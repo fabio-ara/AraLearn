@@ -7,6 +7,7 @@ AraLearn é um aplicativo local-first para estudo, autoria e organização de mi
 Este repositório contém a base pública inicial do projeto.
 
 Nesta etapa, o projeto já define o contrato autoral `aralearn.intent.v1` e a validação estrutural mínima desse formato.
+O repositório também já inclui a pipeline mínima do motor para carregar, validar, normalizar e compilar esse contrato.
 
 ## Estrutura
 
@@ -19,6 +20,8 @@ Nesta etapa, o projeto já define o contrato autoral `aralearn.intent.v1` e a va
 
 - `docs/aralearn.intent.v1.md`
 - `docs/examples/`
+- `src/core/`
+- `src/model/`
 
 ## Validação
 

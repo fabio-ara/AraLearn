@@ -21,3 +21,11 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 - validador estrutural inicial do contrato
 - interface de linha de comando para validar arquivo JSON
 - testes automatizados do validador
+
+## [0.3.0] - 2026-05-02
+
+### Added
+
+- pipeline mínima do motor para carregar, validar, normalizar e compilar `aralearn.intent.v1`
+- modelo interno compilado inicial com ids internos determinísticos
+- testes automatizados da compilação inicial
