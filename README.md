@@ -8,6 +8,7 @@ Este repositório contém a base pública inicial do projeto.
 
 Nesta etapa, o projeto já define o contrato autoral `aralearn.intent.v1` e a validação estrutural mínima desse formato.
 O repositório também já inclui a pipeline mínima do motor para carregar, validar, normalizar e compilar esse contrato.
+Há também uma camada inicial de renderização HTML baseada apenas no modelo compilado.
 
 ## Estrutura
 
@@ -22,6 +23,7 @@ O repositório também já inclui a pipeline mínima do motor para carregar, val
 - `docs/examples/`
 - `src/core/`
 - `src/model/`
+- `src/render/`
 
 ## Validação
 
