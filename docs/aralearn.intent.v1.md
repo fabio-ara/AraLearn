@@ -190,3 +190,34 @@ O validador desta fase:
 - gera `key` quando necessário;
 - rejeita intenção desconhecida;
 - retorna erros claros com caminho estrutural.
+
+## Pipeline mínima do motor
+
+Na fase atual, o AraLearn já estabelece a pipeline mínima:
+
+```text
+carregar
+validar
+normalizar
+compilar
+```
+
+Responsabilidades:
+
+- `carregar`: receber string JSON ou objeto em memória;
+- `validar`: confirmar contrato, hierarquia e regras estruturais;
+- `normalizar`: devolver o documento autoral com `key` gerada quando necessário;
+- `compilar`: produzir um modelo interno com ids internos determinísticos e índices auxiliares.
+
+Nesta fase, a pipeline ainda não inclui renderização, interação ou persistência.
+
+## Modelo compilado inicial
+
+O modelo compilado:
+
+- preserva a hierarquia estrutural do documento;
+- cria ids internos derivados das `key` normalizadas;
+- separa o documento autoral normalizado do modelo interno;
+- expõe índices iniciais de microssequências e cards para uso futuro do motor.
+
+O documento autoral normalizado continua sem ids internos.
