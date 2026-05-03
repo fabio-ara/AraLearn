@@ -38,3 +38,12 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 - renderizadores isolados para `text`, `ask`, `complete`, `code`, `table`, `flow` e `image`
 - exemplo renderizável do contrato com múltiplas intenções
 - testes automatizados da renderização básica
+
+## [0.5.0] - 2026-05-02
+
+### Added
+
+- camada de persistência local simples em `src/storage`
+- separação explícita entre projeto e progresso
+- exportação e importação JSON com validação antes da persistência
+- testes automatizados da persistência local

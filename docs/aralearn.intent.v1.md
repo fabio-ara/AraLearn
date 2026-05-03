@@ -242,3 +242,13 @@ Intenções com renderização inicial:
 - `image`
 
 As demais intenções previstas continuam válidas no contrato, mas podem usar placeholder até fases posteriores.
+
+## Persistência local simples
+
+Nesta fase, o projeto adota persistência local simples com estas regras:
+
+- projeto e progresso ficam separados;
+- a persistência fica atrás de interfaces próprias;
+- a importação JSON valida o projeto antes de gravar;
+- a exportação JSON reúne projeto e progresso em um pacote comum;
+- a camada de persistência não conhece detalhes de renderização.
