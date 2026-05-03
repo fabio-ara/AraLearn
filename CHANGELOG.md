@@ -29,3 +29,12 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 - pipeline mínima do motor para carregar, validar, normalizar e compilar `aralearn.intent.v1`
 - modelo interno compilado inicial com ids internos determinísticos
 - testes automatizados da compilação inicial
+
+## [0.4.0] - 2026-05-02
+
+### Added
+
+- camada inicial de renderização HTML baseada no modelo compilado
+- renderizadores isolados para `text`, `ask`, `complete`, `code`, `table`, `flow` e `image`
+- exemplo renderizável do contrato com múltiplas intenções
+- testes automatizados da renderização básica

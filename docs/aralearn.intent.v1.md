@@ -221,3 +221,24 @@ O modelo compilado:
 - expõe índices iniciais de microssequências e cards para uso futuro do motor.
 
 O documento autoral normalizado continua sem ids internos.
+
+## Renderização básica atual
+
+Nesta fase, a renderização:
+
+- consome apenas o modelo compilado;
+- não valida o JSON cru;
+- mantém renderizadores isolados por intenção;
+- produz HTML estático inicial para inspeção e evolução posterior.
+
+Intenções com renderização inicial:
+
+- `text`
+- `ask`
+- `complete`
+- `code`
+- `table`
+- `flow`
+- `image`
+
+As demais intenções previstas continuam válidas no contrato, mas podem usar placeholder até fases posteriores.
