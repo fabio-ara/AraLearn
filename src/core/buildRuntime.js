@@ -1,12 +1,12 @@
-import { loadIntentV1Source } from "./loadIntentV1Source.js";
-import { normalizeIntentV1Document } from "./normalizeIntentV1Document.js";
-import { compileIntentV1Document } from "../model/compileIntentV1.js";
+import { loadJsonSource } from "./loadJsonSource.js";
+import { validateContractDocument } from "../contract/validateContract.js";
+import { compileContractDocument } from "../model/compileContract.js";
 
-export function buildIntentV1Runtime(source) {
+export function buildRuntime(source) {
   let loadedDocument;
 
   try {
-    loadedDocument = loadIntentV1Source(source);
+    loadedDocument = loadJsonSource(source);
   } catch (error) {
     return {
       ok: false,
@@ -20,8 +20,7 @@ export function buildIntentV1Runtime(source) {
     };
   }
 
-  const normalized = normalizeIntentV1Document(loadedDocument);
-
+  const normalized = validateContractDocument(loadedDocument);
   if (!normalized.ok) {
     return {
       ok: false,
@@ -30,13 +29,13 @@ export function buildIntentV1Runtime(source) {
     };
   }
 
-  const compiled = compileIntentV1Document(normalized.value);
+  const compiled = compileContractDocument(normalized.value);
 
   return {
     ok: true,
     stages: ["load", "validate", "normalize", "compile"],
     loaded: loadedDocument,
-    normalized: normalized.value,
+    normalizedDocument: normalized.value,
     compiled
   };
 }

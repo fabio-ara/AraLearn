@@ -2,9 +2,10 @@ function makeNodeId(parts) {
   return parts.join(":");
 }
 
-export function compileIntentV1Document(document) {
+export function compileContractDocument(document) {
   const sequences = [];
   const cards = [];
+
   const compiledCourses = document.courses.map((course, courseIndex) => {
     const courseId = makeNodeId(["course", course.key]);
 
@@ -48,16 +49,15 @@ export function compileIntentV1Document(document) {
                   moduleId,
                   lessonId,
                   order: microsequenceIndex,
-                  title: microsequence.title ?? null,
-                  objective: microsequence.objective,
+                  title: microsequence.title,
                   cardIds: []
                 };
 
                 const compiledMicrosequence = {
                   id: microsequenceId,
                   key: microsequence.key,
-                  ...(microsequence.title ? { title: microsequence.title } : {}),
-                  objective: microsequence.objective,
+                  title: microsequence.title,
+                  ...(microsequence.tags?.length ? { tags: microsequence.tags } : {}),
                   order: microsequenceIndex,
                   cards: microsequence.cards.map((card, cardIndex) => {
                     const cardId = makeNodeId([
@@ -69,14 +69,11 @@ export function compileIntentV1Document(document) {
                       card.key
                     ]);
 
-                    sequenceEntry.cardIds.push(cardId);
-
+                    const { key, ...payload } = card;
                     const compiledCard = {
                       id: cardId,
-                      key: card.key,
-                      intent: card.intent,
-                      ...(card.title ? { title: card.title } : {}),
-                      ...(card.data ? { data: card.data } : {}),
+                      key,
+                      ...payload,
                       order: cardIndex,
                       scope: {
                         courseId,
@@ -86,6 +83,7 @@ export function compileIntentV1Document(document) {
                       }
                     };
 
+                    sequenceEntry.cardIds.push(cardId);
                     cards.push(compiledCard);
                     return compiledCard;
                   })

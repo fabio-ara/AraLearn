@@ -1,0 +1,75 @@
+{
+  "contract": "aralearn.contract",
+  "courses": [
+    {
+      "title": "Curso renderizável",
+      "modules": [
+        {
+          "title": "Módulo experimental",
+          "lessons": [
+            {
+              "title": "Lição experimental",
+              "microsequences": [
+                {
+                  "title": "Modelo cascata",
+                  "tags": ["Processos de software"],
+                  "cards": [
+                    {
+                      "type": "text",
+                      "title": "Ideia central",
+                      "text": "O modelo cascata organiza o trabalho em fases sequenciais."
+                    },
+                    {
+                      "type": "choice",
+                      "title": "Leitura rápida",
+                      "ask": "Qual estrutura agrupa cards no AraLearn?",
+                      "answer": ["Microssequência"],
+                      "wrong": ["Curso", "Módulo"]
+                    },
+                    {
+                      "type": "complete",
+                      "title": "Complete",
+                      "text": "Todo card pertence a uma [[microssequência]].",
+                      "answer": ["microssequência"],
+                      "wrong": ["lição", "módulo"]
+                    },
+                    {
+                      "type": "editor",
+                      "title": "Trecho de código",
+                      "language": "json",
+                      "code": "{ \"contract\": \"aralearn.contract\" }"
+                    },
+                    {
+                      "type": "table",
+                      "title": "Campos principais",
+                      "columns": ["Campo", "Uso"],
+                      "rows": [
+                        ["type", "Tipo explícito do card"],
+                        ["text", "Conteúdo autoral raso"]
+                      ]
+                    },
+                    {
+                      "type": "flow",
+                      "title": "Fluxo básico",
+                      "flow": [
+                        { "start": "Ler" },
+                        { "process": "Validar" },
+                        { "end": "Renderizar" }
+                      ]
+                    },
+                    {
+                      "type": "image",
+                      "title": "Imagem provisória",
+                      "src": "public/example.png",
+                      "alt": "Imagem de exemplo"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

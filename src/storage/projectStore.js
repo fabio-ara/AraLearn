@@ -1,4 +1,4 @@
-import { validateIntentV1Document } from "../contract/validateIntentV1.js";
+import { validateContractDocument } from "../contract/validateContract.js";
 
 export function parseProjectDocument(rawValue) {
   if (typeof rawValue !== "string" || rawValue.trim() === "") {
@@ -6,7 +6,7 @@ export function parseProjectDocument(rawValue) {
   }
 
   const parsed = JSON.parse(rawValue);
-  const result = validateIntentV1Document(parsed);
+  const result = validateContractDocument(parsed);
 
   if (!result.ok) {
     const summary = result.errors.map((error) => `${error.path}: ${error.message}`).join("; ");
@@ -17,7 +17,7 @@ export function parseProjectDocument(rawValue) {
 }
 
 export function serializeProjectDocument(projectDocument) {
-  const result = validateIntentV1Document(projectDocument);
+  const result = validateContractDocument(projectDocument);
 
   if (!result.ok) {
     const summary = result.errors.map((error) => `${error.path}: ${error.message}`).join("; ");

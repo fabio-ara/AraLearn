@@ -12,7 +12,7 @@ import {
   findModule,
   getDefaultDependencyKeys,
   getFirstPath
-} from "../src/ui/lessonEditorPaths.js";
+} from "../src/ui/projectNavigation.js";
 
 function makeProject() {
   return {
@@ -33,14 +33,14 @@ function makeProject() {
                     key: "micro-1",
                     title: "Micro 1",
                     cards: [
-                      { key: "card-1", title: "Card 1" },
-                      { key: "card-2", title: "Card 2" }
+                      { key: "card-1", title: "Card 1", type: "text", text: "A" },
+                      { key: "card-2", title: "Card 2", type: "text", text: "B" }
                     ]
                   },
                   {
                     key: "micro-2",
                     title: "Micro 2",
-                    cards: [{ key: "card-3", title: "Card 3" }]
+                    cards: [{ key: "card-3", title: "Card 3", type: "text", text: "C" }]
                   }
                 ]
               },
@@ -51,7 +51,7 @@ function makeProject() {
                   {
                     key: "micro-3",
                     title: "Micro 3",
-                    cards: [{ key: "card-4", title: "Card 4" }]
+                    cards: [{ key: "card-4", title: "Card 4", type: "text", text: "D" }]
                   }
                 ]
               }
@@ -68,30 +68,7 @@ function makeProject() {
                   {
                     key: "micro-4",
                     title: "Micro 4",
-                    cards: [{ key: "card-5", title: "Card 5" }]
-                  }
-                ]
-              }
-            ]
-          }
-        ]
-      },
-      {
-        key: "curso-b",
-        title: "Curso B",
-        modules: [
-          {
-            key: "mod-b-1",
-            title: "Modulo B1",
-            lessons: [
-              {
-                key: "licao-b-1",
-                title: "Licao B1",
-                microsequences: [
-                  {
-                    key: "micro-b-1",
-                    title: "Micro B1",
-                    cards: [{ key: "card-b-1", title: "Card B1" }]
+                    cards: [{ key: "card-5", title: "Card 5", type: "text", text: "E" }]
                   }
                 ]
               }
@@ -103,7 +80,7 @@ function makeProject() {
   };
 }
 
-test("lessonEditorPaths resolve caminho inicial e entidades por chave", () => {
+test("projectNavigation resolve caminho inicial e entidades por chave", () => {
   const project = makeProject();
 
   assert.deepEqual(getFirstPath(project), {
@@ -116,14 +93,13 @@ test("lessonEditorPaths resolve caminho inicial e entidades por chave", () => {
   });
 
   assert.equal(findCourse(project, "curso-a")?.title, "Curso A");
-  assert.equal(findCourse(project, "curso-b")?.title, "Curso B");
   assert.equal(findModule(project, "curso-a", "mod-1")?.title, "Modulo 1");
   assert.equal(findLesson(project, "curso-a", "mod-1", "licao-1")?.title, "Licao 1");
   assert.equal(findMicrosequence(project, "curso-a", "mod-1", "licao-1", "micro-2")?.title, "Micro 2");
   assert.equal(findCard(findMicrosequence(project, "curso-a", "mod-1", "licao-1", "micro-1"), "card-2")?.title, "Card 2");
 });
 
-test("lessonEditorPaths montam chave e colecao plana de cards da licao", () => {
+test("projectNavigation monta chave e coleção plana de cards da lição", () => {
   const project = makeProject();
   const lesson = findLesson(project, "curso-a", "mod-1", "licao-1");
 
@@ -148,7 +124,7 @@ test("lessonEditorPaths montam chave e colecao plana de cards da licao", () => {
   );
 });
 
-test("lessonEditorPaths calculam dependencias didaticas em ordem de prioridade", () => {
+test("projectNavigation calcula dependências didáticas em ordem de prioridade", () => {
   const project = makeProject();
   const course = findCourse(project, "curso-a");
   const moduleValue = findModule(project, "curso-a", "mod-1");

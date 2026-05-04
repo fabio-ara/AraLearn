@@ -1,10 +1,10 @@
 function makeError(message) {
   const error = new Error(message);
-  error.name = "IntentLoadError";
+  error.name = "JsonLoadError";
   return error;
 }
 
-export function loadIntentV1Source(source) {
+export function loadJsonSource(source) {
   if (typeof source === "string") {
     try {
       return JSON.parse(source);

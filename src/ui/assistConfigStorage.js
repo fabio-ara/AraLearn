@@ -1,6 +1,4 @@
-const CARD_HISTORY_STORAGE_KEY = "aralearn.card-history.v1";
-const CARD_COMMENT_STORAGE_KEY = "aralearn.card-comments.v1";
-const ASSIST_CONFIG_STORAGE_KEY = "aralearn.assist-config.v1";
+const ASSIST_CONFIG_STORAGE_KEY = "aralearn.assist-config";
 
 function readJsonMap(storage, key) {
   if (!storage || typeof storage.getItem !== "function") {
@@ -30,22 +28,6 @@ function writeJsonMap(storage, key, value) {
   } catch {
     // Evita quebrar a UI se a quota local estiver indisponível.
   }
-}
-
-export function readHistoryStorage(storage = globalThis.localStorage) {
-  return readJsonMap(storage, CARD_HISTORY_STORAGE_KEY);
-}
-
-export function writeHistoryStorage(historyMap, storage = globalThis.localStorage) {
-  writeJsonMap(storage, CARD_HISTORY_STORAGE_KEY, historyMap);
-}
-
-export function readCommentStorage(storage = globalThis.localStorage) {
-  return readJsonMap(storage, CARD_COMMENT_STORAGE_KEY);
-}
-
-export function writeCommentStorage(commentMap, storage = globalThis.localStorage) {
-  writeJsonMap(storage, CARD_COMMENT_STORAGE_KEY, commentMap);
 }
 
 export function readAssistConfigStorage(storage = globalThis.localStorage) {

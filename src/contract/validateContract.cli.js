@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import process from "node:process";
 
-import { validateIntentV1Document } from "./validateIntentV1.js";
+import { validateContractDocument } from "./validateContract.js";
 
 const filePath = process.argv[2];
 
@@ -28,7 +28,7 @@ try {
   process.exit(1);
 }
 
-const result = validateIntentV1Document(parsed);
+const result = validateContractDocument(parsed);
 
 if (!result.ok) {
   console.error(`Documento inválido: ${filePath}`);
