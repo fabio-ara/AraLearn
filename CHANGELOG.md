@@ -47,3 +47,29 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 - separação explícita entre projeto e progresso
 - exportação e importação JSON com validação antes da persistência
 - testes automatizados da persistência local
+
+## [0.6.0] - 2026-05-03
+
+### Added
+
+- camada inicial de edição manual em `src/editor`
+- operações para criar e editar microssequências
+- operações para criar, editar e mover cards dentro da microssequência
+- sessão de edição integrada à camada de storage
+- testes automatizados do editor manual básico
+
+## [0.7.0] - 2026-05-03
+
+### Added
+
+- casca navegável provisória do AraLearn em `public/`, com entrada local por `index.html`
+- navegação completa da hierarquia `curso -> módulo -> lição -> microssequência -> cards`
+- tela de leitura de cards integrada à nova camada de edição local
+- painel provisório da microssequência para interação com LLM por API
+- UI provisória de editor de cards separada da leitura
+- componentes públicos de UI para home, lição, microssequência, leitura e overlays
+
+### Notes
+
+- esta versão entrega casca e fluxo validável, mas ainda não representa a semântica final do projeto
+- detalhes de contrato e runtime ainda serão refinados nas próximas etapas do projeto

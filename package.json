@@ -5,6 +5,8 @@
   "description": "Base inicial pública do AraLearn.",
   "type": "module",
   "scripts": {
+    "start": "node ./scripts/servePublic.js",
+    "dev": "node ./scripts/servePublic.js",
     "test": "node --test",
     "validate:example": "node ./src/contract/validateIntentV1.cli.js ./docs/examples/aralearn-intent-v1.valid.json"
   }

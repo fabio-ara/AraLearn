@@ -252,3 +252,14 @@ Nesta fase, o projeto adota persistência local simples com estas regras:
 - a importação JSON valida o projeto antes de gravar;
 - a exportação JSON reúne projeto e progresso em um pacote comum;
 - a camada de persistência não conhece detalhes de renderização.
+
+## Edição manual básica
+
+Nesta fase, a edição manual básica segue estas regras:
+
+- criar card exige microssequência de destino;
+- não existe card fora de microssequência;
+- editar título e objetivo da microssequência é operação simples;
+- criar, editar e mover card acontece dentro da microssequência;
+- persistência dessas ações simples usa a camada de storage do projeto;
+- o editor não duplica a lógica do renderizador.
