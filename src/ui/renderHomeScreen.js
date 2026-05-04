@@ -37,12 +37,17 @@ function countCompletedCardsInCourse(course, progress) {
   }, 0);
 }
 
-function buildHomeCoursePreviews(project, progress) {
+function formatCount(count, singular, plural) {
+  return `${count} ${count === 1 ? singular : plural}`;
+}
+
+function buildHomeCoursePreviews(project, progress, featuredCourseKey = "") {
   return (project.courses || []).map((course) => {
     return {
       key: course.key,
       title: course.title || "Curso",
       description: course.description || "",
+      isFeatured: course.key === featuredCourseKey,
       moduleCount: (course.modules || []).length,
       lessonCount: countLessons(course),
       completedCount: countCompletedCardsInCourse(course, progress),
@@ -68,27 +73,29 @@ function renderCoursesTopbar(currentCourseKey = "") {
   );
 }
 
-export function renderHomeScreen({ project, progress, selection }) {
+export function renderHomeScreen({ project, progress, selection, featuredCourseKey = "" }) {
   const currentCourseKey = selection?.courseKey || ((project.courses || [])[0]?.key ?? "");
-  const courses = buildHomeCoursePreviews(project, progress)
+  const courses = buildHomeCoursePreviews(project, progress, featuredCourseKey)
     .map((course) => {
       return (
-        '<article class="clean-card course-card progress-card">' +
+        '<article class="clean-card course-card progress-card' +
+        (course.isFeatured ? " course-card-featured" : "") +
+        '">' +
         '<div class="course-copy">' +
-        '<h3 class="card-title">' +
-        escapeHtml(course.title || "Curso") +
-        "</h3>" +
-        (course.description ? '<p class="card-subtitle">' + escapeHtml(course.description) + "</p>" : "") +
+        '<h3 class="card-title' + (course.isFeatured ? " card-title-featured" : "") + '">' + escapeHtml(course.title || "Curso") + "</h3>" +
+        (course.description
+          ? '<p class="card-subtitle">' + escapeHtml(course.description) + "</p>"
+          : "") +
         '<p class="muted tiny progress-meta">' +
         "Progresso: " +
         String(course.completedCount) +
         "/" +
         String(course.totalCount) +
         " · " +
-        String(course.moduleCount) +
-        " módulos · " +
-        String(course.lessonCount) +
-        " lições</p>" +
+        formatCount(course.moduleCount, "módulo", "módulos") +
+        " · " +
+        formatCount(course.lessonCount, "lição", "lições") +
+        "</p>" +
         "</div>" +
         '<div class="course-actions">' +
         '<button class="icon-ghost corner-btn" type="button" data-action="edit-course" data-course-key="' +

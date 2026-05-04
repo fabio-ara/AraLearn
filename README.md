@@ -14,7 +14,7 @@ O projeto reúne a mesma base local para autoria, organização e leitura de mic
 - edição manual de microssequências e cards integrada ao motor editorial
 - casca navegável cobrindo `curso -> módulo -> lição -> microssequência -> cards`
 - reorganização estrutural para refletir múltiplos cursos reais no mesmo projeto
-- painel assistido por LLM via API na microssequência, ainda em evolução
+- geração, revisão e reposicionamento assistidos por LLM via API na camada editorial
 
 ## Como o conteúdo se organiza
 
@@ -60,4 +60,4 @@ npm run validate:example
 
 ## Próximos passos
 
-As próximas iterações devem aprofundar o fluxo editorial, consolidar os contratos públicos e amadurecer a interface local.
+As próximas iterações devem aprofundar os fluxos editoriais assistidos, consolidar os contratos públicos e amadurecer a interface local.

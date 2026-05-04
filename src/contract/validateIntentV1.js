@@ -44,6 +44,28 @@ function ensureString(value, path, fieldName, errors) {
   return value.trim();
 }
 
+function normalizeOptionalTags(value, path, errors) {
+  if (value === undefined) {
+    return [];
+  }
+
+  if (!Array.isArray(value)) {
+    errors.push(makeError(path, 'Campo opcional inválido: "tags".'));
+    return [];
+  }
+
+  return value
+    .map((item, index) => {
+      if (typeof item !== "string") {
+        errors.push(makeError(`${path}.tags[${index}]`, "Tag deve ser texto."));
+        return "";
+      }
+
+      return item.trim();
+    })
+    .filter(Boolean);
+}
+
 function createKeyGenerator(scopeLabel) {
   const usedKeys = new Set();
 
@@ -129,6 +151,7 @@ function validateMicrosequence(microsequence, index, errors, microKeys, path) {
   }
 
   const objective = ensureString(microsequence.objective, currentPath, "objective", errors);
+  const tags = normalizeOptionalTags(microsequence.tags, currentPath, errors);
   const title = microsequence.title && typeof microsequence.title === "string"
     ? microsequence.title.trim()
     : "";
@@ -156,6 +179,7 @@ function validateMicrosequence(microsequence, index, errors, microKeys, path) {
     key,
     ...(title ? { title } : {}),
     objective: objective ?? "",
+    ...(tags.length ? { tags } : {}),
     cards: normalizedCards
   };
 }

@@ -47,6 +47,7 @@ Regras centrais:
                 {
                   "key": "introducao",
                   "objective": "Apresentar o primeiro conceito",
+                  "tags": ["Base anterior", "Pré-requisito"],
                   "cards": [
                     {
                       "key": "conceito-inicial",
@@ -110,6 +111,7 @@ Campos:
 - `key`;
 - `title`: opcional;
 - `objective`: obrigatório;
+- `tags`: opcional, lista curta de tags explícitas associadas à microssequência;
 - `cards`: lista obrigatória de cards.
 
 ### Card

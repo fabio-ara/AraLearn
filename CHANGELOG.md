@@ -102,3 +102,69 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 ### Tests
 
 - suíte automatizada atualizada para validar contrato, compilação, renderização, storage, paths e editor sob a nova raiz multi-curso
+
+## [0.9.1] - 2026-05-04
+
+### Changed
+
+- consolidação do painel da microssequência em um fluxo mais enxuto, com ações assistidas padronizadas e menos texto estrutural
+- desacoplamento do histórico local do card em relação à tela principal
+- redução do peso visual do campo `Objetivo`, tratado como metadado leve da microssequência
+
+### Tests
+
+- atualização da suíte e remoção do armazenamento assistido obsoleto na camada auxiliar de storage
+
+## [0.9.2] - 2026-05-04
+
+### Added
+
+- configuração local da integração por API para LLM no navegador, com persistência da chave e do modelo selecionado
+- camada inicial de integração real com API para LLM por `fetch`, usando saída estruturada em JSON
+- operação editorial para substituir todos os cards de uma microssequência a partir de resultado estruturado da API
+
+### Changed
+
+- reorganização do painel da microssequência para um fluxo assistido focado em geração e revisão de cards
+- materialização direta do retorno da API no projeto local, sem depender de resposta simulada
+
+### Tests
+
+- cobertura automatizada para persistência da configuração da API e para substituição completa dos cards de uma microssequência
+
+## [0.9.3] - 2026-05-04
+
+### Added
+
+- curso especial destacado na home para concentrar rascunhos de microssequências geradas por API
+- tela dedicada de geração de microssequência com pedido amplo, tags explícitas e seletor de modelo
+- garantia estrutural no núcleo editorial para manter sempre o curso especial de rascunhos disponível
+
+### Changed
+
+- separação do fluxo em duas etapas: geração no curso especial e revisão no painel da microssequência
+- especialização da tela do curso de rascunhos como fila de microssequências geradas
+
+### Tests
+
+- cobertura automatizada para garantir a criação do curso especial de rascunhos no documento editorial
+
+## [0.9.4] - 2026-05-04
+
+### Added
+
+- rascunhos de microssequência, com cards de exemplo, para avaliação visual da fila de rascunhos
+
+### Changed
+
+- consolidação do layout compartilhado entre geração e revisão, com prévia superior, faixa de tags consistente e rolagem compatível com WebView
+- a garantia do curso especial de rascunhos agora semeia exemplos quando a fila ainda está vazia ou só contém item inicial vazio
+
+### Tests
+
+- ajuste da suíte editorial para verificar a presença dos rascunhos de exemplo no curso especial
+
+### Fixed
+
+- correções de responsividade, seleção inicial e abertura da fila de rascunhos no curso especial
+- estabilização visual das telas assistidas, com contenção de overflow horizontal e harmonização da faixa de tags

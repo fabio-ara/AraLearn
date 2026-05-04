@@ -1,6 +1,6 @@
 const CARD_HISTORY_STORAGE_KEY = "aralearn.card-history.v1";
 const CARD_COMMENT_STORAGE_KEY = "aralearn.card-comments.v1";
-const ASSIST_CARD_COMMENT_STORAGE_KEY = "aralearn.assist-card-comments.v1";
+const ASSIST_CONFIG_STORAGE_KEY = "aralearn.assist-config.v1";
 
 function readJsonMap(storage, key) {
   if (!storage || typeof storage.getItem !== "function") {
@@ -48,10 +48,21 @@ export function writeCommentStorage(commentMap, storage = globalThis.localStorag
   writeJsonMap(storage, CARD_COMMENT_STORAGE_KEY, commentMap);
 }
 
-export function readAssistCommentStorage(storage = globalThis.localStorage) {
-  return readJsonMap(storage, ASSIST_CARD_COMMENT_STORAGE_KEY);
+export function readAssistConfigStorage(storage = globalThis.localStorage) {
+  const config = readJsonMap(storage, ASSIST_CONFIG_STORAGE_KEY);
+  return {
+    model: typeof config.model === "string" && config.model.trim() ? config.model.trim() : "gemini-2.5-flash-lite",
+    apiKey: typeof config.apiKey === "string" ? config.apiKey : ""
+  };
 }
 
-export function writeAssistCommentStorage(commentMap, storage = globalThis.localStorage) {
-  writeJsonMap(storage, ASSIST_CARD_COMMENT_STORAGE_KEY, commentMap);
+export function writeAssistConfigStorage(config, storage = globalThis.localStorage) {
+  writeJsonMap(
+    storage,
+    ASSIST_CONFIG_STORAGE_KEY,
+    {
+      model: typeof config?.model === "string" ? config.model : "gemini-2.5-flash-lite",
+      apiKey: typeof config?.apiKey === "string" ? config.apiKey : ""
+    }
+  );
 }

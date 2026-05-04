@@ -5,6 +5,13 @@ function clone(value) {
   return structuredClone(value);
 }
 
+export const DRAFT_COURSE_KEY = "course-novas-microssequencias";
+export const DRAFT_MODULE_KEY = "module-fila-geracao";
+export const DRAFT_LESSON_KEY = "lesson-rascunhos-api";
+export const DRAFT_PLACEHOLDER_MICROSEQUENCE_KEY = "microsequence-fila-vazia";
+export const DRAFT_PLACEHOLDER_TITLE = "Fila vazia";
+export const DRAFT_PLACEHOLDER_OBJECTIVE = "Use a geração por API para criar a primeira microssequência.";
+
 function fail(message) {
   throw new Error(message);
 }
@@ -114,6 +121,92 @@ function assignOptionalTextField(record, fieldName, value) {
   }
 }
 
+function normalizeOptionalTags(value) {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  if (!Array.isArray(value)) {
+    fail('Campo opcional inválido: "tags".');
+  }
+
+  return value
+    .map((item) => {
+      if (typeof item !== "string") {
+        fail('Campo opcional inválido: "tags".');
+      }
+
+      return item.trim();
+    })
+    .filter(Boolean);
+}
+
+function normalizeTitleForComparison(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
+function buildUniqueMicrosequenceTitle(lesson, desiredTitle, excludingKey) {
+  const baseTitle = String(desiredTitle || "").replace(/\s+/g, " ").trim();
+  if (!baseTitle) {
+    return "";
+  }
+
+  const titlesInUse = new Set(
+    (lesson.microsequences || [])
+      .filter((item) => item && item.key !== excludingKey)
+      .map((item) => normalizeTitleForComparison(item.title || item.key))
+      .filter(Boolean)
+  );
+
+  if (!titlesInUse.has(normalizeTitleForComparison(baseTitle))) {
+    return baseTitle;
+  }
+
+  let counter = 2;
+  let candidate = `${baseTitle} (${counter})`;
+  while (titlesInUse.has(normalizeTitleForComparison(candidate))) {
+    counter += 1;
+    candidate = `${baseTitle} (${counter})`;
+  }
+
+  return candidate;
+}
+
+function assignUniqueMicrosequenceTitle(lesson, microsequence, nextTitle) {
+  const uniqueTitle = buildUniqueMicrosequenceTitle(lesson, nextTitle, microsequence.key);
+  if (uniqueTitle) {
+    microsequence.title = uniqueTitle;
+  } else {
+    delete microsequence.title;
+  }
+}
+
+function normalizeOptionalRenames(value) {
+  if (value === undefined) {
+    return [];
+  }
+
+  if (!Array.isArray(value)) {
+    fail('Campo opcional inválido: "renames".');
+  }
+
+  return value.map((item) => {
+    if (!item || typeof item !== "object") {
+      fail('Campo opcional inválido: "renames".');
+    }
+
+    return {
+      microsequenceKey: normalizeText(item.microsequenceKey, "microsequenceKey"),
+      title: normalizeText(item.title, "title")
+    };
+  });
+}
+
 function buildCardPayload({ title, data }) {
   const normalizedTitle = title && typeof title === "string" ? title.trim() : "";
   if (data !== undefined) {
@@ -192,6 +285,236 @@ function createStarterCourse({
     ...(description ? { description } : {}),
     modules: [createStarterModule()]
   };
+}
+
+function createDraftPlaceholderMicrosequence() {
+  return {
+    key: DRAFT_PLACEHOLDER_MICROSEQUENCE_KEY,
+    title: DRAFT_PLACEHOLDER_TITLE,
+    objective: DRAFT_PLACEHOLDER_OBJECTIVE,
+    cards: [
+      {
+        key: "card-fila-vazia",
+        intent: "text",
+        title: "Geração pendente",
+        data: createDefaultCardData({
+          title: "Geração pendente",
+          text: "Abra a tela de geração e peça uma nova microssequência para começar a fila."
+        })
+      }
+    ]
+  };
+}
+
+function createDraftSeedMicrosequence({ key, title, objective, tags = [], cards }) {
+  const usedCardKeys = new Set();
+
+  return {
+    key,
+    title,
+    objective,
+    ...(tags.length ? { tags: normalizeOptionalTags(tags) } : {}),
+    cards: cards.map((entry, index) => {
+      const cardTitle = entry.title && entry.title.trim() ? entry.title.trim() : `Card ${index + 1}`;
+      const cardKey = uniqueKey(cardTitle, usedCardKeys, "card");
+      usedCardKeys.add(cardKey);
+      return {
+        key: cardKey,
+        intent: "text",
+        title: cardTitle,
+        data: createDefaultCardData({
+          title: cardTitle,
+          text: entry.text || ""
+        })
+      };
+    })
+  };
+}
+
+function createDraftSeedMicrosequences() {
+  return [
+    createDraftSeedMicrosequence({
+      key: "microsequence-gemini-matrizes-intuicao",
+      title: "Rascunho LLM · Matrizes como tabela de transformação",
+      objective: "Introduzir matrizes por interpretação visual simples antes da formalização.",
+      tags: ["Conjuntos", "Funções", "Tabela"],
+      cards: [
+        {
+          title: "Ideia inicial",
+          text: "Uma matriz pode ser vista primeiro como uma tabela organizada de números com função específica."
+        },
+        {
+          title: "Leitura por linhas",
+          text: "Cada linha pode ser lida como um conjunto coerente de valores que participa da mesma estrutura."
+        },
+        {
+          title: "Leitura por colunas",
+          text: "As colunas ajudam a comparar como uma mesma posição varia entre diferentes linhas."
+        },
+        {
+          title: "Uso didático",
+          text: "Antes de operar, o aluno precisa reconhecer que a forma da matriz já carrega informação."
+        }
+      ]
+    }),
+    createDraftSeedMicrosequence({
+      key: "microsequence-gemini-vetores-operacoes",
+      title: "Rascunho LLM · Vetores e operações básicas",
+      objective: "Apresentar vetor como objeto manipulável por soma e escala sem depender de geometria avançada.",
+      tags: ["Álgebra linear", "Vetores", "Operações"],
+      cards: [
+        {
+          title: "Vetor como objeto",
+          text: "Um vetor pode representar direção, intensidade ou simplesmente uma coleção ordenada de valores."
+        },
+        {
+          title: "Soma de vetores",
+          text: "Somar vetores combina componentes correspondentes e preserva a estrutura posicional."
+        },
+        {
+          title: "Multiplicação por escalar",
+          text: "Multiplicar por escalar altera a intensidade do vetor sem mudar sua natureza de coleção ordenada."
+        },
+        {
+          title: "Ponte para aplicações",
+          text: "Essas operações são base para modelagem, gráficos, sistemas lineares e aprendizado de máquina."
+        }
+      ]
+    }),
+    createDraftSeedMicrosequence({
+      key: "microsequence-gemini-modelo-v-rastreabilidade",
+      title: "Rascunho LLM · Modelo em V e rastreabilidade",
+      objective: "Conectar fases de especificação e teste por pares explícitos de verificação.",
+      tags: ["Modelo cascata", "Modelo em V", "Testes"],
+      cards: [
+        {
+          title: "Estrutura em espelho",
+          text: "O lado esquerdo do modelo organiza definição e projeto; o lado direito organiza verificação correspondente."
+        },
+        {
+          title: "Par requisito-teste",
+          text: "Cada artefato importante deve apontar para um tipo de teste que confirme sua consistência."
+        },
+        {
+          title: "Valor prático",
+          text: "A rastreabilidade facilita explicar por que um teste existe e o que exatamente ele protege."
+        },
+        {
+          title: "Limite do modelo",
+          text: "Quando o contexto muda demais, a rigidez dessa correspondência pode aumentar o custo de adaptação."
+        }
+      ]
+    })
+  ];
+}
+
+function createDraftCourse() {
+  return {
+    key: DRAFT_COURSE_KEY,
+    title: "Novas microssequências",
+    description: "Rascunhos gerados por LLM via API pendente de consolidação em cursos definitivos.",
+    modules: [
+      {
+        key: DRAFT_MODULE_KEY,
+        title: "Fila de geração",
+        description: "Rascunhos aguardando revisão.",
+        lessons: [
+          {
+            key: DRAFT_LESSON_KEY,
+            title: "Rascunhos por API",
+            description: "Microssequências geradas para revisão card a card.",
+            microsequences: createDraftSeedMicrosequences()
+          }
+        ]
+      }
+    ]
+  };
+}
+
+export function isDraftPlaceholderMicrosequence(microsequence) {
+  if (!microsequence) {
+    return false;
+  }
+
+  return (
+    microsequence.key === DRAFT_PLACEHOLDER_MICROSEQUENCE_KEY ||
+    (microsequence.title === DRAFT_PLACEHOLDER_TITLE && microsequence.objective === DRAFT_PLACEHOLDER_OBJECTIVE) ||
+    ((!microsequence.title || !microsequence.title.trim()) && microsequence.objective === "Organizar o próximo bloco didático") ||
+    (microsequence.title === "Nova microssequência" && microsequence.objective === "Organizar o próximo bloco didático")
+  );
+}
+
+function shouldSeedDraftLesson(microsequences) {
+  if (!Array.isArray(microsequences) || microsequences.length === 0) {
+    return true;
+  }
+
+  return microsequences.every((item) => isDraftPlaceholderMicrosequence(item));
+}
+
+export function ensureDraftCourse(document) {
+  const nextDocument = clone(document);
+  const courses = Array.isArray(nextDocument.courses) ? nextDocument.courses : [];
+  const existingCourse = courses.find((item) => item.key === DRAFT_COURSE_KEY);
+  const defaultDraftCourse = createDraftCourse();
+
+  if (!existingCourse) {
+    nextDocument.courses.push(defaultDraftCourse);
+    return ensureValidDocument(nextDocument);
+  }
+
+  let changed = false;
+  if (existingCourse.title !== defaultDraftCourse.title) {
+    existingCourse.title = defaultDraftCourse.title;
+    changed = true;
+  }
+  if (existingCourse.description !== defaultDraftCourse.description) {
+    existingCourse.description = defaultDraftCourse.description;
+    changed = true;
+  }
+  if (!Array.isArray(existingCourse.modules) || !existingCourse.modules.length) {
+    existingCourse.modules = defaultDraftCourse.modules;
+    changed = true;
+  }
+
+  const draftModule = existingCourse.modules.find((item) => item.key === DRAFT_MODULE_KEY);
+  if (!draftModule) {
+    existingCourse.modules.unshift(defaultDraftCourse.modules[0]);
+    changed = true;
+  } else if (!Array.isArray(draftModule.lessons) || !draftModule.lessons.length) {
+    draftModule.title = defaultDraftCourse.modules[0].title;
+    draftModule.description = defaultDraftCourse.modules[0].description;
+    draftModule.lessons = defaultDraftCourse.modules[0].lessons;
+    changed = true;
+  } else {
+    if (draftModule.title !== defaultDraftCourse.modules[0].title) {
+      draftModule.title = defaultDraftCourse.modules[0].title;
+      changed = true;
+    }
+    if (draftModule.description !== defaultDraftCourse.modules[0].description) {
+      draftModule.description = defaultDraftCourse.modules[0].description;
+      changed = true;
+    }
+    const draftLesson = draftModule.lessons.find((item) => item.key === DRAFT_LESSON_KEY);
+    if (!draftLesson) {
+      draftModule.lessons.unshift(defaultDraftCourse.modules[0].lessons[0]);
+      changed = true;
+    } else if (shouldSeedDraftLesson(draftLesson.microsequences)) {
+      draftLesson.microsequences = createDraftSeedMicrosequences();
+      changed = true;
+    } else {
+      if (draftLesson.title !== defaultDraftCourse.modules[0].lessons[0].title) {
+        draftLesson.title = defaultDraftCourse.modules[0].lessons[0].title;
+        changed = true;
+      }
+      if (draftLesson.description !== defaultDraftCourse.modules[0].lessons[0].description) {
+        draftLesson.description = defaultDraftCourse.modules[0].lessons[0].description;
+        changed = true;
+      }
+    }
+  }
+
+  return changed ? ensureValidDocument(nextDocument) : document;
 }
 
 export function updateCourse(document, input) {
@@ -381,7 +704,6 @@ export function createMicrosequence(document, input) {
   const starterCardKey = uniqueKey("introducao", new Set(), "card");
   const microsequence = {
     key,
-    ...(title ? { title } : {}),
     objective,
     cards: [
       {
@@ -394,6 +716,9 @@ export function createMicrosequence(document, input) {
       }
     ]
   };
+  if (title) {
+    assignUniqueMicrosequenceTitle(lesson, microsequence, title);
+  }
 
   lesson.microsequences.push(microsequence);
   return ensureValidDocument(nextDocument);
@@ -411,7 +736,7 @@ export function updateMicrosequence(document, input) {
 
     const nextTitle = input.title.trim();
     if (nextTitle) {
-      microsequence.title = nextTitle;
+      assignUniqueMicrosequenceTitle(lesson, microsequence, nextTitle);
     } else {
       delete microsequence.title;
     }
@@ -438,6 +763,121 @@ export function deleteMicrosequence(document, input) {
   if (!lesson.microsequences.length) {
     lesson.microsequences.push(createStarterMicrosequence());
   }
+
+  return ensureValidDocument(nextDocument);
+}
+
+export function moveMicrosequence(document, input) {
+  const nextDocument = clone(document);
+  const { lesson: sourceLesson } = findLesson(nextDocument, input.moduleKey, input.lessonKey, input.courseKey);
+  const { lesson: targetLesson } = findLesson(
+    nextDocument,
+    input.targetModuleKey,
+    input.targetLessonKey,
+    input.targetCourseKey
+  );
+  const microsequenceIndex = sourceLesson.microsequences.findIndex((item) => item.key === input.microsequenceKey);
+
+  if (microsequenceIndex < 0) {
+    fail(`Microssequência não encontrada: "${input.microsequenceKey}".`);
+  }
+
+  const [microsequence] = sourceLesson.microsequences.splice(microsequenceIndex, 1);
+
+  if (sourceLesson !== targetLesson && !sourceLesson.microsequences.length) {
+    sourceLesson.microsequences.push(createStarterMicrosequence());
+  }
+
+  const usedKeys = collectSiblingKeys(targetLesson.microsequences);
+  if (usedKeys.has(microsequence.key)) {
+    microsequence.key = uniqueKey(microsequence.title || microsequence.objective, usedKeys, "microsequence");
+  }
+
+  const targetPosition = Number.isInteger(input.targetPosition) ? input.targetPosition : targetLesson.microsequences.length;
+  const adjustedTargetPosition =
+    sourceLesson === targetLesson && targetPosition > microsequenceIndex
+      ? targetPosition - 1
+      : targetPosition;
+  const safeIndex = Math.max(0, Math.min(adjustedTargetPosition, targetLesson.microsequences.length));
+  targetLesson.microsequences.splice(safeIndex, 0, microsequence);
+
+  if (microsequence.title) {
+    assignUniqueMicrosequenceTitle(targetLesson, microsequence, microsequence.title);
+  }
+
+  const renames = normalizeOptionalRenames(input.renames);
+  renames.forEach((rename) => {
+    const targetMicrosequence = targetLesson.microsequences.find((item) => item.key === rename.microsequenceKey);
+    if (!targetMicrosequence) {
+      return;
+    }
+
+    assignUniqueMicrosequenceTitle(targetLesson, targetMicrosequence, rename.title);
+  });
+
+  return ensureValidDocument(nextDocument);
+}
+
+export function replaceMicrosequenceCards(document, input) {
+  const nextDocument = clone(document);
+  const { lesson } = findLesson(nextDocument, input.moduleKey, input.lessonKey, input.courseKey);
+  const microsequence = findMicrosequence(lesson, input.microsequenceKey);
+
+  const nextCards = Array.isArray(input.cards) ? input.cards : [];
+  if (!nextCards.length) {
+    fail('Campo obrigatório inválido: "cards".');
+  }
+
+  if (input.title !== undefined) {
+    if (typeof input.title !== "string") {
+      fail('Campo opcional inválido: "title".');
+    }
+    const nextTitle = input.title.trim();
+    if (nextTitle) {
+      assignUniqueMicrosequenceTitle(lesson, microsequence, nextTitle);
+    } else {
+      delete microsequence.title;
+    }
+  }
+
+  if (input.objective !== undefined) {
+    microsequence.objective = normalizeText(input.objective, "objective");
+  }
+
+  if (input.tags !== undefined) {
+    const tags = normalizeOptionalTags(input.tags);
+    if (tags && tags.length) {
+      microsequence.tags = tags;
+    } else {
+      delete microsequence.tags;
+    }
+  }
+
+  const usedKeys = new Set();
+  microsequence.cards = nextCards.map((entry, index) => {
+    const title =
+      entry && typeof entry.title === "string" && entry.title.trim() ? entry.title.trim() : `Card ${index + 1}`;
+    const key =
+      entry && typeof entry.key === "string" && entry.key.trim()
+        ? entry.key.trim()
+        : uniqueKey(title, usedKeys, "card");
+
+    if (usedKeys.has(key)) {
+      fail(`Key de card duplicada: "${key}".`);
+    }
+
+    usedKeys.add(key);
+
+    return {
+      key,
+      intent: "text",
+      title,
+      data: createDefaultCardData({
+        title,
+        text: entry && typeof entry.text === "string" ? entry.text : ""
+      })
+    };
+  });
 
   return ensureValidDocument(nextDocument);
 }
@@ -562,6 +1002,12 @@ export function createEditorSession(storage) {
   }
 
   return {
+    ensureDraftCourse() {
+      const nextDocument = ensureDraftCourse(storage.loadProject());
+      storage.saveProject(nextDocument);
+      return nextDocument;
+    },
+
     updateCourse(input) {
       const nextDocument = updateCourse(storage.loadProject(), input);
       storage.saveProject(nextDocument);
@@ -630,6 +1076,18 @@ export function createEditorSession(storage) {
 
     deleteMicrosequence(input) {
       const nextDocument = deleteMicrosequence(storage.loadProject(), input);
+      storage.saveProject(nextDocument);
+      return nextDocument;
+    },
+
+    moveMicrosequence(input) {
+      const nextDocument = moveMicrosequence(storage.loadProject(), input);
+      storage.saveProject(nextDocument);
+      return nextDocument;
+    },
+
+    replaceMicrosequenceCards(input) {
+      const nextDocument = replaceMicrosequenceCards(storage.loadProject(), input);
       storage.saveProject(nextDocument);
       return nextDocument;
     },

@@ -4,11 +4,18 @@ import fs from "node:fs";
 
 import { validateIntentV1Document } from "../src/contract/validateIntentV1.js";
 import {
+  DRAFT_COURSE_KEY,
+  DRAFT_LESSON_KEY,
+  DRAFT_MODULE_KEY,
   createCardInMicrosequence,
   createEditorSession,
   createMicrosequence,
   deleteCardInMicrosequence,
+  ensureDraftCourse,
+  isDraftPlaceholderMicrosequence,
   moveCardWithinMicrosequence,
+  moveMicrosequence,
+  replaceMicrosequenceCards,
   updateCourse,
   updateCardInMicrosequence,
   updateLesson,
@@ -51,6 +58,12 @@ test("cria microssequência nova dentro da lição sem gerar card solto", () => 
 
 test("edita título e objetivo da microssequência", () => {
   const document = readNormalizedProject("./docs/examples/aralearn-intent-v1.valid.json");
+  document.courses[0].modules[0].lessons[0].microsequences.push({
+    key: "microsequence-segunda",
+    title: "Microssequência revisada",
+    objective: "Outra sequência",
+    cards: [{ key: "card-segundo", title: "Card", intent: "text", data: { text: "ok" } }]
+  });
 
   const nextDocument = updateMicrosequence(document, {
     courseKey: "course-curso-de-exemplo",
@@ -62,7 +75,7 @@ test("edita título e objetivo da microssequência", () => {
   });
 
   const microsequence = nextDocument.courses[0].modules[0].lessons[0].microsequences[0];
-  assert.equal(microsequence.title, "Microssequência revisada");
+  assert.equal(microsequence.title, "Microssequência revisada (2)");
   assert.equal(microsequence.objective, "Apresentar o conceito com outro foco");
 });
 
@@ -181,6 +194,188 @@ test("remove card e preserva card inicial quando a microssequência ficaria vazi
   assert.equal(cards[0].intent, "text");
   assert.equal(cards[0].data.blocks[0].kind, "heading");
   assert.equal(cards[0].data.blocks[1].kind, "popup");
+});
+
+test("substitui os cards da microssequência por resultado estruturado da API", () => {
+  const document = readNormalizedProject("./docs/examples/aralearn-intent-v1.valid.json");
+
+  const nextDocument = replaceMicrosequenceCards(document, {
+    courseKey: "course-curso-de-exemplo",
+    moduleKey: "module-fundamentos",
+    lessonKey: "lesson-primeira-licao",
+    microsequenceKey: "microsequence-apresentar-o-primeiro-conceito",
+    title: "Vetores",
+    objective: "Introduzir vetores em passos curtos",
+    tags: ["Álgebra linear", "Vetores"],
+    cards: [
+      {
+        title: "Intuição",
+        text: "Vetores representam direção e intensidade."
+      },
+      {
+        title: "Operações",
+        text: "Soma e multiplicação por escalar transformam vetores."
+      }
+    ]
+  });
+
+  const microsequence = nextDocument.courses[0].modules[0].lessons[0].microsequences[0];
+  assert.equal(microsequence.title, "Vetores");
+  assert.equal(microsequence.objective, "Introduzir vetores em passos curtos");
+  assert.deepEqual(microsequence.tags, ["Álgebra linear", "Vetores"]);
+  assert.equal(microsequence.cards.length, 2);
+  assert.equal(microsequence.cards[0].title, "Intuição");
+  assert.equal(microsequence.cards[0].data.text, "Vetores representam direção e intensidade.");
+  assert.equal(microsequence.cards[1].data.blocks[0].kind, "heading");
+});
+
+test("move microssequência para outra lição sem invalidar a origem", () => {
+  const document = readNormalizedProject("./docs/examples/aralearn-intent-v1.valid.json");
+  document.courses[0].modules[0].lessons.push({
+    key: "lesson-segunda-licao",
+    title: "Segunda lição",
+    microsequences: [
+      {
+        key: "microsequence-destino",
+        title: "Destino",
+        objective: "Receber novas microssequências",
+        cards: [{ key: "card-destino", title: "Card destino", intent: "text", data: { text: "ok" } }]
+      }
+    ]
+  });
+
+  const nextDocument = moveMicrosequence(document, {
+    courseKey: "course-curso-de-exemplo",
+    moduleKey: "module-fundamentos",
+    lessonKey: "lesson-primeira-licao",
+    microsequenceKey: "microsequence-apresentar-o-primeiro-conceito",
+    targetCourseKey: "course-curso-de-exemplo",
+    targetModuleKey: "module-fundamentos",
+    targetLessonKey: "lesson-segunda-licao"
+  });
+
+  const sourceLesson = nextDocument.courses[0].modules[0].lessons[0];
+  const targetLesson = nextDocument.courses[0].modules[0].lessons[1];
+  assert.equal(sourceLesson.microsequences.length, 1);
+  assert.equal(targetLesson.microsequences.length, 2);
+  assert.equal(targetLesson.microsequences[1].key, "microsequence-apresentar-o-primeiro-conceito");
+});
+
+test("aplica renomeações com fallback determinístico durante reposicionamento", () => {
+  const document = readNormalizedProject("./docs/examples/aralearn-intent-v1.valid.json");
+  document.courses[0].modules[0].lessons.push({
+    key: "lesson-segunda-licao",
+    title: "Segunda lição",
+    microsequences: [
+      {
+        key: "microsequence-cascata",
+        title: "Modelo cascata",
+        objective: "Base",
+        cards: [{ key: "card-a", title: "A", intent: "text", data: { text: "ok" } }]
+      },
+      {
+        key: "microsequence-modelo-v",
+        title: "Modelo em V",
+        objective: "Base",
+        cards: [{ key: "card-b", title: "B", intent: "text", data: { text: "ok" } }]
+      }
+    ]
+  });
+
+  const nextDocument = moveMicrosequence(document, {
+    courseKey: "course-curso-de-exemplo",
+    moduleKey: "module-fundamentos",
+    lessonKey: "lesson-primeira-licao",
+    microsequenceKey: "microsequence-apresentar-o-primeiro-conceito",
+    targetCourseKey: "course-curso-de-exemplo",
+    targetModuleKey: "module-fundamentos",
+    targetLessonKey: "lesson-segunda-licao",
+    targetPosition: 1,
+    renames: [
+      {
+        microsequenceKey: "microsequence-apresentar-o-primeiro-conceito",
+        title: "Modelo cascata"
+      }
+    ]
+  });
+
+  const targetLesson = nextDocument.courses[0].modules[0].lessons[1];
+  assert.equal(targetLesson.microsequences[1].title, "Modelo cascata (2)");
+});
+
+test("garante curso especial de rascunhos para geração por API", () => {
+  const document = readNormalizedProject("./docs/examples/aralearn-intent-v1.valid.json");
+  const nextDocument = ensureDraftCourse(document);
+
+  const draftCourse = nextDocument.courses.find((item) => item.key === DRAFT_COURSE_KEY);
+  assert.ok(draftCourse);
+  assert.equal(draftCourse.modules[0].key, DRAFT_MODULE_KEY);
+  assert.equal(draftCourse.modules[0].lessons[0].key, DRAFT_LESSON_KEY);
+  assert.equal(draftCourse.modules[0].lessons[0].microsequences.length, 3);
+  assert.match(draftCourse.modules[0].lessons[0].microsequences[0].title, /Rascunho LLM/);
+  assert.deepEqual(draftCourse.modules[0].lessons[0].microsequences[0].tags, ["Conjuntos", "Funções", "Tabela"]);
+});
+
+test("migra metadados do curso especial para o texto atual", () => {
+  const document = readNormalizedProject("./docs/examples/aralearn-intent-v1.valid.json");
+  document.courses.push({
+    key: DRAFT_COURSE_KEY,
+    title: "Novas microssequências",
+    description: "Texto antigo",
+    modules: [
+      {
+        key: DRAFT_MODULE_KEY,
+        title: "Outro título",
+        description: "Outra descrição",
+        lessons: [
+          {
+            key: DRAFT_LESSON_KEY,
+            title: "Outro nome",
+            description: "Outra fila",
+            microsequences: [
+              {
+                key: "microsequence-real",
+                title: "Rascunho real",
+                objective: "Objetivo",
+                cards: [{ key: "card-1", title: "Card 1", intent: "text", data: { text: "ok" } }]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  });
+
+  const nextDocument = ensureDraftCourse(document);
+  const draftCourse = nextDocument.courses.find((item) => item.key === DRAFT_COURSE_KEY);
+  assert.equal(draftCourse.description, "Rascunhos gerados por LLM via API pendente de consolidação em cursos definitivos.");
+  assert.equal(draftCourse.modules[0].title, "Fila de geração");
+  assert.equal(draftCourse.modules[0].lessons[0].title, "Rascunhos por API");
+});
+
+test("identifica placeholder de geração mas não oculta microssequência já materializada", () => {
+  assert.equal(
+    isDraftPlaceholderMicrosequence({
+      objective: "Organizar o próximo bloco didático"
+    }),
+    true
+  );
+
+  assert.equal(
+    isDraftPlaceholderMicrosequence({
+      title: "Nova microssequência",
+      objective: "Organizar o próximo bloco didático"
+    }),
+    true
+  );
+
+  assert.equal(
+    isDraftPlaceholderMicrosequence({
+      title: "Rascunho LLM · Matrizes",
+      objective: "Introduzir matrizes em passos curtos"
+    }),
+    false
+  );
 });
 
 test("sessão de edição persiste alterações simples no storage do projeto", () => {

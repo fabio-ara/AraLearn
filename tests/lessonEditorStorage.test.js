@@ -2,10 +2,10 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
-  readAssistCommentStorage,
+  readAssistConfigStorage,
   readCommentStorage,
   readHistoryStorage,
-  writeAssistCommentStorage,
+  writeAssistConfigStorage,
   writeCommentStorage,
   writeHistoryStorage
 } from "../src/ui/lessonEditorStorage.js";
@@ -28,15 +28,18 @@ test("lessonEditorStorage le e grava mapas auxiliares", () => {
 
   writeHistoryStorage({ a: [{ id: "1" }] }, storage);
   writeCommentStorage({ b: "nota" }, storage);
-  writeAssistCommentStorage({ c: "pedido" }, storage);
+  writeAssistConfigStorage({ model: "gemini-2.5-flash", apiKey: "abc" }, storage);
 
   assert.deepEqual(readHistoryStorage(storage), { a: [{ id: "1" }] });
   assert.deepEqual(readCommentStorage(storage), { b: "nota" });
-  assert.deepEqual(readAssistCommentStorage(storage), { c: "pedido" });
+  assert.deepEqual(readAssistConfigStorage(storage), { model: "gemini-2.5-flash", apiKey: "abc" });
 });
 
 test("lessonEditorStorage tolera storage ausente ou JSON invalido", () => {
   assert.deepEqual(readHistoryStorage(null), {});
   assert.deepEqual(readCommentStorage({ getItem: () => "{" }), {});
-  assert.deepEqual(readAssistCommentStorage({ getItem: () => "\"texto\"" }), {});
+  assert.deepEqual(readAssistConfigStorage({ getItem: () => "{" }), {
+    model: "gemini-2.5-flash-lite",
+    apiKey: ""
+  });
 });
