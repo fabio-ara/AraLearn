@@ -8,8 +8,10 @@ O projeto reúne a mesma base local para autoria, organização e leitura de mic
 
 ## Estado atual
 
-- contrato público `aralearn.intent.v1`, com validação estrutural e exemplos JSON
-- pipeline mínima para carregar, normalizar, compilar e renderizar o conteúdo
+- contrato público principal `aralearn.contract`
+- pipeline própria do contrato principal para validar, compilar e renderizar
+- núcleo próprio do contrato principal para storage, editor, seed e LLM, sem compatibilidade com `intent + data`
+- bootstrap web principal já aponta para a casca principal do produto
 - persistência local separada entre projeto e progresso
 - edição manual de microssequências e cards integrada ao motor editorial
 - casca navegável cobrindo `curso -> módulo -> lição -> microssequência -> cards`
@@ -32,7 +34,7 @@ Essa hierarquia é a mesma usada pelo contrato público, pelo motor interno e pe
 ## Documentação pública
 
 - [Visão geral da documentação](./docs/README.md)
-- [Contrato `aralearn.intent.v1`](./docs/aralearn.intent.v1.md)
+- [Contrato público atual](./docs/aralearn-contract.md)
 - [Exemplos JSON](./docs/examples/)
 - [Histórico de versões](./CHANGELOG.md)
 

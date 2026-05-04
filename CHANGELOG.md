@@ -2,6 +2,80 @@
 
 Todas as mudanças relevantes deste projeto serão registradas aqui.
 
+## [0.9.5] - 2026-05-04
+
+### Changed
+
+- remoção do campo `objective` do fluxo ativo do contrato `aralearn.intent.v1`, alinhando editor, modelo compilado, renderização HTML e integração assistida ao shape atual da microssequência
+- simplificação do placeholder de geração por API para identificação estável via `key`, evitando tratar uma microssequência real como item vazio
+- limpeza do dataset local de exemplo e da descrição automática de lições para não depender mais de metadados antigos da microssequência
+- documentação pública atualizada para refletir a simplificação do contrato então vigente
+
+### Tests
+
+- atualização da suíte para garantir que compilação e renderização não reintroduzam `objective` no runtime `v1`
+
+## [0.9.6] - 2026-05-04
+
+### Added
+
+- nova pipeline pública de contrato com validação, compilação e renderização próprias
+- utilitário de linha de comando para validar o exemplo público do contrato
+- exemplo público renderizável do contrato
+
+### Tests
+
+- cobertura automatizada para validação, compilação e renderização da nova pipeline do contrato
+
+## [0.9.7] - 2026-05-04
+
+### Added
+
+- modelagem explícita de cards por tipo
+- camada própria de persistência com envelope de projeto
+- núcleo editorial para microssequências e cards sem `intent + data`
+- integração por API para geração e revisão assistidas com saída em tipos explícitos
+
+### Tests
+
+- cobertura automatizada para editor, persistência e normalização da integração por API
+
+## [0.9.8] - 2026-05-04
+
+### Changed
+
+- `public/main.js` passa a subir a aplicação principal sobre a nova base de contrato, persistência, editor e integração por API
+- a casca principal do navegador passa a usar o contrato público atual como entrada local
+- o seed público do navegador passa a nascer no contrato principal do aplicativo
+
+### Tests
+
+- validação automatizada do seed usado pela UI principal
+
+## [0.9.9] - 2026-05-04
+
+### Changed
+
+- remoção do runtime, editor, storage, testes e documentação operacionais do antigo `aralearn.intent.v1`
+- `projectNavigation` e o storage auxiliar de configuração substituem helpers ainda nomeados pela trilha legada
+- `validate:example` passa a validar diretamente o exemplo do contrato público atual
+
+### Tests
+
+- suíte reduzida ao que ainda está vivo no contrato principal
+
+## [0.9.10] - 2026-05-04
+
+### Changed
+
+- remoção de nomes transitórios do caminho ativo do produto
+- contrato público consolidado como `aralearn.contract`
+- módulos, seed, storage, CLI e documentação pública renomeados para formas canônicas
+
+### Tests
+
+- suíte e exemplo público atualizados para os nomes definitivos do produto
+
 ## [0.1.0] - 2026-05-02
 
 ### Added
