@@ -55,7 +55,7 @@ test("recupera projeto e progresso persistidos", () => {
   const loadedProject = projectStorage.loadProject();
   const loadedProgress = projectStorage.loadProgress();
 
-  assert.equal(loadedProject.course.key, "course-curso-de-exemplo");
+  assert.equal(loadedProject.courses[0].key, "course-curso-de-exemplo");
   assert.deepEqual(loadedProgress.lessons["lesson-primeira-licao"].completedCardKeys, ["card-conceito-inicial"]);
 });
 
@@ -100,7 +100,7 @@ test("importa pacote JSON somente depois de validar o projeto", () => {
 
   const imported = projectStorage.importJson(payload);
 
-  assert.equal(imported.project.course.key, "course-curso-de-exemplo");
+  assert.equal(imported.project.courses[0].key, "course-curso-de-exemplo");
   assert.equal(imported.progress.lessons["lesson-primeira-licao"].cursor, 0);
 });
 

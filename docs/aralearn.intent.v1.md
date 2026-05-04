@@ -11,11 +11,12 @@ Ele descreve intenção autoral, não detalhes de renderização, layout, persis
 Todo documento válido segue esta estrutura:
 
 ```text
-curso
-  módulo
-    lição
-      microssequência
-        card
+cursos[]
+  curso
+    módulo
+      lição
+        microssequência
+          card
 ```
 
 Regras centrais:
@@ -30,42 +31,50 @@ Regras centrais:
 ```json
 {
   "contract": "aralearn.intent.v1",
-  "course": {
-    "key": "curso-exemplo",
-    "title": "Curso de exemplo",
-    "modules": [
-      {
-        "key": "fundamentos",
-        "title": "Fundamentos",
-        "lessons": [
-          {
-            "key": "primeira-licao",
-            "title": "Primeira lição",
-            "microsequences": [
-              {
-                "key": "introducao",
-                "objective": "Apresentar o primeiro conceito",
-                "cards": [
-                  {
-                    "key": "conceito-inicial",
-                    "intent": "text",
-                    "title": "Conceito inicial",
-                    "data": {
-                      "text": "Conteúdo inicial."
+  "courses": [
+    {
+      "key": "curso-exemplo",
+      "title": "Curso de exemplo",
+      "modules": [
+        {
+          "key": "fundamentos",
+          "title": "Fundamentos",
+          "lessons": [
+            {
+              "key": "primeira-licao",
+              "title": "Primeira lição",
+              "microsequences": [
+                {
+                  "key": "introducao",
+                  "objective": "Apresentar o primeiro conceito",
+                  "cards": [
+                    {
+                      "key": "conceito-inicial",
+                      "intent": "text",
+                      "title": "Conceito inicial",
+                      "data": {
+                        "text": "Conteúdo inicial."
+                      }
                     }
-                  }
-                ]
-              }
-            ]
-          }
-        ]
-      }
-    ]
-  }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
 }
 ```
 
 ## Modelo conceitual
+
+### Documento
+
+Campos:
+
+- `courses`: lista obrigatória de cursos.
 
 ### Curso
 
@@ -122,13 +131,13 @@ Regras:
 
 - deve ser estável no escopo adequado;
 - deve ser legível;
-- não precisa ser digitada manualmente pelo usuário;
+- não precisa ser digitada manualmente;
 - o validador pode gerar `key` quando ela estiver ausente;
 - deve ser única dentro do escopo de irmãos do mesmo tipo.
 
 Escopos:
 
-- curso;
+- cursos do documento;
 - módulos do curso;
 - lições do módulo;
 - microssequências da lição;
@@ -218,7 +227,7 @@ O modelo compilado:
 - preserva a hierarquia estrutural do documento;
 - cria ids internos derivados das `key` normalizadas;
 - separa o documento autoral normalizado do modelo interno;
-- expõe índices iniciais de microssequências e cards para uso futuro do motor.
+- expõe índices iniciais de cursos, microssequências e cards para uso futuro do motor.
 
 O documento autoral normalizado continua sem ids internos.
 
@@ -241,7 +250,7 @@ Intenções com renderização inicial:
 - `flow`
 - `image`
 
-As demais intenções previstas continuam válidas no contrato, mas podem usar placeholder até fases posteriores.
+As demais intenções previstas continuam válidas no contrato, mas podem usar implementação mínima até fases posteriores.
 
 ## Persistência local simples
 

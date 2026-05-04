@@ -1,31 +1,33 @@
 {
   "contract": "aralearn.intent.v1",
-  "course": {
-    "title": "Curso de exemplo",
-    "description": "Documento mínimo válido do contrato inicial.",
-    "modules": [
-      {
-        "title": "Fundamentos",
-        "lessons": [
-          {
-            "title": "Primeira lição",
-            "microsequences": [
-              {
-                "objective": "Apresentar o primeiro conceito",
-                "cards": [
-                  {
-                    "intent": "text",
-                    "title": "Conceito inicial",
-                    "data": {
-                      "text": "Conteúdo inicial."
+  "courses": [
+    {
+      "title": "Curso de exemplo",
+      "description": "Documento mínimo válido do contrato inicial.",
+      "modules": [
+        {
+          "title": "Fundamentos",
+          "lessons": [
+            {
+              "title": "Primeira lição",
+              "microsequences": [
+                {
+                  "objective": "Apresentar o primeiro conceito",
+                  "cards": [
+                    {
+                      "intent": "text",
+                      "title": "Conceito inicial",
+                      "data": {
+                        "text": "Conteúdo inicial."
+                      }
                     }
-                  }
-                ]
-              }
-            ]
-          }
-        ]
-      }
-    ]
-  }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
 }

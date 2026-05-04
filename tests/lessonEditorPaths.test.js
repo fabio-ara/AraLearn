@@ -16,65 +16,90 @@ import {
 
 function makeProject() {
   return {
-    course: {
-      key: "curso-a",
-      title: "Curso A",
-      modules: [
-        {
-          key: "mod-1",
-          title: "Modulo 1",
-          lessons: [
-            {
-              key: "licao-1",
-              title: "Licao 1",
-              microsequences: [
-                {
-                  key: "micro-1",
-                  title: "Micro 1",
-                  cards: [
-                    { key: "card-1", title: "Card 1" },
-                    { key: "card-2", title: "Card 2" }
-                  ]
-                },
-                {
-                  key: "micro-2",
-                  title: "Micro 2",
-                  cards: [{ key: "card-3", title: "Card 3" }]
-                }
-              ]
-            },
-            {
-              key: "licao-2",
-              title: "Licao 2",
-              microsequences: [
-                {
-                  key: "micro-3",
-                  title: "Micro 3",
-                  cards: [{ key: "card-4", title: "Card 4" }]
-                }
-              ]
-            }
-          ]
-        },
-        {
-          key: "mod-2",
-          title: "Modulo 2",
-          lessons: [
-            {
-              key: "licao-3",
-              title: "Licao 3",
-              microsequences: [
-                {
-                  key: "micro-4",
-                  title: "Micro 4",
-                  cards: [{ key: "card-5", title: "Card 5" }]
-                }
-              ]
-            }
-          ]
-        }
-      ]
-    }
+    courses: [
+      {
+        key: "curso-a",
+        title: "Curso A",
+        modules: [
+          {
+            key: "mod-1",
+            title: "Modulo 1",
+            lessons: [
+              {
+                key: "licao-1",
+                title: "Licao 1",
+                microsequences: [
+                  {
+                    key: "micro-1",
+                    title: "Micro 1",
+                    cards: [
+                      { key: "card-1", title: "Card 1" },
+                      { key: "card-2", title: "Card 2" }
+                    ]
+                  },
+                  {
+                    key: "micro-2",
+                    title: "Micro 2",
+                    cards: [{ key: "card-3", title: "Card 3" }]
+                  }
+                ]
+              },
+              {
+                key: "licao-2",
+                title: "Licao 2",
+                microsequences: [
+                  {
+                    key: "micro-3",
+                    title: "Micro 3",
+                    cards: [{ key: "card-4", title: "Card 4" }]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            key: "mod-2",
+            title: "Modulo 2",
+            lessons: [
+              {
+                key: "licao-3",
+                title: "Licao 3",
+                microsequences: [
+                  {
+                    key: "micro-4",
+                    title: "Micro 4",
+                    cards: [{ key: "card-5", title: "Card 5" }]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        key: "curso-b",
+        title: "Curso B",
+        modules: [
+          {
+            key: "mod-b-1",
+            title: "Modulo B1",
+            lessons: [
+              {
+                key: "licao-b-1",
+                title: "Licao B1",
+                microsequences: [
+                  {
+                    key: "micro-b-1",
+                    title: "Micro B1",
+                    cards: [{ key: "card-b-1", title: "Card B1" }]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
   };
 }
 
@@ -91,6 +116,7 @@ test("lessonEditorPaths resolve caminho inicial e entidades por chave", () => {
   });
 
   assert.equal(findCourse(project, "curso-a")?.title, "Curso A");
+  assert.equal(findCourse(project, "curso-b")?.title, "Curso B");
   assert.equal(findModule(project, "curso-a", "mod-1")?.title, "Modulo 1");
   assert.equal(findLesson(project, "curso-a", "mod-1", "licao-1")?.title, "Licao 1");
   assert.equal(findMicrosequence(project, "curso-a", "mod-1", "licao-1", "micro-2")?.title, "Micro 2");

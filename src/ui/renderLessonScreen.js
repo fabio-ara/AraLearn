@@ -671,8 +671,9 @@ function renderMicrosequenceAssistScreen({ lesson, microsequence, cards, selecti
       title: "Painel da microssequência",
       canGoBack: true,
       backTitle: "Voltar para a lição",
-      editAction: "switch-microsequence-edit",
-      editTitle: "Abrir editor de cards"
+      editAction: "edit-microsequence",
+      editTitle: "Ações da microssequência",
+      editIcon: "&#8943;"
     }) +
     '<main class="screen-content microsequence-assist-screen">' +
     '<section class="context-band context-band-tight">' +
@@ -693,7 +694,9 @@ function renderMicrosequenceAssistScreen({ lesson, microsequence, cards, selecti
     "<label>Objetivo</label>" +
     '<textarea data-field="assist-microsequence-objective" class="assist-objective-textarea">' +
     escapeHtml(microsequence.objective || "") +
-    "</textarea></div></section>" +
+    '</textarea></div>' +
+    '<button class="primary-btn compact-btn" type="button" data-action="switch-microsequence-edit">Abrir editor de cards</button>' +
+    "</section>" +
     '<section class="editor-step-nav">' +
     '<div class="editor-step-nav-head">' +
     '<button class="icon-ghost tiny-icon" type="button" data-action="editor-prev-card" ' +
@@ -756,7 +759,7 @@ function renderMicrosequenceAssistScreen({ lesson, microsequence, cards, selecti
 
 export function renderLessonScreen({ project, view, selection, course, moduleValue, lesson, microsequence, cards, microsequenceMode, editorSupport }) {
   if (view === "courses") {
-    return renderHomeScreen({ project, progress: editorSupport.progress });
+    return renderHomeScreen({ project, progress: editorSupport.progress, selection });
   }
 
   if (view === "course") {

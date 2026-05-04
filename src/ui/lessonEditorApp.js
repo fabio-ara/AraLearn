@@ -49,37 +49,50 @@ function makeEntityEditorModel(state) {
   if (!entityEditor) return null;
 
   if (entityEditor.kind === "course") {
-    const course = findCourse(project, selection.courseKey);
+    const course = findCourse(project, entityEditor.courseKey || selection.courseKey);
     if (!course) return null;
     return {
       title: "Curso",
       fields: [
         { name: "title", label: "Título", type: "text", value: course.title || "" },
         { name: "description", label: "Descrição", type: "textarea", value: course.description || "" }
+      ],
+      actions: [
+        { key: "create-module", label: "Novo módulo" },
+        { key: "create-course", label: "Novo curso" },
+        { key: "delete-course", label: "Excluir curso", tone: "danger" }
       ]
     };
   }
 
   if (entityEditor.kind === "module") {
-    const moduleValue = findModule(project, selection.courseKey, entityEditor.moduleKey);
+    const moduleValue = findModule(project, entityEditor.courseKey || selection.courseKey, entityEditor.moduleKey);
     if (!moduleValue) return null;
     return {
       title: "Módulo",
       fields: [
         { name: "title", label: "Título", type: "text", value: moduleValue.title || "" },
         { name: "description", label: "Descrição", type: "textarea", value: moduleValue.description || "" }
+      ],
+      actions: [
+        { key: "create-lesson", label: "Nova lição" },
+        { key: "delete-module", label: "Excluir módulo", tone: "danger" }
       ]
     };
   }
 
   if (entityEditor.kind === "lesson") {
-    const lesson = findLesson(project, selection.courseKey, entityEditor.moduleKey, entityEditor.lessonKey);
+    const lesson = findLesson(project, entityEditor.courseKey || selection.courseKey, entityEditor.moduleKey, entityEditor.lessonKey);
     if (!lesson) return null;
     return {
       title: "Lição",
       fields: [
         { name: "title", label: "Título", type: "text", value: lesson.title || "" },
         { name: "description", label: "Descrição", type: "textarea", value: lesson.description || "" }
+      ],
+      actions: [
+        { key: "create-microsequence", label: "Nova microssequência" },
+        { key: "delete-lesson", label: "Excluir lição", tone: "danger" }
       ]
     };
   }
@@ -87,7 +100,7 @@ function makeEntityEditorModel(state) {
   if (entityEditor.kind === "microsequence") {
     const microsequence = findMicrosequence(
       project,
-      selection.courseKey,
+      entityEditor.courseKey || selection.courseKey,
       entityEditor.moduleKey,
       entityEditor.lessonKey,
       entityEditor.microsequenceKey
@@ -98,6 +111,32 @@ function makeEntityEditorModel(state) {
       fields: [
         { name: "title", label: "Título", type: "text", value: microsequence.title || "" },
         { name: "objective", label: "Objetivo", type: "textarea", value: microsequence.objective || "" }
+      ],
+      actions: [
+        { key: "create-card", label: "Novo card" },
+        { key: "delete-microsequence", label: "Excluir microssequência", tone: "danger" }
+      ]
+    };
+  }
+
+  if (entityEditor.kind === "card") {
+    const microsequence = findMicrosequence(
+      project,
+      entityEditor.courseKey || selection.courseKey,
+      entityEditor.moduleKey || selection.moduleKey,
+      entityEditor.lessonKey || selection.lessonKey,
+      entityEditor.microsequenceKey || selection.microsequenceKey
+    );
+    const card = microsequence && (entityEditor.cardKey || selection.cardKey)
+      ? findCard(microsequence, entityEditor.cardKey || selection.cardKey)
+      : null;
+    if (!card) return null;
+    return {
+      title: "Card",
+      fields: [],
+      actions: [
+        { key: "create-card", label: "Novo card após este" },
+        { key: "delete-card", label: "Excluir card", tone: "danger" }
       ]
     };
   }
@@ -136,6 +175,24 @@ export function createLessonEditorApp({ root, storage, editor }) {
 
   function setProject(nextProject) {
     state.project = nextProject;
+  }
+
+  function applySelection(path) {
+    if (!path) return;
+    state.selection = {
+      courseKey: path.courseKey,
+      moduleKey: path.moduleKey,
+      lessonKey: path.lessonKey,
+      microsequenceKey: path.microsequenceKey,
+      cardKey: path.cardKey,
+      cardIndex: path.cardIndex
+    };
+  }
+
+  function selectFirstPath(nextProject) {
+    const nextPath = getFirstPath(nextProject);
+    applySelection(nextPath);
+    return nextPath;
   }
 
   function openCourse(courseKey) {
@@ -295,7 +352,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
     render();
   }
 
-  function openMicrosequenceScreen(microsequenceKey, targetIndex = 0, mode = "play") {
+  function selectMicrosequenceCard(microsequenceKey, targetIndex = 0) {
     const microsequence = findMicrosequence(
       state.project,
       state.selection.courseKey,
@@ -312,6 +369,13 @@ export function createLessonEditorApp({ root, storage, editor }) {
     state.selection.microsequenceKey = microsequence.key;
     state.selection.cardIndex = safeIndex;
     state.selection.cardKey = card ? card.key : null;
+    return microsequence;
+  }
+
+  function openMicrosequenceScreen(microsequenceKey, targetIndex = 0, mode = "play") {
+    const microsequence = selectMicrosequenceCard(microsequenceKey, targetIndex);
+    if (!microsequence) return;
+
     state.view = "microsequence";
     state.microsequenceMode = mode;
     ensureCurrentCardSnapshot();
@@ -323,22 +387,8 @@ export function createLessonEditorApp({ root, storage, editor }) {
   }
 
   function openMicrosequenceAssistPage(microsequenceKey, targetIndex = 0) {
-    const microsequence = findMicrosequence(
-      state.project,
-      state.selection.courseKey,
-      state.selection.moduleKey,
-      state.selection.lessonKey,
-      microsequenceKey
-    );
+    const microsequence = selectMicrosequenceCard(microsequenceKey, targetIndex);
     if (!microsequence) return;
-
-    const cards = microsequence.cards || [];
-    const safeIndex = Math.max(0, Math.min(targetIndex, Math.max(0, cards.length - 1)));
-    const card = cards[safeIndex] || null;
-
-    state.selection.microsequenceKey = microsequence.key;
-    state.selection.cardIndex = safeIndex;
-    state.selection.cardKey = card ? card.key : null;
     state.view = "microsequence-assist";
     state.microsequenceMode = "play";
     ensureCurrentCardSnapshot();
@@ -350,22 +400,8 @@ export function createLessonEditorApp({ root, storage, editor }) {
   }
 
   function openCardEditorPage(microsequenceKey, targetIndex = 0) {
-    const microsequence = findMicrosequence(
-      state.project,
-      state.selection.courseKey,
-      state.selection.moduleKey,
-      state.selection.lessonKey,
-      microsequenceKey
-    );
+    const microsequence = selectMicrosequenceCard(microsequenceKey, targetIndex);
     if (!microsequence) return;
-
-    const cards = microsequence.cards || [];
-    const safeIndex = Math.max(0, Math.min(targetIndex, Math.max(0, cards.length - 1)));
-    const card = cards[safeIndex] || null;
-
-    state.selection.microsequenceKey = microsequence.key;
-    state.selection.cardIndex = safeIndex;
-    state.selection.cardKey = card ? card.key : null;
     state.view = "card-editor";
     state.microsequenceMode = "play";
     ensureCurrentCardSnapshot();
@@ -472,9 +508,11 @@ export function createLessonEditorApp({ root, storage, editor }) {
   function openEntityEditor(kind, target = {}) {
     state.entityEditor = {
       kind,
+      courseKey: target.courseKey || state.selection.courseKey,
       moduleKey: target.moduleKey || state.selection.moduleKey,
       lessonKey: target.lessonKey || state.selection.lessonKey,
-      microsequenceKey: target.microsequenceKey || state.selection.microsequenceKey
+      microsequenceKey: target.microsequenceKey || state.selection.microsequenceKey,
+      cardKey: target.cardKey || state.selection.cardKey
     };
     state.cardEditorOpen = false;
     state.cardCommentOpen = false;
@@ -493,9 +531,234 @@ export function createLessonEditorApp({ root, storage, editor }) {
     render();
   }
 
+  function createCardAtPosition(position) {
+    const microsequenceKey = state.selection.microsequenceKey;
+    if (!microsequenceKey) return null;
+
+    const nextProject = editor.createCard({
+      courseKey: state.selection.courseKey,
+      moduleKey: state.selection.moduleKey,
+      lessonKey: state.selection.lessonKey,
+      microsequenceKey,
+      title: "Novo card",
+      intent: "text",
+      position
+    });
+
+    setProject(nextProject);
+    const microsequence = findMicrosequence(
+      nextProject,
+      state.selection.courseKey,
+      state.selection.moduleKey,
+      state.selection.lessonKey,
+      microsequenceKey
+    );
+    const cards = microsequence?.cards || [];
+    const nextIndex = Math.max(0, Math.min(position, Math.max(0, cards.length - 1)));
+    const nextCard = cards[nextIndex] || null;
+    state.selection.cardIndex = nextIndex;
+    state.selection.cardKey = nextCard ? nextCard.key : null;
+    ensureCurrentCardSnapshot();
+    syncAssistDraft();
+    return nextProject;
+  }
+
+  function createCardAfterCurrent() {
+    const microsequenceKey = state.selection.microsequenceKey;
+    if (!microsequenceKey) return;
+
+    try {
+      createCardAtPosition((Number.isInteger(state.selection.cardIndex) ? state.selection.cardIndex : 0) + 1);
+      render();
+    } catch {
+      // Mantém a UI operacional se a criação falhar por estado transitório.
+    }
+  }
+
+  function deleteCurrentCard() {
+    const microsequenceKey = state.selection.microsequenceKey;
+    const cardKey = state.selection.cardKey;
+    if (!microsequenceKey || !cardKey) return;
+
+    try {
+      const previousIndex = Number.isInteger(state.selection.cardIndex) ? state.selection.cardIndex : 0;
+      const nextProject = editor.deleteCard({
+        courseKey: state.selection.courseKey,
+        moduleKey: state.selection.moduleKey,
+        lessonKey: state.selection.lessonKey,
+        microsequenceKey,
+        cardKey
+      });
+
+      setProject(nextProject);
+      const microsequence = findMicrosequence(
+        nextProject,
+        state.selection.courseKey,
+        state.selection.moduleKey,
+        state.selection.lessonKey,
+        microsequenceKey
+      );
+      const cards = microsequence?.cards || [];
+      const nextIndex = Math.max(0, Math.min(previousIndex, Math.max(0, cards.length - 1)));
+      const nextCard = cards[nextIndex] || null;
+      state.selection.cardIndex = nextIndex;
+      state.selection.cardKey = nextCard ? nextCard.key : null;
+      ensureCurrentCardSnapshot();
+      syncAssistDraft();
+      render();
+    } catch {
+      // Mantém a UI operacional se a remoção falhar por estado transitório.
+    }
+  }
+
   function closeCardEditor() {
     state.cardEditorOpen = false;
     render();
+  }
+
+  function runEntityAction(actionKey) {
+    if (!state.entityEditor || !actionKey) return;
+
+    try {
+      let nextProject = null;
+
+      if (actionKey === "create-course") {
+        nextProject = editor.createCourse({
+          title: "Novo curso"
+        });
+        setProject(nextProject);
+        const course = nextProject.courses[nextProject.courses.length - 1];
+        const moduleValue = course.modules[0];
+        const lesson = moduleValue.lessons[0];
+        const microsequence = lesson.microsequences[0];
+        const card = microsequence.cards[0];
+        applySelection({
+          courseKey: course.key,
+          moduleKey: moduleValue.key,
+          lessonKey: lesson.key,
+          microsequenceKey: microsequence.key,
+          cardKey: card.key,
+          cardIndex: 0
+        });
+        state.view = "courses";
+      } else if (actionKey === "delete-course") {
+        nextProject = editor.deleteCourse({
+          courseKey: state.entityEditor.courseKey || state.selection.courseKey
+        });
+        setProject(nextProject);
+        selectFirstPath(nextProject);
+        state.view = "courses";
+      } else if (actionKey === "create-module") {
+        nextProject = editor.createModule({
+          courseKey: state.entityEditor.courseKey || state.selection.courseKey,
+          title: "Novo módulo"
+        });
+        setProject(nextProject);
+        const course = findCourse(nextProject, state.entityEditor.courseKey || state.selection.courseKey);
+        const moduleValue = course.modules[course.modules.length - 1];
+        const lesson = moduleValue.lessons[0];
+        const microsequence = lesson.microsequences[0];
+        const card = microsequence.cards[0];
+        applySelection({
+          courseKey: course.key,
+          moduleKey: moduleValue.key,
+          lessonKey: lesson.key,
+          microsequenceKey: microsequence.key,
+          cardKey: card.key,
+          cardIndex: 0
+        });
+        state.view = "course";
+      } else if (actionKey === "delete-module") {
+        nextProject = editor.deleteModule({
+          courseKey: state.entityEditor.courseKey || state.selection.courseKey,
+          moduleKey: state.entityEditor.moduleKey
+        });
+        setProject(nextProject);
+        selectFirstPath(nextProject);
+        state.view = "course";
+      } else if (actionKey === "create-lesson") {
+        nextProject = editor.createLesson({
+          courseKey: state.entityEditor.courseKey || state.selection.courseKey,
+          moduleKey: state.entityEditor.moduleKey,
+          title: "Nova lição"
+        });
+        setProject(nextProject);
+        const moduleValue = findModule(
+          nextProject,
+          state.entityEditor.courseKey || state.selection.courseKey,
+          state.entityEditor.moduleKey
+        );
+        const lesson = moduleValue.lessons[moduleValue.lessons.length - 1];
+        const microsequence = lesson.microsequences[0];
+        const card = microsequence.cards[0];
+        applySelection({
+          courseKey: state.entityEditor.courseKey || state.selection.courseKey,
+          moduleKey: moduleValue.key,
+          lessonKey: lesson.key,
+          microsequenceKey: microsequence.key,
+          cardKey: card.key,
+          cardIndex: 0
+        });
+        state.view = "lesson";
+      } else if (actionKey === "delete-lesson") {
+        nextProject = editor.deleteLesson({
+          courseKey: state.entityEditor.courseKey || state.selection.courseKey,
+          moduleKey: state.entityEditor.moduleKey,
+          lessonKey: state.entityEditor.lessonKey
+        });
+        setProject(nextProject);
+        selectFirstPath(nextProject);
+        state.view = "course";
+      } else if (actionKey === "create-microsequence") {
+        nextProject = editor.createMicrosequence({
+          courseKey: state.entityEditor.courseKey || state.selection.courseKey,
+          moduleKey: state.entityEditor.moduleKey,
+          lessonKey: state.entityEditor.lessonKey,
+          title: "Nova microssequência",
+          objective: "Organizar o próximo bloco didático"
+        });
+        setProject(nextProject);
+        const lesson = findLesson(
+          nextProject,
+          state.entityEditor.courseKey || state.selection.courseKey,
+          state.entityEditor.moduleKey,
+          state.entityEditor.lessonKey
+        );
+        const microsequence = lesson.microsequences[lesson.microsequences.length - 1];
+        const card = microsequence.cards[0];
+        applySelection({
+          courseKey: state.entityEditor.courseKey || state.selection.courseKey,
+          moduleKey: state.entityEditor.moduleKey,
+          lessonKey: lesson.key,
+          microsequenceKey: microsequence.key,
+          cardKey: card.key,
+          cardIndex: 0
+        });
+        state.view = "lesson";
+      } else if (actionKey === "delete-microsequence") {
+        nextProject = editor.deleteMicrosequence({
+          courseKey: state.entityEditor.courseKey || state.selection.courseKey,
+          moduleKey: state.entityEditor.moduleKey,
+          lessonKey: state.entityEditor.lessonKey,
+          microsequenceKey: state.entityEditor.microsequenceKey
+        });
+        setProject(nextProject);
+        selectFirstPath(nextProject);
+        state.view = "lesson";
+      } else if (actionKey === "create-card") {
+        createCardAtPosition((Number.isInteger(state.selection.cardIndex) ? state.selection.cardIndex : 0) + 1);
+        state.view = state.view === "card-editor" ? "card-editor" : "microsequence-assist";
+      } else if (actionKey === "delete-card") {
+        state.entityEditor = null;
+        deleteCurrentCard();
+        return;
+      }
+
+      state.entityEditor = null;
+      render();
+    } catch {
+      // Mantém a UI operacional se a ação estrutural falhar por estado transitório.
+    }
   }
 
   function goBack() {
@@ -528,19 +791,20 @@ export function createLessonEditorApp({ root, storage, editor }) {
       let nextProject = null;
       if (state.entityEditor.kind === "course") {
         nextProject = editor.updateCourse({
-          courseKey: state.selection.courseKey,
+          courseKey: state.entityEditor.courseKey || state.selection.courseKey,
           title: payload.title,
           description: payload.description
         });
       } else if (state.entityEditor.kind === "module") {
         nextProject = editor.updateModule({
-          courseKey: state.selection.courseKey,
+          courseKey: state.entityEditor.courseKey || state.selection.courseKey,
           moduleKey: state.entityEditor.moduleKey,
           title: payload.title,
           description: payload.description
         });
       } else if (state.entityEditor.kind === "lesson") {
         nextProject = editor.updateLesson({
+          courseKey: state.entityEditor.courseKey || state.selection.courseKey,
           moduleKey: state.entityEditor.moduleKey,
           lessonKey: state.entityEditor.lessonKey,
           title: payload.title,
@@ -548,6 +812,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
         });
       } else if (state.entityEditor.kind === "microsequence") {
         nextProject = editor.updateMicrosequence({
+          courseKey: state.entityEditor.courseKey || state.selection.courseKey,
           moduleKey: state.entityEditor.moduleKey,
           lessonKey: state.entityEditor.lessonKey,
           microsequenceKey: state.entityEditor.microsequenceKey,
@@ -570,6 +835,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
 
     try {
       const nextProject = editor.updateMicrosequence({
+        courseKey: state.selection.courseKey,
         moduleKey: state.selection.moduleKey,
         lessonKey: state.selection.lessonKey,
         microsequenceKey,
@@ -860,7 +1126,11 @@ export function createLessonEditorApp({ root, storage, editor }) {
     root.querySelector("[data-action='go-back']")?.addEventListener("click", () => goBack());
 
     root.querySelectorAll("[data-action='open-course']").forEach((node) => {
-      node.addEventListener("click", () => openCourse(state.selection.courseKey));
+      node.addEventListener("click", () => {
+        const courseKey = node.getAttribute("data-course-key");
+        if (!courseKey) return;
+        openCourse(courseKey);
+      });
     });
 
     root.querySelectorAll("[data-action='open-lesson']").forEach((node) => {
@@ -919,6 +1189,15 @@ export function createLessonEditorApp({ root, storage, editor }) {
     root.querySelector("[data-action='editor-save']")?.addEventListener("click", () => closeCardEditor());
     root.querySelector("[data-action='editor-prev-card']")?.addEventListener("click", () => openCardByIndex(state.selection.cardIndex - 1));
     root.querySelector("[data-action='editor-next-card']")?.addEventListener("click", () => openCardByIndex(state.selection.cardIndex + 1));
+    root.querySelector("[data-action='edit-card']")?.addEventListener("click", () =>
+      openEntityEditor("card", {
+        courseKey: state.selection.courseKey,
+        moduleKey: state.selection.moduleKey,
+        lessonKey: state.selection.lessonKey,
+        microsequenceKey: state.selection.microsequenceKey,
+        cardKey: state.selection.cardKey
+      })
+    );
 
     root.querySelectorAll("[data-action='open-card-index']").forEach((node) => {
       node.addEventListener("click", () => {
@@ -928,34 +1207,53 @@ export function createLessonEditorApp({ root, storage, editor }) {
       });
     });
 
-    root.querySelector("[data-action='edit-course']")?.addEventListener("click", () => openEntityEditor("course"));
+    root.querySelectorAll("[data-action='edit-course']").forEach((node) => {
+      node.addEventListener("click", () => {
+        const courseKey = node.getAttribute("data-course-key") || state.selection.courseKey;
+        if (!courseKey) return;
+        openEntityEditor("course", { courseKey });
+      });
+    });
     root.querySelectorAll("[data-action='edit-module']").forEach((node) => {
       node.addEventListener("click", () => {
+        const courseKey = node.getAttribute("data-course-key") || state.selection.courseKey;
         const moduleKey = node.getAttribute("data-module-key");
-        if (!moduleKey) return;
-        openEntityEditor("module", { moduleKey });
+        if (!courseKey || !moduleKey) return;
+        openEntityEditor("module", { courseKey, moduleKey });
       });
     });
     root.querySelectorAll("[data-action='edit-lesson']").forEach((node) => {
       node.addEventListener("click", () => {
+        const courseKey = node.getAttribute("data-course-key") || state.selection.courseKey;
         const moduleKey = node.getAttribute("data-module-key") || state.selection.moduleKey;
         const lessonKey = node.getAttribute("data-lesson-key") || state.selection.lessonKey;
-        openEntityEditor("lesson", { moduleKey, lessonKey });
+        if (!courseKey || !moduleKey || !lessonKey) return;
+        openEntityEditor("lesson", { courseKey, moduleKey, lessonKey });
       });
     });
-    root.querySelector("[data-action='edit-microsequence']")?.addEventListener("click", () =>
-      openEntityEditor("microsequence", {
-        moduleKey: state.selection.moduleKey,
-        lessonKey: state.selection.lessonKey,
-        microsequenceKey: state.selection.microsequenceKey
-      })
-    );
+    root.querySelectorAll("[data-action='edit-microsequence']").forEach((node) => {
+      node.addEventListener("click", () =>
+        openEntityEditor("microsequence", {
+          courseKey: state.selection.courseKey,
+          moduleKey: state.selection.moduleKey,
+          lessonKey: state.selection.lessonKey,
+          microsequenceKey: state.selection.microsequenceKey
+        })
+      );
+    });
     root.querySelector("[data-action='switch-microsequence-edit']")?.addEventListener("click", () => {
       openCardEditorPage(state.selection.microsequenceKey, state.selection.cardIndex || 0);
     });
 
     root.querySelector("[data-action='entity-editor-close']")?.addEventListener("click", () => closeEntityEditor());
     root.querySelector("[data-action='entity-editor-save']")?.addEventListener("click", () => closeEntityEditor());
+    root.querySelectorAll("[data-action='run-entity-action']").forEach((node) => {
+      node.addEventListener("click", () => {
+        const actionKey = node.getAttribute("data-entity-action");
+        if (!actionKey) return;
+        runEntityAction(actionKey);
+      });
+    });
     root.querySelector("[data-action='comment-close']")?.addEventListener("click", () => closeCardComment());
     root.querySelector("[data-action='comment-save']")?.addEventListener("click", () => saveCardComment());
 

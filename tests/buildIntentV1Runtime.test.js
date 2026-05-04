@@ -13,10 +13,10 @@ test("compila o exemplo válido para um modelo interno determinístico", () => {
 
   assert.equal(result.ok, true);
   assert.deepEqual(result.stages, ["load", "validate", "normalize", "compile"]);
-  assert.equal(result.compiled.course.id, "course:course-curso-de-exemplo");
-  assert.equal(result.compiled.course.modules[0].id, "module:course-curso-de-exemplo:module-fundamentos");
+  assert.equal(result.compiled.courses[0].id, "course:course-curso-de-exemplo");
+  assert.equal(result.compiled.courses[0].modules[0].id, "module:course-curso-de-exemplo:module-fundamentos");
   assert.equal(
-    result.compiled.course.modules[0].lessons[0].microsequences[0].id,
+    result.compiled.courses[0].modules[0].lessons[0].microsequences[0].id,
     "microsequence:course-curso-de-exemplo:module-fundamentos:lesson-primeira-licao:microsequence-apresentar-o-primeiro-conceito"
   );
   assert.equal(
@@ -49,8 +49,8 @@ test("mantém ids internos apenas no modelo compilado", () => {
   const result = buildIntentV1Runtime(readText("./docs/examples/aralearn-intent-v1.valid.json"));
 
   assert.equal(result.ok, true);
-  assert.equal("id" in result.normalized.course, false);
-  assert.equal("id" in result.normalized.course.modules[0], false);
-  assert.equal("id" in result.normalized.course.modules[0].lessons[0].microsequences[0], false);
-  assert.equal("id" in result.normalized.course.modules[0].lessons[0].microsequences[0].cards[0], false);
+  assert.equal("id" in result.normalized.courses[0], false);
+  assert.equal("id" in result.normalized.courses[0].modules[0], false);
+  assert.equal("id" in result.normalized.courses[0].modules[0].lessons[0].microsequences[0], false);
+  assert.equal("id" in result.normalized.courses[0].modules[0].lessons[0].microsequences[0].cards[0], false);
 });

@@ -199,47 +199,55 @@ function renderMicrosequence(microsequence) {
 }
 
 export function renderHtmlDocument(compiledDocument) {
-  const course = compiledDocument.course;
+  const coursesHtml = compiledDocument.courses
+    .map((course) => {
+      const modulesHtml = course.modules
+        .map((moduleValue) => {
+          const lessonsHtml = moduleValue.lessons
+            .map((lesson) => {
+              const sequencesHtml = lesson.microsequences.map(renderMicrosequence).join("");
+              return (
+                '<section class="lesson" data-lesson-id="' +
+                escapeHtml(lesson.id) +
+                '">' +
+                "<header><h2>" +
+                escapeHtml(lesson.title) +
+                "</h2></header>" +
+                sequencesHtml +
+                "</section>"
+              );
+            })
+            .join("");
 
-  const modulesHtml = course.modules
-    .map((moduleValue) => {
-      const lessonsHtml = moduleValue.lessons
-        .map((lesson) => {
-          const sequencesHtml = lesson.microsequences.map(renderMicrosequence).join("");
           return (
-            '<section class="lesson" data-lesson-id="' +
-            escapeHtml(lesson.id) +
+            '<section class="module" data-module-id="' +
+            escapeHtml(moduleValue.id) +
             '">' +
-            "<header><h2>" +
-            escapeHtml(lesson.title) +
-            "</h2></header>" +
-            sequencesHtml +
+            "<header><h1>" +
+            escapeHtml(moduleValue.title) +
+            "</h1></header>" +
+            lessonsHtml +
             "</section>"
           );
         })
         .join("");
 
       return (
-        '<section class="module" data-module-id="' +
-        escapeHtml(moduleValue.id) +
+        '<section class="course" data-course-id="' +
+        escapeHtml(course.id) +
         '">' +
-        "<header><h1>" +
-        escapeHtml(moduleValue.title) +
+        '<header class="course-head"><h1>' +
+        escapeHtml(course.title) +
         "</h1></header>" +
-        lessonsHtml +
+        modulesHtml +
         "</section>"
       );
     })
     .join("");
 
   return (
-    '<main class="aralearn-document" data-course-id="' +
-    escapeHtml(course.id) +
-    '">' +
-    '<header class="course-head"><h1>' +
-    escapeHtml(course.title) +
-    "</h1></header>" +
-    modulesHtml +
+    '<main class="aralearn-document">' +
+    coursesHtml +
     "</main>"
   );
 }

@@ -61,7 +61,18 @@ export function getDefaultDependencyKeys(dependencies, limit = DEFAULT_ASSIST_DE
 }
 
 export function getFirstPath(project) {
-  const course = project.course;
+  const course = (project.courses || [])[0];
+  if (!course) {
+    return {
+      courseKey: null,
+      moduleKey: null,
+      lessonKey: null,
+      microsequenceKey: null,
+      cardKey: null,
+      cardIndex: 0
+    };
+  }
+
   const moduleValue = course.modules[0];
   const lesson = moduleValue.lessons[0];
   const microsequence = lesson.microsequences[0];
@@ -78,11 +89,7 @@ export function getFirstPath(project) {
 }
 
 export function findCourse(project, courseKey) {
-  if (project.course && project.course.key === courseKey) {
-    return project.course;
-  }
-
-  return null;
+  return (project.courses || []).find((item) => item.key === courseKey) || null;
 }
 
 export function findModule(project, courseKey, moduleKey) {

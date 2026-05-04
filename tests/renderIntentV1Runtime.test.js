@@ -26,8 +26,8 @@ test("renderizador consome o modelo compilado e não o contrato cru", () => {
   const result = renderIntentV1Runtime(readText("./docs/examples/aralearn-intent-v1.renderable.json"));
 
   assert.equal(result.ok, true);
-  assert.equal("id" in result.normalized.course, false);
-  assert.equal("id" in result.compiled.course, true);
+  assert.equal("id" in result.normalized.courses[0], false);
+  assert.equal("id" in result.compiled.courses[0], true);
   assert.match(result.rendered.html, /data-course-id="course:course-curso-renderizavel"/);
 });
 

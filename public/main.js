@@ -23,11 +23,12 @@ try {
 }
 
 const storedSeedVersion = kvStore.getItem(EXAMPLE_SEED_KEY);
+const courseKeys = Array.isArray(project?.courses) ? project.courses.map((course) => course.key) : [];
 const isExampleProject =
   !project ||
-  project.course?.key === "course-exemplo" ||
-  project.course?.key === "course-logica" ||
-  project.course?.key === "course-engenharia-software";
+  courseKeys.includes("course-exemplo") ||
+  courseKeys.includes("course-logica") ||
+  courseKeys.includes("course-engenharia-software");
 
 const shouldResetSeed =
   !project ||

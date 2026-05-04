@@ -270,6 +270,41 @@ function validateCourse(course, errors) {
   };
 }
 
+function validateCourses(document, errors) {
+  if ("course" in document) {
+    errors.push(makeError("course", 'Campo legado inválido: use "courses" na raiz do documento.'));
+  }
+
+  const courses = Array.isArray(document.courses) ? document.courses : [];
+
+  if (!Array.isArray(document.courses) || courses.length === 0) {
+    errors.push(makeError("$", 'Documento deve conter "courses" com pelo menos um item.'));
+    return [];
+  }
+
+  const courseKeys = createKeyGenerator("course");
+  return courses
+    .map((course, index) => {
+      const normalizedCourse = validateCourse(course, errors);
+      if (!normalizedCourse) {
+        return null;
+      }
+
+      const key = courseKeys.next(
+        normalizedCourse.key,
+        normalizedCourse.title || `course-${index + 1}`,
+        `courses[${index}]`,
+        errors
+      );
+
+      return {
+        ...normalizedCourse,
+        key
+      };
+    })
+    .filter(Boolean);
+}
+
 export function validateIntentV1Document(document) {
   const errors = [];
 
@@ -284,7 +319,7 @@ export function validateIntentV1Document(document) {
     errors.push(makeError("contract", `Contrato inválido. Esperado "${CONTRACT_NAME}".`));
   }
 
-  const course = validateCourse(document.course, errors);
+  const courses = validateCourses(document, errors);
 
   if (errors.length > 0) {
     return {
@@ -297,7 +332,7 @@ export function validateIntentV1Document(document) {
     ok: true,
     value: {
       contract: CONTRACT_NAME,
-      course
+      courses
     }
   };
 }

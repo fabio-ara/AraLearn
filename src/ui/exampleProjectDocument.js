@@ -184,108 +184,149 @@ const engineeringSoftwareLessonOne = [
 export function createExampleProjectDocument() {
   return {
     contract: "aralearn.intent.v1",
-    course: {
-      key: "course-engenharia-software",
-      title: "Engenharia de Software",
-      description: "Casca editorial com microssequências didáticas curtas e dependências visíveis.",
-      modules: [
-        {
-          key: "module-processos-software",
-          title: "Processos de software",
-          description: "Modelos de processo e desenvolvimento.",
-          lessons: [
-            {
-              key: "lesson-modelos-processo",
-              title: "Modelos de processo",
-              description: "Comparar abordagens sequenciais, iterativas e orientadas a risco na condução do desenvolvimento.",
-              microsequences: engineeringSoftwareLessonOne
-            },
-            {
-              key: "lesson-praticas-ageis",
-              title: "Práticas ágeis",
-              description: "Entender como XP, Lean e DevOps encurtam ciclos de feedback e sustentam entregas contínuas.",
-              microsequences: [
-                createMicrosequence({
-                  key: "xp",
-                  title: "XP",
-                  objective: "Práticas técnicas e feedback rápido.",
-                  cards: [
-                    { title: "Valores", text: "Comunicação, simplicidade, feedback, coragem e respeito." },
-                    { title: "Práticas", text: "Programação em par, testes e integração contínua aparecem como núcleo." }
-                  ]
-                }),
-                createMicrosequence({
-                  key: "lean-software",
-                  title: "Lean software",
-                  objective: "Fluxo enxuto e eliminação de desperdícios.",
-                  cards: [
-                    { title: "Desperdício", text: "A ideia central é reduzir atividades que não agregam valor." },
-                    { title: "Fluxo", text: "Decisões locais devem favorecer o fluxo global do trabalho." }
-                  ]
-                }),
-                createMicrosequence({
-                  key: "devops",
-                  title: "DevOps",
-                  objective: "Integração entre desenvolvimento e operação.",
-                  cards: [
-                    { title: "Integração", text: "A colaboração reduz atritos entre entrega e operação." },
-                    { title: "Automação", text: "Pipelines e monitoramento apoiam entregas frequentes e estáveis." },
-                    { title: "Cultura", text: "DevOps também é alinhamento cultural, não só ferramental." }
-                  ]
-                })
-              ]
-            }
-          ]
-        },
-        {
-          key: "module-requisitos-arquitetura",
-          title: "Requisitos e arquitetura",
-          description: "Contexto adjacente para ampliar a hierarquia do editor.",
-          lessons: [
-            {
-              key: "lesson-requisitos",
-              title: "Requisitos",
-              description: "Levantar, negociar e priorizar necessidades do sistema antes da solução técnica.",
-              microsequences: [
-                createMicrosequence({
-                  key: "levantamento-requisitos",
-                  title: "Levantamento",
-                  objective: "Coletar necessidades do sistema.",
-                  cards: [
-                    { title: "Fontes", text: "Usuários, documentos, normas e observação ajudam a levantar requisitos." },
-                    { title: "Conflitos", text: "Conflitos entre fontes precisam ser explicitados cedo." }
-                  ]
-                }),
-                createMicrosequence({
-                  key: "priorizacao-requisitos",
-                  title: "Priorização",
-                  objective: "Definir valor e urgência dos requisitos.",
-                  cards: [
-                    { title: "Critérios", text: "Valor, risco, custo e dependência influenciam a priorização." },
-                    { title: "Negociação", text: "Priorização costuma exigir negociação entre atores distintos." }
-                  ]
-                })
-              ]
-            },
-            {
-              key: "lesson-arquitetura",
-              title: "Arquitetura",
-              description: "Relacionar decisões estruturais do sistema com qualidade, evolução e restrições do contexto.",
-              microsequences: [
-                createMicrosequence({
-                  key: "camadas",
-                  title: "Arquitetura em camadas",
-                  objective: "Separação de responsabilidades por camadas.",
-                  cards: [
-                    { title: "Separação", text: "Cada camada concentra uma responsabilidade arquitetural clara." },
-                    { title: "Dependência", text: "As dependências devem seguir direção arquitetural consistente." }
-                  ]
-                })
-              ]
-            }
-          ]
-        }
-      ]
-    }
+    courses: [
+      {
+        key: "course-engenharia-software",
+        title: "Engenharia de Software",
+        description: "Casca editorial com microssequências didáticas curtas e dependências visíveis.",
+        modules: [
+          {
+            key: "module-processos-software",
+            title: "Processos de software",
+            description: "Modelos de processo e desenvolvimento.",
+            lessons: [
+              {
+                key: "lesson-modelos-processo",
+                title: "Modelos de processo",
+                description: "Comparar abordagens sequenciais, iterativas e orientadas a risco na condução do desenvolvimento.",
+                microsequences: engineeringSoftwareLessonOne
+              },
+              {
+                key: "lesson-praticas-ageis",
+                title: "Práticas ágeis",
+                description: "Entender como XP, Lean e DevOps encurtam ciclos de feedback e sustentam entregas contínuas.",
+                microsequences: [
+                  createMicrosequence({
+                    key: "xp",
+                    title: "XP",
+                    objective: "Práticas técnicas e feedback rápido.",
+                    cards: [
+                      { title: "Valores", text: "Comunicação, simplicidade, feedback, coragem e respeito." },
+                      { title: "Práticas", text: "Programação em par, testes e integração contínua aparecem como núcleo." }
+                    ]
+                  }),
+                  createMicrosequence({
+                    key: "lean-software",
+                    title: "Lean software",
+                    objective: "Fluxo enxuto e eliminação de desperdícios.",
+                    cards: [
+                      { title: "Desperdício", text: "A ideia central é reduzir atividades que não agregam valor." },
+                      { title: "Fluxo", text: "Decisões locais devem favorecer o fluxo global do trabalho." }
+                    ]
+                  }),
+                  createMicrosequence({
+                    key: "devops",
+                    title: "DevOps",
+                    objective: "Integração entre desenvolvimento e operação.",
+                    cards: [
+                      { title: "Integração", text: "A colaboração reduz atritos entre entrega e operação." },
+                      { title: "Automação", text: "Pipelines e monitoramento apoiam entregas frequentes e estáveis." },
+                      { title: "Cultura", text: "DevOps também é alinhamento cultural, não só ferramental." }
+                    ]
+                  })
+                ]
+              }
+            ]
+          },
+          {
+            key: "module-requisitos-arquitetura",
+            title: "Requisitos e arquitetura",
+            description: "Contexto adjacente para ampliar a hierarquia do editor.",
+            lessons: [
+              {
+                key: "lesson-requisitos",
+                title: "Requisitos",
+                description: "Levantar, negociar e priorizar necessidades do sistema antes da solução técnica.",
+                microsequences: [
+                  createMicrosequence({
+                    key: "levantamento-requisitos",
+                    title: "Levantamento",
+                    objective: "Coletar necessidades do sistema.",
+                    cards: [
+                      { title: "Fontes", text: "Usuários, documentos, normas e observação ajudam a levantar requisitos." },
+                      { title: "Conflitos", text: "Conflitos entre fontes precisam ser explicitados cedo." }
+                    ]
+                  }),
+                  createMicrosequence({
+                    key: "priorizacao-requisitos",
+                    title: "Priorização",
+                    objective: "Definir valor e urgência dos requisitos.",
+                    cards: [
+                      { title: "Critérios", text: "Valor, risco, custo e dependência influenciam a priorização." },
+                      { title: "Negociação", text: "Priorização costuma exigir negociação entre atores distintos." }
+                    ]
+                  })
+                ]
+              },
+              {
+                key: "lesson-arquitetura",
+                title: "Arquitetura",
+                description: "Relacionar decisões estruturais do sistema com qualidade, evolução e restrições do contexto.",
+                microsequences: [
+                  createMicrosequence({
+                    key: "camadas",
+                    title: "Arquitetura em camadas",
+                    objective: "Separação de responsabilidades por camadas.",
+                    cards: [
+                      { title: "Separação", text: "Cada camada concentra uma responsabilidade arquitetural clara." },
+                      { title: "Dependência", text: "As dependências devem seguir direção arquitetural consistente." }
+                    ]
+                  })
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        key: "course-matematica-informatica",
+        title: "Matemática para Informática",
+        description: "Disciplina com foco em lógica, conjuntos e funções como base para raciocínio computacional.",
+        modules: [
+          {
+            key: "module-logica-matematica",
+            title: "Lógica matemática",
+            description: "Proposições, conectivos e equivalências.",
+            lessons: [
+              {
+                key: "lesson-proposicoes",
+                title: "Proposições",
+                description: "Distinguir frases declarativas, valor lógico e negação.",
+                microsequences: [
+                  createMicrosequence({
+                    key: "frases-logicas",
+                    title: "Frases lógicas",
+                    objective: "Reconhecer quando uma frase pode ser tratada como proposição.",
+                    cards: [
+                      { title: "Definição", text: "Proposição é uma frase declarativa à qual se pode atribuir valor verdadeiro ou falso." },
+                      { title: "Exemplo", text: "Perguntas e comandos não entram como proposições no cálculo proposicional clássico." }
+                    ]
+                  }),
+                  createMicrosequence({
+                    key: "negacao",
+                    title: "Negação",
+                    objective: "Aplicar a negação sem mudar o referente da frase original.",
+                    cards: [
+                      { title: "Operação", text: "Negar uma proposição inverte seu valor lógico sem trocar o tema da afirmação." },
+                      { title: "Cuidado", text: "Negação não é comentário lateral; é transformação lógica da proposição inicial." }
+                    ]
+                  })
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
   };
 }

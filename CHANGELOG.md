@@ -73,3 +73,32 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 - esta versão entrega casca e fluxo validável, mas ainda não representa a semântica final do projeto
 - detalhes de contrato e runtime ainda serão refinados nas próximas etapas do projeto
+
+## [0.8.0] - 2026-05-03
+
+### Added
+
+- ações explícitas no editor de cards para criar novo card logo após o card atual
+- ação explícita no editor de cards para remover o card atual sem invalidar a microssequência
+
+### Changed
+
+- seleção de card da casca local consolidada em uma rotina única para reduzir duplicação entre leitura, painel da microssequência e editor
+
+### Tests
+
+- cobertura automatizada para remoção de card com preservação de card inicial quando a microssequência ficaria vazia
+
+## [0.9.0] - 2026-05-03
+
+### Changed
+
+- reorganização estrutural do contrato `aralearn.intent.v1` para suportar múltiplos cursos reais em `courses[]`
+- refatoração da compilação, renderização e persistência para operar sobre a nova raiz multi-curso
+- refatoração da seleção e da home da casca local para abrir cursos reais do projeto, sem prévias artificiais
+- refatoração das operações editoriais para localizar e alterar módulos, lições, microssequências e cards dentro do curso correto
+- alinhamento da modelagem publicada ao domínio multi-curso adotado pela interface e pelo motor
+
+### Tests
+
+- suíte automatizada atualizada para validar contrato, compilação, renderização, storage, paths e editor sob a nova raiz multi-curso

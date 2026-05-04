@@ -7,7 +7,7 @@ function escapeHtml(value) {
     .replace(/'/g, "&#39;");
 }
 
-export function renderEntityEditorOverlay({ title, fields }) {
+export function renderEntityEditorOverlay({ title, fields, actions = [] }) {
   const inputs = fields
     .map((field) => {
       const value = field.value ? escapeHtml(field.value) : "";
@@ -41,6 +41,26 @@ export function renderEntityEditorOverlay({ title, fields }) {
     })
     .join("");
 
+  const actionButtons = actions.length
+    ? '<section class="entity-action-group">' +
+      '<p class="tiny muted">Ações</p>' +
+      '<div class="entity-action-list">' +
+      actions
+        .map((action) => {
+          return (
+            '<button class="entity-action-btn' +
+            (action.tone === "danger" ? " is-danger" : "") +
+            '" type="button" data-action="run-entity-action" data-entity-action="' +
+            escapeHtml(action.key) +
+            '">' +
+            escapeHtml(action.label) +
+            "</button>"
+          );
+        })
+        .join("") +
+      "</div></section>"
+    : "";
+
   return (
     '<section class="editor-overlay" aria-label="Editor">' +
     '<article class="editor-sheet" role="dialog" aria-modal="true">' +
@@ -53,6 +73,7 @@ export function renderEntityEditorOverlay({ title, fields }) {
     "</header>" +
     '<div class="editor-body">' +
     inputs +
+    actionButtons +
     "</div>" +
     "</article></section>"
   );

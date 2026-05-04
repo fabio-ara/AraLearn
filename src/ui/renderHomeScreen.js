@@ -38,33 +38,20 @@ function countCompletedCardsInCourse(course, progress) {
 }
 
 function buildHomeCoursePreviews(project, progress) {
-  const primaryCourse = project.course;
-  const primaryPreview = {
-    key: primaryCourse.key,
-    title: primaryCourse.title || "Curso",
-    description: primaryCourse.description || "",
-    moduleCount: (primaryCourse.modules || []).length,
-    lessonCount: countLessons(primaryCourse),
-    completedCount: countCompletedCardsInCourse(primaryCourse, progress),
-    totalCount: countCardsInCourse(primaryCourse),
-    isInteractive: true
-  };
-
-  const secondaryPreview = {
-    key: "course-preview-matematica",
-    title: "Matemática para Informática",
-    description: "Disciplina ofertada em 2026 pelo Prof. João Vianei Tamanini para o curso de Tecnologia em Análise e Desenvolvimento de Sistemas no IFSP Campus São Paulo.",
-    moduleCount: 2,
-    lessonCount: 4,
-    completedCount: 0,
-    totalCount: 63,
-    isInteractive: false
-  };
-
-  return [primaryPreview, secondaryPreview];
+  return (project.courses || []).map((course) => {
+    return {
+      key: course.key,
+      title: course.title || "Curso",
+      description: course.description || "",
+      moduleCount: (course.modules || []).length,
+      lessonCount: countLessons(course),
+      completedCount: countCompletedCardsInCourse(course, progress),
+      totalCount: countCardsInCourse(course)
+    };
+  });
 }
 
-function renderCoursesTopbar() {
+function renderCoursesTopbar(currentCourseKey = "") {
   return (
     '<header class="topbar">' +
     '<div class="topbar-space"></div>' +
@@ -74,19 +61,17 @@ function renderCoursesTopbar() {
     '<span class="brand-text">AraLearn</span>' +
     "</span>" +
     "</h1>" +
-    '<button class="icon-ghost" type="button" data-action="edit-course" title="Ações" aria-label="Ações">&#9776;</button>' +
+    '<button class="icon-ghost" type="button" data-action="edit-course" data-course-key="' +
+    escapeHtml(currentCourseKey) +
+    '" title="Ações" aria-label="Ações">&#9776;</button>' +
     "</header>"
   );
 }
 
-export function renderHomeScreen({ project, progress }) {
+export function renderHomeScreen({ project, progress, selection }) {
+  const currentCourseKey = selection?.courseKey || ((project.courses || [])[0]?.key ?? "");
   const courses = buildHomeCoursePreviews(project, progress)
     .map((course) => {
-      const actionButton =
-        course.isInteractive
-          ? '<button class="open-main" type="button" data-action="open-course" title="Abrir curso" aria-label="Abrir curso">&#9654;</button>'
-          : '<button class="open-main" type="button" disabled aria-disabled="true" title="Prévia de curso" aria-label="Prévia de curso">&#9654;</button>';
-
       return (
         '<article class="clean-card course-card progress-card">' +
         '<div class="course-copy">' +
@@ -106,8 +91,12 @@ export function renderHomeScreen({ project, progress }) {
         " lições</p>" +
         "</div>" +
         '<div class="course-actions">' +
-        '<button class="icon-ghost corner-btn" type="button" data-action="edit-course" title="Ações do curso" aria-label="Ações do curso">&ctdot;</button>' +
-        actionButton +
+        '<button class="icon-ghost corner-btn" type="button" data-action="edit-course" data-course-key="' +
+        escapeHtml(course.key) +
+        '" title="Ações do curso" aria-label="Ações do curso">&ctdot;</button>' +
+        '<button class="open-main" type="button" data-action="open-course" data-course-key="' +
+        escapeHtml(course.key) +
+        '" title="Abrir curso" aria-label="Abrir curso">&#9654;</button>' +
         "</div>" +
         "</article>"
       );
@@ -116,7 +105,7 @@ export function renderHomeScreen({ project, progress }) {
 
   return (
     '<section class="screen">' +
-    renderCoursesTopbar() +
+    renderCoursesTopbar(currentCourseKey) +
     '<main class="screen-content">' +
     (courses || '<article class="clean-card"><p class="card-subtitle">Nenhum curso.</p></article>') +
     "</main>" +

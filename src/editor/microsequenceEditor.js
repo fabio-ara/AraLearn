@@ -40,8 +40,9 @@ function normalizeText(value, fieldName) {
   return value.trim();
 }
 
-function findLesson(document, moduleKey, lessonKey) {
-  const moduleValue = document.course.modules.find((item) => item.key === moduleKey);
+function findLesson(document, moduleKey, lessonKey, courseKey) {
+  const course = findCourse(document, courseKey);
+  const moduleValue = course.modules.find((item) => item.key === moduleKey);
   if (!moduleValue) {
     fail(`Módulo não encontrado: "${moduleKey}".`);
   }
@@ -55,11 +56,12 @@ function findLesson(document, moduleKey, lessonKey) {
 }
 
 function findCourse(document, courseKey) {
-  if (!document.course || document.course.key !== courseKey) {
+  const course = (document.courses || []).find((item) => item.key === courseKey);
+  if (!course) {
     fail(`Curso não encontrado: "${courseKey}".`);
   }
 
-  return document.course;
+  return course;
 }
 
 function findModule(document, courseKey, moduleKey) {
@@ -133,6 +135,65 @@ function buildCardPayload({ title, data }) {
   });
 }
 
+function createStarterCard(title = "Novo card") {
+  return {
+    key: uniqueKey("introducao", new Set(), "card"),
+    intent: "text",
+    title,
+    data: createDefaultCardData({
+      title
+    })
+  };
+}
+
+function createStarterMicrosequence({
+  title = "Nova microssequência",
+  objective = "Organizar o próximo bloco didático"
+} = {}) {
+  return {
+    key: uniqueKey(title || objective, new Set(), "microsequence"),
+    ...(title ? { title } : {}),
+    objective,
+    cards: [createStarterCard()]
+  };
+}
+
+function createStarterLesson({
+  title = "Nova lição",
+  description
+} = {}) {
+  return {
+    key: uniqueKey(title, new Set(), "lesson"),
+    title,
+    ...(description ? { description } : {}),
+    microsequences: [createStarterMicrosequence()]
+  };
+}
+
+function createStarterModule({
+  title = "Novo módulo",
+  description
+} = {}) {
+  return {
+    key: uniqueKey(title, new Set(), "module"),
+    title,
+    ...(description ? { description } : {}),
+    lessons: [createStarterLesson()]
+  };
+}
+
+function createStarterCourse({
+  title = "Novo curso",
+  description
+} = {}) {
+  return {
+    key: uniqueKey(title, new Set(), "course"),
+    title,
+    ...(description ? { description } : {}),
+    modules: [createStarterModule()]
+  };
+}
+
 export function updateCourse(document, input) {
   const nextDocument = clone(document);
   const course = findCourse(nextDocument, input.courseKey);
@@ -140,6 +201,80 @@ export function updateCourse(document, input) {
   assignOptionalTextField(course, "title", input.title);
   assignOptionalTextField(course, "description", input.description);
 
+  return ensureValidDocument(nextDocument);
+}
+
+export function createCourse(document, input = {}) {
+  const nextDocument = clone(document);
+  const title =
+    input.title && typeof input.title === "string" && input.title.trim()
+      ? input.title.trim()
+      : "Novo curso";
+  const description =
+    input.description && typeof input.description === "string" && input.description.trim()
+      ? input.description.trim()
+      : "";
+
+  const usedKeys = collectSiblingKeys(nextDocument.courses || []);
+  const course = createStarterCourse({
+    title,
+    description
+  });
+  course.key = input.key && typeof input.key === "string" && input.key.trim()
+    ? input.key.trim()
+    : uniqueKey(title, usedKeys, "course");
+
+  if (usedKeys.has(course.key)) {
+    fail(`Key de curso duplicada: "${course.key}".`);
+  }
+
+  nextDocument.courses.push(course);
+
+  return ensureValidDocument(nextDocument);
+}
+
+export function deleteCourse(document, input) {
+  const nextDocument = clone(document);
+  const courseIndex = (nextDocument.courses || []).findIndex((item) => item.key === input.courseKey);
+  if (courseIndex < 0) {
+    fail(`Curso não encontrado: "${input.courseKey}".`);
+  }
+
+  nextDocument.courses.splice(courseIndex, 1);
+
+  if (!nextDocument.courses.length) {
+    nextDocument.courses.push(createStarterCourse());
+  }
+
+  return ensureValidDocument(nextDocument);
+}
+
+export function createModule(document, input) {
+  const nextDocument = clone(document);
+  const course = findCourse(nextDocument, input.courseKey);
+  const title =
+    input.title && typeof input.title === "string" && input.title.trim()
+      ? input.title.trim()
+      : "Novo módulo";
+  const description =
+    input.description && typeof input.description === "string" && input.description.trim()
+      ? input.description.trim()
+      : "";
+  const usedKeys = collectSiblingKeys(course.modules);
+  const moduleValue = createStarterModule({
+    title,
+    description
+  });
+
+  moduleValue.key = input.key && typeof input.key === "string" && input.key.trim()
+    ? input.key.trim()
+    : uniqueKey(title, usedKeys, "module");
+
+  if (usedKeys.has(moduleValue.key)) {
+    fail(`Key de módulo duplicada: "${moduleValue.key}".`);
+  }
+
+  course.modules.push(moduleValue);
   return ensureValidDocument(nextDocument);
 }
 
@@ -153,9 +288,56 @@ export function updateModule(document, input) {
   return ensureValidDocument(nextDocument);
 }
 
+export function deleteModule(document, input) {
+  const nextDocument = clone(document);
+  const { course } = findModule(nextDocument, input.courseKey, input.moduleKey);
+  const moduleIndex = course.modules.findIndex((item) => item.key === input.moduleKey);
+
+  if (moduleIndex < 0) {
+    fail(`Módulo não encontrado: "${input.moduleKey}".`);
+  }
+
+  course.modules.splice(moduleIndex, 1);
+
+  if (!course.modules.length) {
+    course.modules.push(createStarterModule());
+  }
+
+  return ensureValidDocument(nextDocument);
+}
+
+export function createLesson(document, input) {
+  const nextDocument = clone(document);
+  const { moduleValue } = findModule(nextDocument, input.courseKey, input.moduleKey);
+  const title =
+    input.title && typeof input.title === "string" && input.title.trim()
+      ? input.title.trim()
+      : "Nova lição";
+  const description =
+    input.description && typeof input.description === "string" && input.description.trim()
+      ? input.description.trim()
+      : "";
+  const usedKeys = collectSiblingKeys(moduleValue.lessons);
+  const lesson = createStarterLesson({
+    title,
+    description
+  });
+
+  lesson.key = input.key && typeof input.key === "string" && input.key.trim()
+    ? input.key.trim()
+    : uniqueKey(title, usedKeys, "lesson");
+
+  if (usedKeys.has(lesson.key)) {
+    fail(`Key de lição duplicada: "${lesson.key}".`);
+  }
+
+  moduleValue.lessons.push(lesson);
+  return ensureValidDocument(nextDocument);
+}
+
 export function updateLesson(document, input) {
   const nextDocument = clone(document);
-  const { lesson } = findLesson(nextDocument, input.moduleKey, input.lessonKey);
+  const { lesson } = findLesson(nextDocument, input.moduleKey, input.lessonKey, input.courseKey);
 
   assignOptionalTextField(lesson, "title", input.title);
   assignOptionalTextField(lesson, "description", input.description);
@@ -163,9 +345,27 @@ export function updateLesson(document, input) {
   return ensureValidDocument(nextDocument);
 }
 
+export function deleteLesson(document, input) {
+  const nextDocument = clone(document);
+  const { moduleValue } = findLesson(nextDocument, input.moduleKey, input.lessonKey, input.courseKey);
+  const lessonIndex = moduleValue.lessons.findIndex((item) => item.key === input.lessonKey);
+
+  if (lessonIndex < 0) {
+    fail(`Lição não encontrada: "${input.lessonKey}".`);
+  }
+
+  moduleValue.lessons.splice(lessonIndex, 1);
+
+  if (!moduleValue.lessons.length) {
+    moduleValue.lessons.push(createStarterLesson());
+  }
+
+  return ensureValidDocument(nextDocument);
+}
+
 export function createMicrosequence(document, input) {
   const nextDocument = clone(document);
-  const { lesson } = findLesson(nextDocument, input.moduleKey, input.lessonKey);
+  const { lesson } = findLesson(nextDocument, input.moduleKey, input.lessonKey, input.courseKey);
   const title = input.title && typeof input.title === "string" ? input.title.trim() : "";
   const objective = normalizeText(input.objective, "objective");
 
@@ -201,7 +401,7 @@ export function createMicrosequence(document, input) {
 
 export function updateMicrosequence(document, input) {
   const nextDocument = clone(document);
-  const { lesson } = findLesson(nextDocument, input.moduleKey, input.lessonKey);
+  const { lesson } = findLesson(nextDocument, input.moduleKey, input.lessonKey, input.courseKey);
   const microsequence = findMicrosequence(lesson, input.microsequenceKey);
 
   if (input.title !== undefined) {
@@ -224,9 +424,27 @@ export function updateMicrosequence(document, input) {
   return ensureValidDocument(nextDocument);
 }
 
+export function deleteMicrosequence(document, input) {
+  const nextDocument = clone(document);
+  const { lesson } = findLesson(nextDocument, input.moduleKey, input.lessonKey, input.courseKey);
+  const microsequenceIndex = lesson.microsequences.findIndex((item) => item.key === input.microsequenceKey);
+
+  if (microsequenceIndex < 0) {
+    fail(`Microssequência não encontrada: "${input.microsequenceKey}".`);
+  }
+
+  lesson.microsequences.splice(microsequenceIndex, 1);
+
+  if (!lesson.microsequences.length) {
+    lesson.microsequences.push(createStarterMicrosequence());
+  }
+
+  return ensureValidDocument(nextDocument);
+}
+
 export function createCardInMicrosequence(document, input) {
   const nextDocument = clone(document);
-  const { lesson } = findLesson(nextDocument, input.moduleKey, input.lessonKey);
+  const { lesson } = findLesson(nextDocument, input.moduleKey, input.lessonKey, input.courseKey);
   const microsequence = findMicrosequence(lesson, input.microsequenceKey);
   const intent = normalizeText(input.intent, "intent");
   const title = input.title && typeof input.title === "string" ? input.title.trim() : "";
@@ -258,7 +476,7 @@ export function createCardInMicrosequence(document, input) {
 
 export function updateCardInMicrosequence(document, input) {
   const nextDocument = clone(document);
-  const { lesson } = findLesson(nextDocument, input.moduleKey, input.lessonKey);
+  const { lesson } = findLesson(nextDocument, input.moduleKey, input.lessonKey, input.courseKey);
   const microsequence = findMicrosequence(lesson, input.microsequenceKey);
   const card = microsequence.cards.find((item) => item.key === input.cardKey);
 
@@ -292,7 +510,7 @@ export function updateCardInMicrosequence(document, input) {
 
 export function moveCardWithinMicrosequence(document, input) {
   const nextDocument = clone(document);
-  const { lesson } = findLesson(nextDocument, input.moduleKey, input.lessonKey);
+  const { lesson } = findLesson(nextDocument, input.moduleKey, input.lessonKey, input.courseKey);
   const microsequence = findMicrosequence(lesson, input.microsequenceKey);
   const fromIndex = microsequence.cards.findIndex((item) => item.key === input.cardKey);
 
@@ -313,7 +531,7 @@ export function moveCardWithinMicrosequence(document, input) {
 
 export function deleteCardInMicrosequence(document, input) {
   const nextDocument = clone(document);
-  const { lesson } = findLesson(nextDocument, input.moduleKey, input.lessonKey);
+  const { lesson } = findLesson(nextDocument, input.moduleKey, input.lessonKey, input.courseKey);
   const microsequence = findMicrosequence(lesson, input.microsequenceKey);
   const fromIndex = microsequence.cards.findIndex((item) => item.key === input.cardKey);
 
@@ -350,14 +568,50 @@ export function createEditorSession(storage) {
       return nextDocument;
     },
 
+    createCourse(input) {
+      const nextDocument = createCourse(storage.loadProject(), input);
+      storage.saveProject(nextDocument);
+      return nextDocument;
+    },
+
+    deleteCourse(input) {
+      const nextDocument = deleteCourse(storage.loadProject(), input);
+      storage.saveProject(nextDocument);
+      return nextDocument;
+    },
+
+    createModule(input) {
+      const nextDocument = createModule(storage.loadProject(), input);
+      storage.saveProject(nextDocument);
+      return nextDocument;
+    },
+
     updateModule(input) {
       const nextDocument = updateModule(storage.loadProject(), input);
       storage.saveProject(nextDocument);
       return nextDocument;
     },
 
+    deleteModule(input) {
+      const nextDocument = deleteModule(storage.loadProject(), input);
+      storage.saveProject(nextDocument);
+      return nextDocument;
+    },
+
+    createLesson(input) {
+      const nextDocument = createLesson(storage.loadProject(), input);
+      storage.saveProject(nextDocument);
+      return nextDocument;
+    },
+
     updateLesson(input) {
       const nextDocument = updateLesson(storage.loadProject(), input);
+      storage.saveProject(nextDocument);
+      return nextDocument;
+    },
+
+    deleteLesson(input) {
+      const nextDocument = deleteLesson(storage.loadProject(), input);
       storage.saveProject(nextDocument);
       return nextDocument;
     },
@@ -370,6 +624,12 @@ export function createEditorSession(storage) {
 
     updateMicrosequence(input) {
       const nextDocument = updateMicrosequence(storage.loadProject(), input);
+      storage.saveProject(nextDocument);
+      return nextDocument;
+    },
+
+    deleteMicrosequence(input) {
+      const nextDocument = deleteMicrosequence(storage.loadProject(), input);
       storage.saveProject(nextDocument);
       return nextDocument;
     },

@@ -1,25 +1,27 @@
 {
   "contract": "aralearn.intent.v1",
-  "course": {
-    "key": "curso-invalido",
-    "title": "Curso inválido",
-    "modules": [
-      {
-        "key": "modulo-invalido",
-        "title": "Fundamentos",
-        "lessons": [
-          {
-            "key": "licao-invalida",
-            "title": "Lição com card solto",
-            "cards": [
-              {
-                "key": "card-solto",
-                "intent": "text"
-              }
-            ]
-          }
-        ]
-      }
-    ]
-  }
+  "courses": [
+    {
+      "key": "curso-invalido",
+      "title": "Curso inválido",
+      "modules": [
+        {
+          "key": "modulo-invalido",
+          "title": "Fundamentos",
+          "lessons": [
+            {
+              "key": "licao-invalida",
+              "title": "Lição com card solto",
+              "cards": [
+                {
+                  "key": "card-solto",
+                  "intent": "text"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
 }
