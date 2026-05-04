@@ -1,7 +1,7 @@
 import { createBrowserLocalStorageStore } from "../src/storage/createBrowserLocalStorageStore.js";
 import { createProjectStorage } from "../src/storage/createProjectStorage.js";
 import { createEditorSession } from "../src/editor/contractEditor.js";
-import { createContractApp } from "../src/ui/contractApp.js";
+import { createLessonEditorApp } from "../src/ui/lessonEditorApp.js";
 import { createExampleProjectDocument } from "../src/ui/exampleProjectDocument.js";
 
 const root = document.getElementById("app-root");
@@ -39,7 +39,7 @@ if (shouldResetSeed) {
   kvStore.setItem(EXAMPLE_SEED_KEY, EXAMPLE_SEED_VERSION);
 }
 
-createContractApp({
+createLessonEditorApp({
   root,
   storage,
   editor
