@@ -113,6 +113,86 @@ export function createExampleProjectDocument() {
                           { end: "Verificar" }
                         ]
                       ),
+                      createFlowCard(
+                        "card-v-fluxo-estrutural",
+                        "Fluxo com decisão",
+                        [
+                          { start: "Receber requisito" },
+                          {
+                            if: "O requisito está completo?",
+                            practice: {
+                              text: {
+                                blank: true,
+                                mode: "choice",
+                                options: ["O requisito está completo?", "O requisito está atrasado?"]
+                              },
+                              labels: {
+                                yes: {
+                                  blank: true,
+                                  options: ["Sim", "Não"]
+                                },
+                                no: {
+                                  blank: true,
+                                  options: ["Não", "Talvez"]
+                                }
+                              }
+                            },
+                            then: [
+                              { process: "Planejar implementação" }
+                            ],
+                            else: [
+                              { input: "Solicitar complemento" }
+                            ]
+                          },
+                          { end: "Seguir para execução" }
+                        ]
+                      ),
+                      createFlowCard(
+                        "card-v-fluxo-pratica",
+                        "Fluxograma em exercício",
+                        [
+                          {
+                            start: "Abrir chamado",
+                            practice: {
+                              blankShape: true,
+                              shapeOptions: ["process", "terminal"]
+                            }
+                          },
+                          {
+                            process: "Classificar prioridade",
+                            practice: {
+                              text: {
+                                blank: true,
+                                variants: ["Classificar prioridade", "Definir prioridade"]
+                              }
+                            }
+                          },
+                          {
+                            if: "O impacto é alto?",
+                            practice: {
+                              blankShape: true,
+                              shapeOptions: ["decision", "process"],
+                              labels: {
+                                yes: {
+                                  blank: true,
+                                  options: ["Sim", "Não"]
+                                },
+                                no: {
+                                  blank: true,
+                                  options: ["Não", "Sim"]
+                                }
+                              }
+                            },
+                            then: [
+                              { output: "Escalar atendimento" }
+                            ],
+                            else: [
+                              { process: "Entrar na fila normal" }
+                            ]
+                          },
+                          { end: "Registrar conclusão" }
+                        ]
+                      ),
                       createEditorCard(
                         "card-v-json",
                         "Exemplo estrutural",

@@ -1,10 +1,19 @@
 import { renderLessonScreen } from "./renderLessonScreen.js";
-import { renderCardEditorOverlay } from "./renderCardEditorOverlay.js";
 import { renderCardCommentOverlay } from "./renderCardCommentOverlay.js";
 import { renderCardVersionOverlay } from "./renderCardVersionOverlay.js";
 import { renderEntityEditorOverlay } from "./renderEntityEditorOverlay.js";
 import { renderAssistConfigOverlay } from "./renderAssistConfigOverlay.js";
 import { captureRenderState, restoreRenderState } from "./renderState.js";
+import { resolveCardRuntime } from "../core/cardRuntime.js";
+import { getExerciseOptionStableId } from "../core/exerciseOptions.js";
+import {
+  createFlowchartExerciseState,
+  fillFlowchartExerciseAnswer,
+  flowchartProjectionHasPractice,
+  resetFlowchartExerciseState,
+  validateFlowchartExerciseState
+} from "../flowchart/flowchartExercise.js";
+import { computeFlowchartAutoFitScale } from "../flowchart/flowchartViewport.js";
 import {
   buildCardPathKey,
   collectAssistDependencies,
@@ -25,12 +34,6 @@ import {
   writeCommentStorage,
   writeHistoryStorage
 } from "./lessonEditorStorage.js";
-import { cloneBlocks, getBlockAtPath, getParentArrayAtPath } from "./cardBlockPath.js";
-import {
-  createDefaultChildBlock,
-  normalizeCardBlocks,
-  summarizeCardTextFromBlocks
-} from "../core/cardBlockModel.js";
 import { runGeminiAssist } from "../llm/geminiAssist.js";
 
 const DRAFT_COURSE_KEY = "__disabled-draft-course__";
@@ -176,6 +179,10 @@ function isDraftPlaceholderMicrosequence() {
   return false;
 }
 
+function clampFlowchartScale(value) {
+  return Math.max(0.45, Math.min(2.4, Number(value || 1)));
+}
+
 function makeEntityEditorModel(state) {
   const { project, selection, entityEditor } = state;
   if (!entityEditor) return null;
@@ -288,7 +295,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
     project: initialProject,
     view: "courses",
     selection: null,
-    cardEditorOpen: false,
     cardCommentOpen: false,
     versionHistoryOpen: false,
     entityEditor: null,
@@ -299,6 +305,12 @@ export function createLessonEditorApp({ root, storage, editor }) {
     cardHistory: readHistoryStorage(),
     cardComments: readCommentStorage(),
     cardCommentDraft: "",
+    flowchartPracticeByBlockKey: {},
+    activeFlowchartPrompt: null,
+    flowchartPinch: null,
+    choiceExerciseByBlockKey: {},
+    completeExerciseByBlockKey: {},
+    cardExerciseLoadVersion: 0,
     assistDraft: {
       selectedMode: ASSIST_USER_MODES.GENERATE,
       promptText: "",
@@ -577,7 +589,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
     state.selection.cardKey = card ? card.key : null;
     state.selection.cardIndex = 0;
     state.view = "course";
-    state.cardEditorOpen = false;
     state.cardCommentOpen = false;
     state.entityEditor = null;
     state.microsequenceMode = "play";
@@ -596,7 +607,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
     state.selection.cardKey = firstCard ? firstCard.key : null;
     state.selection.cardIndex = 0;
     state.view = "lesson";
-    state.cardEditorOpen = false;
     state.cardCommentOpen = false;
     state.entityEditor = null;
     state.microsequenceMode = "play";
@@ -642,7 +652,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
     state.assistDraft.selectedMode = ASSIST_USER_MODES.GENERATE;
     state.assistDraft.dependencyKeys = [];
     state.assistDraft.pendingDependencyKey = "";
-    state.cardEditorOpen = false;
     state.cardCommentOpen = false;
     state.versionHistoryOpen = false;
     state.entityEditor = null;
@@ -827,9 +836,9 @@ export function createLessonEditorApp({ root, storage, editor }) {
     state.microsequenceMode = mode;
     ensureCurrentCardSnapshot();
     syncAssistDraft();
-    state.cardEditorOpen = false;
     state.cardCommentOpen = false;
     state.entityEditor = null;
+    state.cardExerciseLoadVersion += 1;
     render({ preserveState: false });
   }
 
@@ -841,21 +850,9 @@ export function createLessonEditorApp({ root, storage, editor }) {
     state.microsequenceMode = "play";
     ensureCurrentCardSnapshot();
     syncAssistDraft();
-    state.cardEditorOpen = false;
     state.cardCommentOpen = false;
     state.entityEditor = null;
-    render({ preserveState: false });
-  }
-
-  function openCardEditorPage(microsequenceKey, targetIndex = 0) {
-    const microsequence = selectMicrosequenceCard(microsequenceKey, targetIndex);
-    if (!microsequence) return;
-    state.view = "card-editor";
-    state.microsequenceMode = "play";
-    ensureCurrentCardSnapshot();
-    state.cardEditorOpen = false;
-    state.cardCommentOpen = false;
-    state.entityEditor = null;
+    state.cardExerciseLoadVersion += 1;
     render({ preserveState: false });
   }
 
@@ -899,10 +896,47 @@ export function createLessonEditorApp({ root, storage, editor }) {
 
     ensureCurrentCardSnapshot();
     syncAssistDraft();
+    state.cardExerciseLoadVersion += 1;
     render({ preserveState: true });
   }
 
   function stepCard(delta) {
+    // No modo de estudo, o card só pode avançar quando exercícios do card atual estiverem completos
+    // e validados como corretos. Isso espelha o comportamento do AraLearn_old.
+    if (delta > 0) {
+      const flowcharts = getCurrentCardRuntimeFlowcharts();
+      for (const entry of flowcharts) {
+        const projection = entry?.block?.projection;
+        if (!projection || !flowchartProjectionHasPractice(projection)) continue;
+        const result = validateFlowchartExerciseState(projection, state.flowchartPracticeByBlockKey[entry.blockKey]);
+        state.flowchartPracticeByBlockKey[entry.blockKey] = result.state;
+        // Só bloqueia avanço quando há exercício e ele não está correto.
+        if (result.status !== "correct") {
+          render({ preserveState: true });
+          return;
+        }
+      }
+
+      const choices = getCurrentCardRuntimeChoiceBlocks();
+      for (const entry of choices) {
+        const exercise = state.choiceExerciseByBlockKey[entry.blockKey] || { selected: [], feedback: null };
+        if (exercise.feedback !== "correct") {
+          // Força feedback para impedir avanço silencioso.
+          validateChoice(entry.blockKey);
+          return;
+        }
+      }
+
+      const completes = getCurrentCardRuntimeCompleteBlocks();
+      for (const entry of completes) {
+        const exercise = state.completeExerciseByBlockKey[entry.blockKey] || { values: [], feedback: null };
+        if (exercise.feedback !== "correct") {
+          validateComplete(entry.blockKey);
+          return;
+        }
+      }
+    }
+
     const lesson = findLesson(
       state.project,
       state.selection.courseKey,
@@ -929,7 +963,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
     state.cardCommentDraft = typeof state.cardComments[pathKey] === "string" ? state.cardComments[pathKey] : "";
     state.cardCommentOpen = true;
     state.versionHistoryOpen = false;
-    state.cardEditorOpen = false;
     state.entityEditor = null;
     render({ preserveState: true });
   }
@@ -963,7 +996,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
       microsequenceKey: target.microsequenceKey || state.selection.microsequenceKey,
       cardKey: target.cardKey || state.selection.cardKey
     };
-    state.cardEditorOpen = false;
     state.cardCommentOpen = false;
     state.versionHistoryOpen = false;
     state.assistConfigOpen = false;
@@ -975,19 +1007,9 @@ export function createLessonEditorApp({ root, storage, editor }) {
     render({ preserveState: true });
   }
 
-  function openCardEditor() {
-    state.cardEditorOpen = true;
-    state.cardCommentOpen = false;
-    state.versionHistoryOpen = false;
-    state.assistConfigOpen = false;
-    state.entityEditor = null;
-    render({ preserveState: true });
-  }
-
   function openVersionHistory() {
     state.versionHistoryOpen = true;
     state.cardCommentOpen = false;
-    state.cardEditorOpen = false;
     state.assistConfigOpen = false;
     state.entityEditor = null;
     render({ preserveState: true });
@@ -1223,11 +1245,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
     }
   }
 
-  function closeCardEditor() {
-    state.cardEditorOpen = false;
-    render({ preserveState: true });
-  }
-
   function runEntityAction(actionKey) {
     if (!state.entityEditor || !actionKey) return;
 
@@ -1359,7 +1376,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
         state.view = "lesson";
       } else if (actionKey === "create-card") {
         createCardAtPosition((Number.isInteger(state.selection.cardIndex) ? state.selection.cardIndex : 0) + 1);
-        state.view = state.view === "card-editor" ? "card-editor" : "microsequence-assist";
+        state.view = "microsequence-assist";
       } else if (actionKey === "delete-card") {
         state.entityEditor = null;
         deleteCurrentCard();
@@ -1374,7 +1391,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
   }
 
   function goBack() {
-    state.cardEditorOpen = false;
     state.cardCommentOpen = false;
     state.versionHistoryOpen = false;
     state.assistConfigOpen = false;
@@ -1388,9 +1404,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
       state.microsequenceMode = "play";
     } else if (state.view === "draft-generator") {
       state.view = "course";
-    } else if (state.view === "card-editor") {
-      state.view = "microsequence-assist";
-      state.microsequenceMode = "play";
     } else if (state.view === "lesson") {
       state.view = "course";
     } else if (state.view === "course") {
@@ -1465,146 +1478,544 @@ export function createLessonEditorApp({ root, storage, editor }) {
     }
   }
 
-  function saveCardStructure({ title, blocks }) {
-    const microsequence = findMicrosequence(
-      state.project,
-      state.selection.courseKey,
-      state.selection.moduleKey,
-      state.selection.lessonKey,
-      state.selection.microsequenceKey
-    );
-    if (!microsequence) return;
+  function setFlowchartViewportScale(scrollNode, nextScale, anchorClientX = null, anchorClientY = null) {
+    if (!scrollNode) {
+      return;
+    }
 
-    const card = state.selection.cardKey ? findCard(microsequence, state.selection.cardKey) : null;
-    if (!card) return;
+    const previousScale = Number(scrollNode.getAttribute("data-flowchart-scale") || 1);
+    const safeScale = clampFlowchartScale(nextScale);
+    const baseWidth = Number(scrollNode.getAttribute("data-flowchart-base-width") || 0);
+    const baseHeight = Number(scrollNode.getAttribute("data-flowchart-base-height") || 0);
+    const stage = scrollNode.querySelector("[data-flowchart-stage='true']");
+    const canvas = scrollNode.querySelector("[data-flowchart-canvas='true']");
+    const valueButton = scrollNode.parentElement?.querySelector("[data-action='flowchart-zoom-reset']");
+    let anchorContentX = null;
+    let anchorContentY = null;
 
-    const normalizedTitle = String(title || "").trim() || card.title || "Novo card";
-    const normalizedBlocks = normalizeCardBlocks({
-      title: normalizedTitle,
-      blocks
-    });
+    if (
+      Number.isFinite(Number(anchorClientX)) &&
+      Number.isFinite(Number(anchorClientY)) &&
+      previousScale > 0
+    ) {
+      const rect = scrollNode.getBoundingClientRect();
+      anchorContentX = (scrollNode.scrollLeft + (Number(anchorClientX) - rect.left)) / previousScale;
+      anchorContentY = (scrollNode.scrollTop + (Number(anchorClientY) - rect.top)) / previousScale;
+    }
 
-    try {
-      const nextCard = buildCardUpdateFromText(card, normalizedTitle, summarizeCardTextFromBlocks(normalizedBlocks));
-      const nextProject = editor.updateCard({
-        courseKey: state.selection.courseKey,
-        moduleKey: state.selection.moduleKey,
-        lessonKey: state.selection.lessonKey,
-        microsequenceKey: microsequence.key,
-        cardKey: card.key,
-        ...nextCard
-      });
-
-      setProject(nextProject);
-    } catch {
-      // Evita quebrar a digitação durante estados transitórios inválidos.
+    scrollNode.setAttribute("data-flowchart-scale", safeScale.toFixed(3));
+    if (canvas) {
+      canvas.style.transform = `scale(${safeScale.toFixed(3)})`;
+    }
+    if (stage && baseWidth > 0 && baseHeight > 0) {
+      stage.style.width = `${Math.max(1, Math.round(baseWidth * safeScale))}px`;
+      stage.style.height = `${Math.max(1, Math.round(baseHeight * safeScale))}px`;
+    }
+    if (valueButton) {
+      valueButton.textContent = `${Math.round(safeScale * 100)}%`;
+    }
+    if (
+      anchorContentX !== null &&
+      anchorContentY !== null &&
+      Number.isFinite(anchorContentX) &&
+      Number.isFinite(anchorContentY)
+    ) {
+      const rect = scrollNode.getBoundingClientRect();
+      scrollNode.scrollLeft = Math.max(0, anchorContentX * safeScale - (Number(anchorClientX) - rect.left));
+      scrollNode.scrollTop = Math.max(0, anchorContentY * safeScale - (Number(anchorClientY) - rect.top));
     }
   }
 
-  function updateCardTitleDraft(title) {
-    const context = getRenderContext();
-    const blocks = normalizeCardBlocks({
-      title,
-      text: readCardText(context.card),
-      blocks: context.card?.blocks || []
+  function autoFitFlowchartViewport(scrollNode) {
+    if (!scrollNode || scrollNode.getAttribute("data-flowchart-autofit") === "true") {
+      return;
+    }
+
+    const baseWidth = Number(scrollNode.getAttribute("data-flowchart-base-width") || 0);
+    const baseHeight = Number(scrollNode.getAttribute("data-flowchart-base-height") || 0);
+    const preferredScale = Number(scrollNode.getAttribute("data-flowchart-scale") || 1);
+
+    if (!(baseWidth > 0 && baseHeight > 0)) {
+      return;
+    }
+
+    const targetScale = computeFlowchartAutoFitScale({
+      viewportWidth: scrollNode.clientWidth,
+      viewportHeight: scrollNode.clientHeight,
+      baseWidth,
+      baseHeight,
+      preferredScale,
+      padding: 12,
+      minScale: 0.2,
+      maxScale: 1.2
     });
 
-    saveCardStructure({
-      title,
-      blocks
-    });
+    setFlowchartViewportScale(scrollNode, targetScale);
+    scrollNode.setAttribute("data-flowchart-autofit", "true");
   }
 
-  function updateCardBlocks(mutator) {
-    const context = getRenderContext();
-    const title = context.card?.title || "Novo card";
-    const blocks = cloneBlocks(
-      normalizeCardBlocks({
-        title,
-        text: readCardText(context.card),
-        blocks: context.card?.blocks || []
-      })
+  function getTouchDistance(touchA, touchB) {
+    if (!touchA || !touchB) {
+      return 0;
+    }
+    const dx = touchA.clientX - touchB.clientX;
+    const dy = touchA.clientY - touchB.clientY;
+    return Math.sqrt(dx * dx + dy * dy);
+  }
+
+  function getTouchMidpoint(touchA, touchB) {
+    return {
+      x: (touchA.clientX + touchB.clientX) / 2,
+      y: (touchA.clientY + touchB.clientY) / 2
+    };
+  }
+
+  function getCurrentCardRuntimeFlowcharts(card = getRenderContext().card) {
+    if (!card) {
+      return [];
+    }
+
+    const runtime = resolveCardRuntime(card);
+    const blockKeyPrefix = buildCardPathKey(state.selection);
+    return (Array.isArray(runtime?.blocks) ? runtime.blocks : [])
+      .map((block, index) => ({
+        block,
+        blockKey: `${blockKeyPrefix}::${index}`
+      }))
+      .filter((entry) => entry.block?.kind === "flowchart" && entry.block?.projection);
+  }
+
+  function getCurrentFlowchartEntry(blockKey) {
+    return getCurrentCardRuntimeFlowcharts().find((entry) => entry.blockKey === blockKey) || null;
+  }
+
+  function getCurrentCardRuntimeChoiceBlocks(card = getRenderContext().card) {
+    if (!card) {
+      return [];
+    }
+
+    const runtime = resolveCardRuntime(card);
+    const blockKeyPrefix = buildCardPathKey(state.selection);
+    return (Array.isArray(runtime?.blocks) ? runtime.blocks : [])
+      .map((block, index) => ({
+        block,
+        blockKey: `${blockKeyPrefix}::${index}`
+      }))
+      .filter((entry) => entry.block?.kind === "multiple_choice");
+  }
+
+  function getCurrentCardRuntimeCompleteBlocks(card = getRenderContext().card) {
+    if (!card) {
+      return [];
+    }
+
+    const runtime = resolveCardRuntime(card);
+    const blockKeyPrefix = buildCardPathKey(state.selection);
+    return (Array.isArray(runtime?.blocks) ? runtime.blocks : [])
+      .map((block, index) => ({
+        block,
+        blockKey: `${blockKeyPrefix}::${index}`
+      }))
+      .filter((entry) => entry.block?.kind === "complete");
+  }
+
+  function ensureCurrentChoiceExerciseState() {
+    const choices = getCurrentCardRuntimeChoiceBlocks();
+    const runtimeOptions = {
+      blockKeyPrefix: buildCardPathKey(state.selection),
+      choiceExerciseStateByBlockKey: {},
+      exerciseShuffleSeed: `${buildCardPathKey(state.selection)}::load::${state.cardExerciseLoadVersion}`
+    };
+
+    choices.forEach((entry) => {
+      const current = state.choiceExerciseByBlockKey[entry.blockKey];
+      const selected = Array.isArray(current?.selected)
+        ? current.selected.map((item) => {
+            if (Number.isInteger(item)) {
+              const options = Array.isArray(entry.block?.options) ? entry.block.options : [];
+              return item >= 0 && item < options.length ? getExerciseOptionStableId(options[item], item) : null;
+            }
+            const value = String(item || "").trim();
+            return value || null;
+          }).filter(Boolean)
+        : [];
+      state.choiceExerciseByBlockKey[entry.blockKey] = {
+        selected,
+        feedback: current?.feedback || null
+      };
+      runtimeOptions.choiceExerciseStateByBlockKey[entry.blockKey] = state.choiceExerciseByBlockKey[entry.blockKey];
+    });
+
+    return runtimeOptions;
+  }
+
+  function ensureCurrentCompleteExerciseState() {
+    const completes = getCurrentCardRuntimeCompleteBlocks();
+    const runtimeOptions = {
+      blockKeyPrefix: buildCardPathKey(state.selection),
+      completeExerciseStateByBlockKey: {}
+    };
+
+    completes.forEach((entry) => {
+      const current = state.completeExerciseByBlockKey[entry.blockKey];
+      state.completeExerciseByBlockKey[entry.blockKey] = {
+        values: Array.isArray(current?.values) ? current.values : [],
+        feedback: current?.feedback || null
+      };
+      runtimeOptions.completeExerciseStateByBlockKey[entry.blockKey] = state.completeExerciseByBlockKey[entry.blockKey];
+    });
+
+    return runtimeOptions;
+  }
+
+  function setChoiceSelection(blockKey, optionId, checked) {
+    const entry = getCurrentCardRuntimeChoiceBlocks().find((item) => item.blockKey === blockKey);
+    if (!entry) {
+      return;
+    }
+
+    ensureCurrentChoiceExerciseState();
+    const exercise = state.choiceExerciseByBlockKey[blockKey] || { selected: [], feedback: null };
+    const selected = new Set(Array.isArray(exercise.selected) ? exercise.selected : []);
+    const normalizedOptionId = String(optionId || "").trim();
+    if (!normalizedOptionId) {
+      return;
+    }
+
+    const isMultiple = entry.block?.answerState === "multiple";
+    if (!isMultiple) {
+      selected.clear();
+    }
+
+    if (checked) {
+      selected.add(normalizedOptionId);
+    } else {
+      selected.delete(normalizedOptionId);
+    }
+
+    state.choiceExerciseByBlockKey[blockKey] = {
+      selected: Array.from(selected),
+      feedback: null
+    };
+
+    render({ preserveState: true });
+  }
+
+  function tryAgainChoice(blockKey) {
+    ensureCurrentChoiceExerciseState();
+    if (!state.choiceExerciseByBlockKey[blockKey]) {
+      return;
+    }
+    state.choiceExerciseByBlockKey[blockKey] = {
+      selected: [],
+      feedback: null
+    };
+    render({ preserveState: true });
+  }
+
+  function viewAnswerChoice(blockKey) {
+    const entry = getCurrentCardRuntimeChoiceBlocks().find((item) => item.blockKey === blockKey);
+    if (!entry) {
+      return;
+    }
+
+    const correct = (Array.isArray(entry.block?.options) ? entry.block.options : [])
+      .map((option, idx) => (option?.answer ? getExerciseOptionStableId(option, idx) : null))
+      .filter(Boolean);
+
+    ensureCurrentChoiceExerciseState();
+    state.choiceExerciseByBlockKey[blockKey] = {
+      selected: correct,
+      feedback: "correct"
+    };
+    render({ preserveState: true });
+  }
+
+  function validateChoice(blockKey) {
+    const entry = getCurrentCardRuntimeChoiceBlocks().find((item) => item.blockKey === blockKey);
+    if (!entry) {
+      return;
+    }
+
+    ensureCurrentChoiceExerciseState();
+    const exercise = state.choiceExerciseByBlockKey[blockKey] || { selected: [], feedback: null };
+    const selected = new Set(Array.isArray(exercise.selected) ? exercise.selected : []);
+    const options = Array.isArray(entry.block?.options) ? entry.block.options : [];
+    const correct = new Set(
+      options
+        .map((option, idx) => (option?.answer ? getExerciseOptionStableId(option, idx) : null))
+        .filter(Boolean)
     );
 
-    mutator(blocks);
-    saveCardStructure({
-      title: blocks[0]?.label || title,
-      blocks
+    if (!selected.size) {
+      state.choiceExerciseByBlockKey[blockKey] = { ...exercise, feedback: "incomplete" };
+      render({ preserveState: true });
+      return;
+    }
+
+    let ok = selected.size === correct.size;
+    if (ok) {
+      for (const idx of selected) {
+        if (!correct.has(idx)) {
+          ok = false;
+          break;
+        }
+      }
+    }
+
+    state.choiceExerciseByBlockKey[blockKey] = { ...exercise, feedback: ok ? "correct" : "wrong" };
+    render({ preserveState: true });
+  }
+
+  function setCompleteBlank(blockKey, blankIndex, value) {
+    const entry = getCurrentCardRuntimeCompleteBlocks().find((item) => item.blockKey === blockKey);
+    if (!entry) {
+      return;
+    }
+
+    ensureCurrentCompleteExerciseState();
+    const exercise = state.completeExerciseByBlockKey[blockKey] || { values: [], feedback: null };
+    const index = Number.parseInt(String(blankIndex), 10);
+    if (!Number.isFinite(index) || index < 0) {
+      return;
+    }
+
+    const values = Array.isArray(exercise.values) ? exercise.values.slice() : [];
+    while (values.length <= index) {
+      values.push("");
+    }
+    values[index] = String(value ?? "");
+    state.completeExerciseByBlockKey[blockKey] = { values, feedback: null };
+    render({ preserveState: true });
+  }
+
+  function tryAgainComplete(blockKey) {
+    ensureCurrentCompleteExerciseState();
+    if (!state.completeExerciseByBlockKey[blockKey]) {
+      return;
+    }
+    state.completeExerciseByBlockKey[blockKey] = { values: [], feedback: null };
+    render({ preserveState: true });
+  }
+
+  function viewAnswerComplete(blockKey) {
+    const entry = getCurrentCardRuntimeCompleteBlocks().find((item) => item.blockKey === blockKey);
+    if (!entry) {
+      return;
+    }
+
+    const expected = String(entry.block?.text || "").match(/\[\[([^\]]+)\]\]/g) || [];
+    const answers = expected.map((chunk) => chunk.slice(2, -2));
+
+    ensureCurrentCompleteExerciseState();
+    state.completeExerciseByBlockKey[blockKey] = { values: answers, feedback: "correct" };
+    render({ preserveState: true });
+  }
+
+  function validateComplete(blockKey) {
+    const entry = getCurrentCardRuntimeCompleteBlocks().find((item) => item.blockKey === blockKey);
+    if (!entry) {
+      return;
+    }
+
+    ensureCurrentCompleteExerciseState();
+    const exercise = state.completeExerciseByBlockKey[blockKey] || { values: [], feedback: null };
+    const values = Array.isArray(exercise.values) ? exercise.values : [];
+    const expected = String(entry.block?.text || "").match(/\[\[([^\]]+)\]\]/g) || [];
+    const answers = expected.map((chunk) => chunk.slice(2, -2));
+
+    if (!answers.length) {
+      state.completeExerciseByBlockKey[blockKey] = { ...exercise, feedback: "correct" };
+      render({ preserveState: true });
+      return;
+    }
+
+    const normalizedValues = answers.map((_, idx) => String(values[idx] ?? "").trim().toLowerCase());
+    const normalizedAnswers = answers.map((item) => String(item ?? "").trim().toLowerCase());
+
+    if (normalizedValues.some((value) => !value)) {
+      state.completeExerciseByBlockKey[blockKey] = { ...exercise, feedback: "incomplete" };
+      render({ preserveState: true });
+      return;
+    }
+
+    const ok = normalizedValues.every((value, idx) => value === normalizedAnswers[idx]);
+    state.completeExerciseByBlockKey[blockKey] = { ...exercise, feedback: ok ? "correct" : "wrong" };
+    render({ preserveState: true });
+  }
+
+  function ensureCurrentFlowchartPracticeState() {
+    const flowcharts = getCurrentCardRuntimeFlowcharts();
+    const runtimeOptions = {
+      blockKeyPrefix: buildCardPathKey(state.selection),
+      enableFlowchartPractice: true,
+      flowchartExerciseStateByBlockKey: {},
+      activeFlowchartPrompt: null
+    };
+
+    flowcharts.forEach((entry) => {
+      state.flowchartPracticeByBlockKey[entry.blockKey] = createFlowchartExerciseState(
+        entry.block.projection,
+        state.flowchartPracticeByBlockKey[entry.blockKey]
+      );
+      runtimeOptions.flowchartExerciseStateByBlockKey[entry.blockKey] = state.flowchartPracticeByBlockKey[entry.blockKey];
+    });
+
+    if (state.activeFlowchartPrompt && runtimeOptions.flowchartExerciseStateByBlockKey[state.activeFlowchartPrompt.blockKey]) {
+      runtimeOptions.activeFlowchartPrompt = state.activeFlowchartPrompt;
+    } else {
+      state.activeFlowchartPrompt = null;
+    }
+
+    return runtimeOptions;
+  }
+
+  function ensureCurrentCardRuntimeOptions() {
+    const flowchartOptions = ensureCurrentFlowchartPracticeState();
+    const choiceOptions = ensureCurrentChoiceExerciseState();
+    const completeOptions = ensureCurrentCompleteExerciseState();
+    return {
+      ...flowchartOptions,
+      ...choiceOptions,
+      ...completeOptions,
+      choiceExerciseStateByBlockKey: {
+        ...(flowchartOptions.choiceExerciseStateByBlockKey || {}),
+        ...(choiceOptions.choiceExerciseStateByBlockKey || {})
+      },
+      completeExerciseStateByBlockKey: {
+        ...(completeOptions.completeExerciseStateByBlockKey || {})
+      },
+      exerciseShuffleSeed: choiceOptions.exerciseShuffleSeed || flowchartOptions.exerciseShuffleSeed || "runtime"
+    };
+  }
+
+  function openFlowchartPrompt(blockKey, kind, targetId) {
+    if (!blockKey || !kind || !targetId) {
+      return;
+    }
+    ensureCurrentFlowchartPracticeState();
+    const current = state.flowchartPracticeByBlockKey[blockKey] || null;
+    if (current?.feedback) {
+      current.feedback = null;
+    }
+    const currentValue =
+      kind === "shape"
+        ? String(current?.shapes?.[targetId] || "").trim()
+        : kind === "label"
+          ? String(current?.labels?.[targetId] || "").trim()
+          : String(current?.texts?.[targetId] || "").trim();
+
+    // No AraLearn_old, clicar novamente numa lacuna já preenchida remove o valor.
+    if (currentValue) {
+      clearFlowchartPracticeValue(blockKey, kind, targetId);
+      return;
+    }
+
+    state.activeFlowchartPrompt = {
+      blockKey,
+      kind,
+      targetId
+    };
+    render({ preserveState: true });
+  }
+
+  function closeFlowchartPrompt() {
+    if (!state.activeFlowchartPrompt) {
+      return;
+    }
+    state.activeFlowchartPrompt = null;
+    render({ preserveState: true });
+  }
+
+  function setFlowchartPracticeValue(blockKey, choiceKind, targetId, value, { closePrompt = false, rerender = true } = {}) {
+    const entry = getCurrentFlowchartEntry(blockKey);
+    if (!entry || !targetId || !choiceKind) {
+      return;
+    }
+
+    const exercise = createFlowchartExerciseState(
+      entry.block.projection,
+      state.flowchartPracticeByBlockKey[blockKey]
+    );
+    if (choiceKind === "shape") {
+      exercise.shapes[targetId] = value;
+    } else if (choiceKind === "label") {
+      exercise.labels[targetId] = value;
+    } else {
+      exercise.texts[targetId] = value;
+    }
+    exercise.feedback = null;
+    state.flowchartPracticeByBlockKey[blockKey] = exercise;
+    if (closePrompt) {
+      state.activeFlowchartPrompt = null;
+    }
+    if (rerender) {
+      render({ preserveState: true });
+    }
+  }
+
+  function clearFlowchartPracticeValue(blockKey, choiceKind, targetId) {
+    setFlowchartPracticeValue(blockKey, choiceKind, targetId, null, {
+      closePrompt: true,
+      rerender: true
     });
   }
 
-  function setBlockLabel(path, value) {
-    updateCardBlocks((blocks) => {
-      const block = getBlockAtPath(blocks, path);
-      if (!block || typeof block !== "object") {
-        return;
-      }
+  function checkFlowchartPractice(blockKey) {
+    const entry = getCurrentFlowchartEntry(blockKey);
+    if (!entry) {
+      return;
+    }
 
-      block.label = value;
-    });
+    const result = validateFlowchartExerciseState(
+      entry.block.projection,
+      state.flowchartPracticeByBlockKey[blockKey]
+    );
+    state.flowchartPracticeByBlockKey[blockKey] = result.state;
+    render({ preserveState: true });
   }
 
-  function addBlock(parentPath, kind) {
-    updateCardBlocks((blocks) => {
-      const parent = getBlockAtPath(blocks, parentPath);
-      if (!parent || parent.kind !== "popup") {
-        return;
-      }
+  function resetFlowchartPractice(blockKey) {
+    const entry = getCurrentFlowchartEntry(blockKey);
+    if (!entry) {
+      return;
+    }
 
-      if (!Array.isArray(parent.children)) {
-        parent.children = [];
-      }
-
-      parent.popupEnabled = true;
-      parent.children.push(createDefaultChildBlock(kind));
-    });
+    state.flowchartPracticeByBlockKey[blockKey] = resetFlowchartExerciseState(
+      entry.block.projection,
+      state.flowchartPracticeByBlockKey[blockKey]
+    );
+    state.activeFlowchartPrompt = null;
+    render({ preserveState: true });
   }
 
-  function setPopupEnabled(path, enabled) {
-    updateCardBlocks((blocks) => {
-      const block = getBlockAtPath(blocks, path);
-      if (!block || block.kind !== "popup") {
-        return;
-      }
+  function viewFlowchartPracticeAnswer(blockKey) {
+    const entry = getCurrentFlowchartEntry(blockKey);
+    if (!entry) {
+      return;
+    }
 
-      block.popupEnabled = !!enabled;
-      if (!block.popupEnabled) {
-        block.children = [];
-      }
-    });
+    state.flowchartPracticeByBlockKey[blockKey] = fillFlowchartExerciseAnswer(
+      entry.block.projection,
+      state.flowchartPracticeByBlockKey[blockKey]
+    );
+    state.activeFlowchartPrompt = null;
+    render({ preserveState: true });
   }
 
-  function moveBlock(path, delta) {
-    updateCardBlocks((blocks) => {
-      const parentInfo = getParentArrayAtPath(blocks, path);
-      if (!parentInfo) {
-        return;
-      }
+  function tryFlowchartPracticeAgain(blockKey) {
+    const entry = getCurrentFlowchartEntry(blockKey);
+    if (!entry) {
+      return;
+    }
 
-      const { array, index } = parentInfo;
-      const nextIndex = index + delta;
-      if (nextIndex < 0 || nextIndex >= array.length) {
-        return;
-      }
-
-      const [item] = array.splice(index, 1);
-      array.splice(nextIndex, 0, item);
-    });
-  }
-
-  function removeBlock(path) {
-    updateCardBlocks((blocks) => {
-      const parentInfo = getParentArrayAtPath(blocks, path);
-      if (!parentInfo) {
-        return;
-      }
-
-      const { array, index } = parentInfo;
-      array.splice(index, 1);
-      if (!array.length) {
-        array.push(createDefaultChildBlock());
-      }
-    });
+    const exercise = createFlowchartExerciseState(
+      entry.block.projection,
+      state.flowchartPracticeByBlockKey[blockKey]
+    );
+    exercise.feedback = null;
+    state.flowchartPracticeByBlockKey[blockKey] = exercise;
+    render({ preserveState: true });
   }
 
   function getRenderContext() {
@@ -1628,6 +2039,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
   function render({ preserveState = true } = {}) {
     const renderState = preserveState ? captureRenderState(root) : null;
     const context = getRenderContext();
+    const currentCardRuntimeOptions = ensureCurrentCardRuntimeOptions();
     const assistCatalog = getAssistCatalog();
     const assistModeConfig = getAssistModeOptions();
     const draftContext = getDraftLessonContext();
@@ -1669,6 +2081,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
           assistError: state.assistDraft.errorMessage,
           hasApiKey: Boolean(state.assistConfig.apiKey),
           historyCount: historyVersions.length,
+          cardRuntimeOptions: currentCardRuntimeOptions,
           currentMicrosequenceIsPlaceholder: isDraftPlaceholderMicrosequence(context.microsequence),
           draftCourseKey: DRAFT_COURSE_KEY,
           draftLessonKey: draftContext.lesson?.key || DRAFT_LESSON_KEY,
@@ -1676,13 +2089,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
           visibleDraftCount: draftMicrosequences.length
         }
       }) +
-      (state.cardEditorOpen
-        ? renderCardEditorOverlay({
-            cards: context.cards,
-            card: context.card,
-            selection: state.selection
-          })
-        : "") +
       (state.cardCommentOpen
         ? renderCardCommentOverlay({
             value: state.cardCommentDraft
@@ -1780,9 +2186,185 @@ export function createLessonEditorApp({ root, storage, editor }) {
       openMicrosequenceAssistPage(state.selection.microsequenceKey, state.selection.cardIndex || 0);
     });
 
-    root.querySelector("[data-action='open-editor']")?.addEventListener("click", () => openCardEditor());
-    root.querySelector("[data-action='editor-close']")?.addEventListener("click", () => closeCardEditor());
-    root.querySelector("[data-action='editor-save']")?.addEventListener("click", () => closeCardEditor());
+    root.querySelectorAll("[data-action='choice-toggle']").forEach((node) => {
+      node.addEventListener("change", () => {
+        const blockKey = node.getAttribute("data-choice-block-key");
+        const optionId = node.getAttribute("data-choice-option-id");
+        if (!blockKey || optionId === null) return;
+        setChoiceSelection(blockKey, optionId, node.checked);
+      });
+    });
+    root.querySelectorAll("[data-action='choice-try-again']").forEach((node) => {
+      node.addEventListener("click", () => {
+        const blockKey = node.getAttribute("data-choice-block-key");
+        if (!blockKey) return;
+        tryAgainChoice(blockKey);
+      });
+    });
+    root.querySelectorAll("[data-action='choice-view-answer']").forEach((node) => {
+      node.addEventListener("click", () => {
+        const blockKey = node.getAttribute("data-choice-block-key");
+        if (!blockKey) return;
+        viewAnswerChoice(blockKey);
+      });
+    });
+    root.querySelectorAll("[data-action='choice-validate']").forEach((node) => {
+      node.addEventListener("click", () => {
+        const blockKey = node.getAttribute("data-choice-block-key");
+        if (!blockKey) return;
+        validateChoice(blockKey);
+      });
+    });
+
+    root.querySelectorAll("[data-action='complete-input']").forEach((node) => {
+      node.addEventListener("input", () => {
+        const blockKey = node.getAttribute("data-complete-block-key");
+        const blankIndex = node.getAttribute("data-complete-blank-index");
+        if (!blockKey || blankIndex === null) return;
+        setCompleteBlank(blockKey, blankIndex, node.value);
+      });
+    });
+    root.querySelectorAll("[data-action='complete-try-again']").forEach((node) => {
+      node.addEventListener("click", () => {
+        const blockKey = node.getAttribute("data-complete-block-key");
+        if (!blockKey) return;
+        tryAgainComplete(blockKey);
+      });
+    });
+    root.querySelectorAll("[data-action='complete-view-answer']").forEach((node) => {
+      node.addEventListener("click", () => {
+        const blockKey = node.getAttribute("data-complete-block-key");
+        if (!blockKey) return;
+        viewAnswerComplete(blockKey);
+      });
+    });
+    root.querySelectorAll("[data-action='complete-validate']").forEach((node) => {
+      node.addEventListener("click", () => {
+        const blockKey = node.getAttribute("data-complete-block-key");
+        if (!blockKey) return;
+        validateComplete(blockKey);
+      });
+    });
+
+    root.querySelectorAll("[data-action='flowchart-open-shape']").forEach((node) => {
+      node.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        openFlowchartPrompt(
+          node.getAttribute("data-flowchart-block-key"),
+          "shape",
+          node.getAttribute("data-flowchart-target-id")
+        );
+      });
+    });
+    root.querySelectorAll("[data-action='flowchart-open-text']").forEach((node) => {
+      node.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        openFlowchartPrompt(
+          node.getAttribute("data-flowchart-block-key"),
+          "text",
+          node.getAttribute("data-flowchart-target-id")
+        );
+      });
+    });
+    root.querySelectorAll("[data-action='flowchart-open-label']").forEach((node) => {
+      node.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        openFlowchartPrompt(
+          node.getAttribute("data-flowchart-block-key"),
+          "label",
+          node.getAttribute("data-flowchart-target-id")
+        );
+      });
+    });
+    root.querySelectorAll("[data-action='flowchart-set-shape']").forEach((node) => {
+      node.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        setFlowchartPracticeValue(
+          node.getAttribute("data-flowchart-block-key"),
+          "shape",
+          node.getAttribute("data-flowchart-target-id"),
+          node.getAttribute("data-flowchart-value"),
+          { closePrompt: true, rerender: true }
+        );
+      });
+    });
+    root.querySelectorAll("[data-action='flowchart-set-text']").forEach((node) => {
+      node.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        setFlowchartPracticeValue(
+          node.getAttribute("data-flowchart-block-key"),
+          "text",
+          node.getAttribute("data-flowchart-target-id"),
+          node.getAttribute("data-flowchart-value"),
+          { closePrompt: true, rerender: true }
+        );
+      });
+    });
+    root.querySelectorAll("[data-action='flowchart-set-label']").forEach((node) => {
+      node.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        setFlowchartPracticeValue(
+          node.getAttribute("data-flowchart-block-key"),
+          "label",
+          node.getAttribute("data-flowchart-target-id"),
+          node.getAttribute("data-flowchart-value"),
+          { closePrompt: true, rerender: true }
+        );
+      });
+    });
+    root.querySelectorAll("[data-action='flowchart-clear-choice']").forEach((node) => {
+      node.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        clearFlowchartPracticeValue(
+          node.getAttribute("data-flowchart-block-key"),
+          node.getAttribute("data-flowchart-choice-kind"),
+          node.getAttribute("data-flowchart-target-id")
+        );
+      });
+    });
+    root.querySelectorAll("[data-action='flowchart-check']").forEach((node) => {
+      node.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        checkFlowchartPractice(node.getAttribute("data-flowchart-block-key"));
+      });
+    });
+    root.querySelectorAll("[data-action='flowchart-reset']").forEach((node) => {
+      node.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        resetFlowchartPractice(node.getAttribute("data-flowchart-block-key"));
+      });
+    });
+    root.querySelectorAll("[data-action='flowchart-view-answer']").forEach((node) => {
+      node.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        viewFlowchartPracticeAnswer(node.getAttribute("data-flowchart-block-key"));
+      });
+    });
+    root.querySelectorAll("[data-action='flowchart-try-again']").forEach((node) => {
+      node.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        tryFlowchartPracticeAgain(node.getAttribute("data-flowchart-block-key"));
+      });
+    });
+    root.querySelectorAll("[data-action='flowchart-close-prompt']").forEach((node) => {
+      node.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        closeFlowchartPrompt();
+      });
+    });
+
     root.querySelector("[data-action='editor-prev-card']")?.addEventListener("click", () => openCardByIndex(state.selection.cardIndex - 1));
     root.querySelector("[data-action='editor-next-card']")?.addEventListener("click", () => openCardByIndex(state.selection.cardIndex + 1));
     root.querySelector("[data-action='edit-card']")?.addEventListener("click", () =>
@@ -1837,9 +2419,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
         })
       );
     });
-    root.querySelector("[data-action='switch-microsequence-edit']")?.addEventListener("click", () => {
-      openCardEditorPage(state.selection.microsequenceKey, state.selection.cardIndex || 0);
-    });
 
     root.querySelector("[data-action='entity-editor-close']")?.addEventListener("click", () => closeEntityEditor());
     root.querySelector("[data-action='entity-editor-save']")?.addEventListener("click", () => closeEntityEditor());
@@ -1854,15 +2433,8 @@ export function createLessonEditorApp({ root, storage, editor }) {
     root.querySelector("[data-action='comment-save']")?.addEventListener("click", () => saveCardComment());
     root.querySelector("[data-action='version-history-close']")?.addEventListener("click", () => closeVersionHistory());
 
-    const cardTitleInput = root.querySelector("[data-field='card-title']");
     const cardCommentInput = root.querySelector("[data-field='card-comment']");
     const assistMicrosequenceTitleInput = root.querySelector("[data-field='assist-microsequence-title']");
-    if (cardTitleInput && context.card) {
-      cardTitleInput.value = context.card.title || "";
-      cardTitleInput.addEventListener("input", () => {
-        updateCardTitleDraft(cardTitleInput.value);
-      });
-    }
     if (cardCommentInput) {
       cardCommentInput.value = state.cardCommentDraft;
       cardCommentInput.addEventListener("input", () => {
@@ -1877,54 +2449,148 @@ export function createLessonEditorApp({ root, storage, editor }) {
         });
       });
     }
-
-    root.querySelectorAll("[data-field='block-label']").forEach((node) => {
+    root.querySelectorAll("[data-flowchart-popup-input='true']").forEach((node) => {
       node.addEventListener("input", () => {
-        setBlockLabel(node.getAttribute("data-block-path"), node.value);
+        setFlowchartPracticeValue(
+          node.getAttribute("data-flowchart-block-key"),
+          node.getAttribute("data-flowchart-choice-kind"),
+          node.getAttribute("data-flowchart-target-id"),
+          node.value,
+          { closePrompt: false, rerender: false }
+        );
+      });
+      node.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          closeFlowchartPrompt();
+          return;
+        }
+        if (event.key === "Escape") {
+          event.preventDefault();
+          closeFlowchartPrompt();
+        }
       });
     });
 
-    root.querySelectorAll("[data-field='block-popup-label']").forEach((node) => {
-      node.addEventListener("input", () => {
-        setBlockLabel(node.getAttribute("data-block-path"), node.value);
-      });
+    const activeFlowchartInput = root.querySelector("[data-flowchart-popup-input='true']");
+    if (state.activeFlowchartPrompt && activeFlowchartInput && document.activeElement !== activeFlowchartInput) {
+      activeFlowchartInput.focus();
+      if (typeof activeFlowchartInput.setSelectionRange === "function") {
+        const size = String(activeFlowchartInput.value || "").length;
+        activeFlowchartInput.setSelectionRange(size, size);
+      }
+    }
+    root.querySelector(".app-shell")?.addEventListener("click", (event) => {
+      if (!state.activeFlowchartPrompt) {
+        return;
+      }
+      const target = event.target;
+      if (!(target instanceof Element)) {
+        return;
+      }
+      const insidePrompt = target.closest("[data-flowchart-prompt='true']");
+      const promptTrigger = target.closest(
+        "[data-action='flowchart-open-shape'], [data-action='flowchart-open-text'], [data-action='flowchart-open-label']"
+      );
+      if (!insidePrompt && !promptTrigger) {
+        closeFlowchartPrompt();
+      }
     });
 
-    root.querySelectorAll("[data-action='add-block']").forEach((node) => {
+    root.querySelectorAll("[data-flowchart-scroll='true']").forEach((scrollNode) => {
+      autoFitFlowchartViewport(scrollNode);
+      if (scrollNode.getAttribute("data-flowchart-centered") !== "true") {
+        const stage = scrollNode.querySelector("[data-flowchart-stage='true']");
+        const stageWidth = stage ? stage.offsetWidth : 0;
+        const stageHeight = stage ? stage.offsetHeight : 0;
+        if (stageWidth > 0 && stageHeight > 0) {
+          scrollNode.scrollLeft = Math.max(0, Math.round((stageWidth - scrollNode.clientWidth) / 2));
+          scrollNode.scrollTop = Math.max(0, Math.round((stageHeight - scrollNode.clientHeight) / 2));
+          scrollNode.setAttribute("data-flowchart-centered", "true");
+        }
+      }
+
+      scrollNode.addEventListener(
+        "wheel",
+        (event) => {
+          if (!(event.ctrlKey || event.metaKey)) {
+            return;
+          }
+          event.preventDefault();
+          const currentScale = Number(scrollNode.getAttribute("data-flowchart-scale") || 1);
+          const factor = event.deltaY < 0 ? 1.12 : 1 / 1.12;
+          setFlowchartViewportScale(scrollNode, currentScale * factor, event.clientX, event.clientY);
+        },
+        { passive: false }
+      );
+      scrollNode.addEventListener(
+        "touchstart",
+        (event) => {
+          if (!event.touches || event.touches.length < 2) {
+            return;
+          }
+          const touchA = event.touches[0];
+          const touchB = event.touches[1];
+          state.flowchartPinch = {
+            scrollNode,
+            startScale: Number(scrollNode.getAttribute("data-flowchart-scale") || 1),
+            startDistance: getTouchDistance(touchA, touchB)
+          };
+          event.preventDefault();
+        },
+        { passive: false }
+      );
+      scrollNode.addEventListener(
+        "touchmove",
+        (event) => {
+          if (!state.flowchartPinch || state.flowchartPinch.scrollNode !== scrollNode || !event.touches || event.touches.length < 2) {
+            return;
+          }
+          const touchA = event.touches[0];
+          const touchB = event.touches[1];
+          const distance = getTouchDistance(touchA, touchB);
+          if (!distance || !state.flowchartPinch.startDistance) {
+            return;
+          }
+          const midpoint = getTouchMidpoint(touchA, touchB);
+          const nextScale = state.flowchartPinch.startScale * (distance / state.flowchartPinch.startDistance);
+          setFlowchartViewportScale(scrollNode, nextScale, midpoint.x, midpoint.y);
+          event.preventDefault();
+        },
+        { passive: false }
+      );
+      const finishPinch = () => {
+        if (state.flowchartPinch?.scrollNode === scrollNode) {
+          state.flowchartPinch = null;
+        }
+      };
+      scrollNode.addEventListener("touchend", finishPinch);
+      scrollNode.addEventListener("touchcancel", finishPinch);
+    });
+
+    root.querySelectorAll("[data-action='flowchart-zoom-in']").forEach((node) => {
       node.addEventListener("click", () => {
-        addBlock(node.getAttribute("data-block-parent"), node.getAttribute("data-block-kind"));
+        const scrollNode = node.closest(".runtime-flow-board-shell")?.querySelector("[data-flowchart-scroll='true']");
+        if (!scrollNode) return;
+        const currentScale = Number(scrollNode.getAttribute("data-flowchart-scale") || 1);
+        setFlowchartViewportScale(scrollNode, currentScale + 0.1);
       });
     });
-
-    root.querySelectorAll("[data-action='toggle-popup-enabled']").forEach((node) => {
-      node.addEventListener("change", () => {
-        setPopupEnabled(node.getAttribute("data-block-path"), node.checked);
-      });
-    });
-
-    root.querySelectorAll("[data-action='move-block-up']").forEach((node) => {
+    root.querySelectorAll("[data-action='flowchart-zoom-out']").forEach((node) => {
       node.addEventListener("click", () => {
-        moveBlock(node.getAttribute("data-block-path"), -1);
+        const scrollNode = node.closest(".runtime-flow-board-shell")?.querySelector("[data-flowchart-scroll='true']");
+        if (!scrollNode) return;
+        const currentScale = Number(scrollNode.getAttribute("data-flowchart-scale") || 1);
+        setFlowchartViewportScale(scrollNode, currentScale - 0.1);
       });
     });
-
-    root.querySelectorAll("[data-action='move-block-down']").forEach((node) => {
+    root.querySelectorAll("[data-action='flowchart-zoom-reset']").forEach((node) => {
       node.addEventListener("click", () => {
-        moveBlock(node.getAttribute("data-block-path"), 1);
+        const scrollNode = node.closest(".runtime-flow-board-shell")?.querySelector("[data-flowchart-scroll='true']");
+        if (!scrollNode) return;
+        const defaultScale = Number(node.getAttribute("data-flowchart-default-scale") || 1);
+        setFlowchartViewportScale(scrollNode, defaultScale);
       });
-    });
-
-    root.querySelectorAll("[data-action='remove-block']").forEach((node) => {
-      node.addEventListener("click", () => {
-        removeBlock(node.getAttribute("data-block-path"));
-      });
-    });
-
-    root.querySelector("[data-action='save-inline-card']")?.addEventListener("click", () => {
-      recordCurrentCardSnapshot("Manual", "manual");
-      state.view = "microsequence-assist";
-      state.microsequenceMode = "play";
-      render({ preserveState: true });
     });
 
     const assistMode = root.querySelector("[data-field='assist-mode']");

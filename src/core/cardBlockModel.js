@@ -1,3 +1,8 @@
+import {
+  convertPublicFlowToStructure,
+  normalizeFlowchartStructure
+} from "../flowchart/flowchartStructure.js";
+
 function clone(value) {
   return structuredClone(value);
 }
@@ -19,18 +24,50 @@ export function createDefaultChildBlock(kind = "paragraph") {
     flowchart: "Fluxo"
   };
 
-  return {
+  const block = {
     kind,
     label: labelByKind[kind] || ""
   };
+
+  if (kind === "flowchart") {
+    block.structure = createDefaultFlowchartStructure();
+  }
+
+  return block;
 }
 
-function normalizeChildBlock(block) {
+function createDefaultFlowchartStructure() {
+  return normalizeFlowchartStructure(
+    convertPublicFlowToStructure([
+      { start: "Início" },
+      { process: "Etapa principal" },
+      { end: "Fim" }
+    ])
+  );
+}
+
+function normalizeFlowchartChildBlock(block, fallbackCard) {
+  const fallbackStructure = Array.isArray(fallbackCard?.flow) && fallbackCard.flow.length
+    ? normalizeFlowchartStructure(convertPublicFlowToStructure(fallbackCard.flow))
+    : createDefaultFlowchartStructure();
+  const normalizedStructure = normalizeFlowchartStructure(block?.structure) || fallbackStructure;
+
+  return {
+    kind: "flowchart",
+    label: normalizeText(block?.label) || "Fluxo",
+    structure: normalizedStructure
+  };
+}
+
+function normalizeChildBlock(block, fallbackCard = null) {
   if (!isPlainObject(block)) {
-    return createDefaultChildBlock();
+    return fallbackCard?.type === "flow" ? createDefaultChildBlock("flowchart") : createDefaultChildBlock();
   }
 
   const kind = normalizeText(block.kind).trim() || "paragraph";
+  if (kind === "flowchart") {
+    return normalizeFlowchartChildBlock(block, fallbackCard);
+  }
 
   return {
     kind,
@@ -38,16 +75,16 @@ function normalizeChildBlock(block) {
   };
 }
 
-function normalizePopupChildren(list) {
+function normalizePopupChildren(list, fallbackCard = null) {
   return (Array.isArray(list) ? list : []).reduce((acc, item) => {
     if (!isPlainObject(item)) {
-      acc.push(createDefaultChildBlock());
+      acc.push(fallbackCard?.type === "flow" ? createDefaultChildBlock("flowchart") : createDefaultChildBlock());
       return acc;
     }
 
     const kind = normalizeText(item.kind).trim() || "paragraph";
     if (kind === "popup") {
-      const nestedChildren = normalizePopupChildren(item.children);
+      const nestedChildren = normalizePopupChildren(item.children, fallbackCard);
       if (nestedChildren.length) {
         acc.push(...nestedChildren);
       } else if (normalizeText(item.label).trim() && normalizeText(item.label).trim().toLowerCase() !== "botão") {
@@ -59,12 +96,12 @@ function normalizePopupChildren(list) {
       return acc;
     }
 
-    acc.push(normalizeChildBlock(item));
+    acc.push(normalizeChildBlock(item, fallbackCard));
     return acc;
   }, []);
 }
 
-export function normalizeCardBlocks({ title = "", text = "", blocks = [] } = {}) {
+export function normalizeCardBlocks({ title = "", text = "", blocks = [], card = null } = {}) {
   const sourceBlocks = Array.isArray(blocks) ? clone(blocks) : [];
   const headingBlock = isPlainObject(sourceBlocks[0]) && sourceBlocks[0].kind === "heading"
     ? {
@@ -78,7 +115,7 @@ export function normalizeCardBlocks({ title = "", text = "", blocks = [] } = {})
 
   let popupBlock = sourceBlocks.find((block) => isPlainObject(block) && block.kind === "popup") || null;
   if (popupBlock) {
-    const children = normalizePopupChildren(popupBlock.children);
+    const children = normalizePopupChildren(popupBlock.children, card);
     popupBlock = {
       kind: "popup",
       label: normalizeText(popupBlock.label).trim() || "Botão",
@@ -88,13 +125,17 @@ export function normalizeCardBlocks({ title = "", text = "", blocks = [] } = {})
   } else {
     const legacyContent = sourceBlocks
       .filter((block, index) => !(index === 0 && isPlainObject(block) && block.kind === "heading"))
-      .map(normalizeChildBlock);
+      .map((block) => normalizeChildBlock(block, card));
 
     if (!legacyContent.length && normalizeText(text).trim()) {
-      legacyContent.push({
-        kind: "paragraph",
-        label: normalizeText(text).trim()
-      });
+      if (card?.type === "flow") {
+        legacyContent.push(normalizeFlowchartChildBlock({ kind: "flowchart", label: "Fluxo" }, card));
+      } else {
+        legacyContent.push({
+          kind: "paragraph",
+          label: normalizeText(text).trim()
+        });
+      }
     }
 
     popupBlock = {

@@ -1,7 +1,6 @@
-import { renderInlineCardEditor } from "./renderCardEditorOverlay.js";
 import { renderHomeScreen } from "./renderHomeScreen.js";
 import { readCardText } from "../core/cardRuntime.js";
-import { renderCardRuntimeBlocks } from "../render/renderCardRuntime.js";
+import { renderCardRuntimeBlocks, renderCardRuntimeBlocksWithDock } from "../render/renderCardRuntime.js";
 
 function escapeHtml(value) {
   return String(value)
@@ -217,10 +216,11 @@ function renderLightDependencyTags(dependencies) {
     .join("");
 }
 
-function renderRuntimeBlocks(card, fallbackText) {
+function renderRuntimeBlocks(card, fallbackText, runtimeOptions = null) {
   return renderCardRuntimeBlocks(card, {
     omitRepeatedHeading: true,
-    fallbackText
+    fallbackText,
+    ...(runtimeOptions || {})
   });
 }
 
@@ -513,14 +513,20 @@ function renderMicrosequenceScreen({ lesson, microsequence, cards, selection, mi
   const microsequenceIndex = Math.max(0, (lesson.microsequences || []).findIndex((item) => item.key === microsequence.key));
   const cardProgressPercent = lessonStudyCount ? ((lessonStudyIndex + 1) / lessonStudyCount) * 100 : 0;
 
+  const runtime = renderCardRuntimeBlocksWithDock(activeCard, {
+    omitRepeatedHeading: true,
+    fallbackText: bodyText,
+    ...(editorSupport.cardRuntimeOptions || {})
+  });
   const cardBody =
     '<article class="card-portrait-body card-portrait-sheet runtime-card-sheet">' +
     '<div class="runtime-card-title">' +
     escapeHtml(activeCard ? activeCard.title || activeCard.key : "Sem card") +
     "</div>" +
     '<div class="card-sheet-content">' +
-    renderRuntimeBlocks(activeCard, bodyText) +
+    runtime.bodyHtml +
     "</div>" +
+    runtime.dockHtml +
     "</article>";
 
   const leadingPanel =
@@ -707,9 +713,6 @@ function renderMicrosequenceWorkbenchScreen({
     '<button class="icon-ghost tiny-icon" type="button" data-action="open-version-history" title="Versões do card" aria-label="Versões do card"' +
     (hasCards ? "" : ' disabled aria-disabled="true"') +
     '>&#8635;</button>' +
-    '<button class="icon-ghost tiny-icon" type="button" data-action="switch-microsequence-edit" title="Abrir editor de cards" aria-label="Abrir editor de cards"' +
-    (hasCards ? "" : ' disabled aria-disabled="true"') +
-    '>&#9998;</button>' +
     "</div>" +
     "</section>" +
     '<section class="editor-step-nav">' +
@@ -832,31 +835,6 @@ export function renderLessonScreen({ project, view, selection, course, moduleVal
 
   if (view === "draft-generator") {
     return renderDraftGeneratorScreen({ lesson, microsequence, cards, selection, editorSupport });
-  }
-
-  if (view === "card-editor") {
-    return (
-      '<section class="screen">' +
-      renderTopbar({
-        title: "Editor de card",
-        canGoBack: true,
-        backTitle: "Voltar para o painel da microssequência",
-        editAction: "save-inline-card",
-        editTitle: "Salvar card",
-        editIcon: "&#10003;"
-      }) +
-      '<main class="screen-content card-editor-screen">' +
-      '<section class="context-band context-band-tight">' +
-      '<span class="context-chip">Lição: ' +
-      escapeHtml(lesson.title || lesson.key) +
-      "</span>" +
-      '<span class="context-chip">Microsseq.: ' +
-      escapeHtml(microsequence.title || microsequence.key) +
-      "</span></section>" +
-      renderInlineCardEditor({ cards, card: cards[Math.max(0, Math.min(selection.cardIndex || 0, Math.max(0, cards.length - 1)))] || null, selection }) +
-      "</main>" +
-      "</section>"
-    );
   }
 
   return renderMicrosequenceScreen({ lesson, microsequence, cards, selection, microsequenceMode, editorSupport });

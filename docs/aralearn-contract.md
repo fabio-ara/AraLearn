@@ -50,6 +50,8 @@ Exemplos de linguagem desejada:
 - `code`;
 - `flow`.
 
+No caso de `flow`, o campo aceita tanto sequências lineares simples quanto estruturas compostas com ramos e laços, como `if`, `while`, `for`, `chain` e `switch`.
+
 Tipos cobertos:
 
 - `text`

@@ -55,3 +55,47 @@ test("rejeita tipo de card desconhecido no contrato principal", () => {
     /Tipo de card desconhecido: "tree"/
   );
 });
+
+test("aceita card flow com estrutura pública composta", () => {
+  const result = validateContractDocument({
+    contract: "aralearn.contract",
+    courses: [
+      {
+        title: "Curso",
+        modules: [
+          {
+            title: "Módulo",
+            lessons: [
+              {
+                title: "Lição",
+                microsequences: [
+                  {
+                    title: "Microssequência",
+                    cards: [
+                      {
+                        type: "flow",
+                        title: "Decisão",
+                        flow: [
+                          { start: "Início" },
+                          {
+                            if: "x > 0",
+                            then: [{ process: "Seguir" }],
+                            else: [{ output: "Parar" }]
+                          },
+                          { end: "Fim" }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.value.courses[0].modules[0].lessons[0].microsequences[0].cards[0].flow[1].if, "x > 0");
+});

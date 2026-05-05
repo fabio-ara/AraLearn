@@ -1,4 +1,17 @@
 import { resolveCardRuntime } from "../core/cardRuntime.js";
+import { getExerciseOptionStableId, shuffleExerciseOptions } from "../core/exerciseOptions.js";
+import { computeFlowchartBoardLayout } from "../flowchart/flowchartLayout.js";
+import {
+  flowchartLinkUsesLabelChoiceBlank,
+  flowchartLinkUsesLabelInputBlank,
+  flowchartNodeUsesTextChoiceBlank,
+  flowchartNodeUsesTextInputBlank,
+  flowchartProjectionHasPractice,
+  listFlowchartLinkLabelOptions,
+  listFlowchartNodeShapeOptions,
+  listFlowchartNodeTextOptions
+} from "../flowchart/flowchartExercise.js";
+import { getFlowchartShapeLabel, renderFlowchartShapeSvg, normalizeFlowchartShapeKey } from "../flowchart/flowchartShapes.js";
 
 function escapeHtml(value) {
   return String(value ?? "")
@@ -23,6 +36,58 @@ function renderMarkdownInline(text) {
 
 function renderMarkdownParagraph(text) {
   return renderMarkdownInline(text);
+}
+
+function buildExerciseShuffleSeed(renderOptions, scope) {
+  const baseSeed = String(renderOptions?.exerciseShuffleSeed || "runtime");
+  return `${baseSeed}::${scope}`;
+}
+
+function normalizeChoiceSelectionIds(options, rawSelected) {
+  const list = Array.isArray(options) ? options : [];
+  return new Set(
+    (Array.isArray(rawSelected) ? rawSelected : [])
+      .map((item) => {
+        if (Number.isInteger(item) && item >= 0 && item < list.length) {
+          return getExerciseOptionStableId(list[item], item);
+        }
+        return String(item || "").trim();
+      })
+      .filter(Boolean)
+  );
+}
+
+function parseCompleteText(text) {
+  const source = String(text || "");
+  const parts = [];
+  let index = 0;
+  let blankIndex = 0;
+
+  while (index < source.length) {
+    const start = source.indexOf("[[", index);
+    if (start < 0) {
+      const tail = source.slice(index);
+      if (tail) parts.push({ kind: "text", value: tail });
+      break;
+    }
+
+    if (start > index) {
+      parts.push({ kind: "text", value: source.slice(index, start) });
+    }
+
+    const end = source.indexOf("]]", start + 2);
+    if (end < 0) {
+      parts.push({ kind: "text", value: source.slice(start) });
+      break;
+    }
+
+    const expected = source.slice(start + 2, end);
+    parts.push({ kind: "blank", expected, index: blankIndex });
+    blankIndex += 1;
+    index = end + 2;
+  }
+
+  return parts;
 }
 
 function renderFlowStep(item) {
@@ -76,7 +141,15 @@ function renderFlowStep(item) {
   );
 }
 
-function renderFlowchartBlock(block) {
+function renderFlowchartBlock(block, renderOptions = {}, blockKey = "flowchart") {
+  if (block?.projection?.nodes?.length) {
+    return renderProjectedFlowchart(block, renderOptions, blockKey);
+  }
+
+  if (block?.structure && block?.structure.kind === "sequence") {
+    return renderFlowchartStructure(block);
+  }
+
   const items = Array.isArray(block?.flow) ? block.flow : [];
   if (!items.length) {
     return '<div class="runtime-block runtime-flow-block"><p class="runtime-paragraph">Fluxograma vazio.</p></div>';
@@ -88,6 +161,786 @@ function renderFlowchartBlock(block) {
     .join('<span class="runtime-flow-arrow">→</span>');
 
   return '<div class="runtime-block runtime-flow-block">' + flowItems + "</div>";
+}
+
+function renderProjectedFlowchart(block, renderOptions = {}, blockKey = "flowchart") {
+  const projection = block?.projection;
+  const nodes = Array.isArray(projection?.nodes) ? projection.nodes : [];
+  const links = Array.isArray(projection?.links) ? projection.links : [];
+
+  if (!nodes.length) {
+    return '<div class="runtime-block runtime-flow-block"><p class="runtime-paragraph">Fluxograma vazio.</p></div>';
+  }
+
+  const layout = computeFlowchartBoardLayout(nodes, links);
+  const nodeById = Object.fromEntries(nodes.map((node) => [node.id, node]));
+  const linkById = Object.fromEntries(links.map((link) => [link.id, link]));
+  const viewportScale = Number(layout.defaultViewportScale || 1);
+  const scaledWidth = Math.max(1, Math.round(layout.width * viewportScale));
+  const scaledHeight = Math.max(1, Math.round(layout.height * viewportScale));
+  const exercise = renderOptions.flowchartExerciseStateByBlockKey?.[blockKey] || null;
+  const prompt =
+    renderOptions.activeFlowchartPrompt?.blockKey === blockKey
+      ? renderOptions.activeFlowchartPrompt
+      : null;
+  const practiceEnabled = !!(
+    renderOptions.enableFlowchartPractice &&
+    exercise &&
+    flowchartProjectionHasPractice(projection)
+  );
+  const dockParts = Array.isArray(renderOptions.dockExerciseParts) ? renderOptions.dockExerciseParts : null;
+  const validationError =
+    block?.projectionValid === false || block?.structureValid === false
+      ? '<p class="runtime-flow-warning">Estrutura de fluxograma inválida para este card.</p>'
+      : "";
+  const routeEntries = layout.routes.map((route) => ({
+    ...route,
+    link: route?.link?.id ? { ...route.link, ...linkById[route.link.id] } : route.link
+  }));
+  const routesSvg = routeEntries
+    .map((route) =>
+      renderFlowchartRoute(route, {
+        practiceEnabled,
+        targetNode: nodeById[route?.link?.toNodeId]
+      })
+    )
+    .join("");
+  const arrowsSvg = routeEntries
+    .map((route) => renderFlowchartArrowOverlay(route, nodeById[route?.link?.toNodeId]))
+    .filter(Boolean)
+    .join("");
+  const labelsHtml = practiceEnabled
+    ? layout.routes
+        .map((route) =>
+          renderFlowchartInteractiveLabel(
+            {
+              ...route,
+              link: route?.link?.id ? { ...route.link, ...linkById[route.link.id] } : route.link
+            },
+            exercise,
+            blockKey,
+            prompt
+          )
+        )
+        .join("")
+    : "";
+  const nodesHtml = layout.nodes
+    .map((node) =>
+      renderFlowchartBoardNode(
+        {
+          ...node,
+          ...(node?.id ? nodeById[node.id] : null)
+        },
+        layout,
+        { practiceEnabled, exercise, blockKey, prompt }
+      )
+    )
+    .join("");
+
+  const practicePanelHtml = practiceEnabled
+    ? renderFlowchartPracticePanel(blockKey, projection, exercise, prompt, renderOptions)
+    : "";
+  if (dockParts && practicePanelHtml) {
+    dockParts.push(practicePanelHtml);
+  }
+
+  return (
+    '<div class="runtime-block runtime-flow-block runtime-flow-board-block">' +
+    validationError +
+    '<div class="runtime-flow-board-shell">' +
+    '<div class="runtime-flow-board-controls" data-flowchart-zoom-controls="true">' +
+    '<button class="icon-ghost tiny-icon" type="button" data-action="flowchart-zoom-out" title="Diminuir zoom" aria-label="Diminuir zoom">-</button>' +
+    '<button class="icon-ghost tiny-icon runtime-flow-zoom-value" type="button" data-action="flowchart-zoom-reset" data-flowchart-default-scale="' +
+    escapeHtml(viewportScale) +
+    '" title="Voltar ao ajuste automático" aria-label="Voltar ao ajuste automático">' +
+    escapeHtml(Math.round(viewportScale * 100)) +
+    '%</button>' +
+    '<button class="icon-ghost tiny-icon" type="button" data-action="flowchart-zoom-in" title="Aumentar zoom" aria-label="Aumentar zoom">+</button>' +
+    "</div>" +
+    '<div class="runtime-flow-board" data-flowchart-scroll="true" data-flowchart-scale="' +
+    escapeHtml(viewportScale.toFixed(3)) +
+    '" data-flowchart-base-width="' +
+    escapeHtml(layout.width) +
+    '" data-flowchart-base-height="' +
+    escapeHtml(layout.height) +
+    '" style="' +
+    escapeHtml(`--flowchart-board-width:${layout.width}px;--flowchart-board-height:${layout.height}px;`) +
+    '">' +
+    '<div class="runtime-flow-board-stage" data-flowchart-stage="true" style="width:' +
+    escapeHtml(scaledWidth) +
+    "px;height:" +
+    escapeHtml(scaledHeight) +
+    'px;">' +
+    '<div class="runtime-flow-board-canvas" data-flowchart-canvas="true" style="width:' +
+    escapeHtml(layout.width) +
+    "px;height:" +
+    escapeHtml(layout.height) +
+    "px;transform:scale(" +
+    escapeHtml(viewportScale.toFixed(3)) +
+    ');transform-origin:top left;">' +
+    '<svg class="runtime-flow-board-svg runtime-flow-board-links" viewBox="0 0 ' +
+    escapeHtml(layout.width) +
+    " " +
+    escapeHtml(layout.height) +
+    '" aria-hidden="true" focusable="false">' +
+    routesSvg +
+    "</svg>" +
+    '<svg class="runtime-flow-board-svg runtime-flow-board-arrows" viewBox="0 0 ' +
+    escapeHtml(layout.width) +
+    " " +
+    escapeHtml(layout.height) +
+    '" aria-hidden="true" focusable="false">' +
+    arrowsSvg +
+    "</svg>" +
+    '<div class="runtime-flow-board-surface">' +
+    labelsHtml +
+    nodesHtml +
+    "</div></div></div></div>" +
+    (practicePanelHtml && !dockParts ? practicePanelHtml : "") +
+    "</div>"
+  );
+}
+
+function getFlowchartArrowGeometry(start, end, targetNode) {
+  if (!Array.isArray(start) || !Array.isArray(end)) {
+    return null;
+  }
+
+  const dx = Number(end[0] || 0) - Number(start[0] || 0);
+  const dy = Number(end[1] || 0) - Number(start[1] || 0);
+  const length = Math.hypot(dx, dy);
+  if (length < 0.5) {
+    return null;
+  }
+
+  const unitX = dx / length;
+  const unitY = dy / length;
+  const targetShapeKey = normalizeFlowchartShapeKey(targetNode?.shape);
+  const headOnlyTarget = targetShapeKey === "connector" || targetShapeKey === "page_connector";
+  const maxHeadLength = 8;
+  const maxHeadHalfWidth = 4;
+  const headTipOffset = headOnlyTarget ? 5 : 6;
+  const headLength = Math.min(maxHeadLength, Math.max(4, length * 0.7));
+  const headHalfWidth = Math.min(maxHeadHalfWidth, Math.max(2.5, headLength * 0.48));
+  const renderEndX = Number(end[0] || 0) - unitX * headTipOffset;
+  const renderEndY = Number(end[1] || 0) - unitY * headTipOffset;
+  const baseX = renderEndX - unitX * headLength;
+  const baseY = renderEndY - unitY * headLength;
+
+  return {
+    length,
+    unitX,
+    unitY,
+    headLength,
+    headHalfWidth,
+    renderEndX,
+    renderEndY,
+    baseX,
+    baseY,
+    headOnlyTarget
+  };
+}
+
+function getFlowchartDisplayedRoutePoints(route, targetNode) {
+  const points = (Array.isArray(route?.points) ? route.points : []).map((point) => [Number(point[0] || 0), Number(point[1] || 0)]);
+  if (points.length < 2) {
+    return points;
+  }
+
+  for (let index = points.length - 1; index > 0; index -= 1) {
+    const geometry = getFlowchartArrowGeometry(points[index - 1], points[index], targetNode);
+    if (!geometry) {
+      continue;
+    }
+    points[index] = [Math.round(geometry.baseX * 10) / 10, Math.round(geometry.baseY * 10) / 10];
+    break;
+  }
+
+  return points;
+}
+
+function renderFlowchartRoute(route, options = {}) {
+  const points = getFlowchartDisplayedRoutePoints(route, options.targetNode);
+  if (points.length < 2) {
+    return "";
+  }
+
+  const label = String(route?.label || route?.link?.label || "").trim();
+  const labelPos = route?.labelPos;
+
+  const skipLabelButton = !!(options.practiceEnabled && route?.link?.labelBlank);
+
+  const routePoints = points.map((point) => `${Math.round(Number(point[0]) || 0)},${Math.round(Number(point[1]) || 0)}`).join(" ");
+
+  return (
+    '<polyline class="runtime-flow-route" data-link-role="' +
+    escapeHtml(route?.link?.role || "next") +
+    '" points="' +
+    escapeHtml(routePoints) +
+    '"></polyline>' +
+    (!skipLabelButton && label && labelPos
+      ? '<text class="runtime-flow-route-label" x="' +
+        escapeHtml(labelPos.x) +
+        '" y="' +
+        escapeHtml(labelPos.y) +
+        '" text-anchor="' +
+        escapeHtml(labelPos.anchor || "middle") +
+        '">' +
+        escapeHtml(label) +
+        "</text>"
+      : "")
+  );
+}
+
+function renderFlowchartArrowOverlay(route, targetNode) {
+  const points = Array.isArray(route?.points) ? route.points : [];
+  if (points.length < 2) {
+    return "";
+  }
+
+  for (let index = points.length - 1; index > 0; index -= 1) {
+    const end = points[index];
+    const start = points[index - 1];
+    const geometry = getFlowchartArrowGeometry(start, end, targetNode);
+    if (!geometry) continue;
+    const tailLength = geometry.headOnlyTarget ? 0 : Math.max(0, geometry.length - geometry.headLength);
+    const lineStartX = geometry.baseX - geometry.unitX * tailLength;
+    const lineStartY = geometry.baseY - geometry.unitY * tailLength;
+    const perpX = -geometry.unitY * geometry.headHalfWidth;
+    const perpY = geometry.unitX * geometry.headHalfWidth;
+
+    const headPoints = [
+      [Math.round(geometry.renderEndX * 10) / 10, Math.round(geometry.renderEndY * 10) / 10],
+      [Math.round((geometry.baseX + perpX) * 10) / 10, Math.round((geometry.baseY + perpY) * 10) / 10],
+      [Math.round((geometry.baseX - perpX) * 10) / 10, Math.round((geometry.baseY - perpY) * 10) / 10]
+    ];
+
+    return (
+      '<g class="runtime-flow-arrow" data-link-role="' +
+      escapeHtml(route?.link?.role || "next") +
+      '">' +
+      '<polygon points="' +
+      headPoints.map((point) => `${point[0]},${point[1]}`).join(" ") +
+      '"></polygon></g>'
+    );
+  }
+
+  return "";
+}
+
+function renderFlowchartInteractiveLabel(route, exercise, blockKey, prompt) {
+  const link = route?.link;
+  const labelPos = route?.labelPos;
+  if (!link?.labelBlank || !labelPos) {
+    return "";
+  }
+
+  const currentValue = String(exercise?.labels?.[link.id] || "").trim();
+  const defaultValue = String(route?.label || link?.label || "").trim();
+  // Em lacunas de exercício, não exibimos o valor padrão (que costuma ser a resposta correta).
+  const displayValue = currentValue || "";
+  const isActive = prompt?.kind === "label" && prompt?.targetId === link.id;
+  const anchorClass =
+    labelPos.anchor === "start"
+      ? " is-anchor-start"
+      : labelPos.anchor === "end"
+        ? " is-anchor-end"
+        : "";
+
+  return (
+    '<button class="runtime-flow-label-button' +
+    (currentValue ? " is-filled" : "") +
+    (!currentValue && !displayValue ? " is-placeholder" : "") +
+    (isActive ? " is-active" : "") +
+    anchorClass +
+    '" type="button" data-action="flowchart-open-label" data-flowchart-block-key="' +
+    escapeHtml(blockKey) +
+    '" data-flowchart-target-id="' +
+    escapeHtml(link.id) +
+    '" style="left:' +
+    escapeHtml(labelPos.x) +
+    "px;top:" +
+    escapeHtml(labelPos.y) +
+    'px;">' +
+    (displayValue ? escapeHtml(displayValue) : "&nbsp;") +
+    "</button>"
+  );
+}
+
+function renderFlowchartBoardNode(node, layout, options = {}) {
+  const position = layout.positions[node.id];
+  if (!position) {
+    return "";
+  }
+
+  const practiceEnabled = !!options.practiceEnabled;
+  const exercise = options.exercise || null;
+  const prompt = options.prompt || null;
+  const currentShape = practiceEnabled && node.shapeBlank
+    ? String(exercise?.shapes?.[node.id] || "").trim()
+    : String(node.shape || "").trim();
+  const currentText = practiceEnabled && node.textBlank
+    ? String(exercise?.texts?.[node.id] || "").trim()
+    : String(node.text || "").trim();
+  const textBlankMode = node.textBlank ? (flowchartNodeUsesTextChoiceBlank(node) ? "choice" : "input") : "";
+  const normalizedShape = currentShape || node.shape;
+  const shapeActive = prompt?.kind === "shape" && prompt?.targetId === node.id;
+  const textActive = prompt?.kind === "text" && prompt?.targetId === node.id;
+  const shapeMarkup =
+    currentShape
+      ? renderFlowchartShapeSvg(normalizedShape || node.shape)
+      : '<div class="runtime-flow-shape-placeholder" aria-hidden="true"></div>';
+
+  return (
+    '<article class="runtime-flow-board-node" data-shape="' +
+    escapeHtml(node.shape) +
+    '" data-role="' +
+    escapeHtml(node.role || "main") +
+    '" style="' +
+    escapeHtml(`left:${position.left}px;top:${position.top}px;`) +
+    '">' +
+    (practiceEnabled && node.shapeBlank
+      ? '<button class="runtime-flow-board-shape runtime-flow-board-shape-button' +
+        (shapeActive ? " is-active" : "") +
+        (currentShape ? " is-filled" : "") +
+        '" type="button" data-action="flowchart-open-shape" data-flowchart-block-key="' +
+        escapeHtml(options.blockKey) +
+        '" data-flowchart-target-id="' +
+        escapeHtml(node.id) +
+        '" aria-label="' +
+        escapeHtml(currentShape ? getFlowchartShapeLabel(normalizedShape || node.shape) : "Escolher símbolo") +
+        '">' +
+        shapeMarkup +
+        "</button>"
+      : '<div class="runtime-flow-board-shape" aria-label="' +
+        escapeHtml(getFlowchartShapeLabel(normalizedShape || node.shape)) +
+        '">' +
+        renderFlowchartShapeSvg(normalizedShape || node.shape) +
+        "</div>") +
+    (practiceEnabled && node.textBlank
+      ? '<button class="runtime-flow-board-copy runtime-flow-board-copy-button' +
+        (textActive ? " is-active" : "") +
+        (currentText ? " is-filled" : "") +
+        ' practice-marked' +
+        (textBlankMode ? " is-blank-" + textBlankMode : "") +
+        '" type="button" data-action="flowchart-open-text" data-flowchart-block-key="' +
+        escapeHtml(options.blockKey) +
+        '" data-flowchart-target-id="' +
+        escapeHtml(node.id) +
+        '" title="' +
+        escapeHtml(currentText ? "Editar texto" : "Preencher texto") +
+        '" aria-label="' +
+        escapeHtml(currentText ? "Editar texto" : "Preencher texto") +
+        '">' +
+        (currentText ? renderMarkdownInline(currentText) : "&nbsp;") +
+        "</button>"
+      : '<div class="runtime-flow-board-copy">' +
+        renderMarkdownInline(currentText || "") +
+        "</div>") +
+    "</article>"
+  );
+}
+
+function renderFlowchartPracticePanel(blockKey, projection, exercise, prompt, renderOptions = {}) {
+  const promptHtml = renderFlowchartPracticePrompt(blockKey, projection, exercise, prompt, renderOptions);
+  const feedbackHtml = renderFlowchartPracticeFeedback(blockKey, exercise?.feedback);
+
+  // Padrão: não exibir faixa fixa de ações em cards com lacunas.
+  // Mostra apenas o picker (quando o usuário seleciona uma lacuna) e o feedback (após verificar).
+  const showActions = Boolean(promptHtml) && !feedbackHtml;
+  const actionsHtml = showActions
+    ? '<div class="runtime-flow-practice-actions">' +
+      '<button class="icon-pill primary" type="button" data-action="flowchart-check" data-flowchart-block-key="' +
+      escapeHtml(blockKey) +
+      '" title="Verificar" aria-label="Verificar">&#10003;</button>' +
+      '<button class="icon-pill" type="button" data-action="flowchart-reset" data-flowchart-block-key="' +
+      escapeHtml(blockKey) +
+      '" title="Reiniciar" aria-label="Reiniciar">&#8635;</button>' +
+      "</div>"
+    : "";
+
+  if (!actionsHtml && !promptHtml && !feedbackHtml) {
+    return "";
+  }
+
+  return (
+    '<div class="runtime-flow-practice-panel" data-flowchart-practice-panel="true">' +
+    actionsHtml +
+    promptHtml +
+    feedbackHtml +
+    "</div>"
+  );
+}
+
+function renderFlowchartPracticePrompt(blockKey, projection, exercise, prompt, renderOptions = {}) {
+  if (!prompt?.kind || !prompt?.targetId) {
+    return "";
+  }
+
+  // Mantém o picker sempre visível sem exigir rolagem do quadro.
+  // Espelha o padrão do AraLearn_old (popup sticky dentro do contêiner do flowchart).
+  const nodes = Array.isArray(projection?.nodes) ? projection.nodes : [];
+  const links = Array.isArray(projection?.links) ? projection.links : [];
+
+  if (prompt.kind === "shape") {
+    const node = nodes.find((item) => item?.id === prompt.targetId);
+    if (!node) {
+      return "";
+    }
+
+    const options = shuffleExerciseOptions(
+      listFlowchartNodeShapeOptions(node),
+      buildExerciseShuffleSeed(renderOptions, `${blockKey}::shape::${node.id}`)
+    );
+    return (
+      '<section class="runtime-flow-prompt" data-flowchart-prompt="true">' +
+      '<div class="runtime-flow-prompt-head">' +
+      '<span class="runtime-flow-prompt-badge">Símbolo</span>' +
+      '<button class="icon-ghost tiny-icon" type="button" data-action="flowchart-close-prompt" data-flowchart-block-key="' +
+      escapeHtml(blockKey) +
+      '" title="Fechar" aria-label="Fechar">&times;</button>' +
+      "</div>" +
+      '<div class="runtime-flow-shape-grid">' +
+      options
+        .map((item) => {
+          const selected = normalizeInlineText(exercise?.shapes?.[node.id]) === item.value;
+          return (
+            '<button class="runtime-flow-shape-option' +
+            (selected ? " is-active" : "") +
+            '" type="button" data-action="flowchart-set-shape" data-flowchart-block-key="' +
+            escapeHtml(blockKey) +
+            '" data-flowchart-target-id="' +
+            escapeHtml(node.id) +
+            '" data-flowchart-value="' +
+            escapeHtml(item.value) +
+            '">' +
+            renderFlowchartShapeSvg(item.value) +
+            '<span class="tiny">' +
+            escapeHtml(getFlowchartShapeLabel(item.value)) +
+            "</span></button>"
+          );
+        })
+        .join("") +
+      "</div>" +
+      '<div class="runtime-flow-prompt-actions">' +
+      '<button class="icon-pill" type="button" data-action="flowchart-clear-choice" data-flowchart-block-key="' +
+      escapeHtml(blockKey) +
+      '" data-flowchart-target-id="' +
+      escapeHtml(node.id) +
+      '" data-flowchart-choice-kind="shape" title="Limpar lacuna" aria-label="Limpar lacuna">&times;</button>' +
+      "</div></section>"
+    );
+  }
+
+  if (prompt.kind === "text") {
+    const node = nodes.find((item) => item?.id === prompt.targetId);
+    if (!node) {
+      return "";
+    }
+
+    if (flowchartNodeUsesTextChoiceBlank(node)) {
+      const options = shuffleExerciseOptions(
+        listFlowchartNodeTextOptions(node),
+        buildExerciseShuffleSeed(renderOptions, `${blockKey}::text::${node.id}`)
+      );
+      return renderFlowchartChoicePrompt({
+        blockKey,
+        targetId: node.id,
+        choiceKind: "text",
+        title: "Texto",
+        selectedValue: String(exercise?.texts?.[node.id] || ""),
+        options
+      });
+    }
+
+    return renderFlowchartInputPrompt({
+      blockKey,
+      targetId: node.id,
+      choiceKind: "text",
+      title: "Texto",
+      value: String(exercise?.texts?.[node.id] || "")
+    });
+  }
+
+  if (prompt.kind === "label") {
+    const link = links.find((item) => item?.id === prompt.targetId);
+    if (!link) {
+      return "";
+    }
+
+    if (flowchartLinkUsesLabelChoiceBlank(link)) {
+      const options = shuffleExerciseOptions(
+        listFlowchartLinkLabelOptions(link),
+        buildExerciseShuffleSeed(renderOptions, `${blockKey}::label::${link.id}`)
+      );
+      return renderFlowchartChoicePrompt({
+        blockKey,
+        targetId: link.id,
+        choiceKind: "label",
+        title: "Rótulo",
+        selectedValue: String(exercise?.labels?.[link.id] || ""),
+        options
+      });
+    }
+
+    if (flowchartLinkUsesLabelInputBlank(link)) {
+      return renderFlowchartInputPrompt({
+        blockKey,
+        targetId: link.id,
+        choiceKind: "label",
+        title: "Rótulo",
+        value: String(exercise?.labels?.[link.id] || "")
+      });
+    }
+  }
+
+  return "";
+}
+
+function renderFlowchartChoicePrompt({ blockKey, targetId, choiceKind, title, selectedValue, options }) {
+  return (
+    '<section class="runtime-flow-prompt" data-flowchart-prompt="true">' +
+    '<div class="runtime-flow-prompt-head">' +
+    '<span class="runtime-flow-prompt-badge">' +
+    escapeHtml(title) +
+    "</span>" +
+    '<button class="icon-ghost tiny-icon" type="button" data-action="flowchart-close-prompt" data-flowchart-block-key="' +
+    escapeHtml(blockKey) +
+    '" title="Fechar" aria-label="Fechar">&times;</button>' +
+    "</div>" +
+    '<div class="token-options">' +
+    (Array.isArray(options) ? options : [])
+      .map((item) => {
+        const selected = normalizeInlineText(selectedValue) === item.value;
+        return (
+          '<button class="token-option' +
+          (selected ? " active" : "") +
+          '" type="button" data-action="flowchart-set-' +
+          escapeHtml(choiceKind) +
+          '" data-flowchart-block-key="' +
+          escapeHtml(blockKey) +
+          '" data-flowchart-target-id="' +
+          escapeHtml(targetId) +
+          '" data-flowchart-value="' +
+          escapeHtml(item.value) +
+          '">' +
+          escapeHtml(item.value) +
+          "</button>"
+        );
+      })
+      .join("") +
+    "</div>" +
+    '<div class="runtime-flow-prompt-actions">' +
+    '<button class="icon-pill" type="button" data-action="flowchart-clear-choice" data-flowchart-block-key="' +
+    escapeHtml(blockKey) +
+    '" data-flowchart-target-id="' +
+    escapeHtml(targetId) +
+    '" data-flowchart-choice-kind="' +
+    escapeHtml(choiceKind) +
+    '" title="Limpar lacuna" aria-label="Limpar lacuna">&times;</button>' +
+    "</div></section>"
+  );
+}
+
+function renderFlowchartInputPrompt({ blockKey, targetId, choiceKind, title, value }) {
+  return (
+    '<section class="runtime-flow-prompt" data-flowchart-prompt="true">' +
+    '<div class="runtime-flow-prompt-head">' +
+    '<span class="runtime-flow-prompt-badge">' +
+    escapeHtml(title) +
+    "</span>" +
+    '<button class="icon-ghost tiny-icon" type="button" data-action="flowchart-close-prompt" data-flowchart-block-key="' +
+    escapeHtml(blockKey) +
+    '" title="Fechar" aria-label="Fechar">&times;</button>' +
+    "</div>" +
+    '<input class="block-input runtime-flow-prompt-input" type="text" data-flowchart-popup-input="true" data-flowchart-block-key="' +
+    escapeHtml(blockKey) +
+    '" data-flowchart-target-id="' +
+    escapeHtml(targetId) +
+    '" data-flowchart-choice-kind="' +
+    escapeHtml(choiceKind) +
+    '" value="' +
+    escapeHtml(value) +
+    '" autocomplete="off" autocapitalize="off" spellcheck="false">' +
+    '<div class="runtime-flow-prompt-actions">' +
+    '<button class="icon-pill" type="button" data-action="flowchart-clear-choice" data-flowchart-block-key="' +
+    escapeHtml(blockKey) +
+    '" data-flowchart-target-id="' +
+    escapeHtml(targetId) +
+    '" data-flowchart-choice-kind="' +
+    escapeHtml(choiceKind) +
+    '" title="Limpar lacuna" aria-label="Limpar lacuna">&times;</button>' +
+    "</div></section>"
+  );
+}
+
+function renderFlowchartPracticeFeedback(blockKey, feedback) {
+  if (!feedback) {
+    return "";
+  }
+
+  if (feedback === "correct") {
+    return '<div class="inline-feedback ok"><p class="tiny">Correto.</p></div>';
+  }
+  if (feedback === "incomplete") {
+    return '<div class="inline-feedback err"><p class="tiny">Preencha todas as lacunas do fluxograma.</p></div>';
+  }
+
+  return (
+    '<div class="inline-feedback err has-actions">' +
+    '<p class="tiny">As respostas marcadas não correspondem ao conjunto esperado.</p>' +
+    '<div class="feedback-icons">' +
+    '<button class="icon-pill" type="button" data-action="flowchart-view-answer" data-flowchart-block-key="' +
+    escapeHtml(blockKey) +
+    '" title="Ver resposta" aria-label="Ver resposta">&#128065;</button>' +
+    '<button class="icon-pill primary" type="button" data-action="flowchart-try-again" data-flowchart-block-key="' +
+    escapeHtml(blockKey) +
+    '" title="Tentar de novo" aria-label="Tentar de novo">&#8635;</button>' +
+    "</div></div>"
+  );
+}
+
+function renderFlowchartStructure(block) {
+  const validationError =
+    block?.structureValid === false
+      ? '<p class="runtime-flow-warning">Estrutura de fluxograma inválida para este card.</p>'
+      : "";
+  const items = Array.isArray(block?.structure?.items) ? block.structure.items : [];
+
+  return (
+    '<div class="runtime-block runtime-flow-block runtime-flow-structure-block">' +
+    validationError +
+    (items.length
+      ? '<div class="runtime-flow-sequence">' + items.map((item) => renderFlowchartStructureNode(item)).join("") + "</div>"
+      : '<p class="runtime-paragraph">Fluxograma vazio.</p>') +
+    "</div>"
+  );
+}
+
+function renderFlowchartStructureNode(node) {
+  if (!node || typeof node !== "object") {
+    return "";
+  }
+
+  if (["start", "end", "input", "output", "process"].includes(node.kind)) {
+    return (
+      '<div class="runtime-flow-node-card" data-kind="' +
+      escapeHtml(node.kind) +
+      '">' +
+      '<div class="runtime-flow-node-kind">' +
+      escapeHtml(getFlowNodeKindLabel(node.kind)) +
+      "</div>" +
+      '<div class="runtime-flow-node-copy">' +
+      renderMarkdownInline(node.text || "") +
+      "</div></div>"
+    );
+  }
+
+  if (node.kind === "if_then" || node.kind === "if_then_else") {
+    return (
+      '<details class="runtime-flow-branch-card" open>' +
+      '<summary class="runtime-flow-branch-summary">' +
+      '<span class="runtime-flow-branch-kind">Decisão</span>' +
+      '<span class="runtime-flow-branch-condition">' +
+      renderMarkdownInline(node.condition || "") +
+      "</span></summary>" +
+      renderFlowBranchGroup("Sim", node.thenBranch) +
+      (node.kind === "if_then_else" ? renderFlowBranchGroup("Não", node.elseBranch) : "") +
+      "</details>"
+    );
+  }
+
+  if (node.kind === "while" || node.kind === "do_while") {
+    const label = node.kind === "while" ? "Enquanto" : "Repita até";
+    return (
+      '<details class="runtime-flow-branch-card" open>' +
+      '<summary class="runtime-flow-branch-summary">' +
+      '<span class="runtime-flow-branch-kind">' +
+      escapeHtml(label) +
+      "</span>" +
+      '<span class="runtime-flow-branch-condition">' +
+      renderMarkdownInline(node.condition || "") +
+      "</span></summary>" +
+      renderFlowBranchGroup("Corpo", node.body) +
+      "</details>"
+    );
+  }
+
+  if (node.kind === "for") {
+    const signature = [node.init, node.condition, node.update].filter(Boolean).join(" ; ");
+    return (
+      '<details class="runtime-flow-branch-card" open>' +
+      '<summary class="runtime-flow-branch-summary">' +
+      '<span class="runtime-flow-branch-kind">Para</span>' +
+      '<span class="runtime-flow-branch-condition">' +
+      renderMarkdownInline(signature || node.condition || "") +
+      "</span></summary>" +
+      renderFlowBranchGroup("Corpo", node.body) +
+      "</details>"
+    );
+  }
+
+  if (node.kind === "if_chain") {
+    const cases = Array.isArray(node.cases) ? node.cases : [];
+    return (
+      '<details class="runtime-flow-branch-card" open>' +
+      '<summary class="runtime-flow-branch-summary">' +
+      '<span class="runtime-flow-branch-kind">Cadeia de decisões</span>' +
+      "</summary>" +
+      cases
+        .map((caseItem, index) =>
+          renderFlowBranchGroup(index === 0 ? "Se" : "Senão se", caseItem?.thenBranch, caseItem?.condition || "")
+        )
+        .join("") +
+      renderFlowBranchGroup("Senão", node.elseBranch) +
+      "</details>"
+    );
+  }
+
+  if (node.kind === "switch_case") {
+    const cases = Array.isArray(node.cases) ? node.cases : [];
+    return (
+      '<details class="runtime-flow-branch-card" open>' +
+      '<summary class="runtime-flow-branch-summary">' +
+      '<span class="runtime-flow-branch-kind">Escolha</span>' +
+      '<span class="runtime-flow-branch-condition">' +
+      renderMarkdownInline(node.expression || "") +
+      "</span></summary>" +
+      cases
+        .map((caseItem) => renderFlowBranchGroup(`Caso ${caseItem?.match || ""}`, caseItem?.body))
+        .join("") +
+      renderFlowBranchGroup("Padrão", node.defaultBranch) +
+      "</details>"
+    );
+  }
+
+  return "";
+}
+
+function renderFlowBranchGroup(label, items, condition = "") {
+  const safeItems = Array.isArray(items) ? items : [];
+  return (
+    '<section class="runtime-flow-branch-group">' +
+    '<div class="runtime-flow-branch-label">' +
+    escapeHtml(label) +
+    (condition ? ": " + renderMarkdownInline(condition) : "") +
+    "</div>" +
+    (safeItems.length
+      ? '<div class="runtime-flow-sequence nested">' + safeItems.map((item) => renderFlowchartStructureNode(item)).join("") + "</div>"
+      : '<p class="runtime-paragraph">Sem etapas.</p>') +
+    "</section>"
+  );
+}
+
+function getFlowNodeKindLabel(kind) {
+  const kindLabelByType = {
+    start: "Início",
+    end: "Fim",
+    process: "Processo",
+    input: "Entrada",
+    output: "Saída"
+  };
+  return kindLabelByType[kind] || kind;
 }
 
 function renderTableBlock(block) {
@@ -115,16 +968,101 @@ function renderTableBlock(block) {
   );
 }
 
-function renderMultipleChoiceBlock(block) {
-  const optionsHtml = (Array.isArray(block?.options) ? block.options : [])
-    .map((option, index) => {
+function renderChoiceFeedback(feedback) {
+  if (feedback === "correct") {
+    return '<p class="runtime-exercise-feedback is-correct">Correto.</p>';
+  }
+  if (feedback === "wrong") {
+    return '<p class="runtime-exercise-feedback is-wrong">Ainda não.</p>';
+  }
+  if (feedback === "incomplete") {
+    return '<p class="runtime-exercise-feedback is-incomplete">Preencha para validar.</p>';
+  }
+  return "";
+}
+
+function renderCompleteBlock(block, renderOptions = {}, blockKey = "runtime-complete") {
+  const exercise = renderOptions.completeExerciseStateByBlockKey?.[blockKey] || null;
+  const blanks = parseCompleteText(block?.text || "");
+  const values = Array.isArray(exercise?.values) ? exercise.values : [];
+  const feedback = exercise?.feedback || null;
+  const dockParts = Array.isArray(renderOptions.dockExerciseParts) ? renderOptions.dockExerciseParts : null;
+
+  const body = blanks
+    .map((part) => {
+      if (part.kind === "text") {
+        return '<span class="runtime-complete-chunk">' + renderMarkdownInline(part.value) + "</span>";
+      }
+      const value = String(values[part.index] ?? "");
       return (
-        '<label class="choice-option">' +
-        '<input type="' +
-        (block?.answerState === "multiple" ? "checkbox" : "radio") +
-        '" disabled name="choice-' +
-        String(index) +
+        '<input class="runtime-complete-blank" type="text" autocomplete="off" spellcheck="false" ' +
+        'data-action="complete-input" data-complete-block-key="' +
+        escapeHtml(blockKey) +
+        '" data-complete-blank-index="' +
+        escapeHtml(part.index) +
+        '" value="' +
+        escapeHtml(value) +
+        '">'
+      );
+    })
+    .join("");
+
+  const bodyHtml =
+    '<div class="runtime-block runtime-complete-block">' +
+    '<div class="runtime-choice-label">Complete</div>' +
+    '<p class="runtime-complete-text">' +
+    body +
+    "</p>";
+
+  const controlsHtml =
+    '<div class="runtime-exercise-controls">' +
+    '<button class="action-pill" type="button" data-action="complete-try-again" data-complete-block-key="' +
+    escapeHtml(blockKey) +
+    '">Tentar de novo</button>' +
+    '<button class="action-pill" type="button" data-action="complete-view-answer" data-complete-block-key="' +
+    escapeHtml(blockKey) +
+    '">Ver resposta</button>' +
+    '<button class="action-pill primary" type="button" data-action="complete-validate" data-complete-block-key="' +
+    escapeHtml(blockKey) +
+    '">Validar</button>' +
+    "</div>" +
+    renderChoiceFeedback(feedback);
+
+  if (dockParts) {
+    dockParts.push(controlsHtml);
+    return bodyHtml + "</div>";
+  }
+
+  return bodyHtml + controlsHtml + "</div>";
+}
+
+function renderMultipleChoiceBlock(block, renderOptions = {}, blockKey = "runtime-choice") {
+  const exercise = renderOptions.choiceExerciseStateByBlockKey?.[blockKey] || null;
+  const options = Array.isArray(block?.options) ? block.options : [];
+  const displayOptions = shuffleExerciseOptions(options, buildExerciseShuffleSeed(renderOptions, `choice::${blockKey}`));
+  const selected = normalizeChoiceSelectionIds(options, exercise?.selected);
+  const isMultiple = block?.answerState === "multiple";
+  const name = `choice-${blockKey}`;
+
+  const optionsHtml = displayOptions
+    .map((option, index) => {
+      const optionId = getExerciseOptionStableId(option, index);
+      const isChecked = selected.has(optionId);
+      return (
+        '<label class="choice-option' +
+        (isChecked ? " is-checked" : "") +
         '">' +
+        '<input type="' +
+        (isMultiple ? "checkbox" : "radio") +
+        '" name="' +
+        escapeHtml(name) +
+        '" data-action="choice-toggle" data-choice-block-key="' +
+        escapeHtml(blockKey) +
+        '" data-choice-option-id="' +
+        escapeHtml(optionId) +
+        '"' +
+        (isChecked ? " checked" : "") +
+        ">" +
         "<span>" +
         renderMarkdownInline(option?.value || "") +
         "</span></label>"
@@ -132,7 +1070,10 @@ function renderMultipleChoiceBlock(block) {
     })
     .join("");
 
-  return (
+  const feedback = exercise?.feedback || null;
+  const dockParts = Array.isArray(renderOptions.dockExerciseParts) ? renderOptions.dockExerciseParts : null;
+
+  const bodyHtml =
     '<div class="runtime-block runtime-choice-block">' +
     '<div class="runtime-choice-label">Pergunta-guia</div>' +
     '<div class="runtime-choice-body">' +
@@ -140,8 +1081,28 @@ function renderMultipleChoiceBlock(block) {
     "</div>" +
     '<div class="choice-group">' +
     optionsHtml +
-    "</div></div>"
-  );
+    "</div>";
+
+  const controlsHtml =
+    '<div class="runtime-exercise-controls">' +
+    '<button class="action-pill" type="button" data-action="choice-try-again" data-choice-block-key="' +
+    escapeHtml(blockKey) +
+    '">Tentar de novo</button>' +
+    '<button class="action-pill" type="button" data-action="choice-view-answer" data-choice-block-key="' +
+    escapeHtml(blockKey) +
+    '">Ver resposta</button>' +
+    '<button class="action-pill primary" type="button" data-action="choice-validate" data-choice-block-key="' +
+    escapeHtml(blockKey) +
+    '">Validar</button>' +
+    "</div>" +
+    renderChoiceFeedback(feedback);
+
+  if (dockParts) {
+    dockParts.push(controlsHtml);
+    return bodyHtml + "</div>";
+  }
+
+  return bodyHtml + controlsHtml + "</div>";
 }
 
 function renderEditorBlock(block) {
@@ -183,7 +1144,7 @@ function renderPopupButtonBlock(block) {
   );
 }
 
-function renderRuntimeBlock(block) {
+function renderRuntimeBlock(block, renderOptions = {}, blockKey = "runtime-block") {
   if (!block || typeof block !== "object") {
     return "";
   }
@@ -195,7 +1156,10 @@ function renderRuntimeBlock(block) {
     return '<p class="runtime-block runtime-paragraph">' + renderMarkdownParagraph(block.value || "") + "</p>";
   }
   if (block.kind === "multiple_choice") {
-    return renderMultipleChoiceBlock(block);
+    return renderMultipleChoiceBlock(block, renderOptions, blockKey);
+  }
+  if (block.kind === "complete") {
+    return renderCompleteBlock(block, renderOptions, blockKey);
   }
   if (block.kind === "editor") {
     return renderEditorBlock(block);
@@ -204,7 +1168,7 @@ function renderRuntimeBlock(block) {
     return renderTableBlock(block);
   }
   if (block.kind === "flowchart") {
-    return renderFlowchartBlock(block);
+    return renderFlowchartBlock(block, renderOptions, blockKey);
   }
   if (block.kind === "image") {
     return renderImageBlock(block);
@@ -216,28 +1180,59 @@ function renderRuntimeBlock(block) {
   return '<p class="runtime-block runtime-paragraph" data-kind="' + escapeHtml(block.kind || "paragraph") + '">' + renderMarkdownParagraph(block.value || "") + "</p>";
 }
 
-export function renderRuntimeBlockList(blocks, fallbackText = "Sem conteúdo.") {
+export function renderRuntimeBlockList(blocks, fallbackText = "Sem conteúdo.", renderOptions = {}) {
   const safeBlocks = Array.isArray(blocks) ? blocks : [];
   if (!safeBlocks.length) {
     return '<p class="runtime-paragraph">' + escapeHtml(fallbackText) + "</p>";
   }
 
-  return safeBlocks.map((block) => renderRuntimeBlock(block)).join("");
+  const blockKeyPrefix = String(renderOptions.blockKeyPrefix || "runtime-block");
+  const blockKeys = Array.isArray(renderOptions.blockKeys) ? renderOptions.blockKeys : [];
+  return safeBlocks
+    .map((block, index) =>
+      renderRuntimeBlock(block, renderOptions, blockKeys[index] || `${blockKeyPrefix}::${index}`)
+    )
+    .join("");
 }
 
 export function renderCardRuntimeBlocks(card, options = {}) {
   const runtime = resolveCardRuntime(card);
   const title = normalizeInlineText(options.title || card?.title || runtime?.title);
   const blocks = Array.isArray(runtime?.blocks) ? runtime.blocks : [];
-  const normalizedBlocks =
+  const blockEntries = blocks.map((block, index) => ({
+    block,
+    originalIndex: index
+  }));
+  const normalizedEntries =
     options.omitRepeatedHeading !== false &&
-    blocks.length &&
-    blocks[0]?.kind === "heading" &&
-    normalizeInlineText(blocks[0].value).toLowerCase() === title.toLowerCase()
-      ? blocks.slice(1)
-      : blocks;
+    blockEntries.length &&
+    blockEntries[0]?.block?.kind === "heading" &&
+    normalizeInlineText(blockEntries[0].block.value).toLowerCase() === title.toLowerCase()
+      ? blockEntries.slice(1)
+      : blockEntries;
 
-  return renderRuntimeBlockList(normalizedBlocks, options.fallbackText || runtime?.fallbackText || "");
+  return renderRuntimeBlockList(
+    normalizedEntries.map((entry) => entry.block),
+    options.fallbackText || runtime?.fallbackText || "",
+    {
+      ...options,
+      blockKeys: normalizedEntries.map((entry) => `${String(options.blockKeyPrefix || "runtime-block")}::${entry.originalIndex}`)
+    }
+  );
+}
+
+export function renderCardRuntimeBlocksWithDock(card, options = {}) {
+  const dockExerciseParts = [];
+  const bodyHtml = renderCardRuntimeBlocks(card, {
+    ...options,
+    dockExerciseParts
+  });
+
+  const dockHtml = dockExerciseParts.length
+    ? '<section class="card-answer-dock" data-card-answer-dock="true">' + dockExerciseParts.join("") + "</section>"
+    : "";
+
+  return { bodyHtml, dockHtml };
 }
 
 export function renderCardRuntimeArticle(card) {

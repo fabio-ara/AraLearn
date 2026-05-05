@@ -104,6 +104,34 @@ test("cria e edita card do contrato principal sem intent nem data", () => {
   assert.equal("data" in card, false);
 });
 
+test("edita card flow preservando estrutura pública composta", () => {
+  const document = readNormalizedProject("./docs/examples/aralearn-contract.renderable.json");
+
+  const updated = updateCardInMicrosequence(document, {
+    courseKey: "course-curso-renderizavel",
+    moduleKey: "module-modulo-experimental",
+    lessonKey: "lesson-licao-experimental",
+    microsequenceKey: "microsequence-modelo-cascata",
+    cardKey: "card-fluxo-basico",
+    title: "Fluxo revisto",
+    flow: [
+      { start: "Início" },
+      {
+        if: "x > 0",
+        then: [{ process: "Seguir" }],
+        else: [{ output: "Parar" }]
+      },
+      { end: "Fim" }
+    ]
+  });
+
+  const card = updated.courses[0].modules[0].lessons[0].microsequences[0].cards[5];
+  assert.equal(card.type, "flow");
+  assert.equal(card.title, "Fluxo revisto");
+  assert.equal(card.flow[1].if, "x > 0");
+  assert.deepEqual(card.flow[1].then.map((item) => item.process), ["Seguir"]);
+});
+
 test("sessão principal persiste alterações no storage dedicado", () => {
   const store = createKeyValueMemoryStore();
   const projectStorage = createProjectStorage(store);

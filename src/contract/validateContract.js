@@ -1,5 +1,12 @@
 const CONTRACT_NAME = "aralearn.contract";
 
+import {
+  convertPublicFlowToStructure,
+  convertStructureToPublicFlow,
+  normalizeFlowchartStructure,
+  validateFlowchartStructureContract
+} from "../flowchart/flowchartStructure.js";
+
 const CARD_TYPES = new Set([
   "text",
   "choice",
@@ -178,21 +185,14 @@ function validateCard(card, index, errors, cardKeys, path) {
       errors.push(makeError(currentPath, 'Campo obrigatório inválido: "flow".'));
       normalized.flow = [];
     } else {
-      normalized.flow = card.flow.map((step, stepIndex) => {
-        if (!isPlainObject(step) || Object.keys(step).length !== 1) {
-          errors.push(makeError(`${currentPath}.flow[${stepIndex}]`, "Etapa de fluxo deve ter exatamente uma chave."));
-          return {};
-        }
-
-        const [kind] = Object.keys(step);
-        const label = step[kind];
-        if (typeof label !== "string" || label.trim() === "") {
-          errors.push(makeError(`${currentPath}.flow[${stepIndex}]`, "Rótulo da etapa deve ser texto."));
-          return {};
-        }
-
-        return { [kind]: label.trim() };
-      });
+      const structure = normalizeFlowchartStructure(convertPublicFlowToStructure(card.flow));
+      const validation = validateFlowchartStructureContract(structure);
+      if (!validation.valid) {
+        errors.push(makeError(`${currentPath}.flow`, 'Campo obrigatório inválido: "flow".'));
+        normalized.flow = [];
+      } else {
+        normalized.flow = convertStructureToPublicFlow(structure);
+      }
     }
   } else if (type === "image") {
     normalized.src = ensureRequiredString(card.src, currentPath, "src", errors) ?? "";
