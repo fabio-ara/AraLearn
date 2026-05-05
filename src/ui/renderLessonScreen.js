@@ -1,6 +1,7 @@
 import { renderInlineCardEditor } from "./renderCardEditorOverlay.js";
 import { renderHomeScreen } from "./renderHomeScreen.js";
-import { normalizeCardBlocks } from "../core/cardBlockModel.js";
+import { readCardText } from "../core/cardRuntime.js";
+import { renderCardRuntimeBlocks } from "../render/renderCardRuntime.js";
 
 function escapeHtml(value) {
   return String(value)
@@ -96,39 +97,6 @@ function truncateText(value, maxLength = 120) {
 
 function formatCount(count, singular, plural) {
   return `${count} ${count === 1 ? singular : plural}`;
-}
-
-function readCardText(card) {
-  if (!card || typeof card !== "object") {
-    return "";
-  }
-
-  if (typeof card.text === "string") {
-    return card.text;
-  }
-  if (typeof card.ask === "string") {
-    return card.ask;
-  }
-  if (typeof card.code === "string") {
-    return card.code;
-  }
-  if (Array.isArray(card.columns) && card.columns.length) {
-    return card.columns.join(" | ");
-  }
-  if (Array.isArray(card.flow) && card.flow.length) {
-    return card.flow
-      .map((step) => {
-        const [kind] = Object.keys(step || {});
-        return kind ? `${kind}: ${step[kind]}` : "";
-      })
-      .filter(Boolean)
-      .join("\n");
-  }
-  if (typeof card.src === "string") {
-    return card.src;
-  }
-
-  return "";
 }
 
 function getLessonDescription(lesson) {
@@ -249,135 +217,11 @@ function renderLightDependencyTags(dependencies) {
     .join("");
 }
 
-function normalizeBlocks(card) {
-  return normalizeCardBlocks({
-    title: card?.title || "",
-    text: readCardText(card),
-    blocks: card?.blocks || []
-  });
-}
-
-function renderMarkdownInline(text) {
-  return escapeHtml(text || "")
-    .replace(/`([^`]+)`/g, "<code>$1</code>")
-    .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
-    .replace(/\*([^*]+)\*/g, "<em>$1</em>")
-    .replace(/\n/g, "<br>");
-}
-
-function renderMarkdownParagraph(text) {
-  return renderMarkdownInline(text);
-}
-
-function splitLabelToItems(label) {
-  return String(label || "")
-    .split(/[;,]/)
-    .map((item) => item.trim())
-    .filter(Boolean)
-    .slice(0, 4);
-}
-
-function renderRuntimeBlockList(blocks, fallbackText) {
-  if (!blocks.length) {
-    return '<p class="runtime-paragraph">' + escapeHtml(fallbackText || "Sem conteúdo.") + "</p>";
-  }
-
-  const cardTitle = "";
-  const normalizedBlocks =
-    blocks.length &&
-    blocks[0] &&
-    blocks[0].kind === "heading" &&
-    cardTitle &&
-    normalizeInlineText(blocks[0].label).toLowerCase() === cardTitle.toLowerCase()
-      ? blocks.slice(1)
-      : blocks;
-
-  return normalizedBlocks
-    .map((block) => {
-      const label = block.label || "";
-      const kind = escapeHtml(block.kind || "paragraph");
-
-      if (block.kind === "heading") {
-        return '<h3 class="runtime-block runtime-heading">' + renderMarkdownInline(label) + "</h3>";
-      }
-
-      if (block.kind === "paragraph") {
-        return '<p class="runtime-block runtime-paragraph">' + renderMarkdownParagraph(label) + "</p>";
-      }
-
-      if (block.kind === "list") {
-        const items = String(block.label || "")
-          .split(/\n|[;,]/)
-          .map((item) => item.trim())
-          .filter(Boolean);
-        const listItems = (items.length ? items : [block.label || "Ponto de apoio"])
-          .map((item) => '<li>' + renderMarkdownInline(item) + "</li>")
-          .join("");
-        return '<div class="runtime-block runtime-list-block"><ul class="runtime-list">' + listItems + "</ul></div>";
-      }
-
-      if (block.kind === "choice") {
-        return (
-          '<div class="runtime-block runtime-choice-block">' +
-          '<div class="runtime-choice-label">Pergunta-guia</div>' +
-          '<div class="runtime-choice-body">' +
-          renderMarkdownParagraph(label) +
-          "</div></div>"
-        );
-      }
-
-      if (block.kind === "table") {
-        return (
-          '<div class="runtime-block runtime-table-block">' +
-          '<div class="runtime-table-title">' +
-          renderMarkdownInline(label) +
-          "</div>" +
-          '<div class="runtime-table-wrap"><table class="runtime-table">' +
-          "<thead><tr><th>Parte</th><th>Foco</th></tr></thead>" +
-          "<tbody>" +
-          "<tr><td>Base</td><td>" + renderMarkdownInline(label) + "</td></tr>" +
-          "<tr><td>Uso</td><td>Aplicar na leitura do card atual</td></tr>" +
-          "</tbody></table></div></div>"
-        );
-      }
-
-      if (block.kind === "flowchart") {
-        const items = splitLabelToItems(block.label);
-        const flowItems = (items.length ? items : [block.label || "Etapa central"])
-          .map((item) => '<span class="runtime-flow-node">' + renderMarkdownInline(item) + "</span>")
-          .join('<span class="runtime-flow-arrow">→</span>');
-        return '<div class="runtime-block runtime-flow-block">' + flowItems + "</div>";
-      }
-
-      if (block.kind === "popup") {
-        return (
-          '<details class="runtime-block runtime-popup-block" open>' +
-          '<summary class="runtime-popup-summary">' +
-          renderMarkdownInline(block.label || "Botão") +
-          "</summary>" +
-          '<div class="runtime-popup-body">' +
-          renderRuntimeBlockList(Array.isArray(block.children) ? block.children : [], "") +
-          "</div></details>"
-        );
-      }
-
-      return '<p class="runtime-block runtime-paragraph" data-kind="' + kind + '">' + renderMarkdownParagraph(label) + "</p>";
-    })
-    .join("");
-}
-
 function renderRuntimeBlocks(card, fallbackText) {
-  const blocks = normalizeBlocks(card);
-  const cardTitle = normalizeInlineText(card && (card.title || card.key));
-  const normalizedBlocks =
-    blocks.length &&
-    blocks[0] &&
-    blocks[0].kind === "heading" &&
-    normalizeInlineText(blocks[0].label).toLowerCase() === cardTitle.toLowerCase()
-      ? blocks.slice(1)
-      : blocks;
-
-  return renderRuntimeBlockList(normalizedBlocks, fallbackText);
+  return renderCardRuntimeBlocks(card, {
+    omitRepeatedHeading: true,
+    fallbackText
+  });
 }
 
 function renderMetaLine({ completed, total, parts = [] }) {
