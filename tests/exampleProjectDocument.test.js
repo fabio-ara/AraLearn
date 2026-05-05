@@ -13,12 +13,28 @@ test("seed principal da UI valida no contrato atual", () => {
   assert.equal(result.value.courses.length, 1);
 });
 
-test("seed principal expõe um curso de exemplo para múltipla escolha", () => {
-  const document = createExampleProjectDocument();
+test("seed principal agora mantém um único curso de teste", () => {
+  const result = validateContractDocument(createExampleProjectDocument());
+  assert.equal(result.ok, true);
+  const document = result.value;
+  const course = document.courses[0];
+
+  assert.equal(course.key, "course-teste-runtime");
+  assert.equal(course.modules.length, 1);
+  assert.equal(course.modules[0].lessons.length, 1);
+  assert.equal(course.modules[0].lessons[0].microsequences.length, 1);
+  assert.equal(course.modules[0].lessons[0].microsequences[0].cards.length, 1);
+});
+
+test("primeiro card do seed é uma tabela com lacunas por bloco", () => {
+  const result = validateContractDocument(createExampleProjectDocument());
+  assert.equal(result.ok, true);
+  const document = result.value;
   const card = document.courses[0].modules[0].lessons[0].microsequences[0].cards[0];
 
-  assert.equal(document.courses[0].key, "course-teste-choice");
-  assert.equal(card.type, "choice");
-  assert.deepEqual(card.answer, ["type"]);
-  assert.deepEqual(card.wrong, ["title", "runtime"]);
+  assert.equal(card.key, "card-tabela-blocos");
+  assert.equal(card.type, "table");
+  assert.equal(Array.isArray(card.rows), true);
+  assert.match(card.rows[0][0], /\[\[type::type\|title\|key\]\]/);
+  assert.match(card.rows[1][1], /\[\[blocos::blocos\|módulos\|tokens\]\]/);
 });

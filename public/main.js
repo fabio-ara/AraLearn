@@ -12,7 +12,7 @@ if (!root) {
 const kvStore = createBrowserLocalStorageStore(globalThis.localStorage);
 const storage = createProjectStorage(kvStore);
 const editor = createEditorSession(storage);
-const EXAMPLE_SEED_VERSION = "contract-choice-v1";
+const EXAMPLE_SEED_VERSION = "contract-runtime-stubs-v8";
 const EXAMPLE_SEED_KEY = "aralearn.example-seed.version";
 
 let project = null;
@@ -28,7 +28,7 @@ const isExampleProject =
   !project ||
   courseKeys.includes("course-engenharia-software") ||
   courseKeys.includes("course-logica") ||
-  courseKeys.includes("course-teste-choice");
+  courseKeys.includes("course-teste-runtime");
 
 const shouldResetSeed =
   !project ||

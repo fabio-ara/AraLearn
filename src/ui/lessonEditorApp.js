@@ -4,6 +4,7 @@ import { renderCardVersionOverlay } from "./renderCardVersionOverlay.js";
 import { renderEntityEditorOverlay } from "./renderEntityEditorOverlay.js";
 import { renderAssistConfigOverlay } from "./renderAssistConfigOverlay.js";
 import { captureRenderState, restoreRenderState } from "./renderState.js";
+import { getRuntimePopupButtonEntry } from "../render/renderCardRuntime.js";
 import { resolveCardRuntime } from "../core/cardRuntime.js";
 import { getExerciseOptionStableId } from "../core/exerciseOptions.js";
 import {
@@ -310,7 +311,9 @@ export function createLessonEditorApp({ root, storage, editor }) {
     flowchartPinch: null,
     choiceExerciseByBlockKey: {},
     completeExerciseByBlockKey: {},
+    activeTextGapPrompt: null,
     cardExerciseLoadVersion: 0,
+    continuePopup: null,
     assistDraft: {
       selectedMode: ASSIST_USER_MODES.GENERATE,
       promptText: "",
@@ -838,6 +841,9 @@ export function createLessonEditorApp({ root, storage, editor }) {
     syncAssistDraft();
     state.cardCommentOpen = false;
     state.entityEditor = null;
+    state.continuePopup = null;
+    state.activeFlowchartPrompt = null;
+    state.activeTextGapPrompt = null;
     state.cardExerciseLoadVersion += 1;
     render({ preserveState: false });
   }
@@ -852,6 +858,9 @@ export function createLessonEditorApp({ root, storage, editor }) {
     syncAssistDraft();
     state.cardCommentOpen = false;
     state.entityEditor = null;
+    state.continuePopup = null;
+    state.activeFlowchartPrompt = null;
+    state.activeTextGapPrompt = null;
     state.cardExerciseLoadVersion += 1;
     render({ preserveState: false });
   }
@@ -896,6 +905,9 @@ export function createLessonEditorApp({ root, storage, editor }) {
 
     ensureCurrentCardSnapshot();
     syncAssistDraft();
+    state.continuePopup = null;
+    state.activeFlowchartPrompt = null;
+    state.activeTextGapPrompt = null;
     state.cardExerciseLoadVersion += 1;
     render({ preserveState: true });
   }
@@ -934,6 +946,60 @@ export function createLessonEditorApp({ root, storage, editor }) {
           validateComplete(entry.blockKey);
           return;
         }
+      }
+
+      const popupEntry = getCurrentPopupRuntimeButtonEntry();
+      const popupIsOpen =
+        !!popupEntry &&
+        !!state.continuePopup &&
+        state.continuePopup.cardPathKey === buildCardPathKey(state.selection) &&
+        state.continuePopup.blockKey === popupEntry.blockKey;
+
+      if (popupEntry && !popupIsOpen) {
+        state.continuePopup = {
+          cardPathKey: buildCardPathKey(state.selection),
+          blockKey: popupEntry.blockKey
+        };
+        state.activeFlowchartPrompt = null;
+        state.activeTextGapPrompt = null;
+        render({ preserveState: true });
+        return;
+      }
+
+      if (popupIsOpen) {
+        const popupFlowcharts = getCurrentPopupRuntimeFlowcharts();
+        for (const entry of popupFlowcharts) {
+          const projection = entry?.block?.projection;
+          if (!projection || !flowchartProjectionHasPractice(projection)) continue;
+          const result = validateFlowchartExerciseState(projection, state.flowchartPracticeByBlockKey[entry.blockKey]);
+          state.flowchartPracticeByBlockKey[entry.blockKey] = result.state;
+          if (result.status !== "correct") {
+            render({ preserveState: true });
+            return;
+          }
+        }
+
+        const popupChoices = getCurrentPopupRuntimeChoiceBlocks();
+        for (const entry of popupChoices) {
+          const exercise = state.choiceExerciseByBlockKey[entry.blockKey] || { selected: [], feedback: null };
+          if (exercise.feedback !== "correct") {
+            validateChoice(entry.blockKey);
+            return;
+          }
+        }
+
+        const popupCompletes = getCurrentPopupRuntimeCompleteBlocks();
+        for (const entry of popupCompletes) {
+          const exercise = state.completeExerciseByBlockKey[entry.blockKey] || { values: [], feedback: null };
+          if (exercise.feedback !== "correct") {
+            validateComplete(entry.blockKey);
+            return;
+          }
+        }
+
+        state.continuePopup = null;
+        state.activeFlowchartPrompt = null;
+        state.activeTextGapPrompt = null;
       }
     }
 
@@ -1570,23 +1636,198 @@ export function createLessonEditorApp({ root, storage, editor }) {
     };
   }
 
+  function autosizeTextGapField(node) {
+    if (!node || (node.tagName !== "TEXTAREA" && node.tagName !== "INPUT")) {
+      return;
+    }
+    const value = String(node.value || "");
+    const longestLine = value.split("\n").reduce((max, line) => Math.max(max, line.length), 0);
+    node.style.width = `${Math.max(1, longestLine || 1)}ch`;
+    if (node.tagName === "TEXTAREA") {
+      node.style.height = "auto";
+      node.style.height = `${node.scrollHeight}px`;
+    }
+  }
+
+  function normalizeTextGapContentEditableValue(node) {
+    if (!node) return "";
+    const raw = String(node.textContent || "").replace(/\u2007/g, "");
+    // Lacunas textuais sao tokens inline; evita quebras de linha e espacos acidentais.
+    return raw.replace(/\s+/g, " ").trim();
+  }
+
+  function getCurrentCardRuntimeBlocks(card = getRenderContext().card) {
+    const runtime = resolveCardRuntime(card);
+    return Array.isArray(runtime?.blocks) ? runtime.blocks : [];
+  }
+
+  function collectRuntimeBlockEntries(blocks, blockKeyPrefix, predicate) {
+    return (Array.isArray(blocks) ? blocks : [])
+      .map((block, index) => ({
+        block,
+        blockKey: `${blockKeyPrefix}::${index}`
+      }))
+      .filter((entry) => predicate(entry.block));
+  }
+
+  function parseTextGapAnswers(text) {
+    const source = String(text || "");
+    const answers = [];
+    let index = 0;
+
+    while (index < source.length) {
+      const start = source.indexOf("[[", index);
+      if (start < 0) {
+        break;
+      }
+
+      const end = source.indexOf("]]", start + 2);
+      if (end < 0) {
+        break;
+      }
+
+      const raw = source.slice(start + 2, end);
+      const delimiterIndex = raw.indexOf("::");
+      answers.push(delimiterIndex >= 0 ? raw.slice(0, delimiterIndex) : raw);
+      index = end + 2;
+    }
+
+    return answers;
+  }
+
+  function parseTextGapParts(text) {
+    const source = String(text || "");
+    const parts = [];
+    let index = 0;
+    let blankIndex = 0;
+
+    while (index < source.length) {
+      const start = source.indexOf("[[", index);
+      if (start < 0) {
+        break;
+      }
+
+      const end = source.indexOf("]]", start + 2);
+      if (end < 0) {
+        break;
+      }
+
+      const raw = source.slice(start + 2, end);
+      const delimiterIndex = raw.indexOf("::");
+      const expected = delimiterIndex >= 0 ? raw.slice(0, delimiterIndex) : raw;
+      const options =
+        delimiterIndex >= 0
+          ? raw
+              .slice(delimiterIndex + 2)
+              .split("|")
+              .map((item) => String(item || "").trim())
+              .filter(Boolean)
+          : [];
+
+      parts.push({ index: blankIndex, expected, options });
+      blankIndex += 1;
+      index = end + 2;
+    }
+
+    return parts;
+  }
+
+  function getTextGapAnswersForBlock(block) {
+    if (!block || typeof block !== "object") {
+      return [];
+    }
+
+    if (block.kind === "complete") {
+      return parseTextGapAnswers(block.text);
+    }
+    if (block.kind === "paragraph" || block.kind === "editor") {
+      return parseTextGapAnswers(block.value);
+    }
+    if (block.kind === "table") {
+      const answers = [];
+      (Array.isArray(block.rows) ? block.rows : []).forEach((row) => {
+        (Array.isArray(row) ? row : []).forEach((cell) => {
+          answers.push(...parseTextGapAnswers(cell?.value || ""));
+        });
+      });
+      return answers;
+    }
+
+    return [];
+  }
+
+  function blockUsesTextGapExercise(block) {
+    return getTextGapAnswersForBlock(block).length > 0;
+  }
+
+  function listTextGapPartsForBlock(block) {
+    if (!block || typeof block !== "object") {
+      return [];
+    }
+
+    if (block.kind === "complete") {
+      return parseTextGapParts(block.text);
+    }
+    if (block.kind === "paragraph" || block.kind === "editor") {
+      return parseTextGapParts(block.value);
+    }
+    if (block.kind === "table") {
+      const parts = [];
+      (Array.isArray(block.rows) ? block.rows : []).forEach((row) => {
+        (Array.isArray(row) ? row : []).forEach((cell) => {
+          parts.push(...parseTextGapParts(cell?.value || "").map((part) => ({ ...part, index: parts.length })));
+        });
+      });
+      return parts;
+    }
+
+    return [];
+  }
+
+  function getTextGapChoicePart(blockKey, blankIndex) {
+    const entry = getCurrentCompleteEntry(blockKey);
+    if (!entry) {
+      return null;
+    }
+
+    return (
+      listTextGapPartsForBlock(entry.block).find(
+        (part) => Number(part.index) === Number(blankIndex) && Array.isArray(part.options) && part.options.length
+      ) || null
+    );
+  }
+
+  function getCurrentPopupRuntimeButtonEntry(card = getRenderContext().card) {
+    const popupEntry = getRuntimePopupButtonEntry(card);
+    if (!popupEntry) {
+      return null;
+    }
+
+    return {
+      ...popupEntry,
+      blockKey: `${buildCardPathKey(state.selection)}::${popupEntry.index}`
+    };
+  }
+
   function getCurrentCardRuntimeFlowcharts(card = getRenderContext().card) {
     if (!card) {
       return [];
     }
 
-    const runtime = resolveCardRuntime(card);
-    const blockKeyPrefix = buildCardPathKey(state.selection);
-    return (Array.isArray(runtime?.blocks) ? runtime.blocks : [])
-      .map((block, index) => ({
-        block,
-        blockKey: `${blockKeyPrefix}::${index}`
-      }))
-      .filter((entry) => entry.block?.kind === "flowchart" && entry.block?.projection);
+    return collectRuntimeBlockEntries(
+      getCurrentCardRuntimeBlocks(card),
+      buildCardPathKey(state.selection),
+      (block) => block?.kind === "flowchart" && block?.projection
+    );
   }
 
   function getCurrentFlowchartEntry(blockKey) {
-    return getCurrentCardRuntimeFlowcharts().find((entry) => entry.blockKey === blockKey) || null;
+    return (
+      [
+        ...getCurrentCardRuntimeFlowcharts(),
+        ...getCurrentPopupRuntimeFlowcharts()
+      ].find((entry) => entry.blockKey === blockKey) || null
+    );
   }
 
   function getCurrentCardRuntimeChoiceBlocks(card = getRenderContext().card) {
@@ -1594,14 +1835,11 @@ export function createLessonEditorApp({ root, storage, editor }) {
       return [];
     }
 
-    const runtime = resolveCardRuntime(card);
-    const blockKeyPrefix = buildCardPathKey(state.selection);
-    return (Array.isArray(runtime?.blocks) ? runtime.blocks : [])
-      .map((block, index) => ({
-        block,
-        blockKey: `${blockKeyPrefix}::${index}`
-      }))
-      .filter((entry) => entry.block?.kind === "multiple_choice");
+    return collectRuntimeBlockEntries(
+      getCurrentCardRuntimeBlocks(card),
+      buildCardPathKey(state.selection),
+      (block) => block?.kind === "multiple_choice"
+    );
   }
 
   function getCurrentCardRuntimeCompleteBlocks(card = getRenderContext().card) {
@@ -1609,18 +1847,75 @@ export function createLessonEditorApp({ root, storage, editor }) {
       return [];
     }
 
-    const runtime = resolveCardRuntime(card);
-    const blockKeyPrefix = buildCardPathKey(state.selection);
-    return (Array.isArray(runtime?.blocks) ? runtime.blocks : [])
-      .map((block, index) => ({
-        block,
-        blockKey: `${blockKeyPrefix}::${index}`
-      }))
-      .filter((entry) => entry.block?.kind === "complete");
+    return collectRuntimeBlockEntries(
+      getCurrentCardRuntimeBlocks(card),
+      buildCardPathKey(state.selection),
+      (block) => blockUsesTextGapExercise(block)
+    );
+  }
+
+  function getCurrentChoiceEntry(blockKey) {
+    return (
+      [
+        ...getCurrentCardRuntimeChoiceBlocks(),
+        ...getCurrentPopupRuntimeChoiceBlocks()
+      ].find((entry) => entry.blockKey === blockKey) || null
+    );
+  }
+
+  function getCurrentCompleteEntry(blockKey) {
+    return (
+      [
+        ...getCurrentCardRuntimeCompleteBlocks(),
+        ...getCurrentPopupRuntimeCompleteBlocks()
+      ].find((entry) => entry.blockKey === blockKey) || null
+    );
+  }
+
+  function getCurrentPopupRuntimeFlowcharts(card = getRenderContext().card) {
+    const popupEntry = getCurrentPopupRuntimeButtonEntry(card);
+    if (!popupEntry) {
+      return [];
+    }
+
+    return collectRuntimeBlockEntries(
+      popupEntry.block.popupBlocks,
+      `${popupEntry.blockKey}::popup`,
+      (block) => block?.kind === "flowchart" && block?.projection
+    );
+  }
+
+  function getCurrentPopupRuntimeChoiceBlocks(card = getRenderContext().card) {
+    const popupEntry = getCurrentPopupRuntimeButtonEntry(card);
+    if (!popupEntry) {
+      return [];
+    }
+
+    return collectRuntimeBlockEntries(
+      popupEntry.block.popupBlocks,
+      `${popupEntry.blockKey}::popup`,
+      (block) => block?.kind === "multiple_choice"
+    );
+  }
+
+  function getCurrentPopupRuntimeCompleteBlocks(card = getRenderContext().card) {
+    const popupEntry = getCurrentPopupRuntimeButtonEntry(card);
+    if (!popupEntry) {
+      return [];
+    }
+
+    return collectRuntimeBlockEntries(
+      popupEntry.block.popupBlocks,
+      `${popupEntry.blockKey}::popup`,
+      (block) => blockUsesTextGapExercise(block)
+    );
   }
 
   function ensureCurrentChoiceExerciseState() {
-    const choices = getCurrentCardRuntimeChoiceBlocks();
+    const choices = [
+      ...getCurrentCardRuntimeChoiceBlocks(),
+      ...getCurrentPopupRuntimeChoiceBlocks()
+    ];
     const runtimeOptions = {
       blockKeyPrefix: buildCardPathKey(state.selection),
       choiceExerciseStateByBlockKey: {},
@@ -1650,10 +1945,14 @@ export function createLessonEditorApp({ root, storage, editor }) {
   }
 
   function ensureCurrentCompleteExerciseState() {
-    const completes = getCurrentCardRuntimeCompleteBlocks();
+    const completes = [
+      ...getCurrentCardRuntimeCompleteBlocks(),
+      ...getCurrentPopupRuntimeCompleteBlocks()
+    ];
     const runtimeOptions = {
       blockKeyPrefix: buildCardPathKey(state.selection),
-      completeExerciseStateByBlockKey: {}
+      completeExerciseStateByBlockKey: {},
+      textGapExerciseStateByBlockKey: {}
     };
 
     completes.forEach((entry) => {
@@ -1663,14 +1962,14 @@ export function createLessonEditorApp({ root, storage, editor }) {
         feedback: current?.feedback || null
       };
       runtimeOptions.completeExerciseStateByBlockKey[entry.blockKey] = state.completeExerciseByBlockKey[entry.blockKey];
+      runtimeOptions.textGapExerciseStateByBlockKey[entry.blockKey] = state.completeExerciseByBlockKey[entry.blockKey];
     });
 
     return runtimeOptions;
   }
 
   function setChoiceSelection(blockKey, optionId, checked) {
-    const entry = getCurrentCardRuntimeChoiceBlocks().find((item) => item.blockKey === blockKey);
-    if (!entry) {
+    if (!getCurrentChoiceEntry(blockKey)) {
       return;
     }
 
@@ -1680,11 +1979,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
     const normalizedOptionId = String(optionId || "").trim();
     if (!normalizedOptionId) {
       return;
-    }
-
-    const isMultiple = entry.block?.answerState === "multiple";
-    if (!isMultiple) {
-      selected.clear();
     }
 
     if (checked) {
@@ -1714,7 +2008,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
   }
 
   function viewAnswerChoice(blockKey) {
-    const entry = getCurrentCardRuntimeChoiceBlocks().find((item) => item.blockKey === blockKey);
+    const entry = getCurrentChoiceEntry(blockKey);
     if (!entry) {
       return;
     }
@@ -1732,7 +2026,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
   }
 
   function validateChoice(blockKey) {
-    const entry = getCurrentCardRuntimeChoiceBlocks().find((item) => item.blockKey === blockKey);
+    const entry = getCurrentChoiceEntry(blockKey);
     if (!entry) {
       return;
     }
@@ -1767,8 +2061,8 @@ export function createLessonEditorApp({ root, storage, editor }) {
     render({ preserveState: true });
   }
 
-  function setCompleteBlank(blockKey, blankIndex, value) {
-    const entry = getCurrentCardRuntimeCompleteBlocks().find((item) => item.blockKey === blockKey);
+  function setCompleteBlank(blockKey, blankIndex, value, { rerender = false } = {}) {
+    const entry = getCurrentCompleteEntry(blockKey);
     if (!entry) {
       return;
     }
@@ -1785,7 +2079,40 @@ export function createLessonEditorApp({ root, storage, editor }) {
       values.push("");
     }
     values[index] = String(value ?? "");
+    const hadFeedback = exercise.feedback !== null;
     state.completeExerciseByBlockKey[blockKey] = { values, feedback: null };
+    if (rerender || hadFeedback) {
+      render({ preserveState: true });
+    }
+  }
+
+  function openTextGapChoicePrompt(blockKey, blankIndex) {
+    if (!getTextGapChoicePart(blockKey, blankIndex)) {
+      return;
+    }
+
+    ensureCurrentCompleteExerciseState();
+    const currentExercise = state.completeExerciseByBlockKey[blockKey] || { values: [], feedback: null };
+    const currentValues = Array.isArray(currentExercise.values) ? currentExercise.values : [];
+    const index = Number.parseInt(String(blankIndex), 10);
+    const currentValue = index >= 0 ? String(currentValues[index] ?? "").trim() : "";
+    if (currentValue) {
+      setCompleteBlank(blockKey, blankIndex, "", { rerender: false });
+    }
+    state.activeTextGapPrompt = {
+      blockKey,
+      blankIndex: Number(blankIndex)
+    };
+    render({ preserveState: true });
+  }
+
+  function setTextGapChoice(blockKey, blankIndex, value) {
+    if (!getTextGapChoicePart(blockKey, blankIndex)) {
+      return;
+    }
+
+    setCompleteBlank(blockKey, blankIndex, value, { rerender: false });
+    state.activeTextGapPrompt = null;
     render({ preserveState: true });
   }
 
@@ -1795,25 +2122,30 @@ export function createLessonEditorApp({ root, storage, editor }) {
       return;
     }
     state.completeExerciseByBlockKey[blockKey] = { values: [], feedback: null };
+    if (state.activeTextGapPrompt?.blockKey === blockKey) {
+      state.activeTextGapPrompt = null;
+    }
     render({ preserveState: true });
   }
 
   function viewAnswerComplete(blockKey) {
-    const entry = getCurrentCardRuntimeCompleteBlocks().find((item) => item.blockKey === blockKey);
+    const entry = getCurrentCompleteEntry(blockKey);
     if (!entry) {
       return;
     }
 
-    const expected = String(entry.block?.text || "").match(/\[\[([^\]]+)\]\]/g) || [];
-    const answers = expected.map((chunk) => chunk.slice(2, -2));
+    const answers = getTextGapAnswersForBlock(entry.block);
 
     ensureCurrentCompleteExerciseState();
     state.completeExerciseByBlockKey[blockKey] = { values: answers, feedback: "correct" };
+    if (state.activeTextGapPrompt?.blockKey === blockKey) {
+      state.activeTextGapPrompt = null;
+    }
     render({ preserveState: true });
   }
 
   function validateComplete(blockKey) {
-    const entry = getCurrentCardRuntimeCompleteBlocks().find((item) => item.blockKey === blockKey);
+    const entry = getCurrentCompleteEntry(blockKey);
     if (!entry) {
       return;
     }
@@ -1821,8 +2153,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
     ensureCurrentCompleteExerciseState();
     const exercise = state.completeExerciseByBlockKey[blockKey] || { values: [], feedback: null };
     const values = Array.isArray(exercise.values) ? exercise.values : [];
-    const expected = String(entry.block?.text || "").match(/\[\[([^\]]+)\]\]/g) || [];
-    const answers = expected.map((chunk) => chunk.slice(2, -2));
+    const answers = getTextGapAnswersForBlock(entry.block);
 
     if (!answers.length) {
       state.completeExerciseByBlockKey[blockKey] = { ...exercise, feedback: "correct" };
@@ -1845,7 +2176,10 @@ export function createLessonEditorApp({ root, storage, editor }) {
   }
 
   function ensureCurrentFlowchartPracticeState() {
-    const flowcharts = getCurrentCardRuntimeFlowcharts();
+    const flowcharts = [
+      ...getCurrentCardRuntimeFlowcharts(),
+      ...getCurrentPopupRuntimeFlowcharts()
+    ];
     const runtimeOptions = {
       blockKeyPrefix: buildCardPathKey(state.selection),
       enableFlowchartPractice: true,
@@ -1885,6 +2219,10 @@ export function createLessonEditorApp({ root, storage, editor }) {
       completeExerciseStateByBlockKey: {
         ...(completeOptions.completeExerciseStateByBlockKey || {})
       },
+      textGapExerciseStateByBlockKey: {
+        ...(completeOptions.textGapExerciseStateByBlockKey || {})
+      },
+      activeTextGapPrompt: state.activeTextGapPrompt,
       exerciseShuffleSeed: choiceOptions.exerciseShuffleSeed || flowchartOptions.exerciseShuffleSeed || "runtime"
     };
   }
@@ -1907,8 +2245,10 @@ export function createLessonEditorApp({ root, storage, editor }) {
 
     // No AraLearn_old, clicar novamente numa lacuna já preenchida remove o valor.
     if (currentValue) {
-      clearFlowchartPracticeValue(blockKey, kind, targetId);
-      return;
+      setFlowchartPracticeValue(blockKey, kind, targetId, null, {
+        closePrompt: false,
+        rerender: false
+      });
     }
 
     state.activeFlowchartPrompt = {
@@ -2086,7 +2426,13 @@ export function createLessonEditorApp({ root, storage, editor }) {
           draftCourseKey: DRAFT_COURSE_KEY,
           draftLessonKey: draftContext.lesson?.key || DRAFT_LESSON_KEY,
           draftMicrosequences,
-          visibleDraftCount: draftMicrosequences.length
+          visibleDraftCount: draftMicrosequences.length,
+          continuePopup: {
+            open:
+              !!state.continuePopup &&
+              state.continuePopup.cardPathKey === buildCardPathKey(state.selection),
+            blockKey: state.continuePopup?.blockKey || null
+          }
         }
       }) +
       (state.cardCommentOpen
@@ -2178,6 +2524,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
     });
 
     root.querySelector("[data-action='prev-card']")?.addEventListener("click", () => stepCard(-1));
+    root.querySelector("[data-action='continue-popup-next']")?.addEventListener("click", () => stepCard(1));
     root.querySelector("[data-action='next-card']")?.addEventListener("click", () => stepCard(1));
     root.querySelector("[data-action='close-study']")?.addEventListener("click", () => goBack());
     root.querySelector("[data-action='go-home']")?.addEventListener("click", () => goBack());
@@ -2187,11 +2534,14 @@ export function createLessonEditorApp({ root, storage, editor }) {
     });
 
     root.querySelectorAll("[data-action='choice-toggle']").forEach((node) => {
-      node.addEventListener("change", () => {
+      node.addEventListener("click", () => {
         const blockKey = node.getAttribute("data-choice-block-key");
         const optionId = node.getAttribute("data-choice-option-id");
         if (!blockKey || optionId === null) return;
-        setChoiceSelection(blockKey, optionId, node.checked);
+        const current = state.choiceExerciseByBlockKey[blockKey];
+        const selected = Array.isArray(current?.selected) ? current.selected : [];
+        const isSelected = selected.includes(optionId);
+        setChoiceSelection(blockKey, optionId, !isSelected);
       });
     });
     root.querySelectorAll("[data-action='choice-try-again']").forEach((node) => {
@@ -2217,11 +2567,75 @@ export function createLessonEditorApp({ root, storage, editor }) {
     });
 
     root.querySelectorAll("[data-action='complete-input']").forEach((node) => {
+      if (node.tagName === "TEXTAREA" || node.tagName === "INPUT") {
+        autosizeTextGapField(node);
+        node.addEventListener("input", () => {
+          const blockKey = node.getAttribute("data-complete-block-key");
+          const blankIndex = node.getAttribute("data-complete-blank-index");
+          if (!blockKey || blankIndex === null) return;
+          autosizeTextGapField(node);
+          setCompleteBlank(blockKey, blankIndex, node.value, { rerender: false });
+        });
+        return;
+      }
+
+      if (node.getAttribute("contenteditable") !== "true") {
+        return;
+      }
+
+      const updateEmptyAttribute = () => {
+        const content = String(node.textContent || "").replace(/\u2007/g, "");
+        const isEmpty = !content.length;
+        node.setAttribute("data-empty", isEmpty ? "true" : "false");
+      };
+
+      updateEmptyAttribute();
+
+      node.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+          event.preventDefault();
+        }
+      });
+
       node.addEventListener("input", () => {
         const blockKey = node.getAttribute("data-complete-block-key");
         const blankIndex = node.getAttribute("data-complete-blank-index");
         if (!blockKey || blankIndex === null) return;
-        setCompleteBlank(blockKey, blankIndex, node.value);
+        const normalized = normalizeTextGapContentEditableValue(node);
+        node.setAttribute("data-empty", normalized ? "false" : "true");
+        setCompleteBlank(blockKey, blankIndex, normalized, { rerender: false });
+      });
+
+      node.addEventListener("blur", () => {
+        if (!normalizeTextGapContentEditableValue(node)) {
+          node.textContent = "";
+          node.setAttribute("data-empty", "true");
+        }
+      });
+    });
+    root.querySelectorAll("[data-action='text-gap-open-choice']").forEach((node) => {
+      const openPrompt = () => {
+        const blockKey = node.getAttribute("data-complete-block-key");
+        const blankIndex = node.getAttribute("data-complete-blank-index");
+        if (!blockKey || blankIndex === null) return;
+        openTextGapChoicePrompt(blockKey, blankIndex);
+      };
+
+      node.addEventListener("click", openPrompt);
+      node.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          openPrompt();
+        }
+      });
+    });
+    root.querySelectorAll("[data-action='text-gap-set-choice']").forEach((node) => {
+      node.addEventListener("click", () => {
+        const blockKey = node.getAttribute("data-complete-block-key");
+        const blankIndex = node.getAttribute("data-complete-blank-index");
+        const value = node.getAttribute("data-text-gap-value");
+        if (!blockKey || blankIndex === null || value === null) return;
+        setTextGapChoice(blockKey, blankIndex, value);
       });
     });
     root.querySelectorAll("[data-action='complete-try-again']").forEach((node) => {
@@ -2449,7 +2863,14 @@ export function createLessonEditorApp({ root, storage, editor }) {
         });
       });
     }
-    root.querySelectorAll("[data-flowchart-popup-input='true']").forEach((node) => {
+    root.querySelectorAll("[data-flowchart-inline-input='true']").forEach((node) => {
+      node.addEventListener("click", () => {
+        node.focus();
+        if (typeof node.setSelectionRange === "function") {
+          const size = String(node.value || "").length;
+          node.setSelectionRange(size, size);
+        }
+      });
       node.addEventListener("input", () => {
         setFlowchartPracticeValue(
           node.getAttribute("data-flowchart-block-key"),
@@ -2462,24 +2883,10 @@ export function createLessonEditorApp({ root, storage, editor }) {
       node.addEventListener("keydown", (event) => {
         if (event.key === "Enter") {
           event.preventDefault();
-          closeFlowchartPrompt();
-          return;
-        }
-        if (event.key === "Escape") {
-          event.preventDefault();
-          closeFlowchartPrompt();
+          node.blur();
         }
       });
     });
-
-    const activeFlowchartInput = root.querySelector("[data-flowchart-popup-input='true']");
-    if (state.activeFlowchartPrompt && activeFlowchartInput && document.activeElement !== activeFlowchartInput) {
-      activeFlowchartInput.focus();
-      if (typeof activeFlowchartInput.setSelectionRange === "function") {
-        const size = String(activeFlowchartInput.value || "").length;
-        activeFlowchartInput.setSelectionRange(size, size);
-      }
-    }
     root.querySelector(".app-shell")?.addEventListener("click", (event) => {
       if (!state.activeFlowchartPrompt) {
         return;

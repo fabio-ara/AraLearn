@@ -831,6 +831,8 @@ button {
   background: transparent;
   box-shadow: none;
   padding: 0;
+  position: relative;
+  overflow: hidden;
 }
 
 .edit-stage {
@@ -1016,15 +1018,55 @@ button {
   line-height: 1.72;
 }
 
+.runtime-paragraph strong,
+.runtime-choice-body strong,
+.runtime-complete-text strong,
+.runtime-table-block strong,
+.runtime-image-caption strong,
+.runtime-markdown-paragraph strong,
+.runtime-markdown-list strong {
+  color: var(--accent-strong);
+  font-weight: 800;
+}
+
+.runtime-markdown-paragraph + .runtime-markdown-paragraph,
+.runtime-markdown-paragraph + .runtime-markdown-list,
+.runtime-markdown-list + .runtime-markdown-paragraph,
+.runtime-markdown-list + .runtime-markdown-list {
+  margin-top: 10px;
+}
+
+.runtime-markdown-list {
+  padding-left: 1.2rem;
+}
+
+.runtime-markdown-list li + li {
+  margin-top: 4px;
+}
+
+.runtime-markdown-list li::marker {
+  color: var(--accent);
+}
+
 .runtime-list-block,
 .runtime-choice-block,
-.runtime-complete-block,
-.runtime-table-block,
 .runtime-flow-block {
   border-radius: 12px;
   border: 1px solid rgba(92, 75, 55, 0.78);
   background: rgba(13, 10, 8, 0.16);
   padding: 10px 12px;
+}
+
+.runtime-complete-block,
+.runtime-code-block,
+.runtime-table-block,
+.runtime-paragraph-gap-block {
+  display: grid;
+  gap: 10px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
 }
 
 .runtime-list {
@@ -1033,13 +1075,12 @@ button {
   padding-left: 18px;
 }
 
-.runtime-choice-label,
 .runtime-table-title {
   color: #e3c789;
   font-size: 0.78rem;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  margin-bottom: 8px;
+  margin-bottom: 0;
 }
 
 .runtime-choice-body {
@@ -1051,59 +1092,166 @@ button {
   overflow-wrap: anywhere;
 }
 
-.runtime-complete-blank {
-  display: inline-block;
+.runtime-text-gap-blank {
+  display: inline;
   vertical-align: baseline;
-  min-width: 120px;
-  max-width: 100%;
-  padding: 6px 8px;
-  margin: 0 2px;
+  padding: 0 0.08em 0 0;
+  margin: 0;
   border-radius: 10px;
-  border: 1px solid rgba(109, 88, 64, 0.9);
-  background: rgba(23, 18, 14, 0.9);
+  border: 1px dashed rgba(230, 192, 117, 0.56);
+  background: rgba(228, 186, 104, 0.08);
   color: var(--text);
+  font: inherit;
+  line-height: inherit;
+  box-sizing: border-box;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+  caret-color: var(--text);
+  direction: ltr;
+  unicode-bidi: plaintext;
+  text-align: left;
+  cursor: text;
 }
 
-.runtime-complete-blank:focus {
-  outline: none;
-  box-shadow: 0 0 0 2px rgba(230, 192, 117, 0.25);
-  border-color: rgba(230, 192, 117, 0.6);
-}
-
-.choice-group {
-  display: grid;
-  gap: 10px;
-  margin-top: 10px;
-}
-
-.choice-option {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 10px 10px;
-  border-radius: 12px;
-  border: 1px solid rgba(126, 104, 67, 0.26);
-  background: rgba(11, 10, 8, 0.18);
+.runtime-text-gap-choice-blank {
   cursor: pointer;
 }
 
-.choice-option:hover {
-  background: rgba(11, 10, 8, 0.28);
+.runtime-text-gap-blank:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(230, 192, 117, 0.25);
+  border-color: rgba(230, 192, 117, 0.92);
 }
 
-.choice-option input {
-  margin-top: 3px;
-  accent-color: var(--accent);
-  flex: 0 0 auto;
+.runtime-text-gap-blank[data-empty="true"] {
+  display: inline-block;
+  min-width: calc(1ch + 0.1em);
 }
 
-.choice-option span {
+.runtime-text-gap-choice-blank[data-empty="true"] {
+  display: inline-flex;
+  align-items: center;
+  vertical-align: text-bottom;
+  min-height: calc(1em + 2px);
+  min-width: calc(3ch + 0.1em);
+  padding: 0 0.18em;
+  border-radius: 999px;
+  line-height: 1;
+}
+
+.runtime-complete-blank,
+.runtime-paragraph-gap-blank,
+.runtime-editor-gap-blank,
+.runtime-table-gap-blank {
+  min-height: 1em;
+}
+
+.runtime-text-gap-paragraph,
+.runtime-complete-text,
+.runtime-table-cell-gap {
+  line-height: 1.78;
+}
+
+.runtime-code-gap {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.runtime-code-block pre {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(92, 75, 55, 0.68);
+  background:
+    linear-gradient(180deg, rgba(17, 13, 10, 0.98), rgba(12, 9, 7, 0.98)),
+    radial-gradient(circle at top left, rgba(228, 186, 104, 0.06), transparent 45%);
+  color: #f5ead7;
+  font-family: "Cascadia Code", "Consolas", "SFMono-Regular", "Cascadia Mono", monospace;
+  font-size: 0.84rem;
+  line-height: 1.58;
+  overflow-x: auto;
+}
+
+.runtime-code-block code {
+  font: inherit;
+}
+
+.runtime-code-gap code {
+  white-space: inherit;
+}
+
+.multiple-choice-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.multiple-choice-option {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  padding: 11px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(111, 88, 62, 0.88);
+  background:
+    linear-gradient(180deg, rgba(35, 27, 20, 0.98), rgba(24, 18, 13, 0.99)),
+    radial-gradient(circle at left, rgba(228, 186, 104, 0.05), transparent 55%);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  font-size: var(--type-sm);
+  line-height: var(--leading-normal);
+  transition: border-color 0.18s ease, background 0.18s ease, transform 0.05s ease;
+}
+
+.multiple-choice-option:active {
+  transform: translateY(1px);
+}
+
+.multiple-choice-option.active {
+  border-color: #8fd85b;
+  background:
+    linear-gradient(180deg, rgba(24, 43, 24, 0.98), rgba(14, 24, 14, 0.99)),
+    radial-gradient(circle at left, rgba(143, 216, 91, 0.12), transparent 55%);
+}
+
+.multiple-choice-option.selected-incorrect {
+  border-color: #e07f7f;
+  background:
+    linear-gradient(180deg, rgba(50, 24, 24, 0.98), rgba(24, 12, 12, 0.99)),
+    radial-gradient(circle at left, rgba(224, 127, 127, 0.14), transparent 55%);
+}
+
+.multiple-choice-mark {
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  border: 1px solid #7f674a;
+  display: inline-grid;
+  place-items: center;
+  font-size: 0.82rem;
+  color: #fff6eb;
+  background: rgba(23, 18, 14, 0.84);
+}
+
+.multiple-choice-option.active .multiple-choice-mark {
+  border-color: #8fd85b;
+  background: rgba(59, 97, 37, 0.72);
+}
+
+.multiple-choice-option.selected-incorrect .multiple-choice-mark {
+  border-color: #e07f7f;
+  background: rgba(122, 46, 46, 0.72);
+}
+
+.multiple-choice-label {
   min-width: 0;
-}
-
-.choice-option.is-checked {
-  border-color: rgba(230, 192, 117, 0.5);
-  box-shadow: 0 0 0 1px rgba(230, 192, 117, 0.22);
+  overflow-wrap: anywhere;
 }
 
 .runtime-exercise-controls {
@@ -1366,6 +1514,14 @@ button {
   cursor: pointer;
 }
 
+.runtime-flow-inline-input {
+  cursor: text;
+  pointer-events: auto;
+  position: relative;
+  z-index: 3;
+  caret-color: #f5e6cb;
+}
+
 .runtime-flow-board-shape-button,
 .runtime-flow-board-copy-button {
   border: 0;
@@ -1374,18 +1530,57 @@ button {
   font: inherit;
 }
 
+.runtime-flow-board-shape-button.practice-marked,
+.runtime-flow-board-copy-button.practice-marked,
+.runtime-flow-board-copy-input.practice-marked,
+.runtime-flow-label-button.practice-marked {
+  border: 1px dashed rgba(230, 192, 117, 0.56);
+  background: rgba(228, 186, 104, 0.08);
+  box-shadow: inset 0 0 0 1px rgba(228, 186, 104, 0.08);
+}
+
+.runtime-flow-board-shape-button.practice-marked {
+  width: 72px;
+  height: 42px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+}
+
+.runtime-flow-board-shape-button.practice-marked .flowchart-shape-svg {
+  position: relative;
+  z-index: 1;
+}
+
 .runtime-flow-board-copy-button {
   width: 96px;
   min-height: 56px;
   border-radius: 10px;
-  border: 1px dashed #8a6f4e;
-  background: #17120e;
   color: var(--text, #f5e6cb);
   padding: 6px 8px;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: background 160ms ease, box-shadow 160ms ease;
+}
+
+.runtime-flow-board-copy-input {
+  width: 96px;
+  min-height: 56px;
+  border-radius: 10px;
+  color: var(--text, #f5e6cb);
+  padding: 6px 8px;
+  font: inherit;
+  text-align: center;
+  appearance: none;
+  transition: background 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
+}
+
+.runtime-flow-board-copy-input:focus,
+.runtime-flow-label-input:focus {
+  outline: none;
+  border-color: rgba(230, 192, 117, 0.92);
+  box-shadow: 0 0 0 2px rgba(230, 192, 117, 0.92);
 }
 
 .runtime-flow-board-shape-button.is-active,
@@ -1396,43 +1591,19 @@ button {
 
 .runtime-flow-board-copy-button.is-filled,
 .runtime-flow-label-button.is-filled {
-  background: rgba(228, 186, 104, 0.12);
+  background: rgba(228, 186, 104, 0.08);
 }
 
-.runtime-flow-board-copy-button.is-filled {
-  border-style: solid;
-  border-color: rgba(230, 192, 117, 0.92);
-  background: #2b2118;
-}
-
-.runtime-flow-board-copy-button.practice-marked {
-  box-shadow: inset 0 0 0 1px rgba(228, 186, 104, 0.08);
-}
-
-.runtime-flow-board-copy-button.practice-marked.is-blank-choice {
-  border-color: rgba(95, 179, 226, 0.72);
-  background:
-    repeating-linear-gradient(-45deg, rgba(13, 40, 60, 0.7), rgba(13, 40, 60, 0.7) 6px, rgba(18, 28, 38, 0.94) 6px, rgba(18, 28, 38, 0.94) 12px),
-    linear-gradient(180deg, rgba(22, 28, 35, 0.98), rgba(16, 18, 22, 0.99));
-}
-
-.runtime-flow-board-copy-button.practice-marked.is-blank-input {
-  border-color: rgba(228, 186, 104, 0.78);
-  background:
-    repeating-linear-gradient(-45deg, rgba(60, 42, 15, 0.7), rgba(60, 42, 15, 0.7) 6px, rgba(44, 34, 21, 0.94) 6px, rgba(44, 34, 21, 0.94) 12px),
-    linear-gradient(180deg, rgba(48, 34, 20, 0.98), rgba(27, 19, 12, 0.99));
-}
-
-.runtime-flow-board-copy-button.practice-marked:not(.is-filled) {
+.runtime-flow-board-copy-button.practice-marked:not(.is-filled),
+.runtime-flow-board-copy-input.practice-marked:not(.is-filled),
+.runtime-flow-label-button.practice-marked:not(.is-filled) {
   color: rgba(255, 239, 207, 0.8);
 }
 
 .runtime-flow-label-button {
   position: absolute;
   transform: translate(-50%, -50%);
-  border: 1px solid rgba(214, 193, 150, 0.42);
   border-radius: 999px;
-  background: rgba(24, 19, 15, 0.94);
   color: #fbf0dd;
   min-width: 34px;
   min-height: 20px;
@@ -1445,6 +1616,15 @@ button {
   box-shadow:
     0 0 0 1px rgba(24, 19, 15, 0.28),
     0 6px 12px rgba(2, 6, 14, 0.18);
+}
+
+.runtime-flow-label-input {
+  min-width: 42px;
+  max-width: 132px;
+  font: inherit;
+  text-align: center;
+  padding: 2px 10px;
+  appearance: none;
 }
 
 .runtime-flow-label-button.is-placeholder {
@@ -1465,14 +1645,6 @@ button {
   gap: 8px;
 }
 
-.runtime-flow-practice-actions,
-.runtime-flow-prompt-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  justify-content: flex-end;
-}
-
 .runtime-flow-prompt {
   position: sticky;
   bottom: 8px;
@@ -1491,7 +1663,7 @@ button {
 .runtime-flow-prompt-head {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 8px;
 }
 
@@ -1582,10 +1754,6 @@ button {
   box-shadow: 0 0 0 2px rgba(230, 192, 117, 0.92);
 }
 
-.runtime-flow-prompt-input {
-  min-height: 44px;
-}
-
 .runtime-flow-node {
   border-radius: 999px;
   border: 1px solid rgba(170, 134, 86, 0.72);
@@ -1662,6 +1830,70 @@ button {
   flex-wrap: nowrap;
   position: relative;
   min-width: 0;
+}
+
+.study-next-wrap.is-popup-open > .study-comment-btn,
+.study-next-wrap.is-popup-open > .study-continue-btn {
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
+}
+
+.study-continue-popup {
+  width: 100%;
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 18px;
+  border: 1px solid rgba(124, 94, 53, 0.78);
+  background:
+    linear-gradient(180deg, rgba(31, 24, 17, 0.98), rgba(18, 14, 10, 0.98)),
+    rgba(16, 12, 9, 0.98);
+  box-shadow:
+    0 18px 36px rgba(0, 0, 0, 0.34),
+    inset 0 1px 0 rgba(255, 240, 217, 0.04);
+}
+
+.study-continue-popup-shell {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 18;
+  padding: 0;
+  pointer-events: none;
+}
+
+.study-continue-popup-shell .study-continue-popup {
+  border-radius: 18px 18px var(--radius) var(--radius);
+  pointer-events: auto;
+}
+
+.study-continue-popup-body {
+  display: grid;
+  gap: 12px;
+  max-height: min(42vh, 360px);
+  overflow: auto;
+}
+
+.study-continue-popup .popup-answer-dock {
+  position: static;
+  padding: 0;
+  border-top: 0;
+  background: none;
+}
+
+.study-continue-popup-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  padding-top: 4px;
+}
+
+.study-continue-popup-btn {
+  position: relative;
+  z-index: 1;
 }
 
 .block-fixed-button .study-next-wrap,

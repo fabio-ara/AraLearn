@@ -14,6 +14,126 @@ function clone(value) {
   return structuredClone(value);
 }
 
+function resolvePopupText(value) {
+  return normalizeText(value).replace(/\[\[([\s\S]*?)\]\]/g, (_, answer) => normalizeText(answer));
+}
+
+function sanitizePopupTableRows(rows) {
+  return (Array.isArray(rows) ? rows : []).map((row) =>
+    (Array.isArray(row) ? row : []).map((cell) => ({
+      ...(cell && typeof cell === "object" ? clone(cell) : {}),
+      value: resolvePopupText(cell?.value),
+      blank: false
+    }))
+  );
+}
+
+function stripFlowPracticeFromSequence(items) {
+  return (Array.isArray(items) ? items : []).map((item) => {
+    if (!item || typeof item !== "object" || Array.isArray(item)) {
+      return item;
+    }
+
+    const next = clone(item);
+    delete next.practice;
+    if (Array.isArray(next.then)) {
+      next.then = stripFlowPracticeFromSequence(next.then);
+    }
+    if (Array.isArray(next.else)) {
+      next.else = stripFlowPracticeFromSequence(next.else);
+    }
+    if (Array.isArray(next.do)) {
+      next.do = stripFlowPracticeFromSequence(next.do);
+    }
+    if (Array.isArray(next.cases)) {
+      next.cases = next.cases.map((entry) => ({
+        ...(entry && typeof entry === "object" ? clone(entry) : {}),
+        items: stripFlowPracticeFromSequence(entry?.items)
+      }));
+    }
+    if (Array.isArray(next.default)) {
+      next.default = stripFlowPracticeFromSequence(next.default);
+    }
+    return next;
+  });
+}
+
+function sanitizePopupProjection(projection) {
+  if (!projection || typeof projection !== "object") {
+    return projection;
+  }
+
+  const next = clone(projection);
+  next.nodes = (Array.isArray(next.nodes) ? next.nodes : []).map((node) => {
+    const clean = clone(node);
+    delete clean.shapeBlank;
+    delete clean.shapeOptions;
+    delete clean.textBlank;
+    delete clean.textOptions;
+    delete clean.textVariants;
+    return clean;
+  });
+  next.links = (Array.isArray(next.links) ? next.links : []).map((link) => {
+    const clean = clone(link);
+    delete clean.labelBlank;
+    delete clean.labelOptions;
+    delete clean.labelVariants;
+    return clean;
+  });
+  return next;
+}
+
+function sanitizePopupBlock(block) {
+  if (!block || typeof block !== "object" || Array.isArray(block)) {
+    return null;
+  }
+
+  if (block.kind === "heading") {
+    return { ...clone(block), value: normalizeText(block.value) };
+  }
+  if (block.kind === "paragraph") {
+    return { ...clone(block), value: resolvePopupText(block.value) };
+  }
+  if (block.kind === "editor") {
+    return { ...clone(block), value: resolvePopupText(block.value) };
+  }
+  if (block.kind === "table") {
+    return {
+      ...clone(block),
+      title: normalizeText(block.title),
+      headers: (Array.isArray(block.headers) ? block.headers : []).map((header) => ({
+        ...(header && typeof header === "object" ? clone(header) : {}),
+        value: resolvePopupText(header?.value)
+      })),
+      rows: sanitizePopupTableRows(block.rows)
+    };
+  }
+  if (block.kind === "image") {
+    return clone(block);
+  }
+  if (block.kind === "flowchart") {
+    return {
+      ...clone(block),
+      flow: stripFlowPracticeFromSequence(block.flow),
+      projection: sanitizePopupProjection(block.projection)
+    };
+  }
+  if (block.kind === "complete") {
+    return {
+      kind: "paragraph",
+      value: resolvePopupText(block.text)
+    };
+  }
+
+  return null;
+}
+
+export function sanitizePopupBlocks(popupBlocks = []) {
+  return (Array.isArray(popupBlocks) ? popupBlocks : [])
+    .map((block) => sanitizePopupBlock(block))
+    .filter(Boolean);
+}
+
 function buildHeadingBlock(title) {
   return {
     kind: "heading",
@@ -23,7 +143,7 @@ function buildHeadingBlock(title) {
 }
 
 function buildButtonBlock(popupBlocks = []) {
-  const safePopupBlocks = Array.isArray(popupBlocks) ? popupBlocks.map((item) => clone(item)) : [];
+  const safePopupBlocks = sanitizePopupBlocks(popupBlocks);
   return {
     kind: "button",
     popupEnabled: safePopupBlocks.length > 0,

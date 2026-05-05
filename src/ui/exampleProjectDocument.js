@@ -1,11 +1,10 @@
-function createChoiceCard(key, title, ask, answer, wrong) {
+function createTableCard(key, title, columns, rows) {
   return {
     key,
-    type: "choice",
+    type: "table",
     title,
-    ask,
-    answer,
-    wrong
+    columns,
+    rows
   };
 }
 
@@ -14,28 +13,33 @@ export function createExampleProjectDocument() {
     contract: "aralearn.contract",
     courses: [
       {
-        key: "course-teste-choice",
+        key: "course-teste-runtime",
         title: "Curso de teste",
-        description: "Exemplo dedicado à múltipla escolha.",
+        description: "Seed mínimo para validar uma tabela com lacunas por bloco no runtime principal.",
         modules: [
           {
-            key: "module-choice",
-            title: "Módulo de escolha",
+            key: "module-teste-runtime",
+            title: "Módulo de teste",
+            description: "Estrutura mínima para inspeção manual do card de tabela.",
             lessons: [
               {
-                key: "lesson-choice",
-                title: "Escolha simples",
+                key: "lesson-tabela-blocos",
+                title: "Tabela com blocos",
+                description: "O primeiro card expõe uma tabela com lacunas por opção.",
                 microsequences: [
                   {
-                    key: "microsequence-choice",
-                    title: "Múltipla escolha",
+                    key: "microsequence-tabela-blocos",
+                    title: "Tabela com lacunas por bloco",
+                    tags: ["Teste", "Tabela"],
                     cards: [
-                      createChoiceCard(
-                        "card-choice",
-                        "Leitura rápida",
-                        "Qual propriedade identifica o tipo explícito do card?",
-                        ["type"],
-                        ["title", "runtime"]
+                      createTableCard(
+                        "card-tabela-blocos",
+                        "Tabela com lacunas por bloco",
+                        ["Campo", "Uso"],
+                        [
+                          ["[[type::type|title|key]]", "Define o tipo explícito do card."],
+                          ["runtime", "Carrega [[blocos::blocos|módulos|tokens]] internos compilados."]
+                        ]
                       )
                     ]
                   }

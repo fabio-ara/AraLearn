@@ -1,4 +1,4 @@
-import { resolveCardRuntime } from "../core/cardRuntime.js";
+import { resolveCardRuntime, sanitizePopupBlocks } from "../core/cardRuntime.js";
 import { getExerciseOptionStableId, shuffleExerciseOptions } from "../core/exerciseOptions.js";
 import { computeFlowchartBoardLayout } from "../flowchart/flowchartLayout.js";
 import {
@@ -35,7 +35,70 @@ function renderMarkdownInline(text) {
 }
 
 function renderMarkdownParagraph(text) {
-  return renderMarkdownInline(text);
+  const source = String(text || "").replace(/\r/g, "");
+  const lines = source.split("\n");
+  const blocks = [];
+  let paragraphLines = [];
+  let activeList = null;
+
+  const flushParagraph = () => {
+    if (!paragraphLines.length) {
+      return;
+    }
+    blocks.push(
+      '<p class="runtime-markdown-paragraph">' +
+      renderMarkdownInline(paragraphLines.join(" ")) +
+      "</p>"
+    );
+    paragraphLines = [];
+  };
+
+  const flushList = () => {
+    if (!activeList || !activeList.items.length) {
+      activeList = null;
+      return;
+    }
+    blocks.push(
+      `<${activeList.tag} class="runtime-markdown-list">` +
+      activeList.items.map((item) => `<li>${renderMarkdownInline(item)}</li>`).join("") +
+      `</${activeList.tag}>`
+    );
+    activeList = null;
+  };
+
+  for (const rawLine of lines) {
+    const line = String(rawLine || "");
+    const trimmed = line.trim();
+
+    if (!trimmed) {
+      flushParagraph();
+      flushList();
+      continue;
+    }
+
+    const unorderedMatch = trimmed.match(/^[-*+]\s+(.+)$/);
+    const orderedMatch = trimmed.match(/^\d+[.)]\s+(.+)$/);
+    const listTag = unorderedMatch ? "ul" : orderedMatch ? "ol" : null;
+    const listValue = unorderedMatch?.[1] || orderedMatch?.[1] || "";
+
+    if (listTag) {
+      flushParagraph();
+      if (!activeList || activeList.tag !== listTag) {
+        flushList();
+        activeList = { tag: listTag, items: [] };
+      }
+      activeList.items.push(listValue);
+      continue;
+    }
+
+    flushList();
+    paragraphLines.push(trimmed);
+  }
+
+  flushParagraph();
+  flushList();
+
+  return blocks.join("") || '<p class="runtime-markdown-paragraph"></p>';
 }
 
 function buildExerciseShuffleSeed(renderOptions, scope) {
@@ -57,7 +120,7 @@ function normalizeChoiceSelectionIds(options, rawSelected) {
   );
 }
 
-function parseCompleteText(text) {
+function parseTextGapParts(text) {
   const source = String(text || "");
   const parts = [];
   let index = 0;
@@ -82,12 +145,209 @@ function parseCompleteText(text) {
     }
 
     const expected = source.slice(start + 2, end);
-    parts.push({ kind: "blank", expected, index: blankIndex });
+    const delimiterIndex = expected.indexOf("::");
+    const answer = delimiterIndex >= 0 ? expected.slice(0, delimiterIndex) : expected;
+    const options =
+      delimiterIndex >= 0
+        ? expected
+            .slice(delimiterIndex + 2)
+            .split("|")
+            .map((item) => String(item || "").trim())
+            .filter(Boolean)
+        : [];
+    parts.push({ kind: "blank", expected: answer, options, index: blankIndex });
     blankIndex += 1;
     index = end + 2;
   }
 
   return parts;
+}
+
+function blockUsesTextGapExercise(block) {
+  if (!block || typeof block !== "object") {
+    return false;
+  }
+
+  if (block.kind === "complete" || block.kind === "paragraph") {
+    return parseTextGapParts(block.kind === "complete" ? block.text : block.value).some((part) => part.kind === "blank");
+  }
+
+  if (block.kind === "editor") {
+    return parseTextGapParts(block.value).some((part) => part.kind === "blank");
+  }
+
+  if (block.kind === "table") {
+    const rows = Array.isArray(block.rows) ? block.rows : [];
+    return rows.some((row) =>
+      (Array.isArray(row) ? row : []).some((cell) =>
+        parseTextGapParts(cell?.value || "").some((part) => part.kind === "blank")
+      )
+    );
+  }
+
+  return false;
+}
+
+function getTextGapSource(block) {
+  if (block?.kind === "complete") {
+    return String(block?.text || "");
+  }
+  if (block?.kind === "paragraph" || block?.kind === "editor") {
+    return String(block?.value || "");
+  }
+  return "";
+}
+
+function getTextGapAnswers(block) {
+  if (!block || typeof block !== "object") {
+    return [];
+  }
+
+  if (block.kind === "table") {
+    const answers = [];
+    const rows = Array.isArray(block.rows) ? block.rows : [];
+    rows.forEach((row) => {
+      (Array.isArray(row) ? row : []).forEach((cell) => {
+        parseTextGapParts(cell?.value || "").forEach((part) => {
+          if (part.kind === "blank") {
+            answers.push(part.expected);
+          }
+        });
+      });
+    });
+    return answers;
+  }
+
+  return parseTextGapParts(getTextGapSource(block))
+    .filter((part) => part.kind === "blank")
+    .map((part) => part.expected);
+}
+
+function renderTextGapChoicePrompt(blockKey, part, value, renderOptions = {}) {
+  const options = shuffleExerciseOptions(
+    (Array.isArray(part?.options) ? part.options : []).map((item) => ({ value: item })),
+    buildExerciseShuffleSeed(renderOptions, `${blockKey}::gap::${part?.index ?? 0}`)
+  );
+  return (
+    '<section class="runtime-flow-prompt" data-text-gap-prompt="true">' +
+    '<div class="runtime-flow-prompt-head">' +
+    '<span class="runtime-flow-prompt-badge">Opções</span></div>' +
+    '<div class="token-options">' +
+    options
+      .map((item) => {
+        const selected = normalizeInlineText(value) === normalizeInlineText(item.value);
+        return (
+          '<button class="token-option' +
+          (selected ? " active" : "") +
+          '" type="button" data-action="text-gap-set-choice" data-complete-block-key="' +
+          escapeHtml(blockKey) +
+          '" data-complete-blank-index="' +
+          escapeHtml(part?.index ?? 0) +
+          '" data-text-gap-value="' +
+          escapeHtml(item.value) +
+          '">' +
+          escapeHtml(item.value) +
+          "</button>"
+        );
+      })
+      .join("") +
+    "</div></section>"
+  );
+}
+
+function renderTextGapBlank(blockKey, part, value, className = "runtime-text-gap-blank") {
+  const rawValue = String(value ?? "");
+  const safeValue = rawValue ? escapeHtml(rawValue) : "";
+  const blankClasses = Array.isArray(part?.options) && part.options.length
+    ? `${className} runtime-text-gap-choice-blank`
+    : className;
+
+  if (Array.isArray(part?.options) && part.options.length) {
+    return (
+      '<span class="' +
+      escapeHtml(blankClasses) +
+      '" role="button" tabindex="0" dir="ltr" data-text-gap-choice="true" ' +
+      'data-action="text-gap-open-choice" data-complete-block-key="' +
+      escapeHtml(blockKey) +
+      '" data-complete-blank-index="' +
+      escapeHtml(part?.index ?? 0) +
+      '" data-empty="' +
+      (rawValue ? "false" : "true") +
+      '">' +
+      safeValue +
+      "</span>"
+    );
+  }
+
+  return (
+    '<span class="' +
+    escapeHtml(blankClasses) +
+    '" contenteditable="true" role="textbox" spellcheck="false" dir="ltr" data-text-gap-field="true" ' +
+    'data-action="complete-input" data-complete-block-key="' +
+    escapeHtml(blockKey) +
+    '" data-complete-blank-index="' +
+    escapeHtml(part?.index ?? 0) +
+    '" data-empty="' +
+    (rawValue ? "false" : "true") +
+    '">' +
+    safeValue +
+    "</span>"
+  );
+}
+
+function renderTextGapParts(parts, blockKey, values, chunkRenderer = renderMarkdownInline, blankClassName, renderOptions = {}) {
+  const activePrompt = renderOptions.activeTextGapPrompt;
+  const dockExerciseParts = Array.isArray(renderOptions.dockExerciseParts) ? renderOptions.dockExerciseParts : null;
+  let promptRendered = false;
+  return parts
+    .map((part) => {
+      if (part.kind === "text") {
+        return '<span class="runtime-text-gap-chunk">' + chunkRenderer(part.value) + "</span>";
+      }
+
+      const value = values[part.index] ?? "";
+      if (
+        !promptRendered &&
+        dockExerciseParts &&
+        Array.isArray(part.options) &&
+        part.options.length &&
+        activePrompt?.blockKey === blockKey &&
+        Number(activePrompt?.blankIndex) === Number(part.index)
+      ) {
+        dockExerciseParts.push(renderTextGapChoicePrompt(blockKey, part, value, renderOptions));
+        promptRendered = true;
+      }
+
+      return renderTextGapBlank(blockKey, part, value, blankClassName);
+    })
+    .join("");
+}
+
+function renderTextGapFeedback(blockKey, feedback) {
+  if (!feedback) {
+    return "";
+  }
+
+  if (feedback === "correct") {
+    return '<div class="inline-feedback ok"><p class="tiny">Correto.</p></div>';
+  }
+
+  if (feedback === "incomplete") {
+    return '<div class="inline-feedback err"><p class="tiny">Preencha todas as lacunas.</p></div>';
+  }
+
+  return (
+    '<div class="inline-feedback err has-actions">' +
+    '<p class="tiny">As respostas preenchidas não correspondem ao conjunto esperado.</p>' +
+    '<div class="feedback-icons">' +
+    '<button class="icon-pill" type="button" data-action="complete-view-answer" data-complete-block-key="' +
+    escapeHtml(blockKey) +
+    '" title="Ver resposta" aria-label="Ver resposta">&#128065;</button>' +
+    '<button class="icon-pill primary" type="button" data-action="complete-try-again" data-complete-block-key="' +
+    escapeHtml(blockKey) +
+    '" title="Tentar de novo" aria-label="Tentar de novo">&#8635;</button>' +
+    "</div></div>"
+  );
 }
 
 function renderFlowStep(item) {
@@ -436,9 +696,6 @@ function renderFlowchartInteractiveLabel(route, exercise, blockKey, prompt) {
   }
 
   const currentValue = String(exercise?.labels?.[link.id] || "").trim();
-  const defaultValue = String(route?.label || link?.label || "").trim();
-  // Em lacunas de exercício, não exibimos o valor padrão (que costuma ser a resposta correta).
-  const displayValue = currentValue || "";
   const isActive = prompt?.kind === "label" && prompt?.targetId === link.id;
   const anchorClass =
     labelPos.anchor === "start"
@@ -447,10 +704,30 @@ function renderFlowchartInteractiveLabel(route, exercise, blockKey, prompt) {
         ? " is-anchor-end"
         : "";
 
+  if (flowchartLinkUsesLabelInputBlank(link)) {
+    return (
+      '<input class="runtime-flow-label-button runtime-flow-label-input practice-marked is-blank-input' +
+      (currentValue ? " is-filled" : "") +
+      (isActive ? " is-active" : "") +
+      anchorClass +
+      '" type="text" data-flowchart-inline-input="true" data-flowchart-block-key="' +
+      escapeHtml(blockKey) +
+      '" data-flowchart-target-id="' +
+      escapeHtml(link.id) +
+      '" data-flowchart-choice-kind="label" style="left:' +
+      escapeHtml(labelPos.x) +
+      "px;top:" +
+      escapeHtml(labelPos.y) +
+      'px;" value="' +
+      escapeHtml(currentValue) +
+      '" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Preencher rótulo da ligação">'
+    );
+  }
+
   return (
-    '<button class="runtime-flow-label-button' +
+    '<button class="runtime-flow-label-button practice-marked is-blank-choice' +
     (currentValue ? " is-filled" : "") +
-    (!currentValue && !displayValue ? " is-placeholder" : "") +
+    (!currentValue ? " is-placeholder" : "") +
     (isActive ? " is-active" : "") +
     anchorClass +
     '" type="button" data-action="flowchart-open-label" data-flowchart-block-key="' +
@@ -462,7 +739,7 @@ function renderFlowchartInteractiveLabel(route, exercise, blockKey, prompt) {
     "px;top:" +
     escapeHtml(labelPos.y) +
     'px;">' +
-    (displayValue ? escapeHtml(displayValue) : "&nbsp;") +
+    (currentValue ? escapeHtml(currentValue) : "&nbsp;") +
     "</button>"
   );
 }
@@ -486,6 +763,7 @@ function renderFlowchartBoardNode(node, layout, options = {}) {
   const normalizedShape = currentShape || node.shape;
   const shapeActive = prompt?.kind === "shape" && prompt?.targetId === node.id;
   const textActive = prompt?.kind === "text" && prompt?.targetId === node.id;
+  const textUsesInput = flowchartNodeUsesTextInputBlank(node);
   const shapeMarkup =
     currentShape
       ? renderFlowchartShapeSvg(normalizedShape || node.shape)
@@ -500,7 +778,7 @@ function renderFlowchartBoardNode(node, layout, options = {}) {
     escapeHtml(`left:${position.left}px;top:${position.top}px;`) +
     '">' +
     (practiceEnabled && node.shapeBlank
-      ? '<button class="runtime-flow-board-shape runtime-flow-board-shape-button' +
+      ? '<button class="runtime-flow-board-shape runtime-flow-board-shape-button practice-marked' +
         (shapeActive ? " is-active" : "") +
         (currentShape ? " is-filled" : "") +
         '" type="button" data-action="flowchart-open-shape" data-flowchart-block-key="' +
@@ -517,7 +795,20 @@ function renderFlowchartBoardNode(node, layout, options = {}) {
         '">' +
         renderFlowchartShapeSvg(normalizedShape || node.shape) +
         "</div>") +
-    (practiceEnabled && node.textBlank
+    (practiceEnabled && node.textBlank && textUsesInput
+      ? '<input class="runtime-flow-board-copy runtime-flow-inline-input runtime-flow-board-copy-input' +
+        (textActive ? " is-active" : "") +
+        (currentText ? " is-filled" : "") +
+        ' practice-marked is-blank-input" type="text" data-flowchart-inline-input="true" data-flowchart-block-key="' +
+        escapeHtml(options.blockKey) +
+        '" data-flowchart-target-id="' +
+        escapeHtml(node.id) +
+        '" data-flowchart-choice-kind="text" value="' +
+        escapeHtml(currentText) +
+        '" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="' +
+        escapeHtml(currentText ? "Editar texto" : "Preencher texto") +
+        '">'
+      : practiceEnabled && node.textBlank
       ? '<button class="runtime-flow-board-copy runtime-flow-board-copy-button' +
         (textActive ? " is-active" : "") +
         (currentText ? " is-filled" : "") +
@@ -545,27 +836,12 @@ function renderFlowchartPracticePanel(blockKey, projection, exercise, prompt, re
   const promptHtml = renderFlowchartPracticePrompt(blockKey, projection, exercise, prompt, renderOptions);
   const feedbackHtml = renderFlowchartPracticeFeedback(blockKey, exercise?.feedback);
 
-  // Padrão: não exibir faixa fixa de ações em cards com lacunas.
-  // Mostra apenas o picker (quando o usuário seleciona uma lacuna) e o feedback (após verificar).
-  const showActions = Boolean(promptHtml) && !feedbackHtml;
-  const actionsHtml = showActions
-    ? '<div class="runtime-flow-practice-actions">' +
-      '<button class="icon-pill primary" type="button" data-action="flowchart-check" data-flowchart-block-key="' +
-      escapeHtml(blockKey) +
-      '" title="Verificar" aria-label="Verificar">&#10003;</button>' +
-      '<button class="icon-pill" type="button" data-action="flowchart-reset" data-flowchart-block-key="' +
-      escapeHtml(blockKey) +
-      '" title="Reiniciar" aria-label="Reiniciar">&#8635;</button>' +
-      "</div>"
-    : "";
-
-  if (!actionsHtml && !promptHtml && !feedbackHtml) {
+  if (!promptHtml && !feedbackHtml) {
     return "";
   }
 
   return (
     '<div class="runtime-flow-practice-panel" data-flowchart-practice-panel="true">' +
-    actionsHtml +
     promptHtml +
     feedbackHtml +
     "</div>"
@@ -596,9 +872,6 @@ function renderFlowchartPracticePrompt(blockKey, projection, exercise, prompt, r
       '<section class="runtime-flow-prompt" data-flowchart-prompt="true">' +
       '<div class="runtime-flow-prompt-head">' +
       '<span class="runtime-flow-prompt-badge">Símbolo</span>' +
-      '<button class="icon-ghost tiny-icon" type="button" data-action="flowchart-close-prompt" data-flowchart-block-key="' +
-      escapeHtml(blockKey) +
-      '" title="Fechar" aria-label="Fechar">&times;</button>' +
       "</div>" +
       '<div class="runtime-flow-shape-grid">' +
       options
@@ -621,13 +894,6 @@ function renderFlowchartPracticePrompt(blockKey, projection, exercise, prompt, r
           );
         })
         .join("") +
-      "</div>" +
-      '<div class="runtime-flow-prompt-actions">' +
-      '<button class="icon-pill" type="button" data-action="flowchart-clear-choice" data-flowchart-block-key="' +
-      escapeHtml(blockKey) +
-      '" data-flowchart-target-id="' +
-      escapeHtml(node.id) +
-      '" data-flowchart-choice-kind="shape" title="Limpar lacuna" aria-label="Limpar lacuna">&times;</button>' +
       "</div></section>"
     );
   }
@@ -653,13 +919,7 @@ function renderFlowchartPracticePrompt(blockKey, projection, exercise, prompt, r
       });
     }
 
-    return renderFlowchartInputPrompt({
-      blockKey,
-      targetId: node.id,
-      choiceKind: "text",
-      title: "Texto",
-      value: String(exercise?.texts?.[node.id] || "")
-    });
+    return "";
   }
 
   if (prompt.kind === "label") {
@@ -684,13 +944,7 @@ function renderFlowchartPracticePrompt(blockKey, projection, exercise, prompt, r
     }
 
     if (flowchartLinkUsesLabelInputBlank(link)) {
-      return renderFlowchartInputPrompt({
-        blockKey,
-        targetId: link.id,
-        choiceKind: "label",
-        title: "Rótulo",
-        value: String(exercise?.labels?.[link.id] || "")
-      });
+      return "";
     }
   }
 
@@ -703,11 +957,7 @@ function renderFlowchartChoicePrompt({ blockKey, targetId, choiceKind, title, se
     '<div class="runtime-flow-prompt-head">' +
     '<span class="runtime-flow-prompt-badge">' +
     escapeHtml(title) +
-    "</span>" +
-    '<button class="icon-ghost tiny-icon" type="button" data-action="flowchart-close-prompt" data-flowchart-block-key="' +
-    escapeHtml(blockKey) +
-    '" title="Fechar" aria-label="Fechar">&times;</button>' +
-    "</div>" +
+    "</span></div>" +
     '<div class="token-options">' +
     (Array.isArray(options) ? options : [])
       .map((item) => {
@@ -729,47 +979,6 @@ function renderFlowchartChoicePrompt({ blockKey, targetId, choiceKind, title, se
         );
       })
       .join("") +
-    "</div>" +
-    '<div class="runtime-flow-prompt-actions">' +
-    '<button class="icon-pill" type="button" data-action="flowchart-clear-choice" data-flowchart-block-key="' +
-    escapeHtml(blockKey) +
-    '" data-flowchart-target-id="' +
-    escapeHtml(targetId) +
-    '" data-flowchart-choice-kind="' +
-    escapeHtml(choiceKind) +
-    '" title="Limpar lacuna" aria-label="Limpar lacuna">&times;</button>' +
-    "</div></section>"
-  );
-}
-
-function renderFlowchartInputPrompt({ blockKey, targetId, choiceKind, title, value }) {
-  return (
-    '<section class="runtime-flow-prompt" data-flowchart-prompt="true">' +
-    '<div class="runtime-flow-prompt-head">' +
-    '<span class="runtime-flow-prompt-badge">' +
-    escapeHtml(title) +
-    "</span>" +
-    '<button class="icon-ghost tiny-icon" type="button" data-action="flowchart-close-prompt" data-flowchart-block-key="' +
-    escapeHtml(blockKey) +
-    '" title="Fechar" aria-label="Fechar">&times;</button>' +
-    "</div>" +
-    '<input class="block-input runtime-flow-prompt-input" type="text" data-flowchart-popup-input="true" data-flowchart-block-key="' +
-    escapeHtml(blockKey) +
-    '" data-flowchart-target-id="' +
-    escapeHtml(targetId) +
-    '" data-flowchart-choice-kind="' +
-    escapeHtml(choiceKind) +
-    '" value="' +
-    escapeHtml(value) +
-    '" autocomplete="off" autocapitalize="off" spellcheck="false">' +
-    '<div class="runtime-flow-prompt-actions">' +
-    '<button class="icon-pill" type="button" data-action="flowchart-clear-choice" data-flowchart-block-key="' +
-    escapeHtml(blockKey) +
-    '" data-flowchart-target-id="' +
-    escapeHtml(targetId) +
-    '" data-flowchart-choice-kind="' +
-    escapeHtml(choiceKind) +
-    '" title="Limpar lacuna" aria-label="Limpar lacuna">&times;</button>' +
     "</div></section>"
   );
 }
@@ -943,97 +1152,97 @@ function getFlowNodeKindLabel(kind) {
   return kindLabelByType[kind] || kind;
 }
 
-function renderTableBlock(block) {
+function renderTableBlock(block, renderOptions = {}, blockKey = "runtime-table") {
   const title = normalizeInlineText(block?.title);
+  const usesTextGap = blockUsesTextGapExercise(block);
+  const exercise = renderOptions.textGapExerciseStateByBlockKey?.[blockKey] || renderOptions.completeExerciseStateByBlockKey?.[blockKey] || null;
+  const values = Array.isArray(exercise?.values) ? exercise.values : [];
+  const feedback = exercise?.feedback || null;
+  let nextBlankIndex = 0;
   const headers = (Array.isArray(block?.headers) ? block.headers : [])
     .map((header) => "<th>" + renderMarkdownInline(header?.value || "") + "</th>")
     .join("");
   const rows = (Array.isArray(block?.rows) ? block.rows : [])
     .map((row) => {
       const cells = (Array.isArray(row) ? row : [])
-        .map((cell) => "<td>" + renderMarkdownInline(cell?.value || "") + "</td>")
+        .map((cell) => {
+          const parts = parseTextGapParts(cell?.value || "");
+          if (!usesTextGap || !parts.some((part) => part.kind === "blank")) {
+            return "<td>" + renderMarkdownInline(cell?.value || "") + "</td>";
+          }
+
+          const scopedParts = parts.map((part) =>
+            part.kind === "blank"
+              ? { ...part, index: nextBlankIndex++ }
+              : part
+          );
+          return (
+            '<td><div class="runtime-table-cell-gap">' +
+            renderTextGapParts(scopedParts, blockKey, values, renderMarkdownInline, "runtime-text-gap-blank runtime-table-gap-blank", renderOptions) +
+            "</div></td>"
+          );
+        })
         .join("");
       return "<tr>" + cells + "</tr>";
     })
     .join("");
 
-  return (
+  const bodyHtml =
     '<div class="runtime-block runtime-table-block">' +
     (title ? '<div class="runtime-table-title">' + renderMarkdownInline(title) + "</div>" : "") +
     '<div class="runtime-table-wrap"><table class="runtime-table">' +
     (headers ? "<thead><tr>" + headers + "</tr></thead>" : "") +
     "<tbody>" +
     rows +
-    "</tbody></table></div></div>"
-  );
-}
+    "</tbody></table></div>";
 
-function renderChoiceFeedback(feedback) {
-  if (feedback === "correct") {
-    return '<p class="runtime-exercise-feedback is-correct">Correto.</p>';
-  }
-  if (feedback === "wrong") {
-    return '<p class="runtime-exercise-feedback is-wrong">Ainda não.</p>';
-  }
-  if (feedback === "incomplete") {
-    return '<p class="runtime-exercise-feedback is-incomplete">Preencha para validar.</p>';
-  }
-  return "";
-}
-
-function renderCompleteBlock(block, renderOptions = {}, blockKey = "runtime-complete") {
-  const exercise = renderOptions.completeExerciseStateByBlockKey?.[blockKey] || null;
-  const blanks = parseCompleteText(block?.text || "");
-  const values = Array.isArray(exercise?.values) ? exercise.values : [];
-  const feedback = exercise?.feedback || null;
-  const dockParts = Array.isArray(renderOptions.dockExerciseParts) ? renderOptions.dockExerciseParts : null;
-
-  const body = blanks
-    .map((part) => {
-      if (part.kind === "text") {
-        return '<span class="runtime-complete-chunk">' + renderMarkdownInline(part.value) + "</span>";
-      }
-      const value = String(values[part.index] ?? "");
-      return (
-        '<input class="runtime-complete-blank" type="text" autocomplete="off" spellcheck="false" ' +
-        'data-action="complete-input" data-complete-block-key="' +
-        escapeHtml(blockKey) +
-        '" data-complete-blank-index="' +
-        escapeHtml(part.index) +
-        '" value="' +
-        escapeHtml(value) +
-        '">'
-      );
-    })
-    .join("");
-
-  const bodyHtml =
-    '<div class="runtime-block runtime-complete-block">' +
-    '<div class="runtime-choice-label">Complete</div>' +
-    '<p class="runtime-complete-text">' +
-    body +
-    "</p>";
-
-  const controlsHtml =
-    '<div class="runtime-exercise-controls">' +
-    '<button class="action-pill" type="button" data-action="complete-try-again" data-complete-block-key="' +
-    escapeHtml(blockKey) +
-    '">Tentar de novo</button>' +
-    '<button class="action-pill" type="button" data-action="complete-view-answer" data-complete-block-key="' +
-    escapeHtml(blockKey) +
-    '">Ver resposta</button>' +
-    '<button class="action-pill primary" type="button" data-action="complete-validate" data-complete-block-key="' +
-    escapeHtml(blockKey) +
-    '">Validar</button>' +
-    "</div>" +
-    renderChoiceFeedback(feedback);
-
-  if (dockParts) {
-    dockParts.push(controlsHtml);
+  if (!usesTextGap) {
     return bodyHtml + "</div>";
   }
 
-  return bodyHtml + controlsHtml + "</div>";
+  return bodyHtml + renderTextGapFeedback(blockKey, feedback) + "</div>";
+}
+
+function renderMultipleChoiceFeedback(feedback, blockKey) {
+  if (!feedback) {
+    return "";
+  }
+
+  if (feedback === "correct") {
+    return '<div class="inline-feedback ok"><p class="tiny">Correto.</p></div>';
+  }
+
+  if (feedback === "incomplete") {
+    return '<div class="inline-feedback err"><p class="tiny">Selecione pelo menos uma resposta.</p></div>';
+  }
+
+  return (
+    '<div class="inline-feedback err has-actions">' +
+    '<p class="tiny">As respostas marcadas não correspondem ao conjunto esperado.</p>' +
+    '<div class="feedback-icons">' +
+    '<button class="icon-pill" type="button" data-action="choice-view-answer" data-choice-block-key="' +
+    escapeHtml(blockKey) +
+    '" title="Ver resposta" aria-label="Ver resposta">&#128065;</button>' +
+    '<button class="icon-pill primary" type="button" data-action="choice-try-again" data-choice-block-key="' +
+    escapeHtml(blockKey) +
+    '" title="Tentar de novo" aria-label="Tentar de novo">&#8635;</button>' +
+    "</div></div>"
+  );
+}
+
+function renderCompleteBlock(block, renderOptions = {}, blockKey = "runtime-complete") {
+  const exercise = renderOptions.textGapExerciseStateByBlockKey?.[blockKey] || renderOptions.completeExerciseStateByBlockKey?.[blockKey] || null;
+  const blanks = parseTextGapParts(block?.text || "");
+  const values = Array.isArray(exercise?.values) ? exercise.values : [];
+  const feedback = exercise?.feedback || null;
+
+  const bodyHtml =
+    '<div class="runtime-block runtime-complete-block">' +
+    '<p class="runtime-complete-text">' +
+    renderTextGapParts(blanks, blockKey, values, renderMarkdownInline, "runtime-text-gap-blank runtime-complete-blank", renderOptions) +
+    "</p>";
+
+  return bodyHtml + renderTextGapFeedback(blockKey, feedback) + "</div>";
 }
 
 function renderMultipleChoiceBlock(block, renderOptions = {}, blockKey = "runtime-choice") {
@@ -1041,71 +1250,62 @@ function renderMultipleChoiceBlock(block, renderOptions = {}, blockKey = "runtim
   const options = Array.isArray(block?.options) ? block.options : [];
   const displayOptions = shuffleExerciseOptions(options, buildExerciseShuffleSeed(renderOptions, `choice::${blockKey}`));
   const selected = normalizeChoiceSelectionIds(options, exercise?.selected);
-  const isMultiple = block?.answerState === "multiple";
-  const name = `choice-${blockKey}`;
+  const feedback = exercise?.feedback || null;
 
   const optionsHtml = displayOptions
     .map((option, index) => {
       const optionId = getExerciseOptionStableId(option, index);
-      const isChecked = selected.has(optionId);
+      const isSelected = selected.has(optionId);
+      const stateClass =
+        isSelected && feedback === "wrong"
+          ? " selected-incorrect"
+          : isSelected
+            ? " active"
+            : "";
+      const mark =
+        isSelected && feedback === "correct"
+          ? "&#10003;"
+          : isSelected && feedback === "wrong"
+            ? "&times;"
+            : "";
       return (
-        '<label class="choice-option' +
-        (isChecked ? " is-checked" : "") +
-        '">' +
-        '<input type="' +
-        (isMultiple ? "checkbox" : "radio") +
-        '" name="' +
-        escapeHtml(name) +
-        '" data-action="choice-toggle" data-choice-block-key="' +
+        '<button class="multiple-choice-option' +
+        stateClass +
+        '" type="button" data-action="choice-toggle" data-choice-block-key="' +
         escapeHtml(blockKey) +
         '" data-choice-option-id="' +
         escapeHtml(optionId) +
-        '"' +
-        (isChecked ? " checked" : "") +
-        ">" +
-        "<span>" +
+        '" aria-pressed="' +
+        (isSelected ? "true" : "false") +
+        '">' +
+        '<span class="multiple-choice-mark">' +
+        mark +
+        "</span>" +
+        '<span class="multiple-choice-label">' +
         renderMarkdownInline(option?.value || "") +
-        "</span></label>"
+        "</span></button>"
       );
     })
     .join("");
 
-  const feedback = exercise?.feedback || null;
-  const dockParts = Array.isArray(renderOptions.dockExerciseParts) ? renderOptions.dockExerciseParts : null;
-
   const bodyHtml =
-    '<div class="runtime-block runtime-choice-block">' +
-    '<div class="runtime-choice-label">Pergunta-guia</div>' +
+    '<section class="runtime-block runtime-choice-block multiple-choice-exercise">' +
     '<div class="runtime-choice-body">' +
     renderMarkdownParagraph(block?.ask || "") +
     "</div>" +
-    '<div class="choice-group">' +
+    '<div class="multiple-choice-list">' +
     optionsHtml +
-    "</div>";
-
-  const controlsHtml =
-    '<div class="runtime-exercise-controls">' +
-    '<button class="action-pill" type="button" data-action="choice-try-again" data-choice-block-key="' +
-    escapeHtml(blockKey) +
-    '">Tentar de novo</button>' +
-    '<button class="action-pill" type="button" data-action="choice-view-answer" data-choice-block-key="' +
-    escapeHtml(blockKey) +
-    '">Ver resposta</button>' +
-    '<button class="action-pill primary" type="button" data-action="choice-validate" data-choice-block-key="' +
-    escapeHtml(blockKey) +
-    '">Validar</button>' +
     "</div>" +
-    renderChoiceFeedback(feedback);
+    renderMultipleChoiceFeedback(feedback, blockKey) +
+    "</section>";
 
-  if (dockParts) {
-    dockParts.push(controlsHtml);
-    return bodyHtml + "</div>";
-  }
-
-  return bodyHtml + controlsHtml + "</div>";
+  return bodyHtml;
 }
 
 function renderEditorBlock(block) {
+  if (blockUsesTextGapExercise(block)) {
+    return renderEditorTextGapBlock(block, arguments[1], arguments[2]);
+  }
   return (
     '<div class="runtime-block runtime-code-block">' +
     '<pre><code data-language="' +
@@ -1114,6 +1314,23 @@ function renderEditorBlock(block) {
     escapeHtml(block?.value || "") +
     "</code></pre></div>"
   );
+}
+
+function renderEditorTextGapBlock(block, renderOptions = {}, blockKey = "runtime-editor") {
+  const exercise = renderOptions.textGapExerciseStateByBlockKey?.[blockKey] || renderOptions.completeExerciseStateByBlockKey?.[blockKey] || null;
+  const blanks = parseTextGapParts(block?.value || "");
+  const values = Array.isArray(exercise?.values) ? exercise.values : [];
+  const feedback = exercise?.feedback || null;
+
+  const bodyHtml =
+    '<div class="runtime-block runtime-code-block runtime-code-gap-block">' +
+    '<pre class="runtime-code-gap"><code data-language="' +
+    escapeHtml(block?.language || "text") +
+    '">' +
+    renderTextGapParts(blanks, blockKey, values, escapeHtml, "runtime-text-gap-blank runtime-editor-gap-blank", renderOptions) +
+    "</code></pre>";
+
+  return bodyHtml + renderTextGapFeedback(blockKey, feedback) + "</div>";
 }
 
 function renderImageBlock(block) {
@@ -1130,7 +1347,7 @@ function renderImageBlock(block) {
 }
 
 function renderPopupButtonBlock(block) {
-  const popupBlocks = Array.isArray(block?.popupBlocks) ? block.popupBlocks : [];
+  const popupBlocks = sanitizePopupBlocks(block?.popupBlocks);
   if (!block?.popupEnabled || !popupBlocks.length) {
     return "";
   }
@@ -1144,6 +1361,55 @@ function renderPopupButtonBlock(block) {
   );
 }
 
+function buildPopupBlockKeyPrefix(blockKeyPrefix = "runtime-block") {
+  return `${String(blockKeyPrefix)}::popup`;
+}
+
+export function getRuntimePopupButtonEntry(card) {
+  const runtime = resolveCardRuntime(card);
+  const blocks = Array.isArray(runtime?.blocks) ? runtime.blocks : [];
+  for (let index = 0; index < blocks.length; index += 1) {
+    const block = blocks[index];
+    if (block?.kind !== "button") {
+      continue;
+    }
+
+    const popupBlocks = sanitizePopupBlocks(block?.popupBlocks);
+    if (!block?.popupEnabled || !popupBlocks.length) {
+      continue;
+    }
+
+    return {
+      block: {
+        ...block,
+        popupBlocks
+      },
+      index
+    };
+  }
+
+  return null;
+}
+
+export function renderPopupButtonDock(block, options = {}) {
+  const popupBlocks = sanitizePopupBlocks(block?.popupBlocks);
+  if (!block?.popupEnabled || !popupBlocks.length) {
+    return { bodyHtml: "", dockHtml: "" };
+  }
+
+  const dockExerciseParts = [];
+  const bodyHtml = renderRuntimeBlockList(popupBlocks, "", {
+    ...options,
+    blockKeyPrefix: buildPopupBlockKeyPrefix(options.blockKeyPrefix || "runtime-block"),
+    dockExerciseParts
+  });
+  const dockHtml = dockExerciseParts.length
+    ? '<section class="card-answer-dock popup-answer-dock" data-card-answer-dock="true">' + dockExerciseParts.join("") + "</section>"
+    : "";
+
+  return { bodyHtml, dockHtml };
+}
+
 function renderRuntimeBlock(block, renderOptions = {}, blockKey = "runtime-block") {
   if (!block || typeof block !== "object") {
     return "";
@@ -1153,6 +1419,24 @@ function renderRuntimeBlock(block, renderOptions = {}, blockKey = "runtime-block
     return '<h3 class="runtime-block runtime-heading">' + renderMarkdownInline(block.value || "") + "</h3>";
   }
   if (block.kind === "paragraph") {
+    if (blockUsesTextGapExercise(block)) {
+      const exercise = renderOptions.textGapExerciseStateByBlockKey?.[blockKey] || renderOptions.completeExerciseStateByBlockKey?.[blockKey] || null;
+      const values = Array.isArray(exercise?.values) ? exercise.values : [];
+      const feedback = exercise?.feedback || null;
+      const bodyHtml =
+        '<div class="runtime-block runtime-paragraph-gap-block">' +
+        '<p class="runtime-block runtime-paragraph runtime-text-gap-paragraph">' +
+        renderTextGapParts(
+          parseTextGapParts(block.value || ""),
+          blockKey,
+          values,
+          renderMarkdownInline,
+          "runtime-text-gap-blank runtime-paragraph-gap-blank",
+          renderOptions
+        ) +
+        "</p>";
+      return bodyHtml + renderTextGapFeedback(blockKey, feedback) + "</div>";
+    }
     return '<p class="runtime-block runtime-paragraph">' + renderMarkdownParagraph(block.value || "") + "</p>";
   }
   if (block.kind === "multiple_choice") {
@@ -1162,10 +1446,10 @@ function renderRuntimeBlock(block, renderOptions = {}, blockKey = "runtime-block
     return renderCompleteBlock(block, renderOptions, blockKey);
   }
   if (block.kind === "editor") {
-    return renderEditorBlock(block);
+    return renderEditorBlock(block, renderOptions, blockKey);
   }
   if (block.kind === "table") {
-    return renderTableBlock(block);
+    return renderTableBlock(block, renderOptions, blockKey);
   }
   if (block.kind === "flowchart") {
     return renderFlowchartBlock(block, renderOptions, blockKey);
@@ -1174,6 +1458,9 @@ function renderRuntimeBlock(block, renderOptions = {}, blockKey = "runtime-block
     return renderImageBlock(block);
   }
   if (block.kind === "button") {
+    if (renderOptions.omitPopupButtonBlock) {
+      return "";
+    }
     return renderPopupButtonBlock(block);
   }
 
