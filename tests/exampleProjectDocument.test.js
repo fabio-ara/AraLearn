@@ -23,18 +23,15 @@ test("seed principal agora mantém um único curso de teste", () => {
   assert.equal(course.modules.length, 1);
   assert.equal(course.modules[0].lessons.length, 1);
   assert.equal(course.modules[0].lessons[0].microsequences.length, 1);
-  assert.equal(course.modules[0].lessons[0].microsequences[0].cards.length, 1);
+  assert.equal(course.modules[0].lessons[0].microsequences[0].cards.length, 0);
 });
 
-test("primeiro card do seed é uma tabela com lacunas por bloco", () => {
+test("seed principal termina sem cards de exemplo", () => {
   const result = validateContractDocument(createExampleProjectDocument());
   assert.equal(result.ok, true);
   const document = result.value;
-  const card = document.courses[0].modules[0].lessons[0].microsequences[0].cards[0];
+  const microsequence = document.courses[0].modules[0].lessons[0].microsequences[0];
 
-  assert.equal(card.key, "card-tabela-blocos");
-  assert.equal(card.type, "table");
-  assert.equal(Array.isArray(card.rows), true);
-  assert.match(card.rows[0][0], /\[\[type::type\|title\|key\]\]/);
-  assert.match(card.rows[1][1], /\[\[blocos::blocos\|módulos\|tokens\]\]/);
+  assert.equal(microsequence.title, "Microssequência vazia");
+  assert.deepEqual(microsequence.cards, []);
 });

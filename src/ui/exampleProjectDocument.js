@@ -1,13 +1,3 @@
-function createTableCard(key, title, columns, rows) {
-  return {
-    key,
-    type: "table",
-    title,
-    columns,
-    rows
-  };
-}
-
 export function createExampleProjectDocument() {
   return {
     contract: "aralearn.contract",
@@ -15,33 +5,23 @@ export function createExampleProjectDocument() {
       {
         key: "course-teste-runtime",
         title: "Curso de teste",
-        description: "Seed mínimo para validar uma tabela com lacunas por bloco no runtime principal.",
+        description: "Estrutura vazia para validação manual da interface sem conteúdo de exemplo persistente.",
         modules: [
           {
             key: "module-teste-runtime",
             title: "Módulo de teste",
-            description: "Estrutura mínima para inspeção manual do card de tabela.",
+            description: "Estrutura mínima para inspeção manual.",
             lessons: [
               {
                 key: "lesson-tabela-blocos",
-                title: "Tabela com blocos",
-                description: "O primeiro card expõe uma tabela com lacunas por opção.",
+                title: "Lição vazia",
+                description: "Sem cards carregados por padrão.",
                 microsequences: [
                   {
                     key: "microsequence-tabela-blocos",
-                    title: "Tabela com lacunas por bloco",
+                    title: "Microssequência vazia",
                     tags: ["Teste", "Tabela"],
-                    cards: [
-                      createTableCard(
-                        "card-tabela-blocos",
-                        "Tabela com lacunas por bloco",
-                        ["Campo", "Uso"],
-                        [
-                          ["[[type::type|title|key]]", "Define o tipo explícito do card."],
-                          ["runtime", "Carrega [[blocos::blocos|módulos|tokens]] internos compilados."]
-                        ]
-                      )
-                    ]
+                    cards: []
                   }
                 ]
               }

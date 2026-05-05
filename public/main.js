@@ -12,7 +12,7 @@ if (!root) {
 const kvStore = createBrowserLocalStorageStore(globalThis.localStorage);
 const storage = createProjectStorage(kvStore);
 const editor = createEditorSession(storage);
-const EXAMPLE_SEED_VERSION = "contract-runtime-stubs-v8";
+const EXAMPLE_SEED_VERSION = "contract-runtime-empty-v1";
 const EXAMPLE_SEED_KEY = "aralearn.example-seed.version";
 
 let project = null;
