@@ -12,7 +12,7 @@ if (!root) {
 const kvStore = createBrowserLocalStorageStore(globalThis.localStorage);
 const storage = createProjectStorage(kvStore);
 const editor = createEditorSession(storage);
-const EXAMPLE_SEED_VERSION = "contract-baseline-v1";
+const EXAMPLE_SEED_VERSION = "contract-flowchart-v2";
 const EXAMPLE_SEED_KEY = "aralearn.example-seed.version";
 
 let project = null;

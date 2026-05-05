@@ -19,6 +19,10 @@ test("compila o contrato principal com pipeline própria e ids determinísticos"
   assert.equal(result.compiled.index.cards[3].type, "editor");
   assert.equal(result.compiled.index.cards[1].runtime.blocks[1].kind, "multiple_choice");
   assert.equal(result.compiled.index.cards[4].runtime.blocks[1].kind, "table");
+  assert.equal(result.compiled.index.cards[5].runtime.blocks[1].kind, "flowchart");
+  assert.equal(result.compiled.index.cards[5].runtime.blocks[1].structureVersion, 1);
+  assert.equal(result.compiled.index.cards[5].runtime.blocks[1].projectionVersion, 1);
+  assert.equal(result.compiled.index.cards[5].runtime.blocks[1].projectionValid, true);
   assert.equal(
     result.compiled.index.cards[0].scope.lessonId,
     "lesson:course-curso-renderizavel:module-modulo-experimental:lesson-licao-experimental"

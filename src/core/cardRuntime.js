@@ -1,3 +1,11 @@
+import {
+  convertPublicFlowToStructure,
+  normalizeFlowchartStructure,
+  validateFlowchartStructureContract
+} from "../flowchart/flowchartStructure.js";
+import { deriveFlowchartProjectionFromStructure } from "../flowchart/flowchartProjection.js";
+import { getExerciseOptionStableId } from "./exerciseOptions.js";
+
 function normalizeText(value) {
   return typeof value === "string" ? value : "";
 }
@@ -44,8 +52,16 @@ function buildChoiceOptions(card) {
   const wrongOptions = Array.isArray(card?.wrong) ? card.wrong : [];
 
   return [
-    ...correctOptions.map((value) => ({ value: normalizeText(value), answer: true })),
-    ...wrongOptions.map((value) => ({ value: normalizeText(value), answer: false }))
+    ...correctOptions.map((value, index) => ({
+      id: getExerciseOptionStableId({ id: `choice-correct-${index}` }, index),
+      value: normalizeText(value),
+      answer: true
+    })),
+    ...wrongOptions.map((value, index) => ({
+      id: getExerciseOptionStableId({ id: `choice-wrong-${index}` }, correctOptions.length + index),
+      value: normalizeText(value),
+      answer: false
+    }))
   ].filter((item) => item.value.trim());
 }
 
@@ -55,6 +71,15 @@ function buildChoiceBlock(card) {
     ask: normalizeText(card?.ask),
     answerState: (Array.isArray(card?.answer) ? card.answer : []).length > 1 ? "multiple" : "single",
     options: buildChoiceOptions(card)
+  };
+}
+
+function buildCompleteBlock(card) {
+  return {
+    kind: "complete",
+    text: normalizeText(card?.text),
+    answer: (Array.isArray(card?.answer) ? card.answer : []).map((item) => normalizeText(item)).filter(Boolean),
+    wrong: (Array.isArray(card?.wrong) ? card.wrong : []).map((item) => normalizeText(item)).filter(Boolean)
   };
 }
 
@@ -109,9 +134,21 @@ function buildTableBlock(card) {
 }
 
 function buildFlowchartBlock(card) {
+  const publicStructure = convertPublicFlowToStructure(card?.flow);
+  const normalizedStructure = normalizeFlowchartStructure(publicStructure);
+  const validation = validateFlowchartStructureContract(normalizedStructure);
+  const projection = validation.valid ? deriveFlowchartProjectionFromStructure(normalizedStructure) : null;
+
   return {
     kind: "flowchart",
-    flow: Array.isArray(card?.flow) ? clone(card.flow) : []
+    flow: Array.isArray(card?.flow) ? clone(card.flow) : [],
+    structureVersion: 1,
+    structure: normalizedStructure,
+    structureValid: validation.valid,
+    structureValidation: validation,
+    projectionVersion: projection ? 1 : 0,
+    projection,
+    projectionValid: !!projection
   };
 }
 
@@ -124,14 +161,7 @@ function buildCardSpecificBlocks(card) {
     return [buildChoiceBlock(card)];
   }
   if (card.type === "complete") {
-    const extra = {};
-    if (Array.isArray(card.answer) && card.answer.length) {
-      extra.answer = card.answer.map((item) => normalizeText(item)).filter(Boolean);
-    }
-    if (Array.isArray(card.wrong) && card.wrong.length) {
-      extra.wrong = card.wrong.map((item) => normalizeText(item)).filter(Boolean);
-    }
-    return [buildParagraphBlock(card.text, extra)];
+    return [buildCompleteBlock(card)];
   }
   if (card.type === "editor") {
     return [buildEditorBlock(card)];

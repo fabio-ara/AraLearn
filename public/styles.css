@@ -182,6 +182,68 @@ button {
   background: linear-gradient(180deg, rgba(39, 31, 24, 0.98), rgba(28, 22, 16, 0.98));
 }
 
+.icon-pill {
+  min-width: var(--tap);
+  min-height: var(--tap);
+  width: var(--tap);
+  height: var(--tap);
+  border-radius: 11px;
+  border: 1px solid rgba(83, 67, 49, 0.9);
+  background: linear-gradient(180deg, rgba(31, 24, 19, 0.98), rgba(22, 17, 13, 0.98));
+  color: var(--text);
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease, transform 0.05s ease;
+}
+
+.action-pill {
+  min-height: var(--tap);
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(83, 67, 49, 0.9);
+  background: linear-gradient(180deg, rgba(31, 24, 19, 0.98), rgba(22, 17, 13, 0.98));
+  color: var(--text);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  transition: background 0.2s ease, border-color 0.2s ease, transform 0.05s ease;
+  white-space: nowrap;
+}
+
+.action-pill:active {
+  transform: translateY(1px);
+}
+
+.action-pill:hover {
+  background: linear-gradient(180deg, rgba(39, 31, 24, 0.98), rgba(28, 22, 16, 0.98));
+}
+
+.action-pill.primary {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-color: var(--accent);
+  box-shadow: 0 10px 18px rgba(157, 116, 39, 0.28);
+}
+
+.icon-pill:active {
+  transform: translateY(1px);
+}
+
+.icon-pill:hover {
+  background: linear-gradient(180deg, rgba(39, 31, 24, 0.98), rgba(28, 22, 16, 0.98));
+}
+
+.icon-pill.primary {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-color: var(--accent);
+  font-weight: 700;
+  box-shadow: 0 10px 18px rgba(157, 116, 39, 0.28);
+}
+
 .palette-icon,
 .primary-btn {
   border-radius: 12px;
@@ -916,6 +978,25 @@ button {
   gap: 14px;
 }
 
+.card-answer-dock {
+  position: sticky;
+  bottom: 0;
+  z-index: 12;
+  padding-top: 10px;
+  padding-bottom: 10px;
+  border-top: 1px solid rgba(92, 75, 55, 0.5);
+  background:
+    linear-gradient(180deg, rgba(10, 9, 8, 0.0), rgba(10, 9, 8, 0.82) 30%, rgba(10, 9, 8, 0.92));
+  display: grid;
+  gap: 10px;
+}
+
+.card-answer-dock .runtime-exercise-controls,
+.card-answer-dock .runtime-flow-practice-actions,
+.card-answer-dock .runtime-flow-prompt-actions {
+  justify-content: flex-end;
+}
+
 .runtime-block {
   margin: 0;
 }
@@ -937,6 +1018,7 @@ button {
 
 .runtime-list-block,
 .runtime-choice-block,
+.runtime-complete-block,
 .runtime-table-block,
 .runtime-flow-block {
   border-radius: 12px;
@@ -964,6 +1046,128 @@ button {
   line-height: 1.62;
 }
 
+.runtime-complete-text {
+  line-height: 1.78;
+  overflow-wrap: anywhere;
+}
+
+.runtime-complete-blank {
+  display: inline-block;
+  vertical-align: baseline;
+  min-width: 120px;
+  max-width: 100%;
+  padding: 6px 8px;
+  margin: 0 2px;
+  border-radius: 10px;
+  border: 1px solid rgba(109, 88, 64, 0.9);
+  background: rgba(23, 18, 14, 0.9);
+  color: var(--text);
+}
+
+.runtime-complete-blank:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(230, 192, 117, 0.25);
+  border-color: rgba(230, 192, 117, 0.6);
+}
+
+.choice-group {
+  display: grid;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.choice-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(126, 104, 67, 0.26);
+  background: rgba(11, 10, 8, 0.18);
+  cursor: pointer;
+}
+
+.choice-option:hover {
+  background: rgba(11, 10, 8, 0.28);
+}
+
+.choice-option input {
+  margin-top: 3px;
+  accent-color: var(--accent);
+  flex: 0 0 auto;
+}
+
+.choice-option span {
+  min-width: 0;
+}
+
+.choice-option.is-checked {
+  border-color: rgba(230, 192, 117, 0.5);
+  box-shadow: 0 0 0 1px rgba(230, 192, 117, 0.22);
+}
+
+.runtime-exercise-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 10px;
+}
+
+.runtime-exercise-feedback {
+  margin-top: 8px;
+  font-size: var(--type-sm);
+  line-height: var(--leading-normal);
+}
+
+.runtime-exercise-feedback.is-correct {
+  color: rgba(172, 226, 184, 0.95);
+}
+
+.runtime-exercise-feedback.is-wrong {
+  color: rgba(233, 159, 147, 0.95);
+}
+
+.runtime-exercise-feedback.is-incomplete {
+  color: rgba(245, 230, 203, 0.86);
+}
+
+.inline-feedback {
+  border-radius: 12px;
+  border: 1px solid rgba(126, 104, 67, 0.26);
+  padding: 12px 14px;
+}
+
+.inline-feedback p {
+  margin: 0;
+}
+
+.inline-feedback.ok {
+  border-color: rgba(69, 150, 106, 0.78);
+  background: rgba(27, 43, 34, 0.92);
+  color: #eef8ef;
+}
+
+.inline-feedback.err {
+  border-color: rgba(162, 78, 88, 0.82);
+  background: rgba(55, 24, 28, 0.94);
+  color: #fff1f1;
+}
+
+.inline-feedback.has-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.feedback-icons {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 0 0 auto;
+}
+
 .runtime-table-wrap {
   overflow: auto;
 }
@@ -988,10 +1192,398 @@ button {
 }
 
 .runtime-flow-block {
+  display: grid;
+  gap: 10px;
+}
+
+.runtime-flow-board-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  height: min(64vh, 560px);
+  min-height: 340px;
+}
+
+.runtime-flow-board-controls {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.runtime-flow-zoom-value {
+  min-width: 62px;
+}
+
+.runtime-flow-board {
+  position: relative;
+  width: 100%;
+  overflow: auto;
+  padding: 4px;
+  border-radius: 14px;
+  border: 1px solid rgba(126, 104, 67, 0.22);
+  background:
+    linear-gradient(180deg, rgba(11, 10, 8, 0.72), rgba(9, 8, 7, 0.82)),
+    radial-gradient(circle at top, rgba(199, 165, 104, 0.08), transparent 60%);
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  touch-action: pan-x pan-y;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.runtime-flow-board-stage {
+  position: relative;
+}
+
+.runtime-flow-board-canvas {
+  position: relative;
+}
+
+.runtime-flow-board-svg {
+  width: var(--flowchart-board-width);
+  height: var(--flowchart-board-height);
+  display: block;
+  overflow: visible;
+}
+
+.runtime-flow-board-links {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.runtime-flow-route {
+  fill: none;
+  stroke: rgba(230, 192, 117, 0.92);
+  stroke-width: 2.4;
+  stroke-linecap: butt;
+  stroke-linejoin: round;
+}
+
+.runtime-flow-board-arrows {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.runtime-flow-arrow polyline {
+  fill: none;
+  stroke: rgba(230, 192, 117, 0.92);
+  stroke-width: 3;
+  stroke-linecap: butt;
+  stroke-linejoin: round;
+}
+
+.runtime-flow-arrow polygon {
+  fill: rgba(230, 192, 117, 0.92);
+  stroke: none;
+}
+
+.runtime-flow-label-button.is-placeholder {
+  opacity: 0.78;
+}
+
+.runtime-flow-route[data-link-role="loop-return"] {
+  stroke: rgba(206, 159, 87, 0.78);
+  stroke-dasharray: 8 6;
+}
+
+.runtime-flow-route-label {
+  fill: #f1dfbb;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+.runtime-flow-board-surface {
+  position: absolute;
+  inset: 0;
+  width: var(--flowchart-board-width);
+  height: var(--flowchart-board-height);
+  pointer-events: none;
+  z-index: 2;
+}
+
+.runtime-flow-board-node {
+  position: absolute;
+  width: 104px;
+  min-height: 110px;
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+}
+
+.runtime-flow-board-shape {
+  width: 80px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+}
+
+.runtime-flow-board-shape .flowchart-shape-svg {
+  width: 80px;
+  height: 48px;
+  overflow: visible;
+}
+
+.runtime-flow-board-shape .flowchart-shape-svg * {
+  fill: rgba(28, 21, 15, 0.78);
+  stroke: rgba(230, 192, 117, 0.92);
+  stroke-width: 2.4;
+}
+
+.runtime-flow-shape-placeholder {
+  width: 72px;
+  height: 42px;
+  border: 2px dashed rgba(230, 192, 117, 0.56);
+  border-radius: 12px;
+  background: rgba(228, 186, 104, 0.08);
+}
+
+.runtime-flow-board-node[data-shape="connector"] .runtime-flow-board-shape .flowchart-shape-svg * {
+  fill: rgba(230, 192, 117, 0.14);
+}
+
+.runtime-flow-board-copy {
+  width: 96px;
+  min-height: 56px;
+  color: #f5e6cb;
+  font-size: 0.69rem;
+  line-height: 1.14;
+  font-weight: 600;
+  text-align: center;
+  text-wrap: balance;
+  word-break: break-word;
+  hyphens: auto;
+}
+
+.runtime-flow-board-shape-button,
+.runtime-flow-board-copy-button,
+.runtime-flow-label-button {
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.runtime-flow-board-shape-button,
+.runtime-flow-board-copy-button {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  font: inherit;
+}
+
+.runtime-flow-board-copy-button {
+  width: 96px;
+  min-height: 56px;
+  border-radius: 10px;
+  border: 1px dashed #8a6f4e;
+  background: #17120e;
+  color: var(--text, #f5e6cb);
+  padding: 6px 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 160ms ease, box-shadow 160ms ease;
+}
+
+.runtime-flow-board-shape-button.is-active,
+.runtime-flow-board-copy-button.is-active,
+.runtime-flow-label-button.is-active {
+  box-shadow: 0 0 0 2px rgba(230, 192, 117, 0.92);
+}
+
+.runtime-flow-board-copy-button.is-filled,
+.runtime-flow-label-button.is-filled {
+  background: rgba(228, 186, 104, 0.12);
+}
+
+.runtime-flow-board-copy-button.is-filled {
+  border-style: solid;
+  border-color: rgba(230, 192, 117, 0.92);
+  background: #2b2118;
+}
+
+.runtime-flow-board-copy-button.practice-marked {
+  box-shadow: inset 0 0 0 1px rgba(228, 186, 104, 0.08);
+}
+
+.runtime-flow-board-copy-button.practice-marked.is-blank-choice {
+  border-color: rgba(95, 179, 226, 0.72);
+  background:
+    repeating-linear-gradient(-45deg, rgba(13, 40, 60, 0.7), rgba(13, 40, 60, 0.7) 6px, rgba(18, 28, 38, 0.94) 6px, rgba(18, 28, 38, 0.94) 12px),
+    linear-gradient(180deg, rgba(22, 28, 35, 0.98), rgba(16, 18, 22, 0.99));
+}
+
+.runtime-flow-board-copy-button.practice-marked.is-blank-input {
+  border-color: rgba(228, 186, 104, 0.78);
+  background:
+    repeating-linear-gradient(-45deg, rgba(60, 42, 15, 0.7), rgba(60, 42, 15, 0.7) 6px, rgba(44, 34, 21, 0.94) 6px, rgba(44, 34, 21, 0.94) 12px),
+    linear-gradient(180deg, rgba(48, 34, 20, 0.98), rgba(27, 19, 12, 0.99));
+}
+
+.runtime-flow-board-copy-button.practice-marked:not(.is-filled) {
+  color: rgba(255, 239, 207, 0.8);
+}
+
+.runtime-flow-label-button {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  border: 1px solid rgba(214, 193, 150, 0.42);
+  border-radius: 999px;
+  background: rgba(24, 19, 15, 0.94);
+  color: #fbf0dd;
+  min-width: 34px;
+  min-height: 20px;
+  padding: 2px 8px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  box-shadow:
+    0 0 0 1px rgba(24, 19, 15, 0.28),
+    0 6px 12px rgba(2, 6, 14, 0.18);
+}
+
+.runtime-flow-label-button.is-placeholder {
+  border-style: dashed;
+  color: rgba(251, 240, 221, 0.28);
+}
+
+.runtime-flow-label-button.is-anchor-start {
+  transform: translate(0, -50%);
+}
+
+.runtime-flow-label-button.is-anchor-end {
+  transform: translate(-100%, -50%);
+}
+
+.runtime-flow-practice-panel {
+  display: grid;
+  gap: 8px;
+}
+
+.runtime-flow-practice-actions,
+.runtime-flow-prompt-actions {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
   gap: 8px;
+  justify-content: flex-end;
+}
+
+.runtime-flow-prompt {
+  position: sticky;
+  bottom: 8px;
+  z-index: 12;
+  border: 1px solid rgba(126, 104, 67, 0.3);
+  border-radius: 14px;
+  background:
+    linear-gradient(180deg, rgba(15, 12, 10, 0.9), rgba(10, 9, 8, 0.94)),
+    radial-gradient(circle at top, rgba(199, 165, 104, 0.08), transparent 64%);
+  padding: 10px;
+  display: grid;
+  gap: 10px;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.24);
+}
+
+.runtime-flow-prompt-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.runtime-flow-prompt-badge {
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #f1dfbb;
+  text-transform: uppercase;
+}
+
+.runtime-flow-choice-list,
+.token-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: flex-start;
+  align-content: flex-start;
+  max-height: 32vh;
+  overflow: auto;
+  padding: 1px 0 6px;
+  box-sizing: border-box;
+}
+
+.token-option {
+  min-height: 36px;
+  border: 1px solid rgba(111, 88, 62, 0.88);
+  border-radius: 10px;
+  background: linear-gradient(180deg, rgba(35, 27, 20, 0.98), rgba(24, 18, 13, 0.99));
+  color: var(--text, #f5e6cb);
+  padding: 7px 11px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.69rem;
+  font-weight: 600;
+  line-height: 1.14;
+  cursor: pointer;
+  flex: 0 0 auto;
+  max-width: 100%;
+  transition: background 0.2s ease, border-color 0.2s ease, transform 0.05s ease, box-shadow 0.2s ease;
+}
+
+.token-option:hover {
+  background: linear-gradient(180deg, rgba(39, 31, 24, 0.98), rgba(28, 22, 16, 0.98));
+}
+
+.token-option:active {
+  transform: translateY(1px);
+}
+
+.token-option.active {
+  border-color: rgba(230, 192, 117, 0.92);
+  box-shadow: none;
+  background: rgba(60, 46, 25, 0.94);
+  color: #fff3dc;
+}
+
+.runtime-flow-shape-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(92px, 1fr));
+  gap: 8px;
+}
+
+.runtime-flow-shape-option {
+  border: 1px solid rgba(126, 104, 67, 0.32);
+  border-radius: 12px;
+  background: rgba(18, 15, 12, 0.9);
+  color: #f5e6cb;
+  padding: 8px;
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+}
+
+.runtime-flow-shape-option .flowchart-shape-svg {
+  width: 64px;
+  height: 36px;
+}
+
+.runtime-flow-shape-option .flowchart-shape-svg * {
+  fill: rgba(28, 21, 15, 0.78);
+  stroke: rgba(230, 192, 117, 0.92);
+  stroke-width: 2.4;
+}
+
+.runtime-flow-shape-option.is-active {
+  box-shadow: 0 0 0 2px rgba(230, 192, 117, 0.92);
+}
+
+.runtime-flow-prompt-input {
+  min-height: 44px;
 }
 
 .runtime-flow-node {
@@ -1350,15 +1942,6 @@ button {
 
 .inline-editor-step-nav {
   padding: 8px;
-}
-
-.card-editor-screen {
-  display: grid;
-  align-content: start;
-  gap: 8px;
-  overflow-y: auto;
-  overflow-x: clip;
-  padding-bottom: 12px;
 }
 
 .microsequence-assist-screen {
@@ -1771,6 +2354,83 @@ button {
 
 .button-popup-meta.disabled {
   opacity: 0.58;
+}
+
+.flowchart-editor-block,
+.flowchart-editor-node-body,
+.flowchart-editor-case-list {
+  display: grid;
+  gap: 10px;
+}
+
+.flowchart-editor-sequence {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(148, 171, 129, 0.2);
+  background: rgba(10, 13, 8, 0.35);
+}
+
+.flowchart-editor-sequence + .flowchart-editor-sequence {
+  margin-top: 8px;
+}
+
+.flowchart-editor-sequence-head,
+.flowchart-editor-case-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.flowchart-editor-sequence-controls {
+  margin-left: auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.flowchart-editor-kind-select {
+  min-width: 160px;
+}
+
+.flowchart-editor-node {
+  margin-left: 8px;
+}
+
+.flowchart-editor-field,
+.flowchart-editor-kind-row {
+  display: grid;
+  gap: 4px;
+}
+
+.flowchart-editor-field-label {
+  font-size: var(--type-xs);
+  color: var(--text-soft);
+}
+
+.flowchart-editor-grid {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}
+
+.flowchart-editor-case {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(148, 171, 129, 0.16);
+  background: rgba(0, 0, 0, 0.12);
+}
+
+.flowchart-editor-add-btn {
+  white-space: nowrap;
+}
+
+.flowchart-editor-empty {
+  min-height: auto;
 }
 
 @media (max-width: 420px) {

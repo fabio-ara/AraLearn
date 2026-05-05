@@ -1,3 +1,10 @@
+import {
+  convertPublicFlowToStructure,
+  convertStructureToPublicFlow,
+  normalizeFlowchartStructure,
+  validateFlowchartStructureContract
+} from "../flowchart/flowchartStructure.js";
+
 function fail(message) {
   throw new Error(message);
 }
@@ -48,21 +55,13 @@ function normalizeFlow(value) {
     fail('Campo obrigatório inválido: "flow".');
   }
 
-  return value.map((step) => {
-    if (!step || typeof step !== "object" || Array.isArray(step)) {
-      fail('Campo obrigatório inválido: "flow".');
-    }
+  const structure = normalizeFlowchartStructure(convertPublicFlowToStructure(value));
+  const validation = validateFlowchartStructureContract(structure);
+  if (!validation.valid) {
+    fail('Campo obrigatório inválido: "flow".');
+  }
 
-    const entries = Object.entries(step);
-    if (entries.length !== 1) {
-      fail('Campo obrigatório inválido: "flow".');
-    }
-
-    const [kind, label] = entries[0];
-    return {
-      [normalizeRequiredString(kind, "flow.kind")]: normalizeRequiredString(label, "flow.label")
-    };
-  });
+  return convertStructureToPublicFlow(structure);
 }
 
 function withOptionalTitle(card, title) {
