@@ -13,12 +13,25 @@ test("seed principal da UI valida no contrato atual", () => {
   assert.equal(result.value.courses.length, 1);
 });
 
-test("seed principal expõe um curso de exemplo para múltipla escolha", () => {
-  const document = createExampleProjectDocument();
-  const card = document.courses[0].modules[0].lessons[0].microsequences[0].cards[0];
+test("seed principal agora mantém um único curso de teste", () => {
+  const result = validateContractDocument(createExampleProjectDocument());
+  assert.equal(result.ok, true);
+  const document = result.value;
+  const course = document.courses[0];
 
-  assert.equal(document.courses[0].key, "course-teste-choice");
-  assert.equal(card.type, "choice");
-  assert.deepEqual(card.answer, ["type"]);
-  assert.deepEqual(card.wrong, ["title", "runtime"]);
+  assert.equal(course.key, "course-teste-runtime");
+  assert.equal(course.modules.length, 1);
+  assert.equal(course.modules[0].lessons.length, 1);
+  assert.equal(course.modules[0].lessons[0].microsequences.length, 1);
+  assert.equal(course.modules[0].lessons[0].microsequences[0].cards.length, 0);
+});
+
+test("seed principal termina sem cards de exemplo", () => {
+  const result = validateContractDocument(createExampleProjectDocument());
+  assert.equal(result.ok, true);
+  const document = result.value;
+  const microsequence = document.courses[0].modules[0].lessons[0].microsequences[0];
+
+  assert.equal(microsequence.title, "Microssequência vazia");
+  assert.deepEqual(microsequence.cards, []);
 });

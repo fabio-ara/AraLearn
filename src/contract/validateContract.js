@@ -220,8 +220,8 @@ function validateMicrosequence(microsequence, index, errors, microKeys, path) {
   const key = microKeys.next(microsequence.key, title || `microsequence-${index + 1}`, currentPath, errors);
   const cards = Array.isArray(microsequence.cards) ? microsequence.cards : [];
 
-  if (!Array.isArray(microsequence.cards) || cards.length === 0) {
-    errors.push(makeError(currentPath, 'Microssequência deve conter "cards" com pelo menos um item.'));
+  if (!Array.isArray(microsequence.cards)) {
+    errors.push(makeError(currentPath, 'Campo obrigatório inválido: "cards".'));
   }
 
   const cardKeys = createKeyGenerator("card");

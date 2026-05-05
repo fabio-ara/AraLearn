@@ -1,43 +1,27 @@
-function createChoiceCard(key, title, ask, answer, wrong) {
-  return {
-    key,
-    type: "choice",
-    title,
-    ask,
-    answer,
-    wrong
-  };
-}
-
 export function createExampleProjectDocument() {
   return {
     contract: "aralearn.contract",
     courses: [
       {
-        key: "course-teste-choice",
+        key: "course-teste-runtime",
         title: "Curso de teste",
-        description: "Exemplo dedicado à múltipla escolha.",
+        description: "Estrutura vazia para validação manual da interface sem conteúdo de exemplo persistente.",
         modules: [
           {
-            key: "module-choice",
-            title: "Módulo de escolha",
+            key: "module-teste-runtime",
+            title: "Módulo de teste",
+            description: "Estrutura mínima para inspeção manual.",
             lessons: [
               {
-                key: "lesson-choice",
-                title: "Escolha simples",
+                key: "lesson-tabela-blocos",
+                title: "Lição vazia",
+                description: "Sem cards carregados por padrão.",
                 microsequences: [
                   {
-                    key: "microsequence-choice",
-                    title: "Múltipla escolha",
-                    cards: [
-                      createChoiceCard(
-                        "card-choice",
-                        "Leitura rápida",
-                        "Qual propriedade identifica o tipo explícito do card?",
-                        ["type"],
-                        ["title", "runtime"]
-                      )
-                    ]
+                    key: "microsequence-tabela-blocos",
+                    title: "Microssequência vazia",
+                    tags: ["Teste", "Tabela"],
+                    cards: []
                   }
                 ]
               }

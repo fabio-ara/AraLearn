@@ -99,3 +99,33 @@ test("aceita card flow com estrutura pública composta", () => {
   assert.equal(result.ok, true);
   assert.equal(result.value.courses[0].modules[0].lessons[0].microsequences[0].cards[0].flow[1].if, "x > 0");
 });
+
+test("aceita microssequência sem cards", () => {
+  const result = validateContractDocument({
+    contract: "aralearn.contract",
+    courses: [
+      {
+        title: "Curso",
+        modules: [
+          {
+            title: "Módulo",
+            lessons: [
+              {
+                title: "Lição",
+                microsequences: [
+                  {
+                    title: "Microssequência",
+                    cards: []
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  });
+
+  assert.equal(result.ok, true);
+  assert.deepEqual(result.value.courses[0].modules[0].lessons[0].microsequences[0].cards, []);
+});
