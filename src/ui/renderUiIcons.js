@@ -1,0 +1,129 @@
+export function renderUiIcon(iconName, className = "ui-icon") {
+  const classes = `${className}`.trim();
+
+  if (iconName === "edit") {
+    return (
+      '<svg class="' +
+      classes +
+      '" viewBox="0 0 16 16" aria-hidden="true" focusable="false">' +
+      '<path d="M11.9 1.6a1.4 1.4 0 0 1 2 0l.5.5a1.4 1.4 0 0 1 0 2L6 12.5l-3 .7.7-3z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"></path>' +
+      '<path d="M9.8 3.7l2.5 2.5" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"></path>' +
+      "</svg>"
+    );
+  }
+
+  if (iconName === "preview") {
+    return (
+      '<svg class="' +
+      classes +
+      '" viewBox="0 0 16 16" aria-hidden="true" focusable="false">' +
+      '<path d="M1.3 8s2.4-4 6.7-4 6.7 4 6.7 4-2.4 4-6.7 4-6.7-4-6.7-4z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"></path>' +
+      '<circle cx="8" cy="8" r="2.1" fill="none" stroke="currentColor" stroke-width="1.3"></circle>' +
+      "</svg>"
+    );
+  }
+
+  if (iconName === "tags") {
+    return (
+      '<svg class="' +
+      classes +
+      '" viewBox="0 0 16 16" aria-hidden="true" focusable="false">' +
+      '<path d="M8.2 2.2H3.5v4.7l5.4 5.4a1.2 1.2 0 0 0 1.7 0l2.7-2.7a1.2 1.2 0 0 0 0-1.7z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"></path>' +
+      '<circle cx="5.5" cy="5.2" r="0.9" fill="currentColor"></circle>' +
+      "</svg>"
+    );
+  }
+
+  if (iconName === "intent") {
+    return (
+      '<svg class="' +
+      classes +
+      '" viewBox="0 0 16 16" aria-hidden="true" focusable="false">' +
+      '<circle cx="8" cy="8" r="4.6" fill="none" stroke="currentColor" stroke-width="1.3"></circle>' +
+      '<circle cx="8" cy="8" r="1.2" fill="currentColor"></circle>' +
+      '<path d="M8 1.8v2M8 12.2v2M1.8 8h2M12.2 8h2" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"></path>' +
+      "</svg>"
+    );
+  }
+
+  if (iconName === "prompt") {
+    return (
+      '<svg class="' +
+      classes +
+      '" viewBox="0 0 16 16" aria-hidden="true" focusable="false">' +
+      '<path d="M3.2 3.2h9.6v7.1H7.1L4 12.8v-2.5H3.2z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"></path>' +
+      '<path d="M5.6 5.8h4.8M5.6 8h3.4" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"></path>' +
+      "</svg>"
+    );
+  }
+
+  if (iconName === "title") {
+    return (
+      '<svg class="' +
+      classes +
+      '" viewBox="0 0 16 16" aria-hidden="true" focusable="false">' +
+      '<path d="M3 4.1h10M3 8h7.2M3 11.9h10" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"></path>' +
+      "</svg>"
+    );
+  }
+
+  if (iconName === "microsequence" || iconName === "versions") {
+    return (
+      '<svg class="' +
+      classes +
+      '" viewBox="0 0 16 16" aria-hidden="true" focusable="false">' +
+      '<rect x="2.7" y="4.6" width="4.9" height="7.9" rx="0.9" transform="rotate(-16 5.15 8.55)" fill="none" stroke="currentColor" stroke-width="1.05"></rect>' +
+      '<rect x="5.55" y="3.35" width="4.9" height="8.35" rx="0.9" fill="none" stroke="currentColor" stroke-width="1.15"></rect>' +
+      '<rect x="8.3" y="4.55" width="4.9" height="7.9" rx="0.9" transform="rotate(16 10.75 8.5)" fill="none" stroke="currentColor" stroke-width="1.05"></rect>' +
+      "</svg>"
+    );
+  }
+
+  if (iconName === "card") {
+    return (
+      '<svg class="' +
+      classes +
+      '" viewBox="0 0 16 16" aria-hidden="true" focusable="false">' +
+      '<rect x="4.2" y="2.3" width="7.6" height="11.4" rx="1.4" fill="none" stroke="currentColor" stroke-width="1.25"></rect>' +
+      '<path d="M5.8 5.1h4.4M5.8 7.3h4.4M5.8 9.5h2.9" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round"></path>' +
+      "</svg>"
+    );
+  }
+
+  if (iconName === "progress") {
+    return (
+      '<svg class="' +
+      classes +
+      '" viewBox="0 0 16 16" aria-hidden="true" focusable="false">' +
+      '<circle cx="8" cy="8" r="4.8" fill="none" stroke="currentColor" stroke-width="1.1" opacity="0.45"></circle>' +
+      '<path d="M8 3.2a4.8 4.8 0 0 1 4.8 4.8" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"></path>' +
+      '<circle cx="8" cy="8" r="1.05" fill="currentColor"></circle>' +
+      "</svg>"
+    );
+  }
+
+  if (iconName === "module") {
+    return (
+      '<svg class="' +
+      classes +
+      '" viewBox="0 0 16 16" aria-hidden="true" focusable="false">' +
+      '<rect x="3" y="3" width="10" height="3.7" rx="0.9" fill="none" stroke="currentColor" stroke-width="1.15"></rect>' +
+      '<rect x="3" y="9.3" width="10" height="3.7" rx="0.9" fill="none" stroke="currentColor" stroke-width="1.15"></rect>' +
+      "</svg>"
+    );
+  }
+
+  if (iconName === "lesson") {
+    return (
+      '<svg class="' +
+      classes +
+      '" viewBox="0 0 16 16" aria-hidden="true" focusable="false">' +
+      '<path d="M4.2 2.5h5l2.6 2.6v8.4H4.2z" fill="none" stroke="currentColor" stroke-width="1.15" stroke-linejoin="round"></path>' +
+      '<path d="M9.2 2.5v2.6h2.6" fill="none" stroke="currentColor" stroke-width="1.15" stroke-linejoin="round"></path>' +
+      '<path d="M5.7 7.1h4.6M5.7 9.2h4.6M5.7 11.3h3.2" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round"></path>' +
+      "</svg>"
+    );
+  }
+
+  return renderUiIcon("preview", classes);
+}
