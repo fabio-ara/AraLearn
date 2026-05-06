@@ -60,7 +60,7 @@ import {
   writeHistoryStorage,
   writeMicrosequenceVersionStorage
 } from "./lessonEditorStorage.js";
-import { runGeminiAssist } from "../llm/geminiAssist.js";
+import { runGeminiAssist } from "../assist/geminiAssist.js";
 import { getLessonProgressCursor, removeLessonProgressEntries, writeLessonProgressEntry } from "../storage/progressStore.js";
 import { detectJsonExchangeFormat } from "../storage/jsonExchange.js";
 
@@ -1498,8 +1498,8 @@ export function createLessonEditorApp({ root, storage, editor }) {
   }
 
   function stepCard(delta) {
-    // No modo de estudo, o card só pode avançar quando exercícios do card atual estiverem completos
-    // e validados como corretos. Isso espelha o comportamento do AraLearn_old.
+    // No modo de estudo, o card só pode avançar quando os exercícios do card atual
+    // estiverem completos e validados como corretos.
     if (delta > 0) {
       const flowcharts = getCurrentCardRuntimeFlowcharts();
       for (const entry of flowcharts) {
@@ -2143,7 +2143,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
       } else {
         const chosenSlot = destinationSlots.find((item) => item.slotId === result.slotId);
         if (!chosenSlot) {
-          fail("A LLM devolveu um slot inválido para reposicionamento. Informe o problema no pedido e tente novamente.");
+          fail("A resposta da API devolveu uma posição inválida para reposicionamento. Ajuste o pedido e tente novamente.");
         }
 
         applyMicrosequenceReposition(chosenSlot, result.renames);
@@ -3689,7 +3689,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
           ? String(current?.labels?.[targetId] || "").trim()
           : String(current?.texts?.[targetId] || "").trim();
 
-    // No AraLearn_old, clicar novamente numa lacuna já preenchida remove o valor.
+    // Ao clicar novamente numa lacuna já preenchida, o valor atual deve ser removido.
     if (currentValue) {
       setFlowchartPracticeValue(blockKey, kind, targetId, null, {
         closePrompt: false,

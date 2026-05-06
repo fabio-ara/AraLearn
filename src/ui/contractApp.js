@@ -9,7 +9,7 @@ import {
 } from "./projectNavigation.js";
 import { readAssistConfigStorage, writeAssistConfigStorage } from "./assistConfigStorage.js";
 import { createStarterContractCard, sanitizeContractCard } from "../contract/contractCard.js";
-import { runGeminiAssist } from "../llm/geminiAssist.js";
+import { runGeminiAssist } from "../assist/geminiAssist.js";
 
 const ASSIST_MODEL_OPTIONS = [
   { value: "gemini-2.5-flash-lite", label: "Gemini 2.5 Flash-Lite" },
@@ -573,7 +573,7 @@ export function createContractApp({ root, storage, editor }) {
         ...nextCard
       });
       setProject(nextProject);
-      state.statusMessage = "Card revisado pela LLM.";
+      state.statusMessage = "Card revisado pela assistência por API.";
     } catch (error) {
       state.assistDraft.errorMessage = error.message;
     } finally {

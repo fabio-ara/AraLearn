@@ -24,7 +24,7 @@ test("gera tres versoes demo com quantidades variaveis de cards", () => {
   assert.notEqual(versions[2].cards[6].title, versions[2].cards[0].title);
 });
 
-test("migra o demo legado de dezoito versoes identicas para o novo preset", () => {
+test("migra o conjunto anterior de dezoito versões idênticas para o novo preset", () => {
   const microsequence = getExampleMicrosequence();
   const entry = {
     activeVersionId: "legacy-9",

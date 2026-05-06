@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { createExampleProjectDocument } from "../src/ui/exampleProjectDocument.js";
 import { validateContractDocument } from "../src/contract/validateContract.js";
 
-test("seed principal da UI valida no contrato atual", () => {
+test("o conteúdo inicial da interface valida no contrato atual", () => {
   const document = createExampleProjectDocument();
   const result = validateContractDocument(document);
 
@@ -13,7 +13,7 @@ test("seed principal da UI valida no contrato atual", () => {
   assert.equal(result.value.courses.length, 1);
 });
 
-test("seed principal agora mantém um único curso de teste", () => {
+test("o conteúdo inicial agora mantém um único curso de teste", () => {
   const result = validateContractDocument(createExampleProjectDocument());
   assert.equal(result.ok, true);
   const document = result.value;
@@ -26,7 +26,7 @@ test("seed principal agora mantém um único curso de teste", () => {
   assert.equal(course.modules[0].lessons[0].microsequences[0].cards.length, 3);
 });
 
-test("seed principal preserva card oficial com runtime de árvore", () => {
+test("o conteúdo inicial preserva o card oficial com árvore de diretórios", () => {
   const result = validateContractDocument(createExampleProjectDocument());
   assert.equal(result.ok, true);
   const document = result.value;
@@ -45,7 +45,7 @@ test("seed principal preserva card oficial com runtime de árvore", () => {
   assert.equal(treeBlock.nodes[0].children[0].children[2].children[0].name, "galeria");
 });
 
-test("seed principal mantém a árvore apenas como exemplo expositivo", () => {
+test("o conteúdo inicial mantém a árvore apenas como exemplo expositivo", () => {
   const result = validateContractDocument(createExampleProjectDocument());
   assert.equal(result.ok, true);
   const cards = result.value.courses[0].modules[0].lessons[0].microsequences[0].cards;

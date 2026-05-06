@@ -9,7 +9,7 @@ import {
   shouldStoreExampleSeedMetadata
 } from "../src/ui/exampleSeed.js";
 
-test("hidrata seed quando ainda não existe projeto local", () => {
+test("hidrata o conteúdo inicial quando ainda não existe projeto local", () => {
   const seedProject = createExampleProjectDocument();
   const currentSeedSignature = getExampleSeedSignature(seedProject);
 
@@ -24,7 +24,7 @@ test("hidrata seed quando ainda não existe projeto local", () => {
   );
 });
 
-test("hidrata seed apenas quando o projeto atual ainda coincide com a assinatura antiga", () => {
+test("hidrata o conteúdo inicial apenas quando o projeto atual ainda coincide com a assinatura anterior", () => {
   const seedProject = createExampleProjectDocument();
   const storedSeedSignature = getExampleSeedSignature(seedProject);
 
@@ -39,7 +39,7 @@ test("hidrata seed apenas quando o projeto atual ainda coincide com a assinatura
   );
 });
 
-test("nao hidrata seed quando o projeto divergiu ou quando falta assinatura anterior", () => {
+test("não hidrata o conteúdo inicial quando o projeto divergiu ou quando falta assinatura anterior", () => {
   const seedProject = createExampleProjectDocument();
   const changedProject = structuredClone(seedProject);
   changedProject.courses.push({
@@ -87,7 +87,7 @@ test("nao hidrata seed quando o projeto divergiu ou quando falta assinatura ante
   );
 });
 
-test("atualiza metadados do seed quando o projeto atual ainda e exatamente o seed oficial", () => {
+test("atualiza os metadados do conteúdo inicial quando o projeto atual ainda é exatamente o exemplo oficial", () => {
   const seedProject = createExampleProjectDocument();
   const currentSeedSignature = getExampleSeedSignature(seedProject);
 

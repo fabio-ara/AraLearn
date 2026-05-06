@@ -834,7 +834,7 @@ function renderMicrosequenceWorkbenchScreen({
     '">' +
     (hasCards
       ? renderRuntimeBlocks(activeCard, bodyText)
-      : '<p class="runtime-paragraph">Envie o pedido à LLM para materializar uma microssequência.</p>') +
+      : '<p class="runtime-paragraph">Envie o pedido à assistência por API para montar uma microssequência.</p>') +
     "</div>" +
     "</article>" +
     '<p class="chip-muted editor-card-stage-count" aria-label="' +

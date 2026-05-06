@@ -868,7 +868,7 @@ function renderFlowchartPracticePrompt(blockKey, projection, exercise, prompt, r
   }
 
   // Mantém o picker sempre visível sem exigir rolagem do quadro.
-  // Espelha o padrão do AraLearn_old (popup sticky dentro do contêiner do flowchart).
+  // Preserva o popup fixo dentro do contêiner do fluxograma.
   const nodes = Array.isArray(projection?.nodes) ? projection.nodes : [];
   const links = Array.isArray(projection?.links) ? projection.links : [];
 

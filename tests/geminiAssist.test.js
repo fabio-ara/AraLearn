@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { normalizeComposeResult, normalizeEditResult } from "../src/llm/geminiAssist.js";
+import { normalizeComposeResult, normalizeEditResult } from "../src/assist/geminiAssist.js";
 
 test("normaliza composição com tipos explícitos", () => {
   const result = normalizeComposeResult({

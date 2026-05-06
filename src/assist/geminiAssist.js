@@ -352,7 +352,7 @@ export async function runGeminiAssist({
   }
 
   const systemInstruction =
-    "Você escreve conteúdo curto em JSON para o contrato do AraLearn. " +
+    "Você escreve conteúdo em JSON para o contrato do AraLearn. " +
     "Use apenas tipos suportados, campos rasos por tipo e respostas previsíveis. " +
     "Não explique o que está fazendo. Responda apenas no JSON pedido.";
 
