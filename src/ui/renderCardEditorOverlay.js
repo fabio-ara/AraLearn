@@ -56,11 +56,44 @@ const BLOCK_META = {
 
 const PALETTE_TYPES = ["paragraph", "list", "choice", "table", "flowchart"];
 
+function readCardText(card) {
+  if (!card || typeof card !== "object") {
+    return "";
+  }
+
+  if (typeof card.text === "string") {
+    return card.text;
+  }
+  if (typeof card.ask === "string") {
+    return card.ask;
+  }
+  if (typeof card.code === "string") {
+    return card.code;
+  }
+  if (Array.isArray(card.columns) && card.columns.length) {
+    return card.columns.join(" | ");
+  }
+  if (Array.isArray(card.flow) && card.flow.length) {
+    return card.flow
+      .map((step) => {
+        const [kind] = Object.keys(step || {});
+        return kind ? `${kind}: ${step[kind]}` : "";
+      })
+      .filter(Boolean)
+      .join("\n");
+  }
+  if (typeof card.src === "string") {
+    return card.src;
+  }
+
+  return "";
+}
+
 function normalizeBlocks(card) {
   return normalizeCardBlocks({
     title: card?.title || "",
-    text: card?.data?.text || "",
-    blocks: card?.data?.blocks || []
+    text: readCardText(card),
+    blocks: card?.blocks || []
   });
 }
 
@@ -294,6 +327,9 @@ export function renderInlineCardEditor({ cards, card, selection }) {
     '<button class="icon-ghost tiny-icon" type="button" data-action="editor-next-card" ' +
     (nextDisabled ? 'disabled aria-disabled="true"' : "") +
     ' title="Próximo card" aria-label="Próximo card">&rarr;</button>' +
+    "</div>" +
+    '<div class="editor-step-actions">' +
+    '<button class="icon-ghost tiny-icon" type="button" data-action="edit-card" title="Ações do card" aria-label="Ações do card">&#8943;</button>' +
     "</div>" +
     '<div class="editor-step-strip">' +
     renderStepStrip(cards, activeIndex) +

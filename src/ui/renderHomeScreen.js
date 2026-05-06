@@ -1,3 +1,5 @@
+import { readLessonProgressEntry } from "../storage/progressStore.js";
+
 function escapeHtml(value) {
   return String(value)
     .replace(/&/g, "&amp;")
@@ -23,13 +25,15 @@ function countCardsInCourse(course) {
 }
 
 function countCompletedCardsInCourse(course, progress) {
-  const lessons = progress && progress.lessons ? progress.lessons : {};
-
   return (course.modules || []).reduce((total, moduleValue) => {
     return (
       total +
       (moduleValue.lessons || []).reduce((lessonTotal, lesson) => {
-        const entry = lessons[lesson.key];
+        const entry = readLessonProgressEntry(progress, {
+          courseKey: course.key,
+          moduleKey: moduleValue.key,
+          lessonKey: lesson.key
+        });
         const completed = entry && Array.isArray(entry.completedCardKeys) ? entry.completedCardKeys.length : 0;
         return lessonTotal + completed;
       }, 0)
@@ -37,31 +41,23 @@ function countCompletedCardsInCourse(course, progress) {
   }, 0);
 }
 
-function buildHomeCoursePreviews(project, progress) {
-  const primaryCourse = project.course;
-  const primaryPreview = {
-    key: primaryCourse.key,
-    title: primaryCourse.title || "Curso",
-    description: primaryCourse.description || "",
-    moduleCount: (primaryCourse.modules || []).length,
-    lessonCount: countLessons(primaryCourse),
-    completedCount: countCompletedCardsInCourse(primaryCourse, progress),
-    totalCount: countCardsInCourse(primaryCourse),
-    isInteractive: true
-  };
+function formatCount(count, singular, plural) {
+  return `${count} ${count === 1 ? singular : plural}`;
+}
 
-  const secondaryPreview = {
-    key: "course-preview-matematica",
-    title: "Matemática para Informática",
-    description: "Disciplina ofertada em 2026 pelo Prof. João Vianei Tamanini para o curso de Tecnologia em Análise e Desenvolvimento de Sistemas no IFSP Campus São Paulo.",
-    moduleCount: 2,
-    lessonCount: 4,
-    completedCount: 0,
-    totalCount: 63,
-    isInteractive: false
-  };
-
-  return [primaryPreview, secondaryPreview];
+function buildHomeCoursePreviews(project, progress, featuredCourseKey = "") {
+  return (project.courses || []).map((course) => {
+    return {
+      key: course.key,
+      title: course.title || "Curso",
+      description: course.description || "",
+      isFeatured: course.key === featuredCourseKey,
+      moduleCount: (course.modules || []).length,
+      lessonCount: countLessons(course),
+      completedCount: countCompletedCardsInCourse(course, progress),
+      totalCount: countCardsInCourse(course)
+    };
+  });
 }
 
 function renderCoursesTopbar() {
@@ -74,40 +70,41 @@ function renderCoursesTopbar() {
     '<span class="brand-text">AraLearn</span>' +
     "</span>" +
     "</h1>" +
-    '<button class="icon-ghost" type="button" data-action="edit-course" title="Ações" aria-label="Ações">&#9776;</button>' +
+    '<button class="icon-ghost" type="button" data-action="open-home-actions" title="Ações" aria-label="Ações">&#9776;</button>' +
     "</header>"
   );
 }
 
-export function renderHomeScreen({ project, progress }) {
-  const courses = buildHomeCoursePreviews(project, progress)
+export function renderHomeScreen({ project, progress, selection, featuredCourseKey = "" }) {
+  const courses = buildHomeCoursePreviews(project, progress, featuredCourseKey)
     .map((course) => {
-      const actionButton =
-        course.isInteractive
-          ? '<button class="open-main" type="button" data-action="open-course" title="Abrir curso" aria-label="Abrir curso">&#9654;</button>'
-          : '<button class="open-main" type="button" disabled aria-disabled="true" title="Prévia de curso" aria-label="Prévia de curso">&#9654;</button>';
-
       return (
-        '<article class="clean-card course-card progress-card">' +
+        '<article class="clean-card course-card progress-card' +
+        (course.isFeatured ? " course-card-featured" : "") +
+        '">' +
         '<div class="course-copy">' +
-        '<h3 class="card-title">' +
-        escapeHtml(course.title || "Curso") +
-        "</h3>" +
-        (course.description ? '<p class="card-subtitle">' + escapeHtml(course.description) + "</p>" : "") +
+        '<h3 class="card-title' + (course.isFeatured ? " card-title-featured" : "") + '">' + escapeHtml(course.title || "Curso") + "</h3>" +
+        (course.description
+          ? '<p class="card-subtitle">' + escapeHtml(course.description) + "</p>"
+          : "") +
         '<p class="muted tiny progress-meta">' +
         "Progresso: " +
         String(course.completedCount) +
         "/" +
         String(course.totalCount) +
         " · " +
-        String(course.moduleCount) +
-        " módulos · " +
-        String(course.lessonCount) +
-        " lições</p>" +
+        formatCount(course.moduleCount, "módulo", "módulos") +
+        " · " +
+        formatCount(course.lessonCount, "lição", "lições") +
+        "</p>" +
         "</div>" +
         '<div class="course-actions">' +
-        '<button class="icon-ghost corner-btn" type="button" data-action="edit-course" title="Ações do curso" aria-label="Ações do curso">&ctdot;</button>' +
-        actionButton +
+        '<button class="icon-ghost corner-btn" type="button" data-action="open-course-actions" data-course-key="' +
+        escapeHtml(course.key) +
+        '" title="Ações do curso" aria-label="Ações do curso">&ctdot;</button>' +
+        '<button class="open-main" type="button" data-action="open-course" data-course-key="' +
+        escapeHtml(course.key) +
+        '" title="Abrir curso" aria-label="Abrir curso">&#9654;</button>' +
         "</div>" +
         "</article>"
       );

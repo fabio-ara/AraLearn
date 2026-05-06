@@ -1,9 +1,9 @@
-import { parseProjectDocument, serializeProjectDocument } from "./projectStore.js";
 import { normalizeProgressDocument, parseProgressDocument, serializeProgressDocument } from "./progressStore.js";
+import { parseProjectDocument, serializeProjectDocument } from "./projectStore.js";
 
 const DEFAULT_KEYS = {
-  project: "aralearn.project.v1",
-  progress: "aralearn.progress.v1"
+  project: "aralearn.project",
+  progress: "aralearn.progress"
 };
 
 function parseEnvelopeJson(rawJson) {
@@ -23,15 +23,15 @@ function normalizeImportEnvelope(parsed) {
     throw new Error("Pacote importado inválido: raiz deve ser um objeto.");
   }
 
-  if (parsed.format !== "aralearn.storage.v1") {
-    throw new Error('Pacote importado inválido: formato esperado "aralearn.storage.v1".');
+  if (parsed.format !== "aralearn.storage") {
+    throw new Error('Pacote importado inválido: formato esperado "aralearn.storage".');
   }
 
   const project = parseProjectDocument(JSON.stringify(parsed.project));
   const progress = normalizeProgressDocument(parsed.progress);
 
   return {
-    format: "aralearn.storage.v1",
+    format: "aralearn.storage",
     project,
     progress
   };
@@ -50,8 +50,7 @@ export function createProjectStorage(store, keys = DEFAULT_KEYS) {
     },
 
     loadProject() {
-      const rawValue = store.getItem(keys.project);
-      return parseProjectDocument(rawValue);
+      return parseProjectDocument(store.getItem(keys.project));
     },
 
     saveProgress(progressDocument) {
@@ -61,8 +60,7 @@ export function createProjectStorage(store, keys = DEFAULT_KEYS) {
     },
 
     loadProgress() {
-      const rawValue = store.getItem(keys.progress);
-      return parseProgressDocument(rawValue);
+      return parseProgressDocument(store.getItem(keys.progress));
     },
 
     clearProgress() {
@@ -70,15 +68,12 @@ export function createProjectStorage(store, keys = DEFAULT_KEYS) {
     },
 
     exportJson() {
-      const project = this.loadProject();
-      const progress = this.loadProgress();
-
       return JSON.stringify(
         {
-          format: "aralearn.storage.v1",
+          format: "aralearn.storage",
           exportedAt: new Date().toISOString(),
-          project,
-          progress
+          project: this.loadProject(),
+          progress: this.loadProgress()
         },
         null,
         2
@@ -87,10 +82,8 @@ export function createProjectStorage(store, keys = DEFAULT_KEYS) {
 
     importJson(rawJson) {
       const envelope = normalizeImportEnvelope(parseEnvelopeJson(rawJson));
-
       this.saveProject(envelope.project);
       this.saveProgress(envelope.progress);
-
       return {
         project: envelope.project,
         progress: envelope.progress

@@ -2,37 +2,61 @@
 
 AraLearn é um aplicativo local-first para estudo, autoria e organização de microssequências de aprendizagem.
 
+## O que o projeto é
+
+O projeto reúne a mesma base local para autoria, organização e leitura de microssequências. O conteúdo fica estruturado em cursos, módulos, lições, microssequências e cards, com persistência local e contrato público próprio para troca de dados.
+
 ## Estado atual
 
-Este repositório contém a base pública inicial do projeto.
+- contrato público principal `aralearn.contract`
+- pipeline própria do contrato principal para validar, compilar e renderizar
+- núcleo próprio do contrato principal para storage, editor, seed e LLM, sem compatibilidade com `intent + data`
+- bootstrap web principal já aponta para a casca principal do produto
+- persistência local separada entre projeto e progresso
+- edição manual de microssequências e cards integrada ao motor editorial
+- casca navegável cobrindo `curso -> módulo -> lição -> microssequência -> cards`
+- reorganização estrutural para refletir múltiplos cursos reais no mesmo projeto
+- geração, revisão e reposicionamento assistidos por LLM via API na camada editorial
 
-Nesta etapa, o projeto já define o contrato autoral `aralearn.intent.v1` e a validação estrutural mínima desse formato.
-O repositório também já inclui a pipeline mínima do motor para carregar, validar, normalizar e compilar esse contrato.
-Há também uma camada inicial de renderização HTML baseada apenas no modelo compilado.
-Nesta etapa, a persistência local simples já fica atrás de uma camada própria, separando projeto e progresso.
-Também já existe uma camada inicial de edição manual de microssequências e cards, separada da renderização e da persistência.
-O projeto agora também conta com uma casca navegável provisória da interface local, cobrindo a hierarquia `curso -> módulo -> lição -> microssequência -> cards`.
-Essa casca já inclui leitura de cards, painel provisório da microssequência para interação com LLM por API e uma UI provisória de editor de cards.
+## Como o conteúdo se organiza
 
-Importante: a interface atual existe para validação de fluxo e integração local. Ela ainda não representa a semântica final do projeto.
+```text
+Projeto
+  -> Cursos
+    -> Módulos
+      -> Lições
+        -> Microssequências
+          -> Cards
+```
 
-## Estrutura
-
-- `docs/` documentação pública
-- `src/` código-fonte
-- `public/` arquivos estáticos públicos
-- `tests/` testes automatizados da fase atual
+Essa hierarquia é a mesma usada pelo contrato público, pelo motor interno e pela interface local.
 
 ## Documentação pública
 
-- `docs/aralearn.intent.v1.md`
-- `docs/examples/`
-- `src/core/`
-- `src/model/`
-- `src/render/`
-- `src/storage/`
-- `src/editor/`
-- `src/ui/`
+- [Visão geral da documentação](./docs/README.md)
+- [Contrato público atual](./docs/aralearn-contract.md)
+- [Exemplos JSON](./docs/examples/)
+- [Histórico de versões](./CHANGELOG.md)
+
+## JSONs do produto
+
+- `aralearn.contract`: contrato público de cursos, usado para exportar cursos isolados e também aceito na ação única `Importar`.
+- `aralearn.storage`: backup completo do aplicativo, também aceito na mesma ação `Importar`, restaurando projeto e progresso local juntos.
+
+## Estrutura principal do repositório
+
+- `public/`: entrada web, assets e estilos da interface local
+- `src/`: contrato, motor, persistência, editor e UI
+- `tests/`: suíte automatizada
+- `scripts/`: utilitários de desenvolvimento, como servidor local
+- `docs/`: documentação pública e exemplos
+
+## Execução local
+
+```powershell
+npm install
+npm start
+```
 
 ## Validação
 
@@ -43,4 +67,4 @@ npm run validate:example
 
 ## Próximos passos
 
-As próximas fases vão definir contrato, motor e interface do novo produto.
+As próximas iterações devem aprofundar os fluxos editoriais assistidos, consolidar os contratos públicos e amadurecer a interface local.
