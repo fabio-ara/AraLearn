@@ -121,6 +121,53 @@ export function readLessonProgressEntry(progressDocument, reference) {
   return null;
 }
 
+export function getLessonProgressCursor(progressDocument, reference, totalCards = 0) {
+  const entry = readLessonProgressEntry(progressDocument, reference);
+  if (!entry) {
+    return 0;
+  }
+
+  const maxIndex = Math.max(0, Number(totalCards || 0) - 1);
+  const safeCursor = Number.isInteger(entry.cursor) && entry.cursor >= 0 ? entry.cursor : 0;
+  return Math.max(0, Math.min(safeCursor, maxIndex));
+}
+
+export function writeLessonProgressEntry(progressDocument, reference, cards = [], reachedIndex = 0) {
+  const normalized = normalizeProgressDocument(progressDocument);
+  const normalizedCards = Array.isArray(cards) ? cards.filter((card) => card && typeof card.key === "string" && card.key.trim() !== "") : [];
+  if (!normalizedCards.length) {
+    return normalized;
+  }
+
+  const pathKey = buildLessonProgressKey(reference);
+  if (!pathKey) {
+    return normalized;
+  }
+
+  const nextLessons = { ...(normalized.lessons || {}) };
+  const previous = readLessonProgressEntry(normalized, reference);
+  const previousCursor = previous && Number.isInteger(previous.cursor) && previous.cursor >= 0 ? previous.cursor : 0;
+  const safeReachedIndex = Math.max(0, Math.min(Number.isInteger(reachedIndex) ? reachedIndex : 0, normalizedCards.length - 1));
+  const furthestCursor = Math.max(previousCursor, safeReachedIndex);
+
+  nextLessons[pathKey] = {
+    cursor: furthestCursor,
+    completedCardKeys: normalizedCards.slice(0, furthestCursor + 1).map((card) => card.key.trim()),
+    updatedAt: new Date().toISOString()
+  };
+
+  for (const legacyKey of listLessonProgressKeys(reference)) {
+    if (legacyKey && legacyKey !== pathKey) {
+      delete nextLessons[legacyKey];
+    }
+  }
+
+  return {
+    version: 1,
+    lessons: nextLessons
+  };
+}
+
 export function removeLessonProgressEntries(progressDocument, lessonReferences = []) {
   const normalized = normalizeProgressDocument(progressDocument);
   const blockedKeys = new Set(

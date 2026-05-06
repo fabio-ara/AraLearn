@@ -28,7 +28,7 @@ export function renderAssistConfigOverlay({ model, apiKey, modelOptions = [] }) 
     '<header class="editor-head">' +
     '<button class="icon-ghost" type="button" data-action="assist-config-close" title="Fechar" aria-label="Fechar">&times;</button>' +
     '<p class="editor-title">Configuração da API</p>' +
-    '<button class="icon-ghost" type="button" data-action="assist-config-save" title="Salvar" aria-label="Salvar">&#10003;</button>' +
+    '<div class="topbar-space" aria-hidden="true"></div>' +
     "</header>" +
     '<div class="editor-body">' +
     '<div class="field">' +

@@ -3,9 +3,11 @@ import assert from "node:assert/strict";
 
 import {
   buildLessonProgressKey,
+  getLessonProgressCursor,
   normalizeProgressDocument,
   readLessonProgressEntry,
-  removeLessonProgressEntries
+  removeLessonProgressEntries,
+  writeLessonProgressEntry
 } from "../src/storage/progressStore.js";
 
 test("gera chave de progresso por caminho completo da lição", () => {
@@ -73,4 +75,19 @@ test("remove apenas o progresso das lições informadas", () => {
   ]);
 
   assert.deepEqual(Object.keys(nextProgress.lessons), []);
+});
+
+test("grava progresso cumulativo preservando o card mais avançado", () => {
+  const cards = [{ key: "card-1" }, { key: "card-2" }, { key: "card-3" }, { key: "card-4" }];
+  const reference = {
+    courseKey: "course-a",
+    moduleKey: "module-a",
+    lessonKey: "lesson-a"
+  };
+
+  const afterAdvance = writeLessonProgressEntry(null, reference, cards, 2);
+  const afterBacktrack = writeLessonProgressEntry(afterAdvance, reference, cards, 1);
+
+  assert.equal(getLessonProgressCursor(afterBacktrack, reference, cards.length), 2);
+  assert.deepEqual(readLessonProgressEntry(afterBacktrack, reference)?.completedCardKeys, ["card-1", "card-2", "card-3"]);
 });

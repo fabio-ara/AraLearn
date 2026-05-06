@@ -282,11 +282,197 @@ export function importCourses(document, input = {}) {
   return ensureValidDocument(nextDocument);
 }
 
+export function importModules(document, input = {}) {
+  const nextDocument = clone(document);
+  const course = findCourse(nextDocument, input.courseKey);
+  const importedDocument = ensureValidDocument(input.document);
+  const importedModules = importedDocument.courses.flatMap((entry) => entry.modules || []);
+
+  if (!importedModules.length) {
+    fail("Documento importado sem módulos.");
+  }
+
+  const usedKeys = collectSiblingKeys(course.modules || []);
+  importedModules.forEach((moduleValue) => {
+    const importedModule = clone(moduleValue);
+    const preferredKey = typeof importedModule.key === "string" && importedModule.key.trim() ? importedModule.key.trim() : "";
+    if (preferredKey && !usedKeys.has(preferredKey)) {
+      importedModule.key = preferredKey;
+      usedKeys.add(preferredKey);
+    } else {
+      importedModule.key = uniqueKey(importedModule.title || "Módulo importado", usedKeys, "module");
+    }
+    course.modules.push(importedModule);
+  });
+
+  return ensureValidDocument(nextDocument);
+}
+
+export function importLessons(document, input = {}) {
+  const nextDocument = clone(document);
+  const { moduleValue } = findModule(nextDocument, input.courseKey, input.moduleKey);
+  const importedDocument = ensureValidDocument(input.document);
+  const importedLessons = importedDocument.courses.flatMap((course) =>
+    (course.modules || []).flatMap((moduleItem) => moduleItem.lessons || [])
+  );
+
+  if (!importedLessons.length) {
+    fail("Documento importado sem lições.");
+  }
+
+  const usedKeys = collectSiblingKeys(moduleValue.lessons || []);
+  importedLessons.forEach((lesson) => {
+    const importedLesson = clone(lesson);
+    const preferredKey = typeof importedLesson.key === "string" && importedLesson.key.trim() ? importedLesson.key.trim() : "";
+    if (preferredKey && !usedKeys.has(preferredKey)) {
+      importedLesson.key = preferredKey;
+      usedKeys.add(preferredKey);
+    } else {
+      importedLesson.key = uniqueKey(importedLesson.title || "Lição importada", usedKeys, "lesson");
+    }
+    moduleValue.lessons.push(importedLesson);
+  });
+
+  return ensureValidDocument(nextDocument);
+}
+
+export function importMicrosequences(document, input = {}) {
+  const nextDocument = clone(document);
+  const { lesson } = findLesson(nextDocument, input.courseKey, input.moduleKey, input.lessonKey);
+  const importedDocument = ensureValidDocument(input.document);
+  const importedMicrosequences = importedDocument.courses.flatMap((course) =>
+    (course.modules || []).flatMap((moduleItem) =>
+      (moduleItem.lessons || []).flatMap((lessonItem) => lessonItem.microsequences || [])
+    )
+  );
+
+  if (!importedMicrosequences.length) {
+    fail("Documento importado sem microssequências.");
+  }
+
+  const usedKeys = collectSiblingKeys(lesson.microsequences || []);
+  importedMicrosequences.forEach((entry) => {
+    const importedMicrosequence = clone(entry);
+    const preferredKey =
+      typeof importedMicrosequence.key === "string" && importedMicrosequence.key.trim()
+        ? importedMicrosequence.key.trim()
+        : "";
+
+    if (preferredKey && !usedKeys.has(preferredKey)) {
+      importedMicrosequence.key = preferredKey;
+      usedKeys.add(preferredKey);
+    } else {
+      importedMicrosequence.key = uniqueKey(importedMicrosequence.title || "Microssequência importada", usedKeys, "microsequence");
+    }
+
+    if (importedMicrosequence.title) {
+      importedMicrosequence.title = buildUniqueMicrosequenceTitle(lesson, importedMicrosequence.title, null);
+    }
+
+    lesson.microsequences.push(importedMicrosequence);
+  });
+
+  return ensureValidDocument(nextDocument);
+}
+
 export function exportCourseDocument(document, input) {
   const course = findCourse(document, input.courseKey);
   return ensureValidDocument({
     contract: "aralearn.contract",
     courses: [clone(course)]
+  });
+}
+
+export function exportModuleDocument(document, input) {
+  const course = findCourse(document, input.courseKey);
+  const moduleValue = course.modules.find((item) => item.key === input.moduleKey);
+  if (!moduleValue) {
+    fail(`Módulo não encontrado: "${input.moduleKey}".`);
+  }
+
+  return ensureValidDocument({
+    contract: "aralearn.contract",
+    courses: [
+      {
+        key: course.key,
+        title: course.title,
+        ...(course.description ? { description: course.description } : {}),
+        modules: [clone(moduleValue)]
+      }
+    ]
+  });
+}
+
+export function exportLessonDocument(document, input) {
+  const course = findCourse(document, input.courseKey);
+  const moduleValue = course.modules.find((item) => item.key === input.moduleKey);
+  if (!moduleValue) {
+    fail(`Módulo não encontrado: "${input.moduleKey}".`);
+  }
+  const lesson = moduleValue.lessons.find((item) => item.key === input.lessonKey);
+  if (!lesson) {
+    fail(`Lição não encontrada: "${input.lessonKey}".`);
+  }
+
+  return ensureValidDocument({
+    contract: "aralearn.contract",
+    courses: [
+      {
+        key: course.key,
+        title: course.title,
+        ...(course.description ? { description: course.description } : {}),
+        modules: [
+          {
+            key: moduleValue.key,
+            title: moduleValue.title,
+            ...(moduleValue.description ? { description: moduleValue.description } : {}),
+            lessons: [clone(lesson)]
+          }
+        ]
+      }
+    ]
+  });
+}
+
+export function exportMicrosequenceDocument(document, input) {
+  const course = findCourse(document, input.courseKey);
+  const moduleValue = course.modules.find((item) => item.key === input.moduleKey);
+  if (!moduleValue) {
+    fail(`Módulo não encontrado: "${input.moduleKey}".`);
+  }
+  const lesson = moduleValue.lessons.find((item) => item.key === input.lessonKey);
+  if (!lesson) {
+    fail(`Lição não encontrada: "${input.lessonKey}".`);
+  }
+  const microsequence = lesson.microsequences.find((item) => item.key === input.microsequenceKey);
+  if (!microsequence) {
+    fail(`Microssequência não encontrada: "${input.microsequenceKey}".`);
+  }
+
+  return ensureValidDocument({
+    contract: "aralearn.contract",
+    courses: [
+      {
+        key: course.key,
+        title: course.title,
+        ...(course.description ? { description: course.description } : {}),
+        modules: [
+          {
+            key: moduleValue.key,
+            title: moduleValue.title,
+            ...(moduleValue.description ? { description: moduleValue.description } : {}),
+            lessons: [
+              {
+                key: lesson.key,
+                title: lesson.title,
+                ...(lesson.description ? { description: lesson.description } : {}),
+                microsequences: [clone(microsequence)]
+              }
+            ]
+          }
+        ]
+      }
+    ]
   });
 }
 
@@ -632,8 +818,32 @@ export function createEditorSession(storage) {
       storage.saveProject(nextDocument);
       return nextDocument;
     },
+    importModules(input) {
+      const nextDocument = importModules(storage.loadProject(), input);
+      storage.saveProject(nextDocument);
+      return nextDocument;
+    },
+    importLessons(input) {
+      const nextDocument = importLessons(storage.loadProject(), input);
+      storage.saveProject(nextDocument);
+      return nextDocument;
+    },
+    importMicrosequences(input) {
+      const nextDocument = importMicrosequences(storage.loadProject(), input);
+      storage.saveProject(nextDocument);
+      return nextDocument;
+    },
     exportCourseDocument(input) {
       return exportCourseDocument(storage.loadProject(), input);
+    },
+    exportModuleDocument(input) {
+      return exportModuleDocument(storage.loadProject(), input);
+    },
+    exportLessonDocument(input) {
+      return exportLessonDocument(storage.loadProject(), input);
+    },
+    exportMicrosequenceDocument(input) {
+      return exportMicrosequenceDocument(storage.loadProject(), input);
     },
     updateCourse(input) {
       const nextDocument = updateCourse(storage.loadProject(), input);
