@@ -297,7 +297,7 @@ function renderDraftCourseScreen({ course, draftMicrosequences }) {
       title: course.title || "Curso",
       canGoBack: true,
       backTitle: "Menu principal",
-      editAction: "edit-course",
+      editAction: "open-course-screen-actions",
       editTitle: "Ações",
       editIcon: "&#9776;"
     }) +
@@ -316,7 +316,7 @@ function renderDraftCourseScreen({ course, draftMicrosequences }) {
     '<section class="clean-card module-card progress-card">' +
     '<header class="module-head">' +
     '<h3 class="card-title">Fila de rascunhos</h3>' +
-    '<button class="icon-ghost" type="button" data-action="edit-lesson" data-module-key="' +
+    '<button class="icon-ghost" type="button" data-action="open-lesson-actions" data-module-key="' +
     escapeHtml(course.modules?.[0]?.key || "") +
     '" data-lesson-key="' +
     escapeHtml(course.modules?.[0]?.lessons?.[0]?.key || "") +
@@ -366,7 +366,7 @@ function renderCourseScreen({ course, progress }) {
             }) +
             "</div>" +
             '<div class="lesson-actions">' +
-            '<button class="icon-ghost" type="button" data-action="edit-lesson" data-module-key="' +
+            '<button class="icon-ghost" type="button" data-action="open-lesson-actions" data-module-key="' +
             escapeHtml(moduleValue.key) +
             '" data-lesson-key="' +
             escapeHtml(lesson.key) +
@@ -391,7 +391,7 @@ function renderCourseScreen({ course, progress }) {
         '<h3 class="card-title">' +
         escapeHtml(moduleValue.title || moduleValue.key) +
         "</h3>" +
-        '<button class="icon-ghost" type="button" data-action="edit-module" data-module-key="' +
+        '<button class="icon-ghost" type="button" data-action="open-module-actions" data-module-key="' +
         escapeHtml(moduleValue.key) +
         '" title="Ações do módulo" aria-label="Ações do módulo">&ctdot;</button>' +
         "</header>" +
@@ -414,7 +414,7 @@ function renderCourseScreen({ course, progress }) {
       title: course.title || "Curso",
       canGoBack: true,
       backTitle: "Menu principal",
-      editAction: "edit-course",
+      editAction: "open-course-screen-actions",
       editTitle: "Ações",
       editIcon: "&#9776;"
     }) +
@@ -456,7 +456,7 @@ function renderLessonScreenView({ course, lesson, moduleValue, progress }) {
         }) +
         "</div>" +
         '<div class="microsequence-actions">' +
-        '<button class="icon-ghost tiny-icon" type="button" data-action="open-microsequence" data-microsequence-key="' +
+        '<button class="icon-ghost tiny-icon" type="button" data-action="open-microsequence-actions" data-microsequence-key="' +
         escapeHtml(microsequence.key) +
         '" title="Ações da microssequência" aria-label="Ações da microssequência">&#8943;</button>' +
         '<button class="open-mini" type="button" data-action="play-microsequence" data-microsequence-key="' +
@@ -473,9 +473,9 @@ function renderLessonScreenView({ course, lesson, moduleValue, progress }) {
     renderTopbar({
       title: lesson.title || "Lição",
       canGoBack: true,
-      editAction: "edit-lesson",
-      editTitle: "Ações da lição",
-      editIcon: "&#8943;"
+      editAction: "open-lesson-screen-actions",
+      editTitle: "Ações",
+      editIcon: "&#9776;"
     }) +
     '<main class="screen-content lesson-structure-screen">' +
     '<section class="context-band lesson-context-band">' +
@@ -685,6 +685,27 @@ function renderMicrosequenceWorkbenchScreen({
   const cardStrip = hasCards
     ? renderEditorCardStrip(visibleCards, safeIndex)
     : '<div class="editor-step-empty">Os cards aparecerão aqui após o envio do prompt.</div>';
+  const versionTabs = (editorSupport.microsequenceVersions || [])
+    .map((item, index) => {
+      return (
+        '<button class="editor-version-tab' +
+        (item.id === editorSupport.activeMicrosequenceVersionId ? " active" : "") +
+        '" type="button" role="tab" aria-selected="' +
+        (item.id === editorSupport.activeMicrosequenceVersionId ? "true" : "false") +
+        '" title="Aba ' +
+        String(index + 1) +
+        '" aria-label="Aba ' +
+        String(index + 1) +
+        '" data-action="select-microsequence-version" data-version-id="' +
+        escapeHtml(item.id) +
+        '">' +
+        '<span class="editor-version-tab-label">' +
+        String(index + 1) +
+        "</span>" +
+        "</button>"
+      );
+    })
+    .join("");
   const previewBody = hasCards
     ? '<article class="card-portrait-body card-portrait-sheet runtime-card-sheet">' +
       '<div class="runtime-card-title">' +
@@ -706,10 +727,7 @@ function renderMicrosequenceWorkbenchScreen({
     renderTopbar({
       title,
       canGoBack: true,
-      backTitle,
-      editAction: "edit-microsequence",
-      editTitle: "Ações da microssequência",
-      editIcon: "&#8943;"
+      backTitle
     }) +
     '<main class="screen-content microsequence-generator-screen">' +
     '<section class="microsequence-assist-panel">' +
@@ -718,13 +736,7 @@ function renderMicrosequenceWorkbenchScreen({
     '<input data-field="assist-microsequence-title" type="text" value="' +
     escapeHtml(microsequence?.title || "") +
     '">' +
-    "</div>" +
-    '<div class="assist-toolbar">' +
-    '<button class="icon-ghost tiny-icon" type="button" data-action="open-version-history" title="Versões do card" aria-label="Versões do card"' +
-    (hasCards ? "" : ' disabled aria-disabled="true"') +
-    '>&#8635;</button>' +
-    "</div>" +
-    "</section>" +
+    "</div></section>" +
     '<section class="editor-step-nav">' +
     '<div class="editor-step-nav-head">' +
     '<button class="icon-ghost tiny-icon" type="button" data-action="editor-prev-card" ' +
@@ -736,6 +748,18 @@ function renderMicrosequenceWorkbenchScreen({
     '<button class="icon-ghost tiny-icon" type="button" data-action="editor-next-card" ' +
     (!hasCards || safeIndex >= visibleCards.length - 1 ? 'disabled aria-disabled="true"' : "") +
     ' title="Próximo card" aria-label="Próximo card">&rarr;</button>' +
+    "</div>" +
+    '<div class="editor-version-strip-wrap">' +
+    '<div class="editor-version-tabbar">' +
+    '<div class="editor-version-strip" data-version-strip="true" role="tablist" aria-label="Abas de versão da microssequência">' +
+    versionTabs +
+    "</div>" +
+    "</div>" +
+    '<div class="editor-version-controls">' +
+    '<button class="icon-ghost tiny-icon version-delete-btn" type="button" data-action="delete-microsequence-version" title="Excluir aba atual" aria-label="Excluir aba atual"' +
+    ((editorSupport.microsequenceVersions || []).length <= 1 ? ' disabled aria-disabled="true"' : "") +
+    '>&#128465;</button>' +
+    "</div>" +
     "</div>" +
     '<div class="editor-step-strip">' +
     cardStrip +

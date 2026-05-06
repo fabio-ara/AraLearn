@@ -323,10 +323,11 @@ button {
 
 .microsequence-actions {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: center;
   gap: 8px;
-  min-width: 108px;
+  min-width: 48px;
   flex: 0 0 auto;
   align-self: center;
 }
@@ -617,6 +618,125 @@ button {
   padding-bottom: 2px;
 }
 
+.editor-version-strip-wrap {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 6px;
+}
+
+.editor-version-tabbar {
+  position: relative;
+  padding-top: 6px;
+  min-width: 0;
+}
+
+.editor-version-tabbar::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-bottom: 1px solid rgba(111, 88, 62, 0.92);
+}
+
+.editor-version-strip {
+  display: flex;
+  gap: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  scroll-behavior: smooth;
+  scroll-snap-type: x proximity;
+  padding: 0;
+}
+
+.editor-version-strip::-webkit-scrollbar {
+  display: none;
+}
+
+.editor-version-tab {
+  position: relative;
+  z-index: 1;
+  flex: 0 0 auto;
+  scroll-snap-align: start;
+  min-width: 42px;
+  width: 42px;
+  max-width: 42px;
+  min-height: 38px;
+  margin-right: -1px;
+  padding: 7px 0 6px;
+  border: 1px solid rgba(111, 88, 62, 0.88);
+  border-bottom: 0;
+  border-radius: 14px 14px 0 0;
+  background: linear-gradient(180deg, rgba(39, 31, 24, 0.98), rgba(23, 18, 14, 0.98));
+  color: #cdbba0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  cursor: pointer;
+  box-shadow: inset 0 1px 0 rgba(255, 240, 217, 0.04);
+}
+
+.editor-version-tab:hover {
+  background: linear-gradient(180deg, rgba(50, 39, 29, 0.98), rgba(29, 23, 17, 0.99));
+  color: #f0dcc0;
+}
+
+.editor-version-tab.active {
+  z-index: 2;
+  background: linear-gradient(180deg, rgba(73, 57, 33, 0.99), rgba(46, 35, 22, 0.99));
+  border-color: rgba(214, 174, 96, 0.86);
+  color: #fff0d4;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 241, 214, 0.09),
+    0 -1px 0 rgba(214, 174, 96, 0.14),
+    0 0 0 1px rgba(246, 214, 150, 0.34);
+}
+
+.editor-version-tab.active::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  background: rgba(46, 35, 22, 0.99);
+}
+
+.editor-version-tab-label {
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.editor-version-controls {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding-bottom: 2px;
+}
+
+.version-delete-btn {
+  color: #e37f7f;
+  overflow: hidden;
+  line-height: 1;
+  padding: 0;
+}
+
+.version-delete-btn {
+  border-color: rgba(161, 70, 70, 0.85);
+  background: rgba(47, 17, 17, 0.95);
+  font-size: 0.95rem;
+}
+
+.version-delete-btn:hover:not(:disabled) {
+  color: #ffb0b0;
+  background: rgba(70, 22, 22, 0.98);
+}
+
 .editor-step-nav-head p {
   text-align: center;
 }
@@ -648,41 +768,6 @@ button {
 .editor-step-nav .icon-ghost:disabled {
   opacity: 0.45;
   cursor: not-allowed;
-}
-
-.editor-step-chip {
-  min-height: 38px;
-  border-radius: 999px;
-  border: 1px solid rgba(111, 88, 62, 0.88);
-  background: linear-gradient(180deg, rgba(34, 27, 20, 0.98), rgba(22, 17, 13, 0.99));
-  color: var(--text);
-  padding: 7px 10px;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  white-space: nowrap;
-  cursor: pointer;
-}
-
-.editor-step-chip:hover {
-  background: linear-gradient(180deg, rgba(43, 33, 24, 0.98), rgba(28, 22, 16, 0.99));
-}
-
-.editor-step-chip.active {
-  border-color: var(--accent);
-  background: rgba(60, 46, 25, 0.94);
-}
-
-.editor-step-chip .chip-index {
-  font-size: 0.68rem;
-  color: var(--muted);
-}
-
-.editor-step-chip .chip-text {
-  font-size: var(--type-sm);
-  max-width: 170px;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .mini-card {

@@ -175,13 +175,38 @@ function getRepositionSchema() {
   };
 }
 
-function buildComposePrompt({ microsequence, dependencyTitles, promptText }) {
+function summarizeMicrosequenceCards(microsequence) {
+  return (microsequence?.cards || [])
+    .map((card, index) => {
+      const body =
+        normalizeText(card?.text) ||
+        normalizeText(card?.ask) ||
+        normalizeText(card?.code) ||
+        normalizeText(card?.title) ||
+        card?.type ||
+        "card";
+      return `${index + 1}. ${body}`;
+    })
+    .join(" | ");
+}
+
+function buildComposePrompt({ microsequence, dependencyTitles, promptText, priorMicrosequences = [] }) {
   const title = normalizeText(microsequence?.title) || "Microssequência atual";
   const tags = dependencyTitles.length ? dependencyTitles.join(", ") : "sem tags";
+  const priorContext = priorMicrosequences.length
+    ? [
+        "Iterações anteriores disponíveis como contexto:",
+        ...priorMicrosequences.map((entry, index) => {
+          const entryTags = Array.isArray(entry?.tags) && entry.tags.length ? entry.tags.join(", ") : "sem tags";
+          return `- Aba ${index + 1}: ${normalizeText(entry?.title) || normalizeText(entry?.label) || "Microssequência"} | tags: ${entryTags} | cards: ${summarizeMicrosequenceCards(entry)}`;
+        })
+      ].join("\n")
+    : "Iterações anteriores disponíveis como contexto: nenhuma.";
 
   return [
     `Microssequência atual: ${title}`,
     `Tags explícitas: ${tags}`,
+    priorContext,
     "Tarefa: gerar uma microssequência no contrato do AraLearn.",
     "Restrições:",
     "- gere entre 3 e 5 cards;",
@@ -308,6 +333,7 @@ export async function runGeminiAssist({
   microsequence,
   card,
   dependencyTitles = [],
+  priorMicrosequences = [],
   destinationSlots = [],
   promptText
 }) {
@@ -334,7 +360,7 @@ export async function runGeminiAssist({
   if (mode === "compose-microsequence") {
     body = makeRequestBody({
       systemInstruction,
-      prompt: buildComposePrompt({ microsequence, dependencyTitles, promptText: trimmedPrompt }),
+      prompt: buildComposePrompt({ microsequence, dependencyTitles, priorMicrosequences, promptText: trimmedPrompt }),
       schema: getComposeSchema(),
       temperature: 0.3,
       maxOutputTokens: 2048
