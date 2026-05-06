@@ -2,6 +2,20 @@
 
 Todas as mudanças relevantes deste projeto serão registradas aqui.
 
+## [0.9.22] - 2026-05-06
+
+### Changed
+
+- a interface inicial passa a destacar o progresso do curso, o contexto do leitor e a navegação da microssequência com menos ruído textual e hierarquia visual mais clara
+- a faixa de versões da microssequência separa a navegação entre versões e cards, com overflow controlado e setas restritas aos mini-cards
+- o painel da microssequência unifica prévia e edição na mesma superfície, mantendo altura estável e rolagem apenas nas áreas de conteúdo
+- a área inicial do aplicativo reorganiza importação, exportação, ações de curso e leitura do exemplo de diretórios, preservando o progresso por caminho de lição
+- README, contrato público, changelog e mensagens da interface passam a usar linguagem pública mais direta, sem rótulos transitórios
+
+### Tests
+
+- a suíte automatizada passa a refletir a nomenclatura pública atual nos cenários de exemplo e de versões da microssequência
+
 ## [0.9.21] - 2026-05-04
 
 ### Changed
@@ -18,7 +32,7 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 - o `Continuar` do leitor volta a abrir o popup final dockado do card quando o runtime traz `popupBlocks`, em vez de avançar direto para o próximo card
 - o popup final passa a ser estritamente de feedback/leitura; `popupBlocks` não aceitam mais contêineres interativos e qualquer bloco de exercício é saneado para leitura simples ou descartado
-- o corpo do card deixa de exibir o placeholder expandido do bloco `button` quando esse popup é consumido pelo rodapé do leitor
+- o corpo do card deixa de exibir o bloco auxiliar expandido de `button` quando esse popup é consumido pelo rodapé do leitor
 - a interface de exemplo e o exemplo público de contrato passam a incluir fluxogramas com `while`, `do_while`, `for` e decisão aninhada, para facilitar teste visual e estrutural de laços compostos
 - os exemplos navegáveis passam a carregar popup final de feedback apenas com contêineres de leitura, como `paragraph`, `table`, `editor`, `image` e `flowchart` sem prática
 - o validador e a persistência do projeto passam a preservar a estrutura de `runtime` dos cards, evitando que exemplos com popup final sejam salvos sem `popupBlocks`
@@ -31,7 +45,7 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 - a seleção de `multiple_choice` volta a ser acumulativa mesmo em perguntas com uma única resposta correta; a validação compara o conjunto marcado em vez de forçar comportamento de radio
 - lacunas textuais deixam de ter largura fixa e passam a autoajustar pela quantidade digitada, começando visualmente em 1 caractere e preservando o fluxo inline com a pontuação adjacente
 - lacunas textuais passam a ser renderizadas como `span` inline `contenteditable`, sem padding interno, alinhadas à baseline do texto e com word wrap dentro da própria lacuna (quebra junto com o texto corrido)
-- lacunas textuais `contenteditable` deixam de manter sentinelas/pseudo-placeholder durante a edição; o placeholder visual de `1ch` só existe fora de foco, para evitar caret invertido ou deslocado ao iniciar a digitação
+- lacunas textuais `contenteditable` deixam de manter sentinelas ou marcadores visuais provisórios durante a edição; a largura visual de `1ch` só existe fora de foco, para evitar caret invertido ou deslocado ao iniciar a digitação
 - contêineres textuais com lacunas (`paragraph`, `complete`, `editor` e `table`) deixam de renderizar botões locais de `Validar`, `Ver resposta` e `Tentar de novo`; a validação fica no `Continuar` do card e o feedback inline só aparece depois desse ciclo comum
 - a interface de exemplo passa a carregar lições dedicadas a testar `text`, `complete`, `editor`, `table`, `image` e popup de feedback
 - o `runtime` do popup final passa a ignorar botões vazios anteriores e a interface de exemplo deixa de duplicar blocos `button`, evitando casos em que o card tinha `popupBlocks` válidos mas o `play` não abria o painel
@@ -165,7 +179,7 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 ### Changed
 
 - remoção do campo `objective` do fluxo ativo do contrato `aralearn.intent.v1`, alinhando editor, modelo compilado, renderização HTML e integração assistida ao shape atual da microssequência
-- simplificação do placeholder de geração por API para identificação estável via `key`, evitando tratar uma microssequência real como item vazio
+- simplificação do item provisório de geração por API para identificação estável via `key`, evitando tratar uma microssequência real como item vazio
 - limpeza do dataset local de exemplo e da descrição automática de lições para não depender mais de metadados antigos da microssequência
 - documentação pública atualizada para refletir a simplificação do contrato então vigente
 

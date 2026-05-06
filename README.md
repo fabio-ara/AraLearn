@@ -10,13 +10,13 @@ O projeto reúne a mesma base local para autoria, organização e leitura de mic
 
 - contrato público principal `aralearn.contract`
 - pipeline própria do contrato principal para validar, compilar e renderizar
-- núcleo próprio do contrato principal para storage, editor, seed e LLM, sem compatibilidade com `intent + data`
-- bootstrap web principal já aponta para a casca principal do produto
+- núcleo próprio do contrato principal para persistência, editor, conteúdo inicial e assistência por API, sem compatibilidade com `intent + data`
+- entrada web principal já aponta para a aplicação principal do produto
 - persistência local separada entre projeto e progresso
 - edição manual de microssequências e cards integrada ao motor editorial
-- casca navegável cobrindo `curso -> módulo -> lição -> microssequência -> cards`
+- interface navegável cobrindo `curso -> módulo -> lição -> microssequência -> cards`
 - reorganização estrutural para refletir múltiplos cursos reais no mesmo projeto
-- geração, revisão e reposicionamento assistidos por LLM via API na camada editorial
+- geração, revisão e reposicionamento assistidos por API na camada editorial
 
 ## Como o conteúdo se organiza
 
@@ -67,4 +67,4 @@ npm run validate:example
 
 ## Próximos passos
 
-As próximas iterações devem aprofundar os fluxos editoriais assistidos, consolidar os contratos públicos e amadurecer a interface local.
+As próximas iterações devem aprofundar os fluxos editoriais assistidos por API, consolidar os contratos públicos e amadurecer a interface local.

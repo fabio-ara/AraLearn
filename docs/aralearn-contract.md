@@ -10,7 +10,7 @@ O contrato:
 
 - manter a hierarquia `course -> module -> lesson -> microsequence -> card`;
 - preservar `microssequência` como camada estrutural obrigatória;
-- simplificar a linguagem autoral do card para consumo humano e por LLM;
+- simplificar a linguagem autoral do card para consumo humano e por assistência via API;
 - empurrar detalhes de runtime, layout e estruturas auxiliares para o motor interno;
 - reduzir a dependência de campos genéricos difíceis de prever em geração assistida.
 
