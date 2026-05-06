@@ -198,7 +198,7 @@ function buildComposePrompt({ microsequence, dependencyTitles, promptText, prior
         "Iterações anteriores disponíveis como contexto:",
         ...priorMicrosequences.map((entry, index) => {
           const entryTags = Array.isArray(entry?.tags) && entry.tags.length ? entry.tags.join(", ") : "sem tags";
-          return `- Aba ${index + 1}: ${normalizeText(entry?.title) || normalizeText(entry?.label) || "Microssequência"} | tags: ${entryTags} | cards: ${summarizeMicrosequenceCards(entry)}`;
+          return `- Versão ${index + 1}: ${normalizeText(entry?.title) || normalizeText(entry?.label) || "Microssequência"} | tags: ${entryTags} | cards: ${summarizeMicrosequenceCards(entry)}`;
         })
       ].join("\n")
     : "Iterações anteriores disponíveis como contexto: nenhuma.";

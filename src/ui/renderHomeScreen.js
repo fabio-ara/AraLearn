@@ -1,4 +1,5 @@
 import { readLessonProgressEntry } from "../storage/progressStore.js";
+import { renderUiIcon } from "./renderUiIcons.js";
 
 function escapeHtml(value) {
   return String(value)
@@ -45,8 +46,36 @@ function formatCount(count, singular, plural) {
   return `${count} ${count === 1 ? singular : plural}`;
 }
 
+function renderMetaMetric(iconName, value, label) {
+  return (
+    '<span class="progress-meta-item" aria-label="' +
+    escapeHtml(label) +
+    '" title="' +
+    escapeHtml(label) +
+    '">' +
+    renderUiIcon(iconName, "progress-meta-item-icon") +
+    '<span class="progress-meta-item-value">' +
+    escapeHtml(value) +
+    "</span></span>"
+  );
+}
+
+function renderHomeCourseMeta(course) {
+  return (
+    '<p class="muted tiny progress-meta">' +
+    [
+      renderMetaMetric("progress", `${course.completedCount}/${course.totalCount}`, `Progresso: ${course.completedCount}/${course.totalCount}`),
+      renderMetaMetric("module", String(course.moduleCount), formatCount(course.moduleCount, "módulo", "módulos")),
+      renderMetaMetric("lesson", String(course.lessonCount), formatCount(course.lessonCount, "lição", "lições"))
+    ].join('<span class="progress-meta-separator" aria-hidden="true">·</span>') +
+    "</p>"
+  );
+}
+
 function buildHomeCoursePreviews(project, progress, featuredCourseKey = "") {
   return (project.courses || []).map((course) => {
+    const completedCount = countCompletedCardsInCourse(course, progress);
+    const totalCount = countCardsInCourse(course);
     return {
       key: course.key,
       title: course.title || "Curso",
@@ -54,8 +83,9 @@ function buildHomeCoursePreviews(project, progress, featuredCourseKey = "") {
       isFeatured: course.key === featuredCourseKey,
       moduleCount: (course.modules || []).length,
       lessonCount: countLessons(course),
-      completedCount: countCompletedCardsInCourse(course, progress),
-      totalCount: countCardsInCourse(course)
+      completedCount,
+      totalCount,
+      progressPercent: totalCount ? Math.max(0, Math.min(100, (completedCount / totalCount) * 100)) : 0
     };
   });
 }
@@ -82,21 +112,15 @@ export function renderHomeScreen({ project, progress, selection, featuredCourseK
         '<article class="clean-card course-card progress-card' +
         (course.isFeatured ? " course-card-featured" : "") +
         '">' +
+        '<div class="card-progress-fill" style="width:' +
+        String(course.progressPercent) +
+        '%"></div>' +
         '<div class="course-copy">' +
         '<h3 class="card-title' + (course.isFeatured ? " card-title-featured" : "") + '">' + escapeHtml(course.title || "Curso") + "</h3>" +
         (course.description
           ? '<p class="card-subtitle">' + escapeHtml(course.description) + "</p>"
           : "") +
-        '<p class="muted tiny progress-meta">' +
-        "Progresso: " +
-        String(course.completedCount) +
-        "/" +
-        String(course.totalCount) +
-        " · " +
-        formatCount(course.moduleCount, "módulo", "módulos") +
-        " · " +
-        formatCount(course.lessonCount, "lição", "lições") +
-        "</p>" +
+        renderHomeCourseMeta(course) +
         "</div>" +
         '<div class="course-actions">' +
         '<button class="icon-ghost corner-btn" type="button" data-action="open-course-actions" data-course-key="' +
