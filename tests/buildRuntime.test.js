@@ -38,3 +38,47 @@ test("falha cedo quando o contrato principal é inválido", () => {
   assert.equal(result.ok, false);
   assert.equal(result.stage, "validate");
 });
+
+test("preserva runtime autorado ao compilar o documento", () => {
+  const result = buildRuntime({
+    contract: "aralearn.contract",
+    courses: [
+      {
+        title: "Curso",
+        modules: [
+          {
+            title: "Módulo",
+            lessons: [
+              {
+                title: "Lição",
+                microsequences: [
+                  {
+                    title: "Microssequência",
+                    cards: [
+                      {
+                        type: "text",
+                        title: "Árvore",
+                        text: "Fallback",
+                        runtime: {
+                          title: "Árvore",
+                          blocks: [
+                            { kind: "heading", value: "Árvore" },
+                            { kind: "directory_tree", base: "/", currentNodeId: "node-a", nodes: [] }
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.compiled.index.cards[0].runtime.blocks[1].kind, "directory_tree");
+  assert.equal(result.compiled.index.cards[0].runtime.blocks[1].currentNodeId, "node-a");
+});

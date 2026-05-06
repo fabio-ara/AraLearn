@@ -5,8 +5,11 @@ import fs from "node:fs";
 import { validateContractDocument } from "../src/contract/validateContract.js";
 import {
   createCardInMicrosequence,
+  createCourse,
   createEditorSession,
   createMicrosequence,
+  exportCourseDocument,
+  importCourses,
   replaceMicrosequenceCards,
   updateCardInMicrosequence,
   updateMicrosequence
@@ -148,4 +151,42 @@ test("sessão principal persiste alterações no storage dedicado", () => {
 
   const loaded = projectStorage.loadProject();
   assert.equal(loaded.courses[0].modules[0].lessons[0].microsequences[0].title, "Modelo cascata revisado");
+});
+
+test("cria curso novo já com módulo, lição, microssequência e card iniciais", () => {
+  const document = readNormalizedProject("./docs/examples/aralearn-contract.renderable.json");
+
+  const nextDocument = createCourse(document, {
+    title: "Curso importado"
+  });
+
+  const course = nextDocument.courses.at(-1);
+  assert.equal(course.title, "Curso importado");
+  assert.equal(course.modules.length, 1);
+  assert.equal(course.modules[0].lessons.length, 1);
+  assert.equal(course.modules[0].lessons[0].microsequences.length, 1);
+  assert.equal(course.modules[0].lessons[0].microsequences[0].cards.length, 1);
+});
+
+test("importa cursos sem sobrescrever keys existentes e exporta curso isolado", () => {
+  const baseDocument = readNormalizedProject("./docs/examples/aralearn-contract.renderable.json");
+  const importedDocument = {
+    contract: "aralearn.contract",
+    courses: [structuredClone(baseDocument.courses[0])]
+  };
+
+  const mergedDocument = importCourses(baseDocument, {
+    document: importedDocument
+  });
+
+  assert.equal(mergedDocument.courses.length, 2);
+  assert.notEqual(mergedDocument.courses[0].key, mergedDocument.courses[1].key);
+
+  const exportedDocument = exportCourseDocument(mergedDocument, {
+    courseKey: mergedDocument.courses[1].key
+  });
+
+  assert.equal(exportedDocument.contract, "aralearn.contract");
+  assert.equal(exportedDocument.courses.length, 1);
+  assert.equal(exportedDocument.courses[0].title, mergedDocument.courses[1].title);
 });

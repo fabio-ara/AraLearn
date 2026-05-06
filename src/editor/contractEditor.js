@@ -257,6 +257,39 @@ export function createCourse(document, input = {}) {
   return ensureValidDocument(nextDocument);
 }
 
+export function importCourses(document, input = {}) {
+  const nextDocument = clone(document);
+  const importedDocument = ensureValidDocument(input.document);
+  const importedCourses = Array.isArray(importedDocument.courses) ? importedDocument.courses : [];
+
+  if (!importedCourses.length) {
+    fail("Documento importado sem cursos.");
+  }
+
+  const usedKeys = collectSiblingKeys(nextDocument.courses || []);
+  importedCourses.forEach((course) => {
+    const importedCourse = clone(course);
+    const preferredKey = typeof importedCourse.key === "string" && importedCourse.key.trim() ? importedCourse.key.trim() : "";
+    if (preferredKey && !usedKeys.has(preferredKey)) {
+      importedCourse.key = preferredKey;
+      usedKeys.add(preferredKey);
+    } else {
+      importedCourse.key = uniqueKey(importedCourse.title || "Curso importado", usedKeys, "course");
+    }
+    nextDocument.courses.push(importedCourse);
+  });
+
+  return ensureValidDocument(nextDocument);
+}
+
+export function exportCourseDocument(document, input) {
+  const course = findCourse(document, input.courseKey);
+  return ensureValidDocument({
+    contract: "aralearn.contract",
+    courses: [clone(course)]
+  });
+}
+
 export function deleteCourse(document, input) {
   const nextDocument = clone(document);
   const courseIndex = (nextDocument.courses || []).findIndex((item) => item.key === input.courseKey);
@@ -593,6 +626,14 @@ export function createEditorSession(storage) {
       const nextDocument = createCourse(storage.loadProject(), input);
       storage.saveProject(nextDocument);
       return nextDocument;
+    },
+    importCourses(input) {
+      const nextDocument = importCourses(storage.loadProject(), input);
+      storage.saveProject(nextDocument);
+      return nextDocument;
+    },
+    exportCourseDocument(input) {
+      return exportCourseDocument(storage.loadProject(), input);
     },
     updateCourse(input) {
       const nextDocument = updateCourse(storage.loadProject(), input);

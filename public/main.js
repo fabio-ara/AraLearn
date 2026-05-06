@@ -3,6 +3,14 @@ import { createProjectStorage } from "../src/storage/createProjectStorage.js";
 import { createEditorSession } from "../src/editor/contractEditor.js";
 import { createLessonEditorApp } from "../src/ui/lessonEditorApp.js";
 import { createExampleProjectDocument } from "../src/ui/exampleProjectDocument.js";
+import {
+  EXAMPLE_SEED_KEY,
+  EXAMPLE_SEED_SIGNATURE_KEY,
+  EXAMPLE_SEED_VERSION,
+  getExampleSeedSignature,
+  shouldHydrateExampleSeed,
+  shouldStoreExampleSeedMetadata
+} from "../src/ui/exampleSeed.js";
 
 const root = document.getElementById("app-root");
 if (!root) {
@@ -12,8 +20,6 @@ if (!root) {
 const kvStore = createBrowserLocalStorageStore(globalThis.localStorage);
 const storage = createProjectStorage(kvStore);
 const editor = createEditorSession(storage);
-const EXAMPLE_SEED_VERSION = "contract-runtime-empty-v1";
-const EXAMPLE_SEED_KEY = "aralearn.example-seed.version";
 
 let project = null;
 try {
@@ -22,22 +28,33 @@ try {
   console.warn("Falha ao carregar projeto persistido. Recriando exemplo.", error);
 }
 
+const exampleProject = createExampleProjectDocument();
+const currentSeedSignature = getExampleSeedSignature(exampleProject);
 const storedSeedVersion = kvStore.getItem(EXAMPLE_SEED_KEY);
-const courseKeys = Array.isArray(project?.courses) ? project.courses.map((course) => course.key) : [];
-const isExampleProject =
-  !project ||
-  courseKeys.includes("course-engenharia-software") ||
-  courseKeys.includes("course-logica") ||
-  courseKeys.includes("course-teste-runtime");
+const storedSeedSignature = kvStore.getItem(EXAMPLE_SEED_SIGNATURE_KEY);
 
-const shouldResetSeed =
-  !project ||
-  (isExampleProject && storedSeedVersion !== EXAMPLE_SEED_VERSION);
-
-if (shouldResetSeed) {
-  project = createExampleProjectDocument();
+if (
+  shouldHydrateExampleSeed({
+    project,
+    storedSeedVersion,
+    storedSeedSignature,
+    currentSeedSignature
+  })
+) {
+  project = exampleProject;
   storage.saveProject(project);
   kvStore.setItem(EXAMPLE_SEED_KEY, EXAMPLE_SEED_VERSION);
+  kvStore.setItem(EXAMPLE_SEED_SIGNATURE_KEY, currentSeedSignature);
+} else if (
+  shouldStoreExampleSeedMetadata({
+    project,
+    storedSeedVersion,
+    storedSeedSignature,
+    currentSeedSignature
+  })
+) {
+  kvStore.setItem(EXAMPLE_SEED_KEY, EXAMPLE_SEED_VERSION);
+  kvStore.setItem(EXAMPLE_SEED_SIGNATURE_KEY, currentSeedSignature);
 }
 
 createLessonEditorApp({

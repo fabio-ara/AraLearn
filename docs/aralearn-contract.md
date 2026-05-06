@@ -66,6 +66,10 @@ Tipos cobertos:
 
 O contrato é validado pelo aplicativo e pelo utilitário de linha de comando.
 
+Na interface principal, esse formato é usado para exportação de cursos isolados e também é aceito pela ação única `Importar`.
+
+Ele não substitui o pacote de backup local `aralearn.storage`, que existe para restaurar o projeto inteiro com progresso.
+
 Exemplo público:
 
 - `docs/examples/aralearn-contract.renderable.json`

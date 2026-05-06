@@ -7,7 +7,7 @@ function escapeHtml(value) {
     .replace(/'/g, "&#39;");
 }
 
-export function renderEntityEditorOverlay({ title, fields, actions = [] }) {
+export function renderEntityEditorOverlay({ title, fields, actions = [], showSaveButton = true }) {
   const inputs = fields
     .map((field) => {
       const value = field.value ? escapeHtml(field.value) : "";
@@ -69,7 +69,9 @@ export function renderEntityEditorOverlay({ title, fields, actions = [] }) {
     '<p class="editor-title">' +
     escapeHtml(title) +
     "</p>" +
-    '<button class="icon-ghost" type="button" data-action="entity-editor-save" title="Salvar" aria-label="Salvar">&#10003;</button>' +
+    (showSaveButton
+      ? '<button class="icon-ghost" type="button" data-action="entity-editor-save" title="Salvar" aria-label="Salvar">&#10003;</button>'
+      : '<div class="topbar-space" aria-hidden="true"></div>') +
     "</header>" +
     '<div class="editor-body">' +
     inputs +

@@ -129,3 +129,46 @@ test("aceita microssequência sem cards", () => {
   assert.equal(result.ok, true);
   assert.deepEqual(result.value.courses[0].modules[0].lessons[0].microsequences[0].cards, []);
 });
+
+test("preserva runtime opcional autorado no card durante a validação", () => {
+  const result = validateContractDocument({
+    contract: "aralearn.contract",
+    courses: [
+      {
+        title: "Curso",
+        modules: [
+          {
+            title: "Módulo",
+            lessons: [
+              {
+                title: "Lição",
+                microsequences: [
+                  {
+                    title: "Microssequência",
+                    cards: [
+                      {
+                        type: "text",
+                        title: "Árvore",
+                        text: "Fallback",
+                        runtime: {
+                          title: "Árvore",
+                          blocks: [
+                            { kind: "heading", value: "Árvore" },
+                            { kind: "directory_tree", base: "/", nodes: [] }
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.value.courses[0].modules[0].lessons[0].microsequences[0].cards[0].runtime.blocks[1].kind, "directory_tree");
+});
