@@ -38,6 +38,11 @@ Essa hierarquia é a mesma usada pelo contrato público, pelo motor interno e pe
 - [Exemplos JSON](./docs/examples/)
 - [Histórico de versões](./CHANGELOG.md)
 
+## JSONs do produto
+
+- `aralearn.contract`: contrato público de cursos, usado para exportar cursos isolados e também aceito na ação única `Importar`.
+- `aralearn.storage`: backup completo do aplicativo, também aceito na mesma ação `Importar`, restaurando projeto e progresso local juntos.
+
 ## Estrutura principal do repositório
 
 - `public/`: entrada web, assets e estilos da interface local

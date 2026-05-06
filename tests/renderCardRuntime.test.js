@@ -579,3 +579,228 @@ test("renderiza popup final apenas com blocos de feedback seguros", () => {
   assert.doesNotMatch(popup.bodyHtml, /multiple-choice-option/);
   assert.equal(popup.dockHtml, "");
 });
+
+test("renderiza árvore de diretórios com destaque do diretório atual", () => {
+  const html = renderCardRuntimeBlocks({
+    type: "text",
+    title: "Árvore",
+    runtime: {
+      title: "Árvore",
+      blocks: [
+        { kind: "heading", value: "Árvore" },
+        {
+          kind: "directory_tree",
+          base: "/",
+          currentNodeId: "node-projetos",
+          nodes: [
+            {
+              id: "node-home",
+              type: "folder",
+              name: "home",
+              children: [
+                {
+                  id: "node-projetos",
+                  type: "folder",
+                  name: "projetos",
+                  children: [
+                    {
+                      id: "node-docs",
+                      type: "folder",
+                      name: "docs"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  });
+
+  assert.match(html, /runtime-directory-tree-block/);
+  assert.match(html, /data-action="directory-tree-toggle-node"/);
+  assert.match(html, /data-action="directory-tree-select-node"/);
+  assert.match(html, /directory-tree-entry-button is-selected is-current/);
+  assert.match(html, /directory-tree-status-panel/);
+  assert.match(html, /Diretório atual:/);
+  assert.match(html, /Seleção:/);
+  assert.match(html, /class="directory-tree-status-value" type="text" readonly value="\/home\/projetos"/);
+  assert.match(html, /aria-label="Seleção"/);
+  assert.match(html, /docs/);
+});
+
+test("renderiza árvore recolhida e mostra linha de seleção separada", () => {
+  const html = renderCardRuntimeBlocks(
+    {
+      type: "text",
+      title: "Árvore",
+      runtime: {
+        title: "Árvore",
+        blocks: [
+          { kind: "heading", value: "Árvore" },
+          {
+            kind: "directory_tree",
+            base: "/",
+            currentNodeId: "node-projetos",
+            nodes: [
+              {
+                id: "node-home",
+                type: "folder",
+                name: "home",
+                children: [
+                  {
+                    id: "node-projetos",
+                    type: "folder",
+                    name: "projetos",
+                    children: [
+                      { id: "node-docs", type: "folder", name: "docs" }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      blockKeyPrefix: "course::module::lesson::card",
+      directoryTreeStateByBlockKey: {
+        "course::module::lesson::card::1": {
+          selectedNodeId: "node-home",
+          collapsedNodeIds: ["node-home"]
+        }
+      }
+    }
+  );
+
+  assert.match(html, /directory-tree-status-label">Seleção:/);
+  assert.match(html, /aria-expanded="false"/);
+  assert.doesNotMatch(html, /node-docs/);
+});
+
+test("renderiza caminho compacto sem espaços e suporta arquivo como filho", () => {
+  const html = renderCardRuntimeBlocks({
+    type: "text",
+    title: "Árvore",
+    runtime: {
+      title: "Árvore",
+      blocks: [
+        { kind: "heading", value: "Árvore" },
+        {
+          kind: "directory_tree",
+          base: "/",
+          currentNodeId: "node-projetos",
+          selectedNodeId: "node-projetos",
+          nodes: [
+            {
+              id: "node-home",
+              type: "folder",
+              name: "home",
+              children: [
+                {
+                  id: "node-aluno",
+                  type: "folder",
+                  name: "aluno",
+                  children: [
+                    {
+                      id: "node-projetos",
+                      type: "folder",
+                      name: "projetos",
+                      children: [
+                        { id: "node-readme", type: "file", name: "README.txt" }
+                      ]
+                    },
+                    {
+                      id: "node-publico",
+                      type: "folder",
+                      name: "publico",
+                      children: [{ id: "node-notas", type: "file", name: "notas.txt" }]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  });
+
+  assert.match(html, /\/home\/aluno\/projetos/);
+  assert.match(html, /README\.txt/);
+  assert.match(html, /publico/);
+});
+
+test("renderiza dock de prática da árvore com tipo, nome e ação", () => {
+  const runtime = renderCardRuntimeBlocksWithDock(
+    {
+      type: "text",
+      title: "Árvore prática",
+      runtime: {
+        title: "Árvore prática",
+        blocks: [
+          { kind: "heading", value: "Árvore prática" },
+          {
+            kind: "directory_tree",
+            base: "/",
+            currentNodeId: "node-docs",
+            nodes: [
+              {
+                id: "node-home",
+                type: "folder",
+                name: "home",
+                children: [
+                  {
+                    id: "node-docs",
+                    type: "folder",
+                    name: "docs"
+                  }
+                ]
+              }
+            ],
+            practice: {
+              mode: "create_file",
+              parentNodeId: "node-docs",
+              nameTemplate: "README.[[txt::txt|md]]"
+            }
+          }
+        ]
+      }
+    },
+    {
+      blockKeyPrefix: "course::module::lesson::card",
+      directoryTreeStateByBlockKey: {
+        "course::module::lesson::card::1": {
+          nodes: [
+            {
+              id: "node-home",
+              type: "folder",
+              name: "home",
+              children: [
+                {
+                  id: "node-docs",
+                  type: "folder",
+                  name: "docs"
+                }
+              ]
+            }
+          ],
+          selectedNodeId: "node-docs",
+          collapsedNodeIds: [],
+          feedback: null,
+          hasInteracted: false,
+          typeValue: "file",
+          nameValues: [""]
+        }
+      }
+    }
+  );
+
+  assert.match(runtime.dockHtml, /directory-tree-practice-dock/);
+  assert.match(runtime.dockHtml, /Criar arquivo/);
+  assert.match(runtime.dockHtml, /data-action="directory-tree-name-set-choice"/);
+  assert.match(runtime.dockHtml, /README/);
+  assert.match(runtime.dockHtml, /Seleção ativa/);
+});

@@ -35,3 +35,32 @@ test("exporta e importa envelope principal sem fallback para v1", () => {
 
   assert.equal(importedStorage.loadProject().contract, "aralearn.contract");
 });
+
+test("backup principal preserva também o progresso do projeto", () => {
+  const store = createKeyValueMemoryStore();
+  const projectStorage = createProjectStorage(store);
+  projectStorage.saveProject(readJson("./docs/examples/aralearn-contract.renderable.json"));
+  projectStorage.saveProgress({
+    version: 1,
+    lessons: {
+      "course-curso-renderizavel::module-modulo-experimental::lesson-licao-experimental": {
+        cursor: 3,
+        completedCardKeys: ["card-ideia-central", "card-leitura-rapida"]
+      }
+    }
+  });
+
+  const exported = projectStorage.exportJson();
+  const restoredStorage = createProjectStorage(createKeyValueMemoryStore());
+  restoredStorage.importJson(exported);
+
+  assert.deepEqual(restoredStorage.loadProgress(), {
+    version: 1,
+    lessons: {
+      "course-curso-renderizavel::module-modulo-experimental::lesson-licao-experimental": {
+        cursor: 3,
+        completedCardKeys: ["card-ideia-central", "card-leitura-rapida"]
+      }
+    }
+  });
+});

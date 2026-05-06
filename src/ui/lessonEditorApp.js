@@ -2,10 +2,24 @@ import { renderLessonScreen } from "./renderLessonScreen.js";
 import { renderCardCommentOverlay } from "./renderCardCommentOverlay.js";
 import { renderCardVersionOverlay } from "./renderCardVersionOverlay.js";
 import { renderEntityEditorOverlay } from "./renderEntityEditorOverlay.js";
+import { renderActionMenuOverlay } from "./renderActionMenuOverlay.js";
 import { renderAssistConfigOverlay } from "./renderAssistConfigOverlay.js";
 import { captureRenderState, restoreRenderState } from "./renderState.js";
 import { getRuntimePopupButtonEntry } from "../render/renderCardRuntime.js";
 import { resolveCardRuntime } from "../core/cardRuntime.js";
+import {
+  cloneDirectoryTreeNodes,
+  directoryTreeNodeCanHaveChildren,
+  DIRECTORY_TREE_BASE_NODE_ID,
+  findDirectoryTreeNodeEntry,
+  getDirectoryTreePathLabels,
+  normalizeDirectoryTreeNodeNameByType,
+  normalizeDirectoryTreeNodeType,
+  normalizeDirectoryTreePractice,
+  resolveDirectoryTreePracticeExpectedName,
+  resolveDirectoryTreePracticeExpectedType,
+  resolveDirectoryTreePracticeNameTemplate
+} from "../core/directoryTree.js";
 import { getExerciseOptionStableId } from "../core/exerciseOptions.js";
 import {
   createFlowchartExerciseState,
@@ -36,6 +50,8 @@ import {
   writeHistoryStorage
 } from "./lessonEditorStorage.js";
 import { runGeminiAssist } from "../llm/geminiAssist.js";
+import { removeLessonProgressEntries } from "../storage/progressStore.js";
+import { detectJsonExchangeFormat } from "../storage/jsonExchange.js";
 
 const DRAFT_COURSE_KEY = "__disabled-draft-course__";
 const DRAFT_MODULE_KEY = "__disabled-draft-module__";
@@ -109,6 +125,18 @@ function parseTagsText(value) {
 
 function formatTagsText(tags) {
   return Array.isArray(tags) ? tags.join(", ") : "";
+}
+
+function slugifyDownloadName(value, fallback = "curso") {
+  const normalized = String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .replace(/-{2,}/g, "-");
+
+  return normalized || fallback;
 }
 
 function buildCardUpdateFromText(card, title, text) {
@@ -187,6 +215,51 @@ function clampFlowchartScale(value) {
 function makeEntityEditorModel(state) {
   const { project, selection, entityEditor } = state;
   if (!entityEditor) return null;
+
+  if (entityEditor.kind === "home-actions") {
+    return {
+      variant: "action-menu",
+      title: "Ações",
+      placement: "side",
+      fields: [],
+      actions: [
+        { key: "create-course", label: "Novo curso", icon: "&#43;" },
+        { key: "import-json", label: "Importar", icon: "&#8679;" }
+      ],
+      showSaveButton: false
+    };
+  }
+
+  if (entityEditor.kind === "course-actions") {
+    const course = findCourse(project, entityEditor.courseKey || selection.courseKey);
+    if (!course) return null;
+    return {
+      variant: "action-menu",
+      title: "Ações do curso",
+      placement: "bottom",
+      fields: [],
+      actions: [
+        { key: "edit-course-metadata", label: "Editar curso", icon: "&#9998;" },
+        { key: "reset-course-progress", label: "Zerar progresso do curso", icon: "&#8635;" },
+        { key: "export-course", label: "Exportar curso", icon: "&#8681;" },
+        { key: "delete-course", label: "Excluir curso", icon: "&#128465;", tone: "danger" }
+      ],
+      showSaveButton: false
+    };
+  }
+
+  if (entityEditor.kind === "course-metadata") {
+    const course = findCourse(project, entityEditor.courseKey || selection.courseKey);
+    if (!course) return null;
+    return {
+      title: "Curso",
+      fields: [
+        { name: "title", label: "Título", type: "text", value: course.title || "" },
+        { name: "description", label: "Descrição", type: "textarea", value: course.description || "" }
+      ],
+      actions: []
+    };
+  }
 
   if (entityEditor.kind === "course") {
     const course = findCourse(project, entityEditor.courseKey || selection.courseKey);
@@ -309,6 +382,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
     flowchartPracticeByBlockKey: {},
     activeFlowchartPrompt: null,
     flowchartPinch: null,
+    directoryTreeUiByBlockKey: {},
     choiceExerciseByBlockKey: {},
     completeExerciseByBlockKey: {},
     activeTextGapPrompt: null,
@@ -948,6 +1022,15 @@ export function createLessonEditorApp({ root, storage, editor }) {
         }
       }
 
+      const trees = getCurrentCardRuntimeDirectoryTrees();
+      for (const entry of trees) {
+        const exercise = state.directoryTreeUiByBlockKey[entry.blockKey] || { feedback: null };
+        if (normalizeDirectoryTreePractice(entry.block?.practice).mode !== "none" && exercise.feedback !== "correct") {
+          validateDirectoryTree(entry.blockKey);
+          return;
+        }
+      }
+
       const popupEntry = getCurrentPopupRuntimeButtonEntry();
       const popupIsOpen =
         !!popupEntry &&
@@ -993,6 +1076,15 @@ export function createLessonEditorApp({ root, storage, editor }) {
           const exercise = state.completeExerciseByBlockKey[entry.blockKey] || { values: [], feedback: null };
           if (exercise.feedback !== "correct") {
             validateComplete(entry.blockKey);
+            return;
+          }
+        }
+
+        const popupTrees = getCurrentPopupRuntimeDirectoryTrees();
+        for (const entry of popupTrees) {
+          const exercise = state.directoryTreeUiByBlockKey[entry.blockKey] || { feedback: null };
+          if (normalizeDirectoryTreePractice(entry.block?.practice).mode !== "none" && exercise.feedback !== "correct") {
+            validateDirectoryTree(entry.blockKey);
             return;
           }
         }
@@ -1084,6 +1176,158 @@ export function createLessonEditorApp({ root, storage, editor }) {
   function closeVersionHistory() {
     state.versionHistoryOpen = false;
     render({ preserveState: true });
+  }
+
+  function notifyUser(message) {
+    if (typeof globalThis.alert === "function") {
+      globalThis.alert(message);
+    }
+  }
+
+  function downloadJsonFile(filename, content) {
+    if (typeof document === "undefined" || typeof URL === "undefined" || typeof Blob === "undefined") {
+      fail("Exportação indisponível neste ambiente.");
+    }
+
+    const blob = new Blob([content], { type: "application/json;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  function pickJsonFile() {
+    if (typeof document === "undefined") {
+      return Promise.reject(new Error("Importação indisponível neste ambiente."));
+    }
+
+    return new Promise((resolve, reject) => {
+      const input = document.createElement("input");
+      input.type = "file";
+      input.accept = "application/json,.json";
+      input.style.display = "none";
+
+      const cleanup = () => {
+        input.remove();
+      };
+
+      input.addEventListener(
+        "change",
+        async () => {
+          try {
+            const [file] = Array.from(input.files || []);
+            cleanup();
+            if (!file) {
+              resolve(null);
+              return;
+            }
+            resolve(await file.text());
+          } catch (error) {
+            cleanup();
+            reject(error);
+          }
+        },
+        { once: true }
+      );
+      input.addEventListener(
+        "cancel",
+        () => {
+          cleanup();
+          resolve(null);
+        },
+        { once: true }
+      );
+
+      document.body.appendChild(input);
+      input.click();
+    });
+  }
+
+  function selectImportedCourse(nextProject) {
+    setProject(nextProject);
+
+    const importedCourse = nextProject.courses[nextProject.courses.length - 1];
+    const moduleValue = importedCourse?.modules?.[0] || null;
+    const lesson = moduleValue?.lessons?.[0] || null;
+    const microsequence = lesson?.microsequences?.[0] || null;
+    const card = microsequence?.cards?.[0] || null;
+
+    if (importedCourse && moduleValue && lesson && microsequence && card) {
+      applySelection({
+        courseKey: importedCourse.key,
+        moduleKey: moduleValue.key,
+        lessonKey: lesson.key,
+        microsequenceKey: microsequence.key,
+        cardKey: card.key,
+        cardIndex: 0
+      });
+    } else {
+      selectFirstPath(nextProject);
+    }
+  }
+
+  async function importJsonFromFile() {
+    const rawJson = await pickJsonFile();
+    if (!rawJson) {
+      return;
+    }
+
+    const parsed = JSON.parse(rawJson);
+    const format = detectJsonExchangeFormat(parsed);
+
+    if (format === "contract") {
+      const nextProject = editor.importCourses({ document: parsed });
+      selectImportedCourse(nextProject);
+      notifyUser("Curso importado.");
+      return;
+    }
+
+    if (typeof globalThis.confirm === "function") {
+      const accepted = globalThis.confirm("Backup completo detectado. Restaurar projeto e progresso atuais?");
+      if (!accepted) {
+        return;
+      }
+    }
+
+    const imported = storage.importJson(rawJson);
+    setProject(imported.project);
+    selectFirstPath(imported.project);
+    state.view = "courses";
+    state.continuePopup = null;
+    state.activeFlowchartPrompt = null;
+    state.activeTextGapPrompt = null;
+    notifyUser("Backup restaurado.");
+  }
+
+  function exportCourseAsJson(courseKey) {
+    const course = findCourse(state.project, courseKey);
+    const exportedDocument = editor.exportCourseDocument({ courseKey });
+    downloadJsonFile(
+      `${slugifyDownloadName(course.title || course.key)}.json`,
+      JSON.stringify(exportedDocument, null, 2)
+    );
+  }
+
+  function collectLessonProgressReferencesInCourse(course) {
+    return (course.modules || []).flatMap((moduleValue) =>
+      (moduleValue.lessons || []).map((lesson) => ({
+        courseKey: course.key,
+        moduleKey: moduleValue.key,
+        lessonKey: lesson.key
+      }))
+    );
+  }
+
+  function resetCourseProgress(courseKey) {
+    const course = findCourse(state.project, courseKey);
+    const lessonReferences = collectLessonProgressReferencesInCourse(course);
+    const currentProgress = storage.loadProgress();
+    const nextProgress = removeLessonProgressEntries(currentProgress, lessonReferences);
+    storage.saveProgress(nextProgress);
   }
 
   function createCardAtPosition(position) {
@@ -1317,7 +1561,39 @@ export function createLessonEditorApp({ root, storage, editor }) {
     try {
       let nextProject = null;
 
-      if (actionKey === "create-course") {
+      if (actionKey === "import-json") {
+        importJsonFromFile()
+          .then(() => {
+            state.entityEditor = null;
+            render({ preserveState: false });
+          })
+          .catch((error) => {
+            notifyUser(error instanceof Error ? error.message : "Falha ao importar JSON.");
+          });
+        return;
+      } else if (actionKey === "edit-course-metadata") {
+        const courseKey = state.entityEditor.courseKey || state.selection.courseKey;
+        openEntityEditor("course-metadata", { courseKey });
+        return;
+      } else if (actionKey === "reset-course-progress") {
+        const courseKey = state.entityEditor.courseKey || state.selection.courseKey;
+        const course = findCourse(state.project, courseKey);
+        if (typeof globalThis.confirm === "function") {
+          const accepted = globalThis.confirm(`Zerar progresso de todo o curso "${course.title || "Curso"}"?`);
+          if (!accepted) {
+            return;
+          }
+        }
+        resetCourseProgress(courseKey);
+        state.entityEditor = null;
+        render({ preserveState: false });
+        return;
+      } else if (actionKey === "export-course") {
+        exportCourseAsJson(state.entityEditor.courseKey || state.selection.courseKey);
+        state.entityEditor = null;
+        render({ preserveState: true });
+        return;
+      } else if (actionKey === "create-course") {
         nextProject = editor.createCourse({
           title: "Novo curso"
         });
@@ -1485,6 +1761,12 @@ export function createLessonEditorApp({ root, storage, editor }) {
     try {
       let nextProject = null;
       if (state.entityEditor.kind === "course") {
+        nextProject = editor.updateCourse({
+          courseKey: state.entityEditor.courseKey || state.selection.courseKey,
+          title: payload.title,
+          description: payload.description
+        });
+      } else if (state.entityEditor.kind === "course-metadata") {
         nextProject = editor.updateCourse({
           courseKey: state.entityEditor.courseKey || state.selection.courseKey,
           title: payload.title,
@@ -1854,6 +2136,40 @@ export function createLessonEditorApp({ root, storage, editor }) {
     );
   }
 
+  function getCurrentCardRuntimeDirectoryTrees(card = getRenderContext().card) {
+    if (!card) {
+      return [];
+    }
+
+    return collectRuntimeBlockEntries(
+      getCurrentCardRuntimeBlocks(card),
+      buildCardPathKey(state.selection),
+      (block) => block?.kind === "directory_tree"
+    );
+  }
+
+  function getCurrentPopupRuntimeDirectoryTrees(card = getRenderContext().card) {
+    const popupEntry = getCurrentPopupRuntimeButtonEntry(card);
+    if (!popupEntry) {
+      return [];
+    }
+
+    return collectRuntimeBlockEntries(
+      popupEntry.block.popupBlocks,
+      `${popupEntry.blockKey}::popup`,
+      (block) => block?.kind === "directory_tree"
+    );
+  }
+
+  function getCurrentDirectoryTreeEntry(blockKey) {
+    return (
+      [
+        ...getCurrentCardRuntimeDirectoryTrees(),
+        ...getCurrentPopupRuntimeDirectoryTrees()
+      ].find((entry) => entry.blockKey === blockKey) || null
+    );
+  }
+
   function getCurrentChoiceEntry(blockKey) {
     return (
       [
@@ -2204,11 +2520,381 @@ export function createLessonEditorApp({ root, storage, editor }) {
     return runtimeOptions;
   }
 
+  function getDirectoryTreePracticeSignature(block) {
+    return JSON.stringify({
+      base: block?.base || "/",
+      nodes: cloneDirectoryTreeNodes(block?.nodes),
+      selectedNodeId: String(block?.selectedNodeId || ""),
+      currentNodeId: String(block?.currentNodeId || block?.referenceNodeId || ""),
+      practice: normalizeDirectoryTreePractice(block?.practice)
+    });
+  }
+
+  function getDirectoryTreeInitialSelectedNodeId(block, nodes = block?.nodes) {
+    const candidateIds = [
+      block?.selectedNodeId,
+      block?.currentNodeId,
+      block?.referenceNodeId,
+      DIRECTORY_TREE_BASE_NODE_ID
+    ].map((item) => String(item || ""));
+
+    for (const candidateId of candidateIds) {
+      if (getDirectoryTreePathLabels(block?.base, nodes, candidateId)) {
+        return candidateId;
+      }
+    }
+
+    return DIRECTORY_TREE_BASE_NODE_ID;
+  }
+
+  function createDirectoryTreeNameValues(practice, currentValues = []) {
+    const template = resolveDirectoryTreePracticeNameTemplate(practice);
+    const blankCount = parseTextGapParts(template).length;
+    const values = Array.isArray(currentValues) ? currentValues.map((item) => String(item ?? "")) : [];
+    while (values.length < blankCount) {
+      values.push("");
+    }
+    return values.slice(0, blankCount);
+  }
+
+  function buildDirectoryTreeNameFromValues(practice, values, nodeType) {
+    const template = resolveDirectoryTreePracticeNameTemplate(practice);
+    if (!template) {
+      return "";
+    }
+
+    const parts = parseTextGapParts(template);
+    const answerByIndex = new Map(parts.map((part) => [part.index, String(values?.[part.index] ?? "").trim()]));
+    if (parts.some((part) => !(answerByIndex.get(part.index) || "").length)) {
+      return "";
+    }
+
+    let currentIndex = 0;
+    const resolved = template.replace(/\[\[([\s\S]*?)\]\]/g, () => {
+      const nextValue = answerByIndex.get(currentIndex) || "";
+      currentIndex += 1;
+      return nextValue;
+    });
+    return normalizeDirectoryTreeNodeNameByType(resolved, nodeType);
+  }
+
+  function fillDirectoryTreeAnswerValues(practice) {
+    const template = resolveDirectoryTreePracticeNameTemplate(practice);
+    return parseTextGapParts(template).map((part) => String(part.expected || ""));
+  }
+
+  function setDirectoryTreeState(blockKey, nextState) {
+    state.directoryTreeUiByBlockKey[blockKey] = nextState;
+  }
+
+  function ensureCurrentDirectoryTreeState() {
+    const trees = [
+      ...getCurrentCardRuntimeDirectoryTrees(),
+      ...getCurrentPopupRuntimeDirectoryTrees()
+    ];
+    const runtimeOptions = {
+      blockKeyPrefix: buildCardPathKey(state.selection),
+      directoryTreeStateByBlockKey: {}
+    };
+
+    trees.forEach((entry) => {
+      const practice = normalizeDirectoryTreePractice(entry.block?.practice);
+      const signature = getDirectoryTreePracticeSignature(entry.block);
+      const current = state.directoryTreeUiByBlockKey[entry.blockKey] || {};
+      const sourceNodes =
+        current.signature === signature && Array.isArray(current.nodes)
+          ? cloneDirectoryTreeNodes(current.nodes)
+          : cloneDirectoryTreeNodes(entry.block?.nodes);
+      const selectedNodeId = String(current.selectedNodeId || getDirectoryTreeInitialSelectedNodeId(entry.block, sourceNodes));
+      const selectedIsValid = !!getDirectoryTreePathLabels(entry.block?.base, sourceNodes, selectedNodeId);
+      const collapsedNodeIds = Array.from(
+        new Set(
+          (Array.isArray(current.collapsedNodeIds) ? current.collapsedNodeIds : Array.isArray(entry.block?.collapsedNodeIds) ? entry.block.collapsedNodeIds : [])
+            .map((item) => String(item || ""))
+            .filter((item) => !!getDirectoryTreePathLabels(entry.block?.base, sourceNodes, item))
+        )
+      );
+
+      state.directoryTreeUiByBlockKey[entry.blockKey] = {
+        signature,
+        nodes: sourceNodes,
+        selectedNodeId: selectedIsValid ? selectedNodeId : getDirectoryTreeInitialSelectedNodeId(entry.block, sourceNodes),
+        collapsedNodeIds,
+        feedback: current.signature === signature ? current.feedback || null : null,
+        hasInteracted: current.signature === signature ? !!current.hasInteracted : false,
+        typeValue: current.signature === signature ? String(current.typeValue || "") : "",
+        nameValues: createDirectoryTreeNameValues(practice, current.signature === signature ? current.nameValues : [])
+      };
+      runtimeOptions.directoryTreeStateByBlockKey[entry.blockKey] = state.directoryTreeUiByBlockKey[entry.blockKey];
+    });
+
+    return runtimeOptions;
+  }
+
+  function selectDirectoryTreeNode(blockKey, nodeId) {
+    const entry = getCurrentDirectoryTreeEntry(blockKey);
+    if (!entry) {
+      return;
+    }
+
+    ensureCurrentDirectoryTreeState();
+    const normalizedNodeId = String(nodeId || DIRECTORY_TREE_BASE_NODE_ID);
+    const current = state.directoryTreeUiByBlockKey[blockKey] || {
+      selectedNodeId: DIRECTORY_TREE_BASE_NODE_ID,
+      collapsedNodeIds: [],
+      nodes: cloneDirectoryTreeNodes(entry.block?.nodes)
+    };
+    if (!getDirectoryTreePathLabels(entry.block?.base, current.nodes, normalizedNodeId)) {
+      return;
+    }
+
+    setDirectoryTreeState(blockKey, {
+      ...current,
+      selectedNodeId: normalizedNodeId,
+      feedback: null,
+      hasInteracted: true
+    });
+    render({ preserveState: true });
+  }
+
+  function toggleDirectoryTreeNode(blockKey, nodeId) {
+    const entry = getCurrentDirectoryTreeEntry(blockKey);
+    if (!entry) {
+      return;
+    }
+
+    const normalizedNodeId = String(nodeId || "");
+    if (!normalizedNodeId) {
+      return;
+    }
+
+    const hasChildren =
+      normalizedNodeId === DIRECTORY_TREE_BASE_NODE_ID
+        ? Array.isArray(state.directoryTreeUiByBlockKey[blockKey]?.nodes) && state.directoryTreeUiByBlockKey[blockKey].nodes.length > 0
+        : (() => {
+            const current = state.directoryTreeUiByBlockKey[blockKey] || { nodes: cloneDirectoryTreeNodes(entry.block?.nodes) };
+            const labels = getDirectoryTreePathLabels(entry.block?.base, current.nodes, normalizedNodeId);
+            if (!labels) {
+              return false;
+            }
+            const queue = [...(Array.isArray(current.nodes) ? current.nodes : [])];
+            while (queue.length) {
+              const node = queue.shift();
+              if (String(node?.id || "") === normalizedNodeId) {
+                return Array.isArray(node?.children) && node.children.length > 0;
+              }
+              if (Array.isArray(node?.children) && node.children.length) {
+                queue.push(...node.children);
+              }
+            }
+            return false;
+          })();
+
+    if (!hasChildren) {
+      return;
+    }
+
+    ensureCurrentDirectoryTreeState();
+    const current = state.directoryTreeUiByBlockKey[blockKey] || {
+      selectedNodeId: DIRECTORY_TREE_BASE_NODE_ID,
+      collapsedNodeIds: [],
+      nodes: cloneDirectoryTreeNodes(entry.block?.nodes)
+    };
+    const collapsed = new Set((Array.isArray(current.collapsedNodeIds) ? current.collapsedNodeIds : []).map((item) => String(item || "")));
+    if (collapsed.has(normalizedNodeId)) {
+      collapsed.delete(normalizedNodeId);
+    } else {
+      collapsed.add(normalizedNodeId);
+    }
+    setDirectoryTreeState(blockKey, {
+      ...current,
+      collapsedNodeIds: Array.from(collapsed)
+    });
+    render({ preserveState: true });
+  }
+
+  function setDirectoryTreeType(blockKey, nodeType) {
+    const entry = getCurrentDirectoryTreeEntry(blockKey);
+    if (!entry) {
+      return;
+    }
+
+    ensureCurrentDirectoryTreeState();
+    const current = state.directoryTreeUiByBlockKey[blockKey];
+    const normalizedNodeType = normalizeDirectoryTreeNodeType(nodeType);
+    setDirectoryTreeState(blockKey, {
+      ...current,
+      typeValue: normalizedNodeType,
+      feedback: null,
+      hasInteracted: true
+    });
+    render({ preserveState: true });
+  }
+
+  function setDirectoryTreeNameBlank(blockKey, blankIndex, value, { rerender = false } = {}) {
+    const entry = getCurrentDirectoryTreeEntry(blockKey);
+    if (!entry) {
+      return;
+    }
+
+    ensureCurrentDirectoryTreeState();
+    const current = state.directoryTreeUiByBlockKey[blockKey];
+    const index = Number.parseInt(String(blankIndex), 10);
+    if (!Number.isFinite(index) || index < 0) {
+      return;
+    }
+    const values = Array.isArray(current.nameValues) ? current.nameValues.slice() : [];
+    while (values.length <= index) {
+      values.push("");
+    }
+    values[index] = String(value ?? "");
+    setDirectoryTreeState(blockKey, {
+      ...current,
+      nameValues: values,
+      feedback: null,
+      hasInteracted: true
+    });
+    if (rerender || current.feedback) {
+      render({ preserveState: true });
+    }
+  }
+
+  function clearDirectoryTreeNameBlank(blockKey, blankIndex) {
+    setDirectoryTreeNameBlank(blockKey, blankIndex, "", { rerender: true });
+  }
+
+  function tryAgainDirectoryTree(blockKey) {
+    const entry = getCurrentDirectoryTreeEntry(blockKey);
+    if (!entry) {
+      return;
+    }
+
+    ensureCurrentDirectoryTreeState();
+    const current = state.directoryTreeUiByBlockKey[blockKey];
+    const practice = normalizeDirectoryTreePractice(entry.block?.practice);
+    setDirectoryTreeState(blockKey, {
+      ...current,
+      nodes: cloneDirectoryTreeNodes(entry.block?.nodes),
+      selectedNodeId: getDirectoryTreeInitialSelectedNodeId(entry.block, entry.block?.nodes),
+      feedback: null,
+      hasInteracted: false,
+      typeValue: "",
+      nameValues: createDirectoryTreeNameValues(practice, [])
+    });
+    render({ preserveState: true });
+  }
+
+  function viewAnswerDirectoryTree(blockKey) {
+    const entry = getCurrentDirectoryTreeEntry(blockKey);
+    if (!entry) {
+      return;
+    }
+
+    ensureCurrentDirectoryTreeState();
+    const current = state.directoryTreeUiByBlockKey[blockKey];
+    const practice = normalizeDirectoryTreePractice(entry.block?.practice);
+    const nextSelectedNodeId =
+      practice.mode === "select"
+        ? String(practice.targetNodeId || DIRECTORY_TREE_BASE_NODE_ID)
+        : practice.mode === "delete"
+          ? String(practice.targetNodeId || DIRECTORY_TREE_BASE_NODE_ID)
+          : String(practice.targetNodeId || practice.parentNodeId || DIRECTORY_TREE_BASE_NODE_ID);
+    setDirectoryTreeState(blockKey, {
+      ...current,
+      selectedNodeId: nextSelectedNodeId,
+      feedback: "correct",
+      hasInteracted: true,
+      typeValue: practice.typePrompt?.expected ? practice.typePrompt.expected : "",
+      nameValues: fillDirectoryTreeAnswerValues(practice)
+    });
+    render({ preserveState: true });
+  }
+
+  function validateDirectoryTree(blockKey) {
+    const entry = getCurrentDirectoryTreeEntry(blockKey);
+    if (!entry) {
+      return;
+    }
+
+    ensureCurrentDirectoryTreeState();
+    const practice = normalizeDirectoryTreePractice(entry.block?.practice);
+    const current = state.directoryTreeUiByBlockKey[blockKey];
+
+    if (practice.mode === "none") {
+      return;
+    }
+
+    let feedback = "correct";
+    const selectedNodeId = String(current.selectedNodeId || DIRECTORY_TREE_BASE_NODE_ID);
+    const selectedEntry = selectedNodeId === DIRECTORY_TREE_BASE_NODE_ID ? null : findDirectoryTreeNodeEntry(entry.block?.nodes, selectedNodeId);
+    const selectedNode = selectedEntry?.node || null;
+
+    if (practice.mode === "select" || practice.mode === "delete") {
+      if (!current.hasInteracted) {
+        feedback = "incomplete";
+      } else {
+        feedback = String(selectedNodeId) === String(practice.targetNodeId || "") ? "correct" : "wrong";
+      }
+    } else if (practice.mode === "create_folder" || practice.mode === "create_file") {
+      const expectedParentId = String(practice.parentNodeId || DIRECTORY_TREE_BASE_NODE_ID);
+      const expectedType = resolveDirectoryTreePracticeExpectedType(practice);
+      const actualType = practice.typePrompt?.expected
+        ? String(current.typeValue || "").trim()
+        : expectedType;
+      const nextName = buildDirectoryTreeNameFromValues(practice, current.nameValues, actualType || expectedType || "folder");
+
+      if (
+        !current.hasInteracted ||
+        !selectedNodeId ||
+        (selectedNodeId !== DIRECTORY_TREE_BASE_NODE_ID && !directoryTreeNodeCanHaveChildren(selectedNode)) ||
+        !actualType ||
+        !nextName
+      ) {
+        feedback = "incomplete";
+      } else {
+        const expectedName = normalizeDirectoryTreeNodeNameByType(
+          resolveDirectoryTreePracticeExpectedName(practice),
+          expectedType || "folder"
+        );
+        feedback =
+          selectedNodeId === expectedParentId &&
+          normalizeDirectoryTreeNodeType(actualType) === normalizeDirectoryTreeNodeType(expectedType) &&
+          nextName === expectedName
+            ? "correct"
+            : "wrong";
+      }
+    } else if (practice.mode === "rename") {
+      const expectedTargetId = String(practice.targetNodeId || "");
+      const nextName = buildDirectoryTreeNameFromValues(practice, current.nameValues, selectedNode?.type || "folder");
+      if (!current.hasInteracted || !selectedNode || !nextName) {
+        feedback = "incomplete";
+      } else {
+        const expectedName = normalizeDirectoryTreeNodeNameByType(
+          resolveDirectoryTreePracticeExpectedName(practice),
+          selectedNode.type || "folder"
+        );
+        feedback =
+          selectedNodeId === expectedTargetId &&
+          nextName === expectedName
+            ? "correct"
+            : "wrong";
+      }
+    }
+
+    setDirectoryTreeState(blockKey, {
+      ...current,
+      feedback
+    });
+    render({ preserveState: true });
+  }
+
   function ensureCurrentCardRuntimeOptions() {
+    const directoryTreeOptions = ensureCurrentDirectoryTreeState();
     const flowchartOptions = ensureCurrentFlowchartPracticeState();
     const choiceOptions = ensureCurrentChoiceExerciseState();
     const completeOptions = ensureCurrentCompleteExerciseState();
     return {
+      ...directoryTreeOptions,
       ...flowchartOptions,
       ...choiceOptions,
       ...completeOptions,
@@ -2221,6 +2907,9 @@ export function createLessonEditorApp({ root, storage, editor }) {
       },
       textGapExerciseStateByBlockKey: {
         ...(completeOptions.textGapExerciseStateByBlockKey || {})
+      },
+      directoryTreeStateByBlockKey: {
+        ...(directoryTreeOptions.directoryTreeStateByBlockKey || {})
       },
       activeTextGapPrompt: state.activeTextGapPrompt,
       exerciseShuffleSeed: choiceOptions.exerciseShuffleSeed || flowchartOptions.exerciseShuffleSeed || "runtime"
@@ -2452,7 +3141,11 @@ export function createLessonEditorApp({ root, storage, editor }) {
             modelOptions: ASSIST_MODEL_OPTIONS
           })
         : "") +
-      (entityEditorModel ? renderEntityEditorOverlay(entityEditorModel) : "") +
+      (entityEditorModel
+        ? entityEditorModel.variant === "action-menu"
+          ? renderActionMenuOverlay(entityEditorModel)
+          : renderEntityEditorOverlay(entityEditorModel)
+        : "") +
       "</div>";
 
     if (renderState) {
@@ -2563,6 +3256,112 @@ export function createLessonEditorApp({ root, storage, editor }) {
         const blockKey = node.getAttribute("data-choice-block-key");
         if (!blockKey) return;
         validateChoice(blockKey);
+      });
+    });
+
+    root.querySelectorAll("[data-action='directory-tree-select-node']").forEach((node) => {
+      node.addEventListener("click", () => {
+        const blockKey = node.getAttribute("data-directory-tree-block-key");
+        const nodeId = node.getAttribute("data-directory-tree-node-id");
+        if (!blockKey || nodeId === null) return;
+        selectDirectoryTreeNode(blockKey, nodeId);
+      });
+    });
+    root.querySelectorAll("[data-action='directory-tree-toggle-node']").forEach((node) => {
+      node.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        const blockKey = node.getAttribute("data-directory-tree-block-key");
+        const nodeId = node.getAttribute("data-directory-tree-node-id");
+        if (!blockKey || nodeId === null) return;
+        toggleDirectoryTreeNode(blockKey, nodeId);
+      });
+    });
+    root.querySelectorAll("[data-action='directory-tree-set-type']").forEach((node) => {
+      node.addEventListener("click", () => {
+        const blockKey = node.getAttribute("data-directory-tree-block-key");
+        const nodeType = node.getAttribute("data-directory-tree-node-type");
+        if (!blockKey || nodeType === null) return;
+        setDirectoryTreeType(blockKey, nodeType);
+      });
+    });
+    root.querySelectorAll("[data-action='directory-tree-name-set-choice']").forEach((node) => {
+      node.addEventListener("click", () => {
+        const blockKey = node.getAttribute("data-directory-tree-block-key");
+        const blankIndex = node.getAttribute("data-directory-tree-blank-index");
+        const value = node.getAttribute("data-directory-tree-value");
+        if (!blockKey || blankIndex === null || value === null) return;
+        setDirectoryTreeNameBlank(blockKey, blankIndex, value, { rerender: true });
+      });
+    });
+    root.querySelectorAll("[data-action='directory-tree-name-clear']").forEach((node) => {
+      const clear = () => {
+        const blockKey = node.getAttribute("data-directory-tree-block-key");
+        const blankIndex = node.getAttribute("data-directory-tree-blank-index");
+        if (!blockKey || blankIndex === null) return;
+        clearDirectoryTreeNameBlank(blockKey, blankIndex);
+      };
+      node.addEventListener("click", clear);
+      node.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          clear();
+        }
+      });
+    });
+    root.querySelectorAll("[data-action='directory-tree-apply']").forEach((node) => {
+      node.addEventListener("click", () => {
+        const blockKey = node.getAttribute("data-directory-tree-block-key");
+        if (!blockKey) return;
+        applyDirectoryTreeAction(blockKey);
+      });
+    });
+    root.querySelectorAll("[data-action='directory-tree-view-answer']").forEach((node) => {
+      node.addEventListener("click", () => {
+        const blockKey = node.getAttribute("data-directory-tree-block-key");
+        if (!blockKey) return;
+        viewAnswerDirectoryTree(blockKey);
+      });
+    });
+    root.querySelectorAll("[data-action='directory-tree-try-again']").forEach((node) => {
+      node.addEventListener("click", () => {
+        const blockKey = node.getAttribute("data-directory-tree-block-key");
+        if (!blockKey) return;
+        tryAgainDirectoryTree(blockKey);
+      });
+    });
+    root.querySelectorAll("[data-action='directory-tree-name-input']").forEach((node) => {
+      if (node.getAttribute("contenteditable") !== "true") {
+        return;
+      }
+
+      const updateEmptyAttribute = () => {
+        const content = String(node.textContent || "").replace(/\u2007/g, "");
+        node.setAttribute("data-empty", content.length ? "false" : "true");
+      };
+
+      updateEmptyAttribute();
+
+      node.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+          event.preventDefault();
+        }
+      });
+
+      node.addEventListener("input", () => {
+        const blockKey = node.getAttribute("data-directory-tree-block-key");
+        const blankIndex = node.getAttribute("data-directory-tree-blank-index");
+        if (!blockKey || blankIndex === null) return;
+        const normalized = normalizeTextGapContentEditableValue(node);
+        node.setAttribute("data-empty", normalized ? "false" : "true");
+        setDirectoryTreeNameBlank(blockKey, blankIndex, normalized, { rerender: false });
+      });
+
+      node.addEventListener("blur", () => {
+        if (!normalizeTextGapContentEditableValue(node)) {
+          node.textContent = "";
+          node.setAttribute("data-empty", "true");
+        }
       });
     });
 
@@ -2799,6 +3598,18 @@ export function createLessonEditorApp({ root, storage, editor }) {
       });
     });
 
+    root.querySelectorAll("[data-action='open-home-actions']").forEach((node) => {
+      node.addEventListener("click", () => {
+        openEntityEditor("home-actions");
+      });
+    });
+    root.querySelectorAll("[data-action='open-course-actions']").forEach((node) => {
+      node.addEventListener("click", () => {
+        const courseKey = node.getAttribute("data-course-key") || state.selection.courseKey;
+        if (!courseKey) return;
+        openEntityEditor("course-actions", { courseKey });
+      });
+    });
     root.querySelectorAll("[data-action='edit-course']").forEach((node) => {
       node.addEventListener("click", () => {
         const courseKey = node.getAttribute("data-course-key") || state.selection.courseKey;
@@ -2836,6 +3647,13 @@ export function createLessonEditorApp({ root, storage, editor }) {
 
     root.querySelector("[data-action='entity-editor-close']")?.addEventListener("click", () => closeEntityEditor());
     root.querySelector("[data-action='entity-editor-save']")?.addEventListener("click", () => closeEntityEditor());
+    root.querySelectorAll("[data-action='dismiss-action-menu']").forEach((node) => {
+      node.addEventListener("click", (event) => {
+        if (event.target === node) {
+          closeEntityEditor();
+        }
+      });
+    });
     root.querySelectorAll("[data-action='run-entity-action']").forEach((node) => {
       node.addEventListener("click", () => {
         const actionKey = node.getAttribute("data-entity-action");

@@ -1,6 +1,7 @@
 import { renderHomeScreen } from "./renderHomeScreen.js";
 import { readCardText } from "../core/cardRuntime.js";
 import { renderCardRuntimeBlocks, renderCardRuntimeBlocksWithDock } from "../render/renderCardRuntime.js";
+import { readLessonProgressEntry } from "../storage/progressStore.js";
 
 function escapeHtml(value) {
   return String(value)
@@ -58,15 +59,21 @@ function countCardsInMicrosequence(microsequence) {
   return (microsequence.cards || []).length;
 }
 
-function countCompletedCardsInLesson(lesson, progress) {
-  const lessons = progress && progress.lessons ? progress.lessons : {};
-  const entry = lessons[lesson.key];
+function countCompletedCardsInLesson(course, moduleValue, lesson, progress) {
+  const entry = readLessonProgressEntry(progress, {
+    courseKey: course.key,
+    moduleKey: moduleValue.key,
+    lessonKey: lesson.key
+  });
   return entry && Array.isArray(entry.completedCardKeys) ? entry.completedCardKeys.length : 0;
 }
 
-function countCompletedCardsInMicrosequence(lesson, microsequence, progress) {
-  const lessons = progress && progress.lessons ? progress.lessons : {};
-  const entry = lessons[lesson.key];
+function countCompletedCardsInMicrosequence(course, moduleValue, lesson, microsequence, progress) {
+  const entry = readLessonProgressEntry(progress, {
+    courseKey: course.key,
+    moduleKey: moduleValue.key,
+    lessonKey: lesson.key
+  });
   const completedCardKeys = entry && Array.isArray(entry.completedCardKeys) ? entry.completedCardKeys : [];
   const cardKeys = new Set((microsequence.cards || []).map((card) => card.key));
   return completedCardKeys.reduce((total, key) => total + (cardKeys.has(key) ? 1 : 0), 0);
@@ -76,8 +83,11 @@ function countCardsInModule(moduleValue) {
   return (moduleValue.lessons || []).reduce((total, lesson) => total + countCardsInLesson(lesson), 0);
 }
 
-function countCompletedCardsInModule(moduleValue, progress) {
-  return (moduleValue.lessons || []).reduce((total, lesson) => total + countCompletedCardsInLesson(lesson, progress), 0);
+function countCompletedCardsInModule(course, moduleValue, progress) {
+  return (moduleValue.lessons || []).reduce(
+    (total, lesson) => total + countCompletedCardsInLesson(course, moduleValue, lesson, progress),
+    0
+  );
 }
 
 function percent(total, completed) {
@@ -322,12 +332,12 @@ function renderDraftCourseScreen({ course, draftMicrosequences }) {
 function renderCourseScreen({ course, progress }) {
   const modules = (course.modules || [])
     .map((moduleValue) => {
-      const moduleCompleted = countCompletedCardsInModule(moduleValue, progress);
+      const moduleCompleted = countCompletedCardsInModule(course, moduleValue, progress);
       const moduleTotal = countCardsInModule(moduleValue);
       const modulePercent = percent(moduleTotal, moduleCompleted);
       const lessons = (moduleValue.lessons || [])
         .map((lesson) => {
-          const lessonCompleted = countCompletedCardsInLesson(lesson, progress);
+          const lessonCompleted = countCompletedCardsInLesson(course, moduleValue, lesson, progress);
           const lessonTotal = countCardsInLesson(lesson);
           const lessonPercent = percent(lessonTotal, lessonCompleted);
           const lessonDescription = getLessonDescription(lesson);
@@ -415,13 +425,13 @@ function renderCourseScreen({ course, progress }) {
   );
 }
 
-function renderLessonScreenView({ lesson, moduleValue, progress }) {
-  const lessonCompleted = countCompletedCardsInLesson(lesson, progress);
+function renderLessonScreenView({ course, lesson, moduleValue, progress }) {
+  const lessonCompleted = countCompletedCardsInLesson(course, moduleValue, lesson, progress);
   const lessonTotal = countCardsInLesson(lesson);
   const microsequenceBlocks = (lesson.microsequences || [])
     .map((microsequence) => {
       const cardCount = countCardsInMicrosequence(microsequence);
-      const microsequenceCompleted = countCompletedCardsInMicrosequence(lesson, microsequence, progress);
+      const microsequenceCompleted = countCompletedCardsInMicrosequence(course, moduleValue, lesson, microsequence, progress);
       const microsequencePercent = percent(cardCount, microsequenceCompleted);
       const didacticTags = renderDidacticTags(moduleValue, lesson.key, microsequence);
 
@@ -826,7 +836,7 @@ export function renderLessonScreen({ project, view, selection, course, moduleVal
   }
 
   if (view === "lesson") {
-    return renderLessonScreenView({ lesson, moduleValue, selection, progress: editorSupport.progress });
+    return renderLessonScreenView({ course, lesson, moduleValue, selection, progress: editorSupport.progress });
   }
 
   if (view === "microsequence-assist") {

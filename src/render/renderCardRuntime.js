@@ -1,4 +1,14 @@
 import { resolveCardRuntime, sanitizePopupBlocks } from "../core/cardRuntime.js";
+import {
+  cloneDirectoryTreeNodes,
+  directoryTreePracticeNeedsName,
+  DIRECTORY_TREE_BASE_NODE_ID,
+  getDirectoryTreePathLabels,
+  normalizeDirectoryTreeBase,
+  normalizeDirectoryTreeNodeType,
+  normalizeDirectoryTreePractice,
+  resolveDirectoryTreePracticeExpectedType
+} from "../core/directoryTree.js";
 import { getExerciseOptionStableId, shuffleExerciseOptions } from "../core/exerciseOptions.js";
 import { computeFlowchartBoardLayout } from "../flowchart/flowchartLayout.js";
 import {
@@ -20,6 +30,10 @@ function escapeHtml(value) {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
+}
+
+function escapeHtmlAttribute(value) {
+  return escapeHtml(value).replace(/\r?\n/g, "&#10;");
 }
 
 function normalizeInlineText(value) {
@@ -1346,6 +1360,445 @@ function renderImageBlock(block) {
   );
 }
 
+function renderDirectoryTreeDisclosureIcon() {
+  return (
+    '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">' +
+    '<path d="M4.5 6.5 8 10l3.5-3.5" />' +
+    "</svg>"
+  );
+}
+
+function renderDirectoryTreeFolderIcon() {
+  return (
+    '<svg viewBox="0 0 24 18" fill="none" stroke="none">' +
+    '<path fill="rgba(244, 198, 109, 0.96)" d="M2.5 4.4a2.4 2.4 0 0 1 2.4-2.4h4.4l1.9 1.9H19a2.5 2.5 0 0 1 2.5 2.5v7.6A2.5 2.5 0 0 1 19 16.5H5A2.5 2.5 0 0 1 2.5 14z"/>' +
+    '<path fill="rgba(255, 229, 170, 0.9)" d="M2.5 6h19v1.2a2.5 2.5 0 0 0-2.5-2.5h-7.6L9.5 2.8H4.9A2.4 2.4 0 0 0 2.5 5.2z"/>' +
+    '<path fill="rgba(153, 104, 26, 0.42)" d="M2.5 6h19v.9h-19z"/>' +
+    "</svg>"
+  );
+}
+
+function renderDirectoryTreeFileIcon() {
+  return (
+    '<svg viewBox="0 0 18 22" fill="none" stroke="none">' +
+    '<path fill="rgba(196, 214, 228, 0.92)" d="M4 1.5h9.4A1.6 1.6 0 0 1 15 3.1v12.8a1.6 1.6 0 0 1-1.6 1.6H4a1.6 1.6 0 0 1-1.5-1.6V3A1.5 1.5 0 0 1 4 1.5z"/>' +
+    '<path fill="rgba(86, 98, 114, 0.8)" d="M5.3 6.1h7.1v1.2H5.3zm0 3h7.1v1.2H5.3zm0 3h5.2v1.2H5.3z"/>' +
+    "</svg>"
+  );
+}
+
+function renderDirectoryTreeBaseIcon() {
+  return (
+    '<svg viewBox="0 0 24 18" fill="none" stroke="none">' +
+    '<path fill="rgba(196, 214, 228, 0.92)" d="M3 4.8A2.8 2.8 0 0 1 5.8 2h12.4A2.8 2.8 0 0 1 21 4.8v6.4A2.8 2.8 0 0 1 18.2 14H5.8A2.8 2.8 0 0 1 3 11.2z"/>' +
+    '<path fill="rgba(90, 114, 132, 0.9)" d="M3 6.2h18v1.1H3z"/>' +
+    '<circle cx="17.9" cy="10.1" r="1.1" fill="rgba(82, 201, 146, 0.95)"/>' +
+    "</svg>"
+  );
+}
+
+function renderDirectoryTreeNodeIcon(nodeType, isBase) {
+  if (isBase) {
+    return renderDirectoryTreeBaseIcon();
+  }
+  return nodeType === "file" ? renderDirectoryTreeFileIcon() : renderDirectoryTreeFolderIcon();
+}
+
+function renderDirectoryTreePathText(base, nodes, nodeId) {
+  const labels = getDirectoryTreePathLabels(base, nodes, nodeId);
+  if (!Array.isArray(labels) || !labels.length) {
+    return "";
+  }
+  const safeBase = String(labels[0] || "/").trim() || "/";
+  const parts = labels.slice(1).map((item) => String(item || "").trim()).filter(Boolean);
+  if (!parts.length) {
+    return safeBase;
+  }
+  if (safeBase === "/") {
+    return `/${parts.join("/")}`;
+  }
+  return `${safeBase}/${parts.join("/")}`;
+}
+
+function getDirectoryTreePracticeModeMeta(mode) {
+  if (mode === "select") {
+    return {
+      badge: "Selecionar",
+      prompt: "Selecione na árvore o item pedido e valide no Continuar.",
+      actionLabel: ""
+    };
+  }
+  if (mode === "create_folder") {
+    return {
+      badge: "Criar pasta",
+      prompt: "Selecione a pasta pai e informe o nome da nova pasta. A validação acontece no Continuar.",
+      actionLabel: ""
+    };
+  }
+  if (mode === "create_file") {
+    return {
+      badge: "Criar arquivo",
+      prompt: "Selecione a pasta pai, escolha o tipo quando necessário e complete o nome. A validação acontece no Continuar.",
+      actionLabel: ""
+    };
+  }
+  if (mode === "delete") {
+    return {
+      badge: "Excluir",
+      prompt: "Selecione o item que deve ser removido da árvore.",
+      actionLabel: ""
+    };
+  }
+  if (mode === "rename") {
+    return {
+      badge: "Renomear",
+      prompt: "Selecione o item a renomear e informe o novo nome. A validação acontece no Continuar.",
+      actionLabel: ""
+    };
+  }
+  return {
+    badge: "",
+    prompt: "",
+    actionLabel: ""
+  };
+}
+
+function renderDirectoryTreePracticeNameBlank(blockKey, part, value) {
+  const rawValue = String(value ?? "");
+  return (
+    '<input class="directory-tree-practice-input" type="text" spellcheck="false" dir="ltr" ' +
+    'data-action="directory-tree-name-input" data-directory-tree-block-key="' +
+    escapeHtml(blockKey) +
+    '" data-directory-tree-blank-index="' +
+    escapeHtml(part?.index ?? 0) +
+    '" value="' +
+    escapeHtmlAttribute(rawValue) +
+    '">' 
+  );
+}
+
+function renderDirectoryTreePracticeNameComposer(blockKey, practice, exercise) {
+  if (!directoryTreePracticeNeedsName(practice.mode) || !practice.nameTemplate) {
+    return "";
+  }
+
+  const parts = parseTextGapParts(practice.nameTemplate);
+  const values = Array.isArray(exercise?.nameValues) ? exercise.nameValues : [];
+  const blankCount = parts.filter((part) => part.kind === "blank").length;
+  if (!blankCount) {
+    return "";
+  }
+
+  const templatePreview = parts
+    .map((part) => {
+      if (part.kind === "text") {
+        return part.value;
+      }
+      const currentValue = String(values[part.index] ?? "").trim();
+      return currentValue || "…";
+    })
+    .join("");
+
+  const fieldGroups = parts
+    .filter((part) => part.kind === "blank" && Array.isArray(part.options) && part.options.length)
+    .map((part, optionGroupIndex) => {
+      const currentValue = normalizeInlineText(values[part.index] ?? "");
+      const label = part.options.every((option) => /^[a-z0-9]{1,5}$/i.test(option)) ? "Extensão" : `Parte ${optionGroupIndex + 1}`;
+      return (
+        '<div class="directory-tree-practice-choice-group">' +
+        '<span class="directory-tree-practice-choice-label">' + escapeHtml(label) + "</span>" +
+        '<div class="token-options">' +
+        part.options
+          .map((option) => {
+            const selected = currentValue === normalizeInlineText(option);
+            return (
+              '<button class="token-option' +
+              (selected ? " active" : "") +
+              '" type="button" data-action="directory-tree-name-set-choice" data-directory-tree-block-key="' +
+              escapeHtml(blockKey) +
+              '" data-directory-tree-blank-index="' +
+              escapeHtml(part.index) +
+              '" data-directory-tree-value="' +
+              escapeHtml(option) +
+              '">' +
+              escapeHtml(option) +
+              "</button>"
+            );
+          })
+          .join("") +
+        "</div></div>"
+      );
+    })
+    .join("");
+
+  const textFields = parts
+    .filter((part) => part.kind === "blank" && (!Array.isArray(part.options) || !part.options.length))
+    .map((part, textFieldIndex) => (
+      '<div class="directory-tree-practice-field">' +
+      '<span class="directory-tree-practice-field-label">' +
+      escapeHtml(textFieldIndex === 0 ? "Nome" : `Parte ${textFieldIndex + 1}`) +
+      "</span>" +
+      renderDirectoryTreePracticeNameBlank(blockKey, part, values[part.index] ?? "") +
+      "</div>"
+    ))
+    .join("");
+
+  return (
+    '<div class="directory-tree-practice-field">' +
+    '<span class="directory-tree-practice-field-label">Prévia</span>' +
+    '<input class="directory-tree-status-value directory-tree-practice-path" type="text" readonly value="' +
+    escapeHtmlAttribute(templatePreview) +
+    '" aria-label="Prévia do nome">' +
+    "</div>" +
+    textFields +
+    fieldGroups
+  );
+}
+
+function renderDirectoryTreePracticeTypePrompt(blockKey, practice, exercise) {
+  if (!practice.typePrompt?.expected) {
+    return "";
+  }
+
+  const currentType = String(exercise?.typeValue || "").trim();
+  return (
+    '<div class="directory-tree-practice-field">' +
+    '<span class="directory-tree-practice-field-label">Tipo</span>' +
+    '<div class="token-options">' +
+    practice.typePrompt.options
+      .map((option) => {
+        const normalizedOption = normalizeDirectoryTreeNodeType(option);
+        const selected = currentType === normalizedOption;
+        return (
+          '<button class="token-option' +
+          (selected ? " active" : "") +
+          '" type="button" data-action="directory-tree-set-type" data-directory-tree-block-key="' +
+          escapeHtml(blockKey) +
+          '" data-directory-tree-node-type="' +
+          escapeHtml(normalizedOption) +
+          '">' +
+          escapeHtml(normalizedOption === "file" ? "Arquivo" : "Pasta") +
+          "</button>"
+        );
+      })
+      .join("") +
+    "</div></div>"
+  );
+}
+
+function renderDirectoryTreePracticeFeedback(blockKey, feedback) {
+  if (!feedback) {
+    return "";
+  }
+  if (feedback === "correct") {
+    return '<div class="inline-feedback ok"><p class="tiny">Correto.</p></div>';
+  }
+  if (feedback === "incomplete") {
+    return '<div class="inline-feedback err"><p class="tiny">Monte a resposta completa na árvore antes de continuar.</p></div>';
+  }
+  return (
+    '<div class="inline-feedback err has-actions">' +
+    '<p class="tiny">A árvore resultante não corresponde ao estado esperado.</p>' +
+    '<div class="feedback-icons">' +
+    '<button class="icon-pill" type="button" data-action="directory-tree-view-answer" data-directory-tree-block-key="' +
+    escapeHtml(blockKey) +
+    '" title="Ver resposta" aria-label="Ver resposta">&#128065;</button>' +
+    '<button class="icon-pill primary" type="button" data-action="directory-tree-try-again" data-directory-tree-block-key="' +
+    escapeHtml(blockKey) +
+    '" title="Tentar de novo" aria-label="Tentar de novo">&#8635;</button>' +
+    "</div></div>"
+  );
+}
+
+function renderDirectoryTreePracticeDock(block, treeState, blockKey) {
+  const practice = normalizeDirectoryTreePractice(block?.practice);
+  if (practice.mode === "none") {
+    return "";
+  }
+
+  const selectedNodeId = String(treeState?.selectedNodeId || DIRECTORY_TREE_BASE_NODE_ID);
+  const selectedPath = renderDirectoryTreePathText(block?.base, treeState?.nodes || block?.nodes, selectedNodeId);
+  const meta = getDirectoryTreePracticeModeMeta(practice.mode);
+  const selectedLabel = selectedPath || normalizeDirectoryTreeBase(block?.base);
+  const actionButton =
+    meta.actionLabel
+      ? '<button class="primary-btn compact-btn directory-tree-practice-submit" type="button" data-action="directory-tree-apply" data-directory-tree-block-key="' +
+        escapeHtml(blockKey) +
+        '">' +
+        escapeHtml(meta.actionLabel) +
+        "</button>"
+      : "";
+
+  return (
+    '<section class="runtime-flow-prompt directory-tree-practice-dock" data-directory-tree-practice="true">' +
+    '<div class="runtime-flow-prompt-head">' +
+    '<span class="runtime-flow-prompt-badge">' +
+    escapeHtml(meta.badge) +
+    "</span></div>" +
+    '<p class="chip-muted directory-tree-practice-copy">' +
+    escapeHtml(meta.prompt) +
+    "</p>" +
+    '<div class="directory-tree-practice-field">' +
+    '<span class="directory-tree-practice-field-label">Seleção ativa</span>' +
+    '<input class="directory-tree-status-value directory-tree-practice-path" type="text" readonly value="' +
+    escapeHtmlAttribute(selectedLabel) +
+    '" aria-label="Seleção ativa">' +
+    "</div>" +
+    renderDirectoryTreePracticeTypePrompt(blockKey, practice, treeState) +
+    renderDirectoryTreePracticeNameComposer(blockKey, practice, treeState) +
+    actionButton +
+    renderDirectoryTreePracticeFeedback(blockKey, treeState?.feedback || null) +
+    "</section>"
+  );
+}
+
+function renderDirectoryTreeDisclosureControl(blockKey, nodeId, hasChildren, expanded) {
+  if (!hasChildren) {
+    return '<span class="directory-tree-disclosure is-empty" aria-hidden="true"></span>';
+  }
+
+  return (
+    '<button type="button" class="directory-tree-disclosure' +
+    (expanded ? " is-expanded" : " is-collapsed") +
+    '" data-action="directory-tree-toggle-node" data-directory-tree-block-key="' +
+    escapeHtml(blockKey) +
+    '" data-directory-tree-node-id="' +
+    escapeHtml(nodeId) +
+    '" aria-expanded="' +
+    (expanded ? "true" : "false") +
+    '" aria-label="' +
+    escapeHtml(expanded ? "Recolher pasta" : "Expandir pasta") +
+    '" title="' +
+    escapeHtml(expanded ? "Recolher" : "Expandir") +
+    '">' +
+    renderDirectoryTreeDisclosureIcon() +
+    "</button>"
+  );
+}
+
+function renderDirectoryTreeItem(node, options = {}) {
+  const isBase = !!options.isBase;
+  const nodeId = isBase ? DIRECTORY_TREE_BASE_NODE_ID : String(node?.id || "");
+  const nodeType = isBase ? "base" : String(node?.type || "folder");
+  const label = isBase ? normalizeDirectoryTreeBase(node?.name) : String(node?.name || "");
+  const children = isBase ? cloneDirectoryTreeNodes(options.nodes) : cloneDirectoryTreeNodes(node?.children);
+  const hasChildren = children.length > 0;
+  const expanded = hasChildren ? !options.collapsedNodeIds?.has(nodeId) : false;
+  const isCurrent = String(options.currentNodeId || "") === String(nodeId || "");
+  const isSelected = String(options.selectedNodeId || "") === String(nodeId || "");
+  const pathText = renderDirectoryTreePathText(options.base, options.nodes, nodeId);
+  const currentMarkerHtml = isCurrent
+    ? '<span class="directory-tree-current-marker" aria-hidden="true"></span>'
+    : "";
+  const childrenHtml = hasChildren && expanded
+    ? '<div class="directory-tree-children"><div class="directory-tree-list">' +
+      children.map((child) => renderDirectoryTreeItem(child, { ...options, isBase: false })).join("") +
+      "</div></div>"
+    : "";
+  const entryClassName =
+    "directory-tree-entry" +
+    (isCurrent ? " is-current" : "") +
+    (isSelected ? " is-selected" : "") +
+    (isBase ? " is-base" : "") +
+    (nodeType === "file" ? " is-file" : "");
+
+  return (
+    '<div class="directory-tree-item directory-tree-item-' +
+    escapeHtml(nodeType) +
+    (isCurrent ? " is-current" : "") +
+    (hasChildren ? " has-children" : "") +
+    '">' +
+    '<div class="' + entryClassName + '">' +
+    renderDirectoryTreeDisclosureControl(options.blockKey, nodeId, hasChildren, expanded) +
+    '<span class="directory-tree-node-icon directory-tree-node-icon-' +
+    escapeHtml(nodeType) +
+    '" aria-hidden="true">' +
+    renderDirectoryTreeNodeIcon(nodeType, isBase) +
+    "</span>" +
+    '<button type="button" class="directory-tree-entry-button' +
+    (isSelected ? " is-selected" : "") +
+    (isCurrent ? " is-current" : "") +
+    '" data-action="directory-tree-select-node" data-directory-tree-block-key="' +
+    escapeHtml(options.blockKey) +
+    '" data-directory-tree-node-id="' +
+    escapeHtml(nodeId) +
+    '" aria-pressed="' +
+    (isSelected ? "true" : "false") +
+    '"' +
+    (isCurrent ? ' aria-current="true"' : "") +
+    (pathText ? ' title="' + escapeHtml(pathText) + '"' : "") +
+    ">" +
+    '<span class="directory-tree-entry-button-label">' +
+    escapeHtml(label) +
+    "</span>" +
+    currentMarkerHtml +
+    "</button>" +
+    "</div>" +
+    childrenHtml +
+    "</div>"
+  );
+}
+
+function renderDirectoryTreeBlock(block, renderOptions = {}, blockKey = "runtime-directory-tree") {
+  const base = normalizeDirectoryTreeBase(block?.base);
+  const treeState = renderOptions.directoryTreeStateByBlockKey?.[blockKey] || null;
+  const nodes = cloneDirectoryTreeNodes(treeState?.nodes || block?.nodes);
+  const currentNodeId = String(block?.currentNodeId || block?.referenceNodeId || "");
+  const selectedNodeId = String(treeState?.selectedNodeId || block?.selectedNodeId || currentNodeId || DIRECTORY_TREE_BASE_NODE_ID);
+  const collapsedNodeIds = new Set(
+    (Array.isArray(treeState?.collapsedNodeIds) ? treeState.collapsedNodeIds : Array.isArray(block?.collapsedNodeIds) ? block.collapsedNodeIds : [])
+      .map((item) => String(item || ""))
+      .filter(Boolean)
+  );
+  const currentPathText = renderDirectoryTreePathText(base, nodes, currentNodeId || DIRECTORY_TREE_BASE_NODE_ID);
+  const selectedPathText = renderDirectoryTreePathText(base, nodes, selectedNodeId || DIRECTORY_TREE_BASE_NODE_ID);
+  const statusRows = [
+    currentPathText
+      ? '<div class="directory-tree-status-row">' +
+        '<span class="directory-tree-status-label">Diretório atual:</span>' +
+        '<input class="directory-tree-status-value" type="text" readonly value="' + escapeHtmlAttribute(currentPathText) + '" aria-label="Diretório atual">' +
+        "</div>"
+      : "",
+    selectedPathText
+      ? '<div class="directory-tree-status-row">' +
+        '<span class="directory-tree-status-label">Seleção:</span>' +
+        '<input class="directory-tree-status-value" type="text" readonly value="' + escapeHtmlAttribute(selectedPathText) + '" aria-label="Seleção">' +
+        "</div>"
+      : ""
+  ].filter(Boolean).join("");
+  const dockExerciseParts = Array.isArray(renderOptions.dockExerciseParts) ? renderOptions.dockExerciseParts : null;
+  if (dockExerciseParts) {
+    const practiceDock = renderDirectoryTreePracticeDock({ ...block, nodes }, treeState || { nodes, selectedNodeId }, blockKey);
+    if (practiceDock) {
+      dockExerciseParts.push(practiceDock);
+    }
+  }
+
+  return (
+    '<section class="runtime-block runtime-directory-tree-block">' +
+    '<div class="directory-tree-box">' +
+    '<div class="directory-tree-tree" aria-label="Árvore de diretórios">' +
+    renderDirectoryTreeItem(
+      { name: base },
+      {
+        blockKey,
+        isBase: true,
+        base,
+        nodes,
+        currentNodeId,
+        selectedNodeId,
+        collapsedNodeIds
+      }
+    ) +
+    "</div>" +
+    (statusRows
+      ? '<div class="directory-tree-status-panel">' + statusRows + "</div>"
+      : "") +
+    "</div>" +
+    "</section>"
+  );
+}
+
 function renderPopupButtonBlock(block) {
   const popupBlocks = sanitizePopupBlocks(block?.popupBlocks);
   if (!block?.popupEnabled || !popupBlocks.length) {
@@ -1456,6 +1909,9 @@ function renderRuntimeBlock(block, renderOptions = {}, blockKey = "runtime-block
   }
   if (block.kind === "image") {
     return renderImageBlock(block);
+  }
+  if (block.kind === "directory_tree") {
+    return renderDirectoryTreeBlock(block, renderOptions, blockKey);
   }
   if (block.kind === "button") {
     if (renderOptions.omitPopupButtonBlock) {

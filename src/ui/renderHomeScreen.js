@@ -1,3 +1,5 @@
+import { readLessonProgressEntry } from "../storage/progressStore.js";
+
 function escapeHtml(value) {
   return String(value)
     .replace(/&/g, "&amp;")
@@ -23,13 +25,15 @@ function countCardsInCourse(course) {
 }
 
 function countCompletedCardsInCourse(course, progress) {
-  const lessons = progress && progress.lessons ? progress.lessons : {};
-
   return (course.modules || []).reduce((total, moduleValue) => {
     return (
       total +
       (moduleValue.lessons || []).reduce((lessonTotal, lesson) => {
-        const entry = lessons[lesson.key];
+        const entry = readLessonProgressEntry(progress, {
+          courseKey: course.key,
+          moduleKey: moduleValue.key,
+          lessonKey: lesson.key
+        });
         const completed = entry && Array.isArray(entry.completedCardKeys) ? entry.completedCardKeys.length : 0;
         return lessonTotal + completed;
       }, 0)
@@ -56,7 +60,7 @@ function buildHomeCoursePreviews(project, progress, featuredCourseKey = "") {
   });
 }
 
-function renderCoursesTopbar(currentCourseKey = "") {
+function renderCoursesTopbar() {
   return (
     '<header class="topbar">' +
     '<div class="topbar-space"></div>' +
@@ -66,15 +70,12 @@ function renderCoursesTopbar(currentCourseKey = "") {
     '<span class="brand-text">AraLearn</span>' +
     "</span>" +
     "</h1>" +
-    '<button class="icon-ghost" type="button" data-action="edit-course" data-course-key="' +
-    escapeHtml(currentCourseKey) +
-    '" title="Ações" aria-label="Ações">&#9776;</button>' +
+    '<button class="icon-ghost" type="button" data-action="open-home-actions" title="Ações" aria-label="Ações">&#9776;</button>' +
     "</header>"
   );
 }
 
 export function renderHomeScreen({ project, progress, selection, featuredCourseKey = "" }) {
-  const currentCourseKey = selection?.courseKey || ((project.courses || [])[0]?.key ?? "");
   const courses = buildHomeCoursePreviews(project, progress, featuredCourseKey)
     .map((course) => {
       return (
@@ -98,7 +99,7 @@ export function renderHomeScreen({ project, progress, selection, featuredCourseK
         "</p>" +
         "</div>" +
         '<div class="course-actions">' +
-        '<button class="icon-ghost corner-btn" type="button" data-action="edit-course" data-course-key="' +
+        '<button class="icon-ghost corner-btn" type="button" data-action="open-course-actions" data-course-key="' +
         escapeHtml(course.key) +
         '" title="Ações do curso" aria-label="Ações do curso">&ctdot;</button>' +
         '<button class="open-main" type="button" data-action="open-course" data-course-key="' +
@@ -112,7 +113,7 @@ export function renderHomeScreen({ project, progress, selection, featuredCourseK
 
   return (
     '<section class="screen">' +
-    renderCoursesTopbar(currentCourseKey) +
+    renderCoursesTopbar() +
     '<main class="screen-content">' +
     (courses || '<article class="clean-card"><p class="card-subtitle">Nenhum curso.</p></article>') +
     "</main>" +

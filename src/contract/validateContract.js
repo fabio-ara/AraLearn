@@ -48,6 +48,10 @@ function readOptionalString(value) {
   return typeof value === "string" && value.trim() ? value.trim() : "";
 }
 
+function cloneRuntime(runtime) {
+  return structuredClone(runtime);
+}
+
 function normalizeStringList(value, path, fieldName, errors, { required = false } = {}) {
   if (value === undefined) {
     if (required) {
@@ -200,6 +204,10 @@ function validateCard(card, index, errors, cardKeys, path) {
     if (alt) {
       normalized.alt = alt;
     }
+  }
+
+  if (isPlainObject(card.runtime) && Array.isArray(card.runtime.blocks)) {
+    normalized.runtime = cloneRuntime(card.runtime);
   }
 
   return normalized;

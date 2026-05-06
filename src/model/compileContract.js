@@ -1,4 +1,4 @@
-import { buildCardRuntime } from "../core/cardRuntime.js";
+import { resolveCardRuntime } from "../core/cardRuntime.js";
 
 function makeNodeId(parts) {
   return parts.join(":");
@@ -76,7 +76,7 @@ export function compileContractDocument(document) {
                       id: cardId,
                       key,
                       ...payload,
-                      runtime: buildCardRuntime(card),
+                      runtime: resolveCardRuntime(card),
                       order: cardIndex,
                       scope: {
                         courseId,
