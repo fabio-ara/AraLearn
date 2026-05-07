@@ -122,22 +122,32 @@ function renderCoursesTopbar() {
 
 function renderHomeTabs(activeHomeTab) {
   return (
-    '<nav class="home-tabbar" aria-label="Tela inicial">' +
+    '<nav class="home-tabbar" role="tablist" aria-label="Tela inicial">' +
     '<button class="home-tab' +
     (activeHomeTab === "generate" ? " active" : "") +
-    '" type="button" data-action="switch-home-tab" data-home-tab="generate" aria-pressed="' +
+    '" id="home-tab-generate" type="button" role="tab" data-action="switch-home-tab" data-home-tab="generate" aria-controls="home-panel-generate" aria-selected="' +
     (activeHomeTab === "generate" ? "true" : "false") +
-    '">' +
+    '" aria-label="Gerar" title="Gerar">' +
     renderUiIcon("sparkles", "home-tab-icon") +
-    '<span>Gerar</span></button>' +
+    "</button>" +
     '<button class="home-tab' +
     (activeHomeTab === "courses" ? " active" : "") +
-    '" type="button" data-action="switch-home-tab" data-home-tab="courses" aria-pressed="' +
+    '" id="home-tab-courses" type="button" role="tab" data-action="switch-home-tab" data-home-tab="courses" aria-controls="home-panel-courses" aria-selected="' +
     (activeHomeTab === "courses" ? "true" : "false") +
-    '">' +
+    '" aria-label="Cursos" title="Cursos">' +
     renderUiIcon("lesson", "home-tab-icon") +
-    '<span>Cursos</span></button>' +
+    "</button>" +
     "</nav>"
+  );
+}
+
+function renderGenerateIconLabel(iconName, label) {
+  return (
+    '<span class="generate-icon-label" aria-hidden="true" title="' +
+    escapeHtml(label) +
+    '">' +
+    renderUiIcon(iconName, "generate-field-icon") +
+    "</span>"
   );
 }
 
@@ -214,41 +224,46 @@ function renderGeneratePane({ project, editorSupport }) {
       : "";
 
   return (
-    '<section class="home-generate-pane">' +
-    '<header class="generate-heading">' +
-    '<h2>Gerar microssequências</h2>' +
-    '<p>Escolha onde a dúvida se encaixa e gere rascunhos direto na estrutura do curso.</p>' +
-    "</header>" +
+    '<section class="home-generate-pane" id="home-panel-generate" role="tabpanel" aria-labelledby="home-tab-generate">' +
     '<section class="clean-card generate-card">' +
-    '<div class="generate-section-title">' + renderUiIcon("folder", "generate-section-icon") + "<h3>Contexto</h3></div>" +
-    '<label class="field">Curso<select data-field="generate-course">' +
+    '<label class="field generate-icon-field">' +
+    renderGenerateIconLabel("folder", "Curso") +
+    '<select data-field="generate-course" aria-label="Curso" title="Curso">' +
     renderCourseOptions(courses, draft.courseKey || "") +
     "</select></label>" +
-    '<label class="field">Módulo<select data-field="generate-module"' +
+    '<label class="field generate-icon-field">' +
+    renderGenerateIconLabel("module", "Módulo") +
+    '<select data-field="generate-module" aria-label="Módulo" title="Módulo"' +
     (!selectedCourse ? " disabled aria-disabled=\"true\"" : "") +
     ">" +
     renderModuleOptions(modules, draft.moduleKey || "") +
     "</select></label>" +
-    '<label class="field">Lição<select data-field="generate-lesson"' +
+    '<label class="field generate-icon-field">' +
+    renderGenerateIconLabel("lesson", "Lição") +
+    '<select data-field="generate-lesson" aria-label="Lição" title="Lição"' +
     (!selectedModule ? " disabled aria-disabled=\"true\"" : "") +
     ">" +
     renderLessonOptions(lessons, draft.lessonKey || "") +
     "</select></label>" +
     '<div class="generate-divider"></div>' +
-    '<div class="generate-section-title">' + renderUiIcon("prompt", "generate-section-icon") + "<h3>Dúvida ou comentário</h3></div>" +
-    '<label class="field"><textarea data-field="generate-prompt" placeholder="Ex.: Como se faz soma de matrizes?">' +
+    '<label class="field generate-icon-field generate-prompt-field">' +
+    renderGenerateIconLabel("prompt", "Dúvida ou comentário") +
+    '<textarea data-field="generate-prompt" aria-label="Dúvida ou comentário" title="Dúvida ou comentário" placeholder="Ex.: Como se faz soma de matrizes?">' +
     escapeHtml(draft.promptText || "") +
     "</textarea></label>" +
     '<div class="generate-divider"></div>' +
-    '<div class="generate-section-title">' + renderUiIcon("intent", "generate-section-icon") + "<h3>Modelo</h3></div>" +
-    '<label class="field"><select data-field="assist-model">' +
+    '<div class="generate-action-row">' +
+    '<label class="field generate-icon-field generate-model-field">' +
+    renderGenerateIconLabel("intent", "Modelo") +
+    '<select data-field="assist-model" aria-label="Modelo" title="Modelo">' +
     modelOptions +
     "</select></label>" +
-    '<button class="open-main generate-submit" type="button" data-action="generate-ladder"' +
+    '<button class="open-main generate-submit" type="button" data-action="generate-ladder" aria-label="Montar escada" title="Montar escada"' +
     (!hasRequiredContext || draft.isSubmitting ? " disabled aria-disabled=\"true\"" : "") +
     ">" +
     renderUiIcon("sparkles", "generate-submit-icon") +
-    '<span>Montar escada</span></button>' +
+    "</button>" +
+    "</div>" +
     "</section>" +
     status +
     "</section>"
@@ -298,7 +313,9 @@ export function renderHomeScreen({ project, progress, selection, featuredCourseK
     renderHomeTabs(safeHomeTab) +
     (safeHomeTab === "generate"
       ? renderGeneratePane({ project, editorSupport })
-      : renderCoursesPane({ project, progress, selection, featuredCourseKey })) +
+      : '<section id="home-panel-courses" role="tabpanel" aria-labelledby="home-tab-courses">' +
+        renderCoursesPane({ project, progress, selection, featuredCourseKey }) +
+        "</section>") +
     "</main>" +
     "</section>"
   );
