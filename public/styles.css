@@ -3051,6 +3051,31 @@ button {
   resize: none;
 }
 
+.draft-generator-control-panel {
+  height: auto;
+  overflow: visible;
+}
+
+.draft-generator-control-panel .dependency-chip-row {
+  min-height: 0;
+  max-height: none;
+  padding-bottom: 0;
+}
+
+.draft-generator-control-panel .workbench-prompt-field {
+  grid-template-rows: auto auto;
+  flex: 0 0 auto;
+  min-height: 0;
+  max-height: none;
+}
+
+.draft-generator-control-panel .assist-prompt {
+  height: 128px;
+  min-height: 96px;
+  max-height: 38dvh;
+  resize: vertical;
+}
+
 .builder-layout,
 .inline-builder-layout {
   display: grid;

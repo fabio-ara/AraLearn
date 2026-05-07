@@ -1102,9 +1102,6 @@ function renderDraftGeneratorScreen({ editorSupport }) {
       backTitle: "Voltar para a fila"
     }) +
     '<main class="screen-content microsequence-generator-screen">' +
-    '<section class="microsequence-assist-panel draft-generator-guidance">' +
-    '<p class="card-subtitle">Escreva um pedido de estudo. O AraLearn criará um rascunho na fila de microssequências e abrirá o painel de revisão.</p>' +
-    "</section>" +
     renderAssistControlPanel({
       editorSupport,
       promptLabel: "Pedido",

@@ -277,9 +277,10 @@ test("mantém o gerador da oficina sem preview de cards", () => {
     }
   });
 
-  assert.match(html, /Escreva um pedido de estudo/);
   assert.match(html, /data-action="apply-assist"/);
   assert.match(html, /data-field="assist-prompt" class="assist-prompt" aria-label="Pedido" title="Pedido"/);
+  assert.doesNotMatch(html, /Escreva um pedido de estudo/);
+  assert.doesNotMatch(html, /draft-generator-guidance/);
   assert.doesNotMatch(html, /editor-card-count-value">1\/7<\/span>/);
   assert.doesNotMatch(html, /runtime-card-title/);
   assert.doesNotMatch(html, /workbench-surface/);
