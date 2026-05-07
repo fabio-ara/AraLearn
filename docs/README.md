@@ -1,11 +1,25 @@
 # Documentação
 
-Este diretório reunirá a documentação pública do AraLearn.
+Este diretório reúne a documentação pública do AraLearn.
 
-## Documentos atuais
+O `README.md` da raiz apresenta o produto para uso geral. Os documentos abaixo aprofundam arquitetura, modelo didático, assistência por IA generativa e pesquisa educacional.
+
+## Produto e arquitetura
+
+- `visao-do-produto.md`: problema, proposta, público, princípios e horizonte do AraLearn
+- `arquitetura.md`: estrutura técnica do app, fluxo de dados, persistência, UI, validação e pontos arquiteturais em aberto
+- `modelo-didatico.md`: microssequências, cards, contêineres, lacunas, revisão e critérios de qualidade didática
+- `oficina-de-microssequencias.md`: geração, fila de rascunhos, painel, versões locais e reposicionamento
+
+## IA generativa e pesquisa
+
+- `assistencia-por-ia.md`: engenharia da assistência por serviços de inteligência artificial generativa acessados por API
+- `pesquisa-e-avaliacao.md`: perguntas de pesquisa, métricas, riscos, desenhos de estudo e decisões dependentes de evidência
+- `decisoes/`: registros de decisões arquiteturais e de produto
+
+## JSON público
 
 - `aralearn-contract.md`: contrato público atual do projeto
-- `assistencia-por-ia.md`: visão de produto e engenharia para geração, edição e reposicionamento de microssequências com serviços de inteligência artificial generativa acessados por API
 - `examples/`: exemplos JSON do contrato público atual
 
 ## Formatos JSON
