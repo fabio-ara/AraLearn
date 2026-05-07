@@ -535,11 +535,8 @@ function renderDraftCourseScreen({ course, draftMicrosequences }) {
     '<section class="clean-card draft-course-hero">' +
     '<div class="draft-course-hero-main">' +
     '<div class="microsequence-copy">' +
-    '<h3 class="card-title card-title-featured">Gerar novas microssequências</h3>' +
-    '<p class="card-subtitle">Use um pedido amplo, selecione tags explícitas e gere rascunhos antes de consolidar em cursos definitivos.</p>' +
-    "</div>" +
-    '<div class="microsequence-actions">' +
-    '<button class="open-mini" type="button" data-action="open-draft-generator" title="Gerar microssequência" aria-label="Gerar microssequência">&#9654;</button>' +
+    '<h3 class="card-title card-title-featured">Rascunhos preservados</h3>' +
+    '<p class="card-subtitle">Revise material local ainda não encaixado na estrutura de cursos.</p>' +
     "</div>" +
     "</div>" +
     "</section>" +
@@ -711,6 +708,10 @@ function renderLessonScreenView({ course, lesson, moduleValue, progress }) {
       );
     })
     .join("");
+  const readyEmptyMessage =
+    lessonTotal === 0
+      ? '<section class="clean-card lesson-ready-empty-card"><p class="card-subtitle">Não há microssequências prontas para estudar aqui.</p></section>'
+      : "";
 
   return (
     '<section class="screen">' +
@@ -736,6 +737,7 @@ function renderLessonScreenView({ course, lesson, moduleValue, progress }) {
     ) +
     "</span>" +
     "</section>" +
+    readyEmptyMessage +
     '<section class="microsequence-list">' +
     microsequenceBlocks +
     "</section>" +

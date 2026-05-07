@@ -1,6 +1,6 @@
 # Assistência por IA generativa
 
-Este documento descreve a engenharia da assistência por serviços de inteligência artificial generativa acessados por API no AraLearn. Para visão de produto, arquitetura geral, modelo didático e oficina, consulte os documentos correspondentes em `docs/`.
+Este documento descreve a engenharia da assistência por serviços de inteligência artificial generativa acessados por API no AraLearn. Para visão de produto, arquitetura geral, modelo didático e rascunhos, consulte os documentos correspondentes em `docs/`.
 
 ## Papel da assistência
 
@@ -11,7 +11,6 @@ Ela pode ser usada para:
 - gerar microssequências;
 - revisar microssequências;
 - reorganizar conteúdo;
-- sugerir encaixe de rascunhos em cursos;
 - apoiar autoria de cards e formatos específicos.
 
 O modelo de linguagem não é responsável sozinho pela estrutura final aplicada ao projeto. A aplicação planeja, solicita, valida, normaliza e converte o resultado para o contrato público.
@@ -28,7 +27,7 @@ A aplicação:
 - tenta reparo quando a resposta falha;
 - normaliza o conteúdo;
 - valida o resultado;
-- aplica o material ao projeto ou à oficina.
+- aplica o material ao projeto ou como nova versão de uma microssequência.
 
 O modelo:
 
@@ -41,13 +40,50 @@ O modelo:
 O usuário:
 
 - escreve o pedido;
-- seleciona tags explícitas quando necessário;
+- escolhe curso, módulo e lição na aba `Gerar`;
 - revisa o resultado;
-- decide se continua editando ou consolida o material.
+- decide se continua editando ou marca o material como pronto para estudo.
+
+## Escada de microssequências
+
+A aba `Gerar` usa um formato intermediário mínimo. O modelo recebe o contexto hierárquico e a dúvida do usuário, mas não gera cards.
+
+Entrada conceitual:
+
+```json
+{
+  "courseTitle": "Curso",
+  "moduleTitle": "Módulo",
+  "lessonTitle": "Lição",
+  "userInput": "Dúvida ou comentário"
+}
+```
+
+Resposta esperada:
+
+```json
+{
+  "title": "Estudo sobre o tema",
+  "steps": [
+    { "title": "Primeira microssequência" },
+    { "title": "Segunda microssequência" }
+  ]
+}
+```
+
+Regras da aplicação:
+
+- `steps` deve ter de 2 a 7 itens;
+- cada `step.title` deve ser texto não vazio;
+- duplicatas exatas são removidas;
+- campos inesperados são ignorados;
+- cards não são aceitos nessa resposta.
+
+Cada item validado vira uma microssequência `draft` dentro da lição escolhida. A escada não vira entidade persistente separada.
 
 ## JSON intermediário
 
-Na geração de microssequências, o modelo recebe um formato menor que o contrato público.
+Na geração ou revisão de cards, o modelo recebe um formato menor que o contrato público.
 
 Exemplo:
 
@@ -85,21 +121,34 @@ Esse JSON é intermediário. O resultado aplicado ao projeto já deve obedecer a
 
 ## Pipeline de geração
 
-Fluxo implementado:
+Fluxo implementado para criar rascunhos na aba `Gerar`:
 
-1. o usuário escreve um pedido na tela `Gerar microssequência`;
-2. a aplicação coleta tags explícitas;
+1. o usuário escolhe curso, módulo e lição;
+2. o usuário escreve uma dúvida ou comentário;
+3. a aplicação monta o payload de contexto;
+4. o serviço de IA generativa recebe prompt e schema de escada;
+5. a resposta é lida como JSON;
+6. a aplicação extrai JSON quando a resposta vem em bloco Markdown;
+7. a aplicação tenta reparo quando o JSON é ilegível ou insuficiente;
+8. a aplicação valida `steps`;
+9. cada item validado vira uma microssequência `draft`;
+10. os rascunhos são persistidos na lição selecionada.
+
+Fluxo implementado para gerar ou revisar cards no painel:
+
+1. o usuário abre uma microssequência;
+2. a aplicação monta contexto de curso, módulo, lição e microssequência;
 3. o AraLearn detecta assunto e estratégia didática;
 4. a aplicação monta um plano determinístico;
 5. o modelo recebe o plano e preenche conteúdo;
 6. a resposta é lida como JSON;
-7. a aplicação extrai JSON quando a resposta vem em bloco Markdown;
+7. a aplicação extrai JSON quando necessário;
 8. a aplicação tenta reparo quando o JSON é ilegível ou insuficiente;
 9. a aplicação repete a chamada sem schema quando o serviço recusa a complexidade do schema;
 10. o AraLearn mescla resposta e plano;
 11. o normalizador reduz densidade, aplica distratores e valida cards;
 12. o resultado é convertido para contrato público;
-13. a microssequência é criada na oficina ou aplicada como nova versão.
+13. a microssequência recebe nova versão ou cards aplicados.
 
 ## Plano determinístico
 

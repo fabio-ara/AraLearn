@@ -18,6 +18,7 @@ test("persiste projeto em chaves dedicadas", () => {
 
   assert.equal(savedProject.contract, "aralearn.contract");
   assert.equal(store.getItem("aralearn.project") !== null, true);
+  assert.equal(projectStorage.loadStorageVersion(), "2");
 });
 
 test("exporta e importa envelope principal sem fallback para v1", () => {
@@ -27,6 +28,7 @@ test("exporta e importa envelope principal sem fallback para v1", () => {
 
   const exported = JSON.parse(projectStorage.exportJson());
   assert.equal(exported.format, "aralearn.storage");
+  assert.equal(exported.storageVersion, 2);
   assert.equal(exported.project.contract, "aralearn.contract");
 
   const importedStore = createKeyValueMemoryStore();
@@ -34,6 +36,7 @@ test("exporta e importa envelope principal sem fallback para v1", () => {
   importedStorage.importJson(JSON.stringify(exported));
 
   assert.equal(importedStorage.loadProject().contract, "aralearn.contract");
+  assert.equal(importedStorage.loadStorageVersion(), "2");
 });
 
 test("backup principal preserva também o progresso do projeto", () => {
@@ -63,4 +66,19 @@ test("backup principal preserva também o progresso do projeto", () => {
       }
     }
   });
+});
+
+test("migra projeto sem versão para storage versionado com status de microssequência", () => {
+  const store = createKeyValueMemoryStore();
+  const project = readJson("./docs/examples/aralearn-contract.renderable.json");
+  delete project.courses[0].modules[0].lessons[0].microsequences[0].status;
+  store.setItem("aralearn.project", JSON.stringify(project));
+
+  const projectStorage = createProjectStorage(store);
+  const loaded = projectStorage.loadProject();
+  const persisted = JSON.parse(store.getItem("aralearn.project"));
+
+  assert.equal(projectStorage.loadStorageVersion(), "2");
+  assert.equal(loaded.courses[0].modules[0].lessons[0].microsequences[0].status, "ready");
+  assert.equal(persisted.courses[0].modules[0].lessons[0].microsequences[0].status, "ready");
 });

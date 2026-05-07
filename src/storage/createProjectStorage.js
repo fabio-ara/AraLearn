@@ -3,8 +3,11 @@ import { parseProjectDocument, serializeProjectDocument } from "./projectStore.j
 
 const DEFAULT_KEYS = {
   project: "aralearn.project",
-  progress: "aralearn.progress"
+  progress: "aralearn.progress",
+  storageVersion: "aralearn.storageVersion"
 };
+
+const CURRENT_STORAGE_VERSION = 2;
 
 function parseEnvelopeJson(rawJson) {
   try {
@@ -42,35 +45,56 @@ export function createProjectStorage(store, keys = DEFAULT_KEYS) {
     throw new Error("Store inválido para persistência.");
   }
 
+  const storageKeys = { ...DEFAULT_KEYS, ...keys };
+
+  function saveStorageVersion() {
+    store.setItem(storageKeys.storageVersion, String(CURRENT_STORAGE_VERSION));
+  }
+
   return {
     saveProject(projectDocument) {
       const serialized = serializeProjectDocument(projectDocument);
-      store.setItem(keys.project, serialized);
+      store.setItem(storageKeys.project, serialized);
+      saveStorageVersion();
       return parseProjectDocument(serialized);
     },
 
     loadProject() {
-      return parseProjectDocument(store.getItem(keys.project));
+      const rawProject = store.getItem(storageKeys.project);
+      const project = parseProjectDocument(rawProject);
+
+      if (project && store.getItem(storageKeys.storageVersion) !== String(CURRENT_STORAGE_VERSION)) {
+        store.setItem(storageKeys.project, serializeProjectDocument(project));
+        saveStorageVersion();
+      }
+
+      return project;
     },
 
     saveProgress(progressDocument) {
       const normalized = normalizeProgressDocument(progressDocument);
-      store.setItem(keys.progress, serializeProgressDocument(normalized));
+      store.setItem(storageKeys.progress, serializeProgressDocument(normalized));
+      saveStorageVersion();
       return normalized;
     },
 
     loadProgress() {
-      return parseProgressDocument(store.getItem(keys.progress));
+      return parseProgressDocument(store.getItem(storageKeys.progress));
     },
 
     clearProgress() {
-      store.removeItem(keys.progress);
+      store.removeItem(storageKeys.progress);
+    },
+
+    loadStorageVersion() {
+      return store.getItem(storageKeys.storageVersion);
     },
 
     exportJson() {
       return JSON.stringify(
         {
           format: "aralearn.storage",
+          storageVersion: CURRENT_STORAGE_VERSION,
           exportedAt: new Date().toISOString(),
           project: this.loadProject(),
           progress: this.loadProgress()

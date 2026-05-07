@@ -148,7 +148,7 @@ A chave não deve ser versionada nem registrada em arquivos do projeto.
 - [Visão do produto](./docs/visao-do-produto.md)
 - [Arquitetura](./docs/arquitetura.md)
 - [Modelo didático](./docs/modelo-didatico.md)
-- [Oficina de microssequências](./docs/oficina-de-microssequencias.md)
+- [Rascunhos e microssequências](./docs/rascunhos-e-microssequencias.md)
 - [Contrato público atual](./docs/aralearn-contract.md)
 - [Assistência por IA generativa](./docs/assistencia-por-ia.md)
 - [Pesquisa e avaliação](./docs/pesquisa-e-avaliacao.md)

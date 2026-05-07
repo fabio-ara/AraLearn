@@ -81,7 +81,8 @@ No estado atual, o AraLearn reúne:
 - persistência de progresso no dispositivo;
 - importação e exportação;
 - renderização de diferentes formatos de card;
-- oficina local para criar e revisar rascunhos de microssequências;
+- aba `Gerar` para criar rascunhos de microssequências dentro da estrutura dos cursos;
+- status `draft` e `ready` para separar autoria em andamento e conteúdo executável;
 - assistência por serviços de inteligência artificial generativa acessados por API;
 - validação automatizada do contrato público e dos exemplos.
 

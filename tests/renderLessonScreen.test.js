@@ -90,6 +90,50 @@ test("renderiza a tela de lição com ações globais e pilha de ações da micr
   assert.doesNotMatch(html, />Progr\.:/);
 });
 
+test("mostra aviso quando a lição tem apenas rascunhos", () => {
+  const project = readProject();
+  const course = project.courses[0];
+  const moduleValue = course.modules[0];
+  const lesson = structuredClone(moduleValue.lessons[0]);
+  lesson.microsequences = lesson.microsequences.map((microsequence) => ({
+    ...microsequence,
+    status: "draft",
+    cards: []
+  }));
+  const moduleWithDraftLesson = {
+    ...moduleValue,
+    lessons: [lesson]
+  };
+  const microsequence = lesson.microsequences[0];
+  const html = renderLessonScreen({
+    project,
+    view: "lesson",
+    selection: {
+      courseKey: course.key,
+      moduleKey: moduleWithDraftLesson.key,
+      lessonKey: lesson.key,
+      microsequenceKey: microsequence.key,
+      cardKey: "",
+      cardIndex: 0
+    },
+    course,
+    moduleValue: moduleWithDraftLesson,
+    lesson,
+    microsequence,
+    cards: [],
+    microsequenceMode: "play",
+    editorSupport: {
+      progress: { version: 1, lessons: {} },
+      draftCourseKey: "__draft__",
+      draftMicrosequences: []
+    }
+  });
+
+  assert.match(html, /Não há microssequências prontas para estudar aqui\./);
+  assert.match(html, /microsequence-status-badge">rascunho/);
+  assert.doesNotMatch(html, /data-action="play-microsequence"/);
+});
+
 test("renderiza o painel da microssequência sem botão próprio de ações e com área de tags", () => {
   const project = readProject();
   const course = project.courses[0];

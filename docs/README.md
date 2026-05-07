@@ -9,7 +9,7 @@ O `README.md` da raiz apresenta o produto para uso geral. Os documentos abaixo a
 - `visao-do-produto.md`: problema, proposta, público, princípios e horizonte do AraLearn
 - `arquitetura.md`: estrutura técnica do app, fluxo de dados, persistência, UI, validação e pontos arquiteturais em aberto
 - `modelo-didatico.md`: microssequências, cards, contêineres, lacunas, revisão e critérios de qualidade didática
-- `oficina-de-microssequencias.md`: geração, fila de rascunhos, painel, versões locais e reposicionamento
+- `rascunhos-e-microssequencias.md`: geração, rascunhos dentro da estrutura dos cursos, painel, status e execução
 
 ## IA generativa e pesquisa
 

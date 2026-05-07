@@ -297,51 +297,7 @@ export function ensureDraftCourse(document) {
     return nextDocument;
   }
 
-  const nextDocument = structuredClone(document);
-  nextDocument.courses = Array.isArray(nextDocument.courses) ? nextDocument.courses : [];
-  let nextDraftCourse = nextDocument.courses.find((course) => course?.key === DRAFT_COURSE_KEY);
-  if (!nextDraftCourse) {
-    nextDraftCourse = {
-      key: DRAFT_COURSE_KEY,
-      title: "Oficina de microssequências",
-      description: "Fila local para gerar, revisar e reposicionar microssequências antes de consolidá-las nos cursos.",
-      modules: []
-    };
-    nextDocument.courses.push(nextDraftCourse);
-  }
-
-  let nextDraftModule = (nextDraftCourse.modules || []).find((moduleValue) => moduleValue?.key === DRAFT_MODULE_KEY);
-  if (!nextDraftModule) {
-    nextDraftModule = {
-      key: DRAFT_MODULE_KEY,
-      title: "Rascunhos",
-      lessons: []
-    };
-    nextDraftCourse.modules = [nextDraftModule, ...(nextDraftCourse.modules || [])];
-  }
-
-  let nextDraftLesson = (nextDraftModule.lessons || []).find((lesson) => lesson?.key === DRAFT_LESSON_KEY);
-  if (!nextDraftLesson) {
-    nextDraftLesson = {
-      key: DRAFT_LESSON_KEY,
-      title: "Fila de microssequências",
-      microsequences: []
-    };
-    nextDraftModule.lessons = [nextDraftLesson, ...(nextDraftModule.lessons || [])];
-  }
-
-  if (!Array.isArray(nextDraftLesson.microsequences) || !nextDraftLesson.microsequences.length) {
-    nextDraftLesson.microsequences = [
-      {
-        key: DRAFT_PLACEHOLDER_MICROSEQUENCE_KEY,
-        title: "Gerador",
-        cards: []
-      }
-    ];
-  }
-  migrateDraftPlaceholderCards(nextDraftLesson);
-
-  return nextDocument;
+  return document;
 }
 
 function isDraftPlaceholderMicrosequence(microsequence) {
@@ -2125,7 +2081,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
     if (state.view === "draft-generator") {
       const draftContext = getDraftLessonContext();
       if (!draftContext.course || !draftContext.moduleValue || !draftContext.lesson) {
-        fail("A oficina de microssequências não está disponível.");
+        fail("A fila de rascunhos não está disponível.");
       }
 
       const createdProject = editor.createMicrosequence({
