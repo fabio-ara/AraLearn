@@ -2178,9 +2178,11 @@ export function createLessonEditorApp({ root, storage, editor }) {
       });
 
       if (mode === "compose-microsequence") {
+        const resultTags = Array.isArray(result.tags) ? result.tags : [];
+        const generatedTags = Array.from(new Set([...dependencyTitles, ...resultTags])).slice(0, MAX_ASSIST_DEPENDENCIES);
         applyMicrosequenceGeneration({
           ...result,
-          tags: dependencyTitles
+          tags: generatedTags
         });
         state.assistDraft.lastRequest = {
           title:
