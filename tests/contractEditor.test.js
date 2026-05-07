@@ -45,11 +45,10 @@ test("cria microssequência nova no contrato principal com card inicial raso", (
 
   const microsequence = nextDocument.courses[0].modules[0].lessons[0].microsequences[1];
   assert.equal(microsequence.title, "Nova sequência");
-  assert.equal(microsequence.cards[0].type, "text");
-  assert.equal(microsequence.cards[0].text, "Descreva a ideia central desta microssequência.");
+  assert.equal(microsequence.cards[0].say, "Descreva a ideia central desta microssequência.");
 });
 
-test("substitui os cards da microssequência por tipos explícitos do contrato principal", () => {
+test("substitui os cards da microssequência por intenções semânticas do contrato principal", () => {
   const document = readNormalizedProject("./docs/examples/aralearn-contract.renderable.json");
 
   const nextDocument = replaceMicrosequenceCards(document, {
@@ -61,15 +60,13 @@ test("substitui os cards da microssequência por tipos explícitos do contrato p
     tags: ["Álgebra linear", "Vetores"],
     cards: [
       {
-        type: "text",
         title: "Intuição",
-        text: "Vetores podem ser lidos como coleções ordenadas de valores."
+        say: "Vetores podem ser lidos como coleções ordenadas de valores."
       },
       {
-        type: "choice",
         title: "Leitura",
         ask: "Qual estrutura agrupa cards?",
-        answer: ["Microssequência"],
+        answer: "Microssequência",
         wrong: ["Curso", "Módulo"]
       }
     ]
@@ -78,7 +75,7 @@ test("substitui os cards da microssequência por tipos explícitos do contrato p
   const microsequence = nextDocument.courses[0].modules[0].lessons[0].microsequences[0];
   assert.equal(microsequence.title, "Vetores");
   assert.deepEqual(microsequence.tags, ["Álgebra linear", "Vetores"]);
-  assert.equal(microsequence.cards[1].type, "choice");
+  assert.equal(microsequence.cards[1].ask, "Qual estrutura agrupa cards?");
 });
 
 test("cria e edita card do contrato principal sem intent nem data", () => {
@@ -89,7 +86,6 @@ test("cria e edita card do contrato principal sem intent nem data", () => {
     moduleKey: "module-modulo-experimental",
     lessonKey: "lesson-licao-experimental",
     microsequenceKey: "microsequence-modelo-cascata",
-    type: "editor",
     title: "Código",
     language: "json",
     code: "{ \"ok\": true }"
@@ -106,7 +102,6 @@ test("cria e edita card do contrato principal sem intent nem data", () => {
   });
 
   const card = updated.courses[0].modules[0].lessons[0].microsequences[0].cards.at(-1);
-  assert.equal(card.type, "editor");
   assert.equal(card.title, "Código revisto");
   assert.equal(card.code, '{ "ok": false }');
   assert.equal("intent" in card, false);
@@ -135,7 +130,6 @@ test("edita card flow preservando estrutura pública composta", () => {
   });
 
   const card = updated.courses[0].modules[0].lessons[0].microsequences[0].cards[5];
-  assert.equal(card.type, "flow");
   assert.equal(card.title, "Fluxo revisto");
   assert.equal(card.flow[1].if, "x > 0");
   assert.deepEqual(card.flow[1].then.map((item) => item.process), ["Seguir"]);
@@ -178,6 +172,8 @@ test("importa cursos sem sobrescrever keys existentes e exporta curso isolado", 
   const baseDocument = readNormalizedProject("./docs/examples/aralearn-contract.renderable.json");
   const importedDocument = {
     contract: "aralearn.contract",
+    version: 1,
+    kind: "project",
     courses: [structuredClone(baseDocument.courses[0])]
   };
 
@@ -205,6 +201,8 @@ test("importa módulo, lição e microssequência em níveis distintos e exporta
     courseKey: baseDocument.courses[0].key,
     document: {
       contract: "aralearn.contract",
+      version: 1,
+      kind: "project",
       courses: [importedCourse]
     }
   });
@@ -215,6 +213,8 @@ test("importa módulo, lição e microssequência em níveis distintos e exporta
     moduleKey: baseDocument.courses[0].modules[0].key,
     document: {
       contract: "aralearn.contract",
+      version: 1,
+      kind: "project",
       courses: [importedCourse]
     }
   });
@@ -226,6 +226,8 @@ test("importa módulo, lição e microssequência em níveis distintos e exporta
     lessonKey: baseDocument.courses[0].modules[0].lessons[0].key,
     document: {
       contract: "aralearn.contract",
+      version: 1,
+      kind: "project",
       courses: [importedCourse]
     }
   });

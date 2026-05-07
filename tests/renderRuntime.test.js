@@ -13,12 +13,12 @@ test("renderiza o exemplo do contrato principal com renderer próprio", () => {
 
   assert.equal(result.ok, true);
   assert.deepEqual(result.stages, ["load", "validate", "normalize", "compile", "render"]);
-  assert.match(result.rendered.html, /class="card card-text"/);
+  assert.match(result.rendered.html, /class="card card-say"/);
   assert.match(result.rendered.html, /class="card card-ask"/);
-  assert.match(result.rendered.html, /class="card card-complete"/);
   assert.match(result.rendered.html, /class="card card-code"/);
   assert.match(result.rendered.html, /class="card card-table"/);
   assert.match(result.rendered.html, /class="card card-flow"/);
-  assert.match(result.rendered.html, /class="card card-image"/);
+  assert.match(result.rendered.html, /class="card card-tree"/);
   assert.doesNotMatch(result.rendered.html, /aralearn\.intent\.v1/);
+  assert.doesNotMatch(result.rendered.html, /card-image/);
 });

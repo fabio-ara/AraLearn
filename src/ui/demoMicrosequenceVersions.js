@@ -30,9 +30,8 @@ function cloneMicrosequenceSnapshot(microsequence, fallbackLabel = "Versão 1") 
 function createFallbackCard() {
   return {
     key: "card-demo-base",
-    type: "text",
     title: "Card de exemplo",
-    text: "Conteúdo de exemplo para a prévia da microssequência."
+    say: "Conteúdo de exemplo para a prévia da microssequência."
   };
 }
 

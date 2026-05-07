@@ -63,6 +63,7 @@ import {
 import { runGeminiAssist } from "../assist/geminiAssist.js";
 import { getLessonProgressCursor, removeLessonProgressEntries, writeLessonProgressEntry } from "../storage/progressStore.js";
 import { detectJsonExchangeFormat } from "../storage/jsonExchange.js";
+import { getContractCardKind, listContractAnswerValues } from "../contract/contractCard.js";
 
 const DRAFT_COURSE_KEY = "__disabled-draft-course__";
 const DRAFT_MODULE_KEY = "__disabled-draft-module__";
@@ -99,8 +100,8 @@ function readCardText(card) {
     return "";
   }
 
-  if (typeof card.text === "string") {
-    return card.text;
+  if (typeof card.say === "string") {
+    return card.say;
   }
   if (typeof card.ask === "string") {
     return card.ask;
@@ -108,8 +109,17 @@ function readCardText(card) {
   if (typeof card.code === "string") {
     return card.code;
   }
-  if (Array.isArray(card.columns) && card.columns.length) {
-    return card.columns.join(" | ");
+  if (Array.isArray(card?.table?.rows) && card.table.rows.length) {
+    return card.table.rows
+      .map((row) => (Array.isArray(row) ? row.join(" | ") : ""))
+      .filter(Boolean)
+      .join("\n");
+  }
+  if (Array.isArray(card?.table?.columns) && card.table.columns.length) {
+    return card.table.columns.join(" | ");
+  }
+  if (card.tree && typeof card.tree === "object") {
+    return card.tree.current || card.tree.base || "tree";
   }
   if (Array.isArray(card.flow) && card.flow.length) {
     return card.flow
@@ -120,10 +130,6 @@ function readCardText(card) {
       .filter(Boolean)
       .join("\n");
   }
-  if (typeof card.src === "string") {
-    return card.src;
-  }
-
   return "";
 }
 
@@ -152,29 +158,21 @@ function slugifyDownloadName(value, fallback = "curso") {
 
 function buildCardUpdateFromText(card, title, text) {
   const base = {
-    type: card?.type || "text",
     title: String(title || "").trim() || card?.title || "Novo card"
   };
+  const nextText = String(text || "").trim();
+  const kind = getContractCardKind(card);
 
-  if (base.type === "choice") {
+  if (kind === "ask") {
     return {
       ...base,
-      ask: String(text || "").trim() || card.ask || "Qual alternativa é a mais adequada?",
-      answer: Array.isArray(card.answer) && card.answer.length ? card.answer : ["Alternativa correta"],
+      ask: nextText || card.ask || "Qual alternativa é a mais adequada?",
+      answer: listContractAnswerValues(card).length ? card.answer : "Alternativa correta",
       wrong: Array.isArray(card.wrong) && card.wrong.length ? card.wrong : ["Distrator 1", "Distrator 2"]
     };
   }
 
-  if (base.type === "complete") {
-    return {
-      ...base,
-      text: String(text || "").trim() || card.text || "Preencha o trecho [[correto]].",
-      answer: Array.isArray(card.answer) && card.answer.length ? card.answer : ["correto"],
-      wrong: Array.isArray(card.wrong) && card.wrong.length ? card.wrong : ["incorreto", "parcial"]
-    };
-  }
-
-  if (base.type === "editor") {
+  if (kind === "code") {
     return {
       ...base,
       language: card.language || "text",
@@ -182,32 +180,40 @@ function buildCardUpdateFromText(card, title, text) {
     };
   }
 
-  if (base.type === "table") {
+  if (kind === "table") {
     return {
       ...base,
-      columns: Array.isArray(card.columns) && card.columns.length ? card.columns : ["Coluna A", "Coluna B"],
-      rows: Array.isArray(card.rows) && card.rows.length ? card.rows : [["Valor 1", "Valor 2"]]
+      ...(nextText ? { say: nextText } : card.say ? { say: card.say } : {}),
+      table: card.table || {
+        columns: ["Coluna A", "Coluna B"],
+        rows: [["Valor 1", "Valor 2"]]
+      }
     };
   }
 
-  if (base.type === "flow") {
+  if (kind === "tree") {
     return {
       ...base,
+      ...(nextText ? { say: nextText } : card.say ? { say: card.say } : {}),
+      tree: card.tree || {
+        base: "/",
+        items: {}
+      }
+    };
+  }
+
+  if (kind === "flow") {
+    return {
+      ...base,
+      ...(nextText ? { say: nextText } : card.say ? { say: card.say } : {}),
       flow: Array.isArray(card.flow) && card.flow.length ? card.flow : [{ start: "Início" }, { end: "Fim" }]
-    };
-  }
-
-  if (base.type === "image") {
-    return {
-      ...base,
-      src: card.src || "public/example.png",
-      ...(card.alt ? { alt: card.alt } : {})
     };
   }
 
   return {
     ...base,
-    text: String(text || "").trim() || card?.text || "Descreva a ideia central desta microssequência."
+    say: nextText || card?.say || "Descreva a ideia central desta microssequência.",
+    ...(Array.isArray(card?.wrong) && card.wrong.length ? { wrong: card.wrong } : {})
   };
 }
 
@@ -1978,8 +1984,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
       lessonKey: state.selection.lessonKey,
       microsequenceKey,
       title: "Novo card",
-      type: "text",
-      text: "Descreva a ideia central desta microssequência.",
+      say: "Descreva a ideia central desta microssequência.",
       position
     });
 

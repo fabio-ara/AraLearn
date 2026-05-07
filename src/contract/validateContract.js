@@ -1,21 +1,8 @@
-const CONTRACT_NAME = "aralearn.contract";
+import { sanitizeContractCard, getContractCardKindLabel } from "./contractCard.js";
 
-import {
-  convertPublicFlowToStructure,
-  convertStructureToPublicFlow,
-  normalizeFlowchartStructure,
-  validateFlowchartStructureContract
-} from "../flowchart/flowchartStructure.js";
-
-const CARD_TYPES = new Set([
-  "text",
-  "choice",
-  "complete",
-  "editor",
-  "table",
-  "flow",
-  "image"
-]);
+export const CONTRACT_NAME = "aralearn.contract";
+export const CONTRACT_VERSION = 1;
+export const CONTRACT_KIND_PROJECT = "project";
 
 function isPlainObject(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
@@ -35,6 +22,18 @@ function makeError(path, message) {
   return { path, message };
 }
 
+function readOptionalString(value, path, fieldName, errors) {
+  if (value === undefined) {
+    return "";
+  }
+  if (typeof value !== "string") {
+    errors.push(makeError(path, `Campo opcional inválido: "${fieldName}".`));
+    return "";
+  }
+
+  return value.trim();
+}
+
 function ensureRequiredString(value, path, fieldName, errors) {
   if (typeof value !== "string" || value.trim() === "") {
     errors.push(makeError(path, `Campo obrigatório inválido: "${fieldName}".`));
@@ -44,24 +43,12 @@ function ensureRequiredString(value, path, fieldName, errors) {
   return value.trim();
 }
 
-function readOptionalString(value) {
-  return typeof value === "string" && value.trim() ? value.trim() : "";
-}
-
-function cloneRuntime(runtime) {
-  return structuredClone(runtime);
-}
-
-function normalizeStringList(value, path, fieldName, errors, { required = false } = {}) {
+function normalizeStringList(value, path, fieldName, errors) {
   if (value === undefined) {
-    if (required) {
-      errors.push(makeError(path, `Campo obrigatório inválido: "${fieldName}".`));
-    }
     return [];
   }
-
-  if (!Array.isArray(value) || !value.length) {
-    errors.push(makeError(path, `Campo ${required ? "obrigatório" : "opcional"} inválido: "${fieldName}".`));
+  if (!Array.isArray(value)) {
+    errors.push(makeError(path, `Campo opcional inválido: "${fieldName}".`));
     return [];
   }
 
@@ -71,10 +58,17 @@ function normalizeStringList(value, path, fieldName, errors, { required = false 
         errors.push(makeError(`${path}.${fieldName}[${index}]`, "Valor deve ser texto."));
         return "";
       }
-
       return item.trim();
     })
     .filter(Boolean);
+}
+
+function assertAllowedFields(source, allowedFields, path, errors, label) {
+  Object.keys(source).forEach((fieldName) => {
+    if (!allowedFields.has(fieldName)) {
+      errors.push(makeError(`${path}.${fieldName}`, `Campo não suportado em ${label}: "${fieldName}".`));
+    }
+  });
 }
 
 function createKeyGenerator(scopeLabel) {
@@ -86,7 +80,7 @@ function createKeyGenerator(scopeLabel) {
 
       if (candidate !== undefined) {
         if (typeof candidate !== "string" || candidate.trim() === "") {
-          errors.push(makeError(path, 'Campo opcional inválido: "key".'));
+          errors.push(makeError(`${path}.key`, 'Campo opcional inválido: "key".'));
           candidate = undefined;
         } else {
           candidate = candidate.trim();
@@ -103,7 +97,7 @@ function createKeyGenerator(scopeLabel) {
       }
 
       if (rawKey) {
-        errors.push(makeError(path, `Key duplicada no escopo: "${candidate}".`));
+        errors.push(makeError(`${path}.key`, `Key duplicada no escopo: "${candidate}".`));
         return candidate;
       }
 
@@ -128,89 +122,18 @@ function validateCard(card, index, errors, cardKeys, path) {
     return null;
   }
 
-  const type = ensureRequiredString(card.type, currentPath, "type", errors);
-  if (type && !CARD_TYPES.has(type)) {
-    errors.push(makeError(currentPath, `Tipo de card desconhecido: "${type}".`));
+  try {
+    const normalizedCard = sanitizeContractCard(card);
+    const title = normalizedCard.title || getContractCardKindLabel(normalizedCard) || `card-${index + 1}`;
+    const key = cardKeys.next(normalizedCard.key, title, currentPath, errors);
+    return {
+      ...normalizedCard,
+      key
+    };
+  } catch (error) {
+    errors.push(makeError(currentPath, error.message));
+    return null;
   }
-
-  const title = readOptionalString(card.title);
-  const key = cardKeys.next(card.key, title || type || `card-${index + 1}`, currentPath, errors);
-
-  const normalized = {
-    key,
-    type: type ?? ""
-  };
-
-  if (title) {
-    normalized.title = title;
-  }
-
-  if (type === "text") {
-    normalized.text = ensureRequiredString(card.text, currentPath, "text", errors) ?? "";
-  } else if (type === "choice") {
-    normalized.ask = ensureRequiredString(card.ask, currentPath, "ask", errors) ?? "";
-    normalized.answer = normalizeStringList(card.answer, currentPath, "answer", errors, { required: true });
-    normalized.wrong = normalizeStringList(card.wrong, currentPath, "wrong", errors, { required: true });
-  } else if (type === "complete") {
-    normalized.text = ensureRequiredString(card.text, currentPath, "text", errors) ?? "";
-    normalized.answer = normalizeStringList(card.answer, currentPath, "answer", errors, { required: true });
-    normalized.wrong = normalizeStringList(card.wrong, currentPath, "wrong", errors, { required: true });
-  } else if (type === "editor") {
-    normalized.code = ensureRequiredString(card.code, currentPath, "code", errors) ?? "";
-    const language = readOptionalString(card.language);
-    if (language) {
-      normalized.language = language;
-    }
-  } else if (type === "table") {
-    normalized.columns = normalizeStringList(card.columns, currentPath, "columns", errors, { required: true });
-    if (!Array.isArray(card.rows) || !card.rows.length) {
-      errors.push(makeError(currentPath, 'Campo obrigatório inválido: "rows".'));
-      normalized.rows = [];
-    } else {
-      normalized.rows = card.rows.map((row, rowIndex) => {
-        if (!Array.isArray(row) || !row.length) {
-          errors.push(makeError(`${currentPath}.rows[${rowIndex}]`, "Linha da tabela deve ser uma lista de textos."));
-          return [];
-        }
-
-        return row
-          .map((cell, cellIndex) => {
-            if (typeof cell !== "string") {
-              errors.push(makeError(`${currentPath}.rows[${rowIndex}][${cellIndex}]`, "Célula da tabela deve ser texto."));
-              return "";
-            }
-
-            return cell.trim();
-          });
-      });
-    }
-  } else if (type === "flow") {
-    if (!Array.isArray(card.flow) || !card.flow.length) {
-      errors.push(makeError(currentPath, 'Campo obrigatório inválido: "flow".'));
-      normalized.flow = [];
-    } else {
-      const structure = normalizeFlowchartStructure(convertPublicFlowToStructure(card.flow));
-      const validation = validateFlowchartStructureContract(structure);
-      if (!validation.valid) {
-        errors.push(makeError(`${currentPath}.flow`, 'Campo obrigatório inválido: "flow".'));
-        normalized.flow = [];
-      } else {
-        normalized.flow = convertStructureToPublicFlow(structure);
-      }
-    }
-  } else if (type === "image") {
-    normalized.src = ensureRequiredString(card.src, currentPath, "src", errors) ?? "";
-    const alt = readOptionalString(card.alt);
-    if (alt) {
-      normalized.alt = alt;
-    }
-  }
-
-  if (isPlainObject(card.runtime) && Array.isArray(card.runtime.blocks)) {
-    normalized.runtime = cloneRuntime(card.runtime);
-  }
-
-  return normalized;
 }
 
 function validateMicrosequence(microsequence, index, errors, microKeys, path) {
@@ -221,15 +144,21 @@ function validateMicrosequence(microsequence, index, errors, microKeys, path) {
     return null;
   }
 
-  const title = ensureRequiredString(microsequence.title, currentPath, "title", errors);
-  const tags = microsequence.tags === undefined
-    ? []
-    : normalizeStringList(microsequence.tags, currentPath, "tags", errors);
+  assertAllowedFields(
+    microsequence,
+    new Set(["key", "title", "tags", "cards"]),
+    currentPath,
+    errors,
+    "microssequência"
+  );
+
+  const title = ensureRequiredString(microsequence.title, `${currentPath}.title`, "title", errors);
+  const tags = normalizeStringList(microsequence.tags, currentPath, "tags", errors);
   const key = microKeys.next(microsequence.key, title || `microsequence-${index + 1}`, currentPath, errors);
   const cards = Array.isArray(microsequence.cards) ? microsequence.cards : [];
 
   if (!Array.isArray(microsequence.cards)) {
-    errors.push(makeError(currentPath, 'Campo obrigatório inválido: "cards".'));
+    errors.push(makeError(`${currentPath}.cards`, 'Campo obrigatório inválido: "cards".'));
   }
 
   const cardKeys = createKeyGenerator("card");
@@ -253,13 +182,21 @@ function validateLesson(lesson, index, errors, lessonKeys, path) {
     return null;
   }
 
-  const title = ensureRequiredString(lesson.title, currentPath, "title", errors);
-  const description = readOptionalString(lesson.description);
+  assertAllowedFields(
+    lesson,
+    new Set(["key", "title", "description", "microsequences"]),
+    currentPath,
+    errors,
+    "lição"
+  );
+
+  const title = ensureRequiredString(lesson.title, `${currentPath}.title`, "title", errors);
+  const description = readOptionalString(lesson.description, `${currentPath}.description`, "description", errors);
   const key = lessonKeys.next(lesson.key, title || `lesson-${index + 1}`, currentPath, errors);
   const microsequences = Array.isArray(lesson.microsequences) ? lesson.microsequences : [];
 
   if (!Array.isArray(lesson.microsequences) || microsequences.length === 0) {
-    errors.push(makeError(currentPath, 'Lição deve conter "microsequences" com pelo menos um item.'));
+    errors.push(makeError(`${currentPath}.microsequences`, 'Lição deve conter "microsequences" com pelo menos um item.'));
   }
 
   const microKeys = createKeyGenerator("microsequence");
@@ -283,13 +220,21 @@ function validateModule(moduleValue, index, errors, moduleKeys, path) {
     return null;
   }
 
-  const title = ensureRequiredString(moduleValue.title, currentPath, "title", errors);
-  const description = readOptionalString(moduleValue.description);
+  assertAllowedFields(
+    moduleValue,
+    new Set(["key", "title", "description", "lessons"]),
+    currentPath,
+    errors,
+    "módulo"
+  );
+
+  const title = ensureRequiredString(moduleValue.title, `${currentPath}.title`, "title", errors);
+  const description = readOptionalString(moduleValue.description, `${currentPath}.description`, "description", errors);
   const key = moduleKeys.next(moduleValue.key, title || `module-${index + 1}`, currentPath, errors);
   const lessons = Array.isArray(moduleValue.lessons) ? moduleValue.lessons : [];
 
   if (!Array.isArray(moduleValue.lessons) || lessons.length === 0) {
-    errors.push(makeError(currentPath, 'Módulo deve conter "lessons" com pelo menos um item.'));
+    errors.push(makeError(`${currentPath}.lessons`, 'Módulo deve conter "lessons" com pelo menos um item.'));
   }
 
   const lessonKeys = createKeyGenerator("lesson");
@@ -313,13 +258,21 @@ function validateCourse(course, index, errors, courseKeys) {
     return null;
   }
 
-  const title = ensureRequiredString(course.title, currentPath, "title", errors);
-  const description = readOptionalString(course.description);
+  assertAllowedFields(
+    course,
+    new Set(["key", "title", "description", "modules"]),
+    currentPath,
+    errors,
+    "curso"
+  );
+
+  const title = ensureRequiredString(course.title, `${currentPath}.title`, "title", errors);
+  const description = readOptionalString(course.description, `${currentPath}.description`, "description", errors);
   const key = courseKeys.next(course.key, title || `course-${index + 1}`, currentPath, errors);
   const modules = Array.isArray(course.modules) ? course.modules : [];
 
   if (!Array.isArray(course.modules) || modules.length === 0) {
-    errors.push(makeError(currentPath, 'Curso deve conter "modules" com pelo menos um item.'));
+    errors.push(makeError(`${currentPath}.modules`, 'Curso deve conter "modules" com pelo menos um item.'));
   }
 
   const moduleKeys = createKeyGenerator("module");
@@ -345,13 +298,29 @@ export function validateContractDocument(document) {
     };
   }
 
+  assertAllowedFields(
+    document,
+    new Set(["contract", "version", "kind", "courses"]),
+    "$",
+    errors,
+    "projeto"
+  );
+
   if (document.contract !== CONTRACT_NAME) {
     errors.push(makeError("contract", `Contrato inválido. Esperado "${CONTRACT_NAME}".`));
   }
 
+  if (document.version !== CONTRACT_VERSION) {
+    errors.push(makeError("version", `Versão inválida. Esperado ${CONTRACT_VERSION}.`));
+  }
+
+  if (document.kind !== CONTRACT_KIND_PROJECT) {
+    errors.push(makeError("kind", `Kind inválido. Esperado "${CONTRACT_KIND_PROJECT}".`));
+  }
+
   const courses = Array.isArray(document.courses) ? document.courses : [];
   if (!Array.isArray(document.courses) || courses.length === 0) {
-    errors.push(makeError("$", 'Documento deve conter "courses" com pelo menos um item.'));
+    errors.push(makeError("courses", 'Documento deve conter "courses" com pelo menos um item.'));
   }
 
   const courseKeys = createKeyGenerator("course");
@@ -370,9 +339,9 @@ export function validateContractDocument(document) {
     ok: true,
     value: {
       contract: CONTRACT_NAME,
+      version: CONTRACT_VERSION,
+      kind: CONTRACT_KIND_PROJECT,
       courses: normalizedCourses
     }
   };
 }
-
-export { CARD_TYPES, CONTRACT_NAME };

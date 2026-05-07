@@ -1,4 +1,4 @@
-import { sanitizeContractCard } from "../contract/contractCard.js";
+import { getContractCardKind, sanitizeContractCard } from "../contract/contractCard.js";
 
 function fail(message) {
   throw new Error(message);
@@ -33,72 +33,99 @@ function getCardSchemaVariants() {
     {
       type: "object",
       properties: {
-        type: { type: "string", enum: ["text"] },
         title: { type: "string" },
-        text: { type: "string" }
+        say: { type: "string" },
+        after: { type: "string" },
+        wrong: { type: "array", items: { type: "string" }, minItems: 1 }
       },
-      required: ["type", "text"],
+      required: ["say"],
       additionalProperties: false
     },
     {
       type: "object",
       properties: {
-        type: { type: "string", enum: ["choice"] },
         title: { type: "string" },
+        say: { type: "string" },
         ask: { type: "string" },
-        answer: { type: "array", items: { type: "string" }, minItems: 1 },
+        answer: {
+          anyOf: [
+            { type: "string" },
+            { type: "array", items: { type: "string" }, minItems: 1 }
+          ]
+        },
         wrong: { type: "array", items: { type: "string" }, minItems: 2 }
       },
-      required: ["type", "ask", "answer", "wrong"],
+      required: ["ask", "answer", "wrong"],
       additionalProperties: false
     },
     {
       type: "object",
       properties: {
-        type: { type: "string", enum: ["complete"] },
         title: { type: "string" },
-        text: { type: "string" },
-        answer: { type: "array", items: { type: "string" }, minItems: 1 },
-        wrong: { type: "array", items: { type: "string" }, minItems: 2 }
-      },
-      required: ["type", "text", "answer", "wrong"],
-      additionalProperties: false
-    },
-    {
-      type: "object",
-      properties: {
-        type: { type: "string", enum: ["editor"] },
-        title: { type: "string" },
+        say: { type: "string" },
         language: { type: "string" },
-        code: { type: "string" }
+        code: { type: "string" },
+        after: { type: "string" },
+        wrong: { type: "array", items: { type: "string" }, minItems: 1 }
       },
-      required: ["type", "code"],
+      required: ["code"],
       additionalProperties: false
     },
     {
       type: "object",
       properties: {
-        type: { type: "string", enum: ["table"] },
         title: { type: "string" },
-        columns: { type: "array", items: { type: "string" }, minItems: 1 },
-        rows: {
-          type: "array",
-          minItems: 1,
-          items: {
-            type: "array",
-            minItems: 1,
-            items: { type: "string" }
-          }
-        }
+        say: { type: "string" },
+        table: {
+          type: "object",
+          properties: {
+            title: { type: "string" },
+            columns: { type: "array", items: { type: "string" }, minItems: 1 },
+            rows: {
+              type: "array",
+              minItems: 1,
+              items: {
+                type: "array",
+                minItems: 1,
+                items: { type: "string" }
+              }
+            }
+          },
+          required: ["columns", "rows"],
+          additionalProperties: false
+        },
+        after: { type: "string" }
       },
-      required: ["type", "columns", "rows"],
+      required: ["table"],
       additionalProperties: false
     },
     {
       type: "object",
       properties: {
-        type: { type: "string", enum: ["flow"] },
         title: { type: "string" },
+        say: { type: "string" },
+        tree: {
+          type: "object",
+          properties: {
+            base: { type: "string" },
+            current: { type: "string" },
+            selected: { type: "string" },
+            closed: { type: "array", items: { type: "string" } },
+            items: { type: "object" }
+          },
+          required: ["items"],
+          additionalProperties: false
+        },
+        after: { type: "string" }
+      },
+      required: ["tree"],
+      additionalProperties: false
+    },
+    {
+      type: "object",
+      properties: {
+        title: { type: "string" },
+        say: { type: "string" },
         flow: {
           type: "array",
           minItems: 1,
@@ -106,18 +133,49 @@ function getCardSchemaVariants() {
             type: "object",
             properties: {
               start: { type: "string" },
+              input: { type: "string" },
+              output: { type: "string" },
               process: { type: "string" },
-              decision: { type: "string" },
-              end: { type: "string" }
+              end: { type: "string" },
+              if: { type: "string" },
+              then: {
+                type: "array",
+                items: { type: "object" }
+              },
+              else: {
+                type: "array",
+                items: { type: "object" }
+              },
+              blank: {
+                anyOf: [
+                  { type: "boolean" },
+                  { type: "string" },
+                  { type: "object" }
+                ]
+              }
             },
             additionalProperties: false
           }
-        }
+        },
+        after: { type: "string" }
       },
-      required: ["type", "flow"],
+      required: ["flow"],
       additionalProperties: false
     }
   ];
+}
+
+function getCardSchemaByKind(cardKind) {
+  const variants = getCardSchemaVariants();
+  const indexByKind = {
+    say: 0,
+    ask: 1,
+    code: 2,
+    table: 3,
+    tree: 4,
+    flow: 5
+  };
+  return variants[indexByKind[cardKind] ?? 0];
 }
 
 function getComposeSchema() {
@@ -143,13 +201,8 @@ function getComposeSchema() {
   };
 }
 
-function getEditSchema(cardType) {
-  const variants = getCardSchemaVariants();
-  const variant = variants.find((item) => item.properties.type.enum[0] === cardType);
-  if (!variant) {
-    fail(`Tipo de card ainda não suportado para revisão assistida: "${cardType}".`);
-  }
-  return variant;
+function getEditSchema(cardKind) {
+  return getCardSchemaByKind(cardKind || "say");
 }
 
 function getRepositionSchema() {
@@ -179,11 +232,13 @@ function summarizeMicrosequenceCards(microsequence) {
   return (microsequence?.cards || [])
     .map((card, index) => {
       const body =
-        normalizeText(card?.text) ||
+        normalizeText(card?.say) ||
         normalizeText(card?.ask) ||
         normalizeText(card?.code) ||
+        (card?.table ? "table" : "") ||
+        (card?.tree ? "tree" : "") ||
+        (Array.isArray(card?.flow) ? "flow" : "") ||
         normalizeText(card?.title) ||
-        card?.type ||
         "card";
       return `${index + 1}. ${body}`;
     })
@@ -210,8 +265,9 @@ function buildComposePrompt({ microsequence, dependencyTitles, promptText, prior
     "Tarefa: gerar uma microssequência no contrato do AraLearn.",
     "Restrições:",
     "- gere entre 3 e 5 cards;",
-    "- cada card deve usar um tipo explícito suportado;",
-    "- prefira campos rasos por tipo, sem wrapper genérico;",
+    "- não use campo type, text, columns, rows, src, runtime, intent nem data;",
+    "- cada card deve declarar intenção por campos simples: say, ask, answer, wrong, code, table, tree, flow ou after;",
+    "- para lacunas textuais use [[resposta]] ou [[resposta::resposta|distrator]];",
     "- não invente novas tags fora do contexto dado;",
     "- não mencione curso, módulo ou lição dentro dos cards;",
     `Pedido do usuário: ${promptText}`
@@ -221,18 +277,18 @@ function buildComposePrompt({ microsequence, dependencyTitles, promptText, prior
 function buildEditPrompt({ microsequence, card, dependencyTitles, promptText }) {
   const microsequenceTitle = normalizeText(microsequence?.title) || "Microssequência atual";
   const cardTitle = normalizeText(card?.title) || "Card atual";
-  const cardType = normalizeText(card?.type) || "text";
+  const cardKind = getContractCardKind(card) || "say";
   const tags = dependencyTitles.length ? dependencyTitles.join(", ") : "sem tags";
 
   return [
     `Microssequência: ${microsequenceTitle}`,
     `Card atual: ${cardTitle}`,
-    `Tipo atual: ${cardType}`,
+    `Intenção atual: ${cardKind}`,
     `Tags explícitas: ${tags}`,
-    "Tarefa: revisar apenas este card mantendo o mesmo tipo.",
+    "Tarefa: revisar apenas este card mantendo a mesma intenção principal.",
     "Restrições:",
-    "- não mude o tipo do card;",
-    "- use o formato raso do contrato;",
+    "- não use campo type, text, columns, rows, src, runtime, intent nem data;",
+    "- use apenas o formato semântico raso do contrato;",
     "- não invente novas tags nem sinônimos de tags;",
     `Pedido do usuário: ${promptText}`
   ].join("\n");
@@ -306,8 +362,8 @@ export function normalizeComposeResult(value) {
   };
 }
 
-export function normalizeEditResult(value, cardType) {
-  return sanitizeContractCard(value, cardType);
+export function normalizeEditResult(value) {
+  return sanitizeContractCard(value);
 }
 
 function normalizeRepositionResult(value) {
@@ -353,7 +409,7 @@ export async function runGeminiAssist({
 
   const systemInstruction =
     "Você escreve conteúdo em JSON para o contrato do AraLearn. " +
-    "Use apenas tipos suportados, campos rasos por tipo e respostas previsíveis. " +
+    "Use apenas campos semânticos simples e respostas previsíveis; nunca use type, text, runtime, intent ou data. " +
     "Não explique o que está fazendo. Responda apenas no JSON pedido.";
 
   let body = null;
@@ -369,7 +425,7 @@ export async function runGeminiAssist({
     body = makeRequestBody({
       systemInstruction,
       prompt: buildEditPrompt({ microsequence, card, dependencyTitles, promptText: trimmedPrompt }),
-      schema: getEditSchema(normalizeText(card?.type) || "text"),
+      schema: getEditSchema(getContractCardKind(card) || "say"),
       temperature: 0.2,
       maxOutputTokens: 1536
     });
@@ -402,7 +458,7 @@ export async function runGeminiAssist({
     return normalizeComposeResult(parsed);
   }
   if (mode === "edit-card") {
-    return normalizeEditResult(parsed, normalizeText(card?.type) || "text");
+    return normalizeEditResult(parsed);
   }
   return normalizeRepositionResult(parsed);
 }

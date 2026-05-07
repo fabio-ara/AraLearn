@@ -1,6 +1,6 @@
 import { serializeProjectDocument } from "../storage/projectStore.js";
 
-export const EXAMPLE_SEED_VERSION = "contract-runtime-directory-tree-v4";
+export const EXAMPLE_SEED_VERSION = "contract-semantic-tree-v1";
 export const EXAMPLE_SEED_KEY = "aralearn.example-seed.version";
 export const EXAMPLE_SEED_SIGNATURE_KEY = "aralearn.example-seed.signature";
 

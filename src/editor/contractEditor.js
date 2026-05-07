@@ -1,5 +1,14 @@
-import { validateContractDocument } from "../contract/validateContract.js";
-import { createStarterContractCard, sanitizeContractCard } from "../contract/contractCard.js";
+import {
+  CONTRACT_KIND_PROJECT,
+  CONTRACT_NAME,
+  CONTRACT_VERSION,
+  validateContractDocument
+} from "../contract/validateContract.js";
+import {
+  createStarterContractCard,
+  getContractCardKindLabel,
+  sanitizeContractCard
+} from "../contract/contractCard.js";
 
 function clone(value) {
   return structuredClone(value);
@@ -177,6 +186,15 @@ function createStarterCard() {
   return sanitizeContractCard(createStarterContractCard());
 }
 
+function createProjectDocument(courses) {
+  return {
+    contract: CONTRACT_NAME,
+    version: CONTRACT_VERSION,
+    kind: CONTRACT_KIND_PROJECT,
+    courses
+  };
+}
+
 function createStarterMicrosequence({ title = "Nova microssequência" } = {}) {
   return {
     key: uniqueKey(title, new Set(), "microsequence"),
@@ -226,6 +244,26 @@ function normalizeCardForInsert(entry, usedKeys, fallbackLabel = "card") {
     ...normalizedCard,
     key
   };
+}
+
+function extractCardInput(input = {}) {
+  const {
+    courseKey,
+    moduleKey,
+    lessonKey,
+    microsequenceKey,
+    cardKey,
+    position,
+    toIndex,
+    targetCourseKey,
+    targetModuleKey,
+    targetLessonKey,
+    targetPosition,
+    renames,
+    ...cardInput
+  } = input || {};
+
+  return cardInput;
 }
 
 export function updateCourse(document, input) {
@@ -377,10 +415,7 @@ export function importMicrosequences(document, input = {}) {
 
 export function exportCourseDocument(document, input) {
   const course = findCourse(document, input.courseKey);
-  return ensureValidDocument({
-    contract: "aralearn.contract",
-    courses: [clone(course)]
-  });
+  return ensureValidDocument(createProjectDocument([clone(course)]));
 }
 
 export function exportModuleDocument(document, input) {
@@ -390,17 +425,16 @@ export function exportModuleDocument(document, input) {
     fail(`Módulo não encontrado: "${input.moduleKey}".`);
   }
 
-  return ensureValidDocument({
-    contract: "aralearn.contract",
-    courses: [
+  return ensureValidDocument(
+    createProjectDocument([
       {
         key: course.key,
         title: course.title,
         ...(course.description ? { description: course.description } : {}),
         modules: [clone(moduleValue)]
       }
-    ]
-  });
+    ])
+  );
 }
 
 export function exportLessonDocument(document, input) {
@@ -414,9 +448,8 @@ export function exportLessonDocument(document, input) {
     fail(`Lição não encontrada: "${input.lessonKey}".`);
   }
 
-  return ensureValidDocument({
-    contract: "aralearn.contract",
-    courses: [
+  return ensureValidDocument(
+    createProjectDocument([
       {
         key: course.key,
         title: course.title,
@@ -430,8 +463,8 @@ export function exportLessonDocument(document, input) {
           }
         ]
       }
-    ]
-  });
+    ])
+  );
 }
 
 export function exportMicrosequenceDocument(document, input) {
@@ -449,9 +482,8 @@ export function exportMicrosequenceDocument(document, input) {
     fail(`Microssequência não encontrada: "${input.microsequenceKey}".`);
   }
 
-  return ensureValidDocument({
-    contract: "aralearn.contract",
-    courses: [
+  return ensureValidDocument(
+    createProjectDocument([
       {
         key: course.key,
         title: course.title,
@@ -472,8 +504,8 @@ export function exportMicrosequenceDocument(document, input) {
           }
         ]
       }
-    ]
-  });
+    ])
+  );
 }
 
 export function deleteCourse(document, input) {
@@ -734,7 +766,8 @@ export function createCardInMicrosequence(document, input) {
   const { lesson } = findLesson(nextDocument, input.courseKey, input.moduleKey, input.lessonKey);
   const microsequence = findMicrosequence(lesson, input.microsequenceKey);
   const usedKeys = collectSiblingKeys(microsequence.cards);
-  const card = normalizeCardForInsert(input, usedKeys, input.title || input.type || "card");
+  const cardInput = extractCardInput(input);
+  const card = normalizeCardForInsert(cardInput, usedKeys, cardInput.title || getContractCardKindLabel(cardInput) || "card");
   const position = Number.isInteger(input.position) ? input.position : microsequence.cards.length;
   const safeIndex = Math.max(0, Math.min(position, microsequence.cards.length));
   microsequence.cards.splice(safeIndex, 0, card);
@@ -755,11 +788,11 @@ export function updateCardInMicrosequence(document, input) {
   const nextCard = normalizeCardForInsert(
     {
       ...currentCard,
-      ...input,
+      ...extractCardInput(input),
       key: currentCard.key
     },
     collectSiblingKeys(microsequence.cards.filter((item) => item.key !== currentCard.key)),
-    currentCard.title || currentCard.type
+    currentCard.title || getContractCardKindLabel(currentCard)
   );
 
   microsequence.cards[cardIndex] = nextCard;

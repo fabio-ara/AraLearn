@@ -11,6 +11,7 @@ O projeto reúne a mesma base local para autoria, organização e leitura de mic
 - contrato público principal `aralearn.contract`
 - pipeline própria do contrato principal para validar, compilar e renderizar
 - núcleo próprio do contrato principal para persistência, editor, conteúdo inicial e assistência por API, sem compatibilidade com `intent + data`
+- cards declarados por intenção simples (`say`, `ask`, `code`, `table`, `tree`, `flow`) sem `type` público
 - entrada web principal já aponta para a aplicação principal do produto
 - persistência local separada entre projeto e progresso
 - edição manual de microssequências e cards integrada ao motor editorial
@@ -40,7 +41,7 @@ Essa hierarquia é a mesma usada pelo contrato público, pelo motor interno e pe
 
 ## JSONs do produto
 
-- `aralearn.contract`: contrato público de cursos, usado para exportar cursos isolados e também aceito na ação única `Importar`.
+- `aralearn.contract`: contrato público de projetos ou recortes estruturais, também aceito na ação única `Importar`.
 - `aralearn.storage`: backup completo do aplicativo, também aceito na mesma ação `Importar`, restaurando projeto e progresso local juntos.
 
 ## Estrutura principal do repositório

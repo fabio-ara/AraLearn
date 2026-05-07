@@ -57,7 +57,7 @@ test("não hidrata o conteúdo inicial quando o projeto divergiu ou quando falta
               {
                 key: "microsequence-importada",
                 title: "Microssequência importada",
-                cards: [{ key: "card-importado", type: "text", text: "Conteúdo importado" }]
+                cards: [{ key: "card-importado", say: "Conteúdo importado" }]
               }
             ]
           }

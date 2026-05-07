@@ -9,7 +9,7 @@ Este diretório reunirá a documentação pública do AraLearn.
 
 ## Formatos JSON
 
-- `aralearn.contract`: troca de cursos entre projetos ou autoria externa
+- `aralearn.contract`: troca de projetos ou recortes estruturais entre projetos e autoria externa
 - `aralearn.storage`: backup/restauração completa do estado local, incluindo progresso
 
 Na UI principal, a ação `Importar` detecta automaticamente qual dos dois formatos foi enviado.

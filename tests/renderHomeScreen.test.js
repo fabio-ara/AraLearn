@@ -7,6 +7,8 @@ test("renderiza ações separadas para home e curso na primeira tela", () => {
   const html = renderHomeScreen({
     project: {
       contract: "aralearn.contract",
+      version: 1,
+      kind: "project",
       courses: [
         {
           key: "course-teste",
@@ -24,7 +26,7 @@ test("renderiza ações separadas para home e curso na primeira tela", () => {
                     {
                       key: "microsequence-teste",
                       title: "Microssequência",
-                      cards: [{ key: "card-teste", type: "text", title: "Card", text: "Conteúdo" }]
+                      cards: [{ key: "card-teste", title: "Card", say: "Conteúdo" }]
                     }
                   ]
                 }
