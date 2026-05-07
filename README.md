@@ -146,6 +146,7 @@ A chave não deve ser versionada nem registrada em arquivos do projeto.
 
 - [Visão geral da documentação](./docs/README.md)
 - [Contrato público atual](./docs/aralearn-contract.md)
+- [Assistência por IA generativa](./docs/assistencia-por-ia.md)
 - [Exemplos JSON](./docs/examples/)
 - [Histórico de versões](./CHANGELOG.md)
 

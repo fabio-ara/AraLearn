@@ -5,6 +5,7 @@ Este diretório reunirá a documentação pública do AraLearn.
 ## Documentos atuais
 
 - `aralearn-contract.md`: contrato público atual do projeto
+- `assistencia-por-ia.md`: geração de microssequências com serviços de inteligência artificial generativa acessados por API
 - `examples/`: exemplos JSON do contrato público atual
 
 ## Formatos JSON
