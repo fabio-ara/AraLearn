@@ -1372,21 +1372,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
     saveMicrosequenceVersions();
   }
 
-  function getPriorMicrosequenceVersionsForAssist() {
-    const entry = getMicrosequenceVersionEntry();
-    if (!entry) {
-      return [];
-    }
-
-    const activeIndex = Math.max(0, entry.versions.findIndex((item) => item.id === entry.activeVersionId));
-    return entry.versions.slice(0, activeIndex).map((item) => ({
-      label: item.label,
-      title: item.title,
-      tags: structuredClone(item.tags || []),
-      cards: structuredClone(item.cards || [])
-    }));
-  }
-
   function switchMicrosequenceVersion(versionId, { preserveCardIndex = true } = {}) {
     const reference = {
       courseKey: state.selection.courseKey,
@@ -2172,7 +2157,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
             : context.microsequence,
         card: context.card,
         dependencyTitles,
-        priorMicrosequences: mode === "compose-microsequence" ? getPriorMicrosequenceVersionsForAssist() : [],
         destinationSlots,
         promptText: state.assistDraft.promptText
       });

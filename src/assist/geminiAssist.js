@@ -1,11 +1,9 @@
 import { getContractCardKind, sanitizeContractCard } from "../contract/contractCard.js";
 import {
+  buildDeterministicAssistPlan,
   buildAssistDraftPrompt,
-  buildAssistPlanPrompt,
   getAssistDraftSchema,
-  getAssistPlanSchema,
-  normalizeAssistDraftResult,
-  normalizeAssistPlan
+  normalizeAssistDraftResult
 } from "./assistMicrosequenceEngine.js";
 
 function fail(message) {
@@ -186,29 +184,6 @@ function getCardSchemaByKind(cardKind) {
   return variants[indexByKind[cardKind] ?? 0];
 }
 
-function getComposeSchema() {
-  return {
-    type: "object",
-    properties: {
-      microsequenceTitle: { type: "string" },
-      tags: {
-        type: "array",
-        items: { type: "string" }
-      },
-      cards: {
-        type: "array",
-        minItems: 3,
-        maxItems: 5,
-        items: {
-          anyOf: getCardSchemaVariants()
-        }
-      }
-    },
-    required: ["microsequenceTitle", "cards"],
-    additionalProperties: false
-  };
-}
-
 function getEditSchema(cardKind) {
   return getCardSchemaByKind(cardKind || "say");
 }
@@ -234,52 +209,6 @@ function getRepositionSchema() {
     required: ["slotId", "renames"],
     additionalProperties: false
   };
-}
-
-function summarizeMicrosequenceCards(microsequence) {
-  return (microsequence?.cards || [])
-    .map((card, index) => {
-      const body =
-        normalizeText(card?.say) ||
-        normalizeText(card?.ask) ||
-        normalizeText(card?.code) ||
-        (card?.table ? "table" : "") ||
-        (card?.tree ? "tree" : "") ||
-        (Array.isArray(card?.flow) ? "flow" : "") ||
-        normalizeText(card?.title) ||
-        "card";
-      return `${index + 1}. ${body}`;
-    })
-    .join(" | ");
-}
-
-function buildComposePrompt({ microsequence, dependencyTitles, promptText, priorMicrosequences = [] }) {
-  const title = normalizeText(microsequence?.title) || "Microssequência atual";
-  const tags = dependencyTitles.length ? dependencyTitles.join(", ") : "sem tags";
-  const priorContext = priorMicrosequences.length
-    ? [
-        "Iterações anteriores disponíveis como contexto:",
-        ...priorMicrosequences.map((entry, index) => {
-          const entryTags = Array.isArray(entry?.tags) && entry.tags.length ? entry.tags.join(", ") : "sem tags";
-          return `- Versão ${index + 1}: ${normalizeText(entry?.title) || normalizeText(entry?.label) || "Microssequência"} | tags: ${entryTags} | cards: ${summarizeMicrosequenceCards(entry)}`;
-        })
-      ].join("\n")
-    : "Iterações anteriores disponíveis como contexto: nenhuma.";
-
-  return [
-    `Microssequência atual: ${title}`,
-    `Tags explícitas: ${tags}`,
-    priorContext,
-    "Tarefa: gerar uma microssequência no contrato do AraLearn.",
-    "Restrições:",
-    "- gere entre 3 e 5 cards;",
-    "- não use campo type, text, columns, rows, src, runtime, intent nem data;",
-    "- cada card deve declarar intenção por campos simples: say, ask, answer, wrong, code, table, tree, flow ou after;",
-    "- para lacunas textuais use [[resposta]] ou [[resposta::resposta|distrator]];",
-    "- não invente novas tags fora do contexto dado;",
-    "- não mencione curso, módulo ou lição dentro dos cards;",
-    `Pedido do usuário: ${promptText}`
-  ].join("\n");
 }
 
 function buildEditPrompt({ microsequence, card, dependencyTitles, promptText }) {
@@ -397,54 +326,85 @@ async function callGemini({ apiKey, model, body }) {
   return parseGeminiResponse(response);
 }
 
+function isRetryableAssistError(error) {
+  const message = error instanceof Error ? error.message : "";
+  return [
+    "O serviço de IA devolveu JSON inválido.",
+    "O serviço de IA devolveu uma microssequência inválida.",
+    "O serviço de IA devolveu poucos cards."
+  ].includes(message);
+}
+
+function buildAssistRetryPrompt({ promptText, plan, microsequence, reason }) {
+  return [
+    "A tentativa anterior não passou pela validação local do AraLearn.",
+    `Motivo: ${reason}`,
+    "Gere novamente somente um objeto JSON válido, sem Markdown e sem comentários.",
+    "Mantenha exatamente o plano, a ordem dos cards e os campos permitidos pelo schema.",
+    buildAssistDraftPrompt({ promptText, plan, microsequence })
+  ].join("\n");
+}
+
 async function composeMicrosequenceWithGemini({
   apiKey,
   model,
   microsequence,
   dependencyTitles,
-  priorMicrosequences,
   promptText
 }) {
   const systemInstruction =
     "Você transforma pedidos de estudo em microssequências didáticas para o AraLearn. " +
-    "Siga o schema recebido, use linguagem direta e responda apenas em JSON.";
-  const plan = normalizeAssistPlan(
-    await callGemini({
-      apiKey,
-      model,
-      body: makeRequestBody({
-        systemInstruction,
-        prompt: buildAssistPlanPrompt({ microsequence, dependencyTitles, priorMicrosequences, promptText }),
-        schema: getAssistPlanSchema(),
-        temperature: 0.15,
-        maxOutputTokens: 1024
-      })
-    })
-  );
-  const draft = normalizeAssistDraftResult(
-    await callGemini({
-      apiKey,
-      model,
-      body: makeRequestBody({
-        systemInstruction,
-        prompt: buildAssistDraftPrompt({ promptText, plan, microsequence }),
-        schema: getAssistDraftSchema(),
-        temperature: 0.2,
-        maxOutputTokens: 2048
-      })
-    })
-  );
+    "Siga o schema recebido, use linguagem direta e responda apenas com um objeto JSON.";
+  const plan = buildDeterministicAssistPlan({
+    promptText,
+    microsequence,
+    dependencyTitles
+  });
+  let lastError = null;
 
-  return {
-    ...draft,
-    microsequenceTitle: draft.microsequenceTitle || plan.title,
-    tags: draft.tags.length ? draft.tags : plan.tags
-  };
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const prompt =
+      attempt === 0
+        ? buildAssistDraftPrompt({ promptText, plan, microsequence })
+        : buildAssistRetryPrompt({
+            promptText,
+            plan,
+            microsequence,
+            reason: lastError instanceof Error ? lastError.message : "resposta inválida"
+          });
+
+    try {
+      const parsed = await callGemini({
+        apiKey,
+        model,
+        body: makeRequestBody({
+          systemInstruction,
+          prompt,
+          schema: getAssistDraftSchema(),
+          temperature: attempt === 0 ? 0.15 : 0.05,
+          maxOutputTokens: 3072
+        })
+      });
+      const draft = normalizeAssistDraftResult(parsed, { plan, promptText });
+      return {
+        ...draft,
+        microsequenceTitle: draft.microsequenceTitle || plan.title,
+        tags: draft.tags.length ? draft.tags : plan.tags
+      };
+    } catch (error) {
+      if (!isRetryableAssistError(error) || attempt === 1) {
+        throw error;
+      }
+      lastError = error;
+    }
+  }
+
+  throw lastError || new Error("Falha ao gerar microssequência.");
 }
 
 export function normalizeComposeResult(value) {
   if (!value || typeof value !== "object" || !Array.isArray(value.cards) || !value.cards.length) {
-    fail("Resposta inválida da API para geração da microssequência.");
+    fail("Resposta inválida do serviço de IA para geração da microssequência.");
   }
 
   return {
@@ -481,7 +441,6 @@ export async function runGeminiAssist({
   microsequence,
   card,
   dependencyTitles = [],
-  priorMicrosequences = [],
   destinationSlots = [],
   promptText
 }) {
@@ -511,7 +470,6 @@ export async function runGeminiAssist({
       model: trimmedModel,
       microsequence,
       dependencyTitles,
-      priorMicrosequences,
       promptText: trimmedPrompt
     });
   } else if (mode === "edit-card") {

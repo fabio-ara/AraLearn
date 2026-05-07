@@ -133,6 +133,15 @@ npm test
 npm run validate:example
 ```
 
+Para verificar a geração real de microssequências com Gemini, defina a chave no ambiente da sessão e rode:
+
+```powershell
+$env:GEMINI_API_KEY="sua-chave"
+npm run smoke:gemini
+```
+
+A chave não deve ser versionada nem registrada em arquivos do projeto.
+
 ## Documentação
 
 - [Visão geral da documentação](./docs/README.md)

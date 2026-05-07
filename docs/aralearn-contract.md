@@ -292,7 +292,7 @@ Exemplo:
 Regra prática:
 
 - sempre envie pelo menos uma resposta correta e distratores claros;
-- use alternativas curtas e comparáveis entre si.
+- use alternativas breves e comparáveis entre si.
 
 ### Card `code`
 

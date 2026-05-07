@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { normalizeComposeResult, normalizeEditResult, runGeminiAssist } from "../src/assist/geminiAssist.js";
-import { normalizeAssistDraftResult } from "../src/assist/assistMicrosequenceEngine.js";
+import { buildDeterministicAssistPlan, normalizeAssistDraftResult } from "../src/assist/assistMicrosequenceEngine.js";
 
 test("normaliza composição com intenções semânticas", () => {
   const result = normalizeComposeResult({
@@ -73,41 +73,55 @@ test("converte rascunho assistido para contrato semântico", () => {
   assert.equal(result.cards[2].ask, "Qual comando envia commits ao remoto?");
 });
 
-test("gera microssequência em duas chamadas estruturadas ao Gemini", async () => {
+test("planeja microssequências localmente para assuntos distintos", () => {
+  const gitPlan = buildDeterministicAssistPlan({
+    promptText: "explique os comandos git init, git add, git commit e git push"
+  });
+  const adminPlan = buildDeterministicAssistPlan({
+    promptText: "diferencie missão, visão e valores, no contexto de administração de empresas"
+  });
+  const flowPlan = buildDeterministicAssistPlan({
+    promptText: "monte um fluxograma para decidir se um número é par"
+  });
+
+  assert.equal(gitPlan.subject, "git_github");
+  assert.equal(gitPlan.recipe, "explain_commands");
+  assert.ok(gitPlan.cardPlans.some((card) => card.container === "code"));
+  assert.equal(adminPlan.subject, "administracao");
+  assert.equal(adminPlan.recipe, "compare_concepts");
+  assert.ok(adminPlan.cardPlans.some((card) => card.container === "table"));
+  assert.equal(flowPlan.subject, "algoritmos_fluxograma");
+  assert.ok(flowPlan.cardPlans.some((card) => card.container === "flow"));
+});
+
+test("gera microssequência com plano local e chamada estruturada ao Gemini", async () => {
   const originalFetch = globalThis.fetch;
   const calls = [];
   globalThis.fetch = async (url, options) => {
     calls.push({ url, body: JSON.parse(options.body) });
-    const payload =
-      calls.length === 1
-        ? {
-            title: "Git básico",
-            subject: "git_github",
-            recipe: "explain_commands",
-            goal: "Distinguir comandos básicos de Git.",
-            tags: ["Git"],
-            cardPlans: [
-              { role: "concept", container: "say", title: "Ideia central", learningGoal: "Apresentar o fluxo." },
-              { role: "code_example", container: "code", title: "Comando", learningGoal: "Mostrar comando." },
-              { role: "choice_check", container: "ask", title: "Verificação", learningGoal: "Checar distinção." }
-            ]
-          }
-        : {
-            title: "Git básico",
-            tags: ["Git"],
-            cards: [
-              { role: "concept", container: "say", title: "Ideia central", text: "Git organiza versões." },
-              { role: "code_example", container: "code", title: "Adicionar", language: "bash", code: "git [[add]] arquivo.txt" },
-              {
-                role: "choice_check",
-                container: "ask",
-                title: "Enviar",
-                question: "Qual comando envia commits?",
-                answer: "git push",
-                wrong: ["git add", "git init"]
-              }
-            ]
-          };
+    const payload = {
+      title: "Git básico",
+      tags: ["Git"],
+      cards: [
+        { role: "concept", container: "say", title: "Ideia central", text: "Git organiza versões." },
+        { role: "code_example", container: "code", title: "Comandos em contexto", language: "bash", code: "git [[add]] arquivo.txt" },
+        {
+          role: "table_summary",
+          container: "table",
+          title: "Função de cada comando",
+          columns: ["Comando", "Função"],
+          rows: [["git add", "Prepara arquivos"], ["git push", "Envia commits"]]
+        },
+        {
+          role: "choice_check",
+          container: "ask",
+          title: "Verificação",
+          question: "Qual comando envia commits?",
+          answer: "git push",
+          wrong: ["git add", "git init"]
+        }
+      ]
+    };
 
     return {
       ok: true,
@@ -133,12 +147,13 @@ test("gera microssequência em duas chamadas estruturadas ao Gemini", async () =
       promptText: "explique git add e git push"
     });
 
-    assert.equal(calls.length, 2);
+    assert.equal(calls.length, 1);
     assert.match(calls[0].url, /gemini-2\.5-flash:generateContent/);
     assert.ok(calls[0].body.generationConfig.responseJsonSchema);
     assert.ok(!calls[0].body.generationConfig.responseSchema);
-    assert.equal(result.cards.length, 3);
-    assert.equal(result.cards[2].answer, "git push");
+    assert.match(calls[0].body.contents[0].parts[0].text, /Plano:/);
+    assert.equal(result.cards.length, 4);
+    assert.equal(result.cards[3].answer, "git push");
   } finally {
     globalThis.fetch = originalFetch;
   }
@@ -149,36 +164,29 @@ test("aceita JSON do Gemini envolto em bloco markdown", async () => {
   const calls = [];
   globalThis.fetch = async (url, options) => {
     calls.push({ url, body: JSON.parse(options.body) });
-    const payload =
-      calls.length === 1
-        ? {
-            title: "Git básico",
-            subject: "git_github",
-            recipe: "explain_commands",
-            goal: "Distinguir comandos básicos de Git.",
-            tags: ["Git"],
-            cardPlans: [
-              { role: "concept", container: "say", title: "Ideia central", learningGoal: "Apresentar o fluxo." },
-              { role: "code_example", container: "code", title: "Comando", learningGoal: "Mostrar comando." },
-              { role: "choice_check", container: "ask", title: "Verificação", learningGoal: "Checar distinção." }
-            ]
-          }
-        : {
-            title: "Git básico",
-            tags: ["Git"],
-            cards: [
-              { role: "concept", container: "say", title: "Ideia central", text: "Git organiza versões." },
-              { role: "code_example", container: "code", title: "Adicionar", language: "bash", code: "git add arquivo.txt" },
-              {
-                role: "choice_check",
-                container: "ask",
-                title: "Enviar",
-                question: "Qual comando envia commits?",
-                answer: "git push",
-                wrong: ["git add", "git init"]
-              }
-            ]
-          };
+    const payload = {
+      title: "Git básico",
+      tags: ["Git"],
+      cards: [
+        { role: "concept", container: "say", title: "Ideia central", text: "Git organiza versões." },
+        { role: "code_example", container: "code", title: "Comandos em contexto", language: "bash", code: "git add arquivo.txt" },
+        {
+          role: "table_summary",
+          container: "table",
+          title: "Função de cada comando",
+          columns: ["Comando", "Função"],
+          rows: [["git add", "Prepara arquivos"], ["git push", "Envia commits"]]
+        },
+        {
+          role: "choice_check",
+          container: "ask",
+          title: "Verificação",
+          question: "Qual comando envia commits?",
+          answer: "git push",
+          wrong: ["git add", "git init"]
+        }
+      ]
+    };
 
     return {
       ok: true,
@@ -204,8 +212,82 @@ test("aceita JSON do Gemini envolto em bloco markdown", async () => {
       promptText: "explique git add e git push"
     });
 
-    assert.equal(result.cards.length, 3);
-    assert.equal(result.cards[2].answer, "git push");
+    assert.equal(calls.length, 1);
+    assert.equal(result.cards.length, 4);
+    assert.equal(result.cards[3].answer, "git push");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("tenta novamente quando o Gemini devolve JSON ilegível", async () => {
+  const originalFetch = globalThis.fetch;
+  const calls = [];
+  globalThis.fetch = async (url, options) => {
+    calls.push({ url, body: JSON.parse(options.body) });
+    return {
+      ok: true,
+      async json() {
+        return {
+          candidates: [
+            {
+              content: {
+                parts: [
+                  {
+                    text:
+                      calls.length === 1
+                        ? "```json\n{\"title\":\"Git básico\",\"cards\":[\n```"
+                        : JSON.stringify({
+                            title: "Git básico",
+                            tags: ["Git"],
+                            cards: [
+                              { role: "concept", container: "say", title: "Ideia central", text: "Git organiza versões." },
+                              {
+                                role: "code_example",
+                                container: "code",
+                                title: "Comandos em contexto",
+                                language: "bash",
+                                code: "git add arquivo.txt"
+                              },
+                              {
+                                role: "table_summary",
+                                container: "table",
+                                title: "Função de cada comando",
+                                columns: ["Comando", "Função"],
+                                rows: [["git add", "Prepara arquivos"], ["git push", "Envia commits"]]
+                              },
+                              {
+                                role: "choice_check",
+                                container: "ask",
+                                title: "Verificação",
+                                question: "Qual comando envia commits?",
+                                answer: "git push",
+                                wrong: ["git add", "git init"]
+                              }
+                            ]
+                          })
+                  }
+                ]
+              }
+            }
+          ]
+        };
+      }
+    };
+  };
+
+  try {
+    const result = await runGeminiAssist({
+      apiKey: "chave",
+      mode: "compose-microsequence",
+      microsequence: { title: "Git", tags: [], cards: [] },
+      promptText: "explique git add e git push"
+    });
+
+    assert.equal(calls.length, 2);
+    assert.match(calls[1].body.contents[0].parts[0].text, /tentativa anterior/i);
+    assert.equal(result.cards.length, 4);
+    assert.equal(result.cards[3].answer, "git push");
   } finally {
     globalThis.fetch = originalFetch;
   }
