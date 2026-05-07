@@ -351,11 +351,34 @@ async function parseGeminiResponse(response) {
     fail(`O serviço de IA não devolveu conteúdo utilizável (${reason}).`);
   }
 
-  try {
-    return JSON.parse(text);
-  } catch {
-    fail("O serviço de IA devolveu JSON inválido.");
+  return parseJsonFromModelText(text);
+}
+
+function parseJsonFromModelText(text) {
+  const candidates = [
+    text,
+    text.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim(),
+    extractJsonObjectText(text)
+  ].filter(Boolean);
+
+  for (const candidate of candidates) {
+    try {
+      return JSON.parse(candidate);
+    } catch {
+      // Tenta a próxima forma comum de resposta do modelo.
+    }
   }
+
+  fail("O serviço de IA devolveu JSON inválido.");
+}
+
+function extractJsonObjectText(text) {
+  const start = text.indexOf("{");
+  const end = text.lastIndexOf("}");
+  if (start < 0 || end <= start) {
+    return "";
+  }
+  return text.slice(start, end + 1).trim();
 }
 
 async function callGemini({ apiKey, model, body }) {

@@ -143,3 +143,70 @@ test("gera microssequência em duas chamadas estruturadas ao Gemini", async () =
     globalThis.fetch = originalFetch;
   }
 });
+
+test("aceita JSON do Gemini envolto em bloco markdown", async () => {
+  const originalFetch = globalThis.fetch;
+  const calls = [];
+  globalThis.fetch = async (url, options) => {
+    calls.push({ url, body: JSON.parse(options.body) });
+    const payload =
+      calls.length === 1
+        ? {
+            title: "Git básico",
+            subject: "git_github",
+            recipe: "explain_commands",
+            goal: "Distinguir comandos básicos de Git.",
+            tags: ["Git"],
+            cardPlans: [
+              { role: "concept", container: "say", title: "Ideia central", learningGoal: "Apresentar o fluxo." },
+              { role: "code_example", container: "code", title: "Comando", learningGoal: "Mostrar comando." },
+              { role: "choice_check", container: "ask", title: "Verificação", learningGoal: "Checar distinção." }
+            ]
+          }
+        : {
+            title: "Git básico",
+            tags: ["Git"],
+            cards: [
+              { role: "concept", container: "say", title: "Ideia central", text: "Git organiza versões." },
+              { role: "code_example", container: "code", title: "Adicionar", language: "bash", code: "git add arquivo.txt" },
+              {
+                role: "choice_check",
+                container: "ask",
+                title: "Enviar",
+                question: "Qual comando envia commits?",
+                answer: "git push",
+                wrong: ["git add", "git init"]
+              }
+            ]
+          };
+
+    return {
+      ok: true,
+      async json() {
+        return {
+          candidates: [
+            {
+              content: {
+                parts: [{ text: "```json\n" + JSON.stringify(payload) + "\n```" }]
+              }
+            }
+          ]
+        };
+      }
+    };
+  };
+
+  try {
+    const result = await runGeminiAssist({
+      apiKey: "chave",
+      mode: "compose-microsequence",
+      microsequence: { title: "Git", tags: [], cards: [] },
+      promptText: "explique git add e git push"
+    });
+
+    assert.equal(result.cards.length, 3);
+    assert.equal(result.cards[2].answer, "git push");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
