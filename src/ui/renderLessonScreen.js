@@ -773,7 +773,7 @@ function renderMicrosequenceWorkbenchScreen({
       "</p></section>"
     : "";
   const assistStatus = editorSupport.lastRequest
-    ? '<section class="microsequence-assist-panel">' +
+    ? '<section class="microsequence-assist-panel assist-status-panel">' +
       '<p class="tiny muted">' +
       escapeHtml(editorSupport.lastRequest.title || "Último pedido") +
       "</p>" +
@@ -978,7 +978,7 @@ function renderDraftGeneratorScreen({ lesson, microsequence, cards, selection, e
     cards,
     selection,
     editorSupport,
-    hideCards: editorSupport.currentMicrosequenceIsPlaceholder
+    hideCards: editorSupport.currentMicrosequenceIsPlaceholder && !(Array.isArray(cards) && cards.length)
   });
 }
 

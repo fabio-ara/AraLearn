@@ -230,6 +230,108 @@ test("renderiza a aba preview da microssequência dentro da superfície combinad
   assert.doesNotMatch(html, /<label[^>]*>\s*Tags\s*<\/label>/);
 });
 
+test("renderiza cards gerados no placeholder da oficina", () => {
+  const project = readProject();
+  const course = project.courses[0];
+  const moduleValue = course.modules[0];
+  const lesson = moduleValue.lessons[0];
+  const microsequence = {
+    ...lesson.microsequences[0],
+    key: "__draft-placeholder__",
+    title: "Gerador"
+  };
+  const html = renderLessonScreen({
+    project,
+    view: "draft-generator",
+    selection: {
+      courseKey: "__draft-course__",
+      moduleKey: "__draft-module__",
+      lessonKey: "__draft-lesson__",
+      microsequenceKey: microsequence.key,
+      cardKey: microsequence.cards[0].key,
+      cardIndex: 0
+    },
+    course,
+    moduleValue,
+    lesson,
+    microsequence,
+    cards: microsequence.cards,
+    microsequenceMode: "play",
+    editorSupport: {
+      progress: { version: 1, lessons: {} },
+      draftCourseKey: "__draft-course__",
+      draftMicrosequences: [],
+      dependencies: [],
+      microsequenceVersions: [{ id: "v1", label: "Versão 1" }],
+      activeMicrosequenceVersionId: "v1",
+      selectedDependencyKeys: [],
+      pendingDependencyKey: "",
+      modelOptions: [],
+      selectedModel: "",
+      assistModeOptions: [{ value: "compose", label: "Gerar microssequência" }],
+      selectedAssistMode: "compose",
+      activeWorkbenchPane: "preview",
+      assistModeLocked: true,
+      promptText: "",
+      currentMicrosequenceIsPlaceholder: true
+    }
+  });
+
+  assert.match(html, /editor-card-count-value">1\/7<\/span>/);
+  assert.doesNotMatch(html, /Os cards aparecerão aqui após o envio do prompt/);
+});
+
+test("renderiza status da oficina em painel rolável", () => {
+  const project = readProject();
+  const course = project.courses[0];
+  const moduleValue = course.modules[0];
+  const lesson = moduleValue.lessons[0];
+  const microsequence = lesson.microsequences[0];
+  const html = renderLessonScreen({
+    project,
+    view: "draft-generator",
+    selection: {
+      courseKey: course.key,
+      moduleKey: moduleValue.key,
+      lessonKey: lesson.key,
+      microsequenceKey: microsequence.key,
+      cardKey: microsequence.cards[0].key,
+      cardIndex: 0
+    },
+    course,
+    moduleValue,
+    lesson,
+    microsequence,
+    cards: microsequence.cards,
+    microsequenceMode: "play",
+    editorSupport: {
+      progress: { version: 1, lessons: {} },
+      draftCourseKey: "__draft-course__",
+      draftMicrosequences: [],
+      dependencies: [],
+      microsequenceVersions: [{ id: "v1", label: "Versão 1" }],
+      activeMicrosequenceVersionId: "v1",
+      selectedDependencyKeys: [],
+      pendingDependencyKey: "",
+      modelOptions: [],
+      selectedModel: "",
+      assistModeOptions: [{ value: "compose", label: "Gerar microssequência" }],
+      selectedAssistMode: "compose",
+      activeWorkbenchPane: "edit",
+      assistModeLocked: true,
+      promptText: "",
+      currentMicrosequenceIsPlaceholder: false,
+      lastRequest: {
+        title: "Microssequência gerada",
+        description: "4 cards aplicados em Git básico com Gemini 2.5 Flash."
+      }
+    }
+  });
+
+  assert.match(html, /class="microsequence-assist-panel assist-status-panel"/);
+  assert.match(html, /4 cards aplicados em Git básico/);
+});
+
 test("renderiza a execução do card com nome do curso e faixa estável de tags", () => {
   const project = readProject();
   const course = project.courses[0];
