@@ -122,6 +122,15 @@ function compactSpaces(value) {
   return normalizeText(value).replace(/\s+/g, " ");
 }
 
+function splitSentences(value) {
+  const text = compactSpaces(value);
+  if (!text) {
+    return [];
+  }
+  const matches = text.match(/[^.!?]+[.!?]+|[^.!?]+$/g);
+  return (matches || [text]).map((item) => item.trim()).filter(Boolean);
+}
+
 function limitText(value, maxLength = 80) {
   const text = compactSpaces(value);
   return text.length > maxLength ? `${text.slice(0, maxLength - 1).trim()}...` : text;
@@ -156,6 +165,29 @@ function detectRecipe(promptText) {
     return "diagnostic_gap";
   }
   return "explain_concept";
+}
+
+function extractCommandTopics(promptText) {
+  const text = normalizeText(promptText);
+  const commands = [];
+  const seen = new Set();
+
+  const commandPatterns = [
+    /\bgit\s+(init|add|commit|push|status|log|branch|merge|pull|clone|remote)\b/gi,
+    /\b(ls|cd|pwd|mkdir|touch|rm|cp|mv|chmod|grep|cat|echo)\b/gi
+  ];
+
+  commandPatterns.forEach((pattern) => {
+    for (const match of text.matchAll(pattern)) {
+      const command = compactSpaces(match[0]).toLowerCase();
+      if (!seen.has(command)) {
+        seen.add(command);
+        commands.push(command);
+      }
+    }
+  });
+
+  return commands.slice(0, 4);
 }
 
 function inferPlanTitle(promptText, subject, recipe) {
@@ -203,13 +235,27 @@ function makeCardPlan(role, container, title, learningGoal) {
   return { role, container, title, learningGoal };
 }
 
-function buildCardPlans({ subject, recipe }) {
+function buildCardPlans({ subject, recipe, promptText = "" }) {
   const practiceContainer = getSubjectPracticeContainer(subject);
   if (recipe === "explain_commands") {
+    const commands = extractCommandTopics(promptText);
+    if (commands.length >= 2) {
+      const commandPlans = commands.map((command) =>
+        makeCardPlan("code_example", "code", command, `Explicar ${command} com um exemplo mínimo e uma frase de uso.`)
+      );
+      const plans = [
+        ...(commands.length >= 4
+          ? commandPlans
+          : [makeCardPlan("concept", "say", "Antes dos comandos", "Mostrar a ideia mínima do fluxo antes da prática."), ...commandPlans]),
+        makeCardPlan("choice_check", "ask", "Verificação", "Checar a função de um comando do fluxo.")
+      ];
+      return plans.slice(0, 5);
+    }
+
     return [
       makeCardPlan("concept", "say", "Ideia central", "Explicar para que serve o conjunto de comandos."),
       makeCardPlan("code_example", "code", "Comandos em contexto", "Mostrar comandos em uma sequência executável."),
-      makeCardPlan("table_summary", "table", "Função de cada comando", "Distinguir comando, efeito e momento de uso."),
+      makeCardPlan("practice_gap", "say", "Recuperação ativa", "Fixar o comando principal em uma lacuna textual."),
       makeCardPlan("choice_check", "ask", "Verificação", "Testar se o estudante reconhece o comando adequado.")
     ];
   }
@@ -271,7 +317,7 @@ export function buildDeterministicAssistPlan({ promptText, microsequence, depend
     recipe,
     goal: `Transformar "${title}" em prática revisável no AraLearn.`,
     tags: buildPlanTags({ subject, dependencyTitles, promptText }),
-    cardPlans: buildCardPlans({ subject, recipe })
+    cardPlans: buildCardPlans({ subject, recipe, promptText })
   });
 }
 
@@ -374,12 +420,16 @@ export function buildAssistDraftPrompt({ promptText, plan, microsequence }) {
     `Devolva exatamente ${cardCount} cards, na mesma ordem do plano.`,
     "Cada card deve ter title e os campos de conteúdo necessários ao seu contêiner.",
     "Escreva para estudante de Tecnologia em Análise e Desenvolvimento de Sistemas.",
-    "Use linguagem direta e exemplos verossímeis do domínio pedido.",
+    "Use linguagem natural simples, de iniciante para iniciante.",
+    "Cada text deve ter no máximo duas frases.",
+    "Separe frases em parágrafos usando uma linha em branco.",
+    "Use uma ideia por card e uma ideia por frase.",
+    "Evite jargão sem explicação.",
     "Não use Markdown. Não explique fora do JSON.",
-    "Para lacunas textuais, use [[resposta]] dentro de text.",
+    "Use [[resposta]] apenas quando o plano pedir prática, revisão ou lacuna.",
     "Para múltipla escolha, preencha question, answer e wrong.",
     "Para tabelas, preencha columns e rows; cada item de rows deve ser uma linha textual separada por |.",
-    "Para comandos, prefira container code com language bash quando fizer sentido.",
+    "Para comandos, use language bash e escreva só o comando do card, sem URL remota e sem sequência longa.",
     "Para C ou Portugol, prefira container code com language c ou portugol.",
     "Para fluxogramas, use flowSteps como passos textuais simples.",
     "Para diretórios, use paths com caminhos absolutos ou relativos coerentes.",
@@ -449,18 +499,77 @@ function convertFlowStepsToContractFlow(steps) {
   ];
 }
 
+function removeTextGaps(value) {
+  return normalizeText(value).replace(/\[\[([^:\]]+)(?:::[^\]]+)?\]\]/g, "$1");
+}
+
+function formatProse(value, { allowGaps = false, maxSentences = 2 } = {}) {
+  const source = allowGaps ? normalizeText(value) : removeTextGaps(value);
+  const sentences = splitSentences(source).slice(0, maxSentences);
+  return sentences.join("\n\n");
+}
+
+function getPlannedCommand(card) {
+  const title = normalizeText(card?.title).toLowerCase();
+  const match = title.match(/\b(?:git\s+)?(?:init|add|commit|push|status|log|branch|merge|pull|clone|remote|ls|cd|pwd|mkdir|touch|rm|cp|mv|chmod|grep|cat|echo)\b(?:\s+\w+)?/);
+  if (!match) {
+    return "";
+  }
+  return compactSpaces(match[0]);
+}
+
+function simplifyCode(value, card) {
+  const source = normalizeText(value);
+  const plannedCommand = getPlannedCommand(card);
+  if (plannedCommand) {
+    const matchingLine = source
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .find((line) => line.toLowerCase().startsWith(plannedCommand));
+    return matchingLine || plannedCommand;
+  }
+
+  return source
+    .split(/\r?\n/)
+    .map((line) => line.trimEnd())
+    .filter(Boolean)
+    .slice(0, 4)
+    .join("\n");
+}
+
+function plannedCommandText(title, topic) {
+  const command = getPlannedCommand({ title });
+  const descriptions = {
+    "git init": "Use git init para transformar uma pasta comum em repositório Git.\n\nDepois disso, o Git consegue acompanhar mudanças nessa pasta.",
+    "git add": "Use git add para preparar arquivos para o próximo registro.\n\nEle ainda não salva o histórico; só monta o conjunto do próximo commit.",
+    "git commit": "Use git commit para registrar as mudanças preparadas.\n\nPense no commit como um ponto salvo da história do projeto.",
+    "git push": "Use git push para enviar commits ao repositório remoto.\n\nEle só faz sentido quando já existe um destino remoto configurado.",
+    "git status": "Use git status para ver o estado atual do repositório.\n\nEle mostra o que mudou e o que já está preparado.",
+    "git log": "Use git log para consultar commits anteriores.\n\nEle ajuda a enxergar a história do projeto.",
+    "git branch": "Use git branch para listar ou criar linhas de trabalho.\n\nUma branch separa uma mudança sem mexer diretamente no fluxo principal.",
+    "git merge": "Use git merge para juntar uma branch a outra.\n\nAntes de juntar, confira se as mudanças fazem sentido juntas."
+  };
+
+  if (descriptions[command]) {
+    return descriptions[command];
+  }
+
+  return `Observe uma aplicação mínima de ${topic}.\n\nUse o exemplo para reconhecer a ação principal antes de memorizar detalhes.`;
+}
+
 function convertAssistCardToContract(card) {
   const container = CONTAINERS.includes(card?.container) ? card.container : "say";
   const title = normalizeText(card?.title) || "Card";
-  const text = normalizeText(card?.text);
-  const after = normalizeText(card?.after);
+  const allowGaps = ["practice_gap", "review"].includes(card?.role);
+  const text = formatProse(card?.text, { allowGaps, maxSentences: container === "table" ? 1 : 2 });
+  const after = formatProse(card?.after, { maxSentences: 1 });
 
   if (container === "ask") {
     return sanitizeContractCard({
       title,
       ...(text ? { say: text } : {}),
-      ask: normalizeText(card?.question) || text || "Qual alternativa está correta?",
-      answer: normalizeText(card?.answer) || "Resposta correta",
+      ask: formatProse(card?.question, { maxSentences: 1 }) || text || "Qual alternativa está correta?",
+      answer: removeTextGaps(card?.answer) || "Resposta correta",
       wrong: normalizeList(card?.wrong, 4).length ? normalizeList(card?.wrong, 4) : ["Distrator 1", "Distrator 2"],
       ...(after ? { after } : {})
     });
@@ -471,7 +580,7 @@ function convertAssistCardToContract(card) {
       title,
       ...(text ? { say: text } : {}),
       language: normalizeText(card?.language) || "text",
-      code: normalizeText(card?.code) || "# complete o exemplo",
+      code: simplifyCode(card?.code, card) || "# complete o exemplo",
       ...(after ? { after } : {}),
       ...(normalizeList(card?.wrong, 4).length ? { wrong: normalizeList(card?.wrong, 4) } : {})
     });
@@ -564,9 +673,9 @@ function createFallbackAssistCard(cardPlan, { plan, promptText, index = 0 } = {}
       role,
       container,
       title,
-      text: `Observe uma aplicação mínima de ${topic}.`,
+      text: plannedCommandText(title, topic),
       language: languageBySubject[subject] || "text",
-      code: codeBySubject[subject] || `Exemplo de ${topic}`
+      code: getPlannedCommand({ title }) || codeBySubject[subject] || `Exemplo de ${topic}`
     };
   }
 
@@ -623,13 +732,16 @@ function mergeAssistCardWithPlan(card, cardPlan, context) {
   const source = card && typeof card === "object" ? card : {};
   const plannedContainer = CONTAINERS.includes(cardPlan?.container) ? cardPlan.container : null;
   const plannedRole = CARD_ROLES.includes(cardPlan?.role) ? cardPlan.role : null;
+  const plannedTitle = normalizeText(cardPlan?.title);
+  const sourceTitle = normalizeText(source.title);
+  const shouldPreferPlannedTitle = plannedRole === "code_example" && Boolean(getPlannedCommand({ title: plannedTitle }));
 
   return {
     ...fallback,
     ...source,
     role: plannedRole || (CARD_ROLES.includes(source.role) ? source.role : fallback.role),
     container: plannedContainer || (CONTAINERS.includes(source.container) ? source.container : fallback.container),
-    title: normalizeText(source.title) || normalizeText(cardPlan?.title) || fallback.title
+    title: shouldPreferPlannedTitle ? plannedTitle : sourceTitle || plannedTitle || fallback.title
   };
 }
 

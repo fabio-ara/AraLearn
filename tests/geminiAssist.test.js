@@ -73,6 +73,42 @@ test("converte rascunho assistido para contrato semântico", () => {
   assert.equal(result.cards[2].ask, "Qual comando envia commits ao remoto?");
 });
 
+test("reduz densidade de textos gerados para estudo", () => {
+  const result = normalizeAssistDraftResult({
+    title: "Git básico",
+    tags: ["Git"],
+    cards: [
+      {
+        role: "concept",
+        container: "say",
+        title: "Ideia central",
+        text:
+          "Git organiza mudanças em etapas. Primeiro você prepara arquivos com [[git add]]. Depois registra com [[git commit]]. Por fim envia com [[git push]]."
+      },
+      {
+        role: "code_example",
+        container: "code",
+        title: "git push",
+        text: "Use git push para enviar commits quando já existe remoto. Não comece por ele.",
+        language: "bash",
+        code: "git remote add origin https://example.com/repo.git\ngit push -u origin main"
+      },
+      {
+        role: "choice_check",
+        container: "ask",
+        title: "Verificação",
+        question: "Qual comando registra mudanças preparadas?",
+        answer: "git commit",
+        wrong: ["git add", "git push"]
+      }
+    ]
+  });
+
+  assert.equal(result.cards[0].say, "Git organiza mudanças em etapas.\n\nPrimeiro você prepara arquivos com git add.");
+  assert.doesNotMatch(result.cards[0].say, /\[\[/);
+  assert.equal(result.cards[1].code, "git push -u origin main");
+});
+
 test("planeja microssequências localmente para assuntos distintos", () => {
   const gitPlan = buildDeterministicAssistPlan({
     promptText: "explique os comandos git init, git add, git commit e git push"
@@ -86,7 +122,11 @@ test("planeja microssequências localmente para assuntos distintos", () => {
 
   assert.equal(gitPlan.subject, "git_github");
   assert.equal(gitPlan.recipe, "explain_commands");
-  assert.ok(gitPlan.cardPlans.some((card) => card.container === "code"));
+  assert.deepEqual(
+    gitPlan.cardPlans.map((card) => card.title),
+    ["git init", "git add", "git commit", "git push", "Verificação"]
+  );
+  assert.ok(gitPlan.cardPlans.every((card, index) => index === 4 || card.container === "code"));
   assert.equal(adminPlan.subject, "administracao");
   assert.equal(adminPlan.recipe, "compare_concepts");
   assert.ok(adminPlan.cardPlans.some((card) => card.container === "table"));
@@ -103,13 +143,9 @@ test("gera microssequência com plano local e chamada estruturada ao Gemini", as
       title: "Git básico",
       tags: ["Git"],
       cards: [
-        { title: "Ideia central", text: "Git organiza versões." },
-        { title: "Comandos em contexto", language: "bash", code: "git [[add]] arquivo.txt" },
-        {
-          title: "Função de cada comando",
-          columns: ["Comando", "Função"],
-          rows: ["git add | Prepara arquivos", "git push | Envia commits"]
-        },
+        { title: "Antes dos comandos", text: "Git registra mudanças em etapas. Cada comando faz uma parte do caminho." },
+        { title: "Comandos em contexto", text: "Use git add para preparar arquivos.", language: "bash", code: "git add arquivo.txt" },
+        { title: "Envio", text: "Use git push para enviar commits quando já existe remoto.", language: "bash", code: "git remote add origin https://example.com/repo.git\ngit push -u origin main" },
         {
           title: "Verificação",
           question: "Qual comando envia commits?",
@@ -153,7 +189,10 @@ test("gera microssequência com plano local e chamada estruturada ao Gemini", as
     assert.equal(cardSchema.properties.rows.items.type, "string");
     assert.match(calls[0].body.contents[0].parts[0].text, /Plano:/);
     assert.equal(result.cards.length, 4);
-    assert.equal(result.cards[2].table.rows[0][0], "git add");
+    assert.equal(result.cards[1].title, "git add");
+    assert.equal(result.cards[1].code, "git add arquivo.txt");
+    assert.equal(result.cards[2].title, "git push");
+    assert.equal(result.cards[2].code, "git push -u origin main");
     assert.equal(result.cards[3].answer, "git push");
   } finally {
     globalThis.fetch = originalFetch;
@@ -169,13 +208,9 @@ test("aceita JSON do Gemini envolto em bloco markdown", async () => {
       title: "Git básico",
       tags: ["Git"],
       cards: [
-        { title: "Ideia central", text: "Git organiza versões." },
-        { title: "Comandos em contexto", language: "bash", code: "git add arquivo.txt" },
-        {
-          title: "Função de cada comando",
-          columns: ["Comando", "Função"],
-          rows: ["git add | Prepara arquivos", "git push | Envia commits"]
-        },
+        { title: "Antes dos comandos", text: "Git registra mudanças em etapas. Cada comando faz uma parte do caminho." },
+        { title: "git add", text: "Use git add para preparar arquivos.", language: "bash", code: "git add arquivo.txt" },
+        { title: "git push", text: "Use git push para enviar commits quando já existe remoto.", language: "bash", code: "git push" },
         {
           title: "Verificação",
           question: "Qual comando envia commits?",
@@ -238,17 +273,9 @@ test("tenta novamente quando o Gemini devolve JSON ilegível", async () => {
                             title: "Git básico",
                             tags: ["Git"],
                             cards: [
-                              { title: "Ideia central", text: "Git organiza versões." },
-                              {
-                                title: "Comandos em contexto",
-                                language: "bash",
-                                code: "git add arquivo.txt"
-                              },
-                              {
-                                title: "Função de cada comando",
-                                columns: ["Comando", "Função"],
-                                rows: ["git add | Prepara arquivos", "git push | Envia commits"]
-                              },
+                              { title: "Antes dos comandos", text: "Git registra mudanças em etapas. Cada comando faz uma parte do caminho." },
+                              { title: "git add", text: "Use git add para preparar arquivos.", language: "bash", code: "git add arquivo.txt" },
+                              { title: "git push", text: "Use git push para enviar commits quando já existe remoto.", language: "bash", code: "git push" },
                               {
                                 title: "Verificação",
                                 question: "Qual comando envia commits?",
@@ -316,13 +343,9 @@ test("remove schema na nova tentativa quando o Gemini rejeita a complexidade", a
                       title: "Git básico",
                       tags: ["Git"],
                       cards: [
-                        { title: "Ideia central", text: "Git organiza versões." },
-                        { title: "Comandos em contexto", language: "bash", code: "git add arquivo.txt" },
-                        {
-                          title: "Função de cada comando",
-                          columns: ["Comando", "Função"],
-                          rows: ["git add | Prepara arquivos", "git push | Envia commits"]
-                        },
+                        { title: "Antes dos comandos", text: "Git registra mudanças em etapas. Cada comando faz uma parte do caminho." },
+                        { title: "git add", text: "Use git add para preparar arquivos.", language: "bash", code: "git add arquivo.txt" },
+                        { title: "git push", text: "Use git push para enviar commits quando já existe remoto.", language: "bash", code: "git push" },
                         {
                           title: "Verificação",
                           question: "Qual comando envia commits?",

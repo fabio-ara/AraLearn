@@ -2034,7 +2034,8 @@ button {
 .runtime-table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 260px;
+  min-width: 420px;
+  table-layout: auto;
 }
 
 .runtime-table th,
@@ -2043,11 +2044,20 @@ button {
   padding: 8px 10px;
   text-align: left;
   vertical-align: top;
+  overflow-wrap: normal;
+  word-break: normal;
 }
 
 .runtime-table th {
   background: rgba(255, 240, 217, 0.06);
   color: #f5e6cb;
+  white-space: nowrap;
+}
+
+.runtime-table th:first-child,
+.runtime-table td:first-child {
+  min-width: 86px;
+  white-space: nowrap;
 }
 
 .runtime-flow-block {
