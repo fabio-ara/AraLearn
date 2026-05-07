@@ -60,7 +60,7 @@ export function readAssistConfigStorage(storage = globalThis.localStorage) {
     return readJsonMap(storage, LEGACY_ASSIST_CONFIG_STORAGE_KEY);
   })();
   return {
-    model: typeof config.model === "string" && config.model.trim() ? config.model.trim() : "gemini-2.5-flash-lite",
+    model: typeof config.model === "string" && config.model.trim() ? config.model.trim() : "gemini-2.5-flash",
     apiKey: typeof config.apiKey === "string" ? config.apiKey : ""
   };
 }
@@ -70,7 +70,7 @@ export function writeAssistConfigStorage(config, storage = globalThis.localStora
     storage,
     ASSIST_CONFIG_STORAGE_KEY,
     {
-      model: typeof config?.model === "string" ? config.model : "gemini-2.5-flash-lite",
+      model: typeof config?.model === "string" ? config.model : "gemini-2.5-flash",
       apiKey: typeof config?.apiKey === "string" ? config.apiKey : ""
     }
   );

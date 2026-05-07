@@ -26,11 +26,11 @@ test("assistConfigStorage lê e grava configuração auxiliar", () => {
 
 test("assistConfigStorage tolera storage ausente ou JSON inválido", () => {
   assert.deepEqual(readAssistConfigStorage(null), {
-    model: "gemini-2.5-flash-lite",
+    model: "gemini-2.5-flash",
     apiKey: ""
   });
   assert.deepEqual(readAssistConfigStorage({ getItem: () => "{" }), {
-    model: "gemini-2.5-flash-lite",
+    model: "gemini-2.5-flash",
     apiKey: ""
   });
 });

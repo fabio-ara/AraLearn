@@ -23,11 +23,11 @@ export function renderAssistConfigOverlay({ model, apiKey, modelOptions = [] }) 
     .join("");
 
   return (
-    '<section class="editor-overlay" aria-label="Configuração da API">' +
+    '<section class="editor-overlay" aria-label="Configuração da IA">' +
     '<article class="editor-sheet comment-sheet" role="dialog" aria-modal="true">' +
     '<header class="editor-head">' +
     '<button class="icon-ghost" type="button" data-action="assist-config-close" title="Fechar" aria-label="Fechar">&times;</button>' +
-    '<p class="editor-title">Configuração da API</p>' +
+    '<p class="editor-title">Configuração da IA</p>' +
     '<div class="topbar-space" aria-hidden="true"></div>' +
     "</header>" +
     '<div class="editor-body">' +
@@ -38,7 +38,7 @@ export function renderAssistConfigOverlay({ model, apiKey, modelOptions = [] }) 
     "</select>" +
     "</div>" +
     '<div class="field">' +
-    "<label>Chave da API</label>" +
+    "<label>Chave do serviço</label>" +
     '<input data-field="assist-config-api-key" type="password" value="' +
     escapeHtml(apiKey || "") +
     '" autocomplete="off" spellcheck="false">' +

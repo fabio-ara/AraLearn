@@ -65,15 +65,16 @@ import { getLessonProgressCursor, removeLessonProgressEntries, writeLessonProgre
 import { detectJsonExchangeFormat } from "../storage/jsonExchange.js";
 import { getContractCardKind, listContractAnswerValues } from "../contract/contractCard.js";
 
-const DRAFT_COURSE_KEY = "__disabled-draft-course__";
-const DRAFT_MODULE_KEY = "__disabled-draft-module__";
-const DRAFT_LESSON_KEY = "__disabled-draft-lesson__";
+const DRAFT_COURSE_KEY = "__draft-course__";
+const DRAFT_MODULE_KEY = "__draft-module__";
+const DRAFT_LESSON_KEY = "__draft-lesson__";
+const DRAFT_PLACEHOLDER_MICROSEQUENCE_KEY = "__draft-placeholder__";
 
 const MAX_ASSIST_DEPENDENCIES = 5;
 const MAX_CARD_SNAPSHOTS = 6;
 const ASSIST_MODEL_OPTIONS = [
-  { value: "gemini-2.5-flash-lite", label: "Gemini 2.5 Flash-Lite" },
   { value: "gemini-2.5-flash", label: "Gemini 2.5 Flash" },
+  { value: "gemini-2.5-flash-lite", label: "Gemini 2.5 Flash-Lite" },
   { value: "gemini-2.0-flash", label: "Gemini 2.0 Flash · até 2026-06-01" }
 ];
 const ASSIST_USER_MODES = {
@@ -218,11 +219,68 @@ function buildCardUpdateFromText(card, title, text) {
 }
 
 function ensureDraftCourse(document) {
-  return document;
+  if (!document || typeof document !== "object") {
+    return document;
+  }
+
+  const courses = Array.isArray(document.courses) ? document.courses : [];
+  const draftCourse = courses.find((course) => course?.key === DRAFT_COURSE_KEY);
+  const draftModule = draftCourse?.modules?.find((moduleValue) => moduleValue?.key === DRAFT_MODULE_KEY);
+  const draftLesson = draftModule?.lessons?.find((lesson) => lesson?.key === DRAFT_LESSON_KEY);
+  const hasWorkspace = draftCourse && draftModule && draftLesson;
+
+  if (hasWorkspace) {
+    return document;
+  }
+
+  const nextDocument = structuredClone(document);
+  nextDocument.courses = Array.isArray(nextDocument.courses) ? nextDocument.courses : [];
+  let nextDraftCourse = nextDocument.courses.find((course) => course?.key === DRAFT_COURSE_KEY);
+  if (!nextDraftCourse) {
+    nextDraftCourse = {
+      key: DRAFT_COURSE_KEY,
+      title: "Oficina de microssequências",
+      description: "Fila local para gerar, revisar e reposicionar microssequências antes de consolidá-las nos cursos.",
+      modules: []
+    };
+    nextDocument.courses.push(nextDraftCourse);
+  }
+
+  let nextDraftModule = (nextDraftCourse.modules || []).find((moduleValue) => moduleValue?.key === DRAFT_MODULE_KEY);
+  if (!nextDraftModule) {
+    nextDraftModule = {
+      key: DRAFT_MODULE_KEY,
+      title: "Rascunhos",
+      lessons: []
+    };
+    nextDraftCourse.modules = [nextDraftModule, ...(nextDraftCourse.modules || [])];
+  }
+
+  let nextDraftLesson = (nextDraftModule.lessons || []).find((lesson) => lesson?.key === DRAFT_LESSON_KEY);
+  if (!nextDraftLesson) {
+    nextDraftLesson = {
+      key: DRAFT_LESSON_KEY,
+      title: "Fila de microssequências",
+      microsequences: []
+    };
+    nextDraftModule.lessons = [nextDraftLesson, ...(nextDraftModule.lessons || [])];
+  }
+
+  if (!Array.isArray(nextDraftLesson.microsequences) || !nextDraftLesson.microsequences.length) {
+    nextDraftLesson.microsequences = [
+      {
+        key: DRAFT_PLACEHOLDER_MICROSEQUENCE_KEY,
+        title: "Gerador",
+        cards: []
+      }
+    ];
+  }
+
+  return nextDocument;
 }
 
-function isDraftPlaceholderMicrosequence() {
-  return false;
+function isDraftPlaceholderMicrosequence(microsequence) {
+  return microsequence?.key === DRAFT_PLACEHOLDER_MICROSEQUENCE_KEY;
 }
 
 function clampFlowchartScale(value) {
@@ -463,6 +521,9 @@ export function createLessonEditorApp({ root, storage, editor }) {
 
   const loadedProject = storage.loadProject();
   const initialProject = ensureDraftCourse(loadedProject);
+  if (initialProject !== loadedProject) {
+    storage.saveProject(initialProject);
+  }
   const initialAssistConfig = readAssistConfigStorage();
   const state = {
     project: initialProject,
@@ -534,20 +595,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
 
     const existingPlaceholder = (draftContext.lesson.microsequences || []).find((item) => isDraftPlaceholderMicrosequence(item));
     if (existingPlaceholder) {
-      if ((existingPlaceholder.title || "").trim()) {
-        const nextProject = editor.updateMicrosequence({
-          courseKey: draftContext.course.key,
-          moduleKey: draftContext.moduleValue.key,
-          lessonKey: draftContext.lesson.key,
-          microsequenceKey: existingPlaceholder.key,
-          title: "",
-          tags: existingPlaceholder.tags || []
-        });
-        setProject(nextProject);
-        const nextDraftLesson = findLesson(nextProject, DRAFT_COURSE_KEY, DRAFT_MODULE_KEY, DRAFT_LESSON_KEY);
-        return (nextDraftLesson?.microsequences || []).find((item) => isDraftPlaceholderMicrosequence(item)) || null;
-      }
-
       return existingPlaceholder;
     }
 
@@ -555,7 +602,8 @@ export function createLessonEditorApp({ root, storage, editor }) {
       courseKey: draftContext.course.key,
       moduleKey: draftContext.moduleValue.key,
       lessonKey: draftContext.lesson.key,
-      title: "",
+      key: DRAFT_PLACEHOLDER_MICROSEQUENCE_KEY,
+      title: "Gerador",
       tags: []
     });
     setProject(nextProject);
@@ -917,7 +965,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
   }
 
   function setAssistModel(model) {
-    state.assistConfig.model = model || "gemini-2.5-flash-lite";
+    state.assistConfig.model = model || "gemini-2.5-flash";
     if (state.assistConfigOpen) {
       state.assistConfigDraft.model = state.assistConfig.model;
     }
@@ -926,7 +974,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
 
   function persistAssistConfigValue(patch = {}) {
     state.assistConfig = {
-      model: patch.model || state.assistConfig.model || "gemini-2.5-flash-lite",
+      model: patch.model || state.assistConfig.model || "gemini-2.5-flash",
       apiKey:
         patch.apiKey !== undefined
           ? String(patch.apiKey || "").trim()
@@ -2050,7 +2098,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
 
   function applyMicrosequenceReposition(slot, renames = []) {
     if (!slot) {
-      fail("A API escolheu um slot de reposicionamento inexistente. Ajuste o pedido e tente de novo.");
+      fail("O serviço de IA escolheu um slot de reposicionamento inexistente. Ajuste o pedido e tente de novo.");
     }
 
     const nextProject = editor.moveMicrosequence({
@@ -2148,7 +2196,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
       } else {
         const chosenSlot = destinationSlots.find((item) => item.slotId === result.slotId);
         if (!chosenSlot) {
-          fail("A resposta da API devolveu uma posição inválida para reposicionamento. Ajuste o pedido e tente novamente.");
+          fail("A resposta do serviço de IA devolveu uma posição inválida para reposicionamento. Ajuste o pedido e tente novamente.");
         }
 
         applyMicrosequenceReposition(chosenSlot, result.renames);
@@ -2161,7 +2209,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
         };
       }
     } catch (error) {
-      state.assistDraft.errorMessage = error instanceof Error ? error.message : "Falha ao chamar a API.";
+      state.assistDraft.errorMessage = error instanceof Error ? error.message : "Falha ao chamar o serviço de IA.";
     } finally {
       state.assistDraft.isSubmitting = false;
       render({ preserveState: true });

@@ -834,7 +834,7 @@ function renderMicrosequenceWorkbenchScreen({
     '">' +
     (hasCards
       ? renderRuntimeBlocks(activeCard, bodyText)
-      : '<p class="runtime-paragraph">Envie o pedido à assistência por API para montar uma microssequência.</p>') +
+      : '<p class="runtime-paragraph">Envie o pedido para montar uma microssequência.</p>') +
     "</div>" +
     "</article>" +
     '<p class="chip-muted editor-card-stage-count" aria-label="' +
@@ -883,7 +883,7 @@ function renderMicrosequenceWorkbenchScreen({
     '<select data-field="assist-model">' +
     modelOptions +
     "</select>" +
-    '<button class="icon-ghost tiny-icon" type="button" data-action="open-assist-config" title="Configurar API" aria-label="Configurar API">&#128273;</button>' +
+    '<button class="icon-ghost tiny-icon" type="button" data-action="open-assist-config" title="Configurar IA" aria-label="Configurar IA">&#128273;</button>' +
     '<button class="open-mini" type="button" data-action="apply-assist" title="' +
     escapeHtml(actionLabel || sendTitle) +
     '" aria-label="' +

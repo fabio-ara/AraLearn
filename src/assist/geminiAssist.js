@@ -1,4 +1,12 @@
 import { getContractCardKind, sanitizeContractCard } from "../contract/contractCard.js";
+import {
+  buildAssistDraftPrompt,
+  buildAssistPlanPrompt,
+  getAssistDraftSchema,
+  getAssistPlanSchema,
+  normalizeAssistDraftResult,
+  normalizeAssistPlan
+} from "./assistMicrosequenceEngine.js";
 
 function fail(message) {
   throw new Error(message);
@@ -23,7 +31,7 @@ function makeRequestBody({ systemInstruction, prompt, schema, temperature = 0.2,
       temperature,
       maxOutputTokens,
       responseMimeType: "application/json",
-      responseSchema: schema
+      responseJsonSchema: schema
     }
   };
 }
@@ -340,14 +348,75 @@ async function parseGeminiResponse(response) {
   const text = parts.map((part) => (typeof part?.text === "string" ? part.text : "")).join("").trim();
   if (!text) {
     const reason = data?.candidates?.[0]?.finishReason || data?.promptFeedback?.blockReason || "sem conteúdo";
-    fail(`A API não devolveu conteúdo utilizável (${reason}).`);
+    fail(`O serviço de IA não devolveu conteúdo utilizável (${reason}).`);
   }
 
   try {
     return JSON.parse(text);
   } catch {
-    fail("A API devolveu JSON inválido.");
+    fail("O serviço de IA devolveu JSON inválido.");
   }
+}
+
+async function callGemini({ apiKey, model, body }) {
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-goog-api-key": apiKey
+      },
+      body: JSON.stringify(body)
+    }
+  );
+
+  return parseGeminiResponse(response);
+}
+
+async function composeMicrosequenceWithGemini({
+  apiKey,
+  model,
+  microsequence,
+  dependencyTitles,
+  priorMicrosequences,
+  promptText
+}) {
+  const systemInstruction =
+    "Você transforma pedidos de estudo em microssequências didáticas para o AraLearn. " +
+    "Siga o schema recebido, use linguagem direta e responda apenas em JSON.";
+  const plan = normalizeAssistPlan(
+    await callGemini({
+      apiKey,
+      model,
+      body: makeRequestBody({
+        systemInstruction,
+        prompt: buildAssistPlanPrompt({ microsequence, dependencyTitles, priorMicrosequences, promptText }),
+        schema: getAssistPlanSchema(),
+        temperature: 0.15,
+        maxOutputTokens: 1024
+      })
+    })
+  );
+  const draft = normalizeAssistDraftResult(
+    await callGemini({
+      apiKey,
+      model,
+      body: makeRequestBody({
+        systemInstruction,
+        prompt: buildAssistDraftPrompt({ promptText, plan, microsequence }),
+        schema: getAssistDraftSchema(),
+        temperature: 0.2,
+        maxOutputTokens: 2048
+      })
+    })
+  );
+
+  return {
+    ...draft,
+    microsequenceTitle: draft.microsequenceTitle || plan.title,
+    tags: draft.tags.length ? draft.tags : plan.tags
+  };
 }
 
 export function normalizeComposeResult(value) {
@@ -376,7 +445,7 @@ function normalizeRepositionResult(value) {
     : null;
 
   if (!slotId || !renames || renames.some((item) => !item.microsequenceKey || !item.title)) {
-    fail("A API devolveu um slot inválido para o reposicionamento da microssequência.");
+    fail("O serviço de IA devolveu um slot inválido para o reposicionamento da microssequência.");
   }
 
   return { slotId, renames };
@@ -394,7 +463,7 @@ export async function runGeminiAssist({
   promptText
 }) {
   const trimmedKey = normalizeText(apiKey);
-  const trimmedModel = normalizeText(model) || "gemini-2.5-flash-lite";
+  const trimmedModel = normalizeText(model) || "gemini-2.5-flash";
   const trimmedPrompt = normalizeText(promptText);
 
   if (!trimmedKey) {
@@ -414,12 +483,13 @@ export async function runGeminiAssist({
 
   let body = null;
   if (mode === "compose-microsequence") {
-    body = makeRequestBody({
-      systemInstruction,
-      prompt: buildComposePrompt({ microsequence, dependencyTitles, priorMicrosequences, promptText: trimmedPrompt }),
-      schema: getComposeSchema(),
-      temperature: 0.3,
-      maxOutputTokens: 2048
+    return composeMicrosequenceWithGemini({
+      apiKey: trimmedKey,
+      model: trimmedModel,
+      microsequence,
+      dependencyTitles,
+      priorMicrosequences,
+      promptText: trimmedPrompt
     });
   } else if (mode === "edit-card") {
     body = makeRequestBody({
@@ -441,22 +511,7 @@ export async function runGeminiAssist({
     fail("Modo de assistência inválido.");
   }
 
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(trimmedModel)}:generateContent`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-goog-api-key": trimmedKey
-      },
-      body: JSON.stringify(body)
-    }
-  );
-
-  const parsed = await parseGeminiResponse(response);
-  if (mode === "compose-microsequence") {
-    return normalizeComposeResult(parsed);
-  }
+  const parsed = await callGemini({ apiKey: trimmedKey, model: trimmedModel, body });
   if (mode === "edit-card") {
     return normalizeEditResult(parsed);
   }
