@@ -20,6 +20,7 @@ const RECIPES = [
   "explain_concept",
   "compare_concepts",
   "explain_commands",
+  "directory_context",
   "worked_example",
   "practice_sequence",
   "diagnostic_gap"
@@ -31,14 +32,13 @@ const CARD_ROLES = [
   "example",
   "code_example",
   "table_summary",
-  "flow_steps",
   "tree_context",
   "practice_gap",
   "choice_check",
   "review"
 ];
 
-const CONTAINERS = ["say", "ask", "code", "table", "flow", "tree"];
+const CONTAINERS = ["say", "ask", "code", "table", "tree"];
 
 const SUBJECT_LABELS = {
   programacao: "Programação",
@@ -149,6 +149,9 @@ function detectSubject(promptText, dependencyTitles = []) {
 
 function detectRecipe(promptText) {
   const text = normalizeForMatching(promptText);
+  if (/(diretorio|pasta|arquivo|caminho|estrutura de projeto|estrutura de pastas|arvore de diretorios)/.test(text)) {
+    return "directory_context";
+  }
   if (/(diferenc|disting|compare|comparar|comparacao|versus|\bvs\b)/.test(text)) {
     return "compare_concepts";
   }
@@ -203,6 +206,7 @@ function inferPlanTitle(promptText, subject, recipe) {
   const recipeLabels = {
     compare_concepts: "Comparação",
     explain_commands: "Comandos essenciais",
+    directory_context: "Estrutura de diretórios",
     worked_example: "Exemplo resolvido",
     practice_sequence: "Prática guiada",
     diagnostic_gap: "Diagnóstico de lacunas",
@@ -223,7 +227,7 @@ function getSubjectPracticeContainer(subject) {
     return "code";
   }
   if (subject === "algoritmos_fluxograma") {
-    return "flow";
+    return "table";
   }
   if (["administracao", "engenharia_software", "logica_proposicional", "matrizes_vetores", "teoria_grafos"].includes(subject)) {
     return "table";
@@ -239,17 +243,34 @@ function buildCardPlans({ subject, recipe, promptText = "" }) {
   const practiceContainer = getSubjectPracticeContainer(subject);
   if (recipe === "explain_commands") {
     const commands = extractCommandTopics(promptText);
-    if (commands.length >= 2) {
-      const commandPlans = commands.map((command) =>
-        makeCardPlan("code_example", "code", command, `Explicar ${command} com um exemplo mínimo e uma frase de uso.`)
-      );
-      const plans = [
-        ...(commands.length >= 4
-          ? commandPlans
-          : [makeCardPlan("concept", "say", "Antes dos comandos", "Mostrar a ideia mínima do fluxo antes da prática."), ...commandPlans]),
+    if (commands.length === 1) {
+      return [
+        makeCardPlan("concept", "say", "Antes do comando", "Explicar o problema que o comando resolve."),
+        makeCardPlan("code_example", "code", commands[0], `Mostrar ${commands[0]} isolado, com uma frase de uso.`),
+        makeCardPlan("practice_gap", "say", "Recuperação ativa", "Fixar o nome ou a função do comando por lacuna de escolha."),
+        makeCardPlan("choice_check", "ask", "Verificação", "Checar quando o comando deve ser usado.")
+      ];
+    }
+
+    if (commands.length === 2) {
+      return [
+        makeCardPlan("concept", "say", "Antes dos comandos", "Mostrar a ideia mínima do fluxo antes da prática."),
+        ...commands.map((command) =>
+          makeCardPlan("code_example", "code", command, `Explicar ${command} com um exemplo mínimo e uma frase de uso.`)
+        ),
+        makeCardPlan("practice_gap", "say", "Recuperação ativa", "Fixar a relação entre os comandos por lacuna de escolha."),
         makeCardPlan("choice_check", "ask", "Verificação", "Checar a função de um comando do fluxo.")
       ];
-      return plans.slice(0, 5);
+    }
+
+    if (commands.length >= 3) {
+      return [
+        makeCardPlan("concept", "say", "Fluxo mínimo", "Explicar a ordem geral sem detalhar tudo de uma vez."),
+        makeCardPlan("table_summary", "table", "Papel de cada comando", "Separar comando, ação e momento de uso em uma tabela simples."),
+        makeCardPlan("code_example", "code", "Sequência mínima", "Mostrar uma sequência pequena, sem URL remota e sem detalhes avançados."),
+        makeCardPlan("practice_gap", "say", "Recuperação ativa", "Fixar a ordem ou a função principal por lacuna de escolha."),
+        makeCardPlan("choice_check", "ask", "Verificação", "Checar a função de um comando do fluxo.")
+      ];
     }
 
     return [
@@ -257,6 +278,15 @@ function buildCardPlans({ subject, recipe, promptText = "" }) {
       makeCardPlan("code_example", "code", "Comandos em contexto", "Mostrar comandos em uma sequência executável."),
       makeCardPlan("practice_gap", "say", "Recuperação ativa", "Fixar o comando principal em uma lacuna textual."),
       makeCardPlan("choice_check", "ask", "Verificação", "Testar se o estudante reconhece o comando adequado.")
+    ];
+  }
+
+  if (recipe === "directory_context") {
+    return [
+      makeCardPlan("concept", "say", "Ideia da estrutura", "Explicar por que a organização de arquivos ajuda o estudo ou o projeto."),
+      makeCardPlan("tree_context", "tree", "Estrutura navegável", "Mostrar diretórios e arquivos em uma árvore simples."),
+      makeCardPlan("practice_gap", "say", "Recuperação ativa", "Fixar o papel de um diretório ou arquivo por lacuna de escolha."),
+      makeCardPlan("choice_check", "ask", "Verificação", "Checar se o estudante identifica o caminho adequado.")
     ];
   }
 
@@ -359,11 +389,6 @@ export function getAssistDraftSchema() {
               items: { type: "string" },
               maxItems: 5
             },
-            flowSteps: {
-              type: "array",
-              items: { type: "string" },
-              maxItems: 5
-            },
             currentPath: { type: "string" },
             selectedPath: { type: "string" },
             paths: {
@@ -419,19 +444,23 @@ export function buildAssistDraftPrompt({ promptText, plan, microsequence }) {
     "Preencha o conteúdo dos cards seguindo exatamente o plano abaixo.",
     `Devolva exatamente ${cardCount} cards, na mesma ordem do plano.`,
     "Cada card deve ter title e os campos de conteúdo necessários ao seu contêiner.",
+    "O plano informa role e container; não devolva role nem container.",
     "Escreva para estudante de Tecnologia em Análise e Desenvolvimento de Sistemas.",
     "Use linguagem natural simples, de iniciante para iniciante.",
+    "A microssequência precisa ter explicação, exemplo ou leitura guiada, prática e consolidação.",
     "Cada text deve ter no máximo duas frases.",
     "Separe frases em parágrafos usando uma linha em branco.",
     "Use uma ideia por card e uma ideia por frase.",
     "Evite jargão sem explicação.",
     "Não use Markdown. Não explique fora do JSON.",
     "Use [[resposta]] apenas quando o plano pedir prática, revisão ou lacuna.",
+    "Todo card com [[resposta]] deve enviar wrong com duas ou três alternativas plausíveis.",
+    "As lacunas devem ser resolvidas por opções selecionáveis; não produza lacunas que dependam de digitação livre.",
     "Para múltipla escolha, preencha question, answer e wrong.",
     "Para tabelas, preencha columns e rows; cada item de rows deve ser uma linha textual separada por |.",
-    "Para comandos, use language bash e escreva só o comando do card, sem URL remota e sem sequência longa.",
+    "Para comandos, use language bash e escreva no máximo quatro linhas, sem URL remota e sem detalhes avançados.",
     "Para C ou Portugol, prefira container code com language c ou portugol.",
-    "Para fluxogramas, use flowSteps como passos textuais simples.",
+    "Nesta etapa, não gere fluxograma; quando o pedido mencionar fluxograma, represente o raciocínio com tabela, texto, código ou pergunta.",
     "Para diretórios, use paths com caminhos absolutos ou relativos coerentes.",
     "Microssequência atual:",
     summarizeMicrosequenceForAssist(microsequence),
@@ -484,23 +513,71 @@ function buildTreeItemsFromPaths(paths) {
   return root;
 }
 
-function convertFlowStepsToContractFlow(steps) {
-  const normalizedSteps = normalizeList(steps, 7);
-  if (!normalizedSteps.length) {
-    return [{ start: "Início" }, { end: "Fim" }];
-  }
-
-  return [
-    { start: normalizedSteps[0] },
-    ...normalizedSteps.slice(1, -1).map((step, index) => ({
-      process: index === 0 && normalizedSteps.length > 3 ? `[[${step}]]` : step
-    })),
-    { end: normalizedSteps.at(-1) || "Fim" }
-  ];
-}
-
 function removeTextGaps(value) {
   return normalizeText(value).replace(/\[\[([^:\]]+)(?:::[^\]]+)?\]\]/g, "$1");
+}
+
+function hasTextGap(value) {
+  return /\[\[[\s\S]*?\]\]/.test(normalizeText(value));
+}
+
+function listTextGapAnswers(value) {
+  const answers = [];
+  for (const match of normalizeText(value).matchAll(/\[\[([\s\S]*?)\]\]/g)) {
+    const raw = normalizeText(match[1]);
+    const delimiterIndex = raw.indexOf("::");
+    const answer = normalizeText(delimiterIndex >= 0 ? raw.slice(0, delimiterIndex) : raw);
+    if (answer) {
+      answers.push(answer);
+    }
+  }
+  return answers;
+}
+
+function getDefaultDistractors(answer) {
+  const normalized = normalizeForMatching(answer);
+  const gitCommands = ["git init", "git add", "git commit", "git push", "git status", "git log"];
+  const shellCommands = ["ls", "cd", "pwd", "mkdir", "chmod", "grep"];
+
+  if (normalized.startsWith("git ")) {
+    return gitCommands.filter((item) => normalizeForMatching(item) !== normalized).slice(0, 3);
+  }
+  if (shellCommands.includes(normalized)) {
+    return shellCommands.filter((item) => normalizeForMatching(item) !== normalized).slice(0, 3);
+  }
+
+  return ["conceito relacionado", "exemplo isolado", "etapa diferente"];
+}
+
+function ensureChoiceDistractors(card, gapText) {
+  const answers = listTextGapAnswers(gapText);
+  if (!answers.length) {
+    return normalizeList(card?.wrong, 4);
+  }
+
+  const normalizedAnswers = new Set(answers.map(normalizeForMatching));
+  const candidates = [
+    ...normalizeList(card?.wrong, 4),
+    ...answers.flatMap(getDefaultDistractors)
+  ]
+    .map(removeTextGaps)
+    .map(compactSpaces)
+    .filter((item) => item && !normalizedAnswers.has(normalizeForMatching(item)));
+
+  return Array.from(new Set(candidates)).slice(0, 3);
+}
+
+function ensurePracticeText(value, card) {
+  if (!["practice_gap", "review"].includes(card?.role) || hasTextGap(value)) {
+    return value;
+  }
+
+  const answer = compactSpaces(card?.answer) || compactSpaces(card?.title) || "ideia central";
+  return `Complete a ideia principal: [[${answer}]].`;
+}
+
+function removeTextGapsFromRows(rows) {
+  return rows.map((row) => row.map((cell) => removeTextGaps(cell)));
 }
 
 function formatProse(value, { allowGaps = false, maxSentences = 2 } = {}) {
@@ -561,7 +638,10 @@ function convertAssistCardToContract(card) {
   const container = CONTAINERS.includes(card?.container) ? card.container : "say";
   const title = normalizeText(card?.title) || "Card";
   const allowGaps = ["practice_gap", "review"].includes(card?.role);
-  const text = formatProse(card?.text, { allowGaps, maxSentences: container === "table" ? 1 : 2 });
+  const text = ensurePracticeText(
+    formatProse(card?.text, { allowGaps, maxSentences: container === "table" ? 1 : 2 }),
+    card
+  );
   const after = formatProse(card?.after, { maxSentences: 1 });
 
   if (container === "ask") {
@@ -576,13 +656,15 @@ function convertAssistCardToContract(card) {
   }
 
   if (container === "code") {
+    const code = simplifyCode(card?.code, card) || "# complete o exemplo";
+    const wrong = ensureChoiceDistractors(card, `${text}\n${code}`);
     return sanitizeContractCard({
       title,
       ...(text ? { say: text } : {}),
       language: normalizeText(card?.language) || "text",
-      code: simplifyCode(card?.code, card) || "# complete o exemplo",
+      code,
       ...(after ? { after } : {}),
-      ...(normalizeList(card?.wrong, 4).length ? { wrong: normalizeList(card?.wrong, 4) } : {})
+      ...(wrong.length ? { wrong } : {})
     });
   }
 
@@ -595,17 +677,8 @@ function convertAssistCardToContract(card) {
       ...(text ? { say: text } : {}),
       table: {
         columns: safeColumns,
-        rows: rows.length ? rows : [["Ideia principal", normalizeText(card?.answer) || "Descrição"]]
+        rows: rows.length ? removeTextGapsFromRows(rows) : [["Ideia principal", normalizeText(card?.answer) || "Descrição"]]
       },
-      ...(after ? { after } : {})
-    });
-  }
-
-  if (container === "flow") {
-    return sanitizeContractCard({
-      title,
-      ...(text ? { say: text } : {}),
-      flow: convertFlowStepsToContractFlow(card?.flowSteps),
       ...(after ? { after } : {})
     });
   }
@@ -626,10 +699,11 @@ function convertAssistCardToContract(card) {
     });
   }
 
+  const wrong = ensureChoiceDistractors(card, text);
   return sanitizeContractCard({
     title,
     say: text || normalizeText(card?.question) || "Leia este card e avance para a próxima prática.",
-    ...(normalizeList(card?.wrong, 4).length ? { wrong: normalizeList(card?.wrong, 4) } : {}),
+    ...(wrong.length ? { wrong } : {}),
     ...(after ? { after } : {})
   });
 }
@@ -694,16 +768,6 @@ function createFallbackAssistCard(cardPlan, { plan, promptText, index = 0 } = {}
     };
   }
 
-  if (container === "flow") {
-    return {
-      role,
-      container,
-      title,
-      text: `Fluxo mínimo para estudar ${topic}.`,
-      flowSteps: ["Identificar o objetivo", "Separar os passos", "Executar a decisão principal", "Revisar o resultado"]
-    };
-  }
-
   if (container === "tree") {
     return {
       role,
@@ -721,9 +785,10 @@ function createFallbackAssistCard(cardPlan, { plan, promptText, index = 0 } = {}
     container,
     title,
     text:
-      role === "practice_gap"
+      ["practice_gap", "review"].includes(role)
         ? `Para revisar ${topic}, complete a ideia central: [[${topic}]].`
-        : `Estude ${topic} observando definição, exemplo e aplicação.`
+        : `Estude ${topic} observando definição, exemplo e aplicação.`,
+    ...(["practice_gap", "review"].includes(role) ? { wrong: getDefaultDistractors(topic) } : {})
   };
 }
 
@@ -735,14 +800,20 @@ function mergeAssistCardWithPlan(card, cardPlan, context) {
   const plannedTitle = normalizeText(cardPlan?.title);
   const sourceTitle = normalizeText(source.title);
   const shouldPreferPlannedTitle = plannedRole === "code_example" && Boolean(getPlannedCommand({ title: plannedTitle }));
-
-  return {
+  const merged = {
     ...fallback,
     ...source,
     role: plannedRole || (CARD_ROLES.includes(source.role) ? source.role : fallback.role),
     container: plannedContainer || (CONTAINERS.includes(source.container) ? source.container : fallback.container),
     title: shouldPreferPlannedTitle ? plannedTitle : sourceTitle || plannedTitle || fallback.title
   };
+
+  if (["practice_gap", "review"].includes(merged.role) && !hasTextGap(source.text)) {
+    merged.text = fallback.text;
+    merged.wrong = normalizeList(source.wrong, 4).length ? source.wrong : fallback.wrong;
+  }
+
+  return merged;
 }
 
 export function normalizeAssistDraftResult(value, options = {}) {

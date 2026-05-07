@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 import { normalizeComposeResult, normalizeEditResult, runGeminiAssist } from "../src/assist/geminiAssist.js";
 import { buildDeterministicAssistPlan, normalizeAssistDraftResult } from "../src/assist/assistMicrosequenceEngine.js";
+import { buildCardRuntime } from "../src/core/cardRuntime.js";
 
 test("normaliza composição com intenções semânticas", () => {
   const result = normalizeComposeResult({
@@ -109,6 +110,44 @@ test("reduz densidade de textos gerados para estudo", () => {
   assert.equal(result.cards[1].code, "git push -u origin main");
 });
 
+test("garante prática por lacuna com opções selecionáveis", () => {
+  const plan = buildDeterministicAssistPlan({
+    promptText: "diferencie missão, visão e valores, no contexto de administração de empresas"
+  });
+  const result = normalizeAssistDraftResult(
+    {
+      title: "Missão, visão e valores",
+      tags: ["Administração"],
+      cards: [
+        { title: "Ponto de partida", text: "Missão, visão e valores orientam decisões da organização." },
+        {
+          title: "Comparação guiada",
+          columns: ["Elemento", "Pergunta"],
+          rows: ["Missão|Por que a organização existe?", "Visão|Onde ela quer chegar?", "Valores|Como ela age?"]
+        },
+        { title: "Exemplo aplicado", text: "Uma empresa pode ter missão de atender bem e visão de crescer com qualidade." },
+        {
+          title: "Verificação",
+          question: "Qual elemento descreve onde a organização quer chegar?",
+          answer: "Visão",
+          wrong: ["Missão", "Valores"]
+        },
+        { title: "Síntese ativa", text: "A visão aponta um destino desejado." }
+      ]
+    },
+    { plan, promptText: "diferencie missão, visão e valores, no contexto de administração de empresas" }
+  );
+
+  const reviewCard = result.cards.at(-1);
+  const runtime = buildCardRuntime(reviewCard);
+  const paragraph = runtime.blocks.find((block) => block.kind === "paragraph" && block.value.includes("[["));
+
+  assert.match(reviewCard.say, /\[\[/);
+  assert.ok(Array.isArray(reviewCard.wrong));
+  assert.ok(reviewCard.wrong.length >= 2);
+  assert.match(paragraph.value, /::/);
+});
+
 test("planeja microssequências localmente para assuntos distintos", () => {
   const gitPlan = buildDeterministicAssistPlan({
     promptText: "explique os comandos git init, git add, git commit e git push"
@@ -119,19 +158,28 @@ test("planeja microssequências localmente para assuntos distintos", () => {
   const flowPlan = buildDeterministicAssistPlan({
     promptText: "monte um fluxograma para decidir se um número é par"
   });
+  const treePlan = buildDeterministicAssistPlan({
+    promptText: "mostre uma estrutura de diretórios para um projeto simples em C"
+  });
 
   assert.equal(gitPlan.subject, "git_github");
   assert.equal(gitPlan.recipe, "explain_commands");
   assert.deepEqual(
     gitPlan.cardPlans.map((card) => card.title),
-    ["git init", "git add", "git commit", "git push", "Verificação"]
+    ["Fluxo mínimo", "Papel de cada comando", "Sequência mínima", "Recuperação ativa", "Verificação"]
   );
-  assert.ok(gitPlan.cardPlans.every((card, index) => index === 4 || card.container === "code"));
+  assert.deepEqual(
+    gitPlan.cardPlans.map((card) => card.container),
+    ["say", "table", "code", "say", "ask"]
+  );
   assert.equal(adminPlan.subject, "administracao");
   assert.equal(adminPlan.recipe, "compare_concepts");
   assert.ok(adminPlan.cardPlans.some((card) => card.container === "table"));
   assert.equal(flowPlan.subject, "algoritmos_fluxograma");
-  assert.ok(flowPlan.cardPlans.some((card) => card.container === "flow"));
+  assert.ok(!flowPlan.cardPlans.some((card) => card.container === "flow"));
+  assert.ok(flowPlan.cardPlans.some((card) => card.container === "table"));
+  assert.equal(treePlan.recipe, "directory_context");
+  assert.ok(treePlan.cardPlans.some((card) => card.container === "tree"));
 });
 
 test("gera microssequência com plano local e chamada estruturada ao Gemini", async () => {
@@ -146,6 +194,7 @@ test("gera microssequência com plano local e chamada estruturada ao Gemini", as
         { title: "Antes dos comandos", text: "Git registra mudanças em etapas. Cada comando faz uma parte do caminho." },
         { title: "Comandos em contexto", text: "Use git add para preparar arquivos.", language: "bash", code: "git add arquivo.txt" },
         { title: "Envio", text: "Use git push para enviar commits quando já existe remoto.", language: "bash", code: "git remote add origin https://example.com/repo.git\ngit push -u origin main" },
+        { title: "Recuperação ativa", text: "Para enviar commits, use [[git push]].", wrong: ["git add", "git init"] },
         {
           title: "Verificação",
           question: "Qual comando envia commits?",
@@ -187,13 +236,15 @@ test("gera microssequência com plano local e chamada estruturada ao Gemini", as
     assert.ok(!cardSchema.properties.role);
     assert.ok(!cardSchema.properties.container);
     assert.equal(cardSchema.properties.rows.items.type, "string");
+    assert.ok(!cardSchema.properties.flowSteps);
     assert.match(calls[0].body.contents[0].parts[0].text, /Plano:/);
-    assert.equal(result.cards.length, 4);
+    assert.match(calls[0].body.contents[0].parts[0].text, /não gere fluxograma/i);
+    assert.equal(result.cards.length, 5);
     assert.equal(result.cards[1].title, "git add");
     assert.equal(result.cards[1].code, "git add arquivo.txt");
     assert.equal(result.cards[2].title, "git push");
     assert.equal(result.cards[2].code, "git push -u origin main");
-    assert.equal(result.cards[3].answer, "git push");
+    assert.equal(result.cards[4].answer, "git push");
   } finally {
     globalThis.fetch = originalFetch;
   }
@@ -211,6 +262,7 @@ test("aceita JSON do Gemini envolto em bloco markdown", async () => {
         { title: "Antes dos comandos", text: "Git registra mudanças em etapas. Cada comando faz uma parte do caminho." },
         { title: "git add", text: "Use git add para preparar arquivos.", language: "bash", code: "git add arquivo.txt" },
         { title: "git push", text: "Use git push para enviar commits quando já existe remoto.", language: "bash", code: "git push" },
+        { title: "Recuperação ativa", text: "Para enviar commits, use [[git push]].", wrong: ["git add", "git init"] },
         {
           title: "Verificação",
           question: "Qual comando envia commits?",
@@ -245,8 +297,8 @@ test("aceita JSON do Gemini envolto em bloco markdown", async () => {
     });
 
     assert.equal(calls.length, 1);
-    assert.equal(result.cards.length, 4);
-    assert.equal(result.cards[3].answer, "git push");
+    assert.equal(result.cards.length, 5);
+    assert.equal(result.cards[4].answer, "git push");
   } finally {
     globalThis.fetch = originalFetch;
   }
@@ -276,6 +328,7 @@ test("tenta novamente quando o Gemini devolve JSON ilegível", async () => {
                               { title: "Antes dos comandos", text: "Git registra mudanças em etapas. Cada comando faz uma parte do caminho." },
                               { title: "git add", text: "Use git add para preparar arquivos.", language: "bash", code: "git add arquivo.txt" },
                               { title: "git push", text: "Use git push para enviar commits quando já existe remoto.", language: "bash", code: "git push" },
+                              { title: "Recuperação ativa", text: "Para enviar commits, use [[git push]].", wrong: ["git add", "git init"] },
                               {
                                 title: "Verificação",
                                 question: "Qual comando envia commits?",
@@ -304,8 +357,8 @@ test("tenta novamente quando o Gemini devolve JSON ilegível", async () => {
 
     assert.equal(calls.length, 2);
     assert.match(calls[1].body.contents[0].parts[0].text, /tentativa anterior/i);
-    assert.equal(result.cards.length, 4);
-    assert.equal(result.cards[3].answer, "git push");
+    assert.equal(result.cards.length, 5);
+    assert.equal(result.cards[4].answer, "git push");
   } finally {
     globalThis.fetch = originalFetch;
   }
@@ -346,6 +399,7 @@ test("remove schema na nova tentativa quando o Gemini rejeita a complexidade", a
                         { title: "Antes dos comandos", text: "Git registra mudanças em etapas. Cada comando faz uma parte do caminho." },
                         { title: "git add", text: "Use git add para preparar arquivos.", language: "bash", code: "git add arquivo.txt" },
                         { title: "git push", text: "Use git push para enviar commits quando já existe remoto.", language: "bash", code: "git push" },
+                        { title: "Recuperação ativa", text: "Para enviar commits, use [[git push]].", wrong: ["git add", "git init"] },
                         {
                           title: "Verificação",
                           question: "Qual comando envia commits?",
@@ -376,8 +430,8 @@ test("remove schema na nova tentativa quando o Gemini rejeita a complexidade", a
     assert.ok(calls[0].body.generationConfig.responseJsonSchema);
     assert.ok(!calls[1].body.generationConfig.responseJsonSchema);
     assert.equal(calls[1].body.generationConfig.responseMimeType, "application/json");
-    assert.equal(result.cards.length, 4);
-    assert.equal(result.cards[3].answer, "git push");
+    assert.equal(result.cards.length, 5);
+    assert.equal(result.cards[4].answer, "git push");
   } finally {
     globalThis.fetch = originalFetch;
   }

@@ -43,6 +43,19 @@ function getCardBody(card) {
   return "";
 }
 
+function hasTextGap(value) {
+  return /\[\[[\s\S]*?\]\]/.test(normalizeText(value));
+}
+
+function hasOpenTextGap(value) {
+  for (const match of normalizeText(value).matchAll(/\[\[([\s\S]*?)\]\]/g)) {
+    if (!normalizeText(match[1]).includes("::")) {
+      return true;
+    }
+  }
+  return false;
+}
+
 function assessMicrosequence(result) {
   const issues = [];
   const cards = Array.isArray(result?.cards) ? result.cards : [];
@@ -53,6 +66,9 @@ function assessMicrosequence(result) {
   const kinds = new Set(cards.map(getCardKind));
   if (kinds.size < 2) {
     issues.push("variedade insuficiente de contêineres");
+  }
+  if (kinds.has("flow")) {
+    issues.push("fluxograma gerado nesta etapa de teste");
   }
 
   cards.forEach((card, index) => {
@@ -68,6 +84,9 @@ function assessMicrosequence(result) {
     }
     if (card?.ask && (!normalizeText(card.answer) || !Array.isArray(card.wrong) || card.wrong.length < 2)) {
       issues.push(`card ${index + 1} tem múltipla escolha incompleta`);
+    }
+    if (hasTextGap(body) && hasOpenTextGap(body) && (!Array.isArray(card?.wrong) || card.wrong.length < 2)) {
+      issues.push(`card ${index + 1} tem lacuna sem opções selecionáveis`);
     }
   });
 
