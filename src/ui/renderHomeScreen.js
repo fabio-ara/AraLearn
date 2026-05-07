@@ -120,7 +120,7 @@ function renderCoursesTopbar() {
   );
 }
 
-function renderHomeTabs(activeHomeTab) {
+export function renderHomeTabs(activeHomeTab) {
   return (
     '<nav class="home-tabbar" role="tablist" aria-label="Tela inicial">' +
     '<button class="home-tab' +
@@ -309,8 +309,8 @@ export function renderHomeScreen({ project, progress, selection, featuredCourseK
   return (
     '<section class="screen">' +
     renderCoursesTopbar() +
-    '<main class="screen-content">' +
     renderHomeTabs(safeHomeTab) +
+    '<main class="screen-content">' +
     (safeHomeTab === "generate"
       ? renderGeneratePane({ project, editorSupport })
       : '<section id="home-panel-courses" role="tabpanel" aria-labelledby="home-tab-courses">' +
