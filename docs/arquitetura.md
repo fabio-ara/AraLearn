@@ -106,6 +106,7 @@ A interface principal organiza o uso em telas:
 - tela de curso;
 - tela de lição;
 - execução de microssequência;
+- rascunhos dentro da estrutura real de cursos;
 - painel da microssequência;
 - tela de geração de microssequência;
 - overlays de ações, importação, edição, configuração e histórico.

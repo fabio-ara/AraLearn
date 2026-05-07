@@ -3,6 +3,7 @@ import { readCardText } from "../core/cardRuntime.js";
 import { renderCardRuntimeBlocks, renderCardRuntimeBlocksWithDock } from "../render/renderCardRuntime.js";
 import { readLessonProgressEntry } from "../storage/progressStore.js";
 import { renderUiIcon } from "./renderUiIcons.js";
+import { isDraftMicrosequence, isReadyMicrosequence } from "../model/microsequenceStatus.js";
 
 function escapeHtml(value) {
   return String(value)
@@ -53,7 +54,10 @@ function renderTopbar({
 }
 
 function countCardsInLesson(lesson) {
-  return (lesson.microsequences || []).reduce((total, microsequence) => total + (microsequence.cards || []).length, 0);
+  return (lesson.microsequences || []).reduce(
+    (total, microsequence) => total + (isReadyMicrosequence(microsequence) ? (microsequence.cards || []).length : 0),
+    0
+  );
 }
 
 function countCardsInMicrosequence(microsequence) {
@@ -347,6 +351,13 @@ function getAssistActionLabel(mode) {
     return "Reposicionar em um curso";
   }
   return "Gerar microssequência";
+}
+
+function renderMicrosequenceStatusBadge(microsequence) {
+  if (!isDraftMicrosequence(microsequence)) {
+    return "";
+  }
+  return '<span class="microsequence-status-badge">rascunho</span>';
 }
 
 function renderAssistControlPanel({ editorSupport, promptLabel, sendTitle, className = "" }) {
@@ -653,23 +664,29 @@ function renderLessonScreenView({ course, lesson, moduleValue, progress }) {
       const microsequenceCompleted = countCompletedCardsInMicrosequence(course, moduleValue, lesson, microsequence, progress);
       const microsequencePercent = percent(cardCount, microsequenceCompleted);
       const didacticTags = renderDidacticTags(moduleValue, lesson.key, microsequence);
+      const isDraft = isDraftMicrosequence(microsequence);
 
       return (
-        '<article class="clean-card microsequence-card progress-card">' +
+        '<article class="clean-card microsequence-card progress-card' +
+        (isDraft ? " draft-microsequence-card" : "") +
+        '">' +
         '<div class="card-progress-fill" style="width:' +
-        String(microsequencePercent) +
+        String(isDraft ? 0 : microsequencePercent) +
         '%"></div>' +
         '<div class="microsequence-copy">' +
-        '<button class="row-main microsequence-main-button" type="button" data-action="play-microsequence" data-microsequence-key="' +
+        '<button class="row-main microsequence-main-button" type="button" data-action="' +
+        (isDraft ? "open-microsequence-assist" : "play-microsequence") +
+        '" data-microsequence-key="' +
         escapeHtml(microsequence.key) +
         '">' +
         '<span class="microsequence-title">' +
         escapeHtml(microsequence.title || microsequence.key) +
         "</span>" +
+        renderMicrosequenceStatusBadge(microsequence) +
         "</button>" +
         didacticTags +
         renderMetaLine({
-          completed: microsequenceCompleted,
+          completed: isDraft ? 0 : microsequenceCompleted,
           total: cardCount,
           parts: [renderCountMetric("card", cardCount, "card", "cards")]
         }) +
@@ -678,9 +695,17 @@ function renderLessonScreenView({ course, lesson, moduleValue, progress }) {
         '<button class="icon-ghost tiny-icon" type="button" data-action="open-microsequence-actions" data-microsequence-key="' +
         escapeHtml(microsequence.key) +
         '" title="Ações da microssequência" aria-label="Ações da microssequência">&#8943;</button>' +
-        '<button class="open-mini" type="button" data-action="play-microsequence" data-microsequence-key="' +
+        '<button class="open-mini" type="button" data-action="' +
+        (isDraft ? "open-microsequence-assist" : "play-microsequence") +
+        '" data-microsequence-key="' +
         escapeHtml(microsequence.key) +
-        '" title="Começar microssequência" aria-label="Começar microssequência">&#9654;</button>' +
+        '" title="' +
+        (isDraft ? "Editar rascunho" : "Começar microssequência") +
+        '" aria-label="' +
+        (isDraft ? "Editar rascunho" : "Começar microssequência") +
+        '">' +
+        (isDraft ? "&#9998;" : "&#9654;") +
+        "</button>" +
         "</div>" +
         "</article>"
       );
@@ -723,15 +748,18 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
   const activeIndex = Number.isInteger(selection.cardIndex) ? selection.cardIndex : 0;
   const safeIndex = Math.max(0, Math.min(activeIndex, Math.max(0, cards.length - 1)));
   const activeCard = cards[safeIndex] || null;
-  const lessonCardEntries = (lesson.microsequences || []).flatMap((lessonMicrosequence) =>
-    (lessonMicrosequence.cards || []).map((card, cardIndex) => ({
+  const lessonCardEntries = (lesson.microsequences || []).flatMap((lessonMicrosequence) => {
+    if (!isReadyMicrosequence(lessonMicrosequence)) {
+      return [];
+    }
+    return (lessonMicrosequence.cards || []).map((card, cardIndex) => ({
       microsequenceKey: lessonMicrosequence.key,
       microsequenceTitle: lessonMicrosequence.title || lessonMicrosequence.key,
       cardKey: card.key,
       card,
       cardIndex
-    }))
-  );
+    }));
+  });
   const lessonStudyIndex = Math.max(0, lessonCardEntries.findIndex((entry) => entry.cardKey === selection.cardKey));
   const lessonStudyCount = lessonCardEntries.length;
   const prevDisabled = microsequenceMode === "play" ? lessonStudyIndex <= 0 : safeIndex <= 0;
@@ -1112,13 +1140,15 @@ function renderDraftGeneratorScreen({ editorSupport }) {
   );
 }
 
-export function renderLessonScreen({ project, view, selection, course, moduleValue, lesson, microsequence, cards, microsequenceMode, editorSupport }) {
+export function renderLessonScreen({ project, view, activeHomeTab, selection, course, moduleValue, lesson, microsequence, cards, microsequenceMode, editorSupport }) {
   if (view === "courses") {
     return renderHomeScreen({
       project,
       progress: editorSupport.progress,
       selection,
-      featuredCourseKey: editorSupport.draftCourseKey
+      featuredCourseKey: editorSupport.draftCourseKey,
+      activeHomeTab,
+      editorSupport
     });
   }
 

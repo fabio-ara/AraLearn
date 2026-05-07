@@ -16,6 +16,11 @@ Uma microssequência é um percurso didático pequeno o bastante para ser retoma
 
 Cards isolados são importantes, mas a aprendizagem esperada depende da relação entre eles.
 
+Microssequências podem estar em dois estados:
+
+- `draft`: rascunho em construção, visível na estrutura do curso, mas fora da execução;
+- `ready`: microssequência pronta para estudo no runtime.
+
 ## Papel dos cards
 
 Cada card deve ter uma função didática clara. Exemplos de função:

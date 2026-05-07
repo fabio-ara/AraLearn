@@ -45,7 +45,26 @@ test("cria microssequência nova no contrato principal com card inicial raso", (
 
   const microsequence = nextDocument.courses[0].modules[0].lessons[0].microsequences[1];
   assert.equal(microsequence.title, "Nova sequência");
+  assert.equal(microsequence.status, "ready");
   assert.equal(microsequence.cards[0].say, "Descreva a ideia central desta microssequência.");
+});
+
+test("cria microssequência rascunho sem cards", () => {
+  const document = readNormalizedProject("./docs/examples/aralearn-contract.renderable.json");
+
+  const nextDocument = createMicrosequence(document, {
+    courseKey: "course-curso-renderizavel",
+    moduleKey: "module-modulo-experimental",
+    lessonKey: "lesson-licao-experimental",
+    title: "Soma de matrizes",
+    status: "draft",
+    cards: []
+  });
+
+  const microsequence = nextDocument.courses[0].modules[0].lessons[0].microsequences[1];
+  assert.equal(microsequence.title, "Soma de matrizes");
+  assert.equal(microsequence.status, "draft");
+  assert.deepEqual(microsequence.cards, []);
 });
 
 test("substitui os cards da microssequência por intenções semânticas do contrato principal", () => {
@@ -74,6 +93,7 @@ test("substitui os cards da microssequência por intenções semânticas do cont
 
   const microsequence = nextDocument.courses[0].modules[0].lessons[0].microsequences[0];
   assert.equal(microsequence.title, "Vetores");
+  assert.equal(microsequence.status, "ready");
   assert.deepEqual(microsequence.tags, ["Álgebra linear", "Vetores"]);
   assert.equal(microsequence.cards[1].ask, "Qual estrutura agrupa cards?");
 });

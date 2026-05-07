@@ -1,3 +1,5 @@
+import { isReadyMicrosequence } from "../model/microsequenceStatus.js";
+
 export const DEFAULT_ASSIST_DEPENDENCIES = 3;
 
 export function buildCardPathKey(selection) {
@@ -117,6 +119,9 @@ export function findCard(microsequence, cardKey) {
 export function collectLessonCards(lesson) {
   const entries = [];
   (lesson?.microsequences || []).forEach((microsequence) => {
+    if (!isReadyMicrosequence(microsequence)) {
+      return;
+    }
     (microsequence.cards || []).forEach((card, cardIndex) => {
       entries.push({
         microsequenceKey: microsequence.key,

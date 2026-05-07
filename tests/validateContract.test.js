@@ -118,7 +118,32 @@ test("aceita microssequência sem cards", () => {
   const result = validateContractDocument(projectWithCards([]));
 
   assert.equal(result.ok, true);
+  assert.equal(result.value.courses[0].modules[0].lessons[0].microsequences[0].status, "draft");
   assert.deepEqual(result.value.courses[0].modules[0].lessons[0].microsequences[0].cards, []);
+});
+
+test("normaliza status de microssequência com cards como pronta", () => {
+  const result = validateContractDocument(
+    projectWithCards([
+      {
+        title: "Ideia",
+        say: "Leia a ideia."
+      }
+    ])
+  );
+
+  assert.equal(result.ok, true);
+  assert.equal(result.value.courses[0].modules[0].lessons[0].microsequences[0].status, "ready");
+});
+
+test("aceita status explícito de rascunho", () => {
+  const document = projectWithCards([]);
+  document.courses[0].modules[0].lessons[0].microsequences[0].status = "draft";
+
+  const result = validateContractDocument(document);
+
+  assert.equal(result.ok, true);
+  assert.equal(result.value.courses[0].modules[0].lessons[0].microsequences[0].status, "draft");
 });
 
 test("rejeita runtime autorado no JSON público", () => {

@@ -1,6 +1,29 @@
 export function renderUiIcon(iconName, className = "ui-icon") {
   const classes = `${className}`.trim();
 
+  if (iconName === "sparkles") {
+    return (
+      '<svg class="' +
+      classes +
+      '" viewBox="0 0 16 16" aria-hidden="true" focusable="false">' +
+      '<path d="M6.2 1.7l1 2.8 2.8 1-2.8 1-1 2.8-1-2.8-2.8-1 2.8-1z" fill="currentColor"></path>' +
+      '<path d="M11.8 7.2l.6 1.7 1.7.6-1.7.6-.6 1.7-.6-1.7-1.7-.6 1.7-.6z" fill="currentColor"></path>' +
+      '<path d="M4.1 10.7l.4 1.2 1.2.4-1.2.4-.4 1.2-.4-1.2-1.2-.4 1.2-.4z" fill="currentColor"></path>' +
+      "</svg>"
+    );
+  }
+
+  if (iconName === "folder") {
+    return (
+      '<svg class="' +
+      classes +
+      '" viewBox="0 0 16 16" aria-hidden="true" focusable="false">' +
+      '<path d="M2.2 4.4h4l1.1 1.3h6.5v6.1a1.4 1.4 0 0 1-1.4 1.4H3.6a1.4 1.4 0 0 1-1.4-1.4z" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linejoin="round"></path>' +
+      '<path d="M2.2 5.7V4.2a1.2 1.2 0 0 1 1.2-1.2h3.1l1.1 1.4" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"></path>' +
+      "</svg>"
+    );
+  }
+
   if (iconName === "edit") {
     return (
       '<svg class="' +
