@@ -103,18 +103,14 @@ test("gera microssequência com plano local e chamada estruturada ao Gemini", as
       title: "Git básico",
       tags: ["Git"],
       cards: [
-        { role: "concept", container: "say", title: "Ideia central", text: "Git organiza versões." },
-        { role: "code_example", container: "code", title: "Comandos em contexto", language: "bash", code: "git [[add]] arquivo.txt" },
+        { title: "Ideia central", text: "Git organiza versões." },
+        { title: "Comandos em contexto", language: "bash", code: "git [[add]] arquivo.txt" },
         {
-          role: "table_summary",
-          container: "table",
           title: "Função de cada comando",
           columns: ["Comando", "Função"],
-          rows: [["git add", "Prepara arquivos"], ["git push", "Envia commits"]]
+          rows: ["git add | Prepara arquivos", "git push | Envia commits"]
         },
         {
-          role: "choice_check",
-          container: "ask",
           title: "Verificação",
           question: "Qual comando envia commits?",
           answer: "git push",
@@ -151,8 +147,13 @@ test("gera microssequência com plano local e chamada estruturada ao Gemini", as
     assert.match(calls[0].url, /gemini-2\.5-flash:generateContent/);
     assert.ok(calls[0].body.generationConfig.responseJsonSchema);
     assert.ok(!calls[0].body.generationConfig.responseSchema);
+    const cardSchema = calls[0].body.generationConfig.responseJsonSchema.properties.cards.items;
+    assert.ok(!cardSchema.properties.role);
+    assert.ok(!cardSchema.properties.container);
+    assert.equal(cardSchema.properties.rows.items.type, "string");
     assert.match(calls[0].body.contents[0].parts[0].text, /Plano:/);
     assert.equal(result.cards.length, 4);
+    assert.equal(result.cards[2].table.rows[0][0], "git add");
     assert.equal(result.cards[3].answer, "git push");
   } finally {
     globalThis.fetch = originalFetch;
@@ -168,18 +169,14 @@ test("aceita JSON do Gemini envolto em bloco markdown", async () => {
       title: "Git básico",
       tags: ["Git"],
       cards: [
-        { role: "concept", container: "say", title: "Ideia central", text: "Git organiza versões." },
-        { role: "code_example", container: "code", title: "Comandos em contexto", language: "bash", code: "git add arquivo.txt" },
+        { title: "Ideia central", text: "Git organiza versões." },
+        { title: "Comandos em contexto", language: "bash", code: "git add arquivo.txt" },
         {
-          role: "table_summary",
-          container: "table",
           title: "Função de cada comando",
           columns: ["Comando", "Função"],
-          rows: [["git add", "Prepara arquivos"], ["git push", "Envia commits"]]
+          rows: ["git add | Prepara arquivos", "git push | Envia commits"]
         },
         {
-          role: "choice_check",
-          container: "ask",
           title: "Verificação",
           question: "Qual comando envia commits?",
           answer: "git push",
@@ -241,24 +238,18 @@ test("tenta novamente quando o Gemini devolve JSON ilegível", async () => {
                             title: "Git básico",
                             tags: ["Git"],
                             cards: [
-                              { role: "concept", container: "say", title: "Ideia central", text: "Git organiza versões." },
+                              { title: "Ideia central", text: "Git organiza versões." },
                               {
-                                role: "code_example",
-                                container: "code",
                                 title: "Comandos em contexto",
                                 language: "bash",
                                 code: "git add arquivo.txt"
                               },
                               {
-                                role: "table_summary",
-                                container: "table",
                                 title: "Função de cada comando",
                                 columns: ["Comando", "Função"],
-                                rows: [["git add", "Prepara arquivos"], ["git push", "Envia commits"]]
+                                rows: ["git add | Prepara arquivos", "git push | Envia commits"]
                               },
                               {
-                                role: "choice_check",
-                                container: "ask",
                                 title: "Verificação",
                                 question: "Qual comando envia commits?",
                                 answer: "git push",
@@ -286,6 +277,82 @@ test("tenta novamente quando o Gemini devolve JSON ilegível", async () => {
 
     assert.equal(calls.length, 2);
     assert.match(calls[1].body.contents[0].parts[0].text, /tentativa anterior/i);
+    assert.equal(result.cards.length, 4);
+    assert.equal(result.cards[3].answer, "git push");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("remove schema na nova tentativa quando o Gemini rejeita a complexidade", async () => {
+  const originalFetch = globalThis.fetch;
+  const calls = [];
+  globalThis.fetch = async (url, options) => {
+    calls.push({ url, body: JSON.parse(options.body) });
+    if (calls.length === 1) {
+      return {
+        ok: false,
+        status: 400,
+        async json() {
+          return {
+            error: {
+              message: "The specified schema produces a constraint that has too many states for serving."
+            }
+          };
+        }
+      };
+    }
+
+    return {
+      ok: true,
+      async json() {
+        return {
+          candidates: [
+            {
+              content: {
+                parts: [
+                  {
+                    text: JSON.stringify({
+                      title: "Git básico",
+                      tags: ["Git"],
+                      cards: [
+                        { title: "Ideia central", text: "Git organiza versões." },
+                        { title: "Comandos em contexto", language: "bash", code: "git add arquivo.txt" },
+                        {
+                          title: "Função de cada comando",
+                          columns: ["Comando", "Função"],
+                          rows: ["git add | Prepara arquivos", "git push | Envia commits"]
+                        },
+                        {
+                          title: "Verificação",
+                          question: "Qual comando envia commits?",
+                          answer: "git push",
+                          wrong: ["git add", "git init"]
+                        }
+                      ]
+                    })
+                  }
+                ]
+              }
+            }
+          ]
+        };
+      }
+    };
+  };
+
+  try {
+    const result = await runGeminiAssist({
+      apiKey: "chave",
+      mode: "compose-microsequence",
+      microsequence: { title: "Git", tags: [], cards: [] },
+      promptText: "explique git add e git push"
+    });
+
+    assert.equal(calls.length, 2);
+    assert.ok(calls[0].body.generationConfig.responseJsonSchema);
+    assert.ok(!calls[1].body.generationConfig.responseJsonSchema);
+    assert.equal(calls[1].body.generationConfig.responseMimeType, "application/json");
     assert.equal(result.cards.length, 4);
     assert.equal(result.cards[3].answer, "git push");
   } finally {

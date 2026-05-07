@@ -95,6 +95,12 @@ function normalizeRows(value, columnCount = 2) {
   return Array.isArray(value)
     ? value
         .map((row) => {
+          if (typeof row === "string") {
+            const separator = row.includes("|") ? "|" : ":";
+            const cells = row.split(separator).map((cell) => normalizeText(cell)).slice(0, columnCount);
+            while (cells.length < columnCount) cells.push("");
+            return cells;
+          }
           if (!Array.isArray(row)) return null;
           const cells = row.map((cell) => normalizeText(cell)).slice(0, columnCount);
           while (cells.length < columnCount) cells.push("");
@@ -269,98 +275,59 @@ export function buildDeterministicAssistPlan({ promptText, microsequence, depend
   });
 }
 
-function getEnumSchema(values) {
-  return {
-    type: "string",
-    enum: values
-  };
-}
-
 export function getAssistDraftSchema() {
   return {
     type: "object",
-    propertyOrdering: ["title", "tags", "cards"],
     properties: {
-      title: { type: "string", description: "Título final da microssequência." },
+      title: { type: "string" },
       tags: {
         type: "array",
-        description: "Tags literais de organização.",
         items: { type: "string" },
-        maxItems: 5
+        maxItems: 4
       },
       cards: {
         type: "array",
-        description: "Cards preenchidos na mesma ordem do plano.",
         minItems: 3,
         maxItems: 5,
         items: {
           type: "object",
-          propertyOrdering: [
-            "role",
-            "container",
-            "title",
-            "text",
-            "question",
-            "answer",
-            "wrong",
-            "language",
-            "code",
-            "columns",
-            "rows",
-            "flowSteps",
-            "currentPath",
-            "selectedPath",
-            "paths",
-            "after"
-          ],
           properties: {
-            role: { ...getEnumSchema(CARD_ROLES), description: "Copie a função didática definida no plano." },
-            container: { ...getEnumSchema(CONTAINERS), description: "Copie o contêiner definido no plano." },
-            title: { type: "string", description: "Título do card." },
-            text: { type: "string", description: "Explicação ou enunciado. Use [[resposta]] para lacunas." },
-            question: { type: "string", description: "Pergunta de múltipla escolha, quando o contêiner for ask." },
-            answer: { type: "string", description: "Resposta correta." },
+            title: { type: "string" },
+            text: { type: "string" },
+            question: { type: "string" },
+            answer: { type: "string" },
             wrong: {
               type: "array",
-              description: "Distratores plausíveis, mas incorretos.",
               items: { type: "string" },
-              maxItems: 4
+              maxItems: 3
             },
-            language: { type: "string", description: "Linguagem do bloco de código, como bash, c, portugol ou text." },
-            code: { type: "string", description: "Código ou sequência de comandos." },
+            language: { type: "string" },
+            code: { type: "string" },
             columns: {
               type: "array",
-              description: "Cabeçalhos da tabela.",
               items: { type: "string" },
-              maxItems: 4
+              maxItems: 3
             },
             rows: {
               type: "array",
-              description: "Linhas da tabela.",
-              maxItems: 6,
-              items: {
-                type: "array",
-                items: { type: "string" },
-                maxItems: 4
-              }
+              items: { type: "string" },
+              maxItems: 5
             },
             flowSteps: {
               type: "array",
-              description: "Passos simples de um fluxograma linear.",
               items: { type: "string" },
-              maxItems: 7
+              maxItems: 5
             },
-            currentPath: { type: "string", description: "Diretório atual, quando o contêiner for tree." },
-            selectedPath: { type: "string", description: "Arquivo ou diretório destacado, quando o contêiner for tree." },
+            currentPath: { type: "string" },
+            selectedPath: { type: "string" },
             paths: {
               type: "array",
-              description: "Caminhos para montar uma árvore de diretórios.",
               items: { type: "string" },
-              maxItems: 8
+              maxItems: 5
             },
-            after: { type: "string", description: "Comentário de fechamento do card." }
+            after: { type: "string" }
           },
-          required: ["role", "container", "title"],
+          required: ["title"],
           additionalProperties: false
         }
       }
@@ -405,12 +372,13 @@ export function buildAssistDraftPrompt({ promptText, plan, microsequence }) {
   return [
     "Preencha o conteúdo dos cards seguindo exatamente o plano abaixo.",
     `Devolva exatamente ${cardCount} cards, na mesma ordem do plano.`,
-    "Copie role, container e title do plano em cada card.",
+    "Cada card deve ter title e os campos de conteúdo necessários ao seu contêiner.",
     "Escreva para estudante de Tecnologia em Análise e Desenvolvimento de Sistemas.",
     "Use linguagem direta e exemplos verossímeis do domínio pedido.",
     "Não use Markdown. Não explique fora do JSON.",
     "Para lacunas textuais, use [[resposta]] dentro de text.",
     "Para múltipla escolha, preencha question, answer e wrong.",
+    "Para tabelas, preencha columns e rows; cada item de rows deve ser uma linha textual separada por |.",
     "Para comandos, prefira container code com language bash quando fizer sentido.",
     "Para C ou Portugol, prefira container code com language c ou portugol.",
     "Para fluxogramas, use flowSteps como passos textuais simples.",

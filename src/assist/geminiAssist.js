@@ -15,6 +15,15 @@ function normalizeText(value) {
 }
 
 function makeRequestBody({ systemInstruction, prompt, schema, temperature = 0.2, maxOutputTokens = 2048 }) {
+  const generationConfig = {
+    temperature,
+    maxOutputTokens,
+    responseMimeType: "application/json"
+  };
+  if (schema) {
+    generationConfig.responseJsonSchema = schema;
+  }
+
   return {
     systemInstruction: {
       parts: [{ text: systemInstruction }]
@@ -25,12 +34,7 @@ function makeRequestBody({ systemInstruction, prompt, schema, temperature = 0.2,
         parts: [{ text: prompt }]
       }
     ],
-    generationConfig: {
-      temperature,
-      maxOutputTokens,
-      responseMimeType: "application/json",
-      responseJsonSchema: schema
-    }
+    generationConfig
   };
 }
 
@@ -332,7 +336,12 @@ function isRetryableAssistError(error) {
     "O serviço de IA devolveu JSON inválido.",
     "O serviço de IA devolveu uma microssequência inválida.",
     "O serviço de IA devolveu poucos cards."
-  ].includes(message);
+  ].includes(message) || isSchemaTooComplexError(error);
+}
+
+function isSchemaTooComplexError(error) {
+  const message = error instanceof Error ? error.message : "";
+  return /schema|constraint|too many states/i.test(message);
 }
 
 function buildAssistRetryPrompt({ promptText, plan, microsequence, reason }) {
@@ -340,7 +349,7 @@ function buildAssistRetryPrompt({ promptText, plan, microsequence, reason }) {
     "A tentativa anterior não passou pela validação local do AraLearn.",
     `Motivo: ${reason}`,
     "Gere novamente somente um objeto JSON válido, sem Markdown e sem comentários.",
-    "Mantenha exatamente o plano, a ordem dos cards e os campos permitidos pelo schema.",
+    "Mantenha exatamente o plano, a ordem dos cards e os campos permitidos pelo formato pedido.",
     buildAssistDraftPrompt({ promptText, plan, microsequence })
   ].join("\n");
 }
@@ -354,7 +363,7 @@ async function composeMicrosequenceWithGemini({
 }) {
   const systemInstruction =
     "Você transforma pedidos de estudo em microssequências didáticas para o AraLearn. " +
-    "Siga o schema recebido, use linguagem direta e responda apenas com um objeto JSON.";
+    "Siga o formato pedido, use linguagem direta e responda apenas com um objeto JSON.";
   const plan = buildDeterministicAssistPlan({
     promptText,
     microsequence,
@@ -380,7 +389,7 @@ async function composeMicrosequenceWithGemini({
         body: makeRequestBody({
           systemInstruction,
           prompt,
-          schema: getAssistDraftSchema(),
+          schema: isSchemaTooComplexError(lastError) ? null : getAssistDraftSchema(),
           temperature: attempt === 0 ? 0.15 : 0.05,
           maxOutputTokens: 3072
         })
