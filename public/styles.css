@@ -3834,6 +3834,7 @@ button {
 .generate-card .field {
   display: grid;
   color: rgba(244, 224, 190, 0.76);
+  font-size: var(--type-sm);
 }
 
 .generate-icon-field {
@@ -3848,7 +3849,7 @@ button {
 
 .generate-icon-label {
   width: 34px;
-  height: 44px;
+  height: 38px;
   display: grid;
   place-items: center;
   border: 1px solid rgba(111, 88, 62, 0.78);
@@ -3870,12 +3871,18 @@ button {
   background: rgba(15, 12, 9, 0.82);
   color: #fff8ec;
   font: inherit;
-  font-weight: 500;
+  font-weight: 400;
+  letter-spacing: 0.01em;
 }
 
 .generate-card select {
-  min-height: 44px;
-  padding: 0 12px;
+  min-height: 38px;
+  padding: 0 11px;
+  font-family: var(--font-ui);
+}
+
+.generate-card select option {
+  font-weight: 400;
 }
 
 .generate-card textarea {
