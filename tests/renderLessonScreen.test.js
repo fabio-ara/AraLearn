@@ -42,6 +42,8 @@ test("renderiza a tela de curso com ações globais e menus contextuais por mód
   });
 
   assert.match(html, /data-action="open-course-screen-actions"/);
+  assert.match(html, /data-home-tab="courses"[^>]+aria-selected="true"/);
+  assert.match(html, /data-home-tab="generate"[^>]+aria-selected="false"/);
   assert.match(html, /data-action="open-module-actions"/);
   assert.match(html, /data-action="open-lesson-actions"/);
   assert.match(html, /aria-label="1 lição" title="1 lição"/);
@@ -80,6 +82,7 @@ test("renderiza a tela de lição com ações globais e pilha de ações da micr
   });
 
   assert.match(html, /data-action="open-lesson-screen-actions"/);
+  assert.match(html, /data-home-tab="courses"[^>]+aria-selected="true"/);
   assert.match(html, /data-action="open-microsequence-actions"/);
   assert.match(html, /data-action="play-microsequence"/);
   assert.match(html, /aria-label="Módulo: Módulo experimental" title="Módulo: Módulo experimental"/);
@@ -183,6 +186,7 @@ test("renderiza o painel da microssequência sem botão próprio de ações e co
 
   assert.doesNotMatch(html, /data-action="open-microsequence-actions"/);
   assert.doesNotMatch(html, /data-action="open-version-history"/);
+  assert.match(html, /data-home-tab="courses"[^>]+aria-selected="true"/);
   assert.match(html, /data-action="select-microsequence-version"/);
   assert.match(html, /data-action="editor-prev-version"/);
   assert.match(html, /data-action="editor-next-version"/);
@@ -423,6 +427,7 @@ test("renderiza a execução do card com nome do curso e faixa estável de tags"
   });
 
   assert.match(html, /<span class="study-reader-context-line">Curso renderizável<\/span>/);
+  assert.match(html, /data-home-tab="courses"[^>]+aria-selected="true"/);
   assert.doesNotMatch(html, /Lição experimental - Modelo cascata/);
   assert.match(html, /class="study-context-tags compact-study-tags"/);
   assert.match(html, /class="study-reader-count" aria-label="Card 1 de 7" title="Card 1 de 7"/);

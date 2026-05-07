@@ -3834,7 +3834,6 @@ button {
 .generate-card .field {
   display: grid;
   color: rgba(244, 224, 190, 0.76);
-  font-weight: 700;
 }
 
 .generate-icon-field {
@@ -3871,6 +3870,7 @@ button {
   background: rgba(15, 12, 9, 0.82);
   color: #fff8ec;
   font: inherit;
+  font-weight: 500;
 }
 
 .generate-card select {

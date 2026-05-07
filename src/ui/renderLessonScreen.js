@@ -1,4 +1,4 @@
-import { renderHomeScreen } from "./renderHomeScreen.js";
+import { renderHomeScreen, renderHomeTabs } from "./renderHomeScreen.js";
 import { readCardText } from "../core/cardRuntime.js";
 import { renderCardRuntimeBlocks, renderCardRuntimeBlocksWithDock } from "../render/renderCardRuntime.js";
 import { readLessonProgressEntry } from "../storage/progressStore.js";
@@ -360,6 +360,10 @@ function renderMicrosequenceStatusBadge(microsequence) {
   return '<span class="microsequence-status-badge">rascunho</span>';
 }
 
+function renderCoursesTabs() {
+  return renderHomeTabs("courses");
+}
+
 function renderAssistControlPanel({ editorSupport, promptLabel, sendTitle, className = "" }) {
   const selectedDependencyTags = (editorSupport.dependencies || [])
     .filter((item) => editorSupport.selectedDependencyKeys.includes(item.key))
@@ -531,6 +535,7 @@ function renderDraftCourseScreen({ course, draftMicrosequences }) {
       editTitle: "Ações",
       editIcon: "&#9776;"
     }) +
+    renderCoursesTabs() +
     '<main class="screen-content course-screen">' +
     '<section class="clean-card draft-course-hero">' +
     '<div class="draft-course-hero-main">' +
@@ -645,6 +650,7 @@ function renderCourseScreen({ course, progress }) {
       editTitle: "Ações",
       editIcon: "&#9776;"
     }) +
+    renderCoursesTabs() +
     '<main class="screen-content course-screen">' +
     modules +
     "</main>" +
@@ -722,6 +728,7 @@ function renderLessonScreenView({ course, lesson, moduleValue, progress }) {
       editTitle: "Ações",
       editIcon: "&#9776;"
     }) +
+    renderCoursesTabs() +
     '<main class="screen-content lesson-structure-screen">' +
     '<section class="context-band lesson-context-band">' +
     '<span class="context-chip lesson-context-chip lesson-context-chip-start">' +
@@ -805,6 +812,7 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
     '<button class="icon-ghost" type="button" data-action="open-microsequence-assist" title="Painel da microssequência" aria-label="Painel da microssequência">&#9998;</button>' +
     '<button class="icon-ghost" type="button" data-action="close-study" title="Fechar leitura" aria-label="Fechar leitura">&times;</button>' +
     "</section>" +
+    renderCoursesTabs() +
     '<main class="screen-content microsequence-screen">' +
     '<section class="study-reader-context">' +
     '<div class="study-reader-line">' +
@@ -1059,6 +1067,7 @@ function renderMicrosequenceWorkbenchScreen({
       canGoBack: true,
       backTitle
     }) +
+    renderCoursesTabs() +
     '<main class="screen-content microsequence-generator-screen">' +
     '<section class="microsequence-assist-panel">' +
     '<div class="field compact-field">' +
@@ -1131,6 +1140,7 @@ function renderDraftGeneratorScreen({ editorSupport }) {
       canGoBack: true,
       backTitle: "Voltar para a fila"
     }) +
+    renderCoursesTabs() +
     '<main class="screen-content microsequence-generator-screen">' +
     renderAssistControlPanel({
       editorSupport,
