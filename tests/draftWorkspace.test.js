@@ -61,3 +61,15 @@ test("mantém projeto quando o gerador não contém cards", () => {
 
   assert.equal(ensureDraftCourse(project), project);
 });
+
+test("não cria curso especial quando ele não existe", () => {
+  const project = {
+    contract: "aralearn.contract",
+    version: 1,
+    kind: "project",
+    courses: []
+  };
+
+  assert.equal(ensureDraftCourse(project), project);
+  assert.deepEqual(project.courses, []);
+});

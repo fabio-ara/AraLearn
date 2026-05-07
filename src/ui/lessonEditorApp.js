@@ -64,6 +64,7 @@ import { runGeminiAssist } from "../assist/geminiAssist.js";
 import { getLessonProgressCursor, removeLessonProgressEntries, writeLessonProgressEntry } from "../storage/progressStore.js";
 import { detectJsonExchangeFormat } from "../storage/jsonExchange.js";
 import { getContractCardKind, listContractAnswerValues } from "../contract/contractCard.js";
+import { isReadyMicrosequence } from "../model/microsequenceStatus.js";
 
 const DRAFT_COURSE_KEY = "__draft-course__";
 const DRAFT_MODULE_KEY = "__draft-module__";
@@ -296,51 +297,7 @@ export function ensureDraftCourse(document) {
     return nextDocument;
   }
 
-  const nextDocument = structuredClone(document);
-  nextDocument.courses = Array.isArray(nextDocument.courses) ? nextDocument.courses : [];
-  let nextDraftCourse = nextDocument.courses.find((course) => course?.key === DRAFT_COURSE_KEY);
-  if (!nextDraftCourse) {
-    nextDraftCourse = {
-      key: DRAFT_COURSE_KEY,
-      title: "Oficina de microssequências",
-      description: "Fila local para gerar, revisar e reposicionar microssequências antes de consolidá-las nos cursos.",
-      modules: []
-    };
-    nextDocument.courses.push(nextDraftCourse);
-  }
-
-  let nextDraftModule = (nextDraftCourse.modules || []).find((moduleValue) => moduleValue?.key === DRAFT_MODULE_KEY);
-  if (!nextDraftModule) {
-    nextDraftModule = {
-      key: DRAFT_MODULE_KEY,
-      title: "Rascunhos",
-      lessons: []
-    };
-    nextDraftCourse.modules = [nextDraftModule, ...(nextDraftCourse.modules || [])];
-  }
-
-  let nextDraftLesson = (nextDraftModule.lessons || []).find((lesson) => lesson?.key === DRAFT_LESSON_KEY);
-  if (!nextDraftLesson) {
-    nextDraftLesson = {
-      key: DRAFT_LESSON_KEY,
-      title: "Fila de microssequências",
-      microsequences: []
-    };
-    nextDraftModule.lessons = [nextDraftLesson, ...(nextDraftModule.lessons || [])];
-  }
-
-  if (!Array.isArray(nextDraftLesson.microsequences) || !nextDraftLesson.microsequences.length) {
-    nextDraftLesson.microsequences = [
-      {
-        key: DRAFT_PLACEHOLDER_MICROSEQUENCE_KEY,
-        title: "Gerador",
-        cards: []
-      }
-    ];
-  }
-  migrateDraftPlaceholderCards(nextDraftLesson);
-
-  return nextDocument;
+  return document;
 }
 
 function isDraftPlaceholderMicrosequence(microsequence) {
@@ -592,6 +549,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
   const state = {
     project: initialProject,
     view: "courses",
+    homeTab: "generate",
     selection: null,
     cardCommentOpen: false,
     versionHistoryOpen: false,
@@ -620,6 +578,15 @@ export function createLessonEditorApp({ root, storage, editor }) {
       dependencyKeys: [],
       pendingDependencyKey: "",
       lastRequest: null,
+      isSubmitting: false,
+      errorMessage: ""
+    },
+    generationDraft: {
+      courseKey: "",
+      moduleKey: "",
+      lessonKey: "",
+      promptText: "",
+      lastResult: null,
       isSubmitting: false,
       errorMessage: ""
     }
@@ -1186,6 +1153,10 @@ export function createLessonEditorApp({ root, storage, editor }) {
   function openMicrosequenceScreen(microsequenceKey, targetIndex = 0, mode = "play") {
     const microsequence = selectMicrosequenceCard(microsequenceKey, targetIndex);
     if (!microsequence) return;
+    if (mode === "play" && !isReadyMicrosequence(microsequence)) {
+      openMicrosequenceAssistPage(microsequenceKey, targetIndex);
+      return;
+    }
 
     state.view = "microsequence";
     state.microsequenceMode = mode;
@@ -2110,7 +2081,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
     if (state.view === "draft-generator") {
       const draftContext = getDraftLessonContext();
       if (!draftContext.course || !draftContext.moduleValue || !draftContext.lesson) {
-        fail("A oficina de microssequências não está disponível.");
+        fail("A fila de rascunhos não está disponível.");
       }
 
       const createdProject = editor.createMicrosequence({
@@ -2195,6 +2166,69 @@ export function createLessonEditorApp({ root, storage, editor }) {
     state.assistDraft.activeWorkbenchPane = "preview";
     createMicrosequenceVersionFromCurrentProject();
     syncAssistDraft();
+  }
+
+  function getVisibleCourses(project = state.project) {
+    return (project.courses || []).filter((course) => course?.key !== DRAFT_COURSE_KEY);
+  }
+
+  function setHomeTab(tab) {
+    state.homeTab = tab === "courses" ? "courses" : "generate";
+    state.view = "courses";
+    state.entityEditor = null;
+    render({ preserveState: false });
+  }
+
+  function setGenerationCourse(courseKey) {
+    const course = getVisibleCourses().find((item) => item.key === courseKey) || null;
+    state.generationDraft.courseKey = course ? course.key : "";
+    state.generationDraft.moduleKey = "";
+    state.generationDraft.lessonKey = "";
+    state.generationDraft.errorMessage = "";
+    state.generationDraft.lastResult = null;
+    render({ preserveState: true });
+  }
+
+  function setGenerationModule(moduleKey) {
+    const course = getVisibleCourses().find((item) => item.key === state.generationDraft.courseKey) || null;
+    const moduleValue = (course?.modules || []).find((item) => item.key === moduleKey) || null;
+    state.generationDraft.moduleKey = moduleValue ? moduleValue.key : "";
+    state.generationDraft.lessonKey = "";
+    state.generationDraft.errorMessage = "";
+    state.generationDraft.lastResult = null;
+    render({ preserveState: true });
+  }
+
+  function setGenerationLesson(lessonKey) {
+    const course = getVisibleCourses().find((item) => item.key === state.generationDraft.courseKey) || null;
+    const moduleValue = (course?.modules || []).find((item) => item.key === state.generationDraft.moduleKey) || null;
+    const lesson = (moduleValue?.lessons || []).find((item) => item.key === lessonKey) || null;
+    state.generationDraft.lessonKey = lesson ? lesson.key : "";
+    state.generationDraft.errorMessage = "";
+    state.generationDraft.lastResult = null;
+    render({ preserveState: true });
+  }
+
+  function openGeneratedLesson() {
+    const result = state.generationDraft.lastResult;
+    if (!result?.courseKey || !result?.moduleKey || !result?.lessonKey) {
+      setHomeTab("courses");
+      return;
+    }
+
+    applySelection({
+      courseKey: result.courseKey,
+      moduleKey: result.moduleKey,
+      lessonKey: result.lessonKey,
+      microsequenceKey: null,
+      cardKey: null,
+      cardIndex: 0
+    });
+    state.homeTab = "courses";
+    state.view = "lesson";
+    state.entityEditor = null;
+    state.microsequenceMode = "play";
+    render({ preserveState: false });
   }
 
   function applyMicrosequenceReposition(slot, renames = []) {
@@ -2315,6 +2349,73 @@ export function createLessonEditorApp({ root, storage, editor }) {
     } finally {
       state.assistDraft.isSubmitting = false;
       render({ preserveState: true });
+    }
+  }
+
+  async function submitGenerateLadderRequest() {
+    const draft = state.generationDraft;
+    const course = getVisibleCourses().find((item) => item.key === draft.courseKey) || null;
+    const moduleValue = (course?.modules || []).find((item) => item.key === draft.moduleKey) || null;
+    const lesson = (moduleValue?.lessons || []).find((item) => item.key === draft.lessonKey) || null;
+    const promptText = String(draft.promptText || "").trim();
+
+    if (!course || !moduleValue || !lesson || !promptText) {
+      state.generationDraft.errorMessage = "Escolha curso, módulo, lição e escreva a dúvida antes de montar a escada.";
+      render({ preserveState: true });
+      return;
+    }
+
+    state.generationDraft.isSubmitting = true;
+    state.generationDraft.errorMessage = "";
+    state.generationDraft.lastResult = null;
+    render({ preserveState: true });
+
+    try {
+      const result = await runGeminiAssist({
+        apiKey: state.assistConfig.apiKey,
+        model: state.assistConfig.model,
+        mode: "plan-microsequence-ladder",
+        microsequence: {
+          courseTitle: course.title || course.key,
+          moduleTitle: moduleValue.title || moduleValue.key,
+          lessonTitle: lesson.title || lesson.key
+        },
+        promptText
+      });
+
+      let nextProject = state.project;
+      result.steps.forEach((step) => {
+        nextProject = editor.createMicrosequence({
+          courseKey: course.key,
+          moduleKey: moduleValue.key,
+          lessonKey: lesson.key,
+          title: step.title,
+          status: "draft",
+          cards: []
+        });
+        setProject(nextProject);
+      });
+
+      applySelection({
+        courseKey: course.key,
+        moduleKey: moduleValue.key,
+        lessonKey: lesson.key,
+        microsequenceKey: null,
+        cardKey: null,
+        cardIndex: 0
+      });
+      state.generationDraft.lastResult = {
+        message: `${result.steps.length} rascunhos criados em ${lesson.title || lesson.key}.`,
+        courseKey: course.key,
+        moduleKey: moduleValue.key,
+        lessonKey: lesson.key
+      };
+      state.generationDraft.promptText = "";
+    } catch (error) {
+      state.generationDraft.errorMessage = error instanceof Error ? error.message : "Falha ao montar a escada.";
+    } finally {
+      state.generationDraft.isSubmitting = false;
+      render({ preserveState: false });
     }
   }
 
@@ -4088,6 +4189,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
       renderLessonScreen({
         project: state.project,
         view: state.view,
+        activeHomeTab: state.homeTab,
         selection: state.selection,
         course: context.course,
         moduleValue: context.moduleValue,
@@ -4110,6 +4212,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
           selectedModel: state.assistConfig.model,
           selectedModelLabel: getAssistModelLabel(state.assistConfig.model),
           modelOptions: ASSIST_MODEL_OPTIONS,
+          generationDraft: state.generationDraft,
           promptText: state.assistDraft.promptText,
           lastRequest: state.assistDraft.lastRequest,
           isSubmitting: state.assistDraft.isSubmitting,
@@ -4161,6 +4264,34 @@ export function createLessonEditorApp({ root, storage, editor }) {
     syncCardStripScroller({ keepActiveCardInView: true });
 
     root.querySelector("[data-action='go-back']")?.addEventListener("click", () => goBack());
+
+    root.querySelectorAll("[data-action='switch-home-tab']").forEach((node) => {
+      node.addEventListener("click", () => {
+        setHomeTab(node.getAttribute("data-home-tab"));
+      });
+    });
+
+    root.querySelector("[data-field='generate-course']")?.addEventListener("change", (event) => {
+      setGenerationCourse(event.target.value);
+    });
+    root.querySelector("[data-field='generate-module']")?.addEventListener("change", (event) => {
+      setGenerationModule(event.target.value);
+    });
+    root.querySelector("[data-field='generate-lesson']")?.addEventListener("change", (event) => {
+      setGenerationLesson(event.target.value);
+    });
+    root.querySelector("[data-field='generate-prompt']")?.addEventListener("input", (event) => {
+      state.generationDraft.promptText = event.target.value;
+      state.generationDraft.errorMessage = "";
+      state.generationDraft.lastResult = null;
+      render({ preserveState: true });
+    });
+    root.querySelector("[data-action='generate-ladder']")?.addEventListener("click", () => {
+      void submitGenerateLadderRequest();
+    });
+    root.querySelector("[data-action='view-generated-lesson']")?.addEventListener("click", () => {
+      openGeneratedLesson();
+    });
 
     root.querySelectorAll("[data-action='open-course']").forEach((node) => {
       node.addEventListener("click", () => {

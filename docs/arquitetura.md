@@ -10,9 +10,9 @@ A aplicação trabalha com três camadas principais:
 
 - contrato público em JSON;
 - runtime interno derivado do contrato;
-- interface de leitura, autoria, revisão e oficina.
+- interface de geração, leitura, autoria e revisão.
 
-O contrato público descreve a estrutura autoral. O runtime interno deriva dados necessários para renderização, validação visual e interação. A interface apresenta cursos, lições, microssequências, cards, progresso, edição e assistência por IA generativa.
+O contrato público descreve a estrutura autoral. O runtime interno deriva dados necessários para renderização, validação visual e interação. A interface apresenta geração de rascunhos, cursos, lições, microssequências, cards, progresso, edição e assistência por IA generativa.
 
 ## Estrutura do repositório
 
@@ -31,10 +31,10 @@ Diretórios centrais em `src/`:
 - `core/`: runtime de cards, árvores, opções de exercício e carregamento;
 - `render/`: renderização de cards e documentos;
 - `flowchart/`: projeção, geometria, viewport e prática de fluxogramas;
-- `storage/`: persistência, progresso, importação, exportação e backup;
+- `storage/`: persistência, versão de armazenamento, progresso, importação, exportação e backup;
 - `editor/`: operações de edição no contrato;
 - `assist/`: planejamento, prompts, chamadas e normalização da assistência por IA generativa;
-- `ui/`: navegação, telas, overlays, oficina, painel de microssequência e estado da interface.
+- `ui/`: navegação, telas, overlays, aba `Gerar`, aba `Cursos`, painel de microssequência e estado da interface.
 
 ## Hierarquia de domínio
 
@@ -91,6 +91,8 @@ O AraLearn separa projeto e progresso.
 
 O projeto contém a estrutura estudável: cursos, módulos, lições, microssequências e cards. O progresso registra avanço local do usuário sobre essa estrutura.
 
+A persistência local também registra `aralearn.storageVersion`. Essa versão permite aplicar migrações sem substituir dados do usuário. A migração atual normaliza `status` de microssequências: com cards vira `ready`; sem cards vira `draft`.
+
 A aplicação trabalha com dois formatos de troca:
 
 - `aralearn.contract`: contrato estrutural público;
@@ -100,21 +102,26 @@ A ação `Importar` detecta os dois formatos. Essa separação permite compartil
 
 ## Interface e navegação
 
-A interface principal organiza o uso em telas:
+A interface principal começa com duas abas:
 
-- tela inicial com cursos e oficina;
+- `Gerar`: seleção de curso, módulo e lição, pedido do usuário, modelo e criação de rascunhos;
+- `Cursos`: estrutura de cursos, módulos, lições, microssequências e execução de cards.
+
+A navegação estrutural inclui:
+
 - tela de curso;
 - tela de lição;
 - execução de microssequência;
 - painel da microssequência;
-- tela de geração de microssequência;
 - overlays de ações, importação, edição, configuração e histórico.
 
-O desenho atual preserva a trilha principal de estudo e adiciona a oficina como espaço de criação e revisão antes da consolidação em cursos.
+## Geração, rascunhos e painel
 
-## Oficina e painel
+A aba `Gerar` cria rascunhos diretamente dentro da lição selecionada. O usuário escolhe o contexto na hierarquia, escreve uma dúvida ou comentário e recebe uma escada de microssequências planejada por IA generativa.
 
-A oficina é uma fila local de rascunhos. Ela permite gerar microssequências novas e revisá-las sem misturar imediatamente esse material aos cursos definitivos.
+Cada item validado dessa escada vira uma microssequência com `status: "draft"` e `cards` vazio.
+
+Rascunhos aparecem na aba `Cursos`, no lugar real da estrutura, mas não entram no runtime de estudo. O runtime coleta apenas microssequências `ready`.
 
 O painel da microssequência concentra:
 
@@ -122,7 +129,6 @@ O painel da microssequência concentra:
 - edição por novo pedido;
 - tags explícitas;
 - versões locais;
-- reposicionamento em cursos;
 - navegação pelos cards da versão ativa.
 
 Esse painel é o ponto de curadoria do material gerado ou editado.
@@ -151,7 +157,7 @@ A validação automatizada cobre:
 - persistência;
 - progresso;
 - importação e exportação;
-- oficina de microssequências;
+- rascunhos e status de microssequências;
 - assistência por IA generativa;
 - fluxogramas e árvores.
 

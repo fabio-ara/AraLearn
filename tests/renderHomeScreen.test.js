@@ -45,7 +45,8 @@ test("renderiza ações separadas para home e curso na primeira tela", () => {
         }
       }
     },
-    selection: { courseKey: "course-teste" }
+    selection: { courseKey: "course-teste" },
+    activeHomeTab: "courses"
   });
 
   assert.match(html, /data-action="open-home-actions"/);
@@ -92,8 +93,57 @@ test("ignora cards do placeholder da oficina na contagem inicial", () => {
     },
     progress: { version: 1, lessons: {} },
     selection: { courseKey: "__draft-course__" },
-    featuredCourseKey: "__draft-course__"
+    featuredCourseKey: "__draft-course__",
+    activeHomeTab: "courses"
   });
 
-  assert.match(html, /progress-meta-item-value">0\/0<\/span>/);
+  assert.doesNotMatch(html, /Oficina de microssequências/);
+});
+
+test("renderiza aba gerar com seletores em cascata", () => {
+  const html = renderHomeScreen({
+    project: {
+      contract: "aralearn.contract",
+      version: 1,
+      kind: "project",
+      courses: [
+        {
+          key: "course-algebra",
+          title: "Álgebra Linear",
+          modules: [
+            {
+              key: "module-matrizes",
+              title: "Matrizes",
+              lessons: [
+                {
+                  key: "lesson-operacoes",
+                  title: "Operações com matrizes",
+                  microsequences: []
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    progress: { version: 1, lessons: {} },
+    selection: { courseKey: "course-algebra" },
+    activeHomeTab: "generate",
+    editorSupport: {
+      generationDraft: {
+        courseKey: "course-algebra",
+        moduleKey: "module-matrizes",
+        lessonKey: "lesson-operacoes",
+        promptText: "Como se faz soma de matrizes?"
+      },
+      modelOptions: [{ value: "gemini-2.5-flash", label: "Gemini 2.5 Flash" }],
+      selectedModel: "gemini-2.5-flash"
+    }
+  });
+
+  assert.match(html, /Gerar microssequências/);
+  assert.match(html, /data-field="generate-course"/);
+  assert.match(html, /Álgebra Linear/);
+  assert.match(html, /data-action="generate-ladder"/);
+  assert.doesNotMatch(html, /disabled aria-disabled="true"/);
 });

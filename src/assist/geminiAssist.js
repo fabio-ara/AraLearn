@@ -215,6 +215,66 @@ function getRepositionSchema() {
   };
 }
 
+function getLadderSchema() {
+  return {
+    type: "object",
+    properties: {
+      title: { type: "string" },
+      steps: {
+        type: "array",
+        minItems: 2,
+        maxItems: 7,
+        items: {
+          type: "object",
+          properties: {
+            title: { type: "string" }
+          },
+          required: ["title"],
+          additionalProperties: false
+        }
+      }
+    },
+    required: ["title", "steps"],
+    additionalProperties: false
+  };
+}
+
+function buildLadderPrompt({ context, promptText }) {
+  return [
+    "Você é o planejador simples do AraLearn.",
+    "",
+    "O usuário escolheu um contexto hierárquico e escreveu uma dúvida.",
+    "Crie uma escada breve de microssequências para estudar essa dúvida.",
+    "",
+    "Contexto:",
+    `Curso: ${normalizeText(context?.courseTitle)}`,
+    `Módulo: ${normalizeText(context?.moduleTitle)}`,
+    `Lição: ${normalizeText(context?.lessonTitle)}`,
+    "",
+    "Dúvida do usuário:",
+    promptText,
+    "",
+    "Regras:",
+    "- Cada item deve ser o título claro de uma microssequência pequena.",
+    "- As etapas devem ir das dependências mínimas até a dúvida principal.",
+    "- Não use nível iniciante/intermediário/avançado.",
+    "- Não use tags.",
+    "- Não gere cards.",
+    "- Não gere explicação.",
+    "- Não gere HTML.",
+    "- Retorne apenas JSON válido no formato:",
+    "",
+    "{",
+    '  "title": "string",',
+    '  "steps": [',
+    '    { "title": "string" }',
+    "  ]",
+    "}",
+    "",
+    "- A lista steps deve ter de 2 a 7 itens."
+  ].join("\n");
+}
+
 function buildEditPrompt({ microsequence, card, dependencyTitles, promptText }) {
   const microsequenceTitle = normalizeText(microsequence?.title) || "Microssequência atual";
   const cardTitle = normalizeText(card?.title) || "Card atual";
@@ -443,6 +503,33 @@ function normalizeRepositionResult(value) {
   return { slotId, renames };
 }
 
+function normalizeLadderResult(value) {
+  const title = normalizeText(value?.title) || "Escada de microssequências";
+  const seen = new Set();
+  const steps = Array.isArray(value?.steps)
+    ? value.steps
+        .map((item) => ({ title: normalizeText(item?.title) }))
+        .filter((item) => {
+          if (!item.title) {
+            return false;
+          }
+          const key = item.title.toLowerCase();
+          if (seen.has(key)) {
+            return false;
+          }
+          seen.add(key);
+          return true;
+        })
+        .slice(0, 7)
+    : [];
+
+  if (steps.length < 2) {
+    fail("O serviço de IA devolveu poucos títulos de microssequências.");
+  }
+
+  return { title, steps };
+}
+
 export async function runGeminiAssist({
   apiKey,
   model,
@@ -497,6 +584,16 @@ export async function runGeminiAssist({
       temperature: 0.2,
       maxOutputTokens: 1024
     });
+  } else if (mode === "plan-microsequence-ladder") {
+    body = makeRequestBody({
+      systemInstruction:
+        "Você planeja escadas de microssequências para o AraLearn. " +
+        "Responda apenas no JSON pedido, sem cards, sem tags e sem explicação.",
+      prompt: buildLadderPrompt({ context: microsequence, promptText: trimmedPrompt }),
+      schema: getLadderSchema(),
+      temperature: 0.15,
+      maxOutputTokens: 1024
+    });
   } else {
     fail("Modo de assistência inválido.");
   }
@@ -504,6 +601,9 @@ export async function runGeminiAssist({
   const parsed = await callGemini({ apiKey: trimmedKey, model: trimmedModel, body });
   if (mode === "edit-card") {
     return normalizeEditResult(parsed);
+  }
+  if (mode === "plan-microsequence-ladder") {
+    return normalizeLadderResult(parsed);
   }
   return normalizeRepositionResult(parsed);
 }

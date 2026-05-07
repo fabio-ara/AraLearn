@@ -37,6 +37,65 @@ test("normaliza revisão no contrato sem type", () => {
   assert.equal(result.code, '{ "ok": true }');
 });
 
+test("gera escada de microssequências com schema simples", async () => {
+  const originalFetch = globalThis.fetch;
+  const calls = [];
+  globalThis.fetch = async (_url, options) => {
+    const body = JSON.parse(options.body);
+    calls.push(body);
+    return {
+      ok: true,
+      async json() {
+        return {
+          candidates: [
+            {
+              content: {
+                parts: [
+                  {
+                    text: JSON.stringify({
+                      title: "Estudo sobre soma de matrizes",
+                      steps: [
+                        { title: "Quando duas matrizes podem ser somadas?" },
+                        { title: "Como somar matrizes entrada por entrada?" },
+                        { title: "Como somar matrizes entrada por entrada?" },
+                        { title: "Erros comuns na soma de matrizes" }
+                      ],
+                      cards: [{ title: "Não deve entrar" }]
+                    })
+                  }
+                ]
+              }
+            }
+          ]
+        };
+      }
+    };
+  };
+
+  try {
+    const result = await runGeminiAssist({
+      apiKey: "chave",
+      mode: "plan-microsequence-ladder",
+      microsequence: {
+        courseTitle: "Álgebra Linear",
+        moduleTitle: "Matrizes",
+        lessonTitle: "Operações com matrizes"
+      },
+      promptText: "Como se faz soma de matrizes?"
+    });
+
+    assert.equal(calls[0].generationConfig.responseMimeType, "application/json");
+    assert.ok(calls[0].generationConfig.responseJsonSchema);
+    assert.deepEqual(result.steps.map((item) => item.title), [
+      "Quando duas matrizes podem ser somadas?",
+      "Como somar matrizes entrada por entrada?",
+      "Erros comuns na soma de matrizes"
+    ]);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("converte rascunho assistido para contrato semântico", () => {
   const result = normalizeAssistDraftResult({
     title: "Comandos básicos de Git",

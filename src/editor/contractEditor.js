@@ -9,6 +9,11 @@ import {
   getContractCardKindLabel,
   sanitizeContractCard
 } from "../contract/contractCard.js";
+import {
+  MICROSEQUENCE_STATUS_DRAFT,
+  MICROSEQUENCE_STATUS_READY,
+  normalizeMicrosequenceStatus
+} from "../model/microsequenceStatus.js";
 
 function clone(value) {
   return structuredClone(value);
@@ -633,10 +638,18 @@ export function createMicrosequence(document, input) {
     fail(`Key de microssequência duplicada: "${key}".`);
   }
 
+  const cardInput = Array.isArray(input.cards) ? input.cards : null;
+  const usedCardKeys = new Set();
+  const cards = cardInput
+    ? cardInput.map((entry, index) => normalizeCardForInsert(entry, usedCardKeys, `Card ${index + 1}`))
+    : input.empty === true || input.status === MICROSEQUENCE_STATUS_DRAFT
+      ? []
+      : [normalizeCardForInsert(createStarterContractCard(), usedCardKeys, "Novo card")];
   const microsequence = {
     key,
     title: buildUniqueMicrosequenceTitle(lesson, title, null),
-    cards: [normalizeCardForInsert(createStarterContractCard(), new Set(), "Novo card")]
+    status: normalizeMicrosequenceStatus(input.status, { cards }),
+    cards
   };
 
   lesson.microsequences.push(microsequence);
@@ -659,6 +672,10 @@ export function updateMicrosequence(document, input) {
     } else {
       delete microsequence.tags;
     }
+  }
+
+  if (input.status !== undefined) {
+    microsequence.status = normalizeMicrosequenceStatus(input.status, microsequence);
   }
 
   return ensureValidDocument(nextDocument);
@@ -758,6 +775,7 @@ export function replaceMicrosequenceCards(document, input) {
 
   const usedKeys = new Set();
   microsequence.cards = cards.map((entry, index) => normalizeCardForInsert(entry, usedKeys, `Card ${index + 1}`));
+  microsequence.status = normalizeMicrosequenceStatus(input.status || MICROSEQUENCE_STATUS_READY, microsequence);
   return ensureValidDocument(nextDocument);
 }
 

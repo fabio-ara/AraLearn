@@ -97,7 +97,10 @@ Campos:
 - `title`: obrigatório
 - `key`: opcional
 - `tags`: opcional, array de strings
+- `status`: opcional, aceita `draft` ou `ready`
 - `cards`: obrigatório, array de cards; pode ser vazio
+
+`draft` indica rascunho dentro da estrutura real do curso. `ready` indica microssequência pronta para execução. Quando o campo não é informado, a aplicação interpreta microssequências com cards como `ready` e microssequências sem cards como `draft`.
 
 ### Card
 
@@ -490,6 +493,7 @@ Regras:
 - use apenas campos documentados;
 - cada curso, módulo, lição e microssequência deve ter title;
 - cada microssequência deve ter cards;
+- use status "draft" para microssequências sem cards e "ready" para microssequências executáveis;
 - cada card deve usar uma intenção semântica clara, como say, ask, code, table, tree ou flow;
 - não inclua campos operacionais derivados;
 - retorne apenas JSON válido.
