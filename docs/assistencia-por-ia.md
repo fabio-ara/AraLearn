@@ -93,7 +93,7 @@ O fluxo atual de geração é:
 7. Se a resposta vier ilegível ou insuficiente, a aplicação faz nova tentativa com prompt de reparo.
 8. Se o serviço rejeitar o schema por complexidade, a aplicação tenta novamente com `responseMimeType: "application/json"` e sem schema.
 9. O AraLearn mescla resposta e plano, normaliza textos, limita excesso, aplica distratores e valida os cards.
-10. A microssequência é criada como rascunho na oficina local.
+10. A microssequência é criada como rascunho na oficina local e aberta no painel de revisão.
 
 Essa organização reduz a dependência de uma única resposta perfeita do modelo.
 

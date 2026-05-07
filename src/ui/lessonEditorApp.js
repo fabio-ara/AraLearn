@@ -764,25 +764,13 @@ export function createLessonEditorApp({ root, storage, editor }) {
   }
 
   function getAssistModeOptions() {
-    const context = getRenderContext();
     const hasSelectedTags = state.assistDraft.dependencyKeys.length > 0;
-    const hasCards = Array.isArray(context.cards) && context.cards.length > 0 && !isDraftPlaceholderMicrosequence(context.microsequence);
 
     if (state.view === "draft-generator") {
-      const options = [
-        { value: ASSIST_USER_MODES.GENERATE, label: "Gerar microssequência" }
-      ];
-
-      if (hasCards) {
-        options.push({ value: ASSIST_USER_MODES.EDIT_MICROSEQUENCE, label: "Editar microssequência" });
-      }
-      if (hasCards && hasSelectedTags) {
-        options.push({ value: ASSIST_USER_MODES.REPOSITION, label: "Reposicionar em um curso" });
-      }
-
+      const options = [{ value: ASSIST_USER_MODES.GENERATE, label: "Gerar microssequência" }];
       return {
         options,
-        locked: options.length === 1
+        locked: true
       };
     }
 
@@ -2055,7 +2043,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
   }
 
   function applyMicrosequenceGeneration({ microsequenceTitle, cards, tags = [] }) {
-    if (state.view === "draft-generator" && isDraftPlaceholderMicrosequence(getRenderContext().microsequence)) {
+    if (state.view === "draft-generator") {
       const draftContext = getDraftLessonContext();
       if (!draftContext.course || !draftContext.moduleValue || !draftContext.lesson) {
         fail("A oficina de microssequências não está disponível.");
@@ -2110,6 +2098,9 @@ export function createLessonEditorApp({ root, storage, editor }) {
       });
       state.assistDraft.dependencyKeys = Array.isArray(tags) ? tags.slice(0, MAX_ASSIST_DEPENDENCIES) : [];
       state.assistDraft.activeWorkbenchPane = "preview";
+      state.assistDraft.selectedMode = ASSIST_USER_MODES.EDIT_MICROSEQUENCE;
+      state.view = "microsequence-assist";
+      state.microsequenceMode = "play";
       createMicrosequenceVersionFromCurrentProject();
       syncAssistDraft();
       return;
@@ -2194,7 +2185,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
       requestedMode === ASSIST_USER_MODES.REPOSITION
         ? "reposition-microsequence"
         : "compose-microsequence";
-    const isBlankDraftGenerator = state.view === "draft-generator" && isDraftPlaceholderMicrosequence(context.microsequence);
+    const isDraftGenerator = state.view === "draft-generator";
 
     state.assistDraft.isSubmitting = true;
     state.assistDraft.errorMessage = "";
@@ -2233,7 +2224,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
           title:
             requestedMode === ASSIST_USER_MODES.EDIT_MICROSEQUENCE
               ? "Microssequência atualizada"
-              : isBlankDraftGenerator
+              : isDraftGenerator
                 ? "Microssequência gerada"
                 : "Microssequência atualizada",
           description:

@@ -349,6 +349,132 @@ function getAssistActionLabel(mode) {
   return "Gerar microssequência";
 }
 
+function renderAssistControlPanel({ editorSupport, promptLabel, sendTitle, className = "" }) {
+  const selectedDependencyTags = (editorSupport.dependencies || [])
+    .filter((item) => editorSupport.selectedDependencyKeys.includes(item.key))
+    .map((item) => {
+      return (
+        '<button class="didactic-tag dependency-tag-chip dependency-chip-button" type="button" data-action="remove-dependency" data-dependency-key="' +
+        escapeHtml(item.key) +
+        '">' +
+        '<span class="didactic-tag-text dependency-chip-label">' +
+        escapeHtml(item.title || item.key) +
+        "</span>" +
+        '<span class="dependency-chip-remove">&times;</span></button>'
+      );
+    })
+    .join("");
+  const availableDependencyOptions = (editorSupport.dependencies || [])
+    .filter((item) => !editorSupport.selectedDependencyKeys.includes(item.key))
+    .map((item) => {
+      return (
+        '<option value="' +
+        escapeHtml(item.key) +
+        '"' +
+        (item.key === editorSupport.pendingDependencyKey ? " selected" : "") +
+        ">" +
+        escapeHtml(item.title || item.key) +
+        "</option>"
+      );
+    })
+    .join("");
+  const dependencyPicker = availableDependencyOptions
+    ? '<div class="assist-tag-picker">' +
+      '<select data-field="assist-dependency-picker" aria-label="Tags" title="Tags">' +
+      availableDependencyOptions +
+      "</select>" +
+      '<button class="icon-ghost tiny-icon" type="button" data-action="add-dependency" title="Adicionar tag" aria-label="Adicionar tag">+</button>' +
+      "</div>"
+    : "";
+  const modelOptions = (editorSupport.modelOptions || [])
+    .map((item) => {
+      return (
+        '<option value="' +
+        escapeHtml(item.value) +
+        '"' +
+        (item.value === editorSupport.selectedModel ? " selected" : "") +
+        ">" +
+        escapeHtml(item.label) +
+        "</option>"
+      );
+    })
+    .join("");
+  const assistModeOptions = (editorSupport.assistModeOptions || [])
+    .map((item) => {
+      return (
+        '<option value="' +
+        escapeHtml(item.value) +
+        '"' +
+        (item.value === editorSupport.selectedAssistMode ? " selected" : "") +
+        ">" +
+        escapeHtml(item.label) +
+        "</option>"
+      );
+    })
+    .join("");
+  const assistWarning = editorSupport.assistError
+    ? '<section class="microsequence-assist-panel assist-status-panel is-warning">' +
+      '<p class="muted assist-last-request">' +
+      escapeHtml(editorSupport.assistError) +
+      "</p></section>"
+    : "";
+  const assistStatus = editorSupport.lastRequest
+    ? '<section class="microsequence-assist-panel assist-status-panel">' +
+      '<p class="tiny muted">' +
+      escapeHtml(editorSupport.lastRequest.title || "Último pedido") +
+      "</p>" +
+      '<p class="muted assist-last-request">' +
+      escapeHtml(editorSupport.lastRequest.description || "") +
+      "</p></section>"
+    : "";
+  const actionLabel = getAssistActionLabel(editorSupport.selectedAssistMode);
+
+  return (
+    '<section class="microsequence-assist-panel microsequence-generator-panel workbench-editor-panel' +
+    (className ? " " + escapeHtml(className) : "") +
+    '">' +
+    '<div class="field compact-field">' +
+    renderWorkbenchIconLabel("tags", "Tags") +
+    dependencyPicker +
+    '<div class="dependency-chip-row">' +
+    selectedDependencyTags +
+    "</div></div>" +
+    '<div class="field compact-field">' +
+    renderWorkbenchIconLabel("intent", "Intenção") +
+    '<select data-field="assist-mode" aria-label="Intenção" title="Intenção"' +
+    (editorSupport.assistModeLocked ? " disabled aria-disabled=\"true\"" : "") +
+    ">" +
+    assistModeOptions +
+    "</select></div>" +
+    '<div class="field compact-field workbench-prompt-field">' +
+    renderWorkbenchIconLabel("prompt", promptLabel) +
+    '<textarea data-field="assist-prompt" class="assist-prompt" aria-label="' +
+    escapeHtml(promptLabel) +
+    '" title="' +
+    escapeHtml(promptLabel) +
+    '">' +
+    escapeHtml(editorSupport.promptText || "") +
+    "</textarea></div>" +
+    '<div class="assist-actions assist-actions-wide">' +
+    '<button class="icon-ghost tiny-icon" type="button" data-action="clear-prompt" title="Limpar prompt" aria-label="Limpar prompt">&#8635;</button>' +
+    '<select data-field="assist-model">' +
+    modelOptions +
+    "</select>" +
+    '<button class="icon-ghost tiny-icon" type="button" data-action="open-assist-config" title="Configurar IA" aria-label="Configurar IA">&#128273;</button>' +
+    '<button class="open-mini" type="button" data-action="apply-assist" title="' +
+    escapeHtml(actionLabel || sendTitle) +
+    '" aria-label="' +
+    escapeHtml(actionLabel || sendTitle) +
+    '"' +
+    (editorSupport.isSubmitting ? " disabled aria-disabled=\"true\"" : "") +
+    ">&#9654;</button>" +
+    "</div>" +
+    assistWarning +
+    assistStatus +
+    "</section>"
+  );
+}
+
 function renderDraftCourseScreen({ course, draftMicrosequences }) {
   const draftCards = (draftMicrosequences || [])
     .map((microsequence) => {
@@ -967,19 +1093,26 @@ function renderMicrosequenceAssistScreen({ lesson, microsequence, cards, selecti
   });
 }
 
-function renderDraftGeneratorScreen({ lesson, microsequence, cards, selection, editorSupport }) {
-  return renderMicrosequenceWorkbenchScreen({
-    title: "Gerar microssequência",
-    backTitle: "Voltar para a fila",
-    sendTitle: "Gerar microssequência",
-    promptLabel: "Pedido",
-    lesson,
-    microsequence,
-    cards,
-    selection,
-    editorSupport,
-    hideCards: editorSupport.currentMicrosequenceIsPlaceholder && !(Array.isArray(cards) && cards.length)
-  });
+function renderDraftGeneratorScreen({ editorSupport }) {
+  return (
+    '<section class="screen">' +
+    renderTopbar({
+      title: "Gerar microssequência",
+      canGoBack: true,
+      backTitle: "Voltar para a fila"
+    }) +
+    '<main class="screen-content microsequence-generator-screen">' +
+    '<section class="microsequence-assist-panel draft-generator-guidance">' +
+    '<p class="card-subtitle">Escreva um pedido de estudo. O AraLearn criará um rascunho na fila de microssequências e abrirá o painel de revisão.</p>' +
+    "</section>" +
+    renderAssistControlPanel({
+      editorSupport,
+      promptLabel: "Pedido",
+      sendTitle: "Gerar microssequência",
+      className: "draft-generator-control-panel"
+    }) +
+    "</main></section>"
+  );
 }
 
 export function renderLessonScreen({ project, view, selection, course, moduleValue, lesson, microsequence, cards, microsequenceMode, editorSupport }) {

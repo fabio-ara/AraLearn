@@ -230,7 +230,7 @@ test("renderiza a aba preview da microssequência dentro da superfície combinad
   assert.doesNotMatch(html, /<label[^>]*>\s*Tags\s*<\/label>/);
 });
 
-test("renderiza cards gerados no placeholder da oficina", () => {
+test("mantém o gerador da oficina sem preview de cards", () => {
   const project = readProject();
   const course = project.courses[0];
   const moduleValue = course.modules[0];
@@ -277,7 +277,14 @@ test("renderiza cards gerados no placeholder da oficina", () => {
     }
   });
 
-  assert.match(html, /editor-card-count-value">1\/7<\/span>/);
+  assert.match(html, /Escreva um pedido de estudo/);
+  assert.match(html, /data-action="apply-assist"/);
+  assert.match(html, /data-field="assist-prompt" class="assist-prompt" aria-label="Pedido" title="Pedido"/);
+  assert.doesNotMatch(html, /editor-card-count-value">1\/7<\/span>/);
+  assert.doesNotMatch(html, /runtime-card-title/);
+  assert.doesNotMatch(html, /workbench-surface/);
+  assert.doesNotMatch(html, /data-field="assist-microsequence-title"/);
+  assert.doesNotMatch(html, /data-action="select-workbench-pane"/);
   assert.doesNotMatch(html, /Os cards aparecerão aqui após o envio do prompt/);
 });
 
@@ -330,6 +337,9 @@ test("renderiza status da oficina em painel rolável", () => {
 
   assert.match(html, /class="microsequence-assist-panel assist-status-panel"/);
   assert.match(html, /4 cards aplicados em Git básico/);
+  assert.doesNotMatch(html, /runtime-card-title/);
+  assert.doesNotMatch(html, /workbench-surface/);
+  assert.doesNotMatch(html, /data-field="assist-microsequence-title"/);
 });
 
 test("renderiza a execução do card com nome do curso e faixa estável de tags", () => {
