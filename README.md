@@ -4,7 +4,7 @@ AraLearn é uma aplicação open source para converter conteúdos, dúvidas e in
 
 O projeto parte de um problema contemporâneo: a informação se tornou abundante, especialmente com o uso de inteligência artificial generativa, mas essa abundância não garante aprendizagem. Explicações, resumos e exemplos podem estar disponíveis em grande quantidade e, ainda assim, o estudante pode continuar sem saber por onde começar, o que praticar, como revisar ou como retomar um percurso interrompido.
 
-O AraLearn procura reduzir essa distância entre acesso à informação e aprendizagem efetiva. Para isso, organiza conteúdos em unidades menores, navegáveis, praticáveis e revisáveis, combinando leitura guiada, cards, exercícios, persistência local e integração com modelos de linguagem acessados por API para geração e reorganização de material didático.
+O AraLearn procura reduzir essa distância entre acesso à informação e aprendizagem efetiva. Para isso, organiza conteúdos em unidades menores, navegáveis, praticáveis e revisáveis, combinando leitura guiada, cards, exercícios, persistência local e integração com serviços de inteligência artificial generativa, acessados por API, para geração e reorganização de material didático.
 
 A aplicação pode ser usada em duas formas principais:
 
@@ -29,7 +29,7 @@ No estado atual, o AraLearn reúne em uma única aplicação:
 - edição local de microssequências e cards;
 - importação e exportação de projetos estruturais;
 - backup completo do estado da aplicação;
-- integração com modelos de linguagem por API para geração, revisão e reorganização de conteúdo;
+- integração com serviços de inteligência artificial generativa, por API, para geração, revisão e reorganização de conteúdo;
 - funcionamento com persistência local, inclusive em cenários sem conexão contínua.
 
 A aplicação aproxima três atividades que normalmente aparecem separadas:
@@ -74,9 +74,9 @@ Essa abordagem permite representar diferentes formas de conhecimento sem abandon
 
 ## Papel da inteligência artificial
 
-No AraLearn, modelos de linguagem acessados por API são usados como apoio à transformação didática do conteúdo. Esses modelos podem auxiliar na geração de cards, na reorganização de microssequências e na adaptação de materiais amplos ou irregulares para uma forma estudável.
+No AraLearn, serviços de inteligência artificial generativa acessados por API são usados como apoio à transformação didática do conteúdo. Modelos de linguagem podem auxiliar na geração de cards, na reorganização de microssequências e na adaptação de materiais amplos ou irregulares para uma forma estudável.
 
-No produto, a API é a interface de integração; o modelo de linguagem é o serviço utilizado por essa interface. O modelo não é tratado como autoridade final sobre o conteúdo. Seu papel é operacional: ajudar a converter textos, dúvidas ou demandas de estudo em estruturas que possam ser lidas, praticadas, revisadas e auditadas pelo usuário.
+Esses modelos não são tratados como autoridade final sobre o conteúdo. Seu papel é operacional: ajudar a converter textos, dúvidas ou demandas de estudo em estruturas que possam ser lidas, praticadas, revisadas e auditadas pelo usuário.
 
 O foco do produto está menos em solicitar uma resposta isolada e mais em construir material que possa integrar um percurso de aprendizagem.
 
@@ -142,7 +142,7 @@ npm run validate:example
 
 ## Status do projeto
 
-O AraLearn está em desenvolvimento ativo. A versão atual já consolida uma base funcional para estudo, autoria local, persistência, importação, exportação, validação automatizada e integração com modelos de linguagem por API.
+O AraLearn está em desenvolvimento ativo. A versão atual já consolida uma base funcional para estudo, autoria local, persistência, importação, exportação, validação automatizada e integração com serviços de inteligência artificial generativa por API.
 
 As próximas iterações devem aprofundar:
 
