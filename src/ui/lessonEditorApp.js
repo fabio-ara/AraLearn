@@ -218,7 +218,62 @@ function buildCardUpdateFromText(card, title, text) {
   };
 }
 
-function ensureDraftCourse(document) {
+function createRecoveredDraftMicrosequenceKey(microsequences, title) {
+  const usedKeys = new Set((microsequences || []).map((item) => item?.key).filter(Boolean));
+  const base = `microsequence-${slugifyDownloadName(title, "microssequencia-recuperada")}`;
+  let candidate = base;
+  let counter = 2;
+
+  while (usedKeys.has(candidate)) {
+    candidate = `${base}-${counter}`;
+    counter += 1;
+  }
+
+  return candidate;
+}
+
+function draftLessonHasPlaceholderCards(draftLesson) {
+  const microsequences = Array.isArray(draftLesson?.microsequences) ? draftLesson.microsequences : [];
+  const placeholder = microsequences.find((item) => isDraftPlaceholderMicrosequence(item));
+  return Array.isArray(placeholder?.cards) && placeholder.cards.length > 0;
+}
+
+function migrateDraftPlaceholderCards(draftLesson) {
+  const microsequences = Array.isArray(draftLesson?.microsequences) ? draftLesson.microsequences : [];
+  const placeholderIndex = microsequences.findIndex((item) => isDraftPlaceholderMicrosequence(item));
+  const placeholder = placeholderIndex >= 0 ? microsequences[placeholderIndex] : null;
+  const placeholderCards = Array.isArray(placeholder?.cards) ? placeholder.cards : [];
+
+  if (!placeholder || !placeholderCards.length) {
+    return false;
+  }
+
+  const title = String(placeholder.title || "").trim() && placeholder.title !== "Gerador"
+    ? placeholder.title
+    : "Microssequência recuperada";
+  const recoveredMicrosequence = {
+    key: createRecoveredDraftMicrosequenceKey(microsequences, title),
+    title,
+    ...(Array.isArray(placeholder.tags) && placeholder.tags.length ? { tags: placeholder.tags } : {}),
+    cards: placeholderCards
+  };
+  const cleanPlaceholder = {
+    key: DRAFT_PLACEHOLDER_MICROSEQUENCE_KEY,
+    title: "Gerador",
+    cards: []
+  };
+
+  draftLesson.microsequences = [
+    ...microsequences.slice(0, placeholderIndex),
+    cleanPlaceholder,
+    ...microsequences.slice(placeholderIndex + 1),
+    recoveredMicrosequence
+  ];
+
+  return true;
+}
+
+export function ensureDraftCourse(document) {
   if (!document || typeof document !== "object") {
     return document;
   }
@@ -230,7 +285,15 @@ function ensureDraftCourse(document) {
   const hasWorkspace = draftCourse && draftModule && draftLesson;
 
   if (hasWorkspace) {
-    return document;
+    if (!draftLessonHasPlaceholderCards(draftLesson)) {
+      return document;
+    }
+    const nextDocument = structuredClone(document);
+    const nextDraftCourse = nextDocument.courses.find((course) => course?.key === DRAFT_COURSE_KEY);
+    const nextDraftModule = nextDraftCourse?.modules?.find((moduleValue) => moduleValue?.key === DRAFT_MODULE_KEY);
+    const nextDraftLesson = nextDraftModule?.lessons?.find((lesson) => lesson?.key === DRAFT_LESSON_KEY);
+    migrateDraftPlaceholderCards(nextDraftLesson);
+    return nextDocument;
   }
 
   const nextDocument = structuredClone(document);
@@ -275,6 +338,7 @@ function ensureDraftCourse(document) {
       }
     ];
   }
+  migrateDraftPlaceholderCards(nextDraftLesson);
 
   return nextDocument;
 }

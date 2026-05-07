@@ -57,3 +57,43 @@ test("renderiza ações separadas para home e curso na primeira tela", () => {
   assert.doesNotMatch(html, />Progresso:/);
   assert.doesNotMatch(html, /data-action="edit-course" data-course-key="course-teste" title="Ações do curso"/);
 });
+
+test("ignora cards do placeholder da oficina na contagem inicial", () => {
+  const html = renderHomeScreen({
+    project: {
+      contract: "aralearn.contract",
+      version: 1,
+      kind: "project",
+      courses: [
+        {
+          key: "__draft-course__",
+          title: "Oficina de microssequências",
+          modules: [
+            {
+              key: "__draft-module__",
+              title: "Rascunhos",
+              lessons: [
+                {
+                  key: "__draft-lesson__",
+                  title: "Fila",
+                  microsequences: [
+                    {
+                      key: "__draft-placeholder__",
+                      title: "Gerador",
+                      cards: [{ key: "card-preso", title: "Preso", say: "Conteúdo" }]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    progress: { version: 1, lessons: {} },
+    selection: { courseKey: "__draft-course__" },
+    featuredCourseKey: "__draft-course__"
+  });
+
+  assert.match(html, /progress-meta-item-value">0\/0<\/span>/);
+});

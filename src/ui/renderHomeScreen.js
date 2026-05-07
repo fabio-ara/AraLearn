@@ -1,6 +1,8 @@
 import { readLessonProgressEntry } from "../storage/progressStore.js";
 import { renderUiIcon } from "./renderUiIcons.js";
 
+const DRAFT_PLACEHOLDER_MICROSEQUENCE_KEY = "__draft-placeholder__";
+
 function escapeHtml(value) {
   return String(value)
     .replace(/&/g, "&amp;")
@@ -15,7 +17,12 @@ function countLessons(course) {
 }
 
 function countCardsInLesson(lesson) {
-  return (lesson.microsequences || []).reduce((total, microsequence) => total + (microsequence.cards || []).length, 0);
+  return (lesson.microsequences || []).reduce((total, microsequence) => {
+    if (microsequence?.key === DRAFT_PLACEHOLDER_MICROSEQUENCE_KEY) {
+      return total;
+    }
+    return total + (microsequence.cards || []).length;
+  }, 0);
 }
 
 function countCardsInCourse(course) {
