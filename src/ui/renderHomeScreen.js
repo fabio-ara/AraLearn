@@ -140,7 +140,7 @@ function renderCoursesTopbar() {
     '<div class="topbar-space"></div>' +
     '<h1 class="topbar-title">' +
     '<span class="brand-title">' +
-    '<img class="brand-mark" src="/public/assets/brand/aralearn-mark.png" alt="" aria-hidden="true">' +
+    '<img class="brand-mark" src="assets/brand/aralearn-mark.png" alt="" aria-hidden="true">' +
     '<span class="brand-text">AraLearn</span>' +
     "</span>" +
     "</h1>" +
