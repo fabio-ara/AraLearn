@@ -450,7 +450,6 @@ button {
   width: 18px;
   height: 18px;
   display: block;
-  transform: translateY(1px);
 }
 
 .microsequence-state-icon.is-draft,
