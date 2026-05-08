@@ -248,13 +248,20 @@ function renderInlineFieldIcon(iconName, label) {
   );
 }
 
+function summarizeIconTitle(label) {
+  const text = String(label || "").trim();
+  const match = text.match(/^[^:]+:\s*(.+)$/);
+  return match ? match[1].trim() : text;
+}
+
 function renderPromptContainerButton(selectedLabel = "Automático") {
-  const title = `Escolher tipo de card. Atual: ${selectedLabel}`;
+  const title = summarizeIconTitle(selectedLabel);
+  const ariaLabel = `Escolher tipo de card`;
   return (
     '<button class="icon-ghost workbench-stack-button assist-container-button" type="button" data-action="open-assist-container-picker" title="' +
     escapeHtml(title) +
     '" aria-label="' +
-    escapeHtml(title) +
+    escapeHtml(ariaLabel) +
     '">' +
     renderUiIcon("card", "assist-container-button-icon") +
     "</button>"
@@ -307,7 +314,7 @@ function renderMetaMetric(iconName, value, label) {
     '<span class="progress-meta-item" aria-label="' +
     escapeHtml(label) +
     '" title="' +
-    escapeHtml(label) +
+    escapeHtml(summarizeIconTitle(label)) +
     '">' +
     renderUiIcon(iconName, "progress-meta-item-icon") +
     '<span class="progress-meta-item-value">' +
@@ -325,7 +332,7 @@ function renderContextMetric(iconName, value, label) {
     '<span class="context-chip-metric" aria-label="' +
     escapeHtml(label) +
     '" title="' +
-    escapeHtml(label) +
+    escapeHtml(summarizeIconTitle(label)) +
     '">' +
     renderUiIcon(iconName, "context-chip-icon") +
     '<span class="context-chip-value">' +

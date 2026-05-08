@@ -72,12 +72,18 @@ function formatCount(count, singular, plural) {
   return `${count} ${count === 1 ? singular : plural}`;
 }
 
+function summarizeIconTitle(label) {
+  const text = String(label || "").trim();
+  const match = text.match(/^[^:]+:\s*(.+)$/);
+  return match ? match[1].trim() : text;
+}
+
 function renderMetaMetric(iconName, value, label) {
   return (
     '<span class="progress-meta-item" aria-label="' +
     escapeHtml(label) +
     '" title="' +
-    escapeHtml(label) +
+    escapeHtml(summarizeIconTitle(label)) +
     '">' +
     renderUiIcon(iconName, "progress-meta-item-icon") +
     '<span class="progress-meta-item-value">' +
