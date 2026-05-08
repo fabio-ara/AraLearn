@@ -1685,36 +1685,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
     render({ preserveState: false });
   }
 
-  function persistMicrosequenceTags(tags = state.assistDraft.dependencyKeys) {
-    const microsequenceKey = state.selection.microsequenceKey;
-    if (!microsequenceKey) return;
-
-    try {
-      const currentMicrosequence = findMicrosequence(
-        state.project,
-        state.selection.courseKey,
-        state.selection.moduleKey,
-        state.selection.lessonKey,
-        microsequenceKey
-      );
-      const nextProject = editor.updateMicrosequence({
-        courseKey: state.selection.courseKey,
-        moduleKey: state.selection.moduleKey,
-        lessonKey: state.selection.lessonKey,
-        microsequenceKey,
-        title: currentMicrosequence?.title || "",
-        tags: Array.isArray(tags) ? tags.slice(0, MAX_ASSIST_DEPENDENCIES) : []
-      });
-
-      setProject(nextProject);
-      if (state.view === "microsequence-assist") {
-        syncActiveMicrosequenceVersionFromProject();
-      }
-    } catch {
-      // Mantém o painel utilizável mesmo se a persistência de tags falhar em um estado transitório.
-    }
-  }
-
   function openCardByIndex(targetIndex) {
     const lesson = findLesson(
       state.project,
@@ -2290,14 +2260,21 @@ export function createLessonEditorApp({ root, storage, editor }) {
     }
   }
 
-  function applyMicrosequenceGeneration({ microsequenceTitle, cards, tags = [] }) {
+  function applyMicrosequenceGeneration({ microsequenceTitle, cards }) {
+    const currentMicrosequence = findMicrosequence(
+      state.project,
+      state.selection.courseKey,
+      state.selection.moduleKey,
+      state.selection.lessonKey,
+      state.selection.microsequenceKey
+    );
     const nextProject = editor.replaceMicrosequenceCards({
       courseKey: state.selection.courseKey,
       moduleKey: state.selection.moduleKey,
       lessonKey: state.selection.lessonKey,
       microsequenceKey: state.selection.microsequenceKey,
       title: microsequenceTitle,
-      tags,
+      tags: structuredClone(currentMicrosequence?.tags || []),
       cards
     });
 
@@ -2312,7 +2289,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
     const firstCard = microsequence?.cards?.[0] || null;
     state.selection.cardIndex = 0;
     state.selection.cardKey = firstCard ? firstCard.key : null;
-    state.assistDraft.dependencyKeys = Array.isArray(tags) ? tags.slice(0, MAX_ASSIST_DEPENDENCIES) : [];
     state.assistDraft.activeWorkbenchPane = "preview";
     createMicrosequenceVersionFromCurrentProject();
     syncAssistDraft();
@@ -2446,6 +2422,13 @@ export function createLessonEditorApp({ root, storage, editor }) {
     const dependencyTitles = assistCatalog
       .filter((item) => state.assistDraft.dependencyKeys.includes(item.key))
       .map((item) => item.title || item.key);
+    const selectedLessonTopicRefs = assistCatalog
+      .filter((item) => state.assistDraft.dependencyKeys.includes(item.key))
+      .map((item) => ({
+        refKey: item.key,
+        label: item.title || item.key,
+        source: item.scope === "Tag" ? "topic" : "microsequence"
+      }));
     const destinationSlots = collectRepositionSlots();
     const requestedMode = state.assistDraft.selectedMode;
     const mode =
@@ -2474,6 +2457,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
         }),
         card: context.card,
         dependencyTitles,
+        selectedLessonTopicRefs,
         destinationSlots,
         promptText: state.assistDraft.promptText,
         preferredContainer: state.assistDraft.preferredContainer,
@@ -2481,12 +2465,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
       });
 
       if (mode === "compose-microsequence") {
-        const resultTags = Array.isArray(result.tags) ? result.tags : [];
-        const generatedTags = Array.from(new Set([...dependencyTitles, ...resultTags])).slice(0, MAX_ASSIST_DEPENDENCIES);
-        applyMicrosequenceGeneration({
-          ...result,
-          tags: generatedTags
-        });
+        applyMicrosequenceGeneration(result);
         state.assistDraft.lastRequest = {
           title: hadCardsBefore ? "Cards atualizados" : "Cards gerados",
           description:
@@ -5679,7 +5658,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
         const key = node.getAttribute("data-dependency-key");
         if (!key) return;
         state.assistDraft.dependencyKeys = state.assistDraft.dependencyKeys.filter((item) => item !== key);
-        persistMicrosequenceTags(state.assistDraft.dependencyKeys);
         syncAssistDraft();
         render({ preserveState: true });
       });
@@ -5699,7 +5677,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
       if (current.size >= MAX_ASSIST_DEPENDENCIES || current.has(key)) return;
       current.add(key);
       state.assistDraft.dependencyKeys = Array.from(current).slice(0, MAX_ASSIST_DEPENDENCIES);
-      persistMicrosequenceTags(state.assistDraft.dependencyKeys);
       syncAssistDraft();
       render({ preserveState: true });
     });

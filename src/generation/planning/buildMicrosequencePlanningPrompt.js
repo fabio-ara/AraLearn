@@ -8,6 +8,7 @@ export function buildMicrosequencePlanningPrompt(contract, modelCapabilities = c
     "Cada item de cardPlan deve conter position, role, resourceType e sourceRefs.",
     "Preserve userFixedTypeId quando ele existir.",
     "Preserve todos os recursos extras escolhidos pelo usuário.",
+    "selectedLessonTopicRefs são assuntos selecionados no escopo da lição, normalmente derivados de títulos/tags de microssequências existentes; use como contexto auxiliar de escopo e terminologia, sem criar tags persistentes.",
     "Use apenas ids presentes no contrato.",
     "Contrato:",
     body

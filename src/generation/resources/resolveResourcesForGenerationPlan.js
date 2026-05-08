@@ -1,5 +1,5 @@
 import { getMicrosequenceType } from "../types/microsequenceTypes.js";
-import { getResourceSchemas, listCardResourceDefinitions } from "./cardResourceDefinitions.js";
+import { getResourceSchemas, listGenerationResourceDefinitions } from "./cardResourceDefinitions.js";
 
 function uniqueKnown(items = [], knownIds = new Set()) {
   const seen = new Set();
@@ -14,7 +14,7 @@ export function resolveResourcesForGenerationPlan({
   resolvedMicrosequenceTypeId,
   userSelectedExtraResourceTypes = [],
   planSelectedExtraResourceTypes = [],
-  resourceCatalog = listCardResourceDefinitions()
+  resourceCatalog = listGenerationResourceDefinitions()
 }) {
   const knownIds = new Set(resourceCatalog.map((item) => item.id));
   const type = getMicrosequenceType(resolvedMicrosequenceTypeId) || getMicrosequenceType("simple");
@@ -35,7 +35,7 @@ export function resolveResourcesForGenerationPlan({
   };
 }
 
-export function buildResourceSelectorState({ resolvedMicrosequenceTypeId, userSelectedExtraResourceTypes = [], resourceCatalog = listCardResourceDefinitions() }) {
+export function buildResourceSelectorState({ resolvedMicrosequenceTypeId, userSelectedExtraResourceTypes = [], resourceCatalog = listGenerationResourceDefinitions() }) {
   const type = getMicrosequenceType(resolvedMicrosequenceTypeId) || getMicrosequenceType("assisted");
   const base = new Set(type?.id === "assisted" ? [] : type?.baseResourceTypes || []);
   const extras = new Set(userSelectedExtraResourceTypes);

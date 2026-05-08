@@ -114,6 +114,8 @@ export const CARD_RESOURCE_DEFINITIONS = Object.freeze([
     id: "block_gap_fill",
     label: "Lacunas com blocos",
     shortDescription: "Preenchimento de lacunas com blocos selecionáveis e feedback.",
+    publicResourceType: "say",
+    publicMapping: "paragraph_text_gap_options",
     limits: { maxBlanks: 4, maxBlocks: 8, maxLabelChars: 48 },
     schema: {
       type: "object",
@@ -136,12 +138,16 @@ export function listCardResourceDefinitions() {
   return CARD_RESOURCE_DEFINITIONS.map(clone);
 }
 
+export function listGenerationResourceDefinitions() {
+  return listCardResourceDefinitions().filter((item) => item.generationAvailable !== false);
+}
+
 export function getCardResourceDefinition(resourceId) {
   return listCardResourceDefinitions().find((item) => item.id === resourceId) || null;
 }
 
 export function listCardResourceSummaries() {
-  return listCardResourceDefinitions().map(({ id, label, shortDescription }) => ({ id, label, shortDescription }));
+  return listGenerationResourceDefinitions().map(({ id, label, shortDescription }) => ({ id, label, shortDescription }));
 }
 
 export function getResourceSchemas(resourceIds = []) {

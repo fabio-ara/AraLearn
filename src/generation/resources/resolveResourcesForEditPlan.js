@@ -1,5 +1,5 @@
 import { getContractCardKind } from "../../contract/contractCard.js";
-import { getResourceSchemas, listCardResourceDefinitions } from "./cardResourceDefinitions.js";
+import { getResourceSchemas, listGenerationResourceDefinitions } from "./cardResourceDefinitions.js";
 
 const CONTRACT_TO_RESOURCE = {
   say: "paragraph",
@@ -22,7 +22,7 @@ function uniqueKnown(items = [], knownIds = new Set()) {
 export function inferResourceTypesFromCards(cards = []) {
   return uniqueKnown(
     (cards || []).map((card) => CONTRACT_TO_RESOURCE[getContractCardKind(card)] || "paragraph"),
-    new Set(listCardResourceDefinitions().map((item) => item.id))
+    new Set(listGenerationResourceDefinitions().map((item) => item.id))
   );
 }
 
@@ -30,7 +30,7 @@ export function resolveResourcesForEditPlan({
   currentCards = [],
   userSelectedExtraResourceTypes = [],
   validatedEditPlan = {},
-  resourceCatalog = listCardResourceDefinitions()
+  resourceCatalog = listGenerationResourceDefinitions()
 }) {
   const knownIds = new Set(resourceCatalog.map((item) => item.id));
   const currentResourceTypes = uniqueKnown(inferResourceTypesFromCards(currentCards), knownIds);

@@ -7,6 +7,7 @@ export function buildMicrosequenceGenerationPrompt(contract, modelCapabilities =
     "A quantidade de cards deve ser exatamente output.expectedCardCount.",
     "Cada card deve ter position, resourceType e os campos do schema do recurso.",
     "Use apenas resourceType presente em resources.allowedResourceTypes.",
+    "Use selectedLessonTopicRefs como assuntos selecionados no escopo da lição para orientar escopo e terminologia; não transforme essas referências em tags persistentes da microssequência.",
     "Use uma ideia principal por card, textos curtos e progressão interna.",
     "Campos fora dos schemas são inválidos.",
     "Contrato:",

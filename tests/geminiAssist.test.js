@@ -370,6 +370,8 @@ test("gera microssequência com plano local e chamada estruturada ao Gemini", as
         tags: [],
         cards: []
       },
+      dependencyTitles: ["Git"],
+      selectedLessonTopicRefs: [{ refKey: "micro-git", label: "Git", source: "microsequence" }],
       promptText: "explique git add e git push"
     });
 
@@ -382,6 +384,7 @@ test("gera microssequência com plano local e chamada estruturada ao Gemini", as
     assert.match(calls[0].body.contents[0].parts[0].text, /"course":\{"title":"Programação"/);
     assert.match(calls[0].body.contents[0].parts[0].text, /"module":\{"title":"Git e colaboração"/);
     assert.match(calls[0].body.contents[0].parts[0].text, /"lesson":\{"title":"Primeiros comandos"/);
+    assert.match(calls[0].body.contents[0].parts[0].text, /"selectedLessonTopicRefs":\[\{"refKey":"micro-git","label":"Git","source":"microsequence"\}\]/);
     assert.doesNotMatch(calls[0].body.contents[0].parts[0].text, /Análise e Desenvolvimento de Sistemas/);
     assert.match(calls[1].body.contents[0].parts[0].text, /code_editor/);
     assert.equal(result.cards.length, 5);
@@ -390,6 +393,7 @@ test("gera microssequência com plano local e chamada estruturada ao Gemini", as
     assert.equal(result.cards[2].title, "git push");
     assert.equal(result.cards[2].code, "git push -u origin main");
     assert.equal(result.cards[4].answer, "git push");
+    assert.deepEqual(result.tags, []);
   } finally {
     globalThis.fetch = originalFetch;
   }
