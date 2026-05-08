@@ -5564,6 +5564,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
     if (assistPrompt) {
       assistPrompt.addEventListener("input", () => {
         state.assistDraft.promptText = assistPrompt.value;
+        render({ preserveState: true });
       });
     }
     root.querySelectorAll("[data-action='remove-dependency']").forEach((node) => {
