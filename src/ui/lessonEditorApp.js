@@ -5589,7 +5589,15 @@ export function createLessonEditorApp({ root, storage, editor }) {
       render({ preserveState: true });
     });
     root.querySelector("[data-action='clear-prompt']")?.addEventListener("click", () => {
-      state.assistDraft.promptText = "";
+      if (root.querySelector("[data-field='generate-prompt']")) {
+        state.generationDraft.promptText = "";
+        state.generationDraft.errorMessage = "";
+        state.generationDraft.lastResult = null;
+        state.pendingGeneratedNavigation = null;
+      }
+      if (root.querySelector("[data-field='assist-prompt']")) {
+        state.assistDraft.promptText = "";
+      }
       render({ preserveState: true });
     });
     root.querySelector("[data-action='open-assist-config']")?.addEventListener("click", () => openAssistConfig());
