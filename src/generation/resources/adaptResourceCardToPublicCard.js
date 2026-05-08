@@ -66,7 +66,50 @@ function adaptBlockGapFill(card) {
   return {
     title: text(card.title) || "Lacunas",
     say: [text(card.prompt), say].filter(Boolean).join(" "),
-    ...(text(card.feedbackPopup?.correctMessage) ? { after: text(card.feedbackPopup.correctMessage) } : {})
+    ...(text(card.feedbackAfter || card.after) ? { after: text(card.feedbackAfter || card.after) } : {})
+  };
+}
+
+function normalizeTreeNodeType(value) {
+  return value === "file" ? "file" : "folder";
+}
+
+function adaptTree(card) {
+  const nodes = Array.isArray(card.nodes) ? card.nodes : [];
+  const byParent = new Map();
+  nodes.forEach((node) => {
+    const parentId = text(node?.parentId);
+    const list = byParent.get(parentId) || [];
+    list.push(node);
+    byParent.set(parentId, list);
+  });
+
+  function buildItems(parentId = "") {
+    return Object.fromEntries(
+      (byParent.get(parentId) || []).map((node, index) => {
+        const label = text(node?.label) || `item-${index + 1}`;
+        if (normalizeTreeNodeType(node?.type) === "file") {
+          return [label, null];
+        }
+        return [label, buildItems(text(node?.id))];
+      })
+    );
+  }
+
+  const rootItems = buildItems("");
+  const rootLabel = text(card.rootLabel);
+  const items = rootLabel ? { [rootLabel]: rootItems } : rootItems;
+
+  return {
+    title: text(card.title) || "Árvore",
+    ...(text(card.prompt) ? { say: text(card.prompt) } : {}),
+    tree: {
+      ...(text(card.base) ? { base: text(card.base) } : {}),
+      ...(text(card.current) ? { current: text(card.current) } : {}),
+      ...(text(card.selected) ? { selected: text(card.selected) } : {}),
+      ...(Array.isArray(card.closed) ? { closed: card.closed.map(text).filter(Boolean) } : {}),
+      items
+    }
   };
 }
 
@@ -103,6 +146,9 @@ export function adaptResourceCardToPublicCard(card) {
   }
   if (resourceType === "block_gap_fill") {
     return sanitizeContractCard(adaptBlockGapFill(card));
+  }
+  if (resourceType === "tree") {
+    return sanitizeContractCard(adaptTree(card));
   }
 
   throw new Error(`Recurso interno sem adaptador público: ${resourceType || "desconhecido"}.`);

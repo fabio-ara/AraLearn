@@ -42,6 +42,7 @@ import { computeFlowchartAutoFitScale } from "../flowchart/flowchartViewport.js"
 import {
   buildCardPathKey,
   collectAssistDependencies,
+  collectLessonTopicRefs,
   collectLessonCards,
   findCard,
   findCourse,
@@ -2422,13 +2423,9 @@ export function createLessonEditorApp({ root, storage, editor }) {
     const dependencyTitles = assistCatalog
       .filter((item) => state.assistDraft.dependencyKeys.includes(item.key))
       .map((item) => item.title || item.key);
-    const selectedLessonTopicRefs = assistCatalog
-      .filter((item) => state.assistDraft.dependencyKeys.includes(item.key))
-      .map((item) => ({
-        refKey: item.key,
-        label: item.title || item.key,
-        source: item.scope === "Tag" ? "topic" : "microsequence"
-      }));
+    const selectedDependencyKeys = new Set(state.assistDraft.dependencyKeys);
+    const selectedLessonTopicRefs = collectLessonTopicRefs(context.lesson, context.microsequence)
+      .filter((item) => selectedDependencyKeys.has(item.refKey) || selectedDependencyKeys.has(item.label));
     const destinationSlots = collectRepositionSlots();
     const requestedMode = state.assistDraft.selectedMode;
     const mode =

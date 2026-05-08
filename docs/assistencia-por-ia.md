@@ -135,9 +135,10 @@ O catálogo interno de recursos inclui:
 - `code_editor`;
 - `table`;
 - `flowchart`;
+- `tree`;
 - `block_gap_fill`.
 
-Cada recurso possui descrição, limites e schema próprio. O recurso `block_gap_fill` é um alias interno para o recurso público já existente de parágrafo com lacunas por opções, persistido como `say` com sintaxe `[[resposta::opção|opção]]`. Ele não cria tipo público novo.
+Cada recurso possui descrição, limites e schema próprio. O recurso `block_gap_fill` é um alias interno para o recurso público já existente de parágrafo com lacunas por opções, persistido como `say` com sintaxe `[[resposta::opção|opção]]`. Ele não cria tipo público novo. Seu comentário posterior usa `feedbackAfter`, preservado como `after` no card público; não há popup público específico por acerto ou erro nesse alias.
 
 Mapeamento principal:
 
@@ -147,6 +148,7 @@ multiple_choice -> ask
 code_editor     -> code
 table           -> table
 flowchart       -> flow
+tree            -> tree
 block_gap_fill  -> say com lacunas por opções
 ```
 

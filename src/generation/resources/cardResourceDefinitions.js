@@ -113,13 +113,13 @@ export const CARD_RESOURCE_DEFINITIONS = Object.freeze([
   Object.freeze({
     id: "block_gap_fill",
     label: "Lacunas com blocos",
-    shortDescription: "Preenchimento de lacunas com blocos selecionáveis e feedback.",
+    shortDescription: "Parágrafo com lacunas por opções e comentário posterior.",
     publicResourceType: "say",
     publicMapping: "paragraph_text_gap_options",
     limits: { maxBlanks: 4, maxBlocks: 8, maxLabelChars: 48 },
     schema: {
       type: "object",
-      required: ["resourceType", "title", "prompt", "segments", "blocks", "feedbackPopup"],
+      required: ["resourceType", "title", "prompt", "segments", "blocks", "feedbackAfter"],
       properties: {
         position: { type: "number" },
         resourceType: { const: "block_gap_fill" },
@@ -127,7 +127,46 @@ export const CARD_RESOURCE_DEFINITIONS = Object.freeze([
         prompt: { type: "string" },
         segments: { type: "array", minItems: 1, items: { type: "object" } },
         blocks: { type: "array", minItems: 1, items: { type: "object" } },
-        feedbackPopup: { type: "object" }
+        feedbackAfter: { type: "string" }
+      },
+      additionalProperties: false
+    }
+  }),
+  Object.freeze({
+    id: "tree",
+    label: "Árvore de diretórios",
+    shortDescription: "Estrutura hierárquica simples de pastas e arquivos.",
+    publicResourceType: "tree",
+    limits: { maxNodes: 20, maxLabelChars: 48 },
+    schema: {
+      type: "object",
+      required: ["resourceType", "title", "nodes"],
+      properties: {
+        position: { type: "number" },
+        resourceType: { const: "tree" },
+        title: { type: "string" },
+        prompt: { type: "string" },
+        base: { type: "string" },
+        current: { type: "string" },
+        selected: { type: "string" },
+        closed: { type: "array", items: { type: "string" } },
+        rootLabel: { type: "string" },
+        nodes: {
+          type: "array",
+          minItems: 1,
+          maxItems: 20,
+          items: {
+            type: "object",
+            required: ["id", "label"],
+            properties: {
+              id: { type: "string" },
+              label: { type: "string" },
+              parentId: { type: ["string", "null"] },
+              type: { enum: ["folder", "file"] }
+            },
+            additionalProperties: false
+          }
+        }
       },
       additionalProperties: false
     }
@@ -164,13 +203,8 @@ export function validateBlockGapFill(card) {
   if (!card || typeof card !== "object") {
     return ["block_gap_fill inválido."];
   }
-  if (!card.feedbackPopup || typeof card.feedbackPopup !== "object") {
-    errors.push("feedbackPopup é obrigatório.");
-  }
-  for (const field of ["correctTitle", "correctMessage", "incorrectTitle", "incorrectMessage"]) {
-    if (typeof card.feedbackPopup?.[field] !== "string" || !card.feedbackPopup[field].trim()) {
-      errors.push(`feedbackPopup.${field} é obrigatório.`);
-    }
+  if (typeof card.feedbackAfter !== "string" || !card.feedbackAfter.trim()) {
+    errors.push("feedbackAfter é obrigatório.");
   }
 
   const blocks = Array.isArray(card.blocks) ? card.blocks : [];
@@ -204,5 +238,44 @@ export function validateBlockGapFill(card) {
   if (blankIds.size === 0 || blankIds.size > 4) {
     errors.push("O número de lacunas deve ser pequeno e maior que zero.");
   }
+  return errors;
+}
+
+export function validateTreeResource(card) {
+  const errors = [];
+  if (!card || typeof card !== "object") {
+    return ["tree inválido."];
+  }
+  const nodes = Array.isArray(card.nodes) ? card.nodes : [];
+  if (!nodes.length || nodes.length > 20) {
+    errors.push("tree deve ter entre 1 e 20 nós.");
+  }
+
+  const ids = new Set();
+  nodes.forEach((node) => {
+    const id = typeof node?.id === "string" ? node.id.trim() : "";
+    const label = typeof node?.label === "string" ? node.label.trim() : "";
+    if (!id || ids.has(id)) {
+      errors.push("Cada nó de tree precisa de id único.");
+    }
+    ids.add(id);
+    if (!label || label.length > 48) {
+      errors.push("Cada nó de tree precisa de label curto.");
+    }
+    if (node?.type && !["folder", "file"].includes(node.type)) {
+      errors.push("tree.type deve ser folder ou file.");
+    }
+  });
+
+  nodes.forEach((node) => {
+    const parentId = typeof node?.parentId === "string" ? node.parentId.trim() : "";
+    if (parentId && !ids.has(parentId)) {
+      errors.push(`parentId inexistente em tree: ${parentId}.`);
+    }
+    if (parentId && parentId === node?.id) {
+      errors.push("Nó de tree não pode apontar para si mesmo.");
+    }
+  });
+
   return errors;
 }

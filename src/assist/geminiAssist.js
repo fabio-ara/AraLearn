@@ -540,12 +540,13 @@ async function callGemini({ apiKey, model, body }) {
   return parseGeminiResponse(response);
 }
 
-function mapPreferredContainerToResource(preferredContainer) {
+export function mapPreferredContainerToResource(preferredContainer) {
   const map = {
     say: "paragraph",
     ask: "multiple_choice",
     code: "code_editor",
     table: "table",
+    tree: "tree",
     flow: "flowchart"
   };
   return map[preferredContainer] || "";

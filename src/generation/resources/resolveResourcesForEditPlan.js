@@ -7,7 +7,7 @@ const CONTRACT_TO_RESOURCE = {
   code: "code_editor",
   table: "table",
   flow: "flowchart",
-  tree: "paragraph"
+  tree: "tree"
 };
 
 function uniqueKnown(items = [], knownIds = new Set()) {

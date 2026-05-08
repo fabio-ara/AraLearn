@@ -58,6 +58,40 @@ export function collectAssistDependencies(course, moduleValue, lesson, microsequ
   return dependencies;
 }
 
+export function collectLessonTopicRefs(lesson, microsequence) {
+  if (!lesson || !microsequence) {
+    return [];
+  }
+
+  const refs = [];
+  const seen = new Set();
+
+  function pushRef(refKey, label) {
+    const safeRefKey = String(refKey || "").trim();
+    const safeLabel = String(label || refKey || "").trim();
+    const key = `${safeRefKey}::${safeLabel.toLowerCase()}`;
+    if (!safeRefKey || !safeLabel || seen.has(key)) {
+      return;
+    }
+    seen.add(key);
+    refs.push({
+      refKey: safeRefKey,
+      label: safeLabel,
+      source: "microsequence"
+    });
+  }
+
+  (lesson.microsequences || []).forEach((item) => {
+    if (!item || item.key === microsequence.key) {
+      return;
+    }
+    pushRef(item.key, item.title || item.key);
+    (item.tags || []).forEach((tag) => pushRef(item.key, tag));
+  });
+
+  return refs;
+}
+
 export function getDefaultDependencyKeys(dependencies, limit = DEFAULT_ASSIST_DEPENDENCIES) {
   return dependencies.slice(0, limit).map((item) => item.key);
 }

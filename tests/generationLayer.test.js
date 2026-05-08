@@ -20,6 +20,11 @@ import { listMicrosequenceTypes } from "../src/generation/types/microsequenceTyp
 import { validateGeneratedCards } from "../src/generation/validation/validateGeneratedCards.js";
 import { validateEditedMicrosequence } from "../src/generation/validation/validateEditedMicrosequence.js";
 import { renderCardRuntimeBlocks } from "../src/render/renderCardRuntime.js";
+import { createProjectStorage } from "../src/storage/createProjectStorage.js";
+import { createKeyValueMemoryStore } from "../src/storage/createKeyValueMemoryStore.js";
+import { replaceMicrosequenceCards } from "../src/editor/contractEditor.js";
+import { mapPreferredContainerToResource } from "../src/assist/geminiAssist.js";
+import { collectLessonTopicRefs } from "../src/ui/lessonEditorPaths.js";
 
 function samplePlanningContract(extra = {}) {
   return buildMicrosequencePlanningContract({
@@ -69,7 +74,7 @@ test("catálogo contém recursos e schemas esperados", () => {
   const resources = listCardResourceDefinitions();
   const ids = resources.map((item) => item.id);
 
-  assert.ok(["paragraph", "multiple_choice", "code_editor", "table", "flowchart", "block_gap_fill"].every((id) => ids.includes(id)));
+  assert.ok(["paragraph", "multiple_choice", "code_editor", "table", "flowchart", "block_gap_fill", "tree"].every((id) => ids.includes(id)));
   assert.ok(resources.every((item) => item.label && item.shortDescription && item.schema && item.limits));
 });
 
@@ -128,13 +133,14 @@ test("resolve recursos de geração com base, extras e deduplicação", () => {
   });
   const selector = buildResourceSelectorState({
     resolvedMicrosequenceTypeId: "guided_practice",
-    userSelectedExtraResourceTypes: ["table"]
+    userSelectedExtraResourceTypes: ["table", "tree"]
   });
 
   assert.deepEqual(result.baseResourceTypes, ["paragraph", "block_gap_fill"]);
   assert.deepEqual(result.userExtraResourceTypes, ["table"]);
   assert.deepEqual(result.planExtraResourceTypes, ["flowchart"]);
   assert.ok(result.allowedResourceTypes.includes("flowchart"));
+  assert.ok(selector.find((item) => item.id === "tree").selected);
   assert.ok(selector.find((item) => item.id === "paragraph").disabled);
   assert.ok(selector.find((item) => item.id === "table").selected);
 });
@@ -181,12 +187,7 @@ test("validação de geração aceita cards válidos e rejeita erros estruturais
         prompt: "Complete.",
         segments: [{ kind: "text", value: "Use" }, { kind: "blank", blankId: "b1", acceptedBlockIds: ["x"] }],
         blocks: [{ blockId: "x", label: "git add" }],
-        feedbackPopup: {
-          correctTitle: "Correto",
-          correctMessage: "Isso prepara arquivos.",
-          incorrectTitle: "Revise",
-          incorrectMessage: "Observe o comando de preparação."
-        }
+        feedbackAfter: "Isso prepara arquivos."
       },
       {
         position: 3,
@@ -212,8 +213,68 @@ test("validação de geração aceita cards válidos e rejeita erros estruturais
       { cards: [response.cards[0], { ...response.cards[1], feedbackPopup: undefined }, response.cards[2]] },
       generationContract
     ).ok,
+    true
+  );
+  assert.equal(
+    validateGeneratedCards(
+      { cards: [response.cards[0], { ...response.cards[1], feedbackAfter: undefined }, response.cards[2]] },
+      generationContract
+    ).ok,
     false
   );
+});
+
+test("tree entra no catálogo, no planejamento, em allowedResourceTypes e na validação", () => {
+  const planningContract = samplePlanningContract({ userSelectedExtraResourceTypes: ["tree"] });
+  const plan = validPlan({
+    selectedExtraResourceTypes: ["tree"],
+    cardPlan: [
+      { position: 1, role: "situar", resourceType: "paragraph", sourceRefs: [] },
+      { position: 2, role: "mostrar estrutura", resourceType: "tree", sourceRefs: [] },
+      { position: 3, role: "consolidar", resourceType: "multiple_choice", sourceRefs: [] }
+    ]
+  });
+  const validatedPlan = validateMicrosequencePlan(plan, planningContract);
+  const generationContract = buildMicrosequenceGenerationContract({ planningContract, validatedPlan, selectedModel: "gemini-2.5-flash" });
+  const response = {
+    cards: [
+      { position: 1, resourceType: "paragraph", title: "Ideia", text: "Texto curto." },
+      {
+        position: 2,
+        resourceType: "tree",
+        title: "Estrutura",
+        prompt: "Observe a estrutura.",
+        base: "/",
+        current: "/home/aluno",
+        selected: "/home/aluno/projetos",
+        nodes: [
+          { id: "home", label: "home", type: "folder" },
+          { id: "aluno", label: "aluno", parentId: "home", type: "folder" },
+          { id: "projetos", label: "projetos", parentId: "aluno", type: "folder" },
+          { id: "readme", label: "README.md", parentId: "projetos", type: "file" }
+        ]
+      },
+      {
+        position: 3,
+        resourceType: "multiple_choice",
+        title: "Teste",
+        question: "Qual item é arquivo?",
+        options: [
+          { optionId: "a", label: "README.md" },
+          { optionId: "b", label: "projetos" },
+          { optionId: "c", label: "home" }
+        ],
+        correctOptionId: "a",
+        feedback: "Arquivo é folha na árvore."
+      }
+    ]
+  };
+
+  assert.equal(validatedPlan.ok, true);
+  assert.ok(planningContract.availableResources.some((item) => item.id === "tree"));
+  assert.ok(generationContract.resources.allowedResourceTypes.includes("tree"));
+  assert.ok(Object.keys(generationContract.resources.resourceSchemas).includes("tree"));
+  assert.equal(validateGeneratedCards(response, generationContract).ok, true);
 });
 
 test("fontes resolvem seleção explícita, menção e ambiguidade", () => {
@@ -321,12 +382,7 @@ test("block_gap_fill é alias interno para parágrafo público com lacunas por o
     prompt: "Complete a frase.",
     segments: [{ kind: "text", value: "Use" }, { kind: "blank", blankId: "b1", acceptedBlockIds: ["x"] }],
     blocks: [{ blockId: "x", label: "git add" }, { blockId: "y", label: "git push" }],
-    feedbackPopup: {
-      correctTitle: "Correto",
-      correctMessage: "Preparou o arquivo.",
-      incorrectTitle: "Revise",
-      incorrectMessage: "Escolha o comando de preparação."
-    }
+    feedbackAfter: "Preparou o arquivo."
   });
   const runtime = renderCardRuntimeBlocks(publicCard);
 
@@ -336,6 +392,135 @@ test("block_gap_fill é alias interno para parágrafo público com lacunas por o
   assert.match(runtime, /runtime-text-gap-choice-blank/);
   assert.match(runtime, /data-action="text-gap-open-choice"/);
   assert.doesNotMatch(runtime, /runtime-block-gap-fill/);
+});
+
+test("block_gap_fill usa schema compatível com say e não exige feedbackPopup descartado", () => {
+  const definition = listCardResourceDefinitions().find((item) => item.id === "block_gap_fill");
+
+  assert.ok(definition.schema.required.includes("feedbackAfter"));
+  assert.equal(definition.schema.required.includes("feedbackPopup"), false);
+  assert.equal(definition.schema.properties.feedbackPopup, undefined);
+});
+
+test("adaptador converte tree interno para contrato público tree", () => {
+  const publicCard = adaptResourceCardToPublicCard({
+    position: 1,
+    resourceType: "tree",
+    title: "Estrutura",
+    prompt: "Observe a estrutura.",
+    base: "/",
+    current: "/home/aluno",
+    nodes: [
+      { id: "home", label: "home", type: "folder" },
+      { id: "aluno", label: "aluno", parentId: "home", type: "folder" },
+      { id: "readme", label: "README.md", parentId: "aluno", type: "file" }
+    ]
+  });
+
+  assert.equal(publicCard.tree.items.home.aluno["README.md"], null);
+  assert.equal(publicCard.say, "Observe a estrutura.");
+  assert.equal(publicCard.resourceType, undefined);
+});
+
+test("tree selecionado na UI mapeia para recurso interno tree", () => {
+  assert.equal(mapPreferredContainerToResource("tree"), "tree");
+});
+
+test("selectedLessonTopicRefs usa somente assuntos da lição atual", () => {
+  const current = { key: "micro-atual", title: "Atual", tags: ["Atual"] };
+  const lesson = {
+    microsequences: [
+      { key: "micro-git", title: "Git", tags: ["commit"] },
+      current,
+      { key: "micro-branch", title: "Branches", tags: ["commit"] }
+    ]
+  };
+  const refs = collectLessonTopicRefs(lesson, current);
+  const selectedKeys = new Set(["micro-git", "commit", "tag-global"]);
+  const selected = refs.filter((item) => selectedKeys.has(item.refKey) || selectedKeys.has(item.label));
+
+  assert.deepEqual(selected, [
+    { refKey: "micro-git", label: "Git", source: "microsequence" },
+    { refKey: "micro-git", label: "commit", source: "microsequence" },
+    { refKey: "micro-branch", label: "commit", source: "microsequence" }
+  ]);
+  assert.equal(selected.some((item) => item.label === "tag-global"), false);
+  assert.equal(selected.some((item) => item.refKey === "micro-atual"), false);
+});
+
+test("geração adaptada com tree e block_gap_fill salva e recarrega sem perda estrutural", () => {
+  const storage = createProjectStorage(createKeyValueMemoryStore());
+  const document = {
+    contract: "aralearn.contract",
+    version: 1,
+    kind: "project",
+    courses: [
+      {
+        key: "course",
+        title: "Curso",
+        modules: [
+          {
+            key: "module",
+            title: "Módulo",
+            lessons: [
+              {
+                key: "lesson",
+                title: "Lição",
+                microsequences: [
+                  {
+                    key: "micro",
+                    title: "Micro",
+                    status: "draft",
+                    included: false,
+                    tags: ["tag-existente"],
+                    cards: []
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  };
+  const adapted = adaptResourceCardsToPublicCards([
+    {
+      position: 1,
+      resourceType: "tree",
+      title: "Estrutura",
+      nodes: [
+        { id: "src", label: "src", type: "folder" },
+        { id: "app", label: "app.js", parentId: "src", type: "file" }
+      ]
+    },
+    {
+      position: 2,
+      resourceType: "block_gap_fill",
+      title: "Complete",
+      prompt: "Complete.",
+      segments: [{ kind: "text", value: "Abra" }, { kind: "blank", blankId: "b1", acceptedBlockIds: ["x"] }],
+      blocks: [{ blockId: "x", label: "src" }, { blockId: "y", label: "dist" }],
+      feedbackAfter: "src contém o código."
+    }
+  ]);
+  const nextDocument = replaceMicrosequenceCards(document, {
+    courseKey: "course",
+    moduleKey: "module",
+    lessonKey: "lesson",
+    microsequenceKey: "micro",
+    title: "Micro",
+    tags: ["tag-existente"],
+    cards: adapted.cards
+  });
+
+  storage.saveProject(nextDocument);
+  const loaded = storage.loadProject();
+  const microsequence = loaded.courses[0].modules[0].lessons[0].microsequences[0];
+
+  assert.deepEqual(microsequence.tags, ["tag-existente"]);
+  assert.equal(microsequence.cards[0].tree.items.src["app.js"], null);
+  assert.match(microsequence.cards[1].say, /\[\[src::src\|dist\]\]/);
+  assert.equal(microsequence.cards[1].after, "src contém o código.");
 });
 
 test("adaptador rejeita saída interna sem recurso público compatível", () => {
