@@ -148,5 +148,39 @@ export function renderUiIcon(iconName, className = "ui-icon") {
     );
   }
 
+  if (iconName === "draft-state") {
+    return (
+      '<svg class="' +
+      classes +
+      '" viewBox="0 0 16 16" aria-hidden="true" focusable="false">' +
+      '<path d="M3.3 11.9l1.3-4.2L10 2.3a1.3 1.3 0 0 1 1.9 0l1.8 1.8a1.3 1.3 0 0 1 0 1.9L8.3 11.4 4 12.7z" fill="none" stroke="currentColor" stroke-width="1.15" stroke-linejoin="round"></path>' +
+      '<path d="M9.1 3.2l3.7 3.7" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round"></path>' +
+      '<path d="M3 13h10" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" opacity="0.72"></path>' +
+      "</svg>"
+    );
+  }
+
+  if (iconName === "ready-state") {
+    return (
+      '<svg class="' +
+      classes +
+      '" viewBox="0 0 16 16" aria-hidden="true" focusable="false">' +
+      '<circle cx="8" cy="8" r="5.2" fill="none" stroke="currentColor" stroke-width="1.15" opacity="0.5"></circle>' +
+      '<path d="M5.1 8.1l1.9 1.9 3.8-4.1" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"></path>' +
+      "</svg>"
+    );
+  }
+
+  if (iconName === "excluded-state") {
+    return (
+      '<svg class="' +
+      classes +
+      '" viewBox="0 0 16 16" aria-hidden="true" focusable="false">' +
+      '<circle cx="8" cy="8" r="5.2" fill="none" stroke="currentColor" stroke-width="1.15" opacity="0.58"></circle>' +
+      '<path d="M5.2 5.2l5.6 5.6M10.8 5.2L5.2 10.8" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round"></path>' +
+      "</svg>"
+    );
+  }
+
   return renderUiIcon("preview", classes);
 }

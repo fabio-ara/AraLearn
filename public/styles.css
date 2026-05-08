@@ -390,10 +390,41 @@ button {
   background: transparent;
   color: inherit;
   text-align: left;
-  display: block;
+  display: grid;
   cursor: pointer;
   min-width: 0;
   padding: 0;
+}
+
+.microsequence-title-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.microsequence-state-icon {
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+
+.microsequence-state-icon-svg {
+  width: 18px;
+  height: 18px;
+  display: block;
+}
+
+.microsequence-state-icon.is-draft,
+.microsequence-state-icon.is-ready {
+  color: #f2c66a;
+}
+
+.microsequence-state-icon.is-excluded {
+  color: #da6f6f;
 }
 
 .microsequence-title,
@@ -596,6 +627,7 @@ button {
 .lesson-panel-head {
   display: grid;
   gap: 8px;
+  justify-items: stretch;
 }
 
 .lesson-panel-title {
@@ -3997,19 +4029,4 @@ button {
   display: grid;
   gap: 8px;
   padding-top: 8px;
-}
-
-.microsequence-status-badge {
-  display: inline-flex;
-  width: fit-content;
-  margin-top: 6px;
-  padding: 3px 8px;
-  border: 1px solid rgba(239, 194, 110, 0.5);
-  border-radius: 999px;
-  color: #f2c66a;
-  background: rgba(95, 68, 25, 0.32);
-  font-size: 0.68rem;
-  font-weight: 900;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
 }

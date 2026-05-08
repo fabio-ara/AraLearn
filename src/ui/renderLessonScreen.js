@@ -408,14 +408,26 @@ function getAssistActionLabel(mode) {
   return "Editar microssequência";
 }
 
-function renderMicrosequenceStatusBadge(microsequence) {
+function renderMicrosequenceStateIcon(microsequence) {
   if (isDraftMicrosequence(microsequence)) {
-    return '<span class="microsequence-status-badge">rascunho · fora do estudo</span>';
+    return (
+      '<span class="microsequence-state-icon is-draft" aria-label="Rascunho" title="Rascunho">' +
+      renderUiIcon("draft-state", "microsequence-state-icon-svg") +
+      "</span>"
+    );
   }
   if (!resolveMicrosequenceRuntimeIncluded(microsequence)) {
-    return '<span class="microsequence-status-badge">fora do estudo</span>';
+    return (
+      '<span class="microsequence-state-icon is-excluded" aria-label="Excluída do estudo" title="Excluída do estudo">' +
+      renderUiIcon("excluded-state", "microsequence-state-icon-svg") +
+      "</span>"
+    );
   }
-  return "";
+  return (
+    '<span class="microsequence-state-icon is-ready" aria-label="Pronta para estudo" title="Pronta para estudo">' +
+    renderUiIcon("ready-state", "microsequence-state-icon-svg") +
+    "</span>"
+  );
 }
 
 function renderCoursesTabs() {
@@ -690,11 +702,6 @@ function renderLessonScreenView({ course, lesson, moduleValue, progress }) {
       const isIncluded = resolveMicrosequenceRuntimeIncluded(microsequence);
       const canToggleRuntime = cardCount > 0;
       const canPlay = isRunnableMicrosequence(microsequence);
-      const draftDescription = isDraft
-        ? '<p class="card-subtitle lesson-description">Ainda não entra no estudo. Gere ou consolide cards para liberar esta microssequência.</p>'
-        : !isIncluded
-          ? '<p class="card-subtitle lesson-description">Esta microssequência foi removida da execução do curso.</p>'
-          : "";
 
       return (
         '<li class="lesson-item progress-row microsequence-row' +
@@ -717,12 +724,13 @@ function renderLessonScreenView({ course, lesson, moduleValue, progress }) {
         '" data-microsequence-key="' +
         escapeHtml(microsequence.key) +
         '">' +
+        '<span class="microsequence-title-line">' +
+        renderMicrosequenceStateIcon(microsequence) +
         '<span class="microsequence-title">' +
         escapeHtml(microsequence.title || microsequence.key) +
         "</span>" +
-        renderMicrosequenceStatusBadge(microsequence) +
+        "</span>" +
         "</button>" +
-        draftDescription +
         didacticTags +
         renderMetaLine({
           completed: isDraft ? 0 : microsequenceCompleted,
@@ -791,7 +799,7 @@ function renderLessonScreenView({ course, lesson, moduleValue, progress }) {
     '<main class="screen-content lesson-structure-screen">' +
     readyEmptyMessage +
     '<section class="clean-card module-card progress-card lesson-panel-card">' +
-    '<header class="module-head lesson-panel-head">' +
+    '<header class="lesson-panel-head">' +
     '<h3 class="card-title lesson-panel-title">Microssequências</h3>' +
     '<p class="muted tiny progress-meta lesson-panel-summary">' +
     renderMetaMetric("progress", `${lessonCompleted}/${lessonTotal}`, `Progresso: ${lessonCompleted}/${lessonTotal}`) +

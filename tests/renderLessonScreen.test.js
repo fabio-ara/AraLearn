@@ -89,6 +89,9 @@ test("renderiza a tela de lição com ações globais e pilha de ações da micr
   assert.match(html, /aria-label="1 microssequência" title="1 microssequência"/);
   assert.match(html, /aria-label="7 cards" title="7 cards"/);
   assert.match(html, /Microssequências/);
+  assert.match(html, /class="muted tiny progress-meta lesson-panel-summary"/);
+  assert.match(html, /class="microsequence-title-line"/);
+  assert.match(html, /microsequence-state-icon is-ready/);
   assert.doesNotMatch(html, /Módulo experimental/);
   assert.doesNotMatch(html, />Mód\.:/);
   assert.doesNotMatch(html, />Progr\.:/);
@@ -132,8 +135,9 @@ test("mostra aviso quando a lição tem apenas rascunhos", () => {
   });
 
   assert.match(html, /Não há microssequências prontas para estudar aqui\./);
-  assert.match(html, /microsequence-status-badge">rascunho · fora do estudo/);
-  assert.match(html, /Ainda não entra no estudo\./);
+  assert.match(html, /microsequence-state-icon is-draft/);
+  assert.match(html, /aria-label="Rascunho" title="Rascunho"/);
+  assert.doesNotMatch(html, /Ainda não entra no estudo\./);
   assert.match(html, /data-action="open-microsequence-assist"/);
 });
 
@@ -168,8 +172,9 @@ test("desabilita play e sinaliza exclusão quando a microssequência sai do estu
     }
   });
 
-  assert.match(html, /microsequence-status-badge">fora do estudo/);
-  assert.match(html, /Esta microssequência foi removida da execução do curso\./);
+  assert.match(html, /microsequence-state-icon is-excluded/);
+  assert.match(html, /aria-label="Excluída do estudo" title="Excluída do estudo"/);
+  assert.doesNotMatch(html, /Esta microssequência foi removida da execução do curso\./);
   assert.match(html, /data-action="toggle-microsequence-runtime"[^>]*>-<\/button>/);
   assert.match(html, /data-action="play-microsequence"[^>]*disabled aria-disabled="true"/);
 });
