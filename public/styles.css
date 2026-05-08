@@ -1403,6 +1403,17 @@ button {
   text-overflow: ellipsis;
 }
 
+.study-reader-course-title {
+  color: #f0c66b;
+  font-family: var(--font-display);
+  font-size: var(--type-sm);
+  font-weight: 600;
+  line-height: var(--leading-snug);
+  letter-spacing: 0.08em;
+  font-variant-caps: all-small-caps;
+  text-transform: lowercase;
+}
+
 .study-reader-count {
   display: inline-flex;
   align-items: center;

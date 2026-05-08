@@ -355,8 +355,9 @@ test("renderiza a execução do card com nome do curso e faixa estável de tags"
     }
   });
 
-  assert.match(html, /<span class="study-reader-context-line">Curso renderizável<\/span>/);
-  assert.match(html, /data-home-tab="courses"[^>]+aria-selected="true"/);
+  assert.match(html, /<span class="study-reader-context-line study-reader-course-title">Curso renderizável<\/span>/);
+  assert.doesNotMatch(html, /data-home-tab="courses"/);
+  assert.doesNotMatch(html, /data-home-tab="generate"/);
   assert.doesNotMatch(html, /Lição experimental - Modelo cascata/);
   assert.match(html, /class="study-context-tags compact-study-tags"/);
   assert.match(html, /class="study-reader-count" aria-label="Card 1 de 7" title="Card 1 de 7"/);

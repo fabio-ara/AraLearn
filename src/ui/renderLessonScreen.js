@@ -744,11 +744,10 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
     '<button class="icon-ghost" type="button" data-action="open-microsequence-assist" title="Editar cards" aria-label="Editar cards">&#9998;</button>' +
     '<button class="icon-ghost" type="button" data-action="close-study" title="Fechar leitura" aria-label="Fechar leitura">&times;</button>' +
     "</section>" +
-    renderCoursesTabs() +
     '<main class="screen-content microsequence-screen">' +
     '<section class="study-reader-context">' +
     '<div class="study-reader-line">' +
-    '<span class="study-reader-context-line">' +
+    '<span class="study-reader-context-line study-reader-course-title">' +
     escapeHtml(course?.title || course?.key || "Curso") +
     "</span>" +
     '<span class="study-reader-count" aria-label="Card ' +
