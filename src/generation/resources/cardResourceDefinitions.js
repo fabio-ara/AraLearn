@@ -113,21 +113,98 @@ export const CARD_RESOURCE_DEFINITIONS = Object.freeze([
   Object.freeze({
     id: "block_gap_fill",
     label: "Lacunas com blocos",
-    shortDescription: "Preenchimento de lacunas com blocos selecionáveis e feedback.",
+    shortDescription: "Parágrafo com lacunas por opções e comentário posterior.",
     publicResourceType: "say",
     publicMapping: "paragraph_text_gap_options",
     limits: { maxBlanks: 4, maxBlocks: 8, maxLabelChars: 48 },
     schema: {
       type: "object",
-      required: ["resourceType", "title", "prompt", "segments", "blocks", "feedbackPopup"],
+      required: ["resourceType", "title", "prompt", "segments", "blocks", "feedbackAfter"],
       properties: {
         position: { type: "number" },
         resourceType: { const: "block_gap_fill" },
         title: { type: "string" },
         prompt: { type: "string" },
-        segments: { type: "array", minItems: 1, items: { type: "object" } },
-        blocks: { type: "array", minItems: 1, items: { type: "object" } },
-        feedbackPopup: { type: "object" }
+        segments: {
+          type: "array",
+          minItems: 1,
+          items: {
+            anyOf: [
+              {
+                type: "object",
+                required: ["kind", "value"],
+                properties: {
+                  kind: { const: "text" },
+                  value: { type: "string" }
+                },
+                additionalProperties: false
+              },
+              {
+                type: "object",
+                required: ["kind", "blankId", "acceptedBlockIds"],
+                properties: {
+                  kind: { const: "blank" },
+                  blankId: { type: "string" },
+                  acceptedBlockIds: { type: "array", minItems: 1, items: { type: "string" } }
+                },
+                additionalProperties: false
+              }
+            ]
+          }
+        },
+        blocks: {
+          type: "array",
+          minItems: 1,
+          items: {
+            type: "object",
+            required: ["blockId", "label"],
+            properties: {
+              blockId: { type: "string" },
+              label: { type: "string" }
+            },
+            additionalProperties: false
+          }
+        },
+        feedbackAfter: { type: "string" }
+      },
+      additionalProperties: false
+    }
+  }),
+  Object.freeze({
+    id: "tree",
+    label: "Árvore de diretórios",
+    shortDescription: "Estrutura hierárquica simples de pastas e arquivos.",
+    publicResourceType: "tree",
+    limits: { maxNodes: 20, maxLabelChars: 48 },
+    schema: {
+      type: "object",
+      required: ["resourceType", "title", "nodes"],
+      properties: {
+        position: { type: "number" },
+        resourceType: { const: "tree" },
+        title: { type: "string" },
+        prompt: { type: "string" },
+        base: { type: "string" },
+        current: { type: "string" },
+        selected: { type: "string" },
+        closed: { type: "array", items: { type: "string" } },
+        rootLabel: { type: "string" },
+        nodes: {
+          type: "array",
+          minItems: 1,
+          maxItems: 20,
+          items: {
+            type: "object",
+            required: ["id", "label"],
+            properties: {
+              id: { type: "string" },
+              label: { type: "string" },
+              parentId: { type: ["string", "null"] },
+              type: { enum: ["folder", "file"] }
+            },
+            additionalProperties: false
+          }
+        }
       },
       additionalProperties: false
     }
@@ -159,23 +236,39 @@ export function getResourceSchemas(resourceIds = []) {
   );
 }
 
+function hasTextGapSyntax(value) {
+  return typeof value === "string" && /\[\[[\s\S]*?\]\]/.test(value);
+}
+
 export function validateBlockGapFill(card) {
   const errors = [];
   if (!card || typeof card !== "object") {
     return ["block_gap_fill inválido."];
   }
-  if (!card.feedbackPopup || typeof card.feedbackPopup !== "object") {
-    errors.push("feedbackPopup é obrigatório.");
-  }
-  for (const field of ["correctTitle", "correctMessage", "incorrectTitle", "incorrectMessage"]) {
-    if (typeof card.feedbackPopup?.[field] !== "string" || !card.feedbackPopup[field].trim()) {
-      errors.push(`feedbackPopup.${field} é obrigatório.`);
+  const allowedCardFields = new Set(["position", "resourceType", "title", "prompt", "segments", "blocks", "feedbackAfter", "sourceRefs"]);
+  Object.keys(card).forEach((field) => {
+    if (!allowedCardFields.has(field)) {
+      errors.push(`Campo não suportado em block_gap_fill: ${field}.`);
     }
+  });
+  if (typeof card.feedbackAfter !== "string" || !card.feedbackAfter.trim()) {
+    errors.push("feedbackAfter é obrigatório.");
+  } else if (hasTextGapSyntax(card.feedbackAfter)) {
+    errors.push("feedbackAfter deve ser texto simples, sem lacunas ou opções.");
   }
 
   const blocks = Array.isArray(card.blocks) ? card.blocks : [];
   const blockIds = new Set();
   blocks.forEach((block) => {
+    if (!block || typeof block !== "object" || Array.isArray(block)) {
+      errors.push("Cada bloco precisa ser objeto.");
+      return;
+    }
+    Object.keys(block).forEach((field) => {
+      if (!["blockId", "label"].includes(field)) {
+        errors.push(`Campo não suportado em blocks: ${field}.`);
+      }
+    });
     if (!block?.blockId || blockIds.has(block.blockId)) {
       errors.push("Cada blockId deve ser único.");
     }
@@ -187,7 +280,31 @@ export function validateBlockGapFill(card) {
 
   const segments = Array.isArray(card.segments) ? card.segments : [];
   const blankIds = new Set();
-  segments.filter((segment) => segment?.kind === "blank").forEach((segment) => {
+  segments.forEach((segment) => {
+    if (!segment || typeof segment !== "object" || Array.isArray(segment)) {
+      errors.push("Cada segmento precisa ser objeto.");
+      return;
+    }
+    if (segment.kind === "text") {
+      Object.keys(segment).forEach((field) => {
+        if (!["kind", "value"].includes(field)) {
+          errors.push(`Campo não suportado em segments.text: ${field}.`);
+        }
+      });
+      if (typeof segment.value !== "string") {
+        errors.push("Segmento de texto precisa de value.");
+      }
+      return;
+    }
+    if (segment.kind !== "blank") {
+      errors.push("Cada segmento precisa usar kind text ou blank.");
+      return;
+    }
+    Object.keys(segment).forEach((field) => {
+      if (!["kind", "blankId", "acceptedBlockIds"].includes(field)) {
+        errors.push(`Campo não suportado em segments.blank: ${field}.`);
+      }
+    });
     if (!segment.blankId || blankIds.has(segment.blankId)) {
       errors.push("Cada blankId deve ser único.");
     }
@@ -204,5 +321,44 @@ export function validateBlockGapFill(card) {
   if (blankIds.size === 0 || blankIds.size > 4) {
     errors.push("O número de lacunas deve ser pequeno e maior que zero.");
   }
+  return errors;
+}
+
+export function validateTreeResource(card) {
+  const errors = [];
+  if (!card || typeof card !== "object") {
+    return ["tree inválido."];
+  }
+  const nodes = Array.isArray(card.nodes) ? card.nodes : [];
+  if (!nodes.length || nodes.length > 20) {
+    errors.push("tree deve ter entre 1 e 20 nós.");
+  }
+
+  const ids = new Set();
+  nodes.forEach((node) => {
+    const id = typeof node?.id === "string" ? node.id.trim() : "";
+    const label = typeof node?.label === "string" ? node.label.trim() : "";
+    if (!id || ids.has(id)) {
+      errors.push("Cada nó de tree precisa de id único.");
+    }
+    ids.add(id);
+    if (!label || label.length > 48) {
+      errors.push("Cada nó de tree precisa de label curto.");
+    }
+    if (node?.type && !["folder", "file"].includes(node.type)) {
+      errors.push("tree.type deve ser folder ou file.");
+    }
+  });
+
+  nodes.forEach((node) => {
+    const parentId = typeof node?.parentId === "string" ? node.parentId.trim() : "";
+    if (parentId && !ids.has(parentId)) {
+      errors.push(`parentId inexistente em tree: ${parentId}.`);
+    }
+    if (parentId && parentId === node?.id) {
+      errors.push("Nó de tree não pode apontar para si mesmo.");
+    }
+  });
+
   return errors;
 }

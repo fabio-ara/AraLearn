@@ -4,6 +4,13 @@ function text(value) {
   return typeof value === "string" ? value.trim() : "";
 }
 
+function plainFeedbackText(value) {
+  return text(value)
+    .replace(/\[\[([^\]:|]+)(?:::[^\]]*)?\]\]/g, "$1")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function adaptMultipleChoice(card) {
   const options = Array.isArray(card.options) ? card.options : [];
   const correct = options.find((item) => item?.optionId === card.correctOptionId);
@@ -66,7 +73,60 @@ function adaptBlockGapFill(card) {
   return {
     title: text(card.title) || "Lacunas",
     say: [text(card.prompt), say].filter(Boolean).join(" "),
-    ...(text(card.feedbackPopup?.correctMessage) ? { after: text(card.feedbackPopup.correctMessage) } : {})
+    ...(plainFeedbackText(card.feedbackAfter || card.after) ? { after: plainFeedbackText(card.feedbackAfter || card.after) } : {})
+  };
+}
+
+function normalizeTreeNodeType(value) {
+  return value === "file" ? "file" : "folder";
+}
+
+function adaptTree(card) {
+  const nodes = Array.isArray(card.nodes) ? card.nodes : [];
+  const closed = Array.isArray(card.closed) ? card.closed.map(text).filter(Boolean) : [];
+  const byParent = new Map();
+  nodes.forEach((node) => {
+    const parentId = text(node?.parentId);
+    const list = byParent.get(parentId) || [];
+    list.push(node);
+    byParent.set(parentId, list);
+  });
+
+  function buildNodeItems(node) {
+    if (normalizeTreeNodeType(node?.type) === "file") {
+      return null;
+    }
+    return buildItems(text(node?.id));
+  }
+
+  function buildItems(parentId = "") {
+    return Object.fromEntries(
+      (byParent.get(parentId) || []).map((node, index) => {
+        const label = text(node?.label) || `item-${index + 1}`;
+        return [label, buildNodeItems(node)];
+      })
+    );
+  }
+
+  const roots = byParent.get("") || [];
+  const rootLabel = text(card.rootLabel);
+  const items =
+    rootLabel && roots.length === 1 && text(roots[0]?.label) === rootLabel
+      ? { [rootLabel]: buildNodeItems(roots[0]) }
+      : rootLabel
+        ? { [rootLabel]: roots.length ? buildItems("") : {} }
+        : buildItems("");
+
+  return {
+    title: text(card.title) || "Árvore",
+    ...(text(card.prompt) ? { say: text(card.prompt) } : {}),
+    tree: {
+      ...(text(card.base) ? { base: text(card.base) } : {}),
+      ...(text(card.current) ? { current: text(card.current) } : {}),
+      ...(text(card.selected) ? { selected: text(card.selected) } : {}),
+      ...(closed.length ? { closed } : {}),
+      items
+    }
   };
 }
 
@@ -103,6 +163,9 @@ export function adaptResourceCardToPublicCard(card) {
   }
   if (resourceType === "block_gap_fill") {
     return sanitizeContractCard(adaptBlockGapFill(card));
+  }
+  if (resourceType === "tree") {
+    return sanitizeContractCard(adaptTree(card));
   }
 
   throw new Error(`Recurso interno sem adaptador público: ${resourceType || "desconhecido"}.`);

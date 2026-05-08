@@ -1,4 +1,4 @@
-import { validateBlockGapFill } from "../resources/cardResourceDefinitions.js";
+import { validateBlockGapFill, validateTreeResource } from "../resources/cardResourceDefinitions.js";
 
 function getCards(response) {
   if (typeof response === "string") {
@@ -40,6 +40,7 @@ function validateCardByResource(card, errors) {
   if (card.resourceType === "table") validateTable(card, errors);
   if (card.resourceType === "flowchart" && (!Array.isArray(card.nodes) || !Array.isArray(card.edges))) errors.push("flowchart sem nodes ou edges.");
   if (card.resourceType === "block_gap_fill") errors.push(...validateBlockGapFill(card));
+  if (card.resourceType === "tree") errors.push(...validateTreeResource(card));
 }
 
 export function validateGeneratedCards(response, generationContract) {

@@ -8,6 +8,8 @@ AraLearn é uma aplicação open source que transforma conteúdos, dúvidas e in
 
 O produto funciona como um motor de aprendizagem ativa: em vez de apenas guardar material, ele procura converter informação em percurso de estudo.
 
+A identidade do projeto parte de uma ideia simples: aprendizagem melhora quando informação vira ação pequena, verificável e retomável.
+
 ## Problema
 
 A informação se tornou abundante. Com a inteligência artificial generativa, explicações, exemplos, resumos e respostas podem ser produzidos em grande quantidade. Mesmo assim, disponibilidade de informação não resolve automaticamente a aprendizagem.
@@ -22,6 +24,8 @@ Um estudante pode continuar sem saber:
 - como transformar uma dúvida pontual em treino acumulável.
 
 Esse problema é especialmente sensível para estudantes trabalhadores, pessoas em transição de carreira e estudantes em rotinas com atenção fragmentada.
+
+Também é um problema típico da aprendizagem mediada por inteligência artificial generativa. A abundância de respostas pode diminuir o custo de obter explicação, mas aumentar o custo de escolher, ordenar, praticar e revisar.
 
 ## Proposta
 
@@ -45,6 +49,8 @@ A aplicação aproxima três atividades que normalmente ficam separadas:
 - revisão do percurso.
 
 O usuário pode estudar, editar, importar, exportar, revisar, criar rascunhos e reorganizar material dentro do mesmo ambiente.
+
+Essa integração permite duas entradas complementares. Na entrada bottom-up, uma dúvida concreta gera rascunhos no contexto da lição. Na entrada top-down, materiais produzidos por pipelines externos podem entrar como cursos, módulos, lições ou microssequências em JSON.
 
 ## Público principal
 
@@ -70,6 +76,7 @@ O produto é guiado por alguns princípios:
 - O conteúdo deve poder ser estudado mesmo sem conexão contínua.
 - A aplicação deve favorecer retomada depois de interrupções.
 - O percurso de aprendizagem deve ser mais auditável do que uma conversa isolada com um modelo de linguagem.
+- A eficiência deve servir à formação, não substituir leitura, reflexão e revisão crítica.
 
 ## O que já existe
 
@@ -85,6 +92,7 @@ No estado atual, o AraLearn reúne:
 - status `draft` e `ready` para separar autoria em andamento e conteúdo executável;
 - assistência por serviços de inteligência artificial generativa acessados por API;
 - validação automatizada do contrato público e dos exemplos.
+- publicação web por GitHub Pages e empacotamento Android com ícone próprio.
 
 ## Horizonte
 
@@ -100,3 +108,5 @@ Isso abre espaço para pesquisa em:
 - avaliação de eficiência, retenção e retomada de estudo.
 
 O produto não precisa realizar todo esse horizonte de uma vez. A direção arquitetural deve permitir crescimento incremental sem perder clareza, portabilidade e controle do usuário.
+
+Há uma inspiração acadêmica e cultural ampla por trás dessa direção: flashcards, aprendizagem ativa, escrita em rede, versionamento, hipertexto, documentação aberta e organização pessoal do conhecimento. O AraLearn não pretende substituir essas tradições; procura aproximá-las em uma ferramenta pequena, local, portável e aberta.

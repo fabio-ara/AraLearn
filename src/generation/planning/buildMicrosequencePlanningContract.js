@@ -1,5 +1,5 @@
 import { listMicrosequenceSizes } from "../types/microsequenceSizes.js";
-import { listMicrosequenceTypeSummaries } from "../types/microsequenceTypes.js";
+import { getMicrosequenceType, listMicrosequenceTypeSummaries } from "../types/microsequenceTypes.js";
 import { listCardResourceSummaries } from "../resources/cardResourceDefinitions.js";
 import { getModelCapabilities } from "../providers/modelCapabilities.js";
 import { resolveReferencedSources } from "../sources/resolveReferencedSources.js";
@@ -15,6 +15,17 @@ function key(value) {
 
 function objective(value) {
   return text(value?.objective) || text(value?.description);
+}
+
+function resolveAvailableTypes(userFixedTypeId) {
+  const fixedTypeId = text(userFixedTypeId);
+  if (fixedTypeId && fixedTypeId !== "assisted") {
+    const fixedType = getMicrosequenceType(fixedTypeId);
+    return fixedType
+      ? [{ id: fixedType.id, label: fixedType.label, shortDescription: fixedType.shortDescription, availableSizes: fixedType.availableSizes }]
+      : [];
+  }
+  return listMicrosequenceTypeSummaries();
 }
 
 export function buildMicrosequencePlanningContract({
@@ -63,7 +74,7 @@ export function buildMicrosequencePlanningContract({
       userFixedTypeId: userFixedTypeId || null,
       userSelectedExtraResourceTypes: [...userSelectedExtraResourceTypes]
     },
-    availableTypes: listMicrosequenceTypeSummaries(),
+    availableTypes: resolveAvailableTypes(userFixedTypeId),
     availableSizes: listMicrosequenceSizes().map(({ id, cardCount }) => ({ id, cardCount })),
     availableResources: listCardResourceSummaries(),
     sources: resolvedSources.referencedSources,

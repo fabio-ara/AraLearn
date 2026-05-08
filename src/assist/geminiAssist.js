@@ -4,9 +4,12 @@ import { buildMicrosequencePlanningContract } from "../generation/planning/build
 import { buildMicrosequencePlanningPrompt } from "../generation/planning/buildMicrosequencePlanningPrompt.js";
 import { validateMicrosequencePlan } from "../generation/planning/validateMicrosequencePlan.js";
 import { buildMicrosequenceGenerationPrompt } from "../generation/prompts/buildMicrosequenceGenerationPrompt.js";
+import { callModelWithRetry } from "../generation/providers/callModelWithRetry.js";
 import { getModelCapabilities } from "../generation/providers/modelCapabilities.js";
+import { ProviderHttpError, ProviderOperationError, classifyProviderError, createValidationFailedError } from "../generation/providers/providerErrors.js";
 import { adaptResourceCardsToPublicCards } from "../generation/resources/adaptResourceCardToPublicCard.js";
-import { validateGeneratedCards } from "../generation/validation/validateGeneratedCards.js";
+import { canResumeGeneration, createGenerationRunState, updateGenerationRunState } from "../generation/runs/generationRunState.js";
+import { validateOrRepairGeneratedCards } from "../generation/validation/validateOrRepairGeneratedCards.js";
 
 function fail(message) {
   throw new Error(message);
@@ -484,7 +487,7 @@ async function parseGeminiResponse(response) {
   const data = await response.json().catch(() => null);
   if (!response.ok) {
     const message = data?.error?.message || `Falha HTTP ${response.status}.`;
-    fail(message);
+    throw new ProviderHttpError({ statusCode: response.status, message, payload: data });
   }
 
   const parts = data?.candidates?.[0]?.content?.parts || [];
@@ -540,12 +543,84 @@ async function callGemini({ apiKey, model, body }) {
   return parseGeminiResponse(response);
 }
 
-function mapPreferredContainerToResource(preferredContainer) {
+function normalizeRetryOptions(options = {}) {
+  return {
+    maxAttempts: options.maxAttempts,
+    baseDelayMs: options.baseDelayMs,
+    maxDelayMs: options.maxDelayMs,
+    jitterRatio: options.jitterRatio,
+    delay: options.delay,
+    random: options.random
+  };
+}
+
+function normalizeFallbackOptions(options = {}) {
+  return {
+    fallbackEnabled: options.fallbackEnabled === true,
+    fallbackModelId: normalizeText(options.fallbackModelId),
+    allowFallbackOn: Array.isArray(options.allowFallbackOn) ? options.allowFallbackOn : undefined
+  };
+}
+
+async function callGeminiWithOperationalRetry({
+  apiKey,
+  model,
+  body,
+  phase,
+  retryOptions = {},
+  fallbackOptions = {}
+}) {
+  return callModelWithRetry({
+    request: body,
+    phase,
+    modelId: model,
+    ...normalizeRetryOptions(retryOptions),
+    ...normalizeFallbackOptions(fallbackOptions),
+    callModel: ({ request, modelId }) => callGemini({ apiKey, model: modelId, body: request })
+  });
+}
+
+function buildOperationalErrorPayload({ phase, classified, canResume = false, runState = null, fallbackUsed = false, modelId = "" }) {
+  const category = classified?.category || "unknown";
+  const retryable = classified?.retryable === true;
+  const message =
+    canResume && retryable
+      ? "O provedor está temporariamente indisponível. O plano foi preservado e a geração pode ser retomada."
+      : phase === "planning"
+        ? "Não foi possível concluir o planejamento com o provedor."
+        : phase === "generation"
+          ? "Não foi possível concluir a geração dos cards com o provedor."
+          : "Não foi possível concluir a chamada ao provedor.";
+  return {
+    ok: false,
+    phase,
+    category,
+    retryable,
+    canResume,
+    runId: runState?.runId || "",
+    message,
+    statusCode: classified?.statusCode || 0,
+    fallbackUsed,
+    modelId: modelId || runState?.actualModelId || runState?.modelId || ""
+  };
+}
+
+function throwOperationalError(payload, runState = null) {
+  const error = new Error(payload.message);
+  Object.assign(error, payload);
+  if (runState) {
+    error.generationRunState = runState;
+  }
+  throw error;
+}
+
+export function mapPreferredContainerToResource(preferredContainer) {
   const map = {
     say: "paragraph",
     ask: "multiple_choice",
     code: "code_editor",
     table: "table",
+    tree: "tree",
     flow: "flowchart"
   };
   return map[preferredContainer] || "";
@@ -576,6 +651,72 @@ function buildGenerationContextEntities(microsequence = {}) {
   };
 }
 
+export function buildMicrosequencePlanningRepairPrompt({ planningContract, invalidPlan, errors }) {
+  return [
+    "Repare apenas o plano de microssequência do AraLearn.",
+    "Responda somente JSON válido com typeId, sizeId, microsequenceGoal, selectedExtraResourceTypes, cardPlan, sourceUsePlan e reason.",
+    "Preserve estritamente request.userFixedTypeId quando ele existir e não for assisted.",
+    "Use apenas ids presentes em availableTypes e availableResources do contrato.",
+    "Preserve todos os recursos extras de request.userSelectedExtraResourceTypes em selectedExtraResourceTypes.",
+    "Erros de validação:",
+    JSON.stringify(errors || []),
+    "Plano inválido:",
+    JSON.stringify(invalidPlan || {}),
+    "Contrato de planejamento:",
+    JSON.stringify(planningContract || {})
+  ].join("\n");
+}
+
+export async function validateOrRepairMicrosequencePlan({
+  apiKey,
+  model,
+  planningContract,
+  planningResult,
+  modelCapabilities,
+  fileParts = [],
+  retryOptions = {},
+  fallbackOptions = {}
+}) {
+  const validation = validateMicrosequencePlan(planningResult, planningContract);
+  if (validation.ok) {
+    return validation;
+  }
+
+  const repairedCall = await callGeminiWithOperationalRetry({
+    apiKey,
+    model,
+    phase: "planning_repair",
+    retryOptions,
+    fallbackOptions,
+    body: makeRequestBody({
+      systemInstruction:
+        "Você repara planos de microssequência para o AraLearn. Responda apenas JSON válido e compacto.",
+      prompt: buildMicrosequencePlanningRepairPrompt({
+        planningContract,
+        invalidPlan: planningResult,
+        errors: validation.errors
+      }),
+      fileParts,
+      schema: null,
+      temperature: 0.05,
+      maxOutputTokens: modelCapabilities?.profile === "compact-json" ? 1536 : 2048
+    })
+  });
+  const repairedPlan = repairedCall.value;
+  const repairedValidation = validateMicrosequencePlan(repairedPlan, planningContract);
+  if (repairedValidation.ok) {
+    return repairedValidation;
+  }
+
+  return {
+    ok: false,
+    errors: [
+      ...validation.errors,
+      ...repairedValidation.errors.map((error) => `Após reparo: ${error}`)
+    ]
+  };
+}
+
 async function composeMicrosequenceWithTwoStepGeneration({
   apiKey,
   model,
@@ -584,7 +725,10 @@ async function composeMicrosequenceWithTwoStepGeneration({
   selectedLessonTopicRefs = [],
   promptText,
   preferredContainer = "",
-  fileParts = []
+  fileParts = [],
+  retryOptions = {},
+  fallbackOptions = {},
+  saveGeneratedCards = null
 }) {
   const modelCapabilities = getModelCapabilities(model);
   const entities = buildGenerationContextEntities(microsequence);
@@ -600,22 +744,76 @@ async function composeMicrosequenceWithTwoStepGeneration({
     selectedModel: model
   });
   const planningPrompt = buildMicrosequencePlanningPrompt(planningContract, modelCapabilities);
-  const planningResult = await callGemini({
-    apiKey,
-    model,
-    body: makeRequestBody({
-      systemInstruction:
-        "Você planeja microssequências para o AraLearn. Responda apenas JSON válido e compacto.",
-      prompt: planningPrompt,
+  let planningCall;
+  try {
+    planningCall = await callGeminiWithOperationalRetry({
+      apiKey,
+      model,
+      phase: "planning",
+      retryOptions,
+      fallbackOptions,
+      body: makeRequestBody({
+        systemInstruction:
+          "Você planeja microssequências para o AraLearn. Responda apenas JSON válido e compacto.",
+        prompt: planningPrompt,
+        fileParts,
+        schema: null,
+        temperature: 0.1,
+        maxOutputTokens: 1536
+      })
+    });
+  } catch (error) {
+    if (error instanceof ProviderOperationError) {
+      throwOperationalError(
+        buildOperationalErrorPayload({
+          phase: "planning",
+          classified: error.details,
+          canResume: false,
+          fallbackUsed: error.fallbackUsed,
+          modelId: error.modelId
+        })
+      );
+    }
+    throw error;
+  }
+
+  let validatedPlan;
+  try {
+    validatedPlan = await validateOrRepairMicrosequencePlan({
+      apiKey,
+      model: planningCall.modelId,
+      planningContract,
+      planningResult: planningCall.value,
+      modelCapabilities: getModelCapabilities(planningCall.modelId),
       fileParts,
-      schema: null,
-      temperature: 0.1,
-      maxOutputTokens: 1536
-    })
-  });
-  const validatedPlan = validateMicrosequencePlan(planningResult, planningContract);
+      retryOptions,
+      fallbackOptions
+    });
+  } catch (error) {
+    if (error instanceof ProviderOperationError) {
+      throwOperationalError(
+        buildOperationalErrorPayload({
+          phase: "planning_repair",
+          classified: error.details,
+          canResume: false,
+          fallbackUsed: error.fallbackUsed,
+          modelId: error.modelId
+        })
+      );
+    }
+    throw error;
+  }
   if (!validatedPlan.ok) {
-    fail(`Plano de microssequência inválido: ${validatedPlan.errors.join(" ")}`);
+    const classified = classifyProviderError(createValidationFailedError(`Plano de microssequência inválido: ${validatedPlan.errors.join(" ")}`));
+    throwOperationalError(
+      buildOperationalErrorPayload({
+        phase: "planning",
+        classified,
+        canResume: false,
+        fallbackUsed: planningCall.fallbackUsed,
+        modelId: planningCall.modelId
+      })
+    );
   }
 
   const generationContract = buildMicrosequenceGenerationContract({
@@ -623,57 +821,222 @@ async function composeMicrosequenceWithTwoStepGeneration({
     validatedPlan,
     selectedModel: model
   });
-  const generationPrompt = buildMicrosequenceGenerationPrompt(generationContract, modelCapabilities);
-  const generationResult = await callGemini({
+  const runState = createGenerationRunState({
+    modelId: model,
+    planningContract,
+    validatedPlan,
+    generationContract
+  });
+
+  return resumeGenerationFromValidatedPlan({
     apiKey,
     model,
-    body: makeRequestBody({
-      systemInstruction:
-        "Você gera cards para o AraLearn. Responda apenas JSON válido no formato pedido.",
-      prompt: generationPrompt,
-      fileParts,
-      schema: null,
-      temperature: 0.15,
-      maxOutputTokens: 4096
-    })
+    runState: updateGenerationRunState(runState, {
+      actualModelId: planningCall.modelId,
+      fallbackUsed: planningCall.fallbackUsed
+    }),
+    fileParts,
+    retryOptions,
+    fallbackOptions,
+    saveGeneratedCards
   });
-  const validation = validateGeneratedCards(generationResult, generationContract);
+}
+
+export async function resumeGenerationFromValidatedPlan({
+  apiKey,
+  model,
+  runState,
+  fileParts = [],
+  retryOptions = {},
+  fallbackOptions = {},
+  saveGeneratedCards = null
+}) {
+  if (!canResumeGeneration(runState)) {
+    fail("Estado de geração inválido para retomada.");
+  }
+
+  const generationContract = runState.generationContract;
+  const generationModel = normalizeText(model) || normalizeText(runState.actualModelId) || normalizeText(runState.modelId);
+  const generationPrompt = buildMicrosequenceGenerationPrompt(generationContract, getModelCapabilities(generationModel));
+  let activeRunState = updateGenerationRunState(runState, { status: "generation_started", lastError: null });
+  let generationCall;
+
+  try {
+    generationCall = await callGeminiWithOperationalRetry({
+      apiKey,
+      model: generationModel,
+      phase: "generation",
+      retryOptions,
+      fallbackOptions,
+      body: makeRequestBody({
+        systemInstruction:
+          "Você gera cards para o AraLearn. Responda apenas JSON válido no formato pedido.",
+        prompt: generationPrompt,
+        fileParts,
+        schema: null,
+        temperature: 0.15,
+        maxOutputTokens: 4096
+      })
+    });
+  } catch (error) {
+    if (error instanceof ProviderOperationError) {
+      const retryable = error.details?.retryable === true;
+      activeRunState = updateGenerationRunState(activeRunState, {
+        status: retryable ? "generation_failed_retryable" : "failed",
+        lastError: {
+          phase: "generation",
+          category: error.details?.category || "unknown",
+          retryable,
+          message: error.details?.message || "Falha na geração.",
+          statusCode: error.details?.statusCode || 0
+        }
+      });
+      throwOperationalError(
+        buildOperationalErrorPayload({
+          phase: "generation",
+          classified: error.details,
+          canResume: retryable,
+          runState: activeRunState,
+          fallbackUsed: error.fallbackUsed,
+          modelId: error.modelId
+        }),
+        activeRunState
+      );
+    }
+    throw error;
+  }
+
+  let validation;
+  try {
+    validation = await validateOrRepairGeneratedCards({
+      rawGeneratedResponse: generationCall.value,
+      generationContract,
+      modelCapabilities: getModelCapabilities(generationCall.modelId),
+      maxRepairAttempts: 1,
+      throwRepairModelErrors: true,
+      callModel: ({ systemInstruction, prompt, temperature, maxOutputTokens }) =>
+        callGeminiWithOperationalRetry({
+          apiKey,
+          model: generationCall.modelId,
+          phase: "generation_repair",
+          retryOptions,
+          fallbackOptions,
+          body: makeRequestBody({
+            systemInstruction,
+            prompt,
+            fileParts,
+            schema: null,
+            temperature,
+            maxOutputTokens
+          })
+        }).then((result) => result.value)
+    });
+  } catch (error) {
+    if (error instanceof ProviderOperationError) {
+      const retryable = error.details?.retryable === true;
+      activeRunState = updateGenerationRunState(activeRunState, {
+        status: retryable ? "generation_failed_retryable" : "failed",
+        lastError: {
+          phase: "generation_repair",
+          category: error.details?.category || "unknown",
+          retryable,
+          message: error.details?.message || "Falha no reparo da geração.",
+          statusCode: error.details?.statusCode || 0
+        }
+      });
+      throwOperationalError(
+        buildOperationalErrorPayload({
+          phase: "generation_repair",
+          classified: error.details,
+          canResume: retryable,
+          runState: activeRunState,
+          fallbackUsed: error.fallbackUsed,
+          modelId: error.modelId
+        }),
+        activeRunState
+      );
+    }
+    throw error;
+  }
   if (!validation.ok) {
-    fail(`O serviço de IA devolveu cards inválidos: ${validation.errors.join(" ")}`);
+    const classified = classifyProviderError(createValidationFailedError(`O serviço de IA devolveu cards inválidos: ${validation.errors.join(" ")}`));
+    activeRunState = updateGenerationRunState(activeRunState, {
+      status: "failed",
+      lastError: {
+        phase: "generation",
+        category: classified.category,
+        retryable: false,
+        message: classified.message,
+        statusCode: 0
+      }
+    });
+    throwOperationalError(
+      buildOperationalErrorPayload({
+        phase: "generation",
+        classified,
+        canResume: false,
+        runState: activeRunState,
+        fallbackUsed: generationCall.fallbackUsed,
+        modelId: generationCall.modelId
+      }),
+      activeRunState
+    );
   }
 
   const adapted = adaptResourceCardsToPublicCards(validation.cards);
   if (!adapted.ok) {
-    fail(`O serviço de IA devolveu cards sem adaptação pública válida: ${adapted.errors.join(" ")}`);
+    const classified = classifyProviderError(createValidationFailedError(`O serviço de IA devolveu cards sem adaptação pública válida: ${adapted.errors.join(" ")}`));
+    activeRunState = updateGenerationRunState(activeRunState, {
+      status: "failed",
+      lastError: {
+        phase: "generation",
+        category: classified.category,
+        retryable: false,
+        message: classified.message,
+        statusCode: 0
+      }
+    });
+    throwOperationalError(
+      buildOperationalErrorPayload({
+        phase: "generation",
+        classified,
+        canResume: false,
+        runState: activeRunState,
+        fallbackUsed: generationCall.fallbackUsed,
+        modelId: generationCall.modelId
+      }),
+      activeRunState
+    );
   }
 
-  return normalizeComposeResult({
-    microsequenceTitle: generationContract.context.microsequence.title || validatedPlan.plan.microsequenceGoal || "Microssequência",
+  let finalRunState = updateGenerationRunState(activeRunState, {
+    status: "generation_validated",
+    actualModelId: generationCall.modelId,
+    fallbackUsed: activeRunState.fallbackUsed || generationCall.fallbackUsed,
+    lastError: null
+  });
+
+  const result = normalizeComposeResult({
+    microsequenceTitle: generationContract.context.microsequence.title || generationContract.didacticPlan?.microsequenceGoal || "Microssequência",
     tags: [],
     cards: adapted.cards
   });
+
+  if (typeof saveGeneratedCards === "function") {
+    await saveGeneratedCards({ cards: result.cards, runState: finalRunState, result });
+    finalRunState = updateGenerationRunState(finalRunState, { status: "saved" });
+  }
+
+  return {
+    ...result,
+    generationRunState: finalRunState,
+    fallbackUsed: finalRunState.fallbackUsed,
+    modelId: finalRunState.actualModelId
+  };
 }
 
-async function composeMicrosequenceWithGemini({
-  apiKey,
-  model,
-  microsequence,
-  dependencyTitles,
-  selectedLessonTopicRefs = [],
-  promptText,
-  preferredContainer = "",
-  fileParts = []
-}) {
-  return composeMicrosequenceWithTwoStepGeneration({
-    apiKey,
-    model,
-    microsequence,
-    dependencyTitles,
-    selectedLessonTopicRefs,
-    promptText,
-    preferredContainer,
-    fileParts
-  });
+async function composeMicrosequenceWithGemini(input) {
+  return composeMicrosequenceWithTwoStepGeneration(input);
 }
 
 export function normalizeComposeResult(value) {
@@ -746,7 +1109,12 @@ export async function runGeminiAssist({
   destinationSlots = [],
   promptText,
   preferredContainer = "",
-  attachments = []
+  attachments = [],
+  retryOptions = {},
+  fallbackModelId = "",
+  fallbackEnabled = false,
+  allowFallbackOn = ["rate_limited", "service_unavailable", "timeout"],
+  saveGeneratedCards = null
 }) {
   const trimmedKey = normalizeText(apiKey);
   const trimmedModel = normalizeText(model) || "gemini-2.5-flash";
@@ -786,7 +1154,14 @@ export async function runGeminiAssist({
         selectedLessonTopicRefs,
         promptText: trimmedPrompt,
         preferredContainer,
-        fileParts
+        fileParts,
+        retryOptions,
+        fallbackOptions: {
+          fallbackEnabled,
+          fallbackModelId,
+          allowFallbackOn
+        },
+        saveGeneratedCards
       });
     } else if (mode === "edit-card") {
       body = makeRequestBody({

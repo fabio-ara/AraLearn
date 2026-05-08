@@ -2,12 +2,12 @@
 
 Este diretório reúne a documentação pública do AraLearn.
 
-O `README.md` da raiz apresenta o produto para uso geral. Os documentos abaixo aprofundam arquitetura, modelo didático, assistência por IA generativa e pesquisa educacional.
+O `README.md` da raiz apresenta o produto para uso geral. Os documentos abaixo aprofundam arquitetura, modelo didático, assistência por IA generativa, publicação e pesquisa educacional.
 
 ## Produto e arquitetura
 
 - `visao-do-produto.md`: problema, proposta, público, princípios e horizonte do AraLearn
-- `arquitetura.md`: estrutura técnica do app, fluxo de dados, persistência, UI, validação e pontos arquiteturais em aberto
+- `arquitetura.md`: estrutura técnica do app, fluxo de dados, persistência, distribuição, UI, validação e pontos arquiteturais em aberto
 - `modelo-didatico.md`: microssequências, cards, contêineres, lacunas, revisão e critérios de qualidade didática
 - `rascunhos-e-microssequencias.md`: geração, rascunhos dentro da estrutura dos cursos, painel, status e execução
 

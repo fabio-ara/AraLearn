@@ -104,6 +104,81 @@ Os tamanhos internos são:
 
 O tamanho é decidido no planejamento, validado pela aplicação e usado para exigir a quantidade exata de cards na resposta final.
 
+## Reparos estruturais
+
+O pipeline usa reparos explícitos em dois pontos diferentes.
+
+No planejamento, o modelo devolve tipo didático, tamanho, objetivo, recursos extras e `cardPlan`. A aplicação valida esse plano com o contrato de planejamento. Quando o plano viola tipo fixado, tamanho, quantidade de cards, recursos permitidos ou preservação de escolhas do usuário, a aplicação faz uma chamada curta de reparo de plano. O reparo não muda a finalidade da etapa: ele apenas tenta produzir um plano válido para o contrato já montado.
+
+Na geração final, o modelo devolve os cards internos. A aplicação valida a resposta com `validateGeneratedCards` antes de qualquer adaptação para o contrato público. Quando a estrutura falha, a aplicação faz uma chamada de reparo estrutural dos cards. Esse reparo recebe:
+
+- resposta inválida original;
+- erros de validação;
+- contrato de geração original;
+- `expectedCardCount`;
+- `cardPlan` validado;
+- `allowedResourceTypes`;
+- schemas apenas dos recursos permitidos;
+- target da microssequência.
+
+O reparo de cards tem objetivo mais estreito que a geração: corrigir JSON, nomes de campos, campos obrigatórios, posições, quantidade e schemas dos recursos, preservando o conteúdo pedagógico sempre que possível. Ele não deve trocar o tipo didático, mudar o plano nem adicionar recursos fora de `allowedResourceTypes`.
+
+O limite padrão é de uma tentativa de reparo. Se a resposta reparada continuar inválida, se não houver JSON parseável, se a quantidade de cards continuar incorreta, se algum recurso continuar fora do contrato ou se recursos como `block_gap_fill` e `tree` continuarem estruturalmente inválidos, a aplicação retorna erro e não salva o resultado.
+
+Para `block_gap_fill`, o reparo estrutural aceita corrigir desvios comuns de provedor, como `segments[].text` para segmentos `{ "kind": "text", "value": "..." }`, `blocks[].text` para `{ "blockId": "...", "label": "..." }`, lacunas com `acceptedBlockIds` apontando para blocos existentes e preservação de `feedbackAfter`.
+
+## Resiliência operacional
+
+Chamadas ao provedor podem falhar por motivos transitórios, como limite temporário de requisições, indisponibilidade ou alta demanda. O pipeline classifica erros do provedor antes de decidir se deve tentar novamente.
+
+Categorias usadas:
+
+- `rate_limited`;
+- `service_unavailable`;
+- `timeout`;
+- `invalid_request`;
+- `auth_error`;
+- `quota_exceeded`;
+- `validation_failed`;
+- `unknown`.
+
+Erros transitórios como `rate_limited`, `service_unavailable` e `timeout` podem receber retry. Erros de autenticação, requisição inválida, cota esgotada e validação local não são repetidos como falha de provedor.
+
+As chamadas de planejamento, reparo de planejamento, geração e reparo de geração usam retry com backoff exponencial e jitter. Os valores padrão são três tentativas, atraso base de 750 ms, atraso máximo de 8000 ms e jitter de 25%. Testes podem injetar uma função de atraso para validar o comportamento sem esperar tempo real.
+
+Depois que o planejamento é validado, a aplicação cria um `generationRunState` em memória com:
+
+- `runId`;
+- status da execução;
+- target estrutural da microssequência;
+- modelo solicitado e modelo realmente usado;
+- contrato de planejamento;
+- plano validado;
+- contrato de geração;
+- último erro operacional, quando existir.
+
+Esse estado não guarda chave de API nem payload grande de anexos. Ele contém o suficiente para refazer somente a geração final quando a fase de geração falha de modo transitório após as tentativas configuradas.
+
+Quando a falha acontece no planejamento, ainda não existe plano validado; nesse caso `canResume` é falso. Quando a falha acontece na geração ou no reparo de geração depois de um plano validado, `canResume` pode ser verdadeiro e a geração pode ser retomada com `resumeGenerationFromValidatedPlan`, sem refazer o planejamento.
+
+O fallback para modelo leve é opcional e fica desativado por padrão. Quando habilitado, ele só é usado em categorias configuradas, normalmente `rate_limited`, `service_unavailable` e `timeout`. O fallback não ocorre em `auth_error`, `invalid_request` ou `validation_failed`. Ao usar fallback, o contrato, o target, `selectedLessonTopicRefs`, o `cardPlan` e os recursos efetivos são preservados; apenas o modelo chamado muda.
+
+Erros operacionais retornam dados padronizados para a camada chamadora:
+
+```json
+{
+  "ok": false,
+  "phase": "generation",
+  "category": "service_unavailable",
+  "retryable": true,
+  "canResume": true,
+  "runId": "generation-...",
+  "message": "O provedor está temporariamente indisponível. O plano foi preservado e a geração pode ser retomada."
+}
+```
+
+Em alta demanda do provedor, o comportamento esperado é tentar novamente com backoff. Se as tentativas acabarem durante a geração, o plano validado fica preservado para retomada. Se houver fallback configurado para essa categoria, a aplicação pode usar o modelo leve sem reconstruir o plano.
+
 ## Assuntos do Escopo da Lição
 
 Na geração e na edição, a seleção compacta de assuntos da UI é enviada internamente como `selectedLessonTopicRefs`.
@@ -135,9 +210,10 @@ O catálogo interno de recursos inclui:
 - `code_editor`;
 - `table`;
 - `flowchart`;
+- `tree`;
 - `block_gap_fill`.
 
-Cada recurso possui descrição, limites e schema próprio. O recurso `block_gap_fill` é um alias interno para o recurso público já existente de parágrafo com lacunas por opções, persistido como `say` com sintaxe `[[resposta::opção|opção]]`. Ele não cria tipo público novo.
+Cada recurso possui descrição, limites e schema próprio. O recurso `block_gap_fill` é um alias interno para o recurso público já existente de parágrafo com lacunas por opções, persistido como `say` com sintaxe `[[resposta::opção|opção]]`. Ele não cria tipo público novo. Seu comentário posterior usa `feedbackAfter`, preservado como `after` no card público; não há popup público específico por acerto ou erro nesse alias.
 
 Mapeamento principal:
 
@@ -147,6 +223,7 @@ multiple_choice -> ask
 code_editor     -> code
 table           -> table
 flowchart       -> flow
+tree            -> tree
 block_gap_fill  -> say com lacunas por opções
 ```
 
@@ -225,8 +302,9 @@ Fluxo implementado para gerar ou revisar cards no painel:
 8. a aplicação resolve recursos efetivos e monta o contrato de geração com schemas completos apenas desses recursos;
 9. o modelo faz a segunda chamada e devolve os cards;
 10. a aplicação valida quantidade, posições, recursos, schemas e campos obrigatórios;
-11. o resultado válido é convertido para o contrato público;
-12. a microssequência recebe nova versão ou cards aplicados.
+11. se a validação falhar, a aplicação tenta um reparo estrutural dos cards e valida novamente;
+12. somente cards internos válidos são convertidos para o contrato público;
+13. a microssequência recebe nova versão ou cards aplicados.
 
 O fluxo preserva o contexto hierárquico:
 
@@ -300,6 +378,14 @@ O prompt completo inclui:
 - selectedLessonTopicRefs;
 - fontes resolvidas;
 - resumo da microssequência atual quando houver.
+
+Quando houver reparo estrutural, o prompt de reparo é mais compacto e restrito. Ele inclui a resposta inválida, os erros de validação e apenas a parte do contrato necessária para corrigir a estrutura. A instrução central é corrigir o JSON existente, não gerar uma microssequência nova.
+
+## Saída estruturada nativa
+
+A integração mantém capacidades de modelo separadas do contrato didático. Os campos `supportsNativeJsonSchema`, `supportsResponseSchema` e `responseMimeType` indicam onde o provedor poderá receber schema nativo no futuro.
+
+No Gemini, a configuração já trabalha com `responseMimeType: "application/json"`. A documentação oficial do Gemini orienta o uso de JSON estruturado via `responseMimeType` e schema JSON no `generationConfig`, mas esta etapa mantém a geração modular baseada em prompts compactos e reparo pós-validação. A extensão para `responseSchema` deve continuar isolada e testável, sem substituir a validação interna antes de salvar.
 
 ## Edição assistida
 
