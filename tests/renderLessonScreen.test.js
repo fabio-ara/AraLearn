@@ -316,8 +316,14 @@ test("renderiza o painel da microssequência vazia em modo de geração de cards
   });
 
   assert.match(html, /<div class="topbar-title">Gerar cards<\/div>/);
-  assert.match(html, /Os cards gerados aparecerão aqui após o envio do prompt\./);
-  assert.match(html, /Envie o pedido para gerar os cards da microssequência\./);
+  assert.doesNotMatch(html, /editor-step-nav/);
+  assert.doesNotMatch(html, /editor-version-count-value/);
+  assert.doesNotMatch(html, /Os cards gerados aparecerão aqui após o envio do prompt\./);
+  assert.match(html, /data-workbench-pane="edit"/);
+  assert.match(html, /data-action="select-workbench-pane" data-workbench-pane="edit" aria-label="Geração" title="Geração"/);
+  assert.doesNotMatch(html, /data-action="select-workbench-pane" data-workbench-pane="preview"/);
+  assert.doesNotMatch(html, /Sem cards ainda/);
+  assert.doesNotMatch(html, /Envie o pedido para gerar os cards da microssequência\./);
   assert.match(html, /data-action="apply-assist"[^>]*title="Gerar cards" aria-label="Gerar cards"/);
 });
 

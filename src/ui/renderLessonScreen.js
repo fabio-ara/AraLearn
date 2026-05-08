@@ -303,6 +303,18 @@ function renderWorkbenchPaneTabs(activePane) {
   );
 }
 
+function renderGenerationPaneTab() {
+  return (
+    '<div class="workbench-surface-tabbar">' +
+    '<div class="workbench-surface-strip" role="tablist" aria-label="Modo de geração">' +
+    '<button class="workbench-surface-tab active" type="button" role="tab" aria-selected="true" data-action="select-workbench-pane" data-workbench-pane="edit" aria-label="Geração" title="Geração">' +
+    renderWorkbenchPaneIcon("edit") +
+    "</button>" +
+    "</div>" +
+    "</div>"
+  );
+}
+
 function collectMicrosequenceDependencies(moduleValue, lessonKey, microsequenceKey) {
   const dependencies = [];
   for (const lesson of moduleValue.lessons || []) {
@@ -997,6 +1009,38 @@ function renderMicrosequenceWorkbenchScreen({
     "</section>"
       );
     })();
+  const stepNavigation = hasCards
+    ? '<section class="editor-step-nav">' +
+      '<div class="editor-step-nav-head editor-version-nav-head">' +
+      versionPrevControl +
+      '<p class="chip-muted editor-version-count" aria-label="' +
+      escapeHtml(versionCount ? "Versão " + String(safeVersionIndex + 1) + " de " + String(versionCount) : "Sem versões ainda") +
+      '" title="' +
+      escapeHtml(versionCount ? "Versão " + String(safeVersionIndex + 1) + " de " + String(versionCount) : "Sem versões ainda") +
+      '">' +
+      renderWorkbenchIcon("versions", "workbench-icon editor-version-count-icon") +
+      '<span class="editor-version-count-value">' +
+      (versionCount ? String(safeVersionIndex + 1) + "/" + String(versionCount) : "0/0") +
+      "</span>" +
+      "</p>" +
+      versionNextControl +
+      "</div>" +
+      '<div class="editor-version-strip-wrap">' +
+      '<div class="editor-version-tabbar">' +
+      '<div class="editor-version-strip" data-version-strip="true" role="tablist" aria-label="Versões da microssequência">' +
+      versionTabs +
+      "</div>" +
+      "</div>" +
+      '<div class="editor-version-controls">' +
+      '<button class="icon-ghost tiny-icon version-delete-btn" type="button" data-action="delete-microsequence-version" title="Excluir versão atual" aria-label="Excluir versão atual"' +
+      ((editorSupport.microsequenceVersions || []).length <= 1 ? ' disabled aria-disabled="true"' : "") +
+      '>&#128465;</button>' +
+      "</div>" +
+      "</div>" +
+      '<div class="editor-step-strip">' +
+      cardStrip +
+      "</div></section>"
+    : "";
 
   return (
     '<section class="screen">' +
@@ -1007,42 +1051,13 @@ function renderMicrosequenceWorkbenchScreen({
     }) +
     renderCoursesTabs() +
     '<main class="screen-content microsequence-generator-screen">' +
-    '<section class="editor-step-nav">' +
-    '<div class="editor-step-nav-head editor-version-nav-head">' +
-    versionPrevControl +
-    '<p class="chip-muted editor-version-count" aria-label="' +
-    escapeHtml(versionCount ? "Versão " + String(safeVersionIndex + 1) + " de " + String(versionCount) : "Sem versões ainda") +
-    '" title="' +
-    escapeHtml(versionCount ? "Versão " + String(safeVersionIndex + 1) + " de " + String(versionCount) : "Sem versões ainda") +
-    '">' +
-    renderWorkbenchIcon("versions", "workbench-icon editor-version-count-icon") +
-    '<span class="editor-version-count-value">' +
-    (versionCount ? String(safeVersionIndex + 1) + "/" + String(versionCount) : "0/0") +
-    "</span>" +
-    "</p>" +
-    versionNextControl +
-    "</div>" +
-    '<div class="editor-version-strip-wrap">' +
-    '<div class="editor-version-tabbar">' +
-    '<div class="editor-version-strip" data-version-strip="true" role="tablist" aria-label="Versões da microssequência">' +
-    versionTabs +
-    "</div>" +
-    "</div>" +
-    '<div class="editor-version-controls">' +
-    '<button class="icon-ghost tiny-icon version-delete-btn" type="button" data-action="delete-microsequence-version" title="Excluir versão atual" aria-label="Excluir versão atual"' +
-    ((editorSupport.microsequenceVersions || []).length <= 1 ? ' disabled aria-disabled="true"' : "") +
-    '>&#128465;</button>' +
-    "</div>" +
-    "</div>" +
-    '<div class="editor-step-strip">' +
-    cardStrip +
-    "</div></section>" +
+    stepNavigation +
     '<section class="workbench-surface" data-workbench-pane="' +
     activeWorkbenchPane +
     '">' +
-    renderWorkbenchPaneTabs(activeWorkbenchPane) +
+    (hasCards ? renderWorkbenchPaneTabs(activeWorkbenchPane) : renderGenerationPaneTab()) +
     '<div class="workbench-surface-body">' +
-    (activeWorkbenchPane === "preview" ? previewPane : editPane) +
+    (hasCards && activeWorkbenchPane === "preview" ? previewPane : editPane) +
     "</div>" +
     "</section>" +
     "</main></section>"
