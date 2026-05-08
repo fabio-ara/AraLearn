@@ -229,6 +229,7 @@ function createStarterMicrosequence({ title = "Nova microssequência" } = {}) {
   return {
     key: uniqueKey(title, new Set(), "microsequence"),
     title,
+    status: MICROSEQUENCE_STATUS_READY,
     cards: [createStarterCard()]
   };
 }

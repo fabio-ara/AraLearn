@@ -21,7 +21,7 @@ test("gera chave de progresso por caminho completo da lição", () => {
   );
 });
 
-test("le progresso por caminho e mantem fallback para chave legada da lição", () => {
+test("lê progresso apenas pelo caminho completo da lição", () => {
   const progress = normalizeProgressDocument({
     version: 1,
     lessons: {
@@ -39,13 +39,13 @@ test("le progresso por caminho e mantem fallback para chave legada da lição", 
     { cursor: 2, completedCardKeys: ["card-2"] }
   );
 
-  assert.deepEqual(
+  assert.equal(
     readLessonProgressEntry(progress, {
       courseKey: "curso-b",
       moduleKey: "mod-9",
       lessonKey: "licao-legada"
     }),
-    { cursor: 1, completedCardKeys: ["card-legacy"] }
+    null
   );
 });
 
@@ -54,7 +54,6 @@ test("remove apenas o progresso das lições informadas", () => {
     version: 1,
     lessons: {
       "course-a::module-a::lesson-a": { cursor: 1, completedCardKeys: ["card-1"] },
-      "lesson-a": { cursor: 1, completedCardKeys: ["card-legacy"] },
       "course-a::module-a::lesson-b": { cursor: 2, completedCardKeys: ["card-2"] },
       "lesson-c": { cursor: 3, completedCardKeys: ["card-3"] }
     }
@@ -70,11 +69,10 @@ test("remove apenas o progresso das lições informadas", () => {
       courseKey: "course-a",
       moduleKey: "module-a",
       lessonKey: "lesson-b"
-    },
-    "lesson-c"
+    }
   ]);
 
-  assert.deepEqual(Object.keys(nextProgress.lessons), []);
+  assert.deepEqual(Object.keys(nextProgress.lessons), ["lesson-c"]);
 });
 
 test("grava progresso cumulativo preservando o card mais avançado", () => {

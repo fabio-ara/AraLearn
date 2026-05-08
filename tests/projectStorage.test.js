@@ -36,17 +36,17 @@ test("persiste projeto em chaves dedicadas", () => {
 
   assert.equal(savedProject.contract, "aralearn.contract");
   assert.equal(store.getItem("aralearn.project") !== null, true);
-  assert.equal(projectStorage.loadStorageVersion(), "2");
+  assert.equal(projectStorage.loadStorageVersion(), null);
 });
 
-test("exporta e importa envelope principal sem fallback para v1", () => {
+test("exporta e importa envelope principal no formato atual", () => {
   const store = createKeyValueMemoryStore();
   const projectStorage = createProjectStorage(store);
   projectStorage.saveProject(readJson("./docs/examples/aralearn-contract.renderable.json"));
 
   const exported = JSON.parse(projectStorage.exportJson());
   assert.equal(exported.format, "aralearn.storage");
-  assert.equal(exported.storageVersion, 2);
+  assert.equal("storageVersion" in exported, false);
   assert.equal(exported.project.contract, "aralearn.contract");
 
   const importedStore = createKeyValueMemoryStore();
@@ -54,7 +54,7 @@ test("exporta e importa envelope principal sem fallback para v1", () => {
   importedStorage.importJson(JSON.stringify(exported));
 
   assert.equal(importedStorage.loadProject().contract, "aralearn.contract");
-  assert.equal(importedStorage.loadStorageVersion(), "2");
+  assert.equal(importedStorage.loadStorageVersion(), null);
 });
 
 test("backup principal preserva também o progresso do projeto", () => {
@@ -86,19 +86,15 @@ test("backup principal preserva também o progresso do projeto", () => {
   });
 });
 
-test("migra projeto sem versão para storage versionado com status de microssequência", () => {
+test("rejeita projeto sem status explícito de microssequência no storage", () => {
   const store = createKeyValueMemoryStore();
   const project = readJson("./docs/examples/aralearn-contract.renderable.json");
   delete project.courses[0].modules[0].lessons[0].microsequences[0].status;
   store.setItem("aralearn.project", JSON.stringify(project));
 
   const projectStorage = createProjectStorage(store);
-  const loaded = projectStorage.loadProject();
-  const persisted = JSON.parse(store.getItem("aralearn.project"));
 
-  assert.equal(projectStorage.loadStorageVersion(), "2");
-  assert.equal(loaded.courses[0].modules[0].lessons[0].microsequences[0].status, "ready");
-  assert.equal(persisted.courses[0].modules[0].lessons[0].microsequences[0].status, "ready");
+  assert.throws(() => projectStorage.loadProject(), /Campo obrigatório inválido: "status"/);
 });
 
 test("salvar e recarregar preserva a ordem reordenada da árvore completa", () => {
@@ -125,6 +121,7 @@ test("salvar e recarregar preserva a ordem reordenada da árvore completa", () =
                   {
                     key: "microsequence-extra",
                     title: "Microssequência extra",
+                    status: "ready",
                     cards: [{ key: "card-extra", title: "Card extra", say: "Conteúdo" }]
                   }
                 ]

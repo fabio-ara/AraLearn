@@ -44,5 +44,5 @@ test("limita o card inicial ao total visível da última versão", () => {
 test("selecionar mini-card força preview apenas no painel da microssequência", () => {
   assert.equal(resolveWorkbenchPaneAfterCardSelection("microsequence-assist", "edit"), "preview");
   assert.equal(resolveWorkbenchPaneAfterCardSelection("microsequence-assist", "preview"), "preview");
-  assert.equal(resolveWorkbenchPaneAfterCardSelection("draft-generator", "edit"), "edit");
+  assert.equal(resolveWorkbenchPaneAfterCardSelection("lesson", "edit"), "edit");
 });

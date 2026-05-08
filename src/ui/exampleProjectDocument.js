@@ -43,6 +43,7 @@ export function createExampleProjectDocument() {
                     key: "microsequence-arvore-diretorios",
                     title: "Diretório atual e caminhos",
                     tags: ["Teste", "Árvore"],
+                    status: "ready",
                     cards: [
                       {
                         key: "card-arvore-diretorios",

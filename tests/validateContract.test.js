@@ -23,11 +23,12 @@ function projectWithCards(cards) {
               {
                 title: "Lição",
                 microsequences: [
-                  {
-                    title: "Microssequência",
-                    cards
-                  }
-                ]
+              {
+                title: "Microssequência",
+                status: "draft",
+                cards
+              }
+            ]
               }
             ]
           }
@@ -114,7 +115,7 @@ test("aceita card tree expositivo sem prática", () => {
   assert.equal("practice" in card.tree, false);
 });
 
-test("aceita microssequência sem cards", () => {
+test("aceita microssequência sem cards quando o status é explícito", () => {
   const result = validateContractDocument(projectWithCards([]));
 
   assert.equal(result.ok, true);
@@ -122,18 +123,22 @@ test("aceita microssequência sem cards", () => {
   assert.deepEqual(result.value.courses[0].modules[0].lessons[0].microsequences[0].cards, []);
 });
 
-test("normaliza status de microssequência com cards como pronta", () => {
-  const result = validateContractDocument(
-    projectWithCards([
-      {
-        title: "Ideia",
-        say: "Leia a ideia."
-      }
-    ])
-  );
+test("rejeita microssequência sem status explícito", () => {
+  const document = projectWithCards([
+    {
+      title: "Ideia",
+      say: "Leia a ideia."
+    }
+  ]);
+  delete document.courses[0].modules[0].lessons[0].microsequences[0].status;
 
-  assert.equal(result.ok, true);
-  assert.equal(result.value.courses[0].modules[0].lessons[0].microsequences[0].status, "ready");
+  const result = validateContractDocument(document);
+
+  assert.equal(result.ok, false);
+  assert.match(
+    result.errors.map((error) => `${error.path}: ${error.message}`).join("\n"),
+    /Campo obrigatório inválido: "status"/
+  );
 });
 
 test("aceita status explícito de rascunho", () => {

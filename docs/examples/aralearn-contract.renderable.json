@@ -15,6 +15,7 @@
                 {
                   "title": "Modelo cascata",
                   "tags": ["Processos de software"],
+                  "status": "ready",
                   "cards": [
                     {
                       "title": "Ideia central",

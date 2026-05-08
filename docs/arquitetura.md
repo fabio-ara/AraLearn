@@ -31,7 +31,7 @@ Diretórios centrais em `src/`:
 - `core/`: runtime de cards, árvores, opções de exercício e carregamento;
 - `render/`: renderização de cards e documentos;
 - `flowchart/`: projeção, geometria, viewport e prática de fluxogramas;
-- `storage/`: persistência, versão de armazenamento, progresso, importação, exportação e backup;
+- `storage/`: persistência, progresso, importação, exportação e backup;
 - `editor/`: operações de edição no contrato;
 - `assist/`: planejamento, prompts, chamadas e normalização da assistência por IA generativa;
 - `ui/`: navegação, telas, overlays, aba `Gerar`, aba `Cursos`, painel de microssequência e estado da interface.
@@ -90,8 +90,6 @@ pedido do usuário
 O AraLearn separa projeto e progresso.
 
 O projeto contém a estrutura estudável: cursos, módulos, lições, microssequências e cards. O progresso registra avanço local do usuário sobre essa estrutura.
-
-A persistência local também registra `aralearn.storageVersion`. Essa versão permite aplicar migrações sem substituir dados do usuário. A migração atual normaliza `status` de microssequências: com cards vira `ready`; sem cards vira `draft`.
 
 A aplicação trabalha com dois formatos de troca:
 
@@ -157,7 +155,7 @@ A validação automatizada cobre:
 - persistência;
 - progresso;
 - importação e exportação;
-- rascunhos e status de microssequências;
+- rascunhos e status explícito de microssequências;
 - assistência por IA generativa;
 - fluxogramas e árvores.
 

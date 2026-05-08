@@ -1,5 +1,4 @@
 import { sanitizeContractCard, getContractCardKindLabel } from "./contractCard.js";
-import { normalizeMicrosequenceStatus } from "../model/microsequenceStatus.js";
 
 export const CONTRACT_NAME = "aralearn.contract";
 export const CONTRACT_VERSION = 1;
@@ -155,13 +154,9 @@ function validateMicrosequence(microsequence, index, errors, microKeys, path) {
 
   const title = ensureRequiredString(microsequence.title, `${currentPath}.title`, "title", errors);
   const tags = normalizeStringList(microsequence.tags, currentPath, "tags", errors);
-  const status = normalizeMicrosequenceStatus(microsequence.status, microsequence);
-  if (
-    microsequence.status !== undefined &&
-    microsequence.status !== "draft" &&
-    microsequence.status !== "ready"
-  ) {
-    errors.push(makeError(`${currentPath}.status`, 'Campo opcional inválido: "status".'));
+  const status = typeof microsequence.status === "string" ? microsequence.status.trim() : "";
+  if (status !== "draft" && status !== "ready") {
+    errors.push(makeError(`${currentPath}.status`, 'Campo obrigatório inválido: "status".'));
   }
   const key = microKeys.next(microsequence.key, title || `microsequence-${index + 1}`, currentPath, errors);
   const cards = Array.isArray(microsequence.cards) ? microsequence.cards : [];
@@ -179,7 +174,7 @@ function validateMicrosequence(microsequence, index, errors, microKeys, path) {
     key,
     title: title ?? "",
     ...(tags.length ? { tags } : {}),
-    status,
+    status: status || "draft",
     cards: normalizedCards
   };
 }

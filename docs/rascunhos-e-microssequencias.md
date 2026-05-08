@@ -70,12 +70,7 @@ Regras:
 
 Rascunhos são persistidos no próprio local em que foram criados: dentro da lição selecionada.
 
-A persistência local registra a versão de armazenamento em `aralearn.storageVersion`. Projetos carregados sem `status` em microssequências são normalizados:
-
-- microssequências com cards recebem `ready`;
-- microssequências sem cards recebem `draft`.
-
-Essa migração preserva conteúdo existente e mantém o contrato público simples para autoria manual e geração assistida.
+O formato persistido é o mesmo formato estrutural atual do projeto. Cada microssequência precisa declarar `status` explicitamente como `draft` ou `ready`.
 
 ## Decisões futuras
 

@@ -2,8 +2,6 @@ import { readLessonProgressEntry } from "../storage/progressStore.js";
 import { isReadyMicrosequence } from "../model/microsequenceStatus.js";
 import { renderUiIcon } from "./renderUiIcons.js";
 
-const DRAFT_PLACEHOLDER_MICROSEQUENCE_KEY = "__draft-placeholder__";
-
 function escapeHtml(value) {
   return String(value)
     .replace(/&/g, "&amp;")
@@ -39,9 +37,6 @@ function countLessons(course) {
 
 function countCardsInLesson(lesson) {
   return (lesson.microsequences || []).reduce((total, microsequence) => {
-    if (microsequence?.key === DRAFT_PLACEHOLDER_MICROSEQUENCE_KEY) {
-      return total;
-    }
     if (!isReadyMicrosequence(microsequence)) {
       return total;
     }
@@ -104,7 +99,7 @@ function renderHomeCourseMeta(course) {
 }
 
 function buildHomeCoursePreviews(project, progress, featuredCourseKey = "") {
-  return (project.courses || []).filter((course) => course?.key !== "__draft-course__").map((course) => {
+  return (project.courses || []).map((course) => {
     const completedCount = countCompletedCardsInCourse(course, progress);
     const totalCount = countCardsInCourse(course);
     return {
@@ -122,7 +117,7 @@ function buildHomeCoursePreviews(project, progress, featuredCourseKey = "") {
 }
 
 function getVisibleCourses(project) {
-  return (project.courses || []).filter((course) => course?.key !== "__draft-course__");
+  return project.courses || [];
 }
 
 function renderCoursesTopbar() {

@@ -66,11 +66,6 @@ import { detectJsonExchangeFormat } from "../storage/jsonExchange.js";
 import { getContractCardKind, listContractAnswerValues } from "../contract/contractCard.js";
 import { isReadyMicrosequence } from "../model/microsequenceStatus.js";
 
-const DRAFT_COURSE_KEY = "__draft-course__";
-const DRAFT_MODULE_KEY = "__draft-module__";
-const DRAFT_LESSON_KEY = "__draft-lesson__";
-const DRAFT_PLACEHOLDER_MICROSEQUENCE_KEY = "__draft-placeholder__";
-
 const MAX_ASSIST_DEPENDENCIES = 5;
 const MAX_CARD_SNAPSHOTS = 6;
 const ASSIST_MODEL_OPTIONS = [
@@ -79,7 +74,6 @@ const ASSIST_MODEL_OPTIONS = [
   { value: "gemini-2.0-flash", label: "Gemini 2.0 Flash · até 2026-06-01" }
 ];
 const ASSIST_USER_MODES = {
-  GENERATE: "generate-microsequence",
   EDIT_MICROSEQUENCE: "edit-microsequence",
   REPOSITION: "reposition-in-course"
 };
@@ -247,91 +241,6 @@ function buildCardUpdateFromText(card, title, text) {
     say: nextText || card?.say || "Descreva a ideia central desta microssequência.",
     ...(Array.isArray(card?.wrong) && card.wrong.length ? { wrong: card.wrong } : {})
   };
-}
-
-function createRecoveredDraftMicrosequenceKey(microsequences, title) {
-  const usedKeys = new Set((microsequences || []).map((item) => item?.key).filter(Boolean));
-  const base = `microsequence-${slugifyDownloadName(title, "microssequencia-recuperada")}`;
-  let candidate = base;
-  let counter = 2;
-
-  while (usedKeys.has(candidate)) {
-    candidate = `${base}-${counter}`;
-    counter += 1;
-  }
-
-  return candidate;
-}
-
-function draftLessonHasPlaceholderCards(draftLesson) {
-  const microsequences = Array.isArray(draftLesson?.microsequences) ? draftLesson.microsequences : [];
-  const placeholder = microsequences.find((item) => isDraftPlaceholderMicrosequence(item));
-  return Array.isArray(placeholder?.cards) && placeholder.cards.length > 0;
-}
-
-function migrateDraftPlaceholderCards(draftLesson) {
-  const microsequences = Array.isArray(draftLesson?.microsequences) ? draftLesson.microsequences : [];
-  const placeholderIndex = microsequences.findIndex((item) => isDraftPlaceholderMicrosequence(item));
-  const placeholder = placeholderIndex >= 0 ? microsequences[placeholderIndex] : null;
-  const placeholderCards = Array.isArray(placeholder?.cards) ? placeholder.cards : [];
-
-  if (!placeholder || !placeholderCards.length) {
-    return false;
-  }
-
-  const title = String(placeholder.title || "").trim() && placeholder.title !== "Gerador"
-    ? placeholder.title
-    : "Microssequência recuperada";
-  const recoveredMicrosequence = {
-    key: createRecoveredDraftMicrosequenceKey(microsequences, title),
-    title,
-    ...(Array.isArray(placeholder.tags) && placeholder.tags.length ? { tags: placeholder.tags } : {}),
-    cards: placeholderCards
-  };
-  const cleanPlaceholder = {
-    key: DRAFT_PLACEHOLDER_MICROSEQUENCE_KEY,
-    title: "Gerador",
-    cards: []
-  };
-
-  draftLesson.microsequences = [
-    ...microsequences.slice(0, placeholderIndex),
-    cleanPlaceholder,
-    ...microsequences.slice(placeholderIndex + 1),
-    recoveredMicrosequence
-  ];
-
-  return true;
-}
-
-export function ensureDraftCourse(document) {
-  if (!document || typeof document !== "object") {
-    return document;
-  }
-
-  const courses = Array.isArray(document.courses) ? document.courses : [];
-  const draftCourse = courses.find((course) => course?.key === DRAFT_COURSE_KEY);
-  const draftModule = draftCourse?.modules?.find((moduleValue) => moduleValue?.key === DRAFT_MODULE_KEY);
-  const draftLesson = draftModule?.lessons?.find((lesson) => lesson?.key === DRAFT_LESSON_KEY);
-  const hasWorkspace = draftCourse && draftModule && draftLesson;
-
-  if (hasWorkspace) {
-    if (!draftLessonHasPlaceholderCards(draftLesson)) {
-      return document;
-    }
-    const nextDocument = structuredClone(document);
-    const nextDraftCourse = nextDocument.courses.find((course) => course?.key === DRAFT_COURSE_KEY);
-    const nextDraftModule = nextDraftCourse?.modules?.find((moduleValue) => moduleValue?.key === DRAFT_MODULE_KEY);
-    const nextDraftLesson = nextDraftModule?.lessons?.find((lesson) => lesson?.key === DRAFT_LESSON_KEY);
-    migrateDraftPlaceholderCards(nextDraftLesson);
-    return nextDocument;
-  }
-
-  return document;
-}
-
-function isDraftPlaceholderMicrosequence(microsequence) {
-  return microsequence?.key === DRAFT_PLACEHOLDER_MICROSEQUENCE_KEY;
 }
 
 function clampFlowchartScale(value) {
@@ -588,11 +497,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
   if (!storage || typeof storage.loadProject !== "function") fail("Storage inválido.");
   if (!editor) fail("Editor inválido.");
 
-  const loadedProject = storage.loadProject();
-  const initialProject = ensureDraftCourse(loadedProject);
-  if (initialProject !== loadedProject) {
-    storage.saveProject(initialProject);
-  }
+  const initialProject = storage.loadProject();
   const initialAssistConfig = readAssistConfigStorage();
   const state = {
     project: initialProject,
@@ -620,7 +525,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
     cardExerciseLoadVersion: 0,
     continuePopup: null,
     assistDraft: {
-      selectedMode: ASSIST_USER_MODES.GENERATE,
+      selectedMode: ASSIST_USER_MODES.EDIT_MICROSEQUENCE,
       activeWorkbenchPane: "preview",
       promptText: "",
       dependencyKeys: [],
@@ -644,16 +549,8 @@ export function createLessonEditorApp({ root, storage, editor }) {
 
   state.selection = getFirstPath(state.project);
 
-  function ensureDraftWorkspace(nextProject) {
-    const ensuredProject = ensureDraftCourse(nextProject);
-    if (ensuredProject !== nextProject) {
-      storage.saveProject(ensuredProject);
-    }
-    return ensuredProject;
-  }
-
   function setProject(nextProject) {
-    state.project = ensureDraftWorkspace(nextProject);
+    state.project = nextProject;
   }
 
   function readStructurePayload(node, fallbackLevel = "") {
@@ -763,43 +660,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
     targetNode.classList.add(position === "after" ? "structure-drop-after" : "structure-drop-before");
   }
 
-  function getDraftLessonContext(project = state.project) {
-    const course = findCourse(project, DRAFT_COURSE_KEY);
-    const moduleValue = course ? findModule(project, DRAFT_COURSE_KEY, DRAFT_MODULE_KEY) : null;
-    const lesson = moduleValue ? findLesson(project, DRAFT_COURSE_KEY, DRAFT_MODULE_KEY, DRAFT_LESSON_KEY) : null;
-    return { course, moduleValue, lesson };
-  }
-
-  function getVisibleDraftMicrosequences(project = state.project) {
-    const { lesson } = getDraftLessonContext(project);
-    return (lesson?.microsequences || []).filter((item) => !isDraftPlaceholderMicrosequence(item));
-  }
-
-  function ensureDraftGeneratorWorkspace() {
-    const draftContext = getDraftLessonContext();
-    if (!draftContext.course || !draftContext.moduleValue || !draftContext.lesson) {
-      return null;
-    }
-
-    const existingPlaceholder = (draftContext.lesson.microsequences || []).find((item) => isDraftPlaceholderMicrosequence(item));
-    if (existingPlaceholder) {
-      return existingPlaceholder;
-    }
-
-    const nextProject = editor.createMicrosequence({
-      courseKey: draftContext.course.key,
-      moduleKey: draftContext.moduleValue.key,
-      lessonKey: draftContext.lesson.key,
-      key: DRAFT_PLACEHOLDER_MICROSEQUENCE_KEY,
-      title: "Gerador",
-      tags: []
-    });
-    setProject(nextProject);
-
-    const nextDraftLesson = findLesson(nextProject, DRAFT_COURSE_KEY, DRAFT_MODULE_KEY, DRAFT_LESSON_KEY);
-    return (nextDraftLesson?.microsequences || []).find((item) => isDraftPlaceholderMicrosequence(item)) || null;
-  }
-
   function collectGlobalAssistTags(project = state.project) {
     const seenTitles = new Set();
     const tags = [];
@@ -820,7 +680,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
     }
 
     (project.courses || []).forEach((course) => {
-      if (!course || course.key === DRAFT_COURSE_KEY) {
+      if (!course) {
         return;
       }
 
@@ -841,10 +701,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
   }
 
   function getAssistCatalog() {
-    if (state.view === "draft-generator" || state.selection.courseKey === DRAFT_COURSE_KEY) {
-      return collectGlobalAssistTags();
-    }
-
     const context = getRenderContext();
     const localDependencies = collectAssistDependencies(context.course, context.moduleValue, context.lesson, context.microsequence);
     const globalTags = collectGlobalAssistTags();
@@ -874,7 +730,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
     const seenSlotIds = new Set();
 
     (project.courses || []).forEach((course) => {
-      if (!course || course.key === DRAFT_COURSE_KEY) {
+      if (!course) {
         return;
       }
 
@@ -954,14 +810,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
   function getAssistModeOptions() {
     const hasSelectedTags = state.assistDraft.dependencyKeys.length > 0;
 
-    if (state.view === "draft-generator") {
-      const options = [{ value: ASSIST_USER_MODES.GENERATE, label: "Gerar microssequência" }];
-      return {
-        options,
-        locked: true
-      };
-    }
-
     const options = [
       { value: ASSIST_USER_MODES.EDIT_MICROSEQUENCE, label: "Editar microssequência" }
     ];
@@ -976,9 +824,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
   }
 
   function getDefaultAssistUserMode() {
-    return state.view === "draft-generator"
-      ? ASSIST_USER_MODES.GENERATE
-      : ASSIST_USER_MODES.EDIT_MICROSEQUENCE;
+    return ASSIST_USER_MODES.EDIT_MICROSEQUENCE;
   }
 
   function applySelection(path) {
@@ -1138,35 +984,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
     render({ preserveState: true });
   }
 
-  function openDraftGenerationPage() {
-    const { course, moduleValue, lesson } = getDraftLessonContext();
-    if (!course || !moduleValue || !lesson) {
-      return;
-    }
-
-    const generatorMicrosequence = ensureDraftGeneratorWorkspace();
-    const firstCard = generatorMicrosequence?.cards?.[0] || null;
-
-    applySelection({
-      courseKey: course.key,
-      moduleKey: moduleValue.key,
-      lessonKey: lesson.key,
-      microsequenceKey: generatorMicrosequence ? generatorMicrosequence.key : null,
-      cardKey: firstCard ? firstCard.key : null,
-      cardIndex: 0
-    });
-    state.view = "draft-generator";
-    state.assistDraft.selectedMode = ASSIST_USER_MODES.GENERATE;
-    state.assistDraft.activeWorkbenchPane = "edit";
-    state.assistDraft.dependencyKeys = [];
-    state.assistDraft.pendingDependencyKey = "";
-    state.cardCommentOpen = false;
-    state.versionHistoryOpen = false;
-    state.entityEditor = null;
-    syncAssistDraft();
-    render({ preserveState: false });
-  }
-
   function closeAssistConfig() {
     state.assistConfigOpen = false;
     render({ preserveState: true });
@@ -1244,11 +1061,9 @@ export function createLessonEditorApp({ root, storage, editor }) {
     const allowedKeys = new Set(dependencies.map((item) => item.key));
     const filteredKeys = state.assistDraft.dependencyKeys.filter((key) => allowedKeys.has(key));
     state.assistDraft.dependencyKeys =
-      state.view === "draft-generator"
+      filteredKeys.length > 0
         ? filteredKeys.slice(0, MAX_ASSIST_DEPENDENCIES)
-        : filteredKeys.length > 0
-          ? filteredKeys.slice(0, MAX_ASSIST_DEPENDENCIES)
-          : getDefaultDependencyKeys(dependencies);
+        : getDefaultDependencyKeys(dependencies);
 
     const availableKeys = dependencies
       .filter((item) => !state.assistDraft.dependencyKeys.includes(item.key))
@@ -2267,69 +2082,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
   }
 
   function applyMicrosequenceGeneration({ microsequenceTitle, cards, tags = [] }) {
-    if (state.view === "draft-generator") {
-      const draftContext = getDraftLessonContext();
-      if (!draftContext.course || !draftContext.moduleValue || !draftContext.lesson) {
-        fail("A fila de rascunhos não está disponível.");
-      }
-
-      const createdProject = editor.createMicrosequence({
-        courseKey: draftContext.course.key,
-        moduleKey: draftContext.moduleValue.key,
-        lessonKey: draftContext.lesson.key,
-        title: microsequenceTitle || "Microssequência"
-      });
-      const createdLesson = findLesson(
-        createdProject,
-        draftContext.course.key,
-        draftContext.moduleValue.key,
-        draftContext.lesson.key
-      );
-      const createdMicrosequence = (createdLesson?.microsequences || [])
-        .filter((item) => !isDraftPlaceholderMicrosequence(item))
-        .at(-1);
-      if (!createdMicrosequence) {
-        fail("Não foi possível criar o rascunho da microssequência.");
-      }
-
-      setProject(createdProject);
-      const nextProject = editor.replaceMicrosequenceCards({
-        courseKey: draftContext.course.key,
-        moduleKey: draftContext.moduleValue.key,
-        lessonKey: draftContext.lesson.key,
-        microsequenceKey: createdMicrosequence.key,
-        title: microsequenceTitle,
-        tags,
-        cards
-      });
-      setProject(nextProject);
-
-      const nextMicrosequence = findMicrosequence(
-        nextProject,
-        draftContext.course.key,
-        draftContext.moduleValue.key,
-        draftContext.lesson.key,
-        createdMicrosequence.key
-      );
-      const firstCard = nextMicrosequence?.cards?.[0] || null;
-      applySelection({
-        courseKey: draftContext.course.key,
-        moduleKey: draftContext.moduleValue.key,
-        lessonKey: draftContext.lesson.key,
-        microsequenceKey: nextMicrosequence?.key || createdMicrosequence.key,
-        cardKey: firstCard ? firstCard.key : null,
-        cardIndex: 0
-      });
-      state.assistDraft.dependencyKeys = Array.isArray(tags) ? tags.slice(0, MAX_ASSIST_DEPENDENCIES) : [];
-      state.assistDraft.activeWorkbenchPane = "preview";
-      state.assistDraft.selectedMode = ASSIST_USER_MODES.EDIT_MICROSEQUENCE;
-      state.view = "microsequence-assist";
-      state.microsequenceMode = "play";
-      createMicrosequenceVersionFromCurrentProject();
-      syncAssistDraft();
-      return;
-    }
-
     const nextProject = editor.replaceMicrosequenceCards({
       courseKey: state.selection.courseKey,
       moduleKey: state.selection.moduleKey,
@@ -2358,7 +2110,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
   }
 
   function getVisibleCourses(project = state.project) {
-    return (project.courses || []).filter((course) => course?.key !== DRAFT_COURSE_KEY);
+    return project.courses || [];
   }
 
   function setHomeTab(tab) {
@@ -2465,7 +2217,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
       requestedMode === ASSIST_USER_MODES.REPOSITION
         ? "reposition-microsequence"
         : "compose-microsequence";
-    const isDraftGenerator = state.view === "draft-generator";
 
     state.assistDraft.isSubmitting = true;
     state.assistDraft.errorMessage = "";
@@ -2484,14 +2235,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
           course: context.course,
           moduleValue: context.moduleValue,
           lesson: context.lesson,
-          microsequence:
-            state.view === "draft-generator" || requestedMode === ASSIST_USER_MODES.GENERATE
-              ? {
-                  title: context.microsequence?.title || "",
-                  tags: context.microsequence?.tags || [],
-                  cards: context.microsequence?.cards || []
-                }
-              : context.microsequence
+          microsequence: context.microsequence
         }),
         card: context.card,
         dependencyTitles,
@@ -2510,9 +2254,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
           title:
             requestedMode === ASSIST_USER_MODES.EDIT_MICROSEQUENCE
               ? "Microssequência atualizada"
-              : isDraftGenerator
-                ? "Microssequência gerada"
-                : "Microssequência atualizada",
+              : "Microssequência atualizada",
           description:
             `${result.cards.length} cards aplicados em ${result.microsequenceTitle} com ${getAssistModelLabel(state.assistConfig.model)}.`,
           timestamp: new Date().toISOString()
@@ -3213,13 +2955,11 @@ export function createLessonEditorApp({ root, storage, editor }) {
     state.entityEditor = null;
 
     if (state.view === "microsequence") {
-      state.view = state.selection.courseKey === DRAFT_COURSE_KEY ? "course" : "lesson";
+      state.view = "lesson";
       state.microsequenceMode = "play";
     } else if (state.view === "microsequence-assist") {
-      state.view = state.selection.courseKey === DRAFT_COURSE_KEY ? "course" : "lesson";
+      state.view = "lesson";
       state.microsequenceMode = "play";
-    } else if (state.view === "draft-generator") {
-      state.view = "course";
     } else if (state.view === "lesson") {
       state.view = "course";
     } else if (state.view === "course") {
@@ -4639,8 +4379,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
     const currentCardRuntimeOptions = ensureCurrentCardRuntimeOptions();
     const assistCatalog = getAssistCatalog();
     const assistModeConfig = getAssistModeOptions();
-    const draftContext = getDraftLessonContext();
-    const draftMicrosequences = getVisibleDraftMicrosequences();
     const entityEditorModel = makeEntityEditorModel(state);
     const microsequenceVersionEntry = state.view === "microsequence-assist" ? getMicrosequenceVersionEntry() : null;
     const historyVersions = getCurrentCardHistory().map((item) => ({
@@ -4685,11 +4423,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
           hasApiKey: Boolean(state.assistConfig.apiKey),
           historyCount: historyVersions.length,
           cardRuntimeOptions: currentCardRuntimeOptions,
-          currentMicrosequenceIsPlaceholder: isDraftPlaceholderMicrosequence(context.microsequence),
-          draftCourseKey: DRAFT_COURSE_KEY,
-          draftLessonKey: draftContext.lesson?.key || DRAFT_LESSON_KEY,
-          draftMicrosequences,
-          visibleDraftCount: draftMicrosequences.length,
           continuePopup: {
             open:
               !!state.continuePopup &&
@@ -4775,10 +4508,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
       });
     });
 
-    root.querySelector("[data-action='open-draft-generator']")?.addEventListener("click", () => {
-      openDraftGenerationPage();
-    });
-
     root.querySelectorAll("[data-action='open-microsequence']").forEach((node) => {
       node.addEventListener("click", () => {
         const microsequenceKey = node.getAttribute("data-microsequence-key");
@@ -4789,14 +4518,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
           lessonKey: state.selection.lessonKey,
           microsequenceKey
         });
-      });
-    });
-
-    root.querySelectorAll("[data-action='open-draft-review']").forEach((node) => {
-      node.addEventListener("click", () => {
-        const microsequenceKey = node.getAttribute("data-microsequence-key");
-        if (!microsequenceKey) return;
-        openMicrosequenceAssistPage(microsequenceKey, 0);
       });
     });
 

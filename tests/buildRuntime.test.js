@@ -57,6 +57,7 @@ test("compila árvore pública para runtime interno de diretórios", () => {
                 microsequences: [
                   {
                     title: "Microssequência",
+                    status: "ready",
                     cards: [
                       {
                         title: "Árvore",

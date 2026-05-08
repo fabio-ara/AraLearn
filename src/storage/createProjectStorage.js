@@ -3,11 +3,8 @@ import { parseProjectDocument, serializeProjectDocument } from "./projectStore.j
 
 const DEFAULT_KEYS = {
   project: "aralearn.project",
-  progress: "aralearn.progress",
-  storageVersion: "aralearn.storageVersion"
+  progress: "aralearn.progress"
 };
-
-const CURRENT_STORAGE_VERSION = 2;
 
 function parseEnvelopeJson(rawJson) {
   try {
@@ -47,34 +44,21 @@ export function createProjectStorage(store, keys = DEFAULT_KEYS) {
 
   const storageKeys = { ...DEFAULT_KEYS, ...keys };
 
-  function saveStorageVersion() {
-    store.setItem(storageKeys.storageVersion, String(CURRENT_STORAGE_VERSION));
-  }
-
   return {
     saveProject(projectDocument) {
       const serialized = serializeProjectDocument(projectDocument);
       store.setItem(storageKeys.project, serialized);
-      saveStorageVersion();
       return parseProjectDocument(serialized);
     },
 
     loadProject() {
       const rawProject = store.getItem(storageKeys.project);
-      const project = parseProjectDocument(rawProject);
-
-      if (project && store.getItem(storageKeys.storageVersion) !== String(CURRENT_STORAGE_VERSION)) {
-        store.setItem(storageKeys.project, serializeProjectDocument(project));
-        saveStorageVersion();
-      }
-
-      return project;
+      return parseProjectDocument(rawProject);
     },
 
     saveProgress(progressDocument) {
       const normalized = normalizeProgressDocument(progressDocument);
       store.setItem(storageKeys.progress, serializeProgressDocument(normalized));
-      saveStorageVersion();
       return normalized;
     },
 
@@ -87,14 +71,13 @@ export function createProjectStorage(store, keys = DEFAULT_KEYS) {
     },
 
     loadStorageVersion() {
-      return store.getItem(storageKeys.storageVersion);
+      return null;
     },
 
     exportJson() {
       return JSON.stringify(
         {
           format: "aralearn.storage",
-          storageVersion: CURRENT_STORAGE_VERSION,
           exportedAt: new Date().toISOString(),
           project: this.loadProject(),
           progress: this.loadProgress()

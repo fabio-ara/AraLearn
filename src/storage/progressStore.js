@@ -45,29 +45,7 @@ export function buildLessonProgressKey(reference) {
     return "";
   }
 
-  if (normalized.courseKey && normalized.moduleKey) {
-    return `${normalized.courseKey}::${normalized.moduleKey}::${normalized.lessonKey}`;
-  }
-
-  return normalized.lessonKey;
-}
-
-export function listLessonProgressKeys(reference) {
-  const normalized = normalizeProgressReference(reference);
-  if (!normalized) {
-    return [];
-  }
-
-  const keys = [];
-  const pathKey = buildLessonProgressKey(normalized);
-  if (pathKey) {
-    keys.push(pathKey);
-  }
-  if (normalized.lessonKey && normalized.lessonKey !== pathKey) {
-    keys.push(normalized.lessonKey);
-  }
-
-  return keys;
+  return `${normalized.courseKey}::${normalized.moduleKey}::${normalized.lessonKey}`;
 }
 
 function normalizeProgressEntry(entry) {
@@ -111,14 +89,8 @@ export function normalizeProgressDocument(progressDocument) {
 export function readLessonProgressEntry(progressDocument, reference) {
   const normalized = normalizeProgressDocument(progressDocument);
   const lessons = normalized.lessons || {};
-
-  for (const key of listLessonProgressKeys(reference)) {
-    if (lessons[key]) {
-      return lessons[key];
-    }
-  }
-
-  return null;
+  const pathKey = buildLessonProgressKey(reference);
+  return pathKey && lessons[pathKey] ? lessons[pathKey] : null;
 }
 
 export function getLessonProgressCursor(progressDocument, reference, totalCards = 0) {
@@ -156,12 +128,6 @@ export function writeLessonProgressEntry(progressDocument, reference, cards = []
     updatedAt: new Date().toISOString()
   };
 
-  for (const legacyKey of listLessonProgressKeys(reference)) {
-    if (legacyKey && legacyKey !== pathKey) {
-      delete nextLessons[legacyKey];
-    }
-  }
-
   return {
     version: 1,
     lessons: nextLessons
@@ -171,7 +137,7 @@ export function writeLessonProgressEntry(progressDocument, reference, cards = []
 export function removeLessonProgressEntries(progressDocument, lessonReferences = []) {
   const normalized = normalizeProgressDocument(progressDocument);
   const blockedKeys = new Set(
-    (Array.isArray(lessonReferences) ? lessonReferences : []).flatMap((reference) => listLessonProgressKeys(reference))
+    (Array.isArray(lessonReferences) ? lessonReferences : []).map((reference) => buildLessonProgressKey(reference)).filter(Boolean)
   );
 
   if (!blockedKeys.size) {

@@ -397,7 +397,7 @@ function getAssistActionLabel(mode) {
   if (mode === "reposition-in-course") {
     return "Reposicionar em um curso";
   }
-  return "Gerar microssequência";
+  return "Editar microssequência";
 }
 
 function renderMicrosequenceStatusBadge(microsequence) {
@@ -533,77 +533,6 @@ function renderAssistControlPanel({ editorSupport, promptLabel, sendTitle, class
     "</div>" +
     assistWarning +
     assistStatus +
-    "</section>"
-  );
-}
-
-function renderDraftCourseScreen({ course, draftMicrosequences }) {
-  const draftCards = (draftMicrosequences || [])
-    .map((microsequence) => {
-      const cardCount = countCardsInMicrosequence(microsequence);
-      const draftTags = renderExplicitTags(microsequence.tags, "didactic-tag-row didactic-tag-row-limited");
-      return (
-        '<article class="clean-card microsequence-card progress-card draft-microsequence-card">' +
-        '<div class="microsequence-copy">' +
-        '<button class="row-main microsequence-main-button" type="button" data-action="open-draft-review" data-microsequence-key="' +
-        escapeHtml(microsequence.key) +
-        '">' +
-        '<span class="microsequence-title">' +
-        escapeHtml(microsequence.title || microsequence.key) +
-        "</span>" +
-        "</button>" +
-        draftTags +
-        renderMetaLine({
-          completed: 0,
-          total: cardCount,
-          parts: [renderCountMetric("card", cardCount, "card", "cards")]
-        }) +
-        "</div>" +
-        '<div class="microsequence-actions">' +
-        '<button class="icon-ghost tiny-icon" type="button" data-action="open-draft-review" data-microsequence-key="' +
-        escapeHtml(microsequence.key) +
-        '" title="Revisar microssequência" aria-label="Revisar microssequência">&#9998;</button>' +
-        '<button class="open-mini" type="button" data-action="play-microsequence" data-microsequence-key="' +
-        escapeHtml(microsequence.key) +
-        '" title="Começar microssequência" aria-label="Começar microssequência">&#9654;</button>' +
-        "</div>" +
-        "</article>"
-      );
-    })
-    .join("");
-
-  return (
-    '<section class="screen">' +
-    renderTopbar({
-      title: course.title || "Curso",
-      canGoBack: true,
-      backTitle: "Menu principal",
-      editAction: "open-course-screen-actions",
-      editTitle: "Ações",
-      editIcon: "&#9776;"
-    }) +
-    renderCoursesTabs() +
-    '<main class="screen-content course-screen">' +
-    '<section class="clean-card draft-course-hero">' +
-    '<div class="draft-course-hero-main">' +
-    '<div class="microsequence-copy">' +
-    '<h3 class="card-title card-title-featured">Rascunhos preservados</h3>' +
-    '<p class="card-subtitle">Revise material local ainda não encaixado na estrutura de cursos.</p>' +
-    "</div>" +
-    "</div>" +
-    "</section>" +
-    '<section class="clean-card module-card progress-card">' +
-    '<header class="module-head">' +
-    '<h3 class="card-title">Fila de rascunhos</h3>' +
-    '<button class="icon-ghost" type="button" data-action="open-lesson-actions" data-module-key="' +
-    escapeHtml(course.modules?.[0]?.key || "") +
-    '" data-lesson-key="' +
-    escapeHtml(course.modules?.[0]?.lessons?.[0]?.key || "") +
-    '" title="Ações da fila" aria-label="Ações da fila">&ctdot;</button>' +
-    "</header>" +
-    (draftCards || '<p class="card-subtitle">Nenhuma microssequência gerada ainda.</p>') +
-    "</section>" +
-    "</main>" +
     "</section>"
   );
 }
@@ -1228,46 +1157,19 @@ function renderMicrosequenceAssistScreen({ lesson, microsequence, cards, selecti
   });
 }
 
-function renderDraftGeneratorScreen({ editorSupport }) {
-  return (
-    '<section class="screen">' +
-    renderTopbar({
-      title: "Gerar microssequência",
-      canGoBack: true,
-      backTitle: "Voltar para a fila"
-    }) +
-    renderCoursesTabs() +
-    '<main class="screen-content microsequence-generator-screen">' +
-    renderAssistControlPanel({
-      editorSupport,
-      promptLabel: "Pedido",
-      sendTitle: "Gerar microssequência",
-      className: "draft-generator-control-panel"
-    }) +
-    "</main></section>"
-  );
-}
-
 export function renderLessonScreen({ project, view, activeHomeTab, selection, course, moduleValue, lesson, microsequence, cards, microsequenceMode, editorSupport }) {
   if (view === "courses") {
     return renderHomeScreen({
       project,
       progress: editorSupport.progress,
       selection,
-      featuredCourseKey: editorSupport.draftCourseKey,
+      featuredCourseKey: selection?.courseKey || "",
       activeHomeTab,
       editorSupport
     });
   }
 
   if (view === "course") {
-    if (course?.key === editorSupport.draftCourseKey) {
-      return renderDraftCourseScreen({
-        course,
-        draftMicrosequences: editorSupport.draftMicrosequences
-      });
-    }
-
     return renderCourseScreen({ course, progress: editorSupport.progress });
   }
 
@@ -1277,10 +1179,6 @@ export function renderLessonScreen({ project, view, activeHomeTab, selection, co
 
   if (view === "microsequence-assist") {
     return renderMicrosequenceAssistScreen({ lesson, microsequence, cards, selection, editorSupport });
-  }
-
-  if (view === "draft-generator") {
-    return renderDraftGeneratorScreen({ lesson, microsequence, cards, selection, editorSupport });
   }
 
   return renderMicrosequenceScreen({ course, lesson, microsequence, cards, selection, microsequenceMode, editorSupport });
