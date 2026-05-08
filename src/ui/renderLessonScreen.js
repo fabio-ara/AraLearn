@@ -217,7 +217,15 @@ function renderWorkbenchCardStrip(cards, activeIndex, structureContext = {}) {
   return (
     '<div class="editor-card-strip-shell" data-card-strip-shell="true">' +
     '<button class="editor-card-strip-arrow is-prev" type="button" data-action="scroll-card-strip-prev" title="Mostrar cards anteriores" aria-label="Mostrar cards anteriores" hidden>&larr;</button>' +
-    '<div class="editor-step-strip editor-card-strip-track" data-card-strip="true">' +
+    '<div class="editor-step-strip editor-card-strip-track" data-card-strip="true" data-structure-collection="card" data-course-key="' +
+    escapeHtml(structureContext.courseKey || "") +
+    '" data-module-key="' +
+    escapeHtml(structureContext.moduleKey || "") +
+    '" data-lesson-key="' +
+    escapeHtml(structureContext.lessonKey || "") +
+    '" data-microsequence-key="' +
+    escapeHtml(structureContext.microsequenceKey || "") +
+    '">' +
     renderEditorCardStrip(cards, activeIndex, structureContext) +
     "</div>" +
     '<button class="editor-card-strip-arrow is-next" type="button" data-action="scroll-card-strip-next" title="Mostrar mais cards" aria-label="Mostrar mais cards" hidden>&rarr;</button>' +
@@ -633,7 +641,11 @@ function renderCourseScreen({ course, progress }) {
           total: moduleTotal,
           parts: [renderCountMetric("lesson", (moduleValue.lessons || []).length, "lição", "lições")]
         }) +
-        '<ul class="lesson-list">' +
+        '<ul class="lesson-list" data-structure-collection="lesson" data-course-key="' +
+        escapeHtml(course.key) +
+        '" data-module-key="' +
+        escapeHtml(moduleValue.key) +
+        '">' +
         (lessons || '<li class="lesson-item"><p class="muted tiny">Sem lições.</p></li>') +
         "</ul>" +
         "</section>"
@@ -652,7 +664,9 @@ function renderCourseScreen({ course, progress }) {
       editIcon: "&#9776;"
     }) +
     renderCoursesTabs() +
-    '<main class="screen-content course-screen">' +
+    '<main class="screen-content course-screen" data-structure-collection="module" data-course-key="' +
+    escapeHtml(course.key) +
+    '">' +
     modules +
     "</main>" +
     "</section>"
@@ -762,7 +776,13 @@ function renderLessonScreenView({ course, lesson, moduleValue, progress }) {
     "</span>" +
     "</section>" +
     readyEmptyMessage +
-    '<section class="microsequence-list">' +
+    '<section class="microsequence-list" data-structure-collection="microsequence" data-course-key="' +
+    escapeHtml(course.key) +
+    '" data-module-key="' +
+    escapeHtml(moduleValue.key) +
+    '" data-lesson-key="' +
+    escapeHtml(lesson.key) +
+    '">' +
     microsequenceBlocks +
     "</section>" +
     "</main>" +

@@ -653,6 +653,78 @@ export function createLessonEditorApp({ root, storage, editor }) {
     return clientY > rect.top + rect.height / 2 ? "after" : "before";
   }
 
+  function getStructureAxis(level) {
+    return level === "card" ? "x" : "y";
+  }
+
+  function getStructureDropPositionForAxis(targetNode, point, axis) {
+    const rect = targetNode.getBoundingClientRect();
+    if (axis === "x") {
+      return point > rect.left + rect.width / 2 ? "after" : "before";
+    }
+    return point > rect.top + rect.height / 2 ? "after" : "before";
+  }
+
+  function readStructureCollection(node) {
+    if (!node) {
+      return null;
+    }
+    const level = node.getAttribute("data-structure-collection") || "";
+    if (!level) {
+      return null;
+    }
+    return readStructurePayload(node, level);
+  }
+
+  function getStructureCollectionItems(node, level) {
+    return Array.from(node?.children || []).filter((child) => child.getAttribute?.("data-structure-target") === level);
+  }
+
+  function resolveCollectionDropState(collectionNode, drag, clientX, clientY) {
+    const collection = readStructureCollection(collectionNode);
+    if (!collection || !drag || collection.level !== drag.level) {
+      return null;
+    }
+
+    const axis = getStructureAxis(drag.level);
+    const point = axis === "x" ? clientX : clientY;
+    const items = getStructureCollectionItems(collectionNode, collection.level)
+      .map((node) => ({
+        node,
+        payload: readStructurePayload(node)
+      }))
+      .filter((entry) => canDropStructure(drag, entry.payload));
+
+    if (!items.length) {
+      return null;
+    }
+
+    const first = items[0];
+    const last = items[items.length - 1];
+    const firstRect = first.node.getBoundingClientRect();
+    const lastRect = last.node.getBoundingClientRect();
+    const firstThreshold = axis === "x" ? firstRect.left + firstRect.width / 2 : firstRect.top + firstRect.height / 2;
+    const lastThreshold = axis === "x" ? lastRect.left + lastRect.width / 2 : lastRect.top + lastRect.height / 2;
+
+    if (point <= firstThreshold) {
+      return { target: first.payload, position: "before", node: first.node };
+    }
+    if (point >= lastThreshold) {
+      return { target: last.payload, position: "after", node: last.node };
+    }
+
+    for (const entry of items) {
+      const position = getStructureDropPositionForAxis(entry.node, point, axis);
+      const rect = entry.node.getBoundingClientRect();
+      const threshold = axis === "x" ? rect.left + rect.width / 2 : rect.top + rect.height / 2;
+      if ((position === "before" && point <= threshold) || (position === "after" && point >= threshold)) {
+        return { target: entry.payload, position, node: entry.node };
+      }
+    }
+
+    return { target: last.payload, position: "after", node: last.node };
+  }
+
   function markStructureDropTarget(targetNode, position) {
     clearStructureDropClasses();
     const originNode = state.structureDrag?.originNode || null;
@@ -5006,7 +5078,9 @@ export function createLessonEditorApp({ root, storage, editor }) {
         }
 
         event.preventDefault();
-        const position = getStructureDropPosition(node, event.clientY);
+        const axis = getStructureAxis(target.level);
+        const point = axis === "x" ? event.clientX : event.clientY;
+        const position = getStructureDropPositionForAxis(node, point, axis);
         state.structureDrop = { target, position };
         markStructureDropTarget(node, position);
         if (event.dataTransfer) {
@@ -5020,8 +5094,34 @@ export function createLessonEditorApp({ root, storage, editor }) {
         }
 
         event.preventDefault();
-        const position = state.structureDrop?.position || getStructureDropPosition(node, event.clientY);
+        const axis = getStructureAxis(target.level);
+        const point = axis === "x" ? event.clientX : event.clientY;
+        const position = state.structureDrop?.position || getStructureDropPositionForAxis(node, point, axis);
         applyStructureReorder(state.structureDrag, target, position);
+      });
+    });
+    root.querySelectorAll("[data-structure-collection]").forEach((node) => {
+      node.addEventListener("dragover", (event) => {
+        const resolved = resolveCollectionDropState(node, state.structureDrag, event.clientX, event.clientY);
+        if (!resolved) {
+          return;
+        }
+
+        event.preventDefault();
+        state.structureDrop = { target: resolved.target, position: resolved.position };
+        markStructureDropTarget(resolved.node, resolved.position);
+        if (event.dataTransfer) {
+          event.dataTransfer.dropEffect = "move";
+        }
+      });
+      node.addEventListener("drop", (event) => {
+        const resolved = resolveCollectionDropState(node, state.structureDrag, event.clientX, event.clientY);
+        if (!resolved) {
+          return;
+        }
+
+        event.preventDefault();
+        applyStructureReorder(state.structureDrag, resolved.target, resolved.position);
       });
     });
     root.querySelectorAll("[data-action='open-course-actions']").forEach((node) => {

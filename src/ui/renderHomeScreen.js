@@ -332,7 +332,7 @@ export function renderHomeScreen({ project, progress, selection, activeHomeTab =
     '<main class="screen-content">' +
     (safeHomeTab === "generate"
       ? renderGeneratePane({ project, editorSupport })
-      : '<section id="home-panel-courses" role="tabpanel" aria-labelledby="home-tab-courses">' +
+      : '<section id="home-panel-courses" role="tabpanel" aria-labelledby="home-tab-courses" data-structure-collection="course">' +
         renderCoursesPane({ project, progress, selection }) +
         "</section>") +
     "</main>" +
