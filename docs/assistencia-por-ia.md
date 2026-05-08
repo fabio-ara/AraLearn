@@ -127,6 +127,58 @@ O limite padrão é de uma tentativa de reparo. Se a resposta reparada continuar
 
 Para `block_gap_fill`, o reparo estrutural aceita corrigir desvios comuns de provedor, como `segments[].text` para segmentos `{ "kind": "text", "value": "..." }`, `blocks[].text` para `{ "blockId": "...", "label": "..." }`, lacunas com `acceptedBlockIds` apontando para blocos existentes e preservação de `feedbackAfter`.
 
+## Resiliência operacional
+
+Chamadas ao provedor podem falhar por motivos transitórios, como limite temporário de requisições, indisponibilidade ou alta demanda. O pipeline classifica erros do provedor antes de decidir se deve tentar novamente.
+
+Categorias usadas:
+
+- `rate_limited`;
+- `service_unavailable`;
+- `timeout`;
+- `invalid_request`;
+- `auth_error`;
+- `quota_exceeded`;
+- `validation_failed`;
+- `unknown`.
+
+Erros transitórios como `rate_limited`, `service_unavailable` e `timeout` podem receber retry. Erros de autenticação, requisição inválida, cota esgotada e validação local não são repetidos como falha de provedor.
+
+As chamadas de planejamento, reparo de planejamento, geração e reparo de geração usam retry com backoff exponencial e jitter. Os valores padrão são três tentativas, atraso base de 750 ms, atraso máximo de 8000 ms e jitter de 25%. Testes podem injetar uma função de atraso para validar o comportamento sem esperar tempo real.
+
+Depois que o planejamento é validado, a aplicação cria um `generationRunState` em memória com:
+
+- `runId`;
+- status da execução;
+- target estrutural da microssequência;
+- modelo solicitado e modelo realmente usado;
+- contrato de planejamento;
+- plano validado;
+- contrato de geração;
+- último erro operacional, quando existir.
+
+Esse estado não guarda chave de API nem payload grande de anexos. Ele contém o suficiente para refazer somente a geração final quando a fase de geração falha de modo transitório após as tentativas configuradas.
+
+Quando a falha acontece no planejamento, ainda não existe plano validado; nesse caso `canResume` é falso. Quando a falha acontece na geração ou no reparo de geração depois de um plano validado, `canResume` pode ser verdadeiro e a geração pode ser retomada com `resumeGenerationFromValidatedPlan`, sem refazer o planejamento.
+
+O fallback para modelo leve é opcional e fica desativado por padrão. Quando habilitado, ele só é usado em categorias configuradas, normalmente `rate_limited`, `service_unavailable` e `timeout`. O fallback não ocorre em `auth_error`, `invalid_request` ou `validation_failed`. Ao usar fallback, o contrato, o target, `selectedLessonTopicRefs`, o `cardPlan` e os recursos efetivos são preservados; apenas o modelo chamado muda.
+
+Erros operacionais retornam dados padronizados para a camada chamadora:
+
+```json
+{
+  "ok": false,
+  "phase": "generation",
+  "category": "service_unavailable",
+  "retryable": true,
+  "canResume": true,
+  "runId": "generation-...",
+  "message": "O provedor está temporariamente indisponível. O plano foi preservado e a geração pode ser retomada."
+}
+```
+
+Em alta demanda do provedor, o comportamento esperado é tentar novamente com backoff. Se as tentativas acabarem durante a geração, o plano validado fica preservado para retomada. Se houver fallback configurado para essa categoria, a aplicação pode usar o modelo leve sem reconstruir o plano.
+
 ## Assuntos do Escopo da Lição
 
 Na geração e na edição, a seleção compacta de assuntos da UI é enviada internamente como `selectedLessonTopicRefs`.

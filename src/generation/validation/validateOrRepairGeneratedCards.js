@@ -206,7 +206,8 @@ export async function validateOrRepairGeneratedCards({
   generationContract,
   modelCapabilities = {},
   callModel,
-  maxRepairAttempts = 1
+  maxRepairAttempts = 1,
+  throwRepairModelErrors = false
 }) {
   const initialValidation = validateGeneratedCards(rawGeneratedResponse, generationContract);
   if (initialValidation.ok) {
@@ -245,6 +246,9 @@ export async function validateOrRepairGeneratedCards({
         maxOutputTokens: modelCapabilities?.profile === "compact-json" ? 4096 : 6144
       });
     } catch (error) {
+      if (throwRepairModelErrors) {
+        throw error;
+      }
       return {
         ok: false,
         errors: [`Reparo de cards não devolveu JSON parseável: ${error instanceof Error ? error.message : "erro desconhecido"}`],

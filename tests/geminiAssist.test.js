@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { normalizeComposeResult, normalizeEditResult, runGeminiAssist, validateOrRepairMicrosequencePlan } from "../src/assist/geminiAssist.js";
+import { normalizeComposeResult, normalizeEditResult, resumeGenerationFromValidatedPlan, runGeminiAssist, validateOrRepairMicrosequencePlan } from "../src/assist/geminiAssist.js";
 import { buildAssistDraftPrompt, buildDeterministicAssistPlan, normalizeAssistDraftResult } from "../src/assist/assistMicrosequenceEngine.js";
 import { buildCardRuntime } from "../src/core/cardRuntime.js";
 import { buildMicrosequencePlanningContract } from "../src/generation/planning/buildMicrosequencePlanningContract.js";
@@ -84,6 +84,20 @@ function makeGeminiTextResponse(payloadText) {
             }
           }
         ]
+      };
+    }
+  };
+}
+
+function makeGeminiErrorResponse(status, message) {
+  return {
+    ok: false,
+    status,
+    async json() {
+      return {
+        error: {
+          message
+        }
       };
     }
   };
@@ -522,11 +536,236 @@ test("fluxo Gemini devolve erro claro quando reparo de geração falha", async (
           microsequence: { title: "Git", tags: [], cards: [] },
           promptText: "explique git add e git push"
         }),
-      /cards inválidos.*Quantidade incorreta de cards/
+      (error) => {
+        assert.equal(error.phase, "generation");
+        assert.equal(error.category, "validation_failed");
+        assert.equal(error.canResume, false);
+        assert.match(error.generationRunState.lastError.message, /Quantidade incorreta de cards/);
+        return true;
+      }
     );
 
     assert.equal(calls.length, 3);
     assert.match(calls[2].body.contents[0].parts[0].text, /Corrija apenas o JSON abaixo/);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("generationRunState é criado após plano validado no fluxo completo", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (_url, options) => {
+    const body = JSON.parse(options.body);
+    const isPlanning = /Planeje uma microssequência/i.test(body.contents[0].parts.at(-1).text);
+    return makeGeminiTextResponse(JSON.stringify(isPlanning ? makeMicrosequencePlanPayload() : makeGeneratedCardsPayload()));
+  };
+
+  try {
+    const result = await runGeminiAssist({
+      apiKey: "chave",
+      mode: "compose-microsequence",
+      microsequence: { key: "micro", title: "Git", tags: [], cards: [] },
+      promptText: "explique git add e git push"
+    });
+
+    assert.equal(result.generationRunState.status, "generation_validated");
+    assert.equal(result.generationRunState.planningContract.request.userPrompt, "explique git add e git push");
+    assert.equal(result.generationRunState.validatedPlan.plan.typeId, "code_or_command");
+    assert.equal(result.generationRunState.generationContract.output.expectedCardCount, 5);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("falha retryable na geração preserva plano validado e permite retomada sem planejamento", async () => {
+  const originalFetch = globalThis.fetch;
+  const calls = [];
+  const delays = [];
+  globalThis.fetch = async (url, options) => {
+    calls.push({ url, body: JSON.parse(options.body) });
+    if (calls.length === 1) {
+      return makeGeminiTextResponse(JSON.stringify(makeMicrosequencePlanPayload()));
+    }
+    return makeGeminiErrorResponse(503, "This model is currently experiencing high demand.");
+  };
+
+  try {
+    let capturedError = null;
+    try {
+      await runGeminiAssist({
+        apiKey: "chave",
+        mode: "compose-microsequence",
+        microsequence: { key: "micro", title: "Git", tags: [], cards: [] },
+        promptText: "explique git add e git push",
+        retryOptions: { maxAttempts: 2, baseDelayMs: 10, jitterRatio: 0, delay: async (ms) => delays.push(ms) }
+      });
+    } catch (error) {
+      capturedError = error;
+    }
+
+    assert.ok(capturedError);
+    assert.equal(capturedError.phase, "generation");
+    assert.equal(capturedError.category, "service_unavailable");
+    assert.equal(capturedError.canResume, true);
+    assert.equal(capturedError.generationRunState.status, "generation_failed_retryable");
+    assert.equal(capturedError.generationRunState.validatedPlan.plan.typeId, "code_or_command");
+
+    const failedRunState = capturedError.generationRunState;
+    const resumeCalls = [];
+    globalThis.fetch = async (url, options) => {
+      resumeCalls.push({ url, body: JSON.parse(options.body) });
+      return makeGeminiTextResponse(JSON.stringify(makeGeneratedCardsPayload()));
+    };
+    const saved = [];
+    const resumed = await resumeGenerationFromValidatedPlan({
+      apiKey: "chave",
+      model: "gemini-2.5-flash",
+      runState: failedRunState,
+      retryOptions: { maxAttempts: 1, delay: async () => null },
+      saveGeneratedCards: async ({ cards, runState }) => saved.push({ cards, runState })
+    });
+
+    assert.equal(resumeCalls.length, 1);
+    assert.match(resumeCalls[0].body.contents[0].parts[0].text, /Gere cards para a microssequência/i);
+    assert.doesNotMatch(resumeCalls[0].body.contents[0].parts[0].text, /Planeje uma microssequência/i);
+    assert.equal(resumed.cards.length, 5);
+    assert.equal(resumed.generationRunState.status, "saved");
+    assert.equal(saved[0].cards.length, 5);
+    assert.equal(saved[0].runState.target.microsequenceKey, "micro");
+
+    assert.equal(calls.length, 3);
+    assert.deepEqual(delays, [10]);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("fallback não ocorre por padrão quando geração recebe 503", async () => {
+  const originalFetch = globalThis.fetch;
+  const calls = [];
+  globalThis.fetch = async (url, options) => {
+    calls.push({ url, body: JSON.parse(options.body) });
+    if (calls.length === 1) {
+      return makeGeminiTextResponse(JSON.stringify(makeMicrosequencePlanPayload()));
+    }
+    return makeGeminiErrorResponse(503, "High demand.");
+  };
+
+  try {
+    await assert.rejects(
+      () =>
+        runGeminiAssist({
+          apiKey: "chave",
+          mode: "compose-microsequence",
+          microsequence: { title: "Git", tags: [], cards: [] },
+          promptText: "explique git add e git push",
+          fallbackModelId: "gemini-2.5-flash-lite",
+          retryOptions: { maxAttempts: 1, delay: async () => null }
+        }),
+      (error) => {
+        assert.equal(error.canResume, true);
+        assert.equal(error.fallbackUsed, false);
+        return true;
+      }
+    );
+
+    assert.ok(calls.every((call) => String(call.url).includes("gemini-2.5-flash:generateContent")));
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("fallback ocorre apenas quando configurado para erro transitório de geração", async () => {
+  const originalFetch = globalThis.fetch;
+  const calls = [];
+  globalThis.fetch = async (url, options) => {
+    calls.push({ url, body: JSON.parse(options.body) });
+    if (calls.length === 1) {
+      return makeGeminiTextResponse(JSON.stringify(makeMicrosequencePlanPayload()));
+    }
+    if (String(url).includes("gemini-2.5-flash:generateContent")) {
+      return makeGeminiErrorResponse(503, "High demand.");
+    }
+    return makeGeminiTextResponse(JSON.stringify(makeGeneratedCardsPayload()));
+  };
+
+  try {
+    const result = await runGeminiAssist({
+      apiKey: "chave",
+      mode: "compose-microsequence",
+      microsequence: { title: "Git", tags: [], cards: [] },
+      promptText: "explique git add e git push",
+      fallbackEnabled: true,
+      fallbackModelId: "gemini-2.5-flash-lite",
+      retryOptions: { maxAttempts: 1, delay: async () => null }
+    });
+
+    assert.equal(result.fallbackUsed, true);
+    assert.equal(result.modelId, "gemini-2.5-flash-lite");
+    assert.ok(calls.some((call) => String(call.url).includes("gemini-2.5-flash-lite:generateContent")));
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("fallback não ocorre em auth_error", async () => {
+  const originalFetch = globalThis.fetch;
+  const calls = [];
+  globalThis.fetch = async (url, options) => {
+    calls.push({ url, body: JSON.parse(options.body) });
+    if (calls.length === 1) {
+      return makeGeminiTextResponse(JSON.stringify(makeMicrosequencePlanPayload()));
+    }
+    return makeGeminiErrorResponse(403, "Forbidden.");
+  };
+
+  try {
+    await assert.rejects(
+      () =>
+        runGeminiAssist({
+          apiKey: "chave",
+          mode: "compose-microsequence",
+          microsequence: { title: "Git", tags: [], cards: [] },
+          promptText: "explique git add e git push",
+          fallbackEnabled: true,
+          fallbackModelId: "gemini-2.5-flash-lite",
+          retryOptions: { maxAttempts: 1, delay: async () => null }
+        }),
+      (error) => {
+        assert.equal(error.category, "auth_error");
+        assert.equal(error.canResume, false);
+        return true;
+      }
+    );
+
+    assert.ok(calls.every((call) => String(call.url).includes("gemini-2.5-flash:generateContent")));
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("erro de planejamento retorna canResume false", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => makeGeminiErrorResponse(400, "Bad request.");
+
+  try {
+    await assert.rejects(
+      () =>
+        runGeminiAssist({
+          apiKey: "chave",
+          mode: "compose-microsequence",
+          microsequence: { title: "Git", tags: [], cards: [] },
+          promptText: "explique git add e git push",
+          retryOptions: { maxAttempts: 2, delay: async () => null }
+        }),
+      (error) => {
+        assert.equal(error.phase, "planning");
+        assert.equal(error.category, "invalid_request");
+        assert.equal(error.canResume, false);
+        assert.equal(error.generationRunState, undefined);
+        return true;
+      }
+    );
   } finally {
     globalThis.fetch = originalFetch;
   }
@@ -717,7 +956,13 @@ test("rejeita planejamento quando o Gemini devolve JSON ilegível", async () => 
           microsequence: { title: "Git", tags: [], cards: [] },
           promptText: "explique git add e git push"
         }),
-      /JSON inválido/
+      (error) => {
+        assert.equal(error.phase, "planning");
+        assert.equal(error.category, "unknown");
+        assert.equal(error.canResume, false);
+        assert.match(error.message, /planejamento/);
+        return true;
+      }
     );
 
     assert.equal(calls.length, 1);
