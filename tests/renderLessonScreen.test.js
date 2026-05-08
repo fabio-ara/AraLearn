@@ -213,8 +213,8 @@ test("renderiza o painel da microssequência sem botão próprio de ações e co
       activeMicrosequenceVersionId: "v7",
       selectedDependencyKeys: [],
       pendingDependencyKey: "",
-      modelOptions: [],
-      selectedModel: "",
+      modelOptions: [{ value: "gemini-2.5-flash", label: "Gemini 2.5 Flash" }],
+      selectedModel: "gemini-2.5-flash",
       assistModeOptions: [],
       selectedAssistMode: "edit-microsequence",
       activeWorkbenchPane: "edit",
@@ -251,9 +251,10 @@ test("renderiza o painel da microssequência sem botão próprio de ações e co
   assert.match(html, /data-field="assist-microsequence-title" type="text" aria-label="Microssequência" title="Microssequência"/);
   assert.match(html, /data-field="assist-dependency-picker" aria-label="Tags" title="Tags"/);
   assert.match(html, /data-field="assist-prompt" class="assist-prompt" aria-label="Pedido" title="Pedido"/);
-  assert.match(html, /workbench-icon-label/);
   assert.match(html, /data-action="clear-prompt" title="Limpar prompt" aria-label="Limpar prompt"/);
   assert.match(html, /data-action="open-assist-config" title="Configurar IA" aria-label="Configurar IA"/);
+  assert.match(html, /data-action="apply-assist"[^>]*title="Editar cards" aria-label="Editar cards"[^>]*disabled aria-disabled="true"/);
+  assert.match(html, /generate-submit-icon/);
   assert.doesNotMatch(html, />Preview<\/button>/);
   assert.doesNotMatch(html, />Edição<\/button>/);
   assert.doesNotMatch(html, /<label[^>]*>\s*Microssequência\s*<\/label>/);
@@ -298,8 +299,8 @@ test("renderiza a aba preview da microssequência dentro da superfície combinad
       activeMicrosequenceVersionId: "v1",
       selectedDependencyKeys: [],
       pendingDependencyKey: "",
-      modelOptions: [],
-      selectedModel: "",
+      modelOptions: [{ value: "gemini-2.5-flash", label: "Gemini 2.5 Flash" }],
+      selectedModel: "gemini-2.5-flash",
       assistModeOptions: [],
       selectedAssistMode: "edit-microsequence",
       activeWorkbenchPane: "preview",

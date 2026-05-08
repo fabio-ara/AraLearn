@@ -43,7 +43,6 @@ export function renderAssistConfigOverlay({ model, apiKey, modelOptions = [] }) 
     escapeHtml(apiKey || "") +
     '" autocomplete="off" spellcheck="false">' +
     "</div>" +
-    '<p class="tiny muted">A chave fica só no storage local deste navegador.</p>' +
     "</div>" +
     "</article></section>"
   );

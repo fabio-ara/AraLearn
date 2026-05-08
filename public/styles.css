@@ -3036,8 +3036,7 @@ button {
   height: 38px;
 }
 
-.workbench-select-field,
-.workbench-prompt-head {
+.workbench-select-field {
   color: rgba(244, 224, 190, 0.76);
   font-size: var(--type-sm);
 }
@@ -3139,12 +3138,21 @@ button {
   padding-bottom: 4px;
 }
 
-.workbench-editor-panel .workbench-prompt-field {
+.workbench-tag-field {
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
+  gap: 6px;
+  min-width: 0;
+}
+
+.workbench-tag-field .assist-tag-picker {
+  margin-top: 0;
+}
+
+.workbench-editor-panel .workbench-prompt-field {
   flex: 0 0 132px;
   min-height: 132px;
   max-height: 132px;
+  align-items: start;
 }
 
 .workbench-editor-panel .assist-prompt {
@@ -3809,6 +3817,10 @@ button {
 
 .assist-actions-wide {
   grid-template-columns: 36px minmax(0, 1fr) 36px 44px;
+  width: 100%;
+}
+
+.assist-actions-wide .generate-model-field {
   width: 100%;
 }
 

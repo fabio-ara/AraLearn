@@ -234,23 +234,11 @@ function renderWorkbenchCardStrip(cards, activeIndex, structureContext = {}) {
 }
 
 function renderWorkbenchPaneIcon(pane) {
-  return renderUiIcon(pane === "edit" ? "edit" : "preview", "workbench-surface-tab-icon");
+  return renderUiIcon(pane === "edit" ? "sparkles" : "preview", "workbench-surface-tab-icon");
 }
 
 function renderWorkbenchIcon(iconName, className = "workbench-icon") {
   return renderUiIcon(iconName, className);
-}
-
-function renderWorkbenchIconLabel(iconName, label) {
-  return (
-    '<label class="workbench-icon-label" aria-label="' +
-    escapeHtml(label) +
-    '" title="' +
-    escapeHtml(label) +
-    '">' +
-    renderWorkbenchIcon(iconName) +
-    "</label>"
-  );
 }
 
 function renderInlineFieldIcon(iconName, label) {
@@ -958,20 +946,23 @@ function renderMicrosequenceWorkbenchScreen({
     "</section>";
   const editPane =
     '<section class="microsequence-assist-panel microsequence-generator-panel workbench-editor-panel">' +
+    (() => {
+      const canSubmitAssist = !!String(microsequence?.title || "").trim() && !!String(editorSupport.promptText || "").trim();
+      return (
     '<label class="field generate-icon-field workbench-select-field">' +
     renderInlineFieldIcon("title", "Microssequência") +
     '<input data-field="assist-microsequence-title" type="text" aria-label="Microssequência" title="Microssequência" value="' +
     escapeHtml(microsequence?.title || "") +
     '">' +
     "</label>" +
-    '<div class="field compact-field">' +
-    renderWorkbenchIconLabel("tags", "Tags") +
+    '<div class="field generate-icon-field workbench-select-field workbench-tag-row">' +
+    renderInlineFieldIcon("tags", "Tags") +
+    '<div class="workbench-tag-field">' +
     dependencyPicker +
     '<div class="dependency-chip-row">' +
     selectedDependencyTags +
-    "</div></div>" +
-    '<div class="field compact-field workbench-prompt-field">' +
-    '<div class="generate-icon-field generate-prompt-field workbench-prompt-head">' +
+    "</div></div></div>" +
+    '<label class="field generate-icon-field generate-prompt-field workbench-prompt-field">' +
     renderInlineFieldIcon("prompt", promptLabel) +
     '<textarea data-field="assist-prompt" class="assist-prompt" aria-label="' +
     escapeHtml(promptLabel) +
@@ -979,7 +970,7 @@ function renderMicrosequenceWorkbenchScreen({
     escapeHtml(promptLabel) +
     '">' +
     escapeHtml(editorSupport.promptText || "") +
-    "</textarea></div></div>" +
+    "</textarea></label>" +
     '<div class="generate-action-row assist-actions assist-actions-wide">' +
     '<button class="icon-ghost tiny-icon generate-inline-icon" type="button" data-action="clear-prompt" title="Limpar prompt" aria-label="Limpar prompt">&#8635;</button>' +
     '<label class="field generate-icon-field generate-model-field">' +
@@ -988,17 +979,21 @@ function renderMicrosequenceWorkbenchScreen({
     modelOptions +
     "</select></label>" +
     '<button class="icon-ghost tiny-icon generate-inline-icon" type="button" data-action="open-assist-config" title="Configurar IA" aria-label="Configurar IA">&#128273;</button>' +
-    '<button class="open-mini" type="button" data-action="apply-assist" title="' +
+    '<button class="open-main generate-submit" type="button" data-action="apply-assist" title="' +
     escapeHtml(sendTitle) +
     '" aria-label="' +
     escapeHtml(sendTitle) +
     '"' +
-    (editorSupport.isSubmitting ? " disabled aria-disabled=\"true\"" : "") +
-    ">&#9654;</button>" +
+    (!canSubmitAssist || editorSupport.isSubmitting ? " disabled aria-disabled=\"true\"" : "") +
+    ">" +
+    renderUiIcon("sparkles", "generate-submit-icon") +
+    "</button>" +
     "</div>" +
     assistWarning +
     assistStatus +
-    "</section>";
+    "</section>"
+      );
+    })();
 
   return (
     '<section class="screen">' +
@@ -1058,7 +1053,7 @@ function renderMicrosequenceAssistScreen({ lesson, microsequence, cards, selecti
   return renderMicrosequenceWorkbenchScreen({
     title: "Editar cards",
     backTitle: "Voltar para a lição",
-    sendTitle: "Gerar microssequências",
+    sendTitle: "Editar cards",
     promptLabel: "Pedido",
     lesson,
     microsequence,
