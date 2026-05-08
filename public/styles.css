@@ -383,6 +383,28 @@ button {
   bottom: -2px;
 }
 
+.structure-drop-inline-before::before,
+.structure-drop-inline-after::after {
+  content: "";
+  position: absolute;
+  top: 10px;
+  bottom: 10px;
+  width: 3px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(241, 207, 139, 0.95), rgba(228, 186, 104, 0.75));
+  box-shadow: 0 0 0 1px rgba(18, 12, 8, 0.45);
+  pointer-events: none;
+  z-index: 3;
+}
+
+.structure-drop-inline-before::before {
+  left: -2px;
+}
+
+.structure-drop-inline-after::after {
+  right: -2px;
+}
+
 .draft-microsequence-card {
   border-color: rgba(228, 186, 104, 0.7);
   background:
@@ -1098,15 +1120,7 @@ button {
   position: relative;
   flex: 0 0 auto;
   display: flex;
-  align-items: flex-start;
-  gap: 6px;
-}
-
-.mini-card-handle {
-  flex: 0 0 30px;
-  width: 30px;
-  height: 30px;
-  margin-top: 4px;
+  align-items: stretch;
 }
 
 .mini-card.active {
@@ -1121,6 +1135,14 @@ button {
   min-height: 120px;
   padding: 8px;
   gap: 4px;
+}
+
+.mini-card[data-structure-draggable="true"] {
+  cursor: grab;
+}
+
+.mini-card[data-structure-draggable="true"]:active {
+  cursor: grabbing;
 }
 
 .mini-card-kicker {
@@ -3142,6 +3164,10 @@ button {
   display: grid;
   gap: 6px;
   min-width: 0;
+}
+
+.workbench-tag-row {
+  align-items: start;
 }
 
 .workbench-tag-field .assist-tag-picker {

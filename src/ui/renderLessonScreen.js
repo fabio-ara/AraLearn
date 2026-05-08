@@ -174,7 +174,9 @@ function renderEditorCardStrip(cards, activeIndex, structureContext = {}) {
         '" data-microsequence-key="' +
         escapeHtml(structureContext.microsequenceKey || "") +
         '">' +
-        '<button class="icon-ghost tiny-icon builder-tool-handle mini-card-handle" type="button" draggable="true" data-action="structure-drag-handle" data-structure-level="card" data-course-key="' +
+        '<button class="mini-card thumb' +
+        (index === activeIndex ? " active" : "") +
+        '" type="button" draggable="true" data-structure-draggable="true" data-action="open-card" data-structure-level="card" data-course-key="' +
         escapeHtml(structureContext.courseKey || "") +
         '" data-module-key="' +
         escapeHtml(structureContext.moduleKey || "") +
@@ -184,21 +186,16 @@ function renderEditorCardStrip(cards, activeIndex, structureContext = {}) {
         escapeHtml(structureContext.microsequenceKey || "") +
         '" data-card-key="' +
         escapeHtml(card.key) +
-        '" title="Arrastar card ' +
-        escapeHtml(cardTitle) +
-        '" aria-label="Arrastar card ' +
-        escapeHtml(cardTitle) +
-        '">&#9776;</button>' +
-        '<button class="mini-card thumb' +
-        (index === activeIndex ? " active" : "") +
-        '" type="button" data-action="open-card" data-card-index="' +
-        String(index) +
         '" aria-label="Card ' +
         String(index + 1) +
         ": " +
         escapeHtml(cardTitle) +
         '" title="Card ' +
         String(index + 1) +
+        " · Arrastar card " +
+        escapeHtml(cardTitle) +
+        '" data-card-index="' +
+        String(index) +
         '">' +
         '<div class="mini-card-kicker" aria-hidden="true">' +
         renderWorkbenchIcon("card", "mini-card-kicker-icon") +
@@ -947,7 +944,7 @@ function renderMicrosequenceWorkbenchScreen({
   const editPane =
     '<section class="microsequence-assist-panel microsequence-generator-panel workbench-editor-panel">' +
     (() => {
-      const canSubmitAssist = !!String(microsequence?.title || "").trim() && !!String(editorSupport.promptText || "").trim();
+      const canSubmitAssist = !!String(microsequence?.title || "").trim();
       return (
     '<label class="field generate-icon-field workbench-select-field">' +
     renderInlineFieldIcon("title", "Microssequência") +
@@ -1034,9 +1031,6 @@ function renderMicrosequenceWorkbenchScreen({
     '<div class="editor-step-strip">' +
     cardStrip +
     "</div></section>" +
-    (hasCards
-      ? '<div class="editor-card-toolbar"><button class="icon-ghost tiny-icon editor-card-actions-btn" type="button" data-action="edit-card" title="Ações do card" aria-label="Ações do card">&#8943;</button></div>'
-      : "") +
     '<section class="workbench-surface" data-workbench-pane="' +
     activeWorkbenchPane +
     '">' +

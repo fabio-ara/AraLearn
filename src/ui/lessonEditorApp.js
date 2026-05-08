@@ -640,9 +640,26 @@ export function createLessonEditorApp({ root, storage, editor }) {
   }
 
   function clearStructureDropClasses() {
-    root.querySelectorAll(".structure-drop-before, .structure-drop-after, .structure-drag-origin").forEach((node) => {
-      node.classList.remove("structure-drop-before", "structure-drop-after", "structure-drag-origin");
-    });
+    root
+      .querySelectorAll(
+        ".structure-drop-before, .structure-drop-after, .structure-drop-inline-before, .structure-drop-inline-after, .structure-drag-origin"
+      )
+      .forEach((node) => {
+        node.classList.remove(
+          "structure-drop-before",
+          "structure-drop-after",
+          "structure-drop-inline-before",
+          "structure-drop-inline-after",
+          "structure-drag-origin"
+        );
+      });
+  }
+
+  function getStructureDropClass(level, position) {
+    if (level === "card") {
+      return position === "after" ? "structure-drop-inline-after" : "structure-drop-inline-before";
+    }
+    return position === "after" ? "structure-drop-after" : "structure-drop-before";
   }
 
   function resetStructureDragState() {
@@ -747,7 +764,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
     clearStructureDropClasses();
     const originNode = state.structureDrag?.originNode || null;
     originNode?.classList.add("structure-drag-origin");
-    targetNode.classList.add(position === "after" ? "structure-drop-after" : "structure-drop-before");
+    targetNode.classList.add(getStructureDropClass(state.structureDrag?.level, position));
   }
 
   function collectGlobalAssistTags(project = state.project) {
@@ -5162,16 +5179,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
       });
     });
 
-    root.querySelector("[data-action='edit-card']")?.addEventListener("click", () =>
-      openEntityEditor("card", {
-        courseKey: state.selection.courseKey,
-        moduleKey: state.selection.moduleKey,
-        lessonKey: state.selection.lessonKey,
-        microsequenceKey: state.selection.microsequenceKey,
-        cardKey: state.selection.cardKey
-      })
-    );
-
     root.querySelectorAll("[data-action='open-card-index']").forEach((node) => {
       node.addEventListener("click", () => {
         const index = Number.parseInt(node.getAttribute("data-card-index") || "0", 10);
@@ -5185,7 +5192,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
         openEntityEditor("home-actions");
       });
     });
-    root.querySelectorAll("[data-action='structure-drag-handle']").forEach((node) => {
+    root.querySelectorAll("[data-action='structure-drag-handle'], [data-structure-draggable='true']").forEach((node) => {
       node.addEventListener("dragstart", (event) => {
         const payload = readStructurePayload(node);
         const originNode = node.closest("[data-structure-target]");
