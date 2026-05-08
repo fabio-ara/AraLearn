@@ -444,6 +444,8 @@ button {
   align-items: center;
   justify-content: center;
   flex: 0 0 auto;
+  position: relative;
+  top: 1px;
 }
 
 .microsequence-state-icon-svg {
