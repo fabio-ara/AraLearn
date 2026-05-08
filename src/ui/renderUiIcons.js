@@ -116,7 +116,7 @@ export function renderUiIcon(iconName, className = "ui-icon") {
   if (iconName === "progress") {
     return (
       '<svg class="' +
-      classes +
+      `${classes} ui-icon-progress`.trim() +
       '" viewBox="0 0 16 16" aria-hidden="true" focusable="false">' +
       '<circle cx="8" cy="8" r="4.8" fill="none" stroke="currentColor" stroke-width="1.1" opacity="0.45"></circle>' +
       '<path d="M8 3.2a4.8 4.8 0 0 1 4.8 4.8" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"></path>' +

@@ -597,6 +597,10 @@ button {
   flex: 0 0 auto;
 }
 
+.ui-icon-progress {
+  transform: translateY(0.5px);
+}
+
 .progress-meta-item-value {
   line-height: 1;
 }
