@@ -77,6 +77,7 @@ const ASSIST_USER_MODES = {
   EDIT_MICROSEQUENCE: "edit-microsequence",
   REPOSITION: "reposition-in-course"
 };
+const COURSES_VIEWS = new Set(["courses", "course", "lesson", "microsequence", "microsequence-assist"]);
 
 function fail(message) {
   throw new Error(message);
@@ -544,13 +545,28 @@ export function createLessonEditorApp({ root, storage, editor }) {
       errorMessage: ""
     },
     structureDrag: null,
-    structureDrop: null
+    structureDrop: null,
+    lastCoursesView: "courses"
   };
 
   state.selection = getFirstPath(state.project);
 
   function setProject(nextProject) {
     state.project = nextProject;
+  }
+
+  function isCoursesView(view) {
+    return COURSES_VIEWS.has(view);
+  }
+
+  function rememberCoursesView(view = state.view) {
+    if (!isCoursesView(view)) {
+      return;
+    }
+    if (view === "courses" && state.homeTab !== "courses") {
+      return;
+    }
+    state.lastCoursesView = view;
   }
 
   function readStructurePayload(node, fallbackLevel = "") {
@@ -2186,8 +2202,15 @@ export function createLessonEditorApp({ root, storage, editor }) {
   }
 
   function setHomeTab(tab) {
-    state.homeTab = tab === "courses" ? "courses" : "generate";
-    state.view = "courses";
+    const nextTab = tab === "courses" ? "courses" : "generate";
+    if (nextTab === "generate") {
+      rememberCoursesView();
+      state.homeTab = "generate";
+      state.view = "courses";
+    } else {
+      state.homeTab = "courses";
+      state.view = state.lastCoursesView || "courses";
+    }
     state.entityEditor = null;
     render({ preserveState: false });
   }
@@ -4446,6 +4469,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
   }
 
   function render({ preserveState = true } = {}) {
+    rememberCoursesView();
     const renderState = preserveState ? captureRenderState(root) : null;
     const context = getRenderContext();
     const currentCardRuntimeOptions = ensureCurrentCardRuntimeOptions();
