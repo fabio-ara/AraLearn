@@ -431,7 +431,8 @@ async function composeMicrosequenceWithGemini({
   model,
   microsequence,
   dependencyTitles,
-  promptText
+  promptText,
+  preferredContainer = ""
 }) {
   const systemInstruction =
     "Você transforma pedidos de estudo em microssequências didáticas para o AraLearn. " +
@@ -439,7 +440,8 @@ async function composeMicrosequenceWithGemini({
   const plan = buildDeterministicAssistPlan({
     promptText,
     microsequence,
-    dependencyTitles
+    dependencyTitles,
+    preferredContainer
   });
   let lastError = null;
 
@@ -550,7 +552,8 @@ export async function runGeminiAssist({
   card,
   dependencyTitles = [],
   destinationSlots = [],
-  promptText
+  promptText,
+  preferredContainer = ""
 }) {
   const trimmedKey = normalizeText(apiKey);
   const trimmedModel = normalizeText(model) || "gemini-2.5-flash";
@@ -578,7 +581,8 @@ export async function runGeminiAssist({
       model: trimmedModel,
       microsequence,
       dependencyTitles,
-      promptText: trimmedPrompt
+      promptText: trimmedPrompt,
+      preferredContainer
     });
   } else if (mode === "edit-card") {
     body = makeRequestBody({

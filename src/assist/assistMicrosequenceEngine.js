@@ -38,7 +38,7 @@ const CARD_ROLES = [
   "review"
 ];
 
-const CONTAINERS = ["say", "ask", "code", "table", "tree"];
+const CONTAINERS = ["say", "ask", "code", "table", "tree", "flow"];
 
 const SUBJECT_LABELS = {
   programacao: "Programação",
@@ -239,7 +239,18 @@ function makeCardPlan(role, container, title, learningGoal) {
   return { role, container, title, learningGoal };
 }
 
-function buildCardPlans({ subject, recipe, promptText = "" }) {
+function applyPreferredContainer(cardPlans, preferredContainer) {
+  if (!CONTAINERS.includes(preferredContainer)) {
+    return cardPlans;
+  }
+
+  return cardPlans.map((item) => ({
+    ...item,
+    container: preferredContainer
+  }));
+}
+
+function buildCardPlans({ subject, recipe, promptText = "", preferredContainer = "" }) {
   const practiceContainer = getSubjectPracticeContainer(subject);
   if (recipe === "explain_commands") {
     const commands = extractCommandTopics(promptText);
@@ -336,7 +347,7 @@ function buildCardPlans({ subject, recipe, promptText = "" }) {
   ];
 }
 
-export function buildDeterministicAssistPlan({ promptText, microsequence, dependencyTitles = [] }) {
+export function buildDeterministicAssistPlan({ promptText, microsequence, dependencyTitles = [], preferredContainer = "" }) {
   const subject = detectSubject(promptText, dependencyTitles);
   const recipe = detectRecipe(promptText);
   const title = inferPlanTitle(promptText, subject, recipe);
@@ -347,7 +358,8 @@ export function buildDeterministicAssistPlan({ promptText, microsequence, depend
     recipe,
     goal: `Transformar "${title}" em prática revisável no AraLearn.`,
     tags: buildPlanTags({ subject, dependencyTitles, promptText }),
-    cardPlans: buildCardPlans({ subject, recipe, promptText })
+    preferredContainer: CONTAINERS.includes(preferredContainer) ? preferredContainer : "",
+    cardPlans: applyPreferredContainer(buildCardPlans({ subject, recipe, promptText }), preferredContainer)
   });
 }
 
@@ -449,6 +461,7 @@ export function summarizeMicrosequenceForAssist(microsequence) {
 
 export function buildAssistDraftPrompt({ promptText, plan, microsequence }) {
   const cardCount = Array.isArray(plan?.cardPlans) ? plan.cardPlans.length : 4;
+  const preferredContainer = CONTAINERS.includes(plan?.preferredContainer) ? plan.preferredContainer : "";
   return [
     "Preencha o conteúdo dos cards seguindo exatamente o plano abaixo.",
     `Devolva exatamente ${cardCount} cards, na mesma ordem do plano.`,
@@ -470,7 +483,15 @@ export function buildAssistDraftPrompt({ promptText, plan, microsequence }) {
     "Para tabelas, preencha columns e rows; cada item de rows deve ser uma linha textual separada por |.",
     "Para comandos, use language bash e escreva no máximo quatro linhas, sem URL remota e sem detalhes avançados.",
     "Para C ou Portugol, prefira container code com language c ou portugol.",
-    "Nesta etapa, não gere fluxograma; quando o pedido mencionar fluxograma, represente o raciocínio com tabela, texto, código ou pergunta.",
+    ...(preferredContainer === "flow"
+      ? [
+          'Preferência explícita de contêiner: {"container":"flow"}.',
+          "A preferência do usuário é usar fluxograma sempre que possível nesta resposta."
+        ]
+      : ["Nesta etapa, não gere fluxograma; quando o pedido mencionar fluxograma, represente o raciocínio com tabela, texto, código ou pergunta."]),
+    ...(preferredContainer && preferredContainer !== "flow"
+      ? [`Preferência explícita de contêiner: {"container":"${preferredContainer}"}.`]
+      : []),
     "Para diretórios, use paths com caminhos absolutos ou relativos coerentes.",
     "Microssequência atual:",
     summarizeMicrosequenceForAssist(microsequence),
@@ -496,6 +517,7 @@ export function normalizeAssistPlan(value) {
     recipe: RECIPES.includes(value.recipe) ? value.recipe : "explain_concept",
     goal: normalizeText(value.goal) || "Estudar o tópico solicitado.",
     tags: normalizeList(value.tags, 5),
+    preferredContainer: CONTAINERS.includes(value.preferredContainer) ? value.preferredContainer : "",
     cardPlans: cardPlans.map((item, index) => ({
       role: CARD_ROLES.includes(item?.role) ? item.role : "concept",
       container: CONTAINERS.includes(item?.container) ? item.container : "say",
@@ -709,6 +731,22 @@ function convertAssistCardToContract(card) {
     });
   }
 
+  if (container === "flow") {
+    const flow = Array.isArray(card?.flow) && card.flow.length
+      ? card.flow
+      : [
+          { start: "Início" },
+          { process: normalizeText(card?.answer) || normalizeText(card?.title) || "Executar passo principal" },
+          { end: "Fim" }
+        ];
+    return sanitizeContractCard({
+      title,
+      ...(text ? { say: text } : {}),
+      flow,
+      ...(after ? { after } : {})
+    });
+  }
+
   const wrong = ensureChoiceDistractors(card, text);
   return sanitizeContractCard({
     title,
@@ -787,6 +825,21 @@ function createFallbackAssistCard(cardPlan, { plan, promptText, index = 0 } = {}
       currentPath: "projeto",
       selectedPath: "projeto/README.md",
       paths: ["projeto/README.md", "projeto/src/app.js", "projeto/docs/anotacoes.md"]
+    };
+  }
+
+  if (container === "flow") {
+    return {
+      role,
+      container,
+      title,
+      text: `Fluxograma introdutório sobre ${topic}.`,
+      flow: [
+        { start: "Início" },
+        { process: `Observar ${topic}` },
+        { if: `A etapa principal de ${topic} está clara?`, then: [{ output: "Avançar" }], else: [{ process: "Revisar o passo central" }] },
+        { end: "Fim" }
+      ]
     };
   }
 

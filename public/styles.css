@@ -2896,6 +2896,7 @@ button {
   padding: 10px;
   border-radius: 18px;
   justify-content: flex-end;
+  flex-wrap: wrap;
 }
 
 .action-menu-btn {
@@ -2911,6 +2912,14 @@ button {
   cursor: pointer;
 }
 
+.action-menu-btn.has-label {
+  width: 78px;
+  height: 64px;
+  padding: 6px 4px;
+  flex-direction: column;
+  gap: 4px;
+}
+
 .action-menu-btn.is-danger {
   border-color: rgba(216, 132, 122, 0.72);
   color: #ffd8d2;
@@ -2920,6 +2929,14 @@ button {
 .action-menu-icon {
   font-size: 1.2rem;
   line-height: 1;
+}
+
+.action-menu-label {
+  font-size: 0.58rem;
+  font-weight: 700;
+  line-height: 1.15;
+  text-align: center;
+  text-transform: uppercase;
 }
 
 .editor-sheet {
@@ -3240,6 +3257,41 @@ button {
   min-height: 0;
   max-height: none;
   align-items: start;
+}
+
+.workbench-prompt-tools {
+  width: 34px;
+  display: grid;
+  gap: 6px;
+  align-content: start;
+}
+
+.workbench-stack-button {
+  width: 34px;
+  min-height: 42px;
+  border-radius: 12px;
+  border: 1px solid rgba(111, 88, 62, 0.78);
+  background: linear-gradient(180deg, rgba(34, 27, 20, 0.98), rgba(22, 17, 13, 0.99));
+  color: #efc15e;
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 2px;
+  padding: 4px 2px;
+}
+
+.assist-container-button-icon {
+  width: 15px;
+  height: 15px;
+  display: block;
+}
+
+.assist-container-button-label {
+  font-size: 0.54rem;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .workbench-editor-panel .assist-prompt {

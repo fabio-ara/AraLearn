@@ -13,6 +13,7 @@ export function renderActionMenuOverlay({ title, placement = "bottom", actions =
     .map((action) => {
       return (
         '<button class="action-menu-btn' +
+        (action.showLabel ? " has-label" : "") +
         (action.tone === "danger" ? " is-danger" : "") +
         '" type="button" data-action="run-entity-action" data-entity-action="' +
         escapeHtml(action.key) +
@@ -24,6 +25,9 @@ export function renderActionMenuOverlay({ title, placement = "bottom", actions =
         '<span class="action-menu-icon" aria-hidden="true">' +
         String(action.icon || "") +
         "</span>" +
+        (action.showLabel
+          ? '<span class="action-menu-label">' + escapeHtml(action.label) + "</span>"
+          : "") +
         "</button>"
       );
     })

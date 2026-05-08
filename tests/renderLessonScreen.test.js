@@ -253,6 +253,7 @@ test("renderiza o painel da microssequência sem botão próprio de ações e co
   assert.match(html, /data-field="assist-microsequence-title" type="text" aria-label="Microssequência" title="Microssequência"/);
   assert.match(html, /data-field="assist-dependency-picker" aria-label="Tags" title="Tags"/);
   assert.match(html, /data-field="assist-prompt" class="assist-prompt" aria-label="Pedido" title="Pedido"/);
+  assert.match(html, /data-action="open-assist-container-picker"/);
   assert.match(html, /data-action="clear-prompt" title="Limpar prompt" aria-label="Limpar prompt"/);
   assert.match(html, /data-action="open-assist-config" title="Configurar IA" aria-label="Configurar IA"/);
   assert.match(html, /data-action="apply-assist"[^>]*title="Editar cards" aria-label="Editar cards"/);
@@ -320,6 +321,7 @@ test("renderiza o painel da microssequência vazia em modo de geração de cards
   assert.doesNotMatch(html, /editor-version-count-value/);
   assert.doesNotMatch(html, /Os cards gerados aparecerão aqui após o envio do prompt\./);
   assert.match(html, /data-workbench-pane="edit"/);
+  assert.match(html, /data-action="open-assist-container-picker"/);
   assert.match(html, /data-action="select-workbench-pane" data-workbench-pane="edit" aria-label="Geração" title="Geração"/);
   assert.doesNotMatch(html, /data-action="select-workbench-pane" data-workbench-pane="preview"/);
   assert.doesNotMatch(html, /Sem cards ainda/);

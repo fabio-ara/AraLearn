@@ -77,6 +77,15 @@ const ASSIST_USER_MODES = {
   EDIT_MICROSEQUENCE: "edit-microsequence",
   REPOSITION: "reposition-in-course"
 };
+const ASSIST_CARD_CONTAINER_OPTIONS = [
+  { value: "", label: "Automático", icon: "&#10022;" },
+  { value: "say", label: "Parágrafo", icon: "&para;" },
+  { value: "ask", label: "Pergunta", icon: "?" },
+  { value: "code", label: "Código", icon: "&lt;/&gt;" },
+  { value: "table", label: "Tabela", icon: "&#8863;" },
+  { value: "tree", label: "Árvore", icon: "&#127794;" },
+  { value: "flow", label: "Fluxograma", icon: "&#9671;" }
+];
 const COURSES_VIEWS = new Set(["courses", "course", "lesson", "microsequence", "microsequence-assist"]);
 
 function fail(message) {
@@ -466,6 +475,22 @@ function makeEntityEditorModel(state) {
     };
   }
 
+  if (entityEditor.kind === "assist-container-picker") {
+    return {
+      variant: "action-menu",
+      title: "Tipo de card",
+      placement: "bottom",
+      fields: [],
+      actions: ASSIST_CARD_CONTAINER_OPTIONS.map((item) => ({
+        key: `set-assist-container:${item.value}`,
+        label: item.label,
+        icon: item.icon,
+        showLabel: true
+      })),
+      showSaveButton: false
+    };
+  }
+
   if (entityEditor.kind === "card") {
     const microsequence = findMicrosequence(
       project,
@@ -529,6 +554,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
       selectedMode: ASSIST_USER_MODES.EDIT_MICROSEQUENCE,
       activeWorkbenchPane: "preview",
       promptText: "",
+      preferredContainer: "",
       dependencyKeys: [],
       pendingDependencyKey: "",
       lastRequest: null,
@@ -1105,6 +1131,10 @@ export function createLessonEditorApp({ root, storage, editor }) {
     return ASSIST_MODEL_OPTIONS.find((item) => item.value === model)?.label || model;
   }
 
+  function getAssistContainerLabel(container) {
+    return ASSIST_CARD_CONTAINER_OPTIONS.find((item) => item.value === container)?.label || "Automático";
+  }
+
   function persistAssistConfig() {
     writeAssistConfigStorage(state.assistConfig);
   }
@@ -1209,6 +1239,9 @@ export function createLessonEditorApp({ root, storage, editor }) {
       state.assistDraft.selectedMode = allowedModes.has(defaultMode)
         ? defaultMode
         : modeOptions.options[0]?.value || defaultMode;
+    }
+    if (!ASSIST_CARD_CONTAINER_OPTIONS.some((item) => item.value === state.assistDraft.preferredContainer)) {
+      state.assistDraft.preferredContainer = "";
     }
   }
 
@@ -2397,7 +2430,8 @@ export function createLessonEditorApp({ root, storage, editor }) {
         card: context.card,
         dependencyTitles,
         destinationSlots,
-        promptText: state.assistDraft.promptText
+        promptText: state.assistDraft.promptText,
+        preferredContainer: state.assistDraft.preferredContainer
       });
 
       if (mode === "compose-microsequence") {
@@ -2808,6 +2842,16 @@ export function createLessonEditorApp({ root, storage, editor }) {
 
     try {
       let nextProject = null;
+
+      if (actionKey.startsWith("set-assist-container:")) {
+        const nextContainer = actionKey.slice("set-assist-container:".length);
+        state.assistDraft.preferredContainer = ASSIST_CARD_CONTAINER_OPTIONS.some((item) => item.value === nextContainer)
+          ? nextContainer
+          : "";
+        state.entityEditor = null;
+        render({ preserveState: true });
+        return;
+      }
 
       if (actionKey === "import-json") {
         importJsonFromFile()
@@ -4644,6 +4688,8 @@ export function createLessonEditorApp({ root, storage, editor }) {
           selectedAssistMode: state.assistDraft.selectedMode,
           activeWorkbenchPane: state.assistDraft.activeWorkbenchPane,
           assistModeLocked: assistModeConfig.locked,
+          preferredContainer: state.assistDraft.preferredContainer,
+          preferredContainerLabel: getAssistContainerLabel(state.assistDraft.preferredContainer),
           selectedModel: state.assistConfig.model,
           selectedModelLabel: getAssistModelLabel(state.assistConfig.model),
           modelOptions: ASSIST_MODEL_OPTIONS,
@@ -5597,6 +5643,9 @@ export function createLessonEditorApp({ root, storage, editor }) {
         state.assistDraft.promptText = "";
       }
       render({ preserveState: true });
+    });
+    root.querySelector("[data-action='open-assist-container-picker']")?.addEventListener("click", () => {
+      openEntityEditor("assist-container-picker");
     });
     root.querySelector("[data-action='open-assist-config']")?.addEventListener("click", () => openAssistConfig());
     root.querySelector("[data-action='apply-assist']")?.addEventListener("click", () => {

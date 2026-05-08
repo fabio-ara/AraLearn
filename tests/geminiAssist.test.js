@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { normalizeComposeResult, normalizeEditResult, runGeminiAssist } from "../src/assist/geminiAssist.js";
-import { buildDeterministicAssistPlan, normalizeAssistDraftResult } from "../src/assist/assistMicrosequenceEngine.js";
+import { buildAssistDraftPrompt, buildDeterministicAssistPlan, normalizeAssistDraftResult } from "../src/assist/assistMicrosequenceEngine.js";
 import { buildCardRuntime } from "../src/core/cardRuntime.js";
 
 test("normaliza composição com intenções semânticas", () => {
@@ -239,6 +239,27 @@ test("planeja microssequências localmente para assuntos distintos", () => {
   assert.ok(flowPlan.cardPlans.some((card) => card.container === "table"));
   assert.equal(treePlan.recipe, "directory_context");
   assert.ok(treePlan.cardPlans.some((card) => card.container === "tree"));
+});
+
+test("aplica contêiner preferido ao plano e ao prompt assistido", () => {
+  const preferredPlan = buildDeterministicAssistPlan({
+    promptText: "troque os cards atuais por um fluxograma simples",
+    preferredContainer: "flow"
+  });
+  const prompt = buildAssistDraftPrompt({
+    promptText: "troque os cards atuais por um fluxograma simples",
+    plan: preferredPlan,
+    microsequence: {
+      courseTitle: "Lógica",
+      moduleTitle: "Decisão",
+      lessonTitle: "Fluxos",
+      title: "Número par"
+    }
+  });
+
+  assert.ok(preferredPlan.cardPlans.every((card) => card.container === "flow"));
+  assert.match(prompt, /"container":"flow"/);
+  assert.doesNotMatch(prompt, /Nesta etapa, não gere fluxograma/);
 });
 
 test("gera microssequência com plano local e chamada estruturada ao Gemini", async () => {

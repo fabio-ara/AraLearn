@@ -248,6 +248,20 @@ function renderInlineFieldIcon(iconName, label) {
   );
 }
 
+function renderPromptContainerButton(selectedLabel = "Automático") {
+  const title = `Escolher tipo de card. Atual: ${selectedLabel}`;
+  return (
+    '<button class="icon-ghost workbench-stack-button assist-container-button" type="button" data-action="open-assist-container-picker" title="' +
+    escapeHtml(title) +
+    '" aria-label="' +
+    escapeHtml(title) +
+    '">' +
+    renderUiIcon("card", "assist-container-button-icon") +
+    '<span class="assist-container-button-label">Tipo</span>' +
+    "</button>"
+  );
+}
+
 function renderMetaMetric(iconName, value, label) {
   return (
     '<span class="progress-meta-item" aria-label="' +
@@ -977,7 +991,10 @@ function renderMicrosequenceWorkbenchScreen({
     "</div></div>" +
     '<div class="generate-divider workbench-divider"></div>' +
     '<label class="field generate-icon-field generate-prompt-field workbench-prompt-field">' +
+    '<div class="workbench-prompt-tools">' +
     renderInlineFieldIcon("prompt", promptLabel) +
+    renderPromptContainerButton(editorSupport.preferredContainerLabel || "Automático") +
+    "</div>" +
     '<textarea data-field="assist-prompt" class="assist-prompt" aria-label="' +
     escapeHtml(promptLabel) +
     '" title="' +
