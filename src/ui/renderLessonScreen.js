@@ -257,7 +257,6 @@ function renderPromptContainerButton(selectedLabel = "Automático") {
     escapeHtml(title) +
     '">' +
     renderUiIcon("card", "assist-container-button-icon") +
-    '<span class="assist-container-button-label">Tipo</span>' +
     "</button>"
   );
 }

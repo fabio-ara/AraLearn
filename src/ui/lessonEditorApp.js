@@ -4,6 +4,7 @@ import { renderCardVersionOverlay } from "./renderCardVersionOverlay.js";
 import { renderEntityEditorOverlay } from "./renderEntityEditorOverlay.js";
 import { renderActionMenuOverlay } from "./renderActionMenuOverlay.js";
 import { renderAssistConfigOverlay } from "./renderAssistConfigOverlay.js";
+import { renderUiIcon } from "./renderUiIcons.js";
 import { captureRenderState, restoreRenderState } from "./renderState.js";
 import {
   buildDemoMicrosequenceVersions,
@@ -78,13 +79,13 @@ const ASSIST_USER_MODES = {
   REPOSITION: "reposition-in-course"
 };
 const ASSIST_CARD_CONTAINER_OPTIONS = [
-  { value: "", label: "Automático", icon: "&#10022;" },
-  { value: "say", label: "Parágrafo", icon: "&para;" },
-  { value: "ask", label: "Pergunta", icon: "?" },
-  { value: "code", label: "Código", icon: "&lt;/&gt;" },
-  { value: "table", label: "Tabela", icon: "&#8863;" },
-  { value: "tree", label: "Árvore", icon: "&#127794;" },
-  { value: "flow", label: "Fluxograma", icon: "&#9671;" }
+  { value: "", label: "Automático", icon: renderUiIcon("sparkles", "action-menu-svg-icon") },
+  { value: "say", label: "Parágrafo", icon: renderUiIcon("prompt", "action-menu-svg-icon") },
+  { value: "ask", label: "Pergunta", icon: renderUiIcon("intent", "action-menu-svg-icon") },
+  { value: "code", label: "Código", icon: renderUiIcon("title", "action-menu-svg-icon") },
+  { value: "table", label: "Tabela", icon: renderUiIcon("module", "action-menu-svg-icon") },
+  { value: "tree", label: "Árvore de diretórios", icon: renderUiIcon("folder", "action-menu-svg-icon") },
+  { value: "flow", label: "Fluxograma", icon: renderUiIcon("microsequence", "action-menu-svg-icon") }
 ];
 const COURSES_VIEWS = new Set(["courses", "course", "lesson", "microsequence", "microsequence-assist"]);
 
@@ -484,8 +485,7 @@ function makeEntityEditorModel(state) {
       actions: ASSIST_CARD_CONTAINER_OPTIONS.map((item) => ({
         key: `set-assist-container:${item.value}`,
         label: item.label,
-        icon: item.icon,
-        showLabel: true
+        icon: item.icon
       })),
       showSaveButton: false
     };
