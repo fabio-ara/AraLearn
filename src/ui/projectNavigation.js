@@ -1,4 +1,4 @@
-import { isReadyMicrosequence } from "../model/microsequenceStatus.js";
+import { isRunnableMicrosequence } from "../model/microsequenceStatus.js";
 
 export const DEFAULT_ASSIST_DEPENDENCIES = 3;
 
@@ -119,7 +119,7 @@ export function findCard(microsequence, cardKey) {
 export function collectLessonCards(lesson) {
   const entries = [];
   (lesson?.microsequences || []).forEach((microsequence) => {
-    if (!isReadyMicrosequence(microsequence)) {
+    if (!isRunnableMicrosequence(microsequence)) {
       return;
     }
     (microsequence.cards || []).forEach((card, cardIndex) => {

@@ -10,6 +10,7 @@ A microssequência continua sendo a unidade mínima de autoria e estudo. Ela nas
 
 - `draft`: rascunho visível na estrutura do curso, mas fora da execução;
 - `ready`: microssequência pronta para entrar no runtime de cards.
+- `included: false`: microssequência visível, mas removida da execução do curso.
 
 ## Aba Gerar
 
@@ -63,7 +64,8 @@ O runtime de estudo ignora rascunhos.
 Regras:
 
 - microssequências `draft` não entram no play;
-- lições, módulos e cursos coletam apenas microssequências `ready`;
+- microssequências com `included: false` também não entram no play;
+- lições, módulos e cursos coletam apenas microssequências `ready` incluídas;
 - quando não há conteúdo pronto no escopo selecionado, a interface informa que não há microssequências prontas para estudar ali.
 
 ## Persistência

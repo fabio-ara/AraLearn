@@ -1,5 +1,5 @@
 import { readLessonProgressEntry } from "../storage/progressStore.js";
-import { isReadyMicrosequence } from "../model/microsequenceStatus.js";
+import { isRunnableMicrosequence } from "../model/microsequenceStatus.js";
 import { renderUiIcon } from "./renderUiIcons.js";
 
 function escapeHtml(value) {
@@ -37,7 +37,7 @@ function countLessons(course) {
 
 function countCardsInLesson(lesson) {
   return (lesson.microsequences || []).reduce((total, microsequence) => {
-    if (!isReadyMicrosequence(microsequence)) {
+    if (!isRunnableMicrosequence(microsequence)) {
       return total;
     }
     return total + (microsequence.cards || []).length;

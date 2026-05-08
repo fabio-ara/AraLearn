@@ -146,7 +146,7 @@ function validateMicrosequence(microsequence, index, errors, microKeys, path) {
 
   assertAllowedFields(
     microsequence,
-    new Set(["key", "title", "tags", "status", "cards"]),
+    new Set(["key", "title", "tags", "status", "included", "cards"]),
     currentPath,
     errors,
     "microssequência"
@@ -157,6 +157,10 @@ function validateMicrosequence(microsequence, index, errors, microKeys, path) {
   const status = typeof microsequence.status === "string" ? microsequence.status.trim() : "";
   if (status !== "draft" && status !== "ready") {
     errors.push(makeError(`${currentPath}.status`, 'Campo obrigatório inválido: "status".'));
+  }
+  const includedValue = microsequence.included;
+  if (includedValue !== undefined && typeof includedValue !== "boolean") {
+    errors.push(makeError(`${currentPath}.included`, 'Campo opcional inválido: "included".'));
   }
   const key = microKeys.next(microsequence.key, title || `microsequence-${index + 1}`, currentPath, errors);
   const cards = Array.isArray(microsequence.cards) ? microsequence.cards : [];
@@ -175,6 +179,7 @@ function validateMicrosequence(microsequence, index, errors, microKeys, path) {
     title: title ?? "",
     ...(tags.length ? { tags } : {}),
     status: status || "draft",
+    included: typeof includedValue === "boolean" ? includedValue : normalizedCards.length > 0,
     cards: normalizedCards
   };
 }

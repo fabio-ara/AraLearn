@@ -332,6 +332,11 @@ button {
   align-self: center;
 }
 
+.microsequence-runtime-toggle[disabled] {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+
 [data-structure-target] {
   position: relative;
   transition:
@@ -543,35 +548,6 @@ button {
   min-width: 0;
 }
 
-.lesson-context-band {
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: nowrap;
-}
-
-.lesson-context-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.lesson-context-chip-start {
-  text-align: left;
-  margin-right: auto;
-  max-width: 48%;
-}
-
-.lesson-context-chip-end {
-  justify-content: flex-end;
-  text-align: right;
-  margin-left: auto;
-  max-width: 48%;
-}
-
 .context-chip-metric {
   display: inline-flex;
   align-items: center;
@@ -611,6 +587,25 @@ button {
   padding: 12px;
   display: grid;
   gap: 10px;
+}
+
+.lesson-panel-card {
+  gap: 12px;
+}
+
+.lesson-panel-head {
+  display: grid;
+  gap: 8px;
+}
+
+.lesson-panel-title {
+  width: 100%;
+  text-align: center;
+}
+
+.lesson-panel-summary {
+  justify-self: start;
+  margin: 0;
 }
 
 .microsequence-panel-head {

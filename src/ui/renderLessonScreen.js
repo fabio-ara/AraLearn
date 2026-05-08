@@ -3,7 +3,7 @@ import { readCardText } from "../core/cardRuntime.js";
 import { renderCardRuntimeBlocks, renderCardRuntimeBlocksWithDock } from "../render/renderCardRuntime.js";
 import { readLessonProgressEntry } from "../storage/progressStore.js";
 import { renderUiIcon } from "./renderUiIcons.js";
-import { isDraftMicrosequence, isReadyMicrosequence } from "../model/microsequenceStatus.js";
+import { isDraftMicrosequence, isReadyMicrosequence, isRunnableMicrosequence, resolveMicrosequenceRuntimeIncluded } from "../model/microsequenceStatus.js";
 
 function escapeHtml(value) {
   return String(value)
@@ -75,7 +75,7 @@ function renderTopbar({
 
 function countCardsInLesson(lesson) {
   return (lesson.microsequences || []).reduce(
-    (total, microsequence) => total + (isReadyMicrosequence(microsequence) ? (microsequence.cards || []).length : 0),
+    (total, microsequence) => total + (isRunnableMicrosequence(microsequence) ? (microsequence.cards || []).length : 0),
     0
   );
 }
@@ -409,10 +409,13 @@ function getAssistActionLabel(mode) {
 }
 
 function renderMicrosequenceStatusBadge(microsequence) {
-  if (!isDraftMicrosequence(microsequence)) {
-    return "";
+  if (isDraftMicrosequence(microsequence)) {
+    return '<span class="microsequence-status-badge">rascunho · fora do estudo</span>';
   }
-  return '<span class="microsequence-status-badge">rascunho · fora do estudo</span>';
+  if (!resolveMicrosequenceRuntimeIncluded(microsequence)) {
+    return '<span class="microsequence-status-badge">fora do estudo</span>';
+  }
+  return "";
 }
 
 function renderCoursesTabs() {
@@ -684,9 +687,14 @@ function renderLessonScreenView({ course, lesson, moduleValue, progress }) {
       const microsequencePercent = percent(cardCount, microsequenceCompleted);
       const didacticTags = renderDidacticTags(moduleValue, lesson.key, microsequence);
       const isDraft = isDraftMicrosequence(microsequence);
+      const isIncluded = resolveMicrosequenceRuntimeIncluded(microsequence);
+      const canToggleRuntime = cardCount > 0;
+      const canPlay = isRunnableMicrosequence(microsequence);
       const draftDescription = isDraft
         ? '<p class="card-subtitle lesson-description">Ainda não entra no estudo. Gere ou consolide cards para liberar esta microssequência.</p>'
-        : "";
+        : !isIncluded
+          ? '<p class="card-subtitle lesson-description">Esta microssequência foi removida da execução do curso.</p>'
+          : "";
 
       return (
         '<li class="lesson-item progress-row microsequence-row' +
@@ -731,6 +739,17 @@ function renderLessonScreenView({ course, lesson, moduleValue, progress }) {
           microsequenceKey: microsequence.key,
           label: `Arrastar microssequência ${microsequence.title || microsequence.key}`
         }) +
+        '<button class="icon-ghost tiny-icon microsequence-runtime-toggle" type="button" data-action="toggle-microsequence-runtime" data-microsequence-key="' +
+        escapeHtml(microsequence.key) +
+        '" title="' +
+        (isIncluded ? "Excluir da execução do curso" : "Incluir na execução do curso") +
+        '" aria-label="' +
+        (isIncluded ? "Excluir da execução do curso" : "Incluir na execução do curso") +
+        '"' +
+        (canToggleRuntime ? "" : ' disabled aria-disabled="true"') +
+        ">" +
+        (isIncluded ? "+" : "-") +
+        "</button>" +
         '<button class="icon-ghost tiny-icon" type="button" data-action="open-microsequence-actions" data-microsequence-key="' +
         escapeHtml(microsequence.key) +
         '" title="Ações da microssequência" aria-label="Ações da microssequência">&#8943;</button>' +
@@ -742,7 +761,9 @@ function renderLessonScreenView({ course, lesson, moduleValue, progress }) {
         (isDraft ? "Editar rascunho" : "Começar microssequência") +
         '" aria-label="' +
         (isDraft ? "Editar rascunho" : "Começar microssequência") +
-        '">' +
+        '"' +
+        (isDraft || canPlay ? "" : ' disabled aria-disabled="true"') +
+        ">" +
         (isDraft ? "&#9998;" : "&#9654;") +
         "</button>" +
         "</div>" +
@@ -768,27 +789,19 @@ function renderLessonScreenView({ course, lesson, moduleValue, progress }) {
     }) +
     renderCoursesTabs() +
     '<main class="screen-content lesson-structure-screen">' +
-    '<section class="context-band lesson-context-band">' +
-    '<span class="context-chip lesson-context-chip lesson-context-chip-start">' +
-    renderContextMetric("module", moduleValue.title || moduleValue.key, `Módulo: ${moduleValue.title || moduleValue.key}`) +
-    "</span>" +
-    '<span class="context-chip lesson-context-chip lesson-context-chip-end">' +
-    renderContextMetric("progress", `${lessonCompleted}/${lessonTotal}`, `Progresso: ${lessonCompleted}/${lessonTotal}`) +
-    '<span class="context-chip-separator" aria-hidden="true">·</span>' +
-    renderContextMetric(
+    readyEmptyMessage +
+    '<section class="clean-card module-card progress-card lesson-panel-card">' +
+    '<header class="module-head lesson-panel-head">' +
+    '<h3 class="card-title lesson-panel-title">Microssequências</h3>' +
+    '<p class="muted tiny progress-meta lesson-panel-summary">' +
+    renderMetaMetric("progress", `${lessonCompleted}/${lessonTotal}`, `Progresso: ${lessonCompleted}/${lessonTotal}`) +
+    '<span class="progress-meta-separator" aria-hidden="true">·</span>' +
+    renderMetaMetric(
       "microsequence",
       String((lesson.microsequences || []).length),
       formatCount((lesson.microsequences || []).length, "microssequência", "microssequências")
     ) +
-    "</span>" +
-    "</section>" +
-    readyEmptyMessage +
-    '<section class="clean-card module-card progress-card lesson-panel-card">' +
-    '<header class="module-head">' +
-    '<h3 class="card-title">Microssequências da lição</h3>' +
-    '<span class="lesson-panel-meta">' +
-    escapeHtml(moduleValue.title || moduleValue.key) +
-    "</span>" +
+    "</p>" +
     "</header>" +
     '<ul class="lesson-list microsequence-list" data-structure-collection="microsequence" data-course-key="' +
     escapeHtml(course.key) +
@@ -810,7 +823,7 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
   const safeIndex = Math.max(0, Math.min(activeIndex, Math.max(0, cards.length - 1)));
   const activeCard = cards[safeIndex] || null;
   const lessonCardEntries = (lesson.microsequences || []).flatMap((lessonMicrosequence) => {
-    if (!isReadyMicrosequence(lessonMicrosequence)) {
+    if (!isRunnableMicrosequence(lessonMicrosequence)) {
       return [];
     }
     return (lessonMicrosequence.cards || []).map((card, cardIndex) => ({

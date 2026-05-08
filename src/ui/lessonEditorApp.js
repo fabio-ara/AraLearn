@@ -64,7 +64,7 @@ import { runGeminiAssist } from "../assist/geminiAssist.js";
 import { getLessonProgressCursor, removeLessonProgressEntries, writeLessonProgressEntry } from "../storage/progressStore.js";
 import { detectJsonExchangeFormat } from "../storage/jsonExchange.js";
 import { getContractCardKind, listContractAnswerValues } from "../contract/contractCard.js";
-import { isReadyMicrosequence } from "../model/microsequenceStatus.js";
+import { isRunnableMicrosequence, resolveMicrosequenceRuntimeIncluded } from "../model/microsequenceStatus.js";
 
 const MAX_ASSIST_DEPENDENCIES = 5;
 const MAX_CARD_SNAPSHOTS = 6;
@@ -1271,7 +1271,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
   function openMicrosequenceScreen(microsequenceKey, targetIndex = 0, mode = "play") {
     const microsequence = selectMicrosequenceCard(microsequenceKey, targetIndex);
     if (!microsequence) return;
-    if (mode === "play" && !isReadyMicrosequence(microsequence)) {
+    if (mode === "play" && !isRunnableMicrosequence(microsequence)) {
       openMicrosequenceAssistPage(microsequenceKey, targetIndex);
       return;
     }
@@ -4491,6 +4491,41 @@ export function createLessonEditorApp({ root, storage, editor }) {
     });
   }
 
+  function toggleSelectedMicrosequenceRuntime(microsequenceKey) {
+    if (!microsequenceKey) {
+      return;
+    }
+
+    const microsequence = findMicrosequence(
+      state.project,
+      state.selection.courseKey,
+      state.selection.moduleKey,
+      state.selection.lessonKey,
+      microsequenceKey
+    );
+    if (!microsequence || !Array.isArray(microsequence.cards) || microsequence.cards.length === 0) {
+      return;
+    }
+
+    const nextProject = editor.updateMicrosequence({
+      courseKey: state.selection.courseKey,
+      moduleKey: state.selection.moduleKey,
+      lessonKey: state.selection.lessonKey,
+      microsequenceKey,
+      included: !resolveMicrosequenceRuntimeIncluded(microsequence)
+    });
+
+    setProject(nextProject);
+    focusStructureTarget({
+      view: "lesson",
+      courseKey: state.selection.courseKey,
+      moduleKey: state.selection.moduleKey,
+      lessonKey: state.selection.lessonKey,
+      microsequenceKey
+    });
+    render({ preserveState: false });
+  }
+
   function syncPendingStructureFocus() {
     const target = state.pendingStructureFocus;
     if (!target || target.view !== state.view) {
@@ -5307,6 +5342,12 @@ export function createLessonEditorApp({ root, storage, editor }) {
           lessonKey: state.selection.lessonKey,
           microsequenceKey
         });
+      });
+    });
+    root.querySelectorAll("[data-action='toggle-microsequence-runtime']").forEach((node) => {
+      node.addEventListener("click", () => {
+        const microsequenceKey = node.getAttribute("data-microsequence-key") || state.selection.microsequenceKey;
+        toggleSelectedMicrosequenceRuntime(microsequenceKey);
       });
     });
     root.querySelectorAll("[data-action='edit-microsequence']").forEach((node) => {

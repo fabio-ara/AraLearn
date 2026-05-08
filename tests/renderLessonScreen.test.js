@@ -82,13 +82,14 @@ test("renderiza a tela de lição com ações globais e pilha de ações da micr
   assert.match(html, /data-action="open-lesson-screen-actions"/);
   assert.match(html, /data-home-tab="courses"[^>]+aria-selected="true"/);
   assert.match(html, /data-action="structure-drag-handle" data-structure-level="microsequence"/);
+  assert.match(html, /data-action="toggle-microsequence-runtime"/);
   assert.match(html, /data-action="open-microsequence-actions"/);
   assert.match(html, /data-action="play-microsequence"/);
-  assert.match(html, /aria-label="Módulo: Módulo experimental" title="Módulo: Módulo experimental"/);
   assert.match(html, /aria-label="Progresso: 0\/7" title="Progresso: 0\/7"/);
   assert.match(html, /aria-label="1 microssequência" title="1 microssequência"/);
   assert.match(html, /aria-label="7 cards" title="7 cards"/);
-  assert.match(html, /Microssequências da lição/);
+  assert.match(html, /Microssequências/);
+  assert.doesNotMatch(html, /Módulo experimental/);
   assert.doesNotMatch(html, />Mód\.:/);
   assert.doesNotMatch(html, />Progr\.:/);
 });
@@ -133,7 +134,44 @@ test("mostra aviso quando a lição tem apenas rascunhos", () => {
   assert.match(html, /Não há microssequências prontas para estudar aqui\./);
   assert.match(html, /microsequence-status-badge">rascunho · fora do estudo/);
   assert.match(html, /Ainda não entra no estudo\./);
-  assert.doesNotMatch(html, /data-action="play-microsequence"/);
+  assert.match(html, /data-action="open-microsequence-assist"/);
+});
+
+test("desabilita play e sinaliza exclusão quando a microssequência sai do estudo", () => {
+  const project = readProject();
+  const course = project.courses[0];
+  const moduleValue = course.modules[0];
+  const lesson = structuredClone(moduleValue.lessons[0]);
+  lesson.microsequences = lesson.microsequences.map((microsequence, index) =>
+    index === 0 ? { ...microsequence, included: false } : microsequence
+  );
+  const microsequence = lesson.microsequences[0];
+  const html = renderLessonScreen({
+    project,
+    view: "lesson",
+    selection: {
+      courseKey: course.key,
+      moduleKey: moduleValue.key,
+      lessonKey: lesson.key,
+      microsequenceKey: microsequence.key,
+      cardKey: microsequence.cards[0].key,
+      cardIndex: 0
+    },
+    course,
+    moduleValue: { ...moduleValue, lessons: [lesson] },
+    lesson,
+    microsequence,
+    cards: microsequence.cards,
+    microsequenceMode: "play",
+    editorSupport: {
+      progress: { version: 1, lessons: {} }
+    }
+  });
+
+  assert.match(html, /microsequence-status-badge">fora do estudo/);
+  assert.match(html, /Esta microssequência foi removida da execução do curso\./);
+  assert.match(html, /data-action="toggle-microsequence-runtime"[^>]*>-<\/button>/);
+  assert.match(html, /data-action="play-microsequence"[^>]*disabled aria-disabled="true"/);
 });
 
 test("renderiza o painel da microssequência sem botão próprio de ações e com área de tags", () => {

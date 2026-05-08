@@ -27,3 +27,21 @@ export function normalizeMicrosequenceStatus(value, microsequence) {
   }
   return resolveMicrosequenceStatus(microsequence);
 }
+
+export function resolveMicrosequenceRuntimeIncluded(microsequence) {
+  if (typeof microsequence?.included === "boolean") {
+    return microsequence.included;
+  }
+  return Array.isArray(microsequence?.cards) && microsequence.cards.length > 0;
+}
+
+export function isRunnableMicrosequence(microsequence) {
+  return isReadyMicrosequence(microsequence) && resolveMicrosequenceRuntimeIncluded(microsequence);
+}
+
+export function normalizeMicrosequenceRuntimeIncluded(value, microsequence) {
+  if (typeof value === "boolean") {
+    return value;
+  }
+  return resolveMicrosequenceRuntimeIncluded(microsequence);
+}

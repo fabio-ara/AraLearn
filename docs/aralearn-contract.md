@@ -98,9 +98,10 @@ Campos:
 - `key`: opcional
 - `tags`: opcional, array de strings
 - `status`: obrigatório, aceita `draft` ou `ready`
+- `included`: opcional, booleano; controla se a microssequência entra na execução do curso
 - `cards`: obrigatório, array de cards; pode ser vazio
 
-`draft` indica rascunho dentro da estrutura real do curso. `ready` indica microssequência pronta para execução.
+`draft` indica rascunho dentro da estrutura real do curso. `ready` indica microssequência pronta para execução. Quando `included` é `false`, a microssequência continua visível na estrutura, mas fica fora do estudo.
 
 ### Card
 

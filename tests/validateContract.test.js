@@ -151,6 +151,22 @@ test("aceita status explícito de rascunho", () => {
   assert.equal(result.value.courses[0].modules[0].lessons[0].microsequences[0].status, "draft");
 });
 
+test("aceita indicador explícito de inclusão no estudo", () => {
+  const document = projectWithCards([
+    {
+      title: "Ideia",
+      say: "Leia a ideia."
+    }
+  ]);
+  document.courses[0].modules[0].lessons[0].microsequences[0].status = "ready";
+  document.courses[0].modules[0].lessons[0].microsequences[0].included = false;
+
+  const result = validateContractDocument(document);
+
+  assert.equal(result.ok, true);
+  assert.equal(result.value.courses[0].modules[0].lessons[0].microsequences[0].included, false);
+});
+
 test("aceita curso, módulo e lição vazios no contrato público", () => {
   const result = validateContractDocument({
     contract: "aralearn.contract",

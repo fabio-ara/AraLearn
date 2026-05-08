@@ -12,6 +12,7 @@ import {
 import {
   MICROSEQUENCE_STATUS_DRAFT,
   MICROSEQUENCE_STATUS_READY,
+  normalizeMicrosequenceRuntimeIncluded,
   normalizeMicrosequenceStatus
 } from "../model/microsequenceStatus.js";
 
@@ -230,6 +231,7 @@ function createStarterMicrosequence({ title = "Nova microssequência" } = {}) {
     key: uniqueKey(title, new Set(), "microsequence"),
     title,
     status: MICROSEQUENCE_STATUS_DRAFT,
+    included: false,
     cards: []
   };
 }
@@ -676,6 +678,7 @@ export function createMicrosequence(document, input) {
     key,
     title: buildUniqueMicrosequenceTitle(lesson, title, null),
     status: normalizeMicrosequenceStatus(input.status || MICROSEQUENCE_STATUS_DRAFT, { cards }),
+    included: normalizeMicrosequenceRuntimeIncluded(input.included, { cards }),
     cards
   };
 
@@ -703,6 +706,10 @@ export function updateMicrosequence(document, input) {
 
   if (input.status !== undefined) {
     microsequence.status = normalizeMicrosequenceStatus(input.status, microsequence);
+  }
+
+  if (input.included !== undefined) {
+    microsequence.included = normalizeMicrosequenceRuntimeIncluded(input.included, microsequence);
   }
 
   return ensureValidDocument(nextDocument);
@@ -813,6 +820,7 @@ export function replaceMicrosequenceCards(document, input) {
   const usedKeys = new Set();
   microsequence.cards = cards.map((entry, index) => normalizeCardForInsert(entry, usedKeys, `Card ${index + 1}`));
   microsequence.status = normalizeMicrosequenceStatus(input.status || MICROSEQUENCE_STATUS_READY, microsequence);
+  microsequence.included = normalizeMicrosequenceRuntimeIncluded(input.included ?? microsequence.included, microsequence);
   return ensureValidDocument(nextDocument);
 }
 
@@ -827,6 +835,7 @@ export function createCardInMicrosequence(document, input) {
   const safeIndex = Math.max(0, Math.min(position, microsequence.cards.length));
   microsequence.cards.splice(safeIndex, 0, card);
   microsequence.status = normalizeMicrosequenceStatus(input.status || microsequence.status, microsequence);
+  microsequence.included = normalizeMicrosequenceRuntimeIncluded(input.included ?? microsequence.included, microsequence);
   return ensureValidDocument(nextDocument);
 }
 
@@ -876,6 +885,10 @@ export function deleteCardInMicrosequence(document, input) {
   microsequence.cards.splice(fromIndex, 1);
   microsequence.status = normalizeMicrosequenceStatus(
     microsequence.cards.length ? microsequence.status : MICROSEQUENCE_STATUS_DRAFT,
+    microsequence
+  );
+  microsequence.included = normalizeMicrosequenceRuntimeIncluded(
+    microsequence.cards.length ? microsequence.included : false,
     microsequence
   );
   return ensureValidDocument(nextDocument);
