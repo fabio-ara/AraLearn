@@ -151,6 +151,45 @@ test("aceita status explícito de rascunho", () => {
   assert.equal(result.value.courses[0].modules[0].lessons[0].microsequences[0].status, "draft");
 });
 
+test("aceita curso, módulo e lição vazios no contrato público", () => {
+  const result = validateContractDocument({
+    contract: "aralearn.contract",
+    version: 1,
+    kind: "project",
+    courses: [
+      {
+        title: "Curso vazio",
+        modules: [
+          {
+            title: "Módulo vazio",
+            lessons: [
+              {
+                title: "Lição vazia",
+                microsequences: []
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  });
+
+  assert.equal(result.ok, true);
+  assert.deepEqual(result.value.courses[0].modules[0].lessons[0].microsequences, []);
+});
+
+test("aceita projeto sem cursos", () => {
+  const result = validateContractDocument({
+    contract: "aralearn.contract",
+    version: 1,
+    kind: "project",
+    courses: []
+  });
+
+  assert.equal(result.ok, true);
+  assert.deepEqual(result.value.courses, []);
+});
+
 test("rejeita runtime autorado no JSON público", () => {
   const result = validateContractDocument(
     projectWithCards([

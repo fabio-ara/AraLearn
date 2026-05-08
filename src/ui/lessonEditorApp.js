@@ -546,7 +546,9 @@ export function createLessonEditorApp({ root, storage, editor }) {
     },
     structureDrag: null,
     structureDrop: null,
-    lastCoursesView: "courses"
+    lastCoursesView: "courses",
+    pendingGeneratedNavigation: null,
+    pendingStructureFocus: null
   };
 
   state.selection = getFirstPath(state.project);
@@ -924,6 +926,30 @@ export function createLessonEditorApp({ root, storage, editor }) {
       microsequenceKey: path.microsequenceKey,
       cardKey: path.cardKey,
       cardIndex: path.cardIndex
+    };
+  }
+
+  function buildNodeSelection({ courseKey = null, moduleKey = null, lessonKey = null, microsequenceKey = null } = {}) {
+    return {
+      courseKey,
+      moduleKey,
+      lessonKey,
+      microsequenceKey,
+      cardKey: null,
+      cardIndex: 0
+    };
+  }
+
+  function focusStructureTarget(target) {
+    if (!target) {
+      return;
+    }
+    state.pendingStructureFocus = {
+      view: target.view || state.view,
+      courseKey: target.courseKey || null,
+      moduleKey: target.moduleKey || null,
+      lessonKey: target.lessonKey || null,
+      microsequenceKey: target.microsequenceKey || null
     };
   }
 
@@ -2208,6 +2234,11 @@ export function createLessonEditorApp({ root, storage, editor }) {
       state.homeTab = "generate";
       state.view = "courses";
     } else {
+      const pendingGeneratedNavigation = state.pendingGeneratedNavigation;
+      if (pendingGeneratedNavigation) {
+        openGeneratedLesson({ pendingGeneratedNavigation });
+        return;
+      }
       state.homeTab = "courses";
       state.view = state.lastCoursesView || "courses";
     }
@@ -2222,6 +2253,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
     state.generationDraft.lessonKey = "";
     state.generationDraft.errorMessage = "";
     state.generationDraft.lastResult = null;
+    state.pendingGeneratedNavigation = null;
     render({ preserveState: true });
   }
 
@@ -2232,6 +2264,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
     state.generationDraft.lessonKey = "";
     state.generationDraft.errorMessage = "";
     state.generationDraft.lastResult = null;
+    state.pendingGeneratedNavigation = null;
     render({ preserveState: true });
   }
 
@@ -2242,20 +2275,23 @@ export function createLessonEditorApp({ root, storage, editor }) {
     state.generationDraft.lessonKey = lesson ? lesson.key : "";
     state.generationDraft.errorMessage = "";
     state.generationDraft.lastResult = null;
+    state.pendingGeneratedNavigation = null;
     render({ preserveState: true });
   }
 
-  function openGeneratedLesson() {
+  function openGeneratedLesson({ pendingGeneratedNavigation = state.pendingGeneratedNavigation } = {}) {
     const result = state.generationDraft.lastResult;
-    if (!result?.courseKey || !result?.moduleKey || !result?.lessonKey) {
-      setHomeTab("courses");
+    const target = pendingGeneratedNavigation || result;
+    if (!target?.courseKey || !target?.moduleKey || !target?.lessonKey) {
+      state.generationDraft.errorMessage = "Nenhuma microssequência nova foi gerada para abrir em Cursos.";
+      render({ preserveState: true });
       return;
     }
 
     applySelection({
-      courseKey: result.courseKey,
-      moduleKey: result.moduleKey,
-      lessonKey: result.lessonKey,
+      courseKey: target.courseKey,
+      moduleKey: target.moduleKey,
+      lessonKey: target.lessonKey,
       microsequenceKey: null,
       cardKey: null,
       cardIndex: 0
@@ -2264,6 +2300,14 @@ export function createLessonEditorApp({ root, storage, editor }) {
     state.view = "lesson";
     state.entityEditor = null;
     state.microsequenceMode = "play";
+    state.pendingGeneratedNavigation = null;
+    focusStructureTarget({
+      view: "lesson",
+      courseKey: target.courseKey,
+      moduleKey: target.moduleKey,
+      lessonKey: target.lessonKey,
+      microsequenceKey: target.firstMicrosequenceKey || null
+    });
     render({ preserveState: false });
   }
 
@@ -2385,7 +2429,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
     const promptText = String(draft.promptText || "").trim();
 
     if (!course || !moduleValue || !lesson || !promptText) {
-      state.generationDraft.errorMessage = "Escolha curso, módulo, lição e escreva a dúvida antes de montar a escada.";
+      state.generationDraft.errorMessage = "Escolha curso, módulo, lição e escreva a dúvida antes de gerar microssequências.";
       render({ preserveState: true });
       return;
     }
@@ -2409,6 +2453,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
       });
 
       let nextProject = state.project;
+      let firstMicrosequenceKey = null;
       result.steps.forEach((step) => {
         nextProject = editor.createMicrosequence({
           courseKey: course.key,
@@ -2418,6 +2463,11 @@ export function createLessonEditorApp({ root, storage, editor }) {
           status: "draft",
           cards: []
         });
+        const createdLesson = findLesson(nextProject, course.key, moduleValue.key, lesson.key);
+        const createdMicrosequence = createdLesson?.microsequences?.at(-1) || null;
+        if (!firstMicrosequenceKey && createdMicrosequence) {
+          firstMicrosequenceKey = createdMicrosequence.key;
+        }
         setProject(nextProject);
       });
 
@@ -2433,11 +2483,19 @@ export function createLessonEditorApp({ root, storage, editor }) {
         message: `${result.steps.length} rascunhos criados em ${lesson.title || lesson.key}.`,
         courseKey: course.key,
         moduleKey: moduleValue.key,
-        lessonKey: lesson.key
+        lessonKey: lesson.key,
+        firstMicrosequenceKey
+      };
+      state.pendingGeneratedNavigation = {
+        courseKey: course.key,
+        moduleKey: moduleValue.key,
+        lessonKey: lesson.key,
+        firstMicrosequenceKey
       };
       state.generationDraft.promptText = "";
     } catch (error) {
-      state.generationDraft.errorMessage = error instanceof Error ? error.message : "Falha ao montar a escada.";
+      state.pendingGeneratedNavigation = null;
+      state.generationDraft.errorMessage = error instanceof Error ? error.message : "Falha ao gerar microssequências.";
     } finally {
       state.generationDraft.isSubmitting = false;
       render({ preserveState: false });
@@ -2903,18 +2961,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
         });
         setProject(nextProject);
         const course = nextProject.courses[nextProject.courses.length - 1];
-        const moduleValue = course.modules[0];
-        const lesson = moduleValue.lessons[0];
-        const microsequence = lesson.microsequences[0];
-        const card = microsequence.cards[0];
-        applySelection({
-          courseKey: course.key,
-          moduleKey: moduleValue.key,
-          lessonKey: lesson.key,
-          microsequenceKey: microsequence.key,
-          cardKey: card.key,
-          cardIndex: 0
-        });
+        applySelection(buildNodeSelection({ courseKey: course.key }));
         state.view = "courses";
       } else if (actionKey === "delete-course") {
         resetCourseProgress(state.entityEditor.courseKey || state.selection.courseKey);
@@ -2932,26 +2979,17 @@ export function createLessonEditorApp({ root, storage, editor }) {
         setProject(nextProject);
         const course = findCourse(nextProject, state.entityEditor.courseKey || state.selection.courseKey);
         const moduleValue = course.modules[course.modules.length - 1];
-        const lesson = moduleValue.lessons[0];
-        const microsequence = lesson.microsequences[0];
-        const card = microsequence.cards[0];
-        applySelection({
-          courseKey: course.key,
-          moduleKey: moduleValue.key,
-          lessonKey: lesson.key,
-          microsequenceKey: microsequence.key,
-          cardKey: card.key,
-          cardIndex: 0
-        });
+        applySelection(buildNodeSelection({ courseKey: course.key, moduleKey: moduleValue.key }));
         state.view = "course";
       } else if (actionKey === "delete-module") {
+        const courseKey = state.entityEditor.courseKey || state.selection.courseKey;
         resetModuleProgress(state.entityEditor.courseKey || state.selection.courseKey, state.entityEditor.moduleKey);
         nextProject = editor.deleteModule({
-          courseKey: state.entityEditor.courseKey || state.selection.courseKey,
+          courseKey,
           moduleKey: state.entityEditor.moduleKey
         });
         setProject(nextProject);
-        selectFirstPath(nextProject);
+        applySelection(buildNodeSelection({ courseKey }));
         state.view = "course";
       } else if (actionKey === "create-lesson") {
         nextProject = editor.createLesson({
@@ -2966,30 +3004,29 @@ export function createLessonEditorApp({ root, storage, editor }) {
           state.entityEditor.moduleKey
         );
         const lesson = moduleValue.lessons[moduleValue.lessons.length - 1];
-        const microsequence = lesson.microsequences[0];
-        const card = microsequence.cards[0];
-        applySelection({
-          courseKey: state.entityEditor.courseKey || state.selection.courseKey,
-          moduleKey: moduleValue.key,
-          lessonKey: lesson.key,
-          microsequenceKey: microsequence.key,
-          cardKey: card.key,
-          cardIndex: 0
-        });
+        applySelection(
+          buildNodeSelection({
+            courseKey: state.entityEditor.courseKey || state.selection.courseKey,
+            moduleKey: moduleValue.key,
+            lessonKey: lesson.key
+          })
+        );
         state.view = "lesson";
       } else if (actionKey === "delete-lesson") {
+        const courseKey = state.entityEditor.courseKey || state.selection.courseKey;
+        const moduleKey = state.entityEditor.moduleKey;
         resetLessonProgress(
-          state.entityEditor.courseKey || state.selection.courseKey,
-          state.entityEditor.moduleKey,
+          courseKey,
+          moduleKey,
           state.entityEditor.lessonKey
         );
         nextProject = editor.deleteLesson({
-          courseKey: state.entityEditor.courseKey || state.selection.courseKey,
-          moduleKey: state.entityEditor.moduleKey,
+          courseKey,
+          moduleKey,
           lessonKey: state.entityEditor.lessonKey
         });
         setProject(nextProject);
-        selectFirstPath(nextProject);
+        applySelection(buildNodeSelection({ courseKey, moduleKey }));
         state.view = "course";
       } else if (actionKey === "create-microsequence") {
         nextProject = editor.createMicrosequence({
@@ -2997,7 +3034,9 @@ export function createLessonEditorApp({ root, storage, editor }) {
           moduleKey: state.entityEditor.moduleKey,
           lessonKey: state.entityEditor.lessonKey,
           title: "Nova microssequência",
-          tags: []
+          tags: [],
+          status: "draft",
+          cards: []
         });
         setProject(nextProject);
         const lesson = findLesson(
@@ -3007,25 +3046,27 @@ export function createLessonEditorApp({ root, storage, editor }) {
           state.entityEditor.lessonKey
         );
         const microsequence = lesson.microsequences[lesson.microsequences.length - 1];
-        const card = microsequence.cards[0];
-        applySelection({
-          courseKey: state.entityEditor.courseKey || state.selection.courseKey,
-          moduleKey: state.entityEditor.moduleKey,
-          lessonKey: lesson.key,
-          microsequenceKey: microsequence.key,
-          cardKey: card.key,
-          cardIndex: 0
-        });
+        applySelection(
+          buildNodeSelection({
+            courseKey: state.entityEditor.courseKey || state.selection.courseKey,
+            moduleKey: state.entityEditor.moduleKey,
+            lessonKey: lesson.key,
+            microsequenceKey: microsequence.key
+          })
+        );
         state.view = "lesson";
       } else if (actionKey === "delete-microsequence") {
+        const courseKey = state.entityEditor.courseKey || state.selection.courseKey;
+        const moduleKey = state.entityEditor.moduleKey;
+        const lessonKey = state.entityEditor.lessonKey;
         nextProject = editor.deleteMicrosequence({
-          courseKey: state.entityEditor.courseKey || state.selection.courseKey,
-          moduleKey: state.entityEditor.moduleKey,
-          lessonKey: state.entityEditor.lessonKey,
+          courseKey,
+          moduleKey,
+          lessonKey,
           microsequenceKey: state.entityEditor.microsequenceKey
         });
         setProject(nextProject);
-        selectFirstPath(nextProject);
+        applySelection(buildNodeSelection({ courseKey, moduleKey, lessonKey }));
         state.view = "lesson";
       } else if (actionKey === "create-card") {
         createCardAtPosition((Number.isInteger(state.selection.cardIndex) ? state.selection.cardIndex : 0) + 1);
@@ -4450,6 +4491,51 @@ export function createLessonEditorApp({ root, storage, editor }) {
     });
   }
 
+  function syncPendingStructureFocus() {
+    const target = state.pendingStructureFocus;
+    if (!target || target.view !== state.view) {
+      return;
+    }
+
+    let selector = "";
+    if (target.view === "lesson" && target.microsequenceKey) {
+      selector =
+        '[data-structure-target="microsequence"][data-course-key="' +
+        target.courseKey +
+        '"][data-module-key="' +
+        target.moduleKey +
+        '"][data-lesson-key="' +
+        target.lessonKey +
+        '"][data-microsequence-key="' +
+        target.microsequenceKey +
+        '"]';
+    } else if (target.view === "course" && target.moduleKey) {
+      selector =
+        '[data-structure-target="module"][data-course-key="' +
+        target.courseKey +
+        '"][data-module-key="' +
+        target.moduleKey +
+        '"]';
+    } else if (target.view === "courses" && target.courseKey) {
+      selector = '[data-structure-target="course"][data-course-key="' + target.courseKey + '"]';
+    }
+
+    if (!selector) {
+      state.pendingStructureFocus = null;
+      return;
+    }
+
+    const node = root.querySelector(selector);
+    if (!node) {
+      return;
+    }
+
+    state.pendingStructureFocus = null;
+    requestAnimationFrame(() => {
+      node.scrollIntoView({ block: "start", inline: "nearest", behavior: "auto" });
+    });
+  }
+
   function scrollCardStrip(direction) {
     const strip = root.querySelector("[data-card-strip='true']");
     if (!strip) {
@@ -4578,6 +4664,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
       state.generationDraft.promptText = event.target.value;
       state.generationDraft.errorMessage = "";
       state.generationDraft.lastResult = null;
+      state.pendingGeneratedNavigation = null;
       render({ preserveState: true });
     });
     root.querySelector("[data-action='generate-ladder']")?.addEventListener("click", () => {
@@ -5505,6 +5592,8 @@ export function createLessonEditorApp({ root, storage, editor }) {
         node.addEventListener("input", handler);
       });
     }
+
+    syncPendingStructureFocus();
   }
 
   ensureCurrentCardSnapshot();

@@ -110,6 +110,6 @@ test("renderiza aba gerar com seletores em cascata", () => {
   assert.match(html, /aria-label="Dúvida ou comentário" title="Dúvida ou comentário"/);
   assert.match(html, /Álgebra Linear/);
   assert.match(html, /data-action="generate-ladder"/);
-  assert.match(html, /aria-label="Montar escada" title="Montar escada"/);
+  assert.match(html, /aria-label="Gerar microssequências" title="Gerar microssequências"/);
   assert.doesNotMatch(html, /disabled aria-disabled="true"/);
 });

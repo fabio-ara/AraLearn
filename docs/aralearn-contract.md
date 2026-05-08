@@ -97,10 +97,10 @@ Campos:
 - `title`: obrigatório
 - `key`: opcional
 - `tags`: opcional, array de strings
-- `status`: opcional, aceita `draft` ou `ready`
+- `status`: obrigatório, aceita `draft` ou `ready`
 - `cards`: obrigatório, array de cards; pode ser vazio
 
-`draft` indica rascunho dentro da estrutura real do curso. `ready` indica microssequência pronta para execução. Quando o campo não é informado, a aplicação interpreta microssequências com cards como `ready` e microssequências sem cards como `draft`.
+`draft` indica rascunho dentro da estrutura real do curso. `ready` indica microssequência pronta para execução.
 
 ### Card
 

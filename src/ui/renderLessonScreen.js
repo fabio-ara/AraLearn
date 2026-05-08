@@ -412,7 +412,7 @@ function renderMicrosequenceStatusBadge(microsequence) {
   if (!isDraftMicrosequence(microsequence)) {
     return "";
   }
-  return '<span class="microsequence-status-badge">rascunho</span>';
+  return '<span class="microsequence-status-badge">rascunho · fora do estudo</span>';
 }
 
 function renderCoursesTabs() {
@@ -652,6 +652,7 @@ function renderCourseScreen({ course, progress }) {
       );
     })
     .join("");
+  const moduleList = modules || '<section class="clean-card module-card progress-card"><p class="card-subtitle">Sem módulos.</p></section>';
 
   return (
     '<section class="screen">' +
@@ -667,7 +668,7 @@ function renderCourseScreen({ course, progress }) {
     '<main class="screen-content course-screen" data-structure-collection="module" data-course-key="' +
     escapeHtml(course.key) +
     '">' +
-    modules +
+    moduleList +
     "</main>" +
     "</section>"
   );
@@ -683,9 +684,12 @@ function renderLessonScreenView({ course, lesson, moduleValue, progress }) {
       const microsequencePercent = percent(cardCount, microsequenceCompleted);
       const didacticTags = renderDidacticTags(moduleValue, lesson.key, microsequence);
       const isDraft = isDraftMicrosequence(microsequence);
+      const draftDescription = isDraft
+        ? '<p class="card-subtitle lesson-description">Ainda não entra no estudo. Gere ou consolide cards para liberar esta microssequência.</p>'
+        : "";
 
       return (
-        '<article class="clean-card microsequence-card progress-card' +
+        '<li class="lesson-item progress-row microsequence-row' +
         (isDraft ? " draft-microsequence-card" : "") +
         '" data-structure-target="microsequence" data-course-key="' +
         escapeHtml(course.key) +
@@ -696,10 +700,10 @@ function renderLessonScreenView({ course, lesson, moduleValue, progress }) {
         '" data-microsequence-key="' +
         escapeHtml(microsequence.key) +
         '">' +
-        '<div class="card-progress-fill" style="width:' +
+        '<div class="row-progress-fill" style="width:' +
         String(isDraft ? 0 : microsequencePercent) +
         '%"></div>' +
-        '<div class="microsequence-copy">' +
+        '<div class="lesson-copy microsequence-copy">' +
         '<button class="row-main microsequence-main-button" type="button" data-action="' +
         (isDraft ? "open-microsequence-assist" : "play-microsequence") +
         '" data-microsequence-key="' +
@@ -710,6 +714,7 @@ function renderLessonScreenView({ course, lesson, moduleValue, progress }) {
         "</span>" +
         renderMicrosequenceStatusBadge(microsequence) +
         "</button>" +
+        draftDescription +
         didacticTags +
         renderMetaLine({
           completed: isDraft ? 0 : microsequenceCompleted,
@@ -741,7 +746,7 @@ function renderLessonScreenView({ course, lesson, moduleValue, progress }) {
         (isDraft ? "&#9998;" : "&#9654;") +
         "</button>" +
         "</div>" +
-        "</article>"
+        "</li>"
       );
     })
     .join("");
@@ -749,6 +754,8 @@ function renderLessonScreenView({ course, lesson, moduleValue, progress }) {
     lessonTotal === 0
       ? '<section class="clean-card lesson-ready-empty-card"><p class="card-subtitle">Não há microssequências prontas para estudar aqui.</p></section>'
       : "";
+  const microsequenceList =
+    microsequenceBlocks || '<li class="lesson-item"><p class="muted tiny">Sem microssequências.</p></li>';
 
   return (
     '<section class="screen">' +
@@ -776,14 +783,22 @@ function renderLessonScreenView({ course, lesson, moduleValue, progress }) {
     "</span>" +
     "</section>" +
     readyEmptyMessage +
-    '<section class="microsequence-list" data-structure-collection="microsequence" data-course-key="' +
+    '<section class="clean-card module-card progress-card lesson-panel-card">' +
+    '<header class="module-head">' +
+    '<h3 class="card-title">Microssequências da lição</h3>' +
+    '<span class="lesson-panel-meta">' +
+    escapeHtml(moduleValue.title || moduleValue.key) +
+    "</span>" +
+    "</header>" +
+    '<ul class="lesson-list microsequence-list" data-structure-collection="microsequence" data-course-key="' +
     escapeHtml(course.key) +
     '" data-module-key="' +
     escapeHtml(moduleValue.key) +
     '" data-lesson-key="' +
     escapeHtml(lesson.key) +
     '">' +
-    microsequenceBlocks +
+    microsequenceList +
+    "</ul>" +
     "</section>" +
     "</main>" +
     "</section>"

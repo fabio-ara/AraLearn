@@ -234,7 +234,7 @@ function renderGeneratePane({ project, editorSupport }) {
     : draft.lastResult
       ? '<section class="generate-feedback"><p>' +
         escapeHtml(draft.lastResult.message || "") +
-        '</p><button type="button" data-action="view-generated-lesson">Ver na aba Cursos</button></section>'
+        '</p><button type="button" data-action="view-generated-lesson">Abrir em Cursos</button></section>'
       : "";
 
   return (
@@ -272,7 +272,7 @@ function renderGeneratePane({ project, editorSupport }) {
     '<select data-field="assist-model" aria-label="Modelo" title="Modelo">' +
     modelOptions +
     "</select></label>" +
-    '<button class="open-main generate-submit" type="button" data-action="generate-ladder" aria-label="Montar escada" title="Montar escada"' +
+    '<button class="open-main generate-submit" type="button" data-action="generate-ladder" aria-label="Gerar microssequências" title="Gerar microssequências"' +
     (!hasRequiredContext || draft.isSubmitting ? " disabled aria-disabled=\"true\"" : "") +
     ">" +
     renderUiIcon("sparkles", "generate-submit-icon") +

@@ -200,8 +200,8 @@ function validateLesson(lesson, index, errors, lessonKeys, path) {
   const key = lessonKeys.next(lesson.key, title || `lesson-${index + 1}`, currentPath, errors);
   const microsequences = Array.isArray(lesson.microsequences) ? lesson.microsequences : [];
 
-  if (!Array.isArray(lesson.microsequences) || microsequences.length === 0) {
-    errors.push(makeError(`${currentPath}.microsequences`, 'Lição deve conter "microsequences" com pelo menos um item.'));
+  if (!Array.isArray(lesson.microsequences)) {
+    errors.push(makeError(`${currentPath}.microsequences`, 'Campo obrigatório inválido: "microsequences".'));
   }
 
   const microKeys = createKeyGenerator("microsequence");
@@ -238,8 +238,8 @@ function validateModule(moduleValue, index, errors, moduleKeys, path) {
   const key = moduleKeys.next(moduleValue.key, title || `module-${index + 1}`, currentPath, errors);
   const lessons = Array.isArray(moduleValue.lessons) ? moduleValue.lessons : [];
 
-  if (!Array.isArray(moduleValue.lessons) || lessons.length === 0) {
-    errors.push(makeError(`${currentPath}.lessons`, 'Módulo deve conter "lessons" com pelo menos um item.'));
+  if (!Array.isArray(moduleValue.lessons)) {
+    errors.push(makeError(`${currentPath}.lessons`, 'Campo obrigatório inválido: "lessons".'));
   }
 
   const lessonKeys = createKeyGenerator("lesson");
@@ -276,8 +276,8 @@ function validateCourse(course, index, errors, courseKeys) {
   const key = courseKeys.next(course.key, title || `course-${index + 1}`, currentPath, errors);
   const modules = Array.isArray(course.modules) ? course.modules : [];
 
-  if (!Array.isArray(course.modules) || modules.length === 0) {
-    errors.push(makeError(`${currentPath}.modules`, 'Curso deve conter "modules" com pelo menos um item.'));
+  if (!Array.isArray(course.modules)) {
+    errors.push(makeError(`${currentPath}.modules`, 'Campo obrigatório inválido: "modules".'));
   }
 
   const moduleKeys = createKeyGenerator("module");
@@ -324,8 +324,8 @@ export function validateContractDocument(document) {
   }
 
   const courses = Array.isArray(document.courses) ? document.courses : [];
-  if (!Array.isArray(document.courses) || courses.length === 0) {
-    errors.push(makeError("courses", 'Documento deve conter "courses" com pelo menos um item.'));
+  if (!Array.isArray(document.courses)) {
+    errors.push(makeError("courses", 'Campo obrigatório inválido: "courses".'));
   }
 
   const courseKeys = createKeyGenerator("course");

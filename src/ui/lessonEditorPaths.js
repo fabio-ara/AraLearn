@@ -75,16 +75,16 @@ export function getFirstPath(project) {
     };
   }
 
-  const moduleValue = course.modules[0];
-  const lesson = moduleValue.lessons[0];
-  const microsequence = lesson.microsequences[0];
-  const card = (microsequence.cards || [])[0] || null;
+  const moduleValue = (course.modules || [])[0] || null;
+  const lesson = (moduleValue?.lessons || [])[0] || null;
+  const microsequence = (lesson?.microsequences || [])[0] || null;
+  const card = (microsequence?.cards || [])[0] || null;
 
   return {
     courseKey: course.key,
-    moduleKey: moduleValue.key,
-    lessonKey: lesson.key,
-    microsequenceKey: microsequence.key,
+    moduleKey: moduleValue?.key || null,
+    lessonKey: lesson?.key || null,
+    microsequenceKey: microsequence?.key || null,
     cardKey: card ? card.key : null,
     cardIndex: 0
   };

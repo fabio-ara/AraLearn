@@ -8,6 +8,7 @@ import {
   createCourse,
   createEditorSession,
   createMicrosequence,
+  deleteCardInMicrosequence,
   deleteLesson,
   exportCourseDocument,
   exportLessonDocument,
@@ -39,7 +40,7 @@ function readNormalizedProject(path) {
   return result.value;
 }
 
-test("cria microssequência nova no contrato principal com card inicial raso", () => {
+test("cria microssequência nova no contrato principal como rascunho vazio", () => {
   const document = readNormalizedProject("./docs/examples/aralearn-contract.renderable.json");
 
   const nextDocument = createMicrosequence(document, {
@@ -51,8 +52,8 @@ test("cria microssequência nova no contrato principal com card inicial raso", (
 
   const microsequence = nextDocument.courses[0].modules[0].lessons[0].microsequences[1];
   assert.equal(microsequence.title, "Nova sequência");
-  assert.equal(microsequence.status, "ready");
-  assert.equal(microsequence.cards[0].say, "Descreva a ideia central desta microssequência.");
+  assert.equal(microsequence.status, "draft");
+  assert.deepEqual(microsequence.cards, []);
 });
 
 test("cria microssequência rascunho sem cards", () => {
@@ -190,10 +191,11 @@ test("reordena cursos sem perder a árvore interna", () => {
   });
 
   assert.equal(moved.courses[0].title, "Curso extra");
-  assert.equal(moved.courses[0].modules[0].lessons[0].microsequences[0].cards.length, 1);
+  assert.deepEqual(moved.courses[0].modules, []);
+  assert.equal(moved.courses[1].modules[0].lessons[0].microsequences[0].cards.length, 7);
 });
 
-test("cria curso novo já com módulo, lição, microssequência e card iniciais", () => {
+test("cria curso novo vazio, sem conteúdo inicial copiado", () => {
   const document = readNormalizedProject("./docs/examples/aralearn-contract.renderable.json");
 
   const nextDocument = createCourse(document, {
@@ -202,10 +204,34 @@ test("cria curso novo já com módulo, lição, microssequência e card iniciais
 
   const course = nextDocument.courses.at(-1);
   assert.equal(course.title, "Curso importado");
-  assert.equal(course.modules.length, 1);
-  assert.equal(course.modules[0].lessons.length, 1);
-  assert.equal(course.modules[0].lessons[0].microsequences.length, 1);
-  assert.equal(course.modules[0].lessons[0].microsequences[0].cards.length, 1);
+  assert.deepEqual(course.modules, []);
+});
+
+test("permite excluir o último card e manter a microssequência vazia", () => {
+  const document = readNormalizedProject("./docs/examples/aralearn-contract.renderable.json");
+
+  let nextDocument = createMicrosequence(document, {
+    courseKey: "course-curso-renderizavel",
+    moduleKey: "module-modulo-experimental",
+    lessonKey: "lesson-licao-experimental",
+    title: "Vazia para testar",
+    status: "ready",
+    cards: [{ title: "Único", say: "Conteúdo" }]
+  });
+
+  const microsequence = nextDocument.courses[0].modules[0].lessons[0].microsequences.at(-1);
+  const cardKey = microsequence.cards[0].key;
+  nextDocument = deleteCardInMicrosequence(nextDocument, {
+    courseKey: "course-curso-renderizavel",
+    moduleKey: "module-modulo-experimental",
+    lessonKey: "lesson-licao-experimental",
+    microsequenceKey: microsequence.key,
+    cardKey
+  });
+
+  const updated = nextDocument.courses[0].modules[0].lessons[0].microsequences.at(-1);
+  assert.deepEqual(updated.cards, []);
+  assert.equal(updated.status, "draft");
 });
 
 test("reordena módulos, lições, microssequências e cards entre irmãos", () => {

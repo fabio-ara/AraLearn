@@ -88,6 +88,7 @@ test("renderiza a tela de lição com ações globais e pilha de ações da micr
   assert.match(html, /aria-label="Progresso: 0\/7" title="Progresso: 0\/7"/);
   assert.match(html, /aria-label="1 microssequência" title="1 microssequência"/);
   assert.match(html, /aria-label="7 cards" title="7 cards"/);
+  assert.match(html, /Microssequências da lição/);
   assert.doesNotMatch(html, />Mód\.:/);
   assert.doesNotMatch(html, />Progr\.:/);
 });
@@ -130,7 +131,8 @@ test("mostra aviso quando a lição tem apenas rascunhos", () => {
   });
 
   assert.match(html, /Não há microssequências prontas para estudar aqui\./);
-  assert.match(html, /microsequence-status-badge">rascunho/);
+  assert.match(html, /microsequence-status-badge">rascunho · fora do estudo/);
+  assert.match(html, /Ainda não entra no estudo\./);
   assert.doesNotMatch(html, /data-action="play-microsequence"/);
 });
 

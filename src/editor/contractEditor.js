@@ -229,8 +229,8 @@ function createStarterMicrosequence({ title = "Nova microssequência" } = {}) {
   return {
     key: uniqueKey(title, new Set(), "microsequence"),
     title,
-    status: MICROSEQUENCE_STATUS_READY,
-    cards: [createStarterCard()]
+    status: MICROSEQUENCE_STATUS_DRAFT,
+    cards: []
   };
 }
 
@@ -239,7 +239,7 @@ function createStarterLesson({ title = "Nova lição", description } = {}) {
     key: uniqueKey(title, new Set(), "lesson"),
     title,
     ...(description ? { description } : {}),
-    microsequences: [createStarterMicrosequence()]
+    microsequences: []
   };
 }
 
@@ -248,7 +248,7 @@ function createStarterModule({ title = "Novo módulo", description } = {}) {
     key: uniqueKey(title, new Set(), "module"),
     title,
     ...(description ? { description } : {}),
-    lessons: [createStarterLesson()]
+    lessons: []
   };
 }
 
@@ -257,7 +257,7 @@ function createStarterCourse({ title = "Novo curso", description } = {}) {
     key: uniqueKey(title, new Set(), "course"),
     title,
     ...(description ? { description } : {}),
-    modules: [createStarterModule()]
+    modules: []
   };
 }
 
@@ -547,11 +547,6 @@ export function deleteCourse(document, input) {
   }
 
   nextDocument.courses.splice(courseIndex, 1);
-
-  if (!nextDocument.courses.length) {
-    nextDocument.courses.push(createStarterCourse());
-  }
-
   return ensureValidDocument(nextDocument);
 }
 
@@ -601,11 +596,6 @@ export function deleteModule(document, input) {
   }
 
   course.modules.splice(moduleIndex, 1);
-
-  if (!course.modules.length) {
-    course.modules.push(createStarterModule());
-  }
-
   return ensureValidDocument(nextDocument);
 }
 
@@ -656,11 +646,6 @@ export function deleteLesson(document, input) {
   }
 
   moduleValue.lessons.splice(lessonIndex, 1);
-
-  if (!moduleValue.lessons.length) {
-    moduleValue.lessons.push(createStarterLesson());
-  }
-
   return ensureValidDocument(nextDocument);
 }
 
@@ -686,15 +671,11 @@ export function createMicrosequence(document, input) {
 
   const cardInput = Array.isArray(input.cards) ? input.cards : null;
   const usedCardKeys = new Set();
-  const cards = cardInput
-    ? cardInput.map((entry, index) => normalizeCardForInsert(entry, usedCardKeys, `Card ${index + 1}`))
-    : input.empty === true || input.status === MICROSEQUENCE_STATUS_DRAFT
-      ? []
-      : [normalizeCardForInsert(createStarterContractCard(), usedCardKeys, "Novo card")];
+  const cards = cardInput ? cardInput.map((entry, index) => normalizeCardForInsert(entry, usedCardKeys, `Card ${index + 1}`)) : [];
   const microsequence = {
     key,
     title: buildUniqueMicrosequenceTitle(lesson, title, null),
-    status: normalizeMicrosequenceStatus(input.status, { cards }),
+    status: normalizeMicrosequenceStatus(input.status || MICROSEQUENCE_STATUS_DRAFT, { cards }),
     cards
   };
 
@@ -737,11 +718,6 @@ export function deleteMicrosequence(document, input) {
   }
 
   lesson.microsequences.splice(microsequenceIndex, 1);
-
-  if (!lesson.microsequences.length) {
-    lesson.microsequences.push(createStarterMicrosequence());
-  }
-
   return ensureValidDocument(nextDocument);
 }
 
@@ -850,6 +826,7 @@ export function createCardInMicrosequence(document, input) {
   const position = Number.isInteger(input.position) ? input.position : microsequence.cards.length;
   const safeIndex = Math.max(0, Math.min(position, microsequence.cards.length));
   microsequence.cards.splice(safeIndex, 0, card);
+  microsequence.status = normalizeMicrosequenceStatus(input.status || microsequence.status, microsequence);
   return ensureValidDocument(nextDocument);
 }
 
@@ -897,9 +874,10 @@ export function deleteCardInMicrosequence(document, input) {
   }
 
   microsequence.cards.splice(fromIndex, 1);
-  if (!microsequence.cards.length) {
-    microsequence.cards.push(normalizeCardForInsert(createStarterContractCard(), new Set(), "Novo card"));
-  }
+  microsequence.status = normalizeMicrosequenceStatus(
+    microsequence.cards.length ? microsequence.status : MICROSEQUENCE_STATUS_DRAFT,
+    microsequence
+  );
   return ensureValidDocument(nextDocument);
 }
 
