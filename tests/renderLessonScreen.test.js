@@ -208,6 +208,7 @@ test("renderiza o painel da microssequência sem botão próprio de ações e co
   assert.match(html, /workbench-surface-tab active" type="button" role="tab" aria-selected="true" data-action="select-workbench-pane" data-workbench-pane="edit" aria-label="Edição" title="Edição"/);
   assert.match(html, /workbench-surface-tab-icon/);
   assert.match(html, /mini-card-kicker-icon/);
+  assert.match(html, /data-action="structure-drag-handle" data-structure-level="card"[^>]+data-card-key="card-ideia-central"/);
   assert.match(html, /data-action="open-card" data-card-index="0" aria-label="Card 1: Ideia central" title="Card 1"/);
   assert.match(html, /data-action="edit-card"/);
   assert.match(html, /<span class="editor-version-tab-label">12<\/span>/);

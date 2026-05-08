@@ -671,7 +671,8 @@ export function createLessonEditorApp({ root, storage, editor }) {
       courseKey: node.getAttribute("data-course-key") || "",
       moduleKey: node.getAttribute("data-module-key") || "",
       lessonKey: node.getAttribute("data-lesson-key") || "",
-      microsequenceKey: node.getAttribute("data-microsequence-key") || ""
+      microsequenceKey: node.getAttribute("data-microsequence-key") || "",
+      cardKey: node.getAttribute("data-card-key") || ""
     };
   }
 
@@ -682,7 +683,8 @@ export function createLessonEditorApp({ root, storage, editor }) {
       left.courseKey === right.courseKey &&
       left.moduleKey === right.moduleKey &&
       left.lessonKey === right.lessonKey &&
-      left.microsequenceKey === right.microsequenceKey;
+      left.microsequenceKey === right.microsequenceKey &&
+      left.cardKey === right.cardKey;
   }
 
   function canDropStructure(drag, target) {
@@ -706,6 +708,16 @@ export function createLessonEditorApp({ root, storage, editor }) {
         drag.lessonKey === target.lessonKey &&
         !!drag.microsequenceKey &&
         !!target.microsequenceKey
+      );
+    }
+    if (drag.level === "card") {
+      return (
+        drag.courseKey === target.courseKey &&
+        drag.moduleKey === target.moduleKey &&
+        drag.lessonKey === target.lessonKey &&
+        drag.microsequenceKey === target.microsequenceKey &&
+        !!drag.cardKey &&
+        !!target.cardKey
       );
     }
 
@@ -2838,6 +2850,28 @@ export function createLessonEditorApp({ root, storage, editor }) {
         targetPosition: toIndex
       });
       nextProject = moveResult.document;
+    } else if (drag.level === "card") {
+      const microsequence = findMicrosequence(
+        state.project,
+        drag.courseKey,
+        drag.moduleKey,
+        drag.lessonKey,
+        drag.microsequenceKey
+      );
+      const items = microsequence?.cards || [];
+      const toIndex = resolveStructureDropIndex(items, drag.cardKey, target.cardKey, position);
+      if (toIndex === null) {
+        resetStructureDragState();
+        return;
+      }
+      nextProject = editor.moveCard({
+        courseKey: drag.courseKey,
+        moduleKey: drag.moduleKey,
+        lessonKey: drag.lessonKey,
+        microsequenceKey: drag.microsequenceKey,
+        cardKey: drag.cardKey,
+        toIndex
+      });
     }
 
     if (!nextProject) {

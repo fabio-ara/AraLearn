@@ -158,11 +158,37 @@ function getLessonDescription(lesson) {
   return "";
 }
 
-function renderEditorCardStrip(cards, activeIndex) {
+function renderEditorCardStrip(cards, activeIndex, structureContext = {}) {
   return cards
     .map((card, index) => {
       const cardTitle = card.title || card.key;
       return (
+        '<div class="mini-card-slot" data-structure-target="card" data-card-key="' +
+        escapeHtml(card.key) +
+        '" data-course-key="' +
+        escapeHtml(structureContext.courseKey || "") +
+        '" data-module-key="' +
+        escapeHtml(structureContext.moduleKey || "") +
+        '" data-lesson-key="' +
+        escapeHtml(structureContext.lessonKey || "") +
+        '" data-microsequence-key="' +
+        escapeHtml(structureContext.microsequenceKey || "") +
+        '">' +
+        '<button class="icon-ghost tiny-icon builder-tool-handle mini-card-handle" type="button" draggable="true" data-action="structure-drag-handle" data-structure-level="card" data-course-key="' +
+        escapeHtml(structureContext.courseKey || "") +
+        '" data-module-key="' +
+        escapeHtml(structureContext.moduleKey || "") +
+        '" data-lesson-key="' +
+        escapeHtml(structureContext.lessonKey || "") +
+        '" data-microsequence-key="' +
+        escapeHtml(structureContext.microsequenceKey || "") +
+        '" data-card-key="' +
+        escapeHtml(card.key) +
+        '" title="Arrastar card ' +
+        escapeHtml(cardTitle) +
+        '" aria-label="Arrastar card ' +
+        escapeHtml(cardTitle) +
+        '">&#9776;</button>' +
         '<button class="mini-card thumb' +
         (index === activeIndex ? " active" : "") +
         '" type="button" data-action="open-card" data-card-index="' +
@@ -180,18 +206,19 @@ function renderEditorCardStrip(cards, activeIndex) {
         '<div class="mini-card-title">' +
         escapeHtml(cardTitle) +
         "</div>" +
-        "</button>"
+        "</button>" +
+        "</div>"
       );
     })
     .join("");
 }
 
-function renderWorkbenchCardStrip(cards, activeIndex) {
+function renderWorkbenchCardStrip(cards, activeIndex, structureContext = {}) {
   return (
     '<div class="editor-card-strip-shell" data-card-strip-shell="true">' +
     '<button class="editor-card-strip-arrow is-prev" type="button" data-action="scroll-card-strip-prev" title="Mostrar cards anteriores" aria-label="Mostrar cards anteriores" hidden>&larr;</button>' +
     '<div class="editor-step-strip editor-card-strip-track" data-card-strip="true">' +
-    renderEditorCardStrip(cards, activeIndex) +
+    renderEditorCardStrip(cards, activeIndex, structureContext) +
     "</div>" +
     '<button class="editor-card-strip-arrow is-next" type="button" data-action="scroll-card-strip-next" title="Mostrar mais cards" aria-label="Mostrar mais cards" hidden>&rarr;</button>' +
     "</div>"
@@ -1008,7 +1035,12 @@ function renderMicrosequenceWorkbenchScreen({
     : "";
   const actionLabel = getAssistActionLabel(editorSupport.selectedAssistMode);
   const cardStrip = hasCards
-    ? renderWorkbenchCardStrip(visibleCards, safeIndex)
+    ? renderWorkbenchCardStrip(visibleCards, safeIndex, {
+      courseKey: selection.courseKey,
+      moduleKey: selection.moduleKey,
+      lessonKey: selection.lessonKey,
+      microsequenceKey: selection.microsequenceKey
+    })
     : '<div class="editor-step-empty">Os cards aparecerão aqui após o envio do prompt.</div>';
   const activeWorkbenchPane = editorSupport.activeWorkbenchPane === "edit" ? "edit" : "preview";
   const versionCount = Array.isArray(editorSupport.microsequenceVersions) ? editorSupport.microsequenceVersions.length : 0;

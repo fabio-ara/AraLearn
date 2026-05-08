@@ -1074,6 +1074,21 @@ button {
     inset 0 1px 0 rgba(255, 240, 217, 0.035);
 }
 
+.mini-card-slot {
+  position: relative;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.mini-card-handle {
+  flex: 0 0 30px;
+  width: 30px;
+  height: 30px;
+  margin-top: 4px;
+}
+
 .mini-card.active {
   border-color: var(--accent);
   box-shadow:
