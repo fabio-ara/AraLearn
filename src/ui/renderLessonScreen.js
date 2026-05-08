@@ -403,13 +403,13 @@ function renderMicrosequenceStateIcon(microsequence) {
   }
   if (!resolveMicrosequenceRuntimeIncluded(microsequence)) {
     return (
-      '<span class="microsequence-state-icon is-excluded" aria-label="Excluída do estudo" title="Excluída do estudo">' +
+      '<span class="microsequence-state-icon is-excluded" aria-label="Microssequência excluída do estudo" title="Microssequência excluída do estudo">' +
       renderUiIcon("excluded-state", "microsequence-state-icon-svg") +
       "</span>"
     );
   }
   return (
-    '<span class="microsequence-state-icon is-ready" aria-label="Pronta para estudo" title="Pronta para estudo">' +
+    '<span class="microsequence-state-icon is-ready" aria-label="Microssequência pronta para estudo" title="Microssequência pronta para estudo">' +
     renderUiIcon("ready-state", "microsequence-state-icon-svg") +
     "</span>"
   );

@@ -173,7 +173,7 @@ test("desabilita play e sinaliza exclusão quando a microssequência sai do estu
   });
 
   assert.match(html, /microsequence-state-icon is-excluded/);
-  assert.match(html, /aria-label="Excluída do estudo" title="Excluída do estudo"/);
+  assert.match(html, /aria-label="Microssequência excluída do estudo" title="Microssequência excluída do estudo"/);
   assert.doesNotMatch(html, /Esta microssequência foi removida da execução do curso\./);
   assert.match(html, /data-action="toggle-microsequence-runtime"[^>]*>\+<\/button>/);
   assert.match(html, /data-action="play-microsequence"[^>]*disabled aria-disabled="true"/);
