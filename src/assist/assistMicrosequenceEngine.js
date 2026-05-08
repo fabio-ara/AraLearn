@@ -426,12 +426,21 @@ export function summarizeMicrosequenceForAssist(microsequence) {
     return "Microssequência atual: vazia.";
   }
 
+  const hierarchy = [
+    `Curso: ${normalizeText(microsequence.courseTitle) || "sem curso"}`,
+    `Objetivo do curso: ${normalizeText(microsequence.courseDescription) || "não informado"}`,
+    `Módulo: ${normalizeText(microsequence.moduleTitle) || "sem módulo"}`,
+    `Objetivo do módulo: ${normalizeText(microsequence.moduleDescription) || "não informado"}`,
+    `Lição: ${normalizeText(microsequence.lessonTitle) || "sem lição"}`,
+    `Objetivo da lição: ${normalizeText(microsequence.lessonDescription) || "não informado"}`
+  ];
   const tags = normalizeList(microsequence.tags, 5).join(", ") || "sem tags";
   const cards = Array.isArray(microsequence.cards) && microsequence.cards.length
     ? microsequence.cards.map(summarizeCard).join(" | ")
     : "sem cards";
 
   return [
+    ...hierarchy,
     `Título atual: ${normalizeText(microsequence.title) || "Microssequência"}`,
     `Tags atuais: ${tags}`,
     `Cards atuais: ${cards}`
@@ -445,7 +454,8 @@ export function buildAssistDraftPrompt({ promptText, plan, microsequence }) {
     `Devolva exatamente ${cardCount} cards, na mesma ordem do plano.`,
     "Cada card deve ter title e os campos de conteúdo necessários ao seu contêiner.",
     "O plano informa role e container; não devolva role nem container.",
-    "Escreva para estudante de Tecnologia em Análise e Desenvolvimento de Sistemas.",
+    "Use o contexto hierárquico de curso, módulo e lição como base semântica principal.",
+    "Escreva de forma neutra e adequada ao contexto didático informado.",
     "Use linguagem natural simples, de iniciante para iniciante.",
     "A microssequência precisa ter explicação, exemplo ou leitura guiada, prática e consolidação.",
     "Cada text deve ter no máximo duas frases.",

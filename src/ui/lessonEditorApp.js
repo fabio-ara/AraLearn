@@ -158,6 +158,36 @@ function slugifyDownloadName(value, fallback = "curso") {
   return normalized || fallback;
 }
 
+function buildMoveActions(items, itemKey, moveUpKey, moveDownKey) {
+  const index = (items || []).findIndex((item) => item.key === itemKey);
+  if (index < 0) {
+    return [];
+  }
+
+  const actions = [];
+  if (index > 0) {
+    actions.push({ key: moveUpKey, label: "Mover para cima", icon: "&uarr;" });
+  }
+  if (index < items.length - 1) {
+    actions.push({ key: moveDownKey, label: "Mover para baixo", icon: "&darr;" });
+  }
+  return actions;
+}
+
+function buildAssistHierarchyContext({ course, moduleValue, lesson, microsequence }) {
+  return {
+    courseTitle: course?.title || course?.key || "",
+    courseDescription: course?.description || "",
+    moduleTitle: moduleValue?.title || moduleValue?.key || "",
+    moduleDescription: moduleValue?.description || "",
+    lessonTitle: lesson?.title || lesson?.key || "",
+    lessonDescription: lesson?.description || "",
+    title: microsequence?.title || "",
+    tags: Array.isArray(microsequence?.tags) ? microsequence.tags : [],
+    cards: Array.isArray(microsequence?.cards) ? microsequence.cards : []
+  };
+}
+
 function buildCardUpdateFromText(card, title, text) {
   const base = {
     title: String(title || "").trim() || card?.title || "Novo card"
@@ -329,6 +359,7 @@ function makeEntityEditorModel(state) {
   if (entityEditor.kind === "course-actions") {
     const course = findCourse(project, entityEditor.courseKey || selection.courseKey);
     if (!course) return null;
+    const moveActions = buildMoveActions(project.courses || [], course.key, "move-course-up", "move-course-down");
     return {
       variant: "action-menu",
       title: "Ações do curso",
@@ -336,6 +367,7 @@ function makeEntityEditorModel(state) {
       fields: [],
       actions: [
         { key: "edit-course-metadata", label: "Editar curso", icon: "&#9998;" },
+        ...moveActions,
         { key: "reset-course-progress", label: "Zerar progresso do curso", icon: "&#8635;" },
         { key: "export-course", label: "Exportar curso", icon: "&#8681;" },
         { key: "delete-course", label: "Excluir curso", icon: "&#128465;", tone: "danger" }
@@ -404,6 +436,8 @@ function makeEntityEditorModel(state) {
   if (entityEditor.kind === "module-actions") {
     const moduleValue = findModule(project, entityEditor.courseKey || selection.courseKey, entityEditor.moduleKey);
     if (!moduleValue) return null;
+    const course = findCourse(project, entityEditor.courseKey || selection.courseKey);
+    const moveActions = buildMoveActions(course?.modules || [], moduleValue.key, "move-module-up", "move-module-down");
     return {
       variant: "action-menu",
       title: "Ações do módulo",
@@ -412,6 +446,7 @@ function makeEntityEditorModel(state) {
       actions: [
         { key: "edit-module-metadata", label: "Editar módulo", icon: "&#9998;" },
         { key: "create-lesson", label: "Adicionar lição", icon: "&#43;" },
+        ...moveActions,
         { key: "reset-module-progress", label: "Zerar progresso do módulo", icon: "&#8635;" },
         { key: "export-module", label: "Exportar módulo", icon: "&#8681;" },
         { key: "delete-module", label: "Excluir módulo", icon: "&#128465;", tone: "danger" }
@@ -436,6 +471,8 @@ function makeEntityEditorModel(state) {
   if (entityEditor.kind === "lesson-actions") {
     const lesson = findLesson(project, entityEditor.courseKey || selection.courseKey, entityEditor.moduleKey, entityEditor.lessonKey);
     if (!lesson) return null;
+    const moduleValue = findModule(project, entityEditor.courseKey || selection.courseKey, entityEditor.moduleKey);
+    const moveActions = buildMoveActions(moduleValue?.lessons || [], lesson.key, "move-lesson-up", "move-lesson-down");
     return {
       variant: "action-menu",
       title: "Ações da lição",
@@ -443,6 +480,7 @@ function makeEntityEditorModel(state) {
       fields: [],
       actions: [
         { key: "edit-lesson-metadata", label: "Editar lição", icon: "&#9998;" },
+        ...moveActions,
         { key: "reset-lesson-progress", label: "Zerar progresso da lição", icon: "&#8635;" },
         { key: "export-lesson", label: "Exportar lição", icon: "&#8681;" },
         { key: "delete-lesson", label: "Excluir lição", icon: "&#128465;", tone: "danger" }
@@ -496,6 +534,13 @@ function makeEntityEditorModel(state) {
       entityEditor.microsequenceKey
     );
     if (!microsequence) return null;
+    const lesson = findLesson(project, entityEditor.courseKey || selection.courseKey, entityEditor.moduleKey, entityEditor.lessonKey);
+    const moveActions = buildMoveActions(
+      lesson?.microsequences || [],
+      microsequence.key,
+      "move-microsequence-up",
+      "move-microsequence-down"
+    );
     return {
       variant: "action-menu",
       title: "Ações da microssequência",
@@ -503,6 +548,7 @@ function makeEntityEditorModel(state) {
       fields: [],
       actions: [
         { key: "edit-microsequence-metadata", label: "Editar microssequência", icon: "&#9998;" },
+        ...moveActions,
         { key: "export-microsequence", label: "Exportar microssequência", icon: "&#8681;" },
         { key: "delete-microsequence", label: "Excluir microssequência", icon: "&#128465;", tone: "danger" }
       ],
@@ -522,11 +568,13 @@ function makeEntityEditorModel(state) {
       ? findCard(microsequence, entityEditor.cardKey || selection.cardKey)
       : null;
     if (!card) return null;
+    const moveActions = buildMoveActions(microsequence.cards || [], card.key, "move-card-up", "move-card-down");
     return {
       title: "Card",
       fields: [],
       actions: [
         { key: "create-card", label: "Novo card após este" },
+        ...moveActions,
         { key: "delete-card", label: "Excluir card", tone: "danger" }
       ]
     };
@@ -834,6 +882,38 @@ export function createLessonEditorApp({ root, storage, editor }) {
       cardKey: path.cardKey,
       cardIndex: path.cardIndex
     };
+  }
+
+  function applySelectionByKeys(nextProject, desiredSelection = state.selection) {
+    const fallbackPath = getFirstPath(nextProject);
+    const course = findCourse(nextProject, desiredSelection?.courseKey) || findCourse(nextProject, fallbackPath.courseKey);
+    const moduleValue =
+      findModule(nextProject, course?.key, desiredSelection?.moduleKey) ||
+      findModule(nextProject, course?.key, fallbackPath.moduleKey);
+    const lesson =
+      findLesson(nextProject, course?.key, moduleValue?.key, desiredSelection?.lessonKey) ||
+      findLesson(nextProject, course?.key, moduleValue?.key, fallbackPath.lessonKey);
+    const microsequence =
+      findMicrosequence(nextProject, course?.key, moduleValue?.key, lesson?.key, desiredSelection?.microsequenceKey) ||
+      findMicrosequence(nextProject, course?.key, moduleValue?.key, lesson?.key, fallbackPath.microsequenceKey);
+    const cards = microsequence?.cards || [];
+    const fallbackCardIndex = Number.isInteger(fallbackPath.cardIndex) ? fallbackPath.cardIndex : 0;
+    const preferredIndex = Number.isInteger(desiredSelection?.cardIndex) ? desiredSelection.cardIndex : fallbackCardIndex;
+    const cardFromKey = desiredSelection?.cardKey ? findCard(microsequence, desiredSelection.cardKey) : null;
+    const safeCardIndex = cards.length ? Math.max(0, Math.min(preferredIndex, cards.length - 1)) : 0;
+    const selectedCard = cardFromKey || cards[safeCardIndex] || null;
+
+    const nextPath = {
+      courseKey: course?.key || null,
+      moduleKey: moduleValue?.key || null,
+      lessonKey: lesson?.key || null,
+      microsequenceKey: microsequence?.key || null,
+      cardKey: selectedCard?.key || null,
+      cardIndex: selectedCard ? cards.findIndex((item) => item.key === selectedCard.key) : 0
+    };
+
+    applySelection(nextPath);
+    return nextPath;
   }
 
   function selectFirstPath(nextProject) {
@@ -2236,7 +2316,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
       fail("O serviço de IA escolheu um slot de reposicionamento inexistente. Ajuste o pedido e tente de novo.");
     }
 
-    const nextProject = editor.moveMicrosequence({
+    const moveResult = editor.moveMicrosequence({
       courseKey: state.selection.courseKey,
       moduleKey: state.selection.moduleKey,
       lessonKey: state.selection.lessonKey,
@@ -2248,22 +2328,15 @@ export function createLessonEditorApp({ root, storage, editor }) {
       renames
     });
 
+    const nextProject = moveResult.document;
+    const movedMicrosequence = moveResult.movedMicrosequence;
     setProject(nextProject);
-    const movedMicrosequence = findMicrosequence(
-      nextProject,
-      slot.courseKey,
-      slot.moduleKey,
-      slot.lessonKey,
-      state.selection.microsequenceKey
-    );
-    const firstCard = movedMicrosequence?.cards?.[0] || null;
-
-    applySelection({
-      courseKey: slot.courseKey,
-      moduleKey: slot.moduleKey,
-      lessonKey: slot.lessonKey,
-      microsequenceKey: movedMicrosequence?.key || state.selection.microsequenceKey,
-      cardKey: firstCard ? firstCard.key : null,
+    applySelectionByKeys(nextProject, {
+      courseKey: movedMicrosequence?.courseKey || slot.courseKey,
+      moduleKey: movedMicrosequence?.moduleKey || slot.moduleKey,
+      lessonKey: movedMicrosequence?.lessonKey || slot.lessonKey,
+      microsequenceKey: movedMicrosequence?.microsequenceKey || state.selection.microsequenceKey,
+      cardKey: null,
       cardIndex: 0
     });
     state.view = "microsequence-assist";
@@ -2298,13 +2371,19 @@ export function createLessonEditorApp({ root, storage, editor }) {
         apiKey: state.assistConfig.apiKey,
         model: state.assistConfig.model,
         mode,
-        microsequence:
-          state.view === "draft-generator" || requestedMode === ASSIST_USER_MODES.GENERATE
-            ? {
-                title: context.microsequence?.title || "",
-                tags: context.microsequence?.tags || []
-              }
-            : context.microsequence,
+        microsequence: buildAssistHierarchyContext({
+          course: context.course,
+          moduleValue: context.moduleValue,
+          lesson: context.lesson,
+          microsequence:
+            state.view === "draft-generator" || requestedMode === ASSIST_USER_MODES.GENERATE
+              ? {
+                  title: context.microsequence?.title || "",
+                  tags: context.microsequence?.tags || [],
+                  cards: context.microsequence?.cards || []
+                }
+              : context.microsequence
+        }),
         card: context.card,
         dependencyTitles,
         destinationSlots,
@@ -2458,6 +2537,148 @@ export function createLessonEditorApp({ root, storage, editor }) {
     }
   }
 
+  function moveSelectedCourse(offset) {
+    const courses = state.project.courses || [];
+    const courseKey = state.entityEditor?.courseKey || state.selection.courseKey;
+    const index = courses.findIndex((item) => item.key === courseKey);
+    if (index < 0) {
+      return null;
+    }
+
+    const targetIndex = index + offset;
+    if (targetIndex < 0 || targetIndex >= courses.length) {
+      return null;
+    }
+
+    const nextProject = editor.moveCourse({ courseKey, toIndex: targetIndex });
+    setProject(nextProject);
+    applySelectionByKeys(nextProject, state.selection);
+    return nextProject;
+  }
+
+  function moveSelectedModule(offset) {
+    const courseKey = state.entityEditor?.courseKey || state.selection.courseKey;
+    const moduleKey = state.entityEditor?.moduleKey || state.selection.moduleKey;
+    const course = findCourse(state.project, courseKey);
+    const modules = course?.modules || [];
+    const index = modules.findIndex((item) => item.key === moduleKey);
+    if (index < 0) {
+      return null;
+    }
+
+    const targetIndex = index + offset;
+    if (targetIndex < 0 || targetIndex >= modules.length) {
+      return null;
+    }
+
+    const nextProject = editor.moveModule({ courseKey, moduleKey, toIndex: targetIndex });
+    setProject(nextProject);
+    applySelectionByKeys(nextProject, state.selection);
+    return nextProject;
+  }
+
+  function moveSelectedLesson(offset) {
+    const courseKey = state.entityEditor?.courseKey || state.selection.courseKey;
+    const moduleKey = state.entityEditor?.moduleKey || state.selection.moduleKey;
+    const lessonKey = state.entityEditor?.lessonKey || state.selection.lessonKey;
+    const moduleValue = findModule(state.project, courseKey, moduleKey);
+    const lessons = moduleValue?.lessons || [];
+    const index = lessons.findIndex((item) => item.key === lessonKey);
+    if (index < 0) {
+      return null;
+    }
+
+    const targetIndex = index + offset;
+    if (targetIndex < 0 || targetIndex >= lessons.length) {
+      return null;
+    }
+
+    const nextProject = editor.moveLesson({ courseKey, moduleKey, lessonKey, toIndex: targetIndex });
+    setProject(nextProject);
+    applySelectionByKeys(nextProject, state.selection);
+    return nextProject;
+  }
+
+  function moveSelectedMicrosequence(offset) {
+    const courseKey = state.entityEditor?.courseKey || state.selection.courseKey;
+    const moduleKey = state.entityEditor?.moduleKey || state.selection.moduleKey;
+    const lessonKey = state.entityEditor?.lessonKey || state.selection.lessonKey;
+    const microsequenceKey = state.entityEditor?.microsequenceKey || state.selection.microsequenceKey;
+    const lesson = findLesson(state.project, courseKey, moduleKey, lessonKey);
+    const microsequences = lesson?.microsequences || [];
+    const index = microsequences.findIndex((item) => item.key === microsequenceKey);
+    if (index < 0) {
+      return null;
+    }
+
+    const targetIndex = index + offset;
+    if (targetIndex < 0 || targetIndex >= microsequences.length) {
+      return null;
+    }
+
+    const moveResult = editor.moveMicrosequence({
+      courseKey,
+      moduleKey,
+      lessonKey,
+      microsequenceKey,
+      targetCourseKey: courseKey,
+      targetModuleKey: moduleKey,
+      targetLessonKey: lessonKey,
+      targetPosition: targetIndex
+    });
+    setProject(moveResult.document);
+    applySelectionByKeys(moveResult.document, {
+      ...state.selection,
+      courseKey,
+      moduleKey,
+      lessonKey,
+      microsequenceKey: moveResult.movedMicrosequence?.microsequenceKey || microsequenceKey
+    });
+    syncAssistDraft();
+    return moveResult.document;
+  }
+
+  function moveSelectedCard(offset) {
+    const courseKey = state.entityEditor?.courseKey || state.selection.courseKey;
+    const moduleKey = state.entityEditor?.moduleKey || state.selection.moduleKey;
+    const lessonKey = state.entityEditor?.lessonKey || state.selection.lessonKey;
+    const microsequenceKey = state.entityEditor?.microsequenceKey || state.selection.microsequenceKey;
+    const cardKey = state.entityEditor?.cardKey || state.selection.cardKey;
+    const microsequence = findMicrosequence(state.project, courseKey, moduleKey, lessonKey, microsequenceKey);
+    const cards = microsequence?.cards || [];
+    const index = cards.findIndex((item) => item.key === cardKey);
+    if (index < 0) {
+      return null;
+    }
+
+    const targetIndex = index + offset;
+    if (targetIndex < 0 || targetIndex >= cards.length) {
+      return null;
+    }
+
+    const nextProject = editor.moveCard({
+      courseKey,
+      moduleKey,
+      lessonKey,
+      microsequenceKey,
+      cardKey,
+      toIndex: targetIndex
+    });
+    setProject(nextProject);
+    applySelectionByKeys(nextProject, {
+      ...state.selection,
+      courseKey,
+      moduleKey,
+      lessonKey,
+      microsequenceKey,
+      cardKey
+    });
+    syncActiveMicrosequenceVersionFromProject();
+    syncAssistDraft();
+    ensureCurrentCardSnapshot();
+    return nextProject;
+  }
+
   function runEntityAction(actionKey) {
     if (!state.entityEditor || !actionKey) return;
 
@@ -2595,6 +2816,36 @@ export function createLessonEditorApp({ root, storage, editor }) {
         state.entityEditor = null;
         render({ preserveState: true });
         return;
+      } else if (actionKey === "move-course-up") {
+        nextProject = moveSelectedCourse(-1);
+        state.view = "courses";
+      } else if (actionKey === "move-course-down") {
+        nextProject = moveSelectedCourse(1);
+        state.view = "courses";
+      } else if (actionKey === "move-module-up") {
+        nextProject = moveSelectedModule(-1);
+        state.view = "course";
+      } else if (actionKey === "move-module-down") {
+        nextProject = moveSelectedModule(1);
+        state.view = "course";
+      } else if (actionKey === "move-lesson-up") {
+        nextProject = moveSelectedLesson(-1);
+        state.view = "lesson";
+      } else if (actionKey === "move-lesson-down") {
+        nextProject = moveSelectedLesson(1);
+        state.view = "lesson";
+      } else if (actionKey === "move-microsequence-up") {
+        nextProject = moveSelectedMicrosequence(-1);
+        state.view = "lesson";
+      } else if (actionKey === "move-microsequence-down") {
+        nextProject = moveSelectedMicrosequence(1);
+        state.view = "lesson";
+      } else if (actionKey === "move-card-up") {
+        nextProject = moveSelectedCard(-1);
+        state.view = "microsequence-assist";
+      } else if (actionKey === "move-card-down") {
+        nextProject = moveSelectedCard(1);
+        state.view = "microsequence-assist";
       } else if (actionKey === "create-course") {
         nextProject = editor.createCourse({
           title: "Novo curso"

@@ -276,12 +276,24 @@ function buildLadderPrompt({ context, promptText }) {
 }
 
 function buildEditPrompt({ microsequence, card, dependencyTitles, promptText }) {
+  const courseTitle = normalizeText(microsequence?.courseTitle) || "Curso atual";
+  const courseDescription = normalizeText(microsequence?.courseDescription) || "não informado";
+  const moduleTitle = normalizeText(microsequence?.moduleTitle) || "Módulo atual";
+  const moduleDescription = normalizeText(microsequence?.moduleDescription) || "não informado";
+  const lessonTitle = normalizeText(microsequence?.lessonTitle) || "Lição atual";
+  const lessonDescription = normalizeText(microsequence?.lessonDescription) || "não informado";
   const microsequenceTitle = normalizeText(microsequence?.title) || "Microssequência atual";
   const cardTitle = normalizeText(card?.title) || "Card atual";
   const cardKind = getContractCardKind(card) || "say";
   const tags = dependencyTitles.length ? dependencyTitles.join(", ") : "sem tags";
 
   return [
+    `Curso: ${courseTitle}`,
+    `Objetivo do curso: ${courseDescription}`,
+    `Módulo: ${moduleTitle}`,
+    `Objetivo do módulo: ${moduleDescription}`,
+    `Lição: ${lessonTitle}`,
+    `Objetivo da lição: ${lessonDescription}`,
     `Microssequência: ${microsequenceTitle}`,
     `Card atual: ${cardTitle}`,
     `Intenção atual: ${cardKind}`,

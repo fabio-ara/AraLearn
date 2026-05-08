@@ -1106,6 +1106,9 @@ function renderMicrosequenceWorkbenchScreen({
     '<div class="editor-step-strip">' +
     cardStrip +
     "</div></section>" +
+    (hasCards
+      ? '<div class="editor-card-toolbar"><button class="icon-ghost tiny-icon editor-card-actions-btn" type="button" data-action="edit-card" title="Ações do card" aria-label="Ações do card">&#8943;</button></div>'
+      : "") +
     '<section class="workbench-surface" data-workbench-pane="' +
     activeWorkbenchPane +
     '">' +

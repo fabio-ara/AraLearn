@@ -206,6 +206,7 @@ test("renderiza o painel da microssequência sem botão próprio de ações e co
   assert.match(html, /workbench-surface-tab-icon/);
   assert.match(html, /mini-card-kicker-icon/);
   assert.match(html, /data-action="open-card" data-card-index="0" aria-label="Card 1: Ideia central" title="Card 1"/);
+  assert.match(html, /data-action="edit-card"/);
   assert.match(html, /<span class="editor-version-tab-label">12<\/span>/);
   assert.match(html, /data-field="assist-microsequence-title" type="text" aria-label="Título da microssequência" title="Título da microssequência"/);
   assert.match(html, /data-field="assist-dependency-picker" aria-label="Tags" title="Tags"/);

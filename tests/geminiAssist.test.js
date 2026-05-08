@@ -283,7 +283,17 @@ test("gera microssequência com plano local e chamada estruturada ao Gemini", as
     const result = await runGeminiAssist({
       apiKey: "chave",
       mode: "compose-microsequence",
-      microsequence: { title: "Git", tags: [], cards: [] },
+      microsequence: {
+        courseTitle: "Programação",
+        courseDescription: "Fundamentos para iniciantes.",
+        moduleTitle: "Git e colaboração",
+        moduleDescription: "Versionamento básico.",
+        lessonTitle: "Primeiros comandos",
+        lessonDescription: "Criar repositório e registrar mudanças.",
+        title: "Git",
+        tags: [],
+        cards: []
+      },
       promptText: "explique git add e git push"
     });
 
@@ -297,6 +307,10 @@ test("gera microssequência com plano local e chamada estruturada ao Gemini", as
     assert.equal(cardSchema.properties.rows.items.type, "string");
     assert.ok(!cardSchema.properties.flowSteps);
     assert.match(calls[0].body.contents[0].parts[0].text, /Plano:/);
+    assert.match(calls[0].body.contents[0].parts[0].text, /Curso: Programação/);
+    assert.match(calls[0].body.contents[0].parts[0].text, /Módulo: Git e colaboração/);
+    assert.match(calls[0].body.contents[0].parts[0].text, /Lição: Primeiros comandos/);
+    assert.doesNotMatch(calls[0].body.contents[0].parts[0].text, /Análise e Desenvolvimento de Sistemas/);
     assert.match(calls[0].body.contents[0].parts[0].text, /não gere fluxograma/i);
     assert.equal(result.cards.length, 5);
     assert.equal(result.cards[1].title, "git add");
@@ -304,6 +318,57 @@ test("gera microssequência com plano local e chamada estruturada ao Gemini", as
     assert.equal(result.cards[2].title, "git push");
     assert.equal(result.cards[2].code, "git push -u origin main");
     assert.equal(result.cards[4].answer, "git push");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("revisa card com contexto explícito de curso, módulo, lição e microssequência", async () => {
+  const originalFetch = globalThis.fetch;
+  const calls = [];
+  globalThis.fetch = async (_url, options) => {
+    calls.push(JSON.parse(options.body));
+    return {
+      ok: true,
+      async json() {
+        return {
+          candidates: [
+            {
+              content: {
+                parts: [{ text: JSON.stringify({ title: "Card revisto", say: "Conteúdo revisado." }) }]
+              }
+            }
+          ]
+        };
+      }
+    };
+  };
+
+  try {
+    const result = await runGeminiAssist({
+      apiKey: "chave",
+      mode: "edit-card",
+      microsequence: {
+        courseTitle: "Programação",
+        courseDescription: "Fundamentos.",
+        moduleTitle: "Git",
+        moduleDescription: "Fluxo básico.",
+        lessonTitle: "Commits",
+        lessonDescription: "Registrar mudanças.",
+        title: "Sequência de commits",
+        tags: ["git"]
+      },
+      card: { key: "card-1", title: "Card atual", say: "Texto antigo" },
+      dependencyTitles: ["git", "commit"],
+      promptText: "Deixe o texto mais direto."
+    });
+
+    const prompt = calls[0].contents[0].parts[0].text;
+    assert.match(prompt, /Curso: Programação/);
+    assert.match(prompt, /Objetivo do módulo: Fluxo básico\./);
+    assert.match(prompt, /Lição: Commits/);
+    assert.match(prompt, /Microssequência: Sequência de commits/);
+    assert.equal(result.say, "Conteúdo revisado.");
   } finally {
     globalThis.fetch = originalFetch;
   }
