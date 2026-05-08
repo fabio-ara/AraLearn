@@ -14,8 +14,7 @@ O `README.md` da raiz apresenta o produto para uso geral. Os documentos abaixo a
 ## IA generativa e pesquisa
 
 - `assistencia-por-ia.md`: engenharia da assistência por serviços de inteligência artificial generativa acessados por API
-- `pesquisa-e-avaliacao.md`: perguntas de pesquisa, métricas, riscos, desenhos de estudo e decisões dependentes de evidência
-- `decisoes/`: registros de decisões arquiteturais e de produto
+- `pesquisa-e-avaliacao.md`: perguntas de pesquisa, métricas, riscos e desenhos de estudo
 
 ## JSON público
 
