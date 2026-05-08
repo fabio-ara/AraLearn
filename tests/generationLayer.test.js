@@ -96,6 +96,14 @@ test("planejamento recebe selectedLessonTopicRefs, catálogo leve e valida plano
   assert.equal(validation.plan.cardPlan.length, 3);
 });
 
+test("planejamento com tipo fixado envia apenas o tipo efetivo", () => {
+  const contract = samplePlanningContract({ userFixedTypeId: "simple" });
+  const prompt = buildMicrosequencePlanningPrompt(contract, getModelCapabilities("gemini-2.5-flash"));
+
+  assert.deepEqual(contract.availableTypes.map((item) => item.id), ["simple"]);
+  assert.match(prompt, /typeId exatamente igual a "simple"/);
+});
+
 test("campos legados de tags são normalizados para selectedLessonTopicRefs", () => {
   const contract = samplePlanningContract({
     selectedLessonTopicRefs: undefined,
@@ -157,6 +165,8 @@ test("contrato e prompt de geração usam contexto, tags, tamanho e schemas efet
   assert.equal(generationContract.request.cardCount, 3);
   assert.deepEqual(Object.keys(generationContract.resources.resourceSchemas).sort(), ["block_gap_fill", "multiple_choice", "paragraph", "table"].sort());
   assert.match(prompt, /block_gap_fill/);
+  assert.match(prompt, /"kind":"blank"/);
+  assert.match(prompt, /não use content, segments\[\]\.text nem blocks\[\]\.text/);
   assert.match(prompt, /selectedLessonTopicRefs como assuntos selecionados no escopo da lição/);
   assert.doesNotMatch(prompt, /code_editor/);
 });
@@ -213,7 +223,7 @@ test("validação de geração aceita cards válidos e rejeita erros estruturais
       { cards: [response.cards[0], { ...response.cards[1], feedbackPopup: undefined }, response.cards[2]] },
       generationContract
     ).ok,
-    true
+    false
   );
   assert.equal(
     validateGeneratedCards(
@@ -222,6 +232,61 @@ test("validação de geração aceita cards válidos e rejeita erros estruturais
     ).ok,
     false
   );
+});
+
+test("block_gap_fill valida estrutura fechada de segmentos, blocos e feedbackAfter", () => {
+  const planningContract = samplePlanningContract();
+  const generationContract = buildMicrosequenceGenerationContract({
+    planningContract,
+    validatedPlan: validateMicrosequencePlan(validPlan(), planningContract),
+    selectedModel: "gemini-2.5-flash"
+  });
+  const validCard = {
+    position: 2,
+    resourceType: "block_gap_fill",
+    title: "Complete",
+    prompt: "Complete.",
+    segments: [
+      { kind: "text", value: "Use" },
+      { kind: "blank", blankId: "b1", acceptedBlockIds: ["x"] },
+      { kind: "text", value: "." }
+    ],
+    blocks: [{ blockId: "x", label: "git add" }],
+    feedbackAfter: "Isso prepara arquivos."
+  };
+  const validResponse = {
+    cards: [
+      { position: 1, resourceType: "paragraph", title: "Ideia", text: "Texto." },
+      validCard,
+      {
+        position: 3,
+        resourceType: "multiple_choice",
+        title: "Teste",
+        question: "Qual comando prepara?",
+        options: [{ optionId: "a", label: "git add" }, { optionId: "b", label: "git push" }, { optionId: "c", label: "git log" }],
+        correctOptionId: "a",
+        feedback: "git add prepara."
+      }
+    ]
+  };
+
+  assert.equal(validateGeneratedCards(validResponse, generationContract).ok, true);
+  assert.equal(validateGeneratedCards({ cards: [validResponse.cards[0], { ...validCard, content: {} }, validResponse.cards[2]] }, generationContract).ok, false);
+  assert.equal(
+    validateGeneratedCards(
+      { cards: [validResponse.cards[0], { ...validCard, segments: [{ text: "Use" }] }, validResponse.cards[2]] },
+      generationContract
+    ).ok,
+    false
+  );
+  assert.equal(
+    validateGeneratedCards(
+      { cards: [validResponse.cards[0], { ...validCard, blocks: [{ text: "git add" }] }, validResponse.cards[2]] },
+      generationContract
+    ).ok,
+    false
+  );
+  assert.equal(validateGeneratedCards({ cards: [validResponse.cards[0], { ...validCard, feedbackAfter: "" }, validResponse.cards[2]] }, generationContract).ok, false);
 });
 
 test("tree entra no catálogo, no planejamento, em allowedResourceTypes e na validação", () => {
@@ -422,6 +487,37 @@ test("adaptador converte tree interno para contrato público tree", () => {
   assert.equal(publicCard.resourceType, undefined);
 });
 
+test("adaptador tree resolve rootLabel sem duplicar raiz pública", () => {
+  const sameRoot = adaptResourceCardToPublicCard({
+    resourceType: "tree",
+    title: "Estrutura",
+    rootLabel: "meu-projeto",
+    nodes: [
+      { id: "root", label: "meu-projeto", type: "folder", parentId: null },
+      { id: "git", label: ".git", type: "folder", parentId: "root" }
+    ]
+  });
+  const wrappedRoot = adaptResourceCardToPublicCard({
+    resourceType: "tree",
+    title: "Estrutura",
+    rootLabel: "meu-projeto",
+    nodes: [{ id: "git", label: ".git", type: "folder" }]
+  });
+  const multipleRoots = adaptResourceCardToPublicCard({
+    resourceType: "tree",
+    title: "Estrutura",
+    rootLabel: "repo",
+    nodes: [
+      { id: "src", label: "src", type: "folder" },
+      { id: "readme", label: "README.md", type: "file" }
+    ]
+  });
+
+  assert.deepEqual(sameRoot.tree.items, { "meu-projeto": { ".git": {} } });
+  assert.deepEqual(wrappedRoot.tree.items, { "meu-projeto": { ".git": {} } });
+  assert.deepEqual(multipleRoots.tree.items, { repo: { src: {}, "README.md": null } });
+});
+
 test("tree selecionado na UI mapeia para recurso interno tree", () => {
   assert.equal(mapPreferredContainerToResource("tree"), "tree");
 });
@@ -446,6 +542,21 @@ test("selectedLessonTopicRefs usa somente assuntos da lição atual", () => {
   ]);
   assert.equal(selected.some((item) => item.label === "tag-global"), false);
   assert.equal(selected.some((item) => item.refKey === "micro-atual"), false);
+});
+
+test("selectedLessonTopicRefs documenta refs compostos por microssequência e label", () => {
+  const current = { key: "micro-atual", title: "Atual" };
+  const refs = collectLessonTopicRefs({
+    microsequences: [
+      { key: "micro-git", title: "Git", tags: ["commit"] },
+      current
+    ]
+  }, current);
+
+  assert.deepEqual(refs, [
+    { refKey: "micro-git", label: "Git", source: "microsequence" },
+    { refKey: "micro-git", label: "commit", source: "microsequence" }
+  ]);
 });
 
 test("geração adaptada com tree e block_gap_fill salva e recarrega sem perda estrutural", () => {

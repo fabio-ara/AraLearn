@@ -577,6 +577,66 @@ function buildGenerationContextEntities(microsequence = {}) {
   };
 }
 
+export function buildMicrosequencePlanningRepairPrompt({ planningContract, invalidPlan, errors }) {
+  return [
+    "Repare apenas o plano de microssequência do AraLearn.",
+    "Responda somente JSON válido com typeId, sizeId, microsequenceGoal, selectedExtraResourceTypes, cardPlan, sourceUsePlan e reason.",
+    "Preserve estritamente request.userFixedTypeId quando ele existir e não for assisted.",
+    "Use apenas ids presentes em availableTypes e availableResources do contrato.",
+    "Preserve todos os recursos extras de request.userSelectedExtraResourceTypes em selectedExtraResourceTypes.",
+    "Erros de validação:",
+    JSON.stringify(errors || []),
+    "Plano inválido:",
+    JSON.stringify(invalidPlan || {}),
+    "Contrato de planejamento:",
+    JSON.stringify(planningContract || {})
+  ].join("\n");
+}
+
+export async function validateOrRepairMicrosequencePlan({
+  apiKey,
+  model,
+  planningContract,
+  planningResult,
+  modelCapabilities,
+  fileParts = []
+}) {
+  const validation = validateMicrosequencePlan(planningResult, planningContract);
+  if (validation.ok) {
+    return validation;
+  }
+
+  const repairedPlan = await callGemini({
+    apiKey,
+    model,
+    body: makeRequestBody({
+      systemInstruction:
+        "Você repara planos de microssequência para o AraLearn. Responda apenas JSON válido e compacto.",
+      prompt: buildMicrosequencePlanningRepairPrompt({
+        planningContract,
+        invalidPlan: planningResult,
+        errors: validation.errors
+      }),
+      fileParts,
+      schema: null,
+      temperature: 0.05,
+      maxOutputTokens: modelCapabilities?.profile === "compact-json" ? 1536 : 2048
+    })
+  });
+  const repairedValidation = validateMicrosequencePlan(repairedPlan, planningContract);
+  if (repairedValidation.ok) {
+    return repairedValidation;
+  }
+
+  return {
+    ok: false,
+    errors: [
+      ...validation.errors,
+      ...repairedValidation.errors.map((error) => `Após reparo: ${error}`)
+    ]
+  };
+}
+
 async function composeMicrosequenceWithTwoStepGeneration({
   apiKey,
   model,
@@ -614,7 +674,14 @@ async function composeMicrosequenceWithTwoStepGeneration({
       maxOutputTokens: 1536
     })
   });
-  const validatedPlan = validateMicrosequencePlan(planningResult, planningContract);
+  const validatedPlan = await validateOrRepairMicrosequencePlan({
+    apiKey,
+    model,
+    planningContract,
+    planningResult,
+    modelCapabilities,
+    fileParts
+  });
   if (!validatedPlan.ok) {
     fail(`Plano de microssequência inválido: ${validatedPlan.errors.join(" ")}`);
   }

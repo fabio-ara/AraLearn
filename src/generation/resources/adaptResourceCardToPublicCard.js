@@ -84,21 +84,30 @@ function adaptTree(card) {
     byParent.set(parentId, list);
   });
 
+  function buildNodeItems(node) {
+    if (normalizeTreeNodeType(node?.type) === "file") {
+      return null;
+    }
+    return buildItems(text(node?.id));
+  }
+
   function buildItems(parentId = "") {
     return Object.fromEntries(
       (byParent.get(parentId) || []).map((node, index) => {
         const label = text(node?.label) || `item-${index + 1}`;
-        if (normalizeTreeNodeType(node?.type) === "file") {
-          return [label, null];
-        }
-        return [label, buildItems(text(node?.id))];
+        return [label, buildNodeItems(node)];
       })
     );
   }
 
-  const rootItems = buildItems("");
+  const roots = byParent.get("") || [];
   const rootLabel = text(card.rootLabel);
-  const items = rootLabel ? { [rootLabel]: rootItems } : rootItems;
+  const items =
+    rootLabel && roots.length === 1 && text(roots[0]?.label) === rootLabel
+      ? { [rootLabel]: buildNodeItems(roots[0]) }
+      : rootLabel
+        ? { [rootLabel]: roots.length ? buildItems("") : {} }
+        : buildItems("");
 
   return {
     title: text(card.title) || "Árvore",

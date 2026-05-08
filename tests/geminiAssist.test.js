@@ -1,9 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { normalizeComposeResult, normalizeEditResult, runGeminiAssist } from "../src/assist/geminiAssist.js";
+import { normalizeComposeResult, normalizeEditResult, runGeminiAssist, validateOrRepairMicrosequencePlan } from "../src/assist/geminiAssist.js";
 import { buildAssistDraftPrompt, buildDeterministicAssistPlan, normalizeAssistDraftResult } from "../src/assist/assistMicrosequenceEngine.js";
 import { buildCardRuntime } from "../src/core/cardRuntime.js";
+import { buildMicrosequencePlanningContract } from "../src/generation/planning/buildMicrosequencePlanningContract.js";
 
 function makeMicrosequencePlanPayload() {
   return {
@@ -394,6 +395,68 @@ test("gera microssequência com plano local e chamada estruturada ao Gemini", as
     assert.equal(result.cards[2].code, "git push -u origin main");
     assert.equal(result.cards[4].answer, "git push");
     assert.deepEqual(result.tags, []);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("repara planejamento quando typeId viola userFixedTypeId", async () => {
+  const originalFetch = globalThis.fetch;
+  const calls = [];
+  globalThis.fetch = async (_url, options) => {
+    calls.push(JSON.parse(options.body));
+    return makeGeminiTextResponse(
+      JSON.stringify({
+        typeId: "simple",
+        sizeId: "short",
+        microsequenceGoal: "Explicar git.",
+        selectedExtraResourceTypes: [],
+        cardPlan: [
+          { position: 1, role: "explicar", resourceType: "paragraph", sourceRefs: [] },
+          { position: 2, role: "explicar", resourceType: "paragraph", sourceRefs: [] },
+          { position: 3, role: "explicar", resourceType: "paragraph", sourceRefs: [] }
+        ],
+        sourceUsePlan: [],
+        reason: "reparado"
+      })
+    );
+  };
+
+  try {
+    const planningContract = buildMicrosequencePlanningContract({
+      selectedCourse: { key: "course", title: "Curso" },
+      selectedModule: { key: "module", title: "Módulo" },
+      selectedLesson: { key: "lesson", title: "Lição" },
+      targetMicrosequence: { key: "micro", title: "Micro" },
+      userPrompt: "Explique git.",
+      userFixedTypeId: "simple",
+      selectedModel: "gemini-2.5-flash"
+    });
+    const result = await validateOrRepairMicrosequencePlan({
+      apiKey: "chave",
+      model: "gemini-2.5-flash",
+      planningContract,
+      planningResult: {
+        typeId: "procedure",
+        sizeId: "short",
+        microsequenceGoal: "Explicar git.",
+        selectedExtraResourceTypes: [],
+        cardPlan: [
+          { position: 1, role: "explicar", resourceType: "paragraph", sourceRefs: [] },
+          { position: 2, role: "explicar", resourceType: "paragraph", sourceRefs: [] },
+          { position: 3, role: "explicar", resourceType: "paragraph", sourceRefs: [] }
+        ],
+        sourceUsePlan: [],
+        reason: "inválido"
+      },
+      modelCapabilities: { profile: "compact-json" }
+    });
+
+    assert.equal(result.ok, true);
+    assert.equal(result.plan.typeId, "simple");
+    assert.equal(calls.length, 1);
+    assert.match(calls[0].contents[0].parts[0].text, /typeId não preserva o Tipo fixado/);
+    assert.match(calls[0].contents[0].parts[0].text, /request.userFixedTypeId/);
   } finally {
     globalThis.fetch = originalFetch;
   }
