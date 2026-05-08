@@ -863,6 +863,9 @@ function renderMicrosequenceWorkbenchScreen({
       escapeHtml(editorSupport.lastRequest.description || "") +
       "</p></section>"
     : "";
+  const emptyCardsMessage = hasCards
+    ? ""
+    : "Os cards gerados aparecerão aqui após o envio do prompt.";
   const cardStrip = hasCards
     ? renderWorkbenchCardStrip(visibleCards, safeIndex, {
       courseKey: selection.courseKey,
@@ -870,7 +873,7 @@ function renderMicrosequenceWorkbenchScreen({
       lessonKey: selection.lessonKey,
       microsequenceKey: selection.microsequenceKey
     })
-    : '<div class="editor-step-empty">Os cards aparecerão aqui após o envio do prompt.</div>';
+    : '<div class="editor-step-empty">' + escapeHtml(emptyCardsMessage) + "</div>";
   const activeWorkbenchPane = editorSupport.activeWorkbenchPane === "edit" ? "edit" : "preview";
   const versionCount = Array.isArray(editorSupport.microsequenceVersions) ? editorSupport.microsequenceVersions.length : 0;
   const activeVersionIndex =
@@ -920,7 +923,7 @@ function renderMicrosequenceWorkbenchScreen({
     '">' +
     (hasCards
       ? renderRuntimeBlocks(activeCard, bodyText)
-      : '<p class="runtime-paragraph">Envie o pedido para montar uma microssequência.</p>') +
+      : '<p class="runtime-paragraph">Envie o pedido para gerar os cards da microssequência.</p>') +
     "</div>" +
     "</article>" +
     '<p class="chip-muted editor-card-stage-count" aria-label="' +
@@ -1047,10 +1050,12 @@ function renderMicrosequenceWorkbenchScreen({
 }
 
 function renderMicrosequenceAssistScreen({ lesson, microsequence, cards, selection, editorSupport }) {
+  const hasCards = Array.isArray(cards) && cards.length > 0;
+
   return renderMicrosequenceWorkbenchScreen({
-    title: "Editar cards",
+    title: hasCards ? "Editar cards" : "Gerar cards",
     backTitle: "Voltar para a lição",
-    sendTitle: "Editar cards",
+    sendTitle: hasCards ? "Editar cards" : "Gerar cards",
     promptLabel: "Pedido",
     lesson,
     microsequence,

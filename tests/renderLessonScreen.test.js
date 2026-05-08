@@ -272,6 +272,55 @@ test("renderiza o painel da microssequência sem botão próprio de ações e co
   assert.doesNotMatch(html, /generator-preview-stage/);
 });
 
+test("renderiza o painel da microssequência vazia em modo de geração de cards", () => {
+  const project = readProject();
+  const course = project.courses[0];
+  const moduleValue = course.modules[0];
+  const lesson = moduleValue.lessons[0];
+  const microsequence = {
+    ...lesson.microsequences[0],
+    cards: []
+  };
+  const html = renderLessonScreen({
+    project,
+    view: "microsequence-assist",
+    selection: {
+      courseKey: course.key,
+      moduleKey: moduleValue.key,
+      lessonKey: lesson.key,
+      microsequenceKey: microsequence.key,
+      cardKey: "",
+      cardIndex: 0
+    },
+    course,
+    moduleValue,
+    lesson,
+    microsequence,
+    cards: [],
+    microsequenceMode: "play",
+    editorSupport: {
+      progress: { version: 1, lessons: {} },
+      dependencies: [],
+      microsequenceVersions: [{ id: "v1", label: "Versão 1" }],
+      activeMicrosequenceVersionId: "v1",
+      selectedDependencyKeys: [],
+      pendingDependencyKey: "",
+      modelOptions: [{ value: "gemini-2.5-flash", label: "Gemini 2.5 Flash" }],
+      selectedModel: "gemini-2.5-flash",
+      assistModeOptions: [],
+      selectedAssistMode: "edit-microsequence",
+      activeWorkbenchPane: "edit",
+      assistModeLocked: true,
+      promptText: ""
+    }
+  });
+
+  assert.match(html, /<div class="topbar-title">Gerar cards<\/div>/);
+  assert.match(html, /Os cards gerados aparecerão aqui após o envio do prompt\./);
+  assert.match(html, /Envie o pedido para gerar os cards da microssequência\./);
+  assert.match(html, /data-action="apply-assist"[^>]*title="Gerar cards" aria-label="Gerar cards"/);
+});
+
 test("renderiza a aba preview da microssequência dentro da superfície combinada", () => {
   const project = readProject();
   const course = project.courses[0];

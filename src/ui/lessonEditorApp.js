@@ -2364,6 +2364,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
   async function submitAssistRequest() {
     const context = getRenderContext();
     const assistCatalog = getAssistCatalog();
+    const hadCardsBefore = Array.isArray(context.microsequence?.cards) && context.microsequence.cards.length > 0;
     const dependencyTitles = assistCatalog
       .filter((item) => state.assistDraft.dependencyKeys.includes(item.key))
       .map((item) => item.title || item.key);
@@ -2407,12 +2408,9 @@ export function createLessonEditorApp({ root, storage, editor }) {
           tags: generatedTags
         });
         state.assistDraft.lastRequest = {
-          title:
-            requestedMode === ASSIST_USER_MODES.EDIT_MICROSEQUENCE
-              ? "Microssequência atualizada"
-              : "Microssequência atualizada",
+          title: hadCardsBefore ? "Cards atualizados" : "Cards gerados",
           description:
-            `${result.cards.length} cards aplicados em ${result.microsequenceTitle} com ${getAssistModelLabel(state.assistConfig.model)}.`,
+            `${result.cards.length} cards ${hadCardsBefore ? "atualizados" : "gerados"} em ${result.microsequenceTitle} com ${getAssistModelLabel(state.assistConfig.model)}.`,
           timestamp: new Date().toISOString()
         };
       } else {
