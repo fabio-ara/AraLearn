@@ -14,6 +14,26 @@ function escapeHtml(value) {
     .replace(/'/g, "&#39;");
 }
 
+function renderStructureHandle({ level, courseKey = "", moduleKey = "", lessonKey = "", microsequenceKey = "", label }) {
+  return (
+    '<button class="icon-ghost tiny-icon builder-tool-handle" type="button" draggable="true" data-action="structure-drag-handle" data-structure-level="' +
+    escapeHtml(level) +
+    '" data-course-key="' +
+    escapeHtml(courseKey) +
+    '" data-module-key="' +
+    escapeHtml(moduleKey) +
+    '" data-lesson-key="' +
+    escapeHtml(lessonKey) +
+    '" data-microsequence-key="' +
+    escapeHtml(microsequenceKey) +
+    '" title="' +
+    escapeHtml(label) +
+    '" aria-label="' +
+    escapeHtml(label) +
+    '">&#9776;</button>'
+  );
+}
+
 function renderTopbar({
   title,
   canGoBack,
@@ -574,7 +594,13 @@ function renderCourseScreen({ course, progress }) {
           const lessonPercent = percent(lessonTotal, lessonCompleted);
           const lessonDescription = getLessonDescription(lesson);
           return (
-            '<li class="lesson-item progress-row">' +
+            '<li class="lesson-item progress-row" data-structure-target="lesson" data-course-key="' +
+            escapeHtml(course.key) +
+            '" data-module-key="' +
+            escapeHtml(moduleValue.key) +
+            '" data-lesson-key="' +
+            escapeHtml(lesson.key) +
+            '">' +
             '<div class="row-progress-fill" style="width:' +
             String(lessonPercent) +
             '%"></div>' +
@@ -598,6 +624,13 @@ function renderCourseScreen({ course, progress }) {
             }) +
             "</div>" +
             '<div class="lesson-actions">' +
+            renderStructureHandle({
+              level: "lesson",
+              courseKey: course.key,
+              moduleKey: moduleValue.key,
+              lessonKey: lesson.key,
+              label: `Arrastar lição ${lesson.title || lesson.key}`
+            }) +
             '<button class="icon-ghost" type="button" data-action="open-lesson-actions" data-module-key="' +
             escapeHtml(moduleValue.key) +
             '" data-lesson-key="' +
@@ -615,15 +648,27 @@ function renderCourseScreen({ course, progress }) {
         .join("");
 
       return (
-        '<section class="clean-card module-card progress-card">' +
+        '<section class="clean-card module-card progress-card" data-structure-target="module" data-course-key="' +
+        escapeHtml(course.key) +
+        '" data-module-key="' +
+        escapeHtml(moduleValue.key) +
+        '">' +
         '<div class="card-progress-fill" style="width:' +
         String(modulePercent) +
         '%"></div>' +
         '<header class="module-head">' +
+        renderStructureHandle({
+          level: "module",
+          courseKey: course.key,
+          moduleKey: moduleValue.key,
+          label: `Arrastar módulo ${moduleValue.title || moduleValue.key}`
+        }) +
         '<h3 class="card-title">' +
         escapeHtml(moduleValue.title || moduleValue.key) +
         "</h3>" +
-        '<button class="icon-ghost" type="button" data-action="open-module-actions" data-module-key="' +
+        '<button class="icon-ghost" type="button" data-action="open-module-actions" data-course-key="' +
+        escapeHtml(course.key) +
+        '" data-module-key="' +
         escapeHtml(moduleValue.key) +
         '" title="Ações do módulo" aria-label="Ações do módulo">&ctdot;</button>' +
         "</header>" +
@@ -672,6 +717,14 @@ function renderLessonScreenView({ course, lesson, moduleValue, progress }) {
       return (
         '<article class="clean-card microsequence-card progress-card' +
         (isDraft ? " draft-microsequence-card" : "") +
+        '" data-structure-target="microsequence" data-course-key="' +
+        escapeHtml(course.key) +
+        '" data-module-key="' +
+        escapeHtml(moduleValue.key) +
+        '" data-lesson-key="' +
+        escapeHtml(lesson.key) +
+        '" data-microsequence-key="' +
+        escapeHtml(microsequence.key) +
         '">' +
         '<div class="card-progress-fill" style="width:' +
         String(isDraft ? 0 : microsequencePercent) +
@@ -695,6 +748,14 @@ function renderLessonScreenView({ course, lesson, moduleValue, progress }) {
         }) +
         "</div>" +
         '<div class="microsequence-actions">' +
+        renderStructureHandle({
+          level: "microsequence",
+          courseKey: course.key,
+          moduleKey: moduleValue.key,
+          lessonKey: lesson.key,
+          microsequenceKey: microsequence.key,
+          label: `Arrastar microssequência ${microsequence.title || microsequence.key}`
+        }) +
         '<button class="icon-ghost tiny-icon" type="button" data-action="open-microsequence-actions" data-microsequence-key="' +
         escapeHtml(microsequence.key) +
         '" title="Ações da microssequência" aria-label="Ações da microssequência">&#8943;</button>' +

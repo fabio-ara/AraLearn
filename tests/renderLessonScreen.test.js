@@ -44,6 +44,8 @@ test("renderiza a tela de curso com ações globais e menus contextuais por mód
   assert.match(html, /data-action="open-course-screen-actions"/);
   assert.match(html, /data-home-tab="courses"[^>]+aria-selected="true"/);
   assert.match(html, /data-home-tab="generate"[^>]+aria-selected="false"/);
+  assert.match(html, /data-action="structure-drag-handle" data-structure-level="module"/);
+  assert.match(html, /data-action="structure-drag-handle" data-structure-level="lesson"/);
   assert.match(html, /data-action="open-module-actions"/);
   assert.match(html, /data-action="open-lesson-actions"/);
   assert.match(html, /aria-label="1 lição" title="1 lição"/);
@@ -83,6 +85,7 @@ test("renderiza a tela de lição com ações globais e pilha de ações da micr
 
   assert.match(html, /data-action="open-lesson-screen-actions"/);
   assert.match(html, /data-home-tab="courses"[^>]+aria-selected="true"/);
+  assert.match(html, /data-action="structure-drag-handle" data-structure-level="microsequence"/);
   assert.match(html, /data-action="open-microsequence-actions"/);
   assert.match(html, /data-action="play-microsequence"/);
   assert.match(html, /aria-label="Módulo: Módulo experimental" title="Módulo: Módulo experimental"/);

@@ -637,7 +637,9 @@ export function createLessonEditorApp({ root, storage, editor }) {
       lastResult: null,
       isSubmitting: false,
       errorMessage: ""
-    }
+    },
+    structureDrag: null,
+    structureDrop: null
   };
 
   state.selection = getFirstPath(state.project);
@@ -652,6 +654,101 @@ export function createLessonEditorApp({ root, storage, editor }) {
 
   function setProject(nextProject) {
     state.project = ensureDraftWorkspace(nextProject);
+  }
+
+  function readStructurePayload(node, fallbackLevel = "") {
+    if (!node) {
+      return null;
+    }
+
+    const level = node.getAttribute("data-structure-level") || node.getAttribute("data-structure-target") || fallbackLevel;
+    if (!level) {
+      return null;
+    }
+
+    return {
+      level,
+      courseKey: node.getAttribute("data-course-key") || "",
+      moduleKey: node.getAttribute("data-module-key") || "",
+      lessonKey: node.getAttribute("data-lesson-key") || "",
+      microsequenceKey: node.getAttribute("data-microsequence-key") || ""
+    };
+  }
+
+  function isSameStructurePayload(left, right) {
+    return !!left &&
+      !!right &&
+      left.level === right.level &&
+      left.courseKey === right.courseKey &&
+      left.moduleKey === right.moduleKey &&
+      left.lessonKey === right.lessonKey &&
+      left.microsequenceKey === right.microsequenceKey;
+  }
+
+  function canDropStructure(drag, target) {
+    if (!drag || !target || drag.level !== target.level || isSameStructurePayload(drag, target)) {
+      return false;
+    }
+
+    if (drag.level === "course") {
+      return !!drag.courseKey && !!target.courseKey;
+    }
+    if (drag.level === "module") {
+      return drag.courseKey === target.courseKey && !!drag.moduleKey && !!target.moduleKey;
+    }
+    if (drag.level === "lesson") {
+      return drag.courseKey === target.courseKey && drag.moduleKey === target.moduleKey && !!drag.lessonKey && !!target.lessonKey;
+    }
+    if (drag.level === "microsequence") {
+      return (
+        drag.courseKey === target.courseKey &&
+        drag.moduleKey === target.moduleKey &&
+        drag.lessonKey === target.lessonKey &&
+        !!drag.microsequenceKey &&
+        !!target.microsequenceKey
+      );
+    }
+
+    return false;
+  }
+
+  function clearStructureDropClasses() {
+    root.querySelectorAll(".structure-drop-before, .structure-drop-after, .structure-drag-origin").forEach((node) => {
+      node.classList.remove("structure-drop-before", "structure-drop-after", "structure-drag-origin");
+    });
+  }
+
+  function resetStructureDragState() {
+    state.structureDrag = null;
+    state.structureDrop = null;
+    clearStructureDropClasses();
+  }
+
+  function resolveStructureDropIndex(items, draggedKey, targetKey, position) {
+    const fromIndex = (items || []).findIndex((item) => item.key === draggedKey);
+    const targetIndex = (items || []).findIndex((item) => item.key === targetKey);
+    if (fromIndex < 0 || targetIndex < 0) {
+      return null;
+    }
+
+    let nextIndex = position === "after" ? targetIndex + 1 : targetIndex;
+    if (fromIndex < nextIndex) {
+      nextIndex -= 1;
+    }
+
+    return nextIndex;
+  }
+
+  function getStructureDropPosition(targetNode, clientY) {
+    const rect = targetNode.getBoundingClientRect();
+    return clientY > rect.top + rect.height / 2 ? "after" : "before";
+  }
+
+  function markStructureDropTarget(targetNode, position) {
+    clearStructureDropClasses();
+    const originNode = state.structureDrag?.originNode || null;
+    originNode?.classList.add("structure-drag-origin");
+    targetNode.classList.add(position === "after" ? "structure-drop-after" : "structure-drop-before");
   }
 
   function getDraftLessonContext(project = state.project) {
@@ -2677,6 +2774,89 @@ export function createLessonEditorApp({ root, storage, editor }) {
     syncAssistDraft();
     ensureCurrentCardSnapshot();
     return nextProject;
+  }
+
+  function applyStructureReorder(drag, target, position) {
+    if (!canDropStructure(drag, target)) {
+      resetStructureDragState();
+      return;
+    }
+
+    let nextProject = null;
+
+    if (drag.level === "course") {
+      const items = state.project.courses || [];
+      const toIndex = resolveStructureDropIndex(items, drag.courseKey, target.courseKey, position);
+      if (toIndex === null) {
+        resetStructureDragState();
+        return;
+      }
+      nextProject = editor.moveCourse({ courseKey: drag.courseKey, toIndex });
+    } else if (drag.level === "module") {
+      const course = findCourse(state.project, drag.courseKey);
+      const items = course?.modules || [];
+      const toIndex = resolveStructureDropIndex(items, drag.moduleKey, target.moduleKey, position);
+      if (toIndex === null) {
+        resetStructureDragState();
+        return;
+      }
+      nextProject = editor.moveModule({
+        courseKey: drag.courseKey,
+        moduleKey: drag.moduleKey,
+        toIndex
+      });
+    } else if (drag.level === "lesson") {
+      const moduleValue = findModule(state.project, drag.courseKey, drag.moduleKey);
+      const items = moduleValue?.lessons || [];
+      const toIndex = resolveStructureDropIndex(items, drag.lessonKey, target.lessonKey, position);
+      if (toIndex === null) {
+        resetStructureDragState();
+        return;
+      }
+      nextProject = editor.moveLesson({
+        courseKey: drag.courseKey,
+        moduleKey: drag.moduleKey,
+        lessonKey: drag.lessonKey,
+        toIndex
+      });
+    } else if (drag.level === "microsequence") {
+      const lesson = findLesson(state.project, drag.courseKey, drag.moduleKey, drag.lessonKey);
+      const items = lesson?.microsequences || [];
+      const toIndex = resolveStructureDropIndex(items, drag.microsequenceKey, target.microsequenceKey, position);
+      if (toIndex === null) {
+        resetStructureDragState();
+        return;
+      }
+      const moveResult = editor.moveMicrosequence({
+        courseKey: drag.courseKey,
+        moduleKey: drag.moduleKey,
+        lessonKey: drag.lessonKey,
+        microsequenceKey: drag.microsequenceKey,
+        targetCourseKey: drag.courseKey,
+        targetModuleKey: drag.moduleKey,
+        targetLessonKey: drag.lessonKey,
+        targetPosition: toIndex
+      });
+      nextProject = moveResult.document;
+    }
+
+    if (!nextProject) {
+      resetStructureDragState();
+      return;
+    }
+
+    state.entityEditor = null;
+    setProject(nextProject);
+    applySelectionByKeys(nextProject, state.selection);
+    syncAssistDraft();
+    if (state.view === "microsequence-assist") {
+      syncActiveMicrosequenceVersionFromProject();
+    }
+    if (state.view === "microsequence" || state.view === "microsequence-assist") {
+      ensureCurrentCardSnapshot();
+    }
+    resetStructureDragState();
+    render({ preserveState: true });
   }
 
   function runEntityAction(actionKey) {
@@ -5030,6 +5210,63 @@ export function createLessonEditorApp({ root, storage, editor }) {
     root.querySelectorAll("[data-action='open-home-actions']").forEach((node) => {
       node.addEventListener("click", () => {
         openEntityEditor("home-actions");
+      });
+    });
+    root.querySelectorAll("[data-action='structure-drag-handle']").forEach((node) => {
+      node.addEventListener("dragstart", (event) => {
+        const payload = readStructurePayload(node);
+        const originNode = node.closest("[data-structure-target]");
+        if (!payload || !originNode) {
+          event.preventDefault();
+          return;
+        }
+
+        state.structureDrag = {
+          ...payload,
+          originNode
+        };
+        state.structureDrop = null;
+        clearStructureDropClasses();
+        originNode.classList.add("structure-drag-origin");
+        if (event.dataTransfer) {
+          event.dataTransfer.effectAllowed = "move";
+          event.dataTransfer.setData("text/plain", [
+            payload.level,
+            payload.courseKey,
+            payload.moduleKey,
+            payload.lessonKey,
+            payload.microsequenceKey
+          ].join("::"));
+        }
+      });
+      node.addEventListener("dragend", () => {
+        resetStructureDragState();
+      });
+    });
+    root.querySelectorAll("[data-structure-target]").forEach((node) => {
+      node.addEventListener("dragover", (event) => {
+        const target = readStructurePayload(node);
+        if (!canDropStructure(state.structureDrag, target)) {
+          return;
+        }
+
+        event.preventDefault();
+        const position = getStructureDropPosition(node, event.clientY);
+        state.structureDrop = { target, position };
+        markStructureDropTarget(node, position);
+        if (event.dataTransfer) {
+          event.dataTransfer.dropEffect = "move";
+        }
+      });
+      node.addEventListener("drop", (event) => {
+        const target = readStructurePayload(node);
+        if (!canDropStructure(state.structureDrag, target)) {
+          return;
+        }
+
+        event.preventDefault();
+        const position = state.structureDrop?.position || getStructureDropPosition(node, event.clientY);
+        applyStructureReorder(state.structureDrag, target, position);
       });
     });
     root.querySelectorAll("[data-action='open-course-actions']").forEach((node) => {

@@ -13,6 +13,26 @@ function escapeHtml(value) {
     .replace(/'/g, "&#39;");
 }
 
+function renderStructureHandle({ level, courseKey, moduleKey = "", lessonKey = "", microsequenceKey = "", label }) {
+  return (
+    '<button class="icon-ghost tiny-icon builder-tool-handle" type="button" draggable="true" data-action="structure-drag-handle" data-structure-level="' +
+    escapeHtml(level) +
+    '" data-course-key="' +
+    escapeHtml(courseKey || "") +
+    '" data-module-key="' +
+    escapeHtml(moduleKey) +
+    '" data-lesson-key="' +
+    escapeHtml(lessonKey) +
+    '" data-microsequence-key="' +
+    escapeHtml(microsequenceKey) +
+    '" title="' +
+    escapeHtml(label) +
+    '" aria-label="' +
+    escapeHtml(label) +
+    '">&#9776;</button>'
+  );
+}
+
 function countLessons(course) {
   return (course.modules || []).reduce((total, moduleValue) => total + (moduleValue.lessons || []).length, 0);
 }
@@ -276,6 +296,8 @@ function renderCoursesPane({ project, progress, selection, featuredCourseKey = "
       return (
         '<article class="clean-card course-card progress-card' +
         (course.isFeatured ? " course-card-featured" : "") +
+        '" data-structure-target="course" data-course-key="' +
+        escapeHtml(course.key) +
         '">' +
         '<div class="card-progress-fill" style="width:' +
         String(course.progressPercent) +
@@ -288,6 +310,11 @@ function renderCoursesPane({ project, progress, selection, featuredCourseKey = "
         renderHomeCourseMeta(course) +
         "</div>" +
         '<div class="course-actions">' +
+        renderStructureHandle({
+          level: "course",
+          courseKey: course.key,
+          label: `Arrastar curso ${course.title || course.key}`
+        }) +
         '<button class="icon-ghost corner-btn" type="button" data-action="open-course-actions" data-course-key="' +
         escapeHtml(course.key) +
         '" title="Ações do curso" aria-label="Ações do curso">&ctdot;</button>' +

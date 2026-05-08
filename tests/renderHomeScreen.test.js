@@ -51,6 +51,7 @@ test("renderiza ações separadas para home e curso na primeira tela", () => {
 
   assert.match(html, /data-action="open-home-actions"/);
   assert.match(html, /data-action="open-course-actions"/);
+  assert.match(html, /data-action="structure-drag-handle" data-structure-level="course" data-course-key="course-teste"/);
   assert.match(html, /aria-label="Cursos" title="Cursos"/);
   assert.doesNotMatch(html, /<span>Cursos<\/span>/);
   assert.match(html, /progress-meta-item-value">1\/1<\/span>/);
