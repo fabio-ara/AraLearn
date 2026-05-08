@@ -3257,6 +3257,8 @@ button {
 }
 
 .workbench-stack-button {
+  min-width: 34px;
+  min-height: 38px;
   width: 34px;
   height: 38px;
   border-radius: 12px;
@@ -3958,8 +3960,9 @@ button {
 }
 
 .generate-action-row.assist-actions-wide {
-  grid-template-columns: 30px minmax(0, 1fr) 30px 30px 40px;
+  grid-template-columns: 34px minmax(0, 1fr) 34px 34px 44px;
   width: 100%;
+  gap: 5px;
 }
 
 .generate-action-row.assist-actions-wide .generate-model-field {
@@ -3968,21 +3971,38 @@ button {
 }
 
 .generate-action-row.assist-actions-wide .generate-icon-field {
-  grid-template-columns: 24px minmax(0, 1fr);
-  gap: 4px;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 6px;
 }
 
 .generate-action-row.assist-actions-wide .generate-icon-label {
-  width: 24px;
-  height: 36px;
-  border-radius: 10px;
+  min-width: 34px;
+  min-height: 38px;
+  width: 34px;
+  height: 38px;
+  border-radius: 12px;
 }
 
 .generate-action-row.assist-actions-wide select {
   min-width: 0;
+  min-height: 38px;
   width: 100%;
   padding: 0 7px;
   font-size: 0.9rem;
+}
+
+.generate-action-row.assist-actions-wide .generate-inline-icon {
+  min-width: 34px;
+  min-height: 38px;
+  width: 34px;
+  height: 38px;
+}
+
+.generate-action-row.assist-actions-wide .generate-submit {
+  min-width: 44px;
+  min-height: 44px;
+  width: 44px;
+  height: 44px;
 }
 
 .editor-step-nav-head {
@@ -4002,30 +4022,34 @@ button {
   }
 
   .generate-action-row.assist-actions-wide {
-    grid-template-columns: 28px minmax(0, 1fr) 28px 28px 38px;
+    grid-template-columns: 32px minmax(0, 1fr) 32px 32px 42px;
     gap: 4px;
   }
 
   .generate-action-row.assist-actions-wide .generate-icon-field {
-    grid-template-columns: 22px minmax(0, 1fr);
+    grid-template-columns: 32px minmax(0, 1fr);
     gap: 4px;
   }
 
   .generate-action-row.assist-actions-wide .generate-icon-label {
-    width: 22px;
+    min-width: 32px;
+    min-height: 38px;
+    width: 32px;
     height: 36px;
   }
 
   .generate-action-row.assist-actions-wide .generate-inline-icon {
-    width: 28px;
+    min-width: 32px;
+    min-height: 38px;
+    width: 32px;
     height: 36px;
   }
 
   .generate-action-row.assist-actions-wide .generate-submit {
-    min-width: 38px;
-    min-height: 38px;
-    width: 38px;
-    height: 38px;
+    min-width: 42px;
+    min-height: 42px;
+    width: 42px;
+    height: 42px;
   }
 }
 
