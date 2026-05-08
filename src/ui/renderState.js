@@ -2,6 +2,9 @@ const TRACKED_SCROLL_SELECTORS = [
   ".screen-content",
   ".editor-sheet",
   ".editor-step-strip",
+  ".editor-version-strip",
+  ".workbench-editor-panel",
+  ".assist-prompt",
   ".card-sheet-content",
   ".dependency-strip",
   ".dependency-chip-row"

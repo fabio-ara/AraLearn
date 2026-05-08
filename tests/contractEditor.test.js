@@ -8,8 +8,21 @@ import {
   createCourse,
   createEditorSession,
   createMicrosequence,
+  deleteCardInMicrosequence,
+  deleteLesson,
   exportCourseDocument,
+  exportLessonDocument,
+  exportMicrosequenceDocument,
+  exportModuleDocument,
   importCourses,
+  importLessons,
+  importMicrosequences,
+  importModules,
+  moveCardWithinMicrosequence,
+  moveCourse,
+  moveLesson,
+  moveMicrosequence,
+  moveModule,
   replaceMicrosequenceCards,
   updateCardInMicrosequence,
   updateMicrosequence
@@ -27,7 +40,7 @@ function readNormalizedProject(path) {
   return result.value;
 }
 
-test("cria microssequência nova no contrato principal com card inicial raso", () => {
+test("cria microssequência nova no contrato principal como rascunho vazio", () => {
   const document = readNormalizedProject("./docs/examples/aralearn-contract.renderable.json");
 
   const nextDocument = createMicrosequence(document, {
@@ -39,11 +52,29 @@ test("cria microssequência nova no contrato principal com card inicial raso", (
 
   const microsequence = nextDocument.courses[0].modules[0].lessons[0].microsequences[1];
   assert.equal(microsequence.title, "Nova sequência");
-  assert.equal(microsequence.cards[0].type, "text");
-  assert.equal(microsequence.cards[0].text, "Descreva a ideia central desta microssequência.");
+  assert.equal(microsequence.status, "draft");
+  assert.deepEqual(microsequence.cards, []);
 });
 
-test("substitui os cards da microssequência por tipos explícitos do contrato principal", () => {
+test("cria microssequência rascunho sem cards", () => {
+  const document = readNormalizedProject("./docs/examples/aralearn-contract.renderable.json");
+
+  const nextDocument = createMicrosequence(document, {
+    courseKey: "course-curso-renderizavel",
+    moduleKey: "module-modulo-experimental",
+    lessonKey: "lesson-licao-experimental",
+    title: "Soma de matrizes",
+    status: "draft",
+    cards: []
+  });
+
+  const microsequence = nextDocument.courses[0].modules[0].lessons[0].microsequences[1];
+  assert.equal(microsequence.title, "Soma de matrizes");
+  assert.equal(microsequence.status, "draft");
+  assert.deepEqual(microsequence.cards, []);
+});
+
+test("substitui os cards da microssequência por intenções semânticas do contrato principal", () => {
   const document = readNormalizedProject("./docs/examples/aralearn-contract.renderable.json");
 
   const nextDocument = replaceMicrosequenceCards(document, {
@@ -55,15 +86,13 @@ test("substitui os cards da microssequência por tipos explícitos do contrato p
     tags: ["Álgebra linear", "Vetores"],
     cards: [
       {
-        type: "text",
         title: "Intuição",
-        text: "Vetores podem ser lidos como coleções ordenadas de valores."
+        say: "Vetores podem ser lidos como coleções ordenadas de valores."
       },
       {
-        type: "choice",
         title: "Leitura",
         ask: "Qual estrutura agrupa cards?",
-        answer: ["Microssequência"],
+        answer: "Microssequência",
         wrong: ["Curso", "Módulo"]
       }
     ]
@@ -71,8 +100,9 @@ test("substitui os cards da microssequência por tipos explícitos do contrato p
 
   const microsequence = nextDocument.courses[0].modules[0].lessons[0].microsequences[0];
   assert.equal(microsequence.title, "Vetores");
+  assert.equal(microsequence.status, "ready");
   assert.deepEqual(microsequence.tags, ["Álgebra linear", "Vetores"]);
-  assert.equal(microsequence.cards[1].type, "choice");
+  assert.equal(microsequence.cards[1].ask, "Qual estrutura agrupa cards?");
 });
 
 test("cria e edita card do contrato principal sem intent nem data", () => {
@@ -83,7 +113,6 @@ test("cria e edita card do contrato principal sem intent nem data", () => {
     moduleKey: "module-modulo-experimental",
     lessonKey: "lesson-licao-experimental",
     microsequenceKey: "microsequence-modelo-cascata",
-    type: "editor",
     title: "Código",
     language: "json",
     code: "{ \"ok\": true }"
@@ -100,7 +129,6 @@ test("cria e edita card do contrato principal sem intent nem data", () => {
   });
 
   const card = updated.courses[0].modules[0].lessons[0].microsequences[0].cards.at(-1);
-  assert.equal(card.type, "editor");
   assert.equal(card.title, "Código revisto");
   assert.equal(card.code, '{ "ok": false }');
   assert.equal("intent" in card, false);
@@ -129,7 +157,6 @@ test("edita card flow preservando estrutura pública composta", () => {
   });
 
   const card = updated.courses[0].modules[0].lessons[0].microsequences[0].cards[5];
-  assert.equal(card.type, "flow");
   assert.equal(card.title, "Fluxo revisto");
   assert.equal(card.flow[1].if, "x > 0");
   assert.deepEqual(card.flow[1].then.map((item) => item.process), ["Seguir"]);
@@ -153,7 +180,22 @@ test("sessão principal persiste alterações no storage dedicado", () => {
   assert.equal(loaded.courses[0].modules[0].lessons[0].microsequences[0].title, "Modelo cascata revisado");
 });
 
-test("cria curso novo já com módulo, lição, microssequência e card iniciais", () => {
+test("reordena cursos sem perder a árvore interna", () => {
+  const document = createCourse(readNormalizedProject("./docs/examples/aralearn-contract.renderable.json"), {
+    title: "Curso extra"
+  });
+
+  const moved = moveCourse(document, {
+    courseKey: document.courses[1].key,
+    toIndex: 0
+  });
+
+  assert.equal(moved.courses[0].title, "Curso extra");
+  assert.deepEqual(moved.courses[0].modules, []);
+  assert.equal(moved.courses[1].modules[0].lessons[0].microsequences[0].cards.length, 7);
+});
+
+test("cria curso novo vazio, sem conteúdo inicial copiado", () => {
   const document = readNormalizedProject("./docs/examples/aralearn-contract.renderable.json");
 
   const nextDocument = createCourse(document, {
@@ -162,16 +204,111 @@ test("cria curso novo já com módulo, lição, microssequência e card iniciais
 
   const course = nextDocument.courses.at(-1);
   assert.equal(course.title, "Curso importado");
-  assert.equal(course.modules.length, 1);
-  assert.equal(course.modules[0].lessons.length, 1);
-  assert.equal(course.modules[0].lessons[0].microsequences.length, 1);
-  assert.equal(course.modules[0].lessons[0].microsequences[0].cards.length, 1);
+  assert.deepEqual(course.modules, []);
+});
+
+test("permite excluir o último card e manter a microssequência vazia", () => {
+  const document = readNormalizedProject("./docs/examples/aralearn-contract.renderable.json");
+
+  let nextDocument = createMicrosequence(document, {
+    courseKey: "course-curso-renderizavel",
+    moduleKey: "module-modulo-experimental",
+    lessonKey: "lesson-licao-experimental",
+    title: "Vazia para testar",
+    status: "ready",
+    cards: [{ title: "Único", say: "Conteúdo" }]
+  });
+
+  const microsequence = nextDocument.courses[0].modules[0].lessons[0].microsequences.at(-1);
+  const cardKey = microsequence.cards[0].key;
+  nextDocument = deleteCardInMicrosequence(nextDocument, {
+    courseKey: "course-curso-renderizavel",
+    moduleKey: "module-modulo-experimental",
+    lessonKey: "lesson-licao-experimental",
+    microsequenceKey: microsequence.key,
+    cardKey
+  });
+
+  const updated = nextDocument.courses[0].modules[0].lessons[0].microsequences.at(-1);
+  assert.deepEqual(updated.cards, []);
+  assert.equal(updated.status, "draft");
+});
+
+test("reordena módulos, lições, microssequências e cards entre irmãos", () => {
+  const baseDocument = readNormalizedProject("./docs/examples/aralearn-contract.renderable.json");
+  const courseKey = "course-curso-renderizavel";
+  const moduleKey = "module-modulo-experimental";
+  const lessonKey = "lesson-licao-experimental";
+  const microsequenceKey = "microsequence-modelo-cascata";
+
+  let document = importModules(baseDocument, {
+    courseKey,
+    document: {
+      contract: "aralearn.contract",
+      version: 1,
+      kind: "project",
+      courses: [structuredClone(baseDocument.courses[0])]
+    }
+  });
+  const extraModuleKey = document.courses[0].modules[1].key;
+  document = moveModule(document, { courseKey, moduleKey: extraModuleKey, toIndex: 0 });
+  assert.equal(document.courses[0].modules[0].key, extraModuleKey);
+
+  document = importLessons(document, {
+    courseKey,
+    moduleKey,
+    document: {
+      contract: "aralearn.contract",
+      version: 1,
+      kind: "project",
+      courses: [structuredClone(baseDocument.courses[0])]
+    }
+  });
+  const extraLessonKey = document.courses[0].modules[1].lessons[1].key;
+  document = moveLesson(document, { courseKey, moduleKey, lessonKey: extraLessonKey, toIndex: 0 });
+  assert.equal(document.courses[0].modules[1].lessons[0].key, extraLessonKey);
+
+  document = importMicrosequences(document, {
+    courseKey,
+    moduleKey,
+    lessonKey,
+    document: {
+      contract: "aralearn.contract",
+      version: 1,
+      kind: "project",
+      courses: [structuredClone(baseDocument.courses[0])]
+    }
+  });
+  const movedMicrosequenceKey = document.courses[0].modules[1].lessons[1].microsequences[1].key;
+  document = moveMicrosequence(document, {
+    courseKey,
+    moduleKey,
+    lessonKey,
+    microsequenceKey: movedMicrosequenceKey,
+    targetCourseKey: courseKey,
+    targetModuleKey: moduleKey,
+    targetLessonKey: lessonKey,
+    targetPosition: 0
+  });
+  assert.equal(document.courses[0].modules[1].lessons[1].microsequences[0].key, movedMicrosequenceKey);
+
+  document = moveCardWithinMicrosequence(document, {
+    courseKey,
+    moduleKey,
+    lessonKey,
+    microsequenceKey,
+    cardKey: "card-leitura-rapida",
+    toIndex: 0
+  });
+  assert.equal(document.courses[0].modules[1].lessons[1].microsequences[1].cards[0].key, "card-leitura-rapida");
 });
 
 test("importa cursos sem sobrescrever keys existentes e exporta curso isolado", () => {
   const baseDocument = readNormalizedProject("./docs/examples/aralearn-contract.renderable.json");
   const importedDocument = {
     contract: "aralearn.contract",
+    version: 1,
+    kind: "project",
     courses: [structuredClone(baseDocument.courses[0])]
   };
 
@@ -189,4 +326,92 @@ test("importa cursos sem sobrescrever keys existentes e exporta curso isolado", 
   assert.equal(exportedDocument.contract, "aralearn.contract");
   assert.equal(exportedDocument.courses.length, 1);
   assert.equal(exportedDocument.courses[0].title, mergedDocument.courses[1].title);
+});
+
+test("excluir lição intermediária preserva a estrutura restante válida", () => {
+  const baseDocument = readNormalizedProject("./docs/examples/aralearn-contract.renderable.json");
+  const courseKey = baseDocument.courses[0].key;
+  const moduleKey = baseDocument.courses[0].modules[0].key;
+  const withExtraLesson = importLessons(baseDocument, {
+    courseKey,
+    moduleKey,
+    document: {
+      contract: "aralearn.contract",
+      version: 1,
+      kind: "project",
+      courses: [structuredClone(baseDocument.courses[0])]
+    }
+  });
+
+  const targetLessonKey = withExtraLesson.courses[0].modules[0].lessons[0].key;
+  const nextDocument = deleteLesson(withExtraLesson, {
+    courseKey,
+    moduleKey,
+    lessonKey: targetLessonKey
+  });
+
+  assert.equal(nextDocument.courses[0].modules[0].lessons.length, 1);
+  assert.notEqual(nextDocument.courses[0].modules[0].lessons[0].key, targetLessonKey);
+});
+
+test("importa módulo, lição e microssequência em níveis distintos e exporta recortes equivalentes", () => {
+  const baseDocument = readNormalizedProject("./docs/examples/aralearn-contract.renderable.json");
+  const importedCourse = structuredClone(baseDocument.courses[0]);
+
+  const withImportedModule = importModules(baseDocument, {
+    courseKey: baseDocument.courses[0].key,
+    document: {
+      contract: "aralearn.contract",
+      version: 1,
+      kind: "project",
+      courses: [importedCourse]
+    }
+  });
+  assert.equal(withImportedModule.courses[0].modules.length, 2);
+
+  const withImportedLesson = importLessons(baseDocument, {
+    courseKey: baseDocument.courses[0].key,
+    moduleKey: baseDocument.courses[0].modules[0].key,
+    document: {
+      contract: "aralearn.contract",
+      version: 1,
+      kind: "project",
+      courses: [importedCourse]
+    }
+  });
+  assert.equal(withImportedLesson.courses[0].modules[0].lessons.length, 2);
+
+  const withImportedMicrosequence = importMicrosequences(baseDocument, {
+    courseKey: baseDocument.courses[0].key,
+    moduleKey: baseDocument.courses[0].modules[0].key,
+    lessonKey: baseDocument.courses[0].modules[0].lessons[0].key,
+    document: {
+      contract: "aralearn.contract",
+      version: 1,
+      kind: "project",
+      courses: [importedCourse]
+    }
+  });
+  assert.equal(withImportedMicrosequence.courses[0].modules[0].lessons[0].microsequences.length, 2);
+
+  const exportedModule = exportModuleDocument(baseDocument, {
+    courseKey: baseDocument.courses[0].key,
+    moduleKey: baseDocument.courses[0].modules[0].key
+  });
+  assert.equal(exportedModule.courses[0].modules.length, 1);
+
+  const exportedLesson = exportLessonDocument(baseDocument, {
+    courseKey: baseDocument.courses[0].key,
+    moduleKey: baseDocument.courses[0].modules[0].key,
+    lessonKey: baseDocument.courses[0].modules[0].lessons[0].key
+  });
+  assert.equal(exportedLesson.courses[0].modules[0].lessons.length, 1);
+
+  const exportedMicrosequence = exportMicrosequenceDocument(baseDocument, {
+    courseKey: baseDocument.courses[0].key,
+    moduleKey: baseDocument.courses[0].modules[0].key,
+    lessonKey: baseDocument.courses[0].modules[0].lessons[0].key,
+    microsequenceKey: baseDocument.courses[0].modules[0].lessons[0].microsequences[0].key
+  });
+  assert.equal(exportedMicrosequence.courses[0].modules[0].lessons[0].microsequences.length, 1);
 });

@@ -45,29 +45,7 @@ export function buildLessonProgressKey(reference) {
     return "";
   }
 
-  if (normalized.courseKey && normalized.moduleKey) {
-    return `${normalized.courseKey}::${normalized.moduleKey}::${normalized.lessonKey}`;
-  }
-
-  return normalized.lessonKey;
-}
-
-export function listLessonProgressKeys(reference) {
-  const normalized = normalizeProgressReference(reference);
-  if (!normalized) {
-    return [];
-  }
-
-  const keys = [];
-  const pathKey = buildLessonProgressKey(normalized);
-  if (pathKey) {
-    keys.push(pathKey);
-  }
-  if (normalized.lessonKey && normalized.lessonKey !== pathKey) {
-    keys.push(normalized.lessonKey);
-  }
-
-  return keys;
+  return `${normalized.courseKey}::${normalized.moduleKey}::${normalized.lessonKey}`;
 }
 
 function normalizeProgressEntry(entry) {
@@ -111,20 +89,55 @@ export function normalizeProgressDocument(progressDocument) {
 export function readLessonProgressEntry(progressDocument, reference) {
   const normalized = normalizeProgressDocument(progressDocument);
   const lessons = normalized.lessons || {};
+  const pathKey = buildLessonProgressKey(reference);
+  return pathKey && lessons[pathKey] ? lessons[pathKey] : null;
+}
 
-  for (const key of listLessonProgressKeys(reference)) {
-    if (lessons[key]) {
-      return lessons[key];
-    }
+export function getLessonProgressCursor(progressDocument, reference, totalCards = 0) {
+  const entry = readLessonProgressEntry(progressDocument, reference);
+  if (!entry) {
+    return 0;
   }
 
-  return null;
+  const maxIndex = Math.max(0, Number(totalCards || 0) - 1);
+  const safeCursor = Number.isInteger(entry.cursor) && entry.cursor >= 0 ? entry.cursor : 0;
+  return Math.max(0, Math.min(safeCursor, maxIndex));
+}
+
+export function writeLessonProgressEntry(progressDocument, reference, cards = [], reachedIndex = 0) {
+  const normalized = normalizeProgressDocument(progressDocument);
+  const normalizedCards = Array.isArray(cards) ? cards.filter((card) => card && typeof card.key === "string" && card.key.trim() !== "") : [];
+  if (!normalizedCards.length) {
+    return normalized;
+  }
+
+  const pathKey = buildLessonProgressKey(reference);
+  if (!pathKey) {
+    return normalized;
+  }
+
+  const nextLessons = { ...(normalized.lessons || {}) };
+  const previous = readLessonProgressEntry(normalized, reference);
+  const previousCursor = previous && Number.isInteger(previous.cursor) && previous.cursor >= 0 ? previous.cursor : 0;
+  const safeReachedIndex = Math.max(0, Math.min(Number.isInteger(reachedIndex) ? reachedIndex : 0, normalizedCards.length - 1));
+  const furthestCursor = Math.max(previousCursor, safeReachedIndex);
+
+  nextLessons[pathKey] = {
+    cursor: furthestCursor,
+    completedCardKeys: normalizedCards.slice(0, furthestCursor + 1).map((card) => card.key.trim()),
+    updatedAt: new Date().toISOString()
+  };
+
+  return {
+    version: 1,
+    lessons: nextLessons
+  };
 }
 
 export function removeLessonProgressEntries(progressDocument, lessonReferences = []) {
   const normalized = normalizeProgressDocument(progressDocument);
   const blockedKeys = new Set(
-    (Array.isArray(lessonReferences) ? lessonReferences : []).flatMap((reference) => listLessonProgressKeys(reference))
+    (Array.isArray(lessonReferences) ? lessonReferences : []).map((reference) => buildLessonProgressKey(reference)).filter(Boolean)
   );
 
   if (!blockedKeys.size) {

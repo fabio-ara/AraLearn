@@ -1,9 +1,15 @@
 import {
+  getContractCardKind,
+  listContractAnswerValues,
+  normalizeFlowForRuntime
+} from "../contract/contractCard.js";
+import {
   convertPublicFlowToStructure,
   normalizeFlowchartStructure,
   validateFlowchartStructureContract
 } from "../flowchart/flowchartStructure.js";
 import { deriveFlowchartProjectionFromStructure } from "../flowchart/flowchartProjection.js";
+import { DIRECTORY_TREE_BASE_NODE_ID } from "./directoryTree.js";
 import { getExerciseOptionStableId } from "./exerciseOptions.js";
 
 function normalizeText(value) {
@@ -14,8 +20,28 @@ function clone(value) {
   return structuredClone(value);
 }
 
+function slugify(value) {
+  return String(value)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .replace(/-{2,}/g, "-");
+}
+
+function normalizeList(value) {
+  return (Array.isArray(value) ? value : [])
+    .map((item) => normalizeText(item).trim())
+    .filter(Boolean);
+}
+
 function resolvePopupText(value) {
-  return normalizeText(value).replace(/\[\[([\s\S]*?)\]\]/g, (_, answer) => normalizeText(answer));
+  return normalizeText(value).replace(/\[\[([\s\S]*?)\]\]/g, (_, answer) => {
+    const text = normalizeText(answer);
+    const delimiterIndex = text.indexOf("::");
+    return delimiterIndex >= 0 ? text.slice(0, delimiterIndex) : text;
+  });
 }
 
 function sanitizePopupTableRows(rows) {
@@ -36,6 +62,7 @@ function stripFlowPracticeFromSequence(items) {
 
     const next = clone(item);
     delete next.practice;
+    delete next.blank;
     if (Array.isArray(next.then)) {
       next.then = stripFlowPracticeFromSequence(next.then);
     }
@@ -142,7 +169,10 @@ function buildHeadingBlock(title) {
   };
 }
 
-function buildButtonBlock(popupBlocks = []) {
+function buildButtonBlock(after) {
+  const popupBlocks = normalizeText(after).trim()
+    ? [buildParagraphBlock(after)]
+    : [];
   const safePopupBlocks = sanitizePopupBlocks(popupBlocks);
   return {
     kind: "button",
@@ -159,17 +189,27 @@ function buildParagraphBlock(value, extra = {}) {
   };
 }
 
-function buildImageBlock(card) {
-  return {
-    kind: "image",
-    src: normalizeText(card?.src),
-    alt: normalizeText(card?.alt)
-  };
+function enrichTextGapsWithWrong(value, wrong) {
+  const wrongValues = normalizeList(wrong);
+  if (!wrongValues.length) {
+    return normalizeText(value);
+  }
+
+  return normalizeText(value).replace(/\[\[([\s\S]*?)\]\]/g, (_, raw) => {
+    const source = normalizeText(raw);
+    if (source.includes("::")) {
+      return `[[${source}]]`;
+    }
+
+    const answer = source.trim();
+    const options = Array.from(new Set([answer, ...wrongValues].filter(Boolean)));
+    return `[[${answer}::${options.join("|")}]]`;
+  });
 }
 
 function buildChoiceOptions(card) {
-  const correctOptions = Array.isArray(card?.answer) ? card.answer : [];
-  const wrongOptions = Array.isArray(card?.wrong) ? card.wrong : [];
+  const correctOptions = listContractAnswerValues(card);
+  const wrongOptions = normalizeList(card?.wrong);
 
   return [
     ...correctOptions.map((value, index) => ({
@@ -186,38 +226,30 @@ function buildChoiceOptions(card) {
 }
 
 function buildChoiceBlock(card) {
+  const answerCount = listContractAnswerValues(card).length;
   return {
     kind: "multiple_choice",
     ask: normalizeText(card?.ask),
-    answerState: (Array.isArray(card?.answer) ? card.answer : []).length > 1 ? "multiple" : "single",
+    answerState: answerCount > 1 ? "multiple" : "single",
     options: buildChoiceOptions(card)
-  };
-}
-
-function buildCompleteBlock(card) {
-  return {
-    kind: "complete",
-    text: normalizeText(card?.text),
-    answer: (Array.isArray(card?.answer) ? card.answer : []).map((item) => normalizeText(item)).filter(Boolean),
-    wrong: (Array.isArray(card?.wrong) ? card.wrong : []).map((item) => normalizeText(item)).filter(Boolean)
   };
 }
 
 function buildEditorBlock(card) {
   return {
     kind: "editor",
-    value: normalizeText(card?.code),
+    value: enrichTextGapsWithWrong(card?.code, card?.wrong),
     language: normalizeText(card?.language) || "text"
   };
 }
 
 function buildTableTitle(card) {
-  return normalizeText(card?.title).trim() || "Tabela";
+  return normalizeText(card?.table?.title).trim() || normalizeText(card?.title).trim() || "Tabela";
 }
 
 function buildTableHeaders(card) {
-  return (Array.isArray(card?.columns) ? card.columns : []).map((column) => ({
-    value: normalizeText(column),
+  return normalizeList(card?.table?.columns).map((column) => ({
+    value: column,
     align: "center",
     tone: "default",
     bold: false,
@@ -226,7 +258,7 @@ function buildTableHeaders(card) {
 }
 
 function buildTableRows(card) {
-  return (Array.isArray(card?.rows) ? card.rows : []).map((row) => {
+  return (Array.isArray(card?.table?.rows) ? card.table.rows : []).map((row) => {
     return (Array.isArray(row) ? row : []).map((cell) => ({
       value: normalizeText(cell),
       align: "center",
@@ -253,8 +285,63 @@ function buildTableBlock(card) {
   };
 }
 
+function normalizeTreeBase(value) {
+  const text = normalizeText(value).trim();
+  return text || "/";
+}
+
+function splitTreePath(value, base = "/") {
+  const safeBase = normalizeTreeBase(base);
+  let text = normalizeText(value).trim().replace(/\\/g, "/");
+  if (!text) {
+    return [];
+  }
+  if (safeBase !== "/" && text.startsWith(safeBase)) {
+    text = text.slice(safeBase.length);
+  }
+  return text
+    .split("/")
+    .map((part) => part.trim())
+    .filter(Boolean);
+}
+
+function buildTreeNodeId(pathParts) {
+  const slug = slugify(pathParts.join("-"));
+  return slug ? `node-${slug}` : DIRECTORY_TREE_BASE_NODE_ID;
+}
+
+function buildTreeNodes(items, parentPath = []) {
+  return Object.entries(items && typeof items === "object" ? items : {}).map(([name, child]) => {
+    const pathParts = parentPath.concat(String(name || "item"));
+    const isFile = child === null;
+    return {
+      id: buildTreeNodeId(pathParts),
+      type: isFile ? "file" : "folder",
+      name: String(name || (isFile ? "arquivo" : "pasta")),
+      ...(isFile ? {} : { children: buildTreeNodes(child, pathParts) })
+    };
+  });
+}
+
+function buildDirectoryTreeBlock(card) {
+  const base = normalizeTreeBase(card?.tree?.base);
+  const currentPath = splitTreePath(card?.tree?.current, base);
+  const selectedPath = splitTreePath(card?.tree?.selected || card?.tree?.current, base);
+  const closed = normalizeList(card?.tree?.closed).map((entry) => buildTreeNodeId(splitTreePath(entry, base)));
+
+  return {
+    kind: "directory_tree",
+    base,
+    currentNodeId: currentPath.length ? buildTreeNodeId(currentPath) : DIRECTORY_TREE_BASE_NODE_ID,
+    selectedNodeId: selectedPath.length ? buildTreeNodeId(selectedPath) : DIRECTORY_TREE_BASE_NODE_ID,
+    collapsedNodeIds: closed,
+    nodes: buildTreeNodes(card?.tree?.items)
+  };
+}
+
 function buildFlowchartBlock(card) {
-  const publicStructure = convertPublicFlowToStructure(card?.flow);
+  const runtimeFlow = normalizeFlowForRuntime(card?.flow);
+  const publicStructure = convertPublicFlowToStructure(runtimeFlow);
   const normalizedStructure = normalizeFlowchartStructure(publicStructure);
   const validation = validateFlowchartStructureContract(normalizedStructure);
   const projection = validation.valid ? deriveFlowchartProjectionFromStructure(normalizedStructure) : null;
@@ -272,31 +359,49 @@ function buildFlowchartBlock(card) {
   };
 }
 
+function appendIntroParagraph(blocks, card) {
+  const say = enrichTextGapsWithWrong(card?.say, card?.wrong).trim();
+  if (say) {
+    blocks.push(buildParagraphBlock(say));
+  }
+}
+
 function buildCardSpecificBlocks(card) {
   if (!card || typeof card !== "object") {
     return [];
   }
 
-  if (card.type === "choice") {
-    return [buildChoiceBlock(card)];
+  const kind = getContractCardKind(card);
+  const blocks = [];
+
+  if (kind === "ask") {
+    appendIntroParagraph(blocks, card);
+    blocks.push(buildChoiceBlock(card));
+    return blocks;
   }
-  if (card.type === "complete") {
-    return [buildCompleteBlock(card)];
+  if (kind === "code") {
+    appendIntroParagraph(blocks, card);
+    blocks.push(buildEditorBlock(card));
+    return blocks;
   }
-  if (card.type === "editor") {
-    return [buildEditorBlock(card)];
+  if (kind === "table") {
+    appendIntroParagraph(blocks, card);
+    blocks.push(buildTableBlock(card));
+    return blocks;
   }
-  if (card.type === "table") {
-    return [buildTableBlock(card)];
+  if (kind === "tree") {
+    appendIntroParagraph(blocks, card);
+    blocks.push(buildDirectoryTreeBlock(card));
+    return blocks;
   }
-  if (card.type === "flow") {
-    return [buildFlowchartBlock(card)];
-  }
-  if (card.type === "image") {
-    return [buildImageBlock(card)];
+  if (kind === "flow") {
+    appendIntroParagraph(blocks, card);
+    blocks.push(buildFlowchartBlock(card));
+    return blocks;
   }
 
-  return [buildParagraphBlock(card.text)];
+  blocks.push(buildParagraphBlock(enrichTextGapsWithWrong(card?.say, card?.wrong)));
+  return blocks;
 }
 
 export function readCardText(card) {
@@ -304,8 +409,8 @@ export function readCardText(card) {
     return "";
   }
 
-  if (typeof card.text === "string") {
-    return card.text;
+  if (typeof card.say === "string") {
+    return card.say;
   }
   if (typeof card.ask === "string") {
     return card.ask;
@@ -313,26 +418,26 @@ export function readCardText(card) {
   if (typeof card.code === "string") {
     return card.code;
   }
-  if (Array.isArray(card.rows) && card.rows.length) {
-    return card.rows
+  if (Array.isArray(card?.table?.rows) && card.table.rows.length) {
+    return card.table.rows
       .map((row) => (Array.isArray(row) ? row.join(" | ") : ""))
       .filter(Boolean)
       .join("\n");
   }
-  if (Array.isArray(card.columns) && card.columns.length) {
-    return card.columns.join(" | ");
+  if (Array.isArray(card?.table?.columns) && card.table.columns.length) {
+    return card.table.columns.join(" | ");
+  }
+  if (card.tree && typeof card.tree === "object") {
+    return normalizeText(card.tree.current) || normalizeText(card.tree.base) || "tree";
   }
   if (Array.isArray(card.flow) && card.flow.length) {
     return card.flow
       .map((step) => {
-        const [kind] = Object.keys(step || {});
+        const [kind] = Object.keys(step || {}).filter((key) => key !== "id" && key !== "blank");
         return kind ? `${kind}: ${step[kind]}` : "";
       })
       .filter(Boolean)
       .join("\n");
-  }
-  if (typeof card.src === "string") {
-    return card.src;
   }
 
   return "";
@@ -343,7 +448,7 @@ export function buildCardRuntime(card) {
   const blocks = [
     buildHeadingBlock(title),
     ...buildCardSpecificBlocks(card),
-    buildButtonBlock()
+    buildButtonBlock(card?.after)
   ];
 
   return {

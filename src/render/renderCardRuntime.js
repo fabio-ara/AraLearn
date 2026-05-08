@@ -1,4 +1,5 @@
 import { resolveCardRuntime, sanitizePopupBlocks } from "../core/cardRuntime.js";
+import { getContractCardKind } from "../contract/contractCard.js";
 import {
   cloneDirectoryTreeNodes,
   directoryTreePracticeNeedsName,
@@ -868,7 +869,7 @@ function renderFlowchartPracticePrompt(blockKey, projection, exercise, prompt, r
   }
 
   // Mantém o picker sempre visível sem exigir rolagem do quadro.
-  // Espelha o padrão do AraLearn_old (popup sticky dentro do contêiner do flowchart).
+  // Preserva o popup fixo dentro do contêiner do fluxograma.
   const nodes = Array.isArray(projection?.nodes) ? projection.nodes : [];
   const links = Array.isArray(projection?.links) ? projection.links : [];
 
@@ -1979,16 +1980,16 @@ export function renderCardRuntimeBlocksWithDock(card, options = {}) {
 }
 
 export function renderCardRuntimeArticle(card) {
-  const cardClassByType = {
-    text: "card-text",
-    choice: "card-ask",
-    complete: "card-complete",
-    editor: "card-code",
+  const cardClassByKind = {
+    say: "card-say",
+    ask: "card-ask",
+    code: "card-code",
     table: "card-table",
-    flow: "card-flow",
-    image: "card-image"
+    tree: "card-tree",
+    flow: "card-flow"
   };
-  const cardClass = cardClassByType[card?.type] || `card-${escapeHtml(card?.type || "text")}`;
+  const kind = getContractCardKind(card) || "say";
+  const cardClass = cardClassByKind[kind] || `card-${escapeHtml(kind)}`;
 
   return (
     '<article class="card ' +

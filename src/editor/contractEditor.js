@@ -1,5 +1,20 @@
-import { validateContractDocument } from "../contract/validateContract.js";
-import { createStarterContractCard, sanitizeContractCard } from "../contract/contractCard.js";
+import {
+  CONTRACT_KIND_PROJECT,
+  CONTRACT_NAME,
+  CONTRACT_VERSION,
+  validateContractDocument
+} from "../contract/validateContract.js";
+import {
+  createStarterContractCard,
+  getContractCardKindLabel,
+  sanitizeContractCard
+} from "../contract/contractCard.js";
+import {
+  MICROSEQUENCE_STATUS_DRAFT,
+  MICROSEQUENCE_STATUS_READY,
+  normalizeMicrosequenceRuntimeIncluded,
+  normalizeMicrosequenceStatus
+} from "../model/microsequenceStatus.js";
 
 function clone(value) {
   return structuredClone(value);
@@ -94,6 +109,31 @@ function collectSiblingKeys(items) {
   return new Set((items || []).map((item) => item.key).filter(Boolean));
 }
 
+function normalizeTargetIndex(value, maxIndex) {
+  if (!Number.isInteger(value)) {
+    fail('Campo obrigatório inválido: "toIndex".');
+  }
+
+  return Math.max(0, Math.min(value, Math.max(0, maxIndex)));
+}
+
+function reorderSiblingItems(items, itemKey, toIndex, label) {
+  const fromIndex = items.findIndex((item) => item.key === itemKey);
+  if (fromIndex < 0) {
+    fail(`${label} não encontrado: "${itemKey}".`);
+  }
+
+  const [item] = items.splice(fromIndex, 1);
+  const safeIndex = normalizeTargetIndex(toIndex, items.length);
+  items.splice(safeIndex, 0, item);
+
+  return {
+    fromIndex,
+    toIndex: safeIndex,
+    item
+  };
+}
+
 function ensureValidDocument(document) {
   const result = validateContractDocument(document);
   if (!result.ok) {
@@ -177,11 +217,22 @@ function createStarterCard() {
   return sanitizeContractCard(createStarterContractCard());
 }
 
+function createProjectDocument(courses) {
+  return {
+    contract: CONTRACT_NAME,
+    version: CONTRACT_VERSION,
+    kind: CONTRACT_KIND_PROJECT,
+    courses
+  };
+}
+
 function createStarterMicrosequence({ title = "Nova microssequência" } = {}) {
   return {
     key: uniqueKey(title, new Set(), "microsequence"),
     title,
-    cards: [createStarterCard()]
+    status: MICROSEQUENCE_STATUS_DRAFT,
+    included: false,
+    cards: []
   };
 }
 
@@ -190,7 +241,7 @@ function createStarterLesson({ title = "Nova lição", description } = {}) {
     key: uniqueKey(title, new Set(), "lesson"),
     title,
     ...(description ? { description } : {}),
-    microsequences: [createStarterMicrosequence()]
+    microsequences: []
   };
 }
 
@@ -199,7 +250,7 @@ function createStarterModule({ title = "Novo módulo", description } = {}) {
     key: uniqueKey(title, new Set(), "module"),
     title,
     ...(description ? { description } : {}),
-    lessons: [createStarterLesson()]
+    lessons: []
   };
 }
 
@@ -208,7 +259,7 @@ function createStarterCourse({ title = "Novo curso", description } = {}) {
     key: uniqueKey(title, new Set(), "course"),
     title,
     ...(description ? { description } : {}),
-    modules: [createStarterModule()]
+    modules: []
   };
 }
 
@@ -226,6 +277,26 @@ function normalizeCardForInsert(entry, usedKeys, fallbackLabel = "card") {
     ...normalizedCard,
     key
   };
+}
+
+function extractCardInput(input = {}) {
+  const {
+    courseKey,
+    moduleKey,
+    lessonKey,
+    microsequenceKey,
+    cardKey,
+    position,
+    toIndex,
+    targetCourseKey,
+    targetModuleKey,
+    targetLessonKey,
+    targetPosition,
+    renames,
+    ...cardInput
+  } = input || {};
+
+  return cardInput;
 }
 
 export function updateCourse(document, input) {
@@ -282,12 +353,192 @@ export function importCourses(document, input = {}) {
   return ensureValidDocument(nextDocument);
 }
 
+export function importModules(document, input = {}) {
+  const nextDocument = clone(document);
+  const course = findCourse(nextDocument, input.courseKey);
+  const importedDocument = ensureValidDocument(input.document);
+  const importedModules = importedDocument.courses.flatMap((entry) => entry.modules || []);
+
+  if (!importedModules.length) {
+    fail("Documento importado sem módulos.");
+  }
+
+  const usedKeys = collectSiblingKeys(course.modules || []);
+  importedModules.forEach((moduleValue) => {
+    const importedModule = clone(moduleValue);
+    const preferredKey = typeof importedModule.key === "string" && importedModule.key.trim() ? importedModule.key.trim() : "";
+    if (preferredKey && !usedKeys.has(preferredKey)) {
+      importedModule.key = preferredKey;
+      usedKeys.add(preferredKey);
+    } else {
+      importedModule.key = uniqueKey(importedModule.title || "Módulo importado", usedKeys, "module");
+    }
+    course.modules.push(importedModule);
+  });
+
+  return ensureValidDocument(nextDocument);
+}
+
+export function importLessons(document, input = {}) {
+  const nextDocument = clone(document);
+  const { moduleValue } = findModule(nextDocument, input.courseKey, input.moduleKey);
+  const importedDocument = ensureValidDocument(input.document);
+  const importedLessons = importedDocument.courses.flatMap((course) =>
+    (course.modules || []).flatMap((moduleItem) => moduleItem.lessons || [])
+  );
+
+  if (!importedLessons.length) {
+    fail("Documento importado sem lições.");
+  }
+
+  const usedKeys = collectSiblingKeys(moduleValue.lessons || []);
+  importedLessons.forEach((lesson) => {
+    const importedLesson = clone(lesson);
+    const preferredKey = typeof importedLesson.key === "string" && importedLesson.key.trim() ? importedLesson.key.trim() : "";
+    if (preferredKey && !usedKeys.has(preferredKey)) {
+      importedLesson.key = preferredKey;
+      usedKeys.add(preferredKey);
+    } else {
+      importedLesson.key = uniqueKey(importedLesson.title || "Lição importada", usedKeys, "lesson");
+    }
+    moduleValue.lessons.push(importedLesson);
+  });
+
+  return ensureValidDocument(nextDocument);
+}
+
+export function importMicrosequences(document, input = {}) {
+  const nextDocument = clone(document);
+  const { lesson } = findLesson(nextDocument, input.courseKey, input.moduleKey, input.lessonKey);
+  const importedDocument = ensureValidDocument(input.document);
+  const importedMicrosequences = importedDocument.courses.flatMap((course) =>
+    (course.modules || []).flatMap((moduleItem) =>
+      (moduleItem.lessons || []).flatMap((lessonItem) => lessonItem.microsequences || [])
+    )
+  );
+
+  if (!importedMicrosequences.length) {
+    fail("Documento importado sem microssequências.");
+  }
+
+  const usedKeys = collectSiblingKeys(lesson.microsequences || []);
+  importedMicrosequences.forEach((entry) => {
+    const importedMicrosequence = clone(entry);
+    const preferredKey =
+      typeof importedMicrosequence.key === "string" && importedMicrosequence.key.trim()
+        ? importedMicrosequence.key.trim()
+        : "";
+
+    if (preferredKey && !usedKeys.has(preferredKey)) {
+      importedMicrosequence.key = preferredKey;
+      usedKeys.add(preferredKey);
+    } else {
+      importedMicrosequence.key = uniqueKey(importedMicrosequence.title || "Microssequência importada", usedKeys, "microsequence");
+    }
+
+    if (importedMicrosequence.title) {
+      importedMicrosequence.title = buildUniqueMicrosequenceTitle(lesson, importedMicrosequence.title, null);
+    }
+
+    lesson.microsequences.push(importedMicrosequence);
+  });
+
+  return ensureValidDocument(nextDocument);
+}
+
 export function exportCourseDocument(document, input) {
   const course = findCourse(document, input.courseKey);
-  return ensureValidDocument({
-    contract: "aralearn.contract",
-    courses: [clone(course)]
-  });
+  return ensureValidDocument(createProjectDocument([clone(course)]));
+}
+
+export function exportModuleDocument(document, input) {
+  const course = findCourse(document, input.courseKey);
+  const moduleValue = course.modules.find((item) => item.key === input.moduleKey);
+  if (!moduleValue) {
+    fail(`Módulo não encontrado: "${input.moduleKey}".`);
+  }
+
+  return ensureValidDocument(
+    createProjectDocument([
+      {
+        key: course.key,
+        title: course.title,
+        ...(course.description ? { description: course.description } : {}),
+        modules: [clone(moduleValue)]
+      }
+    ])
+  );
+}
+
+export function exportLessonDocument(document, input) {
+  const course = findCourse(document, input.courseKey);
+  const moduleValue = course.modules.find((item) => item.key === input.moduleKey);
+  if (!moduleValue) {
+    fail(`Módulo não encontrado: "${input.moduleKey}".`);
+  }
+  const lesson = moduleValue.lessons.find((item) => item.key === input.lessonKey);
+  if (!lesson) {
+    fail(`Lição não encontrada: "${input.lessonKey}".`);
+  }
+
+  return ensureValidDocument(
+    createProjectDocument([
+      {
+        key: course.key,
+        title: course.title,
+        ...(course.description ? { description: course.description } : {}),
+        modules: [
+          {
+            key: moduleValue.key,
+            title: moduleValue.title,
+            ...(moduleValue.description ? { description: moduleValue.description } : {}),
+            lessons: [clone(lesson)]
+          }
+        ]
+      }
+    ])
+  );
+}
+
+export function exportMicrosequenceDocument(document, input) {
+  const course = findCourse(document, input.courseKey);
+  const moduleValue = course.modules.find((item) => item.key === input.moduleKey);
+  if (!moduleValue) {
+    fail(`Módulo não encontrado: "${input.moduleKey}".`);
+  }
+  const lesson = moduleValue.lessons.find((item) => item.key === input.lessonKey);
+  if (!lesson) {
+    fail(`Lição não encontrada: "${input.lessonKey}".`);
+  }
+  const microsequence = lesson.microsequences.find((item) => item.key === input.microsequenceKey);
+  if (!microsequence) {
+    fail(`Microssequência não encontrada: "${input.microsequenceKey}".`);
+  }
+
+  return ensureValidDocument(
+    createProjectDocument([
+      {
+        key: course.key,
+        title: course.title,
+        ...(course.description ? { description: course.description } : {}),
+        modules: [
+          {
+            key: moduleValue.key,
+            title: moduleValue.title,
+            ...(moduleValue.description ? { description: moduleValue.description } : {}),
+            lessons: [
+              {
+                key: lesson.key,
+                title: lesson.title,
+                ...(lesson.description ? { description: lesson.description } : {}),
+                microsequences: [clone(microsequence)]
+              }
+            ]
+          }
+        ]
+      }
+    ])
+  );
 }
 
 export function deleteCourse(document, input) {
@@ -298,11 +549,12 @@ export function deleteCourse(document, input) {
   }
 
   nextDocument.courses.splice(courseIndex, 1);
+  return ensureValidDocument(nextDocument);
+}
 
-  if (!nextDocument.courses.length) {
-    nextDocument.courses.push(createStarterCourse());
-  }
-
+export function moveCourse(document, input) {
+  const nextDocument = clone(document);
+  reorderSiblingItems(nextDocument.courses || [], input.courseKey, input.toIndex, "Curso");
   return ensureValidDocument(nextDocument);
 }
 
@@ -346,11 +598,13 @@ export function deleteModule(document, input) {
   }
 
   course.modules.splice(moduleIndex, 1);
+  return ensureValidDocument(nextDocument);
+}
 
-  if (!course.modules.length) {
-    course.modules.push(createStarterModule());
-  }
-
+export function moveModule(document, input) {
+  const nextDocument = clone(document);
+  const course = findCourse(nextDocument, input.courseKey);
+  reorderSiblingItems(course.modules || [], input.moduleKey, input.toIndex, "Módulo");
   return ensureValidDocument(nextDocument);
 }
 
@@ -394,11 +648,13 @@ export function deleteLesson(document, input) {
   }
 
   moduleValue.lessons.splice(lessonIndex, 1);
+  return ensureValidDocument(nextDocument);
+}
 
-  if (!moduleValue.lessons.length) {
-    moduleValue.lessons.push(createStarterLesson());
-  }
-
+export function moveLesson(document, input) {
+  const nextDocument = clone(document);
+  const { moduleValue } = findModule(nextDocument, input.courseKey, input.moduleKey);
+  reorderSiblingItems(moduleValue.lessons || [], input.lessonKey, input.toIndex, "Lição");
   return ensureValidDocument(nextDocument);
 }
 
@@ -415,10 +671,15 @@ export function createMicrosequence(document, input) {
     fail(`Key de microssequência duplicada: "${key}".`);
   }
 
+  const cardInput = Array.isArray(input.cards) ? input.cards : null;
+  const usedCardKeys = new Set();
+  const cards = cardInput ? cardInput.map((entry, index) => normalizeCardForInsert(entry, usedCardKeys, `Card ${index + 1}`)) : [];
   const microsequence = {
     key,
     title: buildUniqueMicrosequenceTitle(lesson, title, null),
-    cards: [normalizeCardForInsert(createStarterContractCard(), new Set(), "Novo card")]
+    status: normalizeMicrosequenceStatus(input.status || MICROSEQUENCE_STATUS_DRAFT, { cards }),
+    included: normalizeMicrosequenceRuntimeIncluded(input.included, { cards }),
+    cards
   };
 
   lesson.microsequences.push(microsequence);
@@ -443,6 +704,14 @@ export function updateMicrosequence(document, input) {
     }
   }
 
+  if (input.status !== undefined) {
+    microsequence.status = normalizeMicrosequenceStatus(input.status, microsequence);
+  }
+
+  if (input.included !== undefined) {
+    microsequence.included = normalizeMicrosequenceRuntimeIncluded(input.included, microsequence);
+  }
+
   return ensureValidDocument(nextDocument);
 }
 
@@ -456,15 +725,10 @@ export function deleteMicrosequence(document, input) {
   }
 
   lesson.microsequences.splice(microsequenceIndex, 1);
-
-  if (!lesson.microsequences.length) {
-    lesson.microsequences.push(createStarterMicrosequence());
-  }
-
   return ensureValidDocument(nextDocument);
 }
 
-export function moveMicrosequence(document, input) {
+export function moveMicrosequenceWithResult(document, input) {
   const nextDocument = clone(document);
   const { lesson: sourceLesson } = findLesson(nextDocument, input.courseKey, input.moduleKey, input.lessonKey);
   const { lesson: targetLesson } = findLesson(
@@ -480,6 +744,7 @@ export function moveMicrosequence(document, input) {
   }
 
   const [microsequence] = sourceLesson.microsequences.splice(microsequenceIndex, 1);
+  const originalKey = microsequence.key;
 
   if (sourceLesson !== targetLesson && !sourceLesson.microsequences.length) {
     sourceLesson.microsequences.push(createStarterMicrosequence());
@@ -512,7 +777,21 @@ export function moveMicrosequence(document, input) {
     assignUniqueMicrosequenceTitle(targetLesson, targetMicrosequence, rename.title);
   });
 
-  return ensureValidDocument(nextDocument);
+  return {
+    document: ensureValidDocument(nextDocument),
+    movedMicrosequence: {
+      courseKey: input.targetCourseKey,
+      moduleKey: input.targetModuleKey,
+      lessonKey: input.targetLessonKey,
+      microsequenceKey: microsequence.key,
+      previousMicrosequenceKey: originalKey,
+      position: safeIndex
+    }
+  };
+}
+
+export function moveMicrosequence(document, input) {
+  return moveMicrosequenceWithResult(document, input).document;
 }
 
 export function replaceMicrosequenceCards(document, input) {
@@ -540,6 +819,8 @@ export function replaceMicrosequenceCards(document, input) {
 
   const usedKeys = new Set();
   microsequence.cards = cards.map((entry, index) => normalizeCardForInsert(entry, usedKeys, `Card ${index + 1}`));
+  microsequence.status = normalizeMicrosequenceStatus(input.status || MICROSEQUENCE_STATUS_READY, microsequence);
+  microsequence.included = normalizeMicrosequenceRuntimeIncluded(input.included ?? microsequence.included, microsequence);
   return ensureValidDocument(nextDocument);
 }
 
@@ -548,10 +829,13 @@ export function createCardInMicrosequence(document, input) {
   const { lesson } = findLesson(nextDocument, input.courseKey, input.moduleKey, input.lessonKey);
   const microsequence = findMicrosequence(lesson, input.microsequenceKey);
   const usedKeys = collectSiblingKeys(microsequence.cards);
-  const card = normalizeCardForInsert(input, usedKeys, input.title || input.type || "card");
+  const cardInput = extractCardInput(input);
+  const card = normalizeCardForInsert(cardInput, usedKeys, cardInput.title || getContractCardKindLabel(cardInput) || "card");
   const position = Number.isInteger(input.position) ? input.position : microsequence.cards.length;
   const safeIndex = Math.max(0, Math.min(position, microsequence.cards.length));
   microsequence.cards.splice(safeIndex, 0, card);
+  microsequence.status = normalizeMicrosequenceStatus(input.status || microsequence.status, microsequence);
+  microsequence.included = normalizeMicrosequenceRuntimeIncluded(input.included ?? microsequence.included, microsequence);
   return ensureValidDocument(nextDocument);
 }
 
@@ -569,11 +853,11 @@ export function updateCardInMicrosequence(document, input) {
   const nextCard = normalizeCardForInsert(
     {
       ...currentCard,
-      ...input,
+      ...extractCardInput(input),
       key: currentCard.key
     },
     collectSiblingKeys(microsequence.cards.filter((item) => item.key !== currentCard.key)),
-    currentCard.title || currentCard.type
+    currentCard.title || getContractCardKindLabel(currentCard)
   );
 
   microsequence.cards[cardIndex] = nextCard;
@@ -584,18 +868,7 @@ export function moveCardWithinMicrosequence(document, input) {
   const nextDocument = clone(document);
   const { lesson } = findLesson(nextDocument, input.courseKey, input.moduleKey, input.lessonKey);
   const microsequence = findMicrosequence(lesson, input.microsequenceKey);
-  const fromIndex = microsequence.cards.findIndex((item) => item.key === input.cardKey);
-
-  if (fromIndex < 0) {
-    fail(`Card não encontrado: "${input.cardKey}".`);
-  }
-  if (!Number.isInteger(input.toIndex)) {
-    fail('Campo obrigatório inválido: "toIndex".');
-  }
-
-  const [card] = microsequence.cards.splice(fromIndex, 1);
-  const safeIndex = Math.max(0, Math.min(input.toIndex, microsequence.cards.length));
-  microsequence.cards.splice(safeIndex, 0, card);
+  reorderSiblingItems(microsequence.cards || [], input.cardKey, input.toIndex, "Card");
   return ensureValidDocument(nextDocument);
 }
 
@@ -610,9 +883,14 @@ export function deleteCardInMicrosequence(document, input) {
   }
 
   microsequence.cards.splice(fromIndex, 1);
-  if (!microsequence.cards.length) {
-    microsequence.cards.push(normalizeCardForInsert(createStarterContractCard(), new Set(), "Novo card"));
-  }
+  microsequence.status = normalizeMicrosequenceStatus(
+    microsequence.cards.length ? microsequence.status : MICROSEQUENCE_STATUS_DRAFT,
+    microsequence
+  );
+  microsequence.included = normalizeMicrosequenceRuntimeIncluded(
+    microsequence.cards.length ? microsequence.included : false,
+    microsequence
+  );
   return ensureValidDocument(nextDocument);
 }
 
@@ -632,8 +910,32 @@ export function createEditorSession(storage) {
       storage.saveProject(nextDocument);
       return nextDocument;
     },
+    importModules(input) {
+      const nextDocument = importModules(storage.loadProject(), input);
+      storage.saveProject(nextDocument);
+      return nextDocument;
+    },
+    importLessons(input) {
+      const nextDocument = importLessons(storage.loadProject(), input);
+      storage.saveProject(nextDocument);
+      return nextDocument;
+    },
+    importMicrosequences(input) {
+      const nextDocument = importMicrosequences(storage.loadProject(), input);
+      storage.saveProject(nextDocument);
+      return nextDocument;
+    },
     exportCourseDocument(input) {
       return exportCourseDocument(storage.loadProject(), input);
+    },
+    exportModuleDocument(input) {
+      return exportModuleDocument(storage.loadProject(), input);
+    },
+    exportLessonDocument(input) {
+      return exportLessonDocument(storage.loadProject(), input);
+    },
+    exportMicrosequenceDocument(input) {
+      return exportMicrosequenceDocument(storage.loadProject(), input);
     },
     updateCourse(input) {
       const nextDocument = updateCourse(storage.loadProject(), input);
@@ -642,6 +944,11 @@ export function createEditorSession(storage) {
     },
     deleteCourse(input) {
       const nextDocument = deleteCourse(storage.loadProject(), input);
+      storage.saveProject(nextDocument);
+      return nextDocument;
+    },
+    moveCourse(input) {
+      const nextDocument = moveCourse(storage.loadProject(), input);
       storage.saveProject(nextDocument);
       return nextDocument;
     },
@@ -660,6 +967,11 @@ export function createEditorSession(storage) {
       storage.saveProject(nextDocument);
       return nextDocument;
     },
+    moveModule(input) {
+      const nextDocument = moveModule(storage.loadProject(), input);
+      storage.saveProject(nextDocument);
+      return nextDocument;
+    },
     createLesson(input) {
       const nextDocument = createLesson(storage.loadProject(), input);
       storage.saveProject(nextDocument);
@@ -672,6 +984,11 @@ export function createEditorSession(storage) {
     },
     deleteLesson(input) {
       const nextDocument = deleteLesson(storage.loadProject(), input);
+      storage.saveProject(nextDocument);
+      return nextDocument;
+    },
+    moveLesson(input) {
+      const nextDocument = moveLesson(storage.loadProject(), input);
       storage.saveProject(nextDocument);
       return nextDocument;
     },
@@ -691,9 +1008,9 @@ export function createEditorSession(storage) {
       return nextDocument;
     },
     moveMicrosequence(input) {
-      const nextDocument = moveMicrosequence(storage.loadProject(), input);
-      storage.saveProject(nextDocument);
-      return nextDocument;
+      const result = moveMicrosequenceWithResult(storage.loadProject(), input);
+      storage.saveProject(result.document);
+      return result;
     },
     replaceMicrosequenceCards(input) {
       const nextDocument = replaceMicrosequenceCards(storage.loadProject(), input);

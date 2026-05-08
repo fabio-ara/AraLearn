@@ -42,29 +42,36 @@ export function createProjectStorage(store, keys = DEFAULT_KEYS) {
     throw new Error("Store inválido para persistência.");
   }
 
+  const storageKeys = { ...DEFAULT_KEYS, ...keys };
+
   return {
     saveProject(projectDocument) {
       const serialized = serializeProjectDocument(projectDocument);
-      store.setItem(keys.project, serialized);
+      store.setItem(storageKeys.project, serialized);
       return parseProjectDocument(serialized);
     },
 
     loadProject() {
-      return parseProjectDocument(store.getItem(keys.project));
+      const rawProject = store.getItem(storageKeys.project);
+      return parseProjectDocument(rawProject);
     },
 
     saveProgress(progressDocument) {
       const normalized = normalizeProgressDocument(progressDocument);
-      store.setItem(keys.progress, serializeProgressDocument(normalized));
+      store.setItem(storageKeys.progress, serializeProgressDocument(normalized));
       return normalized;
     },
 
     loadProgress() {
-      return parseProgressDocument(store.getItem(keys.progress));
+      return parseProgressDocument(store.getItem(storageKeys.progress));
     },
 
     clearProgress() {
-      store.removeItem(keys.progress);
+      store.removeItem(storageKeys.progress);
+    },
+
+    loadStorageVersion() {
+      return null;
     },
 
     exportJson() {

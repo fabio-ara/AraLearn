@@ -104,6 +104,8 @@ export function compileContractDocument(document) {
 
   return {
     contract: document.contract,
+    version: document.version,
+    kind: document.kind,
     courses: compiledCourses,
     index: {
       sequences,

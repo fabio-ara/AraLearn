@@ -11,11 +11,16 @@ export function detectJsonExchangeFormat(parsed) {
     return "storage";
   }
 
-  if (parsed.contract === "aralearn.contract" && Array.isArray(parsed.courses)) {
+  if (
+    parsed.contract === "aralearn.contract" &&
+    parsed.version === 1 &&
+    parsed.kind === "project" &&
+    Array.isArray(parsed.courses)
+  ) {
     return "contract";
   }
 
   throw new Error(
-    'JSON inválido para importação. Use um curso com `contract: "aralearn.contract"` ou um backup com `format: "aralearn.storage"`.'
+    'JSON inválido para importação. Use um projeto com `contract: "aralearn.contract"`, `version: 1`, `kind: "project"` ou um backup com `format: "aralearn.storage"`.'
   );
 }
