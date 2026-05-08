@@ -944,7 +944,7 @@ function renderMicrosequenceWorkbenchScreen({
   const editPane =
     '<section class="microsequence-assist-panel microsequence-generator-panel workbench-editor-panel">' +
     (() => {
-      const canSubmitAssist = !!String(microsequence?.title || "").trim();
+      const canSubmitAssist = !!String(microsequence?.title || "").trim() && !!String(editorSupport.promptText || "").trim();
       return (
     '<label class="field generate-icon-field workbench-select-field">' +
     renderInlineFieldIcon("title", "Microssequência") +
@@ -952,13 +952,14 @@ function renderMicrosequenceWorkbenchScreen({
     escapeHtml(microsequence?.title || "") +
     '">' +
     "</label>" +
-    '<div class="field generate-icon-field workbench-select-field workbench-tag-row">' +
+    '<div class="workbench-tag-layout">' +
+    '<div class="generate-icon-field workbench-tag-picker-row">' +
     renderInlineFieldIcon("tags", "Tags") +
-    '<div class="workbench-tag-field">' +
-    dependencyPicker +
-    '<div class="dependency-chip-row">' +
+    (dependencyPicker || '<div class="workbench-tag-picker-empty"></div>') +
+    "</div>" +
+    '<div class="dependency-chip-row workbench-tag-chip-row">' +
     selectedDependencyTags +
-    "</div></div></div>" +
+    "</div></div>" +
     '<label class="field generate-icon-field generate-prompt-field workbench-prompt-field">' +
     renderInlineFieldIcon("prompt", promptLabel) +
     '<textarea data-field="assist-prompt" class="assist-prompt" aria-label="' +

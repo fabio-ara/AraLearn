@@ -256,7 +256,7 @@ test("renderiza o painel da microssequência sem botão próprio de ações e co
   assert.match(html, /data-action="clear-prompt" title="Limpar prompt" aria-label="Limpar prompt"/);
   assert.match(html, /data-action="open-assist-config" title="Configurar IA" aria-label="Configurar IA"/);
   assert.match(html, /data-action="apply-assist"[^>]*title="Editar cards" aria-label="Editar cards"/);
-  assert.doesNotMatch(html, /data-action="apply-assist"[^>]*disabled aria-disabled="true"/);
+  assert.match(html, /data-action="apply-assist"[^>]*disabled aria-disabled="true"/);
   assert.match(html, /generate-submit-icon/);
   assert.doesNotMatch(html, />Preview<\/button>/);
   assert.doesNotMatch(html, />Edição<\/button>/);

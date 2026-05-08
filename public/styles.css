@@ -3160,14 +3160,26 @@ button {
   padding-bottom: 4px;
 }
 
-.workbench-tag-field {
+.workbench-tag-layout {
   display: grid;
   gap: 6px;
   min-width: 0;
 }
 
-.workbench-tag-row {
-  align-items: start;
+.workbench-tag-picker-row {
+  min-width: 0;
+}
+
+.workbench-tag-picker-row .assist-tag-picker {
+  margin-top: 0;
+}
+
+.workbench-tag-picker-empty {
+  min-height: 38px;
+}
+
+.workbench-tag-chip-row {
+  padding-left: 42px;
 }
 
 .workbench-tag-field .assist-tag-picker {
