@@ -337,6 +337,18 @@ button {
   cursor: not-allowed;
 }
 
+.microsequence-actions .open-mini:disabled,
+.microsequence-actions .open-mini[aria-disabled="true"] {
+  opacity: 0.44;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.microsequence-actions .open-mini:disabled:hover,
+.microsequence-actions .open-mini[aria-disabled="true"]:hover {
+  background: inherit;
+}
+
 [data-structure-target] {
   position: relative;
   transition:

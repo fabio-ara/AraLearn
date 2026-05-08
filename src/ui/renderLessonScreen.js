@@ -756,7 +756,7 @@ function renderLessonScreenView({ course, lesson, moduleValue, progress }) {
         '"' +
         (canToggleRuntime ? "" : ' disabled aria-disabled="true"') +
         ">" +
-        (isIncluded ? "+" : "-") +
+        (isIncluded ? "-" : "+") +
         "</button>" +
         '<button class="icon-ghost tiny-icon" type="button" data-action="open-microsequence-actions" data-microsequence-key="' +
         escapeHtml(microsequence.key) +
