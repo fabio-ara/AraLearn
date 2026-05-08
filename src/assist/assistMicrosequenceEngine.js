@@ -376,7 +376,7 @@ export function getAssistDraftSchema() {
       cards: {
         type: "array",
         minItems: 3,
-        maxItems: 5,
+        maxItems: 7,
         items: {
           type: "object",
           properties: {
@@ -506,7 +506,7 @@ export function normalizeAssistPlan(value) {
     fail("O serviço de IA devolveu um plano inválido.");
   }
 
-  const cardPlans = Array.isArray(value.cardPlans) ? value.cardPlans.slice(0, 5) : [];
+  const cardPlans = Array.isArray(value.cardPlans) ? value.cardPlans.slice(0, 7) : [];
   if (cardPlans.length < 3) {
     fail("O serviço de IA devolveu um plano com poucos cards.");
   }
@@ -885,9 +885,9 @@ export function normalizeAssistDraftResult(value, options = {}) {
     fail("O serviço de IA devolveu uma microssequência inválida.");
   }
 
-  const rawCards = Array.isArray(value.cards) ? value.cards.slice(0, 5) : [];
-  const plannedCards = Array.isArray(plan?.cardPlans) ? plan.cardPlans.slice(0, 5) : [];
-  const cardCount = Math.min(Math.max(rawCards.length, plannedCards.length, 3), 5);
+  const rawCards = Array.isArray(value.cards) ? value.cards.slice(0, 7) : [];
+  const plannedCards = Array.isArray(plan?.cardPlans) ? plan.cardPlans.slice(0, 7) : [];
+  const cardCount = Math.min(Math.max(rawCards.length, plannedCards.length, 3), 7);
   const assistCards = Array.from({ length: cardCount }, (_, index) =>
     mergeAssistCardWithPlan(rawCards[index], plannedCards[index], {
       plan,

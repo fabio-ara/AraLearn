@@ -5,6 +5,89 @@ import { normalizeComposeResult, normalizeEditResult, runGeminiAssist } from "..
 import { buildAssistDraftPrompt, buildDeterministicAssistPlan, normalizeAssistDraftResult } from "../src/assist/assistMicrosequenceEngine.js";
 import { buildCardRuntime } from "../src/core/cardRuntime.js";
 
+function makeMicrosequencePlanPayload() {
+  return {
+    typeId: "code_or_command",
+    sizeId: "medium",
+    microsequenceGoal: "Explicar git add e git push.",
+    selectedExtraResourceTypes: ["code_editor"],
+    cardPlan: [
+      { position: 1, role: "situar os comandos", resourceType: "paragraph", sourceRefs: [] },
+      { position: 2, role: "apresentar git add", resourceType: "code_editor", sourceRefs: [] },
+      { position: 3, role: "apresentar git push", resourceType: "code_editor", sourceRefs: [] },
+      { position: 4, role: "retomar o uso correto", resourceType: "paragraph", sourceRefs: [] },
+      { position: 5, role: "checar entendimento", resourceType: "multiple_choice", sourceRefs: [] }
+    ],
+    sourceUsePlan: [],
+    reason: "Pedido pede comandos específicos."
+  };
+}
+
+function makeGeneratedCardsPayload() {
+  return {
+    cards: [
+      {
+        position: 1,
+        resourceType: "paragraph",
+        title: "Antes dos comandos",
+        text: "Git registra mudanças em etapas. Cada comando faz uma parte do caminho."
+      },
+      {
+        position: 2,
+        resourceType: "code_editor",
+        title: "git add",
+        prompt: "Use git add para preparar arquivos.",
+        language: "bash",
+        code: "git add arquivo.txt"
+      },
+      {
+        position: 3,
+        resourceType: "code_editor",
+        title: "git push",
+        prompt: "Use git push para enviar commits quando já existe remoto.",
+        language: "bash",
+        code: "git push -u origin main"
+      },
+      {
+        position: 4,
+        resourceType: "paragraph",
+        title: "Recuperação ativa",
+        text: "Para enviar commits, use [[git push]]."
+      },
+      {
+        position: 5,
+        resourceType: "multiple_choice",
+        title: "Verificação",
+        question: "Qual comando envia commits?",
+        options: [
+          { optionId: "a", label: "git push" },
+          { optionId: "b", label: "git add" },
+          { optionId: "c", label: "git init" }
+        ],
+        correctOptionId: "a",
+        feedback: "git push envia commits ao remoto."
+      }
+    ]
+  };
+}
+
+function makeGeminiTextResponse(payloadText) {
+  return {
+    ok: true,
+    async json() {
+      return {
+        candidates: [
+          {
+            content: {
+              parts: [{ text: payloadText }]
+            }
+          }
+        ]
+      };
+    }
+  };
+}
+
 test("normaliza composição com intenções semânticas", () => {
   const result = normalizeComposeResult({
     microsequenceTitle: "Modelo cascata",
@@ -267,37 +350,9 @@ test("gera microssequência com plano local e chamada estruturada ao Gemini", as
   const calls = [];
   globalThis.fetch = async (url, options) => {
     calls.push({ url, body: JSON.parse(options.body) });
-    const payload = {
-      title: "Git básico",
-      tags: ["Git"],
-      cards: [
-        { title: "Antes dos comandos", text: "Git registra mudanças em etapas. Cada comando faz uma parte do caminho." },
-        { title: "Comandos em contexto", text: "Use git add para preparar arquivos.", language: "bash", code: "git add arquivo.txt" },
-        { title: "Envio", text: "Use git push para enviar commits quando já existe remoto.", language: "bash", code: "git remote add origin https://example.com/repo.git\ngit push -u origin main" },
-        { title: "Recuperação ativa", text: "Para enviar commits, use [[git push]].", wrong: ["git add", "git init"] },
-        {
-          title: "Verificação",
-          question: "Qual comando envia commits?",
-          answer: "git push",
-          wrong: ["git add", "git init"]
-        }
-      ]
-    };
-
-    return {
-      ok: true,
-      async json() {
-        return {
-          candidates: [
-            {
-              content: {
-                parts: [{ text: JSON.stringify(payload) }]
-              }
-            }
-          ]
-        };
-      }
-    };
+    return makeGeminiTextResponse(
+      JSON.stringify(calls.length === 1 ? makeMicrosequencePlanPayload() : makeGeneratedCardsPayload())
+    );
   };
 
   try {
@@ -318,21 +373,17 @@ test("gera microssequência com plano local e chamada estruturada ao Gemini", as
       promptText: "explique git add e git push"
     });
 
-    assert.equal(calls.length, 1);
+    assert.equal(calls.length, 2);
     assert.match(calls[0].url, /gemini-2\.5-flash:generateContent/);
-    assert.ok(calls[0].body.generationConfig.responseJsonSchema);
-    assert.ok(!calls[0].body.generationConfig.responseSchema);
-    const cardSchema = calls[0].body.generationConfig.responseJsonSchema.properties.cards.items;
-    assert.ok(!cardSchema.properties.role);
-    assert.ok(!cardSchema.properties.container);
-    assert.equal(cardSchema.properties.rows.items.type, "string");
-    assert.ok(!cardSchema.properties.flowSteps);
-    assert.match(calls[0].body.contents[0].parts[0].text, /Plano:/);
-    assert.match(calls[0].body.contents[0].parts[0].text, /Curso: Programação/);
-    assert.match(calls[0].body.contents[0].parts[0].text, /Módulo: Git e colaboração/);
-    assert.match(calls[0].body.contents[0].parts[0].text, /Lição: Primeiros comandos/);
+    assert.ok(!calls[0].body.generationConfig.responseJsonSchema);
+    assert.ok(!calls[1].body.generationConfig.responseJsonSchema);
+    assert.match(calls[0].body.contents[0].parts[0].text, /Planeje uma microssequência/i);
+    assert.match(calls[1].body.contents[0].parts[0].text, /Gere cards para a microssequência/i);
+    assert.match(calls[0].body.contents[0].parts[0].text, /"course":\{"title":"Programação"/);
+    assert.match(calls[0].body.contents[0].parts[0].text, /"module":\{"title":"Git e colaboração"/);
+    assert.match(calls[0].body.contents[0].parts[0].text, /"lesson":\{"title":"Primeiros comandos"/);
     assert.doesNotMatch(calls[0].body.contents[0].parts[0].text, /Análise e Desenvolvimento de Sistemas/);
-    assert.match(calls[0].body.contents[0].parts[0].text, /não gere fluxograma/i);
+    assert.match(calls[1].body.contents[0].parts[0].text, /code_editor/);
     assert.equal(result.cards.length, 5);
     assert.equal(result.cards[1].title, "git add");
     assert.equal(result.cards[1].code, "git add arquivo.txt");
@@ -385,39 +436,10 @@ test("anexa documentos ao Gemini Files API antes de gerar cards", async () => {
       };
     }
     if (String(url).includes(":generateContent")) {
-      return {
-        ok: true,
-        async json() {
-          return {
-            candidates: [
-              {
-                content: {
-                  parts: [
-                    {
-                      text: JSON.stringify({
-                        title: "Git básico",
-                        tags: ["Git"],
-                        cards: [
-                          { title: "Antes dos comandos", text: "Git registra mudanças em etapas. Cada comando faz uma parte do caminho." },
-                          { title: "git add", text: "Use git add para preparar arquivos.", language: "bash", code: "git add arquivo.txt" },
-                          { title: "git push", text: "Use git push para enviar commits quando já existe remoto.", language: "bash", code: "git push" },
-                          { title: "Recuperação ativa", text: "Para enviar commits, use [[git push]].", wrong: ["git add", "git init"] },
-                          {
-                            title: "Verificação",
-                            question: "Qual comando envia commits?",
-                            answer: "git push",
-                            wrong: ["git add", "git init"]
-                          }
-                        ]
-                      })
-                    }
-                  ]
-                }
-              }
-            ]
-          };
-        }
-      };
+      const generateCallCount = calls.filter((call) => String(call.url).includes(":generateContent")).length;
+      return makeGeminiTextResponse(
+        JSON.stringify(generateCallCount === 1 ? makeMicrosequencePlanPayload() : makeGeneratedCardsPayload())
+      );
     }
     if (url === "https://generativelanguage.googleapis.com/v1beta/files/abc") {
       return {
@@ -440,21 +462,26 @@ test("anexa documentos ao Gemini Files API antes de gerar cards", async () => {
     });
 
     assert.equal(result.cards.length, 5);
-    assert.equal(calls.length, 4);
+    assert.equal(calls.length, 5);
     assert.equal(calls[0].url, "https://generativelanguage.googleapis.com/upload/v1beta/files");
     assert.equal(calls[0].options.headers["X-Goog-Upload-Protocol"], "resumable");
     assert.equal(calls[1].url, "https://upload.example/files/abc");
     assert.ok(calls[1].options.body instanceof ArrayBuffer);
-    const generateBody = JSON.parse(calls[2].options.body);
-    assert.deepEqual(generateBody.contents[0].parts[0], {
+    const generateCalls = calls.filter((call) => String(call.url).includes(":generateContent"));
+    assert.equal(generateCalls.length, 2);
+    const planningBody = JSON.parse(generateCalls[0].options.body);
+    assert.deepEqual(planningBody.contents[0].parts[0], {
       file_data: {
         mime_type: "application/pdf",
         file_uri: "https://generativelanguage.googleapis.com/v1beta/files/abc"
       }
     });
-    assert.match(generateBody.contents[0].parts[1].text, /Plano:/);
-    assert.equal(calls[3].url, "https://generativelanguage.googleapis.com/v1beta/files/abc");
-    assert.equal(calls[3].options.method, "DELETE");
+    assert.match(planningBody.contents[0].parts[1].text, /Planeje uma microssequência/i);
+    const generationBody = JSON.parse(generateCalls[1].options.body);
+    assert.deepEqual(generationBody.contents[0].parts[0], planningBody.contents[0].parts[0]);
+    assert.match(generationBody.contents[0].parts[1].text, /Gere cards para a microssequência/i);
+    const deleteCall = calls.find((call) => call.url === "https://generativelanguage.googleapis.com/v1beta/files/abc");
+    assert.equal(deleteCall.options.method, "DELETE");
   } finally {
     globalThis.fetch = originalFetch;
   }
@@ -516,37 +543,8 @@ test("aceita JSON do Gemini envolto em bloco markdown", async () => {
   const calls = [];
   globalThis.fetch = async (url, options) => {
     calls.push({ url, body: JSON.parse(options.body) });
-    const payload = {
-      title: "Git básico",
-      tags: ["Git"],
-      cards: [
-        { title: "Antes dos comandos", text: "Git registra mudanças em etapas. Cada comando faz uma parte do caminho." },
-        { title: "git add", text: "Use git add para preparar arquivos.", language: "bash", code: "git add arquivo.txt" },
-        { title: "git push", text: "Use git push para enviar commits quando já existe remoto.", language: "bash", code: "git push" },
-        { title: "Recuperação ativa", text: "Para enviar commits, use [[git push]].", wrong: ["git add", "git init"] },
-        {
-          title: "Verificação",
-          question: "Qual comando envia commits?",
-          answer: "git push",
-          wrong: ["git add", "git init"]
-        }
-      ]
-    };
-
-    return {
-      ok: true,
-      async json() {
-        return {
-          candidates: [
-            {
-              content: {
-                parts: [{ text: "```json\n" + JSON.stringify(payload) + "\n```" }]
-              }
-            }
-          ]
-        };
-      }
-    };
+    const payload = calls.length === 1 ? makeMicrosequencePlanPayload() : makeGeneratedCardsPayload();
+    return makeGeminiTextResponse("```json\n" + JSON.stringify(payload) + "\n```");
   };
 
   try {
@@ -556,56 +554,49 @@ test("aceita JSON do Gemini envolto em bloco markdown", async () => {
       microsequence: { title: "Git", tags: [], cards: [] },
       promptText: "explique git add e git push"
     });
+
+    assert.equal(calls.length, 2);
+    assert.equal(result.cards.length, 5);
+    assert.equal(result.cards[4].answer, "git push");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("rejeita planejamento quando o Gemini devolve JSON ilegível", async () => {
+  const originalFetch = globalThis.fetch;
+  const calls = [];
+  globalThis.fetch = async (url, options) => {
+    calls.push({ url, body: JSON.parse(options.body) });
+    return makeGeminiTextResponse("```json\n{\"typeId\":\"simple\",\"cardPlan\":[\n```");
+  };
+
+  try {
+    await assert.rejects(
+      () =>
+        runGeminiAssist({
+          apiKey: "chave",
+          mode: "compose-microsequence",
+          microsequence: { title: "Git", tags: [], cards: [] },
+          promptText: "explique git add e git push"
+        }),
+      /JSON inválido/
+    );
 
     assert.equal(calls.length, 1);
-    assert.equal(result.cards.length, 5);
-    assert.equal(result.cards[4].answer, "git push");
   } finally {
     globalThis.fetch = originalFetch;
   }
 });
 
-test("tenta novamente quando o Gemini devolve JSON ilegível", async () => {
+test("planejamento compacto não envia schema nativo ao Gemini", async () => {
   const originalFetch = globalThis.fetch;
   const calls = [];
   globalThis.fetch = async (url, options) => {
     calls.push({ url, body: JSON.parse(options.body) });
-    return {
-      ok: true,
-      async json() {
-        return {
-          candidates: [
-            {
-              content: {
-                parts: [
-                  {
-                    text:
-                      calls.length === 1
-                        ? "```json\n{\"title\":\"Git básico\",\"cards\":[\n```"
-                        : JSON.stringify({
-                            title: "Git básico",
-                            tags: ["Git"],
-                            cards: [
-                              { title: "Antes dos comandos", text: "Git registra mudanças em etapas. Cada comando faz uma parte do caminho." },
-                              { title: "git add", text: "Use git add para preparar arquivos.", language: "bash", code: "git add arquivo.txt" },
-                              { title: "git push", text: "Use git push para enviar commits quando já existe remoto.", language: "bash", code: "git push" },
-                              { title: "Recuperação ativa", text: "Para enviar commits, use [[git push]].", wrong: ["git add", "git init"] },
-                              {
-                                title: "Verificação",
-                                question: "Qual comando envia commits?",
-                                answer: "git push",
-                                wrong: ["git add", "git init"]
-                              }
-                            ]
-                          })
-                  }
-                ]
-              }
-            }
-          ]
-        };
-      }
-    };
+    return makeGeminiTextResponse(
+      JSON.stringify(calls.length === 1 ? makeMicrosequencePlanPayload() : makeGeneratedCardsPayload())
+    );
   };
 
   try {
@@ -617,78 +608,7 @@ test("tenta novamente quando o Gemini devolve JSON ilegível", async () => {
     });
 
     assert.equal(calls.length, 2);
-    assert.match(calls[1].body.contents[0].parts[0].text, /tentativa anterior/i);
-    assert.equal(result.cards.length, 5);
-    assert.equal(result.cards[4].answer, "git push");
-  } finally {
-    globalThis.fetch = originalFetch;
-  }
-});
-
-test("remove schema na nova tentativa quando o Gemini rejeita a complexidade", async () => {
-  const originalFetch = globalThis.fetch;
-  const calls = [];
-  globalThis.fetch = async (url, options) => {
-    calls.push({ url, body: JSON.parse(options.body) });
-    if (calls.length === 1) {
-      return {
-        ok: false,
-        status: 400,
-        async json() {
-          return {
-            error: {
-              message: "The specified schema produces a constraint that has too many states for serving."
-            }
-          };
-        }
-      };
-    }
-
-    return {
-      ok: true,
-      async json() {
-        return {
-          candidates: [
-            {
-              content: {
-                parts: [
-                  {
-                    text: JSON.stringify({
-                      title: "Git básico",
-                      tags: ["Git"],
-                      cards: [
-                        { title: "Antes dos comandos", text: "Git registra mudanças em etapas. Cada comando faz uma parte do caminho." },
-                        { title: "git add", text: "Use git add para preparar arquivos.", language: "bash", code: "git add arquivo.txt" },
-                        { title: "git push", text: "Use git push para enviar commits quando já existe remoto.", language: "bash", code: "git push" },
-                        { title: "Recuperação ativa", text: "Para enviar commits, use [[git push]].", wrong: ["git add", "git init"] },
-                        {
-                          title: "Verificação",
-                          question: "Qual comando envia commits?",
-                          answer: "git push",
-                          wrong: ["git add", "git init"]
-                        }
-                      ]
-                    })
-                  }
-                ]
-              }
-            }
-          ]
-        };
-      }
-    };
-  };
-
-  try {
-    const result = await runGeminiAssist({
-      apiKey: "chave",
-      mode: "compose-microsequence",
-      microsequence: { title: "Git", tags: [], cards: [] },
-      promptText: "explique git add e git push"
-    });
-
-    assert.equal(calls.length, 2);
-    assert.ok(calls[0].body.generationConfig.responseJsonSchema);
+    assert.ok(!calls[0].body.generationConfig.responseJsonSchema);
     assert.ok(!calls[1].body.generationConfig.responseJsonSchema);
     assert.equal(calls[1].body.generationConfig.responseMimeType, "application/json");
     assert.equal(result.cards.length, 5);

@@ -1,8 +1,12 @@
 import { getContractCardKind, sanitizeContractCard } from "../contract/contractCard.js";
+import { buildMicrosequenceGenerationContract } from "../generation/contracts/buildMicrosequenceGenerationContract.js";
+import { buildMicrosequencePlanningContract } from "../generation/planning/buildMicrosequencePlanningContract.js";
+import { buildMicrosequencePlanningPrompt } from "../generation/planning/buildMicrosequencePlanningPrompt.js";
+import { validateMicrosequencePlan } from "../generation/planning/validateMicrosequencePlan.js";
+import { buildMicrosequenceGenerationPrompt } from "../generation/prompts/buildMicrosequenceGenerationPrompt.js";
+import { getModelCapabilities } from "../generation/providers/modelCapabilities.js";
+import { validateGeneratedCards } from "../generation/validation/validateGeneratedCards.js";
 import {
-  buildDeterministicAssistPlan,
-  buildAssistDraftPrompt,
-  getAssistDraftSchema,
   normalizeAssistDraftResult
 } from "./assistMicrosequenceEngine.js";
 
@@ -538,28 +542,198 @@ async function callGemini({ apiKey, model, body }) {
   return parseGeminiResponse(response);
 }
 
-function isRetryableAssistError(error) {
-  const message = error instanceof Error ? error.message : "";
-  return [
-    "O serviço de IA devolveu JSON inválido.",
-    "O serviço de IA devolveu uma microssequência inválida.",
-    "O serviço de IA devolveu poucos cards."
-  ].includes(message) || isSchemaTooComplexError(error);
+function mapPreferredContainerToResource(preferredContainer) {
+  const map = {
+    say: "paragraph",
+    ask: "multiple_choice",
+    code: "code_editor",
+    table: "table",
+    flow: "flowchart"
+  };
+  return map[preferredContainer] || "";
 }
 
-function isSchemaTooComplexError(error) {
-  const message = error instanceof Error ? error.message : "";
-  return /schema|constraint|too many states/i.test(message);
+function buildGenerationContextEntities(microsequence = {}) {
+  return {
+    selectedCourse: {
+      key: microsequence.courseKey || "",
+      title: microsequence.courseTitle || "",
+      description: microsequence.courseDescription || ""
+    },
+    selectedModule: {
+      key: microsequence.moduleKey || "",
+      title: microsequence.moduleTitle || "",
+      description: microsequence.moduleDescription || ""
+    },
+    selectedLesson: {
+      key: microsequence.lessonKey || "",
+      title: microsequence.lessonTitle || "",
+      description: microsequence.lessonDescription || ""
+    },
+    targetMicrosequence: {
+      key: microsequence.key || "",
+      title: microsequence.title || "",
+      description: microsequence.description || ""
+    }
+  };
 }
 
-function buildAssistRetryPrompt({ promptText, plan, microsequence, reason }) {
-  return [
-    "A tentativa anterior não passou pela validação local do AraLearn.",
-    `Motivo: ${reason}`,
-    "Gere novamente somente um objeto JSON válido, sem Markdown e sem comentários.",
-    "Mantenha exatamente o plano, a ordem dos cards e os campos permitidos pelo formato pedido.",
-    buildAssistDraftPrompt({ promptText, plan, microsequence })
-  ].join("\n");
+function resourceCardToAssistCard(card) {
+  const title = normalizeText(card?.title) || "Card";
+  if (card?.resourceType === "multiple_choice") {
+    const options = Array.isArray(card.options) ? card.options : [];
+    const correct = options.find((item) => item.optionId === card.correctOptionId);
+    return {
+      title,
+      question: normalizeText(card.question) || "Qual alternativa está correta?",
+      answer: normalizeText(correct?.label) || "Resposta correta",
+      wrong: options.filter((item) => item.optionId !== card.correctOptionId).map((item) => normalizeText(item.label)).filter(Boolean).slice(0, 3),
+      text: normalizeText(card.feedback)
+    };
+  }
+  if (card?.resourceType === "code_editor") {
+    return {
+      title,
+      text: normalizeText(card.prompt),
+      language: normalizeText(card.language) || "text",
+      code: normalizeText(card.code)
+    };
+  }
+  if (card?.resourceType === "table") {
+    return {
+      title,
+      columns: Array.isArray(card.columns) ? card.columns : [],
+      rows: (Array.isArray(card.rows) ? card.rows : []).map((row) => (Array.isArray(row) ? row.join("|") : ""))
+    };
+  }
+  if (card?.resourceType === "flowchart") {
+    const nodes = Array.isArray(card.nodes) ? card.nodes : [];
+    return {
+      title,
+      flow: [
+        { start: normalizeText(nodes[0]?.label) || "Início" },
+        ...nodes.slice(1, -1).slice(0, 4).map((node) => ({ process: normalizeText(node.label) || "Etapa" })),
+        { end: normalizeText(nodes.at(-1)?.label) || "Fim" }
+      ]
+    };
+  }
+  if (card?.resourceType === "block_gap_fill") {
+    const blocks = Array.isArray(card.blocks) ? card.blocks : [];
+    const options = blocks.map((block) => normalizeText(block.label)).filter(Boolean);
+    const text = (Array.isArray(card.segments) ? card.segments : [])
+      .map((segment) => {
+        if (segment?.kind === "text") return normalizeText(segment.value);
+        const accepted = options.find((label) => (segment?.acceptedBlockIds || []).some((id) => blocks.find((block) => block.blockId === id && block.label === label)));
+        return accepted ? `[[${accepted}${options.length ? `::${options.join("|")}` : ""}]]` : "[[resposta]]";
+      })
+      .join(" ")
+      .replace(/\s+/g, " ")
+      .trim();
+    return {
+      title,
+      text: text || normalizeText(card.prompt),
+      wrong: options.slice(1, 4),
+      after: normalizeText(card.feedbackPopup?.correctMessage)
+    };
+  }
+  return {
+    title,
+    text: normalizeText(card?.text) || normalizeText(card?.prompt) || "Leia a ideia principal."
+  };
+}
+
+async function composeMicrosequenceWithTwoStepGeneration({
+  apiKey,
+  model,
+  microsequence,
+  dependencyTitles,
+  promptText,
+  preferredContainer = "",
+  fileParts = []
+}) {
+  const modelCapabilities = getModelCapabilities(model);
+  const entities = buildGenerationContextEntities(microsequence);
+  const preferredResource = mapPreferredContainerToResource(preferredContainer);
+  const planningContract = buildMicrosequencePlanningContract({
+    ...entities,
+    selectedLessonTags: dependencyTitles.map((title, index) => ({ id: `tag-${index + 1}`, label: title })),
+    userPrompt: promptText,
+    userFixedTypeId: null,
+    userSelectedExtraResourceTypes: preferredResource ? [preferredResource] : [],
+    selectedModel: model
+  });
+  const planningPrompt = buildMicrosequencePlanningPrompt(planningContract, modelCapabilities);
+  const planningResult = await callGemini({
+    apiKey,
+    model,
+    body: makeRequestBody({
+      systemInstruction:
+        "Você planeja microssequências para o AraLearn. Responda apenas JSON válido e compacto.",
+      prompt: planningPrompt,
+      fileParts,
+      schema: null,
+      temperature: 0.1,
+      maxOutputTokens: 1536
+    })
+  });
+  const validatedPlan = validateMicrosequencePlan(planningResult, planningContract);
+  if (!validatedPlan.ok) {
+    fail(`Plano de microssequência inválido: ${validatedPlan.errors.join(" ")}`);
+  }
+
+  const generationContract = buildMicrosequenceGenerationContract({
+    planningContract,
+    validatedPlan,
+    selectedModel: model
+  });
+  const generationPrompt = buildMicrosequenceGenerationPrompt(generationContract, modelCapabilities);
+  const generationResult = await callGemini({
+    apiKey,
+    model,
+    body: makeRequestBody({
+      systemInstruction:
+        "Você gera cards para o AraLearn. Responda apenas JSON válido no formato pedido.",
+      prompt: generationPrompt,
+      fileParts,
+      schema: null,
+      temperature: 0.15,
+      maxOutputTokens: 4096
+    })
+  });
+  const validation = validateGeneratedCards(generationResult, generationContract);
+  if (!validation.ok) {
+    fail(`O serviço de IA devolveu cards inválidos: ${validation.errors.join(" ")}`);
+  }
+
+  return normalizeAssistDraftResult(
+    {
+      title: generationContract.context.microsequence.title || validatedPlan.plan.microsequenceGoal || "Microssequência",
+      tags: dependencyTitles,
+      cards: validation.cards.map(resourceCardToAssistCard)
+    },
+    {
+      plan: {
+        title: generationContract.context.microsequence.title || "Microssequência",
+        tags: dependencyTitles,
+        cardPlans: validation.cards.map((card) => ({
+          role: "concept",
+          container:
+            card.resourceType === "multiple_choice"
+              ? "ask"
+              : card.resourceType === "code_editor"
+                ? "code"
+                : card.resourceType === "table"
+                  ? "table"
+                  : card.resourceType === "flowchart"
+                    ? "flow"
+                    : "say",
+          title: card.title,
+          learningGoal: "Executar o plano validado."
+        }))
+      },
+      promptText
+    }
+  );
 }
 
 async function composeMicrosequenceWithGemini({
@@ -571,56 +745,15 @@ async function composeMicrosequenceWithGemini({
   preferredContainer = "",
   fileParts = []
 }) {
-  const systemInstruction =
-    "Você transforma pedidos de estudo em microssequências didáticas para o AraLearn. " +
-    "Siga o formato pedido, use linguagem direta e responda apenas com um objeto JSON.";
-  const plan = buildDeterministicAssistPlan({
-    promptText,
+  return composeMicrosequenceWithTwoStepGeneration({
+    apiKey,
+    model,
     microsequence,
     dependencyTitles,
-    preferredContainer
+    promptText,
+    preferredContainer,
+    fileParts
   });
-  let lastError = null;
-
-  for (let attempt = 0; attempt < 2; attempt += 1) {
-    const prompt =
-      attempt === 0
-        ? buildAssistDraftPrompt({ promptText, plan, microsequence })
-        : buildAssistRetryPrompt({
-            promptText,
-            plan,
-            microsequence,
-            reason: lastError instanceof Error ? lastError.message : "resposta inválida"
-          });
-
-    try {
-      const parsed = await callGemini({
-        apiKey,
-        model,
-        body: makeRequestBody({
-          systemInstruction,
-          prompt,
-          fileParts,
-          schema: isSchemaTooComplexError(lastError) ? null : getAssistDraftSchema(),
-          temperature: attempt === 0 ? 0.15 : 0.05,
-          maxOutputTokens: 3072
-        })
-      });
-      const draft = normalizeAssistDraftResult(parsed, { plan, promptText });
-      return {
-        ...draft,
-        microsequenceTitle: draft.microsequenceTitle || plan.title,
-        tags: draft.tags.length ? draft.tags : plan.tags
-      };
-    } catch (error) {
-      if (!isRetryableAssistError(error) || attempt === 1) {
-        throw error;
-      }
-      lastError = error;
-    }
-  }
-
-  throw lastError || new Error("Falha ao gerar microssequência.");
 }
 
 export function normalizeComposeResult(value) {
@@ -631,7 +764,7 @@ export function normalizeComposeResult(value) {
   return {
     microsequenceTitle: normalizeText(value.microsequenceTitle) || "Microssequência",
     tags: Array.isArray(value.tags) ? value.tags.map((item) => normalizeText(item)).filter(Boolean) : [],
-    cards: value.cards.slice(0, 5).map((card) => sanitizeContractCard(card))
+    cards: value.cards.slice(0, 7).map((card) => sanitizeContractCard(card))
   };
 }
 
