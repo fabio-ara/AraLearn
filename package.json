@@ -10,6 +10,7 @@
     "test": "node --test",
     "validate:example": "node ./src/contract/validateContract.cli.js ./docs/examples/aralearn-contract.renderable.json",
     "smoke:gemini": "node ./scripts/runGeminiAssistSmoke.js",
-    "android:debug": "pwsh -NoProfile -File ./scripts/buildAndroidDebug.ps1"
+    "android:debug": "pwsh -NoProfile -File ./scripts/buildAndroidDebug.ps1",
+    "pages:build": "pwsh -NoProfile -File ./scripts/buildPages.ps1"
   }
 }

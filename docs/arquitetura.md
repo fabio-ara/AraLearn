@@ -4,7 +4,7 @@ Este documento descreve a arquitetura pública do AraLearn para apoiar decisões
 
 ## Visão geral
 
-AraLearn é uma aplicação web executada no navegador. O mesmo núcleo pode ser usado em distribuição web e em APK Android empacotado com WebView.
+AraLearn é uma aplicação web executada no navegador. O mesmo núcleo pode ser usado em distribuição web, em GitHub Pages e em APK Android empacotado com WebView.
 
 A aplicação trabalha com três camadas principais:
 
@@ -14,13 +14,15 @@ A aplicação trabalha com três camadas principais:
 
 O contrato público descreve a estrutura autoral. O runtime interno deriva dados necessários para renderização, validação visual e interação. A interface apresenta geração de rascunhos, cursos, lições, microssequências, cards, progresso, edição e assistência por IA generativa.
 
+A arquitetura foi desenhada para tornar o contexto explícito. Curso, módulo, lição e microssequência formam uma moldura pequena para pedidos de geração ou revisão. Isso reduz ambiguidade, facilita validação e permite que modelos de linguagem mais econômicos sejam usados em tarefas delimitadas.
+
 ## Estrutura do repositório
 
 ```text
 public/   Entrada web, assets e estilos da interface
 src/      Contrato, compilação, renderização, persistência, edição, IA e UI
 tests/    Suíte automatizada
-scripts/  Utilitários de desenvolvimento
+scripts/  Utilitários de desenvolvimento e publicação
 docs/     Documentação pública, contrato, arquitetura e exemplos
 android/  Wrapper Android em WebView e build do APK
 ```
@@ -86,6 +88,11 @@ pedido do usuário
   -> rascunho ou versão ativa
 ```
 
+Há dois modos complementares de entrada de conteúdo:
+
+- geração bottom-up: uma dúvida situada em curso, módulo e lição cria rascunhos de microssequências no ponto escolhido;
+- importação top-down: cursos, módulos, lições ou microssequências preparados por pipelines externos entram pelo contrato JSON público.
+
 ## Persistência
 
 O AraLearn separa projeto e progresso.
@@ -98,6 +105,8 @@ A aplicação trabalha com dois formatos de troca:
 - `aralearn.storage`: backup completo do estado local, incluindo projeto e progresso.
 
 A ação `Importar` detecta os dois formatos. Essa separação permite compartilhar material sem carregar necessariamente o histórico de estudo de outra pessoa.
+
+Recortes estruturais também podem ser importados quando seguem o contrato `aralearn.contract`. Isso permite que autores externos produzam cursos inteiros ou partes de cursos sem depender da interface.
 
 ## Interface e navegação
 
@@ -144,6 +153,12 @@ Os cards são declarados por intenção didática no contrato público e renderi
 - `flow`.
 
 O runtime interno pode derivar estruturas auxiliares para interação, como opções de lacunas, árvores projetadas e geometria de fluxogramas. Essas estruturas derivadas não pertencem ao contrato público.
+
+## Distribuição
+
+A distribuição web pública usa GitHub Pages. O artefato publicado preserva `public/` e `src/`, porque a aplicação usa módulos JavaScript nativos e mantém a mesma base de código da execução local.
+
+O APK Android usa `WebViewAssetLoader` para servir os mesmos arquivos web como assets internos. A identidade visual usa o ícone do AraLearn na aba do navegador e no launcher do Android.
 
 ## Validação
 
