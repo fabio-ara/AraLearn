@@ -22,6 +22,7 @@ src/      Contrato, compilação, renderização, persistência, edição, IA e 
 tests/    Suíte automatizada
 scripts/  Utilitários de desenvolvimento
 docs/     Documentação pública, contrato, arquitetura e exemplos
+android/  Wrapper Android em WebView e build do APK
 ```
 
 Diretórios centrais em `src/`:

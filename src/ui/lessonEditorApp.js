@@ -1941,7 +1941,37 @@ export function createLessonEditorApp({ root, storage, editor }) {
     }
   }
 
+  function encodeBase64Utf8(value) {
+    const text = String(value ?? "");
+    if (typeof TextEncoder !== "undefined") {
+      const bytes = new TextEncoder().encode(text);
+      let binary = "";
+      bytes.forEach((byte) => {
+        binary += String.fromCharCode(byte);
+      });
+      return globalThis.btoa(binary);
+    }
+    return globalThis.btoa(unescape(encodeURIComponent(text)));
+  }
+
   function downloadJsonFile(filename, content) {
+    if (
+      globalThis.AndroidHost &&
+      typeof globalThis.AndroidHost.saveExportFile === "function" &&
+      typeof globalThis.btoa === "function"
+    ) {
+      try {
+        const saved = globalThis.AndroidHost.saveExportFile(
+          encodeBase64Utf8(content),
+          filename,
+          "application/json"
+        );
+        if (saved) return;
+      } catch (error) {
+        console.warn("Falha ao exportar pelo host Android.", error);
+      }
+    }
+
     if (typeof document === "undefined" || typeof URL === "undefined" || typeof Blob === "undefined") {
       fail("Exportação indisponível neste ambiente.");
     }

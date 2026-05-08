@@ -117,6 +117,7 @@ src/      Contrato, renderização, persistência, editor e interface
 tests/    Suíte automatizada
 scripts/  Utilitários de desenvolvimento, como servidor local
 docs/     Documentação pública, contrato e exemplos
+android/  Empacotamento Android em WebView
 ```
 
 ## Execução local
@@ -124,6 +125,20 @@ docs/     Documentação pública, contrato e exemplos
 ```powershell
 npm install
 npm start
+```
+
+## Android
+
+Para gerar o APK debug local:
+
+```powershell
+npm run android:debug
+```
+
+Artefato gerado:
+
+```text
+android/app/build/outputs/apk/debug/app-debug.apk
 ```
 
 ## Validação
