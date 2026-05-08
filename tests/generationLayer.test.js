@@ -328,6 +328,7 @@ test("block_gap_fill valida estrutura fechada de segmentos, blocos e feedbackAft
     false
   );
   assert.equal(validateGeneratedCards({ cards: [validResponse.cards[0], { ...validCard, feedbackAfter: "" }, validResponse.cards[2]] }, generationContract).ok, false);
+  assert.equal(validateGeneratedCards({ cards: [validResponse.cards[0], { ...validCard, feedbackAfter: "Use [[git add::git add|git push]]." }, validResponse.cards[2]] }, generationContract).ok, false);
 });
 
 test("prompt de reparo de cards inclui contrato efetivo e schemas permitidos", () => {
@@ -421,6 +422,37 @@ test("validateOrRepairGeneratedCards corrige block_gap_fill aproximado e preserv
   assert.equal(result.cards[1].segments[1].acceptedBlockIds[0], "block_1");
   assert.equal(result.cards[1].blocks[0].label, "git add");
   assert.equal(result.cards[1].feedbackAfter, "Isso prepara arquivos.");
+});
+
+test("validateOrRepairGeneratedCards mantém feedbackAfter de block_gap_fill como texto simples", async () => {
+  const generationContract = sampleGenerationContract();
+  const invalidBlockGapFill = {
+    cards: [
+      validGeneratedCardsResponse().cards[0],
+      {
+        position: 2,
+        resourceType: "block_gap_fill",
+        title: "Complete",
+        prompt: "Complete.",
+        segments: [{ text: "Use" }],
+        blocks: [{ text: "git add" }, { text: "git push" }],
+        feedbackAfter: "O bloco correto é [[git add::git add|git push]]."
+      },
+      validGeneratedCardsResponse().cards[2]
+    ]
+  };
+
+  const result = await validateOrRepairGeneratedCards({
+    rawGeneratedResponse: invalidBlockGapFill,
+    generationContract,
+    modelCapabilities: getModelCapabilities("gemini-2.5-flash"),
+    callModel: async () => invalidBlockGapFill
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.cards[1].feedbackAfter, "O bloco correto é git add.");
+  assert.doesNotMatch(result.cards[1].feedbackAfter, /\[\[/);
+  assert.doesNotMatch(result.cards[1].feedbackAfter, /\|/);
 });
 
 test("validateOrRepairGeneratedCards corrige multiple_choice com índice e tree sem id", async () => {
@@ -689,9 +721,30 @@ test("block_gap_fill é alias interno para parágrafo público com lacunas por o
   assert.equal(publicCard.say.includes("[[git add::git add|git push]]"), true);
   assert.equal(publicCard.resourceType, undefined);
   assert.equal(publicCard.after, "Preparou o arquivo.");
+  assert.doesNotMatch(publicCard.after, /\[\[/);
+  assert.doesNotMatch(publicCard.after, /\|/);
   assert.match(runtime, /runtime-text-gap-choice-blank/);
   assert.match(runtime, /data-action="text-gap-open-choice"/);
   assert.doesNotMatch(runtime, /runtime-block-gap-fill/);
+});
+
+test("block_gap_fill mantém lacunas apenas em say e after como feedback textual", () => {
+  const publicCard = adaptResourceCardToPublicCard({
+    position: 1,
+    resourceType: "block_gap_fill",
+    title: "Complete",
+    prompt: "Complete a frase.",
+    segments: [{ kind: "text", value: "Use" }, { kind: "blank", blankId: "b1", acceptedBlockIds: ["x"] }],
+    blocks: [{ blockId: "x", label: "git add" }, { blockId: "y", label: "git push" }],
+    feedbackAfter: "O bloco correto é [[git add::git add|git push]]."
+  });
+
+  assert.match(publicCard.say, /\[\[git add::git add\|git push\]\]/);
+  assert.equal(publicCard.after, "O bloco correto é git add.");
+  assert.doesNotMatch(publicCard.after, /\[\[/);
+  assert.doesNotMatch(publicCard.after, /\|/);
+  assert.equal(publicCard.ask, undefined);
+  assert.equal(publicCard.wrong, undefined);
 });
 
 test("block_gap_fill usa schema compatível com say e não exige feedbackPopup descartado", () => {
@@ -751,6 +804,18 @@ test("adaptador tree resolve rootLabel sem duplicar raiz pública", () => {
   assert.deepEqual(sameRoot.tree.items, { "meu-projeto": { ".git": {} } });
   assert.deepEqual(wrappedRoot.tree.items, { "meu-projeto": { ".git": {} } });
   assert.deepEqual(multipleRoots.tree.items, { repo: { src: {}, "README.md": null } });
+});
+
+test("adaptador tree omite closed vazio antes do contrato público", () => {
+  const publicCard = adaptResourceCardToPublicCard({
+    resourceType: "tree",
+    title: "Estrutura",
+    closed: [],
+    nodes: [{ id: "src", label: "src", type: "folder" }]
+  });
+
+  assert.equal(publicCard.tree.closed, undefined);
+  assert.deepEqual(publicCard.tree.items, { src: {} });
 });
 
 test("tree selecionado na UI mapeia para recurso interno tree", () => {

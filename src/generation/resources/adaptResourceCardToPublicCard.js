@@ -4,6 +4,13 @@ function text(value) {
   return typeof value === "string" ? value.trim() : "";
 }
 
+function plainFeedbackText(value) {
+  return text(value)
+    .replace(/\[\[([^\]:|]+)(?:::[^\]]*)?\]\]/g, "$1")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function adaptMultipleChoice(card) {
   const options = Array.isArray(card.options) ? card.options : [];
   const correct = options.find((item) => item?.optionId === card.correctOptionId);
@@ -66,7 +73,7 @@ function adaptBlockGapFill(card) {
   return {
     title: text(card.title) || "Lacunas",
     say: [text(card.prompt), say].filter(Boolean).join(" "),
-    ...(text(card.feedbackAfter || card.after) ? { after: text(card.feedbackAfter || card.after) } : {})
+    ...(plainFeedbackText(card.feedbackAfter || card.after) ? { after: plainFeedbackText(card.feedbackAfter || card.after) } : {})
   };
 }
 
@@ -76,6 +83,7 @@ function normalizeTreeNodeType(value) {
 
 function adaptTree(card) {
   const nodes = Array.isArray(card.nodes) ? card.nodes : [];
+  const closed = Array.isArray(card.closed) ? card.closed.map(text).filter(Boolean) : [];
   const byParent = new Map();
   nodes.forEach((node) => {
     const parentId = text(node?.parentId);
@@ -116,7 +124,7 @@ function adaptTree(card) {
       ...(text(card.base) ? { base: text(card.base) } : {}),
       ...(text(card.current) ? { current: text(card.current) } : {}),
       ...(text(card.selected) ? { selected: text(card.selected) } : {}),
-      ...(Array.isArray(card.closed) ? { closed: card.closed.map(text).filter(Boolean) } : {}),
+      ...(closed.length ? { closed } : {}),
       items
     }
   };

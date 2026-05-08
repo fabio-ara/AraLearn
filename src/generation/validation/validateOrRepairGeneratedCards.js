@@ -24,6 +24,13 @@ function normalizeOptionId(value, index) {
   return text(value) || `option_${index + 1}`;
 }
 
+function plainFeedbackText(value) {
+  return text(value)
+    .replace(/\[\[([^\]:|]+)(?:::[^\]]*)?\]\]/g, "$1")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function repairMultipleChoice(card) {
   const options = Array.isArray(card.options)
     ? card.options.map((option, index) => ({
@@ -53,6 +60,7 @@ function repairMultipleChoice(card) {
 
 function repairTree(card) {
   const nodes = Array.isArray(card.nodes) ? card.nodes : [];
+  const closed = Array.isArray(card.closed) ? card.closed.map(text).filter(Boolean) : [];
   const ids = new Set();
   const repairedNodes = nodes.map((node, index) => {
     const idBase = text(node?.id ?? node?.key ?? node?.path ?? node?.label) || `node_${index + 1}`;
@@ -78,7 +86,7 @@ function repairTree(card) {
     ...(text(card.base) ? { base: text(card.base) } : {}),
     ...(text(card.current ?? card.currentPath) ? { current: text(card.current ?? card.currentPath) } : {}),
     ...(text(card.selected ?? card.selectedPath) ? { selected: text(card.selected ?? card.selectedPath) } : {}),
-    ...(Array.isArray(card.closed) ? { closed: card.closed.map(text).filter(Boolean) } : {}),
+    ...(closed.length ? { closed } : {}),
     ...(text(card.rootLabel) ? { rootLabel: text(card.rootLabel) } : {}),
     nodes: repairedNodes
   };
@@ -125,7 +133,7 @@ function repairBlockGapFill(card) {
     prompt: text(card.prompt ?? card.question ?? card.text) || "Complete a lacuna.",
     segments,
     blocks: normalizedBlocks,
-    feedbackAfter: text(card.feedbackAfter ?? card.feedback ?? card.after) || "Confira a relação entre a lacuna e o bloco correto."
+    feedbackAfter: plainFeedbackText(card.feedbackAfter ?? card.feedback ?? card.after) || "Confira a relação entre a lacuna e o bloco correto."
   };
 }
 

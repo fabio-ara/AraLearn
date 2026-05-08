@@ -236,6 +236,10 @@ export function getResourceSchemas(resourceIds = []) {
   );
 }
 
+function hasTextGapSyntax(value) {
+  return typeof value === "string" && /\[\[[\s\S]*?\]\]/.test(value);
+}
+
 export function validateBlockGapFill(card) {
   const errors = [];
   if (!card || typeof card !== "object") {
@@ -249,6 +253,8 @@ export function validateBlockGapFill(card) {
   });
   if (typeof card.feedbackAfter !== "string" || !card.feedbackAfter.trim()) {
     errors.push("feedbackAfter é obrigatório.");
+  } else if (hasTextGapSyntax(card.feedbackAfter)) {
+    errors.push("feedbackAfter deve ser texto simples, sem lacunas ou opções.");
   }
 
   const blocks = Array.isArray(card.blocks) ? card.blocks : [];
