@@ -1163,7 +1163,6 @@ export function renderLessonScreen({ project, view, activeHomeTab, selection, co
       project,
       progress: editorSupport.progress,
       selection,
-      featuredCourseKey: selection?.courseKey || "",
       activeHomeTab,
       editorSupport
     });

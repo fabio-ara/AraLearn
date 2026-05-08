@@ -366,8 +366,6 @@ button {
   bottom: -2px;
 }
 
-.course-card-featured,
-.draft-course-hero,
 .draft-microsequence-card {
   border-color: rgba(228, 186, 104, 0.7);
   background:
@@ -380,23 +378,6 @@ button {
   color: #f2d8a0;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-}
-
-.card-title-featured {
-  color: #f1cf8b;
-}
-
-.draft-course-hero {
-  display: grid;
-  gap: 10px;
-}
-
-.draft-course-hero-main {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
 }
 
 .microsequence-main-button {

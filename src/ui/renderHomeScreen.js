@@ -98,7 +98,7 @@ function renderHomeCourseMeta(course) {
   );
 }
 
-function buildHomeCoursePreviews(project, progress, featuredCourseKey = "") {
+function buildHomeCoursePreviews(project, progress) {
   return (project.courses || []).map((course) => {
     const completedCount = countCompletedCardsInCourse(course, progress);
     const totalCount = countCardsInCourse(course);
@@ -106,7 +106,6 @@ function buildHomeCoursePreviews(project, progress, featuredCourseKey = "") {
       key: course.key,
       title: course.title || "Curso",
       description: course.description || "",
-      isFeatured: course.key === featuredCourseKey,
       moduleCount: (course.modules || []).length,
       lessonCount: countLessons(course),
       completedCount,
@@ -285,20 +284,18 @@ function renderGeneratePane({ project, editorSupport }) {
   );
 }
 
-function renderCoursesPane({ project, progress, selection, featuredCourseKey = "" }) {
-  const courses = buildHomeCoursePreviews(project, progress, featuredCourseKey)
+function renderCoursesPane({ project, progress, selection }) {
+  const courses = buildHomeCoursePreviews(project, progress)
     .map((course) => {
       return (
-        '<article class="clean-card course-card progress-card' +
-        (course.isFeatured ? " course-card-featured" : "") +
-        '" data-structure-target="course" data-course-key="' +
+        '<article class="clean-card course-card progress-card" data-structure-target="course" data-course-key="' +
         escapeHtml(course.key) +
         '">' +
         '<div class="card-progress-fill" style="width:' +
         String(course.progressPercent) +
         '%"></div>' +
         '<div class="course-copy">' +
-        '<h3 class="card-title' + (course.isFeatured ? " card-title-featured" : "") + '">' + escapeHtml(course.title || "Curso") + "</h3>" +
+        '<h3 class="card-title">' + escapeHtml(course.title || "Curso") + "</h3>" +
         (course.description
           ? '<p class="card-subtitle">' + escapeHtml(course.description) + "</p>"
           : "") +
@@ -325,7 +322,7 @@ function renderCoursesPane({ project, progress, selection, featuredCourseKey = "
   return courses || '<article class="clean-card"><p class="card-subtitle">Nenhum curso.</p></article>';
 }
 
-export function renderHomeScreen({ project, progress, selection, featuredCourseKey = "", activeHomeTab = "generate", editorSupport = {} }) {
+export function renderHomeScreen({ project, progress, selection, activeHomeTab = "generate", editorSupport = {} }) {
   const safeHomeTab = activeHomeTab === "courses" ? "courses" : "generate";
 
   return (
@@ -336,7 +333,7 @@ export function renderHomeScreen({ project, progress, selection, featuredCourseK
     (safeHomeTab === "generate"
       ? renderGeneratePane({ project, editorSupport })
       : '<section id="home-panel-courses" role="tabpanel" aria-labelledby="home-tab-courses">' +
-        renderCoursesPane({ project, progress, selection, featuredCourseKey }) +
+        renderCoursesPane({ project, progress, selection }) +
         "</section>") +
     "</main>" +
     "</section>"
