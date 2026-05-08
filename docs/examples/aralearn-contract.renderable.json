@@ -1,5 +1,7 @@
 {
   "contract": "aralearn.contract",
+  "version": 1,
+  "kind": "project",
   "courses": [
     {
       "title": "Curso renderizável",
@@ -13,55 +15,77 @@
                 {
                   "title": "Modelo cascata",
                   "tags": ["Processos de software"],
+                  "status": "ready",
                   "cards": [
                     {
-                      "type": "text",
                       "title": "Ideia central",
-                      "text": "O modelo cascata organiza o trabalho em fases sequenciais."
+                      "say": "O modelo cascata organiza o trabalho em fases sequenciais.",
+                      "after": "A ideia importante é reconhecer a ordem das fases antes de discutir exceções."
                     },
                     {
-                      "type": "choice",
                       "title": "Leitura rápida",
                       "ask": "Qual estrutura agrupa cards no AraLearn?",
-                      "answer": ["Microssequência"],
+                      "answer": "Microssequência",
                       "wrong": ["Curso", "Módulo"]
                     },
                     {
-                      "type": "complete",
                       "title": "Complete",
-                      "text": "Todo card pertence a uma [[microssequência]].",
-                      "answer": ["microssequência"],
+                      "say": "Todo card pertence a uma [[microssequência]].",
                       "wrong": ["lição", "módulo"]
                     },
                     {
-                      "type": "editor",
                       "title": "Trecho de código",
+                      "say": "O identificador abaixo aparece no topo do JSON.",
                       "language": "json",
                       "code": "{ \"contract\": \"aralearn.contract\" }"
                     },
                     {
-                      "type": "table",
                       "title": "Campos principais",
-                      "columns": ["Campo", "Uso"],
-                      "rows": [
-                        ["type", "Tipo explícito do card"],
-                        ["text", "Conteúdo autoral raso"]
-                      ]
+                      "table": {
+                        "columns": ["Campo", "Uso"],
+                        "rows": [
+                          ["say", "Explicação ou lacuna textual"],
+                          ["ask", "Pergunta de múltipla escolha"],
+                          ["flow", "Fluxograma derivado pelo motor"]
+                        ]
+                      }
                     },
                     {
-                      "type": "flow",
                       "title": "Fluxo básico",
                       "flow": [
                         { "start": "Ler" },
-                        { "process": "Validar" },
-                        { "end": "Renderizar" }
+                        { "process": "Validar", "blank": true },
+                        {
+                          "if": "Está correto?",
+                          "blank": { "target": "label", "key": "yes", "options": ["Sim", "Não"] },
+                          "then": [{ "output": "Renderizar" }],
+                          "else": [{ "process": "Revisar" }]
+                        },
+                        { "end": "Fim" }
                       ]
                     },
                     {
-                      "type": "image",
-                      "title": "Imagem provisória",
-                      "src": "public/example.png",
-                      "alt": "Imagem de exemplo"
+                      "title": "Árvore de diretórios",
+                      "say": "A árvore mostra o diretório atual e alguns arquivos próximos.",
+                      "tree": {
+                        "base": "/",
+                        "current": "/home/aluno/projetos",
+                        "selected": "/home/aluno/projetos/README.txt",
+                        "closed": ["/home/aluno/downloads"],
+                        "items": {
+                          "home": {
+                            "aluno": {
+                              "downloads": {
+                                "pacote.zip": null
+                              },
+                              "projetos": {
+                                "docs": {},
+                                "README.txt": null
+                              }
+                            }
+                          }
+                        }
+                      }
                     }
                   ]
                 }

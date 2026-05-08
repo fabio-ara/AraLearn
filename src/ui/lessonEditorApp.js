@@ -4,7 +4,17 @@ import { renderCardVersionOverlay } from "./renderCardVersionOverlay.js";
 import { renderEntityEditorOverlay } from "./renderEntityEditorOverlay.js";
 import { renderActionMenuOverlay } from "./renderActionMenuOverlay.js";
 import { renderAssistConfigOverlay } from "./renderAssistConfigOverlay.js";
+import { renderUiIcon } from "./renderUiIcons.js";
 import { captureRenderState, restoreRenderState } from "./renderState.js";
+import {
+  buildDemoMicrosequenceVersions,
+  getDemoMicrosequenceActiveIndex,
+  syncDemoMicrosequenceOverflow
+} from "./demoMicrosequenceVersions.js";
+import {
+  resolveMicrosequenceAssistOpenState,
+  resolveWorkbenchPaneAfterCardSelection
+} from "./microsequenceWorkbenchState.js";
 import { getRuntimePopupButtonEntry } from "../render/renderCardRuntime.js";
 import { resolveCardRuntime } from "../core/cardRuntime.js";
 import {
@@ -32,6 +42,7 @@ import { computeFlowchartAutoFitScale } from "../flowchart/flowchartViewport.js"
 import {
   buildCardPathKey,
   collectAssistDependencies,
+  collectLessonTopicRefs,
   collectLessonCards,
   findCard,
   findCourse,
@@ -45,30 +56,40 @@ import {
   readAssistConfigStorage,
   readCommentStorage,
   readHistoryStorage,
+  readMicrosequenceVersionStorage,
   writeAssistConfigStorage,
   writeCommentStorage,
-  writeHistoryStorage
+  writeHistoryStorage,
+  writeMicrosequenceVersionStorage
 } from "./lessonEditorStorage.js";
-import { runGeminiAssist } from "../llm/geminiAssist.js";
-import { removeLessonProgressEntries } from "../storage/progressStore.js";
+import { runGeminiAssist } from "../assist/geminiAssist.js";
+import { getLessonProgressCursor, removeLessonProgressEntries, writeLessonProgressEntry } from "../storage/progressStore.js";
 import { detectJsonExchangeFormat } from "../storage/jsonExchange.js";
-
-const DRAFT_COURSE_KEY = "__disabled-draft-course__";
-const DRAFT_MODULE_KEY = "__disabled-draft-module__";
-const DRAFT_LESSON_KEY = "__disabled-draft-lesson__";
+import { getContractCardKind, listContractAnswerValues } from "../contract/contractCard.js";
+import { isRunnableMicrosequence, resolveMicrosequenceRuntimeIncluded } from "../model/microsequenceStatus.js";
 
 const MAX_ASSIST_DEPENDENCIES = 5;
+const MAX_ASSIST_ATTACHMENTS = 6;
 const MAX_CARD_SNAPSHOTS = 6;
 const ASSIST_MODEL_OPTIONS = [
-  { value: "gemini-2.5-flash-lite", label: "Gemini 2.5 Flash-Lite" },
   { value: "gemini-2.5-flash", label: "Gemini 2.5 Flash" },
+  { value: "gemini-2.5-flash-lite", label: "Gemini 2.5 Flash-Lite" },
   { value: "gemini-2.0-flash", label: "Gemini 2.0 Flash · até 2026-06-01" }
 ];
 const ASSIST_USER_MODES = {
-  GENERATE: "generate-microsequence",
   EDIT_MICROSEQUENCE: "edit-microsequence",
   REPOSITION: "reposition-in-course"
 };
+const ASSIST_CARD_CONTAINER_OPTIONS = [
+  { value: "", label: "Automático", icon: renderUiIcon("sparkles", "action-menu-svg-icon") },
+  { value: "say", label: "Parágrafo", icon: renderUiIcon("prompt", "action-menu-svg-icon") },
+  { value: "ask", label: "Pergunta", icon: renderUiIcon("intent", "action-menu-svg-icon") },
+  { value: "code", label: "Código", icon: renderUiIcon("title", "action-menu-svg-icon") },
+  { value: "table", label: "Tabela", icon: renderUiIcon("module", "action-menu-svg-icon") },
+  { value: "tree", label: "Árvore de diretórios", icon: renderUiIcon("folder", "action-menu-svg-icon") },
+  { value: "flow", label: "Fluxograma", icon: renderUiIcon("microsequence", "action-menu-svg-icon") }
+];
+const COURSES_VIEWS = new Set(["courses", "course", "lesson", "microsequence", "microsequence-assist"]);
 
 function fail(message) {
   throw new Error(message);
@@ -88,8 +109,8 @@ function readCardText(card) {
     return "";
   }
 
-  if (typeof card.text === "string") {
-    return card.text;
+  if (typeof card.say === "string") {
+    return card.say;
   }
   if (typeof card.ask === "string") {
     return card.ask;
@@ -97,8 +118,17 @@ function readCardText(card) {
   if (typeof card.code === "string") {
     return card.code;
   }
-  if (Array.isArray(card.columns) && card.columns.length) {
-    return card.columns.join(" | ");
+  if (Array.isArray(card?.table?.rows) && card.table.rows.length) {
+    return card.table.rows
+      .map((row) => (Array.isArray(row) ? row.join(" | ") : ""))
+      .filter(Boolean)
+      .join("\n");
+  }
+  if (Array.isArray(card?.table?.columns) && card.table.columns.length) {
+    return card.table.columns.join(" | ");
+  }
+  if (card.tree && typeof card.tree === "object") {
+    return card.tree.current || card.tree.base || "tree";
   }
   if (Array.isArray(card.flow) && card.flow.length) {
     return card.flow
@@ -109,10 +139,6 @@ function readCardText(card) {
       .filter(Boolean)
       .join("\n");
   }
-  if (typeof card.src === "string") {
-    return card.src;
-  }
-
   return "";
 }
 
@@ -139,31 +165,94 @@ function slugifyDownloadName(value, fallback = "curso") {
   return normalized || fallback;
 }
 
+function normalizeAssistAttachmentName(value, fallback = "documento") {
+  const normalized = String(value || "").trim();
+  return normalized || fallback;
+}
+
+function buildAssistAttachmentSignature(file) {
+  if (!file || typeof file !== "object") {
+    return "";
+  }
+
+  return [
+    normalizeAssistAttachmentName(file.name),
+    Number(file.size || 0),
+    Number(file.lastModified || 0),
+    String(file.type || "").trim()
+  ].join("::");
+}
+
+function normalizeAssistAttachmentList(files = []) {
+  const nextItems = [];
+  const seen = new Set();
+
+  for (const file of files || []) {
+    if (!file || typeof file !== "object" || typeof file.arrayBuffer !== "function") {
+      continue;
+    }
+
+    const signature = buildAssistAttachmentSignature(file);
+    if (!signature || seen.has(signature)) {
+      continue;
+    }
+    seen.add(signature);
+    nextItems.push(file);
+    if (nextItems.length >= MAX_ASSIST_ATTACHMENTS) {
+      break;
+    }
+  }
+
+  return nextItems;
+}
+
+function buildMoveActions(items, itemKey, moveUpKey, moveDownKey) {
+  const index = (items || []).findIndex((item) => item.key === itemKey);
+  if (index < 0) {
+    return [];
+  }
+
+  const actions = [];
+  if (index > 0) {
+    actions.push({ key: moveUpKey, label: "Mover para cima", icon: "&uarr;" });
+  }
+  if (index < items.length - 1) {
+    actions.push({ key: moveDownKey, label: "Mover para baixo", icon: "&darr;" });
+  }
+  return actions;
+}
+
+function buildAssistHierarchyContext({ course, moduleValue, lesson, microsequence }) {
+  return {
+    courseTitle: course?.title || course?.key || "",
+    courseDescription: course?.description || "",
+    moduleTitle: moduleValue?.title || moduleValue?.key || "",
+    moduleDescription: moduleValue?.description || "",
+    lessonTitle: lesson?.title || lesson?.key || "",
+    lessonDescription: lesson?.description || "",
+    title: microsequence?.title || "",
+    tags: Array.isArray(microsequence?.tags) ? microsequence.tags : [],
+    cards: Array.isArray(microsequence?.cards) ? microsequence.cards : []
+  };
+}
+
 function buildCardUpdateFromText(card, title, text) {
   const base = {
-    type: card?.type || "text",
     title: String(title || "").trim() || card?.title || "Novo card"
   };
+  const nextText = String(text || "").trim();
+  const kind = getContractCardKind(card);
 
-  if (base.type === "choice") {
+  if (kind === "ask") {
     return {
       ...base,
-      ask: String(text || "").trim() || card.ask || "Qual alternativa é a mais adequada?",
-      answer: Array.isArray(card.answer) && card.answer.length ? card.answer : ["Alternativa correta"],
+      ask: nextText || card.ask || "Qual alternativa é a mais adequada?",
+      answer: listContractAnswerValues(card).length ? card.answer : "Alternativa correta",
       wrong: Array.isArray(card.wrong) && card.wrong.length ? card.wrong : ["Distrator 1", "Distrator 2"]
     };
   }
 
-  if (base.type === "complete") {
-    return {
-      ...base,
-      text: String(text || "").trim() || card.text || "Preencha o trecho [[correto]].",
-      answer: Array.isArray(card.answer) && card.answer.length ? card.answer : ["correto"],
-      wrong: Array.isArray(card.wrong) && card.wrong.length ? card.wrong : ["incorreto", "parcial"]
-    };
-  }
-
-  if (base.type === "editor") {
+  if (kind === "code") {
     return {
       ...base,
       language: card.language || "text",
@@ -171,41 +260,41 @@ function buildCardUpdateFromText(card, title, text) {
     };
   }
 
-  if (base.type === "table") {
+  if (kind === "table") {
     return {
       ...base,
-      columns: Array.isArray(card.columns) && card.columns.length ? card.columns : ["Coluna A", "Coluna B"],
-      rows: Array.isArray(card.rows) && card.rows.length ? card.rows : [["Valor 1", "Valor 2"]]
+      ...(nextText ? { say: nextText } : card.say ? { say: card.say } : {}),
+      table: card.table || {
+        columns: ["Coluna A", "Coluna B"],
+        rows: [["Valor 1", "Valor 2"]]
+      }
     };
   }
 
-  if (base.type === "flow") {
+  if (kind === "tree") {
     return {
       ...base,
+      ...(nextText ? { say: nextText } : card.say ? { say: card.say } : {}),
+      tree: card.tree || {
+        base: "/",
+        items: {}
+      }
+    };
+  }
+
+  if (kind === "flow") {
+    return {
+      ...base,
+      ...(nextText ? { say: nextText } : card.say ? { say: card.say } : {}),
       flow: Array.isArray(card.flow) && card.flow.length ? card.flow : [{ start: "Início" }, { end: "Fim" }]
-    };
-  }
-
-  if (base.type === "image") {
-    return {
-      ...base,
-      src: card.src || "public/example.png",
-      ...(card.alt ? { alt: card.alt } : {})
     };
   }
 
   return {
     ...base,
-    text: String(text || "").trim() || card?.text || "Descreva a ideia central desta microssequência."
+    say: nextText || card?.say || "Descreva a ideia central desta microssequência.",
+    ...(Array.isArray(card?.wrong) && card.wrong.length ? { wrong: card.wrong } : {})
   };
-}
-
-function ensureDraftCourse(document) {
-  return document;
-}
-
-function isDraftPlaceholderMicrosequence() {
-  return false;
 }
 
 function clampFlowchartScale(value) {
@@ -233,6 +322,7 @@ function makeEntityEditorModel(state) {
   if (entityEditor.kind === "course-actions") {
     const course = findCourse(project, entityEditor.courseKey || selection.courseKey);
     if (!course) return null;
+    const moveActions = buildMoveActions(project.courses || [], course.key, "move-course-up", "move-course-down");
     return {
       variant: "action-menu",
       title: "Ações do curso",
@@ -240,9 +330,24 @@ function makeEntityEditorModel(state) {
       fields: [],
       actions: [
         { key: "edit-course-metadata", label: "Editar curso", icon: "&#9998;" },
+        ...moveActions,
         { key: "reset-course-progress", label: "Zerar progresso do curso", icon: "&#8635;" },
         { key: "export-course", label: "Exportar curso", icon: "&#8681;" },
         { key: "delete-course", label: "Excluir curso", icon: "&#128465;", tone: "danger" }
+      ],
+      showSaveButton: false
+    };
+  }
+
+  if (entityEditor.kind === "course-screen-actions") {
+    return {
+      variant: "action-menu",
+      title: "Ações",
+      placement: "side",
+      fields: [],
+      actions: [
+        { key: "create-module", label: "Novo módulo", icon: "&#43;" },
+        { key: "import-module", label: "Importar módulo", icon: "&#8679;" }
       ],
       showSaveButton: false
     };
@@ -287,10 +392,29 @@ function makeEntityEditorModel(state) {
         { name: "title", label: "Título", type: "text", value: moduleValue.title || "" },
         { name: "description", label: "Descrição", type: "textarea", value: moduleValue.description || "" }
       ],
+      actions: []
+    };
+  }
+
+  if (entityEditor.kind === "module-actions") {
+    const moduleValue = findModule(project, entityEditor.courseKey || selection.courseKey, entityEditor.moduleKey);
+    if (!moduleValue) return null;
+    const course = findCourse(project, entityEditor.courseKey || selection.courseKey);
+    const moveActions = buildMoveActions(course?.modules || [], moduleValue.key, "move-module-up", "move-module-down");
+    return {
+      variant: "action-menu",
+      title: "Ações do módulo",
+      placement: "bottom",
+      fields: [],
       actions: [
-        { key: "create-lesson", label: "Nova lição" },
-        { key: "delete-module", label: "Excluir módulo", tone: "danger" }
-      ]
+        { key: "edit-module-metadata", label: "Editar módulo", icon: "&#9998;" },
+        { key: "create-lesson", label: "Adicionar lição", icon: "&#43;" },
+        ...moveActions,
+        { key: "reset-module-progress", label: "Zerar progresso do módulo", icon: "&#8635;" },
+        { key: "export-module", label: "Exportar módulo", icon: "&#8681;" },
+        { key: "delete-module", label: "Excluir módulo", icon: "&#128465;", tone: "danger" }
+      ],
+      showSaveButton: false
     };
   }
 
@@ -303,10 +427,42 @@ function makeEntityEditorModel(state) {
         { name: "title", label: "Título", type: "text", value: lesson.title || "" },
         { name: "description", label: "Descrição", type: "textarea", value: lesson.description || "" }
       ],
+      actions: []
+    };
+  }
+
+  if (entityEditor.kind === "lesson-actions") {
+    const lesson = findLesson(project, entityEditor.courseKey || selection.courseKey, entityEditor.moduleKey, entityEditor.lessonKey);
+    if (!lesson) return null;
+    const moduleValue = findModule(project, entityEditor.courseKey || selection.courseKey, entityEditor.moduleKey);
+    const moveActions = buildMoveActions(moduleValue?.lessons || [], lesson.key, "move-lesson-up", "move-lesson-down");
+    return {
+      variant: "action-menu",
+      title: "Ações da lição",
+      placement: "bottom",
+      fields: [],
       actions: [
-        { key: "create-microsequence", label: "Nova microssequência" },
-        { key: "delete-lesson", label: "Excluir lição", tone: "danger" }
-      ]
+        { key: "edit-lesson-metadata", label: "Editar lição", icon: "&#9998;" },
+        ...moveActions,
+        { key: "reset-lesson-progress", label: "Zerar progresso da lição", icon: "&#8635;" },
+        { key: "export-lesson", label: "Exportar lição", icon: "&#8681;" },
+        { key: "delete-lesson", label: "Excluir lição", icon: "&#128465;", tone: "danger" }
+      ],
+      showSaveButton: false
+    };
+  }
+
+  if (entityEditor.kind === "lesson-screen-actions") {
+    return {
+      variant: "action-menu",
+      title: "Ações",
+      placement: "side",
+      fields: [],
+      actions: [
+        { key: "create-microsequence", label: "Nova microssequência", icon: "&#43;" },
+        { key: "import-microsequence", label: "Importar microssequência", icon: "&#8679;" }
+      ],
+      showSaveButton: false
     };
   }
 
@@ -332,6 +488,52 @@ function makeEntityEditorModel(state) {
     };
   }
 
+  if (entityEditor.kind === "microsequence-actions") {
+    const microsequence = findMicrosequence(
+      project,
+      entityEditor.courseKey || selection.courseKey,
+      entityEditor.moduleKey,
+      entityEditor.lessonKey,
+      entityEditor.microsequenceKey
+    );
+    if (!microsequence) return null;
+    const lesson = findLesson(project, entityEditor.courseKey || selection.courseKey, entityEditor.moduleKey, entityEditor.lessonKey);
+    const moveActions = buildMoveActions(
+      lesson?.microsequences || [],
+      microsequence.key,
+      "move-microsequence-up",
+      "move-microsequence-down"
+    );
+    return {
+      variant: "action-menu",
+      title: "Ações da microssequência",
+      placement: "bottom",
+      fields: [],
+      actions: [
+        { key: "edit-microsequence-metadata", label: "Editar microssequência", icon: "&#9998;" },
+        ...moveActions,
+        { key: "export-microsequence", label: "Exportar microssequência", icon: "&#8681;" },
+        { key: "delete-microsequence", label: "Excluir microssequência", icon: "&#128465;", tone: "danger" }
+      ],
+      showSaveButton: false
+    };
+  }
+
+  if (entityEditor.kind === "assist-container-picker") {
+    return {
+      variant: "action-menu",
+      title: "Adicionar recursos",
+      placement: "bottom",
+      fields: [],
+      actions: ASSIST_CARD_CONTAINER_OPTIONS.map((item) => ({
+        key: `set-assist-container:${item.value}`,
+        label: item.label,
+        icon: item.icon
+      })),
+      showSaveButton: false
+    };
+  }
+
   if (entityEditor.kind === "card") {
     const microsequence = findMicrosequence(
       project,
@@ -344,11 +546,13 @@ function makeEntityEditorModel(state) {
       ? findCard(microsequence, entityEditor.cardKey || selection.cardKey)
       : null;
     if (!card) return null;
+    const moveActions = buildMoveActions(microsequence.cards || [], card.key, "move-card-up", "move-card-down");
     return {
       title: "Card",
       fields: [],
       actions: [
         { key: "create-card", label: "Novo card após este" },
+        ...moveActions,
         { key: "delete-card", label: "Excluir card", tone: "danger" }
       ]
     };
@@ -362,12 +566,12 @@ export function createLessonEditorApp({ root, storage, editor }) {
   if (!storage || typeof storage.loadProject !== "function") fail("Storage inválido.");
   if (!editor) fail("Editor inválido.");
 
-  const loadedProject = storage.loadProject();
-  const initialProject = ensureDraftCourse(loadedProject);
+  const initialProject = storage.loadProject();
   const initialAssistConfig = readAssistConfigStorage();
   const state = {
     project: initialProject,
     view: "courses",
+    homeTab: "generate",
     selection: null,
     cardCommentOpen: false,
     versionHistoryOpen: false,
@@ -377,6 +581,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
     assistConfigDraft: { ...initialAssistConfig },
     microsequenceMode: "play",
     cardHistory: readHistoryStorage(),
+    microsequenceVersions: readMicrosequenceVersionStorage(),
     cardComments: readCommentStorage(),
     cardCommentDraft: "",
     flowchartPracticeByBlockKey: {},
@@ -389,86 +594,270 @@ export function createLessonEditorApp({ root, storage, editor }) {
     cardExerciseLoadVersion: 0,
     continuePopup: null,
     assistDraft: {
-      selectedMode: ASSIST_USER_MODES.GENERATE,
+      selectedMode: ASSIST_USER_MODES.EDIT_MICROSEQUENCE,
+      activeWorkbenchPane: "preview",
       promptText: "",
+      preferredContainer: "",
+      attachments: [],
       dependencyKeys: [],
       pendingDependencyKey: "",
       lastRequest: null,
       isSubmitting: false,
       errorMessage: ""
-    }
+    },
+    generationDraft: {
+      courseKey: "",
+      moduleKey: "",
+      lessonKey: "",
+      promptText: "",
+      lastResult: null,
+      isSubmitting: false,
+      errorMessage: ""
+    },
+    structureDrag: null,
+    structureDrop: null,
+    lastCoursesView: "courses",
+    pendingGeneratedNavigation: null,
+    pendingStructureFocus: null
   };
 
   state.selection = getFirstPath(state.project);
 
-  function ensureDraftWorkspace(nextProject) {
-    const ensuredProject = ensureDraftCourse(nextProject);
-    if (ensuredProject !== nextProject) {
-      storage.saveProject(ensuredProject);
-    }
-    return ensuredProject;
-  }
-
   function setProject(nextProject) {
-    state.project = ensureDraftWorkspace(nextProject);
+    state.project = nextProject;
   }
 
-  function getDraftLessonContext(project = state.project) {
-    const course = findCourse(project, DRAFT_COURSE_KEY);
-    const moduleValue = course ? findModule(project, DRAFT_COURSE_KEY, DRAFT_MODULE_KEY) : null;
-    const lesson = moduleValue ? findLesson(project, DRAFT_COURSE_KEY, DRAFT_MODULE_KEY, DRAFT_LESSON_KEY) : null;
-    return { course, moduleValue, lesson };
+  function isCoursesView(view) {
+    return COURSES_VIEWS.has(view);
   }
 
-  function getVisibleDraftMicrosequences(project = state.project) {
-    const { lesson } = getDraftLessonContext(project);
-    return (lesson?.microsequences || []).filter((item) => !isDraftPlaceholderMicrosequence(item));
+  function rememberCoursesView(view = state.view) {
+    if (!isCoursesView(view)) {
+      return;
+    }
+    if (view === "courses" && state.homeTab !== "courses") {
+      return;
+    }
+    state.lastCoursesView = view;
   }
 
-  function ensureDraftGeneratorWorkspace() {
-    const draftContext = getDraftLessonContext();
-    if (!draftContext.course || !draftContext.moduleValue || !draftContext.lesson) {
+  function readStructurePayload(node, fallbackLevel = "") {
+    if (!node) {
       return null;
     }
 
-    const existingPlaceholder = (draftContext.lesson.microsequences || []).find((item) => isDraftPlaceholderMicrosequence(item));
-    if (existingPlaceholder) {
-      if ((existingPlaceholder.title || "").trim()) {
-        const nextProject = editor.updateMicrosequence({
-          courseKey: draftContext.course.key,
-          moduleKey: draftContext.moduleValue.key,
-          lessonKey: draftContext.lesson.key,
-          microsequenceKey: existingPlaceholder.key,
-          title: "",
-          tags: existingPlaceholder.tags || []
-        });
-        setProject(nextProject);
-        const nextDraftLesson = findLesson(nextProject, DRAFT_COURSE_KEY, DRAFT_MODULE_KEY, DRAFT_LESSON_KEY);
-        return (nextDraftLesson?.microsequences || []).find((item) => isDraftPlaceholderMicrosequence(item)) || null;
-      }
-
-      return existingPlaceholder;
+    const level = node.getAttribute("data-structure-level") || node.getAttribute("data-structure-target") || fallbackLevel;
+    if (!level) {
+      return null;
     }
 
-    const nextProject = editor.createMicrosequence({
-      courseKey: draftContext.course.key,
-      moduleKey: draftContext.moduleValue.key,
-      lessonKey: draftContext.lesson.key,
-      title: "",
-      tags: []
-    });
-    setProject(nextProject);
+    return {
+      level,
+      courseKey: node.getAttribute("data-course-key") || "",
+      moduleKey: node.getAttribute("data-module-key") || "",
+      lessonKey: node.getAttribute("data-lesson-key") || "",
+      microsequenceKey: node.getAttribute("data-microsequence-key") || "",
+      cardKey: node.getAttribute("data-card-key") || ""
+    };
+  }
 
-    const nextDraftLesson = findLesson(nextProject, DRAFT_COURSE_KEY, DRAFT_MODULE_KEY, DRAFT_LESSON_KEY);
-    return (nextDraftLesson?.microsequences || []).find((item) => isDraftPlaceholderMicrosequence(item)) || null;
+  function isSameStructurePayload(left, right) {
+    return !!left &&
+      !!right &&
+      left.level === right.level &&
+      left.courseKey === right.courseKey &&
+      left.moduleKey === right.moduleKey &&
+      left.lessonKey === right.lessonKey &&
+      left.microsequenceKey === right.microsequenceKey &&
+      left.cardKey === right.cardKey;
+  }
+
+  function canDropStructure(drag, target) {
+    if (!drag || !target || drag.level !== target.level || isSameStructurePayload(drag, target)) {
+      return false;
+    }
+
+    if (drag.level === "course") {
+      return !!drag.courseKey && !!target.courseKey;
+    }
+    if (drag.level === "module") {
+      return drag.courseKey === target.courseKey && !!drag.moduleKey && !!target.moduleKey;
+    }
+    if (drag.level === "lesson") {
+      return drag.courseKey === target.courseKey && drag.moduleKey === target.moduleKey && !!drag.lessonKey && !!target.lessonKey;
+    }
+    if (drag.level === "microsequence") {
+      return (
+        drag.courseKey === target.courseKey &&
+        drag.moduleKey === target.moduleKey &&
+        drag.lessonKey === target.lessonKey &&
+        !!drag.microsequenceKey &&
+        !!target.microsequenceKey
+      );
+    }
+    if (drag.level === "card") {
+      return (
+        drag.courseKey === target.courseKey &&
+        drag.moduleKey === target.moduleKey &&
+        drag.lessonKey === target.lessonKey &&
+        drag.microsequenceKey === target.microsequenceKey &&
+        !!drag.cardKey &&
+        !!target.cardKey
+      );
+    }
+
+    return false;
+  }
+
+  function clearStructureDropClasses() {
+    root
+      .querySelectorAll(
+        ".structure-drop-before, .structure-drop-after, .structure-drop-inline-before, .structure-drop-inline-after, .structure-drag-origin"
+      )
+      .forEach((node) => {
+        node.classList.remove(
+          "structure-drop-before",
+          "structure-drop-after",
+          "structure-drop-inline-before",
+          "structure-drop-inline-after",
+          "structure-drag-origin"
+        );
+      });
+  }
+
+  function getStructureDropClass(level, position) {
+    if (level === "card") {
+      return position === "after" ? "structure-drop-inline-after" : "structure-drop-inline-before";
+    }
+    return position === "after" ? "structure-drop-after" : "structure-drop-before";
+  }
+
+  function resetStructureDragState() {
+    state.structureDrag = null;
+    state.structureDrop = null;
+    clearStructureDropClasses();
+  }
+
+  function resolveStructureDropIndex(items, draggedKey, targetKey, position) {
+    const fromIndex = (items || []).findIndex((item) => item.key === draggedKey);
+    const targetIndex = (items || []).findIndex((item) => item.key === targetKey);
+    if (fromIndex < 0 || targetIndex < 0) {
+      return null;
+    }
+
+    let nextIndex = position === "after" ? targetIndex + 1 : targetIndex;
+    if (fromIndex < nextIndex) {
+      nextIndex -= 1;
+    }
+
+    return nextIndex;
+  }
+
+  function getStructureDropPosition(targetNode, clientY) {
+    const rect = targetNode.getBoundingClientRect();
+    return clientY > rect.top + rect.height / 2 ? "after" : "before";
+  }
+
+  function getStructureAxis(level) {
+    return level === "card" ? "x" : "y";
+  }
+
+  function getStructureDropPositionForAxis(targetNode, point, axis) {
+    const rect = targetNode.getBoundingClientRect();
+    if (axis === "x") {
+      return point > rect.left + rect.width / 2 ? "after" : "before";
+    }
+    return point > rect.top + rect.height / 2 ? "after" : "before";
+  }
+
+  function readStructureCollection(node) {
+    if (!node) {
+      return null;
+    }
+    const level = node.getAttribute("data-structure-collection") || "";
+    if (!level) {
+      return null;
+    }
+    return readStructurePayload(node, level);
+  }
+
+  function getStructureCollectionItems(node, level) {
+    return Array.from(node?.children || []).filter((child) => child.getAttribute?.("data-structure-target") === level);
+  }
+
+  function resolveCollectionDropState(collectionNode, drag, clientX, clientY) {
+    const collection = readStructureCollection(collectionNode);
+    if (!collection || !drag || collection.level !== drag.level) {
+      return null;
+    }
+
+    const axis = getStructureAxis(drag.level);
+    const point = axis === "x" ? clientX : clientY;
+    const items = getStructureCollectionItems(collectionNode, collection.level)
+      .map((node) => ({
+        node,
+        payload: readStructurePayload(node)
+      }))
+      .filter((entry) => canDropStructure(drag, entry.payload));
+
+    if (!items.length) {
+      return null;
+    }
+
+    const first = items[0];
+    const last = items[items.length - 1];
+    const firstRect = first.node.getBoundingClientRect();
+    const lastRect = last.node.getBoundingClientRect();
+    const firstThreshold = axis === "x" ? firstRect.left + firstRect.width / 2 : firstRect.top + firstRect.height / 2;
+    const lastThreshold = axis === "x" ? lastRect.left + lastRect.width / 2 : lastRect.top + lastRect.height / 2;
+
+    if (point <= firstThreshold) {
+      return { target: first.payload, position: "before", node: first.node };
+    }
+    if (point >= lastThreshold) {
+      return { target: last.payload, position: "after", node: last.node };
+    }
+
+    for (const entry of items) {
+      const position = getStructureDropPositionForAxis(entry.node, point, axis);
+      const rect = entry.node.getBoundingClientRect();
+      const threshold = axis === "x" ? rect.left + rect.width / 2 : rect.top + rect.height / 2;
+      if ((position === "before" && point <= threshold) || (position === "after" && point >= threshold)) {
+        return { target: entry.payload, position, node: entry.node };
+      }
+    }
+
+    return { target: last.payload, position: "after", node: last.node };
+  }
+
+  function markStructureDropTarget(targetNode, position) {
+    clearStructureDropClasses();
+    const originNode = state.structureDrag?.originNode || null;
+    originNode?.classList.add("structure-drag-origin");
+    targetNode.classList.add(getStructureDropClass(state.structureDrag?.level, position));
   }
 
   function collectGlobalAssistTags(project = state.project) {
     const seenTitles = new Set();
     const tags = [];
 
+    function pushCatalogEntry(key, title, scope) {
+      const safeKey = String(key || "").trim();
+      const safeTitle = String(title || key || "").trim();
+      if (!safeKey || !safeTitle || seenTitles.has(safeKey.toLowerCase())) {
+        return;
+      }
+
+      seenTitles.add(safeKey.toLowerCase());
+      tags.push({
+        key: safeKey,
+        title: safeTitle,
+        scope
+      });
+    }
+
     (project.courses || []).forEach((course) => {
-      if (!course || course.key === DRAFT_COURSE_KEY) {
+      if (!course) {
         return;
       }
 
@@ -476,15 +865,9 @@ export function createLessonEditorApp({ root, storage, editor }) {
         (moduleValue.lessons || []).forEach((lesson) => {
           (lesson.microsequences || []).forEach((microsequence) => {
             const title = (microsequence.title || microsequence.key || "").trim();
-            if (!title || seenTitles.has(title.toLowerCase())) {
-              return;
-            }
-
-            seenTitles.add(title.toLowerCase());
-            tags.push({
-              key: title,
-              title,
-              scope: course.title || "Curso"
+            pushCatalogEntry(title, title, course.title || "Curso");
+            (microsequence.tags || []).forEach((tag) => {
+              pushCatalogEntry(tag, tag, "Tag");
             });
           });
         });
@@ -495,12 +878,22 @@ export function createLessonEditorApp({ root, storage, editor }) {
   }
 
   function getAssistCatalog() {
-    if (state.view === "draft-generator" || state.selection.courseKey === DRAFT_COURSE_KEY) {
-      return collectGlobalAssistTags();
-    }
-
     const context = getRenderContext();
-    return collectAssistDependencies(context.course, context.moduleValue, context.lesson, context.microsequence);
+    const localDependencies = collectAssistDependencies(context.course, context.moduleValue, context.lesson, context.microsequence);
+    const globalTags = collectGlobalAssistTags();
+    const merged = [];
+    const seenKeys = new Set();
+
+    [...localDependencies, ...globalTags].forEach((item) => {
+      const key = String(item?.key || "").trim();
+      if (!key || seenKeys.has(key)) {
+        return;
+      }
+      seenKeys.add(key);
+      merged.push(item);
+    });
+
+    return merged;
   }
 
   function collectRepositionSlots(project = state.project) {
@@ -514,7 +907,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
     const seenSlotIds = new Set();
 
     (project.courses || []).forEach((course) => {
-      if (!course || course.key === DRAFT_COURSE_KEY) {
+      if (!course) {
         return;
       }
 
@@ -592,27 +985,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
   }
 
   function getAssistModeOptions() {
-    const context = getRenderContext();
     const hasSelectedTags = state.assistDraft.dependencyKeys.length > 0;
-    const hasCards = Array.isArray(context.cards) && context.cards.length > 0 && !isDraftPlaceholderMicrosequence(context.microsequence);
-
-    if (state.view === "draft-generator") {
-      const options = [
-        { value: ASSIST_USER_MODES.GENERATE, label: "Gerar microssequência" }
-      ];
-
-      if (hasCards) {
-        options.push({ value: ASSIST_USER_MODES.EDIT_MICROSEQUENCE, label: "Editar microssequência" });
-      }
-      if (hasCards && hasSelectedTags) {
-        options.push({ value: ASSIST_USER_MODES.REPOSITION, label: "Reposicionar em um curso" });
-      }
-
-      return {
-        options,
-        locked: options.length === 1
-      };
-    }
 
     const options = [
       { value: ASSIST_USER_MODES.EDIT_MICROSEQUENCE, label: "Editar microssequência" }
@@ -628,9 +1001,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
   }
 
   function getDefaultAssistUserMode() {
-    return state.view === "draft-generator"
-      ? ASSIST_USER_MODES.GENERATE
-      : ASSIST_USER_MODES.EDIT_MICROSEQUENCE;
+    return ASSIST_USER_MODES.EDIT_MICROSEQUENCE;
   }
 
   function applySelection(path) {
@@ -643,6 +1014,62 @@ export function createLessonEditorApp({ root, storage, editor }) {
       cardKey: path.cardKey,
       cardIndex: path.cardIndex
     };
+  }
+
+  function buildNodeSelection({ courseKey = null, moduleKey = null, lessonKey = null, microsequenceKey = null } = {}) {
+    return {
+      courseKey,
+      moduleKey,
+      lessonKey,
+      microsequenceKey,
+      cardKey: null,
+      cardIndex: 0
+    };
+  }
+
+  function focusStructureTarget(target) {
+    if (!target) {
+      return;
+    }
+    state.pendingStructureFocus = {
+      view: target.view || state.view,
+      courseKey: target.courseKey || null,
+      moduleKey: target.moduleKey || null,
+      lessonKey: target.lessonKey || null,
+      microsequenceKey: target.microsequenceKey || null
+    };
+  }
+
+  function applySelectionByKeys(nextProject, desiredSelection = state.selection) {
+    const fallbackPath = getFirstPath(nextProject);
+    const course = findCourse(nextProject, desiredSelection?.courseKey) || findCourse(nextProject, fallbackPath.courseKey);
+    const moduleValue =
+      findModule(nextProject, course?.key, desiredSelection?.moduleKey) ||
+      findModule(nextProject, course?.key, fallbackPath.moduleKey);
+    const lesson =
+      findLesson(nextProject, course?.key, moduleValue?.key, desiredSelection?.lessonKey) ||
+      findLesson(nextProject, course?.key, moduleValue?.key, fallbackPath.lessonKey);
+    const microsequence =
+      findMicrosequence(nextProject, course?.key, moduleValue?.key, lesson?.key, desiredSelection?.microsequenceKey) ||
+      findMicrosequence(nextProject, course?.key, moduleValue?.key, lesson?.key, fallbackPath.microsequenceKey);
+    const cards = microsequence?.cards || [];
+    const fallbackCardIndex = Number.isInteger(fallbackPath.cardIndex) ? fallbackPath.cardIndex : 0;
+    const preferredIndex = Number.isInteger(desiredSelection?.cardIndex) ? desiredSelection.cardIndex : fallbackCardIndex;
+    const cardFromKey = desiredSelection?.cardKey ? findCard(microsequence, desiredSelection.cardKey) : null;
+    const safeCardIndex = cards.length ? Math.max(0, Math.min(preferredIndex, cards.length - 1)) : 0;
+    const selectedCard = cardFromKey || cards[safeCardIndex] || null;
+
+    const nextPath = {
+      courseKey: course?.key || null,
+      moduleKey: moduleValue?.key || null,
+      lessonKey: lesson?.key || null,
+      microsequenceKey: microsequence?.key || null,
+      cardKey: selectedCard?.key || null,
+      cardIndex: selectedCard ? cards.findIndex((item) => item.key === selectedCard.key) : 0
+    };
+
+    applySelection(nextPath);
+    return nextPath;
   }
 
   function selectFirstPath(nextProject) {
@@ -675,14 +1102,23 @@ export function createLessonEditorApp({ root, storage, editor }) {
   function openLesson(moduleKey, lessonKey) {
     const lesson = findLesson(state.project, state.selection.courseKey, moduleKey, lessonKey);
     if (!lesson) return;
-    const firstMicrosequence = (lesson.microsequences || [])[0] || null;
-    const firstCard = firstMicrosequence && firstMicrosequence.cards ? firstMicrosequence.cards[0] || null : null;
+    const lessonCards = collectLessonCards(lesson);
+    const progressCursor = getLessonProgressCursor(
+      storage.loadProgress(),
+      getLessonProgressReference(state.selection.courseKey, moduleKey, lessonKey),
+      lessonCards.length
+    );
+    const currentEntry = lessonCards[progressCursor] || lessonCards[0] || null;
+    const firstMicrosequence = currentEntry
+      ? findMicrosequence(state.project, state.selection.courseKey, moduleKey, lessonKey, currentEntry.microsequenceKey)
+      : (lesson.microsequences || [])[0] || null;
+    const firstCard = currentEntry ? currentEntry.card : firstMicrosequence && firstMicrosequence.cards ? firstMicrosequence.cards[0] || null : null;
 
     state.selection.moduleKey = moduleKey;
     state.selection.lessonKey = lessonKey;
-    state.selection.microsequenceKey = firstMicrosequence ? firstMicrosequence.key : null;
+    state.selection.microsequenceKey = currentEntry ? currentEntry.microsequenceKey : firstMicrosequence ? firstMicrosequence.key : null;
     state.selection.cardKey = firstCard ? firstCard.key : null;
-    state.selection.cardIndex = 0;
+    state.selection.cardIndex = currentEntry ? currentEntry.cardIndex : 0;
     state.view = "lesson";
     state.cardCommentOpen = false;
     state.entityEditor = null;
@@ -690,12 +1126,57 @@ export function createLessonEditorApp({ root, storage, editor }) {
     render({ preserveState: false });
   }
 
+  function getLessonProgressReference(courseKey, moduleKey, lessonKey) {
+    if (!courseKey || !moduleKey || !lessonKey) {
+      return null;
+    }
+
+    return { courseKey, moduleKey, lessonKey };
+  }
+
+  function persistLessonProgress(reference, lessonCards, reachedIndex) {
+    if (!reference || !Array.isArray(lessonCards) || !lessonCards.length) {
+      return;
+    }
+
+    const currentProgress = storage.loadProgress();
+    const nextProgress = writeLessonProgressEntry(
+      currentProgress,
+      reference,
+      lessonCards.map((entry) => entry.card),
+      reachedIndex
+    );
+    storage.saveProgress(nextProgress);
+  }
+
+  function collectProgressReferencesInModule(courseKey, moduleValue) {
+    return (moduleValue?.lessons || []).map((lesson) => ({
+      courseKey,
+      moduleKey: moduleValue.key,
+      lessonKey: lesson.key
+    }));
+  }
+
+  function removeProgressEntries(lessonReferences) {
+    const currentProgress = storage.loadProgress();
+    const nextProgress = removeLessonProgressEntries(currentProgress, lessonReferences);
+    storage.saveProgress(nextProgress);
+  }
+
   function saveCardHistory() {
     writeHistoryStorage(state.cardHistory);
   }
 
+  function saveMicrosequenceVersions() {
+    writeMicrosequenceVersionStorage(state.microsequenceVersions);
+  }
+
   function getAssistModelLabel(model) {
     return ASSIST_MODEL_OPTIONS.find((item) => item.value === model)?.label || model;
+  }
+
+  function getAssistContainerLabel(container) {
+    return ASSIST_CARD_CONTAINER_OPTIONS.find((item) => item.value === container)?.label || "Automático";
   }
 
   function persistAssistConfig() {
@@ -708,55 +1189,30 @@ export function createLessonEditorApp({ root, storage, editor }) {
     render({ preserveState: true });
   }
 
-  function openDraftGenerationPage() {
-    const { course, moduleValue, lesson } = getDraftLessonContext();
-    if (!course || !moduleValue || !lesson) {
-      return;
-    }
-
-    const generatorMicrosequence = ensureDraftGeneratorWorkspace();
-    const firstCard = generatorMicrosequence?.cards?.[0] || null;
-
-    applySelection({
-      courseKey: course.key,
-      moduleKey: moduleValue.key,
-      lessonKey: lesson.key,
-      microsequenceKey: generatorMicrosequence ? generatorMicrosequence.key : null,
-      cardKey: firstCard ? firstCard.key : null,
-      cardIndex: 0
-    });
-    state.view = "draft-generator";
-    state.assistDraft.selectedMode = ASSIST_USER_MODES.GENERATE;
-    state.assistDraft.dependencyKeys = [];
-    state.assistDraft.pendingDependencyKey = "";
-    state.cardCommentOpen = false;
-    state.versionHistoryOpen = false;
-    state.entityEditor = null;
-    syncAssistDraft();
-    render({ preserveState: false });
-  }
-
   function closeAssistConfig() {
     state.assistConfigOpen = false;
     render({ preserveState: true });
   }
 
-  function saveAssistConfig() {
-    state.assistConfig = {
-      model: state.assistConfigDraft.model || "gemini-2.5-flash-lite",
-      apiKey: typeof state.assistConfigDraft.apiKey === "string" ? state.assistConfigDraft.apiKey.trim() : ""
-    };
-    persistAssistConfig();
-    state.assistConfigOpen = false;
-    state.assistDraft.errorMessage = "";
-    render({ preserveState: true });
-  }
-
   function setAssistModel(model) {
-    state.assistConfig.model = model || "gemini-2.5-flash-lite";
+    state.assistConfig.model = model || "gemini-2.5-flash";
     if (state.assistConfigOpen) {
       state.assistConfigDraft.model = state.assistConfig.model;
     }
+    persistAssistConfig();
+  }
+
+  function persistAssistConfigValue(patch = {}) {
+    state.assistConfig = {
+      model: patch.model || state.assistConfig.model || "gemini-2.5-flash",
+      apiKey:
+        patch.apiKey !== undefined
+          ? String(patch.apiKey || "").trim()
+          : typeof state.assistConfig.apiKey === "string"
+            ? state.assistConfig.apiKey.trim()
+            : ""
+    };
+    state.assistConfigDraft = { ...state.assistConfig };
     persistAssistConfig();
   }
 
@@ -810,11 +1266,9 @@ export function createLessonEditorApp({ root, storage, editor }) {
     const allowedKeys = new Set(dependencies.map((item) => item.key));
     const filteredKeys = state.assistDraft.dependencyKeys.filter((key) => allowedKeys.has(key));
     state.assistDraft.dependencyKeys =
-      state.view === "draft-generator"
+      filteredKeys.length > 0
         ? filteredKeys.slice(0, MAX_ASSIST_DEPENDENCIES)
-        : filteredKeys.length > 0
-          ? filteredKeys.slice(0, MAX_ASSIST_DEPENDENCIES)
-          : getDefaultDependencyKeys(dependencies);
+        : getDefaultDependencyKeys(dependencies);
 
     const availableKeys = dependencies
       .filter((item) => !state.assistDraft.dependencyKeys.includes(item.key))
@@ -830,6 +1284,10 @@ export function createLessonEditorApp({ root, storage, editor }) {
         ? defaultMode
         : modeOptions.options[0]?.value || defaultMode;
     }
+    if (!ASSIST_CARD_CONTAINER_OPTIONS.some((item) => item.value === state.assistDraft.preferredContainer)) {
+      state.assistDraft.preferredContainer = "";
+    }
+    state.assistDraft.attachments = normalizeAssistAttachmentList(state.assistDraft.attachments);
   }
 
   function applyCardContent({ title, text }) {
@@ -908,6 +1366,10 @@ export function createLessonEditorApp({ root, storage, editor }) {
   function openMicrosequenceScreen(microsequenceKey, targetIndex = 0, mode = "play") {
     const microsequence = selectMicrosequenceCard(microsequenceKey, targetIndex);
     if (!microsequence) return;
+    if (mode === "play" && !isRunnableMicrosequence(microsequence)) {
+      openMicrosequenceAssistPage(microsequenceKey, targetIndex);
+      return;
+    }
 
     state.view = "microsequence";
     state.microsequenceMode = mode;
@@ -923,10 +1385,47 @@ export function createLessonEditorApp({ root, storage, editor }) {
   }
 
   function openMicrosequenceAssistPage(microsequenceKey, targetIndex = 0) {
-    const microsequence = selectMicrosequenceCard(microsequenceKey, targetIndex);
+    const microsequence = findMicrosequence(
+      state.project,
+      state.selection.courseKey,
+      state.selection.moduleKey,
+      state.selection.lessonKey,
+      microsequenceKey
+    );
     if (!microsequence) return;
+    state.selection.microsequenceKey = microsequence.key;
+    const reference = {
+      courseKey: state.selection.courseKey,
+      moduleKey: state.selection.moduleKey,
+      lessonKey: state.selection.lessonKey,
+      microsequenceKey: microsequence.key
+    };
+    const entry = ensureMicrosequenceVersionEntry(reference, microsequence);
+    syncActiveMicrosequenceVersionFromProject(reference);
+    const assistOpenState = resolveMicrosequenceAssistOpenState(entry, targetIndex);
+    const activeVersion =
+      entry?.versions?.find((item) => item.id === assistOpenState.activeVersionId) ||
+      entry?.versions?.at(-1) ||
+      null;
+
+    if (entry && activeVersion) {
+      entry.activeVersionId = activeVersion.id;
+      saveMicrosequenceVersions();
+      applyMicrosequenceVersion(reference, activeVersion, assistOpenState.cardIndex);
+      state.assistDraft.dependencyKeys = Array.isArray(activeVersion.tags)
+        ? activeVersion.tags.slice(0, MAX_ASSIST_DEPENDENCIES)
+        : [];
+    } else {
+      selectMicrosequenceCard(microsequenceKey, targetIndex);
+      state.assistDraft.dependencyKeys = Array.isArray(microsequence.tags)
+        ? microsequence.tags.slice(0, MAX_ASSIST_DEPENDENCIES)
+        : [];
+    }
+
     state.view = "microsequence-assist";
     state.assistDraft.selectedMode = ASSIST_USER_MODES.EDIT_MICROSEQUENCE;
+    state.assistDraft.activeWorkbenchPane = assistOpenState.activeWorkbenchPane;
+    state.assistDraft.attachments = [];
     state.microsequenceMode = "play";
     ensureCurrentCardSnapshot();
     syncAssistDraft();
@@ -936,6 +1435,254 @@ export function createLessonEditorApp({ root, storage, editor }) {
     state.activeFlowchartPrompt = null;
     state.activeTextGapPrompt = null;
     state.cardExerciseLoadVersion += 1;
+    render({ preserveState: false });
+  }
+
+  function buildMicrosequenceVersionKey(reference = state.selection) {
+    if (!reference?.courseKey || !reference?.moduleKey || !reference?.lessonKey || !reference?.microsequenceKey) {
+      return "";
+    }
+
+    return [
+      reference.courseKey,
+      reference.moduleKey,
+      reference.lessonKey,
+      reference.microsequenceKey
+    ].join("::");
+  }
+
+  function cloneMicrosequenceSnapshot(microsequence, fallbackLabel = "Iteração 1") {
+    return {
+      id: `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
+      label: fallbackLabel,
+      title: microsequence?.title || "",
+      tags: Array.isArray(microsequence?.tags) ? structuredClone(microsequence.tags) : [],
+      cards: Array.isArray(microsequence?.cards) ? structuredClone(microsequence.cards) : [],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+  }
+
+  function ensureMicrosequenceVersionEntry(reference = state.selection, microsequence = null) {
+    const versionKey = buildMicrosequenceVersionKey(reference);
+    if (!versionKey) {
+      return null;
+    }
+
+    const currentMicrosequence =
+      microsequence ||
+      findMicrosequence(
+        state.project,
+        reference.courseKey,
+        reference.moduleKey,
+        reference.lessonKey,
+        reference.microsequenceKey
+      );
+    if (!currentMicrosequence) {
+      return null;
+    }
+
+    const currentEntry = state.microsequenceVersions[versionKey];
+    if (currentEntry && Array.isArray(currentEntry.versions) && currentEntry.versions.length) {
+      if (syncDemoMicrosequenceOverflow(currentEntry, currentMicrosequence)) {
+        saveMicrosequenceVersions();
+      }
+      return currentEntry;
+    }
+
+    const initialVersions = buildDemoMicrosequenceVersions(currentMicrosequence);
+    const initialActiveVersion =
+      initialVersions[getDemoMicrosequenceActiveIndex(initialVersions.length)]?.id || initialVersions[0].id;
+    state.microsequenceVersions[versionKey] = {
+      activeVersionId: initialActiveVersion,
+      versions: initialVersions
+    };
+    saveMicrosequenceVersions();
+    return state.microsequenceVersions[versionKey];
+  }
+
+  function getMicrosequenceVersionEntry(reference = state.selection) {
+    const versionKey = buildMicrosequenceVersionKey(reference);
+    if (!versionKey) {
+      return null;
+    }
+    return ensureMicrosequenceVersionEntry(reference);
+  }
+
+  function getActiveMicrosequenceVersion(reference = state.selection) {
+    const entry = getMicrosequenceVersionEntry(reference);
+    if (!entry) {
+      return null;
+    }
+
+    return entry.versions.find((item) => item.id === entry.activeVersionId) || entry.versions[0] || null;
+  }
+
+  function syncActiveMicrosequenceVersionFromProject(reference = state.selection) {
+    const entry = getMicrosequenceVersionEntry(reference);
+    if (!entry) {
+      return;
+    }
+
+    const microsequence = findMicrosequence(
+      state.project,
+      reference.courseKey,
+      reference.moduleKey,
+      reference.lessonKey,
+      reference.microsequenceKey
+    );
+    if (!microsequence) {
+      return;
+    }
+
+    const activeVersion = entry.versions.find((item) => item.id === entry.activeVersionId) || entry.versions[0];
+    if (!activeVersion) {
+      return;
+    }
+
+    activeVersion.title = microsequence.title || "";
+    activeVersion.tags = structuredClone(microsequence.tags || []);
+    activeVersion.cards = structuredClone(microsequence.cards || []);
+    activeVersion.updatedAt = new Date().toISOString();
+    saveMicrosequenceVersions();
+  }
+
+  function applyMicrosequenceVersion(reference, version, targetCardIndex = 0) {
+    if (!reference || !version) {
+      return;
+    }
+
+    const nextProject = editor.replaceMicrosequenceCards({
+      courseKey: reference.courseKey,
+      moduleKey: reference.moduleKey,
+      lessonKey: reference.lessonKey,
+      microsequenceKey: reference.microsequenceKey,
+      title: version.title || "Microssequência",
+      tags: structuredClone(version.tags || []),
+      cards: structuredClone(version.cards || [])
+    });
+    setProject(nextProject);
+
+    const nextMicrosequence = findMicrosequence(
+      nextProject,
+      reference.courseKey,
+      reference.moduleKey,
+      reference.lessonKey,
+      reference.microsequenceKey
+    );
+    const nextCards = nextMicrosequence?.cards || [];
+    const safeIndex = Math.max(0, Math.min(targetCardIndex, Math.max(0, nextCards.length - 1)));
+    const nextCard = nextCards[safeIndex] || null;
+    applySelection({
+      courseKey: reference.courseKey,
+      moduleKey: reference.moduleKey,
+      lessonKey: reference.lessonKey,
+      microsequenceKey: reference.microsequenceKey,
+      cardKey: nextCard?.key || null,
+      cardIndex: safeIndex
+    });
+  }
+
+  function createMicrosequenceVersionFromCurrentProject() {
+    const reference = {
+      courseKey: state.selection.courseKey,
+      moduleKey: state.selection.moduleKey,
+      lessonKey: state.selection.lessonKey,
+      microsequenceKey: state.selection.microsequenceKey
+    };
+    const entry = getMicrosequenceVersionEntry(reference);
+    const microsequence = findMicrosequence(
+      state.project,
+      reference.courseKey,
+      reference.moduleKey,
+      reference.lessonKey,
+      reference.microsequenceKey
+    );
+    if (!entry || !microsequence) {
+      return;
+    }
+
+    const activeIndex = Math.max(0, entry.versions.findIndex((item) => item.id === entry.activeVersionId));
+    const nextVersion = cloneMicrosequenceSnapshot(microsequence, `Iteração ${entry.versions.length + 1}`);
+    entry.versions.splice(activeIndex + 1, 0, nextVersion);
+    entry.activeVersionId = nextVersion.id;
+    saveMicrosequenceVersions();
+  }
+
+  function switchMicrosequenceVersion(versionId, { preserveCardIndex = true } = {}) {
+    const reference = {
+      courseKey: state.selection.courseKey,
+      moduleKey: state.selection.moduleKey,
+      lessonKey: state.selection.lessonKey,
+      microsequenceKey: state.selection.microsequenceKey
+    };
+    syncActiveMicrosequenceVersionFromProject(reference);
+    const entry = getMicrosequenceVersionEntry(reference);
+    if (!entry) {
+      return;
+    }
+
+    const version = entry.versions.find((item) => item.id === versionId);
+    if (!version) {
+      return;
+    }
+
+    entry.activeVersionId = version.id;
+    saveMicrosequenceVersions();
+    const targetCardIndex = preserveCardIndex && Number.isInteger(state.selection.cardIndex) ? state.selection.cardIndex : 0;
+    applyMicrosequenceVersion(reference, version, targetCardIndex);
+    state.assistDraft.dependencyKeys = Array.isArray(version.tags) ? version.tags.slice(0, MAX_ASSIST_DEPENDENCIES) : [];
+    render({ preserveState: false });
+  }
+
+  function stepMicrosequenceVersion(delta) {
+    const reference = {
+      courseKey: state.selection.courseKey,
+      moduleKey: state.selection.moduleKey,
+      lessonKey: state.selection.lessonKey,
+      microsequenceKey: state.selection.microsequenceKey
+    };
+    syncActiveMicrosequenceVersionFromProject(reference);
+    const entry = getMicrosequenceVersionEntry(reference);
+    if (!entry || !Array.isArray(entry.versions) || entry.versions.length <= 1) {
+      return;
+    }
+
+    const activeIndex = Math.max(0, entry.versions.findIndex((item) => item.id === entry.activeVersionId));
+    const nextIndex = Math.max(0, Math.min(activeIndex + delta, entry.versions.length - 1));
+    const nextVersion = entry.versions[nextIndex];
+    if (!nextVersion || nextVersion.id === entry.activeVersionId) {
+      return;
+    }
+
+    switchMicrosequenceVersion(nextVersion.id);
+  }
+
+  function deleteActiveMicrosequenceVersion() {
+    const reference = {
+      courseKey: state.selection.courseKey,
+      moduleKey: state.selection.moduleKey,
+      lessonKey: state.selection.lessonKey,
+      microsequenceKey: state.selection.microsequenceKey
+    };
+    syncActiveMicrosequenceVersionFromProject(reference);
+    const entry = getMicrosequenceVersionEntry(reference);
+    if (!entry || entry.versions.length <= 1) {
+      return;
+    }
+
+    const activeIndex = Math.max(0, entry.versions.findIndex((item) => item.id === entry.activeVersionId));
+    const fallbackIndex = activeIndex > 0 ? activeIndex - 1 : 1;
+    const fallbackVersion = entry.versions[fallbackIndex] || null;
+    if (!fallbackVersion) {
+      return;
+    }
+
+    entry.versions.splice(activeIndex, 1);
+    entry.activeVersionId = fallbackVersion.id;
+    saveMicrosequenceVersions();
+    applyMicrosequenceVersion(reference, fallbackVersion, 0);
+    state.assistDraft.dependencyKeys = Array.isArray(fallbackVersion.tags) ? fallbackVersion.tags.slice(0, MAX_ASSIST_DEPENDENCIES) : [];
     render({ preserveState: false });
   }
 
@@ -960,6 +1707,11 @@ export function createLessonEditorApp({ root, storage, editor }) {
       state.selection.microsequenceKey = entry.microsequenceKey;
       state.selection.cardKey = entry.cardKey;
       state.selection.cardIndex = entry.cardIndex;
+      persistLessonProgress(
+        getLessonProgressReference(state.selection.courseKey, state.selection.moduleKey, state.selection.lessonKey),
+        lessonCards,
+        safeIndex
+      );
     } else {
       const microsequence = findMicrosequence(
         state.project,
@@ -977,6 +1729,11 @@ export function createLessonEditorApp({ root, storage, editor }) {
       state.selection.cardKey = card ? card.key : null;
     }
 
+    state.assistDraft.activeWorkbenchPane = resolveWorkbenchPaneAfterCardSelection(
+      state.view,
+      state.assistDraft.activeWorkbenchPane
+    );
+
     ensureCurrentCardSnapshot();
     syncAssistDraft();
     state.continuePopup = null;
@@ -987,8 +1744,8 @@ export function createLessonEditorApp({ root, storage, editor }) {
   }
 
   function stepCard(delta) {
-    // No modo de estudo, o card só pode avançar quando exercícios do card atual estiverem completos
-    // e validados como corretos. Isso espelha o comportamento do AraLearn_old.
+    // No modo de estudo, o card só pode avançar quando os exercícios do card atual
+    // estiverem completos e validados como corretos.
     if (delta > 0) {
       const flowcharts = getCurrentCardRuntimeFlowcharts();
       for (const entry of flowcharts) {
@@ -1184,7 +1941,37 @@ export function createLessonEditorApp({ root, storage, editor }) {
     }
   }
 
+  function encodeBase64Utf8(value) {
+    const text = String(value ?? "");
+    if (typeof TextEncoder !== "undefined") {
+      const bytes = new TextEncoder().encode(text);
+      let binary = "";
+      bytes.forEach((byte) => {
+        binary += String.fromCharCode(byte);
+      });
+      return globalThis.btoa(binary);
+    }
+    return globalThis.btoa(unescape(encodeURIComponent(text)));
+  }
+
   function downloadJsonFile(filename, content) {
+    if (
+      globalThis.AndroidHost &&
+      typeof globalThis.AndroidHost.saveExportFile === "function" &&
+      typeof globalThis.btoa === "function"
+    ) {
+      try {
+        const saved = globalThis.AndroidHost.saveExportFile(
+          encodeBase64Utf8(content),
+          filename,
+          "application/json"
+        );
+        if (saved) return;
+      } catch (error) {
+        console.warn("Falha ao exportar pelo host Android.", error);
+      }
+    }
+
     if (typeof document === "undefined" || typeof URL === "undefined" || typeof Blob === "undefined") {
       fail("Exportação indisponível neste ambiente.");
     }
@@ -1303,11 +2090,131 @@ export function createLessonEditorApp({ root, storage, editor }) {
     notifyUser("Backup restaurado.");
   }
 
+  function parseContractDocument(rawJson, scopeLabel) {
+    const parsed = JSON.parse(rawJson);
+    const format = detectJsonExchangeFormat(parsed);
+    if (format !== "contract") {
+      fail(`Arquivo incompatível para ${scopeLabel}. Use um JSON de curso com contract: "aralearn.contract".`);
+    }
+    return parsed;
+  }
+
+  async function importModuleFromFile(courseKey) {
+    const rawJson = await pickJsonFile();
+    if (!rawJson) {
+      return;
+    }
+
+    const nextProject = editor.importModules({
+      courseKey,
+      document: parseContractDocument(rawJson, "importar módulo")
+    });
+    setProject(nextProject);
+    const course = findCourse(nextProject, courseKey);
+    const moduleValue = course.modules[course.modules.length - 1];
+    const lesson = moduleValue?.lessons?.[0] || null;
+    const microsequence = lesson?.microsequences?.[0] || null;
+    const card = microsequence?.cards?.[0] || null;
+    applySelection({
+      courseKey,
+      moduleKey: moduleValue?.key || null,
+      lessonKey: lesson?.key || null,
+      microsequenceKey: microsequence?.key || null,
+      cardKey: card?.key || null,
+      cardIndex: 0
+    });
+    state.view = "course";
+    notifyUser("Módulo importado.");
+  }
+
+  async function importLessonFromFile(courseKey, moduleKey) {
+    const rawJson = await pickJsonFile();
+    if (!rawJson) {
+      return;
+    }
+
+    const nextProject = editor.importLessons({
+      courseKey,
+      moduleKey,
+      document: parseContractDocument(rawJson, "importar lição")
+    });
+    setProject(nextProject);
+    const moduleValue = findModule(nextProject, courseKey, moduleKey);
+    const lesson = moduleValue.lessons[moduleValue.lessons.length - 1];
+    const microsequence = lesson?.microsequences?.[0] || null;
+    const card = microsequence?.cards?.[0] || null;
+    applySelection({
+      courseKey,
+      moduleKey,
+      lessonKey: lesson?.key || null,
+      microsequenceKey: microsequence?.key || null,
+      cardKey: card?.key || null,
+      cardIndex: 0
+    });
+    state.view = "lesson";
+    notifyUser("Lição importada.");
+  }
+
+  async function importMicrosequenceFromFile(courseKey, moduleKey, lessonKey) {
+    const rawJson = await pickJsonFile();
+    if (!rawJson) {
+      return;
+    }
+
+    const nextProject = editor.importMicrosequences({
+      courseKey,
+      moduleKey,
+      lessonKey,
+      document: parseContractDocument(rawJson, "importar microssequência")
+    });
+    setProject(nextProject);
+    const lesson = findLesson(nextProject, courseKey, moduleKey, lessonKey);
+    const microsequence = lesson.microsequences[lesson.microsequences.length - 1];
+    const card = microsequence?.cards?.[0] || null;
+    applySelection({
+      courseKey,
+      moduleKey,
+      lessonKey,
+      microsequenceKey: microsequence?.key || null,
+      cardKey: card?.key || null,
+      cardIndex: 0
+    });
+    state.view = "lesson";
+    notifyUser("Microssequência importada.");
+  }
+
   function exportCourseAsJson(courseKey) {
     const course = findCourse(state.project, courseKey);
     const exportedDocument = editor.exportCourseDocument({ courseKey });
     downloadJsonFile(
       `${slugifyDownloadName(course.title || course.key)}.json`,
+      JSON.stringify(exportedDocument, null, 2)
+    );
+  }
+
+  function exportModuleAsJson(courseKey, moduleKey) {
+    const moduleValue = findModule(state.project, courseKey, moduleKey);
+    const exportedDocument = editor.exportModuleDocument({ courseKey, moduleKey });
+    downloadJsonFile(
+      `${slugifyDownloadName(moduleValue.title || moduleValue.key, "modulo")}.json`,
+      JSON.stringify(exportedDocument, null, 2)
+    );
+  }
+
+  function exportLessonAsJson(courseKey, moduleKey, lessonKey) {
+    const lesson = findLesson(state.project, courseKey, moduleKey, lessonKey);
+    const exportedDocument = editor.exportLessonDocument({ courseKey, moduleKey, lessonKey });
+    downloadJsonFile(
+      `${slugifyDownloadName(lesson.title || lesson.key, "licao")}.json`,
+      JSON.stringify(exportedDocument, null, 2)
+    );
+  }
+
+  function exportMicrosequenceAsJson(courseKey, moduleKey, lessonKey, microsequenceKey) {
+    const microsequence = findMicrosequence(state.project, courseKey, moduleKey, lessonKey, microsequenceKey);
+    const exportedDocument = editor.exportMicrosequenceDocument({ courseKey, moduleKey, lessonKey, microsequenceKey });
+    downloadJsonFile(
+      `${slugifyDownloadName(microsequence.title || microsequence.key, "microssequencia")}.json`,
       JSON.stringify(exportedDocument, null, 2)
     );
   }
@@ -1325,9 +2232,16 @@ export function createLessonEditorApp({ root, storage, editor }) {
   function resetCourseProgress(courseKey) {
     const course = findCourse(state.project, courseKey);
     const lessonReferences = collectLessonProgressReferencesInCourse(course);
-    const currentProgress = storage.loadProgress();
-    const nextProgress = removeLessonProgressEntries(currentProgress, lessonReferences);
-    storage.saveProgress(nextProgress);
+    removeProgressEntries(lessonReferences);
+  }
+
+  function resetModuleProgress(courseKey, moduleKey) {
+    const moduleValue = findModule(state.project, courseKey, moduleKey);
+    removeProgressEntries(collectProgressReferencesInModule(courseKey, moduleValue));
+  }
+
+  function resetLessonProgress(courseKey, moduleKey, lessonKey) {
+    removeProgressEntries([{ courseKey, moduleKey, lessonKey }]);
   }
 
   function createCardAtPosition(position) {
@@ -1340,8 +2254,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
       lessonKey: state.selection.lessonKey,
       microsequenceKey,
       title: "Novo card",
-      type: "text",
-      text: "Descreva a ideia central desta microssequência.",
+      say: "Descreva a ideia central desta microssequência.",
       position
     });
 
@@ -1358,6 +2271,9 @@ export function createLessonEditorApp({ root, storage, editor }) {
     const nextCard = cards[nextIndex] || null;
     state.selection.cardIndex = nextIndex;
     state.selection.cardKey = nextCard ? nextCard.key : null;
+    if (state.view === "microsequence-assist") {
+      syncActiveMicrosequenceVersionFromProject();
+    }
     ensureCurrentCardSnapshot();
     syncAssistDraft();
     return nextProject;
@@ -1375,14 +2291,21 @@ export function createLessonEditorApp({ root, storage, editor }) {
     }
   }
 
-  function applyMicrosequenceGeneration({ microsequenceTitle, cards, tags = [] }) {
+  function applyMicrosequenceGeneration({ microsequenceTitle, cards }) {
+    const currentMicrosequence = findMicrosequence(
+      state.project,
+      state.selection.courseKey,
+      state.selection.moduleKey,
+      state.selection.lessonKey,
+      state.selection.microsequenceKey
+    );
     const nextProject = editor.replaceMicrosequenceCards({
       courseKey: state.selection.courseKey,
       moduleKey: state.selection.moduleKey,
       lessonKey: state.selection.lessonKey,
       microsequenceKey: state.selection.microsequenceKey,
       title: microsequenceTitle,
-      tags,
+      tags: structuredClone(currentMicrosequence?.tags || []),
       cards
     });
 
@@ -1397,15 +2320,105 @@ export function createLessonEditorApp({ root, storage, editor }) {
     const firstCard = microsequence?.cards?.[0] || null;
     state.selection.cardIndex = 0;
     state.selection.cardKey = firstCard ? firstCard.key : null;
+    state.assistDraft.activeWorkbenchPane = "preview";
+    createMicrosequenceVersionFromCurrentProject();
     syncAssistDraft();
+  }
+
+  function getVisibleCourses(project = state.project) {
+    return project.courses || [];
+  }
+
+  function setHomeTab(tab) {
+    const nextTab = tab === "courses" ? "courses" : "generate";
+    if (nextTab === "generate") {
+      rememberCoursesView();
+      state.homeTab = "generate";
+      state.view = "courses";
+    } else {
+      const pendingGeneratedNavigation = state.pendingGeneratedNavigation;
+      if (pendingGeneratedNavigation) {
+        openGeneratedLesson({ pendingGeneratedNavigation });
+        return;
+      }
+      state.homeTab = "courses";
+      state.view = state.lastCoursesView || "courses";
+    }
+    state.entityEditor = null;
+    render({ preserveState: false });
+  }
+
+  function setGenerationCourse(courseKey) {
+    const course = getVisibleCourses().find((item) => item.key === courseKey) || null;
+    state.generationDraft.courseKey = course ? course.key : "";
+    state.generationDraft.moduleKey = "";
+    state.generationDraft.lessonKey = "";
+    state.generationDraft.errorMessage = "";
+    state.generationDraft.lastResult = null;
+    state.pendingGeneratedNavigation = null;
+    render({ preserveState: true });
+  }
+
+  function setGenerationModule(moduleKey) {
+    const course = getVisibleCourses().find((item) => item.key === state.generationDraft.courseKey) || null;
+    const moduleValue = (course?.modules || []).find((item) => item.key === moduleKey) || null;
+    state.generationDraft.moduleKey = moduleValue ? moduleValue.key : "";
+    state.generationDraft.lessonKey = "";
+    state.generationDraft.errorMessage = "";
+    state.generationDraft.lastResult = null;
+    state.pendingGeneratedNavigation = null;
+    render({ preserveState: true });
+  }
+
+  function setGenerationLesson(lessonKey) {
+    const course = getVisibleCourses().find((item) => item.key === state.generationDraft.courseKey) || null;
+    const moduleValue = (course?.modules || []).find((item) => item.key === state.generationDraft.moduleKey) || null;
+    const lesson = (moduleValue?.lessons || []).find((item) => item.key === lessonKey) || null;
+    state.generationDraft.lessonKey = lesson ? lesson.key : "";
+    state.generationDraft.errorMessage = "";
+    state.generationDraft.lastResult = null;
+    state.pendingGeneratedNavigation = null;
+    render({ preserveState: true });
+  }
+
+  function openGeneratedLesson({ pendingGeneratedNavigation = state.pendingGeneratedNavigation } = {}) {
+    const result = state.generationDraft.lastResult;
+    const target = pendingGeneratedNavigation || result;
+    if (!target?.courseKey || !target?.moduleKey || !target?.lessonKey) {
+      state.generationDraft.errorMessage = "Nenhuma microssequência nova foi gerada para abrir em Cursos.";
+      render({ preserveState: true });
+      return;
+    }
+
+    applySelection({
+      courseKey: target.courseKey,
+      moduleKey: target.moduleKey,
+      lessonKey: target.lessonKey,
+      microsequenceKey: null,
+      cardKey: null,
+      cardIndex: 0
+    });
+    state.homeTab = "courses";
+    state.view = "lesson";
+    state.entityEditor = null;
+    state.microsequenceMode = "play";
+    state.pendingGeneratedNavigation = null;
+    focusStructureTarget({
+      view: "lesson",
+      courseKey: target.courseKey,
+      moduleKey: target.moduleKey,
+      lessonKey: target.lessonKey,
+      microsequenceKey: target.firstMicrosequenceKey || null
+    });
+    render({ preserveState: false });
   }
 
   function applyMicrosequenceReposition(slot, renames = []) {
     if (!slot) {
-      fail("A API escolheu um slot de reposicionamento inexistente. Ajuste o pedido e tente de novo.");
+      fail("O serviço de IA escolheu um slot de reposicionamento inexistente. Ajuste o pedido e tente de novo.");
     }
 
-    const nextProject = editor.moveMicrosequence({
+    const moveResult = editor.moveMicrosequence({
       courseKey: state.selection.courseKey,
       moduleKey: state.selection.moduleKey,
       lessonKey: state.selection.lessonKey,
@@ -1417,22 +2430,15 @@ export function createLessonEditorApp({ root, storage, editor }) {
       renames
     });
 
+    const nextProject = moveResult.document;
+    const movedMicrosequence = moveResult.movedMicrosequence;
     setProject(nextProject);
-    const movedMicrosequence = findMicrosequence(
-      nextProject,
-      slot.courseKey,
-      slot.moduleKey,
-      slot.lessonKey,
-      state.selection.microsequenceKey
-    );
-    const firstCard = movedMicrosequence?.cards?.[0] || null;
-
-    applySelection({
-      courseKey: slot.courseKey,
-      moduleKey: slot.moduleKey,
-      lessonKey: slot.lessonKey,
-      microsequenceKey: movedMicrosequence?.key || state.selection.microsequenceKey,
-      cardKey: firstCard ? firstCard.key : null,
+    applySelectionByKeys(nextProject, {
+      courseKey: movedMicrosequence?.courseKey || slot.courseKey,
+      moduleKey: movedMicrosequence?.moduleKey || slot.moduleKey,
+      lessonKey: movedMicrosequence?.lessonKey || slot.lessonKey,
+      microsequenceKey: movedMicrosequence?.microsequenceKey || state.selection.microsequenceKey,
+      cardKey: null,
       cardIndex: 0
     });
     state.view = "microsequence-assist";
@@ -1443,16 +2449,19 @@ export function createLessonEditorApp({ root, storage, editor }) {
   async function submitAssistRequest() {
     const context = getRenderContext();
     const assistCatalog = getAssistCatalog();
+    const hadCardsBefore = Array.isArray(context.microsequence?.cards) && context.microsequence.cards.length > 0;
     const dependencyTitles = assistCatalog
       .filter((item) => state.assistDraft.dependencyKeys.includes(item.key))
       .map((item) => item.title || item.key);
+    const selectedDependencyKeys = new Set(state.assistDraft.dependencyKeys);
+    const selectedLessonTopicRefs = collectLessonTopicRefs(context.lesson, context.microsequence)
+      .filter((item) => selectedDependencyKeys.has(item.refKey) || selectedDependencyKeys.has(item.label));
     const destinationSlots = collectRepositionSlots();
     const requestedMode = state.assistDraft.selectedMode;
     const mode =
       requestedMode === ASSIST_USER_MODES.REPOSITION
         ? "reposition-microsequence"
         : "compose-microsequence";
-    const isBlankDraftGenerator = state.view === "draft-generator" && isDraftPlaceholderMicrosequence(context.microsequence);
 
     state.assistDraft.isSubmitting = true;
     state.assistDraft.errorMessage = "";
@@ -1467,39 +2476,33 @@ export function createLessonEditorApp({ root, storage, editor }) {
         apiKey: state.assistConfig.apiKey,
         model: state.assistConfig.model,
         mode,
-        microsequence:
-          state.view === "draft-generator" || requestedMode === ASSIST_USER_MODES.GENERATE
-            ? {
-                title: context.microsequence?.title || "",
-                tags: context.microsequence?.tags || []
-              }
-            : context.microsequence,
+        microsequence: buildAssistHierarchyContext({
+          course: context.course,
+          moduleValue: context.moduleValue,
+          lesson: context.lesson,
+          microsequence: context.microsequence
+        }),
         card: context.card,
         dependencyTitles,
+        selectedLessonTopicRefs,
         destinationSlots,
-        promptText: state.assistDraft.promptText
+        promptText: state.assistDraft.promptText,
+        preferredContainer: state.assistDraft.preferredContainer,
+        attachments: state.assistDraft.attachments
       });
 
       if (mode === "compose-microsequence") {
-        applyMicrosequenceGeneration({
-          ...result,
-          tags: dependencyTitles
-        });
+        applyMicrosequenceGeneration(result);
         state.assistDraft.lastRequest = {
-          title:
-            requestedMode === ASSIST_USER_MODES.EDIT_MICROSEQUENCE
-              ? "Microssequência atualizada"
-              : isBlankDraftGenerator
-                ? "Microssequência gerada"
-                : "Microssequência atualizada",
+          title: hadCardsBefore ? "Cards atualizados" : "Cards gerados",
           description:
-            `${result.cards.length} cards aplicados em ${result.microsequenceTitle} com ${getAssistModelLabel(state.assistConfig.model)}.`,
+            `${result.cards.length} cards ${hadCardsBefore ? "atualizados" : "gerados"} em ${result.microsequenceTitle} com ${getAssistModelLabel(state.assistConfig.model)}.`,
           timestamp: new Date().toISOString()
         };
       } else {
         const chosenSlot = destinationSlots.find((item) => item.slotId === result.slotId);
         if (!chosenSlot) {
-          fail("A LLM devolveu um slot inválido para reposicionamento. Informe o problema no pedido e tente novamente.");
+          fail("A resposta do serviço de IA devolveu uma posição inválida para reposicionamento. Ajuste o pedido e tente novamente.");
         }
 
         applyMicrosequenceReposition(chosenSlot, result.renames);
@@ -1512,10 +2515,91 @@ export function createLessonEditorApp({ root, storage, editor }) {
         };
       }
     } catch (error) {
-      state.assistDraft.errorMessage = error instanceof Error ? error.message : "Falha ao chamar a API.";
+      state.assistDraft.errorMessage = error instanceof Error ? error.message : "Falha ao chamar o serviço de IA.";
     } finally {
       state.assistDraft.isSubmitting = false;
       render({ preserveState: true });
+    }
+  }
+
+  async function submitGenerateLadderRequest() {
+    const draft = state.generationDraft;
+    const course = getVisibleCourses().find((item) => item.key === draft.courseKey) || null;
+    const moduleValue = (course?.modules || []).find((item) => item.key === draft.moduleKey) || null;
+    const lesson = (moduleValue?.lessons || []).find((item) => item.key === draft.lessonKey) || null;
+    const promptText = String(draft.promptText || "").trim();
+
+    if (!course || !moduleValue || !lesson || !promptText) {
+      state.generationDraft.errorMessage = "Escolha curso, módulo, lição e escreva a dúvida antes de gerar microssequências.";
+      render({ preserveState: true });
+      return;
+    }
+
+    state.generationDraft.isSubmitting = true;
+    state.generationDraft.errorMessage = "";
+    state.generationDraft.lastResult = null;
+    render({ preserveState: true });
+
+    try {
+      const result = await runGeminiAssist({
+        apiKey: state.assistConfig.apiKey,
+        model: state.assistConfig.model,
+        mode: "plan-microsequence-ladder",
+        microsequence: {
+          courseTitle: course.title || course.key,
+          moduleTitle: moduleValue.title || moduleValue.key,
+          lessonTitle: lesson.title || lesson.key
+        },
+        promptText
+      });
+
+      let nextProject = state.project;
+      let firstMicrosequenceKey = null;
+      result.steps.forEach((step) => {
+        nextProject = editor.createMicrosequence({
+          courseKey: course.key,
+          moduleKey: moduleValue.key,
+          lessonKey: lesson.key,
+          title: step.title,
+          status: "draft",
+          cards: []
+        });
+        const createdLesson = findLesson(nextProject, course.key, moduleValue.key, lesson.key);
+        const createdMicrosequence = createdLesson?.microsequences?.at(-1) || null;
+        if (!firstMicrosequenceKey && createdMicrosequence) {
+          firstMicrosequenceKey = createdMicrosequence.key;
+        }
+        setProject(nextProject);
+      });
+
+      applySelection({
+        courseKey: course.key,
+        moduleKey: moduleValue.key,
+        lessonKey: lesson.key,
+        microsequenceKey: null,
+        cardKey: null,
+        cardIndex: 0
+      });
+      state.generationDraft.lastResult = {
+        message: `${result.steps.length} rascunhos criados em ${lesson.title || lesson.key}.`,
+        courseKey: course.key,
+        moduleKey: moduleValue.key,
+        lessonKey: lesson.key,
+        firstMicrosequenceKey
+      };
+      state.pendingGeneratedNavigation = {
+        courseKey: course.key,
+        moduleKey: moduleValue.key,
+        lessonKey: lesson.key,
+        firstMicrosequenceKey
+      };
+      state.generationDraft.promptText = "";
+    } catch (error) {
+      state.pendingGeneratedNavigation = null;
+      state.generationDraft.errorMessage = error instanceof Error ? error.message : "Falha ao gerar microssequências.";
+    } finally {
+      state.generationDraft.isSubmitting = false;
+      render({ preserveState: false });
     }
   }
 
@@ -1547,6 +2631,9 @@ export function createLessonEditorApp({ root, storage, editor }) {
       const nextCard = cards[nextIndex] || null;
       state.selection.cardIndex = nextIndex;
       state.selection.cardKey = nextCard ? nextCard.key : null;
+      if (state.view === "microsequence-assist") {
+        syncActiveMicrosequenceVersionFromProject();
+      }
       ensureCurrentCardSnapshot();
       syncAssistDraft();
       render({ preserveState: true });
@@ -1555,11 +2642,268 @@ export function createLessonEditorApp({ root, storage, editor }) {
     }
   }
 
+  function moveSelectedCourse(offset) {
+    const courses = state.project.courses || [];
+    const courseKey = state.entityEditor?.courseKey || state.selection.courseKey;
+    const index = courses.findIndex((item) => item.key === courseKey);
+    if (index < 0) {
+      return null;
+    }
+
+    const targetIndex = index + offset;
+    if (targetIndex < 0 || targetIndex >= courses.length) {
+      return null;
+    }
+
+    const nextProject = editor.moveCourse({ courseKey, toIndex: targetIndex });
+    setProject(nextProject);
+    applySelectionByKeys(nextProject, state.selection);
+    return nextProject;
+  }
+
+  function moveSelectedModule(offset) {
+    const courseKey = state.entityEditor?.courseKey || state.selection.courseKey;
+    const moduleKey = state.entityEditor?.moduleKey || state.selection.moduleKey;
+    const course = findCourse(state.project, courseKey);
+    const modules = course?.modules || [];
+    const index = modules.findIndex((item) => item.key === moduleKey);
+    if (index < 0) {
+      return null;
+    }
+
+    const targetIndex = index + offset;
+    if (targetIndex < 0 || targetIndex >= modules.length) {
+      return null;
+    }
+
+    const nextProject = editor.moveModule({ courseKey, moduleKey, toIndex: targetIndex });
+    setProject(nextProject);
+    applySelectionByKeys(nextProject, state.selection);
+    return nextProject;
+  }
+
+  function moveSelectedLesson(offset) {
+    const courseKey = state.entityEditor?.courseKey || state.selection.courseKey;
+    const moduleKey = state.entityEditor?.moduleKey || state.selection.moduleKey;
+    const lessonKey = state.entityEditor?.lessonKey || state.selection.lessonKey;
+    const moduleValue = findModule(state.project, courseKey, moduleKey);
+    const lessons = moduleValue?.lessons || [];
+    const index = lessons.findIndex((item) => item.key === lessonKey);
+    if (index < 0) {
+      return null;
+    }
+
+    const targetIndex = index + offset;
+    if (targetIndex < 0 || targetIndex >= lessons.length) {
+      return null;
+    }
+
+    const nextProject = editor.moveLesson({ courseKey, moduleKey, lessonKey, toIndex: targetIndex });
+    setProject(nextProject);
+    applySelectionByKeys(nextProject, state.selection);
+    return nextProject;
+  }
+
+  function moveSelectedMicrosequence(offset) {
+    const courseKey = state.entityEditor?.courseKey || state.selection.courseKey;
+    const moduleKey = state.entityEditor?.moduleKey || state.selection.moduleKey;
+    const lessonKey = state.entityEditor?.lessonKey || state.selection.lessonKey;
+    const microsequenceKey = state.entityEditor?.microsequenceKey || state.selection.microsequenceKey;
+    const lesson = findLesson(state.project, courseKey, moduleKey, lessonKey);
+    const microsequences = lesson?.microsequences || [];
+    const index = microsequences.findIndex((item) => item.key === microsequenceKey);
+    if (index < 0) {
+      return null;
+    }
+
+    const targetIndex = index + offset;
+    if (targetIndex < 0 || targetIndex >= microsequences.length) {
+      return null;
+    }
+
+    const moveResult = editor.moveMicrosequence({
+      courseKey,
+      moduleKey,
+      lessonKey,
+      microsequenceKey,
+      targetCourseKey: courseKey,
+      targetModuleKey: moduleKey,
+      targetLessonKey: lessonKey,
+      targetPosition: targetIndex
+    });
+    setProject(moveResult.document);
+    applySelectionByKeys(moveResult.document, {
+      ...state.selection,
+      courseKey,
+      moduleKey,
+      lessonKey,
+      microsequenceKey: moveResult.movedMicrosequence?.microsequenceKey || microsequenceKey
+    });
+    syncAssistDraft();
+    return moveResult.document;
+  }
+
+  function moveSelectedCard(offset) {
+    const courseKey = state.entityEditor?.courseKey || state.selection.courseKey;
+    const moduleKey = state.entityEditor?.moduleKey || state.selection.moduleKey;
+    const lessonKey = state.entityEditor?.lessonKey || state.selection.lessonKey;
+    const microsequenceKey = state.entityEditor?.microsequenceKey || state.selection.microsequenceKey;
+    const cardKey = state.entityEditor?.cardKey || state.selection.cardKey;
+    const microsequence = findMicrosequence(state.project, courseKey, moduleKey, lessonKey, microsequenceKey);
+    const cards = microsequence?.cards || [];
+    const index = cards.findIndex((item) => item.key === cardKey);
+    if (index < 0) {
+      return null;
+    }
+
+    const targetIndex = index + offset;
+    if (targetIndex < 0 || targetIndex >= cards.length) {
+      return null;
+    }
+
+    const nextProject = editor.moveCard({
+      courseKey,
+      moduleKey,
+      lessonKey,
+      microsequenceKey,
+      cardKey,
+      toIndex: targetIndex
+    });
+    setProject(nextProject);
+    applySelectionByKeys(nextProject, {
+      ...state.selection,
+      courseKey,
+      moduleKey,
+      lessonKey,
+      microsequenceKey,
+      cardKey
+    });
+    syncActiveMicrosequenceVersionFromProject();
+    syncAssistDraft();
+    ensureCurrentCardSnapshot();
+    return nextProject;
+  }
+
+  function applyStructureReorder(drag, target, position) {
+    if (!canDropStructure(drag, target)) {
+      resetStructureDragState();
+      return;
+    }
+
+    let nextProject = null;
+
+    if (drag.level === "course") {
+      const items = state.project.courses || [];
+      const toIndex = resolveStructureDropIndex(items, drag.courseKey, target.courseKey, position);
+      if (toIndex === null) {
+        resetStructureDragState();
+        return;
+      }
+      nextProject = editor.moveCourse({ courseKey: drag.courseKey, toIndex });
+    } else if (drag.level === "module") {
+      const course = findCourse(state.project, drag.courseKey);
+      const items = course?.modules || [];
+      const toIndex = resolveStructureDropIndex(items, drag.moduleKey, target.moduleKey, position);
+      if (toIndex === null) {
+        resetStructureDragState();
+        return;
+      }
+      nextProject = editor.moveModule({
+        courseKey: drag.courseKey,
+        moduleKey: drag.moduleKey,
+        toIndex
+      });
+    } else if (drag.level === "lesson") {
+      const moduleValue = findModule(state.project, drag.courseKey, drag.moduleKey);
+      const items = moduleValue?.lessons || [];
+      const toIndex = resolveStructureDropIndex(items, drag.lessonKey, target.lessonKey, position);
+      if (toIndex === null) {
+        resetStructureDragState();
+        return;
+      }
+      nextProject = editor.moveLesson({
+        courseKey: drag.courseKey,
+        moduleKey: drag.moduleKey,
+        lessonKey: drag.lessonKey,
+        toIndex
+      });
+    } else if (drag.level === "microsequence") {
+      const lesson = findLesson(state.project, drag.courseKey, drag.moduleKey, drag.lessonKey);
+      const items = lesson?.microsequences || [];
+      const toIndex = resolveStructureDropIndex(items, drag.microsequenceKey, target.microsequenceKey, position);
+      if (toIndex === null) {
+        resetStructureDragState();
+        return;
+      }
+      const moveResult = editor.moveMicrosequence({
+        courseKey: drag.courseKey,
+        moduleKey: drag.moduleKey,
+        lessonKey: drag.lessonKey,
+        microsequenceKey: drag.microsequenceKey,
+        targetCourseKey: drag.courseKey,
+        targetModuleKey: drag.moduleKey,
+        targetLessonKey: drag.lessonKey,
+        targetPosition: toIndex
+      });
+      nextProject = moveResult.document;
+    } else if (drag.level === "card") {
+      const microsequence = findMicrosequence(
+        state.project,
+        drag.courseKey,
+        drag.moduleKey,
+        drag.lessonKey,
+        drag.microsequenceKey
+      );
+      const items = microsequence?.cards || [];
+      const toIndex = resolveStructureDropIndex(items, drag.cardKey, target.cardKey, position);
+      if (toIndex === null) {
+        resetStructureDragState();
+        return;
+      }
+      nextProject = editor.moveCard({
+        courseKey: drag.courseKey,
+        moduleKey: drag.moduleKey,
+        lessonKey: drag.lessonKey,
+        microsequenceKey: drag.microsequenceKey,
+        cardKey: drag.cardKey,
+        toIndex
+      });
+    }
+
+    if (!nextProject) {
+      resetStructureDragState();
+      return;
+    }
+
+    state.entityEditor = null;
+    setProject(nextProject);
+    applySelectionByKeys(nextProject, state.selection);
+    syncAssistDraft();
+    if (state.view === "microsequence-assist") {
+      syncActiveMicrosequenceVersionFromProject();
+    }
+    if (state.view === "microsequence" || state.view === "microsequence-assist") {
+      ensureCurrentCardSnapshot();
+    }
+    resetStructureDragState();
+    render({ preserveState: true });
+  }
+
   function runEntityAction(actionKey) {
     if (!state.entityEditor || !actionKey) return;
 
     try {
       let nextProject = null;
+
+      if (actionKey.startsWith("set-assist-container:")) {
+        const nextContainer = actionKey.slice("set-assist-container:".length);
+        state.assistDraft.preferredContainer = ASSIST_CARD_CONTAINER_OPTIONS.some((item) => item.value === nextContainer)
+          ? nextContainer
+          : "";
+        state.entityEditor = null;
+        render({ preserveState: true });
+        return;
+      }
 
       if (actionKey === "import-json") {
         importJsonFromFile()
@@ -1571,9 +2915,58 @@ export function createLessonEditorApp({ root, storage, editor }) {
             notifyUser(error instanceof Error ? error.message : "Falha ao importar JSON.");
           });
         return;
+      } else if (actionKey === "import-module") {
+        importModuleFromFile(state.selection.courseKey)
+          .then(() => {
+            state.entityEditor = null;
+            render({ preserveState: false });
+          })
+          .catch((error) => {
+            notifyUser(error instanceof Error ? error.message : "Falha ao importar módulo.");
+          });
+        return;
+      } else if (actionKey === "import-lesson") {
+        importLessonFromFile(state.selection.courseKey, state.selection.moduleKey)
+          .then(() => {
+            state.entityEditor = null;
+            render({ preserveState: false });
+          })
+          .catch((error) => {
+            notifyUser(error instanceof Error ? error.message : "Falha ao importar lição.");
+          });
+        return;
+      } else if (actionKey === "import-microsequence") {
+        importMicrosequenceFromFile(state.selection.courseKey, state.selection.moduleKey, state.selection.lessonKey)
+          .then(() => {
+            state.entityEditor = null;
+            render({ preserveState: false });
+          })
+          .catch((error) => {
+            notifyUser(error instanceof Error ? error.message : "Falha ao importar microssequência.");
+          });
+        return;
       } else if (actionKey === "edit-course-metadata") {
         const courseKey = state.entityEditor.courseKey || state.selection.courseKey;
         openEntityEditor("course-metadata", { courseKey });
+        return;
+      } else if (actionKey === "edit-module-metadata") {
+        openEntityEditor("module", {
+          courseKey: state.entityEditor.courseKey || state.selection.courseKey,
+          moduleKey: state.entityEditor.moduleKey
+        });
+        return;
+      } else if (actionKey === "edit-lesson-metadata") {
+        openEntityEditor("lesson", {
+          courseKey: state.entityEditor.courseKey || state.selection.courseKey,
+          moduleKey: state.entityEditor.moduleKey,
+          lessonKey: state.entityEditor.lessonKey
+        });
+        return;
+      } else if (actionKey === "edit-microsequence-metadata") {
+        openMicrosequenceAssistPage(
+          state.entityEditor.microsequenceKey,
+          0
+        );
         return;
       } else if (actionKey === "reset-course-progress") {
         const courseKey = state.entityEditor.courseKey || state.selection.courseKey;
@@ -1588,31 +2981,101 @@ export function createLessonEditorApp({ root, storage, editor }) {
         state.entityEditor = null;
         render({ preserveState: false });
         return;
+      } else if (actionKey === "reset-module-progress") {
+        const courseKey = state.entityEditor.courseKey || state.selection.courseKey;
+        const moduleValue = findModule(state.project, courseKey, state.entityEditor.moduleKey);
+        if (typeof globalThis.confirm === "function") {
+          const accepted = globalThis.confirm(`Zerar progresso de todo o módulo "${moduleValue.title || "Módulo"}"?`);
+          if (!accepted) {
+            return;
+          }
+        }
+        resetModuleProgress(courseKey, state.entityEditor.moduleKey);
+        state.entityEditor = null;
+        render({ preserveState: false });
+        return;
+      } else if (actionKey === "reset-lesson-progress") {
+        const courseKey = state.entityEditor.courseKey || state.selection.courseKey;
+        const lesson = findLesson(state.project, courseKey, state.entityEditor.moduleKey, state.entityEditor.lessonKey);
+        if (typeof globalThis.confirm === "function") {
+          const accepted = globalThis.confirm(`Zerar progresso da lição "${lesson.title || "Lição"}"?`);
+          if (!accepted) {
+            return;
+          }
+        }
+        resetLessonProgress(courseKey, state.entityEditor.moduleKey, state.entityEditor.lessonKey);
+        state.entityEditor = null;
+        render({ preserveState: false });
+        return;
       } else if (actionKey === "export-course") {
         exportCourseAsJson(state.entityEditor.courseKey || state.selection.courseKey);
         state.entityEditor = null;
         render({ preserveState: true });
         return;
+      } else if (actionKey === "export-module") {
+        exportModuleAsJson(state.entityEditor.courseKey || state.selection.courseKey, state.entityEditor.moduleKey);
+        state.entityEditor = null;
+        render({ preserveState: true });
+        return;
+      } else if (actionKey === "export-lesson") {
+        exportLessonAsJson(
+          state.entityEditor.courseKey || state.selection.courseKey,
+          state.entityEditor.moduleKey,
+          state.entityEditor.lessonKey
+        );
+        state.entityEditor = null;
+        render({ preserveState: true });
+        return;
+      } else if (actionKey === "export-microsequence") {
+        exportMicrosequenceAsJson(
+          state.entityEditor.courseKey || state.selection.courseKey,
+          state.entityEditor.moduleKey,
+          state.entityEditor.lessonKey,
+          state.entityEditor.microsequenceKey
+        );
+        state.entityEditor = null;
+        render({ preserveState: true });
+        return;
+      } else if (actionKey === "move-course-up") {
+        nextProject = moveSelectedCourse(-1);
+        state.view = "courses";
+      } else if (actionKey === "move-course-down") {
+        nextProject = moveSelectedCourse(1);
+        state.view = "courses";
+      } else if (actionKey === "move-module-up") {
+        nextProject = moveSelectedModule(-1);
+        state.view = "course";
+      } else if (actionKey === "move-module-down") {
+        nextProject = moveSelectedModule(1);
+        state.view = "course";
+      } else if (actionKey === "move-lesson-up") {
+        nextProject = moveSelectedLesson(-1);
+        state.view = "lesson";
+      } else if (actionKey === "move-lesson-down") {
+        nextProject = moveSelectedLesson(1);
+        state.view = "lesson";
+      } else if (actionKey === "move-microsequence-up") {
+        nextProject = moveSelectedMicrosequence(-1);
+        state.view = "lesson";
+      } else if (actionKey === "move-microsequence-down") {
+        nextProject = moveSelectedMicrosequence(1);
+        state.view = "lesson";
+      } else if (actionKey === "move-card-up") {
+        nextProject = moveSelectedCard(-1);
+        state.view = "microsequence-assist";
+      } else if (actionKey === "move-card-down") {
+        nextProject = moveSelectedCard(1);
+        state.view = "microsequence-assist";
       } else if (actionKey === "create-course") {
         nextProject = editor.createCourse({
           title: "Novo curso"
         });
         setProject(nextProject);
         const course = nextProject.courses[nextProject.courses.length - 1];
-        const moduleValue = course.modules[0];
-        const lesson = moduleValue.lessons[0];
-        const microsequence = lesson.microsequences[0];
-        const card = microsequence.cards[0];
-        applySelection({
-          courseKey: course.key,
-          moduleKey: moduleValue.key,
-          lessonKey: lesson.key,
-          microsequenceKey: microsequence.key,
-          cardKey: card.key,
-          cardIndex: 0
-        });
+        applySelection(buildNodeSelection({ courseKey: course.key }));
         state.view = "courses";
       } else if (actionKey === "delete-course") {
+        resetCourseProgress(state.entityEditor.courseKey || state.selection.courseKey);
         nextProject = editor.deleteCourse({
           courseKey: state.entityEditor.courseKey || state.selection.courseKey
         });
@@ -1627,25 +3090,17 @@ export function createLessonEditorApp({ root, storage, editor }) {
         setProject(nextProject);
         const course = findCourse(nextProject, state.entityEditor.courseKey || state.selection.courseKey);
         const moduleValue = course.modules[course.modules.length - 1];
-        const lesson = moduleValue.lessons[0];
-        const microsequence = lesson.microsequences[0];
-        const card = microsequence.cards[0];
-        applySelection({
-          courseKey: course.key,
-          moduleKey: moduleValue.key,
-          lessonKey: lesson.key,
-          microsequenceKey: microsequence.key,
-          cardKey: card.key,
-          cardIndex: 0
-        });
+        applySelection(buildNodeSelection({ courseKey: course.key, moduleKey: moduleValue.key }));
         state.view = "course";
       } else if (actionKey === "delete-module") {
+        const courseKey = state.entityEditor.courseKey || state.selection.courseKey;
+        resetModuleProgress(state.entityEditor.courseKey || state.selection.courseKey, state.entityEditor.moduleKey);
         nextProject = editor.deleteModule({
-          courseKey: state.entityEditor.courseKey || state.selection.courseKey,
+          courseKey,
           moduleKey: state.entityEditor.moduleKey
         });
         setProject(nextProject);
-        selectFirstPath(nextProject);
+        applySelection(buildNodeSelection({ courseKey }));
         state.view = "course";
       } else if (actionKey === "create-lesson") {
         nextProject = editor.createLesson({
@@ -1660,25 +3115,29 @@ export function createLessonEditorApp({ root, storage, editor }) {
           state.entityEditor.moduleKey
         );
         const lesson = moduleValue.lessons[moduleValue.lessons.length - 1];
-        const microsequence = lesson.microsequences[0];
-        const card = microsequence.cards[0];
-        applySelection({
-          courseKey: state.entityEditor.courseKey || state.selection.courseKey,
-          moduleKey: moduleValue.key,
-          lessonKey: lesson.key,
-          microsequenceKey: microsequence.key,
-          cardKey: card.key,
-          cardIndex: 0
-        });
+        applySelection(
+          buildNodeSelection({
+            courseKey: state.entityEditor.courseKey || state.selection.courseKey,
+            moduleKey: moduleValue.key,
+            lessonKey: lesson.key
+          })
+        );
         state.view = "lesson";
       } else if (actionKey === "delete-lesson") {
+        const courseKey = state.entityEditor.courseKey || state.selection.courseKey;
+        const moduleKey = state.entityEditor.moduleKey;
+        resetLessonProgress(
+          courseKey,
+          moduleKey,
+          state.entityEditor.lessonKey
+        );
         nextProject = editor.deleteLesson({
-          courseKey: state.entityEditor.courseKey || state.selection.courseKey,
-          moduleKey: state.entityEditor.moduleKey,
+          courseKey,
+          moduleKey,
           lessonKey: state.entityEditor.lessonKey
         });
         setProject(nextProject);
-        selectFirstPath(nextProject);
+        applySelection(buildNodeSelection({ courseKey, moduleKey }));
         state.view = "course";
       } else if (actionKey === "create-microsequence") {
         nextProject = editor.createMicrosequence({
@@ -1686,7 +3145,9 @@ export function createLessonEditorApp({ root, storage, editor }) {
           moduleKey: state.entityEditor.moduleKey,
           lessonKey: state.entityEditor.lessonKey,
           title: "Nova microssequência",
-          tags: []
+          tags: [],
+          status: "draft",
+          cards: []
         });
         setProject(nextProject);
         const lesson = findLesson(
@@ -1696,25 +3157,27 @@ export function createLessonEditorApp({ root, storage, editor }) {
           state.entityEditor.lessonKey
         );
         const microsequence = lesson.microsequences[lesson.microsequences.length - 1];
-        const card = microsequence.cards[0];
-        applySelection({
-          courseKey: state.entityEditor.courseKey || state.selection.courseKey,
-          moduleKey: state.entityEditor.moduleKey,
-          lessonKey: lesson.key,
-          microsequenceKey: microsequence.key,
-          cardKey: card.key,
-          cardIndex: 0
-        });
+        applySelection(
+          buildNodeSelection({
+            courseKey: state.entityEditor.courseKey || state.selection.courseKey,
+            moduleKey: state.entityEditor.moduleKey,
+            lessonKey: lesson.key,
+            microsequenceKey: microsequence.key
+          })
+        );
         state.view = "lesson";
       } else if (actionKey === "delete-microsequence") {
+        const courseKey = state.entityEditor.courseKey || state.selection.courseKey;
+        const moduleKey = state.entityEditor.moduleKey;
+        const lessonKey = state.entityEditor.lessonKey;
         nextProject = editor.deleteMicrosequence({
-          courseKey: state.entityEditor.courseKey || state.selection.courseKey,
-          moduleKey: state.entityEditor.moduleKey,
-          lessonKey: state.entityEditor.lessonKey,
+          courseKey,
+          moduleKey,
+          lessonKey,
           microsequenceKey: state.entityEditor.microsequenceKey
         });
         setProject(nextProject);
-        selectFirstPath(nextProject);
+        applySelection(buildNodeSelection({ courseKey, moduleKey, lessonKey }));
         state.view = "lesson";
       } else if (actionKey === "create-card") {
         createCardAtPosition((Number.isInteger(state.selection.cardIndex) ? state.selection.cardIndex : 0) + 1);
@@ -1739,13 +3202,11 @@ export function createLessonEditorApp({ root, storage, editor }) {
     state.entityEditor = null;
 
     if (state.view === "microsequence") {
-      state.view = state.selection.courseKey === DRAFT_COURSE_KEY ? "course" : "lesson";
+      state.view = "lesson";
       state.microsequenceMode = "play";
     } else if (state.view === "microsequence-assist") {
-      state.view = state.selection.courseKey === DRAFT_COURSE_KEY ? "course" : "lesson";
+      state.view = "lesson";
       state.microsequenceMode = "play";
-    } else if (state.view === "draft-generator") {
-      state.view = "course";
     } else if (state.view === "lesson") {
       state.view = "course";
     } else if (state.view === "course") {
@@ -1800,6 +3261,9 @@ export function createLessonEditorApp({ root, storage, editor }) {
 
       if (nextProject) {
         setProject(nextProject);
+        if (state.entityEditor.kind === "microsequence") {
+          syncActiveMicrosequenceVersionFromProject();
+        }
       }
     } catch {
       // Evita quebrar a digitação durante estados transitórios inválidos.
@@ -1821,6 +3285,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
       });
 
       setProject(nextProject);
+      syncActiveMicrosequenceVersionFromProject();
     } catch {
       // Evita quebrar a digitação durante estados transitórios inválidos.
     }
@@ -2932,7 +4397,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
           ? String(current?.labels?.[targetId] || "").trim()
           : String(current?.texts?.[targetId] || "").trim();
 
-    // No AraLearn_old, clicar novamente numa lacuna já preenchida remove o valor.
+    // Ao clicar novamente numa lacuna já preenchida, o valor atual deve ser removido.
     if (currentValue) {
       setFlowchartPracticeValue(blockKey, kind, targetId, null, {
         closePrompt: false,
@@ -3065,15 +4530,185 @@ export function createLessonEditorApp({ root, storage, editor }) {
     return { course, moduleValue, lesson, microsequence, cards, card, dependencies };
   }
 
+  function syncVersionTabScroller() {
+    const strip = root.querySelector("[data-version-strip='true']");
+    if (!strip) {
+      return;
+    }
+
+    const activeTab = strip.querySelector("[data-action='select-microsequence-version'][aria-selected='true']");
+
+    requestAnimationFrame(() => {
+      if (!activeTab) {
+        return;
+      }
+
+      const visibleLeft = strip.scrollLeft;
+      const visibleRight = visibleLeft + strip.clientWidth;
+      const tabLeft = activeTab.offsetLeft;
+      const tabRight = tabLeft + activeTab.offsetWidth;
+
+      if (tabLeft < visibleLeft) {
+        strip.scrollTo({ left: Math.max(0, tabLeft), behavior: "auto" });
+        return;
+      }
+
+      if (tabRight > visibleRight) {
+        strip.scrollTo({ left: Math.max(0, tabRight - strip.clientWidth), behavior: "auto" });
+      }
+    });
+  }
+
+  function syncCardStripScroller({ keepActiveCardInView = false } = {}) {
+    const strip = root.querySelector("[data-card-strip='true']");
+    if (!strip) {
+      return;
+    }
+
+    const shell = strip.closest("[data-card-strip-shell='true']");
+    const prevArrow = root.querySelector("[data-action='scroll-card-strip-prev']");
+    const nextArrow = root.querySelector("[data-action='scroll-card-strip-next']");
+    const activeCard = strip.querySelector("[data-action='open-card'].active");
+
+    requestAnimationFrame(() => {
+      if (keepActiveCardInView && activeCard) {
+        const visibleLeft = strip.scrollLeft;
+        const visibleRight = visibleLeft + strip.clientWidth;
+        const cardLeft = activeCard.offsetLeft;
+        const cardRight = cardLeft + activeCard.offsetWidth;
+        const inset = 12;
+
+        if (cardLeft < visibleLeft + inset) {
+          strip.scrollTo({ left: Math.max(0, cardLeft - inset), behavior: "auto" });
+        } else if (cardRight > visibleRight - inset) {
+          strip.scrollTo({ left: Math.max(0, cardRight - strip.clientWidth + inset), behavior: "auto" });
+        }
+      }
+
+      const maxScrollLeft = Math.max(0, strip.scrollWidth - strip.clientWidth);
+      const canScroll = maxScrollLeft > 4;
+      const canScrollPrev = canScroll && strip.scrollLeft > 4;
+      const canScrollNext = canScroll && strip.scrollLeft < maxScrollLeft - 4;
+
+      if (shell) {
+        shell.setAttribute("data-card-strip-overflowing", canScroll ? "true" : "false");
+      }
+      if (prevArrow) {
+        prevArrow.hidden = !canScrollPrev;
+      }
+      if (nextArrow) {
+        nextArrow.hidden = !canScrollNext;
+      }
+    });
+  }
+
+  function toggleSelectedMicrosequenceRuntime(microsequenceKey) {
+    if (!microsequenceKey) {
+      return;
+    }
+
+    const microsequence = findMicrosequence(
+      state.project,
+      state.selection.courseKey,
+      state.selection.moduleKey,
+      state.selection.lessonKey,
+      microsequenceKey
+    );
+    if (!microsequence || !Array.isArray(microsequence.cards) || microsequence.cards.length === 0) {
+      return;
+    }
+
+    const nextProject = editor.updateMicrosequence({
+      courseKey: state.selection.courseKey,
+      moduleKey: state.selection.moduleKey,
+      lessonKey: state.selection.lessonKey,
+      microsequenceKey,
+      included: !resolveMicrosequenceRuntimeIncluded(microsequence)
+    });
+
+    setProject(nextProject);
+    focusStructureTarget({
+      view: "lesson",
+      courseKey: state.selection.courseKey,
+      moduleKey: state.selection.moduleKey,
+      lessonKey: state.selection.lessonKey,
+      microsequenceKey
+    });
+    render({ preserveState: false });
+  }
+
+  function syncPendingStructureFocus() {
+    const target = state.pendingStructureFocus;
+    if (!target || target.view !== state.view) {
+      return;
+    }
+
+    let selector = "";
+    if (target.view === "lesson" && target.microsequenceKey) {
+      selector =
+        '[data-structure-target="microsequence"][data-course-key="' +
+        target.courseKey +
+        '"][data-module-key="' +
+        target.moduleKey +
+        '"][data-lesson-key="' +
+        target.lessonKey +
+        '"][data-microsequence-key="' +
+        target.microsequenceKey +
+        '"]';
+    } else if (target.view === "course" && target.moduleKey) {
+      selector =
+        '[data-structure-target="module"][data-course-key="' +
+        target.courseKey +
+        '"][data-module-key="' +
+        target.moduleKey +
+        '"]';
+    } else if (target.view === "courses" && target.courseKey) {
+      selector = '[data-structure-target="course"][data-course-key="' + target.courseKey + '"]';
+    }
+
+    if (!selector) {
+      state.pendingStructureFocus = null;
+      return;
+    }
+
+    const node = root.querySelector(selector);
+    if (!node) {
+      return;
+    }
+
+    state.pendingStructureFocus = null;
+    requestAnimationFrame(() => {
+      node.scrollIntoView({ block: "start", inline: "nearest", behavior: "auto" });
+    });
+  }
+
+  function scrollCardStrip(direction) {
+    const strip = root.querySelector("[data-card-strip='true']");
+    if (!strip) {
+      return;
+    }
+
+    const step = Math.max(160, Math.round(strip.clientWidth * 0.82));
+    strip.scrollBy({
+      left: step * direction,
+      behavior: "smooth"
+    });
+  }
+
+  function setAssistWorkbenchPane(pane) {
+    state.assistDraft.activeWorkbenchPane = pane === "edit" ? "edit" : "preview";
+    render({ preserveState: true });
+  }
+
   function render({ preserveState = true } = {}) {
+    rememberCoursesView();
     const renderState = preserveState ? captureRenderState(root) : null;
     const context = getRenderContext();
     const currentCardRuntimeOptions = ensureCurrentCardRuntimeOptions();
     const assistCatalog = getAssistCatalog();
     const assistModeConfig = getAssistModeOptions();
-    const draftContext = getDraftLessonContext();
-    const draftMicrosequences = getVisibleDraftMicrosequences();
     const entityEditorModel = makeEntityEditorModel(state);
+    const microsequenceVersionEntry = state.view === "microsequence-assist" ? getMicrosequenceVersionEntry() : null;
     const historyVersions = getCurrentCardHistory().map((item) => ({
         key: item.id,
         label: item.label,
@@ -3085,6 +4720,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
       renderLessonScreen({
         project: state.project,
         view: state.view,
+        activeHomeTab: state.homeTab,
         selection: state.selection,
         course: context.course,
         moduleValue: context.moduleValue,
@@ -3096,14 +4732,25 @@ export function createLessonEditorApp({ root, storage, editor }) {
         editorSupport: {
           progress: storage.loadProgress(),
           dependencies: assistCatalog,
+          microsequenceVersions: microsequenceVersionEntry?.versions || [],
+          activeMicrosequenceVersionId: microsequenceVersionEntry?.activeVersionId || "",
           selectedDependencyKeys: state.assistDraft.dependencyKeys,
           pendingDependencyKey: state.assistDraft.pendingDependencyKey,
           assistModeOptions: assistModeConfig.options,
           selectedAssistMode: state.assistDraft.selectedMode,
+          activeWorkbenchPane: state.assistDraft.activeWorkbenchPane,
           assistModeLocked: assistModeConfig.locked,
+          preferredContainer: state.assistDraft.preferredContainer,
+          preferredContainerLabel: getAssistContainerLabel(state.assistDraft.preferredContainer),
+          attachments: state.assistDraft.attachments.map((item) => ({
+            name: normalizeAssistAttachmentName(item?.name),
+            size: Number(item?.size || 0),
+            type: String(item?.type || "").trim()
+          })),
           selectedModel: state.assistConfig.model,
           selectedModelLabel: getAssistModelLabel(state.assistConfig.model),
           modelOptions: ASSIST_MODEL_OPTIONS,
+          generationDraft: state.generationDraft,
           promptText: state.assistDraft.promptText,
           lastRequest: state.assistDraft.lastRequest,
           isSubmitting: state.assistDraft.isSubmitting,
@@ -3111,11 +4758,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
           hasApiKey: Boolean(state.assistConfig.apiKey),
           historyCount: historyVersions.length,
           cardRuntimeOptions: currentCardRuntimeOptions,
-          currentMicrosequenceIsPlaceholder: isDraftPlaceholderMicrosequence(context.microsequence),
-          draftCourseKey: DRAFT_COURSE_KEY,
-          draftLessonKey: draftContext.lesson?.key || DRAFT_LESSON_KEY,
-          draftMicrosequences,
-          visibleDraftCount: draftMicrosequences.length,
           continuePopup: {
             open:
               !!state.continuePopup &&
@@ -3151,8 +4793,39 @@ export function createLessonEditorApp({ root, storage, editor }) {
     if (renderState) {
       restoreRenderState(root, renderState);
     }
+    syncVersionTabScroller();
+    syncCardStripScroller({ keepActiveCardInView: true });
 
     root.querySelector("[data-action='go-back']")?.addEventListener("click", () => goBack());
+
+    root.querySelectorAll("[data-action='switch-home-tab']").forEach((node) => {
+      node.addEventListener("click", () => {
+        setHomeTab(node.getAttribute("data-home-tab"));
+      });
+    });
+
+    root.querySelector("[data-field='generate-course']")?.addEventListener("change", (event) => {
+      setGenerationCourse(event.target.value);
+    });
+    root.querySelector("[data-field='generate-module']")?.addEventListener("change", (event) => {
+      setGenerationModule(event.target.value);
+    });
+    root.querySelector("[data-field='generate-lesson']")?.addEventListener("change", (event) => {
+      setGenerationLesson(event.target.value);
+    });
+    root.querySelector("[data-field='generate-prompt']")?.addEventListener("input", (event) => {
+      state.generationDraft.promptText = event.target.value;
+      state.generationDraft.errorMessage = "";
+      state.generationDraft.lastResult = null;
+      state.pendingGeneratedNavigation = null;
+      render({ preserveState: true });
+    });
+    root.querySelector("[data-action='generate-ladder']")?.addEventListener("click", () => {
+      void submitGenerateLadderRequest();
+    });
+    root.querySelector("[data-action='view-generated-lesson']")?.addEventListener("click", () => {
+      openGeneratedLesson();
+    });
 
     root.querySelectorAll("[data-action='open-course']").forEach((node) => {
       node.addEventListener("click", () => {
@@ -3171,23 +4844,16 @@ export function createLessonEditorApp({ root, storage, editor }) {
       });
     });
 
-    root.querySelector("[data-action='open-draft-generator']")?.addEventListener("click", () => {
-      openDraftGenerationPage();
-    });
-
     root.querySelectorAll("[data-action='open-microsequence']").forEach((node) => {
       node.addEventListener("click", () => {
         const microsequenceKey = node.getAttribute("data-microsequence-key");
         if (!microsequenceKey) return;
-        openMicrosequenceAssistPage(microsequenceKey, 0);
-      });
-    });
-
-    root.querySelectorAll("[data-action='open-draft-review']").forEach((node) => {
-      node.addEventListener("click", () => {
-        const microsequenceKey = node.getAttribute("data-microsequence-key");
-        if (!microsequenceKey) return;
-        openMicrosequenceAssistPage(microsequenceKey, 0);
+        openEntityEditor("microsequence-actions", {
+          courseKey: state.selection.courseKey,
+          moduleKey: state.selection.moduleKey,
+          lessonKey: state.selection.lessonKey,
+          microsequenceKey
+        });
       });
     });
 
@@ -3215,6 +4881,37 @@ export function createLessonEditorApp({ root, storage, editor }) {
         openCardByIndex(index);
       });
     });
+    root.querySelectorAll("[data-action='select-microsequence-version']").forEach((node) => {
+      node.addEventListener("click", () => {
+        const versionId = node.getAttribute("data-version-id");
+        if (!versionId) return;
+        switchMicrosequenceVersion(versionId);
+      });
+    });
+    root.querySelector("[data-action='editor-prev-version']")?.addEventListener("click", () => {
+      stepMicrosequenceVersion(-1);
+    });
+    root.querySelector("[data-action='editor-next-version']")?.addEventListener("click", () => {
+      stepMicrosequenceVersion(1);
+    });
+    root.querySelector("[data-action='delete-microsequence-version']")?.addEventListener("click", () => {
+      deleteActiveMicrosequenceVersion();
+    });
+    root.querySelectorAll("[data-action='select-workbench-pane']").forEach((node) => {
+      node.addEventListener("click", () => {
+        setAssistWorkbenchPane(node.getAttribute("data-workbench-pane"));
+      });
+    });
+
+    root.querySelector("[data-action='scroll-card-strip-prev']")?.addEventListener("click", () => {
+      scrollCardStrip(-1);
+    });
+    root.querySelector("[data-action='scroll-card-strip-next']")?.addEventListener("click", () => {
+      scrollCardStrip(1);
+    });
+    root.querySelector("[data-card-strip='true']")?.addEventListener("scroll", () => {
+      syncCardStripScroller();
+    });
 
     root.querySelector("[data-action='prev-card']")?.addEventListener("click", () => stepCard(-1));
     root.querySelector("[data-action='continue-popup-next']")?.addEventListener("click", () => stepCard(1));
@@ -3222,8 +4919,13 @@ export function createLessonEditorApp({ root, storage, editor }) {
     root.querySelector("[data-action='close-study']")?.addEventListener("click", () => goBack());
     root.querySelector("[data-action='go-home']")?.addEventListener("click", () => goBack());
     root.querySelector("[data-action='open-card-comment']")?.addEventListener("click", () => openCardComment());
-    root.querySelector("[data-action='open-microsequence-assist']")?.addEventListener("click", () => {
-      openMicrosequenceAssistPage(state.selection.microsequenceKey, state.selection.cardIndex || 0);
+    root.querySelectorAll("[data-action='open-microsequence-assist']").forEach((node) => {
+      node.addEventListener("click", () => {
+        const microsequenceKey = node.getAttribute("data-microsequence-key") || state.selection.microsequenceKey;
+        const targetIndex = Number.parseInt(node.getAttribute("data-card-index") || String(state.selection.cardIndex || 0), 10);
+        if (!microsequenceKey) return;
+        openMicrosequenceAssistPage(microsequenceKey, Number.isFinite(targetIndex) ? targetIndex : 0);
+      });
     });
 
     root.querySelectorAll("[data-action='choice-toggle']").forEach((node) => {
@@ -3578,18 +5280,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
       });
     });
 
-    root.querySelector("[data-action='editor-prev-card']")?.addEventListener("click", () => openCardByIndex(state.selection.cardIndex - 1));
-    root.querySelector("[data-action='editor-next-card']")?.addEventListener("click", () => openCardByIndex(state.selection.cardIndex + 1));
-    root.querySelector("[data-action='edit-card']")?.addEventListener("click", () =>
-      openEntityEditor("card", {
-        courseKey: state.selection.courseKey,
-        moduleKey: state.selection.moduleKey,
-        lessonKey: state.selection.lessonKey,
-        microsequenceKey: state.selection.microsequenceKey,
-        cardKey: state.selection.cardKey
-      })
-    );
-
     root.querySelectorAll("[data-action='open-card-index']").forEach((node) => {
       node.addEventListener("click", () => {
         const index = Number.parseInt(node.getAttribute("data-card-index") || "0", 10);
@@ -3603,6 +5293,91 @@ export function createLessonEditorApp({ root, storage, editor }) {
         openEntityEditor("home-actions");
       });
     });
+    root.querySelectorAll("[data-action='structure-drag-handle'], [data-structure-draggable='true']").forEach((node) => {
+      node.addEventListener("dragstart", (event) => {
+        const payload = readStructurePayload(node);
+        const originNode = node.closest("[data-structure-target]");
+        if (!payload || !originNode) {
+          event.preventDefault();
+          return;
+        }
+
+        state.structureDrag = {
+          ...payload,
+          originNode
+        };
+        state.structureDrop = null;
+        clearStructureDropClasses();
+        originNode.classList.add("structure-drag-origin");
+        if (event.dataTransfer) {
+          event.dataTransfer.effectAllowed = "move";
+          event.dataTransfer.setData("text/plain", [
+            payload.level,
+            payload.courseKey,
+            payload.moduleKey,
+            payload.lessonKey,
+            payload.microsequenceKey
+          ].join("::"));
+        }
+      });
+      node.addEventListener("dragend", () => {
+        resetStructureDragState();
+      });
+    });
+    root.querySelectorAll("[data-structure-target]").forEach((node) => {
+      node.addEventListener("dragover", (event) => {
+        const target = readStructurePayload(node);
+        if (!canDropStructure(state.structureDrag, target)) {
+          return;
+        }
+
+        event.preventDefault();
+        const axis = getStructureAxis(target.level);
+        const point = axis === "x" ? event.clientX : event.clientY;
+        const position = getStructureDropPositionForAxis(node, point, axis);
+        state.structureDrop = { target, position };
+        markStructureDropTarget(node, position);
+        if (event.dataTransfer) {
+          event.dataTransfer.dropEffect = "move";
+        }
+      });
+      node.addEventListener("drop", (event) => {
+        const target = readStructurePayload(node);
+        if (!canDropStructure(state.structureDrag, target)) {
+          return;
+        }
+
+        event.preventDefault();
+        const axis = getStructureAxis(target.level);
+        const point = axis === "x" ? event.clientX : event.clientY;
+        const position = state.structureDrop?.position || getStructureDropPositionForAxis(node, point, axis);
+        applyStructureReorder(state.structureDrag, target, position);
+      });
+    });
+    root.querySelectorAll("[data-structure-collection]").forEach((node) => {
+      node.addEventListener("dragover", (event) => {
+        const resolved = resolveCollectionDropState(node, state.structureDrag, event.clientX, event.clientY);
+        if (!resolved) {
+          return;
+        }
+
+        event.preventDefault();
+        state.structureDrop = { target: resolved.target, position: resolved.position };
+        markStructureDropTarget(resolved.node, resolved.position);
+        if (event.dataTransfer) {
+          event.dataTransfer.dropEffect = "move";
+        }
+      });
+      node.addEventListener("drop", (event) => {
+        const resolved = resolveCollectionDropState(node, state.structureDrag, event.clientX, event.clientY);
+        if (!resolved) {
+          return;
+        }
+
+        event.preventDefault();
+        applyStructureReorder(state.structureDrag, resolved.target, resolved.position);
+      });
+    });
     root.querySelectorAll("[data-action='open-course-actions']").forEach((node) => {
       node.addEventListener("click", () => {
         const courseKey = node.getAttribute("data-course-key") || state.selection.courseKey;
@@ -3610,11 +5385,33 @@ export function createLessonEditorApp({ root, storage, editor }) {
         openEntityEditor("course-actions", { courseKey });
       });
     });
+    root.querySelectorAll("[data-action='open-course-screen-actions']").forEach((node) => {
+      node.addEventListener("click", () => {
+        openEntityEditor("course-screen-actions", { courseKey: state.selection.courseKey });
+      });
+    });
+    root.querySelectorAll("[data-action='open-lesson-screen-actions']").forEach((node) => {
+      node.addEventListener("click", () => {
+        openEntityEditor("lesson-screen-actions", {
+          courseKey: state.selection.courseKey,
+          moduleKey: state.selection.moduleKey,
+          lessonKey: state.selection.lessonKey
+        });
+      });
+    });
     root.querySelectorAll("[data-action='edit-course']").forEach((node) => {
       node.addEventListener("click", () => {
         const courseKey = node.getAttribute("data-course-key") || state.selection.courseKey;
         if (!courseKey) return;
         openEntityEditor("course", { courseKey });
+      });
+    });
+    root.querySelectorAll("[data-action='open-module-actions']").forEach((node) => {
+      node.addEventListener("click", () => {
+        const courseKey = node.getAttribute("data-course-key") || state.selection.courseKey;
+        const moduleKey = node.getAttribute("data-module-key");
+        if (!courseKey || !moduleKey) return;
+        openEntityEditor("module-actions", { courseKey, moduleKey });
       });
     });
     root.querySelectorAll("[data-action='edit-module']").forEach((node) => {
@@ -3625,6 +5422,15 @@ export function createLessonEditorApp({ root, storage, editor }) {
         openEntityEditor("module", { courseKey, moduleKey });
       });
     });
+    root.querySelectorAll("[data-action='open-lesson-actions']").forEach((node) => {
+      node.addEventListener("click", () => {
+        const courseKey = node.getAttribute("data-course-key") || state.selection.courseKey;
+        const moduleKey = node.getAttribute("data-module-key") || state.selection.moduleKey;
+        const lessonKey = node.getAttribute("data-lesson-key") || state.selection.lessonKey;
+        if (!courseKey || !moduleKey || !lessonKey) return;
+        openEntityEditor("lesson-actions", { courseKey, moduleKey, lessonKey });
+      });
+    });
     root.querySelectorAll("[data-action='edit-lesson']").forEach((node) => {
       node.addEventListener("click", () => {
         const courseKey = node.getAttribute("data-course-key") || state.selection.courseKey;
@@ -3632,6 +5438,24 @@ export function createLessonEditorApp({ root, storage, editor }) {
         const lessonKey = node.getAttribute("data-lesson-key") || state.selection.lessonKey;
         if (!courseKey || !moduleKey || !lessonKey) return;
         openEntityEditor("lesson", { courseKey, moduleKey, lessonKey });
+      });
+    });
+    root.querySelectorAll("[data-action='open-microsequence-actions']").forEach((node) => {
+      node.addEventListener("click", () => {
+        const microsequenceKey = node.getAttribute("data-microsequence-key") || state.selection.microsequenceKey;
+        if (!microsequenceKey) return;
+        openEntityEditor("microsequence-actions", {
+          courseKey: state.selection.courseKey,
+          moduleKey: state.selection.moduleKey,
+          lessonKey: state.selection.lessonKey,
+          microsequenceKey
+        });
+      });
+    });
+    root.querySelectorAll("[data-action='toggle-microsequence-runtime']").forEach((node) => {
+      node.addEventListener("click", () => {
+        const microsequenceKey = node.getAttribute("data-microsequence-key") || state.selection.microsequenceKey;
+        toggleSelectedMicrosequenceRuntime(microsequenceKey);
       });
     });
     root.querySelectorAll("[data-action='edit-microsequence']").forEach((node) => {
@@ -3646,7 +5470,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
     });
 
     root.querySelector("[data-action='entity-editor-close']")?.addEventListener("click", () => closeEntityEditor());
-    root.querySelector("[data-action='entity-editor-save']")?.addEventListener("click", () => closeEntityEditor());
     root.querySelectorAll("[data-action='dismiss-action-menu']").forEach((node) => {
       node.addEventListener("click", (event) => {
         if (event.target === node) {
@@ -3822,6 +5645,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
     const assistModel = root.querySelector("[data-field='assist-model']");
     const assistDependencyPicker = root.querySelector("[data-field='assist-dependency-picker']");
     const assistPrompt = root.querySelector("[data-field='assist-prompt']");
+    const assistAttachmentInput = root.querySelector("[data-field='assist-attachments']");
     if (assistMode) {
       assistMode.addEventListener("change", () => {
         state.assistDraft.selectedMode = assistMode.value;
@@ -3842,6 +5666,18 @@ export function createLessonEditorApp({ root, storage, editor }) {
     if (assistPrompt) {
       assistPrompt.addEventListener("input", () => {
         state.assistDraft.promptText = assistPrompt.value;
+        render({ preserveState: true });
+      });
+    }
+    if (assistAttachmentInput) {
+      assistAttachmentInput.addEventListener("change", () => {
+        const nextFiles = Array.from(assistAttachmentInput.files || []);
+        state.assistDraft.attachments = normalizeAssistAttachmentList([
+          ...state.assistDraft.attachments,
+          ...nextFiles
+        ]);
+        assistAttachmentInput.value = "";
+        render({ preserveState: true });
       });
     }
     root.querySelectorAll("[data-action='remove-dependency']").forEach((node) => {
@@ -3850,6 +5686,14 @@ export function createLessonEditorApp({ root, storage, editor }) {
         if (!key) return;
         state.assistDraft.dependencyKeys = state.assistDraft.dependencyKeys.filter((item) => item !== key);
         syncAssistDraft();
+        render({ preserveState: true });
+      });
+    });
+    root.querySelectorAll("[data-action='remove-assist-attachment']").forEach((node) => {
+      node.addEventListener("click", () => {
+        const index = Number(node.getAttribute("data-attachment-index"));
+        if (!Number.isInteger(index) || index < 0) return;
+        state.assistDraft.attachments = state.assistDraft.attachments.filter((_, itemIndex) => itemIndex !== index);
         render({ preserveState: true });
       });
     });
@@ -3864,8 +5708,22 @@ export function createLessonEditorApp({ root, storage, editor }) {
       render({ preserveState: true });
     });
     root.querySelector("[data-action='clear-prompt']")?.addEventListener("click", () => {
-      state.assistDraft.promptText = "";
+      if (root.querySelector("[data-field='generate-prompt']")) {
+        state.generationDraft.promptText = "";
+        state.generationDraft.errorMessage = "";
+        state.generationDraft.lastResult = null;
+        state.pendingGeneratedNavigation = null;
+      }
+      if (root.querySelector("[data-field='assist-prompt']")) {
+        state.assistDraft.promptText = "";
+      }
       render({ preserveState: true });
+    });
+    root.querySelector("[data-action='open-assist-container-picker']")?.addEventListener("click", () => {
+      openEntityEditor("assist-container-picker");
+    });
+    root.querySelector("[data-action='open-assist-attachment-picker']")?.addEventListener("click", () => {
+      root.querySelector("[data-field='assist-attachments']")?.click();
     });
     root.querySelector("[data-action='open-assist-config']")?.addEventListener("click", () => openAssistConfig());
     root.querySelector("[data-action='apply-assist']")?.addEventListener("click", () => {
@@ -3873,7 +5731,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
     });
     root.querySelector("[data-action='open-version-history']")?.addEventListener("click", () => openVersionHistory());
     root.querySelector("[data-action='assist-config-close']")?.addEventListener("click", () => closeAssistConfig());
-    root.querySelector("[data-action='assist-config-save']")?.addEventListener("click", () => saveAssistConfig());
     root.querySelectorAll("[data-action='restore-version']").forEach((node) => {
       node.addEventListener("click", () => {
         const versionKey = node.getAttribute("data-version-key");
@@ -3887,12 +5744,12 @@ export function createLessonEditorApp({ root, storage, editor }) {
     const assistConfigApiKey = root.querySelector("[data-field='assist-config-api-key']");
     if (assistConfigModel) {
       assistConfigModel.addEventListener("change", () => {
-        state.assistConfigDraft.model = assistConfigModel.value;
+        persistAssistConfigValue({ model: assistConfigModel.value });
       });
     }
     if (assistConfigApiKey) {
       assistConfigApiKey.addEventListener("input", () => {
-        state.assistConfigDraft.apiKey = assistConfigApiKey.value;
+        persistAssistConfigValue({ apiKey: assistConfigApiKey.value });
       });
     }
 
@@ -3917,9 +5774,17 @@ export function createLessonEditorApp({ root, storage, editor }) {
         node.addEventListener("input", handler);
       });
     }
+
+    syncPendingStructureFocus();
   }
 
   ensureCurrentCardSnapshot();
   syncAssistDraft();
+  if (typeof window !== "undefined" && typeof window.addEventListener === "function") {
+    window.addEventListener("resize", () => {
+      syncVersionTabScroller();
+      syncCardStripScroller({ keepActiveCardInView: true });
+    });
+  }
   render({ preserveState: false });
 }

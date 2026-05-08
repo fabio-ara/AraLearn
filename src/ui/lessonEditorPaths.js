@@ -1,3 +1,5 @@
+import { isRunnableMicrosequence } from "../model/microsequenceStatus.js";
+
 export const DEFAULT_ASSIST_DEPENDENCIES = 3;
 
 export function buildCardPathKey(selection) {
@@ -56,6 +58,40 @@ export function collectAssistDependencies(course, moduleValue, lesson, microsequ
   return dependencies;
 }
 
+export function collectLessonTopicRefs(lesson, microsequence) {
+  if (!lesson || !microsequence) {
+    return [];
+  }
+
+  const refs = [];
+  const seen = new Set();
+
+  function pushRef(refKey, label) {
+    const safeRefKey = String(refKey || "").trim();
+    const safeLabel = String(label || refKey || "").trim();
+    const key = `${safeRefKey}::${safeLabel.toLowerCase()}`;
+    if (!safeRefKey || !safeLabel || seen.has(key)) {
+      return;
+    }
+    seen.add(key);
+    refs.push({
+      refKey: safeRefKey,
+      label: safeLabel,
+      source: "microsequence"
+    });
+  }
+
+  (lesson.microsequences || []).forEach((item) => {
+    if (!item || item.key === microsequence.key) {
+      return;
+    }
+    pushRef(item.key, item.title || item.key);
+    (item.tags || []).forEach((tag) => pushRef(item.key, tag));
+  });
+
+  return refs;
+}
+
 export function getDefaultDependencyKeys(dependencies, limit = DEFAULT_ASSIST_DEPENDENCIES) {
   return dependencies.slice(0, limit).map((item) => item.key);
 }
@@ -73,16 +109,16 @@ export function getFirstPath(project) {
     };
   }
 
-  const moduleValue = course.modules[0];
-  const lesson = moduleValue.lessons[0];
-  const microsequence = lesson.microsequences[0];
-  const card = (microsequence.cards || [])[0] || null;
+  const moduleValue = (course.modules || [])[0] || null;
+  const lesson = (moduleValue?.lessons || [])[0] || null;
+  const microsequence = (lesson?.microsequences || [])[0] || null;
+  const card = (microsequence?.cards || [])[0] || null;
 
   return {
     courseKey: course.key,
-    moduleKey: moduleValue.key,
-    lessonKey: lesson.key,
-    microsequenceKey: microsequence.key,
+    moduleKey: moduleValue?.key || null,
+    lessonKey: lesson?.key || null,
+    microsequenceKey: microsequence?.key || null,
     cardKey: card ? card.key : null,
     cardIndex: 0
   };
@@ -117,6 +153,9 @@ export function findCard(microsequence, cardKey) {
 export function collectLessonCards(lesson) {
   const entries = [];
   (lesson?.microsequences || []).forEach((microsequence) => {
+    if (!isRunnableMicrosequence(microsequence)) {
+      return;
+    }
     (microsequence.cards || []).forEach((card, cardIndex) => {
       entries.push({
         microsequenceKey: microsequence.key,

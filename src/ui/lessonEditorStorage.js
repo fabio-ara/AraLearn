@@ -1,7 +1,7 @@
 const CARD_HISTORY_STORAGE_KEY = "aralearn.card-history.v1";
 const CARD_COMMENT_STORAGE_KEY = "aralearn.card-comments.v1";
 const ASSIST_CONFIG_STORAGE_KEY = "aralearn.assist-config";
-const LEGACY_ASSIST_CONFIG_STORAGE_KEY = "aralearn.assist-config.v1";
+const MICROSEQUENCE_VERSION_STORAGE_KEY = "aralearn.microsequence-versions.v1";
 
 function readJsonMap(storage, key) {
   if (!storage || typeof storage.getItem !== "function") {
@@ -50,16 +50,9 @@ export function writeCommentStorage(commentMap, storage = globalThis.localStorag
 }
 
 export function readAssistConfigStorage(storage = globalThis.localStorage) {
-  const config = (() => {
-    const current = readJsonMap(storage, ASSIST_CONFIG_STORAGE_KEY);
-    if (typeof current.model === "string" || typeof current.apiKey === "string") {
-      return current;
-    }
-
-    return readJsonMap(storage, LEGACY_ASSIST_CONFIG_STORAGE_KEY);
-  })();
+  const config = readJsonMap(storage, ASSIST_CONFIG_STORAGE_KEY);
   return {
-    model: typeof config.model === "string" && config.model.trim() ? config.model.trim() : "gemini-2.5-flash-lite",
+    model: typeof config.model === "string" && config.model.trim() ? config.model.trim() : "gemini-2.5-flash",
     apiKey: typeof config.apiKey === "string" ? config.apiKey : ""
   };
 }
@@ -69,8 +62,16 @@ export function writeAssistConfigStorage(config, storage = globalThis.localStora
     storage,
     ASSIST_CONFIG_STORAGE_KEY,
     {
-      model: typeof config?.model === "string" ? config.model : "gemini-2.5-flash-lite",
+      model: typeof config?.model === "string" ? config.model : "gemini-2.5-flash",
       apiKey: typeof config?.apiKey === "string" ? config.apiKey : ""
     }
   );
+}
+
+export function readMicrosequenceVersionStorage(storage = globalThis.localStorage) {
+  return readJsonMap(storage, MICROSEQUENCE_VERSION_STORAGE_KEY);
+}
+
+export function writeMicrosequenceVersionStorage(versionMap, storage = globalThis.localStorage) {
+  writeJsonMap(storage, MICROSEQUENCE_VERSION_STORAGE_KEY, versionMap);
 }

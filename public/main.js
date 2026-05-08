@@ -5,9 +5,7 @@ import { createLessonEditorApp } from "../src/ui/lessonEditorApp.js";
 import { createExampleProjectDocument } from "../src/ui/exampleProjectDocument.js";
 import {
   EXAMPLE_SEED_KEY,
-  EXAMPLE_SEED_SIGNATURE_KEY,
   EXAMPLE_SEED_VERSION,
-  getExampleSeedSignature,
   shouldHydrateExampleSeed,
   shouldStoreExampleSeedMetadata
 } from "../src/ui/exampleSeed.js";
@@ -22,39 +20,34 @@ const storage = createProjectStorage(kvStore);
 const editor = createEditorSession(storage);
 
 let project = null;
+let shouldResetProject = false;
 try {
   project = storage.loadProject();
 } catch (error) {
   console.warn("Falha ao carregar projeto persistido. Recriando exemplo.", error);
+  shouldResetProject = true;
 }
 
 const exampleProject = createExampleProjectDocument();
-const currentSeedSignature = getExampleSeedSignature(exampleProject);
 const storedSeedVersion = kvStore.getItem(EXAMPLE_SEED_KEY);
-const storedSeedSignature = kvStore.getItem(EXAMPLE_SEED_SIGNATURE_KEY);
 
 if (
+  shouldResetProject ||
   shouldHydrateExampleSeed({
     project,
-    storedSeedVersion,
-    storedSeedSignature,
-    currentSeedSignature
+    storedSeedVersion
   })
 ) {
   project = exampleProject;
   storage.saveProject(project);
   kvStore.setItem(EXAMPLE_SEED_KEY, EXAMPLE_SEED_VERSION);
-  kvStore.setItem(EXAMPLE_SEED_SIGNATURE_KEY, currentSeedSignature);
 } else if (
   shouldStoreExampleSeedMetadata({
     project,
-    storedSeedVersion,
-    storedSeedSignature,
-    currentSeedSignature
+    storedSeedVersion
   })
 ) {
   kvStore.setItem(EXAMPLE_SEED_KEY, EXAMPLE_SEED_VERSION);
-  kvStore.setItem(EXAMPLE_SEED_SIGNATURE_KEY, currentSeedSignature);
 }
 
 createLessonEditorApp({

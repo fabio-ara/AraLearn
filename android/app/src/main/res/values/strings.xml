@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">AraLearn</string>
+    <string name="file_picker_title">Selecionar arquivo</string>
+    <string name="file_picker_unavailable">Nenhum seletor de arquivos disponível.</string>
+    <string name="export_unavailable">Não foi possível abrir o seletor de salvamento.</string>
+    <string name="export_invalid">Falha ao preparar o arquivo para exportação.</string>
+    <string name="export_error">Não foi possível salvar o arquivo exportado.</string>
+    <string name="export_success">Arquivo salvo: %1$s</string>
+</resources>

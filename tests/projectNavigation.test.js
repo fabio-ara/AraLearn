@@ -32,15 +32,18 @@ function makeProject() {
                   {
                     key: "micro-1",
                     title: "Micro 1",
+                    status: "ready",
                     cards: [
-                      { key: "card-1", title: "Card 1", type: "text", text: "A" },
-                      { key: "card-2", title: "Card 2", type: "text", text: "B" }
+                      { key: "card-1", title: "Card 1", say: "A" },
+                      { key: "card-2", title: "Card 2", say: "B" }
                     ]
                   },
                   {
                     key: "micro-2",
                     title: "Micro 2",
-                    cards: [{ key: "card-3", title: "Card 3", type: "text", text: "C" }]
+                    status: "ready",
+                    included: false,
+                    cards: [{ key: "card-3", title: "Card 3", say: "C" }]
                   }
                 ]
               },
@@ -51,7 +54,8 @@ function makeProject() {
                   {
                     key: "micro-3",
                     title: "Micro 3",
-                    cards: [{ key: "card-4", title: "Card 4", type: "text", text: "D" }]
+                    status: "ready",
+                    cards: [{ key: "card-4", title: "Card 4", say: "D" }]
                   }
                 ]
               }
@@ -68,7 +72,8 @@ function makeProject() {
                   {
                     key: "micro-4",
                     title: "Micro 4",
-                    cards: [{ key: "card-5", title: "Card 5", type: "text", text: "E" }]
+                    status: "ready",
+                    cards: [{ key: "card-5", title: "Card 5", say: "E" }]
                   }
                 ]
               }
@@ -118,8 +123,7 @@ test("projectNavigation monta chave e coleção plana de cards da lição", () =
     collectLessonCards(lesson).map((item) => [item.microsequenceKey, item.cardKey, item.cardIndex]),
     [
       ["micro-1", "card-1", 0],
-      ["micro-1", "card-2", 1],
-      ["micro-2", "card-3", 0]
+      ["micro-1", "card-2", 1]
     ]
   );
 });
@@ -144,3 +148,4 @@ test("projectNavigation calcula dependências didáticas em ordem de prioridade"
 
   assert.deepEqual(getDefaultDependencyKeys(dependencies, 2), ["micro-1", "micro-2"]);
 });
+

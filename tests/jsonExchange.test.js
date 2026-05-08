@@ -7,6 +7,8 @@ test("detecta contrato de curso isolado", () => {
   assert.equal(
     detectJsonExchangeFormat({
       contract: "aralearn.contract",
+      version: 1,
+      kind: "project",
       courses: []
     }),
     "contract"

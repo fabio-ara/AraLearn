@@ -6,10 +6,9 @@ import { buildCardRuntime, readCardText } from "../src/core/cardRuntime.js";
 test("compila card choice para runtime interno de múltipla escolha", () => {
   const runtime = buildCardRuntime({
     key: "card-choice",
-    type: "choice",
     title: "Leitura rápida",
     ask: "Qual alternativa combina com o card?",
-    answer: ["Resposta correta"],
+    answer: "Resposta correta",
     wrong: ["Distrator A", "Distrator B"]
   });
 
@@ -28,29 +27,26 @@ test("compila card choice para runtime interno de múltipla escolha", () => {
   assert.equal(runtime.blocks.at(-1).kind, "button");
 });
 
-test("compila card complete para runtime interno com texto e gabarito", () => {
+test("compila card say com lacuna para runtime interno de texto comum", () => {
   const runtime = buildCardRuntime({
     key: "card-complete",
-    type: "complete",
     title: "Complete",
-    text: "No modelo [[cascata]], mudanças tardias custam mais.",
-    answer: ["cascata"],
+    say: "No modelo [[cascata]], mudanças tardias custam mais.",
     wrong: ["iterativo"]
   });
 
-  assert.equal(runtime.blocks[1].kind, "complete");
-  assert.equal(runtime.blocks[1].text, "No modelo [[cascata]], mudanças tardias custam mais.");
-  assert.deepEqual(runtime.blocks[1].answer, ["cascata"]);
-  assert.deepEqual(runtime.blocks[1].wrong, ["iterativo"]);
+  assert.equal(runtime.blocks[1].kind, "paragraph");
+  assert.equal(runtime.blocks[1].value, "No modelo [[cascata::cascata|iterativo]], mudanças tardias custam mais.");
 });
 
 test("compila card table para runtime interno com cabeçalhos e linhas", () => {
   const runtime = buildCardRuntime({
     key: "card-table",
-    type: "table",
     title: "Quadro",
-    columns: ["Campo", "Uso"],
-    rows: [["type", "Tipo do card"]]
+    table: {
+      columns: ["Campo", "Uso"],
+      rows: [["say", "Intenção textual"]]
+    }
   });
 
   assert.equal(runtime.blocks[1].kind, "table");
@@ -61,14 +57,13 @@ test("compila card table para runtime interno com cabeçalhos e linhas", () => {
   );
   assert.deepEqual(
     runtime.blocks[1].rows.map((row) => row.map((cell) => cell.value)),
-    [["type", "Tipo do card"]]
+    [["say", "Intenção textual"]]
   );
 });
 
 test("lê texto representativo de cards de fluxo e tabela", () => {
   assert.equal(
     readCardText({
-      type: "flow",
       flow: [{ start: "Início" }, { process: "Validar" }, { end: "Fim" }]
     }),
     "start: Início\nprocess: Validar\nend: Fim"
@@ -76,9 +71,10 @@ test("lê texto representativo de cards de fluxo e tabela", () => {
 
   assert.equal(
     readCardText({
-      type: "table",
-      columns: ["A", "B"],
-      rows: [["1", "2"], ["3", "4"]]
+      table: {
+        columns: ["A", "B"],
+        rows: [["1", "2"], ["3", "4"]]
+      }
     }),
     "1 | 2\n3 | 4"
   );
@@ -87,7 +83,6 @@ test("lê texto representativo de cards de fluxo e tabela", () => {
 test("compila card flow para runtime interno com structure validada", () => {
   const runtime = buildCardRuntime({
     key: "card-flow",
-    type: "flow",
     title: "Decisão simples",
     flow: [
       { start: "Início" },
