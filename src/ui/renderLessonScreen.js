@@ -942,7 +942,7 @@ function renderMicrosequenceWorkbenchScreen({
     "</div>" +
     "</section>";
   const editPane =
-    '<section class="microsequence-assist-panel microsequence-generator-panel workbench-editor-panel">' +
+    '<section class="workbench-editor-panel workbench-editor-pane">' +
     (() => {
       const canSubmitAssist = !!String(microsequence?.title || "").trim() && !!String(editorSupport.promptText || "").trim();
       return (
@@ -952,14 +952,16 @@ function renderMicrosequenceWorkbenchScreen({
     escapeHtml(microsequence?.title || "") +
     '">' +
     "</label>" +
+    '<div class="generate-divider workbench-divider"></div>' +
     '<div class="workbench-tag-layout">' +
-    '<div class="generate-icon-field workbench-tag-picker-row">' +
+    '<div class="workbench-form-row workbench-tag-picker-row">' +
     renderInlineFieldIcon("tags", "Tags") +
     (dependencyPicker || '<div class="workbench-tag-picker-empty"></div>') +
     "</div>" +
     '<div class="dependency-chip-row workbench-tag-chip-row">' +
     selectedDependencyTags +
     "</div></div>" +
+    '<div class="generate-divider workbench-divider"></div>' +
     '<label class="field generate-icon-field generate-prompt-field workbench-prompt-field">' +
     renderInlineFieldIcon("prompt", promptLabel) +
     '<textarea data-field="assist-prompt" class="assist-prompt" aria-label="' +
@@ -969,6 +971,7 @@ function renderMicrosequenceWorkbenchScreen({
     '">' +
     escapeHtml(editorSupport.promptText || "") +
     "</textarea></label>" +
+    '<div class="generate-divider workbench-divider"></div>' +
     '<div class="generate-action-row assist-actions assist-actions-wide">' +
     '<button class="icon-ghost tiny-icon generate-inline-icon" type="button" data-action="clear-prompt" title="Limpar prompt" aria-label="Limpar prompt">&#8635;</button>' +
     '<label class="field generate-icon-field generate-model-field">' +

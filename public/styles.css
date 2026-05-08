@@ -951,6 +951,16 @@ button {
   overflow: hidden;
 }
 
+.workbench-surface[data-workbench-pane="edit"] .workbench-surface-body {
+  height: auto;
+  min-height: 0;
+  padding: 10px 12px 12px;
+  overflow: visible;
+  background:
+    linear-gradient(180deg, rgba(73, 57, 33, 0.82), rgba(31, 24, 17, 0.96)),
+    radial-gradient(circle at top, rgba(246, 214, 150, 0.16), transparent 68%);
+}
+
 .workbench-surface-pane {
   height: 100%;
   min-height: 0;
@@ -3146,12 +3156,20 @@ button {
 }
 
 .workbench-editor-panel {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
+  display: grid;
+  gap: 9px;
+  height: auto;
   min-height: 0;
-  overflow: hidden;
+  overflow: visible;
   overflow-x: clip;
+}
+
+.workbench-editor-pane {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
 }
 
 .workbench-editor-panel .dependency-chip-row {
@@ -3166,7 +3184,12 @@ button {
   min-width: 0;
 }
 
+.workbench-form-row,
 .workbench-tag-picker-row {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
   min-width: 0;
 }
 
@@ -3182,23 +3205,26 @@ button {
   padding-left: 42px;
 }
 
+.workbench-divider {
+  margin: 2px 0;
+}
+
 .workbench-tag-field .assist-tag-picker {
   margin-top: 0;
 }
 
 .workbench-editor-panel .workbench-prompt-field {
   flex: 0 0 132px;
-  min-height: 132px;
-  max-height: 132px;
+  min-height: 0;
+  max-height: none;
   align-items: start;
 }
 
 .workbench-editor-panel .assist-prompt {
-  height: 100%;
-  min-height: 0;
-  max-height: 100%;
+  min-height: 118px;
+  max-height: 38dvh;
   overflow-y: auto;
-  resize: none;
+  resize: vertical;
 }
 
 .draft-generator-control-panel {
