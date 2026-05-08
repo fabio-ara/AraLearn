@@ -11,6 +11,15 @@ function escapeHtml(value) {
     .replace(/'/g, "&#39;");
 }
 
+function getStructureHandleTitle(level) {
+  if (level === "course") return "Arrastar curso";
+  if (level === "module") return "Arrastar módulo";
+  if (level === "lesson") return "Arrastar lição";
+  if (level === "microsequence") return "Arrastar microssequência";
+  if (level === "card") return "Arrastar card";
+  return "Arrastar item";
+}
+
 function renderStructureHandle({ level, courseKey, moduleKey = "", lessonKey = "", microsequenceKey = "", label }) {
   return (
     '<button class="icon-ghost tiny-icon builder-tool-handle" type="button" draggable="true" data-action="structure-drag-handle" data-structure-level="' +
@@ -24,7 +33,7 @@ function renderStructureHandle({ level, courseKey, moduleKey = "", lessonKey = "
     '" data-microsequence-key="' +
     escapeHtml(microsequenceKey) +
     '" title="' +
-    escapeHtml(label) +
+    escapeHtml(getStructureHandleTitle(level)) +
     '" aria-label="' +
     escapeHtml(label) +
     '">&#9776;</button>'
