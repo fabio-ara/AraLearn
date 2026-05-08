@@ -3274,6 +3274,30 @@ button {
   display: block;
 }
 
+.assist-attachment-button-icon {
+  width: 17px;
+  height: 17px;
+  display: block;
+}
+
+.assist-attachment-input {
+  display: none;
+}
+
+.assist-attachment-chip-row {
+  min-height: 0;
+  padding-bottom: 0;
+}
+
+.assist-attachment-chip {
+  max-width: 100%;
+}
+
+.assist-attachment-chip .dependency-chip-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .workbench-editor-panel .assist-prompt {
   min-height: 118px;
   max-height: 38dvh;
@@ -3934,7 +3958,7 @@ button {
 }
 
 .assist-actions-wide {
-  grid-template-columns: 36px minmax(0, 1fr) 36px 44px;
+  grid-template-columns: 36px minmax(0, 1fr) 36px 36px 44px;
   width: 100%;
 }
 

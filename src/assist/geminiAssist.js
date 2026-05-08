@@ -14,7 +14,7 @@ function normalizeText(value) {
   return typeof value === "string" ? value.trim() : "";
 }
 
-function makeRequestBody({ systemInstruction, prompt, schema, temperature = 0.2, maxOutputTokens = 2048 }) {
+function makeRequestBody({ systemInstruction, prompt, schema, temperature = 0.2, maxOutputTokens = 2048, fileParts = [] }) {
   const generationConfig = {
     temperature,
     maxOutputTokens,
@@ -31,11 +31,147 @@ function makeRequestBody({ systemInstruction, prompt, schema, temperature = 0.2,
     contents: [
       {
         role: "user",
-        parts: [{ text: prompt }]
+        parts: [...fileParts, { text: prompt }]
       }
     ],
     generationConfig
   };
+}
+
+function inferMimeType(fileName = "") {
+  const normalized = normalizeText(fileName).toLowerCase();
+  if (normalized.endsWith(".pdf")) return "application/pdf";
+  if (normalized.endsWith(".md")) return "text/markdown";
+  if (normalized.endsWith(".txt")) return "text/plain";
+  if (normalized.endsWith(".json")) return "application/json";
+  if (normalized.endsWith(".csv")) return "text/csv";
+  if (normalized.endsWith(".html")) return "text/html";
+  if (normalized.endsWith(".xml")) return "application/xml";
+  if (normalized.endsWith(".js")) return "text/javascript";
+  if (normalized.endsWith(".ts")) return "text/plain";
+  if (normalized.endsWith(".py")) return "text/x-python";
+  if (normalized.endsWith(".java")) return "text/x-java-source";
+  if (normalized.endsWith(".c")) return "text/x-c";
+  if (normalized.endsWith(".cpp")) return "text/x-c++src";
+  if (normalized.endsWith(".pptx")) return "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+  if (normalized.endsWith(".docx")) return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+  return "application/octet-stream";
+}
+
+function normalizeAttachmentParts(attachments = []) {
+  return attachments
+    .filter((item) => item && typeof item === "object" && normalizeText(item.uri))
+    .map((item) => ({
+      file_data: {
+        mime_type: normalizeText(item.mimeType) || "application/octet-stream",
+        file_uri: normalizeText(item.uri)
+      }
+    }));
+}
+
+function encodeGeminiResourceName(name) {
+  return String(name || "")
+    .split("/")
+    .map((item) => encodeURIComponent(item))
+    .join("/");
+}
+
+async function parseGeminiUploadResponse(response) {
+  const data = await response.json().catch(() => null);
+  if (!response.ok) {
+    const message = data?.error?.message || `Falha HTTP ${response.status}.`;
+    fail(message);
+  }
+
+  const file = data?.file || data;
+  const uri = normalizeText(file?.uri);
+  const mimeType = normalizeText(file?.mimeType);
+  const name = normalizeText(file?.name);
+
+  if (!uri || !name) {
+    fail("O serviço de IA não devolveu um arquivo utilizável.");
+  }
+
+  return {
+    uri,
+    mimeType: mimeType || "application/octet-stream",
+    name
+  };
+}
+
+async function uploadGeminiAttachment({ apiKey, attachment }) {
+  const name = normalizeText(attachment?.name) || "documento";
+  const mimeType = normalizeText(attachment?.type) || inferMimeType(name);
+  const bytes = await attachment.arrayBuffer();
+  const startResponse = await fetch("https://generativelanguage.googleapis.com/upload/v1beta/files", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-goog-api-key": apiKey,
+      "X-Goog-Upload-Protocol": "resumable",
+      "X-Goog-Upload-Command": "start",
+      "X-Goog-Upload-Header-Content-Length": String(bytes.byteLength),
+      "X-Goog-Upload-Header-Content-Type": mimeType
+    },
+    body: JSON.stringify({
+      file: {
+        display_name: name
+      }
+    })
+  });
+  if (!startResponse.ok) {
+    return parseGeminiUploadResponse(startResponse);
+  }
+
+  const uploadUrl =
+    startResponse.headers?.get("x-goog-upload-url") ||
+    startResponse.headers?.get("X-Goog-Upload-URL") ||
+    startResponse.headers?.get("X-Goog-Upload-Url");
+  if (!uploadUrl) {
+    fail("O serviço de IA não devolveu a URL de upload do anexo.");
+  }
+
+  const uploadResponse = await fetch(uploadUrl, {
+    method: "POST",
+    headers: {
+      "Content-Type": mimeType,
+      "X-Goog-Upload-Offset": "0",
+      "X-Goog-Upload-Command": "upload, finalize"
+    },
+    body: bytes
+  });
+
+  return parseGeminiUploadResponse(uploadResponse);
+}
+
+async function uploadGeminiAttachments({ apiKey, attachments }) {
+  const uploaded = [];
+
+  for (const attachment of attachments || []) {
+    uploaded.push(await uploadGeminiAttachment({ apiKey, attachment }));
+  }
+
+  return uploaded;
+}
+
+async function deleteGeminiAttachment({ apiKey, name }) {
+  const resourceName = normalizeText(name);
+  if (!resourceName) {
+    return;
+  }
+
+  await fetch(`https://generativelanguage.googleapis.com/v1beta/${encodeGeminiResourceName(resourceName)}`, {
+    method: "DELETE",
+    headers: {
+      "x-goog-api-key": apiKey
+    }
+  }).catch(() => null);
+}
+
+async function deleteGeminiAttachments({ apiKey, attachments }) {
+  for (const attachment of attachments || []) {
+    await deleteGeminiAttachment({ apiKey, name: attachment?.name });
+  }
 }
 
 function getCardSchemaVariants() {
@@ -432,7 +568,8 @@ async function composeMicrosequenceWithGemini({
   microsequence,
   dependencyTitles,
   promptText,
-  preferredContainer = ""
+  preferredContainer = "",
+  fileParts = []
 }) {
   const systemInstruction =
     "Você transforma pedidos de estudo em microssequências didáticas para o AraLearn. " +
@@ -463,6 +600,7 @@ async function composeMicrosequenceWithGemini({
         body: makeRequestBody({
           systemInstruction,
           prompt,
+          fileParts,
           schema: isSchemaTooComplexError(lastError) ? null : getAssistDraftSchema(),
           temperature: attempt === 0 ? 0.15 : 0.05,
           maxOutputTokens: 3072
@@ -553,7 +691,8 @@ export async function runGeminiAssist({
   dependencyTitles = [],
   destinationSlots = [],
   promptText,
-  preferredContainer = ""
+  preferredContainer = "",
+  attachments = []
 }) {
   const trimmedKey = normalizeText(apiKey);
   const trimmedModel = normalizeText(model) || "gemini-2.5-flash";
@@ -569,57 +708,73 @@ export async function runGeminiAssist({
     fail("Este ambiente não oferece suporte a fetch.");
   }
 
-  const systemInstruction =
-    "Você escreve conteúdo em JSON para o contrato do AraLearn. " +
-    "Use apenas campos semânticos simples e respostas previsíveis; nunca use type, text, runtime, intent ou data. " +
-    "Não explique o que está fazendo. Responda apenas no JSON pedido.";
+  const normalizedAttachments = (attachments || []).filter(
+    (item) => item && typeof item === "object" && typeof item.arrayBuffer === "function"
+  );
+  const uploadedAttachments = normalizedAttachments.length
+    ? await uploadGeminiAttachments({ apiKey: trimmedKey, attachments: normalizedAttachments })
+    : [];
+  const fileParts = normalizeAttachmentParts(uploadedAttachments);
 
-  let body = null;
-  if (mode === "compose-microsequence") {
-    return composeMicrosequenceWithGemini({
-      apiKey: trimmedKey,
-      model: trimmedModel,
-      microsequence,
-      dependencyTitles,
-      promptText: trimmedPrompt,
-      preferredContainer
-    });
-  } else if (mode === "edit-card") {
-    body = makeRequestBody({
-      systemInstruction,
-      prompt: buildEditPrompt({ microsequence, card, dependencyTitles, promptText: trimmedPrompt }),
-      schema: getEditSchema(getContractCardKind(card) || "say"),
-      temperature: 0.2,
-      maxOutputTokens: 1536
-    });
-  } else if (mode === "reposition-microsequence") {
-    body = makeRequestBody({
-      systemInstruction,
-      prompt: buildRepositionPrompt({ microsequence, dependencyTitles, promptText: trimmedPrompt, destinationSlots }),
-      schema: getRepositionSchema(),
-      temperature: 0.2,
-      maxOutputTokens: 1024
-    });
-  } else if (mode === "plan-microsequence-ladder") {
-    body = makeRequestBody({
-      systemInstruction:
-        "Você planeja escadas de microssequências para o AraLearn. " +
-        "Responda apenas no JSON pedido, sem cards, sem tags e sem explicação.",
-      prompt: buildLadderPrompt({ context: microsequence, promptText: trimmedPrompt }),
-      schema: getLadderSchema(),
-      temperature: 0.15,
-      maxOutputTokens: 1024
-    });
-  } else {
-    fail("Modo de assistência inválido.");
-  }
+  try {
+    const systemInstruction =
+      "Você escreve conteúdo em JSON para o contrato do AraLearn. " +
+      "Use apenas campos semânticos simples e respostas previsíveis; nunca use type, text, runtime, intent ou data. " +
+      "Não explique o que está fazendo. Responda apenas no JSON pedido.";
 
-  const parsed = await callGemini({ apiKey: trimmedKey, model: trimmedModel, body });
-  if (mode === "edit-card") {
-    return normalizeEditResult(parsed);
+    let body = null;
+    if (mode === "compose-microsequence") {
+      return composeMicrosequenceWithGemini({
+        apiKey: trimmedKey,
+        model: trimmedModel,
+        microsequence,
+        dependencyTitles,
+        promptText: trimmedPrompt,
+        preferredContainer,
+        fileParts
+      });
+    } else if (mode === "edit-card") {
+      body = makeRequestBody({
+        systemInstruction,
+        prompt: buildEditPrompt({ microsequence, card, dependencyTitles, promptText: trimmedPrompt }),
+        fileParts,
+        schema: getEditSchema(getContractCardKind(card) || "say"),
+        temperature: 0.2,
+        maxOutputTokens: 1536
+      });
+    } else if (mode === "reposition-microsequence") {
+      body = makeRequestBody({
+        systemInstruction,
+        prompt: buildRepositionPrompt({ microsequence, dependencyTitles, promptText: trimmedPrompt, destinationSlots }),
+        fileParts,
+        schema: getRepositionSchema(),
+        temperature: 0.2,
+        maxOutputTokens: 1024
+      });
+    } else if (mode === "plan-microsequence-ladder") {
+      body = makeRequestBody({
+        systemInstruction:
+          "Você planeja escadas de microssequências para o AraLearn. " +
+          "Responda apenas no JSON pedido, sem cards, sem tags e sem explicação.",
+        prompt: buildLadderPrompt({ context: microsequence, promptText: trimmedPrompt }),
+        fileParts,
+        schema: getLadderSchema(),
+        temperature: 0.15,
+        maxOutputTokens: 1024
+      });
+    } else {
+      fail("Modo de assistência inválido.");
+    }
+
+    const parsed = await callGemini({ apiKey: trimmedKey, model: trimmedModel, body });
+    if (mode === "edit-card") {
+      return normalizeEditResult(parsed);
+    }
+    if (mode === "plan-microsequence-ladder") {
+      return normalizeLadderResult(parsed);
+    }
+    return normalizeRepositionResult(parsed);
+  } finally {
+    await deleteGeminiAttachments({ apiKey: trimmedKey, attachments: uploadedAttachments });
   }
-  if (mode === "plan-microsequence-ladder") {
-    return normalizeLadderResult(parsed);
-  }
-  return normalizeRepositionResult(parsed);
 }

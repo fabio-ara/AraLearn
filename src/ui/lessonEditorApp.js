@@ -68,6 +68,7 @@ import { getContractCardKind, listContractAnswerValues } from "../contract/contr
 import { isRunnableMicrosequence, resolveMicrosequenceRuntimeIncluded } from "../model/microsequenceStatus.js";
 
 const MAX_ASSIST_DEPENDENCIES = 5;
+const MAX_ASSIST_ATTACHMENTS = 6;
 const MAX_CARD_SNAPSHOTS = 6;
 const ASSIST_MODEL_OPTIONS = [
   { value: "gemini-2.5-flash", label: "Gemini 2.5 Flash" },
@@ -161,6 +162,47 @@ function slugifyDownloadName(value, fallback = "curso") {
     .replace(/-{2,}/g, "-");
 
   return normalized || fallback;
+}
+
+function normalizeAssistAttachmentName(value, fallback = "documento") {
+  const normalized = String(value || "").trim();
+  return normalized || fallback;
+}
+
+function buildAssistAttachmentSignature(file) {
+  if (!file || typeof file !== "object") {
+    return "";
+  }
+
+  return [
+    normalizeAssistAttachmentName(file.name),
+    Number(file.size || 0),
+    Number(file.lastModified || 0),
+    String(file.type || "").trim()
+  ].join("::");
+}
+
+function normalizeAssistAttachmentList(files = []) {
+  const nextItems = [];
+  const seen = new Set();
+
+  for (const file of files || []) {
+    if (!file || typeof file !== "object" || typeof file.arrayBuffer !== "function") {
+      continue;
+    }
+
+    const signature = buildAssistAttachmentSignature(file);
+    if (!signature || seen.has(signature)) {
+      continue;
+    }
+    seen.add(signature);
+    nextItems.push(file);
+    if (nextItems.length >= MAX_ASSIST_ATTACHMENTS) {
+      break;
+    }
+  }
+
+  return nextItems;
 }
 
 function buildMoveActions(items, itemKey, moveUpKey, moveDownKey) {
@@ -555,6 +597,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
       activeWorkbenchPane: "preview",
       promptText: "",
       preferredContainer: "",
+      attachments: [],
       dependencyKeys: [],
       pendingDependencyKey: "",
       lastRequest: null,
@@ -1243,6 +1286,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
     if (!ASSIST_CARD_CONTAINER_OPTIONS.some((item) => item.value === state.assistDraft.preferredContainer)) {
       state.assistDraft.preferredContainer = "";
     }
+    state.assistDraft.attachments = normalizeAssistAttachmentList(state.assistDraft.attachments);
   }
 
   function applyCardContent({ title, text }) {
@@ -1380,6 +1424,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
     state.view = "microsequence-assist";
     state.assistDraft.selectedMode = ASSIST_USER_MODES.EDIT_MICROSEQUENCE;
     state.assistDraft.activeWorkbenchPane = assistOpenState.activeWorkbenchPane;
+    state.assistDraft.attachments = [];
     state.microsequenceMode = "play";
     ensureCurrentCardSnapshot();
     syncAssistDraft();
@@ -2431,7 +2476,8 @@ export function createLessonEditorApp({ root, storage, editor }) {
         dependencyTitles,
         destinationSlots,
         promptText: state.assistDraft.promptText,
-        preferredContainer: state.assistDraft.preferredContainer
+        preferredContainer: state.assistDraft.preferredContainer,
+        attachments: state.assistDraft.attachments
       });
 
       if (mode === "compose-microsequence") {
@@ -4690,6 +4736,11 @@ export function createLessonEditorApp({ root, storage, editor }) {
           assistModeLocked: assistModeConfig.locked,
           preferredContainer: state.assistDraft.preferredContainer,
           preferredContainerLabel: getAssistContainerLabel(state.assistDraft.preferredContainer),
+          attachments: state.assistDraft.attachments.map((item) => ({
+            name: normalizeAssistAttachmentName(item?.name),
+            size: Number(item?.size || 0),
+            type: String(item?.type || "").trim()
+          })),
           selectedModel: state.assistConfig.model,
           selectedModelLabel: getAssistModelLabel(state.assistConfig.model),
           modelOptions: ASSIST_MODEL_OPTIONS,
@@ -5588,6 +5639,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
     const assistModel = root.querySelector("[data-field='assist-model']");
     const assistDependencyPicker = root.querySelector("[data-field='assist-dependency-picker']");
     const assistPrompt = root.querySelector("[data-field='assist-prompt']");
+    const assistAttachmentInput = root.querySelector("[data-field='assist-attachments']");
     if (assistMode) {
       assistMode.addEventListener("change", () => {
         state.assistDraft.selectedMode = assistMode.value;
@@ -5611,6 +5663,17 @@ export function createLessonEditorApp({ root, storage, editor }) {
         render({ preserveState: true });
       });
     }
+    if (assistAttachmentInput) {
+      assistAttachmentInput.addEventListener("change", () => {
+        const nextFiles = Array.from(assistAttachmentInput.files || []);
+        state.assistDraft.attachments = normalizeAssistAttachmentList([
+          ...state.assistDraft.attachments,
+          ...nextFiles
+        ]);
+        assistAttachmentInput.value = "";
+        render({ preserveState: true });
+      });
+    }
     root.querySelectorAll("[data-action='remove-dependency']").forEach((node) => {
       node.addEventListener("click", () => {
         const key = node.getAttribute("data-dependency-key");
@@ -5618,6 +5681,14 @@ export function createLessonEditorApp({ root, storage, editor }) {
         state.assistDraft.dependencyKeys = state.assistDraft.dependencyKeys.filter((item) => item !== key);
         persistMicrosequenceTags(state.assistDraft.dependencyKeys);
         syncAssistDraft();
+        render({ preserveState: true });
+      });
+    });
+    root.querySelectorAll("[data-action='remove-assist-attachment']").forEach((node) => {
+      node.addEventListener("click", () => {
+        const index = Number(node.getAttribute("data-attachment-index"));
+        if (!Number.isInteger(index) || index < 0) return;
+        state.assistDraft.attachments = state.assistDraft.attachments.filter((_, itemIndex) => itemIndex !== index);
         render({ preserveState: true });
       });
     });
@@ -5646,6 +5717,9 @@ export function createLessonEditorApp({ root, storage, editor }) {
     });
     root.querySelector("[data-action='open-assist-container-picker']")?.addEventListener("click", () => {
       openEntityEditor("assist-container-picker");
+    });
+    root.querySelector("[data-action='open-assist-attachment-picker']")?.addEventListener("click", () => {
+      root.querySelector("[data-field='assist-attachments']")?.click();
     });
     root.querySelector("[data-action='open-assist-config']")?.addEventListener("click", () => openAssistConfig());
     root.querySelector("[data-action='apply-assist']")?.addEventListener("click", () => {

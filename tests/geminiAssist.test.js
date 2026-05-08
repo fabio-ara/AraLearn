@@ -344,6 +344,122 @@ test("gera microssequência com plano local e chamada estruturada ao Gemini", as
   }
 });
 
+test("anexa documentos ao Gemini Files API antes de gerar cards", async () => {
+  const originalFetch = globalThis.fetch;
+  const calls = [];
+  const attachment = {
+    name: "referencia.pdf",
+    type: "application/pdf",
+    size: 12,
+    async arrayBuffer() {
+      return new Uint8Array([1, 2, 3, 4]).buffer;
+    }
+  };
+  globalThis.fetch = async (url, options = {}) => {
+    calls.push({ url, options });
+    if (url === "https://generativelanguage.googleapis.com/upload/v1beta/files") {
+      return {
+        ok: true,
+        headers: {
+          get(name) {
+            return String(name || "").toLowerCase() === "x-goog-upload-url" ? "https://upload.example/files/abc" : null;
+          }
+        },
+        async json() {
+          return {};
+        }
+      };
+    }
+    if (url === "https://upload.example/files/abc") {
+      return {
+        ok: true,
+        async json() {
+          return {
+            file: {
+              name: "files/abc",
+              uri: "https://generativelanguage.googleapis.com/v1beta/files/abc",
+              mimeType: "application/pdf"
+            }
+          };
+        }
+      };
+    }
+    if (String(url).includes(":generateContent")) {
+      return {
+        ok: true,
+        async json() {
+          return {
+            candidates: [
+              {
+                content: {
+                  parts: [
+                    {
+                      text: JSON.stringify({
+                        title: "Git básico",
+                        tags: ["Git"],
+                        cards: [
+                          { title: "Antes dos comandos", text: "Git registra mudanças em etapas. Cada comando faz uma parte do caminho." },
+                          { title: "git add", text: "Use git add para preparar arquivos.", language: "bash", code: "git add arquivo.txt" },
+                          { title: "git push", text: "Use git push para enviar commits quando já existe remoto.", language: "bash", code: "git push" },
+                          { title: "Recuperação ativa", text: "Para enviar commits, use [[git push]].", wrong: ["git add", "git init"] },
+                          {
+                            title: "Verificação",
+                            question: "Qual comando envia commits?",
+                            answer: "git push",
+                            wrong: ["git add", "git init"]
+                          }
+                        ]
+                      })
+                    }
+                  ]
+                }
+              }
+            ]
+          };
+        }
+      };
+    }
+    if (url === "https://generativelanguage.googleapis.com/v1beta/files/abc") {
+      return {
+        ok: true,
+        async json() {
+          return {};
+        }
+      };
+    }
+    throw new Error(`URL inesperada: ${url}`);
+  };
+
+  try {
+    const result = await runGeminiAssist({
+      apiKey: "chave",
+      mode: "compose-microsequence",
+      microsequence: { title: "Git", tags: [], cards: [] },
+      promptText: "explique git add e git push",
+      attachments: [attachment]
+    });
+
+    assert.equal(result.cards.length, 5);
+    assert.equal(calls.length, 4);
+    assert.equal(calls[0].url, "https://generativelanguage.googleapis.com/upload/v1beta/files");
+    assert.equal(calls[0].options.headers["X-Goog-Upload-Protocol"], "resumable");
+    assert.equal(calls[1].url, "https://upload.example/files/abc");
+    assert.ok(calls[1].options.body instanceof ArrayBuffer);
+    const generateBody = JSON.parse(calls[2].options.body);
+    assert.deepEqual(generateBody.contents[0].parts[0], {
+      file_data: {
+        mime_type: "application/pdf",
+        file_uri: "https://generativelanguage.googleapis.com/v1beta/files/abc"
+      }
+    });
+    assert.match(generateBody.contents[0].parts[1].text, /Plano:/);
+    assert.equal(calls[3].url, "https://generativelanguage.googleapis.com/v1beta/files/abc");
+    assert.equal(calls[3].options.method, "DELETE");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("revisa card com contexto explícito de curso, módulo, lição e microssequência", async () => {
   const originalFetch = globalThis.fetch;
   const calls = [];

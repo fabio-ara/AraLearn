@@ -138,17 +138,19 @@ Fluxo implementado para gerar ou revisar cards no painel:
 
 1. o usuário abre uma microssequência;
 2. a aplicação monta contexto de curso, módulo, lição e microssequência;
-3. o AraLearn detecta assunto e estratégia didática;
-4. a aplicação monta um plano determinístico;
-5. o modelo recebe o plano e preenche conteúdo;
-6. a resposta é lida como JSON;
-7. a aplicação extrai JSON quando necessário;
-8. a aplicação tenta reparo quando o JSON é ilegível ou insuficiente;
-9. a aplicação repete a chamada sem schema quando o serviço recusa a complexidade do schema;
-10. o AraLearn mescla resposta e plano;
-11. o normalizador reduz densidade, aplica distratores e valida cards;
-12. o resultado é convertido para contrato público;
-13. a microssequência recebe nova versão ou cards aplicados.
+3. o usuário pode anexar documentos de referência;
+4. a aplicação envia os anexos ao serviço de arquivos do modelo quando existirem;
+5. o AraLearn detecta assunto e estratégia didática;
+6. a aplicação monta um plano determinístico;
+7. o modelo recebe o plano, o pedido e os arquivos anexados;
+8. a resposta é lida como JSON;
+9. a aplicação extrai JSON quando necessário;
+10. a aplicação tenta reparo quando o JSON é ilegível ou insuficiente;
+11. a aplicação repete a chamada sem schema quando o serviço recusa a complexidade do schema;
+12. o AraLearn mescla resposta e plano;
+13. o normalizador reduz densidade, aplica distratores e valida cards;
+14. o resultado é convertido para contrato público;
+15. a microssequência recebe nova versão ou cards aplicados.
 
 ## Plano determinístico
 
@@ -211,8 +213,20 @@ A geração inicial usa:
 - `code`;
 - `table`;
 - `tree`.
+- `flow`, quando o usuário pede explicitamente esse contêiner.
 
-`flow` permanece no contrato público, mas deve receber engenharia específica antes de entrar na geração automática. Fluxogramas exigem validação estrutural e geométrica mais rigorosa.
+Sem pedido explícito, o planejador continua evitando fluxogramas por padrão. Eles exigem validação estrutural e geométrica mais rigorosa do que os demais contêineres.
+
+## Anexos de referência
+
+No painel `Gerar cards` e `Editar cards`, o usuário pode anexar documentos de referência para o pedido atual.
+
+Regras atuais:
+
+- os anexos ficam apenas no estado transitório da sessão;
+- a aplicação envia os arquivos primeiro ao serviço de arquivos do modelo;
+- o pedido principal recebe as referências desses arquivos no payload;
+- o usuário continua responsável por revisar o resultado aplicado ao projeto.
 
 ## Lacunas por opções
 

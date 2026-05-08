@@ -261,6 +261,47 @@ function renderPromptContainerButton(selectedLabel = "Automático") {
   );
 }
 
+function renderPromptAttachmentButton() {
+  const title = "Anexar documentos";
+  return (
+    '<button class="icon-ghost tiny-icon generate-inline-icon" type="button" data-action="open-assist-attachment-picker" title="' +
+    escapeHtml(title) +
+    '" aria-label="' +
+    escapeHtml(title) +
+    '">' +
+    renderUiIcon("lesson", "assist-attachment-button-icon") +
+    "</button>"
+  );
+}
+
+function renderAssistAttachmentChips(attachments) {
+  const items = Array.isArray(attachments) ? attachments : [];
+  if (!items.length) {
+    return "";
+  }
+
+  const chips = items
+    .map((item, index) => {
+      const name = item?.name || `Documento ${index + 1}`;
+      return (
+        '<button class="didactic-tag dependency-tag-chip dependency-chip-button assist-attachment-chip" type="button" data-action="remove-assist-attachment" data-attachment-index="' +
+        String(index) +
+        '" title="Remover anexo ' +
+        escapeHtml(name) +
+        '" aria-label="Remover anexo ' +
+        escapeHtml(name) +
+        '">' +
+        '<span class="didactic-tag-text dependency-chip-label">' +
+        escapeHtml(name) +
+        "</span>" +
+        '<span class="dependency-chip-remove">&times;</span></button>'
+      );
+    })
+    .join("");
+
+  return '<div class="dependency-chip-row workbench-tag-chip-row assist-attachment-chip-row">' + chips + "</div>";
+}
+
 function renderMetaMetric(iconName, value, label) {
   return (
     '<span class="progress-meta-item" aria-label="' +
@@ -891,6 +932,9 @@ function renderMicrosequenceWorkbenchScreen({
   const emptyCardsMessage = hasCards
     ? ""
     : "Os cards gerados aparecerão aqui após o envio do prompt.";
+  const attachmentInput =
+    '<input data-field="assist-attachments" class="assist-attachment-input" type="file" multiple accept=".pdf,.txt,.md,.json,.csv,.html,.xml,.js,.ts,.py,.java,.c,.cpp,.doc,.docx,.ppt,.pptx,.rtf,.odt,.ods,.odp,text/*,application/pdf,application/json,application/xml">';
+  const attachmentChips = renderAssistAttachmentChips(editorSupport.attachments);
   const cardStrip = hasCards
     ? renderWorkbenchCardStrip(visibleCards, safeIndex, {
       courseKey: selection.courseKey,
@@ -1001,6 +1045,8 @@ function renderMicrosequenceWorkbenchScreen({
     '">' +
     escapeHtml(editorSupport.promptText || "") +
     "</textarea></label>" +
+    attachmentInput +
+    attachmentChips +
     '<div class="generate-divider workbench-divider"></div>' +
     '<div class="generate-action-row assist-actions assist-actions-wide">' +
     '<button class="icon-ghost tiny-icon generate-inline-icon" type="button" data-action="clear-prompt" title="Limpar prompt" aria-label="Limpar prompt">&#8635;</button>' +
@@ -1009,6 +1055,7 @@ function renderMicrosequenceWorkbenchScreen({
     '<select data-field="assist-model" aria-label="Modelo" title="Modelo">' +
     modelOptions +
     "</select></label>" +
+    renderPromptAttachmentButton() +
     '<button class="icon-ghost tiny-icon generate-inline-icon" type="button" data-action="open-assist-config" title="Configurar IA" aria-label="Configurar IA">&#128273;</button>' +
     '<button class="open-main generate-submit" type="button" data-action="apply-assist" title="' +
     escapeHtml(sendTitle) +
