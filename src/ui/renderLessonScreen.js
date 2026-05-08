@@ -254,9 +254,9 @@ function summarizeIconTitle(label) {
   return match ? match[1].trim() : text;
 }
 
-function renderPromptContainerButton(selectedLabel = "Automático") {
-  const title = summarizeIconTitle(selectedLabel);
-  const ariaLabel = `Escolher tipo de card`;
+function renderPromptContainerButton() {
+  const title = "Escolher tipo de card";
+  const ariaLabel = "Escolher tipo de card";
   return (
     '<button class="icon-ghost workbench-stack-button assist-container-button" type="button" data-action="open-assist-container-picker" title="' +
     escapeHtml(title) +
@@ -1043,7 +1043,7 @@ function renderMicrosequenceWorkbenchScreen({
     '<label class="field generate-icon-field generate-prompt-field workbench-prompt-field">' +
     '<div class="workbench-prompt-tools">' +
     renderInlineFieldIcon("prompt", promptLabel) +
-    renderPromptContainerButton(editorSupport.preferredContainerLabel || "Automático") +
+    renderPromptContainerButton() +
     "</div>" +
     '<textarea data-field="assist-prompt" class="assist-prompt" aria-label="' +
     escapeHtml(promptLabel) +

@@ -3250,16 +3250,16 @@ button {
 }
 
 .workbench-prompt-tools {
-  width: 34px;
+  width: 30px;
   display: grid;
-  gap: 6px;
+  gap: 5px;
   align-content: start;
 }
 
 .workbench-stack-button {
-  width: 34px;
-  height: 38px;
-  border-radius: 12px;
+  width: 30px;
+  height: 36px;
+  border-radius: 10px;
   border: 1px solid rgba(111, 88, 62, 0.78);
   background: linear-gradient(180deg, rgba(34, 27, 20, 0.98), rgba(22, 17, 13, 0.99));
   color: #efc15e;
@@ -3269,8 +3269,8 @@ button {
 }
 
 .assist-container-button-icon {
-  width: 17px;
-  height: 17px;
+  width: 14px;
+  height: 14px;
   display: block;
 }
 
@@ -3953,33 +3953,36 @@ button {
   grid-template-columns: 34px 48px;
   width: 100%;
   justify-content: stretch;
-  gap: 6px;
+  gap: 4px;
   align-items: center;
 }
 
 .assist-actions-wide {
-  grid-template-columns: 34px minmax(0, 1fr) 34px 34px 44px;
+  grid-template-columns: 30px minmax(0, 1fr) 30px 30px 40px;
   width: 100%;
 }
 
 .assist-actions-wide .generate-model-field {
   width: 100%;
+  min-width: 0;
 }
 
 .assist-actions-wide .generate-icon-field {
-  grid-template-columns: 30px minmax(0, 1fr);
-  gap: 6px;
+  grid-template-columns: 24px minmax(0, 1fr);
+  gap: 4px;
 }
 
 .assist-actions-wide .generate-icon-label {
-  width: 30px;
+  width: 24px;
   height: 36px;
+  border-radius: 10px;
 }
 
 .assist-actions-wide select {
   min-width: 0;
-  padding: 0 9px;
-  font-size: var(--type-sm);
+  width: 100%;
+  padding: 0 7px;
+  font-size: 0.9rem;
 }
 
 .editor-step-nav-head {
@@ -3999,30 +4002,30 @@ button {
   }
 
   .assist-actions-wide {
-    grid-template-columns: 32px minmax(0, 1fr) 32px 32px 42px;
-    gap: 5px;
+    grid-template-columns: 28px minmax(0, 1fr) 28px 28px 38px;
+    gap: 4px;
   }
 
   .assist-actions-wide .generate-icon-field {
-    grid-template-columns: 28px minmax(0, 1fr);
-    gap: 5px;
+    grid-template-columns: 22px minmax(0, 1fr);
+    gap: 4px;
   }
 
   .assist-actions-wide .generate-icon-label {
-    width: 28px;
+    width: 22px;
     height: 36px;
   }
 
   .assist-actions-wide .generate-inline-icon {
-    width: 32px;
+    width: 28px;
     height: 36px;
   }
 
   .assist-actions-wide .generate-submit {
-    min-width: 42px;
-    min-height: 42px;
-    width: 42px;
-    height: 42px;
+    min-width: 38px;
+    min-height: 38px;
+    width: 38px;
+    height: 38px;
   }
 }
 
