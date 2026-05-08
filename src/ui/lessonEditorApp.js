@@ -521,7 +521,7 @@ function makeEntityEditorModel(state) {
   if (entityEditor.kind === "assist-container-picker") {
     return {
       variant: "action-menu",
-      title: "Tipo de card",
+      title: "Adicionar recursos",
       placement: "bottom",
       fields: [],
       actions: ASSIST_CARD_CONTAINER_OPTIONS.map((item) => ({

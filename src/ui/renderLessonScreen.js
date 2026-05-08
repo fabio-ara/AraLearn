@@ -261,8 +261,8 @@ function summarizeIconTitle(label) {
 }
 
 function renderPromptContainerButton() {
-  const title = "Escolher tipo de card";
-  const ariaLabel = "Escolher tipo de card";
+  const title = "Adicionar recursos";
+  const ariaLabel = "Adicionar recursos";
   return (
     '<button class="icon-ghost workbench-stack-button assist-container-button" type="button" data-action="open-assist-container-picker" title="' +
     escapeHtml(title) +
