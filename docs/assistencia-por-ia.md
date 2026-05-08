@@ -19,12 +19,11 @@ O modelo de linguagem não é responsável sozinho pela estrutura final aplicada
 
 A aplicação:
 
-- define o plano didático;
+- define contratos de planejamento e execução;
 - monta prompts restritos;
-- escolhe schema quando adequado;
+- seleciona recursos didáticos permitidos;
 - envia a chamada ao serviço;
 - extrai JSON;
-- tenta reparo quando a resposta falha;
 - normaliza o conteúdo;
 - valida o resultado;
 - aplica o material ao projeto ou como nova versão de uma microssequência.
@@ -80,6 +79,50 @@ Regras da aplicação:
 - cards não são aceitos nessa resposta.
 
 Cada item validado vira uma microssequência `draft` dentro da lição escolhida. A escada não vira entidade persistente separada.
+
+## Camada modular de microssequência
+
+A geração e a edição de cards usam uma camada interna em `src/generation/`. Essa camada separa:
+
+- tipos didáticos neutros;
+- tamanhos internos de microssequência;
+- catálogo de recursos de card;
+- anexos e fontes resolvidos para a operação;
+- capacidades do modelo selecionado;
+- contratos e prompts de planejamento;
+- contratos e prompts de geração ou edição;
+- validação estrutural da resposta.
+
+Os tipos didáticos iniciais são `Assistido`, `Simples`, `Explicar uma ideia`, `Passo a passo`, `Prática guiada`, `Comparar`, `Revisão rápida`, `Erro comum`, `Regra/procedimento` e `Código/comando`. O tipo `Assistido` delega a escolha efetiva à etapa de planejamento.
+
+Os tamanhos internos são:
+
+- `short`: 3 cards;
+- `medium`: 5 cards;
+- `long`: 7 cards.
+
+O tamanho é decidido no planejamento, validado pela aplicação e usado para exigir a quantidade exata de cards na resposta final.
+
+## Recursos internos
+
+O catálogo interno de recursos inclui:
+
+- `paragraph`;
+- `multiple_choice`;
+- `code_editor`;
+- `table`;
+- `flowchart`;
+- `block_gap_fill`.
+
+Cada recurso possui descrição, limites e schema próprio. O recurso `block_gap_fill` representa lacunas preenchidas com blocos selecionáveis e feedback obrigatório após a tentativa. A renderização já reconhece esse bloco no runtime interno.
+
+Os recursos efetivos de geração são calculados por:
+
+```text
+recursos base do tipo + recursos extras escolhidos pelo usuário + recursos extras pedidos pelo plano
+```
+
+O contrato final inclui schemas apenas dos recursos efetivos.
 
 ## JSON intermediário
 
@@ -138,84 +181,22 @@ Fluxo implementado para gerar ou revisar cards no painel:
 
 1. o usuário abre uma microssequência;
 2. a aplicação monta contexto de curso, módulo, lição e microssequência;
-3. o usuário pode anexar documentos de referência;
-4. a aplicação envia os anexos ao serviço de arquivos do modelo quando existirem;
-5. o AraLearn detecta assunto e estratégia didática;
-6. a aplicação monta um plano determinístico;
-7. o modelo recebe o plano, o pedido e os arquivos anexados;
-8. a resposta é lida como JSON;
-9. a aplicação extrai JSON quando necessário;
-10. a aplicação tenta reparo quando o JSON é ilegível ou insuficiente;
-11. a aplicação repete a chamada sem schema quando o serviço recusa a complexidade do schema;
-12. o AraLearn mescla resposta e plano;
-13. o normalizador reduz densidade, aplica distratores e valida cards;
-14. o resultado é convertido para contrato público;
-15. a microssequência recebe nova versão ou cards aplicados.
+3. o usuário pode escolher tipo, recursos extras e anexos;
+4. a aplicação envia anexos ao serviço de arquivos do modelo quando existirem;
+5. a aplicação monta o contrato de planejamento com hierarquia, tags, pedido, recursos leves, tipos, tamanhos e fontes;
+6. o modelo faz a primeira chamada e devolve `typeId`, `sizeId`, objetivo, recursos extras e `cardPlan`;
+7. a aplicação valida o plano, incluindo tipo, tamanho, quantidade esperada e recursos;
+8. a aplicação resolve recursos efetivos e monta o contrato de geração com schemas completos apenas desses recursos;
+9. o modelo faz a segunda chamada e devolve os cards;
+10. a aplicação valida quantidade, posições, recursos, schemas e campos obrigatórios;
+11. o resultado válido é convertido para o contrato público;
+12. a microssequência recebe nova versão ou cards aplicados.
 
-## Plano determinístico
+O fluxo preserva o contexto hierárquico:
 
-O plano local orienta a resposta do modelo.
-
-Exemplo:
-
-```json
-{
-  "title": "Título planejado",
-  "subject": "git_github",
-  "recipe": "explain_commands",
-  "goal": "Objetivo didático",
-  "tags": ["Git", "Comandos essenciais"],
-  "cardPlans": [
-    {
-      "role": "concept",
-      "container": "say",
-      "title": "Fluxo mínimo",
-      "learningGoal": "Explicar a ordem geral sem detalhar tudo de uma vez."
-    }
-  ]
-}
+```text
+Curso -> Módulo -> Lição -> Microssequência -> Cards
 ```
-
-O modelo vê `role` e `container`, mas não precisa devolvê-los. A aplicação usa esses campos para converter o conteúdo ao contrato público.
-
-Assuntos reconhecidos no planejamento atual:
-
-- programação;
-- linguagem C;
-- Portugol;
-- algoritmos em representação tabular;
-- shell Linux;
-- Git e GitHub;
-- engenharia de software;
-- administração;
-- arquitetura de computadores;
-- lógica proposicional;
-- matrizes e vetores;
-- teoria dos grafos;
-- estudo geral.
-
-Receitas didáticas atuais:
-
-- `explain_concept`;
-- `compare_concepts`;
-- `explain_commands`;
-- `directory_context`;
-- `worked_example`;
-- `practice_sequence`;
-- `diagnostic_gap`.
-
-## Contêineres na geração inicial
-
-A geração inicial usa:
-
-- `say`;
-- `ask`;
-- `code`;
-- `table`;
-- `tree`.
-- `flow`, quando o usuário pede explicitamente esse contêiner.
-
-Sem pedido explícito, o planejador continua evitando fluxogramas por padrão. Eles exigem validação estrutural e geométrica mais rigorosa do que os demais contêineres.
 
 ## Anexos de referência
 
@@ -225,7 +206,9 @@ Regras atuais:
 
 - os anexos ficam apenas no estado transitório da sessão;
 - a aplicação envia os arquivos primeiro ao serviço de arquivos do modelo;
-- o pedido principal recebe as referências desses arquivos no payload;
+- planejamento e geração recebem as referências desses arquivos no payload;
+- anexos selecionados explicitamente têm prioridade sobre menções no texto;
+- quando há vários anexos sem seleção nem menção, a camada de fontes sinaliza necessidade de seleção;
 - o usuário continua responsável por revisar o resultado aplicado ao projeto.
 
 ## Lacunas por opções
@@ -261,23 +244,25 @@ O normalizador reforça:
 Estrutura conceitual do prompt:
 
 ```text
-Preencha o conteúdo dos cards seguindo exatamente o plano abaixo.
-Devolva exatamente N cards, na mesma ordem do plano.
-Cada card deve ter title e os campos de conteúdo necessários.
-Escreva para estudante de Tecnologia em Análise e Desenvolvimento de Sistemas.
-Use linguagem natural simples, de iniciante para iniciante.
-A microssequência precisa ter explicação, exemplo ou leitura guiada, prática e consolidação.
-Cada texto deve ter no máximo duas frases.
-Use uma ideia por card e uma ideia por frase.
-Use [[resposta]] apenas quando o plano pedir prática, revisão ou lacuna.
-Todo card com [[resposta]] deve enviar wrong com duas ou três alternativas plausíveis.
+Gere cards para a microssequência indicada.
+Responda somente JSON válido no formato solicitado.
+Devolva exatamente output.expectedCardCount cards.
+Use apenas resourceType presente em resources.allowedResourceTypes.
+Siga o plano didático validado.
+Cada card deve ter position, resourceType e os campos do schema do recurso.
+Use uma ideia principal por card, textos curtos e progressão interna.
 Retorne apenas JSON válido.
 ```
 
 O prompt completo inclui:
 
 - pedido original do usuário;
-- plano determinístico;
+- contrato de geração;
+- plano didático validado;
+- tipos e recursos efetivos;
+- schemas dos recursos efetivos;
+- tags da lição;
+- fontes resolvidas;
 - resumo da microssequência atual quando houver.
 
 ## Edição assistida
@@ -294,7 +279,7 @@ O usuário pode pedir:
 - ajuste de alternativas;
 - revisão de densidade textual.
 
-O resultado normalizado substitui a versão ativa e cria nova versão local.
+A camada interna já possui contratos para planejar edição e aplicar edição em duas chamadas. O contrato de aplicação recebe a versão atual completa, recursos efetivos, tags, fontes resolvidas e versões anteriores quando o plano validado solicitar. A integração visual completa desse fluxo segue a regra de versionamento existente do painel.
 
 ## Reposicionamento assistido
 
@@ -336,8 +321,7 @@ A chave deve ficar apenas no ambiente da sessão.
 
 Pontos de pesquisa e engenharia:
 
-- dividir geração em várias chamadas menores;
-- gerar card por card com crítica posterior;
+- gerar card por card com crítica posterior quando modelos menores falharem em sequências longas;
 - usar modelos mais robustos para fluxogramas;
 - criar schema especializado para `flow`;
 - registrar vínculo entre fonte e card;

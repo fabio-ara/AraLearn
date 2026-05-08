@@ -1317,6 +1317,71 @@ function renderMultipleChoiceBlock(block, renderOptions = {}, blockKey = "runtim
   return bodyHtml;
 }
 
+function renderBlockGapFillBlock(block, renderOptions = {}, blockKey = "runtime-block-gap-fill") {
+  const state = renderOptions.blockGapFillStateByBlockKey?.[blockKey] || {};
+  const values = state.values && typeof state.values === "object" ? state.values : {};
+  const segments = Array.isArray(block.segments) ? block.segments : [];
+  const blocks = Array.isArray(block.blocks) ? block.blocks : [];
+  const feedback = state.feedback === "correct" || state.feedback === "incorrect" ? state.feedback : "";
+  const popup = block.feedbackPopup || {};
+  const segmentHtml = segments
+    .map((segment) => {
+      if (segment?.kind === "text") {
+        return '<span class="runtime-block-gap-text">' + renderMarkdownInline(segment.value || "") + "</span>";
+      }
+      if (segment?.kind === "blank") {
+        const value = values[segment.blankId] || "";
+        return (
+          '<span class="runtime-block-gap-blank" data-block-gap-blank-id="' +
+          escapeHtml(segment.blankId || "") +
+          '">' +
+          escapeHtml(value || "___") +
+          "</span>"
+        );
+      }
+      return "";
+    })
+    .join(" ");
+  const blockHtml = blocks
+    .map((item) => (
+      '<button class="runtime-block-gap-option" type="button" data-action="block-gap-fill-select" data-block-gap-block-key="' +
+      escapeHtml(blockKey) +
+      '" data-block-gap-block-id="' +
+      escapeHtml(item.blockId || "") +
+      '">' +
+      escapeHtml(item.label || "") +
+      "</button>"
+    ))
+    .join("");
+  const feedbackHtml = feedback
+    ? '<section class="runtime-block-gap-popup" data-block-gap-feedback="' +
+      escapeHtml(feedback) +
+      '"><h4>' +
+      escapeHtml(feedback === "correct" ? popup.correctTitle || "Correto" : popup.incorrectTitle || "Revise") +
+      "</h4><p>" +
+      escapeHtml(feedback === "correct" ? popup.correctMessage || "" : popup.incorrectMessage || "") +
+      "</p></section>"
+    : "";
+
+  return (
+    '<section class="runtime-block runtime-block-gap-fill">' +
+    '<p class="runtime-block-gap-prompt">' +
+    renderMarkdownInline(block.prompt || "") +
+    "</p>" +
+    '<div class="runtime-block-gap-segments">' +
+    segmentHtml +
+    "</div>" +
+    '<div class="runtime-block-gap-options">' +
+    blockHtml +
+    "</div>" +
+    '<button class="icon-pill primary" type="button" data-action="block-gap-fill-check" data-block-gap-block-key="' +
+    escapeHtml(blockKey) +
+    '" title="Verificar" aria-label="Verificar">&#10003;</button>' +
+    feedbackHtml +
+    "</section>"
+  );
+}
+
 function renderEditorBlock(block) {
   if (blockUsesTextGapExercise(block)) {
     return renderEditorTextGapBlock(block, arguments[1], arguments[2]);
@@ -1895,6 +1960,9 @@ function renderRuntimeBlock(block, renderOptions = {}, blockKey = "runtime-block
   }
   if (block.kind === "multiple_choice") {
     return renderMultipleChoiceBlock(block, renderOptions, blockKey);
+  }
+  if (block.kind === "block_gap_fill") {
+    return renderBlockGapFillBlock(block, renderOptions, blockKey);
   }
   if (block.kind === "complete") {
     return renderCompleteBlock(block, renderOptions, blockKey);
