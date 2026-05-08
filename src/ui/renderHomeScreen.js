@@ -165,6 +165,20 @@ function renderGenerateIconLabel(iconName, label) {
   );
 }
 
+function renderGenerateIconButton(action, title, content) {
+  return (
+    '<button class="icon-ghost tiny-icon generate-inline-icon" type="button" data-action="' +
+    escapeHtml(action) +
+    '" title="' +
+    escapeHtml(title) +
+    '" aria-label="' +
+    escapeHtml(title) +
+    '">' +
+    content +
+    "</button>"
+  );
+}
+
 function renderCourseOptions(courses, selectedCourseKey) {
   return [
     '<option value="">Selecione um curso</option>',
@@ -267,11 +281,13 @@ function renderGeneratePane({ project, editorSupport }) {
     "</textarea></label>" +
     '<div class="generate-divider"></div>' +
     '<div class="generate-action-row">' +
+    renderGenerateIconButton("clear-prompt", "Limpar prompt", "&#8635;") +
     '<label class="field generate-icon-field generate-model-field">' +
     renderGenerateIconLabel("intent", "Modelo") +
     '<select data-field="assist-model" aria-label="Modelo" title="Modelo">' +
     modelOptions +
     "</select></label>" +
+    renderGenerateIconButton("open-assist-config", "Configurar IA", "&#128273;") +
     '<button class="open-main generate-submit" type="button" data-action="generate-ladder" aria-label="Gerar microssequências" title="Gerar microssequências"' +
     (!hasRequiredContext || draft.isSubmitting ? " disabled aria-disabled=\"true\"" : "") +
     ">" +

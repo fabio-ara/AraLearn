@@ -111,5 +111,7 @@ test("renderiza aba gerar com seletores em cascata", () => {
   assert.match(html, /Álgebra Linear/);
   assert.match(html, /data-action="generate-ladder"/);
   assert.match(html, /aria-label="Gerar microssequências" title="Gerar microssequências"/);
+  assert.match(html, /data-action="clear-prompt" title="Limpar prompt" aria-label="Limpar prompt"/);
+  assert.match(html, /data-action="open-assist-config" title="Configurar IA" aria-label="Configurar IA"/);
   assert.doesNotMatch(html, /disabled aria-disabled="true"/);
 });

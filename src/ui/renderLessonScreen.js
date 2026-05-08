@@ -3,7 +3,7 @@ import { readCardText } from "../core/cardRuntime.js";
 import { renderCardRuntimeBlocks, renderCardRuntimeBlocksWithDock } from "../render/renderCardRuntime.js";
 import { readLessonProgressEntry } from "../storage/progressStore.js";
 import { renderUiIcon } from "./renderUiIcons.js";
-import { isDraftMicrosequence, isReadyMicrosequence, isRunnableMicrosequence, resolveMicrosequenceRuntimeIncluded } from "../model/microsequenceStatus.js";
+import { isDraftMicrosequence, isRunnableMicrosequence, resolveMicrosequenceRuntimeIncluded } from "../model/microsequenceStatus.js";
 
 function escapeHtml(value) {
   return String(value)
@@ -253,6 +253,16 @@ function renderWorkbenchIconLabel(iconName, label) {
   );
 }
 
+function renderInlineFieldIcon(iconName, label) {
+  return (
+    '<span class="generate-icon-label workbench-inline-icon" aria-hidden="true" title="' +
+    escapeHtml(label) +
+    '">' +
+    renderUiIcon(iconName, "generate-field-icon workbench-inline-icon-svg") +
+    "</span>"
+  );
+}
+
 function renderMetaMetric(iconName, value, label) {
   return (
     '<span class="progress-meta-item" aria-label="' +
@@ -398,16 +408,6 @@ function renderMetaLine({ completed, total, parts = [] }) {
   );
 }
 
-function getAssistActionLabel(mode) {
-  if (mode === "edit-microsequence") {
-    return "Editar microssequência";
-  }
-  if (mode === "reposition-in-course") {
-    return "Reposicionar em um curso";
-  }
-  return "Editar microssequência";
-}
-
 function renderMicrosequenceStateIcon(microsequence) {
   if (isDraftMicrosequence(microsequence)) {
     return (
@@ -432,132 +432,6 @@ function renderMicrosequenceStateIcon(microsequence) {
 
 function renderCoursesTabs() {
   return renderHomeTabs("courses");
-}
-
-function renderAssistControlPanel({ editorSupport, promptLabel, sendTitle, className = "" }) {
-  const selectedDependencyTags = (editorSupport.dependencies || [])
-    .filter((item) => editorSupport.selectedDependencyKeys.includes(item.key))
-    .map((item) => {
-      return (
-        '<button class="didactic-tag dependency-tag-chip dependency-chip-button" type="button" data-action="remove-dependency" data-dependency-key="' +
-        escapeHtml(item.key) +
-        '">' +
-        '<span class="didactic-tag-text dependency-chip-label">' +
-        escapeHtml(item.title || item.key) +
-        "</span>" +
-        '<span class="dependency-chip-remove">&times;</span></button>'
-      );
-    })
-    .join("");
-  const availableDependencyOptions = (editorSupport.dependencies || [])
-    .filter((item) => !editorSupport.selectedDependencyKeys.includes(item.key))
-    .map((item) => {
-      return (
-        '<option value="' +
-        escapeHtml(item.key) +
-        '"' +
-        (item.key === editorSupport.pendingDependencyKey ? " selected" : "") +
-        ">" +
-        escapeHtml(item.title || item.key) +
-        "</option>"
-      );
-    })
-    .join("");
-  const dependencyPicker = availableDependencyOptions
-    ? '<div class="assist-tag-picker">' +
-      '<select data-field="assist-dependency-picker" aria-label="Tags" title="Tags">' +
-      availableDependencyOptions +
-      "</select>" +
-      '<button class="icon-ghost tiny-icon" type="button" data-action="add-dependency" title="Adicionar tag" aria-label="Adicionar tag">+</button>' +
-      "</div>"
-    : "";
-  const modelOptions = (editorSupport.modelOptions || [])
-    .map((item) => {
-      return (
-        '<option value="' +
-        escapeHtml(item.value) +
-        '"' +
-        (item.value === editorSupport.selectedModel ? " selected" : "") +
-        ">" +
-        escapeHtml(item.label) +
-        "</option>"
-      );
-    })
-    .join("");
-  const assistModeOptions = (editorSupport.assistModeOptions || [])
-    .map((item) => {
-      return (
-        '<option value="' +
-        escapeHtml(item.value) +
-        '"' +
-        (item.value === editorSupport.selectedAssistMode ? " selected" : "") +
-        ">" +
-        escapeHtml(item.label) +
-        "</option>"
-      );
-    })
-    .join("");
-  const assistWarning = editorSupport.assistError
-    ? '<section class="microsequence-assist-panel assist-status-panel is-warning">' +
-      '<p class="muted assist-last-request">' +
-      escapeHtml(editorSupport.assistError) +
-      "</p></section>"
-    : "";
-  const assistStatus = editorSupport.lastRequest
-    ? '<section class="microsequence-assist-panel assist-status-panel">' +
-      '<p class="tiny muted">' +
-      escapeHtml(editorSupport.lastRequest.title || "Último pedido") +
-      "</p>" +
-      '<p class="muted assist-last-request">' +
-      escapeHtml(editorSupport.lastRequest.description || "") +
-      "</p></section>"
-    : "";
-  const actionLabel = getAssistActionLabel(editorSupport.selectedAssistMode);
-
-  return (
-    '<section class="microsequence-assist-panel microsequence-generator-panel workbench-editor-panel' +
-    (className ? " " + escapeHtml(className) : "") +
-    '">' +
-    '<div class="field compact-field">' +
-    renderWorkbenchIconLabel("tags", "Tags") +
-    dependencyPicker +
-    '<div class="dependency-chip-row">' +
-    selectedDependencyTags +
-    "</div></div>" +
-    '<div class="field compact-field">' +
-    renderWorkbenchIconLabel("intent", "Intenção") +
-    '<select data-field="assist-mode" aria-label="Intenção" title="Intenção"' +
-    (editorSupport.assistModeLocked ? " disabled aria-disabled=\"true\"" : "") +
-    ">" +
-    assistModeOptions +
-    "</select></div>" +
-    '<div class="field compact-field workbench-prompt-field">' +
-    renderWorkbenchIconLabel("prompt", promptLabel) +
-    '<textarea data-field="assist-prompt" class="assist-prompt" aria-label="' +
-    escapeHtml(promptLabel) +
-    '" title="' +
-    escapeHtml(promptLabel) +
-    '">' +
-    escapeHtml(editorSupport.promptText || "") +
-    "</textarea></div>" +
-    '<div class="assist-actions assist-actions-wide">' +
-    '<button class="icon-ghost tiny-icon" type="button" data-action="clear-prompt" title="Limpar prompt" aria-label="Limpar prompt">&#8635;</button>' +
-    '<select data-field="assist-model">' +
-    modelOptions +
-    "</select>" +
-    '<button class="icon-ghost tiny-icon" type="button" data-action="open-assist-config" title="Configurar IA" aria-label="Configurar IA">&#128273;</button>' +
-    '<button class="open-mini" type="button" data-action="apply-assist" title="' +
-    escapeHtml(actionLabel || sendTitle) +
-    '" aria-label="' +
-    escapeHtml(actionLabel || sendTitle) +
-    '"' +
-    (editorSupport.isSubmitting ? " disabled aria-disabled=\"true\"" : "") +
-    ">&#9654;</button>" +
-    "</div>" +
-    assistWarning +
-    assistStatus +
-    "</section>"
-  );
 }
 
 function renderCourseScreen({ course, progress }) {
@@ -882,7 +756,7 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
     '<div class="study-reader-progress"><span style="width:' +
     String(cardProgressPercent) +
     '%"></span></div>' +
-    '<button class="icon-ghost" type="button" data-action="open-microsequence-assist" title="Painel da microssequência" aria-label="Painel da microssequência">&#9998;</button>' +
+    '<button class="icon-ghost" type="button" data-action="open-microsequence-assist" title="Editar cards" aria-label="Editar cards">&#9998;</button>' +
     '<button class="icon-ghost" type="button" data-action="close-study" title="Fechar leitura" aria-label="Fechar leitura">&times;</button>' +
     "</section>" +
     renderCoursesTabs() +
@@ -990,19 +864,6 @@ function renderMicrosequenceWorkbenchScreen({
       );
     })
     .join("");
-  const assistModeOptions = (editorSupport.assistModeOptions || [])
-    .map((item) => {
-      return (
-        '<option value="' +
-        escapeHtml(item.value) +
-        '"' +
-        (item.value === editorSupport.selectedAssistMode ? " selected" : "") +
-        ">" +
-        escapeHtml(item.label) +
-        "</option>"
-      );
-    })
-    .join("");
   const assistWarning = editorSupport.assistError
     ? '<section class="microsequence-assist-panel assist-status-panel is-warning">' +
       '<p class="muted assist-last-request">' +
@@ -1018,7 +879,6 @@ function renderMicrosequenceWorkbenchScreen({
       escapeHtml(editorSupport.lastRequest.description || "") +
       "</p></section>"
     : "";
-  const actionLabel = getAssistActionLabel(editorSupport.selectedAssistMode);
   const cardStrip = hasCards
     ? renderWorkbenchCardStrip(visibleCards, safeIndex, {
       courseKey: selection.courseKey,
@@ -1098,38 +958,40 @@ function renderMicrosequenceWorkbenchScreen({
     "</section>";
   const editPane =
     '<section class="microsequence-assist-panel microsequence-generator-panel workbench-editor-panel">' +
+    '<label class="field generate-icon-field workbench-select-field">' +
+    renderInlineFieldIcon("title", "Microssequência") +
+    '<input data-field="assist-microsequence-title" type="text" aria-label="Microssequência" title="Microssequência" value="' +
+    escapeHtml(microsequence?.title || "") +
+    '">' +
+    "</label>" +
     '<div class="field compact-field">' +
     renderWorkbenchIconLabel("tags", "Tags") +
     dependencyPicker +
     '<div class="dependency-chip-row">' +
     selectedDependencyTags +
     "</div></div>" +
-    '<div class="field compact-field">' +
-    renderWorkbenchIconLabel("intent", "Intenção") +
-    '<select data-field="assist-mode" aria-label="Intenção" title="Intenção"' +
-    (editorSupport.assistModeLocked ? " disabled aria-disabled=\"true\"" : "") +
-    ">" +
-    assistModeOptions +
-    "</select></div>" +
     '<div class="field compact-field workbench-prompt-field">' +
-    renderWorkbenchIconLabel("prompt", promptLabel) +
+    '<div class="generate-icon-field generate-prompt-field workbench-prompt-head">' +
+    renderInlineFieldIcon("prompt", promptLabel) +
     '<textarea data-field="assist-prompt" class="assist-prompt" aria-label="' +
     escapeHtml(promptLabel) +
     '" title="' +
     escapeHtml(promptLabel) +
     '">' +
     escapeHtml(editorSupport.promptText || "") +
-    "</textarea></div>" +
-    '<div class="assist-actions assist-actions-wide">' +
-    '<button class="icon-ghost tiny-icon" type="button" data-action="clear-prompt" title="Limpar prompt" aria-label="Limpar prompt">&#8635;</button>' +
-    '<select data-field="assist-model">' +
+    "</textarea></div></div>" +
+    '<div class="generate-action-row assist-actions assist-actions-wide">' +
+    '<button class="icon-ghost tiny-icon generate-inline-icon" type="button" data-action="clear-prompt" title="Limpar prompt" aria-label="Limpar prompt">&#8635;</button>' +
+    '<label class="field generate-icon-field generate-model-field">' +
+    renderInlineFieldIcon("intent", "Modelo") +
+    '<select data-field="assist-model" aria-label="Modelo" title="Modelo">' +
     modelOptions +
-    "</select>" +
-    '<button class="icon-ghost tiny-icon" type="button" data-action="open-assist-config" title="Configurar IA" aria-label="Configurar IA">&#128273;</button>' +
+    "</select></label>" +
+    '<button class="icon-ghost tiny-icon generate-inline-icon" type="button" data-action="open-assist-config" title="Configurar IA" aria-label="Configurar IA">&#128273;</button>' +
     '<button class="open-mini" type="button" data-action="apply-assist" title="' +
-    escapeHtml(actionLabel || sendTitle) +
+    escapeHtml(sendTitle) +
     '" aria-label="' +
-    escapeHtml(actionLabel || sendTitle) +
+    escapeHtml(sendTitle) +
     '"' +
     (editorSupport.isSubmitting ? " disabled aria-disabled=\"true\"" : "") +
     ">&#9654;</button>" +
@@ -1147,13 +1009,6 @@ function renderMicrosequenceWorkbenchScreen({
     }) +
     renderCoursesTabs() +
     '<main class="screen-content microsequence-generator-screen">' +
-    '<section class="microsequence-assist-panel">' +
-    '<div class="field compact-field">' +
-    renderWorkbenchIconLabel("title", "Título da microssequência") +
-    '<input data-field="assist-microsequence-title" type="text" aria-label="Título da microssequência" title="Título da microssequência" value="' +
-    escapeHtml(microsequence?.title || "") +
-    '">' +
-    "</div></section>" +
     '<section class="editor-step-nav">' +
     '<div class="editor-step-nav-head editor-version-nav-head">' +
     versionPrevControl +
@@ -1201,9 +1056,9 @@ function renderMicrosequenceWorkbenchScreen({
 
 function renderMicrosequenceAssistScreen({ lesson, microsequence, cards, selection, editorSupport }) {
   return renderMicrosequenceWorkbenchScreen({
-    title: "Painel da microssequência",
+    title: "Editar cards",
     backTitle: "Voltar para a lição",
-    sendTitle: "Enviar pedido",
+    sendTitle: "Gerar microssequências",
     promptLabel: "Pedido",
     lesson,
     microsequence,

@@ -3031,6 +3031,41 @@ button {
   color: var(--muted);
 }
 
+.workbench-inline-icon {
+  width: 34px;
+  height: 38px;
+}
+
+.workbench-select-field,
+.workbench-prompt-head {
+  color: rgba(244, 224, 190, 0.76);
+  font-size: var(--type-sm);
+}
+
+.workbench-select-field input,
+.workbench-editor-panel select,
+.workbench-editor-panel textarea {
+  width: 100%;
+  border: 1px solid rgba(172, 131, 67, 0.72);
+  border-radius: 12px;
+  background: rgba(15, 12, 9, 0.82);
+  color: #fff8ec;
+  font: inherit;
+  font-weight: 400;
+  letter-spacing: 0.01em;
+}
+
+.workbench-select-field input,
+.workbench-editor-panel select {
+  min-height: 38px;
+  padding: 0 11px;
+}
+
+.workbench-editor-panel textarea {
+  padding: 10px 12px;
+  line-height: 1.45;
+}
+
 .workbench-icon {
   width: 14px;
   height: 14px;
@@ -3773,7 +3808,7 @@ button {
 }
 
 .assist-actions-wide {
-  grid-template-columns: 36px minmax(0, 1fr) 36px 36px;
+  grid-template-columns: 36px minmax(0, 1fr) 36px 44px;
   width: 100%;
 }
 
@@ -3974,13 +4009,18 @@ button {
 
 .generate-action-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 44px;
+  grid-template-columns: 36px minmax(0, 1fr) 36px 44px;
   gap: 8px;
   align-items: center;
 }
 
 .generate-model-field {
   min-width: 0;
+}
+
+.generate-inline-icon {
+  width: 36px;
+  height: 36px;
 }
 
 .generate-submit {
