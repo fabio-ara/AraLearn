@@ -10,6 +10,7 @@ import { buildMicrosequenceEditPlanningContract } from "../src/generation/planni
 import { validateMicrosequenceEditPlan } from "../src/generation/planning/validateMicrosequenceEditPlan.js";
 import { buildMicrosequenceGenerationPrompt } from "../src/generation/prompts/buildMicrosequenceGenerationPrompt.js";
 import { getModelCapabilities } from "../src/generation/providers/modelCapabilities.js";
+import { adaptResourceCardsToPublicCards, adaptResourceCardToPublicCard } from "../src/generation/resources/adaptResourceCardToPublicCard.js";
 import { listCardResourceDefinitions } from "../src/generation/resources/cardResourceDefinitions.js";
 import { buildResourceSelectorState, resolveResourcesForGenerationPlan } from "../src/generation/resources/resolveResourcesForGenerationPlan.js";
 import { resolveResourcesForEditPlan } from "../src/generation/resources/resolveResourcesForEditPlan.js";
@@ -24,9 +25,9 @@ function samplePlanningContract(extra = {}) {
   return buildMicrosequencePlanningContract({
     selectedCourse: { key: "course", title: "Curso", description: "Objetivo do curso" },
     selectedModule: { key: "module", title: "Módulo", description: "Objetivo do módulo" },
-    selectedLesson: { key: "lesson", title: "Lição", description: "Objetivo da lição" },
+    selectedLesson: { key: "lesson", title: "Lição", description: "Objetivo da lição", lessonTopics: [{ refKey: "micro-git", label: "Git", source: "microsequence" }] },
     targetMicrosequence: { key: "micro", title: "Microssequência" },
-    selectedLessonTags: [{ id: "tag-1", label: "Git" }],
+    selectedLessonTopicRefs: [{ refKey: "micro-git", label: "Git", source: "microsequence" }],
     userPrompt: "Explique git add",
     selectedModel: "gemini-2.5-flash",
     ...extra
@@ -72,18 +73,33 @@ test("catálogo contém recursos e schemas esperados", () => {
   assert.ok(resources.every((item) => item.label && item.shortDescription && item.schema && item.limits));
 });
 
-test("planejamento recebe tags, catálogo leve e valida plano", () => {
+test("planejamento recebe selectedLessonTopicRefs, catálogo leve e valida plano", () => {
   const contract = samplePlanningContract({
     userFixedTypeId: "guided_practice",
     userSelectedExtraResourceTypes: ["table"]
   });
   const validation = validateMicrosequencePlan(validPlan(), contract);
+  const prompt = buildMicrosequencePlanningPrompt(contract, getModelCapabilities("gemini-2.5-flash"));
 
-  assert.equal(contract.lessonTags[0].label, "Git");
+  assert.equal(contract.selectedLessonTopicRefs[0].label, "Git");
+  assert.equal(contract.selectedLessonTopicRefs[0].refKey, "micro-git");
+  assert.equal(contract.selectedLessonTopicRefs[0].source, "microsequence");
   assert.ok(contract.availableResources.some((item) => item.id === "paragraph" && !item.schema));
+  assert.match(prompt, /selectedLessonTopicRefs são assuntos selecionados no escopo da lição/);
   assert.equal(validation.ok, true);
   assert.equal(validation.plan.sizeId, "short");
   assert.equal(validation.plan.cardPlan.length, 3);
+});
+
+test("campos legados de tags são normalizados para selectedLessonTopicRefs", () => {
+  const contract = samplePlanningContract({
+    selectedLessonTopicRefs: undefined,
+    selectedLessonTags: [{ id: "micro-git", label: "Git", source: "microsequence" }]
+  });
+
+  assert.deepEqual(contract.selectedLessonTopicRefs, [
+    { refKey: "micro-git", label: "Git", source: "microsequence" }
+  ]);
 });
 
 test("planejamento rejeita tipo, tamanho, quantidade e preservação inválidos", () => {
@@ -130,11 +146,12 @@ test("contrato e prompt de geração usam contexto, tags, tamanho e schemas efet
   const prompt = buildMicrosequenceGenerationPrompt(generationContract, getModelCapabilities("gemini-2.5-flash"));
 
   assert.equal(generationContract.context.course.title, "Curso");
-  assert.equal(generationContract.lessonTags[0].label, "Git");
+  assert.equal(generationContract.selectedLessonTopicRefs[0].label, "Git");
   assert.equal(generationContract.request.sizeId, "short");
   assert.equal(generationContract.request.cardCount, 3);
   assert.deepEqual(Object.keys(generationContract.resources.resourceSchemas).sort(), ["block_gap_fill", "multiple_choice", "paragraph", "table"].sort());
   assert.match(prompt, /block_gap_fill/);
+  assert.match(prompt, /selectedLessonTopicRefs como assuntos selecionados no escopo da lição/);
   assert.doesNotMatch(prompt, /code_editor/);
 });
 
@@ -210,14 +227,14 @@ test("fontes resolvem seleção explícita, menção e ambiguidade", () => {
   assert.equal(resolveReferencedSources({ userPrompt: "sem fonte", attachedSources: sources }).shouldAskUserToSelectSource, true);
 });
 
-test("planejamento e contrato de edição preservam versão, tags e recursos", () => {
+test("planejamento e contrato de edição preservam versão, selectedLessonTopicRefs e recursos", () => {
   const editPlanningContract = buildMicrosequenceEditPlanningContract({
     selectedCourse: { key: "course", title: "Curso" },
     selectedModule: { key: "module", title: "Módulo" },
-    selectedLesson: { key: "lesson", title: "Lição" },
+    selectedLesson: { key: "lesson", title: "Lição", lessonTopics: [{ refKey: "micro-git", label: "Git", source: "microsequence" }] },
     selectedMicrosequence: { key: "micro", title: "Micro" },
     selectedMicrosequenceVersion: { id: "v1" },
-    selectedLessonTags: [{ id: "tag-1", label: "Git" }],
+    selectedLessonTopicRefs: [{ refKey: "micro-git", label: "Git", source: "microsequence" }],
     currentCards: [{ key: "c1", title: "Card 1", say: "Texto" }],
     previousVersions: [{ id: "v0", label: "Anterior", cards: [{ title: "Antigo", say: "Antes" }] }],
     userEditPrompt: "troque para tabela",
@@ -248,7 +265,8 @@ test("planejamento e contrato de edição preservam versão, tags e recursos", (
     selectedModel: "gemini-2.5-flash"
   });
 
-  assert.equal(editPlanningContract.lessonTags[0].label, "Git");
+  assert.equal(editPlanningContract.selectedLessonTopicRefs[0].label, "Git");
+  assert.equal(editContract.selectedLessonTopicRefs[0].label, "Git");
   assert.equal(editPlanningContract.previousVersionsSummary[0].versionId, "v0");
   assert.equal(plan.ok, true);
   assert.ok(resources.allowedResourceTypes.includes("table"));
@@ -295,35 +313,34 @@ test("validação de edição preserva cards não afetados em edição localizad
   );
 });
 
-test("renderer exibe block_gap_fill e popup de feedback", () => {
-  const runtime = renderCardRuntimeBlocks(
-    {
-      runtime: {
-        blocks: [
-          {
-            kind: "block_gap_fill",
-            prompt: "Complete a frase.",
-            segments: [{ kind: "text", value: "Use" }, { kind: "blank", blankId: "b1", acceptedBlockIds: ["x"] }],
-            blocks: [{ blockId: "x", label: "git add" }],
-            feedbackPopup: {
-              correctTitle: "Correto",
-              correctMessage: "Preparou o arquivo.",
-              incorrectTitle: "Revise",
-              incorrectMessage: "Escolha o comando de preparação."
-            }
-          }
-        ]
-      }
-    },
-    {
-      blockGapFillStateByBlockKey: {
-        "runtime-block::0": { values: { b1: "git add" }, feedback: "correct" }
-      }
+test("block_gap_fill é alias interno para parágrafo público com lacunas por opções", () => {
+  const publicCard = adaptResourceCardToPublicCard({
+    position: 1,
+    resourceType: "block_gap_fill",
+    title: "Complete",
+    prompt: "Complete a frase.",
+    segments: [{ kind: "text", value: "Use" }, { kind: "blank", blankId: "b1", acceptedBlockIds: ["x"] }],
+    blocks: [{ blockId: "x", label: "git add" }, { blockId: "y", label: "git push" }],
+    feedbackPopup: {
+      correctTitle: "Correto",
+      correctMessage: "Preparou o arquivo.",
+      incorrectTitle: "Revise",
+      incorrectMessage: "Escolha o comando de preparação."
     }
-  );
+  });
+  const runtime = renderCardRuntimeBlocks(publicCard);
 
-  assert.match(runtime, /runtime-block-gap-fill/);
-  assert.match(runtime, /data-action="block-gap-fill-check"/);
-  assert.match(runtime, /runtime-block-gap-popup/);
-  assert.match(runtime, /Preparou o arquivo/);
+  assert.equal(publicCard.say.includes("[[git add::git add|git push]]"), true);
+  assert.equal(publicCard.resourceType, undefined);
+  assert.equal(publicCard.after, "Preparou o arquivo.");
+  assert.match(runtime, /runtime-text-gap-choice-blank/);
+  assert.match(runtime, /data-action="text-gap-open-choice"/);
+  assert.doesNotMatch(runtime, /runtime-block-gap-fill/);
+});
+
+test("adaptador rejeita saída interna sem recurso público compatível", () => {
+  const result = adaptResourceCardsToPublicCards([{ resourceType: "image", title: "Imagem" }]);
+
+  assert.equal(result.ok, false);
+  assert.match(result.errors.join(" "), /sem adaptador público/);
 });

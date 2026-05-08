@@ -1,6 +1,7 @@
 import { listCardResourceSummaries } from "../resources/cardResourceDefinitions.js";
 import { getModelCapabilities } from "../providers/modelCapabilities.js";
 import { resolveReferencedSources } from "../sources/resolveReferencedSources.js";
+import { normalizeSelectedLessonTopicRefs } from "../tags/selectedLessonTopicRefs.js";
 
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -20,7 +21,10 @@ export function buildMicrosequenceEditPlanningContract({
   selectedLesson,
   selectedMicrosequence,
   selectedMicrosequenceVersion,
-  selectedLessonTags = [],
+  selectedLessonTopicRefs = null,
+  selectedLessonScopeTagRefs = null,
+  selectedLessonTags = null,
+  lessonTags = null,
   currentCards = [],
   previousVersions = [],
   userEditPrompt = "",
@@ -33,6 +37,13 @@ export function buildMicrosequenceEditPlanningContract({
 }) {
   const capabilities = getModelCapabilities(selectedModel);
   const resolvedSources = resolveReferencedSources({ userPrompt: userEditPrompt, attachedSources, userSelectedSourceIds });
+  const selectedTopics = normalizeSelectedLessonTopicRefs({
+    selectedLessonTopicRefs,
+    selectedLessonScopeTagRefs,
+    selectedLessonTags,
+    lessonTags,
+    availableLessonTopics: selectedLesson?.lessonTopics || selectedLesson?.scopeTags || selectedLesson?.tags || []
+  });
   return {
     version: "aralearn.microsequence-edit-planning-contract.v1",
     operation: "plan_microsequence_edit",
@@ -49,7 +60,7 @@ export function buildMicrosequenceEditPlanningContract({
       lesson: { title: text(selectedLesson?.title), objective: text(selectedLesson?.description) },
       microsequence: { title: text(selectedMicrosequence?.title), objective: text(selectedMicrosequence?.description) }
     },
-    lessonTags: selectedLessonTags.map((item) => ({ id: text(item.id || item.key || item), label: text(item.label || item.title || item) })),
+    selectedLessonTopicRefs: selectedTopics,
     request: { userEditPrompt: text(userEditPrompt), selectedCardKeys, selectedResourceKeys, userSelectedExtraResourceTypes },
     currentVersionSummary: {
       versionId: text(selectedMicrosequenceVersion?.id),

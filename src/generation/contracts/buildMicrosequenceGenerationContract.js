@@ -21,7 +21,7 @@ export function buildMicrosequenceGenerationContract({ planningContract, validat
     operation: "generate_microsequence_cards",
     target: planningContract.target,
     context: planningContract.context,
-    lessonTags: planningContract.lessonTags,
+    selectedLessonTopicRefs: planningContract.selectedLessonTopicRefs || [],
     request: {
       userPrompt: planningContract.request.userPrompt,
       typeId: plan.typeId,

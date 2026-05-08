@@ -3,6 +3,7 @@ import { listMicrosequenceTypeSummaries } from "../types/microsequenceTypes.js";
 import { listCardResourceSummaries } from "../resources/cardResourceDefinitions.js";
 import { getModelCapabilities } from "../providers/modelCapabilities.js";
 import { resolveReferencedSources } from "../sources/resolveReferencedSources.js";
+import { normalizeSelectedLessonTopicRefs } from "../tags/selectedLessonTopicRefs.js";
 
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -21,7 +22,10 @@ export function buildMicrosequencePlanningContract({
   selectedModule,
   selectedLesson,
   targetMicrosequence,
-  selectedLessonTags = [],
+  selectedLessonTopicRefs = null,
+  selectedLessonScopeTagRefs = null,
+  selectedLessonTags = null,
+  lessonTags = null,
   userPrompt,
   attachedSources = [],
   userSelectedSourceIds = [],
@@ -31,6 +35,13 @@ export function buildMicrosequencePlanningContract({
 }) {
   const capabilities = getModelCapabilities(selectedModel);
   const resolvedSources = resolveReferencedSources({ userPrompt, attachedSources, userSelectedSourceIds });
+  const selectedTopics = normalizeSelectedLessonTopicRefs({
+    selectedLessonTopicRefs,
+    selectedLessonScopeTagRefs,
+    selectedLessonTags,
+    lessonTags,
+    availableLessonTopics: selectedLesson?.lessonTopics || selectedLesson?.scopeTags || selectedLesson?.tags || []
+  });
   return {
     version: "aralearn.microsequence-planning-contract.v1",
     operation: "plan_microsequence_generation",
@@ -46,7 +57,7 @@ export function buildMicrosequencePlanningContract({
       lesson: { title: text(selectedLesson?.title) || key(selectedLesson), objective: objective(selectedLesson) },
       microsequence: { title: text(targetMicrosequence?.title) || key(targetMicrosequence), objective: objective(targetMicrosequence) }
     },
-    lessonTags: selectedLessonTags.map((item) => ({ id: text(item.id || item.key || item), label: text(item.label || item.title || item) })).filter((item) => item.id || item.label),
+    selectedLessonTopicRefs: selectedTopics,
     request: {
       userPrompt: text(userPrompt),
       userFixedTypeId: userFixedTypeId || null,

@@ -87,6 +87,7 @@ A geração e a edição de cards usam uma camada interna em `src/generation/`. 
 - tipos didáticos neutros;
 - tamanhos internos de microssequência;
 - catálogo de recursos de card;
+- referências de assuntos selecionados no escopo da lição;
 - anexos e fontes resolvidos para a operação;
 - capacidades do modelo selecionado;
 - contratos e prompts de planejamento;
@@ -103,6 +104,28 @@ Os tamanhos internos são:
 
 O tamanho é decidido no planejamento, validado pela aplicação e usado para exigir a quantidade exata de cards na resposta final.
 
+## Assuntos do Escopo da Lição
+
+Na geração e na edição, a seleção compacta de assuntos da UI é enviada internamente como `selectedLessonTopicRefs`.
+
+Essas referências são contexto operacional. Elas costumam vir de títulos, tags ou assuntos de microssequências já existentes no escopo da lição atual. Elas não são um novo nível da árvore e não são persistidas automaticamente como tags próprias da microssequência gerada ou editada.
+
+Formato conceitual:
+
+```json
+{
+  "selectedLessonTopicRefs": [
+    {
+      "refKey": "microsequence-chave",
+      "label": "Assunto visível",
+      "source": "microsequence"
+    }
+  ]
+}
+```
+
+A hierarquia principal continua sendo `Curso -> Módulo -> Lição -> Microssequência -> Card`. `selectedLessonTopicRefs` apenas reduz ambiguidade, orienta terminologia e ajuda a etapa de planejamento a escolher tipo, extensão e recursos.
+
 ## Recursos internos
 
 O catálogo interno de recursos inclui:
@@ -114,7 +137,20 @@ O catálogo interno de recursos inclui:
 - `flowchart`;
 - `block_gap_fill`.
 
-Cada recurso possui descrição, limites e schema próprio. O recurso `block_gap_fill` representa lacunas preenchidas com blocos selecionáveis e feedback obrigatório após a tentativa. A renderização já reconhece esse bloco no runtime interno.
+Cada recurso possui descrição, limites e schema próprio. O recurso `block_gap_fill` é um alias interno para o recurso público já existente de parágrafo com lacunas por opções, persistido como `say` com sintaxe `[[resposta::opção|opção]]`. Ele não cria tipo público novo.
+
+Mapeamento principal:
+
+```text
+paragraph       -> say
+multiple_choice -> ask
+code_editor     -> code
+table           -> table
+flowchart       -> flow
+block_gap_fill  -> say com lacunas por opções
+```
+
+O adaptador explícito valida esse mapeamento antes do salvamento. Recursos sem caminho público/runtime são rejeitados.
 
 Os recursos efetivos de geração são calculados por:
 
@@ -183,7 +219,7 @@ Fluxo implementado para gerar ou revisar cards no painel:
 2. a aplicação monta contexto de curso, módulo, lição e microssequência;
 3. o usuário pode escolher tipo, recursos extras e anexos;
 4. a aplicação envia anexos ao serviço de arquivos do modelo quando existirem;
-5. a aplicação monta o contrato de planejamento com hierarquia, tags, pedido, recursos leves, tipos, tamanhos e fontes;
+5. a aplicação monta o contrato de planejamento com hierarquia, selectedLessonTopicRefs, pedido, recursos leves, tipos, tamanhos e fontes;
 6. o modelo faz a primeira chamada e devolve `typeId`, `sizeId`, objetivo, recursos extras e `cardPlan`;
 7. a aplicação valida o plano, incluindo tipo, tamanho, quantidade esperada e recursos;
 8. a aplicação resolve recursos efetivos e monta o contrato de geração com schemas completos apenas desses recursos;
@@ -261,7 +297,7 @@ O prompt completo inclui:
 - plano didático validado;
 - tipos e recursos efetivos;
 - schemas dos recursos efetivos;
-- tags da lição;
+- selectedLessonTopicRefs;
 - fontes resolvidas;
 - resumo da microssequência atual quando houver.
 
@@ -279,7 +315,7 @@ O usuário pode pedir:
 - ajuste de alternativas;
 - revisão de densidade textual.
 
-A camada interna já possui contratos para planejar edição e aplicar edição em duas chamadas. O contrato de aplicação recebe a versão atual completa, recursos efetivos, tags, fontes resolvidas e versões anteriores quando o plano validado solicitar. A integração visual completa desse fluxo segue a regra de versionamento existente do painel.
+A camada interna já possui contratos para planejar edição e aplicar edição em duas chamadas. O contrato de aplicação recebe a versão atual completa, recursos efetivos, selectedLessonTopicRefs, fontes resolvidas e versões anteriores quando o plano validado solicitar. A integração visual completa desse fluxo segue a regra de versionamento existente do painel.
 
 ## Reposicionamento assistido
 

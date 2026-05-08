@@ -20,7 +20,7 @@ export function buildMicrosequenceEditContract({
     operation: "edit_microsequence_cards",
     target: editPlanningContract.target,
     context: editPlanningContract.context,
-    lessonTags: editPlanningContract.lessonTags,
+    selectedLessonTopicRefs: editPlanningContract.selectedLessonTopicRefs || [],
     request: {
       userEditPrompt: editPlanningContract.request.userEditPrompt,
       selectedCardKeys: editPlanningContract.request.selectedCardKeys,
