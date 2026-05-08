@@ -462,6 +462,76 @@ test("repara planejamento quando typeId viola userFixedTypeId", async () => {
   }
 });
 
+test("fluxo Gemini repara geração final inválida antes da adaptação pública", async () => {
+  const originalFetch = globalThis.fetch;
+  const calls = [];
+  const invalidGeneratedCards = makeGeneratedCardsPayload();
+  invalidGeneratedCards.cards[1] = {
+    position: 2,
+    resourceType: "image",
+    title: "Imagem sem contrato"
+  };
+  globalThis.fetch = async (url, options) => {
+    calls.push({ url, body: JSON.parse(options.body) });
+    const generateCallCount = calls.filter((call) => String(call.url).includes(":generateContent")).length;
+    const payload =
+      generateCallCount === 1
+        ? makeMicrosequencePlanPayload()
+        : generateCallCount === 2
+          ? invalidGeneratedCards
+          : makeGeneratedCardsPayload();
+    return makeGeminiTextResponse(JSON.stringify(payload));
+  };
+
+  try {
+    const result = await runGeminiAssist({
+      apiKey: "chave",
+      mode: "compose-microsequence",
+      microsequence: { title: "Git", tags: [], cards: [] },
+      promptText: "explique git add e git push"
+    });
+
+    assert.equal(calls.length, 3);
+    assert.match(calls[2].body.contents[0].parts[0].text, /Corrija apenas o JSON abaixo/);
+    assert.match(calls[2].body.contents[0].parts[0].text, /Recurso fora do permitido: image/);
+    assert.equal(result.cards.length, 5);
+    assert.equal(result.cards[1].code, "git add arquivo.txt");
+    assert.equal(result.cards[4].answer, "git push");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("fluxo Gemini devolve erro claro quando reparo de geração falha", async () => {
+  const originalFetch = globalThis.fetch;
+  const calls = [];
+  const invalidGeneratedCards = { cards: [{ position: 1, resourceType: "image", title: "Imagem" }] };
+  globalThis.fetch = async (url, options) => {
+    calls.push({ url, body: JSON.parse(options.body) });
+    const generateCallCount = calls.filter((call) => String(call.url).includes(":generateContent")).length;
+    const payload = generateCallCount === 1 ? makeMicrosequencePlanPayload() : invalidGeneratedCards;
+    return makeGeminiTextResponse(JSON.stringify(payload));
+  };
+
+  try {
+    await assert.rejects(
+      () =>
+        runGeminiAssist({
+          apiKey: "chave",
+          mode: "compose-microsequence",
+          microsequence: { title: "Git", tags: [], cards: [] },
+          promptText: "explique git add e git push"
+        }),
+      /cards inválidos.*Quantidade incorreta de cards/
+    );
+
+    assert.equal(calls.length, 3);
+    assert.match(calls[2].body.contents[0].parts[0].text, /Corrija apenas o JSON abaixo/);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("anexa documentos ao Gemini Files API antes de gerar cards", async () => {
   const originalFetch = globalThis.fetch;
   const calls = [];

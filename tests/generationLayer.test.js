@@ -8,6 +8,7 @@ import { buildMicrosequencePlanningPrompt } from "../src/generation/planning/bui
 import { validateMicrosequencePlan } from "../src/generation/planning/validateMicrosequencePlan.js";
 import { buildMicrosequenceEditPlanningContract } from "../src/generation/planning/buildMicrosequenceEditPlanningContract.js";
 import { validateMicrosequenceEditPlan } from "../src/generation/planning/validateMicrosequenceEditPlan.js";
+import { buildGeneratedCardsRepairPrompt } from "../src/generation/prompts/buildGeneratedCardsRepairPrompt.js";
 import { buildMicrosequenceGenerationPrompt } from "../src/generation/prompts/buildMicrosequenceGenerationPrompt.js";
 import { getModelCapabilities } from "../src/generation/providers/modelCapabilities.js";
 import { adaptResourceCardsToPublicCards, adaptResourceCardToPublicCard } from "../src/generation/resources/adaptResourceCardToPublicCard.js";
@@ -18,6 +19,7 @@ import { resolveReferencedSources } from "../src/generation/sources/resolveRefer
 import { getMicrosequenceCardCount, listMicrosequenceSizes } from "../src/generation/types/microsequenceSizes.js";
 import { listMicrosequenceTypes } from "../src/generation/types/microsequenceTypes.js";
 import { validateGeneratedCards } from "../src/generation/validation/validateGeneratedCards.js";
+import { validateOrRepairGeneratedCards } from "../src/generation/validation/validateOrRepairGeneratedCards.js";
 import { validateEditedMicrosequence } from "../src/generation/validation/validateEditedMicrosequence.js";
 import { renderCardRuntimeBlocks } from "../src/render/renderCardRuntime.js";
 import { createProjectStorage } from "../src/storage/createProjectStorage.js";
@@ -54,6 +56,45 @@ function validPlan(overrides = {}) {
     reason: "curto",
     ...overrides
   };
+}
+
+function validGeneratedCardsResponse() {
+  return {
+    cards: [
+      { position: 1, resourceType: "paragraph", title: "Ideia", text: "Texto curto." },
+      {
+        position: 2,
+        resourceType: "block_gap_fill",
+        title: "Complete",
+        prompt: "Complete.",
+        segments: [{ kind: "text", value: "Use" }, { kind: "blank", blankId: "b1", acceptedBlockIds: ["x"] }],
+        blocks: [{ blockId: "x", label: "git add" }],
+        feedbackAfter: "Isso prepara arquivos."
+      },
+      {
+        position: 3,
+        resourceType: "multiple_choice",
+        title: "Teste",
+        question: "Qual comando prepara arquivos?",
+        options: [
+          { optionId: "a", label: "git add" },
+          { optionId: "b", label: "git push" },
+          { optionId: "c", label: "git log" }
+        ],
+        correctOptionId: "a",
+        feedback: "Preparar vem antes do commit."
+      }
+    ]
+  };
+}
+
+function sampleGenerationContract(extraPlan = {}) {
+  const planningContract = samplePlanningContract({ userSelectedExtraResourceTypes: ["table"] });
+  return buildMicrosequenceGenerationContract({
+    planningContract,
+    validatedPlan: validateMicrosequencePlan(validPlan(extraPlan), planningContract),
+    selectedModel: "gemini-2.5-flash"
+  });
 }
 
 test("lista tipos didáticos e tamanhos internos", () => {
@@ -287,6 +328,200 @@ test("block_gap_fill valida estrutura fechada de segmentos, blocos e feedbackAft
     false
   );
   assert.equal(validateGeneratedCards({ cards: [validResponse.cards[0], { ...validCard, feedbackAfter: "" }, validResponse.cards[2]] }, generationContract).ok, false);
+});
+
+test("prompt de reparo de cards inclui contrato efetivo e schemas permitidos", () => {
+  const generationContract = sampleGenerationContract();
+  const prompt = buildGeneratedCardsRepairPrompt({
+    invalidResponse: { cards: [{ resourceType: "block_gap_fill", segments: [{ text: "Use" }] }] },
+    validationErrors: ["Cada segmento precisa usar kind text ou blank."],
+    generationContract,
+    modelCapabilities: getModelCapabilities("gemini-2.5-flash")
+  });
+
+  assert.match(prompt, /Corrija apenas o JSON abaixo/);
+  assert.match(prompt, /expectedCardCount/);
+  assert.match(prompt, /cardPlan validado/);
+  assert.match(prompt, /allowedResourceTypes/);
+  assert.match(prompt, /resourceSchemas permitidos/);
+  assert.match(prompt, /block_gap_fill/);
+  assert.doesNotMatch(prompt, /code_editor/);
+});
+
+test("validateOrRepairGeneratedCards aceita geração válida sem reparo", async () => {
+  const generationContract = sampleGenerationContract();
+  let calls = 0;
+
+  const result = await validateOrRepairGeneratedCards({
+    rawGeneratedResponse: validGeneratedCardsResponse(),
+    generationContract,
+    modelCapabilities: getModelCapabilities("gemini-2.5-flash"),
+    callModel: async () => {
+      calls += 1;
+      return validGeneratedCardsResponse();
+    }
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.repaired, false);
+  assert.equal(result.repairAttempts, 0);
+  assert.equal(result.cards.length, 3);
+  assert.equal(calls, 0);
+});
+
+test("validateOrRepairGeneratedCards chama reparo quando geração final falha", async () => {
+  const generationContract = sampleGenerationContract();
+  let calls = 0;
+
+  const result = await validateOrRepairGeneratedCards({
+    rawGeneratedResponse: { cards: validGeneratedCardsResponse().cards.slice(0, 2) },
+    generationContract,
+    modelCapabilities: getModelCapabilities("gemini-2.5-flash"),
+    callModel: async ({ prompt }) => {
+      calls += 1;
+      assert.match(prompt, /Quantidade incorreta de cards/);
+      return validGeneratedCardsResponse();
+    }
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.repaired, true);
+  assert.equal(result.repairAttempts, 1);
+  assert.equal(calls, 1);
+});
+
+test("validateOrRepairGeneratedCards corrige block_gap_fill aproximado e preserva feedbackAfter", async () => {
+  const generationContract = sampleGenerationContract();
+  const invalidBlockGapFill = {
+    cards: [
+      validGeneratedCardsResponse().cards[0],
+      {
+        position: 2,
+        resourceType: "block_gap_fill",
+        title: "Complete",
+        prompt: "Complete.",
+        segments: [{ text: "Use" }],
+        blocks: [{ text: "git add" }],
+        feedbackAfter: "Isso prepara arquivos."
+      },
+      validGeneratedCardsResponse().cards[2]
+    ]
+  };
+
+  const result = await validateOrRepairGeneratedCards({
+    rawGeneratedResponse: invalidBlockGapFill,
+    generationContract,
+    modelCapabilities: getModelCapabilities("gemini-2.5-flash"),
+    callModel: async () => invalidBlockGapFill
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.cards[1].segments[0].kind, "text");
+  assert.equal(result.cards[1].segments[0].value, "Use");
+  assert.equal(result.cards[1].segments[1].acceptedBlockIds[0], "block_1");
+  assert.equal(result.cards[1].blocks[0].label, "git add");
+  assert.equal(result.cards[1].feedbackAfter, "Isso prepara arquivos.");
+});
+
+test("validateOrRepairGeneratedCards corrige multiple_choice com índice e tree sem id", async () => {
+  const choiceContract = sampleGenerationContract();
+  const invalidChoice = {
+    cards: [
+      validGeneratedCardsResponse().cards[0],
+      validGeneratedCardsResponse().cards[1],
+      {
+        position: 3,
+        resourceType: "multiple_choice",
+        title: "Teste",
+        question: "Qual comando prepara arquivos?",
+        options: [{ text: "git push" }, { text: "git add" }, { text: "git log" }],
+        correctIndex: 1,
+        feedback: "git add prepara arquivos."
+      }
+    ]
+  };
+  const choiceResult = await validateOrRepairGeneratedCards({
+    rawGeneratedResponse: invalidChoice,
+    generationContract: choiceContract,
+    modelCapabilities: getModelCapabilities("gemini-2.5-flash"),
+    callModel: async () => invalidChoice
+  });
+  const treeContract = sampleGenerationContract({
+    selectedExtraResourceTypes: ["table", "tree"],
+    cardPlan: [
+      { position: 1, role: "situar", resourceType: "paragraph", sourceRefs: [] },
+      { position: 2, role: "mostrar estrutura", resourceType: "tree", sourceRefs: [] },
+      { position: 3, role: "consolidar", resourceType: "multiple_choice", sourceRefs: [] }
+    ]
+  });
+  const invalidTree = {
+    cards: [
+      validGeneratedCardsResponse().cards[0],
+      {
+        position: 2,
+        resourceType: "tree",
+        title: "Estrutura",
+        nodes: [{ label: "src", type: "folder" }, { label: "app.js", type: "file" }]
+      },
+      validGeneratedCardsResponse().cards[2]
+    ]
+  };
+  const treeResult = await validateOrRepairGeneratedCards({
+    rawGeneratedResponse: invalidTree,
+    generationContract: treeContract,
+    modelCapabilities: getModelCapabilities("gemini-2.5-flash"),
+    callModel: async () => invalidTree
+  });
+
+  assert.equal(choiceResult.ok, true);
+  assert.equal(choiceResult.cards[2].correctOptionId, "option_2");
+  assert.deepEqual(choiceResult.cards[2].options.map((option) => option.label), ["git push", "git add", "git log"]);
+  assert.equal(treeResult.ok, true);
+  assert.deepEqual(treeResult.cards[1].nodes.map((node) => node.id), ["src", "app.js"]);
+});
+
+test("validateOrRepairGeneratedCards rejeita reparo ainda inválido", async () => {
+  const generationContract = sampleGenerationContract();
+  const result = await validateOrRepairGeneratedCards({
+    rawGeneratedResponse: { cards: [{ position: 1, resourceType: "paragraph", title: "", text: "" }] },
+    generationContract,
+    modelCapabilities: getModelCapabilities("gemini-2.5-flash"),
+    callModel: async () => ({ cards: [{ position: 1, resourceType: "image", title: "Imagem" }] })
+  });
+
+  assert.equal(result.ok, false);
+  assert.equal(result.repaired, true);
+  assert.equal(result.repairAttempts, 1);
+  assert.match(result.errors.join(" "), /Quantidade incorreta de cards|Recurso fora do permitido/);
+});
+
+test("validateOrRepairGeneratedCards bloqueia recurso fora do permitido, respeita contagem e cardPlan.position", async () => {
+  const generationContract = sampleGenerationContract();
+  const wrongResource = await validateOrRepairGeneratedCards({
+    rawGeneratedResponse: { cards: validGeneratedCardsResponse().cards.map((card) => ({ ...card, resourceType: card.position === 2 ? "image" : card.resourceType })) },
+    generationContract,
+    modelCapabilities: getModelCapabilities("gemini-2.5-flash"),
+    callModel: async () => ({ cards: validGeneratedCardsResponse().cards.map((card) => ({ ...card, resourceType: card.position === 2 ? "image" : card.resourceType })) })
+  });
+  const wrongCount = await validateOrRepairGeneratedCards({
+    rawGeneratedResponse: { cards: validGeneratedCardsResponse().cards.slice(0, 2) },
+    generationContract,
+    modelCapabilities: getModelCapabilities("gemini-2.5-flash"),
+    callModel: async () => ({ cards: validGeneratedCardsResponse().cards.slice(0, 2) })
+  });
+  const wrongPosition = await validateOrRepairGeneratedCards({
+    rawGeneratedResponse: { cards: validGeneratedCardsResponse().cards.map((card) => ({ ...card, position: 1 })) },
+    generationContract,
+    modelCapabilities: getModelCapabilities("gemini-2.5-flash"),
+    callModel: async () => ({ cards: validGeneratedCardsResponse().cards.map((card) => ({ ...card, position: 1 })) })
+  });
+
+  assert.equal(wrongResource.ok, false);
+  assert.match(wrongResource.errors.join(" "), /Recurso fora do permitido/);
+  assert.equal(wrongCount.ok, false);
+  assert.match(wrongCount.errors.join(" "), /Quantidade incorreta de cards/);
+  assert.equal(wrongPosition.ok, true);
+  assert.deepEqual(wrongPosition.cards.map((card) => card.position), [1, 2, 3]);
 });
 
 test("tree entra no catálogo, no planejamento, em allowedResourceTypes e na validação", () => {

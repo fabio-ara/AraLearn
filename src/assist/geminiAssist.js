@@ -6,7 +6,7 @@ import { validateMicrosequencePlan } from "../generation/planning/validateMicros
 import { buildMicrosequenceGenerationPrompt } from "../generation/prompts/buildMicrosequenceGenerationPrompt.js";
 import { getModelCapabilities } from "../generation/providers/modelCapabilities.js";
 import { adaptResourceCardsToPublicCards } from "../generation/resources/adaptResourceCardToPublicCard.js";
-import { validateGeneratedCards } from "../generation/validation/validateGeneratedCards.js";
+import { validateOrRepairGeneratedCards } from "../generation/validation/validateOrRepairGeneratedCards.js";
 
 function fail(message) {
   throw new Error(message);
@@ -705,7 +705,25 @@ async function composeMicrosequenceWithTwoStepGeneration({
       maxOutputTokens: 4096
     })
   });
-  const validation = validateGeneratedCards(generationResult, generationContract);
+  const validation = await validateOrRepairGeneratedCards({
+    rawGeneratedResponse: generationResult,
+    generationContract,
+    modelCapabilities,
+    maxRepairAttempts: 1,
+    callModel: ({ systemInstruction, prompt, temperature, maxOutputTokens }) =>
+      callGemini({
+        apiKey,
+        model,
+        body: makeRequestBody({
+          systemInstruction,
+          prompt,
+          fileParts,
+          schema: null,
+          temperature,
+          maxOutputTokens
+        })
+      })
+  });
   if (!validation.ok) {
     fail(`O serviço de IA devolveu cards inválidos: ${validation.errors.join(" ")}`);
   }
