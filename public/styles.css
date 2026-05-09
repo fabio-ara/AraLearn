@@ -1526,14 +1526,15 @@ button {
 }
 
 .card-answer-dock {
-  position: sticky;
-  bottom: 0;
   z-index: 12;
+  flex: 0 0 auto;
+  max-height: min(30vh, 220px);
+  overflow: auto;
   padding-top: 10px;
-  padding-bottom: 10px;
+  padding-bottom: 4px;
   border-top: 1px solid rgba(92, 75, 55, 0.5);
   background:
-    linear-gradient(180deg, rgba(10, 9, 8, 0.0), rgba(10, 9, 8, 0.82) 30%, rgba(10, 9, 8, 0.92));
+    linear-gradient(180deg, rgba(18, 14, 11, 0.98), rgba(12, 10, 8, 0.98));
   display: grid;
   gap: 10px;
 }
@@ -2263,8 +2264,8 @@ button {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  height: min(64vh, 560px);
-  min-height: 340px;
+  height: min(46vh, 420px);
+  min-height: 240px;
   width: 100%;
   min-width: 0;
 }

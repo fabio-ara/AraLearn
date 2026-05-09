@@ -120,7 +120,7 @@ test("renderiza prática interativa do fluxograma quando há lacunas", () => {
   assert.doesNotMatch(html, /data-action="flowchart-clear-choice"/);
 });
 
-test("mantém feedback do fluxograma dentro do próprio card mesmo com dock habilitado", () => {
+test("move feedback do fluxograma para o dock do card quando ele está habilitado", () => {
   const runtime = renderCardRuntimeBlocksWithDock(
     {
       type: "flow",
@@ -165,9 +165,9 @@ test("mantém feedback do fluxograma dentro do próprio card mesmo com dock habi
     }
   );
 
-  assert.match(runtime.bodyHtml, /Preencha todas as lacunas do fluxograma\./);
-  assert.doesNotMatch(runtime.dockHtml, /Preencha todas as lacunas do fluxograma\./);
-  assert.match(runtime.bodyHtml, /runtime-flow-board-shell[\s\S]*<\/div><div class="runtime-flow-practice-panel"[\s\S]*<div class="inline-feedback warn">/);
+  assert.doesNotMatch(runtime.bodyHtml, /Preencha todas as lacunas do fluxograma\./);
+  assert.match(runtime.dockHtml, /Preencha todas as lacunas do fluxograma\./);
+  assert.match(runtime.dockHtml, /runtime-flow-practice-panel/);
 });
 
 test("renderiza lacunas digitáveis do fluxograma diretamente no quadro", () => {
