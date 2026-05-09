@@ -120,6 +120,55 @@ test("renderiza prática interativa do fluxograma quando há lacunas", () => {
   assert.doesNotMatch(html, /data-action="flowchart-clear-choice"/);
 });
 
+test("mantém feedback do fluxograma dentro do próprio card mesmo com dock habilitado", () => {
+  const runtime = renderCardRuntimeBlocksWithDock(
+    {
+      type: "flow",
+      title: "Fluxo",
+      runtime: {
+        title: "Fluxo",
+        blocks: [
+          { kind: "heading", value: "Fluxo" },
+          {
+            kind: "flowchart",
+            projectionValid: true,
+            projection: {
+              nodes: [
+                {
+                  id: "decision",
+                  row: 0,
+                  column: "center",
+                  shape: "decision",
+                  text: "Resposta correta?",
+                  textBlank: true,
+                  textOptions: [{ id: "option-1", value: "Sim" }]
+                }
+              ],
+              links: []
+            }
+          }
+        ],
+        fallbackText: "Fluxo"
+      }
+    },
+    {
+      blockKeyPrefix: "course::module::lesson::card",
+      enableFlowchartPractice: true,
+      flowchartExerciseStateByBlockKey: {
+        "course::module::lesson::card::1": {
+          shapes: {},
+          texts: { decision: "" },
+          labels: {},
+          feedback: "incomplete"
+        }
+      }
+    }
+  );
+
+  assert.match(runtime.bodyHtml, /Preencha todas as lacunas do fluxograma\./);
+  assert.doesNotMatch(runtime.dockHtml, /Preencha todas as lacunas do fluxograma\./);
+});
+
 test("renderiza lacunas digitáveis do fluxograma diretamente no quadro", () => {
   const html = renderCardRuntimeBlocks(
     {

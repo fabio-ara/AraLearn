@@ -515,9 +515,6 @@ function renderProjectedFlowchart(block, renderOptions = {}, blockKey = "flowcha
   const practicePanelHtml = practiceEnabled
     ? renderFlowchartPracticePanel(blockKey, projection, exercise, prompt, renderOptions)
     : "";
-  if (dockParts && practicePanelHtml) {
-    dockParts.push(practicePanelHtml);
-  }
 
   return (
     '<div class="runtime-block runtime-flow-block runtime-flow-board-block">' +
@@ -571,7 +568,7 @@ function renderProjectedFlowchart(block, renderOptions = {}, blockKey = "flowcha
     labelsHtml +
     nodesHtml +
     "</div></div></div></div>" +
-    (practicePanelHtml && !dockParts ? practicePanelHtml : "") +
+    practicePanelHtml +
     "</div>"
   );
 }
