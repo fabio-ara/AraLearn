@@ -1205,11 +1205,11 @@ function renderTableBlock(block, renderOptions = {}, blockKey = "runtime-table")
   const bodyHtml =
     '<div class="runtime-block runtime-table-block">' +
     (title ? '<div class="runtime-table-title">' + renderMarkdownInline(title) + "</div>" : "") +
-    '<div class="runtime-table-wrap"><table class="runtime-table">' +
+    '<div class="runtime-table-wrap"><div class="runtime-table-frame"><table class="runtime-table">' +
     (headers ? "<thead><tr>" + headers + "</tr></thead>" : "") +
     "<tbody>" +
     rows +
-    "</tbody></table></div>";
+    "</tbody></table></div></div>";
 
   if (!usesTextGap) {
     return bodyHtml + "</div>";

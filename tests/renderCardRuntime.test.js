@@ -433,6 +433,7 @@ test("renderiza tabela com lacunas textuais por célula", () => {
 
   assert.match(html, /runtime-table-cell-gap/);
   assert.match(html, /runtime-table-gap-blank/);
+  assert.match(html, /runtime-table-frame/);
   assert.doesNotMatch(html, /data-action="complete-validate"/);
 });
 
