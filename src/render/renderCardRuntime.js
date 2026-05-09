@@ -1262,14 +1262,20 @@ function renderCompleteBlock(block, renderOptions = {}, blockKey = "runtime-comp
 
 function renderMultipleChoiceBlock(block, renderOptions = {}, blockKey = "runtime-choice") {
   const exercise = renderOptions.choiceExerciseStateByBlockKey?.[blockKey] || null;
-  const options = Array.isArray(block?.options) ? block.options : [];
+  const options = (Array.isArray(block?.options) ? block.options : []).map((option, index) => ({
+    option,
+    optionId: getExerciseOptionStableId(option, index)
+  }));
   const displayOptions = shuffleExerciseOptions(options, buildExerciseShuffleSeed(renderOptions, `choice::${blockKey}`));
-  const selected = normalizeChoiceSelectionIds(options, exercise?.selected);
+  const selected = new Set(
+    (Array.isArray(exercise?.selected) ? exercise.selected : [])
+      .map((item) => String(item || "").trim())
+      .filter(Boolean)
+  );
   const feedback = exercise?.feedback || null;
 
   const optionsHtml = displayOptions
-    .map((option, index) => {
-      const optionId = getExerciseOptionStableId(option, index);
+    .map(({ option, optionId }) => {
       const isSelected = selected.has(optionId);
       const stateClass =
         isSelected && feedback === "wrong"
