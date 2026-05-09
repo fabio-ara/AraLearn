@@ -1866,6 +1866,111 @@ export function createLessonEditorApp({ root, storage, editor }) {
     return true;
   }
 
+  function focusFirstIncompleteChoice(blockKey) {
+    queueExerciseFocus(
+      "[data-action=\"choice-toggle\"][data-choice-block-key=\"" + blockKey + "\"]"
+    );
+    return true;
+  }
+
+  function focusFirstIncompleteTextGap(blockKey) {
+    const entry = getCurrentCompleteEntry(blockKey);
+    if (!entry) {
+      return false;
+    }
+
+    const exercise = state.completeExerciseByBlockKey[blockKey] || { values: [], feedback: null };
+    const values = Array.isArray(exercise.values) ? exercise.values : [];
+    const parts = listTextGapPartsForBlock(entry.block);
+    const firstMissing = parts.find((part) => !String(values[part.index] ?? "").trim());
+    if (!firstMissing) {
+      return false;
+    }
+
+    if (Array.isArray(firstMissing.options) && firstMissing.options.length) {
+      state.activeTextGapPrompt = {
+        blockKey,
+        blankIndex: Number(firstMissing.index)
+      };
+      queueExerciseFocus("[data-text-gap-prompt='true'] .token-option");
+      return true;
+    }
+
+    state.activeTextGapPrompt = null;
+    queueExerciseFocus(
+      "[data-text-gap-field='true'][data-complete-block-key=\"" +
+        blockKey +
+        "\"][data-complete-blank-index=\"" +
+        firstMissing.index +
+        "\"]"
+    );
+    return true;
+  }
+
+  function focusFirstIncompleteDirectoryTree(blockKey) {
+    const entry = getCurrentDirectoryTreeEntry(blockKey);
+    if (!entry) {
+      return false;
+    }
+
+    const practice = normalizeDirectoryTreePractice(entry.block?.practice);
+    const current = state.directoryTreeUiByBlockKey[blockKey];
+    if (!current) {
+      return false;
+    }
+
+    if (practice.mode === "select" || practice.mode === "delete" || !current.hasInteracted) {
+      queueExerciseFocus(
+        "[data-action=\"directory-tree-select-node\"][data-directory-tree-block-key=\"" + blockKey + "\"]"
+      );
+      return true;
+    }
+
+    if (practice.typePrompt?.expected && !String(current.typeValue || "").trim()) {
+      queueExerciseFocus(
+        "[data-action=\"directory-tree-set-type\"][data-directory-tree-block-key=\"" + blockKey + "\"]"
+      );
+      return true;
+    }
+
+    const parts = parseTextGapParts(practice.nameTemplate || "");
+    const values = Array.isArray(current.nameValues) ? current.nameValues : [];
+    const firstMissing = parts.find((part) => {
+      if (part.kind !== "blank") {
+        return false;
+      }
+      return !String(values[part.index] ?? "").trim();
+    });
+
+    if (!firstMissing) {
+      queueExerciseFocus(
+        "[data-action=\"directory-tree-select-node\"][data-directory-tree-block-key=\"" + blockKey + "\"]"
+      );
+      return true;
+    }
+
+    if (Array.isArray(firstMissing.options) && firstMissing.options.length) {
+      queueExerciseFocus(
+        "[data-action=\"directory-tree-name-set-choice\"][data-directory-tree-block-key=\"" +
+          blockKey +
+          "\"][data-directory-tree-blank-index=\"" +
+          firstMissing.index +
+          "\"]"
+      );
+      return true;
+    }
+
+    queueExerciseFocus(
+      "[data-action=\"directory-tree-name-input\"][data-directory-tree-block-key=\"" +
+        blockKey +
+        "\"][data-directory-tree-blank-index=\"" +
+        firstMissing.index +
+        "\"]",
+      { caretToEnd: true }
+    );
+    return true;
+  }
+
   function stepCard(delta) {
     // No modo de estudo, o card só pode avançar quando os exercícios do card atual
     // estiverem completos e validados como corretos.
@@ -3963,6 +4068,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
 
     if (!selected.size) {
       state.choiceExerciseByBlockKey[blockKey] = { ...exercise, feedback: "incomplete" };
+      focusFirstIncompleteChoice(blockKey);
       render({ preserveState: true });
       return "incomplete";
     }
@@ -4087,6 +4193,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
 
     if (normalizedValues.some((value) => !value)) {
       state.completeExerciseByBlockKey[blockKey] = { ...exercise, feedback: "incomplete" };
+      focusFirstIncompleteTextGap(blockKey);
       render({ preserveState: true });
       return "incomplete";
     }
@@ -4491,6 +4598,9 @@ export function createLessonEditorApp({ root, storage, editor }) {
       ...current,
       feedback
     });
+    if (feedback === "incomplete") {
+      focusFirstIncompleteDirectoryTree(blockKey);
+    }
     render({ preserveState: true });
     return feedback;
   }
