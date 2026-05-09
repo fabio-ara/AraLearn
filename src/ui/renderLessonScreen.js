@@ -1,6 +1,11 @@
 import { renderHomeScreen, renderHomeTabs } from "./renderHomeScreen.js";
 import { readCardText } from "../core/cardRuntime.js";
-import { renderCardRuntimeBlocks, renderCardRuntimeBlocksWithDock } from "../render/renderCardRuntime.js";
+import {
+  getRuntimePopupButtonEntry,
+  renderCardRuntimeBlocks,
+  renderCardRuntimeBlocksWithDock,
+  renderPopupButtonDock
+} from "../render/renderCardRuntime.js";
 import { readLessonProgressEntry } from "../storage/progressStore.js";
 import { renderUiIcon } from "./renderUiIcons.js";
 import { isDraftMicrosequence, isRunnableMicrosequence, resolveMicrosequenceRuntimeIncluded } from "../model/microsequenceStatus.js";
@@ -788,12 +793,22 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
   const lightDependencyTags = renderLightDependencyTags(editorSupport.dependencies || []);
   const microsequenceIndex = Math.max(0, (lesson.microsequences || []).findIndex((item) => item.key === microsequence.key));
   const cardProgressPercent = lessonStudyCount ? ((lessonStudyIndex + 1) / lessonStudyCount) * 100 : 0;
+  const popupEntry = activeCard ? getRuntimePopupButtonEntry(activeCard) : null;
+  const popupBlockKey = editorSupport.continuePopup?.blockKey || `runtime-block::${popupEntry?.index ?? 0}`;
 
   const runtime = renderCardRuntimeBlocksWithDock(activeCard, {
     omitRepeatedHeading: true,
     fallbackText: bodyText,
-    ...(editorSupport.cardRuntimeOptions || {})
+    ...(editorSupport.cardRuntimeOptions || {}),
+    omitPopupButtonBlock: !!popupEntry
   });
+  const continuePopup =
+    popupEntry && editorSupport.continuePopup?.open
+      ? renderPopupButtonDock(popupEntry.block, {
+          ...(editorSupport.cardRuntimeOptions || {}),
+          blockKeyPrefix: popupBlockKey
+        })
+      : { bodyHtml: "", dockHtml: "" };
   const cardBody =
     '<article class="card-portrait-body card-portrait-sheet runtime-card-sheet">' +
     '<div class="runtime-card-title">' +
@@ -804,6 +819,18 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
     "</div>" +
     runtime.dockHtml +
     "</article>";
+  const continuePopupHtml =
+    popupEntry && editorSupport.continuePopup?.open
+      ? '<div class="study-continue-popup-shell">' +
+        '<section class="study-continue-popup">' +
+        '<div class="study-continue-popup-body">' +
+        continuePopup.bodyHtml +
+        "</div>" +
+        continuePopup.dockHtml +
+        '<div class="study-continue-popup-actions">' +
+        '<button class="open-mini study-continue-popup-btn" type="button" data-action="continue-popup-next" title="Continuar" aria-label="Continuar">&#9654;</button>' +
+        "</div></section></div>"
+      : "";
 
   const leadingPanel = lightDependencyTags
     ? '<div class="study-context-tags compact-study-tags">' + lightDependencyTags + "</div>"
@@ -850,11 +877,14 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
     cardBody +
     "</section>" +
     "</main>" +
-    '<section class="study-reader-footer"><div class="study-action-dock"><div class="study-action-stack"><div class="study-next-wrap">' +
+    '<section class="study-reader-footer"><div class="study-action-dock"><div class="study-action-stack"><div class="study-next-wrap' +
+    (continuePopupHtml ? " is-popup-open" : "") +
+    '">' +
     '<button class="icon-ghost study-comment-btn" type="button" data-action="open-card-comment" title="Anotação pessoal" aria-label="Anotação pessoal"><span class="comment-glyph" aria-hidden="true"></span></button>' +
     '<button class="open-mini study-continue-btn" type="button" data-action="next-card" ' +
     (nextDisabled ? 'disabled aria-disabled="true"' : "") +
     ' title="Continuar" aria-label="Continuar">&#9654;</button>' +
+    continuePopupHtml +
     "</div></div></div></section>" +
     "</section>"
   );
