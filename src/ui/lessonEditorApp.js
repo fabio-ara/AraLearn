@@ -2112,6 +2112,10 @@ export function createLessonEditorApp({ root, storage, editor }) {
         0,
         lessonCards.findIndex((entry) => entry.cardKey === state.selection.cardKey)
       );
+      if (delta > 0 && currentIndex >= lessonCards.length - 1) {
+        goBack();
+        return;
+      }
       openCardByIndex(currentIndex + delta);
       return;
     }

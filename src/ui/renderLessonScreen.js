@@ -787,7 +787,7 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
   const lessonStudyIndex = Math.max(0, lessonCardEntries.findIndex((entry) => entry.cardKey === selection.cardKey));
   const lessonStudyCount = lessonCardEntries.length;
   const prevDisabled = microsequenceMode === "play" ? lessonStudyIndex <= 0 : safeIndex <= 0;
-  const nextDisabled = microsequenceMode === "play" ? lessonStudyIndex >= lessonStudyCount - 1 : safeIndex >= cards.length - 1;
+  const nextDisabled = microsequenceMode === "play" ? lessonStudyCount <= 0 : safeIndex >= cards.length - 1;
 
   const bodyText = readCardText(activeCard);
   const lightDependencyTags = renderLightDependencyTags(editorSupport.dependencies || []);
