@@ -1743,6 +1743,18 @@ export function createLessonEditorApp({ root, storage, editor }) {
     render({ preserveState: true });
   }
 
+  function closeContinuePopup({ rerender = true } = {}) {
+    if (!state.continuePopup) {
+      return;
+    }
+    state.continuePopup = null;
+    state.activeFlowchartPrompt = null;
+    state.activeTextGapPrompt = null;
+    if (rerender) {
+      render({ preserveState: true });
+    }
+  }
+
   function stepCard(delta) {
     // No modo de estudo, o card só pode avançar quando os exercícios do card atual
     // estiverem completos e validados como corretos.
@@ -1858,9 +1870,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
           }
         }
 
-        state.continuePopup = null;
-        state.activeFlowchartPrompt = null;
-        state.activeTextGapPrompt = null;
+        closeContinuePopup({ rerender: false });
       }
     }
 
@@ -4974,6 +4984,27 @@ export function createLessonEditorApp({ root, storage, editor }) {
         if (!blockKey) return;
         validateChoice(blockKey);
       });
+    });
+
+    root.querySelector(".study-reader-screen")?.addEventListener("click", (event) => {
+      if (!state.continuePopup) {
+        return;
+      }
+
+      const target = event.target;
+      if (!(target instanceof Element)) {
+        return;
+      }
+
+      if (
+        target.closest(".study-continue-popup") ||
+        target.closest("[data-action='next-card']") ||
+        target.closest("[data-action='continue-popup-next']")
+      ) {
+        return;
+      }
+
+      closeContinuePopup();
     });
 
     root.querySelectorAll("[data-action='directory-tree-select-node']").forEach((node) => {
