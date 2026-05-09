@@ -1262,6 +1262,7 @@ function renderCompleteBlock(block, renderOptions = {}, blockKey = "runtime-comp
 
 function renderMultipleChoiceBlock(block, renderOptions = {}, blockKey = "runtime-choice") {
   const exercise = renderOptions.choiceExerciseStateByBlockKey?.[blockKey] || null;
+  const dockExerciseParts = Array.isArray(renderOptions.dockExerciseParts) ? renderOptions.dockExerciseParts : null;
   const options = (Array.isArray(block?.options) ? block.options : []).map((option, index) => ({
     option,
     optionId: getExerciseOptionStableId(option, index)
@@ -1273,6 +1274,7 @@ function renderMultipleChoiceBlock(block, renderOptions = {}, blockKey = "runtim
       .filter(Boolean)
   );
   const feedback = exercise?.feedback || null;
+  const feedbackHtml = renderMultipleChoiceFeedback(feedback, blockKey);
 
   const optionsHtml = displayOptions
     .map(({ option, optionId }) => {
@@ -1317,8 +1319,12 @@ function renderMultipleChoiceBlock(block, renderOptions = {}, blockKey = "runtim
     '<div class="multiple-choice-list">' +
     optionsHtml +
     "</div>" +
-    renderMultipleChoiceFeedback(feedback, blockKey) +
+    (dockExerciseParts ? "" : feedbackHtml) +
     "</section>";
+
+  if (dockExerciseParts && feedbackHtml) {
+    dockExerciseParts.push(feedbackHtml);
+  }
 
   return bodyHtml;
 }
