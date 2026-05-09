@@ -43,6 +43,13 @@ O usuário:
 - revisa o resultado;
 - decide se continua editando ou marca o material como pronto para estudo.
 
+No estado atual da UI, a assistência está distribuída em dois pontos:
+
+- a aba `Gerar`, para planejar uma escada de microssequências;
+- o painel da microssequência, para gerar ou editar cards.
+
+Essa separação reduz complexidade por tela, mas ainda fragmenta o percurso bottom-up completo.
+
 ## Escada de microssequências
 
 A aba `Gerar` usa um formato intermediário mínimo. O modelo recebe o contexto hierárquico e a dúvida do usuário, mas não gera cards.
@@ -290,6 +297,8 @@ Fluxo implementado para criar rascunhos na aba `Gerar`:
 9. cada item validado vira uma microssequência `draft`;
 10. os rascunhos são persistidos na lição selecionada.
 
+Depois disso, a interface não abre automaticamente um painel de oficina dedicado. O retorno operacional do usuário é para a árvore de cursos e para a tela da lição correspondente.
+
 Fluxo implementado para gerar ou revisar cards no painel:
 
 1. o usuário abre uma microssequência;
@@ -311,6 +320,8 @@ O fluxo preserva o contexto hierárquico:
 ```text
 Curso -> Módulo -> Lição -> Microssequência -> Cards
 ```
+
+Hoje, porém, a preservação de contexto é mais forte na camada estrutural do que na experiência de navegação. A seleção de curso, módulo e lição existe, mas a passagem entre intenção inicial, rascunho gerado e consolidação ainda depende de troca explícita de tela.
 
 ## Anexos de referência
 
@@ -443,6 +454,8 @@ A chave deve ficar apenas no ambiente da sessão.
 
 Pontos de pesquisa e engenharia:
 
+- aproximar geração, localização do rascunho e revisão sem dispersar o usuário;
+- decidir quanto de orientação top-down deve entrar no fluxo bottom-up para evitar perda de foco;
 - gerar card por card com crítica posterior quando modelos menores falharem em sequências longas;
 - usar modelos mais robustos para fluxogramas;
 - criar schema especializado para `flow`;

@@ -52,6 +52,8 @@ O usuário pode estudar, editar, importar, exportar, revisar, criar rascunhos e 
 
 Essa integração permite duas entradas complementares. Na entrada bottom-up, uma dúvida concreta gera rascunhos no contexto da lição. Na entrada top-down, materiais produzidos por pipelines externos podem entrar como cursos, módulos, lições ou microssequências em JSON.
 
+No estado público atual, essas duas entradas ainda aparecem em superfícies diferentes da interface. O fluxo bottom-up começa na aba `Gerar`, com seleção explícita de curso, módulo e lição, e só depois leva o usuário de volta à árvore de cursos para revisar o resultado. Isso preserva contexto estrutural, mas ainda exige atenção extra para não perder a continuidade entre gerar, localizar, revisar e estudar.
+
 ## Público principal
 
 O AraLearn foi pensado para apoiar estudo em condições reais:
@@ -89,10 +91,24 @@ No estado atual, o AraLearn reúne:
 - importação e exportação;
 - renderização de diferentes formatos de card;
 - aba `Gerar` para criar rascunhos de microssequências dentro da estrutura dos cursos;
+- aba `Cursos` para navegação, estudo, importação, exportação, reordenação e revisão estrutural;
 - status `draft` e `ready` para separar autoria em andamento e conteúdo executável;
+- exclusão de microssequências do runtime por `included: false`, sem removê-las da árvore;
+- painel de microssequência com `Preview`, `Edição`, versões locais e anexos temporários;
 - assistência por serviços de inteligência artificial generativa acessados por API;
 - validação automatizada do contrato público e dos exemplos.
 - publicação web por GitHub Pages e empacotamento Android com ícone próprio.
+
+## Estado atual da experiência
+
+A interface pública implementada hoje combina:
+
+- home com abas iconográficas `Gerar` e `Cursos`;
+- navegação estrutural `curso -> módulo -> lição -> microssequência`;
+- estudo apenas de microssequências `ready` incluídas;
+- edição e geração de cards em uma tela própria da microssequência.
+
+Esse desenho já permite autoria, estudo e revisão no mesmo ambiente, mas ainda apresenta uma tensão de UX importante: a entrada bottom-up começa fora da navegação da lição e a consolidação acontece dentro dela. Na prática, isso pode aumentar o risco de o usuário leigo se perder entre intenção de estudo, contexto estrutural e destino final do rascunho.
 
 ## Horizonte
 
