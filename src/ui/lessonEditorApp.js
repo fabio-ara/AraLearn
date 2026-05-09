@@ -4134,6 +4134,12 @@ export function createLessonEditorApp({ root, storage, editor }) {
     const currentValues = Array.isArray(currentExercise.values) ? currentExercise.values : [];
     const index = Number.parseInt(String(blankIndex), 10);
     const currentValue = index >= 0 ? String(currentValues[index] ?? "").trim() : "";
+    if (currentExercise.feedback) {
+      state.completeExerciseByBlockKey[blockKey] = {
+        values: currentValues.slice(),
+        feedback: null
+      };
+    }
     if (currentValue) {
       setCompleteBlank(blockKey, blankIndex, "", { rerender: false });
     }
