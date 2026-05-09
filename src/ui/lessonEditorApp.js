@@ -1984,6 +1984,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
         // Só bloqueia avanço quando há exercício e ele não está correto.
         if (result.status !== "correct") {
           if (result.status === "incomplete") {
+            notifyIncompleteExercise("Preencha todas as lacunas do fluxograma.");
             focusFirstIncompleteFlowchartTarget(entry.blockKey, projection, result.state);
           }
           render({ preserveState: true });
@@ -2052,6 +2053,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
           state.flowchartPracticeByBlockKey[entry.blockKey] = result.state;
           if (result.status !== "correct") {
             if (result.status === "incomplete") {
+              notifyIncompleteExercise("Preencha todas as lacunas do fluxograma.");
               focusFirstIncompleteFlowchartTarget(entry.blockKey, projection, result.state);
             }
             render({ preserveState: true });
@@ -2182,6 +2184,12 @@ export function createLessonEditorApp({ root, storage, editor }) {
   function notifyUser(message) {
     if (typeof globalThis.alert === "function") {
       globalThis.alert(message);
+    }
+  }
+
+  function notifyIncompleteExercise(message) {
+    if (message) {
+      notifyUser(message);
     }
   }
 
@@ -4068,6 +4076,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
 
     if (!selected.size) {
       state.choiceExerciseByBlockKey[blockKey] = { ...exercise, feedback: "incomplete" };
+      notifyIncompleteExercise("Selecione pelo menos uma resposta.");
       focusFirstIncompleteChoice(blockKey);
       render({ preserveState: true });
       return "incomplete";
@@ -4193,6 +4202,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
 
     if (normalizedValues.some((value) => !value)) {
       state.completeExerciseByBlockKey[blockKey] = { ...exercise, feedback: "incomplete" };
+      notifyIncompleteExercise("Preencha todas as lacunas.");
       focusFirstIncompleteTextGap(blockKey);
       render({ preserveState: true });
       return "incomplete";
@@ -4599,6 +4609,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
       feedback
     });
     if (feedback === "incomplete") {
+      notifyIncompleteExercise("Monte a resposta completa na árvore antes de continuar.");
       focusFirstIncompleteDirectoryTree(blockKey);
     }
     render({ preserveState: true });
@@ -4718,6 +4729,10 @@ export function createLessonEditorApp({ root, storage, editor }) {
       state.flowchartPracticeByBlockKey[blockKey]
     );
     state.flowchartPracticeByBlockKey[blockKey] = result.state;
+    if (result.status === "incomplete") {
+      notifyIncompleteExercise("Preencha todas as lacunas do fluxograma.");
+      focusFirstIncompleteFlowchartTarget(blockKey, entry.block.projection, result.state);
+    }
     render({ preserveState: true });
   }
 
