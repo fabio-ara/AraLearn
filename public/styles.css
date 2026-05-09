@@ -255,6 +255,14 @@ button {
   align-content: start;
 }
 
+.lesson-structure-screen {
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: clip;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
 .microsequence-screen {
   display: flex;
   flex-direction: column;
@@ -303,6 +311,11 @@ button {
 .microsequence-list {
   display: grid;
   gap: 8px;
+}
+
+.microsequence-list {
+  min-height: 0;
+  overflow: visible;
 }
 
 .microsequence-card {
@@ -662,6 +675,7 @@ button {
 
 .lesson-panel-card {
   gap: 12px;
+  min-height: 0;
 }
 
 .lesson-panel-head {
