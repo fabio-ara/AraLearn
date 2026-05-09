@@ -348,7 +348,7 @@ function renderTextGapFeedback(blockKey, feedback) {
   }
 
   if (feedback === "incomplete") {
-    return '<div class="inline-feedback err"><p class="tiny">Preencha todas as lacunas.</p></div>';
+    return '<div class="inline-feedback warn"><p class="tiny">Preencha todas as lacunas.</p></div>';
   }
 
   return (
@@ -1004,7 +1004,7 @@ function renderFlowchartPracticeFeedback(blockKey, feedback) {
     return '<div class="inline-feedback ok"><p class="tiny">Correto.</p></div>';
   }
   if (feedback === "incomplete") {
-    return '<div class="inline-feedback err"><p class="tiny">Preencha todas as lacunas do fluxograma.</p></div>';
+    return '<div class="inline-feedback warn"><p class="tiny">Preencha todas as lacunas do fluxograma.</p></div>';
   }
 
   return (
@@ -1225,7 +1225,7 @@ function renderMultipleChoiceFeedback(feedback, blockKey) {
   }
 
   if (feedback === "incomplete") {
-    return '<div class="inline-feedback err"><p class="tiny">Selecione pelo menos uma resposta.</p></div>';
+    return '<div class="inline-feedback warn"><p class="tiny">Selecione pelo menos uma resposta.</p></div>';
   }
 
   return (
@@ -1604,7 +1604,7 @@ function renderDirectoryTreePracticeFeedback(blockKey, feedback) {
     return '<div class="inline-feedback ok"><p class="tiny">Correto.</p></div>';
   }
   if (feedback === "incomplete") {
-    return '<div class="inline-feedback err"><p class="tiny">Monte a resposta completa na árvore antes de continuar.</p></div>';
+    return '<div class="inline-feedback warn"><p class="tiny">Monte a resposta completa na árvore antes de continuar.</p></div>';
   }
   return (
     '<div class="inline-feedback err has-actions">' +

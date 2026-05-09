@@ -2192,9 +2192,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
   }
 
   function notifyIncompleteExercise(message) {
-    if (message) {
-      notifyUser(message);
-    }
+    void message;
   }
 
   function encodeBase64Utf8(value) {
@@ -5845,8 +5843,8 @@ export function createLessonEditorApp({ root, storage, editor }) {
         const stageWidth = stage ? stage.offsetWidth : 0;
         const stageHeight = stage ? stage.offsetHeight : 0;
         if (stageWidth > 0 && stageHeight > 0) {
-          scrollNode.scrollLeft = Math.max(0, Math.round((stageWidth - scrollNode.clientWidth) / 2));
-          scrollNode.scrollTop = Math.max(0, Math.round((stageHeight - scrollNode.clientHeight) / 2));
+          scrollNode.scrollLeft = 0;
+          scrollNode.scrollTop = 0;
           scrollNode.setAttribute("data-flowchart-centered", "true");
         }
       }

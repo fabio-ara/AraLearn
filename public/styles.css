@@ -2154,6 +2154,12 @@ button {
   color: #fff1f1;
 }
 
+.inline-feedback.warn {
+  border-color: rgba(190, 156, 82, 0.86);
+  background: rgba(63, 48, 20, 0.94);
+  color: #fff0c9;
+}
+
 .inline-feedback.has-actions {
   display: flex;
   align-items: center;
@@ -2281,6 +2287,7 @@ button {
   touch-action: pan-x pan-y;
   flex: 1 1 auto;
   min-height: 0;
+  scrollbar-gutter: stable both-edges;
 }
 
 .runtime-flow-board-stage {
