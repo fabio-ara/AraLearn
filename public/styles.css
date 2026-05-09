@@ -2252,6 +2252,11 @@ button {
 .runtime-flow-block {
   display: grid;
   gap: 10px;
+  min-width: 0;
+}
+
+.runtime-flow-board-block {
+  min-width: 0;
 }
 
 .runtime-flow-board-shell {
@@ -2260,6 +2265,8 @@ button {
   gap: 8px;
   height: min(64vh, 560px);
   min-height: 340px;
+  width: 100%;
+  min-width: 0;
 }
 
 .runtime-flow-board-controls {
@@ -2275,6 +2282,8 @@ button {
 .runtime-flow-board {
   position: relative;
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
   overflow: auto;
   padding: 4px;
   border-radius: 14px;
@@ -2292,6 +2301,7 @@ button {
 
 .runtime-flow-board-stage {
   position: relative;
+  min-width: max-content;
 }
 
 .runtime-flow-board-canvas {

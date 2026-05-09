@@ -167,6 +167,7 @@ test("mantém feedback do fluxograma dentro do próprio card mesmo com dock habi
 
   assert.match(runtime.bodyHtml, /Preencha todas as lacunas do fluxograma\./);
   assert.doesNotMatch(runtime.dockHtml, /Preencha todas as lacunas do fluxograma\./);
+  assert.match(runtime.bodyHtml, /runtime-flow-board-shell[\s\S]*<\/div><div class="runtime-flow-practice-panel"[\s\S]*<div class="inline-feedback warn">/);
 });
 
 test("renderiza lacunas digitáveis do fluxograma diretamente no quadro", () => {

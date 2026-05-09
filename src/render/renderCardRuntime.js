@@ -568,8 +568,8 @@ function renderProjectedFlowchart(block, renderOptions = {}, blockKey = "flowcha
     labelsHtml +
     nodesHtml +
     "</div></div></div></div>" +
-    practicePanelHtml +
-    "</div>"
+    "</div></div>" +
+    practicePanelHtml
   );
 }
 
