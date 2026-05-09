@@ -22,7 +22,7 @@ test("o conteúdo inicial agora mantém um único curso de teste", () => {
 
   assert.equal(course.key, "course-teste-runtime");
   assert.equal(course.modules.length, 1);
-  assert.equal(course.modules[0].lessons.length, 1);
+  assert.equal(course.modules[0].lessons.length, 2);
   assert.equal(course.modules[0].lessons[0].microsequences.length, 1);
   assert.equal(course.modules[0].lessons[0].microsequences[0].cards.length, 3);
 });
@@ -57,4 +57,19 @@ test("o conteúdo inicial mantém a árvore apenas como exemplo expositivo", () 
   assert.equal(blocks.every((block) => block.practice === undefined), true);
   assert.equal(blocks[1].selectedNodeId, "node-home-aluno-publico-notas-txt");
   assert.equal(blocks[2].selectedNodeId, "node-home-aluno-downloads-pacote-zip");
+});
+
+test("o conteúdo inicial inclui uma lição de teste com todos os exercícios por opções", () => {
+  const result = validateContractDocument(createExampleProjectDocument());
+  assert.equal(result.ok, true);
+  const lesson = result.value.courses[0].modules[0].lessons[1];
+  const microsequence = lesson.microsequences[0];
+  const runtimeKinds = microsequence.cards.map((card) =>
+    resolveCardRuntime(card).blocks.filter((block) => block.kind !== "button").at(-1)?.kind
+  );
+
+  assert.equal(lesson.title, "Verificação dos exercícios com opções");
+  assert.equal(microsequence.title, "Todos os exercícios com opções");
+  assert.deepEqual(runtimeKinds, ["multiple_choice", "paragraph", "editor", "table", "flowchart"]);
+  assert.equal(microsequence.cards.every((card) => typeof card.after === "string" && card.after.length > 0), true);
 });

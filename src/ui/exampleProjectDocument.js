@@ -84,6 +84,73 @@ export function createExampleProjectDocument() {
                     ]
                   }
                 ]
+              },
+              {
+                key: "lesson-exercicios-opcoes",
+                title: "Verificação dos exercícios com opções",
+                description: "Lição de teste para validar cada tipo de exercício com feedback inline e popup final.",
+                microsequences: [
+                  {
+                    key: "microsequence-exercicios-opcoes",
+                    title: "Todos os exercícios com opções",
+                    tags: ["Teste", "Exercícios", "Opções"],
+                    status: "ready",
+                    cards: [
+                      {
+                        key: "card-teste-multipla-escolha",
+                        title: "Múltipla escolha",
+                        ask: "Qual comando lista arquivos no diretório atual?",
+                        answer: "ls",
+                        wrong: ["cd", "pwd", "mkdir"],
+                        after: "Correto! `ls` lista o conteúdo do diretório atual."
+                      },
+                      {
+                        key: "card-teste-paragrafo-opcoes",
+                        title: "Parágrafo com lacuna",
+                        say: "Para mudar de diretório no terminal, use [[cd::cd|ls|pwd]].",
+                        after: "Correto! `cd` altera o diretório atual."
+                      },
+                      {
+                        key: "card-teste-editor-opcoes",
+                        title: "Editor com lacuna",
+                        say: "Complete o comando para inspecionar o estado do repositório Git.",
+                        code: "git [[status::status|commit|clone]]",
+                        language: "bash",
+                        after: "Correto! `git status` mostra o estado atual do repositório."
+                      },
+                      {
+                        key: "card-teste-tabela-opcoes",
+                        title: "Tabela com lacuna",
+                        say: "Escolha o comando correto na célula da tabela.",
+                        table: {
+                          columns: ["Objetivo", "Comando"],
+                          rows: [
+                            ["Listar arquivos", "[[ls::ls|cd|touch]]"],
+                            ["Mostrar diretório atual", "pwd"]
+                          ]
+                        },
+                        after: "Correto! Para listar arquivos, o comando esperado era `ls`."
+                      },
+                      {
+                        key: "card-teste-fluxograma-opcoes",
+                        title: "Fluxograma com opções",
+                        say: "Preencha o fluxograma escolhendo as opções corretas.",
+                        flow: [
+                          { "start": "Início" },
+                          { "process": "Validar", "blank": { "text": ["Validar", "Executar"] } },
+                          {
+                            "if": "Está correto?",
+                            "blank": { "labels": { "yes": ["Sim", "Não"] } },
+                            "then": [{ "output": "Prosseguir" }],
+                            "else": [{ "process": "Revisar" }]
+                          },
+                          { "end": "Fim" }
+                        ],
+                        after: "Correto! O fluxo valida, segue pelo ramo `Sim` e então prossegue."
+                      }
+                    ]
+                  }
+                ]
               }
             ]
           }
