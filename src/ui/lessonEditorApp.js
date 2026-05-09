@@ -34,6 +34,8 @@ import { getExerciseOptionStableId } from "../core/exerciseOptions.js";
 import {
   createFlowchartExerciseState,
   fillFlowchartExerciseAnswer,
+  flowchartLinkUsesLabelChoiceBlank,
+  flowchartNodeUsesTextChoiceBlank,
   flowchartProjectionHasPractice,
   resetFlowchartExerciseState,
   validateFlowchartExerciseState
@@ -618,7 +620,8 @@ export function createLessonEditorApp({ root, storage, editor }) {
     structureDrop: null,
     lastCoursesView: "courses",
     pendingGeneratedNavigation: null,
-    pendingStructureFocus: null
+    pendingStructureFocus: null,
+    pendingExerciseFocus: null
   };
 
   state.selection = getFirstPath(state.project);
@@ -1755,6 +1758,114 @@ export function createLessonEditorApp({ root, storage, editor }) {
     }
   }
 
+  function queueExerciseFocus(selector, { caretToEnd = false } = {}) {
+    if (!selector) {
+      state.pendingExerciseFocus = null;
+      return;
+    }
+    state.pendingExerciseFocus = { selector, caretToEnd };
+  }
+
+  function syncPendingExerciseFocus() {
+    const target = state.pendingExerciseFocus;
+    if (!target?.selector) {
+      return;
+    }
+
+    const node = root.querySelector(target.selector);
+    if (!node || typeof node.focus !== "function") {
+      return;
+    }
+
+    state.pendingExerciseFocus = null;
+    requestAnimationFrame(() => {
+      node.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "auto" });
+      node.focus();
+      if (
+        target.caretToEnd &&
+        "value" in node &&
+        typeof node.setSelectionRange === "function"
+      ) {
+        const size = String(node.value || "").length;
+        node.setSelectionRange(size, size);
+      }
+    });
+  }
+
+  function findFirstIncompleteFlowchartTarget(projection, exerciseState) {
+    const exercise = createFlowchartExerciseState(projection, exerciseState);
+    const nodes = Array.isArray(projection?.nodes) ? projection.nodes : [];
+    const links = Array.isArray(projection?.links) ? projection.links : [];
+
+    for (const node of nodes) {
+      if (!node?.id) continue;
+
+      if (node.shapeBlank) {
+        const currentShape = String(exercise.shapes?.[node.id] || "").trim();
+        if (!currentShape) {
+          return { kind: "shape", targetId: node.id, focusMode: "prompt" };
+        }
+      }
+
+      if (node.textBlank) {
+        const currentText = String(exercise.texts?.[node.id] || "").trim();
+        if (!currentText) {
+          return {
+            kind: "text",
+            targetId: node.id,
+            focusMode: flowchartNodeUsesTextChoiceBlank(node) ? "prompt" : "input"
+          };
+        }
+      }
+    }
+
+    for (const link of links) {
+      if (!link?.id || !link.labelBlank) continue;
+      const currentLabel = String(exercise.labels?.[link.id] || "").trim();
+      if (!currentLabel) {
+        return {
+          kind: "label",
+          targetId: link.id,
+          focusMode: flowchartLinkUsesLabelChoiceBlank(link) ? "prompt" : "input"
+        };
+      }
+    }
+
+    return null;
+  }
+
+  function focusFirstIncompleteFlowchartTarget(blockKey, projection, exerciseState) {
+    const target = findFirstIncompleteFlowchartTarget(projection, exerciseState);
+    if (!target) {
+      return false;
+    }
+
+    if (target.focusMode === "prompt") {
+      state.activeFlowchartPrompt = {
+        blockKey,
+        kind: target.kind,
+        targetId: target.targetId
+      };
+      queueExerciseFocus(
+        "[data-flowchart-prompt='true'] .runtime-flow-shape-option, [data-flowchart-prompt='true'] .token-option"
+      );
+      return true;
+    }
+
+    state.activeFlowchartPrompt = null;
+    queueExerciseFocus(
+      "[data-flowchart-inline-input='true'][data-flowchart-block-key=\"" +
+        blockKey +
+        "\"][data-flowchart-choice-kind=\"" +
+        target.kind +
+        "\"][data-flowchart-target-id=\"" +
+        target.targetId +
+        "\"]",
+      { caretToEnd: true }
+    );
+    return true;
+  }
+
   function stepCard(delta) {
     // No modo de estudo, o card só pode avançar quando os exercícios do card atual
     // estiverem completos e validados como corretos.
@@ -1767,6 +1878,9 @@ export function createLessonEditorApp({ root, storage, editor }) {
         state.flowchartPracticeByBlockKey[entry.blockKey] = result.state;
         // Só bloqueia avanço quando há exercício e ele não está correto.
         if (result.status !== "correct") {
+          if (result.status === "incomplete") {
+            focusFirstIncompleteFlowchartTarget(entry.blockKey, projection, result.state);
+          }
           render({ preserveState: true });
           return;
         }
@@ -1832,6 +1946,9 @@ export function createLessonEditorApp({ root, storage, editor }) {
           const result = validateFlowchartExerciseState(projection, state.flowchartPracticeByBlockKey[entry.blockKey]);
           state.flowchartPracticeByBlockKey[entry.blockKey] = result.state;
           if (result.status !== "correct") {
+            if (result.status === "incomplete") {
+              focusFirstIncompleteFlowchartTarget(entry.blockKey, projection, result.state);
+            }
             render({ preserveState: true });
             return;
           }
@@ -4820,6 +4937,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
     }
     syncVersionTabScroller();
     syncCardStripScroller({ keepActiveCardInView: true });
+    syncPendingExerciseFocus();
 
     root.querySelector("[data-action='go-back']")?.addEventListener("click", () => goBack());
 
