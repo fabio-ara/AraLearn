@@ -1765,8 +1765,10 @@ export function createLessonEditorApp({ root, storage, editor }) {
         const exercise = state.choiceExerciseByBlockKey[entry.blockKey] || { selected: [], feedback: null };
         if (exercise.feedback !== "correct") {
           // Força feedback para impedir avanço silencioso.
-          validateChoice(entry.blockKey);
-          return;
+          const status = validateChoice(entry.blockKey);
+          if (status !== "correct") {
+            return;
+          }
         }
       }
 
@@ -1774,8 +1776,10 @@ export function createLessonEditorApp({ root, storage, editor }) {
       for (const entry of completes) {
         const exercise = state.completeExerciseByBlockKey[entry.blockKey] || { values: [], feedback: null };
         if (exercise.feedback !== "correct") {
-          validateComplete(entry.blockKey);
-          return;
+          const status = validateComplete(entry.blockKey);
+          if (status !== "correct") {
+            return;
+          }
         }
       }
 
@@ -1783,8 +1787,10 @@ export function createLessonEditorApp({ root, storage, editor }) {
       for (const entry of trees) {
         const exercise = state.directoryTreeUiByBlockKey[entry.blockKey] || { feedback: null };
         if (normalizeDirectoryTreePractice(entry.block?.practice).mode !== "none" && exercise.feedback !== "correct") {
-          validateDirectoryTree(entry.blockKey);
-          return;
+          const status = validateDirectoryTree(entry.blockKey);
+          if (status !== "correct") {
+            return;
+          }
         }
       }
 
@@ -1823,8 +1829,10 @@ export function createLessonEditorApp({ root, storage, editor }) {
         for (const entry of popupChoices) {
           const exercise = state.choiceExerciseByBlockKey[entry.blockKey] || { selected: [], feedback: null };
           if (exercise.feedback !== "correct") {
-            validateChoice(entry.blockKey);
-            return;
+            const status = validateChoice(entry.blockKey);
+            if (status !== "correct") {
+              return;
+            }
           }
         }
 
@@ -1832,8 +1840,10 @@ export function createLessonEditorApp({ root, storage, editor }) {
         for (const entry of popupCompletes) {
           const exercise = state.completeExerciseByBlockKey[entry.blockKey] || { values: [], feedback: null };
           if (exercise.feedback !== "correct") {
-            validateComplete(entry.blockKey);
-            return;
+            const status = validateComplete(entry.blockKey);
+            if (status !== "correct") {
+              return;
+            }
           }
         }
 
@@ -1841,8 +1851,10 @@ export function createLessonEditorApp({ root, storage, editor }) {
         for (const entry of popupTrees) {
           const exercise = state.directoryTreeUiByBlockKey[entry.blockKey] || { feedback: null };
           if (normalizeDirectoryTreePractice(entry.block?.practice).mode !== "none" && exercise.feedback !== "correct") {
-            validateDirectoryTree(entry.blockKey);
-            return;
+            const status = validateDirectoryTree(entry.blockKey);
+            if (status !== "correct") {
+              return;
+            }
           }
         }
 
@@ -3809,7 +3821,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
   function validateChoice(blockKey) {
     const entry = getCurrentChoiceEntry(blockKey);
     if (!entry) {
-      return;
+      return null;
     }
 
     ensureCurrentChoiceExerciseState();
@@ -3825,7 +3837,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
     if (!selected.size) {
       state.choiceExerciseByBlockKey[blockKey] = { ...exercise, feedback: "incomplete" };
       render({ preserveState: true });
-      return;
+      return "incomplete";
     }
 
     let ok = selected.size === correct.size;
@@ -3840,6 +3852,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
 
     state.choiceExerciseByBlockKey[blockKey] = { ...exercise, feedback: ok ? "correct" : "wrong" };
     render({ preserveState: true });
+    return ok ? "correct" : "wrong";
   }
 
   function setCompleteBlank(blockKey, blankIndex, value, { rerender = false } = {}) {
@@ -3928,7 +3941,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
   function validateComplete(blockKey) {
     const entry = getCurrentCompleteEntry(blockKey);
     if (!entry) {
-      return;
+      return null;
     }
 
     ensureCurrentCompleteExerciseState();
@@ -3939,7 +3952,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
     if (!answers.length) {
       state.completeExerciseByBlockKey[blockKey] = { ...exercise, feedback: "correct" };
       render({ preserveState: true });
-      return;
+      return "correct";
     }
 
     const normalizedValues = answers.map((_, idx) => String(values[idx] ?? "").trim().toLowerCase());
@@ -3948,12 +3961,13 @@ export function createLessonEditorApp({ root, storage, editor }) {
     if (normalizedValues.some((value) => !value)) {
       state.completeExerciseByBlockKey[blockKey] = { ...exercise, feedback: "incomplete" };
       render({ preserveState: true });
-      return;
+      return "incomplete";
     }
 
     const ok = normalizedValues.every((value, idx) => value === normalizedAnswers[idx]);
     state.completeExerciseByBlockKey[blockKey] = { ...exercise, feedback: ok ? "correct" : "wrong" };
     render({ preserveState: true });
+    return ok ? "correct" : "wrong";
   }
 
   function ensureCurrentFlowchartPracticeState() {
@@ -4278,7 +4292,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
   function validateDirectoryTree(blockKey) {
     const entry = getCurrentDirectoryTreeEntry(blockKey);
     if (!entry) {
-      return;
+      return null;
     }
 
     ensureCurrentDirectoryTreeState();
@@ -4286,7 +4300,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
     const current = state.directoryTreeUiByBlockKey[blockKey];
 
     if (practice.mode === "none") {
-      return;
+      return "correct";
     }
 
     let feedback = "correct";
@@ -4351,6 +4365,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
       feedback
     });
     render({ preserveState: true });
+    return feedback;
   }
 
   function ensureCurrentCardRuntimeOptions() {
