@@ -313,6 +313,7 @@ function renderTextGapBlank(blockKey, part, value, className = "runtime-text-gap
 function renderTextGapParts(parts, blockKey, values, chunkRenderer = renderMarkdownInline, blankClassName, renderOptions = {}) {
   const activePrompt = renderOptions.activeTextGapPrompt;
   const dockExerciseParts = Array.isArray(renderOptions.dockExerciseParts) ? renderOptions.dockExerciseParts : null;
+  const suppressPrompt = !!renderOptions.suppressTextGapPrompt;
   let promptRendered = false;
   return parts
     .map((part) => {
@@ -322,6 +323,7 @@ function renderTextGapParts(parts, blockKey, values, chunkRenderer = renderMarkd
 
       const value = values[part.index] ?? "";
       if (
+        !suppressPrompt &&
         !promptRendered &&
         dockExerciseParts &&
         Array.isArray(part.options) &&
@@ -348,12 +350,12 @@ function renderTextGapFeedback(blockKey, feedback) {
   }
 
   if (feedback === "incomplete") {
-    return '<div class="inline-feedback warn"><p class="tiny">Preencha todas as lacunas.</p></div>';
+    return '<div class="inline-feedback warn"><p class="tiny">Complete todas as lacunas.</p></div>';
   }
 
   return (
     '<div class="inline-feedback err has-actions">' +
-    '<p class="tiny">As respostas preenchidas não correspondem ao conjunto esperado.</p>' +
+    '<p class="tiny">Incorreto. Tente novamente.</p>' +
     '<div class="feedback-icons">' +
     '<button class="icon-pill" type="button" data-action="complete-view-answer" data-complete-block-key="' +
     escapeHtml(blockKey) +
@@ -1008,12 +1010,12 @@ function renderFlowchartPracticeFeedback(blockKey, feedback) {
     return '<div class="inline-feedback ok"><p class="tiny">Correto.</p></div>';
   }
   if (feedback === "incomplete") {
-    return '<div class="inline-feedback warn"><p class="tiny">Preencha todas as lacunas do fluxograma.</p></div>';
+    return '<div class="inline-feedback warn"><p class="tiny">Complete todas as lacunas.</p></div>';
   }
 
   return (
     '<div class="inline-feedback err has-actions">' +
-    '<p class="tiny">As respostas marcadas não correspondem ao conjunto esperado.</p>' +
+    '<p class="tiny">Incorreto. Tente novamente.</p>' +
     '<div class="feedback-icons">' +
     '<button class="icon-pill" type="button" data-action="flowchart-view-answer" data-flowchart-block-key="' +
     escapeHtml(blockKey) +
@@ -1174,6 +1176,11 @@ function renderTableBlock(block, renderOptions = {}, blockKey = "runtime-table")
   const exercise = renderOptions.textGapExerciseStateByBlockKey?.[blockKey] || renderOptions.completeExerciseStateByBlockKey?.[blockKey] || null;
   const values = Array.isArray(exercise?.values) ? exercise.values : [];
   const feedback = exercise?.feedback || null;
+  const dockExerciseParts = Array.isArray(renderOptions.dockExerciseParts) ? renderOptions.dockExerciseParts : null;
+  const feedbackHtml = renderTextGapFeedback(blockKey, feedback);
+  const bodyRenderOptions = feedbackHtml && dockExerciseParts
+    ? { ...renderOptions, suppressTextGapPrompt: true }
+    : renderOptions;
   let nextBlankIndex = 0;
   const headers = (Array.isArray(block?.headers) ? block.headers : [])
     .map((header) => "<th>" + renderMarkdownInline(header?.value || "") + "</th>")
@@ -1194,7 +1201,7 @@ function renderTableBlock(block, renderOptions = {}, blockKey = "runtime-table")
           );
           return (
             '<td><div class="runtime-table-cell-gap">' +
-            renderTextGapParts(scopedParts, blockKey, values, renderMarkdownInline, "runtime-text-gap-blank runtime-table-gap-blank", renderOptions) +
+            renderTextGapParts(scopedParts, blockKey, values, renderMarkdownInline, "runtime-text-gap-blank runtime-table-gap-blank", bodyRenderOptions) +
             "</div></td>"
           );
         })
@@ -1216,7 +1223,12 @@ function renderTableBlock(block, renderOptions = {}, blockKey = "runtime-table")
     return bodyHtml + "</div>";
   }
 
-  return bodyHtml + renderTextGapFeedback(blockKey, feedback) + "</div>";
+  if (feedbackHtml && dockExerciseParts) {
+    dockExerciseParts.push(feedbackHtml);
+    return bodyHtml + "</div>";
+  }
+
+  return bodyHtml + feedbackHtml + "</div>";
 }
 
 function renderMultipleChoiceFeedback(feedback, blockKey) {
@@ -1251,14 +1263,24 @@ function renderCompleteBlock(block, renderOptions = {}, blockKey = "runtime-comp
   const blanks = parseTextGapParts(block?.text || "");
   const values = Array.isArray(exercise?.values) ? exercise.values : [];
   const feedback = exercise?.feedback || null;
+  const dockExerciseParts = Array.isArray(renderOptions.dockExerciseParts) ? renderOptions.dockExerciseParts : null;
+  const feedbackHtml = renderTextGapFeedback(blockKey, feedback);
+  const bodyRenderOptions = feedbackHtml && dockExerciseParts
+    ? { ...renderOptions, suppressTextGapPrompt: true }
+    : renderOptions;
 
   const bodyHtml =
     '<div class="runtime-block runtime-complete-block">' +
     '<p class="runtime-complete-text">' +
-    renderTextGapParts(blanks, blockKey, values, renderMarkdownInline, "runtime-text-gap-blank runtime-complete-blank", renderOptions) +
+    renderTextGapParts(blanks, blockKey, values, renderMarkdownInline, "runtime-text-gap-blank runtime-complete-blank", bodyRenderOptions) +
     "</p>";
 
-  return bodyHtml + renderTextGapFeedback(blockKey, feedback) + "</div>";
+  if (feedbackHtml && dockExerciseParts) {
+    dockExerciseParts.push(feedbackHtml);
+    return bodyHtml + "</div>";
+  }
+
+  return bodyHtml + feedbackHtml + "</div>";
 }
 
 function renderMultipleChoiceBlock(block, renderOptions = {}, blockKey = "runtime-choice") {
@@ -1349,16 +1371,26 @@ function renderEditorTextGapBlock(block, renderOptions = {}, blockKey = "runtime
   const blanks = parseTextGapParts(block?.value || "");
   const values = Array.isArray(exercise?.values) ? exercise.values : [];
   const feedback = exercise?.feedback || null;
+  const dockExerciseParts = Array.isArray(renderOptions.dockExerciseParts) ? renderOptions.dockExerciseParts : null;
+  const feedbackHtml = renderTextGapFeedback(blockKey, feedback);
+  const bodyRenderOptions = feedbackHtml && dockExerciseParts
+    ? { ...renderOptions, suppressTextGapPrompt: true }
+    : renderOptions;
 
   const bodyHtml =
     '<div class="runtime-block runtime-code-block runtime-code-gap-block">' +
     '<pre class="runtime-code-gap"><code data-language="' +
     escapeHtml(block?.language || "text") +
     '">' +
-    renderTextGapParts(blanks, blockKey, values, escapeHtml, "runtime-text-gap-blank runtime-editor-gap-blank", renderOptions) +
+    renderTextGapParts(blanks, blockKey, values, escapeHtml, "runtime-text-gap-blank runtime-editor-gap-blank", bodyRenderOptions) +
     "</code></pre>";
 
-  return bodyHtml + renderTextGapFeedback(blockKey, feedback) + "</div>";
+  if (feedbackHtml && dockExerciseParts) {
+    dockExerciseParts.push(feedbackHtml);
+    return bodyHtml + "</div>";
+  }
+
+  return bodyHtml + feedbackHtml + "</div>";
 }
 
 function renderImageBlock(block) {
@@ -1890,6 +1922,11 @@ function renderRuntimeBlock(block, renderOptions = {}, blockKey = "runtime-block
       const exercise = renderOptions.textGapExerciseStateByBlockKey?.[blockKey] || renderOptions.completeExerciseStateByBlockKey?.[blockKey] || null;
       const values = Array.isArray(exercise?.values) ? exercise.values : [];
       const feedback = exercise?.feedback || null;
+      const dockExerciseParts = Array.isArray(renderOptions.dockExerciseParts) ? renderOptions.dockExerciseParts : null;
+      const feedbackHtml = renderTextGapFeedback(blockKey, feedback);
+      const bodyRenderOptions = feedbackHtml && dockExerciseParts
+        ? { ...renderOptions, suppressTextGapPrompt: true }
+        : renderOptions;
       const bodyHtml =
         '<div class="runtime-block runtime-paragraph-gap-block">' +
         '<p class="runtime-block runtime-paragraph runtime-text-gap-paragraph">' +
@@ -1899,10 +1936,14 @@ function renderRuntimeBlock(block, renderOptions = {}, blockKey = "runtime-block
           values,
           renderMarkdownInline,
           "runtime-text-gap-blank runtime-paragraph-gap-blank",
-          renderOptions
+          bodyRenderOptions
         ) +
         "</p>";
-      return bodyHtml + renderTextGapFeedback(blockKey, feedback) + "</div>";
+      if (feedbackHtml && dockExerciseParts) {
+        dockExerciseParts.push(feedbackHtml);
+        return bodyHtml + "</div>";
+      }
+      return bodyHtml + feedbackHtml + "</div>";
     }
     return '<p class="runtime-block runtime-paragraph">' + renderMarkdownParagraph(block.value || "") + "</p>";
   }

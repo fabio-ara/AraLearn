@@ -165,8 +165,8 @@ test("move feedback do fluxograma para o dock do card quando ele está habilitad
     }
   );
 
-  assert.doesNotMatch(runtime.bodyHtml, /Preencha todas as lacunas do fluxograma\./);
-  assert.match(runtime.dockHtml, /Preencha todas as lacunas do fluxograma\./);
+  assert.doesNotMatch(runtime.bodyHtml, /Complete todas as lacunas\./);
+  assert.match(runtime.dockHtml, /Complete todas as lacunas\./);
   assert.match(runtime.dockHtml, /runtime-flow-practice-panel/);
 });
 
@@ -555,6 +555,71 @@ test("renderiza parágrafo com lacunas textuais inline", () => {
   assert.match(html, /runtime-paragraph-gap-block/);
   assert.match(html, /runtime-paragraph-gap-blank/);
   assert.match(html, /Correto\./);
+});
+
+test("move feedback de parágrafo com lacuna para o dock do card e substitui o prompt ativo", () => {
+  const runtime = renderCardRuntimeBlocksWithDock(
+    {
+      type: "text",
+      title: "Texto",
+      runtime: {
+        title: "Texto",
+        blocks: [
+          { kind: "heading", value: "Texto" },
+          { kind: "paragraph", value: "Para mudar de diretório, use [[cd::cd|pwd|ls]]." }
+        ]
+      }
+    },
+    {
+      blockKeyPrefix: "course::module::lesson::card",
+      textGapExerciseStateByBlockKey: {
+        "course::module::lesson::card::1": {
+          values: [""],
+          feedback: "incomplete"
+        }
+      },
+      activeTextGapPrompt: {
+        blockKey: "course::module::lesson::card::1",
+        blankIndex: 0
+      }
+    }
+  );
+
+  assert.doesNotMatch(runtime.bodyHtml, /Complete todas as lacunas\./);
+  assert.match(runtime.dockHtml, /Complete todas as lacunas\./);
+  assert.doesNotMatch(runtime.dockHtml, /data-action="text-gap-set-choice"/);
+});
+
+test("mostra prompt de opções de lacuna no dock quando não há feedback pendente", () => {
+  const runtime = renderCardRuntimeBlocksWithDock(
+    {
+      type: "text",
+      title: "Texto",
+      runtime: {
+        title: "Texto",
+        blocks: [
+          { kind: "heading", value: "Texto" },
+          { kind: "paragraph", value: "Para mudar de diretório, use [[cd::cd|pwd|ls]]." }
+        ]
+      }
+    },
+    {
+      blockKeyPrefix: "course::module::lesson::card",
+      textGapExerciseStateByBlockKey: {
+        "course::module::lesson::card::1": {
+          values: [""],
+          feedback: null
+        }
+      },
+      activeTextGapPrompt: {
+        blockKey: "course::module::lesson::card::1",
+        blankIndex: 0
+      }
+    }
+  );
+
+  assert.match(runtime.dockHtml, /data-action="text-gap-set-choice"/);
+  assert.match(runtime.dockHtml, /Opções/);
 });
 
 test("renderiza markdown com destaque forte e lista não ordenada", () => {
