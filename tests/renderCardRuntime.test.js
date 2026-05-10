@@ -544,7 +544,7 @@ test("ignora botões sem popup válido e encontra o botão final correto", () =>
   });
 });
 
-test("renderiza popup final apenas com blocos de feedback seguros", () => {
+test("renderiza popup final preservando blocos interativos do runtime", () => {
   const popup = renderPopupButtonDock(
     {
       kind: "button",
@@ -575,8 +575,8 @@ test("renderiza popup final apenas com blocos de feedback seguros", () => {
   );
 
   assert.match(popup.bodyHtml, /Comentário final/);
-  assert.doesNotMatch(popup.bodyHtml, /Qual etapa garante rastreabilidade\?/);
-  assert.doesNotMatch(popup.bodyHtml, /multiple-choice-option/);
+  assert.match(popup.bodyHtml, /Qual etapa garante rastreabilidade\?/);
+  assert.match(popup.bodyHtml, /multiple-choice-option/);
   assert.equal(popup.dockHtml, "");
 });
 

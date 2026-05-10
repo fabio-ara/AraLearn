@@ -278,6 +278,79 @@ test("renderiza o painel da microssequência sem botão próprio de ações e co
   assert.doesNotMatch(html, /generator-preview-stage/);
 });
 
+test("renderiza popup final do continuar no rodapé sem vazar o bloco inline no corpo do card", () => {
+  const card = {
+    key: "card-popup",
+    title: "Card com popup",
+    type: "text",
+    runtime: {
+      title: "Card com popup",
+      blocks: [
+        { kind: "heading", value: "Card com popup" },
+        { kind: "paragraph", value: "Enunciado principal." },
+        {
+          kind: "button",
+          popupEnabled: true,
+          popupBlocks: [
+            { kind: "paragraph", value: "Comentário final" },
+            {
+              kind: "multiple_choice",
+              ask: "Qual alternativa está correta?",
+              answerState: "single",
+              options: [
+                { value: "Resposta correta", answer: true },
+                { value: "Distrator", answer: false }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  };
+  const project = readProject();
+  const course = project.courses[0];
+  const moduleValue = course.modules[0];
+  const lesson = moduleValue.lessons[0];
+  const microsequence = {
+    ...lesson.microsequences[0],
+    cards: [card]
+  };
+
+  const html = renderLessonScreen({
+    project,
+    view: "microsequence",
+    selection: {
+      courseKey: course.key,
+      moduleKey: moduleValue.key,
+      lessonKey: lesson.key,
+      microsequenceKey: microsequence.key,
+      cardKey: card.key,
+      cardIndex: 0
+    },
+    course,
+    moduleValue,
+    lesson,
+    microsequence,
+    cards: [card],
+    microsequenceMode: "play",
+    editorSupport: {
+      progress: { version: 1, lessons: {} },
+      cardRuntimeOptions: {},
+      continuePopup: {
+        open: true,
+        blockKey: "course::module::lesson::card::2"
+      }
+    }
+  });
+
+  assert.match(html, /study-next-wrap is-popup-open/);
+  assert.match(html, /study-continue-popup/);
+  assert.match(html, /data-action="continue-popup-next"/);
+  assert.match(html, /Comentário final/);
+  assert.match(html, /Qual alternativa está correta\?/);
+  assert.doesNotMatch(html, /runtime-popup-summary/);
+});
+
 test("renderiza o painel da microssequência vazia em modo de geração de cards", () => {
   const project = readProject();
   const course = project.courses[0];

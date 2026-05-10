@@ -36,80 +36,6 @@ function normalizeList(value) {
     .filter(Boolean);
 }
 
-function resolvePopupText(value) {
-  return normalizeText(value).replace(/\[\[([\s\S]*?)\]\]/g, (_, answer) => {
-    const text = normalizeText(answer);
-    const delimiterIndex = text.indexOf("::");
-    return delimiterIndex >= 0 ? text.slice(0, delimiterIndex) : text;
-  });
-}
-
-function sanitizePopupTableRows(rows) {
-  return (Array.isArray(rows) ? rows : []).map((row) =>
-    (Array.isArray(row) ? row : []).map((cell) => ({
-      ...(cell && typeof cell === "object" ? clone(cell) : {}),
-      value: resolvePopupText(cell?.value),
-      blank: false
-    }))
-  );
-}
-
-function stripFlowPracticeFromSequence(items) {
-  return (Array.isArray(items) ? items : []).map((item) => {
-    if (!item || typeof item !== "object" || Array.isArray(item)) {
-      return item;
-    }
-
-    const next = clone(item);
-    delete next.practice;
-    delete next.blank;
-    if (Array.isArray(next.then)) {
-      next.then = stripFlowPracticeFromSequence(next.then);
-    }
-    if (Array.isArray(next.else)) {
-      next.else = stripFlowPracticeFromSequence(next.else);
-    }
-    if (Array.isArray(next.do)) {
-      next.do = stripFlowPracticeFromSequence(next.do);
-    }
-    if (Array.isArray(next.cases)) {
-      next.cases = next.cases.map((entry) => ({
-        ...(entry && typeof entry === "object" ? clone(entry) : {}),
-        items: stripFlowPracticeFromSequence(entry?.items)
-      }));
-    }
-    if (Array.isArray(next.default)) {
-      next.default = stripFlowPracticeFromSequence(next.default);
-    }
-    return next;
-  });
-}
-
-function sanitizePopupProjection(projection) {
-  if (!projection || typeof projection !== "object") {
-    return projection;
-  }
-
-  const next = clone(projection);
-  next.nodes = (Array.isArray(next.nodes) ? next.nodes : []).map((node) => {
-    const clean = clone(node);
-    delete clean.shapeBlank;
-    delete clean.shapeOptions;
-    delete clean.textBlank;
-    delete clean.textOptions;
-    delete clean.textVariants;
-    return clean;
-  });
-  next.links = (Array.isArray(next.links) ? next.links : []).map((link) => {
-    const clean = clone(link);
-    delete clean.labelBlank;
-    delete clean.labelOptions;
-    delete clean.labelVariants;
-    return clean;
-  });
-  return next;
-}
-
 function sanitizePopupBlock(block) {
   if (!block || typeof block !== "object" || Array.isArray(block)) {
     return null;
@@ -119,10 +45,10 @@ function sanitizePopupBlock(block) {
     return { ...clone(block), value: normalizeText(block.value) };
   }
   if (block.kind === "paragraph") {
-    return { ...clone(block), value: resolvePopupText(block.value) };
+    return { ...clone(block), value: normalizeText(block.value) };
   }
   if (block.kind === "editor") {
-    return { ...clone(block), value: resolvePopupText(block.value) };
+    return { ...clone(block), value: normalizeText(block.value) };
   }
   if (block.kind === "table") {
     return {
@@ -130,9 +56,14 @@ function sanitizePopupBlock(block) {
       title: normalizeText(block.title),
       headers: (Array.isArray(block.headers) ? block.headers : []).map((header) => ({
         ...(header && typeof header === "object" ? clone(header) : {}),
-        value: resolvePopupText(header?.value)
+        value: normalizeText(header?.value)
       })),
-      rows: sanitizePopupTableRows(block.rows)
+      rows: (Array.isArray(block.rows) ? block.rows : []).map((row) =>
+        (Array.isArray(row) ? row : []).map((cell) => ({
+          ...(cell && typeof cell === "object" ? clone(cell) : {}),
+          value: normalizeText(cell?.value)
+        }))
+      )
     };
   }
   if (block.kind === "image") {
@@ -141,15 +72,12 @@ function sanitizePopupBlock(block) {
   if (block.kind === "flowchart") {
     return {
       ...clone(block),
-      flow: stripFlowPracticeFromSequence(block.flow),
-      projection: sanitizePopupProjection(block.projection)
+      flow: Array.isArray(block.flow) ? clone(block.flow) : block.flow,
+      projection: clone(block.projection)
     };
   }
-  if (block.kind === "complete") {
-    return {
-      kind: "paragraph",
-      value: resolvePopupText(block.text)
-    };
+  if (block.kind === "complete" || block.kind === "multiple_choice" || block.kind === "directory_tree") {
+    return clone(block);
   }
 
   return null;
