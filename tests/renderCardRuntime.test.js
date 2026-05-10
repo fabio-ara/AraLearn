@@ -120,6 +120,56 @@ test("renderiza prática interativa do fluxograma quando há lacunas", () => {
   assert.doesNotMatch(html, /data-action="flowchart-clear-choice"/);
 });
 
+test("move feedback do fluxograma para o dock do card quando ele está habilitado", () => {
+  const runtime = renderCardRuntimeBlocksWithDock(
+    {
+      type: "flow",
+      title: "Fluxo",
+      runtime: {
+        title: "Fluxo",
+        blocks: [
+          { kind: "heading", value: "Fluxo" },
+          {
+            kind: "flowchart",
+            projectionValid: true,
+            projection: {
+              nodes: [
+                {
+                  id: "decision",
+                  row: 0,
+                  column: "center",
+                  shape: "decision",
+                  text: "Resposta correta?",
+                  textBlank: true,
+                  textOptions: [{ id: "option-1", value: "Sim" }]
+                }
+              ],
+              links: []
+            }
+          }
+        ],
+        fallbackText: "Fluxo"
+      }
+    },
+    {
+      blockKeyPrefix: "course::module::lesson::card",
+      enableFlowchartPractice: true,
+      flowchartExerciseStateByBlockKey: {
+        "course::module::lesson::card::1": {
+          shapes: {},
+          texts: { decision: "" },
+          labels: {},
+          feedback: "incomplete"
+        }
+      }
+    }
+  );
+
+  assert.doesNotMatch(runtime.bodyHtml, /Complete todas as lacunas\./);
+  assert.match(runtime.dockHtml, /Complete todas as lacunas\./);
+  assert.match(runtime.dockHtml, /runtime-flow-practice-panel/);
+});
+
 test("renderiza lacunas digitáveis do fluxograma diretamente no quadro", () => {
   const html = renderCardRuntimeBlocks(
     {
@@ -505,6 +555,71 @@ test("renderiza parágrafo com lacunas textuais inline", () => {
   assert.match(html, /runtime-paragraph-gap-block/);
   assert.match(html, /runtime-paragraph-gap-blank/);
   assert.match(html, /Correto\./);
+});
+
+test("move feedback de parágrafo com lacuna para o dock do card e substitui o prompt ativo", () => {
+  const runtime = renderCardRuntimeBlocksWithDock(
+    {
+      type: "text",
+      title: "Texto",
+      runtime: {
+        title: "Texto",
+        blocks: [
+          { kind: "heading", value: "Texto" },
+          { kind: "paragraph", value: "Para mudar de diretório, use [[cd::cd|pwd|ls]]." }
+        ]
+      }
+    },
+    {
+      blockKeyPrefix: "course::module::lesson::card",
+      textGapExerciseStateByBlockKey: {
+        "course::module::lesson::card::1": {
+          values: [""],
+          feedback: "incomplete"
+        }
+      },
+      activeTextGapPrompt: {
+        blockKey: "course::module::lesson::card::1",
+        blankIndex: 0
+      }
+    }
+  );
+
+  assert.doesNotMatch(runtime.bodyHtml, /Complete todas as lacunas\./);
+  assert.match(runtime.dockHtml, /Complete todas as lacunas\./);
+  assert.doesNotMatch(runtime.dockHtml, /data-action="text-gap-set-choice"/);
+});
+
+test("mostra prompt de opções de lacuna no dock quando não há feedback pendente", () => {
+  const runtime = renderCardRuntimeBlocksWithDock(
+    {
+      type: "text",
+      title: "Texto",
+      runtime: {
+        title: "Texto",
+        blocks: [
+          { kind: "heading", value: "Texto" },
+          { kind: "paragraph", value: "Para mudar de diretório, use [[cd::cd|pwd|ls]]." }
+        ]
+      }
+    },
+    {
+      blockKeyPrefix: "course::module::lesson::card",
+      textGapExerciseStateByBlockKey: {
+        "course::module::lesson::card::1": {
+          values: [""],
+          feedback: null
+        }
+      },
+      activeTextGapPrompt: {
+        blockKey: "course::module::lesson::card::1",
+        blankIndex: 0
+      }
+    }
+  );
+
+  assert.match(runtime.dockHtml, /data-action="text-gap-set-choice"/);
+  assert.match(runtime.dockHtml, /Opções/);
 });
 
 test("renderiza markdown com destaque forte e lista não ordenada", () => {

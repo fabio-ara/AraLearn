@@ -502,3 +502,39 @@ test("renderiza a execução do card com nome do curso e faixa estável de tags"
   assert.match(html, /Diretório atual e caminhos/);
   assert.match(html, /Teste/);
 });
+
+test("mantém o botão continuar ativo no último card do modo de estudo", () => {
+  const project = readProject();
+  const course = project.courses[0];
+  const moduleValue = course.modules[0];
+  const lesson = moduleValue.lessons[1];
+  const microsequence = lesson.microsequences[0];
+  const card = microsequence.cards[4];
+  const html = renderLessonScreen({
+    project,
+    view: "microsequence",
+    selection: {
+      courseKey: course.key,
+      moduleKey: moduleValue.key,
+      lessonKey: lesson.key,
+      microsequenceKey: microsequence.key,
+      cardKey: card.key,
+      cardIndex: 4
+    },
+    course,
+    moduleValue,
+    lesson,
+    microsequence,
+    cards: microsequence.cards,
+    card,
+    microsequenceMode: "play",
+    editorSupport: {
+      progress: {},
+      dependencies: [],
+      cardRuntimeOptions: {}
+    }
+  });
+
+  assert.match(html, /data-action="next-card"/);
+  assert.doesNotMatch(html, /data-action="next-card"[^>]*disabled/);
+});

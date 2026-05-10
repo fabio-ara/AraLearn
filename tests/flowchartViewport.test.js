@@ -27,6 +27,18 @@ test("auto-fit do flowchart respeita escala preferida quando já cabe", () => {
   assert.equal(scale, 1);
 });
 
+test("auto-fit do flowchart prioriza a largura e não reduz só por causa da altura", () => {
+  const scale = computeFlowchartAutoFitScale({
+    viewportWidth: 900,
+    viewportHeight: 320,
+    baseWidth: 600,
+    baseHeight: 1200,
+    preferredScale: 1
+  });
+
+  assert.equal(scale, 1);
+});
+
 test("auto-fit do flowchart respeita limites mínimos e máximos", () => {
   assert.equal(
     computeFlowchartAutoFitScale({

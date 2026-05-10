@@ -1526,14 +1526,15 @@ button {
 }
 
 .card-answer-dock {
-  position: sticky;
-  bottom: 0;
   z-index: 12;
+  flex: 0 0 auto;
+  max-height: min(30vh, 220px);
+  overflow: auto;
   padding-top: 10px;
-  padding-bottom: 10px;
+  padding-bottom: 4px;
   border-top: 1px solid rgba(92, 75, 55, 0.5);
   background:
-    linear-gradient(180deg, rgba(10, 9, 8, 0.0), rgba(10, 9, 8, 0.82) 30%, rgba(10, 9, 8, 0.92));
+    linear-gradient(180deg, rgba(18, 14, 11, 0.98), rgba(12, 10, 8, 0.98));
   display: grid;
   gap: 10px;
 }
@@ -1926,7 +1927,7 @@ button {
 .runtime-table-title {
   color: #f1d39a;
   font-family: var(--font-display);
-  font-size: 0.8rem;
+  font-size: 0.94rem;
   font-weight: 700;
   line-height: var(--leading-snug);
   letter-spacing: 0.08em;
@@ -2154,6 +2155,12 @@ button {
   color: #fff1f1;
 }
 
+.inline-feedback.warn {
+  border-color: rgba(190, 156, 82, 0.86);
+  background: rgba(63, 48, 20, 0.94);
+  color: #fff0c9;
+}
+
 .inline-feedback.has-actions {
   display: flex;
   align-items: center;
@@ -2169,6 +2176,8 @@ button {
 }
 
 .runtime-table-wrap {
+  display: flex;
+  justify-content: center;
   overflow: auto;
   padding-bottom: 4px;
 }
@@ -2199,7 +2208,7 @@ button {
   border-right: 1px solid rgba(116, 91, 61, 0.82);
   border-bottom: 1px solid rgba(116, 91, 61, 0.82);
   padding: 11px 12px;
-  text-align: left;
+  text-align: center;
   vertical-align: middle;
   overflow-wrap: normal;
   word-break: normal;
@@ -2224,7 +2233,7 @@ button {
     radial-gradient(circle at top, rgba(228, 186, 104, 0.08), transparent 62%);
   color: #fff1d8;
   font-family: var(--font-display);
-  font-size: 0.82rem;
+  font-size: 0.94rem;
   font-weight: 700;
   line-height: var(--leading-snug);
   letter-spacing: 0.08em;
@@ -2244,14 +2253,21 @@ button {
 .runtime-flow-block {
   display: grid;
   gap: 10px;
+  min-width: 0;
+}
+
+.runtime-flow-board-block {
+  min-width: 0;
 }
 
 .runtime-flow-board-shell {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  height: min(64vh, 560px);
-  min-height: 340px;
+  height: min(46vh, 420px);
+  min-height: 240px;
+  width: 100%;
+  min-width: 0;
 }
 
 .runtime-flow-board-controls {
@@ -2267,6 +2283,8 @@ button {
 .runtime-flow-board {
   position: relative;
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
   overflow: auto;
   padding: 4px;
   border-radius: 14px;
@@ -2279,10 +2297,12 @@ button {
   touch-action: pan-x pan-y;
   flex: 1 1 auto;
   min-height: 0;
+  scrollbar-gutter: stable both-edges;
 }
 
 .runtime-flow-board-stage {
   position: relative;
+  min-width: max-content;
 }
 
 .runtime-flow-board-canvas {
