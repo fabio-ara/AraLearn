@@ -50,7 +50,7 @@ A aplicação aproxima três atividades que normalmente ficam separadas:
 
 O usuário pode estudar, editar, importar, exportar, revisar, criar rascunhos e reorganizar material dentro do mesmo ambiente.
 
-Essa integração permite duas entradas complementares. Na entrada bottom-up, uma dúvida concreta gera rascunhos no contexto da lição. Na entrada top-down, materiais produzidos por pipelines externos podem entrar como cursos, módulos, lições ou microssequências em JSON.
+Essa integração permite duas entradas complementares. Na entrada bottom-up, uma dúvida concreta gera rascunhos no contexto da lição. Na entrada top-down, materiais produzidos por processos externos podem entrar como cursos, módulos, lições ou microssequências em JSON.
 
 No estado público atual, essas duas entradas ainda aparecem em superfícies diferentes da interface. O fluxo bottom-up começa na aba `Gerar`, com seleção explícita de curso, módulo e lição, e só depois leva o usuário de volta à árvore de cursos para revisar o resultado. Isso preserva contexto estrutural, mas ainda exige atenção extra para não perder a continuidade entre gerar, localizar, revisar e estudar.
 
@@ -93,7 +93,7 @@ No estado atual, o AraLearn reúne:
 - aba `Gerar` para criar rascunhos de microssequências dentro da estrutura dos cursos;
 - aba `Cursos` para navegação, estudo, importação, exportação, reordenação e revisão estrutural;
 - status `draft` e `ready` para separar autoria em andamento e conteúdo executável;
-- exclusão de microssequências do runtime por `included: false`, sem removê-las da árvore;
+- exclusão de microssequências do estudo por `included: false`, sem removê-las da árvore;
 - painel de microssequência com `Preview`, `Edição`, versões locais e anexos temporários;
 - assistência por serviços de inteligência artificial generativa acessados por API;
 - validação automatizada do contrato público e dos exemplos.

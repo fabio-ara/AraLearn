@@ -87,12 +87,12 @@ Regras da aplicação:
 
 Cada item validado vira uma microssequência `draft` dentro da lição escolhida. A escada não vira entidade persistente separada.
 
-## Camada modular de microssequência
+## Estrutura de geração da microssequência
 
-A geração e a edição de cards usam uma camada interna em `src/generation/`. Essa camada separa:
+A geração e a edição de cards usam uma estrutura dedicada em `src/generation/`. Essa estrutura separa:
 
 - tipos didáticos neutros;
-- tamanhos internos de microssequência;
+- tamanhos de microssequência usados na geração;
 - catálogo de recursos de card;
 - referências de assuntos selecionados no escopo da lição;
 - anexos e fontes resolvidos para a operação;
@@ -103,7 +103,7 @@ A geração e a edição de cards usam uma camada interna em `src/generation/`. 
 
 Os tipos didáticos iniciais são `Assistido`, `Simples`, `Explicar uma ideia`, `Passo a passo`, `Prática guiada`, `Comparar`, `Revisão rápida`, `Erro comum`, `Regra/procedimento` e `Código/comando`. O tipo `Assistido` delega a escolha efetiva à etapa de planejamento.
 
-Os tamanhos internos são:
+Os tamanhos usados na geração são:
 
 - `short`: 3 cards;
 - `medium`: 5 cards;
@@ -117,7 +117,7 @@ O pipeline usa reparos explícitos em dois pontos diferentes.
 
 No planejamento, o modelo devolve tipo didático, tamanho, objetivo, recursos extras e `cardPlan`. A aplicação valida esse plano com o contrato de planejamento. Quando o plano viola tipo fixado, tamanho, quantidade de cards, recursos permitidos ou preservação de escolhas do usuário, a aplicação faz uma chamada curta de reparo de plano. O reparo não muda a finalidade da etapa: ele apenas tenta produzir um plano válido para o contrato já montado.
 
-Na geração final, o modelo devolve os cards internos. A aplicação valida a resposta com `validateGeneratedCards` antes de qualquer adaptação para o contrato público. Quando a estrutura falha, a aplicação faz uma chamada de reparo estrutural dos cards. Esse reparo recebe:
+Na geração final, o modelo devolve os cards no formato intermediário. A aplicação valida a resposta com `validateGeneratedCards` antes de qualquer adaptação para o contrato público. Quando a estrutura falha, a aplicação faz uma chamada de reparo estrutural dos cards. Esse reparo recebe:
 
 - resposta inválida original;
 - erros de validação;
@@ -186,9 +186,9 @@ Erros operacionais retornam dados padronizados para a camada chamadora:
 
 Em alta demanda do provedor, o comportamento esperado é tentar novamente com backoff. Se as tentativas acabarem durante a geração, o plano validado fica preservado para retomada. Se houver fallback configurado para essa categoria, a aplicação pode usar o modelo leve sem reconstruir o plano.
 
-## Assuntos do Escopo da Lição
+## Assuntos do escopo da lição
 
-Na geração e na edição, a seleção compacta de assuntos da UI é enviada internamente como `selectedLessonTopicRefs`.
+Na geração e na edição, a seleção compacta de assuntos da UI é enviada à operação como `selectedLessonTopicRefs`.
 
 Essas referências são contexto operacional. Elas costumam vir de títulos, tags ou assuntos de microssequências já existentes no escopo da lição atual. Elas não são um novo nível da árvore e não são persistidas automaticamente como tags próprias da microssequência gerada ou editada.
 
@@ -208,9 +208,9 @@ Formato conceitual:
 
 A hierarquia principal continua sendo `Curso -> Módulo -> Lição -> Microssequência -> Card`. `selectedLessonTopicRefs` apenas reduz ambiguidade, orienta terminologia e ajuda a etapa de planejamento a escolher tipo, extensão e recursos.
 
-## Recursos internos
+## Recursos usados na geração
 
-O catálogo interno de recursos inclui:
+O catálogo de recursos usado na geração inclui:
 
 - `paragraph`;
 - `multiple_choice`;
@@ -220,7 +220,7 @@ O catálogo interno de recursos inclui:
 - `tree`;
 - `block_gap_fill`.
 
-Cada recurso possui descrição, limites e schema próprio. O recurso `block_gap_fill` é um alias interno para o recurso público já existente de parágrafo com lacunas por opções, persistido como `say` com sintaxe `[[resposta::opção|opção]]`. Ele não cria tipo público novo. Seu comentário posterior usa `feedbackAfter`, preservado como `after` no card público; não há popup público específico por acerto ou erro nesse alias.
+Cada recurso possui descrição, limites e schema próprio. O recurso `block_gap_fill` é um alias de geração para o recurso público já existente de parágrafo com lacunas por opções, persistido como `say` com sintaxe `[[resposta::opção|opção]]`. Ele não cria tipo público novo. Seu comentário posterior usa `feedbackAfter`, preservado como `after` no card público; não há popup público específico por acerto ou erro nesse alias.
 
 Mapeamento principal:
 
@@ -234,7 +234,7 @@ tree            -> tree
 block_gap_fill  -> say com lacunas por opções
 ```
 
-O adaptador explícito valida esse mapeamento antes do salvamento. Recursos sem caminho público/runtime são rejeitados.
+O adaptador explícito valida esse mapeamento antes do salvamento. Recursos sem caminho público de estudo são rejeitados.
 
 Os recursos efetivos de geração são calculados por:
 
@@ -312,7 +312,7 @@ Fluxo implementado para gerar ou revisar cards no painel:
 9. o modelo faz a segunda chamada e devolve os cards;
 10. a aplicação valida quantidade, posições, recursos, schemas e campos obrigatórios;
 11. se a validação falhar, a aplicação tenta um reparo estrutural dos cards e valida novamente;
-12. somente cards internos válidos são convertidos para o contrato público;
+12. somente cards válidos no formato intermediário são convertidos para o contrato público;
 13. a microssequência recebe nova versão ou cards aplicados.
 
 O fluxo preserva o contexto hierárquico:
@@ -412,7 +412,7 @@ O usuário pode pedir:
 - ajuste de alternativas;
 - revisão de densidade textual.
 
-A camada interna já possui contratos para planejar edição e aplicar edição em duas chamadas. O contrato de aplicação recebe a versão atual completa, recursos efetivos, selectedLessonTopicRefs, fontes resolvidas e versões anteriores quando o plano validado solicitar. A integração visual completa desse fluxo segue a regra de versionamento existente do painel.
+A estrutura de edição já possui contratos para planejar edição e aplicar edição em duas chamadas. O contrato de aplicação recebe a versão atual completa, recursos efetivos, selectedLessonTopicRefs, fontes resolvidas e versões anteriores quando o plano validado solicitar. A integração visual completa desse fluxo segue a regra de versionamento existente do painel.
 
 ## Reposicionamento assistido
 

@@ -21,7 +21,7 @@ Microssequências podem estar em dois estados:
 - `draft`: rascunho em construção, visível na estrutura do curso, mas fora da execução;
 - `ready`: microssequência pronta para estudo no runtime.
 
-Na implementação atual, essa separação didática também organiza a navegação: o rascunho abre o painel de curadoria, enquanto a microssequência `ready` abre o runtime de estudo.
+Na implementação atual, essa separação didática também organiza a navegação: o rascunho abre o painel de curadoria, enquanto a microssequência `ready` abre o modo de estudo.
 
 ## Papel dos cards
 

@@ -68,7 +68,7 @@ O AraLearn combina dois movimentos complementares.
 
 Na geração bottom-up, o usuário parte de uma dúvida concreta dentro de uma lição. A aplicação pede ao serviço de IA generativa uma pequena escada de microssequências. Cada item nasce como rascunho no lugar correto do curso, para posterior curadoria.
 
-Na produção top-down, cursos ou partes de cursos podem ser preparados por pipelines externos e importados no formato JSON especificado. Esse modo é adequado para estudo sistemático de disciplinas acadêmicas: um material amplo pode ser convertido em cursos, módulos, lições e microssequências antes de chegar à interface.
+Na produção top-down, cursos ou partes de cursos podem ser preparados por processos externos e importados no formato JSON especificado. Esse modo é adequado para estudo sistemático de disciplinas acadêmicas: um material amplo pode ser convertido em cursos, módulos, lições e microssequências antes de chegar à interface.
 
 Desde que obedeçam ao contrato `aralearn.contract`, podem ser importados:
 
