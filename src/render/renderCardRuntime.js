@@ -1205,11 +1205,11 @@ function renderTableBlock(block, renderOptions = {}, blockKey = "runtime-table")
   const bodyHtml =
     '<div class="runtime-block runtime-table-block">' +
     (title ? '<div class="runtime-table-title">' + renderMarkdownInline(title) + "</div>" : "") +
-    '<div class="runtime-table-wrap"><table class="runtime-table">' +
+    '<div class="runtime-table-wrap"><div class="runtime-table-frame"><table class="runtime-table">' +
     (headers ? "<thead><tr>" + headers + "</tr></thead>" : "") +
     "<tbody>" +
     rows +
-    "</tbody></table></div>";
+    "</tbody></table></div></div>";
 
   if (!usesTextGap) {
     return bodyHtml + "</div>";
@@ -1262,14 +1262,22 @@ function renderCompleteBlock(block, renderOptions = {}, blockKey = "runtime-comp
 
 function renderMultipleChoiceBlock(block, renderOptions = {}, blockKey = "runtime-choice") {
   const exercise = renderOptions.choiceExerciseStateByBlockKey?.[blockKey] || null;
-  const options = Array.isArray(block?.options) ? block.options : [];
+  const dockExerciseParts = Array.isArray(renderOptions.dockExerciseParts) ? renderOptions.dockExerciseParts : null;
+  const options = (Array.isArray(block?.options) ? block.options : []).map((option, index) => ({
+    option,
+    optionId: getExerciseOptionStableId(option, index)
+  }));
   const displayOptions = shuffleExerciseOptions(options, buildExerciseShuffleSeed(renderOptions, `choice::${blockKey}`));
-  const selected = normalizeChoiceSelectionIds(options, exercise?.selected);
+  const selected = new Set(
+    (Array.isArray(exercise?.selected) ? exercise.selected : [])
+      .map((item) => String(item || "").trim())
+      .filter(Boolean)
+  );
   const feedback = exercise?.feedback || null;
+  const feedbackHtml = renderMultipleChoiceFeedback(feedback, blockKey);
 
   const optionsHtml = displayOptions
-    .map((option, index) => {
-      const optionId = getExerciseOptionStableId(option, index);
+    .map(({ option, optionId }) => {
       const isSelected = selected.has(optionId);
       const stateClass =
         isSelected && feedback === "wrong"
@@ -1311,8 +1319,12 @@ function renderMultipleChoiceBlock(block, renderOptions = {}, blockKey = "runtim
     '<div class="multiple-choice-list">' +
     optionsHtml +
     "</div>" +
-    renderMultipleChoiceFeedback(feedback, blockKey) +
+    (dockExerciseParts ? "" : feedbackHtml) +
     "</section>";
+
+  if (dockExerciseParts && feedbackHtml) {
+    dockExerciseParts.push(feedbackHtml);
+  }
 
   return bodyHtml;
 }

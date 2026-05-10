@@ -1,4 +1,4 @@
-export const EXAMPLE_SEED_VERSION = "contract-semantic-tree-v1";
+export const EXAMPLE_SEED_VERSION = "contract-semantic-tree-v2";
 export const EXAMPLE_SEED_KEY = "aralearn.example-seed.version";
 
 export function shouldHydrateExampleSeed({

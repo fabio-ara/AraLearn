@@ -230,6 +230,81 @@ test("renderiza múltipla escolha com seleção e validação", () => {
   assert.match(html, /Correto\./);
 });
 
+test("move feedback da múltipla escolha para o fim do card quando há dock", () => {
+  const runtime = renderCardRuntimeBlocksWithDock(
+    {
+      type: "choice",
+      title: "Leitura",
+      runtime: {
+        title: "Leitura",
+        blocks: [
+          { kind: "heading", value: "Leitura" },
+          {
+            kind: "multiple_choice",
+            ask: "Escolha uma alternativa",
+            answerState: "single",
+            options: [
+              { value: "A", answer: true },
+              { value: "B", answer: false }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      blockKeyPrefix: "course::module::lesson::card",
+      exerciseShuffleSeed: "card-load-1",
+      choiceExerciseStateByBlockKey: {
+        "course::module::lesson::card::1": {
+          selected: ["exercise-option-0"],
+          feedback: "correct"
+        }
+      }
+    }
+  );
+
+  assert.doesNotMatch(runtime.bodyHtml, /Correto\./);
+  assert.match(runtime.dockHtml, /Correto\./);
+  assert.match(runtime.dockHtml, /card-answer-dock/);
+});
+
+test("preserva ids originais da múltipla escolha mesmo com embaralhamento visual", () => {
+  const html = renderCardRuntimeBlocks(
+    {
+      type: "choice",
+      title: "Leitura",
+      runtime: {
+        title: "Leitura",
+        blocks: [
+          { kind: "heading", value: "Leitura" },
+          {
+            kind: "multiple_choice",
+            ask: "Escolha a alternativa correta",
+            answerState: "single",
+            options: [
+              { value: "A", answer: false },
+              { value: "B", answer: false },
+              { value: "C", answer: true }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      blockKeyPrefix: "course::module::lesson::card",
+      exerciseShuffleSeed: "popup-seed-1",
+      choiceExerciseStateByBlockKey: {
+        "course::module::lesson::card::1": {
+          selected: ["exercise-option-2"],
+          feedback: "correct"
+        }
+      }
+    }
+  );
+
+  assert.match(html, /data-choice-option-id="exercise-option-2"[\s\S]*?multiple-choice-mark">[\s\S]*?&#10003;/);
+});
+
 test("renderiza complete transformando [[...]] em input", () => {
   const html = renderCardRuntimeBlocks(
     {
@@ -358,6 +433,7 @@ test("renderiza tabela com lacunas textuais por célula", () => {
 
   assert.match(html, /runtime-table-cell-gap/);
   assert.match(html, /runtime-table-gap-blank/);
+  assert.match(html, /runtime-table-frame/);
   assert.doesNotMatch(html, /data-action="complete-validate"/);
 });
 
@@ -577,7 +653,8 @@ test("renderiza popup final preservando blocos interativos do runtime", () => {
   assert.match(popup.bodyHtml, /Comentário final/);
   assert.match(popup.bodyHtml, /Qual etapa garante rastreabilidade\?/);
   assert.match(popup.bodyHtml, /multiple-choice-option/);
-  assert.equal(popup.dockHtml, "");
+  assert.match(popup.dockHtml, /Correto\./);
+  assert.match(popup.dockHtml, /popup-answer-dock/);
 });
 
 test("renderiza árvore de diretórios com destaque do diretório atual", () => {

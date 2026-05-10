@@ -46,7 +46,7 @@ test("renderiza a tela de curso com ações globais e menus contextuais por mód
   assert.match(html, /data-action="structure-drag-handle" data-structure-level="lesson"/);
   assert.match(html, /data-action="open-module-actions"/);
   assert.match(html, /data-action="open-lesson-actions"/);
-  assert.match(html, /aria-label="1 lição" title="1 lição"/);
+  assert.match(html, /aria-label="2 lições" title="2 lições"/);
   assert.match(html, /aria-label="1 microssequência" title="1 microssequência"/);
   assert.match(html, /progress-meta-item-icon/);
 });

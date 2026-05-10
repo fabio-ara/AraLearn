@@ -332,6 +332,7 @@ test("excluir lição intermediária preserva a estrutura restante válida", () 
   const baseDocument = readNormalizedProject("./docs/examples/aralearn-contract.renderable.json");
   const courseKey = baseDocument.courses[0].key;
   const moduleKey = baseDocument.courses[0].modules[0].key;
+  const baseLessonCount = baseDocument.courses[0].modules[0].lessons.length;
   const withExtraLesson = importLessons(baseDocument, {
     courseKey,
     moduleKey,
@@ -350,13 +351,18 @@ test("excluir lição intermediária preserva a estrutura restante válida", () 
     lessonKey: targetLessonKey
   });
 
-  assert.equal(nextDocument.courses[0].modules[0].lessons.length, 1);
+  assert.equal(nextDocument.courses[0].modules[0].lessons.length, baseLessonCount * 2 - 1);
   assert.notEqual(nextDocument.courses[0].modules[0].lessons[0].key, targetLessonKey);
 });
 
 test("importa módulo, lição e microssequência em níveis distintos e exporta recortes equivalentes", () => {
   const baseDocument = readNormalizedProject("./docs/examples/aralearn-contract.renderable.json");
   const importedCourse = structuredClone(baseDocument.courses[0]);
+  const baseLessonCount = baseDocument.courses[0].modules[0].lessons.length;
+  const importedMicrosequenceCount = importedCourse.modules[0].lessons.reduce(
+    (total, lesson) => total + (lesson.microsequences || []).length,
+    0
+  );
 
   const withImportedModule = importModules(baseDocument, {
     courseKey: baseDocument.courses[0].key,
@@ -379,7 +385,7 @@ test("importa módulo, lição e microssequência em níveis distintos e exporta
       courses: [importedCourse]
     }
   });
-  assert.equal(withImportedLesson.courses[0].modules[0].lessons.length, 2);
+  assert.equal(withImportedLesson.courses[0].modules[0].lessons.length, baseLessonCount * 2);
 
   const withImportedMicrosequence = importMicrosequences(baseDocument, {
     courseKey: baseDocument.courses[0].key,
@@ -392,7 +398,10 @@ test("importa módulo, lição e microssequência em níveis distintos e exporta
       courses: [importedCourse]
     }
   });
-  assert.equal(withImportedMicrosequence.courses[0].modules[0].lessons[0].microsequences.length, 2);
+  assert.equal(
+    withImportedMicrosequence.courses[0].modules[0].lessons[0].microsequences.length,
+    (baseDocument.courses[0].modules[0].lessons[0].microsequences || []).length + importedMicrosequenceCount
+  );
 
   const exportedModule = exportModuleDocument(baseDocument, {
     courseKey: baseDocument.courses[0].key,

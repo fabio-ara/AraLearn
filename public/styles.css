@@ -255,6 +255,14 @@ button {
   align-content: start;
 }
 
+.lesson-structure-screen {
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: clip;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
 .microsequence-screen {
   display: flex;
   flex-direction: column;
@@ -303,6 +311,11 @@ button {
 .microsequence-list {
   display: grid;
   gap: 8px;
+}
+
+.microsequence-list {
+  min-height: 0;
+  overflow: visible;
 }
 
 .microsequence-card {
@@ -662,6 +675,7 @@ button {
 
 .lesson-panel-card {
   gap: 12px;
+  min-height: 0;
 }
 
 .lesson-panel-head {
@@ -1910,10 +1924,14 @@ button {
 }
 
 .runtime-table-title {
-  color: #e3c789;
-  font-size: 0.78rem;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  color: #f1d39a;
+  font-family: var(--font-display);
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: var(--leading-snug);
+  letter-spacing: 0.08em;
+  font-variant-caps: all-small-caps;
+  text-transform: lowercase;
   margin-bottom: 0;
 }
 
@@ -2152,35 +2170,75 @@ button {
 
 .runtime-table-wrap {
   overflow: auto;
+  padding-bottom: 4px;
+}
+
+.runtime-table-frame {
+  display: inline-block;
+  border: 1px solid rgba(130, 101, 63, 0.82);
+  border-radius: 14px;
+  overflow: hidden;
+  background:
+    linear-gradient(180deg, rgba(42, 32, 23, 0.98), rgba(24, 18, 13, 0.99)),
+    radial-gradient(circle at top left, rgba(228, 186, 104, 0.08), transparent 56%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 240, 217, 0.04),
+    0 10px 18px rgba(0, 0, 0, 0.16);
 }
 
 .runtime-table {
-  width: 100%;
-  border-collapse: collapse;
-  min-width: 420px;
+  width: auto;
+  min-width: max-content;
+  border-collapse: separate;
+  border-spacing: 0;
   table-layout: auto;
 }
 
 .runtime-table th,
 .runtime-table td {
-  border: 1px solid rgba(101, 79, 55, 0.68);
-  padding: 8px 10px;
+  border-right: 1px solid rgba(116, 91, 61, 0.82);
+  border-bottom: 1px solid rgba(116, 91, 61, 0.82);
+  padding: 11px 12px;
   text-align: left;
-  vertical-align: top;
+  vertical-align: middle;
   overflow-wrap: normal;
   word-break: normal;
+  white-space: nowrap;
+  font-size: 0.9rem;
+  line-height: 1.42;
+  background: rgba(29, 22, 16, 0.92);
+}
+
+.runtime-table th:last-child,
+.runtime-table td:last-child {
+  border-right: 0;
+}
+
+.runtime-table tbody tr:last-child td {
+  border-bottom: 0;
 }
 
 .runtime-table th {
-  background: rgba(255, 240, 217, 0.06);
-  color: #f5e6cb;
-  white-space: nowrap;
+  background:
+    linear-gradient(180deg, rgba(58, 44, 31, 0.98), rgba(47, 35, 24, 0.98)),
+    radial-gradient(circle at top, rgba(228, 186, 104, 0.08), transparent 62%);
+  color: #fff1d8;
+  font-family: var(--font-display);
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: var(--leading-snug);
+  letter-spacing: 0.08em;
+  font-variant-caps: all-small-caps;
+  text-transform: lowercase;
 }
 
-.runtime-table th:first-child,
-.runtime-table td:first-child {
-  min-width: 86px;
-  white-space: nowrap;
+.runtime-table tbody tr:nth-child(even) td {
+  background: rgba(24, 18, 13, 0.94);
+}
+
+.runtime-table-cell-gap {
+  font-size: 0.9rem;
+  line-height: 1.42;
 }
 
 .runtime-flow-block {
@@ -2738,6 +2796,11 @@ button {
 .study-continue-popup-btn {
   position: relative;
   z-index: 1;
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  min-height: 48px;
+  border-radius: 14px;
 }
 
 .block-fixed-button .study-next-wrap,
