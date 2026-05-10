@@ -6,12 +6,12 @@ Ele registra a implementação pública atual. A documentação não assume aind
 
 ## Função dos rascunhos
 
-Rascunhos permitem transformar uma dúvida do usuário em unidades de autoria sem inserir material incompleto no runtime de estudo.
+Rascunhos permitem transformar uma dúvida do usuário em unidades de autoria sem inserir material incompleto no modo de estudo.
 
 A microssequência continua sendo a unidade mínima de autoria e estudo. Ela nasce dentro de uma lição e pode ficar em dois estados:
 
 - `draft`: rascunho visível na estrutura do curso, mas fora da execução;
-- `ready`: microssequência pronta para entrar no runtime de cards.
+- `ready`: microssequência pronta para entrar no modo de estudo por cards.
 - `included: false`: microssequência visível, mas removida da execução do curso.
 
 ## Aba Gerar
@@ -70,7 +70,7 @@ Ao abrir uma microssequência `draft`, o painel pode gerar cards usando o títul
 
 ## Execução
 
-O runtime de estudo ignora rascunhos.
+O modo de estudo ignora rascunhos.
 
 Regras:
 

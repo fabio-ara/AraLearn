@@ -223,7 +223,7 @@ Quando uma chave não é enviada, o validador gera uma chave estável a partir d
 Recomendação prática:
 
 - para edição manual simples, pode omitir `key`;
-- para geração por modelo ou pipeline externo, prefira enviar `key`.
+- para geração por modelo ou processo externo, prefira enviar `key`.
 
 ## Cards e intenções didáticas
 
