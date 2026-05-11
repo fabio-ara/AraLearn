@@ -73,6 +73,14 @@ test("valida preenchimento e resposta correta do fluxograma", () => {
   });
   assert.equal(incorrect.status, "incorrect");
 
+  const incompleteWins = validateFlowchartExerciseState(projection, {
+    ...initial,
+    shapes: { "decision-1": "process" },
+    texts: { "decision-1": "" },
+    labels: { "link-yes": "" }
+  });
+  assert.equal(incompleteWins.status, "incomplete");
+
   const answered = fillFlowchartExerciseAnswer(projection, initial);
   const correct = validateFlowchartExerciseState(projection, answered);
   assert.equal(correct.status, "correct");

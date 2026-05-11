@@ -15,6 +15,11 @@ import {
   normalizeMicrosequenceRuntimeIncluded,
   normalizeMicrosequenceStatus
 } from "../model/microsequenceStatus.js";
+import {
+  buildSourceGuideText,
+  normalizeSourceGuideStructured,
+  SOURCE_GUIDE_LEVELS
+} from "../sourceGuides/sourceGuideStructured.js";
 
 function clone(value) {
   return structuredClone(value);
@@ -69,6 +74,34 @@ function assignOptionalTextField(record, fieldName, value) {
     record[fieldName] = nextValue;
   } else {
     delete record[fieldName];
+  }
+}
+
+function assignOptionalSourceGuide(record, sourceGuide, sourceGuideStructured, level) {
+  if (sourceGuide === undefined && sourceGuideStructured === undefined) {
+    return;
+  }
+
+  if (sourceGuideStructured === undefined) {
+    assignOptionalTextField(record, "sourceGuide", sourceGuide);
+    delete record.sourceGuideStructured;
+    return;
+  }
+
+  const normalizedText = sourceGuide === undefined ? "" : sourceGuide;
+  const structured = normalizeSourceGuideStructured(sourceGuideStructured, { level });
+  const nextText = buildSourceGuideText(structured, normalizedText, { level });
+
+  if (nextText) {
+    record.sourceGuide = nextText;
+  } else {
+    delete record.sourceGuide;
+  }
+
+  if (Object.keys(structured).length) {
+    record.sourceGuideStructured = structured;
+  } else {
+    delete record.sourceGuideStructured;
   }
 }
 
@@ -236,31 +269,37 @@ function createStarterMicrosequence({ title = "Nova microssequência" } = {}) {
   };
 }
 
-function createStarterLesson({ title = "Nova lição", description } = {}) {
-  return {
+function createStarterLesson({ title = "Nova lição", description, sourceGuide, sourceGuideStructured } = {}) {
+  const lesson = {
     key: uniqueKey(title, new Set(), "lesson"),
     title,
     ...(description ? { description } : {}),
     microsequences: []
   };
+  assignOptionalSourceGuide(lesson, sourceGuide, sourceGuideStructured, SOURCE_GUIDE_LEVELS.LESSON);
+  return lesson;
 }
 
-function createStarterModule({ title = "Novo módulo", description } = {}) {
-  return {
+function createStarterModule({ title = "Novo módulo", description, sourceGuide, sourceGuideStructured } = {}) {
+  const moduleValue = {
     key: uniqueKey(title, new Set(), "module"),
     title,
     ...(description ? { description } : {}),
     lessons: []
   };
+  assignOptionalSourceGuide(moduleValue, sourceGuide, sourceGuideStructured, SOURCE_GUIDE_LEVELS.MODULE);
+  return moduleValue;
 }
 
-function createStarterCourse({ title = "Novo curso", description } = {}) {
-  return {
+function createStarterCourse({ title = "Novo curso", description, sourceGuide, sourceGuideStructured } = {}) {
+  const course = {
     key: uniqueKey(title, new Set(), "course"),
     title,
     ...(description ? { description } : {}),
     modules: []
   };
+  assignOptionalSourceGuide(course, sourceGuide, sourceGuideStructured, SOURCE_GUIDE_LEVELS.COURSE);
+  return course;
 }
 
 function normalizeCardForInsert(entry, usedKeys, fallbackLabel = "card") {
@@ -304,6 +343,7 @@ export function updateCourse(document, input) {
   const course = findCourse(nextDocument, input.courseKey);
   assignOptionalTextField(course, "title", input.title);
   assignOptionalTextField(course, "description", input.description);
+  assignOptionalSourceGuide(course, input.sourceGuide, input.sourceGuideStructured, SOURCE_GUIDE_LEVELS.COURSE);
   return ensureValidDocument(nextDocument);
 }
 
@@ -314,8 +354,16 @@ export function createCourse(document, input = {}) {
     input.description && typeof input.description === "string" && input.description.trim()
       ? input.description.trim()
       : "";
+  const sourceGuide =
+    input.sourceGuide && typeof input.sourceGuide === "string" && input.sourceGuide.trim()
+      ? input.sourceGuide.trim()
+      : "";
+  const sourceGuideStructured =
+    input.sourceGuideStructured === undefined
+      ? undefined
+      : normalizeSourceGuideStructured(input.sourceGuideStructured, { level: SOURCE_GUIDE_LEVELS.COURSE });
   const usedKeys = collectSiblingKeys(nextDocument.courses || []);
-  const course = createStarterCourse({ title, description });
+  const course = createStarterCourse({ title, description, sourceGuide, sourceGuideStructured });
   course.key = input.key && typeof input.key === "string" && input.key.trim()
     ? input.key.trim()
     : uniqueKey(title, usedKeys, "course");
@@ -464,6 +512,8 @@ export function exportModuleDocument(document, input) {
         key: course.key,
         title: course.title,
         ...(course.description ? { description: course.description } : {}),
+        ...(course.sourceGuide ? { sourceGuide: course.sourceGuide } : {}),
+        ...(course.sourceGuideStructured ? { sourceGuideStructured: clone(course.sourceGuideStructured) } : {}),
         modules: [clone(moduleValue)]
       }
     ])
@@ -487,11 +537,15 @@ export function exportLessonDocument(document, input) {
         key: course.key,
         title: course.title,
         ...(course.description ? { description: course.description } : {}),
+        ...(course.sourceGuide ? { sourceGuide: course.sourceGuide } : {}),
+        ...(course.sourceGuideStructured ? { sourceGuideStructured: clone(course.sourceGuideStructured) } : {}),
         modules: [
           {
             key: moduleValue.key,
             title: moduleValue.title,
             ...(moduleValue.description ? { description: moduleValue.description } : {}),
+            ...(moduleValue.sourceGuide ? { sourceGuide: moduleValue.sourceGuide } : {}),
+            ...(moduleValue.sourceGuideStructured ? { sourceGuideStructured: clone(moduleValue.sourceGuideStructured) } : {}),
             lessons: [clone(lesson)]
           }
         ]
@@ -521,16 +575,22 @@ export function exportMicrosequenceDocument(document, input) {
         key: course.key,
         title: course.title,
         ...(course.description ? { description: course.description } : {}),
+        ...(course.sourceGuide ? { sourceGuide: course.sourceGuide } : {}),
+        ...(course.sourceGuideStructured ? { sourceGuideStructured: clone(course.sourceGuideStructured) } : {}),
         modules: [
           {
             key: moduleValue.key,
             title: moduleValue.title,
             ...(moduleValue.description ? { description: moduleValue.description } : {}),
+            ...(moduleValue.sourceGuide ? { sourceGuide: moduleValue.sourceGuide } : {}),
+            ...(moduleValue.sourceGuideStructured ? { sourceGuideStructured: clone(moduleValue.sourceGuideStructured) } : {}),
             lessons: [
               {
                 key: lesson.key,
                 title: lesson.title,
                 ...(lesson.description ? { description: lesson.description } : {}),
+                ...(lesson.sourceGuide ? { sourceGuide: lesson.sourceGuide } : {}),
+                ...(lesson.sourceGuideStructured ? { sourceGuideStructured: clone(lesson.sourceGuideStructured) } : {}),
                 microsequences: [clone(microsequence)]
               }
             ]
@@ -566,8 +626,16 @@ export function createModule(document, input) {
     input.description && typeof input.description === "string" && input.description.trim()
       ? input.description.trim()
       : "";
+  const sourceGuide =
+    input.sourceGuide && typeof input.sourceGuide === "string" && input.sourceGuide.trim()
+      ? input.sourceGuide.trim()
+      : "";
+  const sourceGuideStructured =
+    input.sourceGuideStructured === undefined
+      ? undefined
+      : normalizeSourceGuideStructured(input.sourceGuideStructured, { level: SOURCE_GUIDE_LEVELS.MODULE });
   const usedKeys = collectSiblingKeys(course.modules);
-  const moduleValue = createStarterModule({ title, description });
+  const moduleValue = createStarterModule({ title, description, sourceGuide, sourceGuideStructured });
   moduleValue.key = input.key && typeof input.key === "string" && input.key.trim()
     ? input.key.trim()
     : uniqueKey(title, usedKeys, "module");
@@ -585,6 +653,7 @@ export function updateModule(document, input) {
   const { moduleValue } = findModule(nextDocument, input.courseKey, input.moduleKey);
   assignOptionalTextField(moduleValue, "title", input.title);
   assignOptionalTextField(moduleValue, "description", input.description);
+  assignOptionalSourceGuide(moduleValue, input.sourceGuide, input.sourceGuideStructured, SOURCE_GUIDE_LEVELS.MODULE);
   return ensureValidDocument(nextDocument);
 }
 
@@ -616,8 +685,16 @@ export function createLesson(document, input) {
     input.description && typeof input.description === "string" && input.description.trim()
       ? input.description.trim()
       : "";
+  const sourceGuide =
+    input.sourceGuide && typeof input.sourceGuide === "string" && input.sourceGuide.trim()
+      ? input.sourceGuide.trim()
+      : "";
+  const sourceGuideStructured =
+    input.sourceGuideStructured === undefined
+      ? undefined
+      : normalizeSourceGuideStructured(input.sourceGuideStructured, { level: SOURCE_GUIDE_LEVELS.LESSON });
   const usedKeys = collectSiblingKeys(moduleValue.lessons);
-  const lesson = createStarterLesson({ title, description });
+  const lesson = createStarterLesson({ title, description, sourceGuide, sourceGuideStructured });
   lesson.key = input.key && typeof input.key === "string" && input.key.trim()
     ? input.key.trim()
     : uniqueKey(title, usedKeys, "lesson");
@@ -635,6 +712,7 @@ export function updateLesson(document, input) {
   const { lesson } = findLesson(nextDocument, input.courseKey, input.moduleKey, input.lessonKey);
   assignOptionalTextField(lesson, "title", input.title);
   assignOptionalTextField(lesson, "description", input.description);
+  assignOptionalSourceGuide(lesson, input.sourceGuide, input.sourceGuideStructured, SOURCE_GUIDE_LEVELS.LESSON);
   return ensureValidDocument(nextDocument);
 }
 
@@ -674,11 +752,13 @@ export function createMicrosequence(document, input) {
   const cardInput = Array.isArray(input.cards) ? input.cards : null;
   const usedCardKeys = new Set();
   const cards = cardInput ? cardInput.map((entry, index) => normalizeCardForInsert(entry, usedCardKeys, `Card ${index + 1}`)) : [];
+  const tags = normalizeOptionalTags(input.tags);
   const microsequence = {
     key,
     title: buildUniqueMicrosequenceTitle(lesson, title, null),
     status: normalizeMicrosequenceStatus(input.status || MICROSEQUENCE_STATUS_DRAFT, { cards }),
     included: normalizeMicrosequenceRuntimeIncluded(input.included, { cards }),
+    ...(tags && tags.length ? { tags } : {}),
     cards
   };
 

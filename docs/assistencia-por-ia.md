@@ -8,6 +8,7 @@ A assistência por IA generativa apoia a transformação didática de pedidos do
 
 Ela pode ser usada para:
 
+- gerar estrutura de curso, módulo e lição;
 - gerar microssequências;
 - revisar microssequências;
 - reorganizar conteúdo;
@@ -39,13 +40,27 @@ O modelo:
 O usuário:
 
 - escreve o pedido;
-- escolhe curso, módulo e lição na aba `Gerar`;
+- abre o painel contextual no nível desejado;
 - revisa o resultado;
 - decide se continua editando ou marca o material como pronto para estudo.
 
-## Escada de microssequências
+No estado atual da UI, a assistência está distribuída em dois pontos:
 
-A aba `Gerar` usa um formato intermediário mínimo. O modelo recebe o contexto hierárquico e a dúvida do usuário, mas não gera cards.
+- o painel contextual estrutural, para gerar estrutura top-down em home, curso e módulo;
+- o painel contextual da lição, para gerar microssequências `draft`;
+- o painel da microssequência, para gerar ou editar cards.
+
+Essa separação mantém o fluxo estrutural separado da curadoria de cards.
+
+Matriz operacional atual:
+
+- home, curso e módulo: `generate-top-down-structure`
+- lição: `generate-lesson-microsequences`
+- microssequência: `compose-microsequence`
+
+## Geração estrutural contextual
+
+O painel contextual estrutural usa `generate-top-down-structure`. O modelo recebe o contexto hierárquico e o pedido do usuário, mas não gera microssequências nem cards.
 
 Entrada conceitual:
 
@@ -54,7 +69,7 @@ Entrada conceitual:
   "courseTitle": "Curso",
   "moduleTitle": "Módulo",
   "lessonTitle": "Lição",
-  "userInput": "Dúvida ou comentário"
+  "userInput": "Pedido estrutural"
 }
 ```
 
@@ -62,9 +77,59 @@ Resposta esperada:
 
 ```json
 {
-  "title": "Estudo sobre o tema",
-  "steps": [
-    { "title": "Primeira microssequência" },
+  "course": {
+    "title": "Curso",
+    "modules": [
+      {
+        "title": "Módulo",
+        "lessons": [
+          { "title": "Lição" }
+        ]
+      }
+    ]
+  }
+}
+```
+
+Regras da aplicação:
+
+- home gera curso completo;
+- curso gera ou atualiza módulos e lições;
+- módulo gera ou atualiza lições;
+- `description` permanece breve;
+- `sourceGuide` só entra no contexto quando existir;
+- esse modo não gera microssequências nem cards.
+
+## Geração contextual de microssequências na lição
+
+Quando o painel contextual é aberto com `course`, `module` e `lesson` fixados, o envio usa `generate-lesson-microsequences`.
+
+Entrada conceitual:
+
+```json
+{
+  "courseTitle": "Curso",
+  "courseDescription": "Descrição breve",
+  "moduleTitle": "Módulo",
+  "lessonTitle": "Lição",
+  "existingMicrosequences": [
+    {
+      "title": "Microssequência já existente",
+      "tags": ["tag"],
+      "status": "ready",
+      "included": true
+    }
+  ],
+  "userInput": "Quero uma escada inicial para esta lição"
+}
+```
+
+Resposta esperada:
+
+```json
+{
+  "microsequences": [
+    { "title": "Primeira microssequência", "tags": ["base"] },
     { "title": "Segunda microssequência" }
   ]
 }
@@ -72,20 +137,22 @@ Resposta esperada:
 
 Regras da aplicação:
 
-- `steps` deve ter de 2 a 7 itens;
-- cada `step.title` deve ser texto não vazio;
-- duplicatas exatas são removidas;
-- campos inesperados são ignorados;
-- cards não são aceitos nessa resposta.
+- `microsequences` deve ter de 2 a 7 itens;
+- cada item precisa de `title`;
+- `description` é opcional na resposta do modelo, mas só é preservada se o contrato interno do nível aceitar esse campo;
+- `tags` opcionais podem ser preservadas;
+- cards não são aceitos nessa resposta;
+- se o modelo devolver cards, eles são ignorados ou rejeitados na normalização;
+- cada item válido vira uma microssequência `draft` com `included: false` e `cards: []`;
+- a geração não abre automaticamente o workbench;
+- a criação atualiza diretamente a lição persistida.
 
-Cada item validado vira uma microssequência `draft` dentro da lição escolhida. A escada não vira entidade persistente separada.
+## Estrutura de geração da microssequência
 
-## Camada modular de microssequência
-
-A geração e a edição de cards usam uma camada interna em `src/generation/`. Essa camada separa:
+A geração e a edição de cards usam uma estrutura dedicada em `src/generation/`. Essa estrutura separa:
 
 - tipos didáticos neutros;
-- tamanhos internos de microssequência;
+- tamanhos de microssequência usados na geração;
 - catálogo de recursos de card;
 - referências de assuntos selecionados no escopo da lição;
 - anexos e fontes resolvidos para a operação;
@@ -96,7 +163,7 @@ A geração e a edição de cards usam uma camada interna em `src/generation/`. 
 
 Os tipos didáticos iniciais são `Assistido`, `Simples`, `Explicar uma ideia`, `Passo a passo`, `Prática guiada`, `Comparar`, `Revisão rápida`, `Erro comum`, `Regra/procedimento` e `Código/comando`. O tipo `Assistido` delega a escolha efetiva à etapa de planejamento.
 
-Os tamanhos internos são:
+Os tamanhos usados na geração são:
 
 - `short`: 3 cards;
 - `medium`: 5 cards;
@@ -110,7 +177,7 @@ O pipeline usa reparos explícitos em dois pontos diferentes.
 
 No planejamento, o modelo devolve tipo didático, tamanho, objetivo, recursos extras e `cardPlan`. A aplicação valida esse plano com o contrato de planejamento. Quando o plano viola tipo fixado, tamanho, quantidade de cards, recursos permitidos ou preservação de escolhas do usuário, a aplicação faz uma chamada curta de reparo de plano. O reparo não muda a finalidade da etapa: ele apenas tenta produzir um plano válido para o contrato já montado.
 
-Na geração final, o modelo devolve os cards internos. A aplicação valida a resposta com `validateGeneratedCards` antes de qualquer adaptação para o contrato público. Quando a estrutura falha, a aplicação faz uma chamada de reparo estrutural dos cards. Esse reparo recebe:
+Na geração final, o modelo devolve os cards no formato intermediário. A aplicação valida a resposta com `validateGeneratedCards` antes de qualquer adaptação para o contrato público. Quando a estrutura falha, a aplicação faz uma chamada de reparo estrutural dos cards. Esse reparo recebe:
 
 - resposta inválida original;
 - erros de validação;
@@ -179,9 +246,9 @@ Erros operacionais retornam dados padronizados para a camada chamadora:
 
 Em alta demanda do provedor, o comportamento esperado é tentar novamente com backoff. Se as tentativas acabarem durante a geração, o plano validado fica preservado para retomada. Se houver fallback configurado para essa categoria, a aplicação pode usar o modelo leve sem reconstruir o plano.
 
-## Assuntos do Escopo da Lição
+## Assuntos do escopo da lição
 
-Na geração e na edição, a seleção compacta de assuntos da UI é enviada internamente como `selectedLessonTopicRefs`.
+Na geração e na edição, a seleção compacta de assuntos da UI é enviada à operação como `selectedLessonTopicRefs`.
 
 Essas referências são contexto operacional. Elas costumam vir de títulos, tags ou assuntos de microssequências já existentes no escopo da lição atual. Elas não são um novo nível da árvore e não são persistidas automaticamente como tags próprias da microssequência gerada ou editada.
 
@@ -201,9 +268,9 @@ Formato conceitual:
 
 A hierarquia principal continua sendo `Curso -> Módulo -> Lição -> Microssequência -> Card`. `selectedLessonTopicRefs` apenas reduz ambiguidade, orienta terminologia e ajuda a etapa de planejamento a escolher tipo, extensão e recursos.
 
-## Recursos internos
+## Recursos usados na geração
 
-O catálogo interno de recursos inclui:
+O catálogo de recursos usado na geração inclui:
 
 - `paragraph`;
 - `multiple_choice`;
@@ -213,7 +280,7 @@ O catálogo interno de recursos inclui:
 - `tree`;
 - `block_gap_fill`.
 
-Cada recurso possui descrição, limites e schema próprio. O recurso `block_gap_fill` é um alias interno para o recurso público já existente de parágrafo com lacunas por opções, persistido como `say` com sintaxe `[[resposta::opção|opção]]`. Ele não cria tipo público novo. Seu comentário posterior usa `feedbackAfter`, preservado como `after` no card público; não há popup público específico por acerto ou erro nesse alias.
+Cada recurso possui descrição, limites e schema próprio. O recurso `block_gap_fill` é um alias de geração para o recurso público já existente de parágrafo com lacunas por opções, persistido como `say` com sintaxe `[[resposta::opção|opção]]`. Ele não cria tipo público novo. Seu comentário posterior usa `feedbackAfter`, preservado como `after` no card público; não há popup público específico por acerto ou erro nesse alias.
 
 Mapeamento principal:
 
@@ -227,7 +294,7 @@ tree            -> tree
 block_gap_fill  -> say com lacunas por opções
 ```
 
-O adaptador explícito valida esse mapeamento antes do salvamento. Recursos sem caminho público/runtime são rejeitados.
+O adaptador explícito valida esse mapeamento antes do salvamento. Recursos sem caminho público de estudo são rejeitados.
 
 Os recursos efetivos de geração são calculados por:
 
@@ -277,18 +344,28 @@ Esse JSON é intermediário. O resultado aplicado ao projeto já deve obedecer a
 
 ## Pipeline de geração
 
-Fluxo implementado para criar rascunhos na aba `Gerar`:
+Fluxo implementado para gerar estrutura em home, curso e módulo:
 
-1. o usuário escolhe curso, módulo e lição;
-2. o usuário escreve uma dúvida ou comentário;
+1. o usuário abre o painel contextual no escopo desejado;
+2. o usuário escreve um pedido estrutural;
 3. a aplicação monta o payload de contexto;
-4. o serviço de IA generativa recebe prompt e schema de escada;
+4. o serviço de IA generativa recebe prompt e schema estrutural;
 5. a resposta é lida como JSON;
 6. a aplicação extrai JSON quando a resposta vem em bloco Markdown;
 7. a aplicação tenta reparo quando o JSON é ilegível ou insuficiente;
-8. a aplicação valida `steps`;
-9. cada item validado vira uma microssequência `draft`;
-10. os rascunhos são persistidos na lição selecionada.
+8. a aplicação valida curso, módulo e lição;
+9. a estrutura validada é aplicada ao projeto.
+
+Fluxo implementado para gerar microssequências na lição:
+
+1. o usuário abre o painel contextual com lição fixada;
+2. o usuário escreve um pedido para a lição atual;
+3. a aplicação monta o contexto com curso, módulo, lição e microssequências já existentes;
+4. o serviço de IA generativa recebe prompt e schema de microssequências;
+5. a resposta é lida e normalizada como JSON;
+6. a aplicação remove duplicatas e rejeita cards;
+7. cada item válido vira uma microssequência `draft` na lição atual;
+8. a lição é re-renderizada com os novos rascunhos, sem abrir o workbench.
 
 Fluxo implementado para gerar ou revisar cards no painel:
 
@@ -303,7 +380,7 @@ Fluxo implementado para gerar ou revisar cards no painel:
 9. o modelo faz a segunda chamada e devolve os cards;
 10. a aplicação valida quantidade, posições, recursos, schemas e campos obrigatórios;
 11. se a validação falhar, a aplicação tenta um reparo estrutural dos cards e valida novamente;
-12. somente cards internos válidos são convertidos para o contrato público;
+12. somente cards válidos no formato intermediário são convertidos para o contrato público;
 13. a microssequência recebe nova versão ou cards aplicados.
 
 O fluxo preserva o contexto hierárquico:
@@ -311,6 +388,8 @@ O fluxo preserva o contexto hierárquico:
 ```text
 Curso -> Módulo -> Lição -> Microssequência -> Cards
 ```
+
+Hoje, porém, a preservação de contexto é mais forte na camada estrutural do que na experiência de navegação. A seleção de curso, módulo e lição existe, mas a passagem entre intenção inicial, rascunho gerado e consolidação ainda depende de troca explícita de tela.
 
 ## Anexos de referência
 
@@ -381,6 +460,8 @@ O prompt completo inclui:
 
 Quando houver reparo estrutural, o prompt de reparo é mais compacto e restrito. Ele inclui a resposta inválida, os erros de validação e apenas a parte do contrato necessária para corrigir a estrutura. A instrução central é corrigir o JSON existente, não gerar uma microssequência nova.
 
+Os prompts de autoria de cards reforçam um princípio central, expresso de forma curta, e dele derivam regras operacionais: mostrar antes de nomear, concretizar antes de generalizar e não esconder a ponte do raciocínio. A partir disso, a geração deve evitar prática antes de microteoria ou exemplo resolvido na mesma microssequência; manter dados, regras e fórmulas necessários no próprio card; concretizar explicações abstratas com casos pequenos, tabela curta ou exemplo numérico; dar exemplo mínimo ou contraste em cards definidores; traduzir notação nova como `||v||` ou `cos θ` para linguagem comum antes do uso; mostrar linha crítica, coluna intermediária ou linha resolvida em equivalências; usar `table.focus` quando uma linha ou coluna específica merecer destaque; preferir tabelas pequenas em vez de quadros densos; evitar instruções sobre o processo de criação ou referência externa/volátil; não pedir ao aluno apenas repetir resposta já exposta; não interpretar resultado em feedback antes de ensinar a montar a conta; e destacar símbolos, conectivos e fórmulas curtas com acentos graves, como `p`, `q`, `¬`, `∧`, `∨`, `→`, `↔`, `XOR` e `2^n`. O modelo também é instruído a não repetir o título do card como título interno ou primeira frase e pode usar cards mais altos quando isso melhorar a clareza didática.
+
 ## Saída estruturada nativa
 
 A integração mantém capacidades de modelo separadas do contrato didático. Os campos `supportsNativeJsonSchema`, `supportsResponseSchema` e `responseMimeType` indicam onde o provedor poderá receber schema nativo no futuro.
@@ -401,7 +482,7 @@ O usuário pode pedir:
 - ajuste de alternativas;
 - revisão de densidade textual.
 
-A camada interna já possui contratos para planejar edição e aplicar edição em duas chamadas. O contrato de aplicação recebe a versão atual completa, recursos efetivos, selectedLessonTopicRefs, fontes resolvidas e versões anteriores quando o plano validado solicitar. A integração visual completa desse fluxo segue a regra de versionamento existente do painel.
+A estrutura de edição já possui contratos para planejar edição e aplicar edição em duas chamadas. O contrato de aplicação recebe a versão atual completa, recursos efetivos, selectedLessonTopicRefs, fontes resolvidas e versões anteriores quando o plano validado solicitar. A integração visual completa desse fluxo segue a regra de versionamento existente do painel.
 
 ## Reposicionamento assistido
 
@@ -443,6 +524,8 @@ A chave deve ficar apenas no ambiente da sessão.
 
 Pontos de pesquisa e engenharia:
 
+- aproximar geração, localização do rascunho e revisão sem dispersar o usuário;
+- decidir quanto de orientação top-down deve entrar no fluxo bottom-up para evitar perda de foco;
 - gerar card por card com crítica posterior quando modelos menores falharem em sequências longas;
 - usar modelos mais robustos para fluxogramas;
 - criar schema especializado para `flow`;

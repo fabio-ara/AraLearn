@@ -223,7 +223,7 @@ Quando uma chave não é enviada, o validador gera uma chave estável a partir d
 Recomendação prática:
 
 - para edição manual simples, pode omitir `key`;
-- para geração por modelo ou pipeline externo, prefira enviar `key`.
+- para geração por modelo ou processo externo, prefira enviar `key`.
 
 ## Cards e intenções didáticas
 
@@ -332,7 +332,9 @@ Campos:
 
 - `table.columns`: obrigatório, array de strings
 - `table.rows`: obrigatório, array de linhas
-- `table.title`: opcional
+- `table.title`: opcional, apenas quando a tabela precisar de um subtítulo diferente do título do card
+
+O título do card já aparece na interface de estudo. Não repita esse mesmo texto em `table.title`, em uma linha avulsa de conteúdo ou como primeira frase do card. Quando o assunto usar símbolos, conectivos ou fórmulas curtas, use destaque inline com acentos graves, por exemplo `p`, `q`, `¬`, `∧`, `∨`, `→`, `↔` e `2^n`.
 
 Exemplo:
 
@@ -352,6 +354,138 @@ Exemplo:
 Regra prática:
 
 - cada linha deve ter o mesmo número de colunas declarado em `columns`.
+
+### Card `plane`
+
+Uso:
+
+- vetor 2D saindo da origem;
+- vários vetores no mesmo plano;
+- soma geométrica de dois vetores;
+- multiplicação por escalar;
+- distância entre dois pontos.
+
+Campos:
+
+- `plane.vector`: um vetor `[x, y]`
+- `plane.vectors`: lista de 1 a 4 vetores `[x, y]`
+- `plane.sum`: exatamente 2 vetores
+- `plane.scale`: objeto com `k` e `vector`
+- `plane.distance`: exatamente 2 pontos
+- `plane.result`: opcional em `sum`, para expor ou praticar o vetor resultante
+- `plane.x` e `plane.y`: opcionais, no formato `[min, max]`
+
+Exemplo de vetor:
+
+```json
+{
+  "title": "Vetor como seta",
+  "say": "Observe o vetor v = (3,2).",
+  "plane": {
+    "vector": [3, 2]
+  }
+}
+```
+
+Exemplo de soma com lacuna:
+
+```json
+{
+  "title": "Soma de vetores",
+  "say": "Complete o vetor resultante.",
+  "plane": {
+    "sum": [[1, 2], [3, 1]],
+    "result": ["[[4::3|5]]", "[[3::2|4]]"]
+  }
+}
+```
+
+Regras práticas:
+
+- `plane` aceita uma intenção principal por card;
+- o motor calcula grade, eixos, origem, escala e legenda visual fora da área geométrica;
+- o quadriculado não deve autorar moldura própria: a borda arredondada pertence ao motor visual;
+- o JSON público não aceita SVG, HTML, CSS, cor livre ou coordenadas de tela.
+
+### Card `matrix`
+
+Uso:
+
+- matriz visual com colchetes;
+- destaque de diagonal, linha, coluna ou célula;
+- matriz aumentada simples;
+- lacuna em célula.
+- sequência curta de matrizes no mesmo card, com conectores como `+`, `=`, `×` ou `→`.
+
+Campos:
+
+- `matrix.values`: array retangular de arrays para matriz única
+- `matrix.sequence`: opcional no lugar de `values`, com 2 a 5 matrizes em sequência
+- `matrix.name`: opcional, string curta como `A`, `B` ou `M`
+- `matrix.highlight`: opcional, string ou array com seletores
+- `matrix.dividerAfterColumn`: opcional, para matriz aumentada
+
+Campos de cada item em `matrix.sequence`:
+
+- `values`: obrigatório, array retangular de arrays
+- `connector`: opcional no primeiro item e recomendado nos demais; aceita `=`, `+`, `-`, `×`, `·`, `→` ou `⇒`
+- `name`, `highlight` e `dividerAfterColumn`: mesmos significados da matriz única
+
+Seletores aceitos em `matrix.highlight`:
+
+- `mainDiagonal`
+- `secondaryDiagonal`
+- `row:N`
+- `col:N`
+- `cell:R,C`
+
+Exemplo:
+
+```json
+{
+  "title": "Diagonal principal",
+  "say": "Observe a diagonal principal.",
+  "matrix": {
+    "name": "A",
+    "values": [
+      [1, 2, 3],
+      [4, 5, 6],
+      [7, 8, 9]
+    ],
+    "highlight": "mainDiagonal"
+  }
+}
+```
+
+Exemplo de resolução no mesmo card:
+
+```json
+{
+  "title": "Soma de matrizes",
+  "say": "Acompanhe a soma por posição.",
+  "matrix": {
+    "sequence": [
+      { "name": "A", "values": [[1, 2], [3, 4]] },
+      { "connector": "+", "name": "B", "values": [[5, 6], [7, 8]] },
+      {
+        "connector": "=",
+        "name": "A+B",
+        "values": [["1 + 5", "2 + 6"], ["3 + 7", "4 + 8"]],
+        "highlight": "cell:1,1"
+      },
+      { "connector": "=", "values": [[6, 8], [10, 12]] }
+    ]
+  }
+}
+```
+
+Regras práticas:
+
+- `matrix` não substitui `table`;
+- tabelas-verdade, tabelas de dados e cabeçalhos continuam em `table`;
+- para resolução passo a passo com contexto volátil, prefira `matrix.sequence` para manter operandos, estado intermediário e resultado no mesmo card;
+- em soma de matrizes, a leitura renderizada deve seguir a forma escolar contínua `A + B = [A] + [B] = [resultado]`, com quebras responsivas quando a tela for estreita;
+- o JSON público não aceita HTML, SVG ou estilos livres.
 
 ### Card `tree`
 
@@ -495,7 +629,10 @@ Regras:
 - cada curso, módulo, lição e microssequência deve ter title;
 - cada microssequência deve ter cards;
 - use status "draft" para microssequências sem cards e "ready" para microssequências executáveis;
-- cada card deve usar uma intenção semântica clara, como say, ask, code, table, tree ou flow;
+- cada card deve usar uma intenção semântica clara, como say, ask, code, table, tree, flow, plane ou matrix;
+- use table para tabelas-verdade, coordenadas em grade textual e quadros comuns;
+- use plane apenas para plano cartesiano 2D com vetores ou pontos;
+- use matrix apenas quando a aparência de matriz for parte do conteúdo;
 - não inclua campos operacionais derivados;
 - retorne apenas JSON válido.
 ```
@@ -504,6 +641,8 @@ Regras:
 
 - o JSON público usa os campos documentados nesta página para declarar estrutura, conteúdo e intenção didática;
 - a aplicação deriva automaticamente projeções auxiliares, índices e identificadores operacionais;
+- `plane` descreve vetores e pontos 2D em contrato simples; a renderização deriva grade, eixos e escala;
+- `matrix` descreve matriz visual com colchetes, destaque, lacunas e etapas curtas de resolução sem virar tabela comum;
 - `tree` descreve contexto, diretório atual, seleção opcional e estrutura de arquivos e pastas;
 - `flow` descreve leitura e prática por meio de `blank`;
 - importação e exportação usam o mesmo envelope `project`, inclusive para recortes;
@@ -514,6 +653,8 @@ Regras:
 Arquivo público de referência:
 
 - `docs/examples/aralearn-contract.renderable.json`
+- `docs/examples/aralearn-contract.plane-matrix.json`
+- `docs/examples/aralearn-contract.logic-plane-matrix-course.json`
 
 Você pode validar esse exemplo com:
 

@@ -4,6 +4,17 @@ function text(value) {
   return typeof value === "string" ? value.trim() : "";
 }
 
+function matrixCell(value) {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+  return text(value);
+}
+
+function numberPair(value) {
+  return Array.isArray(value) ? value.map((item) => Number(item)).slice(0, 2) : value;
+}
+
 function plainFeedbackText(value) {
   return text(value)
     .replace(/\[\[([^\]:|]+)(?:::[^\]]*)?\]\]/g, "$1")
@@ -130,6 +141,62 @@ function adaptTree(card) {
   };
 }
 
+function adaptPlane(card) {
+  const plane = {};
+  if (Array.isArray(card.x)) plane.x = numberPair(card.x);
+  if (Array.isArray(card.y)) plane.y = numberPair(card.y);
+  if (Array.isArray(card.vector)) plane.vector = numberPair(card.vector);
+  if (Array.isArray(card.vectors)) plane.vectors = card.vectors.map(numberPair);
+  if (Array.isArray(card.sum)) plane.sum = card.sum.map(numberPair);
+  if (card.scale && typeof card.scale === "object") {
+    plane.scale = {
+      k: Number(card.scale.k),
+      vector: numberPair(card.scale.vector)
+    };
+  }
+  if (Array.isArray(card.distance)) plane.distance = card.distance.map(numberPair);
+  if (Array.isArray(card.result)) {
+    plane.result = card.result.map((item) => (typeof item === "number" && Number.isFinite(item) ? item : text(item)));
+  }
+
+  return {
+    title: text(card.title) || "Plano cartesiano",
+    ...(text(card.prompt) ? { say: text(card.prompt) } : {}),
+    plane
+  };
+}
+
+function adaptMatrix(card) {
+  const sequence = Array.isArray(card.sequence)
+    ? card.sequence.map((item) => ({
+        ...(text(item?.connector) ? { connector: text(item.connector) } : {}),
+        ...(text(item?.name) ? { name: text(item.name) } : {}),
+        values: (Array.isArray(item?.values) ? item.values : []).map((row) =>
+          (Array.isArray(row) ? row : []).map(matrixCell)
+        ),
+        ...(item?.highlight !== undefined ? { highlight: item.highlight } : {}),
+        ...(item?.dividerAfterColumn !== undefined ? { dividerAfterColumn: Number(item.dividerAfterColumn) } : {})
+      }))
+    : [];
+
+  return {
+    title: text(card.title) || "Matriz",
+    ...(text(card.prompt) ? { say: text(card.prompt) } : {}),
+    matrix: {
+      ...(text(card.name) ? { name: text(card.name) } : {}),
+      ...(sequence.length
+        ? { sequence }
+        : {
+            values: (Array.isArray(card.values) ? card.values : []).map((row) =>
+              (Array.isArray(row) ? row : []).map(matrixCell)
+            ),
+            ...(card.highlight !== undefined ? { highlight: card.highlight } : {}),
+            ...(card.dividerAfterColumn !== undefined ? { dividerAfterColumn: Number(card.dividerAfterColumn) } : {})
+          })
+    }
+  };
+}
+
 export function adaptResourceCardToPublicCard(card) {
   const resourceType = text(card?.resourceType);
   if (resourceType === "paragraph") {
@@ -150,11 +217,24 @@ export function adaptResourceCardToPublicCard(card) {
     });
   }
   if (resourceType === "table") {
+    const focus =
+      card.focus && typeof card.focus === "object"
+        ? {
+            ...(text(card.focus.label) ? { label: text(card.focus.label) } : {}),
+            ...(Number.isInteger(card.focus.row) ? { row: card.focus.row } : {}),
+            ...(Array.isArray(card.focus.rows) ? { rows: card.focus.rows.filter((value) => Number.isInteger(value) && value >= 1) } : {}),
+            ...(Number.isInteger(card.focus.column) ? { column: card.focus.column } : {}),
+            ...(Array.isArray(card.focus.columns)
+              ? { columns: card.focus.columns.filter((value) => Number.isInteger(value) && value >= 1) }
+              : {})
+          }
+        : null;
     return sanitizeContractCard({
       title: text(card.title) || "Tabela",
       table: {
         columns: Array.isArray(card.columns) ? card.columns.map(text).filter(Boolean) : [],
-        rows: (Array.isArray(card.rows) ? card.rows : []).map((row) => (Array.isArray(row) ? row.map(text) : []))
+        rows: (Array.isArray(card.rows) ? card.rows : []).map((row) => (Array.isArray(row) ? row.map(text) : [])),
+        ...(focus && Object.keys(focus).length ? { focus } : {})
       }
     });
   }
@@ -166,6 +246,12 @@ export function adaptResourceCardToPublicCard(card) {
   }
   if (resourceType === "tree") {
     return sanitizeContractCard(adaptTree(card));
+  }
+  if (resourceType === "plane") {
+    return sanitizeContractCard(adaptPlane(card));
+  }
+  if (resourceType === "matrix") {
+    return sanitizeContractCard(adaptMatrix(card));
   }
 
   throw new Error(`Recurso interno sem adaptador público: ${resourceType || "desconhecido"}.`);

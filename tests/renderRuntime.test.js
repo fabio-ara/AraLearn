@@ -19,6 +19,8 @@ test("renderiza o exemplo do contrato principal com renderer próprio", () => {
   assert.match(result.rendered.html, /class="card card-table"/);
   assert.match(result.rendered.html, /class="card card-flow"/);
   assert.match(result.rendered.html, /class="card card-tree"/);
+  assert.match(result.rendered.html, /class="card card-plane"/);
+  assert.match(result.rendered.html, /class="card card-matrix"/);
   assert.doesNotMatch(result.rendered.html, /aralearn\.intent\.v1/);
   assert.doesNotMatch(result.rendered.html, /card-image/);
 });

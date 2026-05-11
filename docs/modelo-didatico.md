@@ -21,6 +21,8 @@ Microssequências podem estar em dois estados:
 - `draft`: rascunho em construção, visível na estrutura do curso, mas fora da execução;
 - `ready`: microssequência pronta para estudo no runtime.
 
+Na implementação atual, essa separação didática também organiza a navegação: o rascunho abre o painel de curadoria, enquanto a microssequência `ready` abre o modo de estudo.
+
 ## Papel dos cards
 
 Cada card deve ter uma função didática clara. Exemplos de função:
@@ -105,6 +107,8 @@ Microssequências devem favorecer:
 - cards com função clara;
 - exemplos imediatamente acionáveis;
 - revisão sem depender de lembrar toda a conversa que originou o material.
+
+Essa exigência também vale para a arquitetura de navegação. Quando a entrada bottom-up e a revisão ficam distantes demais na interface, o produto corre o risco de enfraquecer a retomada que o próprio modelo didático quer fortalecer.
 
 Esse desenho é especialmente importante para estudantes trabalhadores e para aprendizagem autodirigida com pouco controle sobre tempo e energia.
 
