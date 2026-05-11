@@ -103,7 +103,7 @@ No estado atual, o AraLearn reúne:
 
 A interface pública implementada hoje combina:
 
-- home com abas iconográficas `Gerar` e `Cursos`;
+- home única de cursos com painel contextual de geração por IA;
 - navegação estrutural `curso -> módulo -> lição -> microssequência`;
 - estudo apenas de microssequências `ready` incluídas;
 - edição e geração de cards em uma tela própria da microssequência.

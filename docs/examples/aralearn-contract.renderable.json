@@ -149,6 +149,68 @@
                   ]
                 }
               ]
+            },
+            {
+              "title": "Plano cartesiano e matrizes",
+              "microsequences": [
+                {
+                  "title": "Recursos visuais de matemática",
+                  "tags": ["Teste", "Plane", "Matrix"],
+                  "status": "ready",
+                  "cards": [
+                    {
+                      "title": "Vetor como seta",
+                      "say": "Observe o vetor v = (3,2).",
+                      "plane": {
+                        "vector": [3, 2]
+                      }
+                    },
+                    {
+                      "title": "Soma de vetores",
+                      "say": "Complete o vetor resultante.",
+                      "plane": {
+                        "sum": [[1, 2], [3, 1]],
+                        "result": ["[[4::3|5]]", "[[3::2|4]]"]
+                      }
+                    },
+                    {
+                      "title": "Multiplicação por escalar",
+                      "say": "Compare v com 2v.",
+                      "plane": {
+                        "scale": {
+                          "k": 2,
+                          "vector": [2, 1]
+                        }
+                      }
+                    },
+                    {
+                      "title": "Distância entre pontos",
+                      "say": "Observe a distância entre A e B.",
+                      "plane": {
+                        "distance": [[1, 1], [4, 5]]
+                      }
+                    },
+                    {
+                      "title": "Diagonal principal",
+                      "say": "Observe a diagonal principal.",
+                      "matrix": {
+                        "name": "A",
+                        "values": [[1, 2, 3], [4, 5, 6], [7, 8, 9]],
+                        "highlight": "mainDiagonal"
+                      }
+                    },
+                    {
+                      "title": "Complete a matriz",
+                      "say": "Complete o elemento da linha 2, coluna 3.",
+                      "matrix": {
+                        "name": "A",
+                        "values": [[1, 2, 3], [4, 5, "[[6::5|7|8]]"]],
+                        "highlight": "cell:2,3"
+                      }
+                    }
+                  ]
+                }
+              ]
             }
           ]
         }
