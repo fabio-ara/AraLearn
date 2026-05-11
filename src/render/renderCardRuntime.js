@@ -41,12 +41,107 @@ function normalizeInlineText(value) {
   return String(value || "").replace(/\s+/g, " ").trim();
 }
 
-function renderMarkdownInline(text) {
+function formatRuntimeMathNumber(value) {
+  const numericValue = Number(value);
+  if (!Number.isFinite(numericValue)) {
+    return normalizeInlineText(value);
+  }
+  if (Number.isInteger(numericValue)) {
+    return String(numericValue);
+  }
+  return String(Number(numericValue.toFixed(2)));
+}
+
+function formatMatrixSequenceName(name) {
+  const label = normalizeInlineText(name);
+  return label.replace(/\s*([+×*])\s*/g, " $1 ").replace(/\s+/g, " ").trim();
+}
+
+function formatMatrixSequenceConnector(connector) {
+  const normalizedConnector = normalizeInlineText(connector);
+  if (normalizedConnector === "=>") return "⇒";
+  if (normalizedConnector === "->") return "→";
+  if (normalizedConnector === "*") return "×";
+  return normalizedConnector;
+}
+
+function isMatrixSequenceRelationConnector(connector) {
+  return ["=", "⇒", "→"].includes(formatMatrixSequenceConnector(connector));
+}
+
+function formatMatrixSequenceLeadExpression(sequence) {
+  if (!Array.isArray(sequence) || sequence.length < 2) {
+    return "";
+  }
+
+  const relationIndex = sequence.findIndex((item, index) => index > 0 && isMatrixSequenceRelationConnector(item?.connector || "="));
+  if (relationIndex > 0) {
+    const relationConnector = formatMatrixSequenceConnector(sequence[relationIndex]?.connector || "=");
+    const relationName = formatMatrixSequenceName(sequence[relationIndex]?.name);
+    if (relationName) {
+      return `${relationName} ${relationConnector}`;
+    }
+
+    const terms = [];
+    const firstName = formatMatrixSequenceName(sequence[0]?.name);
+    if (firstName) {
+      terms.push(firstName);
+    }
+    for (let index = 1; index < relationIndex; index += 1) {
+      const connectorText = formatMatrixSequenceConnector(sequence[index]?.connector || "");
+      const name = formatMatrixSequenceName(sequence[index]?.name);
+      if (connectorText) terms.push(connectorText);
+      if (name) terms.push(name);
+    }
+    return terms.length ? `${terms.join(" ")} ${relationConnector}` : "";
+  }
+
+  const terms = sequence
+    .map((item, index) => {
+      const connectorText = index > 0 ? formatMatrixSequenceConnector(item?.connector || "") : "";
+      const name = formatMatrixSequenceName(item?.name);
+      return [connectorText, name].filter(Boolean).join(" ");
+    })
+    .filter(Boolean);
+  return terms.join(" ");
+}
+
+function sanitizeDomId(value) {
+  const normalized = String(value || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return normalized || "runtime";
+}
+
+function renderMarkdownInlineMarkup(text) {
   return escapeHtml(text || "")
-    .replace(/`([^`]+)`/g, "<code>$1</code>")
     .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
     .replace(/\*([^*]+)\*/g, "<em>$1</em>")
     .replace(/\n/g, "<br>");
+}
+
+function renderMarkdownInlineWithCodeState(text, state) {
+  const segments = String(text || "").split("`");
+  let html = "";
+
+  segments.forEach((segment, index) => {
+    if (segment) {
+      html += state.inCode ? escapeHtml(segment).replace(/\n/g, "<br>") : renderMarkdownInlineMarkup(segment);
+    }
+    if (index < segments.length - 1) {
+      html += state.inCode ? "</code>" : "<code>";
+      state.inCode = !state.inCode;
+    }
+  });
+
+  return html;
+}
+
+function renderMarkdownInline(text) {
+  const state = { inCode: false };
+  const html = renderMarkdownInlineWithCodeState(text, state);
+  return html + (state.inCode ? "</code>" : "");
 }
 
 function renderMarkdownParagraph(text) {
@@ -178,6 +273,13 @@ function parseTextGapParts(text) {
   return parts;
 }
 
+function getMatrixBlockItems(block) {
+  if (Array.isArray(block?.sequence) && block.sequence.length) {
+    return block.sequence;
+  }
+  return [block];
+}
+
 function blockUsesTextGapExercise(block) {
   if (!block || typeof block !== "object") {
     return false;
@@ -200,6 +302,21 @@ function blockUsesTextGapExercise(block) {
     );
   }
 
+  if (block.kind === "plane") {
+    return parseTextGapParts(block.resultText || "").some((part) => part.kind === "blank");
+  }
+
+  if (block.kind === "matrix") {
+    return getMatrixBlockItems(block).some((item) => {
+      const rows = Array.isArray(item?.values) ? item.values : [];
+      return rows.some((row) =>
+        (Array.isArray(row) ? row : []).some((cell) =>
+          parseTextGapParts(cell?.value || "").some((part) => part.kind === "blank")
+        )
+      )
+    });
+  }
+
   return false;
 }
 
@@ -209,6 +326,9 @@ function getTextGapSource(block) {
   }
   if (block?.kind === "paragraph" || block?.kind === "editor") {
     return String(block?.value || "");
+  }
+  if (block?.kind === "plane") {
+    return String(block?.resultText || "");
   }
   return "";
 }
@@ -227,6 +347,23 @@ function getTextGapAnswers(block) {
           if (part.kind === "blank") {
             answers.push(part.expected);
           }
+        });
+      });
+    });
+    return answers;
+  }
+
+  if (block.kind === "matrix") {
+    const answers = [];
+    getMatrixBlockItems(block).forEach((item) => {
+      const rows = Array.isArray(item?.values) ? item.values : [];
+      rows.forEach((row) => {
+        (Array.isArray(row) ? row : []).forEach((cell) => {
+          parseTextGapParts(cell?.value || "").forEach((part) => {
+            if (part.kind === "blank") {
+              answers.push(part.expected);
+            }
+          });
         });
       });
     });
@@ -314,11 +451,18 @@ function renderTextGapParts(parts, blockKey, values, chunkRenderer = renderMarkd
   const activePrompt = renderOptions.activeTextGapPrompt;
   const dockExerciseParts = Array.isArray(renderOptions.dockExerciseParts) ? renderOptions.dockExerciseParts : null;
   const suppressPrompt = !!renderOptions.suppressTextGapPrompt;
+  const markdownState = chunkRenderer === renderMarkdownInline ? { inCode: false } : null;
   let promptRendered = false;
-  return parts
+  const html = parts
     .map((part) => {
       if (part.kind === "text") {
-        return '<span class="runtime-text-gap-chunk">' + chunkRenderer(part.value) + "</span>";
+        const renderedChunk = markdownState
+          ? renderMarkdownInlineWithCodeState(part.value, markdownState)
+          : chunkRenderer(part.value);
+        if (markdownState) {
+          return renderedChunk;
+        }
+        return '<span class="runtime-text-gap-chunk">' + renderedChunk + "</span>";
       }
 
       const value = values[part.index] ?? "";
@@ -338,6 +482,8 @@ function renderTextGapParts(parts, blockKey, values, chunkRenderer = renderMarkd
       return renderTextGapBlank(blockKey, part, value, blankClassName);
     })
     .join("");
+
+  return html + (markdownState?.inCode ? "</code>" : "");
 }
 
 function renderTextGapFeedback(blockKey, feedback) {
@@ -1170,8 +1316,534 @@ function getFlowNodeKindLabel(kind) {
   return kindLabelByType[kind] || kind;
 }
 
+function buildPlaneGeometry(block) {
+  const xRange = Array.isArray(block?.xRange) ? block.xRange : [-1, 1];
+  const yRange = Array.isArray(block?.yRange) ? block.yRange : [-1, 1];
+  const [xMin, xMax] = xRange;
+  const [yMin, yMax] = yRange;
+  const unit = 44;
+  const plotLeft = 52;
+  const plotTop = 38;
+  const plotRight = 58;
+  const plotBottom = 42;
+  const plotWidth = Math.max(2, xMax - xMin) * unit;
+  const plotHeight = Math.max(2, yMax - yMin) * unit;
+  const width = plotLeft + plotWidth + plotRight;
+  const height = plotTop + plotHeight + plotBottom;
+
+  return {
+    xMin,
+    xMax,
+    yMin,
+    yMax,
+    unit,
+    plotLeft,
+    plotTop,
+    plotWidth,
+    plotHeight,
+    width,
+    height,
+    xToPx(value) {
+      return plotLeft + (Number(value) - xMin) * unit;
+    },
+    yToPx(value) {
+      return plotTop + plotHeight - (Number(value) - yMin) * unit;
+    }
+  };
+}
+
+function getPlaneToneColor(tone) {
+  if (tone === "secondary") return "#e47b45";
+  if (tone === "tertiary") return "#62b892";
+  if (tone === "quaternary") return "#b99061";
+  if (tone === "result") return "#93cf74";
+  if (tone === "guide") return "#9f8b6c";
+  return "#f2c96d";
+}
+
+function renderPlaneGrid(geometry) {
+  const verticalLines = [];
+  for (let x = geometry.xMin + 1; x <= geometry.xMax - 1; x += 1) {
+    const px = geometry.xToPx(x);
+    verticalLines.push(
+      '<line x1="' +
+      px +
+      '" y1="' +
+      geometry.plotTop +
+      '" x2="' +
+      px +
+      '" y2="' +
+      (geometry.plotTop + geometry.plotHeight) +
+      '" />'
+    );
+  }
+
+  const horizontalLines = [];
+  for (let y = geometry.yMin + 1; y <= geometry.yMax - 1; y += 1) {
+    const py = geometry.yToPx(y);
+    horizontalLines.push(
+      '<line x1="' +
+      geometry.plotLeft +
+      '" y1="' +
+      py +
+      '" x2="' +
+      (geometry.plotLeft + geometry.plotWidth) +
+      '" y2="' +
+      py +
+      '" />'
+    );
+  }
+
+  return verticalLines.concat(horizontalLines).join("");
+}
+
+function renderPlaneAxisLabels(geometry) {
+  const xLabelY =
+    geometry.yMin <= 0 && geometry.yMax >= 0
+      ? geometry.yToPx(0) + 24
+      : geometry.plotTop + geometry.plotHeight + 22;
+  const yLabelX =
+    geometry.xMin <= 0 && geometry.xMax >= 0
+      ? geometry.xToPx(0) - 12
+      : geometry.plotLeft - 12;
+
+  const xLabels = [];
+  for (let x = geometry.xMin; x <= geometry.xMax; x += 1) {
+    xLabels.push(
+      '<text class="runtime-plane-tick" x="' +
+      geometry.xToPx(x) +
+      '" y="' +
+      xLabelY +
+      '" text-anchor="middle" dominant-baseline="hanging">' +
+      escapeHtml(formatRuntimeMathNumber(x)) +
+      "</text>"
+    );
+  }
+
+  const yLabels = [];
+  for (let y = geometry.yMin; y <= geometry.yMax; y += 1) {
+    if (y === 0 && geometry.xMin <= 0 && geometry.xMax >= 0) {
+      continue;
+    }
+    yLabels.push(
+      '<text class="runtime-plane-tick" x="' +
+      yLabelX +
+      '" y="' +
+      geometry.yToPx(y) +
+      '" text-anchor="end" dominant-baseline="middle">' +
+      escapeHtml(formatRuntimeMathNumber(y)) +
+      "</text>"
+    );
+  }
+
+  return xLabels.join("") + yLabels.join("");
+}
+
+function renderPlaneAxes(geometry, markerIdBase) {
+  const plotRight = geometry.plotLeft + geometry.plotWidth;
+  const plotBottom = geometry.plotTop + geometry.plotHeight;
+  const parts = [];
+  if (geometry.yMin <= 0 && geometry.yMax >= 0) {
+    parts.push(
+      '<line class="runtime-plane-axis" x1="' +
+      geometry.plotLeft +
+      '" y1="' +
+      geometry.yToPx(0) +
+      '" x2="' +
+      (plotRight + 12) +
+      '" y2="' +
+      geometry.yToPx(0) +
+      '" marker-end="url(#' +
+      markerIdBase +
+      '-axis)" />' +
+      '<text class="runtime-plane-axis-label" x="' +
+      (plotRight + 30) +
+      '" y="' +
+      (geometry.yToPx(0) + 1) +
+      '" text-anchor="middle" dominant-baseline="middle">x</text>'
+    );
+  }
+  if (geometry.xMin <= 0 && geometry.xMax >= 0) {
+    parts.push(
+      '<line class="runtime-plane-axis" x1="' +
+      geometry.xToPx(0) +
+      '" y1="' +
+      plotBottom +
+      '" x2="' +
+      geometry.xToPx(0) +
+      '" y2="' +
+      (geometry.plotTop - 14) +
+      '" marker-end="url(#' +
+      markerIdBase +
+      '-axis)" />' +
+      '<text class="runtime-plane-axis-label" x="' +
+      geometry.xToPx(0) +
+      '" y="' +
+      (geometry.plotTop - 28) +
+      '" text-anchor="middle" dominant-baseline="middle">y</text>'
+    );
+  }
+  return parts.join("");
+}
+
+function renderPlaneCoordinatePair(pair) {
+  return `(${formatRuntimeMathNumber(Number(pair?.[0] || 0))}, ${formatRuntimeMathNumber(Number(pair?.[1] || 0))})`;
+}
+
+function renderPlaneLegendLabel(item) {
+  const label = String(item?.label || "").trim();
+  if (!label) {
+    return "";
+  }
+
+  if (item?.role === "result") {
+    return label;
+  }
+
+  if (Array.isArray(item?.from) && Array.isArray(item?.to)) {
+    const vectorValue = [
+      Number(item.to[0] || 0) - Number(item.from[0] || 0),
+      Number(item.to[1] || 0) - Number(item.from[1] || 0)
+    ];
+    return /[=(]/.test(label) ? label : `${label} = ${renderPlaneCoordinatePair(vectorValue)}`;
+  }
+
+  if (Array.isArray(item?.at)) {
+    return `${label} = ${renderPlaneCoordinatePair(item.at)}`;
+  }
+
+  return label;
+}
+
+function renderPlaneLegend(block) {
+  const items = [
+    ...(Array.isArray(block?.vectors) ? block.vectors : []),
+    ...(Array.isArray(block?.points) ? block.points : [])
+  ]
+    .map((item) => ({
+      tone: item?.tone || "primary",
+      label: renderPlaneLegendLabel(item)
+    }))
+    .filter((item) => item.label);
+
+  if (!items.length) {
+    return "";
+  }
+
+  return (
+    '<div class="runtime-plane-legend" aria-label="Legenda do plano">' +
+    items
+      .map((item) => (
+        '<span class="runtime-plane-legend-item tone-' +
+        escapeHtml(item.tone) +
+        '">' +
+        '<span class="runtime-plane-legend-swatch" aria-hidden="true"></span>' +
+        '<span class="runtime-plane-legend-label">' +
+        escapeHtml(item.label) +
+        "</span></span>"
+      ))
+      .join("") +
+    "</div>"
+  );
+}
+
+function renderPlaneNote(block) {
+  const note = normalizeInlineText(block?.note);
+  if (!note) {
+    return "";
+  }
+  return '<div class="runtime-plane-note">' + escapeHtml(note) + "</div>";
+}
+
+function renderPlaneBlock(block, renderOptions = {}, blockKey = "runtime-plane") {
+  const geometry = buildPlaneGeometry(block);
+  const usesTextGap = blockUsesTextGapExercise(block);
+  const exercise = renderOptions.textGapExerciseStateByBlockKey?.[blockKey] || renderOptions.completeExerciseStateByBlockKey?.[blockKey] || null;
+  const values = Array.isArray(exercise?.values) ? exercise.values : [];
+  const feedback = exercise?.feedback || null;
+  const dockExerciseParts = Array.isArray(renderOptions.dockExerciseParts) ? renderOptions.dockExerciseParts : null;
+  const feedbackHtml = renderTextGapFeedback(blockKey, feedback);
+  const bodyRenderOptions = feedbackHtml && dockExerciseParts
+    ? { ...renderOptions, suppressTextGapPrompt: true }
+    : renderOptions;
+  const markerIdBase = sanitizeDomId(`${blockKey}-plane`);
+
+  const defs =
+    '<defs>' +
+    ['axis', 'primary', 'secondary', 'tertiary', 'quaternary', 'result']
+      .map((tone) => {
+        const fill = tone === "axis" ? "#f2d79d" : getPlaneToneColor(tone);
+        return (
+          '<marker id="' +
+          markerIdBase +
+          "-" +
+          tone +
+          '" markerWidth="4.8" markerHeight="4.8" refX="4.2" refY="2.4" orient="auto" markerUnits="strokeWidth">' +
+          '<path d="M0,0 L4.8,2.4 L0,4.8 z" fill="' +
+          fill +
+          '" /></marker>'
+        );
+      })
+      .join("") +
+    "</defs>";
+
+  const segments = (Array.isArray(block?.segments) ? block.segments : [])
+    .map((segment) => (
+      '<line class="runtime-plane-segment tone-' +
+      escapeHtml(segment?.tone || "guide") +
+      (segment?.dashed ? " is-dashed" : "") +
+      '" x1="' +
+      geometry.xToPx(segment?.from?.[0] || 0) +
+      '" y1="' +
+      geometry.yToPx(segment?.from?.[1] || 0) +
+      '" x2="' +
+      geometry.xToPx(segment?.to?.[0] || 0) +
+      '" y2="' +
+      geometry.yToPx(segment?.to?.[1] || 0) +
+      '" />'
+    ))
+    .join("");
+
+  const vectors = (Array.isArray(block?.vectors) ? block.vectors : [])
+    .map((vector) => {
+      const markerName = markerIdBase + "-" + sanitizeDomId(vector?.tone || "primary");
+      return (
+        '<g class="runtime-plane-vector tone-' +
+        escapeHtml(vector?.tone || "primary") +
+        (vector?.dashed ? " is-dashed" : "") +
+        '">' +
+        '<line x1="' +
+        geometry.xToPx(vector?.from?.[0] || 0) +
+        '" y1="' +
+        geometry.yToPx(vector?.from?.[1] || 0) +
+        '" x2="' +
+        geometry.xToPx(vector?.to?.[0] || 0) +
+        '" y2="' +
+        geometry.yToPx(vector?.to?.[1] || 0) +
+        '" marker-end="url(#' +
+        markerName +
+        ')" />' +
+        '<circle class="runtime-plane-point tone-' +
+        escapeHtml(vector?.tone || "primary") +
+        '" cx="' +
+        geometry.xToPx(vector?.to?.[0] || 0) +
+        '" cy="' +
+        geometry.yToPx(vector?.to?.[1] || 0) +
+        '" r="3.6" />' +
+        "</g>"
+      );
+    })
+    .join("");
+
+  const points = (Array.isArray(block?.points) ? block.points : [])
+    .map((point) => (
+      '<g class="runtime-plane-point-group tone-' +
+      escapeHtml(point?.tone || "primary") +
+      '">' +
+      '<circle class="runtime-plane-point tone-' +
+      escapeHtml(point?.tone || "primary") +
+      '" cx="' +
+      geometry.xToPx(point?.at?.[0] || 0) +
+      '" cy="' +
+      geometry.yToPx(point?.at?.[1] || 0) +
+      '" r="4.2" />' +
+      "</g>"
+    ))
+    .join("");
+
+  const originVisible = geometry.xMin <= 0 && geometry.xMax >= 0 && geometry.yMin <= 0 && geometry.yMax >= 0;
+  const resultParts = parseTextGapParts(block?.resultText || "");
+  const resultHtml = block?.resultText
+    ? '<div class="runtime-plane-result">' +
+      (usesTextGap
+        ? renderTextGapParts(resultParts, blockKey, values, renderMarkdownInline, "runtime-text-gap-blank runtime-plane-gap-blank", bodyRenderOptions)
+        : renderMarkdownInline(block.resultText)) +
+      "</div>"
+    : "";
+  const legendHtml = renderPlaneLegend(block);
+  const noteHtml = renderPlaneNote(block);
+
+  const bodyHtml =
+    '<div class="runtime-block runtime-plane-block" data-plane-mode="' +
+    escapeHtml(block?.mode || "") +
+    '">' +
+    '<div class="runtime-plane-wrap">' +
+    '<svg class="runtime-plane-svg" viewBox="0 0 ' +
+    geometry.width +
+    " " +
+    geometry.height +
+    '" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Plano cartesiano">' +
+    defs +
+    '<rect class="runtime-plane-surface" x="' +
+    geometry.plotLeft +
+    '" y="' +
+    geometry.plotTop +
+    '" width="' +
+    geometry.plotWidth +
+    '" height="' +
+    geometry.plotHeight +
+    '" rx="14" ry="14" />' +
+    '<g class="runtime-plane-grid">' +
+    renderPlaneGrid(geometry) +
+    "</g>" +
+    '<rect class="runtime-plane-frame" x="' +
+    geometry.plotLeft +
+    '" y="' +
+    geometry.plotTop +
+    '" width="' +
+    geometry.plotWidth +
+    '" height="' +
+    geometry.plotHeight +
+    '" rx="14" ry="14" />' +
+    renderPlaneAxes(geometry, markerIdBase) +
+    renderPlaneAxisLabels(geometry) +
+    segments +
+    vectors +
+    points +
+    (originVisible
+      ? '<circle class="runtime-plane-origin" cx="' +
+        geometry.xToPx(0) +
+        '" cy="' +
+        geometry.yToPx(0) +
+        '" r="3.8" />'
+      : "") +
+    "</svg>" +
+    legendHtml +
+    noteHtml +
+    resultHtml +
+    "</div>";
+
+  if (!usesTextGap) {
+    return bodyHtml + "</div>";
+  }
+  if (feedbackHtml && dockExerciseParts) {
+    dockExerciseParts.push(feedbackHtml);
+    return bodyHtml + "</div>";
+  }
+  return bodyHtml + feedbackHtml + "</div>";
+}
+
+function renderMatrixBlock(block, renderOptions = {}, blockKey = "runtime-matrix") {
+  const usesTextGap = blockUsesTextGapExercise(block);
+  const exercise = renderOptions.textGapExerciseStateByBlockKey?.[blockKey] || renderOptions.completeExerciseStateByBlockKey?.[blockKey] || null;
+  const values = Array.isArray(exercise?.values) ? exercise.values : [];
+  const feedback = exercise?.feedback || null;
+  const dockExerciseParts = Array.isArray(renderOptions.dockExerciseParts) ? renderOptions.dockExerciseParts : null;
+  const feedbackHtml = renderTextGapFeedback(blockKey, feedback);
+  const bodyRenderOptions = feedbackHtml && dockExerciseParts
+    ? { ...renderOptions, suppressTextGapPrompt: true }
+    : renderOptions;
+  const sequence = Array.isArray(block?.sequence) && block.sequence.length ? block.sequence : null;
+  let nextBlankIndex = 0;
+
+  function renderMatrixShell(matrixItem) {
+    const highlightCells = new Set((Array.isArray(matrixItem?.highlightCells) ? matrixItem.highlightCells : []).map((item) => String(item)));
+    const rowCount = Number(matrixItem?.rowCount || 0);
+    const columnCount = Number(matrixItem?.columnCount || 0);
+    const dividerAfterColumn = Number.isInteger(matrixItem?.dividerAfterColumn) ? matrixItem.dividerAfterColumn : null;
+    const displayColumns = columnCount + (dividerAfterColumn ? 1 : 0);
+    const cellsHtml = (Array.isArray(matrixItem?.values) ? matrixItem.values : [])
+      .map((row, rowIndex) =>
+        (Array.isArray(row) ? row : [])
+          .map((cell, columnIndex) => {
+            const scopedColumn = columnIndex + 1 + (dividerAfterColumn && columnIndex + 1 > dividerAfterColumn ? 1 : 0);
+            const parts = parseTextGapParts(cell?.value || "");
+            const highlightClass = highlightCells.has(`${rowIndex}:${columnIndex}`) ? " is-highlighted" : "";
+            const body =
+              usesTextGap && parts.some((part) => part.kind === "blank")
+                ? renderTextGapParts(
+                    parts.map((part) => (part.kind === "blank" ? { ...part, index: nextBlankIndex++ } : part)),
+                    blockKey,
+                    values,
+                    renderMarkdownInline,
+                    "runtime-text-gap-blank runtime-matrix-gap-blank",
+                    bodyRenderOptions
+                  )
+                : renderMarkdownInline(cell?.value || "");
+
+            return (
+              '<div class="runtime-matrix-cell' +
+              highlightClass +
+              '" style="grid-column:' +
+              scopedColumn +
+              ";grid-row:" +
+              (rowIndex + 1) +
+              ';">' +
+              body +
+              "</div>"
+            );
+          })
+          .join("")
+      )
+      .join("");
+    const dividerHtml = dividerAfterColumn
+      ? '<div class="runtime-matrix-divider" style="grid-column:' +
+        (dividerAfterColumn + 1) +
+        ';grid-row:1 / span ' +
+        rowCount +
+        ';"></div>'
+      : "";
+
+    return (
+      '<div class="runtime-matrix-shell">' +
+      '<div class="runtime-matrix-bracket is-left" aria-hidden="true"></div>' +
+      '<div class="runtime-matrix-grid" style="--matrix-columns:' +
+      displayColumns +
+      ";--matrix-rows:" +
+      rowCount +
+      ';">' +
+      dividerHtml +
+      cellsHtml +
+      "</div>" +
+      '<div class="runtime-matrix-bracket is-right" aria-hidden="true"></div>' +
+      "</div>"
+    );
+  }
+
+  function renderMatrixSequenceItem(matrixItem, index) {
+    const connector = index > 0 ? formatMatrixSequenceConnector(matrixItem?.connector || "=") : "";
+    const label = formatMatrixSequenceName(matrixItem?.name);
+    return (
+      '<div class="runtime-matrix-sequence-group"' +
+      (label ? ' aria-label="' + escapeHtmlAttribute(label) + '"' : "") +
+      ">" +
+      (connector ? '<div class="runtime-matrix-sequence-operator" aria-hidden="true">' + escapeHtml(connector) + "</div>" : "") +
+      '<div class="runtime-matrix-item">' +
+      renderMatrixShell(matrixItem) +
+      "</div></div>"
+    );
+  }
+
+  const sequenceLeadExpression = sequence ? formatMatrixSequenceLeadExpression(sequence) : "";
+  const equationHtml = sequence
+    ? (sequenceLeadExpression ? '<div class="runtime-matrix-sequence-prefix">' + escapeHtml(sequenceLeadExpression) + "</div>" : "") +
+      sequence
+        .map((matrixItem, index) => renderMatrixSequenceItem(matrixItem, index))
+        .join("")
+    : (block?.name ? '<div class="runtime-matrix-name">' + escapeHtml(block.name) + " =</div>" : "") + renderMatrixShell(block);
+
+  const bodyHtml =
+    '<div class="runtime-block runtime-matrix-block">' +
+    '<div class="runtime-matrix-wrap">' +
+    '<div class="runtime-matrix-equation' +
+    (sequence ? " is-sequence" : "") +
+    '">' +
+    equationHtml +
+    "</div></div></div>";
+
+  if (!usesTextGap) {
+    return bodyHtml;
+  }
+  if (feedbackHtml && dockExerciseParts) {
+    dockExerciseParts.push(feedbackHtml);
+    return bodyHtml;
+  }
+  return bodyHtml + feedbackHtml;
+}
+
 function renderTableBlock(block, renderOptions = {}, blockKey = "runtime-table") {
   const title = normalizeInlineText(block?.title);
+  const focusLabel = normalizeInlineText(block?.focusLabel);
   const usesTextGap = blockUsesTextGapExercise(block);
   const exercise = renderOptions.textGapExerciseStateByBlockKey?.[blockKey] || renderOptions.completeExerciseStateByBlockKey?.[blockKey] || null;
   const values = Array.isArray(exercise?.values) ? exercise.values : [];
@@ -1183,15 +1855,24 @@ function renderTableBlock(block, renderOptions = {}, blockKey = "runtime-table")
     : renderOptions;
   let nextBlankIndex = 0;
   const headers = (Array.isArray(block?.headers) ? block.headers : [])
-    .map((header) => "<th>" + renderMarkdownInline(header?.value || "") + "</th>")
+    .map((header) =>
+      '<th' + (header?.focused ? ' class="is-focused-column"' : "") + ">" + renderMarkdownInline(header?.value || "") + "</th>"
+    )
     .join("");
   const rows = (Array.isArray(block?.rows) ? block.rows : [])
     .map((row) => {
       const cells = (Array.isArray(row) ? row : [])
         .map((cell) => {
+          const cellClassNames = [
+            cell?.focusedRow ? "is-focused-row" : "",
+            cell?.focusedColumn ? "is-focused-column" : "",
+            cell?.focusedRow && cell?.focusedColumn ? "is-focus-intersection" : ""
+          ]
+            .filter(Boolean)
+            .join(" ");
           const parts = parseTextGapParts(cell?.value || "");
           if (!usesTextGap || !parts.some((part) => part.kind === "blank")) {
-            return "<td>" + renderMarkdownInline(cell?.value || "") + "</td>";
+            return "<td" + (cellClassNames ? ' class="' + cellClassNames + '"' : "") + ">" + renderMarkdownInline(cell?.value || "") + "</td>";
           }
 
           const scopedParts = parts.map((part) =>
@@ -1200,7 +1881,7 @@ function renderTableBlock(block, renderOptions = {}, blockKey = "runtime-table")
               : part
           );
           return (
-            '<td><div class="runtime-table-cell-gap">' +
+            '<td' + (cellClassNames ? ' class="' + cellClassNames + '"' : "") + '><div class="runtime-table-cell-gap">' +
             renderTextGapParts(scopedParts, blockKey, values, renderMarkdownInline, "runtime-text-gap-blank runtime-table-gap-blank", bodyRenderOptions) +
             "</div></td>"
           );
@@ -1213,6 +1894,7 @@ function renderTableBlock(block, renderOptions = {}, blockKey = "runtime-table")
   const bodyHtml =
     '<div class="runtime-block runtime-table-block">' +
     (title ? '<div class="runtime-table-title">' + renderMarkdownInline(title) + "</div>" : "") +
+    (focusLabel ? '<div class="runtime-table-focus-label">' + renderMarkdownInline(focusLabel) + "</div>" : "") +
     '<div class="runtime-table-wrap"><div class="runtime-table-frame"><table class="runtime-table">' +
     (headers ? "<thead><tr>" + headers + "</tr></thead>" : "") +
     "<tbody>" +
@@ -1959,6 +2641,12 @@ function renderRuntimeBlock(block, renderOptions = {}, blockKey = "runtime-block
   if (block.kind === "table") {
     return renderTableBlock(block, renderOptions, blockKey);
   }
+  if (block.kind === "plane") {
+    return renderPlaneBlock(block, renderOptions, blockKey);
+  }
+  if (block.kind === "matrix") {
+    return renderMatrixBlock(block, renderOptions, blockKey);
+  }
   if (block.kind === "flowchart") {
     return renderFlowchartBlock(block, renderOptions, blockKey);
   }
@@ -2040,7 +2728,9 @@ export function renderCardRuntimeArticle(card) {
     code: "card-code",
     table: "card-table",
     tree: "card-tree",
-    flow: "card-flow"
+    flow: "card-flow",
+    plane: "card-plane",
+    matrix: "card-matrix"
   };
   const kind = getContractCardKind(card) || "say";
   const cardClass = cardClassByKind[kind] || `card-${escapeHtml(kind)}`;

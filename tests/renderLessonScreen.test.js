@@ -5,6 +5,10 @@ import fs from "node:fs";
 import { validateContractDocument } from "../src/contract/validateContract.js";
 import { renderLessonScreen } from "../src/ui/renderLessonScreen.js";
 
+function countMatches(source, pattern) {
+  return (source.match(pattern) || []).length;
+}
+
 function readProject() {
   const parsed = JSON.parse(fs.readFileSync("./docs/examples/aralearn-contract.renderable.json", "utf8"));
   const result = validateContractDocument(parsed);
@@ -12,11 +16,31 @@ function readProject() {
   return result.value;
 }
 
-test("renderiza a tela de curso com ações globais e menus contextuais por módulo e lição", () => {
+function buildProgressState(entries = []) {
+  return {
+    version: 1,
+    lessons: Object.fromEntries(
+      entries.map(({ courseKey, moduleKey, lessonKey, completedCardKeys = [], cursor = 0 }) => [
+        `${courseKey}::${moduleKey}::${lessonKey}`,
+        { cursor, completedCardKeys }
+      ])
+    )
+  };
+}
+
+test("renderiza a tela de curso mostrando apenas módulos", () => {
   const project = readProject();
   const course = project.courses[0];
   const moduleValue = course.modules[0];
   const lesson = moduleValue.lessons[0];
+  const progress = buildProgressState([
+    {
+      courseKey: course.key,
+      moduleKey: moduleValue.key,
+      lessonKey: lesson.key,
+      completedCardKeys: [lesson.microsequences[0].cards[0].key]
+    }
+  ]);
   const html = renderLessonScreen({
     project,
     view: "course",
@@ -35,28 +59,146 @@ test("renderiza a tela de curso com ações globais e menus contextuais por mód
     cards: lesson.microsequences[0].cards,
     microsequenceMode: "play",
     editorSupport: {
-      progress: { version: 1, lessons: {} }
+      progress,
+      activeStructureVersionId: "v2",
+      structureVersionContextTabs: [{ label: "C1 → C2" }],
+      structureVersionTabs: [
+        { versionId: "v1", lineage: "M1", displayId: "M1", updatedAt: "2026-05-10T18:32:00.000Z" },
+        { versionId: "v2", lineage: "M1 → M2", displayId: "M2", updatedAt: "2026-05-10T18:40:00.000Z" }
+      ]
     }
   });
 
+  assert.match(html, /data-action="quick-create-module"/);
   assert.match(html, /data-action="open-course-screen-actions"/);
-  assert.match(html, /data-home-tab="courses"[^>]+aria-selected="true"/);
-  assert.match(html, /data-home-tab="generate"[^>]+aria-selected="false"/);
+  assert.match(html, new RegExp(`data-action="open-course-source-guide" data-course-key="${course.key}"`));
+  assert.match(html, new RegExp(`data-action="open-module-source-guide" data-course-key="${course.key}" data-module-key="${moduleValue.key}"`));
+  assert.match(html, new RegExp(`data-action="open-generation-panel-course" data-course-key="${course.key}"`));
+  assert.doesNotMatch(html, /C1 → C2/);
+  assert.doesNotMatch(html, /data-action="select-structure-version"/);
+  assert.doesNotMatch(html, /M1 → M2/);
+  assert.doesNotMatch(html, /10\/05 18:40/);
+  assert.doesNotMatch(html, /data-action="scroll-structure-version-prev"/);
+  assert.doesNotMatch(html, /data-action="scroll-structure-version-next"/);
   assert.match(html, /data-action="structure-drag-handle" data-structure-level="module"/);
-  assert.match(html, /data-action="structure-drag-handle" data-structure-level="lesson"/);
   assert.match(html, /data-action="open-module-actions"/);
-  assert.match(html, /data-action="open-lesson-actions"/);
-  assert.match(html, /aria-label="2 lições" title="2 lições"/);
-  assert.match(html, /aria-label="1 microssequência" title="1 microssequência"/);
+  assert.match(html, /data-action="open-generation-panel-module"/);
+  assert.match(html, /data-action="open-module"/);
+  assert.match(html, /aria-label="3 lições" title="3 lições"/);
+  assert.match(html, /class="topbar lesson-topbar navigation-topbar"/);
+  assert.doesNotMatch(html, /class="structure-version-tabbar"/);
+  assert.match(html, /class="navigation-list structure-navigation-list"/);
+  assert.match(html, /class="lesson-copy structure-copy navigation-main"/);
+  assert.match(html, /class="structure-title-row navigation-title-row"/);
+  assert.match(html, /class="lesson-actions structure-actions navigation-actions"/);
+  assert.equal(countMatches(html, /class="card-progress-fill"/g), (course.modules || []).length);
+  assert.match(html, /card-progress-fill" style="width:[1-9]/);
+  assert.equal(countMatches(html, /class="muted tiny progress-meta"/g), 1);
+  assert.ok(html.indexOf('data-action="open-course-source-guide"') < html.indexOf('data-action="open-generation-panel-course"'));
+  assert.ok(html.indexOf('data-action="open-generation-panel-course"') < html.indexOf('data-action="quick-create-module"'));
+  assert.ok(html.indexOf('data-action="quick-create-module"') < html.indexOf('data-action="open-course-screen-actions"'));
+  assert.doesNotMatch(html, /data-action="open-lesson-actions"/);
+  assert.doesNotMatch(html, /data-action="open-lesson"/);
   assert.match(html, /progress-meta-item-icon/);
 });
 
-test("renderiza a tela de lição com ações globais e pilha de ações da microssequência", () => {
+test("renderiza a tela de módulo mostrando apenas lições", () => {
+  const project = readProject();
+  const course = project.courses[0];
+  const moduleValue = course.modules[0];
+  const lesson = moduleValue.lessons[0];
+  const progress = buildProgressState([
+    {
+      courseKey: course.key,
+      moduleKey: moduleValue.key,
+      lessonKey: lesson.key,
+      completedCardKeys: [lesson.microsequences[0].cards[0].key]
+    }
+  ]);
+  const html = renderLessonScreen({
+    project,
+    view: "module",
+    selection: {
+      courseKey: course.key,
+      moduleKey: moduleValue.key,
+      lessonKey: lesson.key,
+      microsequenceKey: lesson.microsequences[0].key,
+      cardKey: lesson.microsequences[0].cards[0].key,
+      cardIndex: 0
+    },
+    course,
+    moduleValue,
+    lesson,
+    microsequence: lesson.microsequences[0],
+    cards: lesson.microsequences[0].cards,
+    microsequenceMode: "play",
+    editorSupport: {
+      progress,
+      structureVersionContextTabs: [
+        { label: "C1 → C2" },
+        { label: "M1 → M2" }
+      ],
+      activeStructureVersionId: "v2",
+      structureVersionTabs: [
+        { versionId: "v1", lineage: "L1", displayId: "L1", updatedAt: "2026-05-10T18:32:00.000Z" },
+        { versionId: "v2", lineage: "L1 → L2", displayId: "L2", updatedAt: "2026-05-10T18:40:00.000Z" }
+      ]
+    }
+  });
+
+  assert.match(html, /data-action="quick-create-lesson"/);
+  assert.match(html, /data-action="open-module-screen-actions"/);
+  assert.match(
+    html,
+    new RegExp(`data-action="open-module-source-guide" data-course-key="${course.key}" data-module-key="${moduleValue.key}"`)
+  );
+  assert.match(
+    html,
+    new RegExp(`data-action="open-lesson-source-guide" data-course-key="${course.key}" data-module-key="${moduleValue.key}" data-lesson-key="${lesson.key}"`)
+  );
+  assert.match(
+    html,
+    new RegExp(`data-action="open-generation-panel-module" data-course-key="${course.key}" data-module-key="${moduleValue.key}"`)
+  );
+  assert.doesNotMatch(html, /C1 → C2/);
+  assert.doesNotMatch(html, /M1 → M2/);
+  assert.doesNotMatch(html, /L1 → L2/);
+  assert.doesNotMatch(html, /10\/05 18:40/);
+  assert.match(html, /data-action="structure-drag-handle" data-structure-level="lesson"/);
+  assert.match(html, /data-action="open-lesson-actions"/);
+  assert.match(html, /data-action="open-generation-panel-lesson"/);
+  assert.match(html, /data-action="open-lesson"/);
+  assert.doesNotMatch(html, /C1 → C2 · M1 → M2/);
+  assert.doesNotMatch(html, /class="structure-version-tabbar"/);
+  assert.match(html, /class="navigation-list structure-navigation-list"/);
+  assert.match(html, /class="structure-title-row navigation-title-row"/);
+  assert.match(html, /class="lesson-actions structure-actions navigation-actions"/);
+  assert.equal(countMatches(html, /class="card-progress-fill"/g), (moduleValue.lessons || []).length);
+  assert.match(html, /card-progress-fill" style="width:[1-9]/);
+  assert.equal(countMatches(html, /class="muted tiny progress-meta"/g), 3);
+  assert.ok(html.indexOf('data-action="open-module-source-guide"') < html.indexOf('data-action="open-generation-panel-module"'));
+  assert.ok(html.indexOf('data-action="open-generation-panel-module"') < html.indexOf('data-action="quick-create-lesson"'));
+  assert.ok(html.indexOf('data-action="quick-create-lesson"') < html.indexOf('data-action="open-module-screen-actions"'));
+  assert.doesNotMatch(html, /aria-label="Progresso: 0\/12" title="0\/12"/);
+  assert.match(html, /aria-label="1 microssequência" title="1 microssequência"/);
+  assert.doesNotMatch(html, /data-action="open-microsequence-actions"/);
+  assert.doesNotMatch(html, /data-action="play-microsequence"/);
+});
+
+test("renderiza a tela de lição com microssequências agrupadas", () => {
   const project = readProject();
   const course = project.courses[0];
   const moduleValue = course.modules[0];
   const lesson = moduleValue.lessons[0];
   const microsequence = lesson.microsequences[0];
+  const progress = buildProgressState([
+    {
+      courseKey: course.key,
+      moduleKey: moduleValue.key,
+      lessonKey: lesson.key,
+      completedCardKeys: microsequence.cards.slice(0, 2).map((card) => card.key)
+    }
+  ]);
   const html = renderLessonScreen({
     project,
     view: "lesson",
@@ -75,26 +217,62 @@ test("renderiza a tela de lição com ações globais e pilha de ações da micr
     cards: microsequence.cards,
     microsequenceMode: "play",
     editorSupport: {
-      progress: { version: 1, lessons: {} }
+      progress,
+      structureVersionContextTabs: [
+        { label: "C1 → C2" },
+        { label: "M1 → M2" },
+        { label: "L1 → L2" }
+      ],
+      activeStructureVersionId: "v2",
+      structureVersionTabs: [
+        { versionId: "v1", lineage: "V1", displayId: "V1", updatedAt: "2026-05-10T18:32:00.000Z" },
+        { versionId: "v2", lineage: "V1 → V2", displayId: "V2", updatedAt: "2026-05-10T18:40:00.000Z" }
+      ]
     }
   });
 
+  assert.match(html, /data-action="quick-create-microsequence"/);
   assert.match(html, /data-action="open-lesson-screen-actions"/);
-  assert.match(html, /data-home-tab="courses"[^>]+aria-selected="true"/);
-  assert.match(html, /data-action="structure-drag-handle" data-structure-level="microsequence"/);
-  assert.match(html, /data-action="toggle-microsequence-runtime"/);
-  assert.match(html, /data-action="open-microsequence-actions"/);
-  assert.match(html, /data-action="play-microsequence"/);
-  assert.match(html, /aria-label="Progresso: 0\/7" title="0\/7"/);
-  assert.match(html, /aria-label="1 microssequência" title="1 microssequência"/);
-  assert.match(html, /aria-label="7 cards" title="7 cards"/);
+  assert.match(
+    html,
+    new RegExp(
+      `data-action="open-lesson-source-guide" data-course-key="${course.key}" data-module-key="${moduleValue.key}" data-lesson-key="${lesson.key}"`
+    )
+  );
+  assert.match(
+    html,
+    new RegExp(
+      `data-action="open-generation-panel-lesson" data-course-key="${course.key}" data-module-key="${moduleValue.key}" data-lesson-key="${lesson.key}"`
+    )
+  );
+  assert.doesNotMatch(html, /C1 → C2/);
+  assert.doesNotMatch(html, /M1 → M2/);
+  assert.doesNotMatch(html, /L1 → L2/);
+  assert.doesNotMatch(html, /V1 → V2/);
+  assert.doesNotMatch(html, /10\/05 18:40/);
   assert.match(html, /Microssequências/);
-  assert.match(html, /class="muted tiny progress-meta lesson-panel-summary"/);
-  assert.match(html, /class="microsequence-title-line"/);
+  assert.match(html, /data-action="structure-drag-handle" data-structure-level="microsequence"/);
+  assert.match(html, /data-action="open-microsequence-actions"/);
+  assert.match(html, /data-action="open-microsequence-assist"/);
+  assert.match(html, /data-action="play-microsequence"/);
+  assert.match(html, /class="microsequence-group navigation-list"/);
+  assert.match(html, /class="lesson-actions structure-actions navigation-actions"/);
+  assert.match(html, /aria-label="Progresso: 2\/7" title="2\/7"/);
+  assert.equal(countMatches(html, /class="card-progress-fill"/g), 1);
+  assert.match(html, /card-progress-fill" style="width:28\.57142857142857%"/);
+  assert.doesNotMatch(html, /aria-label="1 microssequência" title="1 microssequência"/);
+  assert.match(html, /aria-label="7 cards" title="7 cards"/);
+  assert.match(html, /class="didactic-tag-row microsequence-tag-row"/);
+  assert.match(html, /<span class="didactic-tag-text">Processos de software<\/span>/);
+  assert.equal(countMatches(html, /class="muted tiny progress-meta"/g), 1);
+  assert.ok(html.indexOf('data-action="open-lesson-source-guide"') < html.indexOf('data-action="open-generation-panel-lesson"'));
+  assert.ok(html.indexOf('data-action="open-generation-panel-lesson"') < html.indexOf('data-action="quick-create-microsequence"'));
+  assert.ok(html.indexOf('data-action="quick-create-microsequence"') < html.indexOf('data-action="open-lesson-screen-actions"'));
+  assert.doesNotMatch(html, /data-action="select-structure-version"/);
   assert.match(html, /microsequence-state-icon is-ready/);
-  assert.doesNotMatch(html, /Módulo experimental/);
-  assert.doesNotMatch(html, />Mód\.:/);
-  assert.doesNotMatch(html, />Progr\.:/);
+  assert.doesNotMatch(html, /aria-label="pronta" title="pronta"/);
+  assert.doesNotMatch(html, /data-action="open-microsequence-source-guide"/);
+  assert.doesNotMatch(html, /data-action="toggle-microsequence-runtime"/);
 });
 
 test("mostra aviso quando a lição tem apenas rascunhos", () => {
@@ -135,9 +313,9 @@ test("mostra aviso quando a lição tem apenas rascunhos", () => {
   });
 
   assert.match(html, /Não há microssequências prontas para estudar aqui\./);
+  assert.match(html, /Rascunhos/);
   assert.match(html, /microsequence-state-icon is-draft/);
   assert.match(html, /aria-label="Rascunho" title="Rascunho"/);
-  assert.doesNotMatch(html, /Ainda não entra no estudo\./);
   assert.match(html, /data-action="open-microsequence-assist"/);
 });
 
@@ -174,8 +352,8 @@ test("desabilita play e sinaliza exclusão quando a microssequência sai do estu
 
   assert.match(html, /microsequence-state-icon is-excluded/);
   assert.match(html, /aria-label="Microssequência excluída do estudo" title="Microssequência excluída do estudo"/);
-  assert.doesNotMatch(html, /Esta microssequência foi removida da execução do curso\./);
-  assert.match(html, /data-action="toggle-microsequence-runtime"[^>]*>\+<\/button>/);
+  assert.match(html, /Fora do estudo/);
+  assert.doesNotMatch(html, /data-action="toggle-microsequence-runtime"/);
   assert.match(html, /data-action="play-microsequence"[^>]*disabled aria-disabled="true"/);
 });
 
@@ -187,7 +365,8 @@ test("renderiza o painel da microssequência sem botão próprio de ações e co
   const microsequence = lesson.microsequences[0];
   const microsequenceVersions = Array.from({ length: 12 }, (_, index) => ({
     id: `v${index + 1}`,
-    label: `Iteração ${index + 1}`
+    label: `Iteração ${index + 1}`,
+    updatedAt: `2026-05-${String(index + 1).padStart(2, "0")}T18:4${index % 10}:00.000Z`
   }));
   const html = renderLessonScreen({
     project,
@@ -211,6 +390,10 @@ test("renderiza o painel da microssequência sem botão próprio de ações e co
       dependencies: [{ key: "teste", title: "Teste" }],
       microsequenceVersions,
       activeMicrosequenceVersionId: "v7",
+      visualizedMicrosequenceVersionId: "v6",
+      editBaseMicrosequenceVersionId: "v7",
+      visualizedMicrosequenceVersion: microsequenceVersions[5],
+      canDeleteVisualizedMicrosequenceVersion: true,
       selectedDependencyKeys: [],
       pendingDependencyKey: "",
       modelOptions: [{ value: "gemini-2.5-flash", label: "Gemini 2.5 Flash" }],
@@ -226,21 +409,25 @@ test("renderiza o painel da microssequência sem botão próprio de ações e co
 
   assert.doesNotMatch(html, /data-action="open-microsequence-actions"/);
   assert.doesNotMatch(html, /data-action="open-version-history"/);
-  assert.match(html, /data-home-tab="courses"[^>]+aria-selected="true"/);
-  assert.match(html, /data-action="select-microsequence-version"/);
-  assert.match(html, /data-action="editor-prev-version"/);
-  assert.match(html, /data-action="editor-next-version"/);
+  assert.doesNotMatch(html, /data-action="open-microsequence-version-compare"/);
+  assert.doesNotMatch(html, /data-action="select-microsequence-version"/);
+  assert.doesNotMatch(html, /data-action="editor-prev-version"/);
+  assert.doesNotMatch(html, /data-action="editor-next-version"/);
   assert.doesNotMatch(html, /data-action="editor-prev-card"/);
   assert.doesNotMatch(html, /data-action="editor-next-card"/);
   assert.match(html, /data-action="scroll-card-strip-prev"/);
   assert.match(html, /data-action="scroll-card-strip-next"/);
   assert.doesNotMatch(html, /data-action="version-tabs-prev"/);
   assert.doesNotMatch(html, /data-action="version-tabs-next"/);
-  assert.match(html, /data-action="delete-microsequence-version"/);
-  assert.match(html, /class="editor-version-tab active"/);
-  assert.match(html, /class="chip-muted editor-version-count"/);
-  assert.match(html, /editor-version-count-value">7\/12<\/span>/);
-  assert.match(html, /aria-label="Versão 7 de 12" title="Versão 7 de 12"/);
+  assert.doesNotMatch(html, /data-action="use-microsequence-version"/);
+  assert.doesNotMatch(html, /data-action="toggle-microsequence-version-more"/);
+  assert.doesNotMatch(html, /data-action="duplicate-microsequence-version"/);
+  assert.doesNotMatch(html, /class="editor-version-tab active"/);
+  assert.doesNotMatch(html, /class="chip-muted editor-version-count"/);
+  assert.doesNotMatch(html, /editor-version-count-value">6\/12<\/span>/);
+  assert.doesNotMatch(html, /aria-label="Versão 6 de 12" title="Versão 6 de 12"/);
+  assert.doesNotMatch(html, /Em uso: v7/);
+  assert.doesNotMatch(html, /Visualizando: v6/);
   assert.match(html, /data-action="select-workbench-pane" data-workbench-pane="preview" aria-label="Preview" title="Preview"/);
   assert.match(html, /workbench-surface-tab active" type="button" role="tab" aria-selected="true" data-action="select-workbench-pane" data-workbench-pane="edit" aria-label="Edição" title="Edição"/);
   assert.match(html, /workbench-surface-tab-icon/);
@@ -250,7 +437,8 @@ test("renderiza o painel da microssequência sem botão próprio de ações e co
   assert.match(html, /data-structure-level="card"/);
   assert.match(html, /data-card-key="card-ideia-central"/);
   assert.doesNotMatch(html, /data-action="edit-card"/);
-  assert.match(html, /<span class="editor-version-tab-label">12<\/span>/);
+  assert.doesNotMatch(html, /<span class="editor-version-tab-label">v12<\/span>/);
+  assert.doesNotMatch(html, /<span class="editor-version-tab-meta">12\/05 18:41<\/span>/);
   assert.match(html, /data-field="assist-microsequence-title" type="text" aria-label="Microssequência" title="Microssequência"/);
   assert.match(html, /data-field="assist-dependency-picker" aria-label="Tags" title="Tags"/);
   assert.match(html, /data-field="assist-prompt" class="assist-prompt" aria-label="Pedido" title="Pedido"/);
@@ -274,6 +462,9 @@ test("renderiza o painel da microssequência sem botão próprio de ações e co
   assert.doesNotMatch(html, /mini-card-kicker">Card /);
   assert.doesNotMatch(html, /Intenção do usuário/);
   assert.doesNotMatch(html, /Pedido de revisão/);
+  assert.doesNotMatch(html, /Editar a partir desta/);
+  assert.doesNotMatch(html, /Excluir versão/);
+  assert.doesNotMatch(html, /Duplicar como variação/);
   assert.match(html, /dependency-chip-row/);
   assert.doesNotMatch(html, /generator-preview-stage/);
 });
@@ -396,6 +587,8 @@ test("renderiza o painel da microssequência vazia em modo de geração de cards
   });
 
   assert.match(html, /<div class="topbar-title">Gerar cards<\/div>/);
+  assert.doesNotMatch(html, /data-action="open-version-history"/);
+  assert.doesNotMatch(html, /data-action="open-version-compare"/);
   assert.doesNotMatch(html, /editor-step-nav/);
   assert.doesNotMatch(html, /editor-version-count-value/);
   assert.doesNotMatch(html, /Os cards gerados aparecerão aqui após o envio do prompt\./);
@@ -451,7 +644,8 @@ test("renderiza a aba preview da microssequência dentro da superfície combinad
 
   assert.match(html, /workbench-surface-tab active" type="button" role="tab" aria-selected="true" data-action="select-workbench-pane" data-workbench-pane="preview" aria-label="Preview" title="Preview"/);
   assert.match(html, /workbench-surface-tab-icon/);
-  assert.match(html, /editor-version-count-value">1\/1<\/span>/);
+  assert.doesNotMatch(html, /editor-version-count-value">1\/1<\/span>/);
+  assert.doesNotMatch(html, /data-action="open-version-compare"/);
   assert.match(html, /generator-preview-stage/);
   assert.match(html, /runtime-card-title/);
   assert.match(html, /class="chip-muted editor-card-stage-count" aria-label="Card 1 de 7" title="Card 1 de 7"/);
@@ -493,8 +687,6 @@ test("renderiza a execução do card com nome do curso e faixa estável de tags"
   });
 
   assert.match(html, /<span class="study-reader-context-line study-reader-course-title">Curso renderizável<\/span>/);
-  assert.doesNotMatch(html, /data-home-tab="courses"/);
-  assert.doesNotMatch(html, /data-home-tab="generate"/);
   assert.doesNotMatch(html, /Lição experimental - Modelo cascata/);
   assert.match(html, /class="study-context-tags compact-study-tags"/);
   assert.match(html, /class="study-reader-count" aria-label="Card 1 de 7" title="Card 1 de 7"/);

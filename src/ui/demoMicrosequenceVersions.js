@@ -1,3 +1,5 @@
+import { createMicrosequenceVersionRecord } from "./microsequenceVersionState.js";
+
 const LEGACY_DEMO_MICROSEQUENCE_VERSION_COUNT = 18;
 const DEMO_MICROSEQUENCE_CARD_COUNTS = [3, 5, 7];
 const DEMO_CARD_TITLE_PREFIXES = [
@@ -13,18 +15,6 @@ function normalizeComparableText(value) {
     .replace(/\s+/g, " ")
     .trim()
     .toLowerCase();
-}
-
-function cloneMicrosequenceSnapshot(microsequence, fallbackLabel = "Versão 1") {
-  return {
-    id: `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
-    label: fallbackLabel,
-    title: microsequence?.title || "",
-    tags: Array.isArray(microsequence?.tags) ? structuredClone(microsequence.tags) : [],
-    cards: Array.isArray(microsequence?.cards) ? structuredClone(microsequence.cards) : [],
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  };
 }
 
 function createFallbackCard() {
@@ -114,12 +104,16 @@ export function buildDemoMicrosequenceVersions(microsequence) {
       createCardVariant(baseCards[cardIndex % baseCards.length], versionIndex, cardIndex)
     );
 
-    return cloneMicrosequenceSnapshot(
+    return createMicrosequenceVersionRecord(
       {
         ...microsequence,
         cards
       },
-      `Versão ${versionIndex + 1}`
+      {
+        versionNumber: versionIndex + 1,
+        label: `Versão ${versionIndex + 1}`,
+        operationType: "seed"
+      }
     );
   });
 }

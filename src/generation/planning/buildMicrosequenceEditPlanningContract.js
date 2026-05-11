@@ -15,6 +15,29 @@ function summarizeCard(card, index) {
   };
 }
 
+function keyOf(value) {
+  return text(value?.key) || text(value?.id) || "";
+}
+
+function sourceGuide(value) {
+  return text(value?.sourceGuide);
+}
+
+function sourceGuideStructured(value) {
+  const structured = value?.sourceGuideStructured;
+  return structured && typeof structured === "object" && !Array.isArray(structured) ? structured : undefined;
+}
+
+function summarizeMicrosequence(value) {
+  return {
+    key: keyOf(value),
+    title: text(value?.title) || keyOf(value),
+    objective: text(value?.description),
+    tags: Array.isArray(value?.tags) ? value.tags.map((item) => text(item)).filter(Boolean) : [],
+    status: text(value?.status)
+  };
+}
+
 export function buildMicrosequenceEditPlanningContract({
   selectedCourse,
   selectedModule,
@@ -55,10 +78,58 @@ export function buildMicrosequenceEditPlanningContract({
       versionId: text(selectedMicrosequenceVersion?.id)
     },
     context: {
-      course: { title: text(selectedCourse?.title), objective: text(selectedCourse?.description) },
-      module: { title: text(selectedModule?.title), objective: text(selectedModule?.description) },
-      lesson: { title: text(selectedLesson?.title), objective: text(selectedLesson?.description) },
-      microsequence: { title: text(selectedMicrosequence?.title), objective: text(selectedMicrosequence?.description) }
+      path: [
+        { level: "course", key: keyOf(selectedCourse), title: text(selectedCourse?.title) || keyOf(selectedCourse) },
+        { level: "module", key: keyOf(selectedModule), title: text(selectedModule?.title) || keyOf(selectedModule) },
+        { level: "lesson", key: keyOf(selectedLesson), title: text(selectedLesson?.title) || keyOf(selectedLesson) },
+        { level: "microsequence", key: keyOf(selectedMicrosequence), title: text(selectedMicrosequence?.title) || keyOf(selectedMicrosequence) }
+      ],
+      sourceGuideLineage: [
+        {
+          level: "course",
+          title: text(selectedCourse?.title) || keyOf(selectedCourse),
+          ...(sourceGuide(selectedCourse) ? { sourceGuide: sourceGuide(selectedCourse) } : {}),
+          ...(sourceGuideStructured(selectedCourse) ? { sourceGuideStructured: sourceGuideStructured(selectedCourse) } : {})
+        },
+        {
+          level: "module",
+          title: text(selectedModule?.title) || keyOf(selectedModule),
+          ...(sourceGuide(selectedModule) ? { sourceGuide: sourceGuide(selectedModule) } : {}),
+          ...(sourceGuideStructured(selectedModule) ? { sourceGuideStructured: sourceGuideStructured(selectedModule) } : {})
+        },
+        {
+          level: "lesson",
+          title: text(selectedLesson?.title) || keyOf(selectedLesson),
+          ...(sourceGuide(selectedLesson) ? { sourceGuide: sourceGuide(selectedLesson) } : {}),
+          ...(sourceGuideStructured(selectedLesson) ? { sourceGuideStructured: sourceGuideStructured(selectedLesson) } : {})
+        }
+      ],
+      course: {
+        title: text(selectedCourse?.title),
+        objective: text(selectedCourse?.description),
+        ...(sourceGuide(selectedCourse) ? { sourceGuide: sourceGuide(selectedCourse) } : {}),
+        ...(sourceGuideStructured(selectedCourse) ? { sourceGuideStructured: sourceGuideStructured(selectedCourse) } : {})
+      },
+      module: {
+        title: text(selectedModule?.title),
+        objective: text(selectedModule?.description),
+        ...(sourceGuide(selectedModule) ? { sourceGuide: sourceGuide(selectedModule) } : {}),
+        ...(sourceGuideStructured(selectedModule) ? { sourceGuideStructured: sourceGuideStructured(selectedModule) } : {})
+      },
+      lesson: {
+        title: text(selectedLesson?.title),
+        objective: text(selectedLesson?.description),
+        ...(sourceGuide(selectedLesson) ? { sourceGuide: sourceGuide(selectedLesson) } : {}),
+        ...(sourceGuideStructured(selectedLesson) ? { sourceGuideStructured: sourceGuideStructured(selectedLesson) } : {}),
+        microsequenceLine: Array.isArray(selectedLesson?.microsequences)
+          ? selectedLesson.microsequences.map(summarizeMicrosequence)
+          : []
+      },
+      microsequence: {
+        title: text(selectedMicrosequence?.title),
+        objective: text(selectedMicrosequence?.description),
+        ...(selectedMicrosequence ? summarizeMicrosequence(selectedMicrosequence) : {})
+      }
     },
     selectedLessonTopicRefs: selectedTopics,
     request: { userEditPrompt: text(userEditPrompt), selectedCardKeys, selectedResourceKeys, userSelectedExtraResourceTypes },

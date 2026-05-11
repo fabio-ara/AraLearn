@@ -102,6 +102,21 @@ export function renderUiIcon(iconName, className = "ui-icon") {
     );
   }
 
+  if (iconName === "reposition") {
+    return (
+      '<svg class="' +
+      classes +
+      '" viewBox="0 0 16 16" aria-hidden="true" focusable="false">' +
+      '<path d="M3.2 5.2h7.2" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"></path>' +
+      '<path d="M8.5 3.3l2 1.9-2 2" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"></path>' +
+      '<path d="M12.8 10.8H5.6" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"></path>' +
+      '<path d="M7.5 8.8l-2 2 2 1.9" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"></path>' +
+      '<circle cx="3.2" cy="5.2" r="1" fill="currentColor"></circle>' +
+      '<circle cx="12.8" cy="10.8" r="1" fill="currentColor"></circle>' +
+      "</svg>"
+    );
+  }
+
   if (iconName === "card") {
     return (
       '<svg class="' +
@@ -182,7 +197,7 @@ export function renderUiIcon(iconName, className = "ui-icon") {
       '" viewBox="0 0 16 16" aria-hidden="true" focusable="false">' +
       '<g transform="translate(0 1)">' +
       '<circle cx="8" cy="8" r="5.2" fill="none" stroke="currentColor" stroke-width="1.15" opacity="0.58"></circle>' +
-      '<path d="M5.2 5.2l5.6 5.6M10.8 5.2L5.2 10.8" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round"></path>' +
+      '<path d="M6.2 5.4v5.2M9.8 5.4v5.2" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round"></path>' +
       "</g>" +
       "</svg>"
     );

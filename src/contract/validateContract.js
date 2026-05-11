@@ -1,4 +1,9 @@
 import { sanitizeContractCard, getContractCardKindLabel } from "./contractCard.js";
+import {
+  buildSourceGuideText,
+  normalizeSourceGuideStructured,
+  SOURCE_GUIDE_LEVELS
+} from "../sourceGuides/sourceGuideStructured.js";
 
 export const CONTRACT_NAME = "aralearn.contract";
 export const CONTRACT_VERSION = 1;
@@ -184,6 +189,19 @@ function validateMicrosequence(microsequence, index, errors, microKeys, path) {
   };
 }
 
+function readOptionalSourceGuideStructured(value, sourceGuide, path, errors, level) {
+  if (value === undefined) {
+    return {};
+  }
+  if (!isPlainObject(value)) {
+    errors.push(makeError(path, 'Campo opcional inválido: "sourceGuideStructured".'));
+    return {};
+  }
+
+  const normalized = normalizeSourceGuideStructured(value, { level });
+  return normalized;
+}
+
 function validateLesson(lesson, index, errors, lessonKeys, path) {
   const currentPath = `${path}.lessons[${index}]`;
 
@@ -194,7 +212,7 @@ function validateLesson(lesson, index, errors, lessonKeys, path) {
 
   assertAllowedFields(
     lesson,
-    new Set(["key", "title", "description", "microsequences"]),
+    new Set(["key", "title", "description", "sourceGuide", "sourceGuideStructured", "microsequences"]),
     currentPath,
     errors,
     "lição"
@@ -202,6 +220,14 @@ function validateLesson(lesson, index, errors, lessonKeys, path) {
 
   const title = ensureRequiredString(lesson.title, `${currentPath}.title`, "title", errors);
   const description = readOptionalString(lesson.description, `${currentPath}.description`, "description", errors);
+  const sourceGuide = readOptionalString(lesson.sourceGuide, `${currentPath}.sourceGuide`, "sourceGuide", errors);
+  const sourceGuideStructured = readOptionalSourceGuideStructured(
+    lesson.sourceGuideStructured,
+    sourceGuide,
+    `${currentPath}.sourceGuideStructured`,
+    errors,
+    SOURCE_GUIDE_LEVELS.LESSON
+  );
   const key = lessonKeys.next(lesson.key, title || `lesson-${index + 1}`, currentPath, errors);
   const microsequences = Array.isArray(lesson.microsequences) ? lesson.microsequences : [];
 
@@ -218,6 +244,10 @@ function validateLesson(lesson, index, errors, lessonKeys, path) {
     key,
     title: title ?? "",
     ...(description ? { description } : {}),
+    ...(buildSourceGuideText(sourceGuideStructured, sourceGuide, { level: SOURCE_GUIDE_LEVELS.LESSON })
+      ? { sourceGuide: buildSourceGuideText(sourceGuideStructured, sourceGuide, { level: SOURCE_GUIDE_LEVELS.LESSON }) }
+      : {}),
+    ...(Object.keys(sourceGuideStructured).length ? { sourceGuideStructured } : {}),
     microsequences: normalizedMicrosequences
   };
 }
@@ -232,7 +262,7 @@ function validateModule(moduleValue, index, errors, moduleKeys, path) {
 
   assertAllowedFields(
     moduleValue,
-    new Set(["key", "title", "description", "lessons"]),
+    new Set(["key", "title", "description", "sourceGuide", "sourceGuideStructured", "lessons"]),
     currentPath,
     errors,
     "módulo"
@@ -240,6 +270,14 @@ function validateModule(moduleValue, index, errors, moduleKeys, path) {
 
   const title = ensureRequiredString(moduleValue.title, `${currentPath}.title`, "title", errors);
   const description = readOptionalString(moduleValue.description, `${currentPath}.description`, "description", errors);
+  const sourceGuide = readOptionalString(moduleValue.sourceGuide, `${currentPath}.sourceGuide`, "sourceGuide", errors);
+  const sourceGuideStructured = readOptionalSourceGuideStructured(
+    moduleValue.sourceGuideStructured,
+    sourceGuide,
+    `${currentPath}.sourceGuideStructured`,
+    errors,
+    SOURCE_GUIDE_LEVELS.MODULE
+  );
   const key = moduleKeys.next(moduleValue.key, title || `module-${index + 1}`, currentPath, errors);
   const lessons = Array.isArray(moduleValue.lessons) ? moduleValue.lessons : [];
 
@@ -256,6 +294,10 @@ function validateModule(moduleValue, index, errors, moduleKeys, path) {
     key,
     title: title ?? "",
     ...(description ? { description } : {}),
+    ...(buildSourceGuideText(sourceGuideStructured, sourceGuide, { level: SOURCE_GUIDE_LEVELS.MODULE })
+      ? { sourceGuide: buildSourceGuideText(sourceGuideStructured, sourceGuide, { level: SOURCE_GUIDE_LEVELS.MODULE }) }
+      : {}),
+    ...(Object.keys(sourceGuideStructured).length ? { sourceGuideStructured } : {}),
     lessons: normalizedLessons
   };
 }
@@ -270,7 +312,7 @@ function validateCourse(course, index, errors, courseKeys) {
 
   assertAllowedFields(
     course,
-    new Set(["key", "title", "description", "modules"]),
+    new Set(["key", "title", "description", "sourceGuide", "sourceGuideStructured", "modules"]),
     currentPath,
     errors,
     "curso"
@@ -278,6 +320,14 @@ function validateCourse(course, index, errors, courseKeys) {
 
   const title = ensureRequiredString(course.title, `${currentPath}.title`, "title", errors);
   const description = readOptionalString(course.description, `${currentPath}.description`, "description", errors);
+  const sourceGuide = readOptionalString(course.sourceGuide, `${currentPath}.sourceGuide`, "sourceGuide", errors);
+  const sourceGuideStructured = readOptionalSourceGuideStructured(
+    course.sourceGuideStructured,
+    sourceGuide,
+    `${currentPath}.sourceGuideStructured`,
+    errors,
+    SOURCE_GUIDE_LEVELS.COURSE
+  );
   const key = courseKeys.next(course.key, title || `course-${index + 1}`, currentPath, errors);
   const modules = Array.isArray(course.modules) ? course.modules : [];
 
@@ -294,6 +344,10 @@ function validateCourse(course, index, errors, courseKeys) {
     key,
     title: title ?? "",
     ...(description ? { description } : {}),
+    ...(buildSourceGuideText(sourceGuideStructured, sourceGuide, { level: SOURCE_GUIDE_LEVELS.COURSE })
+      ? { sourceGuide: buildSourceGuideText(sourceGuideStructured, sourceGuide, { level: SOURCE_GUIDE_LEVELS.COURSE }) }
+      : {}),
+    ...(Object.keys(sourceGuideStructured).length ? { sourceGuideStructured } : {}),
     modules: normalizedModules
   };
 }

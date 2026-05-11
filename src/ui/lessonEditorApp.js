@@ -1,20 +1,50 @@
 import { renderLessonScreen } from "./renderLessonScreen.js";
+import { renderGenerationPanelOverlay } from "./renderHomeScreen.js";
 import { renderCardCommentOverlay } from "./renderCardCommentOverlay.js";
 import { renderCardVersionOverlay } from "./renderCardVersionOverlay.js";
+import { renderVersionCompareOverlay } from "./renderVersionCompareOverlay.js";
 import { renderEntityEditorOverlay } from "./renderEntityEditorOverlay.js";
 import { renderActionMenuOverlay } from "./renderActionMenuOverlay.js";
 import { renderAssistConfigOverlay } from "./renderAssistConfigOverlay.js";
 import { renderUiIcon } from "./renderUiIcons.js";
 import { captureRenderState, restoreRenderState } from "./renderState.js";
 import {
+  buildSourceGuideEditorFields,
+  resolveSourceGuidePayload,
+  SOURCE_GUIDE_LEVELS
+} from "../sourceGuides/sourceGuideStructured.js";
+import {
   buildDemoMicrosequenceVersions,
   getDemoMicrosequenceActiveIndex,
   syncDemoMicrosequenceOverflow
 } from "./demoMicrosequenceVersions.js";
 import {
+  insertMicrosequenceVersionAfterActive,
+  removeMicrosequenceVersion,
+  setActiveMicrosequenceVersion,
+  replaceActiveMicrosequenceVersion
+} from "./microsequenceVersionState.js";
+import {
+  applyStructureVersionSnapshot,
+  buildStructureVersionKey,
+  createManualStructureRestore,
+  seedStructureVersionMapFromProject,
+  recordStructureVersionTransition,
+  syncStructureVersionSnapshot
+} from "./structureVersioning.js";
+import { setActiveStructureVersion } from "./structureVersionState.js";
+import { buildMicrosequenceVersionComparisonForVersion } from "./microsequenceVersionComparison.js";
+import { buildStructureVersionComparisonForVersion } from "./structureVersionComparison.js";
+import {
   resolveMicrosequenceAssistOpenState,
   resolveWorkbenchPaneAfterCardSelection
 } from "./microsequenceWorkbenchState.js";
+import {
+  buildScopedVersionLineageLabel,
+  buildVersionLineageLabel,
+  getScopedVersionDisplayId,
+  getVersionDisplayId
+} from "./versionLineage.js";
 import { getRuntimePopupButtonEntry } from "../render/renderCardRuntime.js";
 import { resolveCardRuntime } from "../core/cardRuntime.js";
 import {
@@ -59,16 +89,38 @@ import {
   readCommentStorage,
   readHistoryStorage,
   readMicrosequenceVersionStorage,
+  readStructureVersionStorage,
   writeAssistConfigStorage,
   writeCommentStorage,
   writeHistoryStorage,
-  writeMicrosequenceVersionStorage
+  writeMicrosequenceVersionStorage,
+  writeStructureVersionStorage
 } from "./lessonEditorStorage.js";
 import { runGeminiAssist } from "../assist/geminiAssist.js";
 import { getLessonProgressCursor, removeLessonProgressEntries, writeLessonProgressEntry } from "../storage/progressStore.js";
 import { detectJsonExchangeFormat } from "../storage/jsonExchange.js";
-import { getContractCardKind, listContractAnswerValues } from "../contract/contractCard.js";
+import { createStarterContractCard, getContractCardKind, listContractAnswerValues } from "../contract/contractCard.js";
 import { isRunnableMicrosequence, resolveMicrosequenceRuntimeIncluded } from "../model/microsequenceStatus.js";
+import {
+  createCourse as createCourseDocument,
+  createLesson as createLessonDocument,
+  createModule as createModuleDocument,
+  deleteCourse as deleteCourseDocument,
+  deleteLesson as deleteLessonDocument,
+  deleteModule as deleteModuleDocument,
+  exportCourseDocument as exportCourseDocumentFromDocument,
+  exportLessonDocument as exportLessonDocumentFromDocument,
+  exportModuleDocument as exportModuleDocumentFromDocument,
+  importCourses as importCoursesDocument,
+  importLessons as importLessonsDocument,
+  importModules as importModulesDocument,
+  moveCourse as moveCourseDocument,
+  moveLesson as moveLessonDocument,
+  moveModule as moveModuleDocument,
+  updateCourse as updateCourseDocument,
+  updateLesson as updateLessonDocument,
+  updateModule as updateModuleDocument
+} from "../editor/contractEditor.js";
 
 const MAX_ASSIST_DEPENDENCIES = 5;
 const MAX_ASSIST_ATTACHMENTS = 6;
@@ -89,12 +141,62 @@ const ASSIST_CARD_CONTAINER_OPTIONS = [
   { value: "code", label: "Código", icon: renderUiIcon("title", "action-menu-svg-icon") },
   { value: "table", label: "Tabela", icon: renderUiIcon("module", "action-menu-svg-icon") },
   { value: "tree", label: "Árvore de diretórios", icon: renderUiIcon("folder", "action-menu-svg-icon") },
-  { value: "flow", label: "Fluxograma", icon: renderUiIcon("microsequence", "action-menu-svg-icon") }
+  { value: "flow", label: "Fluxograma", icon: renderUiIcon("microsequence", "action-menu-svg-icon") },
+  { value: "plane", label: "Plano cartesiano", icon: renderUiIcon("card", "action-menu-svg-icon") },
+  { value: "matrix", label: "Matriz", icon: renderUiIcon("card", "action-menu-svg-icon") }
 ];
-const COURSES_VIEWS = new Set(["courses", "course", "lesson", "microsequence", "microsequence-assist"]);
+const COURSES_VIEWS = new Set(["courses", "course", "module", "lesson", "microsequence", "microsequence-assist"]);
+const GENERATION_PANEL_ACTIONS = new Set([
+  "open-generation-panel-global",
+  "open-generation-panel-course",
+  "open-generation-panel-module",
+  "open-generation-panel-lesson"
+]);
+const STRUCTURE_VERSIONING_ACTIVE = false;
 
 function fail(message) {
   throw new Error(message);
+}
+
+export function resolveGenerationPanelScopeFromAction({ action, dataset = {}, selection = {} } = {}) {
+  if (!GENERATION_PANEL_ACTIONS.has(action)) {
+    return null;
+  }
+
+  if (action === "open-generation-panel-global") {
+    return {};
+  }
+
+  const courseKey = dataset.courseKey || selection.courseKey || "";
+  const moduleKey = dataset.moduleKey || selection.moduleKey || "";
+  const lessonKey = dataset.lessonKey || selection.lessonKey || "";
+
+  if (action === "open-generation-panel-course") {
+    return courseKey ? { courseKey } : null;
+  }
+
+  if (action === "open-generation-panel-module") {
+    return courseKey && moduleKey ? { courseKey, moduleKey } : null;
+  }
+
+  if (action === "open-generation-panel-lesson") {
+    return courseKey && moduleKey && lessonKey ? { courseKey, moduleKey, lessonKey } : null;
+  }
+
+  return null;
+}
+
+export function resolveGenerationAssistMode({
+  lessonFixed = false,
+  hasResolvedLesson = false,
+  repositionMicrosequences = false
+} = {}) {
+  if (lessonFixed === true && hasResolvedLesson === true) {
+    return repositionMicrosequences === true
+      ? "generate-and-reposition-lesson-microsequences"
+      : "generate-lesson-microsequences";
+  }
+  return "generate-top-down-structure";
 }
 
 function normalizeComparableText(value) {
@@ -129,6 +231,31 @@ function readCardText(card) {
   if (Array.isArray(card?.table?.columns) && card.table.columns.length) {
     return card.table.columns.join(" | ");
   }
+  if (card.plane && typeof card.plane === "object") {
+    if (Array.isArray(card.plane.vector)) {
+      return `v = (${card.plane.vector.join(", ")})`;
+    }
+    if (Array.isArray(card.plane.vectors)) {
+      const labels = ["v", "w", "u", "t"];
+      return card.plane.vectors.map((vector, index) => `${labels[index] || `v${index + 1}`} = (${vector.join(", ")})`).join("\n");
+    }
+    if (Array.isArray(card.plane.sum) && card.plane.sum.length === 2) {
+      const [first, second] = card.plane.sum;
+      return `v + w = (${Number(first[0]) + Number(second[0])}, ${Number(first[1]) + Number(second[1])})`;
+    }
+    if (card.plane.scale && typeof card.plane.scale === "object") {
+      return `${card.plane.scale.k}v`;
+    }
+    if (Array.isArray(card.plane.distance) && card.plane.distance.length === 2) {
+      return `A(${card.plane.distance[0].join(", ")}) B(${card.plane.distance[1].join(", ")})`;
+    }
+  }
+  if (card.matrix && typeof card.matrix === "object") {
+    return (Array.isArray(card.matrix.values) ? card.matrix.values : [])
+      .map((row) => (Array.isArray(row) ? row.join(" ") : ""))
+      .filter(Boolean)
+      .join("\n");
+  }
   if (card.tree && typeof card.tree === "object") {
     return card.tree.current || card.tree.base || "tree";
   }
@@ -155,6 +282,29 @@ function formatTagsText(tags) {
   return Array.isArray(tags) ? tags.join(", ") : "";
 }
 
+function summarizeStructuredLessons(lessons = []) {
+  return Array.isArray(lessons)
+    ? lessons.map((lesson) => ({
+        title: String(lesson?.title || "").trim(),
+        description: String(lesson?.description || "").trim(),
+        sourceGuide: String(lesson?.sourceGuide || "").trim()
+      }))
+      .filter((lesson) => lesson.title || lesson.description || lesson.sourceGuide)
+    : [];
+}
+
+function summarizeStructuredModules(modules = []) {
+  return Array.isArray(modules)
+    ? modules.map((moduleValue) => ({
+        title: String(moduleValue?.title || "").trim(),
+        description: String(moduleValue?.description || "").trim(),
+        sourceGuide: String(moduleValue?.sourceGuide || "").trim(),
+        lessons: summarizeStructuredLessons(moduleValue?.lessons || [])
+      }))
+      .filter((moduleValue) => moduleValue.title || moduleValue.description || moduleValue.sourceGuide || moduleValue.lessons.length)
+    : [];
+}
+
 function slugifyDownloadName(value, fallback = "curso") {
   const normalized = String(value || "")
     .normalize("NFD")
@@ -170,6 +320,239 @@ function slugifyDownloadName(value, fallback = "curso") {
 function normalizeAssistAttachmentName(value, fallback = "documento") {
   const normalized = String(value || "").trim();
   return normalized || fallback;
+}
+
+function describeStructureVersionOperation(operationType) {
+  const normalized = String(operationType || "").trim();
+  if (normalized === "manual-restore") {
+    return {
+      kind: "manual",
+      label: "Variação",
+      shortLabel: "Variação",
+      shortIcon: "⧉",
+      detailLabel: "Criar variação",
+      detailIcon: "⧉",
+      detailTone: "manual-detail"
+    };
+  }
+  if (normalized === "seed") {
+    return {
+      kind: "automatic",
+      label: "Inicial",
+      shortLabel: "Inicial",
+      shortIcon: "◉",
+      detailLabel: "Versão inicial",
+      detailIcon: "◉",
+      detailTone: "automatic-detail"
+    };
+  }
+  if (normalized === "update") {
+    return {
+      kind: "automatic",
+      label: "Editar",
+      shortLabel: "Editar",
+      shortIcon: "✎",
+      detailLabel: "Edição estrutural",
+      detailIcon: "✎",
+      detailTone: "automatic-detail"
+    };
+  }
+  if (normalized === "create-child") {
+    return {
+      kind: "automatic",
+      label: "Filho+",
+      shortLabel: "Filho+",
+      shortIcon: "+",
+      detailLabel: "Inclusão de filho",
+      detailIcon: "+",
+      detailTone: "automatic-detail"
+    };
+  }
+  if (normalized === "remove-child") {
+    return {
+      kind: "automatic",
+      label: "Filho-",
+      shortLabel: "Filho-",
+      shortIcon: "−",
+      detailLabel: "Remoção de filho",
+      detailIcon: "−",
+      detailTone: "automatic-detail"
+    };
+  }
+  if (normalized === "reorder-children") {
+    return {
+      kind: "automatic",
+      label: "Ordem",
+      shortLabel: "Ordem",
+      shortIcon: "↕",
+      detailLabel: "Reordenação",
+      detailIcon: "↕",
+      detailTone: "automatic-detail"
+    };
+  }
+  if (normalized === "generated") {
+    return {
+      kind: "automatic",
+      label: "Gerada",
+      shortLabel: "Gerada",
+      shortIcon: "✦",
+      detailLabel: "Gerada",
+      detailIcon: "✦",
+      detailTone: "automatic-detail"
+    };
+  }
+  if (normalized === "migration") {
+    return {
+      kind: "automatic",
+      label: "Migrada",
+      shortLabel: "Migrada",
+      shortIcon: "⇄",
+      detailLabel: "Migração local",
+      detailIcon: "⇄",
+      detailTone: "automatic-detail"
+    };
+  }
+  if (normalized === "snapshot") {
+    return {
+      kind: "automatic",
+      label: "Editar",
+      shortLabel: "Editar",
+      shortIcon: "✎",
+      detailLabel: "Snapshot local",
+      detailIcon: "◌",
+      detailTone: "automatic-detail"
+    };
+  }
+
+  return {
+    kind: "automatic",
+    label: normalized || "Editar",
+    shortLabel: normalized || "Editar",
+    shortIcon: "•",
+    detailLabel: "Local",
+    detailIcon: "•",
+    detailTone: "default"
+  };
+}
+
+function getStructureVersionPrefix(level) {
+  if (level === "project") return "C";
+  if (level === "course") return "M";
+  if (level === "module") return "L";
+  if (level === "lesson") return "V";
+  return "V";
+}
+
+function getStableStructureEntryDisplayId(entry, prefix = getStructureVersionPrefix(entry?.level)) {
+  const versions = Array.isArray(entry?.versions) ? entry.versions : [];
+  if (!versions.length) {
+    return `${String(prefix || "V").trim() || "V"}?`;
+  }
+
+  const firstVersion =
+    versions
+      .filter(Boolean)
+      .slice()
+      .sort((left, right) => {
+        const leftNumber = Number.isInteger(left?.publicNumber) ? left.publicNumber : Number.MAX_SAFE_INTEGER;
+        const rightNumber = Number.isInteger(right?.publicNumber) ? right.publicNumber : Number.MAX_SAFE_INTEGER;
+        if (leftNumber !== rightNumber) {
+          return leftNumber - rightNumber;
+        }
+
+        const leftVersionNumber = Number.isInteger(left?.versionNumber) ? left.versionNumber : Number.MAX_SAFE_INTEGER;
+        const rightVersionNumber = Number.isInteger(right?.versionNumber) ? right.versionNumber : Number.MAX_SAFE_INTEGER;
+        return leftVersionNumber - rightVersionNumber;
+      })[0] || versions[0];
+
+  return getScopedVersionDisplayId(firstVersion, prefix, 0);
+}
+
+function buildStructureTabsForEntry(entry, { prefix = getStructureVersionPrefix(entry?.level), action = "select-structure-version" } = {}) {
+  const versions = Array.isArray(entry?.versions) ? entry.versions : [];
+  return versions.map((version, index) => ({
+    versionId: version.id,
+    action,
+    displayId: getScopedVersionDisplayId(version, prefix, index),
+    lineage: buildScopedVersionLineageLabel(version, versions, prefix, index),
+    updatedAt: version.updatedAt || "",
+    createdAt: version.createdAt || ""
+  }));
+}
+
+function buildStructureContextTab(entry) {
+  if (!entry?.activeVersionId) {
+    return null;
+  }
+
+  const versions = Array.isArray(entry?.versions) ? entry.versions : [];
+  const activeIndex = versions.findIndex((item) => item.id === entry.activeVersionId);
+  const activeVersion = activeIndex >= 0 ? versions[activeIndex] : versions.at(-1);
+  if (!activeVersion) {
+    return null;
+  }
+
+  const prefix = getStructureVersionPrefix(entry.level);
+  const label =
+    entry.level === "project"
+      ? buildScopedVersionLineageLabel(activeVersion, versions, prefix, Math.max(activeIndex, 0))
+      : getStableStructureEntryDisplayId(entry, prefix);
+  return {
+    level: entry.level,
+    versionId: activeVersion.id,
+    label
+  };
+}
+
+function buildChildStructureTabs(versionMap, items = [], resolveReference, prefix, action, activeKey = "") {
+  return (Array.isArray(items) ? items : [])
+    .map((item) => {
+      const reference = resolveReference(item);
+      if (!reference) {
+        return null;
+      }
+      const entry = versionMap?.[buildStructureVersionKey(reference)];
+      const versions = Array.isArray(entry?.versions) ? entry.versions : [];
+      const activeIndex = versions.findIndex((version) => version.id === entry?.activeVersionId);
+      const activeVersion = activeIndex >= 0 ? versions[activeIndex] : versions.at(-1);
+      if (!activeVersion) {
+        return null;
+      }
+
+      return {
+        action,
+        isActive: item?.key === activeKey,
+        courseKey: reference.courseKey || "",
+        moduleKey: reference.moduleKey || "",
+        lessonKey: reference.lessonKey || "",
+        displayId: getStableStructureEntryDisplayId(entry, prefix),
+        lineage: getStableStructureEntryDisplayId(entry, prefix),
+        updatedAt: activeVersion.updatedAt || "",
+        createdAt: activeVersion.createdAt || ""
+      };
+    })
+    .filter(Boolean);
+}
+
+function formatOverlayTimestamp(value) {
+  const iso = String(value || "").trim();
+  const match = iso.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})/);
+  if (match) {
+    const [, year, month, day, hour, minute, second] = match;
+    return `${day}/${month}/${year} ${hour}:${minute}:${second}`;
+  }
+
+  const parsed = new Date(iso);
+  if (Number.isNaN(parsed.getTime())) {
+    return iso;
+  }
+
+  const pad = (item) => String(item).padStart(2, "0");
+  return (
+    [pad(parsed.getDate()), pad(parsed.getMonth() + 1), parsed.getFullYear()].join("/") +
+    " " +
+    [pad(parsed.getHours()), pad(parsed.getMinutes()), pad(parsed.getSeconds())].join(":")
+  );
 }
 
 function buildAssistAttachmentSignature(file) {
@@ -208,30 +591,17 @@ function normalizeAssistAttachmentList(files = []) {
   return nextItems;
 }
 
-function buildMoveActions(items, itemKey, moveUpKey, moveDownKey) {
-  const index = (items || []).findIndex((item) => item.key === itemKey);
-  if (index < 0) {
-    return [];
-  }
-
-  const actions = [];
-  if (index > 0) {
-    actions.push({ key: moveUpKey, label: "Mover para cima", icon: "&uarr;" });
-  }
-  if (index < items.length - 1) {
-    actions.push({ key: moveDownKey, label: "Mover para baixo", icon: "&darr;" });
-  }
-  return actions;
-}
-
 function buildAssistHierarchyContext({ course, moduleValue, lesson, microsequence }) {
   return {
     courseTitle: course?.title || course?.key || "",
     courseDescription: course?.description || "",
+    courseSourceGuide: course?.sourceGuide || "",
     moduleTitle: moduleValue?.title || moduleValue?.key || "",
     moduleDescription: moduleValue?.description || "",
+    moduleSourceGuide: moduleValue?.sourceGuide || "",
     lessonTitle: lesson?.title || lesson?.key || "",
     lessonDescription: lesson?.description || "",
+    lessonSourceGuide: lesson?.sourceGuide || "",
     title: microsequence?.title || "",
     tags: Array.isArray(microsequence?.tags) ? microsequence.tags : [],
     cards: Array.isArray(microsequence?.cards) ? microsequence.cards : []
@@ -292,6 +662,22 @@ function buildCardUpdateFromText(card, title, text) {
     };
   }
 
+  if (kind === "plane") {
+    return {
+      ...base,
+      ...(nextText ? { say: nextText } : card.say ? { say: card.say } : {}),
+      plane: card.plane || createStarterContractCard("plane").plane
+    };
+  }
+
+  if (kind === "matrix") {
+    return {
+      ...base,
+      ...(nextText ? { say: nextText } : card.say ? { say: card.say } : {}),
+      matrix: card.matrix || createStarterContractCard("matrix").matrix
+    };
+  }
+
   return {
     ...base,
     say: nextText || card?.say || "Descreva a ideia central desta microssequência.",
@@ -314,8 +700,8 @@ function makeEntityEditorModel(state) {
       placement: "side",
       fields: [],
       actions: [
-        { key: "create-course", label: "Novo curso", icon: "&#43;" },
-        { key: "import-json", label: "Importar", icon: "&#8679;" }
+        { key: "import-json", label: "Importar", icon: "&#8679;" },
+        { key: "export-backup", label: "Exportar backup", icon: "&#8681;" }
       ],
       showSaveButton: false
     };
@@ -324,7 +710,6 @@ function makeEntityEditorModel(state) {
   if (entityEditor.kind === "course-actions") {
     const course = findCourse(project, entityEditor.courseKey || selection.courseKey);
     if (!course) return null;
-    const moveActions = buildMoveActions(project.courses || [], course.key, "move-course-up", "move-course-down");
     return {
       variant: "action-menu",
       title: "Ações do curso",
@@ -332,7 +717,6 @@ function makeEntityEditorModel(state) {
       fields: [],
       actions: [
         { key: "edit-course-metadata", label: "Editar curso", icon: "&#9998;" },
-        ...moveActions,
         { key: "reset-course-progress", label: "Zerar progresso do curso", icon: "&#8635;" },
         { key: "export-course", label: "Exportar curso", icon: "&#8681;" },
         { key: "delete-course", label: "Excluir curso", icon: "&#128465;", tone: "danger" }
@@ -355,6 +739,20 @@ function makeEntityEditorModel(state) {
     };
   }
 
+  if (entityEditor.kind === "module-screen-actions") {
+    return {
+      variant: "action-menu",
+      title: "Ações",
+      placement: "side",
+      fields: [],
+      actions: [
+        { key: "create-lesson", label: "Nova lição", icon: "&#43;" },
+        { key: "import-lesson", label: "Importar lição", icon: "&#8679;" }
+      ],
+      showSaveButton: false
+    };
+  }
+
   if (entityEditor.kind === "course-metadata") {
     const course = findCourse(project, entityEditor.courseKey || selection.courseKey);
     if (!course) return null;
@@ -364,6 +762,16 @@ function makeEntityEditorModel(state) {
         { name: "title", label: "Título", type: "text", value: course.title || "" },
         { name: "description", label: "Descrição", type: "textarea", value: course.description || "" }
       ],
+      actions: []
+    };
+  }
+
+  if (entityEditor.kind === "course-source-guide") {
+    const course = findCourse(project, entityEditor.courseKey || selection.courseKey);
+    if (!course) return null;
+    return {
+      title: "Fonte-guia do curso",
+      fields: buildSourceGuideEditorFields(course.sourceGuide || "", course.sourceGuideStructured || {}, { level: SOURCE_GUIDE_LEVELS.COURSE }),
       actions: []
     };
   }
@@ -398,11 +806,19 @@ function makeEntityEditorModel(state) {
     };
   }
 
+  if (entityEditor.kind === "module-source-guide") {
+    const moduleValue = findModule(project, entityEditor.courseKey || selection.courseKey, entityEditor.moduleKey);
+    if (!moduleValue) return null;
+    return {
+      title: "Fonte-guia do módulo",
+      fields: buildSourceGuideEditorFields(moduleValue.sourceGuide || "", moduleValue.sourceGuideStructured || {}, { level: SOURCE_GUIDE_LEVELS.MODULE }),
+      actions: []
+    };
+  }
+
   if (entityEditor.kind === "module-actions") {
     const moduleValue = findModule(project, entityEditor.courseKey || selection.courseKey, entityEditor.moduleKey);
     if (!moduleValue) return null;
-    const course = findCourse(project, entityEditor.courseKey || selection.courseKey);
-    const moveActions = buildMoveActions(course?.modules || [], moduleValue.key, "move-module-up", "move-module-down");
     return {
       variant: "action-menu",
       title: "Ações do módulo",
@@ -411,7 +827,6 @@ function makeEntityEditorModel(state) {
       actions: [
         { key: "edit-module-metadata", label: "Editar módulo", icon: "&#9998;" },
         { key: "create-lesson", label: "Adicionar lição", icon: "&#43;" },
-        ...moveActions,
         { key: "reset-module-progress", label: "Zerar progresso do módulo", icon: "&#8635;" },
         { key: "export-module", label: "Exportar módulo", icon: "&#8681;" },
         { key: "delete-module", label: "Excluir módulo", icon: "&#128465;", tone: "danger" }
@@ -433,11 +848,19 @@ function makeEntityEditorModel(state) {
     };
   }
 
+  if (entityEditor.kind === "lesson-source-guide") {
+    const lesson = findLesson(project, entityEditor.courseKey || selection.courseKey, entityEditor.moduleKey, entityEditor.lessonKey);
+    if (!lesson) return null;
+    return {
+      title: "Fonte-guia da lição",
+      fields: buildSourceGuideEditorFields(lesson.sourceGuide || "", lesson.sourceGuideStructured || {}, { level: SOURCE_GUIDE_LEVELS.LESSON }),
+      actions: []
+    };
+  }
+
   if (entityEditor.kind === "lesson-actions") {
     const lesson = findLesson(project, entityEditor.courseKey || selection.courseKey, entityEditor.moduleKey, entityEditor.lessonKey);
     if (!lesson) return null;
-    const moduleValue = findModule(project, entityEditor.courseKey || selection.courseKey, entityEditor.moduleKey);
-    const moveActions = buildMoveActions(moduleValue?.lessons || [], lesson.key, "move-lesson-up", "move-lesson-down");
     return {
       variant: "action-menu",
       title: "Ações da lição",
@@ -445,7 +868,6 @@ function makeEntityEditorModel(state) {
       fields: [],
       actions: [
         { key: "edit-lesson-metadata", label: "Editar lição", icon: "&#9998;" },
-        ...moveActions,
         { key: "reset-lesson-progress", label: "Zerar progresso da lição", icon: "&#8635;" },
         { key: "export-lesson", label: "Exportar lição", icon: "&#8681;" },
         { key: "delete-lesson", label: "Excluir lição", icon: "&#128465;", tone: "danger" }
@@ -485,6 +907,8 @@ function makeEntityEditorModel(state) {
       ],
       actions: [
         { key: "create-card", label: "Novo card" },
+        { key: "create-plane-card", label: "Novo plano cartesiano" },
+        { key: "create-matrix-card", label: "Nova matriz" },
         { key: "delete-microsequence", label: "Excluir microssequência", tone: "danger" }
       ]
     };
@@ -499,13 +923,6 @@ function makeEntityEditorModel(state) {
       entityEditor.microsequenceKey
     );
     if (!microsequence) return null;
-    const lesson = findLesson(project, entityEditor.courseKey || selection.courseKey, entityEditor.moduleKey, entityEditor.lessonKey);
-    const moveActions = buildMoveActions(
-      lesson?.microsequences || [],
-      microsequence.key,
-      "move-microsequence-up",
-      "move-microsequence-down"
-    );
     return {
       variant: "action-menu",
       title: "Ações da microssequência",
@@ -513,7 +930,9 @@ function makeEntityEditorModel(state) {
       fields: [],
       actions: [
         { key: "edit-microsequence-metadata", label: "Editar microssequência", icon: "&#9998;" },
-        ...moveActions,
+        { key: "create-card", label: "Novo card", icon: "&#43;" },
+        { key: "create-plane-card", label: "Novo plano cartesiano", icon: "&#9641;" },
+        { key: "create-matrix-card", label: "Nova matriz", icon: "&#91;&#93;" },
         { key: "export-microsequence", label: "Exportar microssequência", icon: "&#8681;" },
         { key: "delete-microsequence", label: "Excluir microssequência", icon: "&#128465;", tone: "danger" }
       ],
@@ -554,6 +973,8 @@ function makeEntityEditorModel(state) {
       fields: [],
       actions: [
         { key: "create-card", label: "Novo card após este" },
+        { key: "create-plane-card", label: "Novo plano cartesiano" },
+        { key: "create-matrix-card", label: "Nova matriz" },
         ...moveActions,
         { key: "delete-card", label: "Excluir card", tone: "danger" }
       ]
@@ -572,11 +993,19 @@ export function createLessonEditorApp({ root, storage, editor }) {
   const initialAssistConfig = readAssistConfigStorage();
   const state = {
     project: initialProject,
+    projectHead: initialProject,
     view: "courses",
-    homeTab: "generate",
+    homeTab: "courses",
+    generationPanelOpen: false,
     selection: null,
     cardCommentOpen: false,
     versionHistoryOpen: false,
+    versionCompareOpen: false,
+    versionHistorySelectionKey: "",
+    versionHistoryExpandedMoreKey: "",
+    versionCompareSelectionKey: "",
+    versionCompareTab: "summary",
+    versionCompareFocusTarget: null,
     entityEditor: null,
     assistConfigOpen: false,
     assistConfig: initialAssistConfig,
@@ -584,6 +1013,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
     microsequenceMode: "play",
     cardHistory: readHistoryStorage(),
     microsequenceVersions: readMicrosequenceVersionStorage(),
+    structureVersions: STRUCTURE_VERSIONING_ACTIVE ? readStructureVersionStorage() : {},
     cardComments: readCommentStorage(),
     cardCommentDraft: "",
     flowchartPracticeByBlockKey: {},
@@ -598,6 +1028,9 @@ export function createLessonEditorApp({ root, storage, editor }) {
     assistDraft: {
       selectedMode: ASSIST_USER_MODES.EDIT_MICROSEQUENCE,
       activeWorkbenchPane: "preview",
+      visualizedVersionId: "",
+      editBaseVersionId: "",
+      versionActionsOpen: false,
       promptText: "",
       preferredContainer: "",
       attachments: [],
@@ -608,10 +1041,18 @@ export function createLessonEditorApp({ root, storage, editor }) {
       errorMessage: ""
     },
     generationDraft: {
+      courseFixed: false,
+      moduleFixed: false,
+      lessonFixed: false,
+      repositionMicrosequences: false,
+      courseInput: "",
       courseKey: "",
+      moduleInput: "",
       moduleKey: "",
+      lessonInput: "",
       lessonKey: "",
       promptText: "",
+      attachments: [],
       lastResult: null,
       isSubmitting: false,
       errorMessage: ""
@@ -621,14 +1062,88 @@ export function createLessonEditorApp({ root, storage, editor }) {
     lastCoursesView: "courses",
     pendingGeneratedNavigation: null,
     pendingStructureFocus: null,
-    pendingExerciseFocus: null
+    pendingExerciseFocus: null,
+    centerActiveStructureVersionTabOnRender: true
   };
 
   state.selection = getFirstPath(state.project);
 
-  function setProject(nextProject) {
+  function setProject(nextProject, { updateHead = true } = {}) {
     state.project = nextProject;
+    if (updateHead) {
+      state.projectHead = nextProject;
+    }
+    if (STRUCTURE_VERSIONING_ACTIVE) {
+      seedAllStructureVersionsFromProject();
+    }
   }
+
+  function commitVisibleProjectMutation(mutator, input) {
+    const nextProject = mutator(state.project, input);
+    storage.saveProject(nextProject);
+    return nextProject;
+  }
+
+  function readVisibleProjectProjection(reader, input) {
+    return reader(state.project, input);
+  }
+
+  const structuralEditor = {
+    createCourse(input) {
+      return commitVisibleProjectMutation(createCourseDocument, input);
+    },
+    importCourses(input) {
+      return commitVisibleProjectMutation(importCoursesDocument, input);
+    },
+    importModules(input) {
+      return commitVisibleProjectMutation(importModulesDocument, input);
+    },
+    importLessons(input) {
+      return commitVisibleProjectMutation(importLessonsDocument, input);
+    },
+    exportCourseDocument(input) {
+      return readVisibleProjectProjection(exportCourseDocumentFromDocument, input);
+    },
+    exportModuleDocument(input) {
+      return readVisibleProjectProjection(exportModuleDocumentFromDocument, input);
+    },
+    exportLessonDocument(input) {
+      return readVisibleProjectProjection(exportLessonDocumentFromDocument, input);
+    },
+    updateCourse(input) {
+      return commitVisibleProjectMutation(updateCourseDocument, input);
+    },
+    deleteCourse(input) {
+      return commitVisibleProjectMutation(deleteCourseDocument, input);
+    },
+    moveCourse(input) {
+      return commitVisibleProjectMutation(moveCourseDocument, input);
+    },
+    createModule(input) {
+      return commitVisibleProjectMutation(createModuleDocument, input);
+    },
+    updateModule(input) {
+      return commitVisibleProjectMutation(updateModuleDocument, input);
+    },
+    deleteModule(input) {
+      return commitVisibleProjectMutation(deleteModuleDocument, input);
+    },
+    moveModule(input) {
+      return commitVisibleProjectMutation(moveModuleDocument, input);
+    },
+    createLesson(input) {
+      return commitVisibleProjectMutation(createLessonDocument, input);
+    },
+    updateLesson(input) {
+      return commitVisibleProjectMutation(updateLessonDocument, input);
+    },
+    deleteLesson(input) {
+      return commitVisibleProjectMutation(deleteLessonDocument, input);
+    },
+    moveLesson(input) {
+      return commitVisibleProjectMutation(moveLessonDocument, input);
+    }
+  };
 
   function isCoursesView(view) {
     return COURSES_VIEWS.has(view);
@@ -636,9 +1151,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
 
   function rememberCoursesView(view = state.view) {
     if (!isCoursesView(view)) {
-      return;
-    }
-    if (view === "courses" && state.homeTab !== "courses") {
       return;
     }
     state.lastCoursesView = view;
@@ -1099,6 +1611,27 @@ export function createLessonEditorApp({ root, storage, editor }) {
     state.cardCommentOpen = false;
     state.entityEditor = null;
     state.microsequenceMode = "play";
+    syncVisibleStructureVersionsFromProject();
+    render({ preserveState: false });
+  }
+
+  function openModule(moduleKey) {
+    const moduleValue = findModule(state.project, state.selection.courseKey, moduleKey);
+    if (!moduleValue) return;
+    const lesson = (moduleValue.lessons || [])[0] || null;
+    const microsequence = lesson && lesson.microsequences ? lesson.microsequences[0] || null : null;
+    const card = microsequence && microsequence.cards ? microsequence.cards[0] || null : null;
+
+    state.selection.moduleKey = moduleValue.key;
+    state.selection.lessonKey = lesson ? lesson.key : null;
+    state.selection.microsequenceKey = microsequence ? microsequence.key : null;
+    state.selection.cardKey = card ? card.key : null;
+    state.selection.cardIndex = 0;
+    state.view = "module";
+    state.cardCommentOpen = false;
+    state.entityEditor = null;
+    state.microsequenceMode = "play";
+    syncVisibleStructureVersionsFromProject();
     render({ preserveState: false });
   }
 
@@ -1126,6 +1659,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
     state.cardCommentOpen = false;
     state.entityEditor = null;
     state.microsequenceMode = "play";
+    syncVisibleStructureVersionsFromProject();
     render({ preserveState: false });
   }
 
@@ -1172,6 +1706,182 @@ export function createLessonEditorApp({ root, storage, editor }) {
 
   function saveMicrosequenceVersions() {
     writeMicrosequenceVersionStorage(state.microsequenceVersions);
+  }
+
+  function saveStructureVersions() {
+    if (!STRUCTURE_VERSIONING_ACTIVE) {
+      return;
+    }
+    writeStructureVersionStorage(state.structureVersions);
+  }
+
+  function seedAllStructureVersionsFromProject() {
+    if (!STRUCTURE_VERSIONING_ACTIVE) {
+      return;
+    }
+    const changed = seedStructureVersionMapFromProject(state.structureVersions, state.projectHead);
+    if (changed) {
+      saveStructureVersions();
+    }
+  }
+
+  function syncActiveStructureVersionFromProject(reference) {
+    if (!STRUCTURE_VERSIONING_ACTIVE) {
+      return;
+    }
+    if (!reference?.level) {
+      return;
+    }
+
+    const entry = syncStructureVersionSnapshot(state.structureVersions, state.projectHead, reference);
+    if (entry) {
+      saveStructureVersions();
+    }
+  }
+
+  function createStructureVersionFromProject(nextProject, reference, options = {}) {
+    if (!STRUCTURE_VERSIONING_ACTIVE) {
+      return;
+    }
+    if (!nextProject) {
+      return;
+    }
+
+    const references = [{ level: "project" }, ...(reference?.level ? [reference] : [])];
+    let changed = false;
+    references.forEach((targetReference) => {
+      const entry = recordStructureVersionTransition(state.structureVersions, {
+        beforeProject: state.project,
+        afterProject: nextProject,
+        reference: targetReference,
+        ...options
+      });
+      if (entry) {
+        changed = true;
+      }
+    });
+    if (changed) {
+      saveStructureVersions();
+    }
+  }
+
+  function getCurrentStructureVersionReference() {
+    if (!STRUCTURE_VERSIONING_ACTIVE) {
+      return null;
+    }
+
+    if (state.view === "courses") {
+      return {
+        level: "project"
+      };
+    }
+
+    if (state.view === "course" && state.selection.courseKey) {
+      return {
+        level: "course",
+        courseKey: state.selection.courseKey
+      };
+    }
+
+    if (state.view === "module" && state.selection.courseKey && state.selection.moduleKey) {
+      return {
+        level: "module",
+        courseKey: state.selection.courseKey,
+        moduleKey: state.selection.moduleKey
+      };
+    }
+
+    if (state.view === "lesson" && state.selection.courseKey && state.selection.moduleKey && state.selection.lessonKey) {
+      return {
+        level: "lesson",
+        courseKey: state.selection.courseKey,
+        moduleKey: state.selection.moduleKey,
+        lessonKey: state.selection.lessonKey
+      };
+    }
+
+    return null;
+  }
+
+  function listVisibleStructureVersionReferences() {
+    if (!STRUCTURE_VERSIONING_ACTIVE) {
+      return [];
+    }
+
+    const references = [];
+    if (state.view === "courses") {
+      references.push({ level: "project" });
+      return references;
+    }
+
+    if (state.selection.courseKey) {
+      references.push({ level: "project" });
+      references.push({
+        level: "course",
+        courseKey: state.selection.courseKey
+      });
+    }
+
+    if ((state.view === "module" || state.view === "lesson") && state.selection.courseKey && state.selection.moduleKey) {
+      references.push({
+        level: "module",
+        courseKey: state.selection.courseKey,
+        moduleKey: state.selection.moduleKey
+      });
+    }
+
+    if (state.view === "lesson" && state.selection.courseKey && state.selection.moduleKey && state.selection.lessonKey) {
+      references.push({
+        level: "lesson",
+        courseKey: state.selection.courseKey,
+        moduleKey: state.selection.moduleKey,
+        lessonKey: state.selection.lessonKey
+      });
+    }
+
+    return references;
+  }
+
+  function syncVisibleStructureVersionsFromProject() {
+    if (!STRUCTURE_VERSIONING_ACTIVE) {
+      return;
+    }
+
+    seedAllStructureVersionsFromProject();
+    listVisibleStructureVersionReferences().forEach((reference) => syncActiveStructureVersionFromProject(reference));
+  }
+
+  function getStructureVersionEntry(reference = getCurrentStructureVersionReference()) {
+    if (!STRUCTURE_VERSIONING_ACTIVE) {
+      return null;
+    }
+
+    const versionKey = buildStructureVersionKey(reference);
+    if (!versionKey) {
+      return null;
+    }
+
+    return state.structureVersions[versionKey] || null;
+  }
+
+  function getSelectedStructureVersionId() {
+    const entry = getStructureVersionEntry();
+    return String(state.versionHistorySelectionKey || entry?.activeVersionId || "").trim();
+  }
+
+  function getSelectedStructureVersion(reference = getCurrentStructureVersionReference()) {
+    const entry = getStructureVersionEntry(reference);
+    if (!entry) {
+      return null;
+    }
+
+    const selectedVersionId = getSelectedStructureVersionId();
+    return (
+      entry.versions.find((item) => item.id === selectedVersionId) ||
+      entry.versions.find((item) => item.id === entry.activeVersionId) ||
+      entry.versions[0] ||
+      null
+    );
   }
 
   function getAssistModelLabel(model) {
@@ -1339,7 +2049,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
       text: version.text
     });
     state.assistDraft.lastRequest = {
-      title: "Versão retomada",
+      title: "Em uso",
       description: `Editor voltou para ${version.label.toLowerCase()}.`,
       timestamp: new Date().toISOString()
     };
@@ -1428,6 +2138,8 @@ export function createLessonEditorApp({ root, storage, editor }) {
     state.view = "microsequence-assist";
     state.assistDraft.selectedMode = ASSIST_USER_MODES.EDIT_MICROSEQUENCE;
     state.assistDraft.activeWorkbenchPane = assistOpenState.activeWorkbenchPane;
+    state.assistDraft.visualizedVersionId = assistOpenState.visualizedVersionId || assistOpenState.activeVersionId || "";
+    state.assistDraft.editBaseVersionId = assistOpenState.editBaseVersionId || assistOpenState.activeVersionId || "";
     state.assistDraft.attachments = [];
     state.microsequenceMode = "play";
     ensureCurrentCardSnapshot();
@@ -1452,18 +2164,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
       reference.lessonKey,
       reference.microsequenceKey
     ].join("::");
-  }
-
-  function cloneMicrosequenceSnapshot(microsequence, fallbackLabel = "Iteração 1") {
-    return {
-      id: `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
-      label: fallbackLabel,
-      title: microsequence?.title || "",
-      tags: Array.isArray(microsequence?.tags) ? structuredClone(microsequence.tags) : [],
-      cards: Array.isArray(microsequence?.cards) ? structuredClone(microsequence.cards) : [],
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
   }
 
   function ensureMicrosequenceVersionEntry(reference = state.selection, microsequence = null) {
@@ -1521,6 +2221,43 @@ export function createLessonEditorApp({ root, storage, editor }) {
     return entry.versions.find((item) => item.id === entry.activeVersionId) || entry.versions[0] || null;
   }
 
+  function getVisualizedMicrosequenceVersionId() {
+    return String(state.assistDraft.visualizedVersionId || getMicrosequenceVersionEntry()?.activeVersionId || "").trim();
+  }
+
+  function getVisualizedMicrosequenceVersion(reference = state.selection) {
+    const entry = getMicrosequenceVersionEntry(reference);
+    if (!entry) {
+      return null;
+    }
+
+    const visualizedVersionId = getVisualizedMicrosequenceVersionId();
+    return (
+      entry.versions.find((item) => item.id === visualizedVersionId) ||
+      entry.versions.find((item) => item.id === entry.activeVersionId) ||
+      entry.versions[0] ||
+      null
+    );
+  }
+
+  function getMicrosequenceEditBaseVersionId() {
+    return String(state.assistDraft.editBaseVersionId || getMicrosequenceVersionEntry()?.activeVersionId || "").trim();
+  }
+
+  function setMicrosequenceVersionViewState({
+    visualizedVersionId = getVisualizedMicrosequenceVersionId(),
+    editBaseVersionId = getMicrosequenceEditBaseVersionId()
+  } = {}) {
+    state.assistDraft.visualizedVersionId = String(visualizedVersionId || "").trim();
+    state.assistDraft.editBaseVersionId = String(editBaseVersionId || state.assistDraft.visualizedVersionId || "").trim();
+    state.assistDraft.versionActionsOpen = false;
+  }
+
+  function toggleMicrosequenceVersionMore() {
+    state.assistDraft.versionActionsOpen = !state.assistDraft.versionActionsOpen;
+    render({ preserveState: true });
+  }
+
   function syncActiveMicrosequenceVersionFromProject(reference = state.selection) {
     const entry = getMicrosequenceVersionEntry(reference);
     if (!entry) {
@@ -1543,10 +2280,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
       return;
     }
 
-    activeVersion.title = microsequence.title || "";
-    activeVersion.tags = structuredClone(microsequence.tags || []);
-    activeVersion.cards = structuredClone(microsequence.cards || []);
-    activeVersion.updatedAt = new Date().toISOString();
+    replaceActiveMicrosequenceVersion(entry, microsequence);
     saveMicrosequenceVersions();
   }
 
@@ -1586,7 +2320,11 @@ export function createLessonEditorApp({ root, storage, editor }) {
     });
   }
 
-  function createMicrosequenceVersionFromCurrentProject() {
+  function createMicrosequenceVersionFromCurrentProject({
+    parentVersionId = "",
+    operationType = "snapshot",
+    label = ""
+  } = {}) {
     const reference = {
       courseKey: state.selection.courseKey,
       moduleKey: state.selection.moduleKey,
@@ -1605,21 +2343,54 @@ export function createLessonEditorApp({ root, storage, editor }) {
       return;
     }
 
-    const activeIndex = Math.max(0, entry.versions.findIndex((item) => item.id === entry.activeVersionId));
-    const nextVersion = cloneMicrosequenceSnapshot(microsequence, `Iteração ${entry.versions.length + 1}`);
-    entry.versions.splice(activeIndex + 1, 0, nextVersion);
-    entry.activeVersionId = nextVersion.id;
+    insertMicrosequenceVersionAfterActive(entry, microsequence, {
+      label: label || `Iteração ${entry.versions.length + 1}`,
+      operationType,
+      parentVersionId: String(parentVersionId || entry.activeVersionId || "").trim()
+    });
     saveMicrosequenceVersions();
+    setMicrosequenceVersionViewState({
+      visualizedVersionId: entry.activeVersionId,
+      editBaseVersionId: entry.activeVersionId
+    });
   }
 
-  function switchMicrosequenceVersion(versionId, { preserveCardIndex = true } = {}) {
+  function ensureEditableMicrosequenceBranch({
+    operationType = "snapshot",
+    label = ""
+  } = {}) {
     const reference = {
       courseKey: state.selection.courseKey,
       moduleKey: state.selection.moduleKey,
       lessonKey: state.selection.lessonKey,
       microsequenceKey: state.selection.microsequenceKey
     };
-    syncActiveMicrosequenceVersionFromProject(reference);
+    const entry = getMicrosequenceVersionEntry(reference);
+    const editBaseVersionId = getMicrosequenceEditBaseVersionId();
+    if (!entry || !editBaseVersionId) {
+      return null;
+    }
+
+    if (entry.activeVersionId === editBaseVersionId) {
+      return entry.versions.find((item) => item.id === entry.activeVersionId) || null;
+    }
+
+    createMicrosequenceVersionFromCurrentProject({
+      parentVersionId: editBaseVersionId,
+      operationType,
+      label
+    });
+    const nextEntry = getMicrosequenceVersionEntry(reference);
+    return nextEntry?.versions?.find((item) => item.id === nextEntry.activeVersionId) || null;
+  }
+
+  function selectMicrosequenceVersion(versionId, { preserveCardIndex = true } = {}) {
+    const reference = {
+      courseKey: state.selection.courseKey,
+      moduleKey: state.selection.moduleKey,
+      lessonKey: state.selection.lessonKey,
+      microsequenceKey: state.selection.microsequenceKey
+    };
     const entry = getMicrosequenceVersionEntry(reference);
     if (!entry) {
       return;
@@ -1630,63 +2401,193 @@ export function createLessonEditorApp({ root, storage, editor }) {
       return;
     }
 
-    entry.activeVersionId = version.id;
-    saveMicrosequenceVersions();
+    setMicrosequenceVersionViewState({
+      visualizedVersionId: version.id,
+      editBaseVersionId: getMicrosequenceEditBaseVersionId()
+    });
     const targetCardIndex = preserveCardIndex && Number.isInteger(state.selection.cardIndex) ? state.selection.cardIndex : 0;
-    applyMicrosequenceVersion(reference, version, targetCardIndex);
-    state.assistDraft.dependencyKeys = Array.isArray(version.tags) ? version.tags.slice(0, MAX_ASSIST_DEPENDENCIES) : [];
+    const safeIndex = Math.max(0, Math.min(targetCardIndex, Math.max(0, (version.cards || []).length - 1)));
+    state.selection.cardIndex = safeIndex;
+    state.selection.cardKey = (version.cards || [])[safeIndex]?.key || null;
+    state.assistDraft.versionActionsOpen = false;
     render({ preserveState: false });
   }
 
-  function stepMicrosequenceVersion(delta) {
+  function useMicrosequenceVersion(versionId) {
     const reference = {
       courseKey: state.selection.courseKey,
       moduleKey: state.selection.moduleKey,
       lessonKey: state.selection.lessonKey,
       microsequenceKey: state.selection.microsequenceKey
     };
-    syncActiveMicrosequenceVersionFromProject(reference);
     const entry = getMicrosequenceVersionEntry(reference);
-    if (!entry || !Array.isArray(entry.versions) || entry.versions.length <= 1) {
+    if (!entry) {
       return;
     }
 
-    const activeIndex = Math.max(0, entry.versions.findIndex((item) => item.id === entry.activeVersionId));
-    const nextIndex = Math.max(0, Math.min(activeIndex + delta, entry.versions.length - 1));
-    const nextVersion = entry.versions[nextIndex];
-    if (!nextVersion || nextVersion.id === entry.activeVersionId) {
+    const version = entry.versions.find((item) => item.id === versionId);
+    if (!version || version.id === entry.activeVersionId) {
       return;
     }
 
-    switchMicrosequenceVersion(nextVersion.id);
+    setActiveMicrosequenceVersion(entry, version.id);
+    saveMicrosequenceVersions();
+    applyMicrosequenceVersion(reference, version, Number.isInteger(state.selection.cardIndex) ? state.selection.cardIndex : 0);
+    state.assistDraft.dependencyKeys = Array.isArray(version.tags) ? version.tags.slice(0, MAX_ASSIST_DEPENDENCIES) : [];
+    setMicrosequenceVersionViewState({
+      visualizedVersionId: version.id,
+      editBaseVersionId: version.id
+    });
+    state.assistDraft.versionActionsOpen = false;
+    render({ preserveState: false });
   }
 
-  function deleteActiveMicrosequenceVersion() {
+  function editMicrosequenceFromVersion(versionId) {
     const reference = {
       courseKey: state.selection.courseKey,
       moduleKey: state.selection.moduleKey,
       lessonKey: state.selection.lessonKey,
       microsequenceKey: state.selection.microsequenceKey
     };
-    syncActiveMicrosequenceVersionFromProject(reference);
     const entry = getMicrosequenceVersionEntry(reference);
-    if (!entry || entry.versions.length <= 1) {
+    if (!entry) {
       return;
     }
 
-    const activeIndex = Math.max(0, entry.versions.findIndex((item) => item.id === entry.activeVersionId));
-    const fallbackIndex = activeIndex > 0 ? activeIndex - 1 : 1;
-    const fallbackVersion = entry.versions[fallbackIndex] || null;
+    const version = entry.versions.find((item) => item.id === versionId);
+    if (!version) {
+      return;
+    }
+
+    applyMicrosequenceVersion(reference, version, 0);
+    state.assistDraft.dependencyKeys = Array.isArray(version.tags) ? version.tags.slice(0, MAX_ASSIST_DEPENDENCIES) : [];
+    setMicrosequenceVersionViewState({
+      visualizedVersionId: version.id,
+      editBaseVersionId: version.id
+    });
+    state.assistDraft.activeWorkbenchPane = "edit";
+    render({ preserveState: false });
+  }
+
+  function duplicateMicrosequenceVersion(versionId) {
+    const reference = {
+      courseKey: state.selection.courseKey,
+      moduleKey: state.selection.moduleKey,
+      lessonKey: state.selection.lessonKey,
+      microsequenceKey: state.selection.microsequenceKey
+    };
+    const entry = getMicrosequenceVersionEntry(reference);
+    if (!entry) {
+      return;
+    }
+
+    const sourceVersion = entry.versions.find((item) => item.id === versionId);
+    if (!sourceVersion) {
+      return;
+    }
+
+    const previousActiveVersionId = entry.activeVersionId;
+    entry.activeVersionId = sourceVersion.id;
+    const duplicatedVersion = insertMicrosequenceVersionAfterActive(entry, sourceVersion, {
+      label: `Variação ${entry.versions.length + 1}`,
+      operationType: "duplicate",
+      parentVersionId: sourceVersion.id
+    });
+    entry.activeVersionId = previousActiveVersionId;
+    saveMicrosequenceVersions();
+    if (!duplicatedVersion) {
+      return;
+    }
+    setMicrosequenceVersionViewState({
+      visualizedVersionId: duplicatedVersion.id,
+      editBaseVersionId: duplicatedVersion.id
+    });
+    state.assistDraft.versionActionsOpen = false;
+    render({ preserveState: true });
+  }
+
+  function canDeleteMicrosequenceVersion(versionId) {
+    const entry = getMicrosequenceVersionEntry();
+    if (!entry || !Array.isArray(entry.versions) || entry.versions.length <= 1) {
+      return false;
+    }
+    if (entry.activeVersionId === versionId) {
+      return false;
+    }
+    return !entry.versions.some((item) => item.parentVersionId === versionId);
+  }
+
+  function deleteMicrosequenceVersion(versionId) {
+    const reference = {
+      courseKey: state.selection.courseKey,
+      moduleKey: state.selection.moduleKey,
+      lessonKey: state.selection.lessonKey,
+      microsequenceKey: state.selection.microsequenceKey
+    };
+    const entry = getMicrosequenceVersionEntry(reference);
+    if (!entry || !canDeleteMicrosequenceVersion(versionId)) {
+      return;
+    }
+
+    const fallbackVersion = removeMicrosequenceVersion(entry, versionId);
     if (!fallbackVersion) {
       return;
     }
 
-    entry.versions.splice(activeIndex, 1);
-    entry.activeVersionId = fallbackVersion.id;
     saveMicrosequenceVersions();
-    applyMicrosequenceVersion(reference, fallbackVersion, 0);
-    state.assistDraft.dependencyKeys = Array.isArray(fallbackVersion.tags) ? fallbackVersion.tags.slice(0, MAX_ASSIST_DEPENDENCIES) : [];
-    render({ preserveState: false });
+    const nextVisualized =
+      getVisualizedMicrosequenceVersionId() === versionId
+        ? fallbackVersion.id
+        : getVisualizedMicrosequenceVersionId();
+    setMicrosequenceVersionViewState({
+      visualizedVersionId: nextVisualized,
+      editBaseVersionId:
+        getMicrosequenceEditBaseVersionId() === versionId ? fallbackVersion.id : getMicrosequenceEditBaseVersionId()
+    });
+    state.assistDraft.versionActionsOpen = false;
+    render({ preserveState: true });
+  }
+
+  function stepMicrosequenceVersion(delta) {
+    const entry = getMicrosequenceVersionEntry();
+    if (!entry || !Array.isArray(entry.versions) || entry.versions.length <= 1) {
+      return;
+    }
+
+    const visualizedVersionId = getVisualizedMicrosequenceVersionId();
+    const currentIndex = Math.max(0, entry.versions.findIndex((item) => item.id === visualizedVersionId));
+    const nextIndex = Math.max(0, Math.min(currentIndex + delta, entry.versions.length - 1));
+    const nextVersion = entry.versions[nextIndex];
+    if (!nextVersion || nextVersion.id === visualizedVersionId) {
+      return;
+    }
+
+    selectMicrosequenceVersion(nextVersion.id);
+  }
+
+  function restoreMicrosequenceProjectToActiveVersion() {
+    const reference = {
+      courseKey: state.selection.courseKey,
+      moduleKey: state.selection.moduleKey,
+      lessonKey: state.selection.lessonKey,
+      microsequenceKey: state.selection.microsequenceKey
+    };
+    const entry = getMicrosequenceVersionEntry(reference);
+    if (!entry) {
+      return;
+    }
+
+    const activeVersion = entry.versions.find((item) => item.id === entry.activeVersionId);
+    if (!activeVersion) {
+      return;
+    }
+
+    applyMicrosequenceVersion(reference, activeVersion, Number.isInteger(state.selection.cardIndex) ? state.selection.cardIndex : 0);
+    state.assistDraft.dependencyKeys = Array.isArray(activeVersion.tags) ? activeVersion.tags.slice(0, MAX_ASSIST_DEPENDENCIES) : [];
+    setMicrosequenceVersionViewState({
+      visualizedVersionId: activeVersion.id,
+      editBaseVersionId: activeVersion.id
+    });
   }
 
   function openCardByIndex(targetIndex) {
@@ -1716,16 +2617,16 @@ export function createLessonEditorApp({ root, storage, editor }) {
         safeIndex
       );
     } else {
-      const microsequence = findMicrosequence(
-        state.project,
-        state.selection.courseKey,
-        state.selection.moduleKey,
-        state.selection.lessonKey,
-        state.selection.microsequenceKey
-      );
-      if (!microsequence) return;
-
-      const cards = microsequence.cards || [];
+      const cards =
+        state.view === "microsequence-assist"
+          ? getVisualizedMicrosequenceVersion()?.cards || []
+          : findMicrosequence(
+              state.project,
+              state.selection.courseKey,
+              state.selection.moduleKey,
+              state.selection.lessonKey,
+              state.selection.microsequenceKey
+            )?.cards || [];
       const safeIndex = Math.max(0, Math.min(targetIndex, Math.max(0, cards.length - 1)));
       const card = cards[safeIndex] || null;
       state.selection.cardIndex = safeIndex;
@@ -2163,8 +3064,91 @@ export function createLessonEditorApp({ root, storage, editor }) {
     };
     state.cardCommentOpen = false;
     state.versionHistoryOpen = false;
+    state.versionCompareOpen = false;
     state.assistConfigOpen = false;
     render({ preserveState: true });
+  }
+
+  function restoreStructureVersion(versionKey) {
+    const reference = getCurrentStructureVersionReference();
+    const entry = getStructureVersionEntry(reference);
+    if (!reference || !entry || !versionKey) {
+      return;
+    }
+
+    const restored = createManualStructureRestore(state.structureVersions, {
+      project: state.project,
+      reference,
+      versionId: versionKey
+    });
+    if (!restored?.snapshot) {
+      return;
+    }
+    saveStructureVersions();
+
+    const nextProject = applyStructureVersionSnapshot(state.project, reference, restored.snapshot);
+    storage.saveProject(nextProject);
+    setProject(nextProject);
+    applySelectionByKeys(nextProject, state.selection);
+    syncAssistDraft();
+    state.assistDraft.lastRequest = {
+      title: "Variação criada",
+      description: `Nova versão criada a partir de ${String(restored.restoredVersion.label || restored.restoredVersion.id).toLowerCase()}.`,
+      timestamp: new Date().toISOString()
+    };
+    render({ preserveState: true });
+  }
+
+  function selectVersionHistoryItem(versionKey) {
+    if (!versionKey) {
+      return;
+    }
+
+    state.versionHistorySelectionKey = versionKey;
+    render({ preserveState: true });
+  }
+
+  function toggleVersionHistoryMore(versionKey) {
+    state.versionHistoryExpandedMoreKey = state.versionHistoryExpandedMoreKey === versionKey ? "" : String(versionKey || "");
+    render({ preserveState: true });
+  }
+
+  function useStructureVersion(versionKey) {
+    const reference = getCurrentStructureVersionReference();
+    const entry = getStructureVersionEntry(reference);
+    if (!reference || !entry || !versionKey || versionKey === entry.activeVersionId) {
+      return;
+    }
+
+    const version = setActiveStructureVersion(entry, versionKey);
+    if (!version?.snapshot) {
+      return;
+    }
+
+    const nextProject = applyStructureVersionSnapshot(state.projectHead, reference, version.snapshot);
+    setProject(nextProject, { updateHead: false });
+    applySelectionByKeys(nextProject, state.selection);
+    syncAssistDraft();
+    state.versionHistorySelectionKey = version.id;
+    render({
+      preserveState: true,
+      preserveScrollSelectors: [
+        ".screen-content",
+        ".editor-sheet",
+        ".editor-step-strip",
+        ".workbench-editor-panel",
+        ".assist-prompt",
+        ".card-sheet-content",
+        ".dependency-strip",
+        ".dependency-chip-row"
+      ],
+      preserveFocus: false
+    });
+  }
+
+  function selectStructureVersionTab(versionKey, { centerActiveTab = true } = {}) {
+    state.centerActiveStructureVersionTabOnRender = centerActiveTab;
+    useStructureVersion(versionKey);
   }
 
   function closeEntityEditor() {
@@ -2173,16 +3157,121 @@ export function createLessonEditorApp({ root, storage, editor }) {
   }
 
   function openVersionHistory() {
+    const structureReference = getCurrentStructureVersionReference();
+    if (structureReference) {
+      syncActiveStructureVersionFromProject(structureReference);
+    }
     state.versionHistoryOpen = true;
+    state.versionCompareOpen = false;
+    state.versionCompareSelectionKey = "";
+    state.versionHistoryExpandedMoreKey = "";
+    state.cardCommentOpen = false;
+    state.assistConfigOpen = false;
+    state.entityEditor = null;
+    if (structureReference) {
+      state.versionHistorySelectionKey = getStructureVersionEntry(structureReference)?.activeVersionId || "";
+    } else {
+      const currentHistory = getCurrentCardHistory();
+      state.versionHistorySelectionKey = currentHistory[0]?.id || "";
+    }
+    render({ preserveState: true });
+  }
+
+  function closeVersionHistory() {
+    state.versionHistoryOpen = false;
+    state.versionHistorySelectionKey = "";
+    state.versionHistoryExpandedMoreKey = "";
+    render({ preserveState: true });
+  }
+
+  function openVersionCompare() {
+    const structureReference = getCurrentStructureVersionReference();
+    if (structureReference) {
+      syncActiveStructureVersionFromProject(structureReference);
+    }
+
+    const comparison = structureReference
+      ? buildStructureVersionComparisonForVersion({
+        entry: getStructureVersionEntry(structureReference),
+        versionId: state.versionCompareSelectionKey || getSelectedStructureVersionId()
+      })
+      : buildMicrosequenceVersionComparisonForVersion({
+        versions: getMicrosequenceVersionEntry()?.versions || [],
+        versionId: state.versionCompareSelectionKey || getVisualizedMicrosequenceVersionId(),
+        cardIndex: Number.isInteger(state.selection?.cardIndex) ? state.selection.cardIndex : 0
+      });
+    if (!comparison) {
+      return;
+    }
+
+    state.versionCompareOpen = true;
+    state.versionHistoryOpen = false;
+    state.versionCompareTab = "summary";
+    state.versionCompareFocusTarget = null;
     state.cardCommentOpen = false;
     state.assistConfigOpen = false;
     state.entityEditor = null;
     render({ preserveState: true });
   }
 
-  function closeVersionHistory() {
-    state.versionHistoryOpen = false;
+  function closeVersionCompare() {
+    state.versionCompareOpen = false;
+    state.versionCompareSelectionKey = "";
+    state.versionCompareTab = "summary";
+    state.versionCompareFocusTarget = null;
     render({ preserveState: true });
+  }
+
+  function selectVersionCompareTab(tabId) {
+    const safeTab = tabId === "previous" || tabId === "current" ? tabId : "summary";
+    state.versionCompareTab = safeTab;
+    render({ preserveState: true });
+  }
+
+  function openVersionCompareTarget(target, tab = "current") {
+    if (!target || typeof target !== "object") {
+      return;
+    }
+
+    state.versionCompareFocusTarget = structuredClone(target);
+    state.versionCompareTab = tab === "previous" ? "previous" : "current";
+    render({ preserveState: true });
+  }
+
+  function backToVersionCompareSummary() {
+    state.versionCompareFocusTarget = null;
+    state.versionCompareTab = "summary";
+    render({ preserveState: true });
+  }
+
+  function useVersionCompareSide(side) {
+    const structureReference = getCurrentStructureVersionReference();
+    const comparison = structureReference
+      ? buildStructureVersionComparisonForVersion({
+        entry: getStructureVersionEntry(structureReference),
+        versionId: state.versionCompareSelectionKey || getSelectedStructureVersionId()
+      })
+      : buildMicrosequenceVersionComparisonForVersion({
+        versions: getMicrosequenceVersionEntry()?.versions || [],
+        versionId: state.versionCompareSelectionKey || getVisualizedMicrosequenceVersionId(),
+        cardIndex: Number.isInteger(state.selection?.cardIndex) ? state.selection.cardIndex : 0
+      });
+    if (!comparison) {
+      return;
+    }
+
+    const versionId = side === "previous" ? comparison.previousVersion?.id : comparison.currentVersion?.id;
+    if (!versionId) {
+      return;
+    }
+
+    if (structureReference) {
+      useStructureVersion(versionId);
+    } else {
+      useMicrosequenceVersion(versionId);
+    }
+
+    closeVersionCompare();
   }
 
   function notifyUser(message) {
@@ -2321,7 +3410,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
     const format = detectJsonExchangeFormat(parsed);
 
     if (format === "contract") {
-      const nextProject = editor.importCourses({ document: parsed });
+      const nextProject = structuralEditor.importCourses({ document: parsed });
       selectImportedCourse(nextProject);
       notifyUser("Curso importado.");
       return;
@@ -2359,7 +3448,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
       return;
     }
 
-    const nextProject = editor.importModules({
+    const nextProject = structuralEditor.importModules({
       courseKey,
       document: parseContractDocument(rawJson, "importar módulo")
     });
@@ -2387,7 +3476,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
       return;
     }
 
-    const nextProject = editor.importLessons({
+    const nextProject = structuralEditor.importLessons({
       courseKey,
       moduleKey,
       document: parseContractDocument(rawJson, "importar lição")
@@ -2439,7 +3528,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
 
   function exportCourseAsJson(courseKey) {
     const course = findCourse(state.project, courseKey);
-    const exportedDocument = editor.exportCourseDocument({ courseKey });
+    const exportedDocument = structuralEditor.exportCourseDocument({ courseKey });
     downloadJsonFile(
       `${slugifyDownloadName(course.title || course.key)}.json`,
       JSON.stringify(exportedDocument, null, 2)
@@ -2448,7 +3537,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
 
   function exportModuleAsJson(courseKey, moduleKey) {
     const moduleValue = findModule(state.project, courseKey, moduleKey);
-    const exportedDocument = editor.exportModuleDocument({ courseKey, moduleKey });
+    const exportedDocument = structuralEditor.exportModuleDocument({ courseKey, moduleKey });
     downloadJsonFile(
       `${slugifyDownloadName(moduleValue.title || moduleValue.key, "modulo")}.json`,
       JSON.stringify(exportedDocument, null, 2)
@@ -2457,7 +3546,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
 
   function exportLessonAsJson(courseKey, moduleKey, lessonKey) {
     const lesson = findLesson(state.project, courseKey, moduleKey, lessonKey);
-    const exportedDocument = editor.exportLessonDocument({ courseKey, moduleKey, lessonKey });
+    const exportedDocument = structuralEditor.exportLessonDocument({ courseKey, moduleKey, lessonKey });
     downloadJsonFile(
       `${slugifyDownloadName(lesson.title || lesson.key, "licao")}.json`,
       JSON.stringify(exportedDocument, null, 2)
@@ -2498,26 +3587,34 @@ export function createLessonEditorApp({ root, storage, editor }) {
     removeProgressEntries([{ courseKey, moduleKey, lessonKey }]);
   }
 
-  function createCardAtPosition(position) {
-    const microsequenceKey = state.selection.microsequenceKey;
+  function createCardAtPosition(position, kind = "say", reference = {}) {
+    const courseKey = reference.courseKey || state.selection.courseKey;
+    const moduleKey = reference.moduleKey || state.selection.moduleKey;
+    const lessonKey = reference.lessonKey || state.selection.lessonKey;
+    const microsequenceKey = reference.microsequenceKey || state.selection.microsequenceKey;
     if (!microsequenceKey) return null;
+    ensureEditableMicrosequenceBranch({
+      operationType: "edit",
+      label: "Edição local"
+    });
+
+    const starterCard = createStarterContractCard(kind);
 
     const nextProject = editor.createCard({
-      courseKey: state.selection.courseKey,
-      moduleKey: state.selection.moduleKey,
-      lessonKey: state.selection.lessonKey,
+      courseKey,
+      moduleKey,
+      lessonKey,
       microsequenceKey,
-      title: "Novo card",
-      say: "Descreva a ideia central desta microssequência.",
+      ...starterCard,
       position
     });
 
     setProject(nextProject);
     const microsequence = findMicrosequence(
       nextProject,
-      state.selection.courseKey,
-      state.selection.moduleKey,
-      state.selection.lessonKey,
+      courseKey,
+      moduleKey,
+      lessonKey,
       microsequenceKey
     );
     const cards = microsequence?.cards || [];
@@ -2525,6 +3622,10 @@ export function createLessonEditorApp({ root, storage, editor }) {
     const nextCard = cards[nextIndex] || null;
     state.selection.cardIndex = nextIndex;
     state.selection.cardKey = nextCard ? nextCard.key : null;
+    state.selection.courseKey = courseKey;
+    state.selection.moduleKey = moduleKey;
+    state.selection.lessonKey = lessonKey;
+    state.selection.microsequenceKey = microsequenceKey;
     if (state.view === "microsequence-assist") {
       syncActiveMicrosequenceVersionFromProject();
     }
@@ -2546,6 +3647,10 @@ export function createLessonEditorApp({ root, storage, editor }) {
   }
 
   function applyMicrosequenceGeneration({ microsequenceTitle, cards }) {
+    ensureEditableMicrosequenceBranch({
+      operationType: "generated",
+      label: "Gerada"
+    });
     const currentMicrosequence = findMicrosequence(
       state.project,
       state.selection.courseKey,
@@ -2575,7 +3680,11 @@ export function createLessonEditorApp({ root, storage, editor }) {
     state.selection.cardIndex = 0;
     state.selection.cardKey = firstCard ? firstCard.key : null;
     state.assistDraft.activeWorkbenchPane = "preview";
-    createMicrosequenceVersionFromCurrentProject();
+    syncActiveMicrosequenceVersionFromProject();
+    setMicrosequenceVersionViewState({
+      visualizedVersionId: getMicrosequenceVersionEntry()?.activeVersionId || "",
+      editBaseVersionId: getMicrosequenceVersionEntry()?.activeVersionId || ""
+    });
     syncAssistDraft();
   }
 
@@ -2583,55 +3692,367 @@ export function createLessonEditorApp({ root, storage, editor }) {
     return project.courses || [];
   }
 
-  function setHomeTab(tab) {
-    const nextTab = tab === "courses" ? "courses" : "generate";
-    if (nextTab === "generate") {
-      rememberCoursesView();
-      state.homeTab = "generate";
-      state.view = "courses";
-    } else {
-      const pendingGeneratedNavigation = state.pendingGeneratedNavigation;
-      if (pendingGeneratedNavigation) {
-        openGeneratedLesson({ pendingGeneratedNavigation });
+  function applyGenerationScope({
+    courseKey = "",
+    moduleKey = "",
+    lessonKey = ""
+  } = {}) {
+    const draft = state.generationDraft;
+    const course = courseKey ? findCourse(state.project, courseKey) : null;
+    const moduleValue = course && moduleKey ? findModule(state.project, course.key, moduleKey) : null;
+    const lesson = course && moduleValue && lessonKey ? findLesson(state.project, course.key, moduleValue.key, lessonKey) : null;
+
+    draft.courseFixed = Boolean(course);
+    draft.courseInput = course?.title || "";
+    draft.courseKey = course?.key || "";
+    draft.moduleFixed = Boolean(moduleValue);
+    draft.moduleInput = moduleValue?.title || "";
+    draft.moduleKey = moduleValue?.key || "";
+    draft.lessonFixed = Boolean(lesson);
+    draft.repositionMicrosequences = false;
+    draft.lessonInput = lesson?.title || "";
+    draft.lessonKey = lesson?.key || "";
+    syncGenerationDraftHierarchy();
+    clearGenerationResult();
+  }
+
+  function clearGenerationScope() {
+    applyGenerationScope();
+  }
+
+  function openGenerationPanel(scope = {}) {
+    applyGenerationScope(scope);
+    state.generationPanelOpen = true;
+    state.entityEditor = null;
+    render({ preserveState: true });
+  }
+
+  function closeGenerationPanel({ preserveGeneratedResult = true } = {}) {
+    state.generationPanelOpen = false;
+    if (!preserveGeneratedResult) {
+      clearGenerationResult();
+    }
+    render({ preserveState: true });
+  }
+
+  function handleGenerationPanelActionClick(event) {
+    const target = event.target;
+    if (!(target instanceof Element)) {
+      return false;
+    }
+
+    const actionNode = target.closest(
+      "[data-action='open-generation-panel-global'], [data-action='open-generation-panel-course'], [data-action='open-generation-panel-module'], [data-action='open-generation-panel-lesson']"
+    );
+    if (!actionNode || !root.contains(actionNode)) {
+      return false;
+    }
+
+    const action = actionNode.getAttribute("data-action") || "";
+    const scope = resolveGenerationPanelScopeFromAction({
+      action,
+      dataset: {
+        courseKey: actionNode.getAttribute("data-course-key") || "",
+        moduleKey: actionNode.getAttribute("data-module-key") || "",
+        lessonKey: actionNode.getAttribute("data-lesson-key") || ""
+      },
+      selection: state.selection || {}
+    });
+    if (scope === null) {
+      return false;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+    openGenerationPanel(scope);
+    return true;
+  }
+
+  function triggerGenerationPanelFromNode(node, event = null) {
+    if (!node) {
+      return false;
+    }
+
+    const action = node.getAttribute("data-action") || "";
+    const scope = resolveGenerationPanelScopeFromAction({
+      action,
+      dataset: {
+        courseKey: node.getAttribute("data-course-key") || "",
+        moduleKey: node.getAttribute("data-module-key") || "",
+        lessonKey: node.getAttribute("data-lesson-key") || ""
+      },
+      selection: state.selection || {}
+    });
+    if (scope === null) {
+      return false;
+    }
+
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    openGenerationPanel(scope);
+    return true;
+  }
+
+  function bindGenerationPanelTrigger(node) {
+    if (!node || node.getAttribute("data-generation-bound") === "true") {
+      return;
+    }
+
+    node.setAttribute("data-generation-bound", "true");
+    node.addEventListener("click", (event) => {
+      triggerGenerationPanelFromNode(node, event);
+    });
+    node.addEventListener(
+      "touchend",
+      (event) => {
+        triggerGenerationPanelFromNode(node, event);
+      },
+      { passive: false }
+    );
+  }
+
+  function clearGenerationResult() {
+    state.generationDraft.errorMessage = "";
+    state.generationDraft.lastResult = null;
+    state.pendingGeneratedNavigation = null;
+  }
+
+  function resolveHierarchyInputMatch(items, inputValue) {
+    const normalizedInput = normalizeComparableText(inputValue);
+    if (!normalizedInput) {
+      return null;
+    }
+
+    return (
+      (items || []).find((item) => {
+        const labels = [item?.title, item?.key].map((value) => normalizeComparableText(value)).filter(Boolean);
+        return labels.includes(normalizedInput);
+      }) || null
+    );
+  }
+
+  function syncGenerationDraftHierarchy() {
+    const draft = state.generationDraft;
+
+    if (!draft.courseFixed) {
+      draft.courseInput = "";
+      draft.courseKey = "";
+      draft.moduleFixed = false;
+      draft.moduleInput = "";
+      draft.moduleKey = "";
+      draft.lessonFixed = false;
+      draft.repositionMicrosequences = false;
+      draft.lessonInput = "";
+      draft.lessonKey = "";
+      return;
+    }
+
+    const course = resolveHierarchyInputMatch(getVisibleCourses(), draft.courseInput);
+    draft.courseKey = course?.key || "";
+
+    if (!course) {
+      draft.moduleFixed = false;
+      draft.moduleInput = "";
+      draft.moduleKey = "";
+      draft.lessonFixed = false;
+      draft.repositionMicrosequences = false;
+      draft.lessonInput = "";
+      draft.lessonKey = "";
+      return;
+    }
+
+    if (!draft.moduleFixed) {
+      draft.moduleInput = "";
+      draft.moduleKey = "";
+      draft.lessonFixed = false;
+      draft.repositionMicrosequences = false;
+      draft.lessonInput = "";
+      draft.lessonKey = "";
+      return;
+    }
+
+    const moduleValue = resolveHierarchyInputMatch(course.modules || [], draft.moduleInput);
+    draft.moduleKey = moduleValue?.key || "";
+
+    if (!moduleValue) {
+      draft.lessonFixed = false;
+      draft.repositionMicrosequences = false;
+      draft.lessonInput = "";
+      draft.lessonKey = "";
+      return;
+    }
+
+    if (!draft.lessonFixed) {
+      draft.repositionMicrosequences = false;
+      draft.lessonInput = "";
+      draft.lessonKey = "";
+      return;
+    }
+
+    const lesson = resolveHierarchyInputMatch(moduleValue.lessons || [], draft.lessonInput);
+    draft.lessonKey = lesson?.key || "";
+  }
+
+  function getGenerationScopeState(project = state.project) {
+    const draft = state.generationDraft;
+    const courses = getVisibleCourses(project);
+    const course = draft.courseKey ? findCourse(project, draft.courseKey) : null;
+    const modules = course?.modules || [];
+    const moduleValue = draft.moduleKey ? findModule(project, draft.courseKey, draft.moduleKey) : null;
+    const lessons = moduleValue?.lessons || [];
+    const lesson = draft.lessonKey ? findLesson(project, draft.courseKey, draft.moduleKey, draft.lessonKey) : null;
+    const hasPrompt = !!String(draft.promptText || "").trim();
+    const hasAttachments = Array.isArray(draft.attachments) && draft.attachments.length > 0;
+    const hasInputSource = hasPrompt || hasAttachments;
+    const pressedFieldsFilled =
+      (!draft.courseFixed || !!String(draft.courseInput || "").trim()) &&
+      (!draft.moduleFixed || !!String(draft.moduleInput || "").trim()) &&
+      (!draft.lessonFixed || !!String(draft.lessonInput || "").trim());
+    const invalidFixedHierarchy = (draft.moduleFixed && !course) || (draft.lessonFixed && !moduleValue);
+
+    const generationMode = resolveGenerationAssistMode({
+      lessonFixed: draft.lessonFixed === true,
+      hasResolvedLesson: !!lesson,
+      repositionMicrosequences: draft.repositionMicrosequences === true
+    });
+    const isLessonMicrosequenceMode =
+      generationMode === "generate-lesson-microsequences" ||
+      generationMode === "generate-and-reposition-lesson-microsequences";
+    const isLessonRepositionMode = generationMode === "generate-and-reposition-lesson-microsequences";
+
+    let actionLabel = "criar curso completo";
+    let actionHelpText = "";
+    let actionSummary = "Curso, módulos e lições";
+    let actionIconName = "folder";
+    let panelTitle = "Gerar estrutura";
+    let panelSubtitle = "";
+    let submitLabel = "Gerar estrutura";
+
+    if (isLessonMicrosequenceMode) {
+      actionLabel = isLessonRepositionMode
+        ? "gerar e reposicionar microssequências nesta lição"
+        : "criar microssequências draft nesta lição";
+      actionHelpText = "";
+      actionSummary = isLessonRepositionMode
+        ? "Gerar e reposicionar microssequências"
+        : "Microssequências draft sem cards";
+      actionIconName = isLessonRepositionMode ? "reposition" : "microsequence";
+      panelTitle = "Gerar microssequências";
+      panelSubtitle = "";
+      submitLabel = isLessonRepositionMode ? "Gerar e reposicionar" : "Gerar microssequências";
+    } else if (draft.courseFixed) {
+      if (!course) {
+        actionLabel = "criar este curso, módulos e lições";
+        actionSummary = "Curso, módulos e lições";
+        actionIconName = "folder";
+      } else if (!draft.moduleFixed) {
+        actionLabel = "criar módulos e lições neste curso";
+        actionSummary = "Módulos e lições neste curso";
+        actionIconName = "module";
+      } else if (!moduleValue) {
+        actionLabel = "criar este módulo e suas lições";
+        actionSummary = "Módulo e lições";
+        actionIconName = "module";
+      } else if (!draft.lessonFixed) {
+        actionLabel = "criar lições neste módulo";
+        actionSummary = "Lições neste módulo";
+        actionIconName = "lesson";
+      } else {
+        actionLabel = "criar/atualizar esta lição";
+        actionSummary = "Atualizar esta lição";
+        actionIconName = "lesson";
+      }
+    }
+
+    return {
+      courses,
+      course,
+      modules,
+      moduleValue,
+      lessons,
+      lesson,
+      moduleToggleEnabled: !!course,
+      moduleInputEnabled: !!course && draft.moduleFixed,
+      lessonToggleEnabled: !!moduleValue,
+      lessonInputEnabled: !!moduleValue && draft.lessonFixed,
+      canSubmit: hasInputSource && pressedFieldsFilled && !invalidFixedHierarchy,
+      actionLabel,
+      actionHelpText,
+      actionSummary,
+      actionIconName,
+      generationMode,
+      isLessonMicrosequenceMode,
+      isLessonGenerationMode: isLessonMicrosequenceMode,
+      isLessonRepositionMode,
+      panelTitle,
+      panelSubtitle,
+      submitLabel
+    };
+  }
+
+  function setGenerationLevelFixed(level) {
+    const draft = state.generationDraft;
+
+    if (level === "course") {
+      const willEnable = !draft.courseFixed;
+      draft.courseFixed = willEnable;
+      if (!willEnable) {
+        draft.courseInput = "";
+        draft.courseKey = "";
+      }
+    } else if (level === "module") {
+      if (!getGenerationScopeState().moduleToggleEnabled) {
         return;
       }
-      state.homeTab = "courses";
-      state.view = state.lastCoursesView || "courses";
+      const willEnable = !draft.moduleFixed;
+      draft.moduleFixed = willEnable;
+      if (!willEnable) {
+        draft.moduleInput = "";
+        draft.moduleKey = "";
+      }
+    } else if (level === "lesson") {
+      if (!getGenerationScopeState().lessonToggleEnabled) {
+        return;
+      }
+      const willEnable = !draft.lessonFixed;
+      draft.lessonFixed = willEnable;
+      if (!willEnable) {
+        draft.repositionMicrosequences = false;
+        draft.lessonInput = "";
+        draft.lessonKey = "";
+      }
     }
-    state.entityEditor = null;
-    render({ preserveState: false });
-  }
 
-  function setGenerationCourse(courseKey) {
-    const course = getVisibleCourses().find((item) => item.key === courseKey) || null;
-    state.generationDraft.courseKey = course ? course.key : "";
-    state.generationDraft.moduleKey = "";
-    state.generationDraft.lessonKey = "";
-    state.generationDraft.errorMessage = "";
-    state.generationDraft.lastResult = null;
-    state.pendingGeneratedNavigation = null;
+    syncGenerationDraftHierarchy();
+    clearGenerationResult();
     render({ preserveState: true });
   }
 
-  function setGenerationModule(moduleKey) {
-    const course = getVisibleCourses().find((item) => item.key === state.generationDraft.courseKey) || null;
-    const moduleValue = (course?.modules || []).find((item) => item.key === moduleKey) || null;
-    state.generationDraft.moduleKey = moduleValue ? moduleValue.key : "";
-    state.generationDraft.lessonKey = "";
-    state.generationDraft.errorMessage = "";
-    state.generationDraft.lastResult = null;
-    state.pendingGeneratedNavigation = null;
+  function setGenerationInput(level, value) {
+    const draft = state.generationDraft;
+    if (level === "course") {
+      draft.courseInput = value;
+    } else if (level === "module") {
+      draft.moduleInput = value;
+    } else if (level === "lesson") {
+      draft.lessonInput = value;
+    }
+
+    syncGenerationDraftHierarchy();
+    clearGenerationResult();
     render({ preserveState: true });
   }
 
-  function setGenerationLesson(lessonKey) {
-    const course = getVisibleCourses().find((item) => item.key === state.generationDraft.courseKey) || null;
-    const moduleValue = (course?.modules || []).find((item) => item.key === state.generationDraft.moduleKey) || null;
-    const lesson = (moduleValue?.lessons || []).find((item) => item.key === lessonKey) || null;
-    state.generationDraft.lessonKey = lesson ? lesson.key : "";
-    state.generationDraft.errorMessage = "";
-    state.generationDraft.lastResult = null;
-    state.pendingGeneratedNavigation = null;
+  function toggleGenerationMicrosequenceReposition() {
+    const scopeState = getGenerationScopeState();
+    if (!scopeState.isLessonGenerationMode) {
+      return;
+    }
+
+    state.generationDraft.repositionMicrosequences = state.generationDraft.repositionMicrosequences !== true;
+    clearGenerationResult();
     render({ preserveState: true });
   }
 
@@ -2639,7 +4060,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
     const result = state.generationDraft.lastResult;
     const target = pendingGeneratedNavigation || result;
     if (!target?.courseKey || !target?.moduleKey || !target?.lessonKey) {
-      state.generationDraft.errorMessage = "Nenhuma microssequência nova foi gerada para abrir em Cursos.";
+      state.generationDraft.errorMessage = "Nenhuma estrutura nova foi gerada para abrir em Cursos.";
       render({ preserveState: true });
       return;
     }
@@ -2653,6 +4074,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
       cardIndex: 0
     });
     state.homeTab = "courses";
+    state.generationPanelOpen = false;
     state.view = "lesson";
     state.entityEditor = null;
     state.microsequenceMode = "play";
@@ -2776,15 +4198,593 @@ export function createLessonEditorApp({ root, storage, editor }) {
     }
   }
 
-  async function submitGenerateLadderRequest() {
-    const draft = state.generationDraft;
-    const course = getVisibleCourses().find((item) => item.key === draft.courseKey) || null;
-    const moduleValue = (course?.modules || []).find((item) => item.key === draft.moduleKey) || null;
-    const lesson = (moduleValue?.lessons || []).find((item) => item.key === draft.lessonKey) || null;
-    const promptText = String(draft.promptText || "").trim();
+  function summarizeStructureChanges(summary, targetCourseTitle) {
+    if (summary.createdCourses > 0) {
+      return `Curso ${targetCourseTitle} estruturado com ${summary.totalModules} módulo(s) e ${summary.totalLessons} lição(ões).`;
+    }
+    if (summary.createdModules > 0 || summary.updatedModules > 0) {
+      return `Estrutura aplicada em ${targetCourseTitle}: ${summary.totalModules} módulo(s) e ${summary.totalLessons} lição(ões).`;
+    }
+    return `Estrutura aplicada em ${targetCourseTitle}: ${summary.totalLessons} lição(ões) atualizada(s).`;
+  }
 
-    if (!course || !moduleValue || !lesson || !promptText) {
-      state.generationDraft.errorMessage = "Escolha curso, módulo, lição e escreva a dúvida antes de gerar microssequências.";
+  function createStructureSummary() {
+    return {
+      createdCourses: 0,
+      updatedCourses: 0,
+      createdModules: 0,
+      updatedModules: 0,
+      createdLessons: 0,
+      updatedLessons: 0,
+      totalModules: 0,
+      totalLessons: 0
+    };
+  }
+
+  function buildStructureGenerationContext(scopeState) {
+    const courseModules = summarizeStructuredModules(scopeState.course?.modules || []);
+    const moduleLessons = summarizeStructuredLessons(scopeState.moduleValue?.lessons || []);
+    return {
+      actionLabel: scopeState.actionLabel,
+      courseFixed: state.generationDraft.courseFixed === true,
+      moduleFixed: state.generationDraft.moduleFixed === true,
+      lessonFixed: state.generationDraft.lessonFixed === true,
+      courseTitle: scopeState.course?.title || String(state.generationDraft.courseInput || "").trim(),
+      courseDescription: scopeState.course?.description || "",
+      courseSourceGuide: scopeState.course?.sourceGuide || "",
+      moduleTitle: scopeState.moduleValue?.title || String(state.generationDraft.moduleInput || "").trim(),
+      moduleDescription: scopeState.moduleValue?.description || "",
+      moduleSourceGuide: scopeState.moduleValue?.sourceGuide || "",
+      courseModules,
+      lessonTitle: scopeState.lesson?.title || String(state.generationDraft.lessonInput || "").trim(),
+      lessonDescription: scopeState.lesson?.description || "",
+      lessonSourceGuide: scopeState.lesson?.sourceGuide || "",
+      moduleLessons,
+      lessonMicrosequences: Array.isArray(scopeState.lesson?.microsequences)
+        ? scopeState.lesson.microsequences.map((microsequence) => ({
+            title: String(microsequence?.title || "").trim(),
+            tags: Array.isArray(microsequence?.tags)
+              ? microsequence.tags.map((item) => String(item || "").trim()).filter(Boolean)
+              : []
+          }))
+        : []
+    };
+  }
+
+  function buildLessonMicrosequenceGenerationContext(scopeState) {
+    return {
+      actionLabel: scopeState.actionLabel,
+      courseTitle: scopeState.course?.title || String(state.generationDraft.courseInput || "").trim(),
+      courseDescription: scopeState.course?.description || "",
+      courseSourceGuide: scopeState.course?.sourceGuide || "",
+      courseSourceGuideStructured: structuredClone(scopeState.course?.sourceGuideStructured || {}),
+      moduleTitle: scopeState.moduleValue?.title || String(state.generationDraft.moduleInput || "").trim(),
+      moduleDescription: scopeState.moduleValue?.description || "",
+      moduleSourceGuide: scopeState.moduleValue?.sourceGuide || "",
+      moduleSourceGuideStructured: structuredClone(scopeState.moduleValue?.sourceGuideStructured || {}),
+      lessonTitle: scopeState.lesson?.title || String(state.generationDraft.lessonInput || "").trim(),
+      lessonDescription: scopeState.lesson?.description || "",
+      lessonSourceGuide: scopeState.lesson?.sourceGuide || "",
+      lessonSourceGuideStructured: structuredClone(scopeState.lesson?.sourceGuideStructured || {}),
+      existingMicrosequences: Array.isArray(scopeState.lesson?.microsequences)
+        ? scopeState.lesson.microsequences.map((microsequence, index) => ({
+            key: String(microsequence?.key || "").trim(),
+            position: index,
+            title: String(microsequence?.title || "").trim(),
+            description: String(microsequence?.description || "").trim(),
+            tags: Array.isArray(microsequence?.tags)
+              ? microsequence.tags.map((item) => String(item || "").trim()).filter(Boolean)
+              : [],
+            status: String(microsequence?.status || "").trim(),
+            included: microsequence?.included === true
+          }))
+        : []
+    };
+  }
+
+  function findSiblingByTitle(items, title) {
+    const normalizedTitle = normalizeComparableText(title);
+    if (!normalizedTitle) {
+      return null;
+    }
+
+    return (
+      (items || []).find((item) => normalizeComparableText(item?.title || item?.key) === normalizedTitle) || null
+    );
+  }
+
+  function upsertGeneratedModule(courseKey, payload, summary) {
+    const currentCourse = findCourse(state.project, courseKey);
+    const existingModule = findSiblingByTitle(currentCourse?.modules || [], payload.title);
+    let nextProject = null;
+
+    if (existingModule) {
+      nextProject = structuralEditor.updateModule({
+        courseKey,
+        moduleKey: existingModule.key,
+        title: existingModule.title,
+        description: payload.description,
+        sourceGuide: payload.sourceGuide,
+        sourceGuideStructured: payload.sourceGuideStructured
+      });
+      createStructureVersionFromProject(nextProject, {
+        level: "module",
+        courseKey,
+        moduleKey: existingModule.key
+      }, {
+        operationType: "update"
+      });
+      summary.updatedModules += 1;
+    } else {
+      nextProject = structuralEditor.createModule({
+        courseKey,
+        title: payload.title,
+        description: payload.description,
+        sourceGuide: payload.sourceGuide,
+        sourceGuideStructured: payload.sourceGuideStructured
+      });
+      createStructureVersionFromProject(nextProject, {
+        level: "course",
+        courseKey
+      }, {
+        operationType: "create-child"
+      });
+      summary.createdModules += 1;
+    }
+
+    setProject(nextProject);
+    if (!existingModule) {
+      const createdModule = findSiblingByTitle(findCourse(nextProject, courseKey)?.modules || [], payload.title);
+      syncActiveStructureVersionFromProject({
+        level: "module",
+        courseKey,
+        moduleKey: createdModule?.key
+      });
+    }
+    return findSiblingByTitle(findCourse(nextProject, courseKey)?.modules || [], payload.title);
+  }
+
+  function upsertGeneratedLesson(courseKey, moduleKey, payload, summary) {
+    const currentModule = findModule(state.project, courseKey, moduleKey);
+    const existingLesson = findSiblingByTitle(currentModule?.lessons || [], payload.title);
+    let nextProject = null;
+
+    if (existingLesson) {
+      nextProject = structuralEditor.updateLesson({
+        courseKey,
+        moduleKey,
+        lessonKey: existingLesson.key,
+        title: existingLesson.title,
+        description: payload.description,
+        sourceGuide: payload.sourceGuide,
+        sourceGuideStructured: payload.sourceGuideStructured
+      });
+      createStructureVersionFromProject(nextProject, {
+        level: "lesson",
+        courseKey,
+        moduleKey,
+        lessonKey: existingLesson.key
+      }, {
+        operationType: "update"
+      });
+      summary.updatedLessons += 1;
+    } else {
+      nextProject = structuralEditor.createLesson({
+        courseKey,
+        moduleKey,
+        title: payload.title,
+        description: payload.description,
+        sourceGuide: payload.sourceGuide,
+        sourceGuideStructured: payload.sourceGuideStructured
+      });
+      createStructureVersionFromProject(nextProject, {
+        level: "module",
+        courseKey,
+        moduleKey
+      }, {
+        operationType: "create-child"
+      });
+      summary.createdLessons += 1;
+    }
+
+    setProject(nextProject);
+    if (!existingLesson) {
+      const createdLesson = findSiblingByTitle(findModule(nextProject, courseKey, moduleKey)?.lessons || [], payload.title);
+      syncActiveStructureVersionFromProject({
+        level: "lesson",
+        courseKey,
+        moduleKey,
+        lessonKey: createdLesson?.key
+      });
+    }
+    return findSiblingByTitle(findModule(nextProject, courseKey, moduleKey)?.lessons || [], payload.title);
+  }
+
+  function applyGeneratedStructure(result, scopeState) {
+    const draft = state.generationDraft;
+    const generatedCourse = result.course;
+    const generatedModules = generatedCourse.modules || [];
+    const summary = createStructureSummary();
+    let course = scopeState.course;
+    let moduleValue = scopeState.moduleValue;
+    let lesson = scopeState.lesson;
+
+    if (!draft.courseFixed || !course) {
+      const nextProject = structuralEditor.createCourse({
+        title: String(draft.courseInput || "").trim() || generatedCourse.title,
+        description: generatedCourse.description,
+        sourceGuide: generatedCourse.sourceGuide,
+        sourceGuideStructured: generatedCourse.sourceGuideStructured
+      });
+      const createdCourse = nextProject.courses[nextProject.courses.length - 1] || null;
+      setProject(nextProject);
+      syncActiveStructureVersionFromProject({
+        level: "course",
+        courseKey: createdCourse?.key
+      });
+      course = createdCourse;
+      summary.createdCourses += 1;
+    } else {
+      const nextProject = structuralEditor.updateCourse({
+        courseKey: course.key,
+        title: course.title,
+        description: generatedCourse.description,
+        sourceGuide: generatedCourse.sourceGuide,
+        sourceGuideStructured: generatedCourse.sourceGuideStructured
+      });
+      createStructureVersionFromProject(nextProject, {
+        level: "course",
+        courseKey: course.key
+      }, {
+        operationType: "update"
+      });
+      setProject(nextProject);
+      course = findCourse(nextProject, course.key);
+      summary.updatedCourses += 1;
+    }
+
+    if (!course) {
+      fail("Falha ao aplicar o curso gerado.");
+    }
+
+    if (draft.moduleFixed) {
+      const modulePayload = generatedModules[0];
+      if (!modulePayload) {
+        fail("A estrutura gerada não trouxe o módulo esperado.");
+      }
+
+      if (!moduleValue) {
+        const nextProject = structuralEditor.createModule({
+          courseKey: course.key,
+          title: String(draft.moduleInput || "").trim() || modulePayload.title,
+          description: modulePayload.description,
+          sourceGuide: modulePayload.sourceGuide,
+          sourceGuideStructured: modulePayload.sourceGuideStructured
+        });
+        createStructureVersionFromProject(nextProject, {
+          level: "course",
+          courseKey: course.key
+        }, {
+          operationType: "create-child"
+        });
+        setProject(nextProject);
+        moduleValue = nextProject.courses
+          .find((item) => item.key === course.key)
+          ?.modules.at(-1) || null;
+        syncActiveStructureVersionFromProject({
+          level: "module",
+          courseKey: course.key,
+          moduleKey: moduleValue?.key
+        });
+        summary.createdModules += 1;
+      } else {
+        const nextProject = structuralEditor.updateModule({
+          courseKey: course.key,
+          moduleKey: moduleValue.key,
+          title: moduleValue.title,
+          description: modulePayload.description,
+          sourceGuide: modulePayload.sourceGuide,
+          sourceGuideStructured: modulePayload.sourceGuideStructured
+        });
+        createStructureVersionFromProject(nextProject, {
+          level: "module",
+          courseKey: course.key,
+          moduleKey: moduleValue.key
+        }, {
+          operationType: "update"
+        });
+        setProject(nextProject);
+        moduleValue = findModule(nextProject, course.key, moduleValue.key);
+        summary.updatedModules += 1;
+      }
+
+      summary.totalModules += 1;
+
+      if (draft.lessonFixed) {
+        const lessonPayload = (modulePayload.lessons || [])[0];
+        if (!lessonPayload) {
+          fail("A estrutura gerada não trouxe a lição esperada.");
+        }
+
+        if (!lesson) {
+          const nextProject = structuralEditor.createLesson({
+            courseKey: course.key,
+            moduleKey: moduleValue.key,
+            title: String(draft.lessonInput || "").trim() || lessonPayload.title,
+            description: lessonPayload.description,
+            sourceGuide: lessonPayload.sourceGuide,
+            sourceGuideStructured: lessonPayload.sourceGuideStructured
+          });
+          createStructureVersionFromProject(nextProject, {
+            level: "module",
+            courseKey: course.key,
+            moduleKey: moduleValue.key
+          }, {
+            operationType: "create-child"
+          });
+          setProject(nextProject);
+          lesson = findModule(nextProject, course.key, moduleValue.key)?.lessons.at(-1) || null;
+          syncActiveStructureVersionFromProject({
+            level: "lesson",
+            courseKey: course.key,
+            moduleKey: moduleValue.key,
+            lessonKey: lesson?.key
+          });
+          summary.createdLessons += 1;
+        } else {
+          const nextProject = structuralEditor.updateLesson({
+            courseKey: course.key,
+            moduleKey: moduleValue.key,
+            lessonKey: lesson.key,
+            title: lesson.title,
+            description: lessonPayload.description,
+            sourceGuide: lessonPayload.sourceGuide,
+            sourceGuideStructured: lessonPayload.sourceGuideStructured
+          });
+          createStructureVersionFromProject(nextProject, {
+            level: "lesson",
+            courseKey: course.key,
+            moduleKey: moduleValue.key,
+            lessonKey: lesson.key
+          }, {
+            operationType: "update"
+          });
+          setProject(nextProject);
+          lesson = findLesson(nextProject, course.key, moduleValue.key, lesson.key);
+          summary.updatedLessons += 1;
+        }
+
+        summary.totalLessons += 1;
+      } else {
+        let firstLesson = null;
+        (modulePayload.lessons || []).forEach((lessonPayload) => {
+          const appliedLesson = upsertGeneratedLesson(course.key, moduleValue.key, lessonPayload, summary);
+          if (!firstLesson && appliedLesson) {
+            firstLesson = appliedLesson;
+          }
+          summary.totalLessons += 1;
+        });
+        lesson = firstLesson;
+      }
+    } else {
+      let firstModule = null;
+      let firstLesson = null;
+      generatedModules.forEach((modulePayload) => {
+        const appliedModule = upsertGeneratedModule(course.key, modulePayload, summary);
+        if (!firstModule && appliedModule) {
+          firstModule = appliedModule;
+        }
+        summary.totalModules += 1;
+
+        (modulePayload.lessons || []).forEach((lessonPayload) => {
+          const appliedLesson = upsertGeneratedLesson(course.key, appliedModule.key, lessonPayload, summary);
+          if (!firstLesson && appliedLesson) {
+            firstLesson = appliedLesson;
+            moduleValue = appliedModule;
+          }
+          summary.totalLessons += 1;
+        });
+      });
+      moduleValue = moduleValue || firstModule;
+      lesson = lesson || firstLesson;
+    }
+
+    return {
+      message: summarizeStructureChanges(summary, course.title || course.key),
+      openActionLabel: "Abrir em Cursos",
+      courseKey: course.key,
+      moduleKey: moduleValue?.key || "",
+      lessonKey: lesson?.key || "",
+      summary
+    };
+  }
+
+  function applyGeneratedLessonMicrosequences(result, scopeState) {
+    const lesson = scopeState.lesson;
+    if (!scopeState.course || !scopeState.moduleValue || !lesson) {
+      fail("A geração contextual da lição exige uma lição válida já existente.");
+    }
+
+    const createdItems = Array.isArray(result?.microsequences) ? result.microsequences.filter(Boolean) : [];
+    if (!createdItems.length) {
+      fail("O serviço de IA não devolveu microssequências válidas para esta lição.");
+    }
+
+    let nextProject = null;
+    for (const item of createdItems) {
+      nextProject = editor.createMicrosequence({
+        courseKey: scopeState.course.key,
+        moduleKey: scopeState.moduleValue.key,
+        lessonKey: lesson.key,
+        title: item.title,
+        tags: Array.isArray(item.tags) ? item.tags : [],
+        status: "draft",
+        included: false,
+        cards: []
+      });
+    }
+
+    if (!nextProject) {
+      fail("Falha ao criar microssequências na lição.");
+    }
+
+    createStructureVersionFromProject(
+      nextProject,
+      {
+        level: "lesson",
+        courseKey: scopeState.course.key,
+        moduleKey: scopeState.moduleValue.key,
+        lessonKey: lesson.key
+      },
+      {
+        operationType: "create-child"
+      }
+    );
+    setProject(nextProject);
+
+    return {
+      message:
+        createdItems.length === 1
+          ? `1 microssequência draft criada em ${lesson.title || lesson.key}.`
+          : `${createdItems.length} microssequências draft criadas em ${lesson.title || lesson.key}.`,
+      courseKey: scopeState.course.key,
+      moduleKey: scopeState.moduleValue.key,
+      lessonKey: lesson.key,
+      createdMicrosequences: createdItems.length
+    };
+  }
+
+  function applyGeneratedAndRepositionedLessonMicrosequences(result, scopeState) {
+    const lesson = scopeState.lesson;
+    if (!scopeState.course || !scopeState.moduleValue || !lesson) {
+      fail("A geração contextual da lição exige uma lição válida já existente.");
+    }
+
+    const createdItems = Array.isArray(result?.generatedMicrosequences)
+      ? result.generatedMicrosequences.filter(Boolean)
+      : [];
+    const existingKeys = Array.isArray(lesson.microsequences)
+      ? lesson.microsequences.map((microsequence) => String(microsequence?.key || "").trim()).filter(Boolean)
+      : [];
+    const hasRequestedReorder = Array.isArray(result?.finalOrder) && result.finalOrder.length > 0;
+
+    if (!createdItems.length && !hasRequestedReorder) {
+      fail("O serviço de IA não devolveu microssequências novas nem uma nova ordem para a lição.");
+    }
+
+    let nextProject = state.project;
+    const createdKeyByDraftId = new Map();
+
+    for (const item of createdItems) {
+      nextProject = editor.createMicrosequence({
+        courseKey: scopeState.course.key,
+        moduleKey: scopeState.moduleValue.key,
+        lessonKey: lesson.key,
+        title: item.title,
+        tags: Array.isArray(item.tags) ? item.tags : [],
+        status: "draft",
+        included: false,
+        cards: []
+      });
+      const updatedLesson = findLesson(nextProject, scopeState.course.key, scopeState.moduleValue.key, lesson.key);
+      const createdMicrosequence = updatedLesson?.microsequences?.[updatedLesson.microsequences.length - 1] || null;
+      if (createdMicrosequence?.key) {
+        createdKeyByDraftId.set(item.draftId, createdMicrosequence.key);
+      }
+    }
+
+    const lessonAfterCreate = findLesson(nextProject, scopeState.course.key, scopeState.moduleValue.key, lesson.key);
+    const currentOrder = Array.isArray(lessonAfterCreate?.microsequences)
+      ? lessonAfterCreate.microsequences.map((microsequence) => String(microsequence?.key || "").trim()).filter(Boolean)
+      : [];
+    const desiredOrder = [];
+    const desiredSet = new Set();
+
+    for (const entry of result.finalOrder || []) {
+      const resolvedKey =
+        entry.entryType === "generated"
+          ? createdKeyByDraftId.get(entry.draftId) || ""
+          : entry.microsequenceKey || "";
+      if (!resolvedKey || desiredSet.has(resolvedKey) || !currentOrder.includes(resolvedKey)) {
+        continue;
+      }
+      desiredSet.add(resolvedKey);
+      desiredOrder.push(resolvedKey);
+    }
+
+    currentOrder.forEach((key) => {
+      if (!desiredSet.has(key)) {
+        desiredSet.add(key);
+        desiredOrder.push(key);
+      }
+    });
+
+    if (!desiredOrder.length) {
+      fail("O serviço de IA não devolveu uma ordem utilizável para a lição.");
+    }
+
+    let reorderedProject = nextProject;
+    desiredOrder.forEach((microsequenceKey, index) => {
+      reorderedProject = editor.moveMicrosequence({
+        courseKey: scopeState.course.key,
+        moduleKey: scopeState.moduleValue.key,
+        lessonKey: lesson.key,
+        microsequenceKey,
+        targetCourseKey: scopeState.course.key,
+        targetModuleKey: scopeState.moduleValue.key,
+        targetLessonKey: lesson.key,
+        targetPosition: index,
+        renames: []
+      });
+    });
+
+    const movedCount = currentOrder.reduce((count, key, index) => count + (desiredOrder[index] !== key ? 1 : 0), 0);
+    const operationType = createdItems.length > 0 ? "create-child" : "update";
+    createStructureVersionFromProject(
+      reorderedProject,
+      {
+        level: "lesson",
+        courseKey: scopeState.course.key,
+        moduleKey: scopeState.moduleValue.key,
+        lessonKey: lesson.key
+      },
+      {
+        label: "Iteração de microssequências",
+        operationType
+      }
+    );
+    setProject(reorderedProject);
+
+    const messageParts = [];
+    if (createdItems.length > 0) {
+      messageParts.push(
+        createdItems.length === 1 ? "1 microssequência draft criada" : `${createdItems.length} microssequências draft criadas`
+      );
+    }
+    if (movedCount > 0) {
+      messageParts.push(movedCount === 1 ? "1 posição ajustada" : `${movedCount} posições ajustadas`);
+    }
+    if (!messageParts.length) {
+      messageParts.push("Ordem da lição confirmada");
+    }
+
+    return {
+      message: `${messageParts.join(" e ")} em ${lesson.title || lesson.key}.`,
+      courseKey: scopeState.course.key,
+      moduleKey: scopeState.moduleValue.key,
+      lessonKey: lesson.key,
+      createdMicrosequences: createdItems.length,
+      movedMicrosequences: movedCount
+    };
+  }
+
+  async function submitGenerateStructureRequest() {
+    syncGenerationDraftHierarchy();
+    const scopeState = getGenerationScopeState();
+    const promptText = String(state.generationDraft.promptText || "").trim();
+
+    if (!scopeState.canSubmit) {
+      state.generationDraft.errorMessage = "Informe texto e/ou anexo e preencha apenas os níveis fixados válidos antes de gerar a estrutura.";
       render({ preserveState: true });
       return;
     }
@@ -2795,62 +4795,59 @@ export function createLessonEditorApp({ root, storage, editor }) {
     render({ preserveState: true });
 
     try {
+      const generationMode = scopeState.generationMode || resolveGenerationAssistMode({
+        lessonFixed: state.generationDraft.lessonFixed === true,
+        hasResolvedLesson: !!scopeState.lesson,
+        repositionMicrosequences: state.generationDraft.repositionMicrosequences === true
+      });
       const result = await runGeminiAssist({
         apiKey: state.assistConfig.apiKey,
         model: state.assistConfig.model,
-        mode: "plan-microsequence-ladder",
-        microsequence: {
-          courseTitle: course.title || course.key,
-          moduleTitle: moduleValue.title || moduleValue.key,
-          lessonTitle: lesson.title || lesson.key
-        },
-        promptText
+        mode: generationMode,
+        microsequence:
+          generationMode === "generate-lesson-microsequences"
+            ? buildLessonMicrosequenceGenerationContext(scopeState)
+            : buildStructureGenerationContext(scopeState),
+        promptText,
+        attachments: state.generationDraft.attachments
       });
 
-      let nextProject = state.project;
-      let firstMicrosequenceKey = null;
-      result.steps.forEach((step) => {
-        nextProject = editor.createMicrosequence({
-          courseKey: course.key,
-          moduleKey: moduleValue.key,
-          lessonKey: lesson.key,
-          title: step.title,
-          status: "draft",
-          cards: []
-        });
-        const createdLesson = findLesson(nextProject, course.key, moduleValue.key, lesson.key);
-        const createdMicrosequence = createdLesson?.microsequences?.at(-1) || null;
-        if (!firstMicrosequenceKey && createdMicrosequence) {
-          firstMicrosequenceKey = createdMicrosequence.key;
-        }
-        setProject(nextProject);
-      });
-
+      const applied =
+        generationMode === "generate-lesson-microsequences"
+          ? applyGeneratedLessonMicrosequences(result, scopeState)
+          : generationMode === "generate-and-reposition-lesson-microsequences"
+            ? applyGeneratedAndRepositionedLessonMicrosequences(result, scopeState)
+            : applyGeneratedStructure(result, scopeState);
       applySelection({
-        courseKey: course.key,
-        moduleKey: moduleValue.key,
-        lessonKey: lesson.key,
+        courseKey: applied.courseKey,
+        moduleKey: applied.moduleKey || null,
+        lessonKey: applied.lessonKey || null,
         microsequenceKey: null,
         cardKey: null,
         cardIndex: 0
       });
-      state.generationDraft.lastResult = {
-        message: `${result.steps.length} rascunhos criados em ${lesson.title || lesson.key}.`,
-        courseKey: course.key,
-        moduleKey: moduleValue.key,
-        lessonKey: lesson.key,
-        firstMicrosequenceKey
-      };
-      state.pendingGeneratedNavigation = {
-        courseKey: course.key,
-        moduleKey: moduleValue.key,
-        lessonKey: lesson.key,
-        firstMicrosequenceKey
-      };
       state.generationDraft.promptText = "";
+      state.generationDraft.attachments = [];
+      if (
+        generationMode === "generate-lesson-microsequences" ||
+        generationMode === "generate-and-reposition-lesson-microsequences"
+      ) {
+        state.generationDraft.lastResult = null;
+        state.pendingGeneratedNavigation = null;
+        state.generationPanelOpen = false;
+        state.view = "lesson";
+        state.microsequenceMode = "play";
+      } else {
+        state.generationDraft.lastResult = applied;
+        state.pendingGeneratedNavigation = {
+          courseKey: applied.courseKey,
+          moduleKey: applied.moduleKey || null,
+          lessonKey: applied.lessonKey || null
+        };
+      }
     } catch (error) {
       state.pendingGeneratedNavigation = null;
-      state.generationDraft.errorMessage = error instanceof Error ? error.message : "Falha ao gerar microssequências.";
+      state.generationDraft.errorMessage = error instanceof Error ? error.message : "Falha ao gerar a estrutura.";
     } finally {
       state.generationDraft.isSubmitting = false;
       render({ preserveState: false });
@@ -2863,6 +4860,10 @@ export function createLessonEditorApp({ root, storage, editor }) {
     if (!microsequenceKey || !cardKey) return;
 
     try {
+      ensureEditableMicrosequenceBranch({
+        operationType: "edit",
+        label: "Edição local"
+      });
       const previousIndex = Number.isInteger(state.selection.cardIndex) ? state.selection.cardIndex : 0;
       const nextProject = editor.deleteCard({
         courseKey: state.selection.courseKey,
@@ -2896,107 +4897,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
     }
   }
 
-  function moveSelectedCourse(offset) {
-    const courses = state.project.courses || [];
-    const courseKey = state.entityEditor?.courseKey || state.selection.courseKey;
-    const index = courses.findIndex((item) => item.key === courseKey);
-    if (index < 0) {
-      return null;
-    }
-
-    const targetIndex = index + offset;
-    if (targetIndex < 0 || targetIndex >= courses.length) {
-      return null;
-    }
-
-    const nextProject = editor.moveCourse({ courseKey, toIndex: targetIndex });
-    setProject(nextProject);
-    applySelectionByKeys(nextProject, state.selection);
-    return nextProject;
-  }
-
-  function moveSelectedModule(offset) {
-    const courseKey = state.entityEditor?.courseKey || state.selection.courseKey;
-    const moduleKey = state.entityEditor?.moduleKey || state.selection.moduleKey;
-    const course = findCourse(state.project, courseKey);
-    const modules = course?.modules || [];
-    const index = modules.findIndex((item) => item.key === moduleKey);
-    if (index < 0) {
-      return null;
-    }
-
-    const targetIndex = index + offset;
-    if (targetIndex < 0 || targetIndex >= modules.length) {
-      return null;
-    }
-
-    const nextProject = editor.moveModule({ courseKey, moduleKey, toIndex: targetIndex });
-    setProject(nextProject);
-    applySelectionByKeys(nextProject, state.selection);
-    return nextProject;
-  }
-
-  function moveSelectedLesson(offset) {
-    const courseKey = state.entityEditor?.courseKey || state.selection.courseKey;
-    const moduleKey = state.entityEditor?.moduleKey || state.selection.moduleKey;
-    const lessonKey = state.entityEditor?.lessonKey || state.selection.lessonKey;
-    const moduleValue = findModule(state.project, courseKey, moduleKey);
-    const lessons = moduleValue?.lessons || [];
-    const index = lessons.findIndex((item) => item.key === lessonKey);
-    if (index < 0) {
-      return null;
-    }
-
-    const targetIndex = index + offset;
-    if (targetIndex < 0 || targetIndex >= lessons.length) {
-      return null;
-    }
-
-    const nextProject = editor.moveLesson({ courseKey, moduleKey, lessonKey, toIndex: targetIndex });
-    setProject(nextProject);
-    applySelectionByKeys(nextProject, state.selection);
-    return nextProject;
-  }
-
-  function moveSelectedMicrosequence(offset) {
-    const courseKey = state.entityEditor?.courseKey || state.selection.courseKey;
-    const moduleKey = state.entityEditor?.moduleKey || state.selection.moduleKey;
-    const lessonKey = state.entityEditor?.lessonKey || state.selection.lessonKey;
-    const microsequenceKey = state.entityEditor?.microsequenceKey || state.selection.microsequenceKey;
-    const lesson = findLesson(state.project, courseKey, moduleKey, lessonKey);
-    const microsequences = lesson?.microsequences || [];
-    const index = microsequences.findIndex((item) => item.key === microsequenceKey);
-    if (index < 0) {
-      return null;
-    }
-
-    const targetIndex = index + offset;
-    if (targetIndex < 0 || targetIndex >= microsequences.length) {
-      return null;
-    }
-
-    const moveResult = editor.moveMicrosequence({
-      courseKey,
-      moduleKey,
-      lessonKey,
-      microsequenceKey,
-      targetCourseKey: courseKey,
-      targetModuleKey: moduleKey,
-      targetLessonKey: lessonKey,
-      targetPosition: targetIndex
-    });
-    setProject(moveResult.document);
-    applySelectionByKeys(moveResult.document, {
-      ...state.selection,
-      courseKey,
-      moduleKey,
-      lessonKey,
-      microsequenceKey: moveResult.movedMicrosequence?.microsequenceKey || microsequenceKey
-    });
-    syncAssistDraft();
-    return moveResult.document;
-  }
-
   function moveSelectedCard(offset) {
     const courseKey = state.entityEditor?.courseKey || state.selection.courseKey;
     const moduleKey = state.entityEditor?.moduleKey || state.selection.moduleKey;
@@ -3015,6 +4915,10 @@ export function createLessonEditorApp({ root, storage, editor }) {
       return null;
     }
 
+    ensureEditableMicrosequenceBranch({
+      operationType: "edit",
+      label: "Edição local"
+    });
     const nextProject = editor.moveCard({
       courseKey,
       moduleKey,
@@ -3045,6 +4949,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
     }
 
     let nextProject = null;
+    let versionReference = null;
 
     if (drag.level === "course") {
       const items = state.project.courses || [];
@@ -3053,7 +4958,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
         resetStructureDragState();
         return;
       }
-      nextProject = editor.moveCourse({ courseKey: drag.courseKey, toIndex });
+      nextProject = structuralEditor.moveCourse({ courseKey: drag.courseKey, toIndex });
     } else if (drag.level === "module") {
       const course = findCourse(state.project, drag.courseKey);
       const items = course?.modules || [];
@@ -3062,11 +4967,15 @@ export function createLessonEditorApp({ root, storage, editor }) {
         resetStructureDragState();
         return;
       }
-      nextProject = editor.moveModule({
+      nextProject = structuralEditor.moveModule({
         courseKey: drag.courseKey,
         moduleKey: drag.moduleKey,
         toIndex
       });
+      versionReference = {
+        level: "course",
+        courseKey: drag.courseKey
+      };
     } else if (drag.level === "lesson") {
       const moduleValue = findModule(state.project, drag.courseKey, drag.moduleKey);
       const items = moduleValue?.lessons || [];
@@ -3075,12 +4984,17 @@ export function createLessonEditorApp({ root, storage, editor }) {
         resetStructureDragState();
         return;
       }
-      nextProject = editor.moveLesson({
+      nextProject = structuralEditor.moveLesson({
         courseKey: drag.courseKey,
         moduleKey: drag.moduleKey,
         lessonKey: drag.lessonKey,
         toIndex
       });
+      versionReference = {
+        level: "module",
+        courseKey: drag.courseKey,
+        moduleKey: drag.moduleKey
+      };
     } else if (drag.level === "microsequence") {
       const lesson = findLesson(state.project, drag.courseKey, drag.moduleKey, drag.lessonKey);
       const items = lesson?.microsequences || [];
@@ -3100,6 +5014,12 @@ export function createLessonEditorApp({ root, storage, editor }) {
         targetPosition: toIndex
       });
       nextProject = moveResult.document;
+      versionReference = {
+        level: "lesson",
+        courseKey: drag.courseKey,
+        moduleKey: drag.moduleKey,
+        lessonKey: drag.lessonKey
+      };
     } else if (drag.level === "card") {
       const microsequence = findMicrosequence(
         state.project,
@@ -3130,6 +5050,11 @@ export function createLessonEditorApp({ root, storage, editor }) {
     }
 
     state.entityEditor = null;
+    if (versionReference) {
+      createStructureVersionFromProject(nextProject, versionReference, {
+        operationType: "reorder-children"
+      });
+    }
     setProject(nextProject);
     applySelectionByKeys(nextProject, state.selection);
     syncAssistDraft();
@@ -3168,6 +5093,11 @@ export function createLessonEditorApp({ root, storage, editor }) {
           .catch((error) => {
             notifyUser(error instanceof Error ? error.message : "Falha ao importar JSON.");
           });
+        return;
+      } else if (actionKey === "export-backup") {
+        downloadJsonFile("aralearn-backup.json", storage.exportJson());
+        state.entityEditor = null;
+        render({ preserveState: true });
         return;
       } else if (actionKey === "import-module") {
         importModuleFromFile(state.selection.courseKey)
@@ -3290,30 +5220,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
         state.entityEditor = null;
         render({ preserveState: true });
         return;
-      } else if (actionKey === "move-course-up") {
-        nextProject = moveSelectedCourse(-1);
-        state.view = "courses";
-      } else if (actionKey === "move-course-down") {
-        nextProject = moveSelectedCourse(1);
-        state.view = "courses";
-      } else if (actionKey === "move-module-up") {
-        nextProject = moveSelectedModule(-1);
-        state.view = "course";
-      } else if (actionKey === "move-module-down") {
-        nextProject = moveSelectedModule(1);
-        state.view = "course";
-      } else if (actionKey === "move-lesson-up") {
-        nextProject = moveSelectedLesson(-1);
-        state.view = "lesson";
-      } else if (actionKey === "move-lesson-down") {
-        nextProject = moveSelectedLesson(1);
-        state.view = "lesson";
-      } else if (actionKey === "move-microsequence-up") {
-        nextProject = moveSelectedMicrosequence(-1);
-        state.view = "lesson";
-      } else if (actionKey === "move-microsequence-down") {
-        nextProject = moveSelectedMicrosequence(1);
-        state.view = "lesson";
       } else if (actionKey === "move-card-up") {
         nextProject = moveSelectedCard(-1);
         state.view = "microsequence-assist";
@@ -3321,62 +5227,95 @@ export function createLessonEditorApp({ root, storage, editor }) {
         nextProject = moveSelectedCard(1);
         state.view = "microsequence-assist";
       } else if (actionKey === "create-course") {
-        nextProject = editor.createCourse({
+        nextProject = structuralEditor.createCourse({
           title: "Novo curso"
         });
-        setProject(nextProject);
         const course = nextProject.courses[nextProject.courses.length - 1];
+        setProject(nextProject);
+        syncActiveStructureVersionFromProject({
+          level: "course",
+          courseKey: course?.key
+        });
         applySelection(buildNodeSelection({ courseKey: course.key }));
         state.view = "courses";
       } else if (actionKey === "delete-course") {
         resetCourseProgress(state.entityEditor.courseKey || state.selection.courseKey);
-        nextProject = editor.deleteCourse({
+        nextProject = structuralEditor.deleteCourse({
           courseKey: state.entityEditor.courseKey || state.selection.courseKey
         });
         setProject(nextProject);
         selectFirstPath(nextProject);
         state.view = "courses";
       } else if (actionKey === "create-module") {
-        nextProject = editor.createModule({
-          courseKey: state.entityEditor.courseKey || state.selection.courseKey,
+        const courseKey = state.entityEditor.courseKey || state.selection.courseKey;
+        nextProject = structuralEditor.createModule({
+          courseKey,
           title: "Novo módulo"
         });
+        createStructureVersionFromProject(nextProject, {
+          level: "course",
+          courseKey
+        }, {
+          operationType: "create-child"
+        });
         setProject(nextProject);
-        const course = findCourse(nextProject, state.entityEditor.courseKey || state.selection.courseKey);
+        const course = findCourse(nextProject, courseKey);
         const moduleValue = course.modules[course.modules.length - 1];
+        syncActiveStructureVersionFromProject({
+          level: "module",
+          courseKey,
+          moduleKey: moduleValue?.key
+        });
         applySelection(buildNodeSelection({ courseKey: course.key, moduleKey: moduleValue.key }));
         state.view = "course";
       } else if (actionKey === "delete-module") {
         const courseKey = state.entityEditor.courseKey || state.selection.courseKey;
         resetModuleProgress(state.entityEditor.courseKey || state.selection.courseKey, state.entityEditor.moduleKey);
-        nextProject = editor.deleteModule({
+        nextProject = structuralEditor.deleteModule({
           courseKey,
           moduleKey: state.entityEditor.moduleKey
+        });
+        createStructureVersionFromProject(nextProject, {
+          level: "course",
+          courseKey
+        }, {
+          operationType: "remove-child"
         });
         setProject(nextProject);
         applySelection(buildNodeSelection({ courseKey }));
         state.view = "course";
       } else if (actionKey === "create-lesson") {
-        nextProject = editor.createLesson({
-          courseKey: state.entityEditor.courseKey || state.selection.courseKey,
-          moduleKey: state.entityEditor.moduleKey,
+        const courseKey = state.entityEditor.courseKey || state.selection.courseKey;
+        const moduleKey = state.entityEditor.moduleKey;
+        nextProject = structuralEditor.createLesson({
+          courseKey,
+          moduleKey,
           title: "Nova lição"
         });
+        createStructureVersionFromProject(nextProject, {
+          level: "module",
+          courseKey,
+          moduleKey
+        }, {
+          operationType: "create-child"
+        });
         setProject(nextProject);
-        const moduleValue = findModule(
-          nextProject,
-          state.entityEditor.courseKey || state.selection.courseKey,
-          state.entityEditor.moduleKey
-        );
+        const moduleValue = findModule(nextProject, courseKey, moduleKey);
         const lesson = moduleValue.lessons[moduleValue.lessons.length - 1];
+        syncActiveStructureVersionFromProject({
+          level: "lesson",
+          courseKey,
+          moduleKey,
+          lessonKey: lesson?.key
+        });
         applySelection(
           buildNodeSelection({
-            courseKey: state.entityEditor.courseKey || state.selection.courseKey,
+            courseKey,
             moduleKey: moduleValue.key,
             lessonKey: lesson.key
           })
         );
-        state.view = "lesson";
+        state.view = "module";
       } else if (actionKey === "delete-lesson") {
         const courseKey = state.entityEditor.courseKey || state.selection.courseKey;
         const moduleKey = state.entityEditor.moduleKey;
@@ -3385,14 +5324,21 @@ export function createLessonEditorApp({ root, storage, editor }) {
           moduleKey,
           state.entityEditor.lessonKey
         );
-        nextProject = editor.deleteLesson({
+        nextProject = structuralEditor.deleteLesson({
           courseKey,
           moduleKey,
           lessonKey: state.entityEditor.lessonKey
         });
+        createStructureVersionFromProject(nextProject, {
+          level: "module",
+          courseKey,
+          moduleKey
+        }, {
+          operationType: "remove-child"
+        });
         setProject(nextProject);
         applySelection(buildNodeSelection({ courseKey, moduleKey }));
-        state.view = "course";
+        state.view = "module";
       } else if (actionKey === "create-microsequence") {
         nextProject = editor.createMicrosequence({
           courseKey: state.entityEditor.courseKey || state.selection.courseKey,
@@ -3402,6 +5348,14 @@ export function createLessonEditorApp({ root, storage, editor }) {
           tags: [],
           status: "draft",
           cards: []
+        });
+        createStructureVersionFromProject(nextProject, {
+          level: "lesson",
+          courseKey: state.entityEditor.courseKey || state.selection.courseKey,
+          moduleKey: state.entityEditor.moduleKey,
+          lessonKey: state.entityEditor.lessonKey
+        }, {
+          operationType: "create-child"
         });
         setProject(nextProject);
         const lesson = findLesson(
@@ -3430,11 +5384,41 @@ export function createLessonEditorApp({ root, storage, editor }) {
           lessonKey,
           microsequenceKey: state.entityEditor.microsequenceKey
         });
+        createStructureVersionFromProject(nextProject, {
+          level: "lesson",
+          courseKey,
+          moduleKey,
+          lessonKey
+        }, {
+          operationType: "remove-child"
+        });
         setProject(nextProject);
         applySelection(buildNodeSelection({ courseKey, moduleKey, lessonKey }));
         state.view = "lesson";
-      } else if (actionKey === "create-card") {
-        createCardAtPosition((Number.isInteger(state.selection.cardIndex) ? state.selection.cardIndex : 0) + 1);
+      } else if (actionKey === "create-card" || actionKey === "create-plane-card" || actionKey === "create-matrix-card") {
+        const kind =
+          actionKey === "create-plane-card"
+            ? "plane"
+            : actionKey === "create-matrix-card"
+              ? "matrix"
+              : "say";
+        const courseKey = state.entityEditor.courseKey || state.selection.courseKey;
+        const moduleKey = state.entityEditor.moduleKey || state.selection.moduleKey;
+        const lessonKey = state.entityEditor.lessonKey || state.selection.lessonKey;
+        const microsequenceKey = state.entityEditor.microsequenceKey || state.selection.microsequenceKey;
+        const microsequence = findMicrosequence(state.project, courseKey, moduleKey, lessonKey, microsequenceKey);
+        const position =
+          state.entityEditor.kind === "card"
+            ? (Number.isInteger(state.selection.cardIndex) ? state.selection.cardIndex : 0) + 1
+            : Array.isArray(microsequence?.cards)
+              ? microsequence.cards.length
+              : 0;
+        createCardAtPosition(position, kind, {
+          courseKey,
+          moduleKey,
+          lessonKey,
+          microsequenceKey
+        });
         state.view = "microsequence-assist";
       } else if (actionKey === "delete-card") {
         state.entityEditor = null;
@@ -3450,8 +5434,18 @@ export function createLessonEditorApp({ root, storage, editor }) {
   }
 
   function goBack() {
+    if (
+      state.view === "microsequence-assist" &&
+      getMicrosequenceEditBaseVersionId() &&
+      getMicrosequenceVersionEntry()?.activeVersionId &&
+      getMicrosequenceEditBaseVersionId() !== getMicrosequenceVersionEntry()?.activeVersionId
+    ) {
+      restoreMicrosequenceProjectToActiveVersion();
+    }
+
     state.cardCommentOpen = false;
     state.versionHistoryOpen = false;
+    state.versionCompareOpen = false;
     state.assistConfigOpen = false;
     state.entityEditor = null;
 
@@ -3462,12 +5456,15 @@ export function createLessonEditorApp({ root, storage, editor }) {
       state.view = "lesson";
       state.microsequenceMode = "play";
     } else if (state.view === "lesson") {
+      state.view = "module";
+    } else if (state.view === "module") {
       state.view = "course";
     } else if (state.view === "course") {
       state.view = "courses";
     }
 
-    render({ preserveState: false });
+    syncVisibleStructureVersionsFromProject();
+    render({ preserveState: true });
   }
 
   function updateEntityDraft(payload) {
@@ -3476,31 +5473,67 @@ export function createLessonEditorApp({ root, storage, editor }) {
     try {
       let nextProject = null;
       if (state.entityEditor.kind === "course") {
-        nextProject = editor.updateCourse({
+        nextProject = structuralEditor.updateCourse({
           courseKey: state.entityEditor.courseKey || state.selection.courseKey,
           title: payload.title,
           description: payload.description
         });
       } else if (state.entityEditor.kind === "course-metadata") {
-        nextProject = editor.updateCourse({
+        nextProject = structuralEditor.updateCourse({
           courseKey: state.entityEditor.courseKey || state.selection.courseKey,
           title: payload.title,
           description: payload.description
         });
+      } else if (state.entityEditor.kind === "course-source-guide") {
+        const course = findCourse(state.project, state.entityEditor.courseKey || state.selection.courseKey);
+        const nextGuide = resolveSourceGuidePayload(payload, course?.sourceGuide || "", { level: SOURCE_GUIDE_LEVELS.COURSE });
+        nextProject = structuralEditor.updateCourse({
+          courseKey: state.entityEditor.courseKey || state.selection.courseKey,
+          sourceGuide: nextGuide.sourceGuide,
+          sourceGuideStructured: nextGuide.sourceGuideStructured
+        });
       } else if (state.entityEditor.kind === "module") {
-        nextProject = editor.updateModule({
+        nextProject = structuralEditor.updateModule({
           courseKey: state.entityEditor.courseKey || state.selection.courseKey,
           moduleKey: state.entityEditor.moduleKey,
           title: payload.title,
           description: payload.description
         });
+      } else if (state.entityEditor.kind === "module-source-guide") {
+        const moduleValue = findModule(
+          state.project,
+          state.entityEditor.courseKey || state.selection.courseKey,
+          state.entityEditor.moduleKey
+        );
+        const nextGuide = resolveSourceGuidePayload(payload, moduleValue?.sourceGuide || "", { level: SOURCE_GUIDE_LEVELS.MODULE });
+        nextProject = structuralEditor.updateModule({
+          courseKey: state.entityEditor.courseKey || state.selection.courseKey,
+          moduleKey: state.entityEditor.moduleKey,
+          sourceGuide: nextGuide.sourceGuide,
+          sourceGuideStructured: nextGuide.sourceGuideStructured
+        });
       } else if (state.entityEditor.kind === "lesson") {
-        nextProject = editor.updateLesson({
+        nextProject = structuralEditor.updateLesson({
           courseKey: state.entityEditor.courseKey || state.selection.courseKey,
           moduleKey: state.entityEditor.moduleKey,
           lessonKey: state.entityEditor.lessonKey,
           title: payload.title,
           description: payload.description
+        });
+      } else if (state.entityEditor.kind === "lesson-source-guide") {
+        const lesson = findLesson(
+          state.project,
+          state.entityEditor.courseKey || state.selection.courseKey,
+          state.entityEditor.moduleKey,
+          state.entityEditor.lessonKey
+        );
+        const nextGuide = resolveSourceGuidePayload(payload, lesson?.sourceGuide || "", { level: SOURCE_GUIDE_LEVELS.LESSON });
+        nextProject = structuralEditor.updateLesson({
+          courseKey: state.entityEditor.courseKey || state.selection.courseKey,
+          moduleKey: state.entityEditor.moduleKey,
+          lessonKey: state.entityEditor.lessonKey,
+          sourceGuide: nextGuide.sourceGuide,
+          sourceGuideStructured: nextGuide.sourceGuideStructured
         });
       } else if (state.entityEditor.kind === "microsequence") {
         nextProject = editor.updateMicrosequence({
@@ -3515,7 +5548,29 @@ export function createLessonEditorApp({ root, storage, editor }) {
 
       if (nextProject) {
         setProject(nextProject);
-        if (state.entityEditor.kind === "microsequence") {
+        if (
+          state.entityEditor.kind === "course" ||
+          state.entityEditor.kind === "course-metadata" ||
+          state.entityEditor.kind === "course-source-guide"
+        ) {
+          syncActiveStructureVersionFromProject({
+            level: "course",
+            courseKey: state.entityEditor.courseKey || state.selection.courseKey
+          });
+        } else if (state.entityEditor.kind === "module" || state.entityEditor.kind === "module-source-guide") {
+          syncActiveStructureVersionFromProject({
+            level: "module",
+            courseKey: state.entityEditor.courseKey || state.selection.courseKey,
+            moduleKey: state.entityEditor.moduleKey
+          });
+        } else if (state.entityEditor.kind === "lesson" || state.entityEditor.kind === "lesson-source-guide") {
+          syncActiveStructureVersionFromProject({
+            level: "lesson",
+            courseKey: state.entityEditor.courseKey || state.selection.courseKey,
+            moduleKey: state.entityEditor.moduleKey,
+            lessonKey: state.entityEditor.lessonKey
+          });
+        } else if (state.entityEditor.kind === "microsequence") {
           syncActiveMicrosequenceVersionFromProject();
         }
       }
@@ -3529,6 +5584,10 @@ export function createLessonEditorApp({ root, storage, editor }) {
     if (!microsequenceKey) return;
 
     try {
+      ensureEditableMicrosequenceBranch({
+        operationType: "edit",
+        label: "Edição local"
+      });
       const nextProject = editor.updateMicrosequence({
         courseKey: state.selection.courseKey,
         moduleKey: state.selection.moduleKey,
@@ -3539,6 +5598,12 @@ export function createLessonEditorApp({ root, storage, editor }) {
       });
 
       setProject(nextProject);
+      syncActiveStructureVersionFromProject({
+        level: "lesson",
+        courseKey: state.selection.courseKey,
+        moduleKey: state.selection.moduleKey,
+        lessonKey: state.selection.lessonKey
+      });
       syncActiveMicrosequenceVersionFromProject();
     } catch {
       // Evita quebrar a digitação durante estados transitórios inválidos.
@@ -3753,6 +5818,20 @@ export function createLessonEditorApp({ root, storage, editor }) {
       });
       return answers;
     }
+    if (block.kind === "plane") {
+      return parseTextGapAnswers(block.resultText);
+    }
+    if (block.kind === "matrix") {
+      const answers = [];
+      getMatrixTextGapItems(block).forEach((matrixItem) => {
+        (Array.isArray(matrixItem?.values) ? matrixItem.values : []).forEach((row) => {
+          (Array.isArray(row) ? row : []).forEach((cell) => {
+            answers.push(...parseTextGapAnswers(cell?.value || ""));
+          });
+        });
+      });
+      return answers;
+    }
 
     return [];
   }
@@ -3761,41 +5840,60 @@ export function createLessonEditorApp({ root, storage, editor }) {
     return getTextGapAnswersForBlock(block).length > 0;
   }
 
+  function getMatrixTextGapItems(block) {
+    return Array.isArray(block?.sequence) && block.sequence.length ? block.sequence : [block];
+  }
+
+  function appendTextGapBlankParts(parts, source) {
+    parseTextGapParts(source).forEach((part) => {
+      if (part.kind === "blank") {
+        parts.push({ ...part, index: parts.length });
+      }
+    });
+  }
+
   function listTextGapPartsForBlock(block) {
     if (!block || typeof block !== "object") {
       return [];
     }
 
     if (block.kind === "complete") {
-      return parseTextGapParts(block.text);
+      const parts = [];
+      appendTextGapBlankParts(parts, block.text);
+      return parts;
     }
     if (block.kind === "paragraph" || block.kind === "editor") {
-      return parseTextGapParts(block.value);
+      const parts = [];
+      appendTextGapBlankParts(parts, block.value);
+      return parts;
     }
     if (block.kind === "table") {
       const parts = [];
       (Array.isArray(block.rows) ? block.rows : []).forEach((row) => {
         (Array.isArray(row) ? row : []).forEach((cell) => {
-          parts.push(...parseTextGapParts(cell?.value || "").map((part) => ({ ...part, index: parts.length })));
+          appendTextGapBlankParts(parts, cell?.value || "");
+        });
+      });
+      return parts;
+    }
+    if (block.kind === "plane") {
+      const parts = [];
+      appendTextGapBlankParts(parts, block.resultText);
+      return parts;
+    }
+    if (block.kind === "matrix") {
+      const parts = [];
+      getMatrixTextGapItems(block).forEach((matrixItem) => {
+        (Array.isArray(matrixItem?.values) ? matrixItem.values : []).forEach((row) => {
+          (Array.isArray(row) ? row : []).forEach((cell) => {
+            appendTextGapBlankParts(parts, cell?.value || "");
+          });
         });
       });
       return parts;
     }
 
     return [];
-  }
-
-  function getTextGapChoicePart(blockKey, blankIndex) {
-    const entry = getCurrentCompleteEntry(blockKey);
-    if (!entry) {
-      return null;
-    }
-
-    return (
-      listTextGapPartsForBlock(entry.block).find(
-        (part) => Number(part.index) === Number(blankIndex) && Array.isArray(part.options) && part.options.length
-      ) || null
-    );
   }
 
   function getCurrentPopupRuntimeButtonEntry(card = getRenderContext().card) {
@@ -4125,10 +6223,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
   }
 
   function openTextGapChoicePrompt(blockKey, blankIndex) {
-    if (!getTextGapChoicePart(blockKey, blankIndex)) {
-      return;
-    }
-
     ensureCurrentCompleteExerciseState();
     const currentExercise = state.completeExerciseByBlockKey[blockKey] || { values: [], feedback: null };
     const currentValues = Array.isArray(currentExercise.values) ? currentExercise.values : [];
@@ -4151,10 +6245,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
   }
 
   function setTextGapChoice(blockKey, blankIndex, value) {
-    if (!getTextGapChoicePart(blockKey, blankIndex)) {
-      return;
-    }
-
     setCompleteBlank(blockKey, blankIndex, value, { rerender: false });
     state.activeTextGapPrompt = null;
     render({ preserveState: true });
@@ -4834,6 +6924,34 @@ export function createLessonEditorApp({ root, storage, editor }) {
     });
   }
 
+  function syncStructureVersionStripScroller({ centerActiveTab = false } = {}) {
+    const strip = root.querySelector("[data-structure-version-strip='true']");
+    if (!strip) {
+      return;
+    }
+
+    const shell = strip.closest("[data-structure-version-strip-shell='true']");
+    const activeTab = strip.querySelector("[data-structure-tab='true'].active");
+    const updateOverflowState = () => {
+      const maxScrollLeft = Math.max(0, strip.scrollWidth - strip.clientWidth);
+      const canScroll = maxScrollLeft > 4;
+
+      if (shell) {
+        shell.setAttribute("data-structure-version-overflowing", canScroll ? "true" : "false");
+      }
+    };
+
+    updateOverflowState();
+
+    if (centerActiveTab && activeTab) {
+      const maxScrollLeft = Math.max(0, strip.scrollWidth - strip.clientWidth);
+      const tabCenter = activeTab.offsetLeft + activeTab.offsetWidth / 2;
+      const targetScrollLeft = Math.max(0, Math.min(maxScrollLeft, tabCenter - strip.clientWidth / 2));
+      strip.scrollLeft = targetScrollLeft;
+      updateOverflowState();
+    }
+  }
+
   function syncCardStripScroller({ keepActiveCardInView = false } = {}) {
     const strip = root.querySelector("[data-card-strip='true']");
     if (!strip) {
@@ -4975,20 +7093,160 @@ export function createLessonEditorApp({ root, storage, editor }) {
     render({ preserveState: true });
   }
 
-  function render({ preserveState = true } = {}) {
+  function render({
+    preserveState = true,
+    preserveScrollSelectors = null,
+    preserveFocus = true
+  } = {}) {
     rememberCoursesView();
-    const renderState = preserveState ? captureRenderState(root) : null;
+    const renderState = preserveState
+      ? captureRenderState(root, {
+          trackedScrollSelectors: Array.isArray(preserveScrollSelectors) ? preserveScrollSelectors : undefined,
+          includeFocus: preserveFocus
+        })
+      : null;
     const context = getRenderContext();
     const currentCardRuntimeOptions = ensureCurrentCardRuntimeOptions();
     const assistCatalog = getAssistCatalog();
     const assistModeConfig = getAssistModeOptions();
     const entityEditorModel = makeEntityEditorModel(state);
     const microsequenceVersionEntry = state.view === "microsequence-assist" ? getMicrosequenceVersionEntry() : null;
-    const historyVersions = getCurrentCardHistory().map((item) => ({
+    const visualizedMicrosequenceVersion = state.view === "microsequence-assist" ? getVisualizedMicrosequenceVersion() : null;
+    const visualizedMicrosequenceVersionId = visualizedMicrosequenceVersion?.id || "";
+    const structureVersionReference = getCurrentStructureVersionReference();
+    const structureVersionEntry = getStructureVersionEntry(structureVersionReference);
+    const visibleStructureReferences = listVisibleStructureVersionReferences();
+    const visibleStructureEntries = visibleStructureReferences
+      .map((reference) => getStructureVersionEntry(reference))
+      .filter(Boolean);
+    const structureVersionTabs =
+      state.view === "courses"
+        ? buildStructureTabsForEntry(structureVersionEntry, { prefix: "C" })
+        : state.view === "course"
+          ? buildChildStructureTabs(
+            state.structureVersions,
+            context.course?.modules || [],
+            (item) => ({
+              level: "module",
+              courseKey: context.course?.key || "",
+              moduleKey: item?.key || ""
+            }),
+            "M",
+            "open-module",
+            state.selection.moduleKey
+          )
+          : state.view === "module"
+            ? buildChildStructureTabs(
+              state.structureVersions,
+              context.moduleValue?.lessons || [],
+              (item) => ({
+                level: "lesson",
+                courseKey: context.course?.key || "",
+                moduleKey: context.moduleValue?.key || "",
+                lessonKey: item?.key || ""
+              }),
+              "L",
+              "open-lesson",
+              state.selection.lessonKey
+            )
+            : buildStructureTabsForEntry(structureVersionEntry, { prefix: "V" });
+    const structureVersionContextTabs =
+      state.view === "courses"
+        ? []
+        : visibleStructureEntries.slice(0, -1).map((entry) => buildStructureContextTab(entry)).filter(Boolean);
+    const versionComparison =
+      state.versionCompareOpen && structureVersionReference
+        ? buildStructureVersionComparisonForVersion({
+          entry: structureVersionEntry,
+          versionId: state.versionCompareSelectionKey || getSelectedStructureVersionId()
+        })
+        : state.view === "microsequence-assist" && state.versionCompareOpen
+          ? buildMicrosequenceVersionComparisonForVersion({
+            versions: microsequenceVersionEntry?.versions || [],
+            versionId: state.versionCompareSelectionKey || visualizedMicrosequenceVersionId || microsequenceVersionEntry?.activeVersionId || "",
+            cardIndex: Number.isInteger(state.selection?.cardIndex) ? state.selection.cardIndex : 0
+          })
+          : null;
+    const versionComparisonViewModel = versionComparison
+      ? {
+        ...versionComparison,
+        activeVersionId: structureVersionReference
+          ? structureVersionEntry?.activeVersionId || ""
+          : microsequenceVersionEntry?.activeVersionId || ""
+      }
+      : null;
+    const structureHistoryTitle =
+      state.view === "course"
+        ? "Versões do curso"
+        : state.view === "module"
+          ? "Versões do módulo"
+          : state.view === "lesson"
+            ? "Versões da lição"
+            : "Versões do card";
+    const historyVersions = getCurrentCardHistory().map((item, index) => ({
+      key: item.id,
+      label: item.label,
+      versionLabel: item.label,
+      origin: `Snapshot ${index + 1}`,
+      meta: [item.source, formatOverlayTimestamp(item.savedAt)].filter(Boolean).join(" · "),
+      selected: item.id === state.versionHistorySelectionKey,
+      actions: [
+        {
+          action: "restore-version",
+          label: "Usar",
+          icon: "✓"
+        }
+      ]
+    }));
+    const structureHistoryVersions = (structureVersionEntry?.versions || []).map((item) => {
+      const operationInfo = describeStructureVersionOperation(item.operationType);
+      const isActive = item.id === structureVersionEntry?.activeVersionId;
+      return {
         key: item.id,
-        label: item.label,
-        meta: [item.source, item.savedAt].filter(Boolean).join(" · ")
-      }));
+        label: item.label || `Versão ${item.versionNumber || 1}`,
+        origin: buildVersionLineageLabel(item, structureVersionEntry?.versions || []),
+        versionLabel: getVersionDisplayId(item),
+        meta: [formatOverlayTimestamp(item.updatedAt), operationInfo.label].filter(Boolean).join(" · "),
+        summary: item.id === state.versionHistorySelectionKey ? "Selecionada para inspeção." : "",
+        inUse: isActive,
+        selected: item.id === state.versionHistorySelectionKey,
+        actions: [
+          {
+            action: "open-version-compare-selected",
+            label:
+              item.parentVersionId || (structureVersionEntry?.versions || []).findIndex((version) => version.id === item.id) > 0
+                ? "Comparar"
+                : "Sem versão anterior",
+            icon: "👁",
+            disabled:
+              !(item.parentVersionId || (structureVersionEntry?.versions || []).findIndex((version) => version.id === item.id) > 0)
+          }
+        ],
+        moreActions: [
+          {
+            action: "restore-structure-version-as-new",
+            label: "Criar variação",
+            icon: "⧉"
+          }
+        ],
+        moreExpanded: item.id === state.versionHistoryExpandedMoreKey
+      };
+    });
+    const structureComparisonAvailable =
+      Array.isArray(structureVersionEntry?.versions) &&
+      structureVersionEntry.versions.findIndex((item) => item.id === structureVersionEntry.activeVersionId) > 0;
+    const versionHistoryTitle = structureVersionReference ? structureHistoryTitle : "Versões do card";
+    const versionHistoryItems = structureVersionReference ? structureHistoryVersions : historyVersions;
+    const versionHistoryEmptyLabel = structureVersionReference ? "Sem versões locais ainda." : "Sem versões anteriores.";
+    const versionHistoryFooter = structureVersionReference
+      ? (() => {
+        const activeVersion = structureVersionEntry?.versions?.find((item) => item.id === structureVersionEntry?.activeVersionId) || null;
+        if (!activeVersion) {
+          return "";
+        }
+        return `Em uso: ${getVersionDisplayId(activeVersion)} · ${formatOverlayTimestamp(activeVersion.updatedAt)}`;
+      })()
+      : "";
 
     root.innerHTML =
       '<div class="app-shell">' +
@@ -5009,6 +7267,12 @@ export function createLessonEditorApp({ root, storage, editor }) {
           dependencies: assistCatalog,
           microsequenceVersions: microsequenceVersionEntry?.versions || [],
           activeMicrosequenceVersionId: microsequenceVersionEntry?.activeVersionId || "",
+          visualizedMicrosequenceVersionId,
+          editBaseMicrosequenceVersionId: getMicrosequenceEditBaseVersionId(),
+          visualizedMicrosequenceVersion,
+          versionActionsOpen: state.assistDraft.versionActionsOpen,
+          canDeleteVisualizedMicrosequenceVersion:
+            state.view === "microsequence-assist" ? canDeleteMicrosequenceVersion(visualizedMicrosequenceVersionId) : false,
           selectedDependencyKeys: state.assistDraft.dependencyKeys,
           pendingDependencyKey: state.assistDraft.pendingDependencyKey,
           assistModeOptions: assistModeConfig.options,
@@ -5025,13 +7289,26 @@ export function createLessonEditorApp({ root, storage, editor }) {
           selectedModel: state.assistConfig.model,
           selectedModelLabel: getAssistModelLabel(state.assistConfig.model),
           modelOptions: ASSIST_MODEL_OPTIONS,
-          generationDraft: state.generationDraft,
+          generationDraft: {
+            ...state.generationDraft,
+            attachments: state.generationDraft.attachments.map((item) => ({
+              name: normalizeAssistAttachmentName(item?.name),
+              size: Number(item?.size || 0),
+              type: String(item?.type || "").trim()
+            }))
+          },
+          generationUiState: getGenerationScopeState(),
           promptText: state.assistDraft.promptText,
           lastRequest: state.assistDraft.lastRequest,
           isSubmitting: state.assistDraft.isSubmitting,
           assistError: state.assistDraft.errorMessage,
           hasApiKey: Boolean(state.assistConfig.apiKey),
           historyCount: historyVersions.length,
+          structureHistoryCount: structureVersionEntry?.versions?.length || 0,
+          structureComparisonAvailable,
+          structureVersionTabs,
+          structureVersionContextTabs,
+          activeStructureVersionId: structureVersionEntry?.activeVersionId || "",
           cardRuntimeOptions: currentCardRuntimeOptions,
           continuePopup: {
             open:
@@ -5048,7 +7325,19 @@ export function createLessonEditorApp({ root, storage, editor }) {
         : "") +
       (state.versionHistoryOpen
         ? renderCardVersionOverlay({
-            versions: historyVersions
+            title: versionHistoryTitle,
+            emptyLabel: versionHistoryEmptyLabel,
+            versions: versionHistoryItems,
+            footer: versionHistoryFooter
+          })
+        : "") +
+      (versionComparison
+        ? renderVersionCompareOverlay({
+            comparison: versionComparisonViewModel,
+            uiState: {
+              activeTab: state.versionCompareTab,
+              focusTarget: state.versionCompareFocusTarget
+            }
           })
         : "") +
       (state.assistConfigOpen
@@ -5056,6 +7345,24 @@ export function createLessonEditorApp({ root, storage, editor }) {
             model: state.assistConfigDraft.model,
             apiKey: state.assistConfigDraft.apiKey,
             modelOptions: ASSIST_MODEL_OPTIONS
+          })
+        : "") +
+      (state.generationPanelOpen
+        ? renderGenerationPanelOverlay({
+            project: state.project,
+            editorSupport: {
+              generationDraft: {
+                ...state.generationDraft,
+                attachments: state.generationDraft.attachments.map((item) => ({
+                  name: normalizeAssistAttachmentName(item?.name),
+                  size: Number(item?.size || 0),
+                  type: String(item?.type || "").trim()
+                }))
+              },
+              generationUiState: getGenerationScopeState(),
+              selectedModel: state.assistConfig.model,
+              modelOptions: ASSIST_MODEL_OPTIONS
+            }
           })
         : "") +
       (entityEditorModel
@@ -5066,38 +7373,198 @@ export function createLessonEditorApp({ root, storage, editor }) {
       "</div>";
 
     if (renderState) {
-      restoreRenderState(root, renderState);
+      restoreRenderState(root, renderState, { restoreFocus: preserveFocus });
     }
+
+    root
+      .querySelectorAll(
+        "[data-action='open-generation-panel-global'], [data-action='open-generation-panel-course'], [data-action='open-generation-panel-module'], [data-action='open-generation-panel-lesson']"
+      )
+      .forEach((node) => bindGenerationPanelTrigger(node));
+
     syncVersionTabScroller();
     syncCardStripScroller({ keepActiveCardInView: true });
     syncPendingExerciseFocus();
 
     root.querySelector("[data-action='go-back']")?.addEventListener("click", () => goBack());
 
-    root.querySelectorAll("[data-action='switch-home-tab']").forEach((node) => {
+    root.querySelectorAll("[data-action='close-generation-panel']").forEach((node) => {
+      node.addEventListener("click", () => closeGenerationPanel());
+    });
+    root.querySelectorAll("[data-action='dismiss-generation-panel']").forEach((node) => {
+      node.addEventListener("click", (event) => {
+        if (event.target === node) {
+          closeGenerationPanel();
+        }
+      });
+    });
+    root.querySelectorAll("[data-action='clear-generation-scope']").forEach((node) => {
       node.addEventListener("click", () => {
-        setHomeTab(node.getAttribute("data-home-tab"));
+        clearGenerationScope();
+        render({ preserveState: true });
+      });
+    });
+    root.querySelectorAll("[data-action='quick-create-course']").forEach((node) => {
+      node.addEventListener("click", () => {
+        const nextProject = structuralEditor.createCourse({ title: "Novo curso" });
+        createStructureVersionFromProject(nextProject, null, {
+          label: "Iteração de cursos",
+          operationType: "create-child"
+        });
+        setProject(nextProject);
+        const course = nextProject.courses[nextProject.courses.length - 1];
+        applySelection(buildNodeSelection({ courseKey: course?.key || null }));
+        state.view = "courses";
+        syncVisibleStructureVersionsFromProject();
+        render({ preserveState: false });
+      });
+    });
+    root.querySelectorAll("[data-action='quick-create-module']").forEach((node) => {
+      node.addEventListener("click", () => {
+        if (!state.selection.courseKey) return;
+        const nextProject = structuralEditor.createModule({ courseKey: state.selection.courseKey, title: "Novo módulo" });
+        createStructureVersionFromProject(
+          nextProject,
+          {
+            level: "course",
+            courseKey: state.selection.courseKey
+          },
+          {
+            label: "Iteração de módulos",
+            operationType: "create-child"
+          }
+        );
+        setProject(nextProject);
+        const course = findCourse(nextProject, state.selection.courseKey);
+        const moduleValue = course?.modules?.[course.modules.length - 1] || null;
+        applySelection(buildNodeSelection({ courseKey: course?.key || null, moduleKey: moduleValue?.key || null }));
+        state.view = "course";
+        syncVisibleStructureVersionsFromProject();
+        render({ preserveState: false });
+      });
+    });
+    root.querySelectorAll("[data-action='quick-create-lesson']").forEach((node) => {
+      node.addEventListener("click", () => {
+        if (!state.selection.courseKey || !state.selection.moduleKey) return;
+        const nextProject = structuralEditor.createLesson({
+          courseKey: state.selection.courseKey,
+          moduleKey: state.selection.moduleKey,
+          title: "Nova lição"
+        });
+        createStructureVersionFromProject(
+          nextProject,
+          {
+            level: "module",
+            courseKey: state.selection.courseKey,
+            moduleKey: state.selection.moduleKey
+          },
+          {
+            label: "Iteração de lições",
+            operationType: "create-child"
+          }
+        );
+        setProject(nextProject);
+        const moduleValue = findModule(nextProject, state.selection.courseKey, state.selection.moduleKey);
+        const lesson = moduleValue?.lessons?.[moduleValue.lessons.length - 1] || null;
+        applySelection(
+          buildNodeSelection({
+            courseKey: state.selection.courseKey,
+            moduleKey: state.selection.moduleKey,
+            lessonKey: lesson?.key || null
+          })
+        );
+        state.view = "module";
+        syncVisibleStructureVersionsFromProject();
+        render({ preserveState: false });
+      });
+    });
+    root.querySelectorAll("[data-action='quick-create-microsequence']").forEach((node) => {
+      node.addEventListener("click", () => {
+        if (!state.selection.courseKey || !state.selection.moduleKey || !state.selection.lessonKey) return;
+        const nextProject = editor.createMicrosequence({
+          courseKey: state.selection.courseKey,
+          moduleKey: state.selection.moduleKey,
+          lessonKey: state.selection.lessonKey,
+          title: "Nova microssequência",
+          tags: [],
+          status: "draft",
+          cards: []
+        });
+        createStructureVersionFromProject(
+          nextProject,
+          {
+            level: "lesson",
+            courseKey: state.selection.courseKey,
+            moduleKey: state.selection.moduleKey,
+            lessonKey: state.selection.lessonKey
+          },
+          {
+            label: "Iteração de microssequências",
+            operationType: "create-child"
+          }
+        );
+        setProject(nextProject);
+        const lesson = findLesson(nextProject, state.selection.courseKey, state.selection.moduleKey, state.selection.lessonKey);
+        const microsequence = lesson?.microsequences?.[lesson.microsequences.length - 1] || null;
+        applySelection(
+          buildNodeSelection({
+            courseKey: state.selection.courseKey,
+            moduleKey: state.selection.moduleKey,
+            lessonKey: state.selection.lessonKey,
+            microsequenceKey: microsequence?.key || null
+          })
+        );
+        state.view = "lesson";
+        syncVisibleStructureVersionsFromProject();
+        render({ preserveState: false });
       });
     });
 
-    root.querySelector("[data-field='generate-course']")?.addEventListener("change", (event) => {
-      setGenerationCourse(event.target.value);
+    root.querySelectorAll("[data-action='toggle-generate-level']").forEach((node) => {
+      node.addEventListener("click", () => {
+        const level = node.getAttribute("data-level");
+        if (!level) return;
+        setGenerationLevelFixed(level);
+      });
     });
-    root.querySelector("[data-field='generate-module']")?.addEventListener("change", (event) => {
-      setGenerationModule(event.target.value);
+    root.querySelector("[data-action='toggle-generate-microsequence-reposition']")?.addEventListener("click", () => {
+      toggleGenerationMicrosequenceReposition();
     });
-    root.querySelector("[data-field='generate-lesson']")?.addEventListener("change", (event) => {
-      setGenerationLesson(event.target.value);
+    root.querySelector("[data-field='generate-course-input']")?.addEventListener("input", (event) => {
+      setGenerationInput("course", event.target.value);
+    });
+    root.querySelector("[data-field='generate-module-input']")?.addEventListener("input", (event) => {
+      setGenerationInput("module", event.target.value);
+    });
+    root.querySelector("[data-field='generate-lesson-input']")?.addEventListener("input", (event) => {
+      setGenerationInput("lesson", event.target.value);
     });
     root.querySelector("[data-field='generate-prompt']")?.addEventListener("input", (event) => {
       state.generationDraft.promptText = event.target.value;
-      state.generationDraft.errorMessage = "";
-      state.generationDraft.lastResult = null;
-      state.pendingGeneratedNavigation = null;
+      clearGenerationResult();
       render({ preserveState: true });
     });
-    root.querySelector("[data-action='generate-ladder']")?.addEventListener("click", () => {
-      void submitGenerateLadderRequest();
+    root.querySelector("[data-field='generate-attachments']")?.addEventListener("change", (event) => {
+      const nextFiles = Array.from(event.target.files || []);
+      state.generationDraft.attachments = normalizeAssistAttachmentList([
+        ...state.generationDraft.attachments,
+        ...nextFiles
+      ]);
+      event.target.value = "";
+      clearGenerationResult();
+      render({ preserveState: true });
+    });
+    root.querySelectorAll("[data-action='remove-generation-attachment']").forEach((node) => {
+      node.addEventListener("click", () => {
+        const index = Number(node.getAttribute("data-attachment-index"));
+        if (!Number.isInteger(index) || index < 0) return;
+        state.generationDraft.attachments = state.generationDraft.attachments.filter((_, itemIndex) => itemIndex !== index);
+        clearGenerationResult();
+        render({ preserveState: true });
+      });
+    });
+    root.querySelector("[data-action='generate-structure']")?.addEventListener("click", () => {
+      void submitGenerateStructureRequest();
     });
     root.querySelector("[data-action='view-generated-lesson']")?.addEventListener("click", () => {
       openGeneratedLesson();
@@ -5118,6 +7585,32 @@ export function createLessonEditorApp({ root, storage, editor }) {
         if (!moduleKey || !lessonKey) return;
         openLesson(moduleKey, lessonKey);
       });
+    });
+
+    root.querySelectorAll("[data-action='open-module']").forEach((node) => {
+      node.addEventListener("click", () => {
+        const moduleKey = node.getAttribute("data-module-key");
+        if (!moduleKey) return;
+        openModule(moduleKey);
+      });
+    });
+    root.querySelectorAll("[data-action='select-structure-version']").forEach((node) => {
+      node.addEventListener("click", () => {
+        const versionKey = node.getAttribute("data-version-key");
+        if (!versionKey) return;
+        selectStructureVersionTab(versionKey, { centerActiveTab: true });
+      });
+    });
+    root.querySelectorAll("[data-structure-tab='true']").forEach((node) => {
+      node.addEventListener("pointerdown", (event) => {
+        event.preventDefault();
+      });
+      node.addEventListener("mousedown", (event) => {
+        event.preventDefault();
+      });
+    });
+    root.querySelector("[data-structure-version-strip='true']")?.addEventListener("scroll", () => {
+      syncStructureVersionStripScroller();
     });
 
     root.querySelectorAll("[data-action='open-microsequence']").forEach((node) => {
@@ -5161,7 +7654,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
       node.addEventListener("click", () => {
         const versionId = node.getAttribute("data-version-id");
         if (!versionId) return;
-        switchMicrosequenceVersion(versionId);
+        selectMicrosequenceVersion(versionId);
       });
     });
     root.querySelector("[data-action='editor-prev-version']")?.addEventListener("click", () => {
@@ -5171,7 +7664,32 @@ export function createLessonEditorApp({ root, storage, editor }) {
       stepMicrosequenceVersion(1);
     });
     root.querySelector("[data-action='delete-microsequence-version']")?.addEventListener("click", () => {
-      deleteActiveMicrosequenceVersion();
+      const versionId =
+        root.querySelector("[data-action='delete-microsequence-version']")?.getAttribute("data-version-id") ||
+        getVisualizedMicrosequenceVersionId();
+      if (!versionId) return;
+      deleteMicrosequenceVersion(versionId);
+    });
+    root.querySelector("[data-action='open-version-compare']")?.addEventListener("click", () => {
+      state.versionCompareSelectionKey = getVisualizedMicrosequenceVersionId();
+      openVersionCompare();
+    });
+    root.querySelector("[data-action='open-microsequence-version-compare']")?.addEventListener("click", () => {
+      state.versionCompareSelectionKey = getVisualizedMicrosequenceVersionId();
+      openVersionCompare();
+    });
+    root.querySelector("[data-action='toggle-microsequence-version-more']")?.addEventListener("click", () => {
+      toggleMicrosequenceVersionMore();
+    });
+    root.querySelector("[data-action='use-microsequence-version']")?.addEventListener("click", () => {
+      const versionId = root.querySelector("[data-action='use-microsequence-version']")?.getAttribute("data-version-id");
+      if (!versionId) return;
+      useMicrosequenceVersion(versionId);
+    });
+    root.querySelector("[data-action='duplicate-microsequence-version']")?.addEventListener("click", () => {
+      const versionId = root.querySelector("[data-action='duplicate-microsequence-version']")?.getAttribute("data-version-id");
+      if (!versionId) return;
+      duplicateMicrosequenceVersion(versionId);
     });
     root.querySelectorAll("[data-action='select-workbench-pane']").forEach((node) => {
       node.addEventListener("click", () => {
@@ -5682,9 +8200,24 @@ export function createLessonEditorApp({ root, storage, editor }) {
         openEntityEditor("course-actions", { courseKey });
       });
     });
+    root.querySelectorAll("[data-action='open-course-source-guide']").forEach((node) => {
+      node.addEventListener("click", () => {
+        const courseKey = node.getAttribute("data-course-key") || state.selection.courseKey;
+        if (!courseKey) return;
+        openEntityEditor("course-source-guide", { courseKey });
+      });
+    });
     root.querySelectorAll("[data-action='open-course-screen-actions']").forEach((node) => {
       node.addEventListener("click", () => {
         openEntityEditor("course-screen-actions", { courseKey: state.selection.courseKey });
+      });
+    });
+    root.querySelectorAll("[data-action='open-module-screen-actions']").forEach((node) => {
+      node.addEventListener("click", () => {
+        openEntityEditor("module-screen-actions", {
+          courseKey: state.selection.courseKey,
+          moduleKey: state.selection.moduleKey
+        });
       });
     });
     root.querySelectorAll("[data-action='open-lesson-screen-actions']").forEach((node) => {
@@ -5711,6 +8244,14 @@ export function createLessonEditorApp({ root, storage, editor }) {
         openEntityEditor("module-actions", { courseKey, moduleKey });
       });
     });
+    root.querySelectorAll("[data-action='open-module-source-guide']").forEach((node) => {
+      node.addEventListener("click", () => {
+        const courseKey = node.getAttribute("data-course-key") || state.selection.courseKey;
+        const moduleKey = node.getAttribute("data-module-key") || state.selection.moduleKey;
+        if (!courseKey || !moduleKey) return;
+        openEntityEditor("module-source-guide", { courseKey, moduleKey });
+      });
+    });
     root.querySelectorAll("[data-action='edit-module']").forEach((node) => {
       node.addEventListener("click", () => {
         const courseKey = node.getAttribute("data-course-key") || state.selection.courseKey;
@@ -5726,6 +8267,15 @@ export function createLessonEditorApp({ root, storage, editor }) {
         const lessonKey = node.getAttribute("data-lesson-key") || state.selection.lessonKey;
         if (!courseKey || !moduleKey || !lessonKey) return;
         openEntityEditor("lesson-actions", { courseKey, moduleKey, lessonKey });
+      });
+    });
+    root.querySelectorAll("[data-action='open-lesson-source-guide']").forEach((node) => {
+      node.addEventListener("click", () => {
+        const courseKey = node.getAttribute("data-course-key") || state.selection.courseKey;
+        const moduleKey = node.getAttribute("data-module-key") || state.selection.moduleKey;
+        const lessonKey = node.getAttribute("data-lesson-key") || state.selection.lessonKey;
+        if (!courseKey || !moduleKey || !lessonKey) return;
+        openEntityEditor("lesson-source-guide", { courseKey, moduleKey, lessonKey });
       });
     });
     root.querySelectorAll("[data-action='edit-lesson']").forEach((node) => {
@@ -5767,6 +8317,32 @@ export function createLessonEditorApp({ root, storage, editor }) {
     });
 
     root.querySelector("[data-action='entity-editor-close']")?.addEventListener("click", () => closeEntityEditor());
+    root.querySelectorAll(".editor-overlay").forEach((node) => {
+      node.addEventListener("click", (event) => {
+        if (event.target !== node) {
+          return;
+        }
+        if (state.versionCompareOpen) {
+          closeVersionCompare();
+          return;
+        }
+        if (state.versionHistoryOpen) {
+          closeVersionHistory();
+          return;
+        }
+        if (state.cardCommentOpen) {
+          closeCardComment();
+          return;
+        }
+        if (state.assistConfigOpen) {
+          closeAssistConfig();
+          return;
+        }
+        if (state.entityEditor) {
+          closeEntityEditor();
+        }
+      });
+    });
     root.querySelectorAll("[data-action='dismiss-action-menu']").forEach((node) => {
       node.addEventListener("click", (event) => {
         if (event.target === node) {
@@ -5784,6 +8360,75 @@ export function createLessonEditorApp({ root, storage, editor }) {
     root.querySelector("[data-action='comment-close']")?.addEventListener("click", () => closeCardComment());
     root.querySelector("[data-action='comment-save']")?.addEventListener("click", () => saveCardComment());
     root.querySelector("[data-action='version-history-close']")?.addEventListener("click", () => closeVersionHistory());
+    root.querySelector("[data-action='version-compare-close']")?.addEventListener("click", () => closeVersionCompare());
+    root.querySelector("[data-action='back-to-comparison']")?.addEventListener("click", () => backToVersionCompareSummary());
+    root.querySelectorAll("[data-action='use-version-compare-side']").forEach((node) => {
+      node.addEventListener("click", () => {
+        const side = node.getAttribute("data-compare-side");
+        if (!side) return;
+        useVersionCompareSide(side);
+      });
+    });
+    root.querySelectorAll("[data-action='select-version-compare-tab']").forEach((node) => {
+      node.addEventListener("click", () => {
+        selectVersionCompareTab(node.getAttribute("data-compare-tab"));
+      });
+    });
+    root.querySelectorAll("[data-action='open-version-compare-target']").forEach((node) => {
+      node.addEventListener("click", () => {
+        const rawTarget = node.getAttribute("data-compare-target");
+        const tabId = node.getAttribute("data-compare-tab") || "current";
+        if (!rawTarget) return;
+        try {
+          openVersionCompareTarget(JSON.parse(rawTarget), tabId);
+        } catch {
+          // noop
+        }
+      });
+    });
+    root.querySelectorAll("[data-action='select-version-history-item']").forEach((node) => {
+      node.addEventListener("click", () => {
+        const versionKey = node.getAttribute("data-version-key");
+        if (!versionKey) return;
+        selectVersionHistoryItem(versionKey);
+      });
+    });
+    root.querySelectorAll("[data-action='toggle-version-history-more']").forEach((node) => {
+      node.addEventListener("click", () => {
+        const versionKey = node.getAttribute("data-version-key");
+        if (!versionKey) return;
+        toggleVersionHistoryMore(versionKey);
+      });
+    });
+    root.querySelectorAll("[data-action='restore-version']").forEach((node) => {
+      node.addEventListener("click", () => {
+        const versionKey = node.getAttribute("data-version-key");
+        if (!versionKey) return;
+        closeVersionHistory();
+        restoreCardVersion(versionKey);
+      });
+    });
+    root.querySelectorAll("[data-action='use-structure-version']").forEach((node) => {
+      node.addEventListener("click", () => {
+        const versionKey = node.getAttribute("data-version-key");
+        if (!versionKey) return;
+        useStructureVersion(versionKey);
+      });
+    });
+    root.querySelectorAll("[data-action='restore-structure-version-as-new']").forEach((node) => {
+      node.addEventListener("click", () => {
+        const versionKey = node.getAttribute("data-version-key");
+        if (!versionKey) return;
+        restoreStructureVersion(versionKey);
+      });
+    });
+    root.querySelectorAll("[data-action='open-version-compare-selected']").forEach((node) => {
+      node.addEventListener("click", () => {
+        const versionKey = node.getAttribute("data-version-key");
+        state.versionCompareSelectionKey = versionKey || state.versionHistorySelectionKey || "";
+        openVersionCompare();
+      });
+    });
 
     const cardCommentInput = root.querySelector("[data-field='card-comment']");
     const assistMicrosequenceTitleInput = root.querySelector("[data-field='assist-microsequence-title']");
@@ -5795,9 +8440,10 @@ export function createLessonEditorApp({ root, storage, editor }) {
     }
     if (assistMicrosequenceTitleInput) {
       assistMicrosequenceTitleInput.addEventListener("input", () => {
+        const visibleVersion = getVisualizedMicrosequenceVersion();
         updateMicrosequenceDraft({
           title: assistMicrosequenceTitleInput.value,
-          tags: formatTagsText(context.microsequence?.tags)
+          tags: formatTagsText(visibleVersion?.tags || context.microsequence?.tags)
         });
       });
     }
@@ -5826,6 +8472,9 @@ export function createLessonEditorApp({ root, storage, editor }) {
       });
     });
     root.querySelector(".app-shell")?.addEventListener("click", (event) => {
+      if (handleGenerationPanelActionClick(event)) {
+        return;
+      }
       if (!state.activeFlowchartPrompt) {
         return;
       }
@@ -6007,9 +8656,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
     root.querySelector("[data-action='clear-prompt']")?.addEventListener("click", () => {
       if (root.querySelector("[data-field='generate-prompt']")) {
         state.generationDraft.promptText = "";
-        state.generationDraft.errorMessage = "";
-        state.generationDraft.lastResult = null;
-        state.pendingGeneratedNavigation = null;
+        clearGenerationResult();
       }
       if (root.querySelector("[data-field='assist-prompt']")) {
         state.assistDraft.promptText = "";
@@ -6022,20 +8669,15 @@ export function createLessonEditorApp({ root, storage, editor }) {
     root.querySelector("[data-action='open-assist-attachment-picker']")?.addEventListener("click", () => {
       root.querySelector("[data-field='assist-attachments']")?.click();
     });
+    root.querySelector("[data-action='open-generation-attachment-picker']")?.addEventListener("click", () => {
+      root.querySelector("[data-field='generate-attachments']")?.click();
+    });
     root.querySelector("[data-action='open-assist-config']")?.addEventListener("click", () => openAssistConfig());
     root.querySelector("[data-action='apply-assist']")?.addEventListener("click", () => {
       void submitAssistRequest();
     });
     root.querySelector("[data-action='open-version-history']")?.addEventListener("click", () => openVersionHistory());
     root.querySelector("[data-action='assist-config-close']")?.addEventListener("click", () => closeAssistConfig());
-    root.querySelectorAll("[data-action='restore-version']").forEach((node) => {
-      node.addEventListener("click", () => {
-        const versionKey = node.getAttribute("data-version-key");
-        if (!versionKey) return;
-        closeVersionHistory();
-        restoreCardVersion(versionKey);
-      });
-    });
 
     const assistConfigModel = root.querySelector("[data-field='assist-config-model']");
     const assistConfigApiKey = root.querySelector("[data-field='assist-config-api-key']");
@@ -6072,6 +8714,8 @@ export function createLessonEditorApp({ root, storage, editor }) {
       });
     }
 
+    syncStructureVersionStripScroller({ centerActiveTab: state.centerActiveStructureVersionTabOnRender !== false });
+    state.centerActiveStructureVersionTabOnRender = true;
     syncPendingStructureFocus();
   }
 
@@ -6080,8 +8724,13 @@ export function createLessonEditorApp({ root, storage, editor }) {
   if (typeof window !== "undefined" && typeof window.addEventListener === "function") {
     window.addEventListener("resize", () => {
       syncVersionTabScroller();
+      syncStructureVersionStripScroller({ centerActiveTab: true });
       syncCardStripScroller({ keepActiveCardInView: true });
     });
   }
+  root.addEventListener("click", (event) => {
+    void handleGenerationPanelActionClick(event);
+  });
+  syncVisibleStructureVersionsFromProject();
   render({ preserveState: false });
 }

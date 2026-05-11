@@ -7,7 +7,9 @@ import {
   createCardInMicrosequence,
   createCourse,
   createEditorSession,
+  createLesson,
   createMicrosequence,
+  createModule,
   deleteCardInMicrosequence,
   deleteLesson,
   exportCourseDocument,
@@ -54,6 +56,78 @@ test("cria microssequência nova no contrato principal como rascunho vazio", () 
   assert.equal(microsequence.title, "Nova sequência");
   assert.equal(microsequence.status, "draft");
   assert.deepEqual(microsequence.cards, []);
+});
+
+test("preserva sourceGuide opcional em curso, módulo e lição", () => {
+  let document = readNormalizedProject("./docs/examples/aralearn-contract.renderable.json");
+
+  document = createCourse(document, {
+    title: "Curso com guia",
+    description: "Descrição curta do curso",
+    sourceGuide: "Objetivo do curso.\nConteúdo obrigatório.\nDificuldades prováveis."
+  });
+
+  const course = document.courses.at(-1);
+  document = createModule(document, {
+    courseKey: course.key,
+    title: "Módulo com guia",
+    description: "Descrição curta do módulo",
+    sourceGuide: "Fonte-guia do módulo."
+  });
+
+  const moduleValue = document.courses.at(-1).modules.at(-1);
+  document = createLesson(document, {
+    courseKey: course.key,
+    moduleKey: moduleValue.key,
+    title: "Lição com guia",
+    description: "Descrição curta da lição",
+    sourceGuide: "Fonte-guia da lição."
+  });
+
+  const lesson = document.courses.at(-1).modules.at(-1).lessons.at(-1);
+  const validation = validateContractDocument(document);
+  assert.equal(validation.ok, true);
+  assert.equal(validation.value.courses.at(-1).sourceGuide, "Objetivo do curso.\nConteúdo obrigatório.\nDificuldades prováveis.");
+  assert.equal(validation.value.courses.at(-1).modules.at(-1).sourceGuide, "Fonte-guia do módulo.");
+  assert.equal(validation.value.courses.at(-1).modules.at(-1).lessons.at(-1).sourceGuide, "Fonte-guia da lição.");
+
+  const exported = exportLessonDocument(document, {
+    courseKey: course.key,
+    moduleKey: moduleValue.key,
+    lessonKey: lesson.key
+  });
+  assert.equal(exported.courses[0].sourceGuide, "Objetivo do curso.\nConteúdo obrigatório.\nDificuldades prováveis.");
+  assert.equal(exported.courses[0].modules[0].sourceGuide, "Fonte-guia do módulo.");
+  assert.equal(exported.courses[0].modules[0].lessons[0].sourceGuide, "Fonte-guia da lição.");
+});
+
+test("preserva sourceGuideStructured e recompila o texto derivado", () => {
+  let document = readNormalizedProject("./docs/examples/aralearn-contract.renderable.json");
+
+  document = createCourse(document, {
+    title: "Curso com guia estruturada",
+    sourceGuideStructured: {
+      audience: "Iniciantes completos.",
+      globalScope: "Entender o fluxo principal.",
+      globalOutOfScope: "Sem avançar para casos especiais."
+    }
+  });
+
+  const course = document.courses.at(-1);
+  assert.deepEqual(course.sourceGuideStructured, {
+    audience: "Iniciantes completos.",
+    globalScope: "Entender o fluxo principal.",
+    globalOutOfScope: "Sem avançar para casos especiais."
+  });
+  assert.match(course.sourceGuide, /Público e ponto de entrada: Iniciantes completos\./);
+  assert.match(course.sourceGuide, /Escopo do curso: Entender o fluxo principal\./);
+  assert.match(course.sourceGuide, /Fora do curso: Sem avançar para casos especiais\./);
+
+  const exported = exportCourseDocument(document, {
+    courseKey: course.key
+  });
+  assert.deepEqual(exported.courses[0].sourceGuideStructured, course.sourceGuideStructured);
+  assert.equal(exported.courses[0].sourceGuide, course.sourceGuide);
 });
 
 test("cria microssequência rascunho sem cards", () => {

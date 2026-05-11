@@ -10,10 +10,15 @@ function clampCardIndex(cards, targetIndex = 0) {
 
 export function resolveMicrosequenceAssistOpenState(entry, targetIndex = 0) {
   const versions = Array.isArray(entry?.versions) ? entry.versions : [];
-  const activeVersion = versions.at(-1) || null;
+  const activeVersion =
+    versions.find((version) => version?.id === entry?.activeVersionId) ||
+    versions.at(-1) ||
+    null;
 
   return {
     activeVersionId: activeVersion?.id || "",
+    visualizedVersionId: activeVersion?.id || "",
+    editBaseVersionId: activeVersion?.id || "",
     cardIndex: clampCardIndex(activeVersion?.cards, targetIndex),
     activeWorkbenchPane: "preview"
   };

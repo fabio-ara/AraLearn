@@ -172,36 +172,64 @@ function buildEditorBlock(card) {
 }
 
 function buildTableTitle(card) {
-  return normalizeText(card?.table?.title).trim() || normalizeText(card?.title).trim() || "Tabela";
+  const title = normalizeText(card?.table?.title).trim();
+  const cardTitle = normalizeText(card?.title).trim();
+  if (!title || title.toLocaleLowerCase("pt-BR") === cardTitle.toLocaleLowerCase("pt-BR")) {
+    return "";
+  }
+  return title;
 }
 
 function buildTableHeaders(card) {
-  return normalizeList(card?.table?.columns).map((column) => ({
+  const focus = card?.table?.focus || {};
+  const focusedColumns = new Set(
+    [focus.column, ...(Array.isArray(focus.columns) ? focus.columns : [])]
+      .map((value) => Number(value))
+      .filter((value) => Number.isInteger(value) && value >= 1)
+  );
+  return normalizeList(card?.table?.columns).map((column, columnIndex) => ({
     value: column,
     align: "center",
     tone: "default",
     bold: false,
-    italic: false
+    italic: false,
+    focused: focusedColumns.has(columnIndex + 1)
   }));
 }
 
 function buildTableRows(card) {
-  return (Array.isArray(card?.table?.rows) ? card.table.rows : []).map((row) => {
-    return (Array.isArray(row) ? row : []).map((cell) => ({
+  const focus = card?.table?.focus || {};
+  const focusedRows = new Set(
+    [focus.row, ...(Array.isArray(focus.rows) ? focus.rows : [])]
+      .map((value) => Number(value))
+      .filter((value) => Number.isInteger(value) && value >= 1)
+  );
+  const focusedColumns = new Set(
+    [focus.column, ...(Array.isArray(focus.columns) ? focus.columns : [])]
+      .map((value) => Number(value))
+      .filter((value) => Number.isInteger(value) && value >= 1)
+  );
+  return (Array.isArray(card?.table?.rows) ? card.table.rows : []).map((row, rowIndex) => {
+    const rowFocused = focusedRows.has(rowIndex + 1);
+    return (Array.isArray(row) ? row : []).map((cell, columnIndex) => ({
       value: normalizeText(cell),
       align: "center",
       tone: "default",
       bold: false,
       italic: false,
-      blank: false
+      blank: false,
+      focusedRow: rowFocused,
+      focusedColumn: focusedColumns.has(columnIndex + 1)
     }));
   });
 }
 
 function buildTableBlock(card) {
+  const focus = card?.table?.focus || {};
   return {
     kind: "table",
     title: buildTableTitle(card),
+    focusLabel: normalizeText(focus?.label).trim(),
     titleStyle: {
       align: "center",
       tone: "default",
@@ -287,6 +315,316 @@ function buildFlowchartBlock(card) {
   };
 }
 
+function formatMathNumber(value) {
+  const numericValue = Number(value);
+  if (!Number.isFinite(numericValue)) {
+    return normalizeText(value);
+  }
+  if (Number.isInteger(numericValue)) {
+    return String(numericValue);
+  }
+  return String(Number(numericValue.toFixed(2)));
+}
+
+function formatMathCoordinateItem(value) {
+  if (typeof value === "number") {
+    return formatMathNumber(value);
+  }
+  return normalizeText(value);
+}
+
+function formatCoordinatePair(pair = []) {
+  return `(${formatMathCoordinateItem(pair[0])}, ${formatMathCoordinateItem(pair[1])})`;
+}
+
+function readPlaneMode(plane) {
+  if (Array.isArray(plane?.distance)) return "distance";
+  if (plane?.scale && typeof plane.scale === "object") return "scale";
+  if (Array.isArray(plane?.sum)) return "sum";
+  if (Array.isArray(plane?.vectors)) return "vectors";
+  if (Array.isArray(plane?.vector)) return "vector";
+  return "";
+}
+
+function buildPlaneAutoRange(values) {
+  const numericValues = (Array.isArray(values) ? values : [])
+    .map((item) => Number(item))
+    .filter((item) => Number.isFinite(item));
+  const baseMin = numericValues.length ? Math.min(...numericValues, 0) : -1;
+  const baseMax = numericValues.length ? Math.max(...numericValues, 0) : 1;
+  let min = Math.floor(baseMin) - 1;
+  let max = Math.ceil(baseMax) + 1;
+  if (min === max) {
+    min -= 1;
+    max += 1;
+  }
+  return [min, max];
+}
+
+function buildPlaneRanges(plane, points = []) {
+  const xValues = [];
+  const yValues = [];
+  (Array.isArray(points) ? points : []).forEach((point) => {
+    const x = Number(point?.[0]);
+    const y = Number(point?.[1]);
+    if (Number.isFinite(x)) {
+      xValues.push(x);
+    }
+    if (Number.isFinite(y)) {
+      yValues.push(y);
+    }
+  });
+
+  return {
+    x: Array.isArray(plane?.x) ? plane.x : buildPlaneAutoRange(xValues),
+    y: Array.isArray(plane?.y) ? plane.y : buildPlaneAutoRange(yValues)
+  };
+}
+
+function buildPlaneVectorEntry(from, to, label, tone = "primary", role = "vector", extra = {}) {
+  return {
+    from,
+    to,
+    label,
+    tone,
+    role,
+    ...extra
+  };
+}
+
+function assignPlaneVectorTones(vectors = []) {
+  const fallbackTones = ["primary", "secondary", "tertiary", "quaternary"];
+  let nextToneIndex = 0;
+  return vectors.map((vector) => {
+    if (vector?.tone) {
+      return vector;
+    }
+    if (vector?.role === "result") {
+      return { ...vector, tone: "result" };
+    }
+    const tone = fallbackTones[nextToneIndex] || fallbackTones[fallbackTones.length - 1];
+    nextToneIndex += 1;
+    return { ...vector, tone };
+  });
+}
+
+function assignPlanePointTones(points = []) {
+  const fallbackTones = ["primary", "secondary", "tertiary", "quaternary"];
+  return points.map((point, index) => (point?.tone ? point : { ...point, tone: fallbackTones[index] || fallbackTones[fallbackTones.length - 1] }));
+}
+
+function buildPlaneResultText(resultLabel, values) {
+  if (!Array.isArray(values) || values.length !== 2) {
+    return "";
+  }
+  return `${resultLabel} = (${formatMathCoordinateItem(values[0])}, ${formatMathCoordinateItem(values[1])})`;
+}
+
+function buildPlaneDistanceGuides(start, end) {
+  const x1 = Number(start?.[0] || 0);
+  const y1 = Number(start?.[1] || 0);
+  const x2 = Number(end?.[0] || 0);
+  const y2 = Number(end?.[1] || 0);
+  return [
+    {
+      from: [x1, y1],
+      to: [x2, y1],
+      tone: "secondary",
+      dashed: true,
+      role: "guide-horizontal"
+    },
+    {
+      from: [x2, y1],
+      to: [x2, y2],
+      tone: "tertiary",
+      dashed: true,
+      role: "guide-vertical"
+    }
+  ];
+}
+
+function buildPlaneBlock(card) {
+  const plane = card?.plane || {};
+  const mode = readPlaneMode(plane);
+  const block = {
+    kind: "plane",
+    mode,
+    vectors: [],
+    segments: [],
+    points: [],
+    resultText: ""
+  };
+
+  if (mode === "vector") {
+    const vector = plane.vector;
+    block.vectors = [buildPlaneVectorEntry([0, 0], vector, `v=${formatCoordinatePair(vector)}`, "", "vector")];
+    block.summaryText = `Vetor ${formatCoordinatePair(vector)}`;
+  } else if (mode === "vectors") {
+    const labelPool = ["v", "w", "u", "t"];
+    block.vectors = plane.vectors.map((vector, index) =>
+      buildPlaneVectorEntry([0, 0], vector, labelPool[index] || `v${index + 1}`, "", "vector")
+    );
+    block.summaryText = plane.vectors
+      .map((vector, index) => `${labelPool[index] || `v${index + 1}`}=${formatCoordinatePair(vector)}`)
+      .join(", ");
+  } else if (mode === "sum") {
+    const [first, second] = plane.sum;
+    const result = [first[0] + second[0], first[1] + second[1]];
+    const hasExplicitResult = plane.result !== undefined;
+    block.vectors = [
+      buildPlaneVectorEntry([0, 0], first, "v", "", "vector"),
+      buildPlaneVectorEntry([0, 0], second, "w", "", "vector"),
+      buildPlaneVectorEntry(first, result, "w deslocado", "", "vector", { dashed: true }),
+      buildPlaneVectorEntry([0, 0], result, "v+w", "", "result")
+    ];
+    block.resultText = hasExplicitResult ? buildPlaneResultText("v+w", plane.result) : "";
+    block.summaryText = hasExplicitResult ? `v+w=${formatCoordinatePair(result)}` : `v=${formatCoordinatePair(first)}, w=${formatCoordinatePair(second)}`;
+    block.note = `Para somar no desenho, copie w=${formatCoordinatePair(second)} para começar na ponta de v=${formatCoordinatePair(first)}. A ponta dessa cópia marca o vetor soma.`;
+  } else if (mode === "scale") {
+    const vector = plane.scale.vector;
+    const scaled = [plane.scale.k * vector[0], plane.scale.k * vector[1]];
+    const scaleLabel = formatMathNumber(plane.scale.k);
+    block.vectors = [
+      buildPlaneVectorEntry([0, 0], vector, "v", "", "vector"),
+      buildPlaneVectorEntry([0, 0], scaled, `${scaleLabel}v`, "", "result")
+    ];
+    block.summaryText = `${scaleLabel}v=${formatCoordinatePair(scaled)}`;
+  } else if (mode === "distance") {
+    const [start, end] = plane.distance;
+    const dx = Number(end?.[0] || 0) - Number(start?.[0] || 0);
+    const dy = Number(end?.[1] || 0) - Number(start?.[1] || 0);
+    block.points = [
+      { at: start, label: `A${formatCoordinatePair(start)}` },
+      { at: end, label: `B${formatCoordinatePair(end)}` }
+    ];
+    block.segments = [
+      {
+        from: start,
+        to: end,
+        tone: "result",
+        dashed: false,
+        role: "distance"
+      },
+      ...buildPlaneDistanceGuides(start, end)
+    ];
+    block.summaryText = `A${formatCoordinatePair(start)}, B${formatCoordinatePair(end)}`;
+    block.note = `Tracejado laranja: ${formatMathNumber(Math.abs(dx))} em x. Tracejado verde-água: ${formatMathNumber(Math.abs(dy))} em y.`;
+  }
+
+  block.vectors = assignPlaneVectorTones(block.vectors);
+  block.points = assignPlanePointTones(block.points);
+
+  const rangePoints = [
+    [0, 0],
+    ...block.vectors.flatMap((vector) => [vector.from, vector.to]),
+    ...block.points.map((point) => point.at),
+    ...block.segments.flatMap((segment) => [segment.from, segment.to])
+  ];
+  const ranges = buildPlaneRanges(plane, rangePoints);
+
+  return {
+    ...block,
+    xRange: ranges.x,
+    yRange: ranges.y
+  };
+}
+
+function normalizeMatrixHighlightList(highlight) {
+  if (Array.isArray(highlight)) {
+    return highlight.map((item) => normalizeText(item)).filter(Boolean);
+  }
+  const token = normalizeText(highlight);
+  return token ? [token] : [];
+}
+
+function buildMatrixHighlightCells(highlight, rowCount, columnCount) {
+  const selectors = normalizeMatrixHighlightList(highlight);
+  const cells = new Set();
+
+  selectors.forEach((selector) => {
+    if (selector === "mainDiagonal") {
+      const size = Math.min(rowCount, columnCount);
+      for (let index = 0; index < size; index += 1) {
+        cells.add(`${index}:${index}`);
+      }
+      return;
+    }
+    if (selector === "secondaryDiagonal") {
+      const size = Math.min(rowCount, columnCount);
+      for (let index = 0; index < size; index += 1) {
+        cells.add(`${index}:${columnCount - 1 - index}`);
+      }
+      return;
+    }
+
+    const rowMatch = selector.match(/^row:(\d+)$/);
+    if (rowMatch) {
+      const rowIndex = Number(rowMatch[1]) - 1;
+      for (let columnIndex = 0; columnIndex < columnCount; columnIndex += 1) {
+        cells.add(`${rowIndex}:${columnIndex}`);
+      }
+      return;
+    }
+
+    const colMatch = selector.match(/^col:(\d+)$/);
+    if (colMatch) {
+      const columnIndex = Number(colMatch[1]) - 1;
+      for (let rowIndex = 0; rowIndex < rowCount; rowIndex += 1) {
+        cells.add(`${rowIndex}:${columnIndex}`);
+      }
+      return;
+    }
+
+    const cellMatch = selector.match(/^cell:(\d+),(\d+)$/);
+    if (cellMatch) {
+      cells.add(`${Number(cellMatch[1]) - 1}:${Number(cellMatch[2]) - 1}`);
+    }
+  });
+
+  return Array.from(cells);
+}
+
+function buildMatrixRuntimeItem(matrix = {}) {
+  const values = (Array.isArray(matrix.values) ? matrix.values : []).map((row) =>
+    (Array.isArray(row) ? row : []).map((cell) => ({
+      value: typeof cell === "number" ? formatMathNumber(cell) : normalizeText(cell)
+    }))
+  );
+  const rowCount = values.length;
+  const columnCount = values[0]?.length || 0;
+
+  return {
+    ...(normalizeText(matrix.connector) ? { connector: normalizeText(matrix.connector) } : {}),
+    ...(normalizeText(matrix.name) ? { name: normalizeText(matrix.name) } : {}),
+    values,
+    rowCount,
+    columnCount,
+    highlightCells: buildMatrixHighlightCells(matrix.highlight, rowCount, columnCount),
+    dividerAfterColumn: Number.isInteger(matrix.dividerAfterColumn) ? matrix.dividerAfterColumn : null,
+    summaryText: values.map((row) => row.map((cell) => cell.value).join(" ")).join(" | ")
+  };
+}
+
+function buildMatrixBlock(card) {
+  const matrix = card?.matrix || {};
+  if (Array.isArray(matrix.sequence)) {
+    const sequence = matrix.sequence.map(buildMatrixRuntimeItem);
+    return {
+      kind: "matrix",
+      ...(normalizeText(matrix.name) ? { name: normalizeText(matrix.name) } : {}),
+      sequence,
+      summaryText: sequence
+        .map((item, index) => [index > 0 ? item.connector || "=" : "", item.name || "", item.summaryText].filter(Boolean).join(" "))
+        .join(" ")
+    };
+  }
+
+  return {
+    kind: "matrix",
+    ...buildMatrixRuntimeItem(matrix)
+  };
+}
+
 function appendIntroParagraph(blocks, card) {
   const say = enrichTextGapsWithWrong(card?.say, card?.wrong).trim();
   if (say) {
@@ -327,6 +665,16 @@ function buildCardSpecificBlocks(card) {
     blocks.push(buildFlowchartBlock(card));
     return blocks;
   }
+  if (kind === "plane") {
+    appendIntroParagraph(blocks, card);
+    blocks.push(buildPlaneBlock(card));
+    return blocks;
+  }
+  if (kind === "matrix") {
+    appendIntroParagraph(blocks, card);
+    blocks.push(buildMatrixBlock(card));
+    return blocks;
+  }
 
   blocks.push(buildParagraphBlock(enrichTextGapsWithWrong(card?.say, card?.wrong)));
   return blocks;
@@ -354,6 +702,12 @@ export function readCardText(card) {
   }
   if (Array.isArray(card?.table?.columns) && card.table.columns.length) {
     return card.table.columns.join(" | ");
+  }
+  if (card.plane && typeof card.plane === "object") {
+    return buildPlaneBlock(card).summaryText || "plane";
+  }
+  if (card.matrix && typeof card.matrix === "object") {
+    return buildMatrixBlock(card).summaryText || "matrix";
   }
   if (card.tree && typeof card.tree === "object") {
     return normalizeText(card.tree.current) || normalizeText(card.tree.base) || "tree";

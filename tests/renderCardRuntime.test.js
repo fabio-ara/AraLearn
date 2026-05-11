@@ -8,6 +8,10 @@ import {
   renderPopupButtonDock
 } from "../src/render/renderCardRuntime.js";
 
+function countMatches(value, pattern) {
+  return value.match(pattern)?.length || 0;
+}
+
 test("renderiza fluxograma projetado como quadro SVG com nós e links", () => {
   const html = renderCardRuntimeBlocks({
     type: "flow",
@@ -487,6 +491,71 @@ test("renderiza tabela com lacunas textuais por célula", () => {
   assert.doesNotMatch(html, /data-action="complete-validate"/);
 });
 
+test("não renderiza título interno de tabela quando o runtime não fornece subtítulo", () => {
+  const html = renderCardRuntimeBlocks({
+    title: "Tabela de p → q",
+    runtime: {
+      title: "Tabela de p → q",
+      blocks: [
+        { kind: "heading", value: "Tabela de p → q" },
+        {
+          kind: "table",
+          title: "",
+          headers: [{ value: "p" }, { value: "q" }, { value: "p → q" }],
+          rows: [
+            [{ value: "V" }, { value: "V" }, { value: "V" }],
+            [{ value: "V" }, { value: "F" }, { value: "F" }]
+          ]
+        }
+      ]
+    }
+  });
+
+  assert.doesNotMatch(html, /runtime-table-title/);
+  assert.equal((html.match(/Tabela de p → q/g) || []).length, 0);
+});
+
+test("renderiza foco didático em linha e coluna da tabela", () => {
+  const html = renderCardRuntimeBlocks({
+    title: "Tabela",
+    runtime: {
+      title: "Tabela",
+      blocks: [
+        {
+          kind: "table",
+          title: "Comparação",
+          focusLabel: "Compare a segunda linha e as colunas finais.",
+          headers: [
+            { value: "p" },
+            { value: "q" },
+            { value: "p → q", focused: true },
+            { value: "¬p ∨ q", focused: true }
+          ],
+          rows: [
+            [
+              { value: "V" },
+              { value: "V" },
+              { value: "V", focusedColumn: true },
+              { value: "V", focusedColumn: true }
+            ],
+            [
+              { value: "V", focusedRow: true },
+              { value: "F", focusedRow: true },
+              { value: "F", focusedRow: true, focusedColumn: true },
+              { value: "F", focusedRow: true, focusedColumn: true }
+            ]
+          ]
+        }
+      ]
+    }
+  });
+
+  assert.match(html, /runtime-table-focus-label/);
+  assert.match(html, /<th class="is-focused-column">/);
+  assert.match(html, /class="is-focused-row"/);
+  assert.match(html, /class="is-focused-row is-focused-column is-focus-intersection"/);
+});
+
 test("renderiza tabela com lacuna por opção no mesmo motor comum", () => {
   const runtime = renderCardRuntimeBlocksWithDock(
     {
@@ -528,6 +597,269 @@ test("renderiza tabela com lacuna por opção no mesmo motor comum", () => {
   assert.match(runtime.dockHtml, /data-action="text-gap-set-choice"/);
 });
 
+test("renderiza plane com vetor simples no quadro cartesiano", () => {
+  const html = renderCardRuntimeBlocks({
+    title: "Plano",
+    runtime: {
+      title: "Plano",
+      blocks: [
+        { kind: "heading", value: "Plano" },
+        {
+          kind: "plane",
+          mode: "vector",
+          xRange: [-1, 5],
+          yRange: [-1, 5],
+          vectors: [
+            {
+              from: [0, 0],
+              to: [3, 2],
+              label: "v=(3,2)",
+              tone: "primary"
+            }
+          ],
+          segments: [],
+          points: [],
+          resultText: ""
+        }
+      ]
+    }
+  });
+
+  assert.match(html, /runtime-plane-block/);
+  assert.match(html, /data-plane-mode="vector"/);
+  assert.match(html, /runtime-plane-svg/);
+  assert.match(html, /runtime-plane-surface/);
+  assert.match(html, /runtime-plane-legend/);
+  assert.match(html, /v=\(3,2\)/);
+  assert.match(html, /markerWidth="4\.8"/);
+  assert.doesNotMatch(html, /markerWidth="10"/);
+  assert.doesNotMatch(html, /runtime-plane-vector-label/);
+});
+
+test("renderiza plane de distância com guias coloridos e nota explícita", () => {
+  const html = renderCardRuntimeBlocks({
+    title: "Distância",
+    runtime: {
+      title: "Distância",
+      blocks: [
+        {
+          kind: "plane",
+          mode: "distance",
+          xRange: [0, 5],
+          yRange: [0, 5],
+          vectors: [],
+          segments: [
+            { from: [1, 1], to: [4, 5], tone: "result", dashed: false, role: "distance" },
+            { from: [1, 1], to: [4, 1], tone: "secondary", dashed: true, role: "guide-horizontal" },
+            { from: [4, 1], to: [4, 5], tone: "tertiary", dashed: true, role: "guide-vertical" }
+          ],
+          points: [
+            { at: [1, 1], label: "A(1,1)", tone: "primary" },
+            { at: [4, 5], label: "B(4,5)", tone: "secondary" }
+          ],
+          note: "Tracejado laranja: 3 em x. Tracejado verde-água: 4 em y.",
+          resultText: ""
+        }
+      ]
+    }
+  });
+
+  assert.match(html, /runtime-plane-segment tone-secondary is-dashed/);
+  assert.match(html, /runtime-plane-segment tone-tertiary is-dashed/);
+  assert.match(html, /Tracejado laranja: 3 em x/);
+});
+
+test("renderiza plane com lacunas no resultado e move feedback para o dock", () => {
+  const runtime = renderCardRuntimeBlocksWithDock(
+    {
+      title: "Plano",
+      runtime: {
+        title: "Plano",
+        blocks: [
+          { kind: "heading", value: "Plano" },
+          {
+            kind: "plane",
+            mode: "sum",
+            xRange: [-1, 6],
+            yRange: [-1, 5],
+            vectors: [
+              { from: [0, 0], to: [1, 2], label: "v", tone: "primary" },
+              { from: [0, 0], to: [3, 1], label: "w", tone: "secondary" },
+              { from: [1, 2], to: [4, 3], label: "w", tone: "secondary" },
+              { from: [1, 2], to: [4, 3], label: "w deslocado", tone: "secondary", dashed: true },
+              { from: [0, 0], to: [4, 3], label: "v+w", tone: "result" }
+            ],
+            segments: [],
+            points: [],
+            note: "Para somar no desenho, copiamos w para começar na ponta de v.",
+            resultText: "v+w = ([[4::3|5]], [[3::2|4]])"
+          }
+        ]
+      }
+    },
+    {
+      blockKeyPrefix: "course::module::lesson::card",
+      textGapExerciseStateByBlockKey: {
+        "course::module::lesson::card::1": {
+          values: ["", ""],
+          feedback: null
+        }
+      },
+      activeTextGapPrompt: {
+        blockKey: "course::module::lesson::card::1",
+        blankIndex: 0
+      }
+    }
+  );
+
+  assert.match(runtime.bodyHtml, /runtime-plane-result/);
+  assert.match(runtime.bodyHtml, /runtime-plane-vector tone-secondary is-dashed/);
+  assert.match(runtime.bodyHtml, /runtime-plane-note/);
+  assert.match(runtime.bodyHtml, /runtime-plane-gap-blank/);
+  assert.match(runtime.bodyHtml, /data-action="text-gap-open-choice"/);
+  assert.match(runtime.dockHtml, /data-action="text-gap-set-choice"/);
+});
+
+test("legenda do plane nao expande automaticamente coordenadas do vetor resultante", () => {
+  const html = renderCardRuntimeBlocks({
+    title: "Plano",
+    runtime: {
+      title: "Plano",
+      blocks: [
+        { kind: "heading", value: "Plano" },
+        {
+          kind: "plane",
+          mode: "sum",
+          xRange: [-1, 6],
+          yRange: [-1, 5],
+          vectors: [
+            { from: [0, 0], to: [1, 2], label: "v", tone: "primary", role: "vector" },
+            { from: [0, 0], to: [3, 1], label: "w", tone: "secondary", role: "vector" },
+            { from: [1, 2], to: [4, 3], label: "w deslocado", tone: "tertiary", dashed: true, role: "vector" },
+            { from: [0, 0], to: [4, 3], label: "v+w", tone: "result", role: "result" }
+          ],
+          segments: [],
+          points: [],
+          note: "Copie w para a ponta de v.",
+          resultText: ""
+        }
+      ]
+    }
+  });
+
+  assert.match(html, />v\+w</);
+  assert.doesNotMatch(html, /v\+w = \(4,3\)/);
+});
+
+test("renderiza matrix com destaque e lacuna em célula", () => {
+  const runtime = renderCardRuntimeBlocksWithDock(
+    {
+      title: "Matriz",
+      runtime: {
+        title: "Matriz",
+        blocks: [
+          { kind: "heading", value: "Matriz" },
+          {
+            kind: "matrix",
+            name: "A",
+            rowCount: 2,
+            columnCount: 3,
+            dividerAfterColumn: 2,
+            highlightCells: ["1:2"],
+            values: [
+              [{ value: "1" }, { value: "2" }, { value: "3" }],
+              [{ value: "4" }, { value: "5" }, { value: "[[6::5|7|8]]" }]
+            ]
+          }
+        ]
+      }
+    },
+    {
+      blockKeyPrefix: "course::module::lesson::card",
+      textGapExerciseStateByBlockKey: {
+        "course::module::lesson::card::1": {
+          values: [""],
+          feedback: null
+        }
+      },
+      activeTextGapPrompt: {
+        blockKey: "course::module::lesson::card::1",
+        blankIndex: 0
+      }
+    }
+  );
+
+  assert.match(runtime.bodyHtml, /runtime-matrix-block/);
+  assert.match(runtime.bodyHtml, /runtime-matrix-name">A =/);
+  assert.match(runtime.bodyHtml, /runtime-matrix-cell is-highlighted/);
+  assert.match(runtime.bodyHtml, /runtime-matrix-divider/);
+  assert.match(runtime.bodyHtml, /runtime-matrix-gap-blank/);
+  assert.match(runtime.dockHtml, /data-action="text-gap-set-choice"/);
+});
+
+test("renderiza matrix com sequência e lacuna no mesmo card", () => {
+  const runtime = renderCardRuntimeBlocksWithDock(
+    {
+      title: "Soma",
+      runtime: {
+        title: "Soma",
+        blocks: [
+          { kind: "heading", value: "Soma" },
+          {
+            kind: "matrix",
+            sequence: [
+              {
+                name: "A",
+                rowCount: 2,
+                columnCount: 2,
+                highlightCells: [],
+                values: [[{ value: "1" }, { value: "2" }], [{ value: "3" }, { value: "4" }]]
+              },
+              {
+                connector: "+",
+                name: "B",
+                rowCount: 2,
+                columnCount: 2,
+                highlightCells: [],
+                values: [[{ value: "5" }, { value: "6" }], [{ value: "7" }, { value: "8" }]]
+              },
+              {
+                connector: "=",
+                name: "A+B",
+                rowCount: 2,
+                columnCount: 2,
+                highlightCells: ["1:0"],
+                values: [[{ value: "6" }, { value: "8" }], [{ value: "[[10::10|9|11]]" }, { value: "12" }]]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      blockKeyPrefix: "course::module::lesson::card",
+      textGapExerciseStateByBlockKey: {
+        "course::module::lesson::card::1": {
+          values: [""],
+          feedback: null
+        }
+      },
+      activeTextGapPrompt: {
+        blockKey: "course::module::lesson::card::1",
+        blankIndex: 0
+      }
+    }
+  );
+
+  assert.match(runtime.bodyHtml, /runtime-matrix-equation is-sequence/);
+  assert.match(runtime.bodyHtml, /runtime-matrix-sequence-prefix">A \+ B =/);
+  assert.match(runtime.bodyHtml, /runtime-matrix-sequence-operator" aria-hidden="true">\+/);
+  assert.match(runtime.bodyHtml, /runtime-matrix-sequence-operator" aria-hidden="true">=/);
+  assert.match(runtime.bodyHtml, /runtime-matrix-gap-blank/);
+  assert.equal(countMatches(runtime.bodyHtml, /<div\b/g), countMatches(runtime.bodyHtml, /<\/div>/g));
+  assert.match(runtime.dockHtml, /data-action="text-gap-set-choice"/);
+});
+
 test("renderiza parágrafo com lacunas textuais inline", () => {
   const html = renderCardRuntimeBlocks(
     {
@@ -555,6 +887,35 @@ test("renderiza parágrafo com lacunas textuais inline", () => {
   assert.match(html, /runtime-paragraph-gap-block/);
   assert.match(html, /runtime-paragraph-gap-blank/);
   assert.match(html, /Correto\./);
+});
+
+test("renderiza lacuna dentro de trecho com acento grave", () => {
+  const html = renderCardRuntimeBlocks(
+    {
+      type: "text",
+      title: "Texto",
+      runtime: {
+        title: "Texto",
+        blocks: [
+          { kind: "heading", value: "Texto" },
+          { kind: "paragraph", value: "Se `v = (2,1)`, então `3v = [[(6,3)::(6,3)|(5,3)|(6,2)]]`." }
+        ]
+      }
+    },
+    {
+      blockKeyPrefix: "course::module::lesson::card",
+      textGapExerciseStateByBlockKey: {
+        "course::module::lesson::card::1": {
+          values: ["(6,3)"],
+          feedback: null
+        }
+      }
+    }
+  );
+
+  assert.match(html, /<code>v = \(2,1\)<\/code>/);
+  assert.match(html, /<code>3v = <span class="runtime-text-gap-blank runtime-paragraph-gap-blank runtime-text-gap-choice-blank"/);
+  assert.match(html, /<span class="runtime-text-gap-blank runtime-paragraph-gap-blank runtime-text-gap-choice-blank"[^>]*>\(6,3\)<\/span><\/code>/);
 });
 
 test("move feedback de parágrafo com lacuna para o dock do card e substitui o prompt ativo", () => {
