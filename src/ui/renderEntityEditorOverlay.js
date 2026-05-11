@@ -1,3 +1,5 @@
+import { renderUiIcon } from "./renderUiIcons.js";
+
 function escapeHtml(value) {
   return String(value)
     .replace(/&/g, "&amp;")
@@ -11,14 +13,29 @@ export function renderEntityEditorOverlay({ title, fields, actions = [] }) {
   const inputs = fields
     .map((field) => {
       const value = field.value ? escapeHtml(field.value) : "";
+      const placeholder = field.placeholder ? escapeHtml(field.placeholder) : "";
+      const labelText = escapeHtml(field.label);
+      const labelContent = field.iconName
+        ? '<span class="field-label-icon" title="' +
+          labelText +
+          '" aria-label="' +
+          labelText +
+          '">' +
+          renderUiIcon(field.iconName, "field-label-svg-icon") +
+          "</span>"
+        : labelText;
       if (field.type === "textarea") {
         return (
           '<div class="field">' +
           "<label>" +
-          escapeHtml(field.label) +
+          labelContent +
           "</label>" +
           '<textarea data-field="' +
           escapeHtml(field.name) +
+          '" aria-label="' +
+          labelText +
+          '" placeholder="' +
+          placeholder +
           '">' +
           value +
           "</textarea>" +
@@ -29,10 +46,14 @@ export function renderEntityEditorOverlay({ title, fields, actions = [] }) {
       return (
         '<div class="field">' +
         "<label>" +
-        escapeHtml(field.label) +
+        labelContent +
         "</label>" +
         '<input data-field="' +
         escapeHtml(field.name) +
+        '" aria-label="' +
+        labelText +
+        '" placeholder="' +
+        placeholder +
         '" type="text" value="' +
         value +
         '">' +

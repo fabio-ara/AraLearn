@@ -194,6 +194,368 @@ test("gera escada de microssequências com schema simples", async () => {
   }
 });
 
+test("gera estrutura top-down com description breve e sourceGuide detalhada", async () => {
+  const originalFetch = globalThis.fetch;
+  const calls = [];
+  globalThis.fetch = async (_url, options = {}) => {
+    calls.push(JSON.parse(options.body));
+    return {
+      ok: true,
+      async json() {
+        return {
+          candidates: [
+            {
+              content: {
+                parts: [
+                  {
+                    text: JSON.stringify({
+                      course: {
+                        title: "Lógica Proposicional",
+                        description: "Curso introdutório de lógica proposicional.",
+                        sourceGuide:
+                          "Objetivo: ensinar lógica proposicional do zero.\nConteúdo obrigatório: conectivos, tabelas-verdade e equivalências.",
+                        sourceGuideStructured: {
+                          audience: "Nenhum pré-requisito formal além de leitura básica.",
+                          globalScope: "Aprender proposições, conectivos e equivalências elementares.",
+                          globalOutOfScope: "Não entrar em lógica de predicados.",
+                          sharedNotation: "Destacar `p`, `q`, `~`, `^`, `v` e `->` inline."
+                        },
+                        modules: [
+                          {
+                            title: "Fundamentos",
+                            description: "Base conceitual inicial.",
+                            sourceGuide: "Apresentar proposições, valores lógicos e conectivos básicos.",
+                            sourceGuideStructured: {
+                              modulePrerequisites: "Reconhecer frases e afirmações simples.",
+                              moduleScope: "Distinguir proposição, valor lógico e conectivo.",
+                              moduleOutOfScope: "Não entrar em prova formal.",
+                              lessonProgression: "Ir da linguagem comum para a simbólica."
+                            },
+                            lessons: [
+                              {
+                                title: "Proposições e conectivos",
+                                description: "Introdução às proposições.",
+                                sourceGuide: "Mostrar exemplos do cotidiano e formalização simbólica.",
+                                sourceGuideStructured: {
+                                  lessonPrerequisites: "Leitura básica e atenção a frases declarativas.",
+                                  lessonGoal: "Reconhecer proposições e usar conectivos básicos.",
+                                  commonErrors: "Tratar ordem dos conectivos como irrelevante.",
+                                  notationRules: "Destacar `e`, `ou`, `não`, `se...então` e símbolos.",
+                                  masteryGoal: "Traduzir frases simples para notação lógica."
+                                }
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    })
+                  }
+                ]
+              }
+            }
+          ]
+        };
+      }
+    };
+  };
+
+  try {
+    const result = await runGeminiAssist({
+      apiKey: "chave",
+      mode: "generate-top-down-structure",
+      microsequence: {
+        actionLabel: "criar curso completo",
+        courseFixed: false,
+        moduleFixed: false,
+        lessonFixed: false
+      },
+      promptText: "Monte um curso inicial de lógica proposicional."
+    });
+
+    const prompt = calls[0].contents[0].parts[0].text;
+    assert.ok(calls[0].generationConfig.responseJsonSchema);
+    assert.match(prompt, /sourceGuideStructured/);
+    assert.match(prompt, /audience/);
+    assert.match(prompt, /Em curso, use apenas: audience, globalScope, globalOutOfScope, sharedNotation/);
+    assert.match(prompt, /Não suba preferências finas de explicação ou prática para curso e módulo/);
+    assert.equal(result.course.description, "Curso introdutório de lógica proposicional.");
+    assert.equal(result.course.sourceGuide.includes("Objetivo: ensinar lógica proposicional do zero."), true);
+    assert.equal(result.course.sourceGuideStructured.globalScope, "Aprender proposições, conectivos e equivalências elementares.");
+    assert.equal(result.course.modules[0].sourceGuide, "Apresentar proposições, valores lógicos e conectivos básicos.");
+    assert.equal(result.course.modules[0].sourceGuideStructured.lessonProgression, "Ir da linguagem comum para a simbólica.");
+    assert.equal(result.course.modules[0].lessons[0].sourceGuide, "Mostrar exemplos do cotidiano e formalização simbólica.");
+    assert.equal(result.course.modules[0].lessons[0].sourceGuideStructured.masteryGoal, "Traduzir frases simples para notação lógica.");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("gera microssequências draft de lição sem cards no modo contextual", async () => {
+  const originalFetch = globalThis.fetch;
+  const calls = [];
+  globalThis.fetch = async (_url, options = {}) => {
+    calls.push(JSON.parse(options.body));
+    return makeGeminiTextResponse(
+      JSON.stringify({
+        microsequences: [
+          {
+            title: "Condições para somar matrizes",
+            description: "Verificar compatibilidade de dimensões.",
+            tags: ["matrizes", "pré-requisito"],
+            cards: [{ title: "Ignorar" }]
+          },
+          {
+            title: "Soma elemento a elemento",
+            tags: ["operação"]
+          },
+          {
+            title: "Erros comuns na soma",
+            description: "Dimensões diferentes e distrações algébricas."
+          }
+        ]
+      })
+    );
+  };
+
+  try {
+    const result = await runGeminiAssist({
+      apiKey: "chave",
+      mode: "generate-lesson-microsequences",
+      microsequence: {
+        actionLabel: "criar microssequências draft nesta lição",
+        courseTitle: "Álgebra Linear",
+        courseDescription: "Curso breve.",
+        moduleTitle: "Matrizes",
+        moduleDescription: "Operações básicas.",
+        lessonTitle: "Soma de matrizes",
+        lessonDescription: "Descrição breve da lição.",
+        existingMicrosequences: [
+          { title: "O que é uma matriz?", tags: ["base"], status: "ready", included: true }
+        ]
+      },
+      promptText: "Monte rascunhos de microssequências para ensinar soma de matrizes."
+    });
+
+    const prompt = calls[0].contents[0].parts[0].text;
+    assert.ok(calls[0].generationConfig.responseJsonSchema);
+    assert.match(prompt, /Microssequências atuais:/);
+    assert.match(prompt, /1\. O que é uma matriz\?; status: ready; included: sim; tags: base/);
+    assert.match(prompt, /- Não gere cards\./);
+    assert.equal(result.microsequences.length, 3);
+    assert.deepEqual(result.microsequences[0], {
+      title: "Condições para somar matrizes",
+      description: "Verificar compatibilidade de dimensões.",
+      tags: ["matrizes", "pré-requisito"]
+    });
+    assert.equal("cards" in result.microsequences[0], false);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("gera e reposiciona microssequências de lição no modo combinado", async () => {
+  const originalFetch = globalThis.fetch;
+  const calls = [];
+  globalThis.fetch = async (_url, options = {}) => {
+    calls.push(JSON.parse(options.body));
+    return makeGeminiTextResponse(
+      JSON.stringify({
+        generatedMicrosequences: [
+          {
+            draftId: "draft_1",
+            title: "Leitura guiada do condicional",
+            description: "Separar antecedente e consequente.",
+            tags: ["condicional", "leitura"]
+          }
+        ],
+        finalOrder: [
+          { entryType: "existing", microsequenceKey: "micro-base" },
+          { entryType: "generated", draftId: "draft_1" },
+          { entryType: "existing", microsequenceKey: "micro-exercicio" }
+        ]
+      })
+    );
+  };
+
+  try {
+    const result = await runGeminiAssist({
+      apiKey: "chave",
+      mode: "generate-and-reposition-lesson-microsequences",
+      microsequence: {
+        actionLabel: "gerar e reposicionar microssequências nesta lição",
+        courseTitle: "Lógica",
+        courseDescription: "Curso breve.",
+        courseSourceGuideStructured: {
+          audience: "Iniciante",
+          globalScope: "Base proposicional"
+        },
+        moduleTitle: "Fundamentos",
+        moduleDescription: "Operações básicas.",
+        moduleSourceGuideStructured: {
+          moduleScope: "Leitura e escrita lógica"
+        },
+        lessonTitle: "Condicional",
+        lessonDescription: "Descrição breve da lição.",
+        lessonSourceGuideStructured: {
+          lessonGoal: "Ler e usar o condicional",
+          commonErrors: "Confundir ordem"
+        },
+        existingMicrosequences: [
+          { key: "micro-base", position: 0, title: "O que é proposição?", tags: ["base"], status: "ready", included: true },
+          { key: "micro-exercicio", position: 1, title: "Exercícios iniciais", tags: ["prática"], status: "draft", included: false }
+        ]
+      },
+      promptText: "Adicione uma micro intermediária e reorganize a progressão."
+    });
+
+    const prompt = calls[0].contents[0].parts[0].text;
+    assert.ok(calls[0].generationConfig.responseJsonSchema);
+    assert.match(prompt, /Microssequências atuais:/);
+    assert.match(prompt, /key: micro-base; posição: 1/);
+    assert.match(prompt, /Fonte-guia estruturada da lição: lessonGoal=Ler e usar o condicional; commonErrors=Confundir ordem/);
+    assert.match(prompt, /finalOrder deve listar a ordem final completa da lição/);
+    assert.equal(result.generatedMicrosequences.length, 1);
+    assert.deepEqual(result.generatedMicrosequences[0], {
+      draftId: "draft_1",
+      title: "Leitura guiada do condicional",
+      description: "Separar antecedente e consequente.",
+      tags: ["condicional", "leitura"]
+    });
+    assert.deepEqual(result.finalOrder, [
+      { entryType: "existing", microsequenceKey: "micro-base", draftId: "" },
+      { entryType: "generated", microsequenceKey: "", draftId: "draft_1" },
+      { entryType: "existing", microsequenceKey: "micro-exercicio", draftId: "" }
+    ]);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("não promove description a sourceGuide no prompt estrutural quando a fonte-guia não existe", async () => {
+  const originalFetch = globalThis.fetch;
+  const calls = [];
+  globalThis.fetch = async (_url, options = {}) => {
+    calls.push(JSON.parse(options.body));
+    return makeGeminiTextResponse(
+      JSON.stringify({
+        course: {
+          title: "Lógica",
+          description: "Curso breve.",
+          sourceGuide: "Guia do curso.",
+          sourceGuideStructured: {
+            audience: "Base mínima.",
+            globalScope: "Escopo do curso.",
+            globalOutOfScope: "Sem extensões.",
+            sharedNotation: "Notação simples."
+          },
+          modules: [
+            {
+              title: "Fundamentos",
+              description: "Base breve.",
+              sourceGuide: "Guia do módulo.",
+              sourceGuideStructured: {
+                modulePrerequisites: "Base mínima.",
+                moduleScope: "Escopo do módulo.",
+                moduleOutOfScope: "Sem desvios.",
+                lessonProgression: "Progressão curta."
+              },
+              lessons: [
+                {
+                  title: "Proposições",
+                  description: "Descrição breve da lição.",
+                  sourceGuide: "Guia detalhado da lição.",
+                  sourceGuideStructured: {
+                    lessonPrerequisites: "Base mínima.",
+                    lessonGoal: "Escopo da lição.",
+                    commonErrors: "Erros básicos.",
+                    notationRules: "Notação simples.",
+                    masteryGoal: "Aplicação local."
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      })
+    );
+  };
+
+  try {
+    await runGeminiAssist({
+      apiKey: "chave",
+      mode: "generate-top-down-structure",
+      microsequence: {
+        actionLabel: "criar/atualizar esta lição",
+        courseFixed: true,
+        moduleFixed: true,
+        lessonFixed: true,
+        courseTitle: "Lógica",
+        courseDescription: "Resumo breve do curso.",
+        moduleTitle: "Fundamentos",
+        moduleDescription: "Resumo breve do módulo.",
+        lessonTitle: "Proposições",
+        lessonDescription: "Resumo breve da lição."
+      },
+      promptText: "Refine a lição atual."
+    });
+
+    const prompt = calls[0].contents[0].parts[0].text;
+    assert.match(prompt, /Descrição breve do curso: Resumo breve do curso\./);
+    assert.match(prompt, /Descrição breve do módulo: Resumo breve do módulo\./);
+    assert.match(prompt, /Descrição breve da lição: Resumo breve da lição\./);
+    assert.match(prompt, /Módulos atuais do curso: nenhum\./);
+    assert.match(prompt, /Lições atuais do módulo: nenhum\./);
+    assert.doesNotMatch(prompt, /Fonte-guia do curso:/);
+    assert.doesNotMatch(prompt, /Fonte-guia do módulo:/);
+    assert.doesNotMatch(prompt, /Fonte-guia da lição:/);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("não promove description a sourceGuide no prompt de microssequências da lição", async () => {
+  const originalFetch = globalThis.fetch;
+  const calls = [];
+  globalThis.fetch = async (_url, options = {}) => {
+    calls.push(JSON.parse(options.body));
+    return makeGeminiTextResponse(
+      JSON.stringify({
+        microsequences: [
+          { title: "Dependências da soma" },
+          { title: "Execução da soma" }
+        ]
+      })
+    );
+  };
+
+  try {
+    await runGeminiAssist({
+      apiKey: "chave",
+      mode: "generate-lesson-microsequences",
+      microsequence: {
+        actionLabel: "criar microssequências draft nesta lição",
+        courseTitle: "Lógica",
+        courseDescription: "Resumo breve do curso.",
+        moduleTitle: "Fundamentos",
+        moduleDescription: "Resumo breve do módulo.",
+        lessonTitle: "Proposições",
+        lessonDescription: "Resumo breve da lição."
+      },
+      promptText: "Estruture rascunhos para esta lição."
+    });
+
+    const prompt = calls[0].contents[0].parts[0].text;
+    assert.match(prompt, /Descrição breve do curso: Resumo breve do curso\./);
+    assert.match(prompt, /Descrição breve do módulo: Resumo breve do módulo\./);
+    assert.match(prompt, /Descrição breve da lição: Resumo breve da lição\./);
+    assert.doesNotMatch(prompt, /Fonte-guia do curso:/);
+    assert.doesNotMatch(prompt, /Fonte-guia do módulo:/);
+    assert.doesNotMatch(prompt, /Fonte-guia da lição:/);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("converte rascunho assistido para contrato semântico", () => {
   const result = normalizeAssistDraftResult({
     title: "Comandos básicos de Git",
@@ -357,6 +719,13 @@ test("aplica contêiner preferido ao plano e ao prompt assistido", () => {
 
   assert.ok(preferredPlan.cardPlans.every((card) => card.container === "flow"));
   assert.match(prompt, /"container":"flow"/);
+  assert.match(prompt, /Não coloque prática antes da microteoria/);
+  assert.match(prompt, /Quando a regra for abstrata ou pouco intuitiva/);
+  assert.match(prompt, /Quando o card estiver definindo um conceito/);
+  assert.match(prompt, /Quando aparecer notação pouco familiar/);
+  assert.match(prompt, /Não use linguagem de bastidor nem referência externa ou volátil/);
+  assert.match(prompt, /destaque inline com acentos graves/);
+  assert.match(prompt, /Não repita o title do card/);
   assert.doesNotMatch(prompt, /Nesta etapa, não gere fluxograma/);
 });
 

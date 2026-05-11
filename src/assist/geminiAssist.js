@@ -10,6 +10,13 @@ import { ProviderHttpError, ProviderOperationError, classifyProviderError, creat
 import { adaptResourceCardsToPublicCards } from "../generation/resources/adaptResourceCardToPublicCard.js";
 import { canResumeGeneration, createGenerationRunState, updateGenerationRunState } from "../generation/runs/generationRunState.js";
 import { validateOrRepairGeneratedCards } from "../generation/validation/validateOrRepairGeneratedCards.js";
+import {
+  buildSourceGuideText,
+  getSourceGuideSchemaProperties,
+  getSourceGuideSchemaRequired,
+  normalizeSourceGuideStructured,
+  SOURCE_GUIDE_LEVELS
+} from "../sourceGuides/sourceGuideStructured.js";
 
 function fail(message) {
   throw new Error(message);
@@ -380,6 +387,149 @@ function getLadderSchema() {
   };
 }
 
+function getLessonMicrosequenceSchema() {
+  return {
+    type: "object",
+    properties: {
+      microsequences: {
+        type: "array",
+        minItems: 2,
+        maxItems: 7,
+        items: {
+          type: "object",
+          properties: {
+            title: { type: "string" },
+            description: { type: "string" },
+            tags: {
+              type: "array",
+              items: { type: "string" },
+              maxItems: 5
+            }
+          },
+          required: ["title"],
+          additionalProperties: false
+        }
+      }
+    },
+    required: ["microsequences"],
+    additionalProperties: false
+  };
+}
+
+function getLessonMicrosequenceRepositionSchema() {
+  return {
+    type: "object",
+    properties: {
+      generatedMicrosequences: {
+        type: "array",
+        maxItems: 7,
+        items: {
+          type: "object",
+          properties: {
+            draftId: { type: "string" },
+            title: { type: "string" },
+            description: { type: "string" },
+            tags: {
+              type: "array",
+              items: { type: "string" },
+              maxItems: 5
+            }
+          },
+          required: ["draftId", "title"],
+          additionalProperties: false
+        }
+      },
+      finalOrder: {
+        type: "array",
+        minItems: 1,
+        items: {
+          type: "object",
+          properties: {
+            entryType: {
+              type: "string",
+              enum: ["existing", "generated"]
+            },
+            microsequenceKey: { type: "string" },
+            draftId: { type: "string" }
+          },
+          required: ["entryType"],
+          additionalProperties: false
+        }
+      }
+    },
+    required: ["generatedMicrosequences", "finalOrder"],
+    additionalProperties: false
+  };
+}
+
+function getStructureSchema() {
+  return {
+    type: "object",
+    properties: {
+      course: {
+        type: "object",
+        properties: {
+          title: { type: "string" },
+          description: { type: "string" },
+          sourceGuide: { type: "string" },
+          sourceGuideStructured: {
+            type: "object",
+            properties: getSourceGuideSchemaProperties(SOURCE_GUIDE_LEVELS.COURSE),
+            required: getSourceGuideSchemaRequired(SOURCE_GUIDE_LEVELS.COURSE),
+            additionalProperties: false
+          },
+          modules: {
+            type: "array",
+            minItems: 1,
+            maxItems: 8,
+            items: {
+              type: "object",
+              properties: {
+                title: { type: "string" },
+                description: { type: "string" },
+                sourceGuide: { type: "string" },
+                sourceGuideStructured: {
+                  type: "object",
+                  properties: getSourceGuideSchemaProperties(SOURCE_GUIDE_LEVELS.MODULE),
+                  required: getSourceGuideSchemaRequired(SOURCE_GUIDE_LEVELS.MODULE),
+                  additionalProperties: false
+                },
+                lessons: {
+                  type: "array",
+                  minItems: 1,
+                  maxItems: 20,
+                  items: {
+                    type: "object",
+                    properties: {
+                      title: { type: "string" },
+                      description: { type: "string" },
+                      sourceGuide: { type: "string" },
+                      sourceGuideStructured: {
+                        type: "object",
+                        properties: getSourceGuideSchemaProperties(SOURCE_GUIDE_LEVELS.LESSON),
+                        required: getSourceGuideSchemaRequired(SOURCE_GUIDE_LEVELS.LESSON),
+                        additionalProperties: false
+                      }
+                    },
+                    required: ["title", "description", "sourceGuide", "sourceGuideStructured"],
+                    additionalProperties: false
+                  }
+                }
+              },
+              required: ["title", "description", "sourceGuide", "sourceGuideStructured", "lessons"],
+              additionalProperties: false
+            }
+          }
+        },
+        required: ["title", "description", "sourceGuide", "sourceGuideStructured", "modules"],
+        additionalProperties: false
+      }
+    },
+    required: ["course"],
+    additionalProperties: false
+  };
+}
+
 function buildLadderPrompt({ context, promptText }) {
   return [
     "Você é o planejador simples do AraLearn.",
@@ -416,6 +566,301 @@ function buildLadderPrompt({ context, promptText }) {
   ].join("\n");
 }
 
+function buildOptionalGuideLine(label, value) {
+  const normalized = normalizeText(value);
+  return normalized ? `${label}: ${normalized}` : "";
+}
+
+function buildOptionalDescriptionLine(label, value) {
+  const normalized = normalizeText(value);
+  return normalized ? `${label}: ${normalized}` : "";
+}
+
+function buildOptionalStructuredGuideLine(label, value) {
+  if (!value || typeof value !== "object") {
+    return "";
+  }
+
+  const entries = Object.entries(value)
+    .map(([key, entryValue]) => [normalizeText(key), normalizeText(entryValue)])
+    .filter(([, entryValue]) => entryValue);
+  if (!entries.length) {
+    return "";
+  }
+
+  return `${label}: ${entries.map(([key, entryValue]) => `${key}=${entryValue}`).join("; ")}`;
+}
+
+function buildExistingMicrosequenceLines(items = [], { includeKeys = false } = {}) {
+  const normalizedItems = Array.isArray(items)
+    ? items
+        .map((item) => ({
+          key: normalizeText(item?.key),
+          position: Number.isInteger(item?.position) ? item.position : null,
+          title: normalizeText(item?.title),
+          description: normalizeText(item?.description),
+          tags: Array.isArray(item?.tags) ? item.tags.map((entry) => normalizeText(entry)).filter(Boolean) : [],
+          status: normalizeText(item?.status),
+          included: item?.included === true
+        }))
+        .filter((item) => item.title)
+    : [];
+
+  if (!normalizedItems.length) {
+    return ["Microssequências atuais: nenhuma."];
+  }
+
+  return [
+    "Microssequências atuais:",
+    ...normalizedItems.map((item, index) => {
+      const key = includeKeys && item.key ? `; key: ${item.key}` : "";
+      const position = includeKeys && Number.isInteger(item.position) ? `; posição: ${item.position + 1}` : "";
+      const tags = item.tags.length ? `; tags: ${item.tags.join(", ")}` : "";
+      const description = item.description ? `; descrição: ${item.description}` : "";
+      return `${index + 1}. ${item.title}${key}${position}; status: ${item.status || "draft"}; included: ${item.included ? "sim" : "não"}${description}${tags}`;
+    })
+  ];
+}
+
+function buildHierarchySummaryLines(label, items = [], childLabel = "") {
+  const normalizedItems = Array.isArray(items)
+    ? items
+        .map((item) => ({
+          title: normalizeText(item?.title),
+          description: normalizeText(item?.description),
+          sourceGuide: normalizeText(item?.sourceGuide),
+          children: Array.isArray(item?.lessons)
+            ? item.lessons
+                .map((child) => ({
+                  title: normalizeText(child?.title),
+                  description: normalizeText(child?.description),
+                  sourceGuide: normalizeText(child?.sourceGuide)
+                }))
+                .filter((child) => child.title || child.description || child.sourceGuide)
+            : []
+        }))
+        .filter((item) => item.title || item.description || item.sourceGuide || item.children.length)
+    : [];
+
+  if (!normalizedItems.length) {
+    return [`${label}: nenhum.`];
+  }
+
+  return [
+    `${label}:`,
+    ...normalizedItems.map((item, index) => {
+      const description = item.description ? `; descrição: ${item.description}` : "";
+      const sourceGuide = item.sourceGuide ? `; fonte-guia: ${item.sourceGuide}` : "";
+      const children = item.children.length
+        ? `; ${childLabel}: ${item.children
+            .map((child) => {
+              const childDescription = child.description ? ` (${child.description})` : "";
+              const childGuide = child.sourceGuide ? ` [${child.sourceGuide}]` : "";
+              return `${child.title || "sem título"}${childDescription}${childGuide}`;
+            })
+            .join(" | ")}`
+        : "";
+      return `${index + 1}. ${item.title || "sem título"}${description}${sourceGuide}${children}`;
+    })
+  ];
+}
+
+function buildStructurePrompt({ context, promptText }) {
+  const courseTitle = normalizeText(context?.courseTitle) || "novo curso";
+  const moduleTitle = normalizeText(context?.moduleTitle) || "novo módulo";
+  const lessonTitle = normalizeText(context?.lessonTitle) || "nova lição";
+
+  return [
+    "Você gera estrutura top-down para o AraLearn.",
+    "",
+    `Ação prevista: ${normalizeText(context?.actionLabel) || "criar curso completo"}.`,
+    `Curso fixado: ${context?.courseFixed ? "sim" : "não"}.`,
+    `Módulo fixado: ${context?.moduleFixed ? "sim" : "não"}.`,
+    `Lição fixada: ${context?.lessonFixed ? "sim" : "não"}.`,
+    "",
+    "Contexto atual:",
+    `Curso: ${courseTitle}`,
+    `Descrição breve do curso: ${normalizeText(context?.courseDescription) || "ausente"}`,
+    buildOptionalGuideLine("Fonte-guia do curso", context?.courseSourceGuide),
+    `Módulo: ${moduleTitle}`,
+    `Descrição breve do módulo: ${normalizeText(context?.moduleDescription) || "ausente"}`,
+    buildOptionalGuideLine("Fonte-guia do módulo", context?.moduleSourceGuide),
+    `Lição: ${lessonTitle}`,
+    `Descrição breve da lição: ${normalizeText(context?.lessonDescription) || "ausente"}`,
+    buildOptionalGuideLine("Fonte-guia da lição", context?.lessonSourceGuide),
+    "",
+    ...buildHierarchySummaryLines("Módulos atuais do curso", context?.courseModules, "lições"),
+    ...buildHierarchySummaryLines("Lições atuais do módulo", context?.moduleLessons),
+    ...buildExistingMicrosequenceLines(context?.lessonMicrosequences),
+    "",
+    "Entrada do usuário:",
+    promptText,
+    "",
+    "Regras:",
+    "- Retorne apenas curso, módulos e lições.",
+    "- Não gere microssequências.",
+    "- Não gere cards.",
+    "- description deve ser breve, própria para UI.",
+    "- Preencha sourceGuideStructured com poucas frases curtas, sem repetir o mesmo texto em níveis diferentes.",
+    "- Em curso, use apenas: audience, globalScope, globalOutOfScope, sharedNotation.",
+    "- Em módulo, use apenas: moduleScope, modulePrerequisites, moduleOutOfScope, lessonProgression.",
+    "- Em lição, use apenas: lessonGoal, lessonPrerequisites, notationRules, commonErrors, masteryGoal.",
+    "- Não suba preferências finas de explicação ou prática para curso e módulo; isso pertence à microssequência.",
+    "- sourceGuide deve ser apenas um resumo curto e legível de sourceGuideStructured.",
+    "- Quando o assunto usar símbolos, conectivos, comandos, fórmulas ou nomes curtos, registre isso em notationRules ou sharedNotation, sem redundância.",
+    "- Não use description como substituto de sourceGuide.",
+    "- Ao atualizar estrutura existente, use os textos atuais dos níveis afetados como base e devolva textos compatíveis com a mudança solicitada.",
+    "- Se um nível estiver fixado, preserve exatamente o título informado pelo usuário.",
+    "- Se o escopo estiver dentro de um curso existente, devolva somente os módulos e lições relevantes para esse curso.",
+    "- Se o escopo estiver dentro de um módulo fixado, devolva exatamente um módulo com suas lições.",
+    "- Se o escopo estiver dentro de uma lição fixada, devolva exatamente um curso, um módulo e uma lição.",
+    "- Não inclua HTML, Markdown estrutural nem explicações fora do JSON.",
+    "",
+    "Formato obrigatório do JSON:",
+    "{",
+    '  "course": {',
+    '    "title": "string",',
+    '    "description": "string",',
+    '    "sourceGuide": "string",',
+    '    "sourceGuideStructured": {',
+    '      "audience": "string",',
+    '      "globalScope": "string",',
+    '      "globalOutOfScope": "string",',
+    '      "sharedNotation": "string"',
+    "    },",
+    '    "modules": [',
+    '      {',
+    '        "title": "string",',
+    '        "description": "string",',
+    '        "sourceGuide": "string",',
+    '        "sourceGuideStructured": {',
+    '          "moduleScope": "string",',
+    '          "modulePrerequisites": "string",',
+    '          "moduleOutOfScope": "string",',
+    '          "lessonProgression": "string"',
+    "        },",
+    '        "lessons": [',
+    '          {',
+    '            "title": "string",',
+    '            "description": "string",',
+    '            "sourceGuide": "string",',
+    '            "sourceGuideStructured": {',
+    '              "lessonGoal": "string",',
+    '              "lessonPrerequisites": "string",',
+    '              "notationRules": "string",',
+    '              "commonErrors": "string",',
+    '              "masteryGoal": "string"',
+    "            }",
+    "          }",
+    "        ]",
+    "      }",
+    "    ]",
+    "  }",
+    "}"
+  ].join("\n");
+}
+
+function buildLessonMicrosequencePrompt({ context, promptText }) {
+  return [
+    "Você gera microssequências draft para uma lição do AraLearn.",
+    "",
+    `Ação prevista: ${normalizeText(context?.actionLabel) || "criar microssequências draft nesta lição"}.`,
+    "",
+    "Contexto atual:",
+    `Curso: ${normalizeText(context?.courseTitle)}`,
+    buildOptionalDescriptionLine("Descrição breve do curso", context?.courseDescription),
+    buildOptionalGuideLine("Fonte-guia do curso", context?.courseSourceGuide),
+    buildOptionalStructuredGuideLine("Fonte-guia estruturada do curso", context?.courseSourceGuideStructured),
+    `Módulo: ${normalizeText(context?.moduleTitle)}`,
+    buildOptionalDescriptionLine("Descrição breve do módulo", context?.moduleDescription),
+    buildOptionalGuideLine("Fonte-guia do módulo", context?.moduleSourceGuide),
+    buildOptionalStructuredGuideLine("Fonte-guia estruturada do módulo", context?.moduleSourceGuideStructured),
+    `Lição: ${normalizeText(context?.lessonTitle)}`,
+    buildOptionalDescriptionLine("Descrição breve da lição", context?.lessonDescription),
+    buildOptionalGuideLine("Fonte-guia da lição", context?.lessonSourceGuide),
+    buildOptionalStructuredGuideLine("Fonte-guia estruturada da lição", context?.lessonSourceGuideStructured),
+    "",
+    ...buildExistingMicrosequenceLines(context?.existingMicrosequences),
+    "",
+    "Entrada do usuário:",
+    promptText,
+    "",
+    "Regras:",
+    "- Gere apenas microssequências draft para esta lição.",
+    "- Gere de 2 a 7 microssequências.",
+    "- Não gere cards.",
+    "- Não gere curso, módulo ou lição.",
+    "- title é obrigatório.",
+    "- description é opcional e deve ser breve.",
+    "- tags são opcionais e devem ser curtas.",
+    "- Não use description como substituto de sourceGuide.",
+    "- Não inclua HTML, Markdown estrutural nem explicações fora do JSON.",
+    "",
+    "Formato obrigatório do JSON:",
+    "{",
+    '  "microsequences": [',
+    '    { "title": "string", "description": "string opcional", "tags": ["string opcional"] }',
+    "  ]",
+    "}"
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+function buildLessonMicrosequenceRepositionPrompt({ context, promptText }) {
+  return [
+    "Você gera e reposiciona microssequências draft para uma lição do AraLearn.",
+    "",
+    `Ação prevista: ${normalizeText(context?.actionLabel) || "gerar e reposicionar microssequências nesta lição"}.`,
+    "",
+    "Contexto atual:",
+    `Curso: ${normalizeText(context?.courseTitle)}`,
+    buildOptionalDescriptionLine("Descrição breve do curso", context?.courseDescription),
+    buildOptionalGuideLine("Fonte-guia do curso", context?.courseSourceGuide),
+    buildOptionalStructuredGuideLine("Fonte-guia estruturada do curso", context?.courseSourceGuideStructured),
+    `Módulo: ${normalizeText(context?.moduleTitle)}`,
+    buildOptionalDescriptionLine("Descrição breve do módulo", context?.moduleDescription),
+    buildOptionalGuideLine("Fonte-guia do módulo", context?.moduleSourceGuide),
+    buildOptionalStructuredGuideLine("Fonte-guia estruturada do módulo", context?.moduleSourceGuideStructured),
+    `Lição: ${normalizeText(context?.lessonTitle)}`,
+    buildOptionalDescriptionLine("Descrição breve da lição", context?.lessonDescription),
+    buildOptionalGuideLine("Fonte-guia da lição", context?.lessonSourceGuide),
+    buildOptionalStructuredGuideLine("Fonte-guia estruturada da lição", context?.lessonSourceGuideStructured),
+    "",
+    ...buildExistingMicrosequenceLines(context?.existingMicrosequences, { includeKeys: true }),
+    "",
+    "Entrada do usuário:",
+    promptText,
+    "",
+    "Regras:",
+    "- Você pode gerar novas microssequências draft, reposicionar as existentes ou fazer ambos, conforme o pedido.",
+    "- Use as tags das microssequências atuais e as fontes-guias da linhagem para preservar progressão e foco.",
+    "- Não gere cards.",
+    "- Não gere curso, módulo ou lição.",
+    "- Cada nova microssequência precisa de draftId único como draft_1, draft_2 ou similar.",
+    "- title é obrigatório nas novas microssequências.",
+    "- description é opcional e deve ser breve.",
+    "- tags são opcionais e devem ser curtas.",
+    "- finalOrder deve listar a ordem final completa da lição, usando microsequenceKey para itens existentes e draftId para itens novos.",
+    "- Não repita a mesma microssequência duas vezes em finalOrder.",
+    "- Não use description como substituto de sourceGuide.",
+    "- Não inclua HTML, Markdown estrutural nem explicações fora do JSON.",
+    "",
+    "Formato obrigatório do JSON:",
+    "{",
+    '  "generatedMicrosequences": [',
+    '    { "draftId": "draft_1", "title": "string", "description": "string opcional", "tags": ["string opcional"] }',
+    "  ],",
+    '  "finalOrder": [',
+    '    { "entryType": "existing", "microsequenceKey": "microsequence-key" },',
+    '    { "entryType": "generated", "draftId": "draft_1" }',
+    "  ]",
+    "}"
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
 function buildEditPrompt({ microsequence, card, dependencyTitles, promptText }) {
   const courseTitle = normalizeText(microsequence?.courseTitle) || "Curso atual";
   const courseDescription = normalizeText(microsequence?.courseDescription) || "não informado";
@@ -431,19 +876,40 @@ function buildEditPrompt({ microsequence, card, dependencyTitles, promptText }) 
   return [
     `Curso: ${courseTitle}`,
     `Objetivo do curso: ${courseDescription}`,
+    buildOptionalGuideLine("Fonte-guia do curso", microsequence?.courseSourceGuide),
     `Módulo: ${moduleTitle}`,
     `Objetivo do módulo: ${moduleDescription}`,
+    buildOptionalGuideLine("Fonte-guia do módulo", microsequence?.moduleSourceGuide),
     `Lição: ${lessonTitle}`,
     `Objetivo da lição: ${lessonDescription}`,
+    buildOptionalGuideLine("Fonte-guia da lição", microsequence?.lessonSourceGuide),
     `Microssequência: ${microsequenceTitle}`,
     `Card atual: ${cardTitle}`,
     `Intenção atual: ${cardKind}`,
     `Tags explícitas: ${tags}`,
     "Tarefa: revisar apenas este card mantendo a mesma intenção principal.",
+    "Princípio didático: mostre antes de nomear, concretize antes de generalizar e não esconda a ponte do raciocínio.",
     "Restrições:",
     "- não use campo type, text, columns, rows, src, runtime, intent nem data;",
     "- use apenas o formato semântico raso do contrato;",
     "- não invente novas tags nem sinônimos de tags;",
+    "- se o card for prática, mantenha no próprio card os dados, regras, fórmulas e notações necessários para resolver;",
+    "- não introduza prática de regra ainda não ensinada na microssequência; nesse caso, transforme o card em microteoria ou exemplo simples;",
+    "- se a explicação estiver abstrata demais para iniciante, concretize com caso pequeno, tabela curta ou exemplo guiado mantendo a mesma intenção do card;",
+    "- se o card definir um conceito, acrescente exemplo mínimo, contraste ou quadro curto;",
+    "- se houver notação pouco familiar para iniciante, traduza para linguagem comum antes de cobrar uso ou interpretação;",
+    "- se o card usar recurso visual como `plane`, `table`, `matrix` ou `tree`, coloque no próprio card os valores, passos e conclusão que o aluno deve ler;",
+    "- em recurso visual, destaque só o que o texto nomear explicitamente;",
+    "- se usar `table`, prefira poucas linhas e poucas colunas; quando houver linha ou coluna decisiva, use `table.focus` com `label` curto para guiar a leitura;",
+    "- não use linguagem de bastidor nem referência externa ou volátil como caderno, aula, prova, material, trecho acima ou equivalente;",
+    "- não mantenha exercício cuja resposta já esteja explicitamente dada no mesmo card por texto, legenda, nota ou fórmula pronta; nesse caso, separe a explicação e a prática;",
+    "- não use feedback que já interprete o resultado final se o aluno ainda não foi ensinado a montar ou ler a conta; confirme primeiro a etapa operacional;",
+    "- em prática de iniciante, reduza o salto de raciocínio ao mínimo e cobre primeiro reconhecimento de padrão antes de combinação de ideias novas;",
+    "- se a explicação ficar pesada demais, divida em mais cards em vez de comprimir tudo num quadro largo ou denso;",
+    "- se a figura existir para justificar um resultado, escreva esse resultado explicitamente no próprio card em vez de deixá-lo implícito na imagem;",
+    "- não use prática que apenas peça para repetir uma resposta já visível por destaque ou posição óbvia;",
+    "- destaque símbolos, conectivos, comandos, fórmulas e nomes curtos com acentos graves;",
+    "- não repita o título do card no corpo nem como título interno;",
     `Pedido do usuário: ${promptText}`
   ].join("\n");
 }
@@ -621,7 +1087,9 @@ export function mapPreferredContainerToResource(preferredContainer) {
     code: "code_editor",
     table: "table",
     tree: "tree",
-    flow: "flowchart"
+    flow: "flowchart",
+    plane: "plane",
+    matrix: "matrix"
   };
   return map[preferredContainer] || "";
 }
@@ -631,17 +1099,20 @@ function buildGenerationContextEntities(microsequence = {}) {
     selectedCourse: {
       key: microsequence.courseKey || "",
       title: microsequence.courseTitle || "",
-      description: microsequence.courseDescription || ""
+      description: microsequence.courseDescription || "",
+      sourceGuide: microsequence.courseSourceGuide || ""
     },
     selectedModule: {
       key: microsequence.moduleKey || "",
       title: microsequence.moduleTitle || "",
-      description: microsequence.moduleDescription || ""
+      description: microsequence.moduleDescription || "",
+      sourceGuide: microsequence.moduleSourceGuide || ""
     },
     selectedLesson: {
       key: microsequence.lessonKey || "",
       title: microsequence.lessonTitle || "",
-      description: microsequence.lessonDescription || ""
+      description: microsequence.lessonDescription || "",
+      sourceGuide: microsequence.lessonSourceGuide || ""
     },
     targetMicrosequence: {
       key: microsequence.key || "",
@@ -1098,6 +1569,167 @@ function normalizeLadderResult(value) {
   return { title, steps };
 }
 
+function normalizeLessonMicrosequenceResult(value) {
+  const seen = new Set();
+  const microsequences = Array.isArray(value?.microsequences)
+    ? value.microsequences
+        .map((item) => ({
+          title: normalizeText(item?.title),
+          description: normalizeText(item?.description),
+          tags: Array.isArray(item?.tags) ? item.tags.map((entry) => normalizeText(entry)).filter(Boolean).slice(0, 5) : []
+        }))
+        .filter((item) => {
+          if (!item.title) {
+            return false;
+          }
+          const key = item.title.toLowerCase();
+          if (seen.has(key)) {
+            return false;
+          }
+          seen.add(key);
+          return true;
+        })
+        .slice(0, 7)
+    : [];
+
+  if (microsequences.length < 2) {
+    fail("O serviço de IA devolveu poucas microssequências para a lição.");
+  }
+
+  return { microsequences };
+}
+
+function normalizeLessonMicrosequenceRepositionResult(value) {
+  const seenDraftIds = new Set();
+  const generatedMicrosequences = Array.isArray(value?.generatedMicrosequences)
+    ? value.generatedMicrosequences
+        .map((item) => ({
+          draftId: normalizeText(item?.draftId),
+          title: normalizeText(item?.title),
+          description: normalizeText(item?.description),
+          tags: Array.isArray(item?.tags) ? item.tags.map((entry) => normalizeText(entry)).filter(Boolean).slice(0, 5) : []
+        }))
+        .filter((item) => {
+          if (!item.draftId || !item.title) {
+            return false;
+          }
+          const key = item.draftId.toLowerCase();
+          if (seenDraftIds.has(key)) {
+            return false;
+          }
+          seenDraftIds.add(key);
+          return true;
+        })
+        .slice(0, 7)
+    : [];
+
+  const finalOrder = Array.isArray(value?.finalOrder)
+    ? value.finalOrder
+        .map((item) => ({
+          entryType: normalizeText(item?.entryType),
+          microsequenceKey: normalizeText(item?.microsequenceKey),
+          draftId: normalizeText(item?.draftId)
+        }))
+        .filter((item) => item.entryType === "existing" || item.entryType === "generated")
+    : [];
+
+  if (!generatedMicrosequences.length && !finalOrder.length) {
+    fail("O serviço de IA não devolveu geração nem ordem final para a lição.");
+  }
+
+  return { generatedMicrosequences, finalOrder };
+}
+
+function normalizeStructureResult(value) {
+  const course = value?.course && typeof value.course === "object" ? value.course : null;
+  const courseTitle = normalizeText(course?.title);
+  const courseDescription = normalizeText(course?.description);
+  const courseSourceGuideStructured = normalizeSourceGuideStructured(course?.sourceGuideStructured, { level: SOURCE_GUIDE_LEVELS.COURSE });
+  const courseSourceGuide =
+    normalizeText(course?.sourceGuide) || buildSourceGuideText(courseSourceGuideStructured, "", { level: SOURCE_GUIDE_LEVELS.COURSE });
+
+  const modules = Array.isArray(course?.modules)
+    ? course.modules
+        .map((moduleValue) => {
+          const moduleTitle = normalizeText(moduleValue?.title);
+          const moduleDescription = normalizeText(moduleValue?.description);
+          const moduleSourceGuideStructured = normalizeSourceGuideStructured(moduleValue?.sourceGuideStructured, { level: SOURCE_GUIDE_LEVELS.MODULE });
+          const moduleSourceGuide =
+            normalizeText(moduleValue?.sourceGuide) || buildSourceGuideText(moduleSourceGuideStructured, "", { level: SOURCE_GUIDE_LEVELS.MODULE });
+          const lessons = Array.isArray(moduleValue?.lessons)
+            ? moduleValue.lessons
+                .map((lesson) => {
+                  const lessonSourceGuideStructured = normalizeSourceGuideStructured(lesson?.sourceGuideStructured, { level: SOURCE_GUIDE_LEVELS.LESSON });
+                  const lessonSourceGuide =
+                    normalizeText(lesson?.sourceGuide) || buildSourceGuideText(lessonSourceGuideStructured, "", { level: SOURCE_GUIDE_LEVELS.LESSON });
+                  return {
+                    title: normalizeText(lesson?.title),
+                    description: normalizeText(lesson?.description),
+                    sourceGuide: lessonSourceGuide,
+                    sourceGuideStructured: lessonSourceGuideStructured
+                  };
+                })
+                .filter((lesson) => lesson.title && lesson.description && lesson.sourceGuide && Object.keys(lesson.sourceGuideStructured).length)
+            : [];
+
+          if (
+            !moduleTitle ||
+            !moduleDescription ||
+            !moduleSourceGuide ||
+            !Object.keys(moduleSourceGuideStructured).length ||
+            !lessons.length
+          ) {
+            return null;
+          }
+
+          const seenLessons = new Set();
+          return {
+            title: moduleTitle,
+            description: moduleDescription,
+            sourceGuide: moduleSourceGuide,
+            sourceGuideStructured: moduleSourceGuideStructured,
+            lessons: lessons.filter((lesson) => {
+              const key = lesson.title.toLowerCase();
+              if (seenLessons.has(key)) {
+                return false;
+              }
+              seenLessons.add(key);
+              return true;
+            })
+          };
+        })
+        .filter(Boolean)
+    : [];
+
+  if (
+    !courseTitle ||
+    !courseDescription ||
+    !courseSourceGuide ||
+    !Object.keys(courseSourceGuideStructured).length ||
+    !modules.length
+  ) {
+    fail("O serviço de IA devolveu uma estrutura de curso incompleta.");
+  }
+
+  const seenModules = new Set();
+  return {
+    course: {
+      title: courseTitle,
+      description: courseDescription,
+      sourceGuide: courseSourceGuide,
+      sourceGuideStructured: courseSourceGuideStructured,
+      modules: modules.filter((moduleValue) => {
+        const key = moduleValue.title.toLowerCase();
+        if (seenModules.has(key)) {
+          return false;
+        }
+        seenModules.add(key);
+        return true;
+      })
+    }
+  };
+}
+
 export async function runGeminiAssist({
   apiKey,
   model,
@@ -1192,6 +1824,39 @@ export async function runGeminiAssist({
         temperature: 0.15,
         maxOutputTokens: 1024
       });
+    } else if (mode === "generate-lesson-microsequences") {
+      body = makeRequestBody({
+        systemInstruction:
+          "Você gera apenas microssequências draft para uma lição do AraLearn. " +
+          "Nunca gere cards. Responda apenas no JSON pedido.",
+        prompt: buildLessonMicrosequencePrompt({ context: microsequence, promptText: trimmedPrompt }),
+        fileParts,
+        schema: getLessonMicrosequenceSchema(),
+        temperature: 0.2,
+        maxOutputTokens: 2048
+      });
+    } else if (mode === "generate-and-reposition-lesson-microsequences") {
+      body = makeRequestBody({
+        systemInstruction:
+          "Você gera e reposiciona microssequências draft para uma lição do AraLearn. " +
+          "Nunca gere cards. Responda apenas no JSON pedido.",
+        prompt: buildLessonMicrosequenceRepositionPrompt({ context: microsequence, promptText: trimmedPrompt }),
+        fileParts,
+        schema: getLessonMicrosequenceRepositionSchema(),
+        temperature: 0.2,
+        maxOutputTokens: 3072
+      });
+    } else if (mode === "generate-top-down-structure") {
+      body = makeRequestBody({
+        systemInstruction:
+          "Você gera estruturas de curso para o AraLearn. " +
+          "Responda apenas no JSON pedido com title, description e sourceGuide em curso, módulo e lição.",
+        prompt: buildStructurePrompt({ context: microsequence, promptText: trimmedPrompt }),
+        fileParts,
+        schema: getStructureSchema(),
+        temperature: 0.2,
+        maxOutputTokens: 4096
+      });
     } else {
       fail("Modo de assistência inválido.");
     }
@@ -1202,6 +1867,15 @@ export async function runGeminiAssist({
     }
     if (mode === "plan-microsequence-ladder") {
       return normalizeLadderResult(parsed);
+    }
+    if (mode === "generate-lesson-microsequences") {
+      return normalizeLessonMicrosequenceResult(parsed);
+    }
+    if (mode === "generate-and-reposition-lesson-microsequences") {
+      return normalizeLessonMicrosequenceRepositionResult(parsed);
+    }
+    if (mode === "generate-top-down-structure") {
+      return normalizeStructureResult(parsed);
     }
     return normalizeRepositionResult(parsed);
   } finally {

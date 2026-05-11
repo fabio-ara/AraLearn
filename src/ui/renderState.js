@@ -105,13 +105,16 @@ function restoreFocusedElement(root, snapshot) {
   }
 }
 
-export function captureRenderState(root) {
+export function captureRenderState(
+  root,
+  { trackedScrollSelectors = TRACKED_SCROLL_SELECTORS, includePageScroll = true, includeFocus = true } = {}
+) {
   if (!root) {
     return { scrollables: [], pageScroll: null, focused: null };
   }
 
   const scrollables = [];
-  TRACKED_SCROLL_SELECTORS.forEach((selector) => {
+  (Array.isArray(trackedScrollSelectors) ? trackedScrollSelectors : TRACKED_SCROLL_SELECTORS).forEach((selector) => {
     root.querySelectorAll(selector).forEach((node, index) => {
       scrollables.push({
         selector,
@@ -125,17 +128,17 @@ export function captureRenderState(root) {
   const pageScroller = getPageScroller();
   return {
     scrollables,
-    pageScroll: pageScroller
+    pageScroll: includePageScroll && pageScroller
       ? {
           top: pageScroller.scrollTop,
           left: pageScroller.scrollLeft
         }
       : null,
-    focused: captureFocusedElement(root)
+    focused: includeFocus ? captureFocusedElement(root) : null
   };
 }
 
-export function restoreRenderState(root, snapshot) {
+export function restoreRenderState(root, snapshot, { restorePageScroll = true, restoreFocus = true } = {}) {
   if (!root || !snapshot) {
     return;
   }
@@ -150,7 +153,7 @@ export function restoreRenderState(root, snapshot) {
     target.scrollLeft = item.left;
   }
 
-  if (snapshot.pageScroll) {
+  if (restorePageScroll && snapshot.pageScroll) {
     const pageScroller = getPageScroller();
     if (pageScroller) {
       pageScroller.scrollTop = snapshot.pageScroll.top;
@@ -160,7 +163,7 @@ export function restoreRenderState(root, snapshot) {
 
   if (typeof requestAnimationFrame === "function") {
     requestAnimationFrame(() => {
-      if (snapshot.pageScroll) {
+      if (restorePageScroll && snapshot.pageScroll) {
         const pageScroller = getPageScroller();
         if (pageScroller) {
           pageScroller.scrollTop = snapshot.pageScroll.top;
@@ -168,9 +171,11 @@ export function restoreRenderState(root, snapshot) {
         }
       }
 
-      restoreFocusedElement(root, snapshot.focused);
+      if (restoreFocus) {
+        restoreFocusedElement(root, snapshot.focused);
+      }
     });
-  } else {
+  } else if (restoreFocus) {
     restoreFocusedElement(root, snapshot.focused);
   }
 }

@@ -9,10 +9,10 @@ AraLearn é uma aplicação web executada no navegador. O mesmo núcleo pode ser
 A aplicação trabalha com três camadas principais:
 
 - contrato público em JSON;
-- runtime interno derivado do contrato;
-- interface de geração, leitura, autoria e revisão.
+- estrutura de leitura derivada do contrato;
+- interface de geração, leitura, autoria, revisão e navegação estrutural.
 
-O contrato público descreve a estrutura autoral. O runtime interno deriva dados necessários para renderização, validação visual e interação. A interface apresenta geração de rascunhos, cursos, lições, microssequências, cards, progresso, edição e assistência por IA generativa.
+O contrato público descreve a estrutura autoral. A estrutura de leitura derivada organiza os dados necessários para renderização, validação visual e interação. A interface apresenta geração de rascunhos, cursos, lições, microssequências, cards, progresso, edição e assistência por IA generativa.
 
 A arquitetura foi desenhada para tornar o contexto explícito. Curso, módulo, lição e microssequência formam uma moldura pequena para pedidos de geração ou revisão. Isso reduz ambiguidade, facilita validação e permite que modelos de linguagem mais econômicos sejam usados em tarefas delimitadas.
 
@@ -30,14 +30,15 @@ android/  Wrapper Android em WebView e build do APK
 Diretórios centrais em `src/`:
 
 - `contract/`: validação e representação do contrato público;
-- `model/`: compilação do contrato para estruturas internas;
-- `core/`: runtime de cards, árvores, opções de exercício e carregamento;
+- `model/`: compilação do contrato para estruturas internas e regras de status das microssequências;
+- `core/`: leitura de cards, árvores, opções de exercício e carregamento;
 - `render/`: renderização de cards e documentos;
 - `flowchart/`: projeção, geometria, viewport e prática de fluxogramas;
 - `storage/`: persistência, progresso, importação, exportação e backup;
 - `editor/`: operações de edição no contrato;
-- `assist/`: planejamento, prompts, chamadas e normalização da assistência por IA generativa;
-- `ui/`: navegação, telas, overlays, aba `Gerar`, aba `Cursos`, painel de microssequência e estado da interface.
+- `assist/`: integração com provedor configurado para execução efetiva das chamadas;
+- `generation/`: contratos, prompts, planejamento, recursos, tipos, validação e estado de execução da geração assistida;
+- `ui/`: navegação, telas, overlays, abas da home, painel de microssequência e estado da interface.
 
 ## Hierarquia de domínio
 
@@ -69,7 +70,7 @@ O fluxo básico é:
 JSON público
   -> validação
   -> compilação
-  -> runtime interno
+  -> estrutura de leitura derivada
   -> renderização
   -> interação do usuário
   -> edição ou progresso
@@ -91,7 +92,9 @@ pedido do usuário
 Há dois modos complementares de entrada de conteúdo:
 
 - geração bottom-up: uma dúvida situada em curso, módulo e lição cria rascunhos de microssequências no ponto escolhido;
-- importação top-down: cursos, módulos, lições ou microssequências preparados por pipelines externos entram pelo contrato JSON público.
+- importação top-down: cursos, módulos, lições ou microssequências preparados por processos externos entram pelo contrato JSON público.
+
+Esses dois modos ainda não estão unificados em uma mesma superfície de operação. A geração bottom-up começa na home, enquanto a revisão estrutural e o estudo acontecem na árvore de cursos.
 
 ## Persistência
 
@@ -123,13 +126,15 @@ A navegação estrutural inclui:
 - painel da microssequência;
 - overlays de ações, importação, edição, configuração e histórico.
 
+Na implementação atual, os dois tabs da home são exibidos apenas por ícone. Isso reduz ruído visual, mas aumenta dependência de affordance e memorização. Para discussão de UX, esse detalhe importa porque o ponto de entrada bottom-up não é autoexplicativo por texto.
+
 ## Geração, rascunhos e painel
 
 A aba `Gerar` cria rascunhos diretamente dentro da lição selecionada. O usuário escolhe o contexto na hierarquia, escreve uma dúvida ou comentário e recebe uma escada de microssequências planejada por IA generativa.
 
 Cada item validado dessa escada vira uma microssequência com `status: "draft"` e `cards` vazio.
 
-Rascunhos aparecem na aba `Cursos`, no lugar real da estrutura, mas não entram no runtime de estudo. O runtime coleta apenas microssequências `ready`.
+Rascunhos aparecem na aba `Cursos`, no lugar real da estrutura, mas não entram no modo de estudo. A leitura principal coleta apenas microssequências `ready`.
 
 O painel da microssequência concentra:
 
@@ -140,6 +145,8 @@ O painel da microssequência concentra:
 - navegação pelos cards da versão ativa.
 
 Esse painel é o ponto de curadoria do material gerado ou editado.
+
+O encaixe atual favorece rastreabilidade estrutural, mas ainda cria uma troca de contexto entre gerar e revisar. Para um usuário leigo, a etapa de voltar de `Gerar` para `Cursos` e então localizar a lição pode não ser a trajetória mais simples.
 
 ## Renderização de cards
 
@@ -152,7 +159,7 @@ Os cards são declarados por intenção didática no contrato público e renderi
 - `tree`;
 - `flow`.
 
-O runtime interno pode derivar estruturas auxiliares para interação, como opções de lacunas, árvores projetadas e geometria de fluxogramas. Essas estruturas derivadas não pertencem ao contrato público.
+A estrutura de leitura derivada pode montar recursos auxiliares para interação, como opções de lacunas, árvores projetadas e geometria de fluxogramas. Essas estruturas derivadas não pertencem ao contrato público.
 
 ## Distribuição
 
@@ -166,7 +173,7 @@ A validação automatizada cobre:
 
 - contrato público;
 - exemplo renderizável;
-- compilação para runtime;
+- compilação da estrutura de leitura;
 - renderização de formatos de card;
 - persistência;
 - progresso;
@@ -174,6 +181,13 @@ A validação automatizada cobre:
 - rascunhos e status explícito de microssequências;
 - assistência por IA generativa;
 - fluxogramas e árvores.
+
+Há também cobertura específica para:
+
+- tabs da home;
+- estados `draft` e `ready`;
+- exclusão do estudo por `included: false`;
+- navegação e versões locais no painel da microssequência.
 
 Comandos principais:
 
@@ -186,6 +200,8 @@ npm run validate:example
 
 As decisões futuras devem considerar:
 
+- como aproximar geração bottom-up e navegação top-down sem perder contexto;
+- como reduzir o risco de o usuário se perder entre home, lição e painel da microssequência;
 - como evoluir o versionamento local para percursos auditáveis;
 - quando transformar versões locais em parte exportável;
 - como registrar vínculo entre fonte e card gerado;

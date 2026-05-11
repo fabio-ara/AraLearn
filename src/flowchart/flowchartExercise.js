@@ -249,7 +249,7 @@ export function validateFlowchartExerciseState(projection, currentState = null) 
     }
   });
 
-  next.feedback = incorrect ? "incorrect" : incomplete ? "incomplete" : "correct";
+  next.feedback = incomplete ? "incomplete" : incorrect ? "incorrect" : "correct";
   return { state: next, status: next.feedback };
 }
 

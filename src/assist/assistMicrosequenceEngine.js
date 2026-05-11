@@ -38,7 +38,7 @@ const CARD_ROLES = [
   "review"
 ];
 
-const CONTAINERS = ["say", "ask", "code", "table", "tree", "flow"];
+const CONTAINERS = ["say", "ask", "code", "table", "tree", "flow", "plane", "matrix"];
 
 const SUBJECT_LABELS = {
   programacao: "Programação",
@@ -470,12 +470,31 @@ export function buildAssistDraftPrompt({ promptText, plan, microsequence }) {
     "Use o contexto hierárquico de curso, módulo e lição como base semântica principal.",
     "Escreva de forma neutra e adequada ao contexto didático informado.",
     "Use linguagem natural simples, de iniciante para iniciante.",
+    "Pense como iniciante absoluto: mostre antes de nomear, concretize antes de generalizar e não esconda a ponte do raciocínio.",
     "A microssequência precisa ter explicação, exemplo ou leitura guiada, prática e consolidação.",
+    "Não coloque prática antes da microteoria: lacunas, perguntas de treino e cálculos devem vir depois de explicação ou exemplo simples na mesma microssequência.",
+    "Todo card de prática deve repetir os dados, regras, fórmulas e notações necessárias no próprio card.",
+    "Quando a regra for abstrata ou pouco intuitiva, concretize com caso pequeno, lista curta ou exemplo guiado antes da generalização.",
+    "Quando o card estiver definindo um conceito, acrescente exemplo mínimo, contraste ou quadro curto.",
+    "Quando aparecer notação pouco familiar, traduza para linguagem comum antes de usar em prática ou interpretação.",
+    "Se o card usar recurso visual como `plane`, `table`, `matrix` ou `tree`, coloque no próprio card os valores, passos e conclusão que o aluno deve ler.",
+    "Em recurso visual, destaque só o que o texto estiver nomeando de modo explícito.",
+    "Quando usar `table`, mantenha poucas linhas e poucas colunas; se houver linha ou coluna decisiva, use `table.focus` com `label` curto para guiar o olhar.",
+    "Não use linguagem de bastidor nem referência externa ou volátil como caderno, aula, material, prova, trecho acima ou equivalente; o conteúdo deve caber e fazer sentido no próprio card.",
+    "Não proponha exercício cuja resposta já esteja explicitamente dada no mesmo card por texto, legenda, nota ou fórmula pronta; se necessário, divida em dois cards.",
+    "Não use feedback que já interprete o resultado final se a microssequência ainda não ensinou a montar ou ler a conta; confirme primeiro a etapa operacional.",
+    "Em prática de iniciante, peça o menor salto possível: reconhecer um padrão já mostrado é melhor que exigir combinação de várias ideias novas de uma vez.",
+    "Se a explicação ficar larga ou pesada demais, quebre em mais de um card em vez de concentrar tudo num quadro único.",
+    "Se a figura existir para justificar um resultado, escreva esse resultado explicitamente no próprio card.",
+    "Não use prática que apenas peça para repetir uma resposta já visível por destaque ou posição óbvia.",
+    "Se tabela curta ou lista comparativa deixar o padrão mais visível, use esse formato sem medo de aumentar a altura do card.",
     "Cada text deve ter no máximo duas frases.",
     "Separe frases em parágrafos usando uma linha em branco.",
     "Use uma ideia por card e uma ideia por frase.",
     "Evite jargão sem explicação.",
-    "Não use Markdown. Não explique fora do JSON.",
+    "Não use Markdown estrutural; use apenas destaque inline com acentos graves para símbolos, comandos, conectivos e fórmulas curtas.",
+    "Não repita o title do card como primeira frase, título interno, linha avulsa ou cabeçalho de tabela; o title já aparece na interface.",
+    "Não explique fora do JSON.",
     "Use [[resposta]] apenas quando o plano pedir prática, revisão ou lacuna.",
     "Todo card com [[resposta]] deve enviar wrong com duas ou três alternativas plausíveis.",
     "As lacunas devem ser resolvidas por opções selecionáveis; não produza lacunas que dependam de digitação livre.",
@@ -747,6 +766,29 @@ function convertAssistCardToContract(card) {
     });
   }
 
+  if (container === "plane") {
+    return sanitizeContractCard({
+      title,
+      ...(text ? { say: text } : {}),
+      plane: card?.plane && typeof card.plane === "object" ? card.plane : { vector: [3, 2] },
+      ...(after ? { after } : {})
+    });
+  }
+
+  if (container === "matrix") {
+    return sanitizeContractCard({
+      title,
+      ...(text ? { say: text } : {}),
+      matrix: card?.matrix && typeof card.matrix === "object"
+        ? card.matrix
+        : {
+            name: "A",
+            values: [[1, 2], [3, 4]]
+          },
+      ...(after ? { after } : {})
+    });
+  }
+
   const wrong = ensureChoiceDistractors(card, text);
   return sanitizeContractCard({
     title,
@@ -840,6 +882,29 @@ function createFallbackAssistCard(cardPlan, { plan, promptText, index = 0 } = {}
         { if: `A etapa principal de ${topic} está clara?`, then: [{ output: "Avançar" }], else: [{ process: "Revisar o passo central" }] },
         { end: "Fim" }
       ]
+    };
+  }
+
+  if (container === "plane") {
+    return {
+      role,
+      container,
+      title,
+      text: `Use o plano cartesiano para observar ${topic} como vetor 2D.`,
+      plane: { vector: [3, 2] }
+    };
+  }
+
+  if (container === "matrix") {
+    return {
+      role,
+      container,
+      title,
+      text: `Use a matriz para acompanhar uma etapa curta de ${topic}.`,
+      matrix: {
+        name: "A",
+        values: [[1, 2], [3, 4]]
+      }
     };
   }
 

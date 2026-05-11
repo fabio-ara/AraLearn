@@ -48,6 +48,10 @@ test("exporta e importa envelope principal no formato atual", () => {
   assert.equal(exported.format, "aralearn.storage");
   assert.equal("storageVersion" in exported, false);
   assert.equal(exported.project.contract, "aralearn.contract");
+  assert.equal("microsequenceVersions" in exported, false);
+  assert.equal("structureVersions" in exported, false);
+  assert.equal("cardHistory" in exported, false);
+  assert.equal("cardComments" in exported, false);
 
   const importedStore = createKeyValueMemoryStore();
   const importedStorage = createProjectStorage(importedStore);

@@ -84,6 +84,1417 @@ export function createExampleProjectDocument() {
                     ]
                   }
                 ]
+              },
+              {
+                key: "lesson-exercicios-opcoes",
+                title: "Verificação dos exercícios com opções",
+                description: "Lição de teste para validar cada tipo de exercício com feedback inline e popup final.",
+                microsequences: [
+                  {
+                    key: "microsequence-exercicios-opcoes",
+                    title: "Todos os exercícios com opções",
+                    tags: ["Teste", "Exercícios", "Opções"],
+                    status: "ready",
+                    cards: [
+                      {
+                        key: "card-teste-multipla-escolha",
+                        title: "Múltipla escolha",
+                        ask: "Qual comando lista arquivos no diretório atual?",
+                        answer: "ls",
+                        wrong: ["cd", "pwd", "mkdir"],
+                        after: "Correto! `ls` lista o conteúdo do diretório atual."
+                      },
+                      {
+                        key: "card-teste-paragrafo-opcoes",
+                        title: "Parágrafo com lacuna",
+                        say: "Para mudar de diretório no terminal, use [[cd::cd|ls|pwd]].",
+                        after: "Correto! `cd` altera o diretório atual."
+                      },
+                      {
+                        key: "card-teste-editor-opcoes",
+                        title: "Editor com lacuna",
+                        say: "Complete o comando para inspecionar o estado do repositório Git.",
+                        code: "git [[status::status|commit|clone]]",
+                        language: "bash",
+                        after: "Correto! `git status` mostra o estado atual do repositório."
+                      },
+                      {
+                        key: "card-teste-tabela-opcoes",
+                        title: "Tabela com lacuna",
+                        say: "Escolha o comando correto na célula da tabela.",
+                        table: {
+                          columns: ["Objetivo", "Comando"],
+                          rows: [
+                            ["Listar arquivos", "[[ls::ls|cd|touch]]"],
+                            ["Mostrar diretório atual", "pwd"]
+                          ]
+                        },
+                        after: "Correto! Para listar arquivos, o comando esperado era `ls`."
+                      },
+                      {
+                        key: "card-teste-fluxograma-opcoes",
+                        title: "Fluxograma com opções",
+                        say: "Preencha o fluxograma escolhendo as opções corretas.",
+                        flow: [
+                          { "start": "Início" },
+                          { "process": "Validar", "blank": { "text": ["Validar", "Executar"] } },
+                          {
+                            "if": "Está correto?",
+                            "blank": { "labels": { "yes": ["Sim", "Não"] } },
+                            "then": [{ "output": "Prosseguir" }],
+                            "else": [{ "process": "Revisar" }]
+                          },
+                          { "end": "Fim" }
+                        ],
+                        after: "Correto! O fluxo valida, segue pelo ramo `Sim` e então prossegue."
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                key: "lesson-plane-matrix",
+                title: "Plano cartesiano e matrizes",
+                description: "Lição oficial para inspeção manual dos recursos plane e matrix.",
+                microsequences: [
+                  {
+                    key: "microsequence-plane-matrix",
+                    title: "Vetores e matrizes",
+                    tags: ["Teste", "Plane", "Matrix"],
+                    status: "ready",
+                    cards: [
+                      {
+                        key: "card-plane-vetor",
+                        title: "Vetor como seta",
+                        say: "Observe o vetor v = (3,2).",
+                        plane: {
+                          vector: [3, 2]
+                        }
+                      },
+                      {
+                        key: "card-plane-soma",
+                        title: "Soma de vetores",
+                        say: "Complete o vetor resultante.",
+                        plane: {
+                          sum: [[1, 2], [3, 1]],
+                          result: ["[[4::3|5]]", "[[3::2|4]]"]
+                        }
+                      },
+                      {
+                        key: "card-plane-escalar",
+                        title: "Multiplicação por escalar",
+                        say: "Compare v com 2v.",
+                        plane: {
+                          scale: {
+                            k: 2,
+                            vector: [2, 1]
+                          }
+                        }
+                      },
+                      {
+                        key: "card-plane-distancia",
+                        title: "Distância entre pontos",
+                        say: "Observe a distância entre A e B.",
+                        plane: {
+                          distance: [[1, 1], [4, 5]]
+                        }
+                      },
+                      {
+                        key: "card-matrix-diagonal",
+                        title: "Diagonal principal",
+                        say: "Observe a diagonal principal.",
+                        matrix: {
+                          name: "A",
+                          values: [[1, 2, 3], [4, 5, 6], [7, 8, 9]],
+                          highlight: "mainDiagonal"
+                        }
+                      },
+                      {
+                        key: "card-matrix-celula",
+                        title: "Complete a matriz",
+                        say: "Complete o elemento da linha 2, coluna 3.",
+                        matrix: {
+                          name: "A",
+                          values: [[1, 2, 3], [4, 5, "[[6::5|7|8]]"]],
+                          highlight: "cell:2,3"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      createMatematicaParaInformaticaCourse()
+    ]
+  };
+}
+
+export function createMatematicaParaInformaticaCourse() {
+  return {
+    key: "course-matematica-para-informatica",
+    title: "Matemática para Informática",
+    description: "Trilha progressiva de lógica proposicional, vetores e matrizes com foco em procedimentos e compreensão.",
+    sourceGuide: "Curso para prova com progressão curta, cards autossuficientes e foco em procedimento.",
+    sourceGuideStructured: {
+      audience: "Aluno iniciante que precisa sair do zero e ganhar segurança para a prova de Matemática para Informática.",
+      globalScope:
+        "Cobrir proposições, conectivos, tabelas-verdade, equivalências, vetores como listas e setas, soma, escalar, módulo, distância, produto escalar, cosseno, matrizes, transformações lineares, composição e inversa simples.",
+      globalOutOfScope:
+        "Não incluir lógica de predicados, determinantes avançados, diagonalização, espaços vetoriais abstratos nem provas formais além do nível pedido na disciplina.",
+      sharedNotation:
+        "Destacar `p`, `q`, `r`, `¬`, `∧`, `∨`, `→`, `↔`, `XOR`, `2^n`, `||v||`, `cos θ`, `v1`, `v2`, `î` e `ĵ` com acentos graves e traduzir a leitura quando a notação aparecer pela primeira vez."
+    },
+    modules: [
+      {
+        key: "module-logica-proposicional",
+        title: "Lógica Proposicional",
+        description: "Da leitura de proposições até tabelas-verdade, equivalências e detecção de erro.",
+        sourceGuide: "Módulo de lógica voltado a leitura de conectivos, tabela-verdade e prova de equivalência por linha crítica.",
+        sourceGuideStructured: {
+          moduleScope: "Ler proposições, montar tabelas-verdade, provar equivalências e detectar uma equivalência falsa com linha crítica.",
+          modulePrerequisites: "Começar sem pré-requisito formal, retomando valor lógico, frase declarativa e leitura básica de conectivos.",
+          moduleOutOfScope: "Não entrar em predicados, quantificadores, álgebra booleana simbólica avançada ou provas formais sem tabela-verdade.",
+          lessonProgression: "Ir de proposição e conectivos básicos para tabelas compostas; depois usar a tabela como método de prova, contraste e diagnóstico de erro."
+        },
+        lessons: [
+          {
+            key: "lesson-logica-proposicoes-conectivos",
+            title: "Proposições e conectivos",
+            description: "Primeiro contato com valores lógicos e conectivos básicos.",
+            sourceGuide: "Introduzir proposição, valor lógico e conectivos básicos sem pressupor repertório prévio.",
+            sourceGuideStructured: {
+              lessonGoal: "Fazer o aluno reconhecer proposição, distinguir frase simples e composta e ler `¬`, `∧` e `∨`.",
+              lessonPrerequisites: "Não assumir conteúdo anterior além de leitura básica de frases e noção informal de verdadeiro e falso.",
+              notationRules: "Usar `V`, `F`, `p`, `q`, `¬`, `∧` e `∨` sempre destacados com acentos graves.",
+              commonErrors: "Confundir pergunta ou ordem com proposição e tratar `∨` como exclusivo antes da hora.",
+              masteryGoal: "Identificar exemplos de proposição e completar casos curtos de negação, conjunção e disjunção."
+            },
+            microsequences: [
+              {
+                key: "microsequence-logica-proposicao-valor",
+                title: "Proposição e valor lógico",
+                tags: ["Lógica", "Pré-requisito", "Proposição"],
+                status: "ready",
+                cards: [
+                  {
+                    key: "card-logica-proposicao-definicao",
+                    title: "O que é proposição",
+                    say: "Uma proposição é uma declaração que pode receber exatamente um valor lógico: verdadeira ou falsa.",
+                    table: {
+                      title: "Exemplos rápidos",
+                      columns: ["Frase", "É proposição?", "Por quê?"],
+                      rows: [
+                        ["`2 + 2 = 4`", "sim", "Pode ser julgada como verdadeira."],
+                        ["`A porta está aberta.`", "sim", "Pode ser verdadeira ou falsa."],
+                        ["`Feche a porta.`", "não", "É uma ordem, não uma afirmação."],
+                        ["`Qual é a senha?`", "não", "É uma pergunta, não uma afirmação."]
+                      ]
+                    }
+                  },
+                  {
+                    key: "card-logica-proposicao-nao-exemplo",
+                    title: "Nem toda frase é proposição",
+                    ask: "Qual frase é uma proposição?",
+                    answer: "O sistema está ligado.",
+                    wrong: ["Feche a janela.", "Qual é a senha?", "Estude lógica."],
+                    after: "Aqui a diferença central é ter valor lógico definido: a frase pode ser verdadeira ou falsa, então entra como proposição."
+                  },
+                  {
+                    key: "card-logica-simples-composta",
+                    title: "Simples e composta",
+                    say: "Uma proposição simples não usa conectivo. Uma composta combina proposições simples com conectivos como `¬`, `∧` e `∨`.",
+                    table: {
+                      title: "Comparando os dois casos",
+                      columns: ["Tipo", "Exemplo", "Leitura"],
+                      rows: [
+                        ["simples", "`p`", "uma única afirmação"],
+                        ["composta", "`¬p`", "nega a afirmação `p`"],
+                        ["composta", "`p ∧ q`", "junta `p` e `q` com o conectivo e"],
+                        ["composta", "`p ∨ q`", "junta `p` e `q` com o conectivo ou"]
+                      ]
+                    }
+                  },
+                  {
+                    key: "card-logica-lacuna-valor",
+                    title: "Valor lógico",
+                    say: "Na tabela-verdade, usamos [[V::V|A|1]] para verdadeiro e [[F::F|B|0]] para falso.",
+                    after: "Isso fixa a convenção da disciplina: `V` marca verdadeiro e `F` marca falso em todas as tabelas."
+                  },
+                  {
+                    key: "card-logica-contexto-programacao",
+                    title: "Ligação com programação",
+                    say: "Condições em programas também combinam valores verdadeiro/falso. A ideia lógica é a mesma, mesmo quando a notação muda.",
+                    table: {
+                      title: "Mesma ideia, outra notação",
+                      columns: ["Na lógica", "Na programação", "Leitura"],
+                      rows: [
+                        ["`¬p`", "`!p`", "não `p`"],
+                        ["`p ∧ q`", "`p && q`", "`p` e `q`"],
+                        ["`p ∨ q`", "`p || q`", "`p` ou `q`"]
+                      ]
+                    }
+                  }
+                ]
+              },
+              {
+                key: "microsequence-logica-conectivos-basicos",
+                title: "Negação, e, ou",
+                tags: ["Lógica", "Conectivos", "Tabela-verdade"],
+                status: "ready",
+                cards: [
+                  {
+                    key: "card-logica-negacao-tabela",
+                    title: "Negação",
+                    say: "`¬p` inverte o valor de `p`.",
+                    table: {
+                      columns: ["p", "¬p"],
+                      rows: [
+                        ["V", "F"],
+                        ["F", "V"]
+                      ]
+                    }
+                  },
+                  {
+                    key: "card-logica-conjuncao-tabela",
+                    title: "Conjunção",
+                    say: "`p ∧ q` só é verdadeira quando as duas proposições são verdadeiras.",
+                    table: {
+                      columns: ["p", "q", "p ∧ q"],
+                      rows: [
+                        ["V", "V", "V"],
+                        ["V", "F", "F"],
+                        ["F", "V", "F"],
+                        ["F", "F", "F"]
+                      ]
+                    }
+                  },
+                  {
+                    key: "card-logica-disjuncao-tabela",
+                    title: "Disjunção",
+                    say: "`p ∨ q` é verdadeira quando pelo menos uma proposição é verdadeira.",
+                    table: {
+                      columns: ["p", "q", "p ∨ q"],
+                      rows: [
+                        ["V", "V", "V"],
+                        ["V", "F", "V"],
+                        ["F", "V", "V"],
+                        ["F", "F", "F"]
+                      ]
+                    }
+                  },
+                  {
+                    key: "card-logica-pratica-conjuncao-ou",
+                    title: "Complete e ou",
+                    say: "Use as regras no próprio card: `p ∧ q` só é `V` quando `p` e `q` são `V`; `p ∨ q` é `V` quando pelo menos uma é `V`.",
+                    table: {
+                      columns: ["p", "q", "p ∧ q", "p ∨ q"],
+                      rows: [
+                        ["V", "F", "[[F::F|V]]", "[[V::V|F]]"],
+                        ["F", "F", "[[F::F|V]]", "[[F::F|V]]"]
+                      ]
+                    },
+                    after: "Na linha `V, F`, a conjunção cai para `F`; já a disjunção continua `V` porque basta uma proposição verdadeira."
+                  },
+                  {
+                    key: "card-logica-erro-conjuncao",
+                    title: "Erro comum",
+                    ask: "Se `p = V` e `q = F`, qual é o valor de `p ∧ q`?",
+                    answer: "F",
+                    wrong: ["V", "Depende", "Não tem valor"],
+                    after: "A conjunção funciona como exigência dupla: se um dos lados falha, o resultado inteiro já fica `F`."
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            key: "lesson-logica-tabelas-verdade",
+            title: "Tabelas-verdade",
+            description: "Como montar tabelas para conectivos e fórmulas compostas.",
+            sourceGuide: "Ensinar montagem de tabela-verdade completa e leitura de fórmulas compostas.",
+            sourceGuideStructured: {
+              lessonGoal: "Fazer o aluno montar tabelas-verdade completas, com colunas intermediárias e coluna final.",
+              lessonPrerequisites: "Já reconhecer `V`, `F`, `¬`, `∧`, `∨`, `→`, `↔` e `XOR` nos casos básicos.",
+              notationRules: "Aceitar também `~`, `^`, `v`, `->` e `<-->` como notações equivalentes quando aparecerem nos exercícios.",
+              commonErrors: "Pular colunas intermediárias, errar a linha crítica da implicação e esquecer que `n` proposições geram `2^n` linhas.",
+              masteryGoal: "Resolver fórmulas como `p -> q ^ (~q v r)` e `(p ^ q) v (~p ^ r)` com tabela completa."
+            },
+            microsequences: [
+              {
+                key: "microsequence-logica-implicacao-bicondicional-xor",
+                title: "Implicação, bicondicional e XOR",
+                tags: ["Lógica", "Conectivos", "Prova"],
+                status: "ready",
+                cards: [
+                  {
+                    key: "card-logica-implicacao-regra",
+                    title: "Implicação",
+                    say: "`p → q` só é falsa no caso `p = V` e `q = F`. Essa é a linha crítica da tabela.",
+                    table: {
+                      title: "Leitura por caso",
+                      columns: ["`p`", "`q`", "`p → q`", "Como pensar"],
+                      rows: [
+                        ["V", "V", "V", "`p` aconteceu e `q` também."],
+                        ["V", "F", "F", "`p` aconteceu, mas `q` falhou."],
+                        ["F", "V", "V", "a promessa não foi acionada por `p`."],
+                        ["F", "F", "V", "a promessa não foi acionada por `p`."]
+                      ]
+                    }
+                  },
+                  {
+                    key: "card-logica-implicacao-tabela",
+                    title: "Tabela de p → q",
+                    table: {
+                      columns: ["p", "q", "p → q"],
+                      rows: [
+                        ["V", "V", "V"],
+                        ["V", "F", "F"],
+                        ["F", "V", "V"],
+                        ["F", "F", "V"]
+                      ]
+                    }
+                  },
+                  {
+                    key: "card-logica-bicondicional-tabela",
+                    title: "Bicondicional",
+                    say: "`p ↔ q` é verdadeiro quando `p` e `q` têm o mesmo valor lógico.",
+                    table: {
+                      columns: ["p", "q", "p ↔ q"],
+                      rows: [
+                        ["V", "V", "V"],
+                        ["V", "F", "F"],
+                        ["F", "V", "F"],
+                        ["F", "F", "V"]
+                      ]
+                    }
+                  },
+                  {
+                    key: "card-logica-xor-tabela",
+                    title: "Ou exclusivo",
+                    say: "`p XOR q` é verdadeiro quando exatamente uma das proposições é verdadeira.",
+                    table: {
+                      columns: ["p", "q", "p XOR q"],
+                      rows: [
+                        ["V", "V", "F"],
+                        ["V", "F", "V"],
+                        ["F", "V", "V"],
+                        ["F", "F", "F"]
+                      ]
+                    }
+                  },
+                  {
+                    key: "card-logica-pratica-implicacao-xor",
+                    title: "Linhas críticas",
+                    say: "Complete usando as regras: `p → q` só falha quando `p` é `V` e `q` é `F`; `p XOR q` é `V` quando os valores são diferentes.",
+                    table: {
+                      columns: ["p", "q", "p → q", "p XOR q"],
+                      rows: [
+                        ["V", "F", "[[F::F|V]]", "[[V::V|F]]"],
+                        ["F", "F", "[[V::V|F]]", "[[F::F|V]]"]
+                      ]
+                    },
+                    after:
+                      "Os critérios mudam: a implicação só falha em `V → F`, enquanto o `XOR` marca exatamente os casos em que os valores são diferentes."
+                  }
+                ]
+              },
+              {
+                key: "microsequence-logica-montagem-tabela",
+                title: "Montagem de tabela composta",
+                tags: ["Lógica", "Tabela-verdade", "Procedimento"],
+                status: "ready",
+                cards: [
+                  {
+                    key: "card-logica-por-que-linhas",
+                    title: "Por que 2^n linhas",
+                    say:
+                      "Cada proposição simples dobra o número de combinações possíveis. Por isso, vale a pena olhar alguns casos pequenos antes da regra geral `2^n`.",
+                    table: {
+                      title: "Casos pequenos antes da fórmula",
+                      columns: ["`n`", "Proposições simples", "Linhas da tabela-verdade"],
+                      rows: [
+                        ["1", "`p`", "`2^1 = 2` linhas"],
+                        ["2", "`p`, `q`", "`2^2 = 4` linhas"],
+                        ["3", "`p`, `q`, `r`", "`2^3 = 8` linhas"],
+                        ["4", "`p`, `q`, `r`, `s`", "`2^4 = 16` linhas"]
+                      ]
+                    }
+                  },
+                  {
+                    key: "card-logica-numero-linhas",
+                    title: "Número de linhas",
+                    say: "Com `n` proposições simples, a tabela tem `2^n` linhas. Para `p`, `q` e `r`, são [[8::8|6|4]] linhas.",
+                    after: "Cada proposição dobra o número de casos possíveis; por isso três proposições geram `2 × 2 × 2 = 8` linhas."
+                  },
+                  {
+                    key: "card-logica-ordem-colunas",
+                    title: "Colunas intermediárias",
+                    say: "Para calcular `(p ∧ q) ∨ (¬p ∧ r)`, crie colunas menores antes da coluna final. Isso evita pular etapas e errar sinais.",
+                    table: {
+                      title: "Ordem segura de montagem",
+                      columns: ["Passo", "Coluna", "Motivo"],
+                      rows: [
+                        ["1", "`¬p`", "será usada na parte direita da fórmula"],
+                        ["2", "`p ∧ q`", "resolve a parte esquerda"],
+                        ["3", "`¬p ∧ r`", "resolve a parte direita"],
+                        ["4", "final", "junta as duas partes com `∨`"]
+                      ]
+                    }
+                  },
+                  {
+                    key: "card-logica-formula-composta-parcial",
+                    title: "Uma linha da fórmula",
+                    say: "Complete a linha de `(p ∧ q) ∨ (¬p ∧ r)`.",
+                    table: {
+                      columns: ["p", "q", "r", "¬p", "p ∧ q", "¬p ∧ r", "final"],
+                      rows: [
+                        ["F", "V", "V", "[[V::V|F]]", "[[F::F|V]]", "[[V::V|F]]", "[[V::V|F]]"]
+                      ]
+                    },
+                    after: "Como `p = F`, a coluna `¬p` vira `V`. Com `r = V`, a parte `¬p ∧ r` fecha em `V` e sustenta o resultado final."
+                  },
+                  {
+                    key: "card-logica-exercicio-professor-um",
+                    title: "Exercício completo de tabela",
+                    say: "Use parênteses para tirar a ambiguidade: `p → (q ∧ (¬q ∨ r))`.",
+                    table: {
+                      columns: ["p", "q", "r", "¬q ∨ r", "q ∧ (¬q ∨ r)", "p → (q ∧ (¬q ∨ r))"],
+                      rows: [
+                        ["V", "V", "V", "V", "V", "V"],
+                        ["V", "V", "F", "F", "F", "F"],
+                        ["V", "F", "V", "V", "F", "F"],
+                        ["V", "F", "F", "V", "F", "F"],
+                        ["F", "V", "V", "V", "V", "V"],
+                        ["F", "V", "F", "F", "F", "V"],
+                        ["F", "F", "V", "V", "F", "V"],
+                        ["F", "F", "F", "V", "F", "V"]
+                      ]
+                    }
+                  },
+                  {
+                    key: "card-logica-exercicio-professor-dois",
+                    title: "Treino acumulado",
+                    say: "Complete linhas da fórmula `(p ∧ q) ∨ (¬p ∧ r)`. A coluna `¬p` já está no card para não depender de memória.",
+                    table: {
+                      columns: ["p", "q", "r", "¬p", "p ∧ q", "¬p ∧ r", "final"],
+                      rows: [
+                        ["V", "V", "F", "F", "[[V::V|F]]", "F", "[[V::V|F]]"],
+                        ["F", "F", "V", "V", "F", "[[V::V|F]]", "[[V::V|F]]"],
+                        ["F", "V", "F", "V", "F", "[[F::F|V]]", "[[F::F|V]]"]
+                      ]
+                    },
+                    after: "O fechamento acontece pela disjunção final: basta uma das duas parcelas terminar em `V` para a coluna final também ficar `V`."
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            key: "lesson-logica-equivalencias",
+            title: "Equivalências lógicas",
+            description: "Comparar colunas finais e detectar equivalências falsas.",
+            sourceGuide: "Usar tabela-verdade para provar equivalências, achar contraexemplo e reconhecer padrões cobrados.",
+            sourceGuideStructured: {
+              lessonGoal: "Levar o aluno a verificar equivalências com tabela-verdade, justificar contraexemplo e reconhecer identidades frequentes.",
+              lessonPrerequisites: "Já saber montar tabela com colunas intermediárias e ler a linha crítica de cada conectivo.",
+              notationRules: "Destacar fórmulas como `¬(p ∧ q)`, `¬(p ∨ q)`, `p → q`, `¬q → ¬p`, `XOR` e `↔` em acento grave.",
+              commonErrors: "Concluir por aparência, omitir a linha que separa duas fórmulas ou aplicar De Morgan sem trocar o conectivo.",
+              masteryGoal: "Provar equivalência, negar equivalência com uma linha crítica e resolver identidades rápidas cobradas em prova."
+            },
+            microsequences: [
+              {
+                key: "microsequence-logica-de-morgan",
+                title: "Leis de De Morgan",
+                tags: ["Lógica", "Equivalência", "De Morgan"],
+                status: "ready",
+                cards: [
+                  {
+                    key: "card-logica-equivalencia-definicao",
+                    title: "O que é equivalência",
+                    say: "Duas fórmulas são equivalentes quando as colunas finais têm o mesmo valor em todas as linhas.",
+                    table: {
+                      title: "Como decidir",
+                      columns: ["Situação", "Conclusão"],
+                      rows: [
+                        ["as colunas finais coincidem linha por linha", "há equivalência"],
+                        ["existe uma linha com valores finais diferentes", "não há equivalência"]
+                      ]
+                    }
+                  },
+                  {
+                    key: "card-logica-de-morgan-e",
+                    title: "Negação do e",
+                    say: "A primeira lei de De Morgan troca `∧` por `∨` ao negar cada parte.",
+                    table: {
+                      columns: ["p", "q", "¬(p ∧ q)", "¬p ∨ ¬q"],
+                      rows: [
+                        ["V", "V", "F", "F"],
+                        ["V", "F", "V", "V"],
+                        ["F", "V", "V", "V"],
+                        ["F", "F", "V", "V"]
+                      ]
+                    }
+                  },
+                  {
+                    key: "card-logica-de-morgan-ou",
+                    title: "Negação do ou",
+                    say: "A segunda lei de De Morgan troca `∨` por `∧` ao negar cada parte.",
+                    table: {
+                      columns: ["p", "q", "¬(p ∨ q)", "¬p ∧ ¬q"],
+                      rows: [
+                        ["V", "V", "F", "F"],
+                        ["V", "F", "F", "F"],
+                        ["F", "V", "F", "F"],
+                        ["F", "F", "V", "V"]
+                      ]
+                    }
+                  },
+                  {
+                    key: "card-logica-pratica-de-morgan",
+                    title: "Complete De Morgan",
+                    say: "`¬(p ∧ q)` é equivalente a [[¬p ∨ ¬q::¬p ∨ ¬q|¬p ∧ ¬q|p ∨ q]].",
+                    after: "Ao negar uma conjunção, o conectivo troca para `∨` e cada proposição é negada separadamente."
+                  },
+                  {
+                    key: "card-logica-comparar-colunas",
+                    title: "Como concluir",
+                    say: "No fim, você não precisa repetir a tabela inteira. Basta comparar as duas colunas finais.\n\nSe elas terminam iguais nas mesmas linhas, as fórmulas são equivalentes.",
+                    table: {
+                      title: "Compare só o resultado final",
+                      columns: ["`p → q`", "`¬p ∨ q`"],
+                      rows: [
+                        ["V", "V"],
+                        ["F", "F"],
+                        ["V", "V"]
+                      ],
+                      focus: {
+                        columns: [1, 2],
+                        row: 2,
+                        label: "Olhe a linha crítica: quando um lado dá `F`, o outro também dá `F`."
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                key: "microsequence-logica-equivalencias-de-prova",
+                title: "Equivalências por tabela",
+                tags: ["Lógica", "Prova", "Tabela-verdade"],
+                status: "ready",
+                cards: [
+                  {
+                    key: "card-logica-implicacao-equivalente",
+                    title: "Implicação como ou",
+                    say: "A melhor forma de memorizar é olhar onde a fórmula falha. `p → q` só falha em `p = V` e `q = F`.\n\nQuando você monta `¬p ∨ q`, a falha aparece exatamente na mesma linha.",
+                    table: {
+                      title: "A linha crítica aparece nos dois lados",
+                      columns: ["p", "q", "¬p", "p → q", "¬p ∨ q"],
+                      rows: [
+                        ["V", "V", "F", "V", "V"],
+                        ["V", "F", "F", "F", "F"],
+                        ["F", "V", "V", "V", "V"],
+                        ["F", "F", "V", "V", "V"]
+                      ],
+                      focus: {
+                        row: 2,
+                        columns: [4, 5],
+                        label: "Compare a linha `p = V`, `q = F`: os dois lados terminam em `F`."
+                      }
+                    }
+                  },
+                  {
+                    key: "card-logica-contrapositiva",
+                    title: "Contrapositiva",
+                    say: "Na contrapositiva, você nega os dois lados e troca a ordem. O ponto principal é acompanhar a mesma linha crítica.\n\nSe a falha continua na mesma linha, a equivalência continua valendo.",
+                    table: {
+                      title: "Negar e trocar a ordem preserva a linha crítica",
+                      columns: ["`p`", "`q`", "`¬q`", "`¬p`", "`p → q`", "`¬q → ¬p`"],
+                      rows: [
+                        ["V", "V", "F", "F", "V", "V"],
+                        ["V", "F", "V", "F", "F", "F"],
+                        ["F", "V", "F", "V", "V", "V"],
+                        ["F", "F", "V", "V", "V", "V"]
+                      ],
+                      focus: {
+                        row: 2,
+                        columns: [5, 6],
+                        label: "Na linha crítica, `p → q` e `¬q → ¬p` também terminam em `F`."
+                      }
+                    }
+                  },
+                  {
+                    key: "card-logica-distributividade",
+                    title: "Distributividade",
+                    say: "Na distributividade, a melhor estratégia é resolver uma linha de cada vez. Primeiro calcule `q ∧ r`.\n\nDepois compare só as duas colunas finais: o lado esquerdo e o lado direito já montado.",
+                    table: {
+                      title: "Mesma linha resolvida passo a passo",
+                      columns: ["`p`", "`q`", "`r`", "`q ∧ r`", "`p ∨ (q ∧ r)`", "`p ∨ q`", "`p ∨ r`", "`(p ∨ q) ∧ (p ∨ r)`"],
+                      rows: [
+                        ["F", "V", "F", "F", "F", "V", "F", "F"]
+                      ],
+                      focus: {
+                        columns: [5, 8],
+                        label: "Compare só as duas colunas finais desta linha: ambas terminam em `F`."
+                      }
+                    }
+                  },
+                  {
+                    key: "card-logica-distributividade-pratica",
+                    title: "Uma linha da distributividade",
+                    say: "Complete a linha de `p ∨ (q ∧ r) ≡ (p ∨ q) ∧ (p ∨ r)`. Os dois lados devem terminar com o mesmo valor.",
+                    table: {
+                      columns: ["p", "q", "r", "q ∧ r", "p ∨ (q ∧ r)", "p ∨ q", "p ∨ r", "(p ∨ q) ∧ (p ∨ r)"],
+                      rows: [["F", "V", "F", "F", "[[F::F|V]]", "V", "F", "[[F::F|V]]"]],
+                      focus: {
+                        columns: [5, 8],
+                        label: "Preencha as duas colunas finais e veja se terminam com o mesmo valor."
+                      }
+                    },
+                    after: "Nesta linha, `q ∧ r` já dá `F`, então os dois lados da distributividade acabam fechando no mesmo `F`."
+                  },
+                  {
+                    key: "card-logica-xor-significado",
+                    title: "O que XOR quer dizer",
+                    say: "`p XOR q` fica verdadeiro quando os dois lados são diferentes.\n\nSe um lado é `V` e o outro é `F`, o resultado é `V`.",
+                    table: {
+                      columns: ["`p`", "`q`", "`p XOR q`"],
+                      rows: [
+                        ["V", "F", "V"],
+                        ["F", "V", "V"],
+                        ["V", "V", "F"]
+                      ],
+                      focus: {
+                        rows: [1, 2],
+                        column: 3,
+                        label: "Olhe os dois casos em que os valores são diferentes: o `XOR` dá `V`."
+                      }
+                    }
+                  },
+                  {
+                    key: "card-logica-xor-formulas-ideia",
+                    title: "Como a fórmula copia esse padrão",
+                    say: "A fórmula `(p ∧ ¬q) ∨ (¬p ∧ q)` escreve os dois casos em que os valores são diferentes.\n\nA fórmula `(p ∨ q) ∧ ¬(p ∧ q)` diz a mesma coisa de outro jeito: pelo menos um lado é verdadeiro, mas não os dois ao mesmo tempo.",
+                    table: {
+                      columns: ["Situação", "Fórmula que combina"],
+                      rows: [
+                        ["`p = V`, `q = F`", "`p ∧ ¬q`"],
+                        ["`p = F`, `q = V`", "`¬p ∧ q`"]
+                      ],
+                      focus: {
+                        column: 2,
+                        label: "A segunda coluna mostra exatamente as duas metades que formam o `XOR`."
+                      }
+                    }
+                  },
+                  {
+                    key: "card-logica-xor-equivalencias",
+                    title: "XOR por fórmulas conhecidas",
+                    ask: "Quais fórmulas representam `p XOR q`?",
+                    answer: ["`(p ∨ q) ∧ ¬(p ∧ q)`", "`(p ∧ ¬q) ∨ (¬p ∧ q)`"],
+                    wrong: ["`p ∧ q`", "`p ↔ q`"],
+                    after: "As duas escritas capturam a mesma ideia: exatamente um lado é verdadeiro, nunca os dois ao mesmo tempo."
+                  },
+                  {
+                    key: "card-logica-bicondicional-significado",
+                    title: "O que bicondicional quer dizer",
+                    say: "`p ↔ q` fica verdadeiro quando os dois lados terminam iguais.\n\nSe os dois são `V` ou os dois são `F`, o resultado é `V`.",
+                    table: {
+                      columns: ["`p`", "`q`", "`p ↔ q`"],
+                      rows: [
+                        ["V", "V", "V"],
+                        ["F", "F", "V"],
+                        ["V", "F", "F"]
+                      ],
+                      focus: {
+                        rows: [1, 2],
+                        column: 3,
+                        label: "Olhe os dois casos em que os valores são iguais: o bicondicional dá `V`."
+                      }
+                    }
+                  },
+                  {
+                    key: "card-logica-bicondicional-formulas-ideia",
+                    title: "Como a fórmula copia esse padrão",
+                    say: "A fórmula `(p ∧ q) ∨ (¬p ∧ ¬q)` junta exatamente os dois casos em que os lados ficam iguais.\n\nJá `(p → q) ∧ (q → p)` exige que cada lado implique o outro, o que também só acontece quando os valores combinam.",
+                    table: {
+                      columns: ["Situação", "Fórmula que combina"],
+                      rows: [
+                        ["`p = V`, `q = V`", "`p ∧ q`"],
+                        ["`p = F`, `q = F`", "`¬p ∧ ¬q`"]
+                      ],
+                      focus: {
+                        column: 2,
+                        label: "A segunda coluna mostra as duas metades que formam o bicondicional."
+                      }
+                    }
+                  },
+                  {
+                    key: "card-logica-bicondicional-equivalencias",
+                    title: "Bicondicional por fórmulas conhecidas",
+                    ask: "Quais fórmulas representam `p ↔ q`?",
+                    answer: ["`(p → q) ∧ (q → p)`", "`(p ∧ q) ∨ (¬p ∧ ¬q)`"],
+                    wrong: ["`p XOR q`", "`(p ∨ q) ∧ ¬(p ∧ q)`"],
+                    after: "Nos dois casos, a fórmula só fecha em `V` quando `p` e `q` terminam com o mesmo valor lógico."
+                  },
+                  {
+                    key: "card-logica-nao-equivalencia-associacao",
+                    title: "Nem toda forma parecida equivale",
+                    say: "`(p → q) → r` e `p → (q → r)` não têm a mesma coluna final. A decisão vem da tabela, não da aparência da fórmula.",
+                    table: {
+                      title: "Uma linha que já separa as fórmulas",
+                      columns: ["`p`", "`q`", "`r`", "`(p → q) → r`", "`p → (q → r)`"],
+                      rows: [["F", "V", "F", "F", "V"]]
+                    }
+                  }
+                ]
+              },
+              {
+                key: "microsequence-logica-detectar-erro",
+                title: "Detecção de erro em equivalência",
+                tags: ["Lógica", "Erro comum", "Prova"],
+                status: "ready",
+                cards: [
+                  {
+                    key: "card-logica-erro-enunciado",
+                    title: "Atenção ao enunciado",
+                    say: "Um exercício pede verificar `¬(p ∧ ¬q) ≡ p ∨ q`. Essa equivalência não é verdadeira em todas as linhas."
+                  },
+                  {
+                    key: "card-logica-erro-tabela",
+                    title: "Tabela que encontra o erro",
+                    table: {
+                      columns: ["p", "q", "¬(p ∧ ¬q)", "p ∨ q", "Iguais?"],
+                      rows: [
+                        ["V", "V", "V", "V", "sim"],
+                        ["V", "F", "F", "V", "não"],
+                        ["F", "V", "V", "V", "sim"],
+                        ["F", "F", "V", "F", "não"]
+                      ]
+                    }
+                  },
+                  {
+                    key: "card-logica-erro-correcao",
+                    title: "Forma correta",
+                    say: "Pela lei de De Morgan, `¬(p ∧ ¬q)` é equivalente a [[¬p ∨ q::¬p ∨ q|p ∨ q|¬p ∧ q]].",
+                    after: "A aplicação correta de De Morgan preserva a negação de `p`, troca `∧` por `∨` e transforma `¬q` em `q`."
+                  },
+                  {
+                    key: "card-logica-contraexemplo-pratica",
+                    title: "Linha que derruba a equivalência",
+                    ask: "Para negar `¬(p ∧ ¬q) ≡ p ∨ q`, qual linha da tabela já basta como contraexemplo?",
+                    answer: "`p = V`, `q = F`: esquerda `F` e direita `V`.",
+                    wrong: ["`p = V`, `q = V`: as duas colunas são `V`.", "`p = F`, `q = V`: as duas colunas são `V`.", "Não existe linha; a equivalência é verdadeira."],
+                    after: "Uma única linha divergente já basta: se as colunas finais não coincidem nesse caso, a equivalência inteira cai."
+                  },
+                  {
+                    key: "card-logica-resposta-curta",
+                    title: "Como justificar a conclusão",
+                    say: "Se uma equivalência for falsa, mostre a linha que falha. Uma única linha diferente já basta para negar a equivalência.",
+                    table: {
+                      title: "Modelo de resposta curta",
+                      columns: ["Passo", "Exemplo de escrita"],
+                      rows: [
+                        ["1", "Escolha a linha em que as colunas finais diferem."],
+                        ["2", "Exemplo: `p = V` e `q = F`."],
+                        ["3", "Conclua: esquerda `F`, direita `V`, então não há equivalência."]
+                      ]
+                    }
+                  },
+                  {
+                    key: "card-logica-revisao-final",
+                    title: "Revisão do módulo",
+                    ask: "Qual é o método mais seguro para verificar equivalências neste curso?",
+                    answer: "Comparar as colunas finais da tabela-verdade.",
+                    wrong: ["Memorizar só o formato da fórmula.", "Olhar apenas uma linha.", "Trocar todos os conectivos por XOR."],
+                    after: "A tabela-verdade é o critério mais seguro porque torna visível, linha por linha, onde duas fórmulas coincidem ou se separam."
+                  }
+                ]
+              },
+              {
+                key: "microsequence-logica-padroes-prova",
+                title: "Padrões rápidos de prova",
+                tags: ["Lógica", "Prova", "Revisão"],
+                status: "ready",
+                cards: [
+                  {
+                    key: "card-logica-xor-identidades",
+                    title: "Identidades rápidas de XOR",
+                    say: "Algumas identidades ficam mais fáceis quando você lembra que `XOR` marca diferença.\n\nSe você compara `p` com ele mesmo, não sobra diferença e o resultado vira `F`. Se compara `p` com `F`, o resultado conserva `p`.",
+                    table: {
+                      columns: ["Expressão", "Equivale a", "Ideia"],
+                      rows: [
+                        ["`p XOR p`", "`F`", "os dois lados são sempre iguais"],
+                        ["`p XOR F`", "`p`", "comparar com falso não troca o valor"],
+                        ["`p XOR (p XOR q)`", "`q`", "o segundo `XOR` cancela a diferença já introduzida por `p`"]
+                      ]
+                    }
+                  },
+                  {
+                    key: "card-logica-xor-identidade-pratica",
+                    title: "Cheque uma identidade de XOR",
+                    ask: "Qual afirmação sobre `XOR` está correta?",
+                    answer: "`p XOR F ≡ p`",
+                    wrong: ["`p XOR p ≡ V`", "`p XOR (p XOR q) ≡ p`", "`p XOR q ≡ p ↔ q`"],
+                    after: "A leitura de diferença resolve rápido: comparar com `F` preserva `p`, enquanto comparar `p` com ele mesmo zera para `F`."
+                  },
+                  {
+                    key: "card-logica-bicondicional-identidades",
+                    title: "Identidades rápidas de bicondicional",
+                    say: "O bicondicional marca igualdade de valores.\n\nPor isso `p ↔ p` fica sempre verdadeiro e `p ↔ V` reproduz o próprio `p`.",
+                    table: {
+                      columns: ["Expressão", "Equivale a", "Motivo"],
+                      rows: [
+                        ["`p ↔ p`", "`V`", "um valor sempre coincide com ele mesmo"],
+                        ["`p ↔ V`", "`p`", "`p` só coincide com `V` quando `p` já é `V`"],
+                        ["`p ↔ (p ∧ q)`", "não equivale a `q`", "com `p = F`, o lado esquerdo vira `V` e `q` pode ficar `F`"]
+                      ]
+                    }
+                  },
+                  {
+                    key: "card-logica-bicondicional-falso",
+                    title: "Encontre a afirmação falsa",
+                    ask: "Qual equivalência falha?",
+                    answer: "`p ↔ (p ∧ q) ≡ q`",
+                    wrong: ["`p ↔ p ≡ V`", "`p ↔ V ≡ p`", "`p ↔ q ≡ (p ∧ q) ∨ (¬p ∧ ¬q)`"],
+                    after: "Um teste curto já derruba a frase: com `p = F` e `q = F`, o lado esquerdo vira `V`, mas `q` continua `F`."
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        key: "module-vetores-matrizes",
+        title: "Vetores e Matrizes",
+        description: "Operações com vetores, similaridade, transformações lineares e inversas simples.",
+        sourceGuide: "Módulo de vetores e matrizes com cálculo legível, interpretação geométrica e transformações básicas.",
+        sourceGuideStructured: {
+          moduleScope:
+            "Trabalhar vetor como lista e seta, soma, escalar, módulo, distância, produto escalar, cosseno, matrizes e transformações pedidas na prova.",
+          modulePrerequisites: "Assumir apenas leitura básica de pares ordenados e operações aritméticas simples.",
+          moduleOutOfScope: "Não entrar em espaços vetoriais abstratos, autovalores, diagonalização ou métodos algébricos fora do programa.",
+          lessonProgression: "Começar por leitura e operações, passar por medidas e similaridade e fechar com matrizes, composição e inversa simples."
+        },
+        lessons: [
+          {
+            key: "lesson-vetores-operacoes",
+            title: "Vetores e operações",
+            description: "Vetor como lista, vetor como seta, soma e multiplicação por escalar.",
+            sourceGuide: "Ensinar vetor como lista e seta, soma e escalar em 2D e 4D.",
+            sourceGuideStructured: {
+              lessonGoal: "Fazer o aluno ler coordenadas e resolver soma e multiplicação por escalar em exemplos geométricos e algébricos.",
+              lessonPrerequisites: "Assumir apenas leitura básica de coordenadas e soma/multiplicação de números inteiros.",
+              notationRules: "Destacar vetores como `(x,y)` ou `(a,b,c,d)` e nomeá-los com `v`, `w`, `v1`, `v2` e `c`.",
+              commonErrors: "Trocar a ordem das coordenadas, somar fora da posição correspondente ou esquecer de multiplicar todas as coordenadas pelo escalar.",
+              masteryGoal: "Ler um vetor, somar coordenada a coordenada e interpretar a soma ou o escalonamento no plano."
+            },
+            microsequences: [
+              {
+                key: "microsequence-vetores-lista-seta",
+                title: "Vetor como lista e seta",
+                tags: ["Vetores", "Pré-requisito", "Plano cartesiano"],
+                status: "ready",
+                cards: [
+                  {
+                    key: "card-vetores-lista",
+                    title: "Vetor como lista",
+                    say: "Um vetor pode ser uma lista ordenada de números. Em `(1, 5)`, a primeira coordenada é 1 e a segunda é 5."
+                  },
+                  {
+                    key: "card-vetores-dados",
+                    title: "Vetor como dados",
+                    say: "Em informática, um documento pode virar vetor: cada coordenada conta uma característica, como a ocorrência de uma palavra."
+                  },
+                  {
+                    key: "card-vetores-plano",
+                    title: "Vetor no plano",
+                    say: "Em 2D, o vetor pode aparecer como seta saindo da origem.",
+                    plane: {
+                      vector: [3, 2]
+                    }
+                  },
+                  {
+                    key: "card-vetores-coordenada-lacuna",
+                    title: "Coordenadas",
+                    say: "No vetor `(1,5)`, a coordenada x é [[1::1|5|0]] e a coordenada y é [[5::5|1|0]].",
+                    after: "A leitura depende da ordem: a primeira coordenada ocupa o eixo x e a segunda ocupa o eixo y."
+                  },
+                  {
+                    key: "card-vetores-dimensao",
+                    title: "Dimensão",
+                    ask: "O vetor `(1,2,3,4)` tem quantas coordenadas?",
+                    answer: "4",
+                    wrong: ["2", "3", "8"],
+                    after: "A dimensão aqui é só a contagem de entradas; como há quatro números, o vetor é 4-dimensional."
+                  }
+                ]
+              },
+              {
+                key: "microsequence-vetores-soma-escalar",
+                title: "Soma e multiplicação por escalar",
+                tags: ["Vetores", "Soma", "Escalar"],
+                status: "ready",
+                cards: [
+                  {
+                    key: "card-vetores-soma-regra",
+                    title: "Soma coordenada a coordenada",
+                    say: "Para somar vetores, some as coordenadas correspondentes: `(a,b) + (c,d) = (a+c, b+d)`."
+                  },
+                  {
+                    key: "card-vetores-soma-4d",
+                    title: "Exercício de soma 4D",
+                    say: "Para `v1 = (1,2,3,4)` e `v2 = (2,3,4,5)`, some coordenada por coordenada:\n\n`v1 + v2 = (1+2, 2+3, 3+4, 4+5) = ([[3::3|2|4]], [[5::5|4|6]], [[7::7|6|8]], [[9::9|8|10]])`.",
+                    after: "A soma preserva a posição de cada coordenada: primeira com primeira, segunda com segunda, e assim por diante."
+                  },
+                  {
+                    key: "card-vetores-soma-geometrica-ideia",
+                    title: "Como a soma aparece no plano",
+                    say: "Primeiro desenhe `v=(1,5)` e `w=(8,1)` saindo da origem. Depois copie `w` para começar na ponta de `v`; a ponta dessa cópia mostra a direção de `v+w`.",
+                    plane: {
+                      sum: [[1, 5], [8, 1]],
+                      x: [0, 10],
+                      y: [0, 7]
+                    }
+                  },
+                  {
+                    key: "card-vetores-soma-geometrica",
+                    title: "Encontre a ponta da soma",
+                    say: "Agora use o desenho para encontrar a ponta do vetor soma. A cópia de `w` começa em `(1,5)` e anda `8` unidades em x e `1` em y.",
+                    plane: {
+                      sum: [[1, 5], [8, 1]],
+                      result: ["[[9::9|8|10]]", "[[6::6|5|7]]"],
+                      x: [0, 10],
+                      y: [0, 7]
+                    },
+                    after: "A cópia deslocada de `w` termina em `(9,6)`, e essa ponta marca exatamente o vetor soma no plano."
+                  },
+                  {
+                    key: "card-vetores-escalar-regra",
+                    title: "Multiplicação por escalar",
+                    say: "Multiplicar por escalar significa multiplicar todas as coordenadas pelo mesmo número."
+                  },
+                  {
+                    key: "card-vetores-escalar-plano",
+                    title: "Dobro de um vetor",
+                    say: "`2 · (1,5) = (2,10)`. O vetor dobra de comprimento e mantém o sentido.",
+                    plane: {
+                      scale: {
+                        k: 2,
+                        vector: [1, 5]
+                      },
+                      x: [0, 3],
+                      y: [0, 11]
+                    }
+                  },
+                  {
+                    key: "card-vetores-escalar-lacuna",
+                    title: "Complete o escalar",
+                    say: "Se `v = (2,1)`, multiplique cada coordenada por 3: `3v = [[(6,3)::(6,3)|(5,3)|(6,2)]]`.",
+                    after: "O escalar se distribui em todas as coordenadas; por isso `2` vira `6` e `1` vira `3`."
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            key: "lesson-vetores-medidas",
+            title: "Módulo, distância e similaridade",
+            description: "Comprimento, separação, produto escalar, ortogonalidade e cosseno.",
+            sourceGuide: "Cobrir módulo, distância, produto escalar, ortogonalidade e cosseno com contas completas.",
+            sourceGuideStructured: {
+              lessonGoal: "Ensinar o aluno a distinguir e calcular módulo, distância, produto escalar, ortogonalidade e cosseno.",
+              lessonPrerequisites: "Já ler vetores por coordenadas e executar soma e multiplicação básica.",
+              notationRules: "Traduzir `||v||`, `v · w` e `cos θ` antes de cobrar substituição ou interpretação.",
+              commonErrors: "Confundir módulo com distância, somar em vez de multiplicar no produto escalar ou interpretar o cosseno antes de montar a fração.",
+              masteryGoal: "Escolher a medida correta e montar a conta completa para os vetores cobrados na prova."
+            },
+            microsequences: [
+              {
+                key: "microsequence-vetores-modulo-distancia",
+                title: "Módulo e distância",
+                tags: ["Vetores", "Módulo", "Distância"],
+                status: "ready",
+                cards: [
+                  {
+                    key: "card-vetores-modulo-definicao",
+                    title: "Módulo",
+                    say: "No plano, o módulo é a distância da origem até a ponta do vetor. Para `v=(3,4)`, o cateto horizontal mede `3` e o vertical mede `4`.\n\nEntão o segmento verde é a hipotenusa do triângulo e seu comprimento fica `√(3² + 4²) = 5`.",
+                    plane: {
+                      distance: [[0, 0], [3, 4]],
+                      x: [0, 5],
+                      y: [0, 5]
+                    }
+                  },
+                  {
+                    key: "card-vetores-modulo-pitagoras",
+                    title: "Módulo pelo Teorema de Pitágoras",
+                    say: "Para `v=(3,4)`, os catetos medem `3` e `4`, e `||v||` é a hipotenusa.\n\nPor isso, `||v|| = √(3² + 4²) = √(9 + 16) = √25 = 5`."
+                  },
+                  {
+                    key: "card-vetores-modulo-4d",
+                    title: "Módulo de v1",
+                    say: "Para `v1 = (1,2,3,4)`, escreva a conta inteira:\n\n`||v1|| = √(1² + 2² + 3² + 4²) = √(1 + 4 + 9 + 16) = √[[30::30|14|20]]`.",
+                    after: "O módulo sai da soma dos quadrados das coordenadas; aqui o radicando correto é `30`, então o comprimento fica `√30`."
+                  },
+                  {
+                    key: "card-vetores-distancia-definicao",
+                    title: "Distância",
+                    say: "A distância entre dois pontos é o comprimento do segmento que liga um ao outro. Entre `A=(1,1)` e `B=(4,5)`, o deslocamento horizontal é `3` e o vertical é `4`.\n\nEntão a distância já pode ser lida como a hipotenusa de um triângulo `3-4-5`.",
+                    plane: {
+                      distance: [[1, 1], [4, 5]]
+                    }
+                  },
+                  {
+                    key: "card-vetores-distancia-diferenca",
+                    title: "Diferença que vira distância",
+                    say: "De `(1,1)` para `(4,5)`, a diferença em x é `4-1 = 3` e a diferença em y é `5-1 = 4`.\n\nEntão `d = √(3² + 4²) = 5`."
+                  },
+                  {
+                    key: "card-vetores-distancia-4d",
+                    title: "Distância do exercício",
+                    say: "Para `v1 = (1,2,3,4)` e `v2 = (2,3,4,5)`, resolva direto pela diferença:\n\n`d(v1,v2) = √((1-2)² + (2-3)² + (3-4)² + (4-5)²) = √(1+1+1+1) = √[[4::4|2|8]] = [[2::2|4|√2]]`.",
+                    after: "Como cada coordenada difere em `1`, a soma dos quadrados vira `4` e a distância fecha em `2`."
+                  }
+                ]
+              },
+              {
+                key: "microsequence-vetores-produto-cosseno",
+                title: "Produto escalar e cosseno",
+                tags: ["Vetores", "Produto escalar", "Similaridade"],
+                status: "ready",
+                cards: [
+                  {
+                    key: "card-vetores-produto-regra",
+                    title: "Produto escalar",
+                    say: "No plano, `v=(2,1)` quer dizer `2` em x e `1` em y; `w=(1,3)` quer dizer `1` em x e `3` em y.\n\nProduto escalar multiplica x com x e y com y: `2·1 + 1·3 = 2 + 3 = 5`.",
+                    plane: {
+                      vectors: [[2, 1], [1, 3]],
+                      x: [0, 3],
+                      y: [0, 4]
+                    }
+                  },
+                  {
+                    key: "card-vetores-produto-4d",
+                    title: "Produto escalar do exercício",
+                    say: "Para `v1 = (1,2,3,4)` e `v2 = (2,3,4,5)`, multiplique coordenadas correspondentes e some:\n\n`v1 · v2 = 1·2 + 2·3 + 3·4 + 4·5 = 2 + 6 + 12 + 20 = [[40::40|30|54]]`.",
+                    after: "O procedimento é sempre o mesmo: multiplicar posição por posição e só depois somar os resultados parciais."
+                  },
+                  {
+                    key: "card-vetores-ortogonalidade",
+                    title: "Ortogonalidade",
+                    say: "Dois vetores não nulos são ortogonais quando formam ângulo reto. No plano, `(1,0)` e `(0,1)` apontam em direções perpendiculares.",
+                    plane: {
+                      vectors: [[1, 0], [0, 1]]
+                    }
+                  },
+                  {
+                    key: "card-vetores-ortogonalidade-algebra",
+                    title: "Por que o produto dá zero",
+                    say: "Para os vetores do desenho, `(1,0) · (0,1) = 1·0 + 0·1 = 0 + 0 = 0`. Por isso, eles são ortogonais."
+                  },
+                  {
+                    key: "card-vetores-produto-zero",
+                    title: "Reconheça o caso ortogonal",
+                    ask: "Qual par de vetores tem produto escalar zero?",
+                    answer: "(1,0) e (0,1)",
+                    wrong: ["(1,1) e (1,1)", "(1,2) e (2,1)", "(2,0) e (3,0)"],
+                    after: "Esse é o caso ortogonal clássico: um vetor aponta no eixo x e o outro no eixo y, então o produto escalar zera."
+                  },
+                  {
+                    key: "card-vetores-cosseno-formula",
+                    title: "Cosseno do ângulo",
+                    say: "`||v||` significa o comprimento do vetor `v`. `cos θ` é um número entre `-1` e `1` que diz se dois vetores apontam para direções parecidas.\n\nSe o valor fica perto de `1`, eles apontam quase para o mesmo lado; se fica perto de `0`, fazem quase ângulo reto.",
+                    plane: {
+                      vectors: [[3, 1], [4, 2]],
+                      x: [0, 5],
+                      y: [0, 3]
+                    }
+                  },
+                  {
+                    key: "card-vetores-cosseno-leitura",
+                    title: "Como ler a fórmula",
+                    say: "Na fórmula `cos θ = (v · w) / (||v|| · ||w||)`, a parte de cima usa o produto escalar e a parte de baixo multiplica os comprimentos dos dois vetores.\n\nEntão a leitura é: primeiro calcule `v · w`, depois calcule `||v||` e `||w||`, e só no fim faça a divisão."
+                  },
+                  {
+                    key: "card-vetores-cosseno-exercicio",
+                    title: "Monte o cálculo do cosseno",
+                    say: "No exercício, você já tem as três peças: `v1·v2 = 40`, `||v1|| = √30` e `||v2|| = √54`.\n\nSubstitua essas três peças na fórmula e monte só a fração final: `cos θ = [[40/(√30 · √54)::40/(√30 · √54)|40/30|√54/40]]`.",
+                    after: "O objetivo aqui não era aproximar o número, e sim montar a substituição correta com produto escalar no numerador e módulos no denominador."
+                  },
+                  {
+                    key: "card-vetores-cosseno-interpretacao",
+                    title: "O que esse valor quer dizer",
+                    say: "Depois de montar a conta, note a ideia central: quando o cosseno fica perto de `1`, os vetores apontam para direções muito parecidas.\n\nComo `v1` e `v2` têm coordenadas proporcionais em vários eixos, isso faz sentido neste exemplo."
+                  },
+                  {
+                    key: "card-vetores-similaridade",
+                    title: "Similaridade em dados",
+                    say: "Quando documentos viram vetores de contagem de palavras, o cosseno ajuda a medir se eles apontam em direções parecidas."
+                  },
+                  {
+                    key: "card-vetores-revisao-mista",
+                    title: "Revisão mista",
+                    ask: "Com `v1=(1,2,3,4)` e `v2=(2,3,4,5)`, qual cálculo mede direção parecida em vez de distância direta?",
+                    answer: "Cosseno: `(v1·v2)/(||v1||·||v2||)`.",
+                    wrong: ["Distância: `||v1-v2||`.", "Soma: `v1+v2`.", "Módulo isolado: `||v1||`."],
+                    after: "A diferença é conceitual: distância mede separação entre pontos, enquanto o cosseno compara alinhamento de direção."
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            key: "lesson-matrizes-transformacoes",
+            title: "Matrizes e transformações",
+            description: "Matrizes como regras que transformam vetores, composição e inversa.",
+            sourceGuide: "Ler matrizes, aplicar transformação linear, compor matrizes e entender inversa simples.",
+            sourceGuideStructured: {
+              lessonGoal: "Fazer o aluno ler matrizes, calcular transformações básicas, compor transformações e reconhecer uma inversa simples.",
+              lessonPrerequisites: "Já dominar soma, produto escalar e leitura de coordenadas de vetores.",
+              notationRules: "Usar `T`, `T1`, `T2`, `T(v)`, `T⁻¹`, `I`, `î` e `ĵ` com destaque e manter a ordem da composição explícita.",
+              commonErrors: "Trocar linha por coluna, inverter a ordem em `T2 · T1` ou tratar inversa como outra matriz qualquer sem relação de desfazer.",
+              masteryGoal: "Montar uma saída de matriz-vetor, ler a ordem da composição e verificar ou reconhecer uma inversa simples."
+            },
+            microsequences: [
+              {
+                key: "microsequence-matrizes-soma-forma",
+                title: "Matriz visual e soma",
+                tags: ["Matrizes", "Soma", "Resolução"],
+                status: "ready",
+                cards: [
+                  {
+                    key: "card-matrizes-forma",
+                    title: "Matriz como arranjo",
+                    say: "Uma matriz organiza números por linhas e colunas. A posição de cada entrada importa.",
+                    matrix: {
+                      name: "A",
+                      values: [[1, 2], [3, 4]]
+                    }
+                  },
+                  {
+                    key: "card-matrizes-soma-sequencia",
+                    title: "Soma de matrizes",
+                    say: "Na soma, cada entrada soma com a entrada da mesma posição. Por exemplo, no canto superior esquerdo fazemos `1 + 5 = 6`.\n\nNa entrada de baixo à esquerda, fazemos `3 + 7 = 10` pelo mesmo motivo.",
+                    matrix: {
+                      sequence: [
+                        { name: "A", values: [[1, 2], [3, 4]] },
+                        { connector: "+", name: "B", values: [[5, 6], [7, 8]] },
+                        {
+                          connector: "=",
+                          name: "A+B",
+                          values: [["1 + 5", "2 + 6"], ["3 + 7", "4 + 8"]]
+                        },
+                        { connector: "=", values: [[6, 8], [10, 12]] }
+                      ]
+                    }
+                  },
+                  {
+                    key: "card-matrizes-soma-pratica",
+                    title: "Complete a soma",
+                    say: "Complete a matriz resultado usando as contas que já aparecem no mesmo card.\n\nBasta copiar cada soma para a entrada correspondente.",
+                    matrix: {
+                      sequence: [
+                        { name: "A", values: [[1, 2], [3, 4]] },
+                        { connector: "+", name: "B", values: [[5, 6], [7, 8]] },
+                        {
+                          connector: "=",
+                          name: "A+B",
+                          values: [["1 + 5", "2 + 6"], ["3 + 7", "4 + 8"]]
+                        },
+                        {
+                          connector: "=",
+                          values: [
+                            ["[[6::6|5|7]]", "[[8::8|7|9]]"],
+                            ["[[10::10|9|11]]", "[[12::12|11|13]]"]
+                          ]
+                        }
+                      ]
+                    },
+                    after: "A soma de matrizes preserva a posição de cada entrada: canto com canto, meio com meio e assim por diante."
+                  },
+                  {
+                    key: "card-matrizes-celula-leitura",
+                    title: "Como ler linha e coluna",
+                    say: "Linha 2 é a linha de baixo; coluna 3 é a coluna da direita.\n\nEntão a entrada destacada na posição `(2,3)` vale `6`.",
+                    matrix: {
+                      name: "A",
+                      values: [[1, 2, 3], [4, 5, 6]],
+                      highlight: "cell:2,3"
+                    }
+                  },
+                  {
+                    key: "card-matrizes-celula-pratica",
+                    title: "Leia uma posição",
+                    say: "Agora leia outra posição na mesma matriz. A entrada da linha 2, coluna 2 é [[5::5|4|6]].",
+                    matrix: {
+                      name: "A",
+                      values: [[1, 2, 3], [4, 5, 6]],
+                      highlight: "cell:2,2"
+                    },
+                    after: "A leitura de posição combina linha e coluna: na segunda linha e na segunda coluna, o encontro cai exatamente no `5`."
+                  },
+                  {
+                    key: "card-matrizes-aumentada",
+                    title: "Matriz aumentada",
+                    say: "A barra separa os coeficientes dos termos independentes em um sistema simples.",
+                    matrix: {
+                      name: "S",
+                      values: [[1, 2, 5], [3, 4, 11]],
+                      dividerAfterColumn: 2
+                    }
+                  }
+                ]
+              },
+              {
+                key: "microsequence-transformacao-linear",
+                title: "Transformação linear pela base",
+                tags: ["Matrizes", "Transformação linear", "Base"],
+                status: "ready",
+                cards: [
+                  {
+                    key: "card-transformacao-ideia",
+                    title: "Ideia central",
+                    say: "Uma transformação linear fica determinada pelo destino dos vetores-base `î = (1,0)` e `ĵ = (0,1)`."
+                  },
+                  {
+                    key: "card-transformacao-matriz-colunas",
+                    title: "Imagens da base viram colunas",
+                    say: "Se `T(î) = (3,2,4)` e `T(ĵ) = (5,5,5)`, a matriz da transformação usa essas imagens como colunas.",
+                    matrix: {
+                      name: "T",
+                      values: [[3, 5], [2, 5], [4, 5]]
+                    }
+                  },
+                  {
+                    key: "card-transformacao-vetor-11",
+                    title: "Transformar v = (1,1)",
+                    say: "Com `T(î) = (3,2,4)` e `T(ĵ) = (5,5,5)`, resolva como combinação das imagens da base:\n\n`T(1,1) = 1·T(î) + 1·T(ĵ) = (3,2,4) + (5,5,5) = ([[8::8|7|9]], [[7::7|8|9]], [[9::9|8|7]])`.",
+                    after: "Como as duas coordenadas de `v` valem `1`, o cálculo reaproveita uma cópia inteira de cada coluna da transformação e depois soma coordenada por coordenada."
+                  },
+                  {
+                    key: "card-transformacao-linha-coluna",
+                    title: "Linha com coluna vira um número",
+                    say: "Pegue a primeira linha `(2,1)` e a coluna do vetor `(1,2)`. A conta segue a mesma ideia do produto escalar: multiplicamos posição por posição e depois somamos.\n\n`2·1 + 1·2 = 2 + 2 = 4`. Esse `4` vira uma coordenada da resposta.",
+                    matrix: {
+                      sequence: [
+                        { name: "linha 1", values: [[2, 1]] },
+                        { connector: "×", name: "v", values: [[1], [2]] },
+                        { connector: "=", name: "conta", values: [["2·1 + 1·2"]] },
+                        { connector: "=", name: "saída", values: [[4]] }
+                      ]
+                    }
+                  },
+                  {
+                    key: "card-transformacao-matriz-vetor",
+                    title: "Matriz vezes vetor",
+                    say: "Agora repetimos a mesma conta em cada linha da matriz.\n\nA linha `(2,1)` produz `4` e a linha `(0,3)` produz `6`. Juntando essas duas saídas, obtemos `T(v) = (4,6)`.",
+                    matrix: {
+                      sequence: [
+                        { name: "T", values: [[2, 1], [0, 3]] },
+                        { connector: "×", name: "v", values: [[1], [2]] },
+                        { connector: "=", name: "contas", values: [["2·1 + 1·2"], ["0·1 + 3·2"]] },
+                        { connector: "=", name: "T(v)", values: [[4], [6]] }
+                      ]
+                    }
+                  },
+                  {
+                    key: "card-transformacao-pratica-matriz-vetor",
+                    title: "Complete a saída",
+                    say: "Use a mesma regra nas duas linhas: multiplicar posição por posição e depois somar.\n\nPrimeira linha: `2·1 + 1·2`. Segunda linha: `0·1 + 3·2`. Complete as duas coordenadas de `T(v)`.",
+                    matrix: {
+                      sequence: [
+                        { name: "T", values: [[2, 1], [0, 3]] },
+                        { connector: "×", name: "v", values: [[1], [2]] },
+                        { connector: "=", name: "T(v)", values: [["[[4::4|3|5]]"], ["[[6::6|3|5]]"]] }
+                      ]
+                    },
+                    after: "Cada linha da matriz produz uma coordenada da saída; por isso a primeira soma fecha a coordenada x e a segunda soma fecha a coordenada y."
+                  }
+                ]
+              },
+              {
+                key: "microsequence-composicao-inversa",
+                title: "Composição e inversa",
+                tags: ["Matrizes", "Composição", "Inversa"],
+                status: "ready",
+                cards: [
+                  {
+                    key: "card-composicao-ordem",
+                    title: "Ordem da composição",
+                    say: "Se um vetor passa primeiro por `T1` e depois por `T2`, escrevemos `T2 · T1`. O ponto ajuda a ler a composição, e a transformação que acontece depois fica à esquerda."
+                  },
+                  {
+                    key: "card-composicao-exemplo",
+                    title: "Exemplo de composição",
+                    say: "Veja um vetor concreto: comece com `v = (1,1)`. Primeiro `T1` leva `v` para `(2,2)`. Depois `T2` leva `(2,2)` para `(2,6)`.\n\nIsso é exatamente o que significa `T2 · T1`: aplicar `T1` e depois `T2` no mesmo vetor.",
+                    matrix: {
+                      sequence: [
+                        { name: "T1", values: [[2, 0], [1, 1]] },
+                        { connector: "×", name: "v", values: [[1], [1]] },
+                        { connector: "=", name: "T1(v)", values: [[2], [2]] },
+                        { connector: "→", name: "T2(T1(v))", values: [[2], [6]] }
+                      ]
+                    }
+                  },
+                  {
+                    key: "card-composicao-pratica",
+                    title: "Complete uma entrada",
+                    say: "Agora volte para a matriz composta. Como `T2 · T1` aplica `T1` e depois `T2`, a entrada destacada usa a primeira linha de `T2` com a primeira coluna de `T1`.\n\nA conta é `0·2 + 1·1`.",
+                    matrix: {
+                      sequence: [
+                        { name: "T2", values: [[0, 1], [1, 2]] },
+                        { connector: "×", name: "T1", values: [[2, 0], [1, 1]] },
+                        { connector: "=", name: "T2 · T1", values: [["[[1::1|0|2]]", 1], [4, 2]], highlight: "cell:1,1" }
+                      ]
+                    },
+                    after: "Nesta entrada, a composição usa a primeira linha de `T2` com a primeira coluna de `T1`; essa combinação produz a célula superior esquerda da matriz final."
+                  },
+                  {
+                    key: "card-inversa-identidade",
+                    title: "Inversa desfaz",
+                    say: "Comece com `v = (1,2)`. A matriz `T` leva esse vetor para `(4,6)`. Se depois aplicarmos `T⁻¹`, voltamos para `(1,2)`.\n\nÉ isso que significa dizer que a inversa desfaz a transformação.",
+                    matrix: {
+                      sequence: [
+                        { name: "T", values: [[2, 1], [0, 3]] },
+                        { connector: "×", name: "v", values: [[1], [2]] },
+                        { connector: "=", name: "T(v)", values: [[4], [6]] },
+                        { connector: "→", name: "T⁻¹(T(v))", values: [[1], [2]] }
+                      ]
+                    }
+                  },
+                  {
+                    key: "card-inversa-identidade-matriz",
+                    title: "Desfazer vira identidade",
+                    say: "Quando `T⁻¹` desfaz `T` para qualquer vetor, a composição se comporta como a identidade. Por isso `T⁻¹ · T = I`, e `I` mantém o vetor como está.",
+                    matrix: {
+                      name: "I",
+                      values: [[1, 0], [0, 1]]
+                    }
+                  },
+                  {
+                    key: "card-inversa-exemplo",
+                    title: "Inversa simples",
+                    say: "A matriz da direita foi escolhida para desfazer o efeito da matriz da esquerda. Quando uma leva o vetor para frente e a outra o traz de volta, estamos diante da ideia de inversa.",
+                    matrix: {
+                      sequence: [
+                        { name: "T", values: [[2, 1], [0, 3]] },
+                        { connector: "→", name: "T⁻¹", values: [["1/2", "-1/6"], [0, "1/3"]] }
+                      ]
+                    }
+                  },
+                  {
+                    key: "card-inversa-pratica",
+                    title: "Checagem por identidade",
+                    ask: "Dadas duas matrizes quadradas T e U, como conferir se U é inversa de T?",
+                    answer: "Multiplicar T·U ou U·T e verificar se o resultado é a identidade.",
+                    wrong: ["Somar as duas matrizes.", "Comparar só a diagonal.", "Trocar linhas por colunas sem calcular."],
+                    after: "A identidade é o teste decisivo porque ela mostra que uma matriz desfaz a outra sem alterar o vetor final."
+                  }
+                ]
               }
             ]
           }
@@ -91,4 +1502,17 @@ export function createExampleProjectDocument() {
       }
     ]
   };
+}
+
+export function createMatematicaParaInformaticaProjectDocument() {
+  return {
+    contract: "aralearn.contract",
+    version: 1,
+    kind: "project",
+    courses: [structuredClone(createMatematicaParaInformaticaCourse())]
+  };
+}
+
+export function createLogicPlaneMatrixTestProjectDocument() {
+  return createMatematicaParaInformaticaProjectDocument();
 }

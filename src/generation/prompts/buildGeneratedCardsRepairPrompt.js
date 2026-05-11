@@ -1,4 +1,5 @@
 import { getResourceSchemas } from "../resources/cardResourceDefinitions.js";
+import { buildDidacticRepairPromptLines } from "../didactics/didacticGovernance.js";
 
 function compactJson(value, modelCapabilities = {}) {
   return modelCapabilities?.profile === "compact-json" ? JSON.stringify(value || {}) : JSON.stringify(value || {}, null, 2);
@@ -33,10 +34,28 @@ export function buildGeneratedCardsRepairPrompt({
     "Não altere o tipo didático nem o plano.",
     "Não adicione recursos fora do contrato.",
     "Remova campos inesperados e corrija nomes de campos incorretos.",
+    "Princípio didático: mostre antes de nomear, concretize antes de generalizar e não esconda a ponte do raciocínio.",
     "",
     "Critérios obrigatórios:",
     `- devolva exatamente ${expectedCardCount} cards;`,
     "- cada card deve manter position coerente com cardPlan;",
+    "- prática deve continuar precedida por microteoria ou exemplo já presente na mesma microssequência;",
+    "- cards de prática devem manter dados, regras e fórmulas necessários no próprio card;",
+    "- explicações abstratas demais para iniciante devem ser concretizadas com caso pequeno, exemplo mínimo, quadro curto ou contraste simples;",
+    "- quando houver notação pouco familiar, explique em linguagem comum antes de cobrar uso ou interpretação;",
+    "- se houver recurso visual como `plane`, `table`, `matrix` ou `tree`, traga no próprio card os valores, passos e conclusão que o aluno deve ler;",
+    "- mantenha destaque visual só quando o texto o nomear explicitamente;",
+    "- quando houver `table`, prefira poucas linhas e poucas colunas; se houver linha ou coluna decisiva, use `table.focus` para guiar o olhar;",
+    "- remova linguagem de bastidor ou referência externa/volátil como caderno, aula, prova, material, trecho acima ou equivalentes;",
+    "- remova exercícios cuja resposta já esteja explicitamente revelada no mesmo card por texto, legenda, nota ou fórmula pronta;",
+    "- não mantenha feedback que já interprete o resultado final quando o card ainda não ensinou a montar ou ler a conta; confirme antes a etapa operacional;",
+    "- em prática de iniciante, reduza o salto de raciocínio ao mínimo e prefira reconhecimento de padrão já mostrado;",
+    "- se a explicação estiver larga ou densa demais, quebre em mais cards em vez de comprimir toda a teoria num único quadro;",
+    "- se a figura justificar um resultado, escreva esse resultado explicitamente no próprio card;",
+    "- remova prática que apenas peça para repetir uma resposta já visível por destaque ou posição óbvia;",
+    "- preserve ou acrescente acentos graves em símbolos, conectivos, comandos, fórmulas e nomes curtos;",
+    "- remova repetições do title do card usadas como primeira frase, título interno ou cabeçalho avulso;",
+    ...buildDidacticRepairPromptLines(),
     "- resourceType deve estar em allowedResourceTypes;",
     "- block_gap_fill deve usar segments[].kind/value ou kind/blankId/acceptedBlockIds, blocks[].blockId/label e feedbackAfter;",
     "- multiple_choice deve ter correctOptionId apontando para options[].optionId;",

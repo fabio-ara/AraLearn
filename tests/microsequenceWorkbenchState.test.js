@@ -20,6 +20,8 @@ test("abre o painel da microssequência na última versão e em preview", () => 
 
   assert.deepEqual(state, {
     activeVersionId: "v3",
+    visualizedVersionId: "v3",
+    editBaseVersionId: "v3",
     cardIndex: 4,
     activeWorkbenchPane: "preview"
   });

@@ -1,4 +1,6 @@
 import { validateBlockGapFill, validateTreeResource } from "../resources/cardResourceDefinitions.js";
+import { adaptResourceCardToPublicCard } from "../resources/adaptResourceCardToPublicCard.js";
+import { collectDidacticCardErrors } from "../didactics/didacticGovernance.js";
 
 function getCards(response) {
   if (typeof response === "string") {
@@ -32,6 +34,14 @@ function validateTable(card, errors) {
   });
 }
 
+function validatePublicResourceAdapter(card, errors) {
+  try {
+    adaptResourceCardToPublicCard(card);
+  } catch (error) {
+    errors.push(error instanceof Error ? error.message : "Recurso visual inválido.");
+  }
+}
+
 function validateCardByResource(card, errors) {
   if (!normalizeText(card.title)) errors.push("Card sem title.");
   if (card.resourceType === "paragraph" && !normalizeText(card.text)) errors.push("paragraph sem text.");
@@ -41,6 +51,7 @@ function validateCardByResource(card, errors) {
   if (card.resourceType === "flowchart" && (!Array.isArray(card.nodes) || !Array.isArray(card.edges))) errors.push("flowchart sem nodes ou edges.");
   if (card.resourceType === "block_gap_fill") errors.push(...validateBlockGapFill(card));
   if (card.resourceType === "tree") errors.push(...validateTreeResource(card));
+  if (card.resourceType === "plane" || card.resourceType === "matrix") validatePublicResourceAdapter(card, errors);
 }
 
 export function validateGeneratedCards(response, generationContract) {
@@ -59,6 +70,7 @@ export function validateGeneratedCards(response, generationContract) {
     seenPositions.add(card?.position);
     if (!allowed.has(card?.resourceType)) errors.push(`Recurso fora do permitido: ${card?.resourceType || ""}.`);
     validateCardByResource(card, errors);
+    errors.push(...collectDidacticCardErrors(card));
     const comparable = normalizeText(card?.text || card?.question || card?.prompt || card?.code || card?.title).toLowerCase();
     if (comparable && seenText.has(comparable)) errors.push("Duplicação textual grosseira.");
     if (comparable) seenText.add(comparable);

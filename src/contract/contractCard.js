@@ -11,7 +11,9 @@ export const CONTRACT_CARD_KINDS = Object.freeze([
   "code",
   "table",
   "tree",
-  "flow"
+  "flow",
+  "plane",
+  "matrix"
 ]);
 
 const COMMON_CARD_FIELDS = new Set(["key", "title", "say", "after"]);
@@ -35,6 +37,21 @@ const FLOW_STEP_FIELDS = new Set([
   "do",
   "blank"
 ]);
+const PLANE_INTENT_FIELDS = Object.freeze(["vector", "vectors", "sum", "scale", "distance"]);
+const PLANE_ALLOWED_FIELDS = new Set([
+  "x",
+  "y",
+  "vector",
+  "vectors",
+  "sum",
+  "scale",
+  "distance",
+  "result"
+]);
+const PLANE_SAFE_ALIAS_FIELDS = new Set(["xRange", "yRange", "label", "labels"]);
+const MATRIX_ALLOWED_FIELDS = new Set(["name", "values", "highlight", "dividerAfterColumn", "sequence"]);
+const MATRIX_SEQUENCE_ITEM_ALLOWED_FIELDS = new Set(["connector", "name", "values", "highlight", "dividerAfterColumn"]);
+const DISALLOWED_VISUAL_FIELDS = new Set(["html", "svg", "style", "color", "layout", "width", "height"]);
 
 function fail(message) {
   throw new Error(message);
@@ -124,6 +141,513 @@ function normalizeTableRows(value) {
   });
 }
 
+function normalizePositiveIntegerList(value, fieldName) {
+  if (!Array.isArray(value)) {
+    fail(`Campo obrigatório inválido: "${fieldName}".`);
+  }
+
+  return value.map((item) => {
+    const nextValue = normalizeFiniteNumber(item, fieldName, { integer: true });
+    if (nextValue < 1) {
+      fail(`Campo obrigatório inválido: "${fieldName}".`);
+    }
+    return nextValue;
+  });
+}
+
+function normalizeOptionalPositiveInteger(value, fieldName) {
+  if (value === undefined || value === null || value === "") {
+    return null;
+  }
+
+  const nextValue = normalizeFiniteNumber(value, fieldName, { integer: true });
+  if (nextValue < 1) {
+    fail(`Campo obrigatório inválido: "${fieldName}".`);
+  }
+  return nextValue;
+}
+
+function normalizeOptionalTableFocus(value) {
+  if (value === undefined || value === null) {
+    return null;
+  }
+  if (!isPlainObject(value)) {
+    fail('Campo obrigatório inválido: "table.focus".');
+  }
+
+  assertAllowedFields(value, new Set(["label", "row", "rows", "column", "columns"]), "table.focus");
+
+  const label = normalizeOptionalString(value.label, "table.focus.label");
+  const row = normalizeOptionalPositiveInteger(value.row, "table.focus.row");
+  const rows = value.rows === undefined ? [] : normalizePositiveIntegerList(value.rows, "table.focus.rows");
+  const column = normalizeOptionalPositiveInteger(value.column, "table.focus.column");
+  const columns = value.columns === undefined ? [] : normalizePositiveIntegerList(value.columns, "table.focus.columns");
+
+  if (!label && row === null && !rows.length && column === null && !columns.length) {
+    return null;
+  }
+
+  return {
+    ...(label ? { label } : {}),
+    ...(row !== null ? { row } : {}),
+    ...(rows.length ? { rows } : {}),
+    ...(column !== null ? { column } : {}),
+    ...(columns.length ? { columns } : {})
+  };
+}
+
+function normalizeFiniteNumber(
+  value,
+  fieldName,
+  {
+    integer = false,
+    allowNumericString = true
+  } = {}
+) {
+  let nextValue = value;
+  if (allowNumericString && typeof nextValue === "string" && nextValue.trim() !== "") {
+    nextValue = Number(nextValue.trim());
+  }
+
+  if (!Number.isFinite(nextValue) || (integer && !Number.isInteger(nextValue))) {
+    fail(`Campo obrigatório inválido: "${fieldName}".`);
+  }
+
+  return Number(nextValue);
+}
+
+function normalizeCoordinatePair(value, fieldName) {
+  if (!Array.isArray(value) || value.length !== 2) {
+    fail(`Campo obrigatório inválido: "${fieldName}".`);
+  }
+
+  return value.map((item) => normalizeFiniteNumber(item, fieldName)) ;
+}
+
+function normalizeCoordinatePairList(
+  value,
+  fieldName,
+  {
+    exactItems = null,
+    minItems = 1,
+    maxItems = Number.POSITIVE_INFINITY,
+    allowObjectMap = false
+  } = {}
+) {
+  const source =
+    Array.isArray(value)
+      ? value
+      : allowObjectMap && isPlainObject(value)
+        ? Object.values(value)
+        : null;
+
+  if (!Array.isArray(source)) {
+    fail(`Campo obrigatório inválido: "${fieldName}".`);
+  }
+
+  if ((exactItems !== null && source.length !== exactItems) || source.length < minItems || source.length > maxItems) {
+    fail(`Campo obrigatório inválido: "${fieldName}".`);
+  }
+
+  return source.map((item) => normalizeCoordinatePair(item, fieldName));
+}
+
+function normalizePlaneRange(value, fieldName) {
+  if (!Array.isArray(value) || value.length !== 2) {
+    fail(`Campo opcional inválido: "${fieldName}".`);
+  }
+
+  const min = normalizeFiniteNumber(value[0], fieldName, { integer: true });
+  const max = normalizeFiniteNumber(value[1], fieldName, { integer: true });
+  if (min >= max) {
+    fail(`Campo opcional inválido: "${fieldName}".`);
+  }
+
+  return [min, max];
+}
+
+function isGapText(value) {
+  return typeof value === "string" && value.includes("[[") && value.includes("]]");
+}
+
+function containsMarkupSyntax(value) {
+  return /<\s*\/?\s*[a-z][^>]*>/i.test(String(value || ""));
+}
+
+function normalizePlaneResultCoordinate(value, fieldName) {
+  if (typeof value === "number") {
+    if (!Number.isFinite(value)) {
+      fail(`Campo opcional inválido: "${fieldName}".`);
+    }
+    return Number(value);
+  }
+
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      fail(`Campo opcional inválido: "${fieldName}".`);
+    }
+    if (isGapText(trimmed)) {
+      return trimmed;
+    }
+    const numericValue = Number(trimmed);
+    if (Number.isFinite(numericValue)) {
+      return numericValue;
+    }
+  }
+
+  fail(`Campo opcional inválido: "${fieldName}".`);
+}
+
+function normalizePlaneResult(value) {
+  if (!Array.isArray(value) || value.length !== 2) {
+    fail('Campo opcional inválido: "plane.result".');
+  }
+
+  return value.map((item) => normalizePlaneResultCoordinate(item, "plane.result"));
+}
+
+function pickPlaneIntent(source) {
+  return PLANE_INTENT_FIELDS.find((fieldName) => source[fieldName] !== undefined) || "";
+}
+
+function normalizePlane(input) {
+  if (!isPlainObject(input.plane)) {
+    fail('Campo obrigatório inválido: "plane".');
+  }
+
+  const source = { ...input.plane };
+  if (source.x === undefined && source.xRange !== undefined) {
+    source.x = source.xRange;
+  }
+  if (source.y === undefined && source.yRange !== undefined) {
+    source.y = source.yRange;
+  }
+
+  [...PLANE_SAFE_ALIAS_FIELDS].forEach((fieldName) => {
+    delete source[fieldName];
+  });
+
+  const intent = pickPlaneIntent(source);
+  if (!intent) {
+    fail('Campo obrigatório inválido: "plane".');
+  }
+
+  PLANE_INTENT_FIELDS.forEach((fieldName) => {
+    if (fieldName !== intent) {
+      delete source[fieldName];
+    }
+  });
+
+  assertDisallowedVisualFields(source, "plane");
+  assertAllowedFields(source, PLANE_ALLOWED_FIELDS, "plane");
+
+  const normalized = {};
+  if (source.x !== undefined) {
+    normalized.x = normalizePlaneRange(source.x, "plane.x");
+  }
+  if (source.y !== undefined) {
+    normalized.y = normalizePlaneRange(source.y, "plane.y");
+  }
+
+  if (intent === "vector") {
+    normalized.vector = normalizeCoordinatePair(source.vector, "plane.vector");
+  }
+  if (intent === "vectors") {
+    normalized.vectors = normalizeCoordinatePairList(source.vectors, "plane.vectors", {
+      minItems: 1,
+      maxItems: 4,
+      allowObjectMap: true
+    });
+  }
+  if (intent === "sum") {
+    normalized.sum = normalizeCoordinatePairList(source.sum, "plane.sum", { exactItems: 2 });
+    if (source.result !== undefined) {
+      normalized.result = normalizePlaneResult(source.result);
+    }
+  }
+  if (intent === "scale") {
+    if (!isPlainObject(source.scale)) {
+      fail('Campo obrigatório inválido: "plane.scale".');
+    }
+    assertAllowedFields(source.scale, new Set(["k", "vector"]), "plane.scale");
+    normalized.scale = {
+      k: normalizeFiniteNumber(source.scale.k, "plane.scale.k"),
+      vector: normalizeCoordinatePair(source.scale.vector, "plane.scale.vector")
+    };
+  }
+  if (intent === "distance") {
+    normalized.distance = normalizeCoordinatePairList(source.distance, "plane.distance", { exactItems: 2 });
+  }
+
+  if (intent !== "sum" && source.result !== undefined) {
+    fail('Campo opcional inválido: "plane.result".');
+  }
+
+  return normalized;
+}
+
+function normalizeMatrixCellValue(value, fieldName) {
+  if (typeof value === "number") {
+    if (!Number.isFinite(value)) {
+      fail(`Campo obrigatório inválido: "${fieldName}".`);
+    }
+    return Number(value);
+  }
+
+  if (typeof value !== "string") {
+    fail(`Campo obrigatório inválido: "${fieldName}".`);
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) {
+    fail(`Campo obrigatório inválido: "${fieldName}".`);
+  }
+  if (isGapText(trimmed)) {
+    return trimmed;
+  }
+
+  if (containsMarkupSyntax(trimmed)) {
+    fail(`Campo obrigatório inválido: "${fieldName}".`);
+  }
+
+  const numericValue = Number(trimmed);
+  if (Number.isFinite(numericValue)) {
+    return numericValue;
+  }
+
+  if (trimmed.length > 80) {
+    fail(`Campo obrigatório inválido: "${fieldName}".`);
+  }
+
+  return trimmed;
+}
+
+function normalizeMatrixValues(value) {
+  if (!Array.isArray(value) || !value.length) {
+    fail('Campo obrigatório inválido: "matrix.values".');
+  }
+
+  let columnCount = null;
+  return value.map((row, rowIndex) => {
+    if (!Array.isArray(row) || !row.length) {
+      fail('Campo obrigatório inválido: "matrix.values".');
+    }
+
+    if (columnCount === null) {
+      columnCount = row.length;
+    } else if (row.length !== columnCount) {
+      fail('Campo obrigatório inválido: "matrix.values".');
+    }
+
+    return row.map((cell) => normalizeMatrixCellValue(cell, `matrix.values[${rowIndex}]`));
+  });
+}
+
+function normalizeMatrixHighlightToken(value) {
+  if (typeof value === "string") {
+    const token = value.trim();
+    if (token) {
+      return token;
+    }
+  }
+
+  if (isPlainObject(value)) {
+    if (value.row !== undefined) {
+      return `row:${normalizeFiniteNumber(value.row, "matrix.highlight", { integer: true })}`;
+    }
+    if (value.col !== undefined) {
+      return `col:${normalizeFiniteNumber(value.col, "matrix.highlight", { integer: true })}`;
+    }
+    if (Array.isArray(value.cell) && value.cell.length === 2) {
+      return `cell:${normalizeFiniteNumber(value.cell[0], "matrix.highlight", { integer: true })},${normalizeFiniteNumber(value.cell[1], "matrix.highlight", { integer: true })}`;
+    }
+  }
+
+  fail('Campo opcional inválido: "matrix.highlight".');
+}
+
+function validateMatrixHighlightToken(value, rowCount, columnCount) {
+  const token = normalizeMatrixHighlightToken(value);
+  if (token === "mainDiagonal" || token === "secondaryDiagonal") {
+    return token;
+  }
+
+  const rowMatch = token.match(/^row:(\d+)$/);
+  if (rowMatch) {
+    const rowIndex = Number(rowMatch[1]);
+    if (rowIndex >= 1 && rowIndex <= rowCount) {
+      return token;
+    }
+    fail('Campo opcional inválido: "matrix.highlight".');
+  }
+
+  const colMatch = token.match(/^col:(\d+)$/);
+  if (colMatch) {
+    const columnIndex = Number(colMatch[1]);
+    if (columnIndex >= 1 && columnIndex <= columnCount) {
+      return token;
+    }
+    fail('Campo opcional inválido: "matrix.highlight".');
+  }
+
+  const cellMatch = token.match(/^cell:(\d+),(\d+)$/);
+  if (cellMatch) {
+    const rowIndex = Number(cellMatch[1]);
+    const columnIndex = Number(cellMatch[2]);
+    if (rowIndex >= 1 && rowIndex <= rowCount && columnIndex >= 1 && columnIndex <= columnCount) {
+      return token;
+    }
+    fail('Campo opcional inválido: "matrix.highlight".');
+  }
+
+  fail('Campo opcional inválido: "matrix.highlight".');
+}
+
+function normalizeMatrixHighlight(value, rowCount, columnCount) {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  const source = Array.isArray(value) ? value : [value];
+  const normalized = Array.from(
+    new Set(source.map((item) => validateMatrixHighlightToken(item, rowCount, columnCount)))
+  );
+  if (!normalized.length) {
+    return undefined;
+  }
+
+  return Array.isArray(value) ? normalized : normalized[0];
+}
+
+function normalizeMatrixConnector(value, fieldName) {
+  if (value === undefined || value === null) {
+    return undefined;
+  }
+
+  if (typeof value !== "string") {
+    fail(`Campo opcional inválido: "${fieldName}".`);
+  }
+
+  const token = value.trim();
+  if (!token) {
+    return undefined;
+  }
+
+  const normalized = {
+    "*": "×",
+    "x": "×",
+    "X": "×",
+    "->": "→",
+    "=>": "⇒"
+  }[token] || token;
+
+  if (["=", "+", "-", "×", "·", "→", "⇒"].includes(normalized)) {
+    return normalized;
+  }
+
+  fail(`Campo opcional inválido: "${fieldName}".`);
+}
+
+function normalizeMatrixSinglePayload(source, context = "matrix", { allowConnector = false } = {}) {
+  const allowed = allowConnector ? MATRIX_SEQUENCE_ITEM_ALLOWED_FIELDS : MATRIX_ALLOWED_FIELDS;
+  assertAllowedFields(source, allowed, context);
+  const connector = allowConnector ? normalizeMatrixConnector(source.connector, `${context}.connector`) : undefined;
+
+  const values = normalizeMatrixValues(source.values);
+  const rowCount = values.length;
+  const columnCount = values[0]?.length || 0;
+  const name = normalizeOptionalString(source.name, `${context}.name`);
+  if (name && name.length > 12) {
+    fail(`Campo opcional inválido: "${context}.name".`);
+  }
+  if (name && containsMarkupSyntax(name)) {
+    fail(`Campo opcional inválido: "${context}.name".`);
+  }
+
+  const dividerAfterColumn =
+    source.dividerAfterColumn === undefined
+      ? undefined
+      : normalizeFiniteNumber(source.dividerAfterColumn, `${context}.dividerAfterColumn`, { integer: true });
+
+  if (dividerAfterColumn !== undefined && (dividerAfterColumn < 1 || dividerAfterColumn >= columnCount)) {
+    fail(`Campo opcional inválido: "${context}.dividerAfterColumn".`);
+  }
+
+  return {
+    ...(connector !== undefined ? { connector } : {}),
+    ...(name ? { name } : {}),
+    values,
+    ...(source.highlight !== undefined ? { highlight: normalizeMatrixHighlight(source.highlight, rowCount, columnCount) } : {}),
+    ...(dividerAfterColumn !== undefined ? { dividerAfterColumn } : {})
+  };
+}
+
+function normalizeMatrixSequence(value) {
+  if (!Array.isArray(value) || value.length < 2 || value.length > 5) {
+    fail('Campo obrigatório inválido: "matrix.sequence".');
+  }
+
+  return value.map((item, index) => {
+    if (!isPlainObject(item)) {
+      fail('Campo obrigatório inválido: "matrix.sequence".');
+    }
+    const normalized = normalizeMatrixSinglePayload(item, `matrix.sequence[${index}]`, { allowConnector: true });
+    if (index === 0 && normalized.connector !== undefined) {
+      fail('Campo opcional inválido: "matrix.sequence[0].connector".');
+    }
+    if (index > 0 && normalized.connector === undefined) {
+      normalized.connector = "=";
+    }
+    return normalized;
+  });
+}
+
+function normalizeMatrix(input) {
+  if (!isPlainObject(input.matrix)) {
+    fail('Campo obrigatório inválido: "matrix".');
+  }
+
+  const source = { ...input.matrix };
+  if (source.headers !== undefined) {
+    fail('Campo não suportado em matrix: "headers". Use "table" para tabelas com cabeçalho.');
+  }
+
+  assertDisallowedVisualFields(source, "matrix");
+  assertAllowedFields(source, MATRIX_ALLOWED_FIELDS, "matrix");
+
+  if (source.sequence !== undefined) {
+    if (source.values !== undefined) {
+      fail('Campo obrigatório inválido: "matrix". Use "values" ou "sequence", não ambos.');
+    }
+    if (source.highlight !== undefined || source.dividerAfterColumn !== undefined) {
+      fail('Campo obrigatório inválido: "matrix". Use destaque e divisor dentro de cada item de "sequence".');
+    }
+    const sequenceName = normalizeOptionalString(source.name, "matrix.name");
+    if (sequenceName && (sequenceName.length > 12 || containsMarkupSyntax(sequenceName))) {
+      fail('Campo opcional inválido: "matrix.name".');
+    }
+    return {
+      ...(sequenceName ? { name: sequenceName } : {}),
+      sequence: normalizeMatrixSequence(source.sequence)
+    };
+  }
+
+  if (source.values === undefined) {
+    fail('Campo obrigatório inválido: "matrix.values".');
+  }
+
+  return normalizeMatrixSinglePayload(source);
+}
+
+function assertDisallowedVisualFields(source, context) {
+  Object.keys(source).forEach((fieldName) => {
+    if (DISALLOWED_VISUAL_FIELDS.has(fieldName)) {
+      fail(`Campo não suportado em ${context}: "${fieldName}".`);
+    }
+  });
+}
+
 function assertAllowedFields(source, allowedFields, context = "card") {
   Object.keys(source).forEach((fieldName) => {
     if (!allowedFields.has(fieldName)) {
@@ -134,6 +658,8 @@ function assertAllowedFields(source, allowedFields, context = "card") {
 
 function readCardPrimaryKinds(card) {
   return [
+    isPlainObject(card.plane) ? "plane" : "",
+    isPlainObject(card.matrix) ? "matrix" : "",
     Array.isArray(card.flow) ? "flow" : "",
     isPlainObject(card.tree) ? "tree" : "",
     isPlainObject(card.table) ? "table" : "",
@@ -165,7 +691,9 @@ export function getContractCardKindLabel(card) {
     code: "code",
     table: "table",
     tree: "tree",
-    flow: "flow"
+    flow: "flow",
+    plane: "plane",
+    matrix: "matrix"
   };
   return labels[kind] || "say";
 }
@@ -237,16 +765,18 @@ function normalizeTable(input) {
   if (!isPlainObject(input.table)) {
     fail('Campo obrigatório inválido: "table".');
   }
-  assertAllowedFields(input.table, new Set(["title", "columns", "rows"]), "table");
+  assertAllowedFields(input.table, new Set(["title", "columns", "rows", "focus"]), "table");
 
   const title = normalizeOptionalString(input.table.title, "table.title");
   const columns = normalizeStringArray(input.table.columns, "table.columns", { required: true });
   const rows = normalizeTableRows(input.table.rows);
+  const focus = normalizeOptionalTableFocus(input.table.focus);
 
   return {
     ...(title ? { title } : {}),
     columns,
-    rows
+    rows,
+    ...(focus ? { focus } : {})
   };
 }
 
@@ -647,6 +1177,26 @@ function normalizeFlowCard(input) {
   };
 }
 
+function normalizePlaneCard(input) {
+  const allowed = new Set([...COMMON_CARD_FIELDS, "plane"]);
+  assertAllowedFields(input, allowed);
+
+  return {
+    ...buildBaseCard(input),
+    plane: normalizePlane(input)
+  };
+}
+
+function normalizeMatrixCard(input) {
+  const allowed = new Set([...COMMON_CARD_FIELDS, "matrix"]);
+  assertAllowedFields(input, allowed);
+
+  return {
+    ...buildBaseCard(input),
+    matrix: normalizeMatrix(input)
+  };
+}
+
 export function sanitizeContractCard(input) {
   if (!isPlainObject(input)) {
     fail("Card inválido.");
@@ -680,11 +1230,17 @@ export function sanitizeContractCard(input) {
   if (kind === "flow") {
     return normalizeFlowCard(input);
   }
+  if (kind === "plane") {
+    return normalizePlaneCard(input);
+  }
+  if (kind === "matrix") {
+    return normalizeMatrixCard(input);
+  }
   if (kind === "say") {
     return normalizeSayCard(input);
   }
 
-  fail('Card deve declarar pelo menos um campo de intenção: "say", "ask", "code", "table", "tree" ou "flow".');
+  fail('Card deve declarar pelo menos um campo de intenção: "say", "ask", "code", "table", "tree", "flow", "plane" ou "matrix".');
 }
 
 export function createStarterContractCard(kind = "say") {
@@ -713,7 +1269,11 @@ export function createStarterContractCard(kind = "say") {
       title: "Tabela",
       table: {
         columns: ["Coluna A", "Coluna B"],
-        rows: [["Valor 1", "Valor 2"]]
+        rows: [["Valor 1", "Valor 2"]],
+        focus: {
+          column: 2,
+          label: "Compare a segunda coluna"
+        }
       }
     };
   }
@@ -745,6 +1305,30 @@ export function createStarterContractCard(kind = "say") {
         { process: "Etapa principal" },
         { end: "Fim" }
       ]
+    };
+  }
+
+  if (safeKind === "plane") {
+    return {
+      title: "Plano cartesiano",
+      say: "Observe o vetor no plano.",
+      plane: {
+        vector: [3, 2]
+      }
+    };
+  }
+
+  if (safeKind === "matrix") {
+    return {
+      title: "Matriz",
+      say: "Observe a matriz A.",
+      matrix: {
+        name: "A",
+        values: [
+          [1, 2],
+          [3, 4]
+        ]
+      }
     };
   }
 

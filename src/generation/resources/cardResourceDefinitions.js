@@ -87,7 +87,160 @@ export const CARD_RESOURCE_DEFINITIONS = Object.freeze([
         resourceType: { const: "table" },
         title: { type: "string" },
         columns: { type: "array", minItems: 1, maxItems: 4, items: { type: "string" } },
-        rows: { type: "array", minItems: 1, maxItems: 6, items: { type: "array", items: { type: "string" } } }
+        rows: { type: "array", minItems: 1, maxItems: 6, items: { type: "array", items: { type: "string" } } },
+        focus: {
+          type: "object",
+          properties: {
+            label: { type: "string" },
+            row: { type: "integer", minimum: 1 },
+            rows: { type: "array", items: { type: "integer", minimum: 1 } },
+            column: { type: "integer", minimum: 1 },
+            columns: { type: "array", items: { type: "integer", minimum: 1 } }
+          },
+          additionalProperties: false
+        }
+      },
+      additionalProperties: false
+    }
+  }),
+  Object.freeze({
+    id: "plane",
+    label: "Plano cartesiano",
+    shortDescription: "Vetores ou pontos 2D com grade, eixos, setas e resultante derivados pelo motor.",
+    publicResourceType: "plane",
+    limits: { maxVectors: 4, coordinateRange: [-12, 12] },
+    schema: {
+      type: "object",
+      required: ["resourceType", "title"],
+      properties: {
+        position: { type: "number" },
+        resourceType: { const: "plane" },
+        title: { type: "string" },
+        prompt: { type: "string" },
+        vector: { type: "array", minItems: 2, maxItems: 2, items: { type: "number" } },
+        vectors: {
+          type: "array",
+          minItems: 1,
+          maxItems: 4,
+          items: { type: "array", minItems: 2, maxItems: 2, items: { type: "number" } }
+        },
+        sum: {
+          type: "array",
+          minItems: 2,
+          maxItems: 2,
+          items: { type: "array", minItems: 2, maxItems: 2, items: { type: "number" } }
+        },
+        scale: {
+          type: "object",
+          required: ["k", "vector"],
+          properties: {
+            k: { type: "number" },
+            vector: { type: "array", minItems: 2, maxItems: 2, items: { type: "number" } }
+          },
+          additionalProperties: false
+        },
+        distance: {
+          type: "array",
+          minItems: 2,
+          maxItems: 2,
+          items: { type: "array", minItems: 2, maxItems: 2, items: { type: "number" } }
+        },
+        result: {
+          type: "array",
+          minItems: 2,
+          maxItems: 2,
+          items: { anyOf: [{ type: "number" }, { type: "string" }] }
+        },
+        x: { type: "array", minItems: 2, maxItems: 2, items: { type: "number" } },
+        y: { type: "array", minItems: 2, maxItems: 2, items: { type: "number" } }
+      },
+      additionalProperties: false
+    }
+  }),
+  Object.freeze({
+    id: "matrix",
+    label: "Matriz",
+    shortDescription: "Matriz visual simples ou sequência de matrizes com conectores para resolução no mesmo card.",
+    publicResourceType: "matrix",
+    limits: { maxRows: 4, maxColumns: 5, maxSequenceItems: 5, maxCellChars: 80 },
+    schema: {
+      type: "object",
+      required: ["resourceType", "title"],
+      anyOf: [{ required: ["values"] }, { required: ["sequence"] }],
+      properties: {
+        position: { type: "number" },
+        resourceType: { const: "matrix" },
+        title: { type: "string" },
+        prompt: { type: "string" },
+        name: { type: "string", maxLength: 12 },
+        values: {
+          type: "array",
+          minItems: 1,
+          maxItems: 4,
+          items: {
+            type: "array",
+            minItems: 1,
+            maxItems: 5,
+            items: { anyOf: [{ type: "number" }, { type: "string", maxLength: 80 }] }
+          }
+        },
+        highlight: {
+          anyOf: [
+            { type: "string" },
+            { type: "array", items: { type: "string" } },
+            {
+              type: "object",
+              properties: {
+                row: { type: "number" },
+                col: { type: "number" },
+                cell: { type: "array", minItems: 2, maxItems: 2, items: { type: "number" } }
+              },
+              additionalProperties: false
+            }
+          ]
+        },
+        dividerAfterColumn: { type: "number" },
+        sequence: {
+          type: "array",
+          minItems: 2,
+          maxItems: 5,
+          items: {
+            type: "object",
+            required: ["values"],
+            properties: {
+              connector: { enum: ["=", "+", "-", "×", "*", "·", "→", "->", "⇒"] },
+              name: { type: "string", maxLength: 12 },
+              values: {
+                type: "array",
+                minItems: 1,
+                maxItems: 4,
+                items: {
+                  type: "array",
+                  minItems: 1,
+                  maxItems: 5,
+                  items: { anyOf: [{ type: "number" }, { type: "string", maxLength: 80 }] }
+                }
+              },
+              highlight: {
+                anyOf: [
+                  { type: "string" },
+                  { type: "array", items: { type: "string" } },
+                  {
+                    type: "object",
+                    properties: {
+                      row: { type: "number" },
+                      col: { type: "number" },
+                      cell: { type: "array", minItems: 2, maxItems: 2, items: { type: "number" } }
+                    },
+                    additionalProperties: false
+                  }
+                ]
+              },
+              dividerAfterColumn: { type: "number" }
+            },
+            additionalProperties: false
+          }
+        }
       },
       additionalProperties: false
     }

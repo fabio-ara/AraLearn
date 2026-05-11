@@ -2,13 +2,7 @@ import { createBrowserLocalStorageStore } from "../src/storage/createBrowserLoca
 import { createProjectStorage } from "../src/storage/createProjectStorage.js";
 import { createEditorSession } from "../src/editor/contractEditor.js";
 import { createLessonEditorApp } from "../src/ui/lessonEditorApp.js";
-import { createExampleProjectDocument } from "../src/ui/exampleProjectDocument.js";
-import {
-  EXAMPLE_SEED_KEY,
-  EXAMPLE_SEED_VERSION,
-  shouldHydrateExampleSeed,
-  shouldStoreExampleSeedMetadata
-} from "../src/ui/exampleSeed.js";
+import { createMatematicaParaInformaticaProjectDocument } from "../src/ui/exampleProjectDocument.js";
 
 const root = document.getElementById("app-root");
 if (!root) {
@@ -18,36 +12,42 @@ if (!root) {
 const kvStore = createBrowserLocalStorageStore(globalThis.localStorage);
 const storage = createProjectStorage(kvStore);
 const editor = createEditorSession(storage);
+function shouldSeedTestProject(project) {
+  return !project || !Array.isArray(project.courses) || project.courses.length === 0;
+}
+
+function isOutdatedSeededTestProject(project) {
+  if (!project || !Array.isArray(project.courses) || project.courses.length !== 1) {
+    return false;
+  }
+  const course = project.courses[0];
+  if (course?.key === "course-logica-vetores-matrizes") {
+    return true;
+  }
+  if (course?.key !== "course-matematica-para-informatica") {
+    return false;
+  }
+  const serialized = JSON.stringify(course);
+  return (
+    !serialized.includes("card-logica-erro-enunciado") ||
+    !serialized.includes("card-transformacao-vetor-11") ||
+    !serialized.includes("card-logica-distributividade-pratica") ||
+    !serialized.includes("card-logica-contraexemplo-pratica") ||
+    !serialized.includes("card-vetores-revisao-mista") ||
+    !serialized.includes("formato de caderno")
+  );
+}
 
 let project = null;
-let shouldResetProject = false;
 try {
   project = storage.loadProject();
 } catch (error) {
-  console.warn("Falha ao carregar projeto persistido. Recriando exemplo.", error);
-  shouldResetProject = true;
+  console.warn("Falha ao carregar projeto persistido. Reiniciando vazio.", error);
 }
 
-const exampleProject = createExampleProjectDocument();
-const storedSeedVersion = kvStore.getItem(EXAMPLE_SEED_KEY);
-
-if (
-  shouldResetProject ||
-  shouldHydrateExampleSeed({
-    project,
-    storedSeedVersion
-  })
-) {
-  project = exampleProject;
+if (shouldSeedTestProject(project) || isOutdatedSeededTestProject(project)) {
+  project = createMatematicaParaInformaticaProjectDocument();
   storage.saveProject(project);
-  kvStore.setItem(EXAMPLE_SEED_KEY, EXAMPLE_SEED_VERSION);
-} else if (
-  shouldStoreExampleSeedMetadata({
-    project,
-    storedSeedVersion
-  })
-) {
-  kvStore.setItem(EXAMPLE_SEED_KEY, EXAMPLE_SEED_VERSION);
 }
 
 createLessonEditorApp({

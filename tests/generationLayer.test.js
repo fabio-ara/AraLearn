@@ -30,10 +30,33 @@ import { collectLessonTopicRefs } from "../src/ui/lessonEditorPaths.js";
 
 function samplePlanningContract(extra = {}) {
   return buildMicrosequencePlanningContract({
-    selectedCourse: { key: "course", title: "Curso", description: "Objetivo do curso" },
-    selectedModule: { key: "module", title: "Módulo", description: "Objetivo do módulo" },
-    selectedLesson: { key: "lesson", title: "Lição", description: "Objetivo da lição", lessonTopics: [{ refKey: "micro-git", label: "Git", source: "microsequence" }] },
-    targetMicrosequence: { key: "micro", title: "Microssequência" },
+    selectedCourse: {
+      key: "course",
+      title: "Curso",
+      description: "Objetivo do curso",
+      sourceGuide: "Guia do curso",
+      sourceGuideStructured: { globalScope: "Escopo do curso." }
+    },
+    selectedModule: {
+      key: "module",
+      title: "Módulo",
+      description: "Objetivo do módulo",
+      sourceGuide: "Guia do módulo",
+      sourceGuideStructured: { moduleScope: "Escopo do módulo." }
+    },
+    selectedLesson: {
+      key: "lesson",
+      title: "Lição",
+      description: "Objetivo da lição",
+      sourceGuide: "Guia da lição",
+      sourceGuideStructured: { lessonGoal: "Escopo da lição." },
+      lessonTopics: [{ refKey: "micro-git", label: "Git", source: "microsequence" }],
+      microsequences: [
+        { key: "micro-base", title: "Base", description: "Introdução", tags: ["Git"], status: "ready" },
+        { key: "micro", title: "Microssequência", description: "Alvo", tags: ["add"], status: "draft" }
+      ]
+    },
+    targetMicrosequence: { key: "micro", title: "Microssequência", description: "Alvo", tags: ["add"], status: "draft" },
     selectedLessonTopicRefs: [{ refKey: "micro-git", label: "Git", source: "microsequence" }],
     userPrompt: "Explique git add",
     selectedModel: "gemini-2.5-flash",
@@ -115,7 +138,7 @@ test("catálogo contém recursos e schemas esperados", () => {
   const resources = listCardResourceDefinitions();
   const ids = resources.map((item) => item.id);
 
-  assert.ok(["paragraph", "multiple_choice", "code_editor", "table", "flowchart", "block_gap_fill", "tree"].every((id) => ids.includes(id)));
+  assert.ok(["paragraph", "multiple_choice", "code_editor", "table", "flowchart", "block_gap_fill", "tree", "plane", "matrix"].every((id) => ids.includes(id)));
   assert.ok(resources.every((item) => item.label && item.shortDescription && item.schema && item.limits));
 });
 
@@ -130,8 +153,18 @@ test("planejamento recebe selectedLessonTopicRefs, catálogo leve e valida plano
   assert.equal(contract.selectedLessonTopicRefs[0].label, "Git");
   assert.equal(contract.selectedLessonTopicRefs[0].refKey, "micro-git");
   assert.equal(contract.selectedLessonTopicRefs[0].source, "microsequence");
+  assert.deepEqual(contract.context.path.map((item) => item.level), ["course", "module", "lesson", "microsequence"]);
+  assert.equal(contract.context.sourceGuideLineage[0].sourceGuide, "Guia do curso");
+  assert.equal(contract.context.lesson.microsequenceLine[0].title, "Base");
   assert.ok(contract.availableResources.some((item) => item.id === "paragraph" && !item.schema));
+  assert.equal(contract.didacticGuardrails.generationFlow[0], "microteoria");
+  assert.ok(contract.didacticGuardrails.hardRules.includes("bastidor zero no texto do aluno"));
+  assert.ok(contract.didacticGuardrails.practiceContract.deterministicChecks.some((item) => item.includes("lacuna longa")));
   assert.match(prompt, /selectedLessonTopicRefs são assuntos selecionados no escopo da lição/);
+  assert.match(prompt, /context\.path como a linha hierárquica completa até a microssequência/);
+  assert.match(prompt, /context\.sourceGuideLineage como governança acumulada/);
+  assert.match(prompt, /context\.lesson\.microsequenceLine/);
+  assert.match(prompt, /planeje a sequência microteoria -> exemplo guiado -> prática autossuficiente -> consolidação/);
   assert.equal(validation.ok, true);
   assert.equal(validation.plan.sizeId, "short");
   assert.equal(validation.plan.cardPlan.length, 3);
@@ -201,14 +234,30 @@ test("contrato e prompt de geração usam contexto, tags, tamanho e schemas efet
   const prompt = buildMicrosequenceGenerationPrompt(generationContract, getModelCapabilities("gemini-2.5-flash"));
 
   assert.equal(generationContract.context.course.title, "Curso");
+  assert.equal(generationContract.context.path[3].title, "Microssequência");
+  assert.equal(generationContract.context.sourceGuideLineage[2].sourceGuide, "Guia da lição");
   assert.equal(generationContract.selectedLessonTopicRefs[0].label, "Git");
   assert.equal(generationContract.request.sizeId, "short");
   assert.equal(generationContract.request.cardCount, 3);
+  assert.equal(generationContract.didacticGuardrails.generationFlow[1], "exemplo guiado");
   assert.deepEqual(Object.keys(generationContract.resources.resourceSchemas).sort(), ["block_gap_fill", "multiple_choice", "paragraph", "table"].sort());
   assert.match(prompt, /block_gap_fill/);
   assert.match(prompt, /"kind":"blank"/);
   assert.match(prompt, /não use content, segments\[\]\.text nem blocks\[\]\.text/);
   assert.match(prompt, /selectedLessonTopicRefs como assuntos selecionados no escopo da lição/);
+  assert.match(prompt, /context\.path como a linha hierárquica completa até a microssequência/);
+  assert.match(prompt, /context\.sourceGuideLineage como governança acumulada/);
+  assert.match(prompt, /context\.lesson\.microsequenceLine/);
+  assert.match(prompt, /Não coloque prática antes da microteoria/);
+  assert.match(prompt, /Quando a regra for abstrata ou pouco intuitiva/);
+  assert.match(prompt, /Quando o card definir um conceito/);
+  assert.match(prompt, /Quando aparecer notação pouco familiar/);
+  assert.match(prompt, /Não use linguagem de bastidor nem referência externa ou volátil/);
+  assert.match(prompt, /Não crie exercício cuja resposta já esteja explicitamente revelada no mesmo card/i);
+  assert.match(prompt, /rolagem vertical/);
+  assert.match(prompt, /Trate sourceGuide de curso, módulo e lição como contrato de governança/);
+  assert.match(prompt, /destaque inline com acentos graves em símbolos, conectivos, comandos, fórmulas e nomes curtos/);
+  assert.match(prompt, /Não repita o title do card/);
   assert.doesNotMatch(prompt, /code_editor/);
 });
 
@@ -269,6 +318,97 @@ test("validação de geração aceita cards válidos e rejeita erros estruturais
   assert.equal(
     validateGeneratedCards(
       { cards: [response.cards[0], { ...response.cards[1], feedbackAfter: undefined }, response.cards[2]] },
+      generationContract
+    ).ok,
+    false
+  );
+  assert.equal(
+    validateGeneratedCards(
+      {
+        cards: [
+          { ...response.cards[0], text: "Como vimos no card anterior, use git add." },
+          response.cards[1],
+          response.cards[2]
+        ]
+      },
+      generationContract
+    ).ok,
+    false
+  );
+  assert.equal(
+    validateGeneratedCards(
+      {
+        cards: [
+          response.cards[0],
+          {
+            ...response.cards[1],
+            prompt: "Complete [[um comando inteiro com muitas palavras e contexto extra::x|y]]."
+          },
+          response.cards[2]
+        ]
+      },
+      generationContract
+    ).ok,
+    false
+  );
+});
+
+test("validação de geração aceita plane e matrix gerados", () => {
+  const planningContract = samplePlanningContract({ userSelectedExtraResourceTypes: ["plane", "matrix"] });
+  const generationContract = buildMicrosequenceGenerationContract({
+    planningContract,
+    validatedPlan: validateMicrosequencePlan(
+      validPlan({
+        selectedExtraResourceTypes: ["plane", "matrix"],
+        cardPlan: [
+          { position: 1, role: "mostrar vetor", resourceType: "plane", sourceRefs: [] },
+          { position: 2, role: "mostrar matriz", resourceType: "matrix", sourceRefs: [] },
+          { position: 3, role: "consolidar", resourceType: "multiple_choice", sourceRefs: [] }
+        ]
+      }),
+      planningContract
+    ),
+    selectedModel: "gemini-2.5-flash"
+  });
+  const response = {
+    cards: [
+      { position: 1, resourceType: "plane", title: "Soma visual", prompt: "Observe.", sum: [[1, 2], [3, 1]], result: [4, 3] },
+      {
+        position: 2,
+        resourceType: "matrix",
+        title: "Soma por entrada",
+        sequence: [
+          { name: "A", values: [[1, 2], [3, 4]] },
+          { connector: "+", name: "B", values: [[5, 6], [7, 8]] },
+          { connector: "=", name: "A+B", values: [["1 + 5", "2 + 6"], [10, 12]], highlight: "cell:1,1" }
+        ]
+      },
+      {
+        position: 3,
+        resourceType: "multiple_choice",
+        title: "Teste",
+        question: "Como somar matrizes?",
+        options: [
+          { optionId: "a", label: "Entrada por entrada" },
+          { optionId: "b", label: "Por diagonal apenas" },
+          { optionId: "c", label: "Somando só linhas" }
+        ],
+        correctOptionId: "a",
+        feedback: "A soma ocorre posição por posição."
+      }
+    ]
+  };
+
+  assert.equal(validateGeneratedCards(response, generationContract).ok, true);
+  assert.equal(
+    validateGeneratedCards(
+      {
+        cards: [
+          response.cards[0],
+          { ...response.cards[1], sequence: response.cards[1].sequence.map((item, index) => (index === 2 ? { ...item, highlight: "cell:9,9" } : item)) },
+          response.cards[2]
+        ]
+      },
       generationContract
     ).ok,
     false
@@ -622,10 +762,17 @@ test("fontes resolvem seleção explícita, menção e ambiguidade", () => {
 
 test("planejamento e contrato de edição preservam versão, selectedLessonTopicRefs e recursos", () => {
   const editPlanningContract = buildMicrosequenceEditPlanningContract({
-    selectedCourse: { key: "course", title: "Curso" },
-    selectedModule: { key: "module", title: "Módulo" },
-    selectedLesson: { key: "lesson", title: "Lição", lessonTopics: [{ refKey: "micro-git", label: "Git", source: "microsequence" }] },
-    selectedMicrosequence: { key: "micro", title: "Micro" },
+    selectedCourse: { key: "course", title: "Curso", sourceGuide: "Guia do curso", sourceGuideStructured: { globalScope: "Escopo do curso." } },
+    selectedModule: { key: "module", title: "Módulo", sourceGuide: "Guia do módulo", sourceGuideStructured: { moduleScope: "Escopo do módulo." } },
+    selectedLesson: {
+      key: "lesson",
+      title: "Lição",
+      sourceGuide: "Guia da lição",
+      sourceGuideStructured: { lessonGoal: "Escopo da lição." },
+      lessonTopics: [{ refKey: "micro-git", label: "Git", source: "microsequence" }],
+      microsequences: [{ key: "micro", title: "Micro", description: "Atual", tags: ["Git"], status: "ready" }]
+    },
+    selectedMicrosequence: { key: "micro", title: "Micro", description: "Atual", tags: ["Git"], status: "ready" },
     selectedMicrosequenceVersion: { id: "v1" },
     selectedLessonTopicRefs: [{ refKey: "micro-git", label: "Git", source: "microsequence" }],
     currentCards: [{ key: "c1", title: "Card 1", say: "Texto" }],
@@ -659,6 +806,9 @@ test("planejamento e contrato de edição preservam versão, selectedLessonTopic
   });
 
   assert.equal(editPlanningContract.selectedLessonTopicRefs[0].label, "Git");
+  assert.deepEqual(editPlanningContract.context.path.map((item) => item.level), ["course", "module", "lesson", "microsequence"]);
+  assert.equal(editPlanningContract.context.sourceGuideLineage[2].sourceGuide, "Guia da lição");
+  assert.equal(editPlanningContract.context.lesson.microsequenceLine[0].title, "Micro");
   assert.equal(editContract.selectedLessonTopicRefs[0].label, "Git");
   assert.equal(editPlanningContract.previousVersionsSummary[0].versionId, "v0");
   assert.equal(plan.ok, true);
@@ -820,6 +970,33 @@ test("adaptador tree omite closed vazio antes do contrato público", () => {
 
 test("tree selecionado na UI mapeia para recurso interno tree", () => {
   assert.equal(mapPreferredContainerToResource("tree"), "tree");
+  assert.equal(mapPreferredContainerToResource("plane"), "plane");
+  assert.equal(mapPreferredContainerToResource("matrix"), "matrix");
+});
+
+test("adaptador converte plane e matrix internos para contrato público", () => {
+  const planeCard = adaptResourceCardToPublicCard({
+    resourceType: "plane",
+    title: "Soma visual",
+    prompt: "Observe a soma.",
+    sum: [[1, 2], [3, 1]],
+    result: ["[[4::4|3|5]]", 3]
+  });
+  const matrixCard = adaptResourceCardToPublicCard({
+    resourceType: "matrix",
+    title: "Soma por entrada",
+    prompt: "Some posição por posição.",
+    sequence: [
+      { name: "A", values: [[1, 2], [3, 4]] },
+      { connector: "+", name: "B", values: [[5, 6], [7, 8]] },
+      { connector: "=", name: "A+B", values: [["1 + 5", "2 + 6"], ["[[10::10|9|11]]", 12]], highlight: "cell:2,1" }
+    ]
+  });
+
+  assert.deepEqual(planeCard.plane.sum, [[1, 2], [3, 1]]);
+  assert.equal(planeCard.plane.result[0], "[[4::4|3|5]]");
+  assert.deepEqual(matrixCard.matrix.sequence[2].values[0], ["1 + 5", "2 + 6"]);
+  assert.equal(matrixCard.matrix.sequence[2].highlight, "cell:2,1");
 });
 
 test("selectedLessonTopicRefs usa somente assuntos da lição atual", () => {
