@@ -1274,7 +1274,7 @@ function renderMicrosequenceWorkbenchScreen({
       '<div class="study-action-stack">' +
       '<div class="study-next-wrap workbench-preview-actions">' +
       '<button class="icon-ghost study-comment-btn" type="button" data-action="discard-generated-version" title="Excluir iteração atual" aria-label="Excluir iteração atual">' +
-      renderUiIcon("excluded-state", "generate-submit-icon") +
+      renderUiIcon("remove-state", "generate-submit-icon") +
       "</button>" +
       '<button class="open-mini study-continue-btn" type="button" data-action="accept-generated-version" title="Aceitar iteração atual" aria-label="Aceitar iteração atual">' +
       renderUiIcon("ready-state", "generate-submit-icon") +

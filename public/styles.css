@@ -1421,6 +1421,8 @@ button {
 
 .workbench-preview-pane {
   display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .workbench-preview-pane .editor-card-stage-shell,
@@ -3646,10 +3648,11 @@ button {
 
 .workbench-preview-footer {
   padding:
-    8px
+    0
     0
     0
     0;
+  margin-top: auto;
 }
 
 .workbench-preview-actions {

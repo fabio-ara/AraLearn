@@ -203,5 +203,18 @@ export function renderUiIcon(iconName, className = "ui-icon") {
     );
   }
 
+  if (iconName === "remove-state") {
+    return (
+      '<svg class="' +
+      classes +
+      '" viewBox="0 0 16 16" aria-hidden="true" focusable="false">' +
+      '<g transform="translate(0 1)">' +
+      '<circle cx="8" cy="8" r="5.2" fill="none" stroke="currentColor" stroke-width="1.15" opacity="0.52"></circle>' +
+      '<path d="M5.9 5.9l4.2 4.2M10.1 5.9l-4.2 4.2" fill="none" stroke="currentColor" stroke-width="1.28" stroke-linecap="round"></path>' +
+      "</g>" +
+      "</svg>"
+    );
+  }
+
   return renderUiIcon("preview", classes);
 }
