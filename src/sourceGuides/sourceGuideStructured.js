@@ -246,7 +246,7 @@ export function buildSourceGuideEditorFields(sourceGuide = "", sourceGuideStruct
     hint:
       field.name === "freeNotes"
         ? "Campo auxiliar para autoria humana. Não entra no núcleo estruturado enviado ao modelo quando a governança principal já estiver preenchida."
-        : "Entra na governança estruturada usada pela geração e pela edição assistidas."
+        : ""
   }));
 }
 
