@@ -8,6 +8,7 @@ import {
 export const CONTRACT_NAME = "aralearn.contract";
 export const CONTRACT_VERSION = 1;
 export const CONTRACT_KIND_PROJECT = "project";
+const CONTRACT_SCOPES = new Set(["course", "module", "lesson", "microsequence"]);
 
 function isPlainObject(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
@@ -364,7 +365,7 @@ export function validateContractDocument(document) {
 
   assertAllowedFields(
     document,
-    new Set(["contract", "version", "kind", "courses"]),
+    new Set(["contract", "version", "kind", "scope", "courses"]),
     "$",
     errors,
     "projeto"
@@ -380,6 +381,11 @@ export function validateContractDocument(document) {
 
   if (document.kind !== CONTRACT_KIND_PROJECT) {
     errors.push(makeError("kind", `Kind inválido. Esperado "${CONTRACT_KIND_PROJECT}".`));
+  }
+
+  const scope = document.scope === undefined ? "" : readOptionalString(document.scope, "scope", "scope", errors);
+  if (scope && !CONTRACT_SCOPES.has(scope)) {
+    errors.push(makeError("scope", 'Campo opcional inválido: "scope".'));
   }
 
   const courses = Array.isArray(document.courses) ? document.courses : [];
@@ -405,6 +411,7 @@ export function validateContractDocument(document) {
       contract: CONTRACT_NAME,
       version: CONTRACT_VERSION,
       kind: CONTRACT_KIND_PROJECT,
+      ...(scope ? { scope } : {}),
       courses: normalizedCourses
     }
   };

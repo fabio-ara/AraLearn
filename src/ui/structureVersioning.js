@@ -119,6 +119,7 @@ export function applyStructureVersionSnapshot(project, reference, snapshot) {
             title: snapshot.title || "",
             ...(snapshot.description ? { description: snapshot.description } : {}),
             ...(snapshot.sourceGuide ? { sourceGuide: snapshot.sourceGuide } : {}),
+            ...(snapshot.sourceGuideStructured ? { sourceGuideStructured: structuredClone(snapshot.sourceGuideStructured) } : {}),
             modules: structuredClone(snapshot.modules || [])
           }
         : course
@@ -141,6 +142,7 @@ export function applyStructureVersionSnapshot(project, reference, snapshot) {
                 title: snapshot.title || "",
                 ...(snapshot.description ? { description: snapshot.description } : {}),
                 ...(snapshot.sourceGuide ? { sourceGuide: snapshot.sourceGuide } : {}),
+                ...(snapshot.sourceGuideStructured ? { sourceGuideStructured: structuredClone(snapshot.sourceGuideStructured) } : {}),
                 lessons: structuredClone(snapshot.lessons || [])
               }
             : moduleValue
@@ -172,6 +174,7 @@ export function applyStructureVersionSnapshot(project, reference, snapshot) {
                     title: snapshot.title || "",
                     ...(snapshot.description ? { description: snapshot.description } : {}),
                     ...(snapshot.sourceGuide ? { sourceGuide: snapshot.sourceGuide } : {}),
+                    ...(snapshot.sourceGuideStructured ? { sourceGuideStructured: structuredClone(snapshot.sourceGuideStructured) } : {}),
                     microsequences: structuredClone(snapshot.microsequences || [])
                   }
                 : lesson

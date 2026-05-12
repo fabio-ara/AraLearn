@@ -23,6 +23,8 @@ function createProject() {
           {
             key: "module-a",
             title: "Módulo A",
+            sourceGuide: "Escopo do módulo: base.",
+            sourceGuideStructured: { moduleScope: "base." },
             lessons: [
               {
                 key: "lesson-a",
@@ -91,6 +93,7 @@ test("syncStructureVersionSnapshot cria entrada inicial e mantém a versão ativ
 
   assert.equal(firstEntry.activeVersionId, "v1");
   assert.equal(firstEntry.versions[0].snapshot.title, "Módulo A");
+  assert.deepEqual(firstEntry.versions[0].snapshot.sourceGuideStructured, { moduleScope: "base." });
 
   const nextProject = createProject();
   nextProject.courses[0].modules[0].title = "Módulo Atualizado";
@@ -214,6 +217,7 @@ test("applyStructureVersionSnapshot restaura o snapshot completo do nível selec
       title: "Lição Restaurada",
       description: "Resumo restaurado",
       sourceGuide: "Guia restaurado",
+      sourceGuideStructured: { lessonGoal: "Restaurar guia estruturada." },
       microsequences: [{ key: "micro-b", title: "Mic B", cards: [] }]
     }
   );
@@ -226,6 +230,9 @@ test("applyStructureVersionSnapshot restaura o snapshot completo do nível selec
     nextProject.courses[0].modules[0].lessons[0].microsequences.map((item) => item.key),
     ["micro-b"]
   );
+  assert.deepEqual(nextProject.courses[0].modules[0].lessons[0].sourceGuideStructured, {
+    lessonGoal: "Restaurar guia estruturada."
+  });
   assert.equal(
     project.courses[0].modules[0].lessons[0].title,
     "Lição A"

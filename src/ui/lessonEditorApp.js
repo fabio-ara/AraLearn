@@ -3323,7 +3323,12 @@ export function createLessonEditorApp({ root, storage, editor }) {
       return;
     }
 
-    const parsed = JSON.parse(rawJson);
+    let parsed;
+    try {
+      parsed = JSON.parse(rawJson);
+    } catch {
+      fail("JSON inválido.");
+    }
     const format = detectJsonExchangeFormat(parsed);
 
     if (format === "contract") {
@@ -3351,10 +3356,15 @@ export function createLessonEditorApp({ root, storage, editor }) {
   }
 
   function parseContractDocument(rawJson, scopeLabel) {
-    const parsed = JSON.parse(rawJson);
+    let parsed;
+    try {
+      parsed = JSON.parse(rawJson);
+    } catch {
+      fail("JSON inválido.");
+    }
     const format = detectJsonExchangeFormat(parsed);
     if (format !== "contract") {
-      fail(`Arquivo incompatível para ${scopeLabel}. Use um JSON de curso com contract: "aralearn.contract".`);
+      fail(`Arquivo incompatível para ${scopeLabel}. Use um JSON do AraLearn exportado no nível correto.`);
     }
     return parsed;
   }

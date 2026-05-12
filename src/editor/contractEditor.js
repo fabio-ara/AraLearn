@@ -259,6 +259,42 @@ function createProjectDocument(courses) {
   };
 }
 
+function createScopedProjectDocument(scope, courses) {
+  return {
+    contract: CONTRACT_NAME,
+    version: CONTRACT_VERSION,
+    kind: CONTRACT_KIND_PROJECT,
+    scope,
+    courses
+  };
+}
+
+function inferContractScope(document) {
+  const explicitScope = typeof document?.scope === "string" ? document.scope.trim() : "";
+  if (explicitScope) {
+    return explicitScope;
+  }
+
+  return "course";
+}
+
+function getScopeLabel(scope) {
+  if (scope === "course") return "curso";
+  if (scope === "module") return "módulo";
+  if (scope === "lesson") return "lição";
+  if (scope === "microsequence") return "microssequência";
+  return "conteúdo";
+}
+
+function assertImportScope(document, expectedScope) {
+  const actualScope = inferContractScope(document);
+  if (actualScope === expectedScope) {
+    return;
+  }
+
+  fail(`Este arquivo contém ${getScopeLabel(actualScope)}. Importe dentro do nível correto para ${getScopeLabel(actualScope)}.`);
+}
+
 function createStarterMicrosequence({ title = "Nova microssequência" } = {}) {
   return {
     key: uniqueKey(title, new Set(), "microsequence"),
@@ -379,6 +415,7 @@ export function createCourse(document, input = {}) {
 export function importCourses(document, input = {}) {
   const nextDocument = clone(document);
   const importedDocument = ensureValidDocument(input.document);
+  assertImportScope(importedDocument, "course");
   const importedCourses = Array.isArray(importedDocument.courses) ? importedDocument.courses : [];
 
   if (!importedCourses.length) {
@@ -405,6 +442,7 @@ export function importModules(document, input = {}) {
   const nextDocument = clone(document);
   const course = findCourse(nextDocument, input.courseKey);
   const importedDocument = ensureValidDocument(input.document);
+  assertImportScope(importedDocument, "module");
   const importedModules = importedDocument.courses.flatMap((entry) => entry.modules || []);
 
   if (!importedModules.length) {
@@ -431,6 +469,7 @@ export function importLessons(document, input = {}) {
   const nextDocument = clone(document);
   const { moduleValue } = findModule(nextDocument, input.courseKey, input.moduleKey);
   const importedDocument = ensureValidDocument(input.document);
+  assertImportScope(importedDocument, "lesson");
   const importedLessons = importedDocument.courses.flatMap((course) =>
     (course.modules || []).flatMap((moduleItem) => moduleItem.lessons || [])
   );
@@ -459,6 +498,7 @@ export function importMicrosequences(document, input = {}) {
   const nextDocument = clone(document);
   const { lesson } = findLesson(nextDocument, input.courseKey, input.moduleKey, input.lessonKey);
   const importedDocument = ensureValidDocument(input.document);
+  assertImportScope(importedDocument, "microsequence");
   const importedMicrosequences = importedDocument.courses.flatMap((course) =>
     (course.modules || []).flatMap((moduleItem) =>
       (moduleItem.lessons || []).flatMap((lessonItem) => lessonItem.microsequences || [])
@@ -496,7 +536,7 @@ export function importMicrosequences(document, input = {}) {
 
 export function exportCourseDocument(document, input) {
   const course = findCourse(document, input.courseKey);
-  return ensureValidDocument(createProjectDocument([clone(course)]));
+  return ensureValidDocument(createScopedProjectDocument("course", [clone(course)]));
 }
 
 export function exportModuleDocument(document, input) {
@@ -507,13 +547,10 @@ export function exportModuleDocument(document, input) {
   }
 
   return ensureValidDocument(
-    createProjectDocument([
+    createScopedProjectDocument("module", [
       {
         key: course.key,
         title: course.title,
-        ...(course.description ? { description: course.description } : {}),
-        ...(course.sourceGuide ? { sourceGuide: course.sourceGuide } : {}),
-        ...(course.sourceGuideStructured ? { sourceGuideStructured: clone(course.sourceGuideStructured) } : {}),
         modules: [clone(moduleValue)]
       }
     ])
@@ -532,20 +569,14 @@ export function exportLessonDocument(document, input) {
   }
 
   return ensureValidDocument(
-    createProjectDocument([
+    createScopedProjectDocument("lesson", [
       {
         key: course.key,
         title: course.title,
-        ...(course.description ? { description: course.description } : {}),
-        ...(course.sourceGuide ? { sourceGuide: course.sourceGuide } : {}),
-        ...(course.sourceGuideStructured ? { sourceGuideStructured: clone(course.sourceGuideStructured) } : {}),
         modules: [
           {
             key: moduleValue.key,
             title: moduleValue.title,
-            ...(moduleValue.description ? { description: moduleValue.description } : {}),
-            ...(moduleValue.sourceGuide ? { sourceGuide: moduleValue.sourceGuide } : {}),
-            ...(moduleValue.sourceGuideStructured ? { sourceGuideStructured: clone(moduleValue.sourceGuideStructured) } : {}),
             lessons: [clone(lesson)]
           }
         ]
@@ -570,27 +601,18 @@ export function exportMicrosequenceDocument(document, input) {
   }
 
   return ensureValidDocument(
-    createProjectDocument([
+    createScopedProjectDocument("microsequence", [
       {
         key: course.key,
         title: course.title,
-        ...(course.description ? { description: course.description } : {}),
-        ...(course.sourceGuide ? { sourceGuide: course.sourceGuide } : {}),
-        ...(course.sourceGuideStructured ? { sourceGuideStructured: clone(course.sourceGuideStructured) } : {}),
         modules: [
           {
             key: moduleValue.key,
             title: moduleValue.title,
-            ...(moduleValue.description ? { description: moduleValue.description } : {}),
-            ...(moduleValue.sourceGuide ? { sourceGuide: moduleValue.sourceGuide } : {}),
-            ...(moduleValue.sourceGuideStructured ? { sourceGuideStructured: clone(moduleValue.sourceGuideStructured) } : {}),
             lessons: [
               {
                 key: lesson.key,
                 title: lesson.title,
-                ...(lesson.description ? { description: lesson.description } : {}),
-                ...(lesson.sourceGuide ? { sourceGuide: lesson.sourceGuide } : {}),
-                ...(lesson.sourceGuideStructured ? { sourceGuideStructured: clone(lesson.sourceGuideStructured) } : {}),
                 microsequences: [clone(microsequence)]
               }
             ]
