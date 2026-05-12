@@ -4486,33 +4486,9 @@ button {
 }
 
 .generator-preview-stage {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(220px, 280px);
-  grid-template-areas:
-    "toggle toggle"
-    "card status";
-  align-items: stretch;
-  gap: 10px;
   flex: 1;
   min-height: 0;
-  overflow: auto;
-  min-width: 0;
-}
-
-.generator-preview-stage > .assist-preview-actions {
-  grid-area: toggle;
-  justify-content: flex-start;
-}
-
-.generator-preview-stage > .editor-card-stage-shell {
-  grid-area: card;
-  min-width: 0;
-}
-
-.generator-preview-stage > .assist-status-panel {
-  grid-area: status;
-  align-self: stretch;
-  min-width: 0;
+  overflow: hidden;
 }
 
 .generator-preview-stage .card-portrait-body {
@@ -5440,23 +5416,6 @@ button {
     height: 42px;
   }
 
-  .generator-preview-stage {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-areas:
-      "toggle"
-      "card"
-      "status";
-    align-content: start;
-    overflow: visible;
-  }
-
-  .generator-preview-stage > .assist-preview-actions {
-    justify-content: flex-start;
-  }
-
-  .generator-preview-stage > .editor-card-stage-shell {
-    min-height: clamp(280px, 42dvh, 420px);
-  }
 }
 
 .assist-status-panel.is-warning {
