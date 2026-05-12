@@ -4,7 +4,7 @@ import { listCardResourceSummaries } from "../resources/cardResourceDefinitions.
 import { getModelCapabilities } from "../providers/modelCapabilities.js";
 import { resolveReferencedSources } from "../sources/resolveReferencedSources.js";
 import { normalizeSelectedLessonTopicRefs } from "../tags/selectedLessonTopicRefs.js";
-import { buildDidacticGuardrails } from "../didactics/didacticGovernance.js";
+import { buildDidacticGuardrails, buildLessonRequestGovernance } from "../didactics/didacticGovernance.js";
 import {
   buildSourceGuideTextForModel,
   sanitizeSourceGuideStructuredForModel,
@@ -81,6 +81,7 @@ export function buildMicrosequencePlanningContract({
 }) {
   const capabilities = getModelCapabilities(selectedModel);
   const resolvedSources = resolveReferencedSources({ userPrompt, attachedSources, userSelectedSourceIds });
+  const lessonGuideStructured = sourceGuideStructuredForModel(selectedLesson, SOURCE_GUIDE_LEVELS.LESSON) || {};
   const selectedTopics = normalizeSelectedLessonTopicRefs({
     selectedLessonTopicRefs,
     selectedLessonScopeTagRefs,
@@ -181,6 +182,7 @@ export function buildMicrosequencePlanningContract({
       userFixedTypeId: userFixedTypeId || null,
       userSelectedExtraResourceTypes: [...userSelectedExtraResourceTypes]
     },
+    requestGovernance: buildLessonRequestGovernance(lessonGuideStructured),
     availableTypes: resolveAvailableTypes(userFixedTypeId),
     availableSizes: listMicrosequenceSizes().map(({ id, cardCount }) => ({ id, cardCount })),
     availableResources: listCardResourceSummaries(),

@@ -353,6 +353,8 @@ Fluxo implementado para gerar ou revisar cards no painel:
 14. quando a substituição cria uma iteração nova, o painel expõe ações para aceitar ou excluir essa iteração atual;
 15. o usuário continua responsável por revisar o resultado aplicado.
 
+No estado atual, esse planejamento também carrega uma política explícita de precedência: a `sourceGuideStructured` da lição vem primeiro, seguida da linhagem `curso -> módulo -> lição`, depois dos assuntos selecionados da lição e só então do pedido livre do usuário. O pedido do usuário especializa o recorte e a ênfase, mas não redefine meta, notação, confusões prováveis nem critério final já governados pela lição.
+
 ## Anexos de referência
 
 No painel `Gerar cards` e `Editar cards`, o usuário pode anexar documentos de referência para o pedido atual.

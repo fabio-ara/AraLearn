@@ -165,10 +165,21 @@ test("planejamento recebe selectedLessonTopicRefs, catálogo leve e valida plano
   assert.deepEqual(contract.context.path.map((item) => item.level), ["course", "module", "lesson", "microsequence"]);
   assert.equal(contract.context.sourceGuideLineage[0].sourceGuide, "Escopo do curso: Escopo do curso.");
   assert.equal(contract.context.lesson.microsequenceLine[0].title, "Base");
+  assert.deepEqual(contract.requestGovernance.precedence, [
+    "context.lesson.sourceGuideStructured",
+    "context.sourceGuideLineage",
+    "selectedLessonTopicRefs",
+    "request.userPrompt"
+  ]);
+  assert.equal(contract.requestGovernance.userPromptRole, "especializar o recorte imediato e a ênfase dentro da lição atual");
+  assert.deepEqual(contract.requestGovernance.lessonAnchors.map((item) => item.field), ["lessonGoal"]);
   assert.ok(contract.availableResources.some((item) => item.id === "paragraph" && !item.schema));
   assert.equal(contract.didacticGuardrails.generationFlow[0], "microteoria");
   assert.ok(contract.didacticGuardrails.hardRules.includes("bastidor zero no texto do aluno"));
   assert.ok(contract.didacticGuardrails.practiceContract.deterministicChecks.some((item) => item.includes("lacuna longa")));
+  assert.match(prompt, /requestGovernance\.precedence como ordem obrigatória de leitura do contrato/);
+  assert.match(prompt, /requestGovernance\.lessonAnchors como âncoras fortes da lição/);
+  assert.match(prompt, /Se request\.userPrompt conflitar com a meta, a notação, as confusões prováveis ou o critério final da lição/);
   assert.match(prompt, /selectedLessonTopicRefs são assuntos selecionados no escopo da lição/);
   assert.match(prompt, /context\.path como a linha hierárquica completa até a microssequência/);
   assert.match(prompt, /context\.sourceGuideLineage como governança acumulada/);
@@ -182,6 +193,33 @@ test("planejamento recebe selectedLessonTopicRefs, catálogo leve e valida plano
   assert.equal(validation.plan.sizeId, "short");
   assert.equal(validation.plan.cardPlan.length, 3);
   assert.deepEqual(validation.plan.cardPlan.map((item) => item.resourceType), ["paragraph", "block_gap_fill", "multiple_choice"]);
+});
+
+test("planejamento valida sourceUsePlan contra fontes resolvidas", () => {
+  const contract = samplePlanningContract({
+    attachedSources: [{ sourceId: "source-1", displayName: "guia.pdf", kind: "pdf" }],
+    userSelectedSourceIds: ["source-1"]
+  });
+
+  const accepted = validateMicrosequencePlan(
+    validPlan({
+      sourceUsePlan: [{ sourceId: "source-1", usage: "base principal", note: "Usar só para nomenclatura." }]
+    }),
+    contract
+  );
+  const rejected = validateMicrosequencePlan(
+    validPlan({
+      sourceUsePlan: [{ sourceId: "source-inexistente" }, { sourceId: "source-inexistente" }]
+    }),
+    contract
+  );
+
+  assert.equal(accepted.ok, true);
+  assert.deepEqual(accepted.plan.sourceUsePlan, [
+    { sourceId: "source-1", usage: "base principal", note: "Usar só para nomenclatura." }
+  ]);
+  assert.equal(rejected.ok, false);
+  assert.match(rejected.errors.join(" "), /fonte inexistente/);
 });
 
 test("planejamento e edição enviam fonte-guia compacta ao modelo", () => {
@@ -226,8 +264,14 @@ test("planejamento e edição enviam fonte-guia compacta ao modelo", () => {
   assert.equal(contract.context.course.sourceGuide.includes("Observações livres"), false);
   assert.deepEqual(contract.context.module.sourceGuideStructured, { moduleScope: "Escopo do módulo." });
   assert.deepEqual(contract.context.lesson.sourceGuideStructured, { lessonGoal: "Escopo da lição." });
+  assert.deepEqual(contract.requestGovernance.lessonAnchors, [
+    { field: "lessonGoal", label: "Meta da lição", value: "Escopo da lição." }
+  ]);
   assert.equal(editContract.context.lesson.sourceGuide.includes("Observações livres"), false);
   assert.deepEqual(editContract.context.lesson.sourceGuideStructured, { lessonGoal: "Escopo da lição." });
+  assert.deepEqual(editContract.requestGovernance.lessonAnchors, [
+    { field: "lessonGoal", label: "Meta da lição", value: "Escopo da lição." }
+  ]);
 });
 
 test("planejamento com tipo fixado envia apenas o tipo efetivo", () => {
@@ -308,11 +352,14 @@ test("contrato e prompt de geração usam contexto, tags, tamanho e schemas efet
   assert.equal(generationContract.request.sizeId, "short");
   assert.equal(generationContract.request.cardCount, 3);
   assert.equal(generationContract.didacticGuardrails.generationFlow[1], "exemplo guiado");
+  assert.equal(generationContract.requestGovernance.lessonAnchors[0].field, "lessonGoal");
   assert.deepEqual(Object.keys(generationContract.resources.resourceSchemas).sort(), ["block_gap_fill", "multiple_choice", "paragraph", "table"].sort());
   assert.match(prompt, /block_gap_fill/);
   assert.match(prompt, /"kind":"blank"/);
   assert.match(prompt, /não use content, segments\[\]\.text nem blocks\[\]\.text/);
   assert.match(prompt, /selectedLessonTopicRefs como assuntos selecionados no escopo da lição/);
+  assert.match(prompt, /requestGovernance\.precedence como ordem obrigatória de leitura do contrato/);
+  assert.match(prompt, /Se request\.userPrompt conflitar com a meta, a notação, as confusões prováveis ou o critério final da lição/);
   assert.match(prompt, /context\.path como a linha hierárquica completa até a microssequência/);
   assert.match(prompt, /context\.sourceGuideLineage como governança acumulada/);
   assert.match(prompt, /context\.lesson\.microsequenceLine/);
@@ -878,12 +925,14 @@ test("planejamento e contrato de edição preservam versão, selectedLessonTopic
   assert.deepEqual(editPlanningContract.context.path.map((item) => item.level), ["course", "module", "lesson", "microsequence"]);
   assert.equal(editPlanningContract.context.sourceGuideLineage[2].sourceGuide, "Meta da lição: Escopo da lição.");
   assert.equal(editPlanningContract.context.lesson.microsequenceLine[0].title, "Micro");
+  assert.equal(editPlanningContract.requestGovernance.lessonAnchors[0].field, "lessonGoal");
   assert.equal(editContract.selectedLessonTopicRefs[0].label, "Git");
   assert.equal(editPlanningContract.previousVersionsSummary[0].versionId, "v0");
   assert.equal(plan.ok, true);
   assert.ok(resources.allowedResourceTypes.includes("table"));
   assert.equal(editContract.currentVersion.cards.length, 1);
   assert.ok(editContract.resources.allowedResourceTypes.includes("table"));
+  assert.equal(editContract.requestGovernance.lessonAnchors[0].field, "lessonGoal");
 });
 
 test("prompts de edição e reparo explicitam a divisão de papéis", () => {
@@ -937,9 +986,13 @@ test("prompts de edição e reparo explicitam a divisão de papéis", () => {
   assert.match(editPlanningPrompt, /Papel do AraLearn nesta operação: fixar escopo de edição, cards atuais, recursos permitidos e validação/);
   assert.match(editPlanningPrompt, /Seu papel aqui é apenas propor editScope, affectedCards, operations, requiredResourceTypes/);
   assert.match(editPlanningPrompt, /Não reescreva os cards nem decida aplicação final no projeto/);
+  assert.match(editPlanningPrompt, /requestGovernance\.precedence como ordem obrigatória de leitura do contrato/);
+  assert.match(editPlanningPrompt, /Se request\.userEditPrompt conflitar com a meta, a notação, as confusões prováveis ou o critério final da lição/);
   assert.match(editPrompt, /Papel do AraLearn: fixar cards atuais, escopo de edição, recursos permitidos e validação final/);
   assert.match(editPrompt, /Seu papel aqui é apenas devolver os cards editados que respeitam esse escopo/);
   assert.match(editPrompt, /Não mude destino estrutural, status, tags persistentes nem decisão editorial final/);
+  assert.match(editPrompt, /requestGovernance\.precedence como ordem obrigatória de leitura do contrato/);
+  assert.match(editPrompt, /Se request\.userEditPrompt conflitar com a meta, a notação, as confusões prováveis ou o critério final da lição/);
   assert.match(repairPrompt, /Papel do AraLearn: manter plano, cardPlan, recursos permitidos, validação e adaptação final/);
   assert.match(repairPrompt, /Seu papel no reparo é apenas corrigir a estrutura do JSON existente dentro dessas restrições/);
   assert.match(repairPrompt, /Não decida destino estrutural, aplicação no projeto nem revisão editorial final/);

@@ -814,6 +814,7 @@ test("gera microssequência com plano local e chamada estruturada ao Gemini", as
     assert.match(calls[0].body.contents[0].parts[0].text, /"course":\{"title":"Programação"/);
     assert.match(calls[0].body.contents[0].parts[0].text, /"module":\{"title":"Git e colaboração"/);
     assert.match(calls[0].body.contents[0].parts[0].text, /"lesson":\{"title":"Primeiros comandos"/);
+    assert.match(calls[0].body.contents[0].parts[0].text, /"requestGovernance":\{"precedence":\["context\.lesson\.sourceGuideStructured"/);
     assert.match(calls[0].body.contents[0].parts[0].text, /"selectedLessonTopicRefs":\[\{"refKey":"micro-git","label":"Git","source":"microsequence"\}\]/);
     assert.doesNotMatch(calls[0].body.contents[0].parts[0].text, /Análise e Desenvolvimento de Sistemas/);
     assert.match(calls[1].body.contents[0].parts[0].text, /code_editor/);

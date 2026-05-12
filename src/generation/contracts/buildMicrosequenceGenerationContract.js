@@ -35,6 +35,7 @@ export function buildMicrosequenceGenerationContract({ planningContract, validat
       cardPlan: plan.cardPlan
     },
     didacticGuardrails: planningContract.didacticGuardrails,
+    requestGovernance: planningContract.requestGovernance,
     resources,
     sources: planningContract.sources,
     model: planningContract.model,

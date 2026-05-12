@@ -6,6 +6,41 @@ function fail(errors) {
   return { ok: false, errors };
 }
 
+function normalizeSourceUsePlan(sourceUsePlan, sourceIds, errors) {
+  const normalized = [];
+  const seen = new Set();
+
+  (Array.isArray(sourceUsePlan) ? sourceUsePlan : []).forEach((item, index) => {
+    if (!item || typeof item !== "object" || Array.isArray(item)) {
+      errors.push(`sourceUsePlan[${index}] inválido.`);
+      return;
+    }
+    const sourceId = String(item.sourceId || "").trim();
+    if (!sourceId) {
+      errors.push(`sourceUsePlan[${index}] sem sourceId.`);
+      return;
+    }
+    if (!sourceIds.has(sourceId)) {
+      errors.push(`sourceUsePlan[${index}] usa fonte inexistente: ${sourceId}.`);
+      return;
+    }
+    if (seen.has(sourceId)) {
+      errors.push(`sourceUsePlan duplicado para a fonte: ${sourceId}.`);
+      return;
+    }
+    seen.add(sourceId);
+    const usage = String(item.usage || item.intent || "").trim();
+    const note = String(item.note || item.reason || "").trim();
+    normalized.push({
+      sourceId,
+      ...(usage ? { usage } : {}),
+      ...(note ? { note } : {})
+    });
+  });
+
+  return normalized;
+}
+
 export function validateMicrosequencePlan(plan, planningContract) {
   const errors = [];
   const type = getMicrosequenceType(plan?.typeId);
@@ -23,6 +58,7 @@ export function validateMicrosequencePlan(plan, planningContract) {
 
   const userExtras = planningContract?.request?.userSelectedExtraResourceTypes || [];
   const selectedExtras = new Set(plan?.selectedExtraResourceTypes || []);
+  const normalizedSourceUsePlan = normalizeSourceUsePlan(plan?.sourceUsePlan, sourceIds, errors);
   userExtras.forEach((resourceId) => {
     if (!selectedExtras.has(resourceId)) errors.push(`Recurso extra do usuário não preservado: ${resourceId}.`);
   });
@@ -61,7 +97,7 @@ export function validateMicrosequencePlan(plan, planningContract) {
         resourceType: item.resourceType,
         sourceRefs: Array.isArray(item.sourceRefs) ? item.sourceRefs : []
       })),
-      sourceUsePlan: Array.isArray(plan.sourceUsePlan) ? plan.sourceUsePlan : [],
+      sourceUsePlan: normalizedSourceUsePlan,
       reason: String(plan.reason || "").trim()
     }
   };

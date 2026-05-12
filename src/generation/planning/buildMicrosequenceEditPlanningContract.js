@@ -2,6 +2,7 @@ import { listCardResourceSummaries } from "../resources/cardResourceDefinitions.
 import { getModelCapabilities } from "../providers/modelCapabilities.js";
 import { resolveReferencedSources } from "../sources/resolveReferencedSources.js";
 import { normalizeSelectedLessonTopicRefs } from "../tags/selectedLessonTopicRefs.js";
+import { buildLessonRequestGovernance } from "../didactics/didacticGovernance.js";
 import {
   buildSourceGuideTextForModel,
   sanitizeSourceGuideStructuredForModel,
@@ -74,6 +75,7 @@ export function buildMicrosequenceEditPlanningContract({
 }) {
   const capabilities = getModelCapabilities(selectedModel);
   const resolvedSources = resolveReferencedSources({ userPrompt: userEditPrompt, attachedSources, userSelectedSourceIds });
+  const lessonGuideStructured = sourceGuideStructuredForModel(selectedLesson, SOURCE_GUIDE_LEVELS.LESSON) || {};
   const selectedTopics = normalizeSelectedLessonTopicRefs({
     selectedLessonTopicRefs,
     selectedLessonScopeTagRefs,
@@ -169,6 +171,7 @@ export function buildMicrosequenceEditPlanningContract({
         ...(selectedMicrosequence ? summarizeMicrosequence(selectedMicrosequence) : {})
       }
     },
+    requestGovernance: buildLessonRequestGovernance(lessonGuideStructured),
     selectedLessonTopicRefs: selectedTopics,
     request: { userEditPrompt: text(userEditPrompt), selectedCardKeys, selectedResourceKeys, userSelectedExtraResourceTypes },
     currentVersionSummary: {

@@ -66,6 +66,14 @@ const EDIT_PROMPT_LINES = Object.freeze([
   "Quando o pedido implicar prática nova ou mais difícil, inclua a microteoria ou o exemplo guiado local necessário."
 ]);
 
+const LESSON_GOVERNANCE_FIELD_LABELS = Object.freeze({
+  lessonGoal: "Meta da lição",
+  lessonPrerequisites: "Pré-requisitos imediatos",
+  notationRules: "Sinais e notação",
+  commonErrors: "Confusões prováveis",
+  masteryGoal: "Ao final"
+});
+
 const DIDACTIC_TEXT_PATTERNS = Object.freeze([
   {
     pattern: /\b(card|exemplo|quest[aã]o|figura|tabela|trecho)\s+anterior\b/i,
@@ -156,6 +164,31 @@ export function buildDidacticEditPlanningPromptLines() {
 
 export function buildDidacticEditPromptLines() {
   return cloneList(EDIT_PROMPT_LINES);
+}
+
+export function buildLessonRequestGovernance(lessonSourceGuideStructured = {}) {
+  const anchors = Object.entries(LESSON_GOVERNANCE_FIELD_LABELS)
+    .map(([field, label]) => {
+      const value = normalizeText(lessonSourceGuideStructured?.[field]);
+      return value ? { field, label, value } : null;
+    })
+    .filter(Boolean);
+
+  return {
+    precedence: [
+      "context.lesson.sourceGuideStructured",
+      "context.sourceGuideLineage",
+      "selectedLessonTopicRefs",
+      "request.userPrompt"
+    ],
+    userPromptRole: "especializar o recorte imediato e a ênfase dentro da lição atual",
+    userPromptLimits: [
+      "não ampliar a operação para fora da meta governada pela lição",
+      "não contradizer notação, confusões prováveis nem critério final da lição",
+      "não usar o pedido do usuário para substituir a progressão didática já governada"
+    ],
+    lessonAnchors: anchors
+  };
 }
 
 export function collectDidacticCardErrors(card) {
