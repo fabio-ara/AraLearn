@@ -2017,14 +2017,34 @@ export function createLessonEditorApp({ root, storage, editor }) {
       visualizedVersionId: "",
       editBaseVersionId: ""
     });
+    state.assistDraft.dependencyKeys = structuredClone(state.assistPreviews[previewKey].tags || []).slice(0, MAX_ASSIST_DEPENDENCIES);
+  }
+
+  function setAssistPreviewTags(tags = []) {
+    const previewKey = buildAssistPreviewKey();
+    const preview = getAssistPreview();
+    if (!previewKey || !preview) {
+      return false;
+    }
+    state.assistPreviews[previewKey] = {
+      ...preview,
+      tags: structuredClone(Array.isArray(tags) ? tags : []).slice(0, MAX_ASSIST_DEPENDENCIES),
+      updatedAt: new Date().toISOString()
+    };
+    saveAssistPreviews();
+    return true;
   }
 
   function syncAssistDraft() {
     const dependencies = getAssistDependencies();
     const allowedKeys = new Set(dependencies.map((item) => item.key));
+    const preview = getAssistPreview();
+    const previewKeys = Array.isArray(preview?.tags) ? preview.tags.filter((key) => allowedKeys.has(key)) : [];
     const filteredKeys = state.assistDraft.dependencyKeys.filter((key) => allowedKeys.has(key));
     state.assistDraft.dependencyKeys =
-      filteredKeys.length > 0
+      previewKeys.length > 0
+        ? previewKeys.slice(0, MAX_ASSIST_DEPENDENCIES)
+        : filteredKeys.length > 0
         ? filteredKeys.slice(0, MAX_ASSIST_DEPENDENCIES)
         : getDefaultDependencyKeys(dependencies);
 
@@ -2167,6 +2187,10 @@ export function createLessonEditorApp({ root, storage, editor }) {
     state.assistDraft.dependencyKeys = Array.isArray(microsequence.tags)
       ? microsequence.tags.slice(0, MAX_ASSIST_DEPENDENCIES)
       : [];
+    const assistPreview = getAssistPreview(reference);
+    if (assistPreview && Array.isArray(assistPreview.tags)) {
+      state.assistDraft.dependencyKeys = assistPreview.tags.slice(0, MAX_ASSIST_DEPENDENCIES);
+    }
 
     state.view = "microsequence-assist";
     state.assistDraft.selectedMode = ASSIST_USER_MODES.EDIT_MICROSEQUENCE;
@@ -8738,6 +8762,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
         const key = node.getAttribute("data-dependency-key");
         if (!key) return;
         state.assistDraft.dependencyKeys = state.assistDraft.dependencyKeys.filter((item) => item !== key);
+        setAssistPreviewTags(state.assistDraft.dependencyKeys);
         syncAssistDraft();
         render({ preserveState: true });
       });
@@ -8757,6 +8782,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
       if (current.size >= MAX_ASSIST_DEPENDENCIES || current.has(key)) return;
       current.add(key);
       state.assistDraft.dependencyKeys = Array.from(current).slice(0, MAX_ASSIST_DEPENDENCIES);
+      setAssistPreviewTags(state.assistDraft.dependencyKeys);
       syncAssistDraft();
       render({ preserveState: true });
     });
