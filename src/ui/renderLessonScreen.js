@@ -725,6 +725,16 @@ function renderHierarchyItemCard({
   );
 }
 
+function renderAssistPreviewMetaItem(iconName, label) {
+  return (
+    '<span class="progress-meta-item">' +
+    renderUiIcon(iconName, "progress-meta-item-icon") +
+    '<span class="progress-meta-item-label">' +
+    escapeHtml(label) +
+    "</span></span>"
+  );
+}
+
 function renderCourseScreen({ course, progress, editorSupport }) {
   const readOnlyView = Boolean(editorSupport?.readOnlyView);
   const modules = (course.modules || [])
@@ -1127,11 +1137,12 @@ function renderMicrosequenceWorkbenchScreen({
   const assistPreview = editorSupport.assistPreview && typeof editorSupport.assistPreview === "object"
     ? editorSupport.assistPreview
     : null;
-  const visualizedCards = Array.isArray(assistPreview?.cards)
+  const assistPreviewActive = Boolean(assistPreview) && editorSupport.assistPreviewActive !== false;
+  const visualizedCards = assistPreviewActive && Array.isArray(assistPreview?.cards)
     ? assistPreview.cards
     : Array.isArray(visualizedVersion?.cards) ? visualizedVersion.cards : cards;
-  const visualizedTitle = assistPreview?.title || visualizedVersion?.title || microsequence?.title || "";
-  const visualizedTags = Array.isArray(assistPreview?.tags)
+  const visualizedTitle = assistPreviewActive ? (assistPreview?.title || "") : (visualizedVersion?.title || microsequence?.title || "");
+  const visualizedTags = assistPreviewActive && Array.isArray(assistPreview?.tags)
     ? assistPreview.tags
     : Array.isArray(visualizedVersion?.tags) ? visualizedVersion.tags : microsequence?.tags || [];
   const visibleCards = hideCards ? [] : visualizedCards;
@@ -1248,17 +1259,45 @@ function renderMicrosequenceWorkbenchScreen({
     })
     : '<div class="editor-step-empty">' + escapeHtml(emptyCardsMessage) + "</div>";
   const activeWorkbenchPane = editorSupport.activeWorkbenchPane === "edit" ? "edit" : "preview";
+  const previewMeta = assistPreview
+    ? [
+      assistPreview.updatedAt ? renderAssistPreviewMetaItem("progress", formatVersionTabTimestamp(assistPreview.updatedAt)) : "",
+      Array.isArray(assistPreview.cards) ? renderAssistPreviewMetaItem("card", `${assistPreview.cards.length} card(s)`) : "",
+      assistPreview.modelLabel ? renderAssistPreviewMetaItem("sparkles", assistPreview.modelLabel) : ""
+    ].filter(Boolean).join("")
+    : "";
+  const previewToggle =
+    assistPreview
+      ? '<div class="generate-action-row assist-actions assist-actions-wide assist-preview-actions">' +
+        (assistPreviewActive
+          ? '<button class="icon-ghost tiny-icon generate-inline-icon" type="button" data-action="show-official-microsequence" title="Ver conteúdo oficial" aria-label="Ver conteúdo oficial">' +
+            renderUiIcon("preview", "generate-submit-icon") +
+            "</button>"
+          : '<button class="icon-ghost tiny-icon generate-inline-icon" type="button" data-action="show-assist-preview" title="Retomar rascunho privado" aria-label="Retomar rascunho privado">' +
+            renderUiIcon("draft-state", "generate-submit-icon") +
+            "</button>") +
+        "</div>"
+      : "";
   const pendingPreviewPanel = assistPreview
     ? '<section class="microsequence-assist-panel assist-status-panel">' +
-      '<p class="tiny muted">Prévia pendente</p>' +
-      '<p class="muted assist-last-request">A proposta validada ainda não alterou a microssequência. Revise e aplique manualmente.</p>' +
+      '<p class="tiny muted">' +
+      (assistPreviewActive ? "Rascunho privado pendente" : "Conteúdo oficial em uso") +
+      "</p>" +
+      '<p class="muted assist-last-request">' +
+      (assistPreviewActive
+        ? "A proposta validada ainda não alterou a microssequência. Revise, alterne ou aplique manualmente."
+        : "Existe um rascunho privado pendente para esta microssequência. O conteúdo oficial continua preservado.") +
+      "</p>" +
+      (previewMeta ? '<div class="progress-meta-row">' + previewMeta + "</div>" : "") +
       '<div class="generate-action-row assist-actions assist-actions-wide assist-preview-actions">' +
-      '<button class="icon-ghost tiny-icon generate-inline-icon" type="button" data-action="discard-assist-preview" title="Descartar prévia" aria-label="Descartar prévia">' +
-      renderUiIcon("excluded-state", "generate-submit-icon") +
-      "</button>" +
-      '<button class="open-main tiny-icon generate-inline-icon" type="button" data-action="apply-assist-preview" title="Aplicar prévia" aria-label="Aplicar prévia">' +
-      renderUiIcon("ready-state", "generate-submit-icon") +
-      "</button>" +
+      (assistPreviewActive
+        ? '<button class="icon-ghost tiny-icon generate-inline-icon" type="button" data-action="discard-assist-preview" title="Descartar prévia" aria-label="Descartar prévia">' +
+          renderUiIcon("excluded-state", "generate-submit-icon") +
+          "</button>" +
+          '<button class="open-main tiny-icon generate-inline-icon" type="button" data-action="apply-assist-preview" title="Aplicar prévia" aria-label="Aplicar prévia">' +
+          renderUiIcon("ready-state", "generate-submit-icon") +
+          "</button>"
+        : "") +
       "</div></section>"
     : "";
   const previewBody =
@@ -1291,6 +1330,7 @@ function renderMicrosequenceWorkbenchScreen({
   const previewPane =
     '<section class="workbench-surface-pane workbench-preview-pane">' +
     '<div class="generator-preview-stage">' +
+    previewToggle +
     previewBody +
     pendingPreviewPanel +
     "</div>" +

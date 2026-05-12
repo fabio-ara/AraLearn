@@ -115,12 +115,14 @@ function normalizeAssistPreviewEntry(entry) {
     ? entry.cards.filter((item) => item && typeof item === "object").map((item) => ({ ...item }))
     : [];
   const updatedAt = typeof entry.updatedAt === "string" && entry.updatedAt.trim() ? entry.updatedAt.trim() : "";
+  const modelId = typeof entry.modelId === "string" ? entry.modelId.trim() : "";
+  const modelLabel = typeof entry.modelLabel === "string" ? entry.modelLabel.trim() : "";
 
   if (!cards.length) {
     return null;
   }
 
-  return { title, tags, cards, updatedAt };
+  return { title, tags, cards, updatedAt, modelId, modelLabel };
 }
 
 export function readAssistPreviewStorage(storage = globalThis.localStorage) {
