@@ -2,6 +2,17 @@
 
 Todas as mudanças relevantes deste projeto serão registradas aqui.
 
+## [Unreleased]
+
+### Changed
+
+- a assistência de cards volta a aplicar diretamente na microssequência o resultado validado da geração ou edição, sem estágio intermediário de prévia privada
+- o workbench da microssequência remove os controles de alternância, aplicação e descarte de prévia, mantendo a superfície de preview apenas como leitura do estado já em uso
+- a edição local de título e tags volta a atuar sempre sobre a microssequência persistida, sem bifurcação por rascunho temporário
+
+### Tests
+
+- a suíte remove os cenários de storage e renderização específicos da prévia privada e passa a validar apenas o fluxo direto de atualização
 ## [0.9.22] - 2026-05-06
 
 ### Changed

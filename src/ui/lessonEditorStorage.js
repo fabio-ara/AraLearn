@@ -6,7 +6,6 @@ const CARD_COMMENT_STORAGE_KEY = "aralearn.card-comments.v1";
 const ASSIST_CONFIG_STORAGE_KEY = "aralearn.assist-config";
 const MICROSEQUENCE_VERSION_STORAGE_KEY = "aralearn.microsequence-versions.v1";
 const STRUCTURE_VERSION_STORAGE_KEY = "aralearn.structure-versions.v1";
-const ASSIST_PREVIEW_STORAGE_KEY = "aralearn.assist-previews.v1";
 
 function readJsonMap(storage, key) {
   if (!storage || typeof storage.getItem !== "function") {
@@ -100,40 +99,4 @@ export function readStructureVersionStorage(storage = globalThis.localStorage) {
 export function writeStructureVersionStorage(versionMap, storage = globalThis.localStorage) {
   normalizeStructureVersionMap(versionMap);
   writeJsonMap(storage, STRUCTURE_VERSION_STORAGE_KEY, versionMap);
-}
-
-function normalizeAssistPreviewEntry(entry) {
-  if (!entry || typeof entry !== "object") {
-    return null;
-  }
-
-  const title = typeof entry.title === "string" && entry.title.trim() ? entry.title.trim() : "Microssequência";
-  const tags = Array.isArray(entry.tags)
-    ? entry.tags.map((item) => String(item || "").trim()).filter(Boolean)
-    : [];
-  const cards = Array.isArray(entry.cards)
-    ? entry.cards.filter((item) => item && typeof item === "object").map((item) => ({ ...item }))
-    : [];
-  const updatedAt = typeof entry.updatedAt === "string" && entry.updatedAt.trim() ? entry.updatedAt.trim() : "";
-  const modelId = typeof entry.modelId === "string" ? entry.modelId.trim() : "";
-  const modelLabel = typeof entry.modelLabel === "string" ? entry.modelLabel.trim() : "";
-
-  if (!cards.length) {
-    return null;
-  }
-
-  return { title, tags, cards, updatedAt, modelId, modelLabel };
-}
-
-export function readAssistPreviewStorage(storage = globalThis.localStorage) {
-  const rawMap = readJsonMap(storage, ASSIST_PREVIEW_STORAGE_KEY);
-  return Object.fromEntries(
-    Object.entries(rawMap)
-      .map(([key, entry]) => [key, normalizeAssistPreviewEntry(entry)])
-      .filter(([, entry]) => entry)
-  );
-}
-
-export function writeAssistPreviewStorage(previewMap, storage = globalThis.localStorage) {
-  writeJsonMap(storage, ASSIST_PREVIEW_STORAGE_KEY, previewMap);
 }

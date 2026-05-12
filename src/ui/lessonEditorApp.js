@@ -81,13 +81,11 @@ import {
   getFirstPath
 } from "./lessonEditorPaths.js";
 import {
-  readAssistPreviewStorage,
   readAssistConfigStorage,
   readCommentStorage,
   readHistoryStorage,
   readMicrosequenceVersionStorage,
   readStructureVersionStorage,
-  writeAssistPreviewStorage,
   writeAssistConfigStorage,
   writeCommentStorage,
   writeHistoryStorage,
@@ -1016,7 +1014,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
     assistConfig: initialAssistConfig,
     assistConfigDraft: { ...initialAssistConfig },
     microsequenceMode: "play",
-    assistPreviews: readAssistPreviewStorage(),
     cardHistory: readHistoryStorage(),
     microsequenceVersions: readMicrosequenceVersionStorage(),
     structureVersions: readStructureVersionStorage(),
@@ -1034,7 +1031,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
     assistDraft: {
       selectedMode: ASSIST_USER_MODES.EDIT_MICROSEQUENCE,
       activeWorkbenchPane: "preview",
-      previewViewMode: "draft",
       visualizedVersionId: "",
       editBaseVersionId: "",
       versionActionsOpen: false,
@@ -1720,10 +1716,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
     writeStructureVersionStorage(state.structureVersions);
   }
 
-  function saveAssistPreviews() {
-    writeAssistPreviewStorage(state.assistPreviews);
-  }
-
   function seedAllStructureVersionsFromProject() {
     if (!STRUCTURE_VERSIONING_ACTIVE) {
       return;
@@ -1971,96 +1963,12 @@ export function createLessonEditorApp({ root, storage, editor }) {
     return getAssistCatalog();
   }
 
-  function getAssistPreviewViewMode() {
-    return state.assistDraft.previewViewMode === "official" ? "official" : "draft";
-  }
-
-  function isAssistPreviewActive(reference = state.selection) {
-    return Boolean(getAssistPreview(reference)) && getAssistPreviewViewMode() === "draft";
-  }
-
-  function buildAssistPreviewKey(reference = state.selection) {
-    return buildMicrosequenceVersionKey(reference);
-  }
-
-  function clearAssistPreview(reference = state.selection) {
-    const previewKey = buildAssistPreviewKey(reference);
-    if (!previewKey || !state.assistPreviews[previewKey]) {
-      return;
-    }
-    delete state.assistPreviews[previewKey];
-    saveAssistPreviews();
-  }
-
-  function getAssistPreview(reference = state.selection) {
-    const previewKey = buildAssistPreviewKey(reference);
-    if (!previewKey) {
-      return null;
-    }
-    return state.assistPreviews[previewKey] || null;
-  }
-
-  function stageAssistPreview({ microsequenceTitle, cards }) {
-    const previewKey = buildAssistPreviewKey();
-    if (!previewKey) {
-      return;
-    }
-    const currentMicrosequence = findMicrosequence(
-      state.project,
-      state.selection.courseKey,
-      state.selection.moduleKey,
-      state.selection.lessonKey,
-      state.selection.microsequenceKey
-    );
-    state.assistPreviews[previewKey] = {
-      title: String(microsequenceTitle || "").trim() || "Microssequência",
-      tags: structuredClone(Array.isArray(currentMicrosequence?.tags) ? currentMicrosequence.tags : []),
-      cards: structuredClone(Array.isArray(cards) ? cards : []),
-      updatedAt: new Date().toISOString(),
-      modelId: state.assistConfig.model,
-      modelLabel: getAssistModelLabel(state.assistConfig.model)
-    };
-    saveAssistPreviews();
-    state.assistDraft.activeWorkbenchPane = "preview";
-    state.assistDraft.previewViewMode = "draft";
-    state.selection.cardIndex = 0;
-    state.selection.cardKey = null;
-    setMicrosequenceVersionViewState({
-      visualizedVersionId: "",
-      editBaseVersionId: ""
-    });
-    state.assistDraft.dependencyKeys = structuredClone(state.assistPreviews[previewKey].tags || []).slice(0, MAX_ASSIST_DEPENDENCIES);
-  }
-
-  function setAssistPreviewTags(tags = []) {
-    const previewKey = buildAssistPreviewKey();
-    const preview = getAssistPreview();
-    if (!previewKey || !preview) {
-      return false;
-    }
-    state.assistPreviews[previewKey] = {
-      ...preview,
-      tags: structuredClone(Array.isArray(tags) ? tags : []).slice(0, MAX_ASSIST_DEPENDENCIES),
-      updatedAt: new Date().toISOString()
-    };
-    saveAssistPreviews();
-    return true;
-  }
-
-  function setAssistPreviewViewMode(mode = "draft") {
-    state.assistDraft.previewViewMode = mode === "official" ? "official" : "draft";
-  }
-
   function syncAssistDraft() {
     const dependencies = getAssistDependencies();
     const allowedKeys = new Set(dependencies.map((item) => item.key));
-    const preview = getAssistPreview();
-    const previewKeys = Array.isArray(preview?.tags) ? preview.tags.filter((key) => allowedKeys.has(key)) : [];
     const filteredKeys = state.assistDraft.dependencyKeys.filter((key) => allowedKeys.has(key));
     state.assistDraft.dependencyKeys =
-      previewKeys.length > 0
-        ? previewKeys.slice(0, MAX_ASSIST_DEPENDENCIES)
-        : filteredKeys.length > 0
+      filteredKeys.length > 0
         ? filteredKeys.slice(0, MAX_ASSIST_DEPENDENCIES)
         : getDefaultDependencyKeys(dependencies);
 
@@ -2083,9 +1991,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
     }
     if (!ASSIST_DIDACTIC_TYPE_OPTIONS.some((item) => item.value === state.assistDraft.didacticTypeId)) {
       state.assistDraft.didacticTypeId = "";
-    }
-    if (!getAssistPreview()) {
-      state.assistDraft.previewViewMode = "draft";
     }
     state.assistDraft.attachments = normalizeAssistAttachmentList(state.assistDraft.attachments);
   }
@@ -2206,15 +2111,10 @@ export function createLessonEditorApp({ root, storage, editor }) {
     state.assistDraft.dependencyKeys = Array.isArray(microsequence.tags)
       ? microsequence.tags.slice(0, MAX_ASSIST_DEPENDENCIES)
       : [];
-    const assistPreview = getAssistPreview(reference);
-    if (assistPreview && Array.isArray(assistPreview.tags)) {
-      state.assistDraft.dependencyKeys = assistPreview.tags.slice(0, MAX_ASSIST_DEPENDENCIES);
-    }
 
     state.view = "microsequence-assist";
     state.assistDraft.selectedMode = ASSIST_USER_MODES.EDIT_MICROSEQUENCE;
     state.assistDraft.activeWorkbenchPane = assistOpenState.activeWorkbenchPane;
-    state.assistDraft.previewViewMode = getAssistPreview(reference) ? "draft" : "official";
     state.assistDraft.visualizedVersionId = "";
     state.assistDraft.editBaseVersionId = "";
     state.assistDraft.attachments = [];
@@ -3686,15 +3586,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
   }
 
   function applyMicrosequenceGeneration({ microsequenceTitle, cards }) {
-    stageAssistPreview({ microsequenceTitle, cards });
-  }
-
-  function applyAssistPreview() {
-    const preview = getAssistPreview();
-    if (!preview) {
-      return;
-    }
-
     ensureEditableMicrosequenceBranch({
       operationType: "generated",
       label: "Gerada"
@@ -3711,9 +3602,9 @@ export function createLessonEditorApp({ root, storage, editor }) {
       moduleKey: state.selection.moduleKey,
       lessonKey: state.selection.lessonKey,
       microsequenceKey: state.selection.microsequenceKey,
-      title: preview.title,
-      tags: structuredClone(Array.isArray(preview.tags) ? preview.tags : currentMicrosequence?.tags || []),
-      cards: structuredClone(preview.cards || [])
+      title: String(microsequenceTitle || "").trim() || currentMicrosequence?.title || "Microssequência",
+      tags: structuredClone(Array.isArray(currentMicrosequence?.tags) ? currentMicrosequence.tags : []),
+      cards: structuredClone(Array.isArray(cards) ? cards : [])
     });
 
     setProject(nextProject);
@@ -3728,32 +3619,16 @@ export function createLessonEditorApp({ root, storage, editor }) {
     state.selection.cardIndex = 0;
     state.selection.cardKey = firstCard ? firstCard.key : null;
     state.assistDraft.activeWorkbenchPane = "preview";
-    state.assistDraft.previewViewMode = "official";
-    clearAssistPreview();
     setMicrosequenceVersionViewState({
       visualizedVersionId: "",
       editBaseVersionId: ""
     });
     state.assistDraft.lastRequest = {
-      title: "Prévia aplicada",
-      description: `${Array.isArray(microsequence?.cards) ? microsequence.cards.length : 0} cards aplicados em ${microsequence?.title || preview.title}.`,
+      title: "Cards atualizados",
+      description: `${Array.isArray(microsequence?.cards) ? microsequence.cards.length : 0} cards aplicados em ${microsequence?.title || microsequenceTitle || "Microssequência"}.`,
       timestamp: new Date().toISOString()
     };
     syncAssistDraft();
-  }
-
-  function discardAssistPreview() {
-    if (!getAssistPreview()) {
-      return;
-    }
-    clearAssistPreview();
-    state.assistDraft.previewViewMode = "official";
-    state.assistDraft.lastRequest = {
-      title: "Prévia descartada",
-      description: "A proposta de cards foi removida sem alterar a microssequência.",
-      timestamp: new Date().toISOString()
-    };
-    render({ preserveState: true });
   }
 
   function getVisibleCourses(project = state.project) {
@@ -4239,9 +4114,9 @@ export function createLessonEditorApp({ root, storage, editor }) {
       if (mode === "compose-microsequence") {
         applyMicrosequenceGeneration(result);
         state.assistDraft.lastRequest = {
-          title: hadCardsBefore ? "Prévia pronta" : "Prévia gerada",
+          title: hadCardsBefore ? "Cards substituídos" : "Cards gerados",
           description:
-            `${result.cards.length} cards em prévia para ${result.microsequenceTitle} com ${getAssistModelLabel(state.assistConfig.model)}. Revise antes de aplicar.`,
+            `${result.cards.length} cards aplicados diretamente em ${result.microsequenceTitle} com ${getAssistModelLabel(state.assistConfig.model)}.`,
           timestamp: new Date().toISOString()
         };
       } else {
@@ -5653,19 +5528,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
     if (!microsequenceKey) return;
 
     try {
-      const assistPreview = getAssistPreview();
-      if (assistPreview) {
-        const previewKey = buildAssistPreviewKey();
-        state.assistPreviews[previewKey] = {
-          ...assistPreview,
-          title: String(payload.title || "").trim() || assistPreview.title || "Microssequência",
-          tags: parseTagsText(payload.tags),
-          updatedAt: new Date().toISOString()
-        };
-        saveAssistPreviews();
-        return;
-      }
-
       ensureEditableMicrosequenceBranch({
         operationType: "edit",
         label: "Edição local"
@@ -7195,7 +7057,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
     const microsequenceVersionEntry = state.view === "microsequence-assist" ? getMicrosequenceVersionEntry() : null;
     const visualizedMicrosequenceVersion = state.view === "microsequence-assist" ? getVisualizedMicrosequenceVersion() : null;
     const visualizedMicrosequenceVersionId = visualizedMicrosequenceVersion?.id || "";
-    const assistPreview = state.view === "microsequence-assist" ? getAssistPreview() : null;
     const structureVersionReference = getCurrentStructureVersionReference();
     const structureVersionEntry = getStructureVersionEntry(structureVersionReference);
     const visibleStructureReferences = listVisibleStructureVersionReferences();
@@ -7403,9 +7264,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
           visualizedMicrosequenceVersionId,
           editBaseMicrosequenceVersionId: getMicrosequenceEditBaseVersionId(),
           visualizedMicrosequenceVersion,
-          assistPreview,
-          assistPreviewActive: Boolean(assistPreview) && getAssistPreviewViewMode() === "draft",
-          assistPreviewViewMode: getAssistPreviewViewMode(),
           versionActionsOpen: state.assistDraft.versionActionsOpen,
           canDeleteVisualizedMicrosequenceVersion:
             state.view === "microsequence-assist" ? canDeleteMicrosequenceVersion(visualizedMicrosequenceVersionId) : false,
@@ -8787,7 +8645,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
         const key = node.getAttribute("data-dependency-key");
         if (!key) return;
         state.assistDraft.dependencyKeys = state.assistDraft.dependencyKeys.filter((item) => item !== key);
-        setAssistPreviewTags(state.assistDraft.dependencyKeys);
         syncAssistDraft();
         render({ preserveState: true });
       });
@@ -8807,7 +8664,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
       if (current.size >= MAX_ASSIST_DEPENDENCIES || current.has(key)) return;
       current.add(key);
       state.assistDraft.dependencyKeys = Array.from(current).slice(0, MAX_ASSIST_DEPENDENCIES);
-      setAssistPreviewTags(state.assistDraft.dependencyKeys);
       syncAssistDraft();
       render({ preserveState: true });
     });
@@ -8833,21 +8689,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
     root.querySelector("[data-action='open-assist-config']")?.addEventListener("click", () => openAssistConfig());
     root.querySelector("[data-action='apply-assist']")?.addEventListener("click", () => {
       void submitAssistRequest();
-    });
-    root.querySelector("[data-action='apply-assist-preview']")?.addEventListener("click", () => {
-      applyAssistPreview();
-      render({ preserveState: true });
-    });
-    root.querySelector("[data-action='discard-assist-preview']")?.addEventListener("click", () => {
-      discardAssistPreview();
-    });
-    root.querySelector("[data-action='show-official-microsequence']")?.addEventListener("click", () => {
-      setAssistPreviewViewMode("official");
-      render({ preserveState: true });
-    });
-    root.querySelector("[data-action='show-assist-preview']")?.addEventListener("click", () => {
-      setAssistPreviewViewMode("draft");
-      render({ preserveState: true });
     });
     root.querySelector("[data-action='open-version-history']")?.addEventListener("click", () => openVersionHistory());
     root.querySelector("[data-action='assist-config-close']")?.addEventListener("click", () => closeAssistConfig());
