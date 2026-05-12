@@ -6,8 +6,10 @@ import { renderVersionCompareOverlay } from "./renderVersionCompareOverlay.js";
 import { renderEntityEditorOverlay } from "./renderEntityEditorOverlay.js";
 import { renderActionMenuOverlay } from "./renderActionMenuOverlay.js";
 import { renderAssistConfigOverlay } from "./renderAssistConfigOverlay.js";
+import { renderCodexTermuxSetupOverlay } from "./renderCodexTermuxSetupOverlay.js";
 import { renderUiIcon } from "./renderUiIcons.js";
 import { captureRenderState, restoreRenderState } from "./renderState.js";
+import { buildCodexTermuxHealthCommand, buildCodexTermuxSetupScript } from "./codexTermuxSetupScript.js";
 import {
   buildSourceGuideEditorFields,
   resolveSourceGuidePayload,
@@ -93,7 +95,13 @@ import {
   writeMicrosequenceVersionStorage,
   writeStructureVersionStorage
 } from "./lessonEditorStorage.js";
-import { runGeminiAssist } from "../assist/geminiAssist.js";
+import {
+  CODEX_LOCAL_MODEL_ID,
+  DEFAULT_CODEX_LOCAL_ENDPOINT,
+  checkCodexLocalHealth,
+  isCodexLocalModel
+} from "../assist/codexLocalAssist.js";
+import { runAssist } from "../assist/runAssist.js";
 import { listMicrosequenceTypes } from "../generation/types/microsequenceTypes.js";
 import { getLessonProgressCursor, removeLessonProgressEntries, writeLessonProgressEntry } from "../storage/progressStore.js";
 import { detectJsonExchangeFormat } from "../storage/jsonExchange.js";
@@ -124,6 +132,7 @@ const MAX_ASSIST_DEPENDENCIES = 5;
 const MAX_ASSIST_ATTACHMENTS = 6;
 const MAX_CARD_SNAPSHOTS = 6;
 const ASSIST_MODEL_OPTIONS = [
+  { value: CODEX_LOCAL_MODEL_ID, label: "Codex CLI · Termux" },
   { value: "gemini-2.5-flash", label: "Gemini 2.5 Flash" },
   { value: "gemini-2.5-flash-lite", label: "Gemini 2.5 Flash-Lite" },
   { value: "gemini-2.0-flash", label: "Gemini 2.0 Flash · até 2026-06-01" }
@@ -1003,6 +1012,13 @@ export function createLessonEditorApp({ root, storage, editor }) {
     assistConfigOpen: false,
     assistConfig: initialAssistConfig,
     assistConfigDraft: { ...initialAssistConfig },
+    codexTermuxSetupOpen: false,
+    codexTermuxSetupStatus: {
+      ok: false,
+      checking: false,
+      error: "",
+      data: null
+    },
     microsequenceMode: "play",
     cardHistory: readHistoryStorage(),
     microsequenceVersions: readMicrosequenceVersionStorage(),
@@ -1875,7 +1891,156 @@ export function createLessonEditorApp({ root, storage, editor }) {
     writeAssistConfigStorage(state.assistConfig);
   }
 
+  function getCodexSetupEndpoint() {
+    return state.assistConfig.codexEndpoint || DEFAULT_CODEX_LOCAL_ENDPOINT;
+  }
+
+  function getCodexSetupScript() {
+    try {
+      return buildCodexTermuxSetupScript({
+        endpoint: getCodexSetupEndpoint(),
+        token: state.assistConfig.codexToken
+      });
+    } catch (error) {
+      return `# Endpoint inválido\n# ${error instanceof Error ? error.message : "Revise o endpoint configurado."}`;
+    }
+  }
+
+  function getCodexSetupHealthCommand() {
+    try {
+      return buildCodexTermuxHealthCommand({
+        endpoint: getCodexSetupEndpoint(),
+        token: state.assistConfig.codexToken
+      });
+    } catch (error) {
+      return `# ${error instanceof Error ? error.message : "Revise o endpoint configurado."}`;
+    }
+  }
+
+  function updateCodexTermuxSetupStatus(nextStatus = {}) {
+    state.codexTermuxSetupStatus = {
+      ok: nextStatus.ok === true,
+      checking: nextStatus.checking === true,
+      error: typeof nextStatus.error === "string" ? nextStatus.error : "",
+      data: nextStatus.data ?? null
+    };
+  }
+
+  function openCodexTermuxSetup(errorMessage = "") {
+    state.assistConfigOpen = false;
+    state.codexTermuxSetupOpen = true;
+    updateCodexTermuxSetupStatus({
+      ok: false,
+      checking: false,
+      error: errorMessage || state.codexTermuxSetupStatus.error || "",
+      data: state.codexTermuxSetupStatus.data
+    });
+    render({ preserveState: true });
+  }
+
+  function closeCodexTermuxSetup() {
+    state.codexTermuxSetupOpen = false;
+    render({ preserveState: true });
+  }
+
+  async function testCodexTermuxConnection({ preserveState = true } = {}) {
+    updateCodexTermuxSetupStatus({
+      ok: false,
+      checking: true,
+      error: "",
+      data: null
+    });
+    render({ preserveState });
+
+    let status;
+    try {
+      status = await checkCodexLocalHealth({
+        endpoint: state.assistConfig.codexEndpoint,
+        token: state.assistConfig.codexToken
+      });
+    } catch (error) {
+      status = {
+        ok: false,
+        error: error instanceof Error ? error.message : "Falha ao validar o endpoint local.",
+        status: 0
+      };
+    }
+
+    updateCodexTermuxSetupStatus({
+      ok: status.ok,
+      checking: false,
+      error: status.ok ? "" : status.error || "Bridge local não encontrado.",
+      data: status.ok ? status.data : null
+    });
+    render({ preserveState });
+    return status;
+  }
+
+  async function ensureCodexLocalReady() {
+    if (!isCodexLocalModel(state.assistConfig.model)) {
+      return true;
+    }
+
+    const status = await testCodexTermuxConnection();
+    if (status.ok) {
+      return true;
+    }
+
+    openCodexTermuxSetup(status.error || "O bridge local não está ativo.");
+    return false;
+  }
+
+  async function handleCodexModelSelection(model) {
+    if (!isCodexLocalModel(model)) {
+      return;
+    }
+
+    const status = await testCodexTermuxConnection();
+    if (!status.ok) {
+      openCodexTermuxSetup(status.error || "O bridge local não está ativo.");
+    }
+  }
+
+  async function copyTextToClipboard(text) {
+    const safeText = String(text || "");
+    if (!safeText) {
+      return false;
+    }
+
+    if (globalThis.navigator?.clipboard?.writeText) {
+      try {
+        await globalThis.navigator.clipboard.writeText(safeText);
+        return true;
+      } catch {
+        // Continua para o fallback legado.
+      }
+    }
+
+    if (!globalThis.document?.body) {
+      return false;
+    }
+
+    const textarea = globalThis.document.createElement("textarea");
+    textarea.value = safeText;
+    textarea.setAttribute("readonly", "readonly");
+    textarea.style.position = "fixed";
+    textarea.style.opacity = "0";
+    textarea.style.pointerEvents = "none";
+    globalThis.document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+
+    try {
+      return globalThis.document.execCommand("copy");
+    } catch {
+      return false;
+    } finally {
+      textarea.remove();
+    }
+  }
+
   function openAssistConfig() {
+    state.codexTermuxSetupOpen = false;
     state.assistConfigDraft = { ...state.assistConfig };
     state.assistConfigOpen = true;
     render({ preserveState: true });
@@ -1892,6 +2057,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
       state.assistConfigDraft.model = state.assistConfig.model;
     }
     persistAssistConfig();
+    void handleCodexModelSelection(state.assistConfig.model);
   }
 
   function persistAssistConfigValue(patch = {}) {
@@ -1902,6 +2068,18 @@ export function createLessonEditorApp({ root, storage, editor }) {
           ? String(patch.apiKey || "").trim()
           : typeof state.assistConfig.apiKey === "string"
             ? state.assistConfig.apiKey.trim()
+            : "",
+      codexEndpoint:
+        patch.codexEndpoint !== undefined
+          ? String(patch.codexEndpoint || "").trim() || DEFAULT_CODEX_LOCAL_ENDPOINT
+          : typeof state.assistConfig.codexEndpoint === "string" && state.assistConfig.codexEndpoint.trim()
+            ? state.assistConfig.codexEndpoint.trim()
+            : DEFAULT_CODEX_LOCAL_ENDPOINT,
+      codexToken:
+        patch.codexToken !== undefined
+          ? String(patch.codexToken || "").trim()
+          : typeof state.assistConfig.codexToken === "string"
+            ? state.assistConfig.codexToken.trim()
             : ""
     };
     state.assistConfigDraft = { ...state.assistConfig };
@@ -2978,6 +3156,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
     state.versionHistoryOpen = false;
     state.versionCompareOpen = false;
     state.assistConfigOpen = false;
+    state.codexTermuxSetupOpen = false;
     render({ preserveState: true });
   }
 
@@ -3220,6 +3399,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
     state.versionHistoryExpandedMoreKey = "";
     state.cardCommentOpen = false;
     state.assistConfigOpen = false;
+    state.codexTermuxSetupOpen = false;
     state.entityEditor = null;
     if (structureReference) {
       state.versionHistorySelectionKey = getStructureVersionEntry(structureReference)?.activeVersionId || "";
@@ -3261,6 +3441,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
     state.versionCompareFocusTarget = null;
     state.cardCommentOpen = false;
     state.assistConfigOpen = false;
+    state.codexTermuxSetupOpen = false;
     state.entityEditor = null;
     render({ preserveState: true });
   }
@@ -4308,9 +4489,15 @@ export function createLessonEditorApp({ root, storage, editor }) {
         fail("Nenhum slot de reposicionamento foi encontrado a partir das tags escolhidas. Selecione tags válidas e tente de novo.");
       }
 
-      const result = await runGeminiAssist({
+      if (!(await ensureCodexLocalReady())) {
+        return;
+      }
+
+      const result = await runAssist({
         apiKey: state.assistConfig.apiKey,
         model: state.assistConfig.model,
+        codexEndpoint: state.assistConfig.codexEndpoint,
+        codexToken: state.assistConfig.codexToken,
         mode,
         microsequence: buildAssistHierarchyContext({
           course: context.course,
@@ -4986,9 +5173,16 @@ export function createLessonEditorApp({ root, storage, editor }) {
         hasResolvedLesson: !!scopeState.lesson,
         repositionMicrosequences: state.generationDraft.repositionMicrosequences === true
       });
-      const result = await runGeminiAssist({
+
+      if (!(await ensureCodexLocalReady())) {
+        return;
+      }
+
+      const result = await runAssist({
         apiKey: state.assistConfig.apiKey,
         model: state.assistConfig.model,
+        codexEndpoint: state.assistConfig.codexEndpoint,
+        codexToken: state.assistConfig.codexToken,
         mode: generationMode,
         microsequence:
           generationMode === "generate-lesson-microsequences"
@@ -5633,6 +5827,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
     state.versionHistoryOpen = false;
     state.versionCompareOpen = false;
     state.assistConfigOpen = false;
+    state.codexTermuxSetupOpen = false;
     state.entityEditor = null;
 
     if (state.view === "microsequence") {
@@ -7568,7 +7763,17 @@ export function createLessonEditorApp({ root, storage, editor }) {
         ? renderAssistConfigOverlay({
             model: state.assistConfigDraft.model,
             apiKey: state.assistConfigDraft.apiKey,
+            codexEndpoint: state.assistConfigDraft.codexEndpoint,
+            codexToken: state.assistConfigDraft.codexToken,
             modelOptions: ASSIST_MODEL_OPTIONS
+          })
+        : "") +
+      (state.codexTermuxSetupOpen
+        ? renderCodexTermuxSetupOverlay({
+            endpoint: getCodexSetupEndpoint(),
+            token: state.assistConfig.codexToken,
+            status: state.codexTermuxSetupStatus,
+            setupScript: getCodexSetupScript()
           })
         : "") +
       (state.generationPanelOpen
@@ -8542,6 +8747,10 @@ export function createLessonEditorApp({ root, storage, editor }) {
           closeAssistConfig();
           return;
         }
+        if (state.codexTermuxSetupOpen) {
+          closeCodexTermuxSetup();
+          return;
+        }
         if (state.entityEditor) {
           closeEntityEditor();
         }
@@ -8897,6 +9106,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
       root.querySelector("[data-field='generate-attachments']")?.click();
     });
     root.querySelector("[data-action='open-assist-config']")?.addEventListener("click", () => openAssistConfig());
+    root.querySelector("[data-action='open-codex-termux-setup']")?.addEventListener("click", () => openCodexTermuxSetup());
     root.querySelector("[data-action='apply-assist']")?.addEventListener("click", () => {
       void submitAssistRequest();
     });
@@ -8908,17 +9118,43 @@ export function createLessonEditorApp({ root, storage, editor }) {
     });
     root.querySelector("[data-action='open-version-history']")?.addEventListener("click", () => openVersionHistory());
     root.querySelector("[data-action='assist-config-close']")?.addEventListener("click", () => closeAssistConfig());
+    root.querySelector("[data-action='close-codex-termux-setup']")?.addEventListener("click", () => closeCodexTermuxSetup());
+    root.querySelector("[data-action='test-codex-termux-connection']")?.addEventListener("click", () => {
+      void testCodexTermuxConnection();
+    });
+    root.querySelector("[data-action='copy-codex-termux-script']")?.addEventListener("click", () => {
+      void copyTextToClipboard(getCodexSetupScript());
+    });
+    root.querySelector("[data-action='copy-codex-termux-endpoint']")?.addEventListener("click", () => {
+      void copyTextToClipboard(getCodexSetupEndpoint());
+    });
+    root.querySelector("[data-action='copy-codex-termux-health-command']")?.addEventListener("click", () => {
+      void copyTextToClipboard(getCodexSetupHealthCommand());
+    });
 
     const assistConfigModel = root.querySelector("[data-field='assist-config-model']");
     const assistConfigApiKey = root.querySelector("[data-field='assist-config-api-key']");
+    const assistConfigCodexEndpoint = root.querySelector("[data-field='assist-config-codex-endpoint']");
+    const assistConfigCodexToken = root.querySelector("[data-field='assist-config-codex-token']");
     if (assistConfigModel) {
       assistConfigModel.addEventListener("change", () => {
         persistAssistConfigValue({ model: assistConfigModel.value });
+        void handleCodexModelSelection(assistConfigModel.value);
       });
     }
     if (assistConfigApiKey) {
       assistConfigApiKey.addEventListener("input", () => {
         persistAssistConfigValue({ apiKey: assistConfigApiKey.value });
+      });
+    }
+    if (assistConfigCodexEndpoint) {
+      assistConfigCodexEndpoint.addEventListener("input", () => {
+        persistAssistConfigValue({ codexEndpoint: assistConfigCodexEndpoint.value });
+      });
+    }
+    if (assistConfigCodexToken) {
+      assistConfigCodexToken.addEventListener("input", () => {
+        persistAssistConfigValue({ codexToken: assistConfigCodexToken.value });
       });
     }
 

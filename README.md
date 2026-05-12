@@ -226,6 +226,10 @@ A arquitetura do AraLearn procura deslocar parte da inteligência do modelo para
 - o usuário pode revisar, editar, excluir, exportar e versionar;
 - o material fica no dispositivo, sob controle do usuário.
 
+Documentação adicional:
+
+- [Codex CLI via Termux no Android](docs/codex-cli-termux.md)
+
 A pergunta central não é apenas:
 
 ```text
