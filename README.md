@@ -536,7 +536,7 @@ O AraLearn está em desenvolvimento ativo. A versão atual já consolida uma bas
 Versão atual do pacote:
 
 ```text
-0.1.1
+0.1.2
 ```
 
 As próximas iterações devem aprofundar:
