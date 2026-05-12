@@ -20,6 +20,7 @@ import {
   normalizeSourceGuideStructured,
   SOURCE_GUIDE_LEVELS
 } from "../sourceGuides/sourceGuideStructured.js";
+import { normalizeLessonGuidance } from "../generation/guidance/lessonGuidance.js";
 
 function clone(value) {
   return structuredClone(value);
@@ -83,14 +84,11 @@ function assignOptionalSourceGuide(record, sourceGuide, sourceGuideStructured, l
   }
 
   if (sourceGuideStructured === undefined) {
-    assignOptionalTextField(record, "sourceGuide", sourceGuide);
-    delete record.sourceGuideStructured;
-    return;
+    fail('Campo obrigatório ausente: "sourceGuideStructured".');
   }
 
-  const normalizedText = sourceGuide === undefined ? "" : sourceGuide;
   const structured = normalizeSourceGuideStructured(sourceGuideStructured, { level });
-  const nextText = buildSourceGuideText(structured, normalizedText, { level });
+  const nextText = buildSourceGuideText(structured, { level });
 
   if (nextText) {
     record.sourceGuide = nextText;
@@ -103,6 +101,14 @@ function assignOptionalSourceGuide(record, sourceGuide, sourceGuideStructured, l
   } else {
     delete record.sourceGuideStructured;
   }
+}
+
+function assignLessonGuidance(record, input = {}) {
+  const normalized = normalizeLessonGuidance(input);
+  record.resourceTags = normalized.resourceTags;
+  record.contentTypeTags = normalized.contentTypeTags;
+  record.learningActionTags = normalized.learningActionTags;
+  record.supportLevel = normalized.supportLevel;
 }
 
 function normalizeOptionalTags(value) {
@@ -305,7 +311,16 @@ function createStarterMicrosequence({ title = "Nova microssequência" } = {}) {
   };
 }
 
-function createStarterLesson({ title = "Nova lição", description, sourceGuide, sourceGuideStructured } = {}) {
+function createStarterLesson({
+  title = "Nova lição",
+  description,
+  sourceGuide,
+  sourceGuideStructured,
+  resourceTags,
+  contentTypeTags,
+  learningActionTags,
+  supportLevel
+} = {}) {
   const lesson = {
     key: uniqueKey(title, new Set(), "lesson"),
     title,
@@ -313,6 +328,7 @@ function createStarterLesson({ title = "Nova lição", description, sourceGuide,
     microsequences: []
   };
   assignOptionalSourceGuide(lesson, sourceGuide, sourceGuideStructured, SOURCE_GUIDE_LEVELS.LESSON);
+  assignLessonGuidance(lesson, { resourceTags, contentTypeTags, learningActionTags, supportLevel });
   return lesson;
 }
 
@@ -390,10 +406,7 @@ export function createCourse(document, input = {}) {
     input.description && typeof input.description === "string" && input.description.trim()
       ? input.description.trim()
       : "";
-  const sourceGuide =
-    input.sourceGuide && typeof input.sourceGuide === "string" && input.sourceGuide.trim()
-      ? input.sourceGuide.trim()
-      : "";
+  const sourceGuide = input.sourceGuide && typeof input.sourceGuide === "string" && input.sourceGuide.trim() ? input.sourceGuide.trim() : undefined;
   const sourceGuideStructured =
     input.sourceGuideStructured === undefined
       ? undefined
@@ -648,10 +661,7 @@ export function createModule(document, input) {
     input.description && typeof input.description === "string" && input.description.trim()
       ? input.description.trim()
       : "";
-  const sourceGuide =
-    input.sourceGuide && typeof input.sourceGuide === "string" && input.sourceGuide.trim()
-      ? input.sourceGuide.trim()
-      : "";
+  const sourceGuide = input.sourceGuide && typeof input.sourceGuide === "string" && input.sourceGuide.trim() ? input.sourceGuide.trim() : undefined;
   const sourceGuideStructured =
     input.sourceGuideStructured === undefined
       ? undefined
@@ -707,16 +717,22 @@ export function createLesson(document, input) {
     input.description && typeof input.description === "string" && input.description.trim()
       ? input.description.trim()
       : "";
-  const sourceGuide =
-    input.sourceGuide && typeof input.sourceGuide === "string" && input.sourceGuide.trim()
-      ? input.sourceGuide.trim()
-      : "";
+  const sourceGuide = input.sourceGuide && typeof input.sourceGuide === "string" && input.sourceGuide.trim() ? input.sourceGuide.trim() : undefined;
   const sourceGuideStructured =
     input.sourceGuideStructured === undefined
       ? undefined
       : normalizeSourceGuideStructured(input.sourceGuideStructured, { level: SOURCE_GUIDE_LEVELS.LESSON });
   const usedKeys = collectSiblingKeys(moduleValue.lessons);
-  const lesson = createStarterLesson({ title, description, sourceGuide, sourceGuideStructured });
+  const lesson = createStarterLesson({
+    title,
+    description,
+    sourceGuide,
+    sourceGuideStructured,
+    resourceTags: input.resourceTags,
+    contentTypeTags: input.contentTypeTags,
+    learningActionTags: input.learningActionTags,
+    supportLevel: input.supportLevel
+  });
   lesson.key = input.key && typeof input.key === "string" && input.key.trim()
     ? input.key.trim()
     : uniqueKey(title, usedKeys, "lesson");
@@ -735,6 +751,7 @@ export function updateLesson(document, input) {
   assignOptionalTextField(lesson, "title", input.title);
   assignOptionalTextField(lesson, "description", input.description);
   assignOptionalSourceGuide(lesson, input.sourceGuide, input.sourceGuideStructured, SOURCE_GUIDE_LEVELS.LESSON);
+  assignLessonGuidance(lesson, input);
   return ensureValidDocument(nextDocument);
 }
 

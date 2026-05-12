@@ -15,6 +15,7 @@ export function buildMicrosequenceEditPlanningPrompt(contract, modelCapabilities
     "Use request.userEditPrompt apenas para especializar o recorte imediato e a ênfase da edição dentro da lição atual.",
     "Se request.userEditPrompt conflitar com a meta, a notação, as confusões prováveis ou o critério final da lição, preserve a governança da lição e reduza o pedido ao escopo governado.",
     "selectedLessonTopicRefs são assuntos selecionados no escopo da lição, normalmente derivados de títulos/tags de microssequências existentes; use como contexto auxiliar de escopo e terminologia, sem criar tags persistentes.",
+    "Respeite context.lesson.resourceTags, contentTypeTags, learningActionTags e supportLevel como governança operacional fechada da lição.",
     ...buildDidacticEditPlanningPromptLines(),
     "Contrato:",
     body

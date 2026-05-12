@@ -14,7 +14,6 @@ import {
 
 test("monta campos fixos de edição a partir da fonte-guia estruturada", () => {
   const fields = buildSourceGuideEditorFields(
-    "",
     {
       moduleScope: "Comandos básicos.",
       lessonProgression: "Começar por navegação e depois arquivos."
@@ -22,15 +21,12 @@ test("monta campos fixos de edição a partir da fonte-guia estruturada", () => 
     { level: SOURCE_GUIDE_LEVELS.MODULE }
   );
 
-  assert.equal(fields.length, 5);
+  assert.equal(fields.length, 4);
   assert.equal(fields[0].name, "moduleScope");
   assert.equal(fields[0].iconName, "intent");
   assert.equal(fields[0].value, "Comandos básicos.");
-  assert.equal(fields[0].tone, "primary");
-  assert.equal(fields[0].hint, "");
+  assert.equal(fields[0].type, "text");
   assert.equal(fields.find((field) => field.name === "lessonProgression")?.value, "Começar por navegação e depois arquivos.");
-  assert.equal(fields.find((field) => field.name === "freeNotes")?.tone, "secondary");
-  assert.match(fields.find((field) => field.name === "freeNotes")?.hint || "", /não entra no núcleo estruturado/i);
 });
 
 test("resolve payload estruturado e recompila texto legível", () => {
@@ -51,7 +47,7 @@ test("resolve payload estruturado e recompila texto legível", () => {
   });
   assert.equal(
     payload.sourceGuide,
-    buildSourceGuideText(payload.sourceGuideStructured, "", { level: SOURCE_GUIDE_LEVELS.LESSON })
+    buildSourceGuideText(payload.sourceGuideStructured, { level: SOURCE_GUIDE_LEVELS.LESSON })
   );
   assert.match(payload.sourceGuide, /Meta da lição: Ler e executar um comando simples\./);
   assert.match(payload.sourceGuide, /Sinais e notação: Destacar `ls` e `cd` inline\./);
@@ -62,8 +58,7 @@ test("compacta fonte-guia para contexto de modelo sem freeNotes", () => {
   const structured = sanitizeSourceGuideStructuredForModel(
     {
       lessonGoal: "Ler e executar um comando simples.",
-      masteryGoal: "Executar sozinho um caso básico.",
-      freeNotes: "Anotação legada que não deve ir para o modelo."
+      masteryGoal: "Executar sozinho um caso básico."
     },
     { level: SOURCE_GUIDE_LEVELS.LESSON }
   );
@@ -73,29 +68,14 @@ test("compacta fonte-guia para contexto de modelo sem freeNotes", () => {
     masteryGoal: "Executar sozinho um caso básico."
   });
   assert.equal(
-    buildSourceGuideTextForModel(structured, "", { level: SOURCE_GUIDE_LEVELS.LESSON }),
+    buildSourceGuideTextForModel(structured, { level: SOURCE_GUIDE_LEVELS.LESSON }),
     "Meta da lição: Ler e executar um comando simples.\nAo final: Executar sozinho um caso básico."
   );
   assert.equal(getSourceGuideSchemaPropertiesForModel(SOURCE_GUIDE_LEVELS.LESSON).freeNotes, undefined);
 });
 
-test("reconstroi campos estruturados a partir de fonte-guia compilada antiga", () => {
-  const structured = normalizeSourceGuideStructured(undefined, {
-    level: SOURCE_GUIDE_LEVELS.LESSON,
-    fallbackText: [
-      "Meta da lição: Construir tabela-verdade simples.",
-      "Pré-requisitos imediatos: Ler proposições declarativas.",
-      "Sinais e notação: Destacar `p`, `q` e `→`.",
-      "Confusões prováveis: Trocar condição suficiente por necessária.",
-      "Ao final: Montar e ler uma tabela pequena."
-    ].join("\n")
-  });
+test("não reidrata fonte-guia textual legada sem objeto estruturado", () => {
+  const structured = normalizeSourceGuideStructured(undefined, { level: SOURCE_GUIDE_LEVELS.LESSON });
 
-  assert.deepEqual(structured, {
-    lessonGoal: "Construir tabela-verdade simples.",
-    lessonPrerequisites: "Ler proposições declarativas.",
-    notationRules: "Destacar `p`, `q` e `→`.",
-    commonErrors: "Trocar condição suficiente por necessária.",
-    masteryGoal: "Montar e ler uma tabela pequena."
-  });
+  assert.deepEqual(structured, {});
 });

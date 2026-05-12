@@ -133,6 +133,24 @@ test("aceita sourceGuideStructured e recompila sourceGuide legível", () => {
   assert.match(result.value.courses[0].modules[0].lessons[0].sourceGuide, /Ao final: Aplicar sozinho em caso básico\./);
 });
 
+test("rejeita sourceGuide textual puro sem sourceGuideStructured", () => {
+  const result = validateContractDocument({
+    contract: "aralearn.contract",
+    version: 1,
+    kind: "project",
+    courses: [
+      {
+        title: "Curso",
+        sourceGuide: "Texto corrido legado.",
+        modules: []
+      }
+    ]
+  });
+
+  assert.equal(result.ok, false);
+  assert.match(result.errors.map((error) => error.message).join("\n"), /sourceGuide textual puro/);
+});
+
 test("rejeita campos legados de card no contrato principal", () => {
   const result = validateContractDocument(projectWithCards([{ type: "text", title: "Antigo", text: "x" }]));
 

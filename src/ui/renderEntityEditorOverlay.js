@@ -40,9 +40,66 @@ export function renderEntityEditorOverlay({ title, helperText = "", fields, acti
           labelText +
           '" placeholder="' +
           placeholder +
+          '" maxlength="' +
+          escapeHtml(String(field.maxLength || 1000)) +
           '">' +
           value +
           "</textarea>" +
+          (hintText ? '<p class="field-hint">' + hintText + "</p>" : "") +
+          "</div>"
+        );
+      }
+
+      if (field.type === "select") {
+        return (
+          '<div class="field' +
+          (field.tone === "secondary" ? " is-secondary" : "") +
+          '">' +
+          "<label>" +
+          labelContent +
+          "</label>" +
+          '<select data-field="' +
+          escapeHtml(field.name) +
+          '" aria-label="' +
+          labelText +
+          '">' +
+          (field.options || [])
+            .map((option) => {
+              const optionValue = escapeHtml(option.id);
+              const optionLabel = escapeHtml(option.label);
+              const selected = option.id === field.value ? ' selected="selected"' : "";
+              return `<option value="${optionValue}"${selected}>${optionLabel}</option>`;
+            })
+            .join("") +
+          "</select>" +
+          (hintText ? '<p class="field-hint">' + hintText + "</p>" : "") +
+          "</div>"
+        );
+      }
+
+      if (field.type === "multiselect") {
+        const selectedValues = new Set(Array.isArray(field.value) ? field.value : []);
+        return (
+          '<div class="field' +
+          (field.tone === "secondary" ? " is-secondary" : "") +
+          '">' +
+          "<label>" +
+          labelContent +
+          "</label>" +
+          '<select multiple="multiple" data-field="' +
+          escapeHtml(field.name) +
+          '" aria-label="' +
+          labelText +
+          '">' +
+          (field.options || [])
+            .map((option) => {
+              const optionValue = escapeHtml(option.id);
+              const optionLabel = escapeHtml(option.label);
+              const selected = selectedValues.has(option.id) ? ' selected="selected"' : "";
+              return `<option value="${optionValue}"${selected}>${optionLabel}</option>`;
+            })
+            .join("") +
+          "</select>" +
           (hintText ? '<p class="field-hint">' + hintText + "</p>" : "") +
           "</div>"
         );
@@ -63,6 +120,8 @@ export function renderEntityEditorOverlay({ title, helperText = "", fields, acti
         placeholder +
         '" type="text" value="' +
         value +
+        '" maxlength="' +
+        escapeHtml(String(field.maxLength || 240)) +
         '">' +
         (hintText ? '<p class="field-hint">' + hintText + "</p>" : "") +
         "</div>"

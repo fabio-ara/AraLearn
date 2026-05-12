@@ -8,6 +8,7 @@ import {
   sanitizeSourceGuideStructuredForModel,
   SOURCE_GUIDE_LEVELS
 } from "../../sourceGuides/sourceGuideStructured.js";
+import { normalizeLessonGuidance } from "../guidance/lessonGuidance.js";
 
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -32,10 +33,9 @@ function sourceGuide(value) {
 function sourceGuideForModel(value, level) {
   const structured = sanitizeSourceGuideStructuredForModel(value?.sourceGuideStructured, { level });
   if (Object.keys(structured).length) {
-    return buildSourceGuideTextForModel(structured, "", { level });
+    return buildSourceGuideTextForModel(structured, { level });
   }
-  const fallback = sourceGuide(value);
-  return fallback || "";
+  return "";
 }
 
 function sourceGuideStructuredForModel(value, level) {
@@ -76,6 +76,7 @@ export function buildMicrosequenceEditPlanningContract({
   const capabilities = getModelCapabilities(selectedModel);
   const resolvedSources = resolveReferencedSources({ userPrompt: userEditPrompt, attachedSources, userSelectedSourceIds });
   const lessonGuideStructured = sourceGuideStructuredForModel(selectedLesson, SOURCE_GUIDE_LEVELS.LESSON) || {};
+  const lessonGuidance = normalizeLessonGuidance(selectedLesson);
   const selectedTopics = normalizeSelectedLessonTopicRefs({
     selectedLessonTopicRefs,
     selectedLessonScopeTagRefs,
@@ -161,6 +162,7 @@ export function buildMicrosequenceEditPlanningContract({
         ...(sourceGuideStructuredForModel(selectedLesson, SOURCE_GUIDE_LEVELS.LESSON)
           ? { sourceGuideStructured: sourceGuideStructuredForModel(selectedLesson, SOURCE_GUIDE_LEVELS.LESSON) }
           : {}),
+        ...lessonGuidance,
         microsequenceLine: Array.isArray(selectedLesson?.microsequences)
           ? selectedLesson.microsequences.map(summarizeMicrosequence)
           : []
@@ -185,7 +187,7 @@ export function buildMicrosequenceEditPlanningContract({
       cardCount: Array.isArray(version.cards) ? version.cards.length : 0,
       shortSummary: text(version.description || version.label).slice(0, 160)
     })),
-    availableResources: listCardResourceSummaries(),
+    availableResources: listCardResourceSummaries().filter((item) => lessonGuidance.resourceTags.includes(item.id)),
     sources: resolvedSources.referencedSources,
     model: { id: capabilities.model, capabilities },
     sourceResolution: resolvedSources

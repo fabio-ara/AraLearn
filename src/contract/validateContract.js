@@ -4,6 +4,7 @@ import {
   normalizeSourceGuideStructured,
   SOURCE_GUIDE_LEVELS
 } from "../sourceGuides/sourceGuideStructured.js";
+import { normalizeLessonGuidance } from "../generation/guidance/lessonGuidance.js";
 
 export const CONTRACT_NAME = "aralearn.contract";
 export const CONTRACT_VERSION = 1;
@@ -192,6 +193,9 @@ function validateMicrosequence(microsequence, index, errors, microKeys, path) {
 
 function readOptionalSourceGuideStructured(value, sourceGuide, path, errors, level) {
   if (value === undefined) {
+    if (typeof sourceGuide === "string" && sourceGuide.trim()) {
+      errors.push(makeError(path, 'sourceGuide textual puro não é aceito sem "sourceGuideStructured".'));
+    }
     return {};
   }
   if (!isPlainObject(value)) {
@@ -199,8 +203,7 @@ function readOptionalSourceGuideStructured(value, sourceGuide, path, errors, lev
     return {};
   }
 
-  const normalized = normalizeSourceGuideStructured(value, { level });
-  return normalized;
+  return normalizeSourceGuideStructured(value, { level });
 }
 
 function validateLesson(lesson, index, errors, lessonKeys, path) {
@@ -213,7 +216,18 @@ function validateLesson(lesson, index, errors, lessonKeys, path) {
 
   assertAllowedFields(
     lesson,
-    new Set(["key", "title", "description", "sourceGuide", "sourceGuideStructured", "microsequences"]),
+    new Set([
+      "key",
+      "title",
+      "description",
+      "sourceGuide",
+      "sourceGuideStructured",
+      "resourceTags",
+      "contentTypeTags",
+      "learningActionTags",
+      "supportLevel",
+      "microsequences"
+    ]),
     currentPath,
     errors,
     "lição"
@@ -229,6 +243,7 @@ function validateLesson(lesson, index, errors, lessonKeys, path) {
     errors,
     SOURCE_GUIDE_LEVELS.LESSON
   );
+  const lessonGuidance = normalizeLessonGuidance(lesson);
   const key = lessonKeys.next(lesson.key, title || `lesson-${index + 1}`, currentPath, errors);
   const microsequences = Array.isArray(lesson.microsequences) ? lesson.microsequences : [];
 
@@ -245,10 +260,11 @@ function validateLesson(lesson, index, errors, lessonKeys, path) {
     key,
     title: title ?? "",
     ...(description ? { description } : {}),
-    ...(buildSourceGuideText(sourceGuideStructured, sourceGuide, { level: SOURCE_GUIDE_LEVELS.LESSON })
-      ? { sourceGuide: buildSourceGuideText(sourceGuideStructured, sourceGuide, { level: SOURCE_GUIDE_LEVELS.LESSON }) }
+    ...(buildSourceGuideText(sourceGuideStructured, { level: SOURCE_GUIDE_LEVELS.LESSON })
+      ? { sourceGuide: buildSourceGuideText(sourceGuideStructured, { level: SOURCE_GUIDE_LEVELS.LESSON }) }
       : {}),
     ...(Object.keys(sourceGuideStructured).length ? { sourceGuideStructured } : {}),
+    ...lessonGuidance,
     microsequences: normalizedMicrosequences
   };
 }
@@ -295,8 +311,8 @@ function validateModule(moduleValue, index, errors, moduleKeys, path) {
     key,
     title: title ?? "",
     ...(description ? { description } : {}),
-    ...(buildSourceGuideText(sourceGuideStructured, sourceGuide, { level: SOURCE_GUIDE_LEVELS.MODULE })
-      ? { sourceGuide: buildSourceGuideText(sourceGuideStructured, sourceGuide, { level: SOURCE_GUIDE_LEVELS.MODULE }) }
+    ...(buildSourceGuideText(sourceGuideStructured, { level: SOURCE_GUIDE_LEVELS.MODULE })
+      ? { sourceGuide: buildSourceGuideText(sourceGuideStructured, { level: SOURCE_GUIDE_LEVELS.MODULE }) }
       : {}),
     ...(Object.keys(sourceGuideStructured).length ? { sourceGuideStructured } : {}),
     lessons: normalizedLessons
@@ -345,8 +361,8 @@ function validateCourse(course, index, errors, courseKeys) {
     key,
     title: title ?? "",
     ...(description ? { description } : {}),
-    ...(buildSourceGuideText(sourceGuideStructured, sourceGuide, { level: SOURCE_GUIDE_LEVELS.COURSE })
-      ? { sourceGuide: buildSourceGuideText(sourceGuideStructured, sourceGuide, { level: SOURCE_GUIDE_LEVELS.COURSE }) }
+    ...(buildSourceGuideText(sourceGuideStructured, { level: SOURCE_GUIDE_LEVELS.COURSE })
+      ? { sourceGuide: buildSourceGuideText(sourceGuideStructured, { level: SOURCE_GUIDE_LEVELS.COURSE }) }
       : {}),
     ...(Object.keys(sourceGuideStructured).length ? { sourceGuideStructured } : {}),
     modules: normalizedModules

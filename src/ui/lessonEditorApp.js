@@ -13,6 +13,7 @@ import {
   resolveSourceGuidePayload,
   SOURCE_GUIDE_LEVELS
 } from "../sourceGuides/sourceGuideStructured.js";
+import { buildLessonGuidanceEditorFields, normalizeLessonGuidance } from "../generation/guidance/lessonGuidance.js";
 import {
   createMicrosequenceVersionRecord,
   insertMicrosequenceVersionAfterActive,
@@ -778,12 +779,12 @@ function makeEntityEditorModel(state) {
   if (entityEditor.kind === "course-source-guide") {
     const course = findCourse(project, entityEditor.courseKey || selection.courseKey);
     if (!course) return null;
-    return {
-      title: "Fonte-guia do curso",
-      helperText: "Defina escopo, limites e convenções do curso. Observações livres ficam fora da governança forte quando os campos estruturados já bastam.",
-      fields: buildSourceGuideEditorFields(course.sourceGuide || "", course.sourceGuideStructured || {}, { level: SOURCE_GUIDE_LEVELS.COURSE }),
-      actions: []
-    };
+      return {
+        title: "Fonte-guia do curso",
+        helperText: "Use frases curtas e telegráficas. O texto derivado é recompilado pelo app; não há campo livre legado.",
+        fields: buildSourceGuideEditorFields(course.sourceGuideStructured || {}, { level: SOURCE_GUIDE_LEVELS.COURSE }),
+        actions: []
+      };
   }
 
   if (entityEditor.kind === "course") {
@@ -819,12 +820,12 @@ function makeEntityEditorModel(state) {
   if (entityEditor.kind === "module-source-guide") {
     const moduleValue = findModule(project, entityEditor.courseKey || selection.courseKey, entityEditor.moduleKey);
     if (!moduleValue) return null;
-    return {
-      title: "Fonte-guia do módulo",
-      helperText: "Defina recorte, pré-requisitos e progressão das lições. Observações livres ficam como apoio editorial, não como regra principal da geração.",
-      fields: buildSourceGuideEditorFields(moduleValue.sourceGuide || "", moduleValue.sourceGuideStructured || {}, { level: SOURCE_GUIDE_LEVELS.MODULE }),
-      actions: []
-    };
+      return {
+        title: "Fonte-guia do módulo",
+        helperText: "Mantenha o módulo enxuto e sem preferências operacionais da lição.",
+        fields: buildSourceGuideEditorFields(moduleValue.sourceGuideStructured || {}, { level: SOURCE_GUIDE_LEVELS.MODULE }),
+        actions: []
+      };
   }
 
   if (entityEditor.kind === "module-actions") {
@@ -862,12 +863,15 @@ function makeEntityEditorModel(state) {
   if (entityEditor.kind === "lesson-source-guide") {
     const lesson = findLesson(project, entityEditor.courseKey || selection.courseKey, entityEditor.moduleKey, entityEditor.lessonKey);
     if (!lesson) return null;
-    return {
-      title: "Fonte-guia da lição",
-      helperText: "Defina meta, notação, confusões prováveis e resultado esperado. Observações livres ficam em segundo plano quando a governança estruturada já estiver completa.",
-      fields: buildSourceGuideEditorFields(lesson.sourceGuide || "", lesson.sourceGuideStructured || {}, { level: SOURCE_GUIDE_LEVELS.LESSON }),
-      actions: []
-    };
+      return {
+        title: "Fonte-guia da lição",
+        helperText: "A lição agora define governança forte: texto curto estruturado, recursos permitidos, tipos de conteúdo, ações de estudo e nível de apoio.",
+        fields: [
+          ...buildSourceGuideEditorFields(lesson.sourceGuideStructured || {}, { level: SOURCE_GUIDE_LEVELS.LESSON }),
+          ...buildLessonGuidanceEditorFields(normalizeLessonGuidance(lesson))
+        ],
+        actions: []
+      };
   }
 
   if (entityEditor.kind === "lesson-actions") {
@@ -4262,6 +4266,11 @@ export function createLessonEditorApp({ root, storage, editor }) {
       lessonTitle: scopeState.lesson?.title || String(state.generationDraft.lessonInput || "").trim(),
       lessonDescription: scopeState.lesson?.description || "",
       lessonSourceGuide: scopeState.lesson?.sourceGuide || "",
+      lessonSourceGuideStructured: structuredClone(scopeState.lesson?.sourceGuideStructured || {}),
+      lessonResourceTags: Array.isArray(scopeState.lesson?.resourceTags) ? [...scopeState.lesson.resourceTags] : [],
+      lessonContentTypeTags: Array.isArray(scopeState.lesson?.contentTypeTags) ? [...scopeState.lesson.contentTypeTags] : [],
+      lessonLearningActionTags: Array.isArray(scopeState.lesson?.learningActionTags) ? [...scopeState.lesson.learningActionTags] : [],
+      lessonSupportLevel: String(scopeState.lesson?.supportLevel || "").trim(),
       moduleLessons,
       lessonMicrosequences: Array.isArray(scopeState.lesson?.microsequences)
         ? scopeState.lesson.microsequences.map((microsequence) => ({
@@ -4289,6 +4298,10 @@ export function createLessonEditorApp({ root, storage, editor }) {
       lessonDescription: scopeState.lesson?.description || "",
       lessonSourceGuide: scopeState.lesson?.sourceGuide || "",
       lessonSourceGuideStructured: structuredClone(scopeState.lesson?.sourceGuideStructured || {}),
+      lessonResourceTags: Array.isArray(scopeState.lesson?.resourceTags) ? [...scopeState.lesson.resourceTags] : [],
+      lessonContentTypeTags: Array.isArray(scopeState.lesson?.contentTypeTags) ? [...scopeState.lesson.contentTypeTags] : [],
+      lessonLearningActionTags: Array.isArray(scopeState.lesson?.learningActionTags) ? [...scopeState.lesson.learningActionTags] : [],
+      lessonSupportLevel: String(scopeState.lesson?.supportLevel || "").trim(),
       existingMicrosequences: Array.isArray(scopeState.lesson?.microsequences)
         ? scopeState.lesson.microsequences.map((microsequence, index) => ({
             key: String(microsequence?.key || "").trim(),
@@ -4380,7 +4393,11 @@ export function createLessonEditorApp({ root, storage, editor }) {
         title: existingLesson.title,
         description: payload.description,
         sourceGuide: payload.sourceGuide,
-        sourceGuideStructured: payload.sourceGuideStructured
+        sourceGuideStructured: payload.sourceGuideStructured,
+        resourceTags: payload.resourceTags,
+        contentTypeTags: payload.contentTypeTags,
+        learningActionTags: payload.learningActionTags,
+        supportLevel: payload.supportLevel
       });
       createStructureVersionFromProject(nextProject, {
         level: "lesson",
@@ -4398,7 +4415,11 @@ export function createLessonEditorApp({ root, storage, editor }) {
         title: payload.title,
         description: payload.description,
         sourceGuide: payload.sourceGuide,
-        sourceGuideStructured: payload.sourceGuideStructured
+        sourceGuideStructured: payload.sourceGuideStructured,
+        resourceTags: payload.resourceTags,
+        contentTypeTags: payload.contentTypeTags,
+        learningActionTags: payload.learningActionTags,
+        supportLevel: payload.supportLevel
       });
       createStructureVersionFromProject(nextProject, {
         level: "module",
@@ -4536,7 +4557,11 @@ export function createLessonEditorApp({ root, storage, editor }) {
             title: String(draft.lessonInput || "").trim() || lessonPayload.title,
             description: lessonPayload.description,
             sourceGuide: lessonPayload.sourceGuide,
-            sourceGuideStructured: lessonPayload.sourceGuideStructured
+            sourceGuideStructured: lessonPayload.sourceGuideStructured,
+            resourceTags: lessonPayload.resourceTags,
+            contentTypeTags: lessonPayload.contentTypeTags,
+            learningActionTags: lessonPayload.learningActionTags,
+            supportLevel: lessonPayload.supportLevel
           });
           createStructureVersionFromProject(nextProject, {
             level: "module",
@@ -4562,7 +4587,11 @@ export function createLessonEditorApp({ root, storage, editor }) {
             title: lesson.title,
             description: lessonPayload.description,
             sourceGuide: lessonPayload.sourceGuide,
-            sourceGuideStructured: lessonPayload.sourceGuideStructured
+            sourceGuideStructured: lessonPayload.sourceGuideStructured,
+            resourceTags: lessonPayload.resourceTags,
+            contentTypeTags: lessonPayload.contentTypeTags,
+            learningActionTags: lessonPayload.learningActionTags,
+            supportLevel: lessonPayload.supportLevel
           });
           createStructureVersionFromProject(nextProject, {
             level: "lesson",
@@ -5508,8 +5537,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
           description: payload.description
         });
       } else if (state.entityEditor.kind === "course-source-guide") {
-        const course = findCourse(state.project, state.entityEditor.courseKey || state.selection.courseKey);
-        const nextGuide = resolveSourceGuidePayload(payload, course?.sourceGuide || "", { level: SOURCE_GUIDE_LEVELS.COURSE });
+        const nextGuide = resolveSourceGuidePayload(payload, { level: SOURCE_GUIDE_LEVELS.COURSE });
         nextProject = structuralEditor.updateCourse({
           courseKey: state.entityEditor.courseKey || state.selection.courseKey,
           sourceGuide: nextGuide.sourceGuide,
@@ -5523,12 +5551,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
           description: payload.description
         });
       } else if (state.entityEditor.kind === "module-source-guide") {
-        const moduleValue = findModule(
-          state.project,
-          state.entityEditor.courseKey || state.selection.courseKey,
-          state.entityEditor.moduleKey
-        );
-        const nextGuide = resolveSourceGuidePayload(payload, moduleValue?.sourceGuide || "", { level: SOURCE_GUIDE_LEVELS.MODULE });
+        const nextGuide = resolveSourceGuidePayload(payload, { level: SOURCE_GUIDE_LEVELS.MODULE });
         nextProject = structuralEditor.updateModule({
           courseKey: state.entityEditor.courseKey || state.selection.courseKey,
           moduleKey: state.entityEditor.moduleKey,
@@ -5544,19 +5567,18 @@ export function createLessonEditorApp({ root, storage, editor }) {
           description: payload.description
         });
       } else if (state.entityEditor.kind === "lesson-source-guide") {
-        const lesson = findLesson(
-          state.project,
-          state.entityEditor.courseKey || state.selection.courseKey,
-          state.entityEditor.moduleKey,
-          state.entityEditor.lessonKey
-        );
-        const nextGuide = resolveSourceGuidePayload(payload, lesson?.sourceGuide || "", { level: SOURCE_GUIDE_LEVELS.LESSON });
+        const nextGuide = resolveSourceGuidePayload(payload, { level: SOURCE_GUIDE_LEVELS.LESSON });
+        const lessonGuidance = normalizeLessonGuidance(payload);
         nextProject = structuralEditor.updateLesson({
           courseKey: state.entityEditor.courseKey || state.selection.courseKey,
           moduleKey: state.entityEditor.moduleKey,
           lessonKey: state.entityEditor.lessonKey,
           sourceGuide: nextGuide.sourceGuide,
-          sourceGuideStructured: nextGuide.sourceGuideStructured
+          sourceGuideStructured: nextGuide.sourceGuideStructured,
+          resourceTags: lessonGuidance.resourceTags,
+          contentTypeTags: lessonGuidance.contentTypeTags,
+          learningActionTags: lessonGuidance.learningActionTags,
+          supportLevel: lessonGuidance.supportLevel
         });
       } else if (state.entityEditor.kind === "microsequence") {
         nextProject = editor.updateMicrosequence({
@@ -8809,7 +8831,12 @@ export function createLessonEditorApp({ root, storage, editor }) {
       const handler = () => {
         updateEntityDraft(
           Object.fromEntries(
-            Object.entries(fields).map(([name, node]) => [name, node.value])
+            Object.entries(fields).map(([name, node]) => {
+              if (node instanceof HTMLSelectElement && node.multiple) {
+                return [name, Array.from(node.selectedOptions).map((option) => option.value)];
+              }
+              return [name, node.value];
+            })
           )
         );
       };

@@ -114,6 +114,39 @@ function makeGuidedPracticeCardsPayload() {
   };
 }
 
+function makeComposeMicrosequenceContext(overrides = {}) {
+  return {
+    courseTitle: "Programação",
+    courseDescription: "Fundamentos para iniciantes.",
+    courseSourceGuideStructured: {
+      audience: "Iniciantes absolutos.",
+      globalScope: "Fluxo básico de Git para começar a versionar.",
+      sharedNotation: "Destacar comandos inline com acentos graves."
+    },
+    moduleTitle: "Git e colaboração",
+    moduleDescription: "Versionamento básico.",
+    moduleSourceGuideStructured: {
+      moduleScope: "Comandos essenciais para registrar e publicar mudanças.",
+      lessonProgression: "Ir de preparação local para envio ao remoto."
+    },
+    lessonTitle: "Primeiros comandos",
+    lessonDescription: "Criar repositório e registrar mudanças.",
+    lessonSourceGuideStructured: {
+      lessonGoal: "Distinguir `git add` de `git push` no fluxo de trabalho.",
+      notationRules: "Destacar `git add` e `git push` inline.",
+      masteryGoal: "Escolher o comando correto para preparar ou enviar mudanças."
+    },
+    lessonResourceTags: ["paragraph", "multiple_choice", "code_editor"],
+    lessonContentTypeTags: ["concept", "procedure", "tool_use"],
+    lessonLearningActionTags: ["understand", "practice", "use_tool"],
+    lessonSupportLevel: "guided",
+    title: "Git",
+    tags: [],
+    cards: [],
+    ...overrides
+  };
+}
+
 function makeGeminiTextResponse(payloadText) {
   return {
     ok: true,
@@ -789,17 +822,7 @@ test("gera microssequência com plano local e chamada estruturada ao Gemini", as
     const result = await runGeminiAssist({
       apiKey: "chave",
       mode: "compose-microsequence",
-      microsequence: {
-        courseTitle: "Programação",
-        courseDescription: "Fundamentos para iniciantes.",
-        moduleTitle: "Git e colaboração",
-        moduleDescription: "Versionamento básico.",
-        lessonTitle: "Primeiros comandos",
-        lessonDescription: "Criar repositório e registrar mudanças.",
-        title: "Git",
-        tags: [],
-        cards: []
-      },
+      microsequence: makeComposeMicrosequenceContext(),
       dependencyTitles: ["Git"],
       selectedLessonTopicRefs: [{ refKey: "micro-git", label: "Git", source: "microsequence" }],
       promptText: "explique git add e git push"
@@ -855,7 +878,9 @@ test("envia tipo didático fixado pela UI para o planejamento da microssequênci
     const result = await runGeminiAssist({
       apiKey: "chave",
       mode: "compose-microsequence",
-      microsequence: { title: "Git", tags: [], cards: [] },
+      microsequence: makeComposeMicrosequenceContext({
+        lessonResourceTags: ["paragraph", "block_gap_fill", "multiple_choice"]
+      }),
       promptText: "crie uma prática guiada sobre git add",
       userFixedTypeId: "guided_practice"
     });
@@ -961,7 +986,7 @@ test("fluxo Gemini repara geração final inválida antes da adaptação públic
     const result = await runGeminiAssist({
       apiKey: "chave",
       mode: "compose-microsequence",
-      microsequence: { title: "Git", tags: [], cards: [] },
+      microsequence: makeComposeMicrosequenceContext(),
       promptText: "explique git add e git push"
     });
 
@@ -993,7 +1018,7 @@ test("fluxo Gemini devolve erro claro quando reparo de geração falha", async (
         runGeminiAssist({
           apiKey: "chave",
           mode: "compose-microsequence",
-          microsequence: { title: "Git", tags: [], cards: [] },
+          microsequence: makeComposeMicrosequenceContext(),
           promptText: "explique git add e git push"
         }),
       (error) => {
@@ -1024,7 +1049,7 @@ test("generationRunState é criado após plano validado no fluxo completo", asyn
     const result = await runGeminiAssist({
       apiKey: "chave",
       mode: "compose-microsequence",
-      microsequence: { key: "micro", title: "Git", tags: [], cards: [] },
+      microsequence: makeComposeMicrosequenceContext({ key: "micro" }),
       promptText: "explique git add e git push"
     });
 
@@ -1052,10 +1077,10 @@ test("falha retryable na geração preserva plano validado e permite retomada se
   try {
     let capturedError = null;
     try {
-      await runGeminiAssist({
-        apiKey: "chave",
-        mode: "compose-microsequence",
-        microsequence: { key: "micro", title: "Git", tags: [], cards: [] },
+        await runGeminiAssist({
+          apiKey: "chave",
+          mode: "compose-microsequence",
+          microsequence: makeComposeMicrosequenceContext({ key: "micro" }),
         promptText: "explique git add e git push",
         retryOptions: { maxAttempts: 2, baseDelayMs: 10, jitterRatio: 0, delay: async (ms) => delays.push(ms) }
       });
@@ -1117,7 +1142,7 @@ test("fallback não ocorre por padrão quando geração recebe 503", async () =>
         runGeminiAssist({
           apiKey: "chave",
           mode: "compose-microsequence",
-          microsequence: { title: "Git", tags: [], cards: [] },
+          microsequence: makeComposeMicrosequenceContext(),
           promptText: "explique git add e git push",
           fallbackModelId: "gemini-2.5-flash-lite",
           retryOptions: { maxAttempts: 1, delay: async () => null }
@@ -1153,7 +1178,7 @@ test("fallback ocorre apenas quando configurado para erro transitório de geraç
     const result = await runGeminiAssist({
       apiKey: "chave",
       mode: "compose-microsequence",
-      microsequence: { title: "Git", tags: [], cards: [] },
+      microsequence: makeComposeMicrosequenceContext(),
       promptText: "explique git add e git push",
       fallbackEnabled: true,
       fallbackModelId: "gemini-2.5-flash-lite",
@@ -1185,7 +1210,7 @@ test("fallback não ocorre em auth_error", async () => {
         runGeminiAssist({
           apiKey: "chave",
           mode: "compose-microsequence",
-          microsequence: { title: "Git", tags: [], cards: [] },
+          microsequence: makeComposeMicrosequenceContext(),
           promptText: "explique git add e git push",
           fallbackEnabled: true,
           fallbackModelId: "gemini-2.5-flash-lite",
@@ -1214,7 +1239,7 @@ test("erro de planejamento retorna canResume false", async () => {
         runGeminiAssist({
           apiKey: "chave",
           mode: "compose-microsequence",
-          microsequence: { title: "Git", tags: [], cards: [] },
+          microsequence: makeComposeMicrosequenceContext(),
           promptText: "explique git add e git push",
           retryOptions: { maxAttempts: 2, delay: async () => null }
         }),
@@ -1292,7 +1317,7 @@ test("anexa documentos ao Gemini Files API antes de gerar cards", async () => {
     const result = await runGeminiAssist({
       apiKey: "chave",
       mode: "compose-microsequence",
-      microsequence: { title: "Git", tags: [], cards: [] },
+      microsequence: makeComposeMicrosequenceContext(),
       promptText: "explique git add e git push",
       attachments: [attachment]
     });
@@ -1387,7 +1412,7 @@ test("aceita JSON do Gemini envolto em bloco markdown", async () => {
     const result = await runGeminiAssist({
       apiKey: "chave",
       mode: "compose-microsequence",
-      microsequence: { title: "Git", tags: [], cards: [] },
+      microsequence: makeComposeMicrosequenceContext(),
       promptText: "explique git add e git push"
     });
 
@@ -1413,7 +1438,7 @@ test("rejeita planejamento quando o Gemini devolve JSON ilegível", async () => 
         runGeminiAssist({
           apiKey: "chave",
           mode: "compose-microsequence",
-          microsequence: { title: "Git", tags: [], cards: [] },
+          microsequence: makeComposeMicrosequenceContext(),
           promptText: "explique git add e git push"
         }),
       (error) => {
@@ -1445,7 +1470,7 @@ test("planejamento compacto não envia schema nativo ao Gemini", async () => {
     const result = await runGeminiAssist({
       apiKey: "chave",
       mode: "compose-microsequence",
-      microsequence: { title: "Git", tags: [], cards: [] },
+      microsequence: makeComposeMicrosequenceContext(),
       promptText: "explique git add e git push"
     });
 

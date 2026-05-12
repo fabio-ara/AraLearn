@@ -25,6 +25,7 @@ export function buildDeterministicCardPlan({
   sizeId,
   selectedExtraResourceTypes = [],
   userSelectedExtraResourceTypes = [],
+  lessonAllowedResourceTypes = [],
   resourceCatalog = listGenerationResourceDefinitions()
 }) {
   const knownIds = new Set(resourceCatalog.map((item) => item.id));
@@ -33,7 +34,11 @@ export function buildDeterministicCardPlan({
   const planItems = type?.cardPlansBySize?.[size?.id] || type?.cardPlansBySize?.short || [];
   const baseResourceTypes = uniqueKnown(type?.baseResourceTypes || [], knownIds);
   const extras = uniqueKnown([...userSelectedExtraResourceTypes, ...selectedExtraResourceTypes], knownIds);
-  const availableResources = uniqueKnown(["paragraph", ...baseResourceTypes, ...extras, "multiple_choice"], knownIds);
+  const lessonAllowed = uniqueKnown(lessonAllowedResourceTypes, knownIds);
+  const plannedResources = uniqueKnown(["paragraph", ...baseResourceTypes, ...extras, "multiple_choice"], knownIds);
+  const availableResources = lessonAllowed.length
+    ? plannedResources.filter((resourceType) => lessonAllowed.includes(resourceType))
+    : plannedResources;
 
   return planItems.slice(0, size.cardCount).map((item, index) => ({
     position: index + 1,

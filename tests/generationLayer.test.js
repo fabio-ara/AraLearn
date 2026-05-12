@@ -30,6 +30,16 @@ import { replaceMicrosequenceCards } from "../src/editor/contractEditor.js";
 import { mapPreferredContainerToResource } from "../src/assist/geminiAssist.js";
 import { collectLessonTopicRefs } from "../src/ui/lessonEditorPaths.js";
 
+function makeBroadLessonGuidance(overrides = {}) {
+  return {
+    resourceTags: ["paragraph", "block_gap_fill", "multiple_choice", "table", "code_editor", "flowchart", "tree", "matrix", "plane"],
+    contentTypeTags: ["concept", "procedure", "comparison", "calculation", "interpretation", "tool_use", "review"],
+    learningActionTags: ["understand", "solve", "practice", "compare", "review", "use_tool"],
+    supportLevel: "guided",
+    ...overrides
+  };
+}
+
 function samplePlanningContract(extra = {}) {
   return buildMicrosequencePlanningContract({
     selectedCourse: {
@@ -52,6 +62,7 @@ function samplePlanningContract(extra = {}) {
       description: "Objetivo da lição",
       sourceGuide: "Guia da lição",
       sourceGuideStructured: { lessonGoal: "Escopo da lição." },
+      ...makeBroadLessonGuidance(),
       lessonTopics: [{ refKey: "micro-git", label: "Git", source: "microsequence" }],
       microsequences: [
         { key: "micro-base", title: "Base", description: "Introdução", tags: ["Git"], status: "ready" },
@@ -244,6 +255,7 @@ test("planejamento e edição enviam fonte-guia compacta ao modelo", () => {
       description: "Objetivo da lição",
       sourceGuide: "Resumo legado da lição",
       sourceGuideStructured: { lessonGoal: "Escopo da lição.", freeNotes: "Não enviar ao modelo." },
+      ...makeBroadLessonGuidance(),
       lessonTopics: [{ refKey: "micro-git", label: "Git", source: "microsequence" }],
       microsequences: [{ key: "micro", title: "Microssequência", description: "Alvo", tags: ["add"], status: "draft" }]
     }
@@ -376,7 +388,7 @@ test("contrato e prompt de geração usam contexto, tags, tamanho e schemas efet
   assert.match(prompt, /Não mude tags persistentes, destino estrutural, status da microssequência nem decisão editorial final/);
   assert.match(prompt, /destaque inline com acentos graves em símbolos, conectivos, comandos, fórmulas e nomes curtos/);
   assert.match(prompt, /Não repita o title do card/);
-  assert.doesNotMatch(prompt, /code_editor/);
+  assert.doesNotMatch(prompt, /"allowedResourceTypes":\[[^\]]*code_editor/);
 });
 
 test("capacidades do modelo ficam separadas dos tipos didáticos", () => {
@@ -885,6 +897,7 @@ test("planejamento e contrato de edição preservam versão, selectedLessonTopic
       title: "Lição",
       sourceGuide: "Guia da lição",
       sourceGuideStructured: { lessonGoal: "Escopo da lição." },
+      ...makeBroadLessonGuidance(),
       lessonTopics: [{ refKey: "micro-git", label: "Git", source: "microsequence" }],
       microsequences: [{ key: "micro", title: "Micro", description: "Atual", tags: ["Git"], status: "ready" }]
     },
@@ -944,6 +957,7 @@ test("prompts de edição e reparo explicitam a divisão de papéis", () => {
       title: "Lição",
       sourceGuide: "Guia da lição",
       sourceGuideStructured: { lessonGoal: "Escopo da lição." },
+      ...makeBroadLessonGuidance(),
       lessonTopics: [{ refKey: "micro-git", label: "Git", source: "microsequence" }],
       microsequences: [{ key: "micro", title: "Micro", description: "Atual", tags: ["Git"], status: "ready" }]
     },

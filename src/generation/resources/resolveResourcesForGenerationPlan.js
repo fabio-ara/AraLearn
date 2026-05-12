@@ -14,6 +14,7 @@ export function resolveResourcesForGenerationPlan({
   resolvedMicrosequenceTypeId,
   userSelectedExtraResourceTypes = [],
   planSelectedExtraResourceTypes = [],
+  lessonAllowedResourceTypes = [],
   resourceCatalog = listGenerationResourceDefinitions()
 }) {
   const knownIds = new Set(resourceCatalog.map((item) => item.id));
@@ -23,7 +24,10 @@ export function resolveResourcesForGenerationPlan({
   const planExtraResourceTypes = uniqueKnown(planSelectedExtraResourceTypes, knownIds).filter(
     (item) => !baseResourceTypes.includes(item) && !userExtraResourceTypes.includes(item)
   );
-  const allowedResourceTypes = uniqueKnown([...baseResourceTypes, ...userExtraResourceTypes, ...planExtraResourceTypes], knownIds);
+  const lessonAllowed = uniqueKnown(lessonAllowedResourceTypes, knownIds);
+  const allowedResourceTypes = uniqueKnown([...baseResourceTypes, ...userExtraResourceTypes, ...planExtraResourceTypes], knownIds).filter(
+    (item) => !lessonAllowed.length || lessonAllowed.includes(item)
+  );
 
   return {
     selectionMode: "type_default_plus_user_extra_plus_plan_extra",

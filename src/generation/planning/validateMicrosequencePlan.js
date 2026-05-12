@@ -48,6 +48,7 @@ export function validateMicrosequencePlan(plan, planningContract) {
   const resourceIds = new Set((planningContract?.availableResources || []).map((item) => item.id));
   const sourceIds = new Set((planningContract?.sources || []).map((item) => item.sourceId));
   const fixedTypeId = planningContract?.request?.userFixedTypeId;
+  const lessonAllowedResourceTypes = planningContract?.context?.lesson?.resourceTags || [];
 
   if (!type) errors.push("typeId não existe.");
   if (fixedTypeId && fixedTypeId !== "assisted" && plan?.typeId !== fixedTypeId) errors.push("typeId não preserva o Tipo fixado.");
@@ -72,7 +73,8 @@ export function validateMicrosequencePlan(plan, planningContract) {
           typeId: plan.typeId,
           sizeId: plan.sizeId,
           selectedExtraResourceTypes: plan?.selectedExtraResourceTypes || [],
-          userSelectedExtraResourceTypes: userExtras
+          userSelectedExtraResourceTypes: userExtras,
+          lessonAllowedResourceTypes
         })
       : [];
   if (cardCount && cardPlan.length !== cardCount) errors.push("cardPlan determinístico não possui a quantidade esperada.");

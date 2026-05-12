@@ -10,6 +10,7 @@ import {
   sanitizeSourceGuideStructuredForModel,
   SOURCE_GUIDE_LEVELS
 } from "../../sourceGuides/sourceGuideStructured.js";
+import { normalizeLessonGuidance } from "../guidance/lessonGuidance.js";
 
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -30,10 +31,9 @@ function sourceGuide(value) {
 function sourceGuideForModel(value, level) {
   const structured = sanitizeSourceGuideStructuredForModel(value?.sourceGuideStructured, { level });
   if (Object.keys(structured).length) {
-    return buildSourceGuideTextForModel(structured, "", { level });
+    return buildSourceGuideTextForModel(structured, { level });
   }
-  const fallback = sourceGuide(value);
-  return fallback || "";
+  return "";
 }
 
 function sourceGuideStructuredForModel(value, level) {
@@ -82,6 +82,7 @@ export function buildMicrosequencePlanningContract({
   const capabilities = getModelCapabilities(selectedModel);
   const resolvedSources = resolveReferencedSources({ userPrompt, attachedSources, userSelectedSourceIds });
   const lessonGuideStructured = sourceGuideStructuredForModel(selectedLesson, SOURCE_GUIDE_LEVELS.LESSON) || {};
+  const lessonGuidance = normalizeLessonGuidance(selectedLesson);
   const selectedTopics = normalizeSelectedLessonTopicRefs({
     selectedLessonTopicRefs,
     selectedLessonScopeTagRefs,
@@ -166,6 +167,7 @@ export function buildMicrosequencePlanningContract({
         ...(sourceGuideStructuredForModel(selectedLesson, SOURCE_GUIDE_LEVELS.LESSON)
           ? { sourceGuideStructured: sourceGuideStructuredForModel(selectedLesson, SOURCE_GUIDE_LEVELS.LESSON) }
           : {}),
+        ...lessonGuidance,
         microsequenceLine: Array.isArray(selectedLesson?.microsequences)
           ? selectedLesson.microsequences.map(summarizeMicrosequence)
           : []
@@ -185,7 +187,7 @@ export function buildMicrosequencePlanningContract({
     requestGovernance: buildLessonRequestGovernance(lessonGuideStructured),
     availableTypes: resolveAvailableTypes(userFixedTypeId),
     availableSizes: listMicrosequenceSizes().map(({ id, cardCount }) => ({ id, cardCount })),
-    availableResources: listCardResourceSummaries(),
+    availableResources: listCardResourceSummaries().filter((item) => lessonGuidance.resourceTags.includes(item.id)),
     didacticGuardrails: buildDidacticGuardrails(),
     sources: resolvedSources.referencedSources,
     model: { id: capabilities.model, capabilities },

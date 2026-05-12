@@ -58,13 +58,17 @@ test("cria microssequência nova no contrato principal como rascunho vazio", () 
   assert.deepEqual(microsequence.cards, []);
 });
 
-test("preserva sourceGuide opcional em curso, módulo e lição", () => {
+test("preserva sourceGuide derivado de sourceGuideStructured em curso, módulo e lição", () => {
   let document = readNormalizedProject("./docs/examples/aralearn-contract.renderable.json");
 
   document = createCourse(document, {
     title: "Curso com guia",
     description: "Descrição curta do curso",
-    sourceGuide: "Objetivo do curso.\nConteúdo obrigatório.\nDificuldades prováveis."
+    sourceGuideStructured: {
+      audience: "Aluno iniciante.",
+      globalScope: "Objetivo do curso.",
+      globalOutOfScope: "Sem casos especiais."
+    }
   });
 
   const course = document.courses.at(-1);
@@ -72,7 +76,10 @@ test("preserva sourceGuide opcional em curso, módulo e lição", () => {
     courseKey: course.key,
     title: "Módulo com guia",
     description: "Descrição curta do módulo",
-    sourceGuide: "Fonte-guia do módulo."
+    sourceGuideStructured: {
+      moduleScope: "Fonte-guia do módulo.",
+      modulePrerequisites: "Base mínima."
+    }
   });
 
   const moduleValue = document.courses.at(-1).modules.at(-1);
@@ -81,15 +88,23 @@ test("preserva sourceGuide opcional em curso, módulo e lição", () => {
     moduleKey: moduleValue.key,
     title: "Lição com guia",
     description: "Descrição curta da lição",
-    sourceGuide: "Fonte-guia da lição."
+    sourceGuideStructured: {
+      lessonGoal: "Fonte-guia da lição.",
+      masteryGoal: "Aplicar sozinho."
+    }
   });
 
   const lesson = document.courses.at(-1).modules.at(-1).lessons.at(-1);
   const validation = validateContractDocument(document);
   assert.equal(validation.ok, true);
-  assert.equal(validation.value.courses.at(-1).sourceGuide, "Objetivo do curso.\nConteúdo obrigatório.\nDificuldades prováveis.");
-  assert.equal(validation.value.courses.at(-1).modules.at(-1).sourceGuide, "Fonte-guia do módulo.");
-  assert.equal(validation.value.courses.at(-1).modules.at(-1).lessons.at(-1).sourceGuide, "Fonte-guia da lição.");
+  assert.match(validation.value.courses.at(-1).sourceGuide, /Objetivo do curso\./);
+  assert.match(validation.value.courses.at(-1).modules.at(-1).sourceGuide, /Fonte-guia do módulo\./);
+  assert.match(validation.value.courses.at(-1).modules.at(-1).lessons.at(-1).sourceGuide, /Fonte-guia da lição\./);
+  assert.deepEqual(validation.value.courses.at(-1).modules.at(-1).lessons.at(-1).resourceTags, [
+    "paragraph",
+    "block_gap_fill",
+    "multiple_choice"
+  ]);
 
   const exported = exportLessonDocument(document, {
     courseKey: course.key,
@@ -99,7 +114,20 @@ test("preserva sourceGuide opcional em curso, módulo e lição", () => {
   assert.equal(exported.scope, "lesson");
   assert.equal(exported.courses[0].sourceGuide, undefined);
   assert.equal(exported.courses[0].modules[0].sourceGuide, undefined);
-  assert.equal(exported.courses[0].modules[0].lessons[0].sourceGuide, "Fonte-guia da lição.");
+  assert.match(exported.courses[0].modules[0].lessons[0].sourceGuide, /Fonte-guia da lição\./);
+});
+
+test("rejeita sourceGuide textual puro na edição estrutural", () => {
+  const document = readNormalizedProject("./docs/examples/aralearn-contract.renderable.json");
+
+  assert.throws(
+    () =>
+      createCourse(document, {
+        title: "Curso textual",
+        sourceGuide: "Texto corrido legado."
+      }),
+    /sourceGuideStructured/
+  );
 });
 
 test("preserva sourceGuideStructured e recompila o texto derivado", () => {

@@ -9,6 +9,7 @@ export function buildMicrosequenceGenerationContract({ planningContract, validat
     resolvedMicrosequenceTypeId: plan.typeId,
     resolvedSizeId: plan.sizeId,
     selectedModel,
+    lessonAllowedResourceTypes: planningContract.context.lesson.resourceTags || [],
     userSelectedExtraResourceTypes: planningContract.request.userSelectedExtraResourceTypes,
     planSelectedExtraResourceTypes: [
       ...(plan.selectedExtraResourceTypes || []),
