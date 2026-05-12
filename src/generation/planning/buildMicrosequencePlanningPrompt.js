@@ -10,8 +10,8 @@ export function buildMicrosequencePlanningPrompt(contract, modelCapabilities = c
   return [
     "Planeje uma microssequência do AraLearn.",
     "Responda somente JSON válido.",
-    "Escolha typeId, sizeId, microsequenceGoal, selectedExtraResourceTypes, cardPlan, sourceUsePlan e reason.",
-    "Cada item de cardPlan deve conter position, role, resourceType e sourceRefs.",
+    "Escolha apenas typeId, sizeId, microsequenceGoal, selectedExtraResourceTypes, sourceUsePlan e reason.",
+    "Não devolva cardPlan, cards, position, role nem resourceType por card; o AraLearn monta a sequência de cards de forma determinística depois do planejamento.",
     "Preserve userFixedTypeId quando ele existir.",
     ...fixedTypeInstructions,
     "Preserve todos os recursos extras escolhidos pelo usuário.",

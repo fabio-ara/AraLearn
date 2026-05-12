@@ -38,7 +38,7 @@ export function buildGeneratedCardsRepairPrompt({
     "",
     "Critérios obrigatórios:",
     `- devolva exatamente ${expectedCardCount} cards;`,
-    "- cada card deve manter position coerente com cardPlan;",
+    "- cada card deve manter position e resourceType exatamente iguais ao item correspondente do cardPlan;",
     "- prática deve continuar precedida por microteoria ou exemplo já presente na mesma microssequência;",
     "- cards de prática devem manter dados, regras e fórmulas necessários no próprio card;",
     "- explicações abstratas demais para iniciante devem ser concretizadas com caso pequeno, exemplo mínimo, quadro curto ou contraste simples;",

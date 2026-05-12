@@ -192,7 +192,11 @@ function normalizeRepairedResponse(response, generationContract) {
   return {
     cards: cards.map((card, index) => {
       const planned = cardPlan[index] || {};
-      const repaired = repairCardByResource(card || {}, text(card?.resourceType) || text(planned.resourceType));
+      const plannedResourceType = text(planned.resourceType);
+      const repaired = repairCardByResource(
+        { ...(card || {}), ...(plannedResourceType ? { resourceType: plannedResourceType } : {}) },
+        plannedResourceType || text(card?.resourceType)
+      );
       return {
         ...repaired,
         position: typeof planned.position === "number" ? planned.position : card?.position

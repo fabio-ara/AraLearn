@@ -1125,7 +1125,8 @@ function buildGenerationContextEntities(microsequence = {}) {
 export function buildMicrosequencePlanningRepairPrompt({ planningContract, invalidPlan, errors }) {
   return [
     "Repare apenas o plano de microssequência do AraLearn.",
-    "Responda somente JSON válido com typeId, sizeId, microsequenceGoal, selectedExtraResourceTypes, cardPlan, sourceUsePlan e reason.",
+    "Responda somente JSON válido com typeId, sizeId, microsequenceGoal, selectedExtraResourceTypes, sourceUsePlan e reason.",
+    "Não devolva cardPlan, cards, position, role nem resourceType por card; o AraLearn monta a sequência de cards de forma determinística depois do planejamento.",
     "Preserve estritamente request.userFixedTypeId quando ele existir e não for assisted.",
     "Use apenas ids presentes em availableTypes e availableResources do contrato.",
     "Preserve todos os recursos extras de request.userSelectedExtraResourceTypes em selectedExtraResourceTypes.",

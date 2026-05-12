@@ -175,7 +175,7 @@ O tamanho é decidido no planejamento, validado pela aplicação e usado para ex
 
 O pipeline usa reparos explícitos em dois pontos diferentes.
 
-No planejamento, o modelo devolve tipo didático, tamanho, objetivo, recursos extras e `cardPlan`. A aplicação valida esse plano com o contrato de planejamento. Quando o plano viola tipo fixado, tamanho, quantidade de cards, recursos permitidos ou preservação de escolhas do usuário, a aplicação faz uma chamada curta de reparo de plano. O reparo não muda a finalidade da etapa: ele apenas tenta produzir um plano válido para o contrato já montado.
+No planejamento, o modelo devolve apenas tipo didático, tamanho, objetivo, recursos extras, plano de uso de fontes e justificativa curta. A aplicação valida esse plano com o contrato de planejamento e monta o `cardPlan` de forma determinística a partir do tipo, do tamanho e dos recursos disponíveis. Quando o plano viola tipo fixado, tamanho, recursos permitidos ou preservação de escolhas do usuário, a aplicação faz uma chamada curta de reparo de plano. O reparo não muda a finalidade da etapa: ele apenas tenta produzir um plano curto válido para o contrato já montado.
 
 Na geração final, o modelo devolve os cards no formato intermediário. A aplicação valida a resposta com `validateGeneratedCards` antes de qualquer adaptação para o contrato público. Quando a estrutura falha, a aplicação faz uma chamada de reparo estrutural dos cards. Esse reparo recebe:
 
@@ -188,7 +188,7 @@ Na geração final, o modelo devolve os cards no formato intermediário. A aplic
 - schemas apenas dos recursos permitidos;
 - target da microssequência.
 
-O reparo de cards tem objetivo mais estreito que a geração: corrigir JSON, nomes de campos, campos obrigatórios, posições, quantidade e schemas dos recursos, preservando o conteúdo pedagógico sempre que possível. Ele não deve trocar o tipo didático, mudar o plano nem adicionar recursos fora de `allowedResourceTypes`.
+O reparo de cards tem objetivo mais estreito que a geração: corrigir JSON, nomes de campos, campos obrigatórios, posições, quantidade e schemas dos recursos, preservando o conteúdo pedagógico sempre que possível. Ele deve manter `position` e `resourceType` iguais ao `cardPlan` determinístico. Ele não deve trocar o tipo didático, mudar o plano nem adicionar recursos fora de `allowedResourceTypes`.
 
 O limite padrão é de uma tentativa de reparo. Se a resposta reparada continuar inválida, se não houver JSON parseável, se a quantidade de cards continuar incorreta, se algum recurso continuar fora do contrato ou se recursos como `block_gap_fill` e `tree` continuarem estruturalmente inválidos, a aplicação retorna erro e não salva o resultado.
 
@@ -374,9 +374,9 @@ Fluxo implementado para gerar ou revisar cards no painel:
 3. o usuário pode escolher tipo, recursos extras e anexos;
 4. a aplicação envia anexos ao serviço de arquivos do modelo quando existirem;
 5. a aplicação monta o contrato de planejamento com hierarquia, selectedLessonTopicRefs, pedido, recursos leves, tipos, tamanhos e fontes;
-6. o modelo faz a primeira chamada e devolve `typeId`, `sizeId`, objetivo, recursos extras e `cardPlan`;
-7. a aplicação valida o plano, incluindo tipo, tamanho, quantidade esperada e recursos;
-8. a aplicação resolve recursos efetivos e monta o contrato de geração com schemas completos apenas desses recursos;
+6. o modelo faz a primeira chamada e devolve `typeId`, `sizeId`, objetivo, recursos extras, fontes e justificativa;
+7. a aplicação valida o plano curto e monta o `cardPlan` determinístico;
+8. a aplicação resolve recursos efetivos e monta o contrato de geração com `cardPlan` fixado e schemas completos apenas desses recursos;
 9. o modelo faz a segunda chamada e devolve os cards;
 10. a aplicação valida quantidade, posições, recursos, schemas e campos obrigatórios;
 11. se a validação falhar, a aplicação tenta um reparo estrutural dos cards e valida novamente;

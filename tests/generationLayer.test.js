@@ -165,9 +165,11 @@ test("planejamento recebe selectedLessonTopicRefs, catálogo leve e valida plano
   assert.match(prompt, /context\.sourceGuideLineage como governança acumulada/);
   assert.match(prompt, /context\.lesson\.microsequenceLine/);
   assert.match(prompt, /planeje a sequência microteoria -> exemplo guiado -> prática autossuficiente -> consolidação/);
+  assert.match(prompt, /Não devolva cardPlan/);
   assert.equal(validation.ok, true);
   assert.equal(validation.plan.sizeId, "short");
   assert.equal(validation.plan.cardPlan.length, 3);
+  assert.deepEqual(validation.plan.cardPlan.map((item) => item.resourceType), ["paragraph", "block_gap_fill", "multiple_choice"]);
 });
 
 test("planejamento com tipo fixado envia apenas o tipo efetivo", () => {
@@ -189,7 +191,7 @@ test("campos legados de tags são normalizados para selectedLessonTopicRefs", ()
   ]);
 });
 
-test("planejamento rejeita tipo, tamanho, quantidade e preservação inválidos", () => {
+test("planejamento rejeita tipo e preservação inválidos, mas ignora cardPlan do modelo", () => {
   const contract = samplePlanningContract({ userFixedTypeId: "procedure", userSelectedExtraResourceTypes: ["flowchart"] });
   const validation = validateMicrosequencePlan(
     validPlan({
@@ -203,8 +205,16 @@ test("planejamento rejeita tipo, tamanho, quantidade e preservação inválidos"
 
   assert.equal(validation.ok, false);
   assert.match(validation.errors.join(" "), /Tipo fixado/);
-  assert.match(validation.errors.join(" "), /quantidade esperada/);
   assert.match(validation.errors.join(" "), /flowchart/);
+
+  const accepted = validateMicrosequencePlan(
+    validPlan({
+      cardPlan: [{ position: 99, role: "ignorar", resourceType: "image", sourceRefs: ["fonte-inexistente"] }]
+    }),
+    samplePlanningContract()
+  );
+  assert.equal(accepted.ok, true);
+  assert.deepEqual(accepted.plan.cardPlan.map((item) => item.position), [1, 2, 3]);
 });
 
 test("resolve recursos de geração com base, extras e deduplicação", () => {
@@ -354,22 +364,13 @@ test("validação de geração aceita cards válidos e rejeita erros estruturais
 });
 
 test("validação de geração aceita plane e matrix gerados", () => {
-  const planningContract = samplePlanningContract({ userSelectedExtraResourceTypes: ["plane", "matrix"] });
-  const generationContract = buildMicrosequenceGenerationContract({
-    planningContract,
-    validatedPlan: validateMicrosequencePlan(
-      validPlan({
-        selectedExtraResourceTypes: ["plane", "matrix"],
-        cardPlan: [
-          { position: 1, role: "mostrar vetor", resourceType: "plane", sourceRefs: [] },
-          { position: 2, role: "mostrar matriz", resourceType: "matrix", sourceRefs: [] },
-          { position: 3, role: "consolidar", resourceType: "multiple_choice", sourceRefs: [] }
-        ]
-      }),
-      planningContract
-    ),
-    selectedModel: "gemini-2.5-flash"
-  });
+  const generationContract = sampleGenerationContract();
+  generationContract.resources.allowedResourceTypes = ["plane", "matrix", "multiple_choice"];
+  generationContract.didacticPlan.cardPlan = [
+    { position: 1, role: "mostrar vetor", resourceType: "plane", sourceRefs: [] },
+    { position: 2, role: "mostrar matriz", resourceType: "matrix", sourceRefs: [] },
+    { position: 3, role: "consolidar", resourceType: "multiple_choice", sourceRefs: [] }
+  ];
   const response = {
     cards: [
       { position: 1, resourceType: "plane", title: "Soma visual", prompt: "Observe.", sum: [[1, 2], [3, 1]], result: [4, 3] },
@@ -619,13 +620,14 @@ test("validateOrRepairGeneratedCards corrige multiple_choice com índice e tree 
     callModel: async () => invalidChoice
   });
   const treeContract = sampleGenerationContract({
-    selectedExtraResourceTypes: ["table", "tree"],
-    cardPlan: [
-      { position: 1, role: "situar", resourceType: "paragraph", sourceRefs: [] },
-      { position: 2, role: "mostrar estrutura", resourceType: "tree", sourceRefs: [] },
-      { position: 3, role: "consolidar", resourceType: "multiple_choice", sourceRefs: [] }
-    ]
+    selectedExtraResourceTypes: ["table", "tree"]
   });
+  treeContract.resources.allowedResourceTypes = ["paragraph", "tree", "multiple_choice"];
+  treeContract.didacticPlan.cardPlan = [
+    { position: 1, role: "situar", resourceType: "paragraph", sourceRefs: [] },
+    { position: 2, role: "mostrar estrutura", resourceType: "tree", sourceRefs: [] },
+    { position: 3, role: "consolidar", resourceType: "multiple_choice", sourceRefs: [] }
+  ];
   const invalidTree = {
     cards: [
       validGeneratedCardsResponse().cards[0],
@@ -667,8 +669,12 @@ test("validateOrRepairGeneratedCards rejeita reparo ainda inválido", async () =
   assert.match(result.errors.join(" "), /Quantidade incorreta de cards|Recurso fora do permitido/);
 });
 
-test("validateOrRepairGeneratedCards bloqueia recurso fora do permitido, respeita contagem e cardPlan.position", async () => {
+test("validateOrRepairGeneratedCards repara recurso mecânico, respeita contagem e cardPlan.position", async () => {
   const generationContract = sampleGenerationContract();
+  const directMismatch = validateGeneratedCards(
+    { cards: validGeneratedCardsResponse().cards.map((card) => ({ ...card, resourceType: card.position === 2 ? "multiple_choice" : card.resourceType })) },
+    generationContract
+  );
   const wrongResource = await validateOrRepairGeneratedCards({
     rawGeneratedResponse: { cards: validGeneratedCardsResponse().cards.map((card) => ({ ...card, resourceType: card.position === 2 ? "image" : card.resourceType })) },
     generationContract,
@@ -688,8 +694,10 @@ test("validateOrRepairGeneratedCards bloqueia recurso fora do permitido, respeit
     callModel: async () => ({ cards: validGeneratedCardsResponse().cards.map((card) => ({ ...card, position: 1 })) })
   });
 
-  assert.equal(wrongResource.ok, false);
-  assert.match(wrongResource.errors.join(" "), /Recurso fora do permitido/);
+  assert.equal(directMismatch.ok, false);
+  assert.match(directMismatch.errors.join(" "), /resourceType incoerente com cardPlan/);
+  assert.equal(wrongResource.ok, true);
+  assert.equal(wrongResource.cards[1].resourceType, "block_gap_fill");
   assert.equal(wrongCount.ok, false);
   assert.match(wrongCount.errors.join(" "), /Quantidade incorreta de cards/);
   assert.equal(wrongPosition.ok, true);
@@ -699,15 +707,15 @@ test("validateOrRepairGeneratedCards bloqueia recurso fora do permitido, respeit
 test("tree entra no catálogo, no planejamento, em allowedResourceTypes e na validação", () => {
   const planningContract = samplePlanningContract({ userSelectedExtraResourceTypes: ["tree"] });
   const plan = validPlan({
-    selectedExtraResourceTypes: ["tree"],
-    cardPlan: [
-      { position: 1, role: "situar", resourceType: "paragraph", sourceRefs: [] },
-      { position: 2, role: "mostrar estrutura", resourceType: "tree", sourceRefs: [] },
-      { position: 3, role: "consolidar", resourceType: "multiple_choice", sourceRefs: [] }
-    ]
+    selectedExtraResourceTypes: ["tree"]
   });
   const validatedPlan = validateMicrosequencePlan(plan, planningContract);
   const generationContract = buildMicrosequenceGenerationContract({ planningContract, validatedPlan, selectedModel: "gemini-2.5-flash" });
+  generationContract.didacticPlan.cardPlan = [
+    { position: 1, role: "situar", resourceType: "paragraph", sourceRefs: [] },
+    { position: 2, role: "mostrar estrutura", resourceType: "tree", sourceRefs: [] },
+    { position: 3, role: "consolidar", resourceType: "multiple_choice", sourceRefs: [] }
+  ];
   const response = {
     cards: [
       { position: 1, resourceType: "paragraph", title: "Ideia", text: "Texto curto." },
