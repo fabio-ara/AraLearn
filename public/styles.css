@@ -3644,6 +3644,18 @@ button {
   background: transparent;
 }
 
+.workbench-preview-footer {
+  padding:
+    8px
+    0
+    0
+    0;
+}
+
+.workbench-preview-actions {
+  justify-content: flex-end;
+}
+
 .study-action-dock {
   position: relative;
   display: flex;

@@ -713,6 +713,61 @@ test("renderiza a execução do card com nome do curso e faixa estável de tags"
   assert.match(html, /Teste/);
 });
 
+test("renderiza CTAs de aceitar e excluir quando a iteracao gerada atual esta pendente", () => {
+  const project = readProject();
+  const course = project.courses[0];
+  const moduleValue = course.modules[0];
+  const lesson = moduleValue.lessons[0];
+  const microsequence = lesson.microsequences[0];
+  const html = renderLessonScreen({
+    project,
+    view: "microsequence-assist",
+    selection: {
+      courseKey: course.key,
+      moduleKey: moduleValue.key,
+      lessonKey: lesson.key,
+      microsequenceKey: microsequence.key,
+      cardKey: microsequence.cards[0].key,
+      cardIndex: 0
+    },
+    course,
+    moduleValue,
+    lesson,
+    microsequence,
+    cards: microsequence.cards,
+    microsequenceMode: "play",
+    editorSupport: {
+      progress: { version: 1, lessons: {} },
+      dependencies: [],
+      microsequenceVersions: [{ id: "v1", label: "Versão 1", operationType: "generated-pending" }],
+      activeMicrosequenceVersionId: "v1",
+      visualizedMicrosequenceVersionId: "v1",
+      editBaseMicrosequenceVersionId: "v1",
+      visualizedMicrosequenceVersion: {
+        id: "v1",
+        title: microsequence.title,
+        tags: microsequence.tags,
+        cards: microsequence.cards
+      },
+      pendingGeneratedVersionId: "v1",
+      pendingGeneratedVersionActive: true,
+      selectedDependencyKeys: [],
+      pendingDependencyKey: "",
+      modelOptions: [{ value: "gemini-2.5-flash", label: "Gemini 2.5 Flash" }],
+      selectedModel: "gemini-2.5-flash",
+      assistModeOptions: [],
+      selectedAssistMode: "edit-microsequence",
+      activeWorkbenchPane: "preview",
+      assistModeLocked: true,
+      promptText: ""
+    }
+  });
+
+  assert.match(html, /data-action="discard-generated-version"/);
+  assert.match(html, /data-action="accept-generated-version"/);
+  assert.match(html, /workbench-preview-footer/);
+});
+
 test("mantém o botão continuar ativo no último card do modo de estudo", () => {
   const project = readProject();
   const course = project.courses[0];

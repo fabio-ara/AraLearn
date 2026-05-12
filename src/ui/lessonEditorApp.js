@@ -156,9 +156,15 @@ const GENERATION_PANEL_ACTIONS = new Set([
   "open-generation-panel-lesson"
 ]);
 const STRUCTURE_VERSIONING_ACTIVE = false;
+const GENERATED_PENDING_OPERATION = "generated-pending";
+const GENERATED_ACCEPTED_OPERATION = "generated";
 
 function fail(message) {
   throw new Error(message);
+}
+
+function isGeneratedPendingOperation(value) {
+  return String(value || "").trim() === GENERATED_PENDING_OPERATION;
 }
 
 export function resolveGenerationPanelScopeFromAction({ action, dataset = {}, selection = {} } = {}) {
@@ -2105,7 +2111,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
       lessonKey: state.selection.lessonKey,
       microsequenceKey: microsequence.key
     };
-    const entry = getMicrosequenceVersionEntry(reference);
+    const entry = ensureMicrosequenceVersionEntry(reference, microsequence);
     const assistOpenState = resolveMicrosequenceAssistOpenState(entry, targetIndex);
     selectMicrosequenceCard(microsequenceKey, targetIndex);
     state.assistDraft.dependencyKeys = Array.isArray(microsequence.tags)
@@ -2196,6 +2202,11 @@ export function createLessonEditorApp({ root, storage, editor }) {
     }
 
     return entry.versions.find((item) => item.id === entry.activeVersionId) || entry.versions[0] || null;
+  }
+
+  function getPendingGeneratedMicrosequenceVersion(reference = state.selection) {
+    const activeVersion = getActiveMicrosequenceVersion(reference);
+    return activeVersion && isGeneratedPendingOperation(activeVersion.operationType) ? activeVersion : null;
   }
 
   function getVisualizedMicrosequenceVersionId() {
@@ -3586,6 +3597,8 @@ export function createLessonEditorApp({ root, storage, editor }) {
   }
 
   function applyMicrosequenceGeneration({ microsequenceTitle, cards }) {
+    ensureMicrosequenceVersionEntry();
+    const previousVersionId = getMicrosequenceVersionEntry()?.activeVersionId || "";
     ensureEditableMicrosequenceBranch({
       operationType: "generated",
       label: "Gerada"
@@ -3619,16 +3632,74 @@ export function createLessonEditorApp({ root, storage, editor }) {
     state.selection.cardIndex = 0;
     state.selection.cardKey = firstCard ? firstCard.key : null;
     state.assistDraft.activeWorkbenchPane = "preview";
+    createMicrosequenceVersionFromCurrentProject({
+      parentVersionId: previousVersionId,
+      operationType: GENERATED_PENDING_OPERATION,
+      label: `Gerada ${getMicrosequenceVersionEntry()?.versions?.length ? getMicrosequenceVersionEntry().versions.length + 1 : ""}`.trim()
+    });
     setMicrosequenceVersionViewState({
-      visualizedVersionId: "",
-      editBaseVersionId: ""
+      visualizedVersionId: getMicrosequenceVersionEntry()?.activeVersionId || "",
+      editBaseVersionId: getMicrosequenceVersionEntry()?.activeVersionId || ""
     });
     state.assistDraft.lastRequest = {
       title: "Cards atualizados",
-      description: `${Array.isArray(microsequence?.cards) ? microsequence.cards.length : 0} cards aplicados em ${microsequence?.title || microsequenceTitle || "Microssequência"}.`,
+      description: `${Array.isArray(microsequence?.cards) ? microsequence.cards.length : 0} cards aplicados em ${microsequence?.title || microsequenceTitle || "Microssequência"}. Aceite ou exclua a iteração atual.`,
       timestamp: new Date().toISOString()
     };
     syncAssistDraft();
+  }
+
+  function acceptPendingGeneratedMicrosequenceVersion() {
+    const entry = getMicrosequenceVersionEntry();
+    const activeVersion = getPendingGeneratedMicrosequenceVersion();
+    if (!entry || !activeVersion) {
+      return;
+    }
+
+    activeVersion.operationType = GENERATED_ACCEPTED_OPERATION;
+    activeVersion.updatedAt = new Date().toISOString();
+    saveMicrosequenceVersions();
+    state.assistDraft.lastRequest = {
+      title: "Iteração aceita",
+      description: `${activeVersion.label || "Versão atual"} mantida como estado em uso.`,
+      timestamp: new Date().toISOString()
+    };
+    render({ preserveState: true });
+  }
+
+  function discardPendingGeneratedMicrosequenceVersion() {
+    const reference = {
+      courseKey: state.selection.courseKey,
+      moduleKey: state.selection.moduleKey,
+      lessonKey: state.selection.lessonKey,
+      microsequenceKey: state.selection.microsequenceKey
+    };
+    const entry = getMicrosequenceVersionEntry(reference);
+    const activeVersion = getPendingGeneratedMicrosequenceVersion(reference);
+    if (!entry || !activeVersion || !canDeleteMicrosequenceVersion(activeVersion.id)) {
+      return;
+    }
+
+    const fallbackVersion = removeMicrosequenceVersion(entry, activeVersion.id);
+    if (!fallbackVersion) {
+      return;
+    }
+
+    saveMicrosequenceVersions();
+    applyMicrosequenceVersion(reference, fallbackVersion, Number.isInteger(state.selection.cardIndex) ? state.selection.cardIndex : 0);
+    state.assistDraft.dependencyKeys = Array.isArray(fallbackVersion.tags)
+      ? fallbackVersion.tags.slice(0, MAX_ASSIST_DEPENDENCIES)
+      : [];
+    setMicrosequenceVersionViewState({
+      visualizedVersionId: fallbackVersion.id,
+      editBaseVersionId: fallbackVersion.id
+    });
+    state.assistDraft.lastRequest = {
+      title: "Iteração excluída",
+      description: `${activeVersion.label || "Versão atual"} removida; a versão anterior voltou a valer.`,
+      timestamp: new Date().toISOString()
+    };
+    render({ preserveState: false });
   }
 
   function getVisibleCourses(project = state.project) {
@@ -7057,6 +7128,10 @@ export function createLessonEditorApp({ root, storage, editor }) {
     const microsequenceVersionEntry = state.view === "microsequence-assist" ? getMicrosequenceVersionEntry() : null;
     const visualizedMicrosequenceVersion = state.view === "microsequence-assist" ? getVisualizedMicrosequenceVersion() : null;
     const visualizedMicrosequenceVersionId = visualizedMicrosequenceVersion?.id || "";
+    const pendingGeneratedVersion = state.view === "microsequence-assist" ? getPendingGeneratedMicrosequenceVersion() : null;
+    const pendingGeneratedVersionVisible =
+      Boolean(pendingGeneratedVersion) &&
+      (!visualizedMicrosequenceVersionId || visualizedMicrosequenceVersionId === pendingGeneratedVersion?.id);
     const structureVersionReference = getCurrentStructureVersionReference();
     const structureVersionEntry = getStructureVersionEntry(structureVersionReference);
     const visibleStructureReferences = listVisibleStructureVersionReferences();
@@ -7264,6 +7339,8 @@ export function createLessonEditorApp({ root, storage, editor }) {
           visualizedMicrosequenceVersionId,
           editBaseMicrosequenceVersionId: getMicrosequenceEditBaseVersionId(),
           visualizedMicrosequenceVersion,
+          pendingGeneratedVersionId: pendingGeneratedVersion?.id || "",
+          pendingGeneratedVersionActive: pendingGeneratedVersionVisible,
           versionActionsOpen: state.assistDraft.versionActionsOpen,
           canDeleteVisualizedMicrosequenceVersion:
             state.view === "microsequence-assist" ? canDeleteMicrosequenceVersion(visualizedMicrosequenceVersionId) : false,
@@ -8689,6 +8766,12 @@ export function createLessonEditorApp({ root, storage, editor }) {
     root.querySelector("[data-action='open-assist-config']")?.addEventListener("click", () => openAssistConfig());
     root.querySelector("[data-action='apply-assist']")?.addEventListener("click", () => {
       void submitAssistRequest();
+    });
+    root.querySelector("[data-action='accept-generated-version']")?.addEventListener("click", () => {
+      acceptPendingGeneratedMicrosequenceVersion();
+    });
+    root.querySelector("[data-action='discard-generated-version']")?.addEventListener("click", () => {
+      discardPendingGeneratedMicrosequenceVersion();
     });
     root.querySelector("[data-action='open-version-history']")?.addEventListener("click", () => openVersionHistory());
     root.querySelector("[data-action='assist-config-close']")?.addEventListener("click", () => closeAssistConfig());
