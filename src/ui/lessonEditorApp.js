@@ -781,7 +781,6 @@ function makeEntityEditorModel(state) {
     if (!course) return null;
       return {
         title: "Fonte-guia do curso",
-        helperText: "Use frases curtas e telegráficas. O texto derivado é recompilado pelo app; não há campo livre legado.",
         fields: buildSourceGuideEditorFields(course.sourceGuideStructured || {}, { level: SOURCE_GUIDE_LEVELS.COURSE }),
         actions: []
       };
@@ -822,7 +821,6 @@ function makeEntityEditorModel(state) {
     if (!moduleValue) return null;
       return {
         title: "Fonte-guia do módulo",
-        helperText: "Mantenha o módulo enxuto e sem preferências operacionais da lição.",
         fields: buildSourceGuideEditorFields(moduleValue.sourceGuideStructured || {}, { level: SOURCE_GUIDE_LEVELS.MODULE }),
         actions: []
       };
@@ -865,7 +863,6 @@ function makeEntityEditorModel(state) {
     if (!lesson) return null;
       return {
         title: "Fonte-guia da lição",
-        helperText: "A lição agora define governança forte: texto curto estruturado, recursos permitidos, tipos de conteúdo, ações de estudo e nível de apoio.",
         fields: [
           ...buildSourceGuideEditorFields(lesson.sourceGuideStructured || {}, { level: SOURCE_GUIDE_LEVELS.LESSON }),
           ...buildLessonGuidanceEditorFields(normalizeLessonGuidance(lesson))
