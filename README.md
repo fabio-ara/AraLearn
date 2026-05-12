@@ -144,42 +144,23 @@ A fonte-guia não é uma descrição comum. Ela é uma orientação de conteúdo
 
 A direção arquitetural atual é tornar essa orientação mais determinística, sem mudar o fluxo principal da UI.
 
-### Curso
+### Curso e módulo
 
-No nível de curso, a fonte-guia indica o escopo geral.
+No estado atual do produto, curso e módulo não têm fonte-guia operacional própria no contrato público.
 
-Exemplo:
+Esses níveis ficam apenas com:
 
-```text
-Escopo: Matemática para Informática.
-Limites: lógica proposicional, álgebra linear e teoria dos grafos.
-Prioridade: resolução passo a passo.
-Não incluir: conteúdos avançados fora da disciplina.
-```
-
-### Módulo
-
-No nível de módulo, a fonte-guia indica o recorte temático.
-
-Exemplo:
-
-```text
-Escopo do módulo: álgebra linear.
-Pré-requisitos: pares ordenados e operações básicas.
-Notação: vetor como (x, y) e matrizes em formato visual.
-Erros comuns: confundir linha, coluna e componente.
-```
+- título;
+- descrição breve para UI;
+- estrutura descendente.
 
 ### Lição
 
 No nível de lição, a fonte-guia é mais operacional. Hoje, a lição pode carregar uma fonte-guia estruturada com campos fechados como:
 
 - meta da lição;
-- pré-requisitos imediatos;
 - sinais e notação;
 - confusões prováveis;
-- objetivo final;
-- observações livres.
 
 Exemplo:
 
@@ -192,11 +173,11 @@ Erros comuns: confundir condicional; pular coluna auxiliar.
 Não incluir: equivalências avançadas.
 ```
 
-No uso atual, restrições de recurso didático, tipo de microssequência e pedido de edição ou geração ficam distribuídas entre essa fonte-guia estruturada e os controles do painel contextual ou do painel da microssequência.
+No uso atual, restrições de recurso didático, tipo de microssequência e pedido de edição ou geração ficam distribuídas entre essa fonte-guia estruturada da lição e os controles do painel contextual ou do painel da microssequência.
 
 A intenção é substituir contexto solto por orientação funcional. Quanto mais fraco o modelo, mais o sistema deve restringir a tarefa.
 
-Na interface atual, os campos estruturados de curso, módulo e lição aparecem como núcleo principal da orientação. `Observações livres` continuam disponíveis para autoria humana, mas ficam visualmente em segundo plano e não entram no núcleo de governança forte enviado ao modelo quando os campos estruturados já bastam.
+Na interface atual, a lição concentra o núcleo principal da orientação enviada ao modelo. Curso e módulo ficam como contexto estrutural leve e não carregam mais fonte-guia própria.
 
 ---
 

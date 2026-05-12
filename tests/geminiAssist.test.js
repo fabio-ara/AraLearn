@@ -287,22 +287,10 @@ test("gera estrutura top-down com description breve e sourceGuide detalhada", as
                       course: {
                         title: "Lógica Proposicional",
                         description: "Curso introdutório de lógica proposicional.",
-                        sourceGuide:
-                          "Objetivo: ensinar lógica proposicional do zero.\nConteúdo obrigatório: conectivos, tabelas-verdade e equivalências.",
-                        sourceGuideStructured: {
-                          audience: "Nenhum pré-requisito formal além de leitura básica.",
-                          globalScope: "Aprender proposições, conectivos e equivalências elementares.",
-                          sharedNotation: "Destacar `p`, `q`, `~`, `^`, `v` e `->` inline."
-                        },
                         modules: [
                           {
                             title: "Fundamentos",
                             description: "Base conceitual inicial.",
-                            sourceGuide: "Apresentar proposições, valores lógicos e conectivos básicos.",
-                            sourceGuideStructured: {
-                              moduleScope: "Distinguir proposição, valor lógico e conectivo.",
-                              lessonProgression: "Ir da linguagem comum para a simbólica."
-                            },
                             lessons: [
                               {
                                 title: "Proposições e conectivos",
@@ -345,17 +333,13 @@ test("gera estrutura top-down com description breve e sourceGuide detalhada", as
     const prompt = calls[0].contents[0].parts[0].text;
     assert.ok(calls[0].generationConfig.responseJsonSchema);
     assert.match(prompt, /sourceGuideStructured/);
-    assert.match(prompt, /audience/);
-    assert.match(prompt, /Em curso, use apenas: audience, globalScope, sharedNotation/);
-    assert.match(prompt, /Não suba preferências finas de explicação ou prática para curso e módulo/);
+    assert.match(prompt, /Curso e módulo não têm fonte-guia própria neste contrato/);
+    assert.match(prompt, /Em lição, use apenas: lessonGoal, notationRules, commonErrors/);
     assert.equal(result.course.description, "Curso introdutório de lógica proposicional.");
-    assert.equal(result.course.sourceGuide.includes("Objetivo: ensinar lógica proposicional do zero."), false);
-    assert.match(result.course.sourceGuide, /Público e ponto de entrada:/);
-    assert.match(result.course.sourceGuide, /Escopo do curso:/);
-    assert.equal(result.course.sourceGuideStructured.globalScope, "Aprender proposições, conectivos e equivalências elementares.");
-    assert.match(result.course.modules[0].sourceGuide, /Escopo do módulo:/);
-    assert.match(result.course.modules[0].sourceGuide, /Progressão das lições:/);
-    assert.equal(result.course.modules[0].sourceGuideStructured.lessonProgression, "Ir da linguagem comum para a simbólica.");
+    assert.equal(result.course.sourceGuide, undefined);
+    assert.equal(result.course.sourceGuideStructured, undefined);
+    assert.equal(result.course.modules[0].sourceGuide, undefined);
+    assert.equal(result.course.modules[0].sourceGuideStructured, undefined);
     assert.match(result.course.modules[0].lessons[0].sourceGuide, /Meta da lição:/);
     assert.match(result.course.modules[0].lessons[0].sourceGuide, /Confusões prováveis:/);
     assert.equal(result.course.modules[0].lessons[0].sourceGuideStructured.commonErrors, "Tratar ordem dos conectivos como irrelevante.");
@@ -515,21 +499,10 @@ test("não promove description a sourceGuide no prompt estrutural quando a fonte
         course: {
           title: "Lógica",
           description: "Curso breve.",
-          sourceGuide: "Guia do curso.",
-          sourceGuideStructured: {
-            audience: "Base mínima.",
-            globalScope: "Escopo do curso.",
-            sharedNotation: "Notação simples."
-          },
           modules: [
             {
               title: "Fundamentos",
               description: "Base breve.",
-              sourceGuide: "Guia do módulo.",
-              sourceGuideStructured: {
-                moduleScope: "Escopo do módulo.",
-                lessonProgression: "Progressão curta."
-              },
               lessons: [
                 {
                   title: "Proposições",

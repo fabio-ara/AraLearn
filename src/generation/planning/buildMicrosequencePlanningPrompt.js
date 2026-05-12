@@ -24,7 +24,7 @@ export function buildMicrosequencePlanningPrompt(contract, modelCapabilities = c
     "Se request.userPrompt conflitar com a meta, a notação, as confusões prováveis ou o critério final da lição, preserve a governança da lição e reduza o pedido ao escopo governado.",
     "selectedLessonTopicRefs são assuntos selecionados no escopo da lição, normalmente derivados de títulos/tags de microssequências existentes; use como contexto auxiliar de escopo e terminologia, sem criar tags persistentes.",
     "Use context.path como a linha hierárquica completa até a microssequência-alvo.",
-    "Use context.sourceGuideLineage como governança acumulada de curso, módulo e lição.",
+    "Use context.lesson.sourceGuideStructured como governança principal da lição atual.",
     "Respeite context.lesson.resourceTags como recursos permitidos da lição.",
     "Respeite context.lesson.contentTypeTags como tipos de conteúdo permitidos da lição.",
     "Respeite context.lesson.learningActionTags como ações de estudo permitidas da lição.",

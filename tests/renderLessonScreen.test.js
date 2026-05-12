@@ -71,8 +71,6 @@ test("renderiza a tela de curso mostrando apenas módulos", () => {
 
   assert.match(html, /data-action="quick-create-module"/);
   assert.match(html, /data-action="open-course-screen-actions"/);
-  assert.match(html, new RegExp(`data-action="open-course-source-guide" data-course-key="${course.key}"`));
-  assert.match(html, new RegExp(`data-action="open-module-source-guide" data-course-key="${course.key}" data-module-key="${moduleValue.key}"`));
   assert.match(html, new RegExp(`data-action="open-generation-panel-course" data-course-key="${course.key}"`));
   assert.doesNotMatch(html, /C1 → C2/);
   assert.doesNotMatch(html, /data-action="select-structure-version"/);
@@ -94,7 +92,6 @@ test("renderiza a tela de curso mostrando apenas módulos", () => {
   assert.equal(countMatches(html, /class="card-progress-fill"/g), (course.modules || []).length);
   assert.match(html, /card-progress-fill" style="width:[1-9]/);
   assert.equal(countMatches(html, /class="muted tiny progress-meta"/g), 1);
-  assert.ok(html.indexOf('data-action="open-course-source-guide"') < html.indexOf('data-action="open-generation-panel-course"'));
   assert.ok(html.indexOf('data-action="open-generation-panel-course"') < html.indexOf('data-action="quick-create-module"'));
   assert.ok(html.indexOf('data-action="quick-create-module"') < html.indexOf('data-action="open-course-screen-actions"'));
   assert.doesNotMatch(html, /data-action="open-lesson-actions"/);
@@ -150,10 +147,6 @@ test("renderiza a tela de módulo mostrando apenas lições", () => {
   assert.match(html, /data-action="open-module-screen-actions"/);
   assert.match(
     html,
-    new RegExp(`data-action="open-module-source-guide" data-course-key="${course.key}" data-module-key="${moduleValue.key}"`)
-  );
-  assert.match(
-    html,
     new RegExp(`data-action="open-lesson-source-guide" data-course-key="${course.key}" data-module-key="${moduleValue.key}" data-lesson-key="${lesson.key}"`)
   );
   assert.match(
@@ -176,7 +169,6 @@ test("renderiza a tela de módulo mostrando apenas lições", () => {
   assert.equal(countMatches(html, /class="card-progress-fill"/g), (moduleValue.lessons || []).length);
   assert.match(html, /card-progress-fill" style="width:[1-9]/);
   assert.equal(countMatches(html, /class="muted tiny progress-meta"/g), 3);
-  assert.ok(html.indexOf('data-action="open-module-source-guide"') < html.indexOf('data-action="open-generation-panel-module"'));
   assert.ok(html.indexOf('data-action="open-generation-panel-module"') < html.indexOf('data-action="quick-create-lesson"'));
   assert.ok(html.indexOf('data-action="quick-create-lesson"') < html.indexOf('data-action="open-module-screen-actions"'));
   assert.doesNotMatch(html, /aria-label="Progresso: 0\/12" title="0\/12"/);

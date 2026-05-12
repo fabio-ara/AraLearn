@@ -96,17 +96,9 @@ test("aceita sourceGuideStructured e recompila sourceGuide legível", () => {
     courses: [
       {
         title: "Curso",
-        sourceGuideStructured: {
-          audience: "Saber ler instruções curtas.",
-          globalScope: "Dominar a habilidade principal.",
-          sharedNotation: "Usar `p` e `q`."
-        },
         modules: [
           {
             title: "Módulo",
-            sourceGuideStructured: {
-              lessonProgression: "Ir do caso simples ao composto."
-            },
             lessons: [
               {
                 title: "Lição",
@@ -124,14 +116,8 @@ test("aceita sourceGuideStructured e recompila sourceGuide legível", () => {
   });
 
   assert.equal(result.ok, true);
-  assert.match(result.value.courses[0].sourceGuide, /Público e ponto de entrada: Saber ler instruções curtas\./);
-  assert.match(result.value.courses[0].sourceGuide, /Escopo do curso: Dominar a habilidade principal\./);
-  assert.match(result.value.courses[0].sourceGuide, /Convenções gerais: Usar `p` e `q`\./);
-  assert.deepEqual(result.value.courses[0].sourceGuideStructured, {
-    audience: "Saber ler instruções curtas.",
-    globalScope: "Dominar a habilidade principal.",
-    sharedNotation: "Usar `p` e `q`."
-  });
+  assert.equal(result.value.courses[0].sourceGuide, undefined);
+  assert.equal(result.value.courses[0].sourceGuideStructured, undefined);
   assert.match(result.value.courses[0].modules[0].lessons[0].sourceGuide, /Meta da lição: Passo a passo simples\./);
   assert.match(result.value.courses[0].modules[0].lessons[0].sourceGuide, /Confusões prováveis: Não inverter a ordem dos termos\./);
 });
@@ -151,7 +137,7 @@ test("rejeita sourceGuide textual puro sem sourceGuideStructured", () => {
   });
 
   assert.equal(result.ok, false);
-  assert.match(result.errors.map((error) => error.message).join("\n"), /sourceGuide textual puro/);
+  assert.match(result.errors.map((error) => error.message).join("\n"), /Campo não suportado em curso: "sourceGuide"/);
 });
 
 test("rejeita campos legados de card no contrato principal", () => {

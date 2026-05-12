@@ -45,7 +45,7 @@ export function buildMicrosequenceGenerationPrompt(contract, modelCapabilities =
     "Use request.userPrompt apenas para especializar o recorte imediato e a ênfase dentro da lição atual.",
     "Se request.userPrompt conflitar com a meta, a notação, as confusões prováveis ou o critério final da lição, preserve a governança da lição e reduza o pedido ao escopo governado.",
     "Use context.path como a linha hierárquica completa até a microssequência.",
-    "Use context.sourceGuideLineage como governança acumulada de curso, módulo e lição.",
+    "Use context.lesson.sourceGuideStructured como governança principal da lição atual.",
     "Respeite context.lesson.resourceTags como envelope fechado de recursos da lição.",
     "Respeite context.lesson.contentTypeTags como envelope fechado de tipos de conteúdo da lição.",
     "Respeite context.lesson.learningActionTags como envelope fechado de ações de estudo da lição.",

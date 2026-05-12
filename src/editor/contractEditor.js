@@ -339,7 +339,6 @@ function createStarterModule({ title = "Novo módulo", description, sourceGuide,
     ...(description ? { description } : {}),
     lessons: []
   };
-  assignOptionalSourceGuide(moduleValue, sourceGuide, sourceGuideStructured, SOURCE_GUIDE_LEVELS.MODULE);
   return moduleValue;
 }
 
@@ -350,7 +349,6 @@ function createStarterCourse({ title = "Novo curso", description, sourceGuide, s
     ...(description ? { description } : {}),
     modules: []
   };
-  assignOptionalSourceGuide(course, sourceGuide, sourceGuideStructured, SOURCE_GUIDE_LEVELS.COURSE);
   return course;
 }
 
@@ -395,7 +393,6 @@ export function updateCourse(document, input) {
   const course = findCourse(nextDocument, input.courseKey);
   assignOptionalTextField(course, "title", input.title);
   assignOptionalTextField(course, "description", input.description);
-  assignOptionalSourceGuide(course, input.sourceGuide, input.sourceGuideStructured, SOURCE_GUIDE_LEVELS.COURSE);
   return ensureValidDocument(nextDocument);
 }
 
@@ -406,13 +403,8 @@ export function createCourse(document, input = {}) {
     input.description && typeof input.description === "string" && input.description.trim()
       ? input.description.trim()
       : "";
-  const sourceGuide = input.sourceGuide && typeof input.sourceGuide === "string" && input.sourceGuide.trim() ? input.sourceGuide.trim() : undefined;
-  const sourceGuideStructured =
-    input.sourceGuideStructured === undefined
-      ? undefined
-      : normalizeSourceGuideStructured(input.sourceGuideStructured, { level: SOURCE_GUIDE_LEVELS.COURSE });
   const usedKeys = collectSiblingKeys(nextDocument.courses || []);
-  const course = createStarterCourse({ title, description, sourceGuide, sourceGuideStructured });
+  const course = createStarterCourse({ title, description });
   course.key = input.key && typeof input.key === "string" && input.key.trim()
     ? input.key.trim()
     : uniqueKey(title, usedKeys, "course");
@@ -661,13 +653,8 @@ export function createModule(document, input) {
     input.description && typeof input.description === "string" && input.description.trim()
       ? input.description.trim()
       : "";
-  const sourceGuide = input.sourceGuide && typeof input.sourceGuide === "string" && input.sourceGuide.trim() ? input.sourceGuide.trim() : undefined;
-  const sourceGuideStructured =
-    input.sourceGuideStructured === undefined
-      ? undefined
-      : normalizeSourceGuideStructured(input.sourceGuideStructured, { level: SOURCE_GUIDE_LEVELS.MODULE });
   const usedKeys = collectSiblingKeys(course.modules);
-  const moduleValue = createStarterModule({ title, description, sourceGuide, sourceGuideStructured });
+  const moduleValue = createStarterModule({ title, description });
   moduleValue.key = input.key && typeof input.key === "string" && input.key.trim()
     ? input.key.trim()
     : uniqueKey(title, usedKeys, "module");
@@ -685,7 +672,6 @@ export function updateModule(document, input) {
   const { moduleValue } = findModule(nextDocument, input.courseKey, input.moduleKey);
   assignOptionalTextField(moduleValue, "title", input.title);
   assignOptionalTextField(moduleValue, "description", input.description);
-  assignOptionalSourceGuide(moduleValue, input.sourceGuide, input.sourceGuideStructured, SOURCE_GUIDE_LEVELS.MODULE);
   return ensureValidDocument(nextDocument);
 }
 

@@ -743,8 +743,6 @@ function renderCourseScreen({ course, progress, editorSupport }) {
           total: moduleTotal,
           parts: [renderCountMetric("lesson", (moduleValue.lessons || []).length, "lição", "lições")]
         }),
-        sourceGuideAction: "open-module-source-guide",
-        sourceGuideTitle: "Editar fonte-guia do módulo",
         menuAction: "open-module-actions",
         openAction: "open-module",
         generationAction: "open-generation-panel-module",
@@ -764,12 +762,6 @@ function renderCourseScreen({ course, progress, editorSupport }) {
       subtitle: editorSupport?.readOnlyView ? editorSupport?.readOnlySubtitle || "" : "",
       backTitle: editorSupport?.readOnlyBackTitle || "Menu principal",
       actions: readOnlyView ? [] : [
-        {
-          action: "open-course-source-guide",
-          title: "Editar fonte-guia do curso",
-          icon: "📎",
-          courseKey: course.key
-        },
         {
           action: "open-generation-panel-course",
           title: "Abrir geração por IA neste curso",
@@ -833,13 +825,6 @@ function renderModuleScreen({ course, moduleValue, progress, editorSupport }) {
       subtitle: editorSupport?.readOnlyView ? editorSupport?.readOnlySubtitle || "" : "",
       backTitle: editorSupport?.readOnlyBackTitle || "Voltar",
       actions: readOnlyView ? [] : [
-        {
-          action: "open-module-source-guide",
-          title: "Editar fonte-guia do módulo",
-          icon: "📎",
-          courseKey: course.key,
-          moduleKey: moduleValue.key
-        },
         {
           action: "open-generation-panel-module",
           title: "Abrir geração por IA neste módulo",

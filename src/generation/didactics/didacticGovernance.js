@@ -36,13 +36,13 @@ const DIDACTIC_GUARDRAILS = Object.freeze({
 
 const PLANNING_PROMPT_LINES = Object.freeze([
   "Pense na microssequência como contrato auditável: planeje a sequência microteoria -> exemplo guiado -> prática autossuficiente -> consolidação.",
-  "Use sourceGuide de curso, módulo e lição como governança principal; userPrompt só especializa o escopo.",
+  "Use sourceGuideStructured da lição como governança principal; userPrompt só especializa o escopo.",
   "Planeje prática apenas depois da explicação necessária e com contexto crítico no próprio card.",
   "Se a prática exigir contexto invisível ou lacuna longa, divida em mais cards ou troque o resourceType."
 ]);
 
 const GENERATION_PROMPT_LINES = Object.freeze([
-  "Trate sourceGuide de curso, módulo e lição como contrato de governança.",
+  "Trate sourceGuideStructured da lição como contrato de governança.",
   "Explique antes de cobrar: a prática deve reutilizar dados, passos ou notações já mostrados localmente.",
   "Prefira cards auditáveis: contexto local explícito, pergunta curta, resposta única e feedback corretivo.",
   "Se a prática não couber com clareza em um único card, divida em mais cards."
@@ -175,7 +175,6 @@ export function buildLessonRequestGovernance(lessonSourceGuideStructured = {}) {
   return {
     precedence: [
       "context.lesson.sourceGuideStructured",
-      "context.sourceGuideLineage",
       "selectedLessonTopicRefs",
       "request.userPrompt"
     ],

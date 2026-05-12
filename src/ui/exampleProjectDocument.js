@@ -237,28 +237,11 @@ export function createMatematicaParaInformaticaCourse() {
     key: "course-matematica-para-informatica",
     title: "Matemática para Informática",
     description: "Trilha progressiva de lógica proposicional, vetores e matrizes com foco em procedimentos e compreensão.",
-    sourceGuide: "Curso para prova com progressão curta, cards autossuficientes e foco em procedimento.",
-    sourceGuideStructured: {
-      audience: "Aluno iniciante que precisa sair do zero e ganhar segurança para a prova de Matemática para Informática.",
-      globalScope:
-        "Cobrir proposições, conectivos, tabelas-verdade, equivalências, vetores como listas e setas, soma, escalar, módulo, distância, produto escalar, cosseno, matrizes, transformações lineares, composição e inversa simples.",
-      globalOutOfScope:
-        "Não incluir lógica de predicados, determinantes avançados, diagonalização, espaços vetoriais abstratos nem provas formais além do nível pedido na disciplina.",
-      sharedNotation:
-        "Destacar `p`, `q`, `r`, `¬`, `∧`, `∨`, `→`, `↔`, `XOR`, `2^n`, `||v||`, `cos θ`, `v1`, `v2`, `î` e `ĵ` com acentos graves e traduzir a leitura quando a notação aparecer pela primeira vez."
-    },
     modules: [
       {
         key: "module-logica-proposicional",
         title: "Lógica Proposicional",
         description: "Da leitura de proposições até tabelas-verdade, equivalências e detecção de erro.",
-        sourceGuide: "Módulo de lógica voltado a leitura de conectivos, tabela-verdade e prova de equivalência por linha crítica.",
-        sourceGuideStructured: {
-          moduleScope: "Ler proposições, montar tabelas-verdade, provar equivalências e detectar uma equivalência falsa com linha crítica.",
-          modulePrerequisites: "Começar sem pré-requisito formal, retomando valor lógico, frase declarativa e leitura básica de conectivos.",
-          moduleOutOfScope: "Não entrar em predicados, quantificadores, álgebra booleana simbólica avançada ou provas formais sem tabela-verdade.",
-          lessonProgression: "Ir de proposição e conectivos básicos para tabelas compostas; depois usar a tabela como método de prova, contraste e diagnóstico de erro."
-        },
         lessons: [
           {
             key: "lesson-logica-proposicoes-conectivos",
@@ -971,14 +954,6 @@ export function createMatematicaParaInformaticaCourse() {
         key: "module-vetores-matrizes",
         title: "Vetores e Matrizes",
         description: "Operações com vetores, similaridade, transformações lineares e inversas simples.",
-        sourceGuide: "Módulo de vetores e matrizes com cálculo legível, interpretação geométrica e transformações básicas.",
-        sourceGuideStructured: {
-          moduleScope:
-            "Trabalhar vetor como lista e seta, soma, escalar, módulo, distância, produto escalar, cosseno, matrizes e transformações pedidas na prova.",
-          modulePrerequisites: "Assumir apenas leitura básica de pares ordenados e operações aritméticas simples.",
-          moduleOutOfScope: "Não entrar em espaços vetoriais abstratos, autovalores, diagonalização ou métodos algébricos fora do programa.",
-          lessonProgression: "Começar por leitura e operações, passar por medidas e similaridade e fechar com matrizes, composição e inversa simples."
-        },
         lessons: [
           {
             key: "lesson-vetores-operacoes",

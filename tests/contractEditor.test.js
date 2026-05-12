@@ -58,28 +58,19 @@ test("cria microssequência nova no contrato principal como rascunho vazio", () 
   assert.deepEqual(microsequence.cards, []);
 });
 
-test("preserva sourceGuide derivado de sourceGuideStructured em curso, módulo e lição", () => {
+test("preserva sourceGuide derivado de sourceGuideStructured apenas na lição", () => {
   let document = readNormalizedProject("./docs/examples/aralearn-contract.renderable.json");
 
   document = createCourse(document, {
     title: "Curso com guia",
-    description: "Descrição curta do curso",
-    sourceGuideStructured: {
-      audience: "Aluno iniciante.",
-      globalScope: "Objetivo do curso.",
-      sharedNotation: "Usar `p` e `q` com destaque."
-    }
+    description: "Descrição curta do curso"
   });
 
   const course = document.courses.at(-1);
   document = createModule(document, {
     courseKey: course.key,
     title: "Módulo com guia",
-    description: "Descrição curta do módulo",
-    sourceGuideStructured: {
-      moduleScope: "Fonte-guia do módulo.",
-      lessonProgression: "Ir do caso simples ao composto."
-    }
+    description: "Descrição curta do módulo"
   });
 
   const moduleValue = document.courses.at(-1).modules.at(-1);
@@ -97,8 +88,8 @@ test("preserva sourceGuide derivado de sourceGuideStructured em curso, módulo e
   const lesson = document.courses.at(-1).modules.at(-1).lessons.at(-1);
   const validation = validateContractDocument(document);
   assert.equal(validation.ok, true);
-  assert.match(validation.value.courses.at(-1).sourceGuide, /Objetivo do curso\./);
-  assert.match(validation.value.courses.at(-1).modules.at(-1).sourceGuide, /Fonte-guia do módulo\./);
+  assert.equal(validation.value.courses.at(-1).sourceGuide, undefined);
+  assert.equal(validation.value.courses.at(-1).modules.at(-1).sourceGuide, undefined);
   assert.match(validation.value.courses.at(-1).modules.at(-1).lessons.at(-1).sourceGuide, /Fonte-guia da lição\./);
   assert.deepEqual(validation.value.courses.at(-1).modules.at(-1).lessons.at(-1).resourceTags, [
     "paragraph",
@@ -117,46 +108,52 @@ test("preserva sourceGuide derivado de sourceGuideStructured em curso, módulo e
   assert.match(exported.courses[0].modules[0].lessons[0].sourceGuide, /Fonte-guia da lição\./);
 });
 
-test("rejeita sourceGuide textual puro na edição estrutural", () => {
+test("ignora sourceGuide textual em curso na edição estrutural", () => {
   const document = readNormalizedProject("./docs/examples/aralearn-contract.renderable.json");
 
-  assert.throws(
-    () =>
-      createCourse(document, {
-        title: "Curso textual",
-        sourceGuide: "Texto corrido legado."
-      }),
-    /sourceGuideStructured/
-  );
+  const nextDocument = createCourse(document, {
+    title: "Curso textual",
+    sourceGuide: "Texto corrido legado."
+  });
+
+  const course = nextDocument.courses.at(-1);
+  assert.equal(course.title, "Curso textual");
+  assert.equal(course.sourceGuide, undefined);
+  assert.equal(course.sourceGuideStructured, undefined);
+  assert.equal(validateContractDocument(nextDocument).ok, true);
 });
 
-test("preserva sourceGuideStructured e recompila o texto derivado", () => {
+test("preserva sourceGuideStructured e recompila o texto derivado na lição", () => {
   let document = readNormalizedProject("./docs/examples/aralearn-contract.renderable.json");
 
-  document = createCourse(document, {
-    title: "Curso com guia estruturada",
+  document = createLesson(document, {
+    courseKey: document.courses[0].key,
+    moduleKey: document.courses[0].modules[0].key,
+    title: "Lição com guia estruturada",
     sourceGuideStructured: {
-      audience: "Iniciantes completos.",
-      globalScope: "Entender o fluxo principal.",
-      sharedNotation: "Usar comandos inline."
+      lessonGoal: "Entender o fluxo principal.",
+      notationRules: "Usar comandos inline.",
+      commonErrors: "Não inverter a ordem dos passos."
     }
   });
 
-  const course = document.courses.at(-1);
-  assert.deepEqual(course.sourceGuideStructured, {
-    audience: "Iniciantes completos.",
-    globalScope: "Entender o fluxo principal.",
-    sharedNotation: "Usar comandos inline."
+  const lesson = document.courses[0].modules[0].lessons.at(-1);
+  assert.deepEqual(lesson.sourceGuideStructured, {
+    lessonGoal: "Entender o fluxo principal.",
+    notationRules: "Usar comandos inline.",
+    commonErrors: "Não inverter a ordem dos passos."
   });
-  assert.match(course.sourceGuide, /Público e ponto de entrada: Iniciantes completos\./);
-  assert.match(course.sourceGuide, /Escopo do curso: Entender o fluxo principal\./);
-  assert.match(course.sourceGuide, /Convenções gerais: Usar comandos inline\./);
+  assert.match(lesson.sourceGuide, /Meta da lição: Entender o fluxo principal\./);
+  assert.match(lesson.sourceGuide, /Sinais e notação: Usar comandos inline\./);
+  assert.match(lesson.sourceGuide, /Confusões prováveis: Não inverter a ordem dos passos\./);
 
-  const exported = exportCourseDocument(document, {
-    courseKey: course.key
+  const exported = exportLessonDocument(document, {
+    courseKey: document.courses[0].key,
+    moduleKey: document.courses[0].modules[0].key,
+    lessonKey: lesson.key
   });
-  assert.deepEqual(exported.courses[0].sourceGuideStructured, course.sourceGuideStructured);
-  assert.equal(exported.courses[0].sourceGuide, course.sourceGuide);
+  assert.deepEqual(exported.courses[0].modules[0].lessons[0].sourceGuideStructured, lesson.sourceGuideStructured);
+  assert.equal(exported.courses[0].modules[0].lessons[0].sourceGuide, lesson.sourceGuide);
 });
 
 test("cria microssequência rascunho sem cards", () => {

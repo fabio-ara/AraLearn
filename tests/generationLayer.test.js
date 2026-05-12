@@ -174,11 +174,9 @@ test("planejamento recebe selectedLessonTopicRefs, catálogo leve e valida plano
   assert.equal(contract.selectedLessonTopicRefs[0].refKey, "micro-git");
   assert.equal(contract.selectedLessonTopicRefs[0].source, "microsequence");
   assert.deepEqual(contract.context.path.map((item) => item.level), ["course", "module", "lesson", "microsequence"]);
-  assert.equal(contract.context.sourceGuideLineage[0].sourceGuide, "Escopo do curso: Escopo do curso.");
   assert.equal(contract.context.lesson.microsequenceLine[0].title, "Base");
   assert.deepEqual(contract.requestGovernance.precedence, [
     "context.lesson.sourceGuideStructured",
-    "context.sourceGuideLineage",
     "selectedLessonTopicRefs",
     "request.userPrompt"
   ]);
@@ -193,7 +191,6 @@ test("planejamento recebe selectedLessonTopicRefs, catálogo leve e valida plano
   assert.match(prompt, /Se request\.userPrompt conflitar com a meta, a notação, as confusões prováveis ou o critério final da lição/);
   assert.match(prompt, /selectedLessonTopicRefs são assuntos selecionados no escopo da lição/);
   assert.match(prompt, /context\.path como a linha hierárquica completa até a microssequência/);
-  assert.match(prompt, /context\.sourceGuideLineage como governança acumulada/);
   assert.match(prompt, /context\.lesson\.microsequenceLine/);
   assert.match(prompt, /planeje a sequência microteoria -> exemplo guiado -> prática autossuficiente -> consolidação/);
   assert.match(prompt, /Papel do AraLearn nesta operação: fixar contrato, tipos disponíveis, recursos possíveis, validação local e cardPlan final/);
@@ -238,16 +235,12 @@ test("planejamento e edição enviam fonte-guia compacta ao modelo", () => {
     selectedCourse: {
       key: "course",
       title: "Curso",
-      description: "Objetivo do curso",
-      sourceGuide: "Resumo legado do curso",
-      sourceGuideStructured: { globalScope: "Escopo do curso.", freeNotes: "Não enviar ao modelo." }
+      description: "Objetivo do curso"
     },
     selectedModule: {
       key: "module",
       title: "Módulo",
-      description: "Objetivo do módulo",
-      sourceGuide: "Resumo legado do módulo",
-      sourceGuideStructured: { moduleScope: "Escopo do módulo.", freeNotes: "Não enviar ao modelo." }
+      description: "Objetivo do módulo"
     },
     selectedLesson: {
       key: "lesson",
@@ -272,9 +265,10 @@ test("planejamento e edição enviam fonte-guia compacta ao modelo", () => {
     selectedModel: "gemini-2.5-flash"
   });
 
-  assert.deepEqual(contract.context.course.sourceGuideStructured, { globalScope: "Escopo do curso." });
-  assert.equal(contract.context.course.sourceGuide.includes("Observações livres"), false);
-  assert.deepEqual(contract.context.module.sourceGuideStructured, { moduleScope: "Escopo do módulo." });
+  assert.equal(contract.context.course.sourceGuideStructured, undefined);
+  assert.equal(contract.context.course.sourceGuide, undefined);
+  assert.equal(contract.context.module.sourceGuideStructured, undefined);
+  assert.equal(contract.context.module.sourceGuide, undefined);
   assert.deepEqual(contract.context.lesson.sourceGuideStructured, { lessonGoal: "Escopo da lição." });
   assert.deepEqual(contract.requestGovernance.lessonAnchors, [
     { field: "lessonGoal", label: "Meta da lição", value: "Escopo da lição." }
@@ -359,7 +353,6 @@ test("contrato e prompt de geração usam contexto, tags, tamanho e schemas efet
 
   assert.equal(generationContract.context.course.title, "Curso");
   assert.equal(generationContract.context.path[3].title, "Microssequência");
-  assert.equal(generationContract.context.sourceGuideLineage[2].sourceGuide, "Meta da lição: Escopo da lição.");
   assert.equal(generationContract.selectedLessonTopicRefs[0].label, "Git");
   assert.equal(generationContract.request.sizeId, "short");
   assert.equal(generationContract.request.cardCount, 3);
@@ -373,7 +366,6 @@ test("contrato e prompt de geração usam contexto, tags, tamanho e schemas efet
   assert.match(prompt, /requestGovernance\.precedence como ordem obrigatória de leitura do contrato/);
   assert.match(prompt, /Se request\.userPrompt conflitar com a meta, a notação, as confusões prováveis ou o critério final da lição/);
   assert.match(prompt, /context\.path como a linha hierárquica completa até a microssequência/);
-  assert.match(prompt, /context\.sourceGuideLineage como governança acumulada/);
   assert.match(prompt, /context\.lesson\.microsequenceLine/);
   assert.match(prompt, /Não coloque prática antes da microteoria/);
   assert.match(prompt, /Quando a regra for abstrata ou pouco intuitiva/);
@@ -382,7 +374,7 @@ test("contrato e prompt de geração usam contexto, tags, tamanho e schemas efet
   assert.match(prompt, /Não use linguagem de bastidor nem referência externa ou volátil/);
   assert.match(prompt, /Não crie exercício cuja resposta já esteja explicitamente revelada no mesmo card/i);
   assert.match(prompt, /rolagem vertical/);
-  assert.match(prompt, /Trate sourceGuide de curso, módulo e lição como contrato de governança/);
+  assert.match(prompt, /Trate sourceGuideStructured da lição como contrato de governança/);
   assert.match(prompt, /Papel do AraLearn: fixar didacticPlan\.cardPlan, recursos permitidos, schemas aceitos, validação e adaptação para o contrato público/);
   assert.match(prompt, /Seu papel aqui é apenas preencher o conteúdo dos cards já planejados/);
   assert.match(prompt, /Não mude tags persistentes, destino estrutural, status da microssequência nem decisão editorial final/);
@@ -890,8 +882,8 @@ test("fontes resolvem seleção explícita, menção e ambiguidade", () => {
 
 test("planejamento e contrato de edição preservam versão, selectedLessonTopicRefs e recursos", () => {
   const editPlanningContract = buildMicrosequenceEditPlanningContract({
-    selectedCourse: { key: "course", title: "Curso", sourceGuide: "Guia do curso", sourceGuideStructured: { globalScope: "Escopo do curso." } },
-    selectedModule: { key: "module", title: "Módulo", sourceGuide: "Guia do módulo", sourceGuideStructured: { moduleScope: "Escopo do módulo." } },
+    selectedCourse: { key: "course", title: "Curso" },
+    selectedModule: { key: "module", title: "Módulo" },
     selectedLesson: {
       key: "lesson",
       title: "Lição",
@@ -936,7 +928,6 @@ test("planejamento e contrato de edição preservam versão, selectedLessonTopic
 
   assert.equal(editPlanningContract.selectedLessonTopicRefs[0].label, "Git");
   assert.deepEqual(editPlanningContract.context.path.map((item) => item.level), ["course", "module", "lesson", "microsequence"]);
-  assert.equal(editPlanningContract.context.sourceGuideLineage[2].sourceGuide, "Meta da lição: Escopo da lição.");
   assert.equal(editPlanningContract.context.lesson.microsequenceLine[0].title, "Micro");
   assert.equal(editPlanningContract.requestGovernance.lessonAnchors[0].field, "lessonGoal");
   assert.equal(editContract.selectedLessonTopicRefs[0].label, "Git");
@@ -950,8 +941,8 @@ test("planejamento e contrato de edição preservam versão, selectedLessonTopic
 
 test("prompts de edição e reparo explicitam a divisão de papéis", () => {
   const editPlanningContract = buildMicrosequenceEditPlanningContract({
-    selectedCourse: { key: "course", title: "Curso", sourceGuide: "Guia do curso", sourceGuideStructured: { globalScope: "Escopo do curso." } },
-    selectedModule: { key: "module", title: "Módulo", sourceGuide: "Guia do módulo", sourceGuideStructured: { moduleScope: "Escopo do módulo." } },
+    selectedCourse: { key: "course", title: "Curso" },
+    selectedModule: { key: "module", title: "Módulo" },
     selectedLesson: {
       key: "lesson",
       title: "Lição",

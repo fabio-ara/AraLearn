@@ -15,18 +15,20 @@ import {
 test("monta campos fixos de edição a partir da fonte-guia estruturada", () => {
   const fields = buildSourceGuideEditorFields(
     {
-      moduleScope: "Comandos básicos.",
-      lessonProgression: "Começar por navegação e depois arquivos."
+      lessonGoal: "Comandos básicos.",
+      notationRules: "Destacar `cd` e `ls` inline.",
+      commonErrors: "Confundir listar com entrar na pasta."
     },
-    { level: SOURCE_GUIDE_LEVELS.MODULE }
+    { level: SOURCE_GUIDE_LEVELS.LESSON }
   );
 
-  assert.equal(fields.length, 2);
-  assert.equal(fields[0].name, "moduleScope");
+  assert.equal(fields.length, 3);
+  assert.equal(fields[0].name, "lessonGoal");
   assert.equal(fields[0].iconName, "intent");
   assert.equal(fields[0].value, "Comandos básicos.");
   assert.equal(fields[0].type, "textarea");
-  assert.equal(fields.find((field) => field.name === "lessonProgression")?.value, "Começar por navegação e depois arquivos.");
+  assert.equal(fields.find((field) => field.name === "notationRules")?.value, "Destacar `cd` e `ls` inline.");
+  assert.equal(fields.find((field) => field.name === "commonErrors")?.value, "Confundir listar com entrar na pasta.");
 });
 
 test("resolve payload estruturado e recompila texto legível", () => {

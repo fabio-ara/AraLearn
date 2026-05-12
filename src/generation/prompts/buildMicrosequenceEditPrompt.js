@@ -15,7 +15,7 @@ export function buildMicrosequenceEditPrompt(contract, modelCapabilities = contr
     "Use request.userEditPrompt apenas para especializar o recorte imediato e a ênfase da edição dentro da lição atual.",
     "Se request.userEditPrompt conflitar com a meta, a notação, as confusões prováveis ou o critério final da lição, preserve a governança da lição e reduza o pedido ao escopo governado.",
     "Use context.path como a linha hierárquica completa até a microssequência.",
-    "Use context.sourceGuideLineage como governança acumulada de curso, módulo e lição.",
+    "Use context.lesson.sourceGuideStructured como governança principal da lição atual.",
     "Respeite context.lesson.resourceTags, contentTypeTags, learningActionTags e supportLevel como governança operacional fechada da lição.",
     "Use selectedLessonTopicRefs como assuntos selecionados no escopo da lição para orientar escopo e terminologia; não transforme essas referências em tags persistentes da microssequência.",
     "Use context.lesson.microsequenceLine para manter continuidade didática com as microssequências da lição sem depender de contexto oculto.",

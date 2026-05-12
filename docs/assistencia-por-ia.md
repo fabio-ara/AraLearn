@@ -104,8 +104,8 @@ Regras da aplicação:
 - curso gera ou atualiza módulos e lições;
 - módulo gera ou atualiza lições;
 - `description` permanece breve;
-- `sourceGuide` e `sourceGuideStructured` entram no contexto quando existirem;
-- quando `sourceGuideStructured` já cobre o nível atual, a aplicação envia ao modelo apenas os campos centrais dessa estrutura, sem `freeNotes` nem carga legatária redundante;
+- `sourceGuide` e `sourceGuideStructured` entram no contexto operacional apenas no nível de lição;
+- quando `sourceGuideStructured` da lição já cobre o nível atual, a aplicação envia ao modelo apenas os campos centrais dessa estrutura, sem `freeNotes` nem carga legatária redundante;
 - na UI de fonte-guia, `Observações livres` permanecem editáveis, mas aparecem como apoio editorial e não como governança forte;
 - esse modo não gera microssequências nem cards.
 
@@ -355,7 +355,7 @@ Fluxo implementado para gerar ou revisar cards no painel:
 14. quando a substituição cria uma iteração nova, o painel expõe ações para aceitar ou excluir essa iteração atual;
 15. o usuário continua responsável por revisar o resultado aplicado.
 
-No estado atual, esse planejamento também carrega uma política explícita de precedência: a `sourceGuideStructured` da lição vem primeiro, seguida da linhagem `curso -> módulo -> lição`, depois dos assuntos selecionados da lição e só então do pedido livre do usuário. O pedido do usuário especializa o recorte e a ênfase, mas não redefine meta, notação, confusões prováveis nem critério final já governados pela lição.
+No estado atual, esse planejamento também carrega uma política explícita de precedência: a `sourceGuideStructured` da lição vem primeiro, depois os assuntos selecionados da lição e só então o pedido livre do usuário. O pedido do usuário especializa o recorte e a ênfase, mas não redefine meta, notação, confusões prováveis nem critério final já governados pela lição.
 
 ## Anexos de referência
 

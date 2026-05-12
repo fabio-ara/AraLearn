@@ -776,16 +776,6 @@ function makeEntityEditorModel(state) {
     };
   }
 
-  if (entityEditor.kind === "course-source-guide") {
-    const course = findCourse(project, entityEditor.courseKey || selection.courseKey);
-    if (!course) return null;
-      return {
-        title: "Fonte-guia do curso",
-        fields: buildSourceGuideEditorFields(course.sourceGuideStructured || {}, { level: SOURCE_GUIDE_LEVELS.COURSE }),
-        actions: []
-      };
-  }
-
   if (entityEditor.kind === "course") {
     const course = findCourse(project, entityEditor.courseKey || selection.courseKey);
     if (!course) return null;
@@ -814,16 +804,6 @@ function makeEntityEditorModel(state) {
       ],
       actions: []
     };
-  }
-
-  if (entityEditor.kind === "module-source-guide") {
-    const moduleValue = findModule(project, entityEditor.courseKey || selection.courseKey, entityEditor.moduleKey);
-    if (!moduleValue) return null;
-      return {
-        title: "Fonte-guia do módulo",
-        fields: buildSourceGuideEditorFields(moduleValue.sourceGuideStructured || {}, { level: SOURCE_GUIDE_LEVELS.MODULE }),
-        actions: []
-      };
   }
 
   if (entityEditor.kind === "module-actions") {
@@ -5690,27 +5670,12 @@ export function createLessonEditorApp({ root, storage, editor }) {
           title: payload.title,
           description: payload.description
         });
-      } else if (state.entityEditor.kind === "course-source-guide") {
-        const nextGuide = resolveSourceGuidePayload(payload, { level: SOURCE_GUIDE_LEVELS.COURSE });
-        nextProject = structuralEditor.updateCourse({
-          courseKey: state.entityEditor.courseKey || state.selection.courseKey,
-          sourceGuide: nextGuide.sourceGuide,
-          sourceGuideStructured: nextGuide.sourceGuideStructured
-        });
       } else if (state.entityEditor.kind === "module") {
         nextProject = structuralEditor.updateModule({
           courseKey: state.entityEditor.courseKey || state.selection.courseKey,
           moduleKey: state.entityEditor.moduleKey,
           title: payload.title,
           description: payload.description
-        });
-      } else if (state.entityEditor.kind === "module-source-guide") {
-        const nextGuide = resolveSourceGuidePayload(payload, { level: SOURCE_GUIDE_LEVELS.MODULE });
-        nextProject = structuralEditor.updateModule({
-          courseKey: state.entityEditor.courseKey || state.selection.courseKey,
-          moduleKey: state.entityEditor.moduleKey,
-          sourceGuide: nextGuide.sourceGuide,
-          sourceGuideStructured: nextGuide.sourceGuideStructured
         });
       } else if (state.entityEditor.kind === "lesson") {
         nextProject = structuralEditor.updateLesson({
@@ -5749,14 +5714,13 @@ export function createLessonEditorApp({ root, storage, editor }) {
         setProject(nextProject);
         if (
           state.entityEditor.kind === "course" ||
-          state.entityEditor.kind === "course-metadata" ||
-          state.entityEditor.kind === "course-source-guide"
+          state.entityEditor.kind === "course-metadata"
         ) {
           syncActiveStructureVersionFromProject({
             level: "course",
             courseKey: state.entityEditor.courseKey || state.selection.courseKey
           });
-        } else if (state.entityEditor.kind === "module" || state.entityEditor.kind === "module-source-guide") {
+        } else if (state.entityEditor.kind === "module") {
           syncActiveStructureVersionFromProject({
             level: "module",
             courseKey: state.entityEditor.courseKey || state.selection.courseKey,
@@ -8455,13 +8419,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
         openEntityEditor("course-actions", { courseKey });
       });
     });
-    root.querySelectorAll("[data-action='open-course-source-guide']").forEach((node) => {
-      node.addEventListener("click", () => {
-        const courseKey = node.getAttribute("data-course-key") || state.selection.courseKey;
-        if (!courseKey) return;
-        openEntityEditor("course-source-guide", { courseKey });
-      });
-    });
     root.querySelectorAll("[data-action='open-course-screen-actions']").forEach((node) => {
       node.addEventListener("click", () => {
         openEntityEditor("course-screen-actions", { courseKey: state.selection.courseKey });
@@ -8497,14 +8454,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
         const moduleKey = node.getAttribute("data-module-key");
         if (!courseKey || !moduleKey) return;
         openEntityEditor("module-actions", { courseKey, moduleKey });
-      });
-    });
-    root.querySelectorAll("[data-action='open-module-source-guide']").forEach((node) => {
-      node.addEventListener("click", () => {
-        const courseKey = node.getAttribute("data-course-key") || state.selection.courseKey;
-        const moduleKey = node.getAttribute("data-module-key") || state.selection.moduleKey;
-        if (!courseKey || !moduleKey) return;
-        openEntityEditor("module-source-guide", { courseKey, moduleKey });
       });
     });
     root.querySelectorAll("[data-action='edit-module']").forEach((node) => {

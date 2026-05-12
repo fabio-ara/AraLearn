@@ -24,18 +24,6 @@ function objective(value) {
   return text(value?.objective) || text(value?.description);
 }
 
-function sourceGuide(value) {
-  return text(value?.sourceGuide);
-}
-
-function sourceGuideForModel(value, level) {
-  const structured = sanitizeSourceGuideStructuredForModel(value?.sourceGuideStructured, { level });
-  if (Object.keys(structured).length) {
-    return buildSourceGuideTextForModel(structured, { level });
-  }
-  return "";
-}
-
 function sourceGuideStructuredForModel(value, level) {
   const structured = sanitizeSourceGuideStructuredForModel(value?.sourceGuideStructured, { level });
   return Object.keys(structured).length ? structured : undefined;
@@ -106,63 +94,19 @@ export function buildMicrosequencePlanningContract({
         { level: "lesson", key: key(selectedLesson), title: text(selectedLesson?.title) || key(selectedLesson) },
         { level: "microsequence", key: key(targetMicrosequence), title: text(targetMicrosequence?.title) || key(targetMicrosequence) }
       ],
-      sourceGuideLineage: [
-        {
-          level: "course",
-          title: text(selectedCourse?.title) || key(selectedCourse),
-          ...(sourceGuideForModel(selectedCourse, SOURCE_GUIDE_LEVELS.COURSE)
-            ? { sourceGuide: sourceGuideForModel(selectedCourse, SOURCE_GUIDE_LEVELS.COURSE) }
-            : {}),
-          ...(sourceGuideStructuredForModel(selectedCourse, SOURCE_GUIDE_LEVELS.COURSE)
-            ? { sourceGuideStructured: sourceGuideStructuredForModel(selectedCourse, SOURCE_GUIDE_LEVELS.COURSE) }
-            : {})
-        },
-        {
-          level: "module",
-          title: text(selectedModule?.title) || key(selectedModule),
-          ...(sourceGuideForModel(selectedModule, SOURCE_GUIDE_LEVELS.MODULE)
-            ? { sourceGuide: sourceGuideForModel(selectedModule, SOURCE_GUIDE_LEVELS.MODULE) }
-            : {}),
-          ...(sourceGuideStructuredForModel(selectedModule, SOURCE_GUIDE_LEVELS.MODULE)
-            ? { sourceGuideStructured: sourceGuideStructuredForModel(selectedModule, SOURCE_GUIDE_LEVELS.MODULE) }
-            : {})
-        },
-        {
-          level: "lesson",
-          title: text(selectedLesson?.title) || key(selectedLesson),
-          ...(sourceGuideForModel(selectedLesson, SOURCE_GUIDE_LEVELS.LESSON)
-            ? { sourceGuide: sourceGuideForModel(selectedLesson, SOURCE_GUIDE_LEVELS.LESSON) }
-            : {}),
-          ...(sourceGuideStructuredForModel(selectedLesson, SOURCE_GUIDE_LEVELS.LESSON)
-            ? { sourceGuideStructured: sourceGuideStructuredForModel(selectedLesson, SOURCE_GUIDE_LEVELS.LESSON) }
-            : {})
-        }
-      ],
       course: {
         title: text(selectedCourse?.title) || key(selectedCourse),
-        objective: objective(selectedCourse),
-        ...(sourceGuideForModel(selectedCourse, SOURCE_GUIDE_LEVELS.COURSE)
-          ? { sourceGuide: sourceGuideForModel(selectedCourse, SOURCE_GUIDE_LEVELS.COURSE) }
-          : {}),
-        ...(sourceGuideStructuredForModel(selectedCourse, SOURCE_GUIDE_LEVELS.COURSE)
-          ? { sourceGuideStructured: sourceGuideStructuredForModel(selectedCourse, SOURCE_GUIDE_LEVELS.COURSE) }
-          : {})
+        objective: objective(selectedCourse)
       },
       module: {
         title: text(selectedModule?.title) || key(selectedModule),
-        objective: objective(selectedModule),
-        ...(sourceGuideForModel(selectedModule, SOURCE_GUIDE_LEVELS.MODULE)
-          ? { sourceGuide: sourceGuideForModel(selectedModule, SOURCE_GUIDE_LEVELS.MODULE) }
-          : {}),
-        ...(sourceGuideStructuredForModel(selectedModule, SOURCE_GUIDE_LEVELS.MODULE)
-          ? { sourceGuideStructured: sourceGuideStructuredForModel(selectedModule, SOURCE_GUIDE_LEVELS.MODULE) }
-          : {})
+        objective: objective(selectedModule)
       },
       lesson: {
         title: text(selectedLesson?.title) || key(selectedLesson),
         objective: objective(selectedLesson),
-        ...(sourceGuideForModel(selectedLesson, SOURCE_GUIDE_LEVELS.LESSON)
-          ? { sourceGuide: sourceGuideForModel(selectedLesson, SOURCE_GUIDE_LEVELS.LESSON) }
+        ...(sourceGuideStructuredForModel(selectedLesson, SOURCE_GUIDE_LEVELS.LESSON)
+          ? { sourceGuide: buildSourceGuideTextForModel(sourceGuideStructuredForModel(selectedLesson, SOURCE_GUIDE_LEVELS.LESSON), { level: SOURCE_GUIDE_LEVELS.LESSON }) }
           : {}),
         ...(sourceGuideStructuredForModel(selectedLesson, SOURCE_GUIDE_LEVELS.LESSON)
           ? { sourceGuideStructured: sourceGuideStructuredForModel(selectedLesson, SOURCE_GUIDE_LEVELS.LESSON) }

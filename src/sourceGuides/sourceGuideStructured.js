@@ -5,15 +5,8 @@ export const SOURCE_GUIDE_LEVELS = Object.freeze({
 });
 
 export const SOURCE_GUIDE_FIELD_DEFINITIONS_BY_LEVEL = Object.freeze({
-  [SOURCE_GUIDE_LEVELS.COURSE]: Object.freeze([
-    { name: "audience", label: "Público e ponto de entrada", iconName: "module", placeholder: "Para quem é o curso." },
-    { name: "globalScope", label: "Escopo do curso", iconName: "intent", placeholder: "O que o curso cobre." },
-    { name: "sharedNotation", label: "Convenções gerais", iconName: "title", placeholder: "Símbolos e convenções globais." }
-  ]),
-  [SOURCE_GUIDE_LEVELS.MODULE]: Object.freeze([
-    { name: "moduleScope", label: "Escopo do módulo", iconName: "intent", placeholder: "Qual recorte este módulo cobre." },
-    { name: "lessonProgression", label: "Progressão das lições", iconName: "prompt", placeholder: "Como as lições devem avançar." }
-  ]),
+  [SOURCE_GUIDE_LEVELS.COURSE]: Object.freeze([]),
+  [SOURCE_GUIDE_LEVELS.MODULE]: Object.freeze([]),
   [SOURCE_GUIDE_LEVELS.LESSON]: Object.freeze([
     { name: "lessonGoal", label: "Meta da lição", iconName: "intent", placeholder: "O que esta lição precisa entregar." },
     { name: "notationRules", label: "Sinais e notação", iconName: "title", placeholder: "Símbolos e leituras obrigatórias." },

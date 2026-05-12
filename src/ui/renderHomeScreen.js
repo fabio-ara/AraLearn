@@ -562,9 +562,6 @@ function renderCoursesPane({ project, progress }) {
         "</div>" +
         renderHomeCourseMeta(course) +
         '<div class="course-actions navigation-actions">' +
-        '<button class="icon-ghost corner-btn" type="button" data-action="open-course-source-guide" data-course-key="' +
-        escapeHtml(course.key) +
-        '" title="Editar fonte-guia do curso" aria-label="Editar fonte-guia do curso">📎</button>' +
         '<button class="icon-ghost corner-btn" type="button" data-action="open-course-actions" data-course-key="' +
         escapeHtml(course.key) +
         '" title="Ações do curso" aria-label="Ações do curso">⋯</button>' +
