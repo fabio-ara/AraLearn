@@ -8,21 +8,16 @@ export const SOURCE_GUIDE_FIELD_DEFINITIONS_BY_LEVEL = Object.freeze({
   [SOURCE_GUIDE_LEVELS.COURSE]: Object.freeze([
     { name: "audience", label: "Público e ponto de entrada", iconName: "module", placeholder: "Para quem é o curso." },
     { name: "globalScope", label: "Escopo do curso", iconName: "intent", placeholder: "O que o curso cobre." },
-    { name: "globalOutOfScope", label: "Fora do curso", iconName: "excluded-state", placeholder: "O que não entra no curso." },
     { name: "sharedNotation", label: "Convenções gerais", iconName: "title", placeholder: "Símbolos e convenções globais." }
   ]),
   [SOURCE_GUIDE_LEVELS.MODULE]: Object.freeze([
     { name: "moduleScope", label: "Escopo do módulo", iconName: "intent", placeholder: "Qual recorte este módulo cobre." },
-    { name: "modulePrerequisites", label: "Pré-requisitos locais", iconName: "module", placeholder: "O que o aluno já precisa trazer." },
-    { name: "moduleOutOfScope", label: "Fora do módulo", iconName: "excluded-state", placeholder: "O que não entra neste módulo." },
     { name: "lessonProgression", label: "Progressão das lições", iconName: "prompt", placeholder: "Como as lições devem avançar." }
   ]),
   [SOURCE_GUIDE_LEVELS.LESSON]: Object.freeze([
     { name: "lessonGoal", label: "Meta da lição", iconName: "intent", placeholder: "O que esta lição precisa entregar." },
-    { name: "lessonPrerequisites", label: "Pré-requisitos imediatos", iconName: "module", placeholder: "Base necessária antes desta lição." },
     { name: "notationRules", label: "Sinais e notação", iconName: "title", placeholder: "Símbolos e leituras obrigatórias." },
-    { name: "commonErrors", label: "Confusões prováveis", iconName: "draft-state", placeholder: "Erros que a lição deve prevenir." },
-    { name: "masteryGoal", label: "Ao final", iconName: "ready-state", placeholder: "O que o aluno fará sozinho ao final." }
+    { name: "commonErrors", label: "Confusões prováveis", iconName: "draft-state", placeholder: "Erros que a lição deve prevenir." }
   ])
 });
 
@@ -78,7 +73,7 @@ export function buildSourceGuideEditorFields(sourceGuideStructured = {}, { level
     placeholder: field.placeholder,
     type: "textarea",
     value: normalizeText(normalized[field.name]),
-    maxLength: level === SOURCE_GUIDE_LEVELS.COURSE ? 180 : level === SOURCE_GUIDE_LEVELS.MODULE ? 160 : 140
+    maxLength: level === SOURCE_GUIDE_LEVELS.COURSE ? 160 : level === SOURCE_GUIDE_LEVELS.MODULE ? 140 : 120
   }));
 }
 

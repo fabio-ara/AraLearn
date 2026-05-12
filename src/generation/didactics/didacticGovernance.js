@@ -68,10 +68,8 @@ const EDIT_PROMPT_LINES = Object.freeze([
 
 const LESSON_GOVERNANCE_FIELD_LABELS = Object.freeze({
   lessonGoal: "Meta da lição",
-  lessonPrerequisites: "Pré-requisitos imediatos",
   notationRules: "Sinais e notação",
-  commonErrors: "Confusões prováveis",
-  masteryGoal: "Ao final"
+  commonErrors: "Confusões prováveis"
 });
 
 const DIDACTIC_TEXT_PATTERNS = Object.freeze([

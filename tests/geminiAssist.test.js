@@ -292,7 +292,6 @@ test("gera estrutura top-down com description breve e sourceGuide detalhada", as
                         sourceGuideStructured: {
                           audience: "Nenhum pré-requisito formal além de leitura básica.",
                           globalScope: "Aprender proposições, conectivos e equivalências elementares.",
-                          globalOutOfScope: "Não entrar em lógica de predicados.",
                           sharedNotation: "Destacar `p`, `q`, `~`, `^`, `v` e `->` inline."
                         },
                         modules: [
@@ -301,9 +300,7 @@ test("gera estrutura top-down com description breve e sourceGuide detalhada", as
                             description: "Base conceitual inicial.",
                             sourceGuide: "Apresentar proposições, valores lógicos e conectivos básicos.",
                             sourceGuideStructured: {
-                              modulePrerequisites: "Reconhecer frases e afirmações simples.",
                               moduleScope: "Distinguir proposição, valor lógico e conectivo.",
-                              moduleOutOfScope: "Não entrar em prova formal.",
                               lessonProgression: "Ir da linguagem comum para a simbólica."
                             },
                             lessons: [
@@ -312,11 +309,9 @@ test("gera estrutura top-down com description breve e sourceGuide detalhada", as
                                 description: "Introdução às proposições.",
                                 sourceGuide: "Mostrar exemplos do cotidiano e formalização simbólica.",
                                 sourceGuideStructured: {
-                                  lessonPrerequisites: "Leitura básica e atenção a frases declarativas.",
                                   lessonGoal: "Reconhecer proposições e usar conectivos básicos.",
                                   commonErrors: "Tratar ordem dos conectivos como irrelevante.",
-                                  notationRules: "Destacar `e`, `ou`, `não`, `se...então` e símbolos.",
-                                  masteryGoal: "Traduzir frases simples para notação lógica."
+                                  notationRules: "Destacar `e`, `ou`, `não`, `se...então` e símbolos."
                                 }
                               }
                             ]
@@ -351,7 +346,7 @@ test("gera estrutura top-down com description breve e sourceGuide detalhada", as
     assert.ok(calls[0].generationConfig.responseJsonSchema);
     assert.match(prompt, /sourceGuideStructured/);
     assert.match(prompt, /audience/);
-    assert.match(prompt, /Em curso, use apenas: audience, globalScope, globalOutOfScope, sharedNotation/);
+    assert.match(prompt, /Em curso, use apenas: audience, globalScope, sharedNotation/);
     assert.match(prompt, /Não suba preferências finas de explicação ou prática para curso e módulo/);
     assert.equal(result.course.description, "Curso introdutório de lógica proposicional.");
     assert.equal(result.course.sourceGuide.includes("Objetivo: ensinar lógica proposicional do zero."), false);
@@ -362,8 +357,8 @@ test("gera estrutura top-down com description breve e sourceGuide detalhada", as
     assert.match(result.course.modules[0].sourceGuide, /Progressão das lições:/);
     assert.equal(result.course.modules[0].sourceGuideStructured.lessonProgression, "Ir da linguagem comum para a simbólica.");
     assert.match(result.course.modules[0].lessons[0].sourceGuide, /Meta da lição:/);
-    assert.match(result.course.modules[0].lessons[0].sourceGuide, /Ao final:/);
-    assert.equal(result.course.modules[0].lessons[0].sourceGuideStructured.masteryGoal, "Traduzir frases simples para notação lógica.");
+    assert.match(result.course.modules[0].lessons[0].sourceGuide, /Confusões prováveis:/);
+    assert.equal(result.course.modules[0].lessons[0].sourceGuideStructured.commonErrors, "Tratar ordem dos conectivos como irrelevante.");
   } finally {
     globalThis.fetch = originalFetch;
   }
@@ -524,7 +519,6 @@ test("não promove description a sourceGuide no prompt estrutural quando a fonte
           sourceGuideStructured: {
             audience: "Base mínima.",
             globalScope: "Escopo do curso.",
-            globalOutOfScope: "Sem extensões.",
             sharedNotation: "Notação simples."
           },
           modules: [
@@ -533,9 +527,7 @@ test("não promove description a sourceGuide no prompt estrutural quando a fonte
               description: "Base breve.",
               sourceGuide: "Guia do módulo.",
               sourceGuideStructured: {
-                modulePrerequisites: "Base mínima.",
                 moduleScope: "Escopo do módulo.",
-                moduleOutOfScope: "Sem desvios.",
                 lessonProgression: "Progressão curta."
               },
               lessons: [
@@ -544,11 +536,9 @@ test("não promove description a sourceGuide no prompt estrutural quando a fonte
                   description: "Descrição breve da lição.",
                   sourceGuide: "Guia detalhado da lição.",
                   sourceGuideStructured: {
-                    lessonPrerequisites: "Base mínima.",
                     lessonGoal: "Escopo da lição.",
                     commonErrors: "Erros básicos.",
-                    notationRules: "Notação simples.",
-                    masteryGoal: "Aplicação local."
+                    notationRules: "Notação simples."
                   }
                 }
               ]

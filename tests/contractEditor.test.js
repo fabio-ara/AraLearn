@@ -67,7 +67,7 @@ test("preserva sourceGuide derivado de sourceGuideStructured em curso, módulo e
     sourceGuideStructured: {
       audience: "Aluno iniciante.",
       globalScope: "Objetivo do curso.",
-      globalOutOfScope: "Sem casos especiais."
+      sharedNotation: "Usar `p` e `q` com destaque."
     }
   });
 
@@ -78,7 +78,7 @@ test("preserva sourceGuide derivado de sourceGuideStructured em curso, módulo e
     description: "Descrição curta do módulo",
     sourceGuideStructured: {
       moduleScope: "Fonte-guia do módulo.",
-      modulePrerequisites: "Base mínima."
+      lessonProgression: "Ir do caso simples ao composto."
     }
   });
 
@@ -90,7 +90,7 @@ test("preserva sourceGuide derivado de sourceGuideStructured em curso, módulo e
     description: "Descrição curta da lição",
     sourceGuideStructured: {
       lessonGoal: "Fonte-guia da lição.",
-      masteryGoal: "Aplicar sozinho."
+      commonErrors: "Trocar a ordem dos conectivos."
     }
   });
 
@@ -138,7 +138,7 @@ test("preserva sourceGuideStructured e recompila o texto derivado", () => {
     sourceGuideStructured: {
       audience: "Iniciantes completos.",
       globalScope: "Entender o fluxo principal.",
-      globalOutOfScope: "Sem avançar para casos especiais."
+      sharedNotation: "Usar comandos inline."
     }
   });
 
@@ -146,11 +146,11 @@ test("preserva sourceGuideStructured e recompila o texto derivado", () => {
   assert.deepEqual(course.sourceGuideStructured, {
     audience: "Iniciantes completos.",
     globalScope: "Entender o fluxo principal.",
-    globalOutOfScope: "Sem avançar para casos especiais."
+    sharedNotation: "Usar comandos inline."
   });
   assert.match(course.sourceGuide, /Público e ponto de entrada: Iniciantes completos\./);
   assert.match(course.sourceGuide, /Escopo do curso: Entender o fluxo principal\./);
-  assert.match(course.sourceGuide, /Fora do curso: Sem avançar para casos especiais\./);
+  assert.match(course.sourceGuide, /Convenções gerais: Usar comandos inline\./);
 
   const exported = exportCourseDocument(document, {
     courseKey: course.key

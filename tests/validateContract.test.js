@@ -98,20 +98,21 @@ test("aceita sourceGuideStructured e recompila sourceGuide legível", () => {
         title: "Curso",
         sourceGuideStructured: {
           audience: "Saber ler instruções curtas.",
-          globalScope: "Dominar a habilidade principal."
+          globalScope: "Dominar a habilidade principal.",
+          sharedNotation: "Usar `p` e `q`."
         },
         modules: [
           {
             title: "Módulo",
             sourceGuideStructured: {
-              moduleOutOfScope: "Não avançar para exceções."
+              lessonProgression: "Ir do caso simples ao composto."
             },
             lessons: [
               {
                 title: "Lição",
                 sourceGuideStructured: {
                   lessonGoal: "Passo a passo simples.",
-                  masteryGoal: "Aplicar sozinho em caso básico."
+                  commonErrors: "Não inverter a ordem dos termos."
                 },
                 microsequences: []
               }
@@ -125,12 +126,14 @@ test("aceita sourceGuideStructured e recompila sourceGuide legível", () => {
   assert.equal(result.ok, true);
   assert.match(result.value.courses[0].sourceGuide, /Público e ponto de entrada: Saber ler instruções curtas\./);
   assert.match(result.value.courses[0].sourceGuide, /Escopo do curso: Dominar a habilidade principal\./);
+  assert.match(result.value.courses[0].sourceGuide, /Convenções gerais: Usar `p` e `q`\./);
   assert.deepEqual(result.value.courses[0].sourceGuideStructured, {
     audience: "Saber ler instruções curtas.",
-    globalScope: "Dominar a habilidade principal."
+    globalScope: "Dominar a habilidade principal.",
+    sharedNotation: "Usar `p` e `q`."
   });
   assert.match(result.value.courses[0].modules[0].lessons[0].sourceGuide, /Meta da lição: Passo a passo simples\./);
-  assert.match(result.value.courses[0].modules[0].lessons[0].sourceGuide, /Ao final: Aplicar sozinho em caso básico\./);
+  assert.match(result.value.courses[0].modules[0].lessons[0].sourceGuide, /Confusões prováveis: Não inverter a ordem dos termos\./);
 });
 
 test("rejeita sourceGuide textual puro sem sourceGuideStructured", () => {
