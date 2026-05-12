@@ -1196,6 +1196,7 @@ async function composeMicrosequenceWithTwoStepGeneration({
   dependencyTitles,
   selectedLessonTopicRefs = [],
   promptText,
+  userFixedTypeId = "",
   preferredContainer = "",
   fileParts = [],
   retryOptions = {},
@@ -1211,7 +1212,7 @@ async function composeMicrosequenceWithTwoStepGeneration({
       ? selectedLessonTopicRefs
       : dependencyTitles.map((title) => ({ refKey: title, label: title, source: "microsequence" })),
     userPrompt: promptText,
-    userFixedTypeId: null,
+    userFixedTypeId: userFixedTypeId || null,
     userSelectedExtraResourceTypes: preferredResource ? [preferredResource] : [],
     selectedModel: model
   });
@@ -1741,6 +1742,7 @@ export async function runGeminiAssist({
   selectedLessonTopicRefs = [],
   destinationSlots = [],
   promptText,
+  userFixedTypeId = "",
   preferredContainer = "",
   attachments = [],
   retryOptions = {},
@@ -1786,6 +1788,7 @@ export async function runGeminiAssist({
         dependencyTitles,
         selectedLessonTopicRefs,
         promptText: trimmedPrompt,
+        userFixedTypeId,
         preferredContainer,
         fileParts,
         retryOptions,

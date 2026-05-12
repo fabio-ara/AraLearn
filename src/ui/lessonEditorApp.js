@@ -93,6 +93,7 @@ import {
   writeStructureVersionStorage
 } from "./lessonEditorStorage.js";
 import { runGeminiAssist } from "../assist/geminiAssist.js";
+import { listMicrosequenceTypes } from "../generation/types/microsequenceTypes.js";
 import { getLessonProgressCursor, removeLessonProgressEntries, writeLessonProgressEntry } from "../storage/progressStore.js";
 import { detectJsonExchangeFormat } from "../storage/jsonExchange.js";
 import { createStarterContractCard, getContractCardKind, listContractAnswerValues } from "../contract/contractCard.js";
@@ -140,6 +141,12 @@ const ASSIST_CARD_CONTAINER_OPTIONS = [
   { value: "flow", label: "Fluxograma", icon: renderUiIcon("microsequence", "action-menu-svg-icon") },
   { value: "plane", label: "Plano cartesiano", icon: renderUiIcon("card", "action-menu-svg-icon") },
   { value: "matrix", label: "Matriz", icon: renderUiIcon("card", "action-menu-svg-icon") }
+];
+const ASSIST_DIDACTIC_TYPE_OPTIONS = [
+  { value: "", label: "Automático" },
+  ...listMicrosequenceTypes()
+    .filter((item) => item.id !== "assisted")
+    .map((item) => ({ value: item.id, label: item.label }))
 ];
 const COURSES_VIEWS = new Set(["courses", "course", "module", "lesson", "microsequence", "microsequence-assist"]);
 const GENERATION_PANEL_ACTIONS = new Set([
@@ -1028,6 +1035,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
       editBaseVersionId: "",
       versionActionsOpen: false,
       promptText: "",
+      didacticTypeId: "",
       preferredContainer: "",
       attachments: [],
       dependencyKeys: [],
@@ -1981,6 +1989,9 @@ export function createLessonEditorApp({ root, storage, editor }) {
     if (!ASSIST_CARD_CONTAINER_OPTIONS.some((item) => item.value === state.assistDraft.preferredContainer)) {
       state.assistDraft.preferredContainer = "";
     }
+    if (!ASSIST_DIDACTIC_TYPE_OPTIONS.some((item) => item.value === state.assistDraft.didacticTypeId)) {
+      state.assistDraft.didacticTypeId = "";
+    }
     state.assistDraft.attachments = normalizeAssistAttachmentList(state.assistDraft.attachments);
   }
 
@@ -2107,6 +2118,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
     state.assistDraft.visualizedVersionId = "";
     state.assistDraft.editBaseVersionId = "";
     state.assistDraft.attachments = [];
+    state.assistDraft.didacticTypeId = "";
     state.microsequenceMode = "play";
     ensureCurrentCardSnapshot();
     syncAssistDraft();
@@ -4089,6 +4101,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
         selectedLessonTopicRefs,
         destinationSlots,
         promptText: state.assistDraft.promptText,
+        userFixedTypeId: state.assistDraft.didacticTypeId,
         preferredContainer: state.assistDraft.preferredContainer,
         attachments: state.assistDraft.attachments
       });
@@ -7257,6 +7270,8 @@ export function createLessonEditorApp({ root, storage, editor }) {
           assistModeLocked: assistModeConfig.locked,
           preferredContainer: state.assistDraft.preferredContainer,
           preferredContainerLabel: getAssistContainerLabel(state.assistDraft.preferredContainer),
+          selectedDidacticTypeId: state.assistDraft.didacticTypeId,
+          didacticTypeOptions: ASSIST_DIDACTIC_TYPE_OPTIONS,
           attachments: state.assistDraft.attachments.map((item) => ({
             name: normalizeAssistAttachmentName(item?.name),
             size: Number(item?.size || 0),
@@ -8573,6 +8588,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
 
     const assistMode = root.querySelector("[data-field='assist-mode']");
     const assistModel = root.querySelector("[data-field='assist-model']");
+    const assistDidacticType = root.querySelector("[data-field='assist-didactic-type']");
     const assistDependencyPicker = root.querySelector("[data-field='assist-dependency-picker']");
     const assistPrompt = root.querySelector("[data-field='assist-prompt']");
     const assistAttachmentInput = root.querySelector("[data-field='assist-attachments']");
@@ -8590,6 +8606,15 @@ export function createLessonEditorApp({ root, storage, editor }) {
     if (assistModel) {
       assistModel.addEventListener("change", () => {
         setAssistModel(assistModel.value);
+        render({ preserveState: true });
+      });
+    }
+    if (assistDidacticType) {
+      assistDidacticType.addEventListener("change", () => {
+        const nextTypeId = assistDidacticType.value;
+        state.assistDraft.didacticTypeId = ASSIST_DIDACTIC_TYPE_OPTIONS.some((item) => item.value === nextTypeId)
+          ? nextTypeId
+          : "";
         render({ preserveState: true });
       });
     }

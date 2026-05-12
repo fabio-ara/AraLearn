@@ -165,6 +165,8 @@ Os tipos didáticos iniciais são `Assistido`, `Simples`, `Explicar uma ideia`, 
 
 Cada tipo é um template interno com papéis de card por tamanho. Esses papéis têm `roleId`, rótulo humano e recursos preferenciais fechados. O modelo não define esses papéis nem escolhe recurso por posição; a aplicação usa o template para montar o `cardPlan` determinístico.
 
+No painel da microssequência, o usuário pode deixar o tipo como `Automático` ou escolher um desses tipos fechados para a geração ou edição de cards daquele pedido. A escolha é local ao painel aberto: ela não altera curso, módulo, lição nem microssequências vizinhas. Quando um tipo é escolhido, o contrato de planejamento envia `userFixedTypeId` e a aplicação valida que o plano devolvido preserve exatamente esse tipo; em `Automático`, a etapa curta de planejamento escolhe entre os tipos disponíveis.
+
 Os tamanhos usados na geração são:
 
 - `short`: 3 cards;

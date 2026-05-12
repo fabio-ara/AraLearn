@@ -396,6 +396,11 @@ test("renderiza o painel da microssequência sem botão próprio de ações e co
       canDeleteVisualizedMicrosequenceVersion: true,
       selectedDependencyKeys: [],
       pendingDependencyKey: "",
+      didacticTypeOptions: [
+        { value: "", label: "Automático" },
+        { value: "guided_practice", label: "Prática guiada" }
+      ],
+      selectedDidacticTypeId: "guided_practice",
       modelOptions: [{ value: "gemini-2.5-flash", label: "Gemini 2.5 Flash" }],
       selectedModel: "gemini-2.5-flash",
       assistModeOptions: [],
@@ -442,6 +447,9 @@ test("renderiza o painel da microssequência sem botão próprio de ações e co
   assert.doesNotMatch(html, /<span class="editor-version-tab-meta">12\/05 18:41<\/span>/);
   assert.match(html, /data-field="assist-microsequence-title" type="text" aria-label="Microssequência" title="Microssequência"/);
   assert.match(html, /data-field="assist-dependency-picker" aria-label="Tags" title="Tags"/);
+  assert.match(html, /data-field="assist-didactic-type" aria-label="Tipo de sequência" title="Tipo de sequência"/);
+  assert.match(html, /<option value="">Automático<\/option>/);
+  assert.match(html, /<option value="guided_practice" selected>Prática guiada<\/option>/);
   assert.match(html, /data-field="assist-prompt" class="assist-prompt" aria-label="Pedido" title="Pedido"/);
   assert.match(html, /data-action="open-assist-container-picker" title="Adicionar recursos" aria-label="Adicionar recursos"/);
   assert.match(html, /data-field="assist-attachments" class="assist-attachment-input" type="file" multiple/);
@@ -576,6 +584,11 @@ test("renderiza o painel da microssequência vazia em modo de geração de cards
       activeMicrosequenceVersionId: "v1",
       selectedDependencyKeys: [],
       pendingDependencyKey: "",
+      didacticTypeOptions: [
+        { value: "", label: "Automático" },
+        { value: "guided_practice", label: "Prática guiada" }
+      ],
+      selectedDidacticTypeId: "",
       modelOptions: [{ value: "gemini-2.5-flash", label: "Gemini 2.5 Flash" }],
       selectedModel: "gemini-2.5-flash",
       assistModeOptions: [],
@@ -598,6 +611,9 @@ test("renderiza o painel da microssequência vazia em modo de geração de cards
   assert.match(html, /data-action="open-assist-container-picker" title="Adicionar recursos" aria-label="Adicionar recursos"/);
   assert.match(html, /data-action="open-assist-attachment-picker" title="Anexar documentos" aria-label="Anexar documentos"/);
   assert.match(html, /data-action="select-workbench-pane" data-workbench-pane="edit" aria-label="Geração" title="Geração"/);
+  assert.match(html, /data-field="assist-didactic-type" aria-label="Tipo de sequência" title="Tipo de sequência"/);
+  assert.match(html, /<option value="" selected>Automático<\/option>/);
+  assert.match(html, /<option value="guided_practice">Prática guiada<\/option>/);
   assert.doesNotMatch(html, /data-action="select-workbench-pane" data-workbench-pane="preview"/);
   assert.doesNotMatch(html, /Sem cards ainda/);
   assert.doesNotMatch(html, /Envie o pedido para gerar os cards da microssequência\./);

@@ -72,6 +72,48 @@ function makeGeneratedCardsPayload() {
   };
 }
 
+function makeGuidedPracticeCardsPayload() {
+  return {
+    cards: [
+      {
+        position: 1,
+        resourceType: "paragraph",
+        title: "Preparar a prática",
+        text: "Antes de escolher um comando, identifique qual etapa do fluxo você quer completar."
+      },
+      {
+        position: 2,
+        resourceType: "block_gap_fill",
+        title: "Complete o fluxo",
+        prompt: "Escolha o bloco que prepara arquivos para o commit.",
+        segments: [
+          { kind: "text", value: "Para preparar arquivos, use " },
+          { kind: "blank", blankId: "b1", acceptedBlockIds: ["git-add"] },
+          { kind: "text", value: "." }
+        ],
+        blocks: [
+          { blockId: "git-add", label: "git add arquivo.txt" },
+          { blockId: "git-push", label: "git push" }
+        ],
+        feedbackAfter: "git add prepara arquivos antes do commit."
+      },
+      {
+        position: 3,
+        resourceType: "multiple_choice",
+        title: "Consolidar",
+        question: "Qual comando prepara arquivos para o commit?",
+        options: [
+          { optionId: "a", label: "git add" },
+          { optionId: "b", label: "git push" },
+          { optionId: "c", label: "git clone" }
+        ],
+        correctOptionId: "a",
+        feedback: "git add coloca mudanças na área de preparação."
+      }
+    ]
+  };
+}
+
 function makeGeminiTextResponse(payloadText) {
   return {
     ok: true,
@@ -778,6 +820,50 @@ test("gera microssequência com plano local e chamada estruturada ao Gemini", as
     assert.equal(result.cards[2].code, "git push -u origin main");
     assert.equal(result.cards[4].answer, "git push");
     assert.deepEqual(result.tags, []);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("envia tipo didático fixado pela UI para o planejamento da microssequência", async () => {
+  const originalFetch = globalThis.fetch;
+  const calls = [];
+  globalThis.fetch = async (url, options) => {
+    calls.push({ url, body: JSON.parse(options.body) });
+    return makeGeminiTextResponse(
+      JSON.stringify(
+        calls.length === 1
+          ? {
+              typeId: "guided_practice",
+              sizeId: "short",
+              microsequenceGoal: "Praticar git add com uma lacuna guiada.",
+              selectedExtraResourceTypes: [],
+              sourceUsePlan: [],
+              reason: "O usuário fixou prática guiada."
+            }
+          : makeGuidedPracticeCardsPayload()
+      )
+    );
+  };
+
+  try {
+    const result = await runGeminiAssist({
+      apiKey: "chave",
+      mode: "compose-microsequence",
+      microsequence: { title: "Git", tags: [], cards: [] },
+      promptText: "crie uma prática guiada sobre git add",
+      userFixedTypeId: "guided_practice"
+    });
+
+    assert.equal(calls.length, 2);
+    assert.match(calls[0].body.contents[0].parts[0].text, /"userFixedTypeId":"guided_practice"/);
+    assert.match(calls[0].body.contents[0].parts[0].text, /typeId exatamente igual a "guided_practice"/);
+    assert.equal(result.generationRunState.validatedPlan.plan.typeId, "guided_practice");
+    assert.deepEqual(
+      result.generationRunState.validatedPlan.plan.cardPlan.map((card) => card.resourceType),
+      ["paragraph", "block_gap_fill", "multiple_choice"]
+    );
+    assert.equal(result.cards.length, 3);
   } finally {
     globalThis.fetch = originalFetch;
   }

@@ -1198,6 +1198,19 @@ function renderMicrosequenceWorkbenchScreen({
       );
     })
     .join("");
+  const didacticTypeOptions = (editorSupport.didacticTypeOptions || [])
+    .map((item) => {
+      return (
+        '<option value="' +
+        escapeHtml(item.value) +
+        '"' +
+        (item.value === editorSupport.selectedDidacticTypeId ? " selected" : "") +
+        ">" +
+        escapeHtml(item.label) +
+        "</option>"
+      );
+    })
+    .join("");
   const assistWarning = editorSupport.assistError
     ? '<section class="microsequence-assist-panel assist-status-panel is-warning">' +
       '<p class="muted assist-last-request">' +
@@ -1283,6 +1296,14 @@ function renderMicrosequenceWorkbenchScreen({
     '<div class="dependency-chip-row workbench-tag-chip-row">' +
     selectedDependencyTags +
     "</div></div>" +
+    '<div class="generate-divider workbench-divider"></div>' +
+    '<label class="field generate-icon-field workbench-select-field">' +
+    renderInlineFieldIcon("intent", "Tipo de sequência") +
+    '<select data-field="assist-didactic-type" aria-label="Tipo de sequência" title="Tipo de sequência"' +
+    (canEditCurrentView ? "" : ' disabled aria-disabled="true"') +
+    ">" +
+    didacticTypeOptions +
+    "</select></label>" +
     '<div class="generate-divider workbench-divider"></div>' +
     '<label class="field generate-icon-field generate-prompt-field workbench-prompt-field">' +
     '<div class="workbench-prompt-tools">' +
