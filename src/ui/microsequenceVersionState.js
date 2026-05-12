@@ -5,6 +5,10 @@ function nowIso(now = new Date()) {
 function cloneMicrosequenceContent(microsequence) {
   return {
     title: microsequence?.title || "",
+    ...(microsequence?.description ? { description: microsequence.description } : {}),
+    ...(microsequence?.status ? { status: microsequence.status } : {}),
+    ...(Object.prototype.hasOwnProperty.call(microsequence || {}, "included") ? { included: microsequence.included === true } : {}),
+    ...(microsequence?.role ? { role: microsequence.role } : {}),
     tags: Array.isArray(microsequence?.tags) ? structuredClone(microsequence.tags) : [],
     cards: Array.isArray(microsequence?.cards) ? structuredClone(microsequence.cards) : []
   };

@@ -408,7 +408,8 @@ test("renderiza o painel da microssequência sem botão próprio de ações e co
   });
 
   assert.doesNotMatch(html, /data-action="open-microsequence-actions"/);
-  assert.doesNotMatch(html, /data-action="open-version-history"/);
+  assert.match(html, /data-action="open-version-history"/);
+  assert.match(html, /data-action="save-microsequence-snapshot"/);
   assert.doesNotMatch(html, /data-action="open-microsequence-version-compare"/);
   assert.doesNotMatch(html, /data-action="select-microsequence-version"/);
   assert.doesNotMatch(html, /data-action="editor-prev-version"/);
@@ -587,7 +588,8 @@ test("renderiza o painel da microssequência vazia em modo de geração de cards
   });
 
   assert.match(html, /<div class="topbar-title">Gerar cards<\/div>/);
-  assert.doesNotMatch(html, /data-action="open-version-history"/);
+  assert.match(html, /data-action="open-version-history"/);
+  assert.match(html, /data-action="save-microsequence-snapshot"/);
   assert.doesNotMatch(html, /data-action="open-version-compare"/);
   assert.doesNotMatch(html, /editor-step-nav/);
   assert.doesNotMatch(html, /editor-version-count-value/);

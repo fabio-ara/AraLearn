@@ -294,6 +294,34 @@ export function recordStructureVersionTransition(
   return entry;
 }
 
+export function createStructureSnapshot(versionMap, { project, reference, label = "", now = new Date() } = {}) {
+  const entity = findStructureVersionEntity(project, reference);
+  if (!entity) {
+    return null;
+  }
+
+  const entry = ensureStructureVersionEntry(versionMap, reference, entity, { now });
+  if (!entry) {
+    return null;
+  }
+
+  if ((entry.versions || []).length === 1 && entry.versions[0]?.operationType === "seed") {
+    entry.versions[0].operationType = "snapshot";
+    entry.versions[0].label = label || "Snapshot 1";
+    entry.versions[0].updatedAt = now instanceof Date ? now.toISOString() : new Date(now).toISOString();
+  } else {
+    insertStructureVersionAfterActive(entry, entity, {
+      label: label || `Snapshot ${(entry.versions || []).length + 1}`,
+      operationType: "snapshot",
+      parentVersionId: "",
+      now
+    });
+  }
+
+  normalizeStructureVersionMap(versionMap, { now });
+  return entry;
+}
+
 export function createManualStructureRestore(versionMap, { project, reference, versionId, now = new Date() } = {}) {
   const currentEntity = findStructureVersionEntity(project, reference);
   if (!currentEntity) {

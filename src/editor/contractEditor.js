@@ -880,10 +880,6 @@ export function replaceMicrosequenceCards(document, input) {
   const microsequence = findMicrosequence(lesson, input.microsequenceKey);
   const cards = Array.isArray(input.cards) ? input.cards : [];
 
-  if (!cards.length) {
-    fail('Campo obrigatório inválido: "cards".');
-  }
-
   if (input.title !== undefined) {
     assignUniqueMicrosequenceTitle(lesson, microsequence, normalizeText(input.title, "title"));
   }
@@ -897,9 +893,11 @@ export function replaceMicrosequenceCards(document, input) {
     }
   }
 
+  assignOptionalTextField(microsequence, "description", input.description);
+
   const usedKeys = new Set();
   microsequence.cards = cards.map((entry, index) => normalizeCardForInsert(entry, usedKeys, `Card ${index + 1}`));
-  microsequence.status = normalizeMicrosequenceStatus(input.status || MICROSEQUENCE_STATUS_READY, microsequence);
+  microsequence.status = normalizeMicrosequenceStatus(input.status || microsequence.status || MICROSEQUENCE_STATUS_READY, microsequence);
   microsequence.included = normalizeMicrosequenceRuntimeIncluded(input.included ?? microsequence.included, microsequence);
   return ensureValidDocument(nextDocument);
 }

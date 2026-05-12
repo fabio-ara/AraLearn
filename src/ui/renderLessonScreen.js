@@ -790,6 +790,8 @@ function renderCourseScreen({ course, progress, editorSupport }) {
           courseKey: course.key
         },
         { action: "quick-create-module", title: "Criar módulo vazio", icon: "＋" },
+        { action: "save-structure-snapshot", title: "Gravar snapshot do curso", icon: renderUiIcon("versions", "home-tab-icon") },
+        { action: "open-version-history", title: "Snapshots do curso", icon: "🕘" },
         { action: "open-course-screen-actions", title: "Ações do curso", icon: "⋯" }
       ].filter(Boolean)
     }) +
@@ -860,6 +862,8 @@ function renderModuleScreen({ course, moduleValue, progress, editorSupport }) {
           moduleKey: moduleValue.key
         },
         { action: "quick-create-lesson", title: "Criar lição vazia", icon: "＋" },
+        { action: "save-structure-snapshot", title: "Gravar snapshot do módulo", icon: renderUiIcon("versions", "home-tab-icon") },
+        { action: "open-version-history", title: "Snapshots do módulo", icon: "🕘" },
         { action: "open-module-screen-actions", title: "Ações do módulo", icon: "⋯" }
       ].filter(Boolean)
     }) +
@@ -983,6 +987,8 @@ function renderLessonScreenView({ course, lesson, moduleValue, progress, editorS
           lessonKey: lesson.key
         },
         { action: "quick-create-microsequence", title: "Criar microssequência vazia", icon: "＋" },
+        { action: "save-structure-snapshot", title: "Gravar snapshot da lição", icon: renderUiIcon("versions", "home-tab-icon") },
+        { action: "open-version-history", title: "Snapshots da lição", icon: "🕘" },
         { action: "open-lesson-screen-actions", title: "Ações da lição", icon: "⋯" }
       ].filter(Boolean)
     }) +
@@ -1143,9 +1149,9 @@ function renderMicrosequenceWorkbenchScreen({
   const activeCard = visibleCards[safeIndex] || null;
   const hasCards = visibleCards.length > 0;
   const bodyText = readCardText(activeCard);
-  const visualizedVersionId = editorSupport.visualizedMicrosequenceVersionId || editorSupport.activeMicrosequenceVersionId || "";
-  const editBaseVersionId = editorSupport.editBaseMicrosequenceVersionId || editorSupport.activeMicrosequenceVersionId || "";
-  const isEditingSelectedVersion = visualizedVersionId && visualizedVersionId === editBaseVersionId;
+  const visualizedVersionId = editorSupport.visualizedMicrosequenceVersionId || "";
+  const editBaseVersionId = editorSupport.editBaseMicrosequenceVersionId || "";
+  const isEditingSelectedVersion = !visualizedVersionId || visualizedVersionId === editBaseVersionId;
   const canEditCurrentView = isEditingSelectedVersion;
   const selectedDependencyTags = (editorSupport.dependencies || [])
     .filter((item) => visualizedTags.includes(item.key))
@@ -1351,7 +1357,18 @@ function renderMicrosequenceWorkbenchScreen({
       title,
       canGoBack: true,
       backTitle,
-      actions: []
+      actions: [
+        {
+          action: "save-microsequence-snapshot",
+          title: "Gravar snapshot da microssequência",
+          icon: renderUiIcon("versions", "home-tab-icon")
+        },
+        {
+          action: "open-version-history",
+          title: "Snapshots da microssequência",
+          icon: "🕘"
+        }
+      ]
     }) +
     '<main class="screen-content microsequence-generator-screen">' +
     stepNavigation +
