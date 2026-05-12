@@ -12,7 +12,7 @@ A aplicação trabalha com três camadas principais:
 - estrutura de leitura derivada do contrato;
 - interface de geração, leitura, autoria, revisão e navegação estrutural.
 
-O contrato público descreve a estrutura autoral. A estrutura de leitura derivada organiza os dados necessários para renderização, validação visual e interação. A interface apresenta geração de rascunhos, cursos, lições, microssequências, cards, progresso, edição e assistência por IA generativa.
+O contrato público descreve a estrutura autoral. A estrutura de leitura derivada organiza os dados necessários para renderização, validação visual e interação. A interface apresenta geração estrutural contextual, criação de rascunhos, leitura, edição, estudo, progresso local e assistência por IA generativa.
 
 A arquitetura foi desenhada para tornar o contexto explícito. Curso, módulo, lição e microssequência formam uma moldura pequena para pedidos de geração ou revisão. Isso reduz ambiguidade, facilita validação e permite que modelos de linguagem mais econômicos sejam usados em tarefas delimitadas.
 
@@ -38,7 +38,7 @@ Diretórios centrais em `src/`:
 - `editor/`: operações de edição no contrato;
 - `assist/`: integração com provedor configurado para execução efetiva das chamadas;
 - `generation/`: contratos, prompts, planejamento, recursos, tipos, validação e estado de execução da geração assistida;
-- `ui/`: navegação, telas, overlays, abas da home, painel de microssequência e estado da interface.
+- `ui/`: navegação, telas, overlays, painéis contextuais, home única de cursos, painel da microssequência e estado da interface.
 
 ## Hierarquia de domínio
 
@@ -95,7 +95,7 @@ Há dois modos complementares de entrada de conteúdo:
 - geração bottom-up: uma dúvida situada em curso, módulo e lição cria rascunhos de microssequências no ponto escolhido;
 - importação top-down: cursos, módulos, lições ou microssequências preparados por processos externos entram pelo contrato JSON público.
 
-Esses dois modos ainda não estão unificados em uma mesma superfície de operação. A geração bottom-up começa na home, enquanto a revisão estrutural e o estudo acontecem na árvore de cursos.
+No estado atual, a geração estrutural top-down e a geração bottom-up já compartilham a mesma navegação principal. O ponto de entrada muda conforme o nível aberto, mas o fluxo continua na mesma árvore estrutural.
 
 ## Persistência
 
@@ -112,42 +112,53 @@ A ação `Importar` detecta os dois formatos. Essa separação permite compartil
 
 Recortes estruturais também podem ser importados quando seguem o contrato `aralearn.contract`. Isso permite que autores externos produzam cursos inteiros ou partes de cursos sem depender da interface.
 
+Além do contrato público e do progresso, a aplicação mantém persistências auxiliares locais para iterações de microssequência e outros estados internos da interface. Esses dados não contaminam a exportação estrutural.
+
 ## Interface e navegação
 
-A interface principal começa com duas abas:
+A interface principal começa com uma home única de cursos.
 
-- `Gerar`: seleção de curso, módulo e lição, pedido do usuário, modelo e criação de rascunhos;
-- `Cursos`: estrutura de cursos, módulos, lições, microssequências e execução de cards.
+Nessa trilha, o usuário encontra:
+
+- lista de cursos do projeto;
+- ações globais compatíveis com a home;
+- botão contextual para geração estrutural;
+- navegação estrutural para curso, módulo, lição e microssequência.
 
 A navegação estrutural inclui:
 
+- home de cursos;
 - tela de curso;
+- tela de módulo;
 - tela de lição;
 - execução de microssequência;
 - painel da microssequência;
-- overlays de ações, importação, edição, configuração e histórico.
+- overlays de ações, importação, edição, configuração e histórico auxiliar.
 
-Na implementação atual, os dois tabs da home são exibidos apenas por ícone. Isso reduz ruído visual, mas aumenta dependência de affordance e memorização. Para discussão de UX, esse detalhe importa porque o ponto de entrada bottom-up não é autoexplicativo por texto.
+O mesmo vocabulário visual é reaproveitado entre home, curso, módulo e lição, com topbar, heading, cards estruturais e ações compactas. A geração não vive mais em uma aba separada.
 
 ## Geração, rascunhos e painel
 
-A aba `Gerar` cria rascunhos diretamente dentro da lição selecionada. O usuário escolhe o contexto na hierarquia, escreve uma dúvida ou comentário e recebe uma escada de microssequências planejada por IA generativa.
+Os painéis contextuais mudam conforme o nível aberto.
 
-Cada item validado dessa escada vira uma microssequência com `status: "draft"` e `cards` vazio.
+Na home, no curso e no módulo, a assistência estrutural pode propor cursos, módulos e lições dentro do escopo atual.
 
-Rascunhos aparecem na aba `Cursos`, no lugar real da estrutura, mas não entram no modo de estudo. A leitura principal coleta apenas microssequências `ready`.
+Na lição, o painel contextual cria rascunhos de microssequências. O usuário escreve uma dúvida, objetivo ou pedido de organização, e a resposta validada vira uma sequência de microssequências `draft` com `cards: []`.
+
+Rascunhos aparecem na própria árvore da lição, no lugar real em que depois serão revisados. Eles não entram no modo de estudo. A leitura principal coleta apenas microssequências `ready` e incluídas.
 
 O painel da microssequência concentra:
 
-- preview;
-- edição por novo pedido;
-- tags explícitas;
-- versões locais;
-- navegação pelos cards da versão ativa.
+- `Preview`;
+- `Edição`;
+- navegação pelos cards da versão em uso;
+- geração ou edição de cards;
+- anexos temporários para o pedido atual;
+- tags e metadados da microssequência;
+- ações de movimentação, exclusão e edição estrutural;
+- controle da iteração gerada atual quando houver uma alteração pendente de aceitação ou exclusão.
 
-Esse painel é o ponto de curadoria do material gerado ou editado.
-
-O encaixe atual favorece rastreabilidade estrutural, mas ainda cria uma troca de contexto entre gerar e revisar. Para um usuário leigo, a etapa de voltar de `Gerar` para `Cursos` e então localizar a lição pode não ser a trajetória mais simples.
+Na geração ou edição de cards, o resultado validado é aplicado diretamente à microssequência aberta. Quando essa aplicação cria uma iteração nova, a interface expõe ações externas ao card para aceitar ou excluir a iteração atual, usando o histórico local como reversão imediata.
 
 ## Renderização de cards
 
@@ -158,9 +169,11 @@ Os cards são declarados por intenção didática no contrato público e renderi
 - `code`;
 - `table`;
 - `tree`;
-- `flow`.
+- `flow`;
+- `plane`;
+- `matrix`.
 
-A estrutura de leitura derivada pode montar recursos auxiliares para interação, como opções de lacunas, árvores projetadas e geometria de fluxogramas. Essas estruturas derivadas não pertencem ao contrato público.
+A estrutura de leitura derivada pode montar recursos auxiliares para interação, como opções de lacunas, árvores projetadas, geometria de fluxogramas, projeção de plano cartesiano e leitura matricial. Essas estruturas derivadas não pertencem ao contrato público.
 
 ## Distribuição
 
@@ -181,14 +194,16 @@ A validação automatizada cobre:
 - importação e exportação;
 - rascunhos e status explícito de microssequências;
 - assistência por IA generativa;
-- fluxogramas e árvores.
+- fluxogramas, árvores, plano cartesiano e matrizes.
 
 Há também cobertura específica para:
 
-- tabs da home;
-- estados `draft` e `ready`;
-- exclusão do estudo por `included: false`;
-- navegação e versões locais no painel da microssequência.
+- geração estrutural contextual;
+- geração contextual de microssequências na lição;
+- abertura do painel da microssequência na versão correta;
+- navegação entre mini-cards;
+- aplicação direta de iterações geradas;
+- controle de aceitação ou exclusão da iteração atual.
 
 Comandos principais:
 
@@ -201,12 +216,11 @@ npm run validate:example
 
 As decisões futuras devem considerar:
 
-- como aproximar geração bottom-up e navegação top-down sem perder contexto;
-- como reduzir o risco de o usuário se perder entre home, lição e painel da microssequência;
-- como evoluir o versionamento local para percursos auditáveis;
-- quando transformar versões locais em parte exportável;
+- como aproximar ainda mais geração estrutural, criação de rascunho e revisão sem dispersar o usuário;
+- como evoluir o versionamento local para percursos mais auditáveis sem contaminar o contrato público;
+- quando transformar parte do histórico local em parte exportável;
 - como registrar vínculo entre fonte e card gerado;
 - se o reposicionamento deve continuar no nível de microssequência ou permitir cards isolados;
-- como incorporar fluxogramas à geração assistida;
+- como incorporar fluxogramas à geração assistida com previsibilidade suficiente;
 - como avaliar qualidade didática antes de aplicar conteúdo;
 - como preservar funcionamento sem conexão contínua quando houver recursos que dependem de serviços externos.

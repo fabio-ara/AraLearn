@@ -29,7 +29,8 @@ A aplicação:
 - normaliza o conteúdo;
 - valida o resultado;
 - adapta o JSON intermediário ao contrato público;
-- aplica o material validado à microssequência alvo.
+- aplica o material validado ao alvo estrutural correto;
+- mantém histórico local auxiliar para reversão da iteração atual quando esse fluxo existir.
 
 O modelo:
 
@@ -38,7 +39,7 @@ O modelo:
 - adapta linguagem;
 - propõe alternativas dentro dos tipos, recursos e campos já delimitados;
 - sugere `slotId` de reposicionamento apenas quando recebe slots fechados;
-- responde em JSON no formato solicitado, sem decidir contrato final nem aplicação no projeto.
+- responde em JSON no formato solicitado, sem decidir contrato final nem persistência final do projeto.
 
 O usuário:
 
@@ -46,11 +47,11 @@ O usuário:
 - abre o painel contextual no nível desejado;
 - escolhe, quando aplicável, tipo didático, recursos extras e anexos;
 - revisa o resultado;
-- decide se continua editando, substitui os cards atuais, reposiciona rascunhos ou mantém o material fora do estudo.
+- decide se continua editando, aceita a iteração atual, exclui a iteração atual, reposiciona rascunhos ou mantém o material fora do estudo.
 
 Em termos operacionais, o serviço acessado por API, o modelo de linguagem, o JSON intermediário e o contrato público final não são a mesma coisa. O serviço executa a chamada; o modelo preenche uma resposta restrita; a aplicação valida e converte; o usuário continua responsável pela curadoria final.
 
-No estado atual da UI, a assistência está distribuída em dois pontos:
+No estado atual da UI, a assistência está distribuída em três pontos:
 
 - o painel contextual estrutural, para gerar estrutura top-down em home, curso e módulo;
 - o painel contextual da lição, para gerar microssequências `draft`;
@@ -103,7 +104,7 @@ Regras da aplicação:
 - curso gera ou atualiza módulos e lições;
 - módulo gera ou atualiza lições;
 - `description` permanece breve;
-- `sourceGuide` só entra no contexto quando existir;
+- `sourceGuide` e `sourceGuideStructured` entram no contexto quando existirem;
 - esse modo não gera microssequências nem cards.
 
 ## Geração contextual de microssequências na lição
@@ -145,12 +146,12 @@ Regras da aplicação:
 
 - `microsequences` deve ter de 2 a 7 itens;
 - cada item precisa de `title`;
-- `description` é opcional na resposta do modelo, mas só é preservada se o contrato interno do nível aceitar esse campo;
+- `description` é opcional;
 - `tags` opcionais podem ser preservadas;
 - cards não são aceitos nessa resposta;
 - se o modelo devolver cards, eles são ignorados ou rejeitados na normalização;
 - cada item válido vira uma microssequência `draft` com `included: false` e `cards: []`;
-- a geração não abre automaticamente o workbench;
+- a geração não abre automaticamente o painel da microssequência;
 - a criação atualiza diretamente a lição persistida.
 
 ## Estrutura de geração da microssequência
@@ -185,24 +186,11 @@ O tamanho é decidido no planejamento, validado pela aplicação e usado para ex
 
 O pipeline usa reparos explícitos em dois pontos diferentes.
 
-No planejamento, o modelo devolve apenas tipo didático, tamanho, objetivo, recursos extras, plano de uso de fontes e justificativa curta. A aplicação valida esse plano com o contrato de planejamento e monta o `cardPlan` de forma determinística a partir do tipo, do tamanho e dos recursos disponíveis. Quando o plano viola tipo fixado, tamanho, recursos permitidos ou preservação de escolhas do usuário, a aplicação faz uma chamada curta de reparo de plano. O reparo não muda a finalidade da etapa: ele apenas tenta produzir um plano curto válido para o contrato já montado.
+No planejamento, o modelo devolve apenas tipo didático, tamanho, objetivo, recursos extras, plano de uso de fontes e justificativa. A aplicação valida esse plano com o contrato de planejamento e monta o `cardPlan` de forma determinística a partir do tipo, do tamanho e dos recursos disponíveis. Quando o plano viola tipo fixado, tamanho, recursos permitidos ou preservação de escolhas do usuário, a aplicação faz uma chamada curta de reparo de plano.
 
-Na geração final, o modelo devolve os cards no formato intermediário. A aplicação valida a resposta com `validateGeneratedCards` antes de qualquer adaptação para o contrato público. Quando a estrutura falha, a aplicação faz uma chamada de reparo estrutural dos cards. Esse reparo recebe:
+Na geração final, o modelo devolve os cards no formato intermediário. A aplicação valida a resposta com `validateGeneratedCards` antes de qualquer adaptação para o contrato público. Quando a estrutura falha, a aplicação faz uma chamada de reparo estrutural dos cards.
 
-- resposta inválida original;
-- erros de validação;
-- contrato de geração original;
-- `expectedCardCount`;
-- `cardPlan` validado;
-- `allowedResourceTypes`;
-- schemas apenas dos recursos permitidos;
-- target da microssequência.
-
-O reparo de cards tem objetivo mais estreito que a geração: corrigir JSON, nomes de campos, campos obrigatórios, posições, quantidade e schemas dos recursos, preservando o conteúdo pedagógico sempre que possível. Ele deve manter `position` e `resourceType` iguais ao `cardPlan` determinístico. Ele não deve trocar o tipo didático, mudar o plano nem adicionar recursos fora de `allowedResourceTypes`.
-
-O limite padrão é de uma tentativa de reparo. Se a resposta reparada continuar inválida, se não houver JSON parseável, se a quantidade de cards continuar incorreta, se algum recurso continuar fora do contrato ou se recursos como `block_gap_fill` e `tree` continuarem estruturalmente inválidos, a aplicação retorna erro e não salva o resultado.
-
-Para `block_gap_fill`, o reparo estrutural aceita corrigir desvios comuns de provedor, como `segments[].text` para segmentos `{ "kind": "text", "value": "..." }`, `blocks[].text` para `{ "blockId": "...", "label": "..." }`, lacunas com `acceptedBlockIds` apontando para blocos existentes e preservação de `feedbackAfter`.
+O limite padrão é de uma tentativa de reparo. Se a resposta reparada continuar inválida, se não houver JSON parseável, se a quantidade de cards continuar incorreta ou se algum recurso continuar fora do contrato, a aplicação retorna erro e não salva o resultado.
 
 ## Resiliência operacional
 
@@ -221,7 +209,7 @@ Categorias usadas:
 
 Erros transitórios como `rate_limited`, `service_unavailable` e `timeout` podem receber retry. Erros de autenticação, requisição inválida, cota esgotada e validação local não são repetidos como falha de provedor.
 
-As chamadas de planejamento, reparo de planejamento, geração e reparo de geração usam retry com backoff exponencial e jitter. Os valores padrão são três tentativas, atraso base de 750 ms, atraso máximo de 8000 ms e jitter de 25%. Testes podem injetar uma função de atraso para validar o comportamento sem esperar tempo real.
+As chamadas de planejamento, reparo de planejamento, geração e reparo de geração usam retry com backoff exponencial e jitter.
 
 Depois que o planejamento é validado, a aplicação cria um `generationRunState` em memória com:
 
@@ -234,27 +222,7 @@ Depois que o planejamento é validado, a aplicação cria um `generationRunState
 - contrato de geração;
 - último erro operacional, quando existir.
 
-Esse estado não guarda chave de API nem payload grande de anexos. Ele contém o suficiente para refazer somente a geração final quando a fase de geração falha de modo transitório após as tentativas configuradas.
-
 Quando a falha acontece no planejamento, ainda não existe plano validado; nesse caso `canResume` é falso. Quando a falha acontece na geração ou no reparo de geração depois de um plano validado, `canResume` pode ser verdadeiro e a geração pode ser retomada com `resumeGenerationFromValidatedPlan`, sem refazer o planejamento.
-
-O fallback para modelo leve é opcional e fica desativado por padrão. Quando habilitado, ele só é usado em categorias configuradas, normalmente `rate_limited`, `service_unavailable` e `timeout`. O fallback não ocorre em `auth_error`, `invalid_request` ou `validation_failed`. Ao usar fallback, o contrato, o target, `selectedLessonTopicRefs`, o `cardPlan` e os recursos efetivos são preservados; apenas o modelo chamado muda.
-
-Erros operacionais retornam dados padronizados para a camada chamadora:
-
-```json
-{
-  "ok": false,
-  "phase": "generation",
-  "category": "service_unavailable",
-  "retryable": true,
-  "canResume": true,
-  "runId": "generation-...",
-  "message": "O provedor está temporariamente indisponível. O plano foi preservado e a geração pode ser retomada."
-}
-```
-
-Em alta demanda do provedor, o comportamento esperado é tentar novamente com backoff. Se as tentativas acabarem durante a geração, o plano validado fica preservado para retomada. Se houver fallback configurado para essa categoria, a aplicação pode usar o modelo leve sem reconstruir o plano.
 
 ## Assuntos do escopo da lição
 
@@ -288,9 +256,11 @@ O catálogo de recursos usado na geração inclui:
 - `table`;
 - `flowchart`;
 - `tree`;
-- `block_gap_fill`.
+- `block_gap_fill`;
+- `plane`;
+- `matrix`.
 
-Cada recurso possui descrição, limites e schema próprio. O recurso `block_gap_fill` é um alias de geração para o recurso público já existente de parágrafo com lacunas por opções, persistido como `say` com sintaxe `[[resposta::opção|opção]]`. Ele não cria tipo público novo. Seu comentário posterior usa `feedbackAfter`, preservado como `after` no card público; não há popup público específico por acerto ou erro nesse alias.
+Cada recurso possui descrição, limites e schema próprio. O recurso `block_gap_fill` é um alias de geração para o recurso público já existente de parágrafo com lacunas por opções, persistido como `say` com sintaxe `[[resposta::opção|opção]]`.
 
 Mapeamento principal:
 
@@ -302,6 +272,8 @@ table           -> table
 flowchart       -> flow
 tree            -> tree
 block_gap_fill  -> say com lacunas por opções
+plane           -> plane
+matrix          -> matrix
 ```
 
 O adaptador explícito valida esse mapeamento antes do salvamento. Recursos sem caminho público de estudo são rejeitados.
@@ -334,22 +306,6 @@ Exemplo:
 }
 ```
 
-Campos aceitos por card:
-
-- `title`: título do card;
-- `text`: explicação, leitura guiada ou lacuna;
-- `question`: enunciado de múltipla escolha;
-- `answer`: resposta correta;
-- `wrong`: alternativas incorretas ou distratores;
-- `language`: linguagem de um card de código;
-- `code`: trecho de código ou comando;
-- `columns`: colunas de tabela;
-- `rows`: linhas de tabela, enviadas como textos separados por `|`;
-- `currentPath`: caminho atual em árvore de diretórios;
-- `selectedPath`: caminho selecionado em árvore de diretórios;
-- `paths`: lista de caminhos para montar uma árvore;
-- `after`: comentário exibido ao continuar.
-
 Esse JSON é intermediário. O resultado aplicado ao projeto já deve obedecer ao `aralearn.contract`.
 
 ## Pipeline de geração
@@ -375,7 +331,7 @@ Fluxo implementado para gerar microssequências na lição:
 5. a resposta é lida e normalizada como JSON;
 6. a aplicação remove duplicatas e rejeita cards;
 7. cada item válido vira uma microssequência `draft` na lição atual;
-8. a lição é re-renderizada com os novos rascunhos, sem abrir o workbench.
+8. a lição é re-renderizada com os novos rascunhos.
 
 Fluxo implementado para gerar ou revisar cards no painel:
 
@@ -383,7 +339,7 @@ Fluxo implementado para gerar ou revisar cards no painel:
 2. a aplicação monta contexto de curso, módulo, lição e microssequência;
 3. o usuário pode escolher tipo, recursos extras e anexos;
 4. a aplicação envia anexos ao serviço de arquivos do modelo quando existirem;
-5. a aplicação monta o contrato de planejamento com hierarquia, selectedLessonTopicRefs, pedido, recursos leves, tipos, tamanhos e fontes;
+5. a aplicação monta o contrato de planejamento com hierarquia, `selectedLessonTopicRefs`, pedido, recursos leves, tipos, tamanhos e fontes;
 6. o modelo faz a primeira chamada e devolve `typeId`, `sizeId`, objetivo, recursos extras, fontes e justificativa;
 7. a aplicação valida o plano curto e monta o `cardPlan` determinístico;
 8. a aplicação resolve recursos efetivos e monta o contrato de geração com `cardPlan` fixado e schemas completos apenas desses recursos;
@@ -392,15 +348,8 @@ Fluxo implementado para gerar ou revisar cards no painel:
 11. se a validação falhar, a aplicação tenta um reparo estrutural dos cards e valida novamente;
 12. somente cards válidos no formato intermediário são convertidos para o contrato público;
 13. a aplicação substitui os cards da microssequência alvo;
-14. o usuário continua responsável por revisar o resultado aplicado.
-
-O fluxo preserva o contexto hierárquico:
-
-```text
-Curso -> Módulo -> Lição -> Microssequência -> Cards
-```
-
-Hoje, porém, a preservação de contexto é mais forte na camada estrutural do que na experiência de navegação. A seleção de curso, módulo e lição existe, mas a passagem entre intenção inicial, rascunho gerado e consolidação ainda depende de troca explícita de tela.
+14. quando a substituição cria uma iteração nova, o painel expõe ações para aceitar ou excluir essa iteração atual;
+15. o usuário continua responsável por revisar o resultado aplicado.
 
 ## Anexos de referência
 
@@ -436,13 +385,6 @@ Formas aceitas:
 }
 ```
 
-O normalizador reforça:
-
-- prática e revisão devem receber lacunas quando apropriado;
-- lacunas precisam de distratores;
-- tabelas geradas não devem depender de digitação livre nesta etapa;
-- cards conceituais não devem receber lacunas indevidas.
-
 ## Prompt de preenchimento
 
 Estrutura conceitual do prompt:
@@ -456,7 +398,7 @@ Devolva exatamente output.expectedCardCount cards.
 Use apenas resourceType presente em resources.allowedResourceTypes.
 Siga o plano didático validado.
 Cada card deve ter position, resourceType e os campos do schema do recurso.
-Use uma ideia principal por card, textos curtos e progressão interna.
+Use uma ideia principal por card e progressão interna.
 Retorne apenas JSON válido.
 ```
 
@@ -467,21 +409,17 @@ O prompt completo inclui:
 - plano didático validado;
 - tipos e recursos efetivos;
 - schemas dos recursos efetivos;
-- selectedLessonTopicRefs;
+- `selectedLessonTopicRefs`;
 - fontes resolvidas;
 - resumo da microssequência atual quando houver.
 
-Ele também reforça a divisão de responsabilidade: a LLM não escolhe `cardPlan`, não decide `resourceType` por posição, não aplica o resultado ao projeto e não substitui a revisão humana.
-
-Quando houver reparo estrutural, o prompt de reparo é mais compacto e restrito. Ele inclui a resposta inválida, os erros de validação e apenas a parte do contrato necessária para corrigir a estrutura. A instrução central é corrigir o JSON existente, não gerar uma microssequência nova.
-
-Os prompts de autoria de cards reforçam um princípio central, expresso de forma curta, e dele derivam regras operacionais: mostrar antes de nomear, concretizar antes de generalizar e não esconder a ponte do raciocínio. A partir disso, a geração deve evitar prática antes de microteoria ou exemplo resolvido na mesma microssequência; manter dados, regras e fórmulas necessários no próprio card; concretizar explicações abstratas com casos pequenos, tabela curta ou exemplo numérico; dar exemplo mínimo ou contraste em cards definidores; traduzir notação nova como `||v||` ou `cos θ` para linguagem comum antes do uso; mostrar linha crítica, coluna intermediária ou linha resolvida em equivalências; usar `table.focus` quando uma linha ou coluna específica merecer destaque; preferir tabelas pequenas em vez de quadros densos; evitar instruções sobre o processo de criação ou referência externa/volátil; não pedir ao aluno apenas repetir resposta já exposta; não interpretar resultado em feedback antes de ensinar a montar a conta; e destacar símbolos, conectivos e fórmulas curtas com acentos graves, como `p`, `q`, `¬`, `∧`, `∨`, `→`, `↔`, `XOR` e `2^n`. O modelo também é instruído a não repetir o título do card como título interno ou primeira frase e pode usar cards mais altos quando isso melhorar a clareza didática.
+Ele também reforça a divisão de responsabilidade: a LLM não escolhe `cardPlan`, não decide `resourceType` por posição, não controla a persistência do projeto e não substitui a revisão humana.
 
 ## Saída estruturada nativa
 
 A integração mantém capacidades de modelo separadas do contrato didático. Os campos `supportsNativeJsonSchema`, `supportsResponseSchema` e `responseMimeType` indicam onde o provedor poderá receber schema nativo no futuro.
 
-No Gemini, a configuração já trabalha com `responseMimeType: "application/json"`. A documentação oficial do Gemini orienta o uso de JSON estruturado via `responseMimeType` e schema JSON no `generationConfig`, mas esta etapa mantém a geração modular baseada em prompts compactos e reparo pós-validação. A extensão para `responseSchema` deve continuar isolada e testável, sem substituir a validação interna antes de salvar.
+No Gemini, a configuração já trabalha com `responseMimeType: "application/json"`. A extensão para `responseSchema` deve continuar isolada e testável, sem substituir a validação interna antes de salvar.
 
 ## Edição assistida
 
@@ -497,7 +435,7 @@ O usuário pode pedir:
 - ajuste de alternativas;
 - revisão de densidade textual.
 
-A estrutura de edição já possui contratos para planejar edição e aplicar edição em duas chamadas. O contrato de aplicação recebe os cards atuais, recursos efetivos, selectedLessonTopicRefs, fontes resolvidas e versões anteriores quando o plano validado solicitar. Nessa trilha, a aplicação continua dona do escopo, dos recursos permitidos, da validação e da aplicação do resultado; o modelo apenas propõe operações e devolve os cards editados pedidos.
+A estrutura de edição já possui contratos para planejar edição e aplicar edição em duas chamadas. Nessa trilha, a aplicação continua dona do escopo, dos recursos permitidos, da validação e da aplicação do resultado; o modelo apenas propõe operações e devolve os cards editados pedidos.
 
 ## Reposicionamento assistido
 
@@ -523,15 +461,6 @@ Para testar geração real:
 $env:GEMINI_API_KEY="sua-chave"
 npm run smoke:gemini
 ```
-
-O teste verifica:
-
-- quantidade de cards;
-- variedade de contêineres;
-- ausência de fluxograma na geração inicial;
-- conteúdo mínimo por card;
-- múltipla escolha completa;
-- lacunas com opções selecionáveis.
 
 A chave deve ficar apenas no ambiente da sessão.
 
