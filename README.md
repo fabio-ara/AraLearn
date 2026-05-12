@@ -102,11 +102,14 @@ No AraLearn, modelos de linguagem são apoio operacional. Eles ajudam a transfor
 O papel da arquitetura é deslocar parte da inteligência do modelo para o processo:
 
 - o contexto é explícito;
-- a saída esperada é JSON;
-- o contrato é validado;
+- a aplicação fixa contratos, tipos, recursos e validações locais;
+- a saída esperada é JSON intermediário;
+- o contrato público final é montado e validado pela aplicação;
 - rascunhos não entram automaticamente no estudo;
 - o usuário pode revisar, editar, excluir, exportar e versionar;
 - o material fica no dispositivo, sob controle do usuário.
+
+Na prática, isso separa três papéis: o usuário define intenção e faz curadoria, o serviço de IA preenche respostas restritas via API, e o AraLearn decide contrato, validação, adaptação e aplicação local.
 
 Esse desenho permite usar modelos mais econômicos em tarefas menores e reservar modelos mais fortes para transformações realmente difíceis. A pergunta central não é apenas “qual modelo responde melhor?”, mas “como organizar a tarefa para que a resposta seja auditável, útil e revisável?”.
 

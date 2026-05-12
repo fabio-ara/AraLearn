@@ -7,8 +7,10 @@ import { buildMicrosequencePlanningContract } from "../src/generation/planning/b
 import { buildMicrosequencePlanningPrompt } from "../src/generation/planning/buildMicrosequencePlanningPrompt.js";
 import { validateMicrosequencePlan } from "../src/generation/planning/validateMicrosequencePlan.js";
 import { buildMicrosequenceEditPlanningContract } from "../src/generation/planning/buildMicrosequenceEditPlanningContract.js";
+import { buildMicrosequenceEditPlanningPrompt } from "../src/generation/planning/buildMicrosequenceEditPlanningPrompt.js";
 import { validateMicrosequenceEditPlan } from "../src/generation/planning/validateMicrosequenceEditPlan.js";
 import { buildGeneratedCardsRepairPrompt } from "../src/generation/prompts/buildGeneratedCardsRepairPrompt.js";
+import { buildMicrosequenceEditPrompt } from "../src/generation/prompts/buildMicrosequenceEditPrompt.js";
 import { buildMicrosequenceGenerationPrompt } from "../src/generation/prompts/buildMicrosequenceGenerationPrompt.js";
 import { getModelCapabilities } from "../src/generation/providers/modelCapabilities.js";
 import { adaptResourceCardsToPublicCards, adaptResourceCardToPublicCard } from "../src/generation/resources/adaptResourceCardToPublicCard.js";
@@ -172,6 +174,9 @@ test("planejamento recebe selectedLessonTopicRefs, catálogo leve e valida plano
   assert.match(prompt, /context\.sourceGuideLineage como governança acumulada/);
   assert.match(prompt, /context\.lesson\.microsequenceLine/);
   assert.match(prompt, /planeje a sequência microteoria -> exemplo guiado -> prática autossuficiente -> consolidação/);
+  assert.match(prompt, /Papel do AraLearn nesta operação: fixar contrato, tipos disponíveis, recursos possíveis, validação local e cardPlan final/);
+  assert.match(prompt, /Seu papel aqui é apenas propor typeId, sizeId, microsequenceGoal/);
+  assert.match(prompt, /Não decida contrato final, recurso por posição, aplicação no projeto nem revisão editorial final/);
   assert.match(prompt, /Não devolva cardPlan/);
   assert.equal(validation.ok, true);
   assert.equal(validation.plan.sizeId, "short");
@@ -273,6 +278,9 @@ test("contrato e prompt de geração usam contexto, tags, tamanho e schemas efet
   assert.match(prompt, /Não crie exercício cuja resposta já esteja explicitamente revelada no mesmo card/i);
   assert.match(prompt, /rolagem vertical/);
   assert.match(prompt, /Trate sourceGuide de curso, módulo e lição como contrato de governança/);
+  assert.match(prompt, /Papel do AraLearn: fixar didacticPlan\.cardPlan, recursos permitidos, schemas aceitos, validação e adaptação para o contrato público/);
+  assert.match(prompt, /Seu papel aqui é apenas preencher o conteúdo dos cards já planejados/);
+  assert.match(prompt, /Não mude tags persistentes, destino estrutural, status da microssequência nem decisão editorial final/);
   assert.match(prompt, /destaque inline com acentos graves em símbolos, conectivos, comandos, fórmulas e nomes curtos/);
   assert.match(prompt, /Não repita o title do card/);
   assert.doesNotMatch(prompt, /code_editor/);
@@ -830,6 +838,65 @@ test("planejamento e contrato de edição preservam versão, selectedLessonTopic
   assert.ok(resources.allowedResourceTypes.includes("table"));
   assert.equal(editContract.currentVersion.cards.length, 1);
   assert.ok(editContract.resources.allowedResourceTypes.includes("table"));
+});
+
+test("prompts de edição e reparo explicitam a divisão de papéis", () => {
+  const editPlanningContract = buildMicrosequenceEditPlanningContract({
+    selectedCourse: { key: "course", title: "Curso", sourceGuide: "Guia do curso", sourceGuideStructured: { globalScope: "Escopo do curso." } },
+    selectedModule: { key: "module", title: "Módulo", sourceGuide: "Guia do módulo", sourceGuideStructured: { moduleScope: "Escopo do módulo." } },
+    selectedLesson: {
+      key: "lesson",
+      title: "Lição",
+      sourceGuide: "Guia da lição",
+      sourceGuideStructured: { lessonGoal: "Escopo da lição." },
+      lessonTopics: [{ refKey: "micro-git", label: "Git", source: "microsequence" }],
+      microsequences: [{ key: "micro", title: "Micro", description: "Atual", tags: ["Git"], status: "ready" }]
+    },
+    selectedMicrosequence: { key: "micro", title: "Micro", description: "Atual", tags: ["Git"], status: "ready" },
+    selectedMicrosequenceVersion: { id: "v1" },
+    selectedLessonTopicRefs: [{ refKey: "micro-git", label: "Git", source: "microsequence" }],
+    currentCards: [{ key: "c1", position: 1, resourceType: "paragraph", title: "Card 1", text: "Texto" }],
+    previousVersions: [{ id: "v0", label: "Anterior", cards: [{ title: "Antigo", say: "Antes" }] }],
+    userEditPrompt: "troque para tabela",
+    userSelectedExtraResourceTypes: ["table"],
+    selectedModel: "gemini-2.5-flash"
+  });
+  const editPlanValidation = validateMicrosequenceEditPlan(
+    {
+      editScope: "selected_cards",
+      affectedCards: ["c1"],
+      operations: [{ operation: "replace_resource", cardKey: "c1", fromResourceType: "paragraph", toResourceType: "table", intent: "comparar" }],
+      requiredResourceTypes: ["table"],
+      requiresFullPreviousVersion: false,
+      previousVersionIdsToLoad: [],
+      reason: "pedido"
+    },
+    editPlanningContract
+  );
+  const editContract = buildMicrosequenceEditContract({
+    editPlanningContract,
+    validatedEditPlan: editPlanValidation,
+    currentCards: [{ key: "c1", position: 1, resourceType: "paragraph", title: "Card 1", text: "Texto" }],
+    selectedModel: "gemini-2.5-flash"
+  });
+  const editPlanningPrompt = buildMicrosequenceEditPlanningPrompt(editPlanningContract, getModelCapabilities("gemini-2.5-flash"));
+  const editPrompt = buildMicrosequenceEditPrompt(editContract, getModelCapabilities("gemini-2.5-flash"));
+  const repairPrompt = buildGeneratedCardsRepairPrompt({
+    invalidResponse: { cards: [{ position: 1, resourceType: "paragraph", title: "", text: "" }] },
+    validationErrors: ["Card sem title."],
+    generationContract: sampleGenerationContract(),
+    modelCapabilities: getModelCapabilities("gemini-2.5-flash")
+  });
+
+  assert.match(editPlanningPrompt, /Papel do AraLearn nesta operação: fixar escopo de edição, cards atuais, recursos permitidos e validação/);
+  assert.match(editPlanningPrompt, /Seu papel aqui é apenas propor editScope, affectedCards, operations, requiredResourceTypes/);
+  assert.match(editPlanningPrompt, /Não reescreva os cards nem decida aplicação final no projeto/);
+  assert.match(editPrompt, /Papel do AraLearn: fixar cards atuais, escopo de edição, recursos permitidos e validação final/);
+  assert.match(editPrompt, /Seu papel aqui é apenas devolver os cards editados que respeitam esse escopo/);
+  assert.match(editPrompt, /Não mude destino estrutural, status, tags persistentes nem decisão editorial final/);
+  assert.match(repairPrompt, /Papel do AraLearn: manter plano, cardPlan, recursos permitidos, validação e adaptação final/);
+  assert.match(repairPrompt, /Seu papel no reparo é apenas corrigir a estrutura do JSON existente dentro dessas restrições/);
+  assert.match(repairPrompt, /Não decida destino estrutural, aplicação no projeto nem revisão editorial final/);
 });
 
 test("validação de edição preserva cards não afetados em edição localizada", () => {

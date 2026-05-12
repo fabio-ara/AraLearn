@@ -32,9 +32,12 @@ export function buildMicrosequenceGenerationPrompt(contract, modelCapabilities =
   return [
     "Gere cards para a microssequência indicada.",
     "Responda somente JSON válido no formato: {\"cards\":[...]}",
+    "Papel do AraLearn: fixar didacticPlan.cardPlan, recursos permitidos, schemas aceitos, validação e adaptação para o contrato público.",
+    "Seu papel aqui é apenas preencher o conteúdo dos cards já planejados.",
     "A quantidade de cards deve ser exatamente output.expectedCardCount.",
     "Cada card deve seguir exatamente position e resourceType do didacticPlan.cardPlan.",
     "Não altere a ordem, o recurso nem a quantidade planejada pelo AraLearn.",
+    "Não mude tags persistentes, destino estrutural, status da microssequência nem decisão editorial final; o usuário revisa o resultado.",
     "Cada card deve ter position, resourceType e os campos do schema do recurso planejado.",
     "Use apenas resourceType presente em resources.allowedResourceTypes.",
     "Use context.path como a linha hierárquica completa até a microssequência.",

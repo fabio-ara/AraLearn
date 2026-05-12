@@ -86,7 +86,8 @@ pedido do usuário
   -> JSON intermediário
   -> validação e normalização
   -> contrato público
-  -> rascunho ou versão ativa
+  -> aplicação local no alvo estrutural
+  -> revisão do usuário
 ```
 
 Há dois modos complementares de entrada de conteúdo:

@@ -21,28 +21,34 @@ O modelo de linguagem não é responsável sozinho pela estrutura final aplicada
 A aplicação:
 
 - define contratos de planejamento e execução;
+- fixa tipos disponíveis, recursos permitidos e `cardPlan` determinístico quando a operação exige cards;
 - monta prompts restritos;
 - seleciona recursos didáticos permitidos;
 - envia a chamada ao serviço;
 - extrai JSON;
 - normaliza o conteúdo;
 - valida o resultado;
-- aplica o material ao projeto ou como nova versão de uma microssequência.
+- adapta o JSON intermediário ao contrato público;
+- aplica o material validado à microssequência alvo.
 
 O modelo:
 
+- responde apenas no recorte pedido pelo contrato atual;
 - preenche conteúdo;
 - adapta linguagem;
-- propõe alternativas;
-- sugere slot de reposicionamento quando recebe destinos fechados;
-- responde em JSON no formato solicitado.
+- propõe alternativas dentro dos tipos, recursos e campos já delimitados;
+- sugere `slotId` de reposicionamento apenas quando recebe slots fechados;
+- responde em JSON no formato solicitado, sem decidir contrato final nem aplicação no projeto.
 
 O usuário:
 
 - escreve o pedido;
 - abre o painel contextual no nível desejado;
+- escolhe, quando aplicável, tipo didático, recursos extras e anexos;
 - revisa o resultado;
-- decide se continua editando ou marca o material como pronto para estudo.
+- decide se continua editando, substitui os cards atuais, reposiciona rascunhos ou mantém o material fora do estudo.
+
+Em termos operacionais, o serviço acessado por API, o modelo de linguagem, o JSON intermediário e o contrato público final não são a mesma coisa. O serviço executa a chamada; o modelo preenche uma resposta restrita; a aplicação valida e converte; o usuário continua responsável pela curadoria final.
 
 No estado atual da UI, a assistência está distribuída em dois pontos:
 
@@ -385,7 +391,8 @@ Fluxo implementado para gerar ou revisar cards no painel:
 10. a aplicação valida quantidade, posições, recursos, schemas e campos obrigatórios;
 11. se a validação falhar, a aplicação tenta um reparo estrutural dos cards e valida novamente;
 12. somente cards válidos no formato intermediário são convertidos para o contrato público;
-13. a microssequência recebe nova versão ou cards aplicados.
+13. a aplicação substitui os cards da microssequência alvo;
+14. o usuário continua responsável por revisar o resultado aplicado.
 
 O fluxo preserva o contexto hierárquico:
 
@@ -443,6 +450,8 @@ Estrutura conceitual do prompt:
 ```text
 Gere cards para a microssequência indicada.
 Responda somente JSON válido no formato solicitado.
+Papel do AraLearn: fixar plano, recursos, schemas e validação.
+Papel do modelo: preencher apenas os cards já planejados.
 Devolva exatamente output.expectedCardCount cards.
 Use apenas resourceType presente em resources.allowedResourceTypes.
 Siga o plano didático validado.
@@ -461,6 +470,8 @@ O prompt completo inclui:
 - selectedLessonTopicRefs;
 - fontes resolvidas;
 - resumo da microssequência atual quando houver.
+
+Ele também reforça a divisão de responsabilidade: a LLM não escolhe `cardPlan`, não decide `resourceType` por posição, não aplica o resultado ao projeto e não substitui a revisão humana.
 
 Quando houver reparo estrutural, o prompt de reparo é mais compacto e restrito. Ele inclui a resposta inválida, os erros de validação e apenas a parte do contrato necessária para corrigir a estrutura. A instrução central é corrigir o JSON existente, não gerar uma microssequência nova.
 
@@ -486,7 +497,7 @@ O usuário pode pedir:
 - ajuste de alternativas;
 - revisão de densidade textual.
 
-A estrutura de edição já possui contratos para planejar edição e aplicar edição em duas chamadas. O contrato de aplicação recebe a versão atual completa, recursos efetivos, selectedLessonTopicRefs, fontes resolvidas e versões anteriores quando o plano validado solicitar. A integração visual completa desse fluxo segue a regra de versionamento existente do painel.
+A estrutura de edição já possui contratos para planejar edição e aplicar edição em duas chamadas. O contrato de aplicação recebe os cards atuais, recursos efetivos, selectedLessonTopicRefs, fontes resolvidas e versões anteriores quando o plano validado solicitar. Nessa trilha, a aplicação continua dona do escopo, dos recursos permitidos, da validação e da aplicação do resultado; o modelo apenas propõe operações e devolve os cards editados pedidos.
 
 ## Reposicionamento assistido
 

@@ -29,9 +29,12 @@ export function buildGeneratedCardsRepairPrompt({
   return [
     "Corrija apenas o JSON abaixo para obedecer ao contrato.",
     "Preserve o conteúdo pedagógico sempre que possível.",
+    "Papel do AraLearn: manter plano, cardPlan, recursos permitidos, validação e adaptação final.",
+    "Seu papel no reparo é apenas corrigir a estrutura do JSON existente dentro dessas restrições.",
     "Altere somente o necessário para satisfazer os campos obrigatórios, tipos permitidos, quantidade de cards e schemas dos recursos.",
     "Não regenere livremente a microssequência.",
     "Não altere o tipo didático nem o plano.",
+    "Não decida destino estrutural, aplicação no projeto nem revisão editorial final; isso pertence ao AraLearn e ao usuário.",
     "Não adicione recursos fora do contrato.",
     "Remova campos inesperados e corrija nomes de campos incorretos.",
     "Princípio didático: mostre antes de nomear, concretize antes de generalizar e não esconda a ponte do raciocínio.",
