@@ -24,12 +24,11 @@ import {
   applyStructureVersionSnapshot,
   buildStructureVersionKey,
   createStructureSnapshot,
-  createManualStructureRestore,
   seedStructureVersionMapFromProject,
   recordStructureVersionTransition,
   syncStructureVersionSnapshot
 } from "./structureVersioning.js";
-import { setActiveStructureVersion } from "./structureVersionState.js";
+import { removeStructureVersion, setActiveStructureVersion } from "./structureVersionState.js";
 import { buildMicrosequenceVersionComparisonForVersion } from "./microsequenceVersionComparison.js";
 import { buildStructureVersionComparisonForVersion } from "./structureVersionComparison.js";
 import {
@@ -2410,52 +2409,12 @@ export function createLessonEditorApp({ root, storage, editor }) {
     render({ preserveState: false });
   }
 
-  function duplicateMicrosequenceVersion(versionId) {
-    const reference = {
-      courseKey: state.selection.courseKey,
-      moduleKey: state.selection.moduleKey,
-      lessonKey: state.selection.lessonKey,
-      microsequenceKey: state.selection.microsequenceKey
-    };
-    const entry = getMicrosequenceVersionEntry(reference);
-    if (!entry) {
-      return;
-    }
-
-    const sourceVersion = entry.versions.find((item) => item.id === versionId);
-    if (!sourceVersion) {
-      return;
-    }
-
-    const previousActiveVersionId = entry.activeVersionId;
-    entry.activeVersionId = sourceVersion.id;
-    const duplicatedVersion = insertMicrosequenceVersionAfterActive(entry, sourceVersion, {
-      label: `Variação ${entry.versions.length + 1}`,
-      operationType: "duplicate",
-      parentVersionId: sourceVersion.id
-    });
-    entry.activeVersionId = previousActiveVersionId;
-    saveMicrosequenceVersions();
-    if (!duplicatedVersion) {
-      return;
-    }
-    setMicrosequenceVersionViewState({
-      visualizedVersionId: duplicatedVersion.id,
-      editBaseVersionId: duplicatedVersion.id
-    });
-    state.assistDraft.versionActionsOpen = false;
-    render({ preserveState: true });
-  }
-
   function canDeleteMicrosequenceVersion(versionId) {
     const entry = getMicrosequenceVersionEntry();
     if (!entry || !Array.isArray(entry.versions) || entry.versions.length <= 1) {
       return false;
     }
-    if (entry.activeVersionId === versionId) {
-      return false;
-    }
-    return !entry.versions.some((item) => item.parentVersionId === versionId);
+    return Boolean(versionId);
   }
 
   function deleteMicrosequenceVersion(versionId) {
@@ -3010,36 +2969,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
     render({ preserveState: true });
   }
 
-  function restoreStructureVersion(versionKey) {
-    const reference = getCurrentStructureVersionReference();
-    const entry = getStructureVersionEntry(reference);
-    if (!reference || !entry || !versionKey) {
-      return;
-    }
-
-    const restored = createManualStructureRestore(state.structureVersions, {
-      project: state.project,
-      reference,
-      versionId: versionKey
-    });
-    if (!restored?.snapshot) {
-      return;
-    }
-    saveStructureVersions();
-
-    const nextProject = applyStructureVersionSnapshot(state.project, reference, restored.snapshot);
-    storage.saveProject(nextProject);
-    setProject(nextProject);
-    applySelectionByKeys(nextProject, state.selection);
-    syncAssistDraft();
-    state.assistDraft.lastRequest = {
-      title: "Variação criada",
-      description: `Nova versão criada a partir de ${String(restored.restoredVersion.label || restored.restoredVersion.id).toLowerCase()}.`,
-      timestamp: new Date().toISOString()
-    };
-    render({ preserveState: true });
-  }
-
   function selectVersionHistoryItem(versionKey) {
     if (!versionKey) {
       return;
@@ -3085,6 +3014,23 @@ export function createLessonEditorApp({ root, storage, editor }) {
       ],
       preserveFocus: false
     });
+  }
+
+  function deleteStructureVersion(versionKey) {
+    const reference = getCurrentStructureVersionReference();
+    const entry = getStructureVersionEntry(reference);
+    if (!reference || !entry || !versionKey || (entry.versions || []).length <= 1) {
+      return;
+    }
+
+    const removed = removeStructureVersion(entry, versionKey);
+    if (!removed) {
+      return;
+    }
+
+    saveStructureVersions();
+    state.versionHistorySelectionKey = entry.activeVersionId || "";
+    render({ preserveState: true });
   }
 
   function selectStructureVersionTab(versionKey, { centerActiveTab = true } = {}) {
@@ -3174,6 +3120,15 @@ export function createLessonEditorApp({ root, storage, editor }) {
       operationType: "snapshot"
     });
     render({ preserveState: true });
+  }
+
+  function saveCurrentSnapshotFromHistory() {
+    if (state.view === "microsequence-assist") {
+      saveCurrentMicrosequenceSnapshot();
+      return;
+    }
+
+    saveCurrentStructureSnapshot();
   }
 
   function closeVersionCompare() {
@@ -7170,31 +7125,36 @@ export function createLessonEditorApp({ root, storage, editor }) {
         origin: buildVersionLineageLabel(item, structureVersionEntry?.versions || []),
         versionLabel: getVersionDisplayId(item),
         meta: [formatOverlayTimestamp(item.updatedAt), operationInfo.label].filter(Boolean).join(" · "),
+        sortKey: item.updatedAt || item.createdAt || "",
         summary: item.id === state.versionHistorySelectionKey ? "Selecionada para inspeção." : "",
         inUse: isActive,
         selected: item.id === state.versionHistorySelectionKey,
         actions: [
           {
-            action: "open-version-compare-selected",
-            label:
-              item.parentVersionId || (structureVersionEntry?.versions || []).findIndex((version) => version.id === item.id) > 0
-                ? "Comparar"
-                : "Sem versão anterior",
-            icon: "👁",
-            disabled:
-              !(item.parentVersionId || (structureVersionEntry?.versions || []).findIndex((version) => version.id === item.id) > 0)
-          }
-        ],
-        moreActions: [
+            action: "use-structure-version",
+            label: "Usar",
+            icon: "✓",
+            disabled: isActive
+          },
           {
-            action: "restore-structure-version-as-new",
-            label: "Criar variação",
-            icon: "⧉"
+            action: "delete-structure-version",
+            label: "Excluir",
+            icon: "×",
+            tone: "danger",
+            disabled: (structureVersionEntry?.versions || []).length <= 1
           }
         ],
         moreExpanded: item.id === state.versionHistoryExpandedMoreKey
       };
     });
+    const orderHistoryVersions = (items) => {
+      const list = Array.isArray(items) ? items.slice() : [];
+      return list.sort((left, right) => {
+        if (left.inUse && !right.inUse) return -1;
+        if (!left.inUse && right.inUse) return 1;
+        return String(right.sortKey || "").localeCompare(String(left.sortKey || ""));
+      });
+    };
     const microsequenceHistoryVersions = (microsequenceVersionEntry?.versions || []).map((item) => {
       const isActive = item.id === microsequenceVersionEntry?.activeVersionId;
       return {
@@ -7203,31 +7163,23 @@ export function createLessonEditorApp({ root, storage, editor }) {
         origin: buildVersionLineageLabel(item, microsequenceVersionEntry?.versions || []),
         versionLabel: getVersionDisplayId(item),
         meta: formatOverlayTimestamp(item.updatedAt),
+        sortKey: item.updatedAt || item.createdAt || "",
         summary: item.id === state.versionHistorySelectionKey ? "Selecionada para inspeção." : "",
         inUse: isActive,
         selected: item.id === state.versionHistorySelectionKey,
         actions: [
           {
-            action: "open-version-compare-selected",
-            label:
-              item.parentVersionId || (microsequenceVersionEntry?.versions || []).findIndex((version) => version.id === item.id) > 0
-                ? "Comparar"
-                : "Sem versão anterior",
-            icon: "👁",
-            disabled:
-              !(item.parentVersionId || (microsequenceVersionEntry?.versions || []).findIndex((version) => version.id === item.id) > 0)
-          }
-        ],
-        moreActions: [
-          {
             action: "use-microsequence-version",
-            label: "Usar snapshot",
-            icon: "✓"
+            label: "Usar",
+            icon: "✓",
+            disabled: isActive
           },
           {
-            action: "duplicate-microsequence-version",
-            label: "Duplicar",
-            icon: "⧉"
+            action: "delete-microsequence-version",
+            label: "Excluir",
+            icon: "×",
+            tone: "danger",
+            disabled: (microsequenceVersionEntry?.versions || []).length <= 1
           }
         ],
         moreExpanded: item.id === state.versionHistoryExpandedMoreKey
@@ -7242,9 +7194,9 @@ export function createLessonEditorApp({ root, storage, editor }) {
         ? "Snapshots da microssequência"
         : "Versões do card";
     const versionHistoryItems = structureVersionReference
-      ? structureHistoryVersions
+      ? orderHistoryVersions(structureHistoryVersions)
       : state.view === "microsequence-assist"
-        ? microsequenceHistoryVersions
+        ? orderHistoryVersions(microsequenceHistoryVersions)
         : historyVersions;
     const versionHistoryEmptyLabel = structureVersionReference || state.view === "microsequence-assist" ? "Sem snapshots locais ainda." : "Sem versões anteriores.";
     const versionHistoryFooter = structureVersionReference
@@ -7342,7 +7294,10 @@ export function createLessonEditorApp({ root, storage, editor }) {
             title: versionHistoryTitle,
             emptyLabel: versionHistoryEmptyLabel,
             versions: versionHistoryItems,
-            footer: versionHistoryFooter
+            footer: versionHistoryFooter,
+            primaryAction: structureVersionReference || state.view === "microsequence-assist"
+              ? { action: "save-version-snapshot", label: "Gravar snapshot", icon: "+" }
+              : null
           })
         : "") +
       (versionComparison
@@ -7699,11 +7654,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
       const versionId = root.querySelector("[data-action='use-microsequence-version']")?.getAttribute("data-version-id");
       if (!versionId) return;
       useMicrosequenceVersion(versionId);
-    });
-    root.querySelector("[data-action='duplicate-microsequence-version']")?.addEventListener("click", () => {
-      const versionId = root.querySelector("[data-action='duplicate-microsequence-version']")?.getAttribute("data-version-id");
-      if (!versionId) return;
-      duplicateMicrosequenceVersion(versionId);
     });
     root.querySelectorAll("[data-action='select-workbench-pane']").forEach((node) => {
       node.addEventListener("click", () => {
@@ -8422,6 +8372,9 @@ export function createLessonEditorApp({ root, storage, editor }) {
         restoreCardVersion(versionKey);
       });
     });
+    root.querySelectorAll("[data-action='save-version-snapshot']").forEach((node) => {
+      node.addEventListener("click", () => saveCurrentSnapshotFromHistory());
+    });
     root.querySelectorAll("[data-action='use-structure-version']").forEach((node) => {
       node.addEventListener("click", () => {
         const versionKey = node.getAttribute("data-version-key");
@@ -8429,11 +8382,11 @@ export function createLessonEditorApp({ root, storage, editor }) {
         useStructureVersion(versionKey);
       });
     });
-    root.querySelectorAll("[data-action='restore-structure-version-as-new']").forEach((node) => {
+    root.querySelectorAll("[data-action='delete-structure-version']").forEach((node) => {
       node.addEventListener("click", () => {
         const versionKey = node.getAttribute("data-version-key");
         if (!versionKey) return;
-        restoreStructureVersion(versionKey);
+        deleteStructureVersion(versionKey);
       });
     });
     root.querySelectorAll("[data-action='use-microsequence-version'][data-version-key]").forEach((node) => {
@@ -8443,18 +8396,11 @@ export function createLessonEditorApp({ root, storage, editor }) {
         useMicrosequenceVersion(versionKey);
       });
     });
-    root.querySelectorAll("[data-action='duplicate-microsequence-version'][data-version-key]").forEach((node) => {
+    root.querySelectorAll("[data-action='delete-microsequence-version'][data-version-key]").forEach((node) => {
       node.addEventListener("click", () => {
         const versionKey = node.getAttribute("data-version-key");
         if (!versionKey) return;
-        duplicateMicrosequenceVersion(versionKey);
-      });
-    });
-    root.querySelectorAll("[data-action='open-version-compare-selected']").forEach((node) => {
-      node.addEventListener("click", () => {
-        const versionKey = node.getAttribute("data-version-key");
-        state.versionCompareSelectionKey = versionKey || state.versionHistorySelectionKey || "";
-        openVersionCompare();
+        deleteMicrosequenceVersion(versionKey);
       });
     });
 
@@ -8705,8 +8651,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
       void submitAssistRequest();
     });
     root.querySelector("[data-action='open-version-history']")?.addEventListener("click", () => openVersionHistory());
-    root.querySelector("[data-action='save-structure-snapshot']")?.addEventListener("click", () => saveCurrentStructureSnapshot());
-    root.querySelector("[data-action='save-microsequence-snapshot']")?.addEventListener("click", () => saveCurrentMicrosequenceSnapshot());
     root.querySelector("[data-action='assist-config-close']")?.addEventListener("click", () => closeAssistConfig());
 
     const assistConfigModel = root.querySelector("[data-field='assist-config-model']");

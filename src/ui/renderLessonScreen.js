@@ -130,19 +130,6 @@ function buildHistoryTopbarAction(historyTitle, historyCount, payload = {}) {
   };
 }
 
-function buildCompareTopbarAction(compareAvailable, payload = {}) {
-  if (!compareAvailable) {
-    return null;
-  }
-
-  return {
-    action: "open-version-compare",
-    title: "Comparar",
-    icon: "↔",
-    ...payload
-  };
-}
-
 function renderStructureVersionContext(contextTabs = []) {
   const items = (contextTabs || []).filter((item) => item?.label);
   if (!items.length) {
@@ -790,7 +777,6 @@ function renderCourseScreen({ course, progress, editorSupport }) {
           courseKey: course.key
         },
         { action: "quick-create-module", title: "Criar módulo vazio", icon: "＋" },
-        { action: "save-structure-snapshot", title: "Gravar snapshot do curso", icon: renderUiIcon("versions", "home-tab-icon") },
         { action: "open-version-history", title: "Snapshots do curso", icon: "🕘" },
         { action: "open-course-screen-actions", title: "Ações do curso", icon: "⋯" }
       ].filter(Boolean)
@@ -862,7 +848,6 @@ function renderModuleScreen({ course, moduleValue, progress, editorSupport }) {
           moduleKey: moduleValue.key
         },
         { action: "quick-create-lesson", title: "Criar lição vazia", icon: "＋" },
-        { action: "save-structure-snapshot", title: "Gravar snapshot do módulo", icon: renderUiIcon("versions", "home-tab-icon") },
         { action: "open-version-history", title: "Snapshots do módulo", icon: "🕘" },
         { action: "open-module-screen-actions", title: "Ações do módulo", icon: "⋯" }
       ].filter(Boolean)
@@ -987,7 +972,6 @@ function renderLessonScreenView({ course, lesson, moduleValue, progress, editorS
           lessonKey: lesson.key
         },
         { action: "quick-create-microsequence", title: "Criar microssequência vazia", icon: "＋" },
-        { action: "save-structure-snapshot", title: "Gravar snapshot da lição", icon: renderUiIcon("versions", "home-tab-icon") },
         { action: "open-version-history", title: "Snapshots da lição", icon: "🕘" },
         { action: "open-lesson-screen-actions", title: "Ações da lição", icon: "⋯" }
       ].filter(Boolean)
@@ -1358,11 +1342,6 @@ function renderMicrosequenceWorkbenchScreen({
       canGoBack: true,
       backTitle,
       actions: [
-        {
-          action: "save-microsequence-snapshot",
-          title: "Gravar snapshot da microssequência",
-          icon: renderUiIcon("versions", "home-tab-icon")
-        },
         {
           action: "open-version-history",
           title: "Snapshots da microssequência",

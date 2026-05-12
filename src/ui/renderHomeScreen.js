@@ -181,9 +181,6 @@ function renderCoursesTopbar() {
     renderUiIcon("sparkles", "home-tab-icon") +
     "</button>" +
     '<button class="icon-ghost" type="button" data-action="quick-create-course" title="Criar curso vazio" aria-label="Criar curso vazio">＋</button>' +
-    '<button class="icon-ghost" type="button" data-action="save-structure-snapshot" title="Gravar snapshot do projeto" aria-label="Gravar snapshot do projeto">' +
-    renderUiIcon("versions", "home-tab-icon") +
-    "</button>" +
     '<button class="icon-ghost" type="button" data-action="open-version-history" title="Snapshots do projeto" aria-label="Snapshots do projeto">🕘</button>' +
     '<button class="icon-ghost" type="button" data-action="open-home-actions" title="Ações do app" aria-label="Ações do app">⋯</button>' +
     "</div>" +
