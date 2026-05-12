@@ -126,7 +126,14 @@ test("lista tipos didáticos e tamanhos internos", () => {
   assert.ok(types.some((item) => item.id === "assisted"));
   assert.ok(types.some((item) => item.id === "simple"));
   assert.ok(types.every((item) => item.id && item.label && item.shortDescription && item.availableSizes.length));
-  assert.ok(types.every((item) => item.cardRolesBySize.short && item.cardRolesBySize.medium && item.cardRolesBySize.long));
+  assert.ok(types.every((item) => item.cardPlansBySize.short && item.cardPlansBySize.medium && item.cardPlansBySize.long));
+  assert.ok(
+    types.every((item) =>
+      Object.values(item.cardPlansBySize).every((planItems) =>
+        planItems.every((planItem) => planItem.roleId && planItem.label && Array.isArray(planItem.preferredResources) && planItem.preferredResources.length)
+      )
+    )
+  );
   assert.ok(types.find((item) => item.id === "guided_practice").baseResourceTypes.includes("block_gap_fill"));
   assert.equal(getMicrosequenceCardCount("short"), 3);
   assert.equal(getMicrosequenceCardCount("medium"), 5);

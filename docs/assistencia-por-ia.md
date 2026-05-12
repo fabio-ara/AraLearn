@@ -163,6 +163,8 @@ A geração e a edição de cards usam uma estrutura dedicada em `src/generation
 
 Os tipos didáticos iniciais são `Assistido`, `Simples`, `Explicar uma ideia`, `Passo a passo`, `Prática guiada`, `Comparar`, `Revisão rápida`, `Erro comum`, `Regra/procedimento` e `Código/comando`. O tipo `Assistido` delega a escolha efetiva à etapa de planejamento.
 
+Cada tipo é um template interno com papéis de card por tamanho. Esses papéis têm `roleId`, rótulo humano e recursos preferenciais fechados. O modelo não define esses papéis nem escolhe recurso por posição; a aplicação usa o template para montar o `cardPlan` determinístico.
+
 Os tamanhos usados na geração são:
 
 - `short`: 3 cards;
