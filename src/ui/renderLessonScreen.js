@@ -1131,7 +1131,9 @@ function renderMicrosequenceWorkbenchScreen({
     ? assistPreview.cards
     : Array.isArray(visualizedVersion?.cards) ? visualizedVersion.cards : cards;
   const visualizedTitle = assistPreview?.title || visualizedVersion?.title || microsequence?.title || "";
-  const visualizedTags = Array.isArray(visualizedVersion?.tags) ? visualizedVersion.tags : microsequence?.tags || [];
+  const visualizedTags = Array.isArray(assistPreview?.tags)
+    ? assistPreview.tags
+    : Array.isArray(visualizedVersion?.tags) ? visualizedVersion.tags : microsequence?.tags || [];
   const visibleCards = hideCards ? [] : visualizedCards;
   const activeIndex = Number.isInteger(selection.cardIndex) ? selection.cardIndex : 0;
   const safeIndex = visibleCards.length ? Math.max(0, Math.min(activeIndex, Math.max(0, visibleCards.length - 1))) : 0;
@@ -1251,8 +1253,12 @@ function renderMicrosequenceWorkbenchScreen({
       '<p class="tiny muted">Prévia pendente</p>' +
       '<p class="muted assist-last-request">A proposta validada ainda não alterou a microssequência. Revise e aplique manualmente.</p>' +
       '<div class="generate-action-row assist-actions assist-actions-wide assist-preview-actions">' +
-      '<button class="icon-ghost" type="button" data-action="discard-assist-preview" title="Descartar prévia" aria-label="Descartar prévia">Descartar</button>' +
-      '<button class="open-main" type="button" data-action="apply-assist-preview" title="Aplicar prévia" aria-label="Aplicar prévia">Aplicar</button>' +
+      '<button class="icon-ghost tiny-icon generate-inline-icon" type="button" data-action="discard-assist-preview" title="Descartar prévia" aria-label="Descartar prévia">' +
+      renderUiIcon("excluded-state", "generate-submit-icon") +
+      "</button>" +
+      '<button class="open-main tiny-icon generate-inline-icon" type="button" data-action="apply-assist-preview" title="Aplicar prévia" aria-label="Aplicar prévia">' +
+      renderUiIcon("ready-state", "generate-submit-icon") +
+      "</button>" +
       "</div></section>"
     : "";
   const previewBody =

@@ -81,11 +81,13 @@ import {
   getFirstPath
 } from "./lessonEditorPaths.js";
 import {
+  readAssistPreviewStorage,
   readAssistConfigStorage,
   readCommentStorage,
   readHistoryStorage,
   readMicrosequenceVersionStorage,
   readStructureVersionStorage,
+  writeAssistPreviewStorage,
   writeAssistConfigStorage,
   writeCommentStorage,
   writeHistoryStorage,
@@ -1014,6 +1016,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
     assistConfig: initialAssistConfig,
     assistConfigDraft: { ...initialAssistConfig },
     microsequenceMode: "play",
+    assistPreviews: readAssistPreviewStorage(),
     cardHistory: readHistoryStorage(),
     microsequenceVersions: readMicrosequenceVersionStorage(),
     structureVersions: readStructureVersionStorage(),
@@ -1033,7 +1036,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
       activeWorkbenchPane: "preview",
       visualizedVersionId: "",
       editBaseVersionId: "",
-      pendingPreview: null,
       versionActionsOpen: false,
       promptText: "",
       didacticTypeId: "",
@@ -1717,6 +1719,10 @@ export function createLessonEditorApp({ root, storage, editor }) {
     writeStructureVersionStorage(state.structureVersions);
   }
 
+  function saveAssistPreviews() {
+    writeAssistPreviewStorage(state.assistPreviews);
+  }
+
   function seedAllStructureVersionsFromProject() {
     if (!STRUCTURE_VERSIONING_ACTIVE) {
       return;
@@ -1964,28 +1970,46 @@ export function createLessonEditorApp({ root, storage, editor }) {
     return getAssistCatalog();
   }
 
-  function clearAssistPreview() {
-    state.assistDraft.pendingPreview = null;
+  function buildAssistPreviewKey(reference = state.selection) {
+    return buildMicrosequenceVersionKey(reference);
   }
 
-  function getAssistPreview() {
-    const preview = state.assistDraft.pendingPreview;
-    if (!preview || typeof preview !== "object") {
+  function clearAssistPreview(reference = state.selection) {
+    const previewKey = buildAssistPreviewKey(reference);
+    if (!previewKey || !state.assistPreviews[previewKey]) {
+      return;
+    }
+    delete state.assistPreviews[previewKey];
+    saveAssistPreviews();
+  }
+
+  function getAssistPreview(reference = state.selection) {
+    const previewKey = buildAssistPreviewKey(reference);
+    if (!previewKey) {
       return null;
     }
-    const microsequenceKey = String(preview.microsequenceKey || "").trim();
-    if (!microsequenceKey || microsequenceKey !== state.selection.microsequenceKey) {
-      return null;
-    }
-    return preview;
+    return state.assistPreviews[previewKey] || null;
   }
 
   function stageAssistPreview({ microsequenceTitle, cards }) {
-    state.assistDraft.pendingPreview = {
-      microsequenceKey: state.selection.microsequenceKey,
+    const previewKey = buildAssistPreviewKey();
+    if (!previewKey) {
+      return;
+    }
+    const currentMicrosequence = findMicrosequence(
+      state.project,
+      state.selection.courseKey,
+      state.selection.moduleKey,
+      state.selection.lessonKey,
+      state.selection.microsequenceKey
+    );
+    state.assistPreviews[previewKey] = {
       title: String(microsequenceTitle || "").trim() || "Microssequência",
-      cards: structuredClone(Array.isArray(cards) ? cards : [])
+      tags: structuredClone(Array.isArray(currentMicrosequence?.tags) ? currentMicrosequence.tags : []),
+      cards: structuredClone(Array.isArray(cards) ? cards : []),
+      updatedAt: new Date().toISOString()
     };
+    saveAssistPreviews();
     state.assistDraft.activeWorkbenchPane = "preview";
     state.selection.cardIndex = 0;
     state.selection.cardKey = null;
@@ -2149,7 +2173,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
     state.assistDraft.activeWorkbenchPane = assistOpenState.activeWorkbenchPane;
     state.assistDraft.visualizedVersionId = "";
     state.assistDraft.editBaseVersionId = "";
-    clearAssistPreview();
     state.assistDraft.attachments = [];
     state.assistDraft.didacticTypeId = "";
     state.microsequenceMode = "play";
@@ -3645,7 +3668,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
       lessonKey: state.selection.lessonKey,
       microsequenceKey: state.selection.microsequenceKey,
       title: preview.title,
-      tags: structuredClone(currentMicrosequence?.tags || []),
+      tags: structuredClone(Array.isArray(preview.tags) ? preview.tags : currentMicrosequence?.tags || []),
       cards: structuredClone(preview.cards || [])
     });
 
@@ -5584,6 +5607,19 @@ export function createLessonEditorApp({ root, storage, editor }) {
     if (!microsequenceKey) return;
 
     try {
+      const assistPreview = getAssistPreview();
+      if (assistPreview) {
+        const previewKey = buildAssistPreviewKey();
+        state.assistPreviews[previewKey] = {
+          ...assistPreview,
+          title: String(payload.title || "").trim() || assistPreview.title || "Microssequência",
+          tags: parseTagsText(payload.tags),
+          updatedAt: new Date().toISOString()
+        };
+        saveAssistPreviews();
+        return;
+      }
+
       ensureEditableMicrosequenceBranch({
         operationType: "edit",
         label: "Edição local"

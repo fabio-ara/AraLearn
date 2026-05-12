@@ -2,8 +2,10 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  readAssistPreviewStorage,
   readMicrosequenceVersionStorage,
   readStructureVersionStorage,
+  writeAssistPreviewStorage,
   writeMicrosequenceVersionStorage,
   writeStructureVersionStorage
 } from "../src/ui/lessonEditorStorage.js";
@@ -76,4 +78,35 @@ test("lessonEditorStorage normaliza versões estruturais legadas na leitura", ()
   assert.equal(entry.activeVersionId, "v1");
   assert.equal(entry.versions[0].snapshot.title, "Módulo A");
   assert.equal(entry.versions[0].operationType, "migration");
+});
+
+test("lessonEditorStorage lê e grava prévias privadas da assistência", () => {
+  const storage = createMemoryStorage();
+
+  writeAssistPreviewStorage(
+    {
+      "course::module::lesson::micro": {
+        title: "Prévia recuperável",
+        tags: ["Git"],
+        cards: [
+          { title: "Card 1", say: "Texto 1" },
+          { title: "Card 2", say: "Texto 2" }
+        ],
+        updatedAt: "2026-05-12T12:00:00.000Z"
+      },
+      vazia: {
+        title: "",
+        tags: [],
+        cards: []
+      }
+    },
+    storage
+  );
+
+  const loaded = readAssistPreviewStorage(storage);
+
+  assert.deepEqual(Object.keys(loaded), ["course::module::lesson::micro"]);
+  assert.equal(loaded["course::module::lesson::micro"].title, "Prévia recuperável");
+  assert.deepEqual(loaded["course::module::lesson::micro"].tags, ["Git"]);
+  assert.equal(loaded["course::module::lesson::micro"].cards.length, 2);
 });
