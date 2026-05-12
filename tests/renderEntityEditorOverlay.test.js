@@ -31,6 +31,8 @@ test("renderiza helper e campo secundário na edição de fonte-guia", () => {
 
   assert.match(html, /class="editor-helper-text"/);
   assert.match(html, /Defina meta, notação e resultado esperado\./);
+  assert.match(html, /class="field-label-content"/);
+  assert.match(html, /class="field-label-text">Meta da lição</);
   assert.match(html, /class="field is-secondary"/);
   assert.match(html, /Campo auxiliar para autoria humana/);
 });

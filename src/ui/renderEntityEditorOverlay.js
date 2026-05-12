@@ -17,12 +17,13 @@ export function renderEntityEditorOverlay({ title, helperText = "", fields, acti
       const labelText = escapeHtml(field.label);
       const hintText = field.hint ? escapeHtml(field.hint) : "";
       const labelContent = field.iconName
-        ? '<span class="field-label-icon" title="' +
-          labelText +
-          '" aria-label="' +
-          labelText +
-          '">' +
+        ? '<span class="field-label-content">' +
+          '<span class="field-label-icon" aria-hidden="true">' +
           renderUiIcon(field.iconName, "field-label-svg-icon") +
+          "</span>" +
+          '<span class="field-label-text">' +
+          labelText +
+          "</span>" +
           "</span>"
         : labelText;
       if (field.type === "textarea") {

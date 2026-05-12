@@ -4151,8 +4151,17 @@ button {
 }
 
 .field label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   color: var(--muted);
   font-size: var(--type-xs);
+}
+
+.field-label-content {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .field-label-icon {
@@ -4161,11 +4170,16 @@ button {
   justify-content: center;
   width: 18px;
   height: 18px;
+  flex: 0 0 auto;
 }
 
 .field-label-svg-icon {
   width: 16px;
   height: 16px;
+}
+
+.field-label-text {
+  line-height: 1.2;
 }
 
 .field input,
