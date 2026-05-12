@@ -111,7 +111,6 @@ export function buildSourceGuideEditorFields(sourceGuideStructured = {}, { level
     placeholder: field.placeholder,
     type: "tokenlist",
     value: normalizeItemList(normalized[field.name]),
-    hint: "Adicione itens curtos. Pressione Enter para criar uma tag e clique no × para remover.",
     maxLength: level === SOURCE_GUIDE_LEVELS.COURSE ? 180 : level === SOURCE_GUIDE_LEVELS.MODULE ? 160 : 140
   }));
 }
