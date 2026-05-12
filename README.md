@@ -286,6 +286,8 @@ Na primeira etapa, a inteligência artificial pode escolher entre opções fecha
 - tamanho;
 - recursos selecionados, sempre dentro dos recursos permitidos pela lição.
 
+Essas opções chegam ao Gemini como listas fechadas do próprio AraLearn. O modelo escolhe dentro delas; depois disso, o AraLearn monta os JSONs efetivos da operação e acrescenta `cardPlan`, contexto resolvido, schemas e validações locais.
+
 Na segunda etapa, a inteligência artificial recebe apenas o plano aprovado e preenche os cards. Ela não deve alterar quantidade, ordem, papéis ou recursos dos cards.
 
 Essa arquitetura torna o uso de modelos baratos mais realista, reduz custo, melhora previsibilidade e preserva controle humano.

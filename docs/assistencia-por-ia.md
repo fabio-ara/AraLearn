@@ -176,6 +176,8 @@ Cada tipo é um template interno com papéis de card por tamanho. Esses papéis 
 
 No painel da microssequência, o usuário pode deixar o tipo como `Automático` ou escolher um desses tipos fechados para a geração ou edição de cards daquele pedido. A escolha é local ao painel aberto: ela não altera curso, módulo, lição nem microssequências vizinhas. Quando um tipo é escolhido, o contrato de planejamento envia `userFixedTypeId` e a aplicação valida que o plano devolvido preserve exatamente esse tipo; em `Automático`, a etapa curta de planejamento escolhe entre os tipos disponíveis.
 
+Na prática, o fluxo bottom-up fica dividido assim: o Gemini consome a governança já produzida no top-down, recebe listas fechadas do AraLearn como `availableTypes`, `availableSizes` e `availableResources`, escolhe dentro dessas listas e devolve apenas a escolha estruturada. Depois dessa escolha, o AraLearn monta os JSONs efetivos de planejamento e geração, acrescenta `cardPlan`, schemas, contexto resolvido e validações determinísticas antes de qualquer salvamento.
+
 Os tamanhos usados na geração são:
 
 - `short`: 3 cards;

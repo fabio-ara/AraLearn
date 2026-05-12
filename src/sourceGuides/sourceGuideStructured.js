@@ -218,7 +218,7 @@ export function buildSourceGuideTextForModel(structured, fallbackText = "", { le
 }
 
 export function resolveSourceGuidePayload(payload = {}, previousText = "", { level = SOURCE_GUIDE_LEVELS.LESSON } = {}) {
-  const structured = normalizeSourceGuideStructured(payload, { level });
+  const structured = normalizeSourceGuideStructured(payload, { fallbackText: previousText, level });
   const sourceGuide = buildSourceGuideText(structured, "", { level });
 
   return {
