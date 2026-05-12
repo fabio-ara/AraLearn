@@ -5,6 +5,11 @@ import { getModelCapabilities } from "../providers/modelCapabilities.js";
 import { resolveReferencedSources } from "../sources/resolveReferencedSources.js";
 import { normalizeSelectedLessonTopicRefs } from "../tags/selectedLessonTopicRefs.js";
 import { buildDidacticGuardrails } from "../didactics/didacticGovernance.js";
+import {
+  buildSourceGuideTextForModel,
+  sanitizeSourceGuideStructuredForModel,
+  SOURCE_GUIDE_LEVELS
+} from "../../sourceGuides/sourceGuideStructured.js";
 
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -22,9 +27,18 @@ function sourceGuide(value) {
   return text(value?.sourceGuide);
 }
 
-function sourceGuideStructured(value) {
-  const structured = value?.sourceGuideStructured;
-  return structured && typeof structured === "object" && !Array.isArray(structured) ? structured : undefined;
+function sourceGuideForModel(value, level) {
+  const structured = sanitizeSourceGuideStructuredForModel(value?.sourceGuideStructured, { level });
+  if (Object.keys(structured).length) {
+    return buildSourceGuideTextForModel(structured, "", { level });
+  }
+  const fallback = sourceGuide(value);
+  return fallback || "";
+}
+
+function sourceGuideStructuredForModel(value, level) {
+  const structured = sanitizeSourceGuideStructuredForModel(value?.sourceGuideStructured, { level });
+  return Object.keys(structured).length ? structured : undefined;
 }
 
 function summarizeMicrosequence(value) {
@@ -94,39 +108,63 @@ export function buildMicrosequencePlanningContract({
         {
           level: "course",
           title: text(selectedCourse?.title) || key(selectedCourse),
-          ...(sourceGuide(selectedCourse) ? { sourceGuide: sourceGuide(selectedCourse) } : {}),
-          ...(sourceGuideStructured(selectedCourse) ? { sourceGuideStructured: sourceGuideStructured(selectedCourse) } : {})
+          ...(sourceGuideForModel(selectedCourse, SOURCE_GUIDE_LEVELS.COURSE)
+            ? { sourceGuide: sourceGuideForModel(selectedCourse, SOURCE_GUIDE_LEVELS.COURSE) }
+            : {}),
+          ...(sourceGuideStructuredForModel(selectedCourse, SOURCE_GUIDE_LEVELS.COURSE)
+            ? { sourceGuideStructured: sourceGuideStructuredForModel(selectedCourse, SOURCE_GUIDE_LEVELS.COURSE) }
+            : {})
         },
         {
           level: "module",
           title: text(selectedModule?.title) || key(selectedModule),
-          ...(sourceGuide(selectedModule) ? { sourceGuide: sourceGuide(selectedModule) } : {}),
-          ...(sourceGuideStructured(selectedModule) ? { sourceGuideStructured: sourceGuideStructured(selectedModule) } : {})
+          ...(sourceGuideForModel(selectedModule, SOURCE_GUIDE_LEVELS.MODULE)
+            ? { sourceGuide: sourceGuideForModel(selectedModule, SOURCE_GUIDE_LEVELS.MODULE) }
+            : {}),
+          ...(sourceGuideStructuredForModel(selectedModule, SOURCE_GUIDE_LEVELS.MODULE)
+            ? { sourceGuideStructured: sourceGuideStructuredForModel(selectedModule, SOURCE_GUIDE_LEVELS.MODULE) }
+            : {})
         },
         {
           level: "lesson",
           title: text(selectedLesson?.title) || key(selectedLesson),
-          ...(sourceGuide(selectedLesson) ? { sourceGuide: sourceGuide(selectedLesson) } : {}),
-          ...(sourceGuideStructured(selectedLesson) ? { sourceGuideStructured: sourceGuideStructured(selectedLesson) } : {})
+          ...(sourceGuideForModel(selectedLesson, SOURCE_GUIDE_LEVELS.LESSON)
+            ? { sourceGuide: sourceGuideForModel(selectedLesson, SOURCE_GUIDE_LEVELS.LESSON) }
+            : {}),
+          ...(sourceGuideStructuredForModel(selectedLesson, SOURCE_GUIDE_LEVELS.LESSON)
+            ? { sourceGuideStructured: sourceGuideStructuredForModel(selectedLesson, SOURCE_GUIDE_LEVELS.LESSON) }
+            : {})
         }
       ],
       course: {
         title: text(selectedCourse?.title) || key(selectedCourse),
         objective: objective(selectedCourse),
-        ...(sourceGuide(selectedCourse) ? { sourceGuide: sourceGuide(selectedCourse) } : {}),
-        ...(sourceGuideStructured(selectedCourse) ? { sourceGuideStructured: sourceGuideStructured(selectedCourse) } : {})
+        ...(sourceGuideForModel(selectedCourse, SOURCE_GUIDE_LEVELS.COURSE)
+          ? { sourceGuide: sourceGuideForModel(selectedCourse, SOURCE_GUIDE_LEVELS.COURSE) }
+          : {}),
+        ...(sourceGuideStructuredForModel(selectedCourse, SOURCE_GUIDE_LEVELS.COURSE)
+          ? { sourceGuideStructured: sourceGuideStructuredForModel(selectedCourse, SOURCE_GUIDE_LEVELS.COURSE) }
+          : {})
       },
       module: {
         title: text(selectedModule?.title) || key(selectedModule),
         objective: objective(selectedModule),
-        ...(sourceGuide(selectedModule) ? { sourceGuide: sourceGuide(selectedModule) } : {}),
-        ...(sourceGuideStructured(selectedModule) ? { sourceGuideStructured: sourceGuideStructured(selectedModule) } : {})
+        ...(sourceGuideForModel(selectedModule, SOURCE_GUIDE_LEVELS.MODULE)
+          ? { sourceGuide: sourceGuideForModel(selectedModule, SOURCE_GUIDE_LEVELS.MODULE) }
+          : {}),
+        ...(sourceGuideStructuredForModel(selectedModule, SOURCE_GUIDE_LEVELS.MODULE)
+          ? { sourceGuideStructured: sourceGuideStructuredForModel(selectedModule, SOURCE_GUIDE_LEVELS.MODULE) }
+          : {})
       },
       lesson: {
         title: text(selectedLesson?.title) || key(selectedLesson),
         objective: objective(selectedLesson),
-        ...(sourceGuide(selectedLesson) ? { sourceGuide: sourceGuide(selectedLesson) } : {}),
-        ...(sourceGuideStructured(selectedLesson) ? { sourceGuideStructured: sourceGuideStructured(selectedLesson) } : {}),
+        ...(sourceGuideForModel(selectedLesson, SOURCE_GUIDE_LEVELS.LESSON)
+          ? { sourceGuide: sourceGuideForModel(selectedLesson, SOURCE_GUIDE_LEVELS.LESSON) }
+          : {}),
+        ...(sourceGuideStructuredForModel(selectedLesson, SOURCE_GUIDE_LEVELS.LESSON)
+          ? { sourceGuideStructured: sourceGuideStructuredForModel(selectedLesson, SOURCE_GUIDE_LEVELS.LESSON) }
+          : {}),
         microsequenceLine: Array.isArray(selectedLesson?.microsequences)
           ? selectedLesson.microsequences.map(summarizeMicrosequence)
           : []

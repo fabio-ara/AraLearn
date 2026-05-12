@@ -321,11 +321,15 @@ test("gera estrutura top-down com description breve e sourceGuide detalhada", as
     assert.match(prompt, /Em curso, use apenas: audience, globalScope, globalOutOfScope, sharedNotation/);
     assert.match(prompt, /Não suba preferências finas de explicação ou prática para curso e módulo/);
     assert.equal(result.course.description, "Curso introdutório de lógica proposicional.");
-    assert.equal(result.course.sourceGuide.includes("Objetivo: ensinar lógica proposicional do zero."), true);
+    assert.equal(result.course.sourceGuide.includes("Objetivo: ensinar lógica proposicional do zero."), false);
+    assert.match(result.course.sourceGuide, /Público e ponto de entrada:/);
+    assert.match(result.course.sourceGuide, /Escopo do curso:/);
     assert.equal(result.course.sourceGuideStructured.globalScope, "Aprender proposições, conectivos e equivalências elementares.");
-    assert.equal(result.course.modules[0].sourceGuide, "Apresentar proposições, valores lógicos e conectivos básicos.");
+    assert.match(result.course.modules[0].sourceGuide, /Escopo do módulo:/);
+    assert.match(result.course.modules[0].sourceGuide, /Progressão das lições:/);
     assert.equal(result.course.modules[0].sourceGuideStructured.lessonProgression, "Ir da linguagem comum para a simbólica.");
-    assert.equal(result.course.modules[0].lessons[0].sourceGuide, "Mostrar exemplos do cotidiano e formalização simbólica.");
+    assert.match(result.course.modules[0].lessons[0].sourceGuide, /Meta da lição:/);
+    assert.match(result.course.modules[0].lessons[0].sourceGuide, /Ao final:/);
     assert.equal(result.course.modules[0].lessons[0].sourceGuideStructured.masteryGoal, "Traduzir frases simples para notação lógica.");
   } finally {
     globalThis.fetch = originalFetch;

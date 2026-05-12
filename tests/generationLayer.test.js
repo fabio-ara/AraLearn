@@ -163,7 +163,7 @@ test("planejamento recebe selectedLessonTopicRefs, catálogo leve e valida plano
   assert.equal(contract.selectedLessonTopicRefs[0].refKey, "micro-git");
   assert.equal(contract.selectedLessonTopicRefs[0].source, "microsequence");
   assert.deepEqual(contract.context.path.map((item) => item.level), ["course", "module", "lesson", "microsequence"]);
-  assert.equal(contract.context.sourceGuideLineage[0].sourceGuide, "Guia do curso");
+  assert.equal(contract.context.sourceGuideLineage[0].sourceGuide, "Escopo do curso: Escopo do curso.");
   assert.equal(contract.context.lesson.microsequenceLine[0].title, "Base");
   assert.ok(contract.availableResources.some((item) => item.id === "paragraph" && !item.schema));
   assert.equal(contract.didacticGuardrails.generationFlow[0], "microteoria");
@@ -182,6 +182,52 @@ test("planejamento recebe selectedLessonTopicRefs, catálogo leve e valida plano
   assert.equal(validation.plan.sizeId, "short");
   assert.equal(validation.plan.cardPlan.length, 3);
   assert.deepEqual(validation.plan.cardPlan.map((item) => item.resourceType), ["paragraph", "block_gap_fill", "multiple_choice"]);
+});
+
+test("planejamento e edição enviam fonte-guia compacta ao modelo", () => {
+  const contract = samplePlanningContract({
+    selectedCourse: {
+      key: "course",
+      title: "Curso",
+      description: "Objetivo do curso",
+      sourceGuide: "Resumo legado do curso",
+      sourceGuideStructured: { globalScope: "Escopo do curso.", freeNotes: "Não enviar ao modelo." }
+    },
+    selectedModule: {
+      key: "module",
+      title: "Módulo",
+      description: "Objetivo do módulo",
+      sourceGuide: "Resumo legado do módulo",
+      sourceGuideStructured: { moduleScope: "Escopo do módulo.", freeNotes: "Não enviar ao modelo." }
+    },
+    selectedLesson: {
+      key: "lesson",
+      title: "Lição",
+      description: "Objetivo da lição",
+      sourceGuide: "Resumo legado da lição",
+      sourceGuideStructured: { lessonGoal: "Escopo da lição.", freeNotes: "Não enviar ao modelo." },
+      lessonTopics: [{ refKey: "micro-git", label: "Git", source: "microsequence" }],
+      microsequences: [{ key: "micro", title: "Microssequência", description: "Alvo", tags: ["add"], status: "draft" }]
+    }
+  });
+  const editContract = buildMicrosequenceEditPlanningContract({
+    selectedCourse: contract.context.course,
+    selectedModule: contract.context.module,
+    selectedLesson: contract.context.lesson,
+    selectedMicrosequence: { key: "micro", title: "Microssequência", description: "Alvo" },
+    selectedMicrosequenceVersion: { id: "v2", label: "v2" },
+    currentCards: [],
+    previousVersions: [],
+    userEditPrompt: "Ajuste a linguagem",
+    selectedModel: "gemini-2.5-flash"
+  });
+
+  assert.deepEqual(contract.context.course.sourceGuideStructured, { globalScope: "Escopo do curso." });
+  assert.equal(contract.context.course.sourceGuide.includes("Observações livres"), false);
+  assert.deepEqual(contract.context.module.sourceGuideStructured, { moduleScope: "Escopo do módulo." });
+  assert.deepEqual(contract.context.lesson.sourceGuideStructured, { lessonGoal: "Escopo da lição." });
+  assert.equal(editContract.context.lesson.sourceGuide.includes("Observações livres"), false);
+  assert.deepEqual(editContract.context.lesson.sourceGuideStructured, { lessonGoal: "Escopo da lição." });
 });
 
 test("planejamento com tipo fixado envia apenas o tipo efetivo", () => {
@@ -257,7 +303,7 @@ test("contrato e prompt de geração usam contexto, tags, tamanho e schemas efet
 
   assert.equal(generationContract.context.course.title, "Curso");
   assert.equal(generationContract.context.path[3].title, "Microssequência");
-  assert.equal(generationContract.context.sourceGuideLineage[2].sourceGuide, "Guia da lição");
+  assert.equal(generationContract.context.sourceGuideLineage[2].sourceGuide, "Meta da lição: Escopo da lição.");
   assert.equal(generationContract.selectedLessonTopicRefs[0].label, "Git");
   assert.equal(generationContract.request.sizeId, "short");
   assert.equal(generationContract.request.cardCount, 3);
@@ -830,7 +876,7 @@ test("planejamento e contrato de edição preservam versão, selectedLessonTopic
 
   assert.equal(editPlanningContract.selectedLessonTopicRefs[0].label, "Git");
   assert.deepEqual(editPlanningContract.context.path.map((item) => item.level), ["course", "module", "lesson", "microsequence"]);
-  assert.equal(editPlanningContract.context.sourceGuideLineage[2].sourceGuide, "Guia da lição");
+  assert.equal(editPlanningContract.context.sourceGuideLineage[2].sourceGuide, "Meta da lição: Escopo da lição.");
   assert.equal(editPlanningContract.context.lesson.microsequenceLine[0].title, "Micro");
   assert.equal(editContract.selectedLessonTopicRefs[0].label, "Git");
   assert.equal(editPlanningContract.previousVersionsSummary[0].versionId, "v0");

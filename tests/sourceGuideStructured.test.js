@@ -4,7 +4,10 @@ import assert from "node:assert/strict";
 import {
   buildSourceGuideEditorFields,
   buildSourceGuideText,
+  buildSourceGuideTextForModel,
+  getSourceGuideSchemaPropertiesForModel,
   resolveSourceGuidePayload,
+  sanitizeSourceGuideStructuredForModel,
   SOURCE_GUIDE_LEVELS
 } from "../src/sourceGuides/sourceGuideStructured.js";
 
@@ -48,4 +51,25 @@ test("resolve payload estruturado e recompila texto legível", () => {
   assert.match(payload.sourceGuide, /Meta da lição: Ler e executar um comando simples\./);
   assert.match(payload.sourceGuide, /Sinais e notação: Destacar `ls` e `cd` inline\./);
   assert.match(payload.sourceGuide, /Ao final: Executar sozinho um caso básico\./);
+});
+
+test("compacta fonte-guia para contexto de modelo sem freeNotes", () => {
+  const structured = sanitizeSourceGuideStructuredForModel(
+    {
+      lessonGoal: "Ler e executar um comando simples.",
+      masteryGoal: "Executar sozinho um caso básico.",
+      freeNotes: "Anotação legada que não deve ir para o modelo."
+    },
+    { level: SOURCE_GUIDE_LEVELS.LESSON }
+  );
+
+  assert.deepEqual(structured, {
+    lessonGoal: "Ler e executar um comando simples.",
+    masteryGoal: "Executar sozinho um caso básico."
+  });
+  assert.equal(
+    buildSourceGuideTextForModel(structured, "", { level: SOURCE_GUIDE_LEVELS.LESSON }),
+    "Meta da lição: Ler e executar um comando simples.\nAo final: Executar sozinho um caso básico."
+  );
+  assert.equal(getSourceGuideSchemaPropertiesForModel(SOURCE_GUIDE_LEVELS.LESSON).freeNotes, undefined);
 });

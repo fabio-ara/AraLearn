@@ -140,6 +140,15 @@ function cloneStructured(value = {}, level = SOURCE_GUIDE_LEVELS.LESSON) {
   );
 }
 
+function cloneStructuredForModel(value = {}, level = SOURCE_GUIDE_LEVELS.LESSON) {
+  return Object.fromEntries(
+    getFieldDefinitions(level)
+      .filter((field) => field.name !== "freeNotes")
+      .map((field) => [field.name, normalizeText(value?.[field.name])])
+      .filter(([, item]) => item)
+  );
+}
+
 function migrateLegacyStructured(value, level) {
   const normalized = {};
   const allowed = getAllowedFieldNames(level);
@@ -191,6 +200,23 @@ export function buildSourceGuideText(structured, fallbackText = "", { level = SO
   return entries.join("\n");
 }
 
+export function buildSourceGuideTextForModel(structured, fallbackText = "", { level = SOURCE_GUIDE_LEVELS.LESSON } = {}) {
+  const normalized = sanitizeSourceGuideStructuredForModel(structured, { fallbackText, level });
+  const entries = getFieldDefinitions(level)
+    .filter((field) => field.name !== "freeNotes")
+    .map((field) => {
+      const value = normalizeText(normalized[field.name]);
+      return value ? `${field.label}: ${value}` : "";
+    })
+    .filter(Boolean);
+
+  if (entries.length) {
+    return entries.join("\n");
+  }
+
+  return normalizeText(fallbackText);
+}
+
 export function resolveSourceGuidePayload(payload = {}, previousText = "", { level = SOURCE_GUIDE_LEVELS.LESSON } = {}) {
   const structured = normalizeSourceGuideStructured(payload, { level });
   const sourceGuide = buildSourceGuideText(structured, "", { level });
@@ -199,6 +225,12 @@ export function resolveSourceGuidePayload(payload = {}, previousText = "", { lev
     sourceGuide,
     sourceGuideStructured: cloneStructured(structured, level)
   };
+}
+
+export function sanitizeSourceGuideStructuredForModel(value, { fallbackText = "", level = SOURCE_GUIDE_LEVELS.LESSON } = {}) {
+  const normalized = normalizeSourceGuideStructured(value, { fallbackText, level });
+  const compact = cloneStructuredForModel(normalized, level);
+  return Object.keys(compact).length ? compact : {};
 }
 
 export function buildSourceGuideEditorFields(sourceGuide = "", sourceGuideStructured = {}, { level = SOURCE_GUIDE_LEVELS.LESSON } = {}) {
@@ -221,4 +253,12 @@ export function getSourceGuideSchemaRequired(level = SOURCE_GUIDE_LEVELS.LESSON)
   return getFieldDefinitions(level)
     .filter((field) => field.name !== "freeNotes")
     .map((field) => field.name);
+}
+
+export function getSourceGuideSchemaPropertiesForModel(level = SOURCE_GUIDE_LEVELS.LESSON) {
+  return Object.fromEntries(
+    getFieldDefinitions(level)
+      .filter((field) => field.name !== "freeNotes")
+      .map((field) => [field.name, { type: "string" }])
+  );
 }

@@ -11,10 +11,10 @@ import { adaptResourceCardsToPublicCards } from "../generation/resources/adaptRe
 import { canResumeGeneration, createGenerationRunState, updateGenerationRunState } from "../generation/runs/generationRunState.js";
 import { validateOrRepairGeneratedCards } from "../generation/validation/validateOrRepairGeneratedCards.js";
 import {
-  buildSourceGuideText,
-  getSourceGuideSchemaProperties,
+  buildSourceGuideTextForModel,
+  getSourceGuideSchemaPropertiesForModel,
   getSourceGuideSchemaRequired,
-  normalizeSourceGuideStructured,
+  sanitizeSourceGuideStructuredForModel,
   SOURCE_GUIDE_LEVELS
 } from "../sourceGuides/sourceGuideStructured.js";
 
@@ -474,7 +474,7 @@ function getStructureSchema() {
           sourceGuide: { type: "string" },
           sourceGuideStructured: {
             type: "object",
-            properties: getSourceGuideSchemaProperties(SOURCE_GUIDE_LEVELS.COURSE),
+            properties: getSourceGuideSchemaPropertiesForModel(SOURCE_GUIDE_LEVELS.COURSE),
             required: getSourceGuideSchemaRequired(SOURCE_GUIDE_LEVELS.COURSE),
             additionalProperties: false
           },
@@ -490,7 +490,7 @@ function getStructureSchema() {
                 sourceGuide: { type: "string" },
                 sourceGuideStructured: {
                   type: "object",
-                  properties: getSourceGuideSchemaProperties(SOURCE_GUIDE_LEVELS.MODULE),
+                  properties: getSourceGuideSchemaPropertiesForModel(SOURCE_GUIDE_LEVELS.MODULE),
                   required: getSourceGuideSchemaRequired(SOURCE_GUIDE_LEVELS.MODULE),
                   additionalProperties: false
                 },
@@ -506,7 +506,7 @@ function getStructureSchema() {
                       sourceGuide: { type: "string" },
                       sourceGuideStructured: {
                         type: "object",
-                        properties: getSourceGuideSchemaProperties(SOURCE_GUIDE_LEVELS.LESSON),
+                        properties: getSourceGuideSchemaPropertiesForModel(SOURCE_GUIDE_LEVELS.LESSON),
                         required: getSourceGuideSchemaRequired(SOURCE_GUIDE_LEVELS.LESSON),
                         additionalProperties: false
                       }
@@ -1646,24 +1646,39 @@ function normalizeStructureResult(value) {
   const course = value?.course && typeof value.course === "object" ? value.course : null;
   const courseTitle = normalizeText(course?.title);
   const courseDescription = normalizeText(course?.description);
-  const courseSourceGuideStructured = normalizeSourceGuideStructured(course?.sourceGuideStructured, { level: SOURCE_GUIDE_LEVELS.COURSE });
+  const courseSourceGuideStructured = sanitizeSourceGuideStructuredForModel(course?.sourceGuideStructured, {
+    fallbackText: course?.sourceGuide,
+    level: SOURCE_GUIDE_LEVELS.COURSE
+  });
   const courseSourceGuide =
-    normalizeText(course?.sourceGuide) || buildSourceGuideText(courseSourceGuideStructured, "", { level: SOURCE_GUIDE_LEVELS.COURSE });
+    buildSourceGuideTextForModel(courseSourceGuideStructured, normalizeText(course?.sourceGuide), { level: SOURCE_GUIDE_LEVELS.COURSE });
 
   const modules = Array.isArray(course?.modules)
     ? course.modules
         .map((moduleValue) => {
           const moduleTitle = normalizeText(moduleValue?.title);
           const moduleDescription = normalizeText(moduleValue?.description);
-          const moduleSourceGuideStructured = normalizeSourceGuideStructured(moduleValue?.sourceGuideStructured, { level: SOURCE_GUIDE_LEVELS.MODULE });
-          const moduleSourceGuide =
-            normalizeText(moduleValue?.sourceGuide) || buildSourceGuideText(moduleSourceGuideStructured, "", { level: SOURCE_GUIDE_LEVELS.MODULE });
+          const moduleSourceGuideStructured = sanitizeSourceGuideStructuredForModel(moduleValue?.sourceGuideStructured, {
+            fallbackText: moduleValue?.sourceGuide,
+            level: SOURCE_GUIDE_LEVELS.MODULE
+          });
+          const moduleSourceGuide = buildSourceGuideTextForModel(
+            moduleSourceGuideStructured,
+            normalizeText(moduleValue?.sourceGuide),
+            { level: SOURCE_GUIDE_LEVELS.MODULE }
+          );
           const lessons = Array.isArray(moduleValue?.lessons)
             ? moduleValue.lessons
                 .map((lesson) => {
-                  const lessonSourceGuideStructured = normalizeSourceGuideStructured(lesson?.sourceGuideStructured, { level: SOURCE_GUIDE_LEVELS.LESSON });
-                  const lessonSourceGuide =
-                    normalizeText(lesson?.sourceGuide) || buildSourceGuideText(lessonSourceGuideStructured, "", { level: SOURCE_GUIDE_LEVELS.LESSON });
+                  const lessonSourceGuideStructured = sanitizeSourceGuideStructuredForModel(lesson?.sourceGuideStructured, {
+                    fallbackText: lesson?.sourceGuide,
+                    level: SOURCE_GUIDE_LEVELS.LESSON
+                  });
+                  const lessonSourceGuide = buildSourceGuideTextForModel(
+                    lessonSourceGuideStructured,
+                    normalizeText(lesson?.sourceGuide),
+                    { level: SOURCE_GUIDE_LEVELS.LESSON }
+                  );
                   return {
                     title: normalizeText(lesson?.title),
                     description: normalizeText(lesson?.description),
