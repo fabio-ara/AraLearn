@@ -7,9 +7,11 @@ import { renderEntityEditorOverlay } from "./renderEntityEditorOverlay.js";
 import { renderActionMenuOverlay } from "./renderActionMenuOverlay.js";
 import { renderAssistConfigOverlay } from "./renderAssistConfigOverlay.js";
 import { renderCodexTermuxSetupOverlay } from "./renderCodexTermuxSetupOverlay.js";
+import { renderExternalImportOverlay } from "./renderExternalImportOverlay.js";
 import { renderUiIcon } from "./renderUiIcons.js";
 import { captureRenderState, restoreRenderState } from "./renderState.js";
 import { buildCodexTermuxHealthCommand, buildCodexTermuxSetupScript } from "./codexTermuxSetupScript.js";
+import { handleExternalJsonImportText } from "./externalJsonImport.js";
 import {
   buildSourceGuideEditorFields,
   resolveSourceGuidePayload,
@@ -1019,6 +1021,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
       error: "",
       data: null
     },
+    pendingExternalImport: null,
     microsequenceMode: "play",
     cardHistory: readHistoryStorage(),
     microsequenceVersions: readMicrosequenceVersionStorage(),
@@ -3667,6 +3670,92 @@ export function createLessonEditorApp({ root, storage, editor }) {
     }
   }
 
+  function clearPendingExternalImport({ preserveState = true } = {}) {
+    state.pendingExternalImport = null;
+    render({ preserveState });
+  }
+
+  function applyStorageImport(rawJson) {
+    const imported = storage.importJson(rawJson);
+    setProject(imported.project);
+    selectFirstPath(imported.project);
+    state.view = "courses";
+    state.continuePopup = null;
+    state.activeFlowchartPrompt = null;
+    state.activeTextGapPrompt = null;
+    notifyUser("Backup restaurado.");
+  }
+
+  function applyJsonImportFromParsed(parsed, rawJson, { reviewed = false } = {}) {
+    const format = detectJsonExchangeFormat(parsed);
+
+    if (format === "contract") {
+      const nextProject = structuralEditor.importCourses({ document: parsed });
+      selectImportedCourse(nextProject);
+      notifyUser("Curso importado.");
+      return;
+    }
+
+    if (!reviewed && typeof globalThis.confirm === "function") {
+      const accepted = globalThis.confirm("Backup completo detectado. Restaurar projeto e progresso atuais?");
+      if (!accepted) {
+        return;
+      }
+    }
+
+    applyStorageImport(rawJson);
+  }
+
+  function receiveExternalJsonImport(rawText, { sourceName = "Compartilhamento Android" } = {}) {
+    try {
+      const prepared = handleExternalJsonImportText(rawText, { sourceName });
+      state.pendingExternalImport = {
+        rawText: prepared.rawText,
+        parsed: prepared.parsed,
+        detectedFormat: prepared.detectedFormat,
+        sourceName: prepared.sourceName,
+        error: ""
+      };
+    } catch (error) {
+      state.pendingExternalImport = {
+        rawText: typeof rawText === "string" ? rawText : "",
+        parsed: null,
+        detectedFormat: "",
+        sourceName: String(sourceName || "Compartilhamento Android").trim() || "Compartilhamento Android",
+        error: error instanceof Error ? error.message : "Falha ao receber o conteúdo compartilhado."
+      };
+    }
+
+    state.assistConfigOpen = false;
+    state.codexTermuxSetupOpen = false;
+    state.generationPanelOpen = false;
+    state.versionHistoryOpen = false;
+    state.versionCompareOpen = false;
+    state.cardCommentOpen = false;
+    state.entityEditor = null;
+    render({ preserveState: true });
+    return true;
+  }
+
+  function confirmPendingExternalImport() {
+    const pendingImport = state.pendingExternalImport;
+    if (!pendingImport || pendingImport.error) {
+      return;
+    }
+
+    try {
+      applyJsonImportFromParsed(pendingImport.parsed, pendingImport.rawText, { reviewed: true });
+      state.pendingExternalImport = null;
+      render({ preserveState: false });
+    } catch (error) {
+      state.pendingExternalImport = {
+        ...pendingImport,
+        error: error instanceof Error ? error.message : "Falha ao importar o conteúdo recebido."
+      };
+      render({ preserveState: true });
+    }
+  }
+
   async function importJsonFromFile() {
     const rawJson = await pickJsonFile();
     if (!rawJson) {
@@ -3679,30 +3768,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
     } catch {
       fail("JSON inválido.");
     }
-    const format = detectJsonExchangeFormat(parsed);
-
-    if (format === "contract") {
-      const nextProject = structuralEditor.importCourses({ document: parsed });
-      selectImportedCourse(nextProject);
-      notifyUser("Curso importado.");
-      return;
-    }
-
-    if (typeof globalThis.confirm === "function") {
-      const accepted = globalThis.confirm("Backup completo detectado. Restaurar projeto e progresso atuais?");
-      if (!accepted) {
-        return;
-      }
-    }
-
-    const imported = storage.importJson(rawJson);
-    setProject(imported.project);
-    selectFirstPath(imported.project);
-    state.view = "courses";
-    state.continuePopup = null;
-    state.activeFlowchartPrompt = null;
-    state.activeTextGapPrompt = null;
-    notifyUser("Backup restaurado.");
+    applyJsonImportFromParsed(parsed, rawJson, { reviewed: false });
   }
 
   function parseContractDocument(rawJson, scopeLabel) {
@@ -7776,6 +7842,18 @@ export function createLessonEditorApp({ root, storage, editor }) {
             setupScript: getCodexSetupScript()
           })
         : "") +
+      (state.pendingExternalImport
+        ? renderExternalImportOverlay({
+            sourceName: state.pendingExternalImport.sourceName,
+            detectedFormat:
+              state.pendingExternalImport.detectedFormat === "storage"
+                ? "Backup completo"
+                : state.pendingExternalImport.detectedFormat === "contract"
+                  ? "Projeto AraLearn"
+                  : "",
+            error: state.pendingExternalImport.error
+          })
+        : "") +
       (state.generationPanelOpen
         ? renderGenerationPanelOverlay({
             project: state.project,
@@ -8751,6 +8829,10 @@ export function createLessonEditorApp({ root, storage, editor }) {
           closeCodexTermuxSetup();
           return;
         }
+        if (state.pendingExternalImport) {
+          clearPendingExternalImport();
+          return;
+        }
         if (state.entityEditor) {
           closeEntityEditor();
         }
@@ -9119,6 +9201,8 @@ export function createLessonEditorApp({ root, storage, editor }) {
     root.querySelector("[data-action='open-version-history']")?.addEventListener("click", () => openVersionHistory());
     root.querySelector("[data-action='assist-config-close']")?.addEventListener("click", () => closeAssistConfig());
     root.querySelector("[data-action='close-codex-termux-setup']")?.addEventListener("click", () => closeCodexTermuxSetup());
+    root.querySelector("[data-action='cancel-external-import']")?.addEventListener("click", () => clearPendingExternalImport());
+    root.querySelector("[data-action='confirm-external-import']")?.addEventListener("click", () => confirmPendingExternalImport());
     root.querySelector("[data-action='test-codex-termux-connection']")?.addEventListener("click", () => {
       void testCodexTermuxConnection();
     });
@@ -9187,6 +9271,11 @@ export function createLessonEditorApp({ root, storage, editor }) {
 
   ensureCurrentCardSnapshot();
   syncAssistDraft();
+  globalThis.AraLearnAndroidImport = {
+    receiveSharedJson(rawText, sourceName) {
+      return receiveExternalJsonImport(rawText, { sourceName });
+    }
+  };
   if (typeof window !== "undefined" && typeof window.addEventListener === "function") {
     window.addEventListener("resize", () => {
       syncVersionTabScroller();
