@@ -27,7 +27,6 @@ test("renderiza helper e campo secundário na edição de fonte-guia", () => {
           { id: "paragraph", label: "Texto" },
           { id: "multiple_choice", label: "Múltipla escolha" }
         ],
-        hint: "Selecione os recursos permitidos.",
         tone: "secondary"
       }
     ]
@@ -41,5 +40,5 @@ test("renderiza helper e campo secundário na edição de fonte-guia", () => {
   assert.match(html, /class="entity-tag-combobox"/);
   assert.match(html, /data-action="remove-entity-tag"/);
   assert.match(html, /class="field is-secondary"/);
-  assert.match(html, /Selecione os recursos permitidos\./);
+  assert.match(html, /entity-tag-combobox-entry[\s\S]*entity-tag-chip-row/);
 });

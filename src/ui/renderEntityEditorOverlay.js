@@ -58,9 +58,6 @@ function renderTagCombobox(field, { allowCustom = false } = {}) {
     '" data-options="' +
     optionsJson +
     '">' +
-    '<div class="dependency-chip-row workbench-tag-chip-row entity-tag-chip-row" data-role="selected-tags">' +
-    chips +
-    "</div>" +
     '<div class="entity-tag-combobox-entry">' +
     '<input class="entity-tag-combobox-input" data-role="tag-input" aria-label="' +
     labelText +
@@ -81,6 +78,9 @@ function renderTagCombobox(field, { allowCustom = false } = {}) {
       .join("") +
     "</datalist>" +
     '<button class="icon-ghost entity-tag-combobox-add" type="button" data-action="add-entity-tag" aria-label="Adicionar item" title="Adicionar item">+</button>' +
+    "</div>" +
+    '<div class="dependency-chip-row workbench-tag-chip-row entity-tag-chip-row" data-role="selected-tags">' +
+    chips +
     "</div>" +
     "</div>" +
     (hintText ? '<p class="field-hint">' + hintText + "</p>" : "") +

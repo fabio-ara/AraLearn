@@ -101,8 +101,7 @@ export function buildLessonGuidanceEditorFields(value = {}) {
       iconName: "module",
       type: "multiselect",
       options: LESSON_RESOURCE_TAG_OPTIONS.map(clone),
-      value: [...normalized.resourceTags],
-      hint: "Selecione os recursos permitidos. Digite para filtrar, Enter para adicionar e × para remover."
+      value: [...normalized.resourceTags]
     },
     {
       name: "contentTypeTags",
@@ -110,8 +109,7 @@ export function buildLessonGuidanceEditorFields(value = {}) {
       iconName: "intent",
       type: "multiselect",
       options: LESSON_CONTENT_TYPE_OPTIONS.map(clone),
-      value: [...normalized.contentTypeTags],
-      hint: "Mantenha apenas os tipos de conteúdo que a lição realmente pode usar."
+      value: [...normalized.contentTypeTags]
     },
     {
       name: "learningActionTags",
@@ -119,8 +117,7 @@ export function buildLessonGuidanceEditorFields(value = {}) {
       iconName: "prompt",
       type: "multiselect",
       options: LESSON_LEARNING_ACTION_OPTIONS.map(clone),
-      value: [...normalized.learningActionTags],
-      hint: "Defina as ações de estudo que a geração pode cobrar nesta lição."
+      value: [...normalized.learningActionTags]
     },
     {
       name: "supportLevel",
