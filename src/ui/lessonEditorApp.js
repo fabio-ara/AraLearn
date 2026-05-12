@@ -1033,6 +1033,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
       activeWorkbenchPane: "preview",
       visualizedVersionId: "",
       editBaseVersionId: "",
+      pendingPreview: null,
       versionActionsOpen: false,
       promptText: "",
       didacticTypeId: "",
@@ -1963,6 +1964,37 @@ export function createLessonEditorApp({ root, storage, editor }) {
     return getAssistCatalog();
   }
 
+  function clearAssistPreview() {
+    state.assistDraft.pendingPreview = null;
+  }
+
+  function getAssistPreview() {
+    const preview = state.assistDraft.pendingPreview;
+    if (!preview || typeof preview !== "object") {
+      return null;
+    }
+    const microsequenceKey = String(preview.microsequenceKey || "").trim();
+    if (!microsequenceKey || microsequenceKey !== state.selection.microsequenceKey) {
+      return null;
+    }
+    return preview;
+  }
+
+  function stageAssistPreview({ microsequenceTitle, cards }) {
+    state.assistDraft.pendingPreview = {
+      microsequenceKey: state.selection.microsequenceKey,
+      title: String(microsequenceTitle || "").trim() || "Microssequência",
+      cards: structuredClone(Array.isArray(cards) ? cards : [])
+    };
+    state.assistDraft.activeWorkbenchPane = "preview";
+    state.selection.cardIndex = 0;
+    state.selection.cardKey = null;
+    setMicrosequenceVersionViewState({
+      visualizedVersionId: "",
+      editBaseVersionId: ""
+    });
+  }
+
   function syncAssistDraft() {
     const dependencies = getAssistDependencies();
     const allowedKeys = new Set(dependencies.map((item) => item.key));
@@ -2117,6 +2149,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
     state.assistDraft.activeWorkbenchPane = assistOpenState.activeWorkbenchPane;
     state.assistDraft.visualizedVersionId = "";
     state.assistDraft.editBaseVersionId = "";
+    clearAssistPreview();
     state.assistDraft.attachments = [];
     state.assistDraft.didacticTypeId = "";
     state.microsequenceMode = "play";
@@ -3586,6 +3619,15 @@ export function createLessonEditorApp({ root, storage, editor }) {
   }
 
   function applyMicrosequenceGeneration({ microsequenceTitle, cards }) {
+    stageAssistPreview({ microsequenceTitle, cards });
+  }
+
+  function applyAssistPreview() {
+    const preview = getAssistPreview();
+    if (!preview) {
+      return;
+    }
+
     ensureEditableMicrosequenceBranch({
       operationType: "generated",
       label: "Gerada"
@@ -3602,9 +3644,9 @@ export function createLessonEditorApp({ root, storage, editor }) {
       moduleKey: state.selection.moduleKey,
       lessonKey: state.selection.lessonKey,
       microsequenceKey: state.selection.microsequenceKey,
-      title: microsequenceTitle,
+      title: preview.title,
       tags: structuredClone(currentMicrosequence?.tags || []),
-      cards
+      cards: structuredClone(preview.cards || [])
     });
 
     setProject(nextProject);
@@ -3619,11 +3661,30 @@ export function createLessonEditorApp({ root, storage, editor }) {
     state.selection.cardIndex = 0;
     state.selection.cardKey = firstCard ? firstCard.key : null;
     state.assistDraft.activeWorkbenchPane = "preview";
+    clearAssistPreview();
     setMicrosequenceVersionViewState({
       visualizedVersionId: "",
       editBaseVersionId: ""
     });
+    state.assistDraft.lastRequest = {
+      title: "Prévia aplicada",
+      description: `${Array.isArray(microsequence?.cards) ? microsequence.cards.length : 0} cards aplicados em ${microsequence?.title || preview.title}.`,
+      timestamp: new Date().toISOString()
+    };
     syncAssistDraft();
+  }
+
+  function discardAssistPreview() {
+    if (!getAssistPreview()) {
+      return;
+    }
+    clearAssistPreview();
+    state.assistDraft.lastRequest = {
+      title: "Prévia descartada",
+      description: "A proposta de cards foi removida sem alterar a microssequência.",
+      timestamp: new Date().toISOString()
+    };
+    render({ preserveState: true });
   }
 
   function getVisibleCourses(project = state.project) {
@@ -4109,9 +4170,9 @@ export function createLessonEditorApp({ root, storage, editor }) {
       if (mode === "compose-microsequence") {
         applyMicrosequenceGeneration(result);
         state.assistDraft.lastRequest = {
-          title: hadCardsBefore ? "Cards atualizados" : "Cards gerados",
+          title: hadCardsBefore ? "Prévia pronta" : "Prévia gerada",
           description:
-            `${result.cards.length} cards ${hadCardsBefore ? "atualizados" : "gerados"} em ${result.microsequenceTitle} com ${getAssistModelLabel(state.assistConfig.model)}.`,
+            `${result.cards.length} cards em prévia para ${result.microsequenceTitle} com ${getAssistModelLabel(state.assistConfig.model)}. Revise antes de aplicar.`,
           timestamp: new Date().toISOString()
         };
       } else {
@@ -7259,6 +7320,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
           visualizedMicrosequenceVersionId,
           editBaseMicrosequenceVersionId: getMicrosequenceEditBaseVersionId(),
           visualizedMicrosequenceVersion,
+          assistPreview: getAssistPreview(),
           versionActionsOpen: state.assistDraft.versionActionsOpen,
           canDeleteVisualizedMicrosequenceVersion:
             state.view === "microsequence-assist" ? canDeleteMicrosequenceVersion(visualizedMicrosequenceVersionId) : false,
@@ -8684,6 +8746,13 @@ export function createLessonEditorApp({ root, storage, editor }) {
     root.querySelector("[data-action='open-assist-config']")?.addEventListener("click", () => openAssistConfig());
     root.querySelector("[data-action='apply-assist']")?.addEventListener("click", () => {
       void submitAssistRequest();
+    });
+    root.querySelector("[data-action='apply-assist-preview']")?.addEventListener("click", () => {
+      applyAssistPreview();
+      render({ preserveState: true });
+    });
+    root.querySelector("[data-action='discard-assist-preview']")?.addEventListener("click", () => {
+      discardAssistPreview();
     });
     root.querySelector("[data-action='open-version-history']")?.addEventListener("click", () => openVersionHistory());
     root.querySelector("[data-action='assist-config-close']")?.addEventListener("click", () => closeAssistConfig());

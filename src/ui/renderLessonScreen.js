@@ -1124,8 +1124,13 @@ function renderMicrosequenceWorkbenchScreen({
   hideCards = false
 }) {
   const visualizedVersion = editorSupport.visualizedMicrosequenceVersion || null;
-  const visualizedCards = Array.isArray(visualizedVersion?.cards) ? visualizedVersion.cards : cards;
-  const visualizedTitle = visualizedVersion?.title || microsequence?.title || "";
+  const assistPreview = editorSupport.assistPreview && typeof editorSupport.assistPreview === "object"
+    ? editorSupport.assistPreview
+    : null;
+  const visualizedCards = Array.isArray(assistPreview?.cards)
+    ? assistPreview.cards
+    : Array.isArray(visualizedVersion?.cards) ? visualizedVersion.cards : cards;
+  const visualizedTitle = assistPreview?.title || visualizedVersion?.title || microsequence?.title || "";
   const visualizedTags = Array.isArray(visualizedVersion?.tags) ? visualizedVersion.tags : microsequence?.tags || [];
   const visibleCards = hideCards ? [] : visualizedCards;
   const activeIndex = Number.isInteger(selection.cardIndex) ? selection.cardIndex : 0;
@@ -1241,6 +1246,15 @@ function renderMicrosequenceWorkbenchScreen({
     })
     : '<div class="editor-step-empty">' + escapeHtml(emptyCardsMessage) + "</div>";
   const activeWorkbenchPane = editorSupport.activeWorkbenchPane === "edit" ? "edit" : "preview";
+  const pendingPreviewPanel = assistPreview
+    ? '<section class="microsequence-assist-panel assist-status-panel">' +
+      '<p class="tiny muted">Prévia pendente</p>' +
+      '<p class="muted assist-last-request">A proposta validada ainda não alterou a microssequência. Revise e aplique manualmente.</p>' +
+      '<div class="generate-action-row assist-actions assist-actions-wide assist-preview-actions">' +
+      '<button class="icon-ghost" type="button" data-action="discard-assist-preview" title="Descartar prévia" aria-label="Descartar prévia">Descartar</button>' +
+      '<button class="open-main" type="button" data-action="apply-assist-preview" title="Aplicar prévia" aria-label="Aplicar prévia">Aplicar</button>' +
+      "</div></section>"
+    : "";
   const previewBody =
     '<div class="editor-card-stage-shell">' +
     '<article class="card-portrait-body card-portrait-sheet runtime-card-sheet' +
@@ -1272,6 +1286,7 @@ function renderMicrosequenceWorkbenchScreen({
     '<section class="workbench-surface-pane workbench-preview-pane">' +
     '<div class="generator-preview-stage">' +
     previewBody +
+    pendingPreviewPanel +
     "</div>" +
     "</section>";
   const editPane =
