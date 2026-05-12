@@ -25,7 +25,11 @@ test("monta campos fixos de edição a partir da fonte-guia estruturada", () => 
   assert.equal(fields[0].name, "moduleScope");
   assert.equal(fields[0].iconName, "intent");
   assert.equal(fields[0].value, "Comandos básicos.");
+  assert.equal(fields[0].tone, "primary");
+  assert.match(fields[0].hint, /governança estruturada/i);
   assert.equal(fields.find((field) => field.name === "lessonProgression")?.value, "Começar por navegação e depois arquivos.");
+  assert.equal(fields.find((field) => field.name === "freeNotes")?.tone, "secondary");
+  assert.match(fields.find((field) => field.name === "freeNotes")?.hint || "", /não entra no núcleo estruturado/i);
 });
 
 test("resolve payload estruturado e recompila texto legível", () => {

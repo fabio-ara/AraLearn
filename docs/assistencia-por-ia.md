@@ -106,6 +106,7 @@ Regras da aplicação:
 - `description` permanece breve;
 - `sourceGuide` e `sourceGuideStructured` entram no contexto quando existirem;
 - quando `sourceGuideStructured` já cobre o nível atual, a aplicação envia ao modelo apenas os campos centrais dessa estrutura, sem `freeNotes` nem carga legatária redundante;
+- na UI de fonte-guia, `Observações livres` permanecem editáveis, mas aparecem como apoio editorial e não como governança forte;
 - esse modo não gera microssequências nem cards.
 
 ## Geração contextual de microssequências na lição

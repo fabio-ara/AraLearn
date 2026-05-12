@@ -241,7 +241,12 @@ export function buildSourceGuideEditorFields(sourceGuide = "", sourceGuideStruct
     iconName: field.iconName,
     placeholder: field.placeholder,
     type: "textarea",
-    value: normalizeText(normalized[field.name])
+    value: normalizeText(normalized[field.name]),
+    tone: field.name === "freeNotes" ? "secondary" : "primary",
+    hint:
+      field.name === "freeNotes"
+        ? "Campo auxiliar para autoria humana. Não entra no núcleo estruturado enviado ao modelo quando a governança principal já estiver preenchida."
+        : "Entra na governança estruturada usada pela geração e pela edição assistidas."
   }));
 }
 

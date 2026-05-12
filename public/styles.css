@@ -4025,6 +4025,17 @@ button {
   gap: 10px;
 }
 
+.editor-helper-text {
+  margin: 0;
+  color: rgba(214, 193, 154, 0.9);
+  font-size: 0.82rem;
+  line-height: 1.5;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(111, 88, 62, 0.72);
+  background: rgba(34, 27, 20, 0.72);
+}
+
 .structure-compare-summary {
   display: grid;
   gap: 8px;
@@ -4127,6 +4138,13 @@ button {
   min-width: 0;
 }
 
+.field.is-secondary {
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(92, 74, 55, 0.72);
+  background: rgba(24, 19, 15, 0.68);
+}
+
 .card-sheet-content-empty {
   place-items: center;
   text-align: center;
@@ -4173,6 +4191,13 @@ button {
   min-height: 160px;
   resize: vertical;
   font-family: inherit;
+}
+
+.field-hint {
+  margin: 0;
+  color: rgba(193, 173, 138, 0.88);
+  font-size: 0.76rem;
+  line-height: 1.45;
 }
 
 .entity-action-group {

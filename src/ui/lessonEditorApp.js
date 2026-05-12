@@ -780,6 +780,7 @@ function makeEntityEditorModel(state) {
     if (!course) return null;
     return {
       title: "Fonte-guia do curso",
+      helperText: "Defina escopo, limites e convenções do curso. Observações livres ficam fora da governança forte quando os campos estruturados já bastam.",
       fields: buildSourceGuideEditorFields(course.sourceGuide || "", course.sourceGuideStructured || {}, { level: SOURCE_GUIDE_LEVELS.COURSE }),
       actions: []
     };
@@ -820,6 +821,7 @@ function makeEntityEditorModel(state) {
     if (!moduleValue) return null;
     return {
       title: "Fonte-guia do módulo",
+      helperText: "Defina recorte, pré-requisitos e progressão das lições. Observações livres ficam como apoio editorial, não como regra principal da geração.",
       fields: buildSourceGuideEditorFields(moduleValue.sourceGuide || "", moduleValue.sourceGuideStructured || {}, { level: SOURCE_GUIDE_LEVELS.MODULE }),
       actions: []
     };
@@ -862,6 +864,7 @@ function makeEntityEditorModel(state) {
     if (!lesson) return null;
     return {
       title: "Fonte-guia da lição",
+      helperText: "Defina meta, notação, confusões prováveis e resultado esperado. Observações livres ficam em segundo plano quando a governança estruturada já estiver completa.",
       fields: buildSourceGuideEditorFields(lesson.sourceGuide || "", lesson.sourceGuideStructured || {}, { level: SOURCE_GUIDE_LEVELS.LESSON }),
       actions: []
     };

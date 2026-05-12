@@ -196,6 +196,8 @@ No uso atual, restrições de recurso didático, tipo de microssequência e pedi
 
 A intenção é substituir contexto solto por orientação funcional. Quanto mais fraco o modelo, mais o sistema deve restringir a tarefa.
 
+Na interface atual, os campos estruturados de curso, módulo e lição aparecem como núcleo principal da orientação. `Observações livres` continuam disponíveis para autoria humana, mas ficam visualmente em segundo plano e não entram no núcleo de governança forte enviado ao modelo quando os campos estruturados já bastam.
+
 ---
 
 ## Cards e formatos didáticos

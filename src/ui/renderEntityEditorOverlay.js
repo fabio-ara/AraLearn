@@ -9,12 +9,13 @@ function escapeHtml(value) {
     .replace(/'/g, "&#39;");
 }
 
-export function renderEntityEditorOverlay({ title, fields, actions = [] }) {
+export function renderEntityEditorOverlay({ title, helperText = "", fields, actions = [] }) {
   const inputs = fields
     .map((field) => {
       const value = field.value ? escapeHtml(field.value) : "";
       const placeholder = field.placeholder ? escapeHtml(field.placeholder) : "";
       const labelText = escapeHtml(field.label);
+      const hintText = field.hint ? escapeHtml(field.hint) : "";
       const labelContent = field.iconName
         ? '<span class="field-label-icon" title="' +
           labelText +
@@ -26,7 +27,9 @@ export function renderEntityEditorOverlay({ title, fields, actions = [] }) {
         : labelText;
       if (field.type === "textarea") {
         return (
-          '<div class="field">' +
+          '<div class="field' +
+          (field.tone === "secondary" ? " is-secondary" : "") +
+          '">' +
           "<label>" +
           labelContent +
           "</label>" +
@@ -39,12 +42,15 @@ export function renderEntityEditorOverlay({ title, fields, actions = [] }) {
           '">' +
           value +
           "</textarea>" +
+          (hintText ? '<p class="field-hint">' + hintText + "</p>" : "") +
           "</div>"
         );
       }
 
       return (
-        '<div class="field">' +
+        '<div class="field' +
+        (field.tone === "secondary" ? " is-secondary" : "") +
+        '">' +
         "<label>" +
         labelContent +
         "</label>" +
@@ -57,6 +63,7 @@ export function renderEntityEditorOverlay({ title, fields, actions = [] }) {
         '" type="text" value="' +
         value +
         '">' +
+        (hintText ? '<p class="field-hint">' + hintText + "</p>" : "") +
         "</div>"
       );
     })
@@ -93,6 +100,7 @@ export function renderEntityEditorOverlay({ title, fields, actions = [] }) {
     '<div class="topbar-space" aria-hidden="true"></div>' +
     "</header>" +
     '<div class="editor-body">' +
+    (helperText ? '<p class="editor-helper-text">' + escapeHtml(helperText) + "</p>" : "") +
     inputs +
     actionButtons +
     "</div>" +
