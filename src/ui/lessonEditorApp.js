@@ -2121,8 +2121,13 @@ export function createLessonEditorApp({ root, storage, editor }) {
     state.view = "microsequence-assist";
     state.assistDraft.selectedMode = ASSIST_USER_MODES.EDIT_MICROSEQUENCE;
     state.assistDraft.activeWorkbenchPane = assistOpenState.activeWorkbenchPane;
-    state.assistDraft.visualizedVersionId = "";
-    state.assistDraft.editBaseVersionId = "";
+    state.assistDraft.visualizedVersionId = assistOpenState.visualizedVersionId || "";
+    state.assistDraft.editBaseVersionId = assistOpenState.editBaseVersionId || "";
+    state.selection.cardIndex = assistOpenState.cardIndex;
+    state.selection.cardKey =
+      entry?.versions
+        ?.find((item) => item.id === assistOpenState.visualizedVersionId)
+        ?.cards?.[assistOpenState.cardIndex]?.key || state.selection.cardKey;
     state.assistDraft.attachments = [];
     state.assistDraft.didacticTypeId = "";
     state.microsequenceMode = "play";
