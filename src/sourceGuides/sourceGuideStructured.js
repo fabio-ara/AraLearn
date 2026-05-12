@@ -149,6 +149,56 @@ function cloneStructuredForModel(value = {}, level = SOURCE_GUIDE_LEVELS.LESSON)
   );
 }
 
+function normalizeLabelToken(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
+function parseStructuredFallbackText(fallbackText, level) {
+  const text = normalizeText(fallbackText);
+  if (!text) {
+    return {};
+  }
+
+  const definitions = getFieldDefinitions(level);
+  const definitionsByLabel = new Map(definitions.map((field) => [normalizeLabelToken(field.label), field.name]));
+  const parsed = {};
+  const freeNotes = [];
+
+  text.split(/\r?\n/).forEach((line) => {
+    const trimmedLine = normalizeText(line);
+    if (!trimmedLine) {
+      return;
+    }
+
+    const match = trimmedLine.match(/^([^:]+):\s*(.+)$/);
+    if (!match) {
+      freeNotes.push(trimmedLine);
+      return;
+    }
+
+    const [, rawLabel, rawValue] = match;
+    const fieldName = definitionsByLabel.get(normalizeLabelToken(rawLabel));
+    const nextValue = normalizeText(rawValue);
+    if (!fieldName || !nextValue) {
+      freeNotes.push(trimmedLine);
+      return;
+    }
+
+    parsed[fieldName] = parsed[fieldName] ? `${parsed[fieldName]} ${nextValue}`.trim() : nextValue;
+  });
+
+  if (freeNotes.length) {
+    parsed.freeNotes = parsed.freeNotes ? `${parsed.freeNotes}\n${freeNotes.join("\n")}` : freeNotes.join("\n");
+  }
+
+  return cloneStructured(parsed, level);
+}
+
 function migrateLegacyStructured(value, level) {
   const normalized = {};
   const allowed = getAllowedFieldNames(level);
@@ -179,7 +229,12 @@ export function normalizeSourceGuideStructured(value, { fallbackText = "", level
   }
 
   const fallback = normalizeText(fallbackText);
-  return fallback ? { freeNotes: fallback } : {};
+  if (!fallback) {
+    return {};
+  }
+
+  const parsedFallback = parseStructuredFallbackText(fallback, level);
+  return Object.keys(parsedFallback).length ? parsedFallback : { freeNotes: fallback };
 }
 
 export function buildSourceGuideText(structured, fallbackText = "", { level = SOURCE_GUIDE_LEVELS.LESSON } = {}) {

@@ -6,6 +6,7 @@ import {
   buildSourceGuideText,
   buildSourceGuideTextForModel,
   getSourceGuideSchemaPropertiesForModel,
+  normalizeSourceGuideStructured,
   resolveSourceGuidePayload,
   sanitizeSourceGuideStructuredForModel,
   SOURCE_GUIDE_LEVELS
@@ -76,4 +77,25 @@ test("compacta fonte-guia para contexto de modelo sem freeNotes", () => {
     "Meta da lição: Ler e executar um comando simples.\nAo final: Executar sozinho um caso básico."
   );
   assert.equal(getSourceGuideSchemaPropertiesForModel(SOURCE_GUIDE_LEVELS.LESSON).freeNotes, undefined);
+});
+
+test("reconstroi campos estruturados a partir de fonte-guia compilada antiga", () => {
+  const structured = normalizeSourceGuideStructured(undefined, {
+    level: SOURCE_GUIDE_LEVELS.LESSON,
+    fallbackText: [
+      "Meta da lição: Construir tabela-verdade simples.",
+      "Pré-requisitos imediatos: Ler proposições declarativas.",
+      "Sinais e notação: Destacar `p`, `q` e `→`.",
+      "Confusões prováveis: Trocar condição suficiente por necessária.",
+      "Ao final: Montar e ler uma tabela pequena."
+    ].join("\n")
+  });
+
+  assert.deepEqual(structured, {
+    lessonGoal: "Construir tabela-verdade simples.",
+    lessonPrerequisites: "Ler proposições declarativas.",
+    notationRules: "Destacar `p`, `q` e `→`.",
+    commonErrors: "Trocar condição suficiente por necessária.",
+    masteryGoal: "Montar e ler uma tabela pequena."
+  });
 });
