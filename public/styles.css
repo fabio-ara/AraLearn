@@ -4196,6 +4196,41 @@ button {
   color-scheme: dark;
 }
 
+.entity-tag-combobox {
+  display: grid;
+  gap: 8px;
+}
+
+.entity-tag-chip-row {
+  max-height: 132px;
+  padding-top: 2px;
+}
+
+.entity-tag-combobox-entry {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 38px;
+  gap: 8px;
+  align-items: center;
+}
+
+.entity-tag-combobox-input {
+  min-width: 0;
+}
+
+.entity-tag-combobox-add {
+  min-height: 40px;
+  border-radius: 10px;
+  border: 1px solid var(--field-border-soft);
+  background: rgba(28, 22, 17, 0.92);
+  color: var(--text);
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.entity-tag-chip {
+  min-height: 28px;
+}
+
 .field select option {
   background: #1a1511;
   color: var(--text);

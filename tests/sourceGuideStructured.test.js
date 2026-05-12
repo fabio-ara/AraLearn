@@ -24,9 +24,9 @@ test("monta campos fixos de edição a partir da fonte-guia estruturada", () => 
   assert.equal(fields.length, 4);
   assert.equal(fields[0].name, "moduleScope");
   assert.equal(fields[0].iconName, "intent");
-  assert.equal(fields[0].value, "Comandos básicos.");
-  assert.equal(fields[0].type, "text");
-  assert.equal(fields.find((field) => field.name === "lessonProgression")?.value, "Começar por navegação e depois arquivos.");
+  assert.deepEqual(fields[0].value, ["Comandos básicos."]);
+  assert.equal(fields[0].type, "tokenlist");
+  assert.deepEqual(fields.find((field) => field.name === "lessonProgression")?.value, ["Começar por navegação e depois arquivos."]);
 });
 
 test("resolve payload estruturado e recompila texto legível", () => {

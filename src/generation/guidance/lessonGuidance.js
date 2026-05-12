@@ -102,7 +102,7 @@ export function buildLessonGuidanceEditorFields(value = {}) {
       type: "multiselect",
       options: LESSON_RESOURCE_TAG_OPTIONS.map(clone),
       value: [...normalized.resourceTags],
-      hint: "O planejamento e a geração só podem usar recursos listados aqui."
+      hint: "Selecione os recursos permitidos. Digite para filtrar, Enter para adicionar e × para remover."
     },
     {
       name: "contentTypeTags",
@@ -110,7 +110,8 @@ export function buildLessonGuidanceEditorFields(value = {}) {
       iconName: "intent",
       type: "multiselect",
       options: LESSON_CONTENT_TYPE_OPTIONS.map(clone),
-      value: [...normalized.contentTypeTags]
+      value: [...normalized.contentTypeTags],
+      hint: "Mantenha apenas os tipos de conteúdo que a lição realmente pode usar."
     },
     {
       name: "learningActionTags",
@@ -118,7 +119,8 @@ export function buildLessonGuidanceEditorFields(value = {}) {
       iconName: "prompt",
       type: "multiselect",
       options: LESSON_LEARNING_ACTION_OPTIONS.map(clone),
-      value: [...normalized.learningActionTags]
+      value: [...normalized.learningActionTags],
+      hint: "Defina as ações de estudo que a geração pode cobrar nesta lição."
     },
     {
       name: "supportLevel",

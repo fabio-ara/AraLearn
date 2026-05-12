@@ -3078,6 +3078,163 @@ export function createLessonEditorApp({ root, storage, editor }) {
     render({ preserveState: true });
   }
 
+  function parseEntityTagComboboxValues(node) {
+    if (!node) return [];
+    try {
+      const parsed = JSON.parse(String(node.getAttribute("data-values") || "[]"));
+      return Array.isArray(parsed) ? parsed.map((item) => String(item || "").trim()).filter(Boolean) : [];
+    } catch {
+      return [];
+    }
+  }
+
+  function readEntityFieldValue(node) {
+    if (!node) return "";
+    if (node instanceof HTMLSelectElement && node.multiple) {
+      return Array.from(node.selectedOptions).map((option) => option.value);
+    }
+    if (node instanceof HTMLElement && node.classList.contains("entity-tag-combobox")) {
+      return parseEntityTagComboboxValues(node);
+    }
+    return node.value;
+  }
+
+  function bindEntityTagCombobox(node, handler) {
+    if (!(node instanceof HTMLElement) || node.getAttribute("data-bind-ready") === "true") {
+      return;
+    }
+
+    node.setAttribute("data-bind-ready", "true");
+    const input = node.querySelector("[data-role='tag-input']");
+    const selectedRow = node.querySelector("[data-role='selected-tags']");
+    const allowCustom = node.getAttribute("data-allow-custom") === "true";
+    let options = [];
+    try {
+      const parsed = JSON.parse(String(node.getAttribute("data-options") || "[]"));
+      options = Array.isArray(parsed) ? parsed : [];
+    } catch {
+      options = [];
+    }
+
+    const findOption = (rawValue) => {
+      const value = String(rawValue || "").trim().toLowerCase();
+      if (!value) return null;
+      return (
+        options.find((option) => String(option?.id || "").trim().toLowerCase() === value) ||
+        options.find((option) => String(option?.label || "").trim().toLowerCase() === value) ||
+        null
+      );
+    };
+
+    const setValues = (nextValues) => {
+      const seen = new Set();
+      const normalized = (Array.isArray(nextValues) ? nextValues : [])
+        .map((item) => String(item || "").trim())
+        .filter((item) => {
+          if (!item) return false;
+          const option = findOption(item);
+          if (!allowCustom && !option) {
+            return false;
+          }
+          const finalValue = option ? String(option.id) : item;
+          const key = finalValue.toLowerCase();
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        })
+        .map((item) => {
+          const option = findOption(item);
+          return option ? String(option.id) : item;
+        });
+      node.setAttribute("data-values", JSON.stringify(normalized));
+      if (selectedRow) {
+        selectedRow.innerHTML = normalized
+          .map((item) => {
+            const option = findOption(item);
+            const value = String(option?.id || item);
+            const label = String(option?.label || item);
+            return (
+              '<button class="didactic-tag dependency-tag-chip dependency-chip-button entity-tag-chip" type="button" data-action="remove-entity-tag" data-value="' +
+              value
+              .replace(/&/g, "&amp;")
+              .replace(/"/g, "&quot;")
+              .replace(/</g, "&lt;")
+              .replace(/>/g, "&gt;") +
+              '">' +
+              '<span class="didactic-tag-text dependency-chip-label">' +
+              label
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;") +
+              "</span>" +
+              '<span class="dependency-chip-remove" aria-hidden="true">&times;</span>' +
+              "</button>"
+            );
+          })
+          .join("");
+      }
+      handler();
+    };
+
+    const addCurrentInput = () => {
+      if (!(input instanceof HTMLInputElement)) return;
+      const rawValue = input.value.trim();
+      if (!rawValue) return;
+      const option = findOption(rawValue);
+      if (!allowCustom && !option) {
+        input.value = "";
+        return;
+      }
+      const values = parseEntityTagComboboxValues(node);
+      values.push(option ? String(option.id) : rawValue);
+      input.value = "";
+      setValues(values);
+    };
+
+    if (input instanceof HTMLInputElement) {
+      input.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === "," || event.key === ";") {
+          event.preventDefault();
+          addCurrentInput();
+        }
+        if (event.key === "Backspace" && !input.value.trim()) {
+          const values = parseEntityTagComboboxValues(node);
+          if (values.length) {
+            values.pop();
+            setValues(values);
+          }
+        }
+      });
+      input.addEventListener("change", addCurrentInput);
+      input.addEventListener("blur", addCurrentInput);
+    }
+
+    node.querySelector("[data-action='add-entity-tag']")?.addEventListener("click", () => {
+      addCurrentInput();
+      input?.focus();
+    });
+
+    node.addEventListener("click", (event) => {
+      const target = event.target instanceof Element ? event.target.closest("[data-action='remove-entity-tag']") : null;
+      if (!target) return;
+      event.preventDefault();
+      const value = String(target.getAttribute("data-value") || "").trim().toLowerCase();
+      setValues(parseEntityTagComboboxValues(node).filter((item) => String(item).trim().toLowerCase() !== value));
+      input?.focus();
+    });
+  }
+
+  function bindEntityFieldNode(node, handler) {
+    if (node instanceof HTMLElement && node.classList.contains("entity-tag-combobox")) {
+      bindEntityTagCombobox(node, handler);
+      return;
+    }
+    node.addEventListener("input", handler);
+    if (node instanceof HTMLSelectElement) {
+      node.addEventListener("change", handler);
+    }
+  }
+
   function openVersionHistory() {
     const structureReference = getCurrentStructureVersionReference();
     state.versionHistoryOpen = true;
@@ -8831,18 +8988,13 @@ export function createLessonEditorApp({ root, storage, editor }) {
       const handler = () => {
         updateEntityDraft(
           Object.fromEntries(
-            Object.entries(fields).map(([name, node]) => {
-              if (node instanceof HTMLSelectElement && node.multiple) {
-                return [name, Array.from(node.selectedOptions).map((option) => option.value)];
-              }
-              return [name, node.value];
-            })
+            Object.entries(fields).map(([name, node]) => [name, readEntityFieldValue(node)])
           )
         );
       };
 
       Object.values(fields).forEach((node) => {
-        node.addEventListener("input", handler);
+        bindEntityFieldNode(node, handler);
       });
     }
 

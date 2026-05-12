@@ -30,6 +30,39 @@ function normalizeText(value) {
   return typeof value === "string" ? value.trim() : "";
 }
 
+function normalizeItemList(value) {
+  if (Array.isArray(value)) {
+    const seen = new Set();
+    return value
+      .map((item) => normalizeText(item))
+      .filter((item) => {
+        if (!item) return false;
+        const key = item.toLowerCase();
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+  }
+
+  const text = normalizeText(value);
+  if (!text) return [];
+  const seen = new Set();
+  return text
+    .split(/\r?\n|;|•/g)
+    .map((item) => normalizeText(item))
+    .filter((item) => {
+      if (!item) return false;
+      const key = item.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+}
+
+function joinItemList(value) {
+  return normalizeItemList(value).join("; ");
+}
+
 function getFieldDefinitions(level = SOURCE_GUIDE_LEVELS.LESSON) {
   return SOURCE_GUIDE_FIELD_DEFINITIONS_BY_LEVEL[level] || SOURCE_GUIDE_FIELD_DEFINITIONS_BY_LEVEL[SOURCE_GUIDE_LEVELS.LESSON];
 }
@@ -38,7 +71,7 @@ export function normalizeSourceGuideStructured(value, { level = SOURCE_GUIDE_LEV
   const source = value && typeof value === "object" && !Array.isArray(value) ? value : {};
   return Object.fromEntries(
     getFieldDefinitions(level)
-      .map((field) => [field.name, normalizeText(source[field.name])])
+      .map((field) => [field.name, joinItemList(source[field.name])])
       .filter(([, fieldValue]) => fieldValue)
   );
 }
@@ -76,8 +109,9 @@ export function buildSourceGuideEditorFields(sourceGuideStructured = {}, { level
     label: field.label,
     iconName: field.iconName,
     placeholder: field.placeholder,
-    type: "text",
-    value: normalizeText(normalized[field.name]),
+    type: "tokenlist",
+    value: normalizeItemList(normalized[field.name]),
+    hint: "Adicione itens curtos. Pressione Enter para criar uma tag e clique no × para remover.",
     maxLength: level === SOURCE_GUIDE_LEVELS.COURSE ? 180 : level === SOURCE_GUIDE_LEVELS.MODULE ? 160 : 140
   }));
 }

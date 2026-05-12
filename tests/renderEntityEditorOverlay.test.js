@@ -12,18 +12,22 @@ test("renderiza helper e campo secundário na edição de fonte-guia", () => {
         name: "lessonGoal",
         label: "Meta da lição",
         iconName: "intent",
-        type: "textarea",
-        value: "Ler um comando.",
+        type: "tokenlist",
+        value: ["Ler um comando.", "Explicar o efeito local."],
         hint: "Entra na governança estruturada usada pela geração e pela edição assistidas.",
         tone: "primary"
       },
       {
-        name: "freeNotes",
-        label: "Observações livres",
+        name: "resourceTags",
+        label: "Recursos da lição",
         iconName: "lesson",
-        type: "textarea",
-        value: "Notas de apoio.",
-        hint: "Campo auxiliar para autoria humana. Não entra no núcleo estruturado enviado ao modelo quando a governança principal já estiver preenchida.",
+        type: "multiselect",
+        value: ["paragraph", "multiple_choice"],
+        options: [
+          { id: "paragraph", label: "Texto" },
+          { id: "multiple_choice", label: "Múltipla escolha" }
+        ],
+        hint: "Selecione os recursos permitidos.",
         tone: "secondary"
       }
     ]
@@ -33,6 +37,8 @@ test("renderiza helper e campo secundário na edição de fonte-guia", () => {
   assert.match(html, /Defina meta, notação e resultado esperado\./);
   assert.match(html, /class="field-label-content"/);
   assert.match(html, /class="field-label-text">Meta da lição</);
+  assert.match(html, /class="entity-tag-combobox"/);
+  assert.match(html, /data-action="remove-entity-tag"/);
   assert.match(html, /class="field is-secondary"/);
-  assert.match(html, /Campo auxiliar para autoria humana/);
+  assert.match(html, /Selecione os recursos permitidos\./);
 });
