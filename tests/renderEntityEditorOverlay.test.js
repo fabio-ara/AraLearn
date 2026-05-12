@@ -12,8 +12,8 @@ test("renderiza helper e campo secundário na edição de fonte-guia", () => {
         name: "lessonGoal",
         label: "Meta da lição",
         iconName: "intent",
-        type: "tokenlist",
-        value: ["Ler um comando.", "Explicar o efeito local."],
+        type: "textarea",
+        value: "Ler um comando.\nExplicar o efeito local.",
         hint: "Entra na governança estruturada usada pela geração e pela edição assistidas.",
         tone: "primary"
       },
@@ -37,6 +37,7 @@ test("renderiza helper e campo secundário na edição de fonte-guia", () => {
   assert.match(html, /Defina meta, notação e resultado esperado\./);
   assert.match(html, /class="field-label-content"/);
   assert.match(html, /class="field-label-text">Meta da lição</);
+  assert.match(html, /<textarea data-field="lessonGoal"/);
   assert.match(html, /class="entity-tag-combobox"/);
   assert.match(html, /data-action="remove-entity-tag"/);
   assert.match(html, /class="field is-secondary"/);
