@@ -362,6 +362,10 @@ button {
   min-height: 0;
 }
 
+.study-reader-screen {
+  padding-bottom: 0;
+}
+
 .study-reader-screen .screen-content {
   padding-bottom: 0;
   overflow: hidden;
