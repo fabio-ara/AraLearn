@@ -1,4 +1,5 @@
 export {
+  buildAttachmentPromptSection,
   buildCodexArgs,
   buildLessonMicrosequencesPrompt,
   buildStandaloneBridgeSource,
@@ -7,4 +8,3 @@ export {
   normalizePort,
   normalizeTimeout
 } from "../src/assist/codexBridgeShared.js";
-

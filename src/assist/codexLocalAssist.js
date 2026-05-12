@@ -1,6 +1,25 @@
+import { buildAssistDraftPrompt, buildDeterministicAssistPlan, normalizeAssistDraftResult } from "./assistMicrosequenceEngine.js";
+import { buildEditPrompt, normalizeEditResult } from "./geminiAssist.js";
+
 export const CODEX_LOCAL_MODEL_ID = "codex-cli-local";
 export const DEFAULT_CODEX_LOCAL_ENDPOINT = "http://127.0.0.1:4183/assist";
 export const DEFAULT_CODEX_LOCAL_HEALTH_ENDPOINT = "http://127.0.0.1:4183/health";
+const TEXT_ATTACHMENT_EXTENSIONS = new Set([
+  ".txt",
+  ".md",
+  ".json",
+  ".csv",
+  ".html",
+  ".xml",
+  ".js",
+  ".ts",
+  ".py",
+  ".java",
+  ".c",
+  ".cpp",
+  ".rtf"
+]);
+const MAX_ATTACHMENT_TEXT_LENGTH = 12000;
 
 function normalizeText(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -19,6 +38,23 @@ function createAbortController(timeoutMs) {
 
 function isSerializableBlob(value) {
   return typeof Blob !== "undefined" && value instanceof Blob;
+}
+
+function getFileExtension(fileName = "") {
+  const normalized = normalizeText(fileName).toLowerCase();
+  const index = normalized.lastIndexOf(".");
+  return index >= 0 ? normalized.slice(index) : "";
+}
+
+function isTextLikeAttachment(attachment) {
+  const mimeType = normalizeText(attachment?.type).toLowerCase();
+  if (mimeType.startsWith("text/")) {
+    return true;
+  }
+  if (mimeType === "application/json" || mimeType === "application/xml") {
+    return true;
+  }
+  return TEXT_ATTACHMENT_EXTENSIONS.has(getFileExtension(attachment?.name));
 }
 
 function sanitizeJsonValue(value, seen = new WeakSet()) {
@@ -55,6 +91,84 @@ function sanitizeJsonValue(value, seen = new WeakSet()) {
     return result;
   }
   return undefined;
+}
+
+async function serializeCodexAttachment(attachment) {
+  const summary = {
+    name: normalizeText(attachment?.name) || "anexo",
+    type: normalizeText(attachment?.type) || "application/octet-stream",
+    size: Number(attachment?.size || 0)
+  };
+
+  if (!isTextLikeAttachment(attachment) || typeof attachment?.text !== "function") {
+    return {
+      ...summary,
+      textContent: "",
+      unsupportedReason: "Conteúdo inline indisponível neste bridge local."
+    };
+  }
+
+  try {
+    const text = String(await attachment.text());
+    return {
+      ...summary,
+      textContent: text.slice(0, MAX_ATTACHMENT_TEXT_LENGTH),
+      truncated: text.length > MAX_ATTACHMENT_TEXT_LENGTH
+    };
+  } catch {
+    return {
+      ...summary,
+      textContent: "",
+      unsupportedReason: "Falha ao ler o conteúdo textual do anexo."
+    };
+  }
+}
+
+async function serializeCodexAttachments(attachments = []) {
+  const serialized = [];
+  for (const attachment of attachments) {
+    if (!attachment || typeof attachment !== "object") {
+      continue;
+    }
+    serialized.push(await serializeCodexAttachment(attachment));
+  }
+  return serialized;
+}
+
+async function buildCodexLocalPrebuiltPrompt({ mode, context, promptText, request }) {
+  if (mode === "compose-microsequence") {
+    const composePlan = buildDeterministicAssistPlan({
+      promptText,
+      microsequence: context,
+      dependencyTitles: Array.isArray(request?.dependencyTitles) ? request.dependencyTitles : [],
+      preferredContainer: normalizeText(request?.preferredContainer)
+    });
+    return {
+      prebuiltPrompt: buildAssistDraftPrompt({
+        promptText,
+        plan: composePlan,
+        microsequence: context
+      }),
+      composePlan
+    };
+  }
+
+  if (mode === "edit-card") {
+    return {
+      prebuiltPrompt: buildEditPrompt({
+        microsequence: context,
+        card: request?.card,
+        dependencyTitles: Array.isArray(request?.dependencyTitles) ? request.dependencyTitles : [],
+        promptText
+      }),
+      composePlan: null
+    };
+  }
+
+  return {
+    prebuiltPrompt: "",
+    composePlan: null
+  };
 }
 
 export function isCodexLocalModel(model) {
@@ -120,7 +234,15 @@ export async function checkCodexLocalHealth({ endpoint, token, timeoutMs = 3000 
 
 export async function runCodexLocalAssist({ endpoint, token, mode, context, promptText, ...rest } = {}) {
   const target = resolveCodexLocalEndpoint(endpoint);
-  const request = sanitizeJsonValue(rest) || {};
+  const { attachments = [], ...requestRest } = rest || {};
+  const request = sanitizeJsonValue(requestRest) || {};
+  const serializedAttachments = await serializeCodexAttachments(attachments);
+  const promptState = await buildCodexLocalPrebuiltPrompt({
+    mode,
+    context: sanitizeJsonValue(context) || {},
+    promptText: normalizeText(promptText),
+    request
+  });
   const response = await fetch(target, {
     method: "POST",
     headers: {
@@ -132,7 +254,11 @@ export async function runCodexLocalAssist({ endpoint, token, mode, context, prom
       mode,
       context: sanitizeJsonValue(context) || {},
       promptText: normalizeText(promptText),
-      request
+      request: {
+        ...request,
+        attachments: serializedAttachments,
+        ...(promptState.prebuiltPrompt ? { prebuiltPrompt: promptState.prebuiltPrompt } : {})
+      }
     })
   });
 
@@ -143,6 +269,14 @@ export async function runCodexLocalAssist({ endpoint, token, mode, context, prom
   if (!data || data.ok !== true) {
     throw new Error(data?.error || "Falha no Codex local.");
   }
+  if (mode === "compose-microsequence") {
+    return normalizeAssistDraftResult(data.result, {
+      plan: promptState.composePlan,
+      promptText: normalizeText(promptText)
+    });
+  }
+  if (mode === "edit-card") {
+    return normalizeEditResult(data.result);
+  }
   return data.result;
 }
-

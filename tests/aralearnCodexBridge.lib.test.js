@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  buildAttachmentPromptSection,
   buildCodexArgs,
   buildLessonMicrosequencesPrompt,
   buildTopDownPrompt,
@@ -47,3 +48,18 @@ test("buildCodexArgs monta o template default exec {prompt}", () => {
   assert.deepEqual(buildCodexArgs({ argsTemplate: "exec {prompt}", prompt: "teste" }), ["exec", "teste"]);
 });
 
+test("buildAttachmentPromptSection inclui conteúdo textual e aviso de truncamento", () => {
+  const section = buildAttachmentPromptSection([
+    {
+      name: "referencia.md",
+      type: "text/markdown",
+      size: 42,
+      textContent: "Conteúdo útil",
+      truncated: true
+    }
+  ]);
+
+  assert.match(section, /referencia\.md/);
+  assert.match(section, /Conteúdo útil/);
+  assert.match(section, /conteúdo truncado/i);
+});

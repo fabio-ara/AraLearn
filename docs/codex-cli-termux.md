@@ -29,9 +29,12 @@ AraLearn APK/WebView
 - AraLearn não executa shell diretamente.
 - Codex CLI precisa estar instalado/autenticado no Termux.
 - O bridge precisa estar rodando.
-- O suporte inicial cobre geração top-down.
-- O suporte inicial cobre geração de microssequências de lição.
-- Cards ficam para etapa futura no provider local.
+- O suporte atual cobre geração top-down.
+- O suporte atual cobre geração de microssequências de lição.
+- O suporte atual cobre geração de cards no workbench da microssequência.
+- O suporte atual cobre edição de cards no workbench.
+- Anexos textuais podem ser enviados inline ao bridge local.
+- Anexos binários ou formatos não textuais entram apenas como metadados neste fluxo inicial.
 
 ## 4. Instalar Termux
 
@@ -105,6 +108,13 @@ Configuração básica:
 - Endpoint: `http://127.0.0.1:4183/assist`
 
 O token é opcional, mas recomendado quando o bridge estiver exposto a cenários menos controlados.
+
+Fluxos suportados no provider local:
+
+- gerar estrutura top-down;
+- gerar microssequências draft de uma lição;
+- gerar ou substituir cards de uma microssequência pelo painel de assistência;
+- editar um card existente pelo painel de assistência.
 
 ## 11. Automatizar inicialização
 

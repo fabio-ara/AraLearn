@@ -49,6 +49,35 @@ function buildExistingMicrosequenceLines(items = []) {
   ];
 }
 
+export function buildAttachmentPromptSection(attachments = []) {
+  const items = Array.isArray(attachments)
+    ? attachments
+        .map((attachment) => ({
+          name: normalizeText(attachment?.name) || "anexo",
+          type: normalizeText(attachment?.type) || "application/octet-stream",
+          size: Number(attachment?.size || 0),
+          textContent: typeof attachment?.textContent === "string" ? attachment.textContent.trim() : "",
+          unsupportedReason: normalizeText(attachment?.unsupportedReason),
+          truncated: attachment?.truncated === true
+        }))
+        .filter((attachment) => attachment.name)
+    : [];
+
+  if (!items.length) {
+    return "";
+  }
+
+  return [
+    "Anexos do usuário:",
+    ...items.map((attachment, index) => {
+      const content = attachment.textContent
+        ? `Conteúdo inline:\n${attachment.textContent}${attachment.truncated ? "\n[conteúdo truncado]" : ""}`
+        : `Observação: ${attachment.unsupportedReason || "Sem conteúdo inline disponível."}`;
+      return `${index + 1}. ${attachment.name} (${attachment.type}, ${attachment.size} bytes)\n${content}`;
+    })
+  ].join("\n\n");
+}
+
 export function extractJsonFromText(text) {
   const raw = typeof text === "string" ? text.trim() : "";
   if (!raw) {
@@ -362,6 +391,35 @@ function buildExistingMicrosequenceLines(items = []) {
       return \`\${index + 1}. \${item.title}; status: \${item.status || "draft"}; included: \${item.included ? "sim" : "não"}\${description}\${tags}\`;
     })
   ];
+}
+
+function buildAttachmentPromptSection(attachments = []) {
+  const items = Array.isArray(attachments)
+    ? attachments
+        .map((attachment) => ({
+          name: normalizeText(attachment?.name) || "anexo",
+          type: normalizeText(attachment?.type) || "application/octet-stream",
+          size: Number(attachment?.size || 0),
+          textContent: typeof attachment?.textContent === "string" ? attachment.textContent.trim() : "",
+          unsupportedReason: normalizeText(attachment?.unsupportedReason),
+          truncated: attachment?.truncated === true
+        }))
+        .filter((attachment) => attachment.name)
+    : [];
+
+  if (!items.length) {
+    return "";
+  }
+
+  return [
+    "Anexos do usuário:",
+    ...items.map((attachment, index) => {
+      const content = attachment.textContent
+        ? \`Conteúdo inline:\\n\${attachment.textContent}\${attachment.truncated ? "\\n[conteúdo truncado]" : ""}\`
+        : \`Observação: \${attachment.unsupportedReason || "Sem conteúdo inline disponível."}\`;
+      return \`\${index + 1}. \${attachment.name} (\${attachment.type}, \${attachment.size} bytes)\\n\${content}\`;
+    })
+  ].join("\\n\\n");
 }
 
 function buildTopDownPrompt(payload = {}) {
@@ -699,17 +757,33 @@ const server = http.createServer(async (request, response) => {
   try {
     const payload = await readJsonBody(request, maxBodyBytes);
     const mode = normalizeText(payload?.mode);
-    let prompt = "";
-    if (mode === "generate-top-down-structure") {
-      prompt = buildTopDownPrompt(payload);
-    } else if (mode === "generate-lesson-microsequences") {
-      prompt = buildLessonMicrosequencesPrompt(payload);
-    } else {
+    const requestPayload = payload?.request && typeof payload.request === "object" ? payload.request : {};
+    const attachmentSection = buildAttachmentPromptSection(requestPayload.attachments || []);
+    let prompt = normalizeText(requestPayload.prebuiltPrompt);
+    if (!prompt) {
+      if (mode === "generate-top-down-structure") {
+        prompt = buildTopDownPrompt(payload);
+      } else if (mode === "generate-lesson-microsequences") {
+        prompt = buildLessonMicrosequencesPrompt(payload);
+      } else {
+        respondJson(response, 400, {
+          ok: false,
+          error: mode
+            ? \`Modo ainda não suportado pelo Codex local: \${mode}. Use Gemini ou outro provedor para esta operação.\`
+            : "Modo ausente no pedido."
+        });
+        return;
+      }
+    }
+
+    if (attachmentSection) {
+      prompt = \`\${prompt}\\n\\n\${attachmentSection}\`;
+    }
+
+    if (!prompt) {
       respondJson(response, 400, {
         ok: false,
-        error: mode
-          ? \`Modo ainda não suportado pelo Codex local: \${mode}. Use Gemini ou outro provedor para esta operação.\`
-          : "Modo ausente no pedido."
+        error: "Não foi possível montar um prompt para o Codex local."
       });
       return;
     }

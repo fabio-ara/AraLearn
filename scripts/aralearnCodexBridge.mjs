@@ -3,6 +3,7 @@ import { spawn } from "node:child_process";
 import process from "node:process";
 
 import {
+  buildAttachmentPromptSection,
   buildCodexArgs,
   buildLessonMicrosequencesPrompt,
   buildTopDownPrompt,
@@ -163,18 +164,34 @@ const server = http.createServer(async (request, response) => {
   try {
     const payload = await readJsonBody(request, maxBodyBytes);
     const mode = normalizeText(payload?.mode);
-    let prompt = "";
+    const requestPayload = payload?.request && typeof payload.request === "object" ? payload.request : {};
+    const attachmentSection = buildAttachmentPromptSection(requestPayload.attachments || []);
+    let prompt = normalizeText(requestPayload.prebuiltPrompt);
 
-    if (mode === "generate-top-down-structure") {
-      prompt = buildTopDownPrompt(payload);
-    } else if (mode === "generate-lesson-microsequences") {
-      prompt = buildLessonMicrosequencesPrompt(payload);
-    } else {
+    if (!prompt) {
+      if (mode === "generate-top-down-structure") {
+        prompt = buildTopDownPrompt(payload);
+      } else if (mode === "generate-lesson-microsequences") {
+        prompt = buildLessonMicrosequencesPrompt(payload);
+      } else {
+        respondJson(response, 400, {
+          ok: false,
+          error: mode
+            ? `Modo ainda não suportado pelo Codex local: ${mode}. Use Gemini ou outro provedor para esta operação.`
+            : "Modo ausente no pedido."
+        });
+        return;
+      }
+    }
+
+    if (attachmentSection) {
+      prompt = `${prompt}\n\n${attachmentSection}`;
+    }
+
+    if (!prompt) {
       respondJson(response, 400, {
         ok: false,
-        error: mode
-          ? `Modo ainda não suportado pelo Codex local: ${mode}. Use Gemini ou outro provedor para esta operação.`
-          : "Modo ausente no pedido."
+        error: "Não foi possível montar um prompt para o Codex local."
       });
       return;
     }
@@ -207,4 +224,3 @@ const server = http.createServer(async (request, response) => {
 server.listen(port, host, () => {
   console.log(`AraLearn Codex bridge em http://${host}:${port}`);
 });
-

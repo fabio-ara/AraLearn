@@ -858,7 +858,7 @@ function buildLessonMicrosequenceRepositionPrompt({ context, promptText }) {
     .join("\n");
 }
 
-function buildEditPrompt({ microsequence, card, dependencyTitles, promptText }) {
+export function buildEditPrompt({ microsequence, card, dependencyTitles, promptText }) {
   const courseTitle = normalizeText(microsequence?.courseTitle) || "Curso atual";
   const courseDescription = normalizeText(microsequence?.courseDescription) || "não informado";
   const moduleTitle = normalizeText(microsequence?.moduleTitle) || "Módulo atual";
