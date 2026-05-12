@@ -3865,7 +3865,11 @@ button {
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  padding: 6px;
+  padding:
+    max(var(--safe-top), 6px)
+    calc(var(--safe-right) + 6px)
+    calc(var(--safe-bottom-tappable) + 6px)
+    calc(var(--safe-left) + 6px);
 }
 
 .action-menu-overlay {
@@ -3874,7 +3878,11 @@ button {
   z-index: 92;
   background: rgba(5, 9, 15, 0.5);
   display: flex;
-  padding: 8px;
+  padding:
+    max(var(--safe-top), 8px)
+    calc(var(--safe-right) + 8px)
+    calc(var(--safe-bottom-tappable) + 8px)
+    calc(var(--safe-left) + 8px);
 }
 
 .action-menu-overlay-side {
@@ -3893,7 +3901,11 @@ button {
   z-index: 92;
   background: rgba(5, 9, 15, 0.55);
   display: flex;
-  padding: 8px;
+  padding:
+    max(var(--safe-top), 8px)
+    calc(var(--safe-right) + 8px)
+    calc(var(--safe-bottom-tappable) + 8px)
+    calc(var(--safe-left) + 8px);
   align-items: flex-start;
   justify-content: flex-end;
 }
@@ -3901,7 +3913,10 @@ button {
 .overlay-panel {
   display: flex;
   width: min(100%, 430px);
-  max-height: min(94dvh, 860px);
+  max-height: min(
+    calc(100dvh - var(--safe-top) - var(--safe-bottom-tappable) - 16px),
+    860px
+  );
   overflow: auto;
   border-radius: 18px;
   background:
@@ -5449,7 +5464,11 @@ button {
 
 @media (max-width: 430px) {
   .overlay-shell {
-    padding: 6px;
+    padding:
+      max(var(--safe-top), 6px)
+      calc(var(--safe-right) + 6px)
+      calc(var(--safe-bottom-tappable) + 6px)
+      calc(var(--safe-left) + 6px);
     align-items: flex-end;
     justify-content: center;
   }
@@ -5459,7 +5478,10 @@ button {
   .generation-overlay-panel {
     width: 100%;
     max-width: 100%;
-    max-height: min(92dvh, 860px);
+    max-height: min(
+      calc(100dvh - var(--safe-top) - var(--safe-bottom-tappable) - 12px),
+      860px
+    );
     margin-left: 0;
     border-radius: 18px;
   }
