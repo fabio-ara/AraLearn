@@ -16,11 +16,11 @@ test("renderAssistConfigOverlay prioriza Gemini como caminho normal e marca Code
   });
 
   assert.match(html, /class="editor-overlay assist-config-overlay"/);
-  assert.match(html, /Gemini\/API comum é o caminho normal/);
   assert.match(html, /<label>Modelo principal<\/label>/);
   assert.match(html, /<label>Chave Gemini\/API<\/label>/);
-  assert.match(html, /Integração local avançada/);
-  assert.match(html, /Preencha estes campos apenas se você realmente for usar Codex CLI local/);
+  assert.match(html, /Codex local/);
+  assert.doesNotMatch(html, /Gemini\/API comum é o caminho normal/);
+  assert.doesNotMatch(html, /Preencha estes campos apenas se você realmente for usar Codex CLI local/);
 });
 
 test("renderAssistConfigOverlay destaca quando o modo local avançado está ativo", () => {
@@ -36,5 +36,5 @@ test("renderAssistConfigOverlay destaca quando o modo local avançado está ativ
   });
 
   assert.match(html, /Modo avançado ativo/);
-  assert.match(html, /bridge local antes de gerar ou editar/);
+  assert.doesNotMatch(html, /bridge local antes de gerar ou editar/);
 });
