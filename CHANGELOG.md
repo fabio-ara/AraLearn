@@ -4,6 +4,8 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ## [Unreleased]
 
+## [0.1.3] - 2026-05-13
+
 ### Changed
 
 - a lição passa a poder carregar `domainMap` com `domainItem`, `practiceVariant` e `gapSummary` derivados para orientar cobertura didática real

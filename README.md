@@ -565,7 +565,7 @@ A documentação pública procura expor essa direção com transparência: quand
 Versão atual do pacote:
 
 ```text
-0.1.2
+0.1.3
 ```
 
 As próximas iterações devem aprofundar:
