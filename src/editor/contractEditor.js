@@ -20,6 +20,7 @@ import {
   normalizeSourceGuideStructured,
   SOURCE_GUIDE_LEVELS
 } from "../sourceGuides/sourceGuideStructured.js";
+import { normalizeLessonGuidance } from "../generation/guidance/lessonGuidance.js";
 
 function clone(value) {
   return structuredClone(value);
@@ -83,14 +84,11 @@ function assignOptionalSourceGuide(record, sourceGuide, sourceGuideStructured, l
   }
 
   if (sourceGuideStructured === undefined) {
-    assignOptionalTextField(record, "sourceGuide", sourceGuide);
-    delete record.sourceGuideStructured;
-    return;
+    fail('Campo obrigatório ausente: "sourceGuideStructured".');
   }
 
-  const normalizedText = sourceGuide === undefined ? "" : sourceGuide;
   const structured = normalizeSourceGuideStructured(sourceGuideStructured, { level });
-  const nextText = buildSourceGuideText(structured, normalizedText, { level });
+  const nextText = buildSourceGuideText(structured, { level });
 
   if (nextText) {
     record.sourceGuide = nextText;
@@ -103,6 +101,14 @@ function assignOptionalSourceGuide(record, sourceGuide, sourceGuideStructured, l
   } else {
     delete record.sourceGuideStructured;
   }
+}
+
+function assignLessonGuidance(record, input = {}) {
+  const normalized = normalizeLessonGuidance(input);
+  record.resourceTags = normalized.resourceTags;
+  record.contentTypeTags = normalized.contentTypeTags;
+  record.learningActionTags = normalized.learningActionTags;
+  record.supportLevel = normalized.supportLevel;
 }
 
 function normalizeOptionalTags(value) {
@@ -259,6 +265,42 @@ function createProjectDocument(courses) {
   };
 }
 
+function createScopedProjectDocument(scope, courses) {
+  return {
+    contract: CONTRACT_NAME,
+    version: CONTRACT_VERSION,
+    kind: CONTRACT_KIND_PROJECT,
+    scope,
+    courses
+  };
+}
+
+function inferContractScope(document) {
+  const explicitScope = typeof document?.scope === "string" ? document.scope.trim() : "";
+  if (explicitScope) {
+    return explicitScope;
+  }
+
+  return "course";
+}
+
+function getScopeLabel(scope) {
+  if (scope === "course") return "curso";
+  if (scope === "module") return "módulo";
+  if (scope === "lesson") return "lição";
+  if (scope === "microsequence") return "microssequência";
+  return "conteúdo";
+}
+
+function assertImportScope(document, expectedScope) {
+  const actualScope = inferContractScope(document);
+  if (actualScope === expectedScope) {
+    return;
+  }
+
+  fail(`Este arquivo contém ${getScopeLabel(actualScope)}. Importe dentro do nível correto para ${getScopeLabel(actualScope)}.`);
+}
+
 function createStarterMicrosequence({ title = "Nova microssequência" } = {}) {
   return {
     key: uniqueKey(title, new Set(), "microsequence"),
@@ -269,7 +311,16 @@ function createStarterMicrosequence({ title = "Nova microssequência" } = {}) {
   };
 }
 
-function createStarterLesson({ title = "Nova lição", description, sourceGuide, sourceGuideStructured } = {}) {
+function createStarterLesson({
+  title = "Nova lição",
+  description,
+  sourceGuide,
+  sourceGuideStructured,
+  resourceTags,
+  contentTypeTags,
+  learningActionTags,
+  supportLevel
+} = {}) {
   const lesson = {
     key: uniqueKey(title, new Set(), "lesson"),
     title,
@@ -277,6 +328,7 @@ function createStarterLesson({ title = "Nova lição", description, sourceGuide,
     microsequences: []
   };
   assignOptionalSourceGuide(lesson, sourceGuide, sourceGuideStructured, SOURCE_GUIDE_LEVELS.LESSON);
+  assignLessonGuidance(lesson, { resourceTags, contentTypeTags, learningActionTags, supportLevel });
   return lesson;
 }
 
@@ -287,7 +339,6 @@ function createStarterModule({ title = "Novo módulo", description, sourceGuide,
     ...(description ? { description } : {}),
     lessons: []
   };
-  assignOptionalSourceGuide(moduleValue, sourceGuide, sourceGuideStructured, SOURCE_GUIDE_LEVELS.MODULE);
   return moduleValue;
 }
 
@@ -298,7 +349,6 @@ function createStarterCourse({ title = "Novo curso", description, sourceGuide, s
     ...(description ? { description } : {}),
     modules: []
   };
-  assignOptionalSourceGuide(course, sourceGuide, sourceGuideStructured, SOURCE_GUIDE_LEVELS.COURSE);
   return course;
 }
 
@@ -343,7 +393,6 @@ export function updateCourse(document, input) {
   const course = findCourse(nextDocument, input.courseKey);
   assignOptionalTextField(course, "title", input.title);
   assignOptionalTextField(course, "description", input.description);
-  assignOptionalSourceGuide(course, input.sourceGuide, input.sourceGuideStructured, SOURCE_GUIDE_LEVELS.COURSE);
   return ensureValidDocument(nextDocument);
 }
 
@@ -354,16 +403,8 @@ export function createCourse(document, input = {}) {
     input.description && typeof input.description === "string" && input.description.trim()
       ? input.description.trim()
       : "";
-  const sourceGuide =
-    input.sourceGuide && typeof input.sourceGuide === "string" && input.sourceGuide.trim()
-      ? input.sourceGuide.trim()
-      : "";
-  const sourceGuideStructured =
-    input.sourceGuideStructured === undefined
-      ? undefined
-      : normalizeSourceGuideStructured(input.sourceGuideStructured, { level: SOURCE_GUIDE_LEVELS.COURSE });
   const usedKeys = collectSiblingKeys(nextDocument.courses || []);
-  const course = createStarterCourse({ title, description, sourceGuide, sourceGuideStructured });
+  const course = createStarterCourse({ title, description });
   course.key = input.key && typeof input.key === "string" && input.key.trim()
     ? input.key.trim()
     : uniqueKey(title, usedKeys, "course");
@@ -379,6 +420,7 @@ export function createCourse(document, input = {}) {
 export function importCourses(document, input = {}) {
   const nextDocument = clone(document);
   const importedDocument = ensureValidDocument(input.document);
+  assertImportScope(importedDocument, "course");
   const importedCourses = Array.isArray(importedDocument.courses) ? importedDocument.courses : [];
 
   if (!importedCourses.length) {
@@ -405,6 +447,7 @@ export function importModules(document, input = {}) {
   const nextDocument = clone(document);
   const course = findCourse(nextDocument, input.courseKey);
   const importedDocument = ensureValidDocument(input.document);
+  assertImportScope(importedDocument, "module");
   const importedModules = importedDocument.courses.flatMap((entry) => entry.modules || []);
 
   if (!importedModules.length) {
@@ -431,6 +474,7 @@ export function importLessons(document, input = {}) {
   const nextDocument = clone(document);
   const { moduleValue } = findModule(nextDocument, input.courseKey, input.moduleKey);
   const importedDocument = ensureValidDocument(input.document);
+  assertImportScope(importedDocument, "lesson");
   const importedLessons = importedDocument.courses.flatMap((course) =>
     (course.modules || []).flatMap((moduleItem) => moduleItem.lessons || [])
   );
@@ -459,6 +503,7 @@ export function importMicrosequences(document, input = {}) {
   const nextDocument = clone(document);
   const { lesson } = findLesson(nextDocument, input.courseKey, input.moduleKey, input.lessonKey);
   const importedDocument = ensureValidDocument(input.document);
+  assertImportScope(importedDocument, "microsequence");
   const importedMicrosequences = importedDocument.courses.flatMap((course) =>
     (course.modules || []).flatMap((moduleItem) =>
       (moduleItem.lessons || []).flatMap((lessonItem) => lessonItem.microsequences || [])
@@ -496,7 +541,7 @@ export function importMicrosequences(document, input = {}) {
 
 export function exportCourseDocument(document, input) {
   const course = findCourse(document, input.courseKey);
-  return ensureValidDocument(createProjectDocument([clone(course)]));
+  return ensureValidDocument(createScopedProjectDocument("course", [clone(course)]));
 }
 
 export function exportModuleDocument(document, input) {
@@ -507,13 +552,10 @@ export function exportModuleDocument(document, input) {
   }
 
   return ensureValidDocument(
-    createProjectDocument([
+    createScopedProjectDocument("module", [
       {
         key: course.key,
         title: course.title,
-        ...(course.description ? { description: course.description } : {}),
-        ...(course.sourceGuide ? { sourceGuide: course.sourceGuide } : {}),
-        ...(course.sourceGuideStructured ? { sourceGuideStructured: clone(course.sourceGuideStructured) } : {}),
         modules: [clone(moduleValue)]
       }
     ])
@@ -532,20 +574,14 @@ export function exportLessonDocument(document, input) {
   }
 
   return ensureValidDocument(
-    createProjectDocument([
+    createScopedProjectDocument("lesson", [
       {
         key: course.key,
         title: course.title,
-        ...(course.description ? { description: course.description } : {}),
-        ...(course.sourceGuide ? { sourceGuide: course.sourceGuide } : {}),
-        ...(course.sourceGuideStructured ? { sourceGuideStructured: clone(course.sourceGuideStructured) } : {}),
         modules: [
           {
             key: moduleValue.key,
             title: moduleValue.title,
-            ...(moduleValue.description ? { description: moduleValue.description } : {}),
-            ...(moduleValue.sourceGuide ? { sourceGuide: moduleValue.sourceGuide } : {}),
-            ...(moduleValue.sourceGuideStructured ? { sourceGuideStructured: clone(moduleValue.sourceGuideStructured) } : {}),
             lessons: [clone(lesson)]
           }
         ]
@@ -570,27 +606,18 @@ export function exportMicrosequenceDocument(document, input) {
   }
 
   return ensureValidDocument(
-    createProjectDocument([
+    createScopedProjectDocument("microsequence", [
       {
         key: course.key,
         title: course.title,
-        ...(course.description ? { description: course.description } : {}),
-        ...(course.sourceGuide ? { sourceGuide: course.sourceGuide } : {}),
-        ...(course.sourceGuideStructured ? { sourceGuideStructured: clone(course.sourceGuideStructured) } : {}),
         modules: [
           {
             key: moduleValue.key,
             title: moduleValue.title,
-            ...(moduleValue.description ? { description: moduleValue.description } : {}),
-            ...(moduleValue.sourceGuide ? { sourceGuide: moduleValue.sourceGuide } : {}),
-            ...(moduleValue.sourceGuideStructured ? { sourceGuideStructured: clone(moduleValue.sourceGuideStructured) } : {}),
             lessons: [
               {
                 key: lesson.key,
                 title: lesson.title,
-                ...(lesson.description ? { description: lesson.description } : {}),
-                ...(lesson.sourceGuide ? { sourceGuide: lesson.sourceGuide } : {}),
-                ...(lesson.sourceGuideStructured ? { sourceGuideStructured: clone(lesson.sourceGuideStructured) } : {}),
                 microsequences: [clone(microsequence)]
               }
             ]
@@ -626,16 +653,8 @@ export function createModule(document, input) {
     input.description && typeof input.description === "string" && input.description.trim()
       ? input.description.trim()
       : "";
-  const sourceGuide =
-    input.sourceGuide && typeof input.sourceGuide === "string" && input.sourceGuide.trim()
-      ? input.sourceGuide.trim()
-      : "";
-  const sourceGuideStructured =
-    input.sourceGuideStructured === undefined
-      ? undefined
-      : normalizeSourceGuideStructured(input.sourceGuideStructured, { level: SOURCE_GUIDE_LEVELS.MODULE });
   const usedKeys = collectSiblingKeys(course.modules);
-  const moduleValue = createStarterModule({ title, description, sourceGuide, sourceGuideStructured });
+  const moduleValue = createStarterModule({ title, description });
   moduleValue.key = input.key && typeof input.key === "string" && input.key.trim()
     ? input.key.trim()
     : uniqueKey(title, usedKeys, "module");
@@ -653,7 +672,6 @@ export function updateModule(document, input) {
   const { moduleValue } = findModule(nextDocument, input.courseKey, input.moduleKey);
   assignOptionalTextField(moduleValue, "title", input.title);
   assignOptionalTextField(moduleValue, "description", input.description);
-  assignOptionalSourceGuide(moduleValue, input.sourceGuide, input.sourceGuideStructured, SOURCE_GUIDE_LEVELS.MODULE);
   return ensureValidDocument(nextDocument);
 }
 
@@ -685,16 +703,22 @@ export function createLesson(document, input) {
     input.description && typeof input.description === "string" && input.description.trim()
       ? input.description.trim()
       : "";
-  const sourceGuide =
-    input.sourceGuide && typeof input.sourceGuide === "string" && input.sourceGuide.trim()
-      ? input.sourceGuide.trim()
-      : "";
+  const sourceGuide = input.sourceGuide && typeof input.sourceGuide === "string" && input.sourceGuide.trim() ? input.sourceGuide.trim() : undefined;
   const sourceGuideStructured =
     input.sourceGuideStructured === undefined
       ? undefined
       : normalizeSourceGuideStructured(input.sourceGuideStructured, { level: SOURCE_GUIDE_LEVELS.LESSON });
   const usedKeys = collectSiblingKeys(moduleValue.lessons);
-  const lesson = createStarterLesson({ title, description, sourceGuide, sourceGuideStructured });
+  const lesson = createStarterLesson({
+    title,
+    description,
+    sourceGuide,
+    sourceGuideStructured,
+    resourceTags: input.resourceTags,
+    contentTypeTags: input.contentTypeTags,
+    learningActionTags: input.learningActionTags,
+    supportLevel: input.supportLevel
+  });
   lesson.key = input.key && typeof input.key === "string" && input.key.trim()
     ? input.key.trim()
     : uniqueKey(title, usedKeys, "lesson");
@@ -713,6 +737,7 @@ export function updateLesson(document, input) {
   assignOptionalTextField(lesson, "title", input.title);
   assignOptionalTextField(lesson, "description", input.description);
   assignOptionalSourceGuide(lesson, input.sourceGuide, input.sourceGuideStructured, SOURCE_GUIDE_LEVELS.LESSON);
+  assignLessonGuidance(lesson, input);
   return ensureValidDocument(nextDocument);
 }
 
@@ -880,10 +905,6 @@ export function replaceMicrosequenceCards(document, input) {
   const microsequence = findMicrosequence(lesson, input.microsequenceKey);
   const cards = Array.isArray(input.cards) ? input.cards : [];
 
-  if (!cards.length) {
-    fail('Campo obrigatório inválido: "cards".');
-  }
-
   if (input.title !== undefined) {
     assignUniqueMicrosequenceTitle(lesson, microsequence, normalizeText(input.title, "title"));
   }
@@ -897,9 +918,11 @@ export function replaceMicrosequenceCards(document, input) {
     }
   }
 
+  assignOptionalTextField(microsequence, "description", input.description);
+
   const usedKeys = new Set();
   microsequence.cards = cards.map((entry, index) => normalizeCardForInsert(entry, usedKeys, `Card ${index + 1}`));
-  microsequence.status = normalizeMicrosequenceStatus(input.status || MICROSEQUENCE_STATUS_READY, microsequence);
+  microsequence.status = normalizeMicrosequenceStatus(input.status || microsequence.status || MICROSEQUENCE_STATUS_READY, microsequence);
   microsequence.included = normalizeMicrosequenceRuntimeIncluded(input.included ?? microsequence.included, microsequence);
   return ensureValidDocument(nextDocument);
 }

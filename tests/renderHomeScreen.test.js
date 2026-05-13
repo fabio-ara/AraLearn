@@ -63,7 +63,6 @@ test("renderiza a home como lista única de cursos com ações globais e geraç�
   assert.doesNotMatch(html, /10\/05 18:55/);
   assert.match(html, /class="courses-home-list navigation-list"/);
   assert.match(html, /class="course-copy navigation-main"/);
-  assert.match(html, /data-action="open-course-source-guide" data-course-key="course-teste"/);
   assert.match(html, /data-action="open-course-actions"/);
   assert.match(html, /data-action="open-generation-panel-course" data-course-key="course-teste"/);
   assert.match(html, /data-action="open-course" data-course-key="course-teste"/);
@@ -71,7 +70,6 @@ test("renderiza a home como lista única de cursos com ações globais e geraç�
   assert.match(html, /class="course-actions navigation-actions"/);
   assert.ok(html.indexOf('data-action="open-generation-panel-global"') < html.indexOf('data-action="quick-create-course"'));
   assert.ok(html.indexOf('data-action="quick-create-course"') < html.indexOf('data-action="open-home-actions"'));
-  assert.ok(html.indexOf('data-action="open-course-source-guide"') < html.indexOf('data-action="open-course-actions"'));
   assert.ok(html.indexOf('data-action="open-course-actions"') < html.indexOf('data-action="open-generation-panel-course"'));
   assert.doesNotMatch(html, /Organizar/);
   assert.match(html, /progress-meta-item-value">1\/1<\/span>/);

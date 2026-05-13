@@ -72,6 +72,81 @@ function makeGeneratedCardsPayload() {
   };
 }
 
+function makeGuidedPracticeCardsPayload() {
+  return {
+    cards: [
+      {
+        position: 1,
+        resourceType: "paragraph",
+        title: "Preparar a prática",
+        text: "Antes de escolher um comando, identifique qual etapa do fluxo você quer completar."
+      },
+      {
+        position: 2,
+        resourceType: "block_gap_fill",
+        title: "Complete o fluxo",
+        prompt: "Escolha o bloco que prepara arquivos para o commit.",
+        segments: [
+          { kind: "text", value: "Para preparar arquivos, use " },
+          { kind: "blank", blankId: "b1", acceptedBlockIds: ["git-add"] },
+          { kind: "text", value: "." }
+        ],
+        blocks: [
+          { blockId: "git-add", label: "git add arquivo.txt" },
+          { blockId: "git-push", label: "git push" }
+        ],
+        feedbackAfter: "git add prepara arquivos antes do commit."
+      },
+      {
+        position: 3,
+        resourceType: "multiple_choice",
+        title: "Consolidar",
+        question: "Qual comando prepara arquivos para o commit?",
+        options: [
+          { optionId: "a", label: "git add" },
+          { optionId: "b", label: "git push" },
+          { optionId: "c", label: "git clone" }
+        ],
+        correctOptionId: "a",
+        feedback: "git add coloca mudanças na área de preparação."
+      }
+    ]
+  };
+}
+
+function makeComposeMicrosequenceContext(overrides = {}) {
+  return {
+    courseTitle: "Programação",
+    courseDescription: "Fundamentos para iniciantes.",
+    courseSourceGuideStructured: {
+      audience: "Iniciantes absolutos.",
+      globalScope: "Fluxo básico de Git para começar a versionar.",
+      sharedNotation: "Destacar comandos inline com acentos graves."
+    },
+    moduleTitle: "Git e colaboração",
+    moduleDescription: "Versionamento básico.",
+    moduleSourceGuideStructured: {
+      moduleScope: "Comandos essenciais para registrar e publicar mudanças.",
+      lessonProgression: "Ir de preparação local para envio ao remoto."
+    },
+    lessonTitle: "Primeiros comandos",
+    lessonDescription: "Criar repositório e registrar mudanças.",
+    lessonSourceGuideStructured: {
+      lessonGoal: "Distinguir `git add` de `git push` no fluxo de trabalho.",
+      notationRules: "Destacar `git add` e `git push` inline.",
+      masteryGoal: "Escolher o comando correto para preparar ou enviar mudanças."
+    },
+    lessonResourceTags: ["paragraph", "multiple_choice", "code_editor"],
+    lessonContentTypeTags: ["concept", "procedure", "tool_use"],
+    lessonLearningActionTags: ["understand", "practice", "use_tool"],
+    lessonSupportLevel: "guided",
+    title: "Git",
+    tags: [],
+    cards: [],
+    ...overrides
+  };
+}
+
 function makeGeminiTextResponse(payloadText) {
   return {
     ok: true,
@@ -212,36 +287,19 @@ test("gera estrutura top-down com description breve e sourceGuide detalhada", as
                       course: {
                         title: "Lógica Proposicional",
                         description: "Curso introdutório de lógica proposicional.",
-                        sourceGuide:
-                          "Objetivo: ensinar lógica proposicional do zero.\nConteúdo obrigatório: conectivos, tabelas-verdade e equivalências.",
-                        sourceGuideStructured: {
-                          audience: "Nenhum pré-requisito formal além de leitura básica.",
-                          globalScope: "Aprender proposições, conectivos e equivalências elementares.",
-                          globalOutOfScope: "Não entrar em lógica de predicados.",
-                          sharedNotation: "Destacar `p`, `q`, `~`, `^`, `v` e `->` inline."
-                        },
                         modules: [
                           {
                             title: "Fundamentos",
                             description: "Base conceitual inicial.",
-                            sourceGuide: "Apresentar proposições, valores lógicos e conectivos básicos.",
-                            sourceGuideStructured: {
-                              modulePrerequisites: "Reconhecer frases e afirmações simples.",
-                              moduleScope: "Distinguir proposição, valor lógico e conectivo.",
-                              moduleOutOfScope: "Não entrar em prova formal.",
-                              lessonProgression: "Ir da linguagem comum para a simbólica."
-                            },
                             lessons: [
                               {
                                 title: "Proposições e conectivos",
                                 description: "Introdução às proposições.",
                                 sourceGuide: "Mostrar exemplos do cotidiano e formalização simbólica.",
                                 sourceGuideStructured: {
-                                  lessonPrerequisites: "Leitura básica e atenção a frases declarativas.",
                                   lessonGoal: "Reconhecer proposições e usar conectivos básicos.",
                                   commonErrors: "Tratar ordem dos conectivos como irrelevante.",
-                                  notationRules: "Destacar `e`, `ou`, `não`, `se...então` e símbolos.",
-                                  masteryGoal: "Traduzir frases simples para notação lógica."
+                                  notationRules: "Destacar `e`, `ou`, `não`, `se...então` e símbolos."
                                 }
                               }
                             ]
@@ -275,16 +333,16 @@ test("gera estrutura top-down com description breve e sourceGuide detalhada", as
     const prompt = calls[0].contents[0].parts[0].text;
     assert.ok(calls[0].generationConfig.responseJsonSchema);
     assert.match(prompt, /sourceGuideStructured/);
-    assert.match(prompt, /audience/);
-    assert.match(prompt, /Em curso, use apenas: audience, globalScope, globalOutOfScope, sharedNotation/);
-    assert.match(prompt, /Não suba preferências finas de explicação ou prática para curso e módulo/);
+    assert.match(prompt, /Curso e módulo não têm fonte-guia própria neste contrato/);
+    assert.match(prompt, /Em lição, use apenas: lessonGoal, notationRules, commonErrors/);
     assert.equal(result.course.description, "Curso introdutório de lógica proposicional.");
-    assert.equal(result.course.sourceGuide.includes("Objetivo: ensinar lógica proposicional do zero."), true);
-    assert.equal(result.course.sourceGuideStructured.globalScope, "Aprender proposições, conectivos e equivalências elementares.");
-    assert.equal(result.course.modules[0].sourceGuide, "Apresentar proposições, valores lógicos e conectivos básicos.");
-    assert.equal(result.course.modules[0].sourceGuideStructured.lessonProgression, "Ir da linguagem comum para a simbólica.");
-    assert.equal(result.course.modules[0].lessons[0].sourceGuide, "Mostrar exemplos do cotidiano e formalização simbólica.");
-    assert.equal(result.course.modules[0].lessons[0].sourceGuideStructured.masteryGoal, "Traduzir frases simples para notação lógica.");
+    assert.equal(result.course.sourceGuide, undefined);
+    assert.equal(result.course.sourceGuideStructured, undefined);
+    assert.equal(result.course.modules[0].sourceGuide, undefined);
+    assert.equal(result.course.modules[0].sourceGuideStructured, undefined);
+    assert.match(result.course.modules[0].lessons[0].sourceGuide, /Meta da lição:/);
+    assert.match(result.course.modules[0].lessons[0].sourceGuide, /Confusões prováveis:/);
+    assert.equal(result.course.modules[0].lessons[0].sourceGuideStructured.commonErrors, "Tratar ordem dos conectivos como irrelevante.");
   } finally {
     globalThis.fetch = originalFetch;
   }
@@ -441,35 +499,19 @@ test("não promove description a sourceGuide no prompt estrutural quando a fonte
         course: {
           title: "Lógica",
           description: "Curso breve.",
-          sourceGuide: "Guia do curso.",
-          sourceGuideStructured: {
-            audience: "Base mínima.",
-            globalScope: "Escopo do curso.",
-            globalOutOfScope: "Sem extensões.",
-            sharedNotation: "Notação simples."
-          },
           modules: [
             {
               title: "Fundamentos",
               description: "Base breve.",
-              sourceGuide: "Guia do módulo.",
-              sourceGuideStructured: {
-                modulePrerequisites: "Base mínima.",
-                moduleScope: "Escopo do módulo.",
-                moduleOutOfScope: "Sem desvios.",
-                lessonProgression: "Progressão curta."
-              },
               lessons: [
                 {
                   title: "Proposições",
                   description: "Descrição breve da lição.",
                   sourceGuide: "Guia detalhado da lição.",
                   sourceGuideStructured: {
-                    lessonPrerequisites: "Base mínima.",
                     lessonGoal: "Escopo da lição.",
                     commonErrors: "Erros básicos.",
-                    notationRules: "Notação simples.",
-                    masteryGoal: "Aplicação local."
+                    notationRules: "Notação simples."
                   }
                 }
               ]
@@ -743,17 +785,7 @@ test("gera microssequência com plano local e chamada estruturada ao Gemini", as
     const result = await runGeminiAssist({
       apiKey: "chave",
       mode: "compose-microsequence",
-      microsequence: {
-        courseTitle: "Programação",
-        courseDescription: "Fundamentos para iniciantes.",
-        moduleTitle: "Git e colaboração",
-        moduleDescription: "Versionamento básico.",
-        lessonTitle: "Primeiros comandos",
-        lessonDescription: "Criar repositório e registrar mudanças.",
-        title: "Git",
-        tags: [],
-        cards: []
-      },
+      microsequence: makeComposeMicrosequenceContext(),
       dependencyTitles: ["Git"],
       selectedLessonTopicRefs: [{ refKey: "micro-git", label: "Git", source: "microsequence" }],
       promptText: "explique git add e git push"
@@ -768,6 +800,7 @@ test("gera microssequência com plano local e chamada estruturada ao Gemini", as
     assert.match(calls[0].body.contents[0].parts[0].text, /"course":\{"title":"Programação"/);
     assert.match(calls[0].body.contents[0].parts[0].text, /"module":\{"title":"Git e colaboração"/);
     assert.match(calls[0].body.contents[0].parts[0].text, /"lesson":\{"title":"Primeiros comandos"/);
+    assert.match(calls[0].body.contents[0].parts[0].text, /"requestGovernance":\{"precedence":\["context\.lesson\.sourceGuideStructured"/);
     assert.match(calls[0].body.contents[0].parts[0].text, /"selectedLessonTopicRefs":\[\{"refKey":"micro-git","label":"Git","source":"microsequence"\}\]/);
     assert.doesNotMatch(calls[0].body.contents[0].parts[0].text, /Análise e Desenvolvimento de Sistemas/);
     assert.match(calls[1].body.contents[0].parts[0].text, /code_editor/);
@@ -778,6 +811,52 @@ test("gera microssequência com plano local e chamada estruturada ao Gemini", as
     assert.equal(result.cards[2].code, "git push -u origin main");
     assert.equal(result.cards[4].answer, "git push");
     assert.deepEqual(result.tags, []);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("envia tipo didático fixado pela UI para o planejamento da microssequência", async () => {
+  const originalFetch = globalThis.fetch;
+  const calls = [];
+  globalThis.fetch = async (url, options) => {
+    calls.push({ url, body: JSON.parse(options.body) });
+    return makeGeminiTextResponse(
+      JSON.stringify(
+        calls.length === 1
+          ? {
+              typeId: "guided_practice",
+              sizeId: "short",
+              microsequenceGoal: "Praticar git add com uma lacuna guiada.",
+              selectedExtraResourceTypes: [],
+              sourceUsePlan: [],
+              reason: "O usuário fixou prática guiada."
+            }
+          : makeGuidedPracticeCardsPayload()
+      )
+    );
+  };
+
+  try {
+    const result = await runGeminiAssist({
+      apiKey: "chave",
+      mode: "compose-microsequence",
+      microsequence: makeComposeMicrosequenceContext({
+        lessonResourceTags: ["paragraph", "block_gap_fill", "multiple_choice"]
+      }),
+      promptText: "crie uma prática guiada sobre git add",
+      userFixedTypeId: "guided_practice"
+    });
+
+    assert.equal(calls.length, 2);
+    assert.match(calls[0].body.contents[0].parts[0].text, /"userFixedTypeId":"guided_practice"/);
+    assert.match(calls[0].body.contents[0].parts[0].text, /typeId exatamente igual a "guided_practice"/);
+    assert.equal(result.generationRunState.validatedPlan.plan.typeId, "guided_practice");
+    assert.deepEqual(
+      result.generationRunState.validatedPlan.plan.cardPlan.map((card) => card.resourceType),
+      ["paragraph", "block_gap_fill", "multiple_choice"]
+    );
+    assert.equal(result.cards.length, 3);
   } finally {
     globalThis.fetch = originalFetch;
   }
@@ -870,7 +949,7 @@ test("fluxo Gemini repara geração final inválida antes da adaptação públic
     const result = await runGeminiAssist({
       apiKey: "chave",
       mode: "compose-microsequence",
-      microsequence: { title: "Git", tags: [], cards: [] },
+      microsequence: makeComposeMicrosequenceContext(),
       promptText: "explique git add e git push"
     });
 
@@ -902,7 +981,7 @@ test("fluxo Gemini devolve erro claro quando reparo de geração falha", async (
         runGeminiAssist({
           apiKey: "chave",
           mode: "compose-microsequence",
-          microsequence: { title: "Git", tags: [], cards: [] },
+          microsequence: makeComposeMicrosequenceContext(),
           promptText: "explique git add e git push"
         }),
       (error) => {
@@ -933,7 +1012,7 @@ test("generationRunState é criado após plano validado no fluxo completo", asyn
     const result = await runGeminiAssist({
       apiKey: "chave",
       mode: "compose-microsequence",
-      microsequence: { key: "micro", title: "Git", tags: [], cards: [] },
+      microsequence: makeComposeMicrosequenceContext({ key: "micro" }),
       promptText: "explique git add e git push"
     });
 
@@ -961,10 +1040,10 @@ test("falha retryable na geração preserva plano validado e permite retomada se
   try {
     let capturedError = null;
     try {
-      await runGeminiAssist({
-        apiKey: "chave",
-        mode: "compose-microsequence",
-        microsequence: { key: "micro", title: "Git", tags: [], cards: [] },
+        await runGeminiAssist({
+          apiKey: "chave",
+          mode: "compose-microsequence",
+          microsequence: makeComposeMicrosequenceContext({ key: "micro" }),
         promptText: "explique git add e git push",
         retryOptions: { maxAttempts: 2, baseDelayMs: 10, jitterRatio: 0, delay: async (ms) => delays.push(ms) }
       });
@@ -1026,7 +1105,7 @@ test("fallback não ocorre por padrão quando geração recebe 503", async () =>
         runGeminiAssist({
           apiKey: "chave",
           mode: "compose-microsequence",
-          microsequence: { title: "Git", tags: [], cards: [] },
+          microsequence: makeComposeMicrosequenceContext(),
           promptText: "explique git add e git push",
           fallbackModelId: "gemini-2.5-flash-lite",
           retryOptions: { maxAttempts: 1, delay: async () => null }
@@ -1062,7 +1141,7 @@ test("fallback ocorre apenas quando configurado para erro transitório de geraç
     const result = await runGeminiAssist({
       apiKey: "chave",
       mode: "compose-microsequence",
-      microsequence: { title: "Git", tags: [], cards: [] },
+      microsequence: makeComposeMicrosequenceContext(),
       promptText: "explique git add e git push",
       fallbackEnabled: true,
       fallbackModelId: "gemini-2.5-flash-lite",
@@ -1094,7 +1173,7 @@ test("fallback não ocorre em auth_error", async () => {
         runGeminiAssist({
           apiKey: "chave",
           mode: "compose-microsequence",
-          microsequence: { title: "Git", tags: [], cards: [] },
+          microsequence: makeComposeMicrosequenceContext(),
           promptText: "explique git add e git push",
           fallbackEnabled: true,
           fallbackModelId: "gemini-2.5-flash-lite",
@@ -1123,7 +1202,7 @@ test("erro de planejamento retorna canResume false", async () => {
         runGeminiAssist({
           apiKey: "chave",
           mode: "compose-microsequence",
-          microsequence: { title: "Git", tags: [], cards: [] },
+          microsequence: makeComposeMicrosequenceContext(),
           promptText: "explique git add e git push",
           retryOptions: { maxAttempts: 2, delay: async () => null }
         }),
@@ -1201,7 +1280,7 @@ test("anexa documentos ao Gemini Files API antes de gerar cards", async () => {
     const result = await runGeminiAssist({
       apiKey: "chave",
       mode: "compose-microsequence",
-      microsequence: { title: "Git", tags: [], cards: [] },
+      microsequence: makeComposeMicrosequenceContext(),
       promptText: "explique git add e git push",
       attachments: [attachment]
     });
@@ -1296,7 +1375,7 @@ test("aceita JSON do Gemini envolto em bloco markdown", async () => {
     const result = await runGeminiAssist({
       apiKey: "chave",
       mode: "compose-microsequence",
-      microsequence: { title: "Git", tags: [], cards: [] },
+      microsequence: makeComposeMicrosequenceContext(),
       promptText: "explique git add e git push"
     });
 
@@ -1322,7 +1401,7 @@ test("rejeita planejamento quando o Gemini devolve JSON ilegível", async () => 
         runGeminiAssist({
           apiKey: "chave",
           mode: "compose-microsequence",
-          microsequence: { title: "Git", tags: [], cards: [] },
+          microsequence: makeComposeMicrosequenceContext(),
           promptText: "explique git add e git push"
         }),
       (error) => {
@@ -1354,7 +1433,7 @@ test("planejamento compacto não envia schema nativo ao Gemini", async () => {
     const result = await runGeminiAssist({
       apiKey: "chave",
       mode: "compose-microsequence",
-      microsequence: { title: "Git", tags: [], cards: [] },
+      microsequence: makeComposeMicrosequenceContext(),
       promptText: "explique git add e git push"
     });
 

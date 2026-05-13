@@ -4,7 +4,7 @@ Este documento apresenta o AraLearn como produto e como objeto de pesquisa. Ele 
 
 ## Síntese
 
-AraLearn é uma aplicação open source que transforma conteúdos, dúvidas e intenções de estudo em microssequências didáticas. Essas microssequências organizam explicações, exemplos, exercícios, lacunas, tabelas, árvores de diretórios, código e fluxogramas em cards navegáveis e revisáveis.
+AraLearn é uma aplicação open source que transforma conteúdos, dúvidas e intenções de estudo em microssequências didáticas. Essas microssequências organizam explicações, exemplos, exercícios, lacunas, tabelas, árvores de diretórios, código, matrizes, plano cartesiano e fluxogramas em cards navegáveis e revisáveis.
 
 O produto funciona como um motor de aprendizagem ativa: em vez de apenas guardar material, ele procura converter informação em percurso de estudo.
 
@@ -50,9 +50,9 @@ A aplicação aproxima três atividades que normalmente ficam separadas:
 
 O usuário pode estudar, editar, importar, exportar, revisar, criar rascunhos e reorganizar material dentro do mesmo ambiente.
 
-Essa integração permite duas entradas complementares. Na entrada bottom-up, uma dúvida concreta gera rascunhos no contexto da lição. Na entrada top-down, materiais produzidos por processos externos podem entrar como cursos, módulos, lições ou microssequências em JSON.
+Essa integração permite duas entradas complementares. Na entrada bottom-up, uma dúvida concreta dentro de uma lição gera rascunhos de microssequências no contexto correto. Na entrada top-down, materiais produzidos por processos externos podem entrar como cursos, módulos, lições ou microssequências em JSON.
 
-No estado público atual, essas duas entradas ainda aparecem em superfícies diferentes da interface. O fluxo bottom-up começa na aba `Gerar`, com seleção explícita de curso, módulo e lição, e só depois leva o usuário de volta à árvore de cursos para revisar o resultado. Isso preserva contexto estrutural, mas ainda exige atenção extra para não perder a continuidade entre gerar, localizar, revisar e estudar.
+No estado público atual, essas entradas já compartilham a navegação estrutural principal: a geração estrutural e a geração contextual de microssequências acontecem por painéis contextuais abertos a partir da home ou das telas de curso, módulo e lição; a geração e a edição de cards acontecem no painel da microssequência.
 
 ## Público principal
 
@@ -90,25 +90,27 @@ No estado atual, o AraLearn reúne:
 - persistência de progresso no dispositivo;
 - importação e exportação;
 - renderização de diferentes formatos de card;
-- aba `Gerar` para criar rascunhos de microssequências dentro da estrutura dos cursos;
-- aba `Cursos` para navegação, estudo, importação, exportação, reordenação e revisão estrutural;
+- geração estrutural contextual em home, curso e módulo;
+- geração contextual de microssequências na lição;
+- painel de microssequência com `Preview`, `Edição`, anexos temporários e controle da iteração gerada atual;
 - status `draft` e `ready` para separar autoria em andamento e conteúdo executável;
 - exclusão de microssequências do estudo por `included: false`, sem removê-las da árvore;
-- painel de microssequência com `Preview`, `Edição`, versões locais e anexos temporários;
 - assistência por serviços de inteligência artificial generativa acessados por API;
-- validação automatizada do contrato público e dos exemplos.
+- validação automatizada do contrato público e dos exemplos;
 - publicação web por GitHub Pages e empacotamento Android com ícone próprio.
 
 ## Estado atual da experiência
 
 A interface pública implementada hoje combina:
 
-- home única de cursos com painel contextual de geração por IA;
+- home única de cursos com ações globais e geração estrutural contextual;
 - navegação estrutural `curso -> módulo -> lição -> microssequência`;
 - estudo apenas de microssequências `ready` incluídas;
-- edição e geração de cards em uma tela própria da microssequência.
+- edição e geração de cards em uma tela própria da microssequência;
+- rascunhos de microssequência visíveis na árvore, mas fora do estudo;
+- iterações locais de cards que podem ser aceitas ou excluídas depois da aplicação direta.
 
-Esse desenho já permite autoria, estudo e revisão no mesmo ambiente, mas ainda apresenta uma tensão de UX importante: a entrada bottom-up começa fora da navegação da lição e a consolidação acontece dentro dela. Na prática, isso pode aumentar o risco de o usuário leigo se perder entre intenção de estudo, contexto estrutural e destino final do rascunho.
+Esse desenho já permite autoria, estudo e revisão no mesmo ambiente.
 
 ## Horizonte
 

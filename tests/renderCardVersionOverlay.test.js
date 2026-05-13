@@ -15,7 +15,8 @@ test("renderiza histórico com seleção explícita e ações discretas", () => 
         selected: true,
         inUse: true,
         actions: [
-          { action: "open-version-compare-selected", label: "Comparar", icon: "👁" }
+          { action: "use-structure-version", label: "Usar", icon: "✓", disabled: true },
+          { action: "delete-structure-version", label: "Excluir", icon: "×", tone: "danger" }
         ]
       },
       {
@@ -23,23 +24,25 @@ test("renderiza histórico com seleção explícita e ações discretas", () => 
         origin: "v1 → v2",
         versionLabel: "v2",
         meta: "Edição estrutural · 10/05/2026 15:00:00",
-        actions: [{ action: "open-version-compare-selected", label: "Comparar", icon: "👁" }],
-        moreActions: [{ action: "restore-structure-version-as-new", label: "Criar variação", icon: "⧉" }],
-        moreExpanded: true
+        actions: [
+          { action: "use-structure-version", label: "Usar", icon: "✓" },
+          { action: "delete-structure-version", label: "Excluir", icon: "×", tone: "danger" }
+        ]
       }
     ],
-    footer: "Em uso: v3 · 10/05/2026 16:00:00"
+    footer: "Em uso: v3 · 10/05/2026 16:00:00",
+    primaryAction: { action: "save-version-snapshot", label: "Gravar snapshot", icon: "+" }
   });
 
   assert.match(html, /history-item-card-body/);
   assert.match(html, /data-action="select-version-history-item" data-version-key="v3"/);
-  assert.match(html, /data-action="open-version-compare-selected" data-version-key="v3"/);
-  assert.match(html, /data-action="open-version-compare-selected" data-version-key="v2"/);
-  assert.match(html, /data-action="restore-structure-version-as-new" data-version-key="v2"/);
+  assert.match(html, /data-action="save-version-snapshot"/);
+  assert.match(html, /data-action="use-structure-version" data-version-key="v3"/);
+  assert.match(html, /data-action="delete-structure-version" data-version-key="v2"/);
   assert.match(html, /Em uso/);
   assert.match(html, /10\/05\/2026 16:00:00/);
   assert.match(html, /Versões estruturais/);
   assert.match(html, /Em uso: v3/);
-  assert.doesNotMatch(html, /data-action="use-structure-version"/);
+  assert.doesNotMatch(html, /data-action="open-version-compare-selected"/);
   assert.doesNotMatch(html, /Retomar como nova/);
 });

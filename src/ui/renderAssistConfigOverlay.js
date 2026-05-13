@@ -7,7 +7,7 @@ function escapeHtml(value) {
     .replace(/'/g, "&#39;");
 }
 
-export function renderAssistConfigOverlay({ model, apiKey, modelOptions = [] }) {
+export function renderAssistConfigOverlay({ model, apiKey, codexEndpoint, codexToken, modelOptions = [] }) {
   const options = modelOptions
     .map((item) => {
       return (
@@ -43,6 +43,19 @@ export function renderAssistConfigOverlay({ model, apiKey, modelOptions = [] }) 
     escapeHtml(apiKey || "") +
     '" autocomplete="off" spellcheck="false">' +
     "</div>" +
+    '<div class="field">' +
+    "<label>Endpoint Codex local</label>" +
+    '<input data-field="assist-config-codex-endpoint" type="text" value="' +
+    escapeHtml(codexEndpoint || "") +
+    '" autocomplete="off" spellcheck="false">' +
+    "</div>" +
+    '<div class="field">' +
+    "<label>Token Codex local</label>" +
+    '<input data-field="assist-config-codex-token" type="password" value="' +
+    escapeHtml(codexToken || "") +
+    '" autocomplete="off" spellcheck="false">' +
+    "</div>" +
+    '<p class="tiny muted">Usado apenas pelo modelo Codex CLI · Termux. O endpoint padrão é http://127.0.0.1:4183/assist.</p>' +
     "</div>" +
     "</article></section>"
   );

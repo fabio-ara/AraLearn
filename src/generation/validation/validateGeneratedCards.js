@@ -61,14 +61,18 @@ export function validateGeneratedCards(response, generationContract) {
   const expectedCount = generationContract?.output?.expectedCardCount || 0;
   if (cards.length !== expectedCount) errors.push("Quantidade incorreta de cards.");
   const allowed = new Set(generationContract?.resources?.allowedResourceTypes || []);
-  const plannedPositions = new Set((generationContract?.didacticPlan?.cardPlan || []).map((item) => item.position));
+  const plannedByPosition = new Map((generationContract?.didacticPlan?.cardPlan || []).map((item) => [item.position, item]));
   const seenPositions = new Set();
   const seenText = new Set();
 
   cards.forEach((card) => {
-    if (!plannedPositions.has(card?.position) || seenPositions.has(card?.position)) errors.push("position incoerente com cardPlan.");
+    const planned = plannedByPosition.get(card?.position);
+    if (!planned || seenPositions.has(card?.position)) errors.push("position incoerente com cardPlan.");
     seenPositions.add(card?.position);
     if (!allowed.has(card?.resourceType)) errors.push(`Recurso fora do permitido: ${card?.resourceType || ""}.`);
+    if (planned?.resourceType && card?.resourceType !== planned.resourceType) {
+      errors.push(`resourceType incoerente com cardPlan na posição ${card.position}: esperado ${planned.resourceType}.`);
+    }
     validateCardByResource(card, errors);
     errors.push(...collectDidacticCardErrors(card));
     const comparable = normalizeText(card?.text || card?.question || card?.prompt || card?.code || card?.title).toLowerCase();

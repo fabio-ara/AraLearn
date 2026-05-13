@@ -76,6 +76,7 @@ function cloneSnapshot(level, entity) {
     title: entity?.title || "",
     ...(entity?.description ? { description: entity.description } : {}),
     ...(entity?.sourceGuide ? { sourceGuide: entity.sourceGuide } : {}),
+    ...(entity?.sourceGuideStructured ? { sourceGuideStructured: structuredClone(entity.sourceGuideStructured) } : {}),
     [childField]: Array.isArray(entity?.[childField]) ? structuredClone(entity[childField]) : []
   };
 }

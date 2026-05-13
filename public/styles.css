@@ -362,6 +362,10 @@ button {
   min-height: 0;
 }
 
+.study-reader-screen {
+  padding-bottom: 0;
+}
+
 .study-reader-screen .screen-content {
   padding-bottom: 0;
   overflow: hidden;
@@ -1417,6 +1421,8 @@ button {
 
 .workbench-preview-pane {
   display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .workbench-preview-pane .editor-card-stage-shell,
@@ -3640,6 +3646,19 @@ button {
   background: transparent;
 }
 
+.workbench-preview-footer {
+  padding:
+    0
+    0
+    0
+    0;
+  margin-top: auto;
+}
+
+.workbench-preview-actions {
+  justify-content: flex-end;
+}
+
 .study-action-dock {
   position: relative;
   display: flex;
@@ -3846,7 +3865,11 @@ button {
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  padding: 6px;
+  padding:
+    max(var(--safe-top), 6px)
+    calc(var(--safe-right) + 6px)
+    calc(var(--safe-bottom-tappable) + 6px)
+    calc(var(--safe-left) + 6px);
 }
 
 .action-menu-overlay {
@@ -3855,7 +3878,11 @@ button {
   z-index: 92;
   background: rgba(5, 9, 15, 0.5);
   display: flex;
-  padding: 8px;
+  padding:
+    max(var(--safe-top), 8px)
+    calc(var(--safe-right) + 8px)
+    calc(var(--safe-bottom-tappable) + 8px)
+    calc(var(--safe-left) + 8px);
 }
 
 .action-menu-overlay-side {
@@ -3874,7 +3901,11 @@ button {
   z-index: 92;
   background: rgba(5, 9, 15, 0.55);
   display: flex;
-  padding: 8px;
+  padding:
+    max(var(--safe-top), 8px)
+    calc(var(--safe-right) + 8px)
+    calc(var(--safe-bottom-tappable) + 8px)
+    calc(var(--safe-left) + 8px);
   align-items: flex-start;
   justify-content: flex-end;
 }
@@ -3882,7 +3913,10 @@ button {
 .overlay-panel {
   display: flex;
   width: min(100%, 430px);
-  max-height: min(94dvh, 860px);
+  max-height: min(
+    calc(100dvh - var(--safe-top) - var(--safe-bottom-tappable) - 16px),
+    860px
+  );
   overflow: auto;
   border-radius: 18px;
   background:
@@ -4006,6 +4040,17 @@ button {
   gap: 10px;
 }
 
+.editor-helper-text {
+  margin: 0;
+  color: rgba(214, 193, 154, 0.9);
+  font-size: 0.82rem;
+  line-height: 1.5;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(111, 88, 62, 0.72);
+  background: rgba(34, 27, 20, 0.72);
+}
+
 .structure-compare-summary {
   display: grid;
   gap: 8px;
@@ -4108,14 +4153,30 @@ button {
   min-width: 0;
 }
 
+.field.is-secondary {
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(92, 74, 55, 0.72);
+  background: rgba(24, 19, 15, 0.68);
+}
+
 .card-sheet-content-empty {
   place-items: center;
   text-align: center;
 }
 
 .field label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   color: var(--muted);
   font-size: var(--type-xs);
+}
+
+.field-label-content {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .field-label-icon {
@@ -4124,11 +4185,16 @@ button {
   justify-content: center;
   width: 18px;
   height: 18px;
+  flex: 0 0 auto;
 }
 
 .field-label-svg-icon {
   width: 16px;
   height: 16px;
+}
+
+.field-label-text {
+  line-height: 1.2;
 }
 
 .field input,
@@ -4145,6 +4211,41 @@ button {
   color-scheme: dark;
 }
 
+.entity-tag-combobox {
+  display: grid;
+  gap: 8px;
+}
+
+.entity-tag-chip-row {
+  max-height: 132px;
+  padding-top: 2px;
+}
+
+.entity-tag-combobox-entry {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 38px;
+  gap: 8px;
+  align-items: center;
+}
+
+.entity-tag-combobox-input {
+  min-width: 0;
+}
+
+.entity-tag-combobox-add {
+  min-height: 40px;
+  border-radius: 10px;
+  border: 1px solid var(--field-border-soft);
+  background: rgba(28, 22, 17, 0.92);
+  color: var(--text);
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.entity-tag-chip {
+  min-height: 28px;
+}
+
 .field select option {
   background: #1a1511;
   color: var(--text);
@@ -4154,6 +4255,13 @@ button {
   min-height: 160px;
   resize: vertical;
   font-family: inherit;
+}
+
+.field-hint {
+  margin: 0;
+  color: rgba(193, 173, 138, 0.88);
+  font-size: 0.76rem;
+  line-height: 1.45;
 }
 
 .entity-action-group {
@@ -4482,7 +4590,6 @@ button {
 }
 
 .generator-preview-stage {
-  display: flex;
   flex: 1;
   min-height: 0;
   overflow: hidden;
@@ -5357,7 +5464,11 @@ button {
 
 @media (max-width: 430px) {
   .overlay-shell {
-    padding: 6px;
+    padding:
+      max(var(--safe-top), 6px)
+      calc(var(--safe-right) + 6px)
+      calc(var(--safe-bottom-tappable) + 6px)
+      calc(var(--safe-left) + 6px);
     align-items: flex-end;
     justify-content: center;
   }
@@ -5367,7 +5478,10 @@ button {
   .generation-overlay-panel {
     width: 100%;
     max-width: 100%;
-    max-height: min(92dvh, 860px);
+    max-height: min(
+      calc(100dvh - var(--safe-top) - var(--safe-bottom-tappable) - 12px),
+      860px
+    );
     margin-left: 0;
     border-radius: 18px;
   }
@@ -5412,6 +5526,7 @@ button {
     width: 42px;
     height: 42px;
   }
+
 }
 
 .assist-status-panel.is-warning {

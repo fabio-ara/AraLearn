@@ -1,0 +1,819 @@
+function normalizeText(value) {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function buildHierarchyLine(label, value) {
+  const normalized = normalizeText(value);
+  return normalized ? `${label}: ${normalized}` : "";
+}
+
+function buildStructuredLine(label, value) {
+  if (!value || typeof value !== "object") {
+    return "";
+  }
+
+  const entries = Object.entries(value)
+    .map(([key, entryValue]) => [normalizeText(key), normalizeText(entryValue)])
+    .filter(([, entryValue]) => entryValue);
+  if (!entries.length) {
+    return "";
+  }
+
+  return `${label}: ${entries.map(([key, entryValue]) => `${key}=${entryValue}`).join("; ")}`;
+}
+
+function buildExistingMicrosequenceLines(items = []) {
+  const normalizedItems = Array.isArray(items)
+    ? items
+        .map((item) => ({
+          title: normalizeText(item?.title),
+          description: normalizeText(item?.description),
+          tags: Array.isArray(item?.tags) ? item.tags.map((entry) => normalizeText(entry)).filter(Boolean) : [],
+          status: normalizeText(item?.status),
+          included: item?.included === true
+        }))
+        .filter((item) => item.title)
+    : [];
+
+  if (!normalizedItems.length) {
+    return ["Microssequências atuais: nenhuma."];
+  }
+
+  return [
+    "Microssequências atuais:",
+    ...normalizedItems.map((item, index) => {
+      const description = item.description ? `; descrição: ${item.description}` : "";
+      const tags = item.tags.length ? `; tags: ${item.tags.join(", ")}` : "";
+      return `${index + 1}. ${item.title}; status: ${item.status || "draft"}; included: ${item.included ? "sim" : "não"}${description}${tags}`;
+    })
+  ];
+}
+
+export function buildAttachmentPromptSection(attachments = []) {
+  const items = Array.isArray(attachments)
+    ? attachments
+        .map((attachment) => ({
+          name: normalizeText(attachment?.name) || "anexo",
+          type: normalizeText(attachment?.type) || "application/octet-stream",
+          size: Number(attachment?.size || 0),
+          textContent: typeof attachment?.textContent === "string" ? attachment.textContent.trim() : "",
+          unsupportedReason: normalizeText(attachment?.unsupportedReason),
+          truncated: attachment?.truncated === true
+        }))
+        .filter((attachment) => attachment.name)
+    : [];
+
+  if (!items.length) {
+    return "";
+  }
+
+  return [
+    "Anexos do usuário:",
+    ...items.map((attachment, index) => {
+      const content = attachment.textContent
+        ? `Conteúdo inline:\n${attachment.textContent}${attachment.truncated ? "\n[conteúdo truncado]" : ""}`
+        : `Observação: ${attachment.unsupportedReason || "Sem conteúdo inline disponível."}`;
+      return `${index + 1}. ${attachment.name} (${attachment.type}, ${attachment.size} bytes)\n${content}`;
+    })
+  ].join("\n\n");
+}
+
+export function extractJsonFromText(text) {
+  const raw = typeof text === "string" ? text.trim() : "";
+  if (!raw) {
+    throw new Error("Saída vazia do Codex.");
+  }
+
+  try {
+    return JSON.parse(raw);
+  } catch {
+    // Continua para as estratégias de extração.
+  }
+
+  const markdownMatch = raw.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  if (markdownMatch?.[1]) {
+    try {
+      return JSON.parse(markdownMatch[1].trim());
+    } catch {
+      // Continua para o fallback por substring.
+    }
+  }
+
+  const firstBrace = raw.indexOf("{");
+  const lastBrace = raw.lastIndexOf("}");
+  if (firstBrace >= 0 && lastBrace > firstBrace) {
+    const candidate = raw.slice(firstBrace, lastBrace + 1);
+    return JSON.parse(candidate);
+  }
+
+  throw new Error("O Codex não devolveu JSON válido.");
+}
+
+export function buildTopDownPrompt(payload = {}) {
+  const context = payload?.context && typeof payload.context === "object" ? payload.context : payload || {};
+  const fixedTitles = [
+    context.courseFixed && normalizeText(context.courseTitle) ? `Curso fixado: ${normalizeText(context.courseTitle)}` : "",
+    context.moduleFixed && normalizeText(context.moduleTitle) ? `Módulo fixado: ${normalizeText(context.moduleTitle)}` : "",
+    context.lessonFixed && normalizeText(context.lessonTitle) ? `Lição fixada: ${normalizeText(context.lessonTitle)}` : ""
+  ].filter(Boolean);
+
+  return [
+    "Você gera estrutura top-down para o AraLearn.",
+    "Responda somente JSON válido.",
+    "Não use Markdown.",
+    "Não explique.",
+    "Gere apenas curso, módulos e lições.",
+    "Não gere microssequências.",
+    "Não gere cards.",
+    "Use descrições breves.",
+    "Preencha sourceGuide e sourceGuideStructured em curso, módulo e lição.",
+    "Se o contexto fixar curso, módulo ou lição, preserve os títulos fixados.",
+    "",
+    buildHierarchyLine("Ação", context.actionLabel),
+    buildHierarchyLine("Curso", context.courseTitle),
+    buildHierarchyLine("Descrição breve do curso", context.courseDescription),
+    buildStructuredLine("Fonte-guia estruturada do curso", context.courseSourceGuideStructured),
+    buildHierarchyLine("Módulo", context.moduleTitle),
+    buildHierarchyLine("Descrição breve do módulo", context.moduleDescription),
+    buildStructuredLine("Fonte-guia estruturada do módulo", context.moduleSourceGuideStructured),
+    buildHierarchyLine("Lição", context.lessonTitle),
+    buildHierarchyLine("Descrição breve da lição", context.lessonDescription),
+    buildStructuredLine("Fonte-guia estruturada da lição", context.lessonSourceGuideStructured),
+    fixedTitles.length ? `Títulos fixados: ${fixedTitles.join(" | ")}` : "",
+    "",
+    "Formato obrigatório:",
+    "{",
+    '  "course": {',
+    '    "title": "string",',
+    '    "description": "string",',
+    '    "sourceGuide": "string",',
+    '    "sourceGuideStructured": {',
+    '      "audience": "string",',
+    '      "globalScope": "string",',
+    '      "globalOutOfScope": "string",',
+    '      "sharedNotation": "string"',
+    "    },",
+    '    "modules": [',
+    "      {",
+    '        "title": "string",',
+    '        "description": "string",',
+    '        "sourceGuide": "string",',
+    '        "sourceGuideStructured": {',
+    '          "moduleScope": "string",',
+    '          "modulePrerequisites": "string",',
+    '          "moduleOutOfScope": "string",',
+    '          "lessonProgression": "string"',
+    "        },",
+    '        "lessons": [',
+    "          {",
+    '            "title": "string",',
+    '            "description": "string",',
+    '            "sourceGuide": "string",',
+    '            "sourceGuideStructured": {',
+    '              "lessonGoal": "string",',
+    '              "lessonPrerequisites": "string",',
+    '              "notationRules": "string",',
+    '              "commonErrors": "string",',
+    '              "masteryGoal": "string"',
+    "            }",
+    "          }",
+    "        ]",
+    "      }",
+    "    ]",
+    "  }",
+    "}",
+    "",
+    "Pedido do usuário:",
+    normalizeText(payload?.promptText)
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+export function buildLessonMicrosequencesPrompt(payload = {}) {
+  const context = payload?.context && typeof payload.context === "object" ? payload.context : payload || {};
+
+  return [
+    "Você gera apenas microssequências draft para uma lição do AraLearn.",
+    "Responda somente JSON válido.",
+    "Não use Markdown.",
+    "Não explique.",
+    "Não gere curso, módulo ou lição.",
+    "Não gere cards.",
+    "Gere de 2 a 7 microssequências.",
+    "",
+    buildHierarchyLine("Curso", context.courseTitle),
+    buildHierarchyLine("Descrição breve do curso", context.courseDescription),
+    buildStructuredLine("Fonte-guia estruturada do curso", context.courseSourceGuideStructured),
+    buildHierarchyLine("Módulo", context.moduleTitle),
+    buildHierarchyLine("Descrição breve do módulo", context.moduleDescription),
+    buildStructuredLine("Fonte-guia estruturada do módulo", context.moduleSourceGuideStructured),
+    buildHierarchyLine("Lição", context.lessonTitle),
+    buildHierarchyLine("Descrição breve da lição", context.lessonDescription),
+    buildStructuredLine("Fonte-guia estruturada da lição", context.lessonSourceGuideStructured),
+    ...buildExistingMicrosequenceLines(context.existingMicrosequences || []),
+    "",
+    "Formato obrigatório:",
+    "{",
+    '  "microsequences": [',
+    "    {",
+    '      "title": "string",',
+    '      "description": "string",',
+    '      "tags": ["string"]',
+    "    }",
+    "  ]",
+    "}",
+    "",
+    "Pedido do usuário:",
+    normalizeText(payload?.promptText)
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+function tokenizeArgsTemplate(template) {
+  const input = normalizeText(template);
+  if (!input) {
+    return [];
+  }
+
+  const tokens = [];
+  let current = "";
+  let quote = "";
+
+  for (let index = 0; index < input.length; index += 1) {
+    const char = input[index];
+    if (quote) {
+      if (char === quote) {
+        quote = "";
+        continue;
+      }
+      current += char;
+      continue;
+    }
+
+    if (char === "'" || char === '"') {
+      quote = char;
+      continue;
+    }
+
+    if (/\s/.test(char)) {
+      if (current) {
+        tokens.push(current);
+        current = "";
+      }
+      continue;
+    }
+
+    current += char;
+  }
+
+  if (current) {
+    tokens.push(current);
+  }
+
+  return tokens;
+}
+
+export function buildCodexArgs({ argsTemplate, prompt }) {
+  const safePrompt = typeof prompt === "string" ? prompt : "";
+  const template = normalizeText(argsTemplate) || "exec {prompt}";
+  const tokens = tokenizeArgsTemplate(template);
+  if (!tokens.length) {
+    return [safePrompt];
+  }
+
+  const hasPromptPlaceholder = tokens.some((token) => token.includes("{prompt}"));
+  if (!hasPromptPlaceholder) {
+    return [...tokens, safePrompt];
+  }
+
+  const result = [];
+  tokens.forEach((token) => {
+    if (token === "{prompt}") {
+      result.push(safePrompt);
+      return;
+    }
+    result.push(token.replaceAll("{prompt}", safePrompt));
+  });
+  return result;
+}
+
+export function normalizePort(value) {
+  const parsed = Number.parseInt(String(value || "").trim(), 10);
+  if (!Number.isInteger(parsed) || parsed < 1 || parsed > 65535) {
+    return 4183;
+  }
+  return parsed;
+}
+
+export function normalizeTimeout(value) {
+  const parsed = Number.parseInt(String(value || "").trim(), 10);
+  if (!Number.isInteger(parsed) || parsed < 1000) {
+    return 180000;
+  }
+  return parsed;
+}
+
+export function buildStandaloneBridgeSource() {
+  return `import http from "node:http";
+import { spawn } from "node:child_process";
+import process from "node:process";
+
+function normalizeText(value) {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function extractJsonFromText(text) {
+  const raw = typeof text === "string" ? text.trim() : "";
+  if (!raw) {
+    throw new Error("Saída vazia do Codex.");
+  }
+  try {
+    return JSON.parse(raw);
+  } catch {}
+
+  const markdownMatch = raw.match(/\\\`\\\`\\\`(?:json)?\\s*([\\s\\S]*?)\\\`\\\`\\\`/i);
+  if (markdownMatch?.[1]) {
+    try {
+      return JSON.parse(markdownMatch[1].trim());
+    } catch {}
+  }
+
+  const firstBrace = raw.indexOf("{");
+  const lastBrace = raw.lastIndexOf("}");
+  if (firstBrace >= 0 && lastBrace > firstBrace) {
+    return JSON.parse(raw.slice(firstBrace, lastBrace + 1));
+  }
+  throw new Error("O Codex não devolveu JSON válido.");
+}
+
+function buildHierarchyLine(label, value) {
+  const normalized = normalizeText(value);
+  return normalized ? \`\${label}: \${normalized}\` : "";
+}
+
+function buildStructuredLine(label, value) {
+  if (!value || typeof value !== "object") {
+    return "";
+  }
+  const entries = Object.entries(value)
+    .map(([key, entryValue]) => [normalizeText(key), normalizeText(entryValue)])
+    .filter(([, entryValue]) => entryValue);
+  if (!entries.length) {
+    return "";
+  }
+  return \`\${label}: \${entries.map(([key, entryValue]) => \`\${key}=\${entryValue}\`).join("; ")}\`;
+}
+
+function buildExistingMicrosequenceLines(items = []) {
+  const normalizedItems = Array.isArray(items)
+    ? items
+        .map((item) => ({
+          title: normalizeText(item?.title),
+          description: normalizeText(item?.description),
+          tags: Array.isArray(item?.tags) ? item.tags.map((entry) => normalizeText(entry)).filter(Boolean) : [],
+          status: normalizeText(item?.status),
+          included: item?.included === true
+        }))
+        .filter((item) => item.title)
+    : [];
+
+  if (!normalizedItems.length) {
+    return ["Microssequências atuais: nenhuma."];
+  }
+
+  return [
+    "Microssequências atuais:",
+    ...normalizedItems.map((item, index) => {
+      const description = item.description ? \`; descrição: \${item.description}\` : "";
+      const tags = item.tags.length ? \`; tags: \${item.tags.join(", ")}\` : "";
+      return \`\${index + 1}. \${item.title}; status: \${item.status || "draft"}; included: \${item.included ? "sim" : "não"}\${description}\${tags}\`;
+    })
+  ];
+}
+
+function buildAttachmentPromptSection(attachments = []) {
+  const items = Array.isArray(attachments)
+    ? attachments
+        .map((attachment) => ({
+          name: normalizeText(attachment?.name) || "anexo",
+          type: normalizeText(attachment?.type) || "application/octet-stream",
+          size: Number(attachment?.size || 0),
+          textContent: typeof attachment?.textContent === "string" ? attachment.textContent.trim() : "",
+          unsupportedReason: normalizeText(attachment?.unsupportedReason),
+          truncated: attachment?.truncated === true
+        }))
+        .filter((attachment) => attachment.name)
+    : [];
+
+  if (!items.length) {
+    return "";
+  }
+
+  return [
+    "Anexos do usuário:",
+    ...items.map((attachment, index) => {
+      const content = attachment.textContent
+        ? \`Conteúdo inline:\\n\${attachment.textContent}\${attachment.truncated ? "\\n[conteúdo truncado]" : ""}\`
+        : \`Observação: \${attachment.unsupportedReason || "Sem conteúdo inline disponível."}\`;
+      return \`\${index + 1}. \${attachment.name} (\${attachment.type}, \${attachment.size} bytes)\\n\${content}\`;
+    })
+  ].join("\\n\\n");
+}
+
+function buildTopDownPrompt(payload = {}) {
+  const context = payload?.context && typeof payload.context === "object" ? payload.context : payload || {};
+  const fixedTitles = [
+    context.courseFixed && normalizeText(context.courseTitle) ? \`Curso fixado: \${normalizeText(context.courseTitle)}\` : "",
+    context.moduleFixed && normalizeText(context.moduleTitle) ? \`Módulo fixado: \${normalizeText(context.moduleTitle)}\` : "",
+    context.lessonFixed && normalizeText(context.lessonTitle) ? \`Lição fixada: \${normalizeText(context.lessonTitle)}\` : ""
+  ].filter(Boolean);
+
+  return [
+    "Você gera estrutura top-down para o AraLearn.",
+    "Responda somente JSON válido.",
+    "Não use Markdown.",
+    "Não explique.",
+    "Gere apenas curso, módulos e lições.",
+    "Não gere microssequências.",
+    "Não gere cards.",
+    "Use descrições breves.",
+    "Preencha sourceGuide e sourceGuideStructured em curso, módulo e lição.",
+    "Se o contexto fixar curso, módulo ou lição, preserve os títulos fixados.",
+    "",
+    buildHierarchyLine("Ação", context.actionLabel),
+    buildHierarchyLine("Curso", context.courseTitle),
+    buildHierarchyLine("Descrição breve do curso", context.courseDescription),
+    buildStructuredLine("Fonte-guia estruturada do curso", context.courseSourceGuideStructured),
+    buildHierarchyLine("Módulo", context.moduleTitle),
+    buildHierarchyLine("Descrição breve do módulo", context.moduleDescription),
+    buildStructuredLine("Fonte-guia estruturada do módulo", context.moduleSourceGuideStructured),
+    buildHierarchyLine("Lição", context.lessonTitle),
+    buildHierarchyLine("Descrição breve da lição", context.lessonDescription),
+    buildStructuredLine("Fonte-guia estruturada da lição", context.lessonSourceGuideStructured),
+    fixedTitles.length ? \`Títulos fixados: \${fixedTitles.join(" | ")}\` : "",
+    "",
+    "Formato obrigatório:",
+    "{",
+    '  "course": {',
+    '    "title": "string",',
+    '    "description": "string",',
+    '    "sourceGuide": "string",',
+    '    "sourceGuideStructured": {',
+    '      "audience": "string",',
+    '      "globalScope": "string",',
+    '      "globalOutOfScope": "string",',
+    '      "sharedNotation": "string"',
+    "    },",
+    '    "modules": [',
+    "      {",
+    '        "title": "string",',
+    '        "description": "string",',
+    '        "sourceGuide": "string",',
+    '        "sourceGuideStructured": {',
+    '          "moduleScope": "string",',
+    '          "modulePrerequisites": "string",',
+    '          "moduleOutOfScope": "string",',
+    '          "lessonProgression": "string"',
+    "        },",
+    '        "lessons": [',
+    "          {",
+    '            "title": "string",',
+    '            "description": "string",',
+    '            "sourceGuide": "string",',
+    '            "sourceGuideStructured": {',
+    '              "lessonGoal": "string",',
+    '              "lessonPrerequisites": "string",',
+    '              "notationRules": "string",',
+    '              "commonErrors": "string",',
+    '              "masteryGoal": "string"',
+    "            }",
+    "          }",
+    "        ]",
+    "      }",
+    "    ]",
+    "  }",
+    "}",
+    "",
+    "Pedido do usuário:",
+    normalizeText(payload?.promptText)
+  ].filter(Boolean).join("\\n");
+}
+
+function buildLessonMicrosequencesPrompt(payload = {}) {
+  const context = payload?.context && typeof payload.context === "object" ? payload.context : payload || {};
+  return [
+    "Você gera apenas microssequências draft para uma lição do AraLearn.",
+    "Responda somente JSON válido.",
+    "Não use Markdown.",
+    "Não explique.",
+    "Não gere curso, módulo ou lição.",
+    "Não gere cards.",
+    "Gere de 2 a 7 microssequências.",
+    "",
+    buildHierarchyLine("Curso", context.courseTitle),
+    buildHierarchyLine("Descrição breve do curso", context.courseDescription),
+    buildStructuredLine("Fonte-guia estruturada do curso", context.courseSourceGuideStructured),
+    buildHierarchyLine("Módulo", context.moduleTitle),
+    buildHierarchyLine("Descrição breve do módulo", context.moduleDescription),
+    buildStructuredLine("Fonte-guia estruturada do módulo", context.moduleSourceGuideStructured),
+    buildHierarchyLine("Lição", context.lessonTitle),
+    buildHierarchyLine("Descrição breve da lição", context.lessonDescription),
+    buildStructuredLine("Fonte-guia estruturada da lição", context.lessonSourceGuideStructured),
+    ...buildExistingMicrosequenceLines(context.existingMicrosequences || []),
+    "",
+    "Formato obrigatório:",
+    "{",
+    '  "microsequences": [',
+    "    {",
+    '      "title": "string",',
+    '      "description": "string",',
+    '      "tags": ["string"]',
+    "    }",
+    "  ]",
+    "}",
+    "",
+    "Pedido do usuário:",
+    normalizeText(payload?.promptText)
+  ].filter(Boolean).join("\\n");
+}
+
+function tokenizeArgsTemplate(template) {
+  const input = normalizeText(template);
+  if (!input) {
+    return [];
+  }
+  const tokens = [];
+  let current = "";
+  let quote = "";
+  for (let index = 0; index < input.length; index += 1) {
+    const char = input[index];
+    if (quote) {
+      if (char === quote) {
+        quote = "";
+        continue;
+      }
+      current += char;
+      continue;
+    }
+    if (char === "'" || char === '"') {
+      quote = char;
+      continue;
+    }
+    if (/\\s/.test(char)) {
+      if (current) {
+        tokens.push(current);
+        current = "";
+      }
+      continue;
+    }
+    current += char;
+  }
+  if (current) {
+    tokens.push(current);
+  }
+  return tokens;
+}
+
+function buildCodexArgs({ argsTemplate, prompt }) {
+  const safePrompt = typeof prompt === "string" ? prompt : "";
+  const template = normalizeText(argsTemplate) || "exec {prompt}";
+  const tokens = tokenizeArgsTemplate(template);
+  if (!tokens.length) {
+    return [safePrompt];
+  }
+  const hasPromptPlaceholder = tokens.some((token) => token.includes("{prompt}"));
+  if (!hasPromptPlaceholder) {
+    return [...tokens, safePrompt];
+  }
+  const result = [];
+  tokens.forEach((token) => {
+    if (token === "{prompt}") {
+      result.push(safePrompt);
+      return;
+    }
+    result.push(token.replaceAll("{prompt}", safePrompt));
+  });
+  return result;
+}
+
+function normalizePort(value) {
+  const parsed = Number.parseInt(String(value || "").trim(), 10);
+  if (!Number.isInteger(parsed) || parsed < 1 || parsed > 65535) {
+    return 4183;
+  }
+  return parsed;
+}
+
+function normalizeTimeout(value) {
+  const parsed = Number.parseInt(String(value || "").trim(), 10);
+  if (!Number.isInteger(parsed) || parsed < 1000) {
+    return 180000;
+  }
+  return parsed;
+}
+
+function respondJson(response, statusCode, payload) {
+  response.writeHead(statusCode, {
+    "content-type": "application/json; charset=utf-8",
+    "access-control-allow-origin": "*",
+    "access-control-allow-methods": "GET, POST, OPTIONS",
+    "access-control-allow-headers": "content-type, x-aralearn-token"
+  });
+  response.end(JSON.stringify(payload));
+}
+
+function isAuthorized(request, token) {
+  if (!token) {
+    return true;
+  }
+  return normalizeText(request.headers["x-aralearn-token"]) === token;
+}
+
+function readJsonBody(request, maxBodyBytes) {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    let size = 0;
+    request.on("data", (chunk) => {
+      size += chunk.length;
+      if (size > maxBodyBytes) {
+        reject(new Error("Payload acima do limite permitido."));
+        request.destroy();
+        return;
+      }
+      chunks.push(chunk);
+    });
+    request.on("end", () => {
+      try {
+        const text = Buffer.concat(chunks).toString("utf8");
+        resolve(text ? JSON.parse(text) : {});
+      } catch (error) {
+        reject(new Error("JSON inválido no corpo do pedido."));
+      }
+    });
+    request.on("error", reject);
+  });
+}
+
+function runCodex({ command, args, cwd, timeoutMs }) {
+  return new Promise((resolve, reject) => {
+    const startedAt = Date.now();
+    const child = spawn(command, args, {
+      shell: false,
+      cwd,
+      env: process.env
+    });
+    let stdout = "";
+    let stderr = "";
+    let settled = false;
+    const timer = setTimeout(() => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      child.kill("SIGTERM");
+      reject(new Error(\`Tempo esgotado ao executar o Codex após \${timeoutMs} ms.\`));
+    }, timeoutMs);
+
+    child.stdout.on("data", (chunk) => {
+      stdout += String(chunk);
+    });
+    child.stderr.on("data", (chunk) => {
+      stderr += String(chunk);
+    });
+    child.on("error", (error) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      clearTimeout(timer);
+      reject(error);
+    });
+    child.on("close", (code) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      clearTimeout(timer);
+      if (code !== 0) {
+        reject(new Error(normalizeText(stderr) || \`Codex finalizou com código \${code}.\`));
+        return;
+      }
+      resolve({
+        stdout,
+        stderr,
+        elapsedMs: Date.now() - startedAt
+      });
+    });
+  });
+}
+
+const host = normalizeText(process.env.ARALEARN_CODEX_HOST) || "127.0.0.1";
+const port = normalizePort(process.env.ARALEARN_CODEX_PORT);
+const token = normalizeText(process.env.ARALEARN_CODEX_TOKEN);
+const command = normalizeText(process.env.ARALEARN_CODEX_COMMAND) || "codex";
+const argsTemplate = normalizeText(process.env.ARALEARN_CODEX_ARGS) || "exec {prompt}";
+const timeoutMs = normalizeTimeout(process.env.ARALEARN_CODEX_TIMEOUT_MS);
+const maxBodyBytes = Number.parseInt(String(process.env.ARALEARN_CODEX_MAX_BODY_BYTES || "1000000"), 10) || 1000000;
+const cwd = normalizeText(process.env.ARALEARN_CODEX_WORKDIR) || process.cwd();
+
+const server = http.createServer(async (request, response) => {
+  if (!request.url) {
+    respondJson(response, 404, { ok: false, error: "Rota inválida." });
+    return;
+  }
+  if (request.method === "OPTIONS") {
+    response.writeHead(204, {
+      "access-control-allow-origin": "*",
+      "access-control-allow-methods": "GET, POST, OPTIONS",
+      "access-control-allow-headers": "content-type, x-aralearn-token"
+    });
+    response.end();
+    return;
+  }
+  if (request.url === "/health" && request.method === "GET") {
+    if (!isAuthorized(request, token)) {
+      respondJson(response, 401, { ok: false, error: "Token local inválido." });
+      return;
+    }
+    respondJson(response, 200, {
+      ok: true,
+      provider: "codex-cli-local",
+      service: "aralearn-codex-bridge",
+      version: 1
+    });
+    return;
+  }
+  if (request.url !== "/assist" || request.method !== "POST") {
+    respondJson(response, 404, { ok: false, error: "Rota não encontrada." });
+    return;
+  }
+  if (!isAuthorized(request, token)) {
+    respondJson(response, 401, { ok: false, error: "Token local inválido." });
+    return;
+  }
+
+  try {
+    const payload = await readJsonBody(request, maxBodyBytes);
+    const mode = normalizeText(payload?.mode);
+    const requestPayload = payload?.request && typeof payload.request === "object" ? payload.request : {};
+    const attachmentSection = buildAttachmentPromptSection(requestPayload.attachments || []);
+    let prompt = normalizeText(requestPayload.prebuiltPrompt);
+    if (!prompt) {
+      if (mode === "generate-top-down-structure") {
+        prompt = buildTopDownPrompt(payload);
+      } else if (mode === "generate-lesson-microsequences") {
+        prompt = buildLessonMicrosequencesPrompt(payload);
+      } else {
+        respondJson(response, 400, {
+          ok: false,
+          error: mode
+            ? \`Modo ainda não suportado pelo Codex local: \${mode}. Use Gemini ou outro provedor para esta operação.\`
+            : "Modo ausente no pedido."
+        });
+        return;
+      }
+    }
+
+    if (attachmentSection) {
+      prompt = \`\${prompt}\\n\\n\${attachmentSection}\`;
+    }
+
+    if (!prompt) {
+      respondJson(response, 400, {
+        ok: false,
+        error: "Não foi possível montar um prompt para o Codex local."
+      });
+      return;
+    }
+
+    const codexResult = await runCodex({
+      command,
+      args: buildCodexArgs({ argsTemplate, prompt }),
+      cwd,
+      timeoutMs
+    });
+    const result = extractJsonFromText(codexResult.stdout);
+    respondJson(response, 200, {
+      ok: true,
+      result,
+      meta: {
+        provider: "codex-cli-local",
+        mode,
+        elapsedMs: codexResult.elapsedMs
+      }
+    });
+  } catch (error) {
+    respondJson(response, 500, {
+      ok: false,
+      error: normalizeText(error?.message) || "Falha inesperada no bridge local."
+    });
+  }
+});
+
+server.listen(port, host, () => {
+  console.log(\`AraLearn Codex bridge em http://\${host}:\${port}\`);
+});
+`;
+}

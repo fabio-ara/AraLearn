@@ -130,19 +130,6 @@ function buildHistoryTopbarAction(historyTitle, historyCount, payload = {}) {
   };
 }
 
-function buildCompareTopbarAction(compareAvailable, payload = {}) {
-  if (!compareAvailable) {
-    return null;
-  }
-
-  return {
-    action: "open-version-compare",
-    title: "Comparar",
-    icon: "↔",
-    ...payload
-  };
-}
-
 function renderStructureVersionContext(contextTabs = []) {
   const items = (contextTabs || []).filter((item) => item?.label);
   if (!items.length) {
@@ -756,8 +743,6 @@ function renderCourseScreen({ course, progress, editorSupport }) {
           total: moduleTotal,
           parts: [renderCountMetric("lesson", (moduleValue.lessons || []).length, "lição", "lições")]
         }),
-        sourceGuideAction: "open-module-source-guide",
-        sourceGuideTitle: "Editar fonte-guia do módulo",
         menuAction: "open-module-actions",
         openAction: "open-module",
         generationAction: "open-generation-panel-module",
@@ -778,18 +763,13 @@ function renderCourseScreen({ course, progress, editorSupport }) {
       backTitle: editorSupport?.readOnlyBackTitle || "Menu principal",
       actions: readOnlyView ? [] : [
         {
-          action: "open-course-source-guide",
-          title: "Editar fonte-guia do curso",
-          icon: "📎",
-          courseKey: course.key
-        },
-        {
           action: "open-generation-panel-course",
           title: "Abrir geração por IA neste curso",
           icon: renderUiIcon("sparkles", "home-tab-icon"),
           courseKey: course.key
         },
         { action: "quick-create-module", title: "Criar módulo vazio", icon: "＋" },
+        { action: "open-version-history", title: "Snapshots do curso", icon: "🕘" },
         { action: "open-course-screen-actions", title: "Ações do curso", icon: "⋯" }
       ].filter(Boolean)
     }) +
@@ -846,13 +826,6 @@ function renderModuleScreen({ course, moduleValue, progress, editorSupport }) {
       backTitle: editorSupport?.readOnlyBackTitle || "Voltar",
       actions: readOnlyView ? [] : [
         {
-          action: "open-module-source-guide",
-          title: "Editar fonte-guia do módulo",
-          icon: "📎",
-          courseKey: course.key,
-          moduleKey: moduleValue.key
-        },
-        {
           action: "open-generation-panel-module",
           title: "Abrir geração por IA neste módulo",
           icon: renderUiIcon("sparkles", "home-tab-icon"),
@@ -860,6 +833,7 @@ function renderModuleScreen({ course, moduleValue, progress, editorSupport }) {
           moduleKey: moduleValue.key
         },
         { action: "quick-create-lesson", title: "Criar lição vazia", icon: "＋" },
+        { action: "open-version-history", title: "Snapshots do módulo", icon: "🕘" },
         { action: "open-module-screen-actions", title: "Ações do módulo", icon: "⋯" }
       ].filter(Boolean)
     }) +
@@ -983,6 +957,7 @@ function renderLessonScreenView({ course, lesson, moduleValue, progress, editorS
           lessonKey: lesson.key
         },
         { action: "quick-create-microsequence", title: "Criar microssequência vazia", icon: "＋" },
+        { action: "open-version-history", title: "Snapshots da lição", icon: "🕘" },
         { action: "open-lesson-screen-actions", title: "Ações da lição", icon: "⋯" }
       ].filter(Boolean)
     }) +
@@ -1143,9 +1118,9 @@ function renderMicrosequenceWorkbenchScreen({
   const activeCard = visibleCards[safeIndex] || null;
   const hasCards = visibleCards.length > 0;
   const bodyText = readCardText(activeCard);
-  const visualizedVersionId = editorSupport.visualizedMicrosequenceVersionId || editorSupport.activeMicrosequenceVersionId || "";
-  const editBaseVersionId = editorSupport.editBaseMicrosequenceVersionId || editorSupport.activeMicrosequenceVersionId || "";
-  const isEditingSelectedVersion = visualizedVersionId && visualizedVersionId === editBaseVersionId;
+  const visualizedVersionId = editorSupport.visualizedMicrosequenceVersionId || "";
+  const editBaseVersionId = editorSupport.editBaseMicrosequenceVersionId || "";
+  const isEditingSelectedVersion = !visualizedVersionId || visualizedVersionId === editBaseVersionId;
   const canEditCurrentView = isEditingSelectedVersion;
   const selectedDependencyTags = (editorSupport.dependencies || [])
     .filter((item) => visualizedTags.includes(item.key))
@@ -1202,6 +1177,19 @@ function renderMicrosequenceWorkbenchScreen({
         escapeHtml(item.value) +
         '"' +
         (item.value === editorSupport.selectedModel ? " selected" : "") +
+        ">" +
+        escapeHtml(item.label) +
+        "</option>"
+      );
+    })
+    .join("");
+  const didacticTypeOptions = (editorSupport.didacticTypeOptions || [])
+    .map((item) => {
+      return (
+        '<option value="' +
+        escapeHtml(item.value) +
+        '"' +
+        (item.value === editorSupport.selectedDidacticTypeId ? " selected" : "") +
         ">" +
         escapeHtml(item.label) +
         "</option>"
@@ -1265,11 +1253,25 @@ function renderMicrosequenceWorkbenchScreen({
     "</span>" +
     "</p>" +
     "</div>";
+  const pendingGeneratedActions = editorSupport.pendingGeneratedVersionActive
+    ? '<section class="study-reader-footer workbench-preview-footer">' +
+      '<div class="study-action-dock">' +
+      '<div class="study-action-stack">' +
+      '<div class="study-next-wrap workbench-preview-actions">' +
+      '<button class="icon-ghost study-comment-btn" type="button" data-action="discard-generated-version" title="Excluir iteração atual" aria-label="Excluir iteração atual">' +
+      renderUiIcon("remove-state", "generate-submit-icon") +
+      "</button>" +
+      '<button class="open-mini study-continue-btn" type="button" data-action="accept-generated-version" title="Aceitar iteração atual" aria-label="Aceitar iteração atual">' +
+      renderUiIcon("ready-state", "generate-submit-icon") +
+      "</button>" +
+      "</div></div></div></section>"
+    : "";
   const previewPane =
     '<section class="workbench-surface-pane workbench-preview-pane">' +
     '<div class="generator-preview-stage">' +
     previewBody +
     "</div>" +
+    pendingGeneratedActions +
     "</section>";
   const editPane =
     '<section class="workbench-editor-panel workbench-editor-pane">' +
@@ -1293,6 +1295,14 @@ function renderMicrosequenceWorkbenchScreen({
     '<div class="dependency-chip-row workbench-tag-chip-row">' +
     selectedDependencyTags +
     "</div></div>" +
+    '<div class="generate-divider workbench-divider"></div>' +
+    '<label class="field generate-icon-field workbench-select-field">' +
+    renderInlineFieldIcon("intent", "Tipo de sequência") +
+    '<select data-field="assist-didactic-type" aria-label="Tipo de sequência" title="Tipo de sequência"' +
+    (canEditCurrentView ? "" : ' disabled aria-disabled="true"') +
+    ">" +
+    didacticTypeOptions +
+    "</select></label>" +
     '<div class="generate-divider workbench-divider"></div>' +
     '<label class="field generate-icon-field generate-prompt-field workbench-prompt-field">' +
     '<div class="workbench-prompt-tools">' +
@@ -1351,7 +1361,13 @@ function renderMicrosequenceWorkbenchScreen({
       title,
       canGoBack: true,
       backTitle,
-      actions: []
+      actions: [
+        {
+          action: "open-version-history",
+          title: "Snapshots da microssequência",
+          icon: "🕘"
+        }
+      ]
     }) +
     '<main class="screen-content microsequence-generator-screen">' +
     stepNavigation +

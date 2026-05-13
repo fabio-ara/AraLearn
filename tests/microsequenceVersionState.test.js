@@ -12,10 +12,26 @@ import {
 function createMicrosequence(title = "Microssequência base") {
   return {
     title,
+    description: "Resumo",
+    status: "draft",
+    included: false,
+    role: "reinforcement",
     tags: ["tag-1"],
     cards: [{ key: "card-1", title: "Card 1", say: "Texto" }]
   };
 }
+
+test("snapshot de microssequência preserva metadados da própria microssequência", () => {
+  const version = createMicrosequenceVersionRecord(createMicrosequence(), {
+    versionNumber: 1,
+    label: "Snapshot 1"
+  });
+
+  assert.equal(version.description, "Resumo");
+  assert.equal(version.status, "draft");
+  assert.equal(version.included, false);
+  assert.equal(version.role, "reinforcement");
+});
 
 test("normaliza entrada legada de versões com ids sequenciais e operationType migration", () => {
   const entry = normalizeMicrosequenceVersionEntry({

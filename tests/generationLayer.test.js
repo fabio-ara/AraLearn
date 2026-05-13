@@ -7,8 +7,10 @@ import { buildMicrosequencePlanningContract } from "../src/generation/planning/b
 import { buildMicrosequencePlanningPrompt } from "../src/generation/planning/buildMicrosequencePlanningPrompt.js";
 import { validateMicrosequencePlan } from "../src/generation/planning/validateMicrosequencePlan.js";
 import { buildMicrosequenceEditPlanningContract } from "../src/generation/planning/buildMicrosequenceEditPlanningContract.js";
+import { buildMicrosequenceEditPlanningPrompt } from "../src/generation/planning/buildMicrosequenceEditPlanningPrompt.js";
 import { validateMicrosequenceEditPlan } from "../src/generation/planning/validateMicrosequenceEditPlan.js";
 import { buildGeneratedCardsRepairPrompt } from "../src/generation/prompts/buildGeneratedCardsRepairPrompt.js";
+import { buildMicrosequenceEditPrompt } from "../src/generation/prompts/buildMicrosequenceEditPrompt.js";
 import { buildMicrosequenceGenerationPrompt } from "../src/generation/prompts/buildMicrosequenceGenerationPrompt.js";
 import { getModelCapabilities } from "../src/generation/providers/modelCapabilities.js";
 import { adaptResourceCardsToPublicCards, adaptResourceCardToPublicCard } from "../src/generation/resources/adaptResourceCardToPublicCard.js";
@@ -27,6 +29,16 @@ import { createKeyValueMemoryStore } from "../src/storage/createKeyValueMemorySt
 import { replaceMicrosequenceCards } from "../src/editor/contractEditor.js";
 import { mapPreferredContainerToResource } from "../src/assist/geminiAssist.js";
 import { collectLessonTopicRefs } from "../src/ui/lessonEditorPaths.js";
+
+function makeBroadLessonGuidance(overrides = {}) {
+  return {
+    resourceTags: ["paragraph", "block_gap_fill", "multiple_choice", "table", "code_editor", "flowchart", "tree", "matrix", "plane"],
+    contentTypeTags: ["concept", "procedure", "comparison", "calculation", "interpretation", "tool_use", "review"],
+    learningActionTags: ["understand", "solve", "practice", "compare", "review", "use_tool"],
+    supportLevel: "guided",
+    ...overrides
+  };
+}
 
 function samplePlanningContract(extra = {}) {
   return buildMicrosequencePlanningContract({
@@ -50,6 +62,7 @@ function samplePlanningContract(extra = {}) {
       description: "Objetivo da lição",
       sourceGuide: "Guia da lição",
       sourceGuideStructured: { lessonGoal: "Escopo da lição." },
+      ...makeBroadLessonGuidance(),
       lessonTopics: [{ refKey: "micro-git", label: "Git", source: "microsequence" }],
       microsequences: [
         { key: "micro-base", title: "Base", description: "Introdução", tags: ["Git"], status: "ready" },
@@ -126,7 +139,14 @@ test("lista tipos didáticos e tamanhos internos", () => {
   assert.ok(types.some((item) => item.id === "assisted"));
   assert.ok(types.some((item) => item.id === "simple"));
   assert.ok(types.every((item) => item.id && item.label && item.shortDescription && item.availableSizes.length));
-  assert.ok(types.every((item) => item.cardRolesBySize.short && item.cardRolesBySize.medium && item.cardRolesBySize.long));
+  assert.ok(types.every((item) => item.cardPlansBySize.short && item.cardPlansBySize.medium && item.cardPlansBySize.long));
+  assert.ok(
+    types.every((item) =>
+      Object.values(item.cardPlansBySize).every((planItems) =>
+        planItems.every((planItem) => planItem.roleId && planItem.label && Array.isArray(planItem.preferredResources) && planItem.preferredResources.length)
+      )
+    )
+  );
   assert.ok(types.find((item) => item.id === "guided_practice").baseResourceTypes.includes("block_gap_fill"));
   assert.equal(getMicrosequenceCardCount("short"), 3);
   assert.equal(getMicrosequenceCardCount("medium"), 5);
@@ -154,20 +174,110 @@ test("planejamento recebe selectedLessonTopicRefs, catálogo leve e valida plano
   assert.equal(contract.selectedLessonTopicRefs[0].refKey, "micro-git");
   assert.equal(contract.selectedLessonTopicRefs[0].source, "microsequence");
   assert.deepEqual(contract.context.path.map((item) => item.level), ["course", "module", "lesson", "microsequence"]);
-  assert.equal(contract.context.sourceGuideLineage[0].sourceGuide, "Guia do curso");
   assert.equal(contract.context.lesson.microsequenceLine[0].title, "Base");
+  assert.deepEqual(contract.requestGovernance.precedence, [
+    "context.lesson.sourceGuideStructured",
+    "selectedLessonTopicRefs",
+    "request.userPrompt"
+  ]);
+  assert.equal(contract.requestGovernance.userPromptRole, "especializar o recorte imediato e a ênfase dentro da lição atual");
+  assert.deepEqual(contract.requestGovernance.lessonAnchors.map((item) => item.field), ["lessonGoal"]);
   assert.ok(contract.availableResources.some((item) => item.id === "paragraph" && !item.schema));
   assert.equal(contract.didacticGuardrails.generationFlow[0], "microteoria");
   assert.ok(contract.didacticGuardrails.hardRules.includes("bastidor zero no texto do aluno"));
   assert.ok(contract.didacticGuardrails.practiceContract.deterministicChecks.some((item) => item.includes("lacuna longa")));
+  assert.match(prompt, /requestGovernance\.precedence como ordem obrigatória de leitura do contrato/);
+  assert.match(prompt, /requestGovernance\.lessonAnchors como âncoras fortes da lição/);
+  assert.match(prompt, /Se request\.userPrompt conflitar com a meta, a notação, as confusões prováveis ou o critério final da lição/);
   assert.match(prompt, /selectedLessonTopicRefs são assuntos selecionados no escopo da lição/);
   assert.match(prompt, /context\.path como a linha hierárquica completa até a microssequência/);
-  assert.match(prompt, /context\.sourceGuideLineage como governança acumulada/);
   assert.match(prompt, /context\.lesson\.microsequenceLine/);
   assert.match(prompt, /planeje a sequência microteoria -> exemplo guiado -> prática autossuficiente -> consolidação/);
+  assert.match(prompt, /Papel do AraLearn nesta operação: fixar contrato, tipos disponíveis, recursos possíveis, validação local e cardPlan final/);
+  assert.match(prompt, /Seu papel aqui é apenas propor typeId, sizeId, microsequenceGoal/);
+  assert.match(prompt, /Não decida contrato final, recurso por posição, aplicação no projeto nem revisão editorial final/);
+  assert.match(prompt, /Não devolva cardPlan/);
   assert.equal(validation.ok, true);
   assert.equal(validation.plan.sizeId, "short");
   assert.equal(validation.plan.cardPlan.length, 3);
+  assert.deepEqual(validation.plan.cardPlan.map((item) => item.resourceType), ["paragraph", "block_gap_fill", "multiple_choice"]);
+});
+
+test("planejamento valida sourceUsePlan contra fontes resolvidas", () => {
+  const contract = samplePlanningContract({
+    attachedSources: [{ sourceId: "source-1", displayName: "guia.pdf", kind: "pdf" }],
+    userSelectedSourceIds: ["source-1"]
+  });
+
+  const accepted = validateMicrosequencePlan(
+    validPlan({
+      sourceUsePlan: [{ sourceId: "source-1", usage: "base principal", note: "Usar só para nomenclatura." }]
+    }),
+    contract
+  );
+  const rejected = validateMicrosequencePlan(
+    validPlan({
+      sourceUsePlan: [{ sourceId: "source-inexistente" }, { sourceId: "source-inexistente" }]
+    }),
+    contract
+  );
+
+  assert.equal(accepted.ok, true);
+  assert.deepEqual(accepted.plan.sourceUsePlan, [
+    { sourceId: "source-1", usage: "base principal", note: "Usar só para nomenclatura." }
+  ]);
+  assert.equal(rejected.ok, false);
+  assert.match(rejected.errors.join(" "), /fonte inexistente/);
+});
+
+test("planejamento e edição enviam fonte-guia compacta ao modelo", () => {
+  const contract = samplePlanningContract({
+    selectedCourse: {
+      key: "course",
+      title: "Curso",
+      description: "Objetivo do curso"
+    },
+    selectedModule: {
+      key: "module",
+      title: "Módulo",
+      description: "Objetivo do módulo"
+    },
+    selectedLesson: {
+      key: "lesson",
+      title: "Lição",
+      description: "Objetivo da lição",
+      sourceGuide: "Resumo legado da lição",
+      sourceGuideStructured: { lessonGoal: "Escopo da lição.", freeNotes: "Não enviar ao modelo." },
+      ...makeBroadLessonGuidance(),
+      lessonTopics: [{ refKey: "micro-git", label: "Git", source: "microsequence" }],
+      microsequences: [{ key: "micro", title: "Microssequência", description: "Alvo", tags: ["add"], status: "draft" }]
+    }
+  });
+  const editContract = buildMicrosequenceEditPlanningContract({
+    selectedCourse: contract.context.course,
+    selectedModule: contract.context.module,
+    selectedLesson: contract.context.lesson,
+    selectedMicrosequence: { key: "micro", title: "Microssequência", description: "Alvo" },
+    selectedMicrosequenceVersion: { id: "v2", label: "v2" },
+    currentCards: [],
+    previousVersions: [],
+    userEditPrompt: "Ajuste a linguagem",
+    selectedModel: "gemini-2.5-flash"
+  });
+
+  assert.equal(contract.context.course.sourceGuideStructured, undefined);
+  assert.equal(contract.context.course.sourceGuide, undefined);
+  assert.equal(contract.context.module.sourceGuideStructured, undefined);
+  assert.equal(contract.context.module.sourceGuide, undefined);
+  assert.deepEqual(contract.context.lesson.sourceGuideStructured, { lessonGoal: "Escopo da lição." });
+  assert.deepEqual(contract.requestGovernance.lessonAnchors, [
+    { field: "lessonGoal", label: "Meta da lição", value: "Escopo da lição." }
+  ]);
+  assert.equal(editContract.context.lesson.sourceGuide.includes("Observações livres"), false);
+  assert.deepEqual(editContract.context.lesson.sourceGuideStructured, { lessonGoal: "Escopo da lição." });
+  assert.deepEqual(editContract.requestGovernance.lessonAnchors, [
+    { field: "lessonGoal", label: "Meta da lição", value: "Escopo da lição." }
+  ]);
 });
 
 test("planejamento com tipo fixado envia apenas o tipo efetivo", () => {
@@ -189,7 +299,7 @@ test("campos legados de tags são normalizados para selectedLessonTopicRefs", ()
   ]);
 });
 
-test("planejamento rejeita tipo, tamanho, quantidade e preservação inválidos", () => {
+test("planejamento rejeita tipo e preservação inválidos, mas ignora cardPlan do modelo", () => {
   const contract = samplePlanningContract({ userFixedTypeId: "procedure", userSelectedExtraResourceTypes: ["flowchart"] });
   const validation = validateMicrosequencePlan(
     validPlan({
@@ -203,8 +313,16 @@ test("planejamento rejeita tipo, tamanho, quantidade e preservação inválidos"
 
   assert.equal(validation.ok, false);
   assert.match(validation.errors.join(" "), /Tipo fixado/);
-  assert.match(validation.errors.join(" "), /quantidade esperada/);
   assert.match(validation.errors.join(" "), /flowchart/);
+
+  const accepted = validateMicrosequencePlan(
+    validPlan({
+      cardPlan: [{ position: 99, role: "ignorar", resourceType: "image", sourceRefs: ["fonte-inexistente"] }]
+    }),
+    samplePlanningContract()
+  );
+  assert.equal(accepted.ok, true);
+  assert.deepEqual(accepted.plan.cardPlan.map((item) => item.position), [1, 2, 3]);
 });
 
 test("resolve recursos de geração com base, extras e deduplicação", () => {
@@ -235,18 +353,19 @@ test("contrato e prompt de geração usam contexto, tags, tamanho e schemas efet
 
   assert.equal(generationContract.context.course.title, "Curso");
   assert.equal(generationContract.context.path[3].title, "Microssequência");
-  assert.equal(generationContract.context.sourceGuideLineage[2].sourceGuide, "Guia da lição");
   assert.equal(generationContract.selectedLessonTopicRefs[0].label, "Git");
   assert.equal(generationContract.request.sizeId, "short");
   assert.equal(generationContract.request.cardCount, 3);
   assert.equal(generationContract.didacticGuardrails.generationFlow[1], "exemplo guiado");
+  assert.equal(generationContract.requestGovernance.lessonAnchors[0].field, "lessonGoal");
   assert.deepEqual(Object.keys(generationContract.resources.resourceSchemas).sort(), ["block_gap_fill", "multiple_choice", "paragraph", "table"].sort());
   assert.match(prompt, /block_gap_fill/);
   assert.match(prompt, /"kind":"blank"/);
   assert.match(prompt, /não use content, segments\[\]\.text nem blocks\[\]\.text/);
   assert.match(prompt, /selectedLessonTopicRefs como assuntos selecionados no escopo da lição/);
+  assert.match(prompt, /requestGovernance\.precedence como ordem obrigatória de leitura do contrato/);
+  assert.match(prompt, /Se request\.userPrompt conflitar com a meta, a notação, as confusões prováveis ou o critério final da lição/);
   assert.match(prompt, /context\.path como a linha hierárquica completa até a microssequência/);
-  assert.match(prompt, /context\.sourceGuideLineage como governança acumulada/);
   assert.match(prompt, /context\.lesson\.microsequenceLine/);
   assert.match(prompt, /Não coloque prática antes da microteoria/);
   assert.match(prompt, /Quando a regra for abstrata ou pouco intuitiva/);
@@ -255,10 +374,13 @@ test("contrato e prompt de geração usam contexto, tags, tamanho e schemas efet
   assert.match(prompt, /Não use linguagem de bastidor nem referência externa ou volátil/);
   assert.match(prompt, /Não crie exercício cuja resposta já esteja explicitamente revelada no mesmo card/i);
   assert.match(prompt, /rolagem vertical/);
-  assert.match(prompt, /Trate sourceGuide de curso, módulo e lição como contrato de governança/);
+  assert.match(prompt, /Trate sourceGuideStructured da lição como contrato de governança/);
+  assert.match(prompt, /Papel do AraLearn: fixar didacticPlan\.cardPlan, recursos permitidos, schemas aceitos, validação e adaptação para o contrato público/);
+  assert.match(prompt, /Seu papel aqui é apenas preencher o conteúdo dos cards já planejados/);
+  assert.match(prompt, /Não mude tags persistentes, destino estrutural, status da microssequência nem decisão editorial final/);
   assert.match(prompt, /destaque inline com acentos graves em símbolos, conectivos, comandos, fórmulas e nomes curtos/);
   assert.match(prompt, /Não repita o title do card/);
-  assert.doesNotMatch(prompt, /code_editor/);
+  assert.doesNotMatch(prompt, /"allowedResourceTypes":\[[^\]]*code_editor/);
 });
 
 test("capacidades do modelo ficam separadas dos tipos didáticos", () => {
@@ -354,22 +476,13 @@ test("validação de geração aceita cards válidos e rejeita erros estruturais
 });
 
 test("validação de geração aceita plane e matrix gerados", () => {
-  const planningContract = samplePlanningContract({ userSelectedExtraResourceTypes: ["plane", "matrix"] });
-  const generationContract = buildMicrosequenceGenerationContract({
-    planningContract,
-    validatedPlan: validateMicrosequencePlan(
-      validPlan({
-        selectedExtraResourceTypes: ["plane", "matrix"],
-        cardPlan: [
-          { position: 1, role: "mostrar vetor", resourceType: "plane", sourceRefs: [] },
-          { position: 2, role: "mostrar matriz", resourceType: "matrix", sourceRefs: [] },
-          { position: 3, role: "consolidar", resourceType: "multiple_choice", sourceRefs: [] }
-        ]
-      }),
-      planningContract
-    ),
-    selectedModel: "gemini-2.5-flash"
-  });
+  const generationContract = sampleGenerationContract();
+  generationContract.resources.allowedResourceTypes = ["plane", "matrix", "multiple_choice"];
+  generationContract.didacticPlan.cardPlan = [
+    { position: 1, role: "mostrar vetor", resourceType: "plane", sourceRefs: [] },
+    { position: 2, role: "mostrar matriz", resourceType: "matrix", sourceRefs: [] },
+    { position: 3, role: "consolidar", resourceType: "multiple_choice", sourceRefs: [] }
+  ];
   const response = {
     cards: [
       { position: 1, resourceType: "plane", title: "Soma visual", prompt: "Observe.", sum: [[1, 2], [3, 1]], result: [4, 3] },
@@ -619,13 +732,14 @@ test("validateOrRepairGeneratedCards corrige multiple_choice com índice e tree 
     callModel: async () => invalidChoice
   });
   const treeContract = sampleGenerationContract({
-    selectedExtraResourceTypes: ["table", "tree"],
-    cardPlan: [
-      { position: 1, role: "situar", resourceType: "paragraph", sourceRefs: [] },
-      { position: 2, role: "mostrar estrutura", resourceType: "tree", sourceRefs: [] },
-      { position: 3, role: "consolidar", resourceType: "multiple_choice", sourceRefs: [] }
-    ]
+    selectedExtraResourceTypes: ["table", "tree"]
   });
+  treeContract.resources.allowedResourceTypes = ["paragraph", "tree", "multiple_choice"];
+  treeContract.didacticPlan.cardPlan = [
+    { position: 1, role: "situar", resourceType: "paragraph", sourceRefs: [] },
+    { position: 2, role: "mostrar estrutura", resourceType: "tree", sourceRefs: [] },
+    { position: 3, role: "consolidar", resourceType: "multiple_choice", sourceRefs: [] }
+  ];
   const invalidTree = {
     cards: [
       validGeneratedCardsResponse().cards[0],
@@ -667,8 +781,12 @@ test("validateOrRepairGeneratedCards rejeita reparo ainda inválido", async () =
   assert.match(result.errors.join(" "), /Quantidade incorreta de cards|Recurso fora do permitido/);
 });
 
-test("validateOrRepairGeneratedCards bloqueia recurso fora do permitido, respeita contagem e cardPlan.position", async () => {
+test("validateOrRepairGeneratedCards repara recurso mecânico, respeita contagem e cardPlan.position", async () => {
   const generationContract = sampleGenerationContract();
+  const directMismatch = validateGeneratedCards(
+    { cards: validGeneratedCardsResponse().cards.map((card) => ({ ...card, resourceType: card.position === 2 ? "multiple_choice" : card.resourceType })) },
+    generationContract
+  );
   const wrongResource = await validateOrRepairGeneratedCards({
     rawGeneratedResponse: { cards: validGeneratedCardsResponse().cards.map((card) => ({ ...card, resourceType: card.position === 2 ? "image" : card.resourceType })) },
     generationContract,
@@ -688,8 +806,10 @@ test("validateOrRepairGeneratedCards bloqueia recurso fora do permitido, respeit
     callModel: async () => ({ cards: validGeneratedCardsResponse().cards.map((card) => ({ ...card, position: 1 })) })
   });
 
-  assert.equal(wrongResource.ok, false);
-  assert.match(wrongResource.errors.join(" "), /Recurso fora do permitido/);
+  assert.equal(directMismatch.ok, false);
+  assert.match(directMismatch.errors.join(" "), /resourceType incoerente com cardPlan/);
+  assert.equal(wrongResource.ok, true);
+  assert.equal(wrongResource.cards[1].resourceType, "block_gap_fill");
   assert.equal(wrongCount.ok, false);
   assert.match(wrongCount.errors.join(" "), /Quantidade incorreta de cards/);
   assert.equal(wrongPosition.ok, true);
@@ -699,15 +819,15 @@ test("validateOrRepairGeneratedCards bloqueia recurso fora do permitido, respeit
 test("tree entra no catálogo, no planejamento, em allowedResourceTypes e na validação", () => {
   const planningContract = samplePlanningContract({ userSelectedExtraResourceTypes: ["tree"] });
   const plan = validPlan({
-    selectedExtraResourceTypes: ["tree"],
-    cardPlan: [
-      { position: 1, role: "situar", resourceType: "paragraph", sourceRefs: [] },
-      { position: 2, role: "mostrar estrutura", resourceType: "tree", sourceRefs: [] },
-      { position: 3, role: "consolidar", resourceType: "multiple_choice", sourceRefs: [] }
-    ]
+    selectedExtraResourceTypes: ["tree"]
   });
   const validatedPlan = validateMicrosequencePlan(plan, planningContract);
   const generationContract = buildMicrosequenceGenerationContract({ planningContract, validatedPlan, selectedModel: "gemini-2.5-flash" });
+  generationContract.didacticPlan.cardPlan = [
+    { position: 1, role: "situar", resourceType: "paragraph", sourceRefs: [] },
+    { position: 2, role: "mostrar estrutura", resourceType: "tree", sourceRefs: [] },
+    { position: 3, role: "consolidar", resourceType: "multiple_choice", sourceRefs: [] }
+  ];
   const response = {
     cards: [
       { position: 1, resourceType: "paragraph", title: "Ideia", text: "Texto curto." },
@@ -762,13 +882,14 @@ test("fontes resolvem seleção explícita, menção e ambiguidade", () => {
 
 test("planejamento e contrato de edição preservam versão, selectedLessonTopicRefs e recursos", () => {
   const editPlanningContract = buildMicrosequenceEditPlanningContract({
-    selectedCourse: { key: "course", title: "Curso", sourceGuide: "Guia do curso", sourceGuideStructured: { globalScope: "Escopo do curso." } },
-    selectedModule: { key: "module", title: "Módulo", sourceGuide: "Guia do módulo", sourceGuideStructured: { moduleScope: "Escopo do módulo." } },
+    selectedCourse: { key: "course", title: "Curso" },
+    selectedModule: { key: "module", title: "Módulo" },
     selectedLesson: {
       key: "lesson",
       title: "Lição",
       sourceGuide: "Guia da lição",
       sourceGuideStructured: { lessonGoal: "Escopo da lição." },
+      ...makeBroadLessonGuidance(),
       lessonTopics: [{ refKey: "micro-git", label: "Git", source: "microsequence" }],
       microsequences: [{ key: "micro", title: "Micro", description: "Atual", tags: ["Git"], status: "ready" }]
     },
@@ -807,14 +928,79 @@ test("planejamento e contrato de edição preservam versão, selectedLessonTopic
 
   assert.equal(editPlanningContract.selectedLessonTopicRefs[0].label, "Git");
   assert.deepEqual(editPlanningContract.context.path.map((item) => item.level), ["course", "module", "lesson", "microsequence"]);
-  assert.equal(editPlanningContract.context.sourceGuideLineage[2].sourceGuide, "Guia da lição");
   assert.equal(editPlanningContract.context.lesson.microsequenceLine[0].title, "Micro");
+  assert.equal(editPlanningContract.requestGovernance.lessonAnchors[0].field, "lessonGoal");
   assert.equal(editContract.selectedLessonTopicRefs[0].label, "Git");
   assert.equal(editPlanningContract.previousVersionsSummary[0].versionId, "v0");
   assert.equal(plan.ok, true);
   assert.ok(resources.allowedResourceTypes.includes("table"));
   assert.equal(editContract.currentVersion.cards.length, 1);
   assert.ok(editContract.resources.allowedResourceTypes.includes("table"));
+  assert.equal(editContract.requestGovernance.lessonAnchors[0].field, "lessonGoal");
+});
+
+test("prompts de edição e reparo explicitam a divisão de papéis", () => {
+  const editPlanningContract = buildMicrosequenceEditPlanningContract({
+    selectedCourse: { key: "course", title: "Curso" },
+    selectedModule: { key: "module", title: "Módulo" },
+    selectedLesson: {
+      key: "lesson",
+      title: "Lição",
+      sourceGuide: "Guia da lição",
+      sourceGuideStructured: { lessonGoal: "Escopo da lição." },
+      ...makeBroadLessonGuidance(),
+      lessonTopics: [{ refKey: "micro-git", label: "Git", source: "microsequence" }],
+      microsequences: [{ key: "micro", title: "Micro", description: "Atual", tags: ["Git"], status: "ready" }]
+    },
+    selectedMicrosequence: { key: "micro", title: "Micro", description: "Atual", tags: ["Git"], status: "ready" },
+    selectedMicrosequenceVersion: { id: "v1" },
+    selectedLessonTopicRefs: [{ refKey: "micro-git", label: "Git", source: "microsequence" }],
+    currentCards: [{ key: "c1", position: 1, resourceType: "paragraph", title: "Card 1", text: "Texto" }],
+    previousVersions: [{ id: "v0", label: "Anterior", cards: [{ title: "Antigo", say: "Antes" }] }],
+    userEditPrompt: "troque para tabela",
+    userSelectedExtraResourceTypes: ["table"],
+    selectedModel: "gemini-2.5-flash"
+  });
+  const editPlanValidation = validateMicrosequenceEditPlan(
+    {
+      editScope: "selected_cards",
+      affectedCards: ["c1"],
+      operations: [{ operation: "replace_resource", cardKey: "c1", fromResourceType: "paragraph", toResourceType: "table", intent: "comparar" }],
+      requiredResourceTypes: ["table"],
+      requiresFullPreviousVersion: false,
+      previousVersionIdsToLoad: [],
+      reason: "pedido"
+    },
+    editPlanningContract
+  );
+  const editContract = buildMicrosequenceEditContract({
+    editPlanningContract,
+    validatedEditPlan: editPlanValidation,
+    currentCards: [{ key: "c1", position: 1, resourceType: "paragraph", title: "Card 1", text: "Texto" }],
+    selectedModel: "gemini-2.5-flash"
+  });
+  const editPlanningPrompt = buildMicrosequenceEditPlanningPrompt(editPlanningContract, getModelCapabilities("gemini-2.5-flash"));
+  const editPrompt = buildMicrosequenceEditPrompt(editContract, getModelCapabilities("gemini-2.5-flash"));
+  const repairPrompt = buildGeneratedCardsRepairPrompt({
+    invalidResponse: { cards: [{ position: 1, resourceType: "paragraph", title: "", text: "" }] },
+    validationErrors: ["Card sem title."],
+    generationContract: sampleGenerationContract(),
+    modelCapabilities: getModelCapabilities("gemini-2.5-flash")
+  });
+
+  assert.match(editPlanningPrompt, /Papel do AraLearn nesta operação: fixar escopo de edição, cards atuais, recursos permitidos e validação/);
+  assert.match(editPlanningPrompt, /Seu papel aqui é apenas propor editScope, affectedCards, operations, requiredResourceTypes/);
+  assert.match(editPlanningPrompt, /Não reescreva os cards nem decida aplicação final no projeto/);
+  assert.match(editPlanningPrompt, /requestGovernance\.precedence como ordem obrigatória de leitura do contrato/);
+  assert.match(editPlanningPrompt, /Se request\.userEditPrompt conflitar com a meta, a notação, as confusões prováveis ou o critério final da lição/);
+  assert.match(editPrompt, /Papel do AraLearn: fixar cards atuais, escopo de edição, recursos permitidos e validação final/);
+  assert.match(editPrompt, /Seu papel aqui é apenas devolver os cards editados que respeitam esse escopo/);
+  assert.match(editPrompt, /Não mude destino estrutural, status, tags persistentes nem decisão editorial final/);
+  assert.match(editPrompt, /requestGovernance\.precedence como ordem obrigatória de leitura do contrato/);
+  assert.match(editPrompt, /Se request\.userEditPrompt conflitar com a meta, a notação, as confusões prováveis ou o critério final da lição/);
+  assert.match(repairPrompt, /Papel do AraLearn: manter plano, cardPlan, recursos permitidos, validação e adaptação final/);
+  assert.match(repairPrompt, /Seu papel no reparo é apenas corrigir a estrutura do JSON existente dentro dessas restrições/);
+  assert.match(repairPrompt, /Não decida destino estrutural, aplicação no projeto nem revisão editorial final/);
 });
 
 test("validação de edição preserva cards não afetados em edição localizada", () => {

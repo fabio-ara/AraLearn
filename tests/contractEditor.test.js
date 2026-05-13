@@ -58,21 +58,19 @@ test("cria microssequência nova no contrato principal como rascunho vazio", () 
   assert.deepEqual(microsequence.cards, []);
 });
 
-test("preserva sourceGuide opcional em curso, módulo e lição", () => {
+test("preserva sourceGuide derivado de sourceGuideStructured apenas na lição", () => {
   let document = readNormalizedProject("./docs/examples/aralearn-contract.renderable.json");
 
   document = createCourse(document, {
     title: "Curso com guia",
-    description: "Descrição curta do curso",
-    sourceGuide: "Objetivo do curso.\nConteúdo obrigatório.\nDificuldades prováveis."
+    description: "Descrição curta do curso"
   });
 
   const course = document.courses.at(-1);
   document = createModule(document, {
     courseKey: course.key,
     title: "Módulo com guia",
-    description: "Descrição curta do módulo",
-    sourceGuide: "Fonte-guia do módulo."
+    description: "Descrição curta do módulo"
   });
 
   const moduleValue = document.courses.at(-1).modules.at(-1);
@@ -81,53 +79,81 @@ test("preserva sourceGuide opcional em curso, módulo e lição", () => {
     moduleKey: moduleValue.key,
     title: "Lição com guia",
     description: "Descrição curta da lição",
-    sourceGuide: "Fonte-guia da lição."
+    sourceGuideStructured: {
+      lessonGoal: "Fonte-guia da lição.",
+      commonErrors: "Trocar a ordem dos conectivos."
+    }
   });
 
   const lesson = document.courses.at(-1).modules.at(-1).lessons.at(-1);
   const validation = validateContractDocument(document);
   assert.equal(validation.ok, true);
-  assert.equal(validation.value.courses.at(-1).sourceGuide, "Objetivo do curso.\nConteúdo obrigatório.\nDificuldades prováveis.");
-  assert.equal(validation.value.courses.at(-1).modules.at(-1).sourceGuide, "Fonte-guia do módulo.");
-  assert.equal(validation.value.courses.at(-1).modules.at(-1).lessons.at(-1).sourceGuide, "Fonte-guia da lição.");
+  assert.equal(validation.value.courses.at(-1).sourceGuide, undefined);
+  assert.equal(validation.value.courses.at(-1).modules.at(-1).sourceGuide, undefined);
+  assert.match(validation.value.courses.at(-1).modules.at(-1).lessons.at(-1).sourceGuide, /Fonte-guia da lição\./);
+  assert.deepEqual(validation.value.courses.at(-1).modules.at(-1).lessons.at(-1).resourceTags, [
+    "paragraph",
+    "block_gap_fill",
+    "multiple_choice"
+  ]);
 
   const exported = exportLessonDocument(document, {
     courseKey: course.key,
     moduleKey: moduleValue.key,
     lessonKey: lesson.key
   });
-  assert.equal(exported.courses[0].sourceGuide, "Objetivo do curso.\nConteúdo obrigatório.\nDificuldades prováveis.");
-  assert.equal(exported.courses[0].modules[0].sourceGuide, "Fonte-guia do módulo.");
-  assert.equal(exported.courses[0].modules[0].lessons[0].sourceGuide, "Fonte-guia da lição.");
+  assert.equal(exported.scope, "lesson");
+  assert.equal(exported.courses[0].sourceGuide, undefined);
+  assert.equal(exported.courses[0].modules[0].sourceGuide, undefined);
+  assert.match(exported.courses[0].modules[0].lessons[0].sourceGuide, /Fonte-guia da lição\./);
 });
 
-test("preserva sourceGuideStructured e recompila o texto derivado", () => {
+test("ignora sourceGuide textual em curso na edição estrutural", () => {
+  const document = readNormalizedProject("./docs/examples/aralearn-contract.renderable.json");
+
+  const nextDocument = createCourse(document, {
+    title: "Curso textual",
+    sourceGuide: "Texto corrido legado."
+  });
+
+  const course = nextDocument.courses.at(-1);
+  assert.equal(course.title, "Curso textual");
+  assert.equal(course.sourceGuide, undefined);
+  assert.equal(course.sourceGuideStructured, undefined);
+  assert.equal(validateContractDocument(nextDocument).ok, true);
+});
+
+test("preserva sourceGuideStructured e recompila o texto derivado na lição", () => {
   let document = readNormalizedProject("./docs/examples/aralearn-contract.renderable.json");
 
-  document = createCourse(document, {
-    title: "Curso com guia estruturada",
+  document = createLesson(document, {
+    courseKey: document.courses[0].key,
+    moduleKey: document.courses[0].modules[0].key,
+    title: "Lição com guia estruturada",
     sourceGuideStructured: {
-      audience: "Iniciantes completos.",
-      globalScope: "Entender o fluxo principal.",
-      globalOutOfScope: "Sem avançar para casos especiais."
+      lessonGoal: "Entender o fluxo principal.",
+      notationRules: "Usar comandos inline.",
+      commonErrors: "Não inverter a ordem dos passos."
     }
   });
 
-  const course = document.courses.at(-1);
-  assert.deepEqual(course.sourceGuideStructured, {
-    audience: "Iniciantes completos.",
-    globalScope: "Entender o fluxo principal.",
-    globalOutOfScope: "Sem avançar para casos especiais."
+  const lesson = document.courses[0].modules[0].lessons.at(-1);
+  assert.deepEqual(lesson.sourceGuideStructured, {
+    lessonGoal: "Entender o fluxo principal.",
+    notationRules: "Usar comandos inline.",
+    commonErrors: "Não inverter a ordem dos passos."
   });
-  assert.match(course.sourceGuide, /Público e ponto de entrada: Iniciantes completos\./);
-  assert.match(course.sourceGuide, /Escopo do curso: Entender o fluxo principal\./);
-  assert.match(course.sourceGuide, /Fora do curso: Sem avançar para casos especiais\./);
+  assert.match(lesson.sourceGuide, /Meta da lição: Entender o fluxo principal\./);
+  assert.match(lesson.sourceGuide, /Sinais e notação: Usar comandos inline\./);
+  assert.match(lesson.sourceGuide, /Confusões prováveis: Não inverter a ordem dos passos\./);
 
-  const exported = exportCourseDocument(document, {
-    courseKey: course.key
+  const exported = exportLessonDocument(document, {
+    courseKey: document.courses[0].key,
+    moduleKey: document.courses[0].modules[0].key,
+    lessonKey: lesson.key
   });
-  assert.deepEqual(exported.courses[0].sourceGuideStructured, course.sourceGuideStructured);
-  assert.equal(exported.courses[0].sourceGuide, course.sourceGuide);
+  assert.deepEqual(exported.courses[0].modules[0].lessons[0].sourceGuideStructured, lesson.sourceGuideStructured);
+  assert.equal(exported.courses[0].modules[0].lessons[0].sourceGuide, lesson.sourceGuide);
 });
 
 test("cria microssequência rascunho sem cards", () => {
@@ -317,12 +343,7 @@ test("reordena módulos, lições, microssequências e cards entre irmãos", () 
 
   let document = importModules(baseDocument, {
     courseKey,
-    document: {
-      contract: "aralearn.contract",
-      version: 1,
-      kind: "project",
-      courses: [structuredClone(baseDocument.courses[0])]
-    }
+    document: exportModuleDocument(baseDocument, { courseKey, moduleKey })
   });
   const extraModuleKey = document.courses[0].modules[1].key;
   document = moveModule(document, { courseKey, moduleKey: extraModuleKey, toIndex: 0 });
@@ -331,12 +352,7 @@ test("reordena módulos, lições, microssequências e cards entre irmãos", () 
   document = importLessons(document, {
     courseKey,
     moduleKey,
-    document: {
-      contract: "aralearn.contract",
-      version: 1,
-      kind: "project",
-      courses: [structuredClone(baseDocument.courses[0])]
-    }
+    document: exportLessonDocument(baseDocument, { courseKey, moduleKey, lessonKey })
   });
   const extraLessonKey = document.courses[0].modules[1].lessons[1].key;
   document = moveLesson(document, { courseKey, moduleKey, lessonKey: extraLessonKey, toIndex: 0 });
@@ -346,12 +362,7 @@ test("reordena módulos, lições, microssequências e cards entre irmãos", () 
     courseKey,
     moduleKey,
     lessonKey,
-    document: {
-      contract: "aralearn.contract",
-      version: 1,
-      kind: "project",
-      courses: [structuredClone(baseDocument.courses[0])]
-    }
+    document: exportMicrosequenceDocument(baseDocument, { courseKey, moduleKey, lessonKey, microsequenceKey })
   });
   const movedMicrosequenceKey = document.courses[0].modules[1].lessons[1].microsequences[1].key;
   document = moveMicrosequence(document, {
@@ -383,6 +394,7 @@ test("importa cursos sem sobrescrever keys existentes e exporta curso isolado", 
     contract: "aralearn.contract",
     version: 1,
     kind: "project",
+    scope: "course",
     courses: [structuredClone(baseDocument.courses[0])]
   };
 
@@ -398,24 +410,35 @@ test("importa cursos sem sobrescrever keys existentes e exporta curso isolado", 
   });
 
   assert.equal(exportedDocument.contract, "aralearn.contract");
+  assert.equal(exportedDocument.scope, "course");
   assert.equal(exportedDocument.courses.length, 1);
   assert.equal(exportedDocument.courses[0].title, mergedDocument.courses[1].title);
+});
+
+test("importação rejeita recorte AraLearn em nível incompatível", () => {
+  const baseDocument = readNormalizedProject("./docs/examples/aralearn-contract.renderable.json");
+  const courseKey = baseDocument.courses[0].key;
+  const moduleKey = baseDocument.courses[0].modules[0].key;
+  const lessonKey = baseDocument.courses[0].modules[0].lessons[0].key;
+
+  const lessonDocument = exportLessonDocument(baseDocument, { courseKey, moduleKey, lessonKey });
+
+  assert.throws(
+    () => importModules(baseDocument, { courseKey, document: lessonDocument }),
+    /Este arquivo contém lição/
+  );
 });
 
 test("excluir lição intermediária preserva a estrutura restante válida", () => {
   const baseDocument = readNormalizedProject("./docs/examples/aralearn-contract.renderable.json");
   const courseKey = baseDocument.courses[0].key;
   const moduleKey = baseDocument.courses[0].modules[0].key;
+  const lessonKey = baseDocument.courses[0].modules[0].lessons[0].key;
   const baseLessonCount = baseDocument.courses[0].modules[0].lessons.length;
   const withExtraLesson = importLessons(baseDocument, {
     courseKey,
     moduleKey,
-    document: {
-      contract: "aralearn.contract",
-      version: 1,
-      kind: "project",
-      courses: [structuredClone(baseDocument.courses[0])]
-    }
+    document: exportLessonDocument(baseDocument, { courseKey, moduleKey, lessonKey })
   });
 
   const targetLessonKey = withExtraLesson.courses[0].modules[0].lessons[0].key;
@@ -425,7 +448,7 @@ test("excluir lição intermediária preserva a estrutura restante válida", () 
     lessonKey: targetLessonKey
   });
 
-  assert.equal(nextDocument.courses[0].modules[0].lessons.length, baseLessonCount * 2 - 1);
+  assert.equal(nextDocument.courses[0].modules[0].lessons.length, baseLessonCount);
   assert.notEqual(nextDocument.courses[0].modules[0].lessons[0].key, targetLessonKey);
 });
 
@@ -433,44 +456,38 @@ test("importa módulo, lição e microssequência em níveis distintos e exporta
   const baseDocument = readNormalizedProject("./docs/examples/aralearn-contract.renderable.json");
   const importedCourse = structuredClone(baseDocument.courses[0]);
   const baseLessonCount = baseDocument.courses[0].modules[0].lessons.length;
-  const importedMicrosequenceCount = importedCourse.modules[0].lessons.reduce(
-    (total, lesson) => total + (lesson.microsequences || []).length,
-    0
-  );
+  const importedMicrosequenceCount = 1;
 
   const withImportedModule = importModules(baseDocument, {
     courseKey: baseDocument.courses[0].key,
-    document: {
-      contract: "aralearn.contract",
-      version: 1,
-      kind: "project",
-      courses: [importedCourse]
-    }
+    document: exportModuleDocument(baseDocument, {
+      courseKey: importedCourse.key,
+      moduleKey: importedCourse.modules[0].key
+    })
   });
   assert.equal(withImportedModule.courses[0].modules.length, 2);
 
   const withImportedLesson = importLessons(baseDocument, {
     courseKey: baseDocument.courses[0].key,
     moduleKey: baseDocument.courses[0].modules[0].key,
-    document: {
-      contract: "aralearn.contract",
-      version: 1,
-      kind: "project",
-      courses: [importedCourse]
-    }
+    document: exportLessonDocument(baseDocument, {
+      courseKey: importedCourse.key,
+      moduleKey: importedCourse.modules[0].key,
+      lessonKey: importedCourse.modules[0].lessons[0].key
+    })
   });
-  assert.equal(withImportedLesson.courses[0].modules[0].lessons.length, baseLessonCount * 2);
+  assert.equal(withImportedLesson.courses[0].modules[0].lessons.length, baseLessonCount + 1);
 
   const withImportedMicrosequence = importMicrosequences(baseDocument, {
     courseKey: baseDocument.courses[0].key,
     moduleKey: baseDocument.courses[0].modules[0].key,
     lessonKey: baseDocument.courses[0].modules[0].lessons[0].key,
-    document: {
-      contract: "aralearn.contract",
-      version: 1,
-      kind: "project",
-      courses: [importedCourse]
-    }
+    document: exportMicrosequenceDocument(baseDocument, {
+      courseKey: importedCourse.key,
+      moduleKey: importedCourse.modules[0].key,
+      lessonKey: importedCourse.modules[0].lessons[0].key,
+      microsequenceKey: importedCourse.modules[0].lessons[0].microsequences[0].key
+    })
   });
   assert.equal(
     withImportedMicrosequence.courses[0].modules[0].lessons[0].microsequences.length,
@@ -481,6 +498,7 @@ test("importa módulo, lição e microssequência em níveis distintos e exporta
     courseKey: baseDocument.courses[0].key,
     moduleKey: baseDocument.courses[0].modules[0].key
   });
+  assert.equal(exportedModule.scope, "module");
   assert.equal(exportedModule.courses[0].modules.length, 1);
 
   const exportedLesson = exportLessonDocument(baseDocument, {
@@ -488,6 +506,7 @@ test("importa módulo, lição e microssequência em níveis distintos e exporta
     moduleKey: baseDocument.courses[0].modules[0].key,
     lessonKey: baseDocument.courses[0].modules[0].lessons[0].key
   });
+  assert.equal(exportedLesson.scope, "lesson");
   assert.equal(exportedLesson.courses[0].modules[0].lessons.length, 1);
 
   const exportedMicrosequence = exportMicrosequenceDocument(baseDocument, {
@@ -496,5 +515,6 @@ test("importa módulo, lição e microssequência em níveis distintos e exporta
     lessonKey: baseDocument.courses[0].modules[0].lessons[0].key,
     microsequenceKey: baseDocument.courses[0].modules[0].lessons[0].microsequences[0].key
   });
+  assert.equal(exportedMicrosequence.scope, "microsequence");
   assert.equal(exportedMicrosequence.courses[0].modules[0].lessons[0].microsequences.length, 1);
 });

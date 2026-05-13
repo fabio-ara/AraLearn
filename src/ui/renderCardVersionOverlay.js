@@ -77,9 +77,21 @@ export function renderCardVersionOverlay({
   versions,
   title = "Versões",
   emptyLabel = "Sem versões anteriores.",
-  footer = ""
+  footer = "",
+  primaryAction = null
 }) {
   const items = (versions || []).map((item) => renderHistoryItem(item)).join("");
+  const primaryActionHtml = primaryAction?.action
+    ? '<button class="icon-ghost" type="button" data-action="' +
+      escapeHtml(primaryAction.action) +
+      '" title="' +
+      escapeHtml(primaryAction.label || "Gravar snapshot") +
+      '" aria-label="' +
+      escapeHtml(primaryAction.label || "Gravar snapshot") +
+      '">' +
+      escapeHtml(primaryAction.icon || "+") +
+      "</button>"
+    : '<div class="topbar-space"></div>';
 
   return (
     '<section class="editor-overlay" aria-label="' + escapeHtml(title) + '">' +
@@ -87,7 +99,7 @@ export function renderCardVersionOverlay({
     '<header class="editor-head">' +
     '<button class="icon-ghost" type="button" data-action="version-history-close" title="Fechar" aria-label="Fechar">&times;</button>' +
     '<p class="editor-title">' + escapeHtml(title) + "</p>" +
-    '<div class="topbar-space"></div>' +
+    primaryActionHtml +
     "</header>" +
     '<div class="editor-body">' +
     (footer ? '<p class="tiny muted history-footer">' + escapeHtml(footer) + "</p>" : "") +

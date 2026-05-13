@@ -1,9 +1,12 @@
 import { normalizeMicrosequenceVersionEntry } from "./microsequenceVersionState.js";
 import { normalizeStructureVersionEntry, normalizeStructureVersionMap } from "./structureVersionState.js";
+import {
+  readAssistConfigStorage as readSharedAssistConfigStorage,
+  writeAssistConfigStorage as writeSharedAssistConfigStorage
+} from "./assistConfigStorage.js";
 
 const CARD_HISTORY_STORAGE_KEY = "aralearn.card-history.v1";
 const CARD_COMMENT_STORAGE_KEY = "aralearn.card-comments.v1";
-const ASSIST_CONFIG_STORAGE_KEY = "aralearn.assist-config";
 const MICROSEQUENCE_VERSION_STORAGE_KEY = "aralearn.microsequence-versions.v1";
 const STRUCTURE_VERSION_STORAGE_KEY = "aralearn.structure-versions.v1";
 
@@ -54,22 +57,11 @@ export function writeCommentStorage(commentMap, storage = globalThis.localStorag
 }
 
 export function readAssistConfigStorage(storage = globalThis.localStorage) {
-  const config = readJsonMap(storage, ASSIST_CONFIG_STORAGE_KEY);
-  return {
-    model: typeof config.model === "string" && config.model.trim() ? config.model.trim() : "gemini-2.5-flash",
-    apiKey: typeof config.apiKey === "string" ? config.apiKey : ""
-  };
+  return readSharedAssistConfigStorage(storage);
 }
 
 export function writeAssistConfigStorage(config, storage = globalThis.localStorage) {
-  writeJsonMap(
-    storage,
-    ASSIST_CONFIG_STORAGE_KEY,
-    {
-      model: typeof config?.model === "string" ? config.model : "gemini-2.5-flash",
-      apiKey: typeof config?.apiKey === "string" ? config.apiKey : ""
-    }
-  );
+  writeSharedAssistConfigStorage(config, storage);
 }
 
 export function readMicrosequenceVersionStorage(storage = globalThis.localStorage) {
