@@ -135,9 +135,20 @@ export function listLessonGuidancePresets() {
   return LESSON_GUIDANCE_PRESETS.map(clone);
 }
 
+export function buildLessonGuidanceFromPreset(presetId = "") {
+  const preset = getLessonGuidancePreset(presetId) || LESSON_GUIDANCE_DEFAULTS;
+  return {
+    presetId: preset.id,
+    resourceTags: [...preset.resourceTags],
+    contentTypeTags: [...preset.contentTypeTags],
+    learningActionTags: [...preset.learningActionTags],
+    supportLevel: preset.supportLevel
+  };
+}
+
 export function normalizeLessonGuidance(value = {}) {
   const presetId = PRESET_IDS.has(text(value?.presetId)) ? text(value?.presetId) : LESSON_GUIDANCE_DEFAULTS.presetId;
-  const preset = getLessonGuidancePreset(presetId) || LESSON_GUIDANCE_DEFAULTS;
+  const preset = buildLessonGuidanceFromPreset(presetId);
   const resourceTags = normalizeChoiceList(value?.resourceTags, RESOURCE_TAG_IDS);
   const contentTypeTags = normalizeChoiceList(value?.contentTypeTags, CONTENT_TYPE_IDS);
   const learningActionTags = normalizeChoiceList(value?.learningActionTags, LEARNING_ACTION_IDS);
@@ -155,11 +166,12 @@ export function buildLessonGuidanceEditorFields(value = {}) {
   return [
     {
       name: "presetId",
-      label: "Preset da lição",
+      label: "Modo da lição",
       iconName: "intent",
       type: "select",
       options: LESSON_GUIDANCE_PRESETS.map((preset) => ({ value: preset.id, label: preset.label })),
-      value: normalized.presetId
+      value: normalized.presetId,
+      hint: "Escolha um modo pronto. Os campos abaixo servem apenas para ajuste fino quando necessário."
     },
     {
       name: "resourceTags",
@@ -167,7 +179,9 @@ export function buildLessonGuidanceEditorFields(value = {}) {
       iconName: "module",
       type: "multiselect",
       options: LESSON_RESOURCE_TAG_OPTIONS.map(clone),
-      value: [...normalized.resourceTags]
+      value: [...normalized.resourceTags],
+      tone: "secondary",
+      hint: "Ajuste fino dos recursos permitidos nesta lição."
     },
     {
       name: "contentTypeTags",
@@ -175,7 +189,9 @@ export function buildLessonGuidanceEditorFields(value = {}) {
       iconName: "intent",
       type: "multiselect",
       options: LESSON_CONTENT_TYPE_OPTIONS.map(clone),
-      value: [...normalized.contentTypeTags]
+      value: [...normalized.contentTypeTags],
+      tone: "secondary",
+      hint: "Ajuste fino do recorte didático."
     },
     {
       name: "learningActionTags",
@@ -183,7 +199,9 @@ export function buildLessonGuidanceEditorFields(value = {}) {
       iconName: "prompt",
       type: "multiselect",
       options: LESSON_LEARNING_ACTION_OPTIONS.map(clone),
-      value: [...normalized.learningActionTags]
+      value: [...normalized.learningActionTags],
+      tone: "secondary",
+      hint: "Ajuste fino do tipo de prática esperado."
     },
     {
       name: "supportLevel",
@@ -191,7 +209,9 @@ export function buildLessonGuidanceEditorFields(value = {}) {
       iconName: "ready-state",
       type: "select",
       options: LESSON_SUPPORT_LEVEL_OPTIONS.map(clone),
-      value: normalized.supportLevel
+      value: normalized.supportLevel,
+      tone: "secondary",
+      hint: "Ajuste fino da intensidade de orientação."
     }
   ];
 }

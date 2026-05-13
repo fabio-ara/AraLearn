@@ -18,12 +18,14 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 - o workbench da microssequência remove os controles de alternância, aplicação e descarte de prévia, mantendo a superfície de preview apenas como leitura do estado já em uso
 - a edição local de título e tags volta a atuar sempre sobre a microssequência persistida, sem bifurcação por rascunho temporário
 - a iteração gerada pela assistência passa a abrir com dois CTAs externos ao card para aceitar ou excluir a versão ativa, reaproveitando o histórico local como mecanismo de reversão imediata
+- a edição da fonte-guia passa a tratar `presetId` como modo pronto de verdade: ao trocar o modo da lição, o app reaplica recursos, tipos de conteúdo, ações de estudo e nível de apoio correspondentes, mantendo os campos abaixo como ajuste fino opcional
 
 ### Tests
 
 - a suíte passa a cobrir policy fraca, gating de recursos avançados, `sourceRefs`, validação separada e reparo determinístico
 - fixtures didáticas reais entram em `tests/fixtures/didactics/`
 - a suíte remove os cenários de storage e renderização específicos da prévia privada e passa a validar apenas o fluxo direto de atualização
+- a suíte passa a cobrir os presets humanos da lição e a distinção entre modo pronto e ajuste fino
 ## [0.9.22] - 2026-05-06
 
 ### Changed

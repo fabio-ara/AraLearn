@@ -22,7 +22,11 @@ import {
   resolveSourceGuidePayload,
   SOURCE_GUIDE_LEVELS
 } from "../sourceGuides/sourceGuideStructured.js";
-import { buildLessonGuidanceEditorFields, normalizeLessonGuidance } from "../generation/guidance/lessonGuidance.js";
+import {
+  buildLessonGuidanceEditorFields,
+  buildLessonGuidanceFromPreset,
+  normalizeLessonGuidance
+} from "../generation/guidance/lessonGuidance.js";
 import {
   createMicrosequenceVersionRecord,
   insertMicrosequenceVersionAfterActive,
@@ -3273,6 +3277,99 @@ export function createLessonEditorApp({ root, storage, editor }) {
     return node.value;
   }
 
+  function setEntityTagComboboxValues(node, nextValues) {
+    if (!(node instanceof HTMLElement) || !node.classList.contains("entity-tag-combobox")) {
+      return;
+    }
+
+    const selectedRow = node.querySelector("[data-role='selected-tags']");
+    const input = node.querySelector("[data-role='tag-input']");
+    const allowCustom = node.getAttribute("data-allow-custom") === "true";
+    let options = [];
+    try {
+      const parsed = JSON.parse(String(node.getAttribute("data-options") || "[]"));
+      options = Array.isArray(parsed) ? parsed : [];
+    } catch {
+      options = [];
+    }
+
+    const findOption = (rawValue) => {
+      const value = String(rawValue || "").trim().toLowerCase();
+      if (!value) return null;
+      return (
+        options.find((option) => String(option?.id || "").trim().toLowerCase() === value) ||
+        options.find((option) => String(option?.label || "").trim().toLowerCase() === value) ||
+        null
+      );
+    };
+
+    const seen = new Set();
+    const normalized = (Array.isArray(nextValues) ? nextValues : [])
+      .map((item) => String(item || "").trim())
+      .filter((item) => {
+        if (!item) return false;
+        const option = findOption(item);
+        if (!allowCustom && !option) {
+          return false;
+        }
+        const finalValue = option ? String(option.id) : item;
+        const key = finalValue.toLowerCase();
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      })
+      .map((item) => {
+        const option = findOption(item);
+        return option ? String(option.id) : item;
+      });
+
+    node.setAttribute("data-values", JSON.stringify(normalized));
+    if (selectedRow) {
+      selectedRow.innerHTML = normalized
+        .map((item) => {
+          const option = findOption(item);
+          const value = String(option?.id || item);
+          const label = String(option?.label || item);
+          return (
+            '<button class="didactic-tag dependency-tag-chip dependency-chip-button entity-tag-chip" type="button" data-action="remove-entity-tag" data-value="' +
+            value
+              .replace(/&/g, "&amp;")
+              .replace(/"/g, "&quot;")
+              .replace(/</g, "&lt;")
+              .replace(/>/g, "&gt;") +
+            '">' +
+            '<span class="didactic-tag-text dependency-chip-label">' +
+            label
+              .replace(/&/g, "&amp;")
+              .replace(/</g, "&lt;")
+              .replace(/>/g, "&gt;") +
+            "</span>" +
+            '<span class="dependency-chip-remove" aria-hidden="true">&times;</span>' +
+            "</button>"
+          );
+        })
+        .join("");
+    }
+    if (input instanceof HTMLInputElement) {
+      input.value = "";
+    }
+  }
+
+  function setEntityFieldValue(node, value) {
+    if (!node) return;
+    if (node instanceof HTMLSelectElement) {
+      node.value = String(value || "");
+      return;
+    }
+    if (node instanceof HTMLElement && node.classList.contains("entity-tag-combobox")) {
+      setEntityTagComboboxValues(node, value);
+      return;
+    }
+    if ("value" in node) {
+      node.value = value;
+    }
+  }
+
   function bindEntityTagCombobox(node, handler) {
     if (!(node instanceof HTMLElement) || node.getAttribute("data-bind-ready") === "true") {
       return;
@@ -3301,52 +3398,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
     };
 
     const setValues = (nextValues) => {
-      const seen = new Set();
-      const normalized = (Array.isArray(nextValues) ? nextValues : [])
-        .map((item) => String(item || "").trim())
-        .filter((item) => {
-          if (!item) return false;
-          const option = findOption(item);
-          if (!allowCustom && !option) {
-            return false;
-          }
-          const finalValue = option ? String(option.id) : item;
-          const key = finalValue.toLowerCase();
-          if (seen.has(key)) return false;
-          seen.add(key);
-          return true;
-        })
-        .map((item) => {
-          const option = findOption(item);
-          return option ? String(option.id) : item;
-        });
-      node.setAttribute("data-values", JSON.stringify(normalized));
-      if (selectedRow) {
-        selectedRow.innerHTML = normalized
-          .map((item) => {
-            const option = findOption(item);
-            const value = String(option?.id || item);
-            const label = String(option?.label || item);
-            return (
-              '<button class="didactic-tag dependency-tag-chip dependency-chip-button entity-tag-chip" type="button" data-action="remove-entity-tag" data-value="' +
-              value
-              .replace(/&/g, "&amp;")
-              .replace(/"/g, "&quot;")
-              .replace(/</g, "&lt;")
-              .replace(/>/g, "&gt;") +
-              '">' +
-              '<span class="didactic-tag-text dependency-chip-label">' +
-              label
-                .replace(/&/g, "&amp;")
-                .replace(/</g, "&lt;")
-                .replace(/>/g, "&gt;") +
-              "</span>" +
-              '<span class="dependency-chip-remove" aria-hidden="true">&times;</span>' +
-              "</button>"
-            );
-          })
-          .join("");
-      }
+      setEntityTagComboboxValues(node, nextValues);
       handler();
     };
 
@@ -9277,6 +9329,17 @@ export function createLessonEditorApp({ root, storage, editor }) {
       Object.values(fields).forEach((node) => {
         bindEntityFieldNode(node, handler);
       });
+
+      if (state.entityEditor?.kind === "lesson-source-guide" && fields.presetId instanceof HTMLSelectElement) {
+        fields.presetId.addEventListener("change", () => {
+          const preset = buildLessonGuidanceFromPreset(fields.presetId.value);
+          setEntityFieldValue(fields.resourceTags, preset.resourceTags);
+          setEntityFieldValue(fields.contentTypeTags, preset.contentTypeTags);
+          setEntityFieldValue(fields.learningActionTags, preset.learningActionTags);
+          setEntityFieldValue(fields.supportLevel, preset.supportLevel);
+          handler();
+        });
+      }
     }
 
     syncStructureVersionStripScroller({ centerActiveTab: state.centerActiveStructureVersionTabOnRender !== false });
