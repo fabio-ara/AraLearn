@@ -136,6 +136,16 @@ Entre os sinais bloqueados ou marcados:
 - conteúdo genérico que serviria para qualquer disciplina;
 - microssequência redundante sem função nova.
 
+Quando a falha é acionável por regra local, o resultado da checagem não deve ficar passivo. O app pode:
+
+- reescrever card específico;
+- inserir exemplo mínimo;
+- inserir preparação de notação;
+- inserir prática pequena;
+- segurar a entrega até uma nova iteração curta.
+
+Se isso aumentar a quantidade final de cards, não é defeito por si só. O defeito é aumentar sem função didática nova.
+
 ## Fonte e grounding mínimo
 
 Quando houver fonte externa na operação:

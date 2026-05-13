@@ -184,6 +184,28 @@ Além disso, a auditoria de profundidade pode apontar:
 - ausência de tratamento de erro comum relevante;
 - falta de formato avaliativo quando a lição pede prova.
 
+## Continuação automática
+
+A checagem didática não existe para despejar um relatório ao usuário.
+
+Quando a falha é determinística o bastante, o AraLearn usa a checagem para decidir a continuação da geração antes da entrega final.
+
+Fluxo:
+
+1. a LLM gera os cards;
+2. o app faz reparo estrutural local;
+3. o app valida estrutura, didática e fonte;
+4. se a falha restante for didática e acionável, o app monta um plano determinístico de continuação;
+5. esse plano pode:
+   - reescrever cards específicos;
+   - inserir um card de exemplo;
+   - inserir preparação de notação;
+   - inserir uma prática mínima;
+6. o app chama a LLM de novo com esse alvo fechado;
+7. só então entrega a microssequência validada.
+
+Essa continuação não deve competir com o pedido textual do usuário. Ela existe para preservar o pedido e fechar a lacuna detectada pelo motor.
+
 ### Grounding mínimo de fonte
 
 Quando houver `sources` ou `sourceUsePlan`, o card precisa:

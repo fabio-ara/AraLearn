@@ -89,6 +89,7 @@ export function validateGeneratedCardsDidactic(cards = [], generationContract = 
 
   return {
     ok: didacticErrors.length === 0,
-    didacticErrors
+    didacticErrors,
+    didacticAudit: depth
   };
 }

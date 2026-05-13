@@ -13,6 +13,7 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 - a validação didática passa a incluir auditoria específica de profundidade (`validateDidacticDepth`) e auditoria de redundância (`validateDidacticRedundancy`)
 - prompts de planejamento, geração e edição passam a proibir resumo genérico, densidade artificial e duplicação sem nova função didática
 - a UI da lição e da microssequência ganha ação pública `Completar lacunas`, que usa auditoria local para sugerir aprofundamento sem inflar volume
+- a auditoria didática deixa de ficar passiva no fluxo de cards: quando detecta lacuna acionável, o app pode disparar iteração automática para reescrever cards específicos ou inserir exemplo/preparação/prática antes da entrega final
 - a camada de geração de cards passa a operar com policy explícita de `weakModelMode`, voltada a modelo fraco e barato
 - `modelCapabilities` deixa de usar flags ambíguas e passa a distinguir `jsonMode`, `responseJsonSchema`, `responseSchema` e força real de schema
 - o planejamento bottom-up fica reduzido a `typeId`, `sizeId`, `microsequenceGoal`, `selectedExtraResourceTypes`, `sourceUsePlan` e `reason`

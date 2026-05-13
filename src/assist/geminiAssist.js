@@ -1483,13 +1483,13 @@ export async function resumeGenerationFromValidatedPlan({
       rawGeneratedResponse: generationCall.value,
       generationContract,
       modelCapabilities: getModelCapabilities(generationCall.modelId),
-      maxRepairAttempts: 1,
+      maxRepairAttempts: 2,
       throwRepairModelErrors: true,
-      callModel: ({ systemInstruction, prompt, temperature, maxOutputTokens }) =>
+      callModel: ({ phase = "generation_repair", systemInstruction, prompt, temperature, maxOutputTokens }) =>
         callGeminiWithOperationalRetry({
           apiKey,
           model: generationCall.modelId,
-          phase: "generation_repair",
+          phase,
           retryOptions,
           fallbackOptions,
           body: makeRequestBody({
@@ -1506,10 +1506,11 @@ export async function resumeGenerationFromValidatedPlan({
   } catch (error) {
     if (error instanceof ProviderOperationError) {
       const retryable = error.details?.retryable === true;
+      const failedPhase = error.phase || "generation_repair";
       activeRunState = updateGenerationRunState(activeRunState, {
         status: retryable ? "generation_failed_retryable" : "failed",
         lastError: {
-          phase: "generation_repair",
+          phase: failedPhase,
           category: error.details?.category || "unknown",
           retryable,
           message: error.details?.message || "Falha no reparo da geração.",
@@ -1518,7 +1519,7 @@ export async function resumeGenerationFromValidatedPlan({
       });
       throwOperationalError(
         buildOperationalErrorPayload({
-          phase: "generation_repair",
+          phase: failedPhase,
           classified: error.details,
           canResume: retryable,
           runState: activeRunState,
@@ -1530,10 +1531,12 @@ export async function resumeGenerationFromValidatedPlan({
     }
     throw error;
   }
+  const finalGenerationContract = validation.generationContract || generationContract;
   if (!validation.ok) {
     const classified = classifyProviderError(createValidationFailedError(`O serviço de IA devolveu cards inválidos: ${validation.errors.join(" ")}`));
     activeRunState = updateGenerationRunState(activeRunState, {
       status: "failed",
+      generationContract: finalGenerationContract,
       lastError: {
         phase: "generation",
         category: classified.category,
@@ -1585,13 +1588,16 @@ export async function resumeGenerationFromValidatedPlan({
     status: "generation_validated",
     actualModelId: generationCall.modelId,
     fallbackUsed: activeRunState.fallbackUsed || generationCall.fallbackUsed,
+    generationContract: finalGenerationContract,
+    autoDidacticIterations: Number(validation.didacticIterationCount) || 0,
     lastError: null
   });
 
   const result = normalizeComposeResult({
-    microsequenceTitle: generationContract.context.microsequence.title || generationContract.didacticPlan?.microsequenceGoal || "Microssequência",
+    microsequenceTitle:
+      finalGenerationContract.context.microsequence.title || finalGenerationContract.didacticPlan?.microsequenceGoal || "Microssequência",
     tags: [],
-    cards: attachDidacticMetadataToPublicCards(adapted.cards, generationContract)
+    cards: attachDidacticMetadataToPublicCards(adapted.cards, finalGenerationContract)
   });
 
   if (typeof saveGeneratedCards === "function") {
