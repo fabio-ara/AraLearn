@@ -3872,6 +3872,10 @@ button {
     calc(var(--safe-left) + 6px);
 }
 
+.assist-config-overlay {
+  z-index: 94;
+}
+
 .action-menu-overlay {
   position: absolute;
   inset: 0;

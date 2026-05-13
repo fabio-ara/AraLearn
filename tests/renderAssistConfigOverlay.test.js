@@ -15,6 +15,7 @@ test("renderAssistConfigOverlay prioriza Gemini como caminho normal e marca Code
     ]
   });
 
+  assert.match(html, /class="editor-overlay assist-config-overlay"/);
   assert.match(html, /Gemini\/API comum é o caminho normal/);
   assert.match(html, /<label>Modelo principal<\/label>/);
   assert.match(html, /<label>Chave Gemini\/API<\/label>/);

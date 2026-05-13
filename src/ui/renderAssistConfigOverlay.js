@@ -24,7 +24,7 @@ export function renderAssistConfigOverlay({ model, apiKey, codexEndpoint, codexT
     .join("");
 
   return (
-    '<section class="editor-overlay" aria-label="Configuração da IA">' +
+    '<section class="editor-overlay assist-config-overlay" aria-label="Configuração da IA">' +
     '<article class="editor-sheet comment-sheet" role="dialog" aria-modal="true">' +
     '<header class="editor-head">' +
     '<button class="icon-ghost" type="button" data-action="assist-config-close" title="Fechar" aria-label="Fechar">&times;</button>' +
