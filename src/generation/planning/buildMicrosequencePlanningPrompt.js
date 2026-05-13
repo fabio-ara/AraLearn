@@ -1,37 +1,25 @@
-import { buildDidacticPlanningPromptLines } from "../didactics/didacticGovernance.js";
-
 export function buildMicrosequencePlanningPrompt(contract, modelCapabilities = contract?.model?.capabilities || {}) {
-  const compact = modelCapabilities.profile === "compact-json";
+  const compact = modelCapabilities?.preferShortSchemas !== false;
   const body = compact ? JSON.stringify(contract) : JSON.stringify(contract, null, 2);
   const fixedTypeId = contract?.request?.userFixedTypeId;
-  const fixedTypeInstructions = fixedTypeId && fixedTypeId !== "assisted"
-    ? [`userFixedTypeId já está resolvido: devolva typeId exatamente igual a "${fixedTypeId}".`]
-    : ["Quando userFixedTypeId estiver vazio ou assisted, escolha typeId entre availableTypes."];
+
   return [
-    "Planeje uma microssequência do AraLearn.",
+    "Planeje a microssequência.",
     "Responda somente JSON válido.",
-    "Papel do AraLearn nesta operação: fixar contrato, tipos disponíveis, recursos possíveis, validação local e cardPlan final.",
-    "Seu papel aqui é apenas propor typeId, sizeId, microsequenceGoal, selectedExtraResourceTypes, sourceUsePlan e reason dentro desse contrato.",
-    "Escolha apenas typeId, sizeId, microsequenceGoal, selectedExtraResourceTypes, sourceUsePlan e reason.",
-    "Não devolva cardPlan, cards, position, role nem resourceType por card; o AraLearn monta a sequência de cards de forma determinística depois do planejamento.",
-    "Não decida contrato final, recurso por posição, aplicação no projeto nem revisão editorial final; isso pertence ao AraLearn e ao usuário.",
-    "Preserve userFixedTypeId quando ele existir.",
-    ...fixedTypeInstructions,
-    "Preserve todos os recursos extras escolhidos pelo usuário.",
-    "Trate requestGovernance.precedence como ordem obrigatória de leitura do contrato.",
-    "Trate requestGovernance.lessonAnchors como âncoras fortes da lição.",
-    "Use request.userPrompt apenas para especializar o recorte imediato e a ênfase dentro da lição atual.",
-    "Se request.userPrompt conflitar com a meta, a notação, as confusões prováveis ou o critério final da lição, preserve a governança da lição e reduza o pedido ao escopo governado.",
-    "selectedLessonTopicRefs são assuntos selecionados no escopo da lição, normalmente derivados de títulos/tags de microssequências existentes; use como contexto auxiliar de escopo e terminologia, sem criar tags persistentes.",
-    "Use context.path como a linha hierárquica completa até a microssequência-alvo.",
-    "Use context.lesson.sourceGuideStructured como governança principal da lição atual.",
-    "Respeite context.lesson.resourceTags como recursos permitidos da lição.",
-    "Respeite context.lesson.contentTypeTags como tipos de conteúdo permitidos da lição.",
-    "Respeite context.lesson.learningActionTags como ações de estudo permitidas da lição.",
-    "Respeite context.lesson.supportLevel como nível de apoio obrigatório da lição.",
-    "Use context.lesson.microsequenceLine para enxergar progressão local, microssequências vizinhas e evitar repetição ou salto didático.",
-    "Use apenas ids presentes no contrato.",
-    ...buildDidacticPlanningPromptLines(),
+    "Devolva apenas: typeId, sizeId, microsequenceGoal, selectedExtraResourceTypes, sourceUsePlan e reason.",
+    "Não devolva cardPlan, cards, position, role, label, resourceType por card, tags persistentes, status nem alteração estrutural.",
+    "Não faça resumo genérico. Decomponha o ponto didático solicitado.",
+    "Cada nova microssequência deve acrescentar função didática nova ou variação de prática justificada.",
+    "Se o conteúdo já está coberto, não gere duplicata.",
+    fixedTypeId && fixedTypeId !== "assisted"
+      ? `Use typeId exatamente igual a "${fixedTypeId}".`
+      : "Escolha typeId entre availableTypes.",
+    "Escolha sizeId entre availableSizes.",
+    "Preserve recursos extras escolhidos pelo usuário quando continuarem válidos.",
+    "Use sourceGuideStructured da lição como governança principal.",
+    "Use selectedLessonTopicRefs apenas como contexto auxiliar local.",
+    "Use sourceUsePlan apenas com sourceId presente em sources.",
+    "Se o pedido conflitar com a governança da lição, preserve a governança da lição.",
     "Contrato:",
     body
   ].join("\n");

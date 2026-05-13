@@ -5,6 +5,7 @@ import {
   SOURCE_GUIDE_LEVELS
 } from "../sourceGuides/sourceGuideStructured.js";
 import { normalizeLessonGuidance } from "../generation/guidance/lessonGuidance.js";
+import { listCoverageRoles, normalizeLessonDomainMap, normalizeMicrosequenceDidacticMetadata } from "../generation/domain/lessonDomainModel.js";
 
 export const CONTRACT_NAME = "aralearn.contract";
 export const CONTRACT_VERSION = 1;
@@ -153,13 +154,26 @@ function validateMicrosequence(microsequence, index, errors, microKeys, path) {
 
   assertAllowedFields(
     microsequence,
-    new Set(["key", "title", "tags", "status", "included", "cards"]),
+    new Set([
+      "key",
+      "title",
+      "description",
+      "tags",
+      "status",
+      "included",
+      "domainRefs",
+      "practiceVariantRefs",
+      "didacticPurpose",
+      "coverageRole",
+      "cards"
+    ]),
     currentPath,
     errors,
     "microssequência"
   );
 
   const title = ensureRequiredString(microsequence.title, `${currentPath}.title`, "title", errors);
+  const description = readOptionalString(microsequence.description, `${currentPath}.description`, "description", errors);
   const tags = normalizeStringList(microsequence.tags, currentPath, "tags", errors);
   const status = typeof microsequence.status === "string" ? microsequence.status.trim() : "";
   if (status !== "draft" && status !== "ready") {
@@ -180,15 +194,40 @@ function validateMicrosequence(microsequence, index, errors, microKeys, path) {
   const normalizedCards = cards
     .map((card, cardIndex) => validateCard(card, cardIndex, errors, cardKeys, currentPath))
     .filter(Boolean);
+  const didacticMeta = normalizeMicrosequenceDidacticMetadata(microsequence);
+  const coverageRole = microsequence.coverageRole === undefined || listCoverageRoles().includes(String(microsequence.coverageRole).trim())
+    ? didacticMeta.coverageRole
+    : "";
+  if (microsequence.coverageRole !== undefined && !coverageRole) {
+    errors.push(makeError(`${currentPath}.coverageRole`, 'Campo opcional inválido: "coverageRole".'));
+  }
 
   return {
     key,
     title: title ?? "",
+    ...(description ? { description } : {}),
     ...(tags.length ? { tags } : {}),
     status: status || "draft",
     included: typeof includedValue === "boolean" ? includedValue : normalizedCards.length > 0,
+    ...(didacticMeta.domainRefs?.length ? { domainRefs: didacticMeta.domainRefs } : {}),
+    ...(didacticMeta.practiceVariantRefs?.length ? { practiceVariantRefs: didacticMeta.practiceVariantRefs } : {}),
+    ...(didacticMeta.didacticPurpose ? { didacticPurpose: didacticMeta.didacticPurpose } : {}),
+    ...(coverageRole ? { coverageRole } : {}),
     cards: normalizedCards
   };
+}
+
+function hasLessonDomainMetadata(lesson = {}, microsequences = []) {
+  if (lesson?.domainMap && typeof lesson.domainMap === "object") {
+    return true;
+  }
+  return (Array.isArray(microsequences) ? microsequences : []).some(
+    (item) =>
+      (Array.isArray(item?.domainRefs) && item.domainRefs.length) ||
+      (Array.isArray(item?.practiceVariantRefs) && item.practiceVariantRefs.length) ||
+      item?.didacticPurpose ||
+      item?.coverageRole
+  );
 }
 
 function readOptionalSourceGuideStructured(value, sourceGuide, path, errors, level) {
@@ -222,10 +261,12 @@ function validateLesson(lesson, index, errors, lessonKeys, path) {
       "description",
       "sourceGuide",
       "sourceGuideStructured",
+      "presetId",
       "resourceTags",
       "contentTypeTags",
       "learningActionTags",
       "supportLevel",
+      "domainMap",
       "microsequences"
     ]),
     currentPath,
@@ -255,6 +296,12 @@ function validateLesson(lesson, index, errors, lessonKeys, path) {
   const normalizedMicrosequences = microsequences
     .map((item, microIndex) => validateMicrosequence(item, microIndex, errors, microKeys, currentPath))
     .filter(Boolean);
+  const domainMap = hasLessonDomainMetadata(lesson, normalizedMicrosequences)
+    ? normalizeLessonDomainMap(lesson.domainMap || {}, {
+        lessonMicrosequences: normalizedMicrosequences,
+        sourceGuideStructured
+      })
+    : null;
 
   return {
     key,
@@ -265,6 +312,7 @@ function validateLesson(lesson, index, errors, lessonKeys, path) {
       : {}),
     ...(Object.keys(sourceGuideStructured).length ? { sourceGuideStructured } : {}),
     ...lessonGuidance,
+    ...(domainMap && (domainMap.items.length || domainMap.practiceVariants.length) ? { domainMap } : {}),
     microsequences: normalizedMicrosequences
   };
 }

@@ -21,7 +21,7 @@ export function collectAssistDependencies(course, moduleValue, lesson, microsequ
   const seenKeys = new Set();
 
   function pushDependency(item, scope) {
-    if (!item || !item.key || item.key === microsequence.key || seenKeys.has(item.key)) {
+    if (!item || !item.key || item.key === microsequence.key || seenKeys.has(item.key) || !isRunnableMicrosequence(item)) {
       return;
     }
 

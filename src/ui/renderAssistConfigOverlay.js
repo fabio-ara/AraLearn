@@ -8,6 +8,7 @@ function escapeHtml(value) {
 }
 
 export function renderAssistConfigOverlay({ model, apiKey, codexEndpoint, codexToken, modelOptions = [] }) {
+  const isCodexLocal = model === "codex-cli-local";
   const options = modelOptions
     .map((item) => {
       return (
@@ -23,7 +24,7 @@ export function renderAssistConfigOverlay({ model, apiKey, codexEndpoint, codexT
     .join("");
 
   return (
-    '<section class="editor-overlay" aria-label="Configuração da IA">' +
+    '<section class="editor-overlay assist-config-overlay" aria-label="Configuração da IA">' +
     '<article class="editor-sheet comment-sheet" role="dialog" aria-modal="true">' +
     '<header class="editor-head">' +
     '<button class="icon-ghost" type="button" data-action="assist-config-close" title="Fechar" aria-label="Fechar">&times;</button>' +
@@ -32,17 +33,21 @@ export function renderAssistConfigOverlay({ model, apiKey, codexEndpoint, codexT
     "</header>" +
     '<div class="editor-body">' +
     '<div class="field">' +
-    "<label>Modelo</label>" +
+    "<label>Modelo principal</label>" +
     '<select data-field="assist-config-model">' +
     options +
     "</select>" +
     "</div>" +
     '<div class="field">' +
-    "<label>Chave do serviço</label>" +
+    "<label>Chave Gemini/API</label>" +
     '<input data-field="assist-config-api-key" type="password" value="' +
     escapeHtml(apiKey || "") +
     '" autocomplete="off" spellcheck="false">' +
     "</div>" +
+    '<section class="entity-action-group">' +
+    '<p class="tiny muted">Codex local</p>' +
+    (isCodexLocal ? '<p class="tiny muted">Modo avançado ativo.</p>' : "") +
+    "</section>" +
     '<div class="field">' +
     "<label>Endpoint Codex local</label>" +
     '<input data-field="assist-config-codex-endpoint" type="text" value="' +
@@ -55,7 +60,6 @@ export function renderAssistConfigOverlay({ model, apiKey, codexEndpoint, codexT
     escapeHtml(codexToken || "") +
     '" autocomplete="off" spellcheck="false">' +
     "</div>" +
-    '<p class="tiny muted">Usado apenas pelo modelo Codex CLI · Termux. O endpoint padrão é http://127.0.0.1:4183/assist.</p>' +
     "</div>" +
     "</article></section>"
   );

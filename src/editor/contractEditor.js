@@ -21,6 +21,7 @@ import {
   SOURCE_GUIDE_LEVELS
 } from "../sourceGuides/sourceGuideStructured.js";
 import { normalizeLessonGuidance } from "../generation/guidance/lessonGuidance.js";
+import { normalizeLessonDomainMap, normalizeMicrosequenceDidacticMetadata } from "../generation/domain/lessonDomainModel.js";
 
 function clone(value) {
   return structuredClone(value);
@@ -105,10 +106,26 @@ function assignOptionalSourceGuide(record, sourceGuide, sourceGuideStructured, l
 
 function assignLessonGuidance(record, input = {}) {
   const normalized = normalizeLessonGuidance(input);
+  record.presetId = normalized.presetId;
   record.resourceTags = normalized.resourceTags;
   record.contentTypeTags = normalized.contentTypeTags;
   record.learningActionTags = normalized.learningActionTags;
   record.supportLevel = normalized.supportLevel;
+}
+
+function assignOptionalDomainMap(record, input = {}, microsequences = record.microsequences || [], sourceGuideStructured = record.sourceGuideStructured || {}) {
+  if (input.domainMap === undefined) {
+    return;
+  }
+  const normalized = normalizeLessonDomainMap(input.domainMap, {
+    lessonMicrosequences: microsequences,
+    sourceGuideStructured
+  });
+  if (normalized.items.length || normalized.practiceVariants.length) {
+    record.domainMap = normalized;
+  } else {
+    delete record.domainMap;
+  }
 }
 
 function normalizeOptionalTags(value) {
@@ -316,6 +333,7 @@ function createStarterLesson({
   description,
   sourceGuide,
   sourceGuideStructured,
+  presetId,
   resourceTags,
   contentTypeTags,
   learningActionTags,
@@ -328,7 +346,7 @@ function createStarterLesson({
     microsequences: []
   };
   assignOptionalSourceGuide(lesson, sourceGuide, sourceGuideStructured, SOURCE_GUIDE_LEVELS.LESSON);
-  assignLessonGuidance(lesson, { resourceTags, contentTypeTags, learningActionTags, supportLevel });
+  assignLessonGuidance(lesson, { presetId, resourceTags, contentTypeTags, learningActionTags, supportLevel });
   return lesson;
 }
 
@@ -738,6 +756,7 @@ export function updateLesson(document, input) {
   assignOptionalTextField(lesson, "description", input.description);
   assignOptionalSourceGuide(lesson, input.sourceGuide, input.sourceGuideStructured, SOURCE_GUIDE_LEVELS.LESSON);
   assignLessonGuidance(lesson, input);
+  assignOptionalDomainMap(lesson, input, lesson.microsequences, lesson.sourceGuideStructured || {});
   return ensureValidDocument(nextDocument);
 }
 
@@ -778,12 +797,18 @@ export function createMicrosequence(document, input) {
   const usedCardKeys = new Set();
   const cards = cardInput ? cardInput.map((entry, index) => normalizeCardForInsert(entry, usedCardKeys, `Card ${index + 1}`)) : [];
   const tags = normalizeOptionalTags(input.tags);
+  const didacticMeta = normalizeMicrosequenceDidacticMetadata(input);
   const microsequence = {
     key,
     title: buildUniqueMicrosequenceTitle(lesson, title, null),
     status: normalizeMicrosequenceStatus(input.status || MICROSEQUENCE_STATUS_DRAFT, { cards }),
     included: normalizeMicrosequenceRuntimeIncluded(input.included, { cards }),
     ...(tags && tags.length ? { tags } : {}),
+    ...(didacticMeta.description ? { description: didacticMeta.description } : {}),
+    ...(didacticMeta.domainRefs?.length ? { domainRefs: didacticMeta.domainRefs } : {}),
+    ...(didacticMeta.practiceVariantRefs?.length ? { practiceVariantRefs: didacticMeta.practiceVariantRefs } : {}),
+    ...(didacticMeta.didacticPurpose ? { didacticPurpose: didacticMeta.didacticPurpose } : {}),
+    ...(didacticMeta.coverageRole ? { coverageRole: didacticMeta.coverageRole } : {}),
     cards
   };
 
@@ -806,6 +831,39 @@ export function updateMicrosequence(document, input) {
       microsequence.tags = tags;
     } else {
       delete microsequence.tags;
+    }
+  }
+
+  const didacticMeta = normalizeMicrosequenceDidacticMetadata(input);
+  if (input.description !== undefined) {
+    assignOptionalTextField(microsequence, "description", input.description);
+  }
+  if (input.domainRefs !== undefined) {
+    if (didacticMeta.domainRefs?.length) {
+      microsequence.domainRefs = didacticMeta.domainRefs;
+    } else {
+      delete microsequence.domainRefs;
+    }
+  }
+  if (input.practiceVariantRefs !== undefined) {
+    if (didacticMeta.practiceVariantRefs?.length) {
+      microsequence.practiceVariantRefs = didacticMeta.practiceVariantRefs;
+    } else {
+      delete microsequence.practiceVariantRefs;
+    }
+  }
+  if (input.didacticPurpose !== undefined) {
+    if (didacticMeta.didacticPurpose) {
+      microsequence.didacticPurpose = didacticMeta.didacticPurpose;
+    } else {
+      delete microsequence.didacticPurpose;
+    }
+  }
+  if (input.coverageRole !== undefined) {
+    if (didacticMeta.coverageRole) {
+      microsequence.coverageRole = didacticMeta.coverageRole;
+    } else {
+      delete microsequence.coverageRole;
     }
   }
 
@@ -918,7 +976,36 @@ export function replaceMicrosequenceCards(document, input) {
     }
   }
 
+  const didacticMeta = normalizeMicrosequenceDidacticMetadata(input);
   assignOptionalTextField(microsequence, "description", input.description);
+  if (input.domainRefs !== undefined) {
+    if (didacticMeta.domainRefs?.length) {
+      microsequence.domainRefs = didacticMeta.domainRefs;
+    } else {
+      delete microsequence.domainRefs;
+    }
+  }
+  if (input.practiceVariantRefs !== undefined) {
+    if (didacticMeta.practiceVariantRefs?.length) {
+      microsequence.practiceVariantRefs = didacticMeta.practiceVariantRefs;
+    } else {
+      delete microsequence.practiceVariantRefs;
+    }
+  }
+  if (input.didacticPurpose !== undefined) {
+    if (didacticMeta.didacticPurpose) {
+      microsequence.didacticPurpose = didacticMeta.didacticPurpose;
+    } else {
+      delete microsequence.didacticPurpose;
+    }
+  }
+  if (input.coverageRole !== undefined) {
+    if (didacticMeta.coverageRole) {
+      microsequence.coverageRole = didacticMeta.coverageRole;
+    } else {
+      delete microsequence.coverageRole;
+    }
+  }
 
   const usedKeys = new Set();
   microsequence.cards = cards.map((entry, index) => normalizeCardForInsert(entry, usedKeys, `Card ${index + 1}`));

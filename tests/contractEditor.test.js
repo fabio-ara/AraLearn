@@ -205,6 +205,40 @@ test("substitui os cards da microssequência por intenções semânticas do cont
   assert.equal(microsequence.cards[1].ask, "Qual estrutura agrupa cards?");
 });
 
+test("substituir cards preserva draft e included false quando a microssequência ainda não deve entrar no estudo", () => {
+  let document = readNormalizedProject("./docs/examples/aralearn-contract.renderable.json");
+
+  document = createMicrosequence(document, {
+    courseKey: "course-curso-renderizavel",
+    moduleKey: "module-modulo-experimental",
+    lessonKey: "lesson-licao-experimental",
+    title: "Rascunho guiado",
+    status: "draft",
+    cards: []
+  });
+
+  const lesson = document.courses[0].modules[0].lessons[0];
+  const createdMicrosequence = lesson.microsequences.at(-1);
+  const nextDocument = replaceMicrosequenceCards(document, {
+    courseKey: "course-curso-renderizavel",
+    moduleKey: "module-modulo-experimental",
+    lessonKey: "lesson-licao-experimental",
+    microsequenceKey: createdMicrosequence.key,
+    title: "Rascunho guiado",
+    cards: [
+      {
+        title: "Ideia inicial",
+        say: "Este conteúdo ainda está em rascunho."
+      }
+    ]
+  });
+
+  const updatedMicrosequence = nextDocument.courses[0].modules[0].lessons[0].microsequences.at(-1);
+  assert.equal(updatedMicrosequence.status, "draft");
+  assert.equal(updatedMicrosequence.included, false);
+  assert.equal(updatedMicrosequence.cards.length, 1);
+});
+
 test("cria e edita card do contrato principal sem intent nem data", () => {
   const document = readNormalizedProject("./docs/examples/aralearn-contract.renderable.json");
 

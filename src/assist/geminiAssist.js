@@ -26,6 +26,7 @@ import {
   listLessonSupportLevelIds,
   normalizeLessonGuidance
 } from "../generation/guidance/lessonGuidance.js";
+import { buildLessonDomainCoverageReport, listCoverageRoles } from "../generation/domain/lessonDomainModel.js";
 
 function fail(message) {
   throw new Error(message);
@@ -35,13 +36,21 @@ function normalizeText(value) {
   return typeof value === "string" ? value.trim() : "";
 }
 
-function makeRequestBody({ systemInstruction, prompt, schema, temperature = 0.2, maxOutputTokens = 2048, fileParts = [] }) {
+function makeRequestBody({
+  systemInstruction,
+  prompt,
+  schema,
+  temperature = 0.2,
+  maxOutputTokens = 2048,
+  fileParts = [],
+  modelCapabilities = {}
+}) {
   const generationConfig = {
     temperature,
     maxOutputTokens,
-    responseMimeType: "application/json"
+    responseMimeType: modelCapabilities?.responseMimeType || "application/json"
   };
-  if (schema) {
+  if (schema && modelCapabilities?.supportsResponseJsonSchema !== false) {
     generationConfig.responseJsonSchema = schema;
   }
 
@@ -409,6 +418,21 @@ function getLessonMicrosequenceSchema() {
           properties: {
             title: { type: "string" },
             description: { type: "string" },
+            domainRefs: {
+              type: "array",
+              items: { type: "string" },
+              maxItems: 8
+            },
+            practiceVariantRefs: {
+              type: "array",
+              items: { type: "string" },
+              maxItems: 8
+            },
+            didacticPurpose: { type: "string" },
+            coverageRole: {
+              type: "string",
+              enum: listCoverageRoles()
+            },
             tags: {
               type: "array",
               items: { type: "string" },
@@ -438,6 +462,21 @@ function getLessonMicrosequenceRepositionSchema() {
             draftId: { type: "string" },
             title: { type: "string" },
             description: { type: "string" },
+            domainRefs: {
+              type: "array",
+              items: { type: "string" },
+              maxItems: 8
+            },
+            practiceVariantRefs: {
+              type: "array",
+              items: { type: "string" },
+              maxItems: 8
+            },
+            didacticPurpose: { type: "string" },
+            coverageRole: {
+              type: "string",
+              enum: listCoverageRoles()
+            },
             tags: {
               type: "array",
               items: { type: "string" },
@@ -587,6 +626,32 @@ function buildOptionalStructuredGuideLine(label, value) {
   return `${label}: ${entries.map(([key, entryValue]) => `${key}=${entryValue}`).join("; ")}`;
 }
 
+function buildOptionalDomainCoverageLine(context) {
+  if (!context?.lessonDomainMap || typeof context.lessonDomainMap !== "object") {
+    return "";
+  }
+
+  const coverage = buildLessonDomainCoverageReport({
+    sourceGuideStructured: context.lessonSourceGuideStructured || {},
+    domainMap: context.lessonDomainMap,
+    microsequences: context.existingMicrosequences || []
+  });
+
+  const parts = [
+    coverage.uncoveredItems.length ? `sem microssequência: ${coverage.uncoveredItems.join("; ")}` : "",
+    coverage.weakItems.length ? `fracos: ${coverage.weakItems.join("; ")}` : "",
+    coverage.explainedWithoutPractice.length
+      ? `explicados sem prática: ${coverage.explainedWithoutPractice.join("; ")}`
+      : "",
+    coverage.practiceWithoutVariation.length
+      ? `prática sem variação: ${coverage.practiceWithoutVariation.join("; ")}`
+      : "",
+    coverage.examMissing.length ? `sem formato de prova: ${coverage.examMissing.join("; ")}` : ""
+  ].filter(Boolean);
+
+  return parts.length ? `Mapa de domínio da lição: ${parts.join(" | ")}` : "";
+}
+
 function buildExistingMicrosequenceLines(items = [], { includeKeys = false } = {}) {
   const normalizedItems = Array.isArray(items)
     ? items
@@ -596,6 +661,12 @@ function buildExistingMicrosequenceLines(items = [], { includeKeys = false } = {
           title: normalizeText(item?.title),
           description: normalizeText(item?.description),
           tags: Array.isArray(item?.tags) ? item.tags.map((entry) => normalizeText(entry)).filter(Boolean) : [],
+          domainRefs: Array.isArray(item?.domainRefs) ? item.domainRefs.map((entry) => normalizeText(entry)).filter(Boolean) : [],
+          practiceVariantRefs: Array.isArray(item?.practiceVariantRefs)
+            ? item.practiceVariantRefs.map((entry) => normalizeText(entry)).filter(Boolean)
+            : [],
+          didacticPurpose: normalizeText(item?.didacticPurpose),
+          coverageRole: normalizeText(item?.coverageRole),
           status: normalizeText(item?.status),
           included: item?.included === true
         }))
@@ -612,8 +683,12 @@ function buildExistingMicrosequenceLines(items = [], { includeKeys = false } = {
       const key = includeKeys && item.key ? `; key: ${item.key}` : "";
       const position = includeKeys && Number.isInteger(item.position) ? `; posição: ${item.position + 1}` : "";
       const tags = item.tags.length ? `; tags: ${item.tags.join(", ")}` : "";
+      const domainRefs = item.domainRefs.length ? `; domainRefs: ${item.domainRefs.join(", ")}` : "";
+      const variantRefs = item.practiceVariantRefs.length ? `; practiceVariants: ${item.practiceVariantRefs.join(", ")}` : "";
+      const didacticPurpose = item.didacticPurpose ? `; finalidade: ${item.didacticPurpose}` : "";
+      const coverageRole = item.coverageRole ? `; papel: ${item.coverageRole}` : "";
       const description = item.description ? `; descrição: ${item.description}` : "";
-      return `${index + 1}. ${item.title}${key}${position}; status: ${item.status || "draft"}; included: ${item.included ? "sim" : "não"}${description}${tags}`;
+      return `${index + 1}. ${item.title}${key}${position}; status: ${item.status || "draft"}; included: ${item.included ? "sim" : "não"}${description}${coverageRole}${didacticPurpose}${domainRefs}${variantRefs}${tags}`;
     })
   ];
 }
@@ -772,6 +847,7 @@ function buildLessonMicrosequencePrompt({ context, promptText }) {
     buildOptionalGuideLine("Tipos de conteúdo da lição", Array.isArray(context?.lessonContentTypeTags) ? context.lessonContentTypeTags.join(", ") : ""),
     buildOptionalGuideLine("Ações de estudo da lição", Array.isArray(context?.lessonLearningActionTags) ? context.lessonLearningActionTags.join(", ") : ""),
     buildOptionalGuideLine("Nível de apoio da lição", context?.lessonSupportLevel),
+    buildOptionalDomainCoverageLine(context),
     "",
     ...buildExistingMicrosequenceLines(context?.existingMicrosequences),
     "",
@@ -783,8 +859,15 @@ function buildLessonMicrosequencePrompt({ context, promptText }) {
     "- Gere de 2 a 7 microssequências.",
     "- Não gere cards.",
     "- Não gere curso, módulo ou lição.",
+    "- Não faça resumo genérico. Decomponha o ponto didático solicitado.",
+    "- Cada nova microssequência deve acrescentar função didática nova ou variação de prática justificada.",
+    "- Se o conteúdo já está coberto, não gere duplicata.",
     "- title é obrigatório.",
     "- description é opcional e deve ser breve.",
+    "- domainRefs deve apontar para capacidades reais do mapa de domínio quando houver.",
+    "- practiceVariantRefs deve apontar para variações de prática quando houver.",
+    "- didacticPurpose deve dizer a finalidade didática da nova microssequência.",
+    "- coverageRole deve escolher um destes papéis: introduce, explain, demonstrate, practice, discriminate, diagnose_error, consolidate, exam_apply, integrate.",
     "- tags são opcionais e devem ser curtas.",
     "- Não use description como substituto de sourceGuide.",
     "- Não inclua HTML, Markdown estrutural nem explicações fora do JSON.",
@@ -792,7 +875,7 @@ function buildLessonMicrosequencePrompt({ context, promptText }) {
     "Formato obrigatório do JSON:",
     "{",
     '  "microsequences": [',
-    '    { "title": "string", "description": "string opcional", "tags": ["string opcional"] }',
+    '    { "title": "string", "description": "string opcional", "domainRefs": ["string opcional"], "practiceVariantRefs": ["string opcional"], "didacticPurpose": "string opcional", "coverageRole": "practice", "tags": ["string opcional"] }',
     "  ]",
     "}"
   ]
@@ -823,6 +906,7 @@ function buildLessonMicrosequenceRepositionPrompt({ context, promptText }) {
     buildOptionalGuideLine("Tipos de conteúdo da lição", Array.isArray(context?.lessonContentTypeTags) ? context.lessonContentTypeTags.join(", ") : ""),
     buildOptionalGuideLine("Ações de estudo da lição", Array.isArray(context?.lessonLearningActionTags) ? context.lessonLearningActionTags.join(", ") : ""),
     buildOptionalGuideLine("Nível de apoio da lição", context?.lessonSupportLevel),
+    buildOptionalDomainCoverageLine(context),
     "",
     ...buildExistingMicrosequenceLines(context?.existingMicrosequences, { includeKeys: true }),
     "",
@@ -834,9 +918,16 @@ function buildLessonMicrosequenceRepositionPrompt({ context, promptText }) {
     "- Use as tags das microssequências atuais e as fontes-guias da linhagem para preservar progressão e foco.",
     "- Não gere cards.",
     "- Não gere curso, módulo ou lição.",
+    "- Não faça resumo genérico. Decomponha o ponto didático solicitado.",
+    "- Só gere nova microssequência quando ela acrescentar função didática nova ou variação de prática justificada.",
+    "- Se o conteúdo já está coberto, prefira não gerar duplicata.",
     "- Cada nova microssequência precisa de draftId único como draft_1, draft_2 ou similar.",
     "- title é obrigatório nas novas microssequências.",
     "- description é opcional e deve ser breve.",
+    "- domainRefs deve apontar para capacidades reais do mapa de domínio quando houver.",
+    "- practiceVariantRefs deve apontar para variações de prática quando houver.",
+    "- didacticPurpose deve dizer a finalidade didática da nova microssequência.",
+    "- coverageRole deve escolher um destes papéis: introduce, explain, demonstrate, practice, discriminate, diagnose_error, consolidate, exam_apply, integrate.",
     "- tags são opcionais e devem ser curtas.",
     "- finalOrder deve listar a ordem final completa da lição, usando microsequenceKey para itens existentes e draftId para itens novos.",
     "- Não repita a mesma microssequência duas vezes em finalOrder.",
@@ -846,7 +937,7 @@ function buildLessonMicrosequenceRepositionPrompt({ context, promptText }) {
     "Formato obrigatório do JSON:",
     "{",
     '  "generatedMicrosequences": [',
-    '    { "draftId": "draft_1", "title": "string", "description": "string opcional", "tags": ["string opcional"] }',
+    '    { "draftId": "draft_1", "title": "string", "description": "string opcional", "domainRefs": ["string opcional"], "practiceVariantRefs": ["string opcional"], "didacticPurpose": "string opcional", "coverageRole": "practice", "tags": ["string opcional"] }',
     "  ],",
     '  "finalOrder": [',
     '    { "entryType": "existing", "microsequenceKey": "microsequence-key" },',
@@ -881,10 +972,12 @@ export function buildEditPrompt({ microsequence, card, dependencyTitles, promptT
     `Objetivo da lição: ${lessonDescription}`,
     buildOptionalGuideLine("Fonte-guia da lição", microsequence?.lessonSourceGuide),
     `Microssequência: ${microsequenceTitle}`,
+    buildOptionalGuideLine("Finalidade didática da microssequência", microsequence?.didacticPurpose),
     `Card atual: ${cardTitle}`,
     `Intenção atual: ${cardKind}`,
     `Tags explícitas: ${tags}`,
     "Tarefa: revisar apenas este card mantendo a mesma intenção principal.",
+    "Não faça resumo genérico. Decomponha o ponto didático solicitado.",
     "Princípio didático: mostre antes de nomear, concretize antes de generalizar e não esconda a ponte do raciocínio.",
     "Restrições:",
     "- não use campo type, text, columns, rows, src, runtime, intent nem data;",
@@ -1175,7 +1268,7 @@ export async function validateOrRepairMicrosequencePlan({
       fileParts,
       schema: null,
       temperature: 0.05,
-      maxOutputTokens: modelCapabilities?.profile === "compact-json" ? 1536 : 2048
+      maxOutputTokens: modelCapabilities?.preferShortSchemas === true ? 1536 : 2048
     })
   });
   const repairedPlan = repairedCall.value;
@@ -1352,7 +1445,8 @@ export async function resumeGenerationFromValidatedPlan({
         fileParts,
         schema: null,
         temperature: 0.15,
-        maxOutputTokens: 4096
+        maxOutputTokens: 4096,
+        modelCapabilities: getModelCapabilities(generationModel)
       })
     });
   } catch (error) {
@@ -1389,13 +1483,13 @@ export async function resumeGenerationFromValidatedPlan({
       rawGeneratedResponse: generationCall.value,
       generationContract,
       modelCapabilities: getModelCapabilities(generationCall.modelId),
-      maxRepairAttempts: 1,
+      maxRepairAttempts: 2,
       throwRepairModelErrors: true,
-      callModel: ({ systemInstruction, prompt, temperature, maxOutputTokens }) =>
+      callModel: ({ phase = "generation_repair", systemInstruction, prompt, temperature, maxOutputTokens }) =>
         callGeminiWithOperationalRetry({
           apiKey,
           model: generationCall.modelId,
-          phase: "generation_repair",
+          phase,
           retryOptions,
           fallbackOptions,
           body: makeRequestBody({
@@ -1404,17 +1498,19 @@ export async function resumeGenerationFromValidatedPlan({
             fileParts,
             schema: null,
             temperature,
-            maxOutputTokens
+            maxOutputTokens,
+            modelCapabilities: getModelCapabilities(generationCall.modelId)
           })
         }).then((result) => result.value)
     });
   } catch (error) {
     if (error instanceof ProviderOperationError) {
       const retryable = error.details?.retryable === true;
+      const failedPhase = error.phase || "generation_repair";
       activeRunState = updateGenerationRunState(activeRunState, {
         status: retryable ? "generation_failed_retryable" : "failed",
         lastError: {
-          phase: "generation_repair",
+          phase: failedPhase,
           category: error.details?.category || "unknown",
           retryable,
           message: error.details?.message || "Falha no reparo da geração.",
@@ -1423,7 +1519,7 @@ export async function resumeGenerationFromValidatedPlan({
       });
       throwOperationalError(
         buildOperationalErrorPayload({
-          phase: "generation_repair",
+          phase: failedPhase,
           classified: error.details,
           canResume: retryable,
           runState: activeRunState,
@@ -1435,10 +1531,12 @@ export async function resumeGenerationFromValidatedPlan({
     }
     throw error;
   }
+  const finalGenerationContract = validation.generationContract || generationContract;
   if (!validation.ok) {
     const classified = classifyProviderError(createValidationFailedError(`O serviço de IA devolveu cards inválidos: ${validation.errors.join(" ")}`));
     activeRunState = updateGenerationRunState(activeRunState, {
       status: "failed",
+      generationContract: finalGenerationContract,
       lastError: {
         phase: "generation",
         category: classified.category,
@@ -1490,13 +1588,16 @@ export async function resumeGenerationFromValidatedPlan({
     status: "generation_validated",
     actualModelId: generationCall.modelId,
     fallbackUsed: activeRunState.fallbackUsed || generationCall.fallbackUsed,
+    generationContract: finalGenerationContract,
+    autoDidacticIterations: Number(validation.didacticIterationCount) || 0,
     lastError: null
   });
 
   const result = normalizeComposeResult({
-    microsequenceTitle: generationContract.context.microsequence.title || generationContract.didacticPlan?.microsequenceGoal || "Microssequência",
+    microsequenceTitle:
+      finalGenerationContract.context.microsequence.title || finalGenerationContract.didacticPlan?.microsequenceGoal || "Microssequência",
     tags: [],
-    cards: adapted.cards
+    cards: attachDidacticMetadataToPublicCards(adapted.cards, finalGenerationContract)
   });
 
   if (typeof saveGeneratedCards === "function") {
@@ -1582,6 +1683,12 @@ function normalizeLessonMicrosequenceResult(value) {
         .map((item) => ({
           title: normalizeText(item?.title),
           description: normalizeText(item?.description),
+          domainRefs: Array.isArray(item?.domainRefs) ? item.domainRefs.map((entry) => normalizeText(entry)).filter(Boolean).slice(0, 8) : [],
+          practiceVariantRefs: Array.isArray(item?.practiceVariantRefs)
+            ? item.practiceVariantRefs.map((entry) => normalizeText(entry)).filter(Boolean).slice(0, 8)
+            : [],
+          didacticPurpose: normalizeText(item?.didacticPurpose),
+          coverageRole: normalizeText(item?.coverageRole),
           tags: Array.isArray(item?.tags) ? item.tags.map((entry) => normalizeText(entry)).filter(Boolean).slice(0, 5) : []
         }))
         .filter((item) => {
@@ -1613,6 +1720,12 @@ function normalizeLessonMicrosequenceRepositionResult(value) {
           draftId: normalizeText(item?.draftId),
           title: normalizeText(item?.title),
           description: normalizeText(item?.description),
+          domainRefs: Array.isArray(item?.domainRefs) ? item.domainRefs.map((entry) => normalizeText(entry)).filter(Boolean).slice(0, 8) : [],
+          practiceVariantRefs: Array.isArray(item?.practiceVariantRefs)
+            ? item.practiceVariantRefs.map((entry) => normalizeText(entry)).filter(Boolean).slice(0, 8)
+            : [],
+          didacticPurpose: normalizeText(item?.didacticPurpose),
+          coverageRole: normalizeText(item?.coverageRole),
           tags: Array.isArray(item?.tags) ? item.tags.map((entry) => normalizeText(entry)).filter(Boolean).slice(0, 5) : []
         }))
         .filter((item) => {
@@ -1720,6 +1833,31 @@ function normalizeStructureResult(value) {
   };
 }
 
+function attachDidacticMetadataToPublicCards(cards = [], generationContract = {}) {
+  const planByPosition = new Map((generationContract?.didacticPlan?.cardPlan || []).map((item) => [item.position, item]));
+  const domainRefs = Array.isArray(generationContract?.context?.microsequence?.domainRefs)
+    ? generationContract.context.microsequence.domainRefs
+    : [];
+  const practiceVariantRefs = Array.isArray(generationContract?.context?.microsequence?.practiceVariantRefs)
+    ? generationContract.context.microsequence.practiceVariantRefs
+    : [];
+  const microsequencePurpose = normalizeText(generationContract?.context?.microsequence?.didacticPurpose);
+
+  return (Array.isArray(cards) ? cards : []).map((card, index) => {
+    const planned = planByPosition.get(index + 1) || {};
+    return sanitizeContractCard({
+      ...card,
+      ...(domainRefs.length ? { domainRefs } : {}),
+      ...(practiceVariantRefs.length ? { practiceVariantRefs } : {}),
+      didacticPurpose:
+        normalizeText(card?.didacticPurpose) ||
+        normalizeText(planned?.learningGoal) ||
+        microsequencePurpose ||
+        "Cumprir a função didática planejada deste card."
+    });
+  });
+}
+
 export async function runGeminiAssist({
   apiKey,
   model,
@@ -1794,7 +1932,8 @@ export async function runGeminiAssist({
         fileParts,
         schema: getEditSchema(getContractCardKind(card) || "say"),
         temperature: 0.2,
-        maxOutputTokens: 1536
+        maxOutputTokens: 1536,
+        modelCapabilities: getModelCapabilities(trimmedModel)
       });
     } else if (mode === "reposition-microsequence") {
       body = makeRequestBody({
@@ -1803,7 +1942,8 @@ export async function runGeminiAssist({
         fileParts,
         schema: getRepositionSchema(),
         temperature: 0.2,
-        maxOutputTokens: 1024
+        maxOutputTokens: 1024,
+        modelCapabilities: getModelCapabilities(trimmedModel)
       });
     } else if (mode === "plan-microsequence-ladder") {
       body = makeRequestBody({
@@ -1814,29 +1954,32 @@ export async function runGeminiAssist({
         fileParts,
         schema: getLadderSchema(),
         temperature: 0.15,
-        maxOutputTokens: 1024
+        maxOutputTokens: 1024,
+        modelCapabilities: getModelCapabilities(trimmedModel)
       });
     } else if (mode === "generate-lesson-microsequences") {
       body = makeRequestBody({
         systemInstruction:
           "Você gera apenas microssequências draft para uma lição do AraLearn. " +
-          "Nunca gere cards. Responda apenas no JSON pedido.",
+          "Nunca gere cards. Não faça resumo genérico. Responda apenas no JSON pedido.",
         prompt: buildLessonMicrosequencePrompt({ context: microsequence, promptText: trimmedPrompt }),
         fileParts,
         schema: getLessonMicrosequenceSchema(),
         temperature: 0.2,
-        maxOutputTokens: 2048
+        maxOutputTokens: 2048,
+        modelCapabilities: getModelCapabilities(trimmedModel)
       });
     } else if (mode === "generate-and-reposition-lesson-microsequences") {
       body = makeRequestBody({
         systemInstruction:
           "Você gera e reposiciona microssequências draft para uma lição do AraLearn. " +
-          "Nunca gere cards. Responda apenas no JSON pedido.",
+          "Nunca gere cards. Não faça resumo genérico. Responda apenas no JSON pedido.",
         prompt: buildLessonMicrosequenceRepositionPrompt({ context: microsequence, promptText: trimmedPrompt }),
         fileParts,
         schema: getLessonMicrosequenceRepositionSchema(),
         temperature: 0.2,
-        maxOutputTokens: 3072
+        maxOutputTokens: 3072,
+        modelCapabilities: getModelCapabilities(trimmedModel)
       });
     } else if (mode === "generate-top-down-structure") {
       body = makeRequestBody({
@@ -1847,7 +1990,8 @@ export async function runGeminiAssist({
         fileParts,
         schema: getStructureSchema(),
         temperature: 0.2,
-        maxOutputTokens: 4096
+        maxOutputTokens: 4096,
+        modelCapabilities: getModelCapabilities(trimmedModel)
       });
     } else {
       fail("Modo de assistência inválido.");

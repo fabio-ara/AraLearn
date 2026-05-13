@@ -126,3 +126,36 @@ test("remove a versão ativa sem resequenciar ids remanescentes", () => {
   assert.equal(entry.activeVersionId, "v1");
   assert.deepEqual(entry.versions.map((version) => version.id), ["v1", "v3"]);
 });
+
+test("remover iteração gerada pendente restaura a versão estudável anterior com status e inclusão preservados", () => {
+  const readyMicrosequence = {
+    ...createMicrosequence("Estudável"),
+    status: "ready",
+    included: true
+  };
+  const pendingDraftMicrosequence = {
+    ...createMicrosequence("Rascunho gerado"),
+    status: "draft",
+    included: false
+  };
+
+  const entry = normalizeMicrosequenceVersionEntry({
+    activeVersionId: "v2",
+    versions: [
+      createMicrosequenceVersionRecord(readyMicrosequence, { versionNumber: 1, label: "Versão 1" }),
+      createMicrosequenceVersionRecord(pendingDraftMicrosequence, {
+        versionNumber: 2,
+        label: "Gerada 2",
+        operationType: "generated-pending",
+        parentVersionId: "v1"
+      })
+    ]
+  });
+
+  const fallback = removeActiveMicrosequenceVersion(entry);
+
+  assert.equal(fallback.id, "v1");
+  assert.equal(fallback.status, "ready");
+  assert.equal(fallback.included, true);
+  assert.equal(entry.activeVersionId, "v1");
+});

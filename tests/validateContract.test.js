@@ -396,6 +396,76 @@ test("aceita indicador explícito de inclusão no estudo", () => {
   assert.equal(result.value.courses[0].modules[0].lessons[0].microsequences[0].included, false);
 });
 
+test("aceita domainMap da lição e metadados didáticos da microssequência", () => {
+  const result = validateContractDocument({
+    contract: "aralearn.contract",
+    version: 1,
+    kind: "project",
+    courses: [
+      {
+        title: "Curso",
+        modules: [
+          {
+            title: "Módulo",
+            lessons: [
+              {
+                title: "Lição",
+                sourceGuideStructured: {
+                  lessonGoal: "Distinguir comandos em um fluxo simples."
+                },
+                domainMap: {
+                  items: [
+                    {
+                      id: "git-flow",
+                      label: "Usar `git add` antes de `git commit`.",
+                      kind: "procedure",
+                      priority: "core",
+                      expectedEvidence: ["ordenar comandos"]
+                    }
+                  ],
+                  practiceVariants: [
+                    {
+                      id: "git-flow-fluency",
+                      domainItemRef: "git-flow",
+                      variantKind: "fluency",
+                      purpose: "Executar a ordem básica.",
+                      difficulty: "baixa"
+                    }
+                  ]
+                },
+                microsequences: [
+                  {
+                    title: "Fluxo local",
+                    status: "ready",
+                    domainRefs: ["git-flow"],
+                    practiceVariantRefs: ["git-flow-fluency"],
+                    didacticPurpose: "Praticar a ordem mínima do fluxo local.",
+                    coverageRole: "practice",
+                    cards: [
+                      {
+                        title: "Contexto",
+                        say: "Primeiro prepare, depois registre."
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  });
+
+  assert.equal(result.ok, true);
+  const lesson = result.value.courses[0].modules[0].lessons[0];
+  const microsequence = lesson.microsequences[0];
+  assert.equal(lesson.domainMap.items[0].id, "git-flow");
+  assert.equal(lesson.domainMap.practiceVariants[0].id, "git-flow-fluency");
+  assert.equal(microsequence.coverageRole, "practice");
+  assert.deepEqual(microsequence.domainRefs, ["git-flow"]);
+});
+
 test("aceita curso, módulo e lição vazios no contrato público", () => {
   const result = validateContractDocument({
     contract: "aralearn.contract",

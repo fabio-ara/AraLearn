@@ -44,6 +44,13 @@ function makeProject() {
                     status: "ready",
                     included: false,
                     cards: [{ key: "card-3", title: "Card 3", say: "C" }]
+                  },
+                  {
+                    key: "micro-2b",
+                    title: "Micro 2b",
+                    status: "draft",
+                    included: true,
+                    cards: [{ key: "card-3b", title: "Card 3b", say: "C2" }]
                   }
                 ]
               },
@@ -128,6 +135,16 @@ test("projectNavigation monta chave e coleção plana de cards da lição", () =
   );
 });
 
+test("projectNavigation ignora rascunho e microssequência excluída do estudo mesmo quando já têm cards", () => {
+  const project = makeProject();
+  const lesson = findLesson(project, "curso-a", "mod-1", "licao-1");
+
+  const entries = collectLessonCards(lesson);
+
+  assert.equal(entries.some((item) => item.microsequenceKey === "micro-2"), false);
+  assert.equal(entries.some((item) => item.microsequenceKey === "micro-2b"), false);
+});
+
 test("projectNavigation calcula dependências didáticas em ordem de prioridade", () => {
   const project = makeProject();
   const course = findCourse(project, "curso-a");
@@ -141,11 +158,10 @@ test("projectNavigation calcula dependências didáticas em ordem de prioridade"
     dependencies.map((item) => [item.key, item.scope]),
     [
       ["micro-1", "Módulo"],
-      ["micro-2", "Módulo"],
       ["micro-4", "Curso"]
     ]
   );
 
-  assert.deepEqual(getDefaultDependencyKeys(dependencies, 2), ["micro-1", "micro-2"]);
+  assert.deepEqual(getDefaultDependencyKeys(dependencies, 2), ["micro-1", "micro-4"]);
 });
 

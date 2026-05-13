@@ -1,7 +1,7 @@
 import { buildDidacticEditPlanningPromptLines } from "../didactics/didacticGovernance.js";
 
 export function buildMicrosequenceEditPlanningPrompt(contract, modelCapabilities = contract?.model?.capabilities || {}) {
-  const body = modelCapabilities.profile === "compact-json" ? JSON.stringify(contract) : JSON.stringify(contract, null, 2);
+  const body = modelCapabilities?.preferShortSchemas === true ? JSON.stringify(contract) : JSON.stringify(contract, null, 2);
   return [
     "Planeje uma edição de microssequência do AraLearn.",
     "Responda somente JSON válido.",

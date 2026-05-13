@@ -59,7 +59,12 @@ export function compileContractDocument(document) {
                   id: microsequenceId,
                   key: microsequence.key,
                   title: microsequence.title,
+                  ...(microsequence.description ? { description: microsequence.description } : {}),
                   ...(microsequence.tags?.length ? { tags: microsequence.tags } : {}),
+                  ...(microsequence.domainRefs?.length ? { domainRefs: microsequence.domainRefs } : {}),
+                  ...(microsequence.practiceVariantRefs?.length ? { practiceVariantRefs: microsequence.practiceVariantRefs } : {}),
+                  ...(microsequence.didacticPurpose ? { didacticPurpose: microsequence.didacticPurpose } : {}),
+                  ...(microsequence.coverageRole ? { coverageRole: microsequence.coverageRole } : {}),
                   order: microsequenceIndex,
                   cards: microsequence.cards.map((card, cardIndex) => {
                     const cardId = makeNodeId([
