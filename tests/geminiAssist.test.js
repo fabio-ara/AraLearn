@@ -47,6 +47,17 @@ function makePlanningPayload() {
   };
 }
 
+function makeSimplePlanningPayload() {
+  return {
+    typeId: "simple",
+    sizeId: "short",
+    microsequenceGoal: "Distinguir `git add` de `git commit` no fluxo local.",
+    selectedExtraResourceTypes: [],
+    sourceUsePlan: [],
+    reason: "Pedido pede uma explicação curta com checagem."
+  };
+}
+
 function makeGeneratedCardsPayload() {
   return {
     cards: [
@@ -95,6 +106,76 @@ function makeGeneratedCardsPayload() {
         title: "Retomada",
         text: "A ordem mínima é: preparar com `git add` e registrar com `git commit`.",
         sourceNote: "Resumo autoral."
+      }
+    ]
+  };
+}
+
+function makeShallowSimpleCardsPayload() {
+  return {
+    cards: [
+      {
+        position: 1,
+        resourceType: "paragraph",
+        title: "Preparar e registrar",
+        text: "`git add` prepara arquivos. `git commit` registra o que já foi preparado.",
+        sourceNote: "Resumo autoral."
+      },
+      {
+        position: 2,
+        resourceType: "paragraph",
+        title: "Ordem mínima",
+        text: "Primeiro você escolhe o que entra, depois grava no histórico local.",
+        sourceNote: "Resumo autoral."
+      },
+      {
+        position: 3,
+        resourceType: "multiple_choice",
+        title: "Checagem",
+        question: "Qual comando registra o histórico local: `git commit` ou `git add`?",
+        options: [
+          { optionId: "a", label: "git commit" },
+          { optionId: "b", label: "git add" },
+          { optionId: "c", label: "git status" }
+        ],
+        correctOptionId: "a",
+        feedback: "`git commit` registra o histórico local.",
+        sourceNote: "Resumo autoral."
+      }
+    ]
+  };
+}
+
+function makeRepairedSimpleCardsPayload() {
+  return {
+    cards: [
+      {
+        position: 1,
+        resourceType: "paragraph",
+        title: "Preparar antes de registrar",
+        text: "`git add` prepara os arquivos escolhidos. `git commit` registra no histórico o que já foi preparado.",
+        sourceNote: "Explicação autoral."
+      },
+      {
+        position: 2,
+        resourceType: "paragraph",
+        title: "Ponto crítico",
+        text: "Os dois comandos não fazem a mesma coisa: um seleciona a mudança, o outro grava a mudança selecionada.",
+        sourceNote: "Explicação autoral."
+      },
+      {
+        position: 3,
+        resourceType: "multiple_choice",
+        title: "Checagem",
+        question: "Qual comando registra o histórico local depois da preparação?",
+        options: [
+          { optionId: "a", label: "git commit" },
+          { optionId: "b", label: "git add" },
+          { optionId: "c", label: "git status" }
+        ],
+        correctOptionId: "a",
+        feedback: "`git commit` registra no histórico o que já foi preparado com `git add`.",
+        sourceNote: "Exemplo autoral."
       }
     ]
   };
@@ -437,6 +518,46 @@ test("anexos PDF usam Files API e o pedido de geração continua sem schema nati
     assert.equal(generateCalls.length, 2);
     assert.ok(!JSON.parse(generateCalls[0].options.body).generationConfig.responseJsonSchema);
     assert.ok(!JSON.parse(generateCalls[1].options.body).generationConfig.responseJsonSchema);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("checagem determinística dispara iteração automática só para defeito realmente acionável", async () => {
+  const originalFetch = globalThis.fetch;
+  const calls = [];
+  globalThis.fetch = async (url, options = {}) => {
+    calls.push({ url, body: JSON.parse(options.body) });
+    const generateCount = calls.filter((item) => String(item.url).includes(":generateContent")).length;
+    if (generateCount === 1) {
+      return makeGeminiTextResponse(JSON.stringify(makeSimplePlanningPayload()));
+    }
+    if (generateCount === 2) {
+      return makeGeminiTextResponse(JSON.stringify(makeShallowSimpleCardsPayload()));
+    }
+    return makeGeminiTextResponse(JSON.stringify(makeRepairedSimpleCardsPayload()));
+  };
+
+  try {
+    const result = await runGeminiAssist({
+      apiKey: "chave",
+      mode: "compose-microsequence",
+      microsequence: {
+        ...makeComposeContext(),
+        lessonResourceTags: ["paragraph", "multiple_choice"],
+        lessonContentTypeTags: ["concept", "procedure"],
+        lessonLearningActionTags: ["understand", "practice"]
+      },
+      promptText: "Explique `git add` e `git commit`."
+    });
+
+    const generateCalls = calls.filter((entry) => String(entry.url).includes(":generateContent"));
+    assert.equal(generateCalls.length, 3);
+    assert.equal(result.cards.length, 3);
+    assert.equal(result.generationRunState.autoDidacticIterations, 1);
+    assert.equal(result.generationRunState.generationContract.output.expectedCardCount, 3);
+    assert.match(generateCalls[2].body.contents[0].parts[0].text, /Ações determinadas pelo AraLearn/);
+    assert.match(generateCalls[2].body.contents[0].parts[0].text, /Reescrever os cards nas posições 3/i);
   } finally {
     globalThis.fetch = originalFetch;
   }

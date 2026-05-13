@@ -11,6 +11,8 @@ import {
 } from "../../sourceGuides/sourceGuideStructured.js";
 import { normalizeLessonGuidance } from "../guidance/lessonGuidance.js";
 import { resolveWeakModelModePolicy } from "../policies/weakModelPolicy.js";
+import { buildLessonDomainMap } from "../domain/lessonDomainModel.js";
+import { summarizeMeticulousPolicyForPrompt } from "../policies/meticulousDidacticPolicy.js";
 
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -29,7 +31,12 @@ function summarizeMicrosequence(value) {
     key: key(value),
     title: text(value?.title) || key(value),
     objective: objective(value),
+    description: text(value?.description),
     tags: Array.isArray(value?.tags) ? value.tags.map((item) => text(item)).filter(Boolean) : [],
+    domainRefs: Array.isArray(value?.domainRefs) ? value.domainRefs.map((item) => text(item)).filter(Boolean) : [],
+    practiceVariantRefs: Array.isArray(value?.practiceVariantRefs) ? value.practiceVariantRefs.map((item) => text(item)).filter(Boolean) : [],
+    didacticPurpose: text(value?.didacticPurpose),
+    coverageRole: text(value?.coverageRole),
     status: text(value?.status),
     included: value?.included === true
   };
@@ -78,6 +85,7 @@ export function buildMicrosequencePlanningContract({
     { level: SOURCE_GUIDE_LEVELS.LESSON }
   );
   const lessonGuidance = normalizeLessonGuidance(selectedLesson);
+  const lessonDomainMap = buildLessonDomainMap(selectedLesson || {});
   const policy = resolveWeakModelModePolicy({
     lessonGuidance,
     lessonSourceGuideStructured,
@@ -128,6 +136,7 @@ export function buildMicrosequencePlanningContract({
             }
           : {}),
         ...lessonGuidance,
+        ...(lessonDomainMap.items.length || lessonDomainMap.practiceVariants.length ? { domainMap: lessonDomainMap } : {}),
         microsequenceLine: Array.isArray(selectedLesson?.microsequences)
           ? selectedLesson.microsequences.map(summarizeMicrosequence)
           : []
@@ -149,6 +158,7 @@ export function buildMicrosequencePlanningContract({
     availableResources: listCardResourceSummaries().filter((item) => policy.safeAllowedResourceTypes.includes(item.id)),
     model: { id: capabilities.model, capabilities },
     sourceResolution: resolvedSources,
-    weakModelMode: policy
+    weakModelMode: policy,
+    meticulousPolicy: summarizeMeticulousPolicyForPrompt({ weakModelMode: true })
   };
 }

@@ -1,3 +1,6 @@
+import { validateDidacticDepth } from "./validateDidacticDepth.js";
+import { annotateDidacticIssue } from "./didacticIssueCatalog.js";
+
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
 }
@@ -41,6 +44,8 @@ function cardMainText(card) {
 
 export function validateGeneratedCardsDidactic(cards = [], generationContract = {}) {
   const didacticErrors = [];
+  const didacticWarnings = [];
+  const directIssues = [];
   const planByPosition = new Map((generationContract?.didacticPlan?.cardPlan || []).map((item) => [item.position, item]));
 
   cards.forEach((card, index) => {
@@ -48,21 +53,45 @@ export function validateGeneratedCardsDidactic(cards = [], generationContract = 
     collectStrings(card, prefix).forEach(({ path, value }) => {
       DIDACTIC_PATTERNS.forEach(({ pattern, message }) => {
         if (pattern.test(value)) {
-          didacticErrors.push(`${path} ${message}`);
+          directIssues.push(
+            annotateDidacticIssue({
+              type: "unstable_or_backstage_reference",
+              target: path,
+              message: `${path} ${message}`
+            })
+          );
         }
       });
       if (gapTooLong(value)) {
-        didacticErrors.push(`${path} lacuna longa.`);
+        directIssues.push(
+          annotateDidacticIssue({
+            type: "practice_without_local_context",
+            target: path,
+            message: `${path} lacuna longa.`
+          })
+        );
       }
     });
 
     if (["block_gap_fill", "multiple_choice", "code_editor"].includes(card?.resourceType) && !cardMainText(card)) {
-      didacticErrors.push(`${prefix} prática sem contexto local.`);
+      directIssues.push(
+        annotateDidacticIssue({
+          type: "practice_without_local_context",
+          target: prefix,
+          message: `${prefix} prática sem contexto local.`
+        })
+      );
     }
     if (card?.resourceType === "multiple_choice") {
       const correct = (card.options || []).find((option) => option?.optionId === card.correctOptionId);
       if (correct && text(card.question).toLowerCase().includes(text(correct.label).toLowerCase())) {
-        didacticErrors.push(`${prefix} resposta revelada no mesmo card.`);
+        directIssues.push(
+          annotateDidacticIssue({
+            type: "answer_revealed_before_practice",
+            target: prefix,
+            message: `${prefix} resposta revelada no mesmo card.`
+          })
+        );
       }
     }
     const planned = planByPosition.get(card.position);
@@ -71,12 +100,47 @@ export function validateGeneratedCardsDidactic(cards = [], generationContract = 
       ["guided_gap", "check_understanding", "check_and_consolidate"].includes(planned.role) &&
       card.position === 1
     ) {
-      didacticErrors.push(`${prefix} prática antes de microteoria.`);
+      directIssues.push(
+        annotateDidacticIssue({
+          type: "practice_before_explanation",
+          target: prefix,
+          message: `${prefix} prática antes de microteoria.`
+        })
+      );
     }
   });
 
+  const depth = validateDidacticDepth({
+    microsequence: generationContract?.context?.microsequence || {},
+    cards,
+    existingMicrosequences: generationContract?.context?.lesson?.microsequenceLine || [],
+    weakModelMode: generationContract?.weakModelMode?.modeId === "weakModelMode"
+  });
+  const allIssues = [...directIssues, ...depth.shallowErrors, ...depth.missingDepth];
+  allIssues.forEach((item) => {
+    if (item.blocksValidation === true) {
+      didacticErrors.push(item.message);
+      return;
+    }
+      didacticWarnings.push(item.message);
+  });
+
+  const mergedAudit = {
+    ...depth,
+    directIssues,
+    blockingIssues: [...directIssues.filter((item) => item.blocksValidation === true), ...(depth.blockingIssues || [])],
+    actionableIssues: [
+      ...directIssues.filter((item) => item.allowsAutoIteration === true),
+      ...(depth.actionableIssues || [])
+    ],
+    heuristicSignals: [...directIssues.filter((item) => item.severity === "heuristic_signal"), ...(depth.heuristicSignals || [])],
+    allIssues
+  };
+
   return {
     ok: didacticErrors.length === 0,
-    didacticErrors
+    didacticErrors,
+    didacticWarnings,
+    didacticAudit: mergedAudit
   };
 }

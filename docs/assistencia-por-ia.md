@@ -6,6 +6,8 @@ Este documento descreve o estado atual da assistência por IA no AraLearn.
 
 O AraLearn não trata a LLM como autora da arquitetura didática.
 
+O AraLearn também não usa a LLM para fazer resumo genérico.
+
 O app decide:
 
 - contexto hierárquico;
@@ -34,6 +36,35 @@ Isso significa:
 - o app monta o `cardPlan` de forma determinística;
 - o prompt final de geração pede apenas preenchimento dos cards planejados;
 - o app repara estrutura de forma determinística antes de tentar reparo por LLM.
+
+O modo meticuloso precisa continuar compatível com esse limite. Por isso a governança extra fica concentrada em contratos pequenos, validação local e iteração curta, sem delegar raciocínio amplo ao modelo.
+
+## Modo meticuloso
+
+A geração bottom-up e a geração de microssequências da lição agora podem carregar uma policy explícita de rigor didático.
+
+Essa policy reforça:
+
+- não fazer resumo genérico;
+- decompor o ponto didático pedido;
+- só criar nova microssequência se houver função didática nova;
+- pedir variação de prática quando a cobertura já existe, mas ainda está fraca;
+- rejeitar repetição sem nova finalidade;
+- marcar item fraco quando existe explicação sem prática ou prática sem variação suficiente.
+
+Na lição, a governança adicional pode usar um `domainMap` interno com:
+
+- `items`: capacidades ou componentes didáticos reais;
+- `practiceVariants`: variações de prática associadas a essas capacidades.
+
+Microssequências podem declarar:
+
+- `domainRefs`;
+- `practiceVariantRefs`;
+- `didacticPurpose`;
+- `coverageRole`.
+
+Isso ajuda o app a saber se uma nova sequência introduz, demonstra, pratica, discrimina, diagnostica erro, consolida ou aplica em prova.
 
 ## Governança da lição
 
@@ -98,6 +129,15 @@ Fluxo atual:
 15. o resultado válido é adaptado ao contrato público;
 16. os cards são aplicados diretamente na microssequência-alvo.
 
+Na geração de microssequências da lição, o fluxo também deixa de depender só de títulos soltos. O app passa a enviar ao modelo:
+
+- `sourceGuideStructured`;
+- `domainMap`, quando existir;
+- cobertura atual da lição;
+- microssequências já existentes com seus papéis didáticos.
+
+O objetivo é sugerir rascunhos que cubram lacunas reais, não aumentar volume.
+
 ## Validação
 
 As validações agora são separadas.
@@ -119,6 +159,12 @@ Bloqueia:
 
 ### Didática
 
+O AraLearn agora separa três camadas:
+
+- checks estruturais e de política fechada;
+- checks declarativos de cobertura;
+- heurísticas textuais fracas.
+
 Bloqueia:
 
 - referência a card anterior;
@@ -131,7 +177,52 @@ Bloqueia:
 - lacuna longa;
 - prática sem contexto local;
 - resposta revelada no mesmo card;
-- prática antes de microteoria, quando detectável pelo plano.
+- prática antes de microteoria, quando detectável pelo plano;
+- redundância didática sem função nova.
+
+Também pode bloquear, quando a regra é declarativa e local:
+
+- microssequência explicativa sem prática;
+- duplicação de cobertura declarada sem função nova.
+
+Além disso, a checagem de profundidade pode apontar sinais fracos:
+
+- definição sem exemplo mínimo;
+- salto para exercício sem exemplo guiado suficiente;
+- conteúdo genérico demais para o domínio;
+- notação sem preparação suficientemente evidente no texto.
+
+E pode apontar lacunas de lição:
+
+- item explicado sem prática;
+- prática sem variação;
+- ausência de tratamento de erro comum relevante;
+- falta de formato avaliativo quando a lição pede prova.
+
+## Continuação automática
+
+A checagem didática não existe para despejar um relatório ao usuário.
+
+Quando a falha é estrutural ou declarativa o bastante, o AraLearn usa a checagem para decidir a continuação da geração antes da entrega final.
+
+Fluxo:
+
+1. a LLM gera os cards;
+2. o app faz reparo estrutural local;
+3. o app valida estrutura, didática e fonte;
+4. se a falha restante for didática e acionável, o app monta um plano determinístico de continuação;
+5. esse plano pode:
+   - reescrever cards específicos;
+   - inserir um card de exemplo;
+   - inserir preparação de notação;
+   - inserir uma prática mínima;
+   - decidir que a lacuna não pertence à microssequência atual e deve virar outra microssequência da lição;
+6. o app chama a LLM de novo com esse alvo fechado;
+7. só então entrega a microssequência validada.
+
+Heurística textual isolada não deve forçar essa continuação automática.
+
+Essa continuação não deve competir com o pedido textual do usuário. Ela existe para preservar o pedido e fechar a lacuna detectada pelo motor.
 
 ### Grounding mínimo de fonte
 
@@ -155,6 +246,19 @@ O fluxo oficial é:
 5. o usuário pode aceitar ou excluir essa iteração;
 6. excluir restaura a versão anterior pelo histórico local;
 7. o modo de estudo ignora `draft` e `included: false`.
+
+## Ações públicas de aprofundamento
+
+O app passa a oferecer ações simples de aprofundamento, como `Completar lacunas`, em vez de expor termos internos.
+
+Essas ações verificam:
+
+- superficialidade;
+- redundância;
+- lacunas de domínio;
+- necessidade real de nova microssequência ou nova prática.
+
+Se não houver ganho didático claro, a ação não deve inflar a quantidade de cards.
 
 ## Fontes e anexos
 

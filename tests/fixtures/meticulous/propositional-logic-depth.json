@@ -1,0 +1,181 @@
+{
+  "sourceGuideStructured": {
+    "lessonGoal": "Distinguir conectivos básicos, montar tabela-verdade simples e reconhecer o formato mais comum de prova.",
+    "notationRules": "Explicar `∧`, `∨` e colunas V/F antes de cobrar leitura formal.",
+    "commonErrors": "Confundir `∨` com exclusão mútua e trocar a linha crítica da tabela."
+  },
+  "domainMap": {
+    "items": [
+      {
+        "id": "logic-connectives",
+        "label": "Distinguir `∧` de `∨` em enunciados parecidos.",
+        "kind": "comparison",
+        "priority": "core",
+        "expectedEvidence": ["escolher o conectivo correto", "justificar a diferença"]
+      },
+      {
+        "id": "logic-truth-table",
+        "label": "Montar combinações V/F para duas proposições.",
+        "kind": "procedure",
+        "priority": "core",
+        "expectedEvidence": ["completar as quatro linhas", "usar a ordem correta"]
+      },
+      {
+        "id": "logic-common-error",
+        "label": "Identificar o erro de ler `∨` como exclusão mútua.",
+        "kind": "error_diagnosis",
+        "priority": "core",
+        "expectedEvidence": ["detectar leitura incorreta", "corrigir a interpretação"],
+        "commonErrors": ["Tratar `∨` como ou exclusivo."]
+      },
+      {
+        "id": "logic-exam",
+        "label": "Resolver questão curta no formato usual de prova sobre conectivos.",
+        "kind": "exam_pattern",
+        "priority": "core",
+        "expectedEvidence": ["marcar alternativa correta", "usar leitura formal em contexto de prova"]
+      }
+    ],
+    "practiceVariants": [
+      {
+        "id": "logic-fluency",
+        "domainItemRef": "logic-truth-table",
+        "variantKind": "fluency",
+        "purpose": "Completar combinações V/F em caso básico.",
+        "difficulty": "baixa",
+        "representation": "tabela",
+        "expectedStudentAction": "preencher as linhas",
+        "commonErrorTarget": "omitir combinação"
+      },
+      {
+        "id": "logic-discrimination",
+        "domainItemRef": "logic-connectives",
+        "variantKind": "discrimination",
+        "purpose": "Contrastar `∧` e `∨` em frases próximas.",
+        "difficulty": "média",
+        "representation": "linguagem natural",
+        "expectedStudentAction": "escolher e justificar conectivo",
+        "commonErrorTarget": "trocar sentido lógico"
+      },
+      {
+        "id": "logic-common-error-variant",
+        "domainItemRef": "logic-common-error",
+        "variantKind": "common_error",
+        "purpose": "Detectar leitura errada de `∨`.",
+        "difficulty": "média",
+        "representation": "alternativas comentadas",
+        "expectedStudentAction": "diagnosticar erro",
+        "commonErrorTarget": "ou exclusivo"
+      },
+      {
+        "id": "logic-exam-variant",
+        "domainItemRef": "logic-exam",
+        "variantKind": "exam_format",
+        "purpose": "Aplicar leitura formal em item curto de prova.",
+        "difficulty": "média",
+        "representation": "múltipla escolha",
+        "expectedStudentAction": "resolver questão objetiva",
+        "commonErrorTarget": "trocar conectivo"
+      }
+    ]
+  },
+  "existingMicrosequences": [
+    {
+      "key": "logic-intro",
+      "title": "Leitura inicial de conectivos",
+      "status": "ready",
+      "included": true,
+      "domainRefs": ["logic-connectives"],
+      "practiceVariantRefs": [],
+      "didacticPurpose": "Apresentar o significado básico de `∧` e `∨`.",
+      "coverageRole": "explain"
+    },
+    {
+      "key": "logic-table-intro",
+      "title": "Primeira tabela-verdade",
+      "status": "ready",
+      "included": true,
+      "domainRefs": ["logic-truth-table"],
+      "practiceVariantRefs": [],
+      "didacticPurpose": "Mostrar a ordem das combinações V/F.",
+      "coverageRole": "demonstrate"
+    },
+    {
+      "key": "logic-table-practice",
+      "title": "Completar uma tabela-verdade simples",
+      "status": "ready",
+      "included": true,
+      "domainRefs": ["logic-truth-table"],
+      "practiceVariantRefs": ["logic-fluency"],
+      "didacticPurpose": "Praticar o preenchimento das quatro combinações.",
+      "coverageRole": "practice"
+    }
+  ],
+  "expectedGaps": {
+    "uncoveredDomainItemIds": ["logic-common-error", "logic-exam"],
+    "explainedWithoutPracticeIds": ["logic-connectives"],
+    "practiceWithoutVariationIds": ["logic-truth-table"],
+    "redundantDomainItemIds": [],
+    "examMissingIds": ["logic-connectives", "logic-truth-table", "logic-common-error", "logic-exam"]
+  },
+  "expectedRedundancies": ["logic-intro"],
+  "validNewMicrosequence": {
+    "title": "Quando `∧` e `∨` parecem parecidos",
+    "description": "Contrastar frases quase iguais e corrigir a leitura errada de `∨`.",
+    "domainRefs": ["logic-connectives", "logic-common-error"],
+    "practiceVariantRefs": ["logic-discrimination", "logic-common-error-variant"],
+    "didacticPurpose": "Criar contraste explícito entre conjunção, disjunção inclusiva e erro comum de leitura.",
+    "coverageRole": "discriminate",
+    "tags": ["contraste", "erro comum"]
+  },
+  "redundantMicrosequence": {
+    "title": "Leitura inicial de conectivos",
+    "description": "Apresentar o significado básico de `∧` e `∨`.",
+    "domainRefs": ["logic-connectives"],
+    "practiceVariantRefs": [],
+    "didacticPurpose": "Apresentar o significado básico de `∧` e `∨`.",
+    "coverageRole": "explain",
+    "tags": []
+  },
+  "shallowResponse": {
+    "microsequence": {
+      "key": "logic-shallow",
+      "title": "Resumo dos conectivos",
+      "coverageRole": "explain"
+    },
+    "cards": [
+      {
+        "key": "card-1",
+        "say": "`∧` é e. `∨` é ou. É um conceito importante deste tema."
+      },
+      {
+        "key": "card-2",
+        "say": "Como vimos na aula, isso aparece muito em lógica."
+      }
+    ]
+  },
+  "meticulousResponse": {
+    "microsequence": {
+      "key": "logic-meticulous",
+      "title": "Separar `∧` de `∨` em frases próximas",
+      "coverageRole": "practice"
+    },
+    "cards": [
+      {
+        "key": "card-1",
+        "say": "`∧` exige que as duas partes sejam verdadeiras. `∨` aceita pelo menos uma parte verdadeira."
+      },
+      {
+        "key": "card-2",
+        "say": "Exemplo: “há aula `∧` há chamada” pede os dois fatos. “há aula `∨` há reposição” aceita um deles."
+      },
+      {
+        "key": "card-3",
+        "ask": "Em “o laboratório abre pela manhã ou à tarde”, `∨` significa exclusão mútua?",
+        "answer": "não",
+        "wrong": ["sim"],
+        "after": "Não. Aqui `∨` continua inclusivo: basta ao menos uma das condições."
+      }
+    ]
+  }
+}

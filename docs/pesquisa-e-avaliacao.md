@@ -29,21 +29,23 @@ Isso pode ocorrer porque o sistema:
 - preserva progresso local;
 - permite revisão e edição;
 - favorece retomada;
-- organiza material em cursos.
+- organiza material em cursos;
+- evita que o estudo seja reduzido a resumo genérico.
 
 ## Perguntas de pesquisa
 
 Perguntas possíveis:
 
-- Microssequências melhoram retenção em comparação com leitura simples?
+- Microssequências melhoram retenção em comparação com leitura simples ou com resumo?
 - Lacunas por opções são mais adequadas que digitação livre em quais contextos?
 - A geração assistida por IA generativa preserva o sentido do material original?
 - O painel de revisão melhora a qualidade final dos cards?
 - Rascunhos cumulativos ajudam o estudante a construir cursos pessoais?
-- Tags explícitas são suficientes para orientar reposicionamento?
+- Mapa de domínio e variação de prática melhoram a cobertura sem aumentar redundância?
 - Estudantes trabalhadores se beneficiam de percursos didáticos menores e revisáveis?
 - O uso offline com persistência local favorece retomada?
 - Que tipos de card funcionam melhor por disciplina?
+- A checagem local de superficialidade reduz explicações rasas sem inflar a densidade textual?
 
 ## Métricas possíveis
 
@@ -61,6 +63,11 @@ Métricas didáticas:
 - acerto em lacunas;
 - acerto em múltipla escolha;
 - reincidência de erro;
+- diversidade de prática por capacidade;
+- itens explicados sem prática;
+- itens com prática única;
+- itens com erro comum tratado;
+- itens com formato de prova coberto;
 - necessidade de ver resposta;
 - qualidade de distratores;
 - clareza percebida;
@@ -93,6 +100,7 @@ Uma decisão de produto deve considerar:
 Riscos pedagógicos:
 
 - transformar explicações frágeis em material praticável sem revisão;
+- trocar decomposição por resumo genérico;
 - criar lacunas ambíguas;
 - usar alternativas pouco plausíveis;
 - fragmentar demais o conteúdo;
@@ -138,5 +146,11 @@ Algumas decisões não devem ser tomadas apenas por preferência visual ou facil
 - eventual exportação de histórico auxiliar local;
 - nível de intervenção automática na edição;
 - critérios para aceitar ou rejeitar uma geração.
+
+Também precisam de evidência:
+
+- quando uma variação de prática consolida de fato, em vez de repetir;
+- quando um item merece nova microssequência, em vez de revisão da existente;
+- quando a checagem local de superficialidade está sensível demais ou permissiva demais.
 
 Essas decisões devem ser orientadas por testes, revisão didática e evidência de uso.

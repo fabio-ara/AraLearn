@@ -2,6 +2,7 @@ import { getMicrosequenceCardCount } from "../types/microsequenceSizes.js";
 import { getMicrosequenceType } from "../types/microsequenceTypes.js";
 import { resolveResourcesForGenerationPlan } from "../resources/resolveResourcesForGenerationPlan.js";
 import { getWeakModelModePolicy } from "../policies/weakModelPolicy.js";
+import { summarizeMeticulousPolicyForPrompt } from "../policies/meticulousDidacticPolicy.js";
 
 export function buildMicrosequenceGenerationContract({ planningContract, validatedPlan, selectedModel }) {
   const plan = validatedPlan?.plan || validatedPlan;
@@ -31,6 +32,7 @@ export function buildMicrosequenceGenerationContract({ planningContract, validat
     requestGovernance: planningContract.requestGovernance,
     selectedLessonTopicRefs: planningContract.selectedLessonTopicRefs || [],
     weakModelMode: getWeakModelModePolicy(planningContract.model.capabilities),
+    meticulousPolicy: summarizeMeticulousPolicyForPrompt({ weakModelMode: true }),
     didacticPlan: {
       microsequenceGoal: plan.microsequenceGoal,
       typeId: plan.typeId,

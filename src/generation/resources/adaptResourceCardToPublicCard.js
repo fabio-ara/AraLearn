@@ -143,7 +143,16 @@ function adaptTree(card) {
 
 function withSourceRefs(publicCard, card) {
   const sourceRefs = Array.isArray(card?.sourceRefs) ? card.sourceRefs.map(text).filter(Boolean) : [];
-  return sourceRefs.length ? { ...publicCard, sourceRefs } : publicCard;
+  const domainRefs = Array.isArray(card?.domainRefs) ? card.domainRefs.map(text).filter(Boolean) : [];
+  const practiceVariantRefs = Array.isArray(card?.practiceVariantRefs) ? card.practiceVariantRefs.map(text).filter(Boolean) : [];
+  const didacticPurpose = text(card?.didacticPurpose);
+  return {
+    ...publicCard,
+    ...(sourceRefs.length ? { sourceRefs } : {}),
+    ...(domainRefs.length ? { domainRefs } : {}),
+    ...(practiceVariantRefs.length ? { practiceVariantRefs } : {}),
+    ...(didacticPurpose ? { didacticPurpose } : {})
+  };
 }
 
 function adaptPlane(card) {

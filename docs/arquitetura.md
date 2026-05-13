@@ -17,8 +17,24 @@ O contrato público continua simples e legível. A complexidade operacional fica
 - `editor/`: mutações estruturais;
 - `storage/`: persistência local, snapshots e progresso;
 - `assist/`: integração com Gemini e Codex local;
-- `generation/`: policy, planejamento, prompts, validação e reparo;
+- `generation/`: policy, domínio didático, planejamento, prompts, validação e reparo;
 - `ui/`: navegação estrutural, estudo e workbench.
+
+## Núcleo didático novo
+
+O app agora separa explicitamente:
+
+- cobertura de domínio;
+- variação de prática;
+- checagem de superficialidade;
+- checagem de redundância.
+
+Arquivos centrais dessa camada:
+
+- `generation/domain/lessonDomainModel.js`
+- `generation/policies/meticulousDidacticPolicy.js`
+- `generation/validation/validateDidacticDepth.js`
+- `generation/validation/validateDidacticRedundancy.js`
 
 ## Regra arquitetural da geração
 
@@ -40,6 +56,31 @@ pedido do usuário
   -> adaptação ao contrato público
   -> aplicação direta na microssequência
 ```
+
+Na trilha de microssequências da lição, o app também pode considerar o mapa de domínio antes de pedir novos rascunhos.
+
+## Mapa de domínio da lição
+
+Quando existir, a lição pode carregar `domainMap` com:
+
+- `items`: capacidades ou componentes didáticos;
+- `practiceVariants`: variações de consolidação;
+- `gapSummary`: fotografia derivada do que está uncovered, weak, redundante, explicado sem prática ou praticado sem variação.
+
+Esse mapa pode ficar no contrato da lição porque é pequeno, determinístico e útil para persistência local e iterações futuras. Ainda assim, a UI comum não precisa expor seus nomes internos.
+
+## Papéis explícitos da microssequência
+
+Microssequências podem declarar:
+
+- `domainRefs`;
+- `practiceVariantRefs`;
+- `didacticPurpose`;
+- `coverageRole`.
+
+`coverageRole` ajuda a distinguir se a sequência introduz, explica, demonstra, pratica, discrimina, diagnostica erro, consolida, aplica em prova ou integra conteúdos.
+
+Isso reduz repetição acidental e melhora a decisão de quando criar nova sequência.
 
 ## Weak model mode
 
@@ -122,6 +163,18 @@ A geração de cards agora separa:
 - validação mínima de fonte.
 
 Isso evita que um único módulo concentre parse, lint didático, grounding e reparo.
+
+Na validação didática, há dois eixos novos:
+
+- profundidade: combinar checks estruturais e declarativos com sinais textuais fracos, sem fingir compreensão semântica ampla;
+- redundância: impedir que a mesma microssequência seja refeita sem nova função didática.
+
+A regra operacional é:
+
+- erro estrutural ou de política fechada pode bloquear e disparar continuação automática;
+- lacuna declarativa local pode disparar continuação automática;
+- lacuna declarativa de lição pode virar sugestão de nova microssequência;
+- heurística textual isolada vira aviso, não veto automático.
 
 ## Aplicação direta
 

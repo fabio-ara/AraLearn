@@ -2,6 +2,8 @@
 
 AraLearn é uma aplicação open source, para uso predominantemente local e offline, para transformar conteúdos, dúvidas e intenções de estudo em percursos didáticos pequenos, praticáveis e revisáveis, com auxílio de inteligência artificial acessada via API.
 
+O AraLearn não é um app de resumo. O objetivo não é condensar um tema em texto genérico, e sim decompor o estudo em microssequências pequenas, rigorosas, progressivas e verificáveis.
+
 O projeto nasce de um problema contemporâneo: a informação deixou de ser escassa, mas a compreensão continua difícil. Mecanismos de busca, repositórios abertos, redes sociais, documentação pública e modelos de linguagem facilitaram a obtenção de explicações, exemplos e resumos. Ainda assim, estudantes frequentemente continuam sem saber por onde começar, o que praticar, como revisar ou como retomar os estudos.
 
 O AraLearn procura reduzir essa distância entre acesso à informação e aprendizagem efetiva. Para isso, organiza o material em uma hierarquia explícita:
@@ -12,7 +14,7 @@ curso -> módulo -> lição -> microssequência -> card
 
 A aplicação combina autoria local, prática ativa, importação e exportação de lições, persistência no dispositivo e assistência por modelos de linguagem acessados por API. O foco atual é o uso de modelos leves e baratos ou disponíveis em free-tier.
 
-A inteligência artificial, no AraLearn, não é encarada como fonte da verdade. Ela é uma força geradora de conteúdo, sim, mas contida por arquitetura: a aplicação define contexto, tipo, tamanho, `cardPlan`, recursos, fonte-guia, contratos e validações. O objetivo é usar inteligência artificial de modo produtivo sem entregar a ela a autoridade final sobre o conhecimento, a didática ou o percurso do usuário.
+A inteligência artificial, no AraLearn, não é encarada como fonte da verdade. Ela é uma força geradora de conteúdo, sim, mas contida por arquitetura: a aplicação define contexto, tipo, tamanho, `cardPlan`, recursos, fonte-guia, mapa de domínio, contratos e validações. O objetivo é usar inteligência artificial de modo produtivo sem entregar a ela a autoridade final sobre o conhecimento, a didática ou o percurso do usuário.
 
 A aplicação pode ser usada como:
 
@@ -32,7 +34,7 @@ O AraLearn foi pensado para estudantes trabalhadores em condições reais: com p
 
 A proposta, entretanto, é mais ampla: o sistema pode apoiar estudo de disciplinas acadêmicas, preparação para concursos, treinamento em linguagens de programação, uso de ferramentas profissionais, treinamento em plataformas de gestão documental, aprendizagem de línguas estrangeiras, estudo de artigos científicos, apoio na leitura de artigos de economia, administração, direito, entre outros domínios.
 
-O objetivo não é substituir sala de aula, leitura aprofundada de livros, produção de artigos, resenhas e resumos ou pesquisa aprofundada. O objetivo é criar ponte entre informação disponível e ação cognitiva executável de forma imediata sob condições restritas de tempo e de ambiente.
+O objetivo não é substituir sala de aula, estudo de fonte, produção de artigos, resenhas ou pesquisa aprofundada. O objetivo é criar ponte entre informação disponível e ação cognitiva executável de forma imediata sob condições restritas de tempo e de ambiente.
 
 Em vez de entregar apenas texto, o AraLearn procura transformar uma dúvida ou um conteúdo em uma sequência de pequenas ações:
 
@@ -50,6 +52,8 @@ versionar
 ```
 
 Não se trata de apenas mais um app de flashcards. Flashcards, claro, são a interface. O objetivo central do projeto, entretanto, é a conversão controlada de informação em aprendizagem prática e ativa.
+
+Meticulosidade, aqui, não significa card longo. Significa decomposição, progressão, prática com finalidade, contraste, tratamento de erro comum e verificação de domínio.
 
 ---
 
@@ -253,6 +257,7 @@ Em vez de pedir ao modelo que decida tudo, o AraLearn caminha para um fluxo em q
 
 ```text
 AraLearn define contexto.
+AraLearn define cobertura didática mínima.
 AraLearn define recursos permitidos.
 AraLearn escolhe ou valida a receita didática.
 AraLearn monta o plano dos cards.
@@ -261,11 +266,12 @@ AraLearn valida.
 O usuário revisa.
 ```
 
-Na geração de microssequências e cards, a direção atual é usar `weakModelMode`:
+Na geração de microssequências e cards, a direção atual é usar `weakModelMode` com política de meticulosidade:
 
 1. planejamento restrito;
 2. `cardPlan` determinístico do app;
-3. geração de conteúdo conforme plano definido pelo app.
+3. mapa de domínio e variação de prática quando a lição já tiver cobertura mapeada;
+4. geração de conteúdo conforme plano definido pelo app.
 
 Na primeira etapa, a inteligência artificial pode escolher apenas entre opções fechadas:
 
@@ -276,6 +282,13 @@ Na primeira etapa, a inteligência artificial pode escolher apenas entre opçõe
 Essas opções chegam ao Gemini como listas fechadas do próprio AraLearn. O modelo escolhe dentro delas; depois disso, o AraLearn monta os JSONs efetivos da operação e acrescenta `cardPlan`, contexto resolvido, schemas e validações locais.
 
 Na segunda etapa, a inteligência artificial recebe apenas o plano aprovado e preenche os cards. Ela não deve alterar quantidade, ordem, posições, papéis ou recursos dos cards.
+
+Prompts e validações agora reforçam:
+
+- não fazer resumo genérico;
+- decompor apenas o ponto didático do card;
+- não gerar microssequência duplicada sem nova função;
+- usar variação de prática com finalidade, em vez de repetição mecânica.
 
 Essa arquitetura torna o uso de modelos baratos mais realista, reduz custo, melhora previsibilidade e preserva controle humano.
 

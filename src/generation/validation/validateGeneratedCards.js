@@ -7,7 +7,7 @@ export function validateGeneratedCards(response, generationContract) {
   const cards = structural.cards || [];
   const didactic = structural.ok
     ? validateGeneratedCardsDidactic(cards, generationContract)
-    : { ok: false, didacticErrors: [] };
+    : { ok: false, didacticErrors: [], didacticWarnings: [], didacticAudit: null };
   const source = structural.ok
     ? validateGeneratedCardsSourceGrounding(cards, generationContract)
     : { ok: false, sourceErrors: [] };
@@ -23,6 +23,8 @@ export function validateGeneratedCards(response, generationContract) {
     cards,
     structuralErrors: structural.structuralErrors || [],
     didacticErrors: didactic.didacticErrors || [],
+    didacticWarnings: didactic.didacticWarnings || [],
+    didacticAudit: didactic.didacticAudit || null,
     sourceErrors: source.sourceErrors || [],
     errors
   };
