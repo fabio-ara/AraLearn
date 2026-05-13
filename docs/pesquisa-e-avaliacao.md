@@ -135,7 +135,7 @@ Algumas decisões não devem ser tomadas apenas por preferência visual ou facil
 - uso de lacunas por opções ou por digitação;
 - entrada de `flow` na geração automática;
 - reposicionamento de cards isolados;
-- exportação de versões locais;
+- eventual exportação de histórico auxiliar local;
 - nível de intervenção automática na edição;
 - critérios para aceitar ou rejeitar uma geração.
 

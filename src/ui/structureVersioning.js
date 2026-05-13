@@ -119,6 +119,7 @@ export function applyStructureVersionSnapshot(project, reference, snapshot) {
             title: snapshot.title || "",
             ...(snapshot.description ? { description: snapshot.description } : {}),
             ...(snapshot.sourceGuide ? { sourceGuide: snapshot.sourceGuide } : {}),
+            ...(snapshot.sourceGuideStructured ? { sourceGuideStructured: structuredClone(snapshot.sourceGuideStructured) } : {}),
             modules: structuredClone(snapshot.modules || [])
           }
         : course
@@ -141,6 +142,7 @@ export function applyStructureVersionSnapshot(project, reference, snapshot) {
                 title: snapshot.title || "",
                 ...(snapshot.description ? { description: snapshot.description } : {}),
                 ...(snapshot.sourceGuide ? { sourceGuide: snapshot.sourceGuide } : {}),
+                ...(snapshot.sourceGuideStructured ? { sourceGuideStructured: structuredClone(snapshot.sourceGuideStructured) } : {}),
                 lessons: structuredClone(snapshot.lessons || [])
               }
             : moduleValue
@@ -172,6 +174,7 @@ export function applyStructureVersionSnapshot(project, reference, snapshot) {
                     title: snapshot.title || "",
                     ...(snapshot.description ? { description: snapshot.description } : {}),
                     ...(snapshot.sourceGuide ? { sourceGuide: snapshot.sourceGuide } : {}),
+                    ...(snapshot.sourceGuideStructured ? { sourceGuideStructured: structuredClone(snapshot.sourceGuideStructured) } : {}),
                     microsequences: structuredClone(snapshot.microsequences || [])
                   }
                 : lesson
@@ -290,6 +293,34 @@ export function recordStructureVersionTransition(
     parentVersionId,
     now
   });
+  normalizeStructureVersionMap(versionMap, { now });
+  return entry;
+}
+
+export function createStructureSnapshot(versionMap, { project, reference, label = "", now = new Date() } = {}) {
+  const entity = findStructureVersionEntity(project, reference);
+  if (!entity) {
+    return null;
+  }
+
+  const entry = ensureStructureVersionEntry(versionMap, reference, entity, { now });
+  if (!entry) {
+    return null;
+  }
+
+  if ((entry.versions || []).length === 1 && entry.versions[0]?.operationType === "seed") {
+    entry.versions[0].operationType = "snapshot";
+    entry.versions[0].label = label || "Snapshot 1";
+    entry.versions[0].updatedAt = now instanceof Date ? now.toISOString() : new Date(now).toISOString();
+  } else {
+    insertStructureVersionAfterActive(entry, entity, {
+      label: label || `Snapshot ${(entry.versions || []).length + 1}`,
+      operationType: "snapshot",
+      parentVersionId: "",
+      now
+    });
+  }
+
   normalizeStructureVersionMap(versionMap, { now });
   return entry;
 }

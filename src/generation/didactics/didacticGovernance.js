@@ -36,13 +36,13 @@ const DIDACTIC_GUARDRAILS = Object.freeze({
 
 const PLANNING_PROMPT_LINES = Object.freeze([
   "Pense na microssequência como contrato auditável: planeje a sequência microteoria -> exemplo guiado -> prática autossuficiente -> consolidação.",
-  "Use sourceGuide de curso, módulo e lição como governança principal; userPrompt só especializa o escopo.",
+  "Use sourceGuideStructured da lição como governança principal; userPrompt só especializa o escopo.",
   "Planeje prática apenas depois da explicação necessária e com contexto crítico no próprio card.",
   "Se a prática exigir contexto invisível ou lacuna longa, divida em mais cards ou troque o resourceType."
 ]);
 
 const GENERATION_PROMPT_LINES = Object.freeze([
-  "Trate sourceGuide de curso, módulo e lição como contrato de governança.",
+  "Trate sourceGuideStructured da lição como contrato de governança.",
   "Explique antes de cobrar: a prática deve reutilizar dados, passos ou notações já mostrados localmente.",
   "Prefira cards auditáveis: contexto local explícito, pergunta curta, resposta única e feedback corretivo.",
   "Se a prática não couber com clareza em um único card, divida em mais cards."
@@ -65,6 +65,12 @@ const EDIT_PROMPT_LINES = Object.freeze([
   "Se um card ainda depender de exemplo anterior, aula, material, figura acima ou contexto invisível, reescreva o card para ficar autossuficiente.",
   "Quando o pedido implicar prática nova ou mais difícil, inclua a microteoria ou o exemplo guiado local necessário."
 ]);
+
+const LESSON_GOVERNANCE_FIELD_LABELS = Object.freeze({
+  lessonGoal: "Meta da lição",
+  notationRules: "Sinais e notação",
+  commonErrors: "Confusões prováveis"
+});
 
 const DIDACTIC_TEXT_PATTERNS = Object.freeze([
   {
@@ -156,6 +162,30 @@ export function buildDidacticEditPlanningPromptLines() {
 
 export function buildDidacticEditPromptLines() {
   return cloneList(EDIT_PROMPT_LINES);
+}
+
+export function buildLessonRequestGovernance(lessonSourceGuideStructured = {}) {
+  const anchors = Object.entries(LESSON_GOVERNANCE_FIELD_LABELS)
+    .map(([field, label]) => {
+      const value = normalizeText(lessonSourceGuideStructured?.[field]);
+      return value ? { field, label, value } : null;
+    })
+    .filter(Boolean);
+
+  return {
+    precedence: [
+      "context.lesson.sourceGuideStructured",
+      "selectedLessonTopicRefs",
+      "request.userPrompt"
+    ],
+    userPromptRole: "especializar o recorte imediato e a ênfase dentro da lição atual",
+    userPromptLimits: [
+      "não ampliar a operação para fora da meta governada pela lição",
+      "não contradizer notação, confusões prováveis nem critério final da lição",
+      "não usar o pedido do usuário para substituir a progressão didática já governada"
+    ],
+    lessonAnchors: anchors
+  };
 }
 
 export function collectDidacticCardErrors(card) {

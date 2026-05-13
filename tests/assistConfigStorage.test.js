@@ -16,21 +16,57 @@ function createMemoryStorage() {
   };
 }
 
-test("assistConfigStorage lê e grava configuração auxiliar", () => {
+test("assistConfigStorage lê config legada e injeta defaults do Codex local", () => {
   const storage = createMemoryStorage();
+  storage.setItem(
+    "aralearn.assist-config",
+    JSON.stringify({
+      model: "gemini-2.5-flash",
+      apiKey: "abc"
+    })
+  );
 
-  writeAssistConfigStorage({ model: "gemini-2.5-flash", apiKey: "abc" }, storage);
-
-  assert.deepEqual(readAssistConfigStorage(storage), { model: "gemini-2.5-flash", apiKey: "abc" });
+  assert.deepEqual(readAssistConfigStorage(storage), {
+    model: "gemini-2.5-flash",
+    apiKey: "abc",
+    codexEndpoint: "http://127.0.0.1:4183/assist",
+    codexToken: ""
+  });
 });
 
-test("assistConfigStorage tolera storage ausente ou JSON inválido", () => {
+test("assistConfigStorage grava e lê endpoint/token do Codex local", () => {
+  const storage = createMemoryStorage();
+
+  writeAssistConfigStorage(
+    {
+      model: "codex-cli-local",
+      apiKey: "",
+      codexEndpoint: "http://127.0.0.1:4183/assist",
+      codexToken: "segredo"
+    },
+    storage
+  );
+
+  assert.deepEqual(readAssistConfigStorage(storage), {
+    model: "codex-cli-local",
+    apiKey: "",
+    codexEndpoint: "http://127.0.0.1:4183/assist",
+    codexToken: "segredo"
+  });
+});
+
+test("assistConfigStorage tolera storage ausente, JSON inválido e valores ausentes", () => {
   assert.deepEqual(readAssistConfigStorage(null), {
     model: "gemini-2.5-flash",
-    apiKey: ""
+    apiKey: "",
+    codexEndpoint: "http://127.0.0.1:4183/assist",
+    codexToken: ""
   });
   assert.deepEqual(readAssistConfigStorage({ getItem: () => "{" }), {
     model: "gemini-2.5-flash",
-    apiKey: ""
+    apiKey: "",
+    codexEndpoint: "http://127.0.0.1:4183/assist",
+    codexToken: ""
   });
 });
+

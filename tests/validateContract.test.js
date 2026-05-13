@@ -96,22 +96,15 @@ test("aceita sourceGuideStructured e recompila sourceGuide legível", () => {
     courses: [
       {
         title: "Curso",
-        sourceGuideStructured: {
-          audience: "Saber ler instruções curtas.",
-          globalScope: "Dominar a habilidade principal."
-        },
         modules: [
           {
             title: "Módulo",
-            sourceGuideStructured: {
-              moduleOutOfScope: "Não avançar para exceções."
-            },
             lessons: [
               {
                 title: "Lição",
                 sourceGuideStructured: {
                   lessonGoal: "Passo a passo simples.",
-                  masteryGoal: "Aplicar sozinho em caso básico."
+                  commonErrors: "Não inverter a ordem dos termos."
                 },
                 microsequences: []
               }
@@ -123,14 +116,28 @@ test("aceita sourceGuideStructured e recompila sourceGuide legível", () => {
   });
 
   assert.equal(result.ok, true);
-  assert.match(result.value.courses[0].sourceGuide, /Público e ponto de entrada: Saber ler instruções curtas\./);
-  assert.match(result.value.courses[0].sourceGuide, /Escopo do curso: Dominar a habilidade principal\./);
-  assert.deepEqual(result.value.courses[0].sourceGuideStructured, {
-    audience: "Saber ler instruções curtas.",
-    globalScope: "Dominar a habilidade principal."
-  });
+  assert.equal(result.value.courses[0].sourceGuide, undefined);
+  assert.equal(result.value.courses[0].sourceGuideStructured, undefined);
   assert.match(result.value.courses[0].modules[0].lessons[0].sourceGuide, /Meta da lição: Passo a passo simples\./);
-  assert.match(result.value.courses[0].modules[0].lessons[0].sourceGuide, /Ao final: Aplicar sozinho em caso básico\./);
+  assert.match(result.value.courses[0].modules[0].lessons[0].sourceGuide, /Confusões prováveis: Não inverter a ordem dos termos\./);
+});
+
+test("rejeita sourceGuide textual puro sem sourceGuideStructured", () => {
+  const result = validateContractDocument({
+    contract: "aralearn.contract",
+    version: 1,
+    kind: "project",
+    courses: [
+      {
+        title: "Curso",
+        sourceGuide: "Texto corrido legado.",
+        modules: []
+      }
+    ]
+  });
+
+  assert.equal(result.ok, false);
+  assert.match(result.errors.map((error) => error.message).join("\n"), /Campo não suportado em curso: "sourceGuide"/);
 });
 
 test("rejeita campos legados de card no contrato principal", () => {

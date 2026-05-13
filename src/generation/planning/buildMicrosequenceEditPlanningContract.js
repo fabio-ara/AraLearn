@@ -2,6 +2,13 @@ import { listCardResourceSummaries } from "../resources/cardResourceDefinitions.
 import { getModelCapabilities } from "../providers/modelCapabilities.js";
 import { resolveReferencedSources } from "../sources/resolveReferencedSources.js";
 import { normalizeSelectedLessonTopicRefs } from "../tags/selectedLessonTopicRefs.js";
+import { buildLessonRequestGovernance } from "../didactics/didacticGovernance.js";
+import {
+  buildSourceGuideTextForModel,
+  sanitizeSourceGuideStructuredForModel,
+  SOURCE_GUIDE_LEVELS
+} from "../../sourceGuides/sourceGuideStructured.js";
+import { normalizeLessonGuidance } from "../guidance/lessonGuidance.js";
 
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -19,13 +26,9 @@ function keyOf(value) {
   return text(value?.key) || text(value?.id) || "";
 }
 
-function sourceGuide(value) {
-  return text(value?.sourceGuide);
-}
-
-function sourceGuideStructured(value) {
-  const structured = value?.sourceGuideStructured;
-  return structured && typeof structured === "object" && !Array.isArray(structured) ? structured : undefined;
+function sourceGuideStructuredForModel(value, level) {
+  const structured = sanitizeSourceGuideStructuredForModel(value?.sourceGuideStructured, { level });
+  return Object.keys(structured).length ? structured : undefined;
 }
 
 function summarizeMicrosequence(value) {
@@ -60,6 +63,8 @@ export function buildMicrosequenceEditPlanningContract({
 }) {
   const capabilities = getModelCapabilities(selectedModel);
   const resolvedSources = resolveReferencedSources({ userPrompt: userEditPrompt, attachedSources, userSelectedSourceIds });
+  const lessonGuideStructured = sourceGuideStructuredForModel(selectedLesson, SOURCE_GUIDE_LEVELS.LESSON) || {};
+  const lessonGuidance = normalizeLessonGuidance(selectedLesson);
   const selectedTopics = normalizeSelectedLessonTopicRefs({
     selectedLessonTopicRefs,
     selectedLessonScopeTagRefs,
@@ -84,43 +89,24 @@ export function buildMicrosequenceEditPlanningContract({
         { level: "lesson", key: keyOf(selectedLesson), title: text(selectedLesson?.title) || keyOf(selectedLesson) },
         { level: "microsequence", key: keyOf(selectedMicrosequence), title: text(selectedMicrosequence?.title) || keyOf(selectedMicrosequence) }
       ],
-      sourceGuideLineage: [
-        {
-          level: "course",
-          title: text(selectedCourse?.title) || keyOf(selectedCourse),
-          ...(sourceGuide(selectedCourse) ? { sourceGuide: sourceGuide(selectedCourse) } : {}),
-          ...(sourceGuideStructured(selectedCourse) ? { sourceGuideStructured: sourceGuideStructured(selectedCourse) } : {})
-        },
-        {
-          level: "module",
-          title: text(selectedModule?.title) || keyOf(selectedModule),
-          ...(sourceGuide(selectedModule) ? { sourceGuide: sourceGuide(selectedModule) } : {}),
-          ...(sourceGuideStructured(selectedModule) ? { sourceGuideStructured: sourceGuideStructured(selectedModule) } : {})
-        },
-        {
-          level: "lesson",
-          title: text(selectedLesson?.title) || keyOf(selectedLesson),
-          ...(sourceGuide(selectedLesson) ? { sourceGuide: sourceGuide(selectedLesson) } : {}),
-          ...(sourceGuideStructured(selectedLesson) ? { sourceGuideStructured: sourceGuideStructured(selectedLesson) } : {})
-        }
-      ],
       course: {
         title: text(selectedCourse?.title),
-        objective: text(selectedCourse?.description),
-        ...(sourceGuide(selectedCourse) ? { sourceGuide: sourceGuide(selectedCourse) } : {}),
-        ...(sourceGuideStructured(selectedCourse) ? { sourceGuideStructured: sourceGuideStructured(selectedCourse) } : {})
+        objective: text(selectedCourse?.description)
       },
       module: {
         title: text(selectedModule?.title),
-        objective: text(selectedModule?.description),
-        ...(sourceGuide(selectedModule) ? { sourceGuide: sourceGuide(selectedModule) } : {}),
-        ...(sourceGuideStructured(selectedModule) ? { sourceGuideStructured: sourceGuideStructured(selectedModule) } : {})
+        objective: text(selectedModule?.description)
       },
       lesson: {
         title: text(selectedLesson?.title),
         objective: text(selectedLesson?.description),
-        ...(sourceGuide(selectedLesson) ? { sourceGuide: sourceGuide(selectedLesson) } : {}),
-        ...(sourceGuideStructured(selectedLesson) ? { sourceGuideStructured: sourceGuideStructured(selectedLesson) } : {}),
+        ...(sourceGuideStructuredForModel(selectedLesson, SOURCE_GUIDE_LEVELS.LESSON)
+          ? { sourceGuide: buildSourceGuideTextForModel(sourceGuideStructuredForModel(selectedLesson, SOURCE_GUIDE_LEVELS.LESSON), { level: SOURCE_GUIDE_LEVELS.LESSON }) }
+          : {}),
+        ...(sourceGuideStructuredForModel(selectedLesson, SOURCE_GUIDE_LEVELS.LESSON)
+          ? { sourceGuideStructured: sourceGuideStructuredForModel(selectedLesson, SOURCE_GUIDE_LEVELS.LESSON) }
+          : {}),
+        ...lessonGuidance,
         microsequenceLine: Array.isArray(selectedLesson?.microsequences)
           ? selectedLesson.microsequences.map(summarizeMicrosequence)
           : []
@@ -131,6 +117,7 @@ export function buildMicrosequenceEditPlanningContract({
         ...(selectedMicrosequence ? summarizeMicrosequence(selectedMicrosequence) : {})
       }
     },
+    requestGovernance: buildLessonRequestGovernance(lessonGuideStructured),
     selectedLessonTopicRefs: selectedTopics,
     request: { userEditPrompt: text(userEditPrompt), selectedCardKeys, selectedResourceKeys, userSelectedExtraResourceTypes },
     currentVersionSummary: {
@@ -144,7 +131,7 @@ export function buildMicrosequenceEditPlanningContract({
       cardCount: Array.isArray(version.cards) ? version.cards.length : 0,
       shortSummary: text(version.description || version.label).slice(0, 160)
     })),
-    availableResources: listCardResourceSummaries(),
+    availableResources: listCardResourceSummaries().filter((item) => lessonGuidance.resourceTags.includes(item.id)),
     sources: resolvedSources.referencedSources,
     model: { id: capabilities.model, capabilities },
     sourceResolution: resolvedSources

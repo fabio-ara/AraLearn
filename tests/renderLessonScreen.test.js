@@ -71,8 +71,6 @@ test("renderiza a tela de curso mostrando apenas módulos", () => {
 
   assert.match(html, /data-action="quick-create-module"/);
   assert.match(html, /data-action="open-course-screen-actions"/);
-  assert.match(html, new RegExp(`data-action="open-course-source-guide" data-course-key="${course.key}"`));
-  assert.match(html, new RegExp(`data-action="open-module-source-guide" data-course-key="${course.key}" data-module-key="${moduleValue.key}"`));
   assert.match(html, new RegExp(`data-action="open-generation-panel-course" data-course-key="${course.key}"`));
   assert.doesNotMatch(html, /C1 → C2/);
   assert.doesNotMatch(html, /data-action="select-structure-version"/);
@@ -94,7 +92,6 @@ test("renderiza a tela de curso mostrando apenas módulos", () => {
   assert.equal(countMatches(html, /class="card-progress-fill"/g), (course.modules || []).length);
   assert.match(html, /card-progress-fill" style="width:[1-9]/);
   assert.equal(countMatches(html, /class="muted tiny progress-meta"/g), 1);
-  assert.ok(html.indexOf('data-action="open-course-source-guide"') < html.indexOf('data-action="open-generation-panel-course"'));
   assert.ok(html.indexOf('data-action="open-generation-panel-course"') < html.indexOf('data-action="quick-create-module"'));
   assert.ok(html.indexOf('data-action="quick-create-module"') < html.indexOf('data-action="open-course-screen-actions"'));
   assert.doesNotMatch(html, /data-action="open-lesson-actions"/);
@@ -150,10 +147,6 @@ test("renderiza a tela de módulo mostrando apenas lições", () => {
   assert.match(html, /data-action="open-module-screen-actions"/);
   assert.match(
     html,
-    new RegExp(`data-action="open-module-source-guide" data-course-key="${course.key}" data-module-key="${moduleValue.key}"`)
-  );
-  assert.match(
-    html,
     new RegExp(`data-action="open-lesson-source-guide" data-course-key="${course.key}" data-module-key="${moduleValue.key}" data-lesson-key="${lesson.key}"`)
   );
   assert.match(
@@ -176,7 +169,6 @@ test("renderiza a tela de módulo mostrando apenas lições", () => {
   assert.equal(countMatches(html, /class="card-progress-fill"/g), (moduleValue.lessons || []).length);
   assert.match(html, /card-progress-fill" style="width:[1-9]/);
   assert.equal(countMatches(html, /class="muted tiny progress-meta"/g), 3);
-  assert.ok(html.indexOf('data-action="open-module-source-guide"') < html.indexOf('data-action="open-generation-panel-module"'));
   assert.ok(html.indexOf('data-action="open-generation-panel-module"') < html.indexOf('data-action="quick-create-lesson"'));
   assert.ok(html.indexOf('data-action="quick-create-lesson"') < html.indexOf('data-action="open-module-screen-actions"'));
   assert.doesNotMatch(html, /aria-label="Progresso: 0\/12" title="0\/12"/);
@@ -396,6 +388,11 @@ test("renderiza o painel da microssequência sem botão próprio de ações e co
       canDeleteVisualizedMicrosequenceVersion: true,
       selectedDependencyKeys: [],
       pendingDependencyKey: "",
+      didacticTypeOptions: [
+        { value: "", label: "Automático" },
+        { value: "guided_practice", label: "Prática guiada" }
+      ],
+      selectedDidacticTypeId: "guided_practice",
       modelOptions: [{ value: "gemini-2.5-flash", label: "Gemini 2.5 Flash" }],
       selectedModel: "gemini-2.5-flash",
       assistModeOptions: [],
@@ -408,7 +405,8 @@ test("renderiza o painel da microssequência sem botão próprio de ações e co
   });
 
   assert.doesNotMatch(html, /data-action="open-microsequence-actions"/);
-  assert.doesNotMatch(html, /data-action="open-version-history"/);
+  assert.match(html, /data-action="open-version-history"/);
+  assert.doesNotMatch(html, /data-action="save-microsequence-snapshot"/);
   assert.doesNotMatch(html, /data-action="open-microsequence-version-compare"/);
   assert.doesNotMatch(html, /data-action="select-microsequence-version"/);
   assert.doesNotMatch(html, /data-action="editor-prev-version"/);
@@ -441,6 +439,9 @@ test("renderiza o painel da microssequência sem botão próprio de ações e co
   assert.doesNotMatch(html, /<span class="editor-version-tab-meta">12\/05 18:41<\/span>/);
   assert.match(html, /data-field="assist-microsequence-title" type="text" aria-label="Microssequência" title="Microssequência"/);
   assert.match(html, /data-field="assist-dependency-picker" aria-label="Tags" title="Tags"/);
+  assert.match(html, /data-field="assist-didactic-type" aria-label="Tipo de sequência" title="Tipo de sequência"/);
+  assert.match(html, /<option value="">Automático<\/option>/);
+  assert.match(html, /<option value="guided_practice" selected>Prática guiada<\/option>/);
   assert.match(html, /data-field="assist-prompt" class="assist-prompt" aria-label="Pedido" title="Pedido"/);
   assert.match(html, /data-action="open-assist-container-picker" title="Adicionar recursos" aria-label="Adicionar recursos"/);
   assert.match(html, /data-field="assist-attachments" class="assist-attachment-input" type="file" multiple/);
@@ -575,6 +576,11 @@ test("renderiza o painel da microssequência vazia em modo de geração de cards
       activeMicrosequenceVersionId: "v1",
       selectedDependencyKeys: [],
       pendingDependencyKey: "",
+      didacticTypeOptions: [
+        { value: "", label: "Automático" },
+        { value: "guided_practice", label: "Prática guiada" }
+      ],
+      selectedDidacticTypeId: "",
       modelOptions: [{ value: "gemini-2.5-flash", label: "Gemini 2.5 Flash" }],
       selectedModel: "gemini-2.5-flash",
       assistModeOptions: [],
@@ -587,7 +593,8 @@ test("renderiza o painel da microssequência vazia em modo de geração de cards
   });
 
   assert.match(html, /<div class="topbar-title">Gerar cards<\/div>/);
-  assert.doesNotMatch(html, /data-action="open-version-history"/);
+  assert.match(html, /data-action="open-version-history"/);
+  assert.doesNotMatch(html, /data-action="save-microsequence-snapshot"/);
   assert.doesNotMatch(html, /data-action="open-version-compare"/);
   assert.doesNotMatch(html, /editor-step-nav/);
   assert.doesNotMatch(html, /editor-version-count-value/);
@@ -596,6 +603,9 @@ test("renderiza o painel da microssequência vazia em modo de geração de cards
   assert.match(html, /data-action="open-assist-container-picker" title="Adicionar recursos" aria-label="Adicionar recursos"/);
   assert.match(html, /data-action="open-assist-attachment-picker" title="Anexar documentos" aria-label="Anexar documentos"/);
   assert.match(html, /data-action="select-workbench-pane" data-workbench-pane="edit" aria-label="Geração" title="Geração"/);
+  assert.match(html, /data-field="assist-didactic-type" aria-label="Tipo de sequência" title="Tipo de sequência"/);
+  assert.match(html, /<option value="" selected>Automático<\/option>/);
+  assert.match(html, /<option value="guided_practice">Prática guiada<\/option>/);
   assert.doesNotMatch(html, /data-action="select-workbench-pane" data-workbench-pane="preview"/);
   assert.doesNotMatch(html, /Sem cards ainda/);
   assert.doesNotMatch(html, /Envie o pedido para gerar os cards da microssequência\./);
@@ -693,6 +703,61 @@ test("renderiza a execução do card com nome do curso e faixa estável de tags"
   assert.match(html, /study-reader-count-value">1\/7<\/span>/);
   assert.match(html, /Diretório atual e caminhos/);
   assert.match(html, /Teste/);
+});
+
+test("renderiza CTAs de aceitar e excluir quando a iteracao gerada atual esta pendente", () => {
+  const project = readProject();
+  const course = project.courses[0];
+  const moduleValue = course.modules[0];
+  const lesson = moduleValue.lessons[0];
+  const microsequence = lesson.microsequences[0];
+  const html = renderLessonScreen({
+    project,
+    view: "microsequence-assist",
+    selection: {
+      courseKey: course.key,
+      moduleKey: moduleValue.key,
+      lessonKey: lesson.key,
+      microsequenceKey: microsequence.key,
+      cardKey: microsequence.cards[0].key,
+      cardIndex: 0
+    },
+    course,
+    moduleValue,
+    lesson,
+    microsequence,
+    cards: microsequence.cards,
+    microsequenceMode: "play",
+    editorSupport: {
+      progress: { version: 1, lessons: {} },
+      dependencies: [],
+      microsequenceVersions: [{ id: "v1", label: "Versão 1", operationType: "generated-pending" }],
+      activeMicrosequenceVersionId: "v1",
+      visualizedMicrosequenceVersionId: "v1",
+      editBaseMicrosequenceVersionId: "v1",
+      visualizedMicrosequenceVersion: {
+        id: "v1",
+        title: microsequence.title,
+        tags: microsequence.tags,
+        cards: microsequence.cards
+      },
+      pendingGeneratedVersionId: "v1",
+      pendingGeneratedVersionActive: true,
+      selectedDependencyKeys: [],
+      pendingDependencyKey: "",
+      modelOptions: [{ value: "gemini-2.5-flash", label: "Gemini 2.5 Flash" }],
+      selectedModel: "gemini-2.5-flash",
+      assistModeOptions: [],
+      selectedAssistMode: "edit-microsequence",
+      activeWorkbenchPane: "preview",
+      assistModeLocked: true,
+      promptText: ""
+    }
+  });
+
+  assert.match(html, /data-action="discard-generated-version"/);
+  assert.match(html, /data-action="accept-generated-version"/);
+  assert.match(html, /workbench-preview-footer/);
 });
 
 test("mantém o botão continuar ativo no último card do modo de estudo", () => {

@@ -6,8 +6,11 @@ import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageInfo;
+import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
+import android.provider.OpenableColumns;
+import android.text.TextUtils;
 import android.util.Base64;
 import android.webkit.JavascriptInterface;
 import android.webkit.ValueCallback;
@@ -26,8 +29,14 @@ import androidx.core.view.WindowCompat;
 import androidx.webkit.WebViewAssetLoader;
 import androidx.webkit.WebViewCompat;
 
+import org.json.JSONObject;
+
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 
 public class MainActivity extends Activity {
     private static final String APP_URL =
@@ -36,6 +45,7 @@ public class MainActivity extends Activity {
     private static final int REQUEST_EXPORT_DOCUMENT = 1002;
     private static final String DEFAULT_EXPORT_NAME = "aralearn-export.json";
     private static final String DEFAULT_EXPORT_MIME = "application/json";
+    private static final int MAX_SHARED_IMPORT_BYTES = 5 * 1024 * 1024;
     private static final int WEBVIEW_PLATFORM_INSETS_MILESTONE = 140;
     private static final String BACK_PRESS_SCRIPT =
         "(function(){try{return !!(window.AraLearnAndroid && " +
@@ -47,6 +57,8 @@ public class MainActivity extends Activity {
     private PendingDocumentWrite pendingExport;
     private WebViewAssetLoader assetLoader;
     private InsetCapabilities insetCapabilities = new InsetCapabilities(false, 0);
+    private String pendingSharedImportText;
+    private String pendingSharedImportSourceName;
 
     private static final class PendingDocumentWrite {
         final byte[] bytes;
@@ -94,6 +106,17 @@ public class MainActivity extends Activity {
         } else {
             webView.restoreState(savedInstanceState);
         }
+
+        captureSharedImportIntent(getIntent());
+        flushPendingSharedImportToWebView();
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        captureSharedImportIntent(intent);
+        flushPendingSharedImportToWebView();
     }
 
     @Override
@@ -164,6 +187,7 @@ public class MainActivity extends Activity {
         settings.setDomStorageEnabled(true);
         settings.setAllowFileAccess(false);
         settings.setAllowContentAccess(true);
+        settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
 
         webView.addJavascriptInterface(new AndroidHostBridge(), "AndroidHost");
         webView.setWebViewClient(new AraLearnWebViewClient());
@@ -291,8 +315,202 @@ public class MainActivity extends Activity {
         runOnUiThread(() -> Toast.makeText(MainActivity.this, message, Toast.LENGTH_SHORT).show());
     }
 
+    private void captureSharedImportIntent(Intent intent) {
+        if (intent == null) {
+            return;
+        }
+
+        String action = intent.getAction();
+        if (Intent.ACTION_VIEW.equals(action)) {
+            captureSharedImportFromUri(intent, intent.getData());
+            return;
+        }
+
+        if (Intent.ACTION_SEND.equals(action)) {
+            Uri streamUri = intent.getParcelableExtra(Intent.EXTRA_STREAM);
+            if (streamUri != null) {
+                captureSharedImportFromUri(intent, streamUri);
+                return;
+            }
+
+            CharSequence sharedText = intent.getCharSequenceExtra(Intent.EXTRA_TEXT);
+            if (sharedText != null) {
+                queueSharedImportText(sharedText.toString(), resolveSharedSourceName(intent, null));
+                markSharedImportIntentConsumed(intent);
+            }
+            return;
+        }
+
+        if (Intent.ACTION_SEND_MULTIPLE.equals(action)) {
+            ArrayList<Uri> streams = intent.getParcelableArrayListExtra(Intent.EXTRA_STREAM);
+            if (streams != null) {
+                for (Uri candidate : streams) {
+                    if (candidate == null) {
+                        continue;
+                    }
+                    if (captureSharedImportFromUri(intent, candidate)) {
+                        return;
+                    }
+                }
+            }
+
+            showToast(getString(R.string.shared_import_unreadable));
+        }
+    }
+
+    private boolean captureSharedImportFromUri(Intent intent, Uri uri) {
+        if (uri == null) {
+            return false;
+        }
+
+        try {
+            queueSharedImportText(readTextFromUri(uri), resolveSharedSourceName(intent, uri));
+            markSharedImportIntentConsumed(intent);
+            return true;
+        } catch (SharedImportTooLargeException error) {
+            showToast(getString(R.string.shared_import_too_large));
+            return false;
+        } catch (IOException error) {
+            showToast(getString(R.string.shared_import_unreadable));
+            return false;
+        }
+    }
+
+    private void queueSharedImportText(String rawText, String sourceName) {
+        if (rawText == null) {
+            showToast(getString(R.string.shared_import_not_text));
+            return;
+        }
+
+        byte[] bytes = rawText.getBytes(StandardCharsets.UTF_8);
+        if (bytes.length > MAX_SHARED_IMPORT_BYTES) {
+            showToast(getString(R.string.shared_import_too_large));
+            return;
+        }
+
+        String normalizedText = rawText.trim();
+        if (normalizedText.isEmpty()) {
+            showToast(getString(R.string.shared_import_not_text));
+            return;
+        }
+
+        pendingSharedImportText = normalizedText;
+        pendingSharedImportSourceName = TextUtils.isEmpty(sourceName)
+            ? getString(R.string.shared_import_default_source)
+            : sourceName;
+        showToast(getString(R.string.shared_import_received));
+    }
+
+    private String readTextFromUri(Uri uri) throws IOException {
+        try (InputStream input = getContentResolver().openInputStream(uri)) {
+            if (input == null) {
+                throw new IOException("Conteúdo indisponível.");
+            }
+
+            ByteArrayOutputStream output = new ByteArrayOutputStream();
+            byte[] buffer = new byte[8192];
+            int totalBytes = 0;
+            int read;
+            while ((read = input.read(buffer)) != -1) {
+                totalBytes += read;
+                if (totalBytes > MAX_SHARED_IMPORT_BYTES) {
+                    throw new SharedImportTooLargeException();
+                }
+                output.write(buffer, 0, read);
+            }
+
+            if (output.size() == 0) {
+                throw new IOException("Conteúdo vazio.");
+            }
+
+            return output.toString(StandardCharsets.UTF_8.name());
+        }
+    }
+
+    private String resolveSharedSourceName(Intent intent, Uri uri) {
+        if (uri != null) {
+            String uriName = readDisplayName(uri);
+            if (!TextUtils.isEmpty(uriName)) {
+                return uriName;
+            }
+            String pathSegment = uri.getLastPathSegment();
+            if (!TextUtils.isEmpty(pathSegment)) {
+                return pathSegment;
+            }
+        }
+
+        CharSequence subject = intent != null ? intent.getCharSequenceExtra(Intent.EXTRA_SUBJECT) : null;
+        if (subject != null && !TextUtils.isEmpty(subject.toString().trim())) {
+            return subject.toString().trim();
+        }
+
+        return getString(R.string.shared_import_default_source);
+    }
+
+    private String readDisplayName(Uri uri) {
+        try (Cursor cursor = getContentResolver().query(uri, new String[] { OpenableColumns.DISPLAY_NAME }, null, null, null)) {
+            if (cursor != null && cursor.moveToFirst()) {
+                int columnIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME);
+                if (columnIndex >= 0) {
+                    String value = cursor.getString(columnIndex);
+                    if (!TextUtils.isEmpty(value)) {
+                        return value;
+                    }
+                }
+            }
+        } catch (RuntimeException ignored) {
+            // Alguns providers não expõem metadados estáveis; o fallback usa lastPathSegment.
+        }
+        return "";
+    }
+
+    private void markSharedImportIntentConsumed(Intent intent) {
+        if (intent == null) {
+            return;
+        }
+
+        intent.setAction(Intent.ACTION_MAIN);
+        intent.setData(null);
+        intent.removeExtra(Intent.EXTRA_STREAM);
+        intent.removeExtra(Intent.EXTRA_TEXT);
+        intent.removeExtra(Intent.EXTRA_SUBJECT);
+    }
+
+    private void flushPendingSharedImportToWebView() {
+        if (webView == null || TextUtils.isEmpty(pendingSharedImportText)) {
+            return;
+        }
+
+        final String importText = pendingSharedImportText;
+        final String sourceName = pendingSharedImportSourceName == null ? "" : pendingSharedImportSourceName;
+        String script =
+            "(function(){try{" +
+            "if(window.AraLearnAndroidImport&&window.AraLearnAndroidImport.receiveSharedJson){" +
+            "return !!window.AraLearnAndroidImport.receiveSharedJson(" +
+            JSONObject.quote(importText) +
+            "," +
+            JSONObject.quote(sourceName) +
+            ");" +
+            "}" +
+            "return false;" +
+            "}catch(_error){return false;}})();";
+
+        webView.evaluateJavascript(script, value -> {
+            if ("true".equals(value)) {
+                pendingSharedImportText = null;
+                pendingSharedImportSourceName = null;
+            }
+        });
+    }
+
     private boolean isDebuggableApp() {
         return (getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE) != 0;
+    }
+
+    private static final class SharedImportTooLargeException extends IOException {
+        SharedImportTooLargeException() {
+            super("Arquivo muito grande para importação.");
+        }
     }
 
     private final class AraLearnWebChromeClient extends WebChromeClient {
@@ -337,6 +555,7 @@ public class MainActivity extends Activity {
         @Override
         public void onPageFinished(WebView view, String url) {
             super.onPageFinished(view, url);
+            flushPendingSharedImportToWebView();
         }
     }
 

@@ -47,9 +47,11 @@ O contrato público oferece formatos de card para diferentes tipos de conhecimen
 - `code`: código, comandos e trechos executáveis;
 - `table`: comparação, classificação e resumo estruturado;
 - `tree`: diretórios, caminhos e estruturas de projeto;
-- `flow`: fluxogramas com leitura e prática por lacunas.
+- `flow`: fluxogramas com leitura e prática por lacunas;
+- `plane`: plano cartesiano introdutório;
+- `matrix`: leitura e prática com matrizes.
 
-O contêiner deve ser escolhido pela necessidade didática, não por variedade visual. Um conceito pode precisar de `say`; uma distinção pode ser melhor em `table`; um procedimento computacional pode exigir `code`, `tree` ou `flow`.
+O contêiner deve ser escolhido pela necessidade didática, não por variedade visual. Um conceito pode precisar de `say`; uma distinção pode ser melhor em `table`; um procedimento computacional pode exigir `code`, `tree` ou `flow`; um raciocínio geométrico inicial pode caber melhor em `plane`; uma transformação matricial ou um cálculo por linhas e colunas pode exigir `matrix`.
 
 ## Lacunas
 
@@ -120,7 +122,7 @@ Modelos de linguagem podem acelerar a autoria, mas não garantem qualidade didá
 - formatos restritos;
 - validação;
 - revisão no painel da microssequência;
-- versões locais;
+- iterações locais reversíveis;
 - possibilidade de edição humana;
 - critérios de avaliação.
 

@@ -33,6 +33,7 @@ export function buildMicrosequenceEditContract({
     },
     previousVersionsSummary: editPlanningContract.previousVersionsSummary,
     previousVersionsLoaded: previousVersionsLoadedWhenRequired,
+    requestGovernance: editPlanningContract.requestGovernance,
     resources,
     sources: editPlanningContract.sources,
     model: {

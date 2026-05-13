@@ -9,6 +9,7 @@ export function buildMicrosequenceGenerationContract({ planningContract, validat
     resolvedMicrosequenceTypeId: plan.typeId,
     resolvedSizeId: plan.sizeId,
     selectedModel,
+    lessonAllowedResourceTypes: planningContract.context.lesson.resourceTags || [],
     userSelectedExtraResourceTypes: planningContract.request.userSelectedExtraResourceTypes,
     planSelectedExtraResourceTypes: [
       ...(plan.selectedExtraResourceTypes || []),
@@ -35,6 +36,7 @@ export function buildMicrosequenceGenerationContract({ planningContract, validat
       cardPlan: plan.cardPlan
     },
     didacticGuardrails: planningContract.didacticGuardrails,
+    requestGovernance: planningContract.requestGovernance,
     resources,
     sources: planningContract.sources,
     model: planningContract.model,

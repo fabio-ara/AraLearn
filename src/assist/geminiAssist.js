@@ -11,12 +11,21 @@ import { adaptResourceCardsToPublicCards } from "../generation/resources/adaptRe
 import { canResumeGeneration, createGenerationRunState, updateGenerationRunState } from "../generation/runs/generationRunState.js";
 import { validateOrRepairGeneratedCards } from "../generation/validation/validateOrRepairGeneratedCards.js";
 import {
-  buildSourceGuideText,
-  getSourceGuideSchemaProperties,
+  buildSourceGuideTextForModel,
+  getSourceGuideSchemaPropertiesForModel,
   getSourceGuideSchemaRequired,
-  normalizeSourceGuideStructured,
+  sanitizeSourceGuideStructuredForModel,
   SOURCE_GUIDE_LEVELS
 } from "../sourceGuides/sourceGuideStructured.js";
+import {
+  getLessonGuidanceSchemaProperties,
+  getLessonGuidanceSchemaRequired,
+  listLessonContentTypeIds,
+  listLessonLearningActionIds,
+  listLessonResourceTagIds,
+  listLessonSupportLevelIds,
+  normalizeLessonGuidance
+} from "../generation/guidance/lessonGuidance.js";
 
 function fail(message) {
   throw new Error(message);
@@ -471,13 +480,6 @@ function getStructureSchema() {
         properties: {
           title: { type: "string" },
           description: { type: "string" },
-          sourceGuide: { type: "string" },
-          sourceGuideStructured: {
-            type: "object",
-            properties: getSourceGuideSchemaProperties(SOURCE_GUIDE_LEVELS.COURSE),
-            required: getSourceGuideSchemaRequired(SOURCE_GUIDE_LEVELS.COURSE),
-            additionalProperties: false
-          },
           modules: {
             type: "array",
             minItems: 1,
@@ -487,13 +489,6 @@ function getStructureSchema() {
               properties: {
                 title: { type: "string" },
                 description: { type: "string" },
-                sourceGuide: { type: "string" },
-                sourceGuideStructured: {
-                  type: "object",
-                  properties: getSourceGuideSchemaProperties(SOURCE_GUIDE_LEVELS.MODULE),
-                  required: getSourceGuideSchemaRequired(SOURCE_GUIDE_LEVELS.MODULE),
-                  additionalProperties: false
-                },
                 lessons: {
                   type: "array",
                   minItems: 1,
@@ -506,22 +501,23 @@ function getStructureSchema() {
                       sourceGuide: { type: "string" },
                       sourceGuideStructured: {
                         type: "object",
-                        properties: getSourceGuideSchemaProperties(SOURCE_GUIDE_LEVELS.LESSON),
+                        properties: getSourceGuideSchemaPropertiesForModel(SOURCE_GUIDE_LEVELS.LESSON),
                         required: getSourceGuideSchemaRequired(SOURCE_GUIDE_LEVELS.LESSON),
                         additionalProperties: false
-                      }
+                      },
+                      ...getLessonGuidanceSchemaProperties()
                     },
-                    required: ["title", "description", "sourceGuide", "sourceGuideStructured"],
+                    required: ["title", "description", "sourceGuide", "sourceGuideStructured", ...getLessonGuidanceSchemaRequired()],
                     additionalProperties: false
                   }
                 }
               },
-              required: ["title", "description", "sourceGuide", "sourceGuideStructured", "lessons"],
+              required: ["title", "description", "lessons"],
               additionalProperties: false
             }
           }
         },
-        required: ["title", "description", "sourceGuide", "sourceGuideStructured", "modules"],
+        required: ["title", "description", "modules"],
         additionalProperties: false
       }
     },
@@ -681,13 +677,25 @@ function buildStructurePrompt({ context, promptText }) {
     "Contexto atual:",
     `Curso: ${courseTitle}`,
     `Descrição breve do curso: ${normalizeText(context?.courseDescription) || "ausente"}`,
-    buildOptionalGuideLine("Fonte-guia do curso", context?.courseSourceGuide),
     `Módulo: ${moduleTitle}`,
     `Descrição breve do módulo: ${normalizeText(context?.moduleDescription) || "ausente"}`,
-    buildOptionalGuideLine("Fonte-guia do módulo", context?.moduleSourceGuide),
     `Lição: ${lessonTitle}`,
     `Descrição breve da lição: ${normalizeText(context?.lessonDescription) || "ausente"}`,
     buildOptionalGuideLine("Fonte-guia da lição", context?.lessonSourceGuide),
+    buildOptionalStructuredGuideLine("Fonte-guia estruturada da lição", context?.lessonSourceGuideStructured),
+    buildOptionalGuideLine(
+      "Recursos atuais da lição",
+      Array.isArray(context?.lessonResourceTags) ? context.lessonResourceTags.join(", ") : ""
+    ),
+    buildOptionalGuideLine(
+      "Tipos atuais de conteúdo",
+      Array.isArray(context?.lessonContentTypeTags) ? context.lessonContentTypeTags.join(", ") : ""
+    ),
+    buildOptionalGuideLine(
+      "Ações atuais de estudo",
+      Array.isArray(context?.lessonLearningActionTags) ? context.lessonLearningActionTags.join(", ") : ""
+    ),
+    buildOptionalGuideLine("Nível atual de apoio", context?.lessonSupportLevel),
     "",
     ...buildHierarchySummaryLines("Módulos atuais do curso", context?.courseModules, "lições"),
     ...buildHierarchySummaryLines("Lições atuais do módulo", context?.moduleLessons),
@@ -701,13 +709,14 @@ function buildStructurePrompt({ context, promptText }) {
     "- Não gere microssequências.",
     "- Não gere cards.",
     "- description deve ser breve, própria para UI.",
-    "- Preencha sourceGuideStructured com poucas frases curtas, sem repetir o mesmo texto em níveis diferentes.",
-    "- Em curso, use apenas: audience, globalScope, globalOutOfScope, sharedNotation.",
-    "- Em módulo, use apenas: moduleScope, modulePrerequisites, moduleOutOfScope, lessonProgression.",
-    "- Em lição, use apenas: lessonGoal, lessonPrerequisites, notationRules, commonErrors, masteryGoal.",
-    "- Não suba preferências finas de explicação ou prática para curso e módulo; isso pertence à microssequência.",
+    "- Curso e módulo não têm fonte-guia própria neste contrato.",
+    "- Em lição, use apenas: lessonGoal, notationRules, commonErrors.",
+    `- Em lição, resourceTags deve usar apenas: ${listLessonResourceTagIds().join(", ")}.`,
+    `- Em lição, contentTypeTags deve usar apenas: ${listLessonContentTypeIds().join(", ")}.`,
+    `- Em lição, learningActionTags deve usar apenas: ${listLessonLearningActionIds().join(", ")}.`,
+    `- Em lição, supportLevel deve usar apenas: ${listLessonSupportLevelIds().join(", ")}.`,
     "- sourceGuide deve ser apenas um resumo curto e legível de sourceGuideStructured.",
-    "- Quando o assunto usar símbolos, conectivos, comandos, fórmulas ou nomes curtos, registre isso em notationRules ou sharedNotation, sem redundância.",
+    "- Quando o assunto usar símbolos, conectivos, comandos, fórmulas ou nomes curtos, registre isso em notationRules.",
     "- Não use description como substituto de sourceGuide.",
     "- Ao atualizar estrutura existente, use os textos atuais dos níveis afetados como base e devolva textos compatíveis com a mudança solicitada.",
     "- Se um nível estiver fixado, preserve exatamente o título informado pelo usuário.",
@@ -721,24 +730,10 @@ function buildStructurePrompt({ context, promptText }) {
     '  "course": {',
     '    "title": "string",',
     '    "description": "string",',
-    '    "sourceGuide": "string",',
-    '    "sourceGuideStructured": {',
-    '      "audience": "string",',
-    '      "globalScope": "string",',
-    '      "globalOutOfScope": "string",',
-    '      "sharedNotation": "string"',
-    "    },",
     '    "modules": [',
     '      {',
     '        "title": "string",',
     '        "description": "string",',
-    '        "sourceGuide": "string",',
-    '        "sourceGuideStructured": {',
-    '          "moduleScope": "string",',
-    '          "modulePrerequisites": "string",',
-    '          "moduleOutOfScope": "string",',
-    '          "lessonProgression": "string"',
-    "        },",
     '        "lessons": [',
     '          {',
     '            "title": "string",',
@@ -746,10 +741,8 @@ function buildStructurePrompt({ context, promptText }) {
     '            "sourceGuide": "string",',
     '            "sourceGuideStructured": {',
     '              "lessonGoal": "string",',
-    '              "lessonPrerequisites": "string",',
     '              "notationRules": "string",',
-    '              "commonErrors": "string",',
-    '              "masteryGoal": "string"',
+    '              "commonErrors": "string"',
     "            }",
     "          }",
     "        ]",
@@ -769,16 +762,16 @@ function buildLessonMicrosequencePrompt({ context, promptText }) {
     "Contexto atual:",
     `Curso: ${normalizeText(context?.courseTitle)}`,
     buildOptionalDescriptionLine("Descrição breve do curso", context?.courseDescription),
-    buildOptionalGuideLine("Fonte-guia do curso", context?.courseSourceGuide),
-    buildOptionalStructuredGuideLine("Fonte-guia estruturada do curso", context?.courseSourceGuideStructured),
     `Módulo: ${normalizeText(context?.moduleTitle)}`,
     buildOptionalDescriptionLine("Descrição breve do módulo", context?.moduleDescription),
-    buildOptionalGuideLine("Fonte-guia do módulo", context?.moduleSourceGuide),
-    buildOptionalStructuredGuideLine("Fonte-guia estruturada do módulo", context?.moduleSourceGuideStructured),
     `Lição: ${normalizeText(context?.lessonTitle)}`,
     buildOptionalDescriptionLine("Descrição breve da lição", context?.lessonDescription),
     buildOptionalGuideLine("Fonte-guia da lição", context?.lessonSourceGuide),
     buildOptionalStructuredGuideLine("Fonte-guia estruturada da lição", context?.lessonSourceGuideStructured),
+    buildOptionalGuideLine("Recursos permitidos da lição", Array.isArray(context?.lessonResourceTags) ? context.lessonResourceTags.join(", ") : ""),
+    buildOptionalGuideLine("Tipos de conteúdo da lição", Array.isArray(context?.lessonContentTypeTags) ? context.lessonContentTypeTags.join(", ") : ""),
+    buildOptionalGuideLine("Ações de estudo da lição", Array.isArray(context?.lessonLearningActionTags) ? context.lessonLearningActionTags.join(", ") : ""),
+    buildOptionalGuideLine("Nível de apoio da lição", context?.lessonSupportLevel),
     "",
     ...buildExistingMicrosequenceLines(context?.existingMicrosequences),
     "",
@@ -826,6 +819,10 @@ function buildLessonMicrosequenceRepositionPrompt({ context, promptText }) {
     buildOptionalDescriptionLine("Descrição breve da lição", context?.lessonDescription),
     buildOptionalGuideLine("Fonte-guia da lição", context?.lessonSourceGuide),
     buildOptionalStructuredGuideLine("Fonte-guia estruturada da lição", context?.lessonSourceGuideStructured),
+    buildOptionalGuideLine("Recursos permitidos da lição", Array.isArray(context?.lessonResourceTags) ? context.lessonResourceTags.join(", ") : ""),
+    buildOptionalGuideLine("Tipos de conteúdo da lição", Array.isArray(context?.lessonContentTypeTags) ? context.lessonContentTypeTags.join(", ") : ""),
+    buildOptionalGuideLine("Ações de estudo da lição", Array.isArray(context?.lessonLearningActionTags) ? context.lessonLearningActionTags.join(", ") : ""),
+    buildOptionalGuideLine("Nível de apoio da lição", context?.lessonSupportLevel),
     "",
     ...buildExistingMicrosequenceLines(context?.existingMicrosequences, { includeKeys: true }),
     "",
@@ -861,7 +858,7 @@ function buildLessonMicrosequenceRepositionPrompt({ context, promptText }) {
     .join("\n");
 }
 
-function buildEditPrompt({ microsequence, card, dependencyTitles, promptText }) {
+export function buildEditPrompt({ microsequence, card, dependencyTitles, promptText }) {
   const courseTitle = normalizeText(microsequence?.courseTitle) || "Curso atual";
   const courseDescription = normalizeText(microsequence?.courseDescription) || "não informado";
   const moduleTitle = normalizeText(microsequence?.moduleTitle) || "Módulo atual";
@@ -1100,19 +1097,26 @@ function buildGenerationContextEntities(microsequence = {}) {
       key: microsequence.courseKey || "",
       title: microsequence.courseTitle || "",
       description: microsequence.courseDescription || "",
-      sourceGuide: microsequence.courseSourceGuide || ""
+      sourceGuide: microsequence.courseSourceGuide || "",
+      sourceGuideStructured: microsequence.courseSourceGuideStructured || {}
     },
     selectedModule: {
       key: microsequence.moduleKey || "",
       title: microsequence.moduleTitle || "",
       description: microsequence.moduleDescription || "",
-      sourceGuide: microsequence.moduleSourceGuide || ""
+      sourceGuide: microsequence.moduleSourceGuide || "",
+      sourceGuideStructured: microsequence.moduleSourceGuideStructured || {}
     },
     selectedLesson: {
       key: microsequence.lessonKey || "",
       title: microsequence.lessonTitle || "",
       description: microsequence.lessonDescription || "",
-      sourceGuide: microsequence.lessonSourceGuide || ""
+      sourceGuide: microsequence.lessonSourceGuide || "",
+      sourceGuideStructured: microsequence.lessonSourceGuideStructured || {},
+      resourceTags: microsequence.lessonResourceTags || [],
+      contentTypeTags: microsequence.lessonContentTypeTags || [],
+      learningActionTags: microsequence.lessonLearningActionTags || [],
+      supportLevel: microsequence.lessonSupportLevel || ""
     },
     targetMicrosequence: {
       key: microsequence.key || "",
@@ -1125,7 +1129,8 @@ function buildGenerationContextEntities(microsequence = {}) {
 export function buildMicrosequencePlanningRepairPrompt({ planningContract, invalidPlan, errors }) {
   return [
     "Repare apenas o plano de microssequência do AraLearn.",
-    "Responda somente JSON válido com typeId, sizeId, microsequenceGoal, selectedExtraResourceTypes, cardPlan, sourceUsePlan e reason.",
+    "Responda somente JSON válido com typeId, sizeId, microsequenceGoal, selectedExtraResourceTypes, sourceUsePlan e reason.",
+    "Não devolva cardPlan, cards, position, role nem resourceType por card; o AraLearn monta a sequência de cards de forma determinística depois do planejamento.",
     "Preserve estritamente request.userFixedTypeId quando ele existir e não for assisted.",
     "Use apenas ids presentes em availableTypes e availableResources do contrato.",
     "Preserve todos os recursos extras de request.userSelectedExtraResourceTypes em selectedExtraResourceTypes.",
@@ -1195,6 +1200,7 @@ async function composeMicrosequenceWithTwoStepGeneration({
   dependencyTitles,
   selectedLessonTopicRefs = [],
   promptText,
+  userFixedTypeId = "",
   preferredContainer = "",
   fileParts = [],
   retryOptions = {},
@@ -1210,7 +1216,7 @@ async function composeMicrosequenceWithTwoStepGeneration({
       ? selectedLessonTopicRefs
       : dependencyTitles.map((title) => ({ refKey: title, label: title, source: "microsequence" })),
     userPrompt: promptText,
-    userFixedTypeId: null,
+    userFixedTypeId: userFixedTypeId || null,
     userSelectedExtraResourceTypes: preferredResource ? [preferredResource] : [],
     selectedModel: model
   });
@@ -1644,41 +1650,35 @@ function normalizeStructureResult(value) {
   const course = value?.course && typeof value.course === "object" ? value.course : null;
   const courseTitle = normalizeText(course?.title);
   const courseDescription = normalizeText(course?.description);
-  const courseSourceGuideStructured = normalizeSourceGuideStructured(course?.sourceGuideStructured, { level: SOURCE_GUIDE_LEVELS.COURSE });
-  const courseSourceGuide =
-    normalizeText(course?.sourceGuide) || buildSourceGuideText(courseSourceGuideStructured, "", { level: SOURCE_GUIDE_LEVELS.COURSE });
 
   const modules = Array.isArray(course?.modules)
     ? course.modules
         .map((moduleValue) => {
           const moduleTitle = normalizeText(moduleValue?.title);
           const moduleDescription = normalizeText(moduleValue?.description);
-          const moduleSourceGuideStructured = normalizeSourceGuideStructured(moduleValue?.sourceGuideStructured, { level: SOURCE_GUIDE_LEVELS.MODULE });
-          const moduleSourceGuide =
-            normalizeText(moduleValue?.sourceGuide) || buildSourceGuideText(moduleSourceGuideStructured, "", { level: SOURCE_GUIDE_LEVELS.MODULE });
           const lessons = Array.isArray(moduleValue?.lessons)
             ? moduleValue.lessons
                 .map((lesson) => {
-                  const lessonSourceGuideStructured = normalizeSourceGuideStructured(lesson?.sourceGuideStructured, { level: SOURCE_GUIDE_LEVELS.LESSON });
-                  const lessonSourceGuide =
-                    normalizeText(lesson?.sourceGuide) || buildSourceGuideText(lessonSourceGuideStructured, "", { level: SOURCE_GUIDE_LEVELS.LESSON });
+                  const lessonSourceGuideStructured = sanitizeSourceGuideStructuredForModel(lesson?.sourceGuideStructured, {
+                    level: SOURCE_GUIDE_LEVELS.LESSON
+                  });
+                  const lessonSourceGuide = buildSourceGuideTextForModel(
+                    lessonSourceGuideStructured,
+                    { level: SOURCE_GUIDE_LEVELS.LESSON }
+                  );
+                  const lessonGuidance = normalizeLessonGuidance(lesson);
                   return {
                     title: normalizeText(lesson?.title),
                     description: normalizeText(lesson?.description),
                     sourceGuide: lessonSourceGuide,
-                    sourceGuideStructured: lessonSourceGuideStructured
+                    sourceGuideStructured: lessonSourceGuideStructured,
+                    ...lessonGuidance
                   };
                 })
                 .filter((lesson) => lesson.title && lesson.description && lesson.sourceGuide && Object.keys(lesson.sourceGuideStructured).length)
             : [];
 
-          if (
-            !moduleTitle ||
-            !moduleDescription ||
-            !moduleSourceGuide ||
-            !Object.keys(moduleSourceGuideStructured).length ||
-            !lessons.length
-          ) {
+          if (!moduleTitle || !moduleDescription || !lessons.length) {
             return null;
           }
 
@@ -1686,8 +1686,6 @@ function normalizeStructureResult(value) {
           return {
             title: moduleTitle,
             description: moduleDescription,
-            sourceGuide: moduleSourceGuide,
-            sourceGuideStructured: moduleSourceGuideStructured,
             lessons: lessons.filter((lesson) => {
               const key = lesson.title.toLowerCase();
               if (seenLessons.has(key)) {
@@ -1701,13 +1699,7 @@ function normalizeStructureResult(value) {
         .filter(Boolean)
     : [];
 
-  if (
-    !courseTitle ||
-    !courseDescription ||
-    !courseSourceGuide ||
-    !Object.keys(courseSourceGuideStructured).length ||
-    !modules.length
-  ) {
+  if (!courseTitle || !courseDescription || !modules.length) {
     fail("O serviço de IA devolveu uma estrutura de curso incompleta.");
   }
 
@@ -1716,8 +1708,6 @@ function normalizeStructureResult(value) {
     course: {
       title: courseTitle,
       description: courseDescription,
-      sourceGuide: courseSourceGuide,
-      sourceGuideStructured: courseSourceGuideStructured,
       modules: modules.filter((moduleValue) => {
         const key = moduleValue.title.toLowerCase();
         if (seenModules.has(key)) {
@@ -1740,6 +1730,7 @@ export async function runGeminiAssist({
   selectedLessonTopicRefs = [],
   destinationSlots = [],
   promptText,
+  userFixedTypeId = "",
   preferredContainer = "",
   attachments = [],
   retryOptions = {},
@@ -1785,6 +1776,7 @@ export async function runGeminiAssist({
         dependencyTitles,
         selectedLessonTopicRefs,
         promptText: trimmedPrompt,
+        userFixedTypeId,
         preferredContainer,
         fileParts,
         retryOptions,
@@ -1850,7 +1842,7 @@ export async function runGeminiAssist({
       body = makeRequestBody({
         systemInstruction:
           "Você gera estruturas de curso para o AraLearn. " +
-          "Responda apenas no JSON pedido com title, description e sourceGuide em curso, módulo e lição.",
+          "Responda apenas no JSON pedido com governança estruturada de curso, módulo e lição.",
         prompt: buildStructurePrompt({ context: microsequence, promptText: trimmedPrompt }),
         fileParts,
         schema: getStructureSchema(),

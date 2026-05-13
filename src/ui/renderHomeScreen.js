@@ -181,6 +181,7 @@ function renderCoursesTopbar() {
     renderUiIcon("sparkles", "home-tab-icon") +
     "</button>" +
     '<button class="icon-ghost" type="button" data-action="quick-create-course" title="Criar curso vazio" aria-label="Criar curso vazio">＋</button>' +
+    '<button class="icon-ghost" type="button" data-action="open-version-history" title="Snapshots do projeto" aria-label="Snapshots do projeto">🕘</button>' +
     '<button class="icon-ghost" type="button" data-action="open-home-actions" title="Ações do app" aria-label="Ações do app">⋯</button>' +
     "</div>" +
     "</header>"
@@ -561,9 +562,6 @@ function renderCoursesPane({ project, progress }) {
         "</div>" +
         renderHomeCourseMeta(course) +
         '<div class="course-actions navigation-actions">' +
-        '<button class="icon-ghost corner-btn" type="button" data-action="open-course-source-guide" data-course-key="' +
-        escapeHtml(course.key) +
-        '" title="Editar fonte-guia do curso" aria-label="Editar fonte-guia do curso">📎</button>' +
         '<button class="icon-ghost corner-btn" type="button" data-action="open-course-actions" data-course-key="' +
         escapeHtml(course.key) +
         '" title="Ações do curso" aria-label="Ações do curso">⋯</button>' +

@@ -1,6 +1,6 @@
 {
   "name": "aralearn",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "private": true,
   "description": "Base inicial pública do AraLearn.",
   "type": "module",
@@ -10,6 +10,7 @@
     "test": "node --test",
     "validate:example": "node ./src/contract/validateContract.cli.js ./docs/examples/aralearn-contract.renderable.json",
     "smoke:gemini": "node ./scripts/runGeminiAssistSmoke.js",
+    "codex:local": "node ./scripts/aralearnCodexBridge.mjs",
     "android:debug": "pwsh -NoProfile -File ./scripts/buildAndroidDebug.ps1",
     "pages:build": "pwsh -NoProfile -File ./scripts/buildPages.ps1"
   }

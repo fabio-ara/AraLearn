@@ -5,6 +5,7 @@ import {
   applyStructureVersionSnapshot,
   buildStructureVersionKey,
   createManualStructureRestore,
+  createStructureSnapshot,
   findStructureVersionEntity,
   seedStructureVersionMapFromProject,
   recordStructureVersionTransition,
@@ -22,6 +23,8 @@ function createProject() {
           {
             key: "module-a",
             title: "Módulo A",
+            sourceGuide: "Escopo do módulo: base.",
+            sourceGuideStructured: { moduleScope: "base." },
             lessons: [
               {
                 key: "lesson-a",
@@ -90,6 +93,7 @@ test("syncStructureVersionSnapshot cria entrada inicial e mantém a versão ativ
 
   assert.equal(firstEntry.activeVersionId, "v1");
   assert.equal(firstEntry.versions[0].snapshot.title, "Módulo A");
+  assert.deepEqual(firstEntry.versions[0].snapshot.sourceGuideStructured, { moduleScope: "base." });
 
   const nextProject = createProject();
   nextProject.courses[0].modules[0].title = "Módulo Atualizado";
@@ -163,6 +167,42 @@ test("recordStructureVersionTransition inicializa entidade nova com versão úni
   assert.equal(entry.versions[0].operationType, "seed");
 });
 
+test("createStructureSnapshot grava snapshots explícitos sem atualizar versões antigas", () => {
+  const versionMap = {};
+  const reference = { level: "module", courseKey: "course-a", moduleKey: "module-a" };
+  const firstProject = createProject();
+
+  const firstEntry = createStructureSnapshot(versionMap, {
+    project: firstProject,
+    reference,
+    now: new Date("2026-05-10T15:00:00.000Z")
+  });
+
+  const secondProject = createProject();
+  secondProject.courses[0].modules[0].title = "Módulo B";
+
+  const secondEntry = createStructureSnapshot(versionMap, {
+    project: secondProject,
+    reference,
+    now: new Date("2026-05-10T16:00:00.000Z")
+  });
+
+  assert.equal(firstEntry.versions.length, 1);
+  assert.equal(secondEntry.activeVersionId, "v2");
+  assert.deepEqual(
+    secondEntry.versions.map((version) => ({
+      id: version.id,
+      label: version.label,
+      operationType: version.operationType,
+      title: version.snapshot.title
+    })),
+    [
+      { id: "v1", label: "Snapshot 1", operationType: "snapshot", title: "Módulo A" },
+      { id: "v2", label: "Snapshot 2", operationType: "snapshot", title: "Módulo B" }
+    ]
+  );
+});
+
 test("applyStructureVersionSnapshot restaura o snapshot completo do nível selecionado", () => {
   const project = createProject();
   const nextProject = applyStructureVersionSnapshot(
@@ -177,6 +217,7 @@ test("applyStructureVersionSnapshot restaura o snapshot completo do nível selec
       title: "Lição Restaurada",
       description: "Resumo restaurado",
       sourceGuide: "Guia restaurado",
+      sourceGuideStructured: { lessonGoal: "Restaurar guia estruturada." },
       microsequences: [{ key: "micro-b", title: "Mic B", cards: [] }]
     }
   );
@@ -189,6 +230,9 @@ test("applyStructureVersionSnapshot restaura o snapshot completo do nível selec
     nextProject.courses[0].modules[0].lessons[0].microsequences.map((item) => item.key),
     ["micro-b"]
   );
+  assert.deepEqual(nextProject.courses[0].modules[0].lessons[0].sourceGuideStructured, {
+    lessonGoal: "Restaurar guia estruturada."
+  });
   assert.equal(
     project.courses[0].modules[0].lessons[0].title,
     "Lição A"
