@@ -1,45 +1,52 @@
 import { getMicrosequenceCardCount } from "../types/microsequenceSizes.js";
 import { getMicrosequenceType } from "../types/microsequenceTypes.js";
 import { resolveResourcesForGenerationPlan } from "../resources/resolveResourcesForGenerationPlan.js";
+import { getWeakModelModePolicy } from "../policies/weakModelPolicy.js";
 
 export function buildMicrosequenceGenerationContract({ planningContract, validatedPlan, selectedModel }) {
   const plan = validatedPlan?.plan || validatedPlan;
   const type = getMicrosequenceType(plan.typeId);
+  const cardCount = getMicrosequenceCardCount(plan.sizeId);
   const resources = resolveResourcesForGenerationPlan({
     resolvedMicrosequenceTypeId: plan.typeId,
-    resolvedSizeId: plan.sizeId,
-    selectedModel,
     lessonAllowedResourceTypes: planningContract.context.lesson.resourceTags || [],
+    lessonGuidance: planningContract.context.lesson,
+    lessonSourceGuideStructured: planningContract.context.lesson.sourceGuideStructured || {},
+    modelCapabilities: planningContract.model.capabilities,
     userSelectedExtraResourceTypes: planningContract.request.userSelectedExtraResourceTypes,
-    planSelectedExtraResourceTypes: [
-      ...(plan.selectedExtraResourceTypes || []),
-      ...(plan.cardPlan || []).map((item) => item.resourceType)
-    ]
+    planSelectedExtraResourceTypes: plan.selectedExtraResourceTypes
   });
-  const cardCount = getMicrosequenceCardCount(plan.sizeId);
+
   return {
-    version: "aralearn.microsequence-generation-contract.v1",
+    version: "aralearn.microsequence-generation-contract.v2",
     operation: "generate_microsequence_cards",
     target: planningContract.target,
     context: planningContract.context,
-    selectedLessonTopicRefs: planningContract.selectedLessonTopicRefs || [],
     request: {
       userPrompt: planningContract.request.userPrompt,
       typeId: plan.typeId,
       sizeId: plan.sizeId,
       cardCount
     },
+    requestGovernance: planningContract.requestGovernance,
+    selectedLessonTopicRefs: planningContract.selectedLessonTopicRefs || [],
+    weakModelMode: getWeakModelModePolicy(planningContract.model.capabilities),
     didacticPlan: {
       microsequenceGoal: plan.microsequenceGoal,
       typeId: plan.typeId,
       typeLabel: type?.label || plan.typeId,
       cardPlan: plan.cardPlan
     },
-    didacticGuardrails: planningContract.didacticGuardrails,
-    requestGovernance: planningContract.requestGovernance,
-    resources,
+    resources: {
+      ...resources,
+      effectiveResourceSchemas: resources.resourceSchemas
+    },
     sources: planningContract.sources,
-    model: planningContract.model,
+    sourceUsePlan: plan.sourceUsePlan || [],
+    model: {
+      ...planningContract.model,
+      id: selectedModel || planningContract.model.id
+    },
     output: {
       format: "json",
       expectedCardCount: cardCount

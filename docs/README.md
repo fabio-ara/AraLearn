@@ -16,7 +16,7 @@ Os textos deste diretório descrevem o estado atualmente implementado no reposit
 ## IA generativa e pesquisa
 
 - `assistencia-por-ia.md`: engenharia da assistência por serviços de inteligência artificial generativa acessados por API
-- `codex-cli-termux.md`: Codex CLI via Termux no Android
+- `codex-cli.md`: Codex CLI local no Android, Windows e Linux
 - `android-share-import.md`: abrir JSON com AraLearn no Android por compartilhamento ou "Abrir com"
 - `pesquisa-e-avaliacao.md`: perguntas de pesquisa, métricas, riscos e desenhos de estudo
 - `planejamento-matematica-para-informatica.md`: exemplo público de planejamento didático aplicado

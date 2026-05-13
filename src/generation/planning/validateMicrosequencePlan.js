@@ -1,9 +1,27 @@
-import { getMicrosequenceCardCount, getMicrosequenceSize } from "../types/microsequenceSizes.js";
+import { getMicrosequenceSize } from "../types/microsequenceSizes.js";
 import { getMicrosequenceType } from "../types/microsequenceTypes.js";
 import { buildDeterministicCardPlan } from "./buildDeterministicCardPlan.js";
+import { assertUserSelectedResourcesAllowed } from "../policies/weakModelPolicy.js";
 
 function fail(errors) {
   return { ok: false, errors };
+}
+
+function text(value) {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function normalizeResourceList(items = []) {
+  const seen = new Set();
+  return (Array.isArray(items) ? items : [])
+    .map((item) => text(item))
+    .filter((item) => {
+      if (!item || seen.has(item)) {
+        return false;
+      }
+      seen.add(item);
+      return true;
+    });
 }
 
 function normalizeSourceUsePlan(sourceUsePlan, sourceIds, errors) {
@@ -15,7 +33,7 @@ function normalizeSourceUsePlan(sourceUsePlan, sourceIds, errors) {
       errors.push(`sourceUsePlan[${index}] inválido.`);
       return;
     }
-    const sourceId = String(item.sourceId || "").trim();
+    const sourceId = text(item.sourceId);
     if (!sourceId) {
       errors.push(`sourceUsePlan[${index}] sem sourceId.`);
       return;
@@ -29,12 +47,10 @@ function normalizeSourceUsePlan(sourceUsePlan, sourceIds, errors) {
       return;
     }
     seen.add(sourceId);
-    const usage = String(item.usage || item.intent || "").trim();
-    const note = String(item.note || item.reason || "").trim();
     normalized.push({
       sourceId,
-      ...(usage ? { usage } : {}),
-      ...(note ? { note } : {})
+      ...(text(item.usage) ? { usage: text(item.usage) } : {}),
+      ...(text(item.note) ? { note: text(item.note) } : {})
     });
   });
 
@@ -43,64 +59,82 @@ function normalizeSourceUsePlan(sourceUsePlan, sourceIds, errors) {
 
 export function validateMicrosequencePlan(plan, planningContract) {
   const errors = [];
-  const type = getMicrosequenceType(plan?.typeId);
-  const size = getMicrosequenceSize(plan?.sizeId);
-  const resourceIds = new Set((planningContract?.availableResources || []).map((item) => item.id));
+  const requestedTypeId = text(plan?.typeId);
+  const requestedSizeId = text(plan?.sizeId);
+  const type = getMicrosequenceType(requestedTypeId);
+  const size = getMicrosequenceSize(requestedSizeId);
   const sourceIds = new Set((planningContract?.sources || []).map((item) => item.sourceId));
-  const fixedTypeId = planningContract?.request?.userFixedTypeId;
-  const lessonAllowedResourceTypes = planningContract?.context?.lesson?.resourceTags || [];
+  const availableTypeIds = new Set((planningContract?.availableTypes || []).map((item) => item.id));
+  const availableSizeIds = new Set((planningContract?.availableSizes || []).map((item) => item.id));
+  const userFixedTypeId = text(planningContract?.request?.userFixedTypeId);
+  const userSelectedExtraResourceTypes = normalizeResourceList(planningContract?.request?.userSelectedExtraResourceTypes);
+  const requestedExtraResourceTypes = normalizeResourceList(plan?.selectedExtraResourceTypes);
 
-  if (!type) errors.push("typeId não existe.");
-  if (fixedTypeId && fixedTypeId !== "assisted" && plan?.typeId !== fixedTypeId) errors.push("typeId não preserva o Tipo fixado.");
-  if (!size) errors.push("sizeId não existe.");
-  if (type && size && !type.availableSizes.includes(size.id)) errors.push("sizeId incompatível com o tipo.");
+  if (!type) {
+    errors.push("typeId não existe.");
+  } else if (!availableTypeIds.has(requestedTypeId)) {
+    errors.push("typeId fora dos tipos permitidos pela policy.");
+  }
+  if (userFixedTypeId && userFixedTypeId !== "assisted" && requestedTypeId !== userFixedTypeId) {
+    errors.push("typeId não preserva o Tipo fixado.");
+  }
+  if (!size) {
+    errors.push("sizeId não existe.");
+  } else if (!availableSizeIds.has(requestedSizeId)) {
+    errors.push("sizeId fora dos tamanhos permitidos pela policy.");
+  }
 
-  const cardCount = getMicrosequenceCardCount(plan?.sizeId);
-
-  const userExtras = planningContract?.request?.userSelectedExtraResourceTypes || [];
-  const selectedExtras = new Set(plan?.selectedExtraResourceTypes || []);
-  const normalizedSourceUsePlan = normalizeSourceUsePlan(plan?.sourceUsePlan, sourceIds, errors);
-  userExtras.forEach((resourceId) => {
-    if (!selectedExtras.has(resourceId)) errors.push(`Recurso extra do usuário não preservado: ${resourceId}.`);
+  userSelectedExtraResourceTypes.forEach((resourceType) => {
+    if (!requestedExtraResourceTypes.includes(resourceType)) {
+      errors.push(`Recurso extra do usuário não preservado: ${resourceType}.`);
+    }
   });
-  (plan?.selectedExtraResourceTypes || []).forEach((resourceId) => {
-    if (!resourceIds.has(resourceId)) errors.push(`selectedExtraResourceTypes inválido: ${resourceId}.`);
+
+  const sourceUsePlan = normalizeSourceUsePlan(plan?.sourceUsePlan, sourceIds, errors);
+  const policyCheck = assertUserSelectedResourcesAllowed({
+    lessonGuidance: planningContract?.context?.lesson || {},
+    lessonSourceGuideStructured: planningContract?.context?.lesson?.sourceGuideStructured || {},
+    modelCapabilities: planningContract?.model?.capabilities || {},
+    resolvedTypeId: requestedTypeId,
+    userSelectedExtraResourceTypes: requestedExtraResourceTypes
   });
+  if (!policyCheck.ok) {
+    errors.push(...policyCheck.errors);
+  }
 
   const cardPlan =
     type && size
       ? buildDeterministicCardPlan({
-          typeId: plan.typeId,
-          sizeId: plan.sizeId,
-          selectedExtraResourceTypes: plan?.selectedExtraResourceTypes || [],
-          userSelectedExtraResourceTypes: userExtras,
-          lessonAllowedResourceTypes
+          typeId: requestedTypeId,
+          sizeId: requestedSizeId,
+          selectedExtraResourceTypes: requestedExtraResourceTypes,
+          userSelectedExtraResourceTypes,
+          lessonAllowedResourceTypes: planningContract?.context?.lesson?.resourceTags || [],
+          lessonGuidance: planningContract?.context?.lesson || {},
+          lessonSourceGuideStructured: planningContract?.context?.lesson?.sourceGuideStructured || {},
+          modelCapabilities: planningContract?.model?.capabilities || {},
+          sourceUsePlan
         })
       : [];
-  if (cardCount && cardPlan.length !== cardCount) errors.push("cardPlan determinístico não possui a quantidade esperada.");
-  cardPlan.forEach((item) => {
-    if (!resourceIds.has(item?.resourceType)) errors.push(`resourceType determinístico inválido: ${item?.resourceType || ""}.`);
-    (item?.sourceRefs || []).forEach((sourceId) => {
-      if (!sourceIds.has(sourceId)) errors.push(`Fonte inexistente no plano: ${sourceId}.`);
-    });
-  });
 
-  if (errors.length) return fail(errors);
+  if (size && cardPlan.length !== size.cardCount) {
+    errors.push("cardPlan determinístico não possui a quantidade esperada.");
+  }
+
+  if (errors.length) {
+    return fail(errors);
+  }
+
   return {
     ok: true,
     plan: {
-      typeId: plan.typeId,
-      sizeId: plan.sizeId,
-      microsequenceGoal: String(plan.microsequenceGoal || "").trim(),
-      selectedExtraResourceTypes: Array.from(selectedExtras),
-      cardPlan: cardPlan.map((item) => ({
-        position: item.position,
-        role: String(item.role).trim(),
-        resourceType: item.resourceType,
-        sourceRefs: Array.isArray(item.sourceRefs) ? item.sourceRefs : []
-      })),
-      sourceUsePlan: normalizedSourceUsePlan,
-      reason: String(plan.reason || "").trim()
+      typeId: requestedTypeId,
+      sizeId: requestedSizeId,
+      microsequenceGoal: text(plan?.microsequenceGoal),
+      selectedExtraResourceTypes: requestedExtraResourceTypes,
+      sourceUsePlan,
+      reason: text(plan?.reason),
+      cardPlan
     }
   };
 }

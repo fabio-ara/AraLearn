@@ -6,14 +6,30 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ### Changed
 
+- a camada de geração de cards passa a operar com policy explícita de `weakModelMode`, voltada a modelo fraco e barato
+- `modelCapabilities` deixa de usar flags ambíguas e passa a distinguir `jsonMode`, `responseJsonSchema`, `responseSchema` e força real de schema
+- o planejamento bottom-up fica reduzido a `typeId`, `sizeId`, `microsequenceGoal`, `selectedExtraResourceTypes`, `sourceUsePlan` e `reason`
+- o `cardPlan` passa a ser montado de forma determinística pelo app, com `position` e `resourceType` fixados por política e template
+- recursos avançados (`flowchart`, `tree`, `matrix`, `plane`) passam a exigir liberação explícita da lição e justificativa operacional
+- a validação de cards foi separada em estrutural, didática e grounding mínimo de fonte
+- o reparo determinístico passa a acontecer antes de qualquer reparo por LLM
+- o contrato público passa a aceitar `presetId` na lição e `sourceRefs` em cards
 - a assistência de cards volta a aplicar diretamente na microssequência o resultado validado da geração ou edição, sem estágio intermediário de prévia privada
 - o workbench da microssequência remove os controles de alternância, aplicação e descarte de prévia, mantendo a superfície de preview apenas como leitura do estado já em uso
 - a edição local de título e tags volta a atuar sempre sobre a microssequência persistida, sem bifurcação por rascunho temporário
 - a iteração gerada pela assistência passa a abrir com dois CTAs externos ao card para aceitar ou excluir a versão ativa, reaproveitando o histórico local como mecanismo de reversão imediata
+- a edição da fonte-guia passa a tratar `presetId` como modo pronto de verdade: ao trocar o modo da lição, o app reaplica recursos, tipos de conteúdo, ações de estudo e nível de apoio correspondentes, mantendo os campos abaixo como ajuste fino opcional
+- a configuração de IA passa a explicitar Gemini/API comum como caminho normal e `Codex CLI local` como integração avançada, além de mover o modelo local para o fim da lista
+- a navegação de estudo e as dependências didáticas passam a ignorar microssequências `draft` ou `included: false`, inclusive após geração, exclusão de iteração e restauração local
 
 ### Tests
 
+- a suíte passa a cobrir policy fraca, gating de recursos avançados, `sourceRefs`, validação separada e reparo determinístico
+- fixtures didáticas reais entram em `tests/fixtures/didactics/`
 - a suíte remove os cenários de storage e renderização específicos da prévia privada e passa a validar apenas o fluxo direto de atualização
+- a suíte passa a cobrir os presets humanos da lição e a distinção entre modo pronto e ajuste fino
+- a suíte passa a cobrir a configuração da IA com Gemini como caminho normal e Codex local como modo avançado
+- a suíte passa a travar que geração, versionamento local e coleta de dependências não promovem `draft` ou `included: false` a conteúdo executável
 ## [0.9.22] - 2026-05-06
 
 ### Changed

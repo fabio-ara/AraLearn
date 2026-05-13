@@ -1,129 +1,92 @@
 # Modelo didático
 
-Este documento descreve o desenho pedagógico do AraLearn. Ele deve orientar decisões sobre cards, microssequências, contêineres, lacunas, revisão e qualidade do material.
+## Unidade principal
 
-## Unidade de aprendizagem
+A unidade didática central do AraLearn é a microssequência.
 
-A unidade principal do AraLearn é a microssequência.
+Ela precisa ser:
 
-Uma microssequência é um percurso didático pequeno o bastante para ser retomado com facilidade e estruturado o bastante para conter progressão. Ela normalmente reúne:
+- pequena o bastante para retomada;
+- clara o bastante para revisão;
+- concreta o bastante para prática;
+- curta o bastante para caber em modelo fraco sem perder governança.
 
-- uma ideia central;
-- uma explicação ou leitura guiada;
-- um exemplo;
-- uma prática ativa;
-- uma verificação ou síntese.
+## Sequência mínima
 
-Cards isolados são importantes, mas a aprendizagem esperada depende da relação entre eles.
+O desenho preferido continua sendo:
 
-Microssequências podem estar em dois estados:
+1. contexto mínimo;
+2. microteoria;
+3. exemplo ou leitura guiada;
+4. prática autossuficiente;
+5. consolidação.
 
-- `draft`: rascunho em construção, visível na estrutura do curso, mas fora da execução;
-- `ready`: microssequência pronta para estudo no runtime.
+Nem toda microssequência precisa ter cinco cards, mas a prática não deve aparecer antes da base necessária.
 
-Na implementação atual, essa separação didática também organiza a navegação: o rascunho abre o painel de curadoria, enquanto a microssequência `ready` abre o modo de estudo.
+## Papel da LLM
 
-## Papel dos cards
+A LLM não decide a didática do percurso.
 
-Cada card deve ter uma função didática clara. Exemplos de função:
+Ela preenche cards planejados pelo app.
 
-- introduzir uma ideia;
-- distinguir conceitos próximos;
-- mostrar um exemplo;
-- pedir recuperação ativa;
-- comparar elementos;
-- praticar procedimento;
-- verificar entendimento;
-- consolidar vocabulário.
+Isso vale especialmente para:
 
-Um card sobrecarregado tende a dificultar estudo. A regra prática é manter uma ideia principal por card e uma progressão visível entre cards.
+- tipo didático;
+- tamanho;
+- posição do card;
+- recurso por posição;
+- regras de validação.
 
-## Contêineres
+## Recursos por prioridade
 
-O contrato público oferece formatos de card para diferentes tipos de conhecimento:
+Prioridade operacional:
 
-- `say`: explicação, leitura guiada e lacunas textuais;
-- `ask`: múltipla escolha;
-- `code`: código, comandos e trechos executáveis;
-- `table`: comparação, classificação e resumo estruturado;
-- `tree`: diretórios, caminhos e estruturas de projeto;
-- `flow`: fluxogramas com leitura e prática por lacunas;
-- `plane`: plano cartesiano introdutório;
-- `matrix`: leitura e prática com matrizes.
+- `paragraph`
+- `block_gap_fill`
+- `multiple_choice`
 
-O contêiner deve ser escolhido pela necessidade didática, não por variedade visual. Um conceito pode precisar de `say`; uma distinção pode ser melhor em `table`; um procedimento computacional pode exigir `code`, `tree` ou `flow`; um raciocínio geométrico inicial pode caber melhor em `plane`; uma transformação matricial ou um cálculo por linhas e colunas pode exigir `matrix`.
+Recursos como `table` e `code_editor` entram quando ajudam a reduzir salto cognitivo.
 
-## Lacunas
+Recursos como `flowchart`, `tree`, `matrix` e `plane` não entram por enfeite. Eles exigem justificativa didática e liberação da lição.
 
-As lacunas são usadas para transformar leitura em recuperação ativa.
+## Regras didáticas mínimas
 
-Tipos de lacuna relevantes:
+Um card bom no AraLearn:
 
-- lacunas por digitação;
-- lacunas por opções selecionáveis;
-- lacunas em fluxogramas;
-- lacunas em tabelas;
-- lacunas em árvores de diretórios.
+- evita bastidor;
+- não depende de “como vimos”;
+- não depende de figura ou trecho acima;
+- traz o contexto crítico no próprio card;
+- não revela a resposta antes da prática;
+- evita lacuna longa;
+- mantém uma função principal clara.
 
-Nos testes atuais da assistência por IA generativa, a preferência é por lacunas com opções selecionáveis. Essa escolha reduz ambiguidade, facilita validação e torna o primeiro ciclo de geração mais controlável.
+## Fonte e grounding mínimo
 
-## Revisão e progresso
+Quando houver fonte externa na operação:
 
-O AraLearn registra progresso local para permitir retomada. O avanço deve refletir o ponto mais avançado alcançado pelo usuário dentro de uma lição.
+- a lição continua governada por `sourceGuideStructured`;
+- `sourceRefs` ajudam a registrar vínculo mínimo entre card e fonte;
+- ausência de fonte precisa ser explícita no contrato intermediário.
 
-Do ponto de vista didático, progresso não deve ser entendido apenas como contagem de cards vistos. O produto deve caminhar para registrar:
+Isso não transforma o AraLearn em sistema de RAG avançado. É grounding mínimo e validável.
 
-- acertos;
-- erros;
-- pedidos de revisão;
-- reformulações;
-- versões de uma microssequência;
-- evidências de dúvida recorrente.
+## Estados didáticos
 
-Essas dimensões ainda podem ser amadurecidas, mas são relevantes para pesquisa educacional.
+Microssequências podem estar em:
 
-## Qualidade didática
+- `draft`
+- `ready`
 
-Uma microssequência gerada ou escrita manualmente deve ser avaliada por critérios como:
+Além disso, `included: false` mantém a microssequência fora do estudo mesmo que ela exista na árvore.
 
-- clareza da linguagem;
-- progressão entre cards;
-- densidade textual adequada;
-- exemplos concretos;
-- alternativas plausíveis;
-- lacunas sem ambiguidade;
-- vínculo entre prática e objetivo;
-- possibilidade de revisão depois de pausa;
-- adequação ao nível presumido do estudante.
+## Aplicação direta
 
-Critérios automáticos podem ajudar, mas a revisão humana continua necessária em materiais de maior responsabilidade.
+No fluxo atual de cards:
 
-## Aprendizagem em atenção fragmentada
+- o resultado validado é aplicado diretamente;
+- a iteração ativa fica visível;
+- o usuário pode aceitar ou excluir;
+- excluir restaura a versão anterior.
 
-O AraLearn foi pensado para estudo em contexto de interrupções. Isso afeta o modelo didático.
-
-Microssequências devem favorecer:
-
-- retomada rápida do contexto;
-- títulos informativos;
-- cards com função clara;
-- exemplos imediatamente acionáveis;
-- revisão sem depender de lembrar toda a conversa que originou o material.
-
-Essa exigência também vale para a arquitetura de navegação. Quando a entrada bottom-up e a revisão ficam distantes demais na interface, o produto corre o risco de enfraquecer a retomada que o próprio modelo didático quer fortalecer.
-
-Esse desenho é especialmente importante para estudantes trabalhadores e para aprendizagem autodirigida com pouco controle sobre tempo e energia.
-
-## Relação com IA generativa
-
-Modelos de linguagem podem acelerar a autoria, mas não garantem qualidade didática. Por isso, o AraLearn deve combinar geração assistida com:
-
-- plano local;
-- formatos restritos;
-- validação;
-- revisão no painel da microssequência;
-- iterações locais reversíveis;
-- possibilidade de edição humana;
-- critérios de avaliação.
-
-O objetivo não é apenas gerar cards. O objetivo é produzir material que realmente apoie prática e consolidação.
+Não existe mais prévia privada entre geração e microssequência persistida.

@@ -1,28 +1,8 @@
 # Contrato JSON do AraLearn
 
-Esta página documenta o formato `aralearn.contract`, usado para representar projetos completos ou recortes estruturais do AraLearn em JSON.
+## Envelope raiz
 
-O objetivo desta documentação é permitir que qualquer pessoa consiga:
-
-- escrever cursos manualmente;
-- validar a estrutura antes de importar;
-- adaptar um modelo de linguagem para produzir conteúdo compatível;
-- gerar cursos, módulos, lições, microssequências ou cards fora da interface;
-- versionar e revisar o conteúdo como arquivo aberto.
-
-## Visão geral
-
-O contrato atual usa sempre:
-
-- `contract: "aralearn.contract"`
-- `version: 1`
-- `kind: "project"`
-
-O JSON declara estrutura autoral e intenção didática. A aplicação deriva internamente identificadores auxiliares, projeções de renderização, estados de prática e outros elementos operacionais.
-
-## Estrutura raiz
-
-Todo documento válido usa esta forma:
+Todo documento público válido usa:
 
 ```json
 {
@@ -33,631 +13,93 @@ Todo documento válido usa esta forma:
 }
 ```
 
-## Hierarquia completa
+## Hierarquia
 
 ```text
 project
-  course
-    module
-      lesson
-        microsequence
-          card
+  -> course
+    -> module
+      -> lesson
+        -> microsequence
+          -> card
 ```
 
-A mesma raiz `project` é usada tanto para um projeto completo quanto para recortes parciais importáveis.
+## Lição
 
-Exemplos:
+Campos principais de lição:
 
-- um arquivo com `1` curso é um projeto válido;
-- um arquivo com apenas parte de um curso continua sendo um projeto válido;
-- um arquivo com apenas `1` microssequência também deve vir embalado dentro da hierarquia completa até `project`.
+- `title`
+- `description`
+- `sourceGuideStructured`
+- `sourceGuide`
+- `presetId`
+- `resourceTags`
+- `contentTypeTags`
+- `learningActionTags`
+- `supportLevel`
+- `microsequences`
 
-## Estrutura mínima por nível
+`sourceGuideStructured` é a fonte de verdade. `sourceGuide` é texto derivado.
 
-### Projeto
+## Presets humanos
 
-Campos:
+O contrato público da lição agora aceita `presetId` com ids simples:
 
-- `contract`: obrigatório, sempre `aralearn.contract`
-- `version`: obrigatório, sempre `1`
-- `kind`: obrigatório, sempre `project`
-- `courses`: obrigatório, array de cursos
+- `guided`
+- `practice`
+- `visual`
+- `code`
+- `review`
+- `source`
 
-### Curso
+O preset não substitui os arrays explícitos. Ele registra o caminho humano simples usado na lição.
 
-Campos:
-
-- `title`: obrigatório
-- `description`: opcional
-- `key`: opcional
-- `modules`: obrigatório, array de módulos
-
-### Módulo
-
-Campos:
-
-- `title`: obrigatório
-- `description`: opcional
-- `key`: opcional
-- `lessons`: obrigatório, array de lições
-
-### Lição
+## Microssequência
 
 Campos:
 
-- `title`: obrigatório
-- `description`: opcional
-- `key`: opcional
-- `microsequences`: obrigatório, array de microssequências
+- `title`
+- `key`
+- `tags`
+- `status`
+- `included`
+- `cards`
 
-### Microssequência
+`status` aceita:
 
-Campos:
+- `draft`
+- `ready`
 
-- `title`: obrigatório
-- `key`: opcional
-- `tags`: opcional, array de strings
-- `status`: obrigatório, aceita `draft` ou `ready`
-- `included`: opcional, booleano; controla se a microssequência entra na execução do curso
-- `cards`: obrigatório, array de cards; pode ser vazio
-
-`draft` indica rascunho dentro da estrutura real do curso. `ready` indica microssequência pronta para execução. Quando `included` é `false`, a microssequência continua visível na estrutura, mas fica fora do estudo.
-
-### Card
+## Card
 
 Campos comuns:
 
-- `key`: opcional
-- `title`: opcional, mas recomendado
-- `say`: opcional, texto explicativo ou texto com lacunas
-- `after`: opcional, comentário final exibido na continuação
-- `wrong`: opcional em cards textuais e obrigatório em `ask`
-
-Cada card define sua função principal por campos semânticos simples.
-
-## Exemplo completo mínimo
-
-Este é o menor documento estruturalmente útil para começar a autorar:
-
-```json
-{
-  "contract": "aralearn.contract",
-  "version": 1,
-  "kind": "project",
-  "courses": [
-    {
-      "title": "Curso de exemplo",
-      "modules": [
-        {
-          "title": "Módulo 1",
-          "lessons": [
-            {
-              "title": "Lição 1",
-              "microsequences": [
-                {
-                  "title": "Microssequência 1",
-                  "cards": [
-                    {
-                      "title": "Ideia central",
-                      "say": "Texto inicial do card."
-                    }
-                  ]
-                }
-              ]
-            }
-          ]
-        }
-      ]
-    }
-  ]
-}
-```
-
-## Recortes estruturais válidos
-
-Importação e exportação usam sempre o envelope `project`, inclusive quando o conteúdo representa apenas parte do material.
-
-### Exemplo: projeto contendo um único curso
-
-```json
-{
-  "contract": "aralearn.contract",
-  "version": 1,
-  "kind": "project",
-  "courses": [
-    {
-      "title": "Curso isolado",
-      "modules": []
-    }
-  ]
-}
-```
-
-### Exemplo: projeto contendo uma única microssequência
-
-```json
-{
-  "contract": "aralearn.contract",
-  "version": 1,
-  "kind": "project",
-  "courses": [
-    {
-      "title": "Curso recortado",
-      "modules": [
-        {
-          "title": "Módulo recortado",
-          "lessons": [
-            {
-              "title": "Lição recortada",
-              "microsequences": [
-                {
-                  "title": "Microssequência recortada",
-                  "cards": [
-                    {
-                      "title": "Card 1",
-                      "say": "Conteúdo do recorte."
-                    }
-                  ]
-                }
-              ]
-            }
-          ]
-        }
-      ]
-    }
-  ]
-}
-```
-
-## Chaves (`key`)
-
-`key` é opcional em qualquer nível.
-
-Quando uma chave não é enviada, o validador gera uma chave estável a partir do título. Isso facilita autoria manual, mas há casos em que vale a pena definir `key` explicitamente:
-
-- quando o conteúdo será regenerado várias vezes por automação;
-- quando o título pode mudar sem mudar a identidade do item;
-- quando o projeto precisa de maior previsibilidade em versionamento;
-- quando uma integração externa precisa referenciar entidades por identificador fixo.
-
-Recomendação prática:
-
-- para edição manual simples, pode omitir `key`;
-- para geração por modelo ou processo externo, prefira enviar `key`.
-
-## Cards e intenções didáticas
-
-O contrato não depende de um campo genérico de tipo. Em vez disso, o card declara sua intenção por campos semânticos.
-
-### Card `say`
-
-Uso:
-
-- explicação;
-- leitura guiada;
-- texto com lacunas.
-
-Exemplo simples:
-
-```json
-{
-  "title": "Ideia central",
-  "say": "O AraLearn organiza estudo em microssequências."
-}
-```
-
-Exemplo com comentário final:
-
-```json
-{
-  "title": "Síntese",
-  "say": "O conteúdo pode ser lido em etapas menores.",
-  "after": "A ideia importante é reduzir a fricção de estudo."
-}
-```
-
-Exemplo com lacuna textual:
-
-```json
-{
-  "title": "Complete",
-  "say": "Cada card pertence a uma [[microssequência]].",
-  "wrong": ["lição", "módulo"]
-}
-```
-
-Regra prática:
-
-- `wrong` ajuda a aplicação a construir distratores para lacunas textuais.
-
-### Card `ask`
-
-Uso:
-
-- múltipla escolha.
-
-Campos:
-
-- `ask`: enunciado da pergunta
-- `answer`: resposta correta
-- `wrong`: array com respostas incorretas
-
-Exemplo:
-
-```json
-{
-  "title": "Leitura rápida",
-  "ask": "Qual estrutura agrupa cards no AraLearn?",
-  "answer": "Microssequência",
-  "wrong": ["Curso", "Módulo"]
-}
-```
-
-Regra prática:
-
-- sempre envie pelo menos uma resposta correta e distratores claros;
-- use alternativas breves e comparáveis entre si.
-
-### Card `code`
-
-Uso:
-
-- exibição de código com apoio textual opcional.
-
-Campos:
-
-- `code`: obrigatório
-- `language`: opcional, mas recomendado
-- `say`: opcional
-
-Exemplo:
-
-```json
-{
-  "title": "Trecho de código",
-  "say": "Observe o identificador do contrato.",
-  "language": "json",
-  "code": "{ \"contract\": \"aralearn.contract\" }"
-}
-```
-
-### Card `table`
-
-Uso:
-
-- tabela de leitura;
-- tabela com lacunas em células.
-
-Campos:
-
-- `table.columns`: obrigatório, array de strings
-- `table.rows`: obrigatório, array de linhas
-- `table.title`: opcional, apenas quando a tabela precisar de um subtítulo diferente do título do card
-
-O título do card já aparece na interface de estudo. Não repita esse mesmo texto em `table.title`, em uma linha avulsa de conteúdo ou como primeira frase do card. Quando o assunto usar símbolos, conectivos ou fórmulas curtas, use destaque inline com acentos graves, por exemplo `p`, `q`, `¬`, `∧`, `∨`, `→`, `↔` e `2^n`.
-
-Exemplo:
-
-```json
-{
-  "title": "Campos principais",
-  "table": {
-    "columns": ["Campo", "Uso"],
-    "rows": [
-      ["say", "Explicação ou lacuna textual"],
-      ["ask", "Pergunta de múltipla escolha"]
-    ]
-  }
-}
-```
-
-Regra prática:
-
-- cada linha deve ter o mesmo número de colunas declarado em `columns`.
-
-### Card `plane`
-
-Uso:
-
-- vetor 2D saindo da origem;
-- vários vetores no mesmo plano;
-- soma geométrica de dois vetores;
-- multiplicação por escalar;
-- distância entre dois pontos.
-
-Campos:
-
-- `plane.vector`: um vetor `[x, y]`
-- `plane.vectors`: lista de 1 a 4 vetores `[x, y]`
-- `plane.sum`: exatamente 2 vetores
-- `plane.scale`: objeto com `k` e `vector`
-- `plane.distance`: exatamente 2 pontos
-- `plane.result`: opcional em `sum`, para expor ou praticar o vetor resultante
-- `plane.x` e `plane.y`: opcionais, no formato `[min, max]`
-
-Exemplo de vetor:
-
-```json
-{
-  "title": "Vetor como seta",
-  "say": "Observe o vetor v = (3,2).",
-  "plane": {
-    "vector": [3, 2]
-  }
-}
-```
-
-Exemplo de soma com lacuna:
-
-```json
-{
-  "title": "Soma de vetores",
-  "say": "Complete o vetor resultante.",
-  "plane": {
-    "sum": [[1, 2], [3, 1]],
-    "result": ["[[4::3|5]]", "[[3::2|4]]"]
-  }
-}
-```
-
-Regras práticas:
-
-- `plane` aceita uma intenção principal por card;
-- o motor calcula grade, eixos, origem, escala e legenda visual fora da área geométrica;
-- o quadriculado não deve autorar moldura própria: a borda arredondada pertence ao motor visual;
-- o JSON público não aceita SVG, HTML, CSS, cor livre ou coordenadas de tela.
-
-### Card `matrix`
-
-Uso:
-
-- matriz visual com colchetes;
-- destaque de diagonal, linha, coluna ou célula;
-- matriz aumentada simples;
-- lacuna em célula.
-- sequência curta de matrizes no mesmo card, com conectores como `+`, `=`, `×` ou `→`.
-
-Campos:
-
-- `matrix.values`: array retangular de arrays para matriz única
-- `matrix.sequence`: opcional no lugar de `values`, com 2 a 5 matrizes em sequência
-- `matrix.name`: opcional, string curta como `A`, `B` ou `M`
-- `matrix.highlight`: opcional, string ou array com seletores
-- `matrix.dividerAfterColumn`: opcional, para matriz aumentada
-
-Campos de cada item em `matrix.sequence`:
-
-- `values`: obrigatório, array retangular de arrays
-- `connector`: opcional no primeiro item e recomendado nos demais; aceita `=`, `+`, `-`, `×`, `·`, `→` ou `⇒`
-- `name`, `highlight` e `dividerAfterColumn`: mesmos significados da matriz única
-
-Seletores aceitos em `matrix.highlight`:
-
-- `mainDiagonal`
-- `secondaryDiagonal`
-- `row:N`
-- `col:N`
-- `cell:R,C`
-
-Exemplo:
-
-```json
-{
-  "title": "Diagonal principal",
-  "say": "Observe a diagonal principal.",
-  "matrix": {
-    "name": "A",
-    "values": [
-      [1, 2, 3],
-      [4, 5, 6],
-      [7, 8, 9]
-    ],
-    "highlight": "mainDiagonal"
-  }
-}
-```
-
-Exemplo de resolução no mesmo card:
-
-```json
-{
-  "title": "Soma de matrizes",
-  "say": "Acompanhe a soma por posição.",
-  "matrix": {
-    "sequence": [
-      { "name": "A", "values": [[1, 2], [3, 4]] },
-      { "connector": "+", "name": "B", "values": [[5, 6], [7, 8]] },
-      {
-        "connector": "=",
-        "name": "A+B",
-        "values": [["1 + 5", "2 + 6"], ["3 + 7", "4 + 8"]],
-        "highlight": "cell:1,1"
-      },
-      { "connector": "=", "values": [[6, 8], [10, 12]] }
-    ]
-  }
-}
-```
-
-Regras práticas:
-
-- `matrix` não substitui `table`;
-- tabelas-verdade, tabelas de dados e cabeçalhos continuam em `table`;
-- para resolução passo a passo com contexto volátil, prefira `matrix.sequence` para manter operandos, estado intermediário e resultado no mesmo card;
-- em soma de matrizes, a leitura renderizada deve seguir a forma escolar contínua `A + B = [A] + [B] = [resultado]`, com quebras responsivas quando a tela for estreita;
-- o JSON público não aceita HTML, SVG ou estilos livres.
-
-### Card `tree`
-
-Uso:
-
-- leitura e inspeção estrutural de diretórios.
-
-Campos:
-
-- `tree.base`: opcional
-- `tree.current`: opcional
-- `tree.selected`: opcional
-- `tree.closed`: opcional, array de caminhos fechados por padrão
-- `tree.items`: obrigatório, objeto que representa a estrutura
-
-Exemplo:
-
-```json
-{
-  "title": "Árvore de diretórios",
-  "say": "A árvore mostra o diretório atual.",
-  "tree": {
-    "base": "/",
-    "current": "/home/aluno/projetos",
-    "selected": "/home/aluno/projetos/README.txt",
-    "closed": ["/home/aluno/downloads"],
-    "items": {
-      "home": {
-        "aluno": {
-          "downloads": {
-            "pacote.zip": null
-          },
-          "projetos": {
-            "docs": {},
-            "README.txt": null
-          }
-        }
-      }
-    }
-  }
-}
-```
-
-Regra estrutural:
-
-- em `tree.items`, objeto representa pasta;
-- `null` representa arquivo.
-
-### Card `flow`
-
-Uso:
-
-- fluxogramas;
-- prática por lacunas em símbolos, textos ou rótulos.
-
-Exemplo:
-
-```json
-{
-  "title": "Fluxo básico",
-  "flow": [
-    { "start": "Início" },
-    { "process": "Validar", "blank": true },
-    {
-      "if": "Está correto?",
-      "blank": { "target": "label", "key": "yes", "options": ["Sim", "Não"] },
-      "then": [{ "output": "Renderizar" }],
-      "else": [{ "process": "Revisar" }]
-    },
-    { "end": "Fim" }
-  ]
-}
-```
-
-`flow` aceita estruturas como:
-
-- `start`
-- `end`
-- `input`
-- `output`
-- `process`
-- `if`
-- `while`
-- `do_while`
-- `for`
-- `chain`
-- `switch`
-
-O campo público `blank` ativa a prática de símbolo, texto ou rótulo.
-
-## Como escrever um curso manualmente
-
-Uma forma segura de autorar manualmente é seguir esta ordem:
-
-1. comece pela estrutura mínima do `project`;
-2. crie um curso com `title`;
-3. adicione um módulo;
-4. adicione uma lição;
-5. adicione uma microssequência;
-6. insira um card simples com `say`;
-7. valide o arquivo;
-8. só depois acrescente `ask`, `table`, `tree` ou `flow`.
-
-Sugestão prática:
-
-- comece pequeno;
-- valide cedo;
-- aumente a complexidade por camadas.
-
-## Como orientar um modelo de linguagem a gerar JSON válido
-
-Se você pretende usar um modelo de linguagem para produzir conteúdo do AraLearn, vale instruí-lo com regras explícitas.
-
-Checklist recomendada:
-
-- peça saída em JSON puro;
-- informe que a raiz deve usar `contract`, `version`, `kind` e `courses`;
-- explique a hierarquia completa até `cards`;
-- diga quais campos são obrigatórios em cada nível;
-- peça que o modelo use apenas os campos documentados;
-- diga que cada card deve escolher uma intenção principal clara;
-- peça arrays válidos para `modules`, `lessons`, `microsequences` e `cards`;
-- se quiser estabilidade maior, peça `key` explícita em todos os níveis;
-- peça que o resultado seja importável sem campos extras.
-
-Prompt-base sugerido:
-
-```text
-Gere um JSON válido do AraLearn usando o contrato aralearn.contract.
-A raiz deve conter:
-- contract: "aralearn.contract"
-- version: 1
-- kind: "project"
-- courses: []
-
-Hierarquia obrigatória:
-project -> course -> module -> lesson -> microsequence -> card
-
-Regras:
-- use apenas campos documentados;
-- cada curso, módulo, lição e microssequência deve ter title;
-- cada microssequência deve ter cards;
-- use status "draft" para microssequências sem cards e "ready" para microssequências executáveis;
-- cada card deve usar uma intenção semântica clara, como say, ask, code, table, tree, flow, plane ou matrix;
-- use table para tabelas-verdade, coordenadas em grade textual e quadros comuns;
-- use plane apenas para plano cartesiano 2D com vetores ou pontos;
-- use matrix apenas quando a aparência de matriz for parte do conteúdo;
-- não inclua campos operacionais derivados;
-- retorne apenas JSON válido.
-```
-
-## Regras gerais
-
-- o JSON público usa os campos documentados nesta página para declarar estrutura, conteúdo e intenção didática;
-- a aplicação deriva automaticamente projeções auxiliares, índices e identificadores operacionais;
-- `plane` descreve vetores e pontos 2D em contrato simples; a renderização deriva grade, eixos e escala;
-- `matrix` descreve matriz visual com colchetes, destaque, lacunas e etapas curtas de resolução sem virar tabela comum;
-- `tree` descreve contexto, diretório atual, seleção opcional e estrutura de arquivos e pastas;
-- `flow` descreve leitura e prática por meio de `blank`;
-- importação e exportação usam o mesmo envelope `project`, inclusive para recortes;
-- conteúdo público deve permanecer legível para autoria humana e geração assistida por modelos de linguagem.
-
-## Exemplo renderizável
-
-Arquivo público de referência:
-
-- `docs/examples/aralearn-contract.renderable.json`
-- `docs/examples/aralearn-contract.plane-matrix.json`
-- `docs/examples/aralearn-contract.logic-plane-matrix-course.json`
-
-Você pode validar esse exemplo com:
-
-```powershell
-npm run validate:example
-```
+- `key`
+- `title`
+- `say`
+- `after`
+- `sourceRefs`
+
+`sourceRefs` é opcional e registra grounding mínimo quando a geração usou fontes.
+
+## Recursos públicos
+
+O contrato público continua aceitando:
+
+- `say`
+- `ask`
+- `code`
+- `table`
+- `tree`
+- `flow`
+- `plane`
+- `matrix`
+
+O contrato público continua legível. O pipeline interno pode usar aliases de geração, mas a persistência final respeita esse conjunto.
+
+## Observações
+
+- `description` não substitui `sourceGuideStructured`;
+- `sourceRefs` não transformam o contrato em sistema de RAG avançado;
+- estados de iteração local e histórico auxiliar continuam fora do contrato público;
+- o contrato continua sendo o formato de importação e exportação estrutural.

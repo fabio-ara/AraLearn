@@ -16,7 +16,7 @@ export const CONTRACT_CARD_KINDS = Object.freeze([
   "matrix"
 ]);
 
-const COMMON_CARD_FIELDS = new Set(["key", "title", "say", "after"]);
+const COMMON_CARD_FIELDS = new Set(["key", "title", "say", "after", "sourceRefs"]);
 const FLOW_STEP_FIELDS = new Set([
   "id",
   "start",
@@ -703,12 +703,14 @@ function buildBaseCard(input) {
   const title = normalizeOptionalString(input.title, "title");
   const say = normalizeOptionalString(input.say, "say");
   const after = normalizeOptionalString(input.after, "after");
+  const sourceRefs = normalizeStringArray(input.sourceRefs, "sourceRefs");
 
   return {
     ...(key ? { key } : {}),
     ...(title ? { title } : {}),
     ...(say ? { say } : {}),
-    ...(after ? { after } : {})
+    ...(after ? { after } : {}),
+    ...(sourceRefs.length ? { sourceRefs } : {})
   };
 }
 
