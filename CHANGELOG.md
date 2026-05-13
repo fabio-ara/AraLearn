@@ -16,6 +16,7 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 - a auditoria didática deixa de ficar passiva no fluxo de cards: quando detecta lacuna acionável, o app pode disparar iteração automática para reescrever cards específicos ou inserir exemplo/preparação/prática antes da entrega final
 - a checagem didática deixa de tratar heurística textual como erro forte por padrão: o pipeline agora separa erro estrutural, lacuna declarativa e sinal textual fraco, reservando continuação automática para o que é mais defensável no motor determinístico
 - a documentação pública passa a diferenciar explicitamente evidência, hipótese aberta e escolha de engenharia, além de ganhar guia de uso do app e matriz de fundamentos com referências
+- a documentação pública passa por revisão ampla de tom e conteúdo: visão do produto, fundamentos, arquitetura, modelo didático, assistência por IA, uso do app, rascunhos e pesquisa deixam de usar taxonomia rígida e passam a explicitar, em prosa mais dissertativa, a autoria do projeto, as decisões arquiteturais, as influências intelectuais, os produtos de referência e os limites técnicos reais das checagens locais
 - a camada de geração de cards passa a operar com policy explícita de `weakModelMode`, voltada a modelo fraco e barato
 - `modelCapabilities` deixa de usar flags ambíguas e passa a distinguir `jsonMode`, `responseJsonSchema`, `responseSchema` e força real de schema
 - o planejamento bottom-up fica reduzido a `typeId`, `sizeId`, `microsequenceGoal`, `selectedExtraResourceTypes`, `sourceUsePlan` e `reason`

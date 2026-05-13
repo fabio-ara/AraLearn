@@ -7,6 +7,7 @@ Este diretório está organizado por objetivo.
 - [Visão do produto](visao-do-produto.md)
 - [Modelo didático](modelo-didatico.md)
 - [Fundamentos e evidências](fundamentos-e-evidencias.md)
+- [Pesquisa e avaliação](pesquisa-e-avaliacao.md)
 
 ## Para usar o app
 
@@ -21,9 +22,8 @@ Este diretório está organizado por objetivo.
 - [Assistência por IA](assistencia-por-ia.md)
 - [Contrato público](aralearn-contract.md)
 
-## Para pesquisa e avaliação
+## Para pesquisa, avaliação e planejamento
 
-- [Pesquisa e avaliação](pesquisa-e-avaliacao.md)
 - [Planejamento de referência](planejamento-matematica-para-informatica.md)
 
 ## Para exemplos e validação

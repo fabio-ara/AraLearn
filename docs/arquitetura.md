@@ -1,218 +1,81 @@
 # Arquitetura do AraLearn
 
+O contrato público do AraLearn é propositalmente mais simples do que a sua operação interna. A arquitetura existe justamente para preservar essa assimetria: um JSON autoral enxuto, portável e legível de um lado; uma máquina local responsável por projeção, validação, persistência, assistência e revisão do outro.
+
 ## Visão geral
 
-AraLearn é um app local-first, offline-first e mobile-first para autoria e estudo em:
+O núcleo estrutural do produto continua sendo:
 
 ```text
 curso -> módulo -> lição -> microssequência -> card
 ```
 
-O contrato público continua simples e legível. A complexidade operacional fica no app.
+Essa hierarquia não é só organização da interface. Ela funciona como moldura para persistência, importação e exportação, contexto de geração e progressão de estudo.
 
-Leitura complementar:
+## Camadas
 
-- [Guia de uso do app](uso-do-app.md)
-- [Fundamentos e evidências](fundamentos-e-evidencias.md)
+O repositório se organiza em seis grandes frentes.
 
-## Camadas principais
+`contract/` define e valida o contrato público. `model/` e `render/` projetam esse contrato para leitura. `editor/` executa mutações estruturais. `storage/` preserva projeto, snapshots e progresso local. `assist/` integra os provedores de IA. `generation/` concentra políticas, planejamento, validação e reparo. `ui/` reúne a navegação estrutural, o estudo e o workbench.
 
-- `contract/`: contrato público e validação;
-- `model/` e `render/`: projeção e leitura;
-- `editor/`: mutações estruturais;
-- `storage/`: persistência local, snapshots e progresso;
-- `assist/`: integração com Gemini e Codex local;
-- `generation/`: policy, domínio didático, planejamento, prompts, validação e reparo;
-- `ui/`: navegação estrutural, estudo e workbench.
+O ponto importante aqui é que a camada de geração não substitui a arquitetura; ela é apenas uma parte dela.
 
-## Núcleo didático novo
+## Uma arquitetura para conter a geração
 
-O app agora separa explicitamente:
+Na trilha de cards, o AraLearn foi desenhado para que a LLM não controle a operação em sentido amplo. Ela não define sozinha o percurso, não fixa posições livremente, não decide a forma de todas as unidades interativas e não aplica o resultado por conta própria. O app mantém autoridade sobre:
 
-- cobertura de domínio;
-- variação de prática;
-- checagem de superficialidade;
-- checagem de redundância.
+- o contexto;
+- a governança da lição;
+- as opções didáticas disponíveis;
+- o plano determinístico dos cards;
+- os formatos permitidos;
+- a validação local;
+- a aplicação final do resultado.
 
-Arquivos centrais dessa camada:
+Essa decisão arquitetural traduz em software uma convicção metodológica: respostas de linguagem natural precisam ser contidas por estrutura quando o objetivo é produzir material estudável e repetível.
 
-- `generation/domain/lessonDomainModel.js`
-- `generation/policies/meticulousDidacticPolicy.js`
-- `generation/validation/validateDidacticDepth.js`
-- `generation/validation/validateDidacticRedundancy.js`
+## O pipeline real
 
-## Regra arquitetural da geração
+O fluxo real da geração de cards é incremental. Um pedido localizado produz contrato de planejamento; o modelo devolve um plano pequeno; o app valida; o app monta `cardPlan`; o modelo preenche; o app repara e valida; o resultado só então é aplicado.
 
-Na trilha de cards, o app controla a operação. A LLM não controla arquitetura didática.
-
-O fluxo atual é:
-
-```text
-pedido do usuário
-  -> contrato de planejamento
-  -> plano curto da LLM
-  -> cardPlan determinístico do app
-  -> contrato de geração
-  -> cards da LLM
-  -> reparo determinístico
-  -> validação estrutural
-  -> validação didática
-  -> validação de fonte
-  -> adaptação ao contrato público
-  -> aplicação direta na microssequência
-```
-
-Na trilha de microssequências da lição, o app também pode considerar o mapa de domínio antes de pedir novos rascunhos.
-
-## Mapa de domínio da lição
-
-Quando existir, a lição pode carregar `domainMap` com:
-
-- `items`: capacidades ou componentes didáticos;
-- `practiceVariants`: variações de consolidação;
-- `gapSummary`: fotografia derivada do que está uncovered, weak, redundante, explicado sem prática ou praticado sem variação.
-
-Esse mapa pode ficar no contrato da lição porque é pequeno, determinístico e útil para persistência local e iterações futuras. Ainda assim, a UI comum não precisa expor seus nomes internos.
-
-## Papéis explícitos da microssequência
-
-Microssequências podem declarar:
-
-- `domainRefs`;
-- `practiceVariantRefs`;
-- `didacticPurpose`;
-- `coverageRole`.
-
-`coverageRole` ajuda a distinguir se a sequência introduz, explica, demonstra, pratica, discrimina, diagnostica erro, consolida, aplica em prova ou integra conteúdos.
-
-Isso reduz repetição acidental e melhora a decisão de quando criar nova sequência.
-
-## Weak model mode
-
-`generation/policies/weakModelPolicy.js` centraliza a política operacional para modelo fraco.
-
-Essa policy define:
-
-- quantidade recomendada e máxima de cards;
-- tamanhos permitidos;
-- recursos base, cautelosos e avançados;
-- gating de recursos avançados;
-- política de schema;
-- política de reparo;
-- política de fallback.
-
-## Planejamento determinístico
-
-A etapa de planejamento não recebe autoridade para desenhar os cards.
-
-Ela devolve apenas:
-
-```json
-{
-  "typeId": "...",
-  "sizeId": "...",
-  "microsequenceGoal": "...",
-  "selectedExtraResourceTypes": [],
-  "sourceUsePlan": [],
-  "reason": "..."
-}
-```
-
-Depois disso, o app:
-
-- valida `typeId` e `sizeId`;
-- aplica a policy da lição;
-- monta o `cardPlan`;
-- fixa `position` e `resourceType` por posição.
+Essa decomposição existe por duas razões. A primeira é pragmática: melhora previsibilidade com modelos mais fracos. A segunda é conceitual: impede que a aplicação terceirize à LLM uma decisão que pertence à arquitetura.
 
 ## Governança da lição
 
-A precedência operacional é fixa:
+A maior parte da inteligência operacional da geração está ancorada na lição. É a lição que define meta, notação, erros prováveis, formatos permitidos, ações de aprendizagem e nível de apoio. O pedido do usuário continua importante, mas passa a atuar sobre um quadro já delimitado.
 
-1. `sourceGuideStructured` da lição;
-2. `selectedLessonTopicRefs`;
-3. `userPrompt`.
+Essa escolha reduz ambiguidade e permite que top-down e bottom-up trabalhem sobre a mesma base local.
 
-`description` não substitui `sourceGuideStructured`.
+## Mapa de domínio
 
-`selectedLessonTopicRefs` orienta recorte local e terminologia. Não é tag persistente por padrão.
+Quando presente, o `domainMap` funciona como memória operacional da lição. Ele registra capacidades relevantes, variações de prática, lacunas e estados de cobertura. Isso permite que a aplicação trate a geração de microssequências não como fila cega de títulos, mas como tentativa de cobrir funções reais do percurso.
 
-## Recursos
+Arquiteturalmente, esse é um ponto importante: o sistema deixa de depender apenas do texto de uma solicitação e passa a usar um estado local persistível sobre o andamento didático da lição.
 
-Base segura:
+## Checagens locais
 
-- `paragraph`
-- `block_gap_fill`
-- `multiple_choice`
+Uma parte delicada da arquitetura está na camada de checagens locais. Ela precisa ser descrita com precisão. O AraLearn não executa interpretação semântica ampla de texto livre. O que ele faz é combinar checagens estruturais, checagens declarativas e sinais textuais de baixa força.
 
-Cautelosos:
+As checagens estruturais verificam contrato, quantidade, forma e coerência local. As checagens declarativas verificam relações explicitadas pela própria modelagem, como prática ausente, variação insuficiente ou duplicação sem nova função. Os sinais textuais observam padrões evidentes demais para serem ignorados, mas não são tratados como compreensão forte do enunciado.
 
-- `table`
-- `code_editor`
+Arquiteturalmente, isso é decisivo porque define o que a aplicação pode fazer de modo legítimo. Ela pode bloquear, reiterar ou recusar quando a base é forte o bastante; pode apenas sinalizar quando a base é fraca demais.
 
-Avançados:
+## Continuação automática
 
-- `flowchart`
-- `tree`
-- `matrix`
-- `plane`
+A continuação automática da geração não é laço cego de insistência. Ela é política de restrição adicional. Quando a falha remanescente é suficientemente forte, o AraLearn transforma esse diagnóstico em nova operação fechada: reescrever posição específica, inserir mediação mínima, adiar uma lacuna para outra microssequência ou recusar redundância. Quando o problema é apenas textual e fraco, a arquitetura correta é não exagerar o poder da máquina.
 
-Recursos avançados só entram quando a policy liberar por tag da lição, adequação do tipo e opt-in ou indicação forte.
+## Aplicação direta e reversibilidade
 
-## Validação
+O resultado validado é aplicado diretamente na microssequência. Isso recoloca a geração dentro do fluxo real de autoria, em vez de deixá-la num limbo de prévia privada. Ao mesmo tempo, a arquitetura preserva reversibilidade por histórico local: a iteração ativa pode ser aceita ou excluída.
 
-A geração de cards agora separa:
+Essa combinação de aplicação direta e reversão explícita é uma escolha arquitetural e também de UX. Ela reduz atrito de uso sem abandonar responsabilidade editorial.
 
-- validação estrutural;
-- validação didática;
-- validação mínima de fonte.
+## Local-first
 
-Isso evita que um único módulo concentre parse, lint didático, grounding e reparo.
+O compromisso local-first e offline-first atravessa a arquitetura inteira. Projeto, progresso, snapshots e histórico auxiliar vivem prioritariamente no dispositivo. A rede entra como canal de geração, não como condição permanente de funcionamento do estudo. Essa escolha reforça autonomia, portabilidade e continuidade.
 
-Na validação didática, há dois eixos novos:
+## O que esta arquitetura de fato sustenta
 
-- profundidade: combinar checks estruturais e declarativos com sinais textuais fracos, sem fingir compreensão semântica ampla;
-- redundância: impedir que a mesma microssequência seja refeita sem nova função didática.
+A arquitetura do AraLearn sustenta, com clareza, algumas afirmações: que a tarefa da LLM é restringida; que o sistema valida localmente parte importante da operação; que o estudo pode continuar com material já salvo; que a separação entre rascunho, revisão e execução é parte real do produto.
 
-A regra operacional é:
-
-- erro estrutural ou de política fechada pode bloquear e disparar continuação automática;
-- lacuna declarativa local pode disparar continuação automática;
-- lacuna declarativa de lição pode virar sugestão de nova microssequência;
-- heurística textual isolada vira aviso, não veto automático.
-
-## Aplicação direta
-
-A decisão oficial continua sendo aplicação direta.
-
-Não existe prévia privada entre geração e persistência local.
-
-O workbench mostra:
-
-- iteração gerada ativa;
-- ação para aceitar;
-- ação para excluir.
-
-Excluir usa o histórico local como reversão imediata.
-
-O modo de estudo ignora:
-
-- microssequências `draft`;
-- microssequências com `included: false`.
-
-## Reivindicações permitidas
-
-Esta arquitetura permite afirmar, de modo responsável, que o AraLearn:
-
-- restringe a tarefa da LLM;
-- valida localmente o que é estrutural e declarativo;
-- preserva dados e progresso localmente;
-- mantém separação entre rascunho, estudo e revisão.
-
-Ela não permite afirmar, no estado atual, que o app compreende texto livre em sentido forte.
-
-## Codex local
-
-`codex-cli-local` permanece suportado, mas como integração avançada.
-
-Ele não define o fluxo principal do estudante comum e não altera o contrato público.
+Ela não sustenta a afirmação de que o app compreende livremente qualquer texto em sentido forte. E é melhor que não sustente.

@@ -1,50 +1,42 @@
 # Guia de uso do app
 
-Este guia descreve o fluxo normal do AraLearn no estado atual.
+Este guia descreve o fluxo de uso do AraLearn no estado atual. Ele foi escrito para leitores que querem operar o app e, ao mesmo tempo, entender por que as ações aparecem nos níveis em que aparecem.
 
-## Visão geral
+## Como o app está organizado
 
-O AraLearn organiza o estudo em:
+O AraLearn distribui o estudo em cinco níveis:
 
 ```text
 curso -> módulo -> lição -> microssequência -> card
 ```
 
-A unidade didática central é a microssequência. O card é a unidade de interação.
+Cada nível tem uma função. O curso organiza uma trilha mais ampla; o módulo agrupa um bloco coerente dessa trilha; a lição concentra orientação didática local; a microssequência organiza um ponto estudável; o card é a unidade interativa por meio da qual o estudante lê, responde, compara, completa, acompanha um exemplo ou executa uma prática.
 
-## Tela inicial
+Essa distinção é importante porque o app não pede o mesmo tipo de operação em todos os níveis.
 
-Na home, o usuário pode:
+## O que se faz na home
+
+Na home, o usuário encontra a lista de cursos e o ponto de entrada para operações mais amplas. Ali faz sentido:
 
 - criar curso vazio;
-- importar contrato estrutural;
-- importar backup completo;
-- abrir um curso existente;
+- importar estrutura;
+- importar backup local completo;
+- abrir um curso já existente;
 - usar geração estrutural contextual.
 
-O foco da home é organizar cursos, não gerar cards diretamente.
+O que não faz sentido na home é gerar diretamente os cards de um problema pontual, porque ainda falta contexto suficiente para isso.
 
-## Curso, módulo e lição
+## O que se faz em curso, módulo e lição
 
-Cada nível estrutural tem papel específico:
+À medida que o usuário desce na hierarquia, o tipo de ação muda.
 
-- `curso`: agrupa módulos de uma mesma disciplina ou trilha;
-- `módulo`: organiza um bloco coerente de lições;
-- `lição`: concentra a orientação didática operacional;
-- `microssequência`: reúne os cards de um ponto estudável.
+No nível do curso, a geração por IA atua sobre módulos e lições. No nível do módulo, atua sobre lições. No nível da lição, atua sobre microssequências draft. Só no nível da microssequência a geração passa a atuar diretamente sobre os cards.
 
-Na prática:
+Essa distribuição não é arbitrária. Ela existe para conter a operação no menor escopo útil. Quanto mais localizado o problema, mais localizado deve ser o pedido.
 
-- em `curso`, a geração por IA atua sobre módulos e lições;
-- em `módulo`, a geração por IA atua sobre lições;
-- em `lição`, a geração por IA atua sobre microssequências draft;
-- em `microssequência`, a geração por IA atua sobre cards.
+## A lição como centro da orientação
 
-## Fonte-guia da lição
-
-A lição é o centro da governança didática.
-
-Ela pode carregar:
+A lição é o ponto mais importante da governança didática do app. É nela que se concentram campos como:
 
 - `sourceGuideStructured`;
 - `resourceTags`;
@@ -53,146 +45,97 @@ Ela pode carregar:
 - `supportLevel`;
 - `presetId`.
 
-Isso serve para restringir a geração e manter coerência local.
+Na prática, isso significa que a qualidade da geração depende fortemente da qualidade da orientação presente na lição. Quando a lição está mal delimitada, a geração tende a perder foco. Quando a lição está bem orientada, o restante do fluxo fica mais previsível.
 
-Na interface, a edição da fonte-guia da lição deve ser feita antes de exigir boa geração de cards.
+Por isso, antes de exigir bons resultados da IA, convém verificar se a lição já explicita meta, notação, confusões prováveis e formatos didáticos coerentes com o que se pretende ensinar.
 
-## Geração de microssequências na lição
+## Gerar microssequências na lição
 
-Na lição, o usuário pode pedir:
+Na tela da lição, o usuário pode pedir geração de microssequências ou geração com reposicionamento. Esse passo ainda não escreve os cards. Ele produz rascunhos.
 
-- gerar microssequências;
-- gerar e reposicionar microssequências.
+Esses rascunhos:
 
-Esse passo:
+- entram na árvore real da lição;
+- nascem fora do estudo;
+- não abrem automaticamente o painel da microssequência;
+- podem carregar metadados didáticos quando a lição já dispõe de mapa de domínio.
 
-- cria `drafts`;
-- não gera cards;
-- não coloca automaticamente a microssequência no estudo;
-- pode considerar `domainMap`, quando a lição já o tiver.
+O objetivo desse nível não é redigir o material final, mas estruturar a trilha da lição: que microssequências faltam, que lacunas ainda existem, que sequência precisa ser reorganizada.
 
-O objetivo é montar a trilha da lição sem ainda entrar na escrita fina dos cards.
+## O painel da microssequência
 
-## Painel da microssequência
+Ao abrir uma microssequência, o usuário entra no workbench. É ali que o estudo local, a revisão editorial e a geração de cards se encontram.
 
-Ao abrir uma microssequência, o usuário entra no workbench.
+O fluxo normal é:
 
-Ali, o fluxo principal é:
+1. inspecionar a microssequência atual;
+2. pedir geração ou edição de cards;
+3. revisar a iteração aplicada;
+4. aceitar ou excluir a iteração ativa.
 
-1. revisar a microssequência atual;
-2. gerar ou editar cards;
-3. inspecionar a iteração aplicada;
-4. aceitar ou excluir a iteração atual.
+Não existe mais uma camada separada de prévia privada. Se o resultado passa pelas validações locais, ele é aplicado diretamente e fica visível no próprio ambiente de trabalho.
 
-Não existe mais prévia privada separada do conteúdo aplicado.
+## O que acontece quando se pede geração de cards
 
-## Geração de cards
+Quando o usuário pede geração de cards, o app não envia um pedido livre do tipo “crie uma boa explicação”. Ele segue um pipeline mais contido.
 
-Quando o usuário pede geração de cards:
+Primeiro, monta um contrato de planejamento. Depois, a LLM devolve um plano curto. O app valida esse plano e monta, por conta própria, o `cardPlan` determinístico. Só então a LLM preenche o conteúdo correspondente às posições já decididas pelo sistema. Em seguida, o app valida estrutura, coerência didática local e vínculo mínimo com fonte, quando houver. Se surgir uma falha estrutural ou declarativa relevante, pode haver nova iteração automática antes da entrega final.
 
-1. o app monta um contrato de planejamento;
-2. a LLM devolve um plano curto;
-3. o app valida o plano;
-4. o app monta o `cardPlan` determinístico;
-5. a LLM preenche os cards;
-6. o app valida;
-7. o resultado validado é aplicado.
+Do ponto de vista do usuário, isso significa que a geração não é um salto único; é uma operação mediada pelo próprio sistema.
 
-Se a geração falhar em regra estrutural ou declarativa relevante, o app pode tentar continuação automática antes da entrega final.
+## Como o estudo funciona
 
-## Estudo
+No modo de estudo, o AraLearn considera apenas material pronto para execução. Isso significa que:
 
-No modo de estudo:
-
-- apenas microssequências `ready` entram normalmente;
-- `draft` fica fora do estudo;
-- `included: false` também fica fora do estudo;
+- microssequências `draft` ficam fora do estudo;
+- microssequências com `included: false` também ficam fora do estudo;
 - o progresso é salvo localmente por caminho completo da lição.
 
-Os cards podem incluir:
+Essa separação evita que rascunho seja confundido com percurso executável.
 
-- explicação breve;
-- lacunas;
-- múltipla escolha;
-- código;
-- tabela;
-- árvore;
-- fluxograma;
-- plano cartesiano;
-- matriz.
+## Formatos de apresentação e prática
 
-## Importação e exportação
+Os cards podem assumir formas diferentes conforme o domínio e a tarefa: explicação, lacuna, escolha, código, tabela, árvore de diretórios, fluxograma, plano cartesiano ou matriz. A escolha desses formatos não deveria ser tratada como efeito visual, mas como escolha didática. Alguns domínios pedem mais leitura comparativa; em outros, execução operacional; em outros, visualização espacial ou procedimental. O critério correto não é “variedade por variedade”, mas adequação entre forma de representação e o tipo de operação cognitiva que se quer favorecer.
 
-O AraLearn trabalha com dois formatos:
+## Importar, exportar e preservar
 
-- `aralearn.contract`: estrutura autoral;
-- `aralearn.storage`: backup completo local.
+O AraLearn trabalha com dois formatos principais. `aralearn.contract` é o formato estrutural e portátil do conteúdo. `aralearn.storage` é o backup local completo, que preserva também progresso e estados auxiliares.
 
-Uso recomendado:
+Em termos práticos:
 
-- exporte `contract` quando quiser portar conteúdo;
-- exporte `storage` quando quiser preservar também progresso e estado local.
+- exporte `contract` quando o objetivo é portar ou publicar estrutura;
+- exporte `storage` quando o objetivo é preservar o ambiente local completo.
 
 ## Snapshots
 
-Snapshots são explícitos.
+Snapshots são explícitos. O app não os grava automaticamente a cada alteração. Isso é intencional. Versionar tudo de modo invisível pode gerar ruído e obscurecer a responsabilidade do usuário sobre o que quer preservar.
 
-O app não grava snapshot automaticamente a cada edição.
-
-Eles podem ser usados para:
-
-- congelar um estado estável;
-- comparar estrutura em momentos diferentes;
-- voltar a uma versão anterior de um nível.
+No uso normal, snapshots servem para congelar estados relevantes, comparar trajetórias e manter reversibilidade sem transformar cada gesto em evento de versionamento formal.
 
 ## Configuração de IA
 
-O app suporta:
+O caminho normal de uso da IA é Gemini/API comum. `Codex CLI local` continua suportado, mas como integração mais avançada.
 
-- Gemini/API comum como caminho normal;
-- `Codex CLI local` como integração avançada.
+Antes de usar IA, convém:
 
-Antes de usar IA:
+1. abrir `Configuração da IA`;
+2. escolher o modelo;
+3. informar a chave da API, quando necessário;
+4. testar o bridge local, se a escolha for `Codex CLI local`.
 
-1. abra `Configuração da IA`;
-2. escolha o modelo;
-3. informe a chave da API, quando necessário;
-4. teste o bridge local, se estiver usando `Codex CLI local`.
+## O que esperar da IA, e o que não esperar
 
-## O que esperar da IA no AraLearn
+No AraLearn, a IA:
 
-A IA no AraLearn:
-
-- não decide a arquitetura didática;
+- não decide sozinha a arquitetura didática;
 - não escolhe livremente o percurso;
 - não controla o `cardPlan`;
-- não deve produzir resumo genérico.
+- não deve ser usada para produzir resumo genérico como finalidade principal.
 
-O app usa IA para preencher contratos fechados e depois valida localmente.
+Ela funciona melhor quando o pedido é específico, a lição já está bem orientada e a microssequência cobre um ponto delimitado. Funciona pior quando o pedido é amplo demais, quando falta orientação local ou quando se espera que o modelo “entenda o domínio inteiro” sem mediação do app.
 
-## O que o usuário ainda precisa fazer
+## O papel do usuário continua central
 
-O AraLearn não elimina curadoria editorial.
+O AraLearn não elimina curadoria editorial. O usuário continua precisando revisar texto, confirmar fidelidade, ajustar orientação da lição e decidir quando um rascunho já merece entrar no estudo.
 
-O usuário ainda precisa:
-
-- revisar o texto gerado;
-- confirmar fidelidade ao conteúdo;
-- ajustar a lição quando a orientação estiver ruim;
-- decidir quando um rascunho já está pronto para estudo.
-
-## Limites operacionais
-
-O app atual é mais forte quando:
-
-- a lição já está bem orientada;
-- o pedido é específico;
-- a microssequência cobre um ponto pequeno;
-- os recursos permitidos combinam com o domínio.
-
-O app é mais fraco quando:
-
-- o pedido é amplo demais;
-- a lição não tem fonte-guia clara;
-- o usuário espera que a IA “entenda tudo sozinha”;
-- o tema exige interpretação semântica profunda sem estrutura local suficiente.
+Essa responsabilidade não é defeito da ferramenta. É parte de sua proposta. O sistema existe para retirar atrito e oferecer estrutura externa, não para tomar posse do conteúdo em lugar do autor ou do estudante.

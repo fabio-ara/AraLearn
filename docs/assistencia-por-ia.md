@@ -1,318 +1,121 @@
 # Assistência por IA generativa
 
-Este documento descreve o estado atual da assistência por IA no AraLearn.
+Este documento descreve o papel da IA no AraLearn sem inflar suas capacidades e sem reduzir a arquitetura a uma sequência de prompts.
 
-Leitura complementar:
+## A posição do produto
 
-- [Fundamentos e evidências](fundamentos-e-evidencias.md)
-- [Arquitetura](arquitetura.md)
+No AraLearn, a LLM não ocupa o lugar de autora da didática. Ela tampouco ocupa o lugar de fonte de verdade. Seu papel é mais restrito: preencher ou reparar conteúdo dentro de um recorte previamente decidido pelo app.
 
-## Posição do produto
+Essa escolha nasce de uma constatação prática e teórica. Na prática, pedidos muito amplos tendem a produzir deriva, repetição, generalização vazia e inconsistência estrutural, sobretudo em modelos leves. Na teoria, trabalhos sobre linguagem controlada e sobre heurísticas superficiais em NLP mostram que fluência textual e estrutura formal confiável não coincidem automaticamente. Por isso, o AraLearn não delega à IA o desenho do percurso. Ele desloca parte da inteligência da operação para contratos, limites e validações locais.
 
-O AraLearn não trata a LLM como autora da arquitetura didática.
+## Por que o AraLearn prefere restrição
 
-O AraLearn também não usa a LLM para fazer resumo genérico.
+Em vez de pedir ao modelo que imagine sozinho um percurso “completo”, o app define:
 
-O app decide:
+- o contexto hierárquico;
+- o escopo da lição;
+- o tipo didático permitido;
+- o tamanho da microssequência;
+- o plano determinístico dos cards;
+- os formatos de apresentação e prática disponíveis;
+- as validações que o resultado precisará atravessar.
 
-- contexto hierárquico;
-- tipo didático permitido;
-- tamanho permitido;
-- `cardPlan` determinístico;
-- recurso por posição;
-- schemas enviados;
-- validação estrutural, didática e de fonte;
-- aplicação local do resultado validado.
-
-A LLM preenche somente conteúdo dentro de contrato fechado.
-
-O alvo operacional é modelo fraco ou barato. No Gemini, a referência atual é `gemini-2.5-flash`, tratada como perfil `weak-structured-json`.
-
-Essa escolha não é apresentada como “o melhor modelo” em sentido absoluto. Ela é uma escolha de engenharia orientada por custo, previsibilidade e restrição de tarefa.
+Esse desenho é compatível com a observação, bastante recorrente em uso real, de que modelos fracos ou baratos se comportam melhor quando a tarefa é estreita, incremental e formalmente delimitada.
 
 ## Weak model mode
 
-O pipeline bottom-up de cards opera em `weakModelMode`.
+O pipeline bottom-up de cards opera em `weakModelMode`. Em termos simples, isso significa que a primeira etapa pede ao modelo apenas uma escolha restrita entre opções fechadas. O plano devolvido é pequeno. O modelo não devolve `cardPlan`, não escolhe livremente a posição dos elementos, não decide sozinho o formato final de cada unidade interativa. Depois da validação desse plano curto, o AraLearn monta o `cardPlan` por conta própria e só então pede o preenchimento do conteúdo.
 
-Isso significa:
+Essa política não é uma admissão de fraqueza do produto; é uma forma de calibrar a operação para o tipo de modelo que o projeto pretende suportar com custo plausível.
 
-- a etapa de planejamento devolve só `typeId`, `sizeId`, `microsequenceGoal`, `selectedExtraResourceTypes`, `sourceUsePlan` e `reason`;
-- a LLM não devolve `cardPlan`;
-- a LLM não escolhe `position`;
-- a LLM não escolhe `resourceType` por card;
-- o app monta o `cardPlan` de forma determinística;
-- o prompt final de geração pede apenas preenchimento dos cards planejados;
-- o app repara estrutura de forma determinística antes de tentar reparo por LLM.
+## O papel da lição
 
-O modo meticuloso precisa continuar compatível com esse limite. Por isso a governança extra fica concentrada em contratos pequenos, validação local e iteração curta, sem delegar raciocínio amplo ao modelo.
+A qualidade da assistência depende fortemente da lição. É a lição que concentra a governança didática principal por meio de `sourceGuideStructured`, tags de formato, tipos de conteúdo, ações de aprendizagem e nível de apoio.
 
-## Modo meticuloso
+Isso significa que a geração não deve ser lida como evento isolado. Ela é uma operação situada. Quando a lição está mal orientada, a saída tende a ficar difusa. Quando a lição está clara, a LLM precisa improvisar menos.
 
-A geração bottom-up e a geração de microssequências da lição agora podem carregar uma policy explícita de rigor didático.
+## Geração de microssequências e geração de cards
 
-Essa policy reforça:
+O AraLearn usa IA em dois pontos centrais, mas com objetivos diferentes.
 
-- não fazer resumo genérico;
-- decompor o ponto didático pedido;
-- só criar nova microssequência se houver função didática nova;
-- pedir variação de prática quando a cobertura já existe, mas ainda está fraca;
-- rejeitar repetição sem nova finalidade;
-- marcar item fraco quando existe explicação sem prática ou prática sem variação suficiente.
+Na lição, a IA pode sugerir microssequências draft. Nesse nível, o foco é organização do percurso, não redação dos cards. O sistema pode considerar `sourceGuideStructured`, `domainMap`, cobertura já existente e risco de redundância.
 
-Na lição, a governança adicional pode usar um `domainMap` interno com:
-
-- `items`: capacidades ou componentes didáticos reais;
-- `practiceVariants`: variações de prática associadas a essas capacidades.
-
-Microssequências podem declarar:
-
-- `domainRefs`;
-- `practiceVariantRefs`;
-- `didacticPurpose`;
-- `coverageRole`.
-
-Isso ajuda o app a saber se uma nova sequência introduz, demonstra, pratica, discrimina, diagnostica erro, consolida ou aplica em prova.
-
-## Governança da lição
-
-A ordem de precedência do pedido é fixa:
-
-1. `sourceGuideStructured` da lição;
-2. `selectedLessonTopicRefs`;
-3. `userPrompt`.
-
-`description` não substitui `sourceGuideStructured`.
-
-`selectedLessonTopicRefs` são contexto operacional. Eles não viram tags persistentes por padrão.
-
-`freeNotes` e descrições legadas não entram como governança forte na geração.
-
-## Recursos permitidos
-
-Recursos base seguros:
-
-- `paragraph`
-- `block_gap_fill`
-- `multiple_choice`
-
-Recursos permitidos com cautela:
-
-- `table`
-- `code_editor`
-
-Recursos avançados:
-
-- `flowchart`
-- `tree`
-- `matrix`
-- `plane`
-
-Recursos avançados só entram quando a policy libera. A liberação exige:
-
-- a lição declarar o recurso em `resourceTags`;
-- o tipo didático justificar o recurso;
-- escolha explícita do usuário ou indicação forte da própria lição.
-
-Se isso não acontecer, o recurso não entra em `availableResources`, não entra nos schemas enviados e não entra no `cardPlan`.
+No painel da microssequência, a IA atua sobre cards. Aqui o objetivo já é muito mais localizado: explicar, demonstrar, praticar, consolidar ou revisar um ponto delimitado pelo próprio percurso.
 
 ## Pipeline de cards
 
-Fluxo atual:
+O fluxo real da geração de cards é o seguinte:
 
-1. o usuário abre a microssequência;
-2. o app monta o contrato de planejamento;
-3. a LLM devolve um plano pequeno;
+1. o usuário faz um pedido localizado;
+2. o app monta um contrato de planejamento;
+3. a LLM devolve um plano curto;
 4. o app valida o plano;
 5. o app monta `cardPlan` determinístico;
-6. o app resolve os recursos efetivos;
+6. o app resolve os formatos permitidos;
 7. o app monta o contrato de geração;
 8. a LLM devolve os cards;
-9. o app faz parse e normalização;
+9. o app normaliza a resposta;
 10. o app executa reparo estrutural determinístico;
 11. o app valida estrutura;
-12. o app valida didática;
-13. o app valida grounding mínimo de fonte;
-14. só então tenta reparo por LLM, se ainda necessário;
-15. o resultado válido é adaptado ao contrato público;
-16. os cards são aplicados diretamente na microssequência-alvo.
+12. o app valida coerência didática local;
+13. o app valida vínculo mínimo com fonte, quando houver;
+14. se necessário, o app pede reparo ou continuação;
+15. o resultado validado é aplicado.
 
-Na geração de microssequências da lição, o fluxo também deixa de depender só de títulos soltos. O app passa a enviar ao modelo:
+O que interessa aqui é que a geração não é tratada como bloco único, e sim como operação em camadas.
 
-- `sourceGuideStructured`;
-- `domainMap`, quando existir;
-- cobertura atual da lição;
-- microssequências já existentes com seus papéis didáticos.
+## Meticulosidade e política didática
 
-O objetivo é sugerir rascunhos que cubram lacunas reais, não aumentar volume.
+A camada de meticulosidade não existe para pedir mais texto. Ela existe para conter dois riscos muito comuns em geração por LLM: resumo genérico e prolixidade enganosa. Em outras palavras, o problema não é só sair “pequeno demais”; é sair liso, amplo e sem progressão prática.
 
-## Validação
+Por isso, a política da geração reforça:
 
-As validações agora são separadas.
+- decomposição do ponto didático;
+- rejeição de resumo genérico;
+- exigência de função nova para novas microssequências;
+- separação entre cobertura e repetição;
+- variação de prática com finalidade.
 
-### Estrutural
+## Checagens locais de qualidade
 
-Bloqueia:
+Uma parte importante da assistência não está no prompt, mas na camada de checagens locais. O AraLearn não interpreta livremente o significado de qualquer texto. O que ele faz é combinar três tipos de inspeção.
 
-- JSON incorreto;
-- `cards` ausentes;
-- quantidade errada;
-- `position` errada;
-- `resourceType` diferente do plano;
-- campo fora do schema;
-- campo obrigatório ausente;
-- `optionId` ou `correctOptionId` inválido;
-- `blankId` ou `blockId` inválido;
-- `highlight` inválido.
+O primeiro tipo é estrutural: contrato, quantidade, posição, formato e campos obrigatórios. O segundo é declarativo: cobertura já registrada, prática ausente, variação insuficiente, duplicação sem função nova. O terceiro é textual, mas com força limitada: padrões evidentes de bastidor, dependência externa, resposta revelada ou genericidade local.
 
-### Didática
-
-O AraLearn agora separa três camadas:
-
-- checks estruturais e de política fechada;
-- checks declarativos de cobertura;
-- heurísticas textuais fracas.
-
-Bloqueia:
-
-- referência a card anterior;
-- referência a tabela, figura ou trecho acima;
-- “como vimos”;
-- “na aula”;
-- “no material”;
-- “no PDF”;
-- linguagem de bastidor;
-- lacuna longa;
-- prática sem contexto local;
-- resposta revelada no mesmo card;
-- prática antes de microteoria, quando detectável pelo plano;
-- redundância didática sem função nova.
-
-Também pode bloquear, quando a regra é declarativa e local:
-
-- microssequência explicativa sem prática;
-- duplicação de cobertura declarada sem função nova.
-
-Além disso, a checagem de profundidade pode apontar sinais fracos:
-
-- definição sem exemplo mínimo;
-- salto para exercício sem exemplo guiado suficiente;
-- conteúdo genérico demais para o domínio;
-- notação sem preparação suficientemente evidente no texto.
-
-E pode apontar lacunas de lição:
-
-- item explicado sem prática;
-- prática sem variação;
-- ausência de tratamento de erro comum relevante;
-- falta de formato avaliativo quando a lição pede prova.
+O ponto decisivo é que esses três tipos não têm o mesmo estatuto. A camada estrutural e parte da camada declarativa podem justificar bloqueio ou continuação automática. A camada textual, por si só, não deve ser confundida com interpretação semântica forte. Ela funciona como apoio, sinal de risco e insumo para revisão.
 
 ## Continuação automática
 
-A checagem didática não existe para despejar um relatório ao usuário.
+Quando a falha é forte o bastante, o app pode acionar continuação automática antes da entrega final. Isso não significa “conversar mais com a LLM até ficar bonito”. Significa restringir ainda mais a tarefa.
 
-Quando a falha é estrutural ou declarativa o bastante, o AraLearn usa a checagem para decidir a continuação da geração antes da entrega final.
+Dependendo do caso, a continuação pode:
 
-Fluxo:
+- reescrever posições específicas;
+- inserir uma etapa de preparação;
+- inserir prática mínima;
+- adiar a lacuna para outra microssequência da lição;
+- rejeitar redundância em vez de inflar volume.
 
-1. a LLM gera os cards;
-2. o app faz reparo estrutural local;
-3. o app valida estrutura, didática e fonte;
-4. se a falha restante for didática e acionável, o app monta um plano determinístico de continuação;
-5. esse plano pode:
-   - reescrever cards específicos;
-   - inserir um card de exemplo;
-   - inserir preparação de notação;
-   - inserir uma prática mínima;
-   - decidir que a lacuna não pertence à microssequência atual e deve virar outra microssequência da lição;
-6. o app chama a LLM de novo com esse alvo fechado;
-7. só então entrega a microssequência validada.
+Essa continuação existe para preservar o pedido do usuário e reduzir o número de iterações manuais necessárias, não para competir com o que o usuário escreveu.
 
-Heurística textual isolada não deve forçar essa continuação automática.
+## Aplicação direta e responsabilidade editorial
 
-Essa continuação não deve competir com o pedido textual do usuário. Ela existe para preservar o pedido e fechar a lacuna detectada pelo motor.
+O resultado validado é aplicado diretamente na microssequência. Não existe mais uma camada separada de prévia privada. A reversão acontece por iteração ativa: o usuário pode aceitar ou excluir a versão gerada.
 
-## Base teórica resumida
+Isso torna a IA parte do fluxo real de autoria, mas não elimina curadoria humana. O usuário continua responsável por julgar fidelidade, clareza, pertinência e adequação do material ao seu próprio percurso.
 
-A arquitetura desta camada segue quatro teses mais modestas que “deixar a LLM decidir”:
+## Fontes e anexos
 
-- linguagem natural livre continua ambígua demais para mapeamento confiável sem restrição forte;
-- modelos podem acertar por heurísticas superficiais, então a fluência não basta;
-- feedback e prática funcionam melhor quando o contexto da tarefa está bem definido;
-- contratos curtos, listas fechadas e validação local são mais defensáveis que delegação ampla.
+Quando houver fontes e anexos, o AraLearn usa grounding mínimo, não promessa de RAG sofisticado. O objetivo é manter vínculo mínimo entre transformação e origem por `sourceRefs` e `sourceUsePlan`. Isso é suficiente para aumentar rastreabilidade local sem transformar o app em infraestrutura pesada de busca semântica.
 
-Referências centrais:
+## Codex local
+
+`Codex CLI local` permanece suportado como integração avançada. O fluxo principal do estudante comum continua sendo Gemini/API comum. O provider local interessa sobretudo quando o usuário quer manter a operação mais próxima de seu próprio ambiente.
+
+## Referências centrais
 
 - RECON / linguagem controlada: https://www.nist.gov/publications/recon-controlled-english-business-rules
 - RuleCNL: https://arxiv.org/abs/1406.2096
 - HANS / heurísticas superficiais: https://aclanthology.org/P19-1334/
-- Feedback: https://assess.ucr.edu/sites/g/files/rcwecm2336/files/2019-02/hattietimperley_2007.pdf
-
-## O que este documento não reivindica
-
-Este documento não afirma que o AraLearn:
-
-- entende semanticamente qualquer texto livre;
-- audita didática como professor humano;
-- garante qualidade apenas por prompt;
-- substitui revisão editorial do usuário.
-
-### Grounding mínimo de fonte
-
-Quando houver `sources` ou `sourceUsePlan`, o card precisa:
-
-- declarar `sourceRefs`; ou
-- justificar ausência com `sourceNote`.
-
-`sourceRefs` precisam existir no contrato da operação.
-
-## Aplicação direta
-
-Não existe mais prévia privada.
-
-O fluxo oficial é:
-
-1. a LLM gera ou edita;
-2. o app valida;
-3. o app aplica diretamente na microssequência;
-4. a UI mostra que existe uma iteração gerada ativa;
-5. o usuário pode aceitar ou excluir essa iteração;
-6. excluir restaura a versão anterior pelo histórico local;
-7. o modo de estudo ignora `draft` e `included: false`.
-
-## Ações públicas de aprofundamento
-
-O app passa a oferecer ações simples de aprofundamento, como `Completar lacunas`, em vez de expor termos internos.
-
-Essas ações verificam:
-
-- superficialidade;
-- redundância;
-- lacunas de domínio;
-- necessidade real de nova microssequência ou nova prática.
-
-Se não houver ganho didático claro, a ação não deve inflar a quantidade de cards.
-
-## Fontes e anexos
-
-`sourceGuideStructured` da lição continua sendo a governança principal.
-
-Quando houver anexos:
-
-- o planejamento pode devolver `sourceUsePlan`;
-- a geração pode carregar `sourceRefs`;
-- o contrato público agora aceita `sourceRefs` em cards.
-
-Isso é grounding mínimo, não RAG avançado.
-
-## Codex local
-
-`codex-cli-local` continua suportado, mas como integração avançada de desenvolvedor.
-
-O fluxo normal do estudante continua sendo Gemini/API comum.
-
-Regras mantidas:
-
-- `GET /health` continua sendo o health check do bridge local;
-- anexos textuais continuam serializados com limite;
-- anexos binários continuam devolvendo mensagem clara;
-- erros do bridge local continuam sendo expostos de forma compreensível.
+- Feedback e aprendizagem: https://assess.ucr.edu/sites/g/files/rcwecm2336/files/2019-02/hattietimperley_2007.pdf
+- Fundamentos gerais do projeto: [Fundamentos e evidências](fundamentos-e-evidencias.md)

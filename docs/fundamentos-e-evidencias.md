@@ -1,281 +1,92 @@
 # Fundamentos e evidências
 
-Este documento separa:
+Este documento explica por que o AraLearn existe do modo como existe. Ele não foi escrito para carimbar decisões com um selo abstrato de legitimidade, nem para esconder escolhas do produto atrás de um vocabulário técnico excessivamente seco. O propósito é mais simples e mais exigente: explicitar de onde vêm as direções do projeto, em que literatura elas se apoiam, que experiências de produto e de estudo elas procuram responder e até onde convém falar com segurança.
 
-- decisões apoiadas por literatura;
-- decisões de engenharia plausíveis, mas não diretamente testadas no AraLearn;
-- hipóteses ainda abertas, que exigem avaliação empírica própria.
+O AraLearn parte de uma situação histórica relativamente clara. A dificuldade contemporânea já não está apenas em acessar informação. A dificuldade está em convertê-la em percurso. A web, a documentação pública, as redes, os vídeos, as plataformas de curso e os modelos de linguagem multiplicaram a disponibilidade de explicações, exemplos e respostas. Mesmo assim, quem quer aprender continua frequentemente preso a um impasse muito concreto: há material demais, formatos demais, promessas demais e organização de menos. O estudante pode encontrar quase tudo, mas ainda não sabe por onde começar, como sequenciar, o que praticar primeiro, o que retomar depois e como transformar abundância em continuidade.
 
-Ele existe para evitar duas distorções:
+O AraLearn responde a esse problema organizando o estudo em níveis explícitos e em unidades de progressão local. Isso o aproxima mais de uma tecnologia de externalização da organização cognitiva do que de um simples gerador de texto. Em vez de competir com a web em abundância informacional, a aplicação tenta oferecer forma estudável.
 
-- prometer mais do que a evidência sustenta;
-- esconder escolhas normativas atrás de linguagem técnica.
+## Estrutura, percurso e unidade
 
-## Como ler este documento
+A hierarquia `curso -> módulo -> lição -> microssequência -> card` não é apenas escolha de navegação. Ela traduz uma posição epistemológica e didática. Em termos próximos do estruturalismo, uma unidade não se define só por sua matéria, mas também pela posição que ocupa em um sistema de relações. Saussure mostrou, no campo da linguagem, que o valor de um signo depende de diferenças e articulações internas. No AraLearn, algo análogo aparece no nível do produto: um card isolado perde grande parte de seu valor se não estiver inscrito numa microssequência; uma microssequência perde parte de sua função se não estiver situada numa lição; e assim por diante.
 
-Cada bloco abaixo usa três rótulos:
+Essa opção também responde a uma realidade prática. Muitas ferramentas tratam o estudo como acúmulo de itens ou como repositório indiferenciado de notas. O AraLearn tenta evitar os dois extremos: nem coleção plana de perguntas, nem acervo passivo de páginas. O que interessa é a passagem de material disponível para progressão executável.
 
-- `amparado`: há literatura suficientemente próxima para justificar a direção;
-- `escolha de engenharia`: a decisão é razoável, mas deriva mais de restrição do produto do que de evidência direta;
-- `hipótese aberta`: a decisão precisa de teste específico no AraLearn.
+## Microunidades e microlearning
 
-## 1. Microssequências pequenas
+O AraLearn trabalha com microunidades, mas não adere a uma caricatura de microlearning segundo a qual qualquer fragmentação seria automaticamente boa. A literatura sobre microlearning sugere utilidade de unidades pequenas sobretudo em contextos móveis, em ambientes de retomada frequente e em cenários em que o estudante precisa encaixar sessões de estudo em rotinas fragmentadas. Ao mesmo tempo, a mesma literatura mostra que fragmentar não basta. Uma unidade pequena pode ser precisa, progressiva e produtiva; mas pode ser também superficial, arbitrária ou desconectada.
 
-### Decisão do AraLearn
+Por isso, o AraLearn não trata o pequeno como valor em si. O valor está em uma unidade pequena o bastante para caber no uso real, mas densa o bastante para ensinar alguma coisa. Em termos de produto, isso significa que a microssequência precisa ter tema delimitado, progressão local e alguma forma de evidência de domínio. O objetivo não é miniaturizar qualquer assunto, mas decompor o necessário para que o estudante consiga operar.
 
-O AraLearn organiza o estudo em microssequências pequenas, com progressão local e cards enxutos.
+Essa direção encontra respaldo em estudos sobre microlearning em ensino superior e aprendizagem móvel, mas o app a articula com uma hierarquia maior justamente para evitar o falso dilema entre fragmento e percurso amplo.
 
-### Status
+## Recuperação ativa, prática e revisão
 
-`amparado`, com ressalvas.
+Uma influência central do AraLearn está no conjunto de estudos sobre retrieval practice, test-enhanced learning e estratégias de estudo de maior utilidade. Roediger e Karpicke mostraram que a recuperação ativa pode melhorar retenção de longo prazo. Dunlosky e colegas, em revisão amplamente citada, colocam `practice testing` e `distributed practice` entre as técnicas mais promissoras em comparação com releitura passiva ou resumo genérico.
 
-### Base
+No plano do produto, isso ajuda a justificar uma decisão forte: o AraLearn não deve ter como finalidade principal condensar um tema em prosa ampla. Ele deve converter partes do conteúdo em ações cognitivas executáveis: reconhecer, completar, discriminar, escolher, resolver, explicar, comparar, retomar. Isso não elimina explicação; desloca sua função. Explicação deixa de ser ponto final e passa a ser mediação para ação.
 
-- A literatura de microlearning sugere utilidade para unidades pequenas, especialmente em contextos móveis e de retomada, mas também alerta que microlearning isolado não basta para percursos mais amplos.
-- Isso combina com a escolha do AraLearn de usar unidades pequenas dentro de uma hierarquia maior, e não como única forma de aprendizagem.
+Essa escolha também ajuda a entender a proximidade do AraLearn com produtos como Anki, embora o projeto não se reduza a um sistema de flashcards espaçados. O que ele retoma desse universo é a centralidade da recuperação ativa e da revisão; o que procura acrescentar é contexto didático, progressão local e integração com organização autoral.
 
-### O que a evidência não autoriza dizer
+## Exemplo resolvido, mediação e carga cognitiva
 
-- que “pequeno” é sempre melhor;
-- que qualquer fragmentação melhora retenção;
-- que microlearning substitui curso, aula, leitura longa ou estudo aprofundado.
+A literatura sobre worked examples e carga cognitiva ajuda a explicar outra decisão importante do produto: evitar, sobretudo para iniciantes, o salto abrupto de definição abstrata para cobrança autônoma. Sweller e Cooper, assim como a literatura posterior sobre example-based learning e instructional design, sustentam que exemplos resolvidos e casos guiados podem reduzir dificuldade improdutiva em fases iniciais da aprendizagem. A questão não é proteger o estudante de todo esforço, mas calibrar o esforço para que ele ocorra onde interessa.
 
-## 2. Prática ativa em vez de resumo
+Isso se articula com a insistência do AraLearn em manter contexto operacional junto da tarefa. Em termos de teoria da carga cognitiva, a separação desnecessária entre enunciado, notação, valores, figura, regra e solicitação aumenta carga extrínseca e exige integração mental adicional. Trabalhos sobre split-attention effect e integração instrucional reforçam essa preocupação. Quando o contexto necessário está disperso, a tarefa pode ficar mais difícil sem que essa dificuldade ensine algo relevante.
 
-### Decisão do AraLearn
+É por isso que o app insiste tanto em manter, no mesmo ponto de estudo, os elementos voláteis necessários à execução. Não se trata de capricho visual. Trata-se de reduzir custo desnecessário de memória de trabalho e de facilitar a continuidade do raciocínio, especialmente em uso móvel e em condições de fadiga.
 
-O app privilegia prática, recuperação ativa, lacunas e checagem de domínio em vez de resumo genérico.
+## Meticulosidade contra resumo raso
 
-### Status
+Uma consequência direta dessas influências é a noção de meticulosidade adotada pelo AraLearn. Meticulosidade, aqui, não é prolixidade. Também não é o acúmulo de cards sem critério. O termo nomeia uma disciplina de decomposição: dizer o ponto certo, preparar a notação, mostrar um caso, trabalhar erro comum, variar a prática quando a variação acrescenta algo, verificar domínio e registrar lacunas reais.
 
-`amparado`.
+Essa posição tem parentesco com uma crítica já presente em muitos ambientes de aprendizagem contemporâneos: explicações fluentes demais podem produzir sensação de entendimento sem que o estudante tenha de fato operado com o conteúdo. Em um cenário saturado por respostas imediatas, o risco não é só a falta de informação; é o excesso de texto aparentemente satisfatório e didaticamente inerte. O AraLearn reage a esse risco preferindo percurso a síntese indistinta.
 
-### Base
+## Top-down e bottom-up
 
-- Revisões de técnicas de estudo colocam `practice testing` e `distributed practice` entre as estratégias de maior utilidade.
-- O efeito de teste e a recuperação ativa têm boa sustentação empírica.
+Outra decisão central do produto é combinar dois movimentos. O primeiro é top-down: estruturar cursos, módulos e lições quando o problema é a organização de um conjunto maior de materiais. O segundo é bottom-up: atuar localmente sobre uma dúvida, uma operação, um erro ou uma lacuna já identificados dentro de uma lição.
 
-### Implicação para o produto
+Esse desenho responde a duas formas reais de desorientação. A primeira é macro: a pessoa tem material demais e não sabe montar uma trilha. A segunda é micro: a trilha existe, mas um ponto local trava o estudo. Em ambos os casos, a ferramenta precisa ajudar sem obrigar o usuário a reconstruir tudo do zero.
 
-O AraLearn deve preferir:
+A escolha também se relaciona ao comportamento observado em modelos de linguagem. Na prática, pedidos muito amplos tendem a produzir deriva, repetição e perda de precisão, principalmente em modelos leves. Pedidos localizados, com contexto já calibrado e restrições fortes, tendem a sair melhores. Isso ajuda a explicar por que o AraLearn, mesmo oferecendo geração top-down, opera de modo especialmente cuidadoso no fluxo bottom-up de cards e microssequências.
 
-- pedir resposta;
-- pedir escolha;
-- pedir reconstrução;
-- pedir aplicação;
+## Modelos de linguagem, linguagem controlada e decomposição da tarefa
 
-em vez de só recontar o conteúdo.
+O papel da IA no AraLearn não pode ser entendido sem essa constatação: fluência textual não equivale a confiabilidade estrutural, fidelidade conceitual ou qualidade didática. A literatura sobre controlled natural language mostra há muito tempo que a passagem confiável entre linguagem natural livre e estrutura formal é problemática; por isso, sistemas que exigem robustez frequentemente reduzem vocabulário, formato e escopo. Trabalhos como RECON e RuleCNL ilustram bem essa direção.
 
-## 3. Exemplo guiado antes de prática difícil
+Ao mesmo tempo, pesquisas sobre heurísticas superficiais em NLP, como HANS, mostram que mesmo modelos fortes podem acertar por pistas frágeis ou razões erradas. Isso não torna os modelos inúteis, mas impede tratá-los como intérpretes transparentes do significado.
 
-### Decisão do AraLearn
+No AraLearn, a consequência é clara: o modelo de linguagem não desenha livremente a didática. O app define hierarquia, contexto, plano determinístico dos cards, formatos permitidos, validação local e aplicação do resultado. A LLM entra como componente gerador sob restrição. Essa opção é tanto técnica quanto metodológica. Técnica, porque melhora previsibilidade com modelos baratos ou leves. Metodológica, porque desloca parte da inteligência da operação para a arquitetura, em vez de atribuí-la ao mistério do prompt.
 
-O percurso preferido é:
+## A justificação técnica das checagens locais
 
-1. contexto;
-2. microteoria;
-3. exemplo guiado;
-4. prática;
-5. consolidação.
+A camada que o produto passou a tratar como checagens locais de qualidade didática precisa ser descrita com precisão. Se for apresentada como se o app compreendesse pedagogicamente qualquer texto livre, a formulação perde crédito. Se for apresentada como mera perfumaria sem efeito operacional, a descrição também fica falsa.
 
-### Status
+O ponto correto está no meio. O AraLearn combina:
 
-`amparado`.
+- checagens estruturais, como forma, posição, esquema e coerência local do resultado;
+- checagens declarativas, como cobertura registrada, prática ausente, variação insuficiente e redundância sem nova função;
+- sinais textuais fracos, como referências instáveis, linguagem de bastidor, genericidade evidente ou resposta revelada de maneira imprópria.
 
-### Base
+As duas primeiras camadas são mais defensáveis para uma máquina determinística. A terceira não deve ser exagerada. Ela serve como indício e contenção, não como leitura semântica forte. Essa arquitetura não elimina limitação; ela a torna explícita. Em vez de fingir interpretação humana, o AraLearn trabalha com o que um motor local pode verificar de modo plausível e usa a continuação automática apenas quando a base da decisão é suficientemente forte.
 
-- A literatura sobre worked examples e cognitive load sustenta o uso de exemplos resolvidos, especialmente para novatos.
-- Também sustenta cautela com descoberta desassistida e com salto prematuro para resolução sem apoio.
+## Local-first, autonomia e rastreabilidade
 
-### Implicação para o produto
+O compromisso local-first também não é detalhe. A literatura recente sobre local-first software insiste em autonomia do usuário, posse dos dados, continuidade offline e resistência a dependências excessivas da nuvem. No caso do AraLearn, isso interessa duplamente. Interessa por razões técnicas, porque estudo e revisão não deveriam desaparecer quando a conexão oscila. E interessa por razões políticas, porque uma ferramenta educacional que registra percurso, erro, progresso e revisão deve tratar esses dados com cuidado especial.
 
-O AraLearn não deve tratar “exemplo” como ornamento. Ele é parte da mediação.
+Aqui a reflexão crítica continua pertinente. Foucault lembra que tecnologias de registro e acompanhamento não são neutras só porque parecem úteis. Em ambiente educacional, qualquer infraestrutura que acompanhe trajetórias pode ampliar autonomia ou reforçar normalização. O AraLearn responde a isso privilegiando controle local, exportabilidade, reversibilidade e documentação explícita do que a IA faz e do que o app valida.
 
-## 4. Feedback corretivo no próprio ciclo
+## Experiência de uso e redução de atrito
 
-### Decisão do AraLearn
+A direção de UI e UX do AraLearn também deve ser lida à luz desse contexto. O público imaginado pelo projeto não é um usuário descansado, com tempo ilimitado para aprender a própria ferramenta antes de começar a estudar. A figura mais forte aqui é a do estudante trabalhador cansado, que já lida com excesso de demanda, interrupção e pouco tempo disponível.
 
-Cards de prática precisam ter feedback corretivo quando o formato exige.
+Desse ponto de vista, reduzir atrito não é apenas “embelezar a interface”. É oferecer estrutura externa utilizável com curva de uso mínima. Isso explica várias escolhas do app: hierarquia estável, ações concentradas no nível adequado, separação entre rascunho e estudo, geração contextual em vez de conversa livre, revisão no mesmo ambiente e persistência local. Produtos como Duolingo, Obsidian, Wikipédia e Git aparecem aqui não como modelos a serem copiados integralmente, mas como referências de problemas e soluções: recorrência, organização pessoal, estrutura aberta, versionamento, reversibilidade.
 
-### Status
+## O que o AraLearn pode afirmar com segurança
 
-`amparado`.
+O AraLearn pode afirmar com segurança que foi desenhado para restringir o papel da LLM, transformar informação em percurso estruturado, favorecer prática ativa, reduzir parte da carga extrínseca desnecessária e manter o controle do projeto no lado local do usuário. Pode afirmar também que suas escolhas dialogam com literatura robusta sobre recuperação ativa, feedback, worked examples, carga cognitiva, microlearning, linguagem controlada e software local-first.
 
-### Base
-
-- A literatura sobre feedback mostra que ele é mais útil quando ajuda a preencher uma lacuna entre o estado atual e o objetivo da tarefa.
-- Meta-análises também mostram que os efeitos de feedback variam e dependem do tipo de feedback.
-
-### Implicação para o produto
-
-O feedback do AraLearn deve priorizar:
-
-- a tarefa;
-- o processo;
-- o próximo passo;
-
-e não elogio vazio ou repetição da resposta.
-
-## 5. Cobertura separada de repetição
-
-### Decisão do AraLearn
-
-O app separa `domainItem` de `practiceVariant`.
-
-### Status
-
-`escolha de engenharia` fortemente inspirada pela literatura.
-
-### Base
-
-- A literatura ajuda a justificar variação de prática, worked examples, feedback e foco em capacidades.
-- Mas o esquema específico `domainItem` + `practiceVariant` é desenho do AraLearn, não padrão consolidado da área.
-
-### Implicação para o produto
-
-Essa separação deve ser tratada como modelo operacional do app, não como verdade teórica universal.
-
-## 6. LLM sob contrato curto e controlado
-
-### Decisão do AraLearn
-
-O app restringe a LLM com:
-
-- contratos pequenos;
-- listas fechadas;
-- `cardPlan` determinístico;
-- validação local;
-- reiteração curta.
-
-### Status
-
-`amparado`.
-
-### Base
-
-- Trabalhos sobre controlled natural language mostram que tradução confiável entre linguagem livre e estrutura formal continua problemática.
-- Trabalhos sobre heurísticas em NLP mostram que sistemas fortes ainda acertam muitas vezes por pistas superficiais.
-- Portanto, restringir tarefa, saída e vocabulário é mais defensável do que pedir “entendimento pedagógico livre”.
-
-### Implicação para o produto
-
-O AraLearn não deve vender “compreensão semântica plena” do texto. Deve vender restrição de tarefa e validação local.
-
-## 7. Heurísticas textuais fracas
-
-### Decisão do AraLearn
-
-A checagem didática usa heurísticas textuais, mas agora as rebaixa a sinal fraco quando não há base estrutural ou declarativa suficiente.
-
-### Status
-
-`amparado`.
-
-### Base
-
-- Literatura de avaliação automática e NLP mostra que sinais superficiais podem ser úteis, mas também frágeis e sujeitos a erro.
-- O AraLearn, portanto, não deve bloquear nem reiterar automaticamente só porque um texto “parece genérico”.
-
-### Implicação para o produto
-
-Sinais textuais devem servir para:
-
-- aviso;
-- revisão assistida;
-- melhoria futura de prompts e contratos;
-
-e não como falso julgamento semântico forte.
-
-## 8. Local-first e offline-first
-
-### Decisão do AraLearn
-
-O app trata persistência local como trilha principal e rede como apoio, não como pré-requisito constante.
-
-### Status
-
-`amparado`.
-
-### Base
-
-- A literatura e a engenharia de local-first software sustentam autonomia local, progresso offline e redução de dependência da nuvem.
-- Há também trabalhos sobre segurança e consistência em sistemas local-first.
-
-### Implicação para o produto
-
-O AraLearn deve preservar:
-
-- operação local;
-- exportabilidade;
-- reversibilidade;
-- separação entre contrato estrutural e backup completo.
-
-## 9. Mobile-first
-
-### Decisão do AraLearn
-
-O app privilegia experiência móvel e celular como condição real de uso.
-
-### Status
-
-`amparado`, mas ainda com necessidade de evidência própria.
-
-### Base
-
-- Revisões de mobile-based microlearning em adultos sugerem potencial em contextos de aprendizagem móvel.
-- A própria literatura também mostra que esse campo ainda precisa de estudos mais situados por domínio e desenho didático.
-
-### Implicação para o produto
-
-Faz sentido otimizar para uso móvel, mas o AraLearn ainda precisa medir:
-
-- qualidade real de retomada;
-- fricção de leitura;
-- efeito do tamanho dos cards;
-- custo cognitivo em viewport pequena.
-
-## 10. Prestação de contas e revisão humana
-
-### Decisão do AraLearn
-
-O app mantém:
-
-- aceitação/exclusão de iteração;
-- separação entre rascunho e estudo;
-- rastreabilidade mínima por `sourceRefs`;
-- documentação explícita das limitações.
-
-### Status
-
-`amparado`.
-
-### Base
-
-- Revisões sobre smart technology em educação apontam a necessidade de accountability e maior pesquisa sobre impactos.
-- Isso reforça a escolha do AraLearn de não tratar saída de IA como verdade final nem como conteúdo autojustificado.
-
-## 11. O que ainda não está amparado o suficiente
-
-Os pontos abaixo não devem ser apresentados como “comprovados”:
-
-- quantidade ideal de cards por microssequência;
-- thresholds exatos das heurísticas textuais;
-- efeito dos presets específicos do AraLearn;
-- superioridade de um tipo de card em cada disciplina;
-- efeito do `domainMap` sobre retenção real;
-- ganho líquido da continuação automática sobre revisão manual;
-- impacto do versionamento local sobre aprendizagem.
-
-Esses itens são `hipótese aberta`.
-
-## 12. Política de documentação do produto
-
-Ao documentar o AraLearn:
-
-- diferenciar evidência, hipótese e escolha de engenharia;
-- evitar prometer “entendimento” quando há só heurística;
-- registrar decisões que nasceram de restrição operacional;
-- atualizar referências quando a arquitetura mudar.
+O que ele não deve afirmar é que já provou empiricamente, em seu próprio contexto, todos os ganhos específicos que promete como horizonte. Há questões que continuam abertas e que merecem avaliação situada: quantidade ideal de etapas por domínio, limiares finos das checagens textuais, efeito dos presets de rigor, ganho líquido da continuação automática sobre revisão apenas manual e impacto do `domainMap` sobre retenção real. Reconhecer isso não enfraquece o projeto. Ao contrário: torna sua documentação mais séria.
 
 ## Referências
 
@@ -287,13 +98,14 @@ Aprendizagem, prática e feedback:
 - Wisniewski, B., Zierer, K., & Hattie, J. (2020). *The Power of Feedback Revisited: A Meta-Analysis of Educational Feedback Research*. Frontiers in Psychology. https://www.frontiersin.org/journals/psychology/articles/10.3389/fpsyg.2019.03087/full
 - Sweller, J., & Cooper, G. A. (1985). *The Use of Worked Examples as a Substitute for Problem Solving in Learning Algebra*. https://onderwijs.felienne.nl/vakdidactiek/materiaal/sweller_worked_examples.pdf
 - van Gog, T. (2018). *Learning How to Solve Problems by Studying Examples*. https://resolve.cambridge.org/core/services/aop-cambridge-core/content/view/632DFF3E1B3166EB325A59BD6028B6EA/9781108416016c8_183-208.pdf/learning-how-to-solve-problems-by-studying-examples.pdf
-- Wieman, C. E., Salehi, S., & Burkholder, E. W. (2019). *DIY productive failure: boosting performance in a large undergraduate biology course*. npj Science of Learning. https://www.nature.com/articles/s41539-019-0040-6
+- Paas, F., & van Merriënboer, J. J. G. (2020). *Cognitive-Load Theory: Methods to Manage Working Memory Load in the Learning of Complex Tasks*. Current Directions in Psychological Science. https://journals.sagepub.com/doi/10.1177/0963721420922183
+- Chandler, P., & Sweller, J. (1991). *Cognitive Load Theory and the Format of Instruction*. Cognition and Instruction. https://www.tandfonline.com/doi/abs/10.1207/s1532690xci0804_2
 
-Microlearning e mobile learning:
+Microlearning e aprendizagem móvel:
 
 - Mohammed, G. S., Wakil, K., & Nawroly, S. S. (2018). *The effectiveness of microlearning to improve students’ learning ability*. https://doi.org/10.3991/ijim.v12i3.7983
-- Sankaranarayanan, S., et al. (2024). *A systematic review of mobile-based microlearning in adult learner contexts*. https://doaj.org/article/b6b940948b034e489c5bd28c73307897
 - Rof, A., et al. (2024). *Exploring learner satisfaction and the effectiveness of microlearning in higher education*. The Internet and Higher Education, 62, 100952. https://repositori.tecnocampus.cat/bitstream/handle/20.500.12367/2941/rof_internethigheduc_expl.pdf?isAllowed=y&sequence=1
+- Sankaranarayanan, S., et al. (2024). *A systematic review of mobile-based microlearning in adult learner contexts*. https://doaj.org/article/b6b940948b034e489c5bd28c73307897
 
 LLM, linguagem controlada e limites semânticos:
 
@@ -307,3 +119,9 @@ Arquitetura local-first e accountability:
 - Haas, D., et al. (2023). *LoRe: A Programming Model for Verifiably Safe Local-First Software*. https://arxiv.org/abs/2304.07133
 - Høiland-Jørgensen, M., et al. (2021). *Augmenting SQLite for Local-First Software*. https://munin.uit.no/handle/10037/24430
 - Garshi, A., Jakobsen, M. W., Nyborg-Christensen, J., Ostnes, D., & Ovchinnikova, M. (2020). *Smart technology in the classroom: a systematic review. Prospects for algorithmic accountability*. https://arxiv.org/abs/2007.06374
+
+Referências intelectuais e de contexto:
+
+- Saussure, F. de. *Curso de Linguística Geral*.
+- Foucault, M. *Vigiar e Punir*; *A Arqueologia do Saber*.
+- Lyotard, J.-F. *A condição pós-moderna*.

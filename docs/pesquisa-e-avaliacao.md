@@ -1,171 +1,106 @@
 # Pesquisa e avaliação
 
-Este documento organiza o AraLearn como objeto de pesquisa educacional e como produto que precisa de critérios para decisões de arquitetura.
+O AraLearn pode ser investigado como produto educacional, como arquitetura sociotécnica e como hipótese sobre o modo como sujeitos aprendem em meio a excesso de informação. Isso já desloca o foco da pergunta tradicional “a IA acerta?” para uma pergunta mais interessante: que tipo de infraestrutura ajuda a transformar informação disponível em percurso estudável, revisável e retomável?
 
-Leitura complementar:
+## Objeto de pesquisa
 
-- [Fundamentos e evidências](fundamentos-e-evidencias.md)
-- [Guia de uso do app](uso-do-app.md)
-
-## Objeto
-
-O AraLearn pode ser investigado como uma infraestrutura aberta para transformar informação em prática de aprendizagem.
-
-O foco não é apenas geração automática de cards. O objeto mais amplo é o ciclo:
+O objeto não é apenas a geração automática de conteúdo. O objeto é o ciclo completo:
 
 ```text
-informação
+material disponível
+  -> organização
   -> transformação didática
   -> prática ativa
   -> revisão
   -> edição
-  -> reorganização
-  -> percurso auditável
+  -> retomada
+  -> consolidação local
 ```
+
+É por isso que o AraLearn interessa não só para informática na educação, mas também para design instrucional, interação humano-computador, organização do conhecimento, linguística aplicada, filosofia da tecnologia e estudos sobre software local-first.
 
 ## Hipótese central
 
-A hipótese de trabalho é que microssequências didáticas podem reduzir fricção em estudo autodirigido, especialmente em cenários de atenção fragmentada.
-
-Isso pode ocorrer porque o sistema:
-
-- transforma dúvidas em ações de estudo;
-- oferece unidades praticáveis;
-- preserva progresso local;
-- permite revisão e edição;
-- favorece retomada;
-- organiza material em cursos;
-- evita que o estudo seja reduzido a resumo genérico.
+A hipótese central do projeto é que microunidades didáticas organizadas em estrutura explícita podem reduzir atrito no estudo autodirigido, sobretudo em condições de atenção fragmentada. Essa redução de atrito não depende apenas da brevidade. Depende de progressão, prática, revisão, preservação de contexto e possibilidade de reorganização.
 
 ## Perguntas de pesquisa
 
-Perguntas possíveis:
+Há várias perguntas plausíveis para investigação.
 
-- Microssequências melhoram retenção em comparação com leitura simples ou com resumo?
-- Lacunas por opções são mais adequadas que digitação livre em quais contextos?
-- A geração assistida por IA generativa preserva o sentido do material original?
-- O painel de revisão melhora a qualidade final dos cards?
-- Rascunhos cumulativos ajudam o estudante a construir cursos pessoais?
-- Mapa de domínio e variação de prática melhoram a cobertura sem aumentar redundância?
-- Estudantes trabalhadores se beneficiam de percursos didáticos menores e revisáveis?
-- O uso offline com persistência local favorece retomada?
-- Que tipos de card funcionam melhor por disciplina?
-- A checagem local de superficialidade reduz explicações rasas sem inflar a densidade textual?
+No plano didático:
+
+- microunidades organizadas como microssequências melhoram retenção e retomada em comparação com explicação livre ou resumo?
+- qual é a relação entre caso guiado, prática apoiada e prática mais autônoma em cada domínio?
+- em que medida contexto local integrado reduz carga extrínseca percebida e melhora desempenho?
+
+No plano da geração assistida:
+
+- a restrição arquitetural da tarefa melhora a qualidade final em comparação com geração mais aberta?
+- a iteração automática reduz retrabalho editorial ou apenas o desloca?
+- o uso de modelos leves, sob contratos fechados, produz material suficientemente útil para revisão humana?
+
+No plano da experiência:
+
+- a organização estrutural reduz a sensação de desorientação diante de muitos materiais?
+- a curva de uso do app é de fato baixa para estudantes trabalhadores?
+- o ambiente integrado de estudo, edição e revisão favorece continuidade?
+
+No plano ético e político:
+
+- como registrar progresso e revisão sem transformar o estudante em mero fornecedor de dados?
+- como preservar autonomia editorial quando a IA participa da escrita do material?
 
 ## Métricas possíveis
 
-Métricas de uso:
+As métricas precisam acompanhar essa variedade de perguntas. Medidas puramente quantitativas, como número de itens gerados, são insuficientes.
 
-- tempo até iniciar prática;
-- número de retomadas;
-- cards concluídos;
-- versões criadas;
-- rascunhos consolidados;
-- pedidos de edição por microssequência.
+No plano de uso:
 
-Métricas didáticas:
+- tempo até iniciar prática depois de abrir uma lição;
+- número de retornos à mesma microssequência;
+- frequência de retomada depois de interrupção;
+- proporção entre rascunhos criados e rascunhos consolidados.
 
-- acerto em lacunas;
-- acerto em múltipla escolha;
+No plano didático:
+
+- acerto em atividades de prática;
 - reincidência de erro;
-- diversidade de prática por capacidade;
-- itens explicados sem prática;
-- itens com prática única;
-- itens com erro comum tratado;
-- itens com formato de prova coberto;
 - necessidade de ver resposta;
-- qualidade de distratores;
-- clareza percebida;
-- retenção depois de intervalo.
+- cobertura de capacidades sem prática ausente;
+- diversidade de prática por capacidade;
+- incidência de expansão por lacuna real e de rejeição por redundância.
 
-Métricas de autoria:
+No plano editorial:
 
-- tempo para criar uma microssequência;
-- quantidade de ajustes necessários;
-- proporção de cards aceitos;
-- proporção de cards descartados;
-- tipos de contêiner usados.
+- proporção entre iterações aceitas e excluídas;
+- número médio de correções humanas após geração;
+- tipos de modificação mais frequentes;
+- divergência entre o plano produzido e o plano desejado pelo usuário.
 
-## Critérios de qualidade
+No plano subjetivo:
 
-Uma decisão de produto deve considerar:
-
-- valor didático;
-- clareza para o usuário;
-- custo cognitivo;
-- robustez técnica;
-- portabilidade do JSON;
-- facilidade de validação;
-- preservação de autonomia do estudante;
-- adequação a modelos menores;
-- possibilidade de avaliação empírica.
-
-## Riscos
-
-Riscos pedagógicos:
-
-- transformar explicações frágeis em material praticável sem revisão;
-- trocar decomposição por resumo genérico;
-- criar lacunas ambíguas;
-- usar alternativas pouco plausíveis;
-- fragmentar demais o conteúdo;
-- reduzir estudo a desempenho imediato;
-- esconder divergências ou controvérsias de uma área.
-
-Riscos técnicos:
-
-- depender de modelo específico;
-- aceitar JSON inválido ou incompleto;
-- misturar rascunho e curso definitivo;
-- perder histórico de revisão;
-- exportar estado local quando o objetivo era apenas exportar estrutura.
-
-Riscos éticos:
-
-- registrar dados sensíveis de aprendizagem sem clareza;
-- usar erros do estudante de forma punitiva;
-- reduzir autonomia sobre o próprio percurso;
-- confundir assistência com autoridade final.
+- percepção de clareza;
+- percepção de carga de uso;
+- confiança na organização do material;
+- sensação de continuidade entre dúvida, geração e estudo.
 
 ## Desenhos de estudo
 
-Possíveis desenhos:
+O AraLearn comporta tanto estudos pequenos quanto investigações comparativas mais ambiciosas. Faz sentido pensar em:
 
-- estudo piloto com poucos usuários;
-- comparação entre leitura e microssequência;
-- comparação entre microssequência escrita manualmente e gerada por IA generativa;
-- análise qualitativa de revisões feitas no painel;
-- avaliação de lacunas por opções;
-- análise de retenção depois de alguns dias;
+- pilotos com poucos usuários e observação qualitativa;
+- comparação entre leitura livre e estudo por microssequência;
+- comparação entre material manual e material gerado com revisão;
 - estudo de caso com estudantes trabalhadores;
-- análise de qualidade de JSON gerado por diferentes modelos.
+- análise de logs locais anonimizados, quando eticamente viável;
+- avaliação por disciplina, já que o equilíbrio entre texto, visualização e prática tende a variar fortemente por domínio.
 
-## Decisões que dependem de evidência
+## O que não deve ser alegado sem cuidado
 
-Algumas decisões não devem ser tomadas apenas por preferência visual ou facilidade técnica:
+O projeto precisa evitar dois excessos. O primeiro é apresentar toda decisão do produto como se fosse dedução direta da literatura. O segundo é descrever escolhas locais como se fossem apenas preferência idiossincrática sem interesse teórico.
 
-- quantidade ideal de cards por microssequência;
-- uso de lacunas por opções ou por digitação;
-- entrada de `flow` na geração automática;
-- reposicionamento de cards isolados;
-- eventual exportação de histórico auxiliar local;
-- nível de intervenção automática na edição;
-- critérios para aceitar ou rejeitar uma geração.
+O caminho mais responsável é outro: reconhecer que algumas direções são fortemente apoiadas por literatura; reconhecer que várias decisões do produto são soluções arquiteturais e didáticas tomadas para responder a um problema real; e reconhecer que certos efeitos ainda precisam de avaliação situada no próprio AraLearn.
 
-Também precisam de evidência:
+## Um critério de honestidade acadêmica
 
-- quando uma variação de prática consolida de fato, em vez de repetir;
-- quando um item merece nova microssequência, em vez de revisão da existente;
-- quando a checagem local de superficialidade está sensível demais ou permissiva demais.
-
-Essas decisões devem ser orientadas por testes, revisão didática e evidência de uso.
-
-## Política de alegações
-
-Ao escrever sobre o AraLearn, convém separar:
-
-- `resultado já sustentado`: por exemplo, que o app usa prática ativa, validação estrutural e persistência local;
-- `decisão plausível`: por exemplo, o desenho específico do `domainMap`;
-- `hipótese aberta`: por exemplo, o efeito líquido dos presets e do tamanho ideal de microssequência.
-
-Essa separação evita transformar documentação de produto em retórica sem lastro.
+Uma avaliação séria do AraLearn não deveria perguntar apenas “funciona?”, mas “funciona para quê, para quem, em que condições e com que custo?”. Essa é uma pergunta melhor porque impede que o produto seja julgado por métricas fáceis, porém pobres. O objetivo do app não é maximizar geração. É reduzir atrito entre informação abundante e aprendizagem praticável.

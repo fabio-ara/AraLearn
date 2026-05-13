@@ -1,130 +1,97 @@
 # Visão do produto
 
-Este documento apresenta o AraLearn como produto e como objeto de pesquisa. Ele foi escrito para leitores que ainda não conhecem a aplicação pelo código, mas precisam entender sua proposta antes de discutir decisões técnicas, pedagógicas ou acadêmicas.
+Este documento apresenta o AraLearn como produto, como artefato técnico e como proposta intelectual. Ele foi escrito para quem precisa entender a aplicação antes de entrar no código, na discussão didática ou na avaliação acadêmica.
 
-## Síntese
+## O problema a que o AraLearn responde
 
-AraLearn é uma aplicação open source que transforma conteúdos, dúvidas e intenções de estudo em microssequências didáticas. Essas microssequências organizam explicações, exemplos, exercícios, lacunas, tabelas, árvores de diretórios, código, matrizes, plano cartesiano e fluxogramas em cards navegáveis e revisáveis.
+O problema contemporâneo da aprendizagem já não é apenas o acesso à informação. A informação está por toda parte: web aberta, vídeos, documentação, plataformas de curso, fóruns, repositórios, redes sociais e, mais recentemente, modelos de linguagem capazes de produzir explicações, exemplos e respostas em segundos. O que continua difícil é converter esse excesso em percurso.
 
-O produto funciona como um motor de aprendizagem ativa: em vez de apenas guardar material, ele procura converter informação em percurso de estudo.
-
-A identidade do projeto parte de uma ideia simples: aprendizagem melhora quando informação vira ação pequena, verificável e retomável.
-
-## Problema
-
-A informação se tornou abundante. Com a inteligência artificial generativa, explicações, exemplos, resumos e respostas podem ser produzidos em grande quantidade. Mesmo assim, disponibilidade de informação não resolve automaticamente a aprendizagem.
-
-Um estudante pode continuar sem saber:
+Muitas pessoas sabem o que querem aprender, mas não sabem:
 
 - por onde começar;
-- qual parte praticar;
-- o que revisar;
-- como conferir se entendeu;
-- como retomar o estudo depois de uma pausa;
-- como transformar uma dúvida pontual em treino acumulável.
+- como delimitar o recorte certo;
+- que parte deve ser explicada antes de ser cobrada;
+- em que formato vale praticar;
+- como revisar;
+- como retomar depois de um intervalo;
+- como organizar, sem se perder, a massa de material que a própria web e as LLMs oferecem com tanta facilidade.
 
-Esse problema é especialmente sensível para estudantes trabalhadores, pessoas em transição de carreira e estudantes em rotinas com atenção fragmentada.
+Esse problema se agrava no caso do estudante trabalhador, cansado, sujeito a interrupções, deslocamentos e múltiplas demandas. Nesses contextos, a dificuldade não é apenas “entender o conteúdo”; é sustentar organização cognitiva e continuidade prática.
 
-Também é um problema típico da aprendizagem mediada por inteligência artificial generativa. A abundância de respostas pode diminuir o custo de obter explicação, mas aumentar o custo de escolher, ordenar, praticar e revisar.
+## A resposta do produto
 
-## Proposta
-
-O AraLearn propõe um ciclo de estudo controlado pelo usuário:
+O AraLearn é uma aplicação open source, local-first e mobile-first que transforma dúvidas, materiais e intenções de estudo em percursos didáticos organizados por uma hierarquia explícita:
 
 ```text
-conteúdo ou dúvida
-  -> microssequência
-  -> cards
-  -> prática ativa
-  -> revisão
-  -> edição
-  -> reorganização
-  -> consolidação em curso
+curso -> módulo -> lição -> microssequência -> card
 ```
 
-A aplicação aproxima três atividades que normalmente ficam separadas:
+A unidade didática central não é o card, mas a microssequência. O card é a unidade interativa; a microssequência é a unidade de progressão. Essa distinção é importante porque o produto não trata aprendizagem como coleção plana de itens soltos. O que interessa não é apenas “ter perguntas”, mas articular contexto, explicação, exemplo, prática e retomada.
 
-- autoria de material didático;
-- estudo ativo;
-- revisão do percurso.
+Em vez de servir como repositório passivo de notas, o AraLearn procura funcionar como motor de transformação didática. Conteúdo disponível vira estudo guiado. Dúvida pontual vira prática executável. Material disperso vira organização. Revisão e edição deixam de ser atividades externas ao estudo e passam a ocorrer no mesmo ambiente.
 
-O usuário pode estudar, editar, importar, exportar, revisar, criar rascunhos e reorganizar material dentro do mesmo ambiente.
+## Dois movimentos complementares
 
-Essa integração permite duas entradas complementares. Na entrada bottom-up, uma dúvida concreta dentro de uma lição gera rascunhos de microssequências no contexto correto. Na entrada top-down, materiais produzidos por processos externos podem entrar como cursos, módulos, lições ou microssequências em JSON.
+O produto trabalha com dois movimentos que se completam.
 
-No estado público atual, essas entradas já compartilham a navegação estrutural principal: a geração estrutural e a geração contextual de microssequências acontecem por painéis contextuais abertos a partir da home ou das telas de curso, módulo e lição; a geração e a edição de cards acontecem no painel da microssequência.
+O primeiro é top-down. Ele é útil quando o problema é a organização de uma massa maior de conteúdo: disciplina, ementa, conjunto de textos, documentação, plano de curso, trilha de formação. Nesse caso, o usuário precisa montar um percurso mais amplo, distribuído em cursos, módulos e lições.
 
-## Público principal
+O segundo é bottom-up. Ele é útil quando o problema já apareceu no estudo concreto: uma dúvida localizada, um procedimento específico, um ponto de notação, um erro recorrente, uma operação que não ficou clara. Nesse caso, não faz sentido pedir ao sistema que reorganize uma disciplina inteira. O que faz sentido é gerar, revisar ou aprofundar uma microssequência localizada no contexto certo.
 
-O AraLearn foi pensado para apoiar estudo em condições reais:
+O AraLearn combina esses dois movimentos porque a aprendizagem real exige os dois. Sem top-down, a pessoa continua afogada em material disperso. Sem bottom-up, a organização ampla não ajuda quando o entendimento trava em um ponto específico.
 
-- pouco tempo disponível;
-- pausas frequentes;
-- disciplinas simultâneas;
-- deslocamentos;
-- retomadas sucessivas;
-- necessidade de aprender ferramentas, conceitos e procedimentos sob pressão.
+## De onde vem essa direção
 
-O produto pode ser usado por estudantes, professores, autores de material didático, pesquisadores em educação e pessoas que desejam construir repositórios pessoais de aprendizagem.
+O AraLearn não nasce do vazio. Há influências explícitas de produto, de prática de estudo e de reflexão intelectual.
 
-## Princípios
+Do lado dos produtos, Anki ajuda a evidenciar o valor da recuperação ativa; Duolingo mostra a força de unidades pequenas e recorrência; Obsidian explicita o valor de um repositório pessoal articulado; Wikipédia continua exemplar como estrutura aberta de conhecimento; Git fornece um imaginário forte de versionamento, reversibilidade e histórico; X expõe, em escala radical, um mundo em que a informação circula em fragmentos rápidos, porém raramente chega organizada como aprendizagem.
 
-O produto é guiado por alguns princípios:
+Do lado intelectual, o projeto dialoga com a tradição estruturalista e com críticas à circulação contemporânea do saber. Em Saussure e no estruturalismo, uma unidade não se define isoladamente, mas por relações dentro de um sistema; no AraLearn, uma unidade didática também precisa ser lida na estrutura maior em que se insere. Em Lyotard, o saber aparece cada vez mais como informação operacionalizável; no AraLearn, esse diagnóstico ajuda a compreender por que hoje é tão fácil obter conteúdo e tão difícil convertê-lo em formação. Em Foucault, qualquer tecnologia que registra, classifica e acompanha trajetórias de sujeitos merece suspeita; no AraLearn, isso reaparece como cuidado com rastreabilidade, controle local e recusa de autoridade automática da IA.
 
-- A aprendizagem precisa de prática, não apenas exposição a conteúdo.
-- O estudante deve manter controle sobre seu material.
-- O material deve ser portável, validável e versionável em JSON.
-- A inteligência artificial generativa deve auxiliar a transformação didática, não substituir a revisão humana.
-- O conteúdo deve poder ser estudado mesmo sem conexão contínua.
-- A aplicação deve favorecer retomada depois de interrupções.
-- O percurso de aprendizagem deve ser mais auditável do que uma conversa isolada com um modelo de linguagem.
-- A eficiência deve servir à formação, não substituir leitura, reflexão e revisão crítica.
+## O que o AraLearn não é
 
-## O que já existe
+O AraLearn não é aplicativo de resumo. Não é chatbot generalista. Não é mecanismo de resposta livre sem contenção. Não é ferramenta que substitui leitura longa, aula, fonte primária ou reflexão crítica. Não é máquina de gerar quantidade para dar sensação de completude.
 
-No estado atual, o AraLearn reúne:
+Sua aposta é outra: em vez de condensar tudo em explicação geral, decompor. Em vez de responder amplamente, situar. Em vez de produzir volume, organizar progressão. Em vez de esconder a transformação feita pela IA, tratá-la como etapa revisável.
+
+## O que existe hoje
+
+No estado atual, o app já reúne um conjunto funcional relevante:
 
 - organização em cursos, módulos, lições, microssequências e cards;
 - contrato JSON público para projetos e recortes estruturais;
+- importação e exportação de estrutura;
 - backup completo do estado local;
 - persistência de progresso no dispositivo;
-- importação e exportação;
-- renderização de diferentes formatos de card;
-- geração estrutural contextual em home, curso e módulo;
+- geração estrutural contextual;
 - geração contextual de microssequências na lição;
-- painel de microssequência com `Preview`, `Edição`, anexos temporários e controle da iteração gerada atual;
-- status `draft` e `ready` para separar autoria em andamento e conteúdo executável;
-- exclusão de microssequências do estudo por `included: false`, sem removê-las da árvore;
-- assistência por serviços de inteligência artificial generativa acessados por API;
-- validação automatizada do contrato público e dos exemplos;
-- publicação web por GitHub Pages e empacotamento Android com ícone próprio.
+- geração e edição de cards no painel da microssequência;
+- aplicação direta de iterações com possibilidade de aceitar ou excluir;
+- separação entre rascunho (`draft`) e conteúdo pronto para estudo;
+- exclusão do estudo por `included: false` sem apagar a microssequência da árvore;
+- formatos de apresentação e prática que incluem texto, escolha, código, tabela, árvore, fluxograma, plano cartesiano e matriz.
 
-## Estado atual da experiência
+## A função da inteligência artificial
 
-A interface pública implementada hoje combina:
+No AraLearn, a inteligência artificial não entra como autora soberana do percurso. Ela entra como força de transformação sob restrição. O app define contexto, contratos, formato esperado, recursos permitidos, plano dos cards, critérios de validação e regras de aplicação. A LLM preenche ou repara conteúdo dentro desse envelope.
 
-- home única de cursos com ações globais e geração estrutural contextual;
-- navegação estrutural `curso -> módulo -> lição -> microssequência`;
-- estudo apenas de microssequências `ready` incluídas;
-- edição e geração de cards em uma tela própria da microssequência;
-- rascunhos de microssequência visíveis na árvore, mas fora do estudo;
-- iterações locais de cards que podem ser aceitas ou excluídas depois da aplicação direta.
+Essa decisão não é apenas técnica; ela é também metodológica. Em vez de pedir ao modelo que “pense didaticamente sobre tudo”, o AraLearn desloca parte da inteligência para a arquitetura. Isso torna mais plausível o uso de modelos leves ou baratos e reduz a dependência de respostas amplas, opacas e difíceis de verificar.
 
-Esse desenho já permite autoria, estudo e revisão no mesmo ambiente.
+## A experiência desejada
+
+Toda a direção de UI e UX do produto busca reduzir atrito. O estudante não deve precisar aprender uma máquina complicada antes de conseguir estudar. A interface, por isso, procura:
+
+- preservar hierarquia estável;
+- tornar as ações principais explícitas;
+- concentrar geração no nível apropriado;
+- reduzir passos desnecessários;
+- manter o estudo, a revisão e a edição próximos;
+- facilitar retomada depois de interrupção.
+
+Essa simplicidade não é minimalismo vazio. Ela responde a uma finalidade concreta: oferecer estrutura externa para quem já está cognitivamente sobrecarregado.
 
 ## Horizonte
 
-O horizonte do AraLearn é transformar aprendizagem em percurso estruturado, revisável e controlado pelo usuário.
+O horizonte do AraLearn é claro: transformar informação abundante em percurso de aprendizagem estruturado, revisável, portável e controlado pelo usuário. É um horizonte técnico, didático e também político, no sentido amplo do termo. Técnico, porque depende de arquitetura e validação. Didático, porque depende de progressão, prática e mediação. Político, porque envolve autonomia, rastreabilidade, dependência de plataformas externas e o modo como uma tecnologia educacional trata os dados e os erros de quem aprende.
 
-Isso abre espaço para pesquisa em:
-
-- aprendizagem ativa mediada por IA generativa;
-- redução de fricção em estudo autodirigido;
-- rastreabilidade entre fonte, transformação e card;
-- qualidade didática de lacunas, alternativas e exemplos;
-- organização de conhecimento pessoal em repositórios portáveis;
-- avaliação de eficiência, retenção e retomada de estudo.
-
-O produto não precisa realizar todo esse horizonte de uma vez. A direção arquitetural deve permitir crescimento incremental sem perder clareza, portabilidade e controle do usuário.
-
-Há uma inspiração acadêmica e cultural ampla por trás dessa direção: flashcards, aprendizagem ativa, escrita em rede, versionamento, hipertexto, documentação aberta e organização pessoal do conhecimento. O AraLearn não pretende substituir essas tradições; procura aproximá-las em uma ferramenta pequena, local, portável e aberta.
+O projeto ainda está em evolução, mas sua identidade já é nítida. Ele não tenta competir com a web em abundância informacional. Tenta oferecer o que a web, sozinha, raramente oferece: forma estudável.

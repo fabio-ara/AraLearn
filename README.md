@@ -552,11 +552,15 @@ A chave não deve ser versionada nem registrada em arquivos do projeto.
 
 O AraLearn está em desenvolvimento ativo. A versão atual já consolida uma base funcional para estudo, autoria local, persistência, importação, exportação, validação automatizada, assistência por inteligência artificial e empacotamento Android.
 
-A documentação do projeto agora diferencia explicitamente:
+Do ponto de vista conceitual, o projeto já tem direção nítida:
 
-- o que está amparado por literatura;
-- o que é escolha de engenharia;
-- o que ainda é hipótese aberta e precisa de avaliação própria.
+- tratar informação abundante como matéria-prima de percurso, não como fim em si;
+- combinar organização top-down com iteração bottom-up;
+- restringir o papel da inteligência artificial por arquitetura, contratos e validações locais;
+- favorecer prática ativa, mediação progressiva e revisão no mesmo ambiente;
+- preservar controle local, reversibilidade e clareza sobre os limites reais da automação.
+
+A documentação pública procura expor essa direção com transparência: quando uma decisão encontra respaldo forte em literatura, isso é dito; quando se trata de solução arquitetural do próprio produto, isso também é dito; quando um efeito ainda depende de avaliação situada no AraLearn, a documentação evita apresentar hipótese como fato consumado.
 
 Versão atual do pacote:
 
