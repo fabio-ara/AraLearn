@@ -5,6 +5,7 @@ import fs from "node:fs";
 import { buildLessonDomainCoverageReport } from "../src/generation/domain/lessonDomainModel.js";
 import { validateDidacticDepth } from "../src/generation/validation/validateDidacticDepth.js";
 import { validateDidacticRedundancy } from "../src/generation/validation/validateDidacticRedundancy.js";
+import { buildDidacticIterationPlan } from "../src/generation/validation/buildDidacticIterationPlan.js";
 import { buildMicrosequencePlanningContract } from "../src/generation/planning/buildMicrosequencePlanningContract.js";
 import { buildMicrosequencePlanningPrompt } from "../src/generation/planning/buildMicrosequencePlanningPrompt.js";
 import { getModelCapabilities } from "../src/generation/providers/modelCapabilities.js";
@@ -137,4 +138,97 @@ test("lacuna real produz sugestão válida e lacuna coberta não aceita duplicat
     validateDidacticRedundancy({ microsequence: redundant, existingMicrosequences: fixture.existingMicrosequences }).ok,
     false
   );
+});
+
+test("matriz de continuação separa expansão local, reescrita e ação para outra microssequência", () => {
+  const expandPlan = buildDidacticIterationPlan(
+    {
+      didacticAudit: {
+        shallowErrors: [
+          {
+            type: "definition_without_example",
+            target: "microsequence",
+            message: "A microssequência explica, mas não mostra exemplo mínimo."
+          }
+        ],
+        missingDepth: [],
+        suggestedActions: []
+      }
+    },
+    {
+      didacticPlan: {
+        cardPlan: [
+          { position: 1, role: "present_core_point", resourceType: "paragraph" },
+          { position: 2, role: "show_minimal_case", resourceType: "paragraph" },
+          { position: 3, role: "check_understanding", resourceType: "multiple_choice" }
+        ]
+      },
+      resources: {
+        allowedResourceTypes: ["paragraph", "multiple_choice"]
+      }
+    }
+  );
+  const deferPlan = buildDidacticIterationPlan(
+    {
+      didacticAudit: {
+        shallowErrors: [],
+        missingDepth: [
+          {
+            type: "domain_items_without_practice",
+            target: "lesson",
+            message: "Itens só explicados: usar `git push` depois do commit."
+          }
+        ],
+        suggestedActions: ["Criar microssequências para: usar `git push` depois do commit."]
+      }
+    },
+    {
+      didacticPlan: {
+        cardPlan: [
+          { position: 1, role: "present_core_point", resourceType: "paragraph" },
+          { position: 2, role: "show_minimal_case", resourceType: "paragraph" },
+          { position: 3, role: "check_understanding", resourceType: "multiple_choice" }
+        ]
+      },
+      resources: {
+        allowedResourceTypes: ["paragraph", "multiple_choice"]
+      }
+    }
+  );
+  const rejectPlan = buildDidacticIterationPlan(
+    {
+      didacticAudit: {
+        shallowErrors: [
+          {
+            type: "duplicate_microsequence_without_new_function",
+            target: "microsequence",
+            message: "A microssequência repete cobertura, formato e finalidade sem acrescentar contraste novo."
+          }
+        ],
+        missingDepth: [],
+        suggestedActions: []
+      }
+    },
+    {
+      didacticPlan: {
+        cardPlan: [
+          { position: 1, role: "present_core_point", resourceType: "paragraph" },
+          { position: 2, role: "show_minimal_case", resourceType: "paragraph" },
+          { position: 3, role: "check_understanding", resourceType: "multiple_choice" }
+        ]
+      },
+      resources: {
+        allowedResourceTypes: ["paragraph", "multiple_choice"]
+      }
+    }
+  );
+
+  assert.equal(expandPlan.outcome, "expand_microsequence");
+  assert.equal(expandPlan.shouldTriggerModelIteration, true);
+  assert.equal(expandPlan.expectedCardCount, 4);
+  assert.equal(deferPlan.outcome, "defer_to_new_microsequence");
+  assert.equal(deferPlan.shouldTriggerModelIteration, false);
+  assert.match(deferPlan.lessonFollowUpActions.join(" "), /Criar microssequências/i);
+  assert.equal(rejectPlan.outcome, "reject_as_redundant");
+  assert.equal(rejectPlan.shouldTriggerModelIteration, false);
 });

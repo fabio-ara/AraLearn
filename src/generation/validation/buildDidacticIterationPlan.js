@@ -115,6 +115,10 @@ function summarizeAuditReasons(audit = {}) {
   ].map((item) => item?.message).filter(Boolean);
 }
 
+function summarizeSuggestedActions(audit = {}) {
+  return (Array.isArray(audit?.suggestedActions) ? audit.suggestedActions : []).map((item) => text(item)).filter(Boolean);
+}
+
 export function buildDidacticIterationPlan(validationResult = {}, generationContract = {}) {
   const didacticAudit = validationResult?.didacticAudit;
   const cardPlan = generationContract?.didacticPlan?.cardPlan || [];
@@ -125,6 +129,8 @@ export function buildDidacticIterationPlan(validationResult = {}, generationCont
 
   const rewritesByPosition = new Map();
   const insertions = [];
+  const deferredLessonActions = [];
+  const rejectionReasons = [];
   const firstPracticePosition = findFirstPracticePosition(cardPlan);
   const practiceInsertionPosition = findPracticeInsertionPosition(cardPlan);
 
@@ -144,6 +150,22 @@ export function buildDidacticIterationPlan(validationResult = {}, generationCont
         resourceType: chooseParagraphResource(allowedResourceTypes),
         learningGoal: "Inserir um exemplo mínimo concreto antes da checagem."
       });
+      return;
+    }
+    if (item?.type === "practice_before_explanation") {
+      addUniqueInsertion(insertions, {
+        anchorPosition: firstPracticePosition,
+        priority: 1,
+        kind: "context_prep",
+        role: "auto_prepare_context",
+        label: "preparar a base antes da prática",
+        resourceType: chooseParagraphResource(allowedResourceTypes),
+        learningGoal: "Adicionar preparação didática local antes da prática existente."
+      });
+      return;
+    }
+    if (item?.type === "duplicate_microsequence_without_new_function") {
+      rejectionReasons.push(item.message);
     }
   });
 
@@ -187,11 +209,45 @@ export function buildDidacticIterationPlan(validationResult = {}, generationCont
         resourceType: choosePracticeResource(allowedResourceTypes),
         learningGoal: "Adicionar prática pequena com evidência de domínio."
       });
+      return;
+    }
+    if (["domain_items_without_practice", "practice_without_variation"].includes(item?.type)) {
+      deferredLessonActions.push(item.message);
     }
   });
 
   const rewritePositions = [...rewritesByPosition.keys()].sort((a, b) => a - b);
+  const lessonFollowUpActions = Array.from(new Set([...deferredLessonActions, ...summarizeSuggestedActions(didacticAudit)])).slice(0, 8);
+  const auditReasons = Array.from(new Set(summarizeAuditReasons(didacticAudit))).slice(0, 8);
+
+  if (rejectionReasons.length) {
+    return {
+      outcome: "reject_as_redundant",
+      shouldTriggerModelIteration: false,
+      expectedCardCount: cardPlan.length,
+      cardPlan,
+      rewritePositions: [],
+      requestedActions: [],
+      lessonFollowUpActions,
+      rejectionReasons: Array.from(new Set(rejectionReasons)),
+      auditReasons
+    };
+  }
+
   if (!rewritePositions.length && !insertions.length) {
+    if (lessonFollowUpActions.length) {
+      return {
+        outcome: "defer_to_new_microsequence",
+        shouldTriggerModelIteration: false,
+        expectedCardCount: cardPlan.length,
+        cardPlan,
+        rewritePositions: [],
+        requestedActions: [],
+        lessonFollowUpActions,
+        rejectionReasons: [],
+        auditReasons
+      };
+    }
     return null;
   }
 
@@ -204,12 +260,22 @@ export function buildDidacticIterationPlan(validationResult = {}, generationCont
     requestedActions.push(`Reescrever os cards nas posições ${rewritePositions.join(", ")} para remover os defeitos detectados.`);
   }
 
+  const outcome =
+    insertions.length && rewritePositions.length
+      ? "rewrite_and_expand"
+      : insertions.length
+        ? "expand_microsequence"
+        : "rewrite_cards";
+
   return {
-    strategy: insertions.length ? "expand_or_rewrite" : "rewrite_only",
+    outcome,
+    shouldTriggerModelIteration: true,
     expectedCardCount: expandedCardPlan.length,
     cardPlan: expandedCardPlan,
     rewritePositions,
     requestedActions: Array.from(new Set(requestedActions)),
-    auditReasons: Array.from(new Set(summarizeAuditReasons(didacticAudit))).slice(0, 8)
+    lessonFollowUpActions,
+    rejectionReasons: [],
+    auditReasons
   };
 }

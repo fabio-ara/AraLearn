@@ -201,6 +201,7 @@ Fluxo:
    - inserir um card de exemplo;
    - inserir preparação de notação;
    - inserir uma prática mínima;
+   - decidir que a lacuna não pertence à microssequência atual e deve virar outra microssequência da lição;
 6. o app chama a LLM de novo com esse alvo fechado;
 7. só então entrega a microssequência validada.
 

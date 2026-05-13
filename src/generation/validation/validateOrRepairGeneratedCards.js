@@ -25,7 +25,8 @@ export async function validateOrRepairGeneratedCards({
       cards: initialValidation.cards,
       repaired: normalizedResponse !== rawGeneratedResponse,
       repairAttempts: 0,
-      generationContract
+      generationContract,
+      didacticContinuation: null
     };
   }
 
@@ -41,7 +42,8 @@ export async function validateOrRepairGeneratedCards({
       errors: initialErrors,
       repaired: normalizedResponse !== rawGeneratedResponse,
       repairAttempts: 0,
-      generationContract
+      generationContract,
+      didacticContinuation: null
     };
   }
 
@@ -50,6 +52,7 @@ export async function validateOrRepairGeneratedCards({
   let lastValidation = initialValidation;
   let currentGenerationContract = generationContract;
   let didacticIterationCount = 0;
+  let lastDidacticContinuation = null;
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
     let repairedResponse;
     let nextGenerationContract = currentGenerationContract;
@@ -58,8 +61,23 @@ export async function validateOrRepairGeneratedCards({
         lastValidation.structuralErrors.length === 0 && lastValidation.sourceErrors.length === 0
           ? buildDidacticIterationPlan(lastValidation, currentGenerationContract)
           : null;
+      lastDidacticContinuation = didacticIterationPlan;
 
       if (didacticIterationPlan) {
+        if (didacticIterationPlan.shouldTriggerModelIteration !== true) {
+          return {
+            ok: false,
+            errors:
+              didacticIterationPlan.outcome === "reject_as_redundant"
+                ? compactErrors(didacticIterationPlan.rejectionReasons)
+                : compactErrors(didacticIterationPlan.lessonFollowUpActions),
+            repaired: normalizedResponse !== rawGeneratedResponse,
+            repairAttempts: attempt - 1,
+            generationContract: currentGenerationContract,
+            didacticIterationCount,
+            didacticContinuation: didacticIterationPlan
+          };
+        }
         nextGenerationContract = {
           ...currentGenerationContract,
           didacticPlan: {
@@ -108,7 +126,8 @@ export async function validateOrRepairGeneratedCards({
         errors: [`Reparo de cards não devolveu JSON parseável: ${error instanceof Error ? error.message : "erro desconhecido"}`],
         repaired: true,
         repairAttempts: attempt,
-        generationContract: currentGenerationContract
+        generationContract: currentGenerationContract,
+        didacticContinuation: null
       };
     }
 
@@ -122,7 +141,8 @@ export async function validateOrRepairGeneratedCards({
         repaired: true,
         repairAttempts: attempt,
         generationContract: currentGenerationContract,
-        didacticIterationCount
+        didacticIterationCount,
+        didacticContinuation: lastDidacticContinuation
       };
     }
     lastResponse = deterministicallyRepaired;
@@ -136,6 +156,7 @@ export async function validateOrRepairGeneratedCards({
     repaired: true,
     repairAttempts: attempts,
     generationContract: currentGenerationContract,
-    didacticIterationCount
+    didacticIterationCount,
+    didacticContinuation: lastDidacticContinuation
   };
 }

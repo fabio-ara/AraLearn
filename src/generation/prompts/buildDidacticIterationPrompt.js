@@ -32,6 +32,7 @@ export function buildDidacticIterationPrompt({
     "Não mude a intenção do pedido original.",
     "Responda somente JSON válido no formato {\"cards\":[...]}.",
     "",
+    `Outcome da continuação: ${iterationPlan?.outcome || "rewrite_cards"}`,
     "Ações determinadas pelo AraLearn:",
     ...(iterationPlan?.requestedActions || []).map((item) => `- ${item}`),
     "",
