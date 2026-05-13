@@ -99,7 +99,7 @@ O produto agora pode oferecer ações públicas como `Completar lacunas` no nív
 
 Essas ações não existem para gerar mais cards por padrão. Elas servem para:
 
-- verificar superficialidade;
-- verificar redundância;
+- checar superficialidade por regra local;
+- checar redundância;
 - localizar item fraco;
 - propor ajuste com ganho didático claro.

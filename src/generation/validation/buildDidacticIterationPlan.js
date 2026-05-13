@@ -4,7 +4,11 @@ function text(value) {
 
 function parseCardTargetPosition(target) {
   const match = /^card-(\d+)$/i.exec(text(target));
-  return match ? Number(match[1]) : 0;
+  if (match) {
+    return Number(match[1]);
+  }
+  const arrayMatch = /^cards\[(\d+)\]$/i.exec(text(target));
+  return arrayMatch ? Number(arrayMatch[1]) + 1 : 0;
 }
 
 function chooseParagraphResource(allowedResourceTypes = []) {
@@ -108,13 +112,6 @@ function buildExpandedCardPlan(cardPlan = [], insertions = []) {
   }));
 }
 
-function summarizeAuditReasons(audit = {}) {
-  return [
-    ...(Array.isArray(audit?.shallowErrors) ? audit.shallowErrors : []),
-    ...(Array.isArray(audit?.missingDepth) ? audit.missingDepth : [])
-  ].map((item) => item?.message).filter(Boolean);
-}
-
 function summarizeSuggestedActions(audit = {}) {
   return (Array.isArray(audit?.suggestedActions) ? audit.suggestedActions : []).map((item) => text(item)).filter(Boolean);
 }
@@ -123,7 +120,13 @@ export function buildDidacticIterationPlan(validationResult = {}, generationCont
   const didacticAudit = validationResult?.didacticAudit;
   const cardPlan = generationContract?.didacticPlan?.cardPlan || [];
   const allowedResourceTypes = generationContract?.resources?.allowedResourceTypes || [];
-  if (!didacticAudit || (!didacticAudit.shallowErrors?.length && !didacticAudit.missingDepth?.length)) {
+  const actionableIssues = Array.isArray(didacticAudit?.actionableIssues) ? didacticAudit.actionableIssues : [];
+  const blockingIssues = Array.isArray(didacticAudit?.blockingIssues) ? didacticAudit.blockingIssues : [];
+  const nonBlockingLessonGaps = [
+    ...(Array.isArray(didacticAudit?.declarativeGaps) ? didacticAudit.declarativeGaps : [])
+  ].filter((item) => item.blocksValidation !== true);
+  const rejectionIssue = blockingIssues.find((item) => item.type === "duplicate_microsequence_without_new_function");
+  if (!didacticAudit || (!actionableIssues.length && !nonBlockingLessonGaps.length && !rejectionIssue)) {
     return null;
   }
 
@@ -134,7 +137,11 @@ export function buildDidacticIterationPlan(validationResult = {}, generationCont
   const firstPracticePosition = findFirstPracticePosition(cardPlan);
   const practiceInsertionPosition = findPracticeInsertionPosition(cardPlan);
 
-  (didacticAudit.shallowErrors || []).forEach((item) => {
+  if (rejectionIssue) {
+    rejectionReasons.push(rejectionIssue.message);
+  }
+
+  actionableIssues.forEach((item) => {
     const position = parseCardTargetPosition(item?.target);
     if (["generic_content", "unstable_or_backstage_reference", "answer_revealed_before_practice", "practice_without_local_context"].includes(item?.type)) {
       addRewriteReason(rewritesByPosition, position, item.message);
@@ -164,39 +171,8 @@ export function buildDidacticIterationPlan(validationResult = {}, generationCont
       });
       return;
     }
-    if (item?.type === "duplicate_microsequence_without_new_function") {
-      rejectionReasons.push(item.message);
-    }
-  });
-
-  (didacticAudit.missingDepth || []).forEach((item) => {
-    const position = parseCardTargetPosition(item?.target);
     if (item?.type === "practice_without_feedback") {
       addRewriteReason(rewritesByPosition, position, item.message);
-      return;
-    }
-    if (item?.type === "notation_without_preparation") {
-      addUniqueInsertion(insertions, {
-        anchorPosition: position || firstPracticePosition,
-        priority: 5,
-        kind: "notation_prep",
-        role: "auto_prepare_notation",
-        label: "preparar notação",
-        resourceType: chooseParagraphResource(allowedResourceTypes),
-        learningGoal: "Traduzir a notação em linguagem comum antes da cobrança."
-      });
-      return;
-    }
-    if (item?.type === "theory_to_exercise_without_example") {
-      addUniqueInsertion(insertions, {
-        anchorPosition: firstPracticePosition,
-        priority: 15,
-        kind: "guided_example",
-        role: "auto_guided_example",
-        label: "mostrar exemplo guiado",
-        resourceType: chooseParagraphResource(allowedResourceTypes),
-        learningGoal: "Adicionar um caso guiado entre a teoria e a prática."
-      });
       return;
     }
     if (item?.type === "conceptual_sequence_without_practice") {
@@ -211,14 +187,15 @@ export function buildDidacticIterationPlan(validationResult = {}, generationCont
       });
       return;
     }
-    if (["domain_items_without_practice", "practice_without_variation"].includes(item?.type)) {
-      deferredLessonActions.push(item.message);
-    }
+  });
+
+  nonBlockingLessonGaps.forEach((item) => {
+    deferredLessonActions.push(item.message);
   });
 
   const rewritePositions = [...rewritesByPosition.keys()].sort((a, b) => a - b);
   const lessonFollowUpActions = Array.from(new Set([...deferredLessonActions, ...summarizeSuggestedActions(didacticAudit)])).slice(0, 8);
-  const auditReasons = Array.from(new Set(summarizeAuditReasons(didacticAudit))).slice(0, 8);
+  const auditReasons = Array.from(new Set([...actionableIssues.map((item) => item.message), ...deferredLessonActions])).slice(0, 8);
 
   if (rejectionReasons.length) {
     return {

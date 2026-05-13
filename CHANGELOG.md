@@ -14,6 +14,7 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 - prompts de planejamento, geração e edição passam a proibir resumo genérico, densidade artificial e duplicação sem nova função didática
 - a UI da lição e da microssequência ganha ação pública `Completar lacunas`, que usa auditoria local para sugerir aprofundamento sem inflar volume
 - a auditoria didática deixa de ficar passiva no fluxo de cards: quando detecta lacuna acionável, o app pode disparar iteração automática para reescrever cards específicos ou inserir exemplo/preparação/prática antes da entrega final
+- a checagem didática deixa de tratar heurística textual como erro forte por padrão: o pipeline agora separa erro estrutural, lacuna declarativa e sinal textual fraco, reservando continuação automática para o que é mais defensável no motor determinístico
 - a camada de geração de cards passa a operar com policy explícita de `weakModelMode`, voltada a modelo fraco e barato
 - `modelCapabilities` deixa de usar flags ambíguas e passa a distinguir `jsonMode`, `responseJsonSchema`, `responseSchema` e força real de schema
 - o planejamento bottom-up fica reduzido a `typeId`, `sizeId`, `microsequenceGoal`, `selectedExtraResourceTypes`, `sourceUsePlan` e `reason`

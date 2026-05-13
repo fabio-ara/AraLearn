@@ -159,6 +159,12 @@ Bloqueia:
 
 ### Didática
 
+O AraLearn agora separa três camadas:
+
+- checks estruturais e de política fechada;
+- checks declarativos de cobertura;
+- heurísticas textuais fracas.
+
 Bloqueia:
 
 - referência a card anterior;
@@ -172,12 +178,21 @@ Bloqueia:
 - prática sem contexto local;
 - resposta revelada no mesmo card;
 - prática antes de microteoria, quando detectável pelo plano;
+- redundância didática sem função nova.
+
+Também pode bloquear, quando a regra é declarativa e local:
+
+- microssequência explicativa sem prática;
+- duplicação de cobertura declarada sem função nova.
+
+Além disso, a checagem de profundidade pode apontar sinais fracos:
+
 - definição sem exemplo mínimo;
 - salto para exercício sem exemplo guiado suficiente;
 - conteúdo genérico demais para o domínio;
-- redundância didática sem função nova.
+- notação sem preparação suficientemente evidente no texto.
 
-Além disso, a auditoria de profundidade pode apontar:
+E pode apontar lacunas de lição:
 
 - item explicado sem prática;
 - prática sem variação;
@@ -188,7 +203,7 @@ Além disso, a auditoria de profundidade pode apontar:
 
 A checagem didática não existe para despejar um relatório ao usuário.
 
-Quando a falha é determinística o bastante, o AraLearn usa a checagem para decidir a continuação da geração antes da entrega final.
+Quando a falha é estrutural ou declarativa o bastante, o AraLearn usa a checagem para decidir a continuação da geração antes da entrega final.
 
 Fluxo:
 
@@ -204,6 +219,8 @@ Fluxo:
    - decidir que a lacuna não pertence à microssequência atual e deve virar outra microssequência da lição;
 6. o app chama a LLM de novo com esse alvo fechado;
 7. só então entrega a microssequência validada.
+
+Heurística textual isolada não deve forçar essa continuação automática.
 
 Essa continuação não deve competir com o pedido textual do usuário. Ela existe para preservar o pedido e fechar a lacuna detectada pelo motor.
 

@@ -1,6 +1,7 @@
 import { buildLessonDomainCoverageReport, isExplanationCoverageRole } from "../domain/lessonDomainModel.js";
 import { buildMeticulousDidacticPolicy } from "../policies/meticulousDidacticPolicy.js";
 import { validateDidacticRedundancy } from "./validateDidacticRedundancy.js";
+import { annotateDidacticIssue } from "./didacticIssueCatalog.js";
 
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -103,7 +104,7 @@ function isGenericCard(card) {
 }
 
 function pushIssue(listRef, type, target, message) {
-  listRef.push({ type, target, message });
+  listRef.push(annotateDidacticIssue({ type, target, message }));
 }
 
 export function validateDidacticDepth({
@@ -187,17 +188,29 @@ export function validateDidacticDepth({
   }
 
   const redundancy = validateDidacticRedundancy({ microsequence, existingMicrosequences });
+  const normalizedRedundancyWarnings = (redundancy.redundancyWarnings || []).map((warning) => annotateDidacticIssue(warning));
   if (!redundancy.ok) {
-    redundancy.redundancyWarnings.forEach((warning) => {
+    normalizedRedundancyWarnings.forEach((warning) => {
       shallowErrors.push(warning);
     });
   }
 
+  const allIssues = [...shallowErrors, ...missingDepth];
+  const blockingIssues = allIssues.filter((item) => item.blocksValidation === true);
+  const declarativeGaps = allIssues.filter((item) => item.severity === "declarative_gap");
+  const heuristicSignals = allIssues.filter((item) => item.severity === "heuristic_signal");
+  const actionableIssues = allIssues.filter((item) => item.allowsAutoIteration === true);
+
   return {
-    ok: shallowErrors.length === 0 && missingDepth.length === 0 && redundancy.redundancyWarnings.length === 0,
+    ok: allIssues.length === 0,
+    passesDeterministicValidation: blockingIssues.length === 0,
     shallowErrors,
     missingDepth,
-    redundancyWarnings: redundancy.redundancyWarnings,
+    redundancyWarnings: normalizedRedundancyWarnings,
+    blockingIssues,
+    declarativeGaps,
+    heuristicSignals,
+    actionableIssues,
     suggestedActions: Array.from(new Set(suggestedActions)).slice(0, 8),
     policy
   };

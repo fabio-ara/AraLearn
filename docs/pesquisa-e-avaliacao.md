@@ -45,7 +45,7 @@ Perguntas possíveis:
 - Estudantes trabalhadores se beneficiam de percursos didáticos menores e revisáveis?
 - O uso offline com persistência local favorece retomada?
 - Que tipos de card funcionam melhor por disciplina?
-- A auditoria de superficialidade reduz explicações rasas sem inflar a densidade textual?
+- A checagem local de superficialidade reduz explicações rasas sem inflar a densidade textual?
 
 ## Métricas possíveis
 
@@ -151,6 +151,6 @@ Também precisam de evidência:
 
 - quando uma variação de prática consolida de fato, em vez de repetir;
 - quando um item merece nova microssequência, em vez de revisão da existente;
-- quando a auditoria de superficialidade está sensível demais ou permissiva demais.
+- quando a checagem local de superficialidade está sensível demais ou permissiva demais.
 
 Essas decisões devem ser orientadas por testes, revisão didática e evidência de uso.

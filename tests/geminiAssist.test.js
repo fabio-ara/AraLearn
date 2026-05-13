@@ -117,22 +117,22 @@ function makeShallowSimpleCardsPayload() {
       {
         position: 1,
         resourceType: "paragraph",
-        title: "Ideia geral",
-        text: "`git add` e `git commit` são comandos importantes do Git.",
+        title: "Preparar e registrar",
+        text: "`git add` prepara arquivos. `git commit` registra o que já foi preparado.",
         sourceNote: "Resumo autoral."
       },
       {
         position: 2,
         resourceType: "paragraph",
-        title: "Resumo",
-        text: "Esses comandos aparecem bastante em versionamento.",
+        title: "Ordem mínima",
+        text: "Primeiro você escolhe o que entra, depois grava no histórico local.",
         sourceNote: "Resumo autoral."
       },
       {
         position: 3,
         resourceType: "multiple_choice",
         title: "Checagem",
-        question: "Qual comando registra o histórico local?",
+        question: "Qual comando registra o histórico local: `git commit` ou `git add`?",
         options: [
           { optionId: "a", label: "git commit" },
           { optionId: "b", label: "git add" },
@@ -146,7 +146,7 @@ function makeShallowSimpleCardsPayload() {
   };
 }
 
-function makeExpandedSimpleCardsPayload() {
+function makeRepairedSimpleCardsPayload() {
   return {
     cards: [
       {
@@ -165,13 +165,6 @@ function makeExpandedSimpleCardsPayload() {
       },
       {
         position: 3,
-        resourceType: "paragraph",
-        title: "Exemplo mínimo",
-        text: "Se você editou `app.js`, primeiro usa `git add app.js`. Depois usa `git commit -m \"ajusta app\"` para registrar essa preparação.",
-        sourceNote: "Exemplo autoral."
-      },
-      {
-        position: 4,
         resourceType: "multiple_choice",
         title: "Checagem",
         question: "Qual comando registra o histórico local depois da preparação?",
@@ -530,7 +523,7 @@ test("anexos PDF usam Files API e o pedido de geração continua sem schema nati
   }
 });
 
-test("auditoria didática dispara iteração automática e pode aumentar a quantidade de cards", async () => {
+test("checagem determinística dispara iteração automática só para defeito realmente acionável", async () => {
   const originalFetch = globalThis.fetch;
   const calls = [];
   globalThis.fetch = async (url, options = {}) => {
@@ -542,7 +535,7 @@ test("auditoria didática dispara iteração automática e pode aumentar a quant
     if (generateCount === 2) {
       return makeGeminiTextResponse(JSON.stringify(makeShallowSimpleCardsPayload()));
     }
-    return makeGeminiTextResponse(JSON.stringify(makeExpandedSimpleCardsPayload()));
+    return makeGeminiTextResponse(JSON.stringify(makeRepairedSimpleCardsPayload()));
   };
 
   try {
@@ -560,11 +553,11 @@ test("auditoria didática dispara iteração automática e pode aumentar a quant
 
     const generateCalls = calls.filter((entry) => String(entry.url).includes(":generateContent"));
     assert.equal(generateCalls.length, 3);
-    assert.equal(result.cards.length, 4);
+    assert.equal(result.cards.length, 3);
     assert.equal(result.generationRunState.autoDidacticIterations, 1);
-    assert.equal(result.generationRunState.generationContract.output.expectedCardCount, 4);
+    assert.equal(result.generationRunState.generationContract.output.expectedCardCount, 3);
     assert.match(generateCalls[2].body.contents[0].parts[0].text, /Ações determinadas pelo AraLearn/);
-    assert.match(generateCalls[2].body.contents[0].parts[0].text, /exemplo mínimo/i);
+    assert.match(generateCalls[2].body.contents[0].parts[0].text, /Reescrever os cards nas posições 3/i);
   } finally {
     globalThis.fetch = originalFetch;
   }

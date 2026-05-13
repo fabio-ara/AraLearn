@@ -26,8 +26,8 @@ O app agora separa explicitamente:
 
 - cobertura de domínio;
 - variação de prática;
-- auditoria de superficialidade;
-- auditoria de redundância.
+- checagem de superficialidade;
+- checagem de redundância.
 
 Arquivos centrais dessa camada:
 
@@ -166,8 +166,15 @@ Isso evita que um único módulo concentre parse, lint didático, grounding e re
 
 Na validação didática, há dois eixos novos:
 
-- profundidade: detectar resumo raso, salto de mediação, notação sem preparo, prática sem feedback quando exigido;
+- profundidade: combinar checks estruturais e declarativos com sinais textuais fracos, sem fingir compreensão semântica ampla;
 - redundância: impedir que a mesma microssequência seja refeita sem nova função didática.
+
+A regra operacional é:
+
+- erro estrutural ou de política fechada pode bloquear e disparar continuação automática;
+- lacuna declarativa local pode disparar continuação automática;
+- lacuna declarativa de lição pode virar sugestão de nova microssequência;
+- heurística textual isolada vira aviso, não veto automático.
 
 ## Aplicação direta
 

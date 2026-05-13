@@ -62,9 +62,60 @@ test("detecta resposta rasa e aceita resposta meticulosa", () => {
   });
 
   assert.equal(shallow.ok, false);
+  assert.equal(shallow.passesDeterministicValidation, false);
   assert.ok(shallow.shallowErrors.some((item) => item.type === "definition_without_example"));
   assert.ok(shallow.shallowErrors.some((item) => item.type === "unstable_or_backstage_reference"));
   assert.equal(meticulous.ok, true);
+  assert.equal(meticulous.passesDeterministicValidation, true);
+});
+
+test("heurística textual isolada não vira falha determinística nem continuação automática", () => {
+  const audit = validateDidacticDepth({
+    microsequence: {
+      key: "micro-heuristic",
+      title: "Comandos Git",
+      coverageRole: "explain"
+    },
+    cards: [
+      {
+        key: "card-1",
+        resourceType: "paragraph",
+        text: "`git add` e `git commit` são comandos importantes do Git."
+      },
+      {
+        key: "card-2",
+        resourceType: "paragraph",
+        text: "Esses comandos aparecem bastante em versionamento."
+      },
+      {
+        key: "card-3",
+        resourceType: "multiple_choice",
+        question: "Qual comando registra o histórico local?",
+        feedback: "`git commit` registra o histórico local."
+      }
+    ],
+    existingMicrosequences: []
+  });
+  const plan = buildDidacticIterationPlan(
+    { didacticAudit: audit },
+    {
+      didacticPlan: {
+        cardPlan: [
+          { position: 1, role: "present_core_point", resourceType: "paragraph" },
+          { position: 2, role: "show_minimal_case", resourceType: "paragraph" },
+          { position: 3, role: "check_understanding", resourceType: "multiple_choice" }
+        ]
+      },
+      resources: {
+        allowedResourceTypes: ["paragraph", "multiple_choice"]
+      }
+    }
+  );
+
+  assert.equal(audit.ok, false);
+  assert.equal(audit.passesDeterministicValidation, true);
+  assert.ok(audit.heuristicSignals.some((item) => item.type === "definition_without_example"));
+  assert.equal(plan, null);
 });
 
 test("separa item explicado sem prática de item com prática insuficiente", () => {
@@ -144,14 +195,41 @@ test("matriz de continuação separa expansão local, reescrita e ação para ou
   const expandPlan = buildDidacticIterationPlan(
     {
       didacticAudit: {
-        shallowErrors: [
+        shallowErrors: [],
+        missingDepth: [
           {
-            type: "definition_without_example",
+            type: "conceptual_sequence_without_practice",
             target: "microsequence",
-            message: "A microssequência explica, mas não mostra exemplo mínimo."
+            message: "A microssequência cobre explicação, mas não deixa evidência prática de domínio.",
+            basis: "declarative",
+            severity: "declarative_gap",
+            blocksValidation: true,
+            allowsAutoIteration: true
           }
         ],
-        missingDepth: [],
+        blockingIssues: [
+          {
+            type: "conceptual_sequence_without_practice",
+            target: "microsequence",
+            message: "A microssequência cobre explicação, mas não deixa evidência prática de domínio.",
+            basis: "declarative",
+            severity: "declarative_gap",
+            blocksValidation: true,
+            allowsAutoIteration: true
+          }
+        ],
+        actionableIssues: [
+          {
+            type: "conceptual_sequence_without_practice",
+            target: "microsequence",
+            message: "A microssequência cobre explicação, mas não deixa evidência prática de domínio.",
+            basis: "declarative",
+            severity: "declarative_gap",
+            blocksValidation: true,
+            allowsAutoIteration: true
+          }
+        ],
+        declarativeGaps: [],
         suggestedActions: []
       }
     },
@@ -176,7 +254,24 @@ test("matriz de continuação separa expansão local, reescrita e ação para ou
           {
             type: "domain_items_without_practice",
             target: "lesson",
-            message: "Itens só explicados: usar `git push` depois do commit."
+            message: "Itens só explicados: usar `git push` depois do commit.",
+            basis: "declarative",
+            severity: "declarative_gap",
+            blocksValidation: false,
+            allowsAutoIteration: false
+          }
+        ],
+        blockingIssues: [],
+        actionableIssues: [],
+        declarativeGaps: [
+          {
+            type: "domain_items_without_practice",
+            target: "lesson",
+            message: "Itens só explicados: usar `git push` depois do commit.",
+            basis: "declarative",
+            severity: "declarative_gap",
+            blocksValidation: false,
+            allowsAutoIteration: false
           }
         ],
         suggestedActions: ["Criar microssequências para: usar `git push` depois do commit."]
@@ -202,10 +297,27 @@ test("matriz de continuação separa expansão local, reescrita e ação para ou
           {
             type: "duplicate_microsequence_without_new_function",
             target: "microsequence",
-            message: "A microssequência repete cobertura, formato e finalidade sem acrescentar contraste novo."
+            message: "A microssequência repete cobertura, formato e finalidade sem acrescentar contraste novo.",
+            basis: "declarative",
+            severity: "hard_error",
+            blocksValidation: true,
+            allowsAutoIteration: false
           }
         ],
         missingDepth: [],
+        blockingIssues: [
+          {
+            type: "duplicate_microsequence_without_new_function",
+            target: "microsequence",
+            message: "A microssequência repete cobertura, formato e finalidade sem acrescentar contraste novo.",
+            basis: "declarative",
+            severity: "hard_error",
+            blocksValidation: true,
+            allowsAutoIteration: false
+          }
+        ],
+        actionableIssues: [],
+        declarativeGaps: [],
         suggestedActions: []
       }
     },

@@ -226,6 +226,56 @@ test("validação didática separa bastidor e referências voláteis", () => {
   });
 });
 
+test("heurística textual isolada vira aviso e não falha determinística", () => {
+  const { generationContract } = buildContractsFromFixture("git-beginner.json");
+  const result = validateGeneratedCardsDidactic(
+    [
+      {
+        position: 1,
+        resourceType: "paragraph",
+        title: "Ideia geral",
+        text: "`git add` e `git commit` são comandos importantes do Git."
+      },
+      {
+        position: 2,
+        resourceType: "paragraph",
+        title: "Preparar",
+        text: "`git add` entra antes de `git commit` no fluxo local."
+      },
+      {
+        position: 3,
+        resourceType: "paragraph",
+        title: "Registrar",
+        text: "`git commit` grava o que já foi preparado."
+      },
+      {
+        position: 4,
+        resourceType: "multiple_choice",
+        title: "Checagem",
+        question: "Qual comando registra o histórico local?",
+        options: [
+          { optionId: "a", label: "git commit" },
+          { optionId: "b", label: "git add" },
+          { optionId: "c", label: "git status" }
+        ],
+        correctOptionId: "a",
+        feedback: "`git commit` grava o histórico local."
+      },
+      {
+        position: 5,
+        resourceType: "paragraph",
+        title: "Retomada",
+        text: "A ordem mínima é: preparar com `git add` e registrar com `git commit`."
+      }
+    ],
+    generationContract
+  );
+
+  assert.equal(result.ok, true);
+  assert.equal(result.didacticErrors.length, 0);
+  assert.ok(result.didacticWarnings.length > 0);
+});
+
 test("validação mínima de fonte exige sourceRefs ou justificativa quando há fontes", () => {
   const { generationContract } = buildContractsFromFixture("git-beginner.json", {
     sourceUsePlan: [{ sourceId: "source-1", usage: "base", note: "Usar a terminologia do comando." }],

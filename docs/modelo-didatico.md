@@ -25,7 +25,7 @@ Meticulosidade significa:
 - progressão pequena e verificável;
 - cobertura funcional do domínio;
 - prática suficiente com variação útil;
-- diagnóstico de superficialidade;
+- checagem local de superficialidade;
 - correção de lacunas sem inflar texto.
 
 Cobertura não é repetição.
@@ -120,23 +120,33 @@ Um card bom no AraLearn:
 - evita resumo genérico;
 - não empilha muitos tópicos no mesmo card.
 
-## Auditoria de superficialidade
+## Checagem de superficialidade
 
-O app agora trata superficialidade como defeito didático detectável.
+O app trata superficialidade em três níveis.
 
-Entre os sinais bloqueados ou marcados:
+Erros duros, aceitáveis para um motor determinístico:
+
+- prática sem contexto local;
+- prática sem feedback quando o formato exige correção explícita;
+- resposta revelada no mesmo card;
+- linguagem de bastidor;
+- referência externa ou volátil;
+- microssequência redundante sem função nova declarada.
+
+Lacunas declarativas:
+
+- microssequência explicativa sem prática;
+- item explicado sem prática na lição;
+- prática sem variação suficiente na lição.
+
+Sinais textuais fracos:
 
 - definição sem exemplo mínimo;
-- prática sem contexto local;
-- notação sem preparação;
-- prática sem feedback quando o formato exige correção explícita;
 - salto de teoria para exercício sem mediação suficiente;
-- ausência de contraste quando o ponto pede distinção;
-- linguagem de bastidor;
-- conteúdo genérico que serviria para qualquer disciplina;
-- microssequência redundante sem função nova.
+- conteúdo genérico que poderia caber em qualquer disciplina;
+- notação sem preparação claramente marcada.
 
-Quando a falha é acionável por regra local, o resultado da checagem não deve ficar passivo. O app pode:
+Quando a falha é acionável por regra local forte, o resultado da checagem não deve ficar passivo. O app pode:
 
 - reescrever card específico;
 - inserir exemplo mínimo;
@@ -145,6 +155,8 @@ Quando a falha é acionável por regra local, o resultado da checagem não deve 
 - segurar a entrega até uma nova iteração curta.
 
 Se isso aumentar a quantidade final de cards, não é defeito por si só. O defeito é aumentar sem função didática nova.
+
+Sinal textual fraco isolado não deve bloquear a geração nem forçar iteração automática. Ele serve para revisão assistida, presets de aprofundamento e melhoria futura do contrato.
 
 ## Fonte e grounding mínimo
 
