@@ -1,6 +1,6 @@
 # Modelo didático
 
-O modelo didático do AraLearn parte de uma recusa: aprender não é apenas receber explicação. A aplicação foi construída sobre a hipótese de que, sobretudo em estudo autodirigido e sob condições de cansaço, interrupção e excesso de informação, a compreensão melhora quando o conteúdo é reorganizado como percurso praticável.
+O modelo didático do AraLearn parte de uma tese positiva: aprender exige percurso, prática e retomada. A aplicação foi construída sobre a hipótese de que, sobretudo em estudo autodirigido e sob condições de cansaço, interrupção e excesso de informação, a compreensão melhora quando o conteúdo é reorganizado como percurso praticável.
 
 ## A unidade central
 
@@ -20,7 +20,7 @@ No AraLearn, meticulosidade não significa ampliação textual. Significa precis
 - variar a prática quando a repetição simples já não acrescenta aprendizado;
 - verificar domínio sem reduzir o percurso a um teste cego.
 
-Essa posição dialoga com literatura sobre recuperação ativa, worked examples, carga cognitiva e feedback formativo, mas também nasce da experiência concreta de autoria: muita explicação aparentemente “completa” falha exatamente porque tenta dizer tudo sem ensinar o passo certo.
+Essa posição dialoga com literatura sobre recuperação ativa, worked examples, carga cognitiva e feedback formativo (Roediger & Karpicke, 2006; Hattie & Timperley, 2007; Sweller & Cooper, 1985; Paas & van Merriënboer, 2020), mas também nasce da experiência concreta de autoria: muita explicação aparentemente “completa” falha exatamente porque tenta dizer tudo sem ensinar o passo certo.
 
 ## Cobertura e repetição
 
@@ -42,11 +42,11 @@ Essa sequência não é dogma mecânico. Ela é um princípio de prudência did�
 
 ## Contexto local e carga cognitiva
 
-Uma consequência importante desse modelo é a insistência em manter o contexto operacional junto da tarefa. Em linguagem de teoria da carga cognitiva, trata-se de reduzir carga extrínseca desnecessária e evitar o custo adicional de integrar mentalmente informações dispersas. Quando dados, operandos, notação, figura relevante e pedido de resposta ficam separados, a tarefa passa a exigir memória de trabalho adicional que nem sempre contribui para a aprendizagem. O AraLearn tenta, por desenho, diminuir esse atrito.
+Uma consequência importante desse modelo é a insistência em manter o contexto operacional junto da tarefa. Em linguagem de teoria da carga cognitiva, trata-se de reduzir carga extrínseca desnecessária e evitar o custo adicional de integrar mentalmente informações dispersas (Chandler & Sweller, 1991; Paas & van Merriënboer, 2020). Quando dados, operandos, notação, figura relevante e pedido de resposta ficam separados, a tarefa passa a exigir memória de trabalho adicional que nem sempre contribui para a aprendizagem. O AraLearn tenta, por desenho, diminuir esse atrito.
 
 ## Papel da LLM
 
-A LLM não decide a didática do percurso. Ela participa de uma etapa delimitada de preenchimento. O app continua responsável por tipo, tamanho, sequência, formatos possíveis e regras de validação. Isso é especialmente importante porque o produto foi calibrado para operar bem também com modelos leves. Em vez de confiar em improvisação ampla, o AraLearn desloca parte da inteligência para a própria arquitetura.
+A LLM não decide a didática do percurso. Ela participa de uma etapa delimitada de preenchimento. O app continua responsável por tipo, tamanho, sequência, formatos possíveis e regras de validação. Isso é especialmente importante porque o produto foi calibrado para operar bem também com modelos leves. Em vez de confiar em improvisação ampla, o AraLearn desloca parte da inteligência para a própria arquitetura, em linha com a prudência sugerida por trabalhos sobre linguagem controlada e heurísticas superficiais em NLP (Neuhaus & Barkmeyer, 2013; McCoy, Pavlick & Linzen, 2019).
 
 ## Formas de apresentação e prática
 

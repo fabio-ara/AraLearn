@@ -44,15 +44,13 @@ O AraLearn combina esses dois movimentos porque a aprendizagem real exige os doi
 
 O AraLearn não nasce do vazio. Há influências explícitas de produto, de prática de estudo e de reflexão intelectual.
 
-Do lado dos produtos, Anki ajuda a evidenciar o valor da recuperação ativa; Duolingo mostra a força de unidades pequenas e recorrência; Obsidian explicita o valor de um repositório pessoal articulado; Wikipédia continua exemplar como estrutura aberta de conhecimento; Git fornece um imaginário forte de versionamento, reversibilidade e histórico; X expõe, em escala radical, um mundo em que a informação circula em fragmentos rápidos, porém raramente chega organizada como aprendizagem.
+Do lado dos produtos, Anki ajuda a evidenciar o valor da recuperação ativa, em linha com o que Roediger e Karpicke (2006) e Dunlosky et al. (2013) mostram sobre prática de recuperação e estudo distribuído; Duolingo mostra a força de unidades pequenas com recorrência; Obsidian explicita o valor de um repositório pessoal articulado; Wikipédia continua exemplar como estrutura aberta de conhecimento; Git fornece um imaginário forte de versionamento, reversibilidade e histórico; X expõe, em escala radical, um mundo em que a informação circula em fragmentos rápidos, porém raramente chega organizada como aprendizagem.
 
-Do lado intelectual, o projeto dialoga com a tradição estruturalista e com críticas à circulação contemporânea do saber. Em Saussure e no estruturalismo, uma unidade não se define isoladamente, mas por relações dentro de um sistema; no AraLearn, uma unidade didática também precisa ser lida na estrutura maior em que se insere. Em Lyotard, o saber aparece cada vez mais como informação operacionalizável; no AraLearn, esse diagnóstico ajuda a compreender por que hoje é tão fácil obter conteúdo e tão difícil convertê-lo em formação. Em Foucault, qualquer tecnologia que registra, classifica e acompanha trajetórias de sujeitos merece suspeita; no AraLearn, isso reaparece como cuidado com rastreabilidade, controle local e recusa de autoridade automática da IA.
+Do lado intelectual, o projeto dialoga com a tradição estruturalista e com críticas à circulação contemporânea do saber. Em Saussure e no estruturalismo, uma unidade não se define isoladamente, mas por relações dentro de um sistema; no AraLearn, uma unidade didática também precisa ser lida na estrutura maior em que se insere. Em Lyotard, o saber aparece cada vez mais como informação operacionalizável; esse diagnóstico ajuda a compreender por que hoje é tão fácil obter conteúdo e tão difícil convertê-lo em formação. Em Foucault, qualquer tecnologia que registra, classifica e acompanha trajetórias de sujeitos merece suspeita; no app, isso reaparece como cuidado com rastreabilidade, controle local e recusa de autoridade automática da IA.
 
-## O que o AraLearn não é
+## A posição do produto
 
-O AraLearn não é aplicativo de resumo. Não é chatbot generalista. Não é mecanismo de resposta livre sem contenção. Não é ferramenta que substitui leitura longa, aula, fonte primária ou reflexão crítica. Não é máquina de gerar quantidade para dar sensação de completude.
-
-Sua aposta é outra: em vez de condensar tudo em explicação geral, decompor. Em vez de responder amplamente, situar. Em vez de produzir volume, organizar progressão. Em vez de esconder a transformação feita pela IA, tratá-la como etapa revisável.
+O AraLearn se define por uma aposta precisa: informação disponível precisa ganhar forma estudável. Por isso, a aplicação privilegia decomposição em vez de condensação genérica, progressão em vez de acúmulo, prática em vez de simples exposição e revisão explícita em vez de resposta livre sem contenção. Aula, estudo extensivo de fonte primária e reflexão crítica continuam relevantes; o papel do app é outro. Ele organiza, orienta e transforma material disperso em percurso revisável.
 
 ## O que existe hoje
 

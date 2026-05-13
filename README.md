@@ -53,7 +53,7 @@ versionar
 
 Não se trata de apenas mais um app de flashcards. Flashcards, claro, são a interface. O objetivo central do projeto, entretanto, é a conversão controlada de informação em aprendizagem prática e ativa.
 
-Meticulosidade, aqui, não significa card longo. Significa decomposição, progressão, prática com finalidade, contraste, tratamento de erro comum e verificação de domínio.
+Meticulosidade, aqui, significa decomposição, progressão, prática com finalidade, contraste, tratamento de erro comum e verificação de domínio. O critério não é extensão textual; é suficiência didática.
 
 ---
 

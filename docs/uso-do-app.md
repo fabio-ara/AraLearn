@@ -79,7 +79,7 @@ Não existe mais uma camada separada de prévia privada. Se o resultado passa pe
 
 Quando o usuário pede geração de cards, o app não envia um pedido livre do tipo “crie uma boa explicação”. Ele segue um pipeline mais contido.
 
-Primeiro, monta um contrato de planejamento. Depois, a LLM devolve um plano curto. O app valida esse plano e monta, por conta própria, o `cardPlan` determinístico. Só então a LLM preenche o conteúdo correspondente às posições já decididas pelo sistema. Em seguida, o app valida estrutura, coerência didática local e vínculo mínimo com fonte, quando houver. Se surgir uma falha estrutural ou declarativa relevante, pode haver nova iteração automática antes da entrega final.
+Primeiro, monta um contrato de planejamento. Depois, a LLM devolve um plano enxuto. O app valida esse plano e monta, por conta própria, o `cardPlan` determinístico. Só então a LLM preenche o conteúdo correspondente às posições já decididas pelo sistema. Em seguida, o app valida estrutura, coerência didática local e vínculo mínimo com fonte, quando houver. Se surgir uma falha estrutural ou declarativa relevante, pode haver nova iteração automática antes da entrega final.
 
 Do ponto de vista do usuário, isso significa que a geração não é um salto único; é uma operação mediada pelo próprio sistema.
 

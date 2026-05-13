@@ -1,12 +1,12 @@
 # Assistência por IA generativa
 
-Este documento descreve o papel da IA no AraLearn sem inflar suas capacidades e sem reduzir a arquitetura a uma sequência de prompts.
+Este documento descreve o papel da IA no AraLearn a partir da arquitetura real do produto e dos limites técnicos que a própria literatura recomenda explicitar.
 
 ## A posição do produto
 
 No AraLearn, a LLM não ocupa o lugar de autora da didática. Ela tampouco ocupa o lugar de fonte de verdade. Seu papel é mais restrito: preencher ou reparar conteúdo dentro de um recorte previamente decidido pelo app.
 
-Essa escolha nasce de uma constatação prática e teórica. Na prática, pedidos muito amplos tendem a produzir deriva, repetição, generalização vazia e inconsistência estrutural, sobretudo em modelos leves. Na teoria, trabalhos sobre linguagem controlada e sobre heurísticas superficiais em NLP mostram que fluência textual e estrutura formal confiável não coincidem automaticamente. Por isso, o AraLearn não delega à IA o desenho do percurso. Ele desloca parte da inteligência da operação para contratos, limites e validações locais.
+Essa escolha nasce de uma constatação prática e teórica. Na prática, pedidos muito amplos tendem a produzir deriva, repetição, generalização vazia e inconsistência estrutural, sobretudo em modelos leves. Na teoria, trabalhos sobre linguagem controlada e sobre heurísticas superficiais em NLP mostram que fluência textual e estrutura formal confiável não coincidem automaticamente (Neuhaus & Barkmeyer, 2013; Njonko et al., 2014; McCoy, Pavlick & Linzen, 2019). Por isso, o AraLearn não delega à IA o desenho do percurso. Ele desloca parte da inteligência da operação para contratos, limites e validações locais.
 
 ## Por que o AraLearn prefere restrição
 
@@ -24,7 +24,7 @@ Esse desenho é compatível com a observação, bastante recorrente em uso real,
 
 ## Weak model mode
 
-O pipeline bottom-up de cards opera em `weakModelMode`. Em termos simples, isso significa que a primeira etapa pede ao modelo apenas uma escolha restrita entre opções fechadas. O plano devolvido é pequeno. O modelo não devolve `cardPlan`, não escolhe livremente a posição dos elementos, não decide sozinho o formato final de cada unidade interativa. Depois da validação desse plano curto, o AraLearn monta o `cardPlan` por conta própria e só então pede o preenchimento do conteúdo.
+O pipeline bottom-up de cards opera em `weakModelMode`. Em termos simples, isso significa que a primeira etapa pede ao modelo apenas uma escolha restrita entre opções fechadas. O plano devolvido é enxuto. O modelo não devolve `cardPlan`, não escolhe livremente a posição dos elementos, não decide sozinho o formato final de cada unidade interativa. Depois da validação desse plano preliminar, o AraLearn monta o `cardPlan` por conta própria e só então pede o preenchimento do conteúdo.
 
 Essa política não é uma admissão de fraqueza do produto; é uma forma de calibrar a operação para o tipo de modelo que o projeto pretende suportar com custo plausível.
 
@@ -48,7 +48,7 @@ O fluxo real da geração de cards é o seguinte:
 
 1. o usuário faz um pedido localizado;
 2. o app monta um contrato de planejamento;
-3. a LLM devolve um plano curto;
+3. a LLM devolve um plano enxuto;
 4. o app valida o plano;
 5. o app monta `cardPlan` determinístico;
 6. o app resolve os formatos permitidos;
@@ -66,7 +66,7 @@ O que interessa aqui é que a geração não é tratada como bloco único, e sim
 
 ## Meticulosidade e política didática
 
-A camada de meticulosidade não existe para pedir mais texto. Ela existe para conter dois riscos muito comuns em geração por LLM: resumo genérico e prolixidade enganosa. Em outras palavras, o problema não é só sair “pequeno demais”; é sair liso, amplo e sem progressão prática.
+A camada de meticulosidade não existe para pedir mais texto. Ela existe para conter dois riscos muito comuns em geração por LLM: resumo genérico e prolixidade enganosa. Em outras palavras, o problema não é só sair insuficiente; é sair liso, amplo e sem progressão prática.
 
 Por isso, a política da geração reforça:
 
@@ -78,11 +78,11 @@ Por isso, a política da geração reforça:
 
 ## Checagens locais de qualidade
 
-Uma parte importante da assistência não está no prompt, mas na camada de checagens locais. O AraLearn não interpreta livremente o significado de qualquer texto. O que ele faz é combinar três tipos de inspeção.
+Uma parte importante da assistência não está no prompt, mas na camada de checagens locais. O AraLearn combina três tipos de inspeção.
 
 O primeiro tipo é estrutural: contrato, quantidade, posição, formato e campos obrigatórios. O segundo é declarativo: cobertura já registrada, prática ausente, variação insuficiente, duplicação sem função nova. O terceiro é textual, mas com força limitada: padrões evidentes de bastidor, dependência externa, resposta revelada ou genericidade local.
 
-O ponto decisivo é que esses três tipos não têm o mesmo estatuto. A camada estrutural e parte da camada declarativa podem justificar bloqueio ou continuação automática. A camada textual, por si só, não deve ser confundida com interpretação semântica forte. Ela funciona como apoio, sinal de risco e insumo para revisão.
+O ponto decisivo é que esses três tipos não têm o mesmo estatuto. A camada estrutural e parte da camada declarativa podem justificar bloqueio ou continuação automática. A camada textual, por si só, não deve ser confundida com interpretação semântica forte. Ela funciona como apoio, sinal de risco e insumo para revisão, o que é coerente com a cautela sugerida por McCoy, Pavlick e Linzen (2019).
 
 ## Continuação automática
 
