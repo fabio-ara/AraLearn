@@ -2,6 +2,11 @@
 
 Este documento descreve o estado atual da assistência por IA no AraLearn.
 
+Leitura complementar:
+
+- [Fundamentos e evidências](fundamentos-e-evidencias.md)
+- [Arquitetura](arquitetura.md)
+
 ## Posição do produto
 
 O AraLearn não trata a LLM como autora da arquitetura didática.
@@ -22,6 +27,8 @@ O app decide:
 A LLM preenche somente conteúdo dentro de contrato fechado.
 
 O alvo operacional é modelo fraco ou barato. No Gemini, a referência atual é `gemini-2.5-flash`, tratada como perfil `weak-structured-json`.
+
+Essa escolha não é apresentada como “o melhor modelo” em sentido absoluto. Ela é uma escolha de engenharia orientada por custo, previsibilidade e restrição de tarefa.
 
 ## Weak model mode
 
@@ -223,6 +230,31 @@ Fluxo:
 Heurística textual isolada não deve forçar essa continuação automática.
 
 Essa continuação não deve competir com o pedido textual do usuário. Ela existe para preservar o pedido e fechar a lacuna detectada pelo motor.
+
+## Base teórica resumida
+
+A arquitetura desta camada segue quatro teses mais modestas que “deixar a LLM decidir”:
+
+- linguagem natural livre continua ambígua demais para mapeamento confiável sem restrição forte;
+- modelos podem acertar por heurísticas superficiais, então a fluência não basta;
+- feedback e prática funcionam melhor quando o contexto da tarefa está bem definido;
+- contratos curtos, listas fechadas e validação local são mais defensáveis que delegação ampla.
+
+Referências centrais:
+
+- RECON / linguagem controlada: https://www.nist.gov/publications/recon-controlled-english-business-rules
+- RuleCNL: https://arxiv.org/abs/1406.2096
+- HANS / heurísticas superficiais: https://aclanthology.org/P19-1334/
+- Feedback: https://assess.ucr.edu/sites/g/files/rcwecm2336/files/2019-02/hattietimperley_2007.pdf
+
+## O que este documento não reivindica
+
+Este documento não afirma que o AraLearn:
+
+- entende semanticamente qualquer texto livre;
+- audita didática como professor humano;
+- garante qualidade apenas por prompt;
+- substitui revisão editorial do usuário.
 
 ### Grounding mínimo de fonte
 

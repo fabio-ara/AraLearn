@@ -15,6 +15,11 @@ O AraLearn não é um app de resumo.
 
 Ele não deve condensar um tópico em texto genérico. Ele deve decompor o conteúdo em passos estudáveis, cada um com função didática verificável.
 
+Leitura complementar:
+
+- [Fundamentos e evidências](fundamentos-e-evidencias.md)
+- [Pesquisa e avaliação](pesquisa-e-avaliacao.md)
+
 ## Meticulosidade
 
 No AraLearn, meticulosidade não significa card longo.
@@ -35,6 +40,13 @@ Cobertura pergunta quais capacidades precisam aparecer no percurso.
 Consolidação pergunta quantas vezes e de quantas formas o aluno precisa praticar.
 
 Repetição ruim é refazer a mesma operação sem novo contraste, nova representação, nova dificuldade, novo erro-alvo ou novo formato avaliativo.
+
+Essa posição é compatível com literatura sobre:
+
+- `practice testing`;
+- `worked examples`;
+- feedback formativo;
+- microlearning usado como componente de um percurso maior, não como substituto universal.
 
 ## Sequência mínima
 
@@ -157,6 +169,15 @@ Quando a falha é acionável por regra local forte, o resultado da checagem não
 Se isso aumentar a quantidade final de cards, não é defeito por si só. O defeito é aumentar sem função didática nova.
 
 Sinal textual fraco isolado não deve bloquear a geração nem forçar iteração automática. Ele serve para revisão assistida, presets de aprofundamento e melhoria futura do contrato.
+
+## O que ainda depende de teste no próprio app
+
+O modelo didático do AraLearn ainda precisa de evidência própria em pontos como:
+
+- quantos cards bastam por microssequência;
+- quando uma prática já conta como suficiente;
+- quando uma variação realmente consolida;
+- que presets funcionam melhor por disciplina.
 
 ## Fonte e grounding mínimo
 

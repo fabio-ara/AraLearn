@@ -234,6 +234,8 @@ Documentação adicional:
 
 - [Codex CLI local no Android, Windows e Linux](docs/codex-cli.md)
 - [Abrir com AraLearn no Android](docs/android-share-import.md)
+- [Guia de uso do app](docs/uso-do-app.md)
+- [Fundamentos e evidências](docs/fundamentos-e-evidencias.md)
 
 A pergunta central não é apenas:
 
@@ -531,7 +533,9 @@ A chave não deve ser versionada nem registrada em arquivos do projeto.
 ## Documentação
 
 - [Visão geral da documentação](docs/README.md)
+- [Guia de uso do app](docs/uso-do-app.md)
 - [Visão do produto](docs/visao-do-produto.md)
+- [Fundamentos e evidências](docs/fundamentos-e-evidencias.md)
 - [Arquitetura](docs/arquitetura.md)
 - [Modelo didático](docs/modelo-didatico.md)
 - [Rascunhos e microssequências](docs/rascunhos-e-microssequencias.md)
@@ -547,6 +551,12 @@ A chave não deve ser versionada nem registrada em arquivos do projeto.
 ## Status
 
 O AraLearn está em desenvolvimento ativo. A versão atual já consolida uma base funcional para estudo, autoria local, persistência, importação, exportação, validação automatizada, assistência por inteligência artificial e empacotamento Android.
+
+A documentação do projeto agora diferencia explicitamente:
+
+- o que está amparado por literatura;
+- o que é escolha de engenharia;
+- o que ainda é hipótese aberta e precisa de avaliação própria.
 
 Versão atual do pacote:
 

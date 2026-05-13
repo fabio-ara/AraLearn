@@ -10,6 +10,11 @@ curso -> módulo -> lição -> microssequência -> card
 
 O contrato público continua simples e legível. A complexidade operacional fica no app.
 
+Leitura complementar:
+
+- [Guia de uso do app](uso-do-app.md)
+- [Fundamentos e evidências](fundamentos-e-evidencias.md)
+
 ## Camadas principais
 
 - `contract/`: contrato público e validação;
@@ -194,6 +199,17 @@ O modo de estudo ignora:
 
 - microssequências `draft`;
 - microssequências com `included: false`.
+
+## Reivindicações permitidas
+
+Esta arquitetura permite afirmar, de modo responsável, que o AraLearn:
+
+- restringe a tarefa da LLM;
+- valida localmente o que é estrutural e declarativo;
+- preserva dados e progresso localmente;
+- mantém separação entre rascunho, estudo e revisão.
+
+Ela não permite afirmar, no estado atual, que o app compreende texto livre em sentido forte.
 
 ## Codex local
 

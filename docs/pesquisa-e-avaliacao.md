@@ -2,6 +2,11 @@
 
 Este documento organiza o AraLearn como objeto de pesquisa educacional e como produto que precisa de critérios para decisões de arquitetura.
 
+Leitura complementar:
+
+- [Fundamentos e evidências](fundamentos-e-evidencias.md)
+- [Guia de uso do app](uso-do-app.md)
+
 ## Objeto
 
 O AraLearn pode ser investigado como uma infraestrutura aberta para transformar informação em prática de aprendizagem.
@@ -154,3 +159,13 @@ Também precisam de evidência:
 - quando a checagem local de superficialidade está sensível demais ou permissiva demais.
 
 Essas decisões devem ser orientadas por testes, revisão didática e evidência de uso.
+
+## Política de alegações
+
+Ao escrever sobre o AraLearn, convém separar:
+
+- `resultado já sustentado`: por exemplo, que o app usa prática ativa, validação estrutural e persistência local;
+- `decisão plausível`: por exemplo, o desenho específico do `domainMap`;
+- `hipótese aberta`: por exemplo, o efeito líquido dos presets e do tamanho ideal de microssequência.
+
+Essa separação evita transformar documentação de produto em retórica sem lastro.
