@@ -1253,28 +1253,21 @@ function renderMicrosequenceWorkbenchScreen({
     "</span>" +
     "</p>" +
     "</div>";
-  const pendingGeneratedNotice = editorSupport.pendingGeneratedVersionActive
-    ? '<section class="microsequence-assist-panel assist-status-panel">' +
-      '<p class="tiny muted">Iteração gerada pendente</p>' +
-      '<p class="muted assist-last-request">Revise os cards no preview. Aceitar mantém esta iteração como estado em uso; Excluir restaura a versão anterior.</p>' +
-      "</section>"
-    : "";
   const pendingGeneratedActions = editorSupport.pendingGeneratedVersionActive
     ? '<section class="study-reader-footer workbench-preview-footer">' +
       '<div class="study-action-dock">' +
       '<div class="study-action-stack">' +
       '<div class="study-next-wrap workbench-preview-actions">' +
-      '<button class="icon-ghost study-comment-btn" type="button" data-action="discard-generated-version" title="Excluir iteração pendente" aria-label="Excluir iteração pendente">' +
+      '<button class="icon-ghost study-comment-btn" type="button" data-action="discard-generated-version" title="Excluir iteração atual" aria-label="Excluir iteração atual">' +
       renderUiIcon("remove-state", "generate-submit-icon") +
       "</button>" +
-      '<button class="open-mini study-continue-btn" type="button" data-action="accept-generated-version" title="Aceitar iteração pendente" aria-label="Aceitar iteração pendente">' +
+      '<button class="open-mini study-continue-btn" type="button" data-action="accept-generated-version" title="Aceitar iteração atual" aria-label="Aceitar iteração atual">' +
       renderUiIcon("ready-state", "generate-submit-icon") +
       "</button>" +
       "</div></div></div></section>"
     : "";
   const previewPane =
     '<section class="workbench-surface-pane workbench-preview-pane">' +
-    pendingGeneratedNotice +
     '<div class="generator-preview-stage">' +
     previewBody +
     "</div>" +

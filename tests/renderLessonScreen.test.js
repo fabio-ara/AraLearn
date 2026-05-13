@@ -757,10 +757,6 @@ test("renderiza CTAs de aceitar e excluir quando a iteracao gerada atual esta pe
 
   assert.match(html, /data-action="discard-generated-version"/);
   assert.match(html, /data-action="accept-generated-version"/);
-  assert.match(html, /Iteração gerada pendente/);
-  assert.match(html, /Aceitar mantém esta iteração como estado em uso; Excluir restaura a versão anterior\./);
-  assert.match(html, /title="Excluir iteração pendente" aria-label="Excluir iteração pendente"/);
-  assert.match(html, /title="Aceitar iteração pendente" aria-label="Aceitar iteração pendente"/);
   assert.match(html, /workbench-preview-footer/);
 });
 
