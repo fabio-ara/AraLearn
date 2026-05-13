@@ -1,3 +1,5 @@
+import { validateDidacticDepth } from "./validateDidacticDepth.js";
+
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
 }
@@ -74,6 +76,16 @@ export function validateGeneratedCardsDidactic(cards = [], generationContract = 
       didacticErrors.push(`${prefix} prática antes de microteoria.`);
     }
   });
+
+  const depth = validateDidacticDepth({
+    microsequence: generationContract?.context?.microsequence || {},
+    cards,
+    existingMicrosequences: generationContract?.context?.lesson?.microsequenceLine || [],
+    weakModelMode: generationContract?.weakModelMode?.modeId === "weakModelMode"
+  });
+  depth.shallowErrors.forEach((item) => didacticErrors.push(`${item.target} ${item.message}`));
+  depth.missingDepth.forEach((item) => didacticErrors.push(`${item.target} ${item.message}`));
+  depth.redundancyWarnings.forEach((item) => didacticErrors.push(`${item.target} ${item.message}`));
 
   return {
     ok: didacticErrors.length === 0,

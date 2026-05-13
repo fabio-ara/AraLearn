@@ -6,6 +6,13 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ### Changed
 
+- a lição passa a poder carregar `domainMap` com `domainItem`, `practiceVariant` e `gapSummary` derivados para orientar cobertura didática real
+- microssequências passam a aceitar `description`, `domainRefs`, `practiceVariantRefs`, `didacticPurpose` e `coverageRole`
+- a geração de microssequências da lição passa a considerar mapa de domínio, lacunas reais, itens fracos e risco de redundância, em vez de depender só de títulos soltos
+- a camada de geração ganha `meticulousDidacticPolicy`, compatível com `weakModelMode`, para reforçar decomposição, prática suficiente e rejeição de resumo genérico
+- a validação didática passa a incluir auditoria específica de profundidade (`validateDidacticDepth`) e auditoria de redundância (`validateDidacticRedundancy`)
+- prompts de planejamento, geração e edição passam a proibir resumo genérico, densidade artificial e duplicação sem nova função didática
+- a UI da lição e da microssequência ganha ação pública `Completar lacunas`, que usa auditoria local para sugerir aprofundamento sem inflar volume
 - a camada de geração de cards passa a operar com policy explícita de `weakModelMode`, voltada a modelo fraco e barato
 - `modelCapabilities` deixa de usar flags ambíguas e passa a distinguir `jsonMode`, `responseJsonSchema`, `responseSchema` e força real de schema
 - o planejamento bottom-up fica reduzido a `typeId`, `sizeId`, `microsequenceGoal`, `selectedExtraResourceTypes`, `sourceUsePlan` e `reason`
@@ -24,6 +31,8 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ### Tests
 
+- fixtures de meticulosidade entram em `tests/fixtures/meticulous/` cobrindo lógica proposicional, soma de matrizes, fluxo Git e navegação Linux
+- a suíte passa a cobrir mapa de domínio, resposta rasa, resposta meticulosa, redundância didática e geração de microssequência para lacuna real
 - a suíte passa a cobrir policy fraca, gating de recursos avançados, `sourceRefs`, validação separada e reparo determinístico
 - fixtures didáticas reais entram em `tests/fixtures/didactics/`
 - a suíte remove os cenários de storage e renderização específicos da prévia privada e passa a validar apenas o fluxo direto de atualização

@@ -8,6 +8,9 @@ export function buildMicrosequencePlanningPrompt(contract, modelCapabilities = c
     "Responda somente JSON válido.",
     "Devolva apenas: typeId, sizeId, microsequenceGoal, selectedExtraResourceTypes, sourceUsePlan e reason.",
     "Não devolva cardPlan, cards, position, role, label, resourceType por card, tags persistentes, status nem alteração estrutural.",
+    "Não faça resumo genérico. Decomponha o ponto didático solicitado.",
+    "Cada nova microssequência deve acrescentar função didática nova ou variação de prática justificada.",
+    "Se o conteúdo já está coberto, não gere duplicata.",
     fixedTypeId && fixedTypeId !== "assisted"
       ? `Use typeId exatamente igual a "${fixedTypeId}".`
       : "Escolha typeId entre availableTypes.",

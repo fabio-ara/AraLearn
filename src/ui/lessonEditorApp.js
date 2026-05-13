@@ -114,6 +114,8 @@ import {
 } from "../assist/codexLocalAssist.js";
 import { runAssist } from "../assist/runAssist.js";
 import { listMicrosequenceTypes } from "../generation/types/microsequenceTypes.js";
+import { buildLessonDomainCoverageReport } from "../generation/domain/lessonDomainModel.js";
+import { validateDidacticDepth } from "../generation/validation/validateDidacticDepth.js";
 import { getLessonProgressCursor, removeLessonProgressEntries, writeLessonProgressEntry } from "../storage/progressStore.js";
 import { detectJsonExchangeFormat } from "../storage/jsonExchange.js";
 import { createStarterContractCard, getContractCardKind, listContractAnswerValues } from "../contract/contractCard.js";
@@ -632,8 +634,15 @@ function buildAssistHierarchyContext({ course, moduleValue, lesson, microsequenc
     lessonTitle: lesson?.title || lesson?.key || "",
     lessonDescription: lesson?.description || "",
     lessonSourceGuide: lesson?.sourceGuide || "",
+    lessonSourceGuideStructured: structuredClone(lesson?.sourceGuideStructured || {}),
+    lessonDomainMap: structuredClone(lesson?.domainMap || {}),
     title: microsequence?.title || "",
+    description: microsequence?.description || "",
     tags: Array.isArray(microsequence?.tags) ? microsequence.tags : [],
+    domainRefs: Array.isArray(microsequence?.domainRefs) ? microsequence.domainRefs : [],
+    practiceVariantRefs: Array.isArray(microsequence?.practiceVariantRefs) ? microsequence.practiceVariantRefs : [],
+    didacticPurpose: microsequence?.didacticPurpose || "",
+    coverageRole: microsequence?.coverageRole || "",
     cards: Array.isArray(microsequence?.cards) ? microsequence.cards : []
   };
 }
@@ -881,6 +890,7 @@ function makeEntityEditorModel(state) {
       fields: [],
       actions: [
         { key: "edit-lesson-metadata", label: "Editar lição", icon: "&#9998;" },
+        { key: "deepen-lesson", label: "Completar lacunas", icon: "&#9881;" },
         { key: "reset-lesson-progress", label: "Zerar progresso da lição", icon: "&#8635;" },
         { key: "export-lesson", label: "Exportar lição", icon: "&#8681;" },
         { key: "delete-lesson", label: "Excluir lição", icon: "&#128465;", tone: "danger" }
@@ -943,6 +953,7 @@ function makeEntityEditorModel(state) {
       fields: [],
       actions: [
         { key: "edit-microsequence-metadata", label: "Editar microssequência", icon: "&#9998;" },
+        { key: "deepen-microsequence", label: "Completar lacunas", icon: "&#9881;" },
         { key: "create-card", label: "Novo card", icon: "&#43;" },
         { key: "create-plane-card", label: "Novo plano cartesiano", icon: "&#9641;" },
         { key: "create-matrix-card", label: "Nova matriz", icon: "&#91;&#93;" },
@@ -4076,7 +4087,14 @@ export function createLessonEditorApp({ root, storage, editor }) {
       lessonKey: state.selection.lessonKey,
       microsequenceKey: state.selection.microsequenceKey,
       title: String(microsequenceTitle || "").trim() || currentMicrosequence?.title || "Microssequência",
+      description: currentMicrosequence?.description || "",
       tags: structuredClone(Array.isArray(currentMicrosequence?.tags) ? currentMicrosequence.tags : []),
+      domainRefs: structuredClone(Array.isArray(currentMicrosequence?.domainRefs) ? currentMicrosequence.domainRefs : []),
+      practiceVariantRefs: structuredClone(
+        Array.isArray(currentMicrosequence?.practiceVariantRefs) ? currentMicrosequence.practiceVariantRefs : []
+      ),
+      didacticPurpose: currentMicrosequence?.didacticPurpose || "",
+      coverageRole: currentMicrosequence?.coverageRole || "",
       cards: structuredClone(Array.isArray(cards) ? cards : [])
     });
 
@@ -4738,6 +4756,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
   }
 
   function buildLessonMicrosequenceGenerationContext(scopeState) {
+    const domainCoverage = buildLessonDomainCoverageReport(scopeState.lesson || {});
     return {
       actionLabel: scopeState.actionLabel,
       courseTitle: scopeState.course?.title || String(state.generationDraft.courseInput || "").trim(),
@@ -4752,6 +4771,14 @@ export function createLessonEditorApp({ root, storage, editor }) {
       lessonDescription: scopeState.lesson?.description || "",
       lessonSourceGuide: scopeState.lesson?.sourceGuide || "",
       lessonSourceGuideStructured: structuredClone(scopeState.lesson?.sourceGuideStructured || {}),
+      lessonDomainMap: structuredClone(scopeState.lesson?.domainMap || {}),
+      lessonDomainCoverage: {
+        uncoveredItems: domainCoverage.uncoveredItems,
+        weakItems: domainCoverage.weakItems,
+        explainedWithoutPractice: domainCoverage.explainedWithoutPractice,
+        practiceWithoutVariation: domainCoverage.practiceWithoutVariation,
+        examMissing: domainCoverage.examMissing
+      },
       lessonResourceTags: Array.isArray(scopeState.lesson?.resourceTags) ? [...scopeState.lesson.resourceTags] : [],
       lessonContentTypeTags: Array.isArray(scopeState.lesson?.contentTypeTags) ? [...scopeState.lesson.contentTypeTags] : [],
       lessonLearningActionTags: Array.isArray(scopeState.lesson?.learningActionTags) ? [...scopeState.lesson.learningActionTags] : [],
@@ -4762,6 +4789,14 @@ export function createLessonEditorApp({ root, storage, editor }) {
             position: index,
             title: String(microsequence?.title || "").trim(),
             description: String(microsequence?.description || "").trim(),
+            domainRefs: Array.isArray(microsequence?.domainRefs)
+              ? microsequence.domainRefs.map((item) => String(item || "").trim()).filter(Boolean)
+              : [],
+            practiceVariantRefs: Array.isArray(microsequence?.practiceVariantRefs)
+              ? microsequence.practiceVariantRefs.map((item) => String(item || "").trim()).filter(Boolean)
+              : [],
+            didacticPurpose: String(microsequence?.didacticPurpose || "").trim(),
+            coverageRole: String(microsequence?.coverageRole || "").trim(),
             tags: Array.isArray(microsequence?.tags)
               ? microsequence.tags.map((item) => String(item || "").trim()).filter(Boolean)
               : [],
@@ -5123,7 +5158,12 @@ export function createLessonEditorApp({ root, storage, editor }) {
         moduleKey: scopeState.moduleValue.key,
         lessonKey: lesson.key,
         title: item.title,
+        description: item.description,
         tags: Array.isArray(item.tags) ? item.tags : [],
+        domainRefs: Array.isArray(item.domainRefs) ? item.domainRefs : [],
+        practiceVariantRefs: Array.isArray(item.practiceVariantRefs) ? item.practiceVariantRefs : [],
+        didacticPurpose: item.didacticPurpose,
+        coverageRole: item.coverageRole,
         status: "draft",
         included: false,
         cards: []
@@ -5187,7 +5227,12 @@ export function createLessonEditorApp({ root, storage, editor }) {
         moduleKey: scopeState.moduleValue.key,
         lessonKey: lesson.key,
         title: item.title,
+        description: item.description,
         tags: Array.isArray(item.tags) ? item.tags : [],
+        domainRefs: Array.isArray(item.domainRefs) ? item.domainRefs : [],
+        practiceVariantRefs: Array.isArray(item.practiceVariantRefs) ? item.practiceVariantRefs : [],
+        didacticPurpose: item.didacticPurpose,
+        coverageRole: item.coverageRole,
         status: "draft",
         included: false,
         cards: []
@@ -5581,6 +5626,93 @@ export function createLessonEditorApp({ root, storage, editor }) {
     render({ preserveState: true });
   }
 
+  function buildLessonAuditPrompt(lesson, report) {
+    return [
+      "Melhore a lição passo a passo.",
+      "Não faça resumo genérico.",
+      report.uncoveredItems.length ? `Cubra estas lacunas reais: ${report.uncoveredItems.join("; ")}.` : "",
+      report.explainedWithoutPractice.length
+        ? `Adicione prática para: ${report.explainedWithoutPractice.join("; ")}.`
+        : "",
+      report.practiceWithoutVariation.length
+        ? `Varie a prática de: ${report.practiceWithoutVariation.join("; ")}.`
+        : "",
+      report.examMissing.length ? `Inclua formato de prova para: ${report.examMissing.join("; ")}.` : "",
+      `Lição atual: ${lesson?.title || "Lição"}.`
+    ]
+      .filter(Boolean)
+      .join(" ");
+  }
+
+  function buildMicrosequenceAuditPrompt(microsequence, audit) {
+    return [
+      "Melhore esta microssequência passo a passo.",
+      "Não faça resumo genérico.",
+      audit.shallowErrors[0]?.message || "",
+      audit.missingDepth[0]?.message || "",
+      audit.suggestedActions[0] || "",
+      `Microssequência atual: ${microsequence?.title || "Microssequência"}.`
+    ]
+      .filter(Boolean)
+      .join(" ");
+  }
+
+  function deepenLessonFromAction() {
+    const courseKey = state.entityEditor.courseKey || state.selection.courseKey;
+    const moduleKey = state.entityEditor.moduleKey;
+    const lessonKey = state.entityEditor.lessonKey;
+    const course = findCourse(state.project, courseKey);
+    const moduleValue = findModule(state.project, courseKey, moduleKey);
+    const lesson = findLesson(state.project, courseKey, moduleKey, lessonKey);
+    const report = buildLessonDomainCoverageReport(lesson);
+
+    state.entityEditor = null;
+    state.generationDraft.courseFixed = true;
+    state.generationDraft.moduleFixed = true;
+    state.generationDraft.lessonFixed = true;
+    state.generationDraft.courseInput = course?.title || courseKey || "";
+    state.generationDraft.courseKey = courseKey || "";
+    state.generationDraft.moduleInput = moduleValue?.title || moduleKey || "";
+    state.generationDraft.moduleKey = moduleKey || "";
+    state.generationDraft.lessonInput = lesson?.title || lessonKey || "";
+    state.generationDraft.lessonKey = lesson?.key || "";
+    state.generationDraft.promptText = buildLessonAuditPrompt(lesson, report);
+    state.generationPanelOpen = true;
+    notifyUser(
+      report.uncoveredItems.length || report.explainedWithoutPractice.length || report.practiceWithoutVariation.length
+        ? "Lacunas detectadas. O painel foi preparado com um pedido focado."
+        : "Nenhuma lacuna didática clara foi detectada nesta lição."
+    );
+    render({ preserveState: true });
+  }
+
+  function deepenMicrosequenceFromAction() {
+    const courseKey = state.entityEditor.courseKey || state.selection.courseKey;
+    const moduleKey = state.entityEditor.moduleKey;
+    const lessonKey = state.entityEditor.lessonKey;
+    const microsequenceKey = state.entityEditor.microsequenceKey;
+    const lesson = findLesson(state.project, courseKey, moduleKey, lessonKey);
+    const microsequence = findMicrosequence(state.project, courseKey, moduleKey, lessonKey, microsequenceKey);
+    const audit = validateDidacticDepth({
+      lesson,
+      microsequence,
+      cards: microsequence?.cards || [],
+      existingMicrosequences: lesson?.microsequences || []
+    });
+
+    state.entityEditor = null;
+    openMicrosequenceAssistPage(microsequence.key, 0);
+    state.assistDraft.promptText = buildMicrosequenceAuditPrompt(microsequence, audit);
+    state.assistDraft.lastRequest = {
+      title: audit.ok ? "Sem lacunas claras" : "Lacunas detectadas",
+      description: audit.ok
+        ? "A microssequência já está coesa para o nível atual."
+        : [...audit.shallowErrors, ...audit.missingDepth].map((item) => item.message).slice(0, 2).join(" "),
+      timestamp: new Date().toISOString()
+    };
+    render({ preserveState: true });
+  }
+
   function runEntityAction(actionKey) {
     if (!state.entityEditor || !actionKey) return;
 
@@ -5659,11 +5791,17 @@ export function createLessonEditorApp({ root, storage, editor }) {
           lessonKey: state.entityEditor.lessonKey
         });
         return;
+      } else if (actionKey === "deepen-lesson") {
+        deepenLessonFromAction();
+        return;
       } else if (actionKey === "edit-microsequence-metadata") {
         openMicrosequenceAssistPage(
           state.entityEditor.microsequenceKey,
           0
         );
+        return;
+      } else if (actionKey === "deepen-microsequence") {
+        deepenMicrosequenceFromAction();
         return;
       } else if (actionKey === "reset-course-progress") {
         const courseKey = state.entityEditor.courseKey || state.selection.courseKey;
