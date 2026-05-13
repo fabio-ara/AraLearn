@@ -143,10 +143,10 @@ const MAX_ASSIST_DEPENDENCIES = 5;
 const MAX_ASSIST_ATTACHMENTS = 6;
 const MAX_CARD_SNAPSHOTS = 6;
 const ASSIST_MODEL_OPTIONS = [
-  { value: CODEX_LOCAL_MODEL_ID, label: "Codex CLI" },
   { value: "gemini-2.5-flash", label: "Gemini 2.5 Flash" },
   { value: "gemini-2.5-flash-lite", label: "Gemini 2.5 Flash-Lite" },
-  { value: "gemini-2.0-flash", label: "Gemini 2.0 Flash · até 2026-06-01" }
+  { value: "gemini-2.0-flash", label: "Gemini 2.0 Flash · até 2026-06-01" },
+  { value: CODEX_LOCAL_MODEL_ID, label: "Codex CLI local · avançado" }
 ];
 const ASSIST_USER_MODES = {
   EDIT_MICROSEQUENCE: "edit-microsequence",

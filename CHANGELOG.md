@@ -19,6 +19,7 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 - a edição local de título e tags volta a atuar sempre sobre a microssequência persistida, sem bifurcação por rascunho temporário
 - a iteração gerada pela assistência passa a abrir com dois CTAs externos ao card para aceitar ou excluir a versão ativa, reaproveitando o histórico local como mecanismo de reversão imediata
 - a edição da fonte-guia passa a tratar `presetId` como modo pronto de verdade: ao trocar o modo da lição, o app reaplica recursos, tipos de conteúdo, ações de estudo e nível de apoio correspondentes, mantendo os campos abaixo como ajuste fino opcional
+- a configuração de IA passa a explicitar Gemini/API comum como caminho normal e `Codex CLI local` como integração avançada, além de mover o modelo local para o fim da lista
 
 ### Tests
 
@@ -26,6 +27,7 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 - fixtures didáticas reais entram em `tests/fixtures/didactics/`
 - a suíte remove os cenários de storage e renderização específicos da prévia privada e passa a validar apenas o fluxo direto de atualização
 - a suíte passa a cobrir os presets humanos da lição e a distinção entre modo pronto e ajuste fino
+- a suíte passa a cobrir a configuração da IA com Gemini como caminho normal e Codex local como modo avançado
 ## [0.9.22] - 2026-05-06
 
 ### Changed
