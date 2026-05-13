@@ -16,7 +16,8 @@ export const CARD_RESOURCE_DEFINITIONS = Object.freeze([
         resourceType: { const: "paragraph" },
         title: { type: "string" },
         text: { type: "string", maxLength: 420 },
-        sourceRefs: { type: "array", items: { type: "string" } }
+        sourceRefs: { type: "array", items: { type: "string" } },
+        sourceNote: { type: "string" }
       },
       additionalProperties: false
     }
@@ -34,6 +35,8 @@ export const CARD_RESOURCE_DEFINITIONS = Object.freeze([
         resourceType: { const: "multiple_choice" },
         title: { type: "string" },
         question: { type: "string", maxLength: 220 },
+        sourceRefs: { type: "array", items: { type: "string" } },
+        sourceNote: { type: "string" },
         options: {
           type: "array",
           minItems: 3,
@@ -67,6 +70,8 @@ export const CARD_RESOURCE_DEFINITIONS = Object.freeze([
         resourceType: { const: "code_editor" },
         title: { type: "string" },
         prompt: { type: "string" },
+        sourceRefs: { type: "array", items: { type: "string" } },
+        sourceNote: { type: "string" },
         language: { type: "string" },
         code: { type: "string" },
         expectedAnswer: { type: "string" }
@@ -86,6 +91,8 @@ export const CARD_RESOURCE_DEFINITIONS = Object.freeze([
         position: { type: "number" },
         resourceType: { const: "table" },
         title: { type: "string" },
+        sourceRefs: { type: "array", items: { type: "string" } },
+        sourceNote: { type: "string" },
         columns: { type: "array", minItems: 1, maxItems: 4, items: { type: "string" } },
         rows: { type: "array", minItems: 1, maxItems: 6, items: { type: "array", items: { type: "string" } } },
         focus: {
@@ -117,6 +124,8 @@ export const CARD_RESOURCE_DEFINITIONS = Object.freeze([
         resourceType: { const: "plane" },
         title: { type: "string" },
         prompt: { type: "string" },
+        sourceRefs: { type: "array", items: { type: "string" } },
+        sourceNote: { type: "string" },
         vector: { type: "array", minItems: 2, maxItems: 2, items: { type: "number" } },
         vectors: {
           type: "array",
@@ -172,6 +181,8 @@ export const CARD_RESOURCE_DEFINITIONS = Object.freeze([
         resourceType: { const: "matrix" },
         title: { type: "string" },
         prompt: { type: "string" },
+        sourceRefs: { type: "array", items: { type: "string" } },
+        sourceNote: { type: "string" },
         name: { type: "string", maxLength: 12 },
         values: {
           type: "array",
@@ -257,6 +268,8 @@ export const CARD_RESOURCE_DEFINITIONS = Object.freeze([
         position: { type: "number" },
         resourceType: { const: "flowchart" },
         title: { type: "string" },
+        sourceRefs: { type: "array", items: { type: "string" } },
+        sourceNote: { type: "string" },
         nodes: { type: "array", minItems: 2, maxItems: 7, items: { type: "object" } },
         edges: { type: "array", minItems: 1, items: { type: "object" } }
       },
@@ -278,6 +291,8 @@ export const CARD_RESOURCE_DEFINITIONS = Object.freeze([
         resourceType: { const: "block_gap_fill" },
         title: { type: "string" },
         prompt: { type: "string" },
+        sourceRefs: { type: "array", items: { type: "string" } },
+        sourceNote: { type: "string" },
         segments: {
           type: "array",
           minItems: 1,
@@ -337,6 +352,8 @@ export const CARD_RESOURCE_DEFINITIONS = Object.freeze([
         resourceType: { const: "tree" },
         title: { type: "string" },
         prompt: { type: "string" },
+        sourceRefs: { type: "array", items: { type: "string" } },
+        sourceNote: { type: "string" },
         base: { type: "string" },
         current: { type: "string" },
         selected: { type: "string" },
@@ -398,7 +415,7 @@ export function validateBlockGapFill(card) {
   if (!card || typeof card !== "object") {
     return ["block_gap_fill inválido."];
   }
-  const allowedCardFields = new Set(["position", "resourceType", "title", "prompt", "segments", "blocks", "feedbackAfter", "sourceRefs"]);
+  const allowedCardFields = new Set(["position", "resourceType", "title", "prompt", "segments", "blocks", "feedbackAfter", "sourceRefs", "sourceNote"]);
   Object.keys(card).forEach((field) => {
     if (!allowedCardFields.has(field)) {
       errors.push(`Campo não suportado em block_gap_fill: ${field}.`);

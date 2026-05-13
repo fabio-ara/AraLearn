@@ -4,16 +4,47 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ## [Unreleased]
 
+## [0.1.3] - 2026-05-13
+
 ### Changed
 
+- a lição passa a poder carregar `domainMap` com `domainItem`, `practiceVariant` e `gapSummary` derivados para orientar cobertura didática real
+- microssequências passam a aceitar `description`, `domainRefs`, `practiceVariantRefs`, `didacticPurpose` e `coverageRole`
+- a geração de microssequências da lição passa a considerar mapa de domínio, lacunas reais, itens fracos e risco de redundância, em vez de depender só de títulos soltos
+- a camada de geração ganha `meticulousDidacticPolicy`, compatível com `weakModelMode`, para reforçar decomposição, prática suficiente e rejeição de resumo genérico
+- a validação didática passa a incluir auditoria específica de profundidade (`validateDidacticDepth`) e auditoria de redundância (`validateDidacticRedundancy`)
+- prompts de planejamento, geração e edição passam a proibir resumo genérico, densidade artificial e duplicação sem nova função didática
+- a UI da lição e da microssequência ganha ação pública `Completar lacunas`, que usa auditoria local para sugerir aprofundamento sem inflar volume
+- a auditoria didática deixa de ficar passiva no fluxo de cards: quando detecta lacuna acionável, o app pode disparar iteração automática para reescrever cards específicos ou inserir exemplo/preparação/prática antes da entrega final
+- a checagem didática deixa de tratar heurística textual como erro forte por padrão: o pipeline agora separa erro estrutural, lacuna declarativa e sinal textual fraco, reservando continuação automática para o que é mais defensável no motor determinístico
+- a documentação pública passa a diferenciar explicitamente evidência, hipótese aberta e escolha de engenharia, além de ganhar guia de uso do app e matriz de fundamentos com referências
+- a documentação pública passa por revisão ampla de tom e conteúdo: visão do produto, fundamentos, arquitetura, modelo didático, assistência por IA, uso do app, rascunhos e pesquisa deixam de usar taxonomia rígida e passam a explicitar, em prosa mais dissertativa, a autoria do projeto, as decisões arquiteturais, as influências intelectuais, os produtos de referência e os limites técnicos reais das checagens locais
+- a camada de geração de cards passa a operar com policy explícita de `weakModelMode`, voltada a modelo fraco e barato
+- `modelCapabilities` deixa de usar flags ambíguas e passa a distinguir `jsonMode`, `responseJsonSchema`, `responseSchema` e força real de schema
+- o planejamento bottom-up fica reduzido a `typeId`, `sizeId`, `microsequenceGoal`, `selectedExtraResourceTypes`, `sourceUsePlan` e `reason`
+- o `cardPlan` passa a ser montado de forma determinística pelo app, com `position` e `resourceType` fixados por política e template
+- recursos avançados (`flowchart`, `tree`, `matrix`, `plane`) passam a exigir liberação explícita da lição e justificativa operacional
+- a validação de cards foi separada em estrutural, didática e grounding mínimo de fonte
+- o reparo determinístico passa a acontecer antes de qualquer reparo por LLM
+- o contrato público passa a aceitar `presetId` na lição e `sourceRefs` em cards
 - a assistência de cards volta a aplicar diretamente na microssequência o resultado validado da geração ou edição, sem estágio intermediário de prévia privada
 - o workbench da microssequência remove os controles de alternância, aplicação e descarte de prévia, mantendo a superfície de preview apenas como leitura do estado já em uso
 - a edição local de título e tags volta a atuar sempre sobre a microssequência persistida, sem bifurcação por rascunho temporário
 - a iteração gerada pela assistência passa a abrir com dois CTAs externos ao card para aceitar ou excluir a versão ativa, reaproveitando o histórico local como mecanismo de reversão imediata
+- a edição da fonte-guia passa a tratar `presetId` como modo pronto de verdade: ao trocar o modo da lição, o app reaplica recursos, tipos de conteúdo, ações de estudo e nível de apoio correspondentes, mantendo os campos abaixo como ajuste fino opcional
+- a configuração de IA passa a explicitar Gemini/API comum como caminho normal e `Codex CLI local` como integração avançada, além de mover o modelo local para o fim da lista
+- a navegação de estudo e as dependências didáticas passam a ignorar microssequências `draft` ou `included: false`, inclusive após geração, exclusão de iteração e restauração local
 
 ### Tests
 
+- fixtures de meticulosidade entram em `tests/fixtures/meticulous/` cobrindo lógica proposicional, soma de matrizes, fluxo Git e navegação Linux
+- a suíte passa a cobrir mapa de domínio, resposta rasa, resposta meticulosa, redundância didática e geração de microssequência para lacuna real
+- a suíte passa a cobrir policy fraca, gating de recursos avançados, `sourceRefs`, validação separada e reparo determinístico
+- fixtures didáticas reais entram em `tests/fixtures/didactics/`
 - a suíte remove os cenários de storage e renderização específicos da prévia privada e passa a validar apenas o fluxo direto de atualização
+- a suíte passa a cobrir os presets humanos da lição e a distinção entre modo pronto e ajuste fino
+- a suíte passa a cobrir a configuração da IA com Gemini como caminho normal e Codex local como modo avançado
+- a suíte passa a travar que geração, versionamento local e coleta de dependências não promovem `draft` ou `included: false` a conteúdo executável
 ## [0.9.22] - 2026-05-06
 
 ### Changed

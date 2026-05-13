@@ -1,108 +1,47 @@
 # Rascunhos e microssequências
 
-Este documento descreve como o AraLearn cria, revisa e consolida rascunhos de microssequências dentro da estrutura real de cursos.
+Uma das distinções operacionais mais importantes do AraLearn é a separação entre estruturar uma lição e escrever as unidades interativas de uma microssequência. Essa distinção impede que a geração vire bloco único indiferenciado.
 
-Ele registra a implementação pública atual.
+## O que acontece na lição
 
-## Função dos rascunhos
+Quando a operação acontece no nível da lição, o resultado esperado não são os cards finais. O resultado são microssequências draft. Elas entram na árvore real, mas ficam fora do estudo. Esse desenho preserva algo importante: a possibilidade de organizar percurso antes de consolidar redação.
 
-Rascunhos permitem transformar uma dúvida do usuário em unidades de autoria sem inserir material incompleto no modo de estudo.
+No estado atual, esses rascunhos podem carregar não apenas título, mas também descrição e metadados didáticos, especialmente quando a lição já dispõe de mapa de domínio. Isso permite que a própria lição registre por que a sequência existe, que ponto cobre e que função cumpre no percurso.
 
-A microssequência continua sendo a unidade mínima de autoria e estudo. Ela nasce dentro de uma lição e pode ficar em três situações relevantes:
+## O que acontece na microssequência
 
-- `draft`: rascunho visível na estrutura do curso, mas fora da execução;
-- `ready`: microssequência pronta para entrar no modo de estudo por cards;
-- `included: false`: microssequência visível, mas removida da execução do curso.
+Quando a operação acontece no workbench da microssequência, o foco muda completamente. Ali o que se gera ou edita são os cards da sequência atual. O fluxo é direto: gerar ou editar, validar, aplicar, revisar a iteração, aceitar ou excluir.
 
-## Geração contextual
+Esse desenho recoloca a geração dentro da prática real do produto. A iteração não fica escondida como prévia abstrata; ela entra no ambiente de trabalho e continua reversível.
 
-A criação de rascunhos acontece pelo painel contextual aberto no nível da lição.
+## Por que a distinção importa
 
-Fluxo:
+Sem essa distinção, o sistema tende a confundir duas tarefas diferentes:
 
-1. o usuário navega até a lição desejada;
-2. o usuário abre a ação contextual de geração;
-3. o usuário escreve uma dúvida, um pedido ou uma intenção de organização;
-4. o AraLearn chama o serviço de IA generativa para planejar uma escada de microssequências;
-5. a resposta é validada como JSON;
-6. cada item válido da escada vira uma microssequência `draft` dentro da lição selecionada.
+- organizar o percurso de uma lição;
+- redigir a unidade interativa de um ponto específico.
 
-Na home, no curso e no módulo, a assistência estrutural atua em outro nível: ela propõe cursos, módulos e lições. A criação de microssequências `draft` fica reservada à lição.
+No primeiro caso, o problema é cobertura, progressão e posicionamento. No segundo, o problema é mediação, exemplo, prática e clareza local. Misturar os dois níveis empobrece ambos.
 
-## Árvore estrutural
+## Como ler um rascunho
 
-A árvore de cursos continua sendo a fonte de verdade da estrutura estudável:
+Um rascunho não é erro nem lixo provisório. Ele é estado de trabalho. Sua função é permitir que a lição cresça sem que tudo entre automaticamente no estudo. Isso é especialmente importante quando a geração ainda está explorando lacunas, ordem de exposição, erros comuns ou formatos de prática.
 
-```text
-Curso
-  -> Módulo
-    -> Lição
-      -> Microssequência
-        -> Cards
-```
+## Quando uma nova microssequência faz sentido
 
-Rascunhos aparecem no mesmo lugar em que serão consolidados, com marcador visual de estado.
+Uma nova microssequência só se justifica quando acrescenta função real ao percurso. Isso pode acontecer porque ela:
 
-Essa escolha evita uma fila paralela fora da estrutura real. O contexto da autoria vem da posição do material na hierarquia, não de uma lista solta de pedidos anteriores.
+- introduz um subpasso ainda ausente;
+- muda a forma de representação;
+- trabalha contraste que faltava;
+- trata erro comum;
+- cobre caso-limite;
+- aproxima o estudante do formato avaliativo esperado;
+- integra um conteúdo com outro;
+- consolida algo que ainda não ficou estável no percurso.
 
-## Painel da microssequência
+Sem isso, a criação de nova sequência tende a gerar volume sem ganho.
 
-O painel da microssequência é o espaço de revisão e edição.
+## Aprofundamento e lacunas
 
-Ele reúne:
-
-- preview da versão em uso;
-- navegação pelos cards;
-- alternância entre `Preview` e `Edição`;
-- geração ou edição por pedido textual;
-- anexos temporários para o pedido atual;
-- ações de movimentação, exclusão e edição estrutural;
-- controle da iteração gerada atual quando houver uma alteração pendente.
-
-Ao abrir uma microssequência `draft`, o painel pode gerar cards usando o título da microssequência e o contexto de curso, módulo e lição. Depois que uma versão válida com cards é aceita como conteúdo em uso e a microssequência é marcada como pronta, ela pode passar a `ready`.
-
-## Aplicação e reversão de cards
-
-Na microssequência, a geração e a edição assistidas de cards não criam mais uma prévia separada da árvore oficial.
-
-O comportamento atual é:
-
-1. o pedido é enviado ao pipeline de planejamento e geração;
-2. a resposta validada substitui diretamente os cards da microssequência aberta;
-3. a interface registra uma iteração local auxiliar;
-4. quando essa iteração é nova, o painel expõe dois CTAs externos ao card:
-   - aceitar a iteração atual;
-   - excluir a iteração atual.
-
-Excluir a iteração atual restaura imediatamente a versão anterior guardada em `localStorage`. Esse mecanismo opera hoje no nível da microssequência em uso, não como versionamento público exportável card a card.
-
-## Execução
-
-O modo de estudo ignora rascunhos.
-
-Regras:
-
-- microssequências `draft` não entram no play;
-- microssequências com `included: false` também não entram no play;
-- lições, módulos e cursos coletam apenas microssequências `ready` incluídas;
-- quando não há conteúdo pronto no escopo selecionado, a interface informa que não há microssequências prontas para estudar ali.
-
-## Persistência
-
-Rascunhos são persistidos no próprio local em que foram criados: dentro da lição selecionada.
-
-O formato persistido é o mesmo formato estrutural atual do projeto. Cada microssequência precisa declarar `status` explicitamente como `draft` ou `ready`.
-
-Iterações locais da microssequência, ponteiros de versão em uso e anexos de sessão não entram nesse contrato público. Eles vivem em persistência auxiliar da interface.
-
-## Decisões futuras
-
-Pontos ainda dependentes de pesquisa e teste:
-
-- como aproximar melhor geração bottom-up e navegação estrutural sem duplicar fluxos;
-- como combinar melhor orientação top-down com criação bottom-up para reduzir desvio de finalidade;
-- como registrar rastreabilidade entre pedido, fonte e cards;
-- quando expor versões locais no formato exportável;
-- como medir qualidade didática antes de marcar uma microssequência como pronta;
-- como orientar modelos mais robustos para gerar fluxogramas;
-- como apoiar revisão de cursos completos a partir de dúvidas pontuais do estudante.
+A ação pública de aprofundamento da lição ou da microssequência não existe para multiplicar unidades interativas indiscriminadamente. Ela existe para localizar lacunas reais: prática ausente, cobertura fraca, redundância, necessidade de contraste, necessidade de variação. Se o resultado for mais unidades, esse aumento precisa estar a serviço da progressão, não da aparência de completude.

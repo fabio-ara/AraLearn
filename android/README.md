@@ -50,8 +50,8 @@ Referências:
 - exportação de pacote usa o seletor nativo de salvamento;
 - não existe vínculo contínuo com arquivo externo.
 
-## HTTP local para Codex via Termux
+## HTTP local para Codex CLI no Android
 
 - o wrapper atual libera tráfego HTTP local para `127.0.0.1` e `localhost` via `network_security_config`;
-- a `WebView` também foi configurada para tolerar mixed content necessário ao bridge local do Termux;
-- esse ajuste existe para o provider `Codex CLI · Termux`, acessado por `http://127.0.0.1:4183`.
+- a `WebView` também foi configurada para tolerar mixed content necessário ao bridge local do Codex CLI;
+- no Android, o setup operacional desse provider usa Termux e o endpoint padrão `http://127.0.0.1:4183`.

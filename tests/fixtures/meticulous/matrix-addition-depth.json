@@ -1,0 +1,188 @@
+{
+  "sourceGuideStructured": {
+    "lessonGoal": "Somar matrizes entrada por entrada, reconhecer restrição de dimensões e praticar em formato de prova.",
+    "notationRules": "Nomear linha e coluna antes de usar `(i,j)` e explicitar a leitura célula por célula.",
+    "commonErrors": "Somar linhas inteiras ou ignorar que as dimensões precisam coincidir."
+  },
+  "domainMap": {
+    "items": [
+      {
+        "id": "matrix-entrywise",
+        "label": "Somar matrizes entrada por entrada.",
+        "kind": "calculation",
+        "priority": "core",
+        "expectedEvidence": ["somar célula correspondente", "escrever a matriz resultante"]
+      },
+      {
+        "id": "matrix-dimensions",
+        "label": "Verificar que as dimensões das matrizes coincidem antes da soma.",
+        "kind": "procedure",
+        "priority": "core",
+        "expectedEvidence": ["comparar ordem das matrizes", "justificar quando a soma não é permitida"]
+      },
+      {
+        "id": "matrix-boundary",
+        "label": "Lidar com zero e número negativo na soma de matrizes.",
+        "kind": "calculation",
+        "priority": "support",
+        "expectedEvidence": ["somar com zero", "somar com sinal negativo"]
+      },
+      {
+        "id": "matrix-common-error",
+        "label": "Identificar o erro de somar a linha inteira em vez da célula correspondente.",
+        "kind": "error_diagnosis",
+        "priority": "core",
+        "expectedEvidence": ["apontar o erro", "corrigir a operação"],
+        "commonErrors": ["Somar linhas como blocos únicos."]
+      },
+      {
+        "id": "matrix-exam",
+        "label": "Resolver soma de matrizes no formato de prova.",
+        "kind": "exam_pattern",
+        "priority": "core",
+        "expectedEvidence": ["resolver item objetivo", "manter a escrita matricial esperada"]
+      }
+    ],
+    "practiceVariants": [
+      {
+        "id": "matrix-fluency",
+        "domainItemRef": "matrix-entrywise",
+        "variantKind": "fluency",
+        "purpose": "Somar matrizes pequenas com números positivos.",
+        "difficulty": "baixa",
+        "representation": "matriz",
+        "expectedStudentAction": "calcular cada célula",
+        "commonErrorTarget": "somar fora da posição"
+      },
+      {
+        "id": "matrix-boundary-zero-negative",
+        "domainItemRef": "matrix-boundary",
+        "variantKind": "boundary_case",
+        "purpose": "Consolidar soma com zero e negativos.",
+        "difficulty": "média",
+        "representation": "matriz",
+        "expectedStudentAction": "resolver caso-limite",
+        "commonErrorTarget": "errar sinal"
+      },
+      {
+        "id": "matrix-common-error-variant",
+        "domainItemRef": "matrix-common-error",
+        "variantKind": "common_error",
+        "purpose": "Diagnosticar soma por linha inteira.",
+        "difficulty": "média",
+        "representation": "resolução comentada",
+        "expectedStudentAction": "identificar o passo incorreto",
+        "commonErrorTarget": "agrupar linha"
+      },
+      {
+        "id": "matrix-exam-variant",
+        "domainItemRef": "matrix-exam",
+        "variantKind": "exam_format",
+        "purpose": "Aplicar o procedimento no padrão da prova.",
+        "difficulty": "média",
+        "representation": "múltipla escolha",
+        "expectedStudentAction": "selecionar resultado correto",
+        "commonErrorTarget": "escrever matriz com ordem errada"
+      }
+    ]
+  },
+  "existingMicrosequences": [
+    {
+      "key": "matrix-intro",
+      "title": "Soma entrada por entrada",
+      "status": "ready",
+      "included": true,
+      "domainRefs": ["matrix-entrywise"],
+      "practiceVariantRefs": [],
+      "didacticPurpose": "Explicar a ideia de combinar células correspondentes.",
+      "coverageRole": "demonstrate"
+    },
+    {
+      "key": "matrix-basic-practice",
+      "title": "Primeira soma de matrizes",
+      "status": "ready",
+      "included": true,
+      "domainRefs": ["matrix-entrywise"],
+      "practiceVariantRefs": ["matrix-fluency"],
+      "didacticPurpose": "Praticar a soma direta com números positivos.",
+      "coverageRole": "practice"
+    },
+    {
+      "key": "matrix-dimensions-rule",
+      "title": "Quando a soma é permitida",
+      "status": "ready",
+      "included": true,
+      "domainRefs": ["matrix-dimensions"],
+      "practiceVariantRefs": [],
+      "didacticPurpose": "Explicar a necessidade de mesma dimensão.",
+      "coverageRole": "explain"
+    }
+  ],
+  "expectedGaps": {
+    "uncoveredDomainItemIds": ["matrix-boundary", "matrix-common-error", "matrix-exam"],
+    "explainedWithoutPracticeIds": ["matrix-dimensions"],
+    "practiceWithoutVariationIds": ["matrix-entrywise"],
+    "redundantDomainItemIds": [],
+    "examMissingIds": ["matrix-entrywise", "matrix-dimensions", "matrix-boundary", "matrix-common-error", "matrix-exam"]
+  },
+  "expectedRedundancies": ["matrix-intro"],
+  "validNewMicrosequence": {
+    "title": "Erro comum na soma por linha",
+    "description": "Mostrar por que a soma deve respeitar cada célula e não a linha inteira.",
+    "domainRefs": ["matrix-common-error", "matrix-entrywise"],
+    "practiceVariantRefs": ["matrix-common-error-variant"],
+    "didacticPurpose": "Diagnosticar o erro mais comum e reconstruir o procedimento correto.",
+    "coverageRole": "diagnose_error",
+    "tags": ["erro comum", "matriz"]
+  },
+  "redundantMicrosequence": {
+    "title": "Soma entrada por entrada",
+    "description": "Explicar a ideia de combinar células correspondentes.",
+    "domainRefs": ["matrix-entrywise"],
+    "practiceVariantRefs": [],
+    "didacticPurpose": "Explicar a ideia de combinar células correspondentes.",
+    "coverageRole": "demonstrate",
+    "tags": []
+  },
+  "shallowResponse": {
+    "microsequence": {
+      "key": "matrix-shallow",
+      "title": "Resumo da soma de matrizes",
+      "coverageRole": "explain"
+    },
+    "cards": [
+      {
+        "key": "card-1",
+        "say": "Somar matrizes é somar os elementos. É o ponto principal deste assunto."
+      },
+      {
+        "key": "card-2",
+        "say": "No material isso já está claro."
+      }
+    ]
+  },
+  "meticulousResponse": {
+    "microsequence": {
+      "key": "matrix-meticulous",
+      "title": "Corrigir a soma por linha inteira",
+      "coverageRole": "diagnose_error"
+    },
+    "cards": [
+      {
+        "key": "card-1",
+        "say": "Na soma de matrizes, cada célula do resultado usa a célula correspondente das duas matrizes."
+      },
+      {
+        "key": "card-2",
+        "say": "Exemplo: se a primeira célula é `2` em `A` e `-1` em `B`, então a primeira célula do resultado é `2 + (-1) = 1`."
+      },
+      {
+        "key": "card-3",
+        "ask": "Um aluno somou `2 + 5 + 1` para preencher a primeira linha toda. Isso está correto?",
+        "answer": "não",
+        "wrong": ["sim"],
+        "after": "Não. Cada posição precisa ser calculada separadamente. Somar a linha inteira mistura células diferentes."
+      }
+    ]
+  }
+}

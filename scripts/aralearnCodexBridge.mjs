@@ -114,7 +114,8 @@ function runCodex({ command, args, cwd, timeoutMs }) {
 const host = normalizeText(process.env.ARALEARN_CODEX_HOST) || "127.0.0.1";
 const port = normalizePort(process.env.ARALEARN_CODEX_PORT);
 const token = normalizeText(process.env.ARALEARN_CODEX_TOKEN);
-const command = normalizeText(process.env.ARALEARN_CODEX_COMMAND) || "codex";
+const defaultCommand = process.platform === "win32" ? "codex.cmd" : "codex";
+const command = normalizeText(process.env.ARALEARN_CODEX_COMMAND) || defaultCommand;
 const argsTemplate = normalizeText(process.env.ARALEARN_CODEX_ARGS) || "exec {prompt}";
 const timeoutMs = normalizeTimeout(process.env.ARALEARN_CODEX_TIMEOUT_MS);
 const maxBodyBytes = Number.parseInt(String(process.env.ARALEARN_CODEX_MAX_BODY_BYTES || "1000000"), 10) || 1000000;

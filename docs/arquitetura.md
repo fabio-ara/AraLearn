@@ -1,226 +1,81 @@
 # Arquitetura do AraLearn
 
-Este documento descreve a arquitetura pública do AraLearn para apoiar decisões técnicas e de produto. Ele complementa o README, o contrato JSON e a documentação específica da assistência por IA generativa.
+O contrato público do AraLearn é propositalmente mais simples do que a sua operação interna. A arquitetura existe justamente para preservar essa assimetria: um JSON autoral enxuto, portável e legível de um lado; uma máquina local responsável por projeção, validação, persistência, assistência e revisão do outro.
 
 ## Visão geral
 
-AraLearn é uma aplicação web executada no navegador. O mesmo núcleo pode ser usado em distribuição web, em GitHub Pages e em APK Android empacotado com WebView.
-
-A aplicação trabalha com três camadas principais:
-
-- contrato público em JSON;
-- estrutura de leitura derivada do contrato;
-- interface de geração, leitura, autoria, revisão e navegação estrutural.
-
-O contrato público descreve a estrutura autoral. A estrutura de leitura derivada organiza os dados necessários para renderização, validação visual e interação. A interface apresenta geração estrutural contextual, criação de rascunhos, leitura, edição, estudo, progresso local e assistência por IA generativa.
-
-A arquitetura foi desenhada para tornar o contexto explícito. Curso, módulo, lição e microssequência formam uma moldura pequena para pedidos de geração ou revisão. Isso reduz ambiguidade, facilita validação e permite que modelos de linguagem mais econômicos sejam usados em tarefas delimitadas.
-
-## Estrutura do repositório
+O núcleo estrutural do produto continua sendo:
 
 ```text
-public/   Entrada web, assets e estilos da interface
-src/      Contrato, compilação, renderização, persistência, edição, IA e UI
-tests/    Suíte automatizada
-scripts/  Utilitários de desenvolvimento e publicação
-docs/     Documentação pública, contrato, arquitetura e exemplos
-android/  Wrapper Android em WebView e build do APK
+curso -> módulo -> lição -> microssequência -> card
 ```
 
-Diretórios centrais em `src/`:
+Essa hierarquia não é só organização da interface. Ela funciona como moldura para persistência, importação e exportação, contexto de geração e progressão de estudo.
 
-- `contract/`: validação e representação do contrato público;
-- `model/`: compilação do contrato para estruturas internas e regras de status das microssequências;
-- `core/`: leitura de cards, árvores, opções de exercício e carregamento;
-- `render/`: renderização de cards e documentos;
-- `flowchart/`: projeção, geometria, viewport e prática de fluxogramas;
-- `storage/`: persistência, progresso, importação, exportação e backup;
-- `editor/`: operações de edição no contrato;
-- `assist/`: integração com provedor configurado para execução efetiva das chamadas;
-- `generation/`: contratos, prompts, planejamento, recursos, tipos, validação e estado de execução da geração assistida;
-- `ui/`: navegação, telas, overlays, painéis contextuais, home única de cursos, painel da microssequência e estado da interface.
+## Camadas
 
-## Hierarquia de domínio
+O repositório se organiza em seis grandes frentes.
 
-A hierarquia central é:
+`contract/` define e valida o contrato público. `model/` e `render/` projetam esse contrato para leitura. `editor/` executa mutações estruturais. `storage/` preserva projeto, snapshots e progresso local. `assist/` integra os provedores de IA. `generation/` concentra políticas, planejamento, validação e reparo. `ui/` reúne a navegação estrutural, o estudo e o workbench.
 
-```text
-Projeto
-  -> Cursos
-    -> Módulos
-      -> Lições
-        -> Microssequências
-          -> Cards
-```
+O ponto importante aqui é que a camada de geração não substitui a arquitetura; ela é apenas uma parte dela.
 
-Essa hierarquia aparece em:
+## Uma arquitetura para conter a geração
 
-- JSON público;
-- navegação da interface;
-- progresso local;
-- importação e exportação;
-- seleção de contexto para edição;
-- encaixe de rascunhos em cursos.
+Na trilha de cards, o AraLearn foi desenhado para que a LLM não controle a operação em sentido amplo. Ela não define sozinha o percurso, não fixa posições livremente, não decide a forma de todas as unidades interativas e não aplica o resultado por conta própria. O app mantém autoridade sobre:
 
-## Fluxo de dados
+- o contexto;
+- a governança da lição;
+- as opções didáticas disponíveis;
+- o plano determinístico dos cards;
+- os formatos permitidos;
+- a validação local;
+- a aplicação final do resultado.
 
-O fluxo básico é:
+Essa decisão arquitetural traduz em software uma convicção metodológica: respostas de linguagem natural precisam ser contidas por estrutura quando o objetivo é produzir material estudável e repetível.
 
-```text
-JSON público
-  -> validação
-  -> compilação
-  -> estrutura de leitura derivada
-  -> renderização
-  -> interação do usuário
-  -> edição ou progresso
-  -> persistência local
-```
+## O pipeline real
 
-A assistência por IA generativa usa um fluxo adicional:
+O fluxo real da geração de cards é incremental. Um pedido localizado produz contrato de planejamento; o modelo devolve um plano pequeno; o app valida; o app monta `cardPlan`; o modelo preenche; o app repara e valida; o resultado só então é aplicado.
 
-```text
-pedido do usuário
-  -> plano local
-  -> chamada ao serviço de IA generativa
-  -> JSON intermediário
-  -> validação e normalização
-  -> contrato público
-  -> aplicação local no alvo estrutural
-  -> revisão do usuário
-```
+Essa decomposição existe por duas razões. A primeira é pragmática: melhora previsibilidade com modelos mais fracos. A segunda é conceitual: impede que a aplicação terceirize à LLM uma decisão que pertence à arquitetura.
 
-Há dois modos complementares de entrada de conteúdo:
+## Governança da lição
 
-- geração bottom-up: uma dúvida situada em curso, módulo e lição cria rascunhos de microssequências no ponto escolhido;
-- importação top-down: cursos, módulos, lições ou microssequências preparados por processos externos entram pelo contrato JSON público.
+A maior parte da inteligência operacional da geração está ancorada na lição. É a lição que define meta, notação, erros prováveis, formatos permitidos, ações de aprendizagem e nível de apoio. O pedido do usuário continua importante, mas passa a atuar sobre um quadro já delimitado.
 
-No estado atual, a geração estrutural top-down e a geração bottom-up já compartilham a mesma navegação principal. O ponto de entrada muda conforme o nível aberto, mas o fluxo continua na mesma árvore estrutural.
+Essa escolha reduz ambiguidade e permite que top-down e bottom-up trabalhem sobre a mesma base local.
 
-## Persistência
+## Mapa de domínio
 
-O AraLearn separa projeto e progresso.
+Quando presente, o `domainMap` funciona como memória operacional da lição. Ele registra capacidades relevantes, variações de prática, lacunas e estados de cobertura. Isso permite que a aplicação trate a geração de microssequências não como fila cega de títulos, mas como tentativa de cobrir funções reais do percurso.
 
-O projeto contém a estrutura estudável: cursos, módulos, lições, microssequências e cards. O progresso registra avanço local do usuário sobre essa estrutura.
+Arquiteturalmente, esse é um ponto importante: o sistema deixa de depender apenas do texto de uma solicitação e passa a usar um estado local persistível sobre o andamento didático da lição.
 
-A aplicação trabalha com dois formatos de troca:
+## Checagens locais
 
-- `aralearn.contract`: contrato estrutural público;
-- `aralearn.storage`: backup completo do estado local, incluindo projeto e progresso.
+Uma parte delicada da arquitetura está na camada de checagens locais. Ela precisa ser descrita com precisão. O AraLearn não executa interpretação semântica ampla de texto livre. O que ele faz é combinar checagens estruturais, checagens declarativas e sinais textuais de baixa força.
 
-A ação `Importar` detecta os dois formatos. Essa separação permite compartilhar material sem carregar necessariamente o histórico de estudo de outra pessoa.
+As checagens estruturais verificam contrato, quantidade, forma e coerência local. As checagens declarativas verificam relações explicitadas pela própria modelagem, como prática ausente, variação insuficiente ou duplicação sem nova função. Os sinais textuais observam padrões evidentes demais para serem ignorados, mas não são tratados como compreensão forte do enunciado.
 
-Recortes estruturais também podem ser importados quando seguem o contrato `aralearn.contract`. Isso permite que autores externos produzam cursos inteiros ou partes de cursos sem depender da interface.
+Arquiteturalmente, isso é decisivo porque define o que a aplicação pode fazer de modo legítimo. Ela pode bloquear, reiterar ou recusar quando a base é forte o bastante; pode apenas sinalizar quando a base é fraca demais.
 
-Além do contrato público e do progresso, a aplicação mantém persistências auxiliares locais para iterações de microssequência e outros estados internos da interface. Esses dados não contaminam a exportação estrutural.
+## Continuação automática
 
-## Interface e navegação
+A continuação automática da geração não é laço cego de insistência. Ela é política de restrição adicional. Quando a falha remanescente é suficientemente forte, o AraLearn transforma esse diagnóstico em nova operação fechada: reescrever posição específica, inserir mediação mínima, adiar uma lacuna para outra microssequência ou recusar redundância. Quando o problema é apenas textual e fraco, a arquitetura correta é não exagerar o poder da máquina.
 
-A interface principal começa com uma home única de cursos.
+## Aplicação direta e reversibilidade
 
-Nessa trilha, o usuário encontra:
+O resultado validado é aplicado diretamente na microssequência. Isso recoloca a geração dentro do fluxo real de autoria, em vez de deixá-la num limbo de prévia privada. Ao mesmo tempo, a arquitetura preserva reversibilidade por histórico local: a iteração ativa pode ser aceita ou excluída.
 
-- lista de cursos do projeto;
-- ações globais compatíveis com a home;
-- botão contextual para geração estrutural;
-- navegação estrutural para curso, módulo, lição e microssequência.
+Essa combinação de aplicação direta e reversão explícita é uma escolha arquitetural e também de UX. Ela reduz atrito de uso sem abandonar responsabilidade editorial.
 
-A navegação estrutural inclui:
+## Local-first
 
-- home de cursos;
-- tela de curso;
-- tela de módulo;
-- tela de lição;
-- execução de microssequência;
-- painel da microssequência;
-- overlays de ações, importação, edição, configuração e histórico auxiliar.
+O compromisso local-first e offline-first atravessa a arquitetura inteira. Projeto, progresso, snapshots e histórico auxiliar vivem prioritariamente no dispositivo. A rede entra como canal de geração, não como condição permanente de funcionamento do estudo. Essa escolha reforça autonomia, portabilidade e continuidade.
 
-O mesmo vocabulário visual é reaproveitado entre home, curso, módulo e lição, com topbar, heading, cards estruturais e ações compactas. A geração não vive mais em uma aba separada.
+## O que esta arquitetura de fato sustenta
 
-## Geração, rascunhos e painel
+A arquitetura do AraLearn sustenta, com clareza, algumas afirmações: que a tarefa da LLM é restringida; que o sistema valida localmente parte importante da operação; que o estudo pode continuar com material já salvo; que a separação entre rascunho, revisão e execução é parte real do produto.
 
-Os painéis contextuais mudam conforme o nível aberto.
-
-Na home, no curso e no módulo, a assistência estrutural pode propor cursos, módulos e lições dentro do escopo atual.
-
-Na lição, o painel contextual cria rascunhos de microssequências. O usuário escreve uma dúvida, objetivo ou pedido de organização, e a resposta validada vira uma sequência de microssequências `draft` com `cards: []`.
-
-Rascunhos aparecem na própria árvore da lição, no lugar real em que depois serão revisados. Eles não entram no modo de estudo. A leitura principal coleta apenas microssequências `ready` e incluídas.
-
-O painel da microssequência concentra:
-
-- `Preview`;
-- `Edição`;
-- navegação pelos cards da versão em uso;
-- geração ou edição de cards;
-- anexos temporários para o pedido atual;
-- tags e metadados da microssequência;
-- ações de movimentação, exclusão e edição estrutural;
-- controle da iteração gerada atual quando houver uma alteração pendente de aceitação ou exclusão.
-
-Na geração ou edição de cards, o resultado validado é aplicado diretamente à microssequência aberta. Quando essa aplicação cria uma iteração nova, a interface expõe ações externas ao card para aceitar ou excluir a iteração atual, usando o histórico local como reversão imediata.
-
-## Renderização de cards
-
-Os cards são declarados por intenção didática no contrato público e renderizados por um motor comum. Os formatos principais são:
-
-- `say`;
-- `ask`;
-- `code`;
-- `table`;
-- `tree`;
-- `flow`;
-- `plane`;
-- `matrix`.
-
-A estrutura de leitura derivada pode montar recursos auxiliares para interação, como opções de lacunas, árvores projetadas, geometria de fluxogramas, projeção de plano cartesiano e leitura matricial. Essas estruturas derivadas não pertencem ao contrato público.
-
-## Distribuição
-
-A distribuição web pública usa GitHub Pages. O artefato publicado preserva `public/` e `src/`, porque a aplicação usa módulos JavaScript nativos e mantém a mesma base de código da execução local.
-
-O APK Android usa `WebViewAssetLoader` para servir os mesmos arquivos web como assets internos. A identidade visual usa o ícone do AraLearn na aba do navegador e no launcher do Android.
-
-## Validação
-
-A validação automatizada cobre:
-
-- contrato público;
-- exemplo renderizável;
-- compilação da estrutura de leitura;
-- renderização de formatos de card;
-- persistência;
-- progresso;
-- importação e exportação;
-- rascunhos e status explícito de microssequências;
-- assistência por IA generativa;
-- fluxogramas, árvores, plano cartesiano e matrizes.
-
-Há também cobertura específica para:
-
-- geração estrutural contextual;
-- geração contextual de microssequências na lição;
-- abertura do painel da microssequência na versão correta;
-- navegação entre mini-cards;
-- aplicação direta de iterações geradas;
-- controle de aceitação ou exclusão da iteração atual.
-
-Comandos principais:
-
-```powershell
-npm test
-npm run validate:example
-```
-
-## Pontos arquiteturais em aberto
-
-As decisões futuras devem considerar:
-
-- como aproximar ainda mais geração estrutural, criação de rascunho e revisão sem dispersar o usuário;
-- como evoluir o versionamento local para percursos mais auditáveis sem contaminar o contrato público;
-- quando transformar parte do histórico local em parte exportável;
-- como registrar vínculo entre fonte e card gerado;
-- se o reposicionamento deve continuar no nível de microssequência ou permitir cards isolados;
-- como incorporar fluxogramas à geração assistida com previsibilidade suficiente;
-- como avaliar qualidade didática antes de aplicar conteúdo;
-- como preservar funcionamento sem conexão contínua quando houver recursos que dependem de serviços externos.
+Ela não sustenta a afirmação de que o app compreende livremente qualquer texto em sentido forte. E é melhor que não sustente.
