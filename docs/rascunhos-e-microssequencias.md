@@ -1,105 +1,47 @@
 # Rascunhos e microssequências
 
-## Regra atual
+Uma das distinções operacionais mais importantes do AraLearn é a separação entre estruturar uma lição e escrever as unidades interativas de uma microssequência. Essa distinção impede que a geração vire bloco único indiferenciado.
 
-AraLearn separa duas coisas:
+## O que acontece na lição
 
-- criação de microssequências na lição;
-- geração ou edição de cards dentro de uma microssequência.
+Quando a operação acontece no nível da lição, o resultado esperado não são os cards finais. O resultado são microssequências draft. Elas entram na árvore real, mas ficam fora do estudo. Esse desenho preserva algo importante: a possibilidade de organizar percurso antes de consolidar redação.
 
-## Rascunhos na lição
+No estado atual, esses rascunhos podem carregar não apenas título, mas também descrição e metadados didáticos, especialmente quando a lição já dispõe de mapa de domínio. Isso permite que a própria lição registre por que a sequência existe, que ponto cobre e que função cumpre no percurso.
 
-Quando a ação acontece no nível da lição, a IA cria microssequências `draft`.
+## O que acontece na microssequência
 
-Esses rascunhos:
+Quando a operação acontece no workbench da microssequência, o foco muda completamente. Ali o que se gera ou edita são os cards da sequência atual. O fluxo é direto: gerar ou editar, validar, aplicar, revisar a iteração, aceitar ou excluir.
 
-- entram direto na árvore real da lição;
-- nascem com `cards: []`;
-- ficam fora do estudo;
-- não abrem workbench automaticamente.
+Esse desenho recoloca a geração dentro da prática real do produto. A iteração não fica escondida como prévia abstrata; ela entra no ambiente de trabalho e continua reversível.
 
-Esses rascunhos não devem ser apenas títulos soltos.
+## Por que a distinção importa
 
-Quando a lição já tiver `domainMap`, o rascunho pode nascer com metadados didáticos como:
+Sem essa distinção, o sistema tende a confundir duas tarefas diferentes:
 
-- `description`;
-- `domainRefs`;
-- `practiceVariantRefs`;
-- `didacticPurpose`;
-- `coverageRole`.
+- organizar o percurso de uma lição;
+- redigir a unidade interativa de um ponto específico.
 
-Isso permite que a lição registre por que a sequência existe e que lacuna ela cobre.
+No primeiro caso, o problema é cobertura, progressão e posicionamento. No segundo, o problema é mediação, exemplo, prática e clareza local. Misturar os dois níveis empobrece ambos.
 
-## Cards na microssequência
+## Como ler um rascunho
 
-Quando a ação acontece no workbench da microssequência, o fluxo oficial é direto:
+Um rascunho não é erro nem lixo provisório. Ele é estado de trabalho. Sua função é permitir que a lição cresça sem que tudo entre automaticamente no estudo. Isso é especialmente importante quando a geração ainda está explorando lacunas, ordem de exposição, erros comuns ou formatos de prática.
 
-1. a IA gera ou edita cards;
-2. o app valida;
-3. o app aplica o resultado diretamente na microssequência-alvo;
-4. a UI marca a iteração gerada como ativa;
-5. o usuário pode aceitar ou excluir.
+## Quando uma nova microssequência faz sentido
 
-Não existe mais etapa de prévia privada.
+Uma nova microssequência só se justifica quando acrescenta função real ao percurso. Isso pode acontecer porque ela:
 
-## Reversão local
+- introduz um subpasso ainda ausente;
+- muda a forma de representação;
+- trabalha contraste que faltava;
+- trata erro comum;
+- cobre caso-limite;
+- aproxima o estudante do formato avaliativo esperado;
+- integra um conteúdo com outro;
+- consolida algo que ainda não ficou estável no percurso.
 
-Excluir a iteração ativa restaura a versão anterior pelo histórico local.
+Sem isso, a criação de nova sequência tende a gerar volume sem ganho.
 
-Aceitar a iteração ativa remove o estado pendente e consolida essa versão como atual.
+## Aprofundamento e lacunas
 
-## Estudo
-
-O modo de estudo ignora:
-
-- `draft`;
-- `included: false`.
-
-Ou seja, existir na árvore não significa entrar automaticamente no percurso de estudo.
-
-## Leitura correta do fluxo
-
-Fluxo de lição:
-
-```text
-pedido
-  -> leitura do sourceGuideStructured
-  -> leitura do domainMap e da cobertura atual
-  -> microssequências draft
-  -> revisão humana
-  -> futura geração de cards
-```
-
-Uma nova microssequência só faz sentido quando acrescenta pelo menos uma destas funções:
-
-- novo subpasso;
-- nova representação;
-- novo contraste;
-- novo erro comum;
-- nova condição de aplicação;
-- novo formato avaliativo;
-- nova integração com conteúdo anterior;
-- consolidação justificada.
-
-Fluxo de cards:
-
-```text
-pedido
-  -> planejamento pequeno
-  -> cardPlan determinístico
-  -> geração/edição
-  -> validação
-  -> aplicação direta
-  -> aceitar ou excluir
-```
-
-## Aprofundamento sem inflar volume
-
-O produto agora pode oferecer ações públicas como `Completar lacunas` no nível da lição ou da microssequência.
-
-Essas ações não existem para gerar mais cards por padrão. Elas servem para:
-
-- checar superficialidade por regra local;
-- checar redundância;
-- localizar item fraco;
-- propor ajuste com ganho didático claro.
+A ação pública de aprofundamento da lição ou da microssequência não existe para multiplicar unidades interativas indiscriminadamente. Ela existe para localizar lacunas reais: prática ausente, cobertura fraca, redundância, necessidade de contraste, necessidade de variação. Se o resultado for mais unidades, esse aumento precisa estar a serviço da progressão, não da aparência de completude.

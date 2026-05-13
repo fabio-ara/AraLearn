@@ -18,7 +18,7 @@ Recorte operacional do app:
 
 ## Critérios de Autoria
 
-Cada microssequência deve seguir uma progressão curta:
+Cada microssequência deve seguir uma progressão enxuta:
 
 1. conceito ou regra;
 2. exemplo resolvido;
@@ -29,11 +29,11 @@ Cada exercício deve ser autossuficiente. O enunciado, os vetores, as matrizes, 
 
 Toda prática deve ser antecedida, na mesma microssequência, por microteoria ou exemplo resolvido que ensine a regra usada. Um exercício aparentemente dedutível pelo enunciado ainda precisa ter a regra ensinada antes, porque o objetivo do curso é formar o procedimento do aluno, não apenas testar interpretação.
 
-Símbolos, conectivos, fórmulas e nomes curtos devem aparecer destacados no corpo do card com acentos graves, como `p`, `q`, `¬`, `∧`, `∨`, `→`, `↔`, `XOR`, `2^n`, `v1` e `v2`. O título do card já aparece na interface e não deve ser repetido como título interno de tabela, linha solta ou primeira frase.
+Símbolos, conectivos, fórmulas e nomes breves devem aparecer destacados no corpo do card com acentos graves, como `p`, `q`, `¬`, `∧`, `∨`, `→`, `↔`, `XOR`, `2^n`, `v1` e `v2`. O título do card já aparece na interface e não deve ser repetido como título interno de tabela, linha solta ou primeira frase.
 
-Quando a regra for abstrata, combinatória ou pouco intuitiva, a explicação deve abrir com casos pequenos concretos antes da fórmula geral. Em lógica, isso inclui quadros como `n = 1`, `n = 2`, `n = 3`; em vetores e matrizes, isso inclui exemplos numéricos curtos antes de generalizações.
+Quando a regra for abstrata, combinatória ou pouco intuitiva, a explicação deve abrir com casos pequenos concretos antes da fórmula geral. Em lógica, isso inclui quadros como `n = 1`, `n = 2`, `n = 3`; em vetores e matrizes, isso inclui exemplos numéricos breves antes de generalizações.
 
-Cards que definem um conceito não devem parar na frase declarativa. Eles precisam mostrar pelo menos um exemplo mínimo, um contraste ou um quadro curto que deixe visível como a definição funciona.
+Cards que definem um conceito não devem parar na frase declarativa. Eles precisam mostrar pelo menos um exemplo mínimo, um contraste ou um quadro breve que deixe visível como a definição funciona.
 
 Quando o objetivo for provar equivalência ou reescrever fórmula, a explicação deve mostrar a ponte do raciocínio: linha crítica, colunas intermediárias, ou uma linha resolvida passo a passo. Não basta afirmar que “a tabela coincide”.
 
@@ -81,7 +81,7 @@ Foram aplicados estes ajustes:
 - tabelas sem subtítulo próprio deixaram de repetir internamente o título do card;
 - a prática de número de linhas da tabela-verdade passou a ser precedida por microteoria sobre as `2^n` combinações;
 - a microteoria sobre `2^n` linhas passou a mostrar um quadro com `n = 1`, `2`, `3` e `4`, para reduzir abstração desnecessária;
-- várias definições secas de lógica passaram a incluir exemplos, contrastes e quadros curtos para reduzir salto conceitual no começo do curso;
+- várias definições secas de lógica passaram a incluir exemplos, contrastes e quadros breves para reduzir salto conceitual no começo do curso;
 - equivalências como implicação, contrapositiva e distributividade passaram a mostrar linha crítica ou linha resolvida, em vez de só anunciar o resultado;
 - símbolos e conectivos nos cards de lógica receberam destaque inline para reduzir ambiguidade de leitura.
 - feedbacks de prática deixaram de repetir só a resposta certa e passaram a explicar o critério usado na correção;

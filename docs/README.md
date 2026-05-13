@@ -1,34 +1,31 @@
-# Documentação
+# Documentação do AraLearn
 
-Este diretório reúne a documentação pública do AraLearn.
+Este diretório está organizado por objetivo.
 
-O `README.md` da raiz apresenta o produto para uso geral. Os documentos abaixo aprofundam arquitetura, modelo didático, assistência por IA generativa, publicação e pesquisa educacional.
+## Para entender o produto
 
-Os textos deste diretório descrevem o estado atualmente implementado no repositório público. Quando houver diferença entre direção de produto e implementação corrente, a documentação pública deve registrar a implementação existente e explicitar a tensão como ponto em aberto, sem antecipar fluxos ainda não entregues.
+- [Visão do produto](visao-do-produto.md)
+- [Modelo didático](modelo-didatico.md)
+- [Fundamentos e evidências](fundamentos-e-evidencias.md)
+- [Pesquisa e avaliação](pesquisa-e-avaliacao.md)
 
-## Produto e arquitetura
+## Para usar o app
 
-- `visao-do-produto.md`: problema, proposta, público, princípios e horizonte do AraLearn
-- `arquitetura.md`: estrutura técnica do app, fluxo de dados, persistência, interface atual, distribuição, validação e tensões arquiteturais em aberto
-- `modelo-didatico.md`: microssequências, cards, contêineres, lacunas, revisão e critérios de qualidade didática
-- `rascunhos-e-microssequencias.md`: geração contextual de microssequências, estados `draft` e `ready`, painel da microssequência, iterações locais e estudo
+- [Guia de uso do app](uso-do-app.md)
+- [Rascunhos e microssequências](rascunhos-e-microssequencias.md)
+- [Abrir com AraLearn no Android](android-share-import.md)
+- [Codex CLI local no Android, Windows e Linux](codex-cli.md)
 
-## IA generativa e pesquisa
+## Para entender a implementação
 
-- `assistencia-por-ia.md`: engenharia da assistência por serviços de inteligência artificial generativa acessados por API
-- `codex-cli.md`: Codex CLI local no Android, Windows e Linux
-- `android-share-import.md`: abrir JSON com AraLearn no Android por compartilhamento ou "Abrir com"
-- `pesquisa-e-avaliacao.md`: perguntas de pesquisa, métricas, riscos e desenhos de estudo
-- `planejamento-matematica-para-informatica.md`: exemplo público de planejamento didático aplicado
+- [Arquitetura](arquitetura.md)
+- [Assistência por IA](assistencia-por-ia.md)
+- [Contrato público](aralearn-contract.md)
 
-## JSON público
+## Para pesquisa, avaliação e planejamento
 
-- `aralearn-contract.md`: contrato público atual do projeto
-- `examples/`: exemplos JSON do contrato público atual
+- [Planejamento de referência](planejamento-matematica-para-informatica.md)
 
-## Formatos JSON
+## Para exemplos e validação
 
-- `aralearn.contract`: troca de projetos ou recortes estruturais entre projetos e autoria externa
-- `aralearn.storage`: backup e restauração completa do estado local, incluindo progresso
-
-Na UI principal, a ação `Importar` detecta automaticamente qual dos dois formatos foi enviado.
+- [Exemplos JSON](examples/)

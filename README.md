@@ -53,7 +53,7 @@ versionar
 
 Não se trata de apenas mais um app de flashcards. Flashcards, claro, são a interface. O objetivo central do projeto, entretanto, é a conversão controlada de informação em aprendizagem prática e ativa.
 
-Meticulosidade, aqui, não significa card longo. Significa decomposição, progressão, prática com finalidade, contraste, tratamento de erro comum e verificação de domínio.
+Meticulosidade, aqui, significa decomposição, progressão, prática com finalidade, contraste, tratamento de erro comum e verificação de domínio. O critério não é extensão textual; é suficiência didática.
 
 ---
 
@@ -234,6 +234,8 @@ Documentação adicional:
 
 - [Codex CLI local no Android, Windows e Linux](docs/codex-cli.md)
 - [Abrir com AraLearn no Android](docs/android-share-import.md)
+- [Guia de uso do app](docs/uso-do-app.md)
+- [Fundamentos e evidências](docs/fundamentos-e-evidencias.md)
 
 A pergunta central não é apenas:
 
@@ -531,7 +533,9 @@ A chave não deve ser versionada nem registrada em arquivos do projeto.
 ## Documentação
 
 - [Visão geral da documentação](docs/README.md)
+- [Guia de uso do app](docs/uso-do-app.md)
 - [Visão do produto](docs/visao-do-produto.md)
+- [Fundamentos e evidências](docs/fundamentos-e-evidencias.md)
 - [Arquitetura](docs/arquitetura.md)
 - [Modelo didático](docs/modelo-didatico.md)
 - [Rascunhos e microssequências](docs/rascunhos-e-microssequencias.md)
@@ -547,6 +551,16 @@ A chave não deve ser versionada nem registrada em arquivos do projeto.
 ## Status
 
 O AraLearn está em desenvolvimento ativo. A versão atual já consolida uma base funcional para estudo, autoria local, persistência, importação, exportação, validação automatizada, assistência por inteligência artificial e empacotamento Android.
+
+Do ponto de vista conceitual, o projeto já tem direção nítida:
+
+- tratar informação abundante como matéria-prima de percurso, não como fim em si;
+- combinar organização top-down com iteração bottom-up;
+- restringir o papel da inteligência artificial por arquitetura, contratos e validações locais;
+- favorecer prática ativa, mediação progressiva e revisão no mesmo ambiente;
+- preservar controle local, reversibilidade e clareza sobre os limites reais da automação.
+
+A documentação pública procura expor essa direção com transparência: quando uma decisão encontra respaldo forte em literatura, isso é dito; quando se trata de solução arquitetural do próprio produto, isso também é dito; quando um efeito ainda depende de avaliação situada no AraLearn, a documentação evita apresentar hipótese como fato consumado.
 
 Versão atual do pacote:
 
