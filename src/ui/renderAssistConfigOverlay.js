@@ -55,7 +55,7 @@ export function renderAssistConfigOverlay({ model, apiKey, codexEndpoint, codexT
     escapeHtml(codexToken || "") +
     '" autocomplete="off" spellcheck="false">' +
     "</div>" +
-    '<p class="tiny muted">Usado apenas pelo modelo Codex CLI · Termux. O endpoint padrão é http://127.0.0.1:4183/assist.</p>' +
+    '<p class="tiny muted">Usado apenas pelo modelo Codex CLI. O endpoint padrão é http://127.0.0.1:4183/assist.</p>' +
     "</div>" +
     "</article></section>"
   );

@@ -228,7 +228,7 @@ A arquitetura do AraLearn procura deslocar parte da inteligência do modelo para
 
 Documentação adicional:
 
-- [Codex CLI via Termux no Android](docs/codex-cli-termux.md)
+- [Codex CLI local no Android, Windows e Linux](docs/codex-cli.md)
 - [Abrir com AraLearn no Android](docs/android-share-import.md)
 
 A pergunta central não é apenas:

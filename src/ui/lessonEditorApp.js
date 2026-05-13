@@ -6,11 +6,16 @@ import { renderVersionCompareOverlay } from "./renderVersionCompareOverlay.js";
 import { renderEntityEditorOverlay } from "./renderEntityEditorOverlay.js";
 import { renderActionMenuOverlay } from "./renderActionMenuOverlay.js";
 import { renderAssistConfigOverlay } from "./renderAssistConfigOverlay.js";
-import { renderCodexTermuxSetupOverlay } from "./renderCodexTermuxSetupOverlay.js";
+import { renderCodexCliSetupOverlay } from "./renderCodexCliSetupOverlay.js";
 import { renderExternalImportOverlay } from "./renderExternalImportOverlay.js";
 import { renderUiIcon } from "./renderUiIcons.js";
 import { captureRenderState, restoreRenderState } from "./renderState.js";
-import { buildCodexTermuxHealthCommand, buildCodexTermuxSetupScript } from "./codexTermuxSetupScript.js";
+import {
+  buildCodexCliHealthCommand,
+  buildCodexCliSetupScript,
+  detectCodexCliSetupPlatform,
+  getCodexCliSetupPresentation
+} from "./codexCliSetup.js";
 import { handleExternalJsonImportText } from "./externalJsonImport.js";
 import {
   buildSourceGuideEditorFields,
@@ -134,7 +139,7 @@ const MAX_ASSIST_DEPENDENCIES = 5;
 const MAX_ASSIST_ATTACHMENTS = 6;
 const MAX_CARD_SNAPSHOTS = 6;
 const ASSIST_MODEL_OPTIONS = [
-  { value: CODEX_LOCAL_MODEL_ID, label: "Codex CLI · Termux" },
+  { value: CODEX_LOCAL_MODEL_ID, label: "Codex CLI" },
   { value: "gemini-2.5-flash", label: "Gemini 2.5 Flash" },
   { value: "gemini-2.5-flash-lite", label: "Gemini 2.5 Flash-Lite" },
   { value: "gemini-2.0-flash", label: "Gemini 2.0 Flash · até 2026-06-01" }
@@ -1014,8 +1019,8 @@ export function createLessonEditorApp({ root, storage, editor }) {
     assistConfigOpen: false,
     assistConfig: initialAssistConfig,
     assistConfigDraft: { ...initialAssistConfig },
-    codexTermuxSetupOpen: false,
-    codexTermuxSetupStatus: {
+    codexCliSetupOpen: false,
+    codexCliSetupStatus: {
       ok: false,
       checking: false,
       error: "",
@@ -1898,9 +1903,18 @@ export function createLessonEditorApp({ root, storage, editor }) {
     return state.assistConfig.codexEndpoint || DEFAULT_CODEX_LOCAL_ENDPOINT;
   }
 
+  function getCodexSetupPlatform() {
+    return detectCodexCliSetupPlatform();
+  }
+
+  function getCodexSetupPresentation() {
+    return getCodexCliSetupPresentation(getCodexSetupPlatform());
+  }
+
   function getCodexSetupScript() {
     try {
-      return buildCodexTermuxSetupScript({
+      return buildCodexCliSetupScript({
+        platform: getCodexSetupPlatform(),
         endpoint: getCodexSetupEndpoint(),
         token: state.assistConfig.codexToken
       });
@@ -1911,7 +1925,8 @@ export function createLessonEditorApp({ root, storage, editor }) {
 
   function getCodexSetupHealthCommand() {
     try {
-      return buildCodexTermuxHealthCommand({
+      return buildCodexCliHealthCommand({
+        platform: getCodexSetupPlatform(),
         endpoint: getCodexSetupEndpoint(),
         token: state.assistConfig.codexToken
       });
@@ -1920,8 +1935,8 @@ export function createLessonEditorApp({ root, storage, editor }) {
     }
   }
 
-  function updateCodexTermuxSetupStatus(nextStatus = {}) {
-    state.codexTermuxSetupStatus = {
+  function updateCodexCliSetupStatus(nextStatus = {}) {
+    state.codexCliSetupStatus = {
       ok: nextStatus.ok === true,
       checking: nextStatus.checking === true,
       error: typeof nextStatus.error === "string" ? nextStatus.error : "",
@@ -1929,25 +1944,25 @@ export function createLessonEditorApp({ root, storage, editor }) {
     };
   }
 
-  function openCodexTermuxSetup(errorMessage = "") {
+  function openCodexCliSetup(errorMessage = "") {
     state.assistConfigOpen = false;
-    state.codexTermuxSetupOpen = true;
-    updateCodexTermuxSetupStatus({
+    state.codexCliSetupOpen = true;
+    updateCodexCliSetupStatus({
       ok: false,
       checking: false,
-      error: errorMessage || state.codexTermuxSetupStatus.error || "",
-      data: state.codexTermuxSetupStatus.data
+      error: errorMessage || state.codexCliSetupStatus.error || "",
+      data: state.codexCliSetupStatus.data
     });
     render({ preserveState: true });
   }
 
-  function closeCodexTermuxSetup() {
-    state.codexTermuxSetupOpen = false;
+  function closeCodexCliSetup() {
+    state.codexCliSetupOpen = false;
     render({ preserveState: true });
   }
 
-  async function testCodexTermuxConnection({ preserveState = true } = {}) {
-    updateCodexTermuxSetupStatus({
+  async function testCodexCliConnection({ preserveState = true } = {}) {
+    updateCodexCliSetupStatus({
       ok: false,
       checking: true,
       error: "",
@@ -1969,7 +1984,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
       };
     }
 
-    updateCodexTermuxSetupStatus({
+    updateCodexCliSetupStatus({
       ok: status.ok,
       checking: false,
       error: status.ok ? "" : status.error || "Bridge local não encontrado.",
@@ -1984,12 +1999,12 @@ export function createLessonEditorApp({ root, storage, editor }) {
       return true;
     }
 
-    const status = await testCodexTermuxConnection();
+    const status = await testCodexCliConnection();
     if (status.ok) {
       return true;
     }
 
-    openCodexTermuxSetup(status.error || "O bridge local não está ativo.");
+    openCodexCliSetup(status.error || "O bridge local não está ativo.");
     return false;
   }
 
@@ -1998,9 +2013,9 @@ export function createLessonEditorApp({ root, storage, editor }) {
       return;
     }
 
-    const status = await testCodexTermuxConnection();
+    const status = await testCodexCliConnection();
     if (!status.ok) {
-      openCodexTermuxSetup(status.error || "O bridge local não está ativo.");
+      openCodexCliSetup(status.error || "O bridge local não está ativo.");
     }
   }
 
@@ -2043,7 +2058,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
   }
 
   function openAssistConfig() {
-    state.codexTermuxSetupOpen = false;
+    state.codexCliSetupOpen = false;
     state.assistConfigDraft = { ...state.assistConfig };
     state.assistConfigOpen = true;
     render({ preserveState: true });
@@ -3159,7 +3174,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
     state.versionHistoryOpen = false;
     state.versionCompareOpen = false;
     state.assistConfigOpen = false;
-    state.codexTermuxSetupOpen = false;
+    state.codexCliSetupOpen = false;
     render({ preserveState: true });
   }
 
@@ -3402,7 +3417,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
     state.versionHistoryExpandedMoreKey = "";
     state.cardCommentOpen = false;
     state.assistConfigOpen = false;
-    state.codexTermuxSetupOpen = false;
+    state.codexCliSetupOpen = false;
     state.entityEditor = null;
     if (structureReference) {
       state.versionHistorySelectionKey = getStructureVersionEntry(structureReference)?.activeVersionId || "";
@@ -3444,7 +3459,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
     state.versionCompareFocusTarget = null;
     state.cardCommentOpen = false;
     state.assistConfigOpen = false;
-    state.codexTermuxSetupOpen = false;
+    state.codexCliSetupOpen = false;
     state.entityEditor = null;
     render({ preserveState: true });
   }
@@ -3727,7 +3742,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
     }
 
     state.assistConfigOpen = false;
-    state.codexTermuxSetupOpen = false;
+    state.codexCliSetupOpen = false;
     state.generationPanelOpen = false;
     state.versionHistoryOpen = false;
     state.versionCompareOpen = false;
@@ -5893,7 +5908,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
     state.versionHistoryOpen = false;
     state.versionCompareOpen = false;
     state.assistConfigOpen = false;
-    state.codexTermuxSetupOpen = false;
+    state.codexCliSetupOpen = false;
     state.entityEditor = null;
 
     if (state.view === "microsequence") {
@@ -7834,12 +7849,12 @@ export function createLessonEditorApp({ root, storage, editor }) {
             modelOptions: ASSIST_MODEL_OPTIONS
           })
         : "") +
-      (state.codexTermuxSetupOpen
-        ? renderCodexTermuxSetupOverlay({
+      (state.codexCliSetupOpen
+        ? renderCodexCliSetupOverlay({
             endpoint: getCodexSetupEndpoint(),
-            token: state.assistConfig.codexToken,
-            status: state.codexTermuxSetupStatus,
-            setupScript: getCodexSetupScript()
+            status: state.codexCliSetupStatus,
+            setupScript: getCodexSetupScript(),
+            presentation: getCodexSetupPresentation()
           })
         : "") +
       (state.pendingExternalImport
@@ -8825,8 +8840,8 @@ export function createLessonEditorApp({ root, storage, editor }) {
           closeAssistConfig();
           return;
         }
-        if (state.codexTermuxSetupOpen) {
-          closeCodexTermuxSetup();
+        if (state.codexCliSetupOpen) {
+          closeCodexCliSetup();
           return;
         }
         if (state.pendingExternalImport) {
@@ -9188,7 +9203,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
       root.querySelector("[data-field='generate-attachments']")?.click();
     });
     root.querySelector("[data-action='open-assist-config']")?.addEventListener("click", () => openAssistConfig());
-    root.querySelector("[data-action='open-codex-termux-setup']")?.addEventListener("click", () => openCodexTermuxSetup());
+    root.querySelector("[data-action='open-codex-cli-setup']")?.addEventListener("click", () => openCodexCliSetup());
     root.querySelector("[data-action='apply-assist']")?.addEventListener("click", () => {
       void submitAssistRequest();
     });
@@ -9200,19 +9215,19 @@ export function createLessonEditorApp({ root, storage, editor }) {
     });
     root.querySelector("[data-action='open-version-history']")?.addEventListener("click", () => openVersionHistory());
     root.querySelector("[data-action='assist-config-close']")?.addEventListener("click", () => closeAssistConfig());
-    root.querySelector("[data-action='close-codex-termux-setup']")?.addEventListener("click", () => closeCodexTermuxSetup());
+    root.querySelector("[data-action='close-codex-cli-setup']")?.addEventListener("click", () => closeCodexCliSetup());
     root.querySelector("[data-action='cancel-external-import']")?.addEventListener("click", () => clearPendingExternalImport());
     root.querySelector("[data-action='confirm-external-import']")?.addEventListener("click", () => confirmPendingExternalImport());
-    root.querySelector("[data-action='test-codex-termux-connection']")?.addEventListener("click", () => {
-      void testCodexTermuxConnection();
+    root.querySelector("[data-action='test-codex-cli-connection']")?.addEventListener("click", () => {
+      void testCodexCliConnection();
     });
-    root.querySelector("[data-action='copy-codex-termux-script']")?.addEventListener("click", () => {
+    root.querySelector("[data-action='copy-codex-cli-script']")?.addEventListener("click", () => {
       void copyTextToClipboard(getCodexSetupScript());
     });
-    root.querySelector("[data-action='copy-codex-termux-endpoint']")?.addEventListener("click", () => {
+    root.querySelector("[data-action='copy-codex-cli-endpoint']")?.addEventListener("click", () => {
       void copyTextToClipboard(getCodexSetupEndpoint());
     });
-    root.querySelector("[data-action='copy-codex-termux-health-command']")?.addEventListener("click", () => {
+    root.querySelector("[data-action='copy-codex-cli-health-command']")?.addEventListener("click", () => {
       void copyTextToClipboard(getCodexSetupHealthCommand());
     });
 
