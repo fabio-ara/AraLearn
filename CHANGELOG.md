@@ -21,6 +21,7 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 - a edição da fonte-guia passa a tratar `presetId` como modo pronto de verdade: ao trocar o modo da lição, o app reaplica recursos, tipos de conteúdo, ações de estudo e nível de apoio correspondentes, mantendo os campos abaixo como ajuste fino opcional
 - a configuração de IA passa a explicitar Gemini/API comum como caminho normal e `Codex CLI local` como integração avançada, além de mover o modelo local para o fim da lista
 - a navegação de estudo e as dependências didáticas passam a ignorar microssequências `draft` ou `included: false`, inclusive após geração, exclusão de iteração e restauração local
+- a oficina da microssequência passa a nomear explicitamente quando o preview está mostrando uma iteração gerada pendente, sem sugerir que isso já equivale a conteúdo pronto
 
 ### Tests
 
@@ -30,6 +31,7 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 - a suíte passa a cobrir os presets humanos da lição e a distinção entre modo pronto e ajuste fino
 - a suíte passa a cobrir a configuração da IA com Gemini como caminho normal e Codex local como modo avançado
 - a suíte passa a travar que geração, versionamento local e coleta de dependências não promovem `draft` ou `included: false` a conteúdo executável
+- a suíte passa a cobrir a cópia pública do estado de iteração gerada pendente no workbench
 ## [0.9.22] - 2026-05-06
 
 ### Changed
