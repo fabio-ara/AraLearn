@@ -12,7 +12,7 @@ curso -> módulo -> lição -> microssequência -> card
 
 A aplicação combina autoria local, prática ativa, importação e exportação de lições, persistência no dispositivo e assistência por modelos de linguagem acessados por API. O foco atual é o uso de modelos leves e baratos ou disponíveis em free-tier.
 
-A inteligência artificial, no AraLearn, não é encarada como fonte da verdade. Ela é uma força geradora de conteúdo, sim, mas contida por arquitetura: a aplicação define contexto, limites, recursos, fonte-guia, contratos, validações, estados de rascunho e iterações locais reversíveis. O objetivo é usar inteligência artificial de modo produtivo sem entregar a ela a autoridade final sobre o conhecimento, a didática ou o percurso do usuário.
+A inteligência artificial, no AraLearn, não é encarada como fonte da verdade. Ela é uma força geradora de conteúdo, sim, mas contida por arquitetura: a aplicação define contexto, tipo, tamanho, `cardPlan`, recursos, fonte-guia, contratos e validações. O objetivo é usar inteligência artificial de modo produtivo sem entregar a ela a autoridade final sobre o conhecimento, a didática ou o percurso do usuário.
 
 A aplicação pode ser usada como:
 
@@ -261,12 +261,13 @@ AraLearn valida.
 O usuário revisa.
 ```
 
-Na geração de microssequências, a direção é usar um processo em duas etapas:
+Na geração de microssequências e cards, a direção atual é usar `weakModelMode`:
 
 1. planejamento restrito;
-2. geração de conteúdo conforme plano definido pelo app.
+2. `cardPlan` determinístico do app;
+3. geração de conteúdo conforme plano definido pelo app.
 
-Na primeira etapa, a inteligência artificial pode escolher entre opções fechadas:
+Na primeira etapa, a inteligência artificial pode escolher apenas entre opções fechadas:
 
 - tipo de microssequência;
 - tamanho;
@@ -274,7 +275,7 @@ Na primeira etapa, a inteligência artificial pode escolher entre opções fecha
 
 Essas opções chegam ao Gemini como listas fechadas do próprio AraLearn. O modelo escolhe dentro delas; depois disso, o AraLearn monta os JSONs efetivos da operação e acrescenta `cardPlan`, contexto resolvido, schemas e validações locais.
 
-Na segunda etapa, a inteligência artificial recebe apenas o plano aprovado e preenche os cards. Ela não deve alterar quantidade, ordem, papéis ou recursos dos cards.
+Na segunda etapa, a inteligência artificial recebe apenas o plano aprovado e preenche os cards. Ela não deve alterar quantidade, ordem, posições, papéis ou recursos dos cards.
 
 Essa arquitetura torna o uso de modelos baratos mais realista, reduz custo, melhora previsibilidade e preserva controle humano.
 
@@ -304,6 +305,7 @@ Já no fluxo de cards, o comportamento atual é:
 
 ```text
 gerar ou editar
+aplicar diretamente na microssequência
 revisar a iteração aplicada
 aceitar ou excluir a iteração atual
 continuar estudando ou editando
@@ -311,7 +313,7 @@ continuar estudando ou editando
 
 Essa distinção é central. O AraLearn não deve fingir que uma geração fluente é equivalente a material didático confiável.
 
-O usuário continua sendo autor e curador do próprio percurso.
+Não existe mais prévia privada nessa trilha. O usuário continua sendo autor e curador do próprio percurso.
 
 ---
 

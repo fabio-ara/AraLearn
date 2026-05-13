@@ -35,13 +35,21 @@ function normalizeText(value) {
   return typeof value === "string" ? value.trim() : "";
 }
 
-function makeRequestBody({ systemInstruction, prompt, schema, temperature = 0.2, maxOutputTokens = 2048, fileParts = [] }) {
+function makeRequestBody({
+  systemInstruction,
+  prompt,
+  schema,
+  temperature = 0.2,
+  maxOutputTokens = 2048,
+  fileParts = [],
+  modelCapabilities = {}
+}) {
   const generationConfig = {
     temperature,
     maxOutputTokens,
-    responseMimeType: "application/json"
+    responseMimeType: modelCapabilities?.responseMimeType || "application/json"
   };
-  if (schema) {
+  if (schema && modelCapabilities?.supportsResponseJsonSchema !== false) {
     generationConfig.responseJsonSchema = schema;
   }
 
@@ -1175,7 +1183,7 @@ export async function validateOrRepairMicrosequencePlan({
       fileParts,
       schema: null,
       temperature: 0.05,
-      maxOutputTokens: modelCapabilities?.profile === "compact-json" ? 1536 : 2048
+      maxOutputTokens: modelCapabilities?.preferShortSchemas === true ? 1536 : 2048
     })
   });
   const repairedPlan = repairedCall.value;
@@ -1352,7 +1360,8 @@ export async function resumeGenerationFromValidatedPlan({
         fileParts,
         schema: null,
         temperature: 0.15,
-        maxOutputTokens: 4096
+        maxOutputTokens: 4096,
+        modelCapabilities: getModelCapabilities(generationModel)
       })
     });
   } catch (error) {
@@ -1404,7 +1413,8 @@ export async function resumeGenerationFromValidatedPlan({
             fileParts,
             schema: null,
             temperature,
-            maxOutputTokens
+            maxOutputTokens,
+            modelCapabilities: getModelCapabilities(generationCall.modelId)
           })
         }).then((result) => result.value)
     });
@@ -1794,7 +1804,8 @@ export async function runGeminiAssist({
         fileParts,
         schema: getEditSchema(getContractCardKind(card) || "say"),
         temperature: 0.2,
-        maxOutputTokens: 1536
+        maxOutputTokens: 1536,
+        modelCapabilities: getModelCapabilities(trimmedModel)
       });
     } else if (mode === "reposition-microsequence") {
       body = makeRequestBody({
@@ -1803,7 +1814,8 @@ export async function runGeminiAssist({
         fileParts,
         schema: getRepositionSchema(),
         temperature: 0.2,
-        maxOutputTokens: 1024
+        maxOutputTokens: 1024,
+        modelCapabilities: getModelCapabilities(trimmedModel)
       });
     } else if (mode === "plan-microsequence-ladder") {
       body = makeRequestBody({
@@ -1814,7 +1826,8 @@ export async function runGeminiAssist({
         fileParts,
         schema: getLadderSchema(),
         temperature: 0.15,
-        maxOutputTokens: 1024
+        maxOutputTokens: 1024,
+        modelCapabilities: getModelCapabilities(trimmedModel)
       });
     } else if (mode === "generate-lesson-microsequences") {
       body = makeRequestBody({
@@ -1825,7 +1838,8 @@ export async function runGeminiAssist({
         fileParts,
         schema: getLessonMicrosequenceSchema(),
         temperature: 0.2,
-        maxOutputTokens: 2048
+        maxOutputTokens: 2048,
+        modelCapabilities: getModelCapabilities(trimmedModel)
       });
     } else if (mode === "generate-and-reposition-lesson-microsequences") {
       body = makeRequestBody({
@@ -1836,7 +1850,8 @@ export async function runGeminiAssist({
         fileParts,
         schema: getLessonMicrosequenceRepositionSchema(),
         temperature: 0.2,
-        maxOutputTokens: 3072
+        maxOutputTokens: 3072,
+        modelCapabilities: getModelCapabilities(trimmedModel)
       });
     } else if (mode === "generate-top-down-structure") {
       body = makeRequestBody({
@@ -1847,7 +1862,8 @@ export async function runGeminiAssist({
         fileParts,
         schema: getStructureSchema(),
         temperature: 0.2,
-        maxOutputTokens: 4096
+        maxOutputTokens: 4096,
+        modelCapabilities: getModelCapabilities(trimmedModel)
       });
     } else {
       fail("Modo de assistência inválido.");

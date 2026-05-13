@@ -141,6 +141,11 @@ function adaptTree(card) {
   };
 }
 
+function withSourceRefs(publicCard, card) {
+  const sourceRefs = Array.isArray(card?.sourceRefs) ? card.sourceRefs.map(text).filter(Boolean) : [];
+  return sourceRefs.length ? { ...publicCard, sourceRefs } : publicCard;
+}
+
 function adaptPlane(card) {
   const plane = {};
   if (Array.isArray(card.x)) plane.x = numberPair(card.x);
@@ -200,21 +205,21 @@ function adaptMatrix(card) {
 export function adaptResourceCardToPublicCard(card) {
   const resourceType = text(card?.resourceType);
   if (resourceType === "paragraph") {
-    return sanitizeContractCard({
+    return sanitizeContractCard(withSourceRefs({
       title: text(card.title) || "Card",
       say: text(card.text)
-    });
+    }, card));
   }
   if (resourceType === "multiple_choice") {
-    return sanitizeContractCard(adaptMultipleChoice(card));
+    return sanitizeContractCard(withSourceRefs(adaptMultipleChoice(card), card));
   }
   if (resourceType === "code_editor") {
-    return sanitizeContractCard({
+    return sanitizeContractCard(withSourceRefs({
       title: text(card.title) || "Código",
       say: text(card.prompt) || "Observe o trecho abaixo.",
       code: text(card.code),
       ...(text(card.language) ? { language: text(card.language) } : {})
-    });
+    }, card));
   }
   if (resourceType === "table") {
     const focus =
@@ -229,29 +234,29 @@ export function adaptResourceCardToPublicCard(card) {
               : {})
           }
         : null;
-    return sanitizeContractCard({
+    return sanitizeContractCard(withSourceRefs({
       title: text(card.title) || "Tabela",
       table: {
         columns: Array.isArray(card.columns) ? card.columns.map(text).filter(Boolean) : [],
         rows: (Array.isArray(card.rows) ? card.rows : []).map((row) => (Array.isArray(row) ? row.map(text) : [])),
         ...(focus && Object.keys(focus).length ? { focus } : {})
       }
-    });
+    }, card));
   }
   if (resourceType === "flowchart") {
-    return sanitizeContractCard(adaptFlowchart(card));
+    return sanitizeContractCard(withSourceRefs(adaptFlowchart(card), card));
   }
   if (resourceType === "block_gap_fill") {
-    return sanitizeContractCard(adaptBlockGapFill(card));
+    return sanitizeContractCard(withSourceRefs(adaptBlockGapFill(card), card));
   }
   if (resourceType === "tree") {
-    return sanitizeContractCard(adaptTree(card));
+    return sanitizeContractCard(withSourceRefs(adaptTree(card), card));
   }
   if (resourceType === "plane") {
-    return sanitizeContractCard(adaptPlane(card));
+    return sanitizeContractCard(withSourceRefs(adaptPlane(card), card));
   }
   if (resourceType === "matrix") {
-    return sanitizeContractCard(adaptMatrix(card));
+    return sanitizeContractCard(withSourceRefs(adaptMatrix(card), card));
   }
 
   throw new Error(`Recurso interno sem adaptador público: ${resourceType || "desconhecido"}.`);

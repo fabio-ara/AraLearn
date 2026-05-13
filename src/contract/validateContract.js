@@ -222,6 +222,7 @@ function validateLesson(lesson, index, errors, lessonKeys, path) {
       "description",
       "sourceGuide",
       "sourceGuideStructured",
+      "presetId",
       "resourceTags",
       "contentTypeTags",
       "learningActionTags",

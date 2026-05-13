@@ -105,6 +105,7 @@ function assignOptionalSourceGuide(record, sourceGuide, sourceGuideStructured, l
 
 function assignLessonGuidance(record, input = {}) {
   const normalized = normalizeLessonGuidance(input);
+  record.presetId = normalized.presetId;
   record.resourceTags = normalized.resourceTags;
   record.contentTypeTags = normalized.contentTypeTags;
   record.learningActionTags = normalized.learningActionTags;
@@ -316,6 +317,7 @@ function createStarterLesson({
   description,
   sourceGuide,
   sourceGuideStructured,
+  presetId,
   resourceTags,
   contentTypeTags,
   learningActionTags,
@@ -328,7 +330,7 @@ function createStarterLesson({
     microsequences: []
   };
   assignOptionalSourceGuide(lesson, sourceGuide, sourceGuideStructured, SOURCE_GUIDE_LEVELS.LESSON);
-  assignLessonGuidance(lesson, { resourceTags, contentTypeTags, learningActionTags, supportLevel });
+  assignLessonGuidance(lesson, { presetId, resourceTags, contentTypeTags, learningActionTags, supportLevel });
   return lesson;
 }
 

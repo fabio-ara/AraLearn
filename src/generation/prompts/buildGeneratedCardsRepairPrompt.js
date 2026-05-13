@@ -2,7 +2,7 @@ import { getResourceSchemas } from "../resources/cardResourceDefinitions.js";
 import { buildDidacticRepairPromptLines } from "../didactics/didacticGovernance.js";
 
 function compactJson(value, modelCapabilities = {}) {
-  return modelCapabilities?.profile === "compact-json" ? JSON.stringify(value || {}) : JSON.stringify(value || {}, null, 2);
+  return modelCapabilities?.preferShortSchemas === true ? JSON.stringify(value || {}) : JSON.stringify(value || {}, null, 2);
 }
 
 function pickAllowedResourceSchemas(generationContract = {}) {

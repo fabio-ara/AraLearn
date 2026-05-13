@@ -10,29 +10,27 @@ const TYPES = [
   {
     id: "assisted",
     label: "Assistido",
-    shortDescription: "A etapa de planejamento escolhe o tipo didático mais adequado.",
-    availableSizes: ["short", "medium", "long"],
-    baseResourceTypes: ["paragraph", "multiple_choice"],
+    shortDescription: "A política e o planejamento escolhem o tipo mais adequado.",
+    availableSizes: ["short", "medium"],
+    baseResourceTypes: ["paragraph", "block_gap_fill", "multiple_choice"],
     cardPlansBySize: {
       short: plans([
-        ["orient_topic", "situar o tema", ["paragraph"]],
-        ["develop_main_idea", "desenvolver a ideia principal", ["paragraph"]],
-        ["check_understanding", "checar entendimento", ["multiple_choice"]]
+        ["anchor_context", "ancorar o contexto", ["paragraph"]],
+        ["guided_practice", "guiar a primeira prática", ["block_gap_fill", "multiple_choice"]],
+        ["consolidate", "consolidar", ["multiple_choice", "paragraph"]]
       ]),
       medium: plans([
-        ["orient_topic", "situar o tema", ["paragraph"]],
-        ["explain_main_idea", "explicar a ideia principal", ["paragraph"]],
-        ["show_short_example", "mostrar exemplo curto", ["paragraph", "table", "code_editor", "matrix", "plane"]],
+        ["anchor_context", "ancorar o contexto", ["paragraph"]],
+        ["show_micro_example", "mostrar microexemplo", ["paragraph", "table", "code_editor"]],
+        ["guided_practice", "guiar a primeira prática", ["block_gap_fill", "multiple_choice"]],
         ["check_understanding", "checar entendimento", ["multiple_choice"]],
         ["consolidate", "consolidar", ["paragraph", "multiple_choice"]]
       ]),
       long: plans([
-        ["orient_topic", "situar o tema", ["paragraph"]],
-        ["explain_first_idea", "explicar a primeira ideia", ["paragraph"]],
-        ["explain_second_idea", "explicar a segunda ideia", ["paragraph", "table"]],
-        ["show_short_example", "mostrar exemplo curto", ["paragraph", "table", "code_editor", "matrix", "plane"]],
+        ["anchor_context", "ancorar o contexto", ["paragraph"]],
+        ["show_micro_example", "mostrar microexemplo", ["paragraph", "table", "code_editor"]],
+        ["guided_practice", "guiar a primeira prática", ["block_gap_fill", "multiple_choice"]],
         ["check_understanding", "checar entendimento", ["multiple_choice"]],
-        ["apply_short_case", "aplicar em situação curta", ["block_gap_fill", "multiple_choice"]],
         ["consolidate", "consolidar", ["paragraph", "multiple_choice"]]
       ])
     }
@@ -40,29 +38,27 @@ const TYPES = [
   {
     id: "simple",
     label: "Simples",
-    shortDescription: "Microssequência curta, segura e genérica.",
-    availableSizes: ["short", "medium", "long"],
+    shortDescription: "Sequência estável com explicação breve e checagem.",
+    availableSizes: ["short", "medium"],
     baseResourceTypes: ["paragraph", "multiple_choice"],
     cardPlansBySize: {
       short: plans([
         ["present_core_point", "apresentar o ponto central", ["paragraph"]],
-        ["show_short_example", "dar exemplo curto", ["paragraph", "table", "code_editor", "matrix", "plane"]],
+        ["show_minimal_case", "mostrar caso mínimo", ["paragraph", "table"]],
         ["check_understanding", "checar entendimento", ["multiple_choice"]]
       ]),
       medium: plans([
         ["present_core_point", "apresentar o ponto central", ["paragraph"]],
-        ["explain_key_detail", "explicar detalhe essencial", ["paragraph"]],
-        ["show_short_example", "dar exemplo curto", ["paragraph", "table", "code_editor", "matrix", "plane"]],
+        ["explain_critical_detail", "explicar detalhe crítico", ["paragraph"]],
+        ["show_minimal_case", "mostrar caso mínimo", ["paragraph", "table", "code_editor"]],
         ["check_understanding", "checar entendimento", ["multiple_choice"]],
         ["consolidate", "consolidar", ["paragraph", "multiple_choice"]]
       ]),
       long: plans([
         ["present_core_point", "apresentar o ponto central", ["paragraph"]],
-        ["explain_key_detail", "explicar detalhe essencial", ["paragraph"]],
-        ["show_short_example", "dar exemplo curto", ["paragraph", "table", "code_editor", "matrix", "plane"]],
-        ["show_variation", "mostrar variação", ["paragraph", "table"]],
+        ["explain_critical_detail", "explicar detalhe crítico", ["paragraph"]],
+        ["show_minimal_case", "mostrar caso mínimo", ["paragraph", "table", "code_editor"]],
         ["check_understanding", "checar entendimento", ["multiple_choice"]],
-        ["apply_short_case", "aplicar em situação curta", ["block_gap_fill", "multiple_choice"]],
         ["consolidate", "consolidar", ["paragraph", "multiple_choice"]]
       ])
     }
@@ -70,240 +66,224 @@ const TYPES = [
   {
     id: "concept",
     label: "Explicar uma ideia",
-    shortDescription: "Introduz uma ideia nova com explicação curta, exemplo simples e checagem.",
-    availableSizes: ["short", "medium", "long"],
+    shortDescription: "Introduz conceito, traduz notação e fecha com checagem.",
+    availableSizes: ["short", "medium"],
     baseResourceTypes: ["paragraph", "multiple_choice"],
     cardPlansBySize: {
       short: plans([
         ["introduce_idea", "introduzir a ideia", ["paragraph"]],
-        ["show_simple_example", "mostrar exemplo simples", ["paragraph", "table", "plane", "matrix"]],
+        ["translate_notation", "traduzir a notação", ["paragraph", "table", "matrix", "plane"]],
         ["check_understanding", "checar entendimento", ["multiple_choice"]]
       ]),
       medium: plans([
         ["introduce_idea", "introduzir a ideia", ["paragraph"]],
-        ["explain_component", "explicar componente essencial", ["paragraph", "table"]],
-        ["show_simple_example", "mostrar exemplo simples", ["paragraph", "table", "plane", "matrix"]],
+        ["translate_notation", "traduzir a notação", ["paragraph", "table", "matrix", "plane"]],
+        ["show_minimal_example", "mostrar exemplo mínimo", ["paragraph", "table", "matrix", "plane"]],
         ["check_understanding", "checar entendimento", ["multiple_choice"]],
-        ["consolidate_idea", "consolidar a ideia", ["paragraph", "multiple_choice"]]
+        ["consolidate", "consolidar", ["paragraph", "multiple_choice"]]
       ]),
       long: plans([
         ["introduce_idea", "introduzir a ideia", ["paragraph"]],
-        ["explain_first_component", "explicar primeiro componente", ["paragraph"]],
-        ["explain_second_component", "explicar segundo componente", ["paragraph", "table"]],
-        ["show_simple_example", "mostrar exemplo simples", ["paragraph", "table", "plane", "matrix"]],
+        ["translate_notation", "traduzir a notação", ["paragraph", "table", "matrix", "plane"]],
+        ["show_minimal_example", "mostrar exemplo mínimo", ["paragraph", "table", "matrix", "plane"]],
         ["check_understanding", "checar entendimento", ["multiple_choice"]],
-        ["apply_short_case", "aplicar em situação curta", ["block_gap_fill", "multiple_choice"]],
-        ["consolidate_idea", "consolidar a ideia", ["paragraph", "multiple_choice"]]
+        ["consolidate", "consolidar", ["paragraph", "multiple_choice"]]
       ])
     }
   },
   {
     id: "procedure",
     label: "Passo a passo",
-    shortDescription: "Ensina uma sequência de ações ou etapas.",
-    availableSizes: ["short", "medium", "long"],
+    shortDescription: "Ensina procedimento curto em ordem operacional.",
+    availableSizes: ["short", "medium"],
     baseResourceTypes: ["paragraph", "multiple_choice"],
     cardPlansBySize: {
       short: plans([
         ["situate_task", "situar a tarefa", ["paragraph"]],
-        ["present_main_action", "apresentar a ação principal", ["paragraph", "table", "code_editor", "flowchart"]],
+        ["show_main_step", "mostrar a etapa principal", ["paragraph", "table", "code_editor", "flowchart", "tree"]],
         ["check_understanding", "checar entendimento", ["multiple_choice"]]
       ]),
       medium: plans([
         ["situate_task", "situar a tarefa", ["paragraph"]],
-        ["present_first_step", "apresentar a primeira etapa", ["paragraph", "table", "code_editor", "flowchart"]],
-        ["present_next_decision", "apresentar a próxima decisão ou ação", ["paragraph", "table", "flowchart", "block_gap_fill"]],
+        ["show_first_step", "mostrar a primeira etapa", ["paragraph", "table", "code_editor", "flowchart", "tree"]],
+        ["show_next_step", "mostrar a próxima etapa", ["paragraph", "table", "code_editor", "flowchart", "tree"]],
         ["check_understanding", "checar entendimento", ["multiple_choice"]],
-        ["consolidate_procedure", "consolidar o procedimento", ["paragraph", "multiple_choice"]]
+        ["consolidate", "consolidar", ["paragraph", "multiple_choice"]]
       ]),
       long: plans([
         ["situate_task", "situar a tarefa", ["paragraph"]],
-        ["present_first_step", "apresentar a primeira etapa", ["paragraph", "table", "code_editor", "flowchart"]],
-        ["present_second_step", "apresentar a segunda etapa", ["paragraph", "table", "code_editor", "flowchart"]],
-        ["present_decision_or_variation", "apresentar decisão ou variação relevante", ["paragraph", "table", "flowchart"]],
+        ["show_first_step", "mostrar a primeira etapa", ["paragraph", "table", "code_editor", "flowchart", "tree"]],
+        ["show_next_step", "mostrar a próxima etapa", ["paragraph", "table", "code_editor", "flowchart", "tree"]],
         ["check_understanding", "checar entendimento", ["multiple_choice"]],
-        ["apply_short_case", "aplicar em situação curta", ["block_gap_fill", "multiple_choice"]],
-        ["consolidate_procedure", "consolidar o procedimento", ["paragraph", "multiple_choice"]]
+        ["consolidate", "consolidar", ["paragraph", "multiple_choice"]]
       ])
     }
   },
   {
     id: "guided_practice",
     label: "Prática guiada",
-    shortDescription: "Conduz o aluno por exercícios curtos com feedback.",
-    availableSizes: ["short", "medium", "long"],
-    baseResourceTypes: ["paragraph", "block_gap_fill"],
+    shortDescription: "Conduz prática breve depois de um contexto mínimo.",
+    availableSizes: ["short", "medium"],
+    baseResourceTypes: ["paragraph", "block_gap_fill", "multiple_choice"],
     cardPlansBySize: {
       short: plans([
         ["situate_practice", "situar a prática", ["paragraph"]],
-        ["guided_gap", "propor uma lacuna com blocos", ["block_gap_fill"]],
-        ["feedback_and_consolidate", "dar feedback e consolidar", ["multiple_choice", "paragraph"]]
+        ["guided_gap", "propor a primeira prática", ["block_gap_fill"]],
+        ["check_and_consolidate", "checar e consolidar", ["multiple_choice", "paragraph"]]
       ]),
       medium: plans([
         ["situate_practice", "situar a prática", ["paragraph"]],
-        ["first_guided_gap", "propor uma primeira lacuna com blocos", ["block_gap_fill"]],
-        ["second_short_application", "propor uma segunda aplicação curta", ["block_gap_fill", "multiple_choice"]],
+        ["show_minimal_reference", "mostrar referência mínima", ["paragraph", "table", "code_editor"]],
+        ["guided_gap", "propor a primeira prática", ["block_gap_fill"]],
         ["check_understanding", "checar entendimento", ["multiple_choice"]],
-        ["feedback_and_consolidate", "dar feedback e consolidar", ["paragraph", "multiple_choice"]]
+        ["consolidate", "consolidar", ["paragraph", "multiple_choice"]]
       ]),
       long: plans([
         ["situate_practice", "situar a prática", ["paragraph"]],
-        ["first_guided_gap", "propor uma primeira lacuna com blocos", ["block_gap_fill"]],
-        ["intermediate_feedback", "dar feedback intermediário", ["paragraph"]],
-        ["second_guided_gap", "propor uma segunda lacuna com blocos", ["block_gap_fill"]],
+        ["show_minimal_reference", "mostrar referência mínima", ["paragraph", "table", "code_editor"]],
+        ["guided_gap", "propor a primeira prática", ["block_gap_fill"]],
         ["check_understanding", "checar entendimento", ["multiple_choice"]],
-        ["apply_short_case", "aplicar em situação curta", ["block_gap_fill", "multiple_choice"]],
-        ["consolidate_learning", "consolidar a aprendizagem", ["paragraph", "multiple_choice"]]
+        ["consolidate", "consolidar", ["paragraph", "multiple_choice"]]
       ])
     }
   },
   {
     id: "comparison",
     label: "Comparar",
-    shortDescription: "Contrasta ideias, opções, comandos, regras, conceitos ou procedimentos.",
-    availableSizes: ["short", "medium", "long"],
+    shortDescription: "Contrasta critérios de forma pequena e auditável.",
+    availableSizes: ["short", "medium"],
     baseResourceTypes: ["paragraph", "table", "multiple_choice"],
     cardPlansBySize: {
       short: plans([
         ["present_items", "apresentar os itens", ["paragraph"]],
-        ["compare_main_criteria", "comparar critérios principais", ["table"]],
+        ["compare_main_criteria", "comparar critérios principais", ["table", "matrix"]],
         ["check_distinction", "checar distinção", ["multiple_choice"]]
       ]),
       medium: plans([
         ["present_items", "apresentar os itens", ["paragraph"]],
-        ["compare_first_criterion", "comparar primeiro critério", ["table", "paragraph"]],
-        ["compare_second_criterion", "comparar segundo critério", ["table", "paragraph"]],
+        ["compare_first_criterion", "comparar o primeiro critério", ["table", "matrix"]],
+        ["compare_second_criterion", "comparar o segundo critério", ["table", "matrix"]],
         ["check_distinction", "checar distinção", ["multiple_choice"]],
-        ["consolidate_comparison", "consolidar a comparação", ["paragraph", "multiple_choice"]]
+        ["consolidate", "consolidar", ["paragraph", "multiple_choice"]]
       ]),
       long: plans([
         ["present_items", "apresentar os itens", ["paragraph"]],
-        ["compare_first_criterion", "comparar primeiro critério", ["table", "paragraph"]],
-        ["compare_second_criterion", "comparar segundo critério", ["table", "paragraph"]],
-        ["show_contrastive_example", "mostrar exemplo contrastivo", ["paragraph", "table"]],
+        ["compare_first_criterion", "comparar o primeiro critério", ["table", "matrix"]],
+        ["compare_second_criterion", "comparar o segundo critério", ["table", "matrix"]],
         ["check_distinction", "checar distinção", ["multiple_choice"]],
-        ["apply_short_case", "aplicar em situação curta", ["block_gap_fill", "multiple_choice"]],
-        ["consolidate_comparison", "consolidar a comparação", ["paragraph", "multiple_choice"]]
+        ["consolidate", "consolidar", ["paragraph", "multiple_choice"]]
       ])
     }
   },
   {
     id: "review",
     label: "Revisão rápida",
-    shortDescription: "Revisa conteúdo já estudado com checagens curtas.",
-    availableSizes: ["short", "medium", "long"],
-    baseResourceTypes: ["paragraph", "multiple_choice"],
+    shortDescription: "Retoma algo já visto com recuperação ativa pequena.",
+    availableSizes: ["short", "medium"],
+    baseResourceTypes: ["paragraph", "block_gap_fill", "multiple_choice"],
     cardPlansBySize: {
       short: plans([
-        ["recall_key_idea", "retomar ideia-chave", ["paragraph"]],
-        ["check_recall", "checar lembrança", ["multiple_choice", "block_gap_fill"]],
-        ["consolidate", "consolidar", ["paragraph", "multiple_choice"]]
+        ["recall_key_idea", "retomar a ideia-chave", ["paragraph"]],
+        ["recover_detail", "recuperar um detalhe", ["block_gap_fill", "multiple_choice"]],
+        ["consolidate", "consolidar", ["multiple_choice", "paragraph"]]
       ]),
       medium: plans([
-        ["recall_key_idea", "retomar ideia-chave", ["paragraph"]],
-        ["recover_key_detail", "recuperar detalhe importante", ["block_gap_fill", "paragraph"]],
-        ["check_recall", "checar lembrança", ["multiple_choice"]],
-        ["fix_common_confusion", "corrigir confusão comum", ["paragraph", "multiple_choice"]],
-        ["consolidate", "consolidar", ["paragraph", "multiple_choice"]]
+        ["recall_key_idea", "retomar a ideia-chave", ["paragraph"]],
+        ["recover_first_detail", "recuperar um primeiro detalhe", ["block_gap_fill"]],
+        ["recover_second_detail", "recuperar um segundo detalhe", ["block_gap_fill", "multiple_choice"]],
+        ["check_understanding", "checar entendimento", ["multiple_choice"]],
+        ["consolidate", "consolidar", ["paragraph"]]
       ]),
       long: plans([
-        ["recall_key_idea", "retomar ideia-chave", ["paragraph"]],
-        ["recover_first_detail", "recuperar primeiro detalhe", ["block_gap_fill", "paragraph"]],
-        ["recover_second_detail", "recuperar segundo detalhe", ["block_gap_fill", "paragraph"]],
-        ["check_recall", "checar lembrança", ["multiple_choice"]],
-        ["fix_common_confusion", "corrigir confusão comum", ["paragraph", "multiple_choice"]],
-        ["apply_short_case", "aplicar em situação curta", ["block_gap_fill", "multiple_choice"]],
-        ["consolidate", "consolidar", ["paragraph", "multiple_choice"]]
+        ["recall_key_idea", "retomar a ideia-chave", ["paragraph"]],
+        ["recover_first_detail", "recuperar um primeiro detalhe", ["block_gap_fill"]],
+        ["recover_second_detail", "recuperar um segundo detalhe", ["block_gap_fill", "multiple_choice"]],
+        ["check_understanding", "checar entendimento", ["multiple_choice"]],
+        ["consolidate", "consolidar", ["paragraph"]]
       ])
     }
   },
   {
     id: "common_mistake",
     label: "Erro comum",
-    shortDescription: "Apresenta erro frequente e conduz o aluno a reconhecê-lo ou corrigi-lo.",
-    availableSizes: ["short", "medium", "long"],
-    baseResourceTypes: ["paragraph", "multiple_choice"],
+    shortDescription: "Expõe uma confusão frequente e corrige o ponto crítico.",
+    availableSizes: ["short", "medium"],
+    baseResourceTypes: ["paragraph", "multiple_choice", "table"],
     cardPlansBySize: {
       short: plans([
         ["present_mistake", "apresentar o erro", ["paragraph"]],
-        ["correct_interpretation", "corrigir a interpretação", ["paragraph", "table"]],
+        ["contrast_correct_case", "contrastar com o caso correto", ["paragraph", "table"]],
         ["check_recognition", "checar reconhecimento", ["multiple_choice"]]
       ]),
       medium: plans([
         ["present_mistake", "apresentar o erro", ["paragraph"]],
-        ["explain_why_it_happens", "mostrar por que ele ocorre", ["paragraph", "table"]],
-        ["correct_interpretation", "corrigir a interpretação", ["paragraph", "table"]],
+        ["explain_why", "mostrar por que ele ocorre", ["paragraph", "table"]],
+        ["contrast_correct_case", "contrastar com o caso correto", ["paragraph", "table"]],
         ["check_recognition", "checar reconhecimento", ["multiple_choice"]],
-        ["consolidate_correction", "consolidar a correção", ["paragraph", "multiple_choice"]]
+        ["consolidate", "consolidar", ["paragraph"]]
       ]),
       long: plans([
         ["present_mistake", "apresentar o erro", ["paragraph"]],
-        ["explain_why_it_happens", "mostrar por que ele ocorre", ["paragraph", "table"]],
-        ["differentiate_correct_case", "diferenciar do caso correto", ["table", "paragraph"]],
-        ["correct_interpretation", "corrigir a interpretação", ["paragraph"]],
+        ["explain_why", "mostrar por que ele ocorre", ["paragraph", "table"]],
+        ["contrast_correct_case", "contrastar com o caso correto", ["paragraph", "table"]],
         ["check_recognition", "checar reconhecimento", ["multiple_choice"]],
-        ["apply_short_case", "aplicar em situação curta", ["block_gap_fill", "multiple_choice"]],
-        ["consolidate_correction", "consolidar a correção", ["paragraph", "multiple_choice"]]
+        ["consolidate", "consolidar", ["paragraph"]]
       ])
     }
   },
   {
     id: "rule_or_policy",
     label: "Regra/procedimento",
-    shortDescription: "Trabalha norma, regra, fluxo administrativo, procedimento institucional ou regra de negócio.",
-    availableSizes: ["short", "medium", "long"],
-    baseResourceTypes: ["paragraph", "flowchart", "multiple_choice"],
+    shortDescription: "Explica regra curta com sequência operacional controlada.",
+    availableSizes: ["short", "medium"],
+    baseResourceTypes: ["paragraph", "multiple_choice", "table"],
     cardPlansBySize: {
       short: plans([
         ["situate_rule", "situar a regra", ["paragraph"]],
-        ["apply_main_rule", "aplicar regra principal", ["flowchart", "paragraph", "table"]],
+        ["show_rule_flow", "mostrar o fluxo principal", ["table", "flowchart", "paragraph"]],
         ["check_interpretation", "checar interpretação", ["multiple_choice"]]
       ]),
       medium: plans([
         ["situate_rule", "situar a regra", ["paragraph"]],
-        ["explain_main_condition", "explicar condição principal", ["paragraph", "flowchart", "table"]],
-        ["show_flow_or_exception", "mostrar fluxo ou exceção", ["flowchart", "table", "paragraph"]],
+        ["show_main_condition", "mostrar a condição principal", ["paragraph", "table", "flowchart"]],
+        ["show_exception_or_variation", "mostrar exceção ou variação", ["paragraph", "table", "flowchart"]],
         ["check_interpretation", "checar interpretação", ["multiple_choice"]],
-        ["consolidate_rule", "consolidar regra", ["paragraph", "multiple_choice"]]
+        ["consolidate", "consolidar", ["paragraph"]]
       ]),
       long: plans([
         ["situate_rule", "situar a regra", ["paragraph"]],
-        ["explain_main_condition", "explicar condição principal", ["paragraph", "flowchart", "table"]],
-        ["explain_exception", "explicar exceção", ["paragraph", "table"]],
-        ["show_flow_or_variation", "mostrar fluxo ou variação", ["flowchart", "table"]],
+        ["show_main_condition", "mostrar a condição principal", ["paragraph", "table", "flowchart"]],
+        ["show_exception_or_variation", "mostrar exceção ou variação", ["paragraph", "table", "flowchart"]],
         ["check_interpretation", "checar interpretação", ["multiple_choice"]],
-        ["apply_short_case", "aplicar em situação curta", ["block_gap_fill", "multiple_choice"]],
-        ["consolidate_rule", "consolidar regra", ["paragraph", "multiple_choice"]]
+        ["consolidate", "consolidar", ["paragraph"]]
       ])
     }
   },
   {
     id: "code_or_command",
     label: "Código/comando",
-    shortDescription: "Trabalha programação, shell, comandos, scripts ou pequenos trechos de código.",
-    availableSizes: ["short", "medium", "long"],
+    shortDescription: "Trabalha comando ou trecho pequeno com uso imediato.",
+    availableSizes: ["short", "medium"],
     baseResourceTypes: ["paragraph", "code_editor", "multiple_choice"],
     cardPlansBySize: {
       short: plans([
-        ["situate_code_or_command", "situar o comando ou código", ["paragraph"]],
-        ["show_minimal_use", "mostrar uso mínimo", ["code_editor"]],
-        ["check_function", "checar função", ["multiple_choice"]]
+        ["situate_command", "situar o comando", ["paragraph"]],
+        ["show_minimal_use", "mostrar uso mínimo", ["code_editor", "tree"]],
+        ["check_function", "checar a função", ["multiple_choice"]]
       ]),
       medium: plans([
-        ["situate_code_or_command", "situar o comando ou código", ["paragraph"]],
-        ["show_minimal_use", "mostrar uso mínimo", ["code_editor"]],
-        ["explain_important_part", "explicar parte importante", ["code_editor", "paragraph"]],
-        ["check_function", "checar função", ["paragraph", "multiple_choice"]],
-        ["consolidate_use", "consolidar uso", ["multiple_choice", "paragraph"]]
+        ["situate_command", "situar o comando", ["paragraph"]],
+        ["show_minimal_use", "mostrar uso mínimo", ["code_editor", "tree"]],
+        ["explain_critical_piece", "explicar a parte crítica", ["code_editor", "paragraph", "tree"]],
+        ["check_function", "checar a função", ["multiple_choice"]],
+        ["consolidate", "consolidar", ["paragraph", "block_gap_fill"]]
       ]),
       long: plans([
-        ["situate_code_or_command", "situar o comando ou código", ["paragraph"]],
-        ["show_minimal_use", "mostrar uso mínimo", ["code_editor"]],
-        ["explain_first_part", "explicar primeira parte", ["code_editor", "paragraph"]],
-        ["explain_second_part", "explicar segunda parte", ["code_editor", "paragraph"]],
-        ["check_function", "checar função", ["multiple_choice"]],
-        ["apply_short_case", "aplicar em situação curta", ["code_editor", "block_gap_fill"]],
-        ["consolidate_use", "consolidar uso", ["multiple_choice", "paragraph"]]
+        ["situate_command", "situar o comando", ["paragraph"]],
+        ["show_minimal_use", "mostrar uso mínimo", ["code_editor", "tree"]],
+        ["explain_critical_piece", "explicar a parte crítica", ["code_editor", "paragraph", "tree"]],
+        ["check_function", "checar a função", ["multiple_choice"]],
+        ["consolidate", "consolidar", ["paragraph", "block_gap_fill"]]
       ])
     }
   }
@@ -320,5 +300,10 @@ export function getMicrosequenceType(typeId) {
 }
 
 export function listMicrosequenceTypeSummaries() {
-  return listMicrosequenceTypes().map(({ id, label, shortDescription }) => ({ id, label, shortDescription }));
+  return listMicrosequenceTypes().map(({ id, label, shortDescription, availableSizes }) => ({
+    id,
+    label,
+    shortDescription,
+    availableSizes
+  }));
 }

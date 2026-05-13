@@ -6,6 +6,14 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ### Changed
 
+- a camada de geração de cards passa a operar com policy explícita de `weakModelMode`, voltada a modelo fraco e barato
+- `modelCapabilities` deixa de usar flags ambíguas e passa a distinguir `jsonMode`, `responseJsonSchema`, `responseSchema` e força real de schema
+- o planejamento bottom-up fica reduzido a `typeId`, `sizeId`, `microsequenceGoal`, `selectedExtraResourceTypes`, `sourceUsePlan` e `reason`
+- o `cardPlan` passa a ser montado de forma determinística pelo app, com `position` e `resourceType` fixados por política e template
+- recursos avançados (`flowchart`, `tree`, `matrix`, `plane`) passam a exigir liberação explícita da lição e justificativa operacional
+- a validação de cards foi separada em estrutural, didática e grounding mínimo de fonte
+- o reparo determinístico passa a acontecer antes de qualquer reparo por LLM
+- o contrato público passa a aceitar `presetId` na lição e `sourceRefs` em cards
 - a assistência de cards volta a aplicar diretamente na microssequência o resultado validado da geração ou edição, sem estágio intermediário de prévia privada
 - o workbench da microssequência remove os controles de alternância, aplicação e descarte de prévia, mantendo a superfície de preview apenas como leitura do estado já em uso
 - a edição local de título e tags volta a atuar sempre sobre a microssequência persistida, sem bifurcação por rascunho temporário
@@ -13,6 +21,8 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ### Tests
 
+- a suíte passa a cobrir policy fraca, gating de recursos avançados, `sourceRefs`, validação separada e reparo determinístico
+- fixtures didáticas reais entram em `tests/fixtures/didactics/`
 - a suíte remove os cenários de storage e renderização específicos da prévia privada e passa a validar apenas o fluxo direto de atualização
 ## [0.9.22] - 2026-05-06
 

@@ -40,7 +40,7 @@ export const LESSON_CONTENT_TYPE_OPTIONS = Object.freeze([
   Object.freeze({ id: "interpretation", label: "Interpretação" }),
   Object.freeze({ id: "tool_use", label: "Ferramenta" }),
   Object.freeze({ id: "error_diagnosis", label: "Erro" }),
-  Object.freeze({ id: "source_reading", label: "Leitura de fonte" }),
+  Object.freeze({ id: "source_reading", label: "Estudo de fonte" }),
   Object.freeze({ id: "review", label: "Revisão" })
 ]);
 
@@ -50,7 +50,7 @@ export const LESSON_LEARNING_ACTION_OPTIONS = Object.freeze([
   Object.freeze({ id: "practice", label: "Praticar" }),
   Object.freeze({ id: "compare", label: "Comparar" }),
   Object.freeze({ id: "review", label: "Revisar" }),
-  Object.freeze({ id: "read_source", label: "Ler fonte" }),
+  Object.freeze({ id: "read_source", label: "Analisar fonte" }),
   Object.freeze({ id: "use_tool", label: "Usar ferramenta" }),
   Object.freeze({ id: "fix_error", label: "Corrigir erro" })
 ]);
@@ -59,12 +59,64 @@ export const LESSON_SUPPORT_LEVEL_OPTIONS = Object.freeze([
   Object.freeze({ id: "very_guided", label: "Muito guiado" }),
   Object.freeze({ id: "guided", label: "Guiado" }),
   Object.freeze({ id: "intermediate", label: "Intermediário" }),
-  Object.freeze({ id: "quick_review", label: "Revisão rápida" })
+  Object.freeze({ id: "quick_review", label: "Revisão enxuta" })
+]);
+
+export const LESSON_GUIDANCE_PRESETS = Object.freeze([
+  Object.freeze({
+    id: "guided",
+    label: "Guiado",
+    resourceTags: ["paragraph", "block_gap_fill", "multiple_choice"],
+    contentTypeTags: ["concept", "procedure"],
+    learningActionTags: ["understand", "practice"],
+    supportLevel: "guided"
+  }),
+  Object.freeze({
+    id: "practice",
+    label: "Prática",
+    resourceTags: ["paragraph", "block_gap_fill", "multiple_choice", "table"],
+    contentTypeTags: ["procedure", "calculation"],
+    learningActionTags: ["practice", "solve"],
+    supportLevel: "guided"
+  }),
+  Object.freeze({
+    id: "visual",
+    label: "Visual",
+    resourceTags: ["paragraph", "multiple_choice", "table", "matrix", "plane", "flowchart", "tree"],
+    contentTypeTags: ["comparison", "interpretation", "classification"],
+    learningActionTags: ["understand", "compare"],
+    supportLevel: "guided"
+  }),
+  Object.freeze({
+    id: "code",
+    label: "Código",
+    resourceTags: ["paragraph", "block_gap_fill", "multiple_choice", "code_editor", "tree"],
+    contentTypeTags: ["procedure", "tool_use"],
+    learningActionTags: ["practice", "use_tool"],
+    supportLevel: "guided"
+  }),
+  Object.freeze({
+    id: "review",
+    label: "Revisão",
+    resourceTags: ["paragraph", "block_gap_fill", "multiple_choice"],
+    contentTypeTags: ["review", "error_diagnosis"],
+    learningActionTags: ["review", "fix_error"],
+    supportLevel: "quick_review"
+  }),
+  Object.freeze({
+    id: "source",
+    label: "Fonte",
+    resourceTags: ["paragraph", "multiple_choice", "table", "tree"],
+    contentTypeTags: ["source_reading", "interpretation"],
+    learningActionTags: ["read_source", "understand"],
+    supportLevel: "guided"
+  })
 ]);
 
 export const LESSON_GUIDANCE_DEFAULTS = Object.freeze({
+  presetId: "guided",
   resourceTags: Object.freeze(["paragraph", "block_gap_fill", "multiple_choice"]),
-  contentTypeTags: Object.freeze(["concept"]),
+  contentTypeTags: Object.freeze(["concept", "procedure"]),
   learningActionTags: Object.freeze(["understand", "practice"]),
   supportLevel: "guided"
 });
@@ -73,28 +125,42 @@ const RESOURCE_TAG_IDS = new Set(LESSON_RESOURCE_TAG_OPTIONS.map((item) => item.
 const CONTENT_TYPE_IDS = new Set(LESSON_CONTENT_TYPE_OPTIONS.map((item) => item.id));
 const LEARNING_ACTION_IDS = new Set(LESSON_LEARNING_ACTION_OPTIONS.map((item) => item.id));
 const SUPPORT_LEVEL_IDS = new Set(LESSON_SUPPORT_LEVEL_OPTIONS.map((item) => item.id));
+const PRESET_IDS = new Set(LESSON_GUIDANCE_PRESETS.map((item) => item.id));
+
+export function getLessonGuidancePreset(presetId = "") {
+  return LESSON_GUIDANCE_PRESETS.find((item) => item.id === text(presetId)) || null;
+}
+
+export function listLessonGuidancePresets() {
+  return LESSON_GUIDANCE_PRESETS.map(clone);
+}
 
 export function normalizeLessonGuidance(value = {}) {
+  const presetId = PRESET_IDS.has(text(value?.presetId)) ? text(value?.presetId) : LESSON_GUIDANCE_DEFAULTS.presetId;
+  const preset = getLessonGuidancePreset(presetId) || LESSON_GUIDANCE_DEFAULTS;
+  const resourceTags = normalizeChoiceList(value?.resourceTags, RESOURCE_TAG_IDS);
+  const contentTypeTags = normalizeChoiceList(value?.contentTypeTags, CONTENT_TYPE_IDS);
+  const learningActionTags = normalizeChoiceList(value?.learningActionTags, LEARNING_ACTION_IDS);
   return {
-    resourceTags:
-      normalizeChoiceList(value?.resourceTags, RESOURCE_TAG_IDS).length > 0
-        ? normalizeChoiceList(value?.resourceTags, RESOURCE_TAG_IDS)
-        : [...LESSON_GUIDANCE_DEFAULTS.resourceTags],
-    contentTypeTags:
-      normalizeChoiceList(value?.contentTypeTags, CONTENT_TYPE_IDS).length > 0
-        ? normalizeChoiceList(value?.contentTypeTags, CONTENT_TYPE_IDS)
-        : [...LESSON_GUIDANCE_DEFAULTS.contentTypeTags],
-    learningActionTags:
-      normalizeChoiceList(value?.learningActionTags, LEARNING_ACTION_IDS).length > 0
-        ? normalizeChoiceList(value?.learningActionTags, LEARNING_ACTION_IDS)
-        : [...LESSON_GUIDANCE_DEFAULTS.learningActionTags],
-    supportLevel: SUPPORT_LEVEL_IDS.has(text(value?.supportLevel)) ? text(value?.supportLevel) : LESSON_GUIDANCE_DEFAULTS.supportLevel
+    presetId,
+    resourceTags: resourceTags.length ? resourceTags : [...preset.resourceTags],
+    contentTypeTags: contentTypeTags.length ? contentTypeTags : [...preset.contentTypeTags],
+    learningActionTags: learningActionTags.length ? learningActionTags : [...preset.learningActionTags],
+    supportLevel: SUPPORT_LEVEL_IDS.has(text(value?.supportLevel)) ? text(value?.supportLevel) : preset.supportLevel
   };
 }
 
 export function buildLessonGuidanceEditorFields(value = {}) {
   const normalized = normalizeLessonGuidance(value);
   return [
+    {
+      name: "presetId",
+      label: "Preset da lição",
+      iconName: "intent",
+      type: "select",
+      options: LESSON_GUIDANCE_PRESETS.map((preset) => ({ value: preset.id, label: preset.label })),
+      value: normalized.presetId
+    },
     {
       name: "resourceTags",
       label: "Recursos da lição",
@@ -132,6 +198,7 @@ export function buildLessonGuidanceEditorFields(value = {}) {
 
 export function getLessonGuidanceSchemaProperties() {
   return {
+    presetId: { type: "string", enum: [...PRESET_IDS] },
     resourceTags: {
       type: "array",
       items: { type: "string", enum: [...RESOURCE_TAG_IDS] },
@@ -155,7 +222,7 @@ export function getLessonGuidanceSchemaProperties() {
 }
 
 export function getLessonGuidanceSchemaRequired() {
-  return ["resourceTags", "contentTypeTags", "learningActionTags", "supportLevel"];
+  return ["presetId", "resourceTags", "contentTypeTags", "learningActionTags", "supportLevel"];
 }
 
 export function listLessonResourceTagIds() {

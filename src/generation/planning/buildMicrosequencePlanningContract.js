@@ -1,16 +1,16 @@
 import { listMicrosequenceSizes } from "../types/microsequenceSizes.js";
-import { getMicrosequenceType, listMicrosequenceTypeSummaries } from "../types/microsequenceTypes.js";
+import { listMicrosequenceTypeSummaries } from "../types/microsequenceTypes.js";
 import { listCardResourceSummaries } from "../resources/cardResourceDefinitions.js";
 import { getModelCapabilities } from "../providers/modelCapabilities.js";
 import { resolveReferencedSources } from "../sources/resolveReferencedSources.js";
 import { normalizeSelectedLessonTopicRefs } from "../tags/selectedLessonTopicRefs.js";
-import { buildDidacticGuardrails, buildLessonRequestGovernance } from "../didactics/didacticGovernance.js";
 import {
   buildSourceGuideTextForModel,
   sanitizeSourceGuideStructuredForModel,
   SOURCE_GUIDE_LEVELS
 } from "../../sourceGuides/sourceGuideStructured.js";
 import { normalizeLessonGuidance } from "../guidance/lessonGuidance.js";
+import { resolveWeakModelModePolicy } from "../policies/weakModelPolicy.js";
 
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -24,11 +24,6 @@ function objective(value) {
   return text(value?.objective) || text(value?.description);
 }
 
-function sourceGuideStructuredForModel(value, level) {
-  const structured = sanitizeSourceGuideStructuredForModel(value?.sourceGuideStructured, { level });
-  return Object.keys(structured).length ? structured : undefined;
-}
-
 function summarizeMicrosequence(value) {
   return {
     key: key(value),
@@ -36,19 +31,29 @@ function summarizeMicrosequence(value) {
     objective: objective(value),
     tags: Array.isArray(value?.tags) ? value.tags.map((item) => text(item)).filter(Boolean) : [],
     status: text(value?.status),
-    ...(text(value?.description) ? { description: text(value.description) } : {})
+    included: value?.included === true
   };
 }
 
-function resolveAvailableTypes(userFixedTypeId) {
+function buildRequestGovernance() {
+  return {
+    precedence: [
+      "context.lesson.sourceGuideStructured",
+      "selectedLessonTopicRefs",
+      "request.userPrompt"
+    ],
+    lessonGuidePriority: "sourceGuideStructured governa meta, notação e confusões prováveis",
+    lessonTopicRefsPriority: "selectedLessonTopicRefs especializa escopo local",
+    userPromptRole: "request.userPrompt apenas especializa o recorte atual"
+  };
+}
+
+function resolveAvailableTypes(policy, userFixedTypeId) {
   const fixedTypeId = text(userFixedTypeId);
   if (fixedTypeId && fixedTypeId !== "assisted") {
-    const fixedType = getMicrosequenceType(fixedTypeId);
-    return fixedType
-      ? [{ id: fixedType.id, label: fixedType.label, shortDescription: fixedType.shortDescription, availableSizes: fixedType.availableSizes }]
-      : [];
+    return listMicrosequenceTypeSummaries().filter((item) => item.id === fixedTypeId);
   }
-  return listMicrosequenceTypeSummaries();
+  return listMicrosequenceTypeSummaries().filter((item) => policy.allowedTypeIds.includes(item.id));
 }
 
 export function buildMicrosequencePlanningContract({
@@ -68,9 +73,19 @@ export function buildMicrosequencePlanningContract({
   selectedModel
 }) {
   const capabilities = getModelCapabilities(selectedModel);
-  const resolvedSources = resolveReferencedSources({ userPrompt, attachedSources, userSelectedSourceIds });
-  const lessonGuideStructured = sourceGuideStructuredForModel(selectedLesson, SOURCE_GUIDE_LEVELS.LESSON) || {};
+  const lessonSourceGuideStructured = sanitizeSourceGuideStructuredForModel(
+    selectedLesson?.sourceGuideStructured,
+    { level: SOURCE_GUIDE_LEVELS.LESSON }
+  );
   const lessonGuidance = normalizeLessonGuidance(selectedLesson);
+  const policy = resolveWeakModelModePolicy({
+    lessonGuidance,
+    lessonSourceGuideStructured,
+    modelCapabilities: capabilities,
+    resolvedTypeId: text(userFixedTypeId) && text(userFixedTypeId) !== "assisted" ? text(userFixedTypeId) : "simple",
+    userSelectedExtraResourceTypes
+  });
+  const resolvedSources = resolveReferencedSources({ userPrompt, attachedSources, userSelectedSourceIds });
   const selectedTopics = normalizeSelectedLessonTopicRefs({
     selectedLessonTopicRefs,
     selectedLessonScopeTagRefs,
@@ -78,8 +93,9 @@ export function buildMicrosequencePlanningContract({
     lessonTags,
     availableLessonTopics: selectedLesson?.lessonTopics || selectedLesson?.scopeTags || selectedLesson?.tags || []
   });
+
   return {
-    version: "aralearn.microsequence-planning-contract.v1",
+    version: "aralearn.microsequence-planning-contract.v2",
     operation: "plan_microsequence_generation",
     target: {
       courseKey: key(selectedCourse),
@@ -105,36 +121,34 @@ export function buildMicrosequencePlanningContract({
       lesson: {
         title: text(selectedLesson?.title) || key(selectedLesson),
         objective: objective(selectedLesson),
-        ...(sourceGuideStructuredForModel(selectedLesson, SOURCE_GUIDE_LEVELS.LESSON)
-          ? { sourceGuide: buildSourceGuideTextForModel(sourceGuideStructuredForModel(selectedLesson, SOURCE_GUIDE_LEVELS.LESSON), { level: SOURCE_GUIDE_LEVELS.LESSON }) }
-          : {}),
-        ...(sourceGuideStructuredForModel(selectedLesson, SOURCE_GUIDE_LEVELS.LESSON)
-          ? { sourceGuideStructured: sourceGuideStructuredForModel(selectedLesson, SOURCE_GUIDE_LEVELS.LESSON) }
+        ...(Object.keys(lessonSourceGuideStructured).length
+          ? {
+              sourceGuideStructured: lessonSourceGuideStructured,
+              sourceGuide: buildSourceGuideTextForModel(lessonSourceGuideStructured, { level: SOURCE_GUIDE_LEVELS.LESSON })
+            }
           : {}),
         ...lessonGuidance,
         microsequenceLine: Array.isArray(selectedLesson?.microsequences)
           ? selectedLesson.microsequences.map(summarizeMicrosequence)
           : []
       },
-      microsequence: {
-        title: text(targetMicrosequence?.title) || key(targetMicrosequence),
-        objective: objective(targetMicrosequence),
-        ...(targetMicrosequence ? summarizeMicrosequence(targetMicrosequence) : {})
-      }
+      microsequence: summarizeMicrosequence(targetMicrosequence)
     },
-    selectedLessonTopicRefs: selectedTopics,
     request: {
       userPrompt: text(userPrompt),
       userFixedTypeId: userFixedTypeId || null,
       userSelectedExtraResourceTypes: [...userSelectedExtraResourceTypes]
     },
-    requestGovernance: buildLessonRequestGovernance(lessonGuideStructured),
-    availableTypes: resolveAvailableTypes(userFixedTypeId),
-    availableSizes: listMicrosequenceSizes().map(({ id, cardCount }) => ({ id, cardCount })),
-    availableResources: listCardResourceSummaries().filter((item) => lessonGuidance.resourceTags.includes(item.id)),
-    didacticGuardrails: buildDidacticGuardrails(),
+    requestGovernance: buildRequestGovernance(),
+    selectedLessonTopicRefs: selectedTopics,
     sources: resolvedSources.referencedSources,
+    availableTypes: resolveAvailableTypes(policy, userFixedTypeId),
+    availableSizes: listMicrosequenceSizes()
+      .filter((item) => policy.allowedSizeIds.includes(item.id))
+      .map(({ id, cardCount }) => ({ id, cardCount })),
+    availableResources: listCardResourceSummaries().filter((item) => policy.safeAllowedResourceTypes.includes(item.id)),
     model: { id: capabilities.model, capabilities },
-    sourceResolution: resolvedSources
+    sourceResolution: resolvedSources,
+    weakModelMode: policy
   };
 }
