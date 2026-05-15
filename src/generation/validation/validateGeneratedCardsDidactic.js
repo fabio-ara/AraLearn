@@ -1,5 +1,6 @@
 import { validateDidacticDepth } from "./validateDidacticDepth.js";
 import { annotateDidacticIssue } from "./didacticIssueCatalog.js";
+import { validateGeneratedCardsStudyTrack } from "./validateGeneratedCardsStudyTrack.js";
 
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -116,7 +117,8 @@ export function validateGeneratedCardsDidactic(cards = [], generationContract = 
     existingMicrosequences: generationContract?.context?.lesson?.microsequenceLine || [],
     weakModelMode: generationContract?.weakModelMode?.modeId === "weakModelMode"
   });
-  const allIssues = [...directIssues, ...depth.shallowErrors, ...depth.missingDepth];
+  const studyTrack = validateGeneratedCardsStudyTrack(cards, generationContract);
+  const allIssues = [...directIssues, ...(studyTrack.issues || []), ...depth.shallowErrors, ...depth.missingDepth];
   allIssues.forEach((item) => {
     if (item.blocksValidation === true) {
       didacticErrors.push(item.message);
@@ -128,12 +130,22 @@ export function validateGeneratedCardsDidactic(cards = [], generationContract = 
   const mergedAudit = {
     ...depth,
     directIssues,
-    blockingIssues: [...directIssues.filter((item) => item.blocksValidation === true), ...(depth.blockingIssues || [])],
+    studyTrackIssues: studyTrack.issues || [],
+    blockingIssues: [
+      ...directIssues.filter((item) => item.blocksValidation === true),
+      ...(studyTrack.issues || []).filter((item) => item.blocksValidation === true),
+      ...(depth.blockingIssues || [])
+    ],
     actionableIssues: [
       ...directIssues.filter((item) => item.allowsAutoIteration === true),
+      ...(studyTrack.issues || []).filter((item) => item.allowsAutoIteration === true),
       ...(depth.actionableIssues || [])
     ],
-    heuristicSignals: [...directIssues.filter((item) => item.severity === "heuristic_signal"), ...(depth.heuristicSignals || [])],
+    heuristicSignals: [
+      ...directIssues.filter((item) => item.severity === "heuristic_signal"),
+      ...(studyTrack.issues || []).filter((item) => item.severity === "heuristic_signal"),
+      ...(depth.heuristicSignals || [])
+    ],
     allIssues
   };
 

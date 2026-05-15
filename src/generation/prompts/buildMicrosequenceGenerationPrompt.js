@@ -3,12 +3,25 @@ export function buildMicrosequenceGenerationPrompt(contract, modelCapabilities =
   const body = compact ? JSON.stringify(contract) : JSON.stringify(contract, null, 2);
   const allowedResourceTypes = contract?.resources?.allowedResourceTypes || [];
   const extraLines = [];
+  const studyTrackPolicy = contract?.studyTrackPolicy || {};
 
   if (allowedResourceTypes.includes("block_gap_fill")) {
     extraLines.push("Em block_gap_fill, use segments com kind text/blank, blankId curto e acceptedBlockIds válidos.");
   }
   if (allowedResourceTypes.includes("matrix")) {
     extraLines.push("Em matrix, use values ou sequence; se usar sequence, mantenha o passo crítico no mesmo card.");
+  }
+  if (studyTrackPolicy.mode === "clarify_local_doubt") {
+    const anchors = (studyTrackPolicy.requiredAnchors || []).join(", ") || "termos perguntados";
+    const bridgeTargets = (studyTrackPolicy.bridgeBackTargets || []).join(", ") || "trilha da lição";
+    extraLines.push(
+      "Modo de estudo: esclarecer dúvida local sem abandonar a trilha didática.",
+      `Termos obrigatórios da dúvida: ${anchors}.`,
+      "Os primeiros cards devem responder diretamente esses termos antes de qualquer conteúdo novo.",
+      "Explique siglas, termos técnicos e palavras em inglês de forma local, operacional e em português claro.",
+      "Não abra microaula paralela nem analogia longa; se usar analogia externa, conecte-a explicitamente ao conteúdo atual.",
+      `Ao final, reconecte a explicação a: ${bridgeTargets}.`
+    );
   }
 
   return [

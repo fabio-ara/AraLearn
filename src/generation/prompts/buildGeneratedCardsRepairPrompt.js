@@ -25,6 +25,15 @@ export function buildGeneratedCardsRepairPrompt({
   const cardPlan = generationContract?.didacticPlan?.cardPlan || [];
   const allowedResourceTypes = generationContract?.resources?.allowedResourceTypes || [];
   const resourceSchemas = pickAllowedResourceSchemas(generationContract);
+  const studyTrackPolicy = generationContract?.studyTrackPolicy || null;
+  const studyTrackLines =
+    studyTrackPolicy?.mode === "clarify_local_doubt"
+      ? [
+          "- se a validação indicar dúvida local não respondida, reescreva os primeiros cards para responder requiredAnchors;",
+          "- não preserve abertura deslocada do tema, mesmo que estruturalmente válida;",
+          "- após esclarecer a dúvida, reconecte ao objetivo da lição ou à microssequência atual."
+        ]
+      : [];
 
   return [
     "Corrija apenas o JSON abaixo para obedecer ao contrato.",
@@ -58,6 +67,7 @@ export function buildGeneratedCardsRepairPrompt({
     "- remova prática que apenas peça para repetir uma resposta já visível por destaque ou posição óbvia;",
     "- preserve ou acrescente acentos graves em símbolos, conectivos, comandos, fórmulas e nomes curtos;",
     "- remova repetições do title do card usadas como primeira frase, título interno ou cabeçalho avulso;",
+    ...studyTrackLines,
     ...buildDidacticRepairPromptLines(),
     "- resourceType deve estar em allowedResourceTypes;",
     "- block_gap_fill deve usar segments[].kind/value ou kind/blankId/acceptedBlockIds, blocks[].blockId/label e feedbackAfter;",
@@ -85,6 +95,9 @@ export function buildGeneratedCardsRepairPrompt({
     "",
     "resourceSchemas permitidos:",
     compactJson(resourceSchemas, modelCapabilities),
+    "",
+    "studyTrackPolicy:",
+    compactJson(studyTrackPolicy || {}, modelCapabilities),
     "",
     "Formato esperado:",
     "{\"cards\":[{\"position\":1,\"resourceType\":\"paragraph\",\"title\":\"\",\"text\":\"\"}]}"

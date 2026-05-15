@@ -13,6 +13,7 @@ import { normalizeLessonGuidance } from "../guidance/lessonGuidance.js";
 import { resolveWeakModelModePolicy } from "../policies/weakModelPolicy.js";
 import { buildLessonDomainMap } from "../domain/lessonDomainModel.js";
 import { summarizeMeticulousPolicyForPrompt } from "../policies/meticulousDidacticPolicy.js";
+import { buildStudyTrackPolicy } from "../policies/studyTrackPolicy.js";
 
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -101,6 +102,20 @@ export function buildMicrosequencePlanningContract({
     lessonTags,
     availableLessonTopics: selectedLesson?.lessonTopics || selectedLesson?.scopeTags || selectedLesson?.tags || []
   });
+  const lessonMicrosequenceLine = Array.isArray(selectedLesson?.microsequences)
+    ? selectedLesson.microsequences.map(summarizeMicrosequence)
+    : [];
+  const studyTrackPolicy = buildStudyTrackPolicy({
+    userPrompt,
+    lesson: {
+      ...(selectedLesson || {}),
+      sourceGuideStructured: lessonSourceGuideStructured,
+      domainMap: lessonDomainMap,
+      microsequenceLine: lessonMicrosequenceLine
+    },
+    microsequence: summarizeMicrosequence(targetMicrosequence),
+    selectedLessonTopicRefs: selectedTopics
+  });
 
   return {
     version: "aralearn.microsequence-planning-contract.v2",
@@ -137,9 +152,7 @@ export function buildMicrosequencePlanningContract({
           : {}),
         ...lessonGuidance,
         ...(lessonDomainMap.items.length || lessonDomainMap.practiceVariants.length ? { domainMap: lessonDomainMap } : {}),
-        microsequenceLine: Array.isArray(selectedLesson?.microsequences)
-          ? selectedLesson.microsequences.map(summarizeMicrosequence)
-          : []
+        microsequenceLine: lessonMicrosequenceLine
       },
       microsequence: summarizeMicrosequence(targetMicrosequence)
     },
@@ -149,6 +162,7 @@ export function buildMicrosequencePlanningContract({
       userSelectedExtraResourceTypes: [...userSelectedExtraResourceTypes]
     },
     requestGovernance: buildRequestGovernance(),
+    studyTrackPolicy,
     selectedLessonTopicRefs: selectedTopics,
     sources: resolvedSources.referencedSources,
     availableTypes: resolveAvailableTypes(policy, userFixedTypeId),

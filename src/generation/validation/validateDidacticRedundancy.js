@@ -70,6 +70,9 @@ export function validateDidacticRedundancy({ microsequence, existingMicrosequenc
     if (!existing || existing === microsequence) {
       return;
     }
+    if (text(candidate.key) && text(candidate.key) === text(existing.key)) {
+      return;
+    }
 
     const sameDomainRefs = candidateDomainRefs && candidateDomainRefs === list(existing.domainRefs).sort().join("|");
     const sameSignature = candidateSignature === signature(existing);

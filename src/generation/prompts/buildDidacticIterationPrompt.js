@@ -19,6 +19,18 @@ export function buildDidacticIterationPrompt({
   modelCapabilities = {}
 }) {
   const pretty = modelCapabilities?.preferShortSchemas !== true;
+  const studyTrackPolicy = generationContract?.studyTrackPolicy || {};
+  const studyTrackLines =
+    studyTrackPolicy.mode === "clarify_local_doubt"
+      ? [
+          "",
+          "Contrato de trilha:",
+          "A iteração deve corrigir deslocamento cognitivo de dúvida local.",
+          "Os primeiros cards devem responder requiredAnchors antes de qualquer expansão.",
+          "Não mantenha cards que abram assunto paralelo sem ponte com a lição.",
+          compactJson(studyTrackPolicy, pretty)
+        ]
+      : [];
   return [
     "Revise a microssequência para corrigir a falha didática detectada pelo AraLearn.",
     "Não faça resumo genérico.",
@@ -47,6 +59,7 @@ export function buildDidacticIterationPrompt({
     "",
     "Schemas permitidos:",
     compactJson(pickAllowedResourceSchemas(generationContract, iterationPlan), pretty),
+    ...studyTrackLines,
     "",
     "Cards atuais a preservar ou revisar:",
     compactJson(cardsResponse, pretty),

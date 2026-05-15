@@ -20,6 +20,9 @@ export function buildMicrosequencePlanningPrompt(contract, modelCapabilities = c
     "Use selectedLessonTopicRefs apenas como contexto auxiliar local.",
     "Use sourceUsePlan apenas com sourceId presente em sources.",
     "Se o pedido conflitar com a governança da lição, preserve a governança da lição.",
+    "Se studyTrackPolicy.mode for clarify_local_doubt, o plano deve responder requiredAnchors diretamente antes de qualquer expansão.",
+    "Nesse modo, microsequenceGoal e reason devem citar os termos obrigatórios e indicar retorno à trilha da lição.",
+    "Não transforme uma dúvida local em aula paralela fora de allowedContextTerms.",
     "Contrato:",
     body
   ].join("\n");

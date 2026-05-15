@@ -18,6 +18,7 @@ import { runCourseForge } from "../src/generation/courseForge/courseForgeRunner.
 import { applyCourseForgePatch } from "../src/generation/courseForge/courseForgeApply.js";
 import { mergeCourseForgeArchitectureAudits, validateCourseForgeArchitectureDraft } from "../src/generation/courseForge/courseForgeValidation.js";
 import { getModelCapabilities } from "../src/generation/providers/modelCapabilities.js";
+import { buildCourseForgePolicyPack, buildCourseForgePrompt } from "../src/generation/courseForge/courseForgePrompts.js";
 
 function createProject() {
   return {
@@ -244,6 +245,24 @@ test("modelCapabilities expõe campos antigos e novos", () => {
   assert.equal(model.supportsJsonMode, true);
   assert.equal(model.supportsResponseJsonSchema, true);
   assert.equal(model.family, "gemini");
+});
+
+test("CourseForge usa policy pack didático compatível com Planner Builder Auditor", () => {
+  const policy = buildCourseForgePolicyPack();
+  const prompt = buildCourseForgePrompt({
+    role: "Você planeja microssequências.",
+    sourcePack: "ementa e exercícios",
+    task: "Planeje a lição.",
+    output: "JSON"
+  });
+
+  assert.match(policy, /microssequência/);
+  assert.match(policy, /sourceGuideStructured/);
+  assert.match(policy, /Explique siglas/);
+  assert.match(policy, /reconecte explicitamente à trilha/);
+  assert.match(prompt, /POLICY PACK/);
+  assert.match(prompt, /domainRefs e practiceVariantRefs/);
+  assert.match(prompt, /artefatos anexos da fase/);
 });
 
 test("fakeProvider devolve resposta roteada por fase", async () => {

@@ -29,6 +29,24 @@ const DIDACTIC_ISSUE_META = Object.freeze({
     blocksValidation: true,
     allowsAutoIteration: true
   },
+  local_doubt_unanswered: {
+    basis: "study_track_policy",
+    severity: "hard_error",
+    blocksValidation: true,
+    allowsAutoIteration: true
+  },
+  cognitive_drift_from_track: {
+    basis: "study_track_policy",
+    severity: "hard_error",
+    blocksValidation: true,
+    allowsAutoIteration: true
+  },
+  missing_return_to_track: {
+    basis: "study_track_policy",
+    severity: "heuristic_signal",
+    blocksValidation: false,
+    allowsAutoIteration: false
+  },
   duplicate_microsequence_without_new_function: {
     basis: "declarative",
     severity: "hard_error",

@@ -172,6 +172,163 @@ test("prompt de geração fica enxuto e reforça contrato fechado", () => {
   assert.doesNotMatch(prompt, /didacticGuardrails/);
 });
 
+test("dúvida local ancora geração na trilha e bloqueia deslocamento cognitivo", () => {
+  const selectedLesson = {
+    key: "lesson-von-neumann",
+    title: "Arquitetura de Von Neumann",
+    description: "Programa armazenado, CPU, memória e barramentos.",
+    sourceGuideStructured: {
+      lessonGoal: "Entender programa armazenado e os componentes básicos da arquitetura de Von Neumann.",
+      notationRules: "Explicar siglas como `PC`, `IR`, `CPU`, `ULA` e `E/S` antes de cobrar uso.",
+      commonErrors: "Confundir registrador, memória principal e barramento."
+    },
+    resourceTags: ["paragraph", "multiple_choice"],
+    contentTypeTags: ["concept"],
+    learningActionTags: ["understand", "practice"],
+    supportLevel: "guided",
+    domainMap: {
+      items: [
+        {
+          id: "pc-ir",
+          label: "PC e IR no ciclo de execução",
+          kind: "concept",
+          expectedEvidence: ["dizer que PC aponta a próxima instrução", "dizer que IR guarda a instrução atual"],
+          commonErrors: ["achar que PC executa cálculo", "achar que IR é memória permanente"]
+        },
+        {
+          id: "stored-program",
+          label: "Programa armazenado e componentes",
+          kind: "concept",
+          expectedEvidence: ["relacionar instruções na memória com CPU"]
+        }
+      ]
+    },
+    microsequences: [
+      {
+        key: "stored-program",
+        title: "Programa armazenado e componentes",
+        didacticPurpose: "Ligar memória, CPU e registradores no ciclo de execução.",
+        domainRefs: ["stored-program", "pc-ir"],
+        coverageRole: "explain",
+        status: "ready",
+        included: true
+      }
+    ]
+  };
+  const planningContract = buildMicrosequencePlanningContract({
+    selectedCourse: { key: "course-oac", title: "Organização e Arquitetura de Computadores" },
+    selectedModule: { key: "module-vn", title: "Modelo de Von Neumann" },
+    selectedLesson,
+    targetMicrosequence: selectedLesson.microsequences[0],
+    selectedLessonTopicRefs: [{ refKey: "stored-program", label: "Programa armazenado e componentes", source: "microsequence" }],
+    userPrompt: "Eu não sei o que são PC e IR",
+    selectedModel: "gemini-2.5-flash"
+  });
+  const invalidPlan = validateMicrosequencePlan(
+    {
+      typeId: "concept",
+      sizeId: "short",
+      microsequenceGoal: "Explicar variáveis em programação.",
+      selectedExtraResourceTypes: [],
+      sourceUsePlan: [],
+      reason: "Dúvida de programação."
+    },
+    planningContract
+  );
+  const validPlan = validateMicrosequencePlan(
+    {
+      typeId: "concept",
+      sizeId: "short",
+      microsequenceGoal: "Explicar `PC` e `IR` no ciclo de execução de Von Neumann.",
+      selectedExtraResourceTypes: [],
+      sourceUsePlan: [],
+      reason: "Responder à dúvida local sobre `PC` e `IR` e voltar ao programa armazenado."
+    },
+    planningContract
+  );
+
+  assert.equal(planningContract.studyTrackPolicy.mode, "clarify_local_doubt");
+  assert.deepEqual(planningContract.studyTrackPolicy.requiredAnchors, ["PC", "IR"]);
+  assert.equal(invalidPlan.ok, false);
+  assert.match(invalidPlan.errors.join(" "), /PC/);
+  assert.match(invalidPlan.errors.join(" "), /IR/);
+  assert.equal(validPlan.ok, true);
+
+  const generationContract = buildMicrosequenceGenerationContract({
+    planningContract,
+    validatedPlan: validPlan,
+    selectedModel: "gemini-2.5-flash"
+  });
+  const prompt = buildMicrosequenceGenerationPrompt(generationContract, getModelCapabilities("gemini-2.5-flash"));
+  const drift = validateGeneratedCardsDidactic(
+    [
+      {
+        position: 1,
+        resourceType: "paragraph",
+        title: "O que são variáveis?",
+        text: "Em programação, uma variável é um espaço para guardar valores."
+      },
+      {
+        position: 2,
+        resourceType: "paragraph",
+        title: "Declarando variável",
+        text: "Por exemplo, `idade = 30` guarda o número em uma variável."
+      },
+      {
+        position: 3,
+        resourceType: "multiple_choice",
+        title: "Identificando variáveis",
+        question: "Qual opção declara uma variável chamada `nome`?",
+        options: [
+          { optionId: "a", label: "`nome = 'Maria'`" },
+          { optionId: "b", label: "`30 = idade`" },
+          { optionId: "c", label: "`print('Maria')`" }
+        ],
+        correctOptionId: "a",
+        feedback: "`nome = 'Maria'` associa um valor ao nome."
+      }
+    ],
+    generationContract
+  );
+  const anchored = validateGeneratedCardsDidactic(
+    [
+      {
+        position: 1,
+        resourceType: "paragraph",
+        title: "PC e IR",
+        text: "`PC` vem de Program Counter, contador de programa: ele aponta a próxima instrução. `IR` vem de Instruction Register, registrador de instrução: ele guarda a instrução atual para decodificação."
+      },
+      {
+        position: 2,
+        resourceType: "paragraph",
+        title: "No ciclo de execução",
+        text: "Por exemplo, na arquitetura de Von Neumann, a CPU busca na memória a instrução apontada pelo `PC`; depois essa instrução fica no `IR` enquanto é interpretada."
+      },
+      {
+        position: 3,
+        resourceType: "multiple_choice",
+        title: "Checagem",
+        question: "Qual alternativa associa corretamente `PC` e `IR` no modelo de Von Neumann?",
+        options: [
+          { optionId: "a", label: "`PC` aponta a próxima instrução; `IR` guarda a instrução atual." },
+          { optionId: "b", label: "`PC` executa cálculos; `IR` armazena permanentemente o programa." },
+          { optionId: "c", label: "`PC` é a memória principal; `IR` é o barramento externo." }
+        ],
+        correctOptionId: "a",
+        feedback: "`PC` orienta a próxima busca; `IR` segura a instrução em uso pela CPU."
+      }
+    ],
+    generationContract
+  );
+
+  assert.match(prompt, /Modo de estudo: esclarecer dúvida local/);
+  assert.match(prompt, /Termos obrigatórios da dúvida: PC, IR/);
+  assert.equal(drift.ok, false);
+  assert.match(drift.didacticErrors.join(" "), /PC/);
+  assert.match(drift.didacticErrors.join(" "), /IR/);
+  assert.equal(anchored.ok, true);
+});
+
 test("sourceGuideStructured governa o contrato sem fallback implícito de description", () => {
   const { planningContract } = buildContractsFromFixture("logic-beginner.json");
 
