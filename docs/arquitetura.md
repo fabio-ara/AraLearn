@@ -40,6 +40,21 @@ O fluxo real da geração de cards é incremental. Um pedido localizado produz c
 
 Essa decomposição existe por duas razões. A primeira é pragmática: melhora previsibilidade com modelos mais fracos. A segunda é conceitual: impede que a aplicação terceirize à LLM uma decisão que pertence à arquitetura.
 
+## A nova camada `CourseForge`
+
+Além desse pipeline já acoplado à UI, a arquitetura agora inclui uma camada interna nova em `generation/courseForge/`. Ela existe para levar a mesma lógica de restrição, auditoria e reparo também ao top-down mais amplo.
+
+No estado atual do repositório, essa camada já sustenta:
+
+- resolução de intenção e escopo sem delegar essa decisão à LLM;
+- execução por fases separadas para arquitetura, lições, microssequências e cards;
+- artefatos persistíveis de run, com retomada parcial;
+- auditoria local de arquitetura, cobertura, aderência à fonte e vocabulário de bastidor;
+- reparo determinístico antes de reparo por provider;
+- compilação final em patch estrutural restrito ao escopo pedido.
+
+É importante registrar o limite correto: `CourseForge` já é motor interno real e já tem cobertura automatizada, mas ainda não substituiu a superfície pública principal do app. A UI que o usuário encontra hoje continua baseada no painel contextual estrutural, na geração de microssequências `draft` na lição e no workbench da microssequência.
+
 ## Governança da lição
 
 A maior parte da inteligência operacional da geração está ancorada na lição. É a lição que define meta, notação, erros prováveis, formatos permitidos, ações de aprendizagem e nível de apoio. O pedido do usuário continua importante, mas passa a atuar sobre um quadro já delimitado.
@@ -69,6 +84,8 @@ A continuação automática da geração não é laço cego de insistência. Ela
 O resultado validado é aplicado diretamente na microssequência. Isso recoloca a geração dentro do fluxo real de autoria, em vez de deixá-la num limbo de prévia privada. Ao mesmo tempo, a arquitetura preserva reversibilidade por histórico local: a iteração ativa pode ser aceita ou excluída.
 
 Essa combinação de aplicação direta e reversão explícita é uma escolha arquitetural e também de UX. Ela reduz atrito de uso sem abandonar responsabilidade editorial.
+
+Na trilha nova de `CourseForge`, a mesma ideia aparece de outro modo: a aplicação não entrega imediatamente qualquer rascunho top-down; ela só consolida o patch depois que as auditorias locais e os reparos necessários terminam.
 
 ## Local-first
 

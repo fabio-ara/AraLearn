@@ -42,6 +42,16 @@ Na lição, a IA pode sugerir microssequências draft. Nesse nível, o foco é o
 
 No painel da microssequência, a IA atua sobre cards. Aqui o objetivo já é muito mais localizado: explicar, demonstrar, praticar, consolidar ou revisar um ponto delimitado pelo próprio percurso.
 
+## O estado atual do top-down
+
+Hoje o produto tem duas camadas distintas de geração mais ampla, e a documentação precisa nomeá-las corretamente.
+
+A primeira é a camada já pública na interface. Ela aparece no painel contextual de home, curso e módulo para gerar estrutura, e na lição para gerar microssequências `draft` ou gerar e reposicionar essas microssequências. Essa é a trilha efetivamente visível ao usuário comum no app.
+
+A segunda é a nova camada interna `CourseForge`. Ela já existe no código e na suíte automatizada como motor top-down por fases, com intenção própria, artefatos persistíveis, auditoria local e reparo antes da aplicação do patch. Essa camada já vai além da estrutura: ela também alcança planejamento de lições, microssequências, cards e aderência mínima à fonte. Mas ela ainda não aparece como fluxo autônomo e nomeado na UI pública.
+
+Descrever esse ponto com precisão importa. Dizer que o AraLearn “já tem motor top-down completo” é verdadeiro se a referência for o estado interno do repositório e da suíte. Dizer que o usuário final “já opera esse motor completo pela interface” ainda seria exagero.
+
 ## Pipeline de cards
 
 O fluxo real da geração de cards é o seguinte:
@@ -111,6 +121,8 @@ Quando houver fontes e anexos, o AraLearn usa grounding mínimo, não promessa d
 ## Codex local
 
 `Codex CLI local` permanece suportado como integração avançada. O fluxo principal do estudante comum continua sendo Gemini/API comum. O provider local interessa sobretudo quando o usuário quer manter a operação mais próxima de seu próprio ambiente.
+
+No pipeline público atual, esse provider já atende a geração estrutural e a geração de microssequências da lição, além do workbench da microssequência. Na refatoração interna `CourseForge`, ele também já existe como provider real da nova trilha top-down, ao lado de um provider falso de teste usado para validação offline do motor.
 
 ## Referências centrais
 

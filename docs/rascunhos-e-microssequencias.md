@@ -8,11 +8,15 @@ Quando a operação acontece no nível da lição, o resultado esperado não sã
 
 No estado atual, esses rascunhos podem carregar não apenas título, mas também descrição e metadados didáticos, especialmente quando a lição já dispõe de mapa de domínio. Isso permite que a própria lição registre por que a sequência existe, que ponto cobre e que função cumpre no percurso.
 
+Quando o usuário escolhe o modo combinado de gerar e reposicionar, a lição também pode receber uma nova ordem final para as microssequências já existentes. Ainda assim, esse passo continua sendo estrutural: ele reorganiza a trilha e cria rascunhos, mas não escreve os cards finais nesse nível.
+
 ## O que acontece na microssequência
 
 Quando a operação acontece no workbench da microssequência, o foco muda completamente. Ali o que se gera ou edita são os cards da sequência atual. O fluxo é direto: gerar ou editar, validar, aplicar, revisar a iteração, aceitar ou excluir.
 
 Esse desenho recoloca a geração dentro da prática real do produto. A iteração não fica escondida como prévia abstrata; ela entra no ambiente de trabalho e continua reversível.
+
+Essa distinção continua valendo mesmo com a nova refatoração top-down interna do repositório. O motor `CourseForge` já consegue, em testes e no código, avançar de arquitetura para microssequências e cards. Mas a interface pública ainda separa explicitamente o nível da lição, onde nascem rascunhos, do nível da microssequência, onde os cards são gerados e revisados no workbench.
 
 ## Por que a distinção importa
 

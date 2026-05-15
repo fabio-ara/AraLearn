@@ -34,6 +34,8 @@ No nível do curso, a geração por IA atua sobre módulos e lições. No nível
 
 Essa distribuição não é arbitrária. Ela existe para conter a operação no menor escopo útil. Quanto mais localizado o problema, mais localizado deve ser o pedido.
 
+Essa continua sendo a trilha pública principal da interface. O repositório já tem uma refatoração interna mais ampla para top-down completo, chamada `CourseForge`, mas ela ainda não aparece ao usuário como tela ou fluxo separado. Portanto, o guia de uso do app deve descrever primeiro o que de fato está exposto hoje: painel contextual estrutural, geração de microssequências `draft` na lição e workbench da microssequência.
+
 ## A lição como centro da orientação
 
 A lição é o ponto mais importante da governança didática do app. É nela que se concentram campos como:
@@ -61,6 +63,8 @@ Esses rascunhos:
 - podem carregar metadados didáticos quando a lição já dispõe de mapa de domínio.
 
 O objetivo desse nível não é redigir o material final, mas estruturar a trilha da lição: que microssequências faltam, que lacunas ainda existem, que sequência precisa ser reorganizada.
+
+Quando a lição já traz `domainMap`, esse passo também pode considerar itens ainda não cobertos, prática insuficiente, variação fraca e risco de redundância. Isso não transforma a geração em “planejamento automático perfeito”; apenas dá ao app memória local mais forte para decidir onde faz sentido abrir novos rascunhos.
 
 ## O painel da microssequência
 
@@ -122,6 +126,8 @@ Antes de usar IA, convém:
 2. escolher o modelo;
 3. informar a chave da API, quando necessário;
 4. testar o bridge local, se a escolha for `Codex CLI local`.
+
+No estado atual, a documentação correta dessa área precisa separar duas coisas: o provider configurável já usado pelos fluxos públicos do app e o uso desse mesmo provider dentro do motor interno `CourseForge`. O usuário comum interage com a primeira camada; a segunda ainda é infraestrutura interna da refatoração top-down.
 
 ## O que esperar da IA, e o que não esperar
 

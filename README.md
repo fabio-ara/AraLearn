@@ -65,6 +65,8 @@ No estado atual, o AraLearn reúne:
 - geração estrutural contextual em home, curso e módulo;
 - criação de rascunhos de microssequências a partir do contexto de uma lição;
 - geração e edição de cards no painel da microssequência;
+- governança didática por lição com `sourceGuideStructured`, `presetId`, catálogos fechados e, quando houver, `domainMap`;
+- motor interno em refatoração para top-down completo por fases, com planejamento, auditoria e reparo locais;
 - recursos de navegação, edição, ordenação, importação, exportação e estudo;
 - execução de cards com progresso local;
 - edição de microssequências e cards;
@@ -137,6 +139,11 @@ Desde que obedeçam ao contrato `aralearn.contract`, podem ser importados:
 - microssequências.
 
 A aplicação também trabalha com `aralearn.storage`, formato de backup completo que preserva projeto e progresso local.
+
+No estado atual do produto, é importante separar duas camadas dessa trilha top-down:
+
+- a camada pública já ligada à interface, que gera estrutura em home, curso e módulo e gera microssequências `draft` na lição;
+- a nova camada interna `CourseForge`, já testada no repositório, que avança para arquitetura, lições, microssequências, cards, auditoria e reparos por fases, mas ainda não aparece como fluxo separado na UI pública.
 
 ---
 
@@ -284,6 +291,8 @@ Na primeira etapa, a inteligência artificial pode escolher apenas entre opçõe
 Essas opções chegam ao Gemini como listas fechadas do próprio AraLearn. O modelo escolhe dentro delas; depois disso, o AraLearn monta os JSONs efetivos da operação e acrescenta `cardPlan`, contexto resolvido, schemas e validações locais.
 
 Na segunda etapa, a inteligência artificial recebe apenas o plano aprovado e preenche os cards. Ela não deve alterar quantidade, ordem, posições, papéis ou recursos dos cards.
+
+Em paralelo a esse pipeline já exposto na interface, o repositório passou a abrigar uma refatoração interna do top-down chamada `CourseForge`. Ela já executa fases separadas de planejamento, auditoria, reparo e compilação de patch, inclusive para árvore estrutural, microssequências e cards. A leitura correta, porém, é esta: o motor já existe e já é testado, mas sua superfície pública ainda não substituiu o fluxo contextual atual da UI.
 
 Prompts e validações agora reforçam:
 
@@ -561,6 +570,8 @@ Do ponto de vista conceitual, o projeto já tem direção nítida:
 - preservar controle local, reversibilidade e clareza sobre os limites reais da automação.
 
 A documentação pública procura expor essa direção com transparência: quando uma decisão encontra respaldo forte em literatura, isso é dito; quando se trata de solução arquitetural do próprio produto, isso também é dito; quando um efeito ainda depende de avaliação situada no AraLearn, a documentação evita apresentar hipótese como fato consumado.
+
+Hoje isso vale também para a refatoração top-down: o app já tem uma camada interna mais ambiciosa para geração completa por fases, mas a interface pública ainda opera principalmente pelo painel contextual estrutural e pelo workbench da microssequência.
 
 Versão atual do pacote:
 
