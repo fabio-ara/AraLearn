@@ -175,6 +175,90 @@ function cloneCardsFinalFromDrafts(cardDrafts = []) {
   }));
 }
 
+function sumBlockingIssues(audit = {}) {
+  return (Array.isArray(audit?.issues) ? audit.issues : []).filter((item) => item?.severity !== "warning").length;
+}
+
+function sumWarnings(audit = {}) {
+  return Array.isArray(audit?.warnings) ? audit.warnings.length : 0;
+}
+
+function updateMetricsCategory(metrics = {}, category = "", patch = {}) {
+  if (!category) {
+    return structuredClone(metrics || {});
+  }
+  return {
+    ...structuredClone(metrics || {}),
+    issueCountsByCategory: {
+      ...(structuredClone(metrics?.issueCountsByCategory || {})),
+      [category]: Math.max(0, Number(patch.issueCount ?? metrics?.issueCountsByCategory?.[category] ?? 0))
+    },
+    repairCallsByCategory: {
+      ...(structuredClone(metrics?.repairCallsByCategory || {})),
+      [category]: Math.max(0, Number(patch.repairCalls ?? metrics?.repairCallsByCategory?.[category] ?? 0))
+    },
+    ...(patch.lastFailureCategory !== undefined ? { lastFailureCategory: patch.lastFailureCategory } : {})
+  };
+}
+
+function buildDiagnosticsSummary(context = {}, runState = {}, phases = []) {
+  const planningAudit = mergeCourseForgeAdherenceAudits(context.microsequenceAudit || {}, context.microsequenceAdherenceAudit || {});
+  const cardsAudit = mergeCardAudits(context.cardsAudit || {});
+  const adherenceAudit = mergeCourseForgeAdherenceAudits(context.sourceAdherenceAudit || {});
+  const blockingByCategory = {
+    planning: sumBlockingIssues(planningAudit),
+    cards: sumBlockingIssues(cardsAudit),
+    adherence: sumBlockingIssues(adherenceAudit)
+  };
+  const warningsByCategory = {
+    planning: sumWarnings(planningAudit),
+    cards: sumWarnings(cardsAudit),
+    adherence: sumWarnings(adherenceAudit)
+  };
+  const phaseStatus = Object.fromEntries((runState?.phases || []).map((phase) => [phase.phaseId, phase.status]));
+
+  return {
+    categories: {
+      planning: {
+        blockingIssues: blockingByCategory.planning,
+        warnings: warningsByCategory.planning,
+        repaired: phaseStatus.repair_microsequences === "completed",
+        latestArtifacts: ["microsequence-audit", "microsequence-adherence-audit"].filter((name) =>
+          ["microsequence-audit", "microsequence-adherence-audit"].includes(name)
+        )
+      },
+      cards: {
+        blockingIssues: blockingByCategory.cards,
+        warnings: warningsByCategory.cards,
+        repaired: phaseStatus.repair_cards === "completed",
+        latestArtifacts: ["cards-audit", "card-drafts"]
+      },
+      adherence: {
+        blockingIssues: blockingByCategory.adherence,
+        warnings: warningsByCategory.adherence,
+        repaired: phaseStatus.repair_card_adherence === "completed",
+        latestArtifacts: ["source-adherence-audit", "cards-final"]
+      }
+    },
+    lastFailureCategory: text(runState?.metrics?.lastFailureCategory),
+    phaseStatus,
+    phases
+  };
+}
+
+function inferFailureCategoryFromPhase(phaseId = "") {
+  if (["plan_microsequences", "audit_microsequences", "repair_microsequences"].includes(phaseId)) {
+    return "planning";
+  }
+  if (["audit_cards", "repair_cards"].includes(phaseId)) {
+    return "cards";
+  }
+  if (["audit_source_adherence", "repair_card_adherence"].includes(phaseId)) {
+    return "adherence";
+  }
+  return "";
+}
+
 export async function runCourseForge({
   intent: rawIntent,
   projectDocument,
@@ -405,11 +489,22 @@ export async function runCourseForge({
           ]
         };
         const blockingIssues = (context.microsequenceAudit.issues || []).filter((item) => item?.severity !== "warning");
+        runState = updateCourseForgeRunState(runState, {
+          metrics: updateMetricsCategory(runState.metrics, "planning", {
+            issueCount: blockingIssues.length,
+            lastFailureCategory: blockingIssues.length ? "planning" : runState?.metrics?.lastFailureCategory || ""
+          })
+        });
         if (providerAudit.approved === false || blockingIssues.length) {
           throw new Error("Auditoria de microssequências reprovou o planejamento atual.");
         }
         artifactStore.saveArtifact(runId, "microsequence-audit", context.microsequenceAudit);
       } else if (phaseId === "repair_microsequences") {
+        runState = updateCourseForgeRunState(runState, {
+          metrics: updateMetricsCategory(runState.metrics, "planning", {
+            repairCalls: Number(runState?.metrics?.repairCallsByCategory?.planning || 0) + 1
+          })
+        });
         context.microsequencePlans = repairCourseForgeMicrosequenceMetadataDeterministically({
           microsequencePlans: context.microsequencePlans || [],
           lessonPlans: context.lessonPlans || []
@@ -457,6 +552,12 @@ export async function runCourseForge({
 
         artifactStore.saveArtifact(runId, "microsequence-plans", context.microsequencePlans);
         artifactStore.saveArtifact(runId, "microsequence-adherence-audit", context.microsequenceAdherenceAudit);
+        runState = updateCourseForgeRunState(runState, {
+          metrics: updateMetricsCategory(runState.metrics, "planning", {
+            issueCount: sumBlockingIssues(context.microsequenceAdherenceAudit),
+            lastFailureCategory: hasBlockingIssues(context.microsequenceAdherenceAudit) ? "planning" : runState?.metrics?.lastFailureCategory || ""
+          })
+        });
         if (hasBlockingIssues(context.microsequenceAdherenceAudit)) {
           throw new Error(`Planejamento de microssequências ainda falhou na cobertura didática: ${context.microsequenceAdherenceAudit.issues.map((item) => item.evidence).join(" ")}`);
         }
@@ -502,6 +603,12 @@ export async function runCourseForge({
           context.cardDrafts = context.cardsAudit.normalizedDrafts;
           artifactStore.saveArtifact(runId, "card-drafts", context.cardDrafts);
         }
+        runState = updateCourseForgeRunState(runState, {
+          metrics: updateMetricsCategory(runState.metrics, "cards", {
+            issueCount: sumBlockingIssues(context.cardsAudit),
+            lastFailureCategory: hasBlockingIssues(context.cardsAudit) ? "cards" : runState?.metrics?.lastFailureCategory || ""
+          })
+        });
         artifactStore.saveArtifact(runId, "cards-audit", context.cardsAudit);
       } else if (phaseId === "audit_source_adherence") {
         const sourceGroundingAudit = auditCourseForgeSourceAdherence({
@@ -509,6 +616,12 @@ export async function runCourseForge({
           sourceLedger: context.sourceLedger || []
         });
         context.sourceAdherenceAudit = sourceGroundingAudit;
+        runState = updateCourseForgeRunState(runState, {
+          metrics: updateMetricsCategory(runState.metrics, "adherence", {
+            issueCount: sumBlockingIssues(context.sourceAdherenceAudit),
+            lastFailureCategory: hasBlockingIssues(context.sourceAdherenceAudit) ? "adherence" : runState?.metrics?.lastFailureCategory || ""
+          })
+        });
         artifactStore.saveArtifact(runId, "source-adherence-audit", context.sourceAdherenceAudit);
       } else if (phaseId === "repair_cards") {
         const cardIssues = mergeCardAudits(context.cardsAudit || {});
@@ -516,6 +629,11 @@ export async function runCourseForge({
           context.cardsFinal = cloneCardsFinalFromDrafts(context.cardDrafts || []);
           artifactStore.saveArtifact(runId, "cards-final", context.cardsFinal);
         } else {
+          runState = updateCourseForgeRunState(runState, {
+            metrics: updateMetricsCategory(runState.metrics, "cards", {
+              repairCalls: Number(runState?.metrics?.repairCallsByCategory?.cards || 0) + 1
+            })
+          });
           let repairedDrafts = structuredClone(context.cardDrafts || []);
           let postRepairCardsAudit = auditCourseForgeCardDrafts({
             cardDrafts: repairedDrafts,
@@ -571,6 +689,12 @@ export async function runCourseForge({
           context.cardsFinal = cloneCardsFinalFromDrafts(context.cardDrafts);
           artifactStore.saveArtifact(runId, "cards-final", context.cardsFinal);
         }
+        runState = updateCourseForgeRunState(runState, {
+          metrics: updateMetricsCategory(runState.metrics, "cards", {
+            issueCount: sumBlockingIssues(context.cardsAudit),
+            lastFailureCategory: hasBlockingIssues(context.cardsAudit) ? "cards" : runState?.metrics?.lastFailureCategory || ""
+          })
+        });
       } else if (phaseId === "repair_card_adherence") {
         const adherenceIssues = mergeCourseForgeAdherenceAudits(context.sourceAdherenceAudit || {});
         if (!hasBlockingIssues(adherenceIssues)) {
@@ -587,6 +711,11 @@ export async function runCourseForge({
             artifactStore.saveArtifact(runId, "cards-final", context.cardsFinal);
           }
         } else {
+          runState = updateCourseForgeRunState(runState, {
+            metrics: updateMetricsCategory(runState.metrics, "adherence", {
+              repairCalls: Number(runState?.metrics?.repairCallsByCategory?.adherence || 0) + 1
+            })
+          });
           let repairedDrafts = repairCourseForgeDraftCardsDeterministically({
             cardDrafts: context.cardDrafts || [],
             sourceLedger: context.sourceLedger || []
@@ -650,6 +779,12 @@ export async function runCourseForge({
           context.cardsFinal = cloneCardsFinalFromDrafts(context.cardDrafts);
           artifactStore.saveArtifact(runId, "cards-final", context.cardsFinal);
         }
+        runState = updateCourseForgeRunState(runState, {
+          metrics: updateMetricsCategory(runState.metrics, "adherence", {
+            issueCount: sumBlockingIssues(context.sourceAdherenceAudit),
+            lastFailureCategory: hasBlockingIssues(context.sourceAdherenceAudit) ? "adherence" : runState?.metrics?.lastFailureCategory || ""
+          })
+        });
       } else if (phaseId === "compile_patch") {
         const cardsByMicrosequenceId = new Map(
           (Array.isArray(context.cardsFinal) ? context.cardsFinal : [])
@@ -688,6 +823,8 @@ export async function runCourseForge({
         context.projectDocument = applyCourseForgePatch(context.projectDocument, context.patch, { intent });
         artifactStore.saveArtifact(runId, "project-after-patch", context.projectDocument);
       } else if (phaseId === "final_report") {
+        const diagnosticsSummary = buildDiagnosticsSummary(context, runState, phases);
+        artifactStore.saveArtifact(runId, "diagnostics-summary", diagnosticsSummary);
         artifactStore.saveArtifact(runId, "final-report", {
           runId,
           status: "completed",
@@ -696,7 +833,9 @@ export async function runCourseForge({
           requestedGenerationDepth: intent.requestedGenerationDepth,
           executedGenerationDepth: intent.generationDepth,
           deferredGenerationDepth: intent.deferredGenerationDepth,
-          deferredPhases
+          deferredPhases,
+          diagnosticsSummary,
+          metrics: structuredClone(runState.metrics || {})
         });
       }
 
@@ -706,6 +845,7 @@ export async function runCourseForge({
       });
       artifactStore.saveRun(runId, { runState, intent });
     } catch (error) {
+      const failureCategory = inferFailureCategoryFromPhase(phaseId) || runState?.metrics?.lastFailureCategory || "";
       runState = markCourseForgePhase(runState, phaseId, {
         status: "failed",
         finishedAt: new Date().toISOString(),
@@ -715,11 +855,15 @@ export async function runCourseForge({
       });
       runState = updateCourseForgeRunState(runState, {
         status: "partial_failure",
+        metrics: updateMetricsCategory(runState.metrics, failureCategory, {
+          lastFailureCategory: failureCategory
+        }),
         lastError: {
           phaseId,
           message: text(error?.message) || "Falha do CourseForge."
         }
       });
+      artifactStore.saveArtifact(runId, "diagnostics-summary", buildDiagnosticsSummary(context, runState, phases));
       artifactStore.saveRun(runId, { runState, intent });
       const wrapped = new Error(text(error?.message) || "Falha do CourseForge.");
       wrapped.runState = runState;

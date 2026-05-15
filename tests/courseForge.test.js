@@ -1086,7 +1086,10 @@ test("audit_source_adherence usa domainMap explícito para fechar cobertura mín
   assert.deepEqual(microsequence.domainRefs, ["domain-lan"]);
   assert.deepEqual(microsequence.practiceVariantRefs, ["variant-lan-discriminacao"]);
   const sourceAudit = result.artifacts.find((item) => item.name === "source-adherence-audit");
+  const diagnostics = result.artifacts.find((item) => item.name === "diagnostics-summary");
   assert.equal(sourceAudit.content.approved, true);
+  assert.equal(diagnostics.content.categories.planning.blockingIssues, 0);
+  assert.equal(diagnostics.content.categories.adherence.blockingIssues, 0);
 });
 
 test("repair_microsequences chama provider quando a cobertura do domainMap nao e inferivel deterministicamente", async () => {
@@ -1280,10 +1283,13 @@ test("repair_microsequences chama provider quando a cobertura do domainMap nao e
   });
 
   const adherenceAudit = result.artifacts.find((item) => item.name === "microsequence-adherence-audit");
+  const finalReport = result.artifacts.find((item) => item.name === "final-report");
   const microsequence = result.projectDocument.courses[0].modules[0].lessons[0].microsequences[0];
   assert.equal(adherenceAudit.content.approved, true);
   assert.deepEqual(microsequence.domainRefs, ["domain-and", "domain-or"]);
   assert.deepEqual(microsequence.practiceVariantRefs, ["variant-and", "variant-or"]);
+  assert.equal(finalReport.content.metrics.repairCallsByCategory.planning, 1);
+  assert.equal(finalReport.content.diagnosticsSummary.categories.planning.repaired, true);
 });
 
 test("repair_card_adherence separa grounding tardio de defeito estrutural dos cards", async () => {
@@ -1451,8 +1457,12 @@ test("repair_card_adherence separa grounding tardio de defeito estrutural dos ca
 
   const cardsAudit = result.artifacts.find((item) => item.name === "cards-audit");
   const sourceAudit = result.artifacts.find((item) => item.name === "source-adherence-audit");
+  const finalReport = result.artifacts.find((item) => item.name === "final-report");
   const microsequence = result.projectDocument.courses[0].modules[0].lessons[0].microsequences[0];
   assert.equal(cardsAudit.content.approved, true);
   assert.equal(sourceAudit.content.approved, true);
   assert.equal(microsequence.cards[0].sourceRefs[0], "src_1");
+  assert.equal(finalReport.content.metrics.repairCallsByCategory.cards, 0);
+  assert.equal(finalReport.content.metrics.repairCallsByCategory.adherence, 1);
+  assert.equal(finalReport.content.diagnosticsSummary.categories.adherence.repaired, true);
 });
