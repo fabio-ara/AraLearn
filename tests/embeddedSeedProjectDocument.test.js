@@ -53,6 +53,35 @@ test("a licao de lei de moore nasce sem lacunas declarativas no domainMap", () =
   assert.equal(coverage.domainMap.items.every((item) => item.status === "ready"), true);
 });
 
+test("todas as licoes do curso embarcado nascem com cobertura declarativa fechada", () => {
+  const course = createOrganizacaoArquiteturaComputadoresCourse();
+  const reports = course.modules[0].lessons.map((lesson) => ({
+    key: lesson.key,
+    coverage: buildLessonDomainCoverageReport(lesson)
+  }));
+
+  for (const report of reports) {
+    assert.equal(report.coverage.uncoveredItems.length, 0, report.key);
+    assert.equal(report.coverage.explainedWithoutPractice.length, 0, report.key);
+    assert.equal(report.coverage.examMissing.length, 0, report.key);
+  }
+});
+
+test("o curso embarcado reforca pontos de apoio das aulas e nao so o gabarito da prova", () => {
+  const course = createOrganizacaoArquiteturaComputadoresCourse();
+  const lessons = course.modules[0].lessons;
+  const devicesLesson = lessons.find((lesson) => lesson.key === "lesson-dispositivos-basicos");
+  const ioLesson = lessons.find((lesson) => lesson.key === "lesson-io-e-barramentos");
+  const memoriesLesson = lessons.find((lesson) => lesson.key === "lesson-memorias");
+  const architectureLesson = lessons.find((lesson) => lesson.key === "lesson-von-neumann");
+
+  assert.ok(JSON.stringify(devicesLesson).includes("CPU e GPU"));
+  assert.ok(JSON.stringify(ioLesson).includes("registros de controle, status e buffer de dados"));
+  assert.ok(JSON.stringify(memoriesLesson).includes("`L1` tende a ser a mais rápida e menor"));
+  assert.ok(JSON.stringify(architectureLesson).includes("`PC`"));
+  assert.ok(JSON.stringify(architectureLesson).includes("reconfiguração física"));
+});
+
 test("o texto publico do curso embarcado evita referencias de bastidor", () => {
   const course = createOrganizacaoArquiteturaComputadoresCourse();
   const learnerFacingText = JSON.stringify(
