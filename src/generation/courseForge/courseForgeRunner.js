@@ -811,7 +811,8 @@ export async function runCourseForge({
           architectureDraft: {
             ...(context.architectureFinal || context.architectureDraft || {}),
             microsequencePlans: microsequencePlansWithCards
-          }
+          },
+          projectDocument: context.projectDocument
         });
         artifactStore.saveArtifact(runId, "patch-final", context.patch);
       } else if (phaseId === "validate_patch") {

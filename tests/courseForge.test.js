@@ -750,6 +750,184 @@ test("compileCourseStructureToPatch inclui cards públicos quando disponíveis",
   assert.equal(operation.microsequence.cards.length, 1);
 });
 
+test("compileCourseStructureToPatch atualiza entidades existentes no escopo local", () => {
+  const patch = compileCourseStructureToPatch({
+    intent: resolveCourseForgeIntent({
+      operation: "repair",
+      scope: { level: "course", courseKey: "course-1" }
+    }),
+    projectDocument: {
+      contract: "aralearn.contract",
+      version: 1,
+      kind: "project",
+      courses: [
+        {
+          key: "course-1",
+          title: "Curso antigo",
+          description: "Descrição antiga.",
+          modules: [
+            {
+              key: "module-1",
+              title: "Módulo antigo",
+              lessons: [
+                {
+                  key: "lesson-1",
+                  title: "Lição antiga",
+                  microsequences: []
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    architectureDraft: {
+      course: {
+        key: "course-1",
+        title: "Curso revisado",
+        description: "Descrição nova.",
+        modules: [
+          {
+            key: "module-1",
+            title: "Módulo revisado",
+            lessons: [
+              {
+                key: "lesson-1",
+                title: "Lição revisada",
+                description: "Agora com resumo.",
+                sourceGuideStructured: {
+                  lessonGoal: "Entender o básico.",
+                  notationRules: "Usar notação simples.",
+                  commonErrors: "Evitar atalhos."
+                },
+                presetId: "default",
+                resourceTags: ["paragraph"],
+                contentTypeTags: ["theory"],
+                learningActionTags: ["read"],
+                supportLevel: "guided",
+                microsequences: []
+              }
+            ]
+          }
+        ]
+      }
+    }
+  });
+
+  assert.deepEqual(
+    patch.operations.map((item) => item.op),
+    ["update_course", "update_module", "update_lesson"]
+  );
+});
+
+test("compileCourseStructureToPatch atualiza microssequência existente e troca seus cards", () => {
+  const patch = compileCourseStructureToPatch({
+    intent: resolveCourseForgeIntent({
+      operation: "repair",
+      scope: {
+        level: "lesson",
+        courseKey: "course-1",
+        moduleKey: "module-1",
+        lessonKey: "lesson-1"
+      }
+    }),
+    projectDocument: {
+      contract: "aralearn.contract",
+      version: 1,
+      kind: "project",
+      courses: [
+        {
+          key: "course-1",
+          title: "Curso 1",
+          modules: [
+            {
+              key: "module-1",
+              title: "Módulo 1",
+              lessons: [
+                {
+                  key: "lesson-1",
+                  title: "Lição 1",
+                  sourceGuideStructured: {
+                    lessonGoal: "Objetivo antigo.",
+                    notationRules: "Notação antiga.",
+                    commonErrors: "Erro antigo."
+                  },
+                  presetId: "default",
+                  resourceTags: ["paragraph"],
+                  contentTypeTags: ["theory"],
+                  learningActionTags: ["read"],
+                  supportLevel: "guided",
+                  microsequences: [
+                    {
+                      key: "micro-1",
+                      title: "Microssequência antiga",
+                      status: "draft",
+                      included: false,
+                      cards: []
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    architectureDraft: {
+      course: {
+        key: "course-1",
+        title: "Curso 1",
+        modules: [
+          {
+            key: "module-1",
+            title: "Módulo 1",
+            lessons: [
+              {
+                key: "lesson-1",
+                title: "Lição 1",
+                sourceGuideStructured: {
+                  lessonGoal: "Objetivo novo.",
+                  notationRules: "Notação nova.",
+                  commonErrors: "Erro novo."
+                },
+                presetId: "default",
+                resourceTags: ["paragraph"],
+                contentTypeTags: ["theory"],
+                learningActionTags: ["read"],
+                supportLevel: "guided",
+                microsequences: []
+              }
+            ]
+          }
+        ]
+      },
+      microsequencePlans: [
+        {
+          courseKey: "course-1",
+          moduleKey: "module-1",
+          lessonKey: "lesson-1",
+          microsequences: [
+            {
+              key: "micro-1",
+              title: "Microssequência revisada",
+              objective: "Objetivo novo.",
+              coverageRole: "core",
+              publicCards: [{ title: "Card novo", say: "Texto novo." }]
+            }
+          ]
+        }
+      ]
+    }
+  });
+
+  assert.deepEqual(
+    patch.operations.map((item) => item.op),
+    ["update_course", "update_module", "update_lesson", "update_microsequence", "replace_microsequence_cards"]
+  );
+  const replaceOperation = patch.operations.find((item) => item.op === "replace_microsequence_cards");
+  assert.equal(replaceOperation.microsequence.cards.length, 1);
+});
+
 test("repair_cards corrige cards inválidos antes de aplicar ao projeto", async () => {
   const provider = createFakeProvider({
     script: {
