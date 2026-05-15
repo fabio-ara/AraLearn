@@ -495,6 +495,14 @@ export async function runCourseForge({
         }
         artifactStore.saveArtifact(runId, "lesson-plans", context.lessonPlans);
       } else if (phaseId === "plan_microsequences") {
+        if (intent.scope?.level === "lesson" && !context.lessonPlans?.length) {
+          const scopedLessonPlan = buildScopedLessonPlan(context.projectDocument, intent.scope);
+          if (!scopedLessonPlan) {
+            throw new Error("Escopo de lição sem lição válida para planejar microssequências.");
+          }
+          context.lessonPlans = [scopedLessonPlan];
+          artifactStore.saveArtifact(runId, "lesson-plans", context.lessonPlans);
+        }
         const modelId = resolveModelForCourseForgePhase({ ...intent, phaseId });
         const response = await callProviderPhase({
           provider,

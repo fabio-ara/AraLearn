@@ -55,11 +55,44 @@ function findMicrosequence(projectDocument = {}, courseKey = "", moduleKey = "",
   ) || null;
 }
 
-function buildScopedCourseFromProject(projectDocument = {}, scope = {}) {
+function buildScopedArchitectureFromProject(projectDocument = {}, scope = {}) {
   const course = findCourse(projectDocument, scope?.courseKey);
+  if (!course) {
+    return null;
+  }
+  if (scope?.level === "course") {
+    return {
+      course: {
+        key: text(course?.key),
+        title: text(course?.title),
+        description: text(course?.description),
+        modules: clone(course?.modules || [])
+      }
+    };
+  }
   const moduleValue = findModule(projectDocument, scope?.courseKey, scope?.moduleKey);
+  if (!moduleValue) {
+    return null;
+  }
+  if (scope?.level === "module") {
+    return {
+      course: {
+        key: text(course?.key),
+        title: text(course?.title),
+        description: text(course?.description),
+        modules: [
+          {
+            key: text(moduleValue?.key),
+            title: text(moduleValue?.title),
+            description: text(moduleValue?.description),
+            lessons: clone(moduleValue?.lessons || [])
+          }
+        ]
+      }
+    };
+  }
   const lesson = findLesson(projectDocument, scope?.courseKey, scope?.moduleKey, scope?.lessonKey);
-  if (!course || !moduleValue || !lesson) {
+  if (!lesson) {
     return null;
   }
   return {
@@ -189,10 +222,10 @@ export function compileCourseStructureToPatch({ intent, architectureDraft, proje
   const scope = intent?.scope || {};
   const normalizedDraft = architectureDraft?.course
     ? architectureDraft
-    : scope?.level === "microsequence"
+    : ["course", "module", "lesson", "microsequence"].includes(text(scope?.level))
       ? {
           ...(clone(architectureDraft || {})),
-          ...(buildScopedCourseFromProject(projectDocument, scope) || {})
+          ...(buildScopedArchitectureFromProject(projectDocument, scope) || {})
         }
       : null;
   const course = normalizedDraft?.course;
