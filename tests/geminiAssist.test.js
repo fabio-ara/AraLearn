@@ -15,10 +15,13 @@ import { validateMicrosequencePlan } from "../src/generation/planning/validateMi
 function makeComposeContext(overrides = {}) {
   return {
     key: "micro-git",
+    courseKey: "course-git",
     courseTitle: "Programação",
     courseDescription: "Fundamentos para iniciantes.",
+    moduleKey: "module-git",
     moduleTitle: "Git e colaboração",
     moduleDescription: "Versionamento básico.",
+    lessonKey: "lesson-git",
     lessonTitle: "Primeiros comandos",
     lessonDescription: "Criar repositório e registrar mudanças.",
     lessonSourceGuideStructured: {
@@ -26,10 +29,41 @@ function makeComposeContext(overrides = {}) {
       notationRules: "Destacar comandos inline com acentos graves.",
       commonErrors: "Confundir preparar arquivos com registrar histórico."
     },
+    lessonDomainMap: {
+      items: [
+        {
+          id: "domain-git-flow",
+          label: "Fluxo local do Git",
+          kind: "concept",
+          centrality: "core"
+        }
+      ],
+      practiceVariants: [
+        {
+          id: "variant-git-flow-check",
+          domainItemRef: "domain-git-flow",
+          label: "Checagem do fluxo local"
+        }
+      ]
+    },
     lessonResourceTags: ["paragraph", "block_gap_fill", "multiple_choice", "code_editor"],
     lessonContentTypeTags: ["procedure", "tool_use"],
     lessonLearningActionTags: ["practice", "use_tool"],
     lessonSupportLevel: "guided",
+    lessonMicrosequences: [
+      {
+        key: "micro-previa",
+        title: "Visão geral do Git",
+        description: "Apresenta o fluxo antes dos comandos.",
+        tags: ["Git"],
+        domainRefs: ["domain-git-flow"],
+        practiceVariantRefs: [],
+        didacticPurpose: "Abrir o contexto.",
+        coverageRole: "explain",
+        status: "ready",
+        included: true
+      }
+    ],
     title: "Fluxo Git",
     cards: [],
     ...overrides
@@ -286,6 +320,34 @@ test("compose-microsequence usa weak model mode e aplica cards validados diretam
     assert.equal(result.cards[1].code, "git add app.js");
     assert.equal(result.generationRunState.status, "generation_validated");
     assert.equal(result.generationRunState.generationContract.weakModelMode.modeId, "weakModelMode");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("compose-microsequence envia domainMap e linha de microssequências da lição para o planejamento", async () => {
+  const originalFetch = globalThis.fetch;
+  const calls = [];
+  globalThis.fetch = async (url, options = {}) => {
+    calls.push({ url, body: JSON.parse(options.body) });
+    const generateCount = calls.filter((item) => String(item.url).includes(":generateContent")).length;
+    const payload = generateCount === 1 ? makePlanningPayload() : makeGeneratedCardsPayload();
+    return makeGeminiTextResponse(JSON.stringify(payload));
+  };
+
+  try {
+    await runGeminiAssist({
+      apiKey: "chave",
+      mode: "compose-microsequence",
+      microsequence: makeComposeContext(),
+      promptText: "Explique `git add` e `git commit`."
+    });
+
+    const planningPrompt = calls[0].body.contents[0].parts[0].text;
+    assert.match(planningPrompt, /"domainMap"/);
+    assert.match(planningPrompt, /"microsequenceLine"/);
+    assert.match(planningPrompt, /micro-previa/);
+    assert.match(planningPrompt, /domain-git-flow/);
   } finally {
     globalThis.fetch = originalFetch;
   }

@@ -625,17 +625,28 @@ function normalizeAssistAttachmentList(files = []) {
 
 function buildAssistHierarchyContext({ course, moduleValue, lesson, microsequence }) {
   return {
+    courseKey: course?.key || "",
     courseTitle: course?.title || course?.key || "",
     courseDescription: course?.description || "",
     courseSourceGuide: course?.sourceGuide || "",
+    courseSourceGuideStructured: structuredClone(course?.sourceGuideStructured || {}),
+    moduleKey: moduleValue?.key || "",
     moduleTitle: moduleValue?.title || moduleValue?.key || "",
     moduleDescription: moduleValue?.description || "",
     moduleSourceGuide: moduleValue?.sourceGuide || "",
+    moduleSourceGuideStructured: structuredClone(moduleValue?.sourceGuideStructured || {}),
+    lessonKey: lesson?.key || "",
     lessonTitle: lesson?.title || lesson?.key || "",
     lessonDescription: lesson?.description || "",
     lessonSourceGuide: lesson?.sourceGuide || "",
     lessonSourceGuideStructured: structuredClone(lesson?.sourceGuideStructured || {}),
     lessonDomainMap: structuredClone(lesson?.domainMap || {}),
+    lessonResourceTags: Array.isArray(lesson?.resourceTags) ? structuredClone(lesson.resourceTags) : [],
+    lessonContentTypeTags: Array.isArray(lesson?.contentTypeTags) ? structuredClone(lesson.contentTypeTags) : [],
+    lessonLearningActionTags: Array.isArray(lesson?.learningActionTags) ? structuredClone(lesson.learningActionTags) : [],
+    lessonSupportLevel: lesson?.supportLevel || "",
+    lessonMicrosequences: Array.isArray(lesson?.microsequences) ? structuredClone(lesson.microsequences) : [],
+    key: microsequence?.key || "",
     title: microsequence?.title || "",
     description: microsequence?.description || "",
     tags: Array.isArray(microsequence?.tags) ? microsequence.tags : [],
@@ -9149,13 +9160,18 @@ export function createLessonEditorApp({ root, storage, editor }) {
       });
     }
     if (assistMicrosequenceTitleInput) {
-      assistMicrosequenceTitleInput.addEventListener("input", () => {
+      const commitAssistMicrosequenceTitle = () => {
         const visibleVersion = getVisualizedMicrosequenceVersion();
         updateMicrosequenceDraft({
           title: assistMicrosequenceTitleInput.value,
           tags: formatTagsText(visibleVersion?.tags || context.microsequence?.tags)
         });
+      };
+      assistMicrosequenceTitleInput.addEventListener("input", () => {
+        syncAssistSubmitState();
       });
+      assistMicrosequenceTitleInput.addEventListener("change", commitAssistMicrosequenceTitle);
+      assistMicrosequenceTitleInput.addEventListener("blur", commitAssistMicrosequenceTitle);
     }
     root.querySelectorAll("[data-flowchart-inline-input='true']").forEach((node) => {
       node.addEventListener("click", () => {
@@ -9303,6 +9319,28 @@ export function createLessonEditorApp({ root, storage, editor }) {
     const assistDependencyPicker = root.querySelector("[data-field='assist-dependency-picker']");
     const assistPrompt = root.querySelector("[data-field='assist-prompt']");
     const assistAttachmentInput = root.querySelector("[data-field='assist-attachments']");
+    const assistSubmitButton = root.querySelector("[data-action='apply-assist']");
+    const syncAssistSubmitState = () => {
+      if (!assistSubmitButton) {
+        return;
+      }
+      const visibleTitleValue =
+        assistMicrosequenceTitleInput instanceof HTMLInputElement
+          ? assistMicrosequenceTitleInput.value
+          : getVisualizedMicrosequenceVersion()?.title || context.microsequence?.title || "";
+      const visiblePromptValue =
+        assistPrompt instanceof HTMLTextAreaElement
+          ? assistPrompt.value
+          : state.assistDraft.promptText || "";
+      const canEditCurrentView = state.view === "microsequence-assist" && canEditCurrentMicrosequenceVersion();
+      const canSubmitAssist =
+        canEditCurrentView &&
+        !!String(visibleTitleValue || "").trim() &&
+        !!String(visiblePromptValue || "").trim() &&
+        !state.assistDraft.isSubmitting;
+      assistSubmitButton.disabled = !canSubmitAssist;
+      assistSubmitButton.setAttribute("aria-disabled", canSubmitAssist ? "false" : "true");
+    };
     if (assistMode) {
       assistMode.addEventListener("change", () => {
         state.assistDraft.selectedMode = assistMode.value;
@@ -9332,7 +9370,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
     if (assistPrompt) {
       assistPrompt.addEventListener("input", () => {
         state.assistDraft.promptText = assistPrompt.value;
-        render({ preserveState: true });
+        syncAssistSubmitState();
       });
     }
     if (assistAttachmentInput) {

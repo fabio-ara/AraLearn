@@ -363,6 +363,81 @@ test("sequencia de matriz mantem opcoes no dock do card no celular", async (t) =
   assert.ok(metrics.bodyOverflow <= 1);
 });
 
+test("editor de cards no celular mantém o textarea estável e o rodapé dentro da shell", async (t) => {
+  if (!chromium) {
+    t.skip("Playwright indisponivel neste ambiente.");
+    return;
+  }
+
+  const port = 4203;
+  const server = spawn(process.execPath, ["./scripts/servePublic.js"], {
+    cwd: repoRoot,
+    env: {
+      ...process.env,
+      PORT: String(port)
+    },
+    stdio: ["ignore", "pipe", "pipe"],
+    windowsHide: true
+  });
+  t.after(async () => {
+    if (server.exitCode === null) {
+      server.kill();
+      try {
+        await once(server, "exit");
+      } catch {
+        // noop
+      }
+    }
+  });
+
+  await waitForServerReady(server, port);
+
+  let browser = null;
+  try {
+    browser = await chromium.launch({ headless: true });
+  } catch {
+    t.skip("Chromium do Playwright nao esta instalado.");
+    return;
+  }
+  t.after(async () => {
+    await browser?.close();
+  });
+
+  const page = await browser.newPage({ viewport: { width: 430, height: 932 } });
+  page.setDefaultTimeout(10000);
+  await seedExampleProject(page);
+  await page.goto(`http://127.0.0.1:${port}/`, { waitUntil: "networkidle" });
+
+  await page.locator("[data-action='open-course']").first().click();
+  await page.locator("[data-action='open-module']").first().click();
+  await page.locator("[data-action='open-lesson']").first().click();
+  await page.locator("[data-action='open-microsequence-assist']").first().click();
+  await page.locator("[data-action='select-workbench-pane'][data-workbench-pane='edit']").click();
+  await page.waitForSelector("[data-field='assist-prompt']");
+
+  await page.evaluate(() => {
+    globalThis.__assistPromptRef = document.querySelector("[data-field='assist-prompt']");
+  });
+  await page.locator("[data-field='assist-prompt']").fill("Eu não sei o que são PC e IR.");
+
+  const metrics = await page.evaluate(() => {
+    const prompt = document.querySelector("[data-field='assist-prompt']");
+    const actionRow = document.querySelector(".generate-action-row.assist-actions.assist-actions-wide");
+    const shell = document.querySelector(".app-shell");
+    return {
+      samePromptNode: globalThis.__assistPromptRef === prompt,
+      promptValue: prompt?.value || "",
+      footerInsideShell:
+        !!(actionRow && shell) &&
+        actionRow.getBoundingClientRect().bottom <= shell.getBoundingClientRect().bottom + 1
+    };
+  });
+
+  assert.equal(metrics.samePromptNode, true);
+  assert.equal(metrics.promptValue, "Eu não sei o que são PC e IR.");
+  assert.equal(metrics.footerInsideShell, true);
+});
+
 test("menus de acoes respeitam a moldura da shell no navegador real", async (t) => {
   if (!chromium) {
     t.skip("Playwright indisponivel neste ambiente.");

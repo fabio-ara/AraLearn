@@ -1206,15 +1206,23 @@ function buildGenerationContextEntities(microsequence = {}) {
       description: microsequence.lessonDescription || "",
       sourceGuide: microsequence.lessonSourceGuide || "",
       sourceGuideStructured: microsequence.lessonSourceGuideStructured || {},
+      domainMap: microsequence.lessonDomainMap || {},
       resourceTags: microsequence.lessonResourceTags || [],
       contentTypeTags: microsequence.lessonContentTypeTags || [],
       learningActionTags: microsequence.lessonLearningActionTags || [],
-      supportLevel: microsequence.lessonSupportLevel || ""
+      supportLevel: microsequence.lessonSupportLevel || "",
+      microsequences: Array.isArray(microsequence.lessonMicrosequences) ? microsequence.lessonMicrosequences : []
     },
     targetMicrosequence: {
       key: microsequence.key || "",
       title: microsequence.title || "",
-      description: microsequence.description || ""
+      description: microsequence.description || "",
+      tags: Array.isArray(microsequence.tags) ? microsequence.tags : [],
+      domainRefs: Array.isArray(microsequence.domainRefs) ? microsequence.domainRefs : [],
+      practiceVariantRefs: Array.isArray(microsequence.practiceVariantRefs) ? microsequence.practiceVariantRefs : [],
+      didacticPurpose: microsequence.didacticPurpose || "",
+      coverageRole: microsequence.coverageRole || "",
+      cards: Array.isArray(microsequence.cards) ? microsequence.cards : []
     }
   };
 }

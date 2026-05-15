@@ -4590,7 +4590,7 @@ button {
   overflow-y: auto;
   overflow-x: clip;
   min-height: 0;
-  padding-bottom: 12px;
+  padding-bottom: calc(var(--safe-bottom-tappable) + 16px);
 }
 
 .generator-preview-stage {
@@ -4618,6 +4618,7 @@ button {
   min-height: 0;
   overflow: visible;
   overflow-x: clip;
+  padding-bottom: max(var(--safe-bottom-tappable), 8px);
 }
 
 .workbench-editor-pane {
@@ -5503,6 +5504,14 @@ button {
   .generate-action-row.assist-actions-wide {
     grid-template-columns: 32px minmax(0, 1fr) 32px 32px 42px;
     gap: 4px;
+  }
+
+  .microsequence-generator-screen {
+    padding-bottom: calc(var(--safe-bottom-tappable) + 20px);
+  }
+
+  .workbench-editor-panel {
+    padding-bottom: calc(var(--safe-bottom-tappable) + 10px);
   }
 
   .generate-action-row.assist-actions-wide .generate-icon-field {
