@@ -55,6 +55,35 @@ function findMicrosequence(projectDocument = {}, courseKey = "", moduleKey = "",
   ) || null;
 }
 
+function buildScopedCourseFromProject(projectDocument = {}, scope = {}) {
+  const course = findCourse(projectDocument, scope?.courseKey);
+  const moduleValue = findModule(projectDocument, scope?.courseKey, scope?.moduleKey);
+  const lesson = findLesson(projectDocument, scope?.courseKey, scope?.moduleKey, scope?.lessonKey);
+  if (!course || !moduleValue || !lesson) {
+    return null;
+  }
+  return {
+    course: {
+      key: text(course?.key),
+      title: text(course?.title),
+      description: text(course?.description),
+      modules: [
+        {
+          key: text(moduleValue?.key),
+          title: text(moduleValue?.title),
+          description: text(moduleValue?.description),
+          lessons: [
+            {
+              ...clone(lesson),
+              microsequences: []
+            }
+          ]
+        }
+      ]
+    }
+  };
+}
+
 function buildCourseOperation(course = {}, exists = false) {
   const payload = {
     key: text(course?.key),
@@ -157,7 +186,16 @@ export function compileCourseStructureToPatch({ intent, architectureDraft, proje
     return clone(architectureDraft.patch);
   }
 
-  const course = architectureDraft?.course;
+  const scope = intent?.scope || {};
+  const normalizedDraft = architectureDraft?.course
+    ? architectureDraft
+    : scope?.level === "microsequence"
+      ? {
+          ...(clone(architectureDraft || {})),
+          ...(buildScopedCourseFromProject(projectDocument, scope) || {})
+        }
+      : null;
+  const course = normalizedDraft?.course;
   if (!course) {
     throw new Error("Arquitetura sem curso para compilar patch.");
   }
@@ -167,7 +205,7 @@ export function compileCourseStructureToPatch({ intent, architectureDraft, proje
   const operations = [buildCourseOperation(course, Boolean(existingCourse))];
 
   const microsequencePlansByLessonKey = new Map(
-    (Array.isArray(architectureDraft?.microsequencePlans) ? architectureDraft.microsequencePlans : [])
+    (Array.isArray(normalizedDraft?.microsequencePlans) ? normalizedDraft.microsequencePlans : [])
       .map((entry) => [text(entry?.lessonKey), entry])
       .filter(([lessonKey]) => lessonKey)
   );

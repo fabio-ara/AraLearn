@@ -71,6 +71,47 @@ test("resolveCourseForgeIntent entende revisão local em conteúdo existente", (
   assert.equal(result.contextSummary.targetExists, true);
 });
 
+test("resolveCourseForgeIntent prioriza geração completa quando o pedido de revisão menciona cards", () => {
+  const result = resolveCourseForgeIntent({
+    scope: {
+      level: "microsequence",
+      courseKey: "course-logica",
+      moduleKey: "module-base",
+      lessonKey: "lesson-1",
+      microsequenceKey: "micro-1"
+    },
+    promptText: "Revise esta microssequência e gere cards prontos para estudar.",
+    projectDocument: {
+      contract: "aralearn.contract",
+      version: 1,
+      kind: "project",
+      courses: [
+        {
+          key: "course-logica",
+          title: "Lógica",
+          modules: [
+            {
+              key: "module-base",
+              title: "Base",
+              lessons: [
+                {
+                  key: "lesson-1",
+                  title: "Lição 1",
+                  microsequences: [{ key: "micro-1", title: "Revisão", status: "draft", included: false, cards: [] }]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  });
+
+  assert.equal(result.operation, "repair");
+  assert.equal(result.requestedGenerationDepth, "full_course");
+  assert.equal(result.generationDepth, "full_course");
+});
+
 test("resolveCourseForgeScope preserva escopo selecionado", () => {
   const result = resolveCourseForgeScope({
     scope: { level: "lesson", courseKey: "c1", moduleKey: "m1", lessonKey: "l1" }
@@ -104,6 +145,10 @@ test("phase resolution escolhe subfluxo estrutural e registra fases adiadas", ()
     scope: { level: "project" },
     promptText: "Quero o curso completo, pronto para estudar."
   });
+  const microsequenceIntent = resolveCourseForgeIntent({
+    scope: { level: "microsequence", courseKey: "c1", moduleKey: "m1", lessonKey: "l1", microsequenceKey: "ms1" },
+    promptText: "Quero o curso completo, pronto para estudar."
+  });
 
   assert.deepEqual(resolveCourseForgePhases(structureIntent), [
     "normalize_intent",
@@ -119,6 +164,8 @@ test("phase resolution escolhe subfluxo estrutural e registra fases adiadas", ()
   assert.ok(resolveCourseForgePhases(fullIntent).includes("plan_microsequences"));
   assert.ok(resolveCourseForgePhases(fullIntent).includes("repair_microsequences"));
   assert.ok(resolveCourseForgePhases(fullIntent).includes("repair_card_adherence"));
+  assert.ok(resolveCourseForgePhases(microsequenceIntent).includes("build_microsequence_contract"));
+  assert.ok(resolveCourseForgePhases(microsequenceIntent).includes("compile_patch"));
   assert.equal(resolveDeferredCourseForgePhases(fullIntent).length, 0);
 });
 
@@ -926,6 +973,116 @@ test("compileCourseStructureToPatch atualiza microssequência existente e troca 
   );
   const replaceOperation = patch.operations.find((item) => item.op === "replace_microsequence_cards");
   assert.equal(replaceOperation.microsequence.cards.length, 1);
+});
+
+test("top-down em escopo de microssequência recompõe cards na microssequência existente", async () => {
+  const provider = createFakeProvider({
+    script: {
+      build_cards: [
+        {
+          cards: [
+            {
+              position: 1,
+              resourceType: "paragraph",
+              title: "Revisão curta",
+              text: "Uma proposição admite valor de verdade.",
+              sourceRefs: ["src_1"]
+            },
+            {
+              position: 2,
+              resourceType: "paragraph",
+              title: "Exemplo curto",
+              text: "`2 + 2 = 4` é proposição porque pode ser verdadeira ou falsa.",
+              sourceRefs: ["src_1"]
+            },
+            {
+              position: 3,
+              resourceType: "multiple_choice",
+              title: "Checagem",
+              question: "Qual frase é proposição?",
+              options: [
+                { optionId: "a", label: "Feche a porta." },
+                { optionId: "b", label: "2 + 2 = 4." },
+                { optionId: "c", label: "Que horas são?" }
+              ],
+              correctOptionId: "b",
+              feedback: "`2 + 2 = 4` admite valor de verdade.",
+              sourceRefs: ["src_1"]
+            }
+          ]
+        }
+      ]
+    }
+  });
+  const registry = createProviderRegistry({ providers: [provider] });
+  const result = await runCourseForge({
+    intent: {
+      operation: "repair",
+      scope: {
+        level: "microsequence",
+        courseKey: "course-logica",
+        moduleKey: "module-base",
+        lessonKey: "lesson-proposicoes",
+        microsequenceKey: "microsequence-revisao"
+      },
+      promptText: "Atualize esta microssequência com cards prontos.",
+      attachments: [{ id: "src_1", name: "ementa.pdf", type: "application/pdf" }]
+    },
+    projectDocument: {
+      contract: "aralearn.contract",
+      version: 1,
+      kind: "project",
+      courses: [
+        {
+          key: "course-logica",
+          title: "Lógica",
+          modules: [
+            {
+              key: "module-base",
+              title: "Base",
+              lessons: [
+                {
+                  key: "lesson-proposicoes",
+                  title: "Proposições",
+                  description: "Lição.",
+                  sourceGuideStructured: {
+                    lessonGoal: "Reconhecer proposições.",
+                    notationRules: "Usar `p` e `q`.",
+                    commonErrors: "Confundir pergunta com proposição."
+                  },
+                  presetId: "default",
+                  resourceTags: ["paragraph", "multiple_choice"],
+                  contentTypeTags: ["theory"],
+                  learningActionTags: ["read"],
+                  supportLevel: "guided",
+                  microsequences: [
+                    {
+                      key: "microsequence-revisao",
+                      title: "Revisão",
+                      description: "Resumo inicial.",
+                      didacticPurpose: "Revisar conceito.",
+                      coverageRole: "explain",
+                      status: "draft",
+                      included: false,
+                      cards: []
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    providerRegistry: registry,
+    providerId: "fake"
+  });
+
+  const microsequence = result.projectDocument.courses[0].modules[0].lessons[0].microsequences[0];
+  assert.equal(microsequence.cards.length, 3);
+  assert.equal(microsequence.status, "ready");
+  assert.equal(microsequence.included, true);
+  assert.ok(result.patch.operations.some((item) => item.op === "replace_microsequence_cards"));
 });
 
 test("repair_cards corrige cards inválidos antes de aplicar ao projeto", async () => {

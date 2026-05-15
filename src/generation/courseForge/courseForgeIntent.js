@@ -100,14 +100,14 @@ function inferRequestedGenerationDepth({ requestedDepth, operation, promptText }
   ) {
     return "structure_only";
   }
+  if (/(curso completo|pronto para estudar|com atividades|com exercicios|com exercícios|gere tudo|com cards|gere cards|cards prontos)/.test(prompt)) {
+    return "full_course";
+  }
   if (operation === "repair" || /(revisar|auditar|corrigir|reparar|consertar)/.test(prompt)) {
     return "repair_only";
   }
   if (operation === "reinforce") {
     return "reinforce_only";
-  }
-  if (/(curso completo|pronto para estudar|com atividades|com exercicios|com exercícios|gere tudo|com cards)/.test(prompt)) {
-    return "full_course";
   }
   return "full_course";
 }

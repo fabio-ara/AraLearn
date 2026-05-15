@@ -88,6 +88,69 @@ function listArchitectureLessons(architectureDraft = {}) {
   return lessons;
 }
 
+function findScopedLesson(projectDocument = {}, scope = {}) {
+  const courses = Array.isArray(projectDocument?.courses) ? projectDocument.courses : [];
+  const course = courses.find((item) => text(item?.key) === text(scope?.courseKey));
+  const moduleValue = (course?.modules || []).find((item) => text(item?.key) === text(scope?.moduleKey));
+  const lesson = (moduleValue?.lessons || []).find((item) => text(item?.key) === text(scope?.lessonKey));
+  return {
+    course,
+    moduleValue,
+    lesson
+  };
+}
+
+function buildScopedLessonPlan(projectDocument = {}, scope = {}) {
+  const { course, moduleValue, lesson } = findScopedLesson(projectDocument, scope);
+  if (!course || !moduleValue || !lesson) {
+    return null;
+  }
+  return {
+    courseKey: text(course?.key),
+    moduleKey: text(moduleValue?.key),
+    lessonKey: text(lesson?.key),
+    lessonTitle: text(lesson?.title),
+    lessonDescription: text(lesson?.description),
+    sourceGuideStructured: structuredClone(lesson?.sourceGuideStructured || {}),
+    domainMap: structuredClone(lesson?.domainMap || null),
+    resourceTags: structuredClone(lesson?.resourceTags || []),
+    contentTypeTags: structuredClone(lesson?.contentTypeTags || []),
+    learningActionTags: structuredClone(lesson?.learningActionTags || []),
+    supportLevel: text(lesson?.supportLevel),
+    presetId: text(lesson?.presetId)
+  };
+}
+
+function buildScopedMicrosequencePlans(projectDocument = {}, scope = {}) {
+  const { course, moduleValue, lesson } = findScopedLesson(projectDocument, scope);
+  const microsequence = (lesson?.microsequences || []).find((item) => text(item?.key) === text(scope?.microsequenceKey));
+  if (!course || !moduleValue || !lesson || !microsequence) {
+    return [];
+  }
+  return [
+    {
+      courseKey: text(course?.key),
+      moduleKey: text(moduleValue?.key),
+      lessonKey: text(lesson?.key),
+      microsequences: [
+        {
+          key: text(microsequence?.key),
+          title: text(microsequence?.title),
+          description: text(microsequence?.description),
+          objective: text(microsequence?.didacticPurpose || microsequence?.description),
+          domainRefs: Array.isArray(microsequence?.domainRefs) ? microsequence.domainRefs.map(text).filter(Boolean) : [],
+          practiceVariantRefs: Array.isArray(microsequence?.practiceVariantRefs)
+            ? microsequence.practiceVariantRefs.map(text).filter(Boolean)
+            : [],
+          didacticPurpose: text(microsequence?.didacticPurpose),
+          coverageRole: text(microsequence?.coverageRole),
+          tags: Array.isArray(microsequence?.tags) ? microsequence.tags.map(text).filter(Boolean) : []
+        }
+      ]
+    }
+  ];
+}
+
 function normalizeLessonPlans(payload = {}, architectureDraft = {}) {
   const explicit = Array.isArray(payload?.lessonPlans) ? payload.lessonPlans : [];
   if (explicit.length) {
@@ -562,6 +625,23 @@ export async function runCourseForge({
           throw new Error(`Planejamento de microssequências ainda falhou na cobertura didática: ${context.microsequenceAdherenceAudit.issues.map((item) => item.evidence).join(" ")}`);
         }
       } else if (phaseId === "build_microsequence_contract") {
+        if (intent.scope?.level === "microsequence") {
+          if (!context.lessonPlans?.length) {
+            const scopedLessonPlan = buildScopedLessonPlan(context.projectDocument, intent.scope);
+            if (!scopedLessonPlan) {
+              throw new Error("Escopo de microssequência sem lição válida para montar contrato.");
+            }
+            context.lessonPlans = [scopedLessonPlan];
+            artifactStore.saveArtifact(runId, "lesson-plans", context.lessonPlans);
+          }
+          if (!context.microsequencePlans?.length) {
+            context.microsequencePlans = buildScopedMicrosequencePlans(context.projectDocument, intent.scope);
+            if (!context.microsequencePlans.length) {
+              throw new Error("Escopo de microssequência sem microssequência válida para gerar cards.");
+            }
+            artifactStore.saveArtifact(runId, "microsequence-plans", context.microsequencePlans);
+          }
+        }
         context.microsequenceContracts = buildCourseForgeMicrosequenceContracts({
           lessonPlans: context.lessonPlans || [],
           microsequencePlans: context.microsequencePlans || [],
@@ -808,10 +888,14 @@ export async function runCourseForge({
         }));
         context.patch = compileCourseStructureToPatch({
           intent,
-          architectureDraft: {
-            ...(context.architectureFinal || context.architectureDraft || {}),
-            microsequencePlans: microsequencePlansWithCards
-          },
+          architectureDraft: context.architectureFinal || context.architectureDraft
+            ? {
+                ...(context.architectureFinal || context.architectureDraft || {}),
+                microsequencePlans: microsequencePlansWithCards
+              }
+            : {
+                microsequencePlans: microsequencePlansWithCards
+              },
           projectDocument: context.projectDocument
         });
         artifactStore.saveArtifact(runId, "patch-final", context.patch);
