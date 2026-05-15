@@ -520,6 +520,23 @@ test("top-down com fake provider gera curso completo em memória", async () => {
   assert.equal(finalReport.content.executedGenerationDepth, "full_course");
   assert.equal(finalReport.content.deferredGenerationDepth, "");
   assert.equal(finalReport.content.deferredPhases.length, 0);
+
+  const planArchitecturePhase = result.runState.phases.find((phase) => phase.phaseId === "plan_architecture");
+  const buildCardsPhase = result.runState.phases.find((phase) => phase.phaseId === "build_cards");
+  const finalReportPhase = result.runState.phases.find((phase) => phase.phaseId === "final_report");
+  assert.equal(planArchitecturePhase.modelId, "codex-cli-local");
+  assert.deepEqual(planArchitecturePhase.target, {
+    level: "project",
+    courseKey: "",
+    moduleKey: "",
+    lessonKey: "",
+    microsequenceKey: ""
+  });
+  assert.ok(planArchitecturePhase.artifactIds.some((artifactId) => artifactId.endsWith(":architecture-draft")));
+  assert.equal(buildCardsPhase.modelId, "codex-cli-local");
+  assert.ok(buildCardsPhase.artifactIds.some((artifactId) => artifactId.endsWith(":card-drafts")));
+  assert.equal(finalReportPhase.modelId, "");
+  assert.ok(finalReportPhase.artifactIds.some((artifactId) => artifactId.endsWith(":final-report")));
 });
 
 test("audit_architecture reprovada aciona repair_architecture e aplica versão corrigida", async () => {
@@ -1153,6 +1170,25 @@ test("top-down em escopo de microssequência recompõe cards na microssequência
   assert.equal(microsequence.status, "ready");
   assert.equal(microsequence.included, true);
   assert.ok(result.patch.operations.some((item) => item.op === "replace_microsequence_cards"));
+  const buildContractPhase = result.runState.phases.find((phase) => phase.phaseId === "build_microsequence_contract");
+  const buildCardsPhase = result.runState.phases.find((phase) => phase.phaseId === "build_cards");
+  assert.deepEqual(buildContractPhase.target, {
+    level: "microsequence",
+    courseKey: "course-logica",
+    moduleKey: "module-base",
+    lessonKey: "lesson-proposicoes",
+    microsequenceKey: "microsequence-revisao"
+  });
+  assert.deepEqual(buildCardsPhase.target, {
+    level: "microsequence",
+    courseKey: "course-logica",
+    moduleKey: "module-base",
+    lessonKey: "lesson-proposicoes",
+    microsequenceKey: "microsequence-revisao"
+  });
+  assert.equal(buildCardsPhase.modelId, "codex-cli-local");
+  assert.ok(buildContractPhase.artifactIds.some((artifactId) => artifactId.endsWith(":microsequence-contracts")));
+  assert.ok(buildCardsPhase.artifactIds.some((artifactId) => artifactId.endsWith(":card-drafts")));
 });
 
 test("top-down em escopo de lição gera microssequências e cards sem depender de arquitetura nova", async () => {

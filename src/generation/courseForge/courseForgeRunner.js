@@ -371,6 +371,76 @@ function inferFailureCategoryFromPhase(phaseId = "") {
   return "";
 }
 
+function buildScopeTarget(scope = {}) {
+  return {
+    level: text(scope?.level) || "project",
+    courseKey: text(scope?.courseKey),
+    moduleKey: text(scope?.moduleKey),
+    lessonKey: text(scope?.lessonKey),
+    microsequenceKey: text(scope?.microsequenceKey)
+  };
+}
+
+function buildMicrosequenceTarget(entry = {}) {
+  return {
+    level: "microsequence",
+    courseKey: text(entry?.courseKey),
+    moduleKey: text(entry?.moduleKey),
+    lessonKey: text(entry?.lessonKey),
+    microsequenceKey: text(entry?.microsequenceKey || entry?.key)
+  };
+}
+
+function derivePhaseTarget({ phaseId = "", intent = {}, context = {} } = {}) {
+  if (["build_microsequence_contract", "build_cards", "audit_cards", "audit_source_adherence", "repair_cards", "repair_card_adherence"].includes(phaseId)) {
+    const microsequencePlans = Array.isArray(context?.microsequencePlans) ? context.microsequencePlans : [];
+    if (microsequencePlans.length === 1) {
+      const microsequences = Array.isArray(microsequencePlans[0]?.microsequences) ? microsequencePlans[0].microsequences : [];
+      if (microsequences.length === 1) {
+        return buildMicrosequenceTarget({
+          courseKey: microsequencePlans[0]?.courseKey,
+          moduleKey: microsequencePlans[0]?.moduleKey,
+          lessonKey: microsequencePlans[0]?.lessonKey,
+          key: microsequences[0]?.key
+        });
+      }
+    }
+  }
+  return buildScopeTarget(intent.scope);
+}
+
+function resolvePhaseModelId(intent = {}, phaseId = "") {
+  if (![
+    "plan_architecture",
+    "audit_architecture",
+    "repair_architecture",
+    "plan_lessons",
+    "plan_microsequences",
+    "audit_microsequences",
+    "repair_microsequences",
+    "build_cards",
+    "repair_cards",
+    "repair_card_adherence"
+  ].includes(phaseId)) {
+    return "";
+  }
+  return resolveModelForCourseForgePhase({ ...intent, phaseId });
+}
+
+function trackArtifactId(artifactIds = [], artifact = null) {
+  if (!artifact?.id || artifactIds.includes(artifact.id)) {
+    return artifactIds;
+  }
+  artifactIds.push(artifact.id);
+  return artifactIds;
+}
+
+function savePhaseArtifact(artifactStore, runId, artifactIds, artifactName, content, metadata = {}) {
+  const artifact = artifactStore.saveArtifact(runId, artifactName, content, metadata);
+  trackArtifactId(artifactIds, artifact);
+  return artifact;
+}
+
 export async function runCourseForge({
   intent: rawIntent,
   projectDocument,
@@ -417,16 +487,22 @@ export async function runCourseForge({
       continue;
     }
 
+    const phaseArtifactIds = [];
+    const phaseModelId = resolvePhaseModelId(intent, phaseId);
+
     runState = markCourseForgePhase(runState, phaseId, {
       status: "running",
+      target: derivePhaseTarget({ phaseId, intent, context }),
+      modelId: phaseModelId,
       startedAt: new Date().toISOString(),
-      attempts: (phaseState?.attempts || 0) + 1
+      attempts: (phaseState?.attempts || 0) + 1,
+      artifactIds: []
     });
     artifactStore.saveRun(runId, { runState, intent });
 
     try {
       if (phaseId === "normalize_intent") {
-        artifactStore.saveArtifact(runId, "intent", intent);
+        savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "intent", intent);
       } else if (phaseId === "index_sources") {
         const localLedger = buildInlineSourceLedger(intent);
         const result = validateCourseForgeSourceLedger(localLedger);
@@ -434,13 +510,12 @@ export async function runCourseForge({
           throw new Error(result.errors.join(" "));
         }
         context.sourceLedger = result.sourceLedger;
-        artifactStore.saveArtifact(runId, "source-ledger", context.sourceLedger);
+        savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "source-ledger", context.sourceLedger);
       } else if (phaseId === "plan_architecture") {
-        const modelId = resolveModelForCourseForgePhase({ ...intent, phaseId });
         const response = await callProviderPhase({
           provider,
           phaseId,
-          modelId,
+          modelId: phaseModelId,
           prompt: buildCourseForgePrompt({
             role: "Você planeja a estrutura didática top-down do AraLearn.",
             sourcePack: JSON.stringify(context.sourceLedger || []),
@@ -451,7 +526,7 @@ export async function runCourseForge({
           artifacts: [{ id: "intent", name: "intent", content: JSON.stringify(intent) }]
         });
         context.architectureDraft = structuredClone(readArchitectureValue(response.value || response));
-        artifactStore.saveArtifact(runId, "architecture-draft", context.architectureDraft);
+        savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "architecture-draft", context.architectureDraft);
       } else if (phaseId === "audit_architecture") {
         const localAudit = validateCourseForgeArchitectureDraft({
           architectureDraft: context.architectureDraft || {},
@@ -460,11 +535,10 @@ export async function runCourseForge({
         });
         let providerAudit = { approved: true, blockingIssues: [], warnings: [] };
         if (provider?.id !== "fake" || provider?.capabilities?.provider === "fake") {
-          const modelId = resolveModelForCourseForgePhase({ ...intent, phaseId });
           const response = await callProviderPhase({
             provider,
             phaseId,
-            modelId,
+            modelId: phaseModelId,
             prompt: buildCourseForgePrompt({
               role: "Você audita a arquitetura didática proposta para o AraLearn.",
               sourcePack: JSON.stringify(context.sourceLedger || []),
@@ -480,18 +554,17 @@ export async function runCourseForge({
           providerAudit = structuredClone(response.value || response || providerAudit);
         }
         context.architectureAudit = mergeCourseForgeArchitectureAudits(localAudit, providerAudit);
-        artifactStore.saveArtifact(runId, "architecture-audit", context.architectureAudit);
+        savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "architecture-audit", context.architectureAudit);
       } else if (phaseId === "repair_architecture") {
         const audit = context.architectureAudit || { approved: true, blockingIssues: [], warnings: [] };
         if (audit.approved && !(audit.blockingIssues || []).length) {
           context.architectureFinal = structuredClone(context.architectureDraft || {});
-          artifactStore.saveArtifact(runId, "architecture-final", context.architectureFinal);
+          savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "architecture-final", context.architectureFinal);
         } else {
-          const modelId = resolveModelForCourseForgePhase({ ...intent, phaseId });
           const response = await callProviderPhase({
             provider,
             phaseId,
-            modelId,
+            modelId: phaseModelId,
             prompt: buildCourseForgePrompt({
               role: "Você repara a arquitetura didática top-down do AraLearn.",
               sourcePack: JSON.stringify(context.sourceLedger || []),
@@ -514,14 +587,13 @@ export async function runCourseForge({
           if (!finalAudit.ok) {
             throw new Error(`A arquitetura reparada ainda falhou na auditoria: ${finalAudit.blockingIssues.map((item) => item.evidence).join(" ")}`);
           }
-          artifactStore.saveArtifact(runId, "architecture-final", context.architectureFinal);
+          savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "architecture-final", context.architectureFinal);
         }
       } else if (phaseId === "plan_lessons") {
-        const modelId = resolveModelForCourseForgePhase({ ...intent, phaseId });
         const response = await callProviderPhase({
           provider,
           phaseId,
-          modelId,
+          modelId: phaseModelId,
           prompt: buildCourseForgePrompt({
             role: "Você normaliza o conjunto de lições planejadas para o AraLearn.",
             sourcePack: JSON.stringify(context.sourceLedger || []),
@@ -542,7 +614,7 @@ export async function runCourseForge({
         if (!lessonValidation.ok) {
           throw new Error(`Planejamento de lições inválido: ${lessonValidation.errors.join(" ")}`);
         }
-        artifactStore.saveArtifact(runId, "lesson-plans", context.lessonPlans);
+        savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "lesson-plans", context.lessonPlans);
       } else if (phaseId === "plan_microsequences") {
         if (["lesson", "module", "course"].includes(intent.scope?.level) && !context.lessonPlans?.length) {
           if (intent.scope?.level === "lesson") {
@@ -562,13 +634,12 @@ export async function runCourseForge({
               throw new Error("Escopo de curso sem lições válidas para planejar microssequências.");
             }
           }
-          artifactStore.saveArtifact(runId, "lesson-plans", context.lessonPlans);
+          savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "lesson-plans", context.lessonPlans);
         }
-        const modelId = resolveModelForCourseForgePhase({ ...intent, phaseId });
         const response = await callProviderPhase({
           provider,
           phaseId,
-          modelId,
+          modelId: phaseModelId,
           prompt: buildCourseForgePrompt({
             role: "Você planeja microssequências para as lições do AraLearn.",
             sourcePack: JSON.stringify(context.sourceLedger || []),
@@ -582,7 +653,7 @@ export async function runCourseForge({
           ]
         });
         context.microsequencePlans = normalizeMicrosequencePlans(response.value || response || {}, context.lessonPlans || []);
-        artifactStore.saveArtifact(runId, "microsequence-plans", context.microsequencePlans);
+        savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "microsequence-plans", context.microsequencePlans);
       } else if (phaseId === "audit_microsequences") {
         const localAudit = validateCourseForgeMicrosequencePlans({
           microsequencePlans: context.microsequencePlans || [],
@@ -593,11 +664,10 @@ export async function runCourseForge({
         }
         let providerAudit = { approved: true, issues: [], warnings: [] };
         if (provider?.id !== "fake" || provider?.capabilities?.provider === "fake") {
-          const modelId = resolveModelForCourseForgePhase({ ...intent, phaseId });
           const response = await callProviderPhase({
             provider,
             phaseId,
-            modelId,
+            modelId: phaseModelId,
             prompt: buildCourseForgePrompt({
               role: "Você audita o planejamento de microssequências do AraLearn.",
               sourcePack: JSON.stringify(context.sourceLedger || []),
@@ -630,7 +700,7 @@ export async function runCourseForge({
         if (providerAudit.approved === false || blockingIssues.length) {
           throw new Error("Auditoria de microssequências reprovou o planejamento atual.");
         }
-        artifactStore.saveArtifact(runId, "microsequence-audit", context.microsequenceAudit);
+        savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "microsequence-audit", context.microsequenceAudit);
       } else if (phaseId === "repair_microsequences") {
         runState = updateCourseForgeRunState(runState, {
           metrics: updateMetricsCategory(runState.metrics, "planning", {
@@ -648,11 +718,10 @@ export async function runCourseForge({
         context.microsequenceAdherenceAudit = adherenceAudit;
 
         if (hasBlockingIssues(adherenceAudit)) {
-          const modelId = resolveModelForCourseForgePhase({ ...intent, phaseId });
           const response = await callProviderPhase({
             provider,
             phaseId,
-            modelId,
+            modelId: phaseModelId,
             prompt: buildCourseForgePrompt({
               role: "Você repara o planejamento de microssequências do AraLearn.",
               sourcePack: JSON.stringify(context.sourceLedger || []),
@@ -682,8 +751,8 @@ export async function runCourseForge({
           context.microsequenceAdherenceAudit = adherenceAudit;
         }
 
-        artifactStore.saveArtifact(runId, "microsequence-plans", context.microsequencePlans);
-        artifactStore.saveArtifact(runId, "microsequence-adherence-audit", context.microsequenceAdherenceAudit);
+        savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "microsequence-plans", context.microsequencePlans);
+        savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "microsequence-adherence-audit", context.microsequenceAdherenceAudit);
         runState = updateCourseForgeRunState(runState, {
           metrics: updateMetricsCategory(runState.metrics, "planning", {
             issueCount: sumBlockingIssues(context.microsequenceAdherenceAudit),
@@ -701,14 +770,14 @@ export async function runCourseForge({
               throw new Error("Escopo de microssequência sem lição válida para montar contrato.");
             }
             context.lessonPlans = [scopedLessonPlan];
-            artifactStore.saveArtifact(runId, "lesson-plans", context.lessonPlans);
+            savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "lesson-plans", context.lessonPlans);
           }
           if (!context.microsequencePlans?.length) {
             context.microsequencePlans = buildScopedMicrosequencePlans(context.projectDocument, intent.scope);
             if (!context.microsequencePlans.length) {
               throw new Error("Escopo de microssequência sem microssequência válida para gerar cards.");
             }
-            artifactStore.saveArtifact(runId, "microsequence-plans", context.microsequencePlans);
+            savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "microsequence-plans", context.microsequencePlans);
           }
         }
         context.microsequenceContracts = buildCourseForgeMicrosequenceContracts({
@@ -716,15 +785,14 @@ export async function runCourseForge({
           microsequencePlans: context.microsequencePlans || [],
           sourceLedger: context.sourceLedger || []
         });
-        artifactStore.saveArtifact(runId, "microsequence-contracts", context.microsequenceContracts);
+        savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "microsequence-contracts", context.microsequenceContracts);
       } else if (phaseId === "build_cards") {
-        const modelId = resolveModelForCourseForgePhase({ ...intent, phaseId });
         context.cardDrafts = [];
         for (const microsequenceContract of context.microsequenceContracts || []) {
           const response = await callProviderPhase({
             provider,
             phaseId,
-            modelId,
+            modelId: phaseModelId,
             prompt: buildCourseForgePrompt({
               role: "Você constrói cards didáticos para uma microssequência do AraLearn.",
               sourcePack: JSON.stringify(context.sourceLedger || []),
@@ -739,7 +807,7 @@ export async function runCourseForge({
           });
           context.cardDrafts.push(normalizeCourseForgeCardsPayload(response.value || response || {}, microsequenceContract));
         }
-        artifactStore.saveArtifact(runId, "card-drafts", context.cardDrafts);
+        savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "card-drafts", context.cardDrafts);
       } else if (phaseId === "audit_cards") {
         context.cardsAudit = auditCourseForgeCardDrafts({
           cardDrafts: context.cardDrafts || [],
@@ -750,7 +818,7 @@ export async function runCourseForge({
           context.cardsAudit.normalizedDrafts.length === (context.cardDrafts || []).length
         ) {
           context.cardDrafts = context.cardsAudit.normalizedDrafts;
-          artifactStore.saveArtifact(runId, "card-drafts", context.cardDrafts);
+          savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "card-drafts", context.cardDrafts);
         }
         runState = updateCourseForgeRunState(runState, {
           metrics: updateMetricsCategory(runState.metrics, "cards", {
@@ -758,7 +826,7 @@ export async function runCourseForge({
             lastFailureCategory: hasBlockingIssues(context.cardsAudit) ? "cards" : runState?.metrics?.lastFailureCategory || ""
           })
         });
-        artifactStore.saveArtifact(runId, "cards-audit", context.cardsAudit);
+        savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "cards-audit", context.cardsAudit);
       } else if (phaseId === "audit_source_adherence") {
         const sourceGroundingAudit = auditCourseForgeSourceAdherence({
           cardDrafts: context.cardDrafts || [],
@@ -771,12 +839,12 @@ export async function runCourseForge({
             lastFailureCategory: hasBlockingIssues(context.sourceAdherenceAudit) ? "adherence" : runState?.metrics?.lastFailureCategory || ""
           })
         });
-        artifactStore.saveArtifact(runId, "source-adherence-audit", context.sourceAdherenceAudit);
+        savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "source-adherence-audit", context.sourceAdherenceAudit);
       } else if (phaseId === "repair_cards") {
         const cardIssues = mergeCardAudits(context.cardsAudit || {});
         if (!hasBlockingIssues(cardIssues)) {
           context.cardsFinal = cloneCardsFinalFromDrafts(context.cardDrafts || []);
-          artifactStore.saveArtifact(runId, "cards-final", context.cardsFinal);
+          savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "cards-final", context.cardsFinal);
         } else {
           runState = updateCourseForgeRunState(runState, {
             metrics: updateMetricsCategory(runState.metrics, "cards", {
@@ -789,7 +857,6 @@ export async function runCourseForge({
             microsequenceContracts: context.microsequenceContracts || []
           });
           if (hasBlockingIssues(mergeCardAudits(postRepairCardsAudit))) {
-            const modelId = resolveModelForCourseForgePhase({ ...intent, phaseId });
             const repairedByProvider = [];
             for (const microsequenceContract of context.microsequenceContracts || []) {
               const currentDraft = repairedDrafts.find((entry) => entry.contractId === microsequenceContract.contractId);
@@ -801,7 +868,7 @@ export async function runCourseForge({
               const response = await callProviderPhase({
                 provider,
                 phaseId,
-                modelId,
+                modelId: phaseModelId,
                 prompt: buildCourseForgePrompt({
                   role: "Você repara cards didáticos já planejados para o AraLearn.",
                   sourcePack: JSON.stringify(context.sourceLedger || []),
@@ -827,16 +894,16 @@ export async function runCourseForge({
 
           const finalAudit = mergeCardAudits(postRepairCardsAudit);
           context.cardsAudit = postRepairCardsAudit;
-          artifactStore.saveArtifact(runId, "cards-audit", context.cardsAudit);
+          savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "cards-audit", context.cardsAudit);
           if (hasBlockingIssues(finalAudit)) {
             throw new Error(`Os cards ainda falharam na auditoria: ${finalAudit.issues.map((item) => item.evidence).join(" ")}`);
           }
           context.cardDrafts = Array.isArray(postRepairCardsAudit.normalizedDrafts) && postRepairCardsAudit.normalizedDrafts.length
             ? structuredClone(postRepairCardsAudit.normalizedDrafts)
             : structuredClone(repairedDrafts);
-          artifactStore.saveArtifact(runId, "card-drafts", context.cardDrafts);
+          savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "card-drafts", context.cardDrafts);
           context.cardsFinal = cloneCardsFinalFromDrafts(context.cardDrafts);
-          artifactStore.saveArtifact(runId, "cards-final", context.cardsFinal);
+          savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "cards-final", context.cardsFinal);
         }
         runState = updateCourseForgeRunState(runState, {
           metrics: updateMetricsCategory(runState.metrics, "cards", {
@@ -855,9 +922,9 @@ export async function runCourseForge({
             context.cardDrafts = Array.isArray(normalizedCards.normalizedDrafts) && normalizedCards.normalizedDrafts.length
               ? structuredClone(normalizedCards.normalizedDrafts)
               : structuredClone(context.cardDrafts || []);
-            artifactStore.saveArtifact(runId, "card-drafts", context.cardDrafts);
+            savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "card-drafts", context.cardDrafts);
             context.cardsFinal = cloneCardsFinalFromDrafts(context.cardDrafts);
-            artifactStore.saveArtifact(runId, "cards-final", context.cardsFinal);
+            savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "cards-final", context.cardsFinal);
           }
         } else {
           runState = updateCourseForgeRunState(runState, {
@@ -875,7 +942,6 @@ export async function runCourseForge({
           });
 
           if (hasBlockingIssues(postRepairSourceAudit)) {
-            const modelId = resolveModelForCourseForgePhase({ ...intent, phaseId });
             const repairedByProvider = [];
             for (const microsequenceContract of context.microsequenceContracts || []) {
               const currentDraft = repairedDrafts.find((entry) => entry.contractId === microsequenceContract.contractId);
@@ -887,7 +953,7 @@ export async function runCourseForge({
               const response = await callProviderPhase({
                 provider,
                 phaseId,
-                modelId,
+                modelId: phaseModelId,
                 prompt: buildCourseForgePrompt({
                   role: "Você repara aderência editorial e grounding de cards do AraLearn.",
                   sourcePack: JSON.stringify(context.sourceLedger || []),
@@ -919,14 +985,14 @@ export async function runCourseForge({
           context.cardDrafts = Array.isArray(normalizedCards.normalizedDrafts) && normalizedCards.normalizedDrafts.length
             ? structuredClone(normalizedCards.normalizedDrafts)
             : structuredClone(context.cardDrafts);
-          artifactStore.saveArtifact(runId, "card-drafts", context.cardDrafts);
+          savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "card-drafts", context.cardDrafts);
           context.sourceAdherenceAudit = postRepairSourceAudit;
-          artifactStore.saveArtifact(runId, "source-adherence-audit", context.sourceAdherenceAudit);
+          savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "source-adherence-audit", context.sourceAdherenceAudit);
           if (hasBlockingIssues(postRepairSourceAudit)) {
             throw new Error(`Os cards ainda falharam na aderência editorial: ${postRepairSourceAudit.issues.map((item) => item.evidence).join(" ")}`);
           }
           context.cardsFinal = cloneCardsFinalFromDrafts(context.cardDrafts);
-          artifactStore.saveArtifact(runId, "cards-final", context.cardsFinal);
+          savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "cards-final", context.cardsFinal);
         }
         runState = updateCourseForgeRunState(runState, {
           metrics: updateMetricsCategory(runState.metrics, "adherence", {
@@ -967,7 +1033,7 @@ export async function runCourseForge({
               },
           projectDocument: context.projectDocument
         });
-        artifactStore.saveArtifact(runId, "patch-final", context.patch);
+        savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "patch-final", context.patch);
       } else if (phaseId === "validate_patch") {
         const validation = validateCourseForgePatch(context.patch, { intent });
         if (!validation.ok) {
@@ -975,11 +1041,11 @@ export async function runCourseForge({
         }
       } else if (phaseId === "apply_patch") {
         context.projectDocument = applyCourseForgePatch(context.projectDocument, context.patch, { intent });
-        artifactStore.saveArtifact(runId, "project-after-patch", context.projectDocument);
+        savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "project-after-patch", context.projectDocument);
       } else if (phaseId === "final_report") {
         const diagnosticsSummary = buildDiagnosticsSummary(context, runState, phases);
-        artifactStore.saveArtifact(runId, "diagnostics-summary", diagnosticsSummary);
-        artifactStore.saveArtifact(runId, "final-report", {
+        savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "diagnostics-summary", diagnosticsSummary);
+        savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "final-report", {
           runId,
           status: "completed",
           phases,
@@ -995,7 +1061,9 @@ export async function runCourseForge({
 
       runState = markCourseForgePhase(runState, phaseId, {
         status: "completed",
-        finishedAt: new Date().toISOString()
+        target: derivePhaseTarget({ phaseId, intent, context }),
+        finishedAt: new Date().toISOString(),
+        artifactIds: phaseArtifactIds
       });
       artifactStore.saveRun(runId, { runState, intent });
     } catch (error) {
