@@ -168,6 +168,13 @@ function mergeCardAudits(...audits) {
   };
 }
 
+function cloneCardsFinalFromDrafts(cardDrafts = []) {
+  return (Array.isArray(cardDrafts) ? cardDrafts : []).map((entry) => ({
+    ...structuredClone(entry),
+    publicCards: Array.isArray(entry?.publicCards) ? structuredClone(entry.publicCards) : []
+  }));
+}
+
 export async function runCourseForge({
   intent: rawIntent,
   projectDocument,
@@ -501,49 +508,25 @@ export async function runCourseForge({
           cardDrafts: context.cardDrafts || [],
           sourceLedger: context.sourceLedger || []
         });
-        const domainCoverageAudit = auditCourseForgeDomainCoverage({
-          microsequencePlans: context.microsequencePlans || [],
-          lessonPlans: context.lessonPlans || []
-        });
-        context.sourceAdherenceAudit = mergeCourseForgeAdherenceAudits(sourceGroundingAudit, domainCoverageAudit);
+        context.sourceAdherenceAudit = sourceGroundingAudit;
         artifactStore.saveArtifact(runId, "source-adherence-audit", context.sourceAdherenceAudit);
       } else if (phaseId === "repair_cards") {
-        const combinedAudit = mergeCardAudits(context.cardsAudit || {}, context.sourceAdherenceAudit || {});
-        if (!hasBlockingIssues(combinedAudit)) {
-          context.cardsFinal = structuredClone(context.cardDrafts || []);
+        const cardIssues = mergeCardAudits(context.cardsAudit || {});
+        if (!hasBlockingIssues(cardIssues)) {
+          context.cardsFinal = cloneCardsFinalFromDrafts(context.cardDrafts || []);
           artifactStore.saveArtifact(runId, "cards-final", context.cardsFinal);
         } else {
-          context.microsequencePlans = repairCourseForgeMicrosequenceMetadataDeterministically({
-            microsequencePlans: context.microsequencePlans || [],
-            lessonPlans: context.lessonPlans || []
-          });
-          artifactStore.saveArtifact(runId, "microsequence-plans", context.microsequencePlans);
-          let repairedDrafts = repairCourseForgeDraftCardsDeterministically({
-            cardDrafts: context.cardDrafts || [],
-            sourceLedger: context.sourceLedger || []
-          });
+          let repairedDrafts = structuredClone(context.cardDrafts || []);
           let postRepairCardsAudit = auditCourseForgeCardDrafts({
             cardDrafts: repairedDrafts,
             microsequenceContracts: context.microsequenceContracts || []
           });
-          let postRepairSourceAudit = auditCourseForgeSourceAdherence({
-            cardDrafts: repairedDrafts,
-            sourceLedger: context.sourceLedger || []
-          });
-          postRepairSourceAudit = mergeCourseForgeAdherenceAudits(
-            postRepairSourceAudit,
-            auditCourseForgeDomainCoverage({
-              microsequencePlans: context.microsequencePlans || [],
-              lessonPlans: context.lessonPlans || []
-            })
-          );
-
-          if (hasBlockingIssues(mergeCardAudits(postRepairCardsAudit, postRepairSourceAudit))) {
+          if (hasBlockingIssues(mergeCardAudits(postRepairCardsAudit))) {
             const modelId = resolveModelForCourseForgePhase({ ...intent, phaseId });
             const repairedByProvider = [];
             for (const microsequenceContract of context.microsequenceContracts || []) {
               const currentDraft = repairedDrafts.find((entry) => entry.contractId === microsequenceContract.contractId);
-              const relatedIssues = combinedAudit.issues.filter((item) => item?.contractId === microsequenceContract.contractId);
+              const relatedIssues = cardIssues.issues.filter((item) => item?.contractId === microsequenceContract.contractId);
               if (!relatedIssues.length) {
                 repairedByProvider.push(structuredClone(currentDraft));
                 continue;
@@ -573,28 +556,98 @@ export async function runCourseForge({
               cardDrafts: repairedDrafts,
               microsequenceContracts: context.microsequenceContracts || []
             });
+          }
+
+          const finalAudit = mergeCardAudits(postRepairCardsAudit);
+          context.cardsAudit = postRepairCardsAudit;
+          artifactStore.saveArtifact(runId, "cards-audit", context.cardsAudit);
+          if (hasBlockingIssues(finalAudit)) {
+            throw new Error(`Os cards ainda falharam na auditoria: ${finalAudit.issues.map((item) => item.evidence).join(" ")}`);
+          }
+          context.cardDrafts = Array.isArray(postRepairCardsAudit.normalizedDrafts) && postRepairCardsAudit.normalizedDrafts.length
+            ? structuredClone(postRepairCardsAudit.normalizedDrafts)
+            : structuredClone(repairedDrafts);
+          artifactStore.saveArtifact(runId, "card-drafts", context.cardDrafts);
+          context.cardsFinal = cloneCardsFinalFromDrafts(context.cardDrafts);
+          artifactStore.saveArtifact(runId, "cards-final", context.cardsFinal);
+        }
+      } else if (phaseId === "repair_card_adherence") {
+        const adherenceIssues = mergeCourseForgeAdherenceAudits(context.sourceAdherenceAudit || {});
+        if (!hasBlockingIssues(adherenceIssues)) {
+          if (!context.cardsFinal) {
+            const normalizedCards = auditCourseForgeCardDrafts({
+              cardDrafts: context.cardDrafts || [],
+              microsequenceContracts: context.microsequenceContracts || []
+            });
+            context.cardDrafts = Array.isArray(normalizedCards.normalizedDrafts) && normalizedCards.normalizedDrafts.length
+              ? structuredClone(normalizedCards.normalizedDrafts)
+              : structuredClone(context.cardDrafts || []);
+            artifactStore.saveArtifact(runId, "card-drafts", context.cardDrafts);
+            context.cardsFinal = cloneCardsFinalFromDrafts(context.cardDrafts);
+            artifactStore.saveArtifact(runId, "cards-final", context.cardsFinal);
+          }
+        } else {
+          let repairedDrafts = repairCourseForgeDraftCardsDeterministically({
+            cardDrafts: context.cardDrafts || [],
+            sourceLedger: context.sourceLedger || []
+          });
+          let postRepairSourceAudit = auditCourseForgeSourceAdherence({
+            cardDrafts: repairedDrafts,
+            sourceLedger: context.sourceLedger || []
+          });
+
+          if (hasBlockingIssues(postRepairSourceAudit)) {
+            const modelId = resolveModelForCourseForgePhase({ ...intent, phaseId });
+            const repairedByProvider = [];
+            for (const microsequenceContract of context.microsequenceContracts || []) {
+              const currentDraft = repairedDrafts.find((entry) => entry.contractId === microsequenceContract.contractId);
+              const relatedIssues = adherenceIssues.issues.filter((item) => item?.contractId === microsequenceContract.contractId);
+              if (!relatedIssues.length) {
+                repairedByProvider.push(structuredClone(currentDraft));
+                continue;
+              }
+              const response = await callProviderPhase({
+                provider,
+                phaseId,
+                modelId,
+                prompt: buildCourseForgePrompt({
+                  role: "Você repara aderência editorial e grounding de cards do AraLearn.",
+                  sourcePack: JSON.stringify(context.sourceLedger || []),
+                  task: "Corrija apenas problemas de sourceRefs, aderência às fontes e formulação editorial associada ao grounding, sem trocar a função didática do card.",
+                  output: "Responda somente JSON válido com cards."
+                }),
+                schema: null,
+                artifacts: [
+                  { id: "intent", name: "intent", content: JSON.stringify(intent) },
+                  { id: "microsequence-contract", name: "microsequence-contract", content: JSON.stringify(microsequenceContract) },
+                  { id: "card-draft", name: "card-draft", content: JSON.stringify(currentDraft || {}) },
+                  { id: "adherence-issues", name: "adherence-issues", content: JSON.stringify(relatedIssues) }
+                ]
+              });
+              repairedByProvider.push(normalizeCourseForgeCardsPayload(response.value || response || {}, microsequenceContract));
+            }
+            repairedDrafts = repairedByProvider;
             postRepairSourceAudit = auditCourseForgeSourceAdherence({
               cardDrafts: repairedDrafts,
               sourceLedger: context.sourceLedger || []
             });
-            postRepairSourceAudit = mergeCourseForgeAdherenceAudits(
-              postRepairSourceAudit,
-              auditCourseForgeDomainCoverage({
-                microsequencePlans: context.microsequencePlans || [],
-                lessonPlans: context.lessonPlans || []
-              })
-            );
           }
 
-          const finalAudit = mergeCardAudits(postRepairCardsAudit, postRepairSourceAudit);
-          context.cardsAudit = postRepairCardsAudit;
+          context.cardDrafts = structuredClone(repairedDrafts);
+          const normalizedCards = auditCourseForgeCardDrafts({
+            cardDrafts: context.cardDrafts || [],
+            microsequenceContracts: context.microsequenceContracts || []
+          });
+          context.cardDrafts = Array.isArray(normalizedCards.normalizedDrafts) && normalizedCards.normalizedDrafts.length
+            ? structuredClone(normalizedCards.normalizedDrafts)
+            : structuredClone(context.cardDrafts);
+          artifactStore.saveArtifact(runId, "card-drafts", context.cardDrafts);
           context.sourceAdherenceAudit = postRepairSourceAudit;
-          artifactStore.saveArtifact(runId, "cards-audit", context.cardsAudit);
           artifactStore.saveArtifact(runId, "source-adherence-audit", context.sourceAdherenceAudit);
-          if (hasBlockingIssues(finalAudit)) {
-            throw new Error(`Os cards ainda falharam na auditoria: ${finalAudit.issues.map((item) => item.evidence).join(" ")}`);
+          if (hasBlockingIssues(postRepairSourceAudit)) {
+            throw new Error(`Os cards ainda falharam na aderência editorial: ${postRepairSourceAudit.issues.map((item) => item.evidence).join(" ")}`);
           }
-          context.cardsFinal = structuredClone(postRepairCardsAudit.normalizedDrafts || repairedDrafts);
+          context.cardsFinal = cloneCardsFinalFromDrafts(context.cardDrafts);
           artifactStore.saveArtifact(runId, "cards-final", context.cardsFinal);
         }
       } else if (phaseId === "compile_patch") {

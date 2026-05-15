@@ -118,6 +118,7 @@ test("phase resolution escolhe subfluxo estrutural e registra fases adiadas", ()
   ]);
   assert.ok(resolveCourseForgePhases(fullIntent).includes("plan_microsequences"));
   assert.ok(resolveCourseForgePhases(fullIntent).includes("repair_microsequences"));
+  assert.ok(resolveCourseForgePhases(fullIntent).includes("repair_card_adherence"));
   assert.equal(resolveDeferredCourseForgePhases(fullIntent).length, 0);
 });
 
@@ -1283,4 +1284,175 @@ test("repair_microsequences chama provider quando a cobertura do domainMap nao e
   assert.equal(adherenceAudit.content.approved, true);
   assert.deepEqual(microsequence.domainRefs, ["domain-and", "domain-or"]);
   assert.deepEqual(microsequence.practiceVariantRefs, ["variant-and", "variant-or"]);
+});
+
+test("repair_card_adherence separa grounding tardio de defeito estrutural dos cards", async () => {
+  const provider = createFakeProvider({
+    script: {
+      plan_architecture: [
+        {
+          course: {
+            key: "course-logica",
+            title: "Lógica",
+            description: "Curso.",
+            modules: [
+              {
+                key: "module-base",
+                title: "Base",
+                description: "Módulo.",
+                lessons: [
+                  {
+                    key: "lesson-proposicoes",
+                    title: "Proposições",
+                    description: "Lição.",
+                    sourceGuideStructured: {
+                      lessonGoal: "Reconhecer proposições.",
+                      notationRules: "Usar `p` e `q`.",
+                      commonErrors: "Confundir pergunta com proposição."
+                    },
+                    presetId: "default",
+                    resourceTags: ["paragraph", "multiple_choice"],
+                    contentTypeTags: ["theory"],
+                    learningActionTags: ["read"],
+                    supportLevel: "guided"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      audit_architecture: [{ approved: true, blockingIssues: [], warnings: [] }],
+      plan_lessons: [
+        {
+          lessonPlans: [
+            {
+              courseKey: "course-logica",
+              moduleKey: "module-base",
+              lessonKey: "lesson-proposicoes",
+              lessonTitle: "Proposições",
+              lessonDescription: "Lição.",
+              sourceGuideStructured: {
+                lessonGoal: "Reconhecer proposições.",
+                notationRules: "Usar `p` e `q`.",
+                commonErrors: "Confundir pergunta com proposição."
+              },
+              presetId: "default",
+              resourceTags: ["paragraph", "multiple_choice"],
+              contentTypeTags: ["theory"],
+              learningActionTags: ["read"],
+              supportLevel: "guided"
+            }
+          ]
+        }
+      ],
+      plan_microsequences: [
+        {
+          microsequencePlans: [
+            {
+              lessonKey: "lesson-proposicoes",
+              moduleKey: "module-base",
+              courseKey: "course-logica",
+              microsequences: [
+                {
+                  key: "microsequence-reconhecimento",
+                  title: "Reconhecimento inicial",
+                  objective: "Diferenciar proposições de outros enunciados.",
+                  coverageRole: "core"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      audit_microsequences: [{ approved: true, issues: [], warnings: [] }],
+      build_cards: [
+        {
+          cards: [
+            {
+              position: 1,
+              resourceType: "paragraph",
+              title: "O que é uma proposição",
+              text: "Uma proposição é um enunciado que pode ser verdadeiro ou falso.",
+              sourceRefs: ["src_inexistente"]
+            },
+            {
+              position: 2,
+              resourceType: "paragraph",
+              title: "Exemplo",
+              text: "`2 + 2 = 4` é proposição.",
+              sourceRefs: []
+            },
+            {
+              position: 3,
+              resourceType: "multiple_choice",
+              title: "Identificação",
+              question: "Qual opção é uma proposição?",
+              options: [
+                { optionId: "a", label: "Feche a porta." },
+                { optionId: "b", label: "2 + 2 = 4." },
+                { optionId: "c", label: "Que horas são?" }
+              ],
+              correctOptionId: "b",
+              feedback: "`2 + 2 = 4` admite valor de verdade.",
+              sourceRefs: []
+            }
+          ]
+        }
+      ],
+      repair_card_adherence: [
+        {
+          cards: [
+            {
+              position: 1,
+              resourceType: "paragraph",
+              title: "O que é uma proposição",
+              text: "Uma proposição é um enunciado que pode ser verdadeiro ou falso.",
+              sourceRefs: ["src_1"]
+            },
+            {
+              position: 2,
+              resourceType: "paragraph",
+              title: "Exemplo",
+              text: "`2 + 2 = 4` é proposição.",
+              sourceRefs: ["src_1"]
+            },
+            {
+              position: 3,
+              resourceType: "multiple_choice",
+              title: "Identificação",
+              question: "Qual opção é uma proposição?",
+              options: [
+                { optionId: "a", label: "Feche a porta." },
+                { optionId: "b", label: "2 + 2 = 4." },
+                { optionId: "c", label: "Que horas são?" }
+              ],
+              correctOptionId: "b",
+              feedback: "`2 + 2 = 4` admite valor de verdade.",
+              sourceRefs: ["src_1"]
+            }
+          ]
+        }
+      ]
+    }
+  });
+  const registry = createProviderRegistry({ providers: [provider] });
+  const result = await runCourseForge({
+    intent: {
+      operation: "create",
+      scope: { level: "project" },
+      promptText: "Criar curso de lógica.",
+      attachments: [{ id: "src_1", name: "ementa.pdf", type: "application/pdf" }]
+    },
+    projectDocument: createProject(),
+    providerRegistry: registry,
+    providerId: "fake"
+  });
+
+  const cardsAudit = result.artifacts.find((item) => item.name === "cards-audit");
+  const sourceAudit = result.artifacts.find((item) => item.name === "source-adherence-audit");
+  const microsequence = result.projectDocument.courses[0].modules[0].lessons[0].microsequences[0];
+  assert.equal(cardsAudit.content.approved, true);
+  assert.equal(sourceAudit.content.approved, true);
+  assert.equal(microsequence.cards[0].sourceRefs[0], "src_1");
 });

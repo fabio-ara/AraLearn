@@ -15,6 +15,7 @@ export const COURSE_FORGE_PHASE_IDS = Object.freeze([
   "audit_cards",
   "audit_source_adherence",
   "repair_cards",
+  "repair_card_adherence",
   "compile_patch",
   "validate_patch",
   "apply_patch",

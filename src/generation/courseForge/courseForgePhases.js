@@ -39,6 +39,7 @@ const FULL_PROJECT_PHASES = Object.freeze([
   "audit_cards",
   "audit_source_adherence",
   "repair_cards",
+  "repair_card_adherence",
   "compile_patch",
   "validate_patch",
   "apply_patch",
@@ -53,6 +54,7 @@ const FULL_MICROSEQUENCE_PHASES = Object.freeze([
   "audit_cards",
   "audit_source_adherence",
   "repair_cards",
+  "repair_card_adherence",
   "validate_patch",
   "apply_patch",
   "final_report"
