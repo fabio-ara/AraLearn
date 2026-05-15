@@ -117,6 +117,7 @@ test("phase resolution escolhe subfluxo estrutural e registra fases adiadas", ()
     "final_report"
   ]);
   assert.ok(resolveCourseForgePhases(fullIntent).includes("plan_microsequences"));
+  assert.ok(resolveCourseForgePhases(fullIntent).includes("repair_microsequences"));
   assert.equal(resolveDeferredCourseForgePhases(fullIntent).length, 0);
 });
 
@@ -1085,4 +1086,201 @@ test("audit_source_adherence usa domainMap explícito para fechar cobertura mín
   assert.deepEqual(microsequence.practiceVariantRefs, ["variant-lan-discriminacao"]);
   const sourceAudit = result.artifacts.find((item) => item.name === "source-adherence-audit");
   assert.equal(sourceAudit.content.approved, true);
+});
+
+test("repair_microsequences chama provider quando a cobertura do domainMap nao e inferivel deterministicamente", async () => {
+  const provider = createFakeProvider({
+    script: {
+      plan_architecture: [
+        {
+          course: {
+            key: "course-logica",
+            title: "Lógica",
+            description: "Curso.",
+            modules: [
+              {
+                key: "module-base",
+                title: "Base",
+                description: "Módulo.",
+                lessons: [
+                  {
+                    key: "lesson-conectivos",
+                    title: "Conectivos",
+                    description: "Lição.",
+                    sourceGuideStructured: {
+                      lessonGoal: "Ler e comparar conectivos.",
+                      notationRules: "Usar `∧` e `∨`.",
+                      commonErrors: "Confundir conjunção com disjunção."
+                    },
+                    domainMap: {
+                      items: [
+                        { id: "domain-and", label: "Reconhecer `∧`", kind: "notation", priority: "core" },
+                        { id: "domain-or", label: "Reconhecer `∨`", kind: "notation", priority: "core" }
+                      ],
+                      practiceVariants: [
+                        {
+                          id: "variant-and",
+                          domainItemRef: "domain-and",
+                          variantKind: "fluency",
+                          purpose: "Ler expressões com `∧`."
+                        },
+                        {
+                          id: "variant-or",
+                          domainItemRef: "domain-or",
+                          variantKind: "fluency",
+                          purpose: "Ler expressões com `∨`."
+                        }
+                      ]
+                    },
+                    presetId: "default",
+                    resourceTags: ["paragraph", "multiple_choice"],
+                    contentTypeTags: ["theory"],
+                    learningActionTags: ["read", "practice"],
+                    supportLevel: "guided"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      audit_architecture: [{ approved: true, blockingIssues: [], warnings: [] }],
+      plan_lessons: [
+        {
+          lessonPlans: [
+            {
+              courseKey: "course-logica",
+              moduleKey: "module-base",
+              lessonKey: "lesson-conectivos",
+              lessonTitle: "Conectivos",
+              lessonDescription: "Lição.",
+              sourceGuideStructured: {
+                lessonGoal: "Ler e comparar conectivos.",
+                notationRules: "Usar `∧` e `∨`.",
+                commonErrors: "Confundir conjunção com disjunção."
+              },
+              domainMap: {
+                items: [
+                  { id: "domain-and", label: "Reconhecer `∧`", kind: "notation", priority: "core" },
+                  { id: "domain-or", label: "Reconhecer `∨`", kind: "notation", priority: "core" }
+                ],
+                practiceVariants: [
+                  {
+                    id: "variant-and",
+                    domainItemRef: "domain-and",
+                    variantKind: "fluency",
+                    purpose: "Ler expressões com `∧`."
+                  },
+                  {
+                    id: "variant-or",
+                    domainItemRef: "domain-or",
+                    variantKind: "fluency",
+                    purpose: "Ler expressões com `∨`."
+                  }
+                ]
+              },
+              presetId: "default",
+              resourceTags: ["paragraph", "multiple_choice"],
+              contentTypeTags: ["theory"],
+              learningActionTags: ["read", "practice"],
+              supportLevel: "guided"
+            }
+          ]
+        }
+      ],
+      plan_microsequences: [
+        {
+          microsequencePlans: [
+            {
+              lessonKey: "lesson-conectivos",
+              moduleKey: "module-base",
+              courseKey: "course-logica",
+              microsequences: [
+                {
+                  key: "microsequence-comparacao",
+                  title: "Comparação inicial",
+                  objective: "Comparar `∧` e `∨`.",
+                  coverageRole: "practice"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      audit_microsequences: [{ approved: true, issues: [], warnings: [] }],
+      repair_microsequences: [
+        {
+          microsequencePlans: [
+            {
+              lessonKey: "lesson-conectivos",
+              moduleKey: "module-base",
+              courseKey: "course-logica",
+              microsequences: [
+                {
+                  key: "microsequence-comparacao",
+                  title: "Comparação inicial",
+                  objective: "Comparar `∧` e `∨`.",
+                  coverageRole: "practice",
+                  domainRefs: ["domain-and", "domain-or"],
+                  practiceVariantRefs: ["variant-and", "variant-or"]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      build_cards: [
+        {
+          cards: [
+            {
+              position: 1,
+              resourceType: "paragraph",
+              title: "Lendo conectivos",
+              text: "`p ∧ q` exige que as duas proposições sejam verdadeiras.",
+              sourceRefs: ["src_1"]
+            },
+            {
+              position: 2,
+              resourceType: "paragraph",
+              title: "Contraste",
+              text: "`p ∨ q` basta quando pelo menos uma proposição é verdadeira.",
+              sourceRefs: ["src_1"]
+            },
+            {
+              position: 3,
+              resourceType: "multiple_choice",
+              title: "Comparação",
+              question: "Qual conectivo exige duas proposições verdadeiras?",
+              options: [
+                { optionId: "a", label: "`∧`" },
+                { optionId: "b", label: "`∨`" },
+                { optionId: "c", label: "Nenhum dos dois" }
+              ],
+              correctOptionId: "a",
+              feedback: "`∧` representa conjunção: as duas precisam ser verdadeiras.",
+              sourceRefs: ["src_1"]
+            }
+          ]
+        }
+      ]
+    }
+  });
+  const registry = createProviderRegistry({ providers: [provider] });
+  const result = await runCourseForge({
+    intent: {
+      operation: "create",
+      scope: { level: "project" },
+      promptText: "Criar curso de lógica com conectivos.",
+      attachments: [{ id: "src_1", name: "ementa.pdf", type: "application/pdf" }]
+    },
+    projectDocument: createProject(),
+    providerRegistry: registry,
+    providerId: "fake"
+  });
+
+  const adherenceAudit = result.artifacts.find((item) => item.name === "microsequence-adherence-audit");
+  const microsequence = result.projectDocument.courses[0].modules[0].lessons[0].microsequences[0];
+  assert.equal(adherenceAudit.content.approved, true);
+  assert.deepEqual(microsequence.domainRefs, ["domain-and", "domain-or"]);
+  assert.deepEqual(microsequence.practiceVariantRefs, ["variant-and", "variant-or"]);
 });

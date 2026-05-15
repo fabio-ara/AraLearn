@@ -199,6 +199,7 @@ export async function runCourseForge({
     lessonPlans: artifactStore.loadArtifact(runId, "lesson-plans")?.content || null,
     microsequencePlans: artifactStore.loadArtifact(runId, "microsequence-plans")?.content || null,
     microsequenceAudit: artifactStore.loadArtifact(runId, "microsequence-audit")?.content || null,
+    microsequenceAdherenceAudit: artifactStore.loadArtifact(runId, "microsequence-adherence-audit")?.content || null,
     microsequenceContracts: artifactStore.loadArtifact(runId, "microsequence-contracts")?.content || null,
     cardDrafts: artifactStore.loadArtifact(runId, "card-drafts")?.content || null,
     cardsAudit: artifactStore.loadArtifact(runId, "cards-audit")?.content || null,
@@ -401,6 +402,57 @@ export async function runCourseForge({
           throw new Error("Auditoria de microssequências reprovou o planejamento atual.");
         }
         artifactStore.saveArtifact(runId, "microsequence-audit", context.microsequenceAudit);
+      } else if (phaseId === "repair_microsequences") {
+        context.microsequencePlans = repairCourseForgeMicrosequenceMetadataDeterministically({
+          microsequencePlans: context.microsequencePlans || [],
+          lessonPlans: context.lessonPlans || []
+        });
+        let adherenceAudit = auditCourseForgeDomainCoverage({
+          microsequencePlans: context.microsequencePlans || [],
+          lessonPlans: context.lessonPlans || []
+        });
+        context.microsequenceAdherenceAudit = adherenceAudit;
+
+        if (hasBlockingIssues(adherenceAudit)) {
+          const modelId = resolveModelForCourseForgePhase({ ...intent, phaseId });
+          const response = await callProviderPhase({
+            provider,
+            phaseId,
+            modelId,
+            prompt: buildCourseForgePrompt({
+              role: "Você repara o planejamento de microssequências do AraLearn.",
+              sourcePack: JSON.stringify(context.sourceLedger || []),
+              task: "Corrija apenas lacunas de cobertura didática, domainRefs, practiceVariantRefs e progressão das microssequências, sem gerar cards.",
+              output: "Responda somente JSON válido com microsequencePlans."
+            }),
+            schema: null,
+            artifacts: [
+              { id: "intent", name: "intent", content: JSON.stringify(intent) },
+              { id: "lesson-plans", name: "lesson-plans", content: JSON.stringify(context.lessonPlans || []) },
+              { id: "microsequence-plans", name: "microsequence-plans", content: JSON.stringify(context.microsequencePlans || []) },
+              { id: "microsequence-issues", name: "microsequence-issues", content: JSON.stringify(adherenceAudit.issues || []) }
+            ]
+          });
+          context.microsequencePlans = normalizeMicrosequencePlans(response.value || response || {}, context.lessonPlans || []);
+          const structuralAudit = validateCourseForgeMicrosequencePlans({
+            microsequencePlans: context.microsequencePlans || [],
+            lessonPlans: context.lessonPlans || []
+          });
+          if (!structuralAudit.ok) {
+            throw new Error(`Reparo de microssequências inválido: ${structuralAudit.errors.join(" ")}`);
+          }
+          adherenceAudit = auditCourseForgeDomainCoverage({
+            microsequencePlans: context.microsequencePlans || [],
+            lessonPlans: context.lessonPlans || []
+          });
+          context.microsequenceAdherenceAudit = adherenceAudit;
+        }
+
+        artifactStore.saveArtifact(runId, "microsequence-plans", context.microsequencePlans);
+        artifactStore.saveArtifact(runId, "microsequence-adherence-audit", context.microsequenceAdherenceAudit);
+        if (hasBlockingIssues(context.microsequenceAdherenceAudit)) {
+          throw new Error(`Planejamento de microssequências ainda falhou na cobertura didática: ${context.microsequenceAdherenceAudit.issues.map((item) => item.evidence).join(" ")}`);
+        }
       } else if (phaseId === "build_microsequence_contract") {
         context.microsequenceContracts = buildCourseForgeMicrosequenceContracts({
           lessonPlans: context.lessonPlans || [],

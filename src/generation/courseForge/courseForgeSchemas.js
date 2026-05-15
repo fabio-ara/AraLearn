@@ -9,6 +9,7 @@ export const COURSE_FORGE_PHASE_IDS = Object.freeze([
   "plan_lessons",
   "plan_microsequences",
   "audit_microsequences",
+  "repair_microsequences",
   "build_microsequence_contract",
   "build_cards",
   "audit_cards",

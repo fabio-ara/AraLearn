@@ -33,6 +33,7 @@ const FULL_PROJECT_PHASES = Object.freeze([
   "plan_lessons",
   "plan_microsequences",
   "audit_microsequences",
+  "repair_microsequences",
   "build_microsequence_contract",
   "build_cards",
   "audit_cards",
