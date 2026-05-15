@@ -8,7 +8,12 @@ import { compileCourseStructureToPatch, validateCourseForgePatch } from "./cours
 import { resolveCourseForgePhases, resolveDeferredCourseForgePhases } from "./courseForgePhases.js";
 import { createCourseForgeRunState, markCourseForgePhase, updateCourseForgeRunState } from "./courseForgeRunState.js";
 import { validateCourseForgeSourceLedger } from "./courseForgeSourceLedger.js";
-import { mergeCourseForgeArchitectureAudits, validateCourseForgeArchitectureDraft } from "./courseForgeValidation.js";
+import {
+  mergeCourseForgeArchitectureAudits,
+  validateCourseForgeArchitectureDraft,
+  validateCourseForgeLessonPlanSet,
+  validateCourseForgeMicrosequencePlans
+} from "./courseForgeValidation.js";
 import { resolveModelForCourseForgePhase } from "../modelProfiles/modelRouting.js";
 
 function text(value) {
@@ -47,6 +52,73 @@ function readArchitectureValue(payload = {}) {
     return payload;
   }
   return payload;
+}
+
+function listArchitectureLessons(architectureDraft = {}) {
+  const course = readArchitectureValue(architectureDraft)?.course;
+  const lessons = [];
+  (Array.isArray(course?.modules) ? course.modules : []).forEach((moduleValue) => {
+    (Array.isArray(moduleValue?.lessons) ? moduleValue.lessons : []).forEach((lesson) => {
+      lessons.push({
+        courseKey: text(course?.key),
+        moduleKey: text(moduleValue?.key),
+        lessonKey: text(lesson?.key),
+        lessonTitle: text(lesson?.title),
+        lessonDescription: text(lesson?.description),
+        sourceGuideStructured: structuredClone(lesson?.sourceGuideStructured || {}),
+        resourceTags: structuredClone(lesson?.resourceTags || []),
+        contentTypeTags: structuredClone(lesson?.contentTypeTags || []),
+        learningActionTags: structuredClone(lesson?.learningActionTags || []),
+        supportLevel: text(lesson?.supportLevel),
+        presetId: text(lesson?.presetId)
+      });
+    });
+  });
+  return lessons;
+}
+
+function normalizeLessonPlans(payload = {}, architectureDraft = {}) {
+  const explicit = Array.isArray(payload?.lessonPlans) ? payload.lessonPlans : [];
+  if (explicit.length) {
+    return explicit.map((lessonPlan) => ({
+      courseKey: text(lessonPlan?.courseKey),
+      moduleKey: text(lessonPlan?.moduleKey),
+      lessonKey: text(lessonPlan?.lessonKey),
+      lessonTitle: text(lessonPlan?.lessonTitle),
+      lessonDescription: text(lessonPlan?.lessonDescription),
+      sourceGuideStructured: structuredClone(lessonPlan?.sourceGuideStructured || {}),
+      resourceTags: structuredClone(lessonPlan?.resourceTags || []),
+      contentTypeTags: structuredClone(lessonPlan?.contentTypeTags || []),
+      learningActionTags: structuredClone(lessonPlan?.learningActionTags || []),
+      supportLevel: text(lessonPlan?.supportLevel),
+      presetId: text(lessonPlan?.presetId)
+    }));
+  }
+  return listArchitectureLessons(architectureDraft);
+}
+
+function normalizeMicrosequencePlans(payload = {}, lessonPlans = []) {
+  const plans = Array.isArray(payload?.microsequencePlans) ? payload.microsequencePlans : Array.isArray(payload) ? payload : [];
+  return plans.map((lessonPlan) => {
+    const lessonKey = text(lessonPlan?.lessonKey);
+    const lessonMeta = lessonPlans.find((item) => text(item?.lessonKey) === lessonKey) || {};
+    return {
+      lessonKey,
+      moduleKey: text(lessonPlan?.moduleKey || lessonMeta.moduleKey),
+      courseKey: text(lessonPlan?.courseKey || lessonMeta.courseKey),
+      microsequences: (Array.isArray(lessonPlan?.microsequences) ? lessonPlan.microsequences : []).map((microsequence, microIndex) => ({
+        key: text(microsequence?.key) || `${lessonKey || "lesson"}-micro-${microIndex + 1}`,
+        title: text(microsequence?.title),
+        description: text(microsequence?.description),
+        objective: text(microsequence?.objective),
+        domainRefs: Array.isArray(microsequence?.domainRefs) ? microsequence.domainRefs.map(text).filter(Boolean) : [],
+        practiceVariantRefs: Array.isArray(microsequence?.practiceVariantRefs) ? microsequence.practiceVariantRefs.map(text).filter(Boolean) : [],
+        didacticPurpose: text(microsequence?.didacticPurpose),
+        coverageRole: text(microsequence?.coverageRole),
+        tags: Array.isArray(microsequence?.tags) ? microsequence.tags.map(text).filter(Boolean) : []
+      }))
+    };
+  });
 }
 
 async function callProviderPhase({ provider, phaseId, modelId, prompt, schema, artifacts }) {
@@ -94,6 +166,9 @@ export async function runCourseForge({
     architectureDraft: artifactStore.loadArtifact(runId, "architecture-draft")?.content || null,
     architectureAudit: artifactStore.loadArtifact(runId, "architecture-audit")?.content || null,
     architectureFinal: artifactStore.loadArtifact(runId, "architecture-final")?.content || null,
+    lessonPlans: artifactStore.loadArtifact(runId, "lesson-plans")?.content || null,
+    microsequencePlans: artifactStore.loadArtifact(runId, "microsequence-plans")?.content || null,
+    microsequenceAudit: artifactStore.loadArtifact(runId, "microsequence-audit")?.content || null,
     patch: artifactStore.loadArtifact(runId, "patch-final")?.content || null
   };
 
@@ -202,10 +277,102 @@ export async function runCourseForge({
           }
           artifactStore.saveArtifact(runId, "architecture-final", context.architectureFinal);
         }
+      } else if (phaseId === "plan_lessons") {
+        const modelId = resolveModelForCourseForgePhase(intent, phaseId);
+        const response = await callProviderPhase({
+          provider,
+          phaseId,
+          modelId,
+          prompt: buildCourseForgePrompt({
+            role: "Você normaliza o conjunto de lições planejadas para o AraLearn.",
+            sourcePack: JSON.stringify(context.sourceLedger || []),
+            task: "Confirme e detalhe o conjunto de lições do curso planejado, sem criar cards.",
+            output: "Responda somente JSON válido com lessonPlans."
+          }),
+          schema: null,
+          artifacts: [
+            { id: "intent", name: "intent", content: JSON.stringify(intent) },
+            { id: "architecture-final", name: "architecture-final", content: JSON.stringify(context.architectureFinal || {}) }
+          ]
+        });
+        context.lessonPlans = normalizeLessonPlans(response.value || response || {}, context.architectureFinal || {});
+        const lessonValidation = validateCourseForgeLessonPlanSet({
+          architectureDraft: context.architectureFinal || {},
+          lessonPlans: context.lessonPlans
+        });
+        if (!lessonValidation.ok) {
+          throw new Error(`Planejamento de lições inválido: ${lessonValidation.errors.join(" ")}`);
+        }
+        artifactStore.saveArtifact(runId, "lesson-plans", context.lessonPlans);
+      } else if (phaseId === "plan_microsequences") {
+        const modelId = resolveModelForCourseForgePhase(intent, phaseId);
+        const response = await callProviderPhase({
+          provider,
+          phaseId,
+          modelId,
+          prompt: buildCourseForgePrompt({
+            role: "Você planeja microssequências para as lições do AraLearn.",
+            sourcePack: JSON.stringify(context.sourceLedger || []),
+            task: "Crie microssequências pequenas, progressivas e sem bastidor para cada lição planejada.",
+            output: "Responda somente JSON válido com microsequencePlans."
+          }),
+          schema: null,
+          artifacts: [
+            { id: "intent", name: "intent", content: JSON.stringify(intent) },
+            { id: "lesson-plans", name: "lesson-plans", content: JSON.stringify(context.lessonPlans || []) }
+          ]
+        });
+        context.microsequencePlans = normalizeMicrosequencePlans(response.value || response || {}, context.lessonPlans || []);
+        artifactStore.saveArtifact(runId, "microsequence-plans", context.microsequencePlans);
+      } else if (phaseId === "audit_microsequences") {
+        const localAudit = validateCourseForgeMicrosequencePlans({
+          microsequencePlans: context.microsequencePlans || [],
+          lessonPlans: context.lessonPlans || []
+        });
+        if (!localAudit.ok) {
+          throw new Error(`Planejamento de microssequências inválido: ${localAudit.errors.join(" ")}`);
+        }
+        let providerAudit = { approved: true, issues: [], warnings: [] };
+        if (provider?.id !== "fake" || provider?.capabilities?.provider === "fake") {
+          const modelId = resolveModelForCourseForgePhase(intent, phaseId);
+          const response = await callProviderPhase({
+            provider,
+            phaseId,
+            modelId,
+            prompt: buildCourseForgePrompt({
+              role: "Você audita o planejamento de microssequências do AraLearn.",
+              sourcePack: JSON.stringify(context.sourceLedger || []),
+              task: "Aponte saltos de progressão, duplicações, escopo excessivo e falta de prática distribuída.",
+              output: "Responda somente JSON válido com approved, issues e warnings."
+            }),
+            schema: null,
+            artifacts: [
+              { id: "intent", name: "intent", content: JSON.stringify(intent) },
+              { id: "microsequence-plans", name: "microsequence-plans", content: JSON.stringify(context.microsequencePlans || []) }
+            ]
+          });
+          providerAudit = structuredClone(response.value || response || providerAudit);
+        }
+        context.microsequenceAudit = {
+          approved: providerAudit.approved !== false,
+          issues: Array.isArray(providerAudit.issues) ? providerAudit.issues : [],
+          warnings: [
+            ...(localAudit.warnings || []).map((message) => ({ severity: "warning", evidence: message })),
+            ...(Array.isArray(providerAudit.warnings) ? providerAudit.warnings : [])
+          ]
+        };
+        const blockingIssues = (context.microsequenceAudit.issues || []).filter((item) => item?.severity !== "warning");
+        if (providerAudit.approved === false || blockingIssues.length) {
+          throw new Error("Auditoria de microssequências reprovou o planejamento atual.");
+        }
+        artifactStore.saveArtifact(runId, "microsequence-audit", context.microsequenceAudit);
       } else if (phaseId === "compile_patch") {
         context.patch = compileCourseStructureToPatch({
           intent,
-          architectureDraft: context.architectureFinal || context.architectureDraft || {}
+          architectureDraft: {
+            ...(context.architectureFinal || context.architectureDraft || {}),
+            microsequencePlans: context.microsequencePlans || []
+          }
         });
         artifactStore.saveArtifact(runId, "patch-final", context.patch);
       } else if (phaseId === "validate_patch") {

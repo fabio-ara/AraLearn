@@ -198,6 +198,103 @@ export function mergeCourseForgeArchitectureAudits(...audits) {
   return merged;
 }
 
+function normalizeArray(value) {
+  return Array.isArray(value) ? value : [];
+}
+
+export function validateCourseForgeLessonPlanSet({ architectureDraft = {}, lessonPlans = [] } = {}) {
+  const course = readArchitectureCourse(architectureDraft);
+  const errors = [];
+  const warnings = [];
+  const expectedLessonKeys = new Set();
+
+  normalizeArray(course?.modules).forEach((moduleValue) => {
+    normalizeArray(moduleValue?.lessons).forEach((lesson) => {
+      expectedLessonKeys.add(text(lesson?.key));
+    });
+  });
+
+  const seen = new Set();
+  normalizeArray(lessonPlans).forEach((lessonPlan, index) => {
+    const lessonKey = text(lessonPlan?.lessonKey);
+    if (!lessonKey) {
+      errors.push(`lessonPlans[${index}] sem lessonKey.`);
+      return;
+    }
+    if (seen.has(lessonKey)) {
+      errors.push(`lessonPlans com lessonKey duplicado: ${lessonKey}.`);
+    }
+    seen.add(lessonKey);
+    if (!expectedLessonKeys.has(lessonKey)) {
+      errors.push(`lessonPlans aponta para lessonKey inexistente na arquitetura: ${lessonKey}.`);
+    }
+    if (!text(lessonPlan?.lessonTitle)) {
+      warnings.push(`lessonPlan ${lessonKey} sem lessonTitle explícito.`);
+    }
+  });
+
+  expectedLessonKeys.forEach((lessonKey) => {
+    if (!seen.has(lessonKey)) {
+      errors.push(`Faltou lessonPlan para a lição ${lessonKey}.`);
+    }
+  });
+
+  return {
+    ok: errors.length === 0,
+    errors,
+    warnings
+  };
+}
+
+export function validateCourseForgeMicrosequencePlans({ microsequencePlans = [], lessonPlans = [] } = {}) {
+  const errors = [];
+  const warnings = [];
+  const validLessonKeys = new Set(normalizeArray(lessonPlans).map((item) => text(item?.lessonKey)).filter(Boolean));
+
+  normalizeArray(microsequencePlans).forEach((lessonPlan, lessonIndex) => {
+    const lessonKey = text(lessonPlan?.lessonKey);
+    if (!lessonKey) {
+      errors.push(`microsequencePlans[${lessonIndex}] sem lessonKey.`);
+      return;
+    }
+    if (!validLessonKeys.has(lessonKey)) {
+      errors.push(`microsequencePlans aponta para lessonKey sem planejamento: ${lessonKey}.`);
+    }
+    const microsequences = normalizeArray(lessonPlan?.microsequences);
+    if (!microsequences.length) {
+      errors.push(`lessonKey ${lessonKey} sem microssequências planejadas.`);
+      return;
+    }
+    const titles = new Set();
+    microsequences.forEach((microsequence, microIndex) => {
+      const title = text(microsequence?.title);
+      if (!title) {
+        errors.push(`lessonKey ${lessonKey} microsequence[${microIndex}] sem título.`);
+      }
+      const normalizedTitle = normalizedText(title);
+      if (normalizedTitle && titles.has(normalizedTitle)) {
+        errors.push(`lessonKey ${lessonKey} com microssequência duplicada: ${title}.`);
+      }
+      titles.add(normalizedTitle);
+      if (hasBackstageVocabulary(title) || hasBackstageVocabulary(microsequence?.objective) || hasBackstageVocabulary(microsequence?.description)) {
+        errors.push(`lessonKey ${lessonKey} contém vocabulário de bastidor em microssequência.`);
+      }
+      if (!text(microsequence?.objective) && !text(microsequence?.description)) {
+        warnings.push(`lessonKey ${lessonKey} microsequence ${title || microIndex + 1} sem objetivo explícito.`);
+      }
+      if (!text(microsequence?.coverageRole)) {
+        warnings.push(`lessonKey ${lessonKey} microsequence ${title || microIndex + 1} sem coverageRole.`);
+      }
+    });
+  });
+
+  return {
+    ok: errors.length === 0,
+    errors,
+    warnings
+  };
+}
+
 export function validateCourseForgeArtifacts({ sourceLedger = [], cards = [], lessonContext = {}, patch = null, intent = {} } = {}) {
   const sourceLedgerResult = validateCourseForgeSourceLedger(sourceLedger);
   const sourceRefResults = cards.map((card) => validateCourseForgeCardSourceRefs(card?.sourceRefs || [], sourceLedger));

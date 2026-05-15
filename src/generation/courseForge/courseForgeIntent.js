@@ -1,7 +1,7 @@
 const OPERATIONS = new Set(["create", "extend", "repair", "replace", "merge", "reorder", "reinforce"]);
 const LEVELS = new Set(["project", "course", "module", "lesson", "microsequence"]);
 const GENERATION_DEPTHS = new Set(["structure_only", "full_course", "repair_only", "reinforce_only"]);
-const IMPLEMENTED_GENERATION_DEPTHS = new Set(["structure_only", "repair_only", "reinforce_only"]);
+const IMPLEMENTED_GENERATION_DEPTHS = new Set(["structure_only", "full_course", "repair_only", "reinforce_only"]);
 
 function text(value) {
   return typeof value === "string" ? value.trim() : "";

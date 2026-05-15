@@ -40,7 +40,7 @@ test("resolveCourseForgeIntent normaliza operação, escopo e anexos", () => {
   assert.equal(result.scope.courseKey, "curso-1");
   assert.equal(result.attachments[0].name, "ementa.pdf");
   assert.equal(result.requestedGenerationDepth, "full_course");
-  assert.equal(result.generationDepth, "structure_only");
+  assert.equal(result.generationDepth, "full_course");
 });
 
 test("resolveCourseForgeIntent entende pedido de só estrutura", () => {
@@ -116,6 +116,7 @@ test("phase resolution escolhe subfluxo estrutural e registra fases adiadas", ()
     "apply_patch",
     "final_report"
   ]);
+  assert.ok(resolveCourseForgePhases(fullIntent).includes("plan_microsequences"));
   assert.ok(resolveDeferredCourseForgePhases(fullIntent).includes("build_cards"));
 });
 
@@ -289,6 +290,58 @@ test("top-down com fake provider gera curso completo em memória", async () => {
           blockingIssues: [],
           warnings: []
         }
+      ],
+      plan_lessons: [
+        {
+          lessonPlans: [
+            {
+              courseKey: "course-logica",
+              moduleKey: "module-proposicoes",
+              lessonKey: "lesson-introducao",
+              lessonTitle: "Introdução",
+              lessonDescription: "Lição.",
+              sourceGuideStructured: {
+                lessonGoal: "Ler proposições.",
+                notationRules: "Usar `p` e `q`.",
+                commonErrors: "Confundir frase e proposição."
+              },
+              presetId: "default",
+              resourceTags: ["paragraph"],
+              contentTypeTags: ["theory"],
+              learningActionTags: ["read"],
+              supportLevel: "guided"
+            }
+          ]
+        }
+      ],
+      plan_microsequences: [
+        {
+          microsequencePlans: [
+            {
+              lessonKey: "lesson-introducao",
+              moduleKey: "module-proposicoes",
+              courseKey: "course-logica",
+              microsequences: [
+                {
+                  key: "microsequence-leitura-inicial",
+                  title: "Leitura inicial de proposições",
+                  objective: "Reconhecer enunciados como proposições.",
+                  coverageRole: "core",
+                  didacticPurpose: "Preparar a leitura formal básica.",
+                  tags: ["Leitura"],
+                  domainRefs: ["domain-1"]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      audit_microsequences: [
+        {
+          approved: true,
+          issues: [],
+          warnings: []
+        }
       ]
     }
   });
@@ -305,10 +358,11 @@ test("top-down com fake provider gera curso completo em memória", async () => {
   });
 
   assert.equal(result.projectDocument.courses[0].title, "Lógica");
-  assert.equal(result.patch.operations.length >= 2, true);
+  assert.equal(result.patch.operations.some((item) => item.op === "add_microsequence"), true);
   const finalReport = result.artifacts.find((item) => item.name === "final-report");
-  assert.equal(finalReport.content.executedGenerationDepth, "structure_only");
-  assert.equal(finalReport.content.deferredGenerationDepth, "full_course");
+  assert.equal(finalReport.content.executedGenerationDepth, "full_course");
+  assert.equal(finalReport.content.deferredGenerationDepth, "");
+  assert.ok(finalReport.content.deferredPhases.includes("build_cards"));
 });
 
 test("audit_architecture reprovada aciona repair_architecture e aplica versão corrigida", async () => {
@@ -449,6 +503,55 @@ test("top-down salva run parcial e retoma depois de falha", async () => {
           blockingIssues: [],
           warnings: []
         }
+      ],
+      plan_lessons: [
+        {
+          lessonPlans: [
+            {
+              courseKey: "course-rede",
+              moduleKey: "module-intro",
+              lessonKey: "lesson-base",
+              lessonTitle: "Conceitos iniciais",
+              lessonDescription: "Lição.",
+              sourceGuideStructured: {
+                lessonGoal: "Entender noções básicas de redes.",
+                notationRules: "Usar nomes simples para host e rede.",
+                commonErrors: "Confundir internet com rede local."
+              },
+              presetId: "default",
+              resourceTags: ["paragraph"],
+              contentTypeTags: ["theory"],
+              learningActionTags: ["read"],
+              supportLevel: "guided"
+            }
+          ]
+        }
+      ],
+      plan_microsequences: [
+        {
+          microsequencePlans: [
+            {
+              lessonKey: "lesson-base",
+              moduleKey: "module-intro",
+              courseKey: "course-rede",
+              microsequences: [
+                {
+                  key: "microsequence-visao-geral",
+                  title: "Visão geral de redes",
+                  objective: "Diferenciar rede local e internet.",
+                  coverageRole: "core"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      audit_microsequences: [
+        {
+          approved: true,
+          issues: [],
+          warnings: []
+        }
       ]
     }
   });
@@ -459,7 +562,7 @@ test("top-down salva run parcial e retoma depois de falha", async () => {
   await assert.rejects(
     async () => {
       await runCourseForge({
-        intent: { operation: "create", scope: { level: "project" }, promptText: "Curso de redes" },
+        intent: { operation: "create", scope: { level: "project" }, promptText: "Quero só a estrutura do curso de redes" },
         projectDocument: createProject(),
         providerRegistry: registry,
         providerId: "fake",
@@ -474,7 +577,7 @@ test("top-down salva run parcial e retoma depois de falha", async () => {
   );
 
   const resumed = await runCourseForge({
-    intent: { operation: "create", scope: { level: "project" }, promptText: "Curso de redes" },
+    intent: { operation: "create", scope: { level: "project" }, promptText: "Quero só a estrutura do curso de redes" },
     projectDocument: createProject(),
     providerRegistry: registry,
     providerId: "fake",
@@ -492,10 +595,39 @@ test("compileCourseStructureToPatch converte arquitetura em operações", () => 
       course: {
         key: "course-1",
         title: "Curso 1",
-        modules: [{ key: "module-1", title: "Módulo 1", lessons: [] }]
+        modules: [{ key: "module-1", title: "Módulo 1", lessons: [{ key: "lesson-1", title: "Lição 1" }] }],
+        microsequencePlans: []
       }
     }
   });
   assert.equal(patch.operations[0].op, "add_course");
   assert.equal(patch.operations[1].op, "add_module");
+});
+
+test("compileCourseStructureToPatch inclui microssequências planejadas", () => {
+  const patch = compileCourseStructureToPatch({
+    intent: resolveCourseForgeIntent({ operation: "create", scope: { level: "project" } }),
+    architectureDraft: {
+      course: {
+        key: "course-1",
+        title: "Curso 1",
+        modules: [{ key: "module-1", title: "Módulo 1", lessons: [{ key: "lesson-1", title: "Lição 1" }] }]
+      },
+      microsequencePlans: [
+        {
+          lessonKey: "lesson-1",
+          microsequences: [
+            {
+              key: "micro-1",
+              title: "Introdução",
+              objective: "Objetivo.",
+              coverageRole: "core"
+            }
+          ]
+        }
+      ]
+    }
+  });
+
+  assert.equal(patch.operations.some((item) => item.op === "add_microsequence"), true);
 });

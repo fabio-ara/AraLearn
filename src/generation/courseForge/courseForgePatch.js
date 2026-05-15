@@ -34,6 +34,12 @@ export function compileCourseStructureToPatch({ intent, architectureDraft }) {
     }
   ];
 
+  const microsequencePlansByLessonKey = new Map(
+    (Array.isArray(architectureDraft?.microsequencePlans) ? architectureDraft.microsequencePlans : [])
+      .map((entry) => [text(entry?.lessonKey), entry])
+      .filter(([lessonKey]) => lessonKey)
+  );
+
   (course.modules || []).forEach((moduleValue) => {
     operations.push({
       op: "add_module",
@@ -50,6 +56,27 @@ export function compileCourseStructureToPatch({ intent, architectureDraft }) {
         courseKey: text(course.key),
         moduleKey: text(moduleValue.key) || "",
         lesson: structuredClone(lesson)
+      });
+      const lessonMicrosequencePlan = microsequencePlansByLessonKey.get(text(lesson?.key));
+      (Array.isArray(lessonMicrosequencePlan?.microsequences) ? lessonMicrosequencePlan.microsequences : []).forEach((microsequence) => {
+        operations.push({
+          op: "add_microsequence",
+          courseKey: text(course.key),
+          moduleKey: text(moduleValue.key) || "",
+          lessonKey: text(lesson?.key) || "",
+          microsequence: {
+            key: text(microsequence?.key),
+            title: text(microsequence?.title) || "Nova microssequência",
+            description: text(microsequence?.description || microsequence?.objective),
+            status: "draft",
+            included: false,
+            tags: Array.isArray(microsequence?.tags) ? microsequence.tags.map(text).filter(Boolean) : [],
+            domainRefs: Array.isArray(microsequence?.domainRefs) ? microsequence.domainRefs.map(text).filter(Boolean) : [],
+            practiceVariantRefs: Array.isArray(microsequence?.practiceVariantRefs) ? microsequence.practiceVariantRefs.map(text).filter(Boolean) : [],
+            didacticPurpose: text(microsequence?.didacticPurpose || microsequence?.objective),
+            coverageRole: text(microsequence?.coverageRole)
+          }
+        });
       });
     });
   });

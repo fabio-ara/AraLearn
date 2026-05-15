@@ -33,10 +33,6 @@ const FULL_PROJECT_PHASES = Object.freeze([
   "plan_lessons",
   "plan_microsequences",
   "audit_microsequences",
-  "build_cards",
-  "audit_cards",
-  "audit_source_adherence",
-  "repair_cards",
   "compile_patch",
   "validate_patch",
   "apply_patch",
@@ -56,6 +52,13 @@ const FULL_MICROSEQUENCE_PHASES = Object.freeze([
   "final_report"
 ]);
 
+const FULL_COURSE_DEFERRED_PHASES = Object.freeze([
+  "build_cards",
+  "audit_cards",
+  "audit_source_adherence",
+  "repair_cards"
+]);
+
 export function resolveCourseForgePhases(intent = {}) {
   const level = intent?.scope?.level || "project";
   const depth = intent?.generationDepth || "structure_only";
@@ -71,6 +74,9 @@ export function resolveCourseForgePhases(intent = {}) {
 export function resolveDeferredCourseForgePhases(intent = {}) {
   const deferredDepth = intent?.deferredGenerationDepth || "";
   if (!deferredDepth || deferredDepth === intent?.generationDepth) {
+    if (intent?.generationDepth === "full_course") {
+      return [...FULL_COURSE_DEFERRED_PHASES];
+    }
     return [];
   }
   const active = new Set(resolveCourseForgePhases(intent));
