@@ -333,6 +333,7 @@ function createStarterLesson({
   description,
   sourceGuide,
   sourceGuideStructured,
+  domainMap,
   presetId,
   resourceTags,
   contentTypeTags,
@@ -347,6 +348,7 @@ function createStarterLesson({
   };
   assignOptionalSourceGuide(lesson, sourceGuide, sourceGuideStructured, SOURCE_GUIDE_LEVELS.LESSON);
   assignLessonGuidance(lesson, { presetId, resourceTags, contentTypeTags, learningActionTags, supportLevel });
+  assignOptionalDomainMap(lesson, { domainMap }, lesson.microsequences, lesson.sourceGuideStructured || {});
   return lesson;
 }
 
@@ -732,6 +734,7 @@ export function createLesson(document, input) {
     description,
     sourceGuide,
     sourceGuideStructured,
+    domainMap: input.domainMap,
     resourceTags: input.resourceTags,
     contentTypeTags: input.contentTypeTags,
     learningActionTags: input.learningActionTags,
