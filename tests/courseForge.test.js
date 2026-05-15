@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 import { resolveCourseForgeIntent } from "../src/generation/courseForge/courseForgeIntent.js";
 import { resolveCourseForgeScope } from "../src/generation/courseForge/courseForgeScope.js";
+import { resolveCourseForgePhases, resolveDeferredCourseForgePhases } from "../src/generation/courseForge/courseForgePhases.js";
 import { createProviderRegistry } from "../src/generation/providers/providerRegistry.js";
 import { PHASE_PROFILES, resolvePhaseProfile } from "../src/generation/modelProfiles/phaseProfiles.js";
 import { createFakeProvider } from "../src/generation/providers/fakeProvider.js";
@@ -37,6 +38,36 @@ test("resolveCourseForgeIntent normaliza operação, escopo e anexos", () => {
   assert.equal(result.operation, "create");
   assert.equal(result.scope.courseKey, "curso-1");
   assert.equal(result.attachments[0].name, "ementa.pdf");
+  assert.equal(result.requestedGenerationDepth, "full_course");
+  assert.equal(result.generationDepth, "structure_only");
+});
+
+test("resolveCourseForgeIntent entende pedido de só estrutura", () => {
+  const result = resolveCourseForgeIntent({
+    scope: { level: "project" },
+    promptText: "Quero só a estrutura, sem cards e sem atividades."
+  });
+
+  assert.equal(result.requestedGenerationDepth, "structure_only");
+  assert.equal(result.generationDepth, "structure_only");
+  assert.equal(result.operation, "create");
+});
+
+test("resolveCourseForgeIntent entende revisão local em conteúdo existente", () => {
+  const result = resolveCourseForgeIntent({
+    scope: { level: "course", courseKey: "course-logica" },
+    promptText: "Revise este curso e corrija a estrutura.",
+    projectDocument: {
+      contract: "aralearn.contract",
+      version: 1,
+      kind: "project",
+      courses: [{ key: "course-logica", title: "Lógica", modules: [] }]
+    }
+  });
+
+  assert.equal(result.operation, "repair");
+  assert.equal(result.requestedGenerationDepth, "repair_only");
+  assert.equal(result.contextSummary.targetExists, true);
 });
 
 test("resolveCourseForgeScope preserva escopo selecionado", () => {
@@ -61,6 +92,28 @@ test("providerRegistry registra provider falso", () => {
 test("phaseProfiles resolve perfis esperados", () => {
   assert.equal(PHASE_PROFILES.architecture_plan.reasoning, "high");
   assert.equal(resolvePhaseProfile("index_sources").temperature, 0);
+});
+
+test("phase resolution escolhe subfluxo estrutural e registra fases adiadas", () => {
+  const structureIntent = resolveCourseForgeIntent({
+    scope: { level: "project" },
+    promptText: "Só estrutura."
+  });
+  const fullIntent = resolveCourseForgeIntent({
+    scope: { level: "project" },
+    promptText: "Quero o curso completo, pronto para estudar."
+  });
+
+  assert.deepEqual(resolveCourseForgePhases(structureIntent), [
+    "normalize_intent",
+    "index_sources",
+    "plan_architecture",
+    "compile_patch",
+    "validate_patch",
+    "apply_patch",
+    "final_report"
+  ]);
+  assert.ok(resolveDeferredCourseForgePhases(fullIntent).includes("build_cards"));
 });
 
 test("modelCapabilities expõe campos antigos e novos", () => {
@@ -211,6 +264,9 @@ test("top-down com fake provider gera curso completo em memória", async () => {
 
   assert.equal(result.projectDocument.courses[0].title, "Lógica");
   assert.equal(result.patch.operations.length >= 2, true);
+  const finalReport = result.artifacts.find((item) => item.name === "final-report");
+  assert.equal(finalReport.content.executedGenerationDepth, "structure_only");
+  assert.equal(finalReport.content.deferredGenerationDepth, "full_course");
 });
 
 test("top-down salva run parcial e retoma depois de falha", async () => {

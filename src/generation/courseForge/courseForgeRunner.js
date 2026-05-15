@@ -5,7 +5,7 @@ import { applyCourseForgePatch } from "./courseForgeApply.js";
 import { createCourseForgeArtifactsStore } from "./courseForgeArtifacts.js";
 import { resolveCourseForgeIntent } from "./courseForgeIntent.js";
 import { compileCourseStructureToPatch, validateCourseForgePatch } from "./courseForgePatch.js";
-import { resolveCourseForgePhases } from "./courseForgePhases.js";
+import { resolveCourseForgePhases, resolveDeferredCourseForgePhases } from "./courseForgePhases.js";
 import { createCourseForgeRunState, markCourseForgePhase, updateCourseForgeRunState } from "./courseForgeRunState.js";
 import { validateCourseForgeSourceLedger } from "./courseForgeSourceLedger.js";
 import { resolveModelForCourseForgePhase } from "../modelProfiles/modelRouting.js";
@@ -53,8 +53,9 @@ export async function runCourseForge({
   artifactStore = createCourseForgeArtifactsStore(),
   resumeRunId = ""
 } = {}) {
-  const intent = resolveCourseForgeIntent(rawIntent);
+  const intent = resolveCourseForgeIntent({ ...rawIntent, projectDocument });
   const phases = resolveCourseForgePhases(intent);
+  const deferredPhases = resolveDeferredCourseForgePhases(intent);
   let runState = resumeRunId
     ? artifactStore.loadRun(resumeRunId)?.runState || createCourseForgeRunState({ runId: resumeRunId, intent, phases })
     : createCourseForgeRunState({ intent, phases });
@@ -133,7 +134,11 @@ export async function runCourseForge({
           runId,
           status: "completed",
           phases,
-          patchOperations: context.patch?.operations?.length || 0
+          patchOperations: context.patch?.operations?.length || 0,
+          requestedGenerationDepth: intent.requestedGenerationDepth,
+          executedGenerationDepth: intent.generationDepth,
+          deferredGenerationDepth: intent.deferredGenerationDepth,
+          deferredPhases
         });
       }
 
