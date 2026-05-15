@@ -112,6 +112,40 @@ test("resolveCourseForgeIntent prioriza geração completa quando o pedido de re
   assert.equal(result.generationDepth, "full_course");
 });
 
+test("resolveCourseForgeIntent entende pedido local de completar lacunas como reinforce_only", () => {
+  const result = resolveCourseForgeIntent({
+    scope: {
+      level: "lesson",
+      courseKey: "course-logica",
+      moduleKey: "module-base",
+      lessonKey: "lesson-1"
+    },
+    promptText: "Completar lacunas desta lição.",
+    projectDocument: {
+      contract: "aralearn.contract",
+      version: 1,
+      kind: "project",
+      courses: [
+        {
+          key: "course-logica",
+          title: "Lógica",
+          modules: [
+            {
+              key: "module-base",
+              title: "Base",
+              lessons: [{ key: "lesson-1", title: "Lição 1", microsequences: [] }]
+            }
+          ]
+        }
+      ]
+    }
+  });
+
+  assert.equal(result.operation, "reinforce");
+  assert.equal(result.requestedGenerationDepth, "reinforce_only");
+  assert.equal(result.generationDepth, "reinforce_only");
+});
+
 test("resolveCourseForgeScope preserva escopo selecionado", () => {
   const result = resolveCourseForgeScope({
     scope: { level: "lesson", courseKey: "c1", moduleKey: "m1", lessonKey: "l1" }
@@ -192,10 +226,16 @@ test("phase resolution escolhe subfluxo estrutural e registra fases adiadas", ()
     scope: { level: "microsequence", courseKey: "c1", moduleKey: "m1", lessonKey: "l1", microsequenceKey: "ms1" },
     promptText: "Revise esta microssequência."
   });
+  const reinforceLessonIntent = resolveCourseForgeIntent({
+    scope: { level: "lesson", courseKey: "c1", moduleKey: "m1", lessonKey: "l1" },
+    promptText: "Completar lacunas desta lição."
+  });
   assert.ok(resolveCourseForgePhases(repairLessonIntent).includes("plan_microsequences"));
   assert.ok(!resolveCourseForgePhases(repairLessonIntent).includes("plan_architecture"));
   assert.ok(resolveCourseForgePhases(repairMicrosequenceIntent).includes("build_microsequence_contract"));
   assert.ok(!resolveCourseForgePhases(repairMicrosequenceIntent).includes("plan_architecture"));
+  assert.ok(resolveCourseForgePhases(reinforceLessonIntent).includes("plan_microsequences"));
+  assert.ok(!resolveCourseForgePhases(reinforceLessonIntent).includes("plan_architecture"));
   assert.equal(resolveDeferredCourseForgePhases(fullIntent).length, 0);
 });
 
@@ -1707,6 +1747,122 @@ test("repair_only em escopo de lição usa subfluxo local sem arquitetura ampla"
   });
 
   assert.equal(result.runState.intent.generationDepth, "repair_only");
+  assert.ok(!result.runState.phases.some((phase) => phase.phaseId === "plan_architecture"));
+  assert.equal(result.projectDocument.courses[0].modules[0].lessons[0].microsequences.length, 1);
+});
+
+test("reinforce_only em escopo de lição reaproveita o subfluxo local sem arquitetura ampla", async () => {
+  const provider = createFakeProvider({
+    script: {
+      plan_microsequences: [
+        {
+          microsequencePlans: [
+            {
+              lessonKey: "lesson-proposicoes",
+              moduleKey: "module-base",
+              courseKey: "course-logica",
+              microsequences: [
+                {
+                  key: "microsequence-reforco",
+                  title: "Reforço rápido",
+                  objective: "Praticar reconhecimento de proposições.",
+                  coverageRole: "practice"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      audit_microsequences: [{ approved: true, issues: [], warnings: [] }],
+      build_cards: [
+        {
+          cards: [
+            {
+              position: 1,
+              resourceType: "paragraph",
+              title: "Critério",
+              text: "Uma proposição admite valor de verdade.",
+              sourceRefs: ["src_1"]
+            },
+            {
+              position: 2,
+              resourceType: "paragraph",
+              title: "Exemplo rápido",
+              text: "`5 > 3` é proposição.",
+              sourceRefs: ["src_1"]
+            },
+            {
+              position: 3,
+              resourceType: "multiple_choice",
+              title: "Prática",
+              question: "Qual opção é uma proposição?",
+              options: [
+                { optionId: "a", label: "Feche a janela." },
+                { optionId: "b", label: "5 > 3." },
+                { optionId: "c", label: "Quem chegou?" }
+              ],
+              correctOptionId: "b",
+              feedback: "`5 > 3` pode ser classificada como verdadeira ou falsa.",
+              sourceRefs: ["src_1"]
+            }
+          ]
+        }
+      ]
+    }
+  });
+  const registry = createProviderRegistry({ providers: [provider] });
+  const result = await runCourseForge({
+    intent: {
+      scope: {
+        level: "lesson",
+        courseKey: "course-logica",
+        moduleKey: "module-base",
+        lessonKey: "lesson-proposicoes"
+      },
+      promptText: "Completar lacunas desta lição.",
+      attachments: [{ id: "src_1", name: "ementa.pdf", type: "application/pdf" }]
+    },
+    projectDocument: {
+      contract: "aralearn.contract",
+      version: 1,
+      kind: "project",
+      courses: [
+        {
+          key: "course-logica",
+          title: "Lógica",
+          modules: [
+            {
+              key: "module-base",
+              title: "Base",
+              lessons: [
+                {
+                  key: "lesson-proposicoes",
+                  title: "Proposições",
+                  description: "Lição.",
+                  sourceGuideStructured: {
+                    lessonGoal: "Reconhecer proposições.",
+                    notationRules: "Usar `p` e `q`.",
+                    commonErrors: "Confundir pergunta com proposição."
+                  },
+                  presetId: "default",
+                  resourceTags: ["paragraph", "multiple_choice"],
+                  contentTypeTags: ["theory"],
+                  learningActionTags: ["read"],
+                  supportLevel: "guided",
+                  microsequences: []
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    providerRegistry: registry,
+    providerId: "fake"
+  });
+
+  assert.equal(result.runState.intent.operation, "reinforce");
+  assert.equal(result.runState.intent.generationDepth, "reinforce_only");
   assert.ok(!result.runState.phases.some((phase) => phase.phaseId === "plan_architecture"));
   assert.equal(result.projectDocument.courses[0].modules[0].lessons[0].microsequences.length, 1);
 });
