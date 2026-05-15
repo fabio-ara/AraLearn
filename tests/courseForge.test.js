@@ -174,10 +174,16 @@ test("phase resolution escolhe subfluxo estrutural e registra fases adiadas", ()
     scope: { level: "module", courseKey: "c1", moduleKey: "m1" },
     promptText: "Quero o curso completo, pronto para estudar."
   });
+  const courseIntent = resolveCourseForgeIntent({
+    scope: { level: "course", courseKey: "c1" },
+    promptText: "Quero o curso completo, pronto para estudar."
+  });
   assert.ok(resolveCourseForgePhases(lessonIntent).includes("plan_microsequences"));
   assert.ok(!resolveCourseForgePhases(lessonIntent).includes("plan_architecture"));
   assert.ok(resolveCourseForgePhases(moduleIntent).includes("plan_microsequences"));
   assert.ok(!resolveCourseForgePhases(moduleIntent).includes("plan_architecture"));
+  assert.ok(resolveCourseForgePhases(courseIntent).includes("plan_microsequences"));
+  assert.ok(!resolveCourseForgePhases(courseIntent).includes("plan_architecture"));
   assert.equal(resolveDeferredCourseForgePhases(fullIntent).length, 0);
 });
 
@@ -1391,6 +1397,190 @@ test("top-down em escopo de módulo gera microssequências e cards para as liç�
   assert.equal(lessons[1].microsequences.length, 1);
   assert.equal(lessons[0].microsequences[0].cards.length, 3);
   assert.equal(lessons[1].microsequences[0].cards.length, 3);
+  assert.ok(!result.runState.phases.some((phase) => phase.phaseId === "plan_architecture"));
+});
+
+test("top-down em escopo de curso gera microssequências e cards para os módulos do curso", async () => {
+  const provider = createFakeProvider({
+    script: {
+      plan_microsequences: [
+        {
+          microsequencePlans: [
+            {
+              lessonKey: "lesson-proposicoes",
+              moduleKey: "module-base",
+              courseKey: "course-logica",
+              microsequences: [
+                {
+                  key: "microsequence-reconhecimento",
+                  title: "Reconhecimento inicial",
+                  objective: "Distinguir proposições de outros enunciados.",
+                  coverageRole: "explain"
+                }
+              ]
+            },
+            {
+              lessonKey: "lesson-conectivos",
+              moduleKey: "module-avancado",
+              courseKey: "course-logica",
+              microsequences: [
+                {
+                  key: "microsequence-conectivos",
+                  title: "Conectivos básicos",
+                  objective: "Ler conjunção e disjunção.",
+                  coverageRole: "explain"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      audit_microsequences: [{ approved: true, issues: [], warnings: [] }],
+      build_cards: [
+        {
+          cards: [
+            {
+              position: 1,
+              resourceType: "paragraph",
+              title: "Definição",
+              text: "Uma proposição é um enunciado que pode ser verdadeiro ou falso.",
+              sourceRefs: ["src_1"]
+            },
+            {
+              position: 2,
+              resourceType: "paragraph",
+              title: "Exemplo",
+              text: "`2 + 2 = 4` é proposição.",
+              sourceRefs: ["src_1"]
+            },
+            {
+              position: 3,
+              resourceType: "multiple_choice",
+              title: "Identificação",
+              question: "Qual opção é uma proposição?",
+              options: [
+                { optionId: "a", label: "Feche a porta." },
+                { optionId: "b", label: "2 + 2 = 4." },
+                { optionId: "c", label: "Que horas são?" }
+              ],
+              correctOptionId: "b",
+              feedback: "`2 + 2 = 4` admite valor de verdade.",
+              sourceRefs: ["src_1"]
+            }
+          ]
+        },
+        {
+          cards: [
+            {
+              position: 1,
+              resourceType: "paragraph",
+              title: "Conjunção",
+              text: "`p ∧ q` exige duas proposições verdadeiras.",
+              sourceRefs: ["src_1"]
+            },
+            {
+              position: 2,
+              resourceType: "paragraph",
+              title: "Disjunção",
+              text: "`p ∨ q` aceita pelo menos uma proposição verdadeira.",
+              sourceRefs: ["src_1"]
+            },
+            {
+              position: 3,
+              resourceType: "multiple_choice",
+              title: "Comparação",
+              question: "Qual conectivo exige duas proposições verdadeiras?",
+              options: [
+                { optionId: "a", label: "`∧`" },
+                { optionId: "b", label: "`∨`" },
+                { optionId: "c", label: "Nenhum dos dois" }
+              ],
+              correctOptionId: "a",
+              feedback: "`∧` representa conjunção.",
+              sourceRefs: ["src_1"]
+            }
+          ]
+        }
+      ]
+    }
+  });
+  const registry = createProviderRegistry({ providers: [provider] });
+  const result = await runCourseForge({
+    intent: {
+      operation: "repair",
+      scope: {
+        level: "course",
+        courseKey: "course-logica"
+      },
+      promptText: "Revise este curso e gere cards prontos para estudar.",
+      attachments: [{ id: "src_1", name: "ementa.pdf", type: "application/pdf" }]
+    },
+    projectDocument: {
+      contract: "aralearn.contract",
+      version: 1,
+      kind: "project",
+      courses: [
+        {
+          key: "course-logica",
+          title: "Lógica",
+          modules: [
+            {
+              key: "module-base",
+              title: "Base",
+              lessons: [
+                {
+                  key: "lesson-proposicoes",
+                  title: "Proposições",
+                  description: "Lição.",
+                  sourceGuideStructured: {
+                    lessonGoal: "Reconhecer proposições.",
+                    notationRules: "Usar `p` e `q`.",
+                    commonErrors: "Confundir pergunta com proposição."
+                  },
+                  presetId: "default",
+                  resourceTags: ["paragraph", "multiple_choice"],
+                  contentTypeTags: ["theory"],
+                  learningActionTags: ["read"],
+                  supportLevel: "guided",
+                  microsequences: []
+                }
+              ]
+            },
+            {
+              key: "module-avancado",
+              title: "Avançado",
+              lessons: [
+                {
+                  key: "lesson-conectivos",
+                  title: "Conectivos",
+                  description: "Lição.",
+                  sourceGuideStructured: {
+                    lessonGoal: "Ler conjunção e disjunção.",
+                    notationRules: "Usar `∧` e `∨`.",
+                    commonErrors: "Confundir conjunção com disjunção."
+                  },
+                  presetId: "default",
+                  resourceTags: ["paragraph", "multiple_choice"],
+                  contentTypeTags: ["theory"],
+                  learningActionTags: ["read"],
+                  supportLevel: "guided",
+                  microsequences: []
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    providerRegistry: registry,
+    providerId: "fake"
+  });
+
+  const modules = result.projectDocument.courses[0].modules;
+  assert.equal(modules[0].lessons[0].microsequences.length, 1);
+  assert.equal(modules[1].lessons[0].microsequences.length, 1);
+  assert.equal(modules[0].lessons[0].microsequences[0].cards.length, 3);
+  assert.equal(modules[1].lessons[0].microsequences[0].cards.length, 3);
   assert.ok(!result.runState.phases.some((phase) => phase.phaseId === "plan_architecture"));
 });
 

@@ -46,6 +46,24 @@ const FULL_PROJECT_PHASES = Object.freeze([
   "final_report"
 ]);
 
+const FULL_COURSE_PHASES = Object.freeze([
+  "normalize_intent",
+  "index_sources",
+  "plan_microsequences",
+  "audit_microsequences",
+  "repair_microsequences",
+  "build_microsequence_contract",
+  "build_cards",
+  "audit_cards",
+  "audit_source_adherence",
+  "repair_cards",
+  "repair_card_adherence",
+  "compile_patch",
+  "validate_patch",
+  "apply_patch",
+  "final_report"
+]);
+
 const FULL_LESSON_PHASES = Object.freeze([
   "normalize_intent",
   "index_sources",
@@ -114,6 +132,9 @@ export function resolveCourseForgePhases(intent = {}) {
     }
     if (level === "module") {
       return [...FULL_MODULE_PHASES];
+    }
+    if (level === "course") {
+      return [...FULL_COURSE_PHASES];
     }
     return [...FULL_PROJECT_PHASES];
   }
