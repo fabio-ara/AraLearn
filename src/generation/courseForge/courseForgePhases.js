@@ -24,6 +24,41 @@ const REPAIR_PHASES = Object.freeze([
   "final_report"
 ]);
 
+const REPAIR_COURSE_PHASES = Object.freeze([
+  "normalize_intent",
+  "index_sources",
+  "plan_microsequences",
+  "audit_microsequences",
+  "repair_microsequences",
+  "build_microsequence_contract",
+  "build_cards",
+  "audit_cards",
+  "audit_source_adherence",
+  "repair_cards",
+  "repair_card_adherence",
+  "compile_patch",
+  "validate_patch",
+  "apply_patch",
+  "final_report"
+]);
+
+const REPAIR_MODULE_PHASES = Object.freeze([...REPAIR_COURSE_PHASES]);
+const REPAIR_LESSON_PHASES = Object.freeze([...REPAIR_COURSE_PHASES]);
+const REPAIR_MICROSEQUENCE_PHASES = Object.freeze([
+  "normalize_intent",
+  "index_sources",
+  "build_microsequence_contract",
+  "build_cards",
+  "audit_cards",
+  "audit_source_adherence",
+  "repair_cards",
+  "repair_card_adherence",
+  "compile_patch",
+  "validate_patch",
+  "apply_patch",
+  "final_report"
+]);
+
 const FULL_PROJECT_PHASES = Object.freeze([
   "normalize_intent",
   "index_sources",
@@ -121,6 +156,18 @@ export function resolveCourseForgePhases(intent = {}) {
   const level = intent?.scope?.level || "project";
   const depth = intent?.generationDepth || "structure_only";
   if (depth === "repair_only" || depth === "reinforce_only") {
+    if (level === "microsequence") {
+      return [...REPAIR_MICROSEQUENCE_PHASES];
+    }
+    if (level === "lesson") {
+      return [...REPAIR_LESSON_PHASES];
+    }
+    if (level === "module") {
+      return [...REPAIR_MODULE_PHASES];
+    }
+    if (level === "course") {
+      return [...REPAIR_COURSE_PHASES];
+    }
     return [...REPAIR_PHASES];
   }
   if (depth === "full_course") {

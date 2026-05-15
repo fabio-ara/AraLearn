@@ -184,6 +184,18 @@ test("phase resolution escolhe subfluxo estrutural e registra fases adiadas", ()
   assert.ok(!resolveCourseForgePhases(moduleIntent).includes("plan_architecture"));
   assert.ok(resolveCourseForgePhases(courseIntent).includes("plan_microsequences"));
   assert.ok(!resolveCourseForgePhases(courseIntent).includes("plan_architecture"));
+  const repairLessonIntent = resolveCourseForgeIntent({
+    scope: { level: "lesson", courseKey: "c1", moduleKey: "m1", lessonKey: "l1" },
+    promptText: "Revise esta lição."
+  });
+  const repairMicrosequenceIntent = resolveCourseForgeIntent({
+    scope: { level: "microsequence", courseKey: "c1", moduleKey: "m1", lessonKey: "l1", microsequenceKey: "ms1" },
+    promptText: "Revise esta microssequência."
+  });
+  assert.ok(resolveCourseForgePhases(repairLessonIntent).includes("plan_microsequences"));
+  assert.ok(!resolveCourseForgePhases(repairLessonIntent).includes("plan_architecture"));
+  assert.ok(resolveCourseForgePhases(repairMicrosequenceIntent).includes("build_microsequence_contract"));
+  assert.ok(!resolveCourseForgePhases(repairMicrosequenceIntent).includes("plan_architecture"));
   assert.equal(resolveDeferredCourseForgePhases(fullIntent).length, 0);
 });
 
@@ -1582,6 +1594,121 @@ test("top-down em escopo de curso gera microssequências e cards para os módulo
   assert.equal(modules[0].lessons[0].microsequences[0].cards.length, 3);
   assert.equal(modules[1].lessons[0].microsequences[0].cards.length, 3);
   assert.ok(!result.runState.phases.some((phase) => phase.phaseId === "plan_architecture"));
+});
+
+test("repair_only em escopo de lição usa subfluxo local sem arquitetura ampla", async () => {
+  const provider = createFakeProvider({
+    script: {
+      plan_microsequences: [
+        {
+          microsequencePlans: [
+            {
+              lessonKey: "lesson-proposicoes",
+              moduleKey: "module-base",
+              courseKey: "course-logica",
+              microsequences: [
+                {
+                  key: "microsequence-revisada",
+                  title: "Revisão guiada",
+                  objective: "Revisar proposições com prática curta.",
+                  coverageRole: "explain"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      audit_microsequences: [{ approved: true, issues: [], warnings: [] }],
+      build_cards: [
+        {
+          cards: [
+            {
+              position: 1,
+              resourceType: "paragraph",
+              title: "Definição",
+              text: "Uma proposição pode ser verdadeira ou falsa.",
+              sourceRefs: ["src_1"]
+            },
+            {
+              position: 2,
+              resourceType: "paragraph",
+              title: "Exemplo",
+              text: "`2 + 2 = 4` é proposição.",
+              sourceRefs: ["src_1"]
+            },
+            {
+              position: 3,
+              resourceType: "multiple_choice",
+              title: "Checagem",
+              question: "Qual enunciado é proposição?",
+              options: [
+                { optionId: "a", label: "Feche a porta." },
+                { optionId: "b", label: "2 + 2 = 4." },
+                { optionId: "c", label: "Que horas são?" }
+              ],
+              correctOptionId: "b",
+              feedback: "`2 + 2 = 4` admite valor de verdade.",
+              sourceRefs: ["src_1"]
+            }
+          ]
+        }
+      ]
+    }
+  });
+  const registry = createProviderRegistry({ providers: [provider] });
+  const result = await runCourseForge({
+    intent: {
+      scope: {
+        level: "lesson",
+        courseKey: "course-logica",
+        moduleKey: "module-base",
+        lessonKey: "lesson-proposicoes"
+      },
+      promptText: "Revise esta lição.",
+      attachments: [{ id: "src_1", name: "ementa.pdf", type: "application/pdf" }]
+    },
+    projectDocument: {
+      contract: "aralearn.contract",
+      version: 1,
+      kind: "project",
+      courses: [
+        {
+          key: "course-logica",
+          title: "Lógica",
+          modules: [
+            {
+              key: "module-base",
+              title: "Base",
+              lessons: [
+                {
+                  key: "lesson-proposicoes",
+                  title: "Proposições",
+                  description: "Lição.",
+                  sourceGuideStructured: {
+                    lessonGoal: "Reconhecer proposições.",
+                    notationRules: "Usar `p` e `q`.",
+                    commonErrors: "Confundir pergunta com proposição."
+                  },
+                  presetId: "default",
+                  resourceTags: ["paragraph", "multiple_choice"],
+                  contentTypeTags: ["theory"],
+                  learningActionTags: ["read"],
+                  supportLevel: "guided",
+                  microsequences: []
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    providerRegistry: registry,
+    providerId: "fake"
+  });
+
+  assert.equal(result.runState.intent.generationDepth, "repair_only");
+  assert.ok(!result.runState.phases.some((phase) => phase.phaseId === "plan_architecture"));
+  assert.equal(result.projectDocument.courses[0].modules[0].lessons[0].microsequences.length, 1);
 });
 
 test("repair_cards corrige cards inválidos antes de aplicar ao projeto", async () => {
