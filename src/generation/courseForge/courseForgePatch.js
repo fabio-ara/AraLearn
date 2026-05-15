@@ -59,6 +59,11 @@ export function compileCourseStructureToPatch({ intent, architectureDraft }) {
       });
       const lessonMicrosequencePlan = microsequencePlansByLessonKey.get(text(lesson?.key));
       (Array.isArray(lessonMicrosequencePlan?.microsequences) ? lessonMicrosequencePlan.microsequences : []).forEach((microsequence) => {
+        const publicCards = Array.isArray(microsequence?.publicCards)
+          ? structuredClone(microsequence.publicCards)
+          : Array.isArray(microsequence?.cards)
+            ? structuredClone(microsequence.cards)
+            : [];
         operations.push({
           op: "add_microsequence",
           courseKey: text(course.key),
@@ -68,13 +73,14 @@ export function compileCourseStructureToPatch({ intent, architectureDraft }) {
             key: text(microsequence?.key),
             title: text(microsequence?.title) || "Nova microssequência",
             description: text(microsequence?.description || microsequence?.objective),
-            status: "draft",
-            included: false,
+            status: publicCards.length ? "ready" : "draft",
+            included: publicCards.length > 0,
             tags: Array.isArray(microsequence?.tags) ? microsequence.tags.map(text).filter(Boolean) : [],
             domainRefs: Array.isArray(microsequence?.domainRefs) ? microsequence.domainRefs.map(text).filter(Boolean) : [],
             practiceVariantRefs: Array.isArray(microsequence?.practiceVariantRefs) ? microsequence.practiceVariantRefs.map(text).filter(Boolean) : [],
             didacticPurpose: text(microsequence?.didacticPurpose || microsequence?.objective),
-            coverageRole: text(microsequence?.coverageRole)
+            coverageRole: text(microsequence?.coverageRole),
+            ...(publicCards.length ? { cards: publicCards } : {})
           }
         });
       });

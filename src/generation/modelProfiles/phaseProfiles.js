@@ -33,5 +33,12 @@ export function resolvePhaseProfile(phaseId = "") {
   if (phaseId === "index_sources") return PHASE_PROFILES.source_index;
   if (phaseId === "plan_architecture") return PHASE_PROFILES.architecture_plan;
   if (phaseId === "audit_architecture") return PHASE_PROFILES.architecture_audit;
+  if (phaseId === "plan_lessons") return PHASE_PROFILES.architecture_plan;
+  if (phaseId === "plan_microsequences") return PHASE_PROFILES.architecture_plan;
+  if (phaseId === "audit_microsequences") return PHASE_PROFILES.architecture_audit;
+  if (phaseId === "build_microsequence_contract") return PHASE_PROFILES.source_index;
+  if (phaseId === "build_cards") return PHASE_PROFILES.architecture_plan;
+  if (phaseId === "audit_cards") return PHASE_PROFILES.architecture_audit;
+  if (phaseId === "audit_source_adherence") return PHASE_PROFILES.architecture_audit;
   return PHASE_PROFILES.repair;
 }

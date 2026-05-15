@@ -117,7 +117,7 @@ test("phase resolution escolhe subfluxo estrutural e registra fases adiadas", ()
     "final_report"
   ]);
   assert.ok(resolveCourseForgePhases(fullIntent).includes("plan_microsequences"));
-  assert.ok(resolveDeferredCourseForgePhases(fullIntent).includes("build_cards"));
+  assert.equal(resolveDeferredCourseForgePhases(fullIntent).length, 0);
 });
 
 test("modelCapabilities expõe campos antigos e novos", () => {
@@ -272,7 +272,7 @@ test("top-down com fake provider gera curso completo em memória", async () => {
                       commonErrors: "Confundir frase e proposição."
                     },
                     presetId: "default",
-                    resourceTags: ["paragraph"],
+                    resourceTags: ["paragraph", "multiple_choice"],
                     contentTypeTags: ["theory"],
                     learningActionTags: ["read"],
                     supportLevel: "guided",
@@ -306,7 +306,7 @@ test("top-down com fake provider gera curso completo em memória", async () => {
                 commonErrors: "Confundir frase e proposição."
               },
               presetId: "default",
-              resourceTags: ["paragraph"],
+              resourceTags: ["paragraph", "multiple_choice"],
               contentTypeTags: ["theory"],
               learningActionTags: ["read"],
               supportLevel: "guided"
@@ -342,6 +342,40 @@ test("top-down com fake provider gera curso completo em memória", async () => {
           issues: [],
           warnings: []
         }
+      ],
+      build_cards: [
+        {
+          cards: [
+            {
+              position: 1,
+              resourceType: "paragraph",
+              title: "O que é uma proposição",
+              text: "Uma proposição é um enunciado que pode ser classificado como verdadeiro ou falso.",
+              sourceRefs: ["src_1"]
+            },
+            {
+              position: 2,
+              resourceType: "paragraph",
+              title: "Exemplo guiado",
+              text: "A frase `2 + 2 = 4` é proposição porque admite valor de verdade.",
+              sourceRefs: ["src_1"]
+            },
+            {
+              position: 3,
+              resourceType: "multiple_choice",
+              title: "Reconhecendo proposições",
+              question: "Qual enunciado é uma proposição?",
+              options: [
+                { optionId: "a", label: "Feche a porta." },
+                { optionId: "b", label: "2 + 2 = 4." },
+                { optionId: "c", label: "Que horas são?" }
+              ],
+              correctOptionId: "b",
+              feedback: "Só `2 + 2 = 4` pode ser classificado como verdadeiro ou falso.",
+              sourceRefs: ["src_1"]
+            }
+          ]
+        }
       ]
     }
   });
@@ -350,7 +384,8 @@ test("top-down com fake provider gera curso completo em memória", async () => {
     intent: {
       operation: "create",
       scope: { level: "project" },
-      promptText: "Criar curso de lógica."
+      promptText: "Criar curso de lógica.",
+      attachments: [{ id: "src_1", name: "ementa.pdf", type: "application/pdf" }]
     },
     projectDocument: createProject(),
     providerRegistry: registry,
@@ -359,10 +394,13 @@ test("top-down com fake provider gera curso completo em memória", async () => {
 
   assert.equal(result.projectDocument.courses[0].title, "Lógica");
   assert.equal(result.patch.operations.some((item) => item.op === "add_microsequence"), true);
+  assert.equal(result.projectDocument.courses[0].modules[0].lessons[0].microsequences[0].status, "ready");
+  assert.equal(result.projectDocument.courses[0].modules[0].lessons[0].microsequences[0].included, true);
+  assert.equal(result.projectDocument.courses[0].modules[0].lessons[0].microsequences[0].cards.length, 3);
   const finalReport = result.artifacts.find((item) => item.name === "final-report");
   assert.equal(finalReport.content.executedGenerationDepth, "full_course");
   assert.equal(finalReport.content.deferredGenerationDepth, "");
-  assert.ok(finalReport.content.deferredPhases.includes("build_cards"));
+  assert.equal(finalReport.content.deferredPhases.length, 0);
 });
 
 test("audit_architecture reprovada aciona repair_architecture e aplica versão corrigida", async () => {
@@ -486,7 +524,7 @@ test("top-down salva run parcial e retoma depois de falha", async () => {
                       commonErrors: "Confundir internet com rede local."
                     },
                     presetId: "default",
-                    resourceTags: ["paragraph"],
+                    resourceTags: ["paragraph", "multiple_choice"],
                     contentTypeTags: ["theory"],
                     learningActionTags: ["read"],
                     supportLevel: "guided"
@@ -519,7 +557,7 @@ test("top-down salva run parcial e retoma depois de falha", async () => {
                 commonErrors: "Confundir internet com rede local."
               },
               presetId: "default",
-              resourceTags: ["paragraph"],
+              resourceTags: ["paragraph", "multiple_choice"],
               contentTypeTags: ["theory"],
               learningActionTags: ["read"],
               supportLevel: "guided"
@@ -552,6 +590,40 @@ test("top-down salva run parcial e retoma depois de falha", async () => {
           issues: [],
           warnings: []
         }
+      ],
+      build_cards: [
+        {
+          cards: [
+            {
+              position: 1,
+              resourceType: "paragraph",
+              title: "Rede local e internet",
+              text: "Rede local conecta dispositivos de um mesmo ambiente; internet interliga redes.",
+              sourceRefs: ["src_1"]
+            },
+            {
+              position: 2,
+              resourceType: "paragraph",
+              title: "Exemplo rápido",
+              text: "Os computadores de uma escola podem formar uma rede local.",
+              sourceRefs: ["src_1"]
+            },
+            {
+              position: 3,
+              resourceType: "multiple_choice",
+              title: "Classificação",
+              question: "Qual opção descreve melhor a internet?",
+              options: [
+                { optionId: "a", label: "Uma única rede doméstica." },
+                { optionId: "b", label: "Um conjunto de redes interligadas." },
+                { optionId: "c", label: "Um cabo entre dois computadores." }
+              ],
+              correctOptionId: "b",
+              feedback: "A internet conecta várias redes entre si.",
+              sourceRefs: ["src_1"]
+            }
+          ]
+        }
       ]
     }
   });
@@ -562,7 +634,12 @@ test("top-down salva run parcial e retoma depois de falha", async () => {
   await assert.rejects(
     async () => {
       await runCourseForge({
-        intent: { operation: "create", scope: { level: "project" }, promptText: "Quero só a estrutura do curso de redes" },
+        intent: {
+          operation: "create",
+          scope: { level: "project" },
+          promptText: "Quero só a estrutura do curso de redes",
+          attachments: [{ id: "src_1", name: "ementa.pdf", type: "application/pdf" }]
+        },
         projectDocument: createProject(),
         providerRegistry: registry,
         providerId: "fake",
@@ -577,7 +654,12 @@ test("top-down salva run parcial e retoma depois de falha", async () => {
   );
 
   const resumed = await runCourseForge({
-    intent: { operation: "create", scope: { level: "project" }, promptText: "Quero só a estrutura do curso de redes" },
+    intent: {
+      operation: "create",
+      scope: { level: "project" },
+      promptText: "Quero só a estrutura do curso de redes",
+      attachments: [{ id: "src_1", name: "ementa.pdf", type: "application/pdf" }]
+    },
     projectDocument: createProject(),
     providerRegistry: registry,
     providerId: "fake",
@@ -630,4 +712,202 @@ test("compileCourseStructureToPatch inclui microssequências planejadas", () => 
   });
 
   assert.equal(patch.operations.some((item) => item.op === "add_microsequence"), true);
+});
+
+test("compileCourseStructureToPatch inclui cards públicos quando disponíveis", () => {
+  const patch = compileCourseStructureToPatch({
+    intent: resolveCourseForgeIntent({ operation: "create", scope: { level: "project" } }),
+    architectureDraft: {
+      course: {
+        key: "course-1",
+        title: "Curso 1",
+        modules: [{ key: "module-1", title: "Módulo 1", lessons: [{ key: "lesson-1", title: "Lição 1" }] }]
+      },
+      microsequencePlans: [
+        {
+          courseKey: "course-1",
+          moduleKey: "module-1",
+          lessonKey: "lesson-1",
+          microsequences: [
+            {
+              key: "micro-1",
+              title: "Introdução",
+              objective: "Objetivo.",
+              coverageRole: "core",
+              publicCards: [{ title: "Card", say: "Texto." }]
+            }
+          ]
+        }
+      ]
+    }
+  });
+
+  const operation = patch.operations.find((item) => item.op === "add_microsequence");
+  assert.equal(operation.microsequence.status, "ready");
+  assert.equal(operation.microsequence.included, true);
+  assert.equal(operation.microsequence.cards.length, 1);
+});
+
+test("repair_cards corrige cards inválidos antes de aplicar ao projeto", async () => {
+  const provider = createFakeProvider({
+    script: {
+      plan_architecture: [
+        {
+          course: {
+            key: "course-logica",
+            title: "Lógica",
+            description: "Curso.",
+            modules: [
+              {
+                key: "module-proposicoes",
+                title: "Proposições",
+                description: "Módulo.",
+                lessons: [
+                  {
+                    key: "lesson-introducao",
+                    title: "Introdução",
+                    description: "Lição.",
+                    sourceGuideStructured: {
+                      lessonGoal: "Ler proposições.",
+                      notationRules: "Usar `p` e `q`.",
+                      commonErrors: "Confundir frase e proposição."
+                    },
+                    presetId: "default",
+                    resourceTags: ["paragraph", "multiple_choice"],
+                    contentTypeTags: ["theory"],
+                    learningActionTags: ["read"],
+                    supportLevel: "guided",
+                    microsequences: []
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      audit_architecture: [{ approved: true, blockingIssues: [], warnings: [] }],
+      plan_lessons: [
+        {
+          lessonPlans: [
+            {
+              courseKey: "course-logica",
+              moduleKey: "module-proposicoes",
+              lessonKey: "lesson-introducao",
+              lessonTitle: "Introdução",
+              lessonDescription: "Lição.",
+              sourceGuideStructured: {
+                lessonGoal: "Ler proposições.",
+                notationRules: "Usar `p` e `q`.",
+                commonErrors: "Confundir frase e proposição."
+              },
+              presetId: "default",
+              resourceTags: ["paragraph", "multiple_choice"],
+              contentTypeTags: ["theory"],
+              learningActionTags: ["read"],
+              supportLevel: "guided"
+            }
+          ]
+        }
+      ],
+      plan_microsequences: [
+        {
+          microsequencePlans: [
+            {
+              lessonKey: "lesson-introducao",
+              moduleKey: "module-proposicoes",
+              courseKey: "course-logica",
+              microsequences: [
+                {
+                  key: "microsequence-leitura-inicial",
+                  title: "Leitura inicial de proposições",
+                  objective: "Reconhecer enunciados como proposições.",
+                  coverageRole: "core"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      audit_microsequences: [{ approved: true, issues: [], warnings: [] }],
+      build_cards: [
+        {
+          cards: [
+            {
+              position: 1,
+              resourceType: "paragraph",
+              title: "Pipeline",
+              text: "Este JSON explica o conceito.",
+              sourceRefs: ["src_inexistente"]
+            },
+            {
+              position: 2,
+              resourceType: "paragraph",
+              title: "Exemplo guiado",
+              text: "A frase `2 + 2 = 4` é proposição.",
+              sourceRefs: []
+            },
+            {
+              position: 3,
+              resourceType: "paragraph",
+              title: "Resumo",
+              text: "Toda proposição admite valor de verdade.",
+              sourceRefs: []
+            }
+          ]
+        }
+      ],
+      repair_cards: [
+        {
+          cards: [
+            {
+              position: 1,
+              resourceType: "paragraph",
+              title: "O que é uma proposição",
+              text: "Uma proposição é um enunciado que pode ser classificado como verdadeiro ou falso.",
+              sourceRefs: ["src_1"]
+            },
+            {
+              position: 2,
+              resourceType: "paragraph",
+              title: "Exemplo guiado",
+              text: "A frase `2 + 2 = 4` é proposição porque admite valor de verdade.",
+              sourceRefs: ["src_1"]
+            },
+            {
+              position: 3,
+              resourceType: "multiple_choice",
+              title: "Reconhecendo proposições",
+              question: "Qual enunciado é uma proposição?",
+              options: [
+                { optionId: "a", label: "Feche a porta." },
+                { optionId: "b", label: "2 + 2 = 4." },
+                { optionId: "c", label: "Que horas são?" }
+              ],
+              correctOptionId: "b",
+              feedback: "Só `2 + 2 = 4` pode ser classificado como verdadeiro ou falso.",
+              sourceRefs: ["src_1"]
+            }
+          ]
+        }
+      ]
+    }
+  });
+  const registry = createProviderRegistry({ providers: [provider] });
+  const result = await runCourseForge({
+    intent: {
+      operation: "create",
+      scope: { level: "project" },
+      promptText: "Criar curso de lógica.",
+      attachments: [{ id: "src_1", name: "ementa.pdf", type: "application/pdf" }]
+    },
+    projectDocument: createProject(),
+    providerRegistry: registry,
+    providerId: "fake"
+  });
+
+  const microsequence = result.projectDocument.courses[0].modules[0].lessons[0].microsequences[0];
+  assert.equal(microsequence.cards.length, 3);
+  assert.equal(microsequence.cards[0].title, "O que é uma proposição");
+  const sourceAudit = result.artifacts.find((item) => item.name === "source-adherence-audit");
+  assert.equal(sourceAudit.content.approved, true);
 });

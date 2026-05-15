@@ -33,6 +33,11 @@ const FULL_PROJECT_PHASES = Object.freeze([
   "plan_lessons",
   "plan_microsequences",
   "audit_microsequences",
+  "build_microsequence_contract",
+  "build_cards",
+  "audit_cards",
+  "audit_source_adherence",
+  "repair_cards",
   "compile_patch",
   "validate_patch",
   "apply_patch",
@@ -52,12 +57,7 @@ const FULL_MICROSEQUENCE_PHASES = Object.freeze([
   "final_report"
 ]);
 
-const FULL_COURSE_DEFERRED_PHASES = Object.freeze([
-  "build_cards",
-  "audit_cards",
-  "audit_source_adherence",
-  "repair_cards"
-]);
+const FULL_COURSE_DEFERRED_PHASES = Object.freeze([]);
 
 export function resolveCourseForgePhases(intent = {}) {
   const level = intent?.scope?.level || "project";
