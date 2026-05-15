@@ -8,6 +8,7 @@ import { compileCourseStructureToPatch, validateCourseForgePatch } from "./cours
 import { resolveCourseForgePhases, resolveDeferredCourseForgePhases } from "./courseForgePhases.js";
 import { createCourseForgeRunState, markCourseForgePhase, updateCourseForgeRunState } from "./courseForgeRunState.js";
 import { validateCourseForgeSourceLedger } from "./courseForgeSourceLedger.js";
+import { mergeCourseForgeArchitectureAudits, validateCourseForgeArchitectureDraft } from "./courseForgeValidation.js";
 import { resolveModelForCourseForgePhase } from "../modelProfiles/modelRouting.js";
 
 function text(value) {
@@ -26,6 +27,26 @@ function buildInlineSourceLedger(intent = {}) {
     notationSignals: [],
     teacherConventions: []
   }));
+}
+
+function buildArchitecturePromptTask(intent = {}, projectDocument = {}) {
+  const summary = Array.isArray(projectDocument?.courses)
+    ? `Cursos atuais no projeto: ${projectDocument.courses.length}.`
+    : "Projeto atual sem cursos.";
+  return `${intent.promptText}\n\nContexto do projeto:\n${summary}`;
+}
+
+function readArchitectureValue(payload = {}) {
+  if (payload?.architectureFinal?.course) {
+    return payload.architectureFinal;
+  }
+  if (payload?.architectureDraft?.course) {
+    return payload.architectureDraft;
+  }
+  if (payload?.course) {
+    return payload;
+  }
+  return payload;
 }
 
 async function callProviderPhase({ provider, phaseId, modelId, prompt, schema, artifacts }) {
@@ -71,6 +92,8 @@ export async function runCourseForge({
     projectDocument: structuredClone(projectDocument),
     sourceLedger: artifactStore.loadArtifact(runId, "source-ledger")?.content || null,
     architectureDraft: artifactStore.loadArtifact(runId, "architecture-draft")?.content || null,
+    architectureAudit: artifactStore.loadArtifact(runId, "architecture-audit")?.content || null,
+    architectureFinal: artifactStore.loadArtifact(runId, "architecture-final")?.content || null,
     patch: artifactStore.loadArtifact(runId, "patch-final")?.content || null
   };
 
@@ -107,18 +130,82 @@ export async function runCourseForge({
           prompt: buildCourseForgePrompt({
             role: "Você planeja a estrutura didática top-down do AraLearn.",
             sourcePack: JSON.stringify(context.sourceLedger || []),
-            task: intent.promptText,
+            task: buildArchitecturePromptTask(intent, context.projectDocument),
             output: "Responda somente JSON válido com architectureDraft ou patch."
           }),
           schema: null,
           artifacts: [{ id: "intent", name: "intent", content: JSON.stringify(intent) }]
         });
-        context.architectureDraft = structuredClone(response.value || response);
+        context.architectureDraft = structuredClone(readArchitectureValue(response.value || response));
         artifactStore.saveArtifact(runId, "architecture-draft", context.architectureDraft);
+      } else if (phaseId === "audit_architecture") {
+        const localAudit = validateCourseForgeArchitectureDraft({
+          architectureDraft: context.architectureDraft || {},
+          sourceLedger: context.sourceLedger || [],
+          scope: intent.scope
+        });
+        let providerAudit = { approved: true, blockingIssues: [], warnings: [] };
+        if (provider?.id !== "fake" || provider?.capabilities?.provider === "fake") {
+          const modelId = resolveModelForCourseForgePhase(intent, phaseId);
+          const response = await callProviderPhase({
+            provider,
+            phaseId,
+            modelId,
+            prompt: buildCourseForgePrompt({
+              role: "Você audita a arquitetura didática proposta para o AraLearn.",
+              sourcePack: JSON.stringify(context.sourceLedger || []),
+              task: "Revise a arquitetura proposta. Aponte problemas de escopo, progressão, aderência às fontes e vocabulário de bastidor.",
+              output: "Responda somente JSON válido com approved, blockingIssues e warnings."
+            }),
+            schema: null,
+            artifacts: [
+              { id: "intent", name: "intent", content: JSON.stringify(intent) },
+              { id: "architecture-draft", name: "architecture-draft", content: JSON.stringify(context.architectureDraft || {}) }
+            ]
+          });
+          providerAudit = structuredClone(response.value || response || providerAudit);
+        }
+        context.architectureAudit = mergeCourseForgeArchitectureAudits(localAudit, providerAudit);
+        artifactStore.saveArtifact(runId, "architecture-audit", context.architectureAudit);
+      } else if (phaseId === "repair_architecture") {
+        const audit = context.architectureAudit || { approved: true, blockingIssues: [], warnings: [] };
+        if (audit.approved && !(audit.blockingIssues || []).length) {
+          context.architectureFinal = structuredClone(context.architectureDraft || {});
+          artifactStore.saveArtifact(runId, "architecture-final", context.architectureFinal);
+        } else {
+          const modelId = resolveModelForCourseForgePhase(intent, phaseId);
+          const response = await callProviderPhase({
+            provider,
+            phaseId,
+            modelId,
+            prompt: buildCourseForgePrompt({
+              role: "Você repara a arquitetura didática top-down do AraLearn.",
+              sourcePack: JSON.stringify(context.sourceLedger || []),
+              task: "Corrija apenas os problemas apontados pela auditoria, sem ampliar o escopo além do pedido.",
+              output: "Responda somente JSON válido com architectureFinal."
+            }),
+            schema: null,
+            artifacts: [
+              { id: "intent", name: "intent", content: JSON.stringify(intent) },
+              { id: "architecture-draft", name: "architecture-draft", content: JSON.stringify(context.architectureDraft || {}) },
+              { id: "architecture-audit", name: "architecture-audit", content: JSON.stringify(audit) }
+            ]
+          });
+          context.architectureFinal = structuredClone(readArchitectureValue(response.value || response));
+          const finalAudit = validateCourseForgeArchitectureDraft({
+            architectureDraft: context.architectureFinal || {},
+            sourceLedger: context.sourceLedger || [],
+            scope: intent.scope
+          });
+          if (!finalAudit.ok) {
+            throw new Error(`A arquitetura reparada ainda falhou na auditoria: ${finalAudit.blockingIssues.map((item) => item.evidence).join(" ")}`);
+          }
+          artifactStore.saveArtifact(runId, "architecture-final", context.architectureFinal);
+        }
       } else if (phaseId === "compile_patch") {
         context.patch = compileCourseStructureToPatch({
           intent,
-          architectureDraft: context.architectureDraft || {}
+          architectureDraft: context.architectureFinal || context.architectureDraft || {}
         });
         artifactStore.saveArtifact(runId, "patch-final", context.patch);
       } else if (phaseId === "validate_patch") {

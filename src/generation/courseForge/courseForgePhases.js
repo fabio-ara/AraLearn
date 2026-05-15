@@ -4,6 +4,8 @@ const STRUCTURE_PHASES = Object.freeze([
   "normalize_intent",
   "index_sources",
   "plan_architecture",
+  "audit_architecture",
+  "repair_architecture",
   "compile_patch",
   "validate_patch",
   "apply_patch",

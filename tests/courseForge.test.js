@@ -16,6 +16,7 @@ import { canResumeCourseForgeRun, createCourseForgeRunState } from "../src/gener
 import { runCourseForgeQueue } from "../src/generation/courseForge/courseForgeQueue.js";
 import { runCourseForge } from "../src/generation/courseForge/courseForgeRunner.js";
 import { applyCourseForgePatch } from "../src/generation/courseForge/courseForgeApply.js";
+import { mergeCourseForgeArchitectureAudits, validateCourseForgeArchitectureDraft } from "../src/generation/courseForge/courseForgeValidation.js";
 import { getModelCapabilities } from "../src/generation/providers/modelCapabilities.js";
 
 function createProject() {
@@ -108,6 +109,8 @@ test("phase resolution escolhe subfluxo estrutural e registra fases adiadas", ()
     "normalize_intent",
     "index_sources",
     "plan_architecture",
+    "audit_architecture",
+    "repair_architecture",
     "compile_patch",
     "validate_patch",
     "apply_patch",
@@ -155,6 +158,38 @@ test("backstage vocabulary auditor detecta jargão visível", () => {
     lessonContext: { title: "Lógica proposicional" }
   });
   assert.equal(result.ok, false);
+});
+
+test("arquitetura local detecta bastidor e falta de governança mínima", () => {
+  const result = validateCourseForgeArchitectureDraft({
+    architectureDraft: {
+      course: {
+        title: "Pipeline do curso",
+        modules: [
+          {
+            title: "Módulo 1",
+            lessons: [{ title: "Lição sem guia", description: "Resumo." }]
+          }
+        ]
+      }
+    },
+    sourceLedger: [{ id: "src_1", title: "Ementa" }],
+    scope: { level: "project" }
+  });
+
+  assert.equal(result.ok, false);
+  assert.ok(result.blockingIssues.some((item) => item.type === "backstage_vocabulary"));
+  assert.ok(result.blockingIssues.some((item) => item.type === "source_gap"));
+});
+
+test("merge de auditorias preserva reprovação se qualquer auditoria bloquear", () => {
+  const result = mergeCourseForgeArchitectureAudits(
+    { approved: true, blockingIssues: [], warnings: [] },
+    { approved: false, blockingIssues: [{ target: "course", type: "too_broad" }], warnings: [] }
+  );
+
+  assert.equal(result.approved, false);
+  assert.equal(result.blockingIssues.length, 1);
 });
 
 test("patch validation bloqueia operação fora do escopo", () => {
@@ -247,6 +282,13 @@ test("top-down com fake provider gera curso completo em memória", async () => {
             ]
           }
         }
+      ],
+      audit_architecture: [
+        {
+          approved: true,
+          blockingIssues: [],
+          warnings: []
+        }
       ]
     }
   });
@@ -269,6 +311,101 @@ test("top-down com fake provider gera curso completo em memória", async () => {
   assert.equal(finalReport.content.deferredGenerationDepth, "full_course");
 });
 
+test("audit_architecture reprovada aciona repair_architecture e aplica versão corrigida", async () => {
+  const provider = createFakeProvider({
+    script: {
+      plan_architecture: [
+        {
+          course: {
+            key: "course-logica",
+            title: "Pipeline de lógica",
+            modules: [
+              {
+                key: "module-base",
+                title: "Módulo base",
+                lessons: [
+                  {
+                    key: "lesson-base",
+                    title: "Lição sem guia",
+                    description: "Resumo"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      audit_architecture: [
+        {
+          approved: false,
+          blockingIssues: [
+            {
+              target: "course",
+              type: "backstage_vocabulary",
+              severity: "blocking",
+              evidence: "Título do curso expõe bastidor.",
+              requiredFix: "Reescrever."
+            }
+          ],
+          warnings: []
+        }
+      ],
+      repair_architecture: [
+        {
+          architectureFinal: {
+            course: {
+              key: "course-logica",
+              title: "Lógica",
+              description: "Curso.",
+              modules: [
+                {
+                  key: "module-base",
+                  title: "Módulo base",
+                  description: "Módulo.",
+                  lessons: [
+                    {
+                      key: "lesson-base",
+                      title: "Introdução",
+                      description: "Lição.",
+                      sourceGuideStructured: {
+                        lessonGoal: "Ler proposições.",
+                        notationRules: "Usar `p` e `q`.",
+                        commonErrors: "Confundir frase e proposição."
+                      },
+                      presetId: "default",
+                      resourceTags: ["paragraph"],
+                      contentTypeTags: ["theory"],
+                      learningActionTags: ["read"],
+                      supportLevel: "guided"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  });
+  const registry = createProviderRegistry({ providers: [provider] });
+  const result = await runCourseForge({
+    intent: {
+      operation: "create",
+      scope: { level: "project" },
+      promptText: "Quero só a estrutura."
+    },
+    projectDocument: createProject(),
+    providerRegistry: registry,
+    providerId: "fake"
+  });
+
+  assert.equal(result.projectDocument.courses[0].title, "Lógica");
+  const auditArtifact = result.artifacts.find((item) => item.name === "architecture-audit");
+  const finalArtifact = result.artifacts.find((item) => item.name === "architecture-final");
+  assert.equal(auditArtifact.content.approved, false);
+  assert.equal(finalArtifact.content.course.title, "Lógica");
+});
+
 test("top-down salva run parcial e retoma depois de falha", async () => {
   const provider = createFakeProvider({
     script: {
@@ -279,8 +416,38 @@ test("top-down salva run parcial e retoma depois de falha", async () => {
             key: "course-rede",
             title: "Redes",
             description: "Curso.",
-            modules: []
+            modules: [
+              {
+                key: "module-intro",
+                title: "Introdução",
+                description: "Módulo.",
+                lessons: [
+                  {
+                    key: "lesson-base",
+                    title: "Conceitos iniciais",
+                    description: "Lição.",
+                    sourceGuideStructured: {
+                      lessonGoal: "Entender noções básicas de redes.",
+                      notationRules: "Usar nomes simples para host e rede.",
+                      commonErrors: "Confundir internet com rede local."
+                    },
+                    presetId: "default",
+                    resourceTags: ["paragraph"],
+                    contentTypeTags: ["theory"],
+                    learningActionTags: ["read"],
+                    supportLevel: "guided"
+                  }
+                ]
+              }
+            ]
           }
+        }
+      ],
+      audit_architecture: [
+        {
+          approved: true,
+          blockingIssues: [],
+          warnings: []
         }
       ]
     }
