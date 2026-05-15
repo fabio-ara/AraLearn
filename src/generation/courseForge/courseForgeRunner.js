@@ -17,10 +17,13 @@ import {
 import { resolveModelForCourseForgePhase } from "../modelProfiles/modelRouting.js";
 import {
   auditCourseForgeCardDrafts,
+  auditCourseForgeDomainCoverage,
+  mergeCourseForgeAdherenceAudits,
   auditCourseForgeSourceAdherence,
   buildCourseForgeMicrosequenceContracts,
   normalizeCourseForgeCardsPayload,
-  repairCourseForgeDraftCardsDeterministically
+  repairCourseForgeDraftCardsDeterministically,
+  repairCourseForgeMicrosequenceMetadataDeterministically
 } from "./courseForgeCards.js";
 
 function text(value) {
@@ -73,6 +76,7 @@ function listArchitectureLessons(architectureDraft = {}) {
         lessonTitle: text(lesson?.title),
         lessonDescription: text(lesson?.description),
         sourceGuideStructured: structuredClone(lesson?.sourceGuideStructured || {}),
+        domainMap: structuredClone(lesson?.domainMap || null),
         resourceTags: structuredClone(lesson?.resourceTags || []),
         contentTypeTags: structuredClone(lesson?.contentTypeTags || []),
         learningActionTags: structuredClone(lesson?.learningActionTags || []),
@@ -94,6 +98,7 @@ function normalizeLessonPlans(payload = {}, architectureDraft = {}) {
       lessonTitle: text(lessonPlan?.lessonTitle),
       lessonDescription: text(lessonPlan?.lessonDescription),
       sourceGuideStructured: structuredClone(lessonPlan?.sourceGuideStructured || {}),
+      domainMap: structuredClone(lessonPlan?.domainMap || null),
       resourceTags: structuredClone(lessonPlan?.resourceTags || []),
       contentTypeTags: structuredClone(lessonPlan?.contentTypeTags || []),
       learningActionTags: structuredClone(lessonPlan?.learningActionTags || []),
@@ -440,10 +445,15 @@ export async function runCourseForge({
         }
         artifactStore.saveArtifact(runId, "cards-audit", context.cardsAudit);
       } else if (phaseId === "audit_source_adherence") {
-        context.sourceAdherenceAudit = auditCourseForgeSourceAdherence({
+        const sourceGroundingAudit = auditCourseForgeSourceAdherence({
           cardDrafts: context.cardDrafts || [],
           sourceLedger: context.sourceLedger || []
         });
+        const domainCoverageAudit = auditCourseForgeDomainCoverage({
+          microsequencePlans: context.microsequencePlans || [],
+          lessonPlans: context.lessonPlans || []
+        });
+        context.sourceAdherenceAudit = mergeCourseForgeAdherenceAudits(sourceGroundingAudit, domainCoverageAudit);
         artifactStore.saveArtifact(runId, "source-adherence-audit", context.sourceAdherenceAudit);
       } else if (phaseId === "repair_cards") {
         const combinedAudit = mergeCardAudits(context.cardsAudit || {}, context.sourceAdherenceAudit || {});
@@ -451,6 +461,11 @@ export async function runCourseForge({
           context.cardsFinal = structuredClone(context.cardDrafts || []);
           artifactStore.saveArtifact(runId, "cards-final", context.cardsFinal);
         } else {
+          context.microsequencePlans = repairCourseForgeMicrosequenceMetadataDeterministically({
+            microsequencePlans: context.microsequencePlans || [],
+            lessonPlans: context.lessonPlans || []
+          });
+          artifactStore.saveArtifact(runId, "microsequence-plans", context.microsequencePlans);
           let repairedDrafts = repairCourseForgeDraftCardsDeterministically({
             cardDrafts: context.cardDrafts || [],
             sourceLedger: context.sourceLedger || []
@@ -463,6 +478,13 @@ export async function runCourseForge({
             cardDrafts: repairedDrafts,
             sourceLedger: context.sourceLedger || []
           });
+          postRepairSourceAudit = mergeCourseForgeAdherenceAudits(
+            postRepairSourceAudit,
+            auditCourseForgeDomainCoverage({
+              microsequencePlans: context.microsequencePlans || [],
+              lessonPlans: context.lessonPlans || []
+            })
+          );
 
           if (hasBlockingIssues(mergeCardAudits(postRepairCardsAudit, postRepairSourceAudit))) {
             const modelId = resolveModelForCourseForgePhase({ ...intent, phaseId });
@@ -503,6 +525,13 @@ export async function runCourseForge({
               cardDrafts: repairedDrafts,
               sourceLedger: context.sourceLedger || []
             });
+            postRepairSourceAudit = mergeCourseForgeAdherenceAudits(
+              postRepairSourceAudit,
+              auditCourseForgeDomainCoverage({
+                microsequencePlans: context.microsequencePlans || [],
+                lessonPlans: context.lessonPlans || []
+              })
+            );
           }
 
           const finalAudit = mergeCardAudits(postRepairCardsAudit, postRepairSourceAudit);

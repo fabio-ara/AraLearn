@@ -911,3 +911,178 @@ test("repair_cards corrige cards inválidos antes de aplicar ao projeto", async 
   const sourceAudit = result.artifacts.find((item) => item.name === "source-adherence-audit");
   assert.equal(sourceAudit.content.approved, true);
 });
+
+test("audit_source_adherence usa domainMap explícito para fechar cobertura mínima da lição", async () => {
+  const provider = createFakeProvider({
+    script: {
+      plan_architecture: [
+        {
+          course: {
+            key: "course-redes",
+            title: "Redes",
+            description: "Curso.",
+            modules: [
+              {
+                key: "module-intro",
+                title: "Fundamentos",
+                description: "Módulo.",
+                lessons: [
+                  {
+                    key: "lesson-rede-local",
+                    title: "Rede local",
+                    description: "Lição.",
+                    sourceGuideStructured: {
+                      lessonGoal: "Distinguir rede local e internet.",
+                      notationRules: "Usar `LAN` e `internet`.",
+                      commonErrors: "Confundir rede local com internet."
+                    },
+                    domainMap: {
+                      items: [
+                        {
+                          id: "domain-lan",
+                          label: "Distinguir rede local e internet",
+                          kind: "concept",
+                          priority: "core"
+                        }
+                      ],
+                      practiceVariants: [
+                        {
+                          id: "variant-lan-discriminacao",
+                          domainItemRef: "domain-lan",
+                          variantKind: "discrimination",
+                          purpose: "Separar exemplos de rede local e internet."
+                        }
+                      ]
+                    },
+                    presetId: "default",
+                    resourceTags: ["paragraph", "multiple_choice"],
+                    contentTypeTags: ["theory"],
+                    learningActionTags: ["read", "practice"],
+                    supportLevel: "guided",
+                    microsequences: []
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      audit_architecture: [{ approved: true, blockingIssues: [], warnings: [] }],
+      plan_lessons: [
+        {
+          lessonPlans: [
+            {
+              courseKey: "course-redes",
+              moduleKey: "module-intro",
+              lessonKey: "lesson-rede-local",
+              lessonTitle: "Rede local",
+              lessonDescription: "Lição.",
+              sourceGuideStructured: {
+                lessonGoal: "Distinguir rede local e internet.",
+                notationRules: "Usar `LAN` e `internet`.",
+                commonErrors: "Confundir rede local com internet."
+              },
+              domainMap: {
+                items: [
+                  {
+                    id: "domain-lan",
+                    label: "Distinguir rede local e internet",
+                    kind: "concept",
+                    priority: "core"
+                  }
+                ],
+                practiceVariants: [
+                  {
+                    id: "variant-lan-discriminacao",
+                    domainItemRef: "domain-lan",
+                    variantKind: "discrimination",
+                    purpose: "Separar exemplos de rede local e internet."
+                  }
+                ]
+              },
+              presetId: "default",
+              resourceTags: ["paragraph", "multiple_choice"],
+              contentTypeTags: ["theory"],
+              learningActionTags: ["read", "practice"],
+              supportLevel: "guided"
+            }
+          ]
+        }
+      ],
+      plan_microsequences: [
+        {
+          microsequencePlans: [
+            {
+              lessonKey: "lesson-rede-local",
+              moduleKey: "module-intro",
+              courseKey: "course-redes",
+              microsequences: [
+                {
+                  key: "microsequence-diferenca-basica",
+                  title: "Diferença básica",
+                  objective: "Explicar o contraste entre rede local e internet.",
+                  coverageRole: "practice"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      audit_microsequences: [{ approved: true, issues: [], warnings: [] }],
+      build_cards: [
+        {
+          cards: [
+            {
+              position: 1,
+              resourceType: "paragraph",
+              title: "Rede local e internet",
+              text: "Rede local conecta dispositivos de um mesmo ambiente; internet interliga várias redes.",
+              sourceRefs: ["src_1"]
+            },
+            {
+              position: 2,
+              resourceType: "paragraph",
+              title: "Exemplo rápido",
+              text: "Os computadores de uma escola podem formar uma rede local.",
+              sourceRefs: ["src_1"]
+            },
+            {
+              position: 3,
+              resourceType: "multiple_choice",
+              title: "Classificação",
+              question: "Qual situação descreve melhor uma rede local?",
+              options: [
+                { optionId: "a", label: "Computadores do mesmo laboratório conectados." },
+                { optionId: "b", label: "Todas as redes do mundo somadas." },
+                { optionId: "c", label: "Um único site na web." }
+              ],
+              correctOptionId: "a",
+              feedback: "Rede local conecta dispositivos de um mesmo ambiente.",
+              sourceRefs: ["src_1"]
+            }
+          ]
+        }
+      ]
+    }
+  });
+  const registry = createProviderRegistry({ providers: [provider] });
+  const result = await runCourseForge({
+    intent: {
+      operation: "create",
+      scope: { level: "project" },
+      promptText: "Criar curso de redes.",
+      attachments: [{ id: "src_1", name: "ementa.pdf", type: "application/pdf" }]
+    },
+    projectDocument: createProject(),
+    providerRegistry: registry,
+    providerId: "fake"
+  });
+
+  const lesson = result.projectDocument.courses[0].modules[0].lessons[0];
+  const microsequence = lesson.microsequences[0];
+  assert.equal(lesson.domainMap.items[0].id, "domain-lan");
+  assert.deepEqual(microsequence.domainRefs, ["domain-lan"]);
+  assert.deepEqual(microsequence.practiceVariantRefs, ["variant-lan-discriminacao"]);
+  const sourceAudit = result.artifacts.find((item) => item.name === "source-adherence-audit");
+  assert.equal(sourceAudit.content.approved, true);
+});
