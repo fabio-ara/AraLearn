@@ -27,6 +27,10 @@ import { buildMicrosequenceRepairTask } from "../src/generation/courseForge/cour
 import { applyCourseForgePatch } from "../src/generation/courseForge/courseForgeApply.js";
 import { buildCourseGraphArtifact } from "../src/generation/courseForge/courseForgeIr.js";
 import {
+  compileCourseForgeEditorInterventionPlan,
+  compileCourseForgeInterventionRequest
+} from "../src/generation/courseForge/courseForgeIntervention.js";
+import {
   mergeCourseForgeArchitectureAudits,
   validateCourseForgeArchitectureDraft,
   validateCourseForgeCourseGraph
@@ -1359,6 +1363,142 @@ test("tarefa de reparo explicita ponte guiada em guided_practice_bridge", () => 
   assert.match(task, /conceito ou alvo que precisa da ponte guiada:\s*concept-compound/i);
   assert.match(task, /ponte de prática guiada/i);
   assert.match(task, /não como explicação solta nem prática já autônoma/i);
+});
+
+test("intervention_request infere relatedConceptRefs para contraste local", () => {
+  const result = compileCourseForgeInterventionRequest({
+    intent: {
+      scope: {
+        level: "microsequence",
+        courseKey: "course-logica",
+        moduleKey: "module-base",
+        lessonKey: "lesson-conectivos",
+        microsequenceKey: "microsequence-contraste"
+      },
+      promptText: "Ainda confundo conjunção com disjunção."
+    },
+    response: {
+      recommendedAction: "patch_existing_microsequence",
+      responseText: "Vou reforçar a distinção local.",
+      rationale: "Falta contraste explícito entre conjunção e disjunção nesta microssequência."
+    },
+    lessonPlans: [
+      {
+        courseKey: "course-logica",
+        moduleKey: "module-base",
+        lessonKey: "lesson-conectivos",
+        domainMap: {
+          items: [
+            { id: "concept-and", label: "Conjunção" },
+            { id: "concept-or", label: "Disjunção" },
+            { id: "concept-implies", label: "Implicação" }
+          ],
+          practiceVariants: []
+        }
+      }
+    ]
+  });
+
+  assert.deepEqual(result.requestedChanges[0].relatedConceptRefs, ["concept-and", "concept-or"]);
+  assert.equal(result.requestedChanges[0].bridgeTargetRef, "");
+});
+
+test("intervention_request infere bridgeTargetRef para ponte guiada", () => {
+  const result = compileCourseForgeInterventionRequest({
+    intent: {
+      scope: {
+        level: "microsequence",
+        courseKey: "course-logica",
+        moduleKey: "module-base",
+        lessonKey: "lesson-proposicoes",
+        microsequenceKey: "microsequence-pratica"
+      },
+      promptText: "Preciso de prática guiada local sobre proposições compostas nesta atividade."
+    },
+    response: {
+      recommendedAction: "needs_new_microsequence",
+      responseText: "Vou pedir uma nova microssequência intermediária.",
+      rationale: "Insira prática guiada local para proposições compostas nesta etapa."
+    },
+    lessonPlans: [
+      {
+        courseKey: "course-logica",
+        moduleKey: "module-base",
+        lessonKey: "lesson-proposicoes",
+        domainMap: {
+          items: [
+            { id: "concept-simple", label: "Proposição simples" },
+            { id: "concept-compound", label: "Proposições compostas" }
+          ],
+          practiceVariants: []
+        }
+      }
+    ]
+  });
+
+  assert.equal(result.requestedChanges[0].didacticInterventionType, "guided_practice_bridge");
+  assert.equal(result.requestedChanges[0].bridgeTargetRef, "concept-compound");
+  assert.deepEqual(result.requestedChanges[0].relatedConceptRefs, []);
+});
+
+test("editor_intervention_plan preserva focos inferidos da intervention_request", () => {
+  const interventionRequest = compileCourseForgeInterventionRequest({
+    intent: {
+      scope: {
+        level: "microsequence",
+        courseKey: "course-logica",
+        moduleKey: "module-base",
+        lessonKey: "lesson-conectivos",
+        microsequenceKey: "microsequence-contraste"
+      },
+      promptText: "Ainda confundo conjunção com disjunção."
+    },
+    response: {
+      recommendedAction: "patch_existing_microsequence",
+      responseText: "Vou reforçar a distinção local.",
+      rationale: "Falta contraste explícito entre conjunção e disjunção nesta microssequência."
+    },
+    lessonPlans: [
+      {
+        courseKey: "course-logica",
+        moduleKey: "module-base",
+        lessonKey: "lesson-conectivos",
+        domainMap: {
+          items: [
+            { id: "concept-and", label: "Conjunção" },
+            { id: "concept-or", label: "Disjunção" }
+          ],
+          practiceVariants: []
+        }
+      }
+    ]
+  });
+  const result = compileCourseForgeEditorInterventionPlan({
+    interventionRequest,
+    projectDocument: {
+      contract: "aralearn.contract",
+      version: 1,
+      kind: "project",
+      courses: [
+        {
+          key: "course-logica",
+          modules: [
+            {
+              key: "module-base",
+              lessons: [
+                {
+                  key: "lesson-conectivos",
+                  microsequences: [{ key: "microsequence-contraste", cards: [] }]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  });
+
+  assert.deepEqual(result.actions[0].relatedConceptRefs, ["concept-and", "concept-or"]);
 });
 
 test("auditoria de alinhamento avaliativo cobra formato pedido explicitamente", () => {

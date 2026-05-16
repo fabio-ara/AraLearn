@@ -43,8 +43,15 @@ function uniqueTextList(values = []) {
   return [...new Set((Array.isArray(values) ? values : []).map(text).filter(Boolean))];
 }
 
+function normalizeForMatch(value = "") {
+  return text(value)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
 function containsDidacticTerm(value = "", terms = []) {
-  const normalized = text(value).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  const normalized = normalizeForMatch(value);
   return (Array.isArray(terms) ? terms : []).some((term) => normalized.includes(String(term).toLowerCase()));
 }
 
@@ -245,7 +252,82 @@ function inferActionInsertionPolicy(change = {}, interventionRequest = {}, actio
   };
 }
 
-function buildRequestedChanges({ recommendedAction = "", target = {}, response = {}, operation = "", intentPrompt = "" } = {}) {
+function findLessonPlanForTarget(lessonPlans = [], target = {}) {
+  const scopedTarget = buildScopeTarget(target);
+  return (Array.isArray(lessonPlans) ? lessonPlans : []).find((lessonPlan) =>
+    text(lessonPlan?.lessonKey) === scopedTarget.lessonKey
+    && (!scopedTarget.moduleKey || text(lessonPlan?.moduleKey) === scopedTarget.moduleKey)
+    && (!scopedTarget.courseKey || text(lessonPlan?.courseKey) === scopedTarget.courseKey)
+  ) || null;
+}
+
+function listMentionedDomainRefs({ lessonPlans = [], target = {}, sourceText = "" } = {}) {
+  const lessonPlan = findLessonPlanForTarget(lessonPlans, target);
+  const normalizedSourceText = normalizeForMatch(sourceText);
+  if (!lessonPlan || !normalizedSourceText) {
+    return [];
+  }
+  return uniqueTextList(
+    (Array.isArray(lessonPlan?.domainMap?.items) ? lessonPlan.domainMap.items : [])
+      .filter((item) => {
+        const normalizedLabel = normalizeForMatch(item?.label);
+        return normalizedLabel && normalizedSourceText.includes(normalizedLabel);
+      })
+      .map((item) => text(item?.id))
+  );
+}
+
+function inferStructuredInterventionFocus({
+  lessonPlans = [],
+  target = {},
+  didacticInterventionType = "",
+  response = {},
+  intentPrompt = ""
+} = {}) {
+  const sourceText = [
+    text(response?.rationale),
+    text(response?.responseText),
+    text(intentPrompt)
+  ].join(" ");
+  const mentionedDomainRefs = listMentionedDomainRefs({
+    lessonPlans,
+    target,
+    sourceText
+  });
+  const focus = {
+    relatedConceptRefs: [],
+    bridgeTargetRef: ""
+  };
+
+  if (didacticInterventionType === "contrast_reinforcement" && mentionedDomainRefs.length >= 2) {
+    focus.relatedConceptRefs = mentionedDomainRefs.slice(0, 4);
+  }
+
+  if (didacticInterventionType === "guided_practice_bridge") {
+    if (mentionedDomainRefs.length >= 1) {
+      focus.bridgeTargetRef = mentionedDomainRefs[0];
+    } else {
+      const lessonPlan = findLessonPlanForTarget(lessonPlans, target);
+      const availableDomainRefs = uniqueTextList(
+        (Array.isArray(lessonPlan?.domainMap?.items) ? lessonPlan.domainMap.items : []).map((item) => text(item?.id))
+      );
+      if (availableDomainRefs.length === 1) {
+        focus.bridgeTargetRef = availableDomainRefs[0];
+      }
+    }
+  }
+
+  return focus;
+}
+
+function buildRequestedChanges({
+  recommendedAction = "",
+  target = {},
+  response = {},
+  operation = "",
+  intentPrompt = "",
+  lessonPlans = []
+} = {}) {
   if (recommendedAction === "answer_only") {
     return [];
   }
@@ -254,30 +336,33 @@ function buildRequestedChanges({ recommendedAction = "", target = {}, response =
     : target.level === "microsequence"
       ? "patch_existing_microsequence"
       : "minimal_local_patch";
-  return [
+  const requestedChange = {
+    changeId: "requested_change_1",
+    type: recommendedAction === "needs_new_microsequence" ? "add_new_microsequence" : "patch_existing_material",
+    operation,
+    patchStrategy,
+    target: structuredClone(target),
+    reason: text(response?.rationale) || text(response?.responseText)
+  };
+  requestedChange.didacticInterventionType = inferRequestedChangeDidacticInterventionType(
+    requestedChange,
     {
-      changeId: "requested_change_1",
-      type: recommendedAction === "needs_new_microsequence" ? "add_new_microsequence" : "patch_existing_material",
-      operation,
-      patchStrategy,
-      didacticInterventionType: inferRequestedChangeDidacticInterventionType(
-        {
-          type: recommendedAction === "needs_new_microsequence" ? "add_new_microsequence" : "patch_existing_material",
-          operation,
-          patchStrategy,
-          reason: text(response?.rationale) || text(response?.responseText)
-        },
-        {
-          recommendedAction,
-          response,
-          target,
-          intentPrompt
-        }
-      ),
-      target: structuredClone(target),
-      reason: text(response?.rationale) || text(response?.responseText)
+      recommendedAction,
+      response,
+      target,
+      intentPrompt
     }
-  ];
+  );
+  const structuredFocus = inferStructuredInterventionFocus({
+    lessonPlans,
+    target,
+    didacticInterventionType: requestedChange.didacticInterventionType,
+    response,
+    intentPrompt
+  });
+  requestedChange.relatedConceptRefs = structuredFocus.relatedConceptRefs;
+  requestedChange.bridgeTargetRef = structuredFocus.bridgeTargetRef;
+  return [requestedChange];
 }
 
 export function compileCourseForgeInterventionRequest({
@@ -294,7 +379,8 @@ export function compileCourseForgeInterventionRequest({
     target,
     response,
     operation,
-    intentPrompt: text(intent?.promptText)
+    intentPrompt: text(intent?.promptText),
+    lessonPlans
   });
   const status = recommendedAction === "answer_only" ? "not_needed" : "ready";
 
