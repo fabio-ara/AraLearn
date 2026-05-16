@@ -742,7 +742,34 @@ function selectRepairDirectivesForTask(directives = [], { maxDirectives = 6 } = 
 
   return {
     selected,
-    omittedCount: Math.max(0, sorted.length - selected.length)
+    omittedCount: Math.max(0, sorted.length - selected.length),
+    selectionSummary: {
+      promptType: "microsequence_repair_task",
+      selectedDirectiveIndexes: sorted
+        .map((directive, index) => ({ directive, index }))
+        .filter(({ directive }) => selectedSet.has(directive))
+        .map(({ index }) => index),
+      omittedDirectiveIndexes: sorted
+        .map((directive, index) => ({ directive, index }))
+        .filter(({ directive }) => !selectedSet.has(directive))
+        .map(({ index }) => index),
+      selectedCount: selected.length,
+      omittedCount: Math.max(0, sorted.length - selected.length),
+      budgetPolicy: "flexible_preserve_critical_directives",
+      rankedDirectives: sorted.map((directive, index) => ({
+        index,
+        directiveType: text(directive?.directiveType),
+        didacticInterventionType: text(directive?.didacticInterventionType),
+        providerIssueType: text(directive?.providerIssueType),
+        severity: text(directive?.severity),
+        requestedChangeId: text(directive?.requestedChangeId),
+        target: structuredClone(directive?.target || {}),
+        severityScore: scoreDirectiveSeverity(directive),
+        targetProximityScore: scoreDirectiveTargetProximity(directive),
+        includedInPrompt: selectedSet.has(directive),
+        omissionReason: selectedSet.has(directive) ? "" : "lower_priority_than_prompt_budget"
+      }))
+    }
   };
 }
 
@@ -1612,6 +1639,10 @@ export async function runCourseForge({
           interventionPlan,
           providerMicrosequenceAudit: context.microsequenceAudit
         });
+        context.microsequenceRepairDirectives = {
+          ...structuredClone(context.microsequenceRepairDirectives || { directives: [] }),
+          promptSelection: selectRepairDirectivesForTask(context.microsequenceRepairDirectives?.directives || []).selectionSummary
+        };
         let combinedPlanningAudit = mergeCourseForgeAdherenceAudits(adherenceAudit, interventionDidacticAudit);
 
         if (hasBlockingIssues(combinedPlanningAudit)) {
@@ -1671,6 +1702,10 @@ export async function runCourseForge({
             interventionPlan,
             providerMicrosequenceAudit: context.microsequenceAudit
           });
+          context.microsequenceRepairDirectives = {
+            ...structuredClone(context.microsequenceRepairDirectives || { directives: [] }),
+            promptSelection: selectRepairDirectivesForTask(context.microsequenceRepairDirectives?.directives || []).selectionSummary
+          };
           combinedPlanningAudit = mergeCourseForgeAdherenceAudits(adherenceAudit, interventionDidacticAudit);
         }
 
@@ -1679,6 +1714,7 @@ export async function runCourseForge({
         savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "intervention-didactic-audit", context.interventionDidacticAudit);
         savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "microsequence-repair-directives", context.microsequenceRepairDirectives);
         runState = updateCourseForgeRunState(runState, {
+          repairPromptBudget: structuredClone(context.microsequenceRepairDirectives?.promptSelection || null),
           metrics: updateMetricsCategory(runState.metrics, "planning", {
             issueCount: sumBlockingIssues(mergeCourseForgeAdherenceAudits(context.microsequenceAdherenceAudit, context.interventionDidacticAudit)),
             lastFailureCategory: hasBlockingIssues(mergeCourseForgeAdherenceAudits(context.microsequenceAdherenceAudit, context.interventionDidacticAudit))

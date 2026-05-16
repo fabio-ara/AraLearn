@@ -1827,6 +1827,38 @@ test("tarefa de reparo preserva diretivas criticas mesmo acima do limite flexive
   assert.match(task, /Outros 2 ajustes de menor prioridade foram omitidos deste prompt/i);
 });
 
+test("artefato de reparo pode carregar resumo auditavel de selecao do prompt", () => {
+  const directivesArtifact = {
+    directives: [
+      {
+        directiveType: "repair_domain_coverage",
+        instruction: "Corrigir cobertura 1.",
+        evidence: "Lacuna estrutural 1."
+      }
+    ],
+    promptSelection: {
+      promptType: "microsequence_repair_task",
+      selectedDirectiveIndexes: [0],
+      omittedDirectiveIndexes: [],
+      selectedCount: 1,
+      omittedCount: 0,
+      budgetPolicy: "flexible_preserve_critical_directives",
+      rankedDirectives: [
+        {
+          index: 0,
+          directiveType: "repair_domain_coverage",
+          includedInPrompt: true,
+          omissionReason: ""
+        }
+      ]
+    }
+  };
+
+  const task = buildMicrosequenceRepairTask(directivesArtifact);
+  assert.match(task, /Lacunas estruturais determinísticas/i);
+  assert.equal(directivesArtifact.promptSelection.promptType, "microsequence_repair_task");
+});
+
 test("intervention_request infere relatedConceptRefs para contraste local", () => {
   const result = compileCourseForgeInterventionRequest({
     intent: {
@@ -6000,6 +6032,8 @@ test("repair_microsequences chama provider quando a cobertura do domainMap nao e
           const directives = JSON.parse(directivesArtifact.content);
           assert.ok(Array.isArray(directives.directives));
           assert.ok(directives.directives.some((directive) => directive.directiveType === "repair_domain_coverage"));
+          assert.equal(directives.promptSelection.promptType, "microsequence_repair_task");
+          assert.ok(Array.isArray(directives.promptSelection.rankedDirectives));
           assert.match(prompt, /Lacunas estruturais determinísticas/i);
           return {
             microsequencePlans: [
@@ -6077,6 +6111,7 @@ test("repair_microsequences chama provider quando a cobertura do domainMap nao e
   assert.equal(adherenceAudit.content.approved, true);
   assert.deepEqual(microsequence.domainRefs, ["domain-and", "domain-or"]);
   assert.deepEqual(microsequence.practiceVariantRefs, ["variant-and", "variant-or"]);
+  assert.equal(result.runState.repairPromptBudget.promptType, "microsequence_repair_task");
   assert.equal(finalReport.content.metrics.repairCallsByCategory.planning, 1);
   assert.equal(finalReport.content.diagnosticsSummary.categories.planning.repaired, true);
 });
