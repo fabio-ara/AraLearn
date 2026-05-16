@@ -2346,9 +2346,18 @@ test("editor_intervention_plan prioriza acoes criticas no providerTask e auditPr
   assert.match(result.providerTask, /Outras 2 ações de menor prioridade foram omitidas deste prompt/i);
   assert.doesNotMatch(result.providerTask, /Microssequência-alvo micro-3/i);
   assert.doesNotMatch(result.providerTask, /Microssequência-alvo micro-4/i);
+  assert.equal(result.providerTaskSelection.promptType, "intervention_provider_task");
+  assert.equal(result.providerTaskSelection.omittedCount, 2);
+  assert.deepEqual(result.providerTaskSelection.omittedActionIds, ["intervention_action_7", "intervention_action_8"]);
+  assert.equal(
+    result.providerTaskSelection.rankedActions.find((item) => item.actionId === "intervention_action_8")?.omissionReason,
+    "lower_priority_than_prompt_budget"
+  );
   assert.match(result.auditProviderTask, /Outras 2 ações de menor prioridade foram omitidas deste prompt/i);
   assert.doesNotMatch(result.auditProviderTask, /Microssequência-alvo micro-3/i);
   assert.doesNotMatch(result.auditProviderTask, /Microssequência-alvo micro-4/i);
+  assert.equal(result.auditProviderTaskSelection.promptType, "intervention_audit_provider_task");
+  assert.equal(result.auditProviderTaskSelection.omittedCount, 2);
 });
 
 test("audit_microsequences normaliza findings estruturados a partir do interventionPlan", async () => {
@@ -4138,6 +4147,9 @@ test("editor consome InterventionRequest pronto sem voltar ao subfluxo do Tutor"
   assert.equal(result.projectDocument.courses[0].modules[0].lessons[0].microsequences[0].cards.length, 3);
   assert.equal(result.interventionPlan.planningMode, "existing_only");
   assert.equal(result.interventionPlan.actions[0].didacticInterventionType, "contrast_reinforcement");
+  assert.equal(result.runState.interventionPromptBudget.providerTask.promptType, "intervention_provider_task");
+  assert.equal(result.runState.interventionPromptBudget.auditProviderTask.promptType, "intervention_audit_provider_task");
+  assert.equal(result.runState.interventionPromptBudget.providerTask.omittedCount, 0);
   assert.ok(result.artifacts.some((artifact) => artifact.name === "intervention-plan"));
 });
 

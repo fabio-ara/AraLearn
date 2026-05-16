@@ -329,6 +329,33 @@ function describeInterventionProviderAction(action = {}, index = 0) {
     .join(" ");
 }
 
+function buildInterventionPromptSelectionSummary({ actions = [], selected = [], omittedCount = 0, promptType = "" } = {}) {
+  const selectedSet = new Set(selected);
+  const rankedActions = normalizeArray(actions)
+    .map((action) => {
+      const priorityScore = scoreInterventionActionPriority(action);
+      const includedInPrompt = selectedSet.has(action);
+      return {
+        actionId: text(action?.actionId),
+        requestedChangeId: text(action?.requestedChangeId),
+        didacticInterventionType: text(action?.didacticInterventionType),
+        priorityScore,
+        includedInPrompt,
+        omissionReason: includedInPrompt ? "" : "lower_priority_than_prompt_budget"
+      };
+    })
+    .sort((left, right) => right.priorityScore - left.priorityScore || left.actionId.localeCompare(right.actionId));
+  return {
+    promptType: text(promptType),
+    selectedActionIds: rankedActions.filter((item) => item.includedInPrompt).map((item) => item.actionId),
+    omittedActionIds: rankedActions.filter((item) => !item.includedInPrompt).map((item) => item.actionId),
+    selectedCount: rankedActions.filter((item) => item.includedInPrompt).length,
+    omittedCount: Math.max(0, Number(omittedCount || 0)),
+    budgetPolicy: "flexible_preserve_critical_actions",
+    rankedActions
+  };
+}
+
 function selectInterventionActionsForProviderTask(actions = [], { maxActions = 6 } = {}) {
   const sorted = normalizeArray(actions).sort((left, right) => {
     const priorityDelta = scoreInterventionActionPriority(right) - scoreInterventionActionPriority(left);
@@ -355,7 +382,13 @@ function selectInterventionActionsForProviderTask(actions = [], { maxActions = 6
 
   return {
     selected,
-    omittedCount: Math.max(0, sorted.length - selected.length)
+    omittedCount: Math.max(0, sorted.length - selected.length),
+    selectionSummary: buildInterventionPromptSelectionSummary({
+      actions: sorted,
+      selected,
+      omittedCount: Math.max(0, sorted.length - selected.length),
+      promptType: "intervention_provider_task"
+    })
   };
 }
 
@@ -637,6 +670,11 @@ export function compileCourseForgeEditorInterventionPlan({ interventionRequest =
       actions.filter((action) => action.expectsNewMicrosequence && action.lessonTargets.some((lessonTarget) => lessonTarget.lessonKey === lessonKey)).length
     ])
   );
+  const providerTaskSelection = selectInterventionActionsForProviderTask(actions).selectionSummary;
+  const auditProviderTaskSelection = {
+    ...structuredClone(providerTaskSelection),
+    promptType: "intervention_audit_provider_task"
+  };
 
   return {
     kind: "editor_intervention_plan",
@@ -650,6 +688,8 @@ export function compileCourseForgeEditorInterventionPlan({ interventionRequest =
     newMicrosequenceCountByLesson,
     providerTask: buildInterventionProviderTask({ planningMode, actions }),
     auditProviderTask: buildInterventionAuditProviderTask({ actions }),
+    providerTaskSelection,
+    auditProviderTaskSelection,
     actions
   };
 }

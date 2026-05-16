@@ -1098,6 +1098,12 @@ export async function runCourseForge({
             request: context.interventionRequest || {}
           });
           context.interventionPlan = buildCourseForgeOperationalInterventionPlan(context, intent);
+          runState = updateCourseForgeRunState(runState, {
+            interventionPromptBudget: {
+              providerTask: structuredClone(context.interventionPlan?.providerTaskSelection || null),
+              auditProviderTask: structuredClone(context.interventionPlan?.auditProviderTaskSelection || null)
+            }
+          });
           savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "intervention-request", context.interventionRequest);
           savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "intervention-request-audit", context.interventionRequestAudit);
           savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "intervention-plan", context.interventionPlan);
