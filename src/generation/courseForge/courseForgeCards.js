@@ -1,5 +1,6 @@
 import { adaptResourceCardsToPublicCards } from "../resources/adaptResourceCardToPublicCard.js";
 import { buildLessonDomainCoverageReport, isPracticeCoverageRole } from "../domain/lessonDomainModel.js";
+import { summarizeDidacticProductionPolicyForPrompt } from "../policies/didacticProductionPolicy.js";
 import { validateGeneratedCardsStructural } from "../validation/validateGeneratedCardsStructural.js";
 import { auditCourseForgeBackstageVocabulary } from "./courseForgeBackstageAudit.js";
 import { validateCourseForgeCardSourceRefs } from "./courseForgeSourceRefs.js";
@@ -131,7 +132,14 @@ export function buildCourseForgeMicrosequenceContracts({ lessonPlans = [], micro
           learningActionTags: structuredClone(lessonMeta.learningActionTags || []),
           supportLevel: text(lessonMeta.supportLevel),
           presetId: text(lessonMeta.presetId)
-        }
+        },
+        didacticProductionPolicy: summarizeDidacticProductionPolicyForPrompt({
+          weakModelMode: true,
+          lessonGuidance: lessonMeta,
+          lessonSourceGuideStructured: lessonMeta.sourceGuideStructured || {},
+          lessonDomainMap: lessonMeta.domainMap || {},
+          studyTrackPolicy: {}
+        })
       };
       const cardPlan = buildSimpleCardPlan(microsequence, lessonMeta, sourceLedger);
       return {

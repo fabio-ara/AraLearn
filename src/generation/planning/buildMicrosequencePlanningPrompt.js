@@ -1,7 +1,16 @@
+import { buildDidacticProductionPromptLines } from "../policies/didacticProductionPolicy.js";
+
 export function buildMicrosequencePlanningPrompt(contract, modelCapabilities = contract?.model?.capabilities || {}) {
   const compact = modelCapabilities?.preferShortSchemas !== false;
   const body = compact ? JSON.stringify(contract) : JSON.stringify(contract, null, 2);
   const fixedTypeId = contract?.request?.userFixedTypeId;
+  const productionLines = buildDidacticProductionPromptLines({
+    weakModelMode: true,
+    lessonGuidance: contract?.context?.lesson || {},
+    lessonSourceGuideStructured: contract?.context?.lesson?.sourceGuideStructured || {},
+    lessonDomainMap: contract?.context?.lesson?.domainMap || {},
+    studyTrackPolicy: contract?.studyTrackPolicy || {}
+  });
 
   return [
     "Planeje a microssequência.",
@@ -20,6 +29,7 @@ export function buildMicrosequencePlanningPrompt(contract, modelCapabilities = c
     "Use selectedLessonTopicRefs apenas como contexto auxiliar local.",
     "Use sourceUsePlan apenas com sourceId presente em sources.",
     "Se o pedido conflitar com a governança da lição, preserve a governança da lição.",
+    ...productionLines,
     "Se studyTrackPolicy.mode for clarify_local_doubt, o plano deve responder requiredAnchors diretamente antes de qualquer expansão.",
     "Nesse modo, microsequenceGoal e reason devem citar os termos obrigatórios e indicar retorno à trilha da lição.",
     "Não transforme uma dúvida local em aula paralela fora de allowedContextTerms.",

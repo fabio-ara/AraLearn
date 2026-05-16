@@ -1,5 +1,6 @@
 import { getResourceSchemas } from "../resources/cardResourceDefinitions.js";
 import { buildDidacticRepairPromptLines } from "../didactics/didacticGovernance.js";
+import { buildDidacticProductionPromptLines } from "../policies/didacticProductionPolicy.js";
 
 function compactJson(value, modelCapabilities = {}) {
   return modelCapabilities?.preferShortSchemas === true ? JSON.stringify(value || {}) : JSON.stringify(value || {}, null, 2);
@@ -26,6 +27,13 @@ export function buildGeneratedCardsRepairPrompt({
   const allowedResourceTypes = generationContract?.resources?.allowedResourceTypes || [];
   const resourceSchemas = pickAllowedResourceSchemas(generationContract);
   const studyTrackPolicy = generationContract?.studyTrackPolicy || null;
+  const productionLines = buildDidacticProductionPromptLines({
+    weakModelMode: true,
+    lessonGuidance: generationContract?.context?.lesson || {},
+    lessonSourceGuideStructured: generationContract?.context?.lesson?.sourceGuideStructured || {},
+    lessonDomainMap: generationContract?.context?.lesson?.domainMap || {},
+    studyTrackPolicy
+  }).map((line) => `- ${line}`);
   const studyTrackLines =
     studyTrackPolicy?.mode === "clarify_local_doubt"
       ? [
@@ -67,6 +75,7 @@ export function buildGeneratedCardsRepairPrompt({
     "- remova prática que apenas peça para repetir uma resposta já visível por destaque ou posição óbvia;",
     "- preserve ou acrescente acentos graves em símbolos, conectivos, comandos, fórmulas e nomes curtos;",
     "- remova repetições do title do card usadas como primeira frase, título interno ou cabeçalho avulso;",
+    ...productionLines,
     ...studyTrackLines,
     ...buildDidacticRepairPromptLines(),
     "- resourceType deve estar em allowedResourceTypes;",

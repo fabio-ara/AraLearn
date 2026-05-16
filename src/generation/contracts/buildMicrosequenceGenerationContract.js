@@ -31,6 +31,7 @@ export function buildMicrosequenceGenerationContract({ planningContract, validat
     },
     requestGovernance: planningContract.requestGovernance,
     studyTrackPolicy: planningContract.studyTrackPolicy || null,
+    didacticProductionPolicy: planningContract.didacticProductionPolicy || planningContract.productionPolicy || null,
     selectedLessonTopicRefs: planningContract.selectedLessonTopicRefs || [],
     weakModelMode: getWeakModelModePolicy(planningContract.model.capabilities),
     meticulousPolicy: summarizeMeticulousPolicyForPrompt({ weakModelMode: true }),

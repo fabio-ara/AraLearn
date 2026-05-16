@@ -14,6 +14,7 @@ import { resolveWeakModelModePolicy } from "../policies/weakModelPolicy.js";
 import { buildLessonDomainMap } from "../domain/lessonDomainModel.js";
 import { summarizeMeticulousPolicyForPrompt } from "../policies/meticulousDidacticPolicy.js";
 import { buildStudyTrackPolicy } from "../policies/studyTrackPolicy.js";
+import { summarizeDidacticProductionPolicyForPrompt } from "../policies/didacticProductionPolicy.js";
 
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -116,6 +117,13 @@ export function buildMicrosequencePlanningContract({
     microsequence: summarizeMicrosequence(targetMicrosequence),
     selectedLessonTopicRefs: selectedTopics
   });
+  const didacticProductionPolicy = summarizeDidacticProductionPolicyForPrompt({
+    weakModelMode: true,
+    lessonGuidance,
+    lessonSourceGuideStructured,
+    lessonDomainMap,
+    studyTrackPolicy
+  });
 
   return {
     version: "aralearn.microsequence-planning-contract.v2",
@@ -163,6 +171,7 @@ export function buildMicrosequencePlanningContract({
     },
     requestGovernance: buildRequestGovernance(),
     studyTrackPolicy,
+    didacticProductionPolicy,
     selectedLessonTopicRefs: selectedTopics,
     sources: resolvedSources.referencedSources,
     availableTypes: resolveAvailableTypes(policy, userFixedTypeId),
@@ -173,6 +182,7 @@ export function buildMicrosequencePlanningContract({
     model: { id: capabilities.model, capabilities },
     sourceResolution: resolvedSources,
     weakModelMode: policy,
-    meticulousPolicy: summarizeMeticulousPolicyForPrompt({ weakModelMode: true })
+    meticulousPolicy: summarizeMeticulousPolicyForPrompt({ weakModelMode: true }),
+    productionPolicy: didacticProductionPolicy
   };
 }

@@ -258,6 +258,8 @@ test("CourseForge usa policy pack didático compatível com Planner Builder Audi
 
   assert.match(policy, /microssequência/);
   assert.match(policy, /sourceGuideStructured/);
+  assert.match(policy, /Perfil-alvo obrigatório/);
+  assert.match(policy, /planner_builder_auditor_internalizado/);
   assert.match(policy, /Explique siglas/);
   assert.match(policy, /reconecte explicitamente à trilha/);
   assert.match(prompt, /POLICY PACK/);

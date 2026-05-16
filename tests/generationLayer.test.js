@@ -169,6 +169,8 @@ test("prompt de geração fica enxuto e reforça contrato fechado", () => {
   assert.match(prompt, /Devolva exatamente output.expectedCardCount cards/);
   assert.match(prompt, /Use exatamente position e resourceType de didacticPlan.cardPlan/);
   assert.match(prompt, /Preencha apenas campos aceitos por resources.effectiveResourceSchemas/);
+  assert.match(prompt, /Arquitetura pedagógica: planner_builder_auditor_internalizado/);
+  assert.match(prompt, /Progressão obrigatória:/);
   assert.doesNotMatch(prompt, /didacticGuardrails/);
 });
 

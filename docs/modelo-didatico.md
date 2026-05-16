@@ -8,9 +8,9 @@ A unidade didática central do AraLearn é a microssequência. Ela não é simpl
 
 Por isso, a microssequência precisa ser suficientemente pequena para caber na rotina e na atenção disponíveis, mas suficientemente concreta para ensinar algo real. O problema não está em ser breve; está em ser breve e vazia. O AraLearn rejeita resumo genérico não porque todo texto de síntese seja ilegítimo, mas porque o tipo de transformação que lhe interessa é outro: decomposição, mediação, prática e revisão.
 
-## Meticulosidade
+## Produção didática exaustiva
 
-No AraLearn, meticulosidade não significa ampliação textual. Significa precisão na progressão. Em termos práticos, isso envolve:
+No AraLearn, a expressão preferida deixa de ser `meticulosidade` e passa a ser `produção didática exaustiva` ou `sequência exaustiva de cards`. O ponto não é ampliar texto. O ponto é tornar o percurso ensinável, progressivo e auditável. Em termos práticos, isso envolve:
 
 - decompor o ponto didático em passos ensináveis;
 - apresentar o mínimo de contexto necessário;
@@ -40,13 +40,17 @@ O desenho preferido continua sendo:
 
 Essa sequência não é dogma mecânico. Ela é um princípio de prudência didática. Nem toda microssequência precisa realizar todos os passos com a mesma extensão, mas a aplicação procura evitar a passagem brusca de teoria abstrata para cobrança sem mediação.
 
+Outra regra forte acompanha essa sequência: a microssequência não deve pressupor o que ainda não foi explicitado. Se um card depende de sigla, termo inglês, notação, convenção ou operação ainda instável, isso precisa ser preparado localmente ou já ter sido estabilizado em microssequência anterior da mesma trilha.
+
 ## Contexto local e carga cognitiva
 
 Uma consequência importante desse modelo é a insistência em manter o contexto operacional junto da tarefa. Em linguagem de teoria da carga cognitiva, trata-se de reduzir carga extrínseca desnecessária e evitar o custo adicional de integrar mentalmente informações dispersas (Chandler & Sweller, 1991; Paas & van Merriënboer, 2020). Quando dados, operandos, notação, figura relevante e pedido de resposta ficam separados, a tarefa passa a exigir memória de trabalho adicional que nem sempre contribui para a aprendizagem. O AraLearn tenta, por desenho, diminuir esse atrito.
 
 ## Papel da LLM
 
-A LLM não decide a didática do percurso. Ela participa de uma etapa delimitada de preenchimento. O app continua responsável por tipo, tamanho, sequência, formatos possíveis e regras de validação. Isso é especialmente importante porque o produto foi calibrado para operar bem também com modelos leves. Em vez de confiar em improvisação ampla, o AraLearn desloca parte da inteligência para a própria arquitetura, em linha com a prudência sugerida por trabalhos sobre linguagem controlada e heurísticas superficiais em NLP (Neuhaus & Barkmeyer, 2013; McCoy, Pavlick & Linzen, 2019).
+A LLM não decide a didática do percurso. Ela participa de uma arquitetura interna de produção em que planejamento, construção e auditoria são separados. O app continua responsável por tipo, tamanho, sequência, formatos possíveis, cobertura mínima, aderência à fonte, regras de validação e reparos. Isso é especialmente importante porque o produto foi calibrado para operar bem também com modelos leves. Em vez de confiar em improvisação ampla, o AraLearn desloca parte da inteligência para a própria arquitetura, em linha com a prudência sugerida por trabalhos sobre linguagem controlada e heurísticas superficiais em NLP (Neuhaus & Barkmeyer, 2013; McCoy, Pavlick & Linzen, 2019).
+
+Em termos práticos, a direção atual é internalizar o antigo fluxo `Planner -> Builder -> Auditor` como motor do próprio app. O planejamento pedagógico deve transformar o acervo bruto em mapa de cobertura, pré-requisitos, vocabulário e progressão; a construção deve produzir apenas dentro desse mapa; a auditoria deve bloquear deriva, bastidor, pressuposto oculto e prática mal posicionada.
 
 ## Formas de apresentação e prática
 

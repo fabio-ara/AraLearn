@@ -1,9 +1,18 @@
+import { buildDidacticProductionPromptLines } from "../policies/didacticProductionPolicy.js";
+
 export function buildMicrosequenceGenerationPrompt(contract, modelCapabilities = contract?.model?.capabilities || {}) {
   const compact = modelCapabilities?.preferShortSchemas !== false;
   const body = compact ? JSON.stringify(contract) : JSON.stringify(contract, null, 2);
   const allowedResourceTypes = contract?.resources?.allowedResourceTypes || [];
   const extraLines = [];
   const studyTrackPolicy = contract?.studyTrackPolicy || {};
+  const productionLines = buildDidacticProductionPromptLines({
+    weakModelMode: true,
+    lessonGuidance: contract?.context?.lesson || {},
+    lessonSourceGuideStructured: contract?.context?.lesson?.sourceGuideStructured || {},
+    lessonDomainMap: contract?.context?.lesson?.domainMap || {},
+    studyTrackPolicy
+  });
 
   if (allowedResourceTypes.includes("block_gap_fill")) {
     extraLines.push("Em block_gap_fill, use segments com kind text/blank, blankId curto e acceptedBlockIds válidos.");
@@ -38,7 +47,8 @@ export function buildMicrosequenceGenerationPrompt(contract, modelCapabilities =
     "Não use linguagem de bastidor.",
     "Não use referência externa ou volátil.",
     "Não revele a resposta antes da prática.",
-    "Não aumente densidade textual para parecer completo. A meticulosidade deve vir de progressão e decomposição.",
+    "Não aumente densidade textual para parecer completo. A sequência exaustiva de cards deve vir de progressão e decomposição.",
+    ...productionLines,
     "Não crie campos fora do schema.",
     "Se houver sources ou sourceUsePlan, use sourceRefs válidos ou sourceNote curto para justificar ausência.",
     ...extraLines,

@@ -1,3 +1,5 @@
+import { buildDidacticProductionPromptLines } from "../policies/didacticProductionPolicy.js";
+
 function compactJson(value, multiline = true) {
   return multiline ? JSON.stringify(value || {}, null, 2) : JSON.stringify(value || {});
 }
@@ -19,6 +21,13 @@ export function buildDidacticIterationPrompt({
   modelCapabilities = {}
 }) {
   const pretty = modelCapabilities?.preferShortSchemas !== true;
+  const productionLines = buildDidacticProductionPromptLines({
+    weakModelMode: true,
+    lessonGuidance: generationContract?.context?.lesson || {},
+    lessonSourceGuideStructured: generationContract?.context?.lesson?.sourceGuideStructured || {},
+    lessonDomainMap: generationContract?.context?.lesson?.domainMap || {},
+    studyTrackPolicy: generationContract?.studyTrackPolicy || {}
+  });
   const studyTrackPolicy = generationContract?.studyTrackPolicy || {};
   const studyTrackLines =
     studyTrackPolicy.mode === "clarify_local_doubt"
@@ -42,6 +51,7 @@ export function buildDidacticIterationPrompt({
     "Se houver reescrita, foque só nos cards-alvo.",
     "Se houver expansão, acrescente exemplo, preparação ou prática apenas onde o plano mandar.",
     "Não mude a intenção do pedido original.",
+    ...productionLines,
     "Responda somente JSON válido no formato {\"cards\":[...]}.",
     "",
     `Outcome da continuação: ${iterationPlan?.outcome || "rewrite_cards"}`,
