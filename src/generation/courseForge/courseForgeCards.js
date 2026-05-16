@@ -991,16 +991,20 @@ function buildInterventionRepairDirective(issue = {}, action = null) {
 }
 
 function buildCoverageRepairDirective(issue = {}) {
+  const issueType = text(issue?.type);
+  const isPrerequisiteGap = issueType === "missing_prerequisite_preparation" || issueType === "practice_before_explanation";
   return {
     directiveType: "repair_domain_coverage",
     requestedChangeId: "",
-    didacticInterventionType: "",
+    didacticInterventionType: isPrerequisiteGap ? "prerequisite_tightening" : "",
     target: {
       courseKey: text(issue?.courseKey),
       moduleKey: text(issue?.moduleKey),
       lessonKey: text(issue?.lessonKey),
       microsequenceKey: text(issue?.microsequenceKey)
     },
+    domainRef: text(issue?.domainRef),
+    prerequisiteRefs: [...new Set(normalizeArray(issue?.prerequisiteRefs).map(text).filter(Boolean))],
     instruction: text(issue?.requiredFix) || "Corrigir a cobertura de domínio e a progressão didática local.",
     evidence: text(issue?.evidence)
   };
@@ -1076,6 +1080,11 @@ export function auditCourseForgePrerequisiteCoverage({ microsequencePlans = [], 
               "Reordenar a microssequência ou introduzir os pré-requisitos antes da prática."
             )
           );
+          Object.assign(issues[issues.length - 1], {
+            domainRef,
+            prerequisiteRefs: structuredClone(missingPrerequisites),
+            didacticInterventionType: "prerequisite_tightening"
+          });
         }
         if (isPracticeCoverageRole(role) && prerequisiteRefs.length && !explainedConcepts.has(domainRef)) {
           issues.push(
@@ -1091,6 +1100,11 @@ export function auditCourseForgePrerequisiteCoverage({ microsequencePlans = [], 
               "Mover a prática para depois de uma microssequência de introdução, explicação ou demonstração."
             )
           );
+          Object.assign(issues[issues.length - 1], {
+            domainRef,
+            prerequisiteRefs: structuredClone(prerequisiteRefs),
+            didacticInterventionType: "prerequisite_tightening"
+          });
         }
       });
 

@@ -1270,6 +1270,36 @@ test("compila diretivas de reparo especificas a partir da auditoria de intervenc
   assert.ok(result.directives.some((directive) => directive.directiveType === "repair_domain_coverage"));
 });
 
+test("diretiva de reparo preserva metadados de tightening de prerequisito", () => {
+  const result = buildCourseForgeMicrosequenceRepairDirectives({
+    adherenceAudit: {
+      issues: [
+        {
+          type: "missing_prerequisite_preparation",
+          lessonKey: "lesson-1",
+          microsequenceKey: "micro-1",
+          domainRef: "concept-compound",
+          prerequisiteRefs: ["concept-and"],
+          didacticInterventionType: "prerequisite_tightening",
+          evidence: "Aplicação usa concept-compound antes de concept-and.",
+          requiredFix: "Introduzir concept-and antes da prática."
+        }
+      ]
+    },
+    interventionDidacticAudit: {
+      issues: []
+    },
+    interventionPlan: {
+      actions: []
+    }
+  });
+
+  const directive = result.directives.find((item) => item.directiveType === "repair_domain_coverage");
+  assert.equal(directive?.didacticInterventionType, "prerequisite_tightening");
+  assert.equal(directive?.domainRef, "concept-compound");
+  assert.deepEqual(directive?.prerequisiteRefs, ["concept-and"]);
+});
+
 test("auditoria de alinhamento avaliativo cobra formato pedido explicitamente", () => {
   const result = auditCourseForgeAssessmentAlignment({
     cardsFinal: [
