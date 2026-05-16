@@ -1,3 +1,4 @@
+import { listPromptPackGuardrails } from "../config/engineConfigRegistry.js";
 import { buildDidacticProductionPolicy } from "../policies/didacticProductionPolicy.js";
 
 function text(value) {
@@ -15,7 +16,8 @@ export function buildCourseForgePolicyPack({
   lessonGuidance = {},
   lessonSourceGuideStructured = {},
   lessonDomainMap = {},
-  studyTrackPolicy = {}
+  studyTrackPolicy = {},
+  engineProfile = {}
 } = {}) {
   const normalizedLessonGuidance = normalizeLessonGuidance(lessonGuidance, lessonSourceGuideStructured);
   const productionPolicy = buildDidacticProductionPolicy({
@@ -23,8 +25,10 @@ export function buildCourseForgePolicyPack({
     lessonGuidance: normalizedLessonGuidance,
     lessonSourceGuideStructured: normalizedLessonGuidance.sourceGuideStructured || {},
     lessonDomainMap,
-    studyTrackPolicy
+    studyTrackPolicy,
+    engineProfile
   });
+  const registryGuardrails = listPromptPackGuardrails("courseForge", engineProfile);
 
   return [
     "Contrato didático AraLearn:",
@@ -41,7 +45,8 @@ export function buildCourseForgePolicyPack({
     "- Use imagem só quando o conteúdo não couber melhor em container público textual, tabela, fluxograma, montagem, editor de código, plano ou matriz.",
     "- Lacunas devem ser atômicas ou quase atômicas; não peça frase, linha, bloco, comando longo ou condição composta em uma única lacuna.",
     "- A microssequência não pode depender de pressuposto oculto; o que ela usar já deve ter sido explicitado antes ou no próprio card.",
-    "- Se surgir dúvida local ou reforço bottom-up, responda a dúvida e reconecte explicitamente à trilha didática planejada."
+    "- Se surgir dúvida local ou reforço bottom-up, responda a dúvida e reconecte explicitamente à trilha didática planejada.",
+    ...registryGuardrails.map((entry) => `- Registry: ${entry}.`)
   ].join("\n");
 }
 
@@ -53,6 +58,7 @@ export function buildCourseForgePrompt({
   lessonSourceGuideStructured = {},
   lessonDomainMap = {},
   studyTrackPolicy = {},
+  engineProfile = {},
   task = "",
   output = ""
 } = {}) {
@@ -66,7 +72,8 @@ export function buildCourseForgePrompt({
         lessonGuidance,
         lessonSourceGuideStructured,
         lessonDomainMap,
-        studyTrackPolicy
+        studyTrackPolicy,
+        engineProfile
       })
     }`,
     `TASK:\n${text(task)}`,

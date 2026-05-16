@@ -1,39 +1,6 @@
+import { getDidacticPolicyConfig } from "../config/engineConfigRegistry.js";
+
 export const DIDACTIC_PRODUCTION_POLICY_ID = "didacticProductionPolicy.v1";
-
-const EXHAUSTIVE_SEQUENCE_STEPS = Object.freeze([
-  "apresentar o elemento",
-  "explicar em linguagem comum",
-  "mostrar exemplo guiado",
-  "propor prática autossuficiente",
-  "consolidar e reconectar à trilha"
-]);
-
-const HARD_RULES = Object.freeze([
-  "bastidor zero no texto do aluno",
-  "card autossuficiente",
-  "explicação antes de prática",
-  "siglas e termos técnicos explicados localmente",
-  "palavras em inglês explicadas de forma funcional quando relevantes",
-  "microssequência sem pressupostos ocultos",
-  "progressão exaustiva por cards"
-]);
-
-const SOURCE_ANCHORING_RULES = Object.freeze([
-  "usar o acervo e o comentário do usuário como governança prioritária",
-  "não inventar domínio paralelo fora da trilha da lição",
-  "não depender de fonte invisível, card anterior ou memória episódica",
-  "distinguir aderência à fonte, inferência local e expansão controlada"
-]);
-
-const OPERATIONAL_EXHAUSTIVENESS_RULES = Object.freeze([
-  "reconhecimento",
-  "leitura",
-  "produção guiada",
-  "combinação",
-  "sequência de uso",
-  "erro frequente",
-  "revisão cumulativa"
-]);
 
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -109,8 +76,10 @@ export function buildDidacticProductionPolicy({
   lessonGuidance = {},
   lessonSourceGuideStructured = {},
   lessonDomainMap = {},
-  studyTrackPolicy = null
+  studyTrackPolicy = null,
+  engineProfile = {}
 } = {}) {
+  const didacticConfig = getDidacticPolicyConfig(engineProfile);
   const operationalDiscipline = inferOperationalDiscipline({
     lessonGuidance,
     lessonSourceGuideStructured,
@@ -122,7 +91,9 @@ export function buildDidacticProductionPolicy({
     lessonDomainMap
   });
   const coreDomainItemCount = countCoreDomainItems(lessonDomainMap);
-  const minimumReappearancesPerCoreItem = operationalDiscipline ? 4 : 3;
+  const minimumReappearancesPerCoreItem = operationalDiscipline
+    ? Number(didacticConfig?.defaultMinimumReappearances?.operational || 4)
+    : Number(didacticConfig?.defaultMinimumReappearances?.conceptual || 3);
   const suggestedPracticeLoad =
     coreDomainItemCount > 0
       ? {
@@ -133,18 +104,18 @@ export function buildDidacticProductionPolicy({
 
   return {
     policyId: DIDACTIC_PRODUCTION_POLICY_ID,
-    targetStudentProfile: "estudante-trabalhador com pouco tempo, pouca margem para erro e possível fragilidade de base",
-    productionArchitecture: "planner_builder_auditor_internalizado",
-    microsequencePrinciple: "a microssequência não pressupõe o que ainda não foi explicitado; pressupostos só podem vir de microssequências anteriores da mesma trilha",
+    targetStudentProfile: text(didacticConfig?.targetStudentProfile),
+    productionArchitecture: text(didacticConfig?.productionArchitecture),
+    microsequencePrinciple: text(didacticConfig?.microsequencePrinciple),
     exhaustiveCardSequence: {
       label: "sequência exaustiva de cards",
-      steps: [...EXHAUSTIVE_SEQUENCE_STEPS],
+      steps: [...(didacticConfig?.exhaustiveSequenceSteps || [])],
       minimumReappearancesPerCoreItem,
       suggestedPracticeLoad
     },
-    hardRules: [...HARD_RULES],
-    sourceAnchoringRules: [...SOURCE_ANCHORING_RULES],
-    operationalExhaustiveness: operationalDiscipline ? [...OPERATIONAL_EXHAUSTIVENESS_RULES] : [],
+    hardRules: [...(didacticConfig?.hardRules || [])],
+    sourceAnchoringRules: [...(didacticConfig?.sourceAnchoringRules || [])],
+    operationalExhaustiveness: operationalDiscipline ? [...(didacticConfig?.operationalExhaustivenessRules || [])] : [],
     explainAcronymsLocally: true,
     explainTechnicalEnglishLocally: technicalEnglishRequired,
     rejectGenericSummary: true,
@@ -198,4 +169,3 @@ export function buildDidacticProductionPromptLines(input = {}) {
 
   return lines;
 }
-
