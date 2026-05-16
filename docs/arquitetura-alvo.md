@@ -123,6 +123,16 @@ Pode ajustar:
 
 Essa superfície deve existir sem contaminar a experiência comum.
 
+## Seed de perfis
+
+O AraLearn deve operar com um `seed` forte por padrão. O seed inicial do projeto é o perfil geral de ADS. Sobre ele, o sistema pode expor perfis especializados e generalizações futuras.
+
+Leitura correta:
+
+- o usuário comum não precisa escolher isso para usar o app;
+- o usuário avançado pode trocar o seed ou sobrescrever partes dele;
+- a parametrização deve acontecer por profiles, prompt packs e contract packs, não por prompt livre desgovernado.
+
 ## Critério de sucesso
 
 O AraLearn só estará arquiteturalmente correto quando a simplicidade externa estiver sustentada por um núcleo interno rigoroso, parametrizável e independente de provider.
