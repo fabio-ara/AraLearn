@@ -2,6 +2,16 @@ function text(value) {
   return typeof value === "string" ? value.trim() : "";
 }
 
+function slugify(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .replace(/-{2,}/g, "-");
+}
+
 function buildScopeTarget(scope = {}) {
   return {
     level: text(scope?.level) || "project",
@@ -27,6 +37,83 @@ function collectMicrosequenceKeys(microsequencePlans = []) {
   return (Array.isArray(microsequencePlans) ? microsequencePlans : []).flatMap((lessonEntry) =>
     (Array.isArray(lessonEntry?.microsequences) ? lessonEntry.microsequences : []).map((microsequence) => text(microsequence?.key)).filter(Boolean)
   );
+}
+
+function uniqueTextList(values = []) {
+  return [...new Set((Array.isArray(values) ? values : []).map(text).filter(Boolean))];
+}
+
+function findCourse(projectDocument = {}, courseKey = "") {
+  return (Array.isArray(projectDocument?.courses) ? projectDocument.courses : []).find((course) => text(course?.key) === text(courseKey)) || null;
+}
+
+function findModule(projectDocument = {}, courseKey = "", moduleKey = "") {
+  return (findCourse(projectDocument, courseKey)?.modules || []).find((moduleValue) => text(moduleValue?.key) === text(moduleKey)) || null;
+}
+
+function findLesson(projectDocument = {}, courseKey = "", moduleKey = "", lessonKey = "") {
+  return (findModule(projectDocument, courseKey, moduleKey)?.lessons || []).find((lesson) => text(lesson?.key) === text(lessonKey)) || null;
+}
+
+function listLessonsForTarget(projectDocument = {}, target = {}, request = {}) {
+  const scopedTarget = buildScopeTarget(target);
+  if (scopedTarget.level === "microsequence" || scopedTarget.level === "lesson") {
+    return scopedTarget.lessonKey
+      ? [{
+          courseKey: scopedTarget.courseKey,
+          moduleKey: scopedTarget.moduleKey,
+          lessonKey: scopedTarget.lessonKey
+        }]
+      : [];
+  }
+  if (scopedTarget.level === "module") {
+    const moduleValue = findModule(projectDocument, scopedTarget.courseKey, scopedTarget.moduleKey);
+    return (Array.isArray(moduleValue?.lessons) ? moduleValue.lessons : []).map((lesson) => ({
+      courseKey: scopedTarget.courseKey,
+      moduleKey: scopedTarget.moduleKey,
+      lessonKey: text(lesson?.key)
+    }));
+  }
+  if (scopedTarget.level === "course") {
+    const course = findCourse(projectDocument, scopedTarget.courseKey);
+    return (Array.isArray(course?.modules) ? course.modules : []).flatMap((moduleValue) =>
+      (Array.isArray(moduleValue?.lessons) ? moduleValue.lessons : []).map((lesson) => ({
+        courseKey: scopedTarget.courseKey,
+        moduleKey: text(moduleValue?.key),
+        lessonKey: text(lesson?.key)
+      }))
+    );
+  }
+  if (Array.isArray(request?.contextSnapshot?.lessonKeys) && request.contextSnapshot.lessonKeys.length) {
+    return request.contextSnapshot.lessonKeys.map((lessonKey) => ({
+      courseKey: scopedTarget.courseKey,
+      moduleKey: scopedTarget.moduleKey,
+      lessonKey: text(lessonKey)
+    }));
+  }
+  return [];
+}
+
+function buildExistingMicrosequenceKeySet(projectDocument = {}, lessonTarget = {}) {
+  const lesson = findLesson(projectDocument, lessonTarget?.courseKey, lessonTarget?.moduleKey, lessonTarget?.lessonKey);
+  return new Set(
+    (Array.isArray(lesson?.microsequences) ? lesson.microsequences : [])
+      .map((microsequence) => text(microsequence?.key))
+      .filter(Boolean)
+  );
+}
+
+function buildGeneratedMicrosequenceKey({ lessonKey = "", title = "", usedKeys = new Set(), index = 0 } = {}) {
+  const base = slugify(title) || `micro-${index + 1}`;
+  const prefix = slugify(lessonKey) || "lesson";
+  let candidate = `${prefix}-micro-${base}`;
+  let counter = 2;
+  while (usedKeys.has(candidate)) {
+    candidate = `${prefix}-micro-${base}-${counter}`;
+    counter += 1;
+  }
+  usedKeys.add(candidate);
+  return candidate;
 }
 
 function deriveEditorTarget(scope = {}, recommendedAction = "") {
@@ -134,4 +221,124 @@ export function compileCourseForgeInterventionRequest({
       reusableMicrosequenceCount: countReusableMicrosequences(microsequencePlans)
     }
   };
+}
+
+export function compileCourseForgeEditorInterventionPlan({ interventionRequest = {}, projectDocument = {} } = {}) {
+  const target = buildScopeTarget(interventionRequest?.target || {});
+  const requestedChanges = Array.isArray(interventionRequest?.requestedChanges) ? interventionRequest.requestedChanges : [];
+  const actions = requestedChanges.map((change, index) => {
+    const actionTarget = buildScopeTarget(change?.target || target);
+    const lessonTargets = listLessonsForTarget(projectDocument, actionTarget, interventionRequest);
+    const expectsNewMicrosequence = text(change?.patchStrategy) === "add_microsequence" || text(change?.type) === "add_new_microsequence";
+    return {
+      actionId: `intervention_action_${index + 1}`,
+      type: text(change?.type),
+      operation: text(change?.operation || interventionRequest?.editorIntent?.operation),
+      patchStrategy: text(change?.patchStrategy),
+      reason: text(change?.reason),
+      target: actionTarget,
+      lessonTargets,
+      existingMicrosequenceKey: text(actionTarget?.microsequenceKey),
+      expectsNewMicrosequence
+    };
+  });
+  const planningMode = actions.every((action) => action.expectsNewMicrosequence)
+    ? "new_only"
+    : actions.every((action) => !action.expectsNewMicrosequence)
+      ? "existing_only"
+      : "mixed";
+  const targetedLessonKeys = uniqueTextList(actions.flatMap((action) => action.lessonTargets.map((lessonTarget) => lessonTarget.lessonKey)));
+  const targetedMicrosequenceKeys = uniqueTextList(actions.map((action) => action.existingMicrosequenceKey));
+  const newMicrosequenceCountByLesson = Object.fromEntries(
+    targetedLessonKeys.map((lessonKey) => [
+      lessonKey,
+      actions.filter((action) => action.expectsNewMicrosequence && action.lessonTargets.some((lessonTarget) => lessonTarget.lessonKey === lessonKey)).length
+    ])
+  );
+
+  return {
+    kind: "editor_intervention_plan",
+    source: "intervention_request",
+    planningMode,
+    target,
+    requestedChangeCount: actions.length,
+    targetedLessonKeys,
+    targetedMicrosequenceKeys,
+    newMicrosequenceCountByLesson,
+    providerTask:
+      planningMode === "new_only"
+        ? "Crie somente novas microssequências para os alvos pedidos. Não replique microssequências já existentes nem replaneje o restante da lição."
+        : planningMode === "existing_only"
+          ? "Reaproveite somente os alvos existentes pedidos. Não crie novas microssequências nem amplie o escopo."
+          : "Siga estritamente os requestedChanges do InterventionRequest sem ampliar o escopo.",
+    actions
+  };
+}
+
+export function constrainCourseForgeMicrosequencePlansToInterventionPlan({ plan = {}, microsequencePlans = [], projectDocument = {} } = {}) {
+  if (!plan || typeof plan !== "object" || !Array.isArray(plan?.actions) || !plan.actions.length) {
+    return structuredClone(Array.isArray(microsequencePlans) ? microsequencePlans : []);
+  }
+
+  const targetedLessonKeySet = new Set(uniqueTextList(plan.targetedLessonKeys));
+  const targetedMicrosequenceKeySet = new Set(uniqueTextList(plan.targetedMicrosequenceKeys));
+  const planningMode = text(plan?.planningMode) || "";
+  const constrained = [];
+
+  (Array.isArray(microsequencePlans) ? microsequencePlans : []).forEach((lessonEntry) => {
+    const lessonKey = text(lessonEntry?.lessonKey);
+    if (targetedLessonKeySet.size && !targetedLessonKeySet.has(lessonKey)) {
+      return;
+    }
+
+    const existingKeys = buildExistingMicrosequenceKeySet(projectDocument, lessonEntry);
+    const usedKeys = new Set(existingKeys);
+    let microsequences = Array.isArray(lessonEntry?.microsequences) ? structuredClone(lessonEntry.microsequences) : [];
+
+    if (planningMode === "existing_only") {
+      if (targetedMicrosequenceKeySet.size) {
+        microsequences = microsequences.filter((microsequence) => targetedMicrosequenceKeySet.has(text(microsequence?.key)));
+      }
+    } else if (planningMode === "new_only") {
+      let generatedCount = 0;
+      const maxNewMicrosequences = Math.max(0, Number(plan?.newMicrosequenceCountByLesson?.[lessonKey] || 0));
+      microsequences = microsequences
+        .map((microsequence, index) => {
+          const currentKey = text(microsequence?.key);
+          const nextKey = !currentKey || existingKeys.has(currentKey)
+            ? buildGeneratedMicrosequenceKey({
+                lessonKey,
+                title: text(microsequence?.title),
+                usedKeys,
+                index
+              })
+            : currentKey;
+          return {
+            ...structuredClone(microsequence),
+            key: nextKey
+          };
+        })
+        .filter((microsequence) => {
+          if (existingKeys.has(text(microsequence?.key))) {
+            return false;
+          }
+          if (maxNewMicrosequences && generatedCount >= maxNewMicrosequences) {
+            return false;
+          }
+          generatedCount += 1;
+          return true;
+        });
+    }
+
+    if (!microsequences.length) {
+      return;
+    }
+
+    constrained.push({
+      ...structuredClone(lessonEntry),
+      microsequences
+    });
+  });
+
+  return constrained;
 }

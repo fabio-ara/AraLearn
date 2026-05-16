@@ -2027,6 +2027,8 @@ test("editor consome InterventionRequest pronto sem voltar ao subfluxo do Tutor"
   assert.ok(!result.runState.phases.some((phase) => phase.phaseId === "audit_intervention"));
   assert.ok(result.patch.operations.some((item) => item.op === "update_card"));
   assert.equal(result.projectDocument.courses[0].modules[0].lessons[0].microsequences[0].cards.length, 3);
+  assert.equal(result.interventionPlan.planningMode, "existing_only");
+  assert.ok(result.artifacts.some((artifact) => artifact.name === "intervention-plan"));
 });
 
 test("tutor_only eleva alvo para lição quando conclui que falta nova microssequência", async () => {
@@ -2117,6 +2119,214 @@ test("tutor_only eleva alvo para lição quando conclui que falta nova microsseq
     microsequenceKey: ""
   });
   assert.ok(result.interventionRequest.requestedChanges.some((change) => change.type === "add_new_microsequence"));
+});
+
+test("editor usa requestedChanges para limitar expansao a nova microssequencia pedida", async () => {
+  const provider = createFakeProvider({
+    script: {
+      audit_microsequences: [{ approved: true, issues: [], warnings: [] }],
+      plan_microsequences: [
+        {
+          microsequencePlans: [
+            {
+              courseKey: "course-logica",
+              moduleKey: "module-base",
+              lessonKey: "lesson-proposicoes",
+              microsequences: [
+                {
+                  key: "microsequence-ponte",
+                  title: "Ponte entre definição e aplicação",
+                  description: "Cria a transição necessária.",
+                  objective: "Reduzir o salto cognitivo.",
+                  domainRefs: ["domain-proposicao"],
+                  didacticPurpose: "Criar ponte didática.",
+                  coverageRole: "explain",
+                  tags: ["ponte"]
+                },
+                {
+                  key: "microsequence-extra",
+                  title: "Expansão indevida",
+                  description: "Não deveria entrar.",
+                  objective: "Escopo indevido.",
+                  domainRefs: ["domain-proposicao"],
+                  didacticPurpose: "Expandir além do pedido.",
+                  coverageRole: "practice",
+                  tags: ["extra"]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      build_cards: [
+        {
+          cards: [
+            {
+              position: 1,
+              resourceType: "paragraph",
+              title: "Critério",
+              text: "Uma proposição admite valor de verdade.",
+              sourceRefs: ["src_1"]
+            },
+            {
+              position: 2,
+              resourceType: "paragraph",
+              title: "Ponte",
+              text: "Antes de aplicar, compare enunciados, perguntas e ordens.",
+              sourceRefs: ["src_1"]
+            },
+            {
+              position: 3,
+              resourceType: "multiple_choice",
+              title: "Checagem",
+              question: "Qual item é proposição?",
+              options: [
+                { optionId: "a", label: "Feche a porta." },
+                { optionId: "b", label: "2 + 2 = 4." },
+                { optionId: "c", label: "Que horas são?" }
+              ],
+              correctOptionId: "b",
+              feedback: "`2 + 2 = 4` admite valor de verdade.",
+              sourceRefs: ["src_1"]
+            }
+          ]
+        }
+      ]
+    }
+  });
+  const registry = createProviderRegistry({ providers: [provider] });
+  const projectDocument = {
+    contract: "aralearn.contract",
+    version: 1,
+    kind: "project",
+    courses: [
+      {
+        key: "course-logica",
+        title: "Lógica",
+        modules: [
+          {
+            key: "module-base",
+            title: "Base",
+            lessons: [
+              {
+                key: "lesson-proposicoes",
+                title: "Proposições",
+                description: "Lição.",
+                sourceGuideStructured: {
+                  lessonGoal: "Reconhecer proposições.",
+                  notationRules: "Usar `p` e `q`.",
+                  commonErrors: "Confundir pergunta com proposição."
+                },
+                domainMap: {
+                  items: [
+                    {
+                      id: "domain-proposicao",
+                      label: "Proposição",
+                      priority: "core"
+                    }
+                  ],
+                  practiceVariants: []
+                },
+                presetId: "default",
+                resourceTags: ["paragraph", "multiple_choice"],
+                contentTypeTags: ["theory"],
+                learningActionTags: ["read"],
+                supportLevel: "guided",
+                microsequences: [
+                  {
+                    key: "microsequence-revisao",
+                    title: "Revisão",
+                    description: "Resumo inicial.",
+                    didacticPurpose: "Revisar conceito.",
+                    coverageRole: "explain",
+                    status: "ready",
+                    included: true,
+                    domainRefs: ["domain-proposicao"],
+                    cards: [{ key: "card-1", title: "Card 1", say: "Texto antigo." }]
+                  },
+                  {
+                    key: "microsequence-pratica",
+                    title: "Prática inicial",
+                    description: "Exercícios básicos.",
+                    didacticPurpose: "Praticar o conceito.",
+                    coverageRole: "practice",
+                    status: "ready",
+                    included: true,
+                    domainRefs: ["domain-proposicao"],
+                    practiceVariantRefs: [],
+                    cards: [
+                      {
+                        key: "card-2",
+                        title: "Card 2",
+                        ask: "Qual item é proposição?",
+                        answer: "2 + 2 = 4.",
+                        wrong: ["Feche a porta.", "Que horas são?"]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  };
+  const result = await runCourseForge({
+    intent: {
+      interventionRequest: {
+        status: "ready",
+        recommendedAction: "needs_new_microsequence",
+        studentPrompt: "Ainda está dando um salto grande demais para mim.",
+        rationale: "Falta uma ponte didática entre definição e aplicação.",
+        target: {
+          level: "lesson",
+          courseKey: "course-logica",
+          moduleKey: "module-base",
+          lessonKey: "lesson-proposicoes",
+          microsequenceKey: ""
+        },
+        editorIntent: {
+          operation: "extend",
+          generationDepthHint: "reinforce_only",
+          interventionModeHint: "targeted_scope_expansion",
+          requestedBy: "tutor"
+        },
+        requestedChanges: [
+          {
+            type: "add_new_microsequence",
+            operation: "extend",
+            patchStrategy: "add_microsequence",
+            target: {
+              level: "lesson",
+              courseKey: "course-logica",
+              moduleKey: "module-base",
+              lessonKey: "lesson-proposicoes",
+              microsequenceKey: ""
+            },
+            reason: "Inserir uma ponte didática local."
+          }
+        ],
+        contextSnapshot: {
+          lessonKeys: ["lesson-proposicoes"],
+          microsequenceKeys: ["microsequence-revisao"],
+          reusableMicrosequenceCount: 1
+        }
+      },
+      attachments: [{ id: "src_1", name: "ementa.pdf", type: "application/pdf" }]
+    },
+    projectDocument,
+    providerRegistry: registry,
+    providerId: "fake"
+  });
+
+  const lesson = result.projectDocument.courses[0].modules[0].lessons[0];
+  assert.equal(result.interventionPlan.planningMode, "new_only");
+  assert.ok(result.patch.operations.some((item) => item.op === "add_microsequence"));
+  assert.ok(!result.patch.operations.some((item) => item.op === "update_microsequence" && item.microsequenceKey === "microsequence-revisao"));
+  assert.equal(lesson.microsequences.length, 3);
+  assert.ok(lesson.microsequences.some((microsequence) => microsequence.key === "microsequence-ponte"));
+  assert.ok(!lesson.microsequences.some((microsequence) => microsequence.key === "microsequence-extra"));
 });
 
 test("repair_only em lição com microssequências existentes reaproveita alvo local mínimo", async () => {

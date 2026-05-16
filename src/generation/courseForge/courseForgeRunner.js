@@ -3,7 +3,11 @@ import { buildCourseForgePrompt } from "./courseForgePrompts.js";
 import { applyCourseForgePatch } from "./courseForgeApply.js";
 import { createCourseForgeArtifactsStore } from "./courseForgeArtifacts.js";
 import { resolveCourseForgeIntent } from "./courseForgeIntent.js";
-import { compileCourseForgeInterventionRequest } from "./courseForgeIntervention.js";
+import {
+  compileCourseForgeEditorInterventionPlan,
+  compileCourseForgeInterventionRequest,
+  constrainCourseForgeMicrosequencePlansToInterventionPlan
+} from "./courseForgeIntervention.js";
 import { compileCourseStructureToPatch, validateCourseForgePatch } from "./courseForgePatch.js";
 import { resolveCourseForgePhases, resolveDeferredCourseForgePhases } from "./courseForgePhases.js";
 import { createCourseForgeRunState, markCourseForgePhase, updateCourseForgeRunState } from "./courseForgeRunState.js";
@@ -470,7 +474,7 @@ function buildDiagnosticsSummary(context = {}, runState = {}, phases = []) {
         blockingIssues: blockingByCategory.intervention,
         warnings: warningsByCategory.intervention,
         repaired: phaseStatus.audit_intervention === "completed" && (!phaseStatus.compile_intervention_request || phaseStatus.compile_intervention_request === "completed"),
-        latestArtifacts: ["intervention-response", "intervention-audit", "intervention-request", "intervention-request-audit"]
+        latestArtifacts: ["intervention-response", "intervention-audit", "intervention-request", "intervention-request-audit", "intervention-plan"]
       },
       graph: {
         blockingIssues: blockingByCategory.graph,
@@ -662,6 +666,64 @@ function buildTutorInterventionContext(projectDocument = {}, intent = {}) {
   };
 }
 
+function buildCourseForgeOperationalInterventionPlan(context = {}, intent = {}) {
+  if (!intent?.interventionRequest) {
+    return null;
+  }
+  return compileCourseForgeEditorInterventionPlan({
+    interventionRequest: intent.interventionRequest,
+    projectDocument: context.projectDocument || {}
+  });
+}
+
+function buildExistingMicrosequencePlansForLessonTargets(projectDocument = {}, lessonTargets = []) {
+  return (Array.isArray(lessonTargets) ? lessonTargets : [])
+    .map((lessonTarget) => {
+      const { course, moduleValue, lesson } = findScopedLesson(projectDocument, lessonTarget);
+      if (!course || !moduleValue || !lesson) {
+        return null;
+      }
+      return {
+        courseKey: text(course?.key),
+        moduleKey: text(moduleValue?.key),
+        lessonKey: text(lesson?.key),
+        microsequences: (Array.isArray(lesson?.microsequences) ? lesson.microsequences : []).map((microsequence) =>
+          normalizeExistingMicrosequencePlan(course, moduleValue, lesson, microsequence)
+        )
+      };
+    })
+    .filter((entry) => entry && Array.isArray(entry.microsequences) && entry.microsequences.length);
+}
+
+function buildCompositeMicrosequencePlansForInterventionAudit({ projectDocument = {}, interventionPlan = null, microsequencePlans = [] } = {}) {
+  if (!interventionPlan || interventionPlan?.planningMode !== "new_only") {
+    return structuredClone(Array.isArray(microsequencePlans) ? microsequencePlans : []);
+  }
+
+  const existingPlans = buildExistingMicrosequencePlansForLessonTargets(
+    projectDocument,
+    (Array.isArray(interventionPlan?.actions) ? interventionPlan.actions : []).flatMap((action) => action.lessonTargets || [])
+  );
+  const incomingByLessonKey = new Map(
+    (Array.isArray(microsequencePlans) ? microsequencePlans : [])
+      .map((lessonEntry) => [text(lessonEntry?.lessonKey), lessonEntry])
+      .filter(([lessonKey]) => lessonKey)
+  );
+
+  return existingPlans.map((existingEntry) => {
+    const incomingEntry = incomingByLessonKey.get(text(existingEntry?.lessonKey));
+    const incomingMicrosequences = Array.isArray(incomingEntry?.microsequences) ? incomingEntry.microsequences : [];
+    const incomingKeySet = new Set(incomingMicrosequences.map((microsequence) => text(microsequence?.key)).filter(Boolean));
+    return {
+      ...structuredClone(existingEntry),
+      microsequences: [
+        ...structuredClone(existingEntry?.microsequences || []).filter((microsequence) => !incomingKeySet.has(text(microsequence?.key))),
+        ...structuredClone(incomingMicrosequences)
+      ]
+    };
+  });
+}
+
 export async function runCourseForge({
   intent: rawIntent,
   projectDocument,
@@ -701,6 +763,7 @@ export async function runCourseForge({
     interventionAudit: artifactStore.loadArtifact(runId, "intervention-audit")?.content || null,
     interventionRequest: artifactStore.loadArtifact(runId, "intervention-request")?.content || structuredClone(intent.interventionRequest || null),
     interventionRequestAudit: artifactStore.loadArtifact(runId, "intervention-request-audit")?.content || null,
+    interventionPlan: artifactStore.loadArtifact(runId, "intervention-plan")?.content || null,
     microsequenceAudit: artifactStore.loadArtifact(runId, "microsequence-audit")?.content || null,
     microsequenceAdherenceAudit: artifactStore.loadArtifact(runId, "microsequence-adherence-audit")?.content || null,
     microsequenceContracts: artifactStore.loadArtifact(runId, "microsequence-contracts")?.content || null,
@@ -743,8 +806,10 @@ export async function runCourseForge({
           context.interventionRequestAudit = validateCourseForgeInterventionRequest({
             request: context.interventionRequest || {}
           });
+          context.interventionPlan = buildCourseForgeOperationalInterventionPlan(context, intent);
           savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "intervention-request", context.interventionRequest);
           savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "intervention-request-audit", context.interventionRequestAudit);
+          savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "intervention-plan", context.interventionPlan);
           if (!context.interventionRequestAudit.ok) {
             throw new Error(context.interventionRequestAudit.errors.join(" "));
           }
@@ -1105,7 +1170,8 @@ export async function runCourseForge({
           }
           savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "lesson-plans", context.lessonPlans);
         }
-        if (intent?.intervention?.mode === "targeted_existing_microsequences") {
+        const interventionPlan = context.interventionPlan || null;
+        if (intent?.intervention?.mode === "targeted_existing_microsequences" || interventionPlan?.planningMode === "existing_only") {
           context.microsequencePlans = buildExistingMicrosequencePlansForScope(context.projectDocument, intent.scope, intent);
           if (!context.microsequencePlans.length) {
             throw new Error("Intervenção local sem microssequências reutilizáveis no escopo selecionado.");
@@ -1113,6 +1179,11 @@ export async function runCourseForge({
           context.microsequencePlans = repairCourseForgeMicrosequenceMetadataDeterministically({
             microsequencePlans: context.microsequencePlans,
             lessonPlans: context.lessonPlans || []
+          });
+          context.microsequencePlans = constrainCourseForgeMicrosequencePlansToInterventionPlan({
+            plan: interventionPlan,
+            microsequencePlans: context.microsequencePlans,
+            projectDocument: context.projectDocument
           });
           savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "microsequence-plans", context.microsequencePlans);
         } else {
@@ -1123,7 +1194,9 @@ export async function runCourseForge({
             prompt: buildCourseForgePrompt({
               role: "Você planeja microssequências para as lições do AraLearn.",
               sourcePack: JSON.stringify(context.sourceLedger || []),
-              task: "Crie microssequências pequenas, progressivas e sem bastidor para cada lição planejada, cobrindo itens centrais do domínio antes de extensões e distribuindo explicação antes de prática do mesmo item.",
+              task:
+                interventionPlan?.providerTask
+                || "Crie microssequências pequenas, progressivas e sem bastidor para cada lição planejada, cobrindo itens centrais do domínio antes de extensões e distribuindo explicação antes de prática do mesmo item.",
               output: "Responda somente JSON válido com microsequencePlans."
             }),
             schema: null,
@@ -1131,13 +1204,22 @@ export async function runCourseForge({
               { id: "intent", name: "intent", content: JSON.stringify(intent) },
               { id: "lesson-plans", name: "lesson-plans", content: JSON.stringify(context.lessonPlans || []) },
               { id: "course-graph", name: "course-graph", content: JSON.stringify(context.courseGraph || {}) },
-              { id: "lesson-governance", name: "lesson-governance", content: JSON.stringify(context.lessonGovernance || []) }
+              { id: "lesson-governance", name: "lesson-governance", content: JSON.stringify(context.lessonGovernance || []) },
+              ...(interventionPlan ? [{ id: "intervention-plan", name: "intervention-plan", content: JSON.stringify(interventionPlan) }] : [])
             ]
           });
           context.microsequencePlans = repairCourseForgeMicrosequenceMetadataDeterministically({
             microsequencePlans: normalizeMicrosequencePlans(response.value || response || {}, context.lessonPlans || []),
             lessonPlans: context.lessonPlans || []
           });
+          context.microsequencePlans = constrainCourseForgeMicrosequencePlansToInterventionPlan({
+            plan: interventionPlan,
+            microsequencePlans: context.microsequencePlans,
+            projectDocument: context.projectDocument
+          });
+          if (interventionPlan?.planningMode === "new_only" && !context.microsequencePlans.length) {
+            throw new Error("Planejamento de intervenção não gerou novas microssequências válidas para os alvos pedidos.");
+          }
           savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "microsequence-plans", context.microsequencePlans);
         }
       } else if (phaseId === "audit_microsequences") {
@@ -1188,6 +1270,7 @@ export async function runCourseForge({
         }
         savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "microsequence-audit", context.microsequenceAudit);
       } else if (phaseId === "repair_microsequences") {
+        const interventionPlan = context.interventionPlan || null;
         runState = updateCourseForgeRunState(runState, {
           metrics: updateMetricsCategory(runState.metrics, "planning", {
             repairCalls: Number(runState?.metrics?.repairCallsByCategory?.planning || 0) + 1
@@ -1197,8 +1280,18 @@ export async function runCourseForge({
           microsequencePlans: context.microsequencePlans || [],
           lessonPlans: context.lessonPlans || []
         });
+        context.microsequencePlans = constrainCourseForgeMicrosequencePlansToInterventionPlan({
+          plan: interventionPlan,
+          microsequencePlans: context.microsequencePlans,
+          projectDocument: context.projectDocument
+        });
+        const adherenceAuditInput = buildCompositeMicrosequencePlansForInterventionAudit({
+          projectDocument: context.projectDocument,
+          interventionPlan,
+          microsequencePlans: context.microsequencePlans
+        });
         let adherenceAudit = auditCourseForgeDomainCoverage({
-          microsequencePlans: context.microsequencePlans || [],
+          microsequencePlans: adherenceAuditInput,
           lessonPlans: context.lessonPlans || []
         });
         context.microsequenceAdherenceAudit = adherenceAudit;
@@ -1219,12 +1312,18 @@ export async function runCourseForge({
               { id: "intent", name: "intent", content: JSON.stringify(intent) },
               { id: "lesson-plans", name: "lesson-plans", content: JSON.stringify(context.lessonPlans || []) },
               { id: "microsequence-plans", name: "microsequence-plans", content: JSON.stringify(context.microsequencePlans || []) },
-              { id: "microsequence-issues", name: "microsequence-issues", content: JSON.stringify(adherenceAudit.issues || []) }
+              { id: "microsequence-issues", name: "microsequence-issues", content: JSON.stringify(adherenceAudit.issues || []) },
+              ...(interventionPlan ? [{ id: "intervention-plan", name: "intervention-plan", content: JSON.stringify(interventionPlan) }] : [])
             ]
           });
           context.microsequencePlans = repairCourseForgeMicrosequenceMetadataDeterministically({
             microsequencePlans: normalizeMicrosequencePlans(response.value || response || {}, context.lessonPlans || []),
             lessonPlans: context.lessonPlans || []
+          });
+          context.microsequencePlans = constrainCourseForgeMicrosequencePlansToInterventionPlan({
+            plan: interventionPlan,
+            microsequencePlans: context.microsequencePlans,
+            projectDocument: context.projectDocument
           });
           const structuralAudit = validateCourseForgeMicrosequencePlans({
             microsequencePlans: context.microsequencePlans || [],
@@ -1234,7 +1333,11 @@ export async function runCourseForge({
             throw new Error(`Reparo de microssequências inválido: ${structuralAudit.errors.join(" ")}`);
           }
           adherenceAudit = auditCourseForgeDomainCoverage({
-            microsequencePlans: context.microsequencePlans || [],
+            microsequencePlans: buildCompositeMicrosequencePlansForInterventionAudit({
+              projectDocument: context.projectDocument,
+              interventionPlan,
+              microsequencePlans: context.microsequencePlans
+            }),
             lessonPlans: context.lessonPlans || []
           });
           context.microsequenceAdherenceAudit = adherenceAudit;
@@ -1528,12 +1631,17 @@ export async function runCourseForge({
           );
         }
       } else if (phaseId === "compile_patch") {
+        const constrainedMicrosequencePlans = constrainCourseForgeMicrosequencePlansToInterventionPlan({
+          plan: context.interventionPlan || null,
+          microsequencePlans: context.microsequencePlans || [],
+          projectDocument: context.projectDocument
+        });
         const cardsByMicrosequenceId = new Map(
           (Array.isArray(context.cardsFinal) ? context.cardsFinal : [])
             .map((entry) => [entry.contractId, entry])
             .filter(([contractId]) => contractId)
         );
-        const microsequencePlansWithCards = (context.microsequencePlans || []).map((lessonPlan) => ({
+        const microsequencePlansWithCards = constrainedMicrosequencePlans.map((lessonPlan) => ({
           ...structuredClone(lessonPlan),
           microsequences: (Array.isArray(lessonPlan?.microsequences) ? lessonPlan.microsequences : []).map((microsequence) => {
             const cardsEntry = cardsByMicrosequenceId.get([
@@ -1582,6 +1690,7 @@ export async function runCourseForge({
           interventionRecommendation: text(context.interventionResponse?.recommendedAction),
           interventionRequestStatus: text(context.interventionRequest?.status),
           interventionEditorOperation: text(context.interventionRequest?.editorIntent?.operation),
+          interventionPlanningMode: text(context.interventionPlan?.planningMode),
           cameFromInterventionRequest: Boolean(intent?.interventionRequest),
           requestedGenerationDepth: intent.requestedGenerationDepth,
           executedGenerationDepth: intent.generationDepth,
@@ -1636,6 +1745,7 @@ export async function runCourseForge({
     patch: context.patch,
     interventionResponse: context.interventionResponse,
     interventionRequest: context.interventionRequest,
+    interventionPlan: context.interventionPlan,
     artifacts: artifactStore.listArtifacts(runId)
   };
 }
