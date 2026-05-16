@@ -22,6 +22,13 @@ function text(value) {
   return typeof value === "string" ? value.trim() : "";
 }
 
+function findLessonMicrosequenceIndex(document, { courseKey = "", moduleKey = "", lessonKey = "", microsequenceKey = "" } = {}) {
+  const course = (Array.isArray(document?.courses) ? document.courses : []).find((entry) => text(entry?.key) === text(courseKey));
+  const moduleValue = (Array.isArray(course?.modules) ? course.modules : []).find((entry) => text(entry?.key) === text(moduleKey));
+  const lesson = (Array.isArray(moduleValue?.lessons) ? moduleValue.lessons : []).find((entry) => text(entry?.key) === text(lessonKey));
+  return (Array.isArray(lesson?.microsequences) ? lesson.microsequences : []).findIndex((entry) => text(entry?.key) === text(microsequenceKey));
+}
+
 function sortOrderOperations(operations = []) {
   const weights = {
     add_course: 1,
@@ -31,13 +38,20 @@ function sortOrderOperations(operations = []) {
     add_lesson: 5,
     update_lesson: 6,
     add_microsequence: 7,
-    update_microsequence: 8,
-    add_card: 9,
-    update_card: 10,
-    delete_card: 11,
-    reorder_children: 12,
-    mark_status: 13,
+    insert_microsequence_after: 8,
+    insert_explanatory_bridge_after: 8,
+    insert_contrast_example_after: 8,
+    insert_practice_bridge_after: 8,
+    update_microsequence: 9,
+    add_card: 10,
+    update_card: 11,
+    delete_card: 12,
+    reorder_children: 13,
+    mark_status: 14,
     replace_microsequence_cards: 98
+    ,
+    replace_microsequence_with_contrast: 98,
+    replace_microsequence_with_guided_practice: 98
   };
   return operations.slice().sort((a, b) => (weights[a.op] || 99) - (weights[b.op] || 99));
 }
@@ -95,6 +109,31 @@ export function applyCourseForgePatch(document, patch, options = {}) {
         moduleKey: operation.moduleKey,
         lessonKey: operation.lessonKey,
         ...(operation.microsequence || {})
+      });
+      return;
+    }
+    if (["insert_microsequence_after", "insert_explanatory_bridge_after", "insert_contrast_example_after", "insert_practice_bridge_after"].includes(operation.op)) {
+      nextDocument = createMicrosequence(nextDocument, {
+        courseKey: operation.courseKey,
+        moduleKey: operation.moduleKey,
+        lessonKey: operation.lessonKey,
+        ...(operation.microsequence || {})
+      });
+      const anchorIndex = findLessonMicrosequenceIndex(nextDocument, {
+        courseKey: operation.courseKey,
+        moduleKey: operation.moduleKey,
+        lessonKey: operation.lessonKey,
+        microsequenceKey: operation.anchorMicrosequenceKey
+      });
+      nextDocument = moveMicrosequence(nextDocument, {
+        courseKey: operation.courseKey,
+        moduleKey: operation.moduleKey,
+        lessonKey: operation.lessonKey,
+        microsequenceKey: operation.microsequence?.key,
+        targetCourseKey: operation.courseKey,
+        targetModuleKey: operation.moduleKey,
+        targetLessonKey: operation.lessonKey,
+        targetPosition: anchorIndex >= 0 ? anchorIndex + 1 : undefined
       });
       return;
     }
@@ -187,7 +226,7 @@ export function applyCourseForgePatch(document, patch, options = {}) {
       });
       return;
     }
-    if (operation.op === "replace_microsequence_cards") {
+    if (["replace_microsequence_cards", "replace_microsequence_with_contrast", "replace_microsequence_with_guided_practice"].includes(operation.op)) {
       nextDocument = replaceMicrosequenceCards(nextDocument, {
         courseKey: operation.courseKey,
         moduleKey: operation.moduleKey,

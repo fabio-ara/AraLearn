@@ -43,8 +43,20 @@ function arraysEqual(left = [], right = []) {
   return left.every((item, index) => item === right[index]);
 }
 
+function textArraysEqual(left = [], right = []) {
+  return arraysEqual(
+    normalizeArray(left).map(text).filter(Boolean),
+    normalizeArray(right).map(text).filter(Boolean)
+  );
+}
+
 function sameCardContent(left = {}, right = {}) {
   return JSON.stringify(left) === JSON.stringify(right);
+}
+
+function containsDidacticTerm(value = "", terms = []) {
+  const normalized = text(value).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  return normalizeArray(terms).some((term) => normalized.includes(String(term).toLowerCase()));
 }
 
 function normalizeOperation(operation = {}) {
@@ -63,7 +75,9 @@ function normalizePatchEvent(event = {}) {
     interventionActionId: text(event.interventionActionId),
     semanticOperation: text(event.semanticOperation),
     reason: text(event.reason),
-    evidence: clone(event?.evidence || {})
+    evidence: clone(event?.evidence || {}),
+    placement: text(event.placement),
+    anchorMicrosequenceKey: text(event.anchorMicrosequenceKey)
   };
 }
 
@@ -154,7 +168,8 @@ function buildRequestedChangeEvent({
   action = null,
   target = {},
   appliedAs = "",
-  stats = null
+  stats = null,
+  details = null
 } = {}) {
   if (!action) {
     return null;
@@ -169,8 +184,59 @@ function buildRequestedChangeEvent({
     semanticOperation: text(action?.semanticOperation),
     reason: text(action?.reason),
     evidence: clone(action?.evidence || {}),
+    ...(details && typeof details === "object" ? clone(details) : {}),
     ...(stats && typeof stats === "object" ? { stats: clone(stats) } : {})
   };
+}
+
+function resolveDidacticDirectPatchOp({ interventionAction = null, microsequence = {}, exists = false } = {}) {
+  if (!interventionAction) {
+    return exists ? "replace_microsequence_cards" : "add_microsequence";
+  }
+
+  const coverageRole = text(microsequence?.coverageRole);
+  const didacticPurpose = text(microsequence?.didacticPurpose || microsequence?.objective);
+  const reason = text(interventionAction?.reason);
+  const placement = text(interventionAction?.insertionPolicy?.placement);
+  const looksLikePractice = containsDidacticTerm(coverageRole, ["practice", "guided_practice", "independent_practice", "exam_transfer"])
+    || containsDidacticTerm(didacticPurpose, ["pratic", "practice", "exercicio", "exercício", "guiad"]);
+  const looksLikeContrast = containsDidacticTerm(didacticPurpose, ["contrast", "contraste"])
+    || containsDidacticTerm(reason, ["contrast", "contraste", "diferenca", "diferença", "contraexemplo"]);
+
+  if (!exists) {
+    if (placement === "after_anchor" && looksLikePractice) {
+      return "insert_practice_bridge_after";
+    }
+    if (placement === "after_anchor" && looksLikeContrast) {
+      return "insert_contrast_example_after";
+    }
+    if (placement === "after_anchor") {
+      return "insert_explanatory_bridge_after";
+    }
+    return "add_microsequence";
+  }
+
+  if (looksLikePractice) {
+    return "replace_microsequence_with_guided_practice";
+  }
+  if (looksLikeContrast) {
+    return "replace_microsequence_with_contrast";
+  }
+  return "replace_microsequence_cards";
+}
+
+function sameMicrosequenceMetadata(existingMicrosequence = {}, nextMicrosequence = {}) {
+  return (
+    text(existingMicrosequence?.title) === text(nextMicrosequence?.title)
+    && text(existingMicrosequence?.description) === text(nextMicrosequence?.description)
+    && text(existingMicrosequence?.status) === text(nextMicrosequence?.status)
+    && Boolean(existingMicrosequence?.included) === Boolean(nextMicrosequence?.included)
+    && text(existingMicrosequence?.didacticPurpose) === text(nextMicrosequence?.didacticPurpose)
+    && text(existingMicrosequence?.coverageRole) === text(nextMicrosequence?.coverageRole)
+    && textArraysEqual(existingMicrosequence?.tags, nextMicrosequence?.tags)
+    && textArraysEqual(existingMicrosequence?.domainRefs, nextMicrosequence?.domainRefs)
+    && textArraysEqual(existingMicrosequence?.practiceVariantRefs, nextMicrosequence?.practiceVariantRefs)
+  );
 }
 
 function buildScopedArchitectureFromProject(projectDocument = {}, scope = {}) {
@@ -408,48 +474,101 @@ function buildMicrosequenceOperations({
   };
 
   if (!exists) {
+    const directPatchOp = resolveDidacticDirectPatchOp({
+      interventionAction,
+      microsequence: normalized,
+      exists: false
+    });
     const requestedChangeEvent = buildRequestedChangeEvent({
       action: interventionAction,
       target: sharedTarget,
-      appliedAs: "add_microsequence",
+      appliedAs: directPatchOp,
+      details: interventionAction?.insertionPolicy?.placement === "after_anchor"
+        ? {
+            placement: text(interventionAction?.insertionPolicy?.placement),
+            anchorMicrosequenceKey: text(interventionAction?.insertionPolicy?.anchorMicrosequenceKey)
+          }
+        : null,
+      stats: {
+        desiredCardCount: normalized.publicCards.length
+      }
+    });
+    return {
+      operations: [
+        interventionAction?.insertionPolicy?.placement === "after_anchor"
+          ? {
+              op: directPatchOp,
+              courseKey,
+              moduleKey,
+              lessonKey,
+              anchorMicrosequenceKey: text(interventionAction?.insertionPolicy?.anchorMicrosequenceKey),
+              microsequence: microsequencePatch
+            }
+          : {
+              op: "add_microsequence",
+              courseKey,
+              moduleKey,
+              lessonKey,
+              microsequence: microsequencePatch
+            }
+      ],
+      events: requestedChangeEvent ? [requestedChangeEvent] : []
+    };
+  }
+
+  if (interventionAction) {
+    const directPatchOp = resolveDidacticDirectPatchOp({
+      interventionAction,
+      microsequence: normalized,
+      exists: true
+    });
+    const requestedChangeEvent = buildRequestedChangeEvent({
+      action: interventionAction,
+      target: sharedTarget,
+      appliedAs: directPatchOp,
       stats: {
         desiredCardCount: normalized.publicCards.length
       }
     });
     return {
       operations: [{
-        op: "add_microsequence",
+        op: directPatchOp,
         courseKey,
         moduleKey,
         lessonKey,
+        microsequenceKey: normalized.key,
         microsequence: microsequencePatch
       }],
       events: requestedChangeEvent ? [requestedChangeEvent] : []
     };
   }
 
-  const operations = [{
-    op: "update_microsequence",
-    ...sharedTarget,
-    microsequence: {
-      title: normalized.title,
-      description: normalized.description,
-      status: normalized.status,
-      included: normalized.included,
-      tags: normalized.tags,
-      domainRefs: normalized.domainRefs,
-      practiceVariantRefs: normalized.practiceVariantRefs,
-      didacticPurpose: normalized.didacticPurpose,
-      coverageRole: normalized.coverageRole
-    }
-  }];
+  const microsequenceMetadataPatch = {
+    title: normalized.title,
+    description: normalized.description,
+    status: normalized.status,
+    included: normalized.included,
+    tags: normalized.tags,
+    domainRefs: normalized.domainRefs,
+    practiceVariantRefs: normalized.practiceVariantRefs,
+    didacticPurpose: normalized.didacticPurpose,
+    coverageRole: normalized.coverageRole
+  };
+  const operations = sameMicrosequenceMetadata(existingMicrosequence, microsequenceMetadataPatch)
+    ? []
+    : [{
+        op: "update_microsequence",
+        ...sharedTarget,
+        microsequence: microsequenceMetadataPatch
+      }];
   const cardMutations = buildCardMutationOperations({
     sharedTarget,
     desiredCards: normalized.publicCards,
     existingMicrosequence
   });
+  const hasMicrosequenceMutations = operations.length > 0 || cardMutations.operations.length > 0;
   const requestedChangeEvent = buildRequestedChangeEvent({
-    action: interventionAction,
+    action: hasMicrosequenceMutations ? interventionAction : null,
     target: sharedTarget,
     appliedAs: "patch_existing_microsequence",
     stats: {
@@ -580,6 +699,23 @@ export function validateCourseForgePatch(patch = {}, { intent = {}, intervention
     };
     if (!patchTargetWithinScope(scope, target) && operation.op !== "add_course") {
       errors.push(`operations[${index}] toca fora do escopo selecionado.`);
+    }
+    if (["insert_microsequence_after", "insert_practice_bridge_after", "insert_contrast_example_after", "insert_explanatory_bridge_after"].includes(operation.op)
+      && !text(operation.anchorMicrosequenceKey)) {
+      errors.push(`operations[${index}] sem anchorMicrosequenceKey.`);
+    }
+    if (
+      ["add_microsequence", "insert_microsequence_after", "insert_practice_bridge_after", "insert_contrast_example_after", "insert_explanatory_bridge_after"]
+        .includes(operation.op)
+      && !text(operation?.microsequence?.key)
+    ) {
+      errors.push(`operations[${index}] sem microsequence.key.`);
+    }
+    if (
+      ["replace_microsequence_cards", "replace_microsequence_with_contrast", "replace_microsequence_with_guided_practice"].includes(operation.op)
+      && !text(operation.microsequenceKey)
+    ) {
+      errors.push(`operations[${index}] sem microsequenceKey.`);
     }
   });
 

@@ -177,6 +177,20 @@ function inferRequestedChangeSemanticOperation(change = {}, target = {}) {
   return `reinforce_existing_${level}`;
 }
 
+function inferActionInsertionPolicy(change = {}, interventionRequest = {}, actionTarget = {}) {
+  const patchStrategy = text(change?.patchStrategy);
+  const requestedType = text(change?.type);
+  if (patchStrategy !== "add_microsequence" && requestedType !== "add_new_microsequence") {
+    return null;
+  }
+  const anchorMicrosequenceKey = uniqueTextList(interventionRequest?.contextSnapshot?.microsequenceKeys || [])[0] || "";
+  return {
+    placement: anchorMicrosequenceKey ? "after_anchor" : "append_to_lesson",
+    anchorMicrosequenceKey,
+    lessonKey: text(actionTarget?.lessonKey)
+  };
+}
+
 function buildRequestedChanges({ recommendedAction = "", target = {}, response = {}, operation = "" } = {}) {
   if (recommendedAction === "answer_only") {
     return [];
@@ -265,6 +279,7 @@ export function compileCourseForgeEditorInterventionPlan({ interventionRequest =
         rationale: text(interventionRequest?.rationale),
         requestedChangeReason: text(change?.reason)
       },
+      insertionPolicy: inferActionInsertionPolicy(change, interventionRequest, actionTarget),
       target: actionTarget,
       lessonTargets,
       existingMicrosequenceKey: text(actionTarget?.microsequenceKey),
