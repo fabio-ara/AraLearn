@@ -2040,6 +2040,9 @@ test("editor_intervention_plan explicita focos estruturados no providerTask", ()
   assert.match(result.providerTask, /Ação 2:\s*prerequisite_tightening/i);
   assert.match(result.providerTask, /domínio-alvo concept-compound/i);
   assert.match(result.providerTask, /pré-requisitos concept-and,\s*concept-or/i);
+  assert.match(result.auditProviderTask, /Audite se cada microssequência realmente materializa a função didática pedida/i);
+  assert.match(result.auditProviderTask, /Ação 1:\s*contrast_reinforcement/i);
+  assert.match(result.auditProviderTask, /contraste explícito entre concept-and e concept-or/i);
 });
 
 test("auditoria de alinhamento avaliativo cobra formato pedido explicitamente", () => {

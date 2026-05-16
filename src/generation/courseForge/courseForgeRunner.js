@@ -1342,6 +1342,7 @@ export async function runCourseForge({
         }
         let providerAudit = { approved: true, issues: [], warnings: [] };
         if (provider?.id !== "fake" || provider?.capabilities?.provider === "fake") {
+          const interventionPlan = context.interventionPlan || null;
           const response = await executeCourseForgeProviderPhase({
             provider,
             phaseId,
@@ -1349,13 +1350,16 @@ export async function runCourseForge({
             prompt: buildCourseForgePrompt({
               role: "Você audita o planejamento de microssequências do AraLearn.",
               sourcePack: JSON.stringify(context.sourceLedger || []),
-              task: "Aponte saltos de progressão, duplicações, escopo excessivo e falta de prática distribuída.",
+              task:
+                interventionPlan?.auditProviderTask
+                || "Aponte saltos de progressão, duplicações, escopo excessivo e falta de prática distribuída.",
               output: "Responda somente JSON válido com approved, issues e warnings."
             }),
             schema: null,
             artifacts: [
               { id: "intent", name: "intent", content: JSON.stringify(intent) },
-              { id: "microsequence-plans", name: "microsequence-plans", content: JSON.stringify(context.microsequencePlans || []) }
+              { id: "microsequence-plans", name: "microsequence-plans", content: JSON.stringify(context.microsequencePlans || []) },
+              ...(interventionPlan ? [{ id: "intervention-plan", name: "intervention-plan", content: JSON.stringify(interventionPlan) }] : [])
             ]
           });
           providerAudit = structuredClone(response.value || response || providerAudit);

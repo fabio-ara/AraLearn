@@ -303,6 +303,30 @@ function buildInterventionProviderTask({ planningMode = "", actions = [] } = {})
   return [header, ...lines].join("\n");
 }
 
+function buildInterventionAuditProviderTask({ actions = [] } = {}) {
+  const lines = normalizeArray(actions)
+    .slice(0, 8)
+    .map((action, index) => {
+      const lessonKey = text(action?.target?.lessonKey) || text(action?.lessonTargets?.[0]?.lessonKey);
+      const targetMicrosequence = text(action?.existingMicrosequenceKey);
+      const focus = describeProviderFocus(action);
+      return [
+        `Ação ${index + 1}: ${text(action?.didacticInterventionType) || "intervenção local"}.`,
+        lessonKey ? `Lição-alvo ${lessonKey}.` : "",
+        targetMicrosequence ? `Microssequência-alvo ${targetMicrosequence}.` : "",
+        focus ? `Foco obrigatório: ${focus}.` : ""
+      ]
+        .filter(Boolean)
+        .join(" ");
+    })
+    .filter(Boolean);
+  return [
+    "Audite se cada microssequência realmente materializa a função didática pedida sem ampliar o escopo.",
+    "Considere explicitamente os seguintes focos por ação:",
+    ...lines
+  ].join("\n");
+}
+
 function findLessonPlanForTarget(lessonPlans = [], target = {}) {
   const scopedTarget = buildScopeTarget(target);
   return (Array.isArray(lessonPlans) ? lessonPlans : []).find((lessonPlan) =>
@@ -562,6 +586,7 @@ export function compileCourseForgeEditorInterventionPlan({ interventionRequest =
     targetedMicrosequenceKeys,
     newMicrosequenceCountByLesson,
     providerTask: buildInterventionProviderTask({ planningMode, actions }),
+    auditProviderTask: buildInterventionAuditProviderTask({ actions }),
     actions
   };
 }
