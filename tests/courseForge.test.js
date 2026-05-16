@@ -1762,6 +1762,71 @@ test("tarefa de reparo prioriza severidade e proximidade do alvo", () => {
   assert.ok(guidedIndex < providerIndex);
 });
 
+test("tarefa de reparo preserva diretivas criticas mesmo acima do limite flexivel", () => {
+  const task = buildMicrosequenceRepairTask({
+    directives: [
+      {
+        directiveType: "repair_domain_coverage",
+        instruction: "Corrigir cobertura 1.",
+        evidence: "Lacuna estrutural 1."
+      },
+      {
+        directiveType: "repair_domain_coverage",
+        instruction: "Corrigir cobertura 2.",
+        evidence: "Lacuna estrutural 2."
+      },
+      {
+        directiveType: "repair_domain_coverage",
+        instruction: "Corrigir cobertura 3.",
+        evidence: "Lacuna estrutural 3."
+      },
+      {
+        directiveType: "repair_domain_coverage",
+        instruction: "Corrigir cobertura 4.",
+        evidence: "Lacuna estrutural 4."
+      },
+      {
+        directiveType: "generate_missing_intervention_microsequence",
+        didacticInterventionType: "guided_practice_bridge",
+        instruction: "Gerar ponte guiada 1.",
+        evidence: "Falta ponte guiada 1."
+      },
+      {
+        directiveType: "generate_missing_intervention_microsequence",
+        didacticInterventionType: "guided_practice_bridge",
+        instruction: "Gerar ponte guiada 2.",
+        evidence: "Falta ponte guiada 2."
+      },
+      {
+        directiveType: "rewrite_for_didactic_intervention_type",
+        didacticInterventionType: "contrast_reinforcement",
+        providerIssueType: "contrast_needs_more_discrimination",
+        severity: "warning",
+        instruction: "Reescrever contraste 1.",
+        evidence: "A discriminação ainda ficou fraca 1."
+      },
+      {
+        directiveType: "rewrite_for_didactic_intervention_type",
+        didacticInterventionType: "contrast_reinforcement",
+        providerIssueType: "contrast_needs_more_discrimination",
+        severity: "warning",
+        instruction: "Reescrever contraste 2.",
+        evidence: "A discriminação ainda ficou fraca 2."
+      }
+    ]
+  });
+
+  assert.match(task, /Corrigir cobertura 1\./);
+  assert.match(task, /Corrigir cobertura 2\./);
+  assert.match(task, /Corrigir cobertura 3\./);
+  assert.match(task, /Corrigir cobertura 4\./);
+  assert.match(task, /Gerar ponte guiada 1\./);
+  assert.match(task, /Gerar ponte guiada 2\./);
+  assert.doesNotMatch(task, /Reescrever contraste 1\./);
+  assert.doesNotMatch(task, /Reescrever contraste 2\./);
+  assert.match(task, /Outros 2 ajustes de menor prioridade foram omitidos deste prompt/i);
+});
+
 test("intervention_request infere relatedConceptRefs para contraste local", () => {
   const result = compileCourseForgeInterventionRequest({
     intent: {

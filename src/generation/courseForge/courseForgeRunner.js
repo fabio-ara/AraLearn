@@ -713,19 +713,52 @@ function sortRepairDirectives(directives = []) {
   });
 }
 
+function isCriticalRepairDirective(directive = {}) {
+  const providerSeverity = text(directive?.severity);
+  if (providerSeverity === "blocking" || providerSeverity === "error") {
+    return true;
+  }
+  const directiveType = text(directive?.directiveType);
+  return ["repair_domain_coverage", "preserve_target_microsequence", "generate_missing_intervention_microsequence"].includes(directiveType);
+}
+
+function selectRepairDirectivesForTask(directives = [], { maxDirectives = 6 } = {}) {
+  const sorted = sortRepairDirectives(directives);
+  const critical = sorted.filter((directive) => isCriticalRepairDirective(directive));
+  const selected = [...critical];
+  const selectedSet = new Set(selected);
+  const softLimit = Math.max(maxDirectives, critical.length);
+
+  for (const directive of sorted) {
+    if (selected.length >= softLimit) {
+      break;
+    }
+    if (selectedSet.has(directive)) {
+      continue;
+    }
+    selected.push(directive);
+    selectedSet.add(directive);
+  }
+
+  return {
+    selected,
+    omittedCount: Math.max(0, sorted.length - selected.length)
+  };
+}
+
 export function buildMicrosequenceRepairTask(directivesArtifact = null) {
   const directives = Array.isArray(directivesArtifact?.directives) ? directivesArtifact.directives : [];
   if (!directives.length) {
     return "Corrija apenas lacunas de cobertura didática, domainRefs, practiceVariantRefs e progressão das microssequências, sem gerar cards.";
   }
-  const prioritized = sortRepairDirectives(directives).slice(0, 6);
-  const structuralLines = prioritized
+  const { selected, omittedCount } = selectRepairDirectivesForTask(directives);
+  const structuralLines = selected
     .filter((directive) => text(directive?.directiveType) === "repair_domain_coverage" && !text(directive?.providerIssueType))
     .map((directive) => `- ${describeMicrosequenceRepairDirective(directive)}`.trim());
-  const interventionLines = prioritized
+  const interventionLines = selected
     .filter((directive) => text(directive?.directiveType) !== "repair_domain_coverage" && !text(directive?.providerIssueType))
     .map((directive) => `- ${describeMicrosequenceRepairDirective(directive)}`.trim());
-  const providerAnchoredLines = prioritized
+  const providerAnchoredLines = selected
     .filter((directive) => text(directive?.providerIssueType))
     .map((directive) => `- ${describeMicrosequenceRepairDirective(directive)}`.trim());
 
@@ -743,6 +776,9 @@ export function buildMicrosequenceRepairTask(directivesArtifact = null) {
   if (providerAnchoredLines.length) {
     sections.push("Ajustes finos locais sugeridos pela auditoria ancorada do provider:");
     sections.push(...providerAnchoredLines);
+  }
+  if (omittedCount > 0) {
+    sections.push(`Outros ${omittedCount} ajustes de menor prioridade foram omitidos deste prompt para preservar foco no reparo crítico.`);
   }
   return sections.join("\n");
 }
