@@ -78,6 +78,11 @@ const COURSE_FORGE_ARTIFACT_DEFINITIONS = Object.freeze({
     schemaVersion: "aralearn.didactic_adherence_audit.v1",
     stage: "auditor"
   },
+  "intervention-didactic-audit": {
+    artifactType: "InterventionDidacticAudit",
+    schemaVersion: "aralearn.intervention_didactic_audit.v1",
+    stage: "auditor"
+  },
   "microsequence-contracts": {
     artifactType: "MicrosequenceContractSet",
     schemaVersion: "aralearn.microsequence_contract_set.v1",

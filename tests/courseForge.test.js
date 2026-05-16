@@ -10,7 +10,11 @@ import { createFakeProvider } from "../src/generation/providers/fakeProvider.js"
 import { listCourseForgeSourceSpans, validateCourseForgeSourceLedger } from "../src/generation/courseForge/courseForgeSourceLedger.js";
 import { validateCourseForgeCardSourceRefs } from "../src/generation/courseForge/courseForgeSourceRefs.js";
 import { auditCourseForgeBackstageVocabulary } from "../src/generation/courseForge/courseForgeBackstageAudit.js";
-import { auditCourseForgeAssessmentAlignment, auditCourseForgePrerequisiteCoverage } from "../src/generation/courseForge/courseForgeCards.js";
+import {
+  auditCourseForgeAssessmentAlignment,
+  auditCourseForgeInterventionDidacticCoherence,
+  auditCourseForgePrerequisiteCoverage
+} from "../src/generation/courseForge/courseForgeCards.js";
 import { compileCourseStructureToPatch, validateCourseForgePatch } from "../src/generation/courseForge/courseForgePatch.js";
 import { createCourseForgeArtifactsStore } from "../src/generation/courseForge/courseForgeArtifacts.js";
 import { canResumeCourseForgeRun, createCourseForgeRunState } from "../src/generation/courseForge/courseForgeRunState.js";
@@ -695,6 +699,121 @@ test("auditoria de prerequisitos bloqueia pratica antes da preparacao", () => {
   assert.equal(result.ok, false);
   assert.ok(result.issues.some((item) => item.type === "missing_prerequisite_preparation"));
   assert.ok(result.issues.some((item) => item.type === "practice_before_explanation"));
+});
+
+test("auditoria de intervencao cobra contraste explicito em reforco local", () => {
+  const result = auditCourseForgeInterventionDidacticCoherence({
+    interventionPlan: {
+      actions: [
+        {
+          requestedChangeId: "requested_change_1",
+          didacticInterventionType: "contrast_reinforcement",
+          expectsNewMicrosequence: false,
+          existingMicrosequenceKey: "micro-1",
+          target: {
+            courseKey: "course-1",
+            moduleKey: "module-1",
+            lessonKey: "lesson-1"
+          }
+        }
+      ]
+    },
+    microsequencePlans: [
+      {
+        courseKey: "course-1",
+        moduleKey: "module-1",
+        lessonKey: "lesson-1",
+        microsequences: [
+          {
+            key: "micro-1",
+            title: "Revisão curta",
+            didacticPurpose: "Retomar o conceito.",
+            coverageRole: "explain",
+            tags: ["revisao"]
+          }
+        ]
+      }
+    ]
+  });
+
+  assert.equal(result.ok, false);
+  assert.ok(result.issues.some((item) => item.type === "intervention_type_mismatch"));
+});
+
+test("auditoria de intervencao cobra pratica guiada em ponte de pratica", () => {
+  const result = auditCourseForgeInterventionDidacticCoherence({
+    interventionPlan: {
+      actions: [
+        {
+          requestedChangeId: "requested_change_1",
+          didacticInterventionType: "guided_practice_bridge",
+          expectsNewMicrosequence: true,
+          target: {
+            courseKey: "course-1",
+            moduleKey: "module-1",
+            lessonKey: "lesson-1"
+          }
+        }
+      ]
+    },
+    microsequencePlans: [
+      {
+        courseKey: "course-1",
+        moduleKey: "module-1",
+        lessonKey: "lesson-1",
+        microsequences: [
+          {
+            key: "micro-bridge",
+            title: "Ponte conceitual",
+            didacticPurpose: "Explicar a base antes da aplicação.",
+            coverageRole: "explain",
+            tags: ["ponte"]
+          }
+        ]
+      }
+    ]
+  });
+
+  assert.equal(result.ok, false);
+  assert.ok(result.issues.some((item) => item.type === "intervention_type_mismatch"));
+});
+
+test("auditoria de intervencao aceita fechamento explicito de pre-requisito", () => {
+  const result = auditCourseForgeInterventionDidacticCoherence({
+    interventionPlan: {
+      actions: [
+        {
+          requestedChangeId: "requested_change_1",
+          didacticInterventionType: "prerequisite_tightening",
+          expectsNewMicrosequence: true,
+          target: {
+            courseKey: "course-1",
+            moduleKey: "module-1",
+            lessonKey: "lesson-1"
+          }
+        }
+      ]
+    },
+    microsequencePlans: [
+      {
+        courseKey: "course-1",
+        moduleKey: "module-1",
+        lessonKey: "lesson-1",
+        microsequences: [
+          {
+            key: "micro-base",
+            title: "Ponte de base",
+            didacticPurpose: "Preparar a base antes da prática principal.",
+            coverageRole: "explain",
+            tags: ["ponte", "base"]
+          }
+        ]
+      }
+    ]
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.issues.length, 0);
 });
 
 test("auditoria de alinhamento avaliativo cobra formato pedido explicitamente", () => {
@@ -2576,6 +2695,7 @@ test("editor usa requestedChanges para limitar expansao a nova microssequencia p
   const lesson = result.projectDocument.courses[0].modules[0].lessons[0];
   assert.equal(result.interventionPlan.planningMode, "new_only");
   assert.equal(result.interventionPlan.actions[0].didacticInterventionType, "explanatory_bridge");
+  assert.ok(result.artifacts.some((artifact) => artifact.name === "intervention-didactic-audit"));
   assert.equal(result.interventionPlan.actions[0].insertionPolicy.placement, "after_anchor");
   assert.equal(result.interventionPlan.actions[0].insertionPolicy.anchorMicrosequenceKey, "microsequence-revisao");
   assert.ok(result.patch.operations.some((item) => item.op === "insert_explanatory_bridge_after"));

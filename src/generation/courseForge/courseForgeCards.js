@@ -15,6 +15,11 @@ function normalizeArray(value) {
   return Array.isArray(value) ? value : [];
 }
 
+function containsDidacticTerm(value = "", terms = []) {
+  const normalized = text(value).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  return normalizeArray(terms).some((term) => normalized.includes(String(term).toLowerCase()));
+}
+
 function hasExplanationCoverageRole(role = "") {
   return ["introduce", "explain", "demonstrate", "consolidate"].includes(text(role));
 }
@@ -617,6 +622,196 @@ export function auditCourseForgeDomainCoverage({ microsequencePlans = [], lesson
           "warning"
         )
       );
+    });
+  });
+
+  return {
+    ok: issues.length === 0,
+    approved: issues.length === 0,
+    issues,
+    warnings
+  };
+}
+
+function summarizeMicrosequenceDidacticText(microsequence = {}) {
+  return [
+    text(microsequence?.title),
+    text(microsequence?.description),
+    text(microsequence?.didacticPurpose || microsequence?.objective),
+    text(microsequence?.coverageRole),
+    normalizeArray(microsequence?.tags).map(text).join(" ")
+  ].join(" ");
+}
+
+function scoreMicrosequenceForInterventionType(microsequence = {}, didacticInterventionType = "") {
+  const combined = summarizeMicrosequenceDidacticText(microsequence);
+  const coverageRole = text(microsequence?.coverageRole);
+  const explanationRole = hasExplanationCoverageRole(coverageRole);
+  const practiceRole = isPracticeCoverageRole(coverageRole);
+  if (didacticInterventionType === "contrast_reinforcement") {
+    return containsDidacticTerm(combined, ["contrast", "contraste", "contraexemplo", "diferenca", "diferença", "erro"]) ? 10 : 0;
+  }
+  if (didacticInterventionType === "guided_practice_bridge") {
+    return practiceRole || containsDidacticTerm(combined, ["pratica", "practice", "treino", "guiad", "exercicio", "exercício"]) ? 10 : 0;
+  }
+  if (didacticInterventionType === "prerequisite_tightening") {
+    return explanationRole && !practiceRole ? 10 : 0;
+  }
+  if (didacticInterventionType === "explanatory_bridge") {
+    return explanationRole && !practiceRole ? 10 : 0;
+  }
+  if (didacticInterventionType === "local_semantic_rewrite") {
+    return 10;
+  }
+  return 0;
+}
+
+function explainInterventionTypeExpectation(didacticInterventionType = "") {
+  if (didacticInterventionType === "contrast_reinforcement") {
+    return "explicitar contraste, contraexemplo ou discriminação local";
+  }
+  if (didacticInterventionType === "guided_practice_bridge") {
+    return "materializar um degrau de prática guiada antes da prática principal";
+  }
+  if (didacticInterventionType === "prerequisite_tightening") {
+    return "fechar a lacuna preparatória com explicação ou preparação explícita";
+  }
+  if (didacticInterventionType === "explanatory_bridge") {
+    return "criar uma ponte explicativa local antes da aplicação";
+  }
+  if (didacticInterventionType === "local_semantic_rewrite") {
+    return "reescrever localmente a microssequência mantendo o alvo explícito";
+  }
+  return "obedecer ao tipo didático explícito da intervenção";
+}
+
+function selectInterventionMicrosequencesByLesson({ lessonEntry = {}, actions = [] } = {}) {
+  const remaining = normalizeArray(lessonEntry?.microsequences).map((microsequence) => structuredClone(microsequence));
+  const selected = [];
+  normalizeArray(actions).forEach((action) => {
+    let bestIndex = -1;
+    let bestScore = -1;
+    remaining.forEach((microsequence, index) => {
+      const score = scoreMicrosequenceForInterventionType(microsequence, text(action?.didacticInterventionType));
+      if (score > bestScore) {
+        bestScore = score;
+        bestIndex = index;
+      }
+    });
+    if (bestIndex >= 0) {
+      const [microsequence] = remaining.splice(bestIndex, 1);
+      selected.push({ action, microsequence, score: bestScore });
+    } else {
+      selected.push({ action, microsequence: null, score: -1 });
+    }
+  });
+  return selected;
+}
+
+export function auditCourseForgeInterventionDidacticCoherence({ microsequencePlans = [], interventionPlan = null } = {}) {
+  const issues = [];
+  const warnings = [];
+  const actions = normalizeArray(interventionPlan?.actions);
+  if (!actions.length) {
+    return { ok: true, approved: true, issues, warnings };
+  }
+
+  const lessonEntryByKey = new Map(
+    normalizeArray(microsequencePlans)
+      .map((lessonEntry) => [text(lessonEntry?.lessonKey), lessonEntry])
+      .filter(([lessonKey]) => lessonKey)
+  );
+
+  const existingActions = actions.filter((action) => !action?.expectsNewMicrosequence);
+  existingActions.forEach((action) => {
+    const lessonKey = text(action?.target?.lessonKey) || text(action?.lessonTargets?.[0]?.lessonKey);
+    const lessonEntry = lessonEntryByKey.get(lessonKey);
+    const targetedMicrosequence = normalizeArray(lessonEntry?.microsequences).find(
+      (microsequence) => text(microsequence?.key) === text(action?.existingMicrosequenceKey)
+    ) || null;
+
+    if (!targetedMicrosequence) {
+      issues.push(
+        makeAuditIssue(
+          {
+            courseKey: action?.target?.courseKey,
+            moduleKey: action?.target?.moduleKey,
+            lessonKey,
+            microsequenceKey: action?.existingMicrosequenceKey
+          },
+          "missing_intervention_target",
+          `A ação ${text(action?.requestedChangeId) || text(action?.actionId)} não encontrou a microssequência alvo no plano resultante.`,
+          "Preservar a microssequência alvo no plano local ou reparar a resolução do alvo."
+        )
+      );
+      return;
+    }
+
+    const score = scoreMicrosequenceForInterventionType(targetedMicrosequence, text(action?.didacticInterventionType));
+    if (score <= 0) {
+      issues.push(
+        makeAuditIssue(
+          {
+            courseKey: action?.target?.courseKey,
+            moduleKey: action?.target?.moduleKey,
+            lessonKey,
+            microsequenceKey: targetedMicrosequence?.key
+          },
+          "intervention_type_mismatch",
+          `A ação ${text(action?.requestedChangeId) || text(action?.actionId)} pediu ${text(action?.didacticInterventionType)}, mas ${text(targetedMicrosequence?.title) || text(targetedMicrosequence?.key)} não parece ${explainInterventionTypeExpectation(text(action?.didacticInterventionType))}.`,
+          "Reescrever a microssequência para materializar explicitamente a função didática pedida."
+        )
+      );
+    }
+  });
+
+  const newActionsByLesson = new Map();
+  actions
+    .filter((action) => action?.expectsNewMicrosequence)
+    .forEach((action) => {
+      const lessonKey = text(action?.target?.lessonKey) || text(action?.lessonTargets?.[0]?.lessonKey);
+      if (!lessonKey) {
+        return;
+      }
+      const items = newActionsByLesson.get(lessonKey) || [];
+      items.push(action);
+      newActionsByLesson.set(lessonKey, items);
+    });
+
+  newActionsByLesson.forEach((lessonActions, lessonKey) => {
+    const lessonEntry = lessonEntryByKey.get(lessonKey);
+    const selections = selectInterventionMicrosequencesByLesson({ lessonEntry, actions: lessonActions });
+    selections.forEach(({ action, microsequence, score }) => {
+      if (!microsequence) {
+        issues.push(
+          makeAuditIssue(
+            {
+              courseKey: action?.target?.courseKey,
+              moduleKey: action?.target?.moduleKey,
+              lessonKey
+            },
+            "missing_intervention_microsequence",
+            `A ação ${text(action?.requestedChangeId) || text(action?.actionId)} não encontrou nenhuma nova microssequência correspondente no plano resultante.`,
+            "Gerar a microssequência local pedida antes de compilar o patch."
+          )
+        );
+        return;
+      }
+      if (score <= 0) {
+        issues.push(
+          makeAuditIssue(
+            {
+              courseKey: action?.target?.courseKey,
+              moduleKey: action?.target?.moduleKey,
+              lessonKey,
+              microsequenceKey: microsequence?.key
+            },
+            "intervention_type_mismatch",
+            `A ação ${text(action?.requestedChangeId) || text(action?.actionId)} pediu ${text(action?.didacticInterventionType)}, mas ${text(microsequence?.title) || text(microsequence?.key)} não parece ${explainInterventionTypeExpectation(text(action?.didacticInterventionType))}.`,
+            "Ajustar o plano da nova microssequência para refletir explicitamente a função didática pedida."
+          )
+        );
+      }
     });
   });
 
