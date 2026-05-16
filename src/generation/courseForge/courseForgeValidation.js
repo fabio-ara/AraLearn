@@ -581,6 +581,13 @@ export function validateCourseForgeInterventionRequest({ request = {} } = {}) {
   const allowedLevels = new Set(["project", "course", "module", "lesson", "microsequence"]);
   const allowedOperations = new Set(["repair", "reinforce", "extend"]);
   const allowedGenerationDepthHints = new Set(["repair_only", "reinforce_only"]);
+  const allowedDidacticInterventionTypes = new Set([
+    "explanatory_bridge",
+    "contrast_reinforcement",
+    "guided_practice_bridge",
+    "prerequisite_tightening",
+    "local_semantic_rewrite"
+  ]);
 
   if (!allowedStatuses.has(status)) {
     errors.push(`status inválido: ${status}.`);
@@ -623,6 +630,9 @@ export function validateCourseForgeInterventionRequest({ request = {} } = {}) {
     if (!text(change?.patchStrategy)) {
       errors.push(`requestedChanges[${index}] sem patchStrategy.`);
     }
+    if (!allowedDidacticInterventionTypes.has(text(change?.didacticInterventionType))) {
+      errors.push(`requestedChanges[${index}] com didacticInterventionType inválido: ${text(change?.didacticInterventionType)}.`);
+    }
     if (!text(change?.reason)) {
       warnings.push(`requestedChanges[${index}] sem justificativa explícita.`);
     }
@@ -656,6 +666,7 @@ export function validateCourseForgeInterventionRequest({ request = {} } = {}) {
         type: text(change?.type),
         operation: text(change?.operation),
         patchStrategy: text(change?.patchStrategy),
+        didacticInterventionType: text(change?.didacticInterventionType),
         target: structuredClone(change?.target || {}),
         reason: text(change?.reason)
       })),

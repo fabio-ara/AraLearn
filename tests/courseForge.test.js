@@ -262,6 +262,7 @@ test("resolveCourseForgeIntent consome InterventionRequest pronto como entrada c
         {
           type: "patch_existing_material",
           patchStrategy: "patch_existing_microsequence",
+          didacticInterventionType: "contrast_reinforcement",
           reason: "Adicionar contraste guiado."
         }
       ]
@@ -484,6 +485,7 @@ test("phase resolution escolhe subfluxo estrutural e registra fases adiadas", ()
         {
           type: "add_new_microsequence",
           patchStrategy: "add_microsequence",
+          didacticInterventionType: "explanatory_bridge",
           reason: "Inserir ponte didática."
         }
       ]
@@ -1598,15 +1600,16 @@ test("compileCourseStructureToPatch materializa requestedChange como evento sem�
   });
   const interventionPlan = {
     actions: [
-      {
-        actionId: "intervention_action_1",
-        requestedChangeId: "requested_change_1",
-        patchStrategy: "patch_existing_microsequence",
-        semanticOperation: "reinforce_existing_microsequence",
-        reason: "Adicionar contraste guiado na microssequência atual.",
-        evidence: {
-          studentPrompt: "Ainda não entendi a diferença.",
-          rationale: "A trilha atual ainda salta do conceito para a prática."
+        {
+          actionId: "intervention_action_1",
+          requestedChangeId: "requested_change_1",
+          patchStrategy: "patch_existing_microsequence",
+          didacticInterventionType: "contrast_reinforcement",
+          semanticOperation: "reinforce_existing_microsequence",
+          reason: "Reforçar este trecho localmente.",
+          evidence: {
+            studentPrompt: "Ainda não entendi a diferença.",
+            rationale: "A trilha atual ainda salta do conceito para a prática."
         },
         lessonTargets: [
           {
@@ -1704,8 +1707,9 @@ test("compileCourseStructureToPatch materializa requestedChange como evento sem�
 
   const applyEvent = patch.events.find((item) => item.eventType === "apply_requested_change");
   assert.equal(applyEvent.requestedChangeId, "requested_change_1");
+  assert.equal(applyEvent.didacticInterventionType, "contrast_reinforcement");
   assert.equal(applyEvent.semanticOperation, "reinforce_existing_microsequence");
-  assert.equal(applyEvent.reason, "Adicionar contraste guiado na microssequência atual.");
+  assert.equal(applyEvent.reason, "Reforçar este trecho localmente.");
   assert.equal(applyEvent.appliedAs, "replace_microsequence_with_contrast");
   assert.ok(patch.operations.some((item) => item.op === "replace_microsequence_with_contrast"));
   assert.ok(!patch.operations.some((item) => item.op === "update_card"));
@@ -2125,6 +2129,7 @@ test("tutor_only compila pedido estruturado quando recomenda patch no material a
     microsequenceKey: "microsequence-revisao"
   });
   assert.ok(result.interventionRequest.requestedChanges.some((change) => change.patchStrategy === "patch_existing_microsequence"));
+  assert.ok(result.interventionRequest.requestedChanges.some((change) => change.didacticInterventionType === "contrast_reinforcement"));
   assert.ok(result.artifacts.some((artifact) => artifact.name === "intervention-request-audit"));
 });
 
@@ -2266,12 +2271,14 @@ test("editor consome InterventionRequest pronto sem voltar ao subfluxo do Tutor"
       (item) =>
         item.eventType === "apply_requested_change"
         && item.requestedChangeId === "requested_change_1"
+        && item.didacticInterventionType === "contrast_reinforcement"
         && item.semanticOperation === "reinforce_existing_microsequence"
         && item.appliedAs === "replace_microsequence_with_contrast"
     )
   );
   assert.equal(result.projectDocument.courses[0].modules[0].lessons[0].microsequences[0].cards.length, 3);
   assert.equal(result.interventionPlan.planningMode, "existing_only");
+  assert.equal(result.interventionPlan.actions[0].didacticInterventionType, "contrast_reinforcement");
   assert.ok(result.artifacts.some((artifact) => artifact.name === "intervention-plan"));
 });
 
@@ -2363,6 +2370,7 @@ test("tutor_only eleva alvo para lição quando conclui que falta nova microsseq
     microsequenceKey: ""
   });
   assert.ok(result.interventionRequest.requestedChanges.some((change) => change.type === "add_new_microsequence"));
+  assert.ok(result.interventionRequest.requestedChanges.some((change) => change.didacticInterventionType === "prerequisite_tightening"));
 });
 
 test("editor usa requestedChanges para limitar expansao a nova microssequencia pedida", async () => {
@@ -2378,16 +2386,6 @@ test("editor usa requestedChanges para limitar expansao a nova microssequencia p
               lessonKey: "lesson-proposicoes",
               microsequences: [
                 {
-                  key: "microsequence-ponte",
-                  title: "Ponte entre definição e aplicação",
-                  description: "Cria a transição necessária.",
-                  objective: "Reduzir o salto cognitivo.",
-                  domainRefs: ["domain-proposicao"],
-                  didacticPurpose: "Criar ponte didática.",
-                  coverageRole: "explain",
-                  tags: ["ponte"]
-                },
-                {
                   key: "microsequence-extra",
                   title: "Expansão indevida",
                   description: "Não deveria entrar.",
@@ -2396,6 +2394,16 @@ test("editor usa requestedChanges para limitar expansao a nova microssequencia p
                   didacticPurpose: "Expandir além do pedido.",
                   coverageRole: "practice",
                   tags: ["extra"]
+                },
+                {
+                  key: "microsequence-ponte",
+                  title: "Ponte entre definição e aplicação",
+                  description: "Cria a transição necessária.",
+                  objective: "Reduzir o salto cognitivo.",
+                  domainRefs: ["domain-proposicao"],
+                  didacticPurpose: "Criar ponte didática.",
+                  coverageRole: "explain",
+                  tags: ["ponte"]
                 }
               ]
             }
@@ -2541,6 +2549,7 @@ test("editor usa requestedChanges para limitar expansao a nova microssequencia p
             type: "add_new_microsequence",
             operation: "extend",
             patchStrategy: "add_microsequence",
+            didacticInterventionType: "explanatory_bridge",
             target: {
               level: "lesson",
               courseKey: "course-logica",
@@ -2566,6 +2575,7 @@ test("editor usa requestedChanges para limitar expansao a nova microssequencia p
 
   const lesson = result.projectDocument.courses[0].modules[0].lessons[0];
   assert.equal(result.interventionPlan.planningMode, "new_only");
+  assert.equal(result.interventionPlan.actions[0].didacticInterventionType, "explanatory_bridge");
   assert.equal(result.interventionPlan.actions[0].insertionPolicy.placement, "after_anchor");
   assert.equal(result.interventionPlan.actions[0].insertionPolicy.anchorMicrosequenceKey, "microsequence-revisao");
   assert.ok(result.patch.operations.some((item) => item.op === "insert_explanatory_bridge_after"));
@@ -2575,6 +2585,7 @@ test("editor usa requestedChanges para limitar expansao a nova microssequencia p
       (item) =>
         item.eventType === "apply_requested_change"
         && item.requestedChangeId === "requested_change_1"
+        && item.didacticInterventionType === "explanatory_bridge"
         && item.semanticOperation === "add_new_microsequence"
         && item.appliedAs === "insert_explanatory_bridge_after"
         && item.anchorMicrosequenceKey === "microsequence-revisao"
@@ -2679,6 +2690,7 @@ test("editor especializa ponte local de pratica em operacao semantica propria", 
             type: "add_new_microsequence",
             operation: "extend",
             patchStrategy: "add_microsequence",
+            didacticInterventionType: "guided_practice_bridge",
             target: {
               level: "lesson",
               courseKey: "course-logica",
@@ -2782,10 +2794,12 @@ test("editor especializa ponte local de pratica em operacao semantica propria", 
     result.patch.events.some(
       (item) =>
         item.eventType === "apply_requested_change"
+        && item.didacticInterventionType === "guided_practice_bridge"
         && item.appliedAs === "insert_practice_bridge_after"
         && item.anchorMicrosequenceKey === "microsequence-revisao"
     )
   );
+  assert.equal(result.interventionPlan.actions[0].didacticInterventionType, "guided_practice_bridge");
   assert.deepEqual(
     result.projectDocument.courses[0].modules[0].lessons[0].microsequences.map((microsequence) => microsequence.key),
     ["microsequence-revisao", "microsequence-pratica-guiada", "microsequence-pratica"]

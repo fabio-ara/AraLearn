@@ -73,6 +73,7 @@ function normalizePatchEvent(event = {}) {
     appliedAs: text(event.appliedAs),
     requestedChangeId: text(event.requestedChangeId),
     interventionActionId: text(event.interventionActionId),
+    didacticInterventionType: text(event.didacticInterventionType),
     semanticOperation: text(event.semanticOperation),
     reason: text(event.reason),
     evidence: clone(event?.evidence || {}),
@@ -181,6 +182,7 @@ function buildRequestedChangeEvent({
     target: clone(target),
     requestedChangeId: text(action?.requestedChangeId),
     interventionActionId: text(action?.actionId),
+    didacticInterventionType: text(action?.didacticInterventionType),
     semanticOperation: text(action?.semanticOperation),
     reason: text(action?.reason),
     evidence: clone(action?.evidence || {}),
@@ -194,6 +196,7 @@ function resolveDidacticDirectPatchOp({ interventionAction = null, microsequence
     return exists ? "replace_microsequence_cards" : "add_microsequence";
   }
 
+  const didacticInterventionType = text(interventionAction?.didacticInterventionType);
   const coverageRole = text(microsequence?.coverageRole);
   const didacticPurpose = text(microsequence?.didacticPurpose || microsequence?.objective);
   const reason = text(interventionAction?.reason);
@@ -204,6 +207,15 @@ function resolveDidacticDirectPatchOp({ interventionAction = null, microsequence
     || containsDidacticTerm(reason, ["contrast", "contraste", "diferenca", "diferença", "contraexemplo"]);
 
   if (!exists) {
+    if (placement === "after_anchor" && didacticInterventionType === "guided_practice_bridge") {
+      return "insert_practice_bridge_after";
+    }
+    if (placement === "after_anchor" && didacticInterventionType === "contrast_reinforcement") {
+      return "insert_contrast_example_after";
+    }
+    if (placement === "after_anchor" && ["explanatory_bridge", "prerequisite_tightening"].includes(didacticInterventionType)) {
+      return "insert_explanatory_bridge_after";
+    }
     if (placement === "after_anchor" && looksLikePractice) {
       return "insert_practice_bridge_after";
     }
@@ -216,6 +228,15 @@ function resolveDidacticDirectPatchOp({ interventionAction = null, microsequence
     return "add_microsequence";
   }
 
+  if (didacticInterventionType === "guided_practice_bridge") {
+    return "replace_microsequence_with_guided_practice";
+  }
+  if (didacticInterventionType === "contrast_reinforcement") {
+    return "replace_microsequence_with_contrast";
+  }
+  if (["explanatory_bridge", "prerequisite_tightening", "local_semantic_rewrite"].includes(didacticInterventionType)) {
+    return "replace_microsequence_cards";
+  }
   if (looksLikePractice) {
     return "replace_microsequence_with_guided_practice";
   }
@@ -581,6 +602,7 @@ function buildMicrosequenceOperations({
           ...event,
           requestedChangeId: text(interventionAction?.requestedChangeId),
           interventionActionId: text(interventionAction?.actionId),
+          didacticInterventionType: text(interventionAction?.didacticInterventionType),
           semanticOperation: text(interventionAction?.semanticOperation),
           reason: text(interventionAction?.reason),
           evidence: clone(interventionAction?.evidence || {})
@@ -732,6 +754,9 @@ export function validateCourseForgePatch(patch = {}, { intent = {}, intervention
     if (!event.semanticOperation) {
       errors.push(`events[${index}] sem semanticOperation.`);
     }
+    if (!event.didacticInterventionType) {
+      errors.push(`events[${index}] sem didacticInterventionType.`);
+    }
     if (!event.reason) {
       errors.push(`events[${index}] sem reason.`);
     }
@@ -750,6 +775,9 @@ export function validateCourseForgePatch(patch = {}, { intent = {}, intervention
       if (!requestedChangeId) {
         errors.push(`interventionPlan.actions[${index}] sem requestedChangeId.`);
         return;
+      }
+      if (!text(action?.didacticInterventionType)) {
+        errors.push(`interventionPlan.actions[${index}] sem didacticInterventionType.`);
       }
       if (!appliedRequestedChangeIds.has(requestedChangeId)) {
         errors.push(`Patch sem evento aplicado para ${requestedChangeId}.`);

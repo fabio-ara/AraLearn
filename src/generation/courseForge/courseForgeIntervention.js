@@ -43,6 +43,19 @@ function uniqueTextList(values = []) {
   return [...new Set((Array.isArray(values) ? values : []).map(text).filter(Boolean))];
 }
 
+function containsDidacticTerm(value = "", terms = []) {
+  const normalized = text(value).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  return (Array.isArray(terms) ? terms : []).some((term) => normalized.includes(String(term).toLowerCase()));
+}
+
+const DIDACTIC_INTERVENTION_TYPES = Object.freeze([
+  "explanatory_bridge",
+  "contrast_reinforcement",
+  "guided_practice_bridge",
+  "prerequisite_tightening",
+  "local_semantic_rewrite"
+]);
+
 function findCourse(projectDocument = {}, courseKey = "") {
   return (Array.isArray(projectDocument?.courses) ? projectDocument.courses : []).find((course) => text(course?.key) === text(courseKey)) || null;
 }
@@ -177,6 +190,47 @@ function inferRequestedChangeSemanticOperation(change = {}, target = {}) {
   return `reinforce_existing_${level}`;
 }
 
+function inferRequestedChangeDidacticInterventionType(change = {}, { recommendedAction = "", response = {}, target = {}, intentPrompt = "" } = {}) {
+  const explicitType = text(change?.didacticInterventionType);
+  if (DIDACTIC_INTERVENTION_TYPES.includes(explicitType)) {
+    return explicitType;
+  }
+
+  const patchStrategy = text(change?.patchStrategy);
+  const requestedType = text(change?.type);
+  const sourceText = [
+    text(change?.reason),
+    text(response?.rationale),
+    text(response?.responseText),
+    text(intentPrompt)
+  ].join(" ");
+  const expectsNewMicrosequence =
+    patchStrategy === "add_microsequence"
+    || requestedType === "add_new_microsequence"
+    || recommendedAction === "needs_new_microsequence";
+
+  const wantsContrast = containsDidacticTerm(sourceText, ["contrast", "contraste", "contraexemplo", "diferenca", "diferença", "disting"]);
+  const wantsPrerequisite = containsDidacticTerm(sourceText, ["pre-requis", "prerequis", "salto", "degrau", "base", "fundamento", "prepar"]);
+  const wantsPractice = containsDidacticTerm(sourceText, ["pratica", "practice", "exercicio", "exercício", "treino", "guiad"]);
+
+  if (wantsContrast) {
+    return "contrast_reinforcement";
+  }
+  if (wantsPrerequisite && (expectsNewMicrosequence || !wantsPractice)) {
+    return "prerequisite_tightening";
+  }
+  if (wantsPractice) {
+    return "guided_practice_bridge";
+  }
+  if (expectsNewMicrosequence) {
+    return "explanatory_bridge";
+  }
+  if (text(target?.level) === "microsequence") {
+    return "local_semantic_rewrite";
+  }
+  return "prerequisite_tightening";
+}
+
 function inferActionInsertionPolicy(change = {}, interventionRequest = {}, actionTarget = {}) {
   const patchStrategy = text(change?.patchStrategy);
   const requestedType = text(change?.type);
@@ -191,7 +245,7 @@ function inferActionInsertionPolicy(change = {}, interventionRequest = {}, actio
   };
 }
 
-function buildRequestedChanges({ recommendedAction = "", target = {}, response = {}, operation = "" } = {}) {
+function buildRequestedChanges({ recommendedAction = "", target = {}, response = {}, operation = "", intentPrompt = "" } = {}) {
   if (recommendedAction === "answer_only") {
     return [];
   }
@@ -206,6 +260,20 @@ function buildRequestedChanges({ recommendedAction = "", target = {}, response =
       type: recommendedAction === "needs_new_microsequence" ? "add_new_microsequence" : "patch_existing_material",
       operation,
       patchStrategy,
+      didacticInterventionType: inferRequestedChangeDidacticInterventionType(
+        {
+          type: recommendedAction === "needs_new_microsequence" ? "add_new_microsequence" : "patch_existing_material",
+          operation,
+          patchStrategy,
+          reason: text(response?.rationale) || text(response?.responseText)
+        },
+        {
+          recommendedAction,
+          response,
+          target,
+          intentPrompt
+        }
+      ),
       target: structuredClone(target),
       reason: text(response?.rationale) || text(response?.responseText)
     }
@@ -225,7 +293,8 @@ export function compileCourseForgeInterventionRequest({
     recommendedAction,
     target,
     response,
-    operation
+    operation,
+    intentPrompt: text(intent?.promptText)
   });
   const status = recommendedAction === "answer_only" ? "not_needed" : "ready";
 
@@ -270,6 +339,12 @@ export function compileCourseForgeEditorInterventionPlan({ interventionRequest =
       type: text(change?.type),
       operation: text(change?.operation || interventionRequest?.editorIntent?.operation),
       patchStrategy: text(change?.patchStrategy),
+      didacticInterventionType: inferRequestedChangeDidacticInterventionType(change, {
+        recommendedAction: interventionRequest?.recommendedAction,
+        response: interventionRequest,
+        target: actionTarget,
+        intentPrompt: interventionRequest?.studentPrompt
+      }),
       semanticOperation: inferRequestedChangeSemanticOperation(change, actionTarget),
       reason: text(change?.reason),
       evidence: {
@@ -306,6 +381,7 @@ export function compileCourseForgeEditorInterventionPlan({ interventionRequest =
     planningMode,
     target,
     requestedChangeCount: actions.length,
+    didacticInterventionTypes: uniqueTextList(actions.map((action) => action.didacticInterventionType)),
     targetedLessonKeys,
     targetedMicrosequenceKeys,
     newMicrosequenceCountByLesson,
@@ -317,6 +393,27 @@ export function compileCourseForgeEditorInterventionPlan({ interventionRequest =
           : "Siga estritamente os requestedChanges do InterventionRequest sem ampliar o escopo.",
     actions
   };
+}
+
+function scoreMicrosequenceAgainstDidacticType(microsequence = {}, didacticInterventionType = "") {
+  const coverageRole = text(microsequence?.coverageRole);
+  const didacticPurpose = text(microsequence?.didacticPurpose || microsequence?.objective);
+  const tags = uniqueTextList(microsequence?.tags).join(" ");
+  const combined = [coverageRole, didacticPurpose, tags].join(" ");
+
+  if (didacticInterventionType === "guided_practice_bridge") {
+    return containsDidacticTerm(combined, ["practice", "pratica", "guided_practice", "guiad", "exercicio", "treino"]) ? 10 : 0;
+  }
+  if (didacticInterventionType === "contrast_reinforcement") {
+    return containsDidacticTerm(combined, ["contrast", "contraste", "contraexemplo", "diferenca", "diferença"]) ? 10 : 0;
+  }
+  if (didacticInterventionType === "prerequisite_tightening") {
+    return containsDidacticTerm(combined, ["introdu", "explain", "base", "ponte", "prepar", "fundamento", "review", "revis"]) ? 10 : 0;
+  }
+  if (didacticInterventionType === "explanatory_bridge") {
+    return containsDidacticTerm(combined, ["introdu", "explain", "ponte", "guided_example", "review", "revis"]) ? 10 : 0;
+  }
+  return 1;
 }
 
 export function constrainCourseForgeMicrosequencePlansToInterventionPlan({ plan = {}, microsequencePlans = [], projectDocument = {} } = {}) {
@@ -344,9 +441,14 @@ export function constrainCourseForgeMicrosequencePlansToInterventionPlan({ plan 
         microsequences = microsequences.filter((microsequence) => targetedMicrosequenceKeySet.has(text(microsequence?.key)));
       }
     } else if (planningMode === "new_only") {
-      let generatedCount = 0;
+      const actionsForLesson = (Array.isArray(plan?.actions) ? plan.actions : []).filter(
+        (action) =>
+          action?.expectsNewMicrosequence
+          && Array.isArray(action?.lessonTargets)
+          && action.lessonTargets.some((lessonTarget) => text(lessonTarget?.lessonKey) === lessonKey)
+      );
       const maxNewMicrosequences = Math.max(0, Number(plan?.newMicrosequenceCountByLesson?.[lessonKey] || 0));
-      microsequences = microsequences
+      const generatedMicrosequences = microsequences
         .map((microsequence, index) => {
           const currentKey = text(microsequence?.key);
           const nextKey = !currentKey || existingKeys.has(currentKey)
@@ -362,16 +464,30 @@ export function constrainCourseForgeMicrosequencePlansToInterventionPlan({ plan 
             key: nextKey
           };
         })
-        .filter((microsequence) => {
-          if (existingKeys.has(text(microsequence?.key))) {
-            return false;
+        .filter((microsequence) => !existingKeys.has(text(microsequence?.key)));
+      const selectedIndices = new Set();
+      const selectedMicrosequences = [];
+
+      actionsForLesson.slice(0, maxNewMicrosequences || actionsForLesson.length).forEach((action) => {
+        let bestIndex = -1;
+        let bestScore = -1;
+        generatedMicrosequences.forEach((microsequence, index) => {
+          if (selectedIndices.has(index)) {
+            return;
           }
-          if (maxNewMicrosequences && generatedCount >= maxNewMicrosequences) {
-            return false;
+          const score = scoreMicrosequenceAgainstDidacticType(microsequence, text(action?.didacticInterventionType));
+          if (score > bestScore) {
+            bestScore = score;
+            bestIndex = index;
           }
-          generatedCount += 1;
-          return true;
         });
+        if (bestIndex >= 0) {
+          selectedIndices.add(bestIndex);
+          selectedMicrosequences.push(generatedMicrosequences[bestIndex]);
+        }
+      });
+
+      microsequences = selectedMicrosequences;
     }
 
     if (!microsequences.length) {
