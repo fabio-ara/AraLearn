@@ -1330,6 +1330,106 @@ test("constrain prioriza microssequencia com domainRef aderente na intervencao l
   assert.equal(result[0].microsequences[0].domainRefs[0], "concept-compound");
 });
 
+test("auditoria de intervencao reprova contraste sem todos os relatedConceptRefs", () => {
+  const result = auditCourseForgeInterventionDidacticCoherence({
+    interventionPlan: {
+      actions: [
+        {
+          requestedChangeId: "requested_change_1",
+          didacticInterventionType: "contrast_reinforcement",
+          expectsNewMicrosequence: false,
+          existingMicrosequenceKey: "micro-1",
+          relatedConceptRefs: ["concept-and", "concept-or"],
+          target: {
+            courseKey: "course-1",
+            moduleKey: "module-1",
+            lessonKey: "lesson-1"
+          }
+        }
+      ]
+    },
+    microsequencePlans: [
+      {
+        courseKey: "course-1",
+        moduleKey: "module-1",
+        lessonKey: "lesson-1",
+        microsequences: [
+          {
+            key: "micro-1",
+            title: "Contraste parcial",
+            didacticPurpose: "Comparar casos próximos.",
+            coverageRole: "discriminate",
+            domainRefs: ["concept-and"],
+            tags: ["contraste"]
+          }
+        ]
+      }
+    ]
+  });
+
+  assert.equal(result.ok, false);
+  assert.ok(result.issues.some((item) => item.type === "intervention_type_mismatch"));
+});
+
+test("constrain prioriza contraste com todos os relatedConceptRefs", () => {
+  const result = constrainCourseForgeMicrosequencePlansToInterventionPlan({
+    plan: {
+      planningMode: "new_only",
+      targetedLessonKeys: ["lesson-1"],
+      targetedMicrosequenceKeys: [],
+      newMicrosequenceCountByLesson: { "lesson-1": 1 },
+      actions: [
+        {
+          requestedChangeId: "requested_change_1",
+          didacticInterventionType: "contrast_reinforcement",
+          expectsNewMicrosequence: true,
+          relatedConceptRefs: ["concept-and", "concept-or"],
+          target: {
+            courseKey: "course-1",
+            moduleKey: "module-1",
+            lessonKey: "lesson-1"
+          },
+          lessonTargets: [{ lessonKey: "lesson-1" }]
+        }
+      ]
+    },
+    microsequencePlans: [
+      {
+        courseKey: "course-1",
+        moduleKey: "module-1",
+        lessonKey: "lesson-1",
+        microsequences: [
+          {
+            key: "micro-a",
+            title: "Contraste parcial",
+            didacticPurpose: "Comparar um dos lados.",
+            coverageRole: "discriminate",
+            domainRefs: ["concept-and"],
+            tags: ["contraste"]
+          },
+          {
+            key: "micro-b",
+            title: "Contraste completo",
+            didacticPurpose: "Comparar os dois conectivos.",
+            coverageRole: "discriminate",
+            domainRefs: ["concept-and", "concept-or"],
+            tags: ["contraste"]
+          }
+        ]
+      }
+    ],
+    projectDocument: {
+      contract: "aralearn.contract",
+      version: 1,
+      kind: "project",
+      courses: []
+    }
+  });
+
+  assert.equal(result[0].microsequences.length, 1);
+  assert.deepEqual(result[0].microsequences[0].domainRefs, ["concept-and", "concept-or"]);
+});
+
 test("compila diretivas de reparo especificas a partir da auditoria de intervencao", () => {
   const result = buildCourseForgeMicrosequenceRepairDirectives({
     adherenceAudit: {

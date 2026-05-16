@@ -753,6 +753,22 @@ function scoreStructuredDomainFocus(microsequence = {}, action = {}) {
   return domainRefs.includes(targetDomainRef) ? 100 : -100;
 }
 
+function scoreStructuredContrastFocus(microsequence = {}, action = {}) {
+  const relatedConceptRefs = [...new Set(normalizeArray(action?.relatedConceptRefs).map(text).filter(Boolean))];
+  if (relatedConceptRefs.length < 2) {
+    return 0;
+  }
+  const domainRefs = normalizeArray(microsequence?.domainRefs).map(text).filter(Boolean);
+  const coveredCount = relatedConceptRefs.filter((ref) => domainRefs.includes(ref)).length;
+  if (coveredCount === relatedConceptRefs.length) {
+    return 100;
+  }
+  if (coveredCount > 0) {
+    return -50;
+  }
+  return -100;
+}
+
 function scoreMicrosequenceForInterventionType(microsequence = {}, action = {}) {
   const didacticInterventionType = text(action?.didacticInterventionType);
   const combined = summarizeMicrosequenceDidacticText(microsequence);
@@ -760,8 +776,9 @@ function scoreMicrosequenceForInterventionType(microsequence = {}, action = {}) 
   const explanationRole = hasExplanationCoverageRole(coverageRole);
   const practiceRole = isPracticeCoverageRole(coverageRole);
   const focusScore = scoreStructuredDomainFocus(microsequence, action);
+  const contrastFocusScore = scoreStructuredContrastFocus(microsequence, action);
   if (didacticInterventionType === "contrast_reinforcement") {
-    return (containsDidacticTerm(combined, ["contrast", "contraste", "contraexemplo", "diferenca", "diferença", "erro"]) ? 10 : 0) + focusScore;
+    return (containsDidacticTerm(combined, ["contrast", "contraste", "contraexemplo", "diferenca", "diferença", "erro"]) ? 10 : 0) + focusScore + contrastFocusScore;
   }
   if (didacticInterventionType === "guided_practice_bridge") {
     return (practiceRole || containsDidacticTerm(combined, ["pratica", "practice", "treino", "guiad", "exercicio", "exercício"]) ? 10 : 0) + focusScore;

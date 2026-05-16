@@ -529,6 +529,22 @@ function scoreStructuredDomainFocus(microsequence = {}, action = {}) {
   return domainRefs.includes(targetDomainRef) ? 100 : -100;
 }
 
+function scoreStructuredContrastFocus(microsequence = {}, action = {}) {
+  const relatedConceptRefs = uniqueTextList(action?.relatedConceptRefs);
+  if (relatedConceptRefs.length < 2) {
+    return 0;
+  }
+  const domainRefs = uniqueTextList(microsequence?.domainRefs);
+  const coveredCount = relatedConceptRefs.filter((ref) => domainRefs.includes(ref)).length;
+  if (coveredCount === relatedConceptRefs.length) {
+    return 100;
+  }
+  if (coveredCount > 0) {
+    return -50;
+  }
+  return -100;
+}
+
 function scoreMicrosequenceAgainstDidacticType(microsequence = {}, action = {}) {
   const didacticInterventionType = text(action?.didacticInterventionType);
   const coverageRole = text(microsequence?.coverageRole);
@@ -536,12 +552,13 @@ function scoreMicrosequenceAgainstDidacticType(microsequence = {}, action = {}) 
   const tags = uniqueTextList(microsequence?.tags).join(" ");
   const combined = [coverageRole, didacticPurpose, tags].join(" ");
   const focusScore = scoreStructuredDomainFocus(microsequence, action);
+  const contrastFocusScore = scoreStructuredContrastFocus(microsequence, action);
 
   if (didacticInterventionType === "guided_practice_bridge") {
     return (containsDidacticTerm(combined, ["practice", "pratica", "guided_practice", "guiad", "exercicio", "treino"]) ? 10 : 0) + focusScore;
   }
   if (didacticInterventionType === "contrast_reinforcement") {
-    return (containsDidacticTerm(combined, ["contrast", "contraste", "contraexemplo", "diferenca", "diferença"]) ? 10 : 0) + focusScore;
+    return (containsDidacticTerm(combined, ["contrast", "contraste", "contraexemplo", "diferenca", "diferença"]) ? 10 : 0) + focusScore + contrastFocusScore;
   }
   if (didacticInterventionType === "prerequisite_tightening") {
     return (containsDidacticTerm(combined, ["introdu", "explain", "base", "ponte", "prepar", "fundamento", "review", "revis"]) ? 10 : 0) + focusScore;
