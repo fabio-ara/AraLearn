@@ -2233,15 +2233,122 @@ test("editor_intervention_plan explicita focos estruturados no providerTask", ()
     }
   });
 
-  assert.match(result.providerTask, /Ação 1:\s*contrast_reinforcement/i);
+  assert.match(result.providerTask, /Ação \d+:\s*contrast_reinforcement/i);
   assert.match(result.providerTask, /contraste explícito entre concept-and e concept-or/i);
-  assert.match(result.providerTask, /Ação 2:\s*prerequisite_tightening/i);
+  assert.match(result.providerTask, /Ação \d+:\s*prerequisite_tightening/i);
   assert.match(result.providerTask, /domínio-alvo concept-compound/i);
   assert.match(result.providerTask, /pré-requisitos concept-and,\s*concept-or/i);
   assert.match(result.auditProviderTask, /Audite se cada microssequência realmente materializa a função didática pedida/i);
   assert.match(result.auditProviderTask, /requestedChangeId,\s*didacticInterventionType,\s*lessonKey,\s*microsequenceKey/i);
-  assert.match(result.auditProviderTask, /Ação 1:\s*contrast_reinforcement/i);
+  assert.match(result.auditProviderTask, /Ação \d+:\s*contrast_reinforcement/i);
   assert.match(result.auditProviderTask, /contraste explícito entre concept-and e concept-or/i);
+});
+
+test("editor_intervention_plan prioriza acoes criticas no providerTask e auditProviderTask", () => {
+  const result = compileCourseForgeEditorInterventionPlan({
+    interventionRequest: {
+      target: {
+        level: "lesson",
+        courseKey: "course-1",
+        moduleKey: "module-1",
+        lessonKey: "lesson-1",
+        microsequenceKey: ""
+      },
+      requestedChanges: [
+        {
+          changeId: "requested_change_1",
+          type: "add_new_microsequence",
+          patchStrategy: "add_microsequence",
+          target: { level: "lesson", courseKey: "course-1", moduleKey: "module-1", lessonKey: "lesson-1", microsequenceKey: "" },
+          relatedConceptRefs: ["concept-a", "concept-b"],
+          reason: "Explicitar contraste local."
+        },
+        {
+          changeId: "requested_change_2",
+          type: "rewrite_microsequence",
+          patchStrategy: "rewrite_existing_microsequence",
+          target: { level: "microsequence", courseKey: "course-1", moduleKey: "module-1", lessonKey: "lesson-1", microsequenceKey: "micro-1" },
+          reason: "Refinar redação local."
+        },
+        {
+          changeId: "requested_change_3",
+          type: "add_new_microsequence",
+          patchStrategy: "add_microsequence",
+          target: { level: "lesson", courseKey: "course-1", moduleKey: "module-1", lessonKey: "lesson-1", microsequenceKey: "" },
+          domainRef: "concept-compound",
+          prerequisiteRefs: ["concept-base-1", "concept-base-2"],
+          reason: "Fechar lacuna preparatória."
+        },
+        {
+          changeId: "requested_change_4",
+          type: "add_new_microsequence",
+          patchStrategy: "add_microsequence",
+          target: { level: "lesson", courseKey: "course-1", moduleKey: "module-1", lessonKey: "lesson-1", microsequenceKey: "" },
+          reason: "Adicionar ponte explicativa local antes da aplicação."
+        },
+        {
+          changeId: "requested_change_5",
+          type: "add_new_microsequence",
+          patchStrategy: "add_microsequence",
+          target: { level: "lesson", courseKey: "course-1", moduleKey: "module-1", lessonKey: "lesson-1", microsequenceKey: "" },
+          bridgeTargetRef: "concept-practice",
+          reason: "Inserir prática guiada antes do exercício principal."
+        },
+        {
+          changeId: "requested_change_6",
+          type: "rewrite_microsequence",
+          patchStrategy: "rewrite_existing_microsequence",
+          target: { level: "microsequence", courseKey: "course-1", moduleKey: "module-1", lessonKey: "lesson-1", microsequenceKey: "micro-2" },
+          reason: "Ajustar texto de apoio."
+        },
+        {
+          changeId: "requested_change_7",
+          type: "rewrite_microsequence",
+          patchStrategy: "rewrite_existing_microsequence",
+          target: { level: "microsequence", courseKey: "course-1", moduleKey: "module-1", lessonKey: "lesson-1", microsequenceKey: "micro-3" },
+          reason: "Polir transição local."
+        },
+        {
+          changeId: "requested_change_8",
+          type: "rewrite_microsequence",
+          patchStrategy: "rewrite_existing_microsequence",
+          target: { level: "microsequence", courseKey: "course-1", moduleKey: "module-1", lessonKey: "lesson-1", microsequenceKey: "micro-4" },
+          reason: "Refinar formulação local."
+        }
+      ]
+    },
+    projectDocument: {
+      contract: "aralearn.contract",
+      version: 1,
+      kind: "project",
+      courses: [
+        {
+          key: "course-1",
+          modules: [
+            {
+              key: "module-1",
+              lessons: [
+                {
+                  key: "lesson-1",
+                  microsequences: [{ key: "micro-1" }, { key: "micro-2" }, { key: "micro-3" }, { key: "micro-4" }]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  });
+
+  assert.match(result.providerTask, /prerequisite_tightening/i);
+  assert.match(result.providerTask, /explanatory_bridge/i);
+  assert.match(result.providerTask, /guided_practice_bridge/i);
+  assert.match(result.providerTask, /Outras 2 ações de menor prioridade foram omitidas deste prompt/i);
+  assert.doesNotMatch(result.providerTask, /Microssequência-alvo micro-3/i);
+  assert.doesNotMatch(result.providerTask, /Microssequência-alvo micro-4/i);
+  assert.match(result.auditProviderTask, /Outras 2 ações de menor prioridade foram omitidas deste prompt/i);
+  assert.doesNotMatch(result.auditProviderTask, /Microssequência-alvo micro-3/i);
+  assert.doesNotMatch(result.auditProviderTask, /Microssequência-alvo micro-4/i);
 });
 
 test("audit_microsequences normaliza findings estruturados a partir do interventionPlan", async () => {

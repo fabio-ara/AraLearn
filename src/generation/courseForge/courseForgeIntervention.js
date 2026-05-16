@@ -277,6 +277,88 @@ function describeProviderFocus(action = {}) {
   return parts.join("; ");
 }
 
+function scoreInterventionActionPriority(action = {}) {
+  const didacticInterventionType = text(action?.didacticInterventionType);
+  let score = 150;
+  if (didacticInterventionType === "prerequisite_tightening") {
+    score = 300;
+  } else if (didacticInterventionType === "explanatory_bridge") {
+    score = 280;
+  } else if (didacticInterventionType === "guided_practice_bridge") {
+    score = 260;
+  } else if (didacticInterventionType === "contrast_reinforcement") {
+    score = 220;
+  } else if (didacticInterventionType === "local_semantic_rewrite") {
+    score = 180;
+  }
+  if (action?.expectsNewMicrosequence) {
+    score += 20;
+  }
+  if (text(action?.existingMicrosequenceKey)) {
+    score += 15;
+  }
+  if (text(action?.requestedChangeId)) {
+    score += 10;
+  }
+  score += uniqueTextList(action?.prerequisiteRefs).length * 5;
+  score += uniqueTextList(action?.relatedConceptRefs).length * 3;
+  if (text(action?.domainRef)) {
+    score += 6;
+  }
+  if (text(action?.bridgeTargetRef)) {
+    score += 4;
+  }
+  return score;
+}
+
+function isCriticalInterventionAction(action = {}) {
+  return ["prerequisite_tightening", "explanatory_bridge", "guided_practice_bridge"].includes(text(action?.didacticInterventionType));
+}
+
+function describeInterventionProviderAction(action = {}, index = 0) {
+  const lessonKey = text(action?.target?.lessonKey) || text(action?.lessonTargets?.[0]?.lessonKey);
+  const targetMicrosequence = text(action?.existingMicrosequenceKey);
+  const focus = describeProviderFocus(action);
+  return [
+    `Ação ${index + 1}: ${text(action?.didacticInterventionType) || "intervenção local"}.`,
+    lessonKey ? `Lição-alvo ${lessonKey}.` : "",
+    targetMicrosequence ? `Microssequência-alvo ${targetMicrosequence}.` : "",
+    focus ? `Foco obrigatório: ${focus}.` : ""
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
+
+function selectInterventionActionsForProviderTask(actions = [], { maxActions = 6 } = {}) {
+  const sorted = normalizeArray(actions).sort((left, right) => {
+    const priorityDelta = scoreInterventionActionPriority(right) - scoreInterventionActionPriority(left);
+    if (priorityDelta !== 0) {
+      return priorityDelta;
+    }
+    return describeInterventionProviderAction(left).localeCompare(describeInterventionProviderAction(right));
+  });
+  const critical = sorted.filter((action) => isCriticalInterventionAction(action));
+  const selected = [...critical];
+  const selectedSet = new Set(selected);
+  const softLimit = Math.max(maxActions, critical.length);
+
+  for (const action of sorted) {
+    if (selected.length >= softLimit) {
+      break;
+    }
+    if (selectedSet.has(action)) {
+      continue;
+    }
+    selected.push(action);
+    selectedSet.add(action);
+  }
+
+  return {
+    selected,
+    omittedCount: Math.max(0, sorted.length - selected.length)
+  };
+}
+
 function buildInterventionProviderTask({ planningMode = "", actions = [] } = {}) {
   const header =
     planningMode === "new_only"
@@ -284,47 +366,27 @@ function buildInterventionProviderTask({ planningMode = "", actions = [] } = {})
       : planningMode === "existing_only"
         ? "Reaproveite somente os alvos existentes pedidos. Não crie novas microssequências nem amplie o escopo."
         : "Siga estritamente os requestedChanges do InterventionRequest sem ampliar o escopo.";
-  const lines = normalizeArray(actions)
-    .slice(0, 8)
-    .map((action, index) => {
-      const lessonKey = text(action?.target?.lessonKey) || text(action?.lessonTargets?.[0]?.lessonKey);
-      const targetMicrosequence = text(action?.existingMicrosequenceKey);
-      const focus = describeProviderFocus(action);
-      return [
-        `Ação ${index + 1}: ${text(action?.didacticInterventionType) || "intervenção local"}.`,
-        lessonKey ? `Lição-alvo ${lessonKey}.` : "",
-        targetMicrosequence ? `Microssequência-alvo ${targetMicrosequence}.` : "",
-        focus ? `Foco obrigatório: ${focus}.` : ""
-      ]
-        .filter(Boolean)
-        .join(" ");
-    })
-    .filter(Boolean);
-  return [header, ...lines].join("\n");
+  const { selected, omittedCount } = selectInterventionActionsForProviderTask(actions);
+  const lines = selected.map((action, index) => describeInterventionProviderAction(action, index)).filter(Boolean);
+  return [
+    header,
+    ...lines,
+    omittedCount > 0 ? `Outras ${omittedCount} ações de menor prioridade foram omitidas deste prompt para preservar foco didático local.` : ""
+  ]
+    .filter(Boolean)
+    .join("\n");
 }
 
 function buildInterventionAuditProviderTask({ actions = [] } = {}) {
-  const lines = normalizeArray(actions)
-    .slice(0, 8)
-    .map((action, index) => {
-      const lessonKey = text(action?.target?.lessonKey) || text(action?.lessonTargets?.[0]?.lessonKey);
-      const targetMicrosequence = text(action?.existingMicrosequenceKey);
-      const focus = describeProviderFocus(action);
-      return [
-        `Ação ${index + 1}: ${text(action?.didacticInterventionType) || "intervenção local"}.`,
-        lessonKey ? `Lição-alvo ${lessonKey}.` : "",
-        targetMicrosequence ? `Microssequência-alvo ${targetMicrosequence}.` : "",
-        focus ? `Foco obrigatório: ${focus}.` : ""
-      ]
-        .filter(Boolean)
-        .join(" ");
-    })
-    .filter(Boolean);
+  const { selected, omittedCount } = selectInterventionActionsForProviderTask(actions);
+  const lines = selected.map((action, index) => describeInterventionProviderAction(action, index)).filter(Boolean);
   return [
     "Audite se cada microssequência realmente materializa a função didática pedida sem ampliar o escopo.",
     "Quando apontar findings de uma ação, repita requestedChangeId, didacticInterventionType, lessonKey, microsequenceKey quando houver e os focos estruturados relevantes.",
     "Considere explicitamente os seguintes focos por ação:",
     ...lines
+    ,
+    omittedCount > 0 ? `Outras ${omittedCount} ações de menor prioridade foram omitidas deste prompt para preservar foco didático local.` : ""
   ].join("\n");
 }
 
