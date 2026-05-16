@@ -1675,6 +1675,41 @@ test("tarefa de reparo explicita ponte guiada em guided_practice_bridge", () => 
   assert.match(task, /não como explicação solta nem prática já autônoma/i);
 });
 
+test("tarefa de reparo separa lacuna estrutural de ajuste fino ancorado do provider", () => {
+  const task = buildMicrosequenceRepairTask({
+    directives: [
+      {
+        directiveType: "repair_domain_coverage",
+        didacticInterventionType: "prerequisite_tightening",
+        instruction: "Introduzir concept-and antes da prática.",
+        domainRef: "concept-compound",
+        prerequisiteRefs: ["concept-and"],
+        evidence: "A prática usa concept-compound cedo demais."
+      },
+      {
+        directiveType: "rewrite_for_didactic_intervention_type",
+        didacticInterventionType: "contrast_reinforcement",
+        instruction: "Reescreva a microssequência para explicitar contraste.",
+        relatedConceptRefs: ["concept-and", "concept-or"],
+        evidence: "A ação pediu contraste, mas a microssequência ficou só expositiva."
+      },
+      {
+        directiveType: "rewrite_for_didactic_intervention_type",
+        didacticInterventionType: "contrast_reinforcement",
+        providerIssueType: "contrast_needs_more_discrimination",
+        instruction: "Reescreva a microssequência para explicitar contraste.",
+        relatedConceptRefs: ["concept-and", "concept-or"],
+        evidence: "O contraste apareceu, mas a discriminação ainda ficou fraca."
+      }
+    ]
+  });
+
+  assert.match(task, /Lacunas estruturais determinísticas/i);
+  assert.match(task, /Diretivas de intervenção didática local/i);
+  assert.match(task, /Ajustes finos locais sugeridos pela auditoria ancorada do provider/i);
+  assert.match(task, /discriminação ainda ficou fraca/i);
+});
+
 test("intervention_request infere relatedConceptRefs para contraste local", () => {
   const result = compileCourseForgeInterventionRequest({
     intent: {
@@ -5729,7 +5764,7 @@ test("repair_microsequences chama provider quando a cobertura do domainMap nao e
           const directives = JSON.parse(directivesArtifact.content);
           assert.ok(Array.isArray(directives.directives));
           assert.ok(directives.directives.some((directive) => directive.directiveType === "repair_domain_coverage"));
-          assert.match(prompt, /diretivas prioritarias|diretivas prioritárias/i);
+          assert.match(prompt, /Lacunas estruturais determinísticas/i);
           return {
             microsequencePlans: [
               {

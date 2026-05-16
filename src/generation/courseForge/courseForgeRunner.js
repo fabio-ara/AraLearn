@@ -664,12 +664,33 @@ export function buildMicrosequenceRepairTask(directivesArtifact = null) {
   if (!directives.length) {
     return "Corrija apenas lacunas de cobertura didática, domainRefs, practiceVariantRefs e progressão das microssequências, sem gerar cards.";
   }
-  const lines = directives.slice(0, 6).map((directive) => `- ${describeMicrosequenceRepairDirective(directive)}`.trim());
-  return [
-    "Corrija apenas as falhas didáticas apontadas, sem gerar cards nem ampliar o escopo.",
-    "Siga estas diretivas prioritárias:",
-    ...lines
-  ].join("\n");
+  const prioritized = directives.slice(0, 6);
+  const structuralLines = prioritized
+    .filter((directive) => text(directive?.directiveType) === "repair_domain_coverage" && !text(directive?.providerIssueType))
+    .map((directive) => `- ${describeMicrosequenceRepairDirective(directive)}`.trim());
+  const interventionLines = prioritized
+    .filter((directive) => text(directive?.directiveType) !== "repair_domain_coverage" && !text(directive?.providerIssueType))
+    .map((directive) => `- ${describeMicrosequenceRepairDirective(directive)}`.trim());
+  const providerAnchoredLines = prioritized
+    .filter((directive) => text(directive?.providerIssueType))
+    .map((directive) => `- ${describeMicrosequenceRepairDirective(directive)}`.trim());
+
+  const sections = [
+    "Corrija apenas as falhas didáticas apontadas, sem gerar cards nem ampliar o escopo."
+  ];
+  if (structuralLines.length) {
+    sections.push("Lacunas estruturais determinísticas que precisam ser corrigidas obrigatoriamente:");
+    sections.push(...structuralLines);
+  }
+  if (interventionLines.length) {
+    sections.push("Diretivas de intervenção didática local:");
+    sections.push(...interventionLines);
+  }
+  if (providerAnchoredLines.length) {
+    sections.push("Ajustes finos locais sugeridos pela auditoria ancorada do provider:");
+    sections.push(...providerAnchoredLines);
+  }
+  return sections.join("\n");
 }
 
 function derivePhaseTarget({ phaseId = "", intent = {}, context = {} } = {}) {
