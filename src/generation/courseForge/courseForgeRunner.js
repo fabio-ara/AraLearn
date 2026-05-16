@@ -3,6 +3,7 @@ import { buildCourseForgePrompt } from "./courseForgePrompts.js";
 import { applyCourseForgePatch } from "./courseForgeApply.js";
 import { createCourseForgeArtifactsStore } from "./courseForgeArtifacts.js";
 import { resolveCourseForgeIntent } from "./courseForgeIntent.js";
+import { compileCourseForgeInterventionRequest } from "./courseForgeIntervention.js";
 import { compileCourseStructureToPatch, validateCourseForgePatch } from "./courseForgePatch.js";
 import { resolveCourseForgePhases, resolveDeferredCourseForgePhases } from "./courseForgePhases.js";
 import { createCourseForgeRunState, markCourseForgePhase, updateCourseForgeRunState } from "./courseForgeRunState.js";
@@ -20,6 +21,7 @@ import {
   mergeCourseForgeArchitectureAudits,
   validateCourseForgeArchitectureDraft,
   validateCourseForgeCourseGraph,
+  validateCourseForgeInterventionRequest,
   validateCourseForgeInterventionResponse,
   validateCourseForgeLessonPlanSet,
   validateCourseForgeMicrosequencePlans
@@ -435,10 +437,13 @@ function buildDiagnosticsSummary(context = {}, runState = {}, phases = []) {
   const cardsAudit = mergeCardAudits(context.cardsAudit || {});
   const adherenceAudit = mergeCourseForgeAdherenceAudits(context.sourceAdherenceAudit || {});
   const interventionAudit = context.interventionAudit || { errors: [], warnings: [] };
+  const interventionRequestAudit = context.interventionRequestAudit || { errors: [], warnings: [] };
   const prerequisiteAudit = context.prerequisiteAudit || { issues: [], warnings: [] };
   const assessmentAlignmentAudit = context.assessmentAlignmentAudit || { issues: [], warnings: [] };
   const blockingByCategory = {
-    intervention: Array.isArray(interventionAudit?.errors) ? interventionAudit.errors.length : 0,
+    intervention:
+      (Array.isArray(interventionAudit?.errors) ? interventionAudit.errors.length : 0)
+      + (Array.isArray(interventionRequestAudit?.errors) ? interventionRequestAudit.errors.length : 0),
     graph: Array.isArray(courseGraphAudit?.blockingIssues) ? courseGraphAudit.blockingIssues.length : 0,
     planning: sumBlockingIssues(planningAudit),
     cards: sumBlockingIssues(cardsAudit),
@@ -447,7 +452,9 @@ function buildDiagnosticsSummary(context = {}, runState = {}, phases = []) {
     assessment: sumBlockingIssues(assessmentAlignmentAudit)
   };
   const warningsByCategory = {
-    intervention: Array.isArray(interventionAudit?.warnings) ? interventionAudit.warnings.length : 0,
+    intervention:
+      (Array.isArray(interventionAudit?.warnings) ? interventionAudit.warnings.length : 0)
+      + (Array.isArray(interventionRequestAudit?.warnings) ? interventionRequestAudit.warnings.length : 0),
     graph: Array.isArray(courseGraphAudit?.warnings) ? courseGraphAudit.warnings.length : 0,
     planning: sumWarnings(planningAudit),
     cards: sumWarnings(cardsAudit),
@@ -462,8 +469,8 @@ function buildDiagnosticsSummary(context = {}, runState = {}, phases = []) {
       intervention: {
         blockingIssues: blockingByCategory.intervention,
         warnings: warningsByCategory.intervention,
-        repaired: phaseStatus.audit_intervention === "completed",
-        latestArtifacts: ["intervention-response", "intervention-audit"]
+        repaired: phaseStatus.audit_intervention === "completed" && (!phaseStatus.compile_intervention_request || phaseStatus.compile_intervention_request === "completed"),
+        latestArtifacts: ["intervention-response", "intervention-audit", "intervention-request", "intervention-request-audit"]
       },
       graph: {
         blockingIssues: blockingByCategory.graph,
@@ -511,7 +518,7 @@ function buildDiagnosticsSummary(context = {}, runState = {}, phases = []) {
 }
 
 function inferFailureCategoryFromPhase(phaseId = "") {
-  if (["answer_locally", "audit_intervention"].includes(phaseId)) {
+  if (["answer_locally", "audit_intervention", "compile_intervention_request"].includes(phaseId)) {
     return "intervention";
   }
   if (["build_course_graph", "audit_course_graph", "repair_course_graph"].includes(phaseId)) {
@@ -557,7 +564,7 @@ function buildMicrosequenceTarget(entry = {}) {
 
 function derivePhaseTarget({ phaseId = "", intent = {}, context = {} } = {}) {
   if (
-    ["answer_locally", "audit_intervention", "build_microsequence_contract", "build_cards", "audit_cards", "audit_source_adherence", "repair_cards", "repair_card_adherence"].includes(
+    ["answer_locally", "audit_intervention", "compile_intervention_request", "build_microsequence_contract", "build_cards", "audit_cards", "audit_source_adherence", "repair_cards", "repair_card_adherence"].includes(
       phaseId
     )
   ) {
@@ -692,6 +699,8 @@ export async function runCourseForge({
     microsequencePlans: artifactStore.loadArtifact(runId, "microsequence-plans")?.content || null,
     interventionResponse: artifactStore.loadArtifact(runId, "intervention-response")?.content || null,
     interventionAudit: artifactStore.loadArtifact(runId, "intervention-audit")?.content || null,
+    interventionRequest: artifactStore.loadArtifact(runId, "intervention-request")?.content || null,
+    interventionRequestAudit: artifactStore.loadArtifact(runId, "intervention-request-audit")?.content || null,
     microsequenceAudit: artifactStore.loadArtifact(runId, "microsequence-audit")?.content || null,
     microsequenceAdherenceAudit: artifactStore.loadArtifact(runId, "microsequence-adherence-audit")?.content || null,
     microsequenceContracts: artifactStore.loadArtifact(runId, "microsequence-contracts")?.content || null,
@@ -798,6 +807,30 @@ export async function runCourseForge({
         savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "intervention-audit", context.interventionAudit);
         if (!context.interventionAudit.ok) {
           throw new Error(context.interventionAudit.errors.join(" "));
+        }
+      } else if (phaseId === "compile_intervention_request") {
+        context.interventionRequest = compileCourseForgeInterventionRequest({
+          intent,
+          response: context.interventionAudit?.response || context.interventionResponse || {},
+          lessonPlans: context.lessonPlans || [],
+          microsequencePlans: context.microsequencePlans || []
+        });
+        context.interventionRequestAudit = validateCourseForgeInterventionRequest({
+          request: context.interventionRequest || {}
+        });
+        runState = updateCourseForgeRunState(runState, {
+          metrics: updateMetricsCategory(runState.metrics, "intervention", {
+            issueCount: Array.isArray(context.interventionRequestAudit?.errors) ? context.interventionRequestAudit.errors.length : 0,
+            lastFailureCategory:
+              Array.isArray(context.interventionRequestAudit?.errors) && context.interventionRequestAudit.errors.length
+                ? "intervention"
+                : runState?.metrics?.lastFailureCategory || ""
+          })
+        });
+        savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "intervention-request", context.interventionRequest);
+        savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "intervention-request-audit", context.interventionRequestAudit);
+        if (!context.interventionRequestAudit.ok) {
+          throw new Error(context.interventionRequestAudit.errors.join(" "));
         }
       } else if (phaseId === "plan_architecture") {
         const response = await executeCourseForgeProviderPhase({
@@ -1536,6 +1569,8 @@ export async function runCourseForge({
           patchEvents: context.patch?.events?.length || 0,
           interventionMode: text(intent?.intervention?.mode),
           interventionRecommendation: text(context.interventionResponse?.recommendedAction),
+          interventionRequestStatus: text(context.interventionRequest?.status),
+          interventionEditorOperation: text(context.interventionRequest?.editorIntent?.operation),
           requestedGenerationDepth: intent.requestedGenerationDepth,
           executedGenerationDepth: intent.generationDepth,
           deferredGenerationDepth: intent.deferredGenerationDepth,
@@ -1588,6 +1623,7 @@ export async function runCourseForge({
     projectDocument: context.projectDocument,
     patch: context.patch,
     interventionResponse: context.interventionResponse,
+    interventionRequest: context.interventionRequest,
     artifacts: artifactStore.listArtifacts(runId)
   };
 }

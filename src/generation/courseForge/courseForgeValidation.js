@@ -567,3 +567,104 @@ export function validateCourseForgeInterventionResponse({ response = {}, lessonC
     }
   };
 }
+
+export function validateCourseForgeInterventionRequest({ request = {} } = {}) {
+  const errors = [];
+  const warnings = [];
+  const status = text(request?.status) || "not_needed";
+  const recommendedAction = text(request?.recommendedAction) || "answer_only";
+  const target = structuredClone(request?.target || {});
+  const editorIntent = request?.editorIntent && typeof request.editorIntent === "object" ? request.editorIntent : null;
+  const requestedChanges = Array.isArray(request?.requestedChanges) ? request.requestedChanges : [];
+  const allowedStatuses = new Set(["not_needed", "ready"]);
+  const allowedActions = new Set(["answer_only", "suggest_editor_patch", "needs_new_microsequence"]);
+  const allowedLevels = new Set(["project", "course", "module", "lesson", "microsequence"]);
+  const allowedOperations = new Set(["repair", "reinforce", "extend"]);
+  const allowedGenerationDepthHints = new Set(["repair_only", "reinforce_only"]);
+
+  if (!allowedStatuses.has(status)) {
+    errors.push(`status inválido: ${status}.`);
+  }
+  if (!allowedActions.has(recommendedAction)) {
+    errors.push(`recommendedAction inválido no pedido: ${recommendedAction}.`);
+  }
+  if (!allowedLevels.has(text(target?.level) || "project")) {
+    errors.push(`target.level inválido no pedido: ${text(target?.level)}.`);
+  }
+  if (status === "not_needed" && recommendedAction !== "answer_only") {
+    errors.push("Pedido sem intervenção não pode carregar ação diferente de answer_only.");
+  }
+  if (status === "ready") {
+    if (!editorIntent) {
+      errors.push("Pedido de intervenção sem editorIntent.");
+    } else {
+      if (!allowedOperations.has(text(editorIntent?.operation))) {
+        errors.push(`editorIntent.operation inválido: ${text(editorIntent?.operation)}.`);
+      }
+      if (!allowedGenerationDepthHints.has(text(editorIntent?.generationDepthHint))) {
+        errors.push(`editorIntent.generationDepthHint inválido: ${text(editorIntent?.generationDepthHint)}.`);
+      }
+      if (!text(editorIntent?.interventionModeHint)) {
+        errors.push("Pedido de intervenção sem interventionModeHint.");
+      }
+    }
+    if (!requestedChanges.length) {
+      errors.push("Pedido de intervenção pronto sem requestedChanges.");
+    }
+  }
+  if (recommendedAction === "needs_new_microsequence" && text(target?.level) === "microsequence") {
+    errors.push("Pedido para nova microssequência não deve manter target de microsequence.");
+  }
+
+  requestedChanges.forEach((change, index) => {
+    if (!text(change?.type)) {
+      errors.push(`requestedChanges[${index}] sem type.`);
+    }
+    if (!text(change?.patchStrategy)) {
+      errors.push(`requestedChanges[${index}] sem patchStrategy.`);
+    }
+    if (!text(change?.reason)) {
+      warnings.push(`requestedChanges[${index}] sem justificativa explícita.`);
+    }
+  });
+
+  return {
+    ok: errors.length === 0,
+    approved: errors.length === 0,
+    errors,
+    warnings,
+    request: {
+      kind: text(request?.kind) || "intervention_request",
+      status,
+      source: text(request?.source) || "tutor_escalation",
+      recommendedAction,
+      studentPrompt: text(request?.studentPrompt),
+      responseText: text(request?.responseText),
+      studyTrackConnection: text(request?.studyTrackConnection),
+      rationale: text(request?.rationale),
+      target,
+      editorIntent: editorIntent
+        ? {
+            operation: text(editorIntent?.operation),
+            generationDepthHint: text(editorIntent?.generationDepthHint),
+            interventionModeHint: text(editorIntent?.interventionModeHint),
+            requestedBy: text(editorIntent?.requestedBy)
+          }
+        : null,
+      requestedChanges: requestedChanges.map((change) => ({
+        type: text(change?.type),
+        operation: text(change?.operation),
+        patchStrategy: text(change?.patchStrategy),
+        target: structuredClone(change?.target || {}),
+        reason: text(change?.reason)
+      })),
+      contextSnapshot: {
+        lessonKeys: Array.isArray(request?.contextSnapshot?.lessonKeys) ? request.contextSnapshot.lessonKeys.map(text).filter(Boolean) : [],
+        microsequenceKeys: Array.isArray(request?.contextSnapshot?.microsequenceKeys)
+          ? request.contextSnapshot.microsequenceKeys.map(text).filter(Boolean)
+          : [],
+        reusableMicrosequenceCount: Math.max(0, Number(request?.contextSnapshot?.reusableMicrosequenceCount || 0))
+      }
+    }
+  };
+}

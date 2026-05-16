@@ -396,6 +396,7 @@ test("phase resolution escolhe subfluxo estrutural e registra fases adiadas", ()
   });
   assert.ok(resolveCourseForgePhases(tutorIntent).includes("answer_locally"));
   assert.ok(resolveCourseForgePhases(tutorIntent).includes("audit_intervention"));
+  assert.ok(resolveCourseForgePhases(tutorIntent).includes("compile_intervention_request"));
   assert.ok(!resolveCourseForgePhases(tutorIntent).includes("compile_patch"));
   assert.ok(resolveCourseForgePhases(repairMicrosequenceIntent).includes("build_microsequence_contract"));
   assert.ok(!resolveCourseForgePhases(repairMicrosequenceIntent).includes("plan_architecture"));
@@ -1673,10 +1674,194 @@ test("tutor_only responde duvida local sem gerar patch", async () => {
 
   assert.equal(result.runState.intent.generationDepth, "tutor_only");
   assert.equal(result.interventionResponse.recommendedAction, "answer_only");
+  assert.equal(result.interventionRequest.status, "not_needed");
+  assert.equal(result.interventionRequest.editorIntent, null);
   assert.equal(result.patch, null);
   assert.deepEqual(result.projectDocument, projectDocument);
   assert.ok(result.artifacts.some((artifact) => artifact.name === "intervention-response"));
+  assert.ok(result.artifacts.some((artifact) => artifact.name === "intervention-request"));
   assert.ok(!result.runState.phases.some((phase) => phase.phaseId === "compile_patch"));
+});
+
+test("tutor_only compila pedido estruturado quando recomenda patch no material atual", async () => {
+  const provider = createFakeProvider({
+    script: {
+      answer_locally: [
+        {
+          responseText: "O texto atual resolve parte da dúvida, mas ainda falta um exemplo guiado para fixar o critério.",
+          studyTrackConnection: "Volte para esta microssequência depois da correção e compare exemplo, não exemplo e contraexemplo.",
+          recommendedAction: "suggest_editor_patch",
+          rationale: "A explicação existente está curta e não ancora o contraste necessário."
+        }
+      ]
+    }
+  });
+  const registry = createProviderRegistry({ providers: [provider] });
+  const result = await runCourseForge({
+    intent: {
+      scope: {
+        level: "microsequence",
+        courseKey: "course-logica",
+        moduleKey: "module-base",
+        lessonKey: "lesson-proposicoes",
+        microsequenceKey: "microsequence-revisao"
+      },
+      promptText: "Ainda não entendi como distinguir proposição de pergunta.",
+      attachments: [{ id: "src_1", name: "ementa.pdf", type: "application/pdf" }]
+    },
+    projectDocument: {
+      contract: "aralearn.contract",
+      version: 1,
+      kind: "project",
+      courses: [
+        {
+          key: "course-logica",
+          title: "Lógica",
+          modules: [
+            {
+              key: "module-base",
+              title: "Base",
+              lessons: [
+                {
+                  key: "lesson-proposicoes",
+                  title: "Proposições",
+                  description: "Lição.",
+                  sourceGuideStructured: {
+                    lessonGoal: "Reconhecer proposições.",
+                    notationRules: "Usar `p` e `q`.",
+                    commonErrors: "Confundir pergunta com proposição."
+                  },
+                  presetId: "default",
+                  resourceTags: ["paragraph", "multiple_choice"],
+                  contentTypeTags: ["theory"],
+                  learningActionTags: ["read"],
+                  supportLevel: "guided",
+                  microsequences: [
+                    {
+                      key: "microsequence-revisao",
+                      title: "Revisão",
+                      description: "Resumo inicial.",
+                      didacticPurpose: "Revisar conceito.",
+                      coverageRole: "explain",
+                      status: "ready",
+                      included: true,
+                      cards: [{ key: "card-1", title: "Card 1", say: "Texto antigo." }]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    providerRegistry: registry,
+    providerId: "fake"
+  });
+
+  assert.equal(result.patch, null);
+  assert.equal(result.interventionRequest.status, "ready");
+  assert.equal(result.interventionRequest.editorIntent.operation, "reinforce");
+  assert.equal(result.interventionRequest.editorIntent.interventionModeHint, "targeted_single_microsequence");
+  assert.deepEqual(result.interventionRequest.target, {
+    level: "microsequence",
+    courseKey: "course-logica",
+    moduleKey: "module-base",
+    lessonKey: "lesson-proposicoes",
+    microsequenceKey: "microsequence-revisao"
+  });
+  assert.ok(result.interventionRequest.requestedChanges.some((change) => change.patchStrategy === "patch_existing_microsequence"));
+  assert.ok(result.artifacts.some((artifact) => artifact.name === "intervention-request-audit"));
+});
+
+test("tutor_only eleva alvo para lição quando conclui que falta nova microssequência", async () => {
+  const provider = createFakeProvider({
+    script: {
+      answer_locally: [
+        {
+          responseText: "A trilha atual precisa de uma microssequência intermediária antes desta prática.",
+          studyTrackConnection: "Depois da inserção dessa ponte, retome esta prática com os novos exemplos.",
+          recommendedAction: "needs_new_microsequence",
+          rationale: "Falta uma ponte didática entre definição e aplicação."
+        }
+      ]
+    }
+  });
+  const registry = createProviderRegistry({ providers: [provider] });
+  const result = await runCourseForge({
+    intent: {
+      scope: {
+        level: "microsequence",
+        courseKey: "course-logica",
+        moduleKey: "module-base",
+        lessonKey: "lesson-proposicoes",
+        microsequenceKey: "microsequence-revisao"
+      },
+      promptText: "Não entendi esta microssequência. Ainda está dando um salto grande demais para mim.",
+      attachments: [{ id: "src_1", name: "ementa.pdf", type: "application/pdf" }]
+    },
+    projectDocument: {
+      contract: "aralearn.contract",
+      version: 1,
+      kind: "project",
+      courses: [
+        {
+          key: "course-logica",
+          title: "Lógica",
+          modules: [
+            {
+              key: "module-base",
+              title: "Base",
+              lessons: [
+                {
+                  key: "lesson-proposicoes",
+                  title: "Proposições",
+                  description: "Lição.",
+                  sourceGuideStructured: {
+                    lessonGoal: "Reconhecer proposições.",
+                    notationRules: "Usar `p` e `q`.",
+                    commonErrors: "Confundir pergunta com proposição."
+                  },
+                  presetId: "default",
+                  resourceTags: ["paragraph", "multiple_choice"],
+                  contentTypeTags: ["theory"],
+                  learningActionTags: ["read"],
+                  supportLevel: "guided",
+                  microsequences: [
+                    {
+                      key: "microsequence-revisao",
+                      title: "Revisão",
+                      description: "Resumo inicial.",
+                      didacticPurpose: "Revisar conceito.",
+                      coverageRole: "explain",
+                      status: "ready",
+                      included: true,
+                      cards: [{ key: "card-1", title: "Card 1", say: "Texto antigo." }]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    providerRegistry: registry,
+    providerId: "fake"
+  });
+
+  assert.equal(result.patch, null);
+  assert.equal(result.interventionRequest.status, "ready");
+  assert.equal(result.interventionRequest.editorIntent.operation, "extend");
+  assert.equal(result.interventionRequest.editorIntent.interventionModeHint, "targeted_scope_expansion");
+  assert.deepEqual(result.interventionRequest.target, {
+    level: "lesson",
+    courseKey: "course-logica",
+    moduleKey: "module-base",
+    lessonKey: "lesson-proposicoes",
+    microsequenceKey: ""
+  });
+  assert.ok(result.interventionRequest.requestedChanges.some((change) => change.type === "add_new_microsequence"));
 });
 
 test("repair_only em lição com microssequências existentes reaproveita alvo local mínimo", async () => {

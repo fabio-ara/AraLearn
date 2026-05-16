@@ -6,6 +6,7 @@ export const COURSE_FORGE_PHASE_IDS = Object.freeze([
   "build_assessment_profile",
   "answer_locally",
   "audit_intervention",
+  "compile_intervention_request",
   "plan_architecture",
   "audit_architecture",
   "repair_architecture",

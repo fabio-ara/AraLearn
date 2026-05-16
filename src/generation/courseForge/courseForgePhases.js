@@ -19,6 +19,7 @@ const TUTOR_INTERVENTION_PHASES = Object.freeze([
   "build_assessment_profile",
   "answer_locally",
   "audit_intervention",
+  "compile_intervention_request",
   "final_report"
 ]);
 
