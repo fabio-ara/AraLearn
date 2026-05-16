@@ -4182,6 +4182,9 @@ test("editor consome InterventionRequest pronto sem voltar ao subfluxo do Tutor"
   assert.equal(result.runState.interventionPromptBudget.providerTask.promptType, "intervention_provider_task");
   assert.equal(result.runState.interventionPromptBudget.auditProviderTask.promptType, "intervention_audit_provider_task");
   assert.equal(result.runState.interventionPromptBudget.providerTask.omittedCount, 0);
+  const finalReport = result.artifacts.find((artifact) => artifact.name === "final-report");
+  assert.equal(finalReport.content.diagnosticsSummary.categories.intervention.promptBudget.providerTask.promptType, "intervention_provider_task");
+  assert.equal(finalReport.content.diagnosticsSummary.categories.intervention.promptBudget.providerTask.omittedCount, 0);
   assert.ok(result.artifacts.some((artifact) => artifact.name === "intervention-plan"));
 });
 
@@ -5903,6 +5906,10 @@ test("audit_source_adherence usa domainMap explícito para fechar cobertura mín
   assert.equal(sourceAudit.content.approved, true);
   assert.equal(diagnostics.content.categories.planning.blockingIssues, 0);
   assert.equal(diagnostics.content.categories.adherence.blockingIssues, 0);
+  assert.equal(diagnostics.content.categories.intervention.promptBudget.providerTask, null);
+  assert.equal(diagnostics.content.categories.planning.promptBudget.promptType, "microsequence_repair_task");
+  assert.equal(diagnostics.content.categories.planning.promptBudget.selectedCount, 0);
+  assert.equal(diagnostics.content.categories.planning.promptBudget.omittedCount, 0);
 });
 
 test("repair_microsequences chama provider quando a cobertura do domainMap nao e inferivel deterministicamente", async () => {
@@ -6114,6 +6121,8 @@ test("repair_microsequences chama provider quando a cobertura do domainMap nao e
   assert.equal(result.runState.repairPromptBudget.promptType, "microsequence_repair_task");
   assert.equal(finalReport.content.metrics.repairCallsByCategory.planning, 1);
   assert.equal(finalReport.content.diagnosticsSummary.categories.planning.repaired, true);
+  assert.equal(finalReport.content.diagnosticsSummary.categories.planning.promptBudget.promptType, "microsequence_repair_task");
+  assert.equal(finalReport.content.diagnosticsSummary.categories.planning.promptBudget.omittedCount, 0);
 });
 
 test("repair_card_adherence separa grounding tardio de defeito estrutural dos cards", async () => {

@@ -437,6 +437,18 @@ function updateMetricsCategory(metrics = {}, category = "", patch = {}) {
   };
 }
 
+function summarizePromptBudget(budget = null) {
+  if (!budget || typeof budget !== "object") {
+    return null;
+  }
+  return {
+    promptType: text(budget?.promptType),
+    budgetPolicy: text(budget?.budgetPolicy),
+    selectedCount: Math.max(0, Number(budget?.selectedCount || 0)),
+    omittedCount: Math.max(0, Number(budget?.omittedCount || 0))
+  };
+}
+
 function buildDiagnosticsSummary(context = {}, runState = {}, phases = []) {
   const courseGraphAudit = context.courseGraphAudit || { blockingIssues: [], warnings: [] };
   const planningAudit = mergeCourseForgeAdherenceAudits(
@@ -480,7 +492,11 @@ function buildDiagnosticsSummary(context = {}, runState = {}, phases = []) {
         blockingIssues: blockingByCategory.intervention,
         warnings: warningsByCategory.intervention,
         repaired: phaseStatus.audit_intervention === "completed" && (!phaseStatus.compile_intervention_request || phaseStatus.compile_intervention_request === "completed"),
-        latestArtifacts: ["intervention-response", "intervention-audit", "intervention-request", "intervention-request-audit", "intervention-plan"]
+        latestArtifacts: ["intervention-response", "intervention-audit", "intervention-request", "intervention-request-audit", "intervention-plan"],
+        promptBudget: {
+          providerTask: summarizePromptBudget(runState?.interventionPromptBudget?.providerTask),
+          auditProviderTask: summarizePromptBudget(runState?.interventionPromptBudget?.auditProviderTask)
+        }
       },
       graph: {
         blockingIssues: blockingByCategory.graph,
@@ -494,7 +510,8 @@ function buildDiagnosticsSummary(context = {}, runState = {}, phases = []) {
         repaired: phaseStatus.repair_microsequences === "completed",
         latestArtifacts: ["microsequence-audit", "microsequence-adherence-audit"].filter((name) =>
           ["microsequence-audit", "microsequence-adherence-audit"].includes(name)
-        )
+        ),
+        promptBudget: summarizePromptBudget(runState?.repairPromptBudget)
       },
       cards: {
         blockingIssues: blockingByCategory.cards,
