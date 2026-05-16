@@ -862,6 +862,44 @@ test("course graph materializa comparacao explicita a partir do objetivo e das c
   assert.ok(courseGraph.prerequisiteEdges.some((edge) => edge.from === "concept-or" && edge.to === comparisonConcept?.conceptId));
 });
 
+test("course graph infere prerequisito a partir de claim preparatoria explicita", () => {
+  const sourceLedgerResult = validateCourseForgeSourceLedger([
+    {
+      id: "src_1",
+      title: "Lógica",
+      spans: [
+        {
+          text: "Conjunção é base para Proposições compostas."
+        }
+      ]
+    }
+  ]);
+  const courseGraph = buildCourseGraphArtifact({
+    lessonPlans: [
+      {
+        lessonKey: "lesson-1",
+        lessonTitle: "Conectivos",
+        sourceGuideStructured: {
+          lessonGoal: "Entender proposições compostas."
+        },
+        domainMap: {
+          items: [
+            { id: "concept-and", label: "Conjunção" },
+            { id: "concept-compound", label: "Proposições compostas" }
+          ],
+          practiceVariants: []
+        }
+      }
+    ],
+    sourceLedger: sourceLedgerResult.sourceLedger
+  });
+
+  const edge = courseGraph.prerequisiteEdges.find((item) => item.from === "concept-and" && item.to === "concept-compound");
+  assert.ok(edge);
+  assert.equal(edge?.inferredFrom, "prerequisite_claim");
+  assert.deepEqual(edge?.sourceClaimRefs, ["src_1:span:1:claim:1"]);
+});
+
 test("course graph materializa misconception de discriminacao a partir de common error", () => {
   const sourceLedgerResult = validateCourseForgeSourceLedger([
     {

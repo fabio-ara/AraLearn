@@ -122,6 +122,10 @@ function containsComparisonSignal(value = "") {
   return /\b(compar\w*|contraste\w*|disting\w*|diferenc\w*|versus|entre)\b/iu.test(text(value));
 }
 
+function containsPrerequisiteSignal(value = "") {
+  return /\b(depende\w*\s+de|requer\w*|exige\w*|pressup[oõ]e\w*|precisa\s+de|necessita\s+de|base\s+para|serve\s+de\s+base\s+para|prepara\s+para|fundamenta\w*)\b/iu.test(text(value));
+}
+
 function findMentionedConceptsInText(value = "", lessonConcepts = []) {
   const normalizedValue = normalizeForMatch(value);
   const valueTokens = tokenizeForMatch(value);
@@ -138,6 +142,25 @@ function findMentionedConceptsInText(value = "", lessonConcepts = []) {
       return labelTokens.length > 0 && labelTokens.every((token) => valueTokens.includes(token));
     })
     .sort((left, right) => normalizedValue.indexOf(normalizeForMatch(left?.label)) - normalizedValue.indexOf(normalizeForMatch(right?.label)));
+}
+
+function findMentionedConceptMentionsInText(value = "", lessonConcepts = []) {
+  const normalizedValue = normalizeForMatch(value);
+  return normalizeArray(lessonConcepts)
+    .map((concept) => {
+      const normalizedLabel = normalizeForMatch(concept?.label);
+      const index = normalizedLabel ? normalizedValue.indexOf(normalizedLabel) : -1;
+      if (index < 0) {
+        return null;
+      }
+      return {
+        concept,
+        index,
+        end: index + normalizedLabel.length
+      };
+    })
+    .filter(Boolean)
+    .sort((left, right) => left.index - right.index);
 }
 
 function buildComparisonSignals({ lessonPlan = {}, sourceClaims = [], lessonConcepts = [] } = {}) {
@@ -186,6 +209,69 @@ function buildComparisonSignals({ lessonPlan = {}, sourceClaims = [], lessonConc
     }
   });
   return comparisons;
+}
+
+function buildPrerequisiteSignals({ lessonPlan = {}, sourceClaims = [], lessonConcepts = [] } = {}) {
+  const evidenceClaims = findMatchingSourceClaims(
+    [
+      lessonPlan?.lessonTitle,
+      lessonPlan?.lessonDescription,
+      lessonPlan?.sourceGuideStructured?.lessonGoal,
+      lessonPlan?.sourceGuideStructured?.commonErrors
+    ],
+    sourceClaims,
+    { minimumOverlap: 1 }
+  ).filter((claim) => containsPrerequisiteSignal(claim?.text));
+
+  const signals = [];
+  const seenEdges = new Set();
+  const targetRequiresSourcePattern = /\b(depende\w*\s+de|requer\w*|exige\w*|pressup[oõ]e\w*|precisa\s+de|necessita\s+de)\b/iu;
+  const sourcePreparesTargetPattern = /\b(base\s+para|serve\s+de\s+base\s+para|prepara\s+para|fundamenta\w*)\b/iu;
+
+  evidenceClaims.forEach((claim) => {
+    const evidence = text(claim?.text);
+    const mentions = findMentionedConceptMentionsInText(evidence, lessonConcepts);
+    if (mentions.length < 2) {
+      return;
+    }
+    [
+      { pattern: targetRequiresSourcePattern, direction: "target_requires_source" },
+      { pattern: sourcePreparesTargetPattern, direction: "source_prepares_target" }
+    ].forEach(({ pattern, direction }) => {
+      const match = pattern.exec(evidence);
+      if (!match || typeof match.index !== "number") {
+        return;
+      }
+      const before = [...mentions].reverse().find((item) => item.end <= match.index);
+      const after = mentions.find((item) => item.index >= match.index + match[0].length);
+      if (!before || !after) {
+        return;
+      }
+      const from = direction === "target_requires_source"
+        ? text(after?.concept?.conceptId)
+        : text(before?.concept?.conceptId);
+      const to = direction === "target_requires_source"
+        ? text(before?.concept?.conceptId)
+        : text(after?.concept?.conceptId);
+      if (!from || !to || from === to) {
+        return;
+      }
+      const edgeKey = `${from}=>${to}`;
+      if (seenEdges.has(edgeKey)) {
+        return;
+      }
+      seenEdges.add(edgeKey);
+      signals.push({
+        from,
+        to,
+        evidence,
+        sourceClaimRefs: unique([claim?.claimId]),
+        inferredFrom: "prerequisite_claim"
+      });
+    });
+  });
+
+  return signals;
 }
 
 function ensurePrerequisiteEdge(prerequisiteEdges = [], { from = "", to = "", lessonKey = "", sourceClaimRefs = [], inferredFrom = "" } = {}) {
@@ -614,6 +700,19 @@ export function buildCourseGraphArtifact({ architectureDraft = {}, lessonPlans =
       concepts.push(concept);
     });
     const lessonConcepts = concepts.filter((concept) => text(concept?.lessonKey) === lessonKey);
+    buildPrerequisiteSignals({
+      lessonPlan,
+      sourceClaims,
+      lessonConcepts
+    }).forEach((signal) => {
+      ensurePrerequisiteEdge(prerequisiteEdges, {
+        from: signal?.from,
+        to: signal?.to,
+        lessonKey,
+        sourceClaimRefs: signal?.sourceClaimRefs,
+        inferredFrom: signal?.inferredFrom
+      });
+    });
     buildComparisonSignals({
       lessonPlan,
       sourceClaims,
