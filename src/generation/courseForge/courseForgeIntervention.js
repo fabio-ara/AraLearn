@@ -158,6 +158,25 @@ function inferInterventionModeHint({ recommendedAction = "", target = {} } = {})
   return "global_regeneration";
 }
 
+function inferRequestedChangeSemanticOperation(change = {}, target = {}) {
+  const patchStrategy = text(change?.patchStrategy);
+  const operation = text(change?.operation);
+  const level = text(target?.level) || "project";
+  if (patchStrategy === "add_microsequence" || text(change?.type) === "add_new_microsequence") {
+    return "add_new_microsequence";
+  }
+  if (patchStrategy === "patch_existing_microsequence" || level === "microsequence") {
+    return operation === "repair" ? "repair_existing_microsequence" : "reinforce_existing_microsequence";
+  }
+  if (operation === "repair") {
+    return `repair_existing_${level}`;
+  }
+  if (operation === "extend") {
+    return `extend_existing_${level}`;
+  }
+  return `reinforce_existing_${level}`;
+}
+
 function buildRequestedChanges({ recommendedAction = "", target = {}, response = {}, operation = "" } = {}) {
   if (recommendedAction === "answer_only") {
     return [];
@@ -169,6 +188,7 @@ function buildRequestedChanges({ recommendedAction = "", target = {}, response =
       : "minimal_local_patch";
   return [
     {
+      changeId: "requested_change_1",
       type: recommendedAction === "needs_new_microsequence" ? "add_new_microsequence" : "patch_existing_material",
       operation,
       patchStrategy,
@@ -232,10 +252,19 @@ export function compileCourseForgeEditorInterventionPlan({ interventionRequest =
     const expectsNewMicrosequence = text(change?.patchStrategy) === "add_microsequence" || text(change?.type) === "add_new_microsequence";
     return {
       actionId: `intervention_action_${index + 1}`,
+      requestedChangeId: text(change?.changeId) || `requested_change_${index + 1}`,
       type: text(change?.type),
       operation: text(change?.operation || interventionRequest?.editorIntent?.operation),
       patchStrategy: text(change?.patchStrategy),
+      semanticOperation: inferRequestedChangeSemanticOperation(change, actionTarget),
       reason: text(change?.reason),
+      evidence: {
+        studentPrompt: text(interventionRequest?.studentPrompt),
+        responseText: text(interventionRequest?.responseText),
+        studyTrackConnection: text(interventionRequest?.studyTrackConnection),
+        rationale: text(interventionRequest?.rationale),
+        requestedChangeReason: text(change?.reason)
+      },
       target: actionTarget,
       lessonTargets,
       existingMicrosequenceKey: text(actionTarget?.microsequenceKey),

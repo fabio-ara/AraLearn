@@ -1666,11 +1666,15 @@ export async function runCourseForge({
             : {
                 microsequencePlans: microsequencePlansWithCards
               },
-          projectDocument: context.projectDocument
+          projectDocument: context.projectDocument,
+          interventionPlan: context.interventionPlan || null
         });
         savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "patch-final", context.patch);
       } else if (phaseId === "validate_patch") {
-        const validation = validateCourseForgePatch(context.patch, { intent });
+        const validation = validateCourseForgePatch(context.patch, {
+          intent,
+          interventionPlan: context.interventionPlan || null
+        });
         if (!validation.ok) {
           throw new Error(validation.errors.join(" "));
         }

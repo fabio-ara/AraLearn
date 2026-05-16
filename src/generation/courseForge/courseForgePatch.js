@@ -57,7 +57,13 @@ function normalizeOperation(operation = {}) {
 function normalizePatchEvent(event = {}) {
   return {
     ...clone(event),
-    eventType: text(event.eventType)
+    eventType: text(event.eventType),
+    appliedAs: text(event.appliedAs),
+    requestedChangeId: text(event.requestedChangeId),
+    interventionActionId: text(event.interventionActionId),
+    semanticOperation: text(event.semanticOperation),
+    reason: text(event.reason),
+    evidence: clone(event?.evidence || {})
   };
 }
 
@@ -98,6 +104,73 @@ function findMicrosequence(projectDocument = {}, courseKey = "", moduleKey = "",
   return (findLesson(projectDocument, courseKey, moduleKey, lessonKey)?.microsequences || []).find(
     (microsequence) => text(microsequence?.key) === text(microsequenceKey)
   ) || null;
+}
+
+function actionTargetsLesson(action = {}, courseKey = "", moduleKey = "", lessonKey = "") {
+  return (Array.isArray(action?.lessonTargets) ? action.lessonTargets : []).some(
+    (lessonTarget) =>
+      text(lessonTarget?.courseKey) === text(courseKey)
+      && text(lessonTarget?.moduleKey) === text(moduleKey)
+      && text(lessonTarget?.lessonKey) === text(lessonKey)
+  );
+}
+
+function createInterventionActionResolver(interventionPlan = {}) {
+  const actions = Array.isArray(interventionPlan?.actions) ? interventionPlan.actions.map(clone) : [];
+  const newActionUsageById = new Map();
+  return {
+    resolveExisting({ courseKey = "", moduleKey = "", lessonKey = "", microsequenceKey = "" } = {}) {
+      return (
+        actions.find((action) =>
+          !action?.expectsNewMicrosequence
+          && text(action?.existingMicrosequenceKey) === text(microsequenceKey)
+          && text(microsequenceKey)
+        )
+        || actions.find((action) =>
+          !action?.expectsNewMicrosequence
+          && !text(action?.existingMicrosequenceKey)
+          && actionTargetsLesson(action, courseKey, moduleKey, lessonKey)
+        )
+        || null
+      );
+    },
+    claimNew({ courseKey = "", moduleKey = "", lessonKey = "" } = {}) {
+      const action = actions.find((candidate) => {
+        if (!candidate?.expectsNewMicrosequence || !actionTargetsLesson(candidate, courseKey, moduleKey, lessonKey)) {
+          return false;
+        }
+        const usedCount = Number(newActionUsageById.get(text(candidate?.actionId)) || 0);
+        return usedCount < 1;
+      }) || null;
+      if (action) {
+        newActionUsageById.set(text(action?.actionId), Number(newActionUsageById.get(text(action?.actionId)) || 0) + 1);
+      }
+      return action;
+    }
+  };
+}
+
+function buildRequestedChangeEvent({
+  action = null,
+  target = {},
+  appliedAs = "",
+  stats = null
+} = {}) {
+  if (!action) {
+    return null;
+  }
+  return {
+    eventType: "apply_requested_change",
+    strategy: text(action?.patchStrategy),
+    appliedAs: text(appliedAs),
+    target: clone(target),
+    requestedChangeId: text(action?.requestedChangeId),
+    interventionActionId: text(action?.actionId),
+    semanticOperation: text(action?.semanticOperation),
+    reason: text(action?.reason),
+    evidence: clone(action?.evidence || {}),
+    ...(stats && typeof stats === "object" ? { stats: clone(stats) } : {})
+  };
 }
 
 function buildScopedArchitectureFromProject(projectDocument = {}, scope = {}) {
@@ -309,7 +382,8 @@ function buildMicrosequenceOperations({
   moduleKey = "",
   lessonKey = "",
   microsequence = {},
-  existingMicrosequence = null
+  existingMicrosequence = null,
+  interventionAction = null
 } = {}) {
   const normalized = normalizeMicrosequenceForPatch(microsequence);
   const exists = Boolean(existingMicrosequence);
@@ -334,6 +408,14 @@ function buildMicrosequenceOperations({
   };
 
   if (!exists) {
+    const requestedChangeEvent = buildRequestedChangeEvent({
+      action: interventionAction,
+      target: sharedTarget,
+      appliedAs: "add_microsequence",
+      stats: {
+        desiredCardCount: normalized.publicCards.length
+      }
+    });
     return {
       operations: [{
         op: "add_microsequence",
@@ -342,7 +424,7 @@ function buildMicrosequenceOperations({
         lessonKey,
         microsequence: microsequencePatch
       }],
-      events: []
+      events: requestedChangeEvent ? [requestedChangeEvent] : []
     };
   }
 
@@ -366,14 +448,37 @@ function buildMicrosequenceOperations({
     desiredCards: normalized.publicCards,
     existingMicrosequence
   });
+  const requestedChangeEvent = buildRequestedChangeEvent({
+    action: interventionAction,
+    target: sharedTarget,
+    appliedAs: "patch_existing_microsequence",
+    stats: {
+      desiredCardCount: normalized.publicCards.length
+    }
+  });
+  const cardMutationEvents = cardMutations.events.map((event) => (
+    interventionAction
+      ? {
+          ...event,
+          requestedChangeId: text(interventionAction?.requestedChangeId),
+          interventionActionId: text(interventionAction?.actionId),
+          semanticOperation: text(interventionAction?.semanticOperation),
+          reason: text(interventionAction?.reason),
+          evidence: clone(interventionAction?.evidence || {})
+        }
+      : event
+  ));
   operations.push(...cardMutations.operations);
   return {
     operations,
-    events: cardMutations.events
+    events: [
+      ...(requestedChangeEvent ? [requestedChangeEvent] : []),
+      ...cardMutationEvents
+    ]
   };
 }
 
-export function compileCourseStructureToPatch({ intent, architectureDraft, projectDocument = {} }) {
+export function compileCourseStructureToPatch({ intent, architectureDraft, projectDocument = {}, interventionPlan = null }) {
   if (architectureDraft?.patch) {
     return clone(architectureDraft.patch);
   }
@@ -396,6 +501,7 @@ export function compileCourseStructureToPatch({ intent, architectureDraft, proje
   const existingCourse = findCourse(projectDocument, courseKey);
   const operations = [buildCourseOperation(course, Boolean(existingCourse))];
   const events = [];
+  const interventionActionResolver = createInterventionActionResolver(interventionPlan);
 
   const microsequencePlansByLessonKey = new Map(
     (Array.isArray(normalizedDraft?.microsequencePlans) ? normalizedDraft.microsequencePlans : [])
@@ -414,12 +520,25 @@ export function compileCourseStructureToPatch({ intent, architectureDraft, proje
       const lessonMicrosequencePlan = microsequencePlansByLessonKey.get(text(lesson?.key));
       (Array.isArray(lessonMicrosequencePlan?.microsequences) ? lessonMicrosequencePlan.microsequences : []).forEach((microsequence) => {
         const existingMicrosequence = findMicrosequence(projectDocument, courseKey, moduleKey, lessonKey, text(microsequence?.key));
+        const interventionAction = existingMicrosequence
+          ? interventionActionResolver.resolveExisting({
+              courseKey,
+              moduleKey,
+              lessonKey,
+              microsequenceKey: text(microsequence?.key)
+            })
+          : interventionActionResolver.claimNew({
+              courseKey,
+              moduleKey,
+              lessonKey
+            });
         const compiled = buildMicrosequenceOperations({
           courseKey,
           moduleKey,
           lessonKey,
           microsequence,
-          existingMicrosequence
+          existingMicrosequence,
+          interventionAction
         });
         operations.push(...compiled.operations);
         events.push(...compiled.events);
@@ -435,7 +554,7 @@ export function compileCourseStructureToPatch({ intent, architectureDraft, proje
   };
 }
 
-export function validateCourseForgePatch(patch = {}, { intent = {} } = {}) {
+export function validateCourseForgePatch(patch = {}, { intent = {}, interventionPlan = null } = {}) {
   const errors = [];
   if (patch?.patchType !== COURSE_FORGE_PATCH_TYPE) {
     errors.push(`patchType inválido: ${patch?.patchType || ""}.`);
@@ -463,6 +582,44 @@ export function validateCourseForgePatch(patch = {}, { intent = {} } = {}) {
       errors.push(`operations[${index}] toca fora do escopo selecionado.`);
     }
   });
+
+  events.forEach((event, index) => {
+    if (event.eventType !== "apply_requested_change") {
+      return;
+    }
+    if (!event.requestedChangeId) {
+      errors.push(`events[${index}] sem requestedChangeId.`);
+    }
+    if (!event.interventionActionId) {
+      errors.push(`events[${index}] sem interventionActionId.`);
+    }
+    if (!event.semanticOperation) {
+      errors.push(`events[${index}] sem semanticOperation.`);
+    }
+    if (!event.reason) {
+      errors.push(`events[${index}] sem reason.`);
+    }
+  });
+
+  const interventionActions = Array.isArray(interventionPlan?.actions) ? interventionPlan.actions : [];
+  if (interventionActions.length) {
+    const appliedRequestedChangeIds = new Set(
+      events
+        .filter((event) => event.eventType === "apply_requested_change")
+        .map((event) => text(event?.requestedChangeId))
+        .filter(Boolean)
+    );
+    interventionActions.forEach((action, index) => {
+      const requestedChangeId = text(action?.requestedChangeId);
+      if (!requestedChangeId) {
+        errors.push(`interventionPlan.actions[${index}] sem requestedChangeId.`);
+        return;
+      }
+      if (!appliedRequestedChangeIds.has(requestedChangeId)) {
+        errors.push(`Patch sem evento aplicado para ${requestedChangeId}.`);
+      }
+    });
+  }
 
   return {
     ok: errors.length === 0,

@@ -651,7 +651,8 @@ export function validateCourseForgeInterventionRequest({ request = {} } = {}) {
             requestedBy: text(editorIntent?.requestedBy)
           }
         : null,
-      requestedChanges: requestedChanges.map((change) => ({
+      requestedChanges: requestedChanges.map((change, index) => ({
+        changeId: text(change?.changeId) || `requested_change_${index + 1}`,
         type: text(change?.type),
         operation: text(change?.operation),
         patchStrategy: text(change?.patchStrategy),

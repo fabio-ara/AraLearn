@@ -1585,6 +1585,138 @@ test("compileCourseStructureToPatch remove cards excedentes com diff semântico"
   assert.equal(patch.events[0].stats.deleteCount, 1);
 });
 
+test("compileCourseStructureToPatch materializa requestedChange como evento semântico auditável", () => {
+  const intent = resolveCourseForgeIntent({
+    operation: "repair",
+    scope: {
+      level: "microsequence",
+      courseKey: "course-1",
+      moduleKey: "module-1",
+      lessonKey: "lesson-1",
+      microsequenceKey: "micro-1"
+    }
+  });
+  const interventionPlan = {
+    actions: [
+      {
+        actionId: "intervention_action_1",
+        requestedChangeId: "requested_change_1",
+        patchStrategy: "patch_existing_microsequence",
+        semanticOperation: "reinforce_existing_microsequence",
+        reason: "Adicionar contraste guiado na microssequência atual.",
+        evidence: {
+          studentPrompt: "Ainda não entendi a diferença.",
+          rationale: "A trilha atual ainda salta do conceito para a prática."
+        },
+        lessonTargets: [
+          {
+            courseKey: "course-1",
+            moduleKey: "module-1",
+            lessonKey: "lesson-1"
+          }
+        ],
+        existingMicrosequenceKey: "micro-1",
+        expectsNewMicrosequence: false
+      }
+    ]
+  };
+  const patch = compileCourseStructureToPatch({
+    intent,
+    projectDocument: {
+      contract: "aralearn.contract",
+      version: 1,
+      kind: "project",
+      courses: [
+        {
+          key: "course-1",
+          title: "Curso 1",
+          modules: [
+            {
+              key: "module-1",
+              title: "Módulo 1",
+              lessons: [
+                {
+                  key: "lesson-1",
+                  title: "Lição 1",
+                  presetId: "default",
+                  resourceTags: ["paragraph"],
+                  contentTypeTags: ["theory"],
+                  learningActionTags: ["read"],
+                  supportLevel: "guided",
+                  microsequences: [
+                    {
+                      key: "micro-1",
+                      title: "Microssequência antiga",
+                      status: "ready",
+                      included: true,
+                      cards: [{ key: "card-1", title: "Card 1", say: "Texto 1." }]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    architectureDraft: {
+      course: {
+        key: "course-1",
+        title: "Curso 1",
+        modules: [
+          {
+            key: "module-1",
+            title: "Módulo 1",
+            lessons: [
+              {
+                key: "lesson-1",
+                title: "Lição 1",
+                presetId: "default",
+                resourceTags: ["paragraph"],
+                contentTypeTags: ["theory"],
+                learningActionTags: ["read"],
+                supportLevel: "guided",
+                microsequences: []
+              }
+            ]
+          }
+        ]
+      },
+      microsequencePlans: [
+        {
+          courseKey: "course-1",
+          moduleKey: "module-1",
+          lessonKey: "lesson-1",
+          microsequences: [
+            {
+              key: "micro-1",
+              title: "Microssequência revisada",
+              objective: "Objetivo novo.",
+              coverageRole: "core",
+              publicCards: [{ title: "Card 1", say: "Texto 1 revisado." }]
+            }
+          ]
+        }
+      ]
+    },
+    interventionPlan
+  });
+
+  const applyEvent = patch.events.find((item) => item.eventType === "apply_requested_change");
+  const syncEvent = patch.events.find((item) => item.eventType === "sync_microsequence_cards");
+  assert.equal(applyEvent.requestedChangeId, "requested_change_1");
+  assert.equal(applyEvent.semanticOperation, "reinforce_existing_microsequence");
+  assert.equal(applyEvent.reason, "Adicionar contraste guiado na microssequência atual.");
+  assert.equal(syncEvent.requestedChangeId, "requested_change_1");
+  assert.equal(
+    validateCourseForgePatch(patch, {
+      intent,
+      interventionPlan
+    }).ok,
+    true
+  );
+});
+
 test("top-down em escopo de microssequência recompõe cards na microssequência existente", async () => {
   const provider = createFakeProvider({
     script: {
@@ -2026,6 +2158,14 @@ test("editor consome InterventionRequest pronto sem voltar ao subfluxo do Tutor"
   assert.ok(!result.runState.phases.some((phase) => phase.phaseId === "answer_locally"));
   assert.ok(!result.runState.phases.some((phase) => phase.phaseId === "audit_intervention"));
   assert.ok(result.patch.operations.some((item) => item.op === "update_card"));
+  assert.ok(
+    result.patch.events.some(
+      (item) =>
+        item.eventType === "apply_requested_change"
+        && item.requestedChangeId === "requested_change_1"
+        && item.semanticOperation === "reinforce_existing_microsequence"
+    )
+  );
   assert.equal(result.projectDocument.courses[0].modules[0].lessons[0].microsequences[0].cards.length, 3);
   assert.equal(result.interventionPlan.planningMode, "existing_only");
   assert.ok(result.artifacts.some((artifact) => artifact.name === "intervention-plan"));
@@ -2323,6 +2463,14 @@ test("editor usa requestedChanges para limitar expansao a nova microssequencia p
   const lesson = result.projectDocument.courses[0].modules[0].lessons[0];
   assert.equal(result.interventionPlan.planningMode, "new_only");
   assert.ok(result.patch.operations.some((item) => item.op === "add_microsequence"));
+  assert.ok(
+    result.patch.events.some(
+      (item) =>
+        item.eventType === "apply_requested_change"
+        && item.requestedChangeId === "requested_change_1"
+        && item.semanticOperation === "add_new_microsequence"
+    )
+  );
   assert.ok(!result.patch.operations.some((item) => item.op === "update_microsequence" && item.microsequenceKey === "microsequence-revisao"));
   assert.equal(lesson.microsequences.length, 3);
   assert.ok(lesson.microsequences.some((microsequence) => microsequence.key === "microsequence-ponte"));
