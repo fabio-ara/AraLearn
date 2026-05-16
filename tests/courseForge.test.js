@@ -1320,6 +1320,38 @@ test("tarefa de reparo explicita alvo e prerequisitos em tightening", () => {
   assert.match(task, /lacuna preparatória/i);
 });
 
+test("tarefa de reparo explicita contraste real em contrast_reinforcement", () => {
+  const task = buildMicrosequenceRepairTask({
+    directives: [
+      {
+        directiveType: "rewrite_for_didactic_intervention_type",
+        didacticInterventionType: "contrast_reinforcement",
+        instruction: "Reescreva a microssequência para explicitar contraste.",
+        evidence: "A ação pediu contraste, mas a microssequência ficou só expositiva."
+      }
+    ]
+  });
+
+  assert.match(task, /contraste real/i);
+  assert.match(task, /discriminação local|contraexemplo|erro frequente/i);
+});
+
+test("tarefa de reparo explicita ponte guiada em guided_practice_bridge", () => {
+  const task = buildMicrosequenceRepairTask({
+    directives: [
+      {
+        directiveType: "generate_missing_intervention_microsequence",
+        didacticInterventionType: "guided_practice_bridge",
+        instruction: "Gere exatamente uma nova microssequência que materialize um degrau de prática guiada antes da prática principal.",
+        evidence: "Faltou a ponte de prática local."
+      }
+    ]
+  });
+
+  assert.match(task, /ponte de prática guiada/i);
+  assert.match(task, /não como explicação solta nem prática já autônoma/i);
+});
+
 test("auditoria de alinhamento avaliativo cobra formato pedido explicitamente", () => {
   const result = auditCourseForgeAssessmentAlignment({
     cardsFinal: [
