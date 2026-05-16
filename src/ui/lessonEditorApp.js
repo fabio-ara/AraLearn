@@ -27,6 +27,7 @@ import {
   buildLessonGuidanceFromPreset,
   normalizeLessonGuidance
 } from "../generation/guidance/lessonGuidance.js";
+import { resolveLessonMicrosequenceOrder } from "../generation/domain/resolveLessonMicrosequenceOrder.js";
 import {
   createMicrosequenceVersionRecord,
   insertMicrosequenceVersionAfterActive,
@@ -5259,26 +5260,24 @@ export function createLessonEditorApp({ root, storage, editor }) {
     const currentOrder = Array.isArray(lessonAfterCreate?.microsequences)
       ? lessonAfterCreate.microsequences.map((microsequence) => String(microsequence?.key || "").trim()).filter(Boolean)
       : [];
-    const desiredOrder = [];
-    const desiredSet = new Set();
+    const proposedOrderKeys = [];
+    const proposedSet = new Set();
 
     for (const entry of result.finalOrder || []) {
       const resolvedKey =
         entry.entryType === "generated"
           ? createdKeyByDraftId.get(entry.draftId) || ""
           : entry.microsequenceKey || "";
-      if (!resolvedKey || desiredSet.has(resolvedKey) || !currentOrder.includes(resolvedKey)) {
+      if (!resolvedKey || proposedSet.has(resolvedKey) || !currentOrder.includes(resolvedKey)) {
         continue;
       }
-      desiredSet.add(resolvedKey);
-      desiredOrder.push(resolvedKey);
+      proposedSet.add(resolvedKey);
+      proposedOrderKeys.push(resolvedKey);
     }
-
-    currentOrder.forEach((key) => {
-      if (!desiredSet.has(key)) {
-        desiredSet.add(key);
-        desiredOrder.push(key);
-      }
+    const desiredOrder = resolveLessonMicrosequenceOrder({
+      microsequences: Array.isArray(lessonAfterCreate?.microsequences) ? lessonAfterCreate.microsequences : [],
+      proposedOrderKeys,
+      lessonDomainMap: lessonAfterCreate?.domainMap || {}
     });
 
     if (!desiredOrder.length) {

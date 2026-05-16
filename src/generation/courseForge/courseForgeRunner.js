@@ -643,7 +643,7 @@ export async function runCourseForge({
           prompt: buildCourseForgePrompt({
             role: "Você planeja microssequências para as lições do AraLearn.",
             sourcePack: JSON.stringify(context.sourceLedger || []),
-            task: "Crie microssequências pequenas, progressivas e sem bastidor para cada lição planejada.",
+            task: "Crie microssequências pequenas, progressivas e sem bastidor para cada lição planejada, cobrindo itens centrais do domínio antes de extensões e distribuindo explicação antes de prática do mesmo item.",
             output: "Responda somente JSON válido com microsequencePlans."
           }),
           schema: null,
@@ -652,7 +652,10 @@ export async function runCourseForge({
             { id: "lesson-plans", name: "lesson-plans", content: JSON.stringify(context.lessonPlans || []) }
           ]
         });
-        context.microsequencePlans = normalizeMicrosequencePlans(response.value || response || {}, context.lessonPlans || []);
+        context.microsequencePlans = repairCourseForgeMicrosequenceMetadataDeterministically({
+          microsequencePlans: normalizeMicrosequencePlans(response.value || response || {}, context.lessonPlans || []),
+          lessonPlans: context.lessonPlans || []
+        });
         savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "microsequence-plans", context.microsequencePlans);
       } else if (phaseId === "audit_microsequences") {
         const localAudit = validateCourseForgeMicrosequencePlans({
@@ -736,7 +739,10 @@ export async function runCourseForge({
               { id: "microsequence-issues", name: "microsequence-issues", content: JSON.stringify(adherenceAudit.issues || []) }
             ]
           });
-          context.microsequencePlans = normalizeMicrosequencePlans(response.value || response || {}, context.lessonPlans || []);
+          context.microsequencePlans = repairCourseForgeMicrosequenceMetadataDeterministically({
+            microsequencePlans: normalizeMicrosequencePlans(response.value || response || {}, context.lessonPlans || []),
+            lessonPlans: context.lessonPlans || []
+          });
           const structuralAudit = validateCourseForgeMicrosequencePlans({
             microsequencePlans: context.microsequencePlans || [],
             lessonPlans: context.lessonPlans || []

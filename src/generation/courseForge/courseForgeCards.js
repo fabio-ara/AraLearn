@@ -1,5 +1,6 @@
 import { adaptResourceCardsToPublicCards } from "../resources/adaptResourceCardToPublicCard.js";
 import { buildLessonDomainCoverageReport, isPracticeCoverageRole } from "../domain/lessonDomainModel.js";
+import { sortLessonMicrosequencesDeterministically } from "../domain/resolveLessonMicrosequenceOrder.js";
 import { summarizeDidacticProductionPolicyForPrompt } from "../policies/didacticProductionPolicy.js";
 import { validateGeneratedCardsStructural } from "../validation/validateGeneratedCardsStructural.js";
 import { auditCourseForgeBackstageVocabulary } from "./courseForgeBackstageAudit.js";
@@ -567,7 +568,7 @@ export function repairCourseForgeMicrosequenceMetadataDeterministically({ micros
 
   return normalizeArray(microsequencePlans).map((lessonEntry) => {
     const lessonPlan = lessonByKey.get(text(lessonEntry?.lessonKey));
-    if (!lessonPlan || !hasExplicitDomainMap(lessonPlan.domainMap)) {
+    if (!lessonPlan) {
       return structuredClone(lessonEntry);
     }
 
@@ -587,28 +588,33 @@ export function repairCourseForgeMicrosequenceMetadataDeterministically({ micros
       variantsByDomain.set(key, list);
     });
 
+    const repairedMicrosequences = normalizeArray(lessonEntry?.microsequences).map((microsequence) => {
+      const currentDomainRefs = normalizeArray(microsequence?.domainRefs).map(text).filter(Boolean);
+      const nextDomainRefs = currentDomainRefs.length
+        ? currentDomainRefs
+        : coreDomainIds.length === 1
+          ? [coreDomainIds[0]]
+          : [];
+      const currentPracticeVariantRefs = normalizeArray(microsequence?.practiceVariantRefs).map(text).filter(Boolean);
+      const nextPracticeVariantRefs =
+        currentPracticeVariantRefs.length
+          ? currentPracticeVariantRefs
+          : isPracticeCoverageRole(text(microsequence?.coverageRole))
+            ? nextDomainRefs.flatMap((domainRef) => normalizeArray(variantsByDomain.get(domainRef)).map((variant) => text(variant?.id))).slice(0, 1)
+            : [];
+
+      return {
+        ...structuredClone(microsequence),
+        domainRefs: nextDomainRefs,
+        practiceVariantRefs: nextPracticeVariantRefs
+      };
+    });
+
     return {
       ...structuredClone(lessonEntry),
-      microsequences: normalizeArray(lessonEntry?.microsequences).map((microsequence) => {
-        const currentDomainRefs = normalizeArray(microsequence?.domainRefs).map(text).filter(Boolean);
-        const nextDomainRefs = currentDomainRefs.length
-          ? currentDomainRefs
-          : coreDomainIds.length === 1
-            ? [coreDomainIds[0]]
-            : [];
-        const currentPracticeVariantRefs = normalizeArray(microsequence?.practiceVariantRefs).map(text).filter(Boolean);
-        const nextPracticeVariantRefs =
-          currentPracticeVariantRefs.length
-            ? currentPracticeVariantRefs
-            : isPracticeCoverageRole(text(microsequence?.coverageRole))
-              ? nextDomainRefs.flatMap((domainRef) => normalizeArray(variantsByDomain.get(domainRef)).map((variant) => text(variant?.id))).slice(0, 1)
-              : [];
-
-        return {
-          ...structuredClone(microsequence),
-          domainRefs: nextDomainRefs,
-          practiceVariantRefs: nextPracticeVariantRefs
-        };
+      microsequences: sortLessonMicrosequencesDeterministically({
+        microsequences: repairedMicrosequences,
+        lessonDomainMap: domainMap
       })
     };
   });
