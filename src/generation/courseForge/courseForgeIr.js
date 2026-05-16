@@ -188,6 +188,77 @@ function buildComparisonSignals({ lessonPlan = {}, sourceClaims = [], lessonConc
   return comparisons;
 }
 
+function ensurePrerequisiteEdge(prerequisiteEdges = [], { from = "", to = "", lessonKey = "", sourceClaimRefs = [], inferredFrom = "" } = {}) {
+  const normalizedFrom = text(from);
+  const normalizedTo = text(to);
+  if (!normalizedFrom || !normalizedTo) {
+    return;
+  }
+  const existing = prerequisiteEdges.find((edge) => text(edge?.from) === normalizedFrom && text(edge?.to) === normalizedTo);
+  if (existing) {
+    existing.sourceClaimRefs = unique([...(existing.sourceClaimRefs || []), ...normalizeArray(sourceClaimRefs)]);
+    if (!text(existing?.inferredFrom) && text(inferredFrom)) {
+      existing.inferredFrom = text(inferredFrom);
+    }
+    return;
+  }
+  prerequisiteEdges.push({
+    edgeId: `${normalizedFrom}=>${normalizedTo}`,
+    from: normalizedFrom,
+    to: normalizedTo,
+    lessonKey,
+    sourceClaimRefs: unique(sourceClaimRefs),
+    inferredFrom: text(inferredFrom)
+  });
+}
+
+function buildConfusionSignals({ lessonPlan = {}, sourceClaims = [], lessonConcepts = [] } = {}) {
+  const evidenceCandidates = [
+    lessonPlan?.sourceGuideStructured?.commonErrors,
+    ...findMatchingSourceClaims(
+      [
+        lessonPlan?.sourceGuideStructured?.commonErrors,
+        lessonPlan?.sourceGuideStructured?.lessonGoal,
+        lessonPlan?.lessonDescription
+      ],
+      sourceClaims,
+      { minimumOverlap: 1 }
+    ).map((claim) => claim?.text)
+  ]
+    .map(text)
+    .filter(Boolean)
+    .filter((value) => /\b(confund\w*|mistur\w*|troc\w*)\b/iu.test(value));
+
+  const confusions = [];
+  const seenPairs = new Set();
+  evidenceCandidates.forEach((evidence) => {
+    const mentionedConcepts = findMentionedConceptsInText(evidence, lessonConcepts);
+    for (let index = 0; index < mentionedConcepts.length - 1; index += 1) {
+      const left = mentionedConcepts[index];
+      const right = mentionedConcepts[index + 1];
+      const leftId = text(left?.conceptId);
+      const rightId = text(right?.conceptId);
+      if (!leftId || !rightId || leftId === rightId) {
+        continue;
+      }
+      const pairKey = [leftId, rightId].sort().join("::");
+      if (seenPairs.has(pairKey)) {
+        continue;
+      }
+      seenPairs.add(pairKey);
+      const matchedClaims = findMatchingSourceClaims([evidence, left?.label, right?.label], sourceClaims, { minimumOverlap: 1 });
+      confusions.push({
+        left,
+        right,
+        evidence,
+        sourceClaimRefs: unique(matchedClaims.map((claim) => claim.claimId)),
+        sourceRefs: unique(matchedClaims.map((claim) => claim.sourceId))
+      });
+    }
+  });
+  return confusions;
+}
+
 export function buildCourseIntentArtifact(intent = {}) {
   return {
     operation: text(intent.operation) || "create",
@@ -509,11 +580,11 @@ export function buildCourseGraphArtifact({ architectureDraft = {}, lessonPlans =
       });
       normalizeArray(item?.prerequisites).forEach((prerequisiteId) => {
         const prerequisiteRef = text(prerequisiteId);
-        prerequisiteEdges.push({
-          edgeId: `${conceptIdByBaseRef.get(prerequisiteRef) || prerequisiteRef}=>${conceptId}`,
+        ensurePrerequisiteEdge(prerequisiteEdges, {
           from: conceptIdByBaseRef.get(prerequisiteRef) || prerequisiteRef,
           to: conceptId,
-          lessonKey
+          lessonKey,
+          inferredFrom: "domain_map"
         });
       });
       normalizeArray(item?.commonErrors).forEach((commonError, errorIndex) => {
@@ -576,6 +647,15 @@ export function buildCourseGraphArtifact({ architectureDraft = {}, lessonPlans =
         lessonConceptLabels.add(normalizedComparisonLabel);
         comparisonConceptId = comparisonConcept.conceptId;
       }
+      unique([comparison?.left?.conceptId, comparison?.right?.conceptId]).forEach((ref) => {
+        ensurePrerequisiteEdge(prerequisiteEdges, {
+          from: ref,
+          to: comparisonConceptId,
+          lessonKey,
+          sourceClaimRefs: comparison?.sourceClaimRefs,
+          inferredFrom: "comparison_goal"
+        });
+      });
       const comparisonTargetId = `${lessonKey}:assessment:comparison:${index + 1}`;
       if (!assessmentTargets.some((target) => text(target?.targetId) === comparisonTargetId)) {
         assessmentTargets.push({
@@ -589,6 +669,27 @@ export function buildCourseGraphArtifact({ architectureDraft = {}, lessonPlans =
           inferredFrom: "comparison_goal"
         });
       }
+    });
+    buildConfusionSignals({
+      lessonPlan,
+      sourceClaims,
+      lessonConcepts
+    }).forEach((confusion, index) => {
+      const relatedConceptRefs = unique([confusion?.left?.conceptId, confusion?.right?.conceptId]);
+      if (relatedConceptRefs.length < 2) {
+        return;
+      }
+      misconceptions.push({
+        misconceptionId: `${lessonKey}:misconception:contrast:${index + 1}`,
+        lessonKey,
+        conceptRef: confusion?.left?.conceptId,
+        relatedConceptRefs,
+        description: text(confusion?.evidence) || `Confundir ${text(confusion?.left?.label)} com ${text(confusion?.right?.label)}.`,
+        misconceptionKind: "contrast_confusion",
+        sourceRefs: unique(confusion?.sourceRefs),
+        sourceClaimRefs: unique(confusion?.sourceClaimRefs),
+        inferredFrom: "common_error_signal"
+      });
     });
     normalizeArray(domainMap.practiceVariants).forEach((item, index) => {
       const baseDomainRef = text(item?.domainItemRef);

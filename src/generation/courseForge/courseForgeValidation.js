@@ -273,6 +273,7 @@ export function validateCourseForgeCourseGraph({
   const concepts = normalizeArray(graph.concepts);
   const objectives = normalizeArray(graph.objectives);
   const prerequisiteEdges = normalizeArray(graph.prerequisiteEdges);
+  const misconceptions = normalizeArray(graph.misconceptions);
   const assessmentTargets = normalizeArray(graph.assessmentTargets);
   const practiceVariants = normalizeArray(graph.practiceVariants);
   const lessonKeys = new Set(normalizeArray(lessonPlans).map((item) => text(item?.lessonKey)).filter(Boolean));
@@ -447,6 +448,57 @@ export function validateCourseForgeCourseGraph({
         )
       );
     }
+    normalizeArray(edge?.sourceClaimRefs).map(text).filter(Boolean).forEach((claimRef) => {
+      if (!sourceClaimMap.has(claimRef)) {
+        blockingIssues.push(
+          makeCourseGraphIssue(
+            edgeTarget,
+            "invalid_claim_ref",
+            `Aresta ${from} -> ${to} aponta para sourceClaimRef inexistente: ${claimRef}.`,
+            "Usar apenas claims presentes no SourceLedger."
+          )
+        );
+      }
+    });
+  });
+
+  misconceptions.forEach((misconception, index) => {
+    const misconceptionTarget = `courseGraph.misconceptions[${index}]`;
+    const conceptRef = text(misconception?.conceptRef);
+    if (conceptRef && !conceptIds.has(conceptRef)) {
+      blockingIssues.push(
+        makeCourseGraphIssue(
+          misconceptionTarget,
+          "dangling_misconception",
+          `Misconception ${text(misconception?.misconceptionId)} aponta para conceptRef inexistente: ${conceptRef}.`,
+          "Apontar a misconception para um conceito existente."
+        )
+      );
+    }
+    normalizeArray(misconception?.relatedConceptRefs).map(text).filter(Boolean).forEach((ref) => {
+      if (!conceptIds.has(ref)) {
+        blockingIssues.push(
+          makeCourseGraphIssue(
+            misconceptionTarget,
+            "dangling_misconception",
+            `Misconception ${text(misconception?.misconceptionId)} referencia conceito inexistente em relatedConceptRefs: ${ref}.`,
+            "Usar apenas conceitos presentes no CourseGraph."
+          )
+        );
+      }
+    });
+    normalizeArray(misconception?.sourceClaimRefs).map(text).filter(Boolean).forEach((claimRef) => {
+      if (!sourceClaimMap.has(claimRef)) {
+        blockingIssues.push(
+          makeCourseGraphIssue(
+            misconceptionTarget,
+            "invalid_claim_ref",
+            `Misconception ${text(misconception?.misconceptionId)} aponta para sourceClaimRef inexistente: ${claimRef}.`,
+            "Usar apenas claims presentes no SourceLedger."
+          )
+        );
+      }
+    });
   });
 
   practiceVariants.forEach((variant, index) => {
@@ -530,6 +582,25 @@ export function validateCourseForgeCourseGraph({
         )
       );
     }
+    lessonConcepts
+      .filter((concept) => text(concept?.kind) === "comparison" && normalizeArray(concept?.relatedConceptRefs).length >= 2)
+      .forEach((concept) => {
+        const comparisonPrerequisites = prerequisiteEdges.filter((edge) =>
+          text(edge?.to) === text(concept?.conceptId)
+          && normalizeArray(concept?.relatedConceptRefs).includes(text(edge?.from))
+        );
+        if (comparisonPrerequisites.length < normalizeArray(concept?.relatedConceptRefs).length) {
+          warnings.push(
+            makeCourseGraphIssue(
+              lessonTarget,
+              "missing_comparison_prerequisites",
+              `O conceito comparativo ${text(concept?.label)} não recebeu todos os pré-requisitos dos conceitos contrastados.`,
+              "Criar arestas dos conceitos-base para o conceito comparativo.",
+              "warning"
+            )
+          );
+        }
+      });
   });
 
   if (normalizeArray(assessmentProfile?.questionTypes).length && !assessmentTargets.length) {

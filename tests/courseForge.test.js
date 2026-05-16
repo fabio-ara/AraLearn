@@ -858,6 +858,47 @@ test("course graph materializa comparacao explicita a partir do objetivo e das c
   const comparisonTarget = courseGraph.assessmentTargets.find((item) => item.targetKind === "comparison");
   assert.equal(comparisonTarget?.conceptRef, comparisonConcept?.conceptId);
   assert.deepEqual(comparisonTarget?.relatedConceptRefs, ["concept-and", "concept-or"]);
+  assert.ok(courseGraph.prerequisiteEdges.some((edge) => edge.from === "concept-and" && edge.to === comparisonConcept?.conceptId));
+  assert.ok(courseGraph.prerequisiteEdges.some((edge) => edge.from === "concept-or" && edge.to === comparisonConcept?.conceptId));
+});
+
+test("course graph materializa misconception de discriminacao a partir de common error", () => {
+  const sourceLedgerResult = validateCourseForgeSourceLedger([
+    {
+      id: "src_1",
+      title: "Lógica",
+      spans: [
+        {
+          text: "Erro comum: confundir conjunção com disjunção."
+        }
+      ]
+    }
+  ]);
+  const courseGraph = buildCourseGraphArtifact({
+    lessonPlans: [
+      {
+        lessonKey: "lesson-1",
+        lessonTitle: "Conectivos",
+        sourceGuideStructured: {
+          lessonGoal: "Comparar conjunção e disjunção.",
+          commonErrors: "Confundir conjunção com disjunção."
+        },
+        domainMap: {
+          items: [
+            { id: "concept-and", label: "Conjunção" },
+            { id: "concept-or", label: "Disjunção" }
+          ],
+          practiceVariants: []
+        }
+      }
+    ],
+    sourceLedger: sourceLedgerResult.sourceLedger
+  });
+
+  const misconception = courseGraph.misconceptions.find((item) => item.misconceptionKind === "contrast_confusion");
+  assert.equal(misconception?.conceptRef, "concept-and");
+  assert.deepEqual(misconception?.relatedConceptRefs, ["concept-and", "concept-or"]);
+  assert.ok(Array.isArray(misconception?.sourceClaimRefs) && misconception.sourceClaimRefs.length >= 1);
 });
 
 test("lesson domain map cria practiceVariants de fallback quando a lição só tem governança mínima", () => {
@@ -929,6 +970,46 @@ test("course graph validation avisa quando a lição pede comparacao sem alvo av
 
   assert.equal(result.ok, true);
   assert.ok(result.warnings.some((item) => item.type === "missing_comparison_target"));
+});
+
+test("course graph validation avisa quando conceito comparativo perde prerequisitos dos conceitos-base", () => {
+  const result = validateCourseForgeCourseGraph({
+    courseGraph: {
+      graphId: "graph-1",
+      concepts: [
+        { conceptId: "concept-and", label: "Conjunção", lessonKey: "lesson-1" },
+        { conceptId: "concept-or", label: "Disjunção", lessonKey: "lesson-1" },
+        {
+          conceptId: "comparison-and-or",
+          label: "Diferença entre Conjunção e Disjunção",
+          kind: "comparison",
+          lessonKey: "lesson-1",
+          relatedConceptRefs: ["concept-and", "concept-or"]
+        }
+      ],
+      objectives: [{ objectiveId: "obj-1", lessonKey: "lesson-1", description: "Comparar conjunção e disjunção." }],
+      prerequisiteEdges: [{ from: "concept-and", to: "comparison-and-or", lessonKey: "lesson-1" }],
+      misconceptions: [],
+      assessmentTargets: [{ targetId: "target-1", lessonKey: "lesson-1", conceptRef: "comparison-and-or", targetKind: "comparison" }],
+      practiceVariants: []
+    },
+    lessonPlans: [
+      {
+        lessonKey: "lesson-1",
+        sourceGuideStructured: { lessonGoal: "Comparar conjunção e disjunção." }
+      }
+    ],
+    sourceLedger: [
+      {
+        id: "src_1",
+        title: "Fonte 1",
+        spans: [{ text: "A conjunção exige duas proposições verdadeiras. A disjunção aceita pelo menos uma proposição verdadeira." }]
+      }
+    ]
+  });
+
+  assert.equal(result.ok, true);
+  assert.ok(result.warnings.some((item) => item.type === "missing_comparison_prerequisites"));
 });
 
 test("auditoria de prerequisitos bloqueia pratica antes da preparacao", () => {
