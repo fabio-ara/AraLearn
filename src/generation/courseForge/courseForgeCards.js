@@ -4,8 +4,8 @@ import { sortLessonMicrosequencesDeterministically } from "../domain/resolveLess
 import { summarizeDidacticProductionPolicyForPrompt } from "../policies/didacticProductionPolicy.js";
 import { validateGeneratedCardsStructural } from "../validation/validateGeneratedCardsStructural.js";
 import { auditCourseForgeBackstageVocabulary } from "./courseForgeBackstageAudit.js";
-import { listCourseForgeSources } from "./courseForgeSourceLedger.js";
-import { validateCourseForgeCardSourceRefs } from "./courseForgeSourceRefs.js";
+import { listCourseForgeSourceSpans, listCourseForgeSources } from "./courseForgeSourceLedger.js";
+import { normalizeCourseForgeCardSourceRefs, validateCourseForgeCardSourceRefs } from "./courseForgeSourceRefs.js";
 
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -17,6 +17,15 @@ function normalizeArray(value) {
 
 function hasExplanationCoverageRole(role = "") {
   return ["introduce", "explain", "demonstrate", "consolidate"].includes(text(role));
+}
+
+function pickTransformationStateForPlan(role = "") {
+  const normalized = text(role);
+  if (normalized === "anchor") return "literal";
+  if (["guided_example", "minimal_example"].includes(normalized)) return "example";
+  if (["practice", "guided_practice", "independent_practice", "exam_transfer"].includes(normalized)) return "application";
+  if (["contrast", "common_error"].includes(normalized)) return "inference";
+  return "paraphrase";
 }
 
 export function makeCourseForgeMicrosequenceId(entry = {}) {
@@ -67,6 +76,9 @@ function buildSimpleCardPlan(microsequence = {}, lessonPlan = {}, sourceLedger =
   const expositoryResourceType = pickExpositoryResourceType(allowedResourceTypes);
   const practiceResourceType = pickPracticeResourceType(allowedResourceTypes);
   const sourceRefs = listCourseForgeSources(sourceLedger).map((item) => text(item?.sourceId || item?.id)).filter(Boolean);
+  const sourceSpans = listCourseForgeSourceSpans(sourceLedger);
+  const firstSourceId = sourceRefs[0] || "";
+  const firstSpanId = sourceSpans.find((span) => text(span?.sourceId) === firstSourceId)?.spanId || sourceSpans[0]?.spanId || "";
   const coverageRole = text(microsequence.coverageRole);
   const supportLevel = text(lessonPlan.supportLevel);
   const wantsThreeCards =
@@ -81,14 +93,18 @@ function buildSimpleCardPlan(microsequence = {}, lessonPlan = {}, sourceLedger =
       role: "anchor",
       label: "Âncora conceitual",
       resourceType: expositoryResourceType,
-      sourceRefs: sourceRefs.slice(0, 1)
+      sourceRefs: sourceRefs.slice(0, 1),
+      sourceSpanRefs: firstSpanId ? [firstSpanId] : [],
+      transformationState: pickTransformationStateForPlan("anchor")
     },
     {
       position: 2,
       role: wantsThreeCards ? "guided_example" : "practice",
       label: wantsThreeCards ? "Exemplo guiado" : "Prática breve",
       resourceType: wantsThreeCards ? expositoryResourceType : practiceResourceType,
-      sourceRefs: sourceRefs.slice(0, 1)
+      sourceRefs: sourceRefs.slice(0, 1),
+      sourceSpanRefs: firstSpanId ? [firstSpanId] : [],
+      transformationState: pickTransformationStateForPlan(wantsThreeCards ? "guided_example" : "practice")
     }
   ];
 
@@ -98,7 +114,9 @@ function buildSimpleCardPlan(microsequence = {}, lessonPlan = {}, sourceLedger =
       role: "practice",
       label: "Prática de consolidação",
       resourceType: practiceResourceType,
-      sourceRefs: sourceRefs.slice(0, 1)
+      sourceRefs: sourceRefs.slice(0, 1),
+      sourceSpanRefs: firstSpanId ? [firstSpanId] : [],
+      transformationState: pickTransformationStateForPlan("practice")
     });
   }
 
@@ -172,9 +190,36 @@ export function buildCourseForgeMicrosequenceContracts({ lessonPlans = [], micro
   });
 }
 
+function buildSourceSupportForCard(card = {}, plannedCard = {}, sourceLedger = []) {
+  const explicit = normalizeCourseForgeCardSourceRefs(card?.sourceRefs, sourceLedger);
+  if (explicit.length) {
+    return explicit;
+  }
+  const fallbackSourceIds = normalizeArray(plannedCard?.sourceRefs).map(text).filter(Boolean);
+  const fallbackSpanIds = normalizeArray(plannedCard?.sourceSpanRefs).map(text).filter(Boolean);
+  if (!fallbackSourceIds.length && !fallbackSpanIds.length) {
+    return [];
+  }
+  return normalizeCourseForgeCardSourceRefs(
+    fallbackSourceIds.map((sourceId, index) => ({
+      sourceId,
+      spanId: fallbackSpanIds[index] || fallbackSpanIds[0] || "",
+      confidence: "medium",
+      transformationState: text(plannedCard?.transformationState) || pickTransformationStateForPlan(plannedCard?.role),
+      note: ""
+    })),
+    sourceLedger
+  );
+}
+
 export function normalizeCourseForgeCardsPayload(payload = {}, contract = {}) {
   const entry = payload?.value || payload;
   const cards = Array.isArray(entry?.cards) ? entry.cards : Array.isArray(entry) ? entry : [];
+  const plannedByPosition = new Map(
+    normalizeArray(contract?.didacticPlan?.cardPlan)
+      .filter((item) => Number.isInteger(item?.position))
+      .map((item) => [item.position, item])
+  );
   return {
     contractId: text(contract.contractId),
     courseKey: text(contract.courseKey),
@@ -182,7 +227,14 @@ export function normalizeCourseForgeCardsPayload(payload = {}, contract = {}) {
     lessonKey: text(contract.lessonKey),
     microsequenceKey: text(contract.microsequenceKey),
     microsequenceTitle: text(contract.microsequenceTitle),
-    cards: structuredClone(cards)
+    cards: structuredClone(cards),
+    sourceSupport: cards.map((card, index) =>
+      buildSourceSupportForCard(
+        card,
+        plannedByPosition.get(Number(card?.position)) || normalizeArray(contract?.didacticPlan?.cardPlan)[index] || {},
+        contract?.sources || []
+      )
+    )
   };
 }
 
@@ -342,11 +394,14 @@ export function auditCourseForgeSourceAdherence({ cardDrafts = [], sourceLedger 
   normalizeArray(cardDrafts).forEach((entry) => {
     let cardsWithRefs = 0;
     normalizeArray(entry?.cards).forEach((card, cardIndex) => {
-      const sourceRefs = normalizeArray(card?.sourceRefs).map(text).filter(Boolean);
-      if (sourceRefs.length) {
+      const sourceSupport = normalizeArray(entry?.sourceSupport?.[cardIndex]).length
+        ? normalizeArray(entry?.sourceSupport?.[cardIndex])
+        : buildSourceSupportForCard(card, {}, sourceLedger);
+      const sourceRefs = sourceSupport.map((item) => text(item?.sourceId)).filter(Boolean);
+      if (sourceSupport.length) {
         cardsWithRefs += 1;
       }
-      const result = validateCourseForgeCardSourceRefs(sourceRefs, sourceLedger);
+      const result = validateCourseForgeCardSourceRefs(sourceSupport, sourceLedger);
       if (!result.ok) {
         issues.push(
           ...result.errors.map((error) =>
@@ -359,6 +414,39 @@ export function auditCourseForgeSourceAdherence({ cardDrafts = [], sourceLedger 
           )
         );
       }
+      result.normalized.forEach((support) => {
+        if (support.transformationState === "unsupported") {
+          issues.push(
+            makeAuditIssue(
+              entry,
+              "unsupported_grounding",
+              `Card ${cardIndex + 1} foi marcado como unsupported.`,
+              "Reescrever o card com suporte real em source span ou marcar enriquecimento externo responsável."
+            )
+          );
+        }
+        if (support.transformationState === "contradicted") {
+          issues.push(
+            makeAuditIssue(
+              entry,
+              "contradicted_grounding",
+              `Card ${cardIndex + 1} contradiz a evidência de origem declarada.`,
+              "Corrigir o card ou trocar a evidência usada."
+            )
+          );
+        }
+        if (support.transformationState === "external_enrichment") {
+          warnings.push(
+            makeAuditIssue(
+              entry,
+              "external_enrichment",
+              `Card ${cardIndex + 1} depende de enriquecimento externo além da fonte principal.`,
+              "Revisar se o enriquecimento externo é desejável para esta lição.",
+              "warning"
+            )
+          );
+        }
+      });
     });
 
     if (hasSources && cardsWithRefs === 0) {
@@ -702,6 +790,7 @@ export function auditCourseForgeAssessmentAlignment({ cardsFinal = [], assessmen
 
 export function repairCourseForgeDraftCardsDeterministically({ cardDrafts = [], sourceLedger = [] } = {}) {
   const fallbackSourceId = text(listCourseForgeSources(sourceLedger)[0]?.sourceId || listCourseForgeSources(sourceLedger)[0]?.id);
+  const fallbackSpanId = text(listCourseForgeSourceSpans(sourceLedger)[0]?.spanId);
   return normalizeArray(cardDrafts).map((entry) => {
     const cards = normalizeArray(entry?.cards).map((card, cardIndex) => {
       const validSourceRefs = normalizeArray(card?.sourceRefs)
@@ -718,9 +807,36 @@ export function repairCourseForgeDraftCardsDeterministically({ cardDrafts = [], 
         sourceRefs: nextSourceRefs
       };
     });
+    const sourceSupport = cards.map((card, cardIndex) => {
+      const existingSupport = normalizeArray(entry?.sourceSupport?.[cardIndex]);
+      const repaired = normalizeCourseForgeCardSourceRefs(existingSupport.length ? existingSupport : card?.sourceRefs, sourceLedger);
+      if (repaired.length) {
+        return repaired.map((item) => ({
+          ...item,
+          spanId: text(item?.spanId) || fallbackSpanId,
+          note: text(item?.note)
+        }));
+      }
+      if (!fallbackSourceId || !fallbackSpanId || cardIndex !== 0) {
+        return [];
+      }
+      return normalizeCourseForgeCardSourceRefs(
+        [
+          {
+            sourceId: fallbackSourceId,
+            spanId: fallbackSpanId,
+            confidence: "medium",
+            transformationState: "paraphrase",
+            note: ""
+          }
+        ],
+        sourceLedger
+      );
+    });
     return {
       ...structuredClone(entry),
-      cards
+      cards,
+      sourceSupport
     };
   });
 }

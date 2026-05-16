@@ -7,7 +7,7 @@ import { resolveCourseForgePhases, resolveDeferredCourseForgePhases } from "../s
 import { createProviderRegistry } from "../src/generation/providers/providerRegistry.js";
 import { PHASE_PROFILES, resolvePhaseProfile } from "../src/generation/modelProfiles/phaseProfiles.js";
 import { createFakeProvider } from "../src/generation/providers/fakeProvider.js";
-import { validateCourseForgeSourceLedger } from "../src/generation/courseForge/courseForgeSourceLedger.js";
+import { listCourseForgeSourceSpans, validateCourseForgeSourceLedger } from "../src/generation/courseForge/courseForgeSourceLedger.js";
 import { validateCourseForgeCardSourceRefs } from "../src/generation/courseForge/courseForgeSourceRefs.js";
 import { auditCourseForgeBackstageVocabulary } from "../src/generation/courseForge/courseForgeBackstageAudit.js";
 import { auditCourseForgeAssessmentAlignment, auditCourseForgePrerequisiteCoverage } from "../src/generation/courseForge/courseForgeCards.js";
@@ -301,12 +301,40 @@ test("sourceLedger valida ids duplicados", () => {
   assert.equal(result.ok, false);
 });
 
+test("sourceLedger sintetiza spans e resume quantidade", () => {
+  const result = validateCourseForgeSourceLedger([
+    {
+      id: "src_1",
+      title: "Ementa",
+      locator: "attachment:1"
+    }
+  ]);
+  assert.equal(result.ok, true);
+  assert.equal(listCourseForgeSourceSpans(result.sourceLedger).length, 1);
+  assert.equal(result.sourceLedger.summary.spanCount, 1);
+  assert.equal(result.sourceLedger.sources[0].spans[0].text, "Ementa");
+});
+
 test("card sourceRefs bloqueia sourceId inexistente", () => {
   const result = validateCourseForgeCardSourceRefs(
     [{ sourceId: "src_2", confidence: "high" }],
     [{ id: "src_1", title: "Fonte 1" }]
   );
   assert.equal(result.ok, false);
+});
+
+test("card sourceRefs infere spanId e aceita enriquecimento externo justificado", () => {
+  const ledgerResult = validateCourseForgeSourceLedger([{ id: "src_1", title: "Fonte 1" }]);
+  const result = validateCourseForgeCardSourceRefs(
+    [
+      { sourceId: "src_1", confidence: "high", transformationState: "paraphrase" },
+      { transformationState: "external_enrichment", note: "Exemplo adicional do motor." }
+    ],
+    ledgerResult.sourceLedger
+  );
+  assert.equal(result.ok, true);
+  assert.equal(result.normalized[0].spanId, "src_1:span:1");
+  assert.equal(result.normalized[1].transformationState, "external_enrichment");
 });
 
 test("backstage vocabulary auditor detecta jargão visível", () => {

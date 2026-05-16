@@ -1,5 +1,5 @@
 import { normalizeLessonDomainMap } from "../domain/lessonDomainModel.js";
-import { listCourseForgeSources } from "./courseForgeSourceLedger.js";
+import { listCourseForgeSourceSpans, listCourseForgeSources } from "./courseForgeSourceLedger.js";
 
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -97,6 +97,66 @@ function inferTeacherConventions(value = "") {
   return conventions;
 }
 
+function chunkSourceText(value = "", maxLength = 320) {
+  const normalized = text(value);
+  if (!normalized) {
+    return [];
+  }
+  const paragraphs = normalized
+    .split(/\n{2,}/u)
+    .map((item) => text(item))
+    .filter(Boolean);
+  const chunks = [];
+  paragraphs.forEach((paragraph) => {
+    if (paragraph.length <= maxLength) {
+      chunks.push(paragraph);
+      return;
+    }
+    const sentences = paragraph
+      .split(/(?<=[.!?])\s+/u)
+      .map((item) => text(item))
+      .filter(Boolean);
+    let current = "";
+    sentences.forEach((sentence) => {
+      const candidate = current ? `${current} ${sentence}` : sentence;
+      if (candidate.length > maxLength && current) {
+        chunks.push(current);
+        current = sentence;
+      } else {
+        current = candidate;
+      }
+    });
+    if (current) {
+      chunks.push(current);
+    }
+  });
+  return chunks.length ? chunks : [normalized];
+}
+
+function buildSourceSpans({
+  sourceId = "",
+  locator = "",
+  rawText = "",
+  fallbackText = "",
+  baseTopics = [],
+  baseAssessmentSignals = [],
+  baseNotationSignals = [],
+  baseTeacherConventions = [],
+  confidence = "medium"
+} = {}) {
+  const chunks = chunkSourceText(rawText || fallbackText);
+  return chunks.map((chunk, index) => ({
+    spanId: `${sourceId}:span:${index + 1}`,
+    locator: locator || `${sourceId}:chunk:${index + 1}`,
+    text: chunk,
+    topics: unique([...baseTopics, ...inferTopicsFromText(chunk)]).slice(0, 8),
+    assessmentSignals: unique([...baseAssessmentSignals, ...inferAssessmentSignals(chunk)]),
+    notationSignals: unique([...baseNotationSignals, ...inferNotationSignals(chunk)]),
+    teacherConventions: unique([...baseTeacherConventions, ...inferTeacherConventions(chunk)]).slice(0, 6),
+    confidence
+  }));
+}
+
 export function buildSourceLedgerArtifact({ attachments = [], promptText = "" } = {}) {
   const sources = normalizeArray(attachments).map((item, index) => {
     const sourceId = text(item?.id) || `source_${index + 1}`;
@@ -120,20 +180,17 @@ export function buildSourceLedgerArtifact({ attachments = [], promptText = "" } 
       assessmentSignals,
       notationSignals,
       teacherConventions,
-      spans: bodyText
-        ? [
-            {
-              spanId: `${sourceId}:span:1`,
-              locator: text(item?.fileRef) || `attachment:${index + 1}`,
-              text: bodyText,
-              topics,
-              assessmentSignals,
-              notationSignals,
-              teacherConventions,
-              confidence: "medium"
-            }
-          ]
-        : []
+      spans: buildSourceSpans({
+        sourceId,
+        locator: text(item?.fileRef) || `attachment:${index + 1}`,
+        rawText: bodyText,
+        fallbackText: title,
+        baseTopics: topics,
+        baseAssessmentSignals: assessmentSignals,
+        baseNotationSignals: notationSignals,
+        baseTeacherConventions: teacherConventions,
+        confidence: bodyText ? "medium" : "low"
+      })
     };
   });
 
@@ -151,18 +208,16 @@ export function buildSourceLedgerArtifact({ attachments = [], promptText = "" } 
       assessmentSignals: inferAssessmentSignals(promptText),
       notationSignals: inferNotationSignals(promptText),
       teacherConventions: inferTeacherConventions(promptText),
-      spans: [
-        {
-          spanId: "user_instruction:span:1",
-          locator: "prompt",
-          text: promptText,
-          topics: inferTopicsFromText(promptText),
-          assessmentSignals: inferAssessmentSignals(promptText),
-          notationSignals: inferNotationSignals(promptText),
-          teacherConventions: inferTeacherConventions(promptText),
-          confidence: "high"
-        }
-      ]
+      spans: buildSourceSpans({
+        sourceId: "user_instruction",
+        locator: "prompt",
+        rawText: promptText,
+        baseTopics: inferTopicsFromText(promptText),
+        baseAssessmentSignals: inferAssessmentSignals(promptText),
+        baseNotationSignals: inferNotationSignals(promptText),
+        baseTeacherConventions: inferTeacherConventions(promptText),
+        confidence: "high"
+      })
     });
   }
 
@@ -171,6 +226,7 @@ export function buildSourceLedgerArtifact({ attachments = [], promptText = "" } 
     sources,
     summary: {
       sourceCount: sources.length,
+      spanCount: listCourseForgeSourceSpans({ sources }).length,
       topicHints: unique(sources.flatMap((item) => item.extractedTopics)),
       teacherSignalCount: sources.reduce((count, item) => count + normalizeArray(item.teacherConventions).length, 0)
     }
@@ -403,7 +459,8 @@ export function buildCardPlansArtifact({ microsequenceContracts = [] } = {}) {
       resourceType: text(item?.resourceType),
       learningGoal: text(item?.label || item?.role),
       requiredConceptRefs: unique(contract?.domainRefs),
-      sourceSpanRefs: unique(normalizeArray(item?.sourceRefs))
+      sourceSpanRefs: unique(normalizeArray(item?.sourceSpanRefs)),
+      transformationState: text(item?.transformationState)
     }))
   }));
 }
