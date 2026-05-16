@@ -203,6 +203,135 @@ function buildScopedMicrosequencePlans(projectDocument = {}, scope = {}) {
   ];
 }
 
+function normalizeExistingMicrosequencePlan(course = {}, moduleValue = {}, lesson = {}, microsequence = {}) {
+  return {
+    key: text(microsequence?.key),
+    title: text(microsequence?.title),
+    description: text(microsequence?.description),
+    objective: text(microsequence?.didacticPurpose || microsequence?.description || microsequence?.title),
+    domainRefs: Array.isArray(microsequence?.domainRefs) ? microsequence.domainRefs.map(text).filter(Boolean) : [],
+    practiceVariantRefs: Array.isArray(microsequence?.practiceVariantRefs)
+      ? microsequence.practiceVariantRefs.map(text).filter(Boolean)
+      : [],
+    didacticPurpose: text(microsequence?.didacticPurpose),
+    coverageRole: text(microsequence?.coverageRole),
+    tags: Array.isArray(microsequence?.tags) ? microsequence.tags.map(text).filter(Boolean) : [],
+    courseKey: text(course?.key),
+    moduleKey: text(moduleValue?.key),
+    lessonKey: text(lesson?.key)
+  };
+}
+
+function scoreMicrosequenceForLocalIntervention(microsequence = {}, intent = {}, index = 0) {
+  let score = index;
+  const role = text(microsequence?.coverageRole);
+  const cardsCount = Array.isArray(microsequence?.cards) ? microsequence.cards.length : 0;
+  if (text(microsequence?.key) === text(intent?.scope?.microsequenceKey)) {
+    score += 100;
+  }
+  if (intent?.operation === "reinforce") {
+    if (["practice", "guided_practice", "independent_practice", "exam_transfer"].includes(role)) {
+      score += 40;
+    }
+  } else if (["introduce", "explain", "demonstrate", "consolidate"].includes(role)) {
+    score += 30;
+  }
+  if (microsequence?.included) {
+    score += 10;
+  }
+  if (text(microsequence?.status) === "ready") {
+    score += 5;
+  }
+  return score + cardsCount;
+}
+
+function chooseMicrosequencesForIntervention(lesson = {}, intent = {}) {
+  const microsequences = Array.isArray(lesson?.microsequences) ? lesson.microsequences : [];
+  if (!microsequences.length) {
+    return [];
+  }
+  if (intent?.intervention?.selectionStrategy !== "one_existing_per_lesson") {
+    return microsequences;
+  }
+  const selected = microsequences
+    .map((microsequence, index) => ({
+      microsequence,
+      score: scoreMicrosequenceForLocalIntervention(microsequence, intent, index)
+    }))
+    .sort((left, right) => right.score - left.score)[0]?.microsequence;
+  return selected ? [selected] : [];
+}
+
+function buildExistingMicrosequencePlansForScope(projectDocument = {}, scope = {}, intent = {}) {
+  if (scope?.level === "microsequence") {
+    return buildScopedMicrosequencePlans(projectDocument, scope);
+  }
+  if (scope?.level === "lesson") {
+    const { course, moduleValue, lesson } = findScopedLesson(projectDocument, scope);
+    if (!course || !moduleValue || !lesson) {
+      return [];
+    }
+    const selected = chooseMicrosequencesForIntervention(lesson, intent);
+    if (!selected.length) {
+      return [];
+    }
+    return [{
+      courseKey: text(course?.key),
+      moduleKey: text(moduleValue?.key),
+      lessonKey: text(lesson?.key),
+      microsequences: selected.map((microsequence) => normalizeExistingMicrosequencePlan(course, moduleValue, lesson, microsequence))
+    }];
+  }
+  if (scope?.level === "module") {
+    const { course, moduleValue } = findScopedLesson(projectDocument, {
+      courseKey: scope?.courseKey,
+      moduleKey: scope?.moduleKey
+    });
+    if (!course || !moduleValue) {
+      return [];
+    }
+    return (Array.isArray(moduleValue?.lessons) ? moduleValue.lessons : [])
+      .map((lesson) => {
+        const selected = chooseMicrosequencesForIntervention(lesson, intent);
+        if (!selected.length) {
+          return null;
+        }
+        return {
+          courseKey: text(course?.key),
+          moduleKey: text(moduleValue?.key),
+          lessonKey: text(lesson?.key),
+          microsequences: selected.map((microsequence) => normalizeExistingMicrosequencePlan(course, moduleValue, lesson, microsequence))
+        };
+      })
+      .filter(Boolean);
+  }
+  if (scope?.level === "course") {
+    const course = (Array.isArray(projectDocument?.courses) ? projectDocument.courses : []).find(
+      (item) => text(item?.key) === text(scope?.courseKey)
+    );
+    if (!course) {
+      return [];
+    }
+    return (Array.isArray(course?.modules) ? course.modules : []).flatMap((moduleValue) =>
+      (Array.isArray(moduleValue?.lessons) ? moduleValue.lessons : [])
+        .map((lesson) => {
+          const selected = chooseMicrosequencesForIntervention(lesson, intent);
+          if (!selected.length) {
+            return null;
+          }
+          return {
+            courseKey: text(course?.key),
+            moduleKey: text(moduleValue?.key),
+            lessonKey: text(lesson?.key),
+            microsequences: selected.map((microsequence) => normalizeExistingMicrosequencePlan(course, moduleValue, lesson, microsequence))
+          };
+        })
+        .filter(Boolean)
+    );
+  }
+  return [];
+}
+
 function normalizeLessonPlans(payload = {}, architectureDraft = {}) {
   const explicit = Array.isArray(payload?.lessonPlans) ? payload.lessonPlans : [];
   if (explicit.length) {
@@ -793,29 +922,41 @@ export async function runCourseForge({
           }
           savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "lesson-plans", context.lessonPlans);
         }
-        const response = await executeCourseForgeProviderPhase({
-          provider,
-          phaseId,
-          modelId: phaseModelId,
-          prompt: buildCourseForgePrompt({
-            role: "Você planeja microssequências para as lições do AraLearn.",
-            sourcePack: JSON.stringify(context.sourceLedger || []),
-            task: "Crie microssequências pequenas, progressivas e sem bastidor para cada lição planejada, cobrindo itens centrais do domínio antes de extensões e distribuindo explicação antes de prática do mesmo item.",
-            output: "Responda somente JSON válido com microsequencePlans."
-          }),
-          schema: null,
-          artifacts: [
-            { id: "intent", name: "intent", content: JSON.stringify(intent) },
-            { id: "lesson-plans", name: "lesson-plans", content: JSON.stringify(context.lessonPlans || []) },
-            { id: "course-graph", name: "course-graph", content: JSON.stringify(context.courseGraph || {}) },
-            { id: "lesson-governance", name: "lesson-governance", content: JSON.stringify(context.lessonGovernance || []) }
-          ]
-        });
-        context.microsequencePlans = repairCourseForgeMicrosequenceMetadataDeterministically({
-          microsequencePlans: normalizeMicrosequencePlans(response.value || response || {}, context.lessonPlans || []),
-          lessonPlans: context.lessonPlans || []
-        });
-        savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "microsequence-plans", context.microsequencePlans);
+        if (intent?.intervention?.mode === "targeted_existing_microsequences") {
+          context.microsequencePlans = buildExistingMicrosequencePlansForScope(context.projectDocument, intent.scope, intent);
+          if (!context.microsequencePlans.length) {
+            throw new Error("Intervenção local sem microssequências reutilizáveis no escopo selecionado.");
+          }
+          context.microsequencePlans = repairCourseForgeMicrosequenceMetadataDeterministically({
+            microsequencePlans: context.microsequencePlans,
+            lessonPlans: context.lessonPlans || []
+          });
+          savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "microsequence-plans", context.microsequencePlans);
+        } else {
+          const response = await executeCourseForgeProviderPhase({
+            provider,
+            phaseId,
+            modelId: phaseModelId,
+            prompt: buildCourseForgePrompt({
+              role: "Você planeja microssequências para as lições do AraLearn.",
+              sourcePack: JSON.stringify(context.sourceLedger || []),
+              task: "Crie microssequências pequenas, progressivas e sem bastidor para cada lição planejada, cobrindo itens centrais do domínio antes de extensões e distribuindo explicação antes de prática do mesmo item.",
+              output: "Responda somente JSON válido com microsequencePlans."
+            }),
+            schema: null,
+            artifacts: [
+              { id: "intent", name: "intent", content: JSON.stringify(intent) },
+              { id: "lesson-plans", name: "lesson-plans", content: JSON.stringify(context.lessonPlans || []) },
+              { id: "course-graph", name: "course-graph", content: JSON.stringify(context.courseGraph || {}) },
+              { id: "lesson-governance", name: "lesson-governance", content: JSON.stringify(context.lessonGovernance || []) }
+            ]
+          });
+          context.microsequencePlans = repairCourseForgeMicrosequenceMetadataDeterministically({
+            microsequencePlans: normalizeMicrosequencePlans(response.value || response || {}, context.lessonPlans || []),
+            lessonPlans: context.lessonPlans || []
+          });
+          savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "microsequence-plans", context.microsequencePlans);
+        }
       } else if (phaseId === "audit_microsequences") {
         const localAudit = validateCourseForgeMicrosequencePlans({
           microsequencePlans: context.microsequencePlans || [],
@@ -1254,6 +1395,7 @@ export async function runCourseForge({
           phases,
           patchOperations: context.patch?.operations?.length || 0,
           patchEvents: context.patch?.events?.length || 0,
+          interventionMode: text(intent?.intervention?.mode),
           requestedGenerationDepth: intent.requestedGenerationDepth,
           executedGenerationDepth: intent.generationDepth,
           deferredGenerationDepth: intent.deferredGenerationDepth,

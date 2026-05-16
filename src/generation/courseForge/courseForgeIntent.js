@@ -58,6 +58,62 @@ function scopeTargetExists(projectDocument = {}, scope = {}) {
   return (lesson.microsequences || []).some((item) => text(item?.key) === text(scope.microsequenceKey));
 }
 
+function countReusableMicrosequencesInScope(projectDocument = {}, scope = {}) {
+  const courses = Array.isArray(projectDocument?.courses) ? projectDocument.courses : [];
+  if (scope.level === "project") {
+    return courses.reduce(
+      (count, course) =>
+        count
+        + (Array.isArray(course?.modules) ? course.modules : []).reduce(
+          (moduleCount, moduleValue) =>
+            moduleCount
+            + (Array.isArray(moduleValue?.lessons) ? moduleValue.lessons : []).reduce(
+              (lessonCount, lesson) => lessonCount + (Array.isArray(lesson?.microsequences) ? lesson.microsequences.length : 0),
+              0
+            ),
+          0
+        ),
+      0
+    );
+  }
+
+  const course = courses.find((item) => text(item?.key) === text(scope.courseKey));
+  if (!course) {
+    return 0;
+  }
+  if (scope.level === "course") {
+    return (Array.isArray(course?.modules) ? course.modules : []).reduce(
+      (count, moduleValue) =>
+        count
+        + (Array.isArray(moduleValue?.lessons) ? moduleValue.lessons : []).reduce(
+          (lessonCount, lesson) => lessonCount + (Array.isArray(lesson?.microsequences) ? lesson.microsequences.length : 0),
+          0
+        ),
+      0
+    );
+  }
+
+  const moduleValue = (course.modules || []).find((item) => text(item?.key) === text(scope.moduleKey));
+  if (!moduleValue) {
+    return 0;
+  }
+  if (scope.level === "module") {
+    return (Array.isArray(moduleValue?.lessons) ? moduleValue.lessons : []).reduce(
+      (count, lesson) => count + (Array.isArray(lesson?.microsequences) ? lesson.microsequences.length : 0),
+      0
+    );
+  }
+
+  const lesson = (moduleValue.lessons || []).find((item) => text(item?.key) === text(scope.lessonKey));
+  if (!lesson) {
+    return 0;
+  }
+  if (scope.level === "lesson") {
+    return Array.isArray(lesson?.microsequences) ? lesson.microsequences.length : 0;
+  }
+  return (lesson.microsequences || []).some((item) => text(item?.key) === text(scope.microsequenceKey)) ? 1 : 0;
+}
+
 function inferOperation({ requestedOperation, scope, promptText, projectDocument }) {
   if (requestedOperation) {
     return requestedOperation;
@@ -119,6 +175,45 @@ function resolveEffectiveGenerationDepth(requestedDepth) {
   return "structure_only";
 }
 
+function buildInterventionPolicy({ scope = {}, generationDepth = "", promptText = "", projectDocument = {} } = {}) {
+  const targetExists = scopeTargetExists(projectDocument, scope);
+  const reusableMicrosequenceCount = countReusableMicrosequencesInScope(projectDocument, scope);
+  const normalizedPrompt = normalizeLooseText(promptText);
+  const supportActor = generationDepth === "reinforce_only" || /(lacuna|duvida|dúvida|exemplo|pratique|pratica|prática)/.test(normalizedPrompt)
+    ? "tutor"
+    : "";
+
+  let mode = "global_regeneration";
+  let selectionStrategy = "full_scope";
+  if (generationDepth === "structure_only") {
+    mode = "structural_patch";
+    selectionStrategy = "structural_scope";
+  } else if (scope.level === "microsequence" && targetExists && reusableMicrosequenceCount > 0) {
+    mode = "targeted_single_microsequence";
+    selectionStrategy = "explicit_scope";
+  } else if (
+    ["repair_only", "reinforce_only"].includes(generationDepth)
+    && ["lesson", "module", "course"].includes(scope.level)
+    && targetExists
+    && reusableMicrosequenceCount > 0
+  ) {
+    mode = "targeted_existing_microsequences";
+    selectionStrategy = "one_existing_per_lesson";
+  }
+
+  return {
+    mode,
+    selectionStrategy,
+    reusableMicrosequenceCount,
+    prefersMinimalPatch: mode === "targeted_existing_microsequences" || mode === "targeted_single_microsequence",
+    actors: {
+      lead: "editor",
+      support: supportActor,
+      audit: "auditor"
+    }
+  };
+}
+
 export function resolveCourseForgeIntent(input = {}) {
   const level = text(input?.scope?.level) || "project";
   if (!LEVELS.has(level)) {
@@ -149,6 +244,12 @@ export function resolveCourseForgeIntent(input = {}) {
   });
   const generationDepth = resolveEffectiveGenerationDepth(requestedGenerationDepth);
   const targetExists = scopeTargetExists(input.projectDocument, scope);
+  const intervention = buildInterventionPolicy({
+    scope,
+    generationDepth,
+    promptText,
+    projectDocument: input.projectDocument
+  });
 
   return {
     intentId: "courseforge.intent.v1",
@@ -163,6 +264,7 @@ export function resolveCourseForgeIntent(input = {}) {
     requestedDepth: requestedGenerationDepth,
     generationDepth,
     deferredGenerationDepth: requestedGenerationDepth === generationDepth ? "" : requestedGenerationDepth,
+    intervention,
     attachments: normalizeAttachments(input.attachments),
     selectedTopDownProfileId: text(input.selectedTopDownProfileId) || "codex_all",
     didacticProfileId: text(input.selectedTopDownProfileId) || "codex_all",
@@ -171,6 +273,7 @@ export function resolveCourseForgeIntent(input = {}) {
       : {},
     contextSummary: {
       targetExists,
+      reusableMicrosequenceCount: intervention.reusableMicrosequenceCount,
       hasAttachments: normalizeAttachments(input.attachments).length > 0,
       projectHasCourses: Array.isArray(input?.projectDocument?.courses) && input.projectDocument.courses.length > 0
     },

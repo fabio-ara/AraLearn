@@ -17,6 +17,7 @@ export function buildCourseIntentArtifact(intent = {}) {
   return {
     operation: text(intent.operation) || "create",
     scope: structuredClone(intent.scope || { level: "project" }),
+    intervention: structuredClone(intent.intervention || {}),
     rawUserText: text(intent.rawUserText || intent.promptText),
     goal: text(intent.goal || intent.promptText),
     audienceLevel: text(intent.audienceLevel) || "beginner",

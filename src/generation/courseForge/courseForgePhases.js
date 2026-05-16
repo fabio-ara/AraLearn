@@ -73,6 +73,28 @@ const REPAIR_MICROSEQUENCE_PHASES = Object.freeze([
   "final_report"
 ]);
 
+const TARGETED_EXISTING_MICROSEQUENCE_PHASES = Object.freeze([
+  "normalize_intent",
+  "index_sources",
+  "build_assessment_profile",
+  "plan_microsequences",
+  "audit_microsequences",
+  "repair_microsequences",
+  "build_microsequence_contract",
+  "compile_card_plans",
+  "build_cards",
+  "audit_cards",
+  "audit_source_adherence",
+  "repair_cards",
+  "repair_card_adherence",
+  "audit_prerequisites",
+  "audit_assessment_alignment",
+  "compile_patch",
+  "validate_patch",
+  "apply_patch",
+  "final_report"
+]);
+
 const FULL_PROJECT_PHASES = Object.freeze([
   "normalize_intent",
   "index_sources",
@@ -205,6 +227,10 @@ const FULL_COURSE_DEFERRED_PHASES = Object.freeze([]);
 export function resolveCourseForgePhases(intent = {}) {
   const level = intent?.scope?.level || "project";
   const depth = intent?.generationDepth || "structure_only";
+  const interventionMode = intent?.intervention?.mode || "";
+  if (interventionMode === "targeted_existing_microsequences") {
+    return [...TARGETED_EXISTING_MICROSEQUENCE_PHASES];
+  }
   if (depth === "repair_only" || depth === "reinforce_only") {
     if (level === "microsequence") {
       return [...REPAIR_MICROSEQUENCE_PHASES];
