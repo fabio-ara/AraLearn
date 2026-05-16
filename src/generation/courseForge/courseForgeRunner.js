@@ -699,7 +699,7 @@ export async function runCourseForge({
     microsequencePlans: artifactStore.loadArtifact(runId, "microsequence-plans")?.content || null,
     interventionResponse: artifactStore.loadArtifact(runId, "intervention-response")?.content || null,
     interventionAudit: artifactStore.loadArtifact(runId, "intervention-audit")?.content || null,
-    interventionRequest: artifactStore.loadArtifact(runId, "intervention-request")?.content || null,
+    interventionRequest: artifactStore.loadArtifact(runId, "intervention-request")?.content || structuredClone(intent.interventionRequest || null),
     interventionRequestAudit: artifactStore.loadArtifact(runId, "intervention-request-audit")?.content || null,
     microsequenceAudit: artifactStore.loadArtifact(runId, "microsequence-audit")?.content || null,
     microsequenceAdherenceAudit: artifactStore.loadArtifact(runId, "microsequence-adherence-audit")?.content || null,
@@ -738,6 +738,17 @@ export async function runCourseForge({
         context.courseIntent = buildCourseIntentArtifact(intent);
         savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "intent", intent);
         savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "course-intent", context.courseIntent);
+        if (intent.interventionRequest) {
+          context.interventionRequest = structuredClone(intent.interventionRequest);
+          context.interventionRequestAudit = validateCourseForgeInterventionRequest({
+            request: context.interventionRequest || {}
+          });
+          savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "intervention-request", context.interventionRequest);
+          savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "intervention-request-audit", context.interventionRequestAudit);
+          if (!context.interventionRequestAudit.ok) {
+            throw new Error(context.interventionRequestAudit.errors.join(" "));
+          }
+        }
       } else if (phaseId === "index_sources") {
         const localLedger = buildInlineSourceLedger(intent);
         const result = validateCourseForgeSourceLedger(localLedger);
@@ -1571,6 +1582,7 @@ export async function runCourseForge({
           interventionRecommendation: text(context.interventionResponse?.recommendedAction),
           interventionRequestStatus: text(context.interventionRequest?.status),
           interventionEditorOperation: text(context.interventionRequest?.editorIntent?.operation),
+          cameFromInterventionRequest: Boolean(intent?.interventionRequest),
           requestedGenerationDepth: intent.requestedGenerationDepth,
           executedGenerationDepth: intent.generationDepth,
           deferredGenerationDepth: intent.deferredGenerationDepth,
