@@ -277,6 +277,12 @@ function listMentionedDomainRefs({ lessonPlans = [], target = {}, sourceText = "
   );
 }
 
+function listAvailableDomainRefs(lessonPlan = null) {
+  return uniqueTextList(
+    (Array.isArray(lessonPlan?.domainMap?.items) ? lessonPlan.domainMap.items : []).map((item) => text(item?.id))
+  );
+}
+
 function inferStructuredInterventionFocus({
   lessonPlans = [],
   target = {},
@@ -294,9 +300,12 @@ function inferStructuredInterventionFocus({
     target,
     sourceText
   });
+  const lessonPlan = findLessonPlanForTarget(lessonPlans, target);
   const focus = {
     relatedConceptRefs: [],
-    bridgeTargetRef: ""
+    bridgeTargetRef: "",
+    domainRef: "",
+    prerequisiteRefs: []
   };
 
   if (didacticInterventionType === "contrast_reinforcement" && mentionedDomainRefs.length >= 2) {
@@ -307,13 +316,26 @@ function inferStructuredInterventionFocus({
     if (mentionedDomainRefs.length >= 1) {
       focus.bridgeTargetRef = mentionedDomainRefs[0];
     } else {
-      const lessonPlan = findLessonPlanForTarget(lessonPlans, target);
-      const availableDomainRefs = uniqueTextList(
-        (Array.isArray(lessonPlan?.domainMap?.items) ? lessonPlan.domainMap.items : []).map((item) => text(item?.id))
-      );
+      const availableDomainRefs = listAvailableDomainRefs(lessonPlan);
       if (availableDomainRefs.length === 1) {
         focus.bridgeTargetRef = availableDomainRefs[0];
       }
+    }
+  }
+
+  if (didacticInterventionType === "prerequisite_tightening") {
+    const targetDomainRef = mentionedDomainRefs.find((domainRef) => {
+      const item = (Array.isArray(lessonPlan?.domainMap?.items) ? lessonPlan.domainMap.items : []).find(
+        (entry) => text(entry?.id) === domainRef
+      );
+      return Array.isArray(item?.prerequisites) && item.prerequisites.length > 0;
+    }) || "";
+    if (targetDomainRef) {
+      focus.domainRef = targetDomainRef;
+      const targetDomainItem = (Array.isArray(lessonPlan?.domainMap?.items) ? lessonPlan.domainMap.items : []).find(
+        (entry) => text(entry?.id) === targetDomainRef
+      );
+      focus.prerequisiteRefs = uniqueTextList(targetDomainItem?.prerequisites);
     }
   }
 
@@ -362,6 +384,8 @@ function buildRequestedChanges({
   });
   requestedChange.relatedConceptRefs = structuredFocus.relatedConceptRefs;
   requestedChange.bridgeTargetRef = structuredFocus.bridgeTargetRef;
+  requestedChange.domainRef = structuredFocus.domainRef;
+  requestedChange.prerequisiteRefs = structuredFocus.prerequisiteRefs;
   return [requestedChange];
 }
 
@@ -444,6 +468,8 @@ export function compileCourseForgeEditorInterventionPlan({ interventionRequest =
       target: actionTarget,
       relatedConceptRefs: uniqueTextList(change?.relatedConceptRefs),
       bridgeTargetRef: text(change?.bridgeTargetRef),
+      domainRef: text(change?.domainRef),
+      prerequisiteRefs: uniqueTextList(change?.prerequisiteRefs),
       lessonTargets,
       existingMicrosequenceKey: text(actionTarget?.microsequenceKey),
       expectsNewMicrosequence

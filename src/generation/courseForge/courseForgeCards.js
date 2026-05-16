@@ -944,6 +944,8 @@ function buildInterventionRepairDirective(issue = {}, action = null) {
   const didacticInterventionType = text(action?.didacticInterventionType);
   const relatedConceptRefs = [...new Set(normalizeArray(action?.relatedConceptRefs).map(text).filter(Boolean))];
   const bridgeTargetRef = text(action?.bridgeTargetRef);
+  const domainRef = text(action?.domainRef);
+  const prerequisiteRefs = [...new Set(normalizeArray(action?.prerequisiteRefs).map(text).filter(Boolean))];
   if (text(issue?.type) === "missing_intervention_target") {
     return {
       directiveType: "preserve_target_microsequence",
@@ -955,6 +957,8 @@ function buildInterventionRepairDirective(issue = {}, action = null) {
         lessonKey: text(action?.target?.lessonKey || issue?.lessonKey),
         microsequenceKey: text(action?.existingMicrosequenceKey || issue?.microsequenceKey)
       },
+      domainRef,
+      prerequisiteRefs,
       relatedConceptRefs,
       bridgeTargetRef,
       instruction: "Preserve a microssequência alvo pedida pela intervenção e reescreva seu conteúdo sem trocar o alvo local.",
@@ -972,6 +976,8 @@ function buildInterventionRepairDirective(issue = {}, action = null) {
         lessonKey: text(action?.target?.lessonKey || issue?.lessonKey),
         microsequenceKey: ""
       },
+      domainRef,
+      prerequisiteRefs,
       relatedConceptRefs,
       bridgeTargetRef,
       instruction: `Gere exatamente uma nova microssequência que materialize ${explainInterventionTypeExpectation(didacticInterventionType)}.`,
@@ -989,6 +995,8 @@ function buildInterventionRepairDirective(issue = {}, action = null) {
         lessonKey: text(action?.target?.lessonKey || issue?.lessonKey),
         microsequenceKey: text(action?.existingMicrosequenceKey || issue?.microsequenceKey)
       },
+      domainRef,
+      prerequisiteRefs,
       relatedConceptRefs,
       bridgeTargetRef,
       instruction: `Reescreva a microssequência para ${explainInterventionTypeExpectation(didacticInterventionType)}.`,

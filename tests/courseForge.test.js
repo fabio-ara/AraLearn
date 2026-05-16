@@ -1329,6 +1329,39 @@ test("tarefa de reparo explicita alvo e prerequisitos em tightening", () => {
   assert.match(task, /lacuna preparatória/i);
 });
 
+test("tarefa de reparo explicita tightening em reescrita e geracao local", () => {
+  const rewriteTask = buildMicrosequenceRepairTask({
+    directives: [
+      {
+        directiveType: "rewrite_for_didactic_intervention_type",
+        didacticInterventionType: "prerequisite_tightening",
+        instruction: "Reescreva a microssequência local.",
+        domainRef: "concept-compound",
+        prerequisiteRefs: ["concept-and", "concept-or"],
+        evidence: "A microssequência ainda pratica cedo demais."
+      }
+    ]
+  });
+  const generateTask = buildMicrosequenceRepairTask({
+    directives: [
+      {
+        directiveType: "generate_missing_intervention_microsequence",
+        didacticInterventionType: "prerequisite_tightening",
+        instruction: "Gere uma nova microssequência local.",
+        domainRef: "concept-compound",
+        prerequisiteRefs: ["concept-and", "concept-or"],
+        evidence: "Faltou a ponte preparatória."
+      }
+    ]
+  });
+
+  assert.match(rewriteTask, /conceito-alvo:\s*concept-compound/i);
+  assert.match(rewriteTask, /pré-requisitos que devem aparecer antes da prática:\s*concept-and,\s*concept-or/i);
+  assert.match(rewriteTask, /fechar explicitamente a lacuna preparatória/i);
+  assert.match(generateTask, /conceito-alvo:\s*concept-compound/i);
+  assert.match(generateTask, /ponte preparatória explícita/i);
+});
+
 test("tarefa de reparo explicita contraste real em contrast_reinforcement", () => {
   const task = buildMicrosequenceRepairTask({
     directives: [
@@ -1441,6 +1474,49 @@ test("intervention_request infere bridgeTargetRef para ponte guiada", () => {
   assert.deepEqual(result.requestedChanges[0].relatedConceptRefs, []);
 });
 
+test("intervention_request infere domainRef e prerequisiteRefs para tightening local", () => {
+  const result = compileCourseForgeInterventionRequest({
+    intent: {
+      scope: {
+        level: "microsequence",
+        courseKey: "course-logica",
+        moduleKey: "module-base",
+        lessonKey: "lesson-proposicoes",
+        microsequenceKey: "microsequence-pratica"
+      },
+      promptText: "Ainda preciso de uma base antes de praticar proposições compostas."
+    },
+    response: {
+      recommendedAction: "needs_new_microsequence",
+      responseText: "Vou pedir uma ponte preparatória.",
+      rationale: "Falta uma base antes de praticar proposições compostas nesta trilha."
+    },
+    lessonPlans: [
+      {
+        courseKey: "course-logica",
+        moduleKey: "module-base",
+        lessonKey: "lesson-proposicoes",
+        domainMap: {
+          items: [
+            { id: "concept-and", label: "Conjunção" },
+            { id: "concept-or", label: "Disjunção" },
+            {
+              id: "concept-compound",
+              label: "Proposições compostas",
+              prerequisites: ["concept-and", "concept-or"]
+            }
+          ],
+          practiceVariants: []
+        }
+      }
+    ]
+  });
+
+  assert.equal(result.requestedChanges[0].didacticInterventionType, "prerequisite_tightening");
+  assert.equal(result.requestedChanges[0].domainRef, "concept-compound");
+  assert.deepEqual(result.requestedChanges[0].prerequisiteRefs, ["concept-and", "concept-or"]);
+});
+
 test("editor_intervention_plan preserva focos inferidos da intervention_request", () => {
   const interventionRequest = compileCourseForgeInterventionRequest({
     intent: {
@@ -1499,6 +1575,72 @@ test("editor_intervention_plan preserva focos inferidos da intervention_request"
   });
 
   assert.deepEqual(result.actions[0].relatedConceptRefs, ["concept-and", "concept-or"]);
+});
+
+test("editor_intervention_plan preserva tightening inferido da intervention_request", () => {
+  const interventionRequest = compileCourseForgeInterventionRequest({
+    intent: {
+      scope: {
+        level: "microsequence",
+        courseKey: "course-logica",
+        moduleKey: "module-base",
+        lessonKey: "lesson-proposicoes",
+        microsequenceKey: "microsequence-pratica"
+      },
+      promptText: "Ainda preciso de uma base antes de praticar proposições compostas."
+    },
+    response: {
+      recommendedAction: "needs_new_microsequence",
+      responseText: "Vou pedir uma ponte preparatória.",
+      rationale: "Falta uma base antes de praticar proposições compostas nesta trilha."
+    },
+    lessonPlans: [
+      {
+        courseKey: "course-logica",
+        moduleKey: "module-base",
+        lessonKey: "lesson-proposicoes",
+        domainMap: {
+          items: [
+            { id: "concept-and", label: "Conjunção" },
+            { id: "concept-or", label: "Disjunção" },
+            {
+              id: "concept-compound",
+              label: "Proposições compostas",
+              prerequisites: ["concept-and", "concept-or"]
+            }
+          ],
+          practiceVariants: []
+        }
+      }
+    ]
+  });
+  const result = compileCourseForgeEditorInterventionPlan({
+    interventionRequest,
+    projectDocument: {
+      contract: "aralearn.contract",
+      version: 1,
+      kind: "project",
+      courses: [
+        {
+          key: "course-logica",
+          modules: [
+            {
+              key: "module-base",
+              lessons: [
+                {
+                  key: "lesson-proposicoes",
+                  microsequences: [{ key: "microsequence-pratica", cards: [] }]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  });
+
+  assert.equal(result.actions[0].domainRef, "concept-compound");
+  assert.deepEqual(result.actions[0].prerequisiteRefs, ["concept-and", "concept-or"]);
 });
 
 test("auditoria de alinhamento avaliativo cobra formato pedido explicitamente", () => {
