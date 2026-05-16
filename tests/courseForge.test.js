@@ -1710,6 +1710,58 @@ test("tarefa de reparo separa lacuna estrutural de ajuste fino ancorado do provi
   assert.match(task, /discriminação ainda ficou fraca/i);
 });
 
+test("tarefa de reparo prioriza severidade e proximidade do alvo", () => {
+  const task = buildMicrosequenceRepairTask({
+    directives: [
+      {
+        directiveType: "rewrite_for_didactic_intervention_type",
+        didacticInterventionType: "contrast_reinforcement",
+        providerIssueType: "contrast_needs_more_discrimination",
+        severity: "warning",
+        requestedChangeId: "requested_change_1",
+        target: {
+          lessonKey: "lesson-1",
+          microsequenceKey: "micro-1"
+        },
+        relatedConceptRefs: ["concept-and", "concept-or"],
+        instruction: "Reescreva a microssequência para explicitar contraste.",
+        evidence: "A discriminação ainda ficou fraca."
+      },
+      {
+        directiveType: "repair_domain_coverage",
+        target: {
+          lessonKey: "lesson-1",
+          microsequenceKey: "micro-2"
+        },
+        instruction: "Corrigir cobertura local.",
+        evidence: "O item central ficou sem cobertura."
+      },
+      {
+        directiveType: "rewrite_for_didactic_intervention_type",
+        didacticInterventionType: "guided_practice_bridge",
+        requestedChangeId: "requested_change_2",
+        target: {
+          lessonKey: "lesson-1",
+          microsequenceKey: "micro-3"
+        },
+        bridgeTargetRef: "concept-compound",
+        instruction: "Reescreva a microssequência para inserir ponte guiada.",
+        evidence: "Ainda falta prática guiada."
+      }
+    ]
+  });
+
+  const structuralIndex = task.indexOf("Corrigir cobertura local.");
+  const guidedIndex = task.indexOf("Reescreva a microssequência para inserir ponte guiada.");
+  const providerIndex = task.indexOf("Reescreva a microssequência para explicitar contraste.");
+
+  assert.ok(structuralIndex >= 0);
+  assert.ok(guidedIndex >= 0);
+  assert.ok(providerIndex >= 0);
+  assert.ok(structuralIndex < guidedIndex);
+  assert.ok(guidedIndex < providerIndex);
+});
+
 test("intervention_request infere relatedConceptRefs para contraste local", () => {
   const result = compileCourseForgeInterventionRequest({
     intent: {

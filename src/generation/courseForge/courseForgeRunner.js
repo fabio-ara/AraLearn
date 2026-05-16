@@ -659,12 +659,66 @@ function describeMicrosequenceRepairDirective(directive = {}) {
     .trim();
 }
 
+function scoreDirectiveSeverity(directive = {}) {
+  const providerSeverity = text(directive?.severity);
+  if (providerSeverity === "blocking" || providerSeverity === "error") {
+    return 300;
+  }
+  if (providerSeverity === "warning") {
+    return 100;
+  }
+  const directiveType = text(directive?.directiveType);
+  if (directiveType === "repair_domain_coverage") {
+    return 250;
+  }
+  if (directiveType === "preserve_target_microsequence") {
+    return 240;
+  }
+  if (directiveType === "generate_missing_intervention_microsequence") {
+    return 230;
+  }
+  if (directiveType === "rewrite_for_didactic_intervention_type") {
+    return text(directive?.providerIssueType) ? 120 : 200;
+  }
+  return 150;
+}
+
+function scoreDirectiveTargetProximity(directive = {}) {
+  const microsequenceKey = text(directive?.target?.microsequenceKey);
+  const lessonKey = text(directive?.target?.lessonKey);
+  const requestedChangeId = text(directive?.requestedChangeId);
+  let score = 0;
+  if (requestedChangeId) {
+    score += 80;
+  }
+  if (microsequenceKey) {
+    score += 40;
+  } else if (lessonKey) {
+    score += 20;
+  }
+  return score;
+}
+
+function sortRepairDirectives(directives = []) {
+  return [...directives].sort((left, right) => {
+    const severityDelta = scoreDirectiveSeverity(right) - scoreDirectiveSeverity(left);
+    if (severityDelta !== 0) {
+      return severityDelta;
+    }
+    const proximityDelta = scoreDirectiveTargetProximity(right) - scoreDirectiveTargetProximity(left);
+    if (proximityDelta !== 0) {
+      return proximityDelta;
+    }
+    return describeMicrosequenceRepairDirective(left).localeCompare(describeMicrosequenceRepairDirective(right));
+  });
+}
+
 export function buildMicrosequenceRepairTask(directivesArtifact = null) {
   const directives = Array.isArray(directivesArtifact?.directives) ? directivesArtifact.directives : [];
   if (!directives.length) {
     return "Corrija apenas lacunas de cobertura didática, domainRefs, practiceVariantRefs e progressão das microssequências, sem gerar cards.";
   }
-  const prioritized = directives.slice(0, 6);
+  const prioritized = sortRepairDirectives(directives).slice(0, 6);
   const structuralLines = prioritized
     .filter((directive) => text(directive?.directiveType) === "repair_domain_coverage" && !text(directive?.providerIssueType))
     .map((directive) => `- ${describeMicrosequenceRepairDirective(directive)}`.trim());
