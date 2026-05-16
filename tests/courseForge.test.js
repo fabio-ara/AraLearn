@@ -169,6 +169,7 @@ test("providerRegistry registra provider falso", () => {
 test("phaseProfiles resolve perfis esperados", () => {
   assert.equal(PHASE_PROFILES.architecture_plan.reasoning, "high");
   assert.equal(resolvePhaseProfile("index_sources").temperature, 0);
+  assert.equal(resolvePhaseProfile("build_assessment_profile").temperature, 0);
 });
 
 test("phase resolution escolhe subfluxo estrutural e registra fases adiadas", () => {
@@ -188,6 +189,7 @@ test("phase resolution escolhe subfluxo estrutural e registra fases adiadas", ()
   assert.deepEqual(resolveCourseForgePhases(structureIntent), [
     "normalize_intent",
     "index_sources",
+    "build_assessment_profile",
     "plan_architecture",
     "audit_architecture",
     "repair_architecture",
@@ -197,6 +199,9 @@ test("phase resolution escolhe subfluxo estrutural e registra fases adiadas", ()
     "final_report"
   ]);
   assert.ok(resolveCourseForgePhases(fullIntent).includes("plan_microsequences"));
+  assert.ok(resolveCourseForgePhases(fullIntent).includes("build_course_graph"));
+  assert.ok(resolveCourseForgePhases(fullIntent).includes("build_lesson_governance"));
+  assert.ok(resolveCourseForgePhases(fullIntent).includes("compile_card_plans"));
   assert.ok(resolveCourseForgePhases(fullIntent).includes("repair_microsequences"));
   assert.ok(resolveCourseForgePhases(fullIntent).includes("repair_card_adherence"));
   assert.ok(resolveCourseForgePhases(microsequenceIntent).includes("build_microsequence_contract"));

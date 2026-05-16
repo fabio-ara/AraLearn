@@ -1,4 +1,3 @@
-import { callModelWithRetry } from "../providers/callModelWithRetry.js";
 import { createDefaultProviderRegistry } from "../providers/providerRegistry.js";
 import { buildCourseForgePrompt } from "./courseForgePrompts.js";
 import { applyCourseForgePatch } from "./courseForgeApply.js";
@@ -15,6 +14,7 @@ import {
   buildLessonGovernanceArtifact,
   buildSourceLedgerArtifact
 } from "./courseForgeIr.js";
+import { executeCourseForgeProviderPhase, resolveCourseForgePhaseModelId } from "./courseForgeRuntime.js";
 import { validateCourseForgeSourceLedger } from "./courseForgeSourceLedger.js";
 import {
   mergeCourseForgeArchitectureAudits,
@@ -22,7 +22,6 @@ import {
   validateCourseForgeLessonPlanSet,
   validateCourseForgeMicrosequencePlans
 } from "./courseForgeValidation.js";
-import { resolveModelForCourseForgePhase } from "../modelProfiles/modelRouting.js";
 import {
   auditCourseForgeCardDrafts,
   auditCourseForgeDomainCoverage,
@@ -246,23 +245,6 @@ function normalizeMicrosequencePlans(payload = {}, lessonPlans = []) {
   });
 }
 
-async function callProviderPhase({ provider, phaseId, modelId, prompt, schema, artifacts }) {
-  return callModelWithRetry({
-    phase: phaseId,
-    modelId,
-    request: { prompt, schema, artifacts },
-    callModel: async ({ modelId: activeModelId }) =>
-      provider.callJson({
-        phaseId,
-        modelId: activeModelId,
-        prompt,
-        schema,
-        artifacts,
-        parameters: {}
-      }).then((result) => result.value)
-  });
-}
-
 function hasBlockingIssues(audit = {}) {
   return (Array.isArray(audit?.issues) ? audit.issues : []).some((item) => item?.severity !== "warning");
 }
@@ -410,24 +392,6 @@ function derivePhaseTarget({ phaseId = "", intent = {}, context = {} } = {}) {
   return buildScopeTarget(intent.scope);
 }
 
-function resolvePhaseModelId(intent = {}, phaseId = "") {
-  if (![
-    "plan_architecture",
-    "audit_architecture",
-    "repair_architecture",
-    "plan_lessons",
-    "plan_microsequences",
-    "audit_microsequences",
-    "repair_microsequences",
-    "build_cards",
-    "repair_cards",
-    "repair_card_adherence"
-  ].includes(phaseId)) {
-    return "";
-  }
-  return resolveModelForCourseForgePhase({ ...intent, phaseId });
-}
-
 function trackArtifactId(artifactIds = [], artifact = null) {
   if (!artifact?.id || artifactIds.includes(artifact.id)) {
     return artifactIds;
@@ -494,7 +458,7 @@ export async function runCourseForge({
     }
 
     const phaseArtifactIds = [];
-    const phaseModelId = resolvePhaseModelId(intent, phaseId);
+    const phaseModelId = resolveCourseForgePhaseModelId(intent, phaseId);
 
     runState = markCourseForgePhase(runState, phaseId, {
       status: "running",
@@ -518,14 +482,15 @@ export async function runCourseForge({
           throw new Error(result.errors.join(" "));
         }
         context.sourceLedger = result.sourceLedger;
+        savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "source-ledger", context.sourceLedger);
+      } else if (phaseId === "build_assessment_profile") {
         context.assessmentProfile = buildAssessmentProfileArtifact({
           intent: context.courseIntent || intent,
           sourceLedger: context.sourceLedger
         });
-        savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "source-ledger", context.sourceLedger);
         savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "assessment-profile", context.assessmentProfile);
       } else if (phaseId === "plan_architecture") {
-        const response = await callProviderPhase({
+        const response = await executeCourseForgeProviderPhase({
           provider,
           phaseId,
           modelId: phaseModelId,
@@ -548,7 +513,7 @@ export async function runCourseForge({
         });
         let providerAudit = { approved: true, blockingIssues: [], warnings: [] };
         if (provider?.id !== "fake" || provider?.capabilities?.provider === "fake") {
-          const response = await callProviderPhase({
+          const response = await executeCourseForgeProviderPhase({
             provider,
             phaseId,
             modelId: phaseModelId,
@@ -574,7 +539,7 @@ export async function runCourseForge({
           context.architectureFinal = structuredClone(context.architectureDraft || {});
           savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "architecture-final", context.architectureFinal);
         } else {
-          const response = await callProviderPhase({
+          const response = await executeCourseForgeProviderPhase({
             provider,
             phaseId,
             modelId: phaseModelId,
@@ -603,7 +568,7 @@ export async function runCourseForge({
           savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "architecture-final", context.architectureFinal);
         }
       } else if (phaseId === "plan_lessons") {
-        const response = await callProviderPhase({
+        const response = await executeCourseForgeProviderPhase({
           provider,
           phaseId,
           modelId: phaseModelId,
@@ -628,7 +593,38 @@ export async function runCourseForge({
           throw new Error(`Planejamento de lições inválido: ${lessonValidation.errors.join(" ")}`);
         }
         savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "lesson-plans", context.lessonPlans);
-        context.lessonGovernance = buildLessonGovernanceArtifact({ lessonPlans: context.lessonPlans });
+      } else if (phaseId === "build_course_graph") {
+        if (["lesson", "module", "course"].includes(intent.scope?.level) && !context.lessonPlans?.length) {
+          if (intent.scope?.level === "lesson") {
+            const scopedLessonPlan = buildScopedLessonPlan(context.projectDocument, intent.scope);
+            if (!scopedLessonPlan) {
+              throw new Error("Escopo de lição sem lição válida para construir CourseGraph.");
+            }
+            context.lessonPlans = [scopedLessonPlan];
+          } else if (intent.scope?.level === "module") {
+            context.lessonPlans = buildScopedLessonPlansFromModule(context.projectDocument, intent.scope);
+          } else {
+            context.lessonPlans = buildScopedLessonPlansFromCourse(context.projectDocument, intent.scope);
+          }
+          if (!context.lessonPlans.length) {
+            throw new Error("Escopo sem lições válidas para construir CourseGraph.");
+          }
+          savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "lesson-plans", context.lessonPlans);
+        }
+        context.courseGraph = buildCourseGraphArtifact({
+          architectureDraft: context.architectureFinal || context.architectureDraft || {},
+          lessonPlans: context.lessonPlans || [],
+          microsequencePlans: context.microsequencePlans || []
+        });
+        savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "course-graph", context.courseGraph);
+      } else if (phaseId === "build_lesson_governance") {
+        if (!context.lessonPlans?.length) {
+          throw new Error("LessonGovernance requer lessonPlans.");
+        }
+        context.lessonGovernance = buildLessonGovernanceArtifact({
+          lessonPlans: context.lessonPlans,
+          courseGraph: context.courseGraph || {}
+        });
         savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "lesson-governance", context.lessonGovernance);
       } else if (phaseId === "plan_microsequences") {
         if (["lesson", "module", "course"].includes(intent.scope?.level) && !context.lessonPlans?.length) {
@@ -651,7 +647,7 @@ export async function runCourseForge({
           }
           savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "lesson-plans", context.lessonPlans);
         }
-        const response = await callProviderPhase({
+        const response = await executeCourseForgeProviderPhase({
           provider,
           phaseId,
           modelId: phaseModelId,
@@ -664,19 +660,15 @@ export async function runCourseForge({
           schema: null,
           artifacts: [
             { id: "intent", name: "intent", content: JSON.stringify(intent) },
-            { id: "lesson-plans", name: "lesson-plans", content: JSON.stringify(context.lessonPlans || []) }
+            { id: "lesson-plans", name: "lesson-plans", content: JSON.stringify(context.lessonPlans || []) },
+            { id: "course-graph", name: "course-graph", content: JSON.stringify(context.courseGraph || {}) },
+            { id: "lesson-governance", name: "lesson-governance", content: JSON.stringify(context.lessonGovernance || []) }
           ]
         });
         context.microsequencePlans = repairCourseForgeMicrosequenceMetadataDeterministically({
           microsequencePlans: normalizeMicrosequencePlans(response.value || response || {}, context.lessonPlans || []),
           lessonPlans: context.lessonPlans || []
         });
-        context.courseGraph = buildCourseGraphArtifact({
-          architectureDraft: context.architectureFinal || context.architectureDraft || {},
-          lessonPlans: context.lessonPlans || [],
-          microsequencePlans: context.microsequencePlans || []
-        });
-        savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "course-graph", context.courseGraph);
         savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "microsequence-plans", context.microsequencePlans);
       } else if (phaseId === "audit_microsequences") {
         const localAudit = validateCourseForgeMicrosequencePlans({
@@ -688,7 +680,7 @@ export async function runCourseForge({
         }
         let providerAudit = { approved: true, issues: [], warnings: [] };
         if (provider?.id !== "fake" || provider?.capabilities?.provider === "fake") {
-          const response = await callProviderPhase({
+          const response = await executeCourseForgeProviderPhase({
             provider,
             phaseId,
             modelId: phaseModelId,
@@ -742,7 +734,7 @@ export async function runCourseForge({
         context.microsequenceAdherenceAudit = adherenceAudit;
 
         if (hasBlockingIssues(adherenceAudit)) {
-          const response = await callProviderPhase({
+          const response = await executeCourseForgeProviderPhase({
             provider,
             phaseId,
             modelId: phaseModelId,
@@ -813,12 +805,13 @@ export async function runCourseForge({
           sourceLedger: context.sourceLedger || {}
         });
         savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "microsequence-contracts", context.microsequenceContracts);
+      } else if (phaseId === "compile_card_plans") {
         context.cardPlans = buildCardPlansArtifact({ microsequenceContracts: context.microsequenceContracts });
         savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "card-plans", context.cardPlans);
       } else if (phaseId === "build_cards") {
         context.cardDrafts = [];
         for (const microsequenceContract of context.microsequenceContracts || []) {
-          const response = await callProviderPhase({
+          const response = await executeCourseForgeProviderPhase({
             provider,
             phaseId,
             modelId: phaseModelId,
@@ -894,7 +887,7 @@ export async function runCourseForge({
                 repairedByProvider.push(structuredClone(currentDraft));
                 continue;
               }
-              const response = await callProviderPhase({
+              const response = await executeCourseForgeProviderPhase({
                 provider,
                 phaseId,
                 modelId: phaseModelId,
@@ -979,7 +972,7 @@ export async function runCourseForge({
                 repairedByProvider.push(structuredClone(currentDraft));
                 continue;
               }
-              const response = await callProviderPhase({
+              const response = await executeCourseForgeProviderPhase({
                 provider,
                 phaseId,
                 modelId: phaseModelId,

@@ -300,17 +300,28 @@ export function buildCourseGraphArtifact({ architectureDraft = {}, lessonPlans =
   };
 }
 
-export function buildLessonGovernanceArtifact({ lessonPlans = [] } = {}) {
+export function buildLessonGovernanceArtifact({ lessonPlans = [], courseGraph = null } = {}) {
+  const graph = courseGraph && typeof courseGraph === "object" ? courseGraph : {};
   return normalizeArray(lessonPlans).map((lessonPlan) => ({
     lessonKey: text(lessonPlan?.lessonKey),
     sourceGuideStructured: structuredClone(lessonPlan?.sourceGuideStructured || {}),
     domainMap: structuredClone(lessonPlan?.domainMap || {}),
     prerequisites: unique(lessonPlan?.prerequisites),
-    targetObjectives: unique([lessonPlan?.sourceGuideStructured?.lessonGoal]),
+    targetObjectives: unique([
+      lessonPlan?.sourceGuideStructured?.lessonGoal,
+      ...normalizeArray(graph.objectives)
+        .filter((item) => text(item?.lessonKey) === text(lessonPlan?.lessonKey))
+        .map((item) => text(item?.objectiveId))
+    ]),
     allowedResources: unique(lessonPlan?.resourceTags),
     learningActions: unique(lessonPlan?.learningActionTags),
     supportLevel: text(lessonPlan?.supportLevel) || "guided",
-    assessmentTargets: unique(lessonPlan?.assessmentTargets)
+    assessmentTargets: unique([
+      ...normalizeArray(lessonPlan?.assessmentTargets),
+      ...normalizeArray(graph.assessmentTargets)
+        .filter((item) => text(item?.lessonKey) === text(lessonPlan?.lessonKey))
+        .map((item) => text(item?.targetId))
+    ])
   }));
 }
 
