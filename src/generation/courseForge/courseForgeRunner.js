@@ -572,12 +572,41 @@ function buildMicrosequenceTarget(entry = {}) {
   };
 }
 
-function buildMicrosequenceRepairTask(directivesArtifact = null) {
+function describeMicrosequenceRepairDirective(directive = {}) {
+  const directiveType = text(directive?.directiveType);
+  const didacticInterventionType = text(directive?.didacticInterventionType);
+  const targetDomainRef = text(directive?.domainRef);
+  const prerequisiteRefs = (Array.isArray(directive?.prerequisiteRefs) ? directive.prerequisiteRefs : [])
+    .map(text)
+    .filter(Boolean);
+  const details = [];
+
+  if (directiveType === "repair_domain_coverage" && didacticInterventionType === "prerequisite_tightening") {
+    if (targetDomainRef) {
+      details.push(`conceito-alvo: ${targetDomainRef}.`);
+    }
+    if (prerequisiteRefs.length) {
+      details.push(`pré-requisitos que devem aparecer antes da prática: ${prerequisiteRefs.join(", ")}.`);
+    }
+    details.push("Feche explicitamente a lacuna preparatória antes da prática ou aplicação.");
+  }
+
+  return [
+    text(directive?.instruction),
+    details.join(" ").trim(),
+    `Evidência: ${text(directive?.evidence)}`
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .trim();
+}
+
+export function buildMicrosequenceRepairTask(directivesArtifact = null) {
   const directives = Array.isArray(directivesArtifact?.directives) ? directivesArtifact.directives : [];
   if (!directives.length) {
     return "Corrija apenas lacunas de cobertura didática, domainRefs, practiceVariantRefs e progressão das microssequências, sem gerar cards.";
   }
-  const lines = directives.slice(0, 6).map((directive) => `- ${text(directive?.instruction)} Evidência: ${text(directive?.evidence)}`.trim());
+  const lines = directives.slice(0, 6).map((directive) => `- ${describeMicrosequenceRepairDirective(directive)}`.trim());
   return [
     "Corrija apenas as falhas didáticas apontadas, sem gerar cards nem ampliar o escopo.",
     "Siga estas diretivas prioritárias:",

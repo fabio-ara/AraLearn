@@ -23,6 +23,7 @@ import { createCourseForgeArtifactsStore } from "../src/generation/courseForge/c
 import { canResumeCourseForgeRun, createCourseForgeRunState } from "../src/generation/courseForge/courseForgeRunState.js";
 import { runCourseForgeQueue } from "../src/generation/courseForge/courseForgeQueue.js";
 import { runCourseForge } from "../src/generation/courseForge/courseForgeRunner.js";
+import { buildMicrosequenceRepairTask } from "../src/generation/courseForge/courseForgeRunner.js";
 import { applyCourseForgePatch } from "../src/generation/courseForge/courseForgeApply.js";
 import { buildCourseGraphArtifact } from "../src/generation/courseForge/courseForgeIr.js";
 import {
@@ -1298,6 +1299,25 @@ test("diretiva de reparo preserva metadados de tightening de prerequisito", () =
   assert.equal(directive?.didacticInterventionType, "prerequisite_tightening");
   assert.equal(directive?.domainRef, "concept-compound");
   assert.deepEqual(directive?.prerequisiteRefs, ["concept-and"]);
+});
+
+test("tarefa de reparo explicita alvo e prerequisitos em tightening", () => {
+  const task = buildMicrosequenceRepairTask({
+    directives: [
+      {
+        directiveType: "repair_domain_coverage",
+        didacticInterventionType: "prerequisite_tightening",
+        instruction: "Introduzir concept-and antes da prática.",
+        domainRef: "concept-compound",
+        prerequisiteRefs: ["concept-and", "concept-base"],
+        evidence: "A prática usa concept-compound cedo demais."
+      }
+    ]
+  });
+
+  assert.match(task, /conceito-alvo:\s*concept-compound/i);
+  assert.match(task, /pré-requisitos que devem aparecer antes da prática:\s*concept-and,\s*concept-base/i);
+  assert.match(task, /lacuna preparatória/i);
 });
 
 test("auditoria de alinhamento avaliativo cobra formato pedido explicitamente", () => {
