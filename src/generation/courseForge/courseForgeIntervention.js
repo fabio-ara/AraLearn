@@ -520,25 +520,36 @@ export function compileCourseForgeEditorInterventionPlan({ interventionRequest =
   };
 }
 
-function scoreMicrosequenceAgainstDidacticType(microsequence = {}, didacticInterventionType = "") {
+function scoreStructuredDomainFocus(microsequence = {}, action = {}) {
+  const targetDomainRef = text(action?.domainRef);
+  if (!targetDomainRef) {
+    return 0;
+  }
+  const domainRefs = uniqueTextList(microsequence?.domainRefs);
+  return domainRefs.includes(targetDomainRef) ? 100 : -100;
+}
+
+function scoreMicrosequenceAgainstDidacticType(microsequence = {}, action = {}) {
+  const didacticInterventionType = text(action?.didacticInterventionType);
   const coverageRole = text(microsequence?.coverageRole);
   const didacticPurpose = text(microsequence?.didacticPurpose || microsequence?.objective);
   const tags = uniqueTextList(microsequence?.tags).join(" ");
   const combined = [coverageRole, didacticPurpose, tags].join(" ");
+  const focusScore = scoreStructuredDomainFocus(microsequence, action);
 
   if (didacticInterventionType === "guided_practice_bridge") {
-    return containsDidacticTerm(combined, ["practice", "pratica", "guided_practice", "guiad", "exercicio", "treino"]) ? 10 : 0;
+    return (containsDidacticTerm(combined, ["practice", "pratica", "guided_practice", "guiad", "exercicio", "treino"]) ? 10 : 0) + focusScore;
   }
   if (didacticInterventionType === "contrast_reinforcement") {
-    return containsDidacticTerm(combined, ["contrast", "contraste", "contraexemplo", "diferenca", "diferença"]) ? 10 : 0;
+    return (containsDidacticTerm(combined, ["contrast", "contraste", "contraexemplo", "diferenca", "diferença"]) ? 10 : 0) + focusScore;
   }
   if (didacticInterventionType === "prerequisite_tightening") {
-    return containsDidacticTerm(combined, ["introdu", "explain", "base", "ponte", "prepar", "fundamento", "review", "revis"]) ? 10 : 0;
+    return (containsDidacticTerm(combined, ["introdu", "explain", "base", "ponte", "prepar", "fundamento", "review", "revis"]) ? 10 : 0) + focusScore;
   }
   if (didacticInterventionType === "explanatory_bridge") {
-    return containsDidacticTerm(combined, ["introdu", "explain", "ponte", "guided_example", "review", "revis"]) ? 10 : 0;
+    return (containsDidacticTerm(combined, ["introdu", "explain", "ponte", "guided_example", "review", "revis"]) ? 10 : 0) + focusScore;
   }
-  return 1;
+  return 1 + focusScore;
 }
 
 export function constrainCourseForgeMicrosequencePlansToInterventionPlan({ plan = {}, microsequencePlans = [], projectDocument = {} } = {}) {
@@ -600,7 +611,7 @@ export function constrainCourseForgeMicrosequencePlansToInterventionPlan({ plan 
           if (selectedIndices.has(index)) {
             return;
           }
-          const score = scoreMicrosequenceAgainstDidacticType(microsequence, text(action?.didacticInterventionType));
+          const score = scoreMicrosequenceAgainstDidacticType(microsequence, action);
           if (score > bestScore) {
             bestScore = score;
             bestIndex = index;

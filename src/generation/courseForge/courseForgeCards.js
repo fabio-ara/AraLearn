@@ -744,27 +744,38 @@ function summarizeMicrosequenceDidacticText(microsequence = {}) {
   ].join(" ");
 }
 
-function scoreMicrosequenceForInterventionType(microsequence = {}, didacticInterventionType = "") {
+function scoreStructuredDomainFocus(microsequence = {}, action = {}) {
+  const targetDomainRef = text(action?.domainRef);
+  if (!targetDomainRef) {
+    return 0;
+  }
+  const domainRefs = normalizeArray(microsequence?.domainRefs).map(text).filter(Boolean);
+  return domainRefs.includes(targetDomainRef) ? 100 : -100;
+}
+
+function scoreMicrosequenceForInterventionType(microsequence = {}, action = {}) {
+  const didacticInterventionType = text(action?.didacticInterventionType);
   const combined = summarizeMicrosequenceDidacticText(microsequence);
   const coverageRole = text(microsequence?.coverageRole);
   const explanationRole = hasExplanationCoverageRole(coverageRole);
   const practiceRole = isPracticeCoverageRole(coverageRole);
+  const focusScore = scoreStructuredDomainFocus(microsequence, action);
   if (didacticInterventionType === "contrast_reinforcement") {
-    return containsDidacticTerm(combined, ["contrast", "contraste", "contraexemplo", "diferenca", "diferença", "erro"]) ? 10 : 0;
+    return (containsDidacticTerm(combined, ["contrast", "contraste", "contraexemplo", "diferenca", "diferença", "erro"]) ? 10 : 0) + focusScore;
   }
   if (didacticInterventionType === "guided_practice_bridge") {
-    return practiceRole || containsDidacticTerm(combined, ["pratica", "practice", "treino", "guiad", "exercicio", "exercício"]) ? 10 : 0;
+    return (practiceRole || containsDidacticTerm(combined, ["pratica", "practice", "treino", "guiad", "exercicio", "exercício"]) ? 10 : 0) + focusScore;
   }
   if (didacticInterventionType === "prerequisite_tightening") {
-    return explanationRole && !practiceRole ? 10 : 0;
+    return (explanationRole && !practiceRole ? 10 : 0) + focusScore;
   }
   if (didacticInterventionType === "explanatory_bridge") {
-    return explanationRole && !practiceRole ? 10 : 0;
+    return (explanationRole && !practiceRole ? 10 : 0) + focusScore;
   }
   if (didacticInterventionType === "local_semantic_rewrite") {
-    return 10;
+    return 10 + focusScore;
   }
-  return 0;
+  return focusScore;
 }
 
 function explainInterventionTypeExpectation(didacticInterventionType = "") {
@@ -793,7 +804,7 @@ function selectInterventionMicrosequencesByLesson({ lessonEntry = {}, actions = 
     let bestIndex = -1;
     let bestScore = -1;
     remaining.forEach((microsequence, index) => {
-      const score = scoreMicrosequenceForInterventionType(microsequence, text(action?.didacticInterventionType));
+      const score = scoreMicrosequenceForInterventionType(microsequence, action);
       if (score > bestScore) {
         bestScore = score;
         bestIndex = index;
@@ -852,7 +863,7 @@ export function auditCourseForgeInterventionDidacticCoherence({ microsequencePla
       return;
     }
 
-    const score = scoreMicrosequenceForInterventionType(targetedMicrosequence, text(action?.didacticInterventionType));
+    const score = scoreMicrosequenceForInterventionType(targetedMicrosequence, action);
     if (score <= 0) {
       issues.push(
         {

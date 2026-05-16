@@ -27,6 +27,7 @@ import { buildMicrosequenceRepairTask } from "../src/generation/courseForge/cour
 import { applyCourseForgePatch } from "../src/generation/courseForge/courseForgeApply.js";
 import { buildCourseGraphArtifact } from "../src/generation/courseForge/courseForgeIr.js";
 import {
+  constrainCourseForgeMicrosequencePlansToInterventionPlan,
   compileCourseForgeEditorInterventionPlan,
   compileCourseForgeInterventionRequest
 } from "../src/generation/courseForge/courseForgeIntervention.js";
@@ -1227,6 +1228,106 @@ test("auditoria de intervencao aceita fechamento explicito de pre-requisito", ()
 
   assert.equal(result.ok, true);
   assert.equal(result.issues.length, 0);
+});
+
+test("auditoria de intervencao reprova ponte explicativa no domainRef errado", () => {
+  const result = auditCourseForgeInterventionDidacticCoherence({
+    interventionPlan: {
+      actions: [
+        {
+          requestedChangeId: "requested_change_1",
+          didacticInterventionType: "explanatory_bridge",
+          expectsNewMicrosequence: false,
+          existingMicrosequenceKey: "micro-1",
+          domainRef: "concept-compound",
+          target: {
+            courseKey: "course-1",
+            moduleKey: "module-1",
+            lessonKey: "lesson-1"
+          }
+        }
+      ]
+    },
+    microsequencePlans: [
+      {
+        courseKey: "course-1",
+        moduleKey: "module-1",
+        lessonKey: "lesson-1",
+        microsequences: [
+          {
+            key: "micro-1",
+            title: "Ponte para conceito errado",
+            didacticPurpose: "Explicar a base antes da aplicação.",
+            coverageRole: "explain",
+            domainRefs: ["concept-simple"],
+            tags: ["ponte"]
+          }
+        ]
+      }
+    ]
+  });
+
+  assert.equal(result.ok, false);
+  assert.ok(result.issues.some((item) => item.type === "intervention_type_mismatch"));
+});
+
+test("constrain prioriza microssequencia com domainRef aderente na intervencao local", () => {
+  const result = constrainCourseForgeMicrosequencePlansToInterventionPlan({
+    plan: {
+      planningMode: "new_only",
+      targetedLessonKeys: ["lesson-1"],
+      targetedMicrosequenceKeys: [],
+      newMicrosequenceCountByLesson: { "lesson-1": 1 },
+      actions: [
+        {
+          requestedChangeId: "requested_change_1",
+          didacticInterventionType: "explanatory_bridge",
+          expectsNewMicrosequence: true,
+          domainRef: "concept-compound",
+          target: {
+            courseKey: "course-1",
+            moduleKey: "module-1",
+            lessonKey: "lesson-1"
+          },
+          lessonTargets: [{ lessonKey: "lesson-1" }]
+        }
+      ]
+    },
+    microsequencePlans: [
+      {
+        courseKey: "course-1",
+        moduleKey: "module-1",
+        lessonKey: "lesson-1",
+        microsequences: [
+          {
+            key: "micro-a",
+            title: "Ponte genérica",
+            didacticPurpose: "Criar ponte didática.",
+            coverageRole: "explain",
+            domainRefs: ["concept-simple"],
+            tags: ["ponte"]
+          },
+          {
+            key: "micro-b",
+            title: "Ponte alvo",
+            didacticPurpose: "Criar ponte didática.",
+            coverageRole: "explain",
+            domainRefs: ["concept-compound"],
+            tags: ["ponte"]
+          }
+        ]
+      }
+    ],
+    projectDocument: {
+      contract: "aralearn.contract",
+      version: 1,
+      kind: "project",
+      courses: []
+    }
+  });
+
+  assert.equal(result[0].microsequences.length, 1);
+  assert.equal(result[0].microsequences[0].domainRefs[0], "concept-compound");
 });
 
 test("compila diretivas de reparo especificas a partir da auditoria de intervencao", () => {
