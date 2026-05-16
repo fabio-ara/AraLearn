@@ -22,8 +22,7 @@ import { compileCourseStructureToPatch, validateCourseForgePatch } from "../src/
 import { createCourseForgeArtifactsStore } from "../src/generation/courseForge/courseForgeArtifacts.js";
 import { canResumeCourseForgeRun, createCourseForgeRunState } from "../src/generation/courseForge/courseForgeRunState.js";
 import { runCourseForgeQueue } from "../src/generation/courseForge/courseForgeQueue.js";
-import { runCourseForge } from "../src/generation/courseForge/courseForgeRunner.js";
-import { buildMicrosequenceRepairTask } from "../src/generation/courseForge/courseForgeRunner.js";
+import { runCourseForge, buildDiagnosticsSummary, buildMicrosequenceRepairTask } from "../src/generation/courseForge/courseForgeRunner.js";
 import { applyCourseForgePatch } from "../src/generation/courseForge/courseForgeApply.js";
 import { buildCourseGraphArtifact } from "../src/generation/courseForge/courseForgeIr.js";
 import {
@@ -1857,6 +1856,49 @@ test("artefato de reparo pode carregar resumo auditavel de selecao do prompt", (
   const task = buildMicrosequenceRepairTask(directivesArtifact);
   assert.match(task, /Lacunas estruturais determinísticas/i);
   assert.equal(directivesArtifact.promptSelection.promptType, "microsequence_repair_task");
+});
+
+test("diagnostics summary gera warning quando a poda de prompt de intervencao fica alta", () => {
+  const diagnostics = buildDiagnosticsSummary(
+    {},
+    {
+      phases: [],
+      metrics: {},
+      interventionPromptBudget: {
+        providerTask: {
+          promptType: "intervention_provider_task",
+          budgetPolicy: "flexible_preserve_critical_actions",
+          selectedCount: 2,
+          omittedCount: 3
+        },
+        auditProviderTask: null
+      }
+    },
+    []
+  );
+
+  assert.equal(diagnostics.categories.intervention.budgetWarnings.length, 1);
+  assert.equal(diagnostics.categories.intervention.budgetWarnings[0].code, "high_prompt_budget_pressure");
+});
+
+test("diagnostics summary gera warning quando o reparo omite diretivas por budget", () => {
+  const diagnostics = buildDiagnosticsSummary(
+    {},
+    {
+      phases: [],
+      metrics: {},
+      repairPromptBudget: {
+        promptType: "microsequence_repair_task",
+        budgetPolicy: "flexible_preserve_critical_directives",
+        selectedCount: 4,
+        omittedCount: 1
+      }
+    },
+    []
+  );
+
+  assert.equal(diagnostics.categories.planning.budgetWarnings.length, 1);
+  assert.equal(diagnostics.categories.planning.budgetWarnings[0].code, "prompt_budget_truncation");
 });
 
 test("intervention_request infere relatedConceptRefs para contraste local", () => {
@@ -4185,6 +4227,7 @@ test("editor consome InterventionRequest pronto sem voltar ao subfluxo do Tutor"
   const finalReport = result.artifacts.find((artifact) => artifact.name === "final-report");
   assert.equal(finalReport.content.diagnosticsSummary.categories.intervention.promptBudget.providerTask.promptType, "intervention_provider_task");
   assert.equal(finalReport.content.diagnosticsSummary.categories.intervention.promptBudget.providerTask.omittedCount, 0);
+  assert.deepEqual(finalReport.content.diagnosticsSummary.categories.intervention.budgetWarnings, []);
   assert.ok(result.artifacts.some((artifact) => artifact.name === "intervention-plan"));
 });
 
@@ -5907,9 +5950,11 @@ test("audit_source_adherence usa domainMap explícito para fechar cobertura mín
   assert.equal(diagnostics.content.categories.planning.blockingIssues, 0);
   assert.equal(diagnostics.content.categories.adherence.blockingIssues, 0);
   assert.equal(diagnostics.content.categories.intervention.promptBudget.providerTask, null);
+  assert.deepEqual(diagnostics.content.categories.intervention.budgetWarnings, []);
   assert.equal(diagnostics.content.categories.planning.promptBudget.promptType, "microsequence_repair_task");
   assert.equal(diagnostics.content.categories.planning.promptBudget.selectedCount, 0);
   assert.equal(diagnostics.content.categories.planning.promptBudget.omittedCount, 0);
+  assert.deepEqual(diagnostics.content.categories.planning.budgetWarnings, []);
 });
 
 test("repair_microsequences chama provider quando a cobertura do domainMap nao e inferivel deterministicamente", async () => {
@@ -6123,6 +6168,7 @@ test("repair_microsequences chama provider quando a cobertura do domainMap nao e
   assert.equal(finalReport.content.diagnosticsSummary.categories.planning.repaired, true);
   assert.equal(finalReport.content.diagnosticsSummary.categories.planning.promptBudget.promptType, "microsequence_repair_task");
   assert.equal(finalReport.content.diagnosticsSummary.categories.planning.promptBudget.omittedCount, 0);
+  assert.deepEqual(finalReport.content.diagnosticsSummary.categories.planning.budgetWarnings, []);
 });
 
 test("repair_card_adherence separa grounding tardio de defeito estrutural dos cards", async () => {

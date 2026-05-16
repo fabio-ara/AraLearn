@@ -449,7 +449,45 @@ function summarizePromptBudget(budget = null) {
   };
 }
 
-function buildDiagnosticsSummary(context = {}, runState = {}, phases = []) {
+function buildPromptBudgetWarnings(promptBudget = null, { label = "" } = {}) {
+  if (!promptBudget || typeof promptBudget !== "object") {
+    return [];
+  }
+  const selectedCount = Math.max(0, Number(promptBudget?.selectedCount || 0));
+  const omittedCount = Math.max(0, Number(promptBudget?.omittedCount || 0));
+  const promptType = text(promptBudget?.promptType);
+  if (!omittedCount) {
+    return [];
+  }
+  const normalizedLabel = text(label) || promptType || "prompt_budget";
+  if (omittedCount >= 3 || (selectedCount > 0 && omittedCount >= selectedCount)) {
+    return [
+      {
+        code: "high_prompt_budget_pressure",
+        severity: "warning",
+        promptType,
+        selectedCount,
+        omittedCount,
+        message: `${normalizedLabel}: poda alta de contexto (${omittedCount} omitidos para ${selectedCount} selecionados).`
+      }
+    ];
+  }
+  if (omittedCount >= 1) {
+    return [
+      {
+        code: "prompt_budget_truncation",
+        severity: "warning",
+        promptType,
+        selectedCount,
+        omittedCount,
+        message: `${normalizedLabel}: houve poda conservadora de contexto (${omittedCount} omitidos).`
+      }
+    ];
+  }
+  return [];
+}
+
+export function buildDiagnosticsSummary(context = {}, runState = {}, phases = []) {
   const courseGraphAudit = context.courseGraphAudit || { blockingIssues: [], warnings: [] };
   const planningAudit = mergeCourseForgeAdherenceAudits(
     context.microsequenceAudit || {},
@@ -485,6 +523,9 @@ function buildDiagnosticsSummary(context = {}, runState = {}, phases = []) {
     assessment: sumWarnings(assessmentAlignmentAudit)
   };
   const phaseStatus = Object.fromEntries((runState?.phases || []).map((phase) => [phase.phaseId, phase.status]));
+  const interventionProviderBudget = summarizePromptBudget(runState?.interventionPromptBudget?.providerTask);
+  const interventionAuditBudget = summarizePromptBudget(runState?.interventionPromptBudget?.auditProviderTask);
+  const repairBudget = summarizePromptBudget(runState?.repairPromptBudget);
 
   return {
     categories: {
@@ -494,9 +535,13 @@ function buildDiagnosticsSummary(context = {}, runState = {}, phases = []) {
         repaired: phaseStatus.audit_intervention === "completed" && (!phaseStatus.compile_intervention_request || phaseStatus.compile_intervention_request === "completed"),
         latestArtifacts: ["intervention-response", "intervention-audit", "intervention-request", "intervention-request-audit", "intervention-plan"],
         promptBudget: {
-          providerTask: summarizePromptBudget(runState?.interventionPromptBudget?.providerTask),
-          auditProviderTask: summarizePromptBudget(runState?.interventionPromptBudget?.auditProviderTask)
-        }
+          providerTask: interventionProviderBudget,
+          auditProviderTask: interventionAuditBudget
+        },
+        budgetWarnings: [
+          ...buildPromptBudgetWarnings(interventionProviderBudget, { label: "intervention.providerTask" }),
+          ...buildPromptBudgetWarnings(interventionAuditBudget, { label: "intervention.auditProviderTask" })
+        ]
       },
       graph: {
         blockingIssues: blockingByCategory.graph,
@@ -511,7 +556,8 @@ function buildDiagnosticsSummary(context = {}, runState = {}, phases = []) {
         latestArtifacts: ["microsequence-audit", "microsequence-adherence-audit"].filter((name) =>
           ["microsequence-audit", "microsequence-adherence-audit"].includes(name)
         ),
-        promptBudget: summarizePromptBudget(runState?.repairPromptBudget)
+        promptBudget: repairBudget,
+        budgetWarnings: buildPromptBudgetWarnings(repairBudget, { label: "planning.repairPrompt" })
       },
       cards: {
         blockingIssues: blockingByCategory.cards,
