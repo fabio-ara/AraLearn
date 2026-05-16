@@ -1,7 +1,7 @@
 const OPERATIONS = new Set(["create", "extend", "repair", "replace", "merge", "reorder", "reinforce"]);
 const LEVELS = new Set(["project", "course", "module", "lesson", "microsequence"]);
-const GENERATION_DEPTHS = new Set(["structure_only", "full_course", "repair_only", "reinforce_only"]);
-const IMPLEMENTED_GENERATION_DEPTHS = new Set(["structure_only", "full_course", "repair_only", "reinforce_only"]);
+const GENERATION_DEPTHS = new Set(["structure_only", "full_course", "repair_only", "reinforce_only", "tutor_only"]);
+const IMPLEMENTED_GENERATION_DEPTHS = new Set(["structure_only", "full_course", "repair_only", "reinforce_only", "tutor_only"]);
 
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -125,6 +125,9 @@ function inferOperation({ requestedOperation, scope, promptText, projectDocument
   if (/(reforco|reforço|extra|mais exercicios|mais exercícios|completar lacunas)/.test(prompt)) {
     return "reinforce";
   }
+  if (targetExists && /(duvida|dúvida|nao entendi|não entendi|explique|me explique|como funciona|o que e|o que é|por que|porque)/.test(prompt)) {
+    return "reinforce";
+  }
   if (/(reorden|reorgan|mudar a ordem|ajuste a ordem)/.test(prompt)) {
     return "reorder";
   }
@@ -141,7 +144,7 @@ function inferOperation({ requestedOperation, scope, promptText, projectDocument
   return targetExists ? "extend" : "create";
 }
 
-function inferRequestedGenerationDepth({ requestedDepth, operation, promptText }) {
+function inferRequestedGenerationDepth({ requestedDepth, operation, promptText, scope = {}, projectDocument = {} }) {
   const normalizedRequested = text(requestedDepth);
   if (normalizedRequested) {
     if (!GENERATION_DEPTHS.has(normalizedRequested)) {
@@ -151,6 +154,14 @@ function inferRequestedGenerationDepth({ requestedDepth, operation, promptText }
   }
 
   const prompt = normalizeLooseText(promptText);
+  const targetExists = scopeTargetExists(projectDocument, scope);
+  if (
+    targetExists
+    && /(duvida|dúvida|nao entendi|não entendi|explique|me explique|como funciona|o que e|o que é|por que|porque)/.test(prompt)
+    && !/(gere cards|cards prontos|curso completo|so estrutura|só estrutura|crie|gere tudo)/.test(prompt)
+  ) {
+    return "tutor_only";
+  }
   if (
     /(so estrutura|só estrutura|apenas estrutura|somente estrutura|sem cards|sem atividades|nao gere conteudo|não gere conteúdo|nao gere microssequencias|não gere microssequências|so modulos|só módulos|so licoes|só lições)/.test(prompt)
   ) {
@@ -185,7 +196,10 @@ function buildInterventionPolicy({ scope = {}, generationDepth = "", promptText 
 
   let mode = "global_regeneration";
   let selectionStrategy = "full_scope";
-  if (generationDepth === "structure_only") {
+  if (generationDepth === "tutor_only" && targetExists) {
+    mode = "tutor_response_only";
+    selectionStrategy = scope.level === "microsequence" ? "explicit_scope" : reusableMicrosequenceCount > 0 ? "one_existing_per_lesson" : "scoped_context";
+  } else if (generationDepth === "structure_only") {
     mode = "structural_patch";
     selectionStrategy = "structural_scope";
   } else if (scope.level === "microsequence" && targetExists && reusableMicrosequenceCount > 0) {
@@ -207,8 +221,8 @@ function buildInterventionPolicy({ scope = {}, generationDepth = "", promptText 
     reusableMicrosequenceCount,
     prefersMinimalPatch: mode === "targeted_existing_microsequences" || mode === "targeted_single_microsequence",
     actors: {
-      lead: "editor",
-      support: supportActor,
+      lead: mode === "tutor_response_only" ? "tutor" : "editor",
+      support: mode === "tutor_response_only" ? "editor" : supportActor,
       audit: "auditor"
     }
   };
@@ -240,7 +254,9 @@ export function resolveCourseForgeIntent(input = {}) {
   const requestedGenerationDepth = inferRequestedGenerationDepth({
     requestedDepth: input.requestedGenerationDepth || input.generationDepth,
     operation,
-    promptText
+    promptText,
+    scope,
+    projectDocument: input.projectDocument
   });
   const generationDepth = resolveEffectiveGenerationDepth(requestedGenerationDepth);
   const targetExists = scopeTargetExists(input.projectDocument, scope);

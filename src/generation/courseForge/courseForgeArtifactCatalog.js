@@ -7,6 +7,16 @@ const COURSE_FORGE_ARTIFACT_DEFINITIONS = Object.freeze({
     schemaVersion: "aralearn.assessment_profile.v1",
     stage: "engine"
   },
+  "intervention-response": {
+    artifactType: "InterventionResponse",
+    schemaVersion: "aralearn.intervention_response.v1",
+    stage: "tutor"
+  },
+  "intervention-audit": {
+    artifactType: "InterventionAudit",
+    schemaVersion: "aralearn.intervention_audit.v1",
+    stage: "auditor"
+  },
   "course-graph": { artifactType: "CourseGraph", schemaVersion: "aralearn.course_graph.v1", stage: "engine" },
   "course-graph-audit": {
     artifactType: "CourseGraphAudit",

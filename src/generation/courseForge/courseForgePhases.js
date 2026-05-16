@@ -13,6 +13,15 @@ const STRUCTURE_PHASES = Object.freeze([
   "final_report"
 ]);
 
+const TUTOR_INTERVENTION_PHASES = Object.freeze([
+  "normalize_intent",
+  "index_sources",
+  "build_assessment_profile",
+  "answer_locally",
+  "audit_intervention",
+  "final_report"
+]);
+
 const REPAIR_PHASES = Object.freeze([
   "normalize_intent",
   "index_sources",
@@ -228,6 +237,9 @@ export function resolveCourseForgePhases(intent = {}) {
   const level = intent?.scope?.level || "project";
   const depth = intent?.generationDepth || "structure_only";
   const interventionMode = intent?.intervention?.mode || "";
+  if (interventionMode === "tutor_response_only" || depth === "tutor_only") {
+    return [...TUTOR_INTERVENTION_PHASES];
+  }
   if (interventionMode === "targeted_existing_microsequences") {
     return [...TARGETED_EXISTING_MICROSEQUENCE_PHASES];
   }

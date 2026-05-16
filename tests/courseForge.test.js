@@ -196,6 +196,48 @@ test("resolveCourseForgeIntent classifica intervenção local sobre microssequê
   assert.equal(result.contextSummary.reusableMicrosequenceCount, 1);
 });
 
+test("resolveCourseForgeIntent classifica dúvida local como tutor_only", () => {
+  const result = resolveCourseForgeIntent({
+    scope: {
+      level: "microsequence",
+      courseKey: "course-logica",
+      moduleKey: "module-base",
+      lessonKey: "lesson-1",
+      microsequenceKey: "micro-1"
+    },
+    promptText: "Não entendi esta microssequência. O que é proposição?",
+    projectDocument: {
+      contract: "aralearn.contract",
+      version: 1,
+      kind: "project",
+      courses: [
+        {
+          key: "course-logica",
+          title: "Lógica",
+          modules: [
+            {
+              key: "module-base",
+              title: "Base",
+              lessons: [
+                {
+                  key: "lesson-1",
+                  title: "Lição 1",
+                  microsequences: [{ key: "micro-1", title: "Explicação", coverageRole: "explain", status: "ready", included: true, cards: [] }]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  });
+
+  assert.equal(result.operation, "reinforce");
+  assert.equal(result.generationDepth, "tutor_only");
+  assert.equal(result.intervention.mode, "tutor_response_only");
+  assert.equal(result.intervention.actors.lead, "tutor");
+});
+
 test("resolveCourseForgeScope preserva escopo selecionado", () => {
   const result = resolveCourseForgeScope({
     scope: { level: "lesson", courseKey: "c1", moduleKey: "m1", lessonKey: "l1" }
@@ -324,6 +366,37 @@ test("phase resolution escolhe subfluxo estrutural e registra fases adiadas", ()
   assert.ok(resolveCourseForgePhases(targetedLessonIntent).includes("plan_microsequences"));
   assert.ok(!resolveCourseForgePhases(targetedLessonIntent).includes("build_course_graph"));
   assert.ok(!resolveCourseForgePhases(targetedLessonIntent).includes("build_lesson_governance"));
+  const tutorIntent = resolveCourseForgeIntent({
+    scope: { level: "microsequence", courseKey: "c1", moduleKey: "m1", lessonKey: "l1", microsequenceKey: "ms1" },
+    promptText: "Não entendi esta microssequência. O que é isso?",
+    projectDocument: {
+      contract: "aralearn.contract",
+      version: 1,
+      kind: "project",
+      courses: [
+        {
+          key: "c1",
+          title: "Curso",
+          modules: [
+            {
+              key: "m1",
+              title: "Módulo",
+              lessons: [
+                {
+                  key: "l1",
+                  title: "Lição",
+                  microsequences: [{ key: "ms1", title: "Micro", coverageRole: "explain", status: "ready", included: true, cards: [] }]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  });
+  assert.ok(resolveCourseForgePhases(tutorIntent).includes("answer_locally"));
+  assert.ok(resolveCourseForgePhases(tutorIntent).includes("audit_intervention"));
+  assert.ok(!resolveCourseForgePhases(tutorIntent).includes("compile_patch"));
   assert.ok(resolveCourseForgePhases(repairMicrosequenceIntent).includes("build_microsequence_contract"));
   assert.ok(!resolveCourseForgePhases(repairMicrosequenceIntent).includes("plan_architecture"));
   assert.ok(resolveCourseForgePhases(reinforceLessonIntent).includes("plan_microsequences"));
@@ -1519,6 +1592,91 @@ test("top-down em escopo de microssequência recompõe cards na microssequência
   assert.equal(buildCardsPhase.modelId, "codex-cli-local");
   assert.ok(buildContractPhase.artifactIds.some((artifactId) => artifactId.endsWith(":microsequence-contracts")));
   assert.ok(buildCardsPhase.artifactIds.some((artifactId) => artifactId.endsWith(":card-drafts")));
+});
+
+test("tutor_only responde duvida local sem gerar patch", async () => {
+  const provider = createFakeProvider({
+    script: {
+      answer_locally: [
+        {
+          responseText: "Uma proposição é um enunciado que pode ser verdadeiro ou falso.",
+          studyTrackConnection: "Depois disso, volte para a microssequência atual e use esse critério para revisar os exemplos.",
+          recommendedAction: "answer_only",
+          rationale: "A dúvida pode ser resolvida sem editar o material."
+        }
+      ]
+    }
+  });
+  const registry = createProviderRegistry({ providers: [provider] });
+  const projectDocument = {
+    contract: "aralearn.contract",
+    version: 1,
+    kind: "project",
+    courses: [
+      {
+        key: "course-logica",
+        title: "Lógica",
+        modules: [
+          {
+            key: "module-base",
+            title: "Base",
+            lessons: [
+              {
+                key: "lesson-proposicoes",
+                title: "Proposições",
+                description: "Lição.",
+                sourceGuideStructured: {
+                  lessonGoal: "Reconhecer proposições.",
+                  notationRules: "Usar `p` e `q`.",
+                  commonErrors: "Confundir pergunta com proposição."
+                },
+                presetId: "default",
+                resourceTags: ["paragraph", "multiple_choice"],
+                contentTypeTags: ["theory"],
+                learningActionTags: ["read"],
+                supportLevel: "guided",
+                microsequences: [
+                  {
+                    key: "microsequence-revisao",
+                    title: "Revisão",
+                    description: "Resumo inicial.",
+                    didacticPurpose: "Revisar conceito.",
+                    coverageRole: "explain",
+                    status: "ready",
+                    included: true,
+                    cards: [{ key: "card-1", title: "Card 1", say: "Texto antigo." }]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  };
+  const result = await runCourseForge({
+    intent: {
+      scope: {
+        level: "microsequence",
+        courseKey: "course-logica",
+        moduleKey: "module-base",
+        lessonKey: "lesson-proposicoes",
+        microsequenceKey: "microsequence-revisao"
+      },
+      promptText: "Não entendi esta microssequência. O que é uma proposição?",
+      attachments: [{ id: "src_1", name: "ementa.pdf", type: "application/pdf" }]
+    },
+    projectDocument,
+    providerRegistry: registry,
+    providerId: "fake"
+  });
+
+  assert.equal(result.runState.intent.generationDepth, "tutor_only");
+  assert.equal(result.interventionResponse.recommendedAction, "answer_only");
+  assert.equal(result.patch, null);
+  assert.deepEqual(result.projectDocument, projectDocument);
+  assert.ok(result.artifacts.some((artifact) => artifact.name === "intervention-response"));
+  assert.ok(!result.runState.phases.some((phase) => phase.phaseId === "compile_patch"));
 });
 
 test("repair_only em lição com microssequências existentes reaproveita alvo local mínimo", async () => {

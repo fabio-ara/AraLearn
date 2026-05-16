@@ -522,3 +522,48 @@ export function validateCourseForgeArtifacts({ sourceLedger = [], cards = [], le
     patchResult
   };
 }
+
+export function validateCourseForgeInterventionResponse({ response = {}, lessonContext = {} } = {}) {
+  const errors = [];
+  const warnings = [];
+  const responseText = text(response?.responseText);
+  const studyTrackConnection = text(response?.studyTrackConnection);
+  const recommendedAction = text(response?.recommendedAction) || "answer_only";
+  const allowedActions = new Set(["answer_only", "suggest_editor_patch", "needs_new_microsequence"]);
+
+  if (!responseText) {
+    errors.push("Resposta local sem responseText.");
+  }
+  if (!studyTrackConnection) {
+    errors.push("Resposta local sem studyTrackConnection.");
+  }
+  if (!allowedActions.has(recommendedAction)) {
+    errors.push(`recommendedAction inválido: ${recommendedAction}.`);
+  }
+
+  const backstageAudit = auditCourseForgeBackstageVocabulary({
+    card: {
+      text: `${responseText} ${studyTrackConnection}`
+    },
+    lessonContext
+  });
+  if (!backstageAudit.ok) {
+    errors.push(`Resposta local expõe vocabulário de bastidor: ${backstageAudit.issues.join(", ")}.`);
+  } else if (backstageAudit.requiresReview) {
+    warnings.push(`Resposta local usa termos técnicos sensíveis: ${backstageAudit.issues.join(", ")}.`);
+  }
+
+  return {
+    ok: errors.length === 0,
+    approved: errors.length === 0,
+    errors,
+    warnings,
+    response: {
+      responseText,
+      studyTrackConnection,
+      recommendedAction,
+      rationale: text(response?.rationale),
+      target: structuredClone(response?.target || {})
+    }
+  };
+}

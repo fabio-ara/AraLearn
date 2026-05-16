@@ -32,6 +32,8 @@ export const PHASE_PROFILES = Object.freeze({
 export function resolvePhaseProfile(phaseId = "") {
   if (phaseId === "index_sources") return PHASE_PROFILES.source_index;
   if (phaseId === "build_assessment_profile") return PHASE_PROFILES.source_index;
+  if (phaseId === "answer_locally") return PHASE_PROFILES.architecture_plan;
+  if (phaseId === "audit_intervention") return PHASE_PROFILES.architecture_audit;
   if (phaseId === "plan_architecture") return PHASE_PROFILES.architecture_plan;
   if (phaseId === "audit_architecture") return PHASE_PROFILES.architecture_audit;
   if (phaseId === "plan_lessons") return PHASE_PROFILES.architecture_plan;
