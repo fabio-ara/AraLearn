@@ -1050,6 +1050,40 @@ test("course graph validation avisa quando conceito comparativo perde prerequisi
   assert.ok(result.warnings.some((item) => item.type === "missing_comparison_prerequisites"));
 });
 
+test("course graph validation avisa quando claim preparatoria explicita nao vira aresta", () => {
+  const result = validateCourseForgeCourseGraph({
+    courseGraph: {
+      graphId: "graph-1",
+      concepts: [
+        { conceptId: "concept-and", label: "Conjunção", lessonKey: "lesson-1" },
+        { conceptId: "concept-compound", label: "Proposições compostas", lessonKey: "lesson-1" }
+      ],
+      objectives: [{ objectiveId: "obj-1", lessonKey: "lesson-1", description: "Entender proposições compostas." }],
+      prerequisiteEdges: [],
+      misconceptions: [],
+      assessmentTargets: [],
+      practiceVariants: []
+    },
+    lessonPlans: [
+      {
+        lessonKey: "lesson-1",
+        lessonTitle: "Conectivos",
+        sourceGuideStructured: { lessonGoal: "Entender proposições compostas." }
+      }
+    ],
+    sourceLedger: [
+      {
+        id: "src_1",
+        title: "Fonte 1",
+        spans: [{ text: "Conjunção é base para Proposições compostas." }]
+      }
+    ]
+  });
+
+  assert.equal(result.ok, true);
+  assert.ok(result.warnings.some((item) => item.type === "missing_claim_prerequisite"));
+});
+
 test("auditoria de prerequisitos bloqueia pratica antes da preparacao", () => {
   const result = auditCourseForgePrerequisiteCoverage({
     courseGraph: {

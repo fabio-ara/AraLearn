@@ -19,6 +19,116 @@ function containsComparisonSignal(value = "") {
   return /\b(compar\w*|contraste\w*|disting\w*|diferenc\w*|versus|entre)\b/iu.test(text(value));
 }
 
+function containsPrerequisiteSignal(value = "") {
+  return /\b(depende\w*\s+de|requer\w*|exige\w*|pressup[oõ]e\w*|precisa\s+de|necessita\s+de|base\s+para|serve\s+de\s+base\s+para|prepara\s+para|fundamenta\w*)\b/iu.test(text(value));
+}
+
+function tokenizeForMatch(value = "") {
+  return [...new Set(
+    normalizedText(value)
+      .split(/[^a-z0-9_]+/u)
+      .map((item) => item.trim())
+      .filter((item) => item.length >= 3)
+      .filter((item) => !new Set(["para", "com", "uma", "das", "dos", "que", "por", "ser", "sao"]).has(item))
+  )];
+}
+
+function findMatchingSourceClaims(queryValues = [], sourceClaims = [], { minimumOverlap = null } = {}) {
+  const queryTokens = [...new Set(normalizeArray(queryValues).flatMap((value) => tokenizeForMatch(value)).filter(Boolean))];
+  if (queryTokens.length < 2) {
+    return [];
+  }
+  const overlapThreshold = Number.isInteger(minimumOverlap) ? minimumOverlap : Math.min(2, queryTokens.length);
+  return normalizeArray(sourceClaims)
+    .map((claim) => ({
+      ...claim,
+      overlap: normalizeArray(claim?.tokens).filter((token) => queryTokens.includes(token)).length
+    }))
+    .filter((claim) => claim.overlap >= overlapThreshold)
+    .sort((left, right) => right.overlap - left.overlap || text(left?.claimId).localeCompare(text(right?.claimId)))
+    .slice(0, 4);
+}
+
+function findMentionedConceptMentionsInText(value = "", lessonConcepts = []) {
+  const normalizedValue = normalizedText(value);
+  return normalizeArray(lessonConcepts)
+    .map((concept) => {
+      const normalizedLabel = normalizedText(concept?.label);
+      const index = normalizedLabel ? normalizedValue.indexOf(normalizedLabel) : -1;
+      if (index < 0) {
+        return null;
+      }
+      return {
+        concept,
+        index,
+        end: index + normalizedLabel.length
+      };
+    })
+    .filter(Boolean)
+    .sort((left, right) => left.index - right.index);
+}
+
+function inferClaimPrerequisitePairs({ lessonPlan = {}, lessonConcepts = [], sourceClaims = [] } = {}) {
+  const evidenceClaims = findMatchingSourceClaims(
+    [
+      lessonPlan?.lessonTitle,
+      lessonPlan?.lessonDescription,
+      lessonPlan?.sourceGuideStructured?.lessonGoal,
+      lessonPlan?.sourceGuideStructured?.commonErrors
+    ],
+    sourceClaims,
+    { minimumOverlap: 1 }
+  ).filter((claim) => containsPrerequisiteSignal(claim?.text));
+
+  const targetRequiresSourcePattern = /\b(depende\w*\s+de|requer\w*|exige\w*|pressup[oõ]e\w*|precisa\s+de|necessita\s+de)\b/iu;
+  const sourcePreparesTargetPattern = /\b(base\s+para|serve\s+de\s+base\s+para|prepara\s+para|fundamenta\w*)\b/iu;
+  const pairs = [];
+  const seen = new Set();
+
+  evidenceClaims.forEach((claim) => {
+    const evidence = text(claim?.text);
+    const mentions = findMentionedConceptMentionsInText(evidence, lessonConcepts);
+    if (mentions.length < 2) {
+      return;
+    }
+    [
+      { pattern: targetRequiresSourcePattern, direction: "target_requires_source" },
+      { pattern: sourcePreparesTargetPattern, direction: "source_prepares_target" }
+    ].forEach(({ pattern, direction }) => {
+      const match = pattern.exec(evidence);
+      if (!match || typeof match.index !== "number") {
+        return;
+      }
+      const before = [...mentions].reverse().find((item) => item.end <= match.index);
+      const after = mentions.find((item) => item.index >= match.index + match[0].length);
+      if (!before || !after) {
+        return;
+      }
+      const from = direction === "target_requires_source"
+        ? text(after?.concept?.conceptId)
+        : text(before?.concept?.conceptId);
+      const to = direction === "target_requires_source"
+        ? text(before?.concept?.conceptId)
+        : text(after?.concept?.conceptId);
+      if (!from || !to || from === to) {
+        return;
+      }
+      const key = `${from}=>${to}`;
+      if (seen.has(key)) {
+        return;
+      }
+      seen.add(key);
+      pairs.push({
+        from,
+        to,
+        evidence
+      });
+    });
+  });
+
+  return pairs;
+}
+
 const BACKSTAGE_TERMS = ["pipeline", "json", "schema", "prompt", "sourceguide", "domainmap", "llm", "auditoria"];
 
 function hasBackstageVocabulary(value) {
@@ -601,6 +711,29 @@ export function validateCourseForgeCourseGraph({
           );
         }
       });
+    inferClaimPrerequisitePairs({
+      lessonPlan,
+      lessonConcepts,
+      sourceClaims
+    }).forEach((pair) => {
+      const hasEdge = prerequisiteEdges.some((edge) =>
+        text(edge?.from) === pair.from
+        && text(edge?.to) === pair.to
+      );
+      if (!hasEdge) {
+        const sourceConcept = lessonConcepts.find((concept) => text(concept?.conceptId) === pair.from);
+        const targetConcept = lessonConcepts.find((concept) => text(concept?.conceptId) === pair.to);
+        warnings.push(
+          makeCourseGraphIssue(
+            lessonTarget,
+            "missing_claim_prerequisite",
+            `A fonte da lição ${lessonKey} sugere que ${text(sourceConcept?.label) || pair.from} prepara ${text(targetConcept?.label) || pair.to}, mas o CourseGraph não materializou essa aresta.`,
+            "Criar aresta de pré-requisito ancorada por claim quando a linguagem preparatória da fonte for explícita.",
+            "warning"
+          )
+        );
+      }
+    });
   });
 
   if (normalizeArray(assessmentProfile?.questionTypes).length && !assessmentTargets.length) {
