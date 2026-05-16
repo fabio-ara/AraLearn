@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import { resolveCourseForgeIntent } from "../src/generation/courseForge/courseForgeIntent.js";
 import { resolveCourseForgeScope } from "../src/generation/courseForge/courseForgeScope.js";
 import { resolveCourseForgePhases, resolveDeferredCourseForgePhases } from "../src/generation/courseForge/courseForgePhases.js";
+import { buildLessonDomainMap } from "../src/generation/domain/lessonDomainModel.js";
 import { createProviderRegistry } from "../src/generation/providers/providerRegistry.js";
 import { PHASE_PROFILES, resolvePhaseProfile } from "../src/generation/modelProfiles/phaseProfiles.js";
 import { createFakeProvider } from "../src/generation/providers/fakeProvider.js";
@@ -781,6 +782,21 @@ test("course graph enriquece conceitos e objetivos com sourceClaimRefs inferidas
   });
   assert.deepEqual(courseGraph.concepts[0].sourceClaimRefs, ["src_1:span:1:claim:1"]);
   assert.deepEqual(courseGraph.objectives[0].sourceClaimRefs, ["src_1:span:1:claim:2"]);
+});
+
+test("lesson domain map cria practiceVariants de fallback quando a lição só tem governança mínima", () => {
+  const domainMap = buildLessonDomainMap({
+    sourceGuideStructured: {
+      lessonGoal: "Distinguir conjunção e disjunção.",
+      notationRules: "Usar `∧` e `∨`.",
+      commonErrors: "Confundir conjunção com disjunção."
+    },
+    microsequences: []
+  });
+  assert.ok(domainMap.items.length >= 3);
+  assert.ok(domainMap.practiceVariants.some((item) => item.variantKind === "explanation" && item.domainItemRef === "lesson-goal"));
+  assert.ok(domainMap.practiceVariants.some((item) => item.variantKind === "fluency" && item.domainItemRef === "notation-1"));
+  assert.ok(domainMap.practiceVariants.some((item) => item.variantKind === "common_error" && item.domainItemRef === "error-1"));
 });
 
 test("auditoria de prerequisitos bloqueia pratica antes da preparacao", () => {

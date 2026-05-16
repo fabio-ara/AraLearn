@@ -191,6 +191,63 @@ function buildFallbackDomainItems(sourceGuideStructured = {}) {
   return items.filter(Boolean);
 }
 
+function buildFallbackPracticeVariants(items = []) {
+  return items
+    .map((item, index) => {
+      const label = text(item?.label);
+      const idBase = text(item?.id) || buildFallbackId("domain", label, index);
+      if (!label) {
+        return null;
+      }
+      if (text(item?.kind) === "notation") {
+        return normalizePracticeVariant({
+          id: `${idBase}-fluency`,
+          domainItemRef: text(item?.id),
+          variantKind: "fluency",
+          purpose: `Ler e usar ${label}.`,
+          representation: text(item?.representations?.[0]) || "simbólica",
+          expectedStudentAction: "reconhecer e interpretar a notação"
+        });
+      }
+      if (text(item?.kind) === "error_diagnosis") {
+        return normalizePracticeVariant({
+          id: `${idBase}-error`,
+          domainItemRef: text(item?.id),
+          variantKind: "common_error",
+          purpose: `Identificar e corrigir ${label}.`,
+          expectedStudentAction: "diagnosticar e corrigir o erro",
+          commonErrorTarget: text(item?.commonErrors?.[0] || label)
+        });
+      }
+      if (text(item?.kind) === "comparison") {
+        return normalizePracticeVariant({
+          id: `${idBase}-compare`,
+          domainItemRef: text(item?.id),
+          variantKind: "discrimination",
+          purpose: `Distinguir ${label}.`,
+          expectedStudentAction: "comparar e discriminar casos próximos"
+        });
+      }
+      if (["procedure", "calculation", "tool_use"].includes(text(item?.kind))) {
+        return normalizePracticeVariant({
+          id: `${idBase}-apply`,
+          domainItemRef: text(item?.id),
+          variantKind: "near_transfer",
+          purpose: `Aplicar ${label}.`,
+          expectedStudentAction: "executar o procedimento em caso próximo"
+        });
+      }
+      return normalizePracticeVariant({
+        id: `${idBase}-explain`,
+        domainItemRef: text(item?.id),
+        variantKind: "explanation",
+        purpose: `Explicar ou reconhecer ${label}.`,
+        expectedStudentAction: "explicar o conceito em palavras próprias"
+      });
+    })
+    .filter(Boolean);
+}
+
 function buildDomainItemCoverageIndex(microsequences = [], practiceVariants = []) {
   const variantById = new Map(practiceVariants.map((variant) => [variant.id, variant]));
   const index = new Map();
@@ -317,9 +374,11 @@ export function normalizeLessonDomainMap(value = {}, { lessonMicrosequences = []
   const fallbackItems = explicitItems.length ? [] : buildFallbackDomainItems(sourceGuideStructured);
   const items = [...explicitItems, ...fallbackItems];
   const itemIds = new Set(items.map((item) => item.id));
-  const practiceVariants = (Array.isArray(value?.practiceVariants) ? value.practiceVariants : [])
+  const explicitPracticeVariants = (Array.isArray(value?.practiceVariants) ? value.practiceVariants : [])
     .map(normalizePracticeVariant)
     .filter((item) => item && itemIds.has(item.domainItemRef));
+  const fallbackPracticeVariants = explicitPracticeVariants.length ? [] : buildFallbackPracticeVariants(items);
+  const practiceVariants = [...explicitPracticeVariants, ...fallbackPracticeVariants];
   const coverage = summarizeLessonDomainCoverage(items, practiceVariants, lessonMicrosequences);
 
   return {
