@@ -1,6 +1,6 @@
 import { auditCourseForgeBackstageVocabulary } from "./courseForgeBackstageAudit.js";
 import { validateCourseForgePatch } from "./courseForgePatch.js";
-import { listCourseForgeSources } from "./courseForgeSourceLedger.js";
+import { buildCourseForgeSourceClaimMap, listCourseForgeSourceClaims, listCourseForgeSources } from "./courseForgeSourceLedger.js";
 import { validateCourseForgeCardSourceRefs } from "./courseForgeSourceRefs.js";
 import { validateCourseForgeSourceLedger } from "./courseForgeSourceLedger.js";
 
@@ -13,6 +13,10 @@ function normalizedText(value) {
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase();
+}
+
+function containsComparisonSignal(value = "") {
+  return /\b(compar\w*|contraste\w*|disting\w*|diferenc\w*|versus|entre)\b/iu.test(text(value));
 }
 
 const BACKSTAGE_TERMS = ["pipeline", "json", "schema", "prompt", "sourceguide", "domainmap", "llm", "auditoria"];
@@ -273,6 +277,8 @@ export function validateCourseForgeCourseGraph({
   const practiceVariants = normalizeArray(graph.practiceVariants);
   const lessonKeys = new Set(normalizeArray(lessonPlans).map((item) => text(item?.lessonKey)).filter(Boolean));
   const conceptIds = new Set();
+  const sourceClaims = listCourseForgeSourceClaims(sourceLedger);
+  const sourceClaimMap = buildCourseForgeSourceClaimMap(sourceLedger);
 
   if (!text(graph.graphId)) {
     blockingIssues.push(
@@ -321,6 +327,19 @@ export function validateCourseForgeCourseGraph({
         )
       );
     }
+    const sourceClaimRefs = normalizeArray(concept?.sourceClaimRefs).map(text).filter(Boolean);
+    sourceClaimRefs.forEach((claimRef) => {
+      if (!sourceClaimMap.has(claimRef)) {
+        blockingIssues.push(
+          makeCourseGraphIssue(
+            conceptTarget,
+            "invalid_claim_ref",
+            `Conceito ${conceptId} aponta para sourceClaimRef inexistente: ${claimRef}.`,
+            "Usar apenas claims presentes no SourceLedger."
+          )
+        );
+      }
+    });
   });
 
   const objectiveLessonKeys = new Set();
@@ -350,6 +369,62 @@ export function validateCourseForgeCourseGraph({
         );
       }
     }
+    normalizeArray(objective?.sourceClaimRefs).map(text).filter(Boolean).forEach((claimRef) => {
+      if (!sourceClaimMap.has(claimRef)) {
+        blockingIssues.push(
+          makeCourseGraphIssue(
+            objectiveTarget,
+            "invalid_claim_ref",
+            `Objetivo ${text(objective?.objectiveId)} aponta para sourceClaimRef inexistente: ${claimRef}.`,
+            "Usar apenas claims presentes no SourceLedger."
+          )
+        );
+      }
+    });
+  });
+
+  assessmentTargets.forEach((target, index) => {
+    const assessmentTarget = `courseGraph.assessmentTargets[${index}]`;
+    if (!text(target?.targetId)) {
+      blockingIssues.push(
+        makeCourseGraphIssue(assessmentTarget, "missing_assessment_target_id", "AssessmentTarget sem id.", "Gerar id estável.")
+      );
+    }
+    const conceptRef = text(target?.conceptRef);
+    if (conceptRef && !conceptIds.has(conceptRef)) {
+      blockingIssues.push(
+        makeCourseGraphIssue(
+          assessmentTarget,
+          "dangling_assessment_target",
+          `AssessmentTarget ${text(target?.targetId)} aponta para conceptRef inexistente: ${conceptRef}.`,
+          "Apontar o alvo avaliativo para um conceito existente."
+        )
+      );
+    }
+    normalizeArray(target?.relatedConceptRefs).map(text).filter(Boolean).forEach((ref) => {
+      if (!conceptIds.has(ref)) {
+        blockingIssues.push(
+          makeCourseGraphIssue(
+            assessmentTarget,
+            "dangling_assessment_target",
+            `AssessmentTarget ${text(target?.targetId)} referencia conceito inexistente em relatedConceptRefs: ${ref}.`,
+            "Usar apenas conceitos presentes no CourseGraph."
+          )
+        );
+      }
+    });
+    normalizeArray(target?.sourceClaimRefs).map(text).filter(Boolean).forEach((claimRef) => {
+      if (!sourceClaimMap.has(claimRef)) {
+        blockingIssues.push(
+          makeCourseGraphIssue(
+            assessmentTarget,
+            "invalid_claim_ref",
+            `AssessmentTarget ${text(target?.targetId)} aponta para sourceClaimRef inexistente: ${claimRef}.`,
+            "Usar apenas claims presentes no SourceLedger."
+          )
+        );
+      }
+    });
   });
 
   prerequisiteEdges.forEach((edge, index) => {
@@ -400,6 +475,14 @@ export function validateCourseForgeCourseGraph({
       return;
     }
     const lessonTarget = `lesson:${lessonKey}`;
+    const lessonConcepts = concepts.filter((concept) => text(concept?.lessonKey) === lessonKey);
+    const lessonAssessmentTargets = assessmentTargets.filter((target) => text(target?.lessonKey) === lessonKey);
+    const lessonClaimCount = sourceClaims.filter((claim) =>
+      [text(lessonPlan?.lessonTitle), text(lessonPlan?.lessonDescription), text(lessonPlan?.sourceGuideStructured?.lessonGoal)]
+        .map(normalizedText)
+        .filter(Boolean)
+        .some((snippet) => normalizedText(claim?.text).includes(snippet) || snippet.includes(normalizedText(claim?.text)))
+    ).length;
     if (!concepts.some((concept) => text(concept?.lessonKey) === lessonKey)) {
       blockingIssues.push(
         makeCourseGraphIssue(
@@ -410,6 +493,17 @@ export function validateCourseForgeCourseGraph({
         )
       );
     }
+    if (lessonClaimCount > 0 && !lessonConcepts.some((concept) => normalizeArray(concept?.sourceClaimRefs).length > 0)) {
+      warnings.push(
+        makeCourseGraphIssue(
+          lessonTarget,
+          "missing_claim_grounding",
+          `CourseGraph sem conceitos ancorados por claim na lição ${lessonKey}, apesar de haver claims relevantes na fonte.`,
+          "Preferir sourceClaimRefs no grafo quando o SourceLedger já fornece grounding por claim.",
+          "warning"
+        )
+      );
+    }
     if (!objectiveLessonKeys.has(lessonKey)) {
       warnings.push(
         makeCourseGraphIssue(
@@ -417,6 +511,21 @@ export function validateCourseForgeCourseGraph({
           "missing_lesson_objective",
           `CourseGraph sem objetivo explícito para a lição ${lessonKey}.`,
           "Derivar objetivo a partir de sourceGuideStructured.lessonGoal.",
+          "warning"
+        )
+      );
+    }
+    if (containsComparisonSignal(lessonPlan?.sourceGuideStructured?.lessonGoal) && !lessonAssessmentTargets.some((target) => {
+      const targetKind = text(target?.targetKind).toLowerCase();
+      const description = text(target?.description).toLowerCase();
+      return targetKind === "comparison" || containsComparisonSignal(description);
+    })) {
+      warnings.push(
+        makeCourseGraphIssue(
+          lessonTarget,
+          "missing_comparison_target",
+          `A lição ${lessonKey} pede comparação, mas o CourseGraph não materializou alvo avaliativo explícito para isso.`,
+          "Gerar assessmentTarget de comparação ancorado nos conceitos contrastados.",
           "warning"
         )
       );

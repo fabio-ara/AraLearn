@@ -32,19 +32,160 @@ function tokenizeForMatch(value = "") {
   )];
 }
 
-function findMatchingSourceClaims(queryValues = [], sourceClaims = []) {
+function slugify(value = "") {
+  return normalizeForMatch(value)
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .replace(/-{2,}/g, "-");
+}
+
+function findMatchingSourceClaims(queryValues = [], sourceClaims = [], { minimumOverlap = null } = {}) {
   const queryTokens = unique(normalizeArray(queryValues).flatMap((value) => tokenizeForMatch(value)));
   if (queryTokens.length < 2) {
     return [];
   }
+  const overlapThreshold = Number.isInteger(minimumOverlap) ? minimumOverlap : Math.min(2, queryTokens.length);
   return normalizeArray(sourceClaims)
     .map((claim) => ({
       ...claim,
       overlap: normalizeArray(claim?.tokens).filter((token) => queryTokens.includes(token)).length
     }))
-    .filter((claim) => claim.overlap >= Math.min(2, queryTokens.length))
+    .filter((claim) => claim.overlap >= overlapThreshold)
     .sort((left, right) => right.overlap - left.overlap || text(left?.claimId).localeCompare(text(right?.claimId)))
     .slice(0, 4);
+}
+
+function extractConceptLabelFromClaim(claimText = "") {
+  const normalized = text(claimText)
+    .replace(/^[AaOo]\s+/u, "")
+    .replace(/^[Aa]s\s+/u, "")
+    .replace(/^[Oo]s\s+/u, "");
+  const parts = normalized
+    .split(/\b(e|sao|são|é|exige|aceita|permite|representa|usa|define|indica|compara)\b/iu)
+    .map((item) => text(item))
+    .filter(Boolean);
+  const candidate = text(parts[0] || normalized)
+    .replace(/[.:,;!?]+$/u, "")
+    .trim();
+  if (candidate.length < 4 || candidate.length > 80) {
+    return "";
+  }
+  return candidate.charAt(0).toUpperCase() + candidate.slice(1);
+}
+
+function inferConceptKindFromLabel(label = "") {
+  if (/[`∧∨¬→↔=+\-*/]/u.test(text(label))) {
+    return "notation";
+  }
+  if (/\b(diferenca|diferença|compar|contraste|versus)\b/iu.test(text(label))) {
+    return "comparison";
+  }
+  return "concept";
+}
+
+function buildClaimDrivenConcepts({ lessonKey = "", lessonPlan = {}, sourceClaims = [], existingLabels = new Set(), usedConceptIds = new Set() } = {}) {
+  const lessonQuery = [
+    lessonPlan?.lessonTitle,
+    lessonPlan?.lessonDescription,
+    lessonPlan?.sourceGuideStructured?.lessonGoal,
+    lessonPlan?.sourceGuideStructured?.notationRules,
+    lessonPlan?.sourceGuideStructured?.commonErrors
+  ];
+  const matchedClaims = findMatchingSourceClaims(lessonQuery, sourceClaims, { minimumOverlap: 1 });
+  return matchedClaims
+    .map((claim, index) => {
+      const label = extractConceptLabelFromClaim(claim?.text);
+      const normalizedLabel = normalizeForMatch(label);
+      if (!label || existingLabels.has(normalizedLabel)) {
+        return null;
+      }
+      existingLabels.add(normalizedLabel);
+      return {
+        conceptId: ensureUniqueGraphId(`claim-${slugify(label) || index + 1}`, lessonKey, usedConceptIds),
+        label,
+        kind: inferConceptKindFromLabel(label),
+        priority: "support",
+        sourceRefs: unique([claim?.sourceId]),
+        sourceClaimRefs: unique([claim?.claimId]),
+        expectedEvidence: unique([claim?.text]),
+        representations: [],
+        assessmentFormats: [],
+        lessonKey,
+        inferredFrom: "source_claim"
+      };
+    })
+    .filter(Boolean)
+    .slice(0, 4);
+}
+
+function containsComparisonSignal(value = "") {
+  return /\b(compar\w*|contraste\w*|disting\w*|diferenc\w*|versus|entre)\b/iu.test(text(value));
+}
+
+function findMentionedConceptsInText(value = "", lessonConcepts = []) {
+  const normalizedValue = normalizeForMatch(value);
+  const valueTokens = tokenizeForMatch(value);
+  return normalizeArray(lessonConcepts)
+    .filter((concept) => {
+      const normalizedLabel = normalizeForMatch(concept?.label);
+      if (!normalizedLabel) {
+        return false;
+      }
+      if (normalizedValue.includes(normalizedLabel)) {
+        return true;
+      }
+      const labelTokens = tokenizeForMatch(concept?.label);
+      return labelTokens.length > 0 && labelTokens.every((token) => valueTokens.includes(token));
+    })
+    .sort((left, right) => normalizedValue.indexOf(normalizeForMatch(left?.label)) - normalizedValue.indexOf(normalizeForMatch(right?.label)));
+}
+
+function buildComparisonSignals({ lessonPlan = {}, sourceClaims = [], lessonConcepts = [] } = {}) {
+  const evidenceCandidates = [
+    lessonPlan?.sourceGuideStructured?.lessonGoal,
+    lessonPlan?.lessonDescription,
+    ...findMatchingSourceClaims(
+      [
+        lessonPlan?.lessonTitle,
+        lessonPlan?.lessonDescription,
+        lessonPlan?.sourceGuideStructured?.lessonGoal
+      ],
+      sourceClaims,
+      { minimumOverlap: 1 }
+    ).map((claim) => claim?.text)
+  ]
+    .map(text)
+    .filter(Boolean)
+    .filter((value) => containsComparisonSignal(value));
+
+  const comparisons = [];
+  const seenPairs = new Set();
+  evidenceCandidates.forEach((evidence) => {
+    const mentionedConcepts = findMentionedConceptsInText(evidence, lessonConcepts);
+    for (let index = 0; index < mentionedConcepts.length - 1; index += 1) {
+      const left = mentionedConcepts[index];
+      const right = mentionedConcepts[index + 1];
+      const leftId = text(left?.conceptId);
+      const rightId = text(right?.conceptId);
+      if (!leftId || !rightId || leftId === rightId) {
+        continue;
+      }
+      const pairKey = [leftId, rightId].sort().join("::");
+      if (seenPairs.has(pairKey)) {
+        continue;
+      }
+      seenPairs.add(pairKey);
+      const matchedClaims = findMatchingSourceClaims([evidence, left?.label, right?.label], sourceClaims, { minimumOverlap: 1 });
+      comparisons.push({
+        left,
+        right,
+        evidence,
+        sourceRefs: unique(matchedClaims.map((claim) => claim.sourceId)),
+        sourceClaimRefs: unique(matchedClaims.map((claim) => claim.claimId))
+      });
+    }
+  });
+  return comparisons;
 }
 
 export function buildCourseIntentArtifact(intent = {}) {
@@ -344,10 +485,12 @@ export function buildCourseGraphArtifact({ architectureDraft = {}, lessonPlans =
       sourceGuideStructured: lessonPlan?.sourceGuideStructured || {}
     });
     const conceptIdByBaseRef = new Map();
+    const lessonConceptLabels = new Set();
     normalizeArray(domainMap.items).forEach((item, index) => {
       const baseConceptId = text(item?.id) || `${lessonKey}:concept:${index + 1}`;
       const conceptId = ensureUniqueGraphId(baseConceptId, lessonKey, usedConceptIds);
       conceptIdByBaseRef.set(baseConceptId, conceptId);
+      lessonConceptLabels.add(normalizeForMatch(item?.label));
       const matchedClaims = findMatchingSourceClaims(
         [item?.label, ...(normalizeArray(item?.expectedEvidence)), ...(normalizeArray(item?.commonErrors))],
         sourceClaims
@@ -389,6 +532,63 @@ export function buildCourseGraphArtifact({ architectureDraft = {}, lessonPlans =
           description: text(assessmentFormat)
         });
       });
+    });
+    buildClaimDrivenConcepts({
+      lessonKey,
+      lessonPlan,
+      sourceClaims,
+      existingLabels: lessonConceptLabels,
+      usedConceptIds
+    }).forEach((concept) => {
+      concepts.push(concept);
+    });
+    const lessonConcepts = concepts.filter((concept) => text(concept?.lessonKey) === lessonKey);
+    buildComparisonSignals({
+      lessonPlan,
+      sourceClaims,
+      lessonConcepts
+    }).forEach((comparison, index) => {
+      const leftLabel = text(comparison?.left?.label);
+      const rightLabel = text(comparison?.right?.label);
+      const comparisonLabel = `Diferença entre ${leftLabel} e ${rightLabel}`;
+      const normalizedComparisonLabel = normalizeForMatch(comparisonLabel);
+      const existingComparisonConcept = lessonConcepts.find((concept) =>
+        text(concept?.kind) === "comparison" && normalizeForMatch(concept?.label) === normalizedComparisonLabel
+      );
+      let comparisonConceptId = text(existingComparisonConcept?.conceptId);
+      if (!comparisonConceptId) {
+        const comparisonConcept = {
+          conceptId: ensureUniqueGraphId(`comparison-${slugify(leftLabel)}-${slugify(rightLabel) || index + 1}`, lessonKey, usedConceptIds),
+          label: comparisonLabel,
+          kind: "comparison",
+          priority: "support",
+          sourceRefs: unique(comparison?.sourceRefs),
+          sourceClaimRefs: unique(comparison?.sourceClaimRefs),
+          expectedEvidence: unique([comparison?.evidence]),
+          representations: [],
+          assessmentFormats: ["comparison"],
+          lessonKey,
+          relatedConceptRefs: unique([comparison?.left?.conceptId, comparison?.right?.conceptId]),
+          inferredFrom: "comparison_goal"
+        };
+        concepts.push(comparisonConcept);
+        lessonConcepts.push(comparisonConcept);
+        lessonConceptLabels.add(normalizedComparisonLabel);
+        comparisonConceptId = comparisonConcept.conceptId;
+      }
+      const comparisonTargetId = `${lessonKey}:assessment:comparison:${index + 1}`;
+      if (!assessmentTargets.some((target) => text(target?.targetId) === comparisonTargetId)) {
+        assessmentTargets.push({
+          targetId: comparisonTargetId,
+          lessonKey,
+          conceptRef: comparisonConceptId,
+          targetKind: "comparison",
+          relatedConceptRefs: unique([comparison?.left?.conceptId, comparison?.right?.conceptId]),
+          sourceClaimRefs: unique(comparison?.sourceClaimRefs),
+          description: text(comparison?.evidence) || `Comparar ${leftLabel} e ${rightLabel}.`,
+          inferredFrom: "comparison_goal"
+        });
+      }
     });
     normalizeArray(domainMap.practiceVariants).forEach((item, index) => {
       const baseDomainRef = text(item?.domainItemRef);
