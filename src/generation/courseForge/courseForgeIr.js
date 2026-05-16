@@ -1,3 +1,4 @@
+import { normalizeLessonDomainMap } from "../domain/lessonDomainModel.js";
 import { listCourseForgeSources } from "./courseForgeSourceLedger.js";
 
 function text(value) {
@@ -209,6 +210,29 @@ function buildObjectiveId(lessonKey = "", index = 0) {
   return `${lessonKey || "lesson"}:objective:${index + 1}`;
 }
 
+function ensureUniqueGraphId(baseId = "", lessonKey = "", usedIds = new Set()) {
+  const normalizedBaseId = text(baseId);
+  if (!normalizedBaseId) {
+    return "";
+  }
+  if (!usedIds.has(normalizedBaseId)) {
+    usedIds.add(normalizedBaseId);
+    return normalizedBaseId;
+  }
+  const lessonScopedId = `${lessonKey || "lesson"}:${normalizedBaseId}`;
+  if (!usedIds.has(lessonScopedId)) {
+    usedIds.add(lessonScopedId);
+    return lessonScopedId;
+  }
+  let suffix = 2;
+  while (usedIds.has(`${lessonScopedId}:${suffix}`)) {
+    suffix += 1;
+  }
+  const resolvedId = `${lessonScopedId}:${suffix}`;
+  usedIds.add(resolvedId);
+  return resolvedId;
+}
+
 export function buildCourseGraphArtifact({ architectureDraft = {}, lessonPlans = [], microsequencePlans = [] } = {}) {
   const concepts = [];
   const objectives = [];
@@ -218,26 +242,68 @@ export function buildCourseGraphArtifact({ architectureDraft = {}, lessonPlans =
   const practiceVariants = [];
 
   const lessonByKey = new Map(normalizeArray(lessonPlans).map((item) => [text(item?.lessonKey), item]));
+  const usedConceptIds = new Set();
+  const usedPracticeVariantIds = new Set();
 
   normalizeArray(lessonPlans).forEach((lessonPlan) => {
     const lessonKey = text(lessonPlan?.lessonKey);
-    const domainMap = lessonPlan?.domainMap && typeof lessonPlan.domainMap === "object" ? lessonPlan.domainMap : {};
+    const domainMap = normalizeLessonDomainMap(lessonPlan?.domainMap || {}, {
+      lessonMicrosequences: [],
+      sourceGuideStructured: lessonPlan?.sourceGuideStructured || {}
+    });
+    const conceptIdByBaseRef = new Map();
     normalizeArray(domainMap.items).forEach((item, index) => {
-      const conceptId = text(item?.id) || `${lessonKey}:concept:${index + 1}`;
+      const baseConceptId = text(item?.id) || `${lessonKey}:concept:${index + 1}`;
+      const conceptId = ensureUniqueGraphId(baseConceptId, lessonKey, usedConceptIds);
+      conceptIdByBaseRef.set(baseConceptId, conceptId);
       concepts.push({
         conceptId,
-        label: text(item?.label),
+        label: text(item?.label) || conceptId,
         kind: text(item?.kind) || "concept",
         priority: text(item?.priority) || "support",
+        sourceRefs: unique(item?.sourceRefs),
+        expectedEvidence: unique(item?.expectedEvidence),
+        representations: unique(item?.representations),
+        assessmentFormats: unique(item?.assessmentFormats),
         lessonKey
+      });
+      normalizeArray(item?.prerequisites).forEach((prerequisiteId) => {
+        const prerequisiteRef = text(prerequisiteId);
+        prerequisiteEdges.push({
+          edgeId: `${conceptIdByBaseRef.get(prerequisiteRef) || prerequisiteRef}=>${conceptId}`,
+          from: conceptIdByBaseRef.get(prerequisiteRef) || prerequisiteRef,
+          to: conceptId,
+          lessonKey
+        });
+      });
+      normalizeArray(item?.commonErrors).forEach((commonError, errorIndex) => {
+        misconceptions.push({
+          misconceptionId: `${conceptId}:misconception:${errorIndex + 1}`,
+          lessonKey,
+          conceptRef: conceptId,
+          description: text(commonError)
+        });
+      });
+      normalizeArray(item?.assessmentFormats).forEach((assessmentFormat, formatIndex) => {
+        assessmentTargets.push({
+          targetId: `${conceptId}:assessment:${formatIndex + 1}`,
+          lessonKey,
+          conceptRef: conceptId,
+          description: text(assessmentFormat)
+        });
       });
     });
     normalizeArray(domainMap.practiceVariants).forEach((item, index) => {
+      const baseDomainRef = text(item?.domainItemRef);
       practiceVariants.push({
-        practiceVariantId: text(item?.id) || `${lessonKey}:variant:${index + 1}`,
-        domainItemRef: text(item?.domainItemRef),
+        practiceVariantId: ensureUniqueGraphId(text(item?.id) || `${lessonKey}:variant:${index + 1}`, lessonKey, usedPracticeVariantIds),
+        domainItemRef: conceptIdByBaseRef.get(baseDomainRef) || baseDomainRef,
         variantKind: text(item?.variantKind) || "practice",
         purpose: text(item?.purpose),
+        difficulty: text(item?.difficulty),
+        representation: text(item?.representation),
+        expectedStudentAction: text(item?.expectedStudentAction),
+        commonErrorTarget: text(item?.commonErrorTarget),
         lessonKey
       });
     });
@@ -265,27 +331,29 @@ export function buildCourseGraphArtifact({ architectureDraft = {}, lessonPlans =
 
   normalizeArray(microsequencePlans).forEach((lessonPlan) => {
     const lessonKey = text(lessonPlan?.lessonKey);
+    if (concepts.some((item) => item.lessonKey === lessonKey)) {
+      return;
+    }
+    const lessonMeta = lessonByKey.get(lessonKey) || {};
     normalizeArray(lessonPlan?.microsequences).forEach((microsequence) => {
-      normalizeArray(microsequence?.prerequisiteRefs).forEach((ref) => {
-        prerequisiteEdges.push({
-          from: text(ref),
-          to: text(microsequence?.key),
-          lessonKey
+      normalizeArray(microsequence?.domainRefs).forEach((ref) => {
+        const conceptId = ensureUniqueGraphId(text(ref), lessonKey, usedConceptIds);
+        if (!conceptId) {
+          return;
+        }
+        concepts.push({
+          conceptId,
+          label: conceptId,
+          kind: "concept",
+          priority: text(microsequence?.coverageRole) || "support",
+          sourceRefs: [],
+          expectedEvidence: [],
+          representations: [],
+          assessmentFormats: [],
+          lessonKey,
+          inferredFrom: text(lessonMeta?.lessonTitle)
         });
       });
-      if (normalizeArray(microsequence?.domainRefs).length && !concepts.some((item) => item.lessonKey === lessonKey)) {
-        const lessonMeta = lessonByKey.get(lessonKey) || {};
-        normalizeArray(microsequence?.domainRefs).forEach((ref) => {
-          concepts.push({
-            conceptId: text(ref),
-            label: text(ref),
-            kind: "concept",
-            priority: text(microsequence?.coverageRole) || "support",
-            lessonKey,
-            inferredFrom: text(lessonMeta?.lessonTitle)
-          });
-        });
-      }
     });
   });
 

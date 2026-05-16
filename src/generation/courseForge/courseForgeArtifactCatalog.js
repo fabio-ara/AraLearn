@@ -8,6 +8,11 @@ const COURSE_FORGE_ARTIFACT_DEFINITIONS = Object.freeze({
     stage: "engine"
   },
   "course-graph": { artifactType: "CourseGraph", schemaVersion: "aralearn.course_graph.v1", stage: "engine" },
+  "course-graph-audit": {
+    artifactType: "CourseGraphAudit",
+    schemaVersion: "aralearn.course_graph_audit.v1",
+    stage: "auditor"
+  },
   "architecture-draft": {
     artifactType: "ArchitectureDraft",
     schemaVersion: "aralearn.architecture_draft.v1",

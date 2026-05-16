@@ -36,6 +36,8 @@ export function resolvePhaseProfile(phaseId = "") {
   if (phaseId === "audit_architecture") return PHASE_PROFILES.architecture_audit;
   if (phaseId === "plan_lessons") return PHASE_PROFILES.architecture_plan;
   if (phaseId === "build_course_graph") return PHASE_PROFILES.source_index;
+  if (phaseId === "audit_course_graph") return PHASE_PROFILES.architecture_audit;
+  if (phaseId === "repair_course_graph") return PHASE_PROFILES.repair;
   if (phaseId === "build_lesson_governance") return PHASE_PROFILES.source_index;
   if (phaseId === "plan_microsequences") return PHASE_PROFILES.architecture_plan;
   if (phaseId === "audit_microsequences") return PHASE_PROFILES.architecture_audit;

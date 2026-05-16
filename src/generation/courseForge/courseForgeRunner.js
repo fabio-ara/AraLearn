@@ -19,6 +19,7 @@ import { validateCourseForgeSourceLedger } from "./courseForgeSourceLedger.js";
 import {
   mergeCourseForgeArchitectureAudits,
   validateCourseForgeArchitectureDraft,
+  validateCourseForgeCourseGraph,
   validateCourseForgeLessonPlanSet,
   validateCourseForgeMicrosequencePlans
 } from "./courseForgeValidation.js";
@@ -297,15 +298,18 @@ function updateMetricsCategory(metrics = {}, category = "", patch = {}) {
 }
 
 function buildDiagnosticsSummary(context = {}, runState = {}, phases = []) {
+  const courseGraphAudit = context.courseGraphAudit || { blockingIssues: [], warnings: [] };
   const planningAudit = mergeCourseForgeAdherenceAudits(context.microsequenceAudit || {}, context.microsequenceAdherenceAudit || {});
   const cardsAudit = mergeCardAudits(context.cardsAudit || {});
   const adherenceAudit = mergeCourseForgeAdherenceAudits(context.sourceAdherenceAudit || {});
   const blockingByCategory = {
+    graph: Array.isArray(courseGraphAudit?.blockingIssues) ? courseGraphAudit.blockingIssues.length : 0,
     planning: sumBlockingIssues(planningAudit),
     cards: sumBlockingIssues(cardsAudit),
     adherence: sumBlockingIssues(adherenceAudit)
   };
   const warningsByCategory = {
+    graph: Array.isArray(courseGraphAudit?.warnings) ? courseGraphAudit.warnings.length : 0,
     planning: sumWarnings(planningAudit),
     cards: sumWarnings(cardsAudit),
     adherence: sumWarnings(adherenceAudit)
@@ -314,6 +318,12 @@ function buildDiagnosticsSummary(context = {}, runState = {}, phases = []) {
 
   return {
     categories: {
+      graph: {
+        blockingIssues: blockingByCategory.graph,
+        warnings: warningsByCategory.graph,
+        repaired: phaseStatus.repair_course_graph === "completed",
+        latestArtifacts: ["course-graph", "course-graph-audit"]
+      },
       planning: {
         blockingIssues: blockingByCategory.planning,
         warnings: warningsByCategory.planning,
@@ -342,6 +352,9 @@ function buildDiagnosticsSummary(context = {}, runState = {}, phases = []) {
 }
 
 function inferFailureCategoryFromPhase(phaseId = "") {
+  if (["build_course_graph", "audit_course_graph", "repair_course_graph"].includes(phaseId)) {
+    return "graph";
+  }
   if (["plan_microsequences", "audit_microsequences", "repair_microsequences"].includes(phaseId)) {
     return "planning";
   }
@@ -434,6 +447,7 @@ export async function runCourseForge({
     sourceLedger: artifactStore.loadArtifact(runId, "source-ledger")?.content || null,
     assessmentProfile: artifactStore.loadArtifact(runId, "assessment-profile")?.content || null,
     courseGraph: artifactStore.loadArtifact(runId, "course-graph")?.content || null,
+    courseGraphAudit: artifactStore.loadArtifact(runId, "course-graph-audit")?.content || null,
     architectureDraft: artifactStore.loadArtifact(runId, "architecture-draft")?.content || null,
     architectureAudit: artifactStore.loadArtifact(runId, "architecture-audit")?.content || null,
     architectureFinal: artifactStore.loadArtifact(runId, "architecture-final")?.content || null,
@@ -617,6 +631,110 @@ export async function runCourseForge({
           microsequencePlans: context.microsequencePlans || []
         });
         savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "course-graph", context.courseGraph);
+      } else if (phaseId === "audit_course_graph") {
+        const localAudit = validateCourseForgeCourseGraph({
+          courseGraph: context.courseGraph || {},
+          lessonPlans: context.lessonPlans || [],
+          assessmentProfile: context.assessmentProfile || {},
+          sourceLedger: context.sourceLedger || []
+        });
+        let providerAudit = { approved: true, blockingIssues: [], warnings: [] };
+        if (provider?.id !== "fake" || provider?.capabilities?.provider === "fake") {
+          const response = await executeCourseForgeProviderPhase({
+            provider,
+            phaseId,
+            modelId: phaseModelId,
+            prompt: buildCourseForgePrompt({
+              role: "Você audita o CourseGraph do AraLearn.",
+              sourcePack: JSON.stringify(context.sourceLedger || []),
+              task: "Revise conceitos, objetivos, prerequisitos, assessmentTargets e practiceVariants. Aponte lacunas semânticas, referências quebradas e governança insuficiente por lição.",
+              output: "Responda somente JSON válido com approved, blockingIssues e warnings."
+            }),
+            schema: null,
+            artifacts: [
+              { id: "intent", name: "intent", content: JSON.stringify(intent) },
+              { id: "lesson-plans", name: "lesson-plans", content: JSON.stringify(context.lessonPlans || []) },
+              { id: "course-graph", name: "course-graph", content: JSON.stringify(context.courseGraph || {}) },
+              { id: "assessment-profile", name: "assessment-profile", content: JSON.stringify(context.assessmentProfile || {}) }
+            ]
+          });
+          providerAudit = structuredClone(response.value || response || providerAudit);
+        }
+        context.courseGraphAudit = mergeCourseForgeArchitectureAudits(localAudit, providerAudit);
+        runState = updateCourseForgeRunState(runState, {
+          metrics: updateMetricsCategory(runState.metrics, "graph", {
+            issueCount: Array.isArray(context.courseGraphAudit?.blockingIssues) ? context.courseGraphAudit.blockingIssues.length : 0,
+            lastFailureCategory:
+              Array.isArray(context.courseGraphAudit?.blockingIssues) && context.courseGraphAudit.blockingIssues.length
+                ? "graph"
+                : runState?.metrics?.lastFailureCategory || ""
+          })
+        });
+        savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "course-graph-audit", context.courseGraphAudit);
+      } else if (phaseId === "repair_course_graph") {
+        const audit = context.courseGraphAudit || { approved: true, blockingIssues: [], warnings: [] };
+        if (audit.approved && !(audit.blockingIssues || []).length) {
+          savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "course-graph", context.courseGraph || {});
+        } else {
+          runState = updateCourseForgeRunState(runState, {
+            metrics: updateMetricsCategory(runState.metrics, "graph", {
+              repairCalls: Number(runState?.metrics?.repairCallsByCategory?.graph || 0) + 1
+            })
+          });
+          context.courseGraph = buildCourseGraphArtifact({
+            architectureDraft: context.architectureFinal || context.architectureDraft || {},
+            lessonPlans: context.lessonPlans || [],
+            microsequencePlans: []
+          });
+          let finalAudit = validateCourseForgeCourseGraph({
+            courseGraph: context.courseGraph || {},
+            lessonPlans: context.lessonPlans || [],
+            assessmentProfile: context.assessmentProfile || {},
+            sourceLedger: context.sourceLedger || []
+          });
+          if (!finalAudit.ok) {
+            const response = await executeCourseForgeProviderPhase({
+              provider,
+              phaseId,
+              modelId: phaseModelId,
+              prompt: buildCourseForgePrompt({
+                role: "Você repara o CourseGraph do AraLearn.",
+                sourcePack: JSON.stringify(context.sourceLedger || []),
+                task: "Corrija apenas os problemas apontados pela auditoria do CourseGraph, preservando o escopo das lições e a governança didática.",
+                output: "Responda somente JSON válido com courseGraph."
+              }),
+              schema: null,
+              artifacts: [
+                { id: "intent", name: "intent", content: JSON.stringify(intent) },
+                { id: "lesson-plans", name: "lesson-plans", content: JSON.stringify(context.lessonPlans || []) },
+                { id: "course-graph", name: "course-graph", content: JSON.stringify(context.courseGraph || {}) },
+                { id: "course-graph-audit", name: "course-graph-audit", content: JSON.stringify(audit) }
+              ]
+            });
+            context.courseGraph = structuredClone((response.value || response || {}).courseGraph || response.value || response || {});
+            finalAudit = validateCourseForgeCourseGraph({
+              courseGraph: context.courseGraph || {},
+              lessonPlans: context.lessonPlans || [],
+              assessmentProfile: context.assessmentProfile || {},
+              sourceLedger: context.sourceLedger || []
+            });
+          }
+          context.courseGraphAudit = finalAudit;
+          savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "course-graph", context.courseGraph);
+          savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "course-graph-audit", context.courseGraphAudit);
+          if (!finalAudit.ok) {
+            throw new Error(`O CourseGraph ainda falhou na auditoria: ${finalAudit.blockingIssues.map((item) => item.evidence).join(" ")}`);
+          }
+        }
+        runState = updateCourseForgeRunState(runState, {
+          metrics: updateMetricsCategory(runState.metrics, "graph", {
+            issueCount: Array.isArray(context.courseGraphAudit?.blockingIssues) ? context.courseGraphAudit.blockingIssues.length : 0,
+            lastFailureCategory:
+              Array.isArray(context.courseGraphAudit?.blockingIssues) && context.courseGraphAudit.blockingIssues.length
+                ? "graph"
+                : runState?.metrics?.lastFailureCategory || ""
+          })
+        });
       } else if (phaseId === "build_lesson_governance") {
         if (!context.lessonPlans?.length) {
           throw new Error("LessonGovernance requer lessonPlans.");

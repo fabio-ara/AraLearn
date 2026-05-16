@@ -22,6 +22,8 @@ export function resolveCourseForgePhaseModelId(intent = {}, phaseId = "") {
       "audit_architecture",
       "repair_architecture",
       "plan_lessons",
+      "audit_course_graph",
+      "repair_course_graph",
       "plan_microsequences",
       "audit_microsequences",
       "repair_microsequences",

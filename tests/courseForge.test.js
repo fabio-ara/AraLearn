@@ -16,7 +16,11 @@ import { canResumeCourseForgeRun, createCourseForgeRunState } from "../src/gener
 import { runCourseForgeQueue } from "../src/generation/courseForge/courseForgeQueue.js";
 import { runCourseForge } from "../src/generation/courseForge/courseForgeRunner.js";
 import { applyCourseForgePatch } from "../src/generation/courseForge/courseForgeApply.js";
-import { mergeCourseForgeArchitectureAudits, validateCourseForgeArchitectureDraft } from "../src/generation/courseForge/courseForgeValidation.js";
+import {
+  mergeCourseForgeArchitectureAudits,
+  validateCourseForgeArchitectureDraft,
+  validateCourseForgeCourseGraph
+} from "../src/generation/courseForge/courseForgeValidation.js";
 import { getModelCapabilities } from "../src/generation/providers/modelCapabilities.js";
 import { buildCourseForgePolicyPack, buildCourseForgePrompt } from "../src/generation/courseForge/courseForgePrompts.js";
 
@@ -170,6 +174,7 @@ test("phaseProfiles resolve perfis esperados", () => {
   assert.equal(PHASE_PROFILES.architecture_plan.reasoning, "high");
   assert.equal(resolvePhaseProfile("index_sources").temperature, 0);
   assert.equal(resolvePhaseProfile("build_assessment_profile").temperature, 0);
+  assert.equal(resolvePhaseProfile("audit_course_graph").temperature, 0);
 });
 
 test("phase resolution escolhe subfluxo estrutural e registra fases adiadas", () => {
@@ -200,6 +205,8 @@ test("phase resolution escolhe subfluxo estrutural e registra fases adiadas", ()
   ]);
   assert.ok(resolveCourseForgePhases(fullIntent).includes("plan_microsequences"));
   assert.ok(resolveCourseForgePhases(fullIntent).includes("build_course_graph"));
+  assert.ok(resolveCourseForgePhases(fullIntent).includes("audit_course_graph"));
+  assert.ok(resolveCourseForgePhases(fullIntent).includes("repair_course_graph"));
   assert.ok(resolveCourseForgePhases(fullIntent).includes("build_lesson_governance"));
   assert.ok(resolveCourseForgePhases(fullIntent).includes("compile_card_plans"));
   assert.ok(resolveCourseForgePhases(fullIntent).includes("repair_microsequences"));
@@ -336,6 +343,30 @@ test("merge de auditorias preserva reprovação se qualquer auditoria bloquear",
 
   assert.equal(result.approved, false);
   assert.equal(result.blockingIssues.length, 1);
+});
+
+test("course graph local detecta referencias quebradas e licoes sem cobertura", () => {
+  const result = validateCourseForgeCourseGraph({
+    courseGraph: {
+      graphId: "graph-1",
+      concepts: [{ conceptId: "concept-1", label: "Conceito 1", lessonKey: "lesson-ok", sourceRefs: ["src_1"] }],
+      objectives: [{ objectiveId: "obj-1", lessonKey: "lesson-ok", description: "Objetivo." }],
+      prerequisiteEdges: [{ from: "concept-1", to: "concept-inexistente", lessonKey: "lesson-ok" }],
+      assessmentTargets: [],
+      practiceVariants: [{ practiceVariantId: "variant-1", domainItemRef: "concept-ausente", lessonKey: "lesson-ok" }]
+    },
+    lessonPlans: [
+      { lessonKey: "lesson-ok", sourceGuideStructured: { lessonGoal: "Objetivo." } },
+      { lessonKey: "lesson-sem-cobertura", sourceGuideStructured: { lessonGoal: "Outro objetivo." } }
+    ],
+    assessmentProfile: { questionTypes: ["multiple_choice"] },
+    sourceLedger: [{ id: "src_1", title: "Fonte 1" }]
+  });
+
+  assert.equal(result.ok, false);
+  assert.ok(result.blockingIssues.some((item) => item.type === "dangling_edge"));
+  assert.ok(result.blockingIssues.some((item) => item.type === "dangling_variant"));
+  assert.ok(result.blockingIssues.some((item) => item.type === "missing_lesson_concepts"));
 });
 
 test("patch validation bloqueia operação fora do escopo", () => {
@@ -2273,14 +2304,17 @@ test("audit_source_adherence usa domainMap explícito para fechar cobertura mín
   const courseGraphArtifact = result.artifacts.find((item) => item.name === "course-graph");
   const lessonGovernanceArtifact = result.artifacts.find((item) => item.name === "lesson-governance");
   const cardPlansArtifact = result.artifacts.find((item) => item.name === "card-plans");
+  const courseGraphAuditArtifact = result.artifacts.find((item) => item.name === "course-graph-audit");
   assert.equal(lesson.domainMap.items[0].id, "domain-lan");
   assert.deepEqual(microsequence.domainRefs, ["domain-lan"]);
   assert.deepEqual(microsequence.practiceVariantRefs, ["variant-lan-discriminacao"]);
   assert.equal(courseIntentArtifact.artifactType, "CourseIntent");
   assert.equal(assessmentProfileArtifact.artifactType, "AssessmentProfile");
   assert.equal(courseGraphArtifact.artifactType, "CourseGraph");
+  assert.equal(courseGraphAuditArtifact.artifactType, "CourseGraphAudit");
   assert.equal(lessonGovernanceArtifact.artifactType, "LessonGovernanceSet");
   assert.equal(cardPlansArtifact.artifactType, "CardPlanSet");
+  assert.equal(courseGraphAuditArtifact.content.approved, true);
   assert.equal(courseGraphArtifact.content.concepts[0].conceptId, "domain-lan");
   assert.equal(lessonGovernanceArtifact.content[0].lessonKey, "lesson-rede-local");
   assert.equal(cardPlansArtifact.content[0].cards[0].role, "anchor");

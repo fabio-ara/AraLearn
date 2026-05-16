@@ -32,6 +32,16 @@ function makeArchitectureIssue(target, type, evidence, requiredFix, severity = "
   };
 }
 
+function makeCourseGraphIssue(target, type, evidence, requiredFix, severity = "blocking") {
+  return {
+    target,
+    type,
+    severity,
+    evidence,
+    requiredFix
+  };
+}
+
 function readArchitectureCourse(architectureDraft = {}) {
   if (architectureDraft?.architectureFinal?.course) {
     return architectureDraft.architectureFinal.course;
@@ -243,6 +253,204 @@ export function validateCourseForgeLessonPlanSet({ architectureDraft = {}, lesso
   return {
     ok: errors.length === 0,
     errors,
+    warnings
+  };
+}
+
+export function validateCourseForgeCourseGraph({
+  courseGraph = {},
+  lessonPlans = [],
+  assessmentProfile = {},
+  sourceLedger = []
+} = {}) {
+  const blockingIssues = [];
+  const warnings = [];
+  const graph = courseGraph && typeof courseGraph === "object" ? courseGraph : {};
+  const concepts = normalizeArray(graph.concepts);
+  const objectives = normalizeArray(graph.objectives);
+  const prerequisiteEdges = normalizeArray(graph.prerequisiteEdges);
+  const assessmentTargets = normalizeArray(graph.assessmentTargets);
+  const practiceVariants = normalizeArray(graph.practiceVariants);
+  const lessonKeys = new Set(normalizeArray(lessonPlans).map((item) => text(item?.lessonKey)).filter(Boolean));
+  const conceptIds = new Set();
+
+  if (!text(graph.graphId)) {
+    blockingIssues.push(
+      makeCourseGraphIssue("graphId", "missing_graph_id", "CourseGraph sem graphId.", "Definir um graphId estável.")
+    );
+  }
+
+  if (!concepts.length && !objectives.length) {
+    blockingIssues.push(
+      makeCourseGraphIssue(
+        "course-graph",
+        "missing_semantic_core",
+        "CourseGraph sem conceitos e sem objetivos.",
+        "Gerar conceitos e objetivos a partir do domainMap e da governança das lições."
+      )
+    );
+  }
+
+  concepts.forEach((concept, index) => {
+    const conceptId = text(concept?.conceptId);
+    const conceptTarget = `courseGraph.concepts[${index}]`;
+    if (!conceptId) {
+      blockingIssues.push(
+        makeCourseGraphIssue(conceptTarget, "missing_concept_id", "Conceito sem conceptId.", "Gerar um conceptId estável.")
+      );
+      return;
+    }
+    if (conceptIds.has(conceptId)) {
+      blockingIssues.push(
+        makeCourseGraphIssue(conceptTarget, "duplicated_concept", `conceptId duplicado: ${conceptId}.`, "Remover duplicação.")
+      );
+    }
+    conceptIds.add(conceptId);
+    if (!text(concept?.label)) {
+      blockingIssues.push(
+        makeCourseGraphIssue(conceptTarget, "missing_label", `Conceito ${conceptId} sem label.`, "Definir label legível.")
+      );
+    }
+    if (lessonKeys.size && !lessonKeys.has(text(concept?.lessonKey))) {
+      blockingIssues.push(
+        makeCourseGraphIssue(
+          conceptTarget,
+          "invalid_lesson_ref",
+          `Conceito ${conceptId} aponta para lessonKey fora do escopo.`,
+          "Vincular o conceito a uma lição válida."
+        )
+      );
+    }
+  });
+
+  const objectiveLessonKeys = new Set();
+  objectives.forEach((objective, index) => {
+    const objectiveTarget = `courseGraph.objectives[${index}]`;
+    const lessonKey = text(objective?.lessonKey);
+    if (!text(objective?.objectiveId)) {
+      blockingIssues.push(
+        makeCourseGraphIssue(objectiveTarget, "missing_objective_id", "Objetivo sem objectiveId.", "Gerar objectiveId estável.")
+      );
+    }
+    if (!text(objective?.description)) {
+      blockingIssues.push(
+        makeCourseGraphIssue(objectiveTarget, "missing_objective_description", "Objetivo sem descrição.", "Definir objetivo explícito.")
+      );
+    }
+    if (lessonKey) {
+      objectiveLessonKeys.add(lessonKey);
+      if (lessonKeys.size && !lessonKeys.has(lessonKey)) {
+        blockingIssues.push(
+          makeCourseGraphIssue(
+            objectiveTarget,
+            "invalid_lesson_ref",
+            `Objetivo ${text(objective?.objectiveId)} aponta para lessonKey fora do escopo.`,
+            "Vincular o objetivo a uma lição válida."
+          )
+        );
+      }
+    }
+  });
+
+  prerequisiteEdges.forEach((edge, index) => {
+    const edgeTarget = `courseGraph.prerequisiteEdges[${index}]`;
+    const from = text(edge?.from);
+    const to = text(edge?.to);
+    if (!from || !to) {
+      blockingIssues.push(
+        makeCourseGraphIssue(edgeTarget, "invalid_edge", "Aresta de pré-requisito incompleta.", "Preencher origem e destino.")
+      );
+      return;
+    }
+    if (!conceptIds.has(from) || !conceptIds.has(to)) {
+      blockingIssues.push(
+        makeCourseGraphIssue(
+          edgeTarget,
+          "dangling_edge",
+          `Aresta ${from} -> ${to} referencia conceito inexistente.`,
+          "Apontar somente para conceitos presentes no grafo."
+        )
+      );
+    }
+  });
+
+  practiceVariants.forEach((variant, index) => {
+    const variantTarget = `courseGraph.practiceVariants[${index}]`;
+    const ref = text(variant?.domainItemRef);
+    if (!text(variant?.practiceVariantId)) {
+      blockingIssues.push(
+        makeCourseGraphIssue(variantTarget, "missing_variant_id", "PracticeVariant sem id.", "Gerar id estável.")
+      );
+    }
+    if (!ref || !conceptIds.has(ref)) {
+      blockingIssues.push(
+        makeCourseGraphIssue(
+          variantTarget,
+          "dangling_variant",
+          `PracticeVariant ${text(variant?.practiceVariantId)} referencia domínio inexistente.`,
+          "Apontar domainItemRef para um conceito do grafo."
+        )
+      );
+    }
+  });
+
+  normalizeArray(lessonPlans).forEach((lessonPlan) => {
+    const lessonKey = text(lessonPlan?.lessonKey);
+    if (!lessonKey) {
+      return;
+    }
+    const lessonTarget = `lesson:${lessonKey}`;
+    if (!concepts.some((concept) => text(concept?.lessonKey) === lessonKey)) {
+      blockingIssues.push(
+        makeCourseGraphIssue(
+          lessonTarget,
+          "missing_lesson_concepts",
+          `CourseGraph sem conceitos para a lição ${lessonKey}.`,
+          "Projetar os itens do domainMap para o grafo."
+        )
+      );
+    }
+    if (!objectiveLessonKeys.has(lessonKey)) {
+      warnings.push(
+        makeCourseGraphIssue(
+          lessonTarget,
+          "missing_lesson_objective",
+          `CourseGraph sem objetivo explícito para a lição ${lessonKey}.`,
+          "Derivar objetivo a partir de sourceGuideStructured.lessonGoal.",
+          "warning"
+        )
+      );
+    }
+  });
+
+  if (normalizeArray(assessmentProfile?.questionTypes).length && !assessmentTargets.length) {
+    warnings.push(
+      makeCourseGraphIssue(
+        "courseGraph.assessmentTargets",
+        "missing_assessment_targets",
+        "Há sinais de avaliação, mas o CourseGraph não materializou assessmentTargets.",
+        "Projetar alvos de avaliação no grafo.",
+        "warning"
+      )
+    );
+  }
+
+  if (listCourseForgeSources(sourceLedger).length && !concepts.some((concept) => normalizeArray(concept?.sourceRefs).length)) {
+    warnings.push(
+      makeCourseGraphIssue(
+        "courseGraph.concepts",
+        "missing_source_grounding",
+        "CourseGraph sem sourceRefs explícitos apesar de haver fontes disponíveis.",
+        "Propagar sourceRefs do domainMap para o grafo.",
+        "warning"
+      )
+    );
+  }
+
+  return {
+    ok: blockingIssues.length === 0,
+    approved: blockingIssues.length === 0,
+    blockingIssues,
     warnings
   };
 }
