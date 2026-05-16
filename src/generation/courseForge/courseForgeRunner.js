@@ -7,6 +7,14 @@ import { resolveCourseForgeIntent } from "./courseForgeIntent.js";
 import { compileCourseStructureToPatch, validateCourseForgePatch } from "./courseForgePatch.js";
 import { resolveCourseForgePhases, resolveDeferredCourseForgePhases } from "./courseForgePhases.js";
 import { createCourseForgeRunState, markCourseForgePhase, updateCourseForgeRunState } from "./courseForgeRunState.js";
+import {
+  buildAssessmentProfileArtifact,
+  buildCardPlansArtifact,
+  buildCourseGraphArtifact,
+  buildCourseIntentArtifact,
+  buildLessonGovernanceArtifact,
+  buildSourceLedgerArtifact
+} from "./courseForgeIr.js";
 import { validateCourseForgeSourceLedger } from "./courseForgeSourceLedger.js";
 import {
   mergeCourseForgeArchitectureAudits,
@@ -31,17 +39,10 @@ function text(value) {
 }
 
 function buildInlineSourceLedger(intent = {}) {
-  return (intent.attachments || []).map((item, index) => ({
-    id: item.id || `src_${index + 1}`,
-    title: item.name || `Anexo ${index + 1}`,
-    kind: item.kind || "attachment",
-    locator: "",
-    priority: index + 1,
-    extractedTopics: [],
-    assessmentSignals: [],
-    notationSignals: [],
-    teacherConventions: []
-  }));
+  return buildSourceLedgerArtifact({
+    attachments: intent.attachments || [],
+    promptText: text(intent.rawUserText || intent.promptText)
+  });
 }
 
 function buildArchitecturePromptTask(intent = {}, projectDocument = {}) {
@@ -465,15 +466,20 @@ export async function runCourseForge({
   const context = {
     intent,
     projectDocument: structuredClone(projectDocument),
+    courseIntent: artifactStore.loadArtifact(runId, "course-intent")?.content || artifactStore.loadArtifact(runId, "intent")?.content || null,
     sourceLedger: artifactStore.loadArtifact(runId, "source-ledger")?.content || null,
+    assessmentProfile: artifactStore.loadArtifact(runId, "assessment-profile")?.content || null,
+    courseGraph: artifactStore.loadArtifact(runId, "course-graph")?.content || null,
     architectureDraft: artifactStore.loadArtifact(runId, "architecture-draft")?.content || null,
     architectureAudit: artifactStore.loadArtifact(runId, "architecture-audit")?.content || null,
     architectureFinal: artifactStore.loadArtifact(runId, "architecture-final")?.content || null,
     lessonPlans: artifactStore.loadArtifact(runId, "lesson-plans")?.content || null,
+    lessonGovernance: artifactStore.loadArtifact(runId, "lesson-governance")?.content || null,
     microsequencePlans: artifactStore.loadArtifact(runId, "microsequence-plans")?.content || null,
     microsequenceAudit: artifactStore.loadArtifact(runId, "microsequence-audit")?.content || null,
     microsequenceAdherenceAudit: artifactStore.loadArtifact(runId, "microsequence-adherence-audit")?.content || null,
     microsequenceContracts: artifactStore.loadArtifact(runId, "microsequence-contracts")?.content || null,
+    cardPlans: artifactStore.loadArtifact(runId, "card-plans")?.content || null,
     cardDrafts: artifactStore.loadArtifact(runId, "card-drafts")?.content || null,
     cardsAudit: artifactStore.loadArtifact(runId, "cards-audit")?.content || null,
     sourceAdherenceAudit: artifactStore.loadArtifact(runId, "source-adherence-audit")?.content || null,
@@ -502,7 +508,9 @@ export async function runCourseForge({
 
     try {
       if (phaseId === "normalize_intent") {
+        context.courseIntent = buildCourseIntentArtifact(intent);
         savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "intent", intent);
+        savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "course-intent", context.courseIntent);
       } else if (phaseId === "index_sources") {
         const localLedger = buildInlineSourceLedger(intent);
         const result = validateCourseForgeSourceLedger(localLedger);
@@ -510,7 +518,12 @@ export async function runCourseForge({
           throw new Error(result.errors.join(" "));
         }
         context.sourceLedger = result.sourceLedger;
+        context.assessmentProfile = buildAssessmentProfileArtifact({
+          intent: context.courseIntent || intent,
+          sourceLedger: context.sourceLedger
+        });
         savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "source-ledger", context.sourceLedger);
+        savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "assessment-profile", context.assessmentProfile);
       } else if (phaseId === "plan_architecture") {
         const response = await callProviderPhase({
           provider,
@@ -615,6 +628,8 @@ export async function runCourseForge({
           throw new Error(`Planejamento de lições inválido: ${lessonValidation.errors.join(" ")}`);
         }
         savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "lesson-plans", context.lessonPlans);
+        context.lessonGovernance = buildLessonGovernanceArtifact({ lessonPlans: context.lessonPlans });
+        savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "lesson-governance", context.lessonGovernance);
       } else if (phaseId === "plan_microsequences") {
         if (["lesson", "module", "course"].includes(intent.scope?.level) && !context.lessonPlans?.length) {
           if (intent.scope?.level === "lesson") {
@@ -656,6 +671,12 @@ export async function runCourseForge({
           microsequencePlans: normalizeMicrosequencePlans(response.value || response || {}, context.lessonPlans || []),
           lessonPlans: context.lessonPlans || []
         });
+        context.courseGraph = buildCourseGraphArtifact({
+          architectureDraft: context.architectureFinal || context.architectureDraft || {},
+          lessonPlans: context.lessonPlans || [],
+          microsequencePlans: context.microsequencePlans || []
+        });
+        savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "course-graph", context.courseGraph);
         savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "microsequence-plans", context.microsequencePlans);
       } else if (phaseId === "audit_microsequences") {
         const localAudit = validateCourseForgeMicrosequencePlans({
@@ -789,9 +810,11 @@ export async function runCourseForge({
         context.microsequenceContracts = buildCourseForgeMicrosequenceContracts({
           lessonPlans: context.lessonPlans || [],
           microsequencePlans: context.microsequencePlans || [],
-          sourceLedger: context.sourceLedger || []
+          sourceLedger: context.sourceLedger || {}
         });
         savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "microsequence-contracts", context.microsequenceContracts);
+        context.cardPlans = buildCardPlansArtifact({ microsequenceContracts: context.microsequenceContracts });
+        savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "card-plans", context.cardPlans);
       } else if (phaseId === "build_cards") {
         context.cardDrafts = [];
         for (const microsequenceContract of context.microsequenceContracts || []) {

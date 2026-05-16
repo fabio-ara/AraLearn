@@ -4,6 +4,7 @@ import { sortLessonMicrosequencesDeterministically } from "../domain/resolveLess
 import { summarizeDidacticProductionPolicyForPrompt } from "../policies/didacticProductionPolicy.js";
 import { validateGeneratedCardsStructural } from "../validation/validateGeneratedCardsStructural.js";
 import { auditCourseForgeBackstageVocabulary } from "./courseForgeBackstageAudit.js";
+import { listCourseForgeSources } from "./courseForgeSourceLedger.js";
 import { validateCourseForgeCardSourceRefs } from "./courseForgeSourceRefs.js";
 
 function text(value) {
@@ -61,7 +62,7 @@ function buildSimpleCardPlan(microsequence = {}, lessonPlan = {}, sourceLedger =
   const allowedResourceTypes = pickAllowedResourceTypes(lessonPlan);
   const expositoryResourceType = pickExpositoryResourceType(allowedResourceTypes);
   const practiceResourceType = pickPracticeResourceType(allowedResourceTypes);
-  const sourceRefs = normalizeArray(sourceLedger).map((item) => text(item?.id)).filter(Boolean);
+  const sourceRefs = listCourseForgeSources(sourceLedger).map((item) => text(item?.sourceId || item?.id)).filter(Boolean);
   const coverageRole = text(microsequence.coverageRole);
   const supportLevel = text(lessonPlan.supportLevel);
   const wantsThreeCards =
@@ -160,7 +161,8 @@ export function buildCourseForgeMicrosequenceContracts({ lessonPlans = [], micro
           format: "json",
           expectedCardCount: cardPlan.length
         },
-        sources: structuredClone(sourceLedger)
+        sources: structuredClone(listCourseForgeSources(sourceLedger)),
+        domainRefs: normalizeArray(microsequence?.domainRefs).map(text).filter(Boolean)
       };
     });
   });
@@ -330,7 +332,7 @@ export function auditCourseForgeCardDrafts({ cardDrafts = [], microsequenceContr
 export function auditCourseForgeSourceAdherence({ cardDrafts = [], sourceLedger = [] } = {}) {
   const issues = [];
   const warnings = [];
-  const sourceIds = normalizeArray(sourceLedger).map((item) => text(item?.id)).filter(Boolean);
+  const sourceIds = listCourseForgeSources(sourceLedger).map((item) => text(item?.sourceId || item?.id)).filter(Boolean);
   const hasSources = sourceIds.length > 0;
 
   normalizeArray(cardDrafts).forEach((entry) => {
@@ -535,7 +537,7 @@ export function auditCourseForgeDomainCoverage({ microsequencePlans = [], lesson
 }
 
 export function repairCourseForgeDraftCardsDeterministically({ cardDrafts = [], sourceLedger = [] } = {}) {
-  const fallbackSourceId = text(normalizeArray(sourceLedger)[0]?.id);
+  const fallbackSourceId = text(listCourseForgeSources(sourceLedger)[0]?.sourceId || listCourseForgeSources(sourceLedger)[0]?.id);
   return normalizeArray(cardDrafts).map((entry) => {
     const cards = normalizeArray(entry?.cards).map((card, cardIndex) => {
       const validSourceRefs = normalizeArray(card?.sourceRefs)

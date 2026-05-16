@@ -155,11 +155,17 @@ export function resolveCourseForgeIntent(input = {}) {
     operation,
     scope,
     promptText,
+    rawUserText: promptText,
+    goal: promptText,
+    audienceLevel: "beginner",
+    timeHorizon: "",
     requestedGenerationDepth,
+    requestedDepth: requestedGenerationDepth,
     generationDepth,
     deferredGenerationDepth: requestedGenerationDepth === generationDepth ? "" : requestedGenerationDepth,
     attachments: normalizeAttachments(input.attachments),
     selectedTopDownProfileId: text(input.selectedTopDownProfileId) || "codex_all",
+    didacticProfileId: text(input.selectedTopDownProfileId) || "codex_all",
     phaseModelOverrides: input.phaseModelOverrides && typeof input.phaseModelOverrides === "object"
       ? structuredClone(input.phaseModelOverrides)
       : {},

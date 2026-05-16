@@ -1,9 +1,11 @@
+import { listCourseForgeSources } from "./courseForgeSourceLedger.js";
+
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
 }
 
 export function normalizeCourseForgeCardSourceRefs(sourceRefs = [], sourceLedger = []) {
-  const ledgerIds = new Set((Array.isArray(sourceLedger) ? sourceLedger : []).map((item) => text(item?.id)).filter(Boolean));
+  const ledgerIds = new Set(listCourseForgeSources(sourceLedger).map((item) => text(item?.sourceId || item?.id)).filter(Boolean));
   return (Array.isArray(sourceRefs) ? sourceRefs : [])
     .map((item, index) => {
       if (typeof item === "string") {
@@ -34,7 +36,7 @@ export function normalizeCourseForgeCardSourceRefs(sourceRefs = [], sourceLedger
 export function validateCourseForgeCardSourceRefs(sourceRefs = [], sourceLedger = []) {
   const normalized = normalizeCourseForgeCardSourceRefs(sourceRefs, sourceLedger);
   const errors = [];
-  const ledgerIds = new Set((Array.isArray(sourceLedger) ? sourceLedger : []).map((item) => text(item?.id)).filter(Boolean));
+  const ledgerIds = new Set(listCourseForgeSources(sourceLedger).map((item) => text(item?.sourceId || item?.id)).filter(Boolean));
 
   normalized.forEach((item, index) => {
     if (!ledgerIds.has(item.sourceId)) {

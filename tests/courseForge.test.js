@@ -371,6 +371,13 @@ test("run state persiste e permite retomada", () => {
   assert.equal(canResumeCourseForgeRun(store.loadRun(runState.runId).runState), true);
 });
 
+test("artifact store registra tipo e schema de artefato conhecido", () => {
+  const store = createCourseForgeArtifactsStore();
+  const artifact = store.saveArtifact("run-1", "course-intent", { operation: "create" });
+  assert.equal(artifact.artifactType, "CourseIntent");
+  assert.equal(artifact.schemaVersion, "aralearn.course_intent.v2");
+});
+
 test("queue preserva falha parcial sem apagar resultados válidos", async () => {
   const result = await runCourseForgeQueue(
     [
@@ -2256,9 +2263,22 @@ test("audit_source_adherence usa domainMap explícito para fechar cobertura mín
 
   const lesson = result.projectDocument.courses[0].modules[0].lessons[0];
   const microsequence = lesson.microsequences[0];
+  const courseIntentArtifact = result.artifacts.find((item) => item.name === "course-intent");
+  const assessmentProfileArtifact = result.artifacts.find((item) => item.name === "assessment-profile");
+  const courseGraphArtifact = result.artifacts.find((item) => item.name === "course-graph");
+  const lessonGovernanceArtifact = result.artifacts.find((item) => item.name === "lesson-governance");
+  const cardPlansArtifact = result.artifacts.find((item) => item.name === "card-plans");
   assert.equal(lesson.domainMap.items[0].id, "domain-lan");
   assert.deepEqual(microsequence.domainRefs, ["domain-lan"]);
   assert.deepEqual(microsequence.practiceVariantRefs, ["variant-lan-discriminacao"]);
+  assert.equal(courseIntentArtifact.artifactType, "CourseIntent");
+  assert.equal(assessmentProfileArtifact.artifactType, "AssessmentProfile");
+  assert.equal(courseGraphArtifact.artifactType, "CourseGraph");
+  assert.equal(lessonGovernanceArtifact.artifactType, "LessonGovernanceSet");
+  assert.equal(cardPlansArtifact.artifactType, "CardPlanSet");
+  assert.equal(courseGraphArtifact.content.concepts[0].conceptId, "domain-lan");
+  assert.equal(lessonGovernanceArtifact.content[0].lessonKey, "lesson-rede-local");
+  assert.equal(cardPlansArtifact.content[0].cards[0].role, "anchor");
   const sourceAudit = result.artifacts.find((item) => item.name === "source-adherence-audit");
   const diagnostics = result.artifacts.find((item) => item.name === "diagnostics-summary");
   assert.equal(sourceAudit.content.approved, true);

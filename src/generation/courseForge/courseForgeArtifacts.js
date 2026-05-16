@@ -1,3 +1,5 @@
+import { getCourseForgeArtifactDefinition } from "./courseForgeArtifactCatalog.js";
+
 function memoryStorage() {
   const map = new Map();
   return {
@@ -26,6 +28,19 @@ function writeEnvelope(storage, storageKey, envelope) {
   storage.setItem(storageKey, JSON.stringify(envelope));
 }
 
+function buildArtifactRecord(runId, artifactName, content, metadata = {}) {
+  const definition = getCourseForgeArtifactDefinition(artifactName);
+  return {
+    id: `${runId}:${text(artifactName) || "artifact"}`,
+    name: artifactName,
+    artifactType: text(definition?.artifactType),
+    schemaVersion: text(definition?.schemaVersion),
+    stage: text(definition?.stage),
+    metadata: structuredClone(metadata),
+    content: structuredClone(content)
+  };
+}
+
 export function createCourseForgeArtifactsStore({ storage = memoryStorage(), storageKey = "courseforge-runs" } = {}) {
   return {
     saveRun(runId, payload = {}) {
@@ -45,12 +60,7 @@ export function createCourseForgeArtifactsStore({ storage = memoryStorage(), sto
       const envelope = readEnvelope(storage, storageKey);
       const record = envelope.runs[runId] || { artifacts: {} };
       record.artifacts ||= {};
-      record.artifacts[artifactName] = {
-        id: `${runId}:${text(artifactName) || "artifact"}`,
-        name: artifactName,
-        metadata: structuredClone(metadata),
-        content: structuredClone(content)
-      };
+      record.artifacts[artifactName] = buildArtifactRecord(runId, artifactName, content, metadata);
       envelope.runs[runId] = record;
       writeEnvelope(storage, storageKey, envelope);
       return structuredClone(record.artifacts[artifactName]);

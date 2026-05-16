@@ -1,5 +1,6 @@
 import { auditCourseForgeBackstageVocabulary } from "./courseForgeBackstageAudit.js";
 import { validateCourseForgePatch } from "./courseForgePatch.js";
+import { listCourseForgeSources } from "./courseForgeSourceLedger.js";
 import { validateCourseForgeCardSourceRefs } from "./courseForgeSourceRefs.js";
 import { validateCourseForgeSourceLedger } from "./courseForgeSourceLedger.js";
 
@@ -48,7 +49,7 @@ export function validateCourseForgeArchitectureDraft({ architectureDraft = {}, s
   const blockingIssues = [];
   const warnings = [];
   const course = readArchitectureCourse(architectureDraft);
-  const hasSources = Array.isArray(sourceLedger) && sourceLedger.length > 0;
+  const hasSources = listCourseForgeSources(sourceLedger).length > 0;
 
   if (!course) {
     blockingIssues.push(
