@@ -1973,6 +1973,75 @@ test("editor_intervention_plan preserva explanatory_bridge inferido da intervent
   assert.equal(result.actions[0].domainRef, "concept-compound");
 });
 
+test("editor_intervention_plan explicita focos estruturados no providerTask", () => {
+  const result = compileCourseForgeEditorInterventionPlan({
+    interventionRequest: {
+      target: {
+        level: "lesson",
+        courseKey: "course-1",
+        moduleKey: "module-1",
+        lessonKey: "lesson-1",
+        microsequenceKey: ""
+      },
+      requestedChanges: [
+        {
+          changeId: "requested_change_1",
+          type: "add_new_microsequence",
+          patchStrategy: "add_microsequence",
+          didacticInterventionType: "contrast_reinforcement",
+          target: {
+            level: "lesson",
+            courseKey: "course-1",
+            moduleKey: "module-1",
+            lessonKey: "lesson-1",
+            microsequenceKey: ""
+          },
+          relatedConceptRefs: ["concept-and", "concept-or"],
+          reason: "Explicitar contraste local."
+        },
+        {
+          changeId: "requested_change_2",
+          type: "add_new_microsequence",
+          patchStrategy: "add_microsequence",
+          didacticInterventionType: "prerequisite_tightening",
+          target: {
+            level: "lesson",
+            courseKey: "course-1",
+            moduleKey: "module-1",
+            lessonKey: "lesson-1",
+            microsequenceKey: ""
+          },
+          domainRef: "concept-compound",
+          prerequisiteRefs: ["concept-and", "concept-or"],
+          reason: "Fechar lacuna preparatória."
+        }
+      ]
+    },
+    projectDocument: {
+      contract: "aralearn.contract",
+      version: 1,
+      kind: "project",
+      courses: [
+        {
+          key: "course-1",
+          modules: [
+            {
+              key: "module-1",
+              lessons: [{ key: "lesson-1", microsequences: [] }]
+            }
+          ]
+        }
+      ]
+    }
+  });
+
+  assert.match(result.providerTask, /Ação 1:\s*contrast_reinforcement/i);
+  assert.match(result.providerTask, /contraste explícito entre concept-and e concept-or/i);
+  assert.match(result.providerTask, /Ação 2:\s*prerequisite_tightening/i);
+  assert.match(result.providerTask, /domínio-alvo concept-compound/i);
+  assert.match(result.providerTask, /pré-requisitos concept-and,\s*concept-or/i);
+});
+
 test("auditoria de alinhamento avaliativo cobra formato pedido explicitamente", () => {
   const result = auditCourseForgeAssessmentAlignment({
     cardsFinal: [

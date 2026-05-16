@@ -43,6 +43,10 @@ function uniqueTextList(values = []) {
   return [...new Set((Array.isArray(values) ? values : []).map(text).filter(Boolean))];
 }
 
+function normalizeArray(values = []) {
+  return Array.isArray(values) ? values : [];
+}
+
 function normalizeForMatch(value = "") {
   return text(value)
     .normalize("NFD")
@@ -250,6 +254,53 @@ function inferActionInsertionPolicy(change = {}, interventionRequest = {}, actio
     anchorMicrosequenceKey,
     lessonKey: text(actionTarget?.lessonKey)
   };
+}
+
+function describeProviderFocus(action = {}) {
+  const parts = [];
+  const domainRef = text(action?.domainRef);
+  const relatedConceptRefs = uniqueTextList(action?.relatedConceptRefs);
+  const bridgeTargetRef = text(action?.bridgeTargetRef);
+  const prerequisiteRefs = uniqueTextList(action?.prerequisiteRefs);
+  if (domainRef) {
+    parts.push(`domínio-alvo ${domainRef}`);
+  }
+  if (relatedConceptRefs.length >= 2) {
+    parts.push(`contraste explícito entre ${relatedConceptRefs.join(" e ")}`);
+  }
+  if (bridgeTargetRef) {
+    parts.push(`ponte guiada para ${bridgeTargetRef}`);
+  }
+  if (prerequisiteRefs.length) {
+    parts.push(`pré-requisitos ${prerequisiteRefs.join(", ")}`);
+  }
+  return parts.join("; ");
+}
+
+function buildInterventionProviderTask({ planningMode = "", actions = [] } = {}) {
+  const header =
+    planningMode === "new_only"
+      ? "Crie somente novas microssequências para os alvos pedidos. Não replique microssequências já existentes nem replaneje o restante da lição."
+      : planningMode === "existing_only"
+        ? "Reaproveite somente os alvos existentes pedidos. Não crie novas microssequências nem amplie o escopo."
+        : "Siga estritamente os requestedChanges do InterventionRequest sem ampliar o escopo.";
+  const lines = normalizeArray(actions)
+    .slice(0, 8)
+    .map((action, index) => {
+      const lessonKey = text(action?.target?.lessonKey) || text(action?.lessonTargets?.[0]?.lessonKey);
+      const targetMicrosequence = text(action?.existingMicrosequenceKey);
+      const focus = describeProviderFocus(action);
+      return [
+        `Ação ${index + 1}: ${text(action?.didacticInterventionType) || "intervenção local"}.`,
+        lessonKey ? `Lição-alvo ${lessonKey}.` : "",
+        targetMicrosequence ? `Microssequência-alvo ${targetMicrosequence}.` : "",
+        focus ? `Foco obrigatório: ${focus}.` : ""
+      ]
+        .filter(Boolean)
+        .join(" ");
+    })
+    .filter(Boolean);
+  return [header, ...lines].join("\n");
 }
 
 function findLessonPlanForTarget(lessonPlans = [], target = {}) {
@@ -510,12 +561,7 @@ export function compileCourseForgeEditorInterventionPlan({ interventionRequest =
     targetedLessonKeys,
     targetedMicrosequenceKeys,
     newMicrosequenceCountByLesson,
-    providerTask:
-      planningMode === "new_only"
-        ? "Crie somente novas microssequências para os alvos pedidos. Não replique microssequências já existentes nem replaneje o restante da lição."
-        : planningMode === "existing_only"
-          ? "Reaproveite somente os alvos existentes pedidos. Não crie novas microssequências nem amplie o escopo."
-          : "Siga estritamente os requestedChanges do InterventionRequest sem ampliar o escopo.",
+    providerTask: buildInterventionProviderTask({ planningMode, actions }),
     actions
   };
 }
