@@ -1255,6 +1255,7 @@ test("compila diretivas de reparo especificas a partir da auditoria de intervenc
         {
           requestedChangeId: "requested_change_1",
           didacticInterventionType: "contrast_reinforcement",
+          relatedConceptRefs: ["concept-and", "concept-or"],
           target: {
             courseKey: "course-1",
             moduleKey: "module-1",
@@ -1269,6 +1270,10 @@ test("compila diretivas de reparo especificas a partir da auditoria de intervenc
   assert.equal(result.kind, "microsequence_repair_directives");
   assert.ok(result.directives.some((directive) => directive.directiveType === "rewrite_for_didactic_intervention_type"));
   assert.ok(result.directives.some((directive) => directive.directiveType === "repair_domain_coverage"));
+  assert.deepEqual(
+    result.directives.find((directive) => directive.directiveType === "rewrite_for_didactic_intervention_type")?.relatedConceptRefs,
+    ["concept-and", "concept-or"]
+  );
 });
 
 test("diretiva de reparo preserva metadados de tightening de prerequisito", () => {
@@ -1327,11 +1332,13 @@ test("tarefa de reparo explicita contraste real em contrast_reinforcement", () =
         directiveType: "rewrite_for_didactic_intervention_type",
         didacticInterventionType: "contrast_reinforcement",
         instruction: "Reescreva a microssequência para explicitar contraste.",
+        relatedConceptRefs: ["concept-and", "concept-or"],
         evidence: "A ação pediu contraste, mas a microssequência ficou só expositiva."
       }
     ]
   });
 
+  assert.match(task, /conceitos que devem ser contrastados explicitamente:\s*concept-and,\s*concept-or/i);
   assert.match(task, /contraste real/i);
   assert.match(task, /discriminação local|contraexemplo|erro frequente/i);
 });
@@ -1343,11 +1350,13 @@ test("tarefa de reparo explicita ponte guiada em guided_practice_bridge", () => 
         directiveType: "generate_missing_intervention_microsequence",
         didacticInterventionType: "guided_practice_bridge",
         instruction: "Gere exatamente uma nova microssequência que materialize um degrau de prática guiada antes da prática principal.",
+        bridgeTargetRef: "concept-compound",
         evidence: "Faltou a ponte de prática local."
       }
     ]
   });
 
+  assert.match(task, /conceito ou alvo que precisa da ponte guiada:\s*concept-compound/i);
   assert.match(task, /ponte de prática guiada/i);
   assert.match(task, /não como explicação solta nem prática já autônoma/i);
 });

@@ -356,6 +356,8 @@ export function compileCourseForgeEditorInterventionPlan({ interventionRequest =
       },
       insertionPolicy: inferActionInsertionPolicy(change, interventionRequest, actionTarget),
       target: actionTarget,
+      relatedConceptRefs: uniqueTextList(change?.relatedConceptRefs),
+      bridgeTargetRef: text(change?.bridgeTargetRef),
       lessonTargets,
       existingMicrosequenceKey: text(actionTarget?.microsequenceKey),
       expectsNewMicrosequence

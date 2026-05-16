@@ -576,6 +576,10 @@ function describeMicrosequenceRepairDirective(directive = {}) {
   const directiveType = text(directive?.directiveType);
   const didacticInterventionType = text(directive?.didacticInterventionType);
   const targetDomainRef = text(directive?.domainRef);
+  const relatedConceptRefs = (Array.isArray(directive?.relatedConceptRefs) ? directive.relatedConceptRefs : [])
+    .map(text)
+    .filter(Boolean);
+  const bridgeTargetRef = text(directive?.bridgeTargetRef);
   const prerequisiteRefs = (Array.isArray(directive?.prerequisiteRefs) ? directive.prerequisiteRefs : [])
     .map(text)
     .filter(Boolean);
@@ -591,15 +595,27 @@ function describeMicrosequenceRepairDirective(directive = {}) {
     details.push("Feche explicitamente a lacuna preparatória antes da prática ou aplicação.");
   }
   if (directiveType === "rewrite_for_didactic_intervention_type" && didacticInterventionType === "contrast_reinforcement") {
+    if (relatedConceptRefs.length >= 2) {
+      details.push(`conceitos que devem ser contrastados explicitamente: ${relatedConceptRefs.join(", ")}.`);
+    }
     details.push("Materialize contraste real, discriminação local, contraexemplo ou erro frequente explicitamente visível na microssequência.");
   }
   if (directiveType === "rewrite_for_didactic_intervention_type" && didacticInterventionType === "guided_practice_bridge") {
+    if (bridgeTargetRef) {
+      details.push(`conceito ou alvo que precisa da ponte guiada: ${bridgeTargetRef}.`);
+    }
     details.push("Insira um degrau de prática guiada antes da prática principal, com apoio explícito, passo intermediário ou treino assistido.");
   }
   if (directiveType === "generate_missing_intervention_microsequence" && didacticInterventionType === "contrast_reinforcement") {
+    if (relatedConceptRefs.length >= 2) {
+      details.push(`conceitos que devem aparecer no contraste: ${relatedConceptRefs.join(", ")}.`);
+    }
     details.push("A nova microssequência deve nascer com contraste real entre alternativas, não só explicação neutra.");
   }
   if (directiveType === "generate_missing_intervention_microsequence" && didacticInterventionType === "guided_practice_bridge") {
+    if (bridgeTargetRef) {
+      details.push(`conceito ou alvo que precisa da ponte guiada: ${bridgeTargetRef}.`);
+    }
     details.push("A nova microssequência deve nascer como ponte de prática guiada, não como explicação solta nem prática já autônoma.");
   }
 
