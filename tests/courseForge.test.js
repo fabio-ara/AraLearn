@@ -1201,10 +1201,119 @@ test("compileCourseStructureToPatch atualiza microssequência existente e troca 
 
   assert.deepEqual(
     patch.operations.map((item) => item.op),
-    ["update_course", "update_module", "update_lesson", "update_microsequence", "replace_microsequence_cards"]
+    ["update_course", "update_module", "update_lesson", "update_microsequence", "add_card"]
   );
-  const replaceOperation = patch.operations.find((item) => item.op === "replace_microsequence_cards");
-  assert.equal(replaceOperation.microsequence.cards.length, 1);
+  const addOperation = patch.operations.find((item) => item.op === "add_card");
+  assert.equal(addOperation.card.title, "Card novo");
+  assert.equal(patch.events[0].eventType, "sync_microsequence_cards");
+});
+
+test("compileCourseStructureToPatch remove cards excedentes com diff semântico", () => {
+  const patch = compileCourseStructureToPatch({
+    intent: resolveCourseForgeIntent({
+      operation: "repair",
+      scope: {
+        level: "lesson",
+        courseKey: "course-1",
+        moduleKey: "module-1",
+        lessonKey: "lesson-1"
+      }
+    }),
+    projectDocument: {
+      contract: "aralearn.contract",
+      version: 1,
+      kind: "project",
+      courses: [
+        {
+          key: "course-1",
+          title: "Curso 1",
+          modules: [
+            {
+              key: "module-1",
+              title: "Módulo 1",
+              lessons: [
+                {
+                  key: "lesson-1",
+                  title: "Lição 1",
+                  sourceGuideStructured: {
+                    lessonGoal: "Objetivo antigo.",
+                    notationRules: "Notação antiga.",
+                    commonErrors: "Erro antigo."
+                  },
+                  presetId: "default",
+                  resourceTags: ["paragraph"],
+                  contentTypeTags: ["theory"],
+                  learningActionTags: ["read"],
+                  supportLevel: "guided",
+                  microsequences: [
+                    {
+                      key: "micro-1",
+                      title: "Microssequência antiga",
+                      status: "ready",
+                      included: true,
+                      cards: [
+                        { key: "card-1", title: "Card 1", say: "Texto 1." },
+                        { key: "card-2", title: "Card 2", say: "Texto 2." }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    architectureDraft: {
+      course: {
+        key: "course-1",
+        title: "Curso 1",
+        modules: [
+          {
+            key: "module-1",
+            title: "Módulo 1",
+            lessons: [
+              {
+                key: "lesson-1",
+                title: "Lição 1",
+                sourceGuideStructured: {
+                  lessonGoal: "Objetivo novo.",
+                  notationRules: "Notação nova.",
+                  commonErrors: "Erro novo."
+                },
+                presetId: "default",
+                resourceTags: ["paragraph"],
+                contentTypeTags: ["theory"],
+                learningActionTags: ["read"],
+                supportLevel: "guided",
+                microsequences: []
+              }
+            ]
+          }
+        ]
+      },
+      microsequencePlans: [
+        {
+          courseKey: "course-1",
+          moduleKey: "module-1",
+          lessonKey: "lesson-1",
+          microsequences: [
+            {
+              key: "micro-1",
+              title: "Microssequência revisada",
+              objective: "Objetivo novo.",
+              coverageRole: "core",
+              publicCards: [{ title: "Card 1", say: "Texto 1 revisado." }]
+            }
+          ]
+        }
+      ]
+    }
+  });
+
+  assert.ok(patch.operations.some((item) => item.op === "update_card"));
+  assert.ok(patch.operations.some((item) => item.op === "delete_card"));
+  assert.equal(patch.events[0].stats.deleteCount, 1);
 });
 
 test("top-down em escopo de microssequência recompõe cards na microssequência existente", async () => {
@@ -1314,7 +1423,8 @@ test("top-down em escopo de microssequência recompõe cards na microssequência
   assert.equal(microsequence.cards.length, 3);
   assert.equal(microsequence.status, "ready");
   assert.equal(microsequence.included, true);
-  assert.ok(result.patch.operations.some((item) => item.op === "replace_microsequence_cards"));
+  assert.ok(result.patch.operations.some((item) => item.op === "add_card"));
+  assert.ok(result.patch.events.some((item) => item.eventType === "sync_microsequence_cards"));
   const buildContractPhase = result.runState.phases.find((phase) => phase.phaseId === "build_microsequence_contract");
   const buildCardsPhase = result.runState.phases.find((phase) => phase.phaseId === "build_cards");
   assert.deepEqual(buildContractPhase.target, {

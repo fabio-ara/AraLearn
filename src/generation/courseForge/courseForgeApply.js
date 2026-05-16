@@ -1,6 +1,7 @@
 import {
   createCardInMicrosequence,
   createCourse,
+  deleteCardInMicrosequence,
   createLesson,
   createMicrosequence,
   createModule,
@@ -33,8 +34,10 @@ function sortOrderOperations(operations = []) {
     update_microsequence: 8,
     add_card: 9,
     update_card: 10,
-    reorder_children: 11,
-    mark_status: 12
+    delete_card: 11,
+    reorder_children: 12,
+    mark_status: 13,
+    replace_microsequence_cards: 98
   };
   return operations.slice().sort((a, b) => (weights[a.op] || 99) - (weights[b.op] || 99));
 }
@@ -123,6 +126,16 @@ export function applyCourseForgePatch(document, patch, options = {}) {
         microsequenceKey: operation.microsequenceKey,
         cardKey: operation.cardKey,
         ...(operation.card || {})
+      });
+      return;
+    }
+    if (operation.op === "delete_card") {
+      nextDocument = deleteCardInMicrosequence(nextDocument, {
+        courseKey: operation.courseKey,
+        moduleKey: operation.moduleKey,
+        lessonKey: operation.lessonKey,
+        microsequenceKey: operation.microsequenceKey,
+        cardKey: operation.cardKey
       });
       return;
     }

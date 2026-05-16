@@ -1253,6 +1253,7 @@ export async function runCourseForge({
           status: "completed",
           phases,
           patchOperations: context.patch?.operations?.length || 0,
+          patchEvents: context.patch?.events?.length || 0,
           requestedGenerationDepth: intent.requestedGenerationDepth,
           executedGenerationDepth: intent.generationDepth,
           deferredGenerationDepth: intent.deferredGenerationDepth,

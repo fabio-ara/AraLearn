@@ -9,10 +9,55 @@ function clone(value) {
   return structuredClone(value);
 }
 
+function normalizeArray(value) {
+  return Array.isArray(value) ? value : [];
+}
+
+function slugify(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .replace(/-{2,}/g, "-");
+}
+
+function uniqueKey(baseLabel, usedKeys, fallbackPrefix) {
+  const base = slugify(baseLabel) || fallbackPrefix;
+  let candidate = `${fallbackPrefix}-${base}`;
+  let counter = 2;
+
+  while (usedKeys.has(candidate)) {
+    candidate = `${fallbackPrefix}-${base}-${counter}`;
+    counter += 1;
+  }
+
+  return candidate;
+}
+
+function arraysEqual(left = [], right = []) {
+  if (left.length !== right.length) {
+    return false;
+  }
+  return left.every((item, index) => item === right[index]);
+}
+
+function sameCardContent(left = {}, right = {}) {
+  return JSON.stringify(left) === JSON.stringify(right);
+}
+
 function normalizeOperation(operation = {}) {
   return {
     ...clone(operation),
     op: text(operation.op)
+  };
+}
+
+function normalizePatchEvent(event = {}) {
+  return {
+    ...clone(event),
+    eventType: text(event.eventType)
   };
 }
 
@@ -147,14 +192,127 @@ function buildLessonOperation(courseKey = "", moduleKey = "", lesson = {}, exist
     : { op: "add_lesson", courseKey, moduleKey, lesson: payload };
 }
 
+function buildCardMutationOperations({ sharedTarget = {}, desiredCards = [], existingMicrosequence = {} } = {}) {
+  const existingCards = normalizeArray(existingMicrosequence?.cards)
+    .map(clone)
+    .filter((card) => text(card?.key));
+  const existingByKey = new Map(existingCards.map((card) => [text(card?.key), card]));
+  const usedExistingKeys = new Set();
+  const reservedKeys = new Set(existingCards.map((card) => text(card?.key)).filter(Boolean));
+
+  const normalizedDesiredCards = normalizeArray(desiredCards).map((card, index) => {
+    const explicitKey = text(card?.key);
+    const positionalKey = text(existingCards[index]?.key);
+    let resolvedKey = "";
+
+    if (explicitKey && existingByKey.has(explicitKey) && !usedExistingKeys.has(explicitKey)) {
+      resolvedKey = explicitKey;
+    } else if (positionalKey && !usedExistingKeys.has(positionalKey)) {
+      resolvedKey = positionalKey;
+    } else if (explicitKey && !reservedKeys.has(explicitKey)) {
+      resolvedKey = explicitKey;
+    } else {
+      resolvedKey = uniqueKey(text(card?.title) || `card-${index + 1}`, reservedKeys, "card");
+    }
+
+    if (existingByKey.has(resolvedKey)) {
+      usedExistingKeys.add(resolvedKey);
+    }
+    reservedKeys.add(resolvedKey);
+
+    return {
+      ...clone(card),
+      key: resolvedKey
+    };
+  });
+
+  const desiredKeys = normalizedDesiredCards.map((card) => text(card?.key)).filter(Boolean);
+  const desiredKeySet = new Set(desiredKeys);
+  const operations = [];
+  let addCount = 0;
+  let updateCount = 0;
+  let deleteCount = 0;
+  let reorderCount = 0;
+
+  normalizedDesiredCards.forEach((card, index) => {
+    const current = existingByKey.get(text(card?.key));
+    if (!current) {
+      addCount += 1;
+      operations.push({
+        op: "add_card",
+        ...sharedTarget,
+        position: index,
+        card: clone(card)
+      });
+      return;
+    }
+    if (!sameCardContent(current, card)) {
+      updateCount += 1;
+      operations.push({
+        op: "update_card",
+        ...sharedTarget,
+        cardKey: text(card?.key),
+        card: clone(card)
+      });
+    }
+  });
+
+  existingCards.forEach((card) => {
+    const cardKey = text(card?.key);
+    if (!cardKey || desiredKeySet.has(cardKey)) {
+      return;
+    }
+    deleteCount += 1;
+    operations.push({
+      op: "delete_card",
+      ...sharedTarget,
+      cardKey
+    });
+  });
+
+  const currentOrder = existingCards.map((card) => text(card?.key)).filter((cardKey) => desiredKeySet.has(cardKey));
+  if (desiredKeys.length > 1 && !arraysEqual(currentOrder, desiredKeys)) {
+    reorderCount = 1;
+    operations.push({
+      op: "reorder_children",
+      ...sharedTarget,
+      childType: "card",
+      order: desiredKeys
+    });
+  }
+
+  const hasChanges = addCount || updateCount || deleteCount || reorderCount;
+  return {
+    operations,
+    events: hasChanges
+      ? [
+          {
+            eventType: "sync_microsequence_cards",
+            strategy: "semantic_diff",
+            target: clone(sharedTarget),
+            stats: {
+              existingCount: existingCards.length,
+              desiredCount: normalizedDesiredCards.length,
+              addCount,
+              updateCount,
+              deleteCount,
+              reorderCount
+            }
+          }
+        ]
+      : []
+  };
+}
+
 function buildMicrosequenceOperations({
   courseKey = "",
   moduleKey = "",
   lessonKey = "",
   microsequence = {},
-  exists = false
+  existingMicrosequence = null
 } = {}) {
   const normalized = normalizeMicrosequenceForPatch(microsequence);
+  const exists = Boolean(existingMicrosequence);
   const sharedTarget = {
     courseKey,
     moduleKey,
@@ -176,13 +334,16 @@ function buildMicrosequenceOperations({
   };
 
   if (!exists) {
-    return [{
-      op: "add_microsequence",
-      courseKey,
-      moduleKey,
-      lessonKey,
-      microsequence: microsequencePatch
-    }];
+    return {
+      operations: [{
+        op: "add_microsequence",
+        courseKey,
+        moduleKey,
+        lessonKey,
+        microsequence: microsequencePatch
+      }],
+      events: []
+    };
   }
 
   const operations = [{
@@ -200,18 +361,16 @@ function buildMicrosequenceOperations({
       coverageRole: normalized.coverageRole
     }
   }];
-  if (normalized.publicCards.length) {
-    operations.push({
-      op: "replace_microsequence_cards",
-      ...sharedTarget,
-      microsequence: {
-        cards: normalized.publicCards,
-        status: normalized.status,
-        included: normalized.included
-      }
-    });
-  }
-  return operations;
+  const cardMutations = buildCardMutationOperations({
+    sharedTarget,
+    desiredCards: normalized.publicCards,
+    existingMicrosequence
+  });
+  operations.push(...cardMutations.operations);
+  return {
+    operations,
+    events: cardMutations.events
+  };
 }
 
 export function compileCourseStructureToPatch({ intent, architectureDraft, projectDocument = {} }) {
@@ -236,6 +395,7 @@ export function compileCourseStructureToPatch({ intent, architectureDraft, proje
   const courseKey = text(course.key);
   const existingCourse = findCourse(projectDocument, courseKey);
   const operations = [buildCourseOperation(course, Boolean(existingCourse))];
+  const events = [];
 
   const microsequencePlansByLessonKey = new Map(
     (Array.isArray(normalizedDraft?.microsequencePlans) ? normalizedDraft.microsequencePlans : [])
@@ -254,15 +414,15 @@ export function compileCourseStructureToPatch({ intent, architectureDraft, proje
       const lessonMicrosequencePlan = microsequencePlansByLessonKey.get(text(lesson?.key));
       (Array.isArray(lessonMicrosequencePlan?.microsequences) ? lessonMicrosequencePlan.microsequences : []).forEach((microsequence) => {
         const existingMicrosequence = findMicrosequence(projectDocument, courseKey, moduleKey, lessonKey, text(microsequence?.key));
-        operations.push(
-          ...buildMicrosequenceOperations({
-            courseKey,
-            moduleKey,
-            lessonKey,
-            microsequence,
-            exists: Boolean(existingMicrosequence)
-          })
-        );
+        const compiled = buildMicrosequenceOperations({
+          courseKey,
+          moduleKey,
+          lessonKey,
+          microsequence,
+          existingMicrosequence
+        });
+        operations.push(...compiled.operations);
+        events.push(...compiled.events);
       });
     });
   });
@@ -270,7 +430,8 @@ export function compileCourseStructureToPatch({ intent, architectureDraft, proje
   return {
     patchType: COURSE_FORGE_PATCH_TYPE,
     target: clone(intent?.scope || { level: "project" }),
-    operations
+    operations,
+    events
   };
 }
 
@@ -281,6 +442,7 @@ export function validateCourseForgePatch(patch = {}, { intent = {} } = {}) {
   }
 
   const operations = Array.isArray(patch?.operations) ? patch.operations.map(normalizeOperation) : [];
+  const events = Array.isArray(patch?.events) ? patch.events.map(normalizePatchEvent) : [];
   if (!operations.length) {
     errors.push("Patch sem operações.");
   }
@@ -308,7 +470,8 @@ export function validateCourseForgePatch(patch = {}, { intent = {} } = {}) {
     patch: {
       patchType: patch?.patchType,
       target: structuredClone(patch?.target || {}),
-      operations
+      operations,
+      events
     }
   };
 }
