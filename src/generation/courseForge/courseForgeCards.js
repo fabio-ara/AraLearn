@@ -1054,10 +1054,54 @@ function buildCoverageRepairDirective(issue = {}) {
   };
 }
 
+function buildProviderAnchoredInterventionDirective(issue = {}, action = null) {
+  if (!action) {
+    return null;
+  }
+  const knownDirective = buildInterventionRepairDirective(issue, action);
+  if (knownDirective) {
+    return knownDirective;
+  }
+  const didacticInterventionType = text(action?.didacticInterventionType);
+  const relatedConceptRefs = [...new Set(normalizeArray(action?.relatedConceptRefs).map(text).filter(Boolean))];
+  const bridgeTargetRef = text(action?.bridgeTargetRef);
+  const domainRef = text(action?.domainRef);
+  const prerequisiteRefs = [...new Set(normalizeArray(action?.prerequisiteRefs).map(text).filter(Boolean))];
+  return {
+    directiveType: "rewrite_for_didactic_intervention_type",
+    requestedChangeId: text(action?.requestedChangeId),
+    didacticInterventionType,
+    target: {
+      courseKey: text(action?.target?.courseKey || issue?.courseKey),
+      moduleKey: text(action?.target?.moduleKey || issue?.moduleKey),
+      lessonKey: text(action?.target?.lessonKey || issue?.lessonKey),
+      microsequenceKey: text(action?.existingMicrosequenceKey || issue?.microsequenceKey)
+    },
+    domainRef,
+    prerequisiteRefs,
+    relatedConceptRefs,
+    bridgeTargetRef,
+    instruction: `Reescreva a microssequência para ${explainInterventionTypeExpectation(didacticInterventionType)}.`,
+    evidence: text(issue?.evidence),
+    providerIssueType: text(issue?.type)
+  };
+}
+
+function buildDirectiveDedupKey(directive = {}) {
+  return [
+    text(directive?.directiveType),
+    text(directive?.requestedChangeId),
+    text(directive?.didacticInterventionType),
+    text(directive?.target?.lessonKey),
+    text(directive?.target?.microsequenceKey)
+  ].join("|");
+}
+
 export function buildCourseForgeMicrosequenceRepairDirectives({
   adherenceAudit = {},
   interventionDidacticAudit = {},
-  interventionPlan = null
+  interventionPlan = null,
+  providerMicrosequenceAudit = {}
 } = {}) {
   const interventionActions = new Map(
     normalizeArray(interventionPlan?.actions)
@@ -1065,17 +1109,40 @@ export function buildCourseForgeMicrosequenceRepairDirectives({
       .filter(([requestedChangeId]) => requestedChangeId)
   );
   const directives = [];
+  const seenDirectiveKeys = new Set();
+
+  function pushDirective(directive = null) {
+    if (!directive) {
+      return;
+    }
+    const key = buildDirectiveDedupKey(directive);
+    if (seenDirectiveKeys.has(key)) {
+      return;
+    }
+    seenDirectiveKeys.add(key);
+    directives.push(directive);
+  }
 
   normalizeArray(interventionDidacticAudit?.issues).forEach((issue) => {
     const action = interventionActions.get(text(issue?.requestedChangeId)) || interventionActions.get(text(issue?.metadata?.requestedChangeId)) || null;
     const directive = buildInterventionRepairDirective(issue, action);
-    if (directive) {
-      directives.push(directive);
+    pushDirective(directive);
+  });
+
+  [
+    ...normalizeArray(providerMicrosequenceAudit?.issues),
+    ...normalizeArray(providerMicrosequenceAudit?.warnings)
+  ].forEach((issue) => {
+    const requestedChangeId = text(issue?.requestedChangeId) || text(issue?.metadata?.requestedChangeId);
+    if (!requestedChangeId) {
+      return;
     }
+    const action = interventionActions.get(requestedChangeId) || null;
+    pushDirective(buildProviderAnchoredInterventionDirective(issue, action));
   });
 
   normalizeArray(adherenceAudit?.issues).forEach((issue) => {
-    directives.push(buildCoverageRepairDirective(issue));
+    pushDirective(buildCoverageRepairDirective(issue));
   });
 
   return {

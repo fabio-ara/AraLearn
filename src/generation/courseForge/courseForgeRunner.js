@@ -1492,7 +1492,8 @@ export async function runCourseForge({
         context.microsequenceRepairDirectives = buildCourseForgeMicrosequenceRepairDirectives({
           adherenceAudit,
           interventionDidacticAudit,
-          interventionPlan
+          interventionPlan,
+          providerMicrosequenceAudit: context.microsequenceAudit
         });
         let combinedPlanningAudit = mergeCourseForgeAdherenceAudits(adherenceAudit, interventionDidacticAudit);
 
@@ -1550,7 +1551,8 @@ export async function runCourseForge({
           context.microsequenceRepairDirectives = buildCourseForgeMicrosequenceRepairDirectives({
             adherenceAudit,
             interventionDidacticAudit,
-            interventionPlan
+            interventionPlan,
+            providerMicrosequenceAudit: context.microsequenceAudit
           });
           combinedPlanningAudit = mergeCourseForgeAdherenceAudits(adherenceAudit, interventionDidacticAudit);
         }

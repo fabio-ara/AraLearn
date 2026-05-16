@@ -1511,6 +1511,52 @@ test("diretiva de reparo preserva metadados de tightening de prerequisito", () =
   assert.deepEqual(directive?.prerequisiteRefs, ["concept-and"]);
 });
 
+test("diretivas de reparo reaproveitam finding ancorado do provider por requestedChangeId", () => {
+  const result = buildCourseForgeMicrosequenceRepairDirectives({
+    adherenceAudit: {
+      issues: []
+    },
+    interventionDidacticAudit: {
+      issues: []
+    },
+    providerMicrosequenceAudit: {
+      approved: true,
+      issues: [],
+      warnings: [
+        {
+          type: "contrast_needs_more_discrimination",
+          requestedChangeId: "requested_change_1",
+          didacticInterventionType: "contrast_reinforcement",
+          lessonKey: "lesson-1",
+          microsequenceKey: "micro-1",
+          evidence: "O contraste apareceu, mas a discriminação ainda ficou fraca."
+        }
+      ]
+    },
+    interventionPlan: {
+      actions: [
+        {
+          requestedChangeId: "requested_change_1",
+          didacticInterventionType: "contrast_reinforcement",
+          relatedConceptRefs: ["concept-and", "concept-or"],
+          target: {
+            courseKey: "course-1",
+            moduleKey: "module-1",
+            lessonKey: "lesson-1"
+          },
+          existingMicrosequenceKey: "micro-1"
+        }
+      ]
+    }
+  });
+
+  const directive = result.directives.find((item) => item.requestedChangeId === "requested_change_1");
+  assert.equal(directive?.directiveType, "rewrite_for_didactic_intervention_type");
+  assert.equal(directive?.providerIssueType, "contrast_needs_more_discrimination");
+  assert.deepEqual(directive?.relatedConceptRefs, ["concept-and", "concept-or"]);
+  assert.match(directive?.evidence || "", /discriminação ainda ficou fraca/i);
+});
+
 test("tarefa de reparo explicita alvo e prerequisitos em tightening", () => {
   const task = buildMicrosequenceRepairTask({
     directives: [
