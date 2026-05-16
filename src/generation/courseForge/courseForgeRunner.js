@@ -830,6 +830,78 @@ function buildCompositeMicrosequencePlansForInterventionAudit({ projectDocument 
   });
 }
 
+function normalizeTextList(values = []) {
+  return [...new Set((Array.isArray(values) ? values : []).map(text).filter(Boolean))];
+}
+
+function findMatchingInterventionAction({ finding = {}, interventionPlan = null } = {}) {
+  const actions = Array.isArray(interventionPlan?.actions) ? interventionPlan.actions : [];
+  const requestedChangeId = text(finding?.requestedChangeId);
+  if (requestedChangeId) {
+    const matchedByRequestedChange = actions.find((action) => text(action?.requestedChangeId) === requestedChangeId);
+    if (matchedByRequestedChange) {
+      return matchedByRequestedChange;
+    }
+  }
+
+  const didacticInterventionType = text(finding?.didacticInterventionType);
+  const lessonKey = text(finding?.lessonKey);
+  const microsequenceKey = text(finding?.microsequenceKey);
+  const matchingActions = actions.filter((action) => {
+    if (didacticInterventionType && text(action?.didacticInterventionType) !== didacticInterventionType) {
+      return false;
+    }
+    if (lessonKey) {
+      const actionLessonKey = text(action?.target?.lessonKey) || text(action?.lessonTargets?.[0]?.lessonKey);
+      if (actionLessonKey !== lessonKey) {
+        return false;
+      }
+    }
+    if (microsequenceKey && text(action?.existingMicrosequenceKey) && text(action?.existingMicrosequenceKey) !== microsequenceKey) {
+      return false;
+    }
+    return true;
+  });
+  if (matchingActions.length === 1) {
+    return matchingActions[0];
+  }
+  return actions.length === 1 ? actions[0] : null;
+}
+
+function normalizeInterventionAuditFinding(finding = {}, interventionPlan = null) {
+  const matchedAction = findMatchingInterventionAction({ finding, interventionPlan });
+  const target = matchedAction?.target || {};
+  return {
+    ...structuredClone(finding || {}),
+    requestedChangeId: text(finding?.requestedChangeId) || text(matchedAction?.requestedChangeId),
+    didacticInterventionType: text(finding?.didacticInterventionType) || text(matchedAction?.didacticInterventionType),
+    courseKey: text(finding?.courseKey) || text(target?.courseKey),
+    moduleKey: text(finding?.moduleKey) || text(target?.moduleKey),
+    lessonKey: text(finding?.lessonKey) || text(target?.lessonKey) || text(matchedAction?.lessonTargets?.[0]?.lessonKey),
+    microsequenceKey: text(finding?.microsequenceKey) || text(matchedAction?.existingMicrosequenceKey),
+    domainRef: text(finding?.domainRef) || text(matchedAction?.domainRef),
+    relatedConceptRefs: normalizeTextList(finding?.relatedConceptRefs).length
+      ? normalizeTextList(finding?.relatedConceptRefs)
+      : normalizeTextList(matchedAction?.relatedConceptRefs),
+    bridgeTargetRef: text(finding?.bridgeTargetRef) || text(matchedAction?.bridgeTargetRef),
+    prerequisiteRefs: normalizeTextList(finding?.prerequisiteRefs).length
+      ? normalizeTextList(finding?.prerequisiteRefs)
+      : normalizeTextList(matchedAction?.prerequisiteRefs)
+  };
+}
+
+function normalizeInterventionProviderAudit(providerAudit = {}, interventionPlan = null) {
+  const normalizedIssues = (Array.isArray(providerAudit?.issues) ? providerAudit.issues : [])
+    .map((finding) => normalizeInterventionAuditFinding(finding, interventionPlan));
+  const normalizedWarnings = (Array.isArray(providerAudit?.warnings) ? providerAudit.warnings : [])
+    .map((finding) => normalizeInterventionAuditFinding(finding, interventionPlan));
+  return {
+    approved: providerAudit?.approved !== false,
+    issues: normalizedIssues,
+    warnings: normalizedWarnings
+  };
+}
+
 export async function runCourseForge({
   intent: rawIntent,
   projectDocument,
@@ -1353,7 +1425,9 @@ export async function runCourseForge({
               task:
                 interventionPlan?.auditProviderTask
                 || "Aponte saltos de progressão, duplicações, escopo excessivo e falta de prática distribuída.",
-              output: "Responda somente JSON válido com approved, issues e warnings."
+              output: interventionPlan
+                ? "Responda somente JSON válido com approved, issues e warnings. Em cada issue ou warning ligado a uma ação, inclua requestedChangeId, didacticInterventionType, lessonKey, microsequenceKey quando houver, e repita domainRef, relatedConceptRefs, bridgeTargetRef e prerequisiteRefs relevantes."
+                : "Responda somente JSON válido com approved, issues e warnings."
             }),
             schema: null,
             artifacts: [
@@ -1363,6 +1437,7 @@ export async function runCourseForge({
             ]
           });
           providerAudit = structuredClone(response.value || response || providerAudit);
+          providerAudit = normalizeInterventionProviderAudit(providerAudit, interventionPlan);
         }
         context.microsequenceAudit = {
           approved: providerAudit.approved !== false,

@@ -322,6 +322,7 @@ function buildInterventionAuditProviderTask({ actions = [] } = {}) {
     .filter(Boolean);
   return [
     "Audite se cada microssequência realmente materializa a função didática pedida sem ampliar o escopo.",
+    "Quando apontar findings de uma ação, repita requestedChangeId, didacticInterventionType, lessonKey, microsequenceKey quando houver e os focos estruturados relevantes.",
     "Considere explicitamente os seguintes focos por ação:",
     ...lines
   ].join("\n");

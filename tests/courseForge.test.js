@@ -2041,8 +2041,214 @@ test("editor_intervention_plan explicita focos estruturados no providerTask", ()
   assert.match(result.providerTask, /domínio-alvo concept-compound/i);
   assert.match(result.providerTask, /pré-requisitos concept-and,\s*concept-or/i);
   assert.match(result.auditProviderTask, /Audite se cada microssequência realmente materializa a função didática pedida/i);
+  assert.match(result.auditProviderTask, /requestedChangeId,\s*didacticInterventionType,\s*lessonKey,\s*microsequenceKey/i);
   assert.match(result.auditProviderTask, /Ação 1:\s*contrast_reinforcement/i);
   assert.match(result.auditProviderTask, /contraste explícito entre concept-and e concept-or/i);
+});
+
+test("audit_microsequences normaliza findings estruturados a partir do interventionPlan", async () => {
+  const provider = createFakeProvider({
+    script: {
+      plan_microsequences: [
+        {
+          microsequencePlans: [
+            {
+              courseKey: "course-logica",
+              moduleKey: "module-base",
+              lessonKey: "lesson-proposicoes",
+              microsequences: [
+                {
+                  key: "microsequence-contraste",
+                  title: "Contraste entre AND e OR",
+                  description: "Explicita a diferença entre conectivos.",
+                  objective: "Distinguir AND de OR em casos simples.",
+                  domainRefs: ["concept-and", "concept-or"],
+                  didacticPurpose: "Materializar contraste local com prática guiada curta.",
+                  coverageRole: "practice",
+                  tags: ["contraste", "pratica"]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      audit_microsequences: [
+        (input) => {
+          assert.match(input.prompt, /requestedChangeId,\s*didacticInterventionType,\s*lessonKey,\s*microsequenceKey/i);
+          return {
+            approved: true,
+            issues: [],
+            warnings: [
+              {
+                severity: "warning",
+                type: "contrast_needs_more_discrimination",
+                requestedChangeId: "requested_change_1",
+                evidence: "O contraste apareceu, mas ainda pode ficar mais explícito."
+              }
+            ]
+          };
+        }
+      ],
+      build_cards: [
+        {
+          cards: [
+            {
+              position: 1,
+              resourceType: "paragraph",
+              title: "AND e OR",
+              text: "AND exige ambas as condições; OR aceita pelo menos uma.",
+              sourceRefs: ["src_1"]
+            },
+            {
+              position: 2,
+              resourceType: "paragraph",
+              title: "Exemplo contrastivo",
+              text: "Em `p AND q`, ambas devem valer; em `p OR q`, basta uma.",
+              sourceRefs: ["src_1"]
+            },
+            {
+              position: 3,
+              resourceType: "multiple_choice",
+              title: "Discriminação rápida",
+              question: "Qual conectivo aceita que apenas uma condição seja verdadeira?",
+              options: [
+                { optionId: "a", label: "AND" },
+                { optionId: "b", label: "OR" },
+                { optionId: "c", label: "Nenhum" }
+              ],
+              correctOptionId: "b",
+              feedback: "OR aceita pelo menos uma condição verdadeira.",
+              sourceRefs: ["src_1"]
+            }
+          ]
+        }
+      ]
+    }
+  });
+  const registry = createProviderRegistry({ providers: [provider] });
+  const artifactStore = createCourseForgeArtifactsStore();
+  let runId = "";
+  await assert.rejects(
+    async () => {
+      await runCourseForge({
+        intent: {
+          interventionRequest: {
+            status: "ready",
+            recommendedAction: "needs_new_microsequence",
+            studentPrompt: "Ainda confundo AND com OR.",
+            responseText: "Vamos inserir um contraste local.",
+            rationale: "Falta discriminação explícita entre os conectivos.",
+            target: {
+              level: "lesson",
+              courseKey: "course-logica",
+              moduleKey: "module-base",
+              lessonKey: "lesson-proposicoes",
+              microsequenceKey: ""
+            },
+            editorIntent: {
+              operation: "extend",
+              generationDepthHint: "reinforce_only",
+              interventionModeHint: "targeted_scope_expansion",
+              requestedBy: "tutor"
+            },
+            requestedChanges: [
+              {
+                changeId: "requested_change_1",
+                type: "add_new_microsequence",
+                operation: "extend",
+                patchStrategy: "add_microsequence",
+                didacticInterventionType: "contrast_reinforcement",
+                target: {
+                  level: "lesson",
+                  courseKey: "course-logica",
+                  moduleKey: "module-base",
+                  lessonKey: "lesson-proposicoes",
+                  microsequenceKey: ""
+                },
+                relatedConceptRefs: ["concept-and", "concept-or"],
+                reason: "Inserir contraste local entre AND e OR."
+              }
+            ],
+            contextSnapshot: {
+              lessonKeys: ["lesson-proposicoes"],
+              microsequenceKeys: ["microsequence-revisao"],
+              reusableMicrosequenceCount: 1
+            }
+          },
+          attachments: [{ id: "src_1", name: "ementa.pdf", type: "application/pdf" }]
+        },
+        projectDocument: {
+          contract: "aralearn.contract",
+          version: 1,
+          kind: "project",
+          courses: [
+            {
+              key: "course-logica",
+              title: "Lógica",
+              modules: [
+                {
+                  key: "module-base",
+                  title: "Base",
+                  lessons: [
+                    {
+                      key: "lesson-proposicoes",
+                      title: "Proposições compostas",
+                      description: "Lição.",
+                      sourceGuideStructured: {
+                        lessonGoal: "Distinguir conectivos básicos.",
+                        notationRules: "Usar `AND` e `OR` com exemplos simples.",
+                        commonErrors: "Confundir conjunção com disjunção."
+                      },
+                      domainMap: {
+                        items: [
+                          { id: "concept-and", label: "AND", priority: "core" },
+                          { id: "concept-or", label: "OR", priority: "core" }
+                        ],
+                        practiceVariants: []
+                      },
+                      presetId: "default",
+                      resourceTags: ["paragraph"],
+                      contentTypeTags: ["theory"],
+                      learningActionTags: ["read"],
+                      supportLevel: "guided",
+                      microsequences: [
+                        {
+                          key: "microsequence-revisao",
+                          title: "Revisão",
+                          description: "Resumo inicial.",
+                          didacticPurpose: "Revisar conectivos.",
+                          coverageRole: "explain",
+                          status: "ready",
+                          included: true,
+                          domainRefs: ["concept-and", "concept-or"],
+                          cards: [{ key: "card-1", title: "Card 1", say: "Texto antigo." }]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        providerRegistry: registry,
+        providerId: "fake",
+        artifactStore
+      });
+    },
+    (error) => {
+      runId = error.runId;
+      return /quantidade errada/i.test(error.message);
+    }
+  );
+
+  const auditArtifact = artifactStore.loadArtifact(runId, "microsequence-audit");
+  assert.equal(auditArtifact.content.approved, true);
+  assert.equal(auditArtifact.content.warnings.length, 1);
+  assert.equal(auditArtifact.content.warnings[0].requestedChangeId, "requested_change_1");
+  assert.equal(auditArtifact.content.warnings[0].didacticInterventionType, "contrast_reinforcement");
+  assert.equal(auditArtifact.content.warnings[0].lessonKey, "lesson-proposicoes");
+  assert.deepEqual(auditArtifact.content.warnings[0].relatedConceptRefs, ["concept-and", "concept-or"]);
 });
 
 test("auditoria de alinhamento avaliativo cobra formato pedido explicitamente", () => {
