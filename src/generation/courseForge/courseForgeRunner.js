@@ -603,6 +603,12 @@ function describeMicrosequenceRepairDirective(directive = {}) {
     }
     details.push("Reescreva a microssequência para fechar explicitamente a lacuna preparatória antes da prática ou aplicação.");
   }
+  if (directiveType === "rewrite_for_didactic_intervention_type" && didacticInterventionType === "explanatory_bridge") {
+    if (targetDomainRef) {
+      details.push(`conceito ou domínio que precisa da ponte explicativa: ${targetDomainRef}.`);
+    }
+    details.push("Reescreva a microssequência para criar uma ponte explicativa local antes da aplicação, não prática prematura.");
+  }
   if (directiveType === "rewrite_for_didactic_intervention_type" && didacticInterventionType === "contrast_reinforcement") {
     if (relatedConceptRefs.length >= 2) {
       details.push(`conceitos que devem ser contrastados explicitamente: ${relatedConceptRefs.join(", ")}.`);
@@ -629,6 +635,12 @@ function describeMicrosequenceRepairDirective(directive = {}) {
       details.push(`pré-requisitos que devem aparecer antes da prática: ${prerequisiteRefs.join(", ")}.`);
     }
     details.push("A nova microssequência deve nascer como ponte preparatória explícita antes da prática ou aplicação.");
+  }
+  if (directiveType === "generate_missing_intervention_microsequence" && didacticInterventionType === "explanatory_bridge") {
+    if (targetDomainRef) {
+      details.push(`conceito ou domínio que precisa da ponte explicativa: ${targetDomainRef}.`);
+    }
+    details.push("A nova microssequência deve nascer como ponte explicativa local antes da aplicação, não como prática prematura.");
   }
   if (directiveType === "generate_missing_intervention_microsequence" && didacticInterventionType === "guided_practice_bridge") {
     if (bridgeTargetRef) {

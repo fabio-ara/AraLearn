@@ -323,6 +323,17 @@ function inferStructuredInterventionFocus({
     }
   }
 
+  if (didacticInterventionType === "explanatory_bridge") {
+    if (mentionedDomainRefs.length >= 1) {
+      focus.domainRef = mentionedDomainRefs[0];
+    } else {
+      const availableDomainRefs = listAvailableDomainRefs(lessonPlan);
+      if (availableDomainRefs.length === 1) {
+        focus.domainRef = availableDomainRefs[0];
+      }
+    }
+  }
+
   if (didacticInterventionType === "prerequisite_tightening") {
     const targetDomainRef = mentionedDomainRefs.find((domainRef) => {
       const item = (Array.isArray(lessonPlan?.domainMap?.items) ? lessonPlan.domainMap.items : []).find(
