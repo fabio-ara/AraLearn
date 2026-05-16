@@ -36,6 +36,7 @@ import {
   auditCourseForgeDomainCoverage,
   auditCourseForgeInterventionDidacticCoherence,
   auditCourseForgePrerequisiteCoverage,
+  buildCourseForgeMicrosequenceRepairDirectives,
   mergeCourseForgeAdherenceAudits,
   auditCourseForgeSourceAdherence,
   buildCourseForgeMicrosequenceContracts,
@@ -571,6 +572,19 @@ function buildMicrosequenceTarget(entry = {}) {
   };
 }
 
+function buildMicrosequenceRepairTask(directivesArtifact = null) {
+  const directives = Array.isArray(directivesArtifact?.directives) ? directivesArtifact.directives : [];
+  if (!directives.length) {
+    return "Corrija apenas lacunas de cobertura didática, domainRefs, practiceVariantRefs e progressão das microssequências, sem gerar cards.";
+  }
+  const lines = directives.slice(0, 6).map((directive) => `- ${text(directive?.instruction)} Evidência: ${text(directive?.evidence)}`.trim());
+  return [
+    "Corrija apenas as falhas didáticas apontadas, sem gerar cards nem ampliar o escopo.",
+    "Siga estas diretivas prioritárias:",
+    ...lines
+  ].join("\n");
+}
+
 function derivePhaseTarget({ phaseId = "", intent = {}, context = {} } = {}) {
   if (
     ["answer_locally", "audit_intervention", "compile_intervention_request", "build_microsequence_contract", "build_cards", "audit_cards", "audit_source_adherence", "repair_cards", "repair_card_adherence"].includes(
@@ -772,6 +786,7 @@ export async function runCourseForge({
     microsequenceAudit: artifactStore.loadArtifact(runId, "microsequence-audit")?.content || null,
     microsequenceAdherenceAudit: artifactStore.loadArtifact(runId, "microsequence-adherence-audit")?.content || null,
     interventionDidacticAudit: artifactStore.loadArtifact(runId, "intervention-didactic-audit")?.content || null,
+    microsequenceRepairDirectives: artifactStore.loadArtifact(runId, "microsequence-repair-directives")?.content || null,
     microsequenceContracts: artifactStore.loadArtifact(runId, "microsequence-contracts")?.content || null,
     cardPlans: artifactStore.loadArtifact(runId, "card-plans")?.content || null,
     cardDrafts: artifactStore.loadArtifact(runId, "card-drafts")?.content || null,
@@ -1306,6 +1321,11 @@ export async function runCourseForge({
         });
         context.microsequenceAdherenceAudit = adherenceAudit;
         context.interventionDidacticAudit = interventionDidacticAudit;
+        context.microsequenceRepairDirectives = buildCourseForgeMicrosequenceRepairDirectives({
+          adherenceAudit,
+          interventionDidacticAudit,
+          interventionPlan
+        });
         let combinedPlanningAudit = mergeCourseForgeAdherenceAudits(adherenceAudit, interventionDidacticAudit);
 
         if (hasBlockingIssues(combinedPlanningAudit)) {
@@ -1316,7 +1336,7 @@ export async function runCourseForge({
             prompt: buildCourseForgePrompt({
               role: "Você repara o planejamento de microssequências do AraLearn.",
               sourcePack: JSON.stringify(context.sourceLedger || []),
-              task: "Corrija apenas lacunas de cobertura didática, domainRefs, practiceVariantRefs e progressão das microssequências, sem gerar cards.",
+              task: buildMicrosequenceRepairTask(context.microsequenceRepairDirectives),
               output: "Responda somente JSON válido com microsequencePlans."
             }),
             schema: null,
@@ -1325,6 +1345,7 @@ export async function runCourseForge({
               { id: "lesson-plans", name: "lesson-plans", content: JSON.stringify(context.lessonPlans || []) },
               { id: "microsequence-plans", name: "microsequence-plans", content: JSON.stringify(context.microsequencePlans || []) },
               { id: "microsequence-issues", name: "microsequence-issues", content: JSON.stringify(combinedPlanningAudit.issues || []) },
+              { id: "microsequence-repair-directives", name: "microsequence-repair-directives", content: JSON.stringify(context.microsequenceRepairDirectives || { directives: [] }) },
               ...(interventionPlan ? [{ id: "intervention-plan", name: "intervention-plan", content: JSON.stringify(interventionPlan) }] : [])
             ]
           });
@@ -1358,12 +1379,18 @@ export async function runCourseForge({
           });
           context.microsequenceAdherenceAudit = adherenceAudit;
           context.interventionDidacticAudit = interventionDidacticAudit;
+          context.microsequenceRepairDirectives = buildCourseForgeMicrosequenceRepairDirectives({
+            adherenceAudit,
+            interventionDidacticAudit,
+            interventionPlan
+          });
           combinedPlanningAudit = mergeCourseForgeAdherenceAudits(adherenceAudit, interventionDidacticAudit);
         }
 
         savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "microsequence-plans", context.microsequencePlans);
         savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "microsequence-adherence-audit", context.microsequenceAdherenceAudit);
         savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "intervention-didactic-audit", context.interventionDidacticAudit);
+        savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "microsequence-repair-directives", context.microsequenceRepairDirectives);
         runState = updateCourseForgeRunState(runState, {
           metrics: updateMetricsCategory(runState.metrics, "planning", {
             issueCount: sumBlockingIssues(mergeCourseForgeAdherenceAudits(context.microsequenceAdherenceAudit, context.interventionDidacticAudit)),

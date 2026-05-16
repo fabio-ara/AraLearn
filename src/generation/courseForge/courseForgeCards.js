@@ -732,7 +732,8 @@ export function auditCourseForgeInterventionDidacticCoherence({ microsequencePla
 
     if (!targetedMicrosequence) {
       issues.push(
-        makeAuditIssue(
+        {
+          ...makeAuditIssue(
           {
             courseKey: action?.target?.courseKey,
             moduleKey: action?.target?.moduleKey,
@@ -742,7 +743,10 @@ export function auditCourseForgeInterventionDidacticCoherence({ microsequencePla
           "missing_intervention_target",
           `A ação ${text(action?.requestedChangeId) || text(action?.actionId)} não encontrou a microssequência alvo no plano resultante.`,
           "Preservar a microssequência alvo no plano local ou reparar a resolução do alvo."
-        )
+          ),
+          requestedChangeId: text(action?.requestedChangeId),
+          didacticInterventionType: text(action?.didacticInterventionType)
+        }
       );
       return;
     }
@@ -750,7 +754,8 @@ export function auditCourseForgeInterventionDidacticCoherence({ microsequencePla
     const score = scoreMicrosequenceForInterventionType(targetedMicrosequence, text(action?.didacticInterventionType));
     if (score <= 0) {
       issues.push(
-        makeAuditIssue(
+        {
+          ...makeAuditIssue(
           {
             courseKey: action?.target?.courseKey,
             moduleKey: action?.target?.moduleKey,
@@ -760,7 +765,10 @@ export function auditCourseForgeInterventionDidacticCoherence({ microsequencePla
           "intervention_type_mismatch",
           `A ação ${text(action?.requestedChangeId) || text(action?.actionId)} pediu ${text(action?.didacticInterventionType)}, mas ${text(targetedMicrosequence?.title) || text(targetedMicrosequence?.key)} não parece ${explainInterventionTypeExpectation(text(action?.didacticInterventionType))}.`,
           "Reescrever a microssequência para materializar explicitamente a função didática pedida."
-        )
+          ),
+          requestedChangeId: text(action?.requestedChangeId),
+          didacticInterventionType: text(action?.didacticInterventionType)
+        }
       );
     }
   });
@@ -784,7 +792,8 @@ export function auditCourseForgeInterventionDidacticCoherence({ microsequencePla
     selections.forEach(({ action, microsequence, score }) => {
       if (!microsequence) {
         issues.push(
-          makeAuditIssue(
+          {
+            ...makeAuditIssue(
             {
               courseKey: action?.target?.courseKey,
               moduleKey: action?.target?.moduleKey,
@@ -793,13 +802,17 @@ export function auditCourseForgeInterventionDidacticCoherence({ microsequencePla
             "missing_intervention_microsequence",
             `A ação ${text(action?.requestedChangeId) || text(action?.actionId)} não encontrou nenhuma nova microssequência correspondente no plano resultante.`,
             "Gerar a microssequência local pedida antes de compilar o patch."
-          )
+            ),
+            requestedChangeId: text(action?.requestedChangeId),
+            didacticInterventionType: text(action?.didacticInterventionType)
+          }
         );
         return;
       }
       if (score <= 0) {
         issues.push(
-          makeAuditIssue(
+          {
+            ...makeAuditIssue(
             {
               courseKey: action?.target?.courseKey,
               moduleKey: action?.target?.moduleKey,
@@ -809,7 +822,10 @@ export function auditCourseForgeInterventionDidacticCoherence({ microsequencePla
             "intervention_type_mismatch",
             `A ação ${text(action?.requestedChangeId) || text(action?.actionId)} pediu ${text(action?.didacticInterventionType)}, mas ${text(microsequence?.title) || text(microsequence?.key)} não parece ${explainInterventionTypeExpectation(text(action?.didacticInterventionType))}.`,
             "Ajustar o plano da nova microssequência para refletir explicitamente a função didática pedida."
-          )
+            ),
+            requestedChangeId: text(action?.requestedChangeId),
+            didacticInterventionType: text(action?.didacticInterventionType)
+          }
         );
       }
     });
@@ -820,6 +836,102 @@ export function auditCourseForgeInterventionDidacticCoherence({ microsequencePla
     approved: issues.length === 0,
     issues,
     warnings
+  };
+}
+
+function buildInterventionRepairDirective(issue = {}, action = null) {
+  const didacticInterventionType = text(action?.didacticInterventionType);
+  if (text(issue?.type) === "missing_intervention_target") {
+    return {
+      directiveType: "preserve_target_microsequence",
+      requestedChangeId: text(action?.requestedChangeId),
+      didacticInterventionType,
+      target: {
+        courseKey: text(action?.target?.courseKey || issue?.courseKey),
+        moduleKey: text(action?.target?.moduleKey || issue?.moduleKey),
+        lessonKey: text(action?.target?.lessonKey || issue?.lessonKey),
+        microsequenceKey: text(action?.existingMicrosequenceKey || issue?.microsequenceKey)
+      },
+      instruction: "Preserve a microssequência alvo pedida pela intervenção e reescreva seu conteúdo sem trocar o alvo local.",
+      evidence: text(issue?.evidence)
+    };
+  }
+  if (text(issue?.type) === "missing_intervention_microsequence") {
+    return {
+      directiveType: "generate_missing_intervention_microsequence",
+      requestedChangeId: text(action?.requestedChangeId),
+      didacticInterventionType,
+      target: {
+        courseKey: text(action?.target?.courseKey || issue?.courseKey),
+        moduleKey: text(action?.target?.moduleKey || issue?.moduleKey),
+        lessonKey: text(action?.target?.lessonKey || issue?.lessonKey),
+        microsequenceKey: ""
+      },
+      instruction: `Gere exatamente uma nova microssequência que materialize ${explainInterventionTypeExpectation(didacticInterventionType)}.`,
+      evidence: text(issue?.evidence)
+    };
+  }
+  if (text(issue?.type) === "intervention_type_mismatch") {
+    return {
+      directiveType: "rewrite_for_didactic_intervention_type",
+      requestedChangeId: text(action?.requestedChangeId),
+      didacticInterventionType,
+      target: {
+        courseKey: text(action?.target?.courseKey || issue?.courseKey),
+        moduleKey: text(action?.target?.moduleKey || issue?.moduleKey),
+        lessonKey: text(action?.target?.lessonKey || issue?.lessonKey),
+        microsequenceKey: text(action?.existingMicrosequenceKey || issue?.microsequenceKey)
+      },
+      instruction: `Reescreva a microssequência para ${explainInterventionTypeExpectation(didacticInterventionType)}.`,
+      evidence: text(issue?.evidence)
+    };
+  }
+  return null;
+}
+
+function buildCoverageRepairDirective(issue = {}) {
+  return {
+    directiveType: "repair_domain_coverage",
+    requestedChangeId: "",
+    didacticInterventionType: "",
+    target: {
+      courseKey: text(issue?.courseKey),
+      moduleKey: text(issue?.moduleKey),
+      lessonKey: text(issue?.lessonKey),
+      microsequenceKey: text(issue?.microsequenceKey)
+    },
+    instruction: text(issue?.requiredFix) || "Corrigir a cobertura de domínio e a progressão didática local.",
+    evidence: text(issue?.evidence)
+  };
+}
+
+export function buildCourseForgeMicrosequenceRepairDirectives({
+  adherenceAudit = {},
+  interventionDidacticAudit = {},
+  interventionPlan = null
+} = {}) {
+  const interventionActions = new Map(
+    normalizeArray(interventionPlan?.actions)
+      .map((action) => [text(action?.requestedChangeId), action])
+      .filter(([requestedChangeId]) => requestedChangeId)
+  );
+  const directives = [];
+
+  normalizeArray(interventionDidacticAudit?.issues).forEach((issue) => {
+    const action = interventionActions.get(text(issue?.requestedChangeId)) || interventionActions.get(text(issue?.metadata?.requestedChangeId)) || null;
+    const directive = buildInterventionRepairDirective(issue, action);
+    if (directive) {
+      directives.push(directive);
+    }
+  });
+
+  normalizeArray(adherenceAudit?.issues).forEach((issue) => {
+    directives.push(buildCoverageRepairDirective(issue));
+  });
+
+  return {
+    kind: "microsequence_repair_directives",
+    directives: directives.filter(Boolean)
   };
 }
 

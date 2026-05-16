@@ -12,6 +12,7 @@ import { validateCourseForgeCardSourceRefs } from "../src/generation/courseForge
 import { auditCourseForgeBackstageVocabulary } from "../src/generation/courseForge/courseForgeBackstageAudit.js";
 import {
   auditCourseForgeAssessmentAlignment,
+  buildCourseForgeMicrosequenceRepairDirectives,
   auditCourseForgeInterventionDidacticCoherence,
   auditCourseForgePrerequisiteCoverage
 } from "../src/generation/courseForge/courseForgeCards.js";
@@ -814,6 +815,52 @@ test("auditoria de intervencao aceita fechamento explicito de pre-requisito", ()
 
   assert.equal(result.ok, true);
   assert.equal(result.issues.length, 0);
+});
+
+test("compila diretivas de reparo especificas a partir da auditoria de intervencao", () => {
+  const result = buildCourseForgeMicrosequenceRepairDirectives({
+    adherenceAudit: {
+      issues: [
+        {
+          type: "missing_domain_refs",
+          lessonKey: "lesson-1",
+          microsequenceKey: "micro-1",
+          evidence: "A microssequência ficou sem domainRefs.",
+          requiredFix: "Vincular a microssequência a pelo menos um domainRef."
+        }
+      ]
+    },
+    interventionDidacticAudit: {
+      issues: [
+        {
+          type: "intervention_type_mismatch",
+          requestedChangeId: "requested_change_1",
+          didacticInterventionType: "contrast_reinforcement",
+          lessonKey: "lesson-1",
+          microsequenceKey: "micro-1",
+          evidence: "A ação pediu contraste, mas a microssequência ficou só expositiva."
+        }
+      ]
+    },
+    interventionPlan: {
+      actions: [
+        {
+          requestedChangeId: "requested_change_1",
+          didacticInterventionType: "contrast_reinforcement",
+          target: {
+            courseKey: "course-1",
+            moduleKey: "module-1",
+            lessonKey: "lesson-1"
+          },
+          existingMicrosequenceKey: "micro-1"
+        }
+      ]
+    }
+  });
+
+  assert.equal(result.kind, "microsequence_repair_directives");
+  assert.ok(result.directives.some((directive) => directive.directiveType === "rewrite_for_didactic_intervention_type"));
+  assert.ok(result.directives.some((directive) => directive.directiveType === "repair_domain_coverage"));
 });
 
 test("auditoria de alinhamento avaliativo cobra formato pedido explicitamente", () => {
@@ -4242,24 +4289,32 @@ test("repair_microsequences chama provider quando a cobertura do domainMap nao e
       ],
       audit_microsequences: [{ approved: true, issues: [], warnings: [] }],
       repair_microsequences: [
-        {
-          microsequencePlans: [
-            {
-              lessonKey: "lesson-conectivos",
-              moduleKey: "module-base",
-              courseKey: "course-logica",
-              microsequences: [
-                {
-                  key: "microsequence-comparacao",
-                  title: "Comparação inicial",
-                  objective: "Comparar `∧` e `∨`.",
-                  coverageRole: "practice",
-                  domainRefs: ["domain-and", "domain-or"],
-                  practiceVariantRefs: ["variant-and", "variant-or"]
-                }
-              ]
-            }
-          ]
+        ({ artifacts = [], prompt = "" }) => {
+          const directivesArtifact = artifacts.find((item) => item.name === "microsequence-repair-directives");
+          assert.ok(directivesArtifact);
+          const directives = JSON.parse(directivesArtifact.content);
+          assert.ok(Array.isArray(directives.directives));
+          assert.ok(directives.directives.some((directive) => directive.directiveType === "repair_domain_coverage"));
+          assert.match(prompt, /diretivas prioritarias|diretivas prioritárias/i);
+          return {
+            microsequencePlans: [
+              {
+                lessonKey: "lesson-conectivos",
+                moduleKey: "module-base",
+                courseKey: "course-logica",
+                microsequences: [
+                  {
+                    key: "microsequence-comparacao",
+                    title: "Comparação inicial",
+                    objective: "Comparar `∧` e `∨`.",
+                    coverageRole: "practice",
+                    domainRefs: ["domain-and", "domain-or"],
+                    practiceVariantRefs: ["variant-and", "variant-or"]
+                  }
+                ]
+              }
+            ]
+          };
         }
       ],
       build_cards: [

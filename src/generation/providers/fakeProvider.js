@@ -26,7 +26,18 @@ export function createFakeProvider({ id = "fake", script = {} } = {}) {
       const phaseId = text(input.phaseId);
       const entry = nextEntry(phaseId);
       if (typeof entry === "function") {
-        return entry(input);
+        const result = await entry(input);
+        if (result instanceof Error) {
+          throw result;
+        }
+        if (result && typeof result === "object" && ("ok" in result || "value" in result || "rawText" in result)) {
+          return result;
+        }
+        return {
+          ok: true,
+          value: structuredClone(result ?? {}),
+          rawText: JSON.stringify(result ?? {})
+        };
       }
       if (entry instanceof Error) {
         throw entry;
