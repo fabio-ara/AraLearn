@@ -28,6 +28,8 @@ export function resolveCourseForgePhaseModelId(intent = {}, phaseId = "") {
       "audit_microsequences",
       "repair_microsequences",
       "build_cards",
+      "audit_prerequisites",
+      "audit_assessment_alignment",
       "repair_cards",
       "repair_card_adherence"
     ].includes(phaseId)

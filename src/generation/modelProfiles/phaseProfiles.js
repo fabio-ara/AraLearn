@@ -47,6 +47,8 @@ export function resolvePhaseProfile(phaseId = "") {
   if (phaseId === "build_cards") return PHASE_PROFILES.architecture_plan;
   if (phaseId === "audit_cards") return PHASE_PROFILES.architecture_audit;
   if (phaseId === "audit_source_adherence") return PHASE_PROFILES.architecture_audit;
+  if (phaseId === "audit_prerequisites") return PHASE_PROFILES.architecture_audit;
+  if (phaseId === "audit_assessment_alignment") return PHASE_PROFILES.architecture_audit;
   if (phaseId === "repair_card_adherence") return PHASE_PROFILES.repair;
   return PHASE_PROFILES.repair;
 }

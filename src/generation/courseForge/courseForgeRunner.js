@@ -25,7 +25,9 @@ import {
 } from "./courseForgeValidation.js";
 import {
   auditCourseForgeCardDrafts,
+  auditCourseForgeAssessmentAlignment,
   auditCourseForgeDomainCoverage,
+  auditCourseForgePrerequisiteCoverage,
   mergeCourseForgeAdherenceAudits,
   auditCourseForgeSourceAdherence,
   buildCourseForgeMicrosequenceContracts,
@@ -302,17 +304,23 @@ function buildDiagnosticsSummary(context = {}, runState = {}, phases = []) {
   const planningAudit = mergeCourseForgeAdherenceAudits(context.microsequenceAudit || {}, context.microsequenceAdherenceAudit || {});
   const cardsAudit = mergeCardAudits(context.cardsAudit || {});
   const adherenceAudit = mergeCourseForgeAdherenceAudits(context.sourceAdherenceAudit || {});
+  const prerequisiteAudit = context.prerequisiteAudit || { issues: [], warnings: [] };
+  const assessmentAlignmentAudit = context.assessmentAlignmentAudit || { issues: [], warnings: [] };
   const blockingByCategory = {
     graph: Array.isArray(courseGraphAudit?.blockingIssues) ? courseGraphAudit.blockingIssues.length : 0,
     planning: sumBlockingIssues(planningAudit),
     cards: sumBlockingIssues(cardsAudit),
-    adherence: sumBlockingIssues(adherenceAudit)
+    adherence: sumBlockingIssues(adherenceAudit),
+    prerequisites: sumBlockingIssues(prerequisiteAudit),
+    assessment: sumBlockingIssues(assessmentAlignmentAudit)
   };
   const warningsByCategory = {
     graph: Array.isArray(courseGraphAudit?.warnings) ? courseGraphAudit.warnings.length : 0,
     planning: sumWarnings(planningAudit),
     cards: sumWarnings(cardsAudit),
-    adherence: sumWarnings(adherenceAudit)
+    adherence: sumWarnings(adherenceAudit),
+    prerequisites: sumWarnings(prerequisiteAudit),
+    assessment: sumWarnings(assessmentAlignmentAudit)
   };
   const phaseStatus = Object.fromEntries((runState?.phases || []).map((phase) => [phase.phaseId, phase.status]));
 
@@ -343,6 +351,18 @@ function buildDiagnosticsSummary(context = {}, runState = {}, phases = []) {
         warnings: warningsByCategory.adherence,
         repaired: phaseStatus.repair_card_adherence === "completed",
         latestArtifacts: ["source-adherence-audit", "cards-final"]
+      },
+      prerequisites: {
+        blockingIssues: blockingByCategory.prerequisites,
+        warnings: warningsByCategory.prerequisites,
+        repaired: phaseStatus.audit_prerequisites === "completed",
+        latestArtifacts: ["prerequisite-audit"]
+      },
+      assessment: {
+        blockingIssues: blockingByCategory.assessment,
+        warnings: warningsByCategory.assessment,
+        repaired: phaseStatus.audit_assessment_alignment === "completed",
+        latestArtifacts: ["assessment-alignment-audit"]
       }
     },
     lastFailureCategory: text(runState?.metrics?.lastFailureCategory),
@@ -354,6 +374,12 @@ function buildDiagnosticsSummary(context = {}, runState = {}, phases = []) {
 function inferFailureCategoryFromPhase(phaseId = "") {
   if (["build_course_graph", "audit_course_graph", "repair_course_graph"].includes(phaseId)) {
     return "graph";
+  }
+  if (phaseId === "audit_prerequisites") {
+    return "prerequisites";
+  }
+  if (phaseId === "audit_assessment_alignment") {
+    return "assessment";
   }
   if (["plan_microsequences", "audit_microsequences", "repair_microsequences"].includes(phaseId)) {
     return "planning";
@@ -462,6 +488,8 @@ export async function runCourseForge({
     cardsAudit: artifactStore.loadArtifact(runId, "cards-audit")?.content || null,
     sourceAdherenceAudit: artifactStore.loadArtifact(runId, "source-adherence-audit")?.content || null,
     cardsFinal: artifactStore.loadArtifact(runId, "cards-final")?.content || null,
+    prerequisiteAudit: artifactStore.loadArtifact(runId, "prerequisite-audit")?.content || null,
+    assessmentAlignmentAudit: artifactStore.loadArtifact(runId, "assessment-alignment-audit")?.content || null,
     patch: artifactStore.loadArtifact(runId, "patch-final")?.content || null
   };
 
@@ -1140,6 +1168,41 @@ export async function runCourseForge({
             lastFailureCategory: hasBlockingIssues(context.sourceAdherenceAudit) ? "adherence" : runState?.metrics?.lastFailureCategory || ""
           })
         });
+      } else if (phaseId === "audit_prerequisites") {
+        context.prerequisiteAudit = auditCourseForgePrerequisiteCoverage({
+          microsequencePlans: context.microsequencePlans || [],
+          courseGraph: context.courseGraph || {}
+        });
+        runState = updateCourseForgeRunState(runState, {
+          metrics: updateMetricsCategory(runState.metrics, "prerequisites", {
+            issueCount: sumBlockingIssues(context.prerequisiteAudit),
+            lastFailureCategory: hasBlockingIssues(context.prerequisiteAudit) ? "prerequisites" : runState?.metrics?.lastFailureCategory || ""
+          })
+        });
+        savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "prerequisite-audit", context.prerequisiteAudit);
+        if (hasBlockingIssues(context.prerequisiteAudit)) {
+          throw new Error(`A auditoria de pré-requisitos bloqueou o fluxo: ${context.prerequisiteAudit.issues.map((item) => item.evidence).join(" ")}`);
+        }
+      } else if (phaseId === "audit_assessment_alignment") {
+        context.assessmentAlignmentAudit = auditCourseForgeAssessmentAlignment({
+          cardsFinal: context.cardsFinal || [],
+          assessmentProfile: context.assessmentProfile || {},
+          courseGraph: context.courseGraph || {},
+          lessonPlans: context.lessonPlans || []
+        });
+        runState = updateCourseForgeRunState(runState, {
+          metrics: updateMetricsCategory(runState.metrics, "assessment", {
+            issueCount: sumBlockingIssues(context.assessmentAlignmentAudit),
+            lastFailureCategory:
+              hasBlockingIssues(context.assessmentAlignmentAudit) ? "assessment" : runState?.metrics?.lastFailureCategory || ""
+          })
+        });
+        savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "assessment-alignment-audit", context.assessmentAlignmentAudit);
+        if (hasBlockingIssues(context.assessmentAlignmentAudit)) {
+          throw new Error(
+            `A auditoria de alinhamento avaliativo bloqueou o fluxo: ${context.assessmentAlignmentAudit.issues.map((item) => item.evidence).join(" ")}`
+          );
+        }
       } else if (phaseId === "compile_patch") {
         const cardsByMicrosequenceId = new Map(
           (Array.isArray(context.cardsFinal) ? context.cardsFinal : [])

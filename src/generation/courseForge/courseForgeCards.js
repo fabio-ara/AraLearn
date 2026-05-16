@@ -15,6 +15,10 @@ function normalizeArray(value) {
   return Array.isArray(value) ? value : [];
 }
 
+function hasExplanationCoverageRole(role = "") {
+  return ["introduce", "explain", "demonstrate", "consolidate"].includes(text(role));
+}
+
 export function makeCourseForgeMicrosequenceId(entry = {}) {
   return [
     text(entry.courseKey),
@@ -527,6 +531,166 @@ export function auditCourseForgeDomainCoverage({ microsequencePlans = [], lesson
       );
     });
   });
+
+  return {
+    ok: issues.length === 0,
+    approved: issues.length === 0,
+    issues,
+    warnings
+  };
+}
+
+export function auditCourseForgePrerequisiteCoverage({ microsequencePlans = [], courseGraph = {} } = {}) {
+  const issues = [];
+  const warnings = [];
+  const prerequisiteRefsByConcept = new Map();
+
+  normalizeArray(courseGraph?.prerequisiteEdges).forEach((edge) => {
+    const targetId = text(edge?.to);
+    const sourceId = text(edge?.from);
+    if (!targetId || !sourceId) {
+      return;
+    }
+    const refs = prerequisiteRefsByConcept.get(targetId) || [];
+    refs.push(sourceId);
+    prerequisiteRefsByConcept.set(targetId, refs);
+  });
+
+  normalizeArray(microsequencePlans).forEach((lessonEntry) => {
+    const explainedConcepts = new Set();
+    normalizeArray(lessonEntry?.microsequences).forEach((microsequence, microIndex) => {
+      const label = text(microsequence?.title) || `microssequência ${microIndex + 1}`;
+      const role = text(microsequence?.coverageRole);
+      const domainRefs = normalizeArray(microsequence?.domainRefs).map(text).filter(Boolean);
+
+      domainRefs.forEach((domainRef) => {
+        const prerequisiteRefs = normalizeArray(prerequisiteRefsByConcept.get(domainRef)).map(text).filter(Boolean);
+        const missingPrerequisites = prerequisiteRefs.filter((ref) => !explainedConcepts.has(ref));
+        if (missingPrerequisites.length && !hasExplanationCoverageRole(role)) {
+          issues.push(
+            makeAuditIssue(
+              {
+                courseKey: lessonEntry?.courseKey,
+                moduleKey: lessonEntry?.moduleKey,
+                lessonKey: lessonEntry?.lessonKey,
+                microsequenceKey: microsequence?.key
+              },
+              "missing_prerequisite_preparation",
+              `${label} usa ${domainRef} antes de preparar seus pré-requisitos: ${missingPrerequisites.join(", ")}.`,
+              "Reordenar a microssequência ou introduzir os pré-requisitos antes da prática."
+            )
+          );
+        }
+        if (isPracticeCoverageRole(role) && prerequisiteRefs.length && !explainedConcepts.has(domainRef)) {
+          issues.push(
+            makeAuditIssue(
+              {
+                courseKey: lessonEntry?.courseKey,
+                moduleKey: lessonEntry?.moduleKey,
+                lessonKey: lessonEntry?.lessonKey,
+                microsequenceKey: microsequence?.key
+              },
+              "practice_before_explanation",
+              `${label} pratica ${domainRef} antes de haver preparação explícita no fluxo.`,
+              "Mover a prática para depois de uma microssequência de introdução, explicação ou demonstração."
+            )
+          );
+        }
+      });
+
+      if (hasExplanationCoverageRole(role)) {
+        domainRefs.forEach((domainRef) => explainedConcepts.add(domainRef));
+      } else if (!role && domainRefs.length) {
+        warnings.push(
+          makeAuditIssue(
+            {
+              courseKey: lessonEntry?.courseKey,
+              moduleKey: lessonEntry?.moduleKey,
+              lessonKey: lessonEntry?.lessonKey,
+              microsequenceKey: microsequence?.key
+            },
+            "missing_coverage_role",
+            `${label} não declara coverageRole, então a auditoria de pré-requisito perde precisão.`,
+            "Definir coverageRole explícito na microssequência.",
+            "warning"
+          )
+        );
+      }
+    });
+  });
+
+  return {
+    ok: issues.length === 0,
+    approved: issues.length === 0,
+    issues,
+    warnings
+  };
+}
+
+export function auditCourseForgeAssessmentAlignment({ cardsFinal = [], assessmentProfile = {}, courseGraph = {}, lessonPlans = [] } = {}) {
+  const issues = [];
+  const warnings = [];
+  const publicCards = normalizeArray(cardsFinal).flatMap((entry) => normalizeArray(entry?.publicCards));
+  const questionTypes = normalizeArray(assessmentProfile?.questionTypes).map(text).filter(Boolean);
+  const examTypes = normalizeArray(assessmentProfile?.examTypes).map(text).filter(Boolean);
+  const expectedPrecision = text(assessmentProfile?.expectedPrecision);
+  const hasMultipleChoice = publicCards.some((card) => text(card?.ask) && normalizeArray(card?.wrong).length > 0);
+  const hasGapFill = publicCards.some((card) => text(card?.say).includes("[["));
+  const hasAssessmentTargets = normalizeArray(courseGraph?.assessmentTargets).length > 0;
+  const hasNotationSensitiveCard = publicCards.some((card) =>
+    /[`∧∨¬→↔=+\-*/]/u.test(`${text(card?.title)} ${text(card?.say)} ${text(card?.after)} ${text(card?.ask)}`)
+  );
+  const supportsGapFill = lessonPlans.some((lessonPlan) => normalizeArray(lessonPlan?.resourceTags).map(text).includes("block_gap_fill"));
+
+  if (questionTypes.includes("multiple_choice") && !hasMultipleChoice) {
+    issues.push(
+      makeAuditIssue(
+        {},
+        "missing_multiple_choice",
+        "O AssessmentProfile pede múltipla escolha, mas os cards finais não materializaram esse formato.",
+        "Gerar ao menos um card de múltipla escolha alinhado ao perfil avaliativo."
+      )
+    );
+  }
+
+  if (questionTypes.includes("gap_fill") && !hasGapFill) {
+    const target = supportsGapFill ? issues : warnings;
+    target.push(
+      makeAuditIssue(
+        {},
+        "missing_gap_fill",
+        "O AssessmentProfile pede lacuna/completar, mas os cards finais não materializaram esse formato.",
+        supportsGapFill
+          ? "Gerar ao menos um card de lacuna alinhado ao perfil avaliativo."
+          : "O perfil pediu lacuna, mas a lição atual não declara esse contêiner como recurso permitido.",
+        supportsGapFill ? "blocking" : "warning"
+      )
+    );
+  }
+
+  if (examTypes.length && !hasAssessmentTargets) {
+    warnings.push(
+      makeAuditIssue(
+        {},
+        "missing_assessment_targets",
+        "Há sinais de prova ou lista avaliativa, mas o grafo não declarou assessmentTargets explícitos.",
+        "Projetar assessmentTargets no CourseGraph para governar melhor a cobrança.",
+        "warning"
+      )
+    );
+  }
+
+  if (expectedPrecision === "high" && !hasNotationSensitiveCard) {
+    warnings.push(
+      makeAuditIssue(
+        {},
+        "low_precision_surface",
+        "O AssessmentProfile pede alta precisão terminológica, mas os cards finais não mostram sinal claro de notação ou precisão formal.",
+        "Revisar se a superfície dos cards preserva notação, nomes técnicos e precisão de cobrança.",
+        "warning"
+      )
+    );
+  }
 
   return {
     ok: issues.length === 0,

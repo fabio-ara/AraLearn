@@ -10,6 +10,7 @@ import { createFakeProvider } from "../src/generation/providers/fakeProvider.js"
 import { validateCourseForgeSourceLedger } from "../src/generation/courseForge/courseForgeSourceLedger.js";
 import { validateCourseForgeCardSourceRefs } from "../src/generation/courseForge/courseForgeSourceRefs.js";
 import { auditCourseForgeBackstageVocabulary } from "../src/generation/courseForge/courseForgeBackstageAudit.js";
+import { auditCourseForgeAssessmentAlignment, auditCourseForgePrerequisiteCoverage } from "../src/generation/courseForge/courseForgeCards.js";
 import { compileCourseStructureToPatch, validateCourseForgePatch } from "../src/generation/courseForge/courseForgePatch.js";
 import { createCourseForgeArtifactsStore } from "../src/generation/courseForge/courseForgeArtifacts.js";
 import { canResumeCourseForgeRun, createCourseForgeRunState } from "../src/generation/courseForge/courseForgeRunState.js";
@@ -175,6 +176,7 @@ test("phaseProfiles resolve perfis esperados", () => {
   assert.equal(resolvePhaseProfile("index_sources").temperature, 0);
   assert.equal(resolvePhaseProfile("build_assessment_profile").temperature, 0);
   assert.equal(resolvePhaseProfile("audit_course_graph").temperature, 0);
+  assert.equal(resolvePhaseProfile("audit_prerequisites").temperature, 0);
 });
 
 test("phase resolution escolhe subfluxo estrutural e registra fases adiadas", () => {
@@ -211,6 +213,8 @@ test("phase resolution escolhe subfluxo estrutural e registra fases adiadas", ()
   assert.ok(resolveCourseForgePhases(fullIntent).includes("compile_card_plans"));
   assert.ok(resolveCourseForgePhases(fullIntent).includes("repair_microsequences"));
   assert.ok(resolveCourseForgePhases(fullIntent).includes("repair_card_adherence"));
+  assert.ok(resolveCourseForgePhases(fullIntent).includes("audit_prerequisites"));
+  assert.ok(resolveCourseForgePhases(fullIntent).includes("audit_assessment_alignment"));
   assert.ok(resolveCourseForgePhases(microsequenceIntent).includes("build_microsequence_contract"));
   assert.ok(resolveCourseForgePhases(microsequenceIntent).includes("compile_patch"));
   const lessonIntent = resolveCourseForgeIntent({
@@ -367,6 +371,55 @@ test("course graph local detecta referencias quebradas e licoes sem cobertura", 
   assert.ok(result.blockingIssues.some((item) => item.type === "dangling_edge"));
   assert.ok(result.blockingIssues.some((item) => item.type === "dangling_variant"));
   assert.ok(result.blockingIssues.some((item) => item.type === "missing_lesson_concepts"));
+});
+
+test("auditoria de prerequisitos bloqueia pratica antes da preparacao", () => {
+  const result = auditCourseForgePrerequisiteCoverage({
+    courseGraph: {
+      prerequisiteEdges: [{ from: "concept-base", to: "concept-avancado", lessonKey: "lesson-1" }]
+    },
+    microsequencePlans: [
+      {
+        lessonKey: "lesson-1",
+        microsequences: [
+          {
+            key: "micro-1",
+            title: "Aplicação direta",
+            coverageRole: "practice",
+            domainRefs: ["concept-avancado"]
+          }
+        ]
+      }
+    ]
+  });
+
+  assert.equal(result.ok, false);
+  assert.ok(result.issues.some((item) => item.type === "missing_prerequisite_preparation"));
+  assert.ok(result.issues.some((item) => item.type === "practice_before_explanation"));
+});
+
+test("auditoria de alinhamento avaliativo cobra formato pedido explicitamente", () => {
+  const result = auditCourseForgeAssessmentAlignment({
+    cardsFinal: [
+      {
+        publicCards: [{ title: "Resumo", say: "Texto expositivo." }]
+      }
+    ],
+    assessmentProfile: {
+      questionTypes: ["multiple_choice", "gap_fill"],
+      examTypes: ["exam"],
+      expectedPrecision: "high"
+    },
+    lessonPlans: [{ resourceTags: ["paragraph", "multiple_choice", "block_gap_fill"] }],
+    courseGraph: {
+      assessmentTargets: []
+    }
+  });
+
+  assert.equal(result.ok, false);
+  assert.ok(result.issues.some((item) => item.type === "missing_multiple_choice"));
+  assert.ok(result.issues.some((item) => item.type === "missing_gap_fill"));
+  assert.ok(result.warnings.some((item) => item.type === "missing_assessment_targets"));
 });
 
 test("patch validation bloqueia operação fora do escopo", () => {

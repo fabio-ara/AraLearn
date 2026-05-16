@@ -66,6 +66,16 @@ const COURSE_FORGE_ARTIFACT_DEFINITIONS = Object.freeze({
     schemaVersion: "aralearn.source_faithfulness_audit.v1",
     stage: "auditor"
   },
+  "prerequisite-audit": {
+    artifactType: "PrerequisiteAudit",
+    schemaVersion: "aralearn.prerequisite_audit.v1",
+    stage: "auditor"
+  },
+  "assessment-alignment-audit": {
+    artifactType: "AssessmentAlignmentAudit",
+    schemaVersion: "aralearn.assessment_alignment_audit.v1",
+    stage: "auditor"
+  },
   "cards-final": { artifactType: "CardSet", schemaVersion: "aralearn.card_set.v1", stage: "repair" },
   "patch-final": { artifactType: "Patch", schemaVersion: "aralearn.patch.v1", stage: "engine" },
   "project-after-patch": {
