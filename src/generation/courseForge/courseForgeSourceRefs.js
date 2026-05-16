@@ -1,4 +1,4 @@
-import { buildCourseForgeSourceSpanMap, listCourseForgeSources } from "./courseForgeSourceLedger.js";
+import { buildCourseForgeSourceClaimMap, buildCourseForgeSourceSpanMap, listCourseForgeSources } from "./courseForgeSourceLedger.js";
 
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -18,11 +18,19 @@ const TRANSFORMATION_STATES = new Set([
 export function normalizeCourseForgeCardSourceRefs(sourceRefs = [], sourceLedger = []) {
   const ledgerIds = new Set(listCourseForgeSources(sourceLedger).map((item) => text(item?.sourceId || item?.id)).filter(Boolean));
   const spansById = buildCourseForgeSourceSpanMap(sourceLedger);
+  const claimsById = buildCourseForgeSourceClaimMap(sourceLedger);
   const firstSpanIdBySourceId = new Map();
+  const firstClaimIdBySpanId = new Map();
   [...spansById.values()].forEach((span) => {
     const sourceId = text(span?.sourceId);
     if (sourceId && !firstSpanIdBySourceId.has(sourceId)) {
       firstSpanIdBySourceId.set(sourceId, text(span?.spanId));
+    }
+  });
+  [...claimsById.values()].forEach((claim) => {
+    const spanId = text(claim?.spanId);
+    if (spanId && !firstClaimIdBySpanId.has(spanId)) {
+      firstClaimIdBySpanId.set(spanId, text(claim?.claimId));
     }
   });
   return (Array.isArray(sourceRefs) ? sourceRefs : [])
@@ -30,15 +38,17 @@ export function normalizeCourseForgeCardSourceRefs(sourceRefs = [], sourceLedger
       if (typeof item === "string") {
         const defaultSourceId = text(item);
         const defaultSpanId = firstSpanIdBySourceId.get(defaultSourceId) || "";
+        const defaultClaimId = firstClaimIdBySpanId.get(defaultSpanId) || "";
         return {
           number: index + 1,
           sourceId: defaultSourceId,
           spanId: text(defaultSpanId),
+          claimId: defaultClaimId,
           locator: "",
           supportType: "direct",
           confidence: "medium",
           transformationState: "paraphrase",
-          claim: "",
+          claim: text(claimsById.get(defaultClaimId)?.text),
           note: ""
         };
       }
@@ -46,6 +56,7 @@ export function normalizeCourseForgeCardSourceRefs(sourceRefs = [], sourceLedger
       const inferredSourceId = explicitSpanId ? text(spansById.get(explicitSpanId)?.sourceId) : "";
       const sourceId = text(item?.sourceId) || inferredSourceId;
       const spanId = explicitSpanId || firstSpanIdBySourceId.get(sourceId) || "";
+      const claimId = text(item?.claimId) || firstClaimIdBySpanId.get(spanId) || "";
       const transformationState = TRANSFORMATION_STATES.has(text(item?.transformationState))
         ? text(item?.transformationState)
         : "paraphrase";
@@ -53,14 +64,16 @@ export function normalizeCourseForgeCardSourceRefs(sourceRefs = [], sourceLedger
         number: Number.isInteger(item?.number) ? item.number : index + 1,
         sourceId,
         spanId,
+        claimId,
         locator: text(item?.locator),
         supportType: text(item?.supportType) || "direct",
         confidence: text(item?.confidence) || "medium",
         transformationState,
-        claim: text(item?.claim),
+        claim: text(item?.claim || claimsById.get(claimId)?.text),
         note: text(item?.note),
         knownSource: ledgerIds.has(sourceId),
-        knownSpan: spanId ? spansById.has(spanId) : false
+        knownSpan: spanId ? spansById.has(spanId) : false,
+        knownClaim: claimId ? claimsById.has(claimId) : false
       };
     })
     .filter((item) => item.sourceId || item.transformationState === "external_enrichment");
@@ -71,6 +84,7 @@ export function validateCourseForgeCardSourceRefs(sourceRefs = [], sourceLedger 
   const errors = [];
   const ledgerIds = new Set(listCourseForgeSources(sourceLedger).map((item) => text(item?.sourceId || item?.id)).filter(Boolean));
   const spansById = buildCourseForgeSourceSpanMap(sourceLedger);
+  const claimsById = buildCourseForgeSourceClaimMap(sourceLedger);
 
   normalized.forEach((item, index) => {
     if (item.transformationState !== "external_enrichment" && !ledgerIds.has(item.sourceId)) {
@@ -90,6 +104,15 @@ export function validateCourseForgeCardSourceRefs(sourceRefs = [], sourceLedger 
     }
     if (item.spanId && item.sourceId && spansById.has(item.spanId) && text(spansById.get(item.spanId)?.sourceId) !== text(item.sourceId)) {
       errors.push(`sourceRefs[${index}] mistura sourceId e spanId de fontes diferentes.`);
+    }
+    if (item.claimId && !claimsById.has(item.claimId)) {
+      errors.push(`sourceRefs[${index}] aponta para claimId inexistente: ${item.claimId}.`);
+    }
+    if (item.claimId && item.spanId && claimsById.has(item.claimId) && text(claimsById.get(item.claimId)?.spanId) !== text(item.spanId)) {
+      errors.push(`sourceRefs[${index}] mistura claimId e spanId de trechos diferentes.`);
+    }
+    if (item.claimId && item.sourceId && claimsById.has(item.claimId) && text(claimsById.get(item.claimId)?.sourceId) !== text(item.sourceId)) {
+      errors.push(`sourceRefs[${index}] mistura claimId e sourceId de fontes diferentes.`);
     }
     if (item.transformationState === "external_enrichment" && !item.note) {
       errors.push(`sourceRefs[${index}] com external_enrichment precisa de note.`);

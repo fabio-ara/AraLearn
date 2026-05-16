@@ -7,10 +7,11 @@ import { resolveCourseForgePhases, resolveDeferredCourseForgePhases } from "../s
 import { createProviderRegistry } from "../src/generation/providers/providerRegistry.js";
 import { PHASE_PROFILES, resolvePhaseProfile } from "../src/generation/modelProfiles/phaseProfiles.js";
 import { createFakeProvider } from "../src/generation/providers/fakeProvider.js";
-import { listCourseForgeSourceSpans, validateCourseForgeSourceLedger } from "../src/generation/courseForge/courseForgeSourceLedger.js";
+import { listCourseForgeSourceClaims, listCourseForgeSourceSpans, validateCourseForgeSourceLedger } from "../src/generation/courseForge/courseForgeSourceLedger.js";
 import { validateCourseForgeCardSourceRefs } from "../src/generation/courseForge/courseForgeSourceRefs.js";
 import { auditCourseForgeBackstageVocabulary } from "../src/generation/courseForge/courseForgeBackstageAudit.js";
 import {
+  auditCourseForgeSourceAdherence,
   auditCourseForgeAssessmentAlignment,
   buildCourseForgeMicrosequenceRepairDirectives,
   auditCourseForgeInterventionDidacticCoherence,
@@ -22,6 +23,7 @@ import { canResumeCourseForgeRun, createCourseForgeRunState } from "../src/gener
 import { runCourseForgeQueue } from "../src/generation/courseForge/courseForgeQueue.js";
 import { runCourseForge } from "../src/generation/courseForge/courseForgeRunner.js";
 import { applyCourseForgePatch } from "../src/generation/courseForge/courseForgeApply.js";
+import { buildCourseGraphArtifact } from "../src/generation/courseForge/courseForgeIr.js";
 import {
   mergeCourseForgeArchitectureAudits,
   validateCourseForgeArchitectureDraft,
@@ -591,6 +593,24 @@ test("sourceLedger sintetiza spans e resume quantidade", () => {
   assert.equal(result.sourceLedger.sources[0].spans[0].text, "Ementa");
 });
 
+test("sourceLedger sintetiza claims quando o span tem texto rico", () => {
+  const result = validateCourseForgeSourceLedger([
+    {
+      id: "src_1",
+      title: "Lógica",
+      spans: [
+        {
+          text: "A conjunção exige duas proposições verdadeiras. A disjunção aceita pelo menos uma proposição verdadeira."
+        }
+      ]
+    }
+  ]);
+  assert.equal(result.ok, true);
+  assert.equal(listCourseForgeSourceClaims(result.sourceLedger).length, 2);
+  assert.equal(result.sourceLedger.summary.claimCount, 2);
+  assert.equal(result.sourceLedger.sources[0].spans[0].claims[0].claimId, "src_1:span:1:claim:1");
+});
+
 test("card sourceRefs bloqueia sourceId inexistente", () => {
   const result = validateCourseForgeCardSourceRefs(
     [{ sourceId: "src_2", confidence: "high" }],
@@ -611,6 +631,55 @@ test("card sourceRefs infere spanId e aceita enriquecimento externo justificado"
   assert.equal(result.ok, true);
   assert.equal(result.normalized[0].spanId, "src_1:span:1");
   assert.equal(result.normalized[1].transformationState, "external_enrichment");
+});
+
+test("card sourceRefs infere claimId quando o span tem claims sintetizadas", () => {
+  const ledgerResult = validateCourseForgeSourceLedger([
+    {
+      id: "src_1",
+      title: "Lógica",
+      spans: [{ text: "A conjunção exige duas proposições verdadeiras." }]
+    }
+  ]);
+  const result = validateCourseForgeCardSourceRefs(
+    [{ sourceId: "src_1", confidence: "high", transformationState: "paraphrase" }],
+    ledgerResult.sourceLedger
+  );
+  assert.equal(result.ok, true);
+  assert.equal(result.normalized[0].claimId, "src_1:span:1:claim:1");
+});
+
+test("audit_source_adherence usa claims sintetizadas para bloquear grounding fraco em fonte rica", () => {
+  const ledgerResult = validateCourseForgeSourceLedger([
+    {
+      id: "src_1",
+      title: "Lógica",
+      spans: [{ text: "A conjunção exige duas proposições verdadeiras." }]
+    }
+  ]);
+  const result = auditCourseForgeSourceAdherence({
+    sourceLedger: ledgerResult.sourceLedger,
+    cardDrafts: [
+      {
+        contractId: "contract-1",
+        courseKey: "course-1",
+        moduleKey: "module-1",
+        lessonKey: "lesson-1",
+        microsequenceKey: "micro-1",
+        cards: [
+          {
+            title: "Árvore de diretórios",
+            text: "Use mkdir para criar uma pasta nova."
+          }
+        ],
+        sourceSupport: [
+          [{ sourceId: "src_1", spanId: "src_1:span:1", claimId: "src_1:span:1:claim:1", transformationState: "paraphrase", confidence: "high" }]
+        ]
+      }
+    ]
+  });
+  assert.equal(result.ok, false);
+  assert.ok(result.issues.some((item) => item.type === "weak_claim_grounding"));
 });
 
 test("backstage vocabulary auditor detecta jargão visível", () => {
@@ -675,6 +744,43 @@ test("course graph local detecta referencias quebradas e licoes sem cobertura", 
   assert.ok(result.blockingIssues.some((item) => item.type === "dangling_edge"));
   assert.ok(result.blockingIssues.some((item) => item.type === "dangling_variant"));
   assert.ok(result.blockingIssues.some((item) => item.type === "missing_lesson_concepts"));
+});
+
+test("course graph enriquece conceitos e objetivos com sourceClaimRefs inferidas", () => {
+  const sourceLedgerResult = validateCourseForgeSourceLedger([
+    {
+      id: "src_1",
+      title: "Lógica",
+      spans: [
+        {
+          text: "A conjunção exige duas proposições verdadeiras. O objetivo da lição é comparar conjunção e disjunção."
+        }
+      ]
+    }
+  ]);
+  const courseGraph = buildCourseGraphArtifact({
+    lessonPlans: [
+      {
+        lessonKey: "lesson-1",
+        sourceGuideStructured: {
+          lessonGoal: "Comparar conjunção e disjunção."
+        },
+        domainMap: {
+          items: [
+            {
+              id: "concept-and",
+              label: "Conjunção",
+              expectedEvidence: ["duas proposições verdadeiras"]
+            }
+          ],
+          practiceVariants: []
+        }
+      }
+    ],
+    sourceLedger: sourceLedgerResult.sourceLedger
+  });
+  assert.deepEqual(courseGraph.concepts[0].sourceClaimRefs, ["src_1:span:1:claim:1"]);
+  assert.deepEqual(courseGraph.objectives[0].sourceClaimRefs, ["src_1:span:1:claim:2"]);
 });
 
 test("auditoria de prerequisitos bloqueia pratica antes da preparacao", () => {

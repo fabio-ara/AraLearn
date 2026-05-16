@@ -6,6 +6,59 @@ function normalizeArray(value) {
   return Array.isArray(value) ? value : [];
 }
 
+function normalizeClaimText(value) {
+  return text(value)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
+function tokenizeClaimText(value) {
+  return [...new Set(
+    normalizeClaimText(value)
+      .split(/[^a-z0-9_]+/u)
+      .map((item) => item.trim())
+      .filter((item) => item.length >= 3)
+      .filter((item) => !new Set(["para", "com", "uma", "das", "dos", "que", "por", "ser", "sao", "são"]).has(item))
+  )];
+}
+
+function splitSpanClaims(value = "") {
+  const normalized = text(value);
+  if (!normalized) {
+    return [];
+  }
+  return normalized
+    .split(/(?<=[.!?])\s+|\n+/u)
+    .map((item) => text(item))
+    .filter(Boolean);
+}
+
+function normalizeSpanClaims(span = {}, sourceId = "", spanId = "", fallbackText = "") {
+  const explicitClaims = normalizeArray(span?.claims);
+  const baseClaims = explicitClaims.length
+    ? explicitClaims
+    : splitSpanClaims(text(span?.text || fallbackText)).map((claimText) => ({ text: claimText }));
+  return baseClaims
+    .map((claim, index) => {
+      const claimText = text(claim?.text || claim);
+      const tokens = tokenizeClaimText(claimText);
+      if (!claimText || tokens.length < 4) {
+        return null;
+      }
+      return {
+        claimId: text(claim?.claimId) || `${spanId || `${sourceId}:span:1`}:claim:${index + 1}`,
+        sourceId,
+        spanId,
+        text: claimText,
+        normalizedText: normalizeClaimText(claimText),
+        tokens,
+        confidence: ["low", "medium", "high"].includes(text(claim?.confidence)) ? text(claim?.confidence) : "medium"
+      };
+    })
+    .filter(Boolean);
+}
+
 export function listCourseForgeSources(input = null) {
   if (Array.isArray(input)) {
     return input.map((item, index) => ({
@@ -44,6 +97,24 @@ export function listCourseForgeSourceSpans(input = null) {
   );
 }
 
+export function listCourseForgeSourceClaims(input = null) {
+  return listCourseForgeSources(input).flatMap((source, sourceIndex) =>
+    normalizeArray(source?.spans).flatMap((span, spanIndex) => {
+      const sourceId = text(source?.sourceId || source?.id) || `source_${sourceIndex + 1}`;
+      const spanId = text(span?.spanId) || `${sourceId}:span:${spanIndex + 1}`;
+      return normalizeSpanClaims(span, sourceId, spanId, text(span?.text)).map((claim, claimIndex) => ({
+        claimId: text(claim?.claimId) || `${spanId}:claim:${claimIndex + 1}`,
+        sourceId,
+        spanId,
+        text: text(claim?.text),
+        normalizedText: text(claim?.normalizedText) || normalizeClaimText(claim?.text),
+        tokens: normalizeArray(claim?.tokens).map(text).filter(Boolean),
+        confidence: ["low", "medium", "high"].includes(text(claim?.confidence)) ? text(claim?.confidence) : "medium"
+      }));
+    })
+  );
+}
+
 export function buildCourseForgeSourceSpanMap(input = null) {
   const map = new Map();
   listCourseForgeSourceSpans(input).forEach((span) => {
@@ -52,10 +123,19 @@ export function buildCourseForgeSourceSpanMap(input = null) {
   return map;
 }
 
+export function buildCourseForgeSourceClaimMap(input = null) {
+  const map = new Map();
+  listCourseForgeSourceClaims(input).forEach((claim) => {
+    map.set(text(claim?.claimId), claim);
+  });
+  return map;
+}
+
 export function validateCourseForgeSourceLedger(input = []) {
   const errors = [];
   const seen = new Set();
   const seenSpanIds = new Set();
+  const seenClaimIds = new Set();
   const sources = listCourseForgeSources(input).map((item, index) => {
     const id = text(item?.sourceId || item?.id);
     const title = text(item?.title);
@@ -101,7 +181,14 @@ export function validateCourseForgeSourceLedger(input = []) {
             assessmentSignals: Array.isArray(span?.assessmentSignals) ? span.assessmentSignals.map(text).filter(Boolean) : [],
             notationSignals: Array.isArray(span?.notationSignals) ? span.notationSignals.map(text).filter(Boolean) : [],
             teacherConventions: Array.isArray(span?.teacherConventions) ? span.teacherConventions.map(text).filter(Boolean) : [],
-            confidence: ["low", "medium", "high"].includes(text(span?.confidence)) ? text(span?.confidence) : "medium"
+            confidence: ["low", "medium", "high"].includes(text(span?.confidence)) ? text(span?.confidence) : "medium",
+            claims: normalizeSpanClaims(span, id, spanId, text(span?.text || item?.title)).map((claim) => {
+              if (seenClaimIds.has(claim.claimId)) {
+                errors.push(`sourceLedger com claimId duplicado: ${claim.claimId}.`);
+              }
+              seenClaimIds.add(claim.claimId);
+              return claim;
+            })
           };
         }
       )
@@ -116,7 +203,8 @@ export function validateCourseForgeSourceLedger(input = []) {
       sources,
       summary: {
         sourceCount: sources.length,
-        spanCount: listCourseForgeSourceSpans({ sources }).length
+        spanCount: listCourseForgeSourceSpans({ sources }).length,
+        claimCount: listCourseForgeSourceClaims({ sources }).length
       }
     }
   };

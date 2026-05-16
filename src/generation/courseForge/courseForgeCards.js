@@ -4,7 +4,7 @@ import { sortLessonMicrosequencesDeterministically } from "../domain/resolveLess
 import { summarizeDidacticProductionPolicyForPrompt } from "../policies/didacticProductionPolicy.js";
 import { validateGeneratedCardsStructural } from "../validation/validateGeneratedCardsStructural.js";
 import { auditCourseForgeBackstageVocabulary } from "./courseForgeBackstageAudit.js";
-import { listCourseForgeSourceSpans, listCourseForgeSources } from "./courseForgeSourceLedger.js";
+import { buildCourseForgeSourceClaimMap, listCourseForgeSourceClaims, listCourseForgeSourceSpans, listCourseForgeSources } from "./courseForgeSourceLedger.js";
 import { normalizeCourseForgeCardSourceRefs, validateCourseForgeCardSourceRefs } from "./courseForgeSourceRefs.js";
 
 function text(value) {
@@ -15,9 +15,74 @@ function normalizeArray(value) {
   return Array.isArray(value) ? value : [];
 }
 
+const CLAIM_STOPWORDS = new Set(["para", "com", "uma", "das", "dos", "que", "por", "ser", "sao", "são", "como", "mais", "menos"]);
+
 function containsDidacticTerm(value = "", terms = []) {
   const normalized = text(value).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
   return normalizeArray(terms).some((term) => normalized.includes(String(term).toLowerCase()));
+}
+
+function normalizeForClaimMatch(value = "") {
+  return text(value)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
+function tokenizeClaimMatch(value = "") {
+  return [...new Set(
+    normalizeForClaimMatch(value)
+      .split(/[^a-z0-9_]+/u)
+      .map((item) => item.trim())
+      .filter((item) => item.length >= 3)
+      .filter((item) => !CLAIM_STOPWORDS.has(item))
+  )];
+}
+
+function buildCardClaimText(card = {}) {
+  const optionLabels = normalizeArray(card?.options).map((item) => text(item?.label)).filter(Boolean);
+  return [
+    text(card?.title),
+    text(card?.text),
+    text(card?.say),
+    text(card?.question),
+    text(card?.feedback),
+    text(card?.after),
+    text(card?.answer),
+    ...optionLabels
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
+
+function hasRichClaim(claim = {}) {
+  return normalizeArray(claim?.tokens).length >= 4;
+}
+
+function findClaimsForSupport(support = {}, claimMap = new Map()) {
+  const claimId = text(support?.claimId);
+  if (claimId && claimMap.has(claimId)) {
+    return [claimMap.get(claimId)];
+  }
+  const spanId = text(support?.spanId);
+  return [...claimMap.values()].filter((claim) => text(claim?.spanId) === spanId);
+}
+
+function scoreClaimOverlap(cardText = "", claims = []) {
+  const cardTokens = tokenizeClaimMatch(cardText);
+  if (cardTokens.length < 4) {
+    return { overlap: 0, cardTokens, bestClaim: null };
+  }
+  let bestClaim = null;
+  let bestOverlap = 0;
+  normalizeArray(claims).forEach((claim) => {
+    const overlap = normalizeArray(claim?.tokens).filter((token) => cardTokens.includes(token)).length;
+    if (overlap > bestOverlap) {
+      bestOverlap = overlap;
+      bestClaim = claim;
+    }
+  });
+  return { overlap: bestOverlap, cardTokens, bestClaim };
 }
 
 function hasExplanationCoverageRole(role = "") {
@@ -82,8 +147,10 @@ function buildSimpleCardPlan(microsequence = {}, lessonPlan = {}, sourceLedger =
   const practiceResourceType = pickPracticeResourceType(allowedResourceTypes);
   const sourceRefs = listCourseForgeSources(sourceLedger).map((item) => text(item?.sourceId || item?.id)).filter(Boolean);
   const sourceSpans = listCourseForgeSourceSpans(sourceLedger);
+  const sourceClaims = listCourseForgeSourceClaims(sourceLedger);
   const firstSourceId = sourceRefs[0] || "";
   const firstSpanId = sourceSpans.find((span) => text(span?.sourceId) === firstSourceId)?.spanId || sourceSpans[0]?.spanId || "";
+  const firstClaimId = sourceClaims.find((claim) => text(claim?.spanId) === firstSpanId)?.claimId || "";
   const coverageRole = text(microsequence.coverageRole);
   const supportLevel = text(lessonPlan.supportLevel);
   const wantsThreeCards =
@@ -100,6 +167,7 @@ function buildSimpleCardPlan(microsequence = {}, lessonPlan = {}, sourceLedger =
       resourceType: expositoryResourceType,
       sourceRefs: sourceRefs.slice(0, 1),
       sourceSpanRefs: firstSpanId ? [firstSpanId] : [],
+      sourceClaimRefs: firstClaimId ? [firstClaimId] : [],
       transformationState: pickTransformationStateForPlan("anchor")
     },
     {
@@ -109,6 +177,7 @@ function buildSimpleCardPlan(microsequence = {}, lessonPlan = {}, sourceLedger =
       resourceType: wantsThreeCards ? expositoryResourceType : practiceResourceType,
       sourceRefs: sourceRefs.slice(0, 1),
       sourceSpanRefs: firstSpanId ? [firstSpanId] : [],
+      sourceClaimRefs: firstClaimId ? [firstClaimId] : [],
       transformationState: pickTransformationStateForPlan(wantsThreeCards ? "guided_example" : "practice")
     }
   ];
@@ -121,6 +190,7 @@ function buildSimpleCardPlan(microsequence = {}, lessonPlan = {}, sourceLedger =
       resourceType: practiceResourceType,
       sourceRefs: sourceRefs.slice(0, 1),
       sourceSpanRefs: firstSpanId ? [firstSpanId] : [],
+      sourceClaimRefs: firstClaimId ? [firstClaimId] : [],
       transformationState: pickTransformationStateForPlan("practice")
     });
   }
@@ -202,6 +272,8 @@ function buildSourceSupportForCard(card = {}, plannedCard = {}, sourceLedger = [
   }
   const fallbackSourceIds = normalizeArray(plannedCard?.sourceRefs).map(text).filter(Boolean);
   const fallbackSpanIds = normalizeArray(plannedCard?.sourceSpanRefs).map(text).filter(Boolean);
+  const fallbackClaimIds = normalizeArray(plannedCard?.sourceClaimRefs).map(text).filter(Boolean);
+  const claimMap = buildCourseForgeSourceClaimMap(sourceLedger);
   if (!fallbackSourceIds.length && !fallbackSpanIds.length) {
     return [];
   }
@@ -209,8 +281,10 @@ function buildSourceSupportForCard(card = {}, plannedCard = {}, sourceLedger = [
     fallbackSourceIds.map((sourceId, index) => ({
       sourceId,
       spanId: fallbackSpanIds[index] || fallbackSpanIds[0] || "",
+      claimId: fallbackClaimIds[index] || fallbackClaimIds[0] || "",
       confidence: "medium",
       transformationState: text(plannedCard?.transformationState) || pickTransformationStateForPlan(plannedCard?.role),
+      claim: text(claimMap.get(fallbackClaimIds[index] || fallbackClaimIds[0] || "")?.text),
       note: ""
     })),
     sourceLedger
@@ -394,6 +468,7 @@ export function auditCourseForgeSourceAdherence({ cardDrafts = [], sourceLedger 
   const issues = [];
   const warnings = [];
   const sourceIds = listCourseForgeSources(sourceLedger).map((item) => text(item?.sourceId || item?.id)).filter(Boolean);
+  const claimMap = buildCourseForgeSourceClaimMap(sourceLedger);
   const hasSources = sourceIds.length > 0;
 
   normalizeArray(cardDrafts).forEach((entry) => {
@@ -450,6 +525,32 @@ export function auditCourseForgeSourceAdherence({ cardDrafts = [], sourceLedger 
               "warning"
             )
           );
+        }
+        const supportClaims = findClaimsForSupport(support, claimMap);
+        const richClaims = supportClaims.filter(hasRichClaim);
+        if (richClaims.length && !text(support?.claimId)) {
+          warnings.push(
+            makeAuditIssue(
+              entry,
+              "implicit_claim_grounding",
+              `Card ${cardIndex + 1} aponta para span rico, mas sem claimId explícito.`,
+              "Persistir claimId no grounding interno para manter rastreabilidade por afirmação.",
+              "warning"
+            )
+          );
+        }
+        if (richClaims.length && ["literal", "paraphrase", "inference"].includes(text(support?.transformationState))) {
+          const overlap = scoreClaimOverlap(buildCardClaimText(card), richClaims);
+          if (overlap.cardTokens.length >= 4 && overlap.overlap === 0) {
+            issues.push(
+              makeAuditIssue(
+                entry,
+                "weak_claim_grounding",
+                `Card ${cardIndex + 1} não compartilha vocabulário relevante com a claim ancorada.`,
+                "Trocar a claim usada, ajustar o card ou marcar a transformação como enriquecimento externo responsável."
+              )
+            );
+          }
         }
       });
     });

@@ -1,5 +1,5 @@
 import { normalizeLessonDomainMap } from "../domain/lessonDomainModel.js";
-import { listCourseForgeSourceSpans, listCourseForgeSources } from "./courseForgeSourceLedger.js";
+import { listCourseForgeSourceClaims, listCourseForgeSourceSpans, listCourseForgeSources } from "./courseForgeSourceLedger.js";
 
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -11,6 +11,40 @@ function normalizeArray(value) {
 
 function unique(values = []) {
   return [...new Set(normalizeArray(values).map(text).filter(Boolean))];
+}
+
+const MATCH_STOPWORDS = new Set(["para", "com", "uma", "das", "dos", "que", "por", "ser", "sao", "são", "como", "mais", "menos"]);
+
+function normalizeForMatch(value = "") {
+  return text(value)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
+function tokenizeForMatch(value = "") {
+  return [...new Set(
+    normalizeForMatch(value)
+      .split(/[^a-z0-9_]+/u)
+      .map((item) => item.trim())
+      .filter((item) => item.length >= 3)
+      .filter((item) => !MATCH_STOPWORDS.has(item))
+  )];
+}
+
+function findMatchingSourceClaims(queryValues = [], sourceClaims = []) {
+  const queryTokens = unique(normalizeArray(queryValues).flatMap((value) => tokenizeForMatch(value)));
+  if (queryTokens.length < 2) {
+    return [];
+  }
+  return normalizeArray(sourceClaims)
+    .map((claim) => ({
+      ...claim,
+      overlap: normalizeArray(claim?.tokens).filter((token) => queryTokens.includes(token)).length
+    }))
+    .filter((claim) => claim.overlap >= Math.min(2, queryTokens.length))
+    .sort((left, right) => right.overlap - left.overlap || text(left?.claimId).localeCompare(text(right?.claimId)))
+    .slice(0, 4);
 }
 
 export function buildCourseIntentArtifact(intent = {}) {
@@ -290,13 +324,14 @@ function ensureUniqueGraphId(baseId = "", lessonKey = "", usedIds = new Set()) {
   return resolvedId;
 }
 
-export function buildCourseGraphArtifact({ architectureDraft = {}, lessonPlans = [], microsequencePlans = [] } = {}) {
+export function buildCourseGraphArtifact({ architectureDraft = {}, lessonPlans = [], microsequencePlans = [], sourceLedger = null } = {}) {
   const concepts = [];
   const objectives = [];
   const prerequisiteEdges = [];
   const misconceptions = [];
   const assessmentTargets = [];
   const practiceVariants = [];
+  const sourceClaims = listCourseForgeSourceClaims(sourceLedger);
 
   const lessonByKey = new Map(normalizeArray(lessonPlans).map((item) => [text(item?.lessonKey), item]));
   const usedConceptIds = new Set();
@@ -313,12 +348,17 @@ export function buildCourseGraphArtifact({ architectureDraft = {}, lessonPlans =
       const baseConceptId = text(item?.id) || `${lessonKey}:concept:${index + 1}`;
       const conceptId = ensureUniqueGraphId(baseConceptId, lessonKey, usedConceptIds);
       conceptIdByBaseRef.set(baseConceptId, conceptId);
+      const matchedClaims = findMatchingSourceClaims(
+        [item?.label, ...(normalizeArray(item?.expectedEvidence)), ...(normalizeArray(item?.commonErrors))],
+        sourceClaims
+      );
       concepts.push({
         conceptId,
         label: text(item?.label) || conceptId,
         kind: text(item?.kind) || "concept",
         priority: text(item?.priority) || "support",
-        sourceRefs: unique(item?.sourceRefs),
+        sourceRefs: unique([...normalizeArray(item?.sourceRefs), ...matchedClaims.map((claim) => claim.sourceId)]),
+        sourceClaimRefs: unique(matchedClaims.map((claim) => claim.claimId)),
         expectedEvidence: unique(item?.expectedEvidence),
         representations: unique(item?.representations),
         assessmentFormats: unique(item?.assessmentFormats),
@@ -366,10 +406,12 @@ export function buildCourseGraphArtifact({ architectureDraft = {}, lessonPlans =
     });
     const sourceGuide = lessonPlan?.sourceGuideStructured || {};
     if (text(sourceGuide.lessonGoal)) {
+      const matchedClaims = findMatchingSourceClaims([sourceGuide.lessonGoal], sourceClaims);
       objectives.push({
         objectiveId: buildObjectiveId(lessonKey, objectives.length),
         lessonKey,
-        description: text(sourceGuide.lessonGoal)
+        description: text(sourceGuide.lessonGoal),
+        sourceClaimRefs: unique(matchedClaims.map((claim) => claim.claimId))
       });
       assessmentTargets.push({
         targetId: `${lessonKey}:assessment:${assessmentTargets.length + 1}`,
@@ -461,6 +503,7 @@ export function buildCardPlansArtifact({ microsequenceContracts = [] } = {}) {
       learningGoal: text(item?.label || item?.role),
       requiredConceptRefs: unique(contract?.domainRefs),
       sourceSpanRefs: unique(normalizeArray(item?.sourceSpanRefs)),
+      sourceClaimRefs: unique(normalizeArray(item?.sourceClaimRefs)),
       transformationState: text(item?.transformationState)
     }))
   }));

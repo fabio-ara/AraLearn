@@ -1054,7 +1054,8 @@ export async function runCourseForge({
         context.courseGraph = buildCourseGraphArtifact({
           architectureDraft: context.architectureFinal || context.architectureDraft || {},
           lessonPlans: context.lessonPlans || [],
-          microsequencePlans: context.microsequencePlans || []
+          microsequencePlans: context.microsequencePlans || [],
+          sourceLedger: context.sourceLedger || []
         });
         savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "course-graph", context.courseGraph);
       } else if (phaseId === "audit_course_graph") {
@@ -1110,7 +1111,8 @@ export async function runCourseForge({
           context.courseGraph = buildCourseGraphArtifact({
             architectureDraft: context.architectureFinal || context.architectureDraft || {},
             lessonPlans: context.lessonPlans || [],
-            microsequencePlans: []
+            microsequencePlans: [],
+            sourceLedger: context.sourceLedger || []
           });
           let finalAudit = validateCourseForgeCourseGraph({
             courseGraph: context.courseGraph || {},
