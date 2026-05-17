@@ -1238,6 +1238,18 @@ function renderMicrosequenceWorkbenchScreen({
       escapeHtml(editorSupport.lastRequest.description || "") +
       "</p></section>"
     : "";
+  const nextPlannedMicrosequence = editorSupport.nextPlannedMicrosequence || null;
+  const semanticActionsPanel = !isPlanned
+    ? '<section class="microsequence-assist-panel assist-status-panel">' +
+      '<p class="tiny muted">Ações rápidas</p>' +
+      '<div class="assist-actions assist-actions-wide">' +
+      '<button class="open-mini" type="button" data-action="fill-assist-template-repair" title="Preparar pedido para corrigir esta microssequência" aria-label="Preparar pedido para corrigir esta microssequência">Corrigir</button>' +
+      '<button class="open-mini" type="button" data-action="fill-assist-template-expand" title="Preparar pedido para expandir esta microssequência" aria-label="Preparar pedido para expandir esta microssequência">Expandir</button>' +
+      (nextPlannedMicrosequence
+        ? '<button class="open-mini" type="button" data-action="open-next-planned-microsequence" title="Abrir próxima microssequência planejada" aria-label="Abrir próxima microssequência planejada">Próxima planejada</button>'
+        : "") +
+      "</div></section>"
+    : "";
   const plannedStatePanel = isPlanned
     ? '<section class="microsequence-assist-panel assist-status-panel">' +
       '<p class="tiny muted">Microssequência planejada</p>' +
@@ -1245,6 +1257,9 @@ function renderMicrosequenceWorkbenchScreen({
       '<div class="assist-actions assist-actions-wide">' +
       '<button class="open-mini" type="button" data-action="fill-assist-template-materialize" title="Preparar pedido para materializar esta microssequência" aria-label="Preparar pedido para materializar esta microssequência">Gerar agora</button>' +
       '<button class="open-mini" type="button" data-action="fill-assist-template-reformulate" title="Preparar pedido para reformular esta microssequência" aria-label="Preparar pedido para reformular esta microssequência">Reformular proposta</button>' +
+      (nextPlannedMicrosequence
+        ? '<button class="open-mini" type="button" data-action="open-next-planned-microsequence" title="Abrir próxima microssequência planejada" aria-label="Abrir próxima microssequência planejada">Próxima planejada</button>'
+        : "") +
       "</div></section>"
     : "";
   const emptyCardsMessage = hasCards
@@ -1340,6 +1355,8 @@ function renderMicrosequenceWorkbenchScreen({
     didacticTypeOptions +
     "</select></label>" +
     '<div class="generate-divider workbench-divider"></div>' +
+    semanticActionsPanel +
+    (semanticActionsPanel ? '<div class="generate-divider workbench-divider"></div>' : "") +
     plannedStatePanel +
     (plannedStatePanel ? '<div class="generate-divider workbench-divider"></div>' : "") +
     '<label class="field generate-icon-field generate-prompt-field workbench-prompt-field">' +

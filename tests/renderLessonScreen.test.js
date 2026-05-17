@@ -449,6 +449,8 @@ test("renderiza o painel da microssequência sem botão próprio de ações e co
   assert.match(html, /data-action="open-assist-attachment-picker" title="Anexar documentos" aria-label="Anexar documentos"/);
   assert.match(html, /data-action="remove-assist-attachment" data-attachment-index="0"/);
   assert.match(html, /referencia\.pdf/);
+  assert.match(html, /data-action="fill-assist-template-repair"/);
+  assert.match(html, /data-action="fill-assist-template-expand"/);
   assert.match(html, /data-action="clear-prompt" title="Limpar prompt" aria-label="Limpar prompt"/);
   assert.match(html, /data-action="open-assist-config" title="Configurar IA" aria-label="Configurar IA"/);
   assert.match(html, /data-action="apply-assist"[^>]*title="Editar cards" aria-label="Editar cards"/);
@@ -618,6 +620,66 @@ test("renderiza o painel da microssequência vazia em modo de geração de cards
   assert.doesNotMatch(html, /Envie o pedido para gerar os cards da microssequência\./);
   assert.match(html, /data-field="assist-prompt" class="assist-prompt" aria-label="Pedido de materialização" title="Pedido de materialização"/);
   assert.match(html, /data-action="apply-assist"[^>]*title="Materializar microssequência" aria-label="Materializar microssequência"/);
+});
+
+test("renderiza atalho para próxima microssequência planejada no painel de edição", () => {
+  const project = readProject();
+  const course = project.courses[0];
+  const moduleValue = course.modules[0];
+  const lesson = structuredClone(moduleValue.lessons[0]);
+  lesson.microsequences = [
+    {
+      ...lesson.microsequences[0]
+    },
+    {
+      key: "microsequence-planejada",
+      title: "Próxima etapa",
+      status: "draft",
+      included: false,
+      tags: ["Contraste"],
+      cards: []
+    }
+  ];
+  const microsequence = lesson.microsequences[0];
+  const html = renderLessonScreen({
+    project,
+    view: "microsequence-assist",
+    selection: {
+      courseKey: course.key,
+      moduleKey: moduleValue.key,
+      lessonKey: lesson.key,
+      microsequenceKey: microsequence.key,
+      cardKey: microsequence.cards[0].key,
+      cardIndex: 0
+    },
+    course,
+    moduleValue: { ...moduleValue, lessons: [lesson] },
+    lesson,
+    microsequence,
+    cards: microsequence.cards,
+    microsequenceMode: "play",
+    editorSupport: {
+      progress: { version: 1, lessons: {} },
+      dependencies: [],
+      microsequenceVersions: [{ id: "v1", label: "Versão 1" }],
+      activeMicrosequenceVersionId: "v1",
+      selectedDependencyKeys: [],
+      pendingDependencyKey: "",
+      didacticTypeOptions: [{ value: "", label: "Automático" }],
+      selectedDidacticTypeId: "",
+      modelOptions: [{ value: "gemini-2.5-flash", label: "Gemini 2.5 Flash" }],
+      selectedModel: "gemini-2.5-flash",
+      assistModeOptions: [],
+      selectedAssistMode: "edit-microsequence",
+      activeWorkbenchPane: "edit",
+      assistModeLocked: true,
+      attachments: [],
+      promptText: "",
+      nextPlannedMicrosequence: lesson.microsequences[1]
+    }
+  });
+
+  assert.match(html, /data-action="open-next-planned-microsequence"/);
 });
 
 test("renderiza a aba preview da microssequência dentro da superfície combinada", () => {

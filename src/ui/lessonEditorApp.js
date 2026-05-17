@@ -145,7 +145,7 @@ import { validateDidacticDepth } from "../generation/validation/validateDidactic
 import { getLessonProgressCursor, removeLessonProgressEntries, writeLessonProgressEntry } from "../storage/progressStore.js";
 import { detectJsonExchangeFormat } from "../storage/jsonExchange.js";
 import { createStarterContractCard, getContractCardKind, listContractAnswerValues } from "../contract/contractCard.js";
-import { isRunnableMicrosequence, resolveMicrosequenceRuntimeIncluded } from "../model/microsequenceStatus.js";
+import { isDraftMicrosequence, isRunnableMicrosequence, resolveMicrosequenceRuntimeIncluded } from "../model/microsequenceStatus.js";
 import { ingestCourseForgeAttachments } from "../generation/ingestion/courseForgeAttachmentIngestion.js";
 import {
   createCourse as createCourseDocument,
@@ -4427,7 +4427,39 @@ export function createLessonEditorApp({ root, storage, editor }) {
         "Preserve o lugar dela na trilha, mas torne o foco didático mais claro, mais estudável e menos ambíguo."
       ].join(" ");
     }
+    if (templateId === "repair") {
+      return [
+        `Corrija a microssequência "${title}" sem mudar desnecessariamente a intenção didática.`,
+        "Ajuste explicações confusas, lacunas de preparação, contraste insuficiente ou prática mal alinhada."
+      ].join(" ");
+    }
+    if (templateId === "expand") {
+      return [
+        `Expanda a microssequência "${title}" com novos cards dentro do mesmo foco.`,
+        "Aprofunde a compreensão, reforce contraste quando necessário e adicione prática sem replanejar a trilha inteira."
+      ].join(" ");
+    }
     return "";
+  }
+
+  function isPlannedMicrosequenceForRuntime(microsequence) {
+    const cards = Array.isArray(microsequence?.cards) ? microsequence.cards : [];
+    return isDraftMicrosequence(microsequence) && cards.length === 0;
+  }
+
+  function findNextPlannedMicrosequenceInLesson(lesson, currentMicrosequenceKey) {
+    const microsequences = Array.isArray(lesson?.microsequences) ? lesson.microsequences : [];
+    const currentIndex = microsequences.findIndex((item) => item?.key === currentMicrosequenceKey);
+    if (currentIndex < 0) {
+      return null;
+    }
+    for (let index = currentIndex + 1; index < microsequences.length; index += 1) {
+      const candidate = microsequences[index];
+      if (isPlannedMicrosequenceForRuntime(candidate)) {
+        return candidate;
+      }
+    }
+    return null;
   }
 
   function deepenLessonFromAction() {
@@ -6742,6 +6774,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
           preferredContainer: state.assistDraft.preferredContainer,
           preferredContainerLabel: getAssistContainerLabel(state.assistDraft.preferredContainer),
           selectedDidacticTypeId: state.assistDraft.didacticTypeId,
+          nextPlannedMicrosequence: findNextPlannedMicrosequenceInLesson(context.lesson, context.microsequence?.key),
           didacticTypeOptions: ASSIST_DIDACTIC_TYPE_OPTIONS,
           attachments: state.assistDraft.attachments.map((item) => ({
             name: normalizeAssistAttachmentName(item?.name),
@@ -8191,6 +8224,24 @@ export function createLessonEditorApp({ root, storage, editor }) {
       state.assistDraft.promptText = buildAssistTemplatePrompt("reformulate", getRenderContext().microsequence);
       render({ preserveState: true });
       root.querySelector("[data-field='assist-prompt']")?.focus();
+    });
+    root.querySelector("[data-action='fill-assist-template-repair']")?.addEventListener("click", () => {
+      state.assistDraft.promptText = buildAssistTemplatePrompt("repair", getRenderContext().microsequence);
+      render({ preserveState: true });
+      root.querySelector("[data-field='assist-prompt']")?.focus();
+    });
+    root.querySelector("[data-action='fill-assist-template-expand']")?.addEventListener("click", () => {
+      state.assistDraft.promptText = buildAssistTemplatePrompt("expand", getRenderContext().microsequence);
+      render({ preserveState: true });
+      root.querySelector("[data-field='assist-prompt']")?.focus();
+    });
+    root.querySelector("[data-action='open-next-planned-microsequence']")?.addEventListener("click", () => {
+      const context = getRenderContext();
+      const nextPlanned = findNextPlannedMicrosequenceInLesson(context.lesson, context.microsequence?.key);
+      if (!nextPlanned) {
+        return;
+      }
+      openMicrosequenceAssistPage(nextPlanned.key, 0);
     });
     root.querySelector("[data-action='open-assist-container-picker']")?.addEventListener("click", () => {
       openEntityEditor("assist-container-picker");
