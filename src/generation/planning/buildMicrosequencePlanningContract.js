@@ -10,7 +10,8 @@ import {
   SOURCE_GUIDE_LEVELS
 } from "../../sourceGuides/sourceGuideStructured.js";
 import { normalizeLessonGuidance } from "../guidance/lessonGuidance.js";
-import { resolveWeakModelModePolicy } from "../policies/weakModelPolicy.js";
+import { getWeakModelModePolicy } from "../policies/weakModelPolicy.js";
+import { resolveWeakModelRepresentationPolicy } from "../didactics/resourceRepresentationPolicy.js";
 import { buildLessonDomainMap } from "../domain/lessonDomainModel.js";
 import { summarizeMeticulousPolicyForPrompt } from "../policies/meticulousDidacticPolicy.js";
 import { buildStudyTrackPolicy } from "../policies/studyTrackPolicy.js";
@@ -57,12 +58,12 @@ function buildRequestGovernance() {
   };
 }
 
-function resolveAvailableTypes(policy, userFixedTypeId) {
+function resolveAvailableTypes(representationPolicy, userFixedTypeId) {
   const fixedTypeId = text(userFixedTypeId);
   if (fixedTypeId && fixedTypeId !== "assisted") {
     return listMicrosequenceTypeSummaries().filter((item) => item.id === fixedTypeId);
   }
-  return listMicrosequenceTypeSummaries().filter((item) => policy.allowedTypeIds.includes(item.id));
+  return listMicrosequenceTypeSummaries().filter((item) => representationPolicy.allowedTypeIds.includes(item.id));
 }
 
 export function buildMicrosequencePlanningContract({
@@ -88,7 +89,8 @@ export function buildMicrosequencePlanningContract({
   );
   const lessonGuidance = normalizeLessonGuidance(selectedLesson);
   const lessonDomainMap = buildLessonDomainMap(selectedLesson || {});
-  const policy = resolveWeakModelModePolicy({
+  const weakModelMode = getWeakModelModePolicy(capabilities);
+  const representationPolicy = resolveWeakModelRepresentationPolicy({
     lessonGuidance,
     lessonSourceGuideStructured,
     modelCapabilities: capabilities,
@@ -174,14 +176,15 @@ export function buildMicrosequencePlanningContract({
     didacticProductionPolicy,
     selectedLessonTopicRefs: selectedTopics,
     sources: resolvedSources.referencedSources,
-    availableTypes: resolveAvailableTypes(policy, userFixedTypeId),
+    availableTypes: resolveAvailableTypes(representationPolicy, userFixedTypeId),
     availableSizes: listMicrosequenceSizes()
-      .filter((item) => policy.allowedSizeIds.includes(item.id))
+      .filter((item) => representationPolicy.allowedSizeIds.includes(item.id))
       .map(({ id, cardCount }) => ({ id, cardCount })),
-    availableResources: listCardResourceSummaries().filter((item) => policy.safeAllowedResourceTypes.includes(item.id)),
+    availableResources: listCardResourceSummaries().filter((item) => representationPolicy.safeAllowedResourceTypes.includes(item.id)),
     model: { id: capabilities.model, capabilities },
     sourceResolution: resolvedSources,
-    weakModelMode: policy,
+    weakModelMode,
+    representationPolicy,
     meticulousPolicy: summarizeMeticulousPolicyForPrompt({ weakModelMode: true }),
     productionPolicy: didacticProductionPolicy
   };

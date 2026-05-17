@@ -1,7 +1,7 @@
 import { getMicrosequenceSize } from "../types/microsequenceSizes.js";
 import { getMicrosequenceType } from "../types/microsequenceTypes.js";
 import { buildDeterministicCardPlan } from "./buildDeterministicCardPlan.js";
-import { assertUserSelectedResourcesAllowed } from "../policies/weakModelPolicy.js";
+import { assertUserSelectedResourcesAllowed } from "../didactics/resourceRepresentationPolicy.js";
 import { validatePlanAgainstStudyTrack } from "../policies/studyTrackPolicy.js";
 
 function fail(errors) {

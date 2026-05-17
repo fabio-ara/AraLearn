@@ -1,6 +1,6 @@
 import { getMicrosequenceType } from "../types/microsequenceTypes.js";
 import { getResourceSchemas, listGenerationResourceDefinitions } from "./cardResourceDefinitions.js";
-import { resolveWeakModelModePolicy } from "../policies/weakModelPolicy.js";
+import { resolveWeakModelRepresentationPolicy } from "../didactics/resourceRepresentationPolicy.js";
 
 function uniqueKnown(items = [], knownIds = new Set()) {
   const seen = new Set();
@@ -27,7 +27,7 @@ export function resolveResourcesForGenerationPlan({
 }) {
   const knownIds = new Set(resourceCatalog.map((item) => item.id));
   const type = getMicrosequenceType(resolvedMicrosequenceTypeId) || getMicrosequenceType("simple");
-  const policy = resolveWeakModelModePolicy({
+  const representationPolicy = resolveWeakModelRepresentationPolicy({
     lessonGuidance: {
       ...lessonGuidance,
       resourceTags: Array.isArray(lessonAllowedResourceTypes) && lessonAllowedResourceTypes.length
@@ -41,13 +41,13 @@ export function resolveResourcesForGenerationPlan({
   });
 
   const baseResourceTypes = uniqueKnown(type?.baseResourceTypes || [], knownIds).filter((resourceType) =>
-    policy.safeAllowedResourceTypes.includes(resourceType)
+    representationPolicy.safeAllowedResourceTypes.includes(resourceType)
   );
   const userExtraResourceTypes = uniqueKnown(userSelectedExtraResourceTypes, knownIds).filter((resourceType) =>
-    policy.safeAllowedResourceTypes.includes(resourceType) && !baseResourceTypes.includes(resourceType)
+    representationPolicy.safeAllowedResourceTypes.includes(resourceType) && !baseResourceTypes.includes(resourceType)
   );
   const planExtraResourceTypes = uniqueKnown(planSelectedExtraResourceTypes, knownIds).filter((resourceType) =>
-    policy.safeAllowedResourceTypes.includes(resourceType) &&
+    representationPolicy.safeAllowedResourceTypes.includes(resourceType) &&
     !baseResourceTypes.includes(resourceType) &&
     !userExtraResourceTypes.includes(resourceType)
   );
@@ -58,12 +58,12 @@ export function resolveResourcesForGenerationPlan({
 
   return {
     selectionMode: "weak_model_policy",
-    policy,
+    representationPolicy,
     baseResourceTypes,
     userExtraResourceTypes,
     planExtraResourceTypes,
     allowedResourceTypes,
-    rejectedResourceTypes: policy.rejectedResourceTypes,
+    rejectedResourceTypes: representationPolicy.rejectedResourceTypes,
     resourceSchemas: getResourceSchemas(allowedResourceTypes)
   };
 }
@@ -77,7 +77,7 @@ export function buildResourceSelectorState({
   resourceCatalog = listGenerationResourceDefinitions()
 }) {
   const type = getMicrosequenceType(resolvedMicrosequenceTypeId) || getMicrosequenceType("assisted");
-  const policy = resolveWeakModelModePolicy({
+  const representationPolicy = resolveWeakModelRepresentationPolicy({
     lessonGuidance,
     lessonSourceGuideStructured,
     modelCapabilities,
@@ -86,13 +86,13 @@ export function buildResourceSelectorState({
   });
   const base = new Set(
     uniqueKnown(type?.baseResourceTypes || [], new Set(resourceCatalog.map((resource) => resource.id))).filter((resourceType) =>
-      policy.safeAllowedResourceTypes.includes(resourceType)
+      representationPolicy.safeAllowedResourceTypes.includes(resourceType)
     )
   );
   const extras = new Set(uniqueKnown(userSelectedExtraResourceTypes, new Set(resourceCatalog.map((resource) => resource.id))));
   return resourceCatalog.map((resource) => {
-    const decision = policy.resourceDecisions.find((item) => item.resourceType === resource.id);
-    const policyAllowed = policy.safeAllowedResourceTypes.includes(resource.id);
+    const decision = representationPolicy.resourceDecisions.find((item) => item.resourceType === resource.id);
+    const policyAllowed = representationPolicy.safeAllowedResourceTypes.includes(resource.id);
     return {
       ...resource,
       selected: base.has(resource.id) || extras.has(resource.id),

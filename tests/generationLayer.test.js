@@ -8,7 +8,7 @@ import { validateMicrosequencePlan } from "../src/generation/planning/validateMi
 import { buildMicrosequenceGenerationContract } from "../src/generation/contracts/buildMicrosequenceGenerationContract.js";
 import { buildMicrosequenceGenerationPrompt } from "../src/generation/prompts/buildMicrosequenceGenerationPrompt.js";
 import { getModelCapabilities } from "../src/generation/providers/modelCapabilities.js";
-import { resolveWeakModelModePolicy, assertUserSelectedResourcesAllowed } from "../src/generation/policies/weakModelPolicy.js";
+import { assertUserSelectedResourcesAllowed, resolveWeakModelRepresentationPolicy } from "../src/generation/didactics/resourceRepresentationPolicy.js";
 import { resolveResourcesForGenerationPlan, buildResourceSelectorState } from "../src/generation/resources/resolveResourcesForGenerationPlan.js";
 import { validateGeneratedCardsStructural } from "../src/generation/validation/validateGeneratedCardsStructural.js";
 import { validateGeneratedCardsDidactic } from "../src/generation/validation/validateGeneratedCardsDidactic.js";
@@ -76,13 +76,13 @@ test("modelCapabilities distingue responseJsonSchema de responseSchema e usa per
 });
 
 test("weakModelPolicy bloqueia recursos avançados por padrão e libera matrix só com sinal forte", () => {
-  const logicPolicy = resolveWeakModelModePolicy({
+  const logicPolicy = resolveWeakModelRepresentationPolicy({
     lessonGuidance: loadFixture("logic-beginner.json").selectedLesson,
     lessonSourceGuideStructured: loadFixture("logic-beginner.json").selectedLesson.sourceGuideStructured,
     modelCapabilities: getModelCapabilities("gemini-2.5-flash"),
     resolvedTypeId: "concept"
   });
-  const matrixPolicy = resolveWeakModelModePolicy({
+  const matrixPolicy = resolveWeakModelRepresentationPolicy({
     lessonGuidance: loadFixture("vector-matrix-beginner.json").selectedLesson,
     lessonSourceGuideStructured: loadFixture("vector-matrix-beginner.json").selectedLesson.sourceGuideStructured,
     modelCapabilities: getModelCapabilities("gemini-2.5-flash"),
