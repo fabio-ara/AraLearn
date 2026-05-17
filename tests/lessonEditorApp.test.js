@@ -8,6 +8,20 @@ import {
   toggleCourseForgeGenerationDraftLevel
 } from "../src/generation/runtime/courseForgeGenerationDraftState.js";
 import {
+  applyCourseForgeAssistConfigPatch,
+  buildClosedCourseForgeGenerationPanelState,
+  buildCourseForgeGenerationInputState,
+  buildCourseForgeGenerationLevelState,
+  buildCourseForgeGenerationResultClearedState,
+  buildOpenedCourseForgeGenerationPanelState,
+  checkCourseForgeCodexCliConnection,
+  createCourseForgeCodexCliSetupStatus,
+  executeCourseForgeStructureGeneration,
+  normalizeCourseForgeAssistConfig,
+  resolveCourseForgeGenerationScopeViewState,
+  resolveCourseForgeOpenGeneratedLessonState
+} from "../src/generation/runtime/courseForgeGenerationEditorRuntime.js";
+import {
   resolveCourseForgeProviderReadiness,
   resolveGenerationAssistMode,
   resolveGenerationPanelScopeFromAction,
@@ -191,6 +205,177 @@ test("resolveCourseForgeProviderReadiness só valida provider local", async () =
   assert.equal(codex.ok, true);
 });
 
+test("createCourseForgeCodexCliSetupStatus normaliza payload transitório", () => {
+  assert.deepEqual(createCourseForgeCodexCliSetupStatus({ checking: true, data: "ignorar" }), {
+    ok: false,
+    checking: true,
+    error: "",
+    data: null
+  });
+});
+
+test("normalizeCourseForgeAssistConfig e patch consolidam config fora da UI", () => {
+  assert.deepEqual(normalizeCourseForgeAssistConfig({ codexEndpoint: " " }), {
+    model: "gemini-2.5-flash",
+    apiKey: "",
+    codexEndpoint: "http://127.0.0.1:4183/assist",
+    codexToken: ""
+  });
+
+  const patched = applyCourseForgeAssistConfigPatch({
+    assistConfig: {
+      model: "gemini-2.5-flash",
+      apiKey: " chave ",
+      codexEndpoint: "",
+      codexToken: " token "
+    },
+    patch: {
+      model: "codex-cli-local",
+      codexEndpoint: " http://127.0.0.1:9999/assist "
+    }
+  });
+
+  assert.equal(patched.assistConfig.model, "codex-cli-local");
+  assert.equal(patched.assistConfig.apiKey, "chave");
+  assert.equal(patched.assistConfig.codexEndpoint, "http://127.0.0.1:9999/assist");
+  assert.equal(patched.assistConfigDraft.codexToken, "token");
+});
+
+test("checkCourseForgeCodexCliConnection normaliza erro do health-check", async () => {
+  const failed = await checkCourseForgeCodexCliConnection({
+    assistConfig: {
+      codexEndpoint: "http://127.0.0.1:4183/assist",
+      codexToken: "segredo"
+    },
+    checkCodexLocalHealth: async () => {
+      throw new Error("porta fechada");
+    }
+  });
+
+  assert.equal(failed.status.ok, false);
+  assert.equal(failed.setupStatus.error, "porta fechada");
+  assert.equal(failed.setupStatus.checking, false);
+});
+
+test("runtime do painel de geração abre, limpa e fecha sem depender da UI", () => {
+  const projectDocument = {
+    courses: [
+      {
+        key: "course-a",
+        title: "Curso A",
+        modules: [
+          {
+            key: "module-a",
+            title: "Módulo A",
+            lessons: [{ key: "lesson-a", title: "Lição A" }]
+          }
+        ]
+      }
+    ]
+  };
+  const visibleCourses = projectDocument.courses;
+  const opened = buildOpenedCourseForgeGenerationPanelState({
+    draft: {
+      promptText: "manter",
+      errorMessage: "erro antigo",
+      lastResult: { message: "anterior" }
+    },
+    scope: { courseKey: "course-a", moduleKey: "module-a" },
+    projectDocument,
+    visibleCourses,
+    findCourse: (project, key) => project.courses.find((item) => item.key === key) || null,
+    findModule: (project, courseKey, moduleKey) =>
+      project.courses.find((item) => item.key === courseKey)?.modules.find((item) => item.key === moduleKey) || null,
+    findLesson: (project, courseKey, moduleKey, lessonKey) =>
+      project.courses
+        .find((item) => item.key === courseKey)
+        ?.modules.find((item) => item.key === moduleKey)
+        ?.lessons.find((item) => item.key === lessonKey) || null
+  });
+
+  assert.equal(opened.generationPanelOpen, true);
+  assert.equal(opened.entityEditor, null);
+  assert.equal(opened.draft.courseFixed, true);
+  assert.equal(opened.draft.moduleFixed, true);
+  assert.equal(opened.draft.errorMessage, "");
+  assert.equal(opened.pendingGeneratedNavigation, null);
+
+  const scopeViewState = resolveCourseForgeGenerationScopeViewState({
+    draft: opened.draft,
+    projectDocument,
+    visibleCourses,
+    findCourse: (project, key) => project.courses.find((item) => item.key === key) || null,
+    findModule: (project, courseKey, moduleKey) =>
+      project.courses.find((item) => item.key === courseKey)?.modules.find((item) => item.key === moduleKey) || null,
+    findLesson: (project, courseKey, moduleKey, lessonKey) =>
+      project.courses
+        .find((item) => item.key === courseKey)
+        ?.modules.find((item) => item.key === moduleKey)
+        ?.lessons.find((item) => item.key === lessonKey) || null
+  });
+  assert.equal(scopeViewState.lessonToggleEnabled, true);
+
+  const changedLevel = buildCourseForgeGenerationLevelState({
+    draft: opened.draft,
+    level: "lesson",
+    projectDocument,
+    visibleCourses,
+    findCourse: (project, key) => project.courses.find((item) => item.key === key) || null,
+    findModule: (project, courseKey, moduleKey) =>
+      project.courses.find((item) => item.key === courseKey)?.modules.find((item) => item.key === moduleKey) || null,
+    findLesson: (project, courseKey, moduleKey, lessonKey) =>
+      project.courses
+        .find((item) => item.key === courseKey)
+        ?.modules.find((item) => item.key === moduleKey)
+        ?.lessons.find((item) => item.key === lessonKey) || null
+  });
+  assert.equal(changedLevel.draft.lessonFixed, true);
+
+  const changedInput = buildCourseForgeGenerationInputState({
+    draft: changedLevel.draft,
+    level: "lesson",
+    value: "Lição A",
+    visibleCourses
+  });
+  assert.equal(changedInput.draft.lessonKey, "lesson-a");
+
+  const cleared = buildCourseForgeGenerationResultClearedState({
+    draft: {
+      ...changedInput.draft,
+      errorMessage: "erro",
+      lastResult: { message: "ok" }
+    },
+    pendingGeneratedNavigation: { lessonKey: "lesson-a" }
+  });
+  assert.equal(cleared.draft.errorMessage, "");
+  assert.equal(cleared.draft.lastResult, null);
+  assert.equal(cleared.pendingGeneratedNavigation, null);
+
+  const closed = buildClosedCourseForgeGenerationPanelState({
+    draft: changedInput.draft,
+    preserveGeneratedResult: true,
+    pendingGeneratedNavigation: { lessonKey: "lesson-a" }
+  });
+  assert.equal(closed.generationPanelOpen, false);
+  assert.equal(closed.pendingGeneratedNavigation.lessonKey, "lesson-a");
+});
+
+test("resolveCourseForgeOpenGeneratedLessonState valida abertura fora da UI", () => {
+  const failed = resolveCourseForgeOpenGeneratedLessonState({});
+  assert.equal(failed.ok, false);
+  assert.match(failed.errorMessage, /Nenhuma estrutura nova/);
+
+  const opened = resolveCourseForgeOpenGeneratedLessonState({
+    pendingGeneratedNavigation: {
+      courseKey: "course-a",
+      moduleKey: "module-a",
+      lessonKey: "lesson-a"
+    }
+  });
+  assert.equal(opened.ok, true);
+  assert.equal(opened.viewState.view, "lesson");
+});
+
 test("applyCourseForgeGenerationScope fixa escopo resolvido fora da UI", () => {
   const projectDocument = {
     courses: [
@@ -370,4 +555,122 @@ test("prepareCourseForgeLessonDeepeningDraft monta pedido focado sem depender da
   assert.equal(draft.promptText, "Aprofundar lacunas.");
   assert.equal(draft.lessonKey, "lesson-a");
   assert.equal(draft.attachments.length, 1);
+});
+
+test("executeCourseForgeStructureGeneration bloqueia submissão inválida antes do provider", async () => {
+  const result = await executeCourseForgeStructureGeneration({
+    draft: {
+      promptText: "",
+      attachments: []
+    },
+    assistConfig: {
+      model: "gemini-2.5-flash"
+    },
+    projectDocument: { courses: [] },
+    visibleCourses: [],
+    runCourseForge: async () => {
+      throw new Error("não deveria executar");
+    }
+  });
+
+  assert.equal(result.status, "invalid");
+  assert.match(result.draft.errorMessage, /Informe texto e\/ou anexo/);
+});
+
+test("executeCourseForgeStructureGeneration abre setup quando provider local não responde", async () => {
+  const projectDocument = {
+    courses: [{ key: "course-a", title: "Curso A", modules: [] }]
+  };
+  const result = await executeCourseForgeStructureGeneration({
+    draft: {
+      promptText: "Gerar estrutura",
+      attachments: []
+    },
+    assistConfig: {
+      model: "codex-cli-local",
+      codexEndpoint: "http://127.0.0.1:4183/assist",
+      codexToken: "segredo"
+    },
+    projectDocument,
+    visibleCourses: projectDocument.courses,
+    checkCodexLocalHealth: async () => ({
+      ok: false,
+      error: "bridge offline",
+      data: { status: 503 }
+    }),
+    runCourseForge: async () => {
+      throw new Error("não deveria executar");
+    }
+  });
+
+  assert.equal(result.status, "provider-unready");
+  assert.equal(result.shouldOpenCodexCliSetup, true);
+  assert.equal(result.codexCliSetupStatus.error, "bridge offline");
+});
+
+test("executeCourseForgeStructureGeneration retorna sucesso aplicável fora da UI", async () => {
+  const projectDocument = {
+    courses: [
+      {
+        key: "course-a",
+        title: "Curso A",
+        modules: [
+          {
+            key: "module-a",
+            title: "Módulo A",
+            lessons: [{ key: "lesson-a", title: "Lição A" }]
+          }
+        ]
+      }
+    ]
+  };
+  const visibleCourses = projectDocument.courses;
+  const result = await executeCourseForgeStructureGeneration({
+    draft: {
+      courseFixed: true,
+      courseInput: "Curso A",
+      courseKey: "course-a",
+      moduleFixed: true,
+      moduleInput: "Módulo A",
+      moduleKey: "module-a",
+      promptText: "Gerar estrutura",
+      attachments: [{ name: "base.md" }]
+    },
+    assistConfig: {
+      model: "gemini-2.5-flash",
+      apiKey: "chave"
+    },
+    projectDocument,
+    visibleCourses,
+    findCourse: (project, key) => project.courses.find((item) => item.key === key) || null,
+    findModule: (project, courseKey, moduleKey) =>
+      project.courses.find((item) => item.key === courseKey)?.modules.find((item) => item.key === moduleKey) || null,
+    findLesson: (project, courseKey, moduleKey, lessonKey) =>
+      project.courses
+        .find((item) => item.key === courseKey)
+        ?.modules.find((item) => item.key === moduleKey)
+        ?.lessons.find((item) => item.key === lessonKey) || null,
+    ingestAttachments: async (attachments) => ({
+      attachments: attachments.map((item) => ({ ...item, contentText: "conteúdo" })),
+      extractedCount: 1,
+      warnings: []
+    }),
+    runCourseForge: async () => ({
+      projectDocument,
+      patch: {
+        operations: [{}],
+        events: [{}],
+        target: {
+          courseKey: "course-a",
+          moduleKey: "module-a",
+          lessonKey: "lesson-a"
+        }
+      }
+    })
+  });
+
+  assert.equal(result.status, "success");
+  assert.equal(result.selection.lessonKey, "lesson-a");
+  assert.equal(result.pendingGeneratedNavigation.lessonKey, "lesson-a");
+  assert.equal(result.draft.lastResult.message, "Fluxo top-down aplicado com 1 operações e 1 evento auditável.");
 });
