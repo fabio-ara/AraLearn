@@ -1,4 +1,5 @@
 import { getDidacticPolicyConfig } from "../config/didacticPolicyRegistry.js";
+import { buildCourseModelPromptLines } from "../runtime/courseModelSemantics.js";
 
 export const DIDACTIC_PRODUCTION_POLICY_ID = "didacticProductionPolicy.v1";
 
@@ -116,6 +117,7 @@ export function buildDidacticProductionPolicy({
     hardRules: [...(didacticConfig?.hardRules || [])],
     sourceAnchoringRules: [...(didacticConfig?.sourceAnchoringRules || [])],
     operationalExhaustiveness: operationalDiscipline ? [...(didacticConfig?.operationalExhaustivenessRules || [])] : [],
+    courseModelLines: buildCourseModelPromptLines(didacticConfig?.courseSemantics || {}),
     explainAcronymsLocally: true,
     explainTechnicalEnglishLocally: technicalEnglishRequired,
     rejectGenericSummary: true,
@@ -135,6 +137,7 @@ export function summarizeDidacticProductionPolicyForPrompt(input = {}) {
       minimumReappearancesPerCoreItem: policy.exhaustiveCardSequence.minimumReappearancesPerCoreItem,
       steps: policy.exhaustiveCardSequence.steps
     },
+    courseModelLines: policy.courseModelLines,
     explainAcronymsLocally: policy.explainAcronymsLocally,
     explainTechnicalEnglishLocally: policy.explainTechnicalEnglishLocally,
     rejectGenericSummary: policy.rejectGenericSummary,
@@ -165,6 +168,9 @@ export function buildDidacticProductionPromptLines(input = {}) {
   }
   if (policy.requireBridgeBackToTrack) {
     lines.push("Depois de esclarecer a dúvida local, reconecte explicitamente à trilha didática em curso.");
+  }
+  if (policy.courseModelLines.length) {
+    lines.push(...policy.courseModelLines);
   }
 
   return lines;

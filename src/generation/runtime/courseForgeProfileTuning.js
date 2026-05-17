@@ -1,4 +1,9 @@
 import { DEFAULT_ENGINE_PROFILE_ID, resolveEngineProfile } from "../config/engineProfileRegistry.js";
+import {
+  buildCourseSemanticsForPolicy,
+  buildResourcePreferencesFromCourseModel,
+  createDefaultCourseModel
+} from "./courseModelSemantics.js";
 
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -41,11 +46,14 @@ export function createCourseForgeProfileTuning(profileId = DEFAULT_ENGINE_PROFIL
     requireVocabularyMap: normalizeBoolean(
       input?.requireVocabularyMap,
       didacticPolicy?.topDownCourseStrategy?.requireVocabularyMap !== false
-    )
+    ),
+    courseModel: createDefaultCourseModel(input?.courseModel || { description: input?.courseModelDescription })
   };
 }
 
 export function buildCourseForgeEngineProfileOverrides({ profileTuning = {} } = {}) {
+  const courseSemantics = buildCourseSemanticsForPolicy(profileTuning?.courseModel || {});
+  const resourcePreferences = buildResourcePreferencesFromCourseModel(profileTuning?.courseModel || {});
   return {
     didacticPolicy: {
       targetStudentProfile: text(profileTuning?.targetStudentProfile),
@@ -61,7 +69,9 @@ export function buildCourseForgeEngineProfileOverrides({ profileTuning = {} } = 
         },
         requireCoreCoverageBeforeExtensions: profileTuning?.requireCoreCoverageBeforeExtensions !== false,
         requireVocabularyMap: profileTuning?.requireVocabularyMap !== false
-      }
+      },
+      courseSemantics,
+      resourcePreferences
     }
   };
 }

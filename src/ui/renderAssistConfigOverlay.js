@@ -1,4 +1,7 @@
 import { renderUiIcon } from "./renderUiIcons.js";
+import { listCourseModelOptions } from "../generation/runtime/courseModelSemantics.js";
+
+const COURSE_MODEL_OPTIONS = listCourseModelOptions();
 
 function escapeHtml(value) {
   return String(value)
@@ -85,6 +88,22 @@ function renderFieldLabel(iconName, label, title = "") {
   );
 }
 
+function renderToggleList(listName, options = [], selectedValues = [], title = "") {
+  const selectedSet = new Set(Array.isArray(selectedValues) ? selectedValues : []);
+  return (
+    `<div class="assist-config-chip-list" title="${escapeHtml(title)}">` +
+    (Array.isArray(options) ? options : [])
+      .map((option) => (
+        `<button class="assist-config-pick-chip${selectedSet.has(option.value) ? " is-active" : ""}" type="button" ` +
+        `data-action="toggle-assist-course-model-list" data-list="${escapeHtml(listName)}" data-value="${escapeHtml(option.value)}" ` +
+        `title="${escapeHtml(option.label)}" aria-pressed="${selectedSet.has(option.value) ? "true" : "false"}">` +
+        `${escapeHtml(option.label)}</button>`
+      ))
+      .join("") +
+    "</div>"
+  );
+}
+
 export function renderAssistConfigOverlay({
   model,
   apiKey,
@@ -134,6 +153,61 @@ export function renderAssistConfigOverlay({
     renderFieldLabel("prompt", "Para quem", "Ajusta a trilha ao nível e ao tempo do estudante") +
     `<input data-field="assist-config-target-student-profile" type="text" value="${escapeHtml(profileTuning.targetStudentProfile || "")}" autocomplete="off" spellcheck="false" placeholder="Perfil do estudante" title="Ajusta a trilha ao nível e ao tempo do estudante">` +
     "</label>" +
+    '<label class="field assist-config-field assist-config-course-request-field">' +
+    renderFieldLabel("edit", "Curso", "Descreve o curso para a IA completar a modelagem") +
+    `<textarea data-field="assist-config-course-model-description" aria-label="Modelagem do curso" title="Descreve o curso para a IA completar a modelagem" placeholder="Descreva o tipo de curso, as representações, a progressão e as dificuldades do estudante.">${escapeHtml(profileTuning.courseModel?.description || "")}</textarea>` +
+    '<div class="assist-config-inline-actions">' +
+    renderLabeledAction("assist-config-infer-course-model", "sparkles", "Ler pedido", "Ler o pedido e completar a modelagem do curso") +
+    "</div>" +
+    "</label>" +
+    '<div class="assist-config-grid">' +
+    '<label class="field assist-config-field">' +
+    renderFieldLabel("folder", "Natureza", "Que tipo de curso é este") +
+    '<select data-field="assist-config-course-material-nature" aria-label="Natureza do curso" title="Que tipo de curso é este">' +
+    renderOptionList([{ value: "", label: "Selecionar" }, ...COURSE_MODEL_OPTIONS.materialNature], profileTuning.courseModel?.materialNature || "") +
+    "</select></label>" +
+    '<label class="field assist-config-field">' +
+    renderFieldLabel("module", "Progressão", "Como a trilha deve avançar") +
+    '<select data-field="assist-config-course-progression-mode" aria-label="Progressão do curso" title="Como a trilha deve avançar">' +
+    renderOptionList([{ value: "", label: "Selecionar" }, ...COURSE_MODEL_OPTIONS.progressionMode], profileTuning.courseModel?.progressionMode || "") +
+    "</select></label>" +
+    "</div>" +
+    '<section class="assist-config-semantic-section">' +
+    renderFieldLabel("tags", "Representações", "Formas centrais do conteúdo") +
+    renderToggleList(
+      "centralRepresentations",
+      COURSE_MODEL_OPTIONS.centralRepresentations,
+      profileTuning.courseModel?.centralRepresentations || [],
+      "Formas centrais do conteúdo"
+    ) +
+    "</section>" +
+    '<section class="assist-config-semantic-section">' +
+    renderFieldLabel("lesson", "Operações", "O que o estudante mais precisa fazer") +
+    renderToggleList(
+      "cognitiveOperations",
+      COURSE_MODEL_OPTIONS.cognitiveOperations,
+      profileTuning.courseModel?.cognitiveOperations || [],
+      "O que o estudante mais precisa fazer"
+    ) +
+    "</section>" +
+    '<section class="assist-config-semantic-section">' +
+    renderFieldLabel("intent", "Dificuldades", "Onde o estudante costuma travar") +
+    renderToggleList(
+      "expectedDifficulties",
+      COURSE_MODEL_OPTIONS.expectedDifficulties,
+      profileTuning.courseModel?.expectedDifficulties || [],
+      "Onde o estudante costuma travar"
+    ) +
+    "</section>" +
+    '<section class="assist-config-semantic-section">' +
+    renderFieldLabel("ready-state", "Prática", "Como a prática deve aparecer") +
+    renderToggleList(
+      "practiceModes",
+      COURSE_MODEL_OPTIONS.practiceModes,
+      profileTuning.courseModel?.practiceModes || [],
+      "Como a prática deve aparecer"
+    ) +
+    "</section>" +
     '<div class="assist-config-number-grid">' +
     renderNumberField({
       field: "assist-config-conceptual-reappearances",

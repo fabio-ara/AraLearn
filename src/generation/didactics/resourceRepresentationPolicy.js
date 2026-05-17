@@ -83,7 +83,15 @@ function typeSupportsResource(typeId, resourceType) {
   return (TYPE_RESOURCE_JUSTIFICATIONS[typeId] || []).includes(resourceType);
 }
 
-function hasStrongResourceNeed(resourceType, { lessonGuidance = {}, lessonSourceGuideStructured = {}, resolvedTypeId = "" } = {}) {
+function normalizeCourseSemantics(courseSemantics = {}) {
+  return {
+    centralRepresentations: list(courseSemantics?.centralRepresentations),
+    cognitiveOperations: list(courseSemantics?.cognitiveOperations),
+    practiceModes: list(courseSemantics?.practiceModes)
+  };
+}
+
+function hasStrongResourceNeed(resourceType, { lessonGuidance = {}, lessonSourceGuideStructured = {}, resolvedTypeId = "", courseSemantics = {} } = {}) {
   const rule = ADVANCED_RESOURCE_SIGNAL_RULES[resourceType];
   if (!rule) {
     return false;
@@ -91,11 +99,26 @@ function hasStrongResourceNeed(resourceType, { lessonGuidance = {}, lessonSource
   const contentTypeTags = list(lessonGuidance.contentTypeTags);
   const learningActionTags = list(lessonGuidance.learningActionTags);
   const guideText = normalizeGuideText(lessonSourceGuideStructured);
+  const normalizedCourseSemantics = normalizeCourseSemantics(courseSemantics);
+  const courseHints = {
+    matrix: normalizedCourseSemantics.centralRepresentations.includes("matrix"),
+    plane:
+      normalizedCourseSemantics.centralRepresentations.includes("graph") ||
+      normalizedCourseSemantics.centralRepresentations.includes("formula"),
+    flowchart:
+      normalizedCourseSemantics.centralRepresentations.includes("flowchart") ||
+      normalizedCourseSemantics.cognitiveOperations.includes("trace") ||
+      normalizedCourseSemantics.cognitiveOperations.includes("build"),
+    tree:
+      normalizedCourseSemantics.centralRepresentations.includes("tree") ||
+      normalizedCourseSemantics.cognitiveOperations.includes("classify")
+  };
   return (
     includesAny(contentTypeTags, rule.contentTypeTags) ||
     includesAny(learningActionTags, rule.learningActionTags) ||
     rule.typeIds.includes(text(resolvedTypeId)) ||
-    rule.sourceGuideTerms.some((term) => guideText.includes(term))
+    rule.sourceGuideTerms.some((term) => guideText.includes(term)) ||
+    courseHints[resourceType] === true
   );
 }
 
@@ -152,36 +175,51 @@ function buildResourceDecision(resourceType, context) {
   const stronglyIndicated = hasStrongResourceNeed(resourceType, {
     lessonGuidance: context.lessonGuidance,
     lessonSourceGuideStructured: context.lessonSourceGuideStructured,
-    resolvedTypeId: context.resolvedTypeId
+    resolvedTypeId: context.resolvedTypeId,
+    courseSemantics: context.courseSemantics
   });
+  const preferredResourceTypes = list(context.resourcePreferences?.preferredResourceTypes);
+  const discouragedResourceTypes = list(context.resourcePreferences?.discouragedResourceTypes);
+  const preferredByCourse = preferredResourceTypes.includes(resourceType);
+  const discouragedByCourse = discouragedResourceTypes.includes(resourceType);
 
   if (BASE_SAFE_RESOURCE_TYPES.includes(resourceType)) {
     return {
       resourceType,
       allowed: explicitlyAllowedByLesson || BASE_SAFE_RESOURCE_TYPES.includes(resourceType),
       classification: "safe",
+      preferred: preferredByCourse,
       reason: "recurso base seguro"
     };
   }
 
   if (CAUTIOUS_RESOURCE_TYPES.includes(resourceType)) {
+    const cautiousAllowed = (explicitlyAllowedByLesson || preferredByCourse) && typeJustified && !discouragedByCourse;
     return {
       resourceType,
-      allowed: explicitlyAllowedByLesson && typeJustified,
+      allowed: cautiousAllowed,
       classification: "cautious",
-      reason: explicitlyAllowedByLesson && typeJustified ? "recurso cauteloso permitido" : "recurso cauteloso fora do envelope da lição ou do tipo"
+      preferred: preferredByCourse,
+      reason: cautiousAllowed ? "recurso cauteloso permitido" : "recurso cauteloso fora do envelope da lição ou do tipo"
     };
   }
 
-  const advancedAllowed = explicitlyAllowedByLesson && typeJustified && (explicitlySelectedByUser || stronglyIndicated);
+  const advancedAllowed =
+    (explicitlyAllowedByLesson || preferredByCourse) &&
+    typeJustified &&
+    !discouragedByCourse &&
+    (explicitlySelectedByUser || stronglyIndicated || preferredByCourse);
   return {
     resourceType,
     allowed: advancedAllowed,
     classification: "advanced",
+    preferred: preferredByCourse,
     reason: advancedAllowed
       ? explicitlySelectedByUser
         ? "recurso avançado liberado por tag da lição, tipo compatível e escolha explícita do usuário"
-        : "recurso avançado liberado por tag da lição, tipo compatível e indicação forte da lição"
+        : preferredByCourse
+          ? "recurso avançado liberado pela modelagem do curso, pelo tipo compatível e pela indicação didática"
+          : "recurso avançado liberado por tag da lição, tipo compatível e indicação forte da lição"
       : "recurso avançado bloqueado por padrão"
   };
 }
@@ -191,7 +229,9 @@ export function resolveWeakModelRepresentationPolicy({
   lessonSourceGuideStructured = {},
   modelCapabilities = {},
   resolvedTypeId = "",
-  userSelectedExtraResourceTypes = []
+  userSelectedExtraResourceTypes = [],
+  courseSemantics = {},
+  resourcePreferences = {}
 } = {}) {
   const allowedTypeIds = resolveAllowedTypeIds(lessonGuidance);
   const allowedSizeIds = resolveAllowedSizeIds(lessonGuidance, modelCapabilities);
@@ -204,7 +244,9 @@ export function resolveWeakModelRepresentationPolicy({
       lessonGuidance,
       lessonSourceGuideStructured,
       userSelectedExtraResourceTypes,
-      resolvedTypeId
+      resolvedTypeId,
+      courseSemantics,
+      resourcePreferences
     })
   );
 
@@ -213,6 +255,7 @@ export function resolveWeakModelRepresentationPolicy({
     allowedTypeIds,
     allowedSizeIds,
     resourceDecisions,
+    preferredResourceTypes: resourceDecisions.filter((item) => item.allowed && item.preferred).map((item) => item.resourceType),
     safeAllowedResourceTypes: resourceDecisions.filter((item) => item.allowed).map((item) => item.resourceType),
     rejectedResourceTypes: resourceDecisions.filter((item) => !item.allowed).map((item) => item.resourceType),
     baseSafeResourceTypes: [...BASE_SAFE_RESOURCE_TYPES],

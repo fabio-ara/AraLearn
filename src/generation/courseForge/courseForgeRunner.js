@@ -118,7 +118,14 @@ function findScopedLesson(projectDocument = {}, scope = {}) {
   };
 }
 
-function buildScopedLessonPlan(projectDocument = {}, scope = {}) {
+function buildCourseSemanticFields(engineProfile = {}) {
+  return {
+    courseSemantics: structuredClone(engineProfile?.didacticPolicy?.courseSemantics || {}),
+    resourcePreferences: structuredClone(engineProfile?.didacticPolicy?.resourcePreferences || {})
+  };
+}
+
+function buildScopedLessonPlan(projectDocument = {}, scope = {}, engineProfile = {}) {
   const { course, moduleValue, lesson } = findScopedLesson(projectDocument, scope);
   if (!course || !moduleValue || !lesson) {
     return null;
@@ -135,11 +142,12 @@ function buildScopedLessonPlan(projectDocument = {}, scope = {}) {
     contentTypeTags: structuredClone(lesson?.contentTypeTags || []),
     learningActionTags: structuredClone(lesson?.learningActionTags || []),
     supportLevel: text(lesson?.supportLevel),
-    presetId: text(lesson?.presetId)
+    presetId: text(lesson?.presetId),
+    ...buildCourseSemanticFields(engineProfile)
   };
 }
 
-function buildScopedLessonPlansFromModule(projectDocument = {}, scope = {}) {
+function buildScopedLessonPlansFromModule(projectDocument = {}, scope = {}, engineProfile = {}) {
   const { course, moduleValue } = findScopedLesson(projectDocument, {
     courseKey: scope?.courseKey,
     moduleKey: scope?.moduleKey
@@ -155,15 +163,16 @@ function buildScopedLessonPlansFromModule(projectDocument = {}, scope = {}) {
     lessonDescription: text(lesson?.description),
     sourceGuideStructured: structuredClone(lesson?.sourceGuideStructured || {}),
     domainMap: structuredClone(lesson?.domainMap || null),
-    resourceTags: structuredClone(lesson?.resourceTags || []),
-    contentTypeTags: structuredClone(lesson?.contentTypeTags || []),
-    learningActionTags: structuredClone(lesson?.learningActionTags || []),
-    supportLevel: text(lesson?.supportLevel),
-    presetId: text(lesson?.presetId)
-  }));
+        resourceTags: structuredClone(lesson?.resourceTags || []),
+        contentTypeTags: structuredClone(lesson?.contentTypeTags || []),
+        learningActionTags: structuredClone(lesson?.learningActionTags || []),
+        supportLevel: text(lesson?.supportLevel),
+        presetId: text(lesson?.presetId),
+        ...buildCourseSemanticFields(engineProfile)
+      }));
 }
 
-function buildScopedLessonPlansFromCourse(projectDocument = {}, scope = {}) {
+function buildScopedLessonPlansFromCourse(projectDocument = {}, scope = {}, engineProfile = {}) {
   const course = (Array.isArray(projectDocument?.courses) ? projectDocument.courses : []).find(
     (item) => text(item?.key) === text(scope?.courseKey)
   );
@@ -183,7 +192,8 @@ function buildScopedLessonPlansFromCourse(projectDocument = {}, scope = {}) {
       contentTypeTags: structuredClone(lesson?.contentTypeTags || []),
       learningActionTags: structuredClone(lesson?.learningActionTags || []),
       supportLevel: text(lesson?.supportLevel),
-      presetId: text(lesson?.presetId)
+      presetId: text(lesson?.presetId),
+      ...buildCourseSemanticFields(engineProfile)
     }))
   );
 }
@@ -347,7 +357,7 @@ function buildExistingMicrosequencePlansForScope(projectDocument = {}, scope = {
   return [];
 }
 
-function normalizeLessonPlans(payload = {}, architectureDraft = {}) {
+function normalizeLessonPlans(payload = {}, architectureDraft = {}, engineProfile = {}) {
   const explicit = Array.isArray(payload?.lessonPlans) ? payload.lessonPlans : [];
   if (explicit.length) {
     return explicit.map((lessonPlan) => ({
@@ -362,10 +372,14 @@ function normalizeLessonPlans(payload = {}, architectureDraft = {}) {
       contentTypeTags: structuredClone(lessonPlan?.contentTypeTags || []),
       learningActionTags: structuredClone(lessonPlan?.learningActionTags || []),
       supportLevel: text(lessonPlan?.supportLevel),
-      presetId: text(lessonPlan?.presetId)
+      presetId: text(lessonPlan?.presetId),
+      ...buildCourseSemanticFields(engineProfile)
     }));
   }
-  return listArchitectureLessons(architectureDraft);
+  return listArchitectureLessons(architectureDraft).map((lessonPlan) => ({
+    ...lessonPlan,
+    ...buildCourseSemanticFields(engineProfile)
+  }));
 }
 
 function normalizeMicrosequencePlans(payload = {}, lessonPlans = []) {
@@ -728,7 +742,7 @@ function buildTutorInterventionContext(projectDocument = {}, intent = {}) {
     const { course, moduleValue, lesson } = findScopedLesson(projectDocument, scope);
     const microsequence = (lesson?.microsequences || []).find((item) => text(item?.key) === text(scope?.microsequenceKey));
     if (lesson) {
-      lessonMap.set(text(lesson?.key), buildScopedLessonPlan(projectDocument, scope));
+      lessonMap.set(text(lesson?.key), buildScopedLessonPlan(projectDocument, scope, {}));
     }
     if (microsequence) {
       microsequenceMap.set(text(microsequence?.key), {
@@ -742,7 +756,7 @@ function buildTutorInterventionContext(projectDocument = {}, intent = {}) {
         courseKey: lessonEntry?.courseKey,
         moduleKey: lessonEntry?.moduleKey,
         lessonKey: lessonEntry?.lessonKey
-      });
+      }, {});
       if (lessonPlan) {
         lessonMap.set(text(lessonEntry?.lessonKey), lessonPlan);
       }
@@ -1214,7 +1228,7 @@ export async function runCourseForge({
           ]
         });
         context.lessonPlans = enrichLessonPlansFromSourceLedger({
-          lessonPlans: normalizeLessonPlans(response.value || response || {}, context.architectureFinal || {}),
+          lessonPlans: normalizeLessonPlans(response.value || response || {}, context.architectureFinal || {}, engineProfile),
           sourceLedger: context.sourceLedger || []
         });
         const lessonValidation = validateCourseForgeLessonPlanSet({
@@ -1228,15 +1242,15 @@ export async function runCourseForge({
       } else if (phaseId === "build_course_graph") {
         if (["lesson", "module", "course"].includes(intent.scope?.level) && !context.lessonPlans?.length) {
           if (intent.scope?.level === "lesson") {
-            const scopedLessonPlan = buildScopedLessonPlan(context.projectDocument, intent.scope);
+            const scopedLessonPlan = buildScopedLessonPlan(context.projectDocument, intent.scope, engineProfile);
             if (!scopedLessonPlan) {
               throw new Error("Escopo de lição sem lição válida para construir CourseGraph.");
             }
             context.lessonPlans = [scopedLessonPlan];
           } else if (intent.scope?.level === "module") {
-            context.lessonPlans = buildScopedLessonPlansFromModule(context.projectDocument, intent.scope);
+            context.lessonPlans = buildScopedLessonPlansFromModule(context.projectDocument, intent.scope, engineProfile);
           } else {
-            context.lessonPlans = buildScopedLessonPlansFromCourse(context.projectDocument, intent.scope);
+            context.lessonPlans = buildScopedLessonPlansFromCourse(context.projectDocument, intent.scope, engineProfile);
           }
           if (!context.lessonPlans.length) {
             throw new Error("Escopo sem lições válidas para construir CourseGraph.");
@@ -1371,18 +1385,18 @@ export async function runCourseForge({
       } else if (phaseId === "plan_microsequences") {
         if (["lesson", "module", "course"].includes(intent.scope?.level) && !context.lessonPlans?.length) {
           if (intent.scope?.level === "lesson") {
-            const scopedLessonPlan = buildScopedLessonPlan(context.projectDocument, intent.scope);
+            const scopedLessonPlan = buildScopedLessonPlan(context.projectDocument, intent.scope, engineProfile);
             if (!scopedLessonPlan) {
               throw new Error("Escopo de lição sem lição válida para planejar microssequências.");
             }
             context.lessonPlans = [scopedLessonPlan];
           } else if (intent.scope?.level === "module") {
-            context.lessonPlans = buildScopedLessonPlansFromModule(context.projectDocument, intent.scope);
+            context.lessonPlans = buildScopedLessonPlansFromModule(context.projectDocument, intent.scope, engineProfile);
             if (!context.lessonPlans.length) {
               throw new Error("Escopo de módulo sem lições válidas para planejar microssequências.");
             }
           } else {
-            context.lessonPlans = buildScopedLessonPlansFromCourse(context.projectDocument, intent.scope);
+            context.lessonPlans = buildScopedLessonPlansFromCourse(context.projectDocument, intent.scope, engineProfile);
             if (!context.lessonPlans.length) {
               throw new Error("Escopo de curso sem lições válidas para planejar microssequências.");
             }
@@ -1626,7 +1640,7 @@ export async function runCourseForge({
       } else if (phaseId === "build_microsequence_contract") {
         if (intent.scope?.level === "microsequence") {
           if (!context.lessonPlans?.length) {
-            const scopedLessonPlan = buildScopedLessonPlan(context.projectDocument, intent.scope);
+            const scopedLessonPlan = buildScopedLessonPlan(context.projectDocument, intent.scope, engineProfile);
             if (!scopedLessonPlan) {
               throw new Error("Escopo de microssequência sem lição válida para montar contrato.");
             }

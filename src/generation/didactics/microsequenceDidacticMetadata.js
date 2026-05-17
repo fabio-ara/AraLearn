@@ -143,14 +143,42 @@ export function pickAllowedResourceTypes(lessonPlan = {}) {
   const allowed = normalizeArray(lessonPlan.resourceTags)
     .map(text)
     .filter(Boolean)
-    .filter((resourceType) => ["paragraph", "multiple_choice", "block_gap_fill", "table", "code_editor", "plane", "matrix"].includes(resourceType));
+    .filter((resourceType) => ["paragraph", "multiple_choice", "block_gap_fill", "table", "code_editor", "plane", "matrix", "flowchart", "tree"].includes(resourceType));
   if (allowed.length) {
     return allowed;
+  }
+  const courseRepresentations = normalizeArray(lessonPlan?.courseSemantics?.centralRepresentations).map(text);
+  if (courseRepresentations.includes("matrix")) {
+    return ["paragraph", "multiple_choice", "matrix"];
+  }
+  if (courseRepresentations.includes("flowchart")) {
+    return ["paragraph", "multiple_choice", "flowchart"];
+  }
+  if (courseRepresentations.includes("code") || courseRepresentations.includes("pseudocode")) {
+    return ["paragraph", "multiple_choice", "code_editor"];
+  }
+  if (courseRepresentations.includes("graph")) {
+    return ["paragraph", "multiple_choice", "plane"];
+  }
+  if (courseRepresentations.includes("table") || courseRepresentations.includes("spreadsheet")) {
+    return ["paragraph", "multiple_choice", "table"];
+  }
+  if (courseRepresentations.includes("tree")) {
+    return ["paragraph", "multiple_choice", "tree"];
   }
   return ["paragraph", "multiple_choice"];
 }
 
 function pickPracticeResourceType(allowedResourceTypes = []) {
+  if (allowedResourceTypes.includes("matrix")) {
+    return "matrix";
+  }
+  if (allowedResourceTypes.includes("flowchart")) {
+    return "flowchart";
+  }
+  if (allowedResourceTypes.includes("tree")) {
+    return "tree";
+  }
   if (allowedResourceTypes.includes("block_gap_fill")) {
     return "block_gap_fill";
   }
@@ -164,6 +192,15 @@ function pickPracticeResourceType(allowedResourceTypes = []) {
 }
 
 function pickExpositoryResourceType(allowedResourceTypes = []) {
+  if (allowedResourceTypes.includes("matrix")) {
+    return "matrix";
+  }
+  if (allowedResourceTypes.includes("flowchart")) {
+    return "flowchart";
+  }
+  if (allowedResourceTypes.includes("tree")) {
+    return "tree";
+  }
   if (allowedResourceTypes.includes("paragraph")) {
     return "paragraph";
   }

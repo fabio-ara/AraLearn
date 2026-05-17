@@ -38,7 +38,9 @@ export function resolveResourcesForGenerationPlan({
     lessonSourceGuideStructured,
     modelCapabilities,
     resolvedTypeId: type?.id || "simple",
-    userSelectedExtraResourceTypes
+    userSelectedExtraResourceTypes,
+    courseSemantics: lessonGuidance?.courseSemantics || {},
+    resourcePreferences: lessonGuidance?.resourcePreferences || {}
   });
 
   const baseResourceTypes = uniqueKnown(type?.baseResourceTypes || [], knownIds).filter((resourceType) =>
@@ -83,7 +85,9 @@ export function buildResourceSelectorState({
     lessonSourceGuideStructured,
     modelCapabilities,
     resolvedTypeId: type?.id || "simple",
-    userSelectedExtraResourceTypes
+    userSelectedExtraResourceTypes,
+    courseSemantics: lessonGuidance?.courseSemantics || {},
+    resourcePreferences: lessonGuidance?.resourcePreferences || {}
   });
   const knownIds = new Set(resourceCatalog.map((resource) => resource.id));
   const base = new Set(

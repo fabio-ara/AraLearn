@@ -134,6 +134,8 @@ export function buildCourseForgeMicrosequenceContracts({ lessonPlans = [], micro
           description: text(lessonMeta.lessonDescription),
           tags: normalizeArray(microsequence?.tags).map(text).filter(Boolean),
           sourceGuideStructured: structuredClone(lessonMeta.sourceGuideStructured || {}),
+          courseSemantics: structuredClone(lessonMeta.courseSemantics || {}),
+          resourcePreferences: structuredClone(lessonMeta.resourcePreferences || {}),
           resourceTags: structuredClone(lessonMeta.resourceTags || []),
           contentTypeTags: structuredClone(lessonMeta.contentTypeTags || []),
           learningActionTags: structuredClone(lessonMeta.learningActionTags || []),

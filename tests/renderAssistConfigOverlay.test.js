@@ -36,8 +36,12 @@ test("renderAssistConfigOverlay expõe motor, perfil e parâmetros do perfil sem
   assert.match(html, />Motor</);
   assert.match(html, />Perfil</);
   assert.match(html, />Para quem</);
+  assert.match(html, />Curso</);
+  assert.match(html, />Natureza</);
+  assert.match(html, />Representações</);
   assert.match(html, />Retoma ideia</);
   assert.match(html, />Explica vocabulário</);
+  assert.match(html, /assist-config-infer-course-model/);
   assert.match(html, /Chave ausente/);
   assert.doesNotMatch(html, /sourceGuideStructured/);
   assert.doesNotMatch(html, /Diretivas extras/);

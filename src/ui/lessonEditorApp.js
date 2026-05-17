@@ -122,6 +122,10 @@ import {
 } from "../generation/runtime/courseForgeGenerationDraftState.js";
 import { executeCourseForgeMicrosequenceGeneration } from "../generation/runtime/courseForgeInterventionRuntime.js";
 import {
+  createDefaultCourseModel,
+  inferCourseModelFromDescription
+} from "../generation/runtime/courseModelSemantics.js";
+import {
   applyCourseForgeAssistConfigPatch,
   applyCourseForgeGenerationPanelScopeState,
   buildClosedCourseForgeGenerationPanelState,
@@ -1813,6 +1817,38 @@ export function createLessonEditorApp({ root, storage, editor }) {
         ...patch
       }
     });
+  }
+
+  function updateAssistCourseModel(patch = {}) {
+    const nextCourseModel = createDefaultCourseModel({
+      ...(state.assistConfig.profileTuning?.courseModel || {}),
+      ...patch
+    });
+    updateAssistProfileTuning({ courseModel: nextCourseModel });
+  }
+
+  function toggleAssistCourseModelList(listName = "", value = "") {
+    const normalizedListName = String(listName || "").trim();
+    const normalizedValue = String(value || "").trim();
+    if (!normalizedListName || !normalizedValue) {
+      return;
+    }
+    const currentValues = Array.isArray(state.assistConfig.profileTuning?.courseModel?.[normalizedListName])
+      ? state.assistConfig.profileTuning.courseModel[normalizedListName]
+      : [];
+    const nextValues = currentValues.includes(normalizedValue)
+      ? currentValues.filter((entry) => entry !== normalizedValue)
+      : [...currentValues, normalizedValue];
+    updateAssistCourseModel({ [normalizedListName]: nextValues });
+  }
+
+  function inferAssistCourseModelFromDescription() {
+    const nextCourseModel = inferCourseModelFromDescription(
+      state.assistConfig.profileTuning?.courseModel?.description || "",
+      state.assistConfig.profileTuning?.courseModel || {}
+    );
+    updateAssistProfileTuning({ courseModel: nextCourseModel });
+    render({ preserveState: true });
   }
 
   function persistAssistConfigValue(patch = {}) {
@@ -8261,6 +8297,9 @@ export function createLessonEditorApp({ root, storage, editor }) {
     root.querySelector("[data-action='assist-config-reset-profile']")?.addEventListener("click", () => {
       resetAssistProfileTuning(state.assistConfig.didacticProfileId);
     });
+    root.querySelector("[data-action='assist-config-infer-course-model']")?.addEventListener("click", () => {
+      inferAssistCourseModelFromDescription();
+    });
     root.querySelector("[data-action='cancel-external-import']")?.addEventListener("click", () => clearPendingExternalImport());
     root.querySelector("[data-action='confirm-external-import']")?.addEventListener("click", () => confirmPendingExternalImport());
     root.querySelector("[data-action='test-codex-cli-connection']")?.addEventListener("click", () => {
@@ -8280,6 +8319,9 @@ export function createLessonEditorApp({ root, storage, editor }) {
     const assistConfigProfile = root.querySelector("[data-field='assist-config-profile']");
     const assistConfigApiKey = root.querySelector("[data-field='assist-config-api-key']");
     const assistConfigTargetStudentProfile = root.querySelector("[data-field='assist-config-target-student-profile']");
+    const assistConfigCourseModelDescription = root.querySelector("[data-field='assist-config-course-model-description']");
+    const assistConfigCourseMaterialNature = root.querySelector("[data-field='assist-config-course-material-nature']");
+    const assistConfigCourseProgressionMode = root.querySelector("[data-field='assist-config-course-progression-mode']");
     const assistConfigConceptualReappearances = root.querySelector("[data-field='assist-config-conceptual-reappearances']");
     const assistConfigOperationalReappearances = root.querySelector("[data-field='assist-config-operational-reappearances']");
     const assistConfigMinMicrosequences = root.querySelector("[data-field='assist-config-min-microsequences']");
@@ -8306,6 +8348,21 @@ export function createLessonEditorApp({ root, storage, editor }) {
     if (assistConfigTargetStudentProfile) {
       assistConfigTargetStudentProfile.addEventListener("input", () => {
         updateAssistProfileTuning({ targetStudentProfile: assistConfigTargetStudentProfile.value });
+      });
+    }
+    if (assistConfigCourseModelDescription) {
+      assistConfigCourseModelDescription.addEventListener("input", () => {
+        updateAssistCourseModel({ description: assistConfigCourseModelDescription.value });
+      });
+    }
+    if (assistConfigCourseMaterialNature) {
+      assistConfigCourseMaterialNature.addEventListener("change", () => {
+        updateAssistCourseModel({ materialNature: assistConfigCourseMaterialNature.value });
+      });
+    }
+    if (assistConfigCourseProgressionMode) {
+      assistConfigCourseProgressionMode.addEventListener("change", () => {
+        updateAssistCourseModel({ progressionMode: assistConfigCourseProgressionMode.value });
       });
     }
     if (assistConfigConceptualReappearances) {
@@ -8352,6 +8409,12 @@ export function createLessonEditorApp({ root, storage, editor }) {
         updateAssistProfileTuning({
           [field]: state.assistConfig.profileTuning?.[field] !== true
         });
+        render({ preserveState: true });
+      });
+    });
+    root.querySelectorAll("[data-action='toggle-assist-course-model-list']").forEach((node) => {
+      node.addEventListener("click", () => {
+        toggleAssistCourseModelList(node.getAttribute("data-list") || "", node.getAttribute("data-value") || "");
         render({ preserveState: true });
       });
     });

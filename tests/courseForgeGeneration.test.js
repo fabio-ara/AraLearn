@@ -78,7 +78,15 @@ test("resolveCourseForgeDidacticProfileId e buildCourseForgeEngineProfileOverrid
       profileTuning: createCourseForgeProfileTuning("aralearn.engine.ads.general.v3", {
         targetStudentProfile: "estudante em revisão final",
         conceptualReappearances: 2,
-        operationalReappearances: 5
+        operationalReappearances: 5,
+        courseModel: {
+          description: "Curso com progressão visual para formal.",
+          materialNature: "formal_language",
+          progressionMode: "visual_to_formal",
+          centralRepresentations: ["flowchart", "pseudocode", "code"],
+          cognitiveOperations: ["translate", "trace"],
+          practiceModes: ["guided_first", "translation"]
+        }
       })
     }),
     {
@@ -96,6 +104,19 @@ test("resolveCourseForgeDidacticProfileId e buildCourseForgeEngineProfileOverrid
           },
           requireCoreCoverageBeforeExtensions: true,
           requireVocabularyMap: true
+        },
+        courseSemantics: {
+          description: "Curso com progressão visual para formal.",
+          materialNature: "formal_language",
+          progressionMode: "visual_to_formal",
+          centralRepresentations: ["flowchart", "pseudocode", "code"],
+          cognitiveOperations: ["translate", "trace"],
+          expectedDifficulties: [],
+          practiceModes: ["guided_first", "translation"]
+        },
+        resourcePreferences: {
+          preferredResourceTypes: ["flowchart", "code_editor", "matrix", "paragraph"],
+          discouragedResourceTypes: ["tree"]
         }
       }
     }
@@ -119,6 +140,7 @@ test("resolveCourseForgeLaunchConfig monta runtime e intent config fora da UI", 
     launchConfig.engineProfileOverrides.didacticPolicy.targetStudentProfile,
     "estudante que precisa de operadores bem explicados"
   );
+  assert.deepEqual(launchConfig.engineProfileOverrides.didacticPolicy.courseSemantics.centralRepresentations, []);
   assert.equal(launchConfig.phaseModelOverrides.plan_architecture, "gemini-2.5-flash");
   assert.equal(typeof launchConfig.providerRegistry.get("google")?.callJson, "function");
 });

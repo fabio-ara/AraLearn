@@ -70,7 +70,7 @@ export function applyCourseForgeAssistConfigPatch({ assistConfig = {}, patch = {
   });
   return {
     assistConfig: nextAssistConfig,
-    assistConfigDraft: { ...nextAssistConfig }
+    assistConfigDraft: structuredClone(nextAssistConfig)
   };
 }
 

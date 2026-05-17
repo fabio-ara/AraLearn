@@ -3934,6 +3934,16 @@ button {
   width: 100%;
 }
 
+.assist-config-course-request-field textarea {
+  min-height: 92px;
+  resize: vertical;
+}
+
+.assist-config-inline-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
 .assist-config-number-field input {
   text-align: center;
 }
@@ -3947,6 +3957,36 @@ button {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   flex-wrap: wrap;
   gap: 8px;
+}
+
+.assist-config-semantic-section {
+  display: grid;
+  gap: 8px;
+}
+
+.assist-config-chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.assist-config-pick-chip {
+  min-height: 34px;
+  padding: 0 11px;
+  border-radius: 999px;
+  border: 1px solid rgba(151, 117, 68, 0.28);
+  background: rgba(28, 22, 17, 0.82);
+  color: #d8c29d;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.assist-config-pick-chip.is-active {
+  border-color: rgba(214, 174, 96, 0.58);
+  background: rgba(80, 61, 31, 0.72);
+  color: #f5dfae;
 }
 
 .assist-config-toggle-group {

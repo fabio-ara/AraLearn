@@ -95,7 +95,9 @@ export function buildMicrosequencePlanningContract({
     lessonSourceGuideStructured,
     modelCapabilities: capabilities,
     resolvedTypeId: text(userFixedTypeId) && text(userFixedTypeId) !== "assisted" ? text(userFixedTypeId) : "simple",
-    userSelectedExtraResourceTypes
+    userSelectedExtraResourceTypes,
+    courseSemantics: selectedLesson?.courseSemantics || {},
+    resourcePreferences: selectedLesson?.resourcePreferences || {}
   });
   const resolvedSources = resolveReferencedSources({ userPrompt, attachedSources, userSelectedSourceIds });
   const selectedTopics = normalizeSelectedLessonTopicRefs({
@@ -161,6 +163,8 @@ export function buildMicrosequencePlanningContract({
             }
           : {}),
         ...lessonGuidance,
+        ...(selectedLesson?.courseSemantics ? { courseSemantics: structuredClone(selectedLesson.courseSemantics) } : {}),
+        ...(selectedLesson?.resourcePreferences ? { resourcePreferences: structuredClone(selectedLesson.resourcePreferences) } : {}),
         ...(lessonDomainMap.items.length || lessonDomainMap.practiceVariants.length ? { domainMap: lessonDomainMap } : {}),
         microsequenceLine: lessonMicrosequenceLine
       },

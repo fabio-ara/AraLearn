@@ -1,5 +1,6 @@
 import { listPromptPackGuardrails } from "../config/promptPackRegistry.js";
 import { buildDidacticProductionPolicy } from "../policies/didacticProductionPolicy.js";
+import { buildCourseModelPromptLines } from "../runtime/courseModelSemantics.js";
 
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -29,6 +30,7 @@ export function buildCourseForgePolicyPack({
     engineProfile
   });
   const registryGuardrails = listPromptPackGuardrails("courseForge", engineProfile);
+  const courseModelLines = buildCourseModelPromptLines(engineProfile?.didacticPolicy?.courseSemantics || {});
 
   return [
     "Contrato didático AraLearn:",
@@ -43,6 +45,7 @@ export function buildCourseForgePolicyPack({
     "- Explique siglas, termos técnicos, palavras em inglês e notação antes de cobrar uso; em programação, apresente forma técnica, tradução funcional e efeito operacional.",
     "- Em conteúdo operacional, comandos, terminal ou linguagem de programação, a prática deve cobrir reconhecimento, leitura, produção guiada, combinação, sequência, erro frequente e revisão cumulativa.",
     "- Use imagem só quando o conteúdo não couber melhor em container público textual, tabela, fluxograma, montagem, editor de código, plano ou matriz.",
+    ...courseModelLines.map((line) => `- Modelagem do curso: ${line}`),
     "- Lacunas devem ser atômicas ou quase atômicas; não peça frase, linha, bloco, comando longo ou condição composta em uma única lacuna.",
     "- A microssequência não pode depender de pressuposto oculto; o que ela usar já deve ter sido explicitado antes ou no próprio card.",
     "- Se surgir dúvida local ou reforço bottom-up, responda a dúvida e reconecte explicitamente à trilha didática planejada.",
