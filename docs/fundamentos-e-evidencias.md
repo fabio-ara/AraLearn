@@ -1,89 +1,80 @@
 # Fundamentos e evidências
 
-## Estrutura, percurso e unidade
+## Como ler este documento
 
-O AraLearn parte da ideia de que aprender não é apenas acumular informação, mas percorrer uma ordem de operações cognitivas. Isso aproxima o produto de tradições que valorizam:
+O AraLearn tem fundamentos pedagógicos, técnicos e filosóficos, mas este texto não pretende transformar o produto em tese pronta nem em vitrine conceitual. O objetivo aqui é indicar com honestidade quais ideias ajudam a orientar o desenho do app, quais autores e tradições dialogam com ele e quais pontos ainda dependem de pesquisa empírica.
 
-- decomposição do problema;
-- explicitação de relações internas;
-- progressão de dificuldade;
-- retomada do que ainda não estabilizou.
+## Estrutura antes de volume
 
-Por isso o projeto trata a microssequência, e não o card isolado, como unidade didática central.
+Uma convicção central do projeto é que aprender não se reduz a acumular informação. Em muitos casos, o problema mais difícil está em dar forma ao percurso: distinguir pré-requisito de aprofundamento, explicação de prática, passo central de detalhe periférico.
 
-## Microunidades e microlearning
+Por isso, o AraLearn trata a microssequência como unidade didática central. O card continua importante, mas ele ganha mais força quando está situado numa pequena sequência com função clara.
 
-O produto dialoga com a literatura de microlearning apenas em parte. A redução de escala interessa ao AraLearn porque diminui carga cognitiva e favorece continuidade. Mas a proposta não é fragmentação arbitrária. A microunidade só faz sentido quando tem função didática clara dentro de uma trilha maior.
+## Microlearning, mas com função
+
+O produto conversa com a literatura de microlearning apenas parcialmente. A redução de escala interessa ao AraLearn porque diminui carga cognitiva e facilita continuidade em rotinas fragmentadas. Mas o objetivo não é fragmentar por fragmentar.
+
+Uma microssequência faz sentido quando é curta e também funcional. Ela precisa cumprir um papel: introduzir, explicar, contrastar, praticar, revisar ou preparar a continuação.
 
 ## Recuperação ativa, prática e revisão
 
-O AraLearn assume que compreensão melhora quando o usuário:
+O desenho do app também dialoga com pesquisas sobre active recall, prática de recuperação, worked examples, feedback e revisão. Em linhas gerais, a proposta do produto assume que compreensão tende a melhorar quando o estudante:
 
-- recupera informação ativamente;
-- pratica procedimentos;
-- compara casos;
-- enfrenta erros comuns;
-- revisa passos pouco estáveis.
+- precisa recuperar ativamente uma noção;
+- pratica procedimentos em vez de apenas reler;
+- compara casos próximos;
+- encontra erros comuns de forma explícita;
+- recebe uma progressão que não salta etapas demais.
 
-Isso justifica a presença de cards interativos, a ênfase em prática localizada e a possibilidade de expandir ou corrigir microssequências durante o estudo.
+Aqui o diálogo é compatível com autores e tradições como Robert e Elizabeth Bjork, John Sweller, Richard Mayer e pesquisas sobre worked examples, faded guidance e gestão de carga cognitiva.
 
-## Exemplo resolvido, mediação e carga cognitiva
+## Mediação e progressão
 
-Em muitos domínios, exemplo resolvido, mediação gradual e explicitação de passo intermediário são preferíveis a exposição abrupta. O produto tenta incorporar isso ao:
+O AraLearn também se aproxima de tradições que valorizam mediação e progressão em vez de exposição abrupta. Em termos amplos, isso conversa com debates presentes em didática, psicologia educacional e teorias histórico-culturais do aprendizado.
 
-- ordenar a trilha;
-- evitar prática antes de preparação;
-- permitir reforço local;
-- usar contraste quando necessário;
-- tratar lacunas como oportunidade de intervenção situada.
+Sem transformar o app em aplicação direta de um único autor, há afinidade com a ideia de que aprender envolve apoio estruturado, passagem entre níveis de autonomia e reconstrução ativa do conteúdo, não mera recepção passiva.
 
-## Meticulosidade contra resumo raso
+## IA sob forma arquitetada
 
-Uma convicção forte do projeto é que fluência textual não basta. Um texto “bonito” pode ser didaticamente ruim. Daí a ênfase em meticulosidade: explicitar passos, pressupostos, nomenclatura, transições e pontos de falha.
+Do ponto de vista técnico, o produto parte da hipótese de que modelos de linguagem funcionam melhor quando a tarefa é decomposta, contextualizada e validada. Daí a ênfase em contratos, artefatos intermediários, auditoria e patch.
 
-## Organização estrutural e intervenção local
+Essa escolha dialoga com discussões recentes sobre specification-driven development e sobre o uso de modelos de linguagem em pipelines estruturados, em vez de depender apenas de prompt livre. O AraLearn tenta incorporar essa direção sem empurrar complexidade técnica para a superfície principal de uso.
 
-O AraLearn combina:
+## Grounding, recuperação e limites do rótulo RAG
 
-- organização de material amplo em trilha;
-- geração localizada durante o estudo.
+O app também incorpora práticas de grounding: ingestão de fontes, extração textual, preservação de trechos úteis e recuperação localizada de informação para orientar a geração. Isso o aproxima de parte da literatura e da engenharia em torno de RAG.
 
-Esse desenho responde a dois problemas diferentes: dar forma ao corpus e responder à dificuldade concreta do usuário no momento da prática.
+Mesmo assim, o rótulo não dá conta de tudo. O AraLearn não foi pensado principalmente como sistema de pergunta e resposta sobre documentos, e sim como sistema de organização didática, autoria assistida e continuidade do estudo. Se há algo de RAG aqui, ele aparece como componente de grounding dentro de uma arquitetura mais ampla.
 
-## Modelos de linguagem e decomposição da tarefa
+## Persistência local, autonomia e continuidade
 
-O produto pressupõe que o desempenho de uma LLM melhora quando a tarefa é decomposta, contextualizada e validada. Isso justifica o investimento em contratos, artefatos intermediários, auditoria e reparo.
+A persistência local do projeto não é um detalhe técnico qualquer. Ela responde a uma situação concreta de uso: estudar com tempo escasso, conexão instável e atenção dividida. Guardar o percurso no dispositivo permite reler, revisar e retomar sem depender continuamente da rede.
 
-## Local-first, autonomia e rastreabilidade
-
-A opção por persistência local, exportação, versionamento e integração com provider local reforça:
-
-- autonomia do usuário;
-- controle sobre o material;
-- auditabilidade do percurso;
-- menor dependência de infraestrutura remota constante.
+Essa escolha também reforça autonomia, rastreabilidade e controle editorial do material.
 
 ## O que o AraLearn pode afirmar com segurança
 
-O AraLearn pode afirmar que foi desenhado para:
+Hoje o AraLearn pode afirmar, com boa base de projeto e implementação, que foi desenhado para:
 
-- reduzir atrito de organização do estudo;
-- estruturar material amplo em trilha revisável;
-- permitir intervenção autoral durante a prática;
-- usar IA sob controle arquitetural e humano.
+- organizar conteúdo amplo em trilhas de estudo revisáveis;
+- permitir materialização progressiva em vez de geração massiva;
+- preservar autoria e correção humana;
+- combinar persistência local com assistência por IA;
+- funcionar como apoio real a rotinas de estudo fragmentadas.
 
-O produto não deve afirmar, sem pesquisa específica, que garante melhor aprendizagem em qualquer público ou domínio.
+O que ele não deve afirmar sem pesquisa específica é que produz melhora garantida de aprendizagem em qualquer público, disciplina ou contexto.
 
-## Referências
+## Referências e diálogos
 
-O projeto dialoga com literaturas de:
+O projeto dialoga, em graus diferentes, com:
 
-- microlearning;
-- active recall;
-- cognitive load;
-- worked examples;
-- human-in-the-loop authoring;
+- literatura sobre microlearning;
+- active recall e retrieval practice;
+- cognitive load theory;
+- worked examples e faded guidance;
+- autoria assistida com human-in-the-loop;
+- grounded generation e recuperação localizada;
 - specification-driven development;
-- local-first software.
+- software com persistência local e autonomia de uso.
 
-Este documento registra a direção intelectual do produto; não substitui revisão bibliográfica formal para pesquisa acadêmica.
+Essas referências servem para orientar a leitura do produto e para abrir caminho a pesquisa futura. Não substituem revisão bibliográfica formal nem validam automaticamente os efeitos do app.

@@ -1,10 +1,10 @@
 # Planejamento de Matemática para Informática
 
-Este documento registra um planejamento de referência para um curso do AraLearn. Ele serve como exemplo de como a arquitetura pedagógica do produto pode organizar um domínio específico sem perder progressão, prática e legibilidade.
+Este documento registra um planejamento de referência para um curso no AraLearn. Ele mostra como a arquitetura do app pode organizar um domínio específico sem perder progressão, prática e legibilidade.
 
 ## Propósito
 
-O curso prepara o aluno para lidar com procedimentos centrais de lógica proposicional, vetores e matrizes sem pressupor domínio prévio forte de lógica formal ou álgebra linear.
+O curso foi pensado para ajudar o aluno a lidar com procedimentos centrais de lógica proposicional, vetores e matrizes sem pressupor domínio prévio forte de lógica formal ou álgebra linear.
 
 O recorte inclui:
 
@@ -22,7 +22,7 @@ Cada microssequência deve privilegiar uma progressão curta e funcional:
 
 Cada exercício precisa ser autossuficiente. Os dados necessários devem aparecer no próprio card, sem exigir busca retrospectiva em outros pontos da trilha.
 
-Quando a regra for abstrata ou pouco intuitiva, a explicação deve começar por caso concreto antes de generalização. Quando o objetivo for demonstrar equivalência ou reescrever expressão, a microssequência deve mostrar a ponte do raciocínio, e não apenas o resultado.
+Quando a regra for abstrata ou pouco intuitiva, a explicação deve começar por um caso concreto antes da generalização. Quando o objetivo for demonstrar equivalência ou reescrever expressão, a microssequência deve mostrar a ponte do raciocínio, e não só o resultado.
 
 ## Progressão
 
@@ -36,16 +36,10 @@ A sequência começa com vetor como objeto numérico e geométrico, segue para s
 
 ## Princípios operacionais
 
-Este planejamento exemplifica princípios que o AraLearn procura preservar:
+Este planejamento exemplifica princípios que o AraLearn tenta preservar:
 
-- prática sempre apoiada em preparação suficiente;
+- prática apoiada em preparação suficiente;
 - explicação com notação legível;
-- contraste quando houver risco de confusão conceitual;
+- contraste quando houver risco de confusão;
 - preferência por passos visíveis em vez de respostas abruptas;
 - uso de representações diferentes apenas quando servem à função didática.
-
-## Referências
-
-- MIT Open Learning, sobre prática espaçada e intercalada;
-- materiais abertos de lógica e álgebra linear, como LibreTexts;
-- literatura sobre exemplos resolvidos e preenchimento gradual de lacunas em aprendizagem matemática.

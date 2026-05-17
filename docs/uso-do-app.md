@@ -1,8 +1,8 @@
 # Guia de uso do app
 
-## Como o app está organizado
+## Como o AraLearn se organiza
 
-O AraLearn organiza o projeto em cinco níveis visíveis:
+O app trabalha com cinco níveis visíveis:
 
 - cursos;
 - módulos;
@@ -10,102 +10,64 @@ O AraLearn organiza o projeto em cinco níveis visíveis:
 - microssequências;
 - cards.
 
-O curso oferece a moldura mais ampla. O módulo agrupa partes do percurso. A lição concentra a orientação didática local. A microssequência organiza uma pequena unidade de estudo. O card é a unidade de interação.
+Curso e módulo organizam o percurso em escala mais ampla. A lição concentra a orientação local. A microssequência reúne uma pequena unidade de estudo. O card é a unidade de interação.
 
-## O que se faz na home
+Essa organização existe para ajudar o usuário a estudar com continuidade. Ela também orienta a geração assistida: o sistema não responde sobre um tema solto, mas sobre um ponto situado na trilha.
 
-Na home, o usuário pode:
+## O que se faz na tela inicial
+
+Na tela inicial, o usuário pode:
 
 - ver os cursos do projeto;
-- criar ou importar conteúdo;
+- criar, importar e exportar conteúdo;
 - abrir o painel de geração estrutural;
 - configurar provider e modelo;
-- acessar ações globais de backup, exportação e manutenção.
+- acessar ações globais de backup e manutenção.
 
-A home é o ponto mais amplo de organização do produto.
+É o lugar em que o projeto aparece como conjunto.
 
 ## O que se faz em curso, módulo e lição
 
-Curso, módulo e lição são níveis de planejamento e navegação. Neles o usuário pode:
+Nos níveis de curso, módulo e lição, o trabalho é sobretudo de organização e orientação. O usuário pode:
 
 - revisar a estrutura existente;
 - editar títulos e descrições;
+- anexar fontes;
 - ajustar a orientação da lição;
-- anexar fontes para organização pedagógica;
 - acionar geração estrutural no escopo selecionado.
 
-Quando a geração estrutural termina, o resultado esperado é uma trilha navegável até o nível de microssequência. Isso não significa que todos os cards já existam.
+O resultado esperado desse fluxo não é, necessariamente, uma pilha completa de cards. Em muitos casos, o mais importante é obter uma trilha navegável até o nível de microssequência e deixar a materialização do conteúdo para o momento mais oportuno.
 
-## A lição como centro de orientação
+## Por que a lição é tão importante
 
-A lição é o ponto mais importante de orientação local. É nela que o produto concentra:
+A lição é o ponto em que o app concentra orientação didática mais fina. É nela que se registram informações como objetivo local, foco de prática, convenções, notação preferida, limites do recorte e erros comuns.
 
-- fonte-guia estruturada;
-- domínio conceitual;
-- foco de prática;
-- limites do conteúdo;
-- notação preferida;
-- erros comuns a combater.
+Isso ajuda o sistema a produzir algo mais situado do que uma resposta genérica. Também ajuda o usuário a entender, reler e corrigir o percurso depois.
 
-Essa informação orienta tanto a organização estrutural quanto a geração local durante o estudo.
+## Como ler uma microssequência planejada
 
-## Microssequências planejadas
+No AraLearn, uma microssequência pode existir antes de ter cards. Isso não é falha.
 
-Uma microssequência pode aparecer na lição mesmo antes de ter cards. Isso é normal.
+Quando isso acontece, o app está mostrando uma etapa já planejada da trilha, mas ainda não materializada. Essa decisão tem uma função prática: permitir que o usuário veja para onde o percurso está indo, escolha por onde continuar e materialize o conteúdo de modo progressivo.
 
-Quando isso acontece, a microssequência deve ser lida como etapa planejada da trilha. Ela já informa ao usuário:
+Essa materialização progressiva é parte importante do desenho do produto. Ela evita que o fluxo estrutural tente gerar tudo de uma vez e permite que o estudo avance por blocos menores, mais controláveis e mais fáceis de revisar.
 
-- que assunto vem adiante;
-- que função didática esse passo deve cumprir;
-- onde ele se encaixa no percurso.
+## O que se faz dentro da microssequência
 
-O usuário pode abrir essa microssequência e decidir quando materializá-la.
-
-## O painel da microssequência
-
-No painel da microssequência, o usuário encontra o centro operacional do estudo local. Ali ele pode:
+O painel da microssequência é o centro operacional do estudo local. Ali o usuário pode:
 
 - estudar os cards já existentes;
-- materializar uma microssequência vazia;
+- materializar uma microssequência ainda vazia;
 - corrigir uma sequência ruim;
 - expandir um ponto insuficiente;
 - reformular a proposta;
 - editar cards manualmente;
-- abrir a próxima microssequência planejada.
+- continuar para a próxima etapa da trilha.
 
-Essa superfície aproxima estudo, autoria e revisão.
+É nesse ponto que estudo, revisão e autoria se encontram com mais força.
 
-## O que acontece durante o estudo
+## O que continua funcionando sem internet
 
-Durante o estudo, o AraLearn não trata o usuário como leitor passivo. O runtime permite interação com os cards, registro de progresso e continuação do percurso.
+Como o projeto fica salvo localmente, o app continua útil sem conexão para atividades como navegação, leitura, revisão e retomada do estudo.
 
-Se surgir dúvida, fricção ou necessidade de aprofundamento, o usuário pode intervir no ponto exato em que está. A geração local acontece em contexto, sem replanejar o curso inteiro.
-
-## Configuração de IA
-
-O painel de geração permite:
-
-- escolher provider;
-- escolher modelo;
-- informar prompt;
-- anexar fontes;
-- selecionar escopo;
-- usar parâmetros avançados quando necessário.
-
-Usuários mais avançados também podem refinar aspectos de prompt, seed e perfil didático. Usuários comuns podem operar com os padrões do sistema.
-
-## Fontes e arquivos
-
-O app aceita importação e exportação de projetos ou recortes estruturais. Também aceita anexos para organização pedagógica e, no Android, oferece integração de compartilhamento para abrir arquivos no próprio app.
-
-Depois que o projeto está salvo localmente, o usuário mantém controle sobre seu material.
-
-## O papel do usuário continua central
-
-Mesmo quando a IA participa da organização ou da materialização do conteúdo, o usuário permanece responsável por orientar, revisar, corrigir e apropriar-se do percurso. O AraLearn foi desenhado para ampliar capacidade de estudo, não para produzir obediência a um texto gerado.
-
-## Leituras complementares
-
-- [Visão do produto](visao-do-produto.md)
-- [Assistência por IA generativa](assistencia-por-ia.md)
-- [Rascunhos e microssequências](rascunhos-e-microssequencias.md)
+Os recursos que dependem de LLM, como geração estrutural, materialização assistida e reformulação por IA, exigem internet quando usam provider remoto. Isso significa que o AraLearn continua servindo para estudo em trânsito ou em locais sem sinal, mesmo quando a parte criativa fica temporariamente indisponível.

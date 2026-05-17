@@ -1,59 +1,39 @@
 # Arquitetura-alvo do AraLearn
 
-## Tese de produto
+## O que este documento descreve
 
-O AraLearn deve consolidar-se como um sistema em que a organização pedagógica ampla e a intervenção local durante o estudo pertencem à mesma arquitetura, em vez de funcionarem como produtos quase separados.
+Este texto registra a direção arquitetural do produto. Não é uma promessa de marketing nem um mapa fechado para qualquer versão futura. Ele descreve a forma que o AraLearn procura consolidar: um sistema em que organização ampla do estudo e intervenção local durante a prática pertençam à mesma arquitetura.
 
-## Princípios não negociáveis
+## A tese central
+
+O app fica mais coerente quando a trilha estrutural e a ajuda local deixam de parecer produtos quase separados. A mesma lógica que organiza o material precisa continuar válida quando o usuário entra numa microssequência, pede reforço, corrige um card ou materializa uma etapa ainda vazia.
+
+## Princípios que a arquitetura tenta preservar
 
 - a microssequência é a unidade didática central;
-- o card é unidade de interação, não de planejamento;
-- a IA não detém soberania didática;
-- o usuário preserva possibilidade real de autoria, auditoria e correção;
+- o card é a unidade de interação, não de planejamento;
+- a IA ajuda, mas não decide sozinha a didática;
+- o usuário preserva possibilidade real de autoria, revisão e correção;
 - o fluxo estrutural e o fluxo local compartilham o mesmo núcleo conceitual;
-- falha operacional não pode corromper o projeto.
+- falha operacional não deve corromper o projeto.
 
-## Núcleo arquitetural
+## O que isso implica
 
-O produto deve continuar apoiado em quatro frentes:
+Na prática, a arquitetura-alvo pede quatro frentes articuladas:
 
-- core didático;
-- engine de produção por fases;
-- runtime de providers;
-- registry de configuração.
+- um core didático com regras mais estáveis;
+- um motor de produção por fases;
+- runtimes de provider claramente separados da didática;
+- persistência local com aplicação controlada de mudanças.
 
-## Fluxo estrutural desejado
-
-O fluxo estrutural deve:
-
-- organizar corpus amplo em trilha pedagógica;
-- produzir cursos, módulos, lições e microssequências planejadas;
-- registrar metadados suficientes para navegação e continuidade;
-- evitar pré-materialização massiva de cards como comportamento padrão.
-
-## Fluxo local desejado
-
-O fluxo local deve:
-
-- materializar microssequências sob demanda;
-- permitir correção, expansão, edição e reformulação;
-- operar por patch mínimo;
-- preservar o restante da trilha sempre que possível.
-
-## Superfícies de uso
-
-O usuário comum deve encontrar uma experiência simples. O usuário avançado pode acessar parâmetros mais finos de provider, prompt, seed e perfil. A arquitetura-alvo não rejeita controle avançado; ela apenas não deve impô-lo como condição de uso.
-
-## Fidelity by design
-
-A fidelidade à fonte não depende apenas de “citar documento”. Ela depende de ingestão, recorte, governança, grounding mínimo, auditoria e possibilidade de revisão local.
+Esse desenho faz mais sentido para o produto do que uma sequência de integrações isoladas com modelos diferentes.
 
 ## Critério de sucesso
 
-O sucesso arquitetural do AraLearn não é apenas “gerar muito”. É conseguir:
+O AraLearn se aproxima dessa arquitetura quando consegue:
 
-- organizar bem;
-- tornar navegável;
-- permitir estudo real;
-- aceitar intervenção humana;
-- manter coerência entre estrutura e prática.
+- organizar material amplo em trilha navegável;
+- deixar claro o que já está planejado e o que já está pronto para estudo;
+- materializar conteúdo localmente sem replanejar tudo;
+- preservar coerência entre o percurso e a intervenção local;
+- manter o projeto utilizável, auditável e editável pelo próprio usuário.

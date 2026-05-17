@@ -2,75 +2,46 @@
 
 ## A distinção central
 
-Uma das distinções mais importantes do AraLearn é a diferença entre:
+Uma das ideias mais importantes do AraLearn é a separação entre planejar uma etapa da trilha e materializar o conteúdo estudável dessa etapa.
 
-- planejar uma etapa da trilha;
-- materializar o conteúdo estudável dessa etapa.
-
-Essa distinção impede que o produto trate toda geração como se fosse um bloco único indiferenciado.
+Sem essa distinção, o produto tenderia a tratar toda geração como um bloco único: ou tudo já vem pronto, ou tudo parece incompleto. O AraLearn tenta escapar desses dois extremos.
 
 ## O que acontece na lição
 
-No nível da lição, o produto organiza a trilha local. Esse trabalho pode incluir:
+No nível da lição, o trabalho é principalmente de organização do percurso. É ali que o app pode:
 
-- criação de microssequências planejadas;
-- revisão de ordem;
-- ajuste de títulos e descrições;
-- atualização de governança didática.
+- criar microssequências planejadas;
+- revisar ordem e continuidade;
+- ajustar títulos, descrições e orientação;
+- registrar o que aquela parte da trilha deve cobrir.
 
-Aqui o foco está no percurso, não na redação imediata de todos os cards.
+Nesse nível, o foco está no desenho do caminho.
 
 ## O que acontece na microssequência
 
-No nível da microssequência, o foco muda. O usuário entra em uma unidade específica da trilha para:
+Quando o usuário entra numa microssequência, o foco muda. O problema deixa de ser apenas estrutural e passa a ser local: materializar, corrigir, expandir, reformular ou editar uma unidade específica de estudo.
 
-- materializar conteúdo;
-- corrigir cards;
-- expandir prática;
-- reformular uma proposta ruim;
-- editar texto e estrutura local.
-
-Esse é o ponto em que estudo e autoria se encontram de forma mais intensa.
+É aí que o app aproxima mais intensamente estudo, autoria e revisão.
 
 ## Como ler uma microssequência vazia
 
-Uma microssequência vazia não deve ser interpretada como falha. Ela é uma etapa planejada do percurso. Sua função é tornar a arquitetura pedagógica visível antes da materialização completa.
+Uma microssequência sem cards não deve ser lida como erro. Ela é uma etapa planejada da trilha, já visível para o usuário, mas ainda não materializada.
 
-Isso ajuda o usuário a:
+Isso oferece vantagens concretas:
 
-- saber o que vem depois;
-- escolher por onde quer continuar;
-- compreender a lógica do percurso;
-- entrar em uma lição específica sem depender de ordem rígida de abertura.
+- torna o percurso legível antes de gerar tudo;
+- ajuda a escolher por onde continuar;
+- reduz custo e volume de geração prematura;
+- preserva espaço para intervenção autoral posterior.
 
-## O que é um rascunho
+## O que significa rascunho
 
-Rascunho, no AraLearn, é estado de trabalho. Ele pode indicar que:
+No AraLearn, rascunho é estado de trabalho, não sinônimo de descarte.
 
-- a etapa ainda não foi materializada;
-- a microssequência foi criada, mas ainda não entrou no estudo;
-- existe uma iteração que precisa de revisão antes de virar conteúdo estável.
+Ele pode indicar que uma etapa ainda está sendo preparada, que a materialização local ainda precisa de revisão ou que existe uma iteração recente aguardando decisão do usuário.
 
-Rascunho não é sinônimo de descarte.
+## Por que isso melhora o produto
 
-## Quando uma nova microssequência faz sentido
+Ao separar estrutura e materialização, o AraLearn consegue fazer algo mais útil do que simplesmente despejar cards.
 
-Uma nova microssequência só se justifica quando acrescenta função real ao percurso. Isso pode acontecer para:
-
-- introduzir subpasso ainda ausente;
-- tratar contraste relevante;
-- corrigir pré-requisito mal estabilizado;
-- variar a forma de prática;
-- enfrentar erro comum;
-- preparar transição para etapa seguinte.
-
-Sem função clara, o aumento de microssequências tende a produzir volume, não aprendizagem.
-
-## Por que essa distinção importa
-
-Sem separar estrutura e materialização, o produto corre dois riscos:
-
-- tornar o fluxo amplo caro, pesado e pouco controlável;
-- apagar a intervenção autoral do usuário durante o estudo.
-
-Ao manter a trilha e a materialização como movimentos distintos, o AraLearn preserva tanto a arquitetura pedagógica quanto a autoria situada.
+Ele mostra o percurso, permite estudá-lo por partes, acolhe correções no meio do caminho e mantém a trilha como referência estável enquanto o conteúdo vai ganhando forma.

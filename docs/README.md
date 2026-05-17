@@ -1,36 +1,42 @@
 # Documentação do AraLearn
 
-Esta documentação apresenta o AraLearn como um ambiente local-first que usa modelos de linguagem para organizar material em arquitetura pedagógica e para continuar o curso durante o próprio estudo, sempre com controle humano sobre o resultado.
+Esta documentação apresenta o AraLearn a partir do que ele é hoje: um aplicativo open source de organização de conteúdo didático em trilhas de estudo com flashcards, com persistência local e uso de IA para planejamento e intervenção localizada.
 
-## Leitura recomendada
+Os textos abaixo procuram mostrar, com linguagem pública, o que o app faz, por que ele foi desenhado assim e quais hipóteses pedagógicas e técnicas orientam o projeto.
 
-Para uma visão rápida do produto:
+## Por onde começar
+
+Se a leitura for de apresentação, este é o melhor caminho:
 
 - [Visão do produto](visao-do-produto.md)
 - [Guia de uso do app](uso-do-app.md)
+- [Assistência por IA](assistencia-por-ia.md)
+
+## Para entender melhor a proposta
+
+Estes documentos aprofundam as escolhas do produto:
+
 - [Arquitetura](arquitetura.md)
-
-Para entender a posição pedagógica, filosófica e técnica:
-
-- [Assistência por IA generativa](assistencia-por-ia.md)
 - [Modelo didático](modelo-didatico.md)
 - [Fundamentos e evidências](fundamentos-e-evidencias.md)
+- [Rascunhos e microssequências](rascunhos-e-microssequencias.md)
 
-Para entender a estrutura pública e os contratos:
+## Estrutura pública e contratos
+
+Estes textos explicam como o projeto se organiza e o que fica persistido:
 
 - [Contrato público do AraLearn](aralearn-contract.md)
-- [Rascunhos e microssequências](rascunhos-e-microssequencias.md)
 - [Perfis didáticos](perfis-didaticos.md)
+- [Arquitetura-alvo](arquitetura-alvo.md)
 
-Para operação, plataformas e integrações:
+## Operação e plataformas
 
 - [Codex CLI local](codex-cli.md)
 - [Abrir com AraLearn no Android](android-share-import.md)
 - [Android wrapper](../android/README.md)
 
-Para direção normativa, pesquisa e exemplos:
+## Pesquisa, exemplos e referência
 
-- [Arquitetura-alvo](arquitetura-alvo.md)
 - [Pesquisa e avaliação](pesquisa-e-avaliacao.md)
 - [Planejamento de Matemática para Informática](planejamento-matematica-para-informatica.md)
 - [Exemplos JSON](examples/)

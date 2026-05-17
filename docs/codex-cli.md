@@ -1,49 +1,32 @@
 # Codex CLI local no AraLearn
 
-## Visão geral
+O AraLearn suporta um provider local via `Codex CLI`. Esse caminho permite executar parte dos fluxos do app sem depender apenas de providers por API.
 
-O AraLearn suporta provider local via `Codex CLI`. Esse caminho permite rodar fluxos estruturais e locais sem depender exclusivamente de providers por API.
+## Como a integração funciona
 
-## Arquitetura
+O app conversa com um bridge HTTP local, e esse bridge aciona o `Codex CLI`. A interface continua simples, enquanto a execução local fica encapsulada como provider do produto.
 
-O app fala com um bridge HTTP local que, por sua vez, aciona o `Codex CLI`. Essa separação permite que a interface web permaneça simples e que a execução local seja tratada como provider formal do produto.
+## O que precisa existir
 
-## O que o app espera
-
-O app espera:
+Para esse modo funcionar, o ambiente precisa ter:
 
 - bridge local ativo;
 - endpoint acessível;
 - `Codex CLI` instalado;
 - ambiente Node funcional para o bridge.
 
-## Plataformas
+## Em quais plataformas
 
-### Android
-
-No Android, o setup operacional usa `Termux` e endpoint local, normalmente em `127.0.0.1`.
-
-### Windows
-
-No Windows, o fluxo esperado usa PowerShell, bridge local e binário do `Codex CLI` disponível no ambiente.
-
-### Linux
-
-No Linux, o princípio é o mesmo: bridge local, Node e `Codex CLI` acessível.
-
-## Saúde do bridge
-
-O produto verifica o estado do bridge antes de iniciar operações pesadas. Isso evita abrir geração estrutural ou local quando o provider local não está operacional.
-
-## Limitações
-
-Esse modo depende de ambiente corretamente preparado no dispositivo do usuário. Ele não substitui a necessidade de configuração local mínima.
+O princípio é o mesmo em Windows, Linux e Android. No Android, a operação costuma passar por `Termux`; no desktop, pelo ambiente local do sistema.
 
 ## Quando esse modo faz mais sentido
 
-O provider local tende a ser útil quando o usuário quer:
+Esse provider tende a ser útil quando o usuário quer:
 
-- testar fluxos mais pesados;
-- evitar custo direto de API;
-- operar com maior autonomia local;
-- manter parte importante do trabalho no próprio dispositivo.
+- reduzir dependência de API externa;
+- ampliar autonomia operacional;
+- experimentar fluxos locais com mais controle do ambiente.
+
+## Limite prático
+
+Esse caminho continua exigindo preparação técnica do dispositivo. Ele amplia a autonomia do app, mas não elimina a necessidade de setup local.

@@ -1,51 +1,44 @@
 # Arquitetura do AraLearn
 
-## Leitura correta
+## A ideia geral
 
-O AraLearn não foi desenhado para enviar um pedido livre a uma LLM e aceitar sua resposta como produto final. Sua arquitetura procura deslocar parte da inteligência do modelo para o sistema: contratos, hierarquia, ingestão, governança da lição, artefatos intermediários, auditoria e aplicação controlada.
+O AraLearn não foi desenhado para enviar um pedido solto a uma LLM e tomar a resposta como produto final. Sua arquitetura tenta colocar mais inteligência no sistema como um todo: estrutura do projeto, orientação da lição, ingestão de fontes, contratos, auditoria, validação e aplicação controlada do resultado.
 
-Essa é a chave para entender o projeto.
+Em termos simples, isso significa que o app procura organizar a tarefa antes de pedir texto.
 
-## Estrutura pública
+## Estrutura pública do projeto
 
-O contrato público do AraLearn organiza o projeto em:
+O contrato público organiza o conteúdo em:
 
 ```text
 projeto -> curso -> módulo -> lição -> microssequência -> card
 ```
 
-Essa estrutura serve ao mesmo tempo para navegação, persistência, contextualização do pedido e controle didático. O modelo não responde “sobre qualquer coisa”; ele responde sobre um ponto situado na hierarquia.
+Essa hierarquia é importante porque serve a três coisas ao mesmo tempo:
 
-## Camadas principais
+- persistência do material;
+- navegação do usuário;
+- contextualização das operações de geração e edição.
+
+O modelo não trabalha “sobre qualquer coisa”. Ele trabalha sobre um ponto localizado nessa estrutura.
+
+## As camadas principais
 
 ### Core didático
 
-O core didático define invariantes pedagógicas do produto:
+O core didático reúne as regras que dizem o que conta como progressão aceitável, prática suficiente, contraste útil, revisão legítima e microssequência bem formada.
 
-- o que conta como microssequência;
-- quais funções didáticas ela pode cumprir;
-- que lacunas, redundâncias ou pressupostos ocultos devem ser combatidos;
-- como prática, explicação, contraste e revisão se articulam;
-- como ler uma microssequência vazia, um rascunho e uma etapa pronta para estudo.
+Essa camada existe para que o comportamento do produto não dependa apenas do modelo ou do provider.
 
 ### Engine de produção
 
-O motor de geração, hoje concentrado no `CourseForge`, executa fases pequenas, auditáveis e retomáveis. Ele trabalha com artefatos intermediários e permite separar:
+O motor de geração, hoje concentrado no `CourseForge`, executa fases menores e auditáveis. Ele permite separar ingestão, interpretação do pedido, planejamento estrutural, geração localizada, auditoria, reparo, compilação de patch e aplicação.
 
-- ingestão de fontes;
-- interpretação da intenção;
-- organização estrutural;
-- planejamento local;
-- auditoria;
-- reparo;
-- compilação de patch;
-- validação e aplicação.
-
-Essa lógica é próxima de specification-driven development: o sistema não pede apenas “gere conteúdo”, mas conduz uma sequência de transformações com contratos explícitos.
+Essa lógica é próxima de specification-driven development: o sistema usa contratos e etapas explícitas para reduzir ambiguidade e manter mais controle sobre o que será alterado no projeto.
 
 ### Runtime de providers
 
-Os providers cuidam de transporte e execução operacional:
+Os providers cuidam da parte operacional:
 
 - envio de prompt e anexos;
 - adaptação ao modelo;
@@ -53,89 +46,39 @@ Os providers cuidam de transporte e execução operacional:
 - integração por API;
 - integração local via `Codex CLI`.
 
-A camada de provider não deve decidir a didática.
+Eles são importantes, mas não devem definir a didática.
 
-### Runtime de estudo e edição local
+### Runtime de estudo e edição
 
-O runtime da microssequência é a superfície em que o usuário estuda e intervém. Ali o produto materializa, corrige, expande, edita ou reformula conteúdo já situado dentro de uma trilha.
+A microssequência não é apenas um lugar onde cards aparecem. Ela é a superfície em que o usuário estuda, revisa, corrige, expande e reformula conteúdo.
 
-Esse runtime é parte central da arquitetura, não um acessório de interface.
+Por isso, o runtime local da microssequência é parte central da arquitetura do produto, e não acessório de interface.
 
-## Governança da lição
+## O papel da lição
 
-A lição é o ponto mais importante de governança didática do contrato público. É nela que o produto concentra orientação mais fina sobre escopo, notação, limites, passos esperados, erros comuns, foco de prática e domínio conceitual.
+A lição é o ponto mais importante de governança local. É ali que o app concentra objetivo, foco de prática, convenções, notação, limites e possíveis erros comuns.
 
-Essa governança aparece sobretudo por meio de:
+Essa orientação ajuda o sistema a produzir saídas mais situadas e também facilita auditoria posterior. Em vez de depender só do prompt do momento, o produto preserva uma memória didática do contexto em que cada microssequência faz sentido.
 
-- `sourceGuideStructured`;
-- `presetId`;
-- tags didáticas;
-- `domainMap`.
+## Ingestão e grounding
 
-Curso e módulo fornecem moldura estrutural mais ampla; a lição fornece o contexto didático local mais decisivo.
+Antes de acionar o modelo, o AraLearn procura extrair e normalizar o texto das fontes. Hoje o projeto já usa:
 
-## Ingestão e parsing
-
-Antes de envolver o modelo, o AraLearn procura extrair e normalizar o texto das fontes. Isso reduz custo, ruído e fragilidade. O projeto já usa parsers open source como:
-
-- `pdfjs-dist`, para PDF;
+- `pdfjs-dist`, para `PDF`;
 - `mammoth`, para `DOCX`.
 
-O objetivo não é reconstrução visual completa, e sim grounding textual suficientemente bom para organização pedagógica.
+O objetivo não é reconstruir visualmente o documento, mas aproveitar o texto como base para organização didática, grounding e verificação.
 
-## Fluxo estrutural
+Há aqui elementos de recuperação localizada de informação, mas o produto não se resume a um fluxo RAG clássico. O material importado serve menos para “responder perguntas sobre o documento” e mais para sustentar uma trilha de estudo editável.
 
-Quando o usuário quer organizar material amplo, o AraLearn gera uma trilha estrutural auditada: cursos, módulos, lições e microssequências planejadas. O valor principal desse fluxo está em produzir ordem, não em pré-materializar todo o curso em cards.
+## Por que patch importa
 
-Por isso, microssequências podem nascer vazias e ainda assim serem plenamente válidas como parte da arquitetura pedagógica.
+Quando o sistema altera o projeto, ele não deveria substituir cegamente blocos inteiros de conteúdo sempre que possível. A aplicação por patch existe para tornar a mudança mais legível, auditável e segura.
 
-## Fluxo local
+Isso é especialmente importante num app em que o usuário pode estudar, editar e versionar o material localmente.
 
-Quando o usuário já está no estudo concreto, o problema é outro: uma dúvida localizada, um contraste ausente, um card ruim, uma prática insuficiente, uma formulação confusa. Nesse caso, o AraLearn aciona a geração local, sempre dentro da trilha já planejada.
+## Operação local e continuidade
 
-Esse fluxo preserva o restante do percurso e opera por patch mínimo.
+O AraLearn mantém o projeto salvo no dispositivo do usuário. Essa persistência local permite continuar navegando e estudando mesmo sem internet, desde que o conteúdo já esteja materializado.
 
-## Artefatos internos
-
-A arquitetura usa artefatos explícitos para não depender apenas de texto solto. Entre eles estão:
-
-- `SourceLedger`;
-- `CourseIntent`;
-- `AssessmentProfile`;
-- `CourseGraph`;
-- `LessonGovernance`;
-- `MicrosequencePlan`;
-- `CardPlan`;
-- `AuditFinding`;
-- `RepairAction`;
-- `Patch`;
-- `InterventionRequest`;
-- `InterventionPlan`.
-
-Esses artefatos não existem para burocratizar o produto, e sim para tornar o comportamento verificável.
-
-## Auditoria
-
-O AraLearn não parte da suposição de que a primeira resposta do modelo já é didaticamente adequada. A arquitetura prevê auditoria sobre:
-
-- alinhamento estrutural;
-- coerência didática;
-- grounding mínimo na fonte;
-- lacunas ou pressupostos ocultos;
-- desvios de escopo;
-- defeitos localmente inaceitáveis.
-
-Quando necessário, o sistema repara antes de aplicar.
-
-## O que o usuário vê e o que a LLM vê
-
-O usuário vê cursos, lições, microssequências, cards, botões de ação, histórico e superfícies de edição. A LLM, por sua vez, recebe um recorte muito mais controlado: contexto hierárquico, governança da lição, pedido do usuário, artefatos resumidos, contratos e limites da operação.
-
-Essa diferença é essencial. A boa experiência pública do AraLearn depende de forte preparação privada do problema.
-
-## Documentos complementares
-
-- [Visão do produto](visao-do-produto.md)
-- [Assistência por IA generativa](assistencia-por-ia.md)
-- [Contrato público](aralearn-contract.md)
-- [Arquitetura-alvo](arquitetura-alvo.md)
+Quando entra em cena uma LLM remota, a conexão volta a ser necessária. A arquitetura, portanto, combina autonomia local para continuidade do estudo com dependência pontual de rede para operações criativas.
