@@ -55,25 +55,6 @@ Meticulosidade, aqui, significa decomposição, progressão, prática com finali
 
 ---
 
-## O que mudou
-
-O AraLearn continua sendo um motor de geração de microssequências didáticas de cards, mas sua missão operacional ficou mais nítida.
-
-Antes, havia maior ênfase na ideia de top-down como pré-materialização ampla do conteúdo. Hoje, a direção do produto é mais forte:
-
-- o `top-down` organiza material amplo em uma trilha didática navegável;
-- o `bottom-up` atua durante a execução do estudo, no ponto em que a dúvida aparece;
-- a autoria do curso deixa de ser apenas preparatória e passa a acontecer também no runtime;
-- a inteligência artificial passa a funcionar menos como “geradora de curso pronto” e mais como parceira de organização e intervenção situada.
-
-Em outras palavras: o AraLearn não quer apenas gerar estrutura nem apenas gerar cards. Quer articular os dois movimentos de modo coerente.
-
-No fluxo amplo, a LLM ajuda a transformar materiais como ementa, bibliografia, listas de exercícios, slides, documentação ou artigo científico em uma trilha organizada de cursos, módulos, lições e microssequências planejadas. No fluxo local, essa mesma trilha pode ser materializada progressivamente durante o estudo, à medida que o usuário pede explicação, correção, expansão, reformulação ou a geração da próxima microssequência.
-
-Essa mudança aproxima o produto de sua tese mais forte: estrutura externa robusta, autoria humana situada, prática ativa e progressão auditável.
-
----
-
 ## Visão geral
 
 No estado atual, o AraLearn reúne:
@@ -102,6 +83,10 @@ A aplicação aproxima quatro atividades que normalmente aparecem separadas:
 - revisão do próprio percurso.
 
 Essa integração permite que o mesmo ambiente seja usado para estudar, corrigir, reorganizar, preservar e fazer crescer o próprio material.
+
+Essa articulação entre organização estrutural e intervenção local define o produto no seu estado atual. O AraLearn não trata a inteligência artificial como autora soberana do curso nem como simples geradora de cards. Seu papel é organizar material amplo em arquitetura pedagógica, sugerir e preencher conteúdo localizado dentro dessa arquitetura e responder às intervenções do usuário durante o estudo.
+
+No fluxo amplo, a LLM ajuda a transformar materiais como ementa, bibliografia, listas de exercícios, slides, documentação ou artigo científico em uma trilha organizada de cursos, módulos, lições e microssequências planejadas. No fluxo local, essa mesma trilha pode ser materializada progressivamente durante o estudo, à medida que o usuário pede explicação, correção, expansão, reformulação ou a geração da próxima microssequência.
 
 ---
 
