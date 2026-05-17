@@ -135,6 +135,118 @@ function normalizeExtractedText(rawText = "") {
     .trim();
 }
 
+function normalizePdfLine(rawLine = "") {
+  return text(rawLine)
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function isLikelyPageNumberLine(value = "") {
+  const normalized = normalizePdfLine(value);
+  return /^\d{1,4}$/.test(normalized) || /^p[aá]gina\s+\d{1,4}$/i.test(normalized);
+}
+
+function shouldJoinPdfLines(currentLine = "", nextLine = "") {
+  const current = normalizePdfLine(currentLine);
+  const next = normalizePdfLine(nextLine);
+  if (!current || !next) {
+    return false;
+  }
+  if (/[.!?:;]\)?$/.test(current)) {
+    return false;
+  }
+  if (/^[•\-*]/.test(next) || /^\d+[.)]\s/.test(next)) {
+    return false;
+  }
+  if (/^[A-Z0-9][A-Z0-9\s]{4,}$/.test(next)) {
+    return false;
+  }
+  return /^[a-zà-ÿ(]/u.test(next);
+}
+
+function cleanupPdfPageLines(pageLines = []) {
+  const filtered = pageLines
+    .map((line) => normalizePdfLine(line))
+    .filter(Boolean)
+    .filter((line) => !isLikelyPageNumberLine(line));
+
+  const merged = [];
+  for (let index = 0; index < filtered.length; index += 1) {
+    let current = filtered[index];
+    while (index + 1 < filtered.length && shouldJoinPdfLines(current, filtered[index + 1])) {
+      const next = filtered[index + 1];
+      if (/-$/u.test(current) && /^[a-zà-ÿ]/u.test(next)) {
+        current = `${current.slice(0, -1)}${next}`;
+      } else {
+        current = `${current} ${next}`;
+      }
+      index += 1;
+    }
+    merged.push(current);
+  }
+
+  return merged;
+}
+
+function collectRepeatedMarginLines(pages = []) {
+  const counts = new Map();
+  pages.forEach((page) => {
+    const lines = page.lines || [];
+    const marginLines = [
+      ...lines.slice(0, 2),
+      ...lines.slice(Math.max(2, lines.length - 2))
+    ]
+      .map((line) => normalizePdfLine(line))
+      .filter((line) => line.length >= 4)
+      .filter((line) => line.length <= 120)
+      .filter((line) => !isLikelyPageNumberLine(line));
+    new Set(marginLines).forEach((line) => {
+      counts.set(line, Number(counts.get(line) || 0) + 1);
+    });
+  });
+  return new Set(
+    [...counts.entries()]
+      .filter(([, count]) => count >= 2)
+      .map(([line]) => line)
+  );
+}
+
+function buildCleanPdfTextFromPages(pages = []) {
+  const repeatedMarginLines = collectRepeatedMarginLines(pages);
+  const cleanedPages = pages.map((page) => {
+    const visibleLines = (page.lines || [])
+      .map((line) => normalizePdfLine(line))
+      .filter(Boolean)
+      .filter((line) => !repeatedMarginLines.has(line));
+    return cleanupPdfPageLines(visibleLines);
+  });
+
+  for (let pageIndex = 0; pageIndex < cleanedPages.length - 1; pageIndex += 1) {
+    const currentPageLines = cleanedPages[pageIndex];
+    const nextPageLines = cleanedPages[pageIndex + 1];
+    if (!currentPageLines.length || !nextPageLines.length) {
+      continue;
+    }
+    const lastIndex = currentPageLines.length - 1;
+    const currentLastLine = currentPageLines[lastIndex];
+    const nextFirstLine = nextPageLines[0];
+    if (!shouldJoinPdfLines(currentLastLine, nextFirstLine)) {
+      continue;
+    }
+    currentPageLines[lastIndex] = /-$/u.test(currentLastLine) && /^[a-zà-ÿ]/u.test(nextFirstLine)
+      ? `${currentLastLine.slice(0, -1)}${nextFirstLine}`
+      : `${currentLastLine} ${nextFirstLine}`;
+    nextPageLines.shift();
+  }
+
+  return normalizeExtractedText(
+    cleanedPages
+      .map((lines) => lines.join("\n"))
+      .filter(Boolean)
+      .join("\n\n")
+  );
+}
+
 async function loadPdfjs() {
   if (!pdfjsLoaderPromise) {
     pdfjsLoaderPromise = import(PDF_MODULE_URL.href);
@@ -192,30 +304,33 @@ async function extractPdfTextFromArrayBuffer(arrayBuffer, { loadPdfjsModule = lo
     data: new Uint8Array(arrayBuffer)
   });
   const documentHandle = await loadingTask.promise;
-  const pageTexts = [];
+  const pages = [];
 
   for (let pageNumber = 1; pageNumber <= documentHandle.numPages; pageNumber += 1) {
     const page = await documentHandle.getPage(pageNumber);
     const textContent = await page.getTextContent();
-    const parts = [];
+    const lines = [];
+    let currentLine = [];
     for (const item of Array.isArray(textContent?.items) ? textContent.items : []) {
       const chunk = text(item?.str);
       if (chunk) {
-        parts.push(chunk);
+        currentLine.push(chunk);
       }
       if (item?.hasEOL) {
-        parts.push("\n");
+        lines.push(currentLine.join(" "));
+        currentLine = [];
       }
     }
-    pageTexts.push(
-      parts.join(" ")
-        .replace(/ *\n */g, "\n")
-        .replace(/[ \t]{2,}/g, " ")
-        .trim()
-    );
+    if (currentLine.length) {
+      lines.push(currentLine.join(" "));
+    }
+    pages.push({
+      pageNumber,
+      lines
+    });
   }
 
-  return normalizeExtractedText(pageTexts.filter(Boolean).join("\n\n"));
+  return buildCleanPdfTextFromPages(pages);
 }
 
 async function extractDocxTextFromArrayBuffer(arrayBuffer, { loadMammothLib = loadMammoth } = {}) {

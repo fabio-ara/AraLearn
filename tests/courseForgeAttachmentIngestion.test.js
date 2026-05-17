@@ -89,6 +89,59 @@ test("ingestCourseForgeAttachments usa parser de pdf quando disponivel", async (
   assert.equal(result.attachments[0].ingestionStatus, "supported");
 });
 
+test("ingestCourseForgeAttachments limpa cabecalho repetido, numero de pagina e hifenizacao de pdf", async () => {
+  const result = await ingestCourseForgeAttachments([
+    makeFile({
+      name: "apostila-limpeza.pdf",
+      type: "application/pdf",
+      binaryContent: encodeText("pdf-bytes")
+    })
+  ], {
+    async loadPdfjsModule() {
+      return {
+        GlobalWorkerOptions: {},
+        getDocument() {
+          return {
+            promise: Promise.resolve({
+              numPages: 2,
+              async getPage(pageNumber) {
+                return {
+                  async getTextContent() {
+                    if (pageNumber === 1) {
+                      return {
+                        items: [
+                          { str: "Algoritmos 1 - Aula 3", hasEOL: true },
+                          { str: "Intro-", hasEOL: true },
+                          { str: "dução", hasEOL: true },
+                          { str: "rede local", hasEOL: true },
+                          { str: "1", hasEOL: true }
+                        ]
+                      };
+                    }
+                    return {
+                      items: [
+                        { str: "Algoritmos 1 - Aula 3", hasEOL: true },
+                        { str: "continua", hasEOL: true },
+                        { str: "na prática.", hasEOL: true },
+                        { str: "2", hasEOL: true }
+                      ]
+                    };
+                  }
+                };
+              }
+            })
+          };
+        }
+      };
+    }
+  });
+
+  assert.doesNotMatch(result.attachments[0].textContent, /Algoritmos 1 - Aula 3/);
+  assert.doesNotMatch(result.attachments[0].textContent, /^\d$/m);
+  assert.match(result.attachments[0].textContent, /Introdução/);
+  assert.match(result.attachments[0].textContent, /rede local continua na prática\./i);
+});
+
 test("ingestCourseForgeAttachments usa parser de docx e preserva warnings", async () => {
   const result = await ingestCourseForgeAttachments([
     makeFile({
