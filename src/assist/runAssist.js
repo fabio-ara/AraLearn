@@ -1,4 +1,4 @@
-import { runGeminiAssist } from "./geminiAssist.js";
+import { runGeminiAssist } from "./assistModeDispatcher.js";
 import { isCodexLocalModel, runCodexLocalAssist } from "./codexLocalAssist.js";
 
 export function runAssist({ model, apiKey, codexEndpoint, codexToken, ...payload }) {

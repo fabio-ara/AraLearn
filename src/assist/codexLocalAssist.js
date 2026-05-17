@@ -1,5 +1,5 @@
 import { buildAssistDraftPrompt, buildDeterministicAssistPlan, normalizeAssistDraftResult } from "./assistMicrosequenceEngine.js";
-import { buildEditPrompt, normalizeEditResult } from "./geminiAssist.js";
+import { buildEditPrompt, normalizeEditResult } from "./assistPromptBuilders.js";
 
 export const CODEX_LOCAL_MODEL_ID = "codex-cli-local";
 export const DEFAULT_CODEX_LOCAL_ENDPOINT = "http://127.0.0.1:4183/assist";
