@@ -56,11 +56,7 @@ export function normalizeCourseForgeAssistConfig(config = {}) {
     didacticProfileId,
     profileTuning: createCourseForgeProfileTuning(
       didacticProfileId,
-      config.profileTuning && typeof config.profileTuning === "object"
-        ? config.profileTuning
-        : {
-            guardrailsText: typeof config.customPromptGuidance === "string" ? config.customPromptGuidance : ""
-          }
+      config.profileTuning && typeof config.profileTuning === "object" ? config.profileTuning : {}
     ),
     codexEndpoint: text(config.codexEndpoint) || DEFAULT_CODEX_LOCAL_ENDPOINT,
     codexToken: typeof config.codexToken === "string" ? config.codexToken.trim() : ""

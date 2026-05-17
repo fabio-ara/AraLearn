@@ -16,25 +16,10 @@ function normalizeBoolean(value, fallback) {
   return typeof value === "boolean" ? value : fallback;
 }
 
-function normalizeGuardrailsText(value = "", fallbackLines = []) {
-  if (typeof value === "string" && value.trim()) {
-    return value
-      .split(/\r?\n/u)
-      .map((entry) => text(entry))
-      .filter(Boolean)
-      .join("\n");
-  }
-  return (Array.isArray(fallbackLines) ? fallbackLines : [])
-    .map((entry) => text(entry))
-    .filter(Boolean)
-    .join("\n");
-}
-
 export function createCourseForgeProfileTuning(profileId = DEFAULT_ENGINE_PROFILE_ID, input = {}) {
   const resolvedProfile = resolveEngineProfile(profileId || DEFAULT_ENGINE_PROFILE_ID);
   const didacticPolicy = resolvedProfile?.didacticPolicy || {};
   const budget = didacticPolicy?.topDownCourseStrategy?.defaultBudgetByLesson || {};
-  const guardrails = resolvedProfile?.promptPacks?.courseForge?.guardrails || [];
 
   return {
     targetStudentProfile: text(input?.targetStudentProfile) || text(didacticPolicy?.targetStudentProfile),
@@ -56,17 +41,11 @@ export function createCourseForgeProfileTuning(profileId = DEFAULT_ENGINE_PROFIL
     requireVocabularyMap: normalizeBoolean(
       input?.requireVocabularyMap,
       didacticPolicy?.topDownCourseStrategy?.requireVocabularyMap !== false
-    ),
-    guardrailsText: normalizeGuardrailsText(input?.guardrailsText, guardrails)
+    )
   };
 }
 
 export function buildCourseForgeEngineProfileOverrides({ profileTuning = {} } = {}) {
-  const guardrails = String(profileTuning?.guardrailsText || "")
-    .split(/\r?\n/u)
-    .map((entry) => text(entry))
-    .filter(Boolean);
-
   return {
     didacticPolicy: {
       targetStudentProfile: text(profileTuning?.targetStudentProfile),
@@ -82,11 +61,6 @@ export function buildCourseForgeEngineProfileOverrides({ profileTuning = {} } = 
         },
         requireCoreCoverageBeforeExtensions: profileTuning?.requireCoreCoverageBeforeExtensions !== false,
         requireVocabularyMap: profileTuning?.requireVocabularyMap !== false
-      }
-    },
-    promptPacks: {
-      courseForge: {
-        guardrails
       }
     }
   };

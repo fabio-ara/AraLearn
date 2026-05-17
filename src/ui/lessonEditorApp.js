@@ -8285,7 +8285,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
     const assistConfigMinMicrosequences = root.querySelector("[data-field='assist-config-min-microsequences']");
     const assistConfigTargetMicrosequences = root.querySelector("[data-field='assist-config-target-microsequences']");
     const assistConfigMaxMicrosequences = root.querySelector("[data-field='assist-config-max-microsequences']");
-    const assistConfigGuardrailsText = root.querySelector("[data-field='assist-config-guardrails-text']");
     const assistConfigCodexEndpoint = root.querySelector("[data-field='assist-config-codex-endpoint']");
     const assistConfigCodexToken = root.querySelector("[data-field='assist-config-codex-token']");
     if (assistConfigModel) {
@@ -8332,11 +8331,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
     if (assistConfigMaxMicrosequences) {
       assistConfigMaxMicrosequences.addEventListener("input", () => {
         updateAssistProfileTuning({ maxMicrosequences: assistConfigMaxMicrosequences.value });
-      });
-    }
-    if (assistConfigGuardrailsText) {
-      assistConfigGuardrailsText.addEventListener("input", () => {
-        updateAssistProfileTuning({ guardrailsText: assistConfigGuardrailsText.value });
       });
     }
     if (assistConfigCodexEndpoint) {

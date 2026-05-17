@@ -76,15 +76,17 @@ test("resolveCourseForgeDidacticProfileId e buildCourseForgeEngineProfileOverrid
   assert.deepEqual(
     buildCourseForgeEngineProfileOverrides({
       profileTuning: createCourseForgeProfileTuning("aralearn.engine.ads.general.v3", {
-        guardrailsText: "Priorize contraste.\nMostre passo a passo."
+        targetStudentProfile: "estudante em revisão final",
+        conceptualReappearances: 2,
+        operationalReappearances: 5
       })
     }),
     {
       didacticPolicy: {
-        targetStudentProfile: "estudante-trabalhador de ADS com pouco tempo, pouca margem para erro e possível fragilidade de base",
+        targetStudentProfile: "estudante em revisão final",
         defaultMinimumReappearances: {
-          conceptual: 3,
-          operational: 4
+          conceptual: 2,
+          operational: 5
         },
         topDownCourseStrategy: {
           defaultBudgetByLesson: {
@@ -94,11 +96,6 @@ test("resolveCourseForgeDidacticProfileId e buildCourseForgeEngineProfileOverrid
           },
           requireCoreCoverageBeforeExtensions: true,
           requireVocabularyMap: true
-        }
-      },
-      promptPacks: {
-        courseForge: {
-          guardrails: ["Priorize contraste.", "Mostre passo a passo."]
         }
       }
     }
@@ -111,14 +108,17 @@ test("resolveCourseForgeLaunchConfig monta runtime e intent config fora da UI", 
     apiKey: "chave",
     didacticProfileId: "aralearn.engine.ads.programming.v1",
     profileTuning: createCourseForgeProfileTuning("aralearn.engine.ads.programming.v1", {
-      guardrailsText: "Explique os operadores localmente."
+      targetStudentProfile: "estudante que precisa de operadores bem explicados"
     })
   });
 
   assert.equal(launchConfig.providerId, "google");
   assert.equal(launchConfig.selectedTopDownProfileId, "custom");
   assert.equal(launchConfig.didacticProfileId, "aralearn.engine.ads.programming.v1");
-  assert.deepEqual(launchConfig.engineProfileOverrides.promptPacks.courseForge.guardrails, ["Explique os operadores localmente."]);
+  assert.equal(
+    launchConfig.engineProfileOverrides.didacticPolicy.targetStudentProfile,
+    "estudante que precisa de operadores bem explicados"
+  );
   assert.equal(launchConfig.phaseModelOverrides.plan_architecture, "gemini-2.5-flash");
   assert.equal(typeof launchConfig.providerRegistry.get("google")?.callJson, "function");
 });
@@ -184,7 +184,7 @@ test("prepareCourseForgeStructureGeneration monta request fora da UI", async () 
       apiKey: "chave",
       didacticProfileId: "aralearn.engine.ads.programming.v1",
       profileTuning: createCourseForgeProfileTuning("aralearn.engine.ads.programming.v1", {
-        guardrailsText: "Priorize passo a passo."
+        targetStudentProfile: "estudante que precisa de passo a passo"
       })
     },
     ingestAttachments: async (attachments) => ({
@@ -197,7 +197,10 @@ test("prepareCourseForgeStructureGeneration monta request fora da UI", async () 
   assert.equal(prepared.promptText, "Gerar arquitetura de revisão");
   assert.equal(prepared.launchConfig.providerId, "google");
   assert.equal(prepared.request.intent.didacticProfileId, "aralearn.engine.ads.programming.v1");
-  assert.deepEqual(prepared.request.intent.engineProfileOverrides.promptPacks.courseForge.guardrails, ["Priorize passo a passo."]);
+  assert.equal(
+    prepared.request.intent.engineProfileOverrides.didacticPolicy.targetStudentProfile,
+    "estudante que precisa de passo a passo"
+  );
   assert.deepEqual(prepared.request.intent.scope, {
     level: "module",
     courseKey: "course-a",

@@ -7,11 +7,10 @@ import { createCourseForgeProfileTuning } from "../src/generation/runtime/course
 test("renderAssistConfigOverlay expõe motor, perfil e parâmetros do perfil sem diretiva solta", () => {
   const html = renderAssistConfigOverlay({
     model: "gemini-2.5-flash",
-    apiKey: "abc",
+    apiKey: "",
     didacticProfileId: "aralearn.engine.ads.general.v3",
     profileTuning: createCourseForgeProfileTuning("aralearn.engine.ads.general.v3", {
-      targetStudentProfile: "estudante com base irregular",
-      guardrailsText: "Priorize contraste."
+      targetStudentProfile: "estudante com base irregular"
     }),
     codexEndpoint: "http://127.0.0.1:4183/assist",
     codexToken: "",
@@ -33,10 +32,16 @@ test("renderAssistConfigOverlay expõe motor, perfil e parâmetros do perfil sem
   assert.match(html, /data-field="assist-config-api-key"/);
   assert.match(html, /data-field="assist-config-target-student-profile"/);
   assert.match(html, /data-field="assist-config-conceptual-reappearances"/);
-  assert.match(html, /data-field="assist-config-guardrails-text"/);
   assert.match(html, /data-action="assist-config-reset-profile"/);
-  assert.match(html, /Priorize contraste\./);
+  assert.match(html, />Motor</);
+  assert.match(html, />Perfil</);
+  assert.match(html, />Para quem</);
+  assert.match(html, />Retoma ideia</);
+  assert.match(html, />Explica vocabulário</);
+  assert.match(html, /Chave ausente/);
+  assert.doesNotMatch(html, /sourceGuideStructured/);
   assert.doesNotMatch(html, /Diretivas extras/);
+  assert.doesNotMatch(html, /assist-config-guardrails-text/);
 });
 
 test("renderAssistConfigOverlay concentra o setup local no mesmo overlay quando Codex local está ativo", () => {
@@ -57,10 +62,12 @@ test("renderAssistConfigOverlay concentra o setup local no mesmo overlay quando 
     ]
   });
 
-  assert.match(html, /Local: offline/);
+  assert.match(html, /Local offline/);
   assert.match(html, /data-field="assist-config-codex-endpoint"/);
   assert.match(html, /data-field="assist-config-codex-token"/);
   assert.match(html, /data-action="test-codex-cli-connection"/);
   assert.match(html, /data-action="copy-codex-cli-script"/);
+  assert.match(html, />Script</);
+  assert.match(html, />Endpoint</);
   assert.match(html, /bridge offline/);
 });

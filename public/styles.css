@@ -3909,21 +3909,29 @@ button {
   gap: 8px;
 }
 
+.assist-config-inline-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  color: #d8c29d;
+  font-size: 12px;
+  line-height: 1.2;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
 .assist-config-field-icon {
   width: 16px;
   height: 16px;
   color: #d7b46a;
+  flex: 0 0 auto;
 }
 
 .assist-config-field select,
 .assist-config-field input,
 .assist-config-field textarea {
   width: 100%;
-}
-
-.assist-config-guidance-field textarea {
-  min-height: 110px;
-  resize: vertical;
 }
 
 .assist-config-number-field input {
@@ -3935,9 +3943,18 @@ button {
 }
 
 .assist-config-toggle-row {
-  display: inline-flex;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   flex-wrap: wrap;
   gap: 8px;
+}
+
+.assist-config-toggle-group {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
 }
 
 .assist-config-toggle-chip {
@@ -3963,6 +3980,13 @@ button {
   height: 16px;
 }
 
+.assist-config-toggle-text {
+  color: #d8c29d;
+  font-size: 12px;
+  line-height: 1.2;
+  font-weight: 700;
+}
+
 .assist-config-local-panel {
   display: grid;
   gap: 12px;
@@ -3973,7 +3997,8 @@ button {
 }
 
 .assist-config-local-actions {
-  display: inline-flex;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   flex-wrap: wrap;
   gap: 8px;
 }
@@ -3982,6 +4007,32 @@ button {
   width: 40px;
   height: 40px;
   border-radius: 12px;
+}
+
+.assist-config-text-action {
+  min-height: 40px;
+  border-radius: 12px;
+  border: 1px solid rgba(151, 117, 68, 0.28);
+  background: linear-gradient(180deg, rgba(34, 27, 20, 0.98), rgba(22, 17, 13, 0.99));
+  color: #e9d7b5;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 10px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.assist-config-text-action:hover {
+  background: linear-gradient(180deg, rgba(39, 31, 24, 0.98), rgba(28, 22, 16, 0.98));
+}
+
+.assist-config-text-action:active {
+  transform: translateY(1px);
 }
 
 .assist-config-action-icon {
@@ -3996,11 +4047,16 @@ button {
   min-height: 34px;
   padding: 0 12px;
   border-radius: 999px;
-  border: 1px solid rgba(151, 117, 68, 0.28);
-  background: rgba(28, 22, 17, 0.82);
+  border: 1px solid rgba(151, 117, 68, 0.34);
+  background: linear-gradient(180deg, rgba(34, 27, 20, 0.98), rgba(22, 17, 13, 0.99));
   color: #e9d7b5;
   font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
   text-decoration: none;
+  white-space: nowrap;
+  box-shadow: inset 0 1px 0 rgba(255, 240, 217, 0.03);
+  justify-content: center;
 }
 
 .assist-config-status-chip.is-ready {
@@ -5983,6 +6039,11 @@ button {
   .assist-config-grid,
   .assist-config-local-grid,
   .assist-config-number-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .assist-config-toggle-row,
+  .assist-config-local-actions {
     grid-template-columns: minmax(0, 1fr);
   }
 }

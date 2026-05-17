@@ -47,8 +47,7 @@ test("assistConfigStorage grava e lê endpoint/token do Codex local", () => {
       apiKey: "",
       didacticProfileId: "aralearn.engine.ads.systems.v1",
       profileTuning: createCourseForgeProfileTuning("aralearn.engine.ads.systems.v1", {
-        targetStudentProfile: "estudante operacional",
-        guardrailsText: "Priorize exemplos operacionais."
+        targetStudentProfile: "estudante operacional"
       }),
       codexEndpoint: "http://127.0.0.1:4183/assist",
       codexToken: "segredo"
@@ -61,8 +60,7 @@ test("assistConfigStorage grava e lê endpoint/token do Codex local", () => {
     apiKey: "",
     didacticProfileId: "aralearn.engine.ads.systems.v1",
     profileTuning: createCourseForgeProfileTuning("aralearn.engine.ads.systems.v1", {
-      targetStudentProfile: "estudante operacional",
-      guardrailsText: "Priorize exemplos operacionais."
+      targetStudentProfile: "estudante operacional"
     }),
     codexEndpoint: "http://127.0.0.1:4183/assist",
     codexToken: "segredo"

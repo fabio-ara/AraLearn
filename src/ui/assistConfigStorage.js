@@ -48,11 +48,7 @@ export function readAssistConfigStorage(storage = globalThis.localStorage) {
       typeof config.didacticProfileId === "string" && config.didacticProfileId.trim()
         ? config.didacticProfileId.trim()
         : DEFAULT_ENGINE_PROFILE_ID,
-      config.profileTuning && typeof config.profileTuning === "object"
-        ? config.profileTuning
-        : {
-            guardrailsText: typeof config.customPromptGuidance === "string" ? config.customPromptGuidance : ""
-          }
+      config.profileTuning && typeof config.profileTuning === "object" ? config.profileTuning : {}
     ),
     codexEndpoint:
       typeof config.codexEndpoint === "string" && config.codexEndpoint.trim()
