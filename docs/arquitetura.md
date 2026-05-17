@@ -1,36 +1,39 @@
 # Arquitetura do AraLearn
 
-Este documento descreve a arquitetura do produto no estado atual do repositorio. Ele substitui a ideia antiga de "refundacao" por uma descricao operacional do que ja existe.
+Este documento descreve a arquitetura do AraLearn no estado atual do repositório, mas sem reduzir o produto a inventário de arquivos. O interesse principal aqui é mostrar como o app organiza a relação entre contrato público, governança didática, pipeline estrutural, runtime local e providers.
 
-## Leitura curta
+## Leitura correta
 
-O AraLearn pode ser lido como a composicao de quatro camadas:
+O contrato público continua simples, mas a operação interna precisa ser rigorosa.
 
-1. `contrato publico`: estrutura exportavel e editavel pelo usuario;
-2. `core didatico`: regras de orientacao, cobertura, progressao e formatos;
-3. `engine de geracao`: pipeline `CourseForge` e runtime local;
-4. `superficie de uso`: navegacao, estudo, edicao e configuracao de provider.
+O AraLearn pode ser entendido como a composição de quatro camadas:
 
-## Principio central
+- um `core didático`, que define progressão, cobertura, contraste, prática e auditoria;
+- uma `engine de produção`, que executa fases pequenas, reordenáveis e auditáveis;
+- um `runtime de providers`, separado da lógica pedagógica;
+- uma `superfície de uso`, em que estudo, geração, edição e revisão aparecem ao usuário.
 
-A arquitetura atual e inspirada por uma logica proxima de `specification-driven development`.
+## Princípio central
 
-Em vez de delegar uma tarefa ampla diretamente a uma LLM, o AraLearn tenta quebrar a operacao em especificacoes intermediarias pequenas:
+Uma das ideias fortes da arquitetura do AraLearn é evitar o salto bruto entre pedido humano amplo e resultado final aceito sem mediação. Em vez de delegar uma tarefa inteira a um prompt solto, o produto tenta quebrar a operação em especificações intermediárias menores, algo próximo do que, em engenharia, se reconhece como desenvolvimento orientado por especificação.
 
-- intencao;
+Na prática, isso significa trabalhar com artefatos como:
+
+- intenção;
 - escopo;
-- anexos ingeridos;
-- governanca da licao;
-- planos de microssequencia;
-- contratos locais de geracao;
+- ingestão de anexos;
+- governança da lição;
+- planos de lição;
+- planos de microssequência;
 - auditorias;
+- contratos locais de geração;
 - patch final.
 
-O sistema nao trata a resposta da LLM como produto final. Ele a trata como insumo para uma pipeline controlada.
+A LLM não opera diretamente sobre a árvore inteira do projeto como se fosse autora soberana do sistema. Ela entra dentro desses envelopes menores.
 
-## Estrutura publica
+## Contrato público
 
-O contrato publico segue esta hierarquia:
+A estrutura pública continua sendo:
 
 ```text
 project
@@ -41,36 +44,36 @@ project
           -> card
 ```
 
-Essa estrutura e ao mesmo tempo:
+Essa estrutura aparece:
 
-- forma de persistencia;
-- forma de navegacao;
-- forma de contexto para a IA.
+- na persistência exportável;
+- na navegação do usuário;
+- na forma como o contexto é entregue à IA.
 
-O contrato publico continua pequeno de proposito. Estados de runtime, historico de iteracoes e detalhes de provider ficam fora dele.
+Ela não é apenas decoração hierárquica. Ela resolve um problema concreto: restringir contexto e dar posição semântica às unidades didáticas.
 
-## Camada de governanca didatica
+## Governança da lição
 
-A licao concentra o principal nucleo de governanca usado pela geracao. Os campos mais importantes sao:
+A lição concentra o principal núcleo de orientação do produto. Hoje, esse núcleo passa por campos como:
 
-- `sourceGuideStructured`
-- `presetId`
-- `resourceTags`
-- `contentTypeTags`
-- `learningActionTags`
-- `supportLevel`
-- `domainMap`
+- `sourceGuideStructured`;
+- `presetId`;
+- `resourceTags`;
+- `contentTypeTags`;
+- `learningActionTags`;
+- `supportLevel`;
+- `domainMap`.
 
-Essa camada faz duas coisas ao mesmo tempo:
+Essa camada tem dupla função:
 
-- fornece orientacao humana editavel;
-- restringe o espaco de decisao da LLM.
+- servir como orientação humana editável;
+- restringir o espaço de decisão da LLM.
 
-## Camada de ingestao
+## Ingestão e parsing
 
-Antes da geracao estrutural, o sistema tenta transformar anexos em texto utilizavel.
+O AraLearn não trata o envio bruto de documentos para LLM como solução suficiente. Antes da geração estrutural, o sistema tenta extrair texto utilizável e reduzir ruído.
 
-Hoje a base do repositorio ja opera com:
+Hoje o repositório já contempla ingestão de:
 
 - texto simples;
 - Markdown;
@@ -80,191 +83,145 @@ Hoje a base do repositorio ja opera com:
 - PDF;
 - DOCX.
 
-Parsers open source ja integrados:
+Para isso, o projeto usa bibliotecas open source já integradas ao runtime, como:
 
-- `pdfjs-dist`
-- `mammoth`
+- `pdfjs-dist`;
+- `mammoth`.
 
-O objetivo dessa camada nao e preservar diagrama ou layout perfeitamente. E produzir material textual suficiente para grounding e planejamento.
+O objetivo dessa camada não é preservação visual perfeita do layout original, mas extração textual suficiente para grounding, planejamento e warnings auditáveis quando a fonte vier degradada.
 
-## `CourseForge`: engine estrutural
+## CourseForge
 
-O `CourseForge` e o runtime publico da geracao top-down.
+O `CourseForge` é o runtime público da geração estrutural.
 
 Ele recebe:
 
-- `intent`
-- escopo (`project`, `course`, `module`, `lesson` ou `microsequence`)
-- provider configurado
-- artefatos estruturados
-- projeto atual
+- intenção;
+- escopo (`project`, `course`, `module`, `lesson` ou `microsequence`);
+- provider configurado;
+- anexos ingeridos;
+- projeto atual.
 
-Ele devolve:
+Ele pode produzir:
 
-- artefatos intermediarios;
+- artefatos intermediários;
 - auditorias;
 - patch validado;
 - projeto atualizado.
 
-## Artefatos principais
+## Top-down estrutural
 
-Os nomes exatos podem variar por fase, mas os artefatos centrais hoje giram em torno de:
+No estado atual, o top-down atua nos escopos amplos:
 
-- `intent`
-- `sourceLedger`
-- `lessonPlans`
-- `courseGraph`
-- `lessonGovernance`
-- `microsequencePlans`
-- `interventionPlan`
-- `microsequenceContracts`
-- `cardDrafts`
-- `patch`
+- `project`;
+- `course`;
+- `module`;
+- `lesson`.
 
-Esses artefatos sao importantes porque mostram que a LLM nao opera diretamente sobre a arvore inteira do produto de uma vez.
+Seu trabalho principal é:
 
-## Semantica nova do top-down
+- organizar a trilha;
+- planejar microssequências;
+- atualizar a governança local;
+- validar ordem, cobertura, contraste e prática;
+- compilar patch auditado.
 
-No estado atual, o top-down:
+O top-down atual não materializa cards por padrão. Essa decisão não é empobrecimento do produto; é clarificação de responsabilidade. A organização ampla fica no fluxo estrutural. A materialização didática fina se desloca para o runtime local.
 
-- gera estrutura auditada;
-- planeja microssequencias;
-- nao materializa cards por padrao.
+## Runtime local da microssequência
 
-Isso vale para os escopos amplos:
+O runtime local é a segunda metade da arquitetura atual.
 
-- `project`
-- `course`
-- `module`
-- `lesson`
+Ele existe para permitir que o usuário trabalhe sobre uma microssequência concreta, planejada ou já pronta. Nesse nível, o app permite:
 
-O escopo `microsequence` continua sendo o ponto de materializacao local de cards.
+- materializar uma microssequência vazia;
+- corrigir uma sequência fraca;
+- expandir com mais prática, contraste ou explicação;
+- reformular a proposta local;
+- editar conteúdo durante o próprio estudo;
+- abrir a próxima microssequência planejada.
 
-## Runtime local da microssequencia
+Esse runtime é decisivo porque desloca a autoria para junto da prática.
 
-O runtime local e a segunda metade da arquitetura do produto.
+## Artefatos intermediários
 
-Ele recebe uma microssequencia real ou planejada e permite:
+Os nomes internos variam por fase, mas a arquitetura já gira em torno de artefatos como:
 
-- materializar conteudo;
-- corrigir;
-- expandir;
-- reformular;
-- editar localmente;
-- abrir a proxima microssequencia planejada.
+- `intent`;
+- `sourceLedger`;
+- `lessonPlans`;
+- `courseGraph`;
+- `lessonGovernance`;
+- `microsequencePlans`;
+- `interventionPlan`;
+- `microsequenceContracts`;
+- `cardDrafts`;
+- `patch`.
 
-Esse runtime existe para deslocar a autoria para junto do estudo.
-
-## Pipeline local
-
-No fluxo local, a operacao deixa de ser reorganizacao ampla e passa a ser intervencao situada.
-
-O runtime monta um contrato local com:
-
-- contexto da licao;
-- titulo e tags da microssequencia;
-- tipo didatico;
-- pedido do usuario;
-- anexos locais, quando houver.
-
-Depois disso:
-
-1. envia o pedido ao provider;
-2. valida a resposta;
-3. registra a iteracao;
-4. aplica a versao gerada;
-5. deixa o usuario aceitar ou descartar.
+O ponto importante não é decorar a lista, e sim entender a arquitetura: a LLM trabalha sobre recortes estruturados, e não sobre um vazio textual genérico.
 
 ## Auditoria
 
-O sistema usa auditoria em varios pontos.
+O produto usa auditoria em vários níveis.
 
-No minimo, isso inclui:
+Isso pode incluir:
 
-- validacao estrutural do JSON;
-- checagens de coerencia didatica local;
-- checagens de cobertura e ordem no fluxo estrutural;
-- grounding minimo quando ha fontes;
-- validacao semantica do patch antes da aplicacao.
+- validação estrutural do JSON;
+- coerência didática local;
+- checagem de cobertura e ordem;
+- grounding mínimo quando houver fonte;
+- validação semântica do patch antes da aplicação.
 
-O valor da arquitetura esta justamente aqui: a LLM nao escreve diretamente no projeto sem passar por mediacao.
+Essa camada é parte constitutiva da arquitetura. Sem ela, o AraLearn cairia facilmente na lógica do “prompt entra, texto sai”.
 
 ## Providers
 
-Os providers ficam desacoplados da camada pedagogica.
+Os providers ficam desacoplados da camada pedagógica.
 
-O repositorio hoje ja contempla:
+Hoje o repositório já contempla:
 
 - Gemini por API;
 - `Codex CLI local` via bridge HTTP;
-- provider falso de teste para validacao offline.
+- provider falso de teste para validação offline da engine.
 
-Esse desacoplamento permite:
+Essa separação é importante porque a didática do produto não pode depender do provider específico do momento.
 
-- testar pipeline sem depender sempre de provider real;
-- trocar provider sem reescrever a didatica;
-- manter a engine acima da infraestrutura de inferencia.
+## Interface e operação
 
-## UI e runtime
+A superfície principal do produto continua em `src/ui/`.
 
-A superficie de uso principal fica em `src/ui/`.
+Ela reúne:
 
-Ela reune:
+- navegação entre cursos, módulos, lições e microssequências;
+- painel estrutural contextual de geração top-down;
+- workbench local da microssequência;
+- execução de cards;
+- histórico de versões e reversão local;
+- configuração de provider.
 
-- navegacao entre cursos, modulos, licoes e microssequencias;
-- painel estrutural contextual de geracao top-down;
-- workbench local da microssequencia;
-- estudo em runtime;
-- historico de versoes e estados locais;
-- configuracao de provider.
+## O que o usuário vê e o que a LLM vê
 
-## O que o usuario ve e o que a LLM ve
+É importante separar essas duas perspectivas.
 
-E importante separar essas duas perspectivas.
+O usuário vê:
 
-O usuario ve:
+- a hierarquia do curso;
+- a governança editável da lição;
+- microssequências planejadas ou prontas;
+- cards e iterações;
+- ações de materialização, correção, expansão e revisão.
 
-- hierarquia do curso;
-- licao e governanca editavel;
-- microssequencias planejadas ou prontas;
-- cards e iteracoes;
-- botoes de materializacao, correcao e expansao.
-
-A LLM ve:
+A LLM vê:
 
 - prompt contextual;
-- contratos JSON;
-- artefatos parciais;
-- restricoes de formato;
-- orientacao derivada da licao;
-- pedidos locais de intervencao.
+- artefatos JSON;
+- restrições de formato;
+- governança da lição;
+- pedidos locais de intervenção;
+- contratos de geração ou reparo.
 
-Essa diferenca e parte central da arquitetura.
+Essa diferença é parte central do desenho do produto.
 
-## Relacao com o contrato publico
+## Documento complementar
 
-O contrato publico nao precisa expor toda a engine. Ele registra a estrutura que o usuario possui e edita.
-
-Em especial:
-
-- o contrato nao precisa carregar estado interno de fase;
-- o contrato nao precisa carregar detalhes de provider;
-- o contrato nao precisa carregar runtime autorado da UI;
-- o contrato pode continuar legivel e portavel.
-
-## O que a arquitetura tenta evitar
-
-Ela tenta evitar quatro erros comuns:
-
-1. pedir ao modelo que invente a didatica inteira em texto livre;
-2. misturar planejamento estrutural com materializacao local sem fronteira clara;
-3. tratar fluencia textual como prova de qualidade didatica;
-4. acoplar o produto inteiro a um unico provider ou a uma unica fase de geracao.
-
-## Mapa de leitura complementar
-
-- [Visao do produto](visao-do-produto.md)
-- [Assistencia por IA](assistencia-por-ia.md)
-- [Guia de uso do app](uso-do-app.md)
-- [Contrato publico](aralearn-contract.md)
-- [Fundamentos e evidencias](fundamentos-e-evidencias.md)
+A referência de direção mais ampla continua em [arquitetura-alvo.md](./arquitetura-alvo.md), que funciona como documento de tese arquitetural do projeto. Este arquivo, por sua vez, descreve o que já está suficientemente consolidado para leitura pública do estado atual.

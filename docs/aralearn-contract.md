@@ -1,21 +1,21 @@
-# Contrato publico do AraLearn
+# Contrato público do AraLearn
 
-Este documento descreve o contrato JSON publico do AraLearn em nivel suficiente para leitura, interoperabilidade e importacao/exportacao. Ele nao tenta documentar cada funcao interna da engine.
+Este documento descreve o contrato JSON público do AraLearn em nível suficiente para leitura, interoperabilidade e importação/exportação. Ele não tenta documentar cada função interna da engine.
 
 ## Objetivo do contrato
 
-O contrato publico existe para:
+O contrato público existe para:
 
-- persistir estrutura didatica;
-- permitir importacao e exportacao;
-- manter o projeto legivel;
-- separar dados do usuario de estados internos de runtime.
+- persistir estrutura didática;
+- permitir importação e exportação;
+- manter o projeto legível;
+- separar dados do usuário de estados internos de runtime.
 
-Ele nao existe para expor todo o pipeline do `CourseForge`.
+Ele não existe para expor todo o pipeline do `CourseForge`.
 
 ## Envelope raiz
 
-Todo documento estrutural valido parte de:
+Todo documento estrutural válido parte de:
 
 ```json
 {
@@ -46,9 +46,9 @@ Campos centrais:
 - `description`
 - `modules`
 
-Curso organiza a trilha ampla. Ele nao carrega hoje a governanca didatica forte que fica concentrada na licao.
+O curso organiza a trilha ampla. Ele não carrega, no estado atual, a governança didática forte que fica concentrada na lição.
 
-## Modulo
+## Módulo
 
 Campos centrais:
 
@@ -57,9 +57,9 @@ Campos centrais:
 - `description`
 - `lessons`
 
-Modulo agrupa um bloco coerente do percurso.
+O módulo agrupa um bloco coerente do percurso.
 
-## Licao
+## Lição
 
 Campos centrais:
 
@@ -78,9 +78,9 @@ Campos centrais:
 
 ### `sourceGuideStructured`
 
-`sourceGuideStructured` e a principal fonte de verdade da orientacao local da licao.
+`sourceGuideStructured` é a principal fonte de verdade da orientação local da lição.
 
-`sourceGuide` e texto derivado para leitura humana. Ele nao substitui o objeto estruturado.
+`sourceGuide` é texto derivado para leitura humana. Ele não substitui o objeto estruturado.
 
 ### Guidance tags
 
@@ -92,19 +92,19 @@ Os campos:
 - `learningActionTags`
 - `supportLevel`
 
-ajudam a restringir o tipo de microssequencia e de card que faz sentido gerar naquela licao.
+ajudam a restringir o tipo de microssequência e de card que faz sentido gerar naquela lição.
 
 ### `domainMap`
 
-`domainMap` registra itens de dominio, sinais de cobertura e relacoes relevantes para a progressao local. Ele ajuda o sistema a raciocinar sobre:
+`domainMap` registra itens de domínio, sinais de cobertura e relações relevantes para a progressão local. Ele ajuda o sistema a raciocinar sobre:
 
 - lacunas;
-- prerequisitos;
+- pré-requisitos;
 - contraste;
-- pratica;
+- prática;
 - cobertura ainda fraca.
 
-## Microssequencia
+## Microssequência
 
 Campos centrais:
 
@@ -118,23 +118,23 @@ Campos centrais:
 
 ### `status`
 
-Estados publicos hoje aceitos:
+Estados públicos hoje aceitos:
 
 - `draft`
 - `ready`
 
 ### `included`
 
-`included` indica se a microssequencia entra no percurso de estudo.
+`included` indica se a microssequência entra no percurso de estudo.
 
-### Microssequencia planejada
+### Microssequência planejada
 
-No estado atual do produto, uma microssequencia pode existir com:
+No estado atual do produto, uma microssequência pode existir com:
 
 - `status: "draft"`
 - `cards: []`
 
-Esse caso nao e erro. Ele representa uma `microssequencia planejada`, ainda nao materializada.
+Esse caso não é erro. Ele representa uma microssequência planejada, ainda não materializada.
 
 ## Card
 
@@ -146,11 +146,11 @@ Campos comuns:
 - `after`
 - `sourceRefs`
 
-Dependendo do recurso didatico, outros campos publicos aparecem.
+Dependendo do recurso didático, outros campos públicos aparecem.
 
-## Recursos publicos
+## Recursos públicos
 
-O contrato publico contempla recursos como:
+O contrato público contempla recursos como:
 
 - `say`
 - `ask`
@@ -161,37 +161,37 @@ O contrato publico contempla recursos como:
 - `plane`
 - `matrix`
 
-O pipeline interno pode usar aliases, schemas ou artefatos adicionais, mas a persistencia publica respeita esse conjunto.
+O pipeline interno pode usar aliases, schemas ou artefatos adicionais, mas a persistência pública respeita esse conjunto.
 
 ## `sourceRefs`
 
-`sourceRefs` e opcional e registra grounding minimo quando a geracao usou fonte.
+`sourceRefs` é opcional e registra grounding mínimo quando a geração usou fonte.
 
-Ele nao transforma o contrato em sistema completo de busca semantica. Sua funcao e rastreabilidade suficiente para auditoria local.
+Ele não transforma o contrato em sistema completo de busca semântica. Sua função é fornecer rastreabilidade suficiente para auditoria local.
 
-## O que fica fora do contrato publico
+## O que fica fora do contrato público
 
 Ficam fora do contrato:
 
 - estados de fase do `CourseForge`;
 - detalhes de provider;
 - runtime autorado da UI;
-- historico interno de iteracoes locais;
-- configuracoes transitórias de execucao.
+- histórico interno de iterações locais;
+- configurações transitórias de execução.
 
-Isso mantem o contrato pequeno e portavel.
+Isso mantém o contrato pequeno e portável.
 
-## Relacao com o top-down e com o runtime local
+## Relação com o top-down e com o runtime local
 
 No estado atual do produto:
 
 - o top-down escreve no contrato a trilha planejada;
-- o runtime local materializa progressivamente as microssequencias;
-- o usuario pode exportar a estrutura sem exportar o motor.
+- o runtime local materializa progressivamente as microssequências;
+- o usuário pode exportar a estrutura sem exportar o motor.
 
 ## Exemplos
 
-Exemplos publicos do contrato:
+Exemplos públicos do contrato:
 
 - [examples/](examples/)
 
@@ -199,4 +199,4 @@ Exemplos publicos do contrato:
 
 - [Arquitetura](arquitetura.md)
 - [Guia de uso do app](uso-do-app.md)
-- [Assistencia por IA](assistencia-por-ia.md)
+- [Assistência por IA generativa](assistencia-por-ia.md)
