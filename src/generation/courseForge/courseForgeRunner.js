@@ -1014,12 +1014,27 @@ function buildCourseForgeOperationalInterventionPlan(context = {}, intent = {}) 
 }
 
 function buildExistingMicrosequencePlansForLessonTargets(projectDocument = {}, lessonTargets = []) {
-  return (Array.isArray(lessonTargets) ? lessonTargets : [])
+  const lessonPlans = [];
+  const plans = (Array.isArray(lessonTargets) ? lessonTargets : [])
     .map((lessonTarget) => {
       const { course, moduleValue, lesson } = findScopedLesson(projectDocument, lessonTarget);
       if (!course || !moduleValue || !lesson) {
         return null;
       }
+      lessonPlans.push({
+        courseKey: text(course?.key),
+        moduleKey: text(moduleValue?.key),
+        lessonKey: text(lesson?.key),
+        lessonTitle: text(lesson?.title),
+        lessonDescription: text(lesson?.description),
+        sourceGuideStructured: structuredClone(lesson?.sourceGuideStructured || {}),
+        domainMap: structuredClone(lesson?.domainMap || {}),
+        resourceTags: structuredClone(lesson?.resourceTags || []),
+        contentTypeTags: structuredClone(lesson?.contentTypeTags || []),
+        learningActionTags: structuredClone(lesson?.learningActionTags || []),
+        supportLevel: text(lesson?.supportLevel),
+        presetId: text(lesson?.presetId)
+      });
       return {
         courseKey: text(course?.key),
         moduleKey: text(moduleValue?.key),
@@ -1030,6 +1045,10 @@ function buildExistingMicrosequencePlansForLessonTargets(projectDocument = {}, l
       };
     })
     .filter((entry) => entry && Array.isArray(entry.microsequences) && entry.microsequences.length);
+  return repairCourseForgeMicrosequenceMetadataDeterministically({
+    microsequencePlans: plans,
+    lessonPlans
+  });
 }
 
 function buildCompositeMicrosequencePlansForInterventionAudit({ projectDocument = {}, interventionPlan = null, microsequencePlans = [] } = {}) {
@@ -1594,6 +1613,10 @@ export async function runCourseForge({
               throw new Error("Escopo de curso sem lições válidas para planejar microssequências.");
             }
           }
+          context.lessonPlans = enrichLessonPlansFromSourceLedger({
+            lessonPlans: context.lessonPlans,
+            sourceLedger: context.sourceLedger || []
+          });
           savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "lesson-plans", context.lessonPlans);
         }
         const interventionPlan = context.interventionPlan || null;
@@ -1833,7 +1856,10 @@ export async function runCourseForge({
             if (!scopedLessonPlan) {
               throw new Error("Escopo de microssequência sem lição válida para montar contrato.");
             }
-            context.lessonPlans = [scopedLessonPlan];
+            context.lessonPlans = enrichLessonPlansFromSourceLedger({
+              lessonPlans: [scopedLessonPlan],
+              sourceLedger: context.sourceLedger || []
+            });
             savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "lesson-plans", context.lessonPlans);
           }
           if (!context.microsequencePlans?.length) {
@@ -1841,6 +1867,10 @@ export async function runCourseForge({
             if (!context.microsequencePlans.length) {
               throw new Error("Escopo de microssequência sem microssequência válida para gerar cards.");
             }
+            context.microsequencePlans = repairCourseForgeMicrosequenceMetadataDeterministically({
+              microsequencePlans: context.microsequencePlans,
+              lessonPlans: context.lessonPlans || []
+            });
             savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "microsequence-plans", context.microsequencePlans);
           }
         }

@@ -43,6 +43,10 @@ function normalizedUnique(values = []) {
   return [...new Set(normalizeArray(values).map(normalizeForMatch).filter(Boolean))];
 }
 
+function firstSentence(value = "") {
+  return text(value).split(/(?<=[.!?])\s+/u).map(text).find(Boolean) || "";
+}
+
 function stripInstructionalPrefix(value = "", instructionalRole = "") {
   const normalized = text(value);
   if (!normalized) {
@@ -57,7 +61,51 @@ function stripInstructionalPrefix(value = "", instructionalRole = "") {
   if (instructionalRole === "exercise") {
     return normalized.replace(/^(exerc[ií]cio|exerc[ií]cios|atividade|atividades|quest[aã]o|quest[oõ]es|desafio|desafios|pr[aá]tica)\s*[:\-]\s*/iu, "").trim();
   }
+  if (instructionalRole === "definition") {
+    return normalized.replace(/^(defini[cç][aã]o|conceito)\s*[:\-]\s*/iu, "").trim();
+  }
+  if (instructionalRole === "example") {
+    return normalized.replace(/^(exemplo|exemplos|por exemplo)\s*[:\-]\s*/iu, "").trim();
+  }
   return normalized;
+}
+
+function extractDomainLabelFromInstructionalText(value = "", instructionalRole = "") {
+  const stripped = stripInstructionalPrefix(value, instructionalRole)
+    .replace(/^[0-9]+[.)]\s+/u, "")
+    .trim();
+  if (!stripped) {
+    return "";
+  }
+  const first = firstSentence(stripped);
+  const parts = first
+    .split(/\b(e|sao|são|é|define|representa|significa|permite|exige|consiste|usa|aplica|compara|distingue|conecta|interliga)\b/iu)
+    .map(text)
+    .filter(Boolean);
+  const candidate = text(parts[0] || first)
+    .replace(/[.:,;!?]+$/u, "")
+    .trim();
+  if (candidate.length < 4 || candidate.length > 90) {
+    return "";
+  }
+  return candidate.charAt(0).toUpperCase() + candidate.slice(1);
+}
+
+function inferPracticeVariantKindFromText(value = "") {
+  const normalized = normalizeForMatch(value);
+  if (/\b(compare|comparar|contraste|distinga|distinguir|diferencie)\b/u.test(normalized)) {
+    return "discrimination";
+  }
+  if (/\b(erro|erros|corrija|corrigir|diagnostique|diagnosticar|confunda|confundir)\b/u.test(normalized)) {
+    return "common_error";
+  }
+  if (/\b(explique|explicar|justifique|justificar)\b/u.test(normalized)) {
+    return "explanation";
+  }
+  if (/\b(aplique|aplicar|resolva|resolver|use|usar)\b/u.test(normalized)) {
+    return "near_transfer";
+  }
+  return "fluency";
 }
 
 function findMatchingSourceClaims(queryValues = [], sourceClaims = [], { minimumOverlap = null } = {}) {
@@ -433,6 +481,25 @@ function deriveGuideValueFromInstructionalSpans(spans = [], instructionalRole = 
     .find((value) => value.length >= 8) || "";
 }
 
+function selectMatchingDomainItemIds(span = {}, items = []) {
+  const spanTokens = tokenizeForMatch(text(span?.text));
+  if (!spanTokens.length) {
+    return [];
+  }
+  return normalizeArray(items)
+    .map((item) => ({
+      item,
+      overlap: tokenizeForMatch(`${text(item?.label)} ${normalizeArray(item?.expectedEvidence).join(" ")}`)
+        .filter((token) => spanTokens.includes(token))
+        .length
+    }))
+    .filter((entry) => entry.overlap > 0)
+    .sort((left, right) => right.overlap - left.overlap || text(left?.item?.id).localeCompare(text(right?.item?.id)))
+    .slice(0, 2)
+    .map((entry) => text(entry?.item?.id))
+    .filter(Boolean);
+}
+
 export function enrichLessonPlansFromSourceLedger({ lessonPlans = [], sourceLedger = null } = {}) {
   const normalizedLessonPlans = normalizeArray(lessonPlans);
   const allowSingleLessonFallback = normalizedLessonPlans.length === 1;
@@ -462,14 +529,124 @@ export function enrichLessonPlansFromSourceLedger({ lessonPlans = [], sourceLedg
           "misconception"
         )
       : "";
+    const nextSourceGuideStructured = {
+      ...sourceGuideStructured,
+      ...(derivedGoal ? { lessonGoal: derivedGoal } : {}),
+      ...(derivedCommonErrors ? { commonErrors: derivedCommonErrors } : {})
+    };
+    const definitionSpans = findRelevantInstructionalSpans({
+      lessonPlan,
+      sourceLedger,
+      instructionalRole: "definition",
+      allowSingleLessonFallback,
+      maxItems: 4
+    });
+    const exampleSpans = findRelevantInstructionalSpans({
+      lessonPlan,
+      sourceLedger,
+      instructionalRole: "example",
+      allowSingleLessonFallback,
+      maxItems: 3
+    });
+    const exerciseSpans = findRelevantInstructionalSpans({
+      lessonPlan,
+      sourceLedger,
+      instructionalRole: "exercise",
+      allowSingleLessonFallback,
+      maxItems: 4
+    });
+    const explicitDomainItems = normalizeArray(lessonPlan?.domainMap?.items).map((item) => structuredClone(item));
+    const existingNormalizedLabels = new Set(explicitDomainItems.map((item) => normalizeForMatch(item?.label)));
+    definitionSpans.forEach((span, index) => {
+      const label = extractDomainLabelFromInstructionalText(span?.text, "definition");
+      if (!label || existingNormalizedLabels.has(normalizeForMatch(label))) {
+        return;
+      }
+      explicitDomainItems.push({
+        id: `source-definition-${index + 1}`,
+        label,
+        kind: "concept",
+        priority: index === 0 ? "core" : "support",
+        sourceRefs: unique([text(span?.sourceId)]),
+        expectedEvidence: unique([stripInstructionalPrefix(span?.text, "definition")])
+      });
+      existingNormalizedLabels.add(normalizeForMatch(label));
+    });
+    const enrichedItems = explicitDomainItems.map((item) => {
+      const matchedSpan = [...definitionSpans, ...exampleSpans].find((span) =>
+        selectMatchingDomainItemIds(span, [item]).includes(text(item?.id))
+      );
+      if (!matchedSpan) {
+        return item;
+      }
+      return {
+        ...structuredClone(item),
+        sourceRefs: unique([...(normalizeArray(item?.sourceRefs)), text(matchedSpan?.sourceId)]),
+        expectedEvidence: unique([
+          ...(normalizeArray(item?.expectedEvidence)),
+          stripInstructionalPrefix(matchedSpan?.text, text(matchedSpan?.instructionalRole))
+        ]),
+        representations: text(matchedSpan?.instructionalRole) === "example"
+          ? unique([...(normalizeArray(item?.representations)), "exemplo contextual"])
+          : normalizeArray(item?.representations)
+      };
+    });
+    const normalizedWithFallback = normalizeLessonDomainMap({ items: enrichedItems, practiceVariants: lessonPlan?.domainMap?.practiceVariants || [] }, {
+      lessonMicrosequences: [],
+      sourceGuideStructured: nextSourceGuideStructured
+    });
+    const currentPracticeVariants = normalizeArray(normalizedWithFallback.practiceVariants).map((variant) => structuredClone(variant));
+    const existingVariantKeys = new Set(currentPracticeVariants.map((variant) =>
+      `${text(variant?.domainItemRef)}::${text(variant?.variantKind)}::${normalizeForMatch(variant?.purpose)}`
+    ));
+    exerciseSpans.forEach((span, index) => {
+      const matchedDomainItemRefs = selectMatchingDomainItemIds(span, normalizedWithFallback.items);
+      const fallbackDomainItemRef = matchedDomainItemRefs[0]
+        || text(normalizedWithFallback.items.find((item) => text(item?.priority) === "core")?.id)
+        || text(normalizedWithFallback.items[0]?.id);
+      if (!fallbackDomainItemRef) {
+        return;
+      }
+      const variantKind = inferPracticeVariantKindFromText(span?.text);
+      const purpose = stripInstructionalPrefix(span?.text, "exercise");
+      const variantKey = `${fallbackDomainItemRef}::${variantKind}::${normalizeForMatch(purpose)}`;
+      if (existingVariantKeys.has(variantKey)) {
+        return;
+      }
+      currentPracticeVariants.push({
+        id: `source-exercise-${index + 1}`,
+        domainItemRef: fallbackDomainItemRef,
+        variantKind,
+        purpose,
+        expectedStudentAction: variantKind === "discrimination"
+          ? "comparar e discriminar casos próximos"
+          : variantKind === "common_error"
+            ? "diagnosticar e corrigir o erro"
+            : variantKind === "explanation"
+              ? "explicar o raciocínio em palavras próprias"
+              : "aplicar o conteúdo em caso próximo"
+      });
+      existingVariantKeys.add(variantKey);
+    });
+    const normalizedDomainMap = normalizeLessonDomainMap({
+      ...structuredClone(lessonPlan?.domainMap || {}),
+      items: normalizedWithFallback.items,
+      practiceVariants: currentPracticeVariants
+    }, {
+      lessonMicrosequences: [],
+      sourceGuideStructured: nextSourceGuideStructured
+    });
+    const shouldPersistDerivedDomainMap =
+      normalizeArray(lessonPlan?.domainMap?.items).length > 0
+      || normalizeArray(lessonPlan?.domainMap?.practiceVariants).length > 0
+      || definitionSpans.length > 0
+      || exampleSpans.length > 0
+      || exerciseSpans.length > 0;
 
     return {
       ...structuredClone(lessonPlan),
-      sourceGuideStructured: {
-        ...sourceGuideStructured,
-        ...(derivedGoal ? { lessonGoal: derivedGoal } : {}),
-        ...(derivedCommonErrors ? { commonErrors: derivedCommonErrors } : {})
-      }
+      sourceGuideStructured: nextSourceGuideStructured,
+      domainMap: shouldPersistDerivedDomainMap ? normalizedDomainMap : structuredClone(lessonPlan?.domainMap || {})
     };
   });
 }

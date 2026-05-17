@@ -16,7 +16,8 @@ import {
   auditCourseForgeAssessmentAlignment,
   buildCourseForgeMicrosequenceRepairDirectives,
   auditCourseForgeInterventionDidacticCoherence,
-  auditCourseForgePrerequisiteCoverage
+  auditCourseForgePrerequisiteCoverage,
+  repairCourseForgeMicrosequenceMetadataDeterministically
 } from "../src/generation/courseForge/courseForgeCards.js";
 import { compileCourseStructureToPatch, validateCourseForgePatch } from "../src/generation/courseForge/courseForgePatch.js";
 import { createCourseForgeArtifactsStore } from "../src/generation/courseForge/courseForgeArtifacts.js";
@@ -1031,6 +1032,44 @@ test("course graph deriva objetivo, erro comum e assessmentTargets de exercicio 
   const exerciseTarget = courseGraph.assessmentTargets.find((item) => item.targetKind === "exercise_prompt");
   assert.equal(exerciseTarget?.description, "compare rede local e internet em dois cenários.");
   assert.ok(Array.isArray(exerciseTarget?.sourceClaimRefs) && exerciseTarget.sourceClaimRefs.length >= 1);
+});
+
+test("enrichLessonPlansFromSourceLedger deriva domainMap e practiceVariants a partir de definicoes e exercicios", () => {
+  const sourceLedgerResult = validateCourseForgeSourceLedger([
+    {
+      id: "src_1",
+      title: "Redes",
+      spans: [
+        {
+          text: "Objetivo: distinguir rede local e internet.",
+          instructionalRole: "objective"
+        },
+        {
+          text: "Definição: rede local conecta dispositivos de um mesmo ambiente.",
+          instructionalRole: "definition"
+        },
+        {
+          text: "Exercício: compare rede local e internet em dois cenários.",
+          instructionalRole: "exercise"
+        }
+      ]
+    }
+  ]);
+
+  const [lessonPlan] = enrichLessonPlansFromSourceLedger({
+    lessonPlans: [
+      {
+        lessonKey: "lesson-1",
+        lessonTitle: "Redes básicas",
+        sourceGuideStructured: {},
+        domainMap: {}
+      }
+    ],
+    sourceLedger: sourceLedgerResult.sourceLedger
+  });
+
+  assert.ok(lessonPlan.domainMap.items.some((item) => item.label === "Rede local"));
+  assert.ok(lessonPlan.domainMap.practiceVariants.some((variant) => variant.variantKind === "discrimination"));
 });
 
 test("lesson domain map cria practiceVariants de fallback quando a lição só tem governança mínima", () => {
@@ -6271,6 +6310,45 @@ test("repair_microsequences chama provider quando a cobertura do domainMap nao e
   assert.equal(finalReport.content.diagnosticsSummary.categories.planning.promptBudget.omittedCount, 0);
   assert.deepEqual(finalReport.content.diagnosticsSummary.categories.planning.budgetWarnings, []);
   assert.equal(finalReport.content.diagnosticsSummary.categories.planning.reviewRecommendation, null);
+});
+
+test("repairCourseForgeMicrosequenceMetadataDeterministically infere metadados basicos a partir do domainMap", () => {
+  const repaired = repairCourseForgeMicrosequenceMetadataDeterministically({
+    lessonPlans: [
+      {
+        lessonKey: "lesson-1",
+        domainMap: {
+          items: [
+            { id: "domain-lan", label: "Rede local", priority: "core", expectedEvidence: ["conecta dispositivos próximos"] },
+            { id: "domain-internet", label: "Internet", priority: "core", expectedEvidence: ["interliga redes"] }
+          ],
+          practiceVariants: [
+            { id: "variant-lan-compare", domainItemRef: "domain-lan", variantKind: "discrimination", purpose: "Comparar rede local e internet." },
+            { id: "variant-internet-compare", domainItemRef: "domain-internet", variantKind: "discrimination", purpose: "Comparar internet e rede local." }
+          ]
+        }
+      }
+    ],
+    microsequencePlans: [
+      {
+        lessonKey: "lesson-1",
+        microsequences: [
+          {
+            key: "micro-1",
+            title: "Comparar rede local e internet",
+            objective: "",
+            coverageRole: ""
+          }
+        ]
+      }
+    ]
+  });
+
+  const micro = repaired[0].microsequences[0];
+  assert.equal(micro.coverageRole, "discriminate");
+  assert.deepEqual(micro.domainRefs, ["domain-lan", "domain-internet"]);
+  assert.ok(micro.didacticPurpose.length > 0);
+  assert.deepEqual(micro.practiceVariantRefs, ["variant-lan-compare", "variant-internet-compare"]);
 });
 
 test("repair_card_adherence separa grounding tardio de defeito estrutural dos cards", async () => {

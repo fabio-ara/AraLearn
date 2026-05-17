@@ -1,5 +1,5 @@
 import { adaptResourceCardsToPublicCards } from "../resources/adaptResourceCardToPublicCard.js";
-import { buildLessonDomainCoverageReport, isPracticeCoverageRole } from "../domain/lessonDomainModel.js";
+import { buildLessonDomainCoverageReport, isPracticeCoverageRole, normalizeLessonDomainMap } from "../domain/lessonDomainModel.js";
 import { sortLessonMicrosequencesDeterministically } from "../domain/resolveLessonMicrosequenceOrder.js";
 import { summarizeDidacticProductionPolicyForPrompt } from "../policies/didacticProductionPolicy.js";
 import { validateGeneratedCardsStructural } from "../validation/validateGeneratedCardsStructural.js";
@@ -87,6 +87,118 @@ function scoreClaimOverlap(cardText = "", claims = []) {
 
 function hasExplanationCoverageRole(role = "") {
   return ["introduce", "explain", "demonstrate", "consolidate"].includes(text(role));
+}
+
+function normalizeComparableText(value = "") {
+  return text(value)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
+function inferCoverageRoleFromMicrosequence(microsequence = {}) {
+  const explicit = text(microsequence?.coverageRole);
+  if (explicit) {
+    return explicit;
+  }
+  const combined = normalizeComparableText([
+    microsequence?.title,
+    microsequence?.objective,
+    microsequence?.didacticPurpose
+  ].filter(Boolean).join(" "));
+  if (/\b(compare|comparacao|comparar|contraste|distinguir|diferenciar)\b/u.test(combined)) {
+    return "discriminate";
+  }
+  if (/\b(erro|corrigir|corrija|diagnosticar|pegadinha|confus)\b/u.test(combined)) {
+    return "diagnose_error";
+  }
+  if (/\b(pratica|praticar|exercicio|aplicar|aplicacao|resolver|treino)\b/u.test(combined)) {
+    return "practice";
+  }
+  if (/\b(exemplo|demonstracao|demonstrar)\b/u.test(combined)) {
+    return "demonstrate";
+  }
+  return "explain";
+}
+
+function selectDomainRefsForMicrosequence(microsequence = {}, domainItems = []) {
+  const currentDomainRefs = normalizeArray(microsequence?.domainRefs).map(text).filter(Boolean);
+  if (currentDomainRefs.length) {
+    return currentDomainRefs;
+  }
+  const microTokens = tokenizeClaimMatch([
+    microsequence?.title,
+    microsequence?.objective,
+    microsequence?.didacticPurpose
+  ].filter(Boolean).join(" "));
+  if (!microTokens.length) {
+    const coreDomainIds = normalizeArray(domainItems)
+      .filter((item) => text(item?.priority) === "core")
+      .map((item) => text(item?.id))
+      .filter(Boolean);
+    return coreDomainIds.length === 1 ? [coreDomainIds[0]] : [];
+  }
+  const matched = normalizeArray(domainItems)
+    .map((item) => ({
+      id: text(item?.id),
+      overlap: tokenizeClaimMatch(`${text(item?.label)} ${normalizeArray(item?.expectedEvidence).join(" ")}`)
+        .filter((token) => microTokens.includes(token))
+        .length,
+      priority: text(item?.priority)
+    }))
+    .filter((item) => item.id && item.overlap > 0)
+    .sort((left, right) => right.overlap - left.overlap || (left.priority === "core" ? -1 : 1))
+    .slice(0, 2)
+    .map((item) => item.id);
+  return matched.length ? matched : [];
+}
+
+function pickVariantRefsForRole(domainRefs = [], variantsByDomain = new Map(), coverageRole = "") {
+  const current = domainRefs.flatMap((domainRef) => normalizeArray(variantsByDomain.get(domainRef)));
+  if (!current.length) {
+    return [];
+  }
+  const preferredKinds =
+    coverageRole === "discriminate"
+      ? ["discrimination", "common_error", "exam_format"]
+      : coverageRole === "diagnose_error"
+        ? ["common_error", "discrimination"]
+        : coverageRole === "practice" || coverageRole === "exam_apply"
+          ? ["near_transfer", "fluency", "exam_format", "integration"]
+          : ["explanation", "fluency", "representation_shift"];
+  const sorted = [...current].sort((left, right) => {
+    const leftIndex = preferredKinds.indexOf(text(left?.variantKind));
+    const rightIndex = preferredKinds.indexOf(text(right?.variantKind));
+    return (leftIndex < 0 ? 99 : leftIndex) - (rightIndex < 0 ? 99 : rightIndex);
+  });
+  return sorted.slice(0, 2).map((variant) => text(variant?.id)).filter(Boolean);
+}
+
+function inferDidacticPurpose(microsequence = {}, domainItemsById = new Map(), domainRefs = [], coverageRole = "") {
+  const explicit = text(microsequence?.didacticPurpose || microsequence?.objective);
+  if (explicit) {
+    return explicit;
+  }
+  const labels = domainRefs
+    .map((domainRef) => text(domainItemsById.get(domainRef)?.label))
+    .filter(Boolean)
+    .slice(0, 2);
+  if (!labels.length) {
+    return "";
+  }
+  if (coverageRole === "discriminate") {
+    return `Distinguir ${labels.join(" e ")}.`;
+  }
+  if (coverageRole === "diagnose_error") {
+    return `Diagnosticar erros em ${labels.join(" e ")}.`;
+  }
+  if (coverageRole === "practice" || coverageRole === "exam_apply") {
+    return `Praticar ${labels.join(" e ")} em casos próximos.`;
+  }
+  if (coverageRole === "demonstrate") {
+    return `Demonstrar ${labels.join(" e ")} com exemplo guiado.`;
+  }
+  return `Explicar ${labels.join(" e ")}.`;
 }
 
 function pickTransformationStateForPlan(role = "") {
@@ -601,7 +713,10 @@ export function auditCourseForgeDomainCoverage({ microsequencePlans = [], lesson
       return;
     }
 
-    const domainMap = lessonPlan.domainMap || {};
+    const domainMap = normalizeLessonDomainMap(lessonPlan.domainMap || {}, {
+      lessonMicrosequences: [],
+      sourceGuideStructured: lessonPlan.sourceGuideStructured || {}
+    });
     const domainItems = normalizeArray(domainMap.items);
     const practiceVariants = normalizeArray(domainMap.practiceVariants);
     const variantsByDomain = new Map();
@@ -1387,7 +1502,12 @@ export function repairCourseForgeMicrosequenceMetadataDeterministically({ micros
       return structuredClone(lessonEntry);
     }
 
-    const domainMap = lessonPlan.domainMap || {};
+    const domainMap = normalizeLessonDomainMap(lessonPlan.domainMap || {}, {
+      lessonMicrosequences: [],
+      sourceGuideStructured: lessonPlan.sourceGuideStructured || {}
+    });
+    const domainItems = normalizeArray(domainMap.items);
+    const domainItemsById = new Map(domainItems.map((item) => [text(item?.id), item]));
     const coreDomainIds = normalizeArray(domainMap.items)
       .filter((item) => text(item?.priority) === "core")
       .map((item) => text(item?.id))
@@ -1404,22 +1524,30 @@ export function repairCourseForgeMicrosequenceMetadataDeterministically({ micros
     });
 
     const repairedMicrosequences = normalizeArray(lessonEntry?.microsequences).map((microsequence) => {
+      const nextCoverageRole = inferCoverageRoleFromMicrosequence(microsequence);
       const currentDomainRefs = normalizeArray(microsequence?.domainRefs).map(text).filter(Boolean);
+      const inferredDomainRefs = selectDomainRefsForMicrosequence(microsequence, domainItems);
       const nextDomainRefs = currentDomainRefs.length
         ? currentDomainRefs
-        : coreDomainIds.length === 1
-          ? [coreDomainIds[0]]
-          : [];
+        : inferredDomainRefs.length
+          ? inferredDomainRefs
+          : nextCoverageRole === "discriminate" && coreDomainIds.length >= 2
+            ? coreDomainIds.slice(0, 2)
+            : coreDomainIds.length >= 1
+              ? [coreDomainIds[0]]
+              : [];
       const currentPracticeVariantRefs = normalizeArray(microsequence?.practiceVariantRefs).map(text).filter(Boolean);
       const nextPracticeVariantRefs =
         currentPracticeVariantRefs.length
           ? currentPracticeVariantRefs
-          : isPracticeCoverageRole(text(microsequence?.coverageRole))
-            ? nextDomainRefs.flatMap((domainRef) => normalizeArray(variantsByDomain.get(domainRef)).map((variant) => text(variant?.id))).slice(0, 1)
+          : isPracticeCoverageRole(nextCoverageRole)
+            ? pickVariantRefsForRole(nextDomainRefs, variantsByDomain, nextCoverageRole)
             : [];
 
       return {
         ...structuredClone(microsequence),
+        coverageRole: nextCoverageRole,
+        didacticPurpose: inferDidacticPurpose(microsequence, domainItemsById, nextDomainRefs, nextCoverageRole),
         domainRefs: nextDomainRefs,
         practiceVariantRefs: nextPracticeVariantRefs
       };
