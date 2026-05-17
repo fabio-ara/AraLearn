@@ -114,9 +114,7 @@ import {
 } from "../assist/codexLocalAssistProvider.js";
 import { runAssist } from "../assist/assistRuntime.js";
 import { runCourseForge } from "../generation/courseForge/courseForgeRunner.js";
-import { createProviderRegistry, resolveProviderFromModelId } from "../generation/providers/providerRegistry.js";
-import { createCodexCliProvider } from "../generation/providers/codexCliProvider.js";
-import { createGeminiProvider } from "../generation/providers/geminiProvider.js";
+import { resolveCourseForgeLaunchConfig } from "../generation/runtime/courseForgeLaunchConfig.js";
 import { listMicrosequenceTypes } from "../generation/types/microsequenceTypes.js";
 import { buildLessonDomainCoverageReport } from "../generation/domain/lessonDomainModel.js";
 import { validateDidacticDepth } from "../generation/validation/validateDidacticDepth.js";
@@ -126,7 +124,6 @@ import { createStarterContractCard, getContractCardKind, listContractAnswerValue
 import { isRunnableMicrosequence, resolveMicrosequenceRuntimeIncluded } from "../model/microsequenceStatus.js";
 import { ingestCourseForgeAttachments } from "./courseForgeAttachmentIngestion.js";
 import {
-  buildCourseForgePhaseModelOverrides,
   resolveCourseForgeGenerationScope,
   resolveCourseForgeNavigationTarget,
   summarizeCourseForgeTopDownResult
@@ -4684,28 +4681,23 @@ export function createLessonEditorApp({ root, storage, editor }) {
           "Os anexos atuais ainda não geraram texto utilizável para o top-down. Use TXT, Markdown, HTML, JSON, CSV ou complemente com um prompt."
         );
       }
-      const providerId = resolveProviderFromModelId(selectedModel);
-      const provider = isCodexLocalModel(selectedModel)
-        ? createCodexCliProvider({
-            endpoint: state.assistConfig.codexEndpoint,
-            token: state.assistConfig.codexToken,
-            modelId: selectedModel || CODEX_LOCAL_MODEL_ID
-          })
-        : createGeminiProvider({
-            apiKey: state.assistConfig.apiKey,
-            modelId: selectedModel || "gemini-2.5-flash"
-          });
+      const launchConfig = resolveCourseForgeLaunchConfig({
+        selectedModel,
+        apiKey: state.assistConfig.apiKey,
+        codexEndpoint: state.assistConfig.codexEndpoint,
+        codexToken: state.assistConfig.codexToken
+      });
       const courseForgeResult = await runCourseForge({
         intent: {
           scope: resolveCourseForgeGenerationScope(scopeState),
           promptText,
           attachments: ingestedAttachments.attachments,
-          phaseModelOverrides: buildCourseForgePhaseModelOverrides(selectedModel),
-          selectedTopDownProfileId: isCodexLocalModel(selectedModel) ? "codex_all" : "custom"
+          phaseModelOverrides: launchConfig.phaseModelOverrides,
+          selectedTopDownProfileId: launchConfig.selectedTopDownProfileId
         },
         projectDocument: state.project,
-        providerRegistry: createProviderRegistry({ providers: [provider] }),
-        providerId
+        providerRegistry: launchConfig.providerRegistry,
+        providerId: launchConfig.providerId
       });
       storage.saveProject(courseForgeResult.projectDocument);
       createStructureVersionFromProject(courseForgeResult.projectDocument, getCurrentStructureVersionReference(), {

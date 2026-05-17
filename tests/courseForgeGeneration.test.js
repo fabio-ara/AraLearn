@@ -2,11 +2,15 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
-  buildCourseForgePhaseModelOverrides,
   resolveCourseForgeGenerationScope,
   resolveCourseForgeNavigationTarget,
   summarizeCourseForgeTopDownResult
 } from "../src/ui/courseForgeGeneration.js";
+import {
+  buildCourseForgePhaseModelOverrides,
+  resolveCourseForgeLaunchConfig,
+  resolveCourseForgeTopDownProfileId
+} from "../src/generation/runtime/courseForgeLaunchConfig.js";
 
 test("resolveCourseForgeGenerationScope usa o menor escopo existente", () => {
   assert.deepEqual(
@@ -45,6 +49,23 @@ test("buildCourseForgePhaseModelOverrides fixa o mesmo modelo nas fases roteáve
   assert.equal(overrides.plan_architecture, "gemini-2.5-flash");
   assert.equal(overrides.repair_cards, "gemini-2.5-flash");
   assert.equal(overrides.repair_card_adherence, "gemini-2.5-flash");
+});
+
+test("resolveCourseForgeTopDownProfileId seleciona perfil operacional por provider", () => {
+  assert.equal(resolveCourseForgeTopDownProfileId("codex-cli-local"), "codex_all");
+  assert.equal(resolveCourseForgeTopDownProfileId("gemini-2.5-flash"), "custom");
+});
+
+test("resolveCourseForgeLaunchConfig monta runtime e intent config fora da UI", () => {
+  const launchConfig = resolveCourseForgeLaunchConfig({
+    selectedModel: "gemini-2.5-flash",
+    apiKey: "chave"
+  });
+
+  assert.equal(launchConfig.providerId, "google");
+  assert.equal(launchConfig.selectedTopDownProfileId, "custom");
+  assert.equal(launchConfig.phaseModelOverrides.plan_architecture, "gemini-2.5-flash");
+  assert.equal(typeof launchConfig.providerRegistry.get("google")?.callJson, "function");
 });
 
 test("resolveCourseForgeNavigationTarget usa patch e fallback do projeto final", () => {

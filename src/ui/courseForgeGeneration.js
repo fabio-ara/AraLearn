@@ -2,33 +2,6 @@ function text(value) {
   return typeof value === "string" ? value.trim() : "";
 }
 
-const COURSE_FORGE_PHASES_WITH_MODEL_OVERRIDE = Object.freeze([
-  "plan_architecture",
-  "audit_architecture",
-  "repair_architecture",
-  "plan_lessons",
-  "audit_course_graph",
-  "repair_course_graph",
-  "plan_microsequences",
-  "audit_microsequences",
-  "repair_microsequences",
-  "answer_locally",
-  "build_cards",
-  "audit_intervention",
-  "audit_prerequisites",
-  "audit_assessment_alignment",
-  "repair_cards",
-  "repair_card_adherence"
-]);
-
-export function buildCourseForgePhaseModelOverrides(modelId = "") {
-  const trimmedModelId = text(modelId);
-  if (!trimmedModelId) {
-    return {};
-  }
-  return Object.fromEntries(COURSE_FORGE_PHASES_WITH_MODEL_OVERRIDE.map((phaseId) => [phaseId, trimmedModelId]));
-}
-
 export function resolveCourseForgeGenerationScope(scopeState = {}) {
   const courseKey = text(scopeState?.course?.key);
   const moduleKey = text(scopeState?.moduleValue?.key);
