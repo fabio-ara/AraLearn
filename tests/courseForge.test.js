@@ -376,12 +376,15 @@ test("phase resolution escolhe subfluxo estrutural e registra fases adiadas", ()
   assert.ok(resolveCourseForgePhases(fullIntent).includes("audit_course_graph"));
   assert.ok(resolveCourseForgePhases(fullIntent).includes("repair_course_graph"));
   assert.ok(resolveCourseForgePhases(fullIntent).includes("build_lesson_governance"));
-  assert.ok(resolveCourseForgePhases(fullIntent).includes("compile_card_plans"));
   assert.ok(resolveCourseForgePhases(fullIntent).includes("repair_microsequences"));
-  assert.ok(resolveCourseForgePhases(fullIntent).includes("repair_card_adherence"));
   assert.ok(resolveCourseForgePhases(fullIntent).includes("audit_prerequisites"));
-  assert.ok(resolveCourseForgePhases(fullIntent).includes("audit_assessment_alignment"));
+  assert.ok(!resolveCourseForgePhases(fullIntent).includes("compile_card_plans"));
+  assert.ok(!resolveCourseForgePhases(fullIntent).includes("repair_card_adherence"));
+  assert.ok(!resolveCourseForgePhases(fullIntent).includes("audit_assessment_alignment"));
   assert.ok(resolveCourseForgePhases(microsequenceIntent).includes("build_microsequence_contract"));
+  assert.ok(resolveCourseForgePhases(microsequenceIntent).includes("compile_card_plans"));
+  assert.ok(resolveCourseForgePhases(microsequenceIntent).includes("repair_card_adherence"));
+  assert.ok(resolveCourseForgePhases(microsequenceIntent).includes("audit_assessment_alignment"));
   assert.ok(resolveCourseForgePhases(microsequenceIntent).includes("compile_patch"));
   const lessonIntent = resolveCourseForgeIntent({
     scope: { level: "lesson", courseKey: "c1", moduleKey: "m1", lessonKey: "l1" },
@@ -2652,17 +2655,34 @@ test("audit_microsequences normaliza findings estruturados a partir do intervent
   });
   const registry = createProviderRegistry({ providers: [provider] });
   const artifactStore = createCourseForgeArtifactsStore();
-  let runId = "";
-  await assert.rejects(
-    async () => {
-      await runCourseForge({
-        intent: {
-          interventionRequest: {
-            status: "ready",
-            recommendedAction: "needs_new_microsequence",
-            studentPrompt: "Ainda confundo AND com OR.",
-            responseText: "Vamos inserir um contraste local.",
-            rationale: "Falta discriminação explícita entre os conectivos.",
+  const result = await runCourseForge({
+    intent: {
+      interventionRequest: {
+        status: "ready",
+        recommendedAction: "needs_new_microsequence",
+        studentPrompt: "Ainda confundo AND com OR.",
+        responseText: "Vamos inserir um contraste local.",
+        rationale: "Falta discriminação explícita entre os conectivos.",
+        target: {
+          level: "lesson",
+          courseKey: "course-logica",
+          moduleKey: "module-base",
+          lessonKey: "lesson-proposicoes",
+          microsequenceKey: ""
+        },
+        editorIntent: {
+          operation: "extend",
+          generationDepthHint: "reinforce_only",
+          interventionModeHint: "targeted_scope_expansion",
+          requestedBy: "tutor"
+        },
+        requestedChanges: [
+          {
+            changeId: "requested_change_1",
+            type: "add_new_microsequence",
+            operation: "extend",
+            patchStrategy: "add_microsequence",
+            didacticInterventionType: "contrast_reinforcement",
             target: {
               level: "lesson",
               courseKey: "course-logica",
@@ -2670,104 +2690,78 @@ test("audit_microsequences normaliza findings estruturados a partir do intervent
               lessonKey: "lesson-proposicoes",
               microsequenceKey: ""
             },
-            editorIntent: {
-              operation: "extend",
-              generationDepthHint: "reinforce_only",
-              interventionModeHint: "targeted_scope_expansion",
-              requestedBy: "tutor"
-            },
-            requestedChanges: [
-              {
-                changeId: "requested_change_1",
-                type: "add_new_microsequence",
-                operation: "extend",
-                patchStrategy: "add_microsequence",
-                didacticInterventionType: "contrast_reinforcement",
-                target: {
-                  level: "lesson",
-                  courseKey: "course-logica",
-                  moduleKey: "module-base",
-                  lessonKey: "lesson-proposicoes",
-                  microsequenceKey: ""
-                },
-                relatedConceptRefs: ["concept-and", "concept-or"],
-                reason: "Inserir contraste local entre AND e OR."
-              }
-            ],
-            contextSnapshot: {
-              lessonKeys: ["lesson-proposicoes"],
-              microsequenceKeys: ["microsequence-revisao"],
-              reusableMicrosequenceCount: 1
-            }
-          },
-          attachments: [{ id: "src_1", name: "ementa.pdf", type: "application/pdf" }]
-        },
-        projectDocument: {
-          contract: "aralearn.contract",
-          version: 1,
-          kind: "project",
-          courses: [
+            relatedConceptRefs: ["concept-and", "concept-or"],
+            reason: "Inserir contraste local entre AND e OR."
+          }
+        ],
+        contextSnapshot: {
+          lessonKeys: ["lesson-proposicoes"],
+          microsequenceKeys: ["microsequence-revisao"],
+          reusableMicrosequenceCount: 1
+        }
+      },
+      attachments: [{ id: "src_1", name: "ementa.pdf", type: "application/pdf" }]
+    },
+    projectDocument: {
+      contract: "aralearn.contract",
+      version: 1,
+      kind: "project",
+      courses: [
+        {
+          key: "course-logica",
+          title: "Lógica",
+          modules: [
             {
-              key: "course-logica",
-              title: "Lógica",
-              modules: [
+              key: "module-base",
+              title: "Base",
+              lessons: [
                 {
-                  key: "module-base",
-                  title: "Base",
-                  lessons: [
+                  key: "lesson-proposicoes",
+                  title: "Proposições compostas",
+                  description: "Lição.",
+                  sourceGuideStructured: {
+                    lessonGoal: "Distinguir conectivos básicos.",
+                    notationRules: "Usar `AND` e `OR` com exemplos simples.",
+                    commonErrors: "Confundir conjunção com disjunção."
+                  },
+                  domainMap: {
+                    items: [
+                      { id: "concept-and", label: "AND", priority: "core" },
+                      { id: "concept-or", label: "OR", priority: "core" }
+                    ],
+                    practiceVariants: []
+                  },
+                  presetId: "default",
+                  resourceTags: ["paragraph"],
+                  contentTypeTags: ["theory"],
+                  learningActionTags: ["read"],
+                  supportLevel: "guided",
+                  microsequences: [
                     {
-                      key: "lesson-proposicoes",
-                      title: "Proposições compostas",
-                      description: "Lição.",
-                      sourceGuideStructured: {
-                        lessonGoal: "Distinguir conectivos básicos.",
-                        notationRules: "Usar `AND` e `OR` com exemplos simples.",
-                        commonErrors: "Confundir conjunção com disjunção."
-                      },
-                      domainMap: {
-                        items: [
-                          { id: "concept-and", label: "AND", priority: "core" },
-                          { id: "concept-or", label: "OR", priority: "core" }
-                        ],
-                        practiceVariants: []
-                      },
-                      presetId: "default",
-                      resourceTags: ["paragraph"],
-                      contentTypeTags: ["theory"],
-                      learningActionTags: ["read"],
-                      supportLevel: "guided",
-                      microsequences: [
-                        {
-                          key: "microsequence-revisao",
-                          title: "Revisão",
-                          description: "Resumo inicial.",
-                          didacticPurpose: "Revisar conectivos.",
-                          coverageRole: "explain",
-                          status: "ready",
-                          included: true,
-                          domainRefs: ["concept-and", "concept-or"],
-                          cards: [{ key: "card-1", title: "Card 1", say: "Texto antigo." }]
-                        }
-                      ]
+                      key: "microsequence-revisao",
+                      title: "Revisão",
+                      description: "Resumo inicial.",
+                      didacticPurpose: "Revisar conectivos.",
+                      coverageRole: "explain",
+                      status: "ready",
+                      included: true,
+                      domainRefs: ["concept-and", "concept-or"],
+                      cards: [{ key: "card-1", title: "Card 1", say: "Texto antigo." }]
                     }
                   ]
                 }
               ]
             }
           ]
-        },
-        providerRegistry: registry,
-        providerId: "fake",
-        artifactStore
-      });
+        }
+      ]
     },
-    (error) => {
-      runId = error.runId;
-      return /quantidade errada/i.test(error.message);
-    }
-  );
+    providerRegistry: registry,
+    providerId: "fake",
+    artifactStore
+  });
 
-  const auditArtifact = artifactStore.loadArtifact(runId, "microsequence-audit");
+  const auditArtifact = artifactStore.loadArtifact(result.runState.runId, "microsequence-audit");
   assert.equal(auditArtifact.content.approved, true);
   assert.equal(auditArtifact.content.warnings.length, 1);
   assert.equal(auditArtifact.content.warnings[0].requestedChangeId, "requested_change_1");
@@ -2957,40 +2951,6 @@ test("top-down com fake provider gera curso completo em memória", async () => {
           warnings: []
         }
       ],
-      build_cards: [
-        {
-          cards: [
-            {
-              position: 1,
-              resourceType: "paragraph",
-              title: "O que é uma proposição",
-              text: "Uma proposição é um enunciado que pode ser classificado como verdadeiro ou falso.",
-              sourceRefs: ["src_1"]
-            },
-            {
-              position: 2,
-              resourceType: "paragraph",
-              title: "Exemplo guiado",
-              text: "A frase `2 + 2 = 4` é proposição porque admite valor de verdade.",
-              sourceRefs: ["src_1"]
-            },
-            {
-              position: 3,
-              resourceType: "multiple_choice",
-              title: "Reconhecendo proposições",
-              question: "Qual enunciado é uma proposição?",
-              options: [
-                { optionId: "a", label: "Feche a porta." },
-                { optionId: "b", label: "2 + 2 = 4." },
-                { optionId: "c", label: "Que horas são?" }
-              ],
-              correctOptionId: "b",
-              feedback: "Só `2 + 2 = 4` pode ser classificado como verdadeiro ou falso.",
-              sourceRefs: ["src_1"]
-            }
-          ]
-        }
-      ]
     }
   });
   const registry = createProviderRegistry({ providers: [provider] });
@@ -3008,16 +2968,15 @@ test("top-down com fake provider gera curso completo em memória", async () => {
 
   assert.equal(result.projectDocument.courses[0].title, "Lógica");
   assert.equal(result.patch.operations.some((item) => item.op === "add_microsequence"), true);
-  assert.equal(result.projectDocument.courses[0].modules[0].lessons[0].microsequences[0].status, "ready");
-  assert.equal(result.projectDocument.courses[0].modules[0].lessons[0].microsequences[0].included, true);
-  assert.equal(result.projectDocument.courses[0].modules[0].lessons[0].microsequences[0].cards.length, 3);
+  assert.equal(result.projectDocument.courses[0].modules[0].lessons[0].microsequences[0].status, "draft");
+  assert.equal(result.projectDocument.courses[0].modules[0].lessons[0].microsequences[0].included, false);
+  assert.equal(result.projectDocument.courses[0].modules[0].lessons[0].microsequences[0].cards.length, 0);
   const finalReport = result.artifacts.find((item) => item.name === "final-report");
   assert.equal(finalReport.content.executedGenerationDepth, "full_course");
   assert.equal(finalReport.content.deferredGenerationDepth, "");
   assert.equal(finalReport.content.deferredPhases.length, 0);
 
   const planArchitecturePhase = result.runState.phases.find((phase) => phase.phaseId === "plan_architecture");
-  const buildCardsPhase = result.runState.phases.find((phase) => phase.phaseId === "build_cards");
   const finalReportPhase = result.runState.phases.find((phase) => phase.phaseId === "final_report");
   assert.equal(planArchitecturePhase.modelId, "codex-cli-local");
   assert.deepEqual(planArchitecturePhase.target, {
@@ -3028,13 +2987,12 @@ test("top-down com fake provider gera curso completo em memória", async () => {
     microsequenceKey: ""
   });
   assert.ok(planArchitecturePhase.artifactIds.some((artifactId) => artifactId.endsWith(":architecture-draft")));
-  assert.equal(buildCardsPhase.modelId, "codex-cli-local");
-  assert.ok(buildCardsPhase.artifactIds.some((artifactId) => artifactId.endsWith(":card-drafts")));
+  assert.ok(!result.runState.phases.some((phase) => phase.phaseId === "build_cards"));
   assert.equal(finalReportPhase.modelId, "");
   assert.ok(finalReportPhase.artifactIds.some((artifactId) => artifactId.endsWith(":final-report")));
 });
 
-test("top-down amplo materializa apenas a entrada inicial e deixa o restante da trilha em draft", async () => {
+test("top-down amplo cria a trilha planejada sem materializar cards por padrão", async () => {
   const provider = createFakeProvider({
     script: {
       plan_architecture: [
@@ -3137,40 +3095,6 @@ test("top-down amplo materializa apenas a entrada inicial e deixa o restante da 
           warnings: []
         }
       ],
-      build_cards: [
-        {
-          cards: [
-            {
-              position: 1,
-              resourceType: "paragraph",
-              title: "O que é uma proposição",
-              text: "Uma proposição é um enunciado que pode ser classificado como verdadeiro ou falso.",
-              sourceRefs: ["src_1"]
-            },
-            {
-              position: 2,
-              resourceType: "paragraph",
-              title: "Exemplo guiado",
-              text: "A frase `2 + 2 = 4` é proposição porque admite valor de verdade.",
-              sourceRefs: ["src_1"]
-            },
-            {
-              position: 3,
-              resourceType: "multiple_choice",
-              title: "Reconhecendo proposições",
-              question: "Qual enunciado é uma proposição?",
-              options: [
-                { optionId: "a", label: "Feche a porta." },
-                { optionId: "b", label: "2 + 2 = 4." },
-                { optionId: "c", label: "Que horas são?" }
-              ],
-              correctOptionId: "b",
-              feedback: "Só `2 + 2 = 4` pode ser classificado como verdadeiro ou falso.",
-              sourceRefs: ["src_1"]
-            }
-          ]
-        }
-      ]
     }
   });
   const registry = createProviderRegistry({ providers: [provider] });
@@ -3188,16 +3112,15 @@ test("top-down amplo materializa apenas a entrada inicial e deixa o restante da 
 
   const microsequences = result.projectDocument.courses[0].modules[0].lessons[0].microsequences;
   assert.equal(microsequences.length, 2);
-  assert.equal(microsequences[0].status, "ready");
-  assert.equal(microsequences[0].included, true);
-  assert.equal(microsequences[0].cards.length, 3);
+  assert.equal(microsequences[0].status, "draft");
+  assert.equal(microsequences[0].included, false);
+  assert.equal(microsequences[0].cards.length, 0);
   assert.equal(microsequences[1].status, "draft");
   assert.equal(microsequences[1].included, false);
   assert.equal(microsequences[1].cards.length, 0);
   assert.equal(microsequences[1].title, "Contraste entre proposição e pergunta");
 
-  const buildCardsPhase = result.runState.phases.find((phase) => phase.phaseId === "build_cards");
-  assert.ok(buildCardsPhase.artifactIds.some((artifactId) => artifactId.endsWith(":card-drafts")));
+  assert.ok(!result.runState.phases.some((phase) => phase.phaseId === "build_cards"));
 });
 
 test("audit_architecture reprovada aciona repair_architecture e aplica versão corrigida", async () => {
@@ -5185,7 +5108,7 @@ test("repair_only em lição com microssequências existentes reaproveita alvo l
   assert.ok(result.patch.operations.some((item) => item.microsequenceKey === "microsequence-explicacao"));
 });
 
-test("top-down em escopo de lição gera microssequências e cards sem depender de arquitetura nova", async () => {
+test("top-down em escopo de lição gera microssequências planejadas sem cards por padrão", async () => {
   const provider = createFakeProvider({
     script: {
       plan_microsequences: [
@@ -5207,41 +5130,7 @@ test("top-down em escopo de lição gera microssequências e cards sem depender 
           ]
         }
       ],
-      audit_microsequences: [{ approved: true, issues: [], warnings: [] }],
-      build_cards: [
-        {
-          cards: [
-            {
-              position: 1,
-              resourceType: "paragraph",
-              title: "Definição",
-              text: "Uma proposição é um enunciado que pode ser verdadeiro ou falso.",
-              sourceRefs: ["src_1"]
-            },
-            {
-              position: 2,
-              resourceType: "paragraph",
-              title: "Exemplo",
-              text: "`2 + 2 = 4` é proposição.",
-              sourceRefs: ["src_1"]
-            },
-            {
-              position: 3,
-              resourceType: "multiple_choice",
-              title: "Identificação",
-              question: "Qual opção é uma proposição?",
-              options: [
-                { optionId: "a", label: "Feche a porta." },
-                { optionId: "b", label: "2 + 2 = 4." },
-                { optionId: "c", label: "Que horas são?" }
-              ],
-              correctOptionId: "b",
-              feedback: "`2 + 2 = 4` admite valor de verdade.",
-              sourceRefs: ["src_1"]
-            }
-          ]
-        }
-      ]
+      audit_microsequences: [{ approved: true, issues: [], warnings: [] }]
     }
   });
   const registry = createProviderRegistry({ providers: [provider] });
@@ -5298,12 +5187,14 @@ test("top-down em escopo de lição gera microssequências e cards sem depender 
 
   const lesson = result.projectDocument.courses[0].modules[0].lessons[0];
   assert.equal(lesson.microsequences.length, 1);
-  assert.equal(lesson.microsequences[0].cards.length, 3);
-  assert.equal(lesson.microsequences[0].status, "ready");
+  assert.equal(lesson.microsequences[0].cards.length, 0);
+  assert.equal(lesson.microsequences[0].status, "draft");
+  assert.equal(lesson.microsequences[0].included, false);
   assert.ok(!result.runState.phases.some((phase) => phase.phaseId === "plan_architecture"));
+  assert.ok(!result.runState.phases.some((phase) => phase.phaseId === "build_cards"));
 });
 
-test("top-down em escopo de módulo gera microssequências e cards para as lições do módulo", async () => {
+test("top-down em escopo de módulo gera microssequências planejadas para as lições do módulo", async () => {
   const provider = createFakeProvider({
     script: {
       plan_microsequences: [
@@ -5338,73 +5229,7 @@ test("top-down em escopo de módulo gera microssequências e cards para as liç�
           ]
         }
       ],
-      audit_microsequences: [{ approved: true, issues: [], warnings: [] }],
-      build_cards: [
-        {
-          cards: [
-            {
-              position: 1,
-              resourceType: "paragraph",
-              title: "Definição",
-              text: "Uma proposição é um enunciado que pode ser verdadeiro ou falso.",
-              sourceRefs: ["src_1"]
-            },
-            {
-              position: 2,
-              resourceType: "paragraph",
-              title: "Exemplo",
-              text: "`2 + 2 = 4` é proposição.",
-              sourceRefs: ["src_1"]
-            },
-            {
-              position: 3,
-              resourceType: "multiple_choice",
-              title: "Identificação",
-              question: "Qual opção é uma proposição?",
-              options: [
-                { optionId: "a", label: "Feche a porta." },
-                { optionId: "b", label: "2 + 2 = 4." },
-                { optionId: "c", label: "Que horas são?" }
-              ],
-              correctOptionId: "b",
-              feedback: "`2 + 2 = 4` admite valor de verdade.",
-              sourceRefs: ["src_1"]
-            }
-          ]
-        },
-        {
-          cards: [
-            {
-              position: 1,
-              resourceType: "paragraph",
-              title: "Conjunção",
-              text: "`p ∧ q` exige duas proposições verdadeiras.",
-              sourceRefs: ["src_1"]
-            },
-            {
-              position: 2,
-              resourceType: "paragraph",
-              title: "Disjunção",
-              text: "`p ∨ q` aceita pelo menos uma proposição verdadeira.",
-              sourceRefs: ["src_1"]
-            },
-            {
-              position: 3,
-              resourceType: "multiple_choice",
-              title: "Comparação",
-              question: "Qual conectivo exige duas proposições verdadeiras?",
-              options: [
-                { optionId: "a", label: "`∧`" },
-                { optionId: "b", label: "`∨`" },
-                { optionId: "c", label: "Nenhum dos dois" }
-              ],
-              correctOptionId: "a",
-              feedback: "`∧` representa conjunção.",
-              sourceRefs: ["src_1"]
-            }
-          ]
-        }
-      ]
+      audit_microsequences: [{ approved: true, issues: [], warnings: [] }]
     }
   });
   const registry = createProviderRegistry({ providers: [provider] });
@@ -5477,12 +5302,15 @@ test("top-down em escopo de módulo gera microssequências e cards para as liç�
   const lessons = result.projectDocument.courses[0].modules[0].lessons;
   assert.equal(lessons[0].microsequences.length, 1);
   assert.equal(lessons[1].microsequences.length, 1);
-  assert.equal(lessons[0].microsequences[0].cards.length, 3);
-  assert.equal(lessons[1].microsequences[0].cards.length, 3);
+  assert.equal(lessons[0].microsequences[0].cards.length, 0);
+  assert.equal(lessons[1].microsequences[0].cards.length, 0);
+  assert.equal(lessons[0].microsequences[0].status, "draft");
+  assert.equal(lessons[1].microsequences[0].status, "draft");
   assert.ok(!result.runState.phases.some((phase) => phase.phaseId === "plan_architecture"));
+  assert.ok(!result.runState.phases.some((phase) => phase.phaseId === "build_cards"));
 });
 
-test("top-down em escopo de curso gera microssequências e cards para os módulos do curso", async () => {
+test("top-down em escopo de curso gera microssequências planejadas para os módulos do curso", async () => {
   const provider = createFakeProvider({
     script: {
       plan_microsequences: [
@@ -5517,73 +5345,7 @@ test("top-down em escopo de curso gera microssequências e cards para os módulo
           ]
         }
       ],
-      audit_microsequences: [{ approved: true, issues: [], warnings: [] }],
-      build_cards: [
-        {
-          cards: [
-            {
-              position: 1,
-              resourceType: "paragraph",
-              title: "Definição",
-              text: "Uma proposição é um enunciado que pode ser verdadeiro ou falso.",
-              sourceRefs: ["src_1"]
-            },
-            {
-              position: 2,
-              resourceType: "paragraph",
-              title: "Exemplo",
-              text: "`2 + 2 = 4` é proposição.",
-              sourceRefs: ["src_1"]
-            },
-            {
-              position: 3,
-              resourceType: "multiple_choice",
-              title: "Identificação",
-              question: "Qual opção é uma proposição?",
-              options: [
-                { optionId: "a", label: "Feche a porta." },
-                { optionId: "b", label: "2 + 2 = 4." },
-                { optionId: "c", label: "Que horas são?" }
-              ],
-              correctOptionId: "b",
-              feedback: "`2 + 2 = 4` admite valor de verdade.",
-              sourceRefs: ["src_1"]
-            }
-          ]
-        },
-        {
-          cards: [
-            {
-              position: 1,
-              resourceType: "paragraph",
-              title: "Conjunção",
-              text: "`p ∧ q` exige duas proposições verdadeiras.",
-              sourceRefs: ["src_1"]
-            },
-            {
-              position: 2,
-              resourceType: "paragraph",
-              title: "Disjunção",
-              text: "`p ∨ q` aceita pelo menos uma proposição verdadeira.",
-              sourceRefs: ["src_1"]
-            },
-            {
-              position: 3,
-              resourceType: "multiple_choice",
-              title: "Comparação",
-              question: "Qual conectivo exige duas proposições verdadeiras?",
-              options: [
-                { optionId: "a", label: "`∧`" },
-                { optionId: "b", label: "`∨`" },
-                { optionId: "c", label: "Nenhum dos dois" }
-              ],
-              correctOptionId: "a",
-              feedback: "`∧` representa conjunção.",
-              sourceRefs: ["src_1"]
-            }
-          ]
-        }
-      ]
+      audit_microsequences: [{ approved: true, issues: [], warnings: [] }]
     }
   });
   const registry = createProviderRegistry({ providers: [provider] });
@@ -5661,9 +5423,12 @@ test("top-down em escopo de curso gera microssequências e cards para os módulo
   const modules = result.projectDocument.courses[0].modules;
   assert.equal(modules[0].lessons[0].microsequences.length, 1);
   assert.equal(modules[1].lessons[0].microsequences.length, 1);
-  assert.equal(modules[0].lessons[0].microsequences[0].cards.length, 3);
-  assert.equal(modules[1].lessons[0].microsequences[0].cards.length, 3);
+  assert.equal(modules[0].lessons[0].microsequences[0].cards.length, 0);
+  assert.equal(modules[1].lessons[0].microsequences[0].cards.length, 0);
+  assert.equal(modules[0].lessons[0].microsequences[0].status, "draft");
+  assert.equal(modules[1].lessons[0].microsequences[0].status, "draft");
   assert.ok(!result.runState.phases.some((phase) => phase.phaseId === "plan_architecture"));
+  assert.ok(!result.runState.phases.some((phase) => phase.phaseId === "build_cards"));
 });
 
 test("repair_only em escopo de lição usa subfluxo local sem arquitetura ampla", async () => {
@@ -5900,84 +5665,6 @@ test("reinforce_only em escopo de lição reaproveita o subfluxo local sem arqui
 test("repair_cards corrige cards inválidos antes de aplicar ao projeto", async () => {
   const provider = createFakeProvider({
     script: {
-      plan_architecture: [
-        {
-          course: {
-            key: "course-logica",
-            title: "Lógica",
-            description: "Curso.",
-            modules: [
-              {
-                key: "module-proposicoes",
-                title: "Proposições",
-                description: "Módulo.",
-                lessons: [
-                  {
-                    key: "lesson-introducao",
-                    title: "Introdução",
-                    description: "Lição.",
-                    sourceGuideStructured: {
-                      lessonGoal: "Ler proposições.",
-                      notationRules: "Usar `p` e `q`.",
-                      commonErrors: "Confundir frase e proposição."
-                    },
-                    presetId: "default",
-                    resourceTags: ["paragraph", "multiple_choice"],
-                    contentTypeTags: ["theory"],
-                    learningActionTags: ["read"],
-                    supportLevel: "guided",
-                    microsequences: []
-                  }
-                ]
-              }
-            ]
-          }
-        }
-      ],
-      audit_architecture: [{ approved: true, blockingIssues: [], warnings: [] }],
-      plan_lessons: [
-        {
-          lessonPlans: [
-            {
-              courseKey: "course-logica",
-              moduleKey: "module-proposicoes",
-              lessonKey: "lesson-introducao",
-              lessonTitle: "Introdução",
-              lessonDescription: "Lição.",
-              sourceGuideStructured: {
-                lessonGoal: "Ler proposições.",
-                notationRules: "Usar `p` e `q`.",
-                commonErrors: "Confundir frase e proposição."
-              },
-              presetId: "default",
-              resourceTags: ["paragraph", "multiple_choice"],
-              contentTypeTags: ["theory"],
-              learningActionTags: ["read"],
-              supportLevel: "guided"
-            }
-          ]
-        }
-      ],
-      plan_microsequences: [
-        {
-          microsequencePlans: [
-            {
-              lessonKey: "lesson-introducao",
-              moduleKey: "module-proposicoes",
-              courseKey: "course-logica",
-              microsequences: [
-                {
-                  key: "microsequence-leitura-inicial",
-                  title: "Leitura inicial de proposições",
-                  objective: "Reconhecer enunciados como proposições.",
-                  coverageRole: "core"
-                }
-              ]
-            }
-          ]
-        }
-      ],
-      audit_microsequences: [{ approved: true, issues: [], warnings: [] }],
       build_cards: [
         {
           cards: [
@@ -6044,12 +5731,63 @@ test("repair_cards corrige cards inválidos antes de aplicar ao projeto", async 
   const registry = createProviderRegistry({ providers: [provider] });
   const result = await runCourseForge({
     intent: {
-      operation: "create",
-      scope: { level: "project" },
-      promptText: "Criar curso de lógica.",
+      operation: "repair",
+      scope: {
+        level: "microsequence",
+        courseKey: "course-logica",
+        moduleKey: "module-proposicoes",
+        lessonKey: "lesson-introducao",
+        microsequenceKey: "microsequence-leitura-inicial"
+      },
+      promptText: "Corrigir os cards desta microssequência.",
       attachments: [{ id: "src_1", name: "ementa.pdf", type: "application/pdf" }]
     },
-    projectDocument: createProject(),
+    projectDocument: {
+      contract: "aralearn.contract",
+      version: 1,
+      kind: "project",
+      courses: [
+        {
+          key: "course-logica",
+          title: "Lógica",
+          modules: [
+            {
+              key: "module-proposicoes",
+              title: "Proposições",
+              lessons: [
+                {
+                  key: "lesson-introducao",
+                  title: "Introdução",
+                  description: "Lição.",
+                  sourceGuideStructured: {
+                    lessonGoal: "Ler proposições.",
+                    notationRules: "Usar `p` e `q`.",
+                    commonErrors: "Confundir frase e proposição."
+                  },
+                  presetId: "default",
+                  resourceTags: ["paragraph", "multiple_choice"],
+                  contentTypeTags: ["theory"],
+                  learningActionTags: ["read"],
+                  supportLevel: "guided",
+                  microsequences: [
+                    {
+                      key: "microsequence-leitura-inicial",
+                      title: "Leitura inicial de proposições",
+                      description: "Introdução.",
+                      didacticPurpose: "Reconhecer enunciados como proposições.",
+                      coverageRole: "explain",
+                      status: "draft",
+                      included: false,
+                      cards: []
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
     providerRegistry: registry,
     providerId: "fake"
   });
@@ -6064,120 +5802,6 @@ test("repair_cards corrige cards inválidos antes de aplicar ao projeto", async 
 test("audit_source_adherence usa domainMap explícito para fechar cobertura mínima da lição", async () => {
   const provider = createFakeProvider({
     script: {
-      plan_architecture: [
-        {
-          course: {
-            key: "course-redes",
-            title: "Redes",
-            description: "Curso.",
-            modules: [
-              {
-                key: "module-intro",
-                title: "Fundamentos",
-                description: "Módulo.",
-                lessons: [
-                  {
-                    key: "lesson-rede-local",
-                    title: "Rede local",
-                    description: "Lição.",
-                    sourceGuideStructured: {
-                      lessonGoal: "Distinguir rede local e internet.",
-                      notationRules: "Usar `LAN` e `internet`.",
-                      commonErrors: "Confundir rede local com internet."
-                    },
-                    domainMap: {
-                      items: [
-                        {
-                          id: "domain-lan",
-                          label: "Distinguir rede local e internet",
-                          kind: "concept",
-                          priority: "core"
-                        }
-                      ],
-                      practiceVariants: [
-                        {
-                          id: "variant-lan-discriminacao",
-                          domainItemRef: "domain-lan",
-                          variantKind: "discrimination",
-                          purpose: "Separar exemplos de rede local e internet."
-                        }
-                      ]
-                    },
-                    presetId: "default",
-                    resourceTags: ["paragraph", "multiple_choice"],
-                    contentTypeTags: ["theory"],
-                    learningActionTags: ["read", "practice"],
-                    supportLevel: "guided",
-                    microsequences: []
-                  }
-                ]
-              }
-            ]
-          }
-        }
-      ],
-      audit_architecture: [{ approved: true, blockingIssues: [], warnings: [] }],
-      plan_lessons: [
-        {
-          lessonPlans: [
-            {
-              courseKey: "course-redes",
-              moduleKey: "module-intro",
-              lessonKey: "lesson-rede-local",
-              lessonTitle: "Rede local",
-              lessonDescription: "Lição.",
-              sourceGuideStructured: {
-                lessonGoal: "Distinguir rede local e internet.",
-                notationRules: "Usar `LAN` e `internet`.",
-                commonErrors: "Confundir rede local com internet."
-              },
-              domainMap: {
-                items: [
-                  {
-                    id: "domain-lan",
-                    label: "Distinguir rede local e internet",
-                    kind: "concept",
-                    priority: "core"
-                  }
-                ],
-                practiceVariants: [
-                  {
-                    id: "variant-lan-discriminacao",
-                    domainItemRef: "domain-lan",
-                    variantKind: "discrimination",
-                    purpose: "Separar exemplos de rede local e internet."
-                  }
-                ]
-              },
-              presetId: "default",
-              resourceTags: ["paragraph", "multiple_choice"],
-              contentTypeTags: ["theory"],
-              learningActionTags: ["read", "practice"],
-              supportLevel: "guided"
-            }
-          ]
-        }
-      ],
-      plan_microsequences: [
-        {
-          microsequencePlans: [
-            {
-              lessonKey: "lesson-rede-local",
-              moduleKey: "module-intro",
-              courseKey: "course-redes",
-              microsequences: [
-                {
-                  key: "microsequence-diferenca-basica",
-                  title: "Diferença básica",
-                  objective: "Explicar o contraste entre rede local e internet.",
-                  coverageRole: "practice"
-                }
-              ]
-            }
-          ]
-        }
-      ],
-      audit_microsequences: [{ approved: true, issues: [], warnings: [] }],
       build_cards: [
         {
           cards: [
@@ -6217,12 +5841,83 @@ test("audit_source_adherence usa domainMap explícito para fechar cobertura mín
   const registry = createProviderRegistry({ providers: [provider] });
   const result = await runCourseForge({
     intent: {
-      operation: "create",
-      scope: { level: "project" },
-      promptText: "Criar curso de redes.",
+      operation: "repair",
+      scope: {
+        level: "microsequence",
+        courseKey: "course-redes",
+        moduleKey: "module-intro",
+        lessonKey: "lesson-rede-local",
+        microsequenceKey: "microsequence-diferenca-basica"
+      },
+      promptText: "Gerar os cards desta microssequência.",
       attachments: [{ id: "src_1", name: "ementa.pdf", type: "application/pdf" }]
     },
-    projectDocument: createProject(),
+    projectDocument: {
+      contract: "aralearn.contract",
+      version: 1,
+      kind: "project",
+      courses: [
+        {
+          key: "course-redes",
+          title: "Redes",
+          modules: [
+            {
+              key: "module-intro",
+              title: "Fundamentos",
+              lessons: [
+                {
+                  key: "lesson-rede-local",
+                  title: "Rede local",
+                  description: "Lição.",
+                  sourceGuideStructured: {
+                    lessonGoal: "Distinguir rede local e internet.",
+                    notationRules: "Usar `LAN` e `internet`.",
+                    commonErrors: "Confundir rede local com internet."
+                  },
+                  domainMap: {
+                    items: [
+                      {
+                        id: "domain-lan",
+                        label: "Distinguir rede local e internet",
+                        kind: "concept",
+                        priority: "core"
+                      }
+                    ],
+                    practiceVariants: [
+                      {
+                        id: "variant-lan-discriminacao",
+                        domainItemRef: "domain-lan",
+                        variantKind: "discrimination",
+                        purpose: "Separar exemplos de rede local e internet."
+                      }
+                    ]
+                  },
+                  presetId: "default",
+                  resourceTags: ["paragraph", "multiple_choice"],
+                  contentTypeTags: ["theory"],
+                  learningActionTags: ["read", "practice"],
+                  supportLevel: "guided",
+                  microsequences: [
+                    {
+                      key: "microsequence-diferenca-basica",
+                      title: "Diferença básica",
+                      description: "Contraste inicial.",
+                      didacticPurpose: "Explicar o contraste entre rede local e internet.",
+                      coverageRole: "practice",
+                      status: "draft",
+                      included: false,
+                      domainRefs: ["domain-lan"],
+                      practiceVariantRefs: ["variant-lan-discriminacao"],
+                      cards: []
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
     providerRegistry: registry,
     providerId: "fake"
   });
@@ -6231,22 +5926,13 @@ test("audit_source_adherence usa domainMap explícito para fechar cobertura mín
   const microsequence = lesson.microsequences[0];
   const courseIntentArtifact = result.artifacts.find((item) => item.name === "course-intent");
   const assessmentProfileArtifact = result.artifacts.find((item) => item.name === "assessment-profile");
-  const courseGraphArtifact = result.artifacts.find((item) => item.name === "course-graph");
-  const lessonGovernanceArtifact = result.artifacts.find((item) => item.name === "lesson-governance");
   const cardPlansArtifact = result.artifacts.find((item) => item.name === "card-plans");
-  const courseGraphAuditArtifact = result.artifacts.find((item) => item.name === "course-graph-audit");
   assert.equal(lesson.domainMap.items[0].id, "domain-lan");
   assert.deepEqual(microsequence.domainRefs, ["domain-lan"]);
   assert.deepEqual(microsequence.practiceVariantRefs, ["variant-lan-discriminacao"]);
   assert.equal(courseIntentArtifact.artifactType, "CourseIntent");
   assert.equal(assessmentProfileArtifact.artifactType, "AssessmentProfile");
-  assert.equal(courseGraphArtifact.artifactType, "CourseGraph");
-  assert.equal(courseGraphAuditArtifact.artifactType, "CourseGraphAudit");
-  assert.equal(lessonGovernanceArtifact.artifactType, "LessonGovernanceSet");
   assert.equal(cardPlansArtifact.artifactType, "CardPlanSet");
-  assert.equal(courseGraphAuditArtifact.content.approved, true);
-  assert.equal(courseGraphArtifact.content.concepts[0].conceptId, "domain-lan");
-  assert.equal(lessonGovernanceArtifact.content[0].lessonKey, "lesson-rede-local");
   assert.equal(cardPlansArtifact.content[0].cards[0].role, "anchor");
   const sourceAudit = result.artifacts.find((item) => item.name === "source-adherence-audit");
   const diagnostics = result.artifacts.find((item) => item.name === "diagnostics-summary");
@@ -6256,9 +5942,7 @@ test("audit_source_adherence usa domainMap explícito para fechar cobertura mín
   assert.equal(diagnostics.content.categories.intervention.promptBudget.providerTask, null);
   assert.deepEqual(diagnostics.content.categories.intervention.budgetWarnings, []);
   assert.equal(diagnostics.content.categories.intervention.reviewRecommendation, null);
-  assert.equal(diagnostics.content.categories.planning.promptBudget.promptType, "microsequence_repair_task");
-  assert.equal(diagnostics.content.categories.planning.promptBudget.selectedCount, 0);
-  assert.equal(diagnostics.content.categories.planning.promptBudget.omittedCount, 0);
+  assert.equal(diagnostics.content.categories.planning.promptBudget, null);
   assert.deepEqual(diagnostics.content.categories.planning.budgetWarnings, []);
   assert.equal(diagnostics.content.categories.planning.reviewRecommendation, null);
   assert.deepEqual(diagnostics.content.reviewCandidates, []);
@@ -6521,83 +6205,6 @@ test("repairCourseForgeMicrosequenceMetadataDeterministically infere metadados b
 test("repair_card_adherence separa grounding tardio de defeito estrutural dos cards", async () => {
   const provider = createFakeProvider({
     script: {
-      plan_architecture: [
-        {
-          course: {
-            key: "course-logica",
-            title: "Lógica",
-            description: "Curso.",
-            modules: [
-              {
-                key: "module-base",
-                title: "Base",
-                description: "Módulo.",
-                lessons: [
-                  {
-                    key: "lesson-proposicoes",
-                    title: "Proposições",
-                    description: "Lição.",
-                    sourceGuideStructured: {
-                      lessonGoal: "Reconhecer proposições.",
-                      notationRules: "Usar `p` e `q`.",
-                      commonErrors: "Confundir pergunta com proposição."
-                    },
-                    presetId: "default",
-                    resourceTags: ["paragraph", "multiple_choice"],
-                    contentTypeTags: ["theory"],
-                    learningActionTags: ["read"],
-                    supportLevel: "guided"
-                  }
-                ]
-              }
-            ]
-          }
-        }
-      ],
-      audit_architecture: [{ approved: true, blockingIssues: [], warnings: [] }],
-      plan_lessons: [
-        {
-          lessonPlans: [
-            {
-              courseKey: "course-logica",
-              moduleKey: "module-base",
-              lessonKey: "lesson-proposicoes",
-              lessonTitle: "Proposições",
-              lessonDescription: "Lição.",
-              sourceGuideStructured: {
-                lessonGoal: "Reconhecer proposições.",
-                notationRules: "Usar `p` e `q`.",
-                commonErrors: "Confundir pergunta com proposição."
-              },
-              presetId: "default",
-              resourceTags: ["paragraph", "multiple_choice"],
-              contentTypeTags: ["theory"],
-              learningActionTags: ["read"],
-              supportLevel: "guided"
-            }
-          ]
-        }
-      ],
-      plan_microsequences: [
-        {
-          microsequencePlans: [
-            {
-              lessonKey: "lesson-proposicoes",
-              moduleKey: "module-base",
-              courseKey: "course-logica",
-              microsequences: [
-                {
-                  key: "microsequence-reconhecimento",
-                  title: "Reconhecimento inicial",
-                  objective: "Diferenciar proposições de outros enunciados.",
-                  coverageRole: "core"
-                }
-              ]
-            }
-          ]
-        }
-      ],
-      audit_microsequences: [{ approved: true, issues: [], warnings: [] }],
       build_cards: [
         {
           cards: [
@@ -6671,12 +6278,63 @@ test("repair_card_adherence separa grounding tardio de defeito estrutural dos ca
   const registry = createProviderRegistry({ providers: [provider] });
   const result = await runCourseForge({
     intent: {
-      operation: "create",
-      scope: { level: "project" },
-      promptText: "Criar curso de lógica.",
+      operation: "repair",
+      scope: {
+        level: "microsequence",
+        courseKey: "course-logica",
+        moduleKey: "module-base",
+        lessonKey: "lesson-proposicoes",
+        microsequenceKey: "microsequence-reconhecimento"
+      },
+      promptText: "Corrigir o grounding desta microssequência.",
       attachments: [{ id: "src_1", name: "ementa.pdf", type: "application/pdf" }]
     },
-    projectDocument: createProject(),
+    projectDocument: {
+      contract: "aralearn.contract",
+      version: 1,
+      kind: "project",
+      courses: [
+        {
+          key: "course-logica",
+          title: "Lógica",
+          modules: [
+            {
+              key: "module-base",
+              title: "Base",
+              lessons: [
+                {
+                  key: "lesson-proposicoes",
+                  title: "Proposições",
+                  description: "Lição.",
+                  sourceGuideStructured: {
+                    lessonGoal: "Reconhecer proposições.",
+                    notationRules: "Usar `p` e `q`.",
+                    commonErrors: "Confundir pergunta com proposição."
+                  },
+                  presetId: "default",
+                  resourceTags: ["paragraph", "multiple_choice"],
+                  contentTypeTags: ["theory"],
+                  learningActionTags: ["read"],
+                  supportLevel: "guided",
+                  microsequences: [
+                    {
+                      key: "microsequence-reconhecimento",
+                      title: "Reconhecimento inicial",
+                      description: "Introdução.",
+                      didacticPurpose: "Diferenciar proposições de outros enunciados.",
+                      coverageRole: "explain",
+                      status: "draft",
+                      included: false,
+                      cards: []
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
     providerRegistry: registry,
     providerId: "fake"
   });

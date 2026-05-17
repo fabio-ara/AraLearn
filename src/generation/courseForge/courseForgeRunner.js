@@ -68,32 +68,6 @@ function buildArchitecturePromptTask(intent = {}, projectDocument = {}) {
   return `${intent.promptText}\n\nContexto do projeto:\n${summary}`;
 }
 
-function shouldMaterializeInitialStudyEntry(intent = {}) {
-  if (text(intent?.generationDepth) !== "full_course") {
-    return false;
-  }
-  if (text(intent?.scope?.level) === "microsequence") {
-    return false;
-  }
-  return ["create", "extend", "merge"].includes(text(intent?.operation));
-}
-
-function selectInitialStudyEntryContracts(contracts = []) {
-  const selectedKeys = new Set();
-  return (Array.isArray(contracts) ? contracts : []).filter((contract) => {
-    const lessonKey = [
-      text(contract?.courseKey),
-      text(contract?.moduleKey),
-      text(contract?.lessonKey)
-    ].join("::");
-    if (!lessonKey || selectedKeys.has(lessonKey)) {
-      return false;
-    }
-    selectedKeys.add(lessonKey);
-    return true;
-  });
-}
-
 function readArchitectureValue(payload = {}) {
   if (payload?.architectureFinal?.course) {
     return payload.architectureFinal;
@@ -1672,9 +1646,6 @@ export async function runCourseForge({
           microsequencePlans: context.microsequencePlans || [],
           sourceLedger: context.sourceLedger || {}
         });
-        if (shouldMaterializeInitialStudyEntry(intent)) {
-          context.microsequenceContracts = selectInitialStudyEntryContracts(context.microsequenceContracts);
-        }
         savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "microsequence-contracts", context.microsequenceContracts);
       } else if (phaseId === "compile_card_plans") {
         context.cardPlans = buildCardPlansArtifact({ microsequenceContracts: context.microsequenceContracts });
