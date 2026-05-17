@@ -39,6 +39,27 @@ function slugify(value = "") {
     .replace(/-{2,}/g, "-");
 }
 
+function normalizedUnique(values = []) {
+  return [...new Set(normalizeArray(values).map(normalizeForMatch).filter(Boolean))];
+}
+
+function stripInstructionalPrefix(value = "", instructionalRole = "") {
+  const normalized = text(value);
+  if (!normalized) {
+    return "";
+  }
+  if (instructionalRole === "objective") {
+    return normalized.replace(/^(objetivo|objetivos|meta|metas|compet[eê]ncia|compet[eê]ncias|habilidade|habilidades)\s*[:\-]\s*/iu, "").trim();
+  }
+  if (instructionalRole === "misconception") {
+    return normalized.replace(/^(erro\s+comum|erros\s+comuns|pegadinha|pegadinhas|confus[aã]o|confus[oõ]es|cuidado)\s*[:\-]\s*/iu, "").trim();
+  }
+  if (instructionalRole === "exercise") {
+    return normalized.replace(/^(exerc[ií]cio|exerc[ií]cios|atividade|atividades|quest[aã]o|quest[oõ]es|desafio|desafios|pr[aá]tica)\s*[:\-]\s*/iu, "").trim();
+  }
+  return normalized;
+}
+
 function findMatchingSourceClaims(queryValues = [], sourceClaims = [], { minimumOverlap = null } = {}) {
   const queryTokens = unique(normalizeArray(queryValues).flatMap((value) => tokenizeForMatch(value)));
   if (queryTokens.length < 2) {
@@ -343,6 +364,114 @@ function buildConfusionSignals({ lessonPlan = {}, sourceClaims = [], lessonConce
     }
   });
   return confusions;
+}
+
+function buildLessonSourceQueryValues(lessonPlan = {}) {
+  const domainMapItems = normalizeArray(lessonPlan?.domainMap?.items);
+  return unique([
+    lessonPlan?.lessonTitle,
+    lessonPlan?.lessonDescription,
+    lessonPlan?.sourceGuideStructured?.lessonGoal,
+    lessonPlan?.sourceGuideStructured?.commonErrors,
+    ...domainMapItems.map((item) => item?.label),
+    ...domainMapItems.flatMap((item) => normalizeArray(item?.expectedEvidence)),
+    ...domainMapItems.flatMap((item) => normalizeArray(item?.commonErrors))
+  ]);
+}
+
+function findRelevantInstructionalSpans({
+  lessonPlan = {},
+  sourceLedger = null,
+  instructionalRole = "",
+  allowSingleLessonFallback = false,
+  maxItems = 3
+} = {}) {
+  const relevantRole = text(instructionalRole);
+  if (!relevantRole) {
+    return [];
+  }
+  const queryTokens = normalizedUnique(buildLessonSourceQueryValues(lessonPlan).flatMap((value) => tokenizeForMatch(value)));
+  const spans = listCourseForgeSourceSpans(sourceLedger)
+    .filter((span) => text(span?.instructionalRole) === relevantRole)
+    .map((span) => {
+      const overlap = queryTokens.length
+        ? tokenizeForMatch(`${text(span?.text)} ${normalizeArray(span?.topics).join(" ")}`)
+            .filter((token) => queryTokens.includes(token))
+            .length
+        : 0;
+      return {
+        ...span,
+        overlap
+      };
+    })
+    .filter((span) => span.overlap > 0 || allowSingleLessonFallback)
+    .sort((left, right) =>
+      right.overlap - left.overlap
+      || text(left?.spanId).localeCompare(text(right?.spanId))
+    );
+  return spans.slice(0, maxItems);
+}
+
+function claimIdsBySpanId(sourceLedger = null) {
+  return listCourseForgeSourceClaims(sourceLedger).reduce((map, claim) => {
+    const spanId = text(claim?.spanId);
+    if (!spanId) {
+      return map;
+    }
+    if (!map.has(spanId)) {
+      map.set(spanId, []);
+    }
+    map.get(spanId).push(text(claim?.claimId));
+    return map;
+  }, new Map());
+}
+
+function deriveGuideValueFromInstructionalSpans(spans = [], instructionalRole = "") {
+  return spans
+    .map((span) => stripInstructionalPrefix(span?.text, instructionalRole))
+    .map(text)
+    .find((value) => value.length >= 8) || "";
+}
+
+export function enrichLessonPlansFromSourceLedger({ lessonPlans = [], sourceLedger = null } = {}) {
+  const normalizedLessonPlans = normalizeArray(lessonPlans);
+  const allowSingleLessonFallback = normalizedLessonPlans.length === 1;
+  return normalizedLessonPlans.map((lessonPlan) => {
+    const sourceGuideStructured = structuredClone(lessonPlan?.sourceGuideStructured || {});
+    const derivedGoal = !text(sourceGuideStructured?.lessonGoal)
+      ? deriveGuideValueFromInstructionalSpans(
+          findRelevantInstructionalSpans({
+            lessonPlan,
+            sourceLedger,
+            instructionalRole: "objective",
+            allowSingleLessonFallback,
+            maxItems: 1
+          }),
+          "objective"
+        )
+      : "";
+    const derivedCommonErrors = !text(sourceGuideStructured?.commonErrors)
+      ? deriveGuideValueFromInstructionalSpans(
+          findRelevantInstructionalSpans({
+            lessonPlan,
+            sourceLedger,
+            instructionalRole: "misconception",
+            allowSingleLessonFallback,
+            maxItems: 1
+          }),
+          "misconception"
+        )
+      : "";
+
+    return {
+      ...structuredClone(lessonPlan),
+      sourceGuideStructured: {
+        ...sourceGuideStructured,
+        ...(derivedGoal ? { lessonGoal: derivedGoal } : {}),
+        ...(derivedCommonErrors ? { commonErrors: derivedCommonErrors } : {})
+      }
+    };
+  });
 }
 
 export function buildCourseIntentArtifact(intent = {}) {
@@ -691,6 +820,7 @@ function ensureUniqueGraphId(baseId = "", lessonKey = "", usedIds = new Set()) {
 }
 
 export function buildCourseGraphArtifact({ architectureDraft = {}, lessonPlans = [], microsequencePlans = [], sourceLedger = null } = {}) {
+  const normalizedLessonPlans = enrichLessonPlansFromSourceLedger({ lessonPlans, sourceLedger });
   const concepts = [];
   const objectives = [];
   const prerequisiteEdges = [];
@@ -698,12 +828,14 @@ export function buildCourseGraphArtifact({ architectureDraft = {}, lessonPlans =
   const assessmentTargets = [];
   const practiceVariants = [];
   const sourceClaims = listCourseForgeSourceClaims(sourceLedger);
+  const sourceClaimIdsBySpan = claimIdsBySpanId(sourceLedger);
 
-  const lessonByKey = new Map(normalizeArray(lessonPlans).map((item) => [text(item?.lessonKey), item]));
+  const lessonByKey = new Map(normalizeArray(normalizedLessonPlans).map((item) => [text(item?.lessonKey), item]));
   const usedConceptIds = new Set();
   const usedPracticeVariantIds = new Set();
+  const allowSingleLessonFallback = normalizedLessonPlans.length === 1;
 
-  normalizeArray(lessonPlans).forEach((lessonPlan) => {
+  normalizeArray(normalizedLessonPlans).forEach((lessonPlan) => {
     const lessonKey = text(lessonPlan?.lessonKey);
     const domainMap = normalizeLessonDomainMap(lessonPlan?.domainMap || {}, {
       lessonMicrosequences: [],
@@ -894,6 +1026,26 @@ export function buildCourseGraphArtifact({ architectureDraft = {}, lessonPlans =
         description: text(sourceGuide.commonErrors)
       });
     }
+    findRelevantInstructionalSpans({
+      lessonPlan,
+      sourceLedger,
+      instructionalRole: "exercise",
+      allowSingleLessonFallback,
+      maxItems: 3
+    }).forEach((span, index) => {
+      const description = stripInstructionalPrefix(span?.text, "exercise");
+      const normalizedDescription = normalizeForMatch(description);
+      if (!description || assessmentTargets.some((target) => normalizeForMatch(target?.description) === normalizedDescription)) {
+        return;
+      }
+      assessmentTargets.push({
+        targetId: `${lessonKey}:assessment:exercise:${index + 1}`,
+        lessonKey,
+        targetKind: "exercise_prompt",
+        sourceClaimRefs: unique(sourceClaimIdsBySpan.get(text(span?.spanId)) || []),
+        description
+      });
+    });
   });
 
   normalizeArray(microsequencePlans).forEach((lessonPlan) => {

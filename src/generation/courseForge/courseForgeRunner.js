@@ -16,6 +16,7 @@ import {
   buildCardPlansArtifact,
   buildCourseGraphArtifact,
   buildCourseIntentArtifact,
+  enrichLessonPlansFromSourceLedger,
   buildLessonGovernanceArtifact,
   buildSourceLedgerArtifact
 } from "./courseForgeIr.js";
@@ -1419,7 +1420,10 @@ export async function runCourseForge({
             { id: "architecture-final", name: "architecture-final", content: JSON.stringify(context.architectureFinal || {}) }
           ]
         });
-        context.lessonPlans = normalizeLessonPlans(response.value || response || {}, context.architectureFinal || {});
+        context.lessonPlans = enrichLessonPlansFromSourceLedger({
+          lessonPlans: normalizeLessonPlans(response.value || response || {}, context.architectureFinal || {}),
+          sourceLedger: context.sourceLedger || []
+        });
         const lessonValidation = validateCourseForgeLessonPlanSet({
           architectureDraft: context.architectureFinal || {},
           lessonPlans: context.lessonPlans
@@ -1444,6 +1448,10 @@ export async function runCourseForge({
           if (!context.lessonPlans.length) {
             throw new Error("Escopo sem lições válidas para construir CourseGraph.");
           }
+          context.lessonPlans = enrichLessonPlansFromSourceLedger({
+            lessonPlans: context.lessonPlans,
+            sourceLedger: context.sourceLedger || []
+          });
           savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "lesson-plans", context.lessonPlans);
         }
         context.courseGraph = buildCourseGraphArtifact({

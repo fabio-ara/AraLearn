@@ -24,7 +24,7 @@ import { canResumeCourseForgeRun, createCourseForgeRunState } from "../src/gener
 import { runCourseForgeQueue } from "../src/generation/courseForge/courseForgeQueue.js";
 import { runCourseForge, buildDiagnosticsSummary, buildMicrosequenceRepairTask } from "../src/generation/courseForge/courseForgeRunner.js";
 import { applyCourseForgePatch } from "../src/generation/courseForge/courseForgeApply.js";
-import { buildCourseGraphArtifact } from "../src/generation/courseForge/courseForgeIr.js";
+import { buildCourseGraphArtifact, enrichLessonPlansFromSourceLedger } from "../src/generation/courseForge/courseForgeIr.js";
 import {
   constrainCourseForgeMicrosequencePlansToInterventionPlan,
   compileCourseForgeEditorInterventionPlan,
@@ -942,6 +942,95 @@ test("course graph materializa misconception de discriminacao a partir de common
   assert.equal(misconception?.conceptRef, "concept-and");
   assert.deepEqual(misconception?.relatedConceptRefs, ["concept-and", "concept-or"]);
   assert.ok(Array.isArray(misconception?.sourceClaimRefs) && misconception.sourceClaimRefs.length >= 1);
+});
+
+test("enrichLessonPlansFromSourceLedger deriva governanca minima a partir de spans instrucionais", () => {
+  const sourceLedgerResult = validateCourseForgeSourceLedger([
+    {
+      id: "src_1",
+      title: "Redes",
+      spans: [
+        {
+          text: "Objetivo: distinguir rede local e internet.",
+          instructionalRole: "objective"
+        },
+        {
+          text: "Erro comum: confundir rede local com internet.",
+          instructionalRole: "misconception"
+        }
+      ]
+    }
+  ]);
+
+  const lessonPlans = enrichLessonPlansFromSourceLedger({
+    lessonPlans: [
+      {
+        lessonKey: "lesson-1",
+        lessonTitle: "Redes básicas",
+        sourceGuideStructured: {},
+        domainMap: {
+          items: [
+            { id: "lan", label: "Rede local" },
+            { id: "internet", label: "Internet" }
+          ]
+        }
+      }
+    ],
+    sourceLedger: sourceLedgerResult.sourceLedger
+  });
+
+  assert.equal(lessonPlans[0].sourceGuideStructured.lessonGoal, "distinguir rede local e internet.");
+  assert.equal(lessonPlans[0].sourceGuideStructured.commonErrors, "confundir rede local com internet.");
+});
+
+test("course graph deriva objetivo, erro comum e assessmentTargets de exercicio a partir do SourceLedger", () => {
+  const sourceLedgerResult = validateCourseForgeSourceLedger([
+    {
+      id: "src_1",
+      title: "Redes",
+      spans: [
+        {
+          spanId: "src_1:span:1",
+          text: "Objetivo: distinguir rede local e internet.",
+          instructionalRole: "objective"
+        },
+        {
+          spanId: "src_1:span:2",
+          text: "Erro comum: confundir rede local com internet.",
+          instructionalRole: "misconception"
+        },
+        {
+          spanId: "src_1:span:3",
+          text: "Exercício: compare rede local e internet em dois cenários.",
+          instructionalRole: "exercise"
+        }
+      ]
+    }
+  ]);
+
+  const courseGraph = buildCourseGraphArtifact({
+    lessonPlans: [
+      {
+        lessonKey: "lesson-1",
+        lessonTitle: "Redes básicas",
+        sourceGuideStructured: {},
+        domainMap: {
+          items: [
+            { id: "lan", label: "Rede local" },
+            { id: "internet", label: "Internet" }
+          ],
+          practiceVariants: []
+        }
+      }
+    ],
+    sourceLedger: sourceLedgerResult.sourceLedger
+  });
+
+  assert.equal(courseGraph.objectives[0].description, "distinguir rede local e internet.");
+  assert.ok(courseGraph.misconceptions.some((item) => item.description === "confundir rede local com internet."));
+  const exerciseTarget = courseGraph.assessmentTargets.find((item) => item.targetKind === "exercise_prompt");
+  assert.equal(exerciseTarget?.description, "compare rede local e internet em dois cenários.");
+  assert.ok(Array.isArray(exerciseTarget?.sourceClaimRefs) && exerciseTarget.sourceClaimRefs.length >= 1);
 });
 
 test("lesson domain map cria practiceVariants de fallback quando a lição só tem governança mínima", () => {
