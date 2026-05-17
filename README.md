@@ -62,11 +62,10 @@ Meticulosidade, aqui, significa decomposição, progressão, prática com finali
 No estado atual, o AraLearn reúne:
 
 - organização de conteúdos em cursos, módulos, lições, microssequências e cards;
-- geração estrutural contextual em home, curso e módulo;
-- criação de rascunhos de microssequências a partir do contexto de uma lição;
-- geração e edição de cards no painel da microssequência;
+- geração estrutural contextual em home, curso, módulo e lição pelo `CourseForge`;
+- intervenção local de geração e edição de cards no painel da microssequência;
 - governança didática por lição com `sourceGuideStructured`, `presetId`, catálogos fechados e, quando houver, `domainMap`;
-- motor interno em refatoração para top-down completo por fases, com planejamento, auditoria e reparo locais;
+- motor `CourseForge` por fases para top-down e intervenção local, com planejamento, auditoria e reparo;
 - recursos de navegação, edição, ordenação, importação, exportação e estudo;
 - execução de cards com progresso local;
 - edição de microssequências e cards;
@@ -140,10 +139,9 @@ Desde que obedeçam ao contrato `aralearn.contract`, podem ser importados:
 
 A aplicação também trabalha com `aralearn.storage`, formato de backup completo que preserva projeto e progresso local.
 
-No estado atual do produto, é importante separar duas camadas dessa trilha top-down:
+No estado atual do produto, essa trilha estrutural pública já foi consolidada no `CourseForge`. O mesmo motor por fases atende home, curso, módulo e lição, sempre dentro do escopo selecionado e com patch auditado antes da aplicação.
 
-- a camada pública já ligada à interface, que gera estrutura em home, curso e módulo e gera microssequências `draft` na lição;
-- a nova camada `CourseForge`, já conectada ao painel público de geração estrutural para o fluxo top-down, enquanto a geração contextual de microssequências na lição e o workbench local continuam em trilha própria.
+O workbench da microssequência continua existindo, mas com outra função: ele não é mais um branch estrutural paralelo da lição. Hoje ele é a superfície local de intervenção, reparo e iteração sobre os cards da microssequência selecionada.
 
 ---
 
@@ -292,7 +290,9 @@ Essas opções chegam ao Gemini como listas fechadas do próprio AraLearn. O mod
 
 Na segunda etapa, a inteligência artificial recebe apenas o plano aprovado e preenche os cards. Ela não deve alterar quantidade, ordem, posições, papéis ou recursos dos cards.
 
-Em paralelo ao fluxo contextual já exposto na interface, o repositório passou a abrigar uma refatoração do top-down chamada `CourseForge`. Ela já executa fases separadas de planejamento, auditoria, reparo e compilação de patch, inclusive para árvore estrutural, microssequências e cards. No estado atual, esse motor já atende o painel público de geração estrutural; o que ainda não foi substituído é a trilha contextual de geração de microssequências `draft` na lição e a edição local no workbench.
+O `CourseForge` passou a ser o runtime público da geração estrutural. Ele executa fases separadas de planejamento, auditoria, reparo e compilação de patch para árvore estrutural, microssequências e cards, inclusive no escopo da lição.
+
+O que permanece fora do top-down não é um motor concorrente de lição, e sim a intervenção local do painel da microssequência: ali o app opera sobre cards do item selecionado, com iteração, reversão e aceite local.
 
 Prompts e validações agora reforçam:
 
@@ -311,7 +311,7 @@ Microssequências geradas a partir do contexto de uma lição nascem como rascun
 
 No fluxo atual, é importante separar dois casos:
 
-- a geração de microssequências cria itens `draft` fora do estudo;
+- quando o patch cria ou mantém microssequências em `draft`, elas continuam fora do estudo;
 - a geração ou edição de cards no painel da microssequência aplica a iteração diretamente no conteúdo em uso, mas mantém reversão local por versões.
 
 O fluxo esperado de microssequências continua sendo:
@@ -528,7 +528,7 @@ Valide o exemplo renderizável do contrato:
 npm run validate:example
 ```
 
-Para verificar a geração real de microssequências com Gemini, defina a chave no ambiente da sessão e rode:
+Para verificar o fluxo real do `CourseForge` com Gemini, defina a chave no ambiente da sessão e rode:
 
 ```powershell
 $env:GEMINI_API_KEY="sua-chave"
@@ -571,14 +571,14 @@ Do ponto de vista conceitual, o projeto já tem direção nítida:
 
 A documentação pública procura expor essa direção com transparência: quando uma decisão encontra respaldo forte em literatura, isso é dito; quando se trata de solução arquitetural do próprio produto, isso também é dito; quando um efeito ainda depende de avaliação situada no AraLearn, a documentação evita apresentar hipótese como fato consumado.
 
-Hoje isso vale também para a refatoração top-down: o app já usa a camada por fases no painel estrutural público, mas ainda preserva o workbench da microssequência e a geração contextual de `drafts` como trilhas locais separadas.
+Hoje isso vale também para a geração por IA: o app já usa a camada por fases no painel estrutural público em todos os escopos até a lição, e preserva o workbench apenas como superfície local de intervenção sobre cards.
 
 Na ingestão de fontes, a prioridade operacional atual é texto simples, `PDF` e `DOCX`. O objetivo imediato não é reconstrução visual completa do documento, mas extração textual suficiente para alimentar o `SourceLedger` com grounding auditável e custo controlado.
 
 Versão atual do pacote:
 
 ```text
-0.1.4
+0.9.24
 ```
 
 As próximas iterações devem aprofundar:

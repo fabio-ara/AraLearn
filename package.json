@@ -1,6 +1,6 @@
 {
   "name": "aralearn",
-  "version": "0.1.4",
+  "version": "0.9.24",
   "private": true,
   "description": "Base inicial pública do AraLearn.",
   "type": "module",

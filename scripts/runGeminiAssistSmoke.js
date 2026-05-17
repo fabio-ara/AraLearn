@@ -1,146 +1,140 @@
-import { runGeminiAssist } from "../src/assist/geminiAssist.js";
+import { runCourseForge } from "../src/generation/courseForge/courseForgeRunner.js";
+import { resolveCourseForgeLaunchConfig } from "../src/generation/runtime/courseForgeLaunchConfig.js";
 
 const apiKey =
   process.env.GEMINI_API_KEY ||
   process.env.GOOGLE_API_KEY ||
   process.env.GOOGLE_AI_API_KEY;
-const model = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+const selectedModel = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 
-const prompts = [
-  "explique os comandos git init, git add, git commit e git push",
-  "explique a diferença entre modelos incremental e iterativo, no contexto da engenharia de software",
-  "diferencie missão, visão e valores, no contexto de administração de empresas",
-  "monte um fluxograma para decidir se um número inteiro é par ou ímpar",
-  "explique ponteiros em linguagem C para quem conhece variáveis comuns",
-  "explique modus ponens em lógica proposicional com uma tabela verdade pequena",
-  "explique ls, cd, mkdir e chmod no shell Linux"
-];
+function text(value) {
+  return typeof value === "string" ? value.trim() : "";
+}
 
 function fail(message) {
   throw new Error(message);
 }
 
-function normalizeText(value) {
-  return typeof value === "string" ? value.trim() : "";
+function createSmokeProjectDocument() {
+  return {
+    contract: "aralearn.contract",
+    version: 1,
+    kind: "project",
+    courses: [
+      {
+        key: "course-smoke",
+        title: "Curso de smoke",
+        description: "Projeto mínimo para validar o fluxo real do CourseForge com Gemini.",
+        modules: [
+          {
+            key: "module-shell",
+            title: "Shell Linux",
+            description: "Módulo mínimo de teste.",
+            lessons: [
+              {
+                key: "lesson-navegacao",
+                title: "Navegação básica no terminal",
+                description: "Lição vazia para o smoke real do runtime atual.",
+                sourceGuideStructured: {
+                  lessonGoal: "Fazer o aluno navegar pelo sistema de arquivos com cd, pwd e ls.",
+                  lessonPrerequisites: "Assumir apenas leitura básica de caminhos e noção simples de pasta.",
+                  notationRules: "Usar comandos com crases e mostrar caminhos curtos como `/home/aluno`.",
+                  commonErrors: "Confundir diretório atual com conteúdo listado e usar `cd` sem destino.",
+                  masteryGoal: "Interpretar pwd, listar com ls e trocar de diretório com exemplos curtos."
+                },
+                microsequences: []
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  };
 }
 
-function getCardKind(card) {
-  if (card?.ask) return "ask";
-  if (card?.code) return "code";
-  if (card?.table) return "table";
-  if (card?.flow) return "flow";
-  if (card?.tree) return "tree";
-  return "say";
-}
-
-function getCardBody(card) {
-  if (card?.say) return card.say;
-  if (card?.ask) return card.ask;
-  if (card?.code) return card.code;
-  if (card?.table) return JSON.stringify(card.table);
-  if (card?.flow) return JSON.stringify(card.flow);
-  if (card?.tree) return JSON.stringify(card.tree);
-  return "";
-}
-
-function hasTextGap(value) {
-  return /\[\[[\s\S]*?\]\]/.test(normalizeText(value));
-}
-
-function hasOpenTextGap(value) {
-  for (const match of normalizeText(value).matchAll(/\[\[([\s\S]*?)\]\]/g)) {
-    if (!normalizeText(match[1]).includes("::")) {
-      return true;
-    }
-  }
-  return false;
-}
-
-function assessMicrosequence(result) {
+function assessGeneratedLesson(projectDocument = {}) {
+  const lesson = projectDocument?.courses?.[0]?.modules?.[0]?.lessons?.[0];
+  const microsequences = Array.isArray(lesson?.microsequences) ? lesson.microsequences : [];
   const issues = [];
-  const cards = Array.isArray(result?.cards) ? result.cards : [];
-  if (cards.length < 3 || cards.length > 5) {
-    issues.push(`quantidade inválida de cards: ${cards.length}`);
+
+  if (!microsequences.length) {
+    issues.push("nenhuma microssequência foi criada");
+    return { issues, microsequences };
   }
 
-  const kinds = new Set(cards.map(getCardKind));
-  if (kinds.size < 2) {
-    issues.push("variedade insuficiente de contêineres");
-  }
-  if (kinds.has("flow")) {
-    issues.push("fluxograma gerado nesta etapa de teste");
-  }
-
-  cards.forEach((card, index) => {
-    const body = normalizeText(getCardBody(card));
-    if (!normalizeText(card?.title)) {
-      issues.push(`card ${index + 1} sem título`);
+  microsequences.forEach((microsequence, microIndex) => {
+    const cards = Array.isArray(microsequence?.cards) ? microsequence.cards : [];
+    if (!text(microsequence?.title)) {
+      issues.push(`microssequência ${microIndex + 1} sem título`);
     }
-    if (body.length < 20) {
-      issues.push(`card ${index + 1} com conteúdo insuficiente`);
+    if (cards.length < 3) {
+      issues.push(`microssequência ${microIndex + 1} com poucos cards (${cards.length})`);
     }
-    if (/Resposta correta|Distrator \d|complete o exemplo/i.test(body)) {
-      issues.push(`card ${index + 1} parece genérico demais`);
-    }
-    if (card?.ask && (!normalizeText(card.answer) || !Array.isArray(card.wrong) || card.wrong.length < 2)) {
-      issues.push(`card ${index + 1} tem múltipla escolha incompleta`);
-    }
-    if (hasTextGap(body) && hasOpenTextGap(body) && (!Array.isArray(card?.wrong) || card.wrong.length < 2)) {
-      issues.push(`card ${index + 1} tem lacuna sem opções selecionáveis`);
-    }
+    cards.forEach((card, cardIndex) => {
+      if (!text(card?.title)) {
+        issues.push(`card ${microIndex + 1}.${cardIndex + 1} sem título`);
+      }
+      const hasBody = [card?.say, card?.ask, card?.code, card?.table, card?.flow, card?.tree, card?.matrix, card?.plane]
+        .some((value) => (typeof value === "string" ? text(value) : value));
+      if (!hasBody) {
+        issues.push(`card ${microIndex + 1}.${cardIndex + 1} sem conteúdo útil`);
+      }
+    });
   });
 
-  return issues;
+  return { issues, microsequences };
 }
 
-function summarizeMicrosequence(result) {
-  const cards = Array.isArray(result?.cards) ? result.cards : [];
-  return [
-    `Título: ${result.microsequenceTitle}`,
-    `Tags: ${(result.tags || []).join(", ") || "sem tags"}`,
-    ...cards.map((card, index) => {
-      const kind = getCardKind(card);
-      const body = normalizeText(getCardBody(card)).replace(/\s+/g, " ");
-      return `${index + 1}. ${kind} · ${card.title || "Card"} · ${body.slice(0, 120)}`;
+function summarizeMicrosequences(microsequences = []) {
+  return microsequences
+    .map((microsequence, index) => {
+      const cards = Array.isArray(microsequence?.cards) ? microsequence.cards : [];
+      const cardTitles = cards.map((card) => text(card?.title) || "Card sem título").join(" | ");
+      return `${index + 1}. ${text(microsequence?.title) || "Microssequência sem título"} (${cards.length} cards)\n   ${cardTitles}`;
     })
-  ].join("\n");
+    .join("\n");
 }
 
 if (!apiKey) {
-  fail(
-    "Defina GEMINI_API_KEY, GOOGLE_API_KEY ou GOOGLE_AI_API_KEY no ambiente antes de rodar este teste."
-  );
+  fail("Defina GEMINI_API_KEY, GOOGLE_API_KEY ou GOOGLE_AI_API_KEY no ambiente antes de rodar este teste.");
 }
 
-let failures = 0;
+const projectDocument = createSmokeProjectDocument();
+const launchConfig = resolveCourseForgeLaunchConfig({
+  selectedModel,
+  apiKey
+});
 
-for (const promptText of prompts) {
-  console.log(`\n## Pedido\n${promptText}`);
-  try {
-    const result = await runGeminiAssist({
-      apiKey,
-      model,
-      mode: "compose-microsequence",
-      microsequence: { title: "Gerador", tags: [], cards: [] },
-      promptText
-    });
-    const issues = assessMicrosequence(result);
-    console.log(summarizeMicrosequence(result));
-    if (issues.length) {
-      failures += 1;
-      console.log(`Problemas: ${issues.join("; ")}`);
-    } else {
-      console.log("Resultado: aceitável");
-    }
-  } catch (error) {
-    failures += 1;
-    console.log(`Falha: ${error instanceof Error ? error.message : String(error)}`);
-  }
+const result = await runCourseForge({
+  intent: {
+    operation: "create",
+    scope: {
+      level: "lesson",
+      courseKey: "course-smoke",
+      moduleKey: "module-shell",
+      lessonKey: "lesson-navegacao"
+    },
+    promptText: "Crie uma microssequência curta e prática para iniciantes sobre pwd, ls e cd, com foco em navegação básica no terminal.",
+    attachments: []
+  },
+  projectDocument,
+  providerRegistry: launchConfig.providerRegistry,
+  providerId: launchConfig.providerId
+});
+
+const { issues, microsequences } = assessGeneratedLesson(result.projectDocument);
+const patchOperations = Array.isArray(result?.patch?.operations) ? result.patch.operations.length : 0;
+
+console.log(`Modelo: ${selectedModel}`);
+console.log(`Patch operations: ${patchOperations}`);
+console.log(summarizeMicrosequences(microsequences));
+
+if (!patchOperations) {
+  fail("O smoke não produziu operações de patch.");
 }
 
-if (failures) {
-  process.exitCode = 1;
-  console.log(`\n${failures} pedido(s) precisam de ajuste.`);
-} else {
-  console.log("\nTodos os pedidos produziram microssequências aceitáveis pelos critérios automáticos.");
+if (issues.length) {
+  fail(`O smoke gerou conteúdo inválido: ${issues.join("; ")}`);
 }
+
+console.log("Smoke concluído com sucesso.");

@@ -28,6 +28,9 @@ jobs:
         with:
           node-version: 22
 
+      - name: Instalar dependências
+        run: npm ci
+
       - name: Validar testes
         run: npm test
 

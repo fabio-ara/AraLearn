@@ -4,7 +4,16 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ## [Unreleased]
 
-## [0.1.4] - 2026-05-15
+## [0.9.24] - 2026-05-17
+
+### Changed
+
+- o workflow do GitHub Pages passa a instalar dependências antes de validar testes e gerar o artefato público
+- a build pública do Pages passa a publicar também os assets de `pdfjs-dist` e `mammoth` usados pela ingestão de `PDF` e `DOCX` em runtime
+- o smoke de Gemini deixa de apontar para o stack removido de `assist` e passa a validar o fluxo real do `CourseForge` no runtime atual
+- o `README` e o changelog público passam a descrever o estado atual do produto, com geração estrutural unificada no `CourseForge` e workbench local reduzido à intervenção de cards
+
+## [0.9.23] - 2026-05-15
 
 ### Changed
 

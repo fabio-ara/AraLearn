@@ -61,9 +61,8 @@ No estado atual, o app já reúne um conjunto funcional relevante:
 - importação e exportação de estrutura;
 - backup completo do estado local;
 - persistência de progresso no dispositivo;
-- geração estrutural contextual;
-- geração contextual de microssequências na lição;
-- geração e edição de cards no painel da microssequência;
+- geração estrutural contextual em home, curso, módulo e lição pelo `CourseForge`;
+- geração e edição local de cards no painel da microssequência;
 - aplicação direta de iterações com possibilidade de aceitar ou excluir;
 - separação entre rascunho (`draft`) e conteúdo pronto para estudo;
 - exclusão do estudo por `included: false` sem apagar a microssequência da árvore;
