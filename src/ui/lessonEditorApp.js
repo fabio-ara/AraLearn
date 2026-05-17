@@ -82,6 +82,14 @@ import {
 } from "../flowchart/flowchartExercise.js";
 import { computeFlowchartAutoFitScale } from "../flowchart/flowchartViewport.js";
 import {
+  buildCourseNavigationState,
+  buildLessonNavigationState,
+  buildModuleNavigationState,
+  buildNavigationViewState,
+  resolveFirstSelection,
+  resolveSelectionByKeys as resolveSelectionByKeysRuntime
+} from "./lessonEditorNavigation.js";
+import {
   buildCardPathKey,
   collectAssistDependencies,
   collectLessonCards,
@@ -90,8 +98,7 @@ import {
   findLesson,
   findMicrosequence,
   findModule,
-  getDefaultDependencyKeys,
-  getFirstPath
+  getDefaultDependencyKeys
 } from "./lessonEditorPaths.js";
 import {
   readAssistConfigStorage,
@@ -1409,109 +1416,44 @@ export function createLessonEditorApp({ root, storage, editor }) {
   }
 
   function applySelectionByKeys(nextProject, desiredSelection = state.selection) {
-    const fallbackPath = getFirstPath(nextProject);
-    const course = findCourse(nextProject, desiredSelection?.courseKey) || findCourse(nextProject, fallbackPath.courseKey);
-    const moduleValue =
-      findModule(nextProject, course?.key, desiredSelection?.moduleKey) ||
-      findModule(nextProject, course?.key, fallbackPath.moduleKey);
-    const lesson =
-      findLesson(nextProject, course?.key, moduleValue?.key, desiredSelection?.lessonKey) ||
-      findLesson(nextProject, course?.key, moduleValue?.key, fallbackPath.lessonKey);
-    const microsequence =
-      findMicrosequence(nextProject, course?.key, moduleValue?.key, lesson?.key, desiredSelection?.microsequenceKey) ||
-      findMicrosequence(nextProject, course?.key, moduleValue?.key, lesson?.key, fallbackPath.microsequenceKey);
-    const cards = microsequence?.cards || [];
-    const fallbackCardIndex = Number.isInteger(fallbackPath.cardIndex) ? fallbackPath.cardIndex : 0;
-    const preferredIndex = Number.isInteger(desiredSelection?.cardIndex) ? desiredSelection.cardIndex : fallbackCardIndex;
-    const cardFromKey = desiredSelection?.cardKey ? findCard(microsequence, desiredSelection.cardKey) : null;
-    const safeCardIndex = cards.length ? Math.max(0, Math.min(preferredIndex, cards.length - 1)) : 0;
-    const selectedCard = cardFromKey || cards[safeCardIndex] || null;
-
-    const nextPath = {
-      courseKey: course?.key || null,
-      moduleKey: moduleValue?.key || null,
-      lessonKey: lesson?.key || null,
-      microsequenceKey: microsequence?.key || null,
-      cardKey: selectedCard?.key || null,
-      cardIndex: selectedCard ? cards.findIndex((item) => item.key === selectedCard.key) : 0
-    };
-
+    const nextPath = resolveSelectionByKeysRuntime(nextProject, desiredSelection);
     applySelection(nextPath);
     return nextPath;
   }
 
   function selectFirstPath(nextProject) {
-    const nextPath = getFirstPath(nextProject);
+    const nextPath = resolveFirstSelection(nextProject);
     applySelection(nextPath);
     return nextPath;
   }
 
   function openCourse(courseKey) {
-    const course = findCourse(state.project, courseKey);
-    if (!course) return;
-    const moduleValue = (course.modules || [])[0] || null;
-    const lesson = moduleValue && moduleValue.lessons ? moduleValue.lessons[0] || null : null;
-    const microsequence = lesson && lesson.microsequences ? lesson.microsequences[0] || null : null;
-    const card = microsequence && microsequence.cards ? microsequence.cards[0] || null : null;
-
-    state.selection.courseKey = course.key;
-    state.selection.moduleKey = moduleValue ? moduleValue.key : null;
-    state.selection.lessonKey = lesson ? lesson.key : null;
-    state.selection.microsequenceKey = microsequence ? microsequence.key : null;
-    state.selection.cardKey = card ? card.key : null;
-    state.selection.cardIndex = 0;
-    state.view = "course";
-    state.cardCommentOpen = false;
-    state.entityEditor = null;
-    state.microsequenceMode = "play";
+    const navigationState = buildCourseNavigationState(state.project, courseKey);
+    if (!navigationState) return;
+    Object.assign(state, buildNavigationViewState(navigationState));
     syncVisibleStructureVersionsFromProject();
     render({ preserveState: false });
   }
 
   function openModule(moduleKey) {
-    const moduleValue = findModule(state.project, state.selection.courseKey, moduleKey);
-    if (!moduleValue) return;
-    const lesson = (moduleValue.lessons || [])[0] || null;
-    const microsequence = lesson && lesson.microsequences ? lesson.microsequences[0] || null : null;
-    const card = microsequence && microsequence.cards ? microsequence.cards[0] || null : null;
-
-    state.selection.moduleKey = moduleValue.key;
-    state.selection.lessonKey = lesson ? lesson.key : null;
-    state.selection.microsequenceKey = microsequence ? microsequence.key : null;
-    state.selection.cardKey = card ? card.key : null;
-    state.selection.cardIndex = 0;
-    state.view = "module";
-    state.cardCommentOpen = false;
-    state.entityEditor = null;
-    state.microsequenceMode = "play";
+    const navigationState = buildModuleNavigationState(state.project, {
+      courseKey: state.selection.courseKey,
+      moduleKey
+    });
+    if (!navigationState) return;
+    Object.assign(state, buildNavigationViewState(navigationState));
     syncVisibleStructureVersionsFromProject();
     render({ preserveState: false });
   }
 
   function openLesson(moduleKey, lessonKey) {
-    const lesson = findLesson(state.project, state.selection.courseKey, moduleKey, lessonKey);
-    if (!lesson) return;
-    const lessonCards = collectLessonCards(lesson);
-    const progressCursor = getLessonProgressCursor(
-      storage.loadProgress(),
-      getLessonProgressReference(state.selection.courseKey, moduleKey, lessonKey),
-      lessonCards.length
-    );
-    const currentEntry = lessonCards[progressCursor] || lessonCards[0] || null;
-    const firstMicrosequence = currentEntry
-      ? findMicrosequence(state.project, state.selection.courseKey, moduleKey, lessonKey, currentEntry.microsequenceKey)
-      : (lesson.microsequences || [])[0] || null;
-    const firstCard = currentEntry ? currentEntry.card : firstMicrosequence && firstMicrosequence.cards ? firstMicrosequence.cards[0] || null : null;
-
-    state.selection.moduleKey = moduleKey;
-    state.selection.lessonKey = lessonKey;
-    state.selection.microsequenceKey = currentEntry ? currentEntry.microsequenceKey : firstMicrosequence ? firstMicrosequence.key : null;
-    state.selection.cardKey = firstCard ? firstCard.key : null;
-    state.selection.cardIndex = currentEntry ? currentEntry.cardIndex : 0;
-    state.view = "lesson";
-    state.cardCommentOpen = false;
-    state.entityEditor = null;
-    state.microsequenceMode = "play";
+    const navigationState = buildLessonNavigationState(state.project, storage.loadProgress(), {
+      courseKey: state.selection.courseKey,
+      moduleKey,
+      lessonKey
+    });
+    if (!navigationState) return;
+    Object.assign(state, buildNavigationViewState(navigationState));
     syncVisibleStructureVersionsFromProject();
     render({ preserveState: false });
   }
