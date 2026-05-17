@@ -1,4 +1,4 @@
-import { DEFAULT_CODEX_LOCAL_ENDPOINT } from "../assist/codexLocalAssistProvider.js";
+import { DEFAULT_CODEX_LOCAL_ENDPOINT } from "../generation/providers/codexCliConfig.js";
 
 const ASSIST_CONFIG_STORAGE_KEY = "aralearn.assist-config";
 const DEFAULT_ASSIST_MODEL = "gemini-2.5-flash";

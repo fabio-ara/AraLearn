@@ -1,4 +1,4 @@
-import { isCodexLocalModel } from "../../assist/codexLocalAssistProvider.js";
+import { isCodexLocalModel } from "../providers/codexCliConfig.js";
 
 const GENERATION_PANEL_ACTIONS = new Set([
   "open-generation-panel-global",

@@ -1,4 +1,4 @@
-import { resolveCodexLocalEndpoint } from "../../assist/codexLocalAssistProvider.js";
+import { resolveCodexLocalEndpoint } from "./codexCliConfig.js";
 import { ProviderHttpError } from "./providerErrors.js";
 
 function text(value) {

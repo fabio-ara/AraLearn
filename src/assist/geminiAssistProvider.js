@@ -7,7 +7,7 @@ import {
   deleteGeminiAttachments
 } from "./geminiProviderAdapter.js";
 import { runAssistWithApiProvider } from "./assistApiProviderRuntime.js";
-import { CODEX_LOCAL_MODEL_ID } from "./codexLocalAssistProvider.js";
+import { CODEX_LOCAL_MODEL_ID } from "../generation/providers/codexCliConfig.js";
 
 function normalizeText(value) {
   return typeof value === "string" ? value.trim() : "";

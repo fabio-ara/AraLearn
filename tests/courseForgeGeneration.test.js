@@ -5,7 +5,7 @@ import {
   resolveCourseForgeGenerationScope,
   resolveCourseForgeNavigationTarget,
   summarizeCourseForgeTopDownResult
-} from "../src/ui/courseForgeGeneration.js";
+} from "../src/generation/runtime/courseForgeGenerationState.js";
 import {
   buildCourseForgePhaseModelOverrides,
   resolveCourseForgeLaunchConfig,

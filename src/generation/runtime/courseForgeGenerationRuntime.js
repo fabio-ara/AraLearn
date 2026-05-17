@@ -3,7 +3,7 @@ import {
   resolveCourseForgeGenerationScope,
   resolveCourseForgeNavigationTarget,
   summarizeCourseForgeTopDownResult
-} from "../../ui/courseForgeGeneration.js";
+} from "./courseForgeGenerationState.js";
 
 function text(value) {
   return typeof value === "string" ? value.trim() : "";

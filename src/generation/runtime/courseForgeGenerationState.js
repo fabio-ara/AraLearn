@@ -37,17 +37,17 @@ export function resolveCourseForgeNavigationTarget({ projectDocument = {}, patch
   const projectCourses = Array.isArray(projectDocument?.courses) ? projectDocument.courses : [];
   const target = patch?.target || {};
 
-  let course =
+  const course =
     projectCourses.find((item) => text(item?.key) === text(target?.courseKey || scopeState?.course?.key)) ||
     projectCourses[0] ||
     null;
-  let moduleValue =
+  const moduleValue =
     (Array.isArray(course?.modules) ? course.modules : []).find(
       (item) => text(item?.key) === text(target?.moduleKey || scopeState?.moduleValue?.key)
     ) ||
     (Array.isArray(course?.modules) ? course.modules[0] : null) ||
     null;
-  let lesson =
+  const lesson =
     (Array.isArray(moduleValue?.lessons) ? moduleValue.lessons : []).find(
       (item) => text(item?.key) === text(target?.lessonKey || scopeState?.lesson?.key)
     ) ||

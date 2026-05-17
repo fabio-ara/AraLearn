@@ -1,4 +1,4 @@
-import { CODEX_LOCAL_MODEL_ID, isCodexLocalModel } from "../../assist/codexLocalAssistProvider.js";
+import { CODEX_LOCAL_MODEL_ID, isCodexLocalModel } from "../providers/codexCliConfig.js";
 import { createCodexCliProvider } from "../providers/codexCliProvider.js";
 import { createGeminiProvider } from "../providers/geminiProvider.js";
 import { createProviderRegistry, resolveProviderFromModelId } from "../providers/providerRegistry.js";
