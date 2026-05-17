@@ -1,132 +1,111 @@
 # Guia de uso do app
 
-Este guia descreve o fluxo de uso do AraLearn no estado atual. Ele foi escrito para leitores que querem operar o app e, ao mesmo tempo, entender por que as ações aparecem nos níveis em que aparecem.
-
 ## Como o app está organizado
 
-O AraLearn distribui o estudo em cinco níveis:
+O AraLearn organiza o projeto em cinco níveis visíveis:
 
-```text
-curso -> módulo -> lição -> microssequência -> card
-```
+- cursos;
+- módulos;
+- lições;
+- microssequências;
+- cards.
 
-Cada nível tem uma função. O curso organiza uma trilha mais ampla; o módulo agrupa um bloco coerente dessa trilha; a lição concentra orientação didática local; a microssequência organiza um ponto estudável; o card é a unidade interativa por meio da qual o estudante lê, responde, compara, completa, acompanha um exemplo ou executa uma prática.
-
-Essa distinção é importante porque o app não pede o mesmo tipo de operação em todos os níveis.
+O curso oferece a moldura mais ampla. O módulo agrupa partes do percurso. A lição concentra a orientação didática local. A microssequência organiza uma pequena unidade de estudo. O card é a unidade de interação.
 
 ## O que se faz na home
 
-Na home, o usuário encontra a lista de cursos e o ponto de entrada para operações mais amplas. Ali faz sentido:
+Na home, o usuário pode:
 
-- criar curso vazio;
-- importar estrutura;
-- importar backup local completo;
-- abrir um curso já existente;
-- usar geração estrutural contextual.
+- ver os cursos do projeto;
+- criar ou importar conteúdo;
+- abrir o painel de geração estrutural;
+- configurar provider e modelo;
+- acessar ações globais de backup, exportação e manutenção.
 
-O que não faz sentido na home é gerar diretamente os cards de um problema pontual, porque ainda falta contexto suficiente para isso.
+A home é o ponto mais amplo de organização do produto.
 
 ## O que se faz em curso, módulo e lição
 
-À medida que o usuário desce na hierarquia, o tipo de ação muda.
+Curso, módulo e lição são níveis de planejamento e navegação. Neles o usuário pode:
 
-No nível do curso, a geração por IA atua sobre módulos, lições e o planejamento descendente necessário. No nível do módulo, atua sobre lições e seus desdobramentos. No nível da lição, a geração estrutural atualiza a própria lição e planeja suas microssequências pelo `CourseForge`, sem materializar cards por padrão. Só no nível da microssequência a operação deixa de ser top-down e passa a atuar diretamente sobre o workbench local.
+- revisar a estrutura existente;
+- editar títulos e descrições;
+- ajustar a orientação da lição;
+- anexar fontes para organização pedagógica;
+- acionar geração estrutural no escopo selecionado.
 
-Essa distribuição não é arbitrária. Ela existe para conter a operação no menor escopo útil. Quanto mais localizado o problema, mais localizado deve ser o pedido.
+Quando a geração estrutural termina, o resultado esperado é uma trilha navegável até o nível de microssequência. Isso não significa que todos os cards já existam.
 
-## A lição como centro da orientação
+## A lição como centro de orientação
 
-A lição é o ponto mais importante da governança didática do app. É nela que se concentram campos como:
+A lição é o ponto mais importante de orientação local. É nela que o produto concentra:
 
-- `sourceGuideStructured`;
-- `resourceTags`;
-- `contentTypeTags`;
-- `learningActionTags`;
-- `supportLevel`;
-- `presetId`;
-- `domainMap`.
+- fonte-guia estruturada;
+- domínio conceitual;
+- foco de prática;
+- limites do conteúdo;
+- notação preferida;
+- erros comuns a combater.
 
-Na prática, isso significa que a qualidade da geração depende fortemente da qualidade da orientação presente na lição. Quando a lição está mal delimitada, a geração tende a perder foco. Quando a lição está bem orientada, o restante do fluxo fica mais previsível.
-
-## Gerar estrutura
-
-O painel contextual de geração já opera no fluxo estrutural único. Isso significa que o pedido pode atualizar a governança da lição e criar ou revisar microssequências planejadas no mesmo ciclo top-down. A materialização dos cards acontece depois, no runtime local de cada microssequência.
-
-O objetivo desse nível continua sendo estruturar a trilha no menor escopo útil. Quando a lição já traz `domainMap`, `sourceGuideStructured` e sinais locais de cobertura, o `CourseForge` usa esses dados para decidir lacunas, progressão, prática, contraste e risco de redundância antes de aplicar o patch.
+Essa informação orienta tanto a organização estrutural quanto a geração local durante o estudo.
 
 ## Microssequências planejadas
 
-No estado atual do produto, a trilha pode nascer com microssequências ainda vazias. Isso não significa erro nem conteúdo quebrado. Significa que a etapa foi planejada, mas ainda não foi materializada.
+Uma microssequência pode aparecer na lição mesmo antes de ter cards. Isso é normal.
 
-Essa decisão é importante porque permite que o usuário:
+Quando isso acontece, a microssequência deve ser lida como etapa planejada da trilha. Ela já informa ao usuário:
 
-- veja a trilha antes de materializar tudo;
-- escolha uma lição específica para começar;
-- abra a próxima etapa do percurso sem depender de geração ampla do curso inteiro.
+- que assunto vem adiante;
+- que função didática esse passo deve cumprir;
+- onde ele se encaixa no percurso.
+
+O usuário pode abrir essa microssequência e decidir quando materializá-la.
 
 ## O painel da microssequência
 
-Ao abrir uma microssequência, o usuário entra no workbench. É ali que o estudo local, a revisão editorial e a materialização progressiva do conteúdo se encontram.
+No painel da microssequência, o usuário encontra o centro operacional do estudo local. Ali ele pode:
 
-O fluxo normal é:
+- estudar os cards já existentes;
+- materializar uma microssequência vazia;
+- corrigir uma sequência ruim;
+- expandir um ponto insuficiente;
+- reformular a proposta;
+- editar cards manualmente;
+- abrir a próxima microssequência planejada.
 
-1. inspecionar a microssequência atual;
-2. materializar, gerar, editar, expandir ou reformular localmente;
-3. revisar a iteração aplicada;
-4. aceitar ou excluir a iteração ativa.
-
-Não existe mais uma camada separada de prévia privada. Se o resultado passa pelas validações locais, ele é aplicado diretamente e fica visível no próprio ambiente de trabalho.
+Essa superfície aproxima estudo, autoria e revisão.
 
 ## O que acontece durante o estudo
 
-Uma vez dentro da microssequência, o AraLearn procura manter o estudo e a intervenção próximos. O usuário pode estudar, perceber um problema e pedir ajuda no próprio ponto em que o entendimento travou.
+Durante o estudo, o AraLearn não trata o usuário como leitor passivo. O runtime permite interação com os cards, registro de progresso e continuação do percurso.
 
-É isso que faz o fluxo bottom-up participar do runtime real: a autoria local não acontece só antes do estudo, mas também durante ele.
-
-## O que entra no estudo
-
-No modo de estudo, o AraLearn considera apenas material pronto para execução. Isso significa que:
-
-- microssequências `draft` continuam fora do estudo;
-- microssequências com `included: false` também ficam fora;
-- o progresso é salvo localmente por caminho completo da lição.
-
-Essa separação evita que estado de trabalho seja confundido com percurso executável.
-
-## Fontes e anexos
-
-O fluxo estrutural aceita texto e anexos para ingestão. Hoje isso cobre, entre outros formatos:
-
-- texto simples;
-- Markdown;
-- HTML;
-- JSON;
-- CSV;
-- PDF;
-- DOCX.
-
-Quando a extração vier parcial, o sistema pode avisar. O objetivo não é prometer leitura perfeita de layout, e sim texto suficientemente utilizável para organização didática e grounding mínimo.
+Se surgir dúvida, fricção ou necessidade de aprofundamento, o usuário pode intervir no ponto exato em que está. A geração local acontece em contexto, sem replanejar o curso inteiro.
 
 ## Configuração de IA
 
-O caminho normal de uso da IA é por API comum. `Codex CLI local` continua suportado, mas como integração mais avançada.
+O painel de geração permite:
 
-Antes de usar IA, convém:
+- escolher provider;
+- escolher modelo;
+- informar prompt;
+- anexar fontes;
+- selecionar escopo;
+- usar parâmetros avançados quando necessário.
 
-1. abrir `Configuração da IA`;
-2. escolher o modelo;
-3. informar a chave da API, quando necessário;
-4. testar o bridge local, se a escolha for `Codex CLI local`.
+Usuários mais avançados também podem refinar aspectos de prompt, seed e perfil didático. Usuários comuns podem operar com os padrões do sistema.
+
+## Fontes e arquivos
+
+O app aceita importação e exportação de projetos ou recortes estruturais. Também aceita anexos para organização pedagógica e, no Android, oferece integração de compartilhamento para abrir arquivos no próprio app.
+
+Depois que o projeto está salvo localmente, o usuário mantém controle sobre seu material.
 
 ## O papel do usuário continua central
 
-O AraLearn não elimina curadoria editorial. O usuário continua precisando revisar texto, confirmar fidelidade, ajustar orientação da lição e decidir quando uma microssequência já merece entrar no estudo.
-
-Essa responsabilidade não é defeito da ferramenta. É parte da proposta do produto. O sistema existe para retirar atrito e oferecer estrutura externa, não para tomar posse do conteúdo no lugar do autor ou do estudante.
+Mesmo quando a IA participa da organização ou da materialização do conteúdo, o usuário permanece responsável por orientar, revisar, corrigir e apropriar-se do percurso. O AraLearn foi desenhado para ampliar capacidade de estudo, não para produzir obediência a um texto gerado.
 
 ## Leituras complementares
 
 - [Visão do produto](visao-do-produto.md)
-- [Arquitetura](arquitetura.md)
 - [Assistência por IA generativa](assistencia-por-ia.md)
-- [Contrato público](aralearn-contract.md)
+- [Rascunhos e microssequências](rascunhos-e-microssequencias.md)

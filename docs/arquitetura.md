@@ -1,227 +1,141 @@
 # Arquitetura do AraLearn
 
-Este documento descreve a arquitetura do AraLearn no estado atual do repositório, mas sem reduzir o produto a inventário de arquivos. O interesse principal aqui é mostrar como o app organiza a relação entre contrato público, governança didática, pipeline estrutural, runtime local e providers.
-
 ## Leitura correta
 
-O contrato público continua simples, mas a operação interna precisa ser rigorosa.
+O AraLearn não foi desenhado para enviar um pedido livre a uma LLM e aceitar sua resposta como produto final. Sua arquitetura procura deslocar parte da inteligência do modelo para o sistema: contratos, hierarquia, ingestão, governança da lição, artefatos intermediários, auditoria e aplicação controlada.
 
-O AraLearn pode ser entendido como a composição de quatro camadas:
+Essa é a chave para entender o projeto.
 
-- um `core didático`, que define progressão, cobertura, contraste, prática e auditoria;
-- uma `engine de produção`, que executa fases pequenas, reordenáveis e auditáveis;
-- um `runtime de providers`, separado da lógica pedagógica;
-- uma `superfície de uso`, em que estudo, geração, edição e revisão aparecem ao usuário.
+## Estrutura pública
 
-## Princípio central
-
-Uma das ideias fortes da arquitetura do AraLearn é evitar o salto bruto entre pedido humano amplo e resultado final aceito sem mediação. Em vez de delegar uma tarefa inteira a um prompt solto, o produto tenta quebrar a operação em especificações intermediárias menores, algo próximo do que, em engenharia, se reconhece como desenvolvimento orientado por especificação.
-
-Na prática, isso significa trabalhar com artefatos como:
-
-- intenção;
-- escopo;
-- ingestão de anexos;
-- governança da lição;
-- planos de lição;
-- planos de microssequência;
-- auditorias;
-- contratos locais de geração;
-- patch final.
-
-A LLM não opera diretamente sobre a árvore inteira do projeto como se fosse autora soberana do sistema. Ela entra dentro desses envelopes menores.
-
-## Contrato público
-
-A estrutura pública continua sendo:
+O contrato público do AraLearn organiza o projeto em:
 
 ```text
-project
-  -> course
-    -> module
-      -> lesson
-        -> microsequence
-          -> card
+projeto -> curso -> módulo -> lição -> microssequência -> card
 ```
 
-Essa estrutura aparece:
+Essa estrutura serve ao mesmo tempo para navegação, persistência, contextualização do pedido e controle didático. O modelo não responde “sobre qualquer coisa”; ele responde sobre um ponto situado na hierarquia.
 
-- na persistência exportável;
-- na navegação do usuário;
-- na forma como o contexto é entregue à IA.
+## Camadas principais
 
-Ela não é apenas decoração hierárquica. Ela resolve um problema concreto: restringir contexto e dar posição semântica às unidades didáticas.
+### Core didático
+
+O core didático define invariantes pedagógicas do produto:
+
+- o que conta como microssequência;
+- quais funções didáticas ela pode cumprir;
+- que lacunas, redundâncias ou pressupostos ocultos devem ser combatidos;
+- como prática, explicação, contraste e revisão se articulam;
+- como ler uma microssequência vazia, um rascunho e uma etapa pronta para estudo.
+
+### Engine de produção
+
+O motor de geração, hoje concentrado no `CourseForge`, executa fases pequenas, auditáveis e retomáveis. Ele trabalha com artefatos intermediários e permite separar:
+
+- ingestão de fontes;
+- interpretação da intenção;
+- organização estrutural;
+- planejamento local;
+- auditoria;
+- reparo;
+- compilação de patch;
+- validação e aplicação.
+
+Essa lógica é próxima de specification-driven development: o sistema não pede apenas “gere conteúdo”, mas conduz uma sequência de transformações com contratos explícitos.
+
+### Runtime de providers
+
+Os providers cuidam de transporte e execução operacional:
+
+- envio de prompt e anexos;
+- adaptação ao modelo;
+- retries, timeout e fallback;
+- integração por API;
+- integração local via `Codex CLI`.
+
+A camada de provider não deve decidir a didática.
+
+### Runtime de estudo e edição local
+
+O runtime da microssequência é a superfície em que o usuário estuda e intervém. Ali o produto materializa, corrige, expande, edita ou reformula conteúdo já situado dentro de uma trilha.
+
+Esse runtime é parte central da arquitetura, não um acessório de interface.
 
 ## Governança da lição
 
-A lição concentra o principal núcleo de orientação do produto. Hoje, esse núcleo passa por campos como:
+A lição é o ponto mais importante de governança didática do contrato público. É nela que o produto concentra orientação mais fina sobre escopo, notação, limites, passos esperados, erros comuns, foco de prática e domínio conceitual.
+
+Essa governança aparece sobretudo por meio de:
 
 - `sourceGuideStructured`;
 - `presetId`;
-- `resourceTags`;
-- `contentTypeTags`;
-- `learningActionTags`;
-- `supportLevel`;
+- tags didáticas;
 - `domainMap`.
 
-Essa camada tem dupla função:
-
-- servir como orientação humana editável;
-- restringir o espaço de decisão da LLM.
+Curso e módulo fornecem moldura estrutural mais ampla; a lição fornece o contexto didático local mais decisivo.
 
 ## Ingestão e parsing
 
-O AraLearn não trata o envio bruto de documentos para LLM como solução suficiente. Antes da geração estrutural, o sistema tenta extrair texto utilizável e reduzir ruído.
+Antes de envolver o modelo, o AraLearn procura extrair e normalizar o texto das fontes. Isso reduz custo, ruído e fragilidade. O projeto já usa parsers open source como:
 
-Hoje o repositório já contempla ingestão de:
+- `pdfjs-dist`, para PDF;
+- `mammoth`, para `DOCX`.
 
-- texto simples;
-- Markdown;
-- HTML;
-- JSON;
-- CSV;
-- PDF;
-- DOCX.
+O objetivo não é reconstrução visual completa, e sim grounding textual suficientemente bom para organização pedagógica.
 
-Para isso, o projeto usa bibliotecas open source já integradas ao runtime, como:
+## Fluxo estrutural
 
-- `pdfjs-dist`;
-- `mammoth`.
+Quando o usuário quer organizar material amplo, o AraLearn gera uma trilha estrutural auditada: cursos, módulos, lições e microssequências planejadas. O valor principal desse fluxo está em produzir ordem, não em pré-materializar todo o curso em cards.
 
-O objetivo dessa camada não é preservação visual perfeita do layout original, mas extração textual suficiente para grounding, planejamento e warnings auditáveis quando a fonte vier degradada.
+Por isso, microssequências podem nascer vazias e ainda assim serem plenamente válidas como parte da arquitetura pedagógica.
 
-## CourseForge
+## Fluxo local
 
-O `CourseForge` é o runtime público da geração estrutural.
+Quando o usuário já está no estudo concreto, o problema é outro: uma dúvida localizada, um contraste ausente, um card ruim, uma prática insuficiente, uma formulação confusa. Nesse caso, o AraLearn aciona a geração local, sempre dentro da trilha já planejada.
 
-Ele recebe:
+Esse fluxo preserva o restante do percurso e opera por patch mínimo.
 
-- intenção;
-- escopo (`project`, `course`, `module`, `lesson` ou `microsequence`);
-- provider configurado;
-- anexos ingeridos;
-- projeto atual.
+## Artefatos internos
 
-Ele pode produzir:
+A arquitetura usa artefatos explícitos para não depender apenas de texto solto. Entre eles estão:
 
-- artefatos intermediários;
-- auditorias;
-- patch validado;
-- projeto atualizado.
+- `SourceLedger`;
+- `CourseIntent`;
+- `AssessmentProfile`;
+- `CourseGraph`;
+- `LessonGovernance`;
+- `MicrosequencePlan`;
+- `CardPlan`;
+- `AuditFinding`;
+- `RepairAction`;
+- `Patch`;
+- `InterventionRequest`;
+- `InterventionPlan`.
 
-## Top-down estrutural
-
-No estado atual, o top-down atua nos escopos amplos:
-
-- `project`;
-- `course`;
-- `module`;
-- `lesson`.
-
-Seu trabalho principal é:
-
-- organizar a trilha;
-- planejar microssequências;
-- atualizar a governança local;
-- validar ordem, cobertura, contraste e prática;
-- compilar patch auditado.
-
-O top-down atual não materializa cards por padrão. Essa decisão não é empobrecimento do produto; é clarificação de responsabilidade. A organização ampla fica no fluxo estrutural. A materialização didática fina se desloca para o runtime local.
-
-## Runtime local da microssequência
-
-O runtime local é a segunda metade da arquitetura atual.
-
-Ele existe para permitir que o usuário trabalhe sobre uma microssequência concreta, planejada ou já pronta. Nesse nível, o app permite:
-
-- materializar uma microssequência vazia;
-- corrigir uma sequência fraca;
-- expandir com mais prática, contraste ou explicação;
-- reformular a proposta local;
-- editar conteúdo durante o próprio estudo;
-- abrir a próxima microssequência planejada.
-
-Esse runtime é decisivo porque desloca a autoria para junto da prática.
-
-## Artefatos intermediários
-
-Os nomes internos variam por fase, mas a arquitetura já gira em torno de artefatos como:
-
-- `intent`;
-- `sourceLedger`;
-- `lessonPlans`;
-- `courseGraph`;
-- `lessonGovernance`;
-- `microsequencePlans`;
-- `interventionPlan`;
-- `microsequenceContracts`;
-- `cardDrafts`;
-- `patch`.
-
-O ponto importante não é decorar a lista, e sim entender a arquitetura: a LLM trabalha sobre recortes estruturados, e não sobre um vazio textual genérico.
+Esses artefatos não existem para burocratizar o produto, e sim para tornar o comportamento verificável.
 
 ## Auditoria
 
-O produto usa auditoria em vários níveis.
+O AraLearn não parte da suposição de que a primeira resposta do modelo já é didaticamente adequada. A arquitetura prevê auditoria sobre:
 
-Isso pode incluir:
+- alinhamento estrutural;
+- coerência didática;
+- grounding mínimo na fonte;
+- lacunas ou pressupostos ocultos;
+- desvios de escopo;
+- defeitos localmente inaceitáveis.
 
-- validação estrutural do JSON;
-- coerência didática local;
-- checagem de cobertura e ordem;
-- grounding mínimo quando houver fonte;
-- validação semântica do patch antes da aplicação.
-
-Essa camada é parte constitutiva da arquitetura. Sem ela, o AraLearn cairia facilmente na lógica do “prompt entra, texto sai”.
-
-## Providers
-
-Os providers ficam desacoplados da camada pedagógica.
-
-Hoje o repositório já contempla:
-
-- Gemini por API;
-- `Codex CLI local` via bridge HTTP;
-- provider falso de teste para validação offline da engine.
-
-Essa separação é importante porque a didática do produto não pode depender do provider específico do momento.
-
-## Interface e operação
-
-A superfície principal do produto continua em `src/ui/`.
-
-Ela reúne:
-
-- navegação entre cursos, módulos, lições e microssequências;
-- painel estrutural contextual de geração top-down;
-- workbench local da microssequência;
-- execução de cards;
-- histórico de versões e reversão local;
-- configuração de provider.
+Quando necessário, o sistema repara antes de aplicar.
 
 ## O que o usuário vê e o que a LLM vê
 
-É importante separar essas duas perspectivas.
+O usuário vê cursos, lições, microssequências, cards, botões de ação, histórico e superfícies de edição. A LLM, por sua vez, recebe um recorte muito mais controlado: contexto hierárquico, governança da lição, pedido do usuário, artefatos resumidos, contratos e limites da operação.
 
-O usuário vê:
+Essa diferença é essencial. A boa experiência pública do AraLearn depende de forte preparação privada do problema.
 
-- a hierarquia do curso;
-- a governança editável da lição;
-- microssequências planejadas ou prontas;
-- cards e iterações;
-- ações de materialização, correção, expansão e revisão.
+## Documentos complementares
 
-A LLM vê:
-
-- prompt contextual;
-- artefatos JSON;
-- restrições de formato;
-- governança da lição;
-- pedidos locais de intervenção;
-- contratos de geração ou reparo.
-
-Essa diferença é parte central do desenho do produto.
-
-## Documento complementar
-
-A referência de direção mais ampla continua em [arquitetura-alvo.md](./arquitetura-alvo.md), que funciona como documento de tese arquitetural do projeto. Este arquivo, por sua vez, descreve o que já está suficientemente consolidado para leitura pública do estado atual.
+- [Visão do produto](visao-do-produto.md)
+- [Assistência por IA generativa](assistencia-por-ia.md)
+- [Contrato público](aralearn-contract.md)
+- [Arquitetura-alvo](arquitetura-alvo.md)

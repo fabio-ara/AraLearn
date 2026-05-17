@@ -1,202 +1,122 @@
 # Contrato público do AraLearn
 
-Este documento descreve o contrato JSON público do AraLearn em nível suficiente para leitura, interoperabilidade e importação/exportação. Ele não tenta documentar cada função interna da engine.
-
 ## Objetivo do contrato
 
-O contrato público existe para:
+O contrato público descreve a forma persistível do projeto AraLearn. Ele existe para:
 
-- persistir estrutura didática;
+- manter interoperabilidade;
 - permitir importação e exportação;
-- manter o projeto legível;
-- separar dados do usuário de estados internos de runtime.
+- estabilizar a estrutura visível do produto;
+- separar o que é dado do usuário do que é runtime interno.
 
-Ele não existe para expor todo o pipeline do `CourseForge`.
+O contrato público é deliberadamente menor do que a arquitetura interna.
 
 ## Envelope raiz
 
-Todo documento estrutural válido parte de:
-
-```json
-{
-  "contract": "aralearn.contract",
-  "version": 1,
-  "kind": "project",
-  "courses": []
-}
-```
-
-## Hierarquia
+O documento público do projeto organiza uma árvore que parte de:
 
 ```text
 project
-  -> course
-    -> module
-      -> lesson
-        -> microsequence
-          -> card
 ```
+
+e desce por:
+
+```text
+course -> module -> lesson -> microsequence -> card
+```
+
+Cada nível preserva seu papel semântico e estrutural.
 
 ## Curso
 
-Campos centrais:
+O curso é a unidade mais ampla de organização pública. Ele pode representar:
 
-- `key`
-- `title`
-- `description`
-- `modules`
+- disciplina;
+- trilha temática;
+- corpus;
+- projeto formativo;
+- conjunto instrumental.
 
-O curso organiza a trilha ampla. Ele não carrega, no estado atual, a governança didática forte que fica concentrada na lição.
+O curso fornece contexto amplo, não governança didática fina.
 
 ## Módulo
 
-Campos centrais:
-
-- `key`
-- `title`
-- `description`
-- `lessons`
-
-O módulo agrupa um bloco coerente do percurso.
+O módulo agrupa partes do percurso dentro do curso. Ele é uma unidade intermediária de organização e navegação.
 
 ## Lição
 
-Campos centrais:
-
-- `key`
-- `title`
-- `description`
-- `sourceGuideStructured`
-- `sourceGuide`
-- `presetId`
-- `resourceTags`
-- `contentTypeTags`
-- `learningActionTags`
-- `supportLevel`
-- `domainMap`
-- `microsequences`
+A lição é o ponto central da governança local. Além de título e descrição, ela pode carregar orientação estruturada suficiente para guiar a organização pedagógica e a geração localizada.
 
 ### `sourceGuideStructured`
 
-`sourceGuideStructured` é a principal fonte de verdade da orientação local da lição.
+`sourceGuideStructured` representa a orientação didática legível pelo sistema. Pode incluir, conforme o caso:
 
-`sourceGuide` é texto derivado para leitura humana. Ele não substitui o objeto estruturado.
+- escopo;
+- notação;
+- passos esperados;
+- erros comuns;
+- exclusões;
+- foco de prática.
 
-### Guidance tags
+### Tags e presets
 
-Os campos:
-
-- `presetId`
-- `resourceTags`
-- `contentTypeTags`
-- `learningActionTags`
-- `supportLevel`
-
-ajudam a restringir o tipo de microssequência e de card que faz sentido gerar naquela lição.
+O contrato também pode registrar presets e tags didáticas para orientar o comportamento do produto sem expor detalhes de runtime.
 
 ### `domainMap`
 
-`domainMap` registra itens de domínio, sinais de cobertura e relações relevantes para a progressão local. Ele ajuda o sistema a raciocinar sobre:
-
-- lacunas;
-- pré-requisitos;
-- contraste;
-- prática;
-- cobertura ainda fraca.
+`domainMap` descreve o domínio conceitual local da lição: conceitos, relações, alvos de prática, comparações ou pré-requisitos relevantes.
 
 ## Microssequência
 
-Campos centrais:
+A microssequência é a unidade didática central do AraLearn. Ela reúne um pequeno conjunto de cards orientados por uma finalidade comum.
 
-- `key`
-- `title`
-- `description`
-- `tags`
-- `status`
-- `included`
-- `cards`
+Uma microssequência pode nascer planejada antes de ter cards. Isso significa que ela já faz parte da trilha, ainda que o conteúdo interativo seja materializado depois.
 
 ### `status`
 
-Estados públicos hoje aceitos:
-
-- `draft`
-- `ready`
+O campo `status` torna explícito o estado público da microssequência. Ele distingue, por exemplo, uma etapa ainda em preparação de uma etapa pronta para estudo.
 
 ### `included`
 
-`included` indica se a microssequência entra no percurso de estudo.
+O campo `included` indica se aquela microssequência entra no fluxo estudável naquele momento.
 
 ### Microssequência planejada
 
-No estado atual do produto, uma microssequência pode existir com:
-
-- `status: "draft"`
-- `cards: []`
-
-Esse caso não é erro. Ele representa uma microssequência planejada, ainda não materializada.
+Uma microssequência planejada sem cards é estado válido do contrato público. Ela não é erro nem lixo provisório. É uma etapa legítima da arquitetura pedagógica.
 
 ## Card
 
-Campos comuns:
-
-- `key`
-- `title`
-- `say`
-- `after`
-- `sourceRefs`
-
-Dependendo do recurso didático, outros campos públicos aparecem.
+O card é a unidade de interação. Ele pode assumir diferentes formas de apresentação e prática, desde que permaneça dentro do contrato público aceito pelo app.
 
 ## Recursos públicos
 
-O contrato público contempla recursos como:
-
-- `say`
-- `ask`
-- `code`
-- `table`
-- `tree`
-- `flow`
-- `plane`
-- `matrix`
-
-O pipeline interno pode usar aliases, schemas ou artefatos adicionais, mas a persistência pública respeita esse conjunto.
+O contrato aceita recursos públicos que façam sentido para o estudo e para a renderização local. Recursos de runtime interno, metadados operacionais de provider e detalhes de execução ficam fora do envelope público.
 
 ## `sourceRefs`
 
-`sourceRefs` é opcional e registra grounding mínimo quando a geração usou fonte.
-
-Ele não transforma o contrato em sistema completo de busca semântica. Sua função é fornecer rastreabilidade suficiente para auditoria local.
+Quando presentes, `sourceRefs` registram ancoragem mínima do conteúdo em fontes usadas na geração ou curadoria. Isso contribui para inspeção e grounding.
 
 ## O que fica fora do contrato público
 
-Ficam fora do contrato:
+O contrato público não deve carregar:
 
-- estados de fase do `CourseForge`;
 - detalhes de provider;
-- runtime autorado da UI;
-- histórico interno de iterações locais;
-- configurações transitórias de execução.
+- runtime autorado;
+- estado interno transitório;
+- políticas operacionais de execução;
+- artefatos intermediários completos do motor.
 
-Isso mantém o contrato pequeno e portável.
+Esses elementos pertencem à arquitetura interna.
 
-## Relação com o top-down e com o runtime local
+## Relação com a organização estrutural e o runtime local
 
-No estado atual do produto:
+O mesmo contrato serve tanto para a trilha estrutural quanto para o estudo local. A diferença está no uso que o produto faz dele:
 
-- o top-down escreve no contrato a trilha planejada;
-- o runtime local materializa progressivamente as microssequências;
-- o usuário pode exportar a estrutura sem exportar o motor.
+- na organização estrutural, ele representa a arquitetura do percurso;
+- no runtime local, ele recebe materializações e intervenções situadas.
 
-## Exemplos
+## Exemplos e leituras complementares
 
-Exemplos públicos do contrato:
-
-- [examples/](examples/)
-
-## Leitura complementar
-
+- [Exemplos JSON](examples/)
 - [Arquitetura](arquitetura.md)
-- [Guia de uso do app](uso-do-app.md)
-- [Assistência por IA generativa](assistencia-por-ia.md)
+- [Rascunhos e microssequências](rascunhos-e-microssequencias.md)

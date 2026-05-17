@@ -1,75 +1,71 @@
 # Modelo didático
 
-O modelo didático do AraLearn parte de uma tese positiva: aprender exige percurso, prática e retomada. A aplicação foi construída sobre a hipótese de que, sobretudo em estudo autodirigido e sob condições de cansaço, interrupção e excesso de informação, a compreensão melhora quando o conteúdo é reorganizado como percurso praticável.
-
 ## A unidade central
 
-A unidade didática central do AraLearn é a microssequência. Ela não é simplesmente uma coleção de itens. É uma unidade de progressão local. Sua função é conduzir o estudante de um ponto de entrada suficientemente delimitado até algum tipo de evidência de domínio.
+A unidade didática central do AraLearn é a microssequência. Ela reúne poucos cards em torno de uma mesma função pedagógica. Essa função pode ser:
 
-Por isso, a microssequência precisa ser suficientemente pequena para caber na rotina e na atenção disponíveis, mas suficientemente concreta para ensinar algo real. O problema não está em ser breve; está em ser breve e vazia. O AraLearn rejeita resumo genérico não porque todo texto de síntese seja ilegítimo, mas porque o tipo de transformação que lhe interessa é outro: decomposição, mediação, prática e revisão.
+- introduzir um conceito;
+- explicar um procedimento;
+- comparar dois conceitos;
+- praticar um passo;
+- corrigir erro recorrente;
+- revisar;
+- preparar continuidade.
 
-## Produção didática exaustiva
+## Produção didática suficiente
 
-No AraLearn, a expressão preferida deixa de ser `meticulosidade` e passa a ser `produção didática exaustiva` ou `sequência exaustiva de cards`. O ponto não é ampliar texto. O ponto é tornar o percurso ensinável, progressivo e auditável. Em termos práticos, isso envolve:
-
-- decompor o ponto didático em passos ensináveis;
-- apresentar o mínimo de contexto necessário;
-- preparar notação quando ela ainda não está estabilizada para o estudante;
-- mostrar um caso ou uma leitura guiada antes de exigir salto grande;
-- pedir prática em formato coerente com o que foi mostrado;
-- variar a prática quando a repetição simples já não acrescenta aprendizado;
-- verificar domínio sem reduzir o percurso a um teste cego.
-
-Essa posição dialoga com literatura sobre recuperação ativa, worked examples, carga cognitiva e feedback formativo (Roediger & Karpicke, 2006; Hattie & Timperley, 2007; Sweller & Cooper, 1985; Paas & van Merriënboer, 2020), mas também nasce da experiência concreta de autoria: muita explicação aparentemente “completa” falha exatamente porque tenta dizer tudo sem ensinar o passo certo.
+O produto não procura exaustividade textual. Procura suficiência didática local: conteúdo bastante para que o usuário entenda o ponto, pratique algo relevante e consiga avançar ou perceber o que ainda falta.
 
 ## Cobertura e repetição
 
-Uma das distinções mais importantes do modelo é a diferença entre cobertura e repetição. Cobertura pergunta quais capacidades precisam aparecer para que o estudante possa operar com o tema. Repetição pergunta quantas vezes e de quantas formas uma dessas capacidades precisa ser revisitadas para consolidar entendimento.
+Repetição só faz sentido quando acrescenta função nova. O AraLearn tenta distinguir:
 
-Sem essa distinção, o percurso cai em dois extremos ruins: ou vira resumo condensado, ou vira série de exercícios equivalentes. O AraLearn tenta escapar dos dois. Por isso, sua modelagem interna separa a capacidade a ser coberta da variação de prática usada para consolidá-la.
+- reforço legítimo;
+- contraste necessário;
+- prática adicional útil;
+- repetição ornamental.
 
 ## Sequência preferida
 
-O desenho preferido continua sendo:
+Embora diferentes domínios exijam variação, o produto costuma favorecer sequências como:
 
-1. contexto mínimo;
-2. microteoria;
-3. caso guiado ou leitura acompanhada;
-4. prática autossuficiente;
-5. consolidação.
+- situar;
+- explicar;
+- exemplificar;
+- praticar;
+- revisar;
+- continuar.
 
-Essa sequência não é dogma mecânico. Ela é um princípio de prudência didática. Nem toda microssequência precisa realizar todos os passos com a mesma extensão, mas a aplicação procura evitar a passagem brusca de teoria abstrata para cobrança sem mediação.
-
-Outra regra forte acompanha essa sequência: a microssequência não deve pressupor o que ainda não foi explicitado. Se um card depende de sigla, termo inglês, notação, convenção ou operação ainda instável, isso precisa ser preparado localmente ou já ter sido estabilizado em microssequência anterior da mesma trilha.
+Essa preferência não é rígida, mas orienta o planejamento e a auditoria.
 
 ## Contexto local e carga cognitiva
 
-Uma consequência importante desse modelo é a insistência em manter o contexto operacional junto da tarefa. Em linguagem de teoria da carga cognitiva, trata-se de reduzir carga extrínseca desnecessária e evitar o custo adicional de integrar mentalmente informações dispersas (Chandler & Sweller, 1991; Paas & van Merriënboer, 2020). Quando dados, operandos, notação, figura relevante e pedido de resposta ficam separados, a tarefa passa a exigir memória de trabalho adicional que nem sempre contribui para a aprendizagem. O AraLearn tenta, por desenho, diminuir esse atrito.
+Cada microssequência deve pressupor o mínimo possível. Quando um passo depende de pré-requisito instável, o sistema tende a pedir reparo, reforço ou nova preparação. Isso reduz sobrecarga cognitiva e evita salto didático injustificado.
 
 ## Papel da LLM
 
-A LLM não decide a didática do percurso. Ela participa de uma arquitetura interna de produção em que planejamento, construção e auditoria são separados. O app continua responsável por tipo, tamanho, sequência, formatos possíveis, cobertura mínima, aderência à fonte, regras de validação e reparos. Isso é especialmente importante porque o produto foi calibrado para operar bem também com modelos leves. Em vez de confiar em improvisação ampla, o AraLearn desloca parte da inteligência para a própria arquitetura, em linha com a prudência sugerida por trabalhos sobre linguagem controlada e heurísticas superficiais em NLP (Neuhaus & Barkmeyer, 2013; McCoy, Pavlick & Linzen, 2019).
+A LLM ajuda a propor estrutura, preencher conteúdo e responder a intervenções locais. Mas a inteligibilidade do resultado depende de:
 
-Em termos práticos, a direção atual é internalizar o antigo fluxo `Planner -> Builder -> Auditor` como motor do próprio app. O planejamento pedagógico deve transformar o acervo bruto em mapa de cobertura, pré-requisitos, vocabulário e progressão; a construção deve produzir apenas dentro desse mapa; a auditoria deve bloquear deriva, bastidor, pressuposto oculto e prática mal posicionada.
+- governança da lição;
+- contexto hierárquico;
+- validação;
+- revisão humana.
 
 ## Formas de apresentação e prática
 
-Os diferentes formatos disponíveis no produto não entram por ornamentação visual. Texto, escolha, lacuna, código, tabela, árvore, fluxograma, plano cartesiano e matriz servem a demandas didáticas distintas. Em alguns casos, a tarefa exige leitura comparativa; em outros, execução operacional; em outros, visualização espacial ou procedimental. O critério correto não é “variedade por variedade”, mas adequação entre forma de representação e o tipo de operação cognitiva que se quer favorecer.
+O card pode assumir formas diferentes conforme a necessidade do domínio. O importante é que a forma sirva à função didática da microssequência, e não o contrário.
 
-## Checagens locais de qualidade didática
+## Estados de trabalho
 
-O modelo didático do AraLearn inclui uma camada de checagens locais. Essa camada não deve ser lida como professor artificial que interpreta qualquer texto com profundidade humana. Ela funciona como contenção técnica para defeitos detectáveis.
+O modelo didático do AraLearn admite estados diferentes:
 
-Parte dessas checagens é estrutural: ausência de contexto mínimo, resposta revelada, dependência de referência externa, quebra do plano. Parte é declarativa: prática ausente, variação insuficiente, repetição sem nova função. Parte é textual, mas com força limitada: sinais evidentes de genericidade, mediação fraca ou preparação ausente. O objetivo não é julgar semanticamente tudo; é impedir que a aplicação aceite sem resistência certos defeitos recorrentes.
+- microssequência planejada;
+- microssequência em elaboração;
+- microssequência pronta para estudo;
+- iteração local pendente de revisão.
 
-## Rascunho, prontidão e estudo
+Esses estados permitem que estrutura e prática cresçam sem se confundirem.
 
-O modelo também distingue claramente autoria em andamento e conteúdo executável. `draft` não é apenas um estado visual; é uma forma de separar o que ainda está em construção do que já pode entrar no estudo. O mesmo vale para `included: false`, que mantém uma microssequência fora do percurso executável sem apagá-la da árvore.
+## O que ainda precisa ser provado
 
-Essa decisão preserva algo importante: a possibilidade de estudar, revisar e reorganizar no mesmo ambiente sem confundir material de trabalho com material pronto.
-
-## O que o modelo ainda precisa provar em pesquisa própria
-
-Alguns pontos do modelo didático já encontram base teórica forte. Outros ainda precisam de avaliação situada no próprio AraLearn: tamanho ideal das microssequências por domínio, grau de variação necessário para consolidar uma capacidade, efeito dos presets de lição, momento certo de expandir uma sequência em vez de criar outra e impacto real das checagens locais sobre a qualidade percebida pelo estudante.
-
-Isso não reduz a consistência do modelo. Apenas impede que o projeto transforme decisões promissoras em certeza prematura.
+O modelo didático do produto é uma tese operacional e de design. Seus efeitos sobre aprendizagem, motivação e continuidade precisam ser avaliados empiricamente em pesquisas posteriores.

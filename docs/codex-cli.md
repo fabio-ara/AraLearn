@@ -1,148 +1,49 @@
 # Codex CLI local no AraLearn
 
-## 1. Visão geral
+## Visão geral
 
-O provider `Codex CLI` do AraLearn usa sempre a mesma arquitetura:
+O AraLearn suporta provider local via `Codex CLI`. Esse caminho permite rodar fluxos estruturais e locais sem depender exclusivamente de providers por API.
 
-- o app fala com um bridge HTTP local;
-- o bridge expõe `127.0.0.1`;
-- o bridge chama o `Codex CLI` instalado no ambiente local.
+## Arquitetura
 
-Quando o bridge não responde, o app abre uma tela de assistência com diagnóstico, endpoint, script copiável e comando de teste específico para a plataforma detectada.
+O app fala com um bridge HTTP local que, por sua vez, aciona o `Codex CLI`. Essa separação permite que a interface web permaneça simples e que a execução local seja tratada como provider formal do produto.
 
-## 2. Arquitetura
+## O que o app espera
 
-```text
-AraLearn
--> http://127.0.0.1:4183/assist
--> Node.js bridge
--> Codex CLI
-```
+O app espera:
 
-## 3. O que o app espera
+- bridge local ativo;
+- endpoint acessível;
+- `Codex CLI` instalado;
+- ambiente Node funcional para o bridge.
 
-- endpoint local em `http://127.0.0.1:4183/assist`;
-- rota de saúde em `http://127.0.0.1:4183/health`;
-- bridge ativo fora do AraLearn;
-- `Codex CLI` já instalado e autenticado no ambiente da plataforma.
+## Plataformas
 
-## 4. Android
+### Android
 
-No Android, o setup operacional acontece no Termux.
+No Android, o setup operacional usa `Termux` e endpoint local, normalmente em `127.0.0.1`.
 
-No AraLearn:
+### Windows
 
-- selecione `Codex CLI`;
-- se o bridge não estiver ativo, abra a configuração local;
-- toque em `Copiar script para Termux`;
-- cole no Termux.
+No Windows, o fluxo esperado usa PowerShell, bridge local e binário do `Codex CLI` disponível no ambiente.
 
-O script do app:
+### Linux
 
-- atualiza pacotes do Termux;
-- instala Node.js;
-- confere `codex`;
-- grava `~/aralearn-codex/aralearnCodexBridge.mjs`;
-- define `ARALEARN_CODEX_HOST`, `ARALEARN_CODEX_PORT`, `ARALEARN_CODEX_COMMAND=codex` e token opcional;
-- inicia o bridge local.
+No Linux, o princípio é o mesmo: bridge local, Node e `Codex CLI` acessível.
 
-## 5. Windows
+## Saúde do bridge
 
-No Windows, o setup operacional acontece no PowerShell.
+O produto verifica o estado do bridge antes de iniciar operações pesadas. Isso evita abrir geração estrutural ou local quando o provider local não está operacional.
 
-No AraLearn:
+## Limitações
 
-- selecione `Codex CLI`;
-- se o bridge não estiver ativo, abra a configuração local;
-- toque em `Copiar script PowerShell`;
-- cole numa janela do PowerShell;
-- mantenha essa janela aberta enquanto usar o provider.
+Esse modo depende de ambiente corretamente preparado no dispositivo do usuário. Ele não substitui a necessidade de configuração local mínima.
 
-O script do app:
+## Quando esse modo faz mais sentido
 
-- confere `node`;
-- confere `codex.cmd` ou `codex`;
-- grava `%USERPROFILE%\aralearn-codex\aralearnCodexBridge.mjs`;
-- define `ARALEARN_CODEX_HOST`, `ARALEARN_CODEX_PORT`, `ARALEARN_CODEX_COMMAND=codex.cmd` e token opcional;
-- inicia o bridge local.
+O provider local tende a ser útil quando o usuário quer:
 
-## 6. Linux
-
-No Linux, o setup operacional acontece no shell da distribuição.
-
-No AraLearn:
-
-- selecione `Codex CLI`;
-- se o bridge não estiver ativo, abra a configuração local;
-- toque em `Copiar script para Linux`;
-- cole no terminal;
-- mantenha esse terminal aberto enquanto usar o provider.
-
-O script do app:
-
-- confere `node`;
-- confere `codex`;
-- grava `~/aralearn-codex/aralearnCodexBridge.mjs`;
-- define `ARALEARN_CODEX_HOST`, `ARALEARN_CODEX_PORT`, `ARALEARN_CODEX_COMMAND=codex` e token opcional;
-- inicia o bridge local.
-
-## 7. Saúde do bridge
-
-Android e Linux:
-
-```bash
-curl http://127.0.0.1:4183/health
-```
-
-Com token:
-
-```bash
-curl -H "x-aralearn-token: TOKEN" http://127.0.0.1:4183/health
-```
-
-Windows PowerShell:
-
-```powershell
-Invoke-RestMethod -Uri 'http://127.0.0.1:4183/health'
-```
-
-Com token:
-
-```powershell
-Invoke-RestMethod -Headers @{ "x-aralearn-token" = "TOKEN" } -Uri 'http://127.0.0.1:4183/health'
-```
-
-## 8. Variáveis aceitas pelo bridge
-
-- `ARALEARN_CODEX_HOST`
-- `ARALEARN_CODEX_PORT`
-- `ARALEARN_CODEX_TOKEN`
-- `ARALEARN_CODEX_COMMAND`
-- `ARALEARN_CODEX_ARGS`
-- `ARALEARN_CODEX_TIMEOUT_MS`
-- `ARALEARN_CODEX_MAX_BODY_BYTES`
-- `ARALEARN_CODEX_WORKDIR`
-
-## 9. Limitações
-
-- AraLearn não instala automaticamente shell, Node.js nem Codex CLI.
-- no Android, o bridge roda fora do APK.
-- no Windows e no Linux, o bridge roda fora do navegador.
-- o app usa apenas HTTP local em `127.0.0.1`.
-
-## 10. Problemas comuns
-
-- `Bridge local não encontrado`
-  Verifique se o bridge está rodando e se o endpoint continua em `127.0.0.1:4183`.
-
-- `Codex CLI não encontrado`
-  Instale o Codex CLI no ambiente local da plataforma e confirme `codex --help`.
-
-- `Token local inválido`
-  Confirme o valor de `ARALEARN_CODEX_TOKEN` no bridge e o mesmo token na configuração da IA no app.
-
-- `Falha HTTP 404`
-  O endpoint deve terminar em `/assist`.
-
-- `Falha HTTP 500`
-  Veja o erro textual devolvido pelo bridge; normalmente será falha do próprio `Codex CLI`.
+- testar fluxos mais pesados;
+- evitar custo direto de API;
+- operar com maior autonomia local;
+- manter parte importante do trabalho no próprio dispositivo.

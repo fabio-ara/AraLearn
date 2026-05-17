@@ -1,49 +1,76 @@
 # Rascunhos e microssequências
 
-Uma das distinções operacionais mais importantes do AraLearn é a separação entre estruturar uma lição e escrever as unidades interativas de uma microssequência. Essa distinção impede que a geração vire bloco único indiferenciado.
+## A distinção central
+
+Uma das distinções mais importantes do AraLearn é a diferença entre:
+
+- planejar uma etapa da trilha;
+- materializar o conteúdo estudável dessa etapa.
+
+Essa distinção impede que o produto trate toda geração como se fosse um bloco único indiferenciado.
 
 ## O que acontece na lição
 
-Quando a operação acontece no nível da lição, o AraLearn agora usa o fluxo estrutural único do `CourseForge`. O resultado esperado pode incluir atualização da própria lição e criação ou revisão de microssequências planejadas, sempre dentro do escopo selecionado e com auditoria antes do patch.
+No nível da lição, o produto organiza a trilha local. Esse trabalho pode incluir:
 
-Isso não elimina a utilidade dos rascunhos quando eles existirem. Uma microssequência ainda pode nascer em `draft` e fora do estudo. Quando vier sem cards, ela deve ser lida como etapa planejada da trilha, navegável e pronta para materialização posterior. A diferença é que essa condição passou a ser consequência do patch aplicado, e não de um motor separado de “gerar rascunhos da lição”.
+- criação de microssequências planejadas;
+- revisão de ordem;
+- ajuste de títulos e descrições;
+- atualização de governança didática.
+
+Aqui o foco está no percurso, não na redação imediata de todos os cards.
 
 ## O que acontece na microssequência
 
-Quando a operação acontece no workbench da microssequência, o foco muda completamente. Ali o que se gera ou edita são os cards da sequência atual. O fluxo é direto: gerar ou editar, validar, aplicar, revisar a iteração, aceitar ou excluir.
+No nível da microssequência, o foco muda. O usuário entra em uma unidade específica da trilha para:
 
-Esse desenho recoloca a geração dentro da prática real do produto. A iteração não fica escondida como prévia abstrata; ela entra no ambiente de trabalho e continua reversível.
+- materializar conteúdo;
+- corrigir cards;
+- expandir prática;
+- reformular uma proposta ruim;
+- editar texto e estrutura local.
 
-Essa distinção continua valendo. A lição continua sendo o nível de planejamento e governança local; a microssequência continua sendo o nível de edição fina dos cards no workbench. O que mudou é que a superfície pública da lição já não usa mais um branch estrutural separado para criar rascunhos.
+Esse é o ponto em que estudo e autoria se encontram de forma mais intensa.
 
-## Por que a distinção importa
+## Como ler uma microssequência vazia
 
-Sem essa distinção, o sistema tende a confundir duas tarefas diferentes:
+Uma microssequência vazia não deve ser interpretada como falha. Ela é uma etapa planejada do percurso. Sua função é tornar a arquitetura pedagógica visível antes da materialização completa.
 
-- organizar o percurso de uma lição;
-- redigir a unidade interativa de um ponto específico.
+Isso ajuda o usuário a:
 
-No primeiro caso, o problema é cobertura, progressão e posicionamento. No segundo, o problema é mediação, exemplo, prática e clareza local. Misturar os dois níveis empobrece ambos.
+- saber o que vem depois;
+- escolher por onde quer continuar;
+- compreender a lógica do percurso;
+- entrar em uma lição específica sem depender de ordem rígida de abertura.
 
-## Como ler um rascunho
+## O que é um rascunho
 
-Um rascunho não é erro nem lixo provisório. Ele é estado de trabalho. Sua função é permitir que a lição cresça sem que tudo entre automaticamente no estudo. Isso é especialmente importante quando a geração ainda está explorando lacunas, ordem de exposição, erros comuns ou formatos de prática.
+Rascunho, no AraLearn, é estado de trabalho. Ele pode indicar que:
+
+- a etapa ainda não foi materializada;
+- a microssequência foi criada, mas ainda não entrou no estudo;
+- existe uma iteração que precisa de revisão antes de virar conteúdo estável.
+
+Rascunho não é sinônimo de descarte.
 
 ## Quando uma nova microssequência faz sentido
 
-Uma nova microssequência só se justifica quando acrescenta função real ao percurso. Isso pode acontecer porque ela:
+Uma nova microssequência só se justifica quando acrescenta função real ao percurso. Isso pode acontecer para:
 
-- introduz um subpasso ainda ausente;
-- muda a forma de representação;
-- trabalha contraste que faltava;
-- trata erro comum;
-- cobre caso-limite;
-- aproxima o estudante do formato avaliativo esperado;
-- integra um conteúdo com outro;
-- consolida algo que ainda não ficou estável no percurso.
+- introduzir subpasso ainda ausente;
+- tratar contraste relevante;
+- corrigir pré-requisito mal estabilizado;
+- variar a forma de prática;
+- enfrentar erro comum;
+- preparar transição para etapa seguinte.
 
-Sem isso, a criação de nova sequência tende a gerar volume sem ganho.
+Sem função clara, o aumento de microssequências tende a produzir volume, não aprendizagem.
 
-## Aprofundamento e lacunas
+## Por que essa distinção importa
 
-A ação pública de aprofundamento da lição ou da microssequência não existe para multiplicar unidades interativas indiscriminadamente. Ela existe para localizar lacunas reais: prática ausente, cobertura fraca, redundância, necessidade de contraste, necessidade de variação. Se o resultado for mais unidades, esse aumento precisa estar a serviço da progressão, não da aparência de completude.
+Sem separar estrutura e materialização, o produto corre dois riscos:
+
+- tornar o fluxo amplo caro, pesado e pouco controlável;
+- apagar a intervenção autoral do usuário durante o estudo.
+
+Ao manter a trilha e a materialização como movimentos distintos, o AraLearn preserva tanto a arquitetura pedagógica quanto a autoria situada.

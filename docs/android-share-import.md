@@ -1,100 +1,29 @@
 # Abrir com AraLearn no Android
 
-## 1. O que o recurso faz
+## O que o recurso faz
 
-O APK Android do AraLearn pode receber JSON compartilhado por outros apps e reaproveitar o fluxo interno de importação já existente.
+No Android, o AraLearn pode receber arquivos compartilhados de outros apps para que o usuário os use como fonte de organização pedagógica ou importação local.
 
-Isso permite importar conteúdo vindo de:
+## Fluxo
 
-- ChatGPT;
-- navegador;
-- gerenciador de arquivos;
-- editor de texto;
-- qualquer app Android que envie texto ou arquivo JSON compatível.
+O usuário compartilha um arquivo com o AraLearn, o app recebe o conteúdo e o disponibiliza para ingestão, importação ou uso como fonte no fluxo estrutural.
 
-## 2. Fluxo
+## Formatos aceitos
 
-```text
-ChatGPT / outro app
-→ Compartilhar ou Abrir com
-→ AraLearn
-→ validação do contrato
-→ revisão/importação
-```
+Os formatos efetivamente aproveitáveis dependem dos parsers e fluxos já suportados pelo produto. O objetivo principal é permitir entrada prática de fontes no dispositivo móvel.
 
-## 3. Formatos aceitos
+## Como usar
 
-- `aralearn.contract`
-- `aralearn.storage`
-- JSON de recortes estruturais já exportados pelo AraLearn, quando embalados no mesmo envelope `aralearn.contract`
+Esse recurso é útil para cenários como:
 
-## 4. Como usar com ChatGPT
+- abrir um PDF de apostila diretamente no app;
+- enviar um `DOCX` para servir de base à organização de uma lição;
+- importar um recorte estrutural salvo anteriormente.
 
-Exemplo de uso:
+## Limitações
 
-- pedir ao ChatGPT para gerar um arquivo JSON compatível com `aralearn.contract`;
-- baixar ou compartilhar o arquivo;
-- escolher `AraLearn`;
-- revisar o formato detectado;
-- tocar em `Importar`.
+O compartilhamento não transforma automaticamente qualquer arquivo em fonte perfeita. A qualidade final depende do formato, da extração textual disponível e do uso que o usuário fará no fluxo do app.
 
-O mesmo vale para texto JSON compartilhado como `text/plain`.
+## Privacidade
 
-## 5. Limitações
-
-- O AraLearn não controla como cada app Android compartilha arquivos.
-- Alguns apps enviam JSON como `text/plain`.
-- Arquivos muito grandes podem ser rejeitados.
-- O conteúdo ainda precisa obedecer ao contrato do AraLearn.
-- A importação deve ser revisada pelo usuário antes de ser aplicada.
-- Em `ACTION_SEND_MULTIPLE`, o app usa apenas o primeiro item legível.
-
-## 6. Privacidade
-
-- O arquivo recebido é processado localmente pelo AraLearn.
-- O AraLearn não envia o arquivo para servidor próprio.
-- Se o arquivo foi criado por ChatGPT ou outro serviço externo, continuam valendo as políticas desse serviço.
-
-## 7. Teste manual obrigatório
-
-1. Gerar o APK:
-
-```powershell
-npm run android:debug
-```
-
-2. Instalar o APK no Android.
-
-3. Criar um arquivo `teste-aralearn.json` com:
-
-```json
-{
-  "contract": "aralearn.contract",
-  "version": 1,
-  "kind": "project",
-  "courses": [
-    {
-      "title": "Curso recebido por compartilhamento",
-      "modules": [
-        {
-          "title": "Módulo 1",
-          "lessons": [
-            {
-              "title": "Lição 1",
-              "microsequences": []
-            }
-          ]
-        }
-      ]
-    }
-  ]
-}
-```
-
-4. Abrir o arquivo no Android com `Abrir com AraLearn`.
-
-5. Confirmar que o AraLearn abre e mostra a revisão de importação.
-
-6. Compartilhar texto JSON para o AraLearn.
-
-7. Confirmar que o AraLearn importa ou mostra erro claro.
+O recurso existe para uso local do material no próprio dispositivo. O AraLearn não transforma compartilhamento Android em sincronização contínua com fonte externa.
