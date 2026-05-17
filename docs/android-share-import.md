@@ -14,6 +14,10 @@ Esse recurso faz sentido em cenários como:
 - enviar um `DOCX` para servir de base a uma lição;
 - reaproveitar um recorte estrutural salvo anteriormente.
 
+## Por que isso importa
+
+Em contexto móvel, a entrada prática de material é parte da proposta do produto. O estudo nem sempre começa numa mesa de trabalho; muitas vezes ele começa no trânsito, no celular, com um arquivo encontrado no meio da rotina.
+
 ## Limitações
 
 Compartilhar um arquivo com o app não garante aproveitamento perfeito. A utilidade do material depende do formato, da qualidade da extração textual e do fluxo escolhido depois.

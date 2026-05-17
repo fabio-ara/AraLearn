@@ -22,7 +22,7 @@ Cada microssequência deve privilegiar uma progressão curta e funcional:
 
 Cada exercício precisa ser autossuficiente. Os dados necessários devem aparecer no próprio card, sem exigir busca retrospectiva em outros pontos da trilha.
 
-Quando a regra for abstrata ou pouco intuitiva, a explicação deve começar por um caso concreto antes da generalização. Quando o objetivo for demonstrar equivalência ou reescrever expressão, a microssequência deve mostrar a ponte do raciocínio, e não só o resultado.
+Quando a regra for abstrata ou pouco intuitiva, a explicação deve começar por caso concreto antes da generalização. Quando o objetivo for demonstrar equivalência ou reescrever expressão, a microssequência deve mostrar a ponte do raciocínio, e não apenas o resultado.
 
 ## Progressão
 

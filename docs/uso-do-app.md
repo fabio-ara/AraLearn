@@ -10,9 +10,9 @@ O app trabalha com cinco níveis visíveis:
 - microssequências;
 - cards.
 
-Curso e módulo organizam o percurso em escala mais ampla. A lição concentra a orientação local. A microssequência reúne uma pequena unidade de estudo. O card é a unidade de interação.
+Curso e módulo oferecem a moldura mais ampla do percurso. A lição concentra orientação mais fina. A microssequência organiza uma pequena unidade de estudo. O card é a unidade de interação.
 
-Essa organização existe para ajudar o usuário a estudar com continuidade. Ela também orienta a geração assistida: o sistema não responde sobre um tema solto, mas sobre um ponto situado na trilha.
+Essa organização não serve apenas para navegação. Ela também situa a assistência do sistema. O app não responde sobre um tema solto, mas sobre um ponto localizado dentro de uma trilha.
 
 ## O que se faz na tela inicial
 
@@ -24,33 +24,38 @@ Na tela inicial, o usuário pode:
 - configurar provider e modelo;
 - acessar ações globais de backup e manutenção.
 
-É o lugar em que o projeto aparece como conjunto.
+É o ponto em que o projeto aparece como conjunto.
 
 ## O que se faz em curso, módulo e lição
 
-Nos níveis de curso, módulo e lição, o trabalho é sobretudo de organização e orientação. O usuário pode:
+Nos níveis de curso, módulo e lição, o trabalho é principalmente de organização e orientação. Ali o usuário pode:
 
 - revisar a estrutura existente;
 - editar títulos e descrições;
 - anexar fontes;
 - ajustar a orientação da lição;
-- acionar geração estrutural no escopo selecionado.
+- pedir geração estrutural no escopo selecionado.
 
-O resultado esperado desse fluxo não é, necessariamente, uma pilha completa de cards. Em muitos casos, o mais importante é obter uma trilha navegável até o nível de microssequência e deixar a materialização do conteúdo para o momento mais oportuno.
+Esse fluxo não precisa gerar todos os cards de uma vez. Em muitos casos, o mais valioso é produzir um esqueleto navegável com cursos, módulos, lições e microssequências planejadas, deixando a materialização do conteúdo para depois.
 
 ## Por que a lição é tão importante
 
-A lição é o ponto em que o app concentra orientação didática mais fina. É nela que se registram informações como objetivo local, foco de prática, convenções, notação preferida, limites do recorte e erros comuns.
+A lição é o ponto em que o AraLearn concentra governança local. É ali que se registram objetivo, foco de prática, notação preferida, limites do recorte, erros comuns e outras orientações que ajudam o sistema e o próprio usuário a entender o que aquela parte do percurso precisa fazer.
 
-Isso ajuda o sistema a produzir algo mais situado do que uma resposta genérica. Também ajuda o usuário a entender, reler e corrigir o percurso depois.
+Isso também torna o estudo mais transparente. O contexto de uma microssequência não depende apenas do pedido da hora; ele já está ancorado em uma etapa visível e editável da trilha.
 
 ## Como ler uma microssequência planejada
 
 No AraLearn, uma microssequência pode existir antes de ter cards. Isso não é falha.
 
-Quando isso acontece, o app está mostrando uma etapa já planejada da trilha, mas ainda não materializada. Essa decisão tem uma função prática: permitir que o usuário veja para onde o percurso está indo, escolha por onde continuar e materialize o conteúdo de modo progressivo.
+Nesse caso, o app está mostrando uma etapa já planejada do percurso, ainda não materializada. Essa escolha é importante porque permite:
 
-Essa materialização progressiva é parte importante do desenho do produto. Ela evita que o fluxo estrutural tente gerar tudo de uma vez e permite que o estudo avance por blocos menores, mais controláveis e mais fáceis de revisar.
+- ver para onde a trilha está indo;
+- escolher por onde continuar;
+- estudar por partes menores;
+- evitar geração prematura de volume excessivo.
+
+O produto, assim, separa duas tarefas diferentes: planejar a trilha e materializar o conteúdo estudável de cada etapa.
 
 ## O que se faz dentro da microssequência
 
@@ -64,10 +69,18 @@ O painel da microssequência é o centro operacional do estudo local. Ali o usu�
 - editar cards manualmente;
 - continuar para a próxima etapa da trilha.
 
-É nesse ponto que estudo, revisão e autoria se encontram com mais força.
+É nesse ponto que estudo, autoria e revisão se encontram com mais intensidade.
+
+## Dois modos legítimos de uso
+
+O AraLearn pode ser usado de maneira simples ou mais autoral.
+
+Num uso mais direto, a pessoa fornece material, pede a organização do curso e começa a estudar a partir do esqueleto produzido, materializando cards quando precisar.
+
+Num uso mais avançado, a pessoa interfere no percurso, na orientação didática, na forma dos cards, nos parâmetros do fluxo e no próprio conteúdo final. Isso torna o app útil tanto para quem quer baixo atrito quanto para quem quer autoria mais forte, inclusive em contexto docente.
 
 ## O que continua funcionando sem internet
 
-Como o projeto fica salvo localmente, o app continua útil sem conexão para atividades como navegação, leitura, revisão e retomada do estudo.
+Como o projeto fica salvo localmente, o app continua útil sem conexão para navegar, reler, revisar e retomar o estudo.
 
-Os recursos que dependem de LLM, como geração estrutural, materialização assistida e reformulação por IA, exigem internet quando usam provider remoto. Isso significa que o AraLearn continua servindo para estudo em trânsito ou em locais sem sinal, mesmo quando a parte criativa fica temporariamente indisponível.
+Quando a operação depende de geração com modelo remoto, a internet volta a ser necessária. Ainda assim, a parte já construída do percurso continua acessível, o que preserva continuidade em situações de mobilidade e conexão instável.

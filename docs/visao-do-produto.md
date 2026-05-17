@@ -2,57 +2,53 @@
 
 ## O problema a que o AraLearn responde
 
-Em muitos contextos de estudo, o problema principal não é falta de material. O estudante já tem apostila, slides, anotações, exercícios, artigos, documentação, vídeos e, mais recentemente, respostas de modelos de linguagem. Ainda assim, continua sem saber por onde começar, o que vem antes do quê, o que precisa praticar primeiro e como retomar o percurso depois de uma interrupção.
+O AraLearn parte de um diagnóstico recorrente em contextos de estudo: não falta informação; falta forma. Muitas pessoas já têm acesso a material de sobra, mas ainda assim não conseguem transformá-lo em percurso. Sabem que precisam estudar, mas não sabem por onde começar, o que vem antes do quê, o que já entenderam, o que ainda não foi praticado e como retomar o fio depois de uma interrupção.
 
-O AraLearn nasce dessa dificuldade. Seu foco não é apenas gerar texto sobre um tema, mas ajudar a organizar conteúdo didático em trilhas de estudo legíveis e continuáveis.
+Essa dificuldade pesa ainda mais sobre quem estuda em condições irregulares: estudantes-trabalhadores, pessoas com dupla jornada, professores em formação continuada, autodidatas que dependem de material heterogêneo e qualquer usuário que precise estudar em janelas curtas, com atenção dividida e conexão nem sempre disponível.
 
-Esse ponto importa especialmente para estudantes-trabalhadores. O estudo muitas vezes acontece em sessões curtas, no transporte público, entre turnos ou no fim de um dia cansativo. Nesses cenários, perder a estrutura costuma ser mais grave do que perder um detalhe do conteúdo.
+## A resposta do produto
 
-## O que o produto oferece
-
-O app organiza o projeto em uma hierarquia explícita:
+O AraLearn organiza o estudo em uma estrutura explícita:
 
 ```text
 curso -> módulo -> lição -> microssequência -> card
 ```
 
-Essa estrutura não serve apenas para armazenar conteúdo. Ela serve para dar forma ao percurso.
+Essa hierarquia não é só uma árvore de navegação. Ela organiza contexto didático. Cada nível informa o seguinte, de modo que a microssequência não surge como card solto nem como resposta avulsa de chat, mas como etapa situada num percurso maior.
 
-A microssequência é a unidade didática central do AraLearn. Em vez de pensar o estudo como uma lista indiferenciada de cards, o app reúne poucos cards em torno de uma finalidade concreta: introduzir um conceito, contrastar ideias próximas, praticar um passo, revisar um ponto frágil ou preparar a continuação da trilha.
+A microssequência é a unidade didática central do app. Ela reúne poucos cards em torno de uma finalidade concreta: introduzir uma noção, preparar um passo, oferecer prática, comparar ideias, revisar um erro recorrente ou conduzir à etapa seguinte.
 
-## Como a IA entra
+## O que torna o produto singular
 
-O AraLearn usa modelos de linguagem em duas frentes.
+O AraLearn reúne quatro coisas que normalmente aparecem separadas:
 
-Na primeira, a IA ajuda a transformar material amplo em uma arquitetura pedagógica navegável. Isso inclui sugerir cursos, módulos, lições e microssequências a partir de fontes e objetivos de estudo.
-
-Na segunda, a IA ajuda a continuar o trabalho dentro da trilha já existente. Ela pode materializar uma microssequência planejada, corrigir cards ruins, propor reforço local, reformular um trecho confuso ou expandir um ponto ainda fraco.
-
-O diferencial está em como isso acontece. O app não trata o modelo como professor soberano nem como gerador cego de flashcards. Ele preserva estrutura, contexto, validação e possibilidade de intervenção humana.
-
-## O que o produto realmente inova
-
-O AraLearn não inova por prometer uma inteligência milagrosa. A inovação do app está em reunir, no mesmo ambiente, quatro coisas que costumam aparecer separadas:
-
-- organização do percurso de estudo;
-- geração assistida de conteúdo localizado;
+- organização estrutural do percurso;
+- linguagem autoral simples para representar conteúdo didático;
 - estudo ativo no próprio runtime;
-- autoria e revisão do material persistido.
+- possibilidade contínua de revisão, correção e reautoria.
 
-Esse arranjo muda o papel do usuário. Ele não é apenas consumidor de saídas da IA. Também pode atuar como autor, revisor, planejador e estudante do próprio percurso.
+Isso muda o papel do usuário. Em vez de apenas receber conteúdo gerado, ele pode usar o app como estudante, autor, revisor ou organizador de trilhas. Também muda o papel da IA: ela deixa de ocupar o centro do produto e passa a operar dentro de uma arquitetura mais explícita.
 
-Há, portanto, um deslocamento importante: o valor do sistema não está só na resposta gerada, mas na continuidade entre estrutura, estudo e edição.
+## A linguagem autoral como contribuição do produto
 
-## Persistência local e uso sem internet
+Uma das propostas mais originais do AraLearn é o uso de uma linguagem autoral simples em JSON para representar conteúdo didático. Essa linguagem é suficientemente legível para humanos e suficientemente operacional para modelos de linguagem.
 
-O projeto fica salvo localmente no dispositivo do usuário. Por isso, várias atividades continuam disponíveis mesmo sem internet: abrir o app, navegar pela estrutura, revisar microssequências, ler cards já existentes e retomar o ponto em que o estudo parou.
+Com ela, o conteúdo pode ser descrito por elementos como explicação, código, tabela, fluxograma, árvore, plano cartesiano e matriz. O runtime do app transforma essa base comum em experiências mais complexas de leitura e prática, sem exigir que o autor ou o modelo tenham de escrever diretamente em formatos visuais de baixo nível.
 
-Os recursos de geração com LLM exigem conexão. Isso significa que o app não se torna plenamente criativo offline, mas continua útil para estudo, consulta e continuidade em contextos de conexão instável.
+## Assistência sem apagamento da autoria
 
-## Uma posição pedagógica e política
+O produto foi pensado para funcionar em mais de um regime de uso. Um usuário pode simplesmente fornecer material, deixar o app organizar o esqueleto do curso e seguir estudando. Outro pode intervir com muito mais detalhe: editar percurso, revisar cards, ajustar orientação da lição, mudar parâmetros do fluxo e reescrever conteúdo.
 
-Pedagogicamente, o AraLearn aposta em percurso, prática, contraste, revisão e progressão. O card isolado importa, mas faz mais sentido quando pertence a uma pequena unidade com função clara dentro de uma trilha maior.
+Essa diferença importa porque o produto não foi pensado para substituir autoria por automatismo. Ele tenta combinar assistência, legibilidade e autonomia.
 
-Politicamente, o app tenta devolver ao estudante alguma capacidade de orientação diante do excesso de informação. Em vez de substituir a autonomia por uma resposta pronta, ele oferece uma estrutura editável e auditável.
+## Persistência local e continuidade
 
-Eticamente, o produto parte da ideia de que um sistema de estudo assistido por IA precisa permitir revisão, recusa e correção. Fluência textual, sozinha, não basta como critério de confiança.
+O projeto fica salvo localmente no dispositivo do usuário. Por isso, o app continua disponível sem internet para navegação, revisão e retomada do estudo. Já as operações criativas que dependem de modelos de linguagem exigem conexão ou provider local configurado.
+
+Esse ponto é menos um detalhe de infraestrutura do que parte da proposta pedagógica: o estudo precisa continuar existindo mesmo quando a rede falha ou a rotina fica fragmentada.
+
+## Uma posição educacional
+
+Pedagogicamente, o AraLearn aposta em percurso, progressão, prática e revisão. Politicamente, ele procura devolver ao usuário alguma capacidade de orientação diante do excesso de informação. Filosoficamente, o produto recusa tanto a fantasia de neutralidade absoluta quanto a delegação cega de autoridade a um modelo.
+
+Em vez de impor um método fechado ou dissolver tudo em personalização sem forma, o app tenta oferecer estrutura suficiente para orientar e abertura suficiente para permitir apropriação crítica.

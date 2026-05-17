@@ -4,7 +4,7 @@
 
 Uma das ideias mais importantes do AraLearn é a separação entre planejar uma etapa da trilha e materializar o conteúdo estudável dessa etapa.
 
-Sem essa distinção, o produto tenderia a tratar toda geração como um bloco único: ou tudo já vem pronto, ou tudo parece incompleto. O AraLearn tenta escapar desses dois extremos.
+Sem essa distinção, o produto tenderia a tratar toda geração como bloco único: ou tudo já vem pronto, ou tudo parece incompleto. O AraLearn tenta escapar desses dois extremos.
 
 ## O que acontece na lição
 
@@ -13,7 +13,7 @@ No nível da lição, o trabalho é principalmente de organização do percurso.
 - criar microssequências planejadas;
 - revisar ordem e continuidade;
 - ajustar títulos, descrições e orientação;
-- registrar o que aquela parte da trilha deve cobrir.
+- registrar o que aquela parte da trilha precisa cobrir.
 
 Nesse nível, o foco está no desenho do caminho.
 
@@ -42,6 +42,4 @@ Ele pode indicar que uma etapa ainda está sendo preparada, que a materializaç�
 
 ## Por que isso melhora o produto
 
-Ao separar estrutura e materialização, o AraLearn consegue fazer algo mais útil do que simplesmente despejar cards.
-
-Ele mostra o percurso, permite estudá-lo por partes, acolhe correções no meio do caminho e mantém a trilha como referência estável enquanto o conteúdo vai ganhando forma.
+Ao separar estrutura e materialização, o AraLearn consegue fazer algo mais forte do que simplesmente despejar cards. Ele mostra o percurso, permite estudá-lo por partes, acolhe correções no meio do caminho e mantém a trilha como referência estável enquanto o conteúdo ganha forma.

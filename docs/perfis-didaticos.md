@@ -10,6 +10,7 @@ Um perfil precisa continuar respeitando:
 
 - a hierarquia pública do projeto;
 - a centralidade da microssequência;
+- a linguagem autoral simples do produto;
 - a possibilidade de auditoria e correção;
 - o controle do usuário sobre o resultado;
 - a separação entre provider e didática.
@@ -26,4 +27,4 @@ Um perfil pode alterar, por exemplo:
 
 ## Para que isso serve
 
-Essa camada permite que o app se comporte de forma um pouco diferente em contextos distintos, como disciplinas acadêmicas, documentação técnica, formação instrumental ou leitura guiada de corpus, sem perder coerência interna.
+Essa camada permite que o app se comporte de forma um pouco diferente em disciplinas acadêmicas, documentação técnica, formação instrumental, leitura guiada de corpus ou outros cenários, sem perder coerência interna.

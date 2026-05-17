@@ -6,6 +6,10 @@ O AraLearn suporta um provider local via `Codex CLI`. Esse caminho permite execu
 
 O app conversa com um bridge HTTP local, e esse bridge aciona o `Codex CLI`. A interface continua simples, enquanto a execução local fica encapsulada como provider do produto.
 
+## Por que isso importa
+
+Esse modo amplia a autonomia operacional do app e reforça uma dimensão importante do projeto: a possibilidade de combinar persistência local, autoria do usuário e assistência não inteiramente subordinada a serviços remotos.
+
 ## O que precisa existir
 
 Para esse modo funcionar, o ambiente precisa ter:
@@ -18,14 +22,6 @@ Para esse modo funcionar, o ambiente precisa ter:
 ## Em quais plataformas
 
 O princípio é o mesmo em Windows, Linux e Android. No Android, a operação costuma passar por `Termux`; no desktop, pelo ambiente local do sistema.
-
-## Quando esse modo faz mais sentido
-
-Esse provider tende a ser útil quando o usuário quer:
-
-- reduzir dependência de API externa;
-- ampliar autonomia operacional;
-- experimentar fluxos locais com mais controle do ambiente.
 
 ## Limite prático
 
