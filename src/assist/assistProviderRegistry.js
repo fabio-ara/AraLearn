@@ -1,49 +1,30 @@
-import { runCodexLocalAssist, CODEX_LOCAL_MODEL_ID } from "./codexLocalAssist.js";
+import { CODEX_LOCAL_MODEL_ID, codexLocalAssistProvider } from "./codexLocalAssist.js";
 import { GEMINI_ASSIST_PROVIDER_ID, geminiAssistProvider } from "./geminiAssistProvider.js";
-import { runGeminiAssist } from "./assistModeDispatcher.js";
 
 export { CODEX_LOCAL_MODEL_ID, GEMINI_ASSIST_PROVIDER_ID };
+const ASSIST_PROVIDER_DESCRIPTORS = Object.freeze([
+  codexLocalAssistProvider,
+  geminiAssistProvider
+]);
 
 function normalizeText(value) {
   return typeof value === "string" ? value.trim() : "";
 }
 
 export function resolveAssistProviderId(model) {
-  return normalizeText(model) === CODEX_LOCAL_MODEL_ID ? CODEX_LOCAL_MODEL_ID : GEMINI_ASSIST_PROVIDER_ID;
+  return resolveAssistProviderDescriptor(model).providerId;
 }
 
 export function resolveAssistProvider(model) {
-  return resolveAssistProviderId(model) === GEMINI_ASSIST_PROVIDER_ID ? geminiAssistProvider : null;
+  return resolveAssistProviderDescriptor(model);
 }
 
 export function resolveAssistProviderDescriptor(model) {
-  if (resolveAssistProviderId(model) === CODEX_LOCAL_MODEL_ID) {
-    return {
-      providerId: CODEX_LOCAL_MODEL_ID,
-      run({ codexEndpoint, codexToken, mode, promptText, context, microsequence, ...payload }) {
-        return runCodexLocalAssist({
-          endpoint: codexEndpoint,
-          token: codexToken,
-          mode,
-          context: context ?? microsequence ?? {},
-          promptText,
-          ...payload
-        });
-      }
-    };
-  }
-
-  return {
-    providerId: GEMINI_ASSIST_PROVIDER_ID,
-    provider: geminiAssistProvider,
-    run({ model: selectedModel, apiKey, ...payload }) {
-      return runGeminiAssist({
-        model: selectedModel,
-        apiKey,
-        ...payload
-      });
-    }
-  };
+  const normalizedModel = normalizeText(model);
+  return (
+    ASSIST_PROVIDER_DESCRIPTORS.find((descriptor) => descriptor.matchesModel(normalizedModel)) ||
+    ASSIST_PROVIDER_DESCRIPTORS[ASSIST_PROVIDER_DESCRIPTORS.length - 1]
+  );
 }
 
 export function runAssistWithResolvedProvider(request) {

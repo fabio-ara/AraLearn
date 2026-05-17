@@ -6,6 +6,8 @@ import {
   uploadGeminiAttachments,
   deleteGeminiAttachments
 } from "./geminiProviderAdapter.js";
+import { runAssistWithApiProvider } from "./assistApiProviderRuntime.js";
+import { CODEX_LOCAL_MODEL_ID } from "./codexLocalAssist.js";
 
 function normalizeText(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -17,6 +19,15 @@ export const DEFAULT_GEMINI_ASSIST_MODEL_ID = "gemini-2.5-flash";
 export const geminiAssistProvider = Object.freeze({
   providerId: GEMINI_ASSIST_PROVIDER_ID,
   defaultModelId: DEFAULT_GEMINI_ASSIST_MODEL_ID,
+  matchesModel(model) {
+    return normalizeText(model) !== CODEX_LOCAL_MODEL_ID;
+  },
+  run(request = {}) {
+    return runAssistWithApiProvider({
+      provider: geminiAssistProvider,
+      ...request
+    });
+  },
   normalizeCredentials({ apiKey }) {
     return {
       apiKey: normalizeText(apiKey)
