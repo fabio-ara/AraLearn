@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { ingestCourseForgeAttachments } from "../src/ui/courseForgeAttachmentIngestion.js";
+import { ingestCourseForgeAttachments } from "../src/generation/ingestion/courseForgeAttachmentIngestion.js";
 
 function encodeText(value) {
   return new TextEncoder().encode(value).buffer;

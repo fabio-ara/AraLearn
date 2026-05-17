@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 import {
   buildCourseForgeMicrosequencePrompt,
+  executeCourseForgeMicrosequenceGeneration,
   prepareCourseForgeMicrosequenceGeneration,
   resolveCourseForgeMicrosequenceRequestConfig
 } from "../src/generation/runtime/courseForgeInterventionRuntime.js";
@@ -116,4 +117,98 @@ test("prepareCourseForgeMicrosequenceGeneration rejeita falta de alvo ou de entr
       }),
     /Informe um pedido ou anexo com texto utilizável/
   );
+});
+
+test("executeCourseForgeMicrosequenceGeneration abre setup quando provider local nao responde", async () => {
+  const result = await executeCourseForgeMicrosequenceGeneration({
+    selection: {
+      courseKey: "course-a",
+      moduleKey: "module-a",
+      lessonKey: "lesson-a",
+      microsequenceKey: "micro-a"
+    },
+    draft: {
+      promptText: "Corrija a progressão."
+    },
+    assistConfig: {
+      model: "codex-cli-local",
+      codexEndpoint: "http://127.0.0.1:4183/assist",
+      codexToken: "segredo"
+    },
+    checkCodexLocalHealth: async () => ({
+      ok: false,
+      error: "bridge offline"
+    }),
+    runCourseForge: async () => {
+      throw new Error("nao deveria executar");
+    }
+  });
+
+  assert.equal(result.status, "provider-unready");
+  assert.equal(result.errorMessage, "bridge offline");
+});
+
+test("executeCourseForgeMicrosequenceGeneration executa fluxo local no runtime novo", async () => {
+  const projectDocument = {
+    courses: [
+      {
+        key: "course-a",
+        modules: [
+          {
+            key: "module-a",
+            lessons: [
+              {
+                key: "lesson-a",
+                microsequences: [{ key: "micro-a", cards: [] }]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  };
+
+  const result = await executeCourseForgeMicrosequenceGeneration({
+    selection: {
+      courseKey: "course-a",
+      moduleKey: "module-a",
+      lessonKey: "lesson-a",
+      microsequenceKey: "micro-a"
+    },
+    draft: {
+      promptText: "Expanda a explicação.",
+      attachments: [{ name: "apoio.md" }]
+    },
+    assistConfig: {
+      model: "gemini-2.5-flash",
+      apiKey: "chave"
+    },
+    dependencyTitles: ["Base anterior"],
+    selectedDidacticTypeId: "explain",
+    preferredContainerLabel: "Parágrafo",
+    projectDocument,
+    ingestAttachments: async (attachments) => ({
+      attachments: attachments.map((item) => ({ ...item, textContent: "conteúdo" })),
+      extractedCount: 1,
+      warnings: []
+    }),
+    runCourseForge: async (request) => ({
+      projectDocument: {
+        ...projectDocument,
+        generated: request.intent.promptText
+      },
+      patch: {
+        target: {
+          courseKey: "course-a",
+          moduleKey: "module-a",
+          lessonKey: "lesson-a",
+          microsequenceKey: "micro-a"
+        }
+      }
+    })
+  });
+
+  assert.equal(result.status, "success");
+  assert.match(result.preparedIntervention.request.intent.promptText, /Base anterior/);
+  assert.equal(result.courseForgeResult.projectDocument.generated.includes("Expanda a explicação."), true);
 });

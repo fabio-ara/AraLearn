@@ -122,7 +122,7 @@ import { runCourseForge } from "../generation/courseForge/courseForgeRunner.js";
 import {
   prepareCourseForgeLessonDeepeningDraft
 } from "../generation/runtime/courseForgeGenerationDraftState.js";
-import { prepareCourseForgeMicrosequenceGeneration } from "../generation/runtime/courseForgeInterventionRuntime.js";
+import { executeCourseForgeMicrosequenceGeneration } from "../generation/runtime/courseForgeInterventionRuntime.js";
 import {
   applyCourseForgeAssistConfigPatch,
   applyCourseForgeGenerationPanelScopeState,
@@ -138,10 +138,7 @@ import {
   resolveCourseForgeGenerationScopeViewState,
   resolveCourseForgeOpenGeneratedLessonState
 } from "../generation/runtime/courseForgeGenerationEditorRuntime.js";
-import {
-  resolveCourseForgeProviderReadiness,
-  resolveGenerationPanelScopeFromAction
-} from "../generation/runtime/courseForgeGenerationViewModel.js";
+import { resolveGenerationPanelScopeFromAction } from "../generation/runtime/courseForgeGenerationViewModel.js";
 import { listMicrosequenceTypes } from "../generation/types/microsequenceTypes.js";
 import { buildLessonDomainCoverageReport } from "../generation/domain/lessonDomainModel.js";
 import { validateDidacticDepth } from "../generation/validation/validateDidacticDepth.js";
@@ -149,7 +146,7 @@ import { getLessonProgressCursor, removeLessonProgressEntries, writeLessonProgre
 import { detectJsonExchangeFormat } from "../storage/jsonExchange.js";
 import { createStarterContractCard, getContractCardKind, listContractAnswerValues } from "../contract/contractCard.js";
 import { isRunnableMicrosequence, resolveMicrosequenceRuntimeIncluded } from "../model/microsequenceStatus.js";
-import { ingestCourseForgeAttachments } from "./courseForgeAttachmentIngestion.js";
+import { ingestCourseForgeAttachments } from "../generation/ingestion/courseForgeAttachmentIngestion.js";
 import {
   createCourse as createCourseDocument,
   createLesson as createLessonDocument,
@@ -1742,31 +1739,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
     updateCodexCliSetupStatus(connection.setupStatus);
     render({ preserveState });
     return connection.status;
-  }
-
-  async function ensureCodexLocalReady() {
-    const status = await resolveCourseForgeProviderReadiness({
-      selectedModel: state.assistConfig.model,
-      codexEndpoint: state.assistConfig.codexEndpoint,
-      codexToken: state.assistConfig.codexToken,
-      checkCodexLocalHealth
-    });
-    if (status.ok) {
-      return true;
-    }
-
-    if (isCodexLocalModel(state.assistConfig.model)) {
-      updateCodexCliSetupStatus({
-        ok: false,
-        checking: false,
-        error: status.error || "O bridge local não está ativo.",
-        data: status.data ?? null
-      });
-      openCodexCliSetup(status.error || "O bridge local não está ativo.");
-      return false;
-    }
-
-    return true;
   }
 
   async function handleCodexModelSelection(model) {
@@ -4105,32 +4077,37 @@ export function createLessonEditorApp({ root, storage, editor }) {
     render({ preserveState: true });
 
     try {
-      if (!(await ensureCodexLocalReady())) {
-        return;
-      }
-
       const previousVersionId = getMicrosequenceVersionEntry()?.activeVersionId || "";
-      const preparedIntervention = await prepareCourseForgeMicrosequenceGeneration({
+      const submission = await executeCourseForgeMicrosequenceGeneration({
         selection: state.selection,
         draft: state.assistDraft,
         assistConfig: state.assistConfig,
         dependencyTitles,
         selectedDidacticTypeId: state.assistDraft.didacticTypeId,
         preferredContainerLabel: getAssistContainerLabel(state.assistDraft.preferredContainer),
-        ingestAttachments: ingestCourseForgeAttachments
+        projectDocument: state.project,
+        checkCodexLocalHealth,
+        ingestAttachments: ingestCourseForgeAttachments,
+        runCourseForge
       });
-      const courseForgeResult = await runCourseForge({
-        ...preparedIntervention.request,
-        projectDocument: state.project
-      });
-      storage.saveProject(courseForgeResult.projectDocument);
+
+      if (submission.status === "provider-unready") {
+        openCodexCliSetup(submission.errorMessage || "O bridge local não está ativo.");
+        return;
+      }
+
+      if (submission.status !== "success") {
+        throw new Error(submission.errorMessage || "Falha ao chamar o serviço de IA.");
+      }
+
+      storage.saveProject(submission.courseForgeResult.projectDocument);
       applyMicrosequenceGeneration({
-        projectDocument: courseForgeResult.projectDocument,
+        projectDocument: submission.courseForgeResult.projectDocument,
         previousVersionId,
         fallbackTitle: context.microsequence?.title || "Microssequência"
       });
       const nextMicrosequence = findMicrosequence(
-        courseForgeResult.projectDocument,
+        submission.courseForgeResult.projectDocument,
         state.selection.courseKey,
         state.selection.moduleKey,
         state.selection.lessonKey,

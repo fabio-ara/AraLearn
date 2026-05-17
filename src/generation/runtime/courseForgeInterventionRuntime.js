@@ -1,4 +1,6 @@
+import { isCodexLocalModel } from "../providers/codexCliConfig.js";
 import { resolveCourseForgeLaunchConfig } from "./courseForgeLaunchConfig.js";
+import { resolveCourseForgeProviderReadiness } from "./courseForgeGenerationViewModel.js";
 
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -119,4 +121,57 @@ export async function prepareCourseForgeMicrosequenceGeneration({
       providerId: launchConfig.providerId
     }
   };
+}
+
+export async function executeCourseForgeMicrosequenceGeneration({
+  selection = {},
+  draft = {},
+  assistConfig = {},
+  dependencyTitles = [],
+  selectedDidacticTypeId = "",
+  preferredContainerLabel = "",
+  projectDocument = {},
+  checkCodexLocalHealth,
+  ingestAttachments,
+  runCourseForge
+} = {}) {
+  const readiness = await resolveCourseForgeProviderReadiness({
+    selectedModel: assistConfig.model,
+    codexEndpoint: assistConfig.codexEndpoint,
+    codexToken: assistConfig.codexToken,
+    checkCodexLocalHealth
+  });
+
+  if (!readiness.ok && isCodexLocalModel(assistConfig.model)) {
+    return {
+      status: "provider-unready",
+      errorMessage: readiness.error || "O bridge local não está ativo."
+    };
+  }
+
+  try {
+    const preparedIntervention = await prepareCourseForgeMicrosequenceGeneration({
+      selection,
+      draft,
+      assistConfig,
+      dependencyTitles,
+      selectedDidacticTypeId,
+      preferredContainerLabel,
+      ingestAttachments
+    });
+    const courseForgeResult = await runCourseForge({
+      ...preparedIntervention.request,
+      projectDocument
+    });
+    return {
+      status: "success",
+      courseForgeResult,
+      preparedIntervention
+    };
+  } catch (error) {
+    return {
+      status: "error",
+      errorMessage: error instanceof Error ? error.message : "Falha ao chamar o serviço de IA."
+    };
+  }
 }
