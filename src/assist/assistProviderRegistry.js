@@ -1,4 +1,4 @@
-import { CODEX_LOCAL_MODEL_ID, codexLocalAssistProvider } from "./codexLocalAssist.js";
+import { CODEX_LOCAL_MODEL_ID, codexLocalAssistProvider } from "./codexLocalAssistProvider.js";
 import { GEMINI_ASSIST_PROVIDER_ID, geminiAssistProvider } from "./geminiAssistProvider.js";
 
 export { CODEX_LOCAL_MODEL_ID, GEMINI_ASSIST_PROVIDER_ID };

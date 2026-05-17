@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { runAssist } from "../src/assist/runAssist.js";
+import { runAssist } from "../src/assist/assistRuntime.js";
 
 test("runAssist roteia para Codex local quando o modelo é codex-cli-local", async () => {
   const originalFetch = globalThis.fetch;

@@ -9,7 +9,7 @@ import {
   runCodexLocalAssist,
   resolveCodexLocalEndpoint,
   resolveCodexLocalHealthEndpoint
-} from "../src/assist/codexLocalAssist.js";
+} from "../src/assist/codexLocalAssistProvider.js";
 
 test("isCodexLocalModel reconhece apenas o model id local", () => {
   assert.equal(isCodexLocalModel("codex-cli-local"), true);

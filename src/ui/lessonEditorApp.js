@@ -111,8 +111,8 @@ import {
   DEFAULT_CODEX_LOCAL_ENDPOINT,
   checkCodexLocalHealth,
   isCodexLocalModel
-} from "../assist/codexLocalAssist.js";
-import { runAssist } from "../assist/runAssist.js";
+} from "../assist/codexLocalAssistProvider.js";
+import { runAssist } from "../assist/assistRuntime.js";
 import { runCourseForge } from "../generation/courseForge/courseForgeRunner.js";
 import { createProviderRegistry, resolveProviderFromModelId } from "../generation/providers/providerRegistry.js";
 import { createCodexCliProvider } from "../generation/providers/codexCliProvider.js";

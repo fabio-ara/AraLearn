@@ -1,5 +1,5 @@
 import { buildStandaloneBridgeSource } from "../assist/codexBridgeShared.js";
-import { resolveCodexLocalEndpoint, resolveCodexLocalHealthEndpoint } from "../assist/codexLocalAssist.js";
+import { resolveCodexLocalEndpoint, resolveCodexLocalHealthEndpoint } from "../assist/codexLocalAssistProvider.js";
 
 const PLATFORM_ANDROID = "android";
 const PLATFORM_WINDOWS = "windows";

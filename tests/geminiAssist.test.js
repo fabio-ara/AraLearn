@@ -7,7 +7,7 @@ import {
   resumeGenerationFromValidatedPlan,
   runGeminiAssist,
   validateOrRepairMicrosequencePlan
-} from "../src/assist/geminiAssist.js";
+} from "../src/assist/assistModeDispatcher.js";
 import { buildMicrosequencePlanningContract } from "../src/generation/planning/buildMicrosequencePlanningContract.js";
 import { buildMicrosequenceGenerationContract } from "../src/generation/contracts/buildMicrosequenceGenerationContract.js";
 import { validateMicrosequencePlan } from "../src/generation/planning/validateMicrosequencePlan.js";
