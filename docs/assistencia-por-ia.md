@@ -38,7 +38,7 @@ Isso significa que a geração não deve ser lida como evento isolado. Ela é um
 
 O AraLearn usa IA em dois pontos centrais, mas com objetivos diferentes.
 
-Na lição, a IA já opera no fluxo estrutural do `CourseForge`. Nesse nível, o sistema pode revisar a governança local, planejar microssequências e compilar cards quando o pedido exigir, sempre dentro do escopo da lição e com auditoria local antes do patch. O sistema considera `sourceGuideStructured`, `domainMap`, cobertura já existente, sinais de prática e risco de redundância.
+Na lição, a IA já opera no fluxo estrutural do `CourseForge`. Nesse nível, o sistema pode revisar a governança local e planejar microssequências, sempre dentro do escopo da lição e com auditoria local antes do patch. O sistema considera `sourceGuideStructured`, `domainMap`, cobertura já existente, sinais de prática e risco de redundância. A materialização de cards fica para o runtime local da microssequência.
 
 No painel da microssequência, a IA atua sobre cards. Aqui o objetivo já é muito mais localizado: explicar, demonstrar, praticar, consolidar ou revisar um ponto delimitado pelo próprio percurso.
 

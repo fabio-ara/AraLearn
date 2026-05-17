@@ -181,7 +181,7 @@ test("resolveGenerationScopeState monta o view-model de escopo fora da UI", () =
   });
 
   assert.equal(state.canSubmit, true);
-  assert.equal(state.actionSummary, "Lição, microssequências e cards");
+  assert.equal(state.actionSummary, "Lição e microssequências planejadas");
   assert.equal(state.lessonInputEnabled, true);
   assert.equal(state.generationMode, "generate-top-down-structure");
 });

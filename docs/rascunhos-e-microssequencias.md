@@ -4,9 +4,9 @@ Uma das distinções operacionais mais importantes do AraLearn é a separação 
 
 ## O que acontece na lição
 
-Quando a operação acontece no nível da lição, o AraLearn agora usa o fluxo estrutural único do `CourseForge`. O resultado esperado pode incluir atualização da própria lição, criação ou revisão de microssequências e compilação de cards, sempre dentro do escopo selecionado e com auditoria antes do patch.
+Quando a operação acontece no nível da lição, o AraLearn agora usa o fluxo estrutural único do `CourseForge`. O resultado esperado pode incluir atualização da própria lição e criação ou revisão de microssequências planejadas, sempre dentro do escopo selecionado e com auditoria antes do patch.
 
-Isso não elimina a utilidade dos rascunhos quando eles existirem. Uma microssequência ainda pode nascer em `draft` e fora do estudo. A diferença é que essa condição passou a ser consequência do patch aplicado, e não de um motor separado de “gerar rascunhos da lição”.
+Isso não elimina a utilidade dos rascunhos quando eles existirem. Uma microssequência ainda pode nascer em `draft` e fora do estudo. Quando vier sem cards, ela deve ser lida como etapa planejada da trilha, navegável e pronta para materialização posterior. A diferença é que essa condição passou a ser consequência do patch aplicado, e não de um motor separado de “gerar rascunhos da lição”.
 
 ## O que acontece na microssequência
 

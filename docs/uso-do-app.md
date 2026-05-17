@@ -30,7 +30,7 @@ O que não faz sentido na home é gerar diretamente os cards de um problema pont
 
 À medida que o usuário desce na hierarquia, o tipo de ação muda.
 
-No nível do curso, a geração por IA atua sobre módulos, lições e o planejamento descendente necessário. No nível do módulo, atua sobre lições e seus desdobramentos. No nível da lição, a geração estrutural já pode atualizar a própria lição, suas microssequências e os cards correspondentes pelo `CourseForge`. Só no nível da microssequência a operação deixa de ser top-down e passa a atuar diretamente sobre o workbench local de cards.
+No nível do curso, a geração por IA atua sobre módulos, lições e o planejamento descendente necessário. No nível do módulo, atua sobre lições e seus desdobramentos. No nível da lição, a geração estrutural atualiza a própria lição e planeja suas microssequências pelo `CourseForge`, sem materializar cards por padrão. Só no nível da microssequência a operação deixa de ser top-down e passa a atuar diretamente sobre o workbench local de cards.
 
 Essa distribuição não é arbitrária. Ela existe para conter a operação no menor escopo útil. Quanto mais localizado o problema, mais localizado deve ser o pedido.
 
@@ -53,18 +53,18 @@ Por isso, antes de exigir bons resultados da IA, convém verificar se a lição 
 
 ## Gerar estrutura na lição
 
-Na tela da lição, o painel contextual de geração já opera no fluxo estrutural único. Isso significa que o pedido pode atualizar a governança da lição, criar ou revisar microssequências e, quando o escopo pedir, compilar cards no mesmo ciclo top-down.
+Na tela da lição, o painel contextual de geração já opera no fluxo estrutural único. Isso significa que o pedido pode atualizar a governança da lição e criar ou revisar microssequências planejadas no mesmo ciclo top-down. A materialização dos cards acontece depois, no runtime local de cada microssequência.
 
 O objetivo desse nível continua sendo estruturar a trilha da lição no menor escopo útil. A diferença é que o app não interrompe mais esse fluxo em um branch separado de rascunhos. Quando a lição já traz `domainMap`, `sourceGuideStructured` e sinais locais de cobertura, o `CourseForge` usa esses dados para decidir lacunas, progressão, prática, contraste e risco de redundância antes de aplicar o patch.
 
 ## O painel da microssequência
 
-Ao abrir uma microssequência, o usuário entra no workbench. É ali que o estudo local, a revisão editorial e a geração de cards se encontram.
+Ao abrir uma microssequência, o usuário entra no workbench. É ali que o estudo local, a revisão editorial e a materialização progressiva dos cards se encontram.
 
 O fluxo normal é:
 
 1. inspecionar a microssequência atual;
-2. pedir geração ou edição de cards;
+2. pedir materialização, geração ou edição de cards;
 3. revisar a iteração aplicada;
 4. aceitar ou excluir a iteração ativa.
 

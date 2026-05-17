@@ -63,7 +63,7 @@ No estado atual, o AraLearn reúne:
 
 - organização de conteúdos em cursos, módulos, lições, microssequências e cards;
 - geração estrutural contextual em home, curso, módulo e lição pelo `CourseForge`;
-- intervenção local de geração e edição de cards no painel da microssequência;
+- intervenção local de materialização, geração e edição de cards no painel da microssequência;
 - governança didática por lição com `sourceGuideStructured`, `presetId`, catálogos fechados e, quando houver, `domainMap`;
 - motor `CourseForge` por fases para top-down e intervenção local, com planejamento, auditoria e reparo;
 - recursos de navegação, edição, ordenação, importação, exportação e estudo;
@@ -141,7 +141,7 @@ A aplicação também trabalha com `aralearn.storage`, formato de backup complet
 
 No estado atual do produto, essa trilha estrutural pública já foi consolidada no `CourseForge`. O mesmo motor por fases atende home, curso, módulo e lição, sempre dentro do escopo selecionado e com patch auditado antes da aplicação.
 
-O workbench da microssequência continua existindo, mas com outra função: ele não é mais um branch estrutural paralelo da lição. Hoje ele é a superfície local de intervenção, reparo e iteração sobre os cards da microssequência selecionada.
+O workbench da microssequência continua existindo, mas com outra função: ele não é mais um branch estrutural paralelo da lição. Hoje ele é a superfície local de materialização, intervenção, reparo e iteração sobre os cards da microssequência selecionada.
 
 ---
 
@@ -290,7 +290,7 @@ Essas opções chegam ao Gemini como listas fechadas do próprio AraLearn. O mod
 
 Na segunda etapa, a inteligência artificial recebe apenas o plano aprovado e preenche os cards. Ela não deve alterar quantidade, ordem, posições, papéis ou recursos dos cards.
 
-O `CourseForge` passou a ser o runtime público da geração estrutural. Ele executa fases separadas de planejamento, auditoria, reparo e compilação de patch para árvore estrutural, microssequências e cards, inclusive no escopo da lição.
+O `CourseForge` passou a ser o runtime público da geração estrutural. Ele executa fases separadas de planejamento, auditoria, reparo e compilação de patch para árvore estrutural e microssequências planejadas, inclusive no escopo da lição. A materialização de cards fica concentrada no runtime local da microssequência.
 
 O que permanece fora do top-down não é um motor concorrente de lição, e sim a intervenção local do painel da microssequência: ali o app opera sobre cards do item selecionado, com iteração, reversão e aceite local.
 
@@ -307,11 +307,11 @@ Essa arquitetura torna o uso de modelos baratos mais realista, reduz custo, melh
 
 ## Rascunhos, revisão e prontidão
 
-Microssequências geradas a partir do contexto de uma lição nascem como rascunhos. Elas não devem ser tratadas como material definitivo.
+Microssequências geradas a partir do contexto de uma lição nascem como etapas planejadas ou rascunhos. Elas não devem ser tratadas como material definitivo.
 
 No fluxo atual, é importante separar dois casos:
 
-- quando o patch cria ou mantém microssequências em `draft`, elas continuam fora do estudo;
+- quando o patch cria ou mantém microssequências em `draft`, elas continuam fora do estudo e podem aparecer como etapas planejadas ainda sem cards;
 - a geração ou edição de cards no painel da microssequência aplica a iteração diretamente no conteúdo em uso, mas mantém reversão local por versões.
 
 O fluxo esperado de microssequências continua sendo:

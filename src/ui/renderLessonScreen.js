@@ -1255,7 +1255,7 @@ function renderMicrosequenceWorkbenchScreen({
       '<p class="tiny muted">Microssequência planejada</p>' +
       '<p class="muted assist-last-request">Esta etapa ainda não tem cards. Você pode materializar o conteúdo agora, reformular a proposta ou ajustar tags e foco antes de gerar.</p>' +
       '<div class="assist-actions assist-actions-wide">' +
-      '<button class="open-mini" type="button" data-action="fill-assist-template-materialize" title="Preparar pedido para materializar esta microssequência" aria-label="Preparar pedido para materializar esta microssequência">Gerar agora</button>' +
+      '<button class="open-mini" type="button" data-action="fill-assist-template-materialize" title="Preparar pedido para materializar esta microssequência" aria-label="Preparar pedido para materializar esta microssequência">Materializar agora</button>' +
       '<button class="open-mini" type="button" data-action="fill-assist-template-reformulate" title="Preparar pedido para reformular esta microssequência" aria-label="Preparar pedido para reformular esta microssequência">Reformular proposta</button>' +
       (nextPlannedMicrosequence
         ? '<button class="open-mini" type="button" data-action="open-next-planned-microsequence" title="Abrir próxima microssequência planejada" aria-label="Abrir próxima microssequência planejada">Próxima planejada</button>'
@@ -1264,7 +1264,9 @@ function renderMicrosequenceWorkbenchScreen({
     : "";
   const emptyCardsMessage = hasCards
     ? ""
-    : "Os cards gerados aparecerão aqui após o envio do prompt.";
+    : isPlanned
+      ? "Esta microssequência foi planejada, mas ainda não foi materializada."
+      : "Os cards gerados aparecerão aqui após o envio do prompt.";
   const attachmentInput =
     '<input data-field="assist-attachments" class="assist-attachment-input" type="file" multiple accept=".pdf,.txt,.md,.json,.csv,.html,.xml,.js,.ts,.py,.java,.c,.cpp,.doc,.docx,.ppt,.pptx,.rtf,.odt,.ods,.odp,text/*,application/pdf,application/json,application/xml">';
   const attachmentChips = renderAssistAttachmentChips(editorSupport.attachments);
@@ -1290,7 +1292,9 @@ function renderMicrosequenceWorkbenchScreen({
     '">' +
     (hasCards
       ? renderRuntimeBlocks(activeCard, bodyText)
-      : '<p class="runtime-paragraph">Envie o pedido para gerar os cards da microssequência.</p>') +
+      : '<p class="runtime-paragraph">' +
+        escapeHtml(isPlanned ? "Envie o pedido para materializar esta microssequência." : "Envie o pedido para gerar os cards da microssequência.") +
+        "</p>") +
     "</div>" +
     "</article>" +
     '<p class="chip-muted editor-card-stage-count" aria-label="' +
