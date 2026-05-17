@@ -3034,6 +3034,172 @@ test("top-down com fake provider gera curso completo em memória", async () => {
   assert.ok(finalReportPhase.artifactIds.some((artifactId) => artifactId.endsWith(":final-report")));
 });
 
+test("top-down amplo materializa apenas a entrada inicial e deixa o restante da trilha em draft", async () => {
+  const provider = createFakeProvider({
+    script: {
+      plan_architecture: [
+        {
+          course: {
+            key: "course-logica",
+            title: "Lógica",
+            modules: [
+              {
+                key: "module-proposicoes",
+                title: "Proposições",
+                lessons: [
+                  {
+                    key: "lesson-introducao",
+                    title: "Introdução",
+                    description: "Lição.",
+                    sourceGuideStructured: {
+                      lessonGoal: "Ler proposições.",
+                      notationRules: "Usar `p` e `q`.",
+                      commonErrors: "Confundir frase e proposição."
+                    },
+                    presetId: "default",
+                    resourceTags: ["paragraph", "multiple_choice"],
+                    contentTypeTags: ["theory"],
+                    learningActionTags: ["read"],
+                    supportLevel: "guided",
+                    microsequences: []
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      audit_architecture: [
+        {
+          approved: true,
+          blockingIssues: [],
+          warnings: []
+        }
+      ],
+      plan_lessons: [
+        {
+          lessonPlans: [
+            {
+              courseKey: "course-logica",
+              moduleKey: "module-proposicoes",
+              lessonKey: "lesson-introducao",
+              lessonTitle: "Introdução",
+              lessonDescription: "Lição.",
+              sourceGuideStructured: {
+                lessonGoal: "Ler proposições.",
+                notationRules: "Usar `p` e `q`.",
+                commonErrors: "Confundir frase e proposição."
+              },
+              presetId: "default",
+              resourceTags: ["paragraph", "multiple_choice"],
+              contentTypeTags: ["theory"],
+              learningActionTags: ["read"],
+              supportLevel: "guided"
+            }
+          ]
+        }
+      ],
+      plan_microsequences: [
+        {
+          microsequencePlans: [
+            {
+              lessonKey: "lesson-introducao",
+              moduleKey: "module-proposicoes",
+              courseKey: "course-logica",
+              microsequences: [
+                {
+                  key: "microsequence-leitura-inicial",
+                  title: "Leitura inicial de proposições",
+                  objective: "Reconhecer enunciados como proposições.",
+                  coverageRole: "core",
+                  didacticPurpose: "Preparar a leitura formal básica.",
+                  tags: ["Leitura"],
+                  domainRefs: ["domain-1"]
+                },
+                {
+                  key: "microsequence-contraste",
+                  title: "Contraste entre proposição e pergunta",
+                  objective: "Distinguir proposição de pergunta.",
+                  coverageRole: "contrast",
+                  didacticPurpose: "Discriminar enunciados próximos.",
+                  tags: ["Contraste"],
+                  domainRefs: ["domain-1", "domain-2"]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      audit_microsequences: [
+        {
+          approved: true,
+          issues: [],
+          warnings: []
+        }
+      ],
+      build_cards: [
+        {
+          cards: [
+            {
+              position: 1,
+              resourceType: "paragraph",
+              title: "O que é uma proposição",
+              text: "Uma proposição é um enunciado que pode ser classificado como verdadeiro ou falso.",
+              sourceRefs: ["src_1"]
+            },
+            {
+              position: 2,
+              resourceType: "paragraph",
+              title: "Exemplo guiado",
+              text: "A frase `2 + 2 = 4` é proposição porque admite valor de verdade.",
+              sourceRefs: ["src_1"]
+            },
+            {
+              position: 3,
+              resourceType: "multiple_choice",
+              title: "Reconhecendo proposições",
+              question: "Qual enunciado é uma proposição?",
+              options: [
+                { optionId: "a", label: "Feche a porta." },
+                { optionId: "b", label: "2 + 2 = 4." },
+                { optionId: "c", label: "Que horas são?" }
+              ],
+              correctOptionId: "b",
+              feedback: "Só `2 + 2 = 4` pode ser classificado como verdadeiro ou falso.",
+              sourceRefs: ["src_1"]
+            }
+          ]
+        }
+      ]
+    }
+  });
+  const registry = createProviderRegistry({ providers: [provider] });
+  const result = await runCourseForge({
+    intent: {
+      operation: "create",
+      scope: { level: "project" },
+      promptText: "Criar curso de lógica.",
+      attachments: [{ id: "src_1", name: "ementa.pdf", type: "application/pdf" }]
+    },
+    projectDocument: createProject(),
+    providerRegistry: registry,
+    providerId: "fake"
+  });
+
+  const microsequences = result.projectDocument.courses[0].modules[0].lessons[0].microsequences;
+  assert.equal(microsequences.length, 2);
+  assert.equal(microsequences[0].status, "ready");
+  assert.equal(microsequences[0].included, true);
+  assert.equal(microsequences[0].cards.length, 3);
+  assert.equal(microsequences[1].status, "draft");
+  assert.equal(microsequences[1].included, false);
+  assert.equal(microsequences[1].cards.length, 0);
+  assert.equal(microsequences[1].title, "Contraste entre proposição e pergunta");
+
+  const buildCardsPhase = result.runState.phases.find((phase) => phase.phaseId === "build_cards");
+  assert.ok(buildCardsPhase.artifactIds.some((artifactId) => artifactId.endsWith(":card-drafts")));
+});
+
 test("audit_architecture reprovada aciona repair_architecture e aplica versão corrigida", async () => {
   const provider = createFakeProvider({
     script: {
