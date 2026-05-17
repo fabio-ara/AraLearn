@@ -28,6 +28,7 @@ function normalizeAttachments(attachments = []) {
             ? item.sourceBlocks
                 .map((block) => ({
                   blockType: text(block?.blockType),
+                  instructionalRole: text(block?.instructionalRole),
                   text: text(block?.text)
                 }))
                 .filter((block) => block.text)

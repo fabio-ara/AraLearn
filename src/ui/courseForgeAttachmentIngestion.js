@@ -135,6 +135,13 @@ function normalizeExtractedText(rawText = "") {
     .trim();
 }
 
+function normalizeForMatch(value = "") {
+  return text(value)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
 function isHeadingLikeLine(value = "") {
   const normalized = text(value);
   if (!normalized || normalized.length > 120) {
@@ -143,11 +150,55 @@ function isHeadingLikeLine(value = "") {
   if (/^[A-ZÀ-Ý0-9][A-ZÀ-Ý0-9\s:/.-]{4,}$/u.test(normalized)) {
     return true;
   }
+  if (
+    /^[A-ZÀ-Ý][\p{L}\p{N}\s:/-]{2,80}$/u.test(normalized)
+    && !/[.!?;]$/u.test(normalized)
+    && normalized.split(/\s+/u).length <= 6
+  ) {
+    return true;
+  }
   return /^([0-9]+(\.[0-9]+)*)\s+.+/.test(normalized);
 }
 
 function isListLikeLine(value = "") {
   return /^([•\-*]|[0-9]+[.)])\s+/.test(text(value));
+}
+
+function stripHeadingPrefix(value = "") {
+  return text(value)
+    .replace(/^([0-9]+(\.[0-9]+)*)\s+/u, "")
+    .replace(/^([•\-*]|[0-9]+[.)])\s+/u, "")
+    .replace(/[:\-–]\s*$/u, "")
+    .trim();
+}
+
+function inferInstructionalRole(value = "", { blockType = "" } = {}) {
+  const normalized = normalizeForMatch(stripHeadingPrefix(value));
+  if (!normalized) {
+    return "";
+  }
+  if (/\b(objetivo|objetivos|meta|metas|competencia|competencias|habilidade|habilidades)\b/u.test(normalized)) {
+    return "objective";
+  }
+  if (/\b(exercicio|exercicios|atividade|atividades|questao|questoes|desafio|desafios|pratica)\b/u.test(normalized)) {
+    return "exercise";
+  }
+  if (/\b(definicao|conceito|define-se|significa)\b/u.test(normalized)) {
+    return "definition";
+  }
+  if (/\b(exemplo|exemplos|por exemplo|ilustracao|caso pratico)\b/u.test(normalized)) {
+    return "example";
+  }
+  if (/\b(observacao|observacoes|atencao|lembrete|importante|nota)\b/u.test(normalized)) {
+    return "note";
+  }
+  if (/\b(erro comum|erros comuns|pegadinha|pegadinhas|confusao|confusoes|cuidado)\b/u.test(normalized)) {
+    return "misconception";
+  }
+  if (blockType === "list_item" && /\b(compare|classifique|resolva|explique|identifique|aplique|complete|justifique)\b/u.test(normalized)) {
+    return "exercise";
+  }
+  return "";
 }
 
 function inferBlockType(value = "") {
@@ -171,6 +222,7 @@ function splitStructuredBlocks(rawText = "") {
     .map((entry) => text(entry))
     .filter(Boolean);
   const blocks = [];
+  let activeRole = "";
 
   paragraphs.forEach((paragraph) => {
     const lines = paragraph
@@ -182,17 +234,23 @@ function splitStructuredBlocks(rawText = "") {
     }
 
     if (lines.length === 1) {
+      const blockType = inferBlockType(lines[0]);
+      const instructionalRole = inferInstructionalRole(lines[0], { blockType }) || (blockType !== "heading" ? activeRole : "");
       blocks.push({
-        blockType: inferBlockType(lines[0]),
+        blockType,
+        instructionalRole,
         text: lines[0]
       });
+      activeRole = blockType === "heading" ? instructionalRole : activeRole;
       return;
     }
 
     if (lines.every((line) => isListLikeLine(line))) {
+      const roleFromList = inferInstructionalRole(lines.join(" "), { blockType: "list_item" }) || activeRole;
       lines.forEach((line) => {
         blocks.push({
           blockType: "list_item",
+          instructionalRole: roleFromList,
           text: line
         });
       });
@@ -200,22 +258,27 @@ function splitStructuredBlocks(rawText = "") {
     }
 
     if (isHeadingLikeLine(lines[0])) {
+      const headingRole = inferInstructionalRole(lines[0], { blockType: "heading" });
       blocks.push({
         blockType: "heading",
+        instructionalRole: headingRole,
         text: lines[0]
       });
       const remainder = lines.slice(1).join(" ");
       if (text(remainder)) {
         blocks.push({
           blockType: "paragraph",
+          instructionalRole: inferInstructionalRole(remainder, { blockType: "paragraph" }) || headingRole,
           text: remainder
         });
       }
+      activeRole = headingRole;
       return;
     }
 
     blocks.push({
       blockType: "paragraph",
+      instructionalRole: inferInstructionalRole(lines.join(" "), { blockType: "paragraph" }) || activeRole,
       text: lines.join(" ")
     });
   });

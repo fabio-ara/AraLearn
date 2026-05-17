@@ -168,7 +168,23 @@ test("ingestCourseForgeAttachments usa parser de docx e preserva warnings", asyn
   assert.equal(result.extractedCount, 1);
   assert.match(result.attachments[0].textContent, /Comparar LAN e internet/);
   assert.equal(result.attachments[0].ingestionStatus, "supported");
+  assert.equal(result.attachments[0].sourceBlocks[0].instructionalRole, "objective");
+  assert.equal(result.attachments[0].sourceBlocks[1].instructionalRole, "objective");
   assert.match(result.warnings[0], /tabela simplificada/i);
+});
+
+test("ingestCourseForgeAttachments propaga papel instrucional de secao para itens de lista", async () => {
+  const result = await ingestCourseForgeAttachments([
+    makeFile({
+      name: "lista.md",
+      type: "text/markdown",
+      content: "Exercícios\n\n1. Compare LAN e WAN.\n2. Identifique o roteador."
+    })
+  ]);
+
+  assert.equal(result.attachments[0].sourceBlocks[0].instructionalRole, "exercise");
+  assert.equal(result.attachments[0].sourceBlocks[1].instructionalRole, "exercise");
+  assert.equal(result.attachments[0].sourceBlocks[2].instructionalRole, "exercise");
 });
 
 test("ingestCourseForgeAttachments sinaliza formato ainda nao suportado", async () => {

@@ -406,6 +406,26 @@ function inferAssessmentSignals(value = "") {
   return signals;
 }
 
+function inferAssessmentSignalsFromRole(instructionalRole = "") {
+  const normalized = text(instructionalRole);
+  if (normalized === "exercise") {
+    return ["assessment_reference", "practice_prompt"];
+  }
+  if (normalized === "objective") {
+    return ["goal_reference"];
+  }
+  if (normalized === "definition") {
+    return ["definition_focus"];
+  }
+  if (normalized === "example") {
+    return ["worked_example"];
+  }
+  if (normalized === "misconception") {
+    return ["misconception_warning"];
+  }
+  return [];
+}
+
 function inferNotationSignals(value = "") {
   const normalized = text(value);
   const signals = [];
@@ -418,14 +438,28 @@ function inferNotationSignals(value = "") {
   return signals;
 }
 
-function inferTeacherConventions(value = "") {
+function inferTeacherConventions(value = "", { instructionalRole = "" } = {}) {
   const normalized = text(value);
   const conventions = [];
+  const role = text(instructionalRole);
+  if (role === "objective") {
+    conventions.push("explicit_objective_block");
+  } else if (role === "exercise") {
+    conventions.push("exercise_block");
+  } else if (role === "definition") {
+    conventions.push("definition_block");
+  } else if (role === "example") {
+    conventions.push("example_block");
+  } else if (role === "note") {
+    conventions.push("teacher_note_block");
+  } else if (role === "misconception") {
+    conventions.push("misconception_block");
+  }
   if (!normalized) {
     return conventions;
   }
   if (/(professor|cobranca|cobrança|estilo)/i.test(normalized)) {
-    conventions.push(normalized);
+    conventions.push("teacher_style_reference");
   }
   return conventions;
 }
@@ -470,6 +504,7 @@ function normalizeSourceBlocks(blocks = []) {
   return normalizeArray(blocks)
     .map((block) => ({
       blockType: text(block?.blockType) || "paragraph",
+      instructionalRole: text(block?.instructionalRole),
       text: text(block?.text)
     }))
     .filter((block) => block.text);
@@ -492,22 +527,32 @@ function buildSourceSpans({
     ? normalizedBlocks.flatMap((block) =>
         chunkSourceText(block.text).map((chunk) => ({
           text: chunk,
-          blockType: block.blockType
+          blockType: block.blockType,
+          instructionalRole: block.instructionalRole
         }))
       )
     : chunkSourceText(rawText || fallbackText).map((chunk) => ({
         text: chunk,
-        blockType: "paragraph"
+        blockType: "paragraph",
+        instructionalRole: ""
       }));
   return spanInputs.map((spanInput, index) => ({
     spanId: `${sourceId}:span:${index + 1}`,
     locator: locator || `${sourceId}:chunk:${index + 1}`,
     text: spanInput.text,
     blockType: spanInput.blockType,
+    instructionalRole: spanInput.instructionalRole,
     topics: unique([...baseTopics, ...inferTopicsFromText(spanInput.text)]).slice(0, 8),
-    assessmentSignals: unique([...baseAssessmentSignals, ...inferAssessmentSignals(spanInput.text)]),
+    assessmentSignals: unique([
+      ...baseAssessmentSignals,
+      ...inferAssessmentSignals(spanInput.text),
+      ...inferAssessmentSignalsFromRole(spanInput.instructionalRole)
+    ]),
     notationSignals: unique([...baseNotationSignals, ...inferNotationSignals(spanInput.text)]),
-    teacherConventions: unique([...baseTeacherConventions, ...inferTeacherConventions(spanInput.text)]).slice(0, 6),
+    teacherConventions: unique([
+      ...baseTeacherConventions,
+      ...inferTeacherConventions(spanInput.text, { instructionalRole: spanInput.instructionalRole })
+    ]).slice(0, 6),
     confidence
   }));
 }
