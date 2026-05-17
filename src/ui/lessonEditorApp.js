@@ -4114,9 +4114,9 @@ export function createLessonEditorApp({ root, storage, editor }) {
         state.selection.microsequenceKey
       );
       state.assistDraft.lastRequest = {
-        title: hadCardsBefore ? "Cards substituídos" : "Cards gerados",
+        title: hadCardsBefore ? "Cards substituídos" : "Microssequência materializada",
         description:
-          `${Array.isArray(nextMicrosequence?.cards) ? nextMicrosequence.cards.length : 0} cards aplicados em ${nextMicrosequence?.title || context.microsequence?.title || "Microssequência"} com ${getAssistModelLabel(state.assistConfig.model)}.`,
+          `${Array.isArray(nextMicrosequence?.cards) ? nextMicrosequence.cards.length : 0} cards ${hadCardsBefore ? "aplicados" : "materializados"} em ${nextMicrosequence?.title || context.microsequence?.title || "Microssequência"} com ${getAssistModelLabel(state.assistConfig.model)}.`,
         timestamp: new Date().toISOString()
       };
     } catch (error) {
@@ -4410,6 +4410,24 @@ export function createLessonEditorApp({ root, storage, editor }) {
     ]
       .filter(Boolean)
       .join(" ");
+  }
+
+  function buildAssistTemplatePrompt(templateId, microsequence) {
+    const title = microsequence?.title || "esta microssequência";
+    if (templateId === "materialize") {
+      return [
+        `Materialize a microssequência "${title}" com cards prontos para estudo.`,
+        "Respeite o lugar dela na trilha, as tags atuais e a progressão já planejada.",
+        "Abra com explicação suficiente e avance para discriminação, prática ou reforço quando isso fizer sentido."
+      ].join(" ");
+    }
+    if (templateId === "reformulate") {
+      return [
+        `Reformule a proposta da microssequência "${title}" antes de gerar os cards.`,
+        "Preserve o lugar dela na trilha, mas torne o foco didático mais claro, mais estudável e menos ambíguo."
+      ].join(" ");
+    }
+    return "";
   }
 
   function deepenLessonFromAction() {
@@ -8163,6 +8181,16 @@ export function createLessonEditorApp({ root, storage, editor }) {
         state.assistDraft.promptText = "";
       }
       render({ preserveState: true });
+    });
+    root.querySelector("[data-action='fill-assist-template-materialize']")?.addEventListener("click", () => {
+      state.assistDraft.promptText = buildAssistTemplatePrompt("materialize", getRenderContext().microsequence);
+      render({ preserveState: true });
+      root.querySelector("[data-field='assist-prompt']")?.focus();
+    });
+    root.querySelector("[data-action='fill-assist-template-reformulate']")?.addEventListener("click", () => {
+      state.assistDraft.promptText = buildAssistTemplatePrompt("reformulate", getRenderContext().microsequence);
+      render({ preserveState: true });
+      root.querySelector("[data-field='assist-prompt']")?.focus();
     });
     root.querySelector("[data-action='open-assist-container-picker']")?.addEventListener("click", () => {
       openEntityEditor("assist-container-picker");

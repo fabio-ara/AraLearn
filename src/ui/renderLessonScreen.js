@@ -589,7 +589,18 @@ function renderMetaLine({ completed, total, parts = [] }) {
   );
 }
 
+function isPlannedMicrosequence(microsequence) {
+  return isDraftMicrosequence(microsequence) && countCardsInMicrosequence(microsequence) === 0;
+}
+
 function renderMicrosequenceStateIcon(microsequence) {
+  if (isPlannedMicrosequence(microsequence)) {
+    return (
+      '<span class="microsequence-state-icon is-draft" aria-label="Microssequência planejada" title="Microssequência planejada">' +
+      renderUiIcon("draft-state", "microsequence-state-icon-svg") +
+      "</span>"
+    );
+  }
   if (isDraftMicrosequence(microsequence)) {
     return (
       '<span class="microsequence-state-icon is-draft" aria-label="Rascunho" title="Rascunho">' +
@@ -859,11 +870,16 @@ function renderLessonScreenView({ course, lesson, moduleValue, progress, editorS
   const groupedMicrosequences = {
     main: [],
     reinforcement: [],
+    planned: [],
     draft: [],
     paused: []
   };
 
   (lesson.microsequences || []).forEach((microsequence) => {
+    if (isPlannedMicrosequence(microsequence)) {
+      groupedMicrosequences.planned.push(microsequence);
+      return;
+    }
     if (isDraftMicrosequence(microsequence)) {
       groupedMicrosequences.draft.push(microsequence);
       return;
@@ -888,8 +904,11 @@ function renderLessonScreenView({ course, lesson, moduleValue, progress, editorS
       const cardCount = countCardsInMicrosequence(microsequence);
       const microsequenceCompleted = countCompletedCardsInMicrosequence(course, moduleValue, lesson, microsequence, progress);
       const isDraft = isDraftMicrosequence(microsequence);
+      const isPlanned = isPlannedMicrosequence(microsequence);
       const canPlay = isRunnableMicrosequence(microsequence);
-      const description = normalizeInlineText(microsequence.description || "");
+      const description = normalizeInlineText(
+        microsequence.description || (isPlanned ? "Etapa planejada da trilha. Abra para materializar ou reformular." : "")
+      );
       const supportingHtml = renderExplicitTags(microsequence.tags, "didactic-tag-row microsequence-tag-row");
 
       return renderHierarchyItemCard({
@@ -912,7 +931,7 @@ function renderLessonScreenView({ course, lesson, moduleValue, progress, editorS
         openAction: isDraft ? "open-microsequence-assist" : "play-microsequence",
         generationAction: "open-microsequence-assist",
         dragLabel: `Arrastar microssequência ${microsequence.title || microsequence.key}`,
-        openTitle: isDraft ? "Editar rascunho" : "Abrir microssequência",
+        openTitle: isPlanned ? "Abrir microssequência planejada" : isDraft ? "Editar rascunho" : "Abrir microssequência",
         readOnly: readOnlyView
       }).replace('>▶</button>', canPlay || isDraft ? '>▶</button>' : ' disabled aria-disabled="true">▶</button>');
     })
@@ -923,11 +942,18 @@ function renderLessonScreenView({ course, lesson, moduleValue, progress, editorS
 
   const readyEmptyMessage =
     lessonTotal === 0
-      ? '<section class="clean-card lesson-ready-empty-card"><p class="card-subtitle">Não há microssequências prontas para estudar aqui.</p></section>'
+      ? '<section class="clean-card lesson-ready-empty-card"><p class="card-subtitle">' +
+        escapeHtml(
+          groupedMicrosequences.planned.length
+            ? "Não há microssequências prontas para estudar aqui. As etapas planejadas abaixo podem ser materializadas quando você quiser."
+            : "Não há microssequências prontas para estudar aqui."
+        ) +
+        "</p></section>"
       : "";
   const microsequenceGroups =
     renderMicrosequenceGroup("Microssequências", groupedMicrosequences.main) +
     renderMicrosequenceGroup("Reforços", groupedMicrosequences.reinforcement) +
+    renderMicrosequenceGroup("Planejadas", groupedMicrosequences.planned) +
     renderMicrosequenceGroup("Rascunhos", groupedMicrosequences.draft) +
     renderMicrosequenceGroup("Fora do estudo", groupedMicrosequences.paused);
 
@@ -1117,6 +1143,7 @@ function renderMicrosequenceWorkbenchScreen({
   const safeIndex = visibleCards.length ? Math.max(0, Math.min(activeIndex, Math.max(0, visibleCards.length - 1))) : 0;
   const activeCard = visibleCards[safeIndex] || null;
   const hasCards = visibleCards.length > 0;
+  const isPlanned = isPlannedMicrosequence(microsequence);
   const bodyText = readCardText(activeCard);
   const visualizedVersionId = editorSupport.visualizedMicrosequenceVersionId || "";
   const editBaseVersionId = editorSupport.editBaseMicrosequenceVersionId || "";
@@ -1211,6 +1238,15 @@ function renderMicrosequenceWorkbenchScreen({
       escapeHtml(editorSupport.lastRequest.description || "") +
       "</p></section>"
     : "";
+  const plannedStatePanel = isPlanned
+    ? '<section class="microsequence-assist-panel assist-status-panel">' +
+      '<p class="tiny muted">Microssequência planejada</p>' +
+      '<p class="muted assist-last-request">Esta etapa ainda não tem cards. Você pode materializar o conteúdo agora, reformular a proposta ou ajustar tags e foco antes de gerar.</p>' +
+      '<div class="assist-actions assist-actions-wide">' +
+      '<button class="open-mini" type="button" data-action="fill-assist-template-materialize" title="Preparar pedido para materializar esta microssequência" aria-label="Preparar pedido para materializar esta microssequência">Gerar agora</button>' +
+      '<button class="open-mini" type="button" data-action="fill-assist-template-reformulate" title="Preparar pedido para reformular esta microssequência" aria-label="Preparar pedido para reformular esta microssequência">Reformular proposta</button>' +
+      "</div></section>"
+    : "";
   const emptyCardsMessage = hasCards
     ? ""
     : "Os cards gerados aparecerão aqui após o envio do prompt.";
@@ -1304,6 +1340,8 @@ function renderMicrosequenceWorkbenchScreen({
     didacticTypeOptions +
     "</select></label>" +
     '<div class="generate-divider workbench-divider"></div>' +
+    plannedStatePanel +
+    (plannedStatePanel ? '<div class="generate-divider workbench-divider"></div>' : "") +
     '<label class="field generate-icon-field generate-prompt-field workbench-prompt-field">' +
     '<div class="workbench-prompt-tools">' +
     renderInlineFieldIcon("prompt", promptLabel) +
@@ -1385,12 +1423,13 @@ function renderMicrosequenceWorkbenchScreen({
 
 function renderMicrosequenceAssistScreen({ lesson, microsequence, cards, selection, editorSupport }) {
   const hasCards = Array.isArray(cards) && cards.length > 0;
+  const isPlanned = isPlannedMicrosequence(microsequence);
 
   return renderMicrosequenceWorkbenchScreen({
-    title: hasCards ? "Editar cards" : "Gerar cards",
+    title: hasCards ? "Editar cards" : isPlanned ? "Materializar microssequência" : "Gerar cards",
     backTitle: "Voltar para a lição",
-    sendTitle: hasCards ? "Editar cards" : "Gerar cards",
-    promptLabel: "Pedido",
+    sendTitle: hasCards ? "Editar cards" : isPlanned ? "Materializar microssequência" : "Gerar cards",
+    promptLabel: isPlanned ? "Pedido de materialização" : "Pedido",
     lesson,
     microsequence,
     cards,

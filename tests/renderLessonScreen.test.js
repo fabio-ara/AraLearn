@@ -304,11 +304,12 @@ test("mostra aviso quando a lição tem apenas rascunhos", () => {
     }
   });
 
-  assert.match(html, /Não há microssequências prontas para estudar aqui\./);
-  assert.match(html, /Rascunhos/);
+  assert.match(html, /Não há microssequências prontas para estudar aqui\. As etapas planejadas abaixo podem ser materializadas quando você quiser\./);
+  assert.match(html, /Planejadas/);
   assert.match(html, /microsequence-state-icon is-draft/);
-  assert.match(html, /aria-label="Rascunho" title="Rascunho"/);
+  assert.match(html, /aria-label="Microssequência planejada" title="Microssequência planejada"/);
   assert.match(html, /data-action="open-microsequence-assist"/);
+  assert.match(html, /Etapa planejada da trilha\. Abra para materializar ou reformular\./);
 });
 
 test("desabilita play e sinaliza exclusão quando a microssequência sai do estudo", () => {
@@ -550,6 +551,8 @@ test("renderiza o painel da microssequência vazia em modo de geração de cards
   const lesson = moduleValue.lessons[0];
   const microsequence = {
     ...lesson.microsequences[0],
+    status: "draft",
+    included: false,
     cards: []
   };
   const html = renderLessonScreen({
@@ -592,7 +595,7 @@ test("renderiza o painel da microssequência vazia em modo de geração de cards
     }
   });
 
-  assert.match(html, /<div class="topbar-title">Gerar cards<\/div>/);
+  assert.match(html, /<div class="topbar-title">Materializar microssequência<\/div>/);
   assert.match(html, /data-action="open-version-history"/);
   assert.doesNotMatch(html, /data-action="save-microsequence-snapshot"/);
   assert.doesNotMatch(html, /data-action="open-version-compare"/);
@@ -600,6 +603,10 @@ test("renderiza o painel da microssequência vazia em modo de geração de cards
   assert.doesNotMatch(html, /editor-version-count-value/);
   assert.doesNotMatch(html, /Os cards gerados aparecerão aqui após o envio do prompt\./);
   assert.match(html, /data-workbench-pane="edit"/);
+  assert.match(html, /Microssequência planejada/);
+  assert.match(html, /Esta etapa ainda não tem cards\./);
+  assert.match(html, /data-action="fill-assist-template-materialize"/);
+  assert.match(html, /data-action="fill-assist-template-reformulate"/);
   assert.match(html, /data-action="open-assist-container-picker" title="Adicionar recursos" aria-label="Adicionar recursos"/);
   assert.match(html, /data-action="open-assist-attachment-picker" title="Anexar documentos" aria-label="Anexar documentos"/);
   assert.match(html, /data-action="select-workbench-pane" data-workbench-pane="edit" aria-label="Geração" title="Geração"/);
@@ -609,7 +616,8 @@ test("renderiza o painel da microssequência vazia em modo de geração de cards
   assert.doesNotMatch(html, /data-action="select-workbench-pane" data-workbench-pane="preview"/);
   assert.doesNotMatch(html, /Sem cards ainda/);
   assert.doesNotMatch(html, /Envie o pedido para gerar os cards da microssequência\./);
-  assert.match(html, /data-action="apply-assist"[^>]*title="Gerar cards" aria-label="Gerar cards"/);
+  assert.match(html, /data-field="assist-prompt" class="assist-prompt" aria-label="Pedido de materialização" title="Pedido de materialização"/);
+  assert.match(html, /data-action="apply-assist"[^>]*title="Materializar microssequência" aria-label="Materializar microssequência"/);
 });
 
 test("renderiza a aba preview da microssequência dentro da superfície combinada", () => {
