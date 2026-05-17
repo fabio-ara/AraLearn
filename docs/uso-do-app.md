@@ -34,7 +34,7 @@ No nível do curso, a geração por IA atua sobre módulos e lições. No nível
 
 Essa distribuição não é arbitrária. Ela existe para conter a operação no menor escopo útil. Quanto mais localizado o problema, mais localizado deve ser o pedido.
 
-Essa continua sendo a trilha pública principal da interface. O repositório já tem uma refatoração interna mais ampla para top-down completo, chamada `CourseForge`, mas ela ainda não aparece ao usuário como tela ou fluxo separado. Portanto, o guia de uso do app deve descrever primeiro o que de fato está exposto hoje: painel contextual estrutural, geração de microssequências `draft` na lição e workbench da microssequência.
+Essa continua sendo a trilha pública principal da interface. A diferença é que o painel estrutural agora já usa o motor `CourseForge` no fluxo top-down, enquanto a geração de microssequências `draft` na lição e o workbench da microssequência seguem em trilha própria. Portanto, o guia de uso do app deve descrever com precisão essa divisão atual da superfície pública.
 
 ## A lição como centro da orientação
 
@@ -127,7 +127,7 @@ Antes de usar IA, convém:
 3. informar a chave da API, quando necessário;
 4. testar o bridge local, se a escolha for `Codex CLI local`.
 
-No estado atual, a documentação correta dessa área precisa separar duas coisas: o provider configurável já usado pelos fluxos públicos do app e o uso desse mesmo provider dentro do motor interno `CourseForge`. O usuário comum interage com a primeira camada; a segunda ainda é infraestrutura interna da refatoração top-down.
+No estado atual, a documentação correta dessa área precisa separar duas coisas: o provider configurável já usado pelos fluxos públicos do app e o uso desse mesmo provider dentro do fluxo estrutural do `CourseForge`. O usuário comum continua interagindo com uma superfície simples, mas o top-down estrutural já passa pelo runtime novo por fases.
 
 ## O que esperar da IA, e o que não esperar
 

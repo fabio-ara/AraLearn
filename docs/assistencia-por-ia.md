@@ -48,9 +48,9 @@ Hoje o produto tem duas camadas distintas de geração mais ampla, e a documenta
 
 A primeira é a camada já pública na interface. Ela aparece no painel contextual de home, curso e módulo para gerar estrutura, e na lição para gerar microssequências `draft` ou gerar e reposicionar essas microssequências. Essa é a trilha efetivamente visível ao usuário comum no app.
 
-A segunda é a nova camada interna `CourseForge`. Ela já existe no código e na suíte automatizada como motor top-down por fases, com intenção própria, artefatos persistíveis, auditoria local e reparo antes da aplicação do patch. Essa camada já vai além da estrutura: ela também alcança planejamento de lições, microssequências, cards e aderência mínima à fonte. Mas ela ainda não aparece como fluxo autônomo e nomeado na UI pública.
+A segunda é a camada `CourseForge`. Ela já existe no código e na suíte automatizada como motor top-down por fases, com intenção própria, artefatos persistíveis, auditoria local e reparo antes da aplicação do patch. Essa camada já vai além da estrutura: ela também alcança planejamento de lições, microssequências, cards e aderência mínima à fonte. No estado atual, ela já sustenta o painel público de geração estrutural, embora ainda não substitua toda a trilha contextual local da lição.
 
-Descrever esse ponto com precisão importa. Dizer que o AraLearn “já tem motor top-down completo” é verdadeiro se a referência for o estado interno do repositório e da suíte. Dizer que o usuário final “já opera esse motor completo pela interface” ainda seria exagero.
+Descrever esse ponto com precisão importa. Dizer que o AraLearn “já tem motor top-down completo” é verdadeiro se a referência for o estado interno do repositório e da suíte. Dizer que o usuário final “já opera toda a refatoração top-down pela interface” ainda seria exagero. O correto hoje é: o painel estrutural público já aciona o `CourseForge`, mas a geração contextual de microssequências e a edição local continuam em trilhas próprias.
 
 ## Pipeline de cards
 

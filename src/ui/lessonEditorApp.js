@@ -125,6 +125,7 @@ import { getLessonProgressCursor, removeLessonProgressEntries, writeLessonProgre
 import { detectJsonExchangeFormat } from "../storage/jsonExchange.js";
 import { createStarterContractCard, getContractCardKind, listContractAnswerValues } from "../contract/contractCard.js";
 import { isRunnableMicrosequence, resolveMicrosequenceRuntimeIncluded } from "../model/microsequenceStatus.js";
+import { ingestCourseForgeAttachments } from "./courseForgeAttachmentIngestion.js";
 import {
   buildCourseForgePhaseModelOverrides,
   resolveCourseForgeGenerationScope,
@@ -5401,6 +5402,12 @@ export function createLessonEditorApp({ root, storage, editor }) {
             : applyGeneratedAndRepositionedLessonMicrosequences(result, scopeState);
       } else {
         const selectedModel = String(state.assistConfig.model || "").trim() || "gemini-2.5-flash";
+        const ingestedAttachments = await ingestCourseForgeAttachments(state.generationDraft.attachments);
+        if (!promptText && ingestedAttachments.extractedCount === 0 && ingestedAttachments.attachments.length > 0) {
+          throw new Error(
+            "Os anexos atuais ainda não geraram texto utilizável para o top-down. Use TXT, Markdown, HTML, JSON, CSV ou complemente com um prompt."
+          );
+        }
         const providerId = resolveProviderFromModelId(selectedModel);
         const provider = isCodexLocalModel(selectedModel)
           ? createCodexCliProvider({
@@ -5416,7 +5423,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
           intent: {
             scope: resolveCourseForgeGenerationScope(scopeState),
             promptText,
-            attachments: state.generationDraft.attachments,
+            attachments: ingestedAttachments.attachments,
             phaseModelOverrides: buildCourseForgePhaseModelOverrides(selectedModel),
             selectedTopDownProfileId: isCodexLocalModel(selectedModel) ? "codex_all" : "custom"
           },
@@ -5431,6 +5438,11 @@ export function createLessonEditorApp({ root, storage, editor }) {
         setProject(courseForgeResult.projectDocument);
         applied = {
           ...summarizeCourseForgeTopDownResult(courseForgeResult),
+          ...(ingestedAttachments.warnings.length
+            ? {
+                message: `${summarizeCourseForgeTopDownResult(courseForgeResult).message} Avisos de ingestão: ${ingestedAttachments.warnings.join(" ")}`
+              }
+            : {}),
           ...resolveCourseForgeNavigationTarget({
             projectDocument: courseForgeResult.projectDocument,
             patch: courseForgeResult.patch,

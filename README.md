@@ -143,7 +143,7 @@ A aplicação também trabalha com `aralearn.storage`, formato de backup complet
 No estado atual do produto, é importante separar duas camadas dessa trilha top-down:
 
 - a camada pública já ligada à interface, que gera estrutura em home, curso e módulo e gera microssequências `draft` na lição;
-- a nova camada interna `CourseForge`, já testada no repositório, que avança para arquitetura, lições, microssequências, cards, auditoria e reparos por fases, mas ainda não aparece como fluxo separado na UI pública.
+- a nova camada `CourseForge`, já conectada ao painel público de geração estrutural para o fluxo top-down, enquanto a geração contextual de microssequências na lição e o workbench local continuam em trilha própria.
 
 ---
 
@@ -292,7 +292,7 @@ Essas opções chegam ao Gemini como listas fechadas do próprio AraLearn. O mod
 
 Na segunda etapa, a inteligência artificial recebe apenas o plano aprovado e preenche os cards. Ela não deve alterar quantidade, ordem, posições, papéis ou recursos dos cards.
 
-Em paralelo a esse pipeline já exposto na interface, o repositório passou a abrigar uma refatoração interna do top-down chamada `CourseForge`. Ela já executa fases separadas de planejamento, auditoria, reparo e compilação de patch, inclusive para árvore estrutural, microssequências e cards. A leitura correta, porém, é esta: o motor já existe e já é testado, mas sua superfície pública ainda não substituiu o fluxo contextual atual da UI.
+Em paralelo ao fluxo contextual já exposto na interface, o repositório passou a abrigar uma refatoração do top-down chamada `CourseForge`. Ela já executa fases separadas de planejamento, auditoria, reparo e compilação de patch, inclusive para árvore estrutural, microssequências e cards. No estado atual, esse motor já atende o painel público de geração estrutural; o que ainda não foi substituído é a trilha contextual de geração de microssequências `draft` na lição e a edição local no workbench.
 
 Prompts e validações agora reforçam:
 
@@ -571,7 +571,7 @@ Do ponto de vista conceitual, o projeto já tem direção nítida:
 
 A documentação pública procura expor essa direção com transparência: quando uma decisão encontra respaldo forte em literatura, isso é dito; quando se trata de solução arquitetural do próprio produto, isso também é dito; quando um efeito ainda depende de avaliação situada no AraLearn, a documentação evita apresentar hipótese como fato consumado.
 
-Hoje isso vale também para a refatoração top-down: o app já tem uma camada interna mais ambiciosa para geração completa por fases, mas a interface pública ainda opera principalmente pelo painel contextual estrutural e pelo workbench da microssequência.
+Hoje isso vale também para a refatoração top-down: o app já usa a camada por fases no painel estrutural público, mas ainda preserva o workbench da microssequência e a geração contextual de `drafts` como trilhas locais separadas.
 
 Versão atual do pacote:
 
