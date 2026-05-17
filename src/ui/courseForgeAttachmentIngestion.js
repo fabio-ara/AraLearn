@@ -82,7 +82,7 @@ function stripHtmlToText(rawHtml = "") {
     doc.querySelectorAll("script, style, noscript").forEach((node) => node.remove());
     doc.querySelectorAll("br").forEach((node) => node.replaceWith("\n"));
     doc.querySelectorAll("p, div, section, article, li, h1, h2, h3, h4, h5, h6, pre, blockquote, tr").forEach((node) => {
-      node.append("\n");
+      node.append("\n\n");
     });
     doc.querySelectorAll("td, th").forEach((node) => {
       node.append(" | ");
@@ -97,7 +97,7 @@ function stripHtmlToText(rawHtml = "") {
     .replace(/<script[\s\S]*?<\/script>/gi, " ")
     .replace(/<style[\s\S]*?<\/style>/gi, " ")
     .replace(/<br\s*\/?>/gi, "\n")
-    .replace(/<\/(p|div|section|article|li|h1|h2|h3|h4|h5|h6|pre|blockquote|tr)>/gi, "\n")
+    .replace(/<\/(p|div|section|article|li|h1|h2|h3|h4|h5|h6|pre|blockquote|tr)>/gi, "\n\n")
     .replace(/<\/(td|th)>/gi, " | ")
     .replace(/<[^>]+>/g, " ")
     .replace(/[ \t]+\n/g, "\n")
@@ -133,6 +133,94 @@ function normalizeExtractedText(rawText = "") {
     .replace(/[ \t]+\n/g, "\n")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
+}
+
+function isHeadingLikeLine(value = "") {
+  const normalized = text(value);
+  if (!normalized || normalized.length > 120) {
+    return false;
+  }
+  if (/^[A-ZÀ-Ý0-9][A-ZÀ-Ý0-9\s:/.-]{4,}$/u.test(normalized)) {
+    return true;
+  }
+  return /^([0-9]+(\.[0-9]+)*)\s+.+/.test(normalized);
+}
+
+function isListLikeLine(value = "") {
+  return /^([•\-*]|[0-9]+[.)])\s+/.test(text(value));
+}
+
+function inferBlockType(value = "") {
+  if (isHeadingLikeLine(value)) {
+    return "heading";
+  }
+  if (isListLikeLine(value)) {
+    return "list_item";
+  }
+  return "paragraph";
+}
+
+function splitStructuredBlocks(rawText = "") {
+  const normalized = normalizeExtractedText(rawText);
+  if (!normalized) {
+    return [];
+  }
+
+  const paragraphs = normalized
+    .split(/\n{2,}/u)
+    .map((entry) => text(entry))
+    .filter(Boolean);
+  const blocks = [];
+
+  paragraphs.forEach((paragraph) => {
+    const lines = paragraph
+      .split(/\n/u)
+      .map((entry) => text(entry))
+      .filter(Boolean);
+    if (!lines.length) {
+      return;
+    }
+
+    if (lines.length === 1) {
+      blocks.push({
+        blockType: inferBlockType(lines[0]),
+        text: lines[0]
+      });
+      return;
+    }
+
+    if (lines.every((line) => isListLikeLine(line))) {
+      lines.forEach((line) => {
+        blocks.push({
+          blockType: "list_item",
+          text: line
+        });
+      });
+      return;
+    }
+
+    if (isHeadingLikeLine(lines[0])) {
+      blocks.push({
+        blockType: "heading",
+        text: lines[0]
+      });
+      const remainder = lines.slice(1).join(" ");
+      if (text(remainder)) {
+        blocks.push({
+          blockType: "paragraph",
+          text: remainder
+        });
+      }
+      return;
+    }
+
+    blocks.push({
+      blockType: "paragraph",
+      text: lines.join(" ")
+    });
+  });
+
+  return blocks;
 }
 
 function normalizePdfLine(rawLine = "") {
@@ -354,6 +442,7 @@ function createAttachmentRecord(index, file, overrides = {}) {
     mimeType,
     fileRef: buildAttachmentReference(file),
     textContent: "",
+    sourceBlocks: [],
     ingestionStatus: "unsupported",
     ingestionWarnings: [],
     ...overrides
@@ -378,6 +467,7 @@ export async function ingestCourseForgeAttachments(files = [], options = {}) {
         const textContent = await extractPdfTextFromArrayBuffer(await file.arrayBuffer(), { loadPdfjsModule });
         const record = createAttachmentRecord(index, file, {
           textContent,
+          sourceBlocks: splitStructuredBlocks(textContent),
           ingestionStatus: textContent ? "supported" : "partial"
         });
         if (!textContent) {
@@ -401,6 +491,7 @@ export async function ingestCourseForgeAttachments(files = [], options = {}) {
         const result = await extractDocxTextFromArrayBuffer(await file.arrayBuffer(), { loadMammothLib });
         const record = createAttachmentRecord(index, file, {
           textContent: result.textContent,
+          sourceBlocks: splitStructuredBlocks(result.textContent),
           ingestionStatus: result.textContent ? "supported" : "partial",
           ingestionWarnings: result.warnings
         });
@@ -434,6 +525,7 @@ export async function ingestCourseForgeAttachments(files = [], options = {}) {
     const textContent = normalizeStructuredText(rawText, extension);
     const record = createAttachmentRecord(index, file, {
       textContent,
+      sourceBlocks: splitStructuredBlocks(textContent),
       ingestionStatus: textContent ? "supported" : "partial"
     });
     ingested.push(record);

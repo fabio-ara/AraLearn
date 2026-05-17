@@ -32,6 +32,7 @@ test("ingestCourseForgeAttachments preserva texto simples", async () => {
   assert.equal(result.extractedCount, 1);
   assert.equal(result.attachments[0].name, "ementa.md");
   assert.match(result.attachments[0].textContent, /Proposições/);
+  assert.ok(result.attachments[0].sourceBlocks.length >= 2);
   assert.deepEqual(result.warnings, []);
 });
 
@@ -47,6 +48,8 @@ test("ingestCourseForgeAttachments extrai texto de html simples", async () => {
   assert.equal(result.extractedCount, 1);
   assert.match(result.attachments[0].textContent, /Redes/);
   assert.match(result.attachments[0].textContent, /LAN conecta um mesmo ambiente/);
+  assert.ok(result.attachments[0].sourceBlocks.length >= 1);
+  assert.ok(result.attachments[0].sourceBlocks.some((block) => /Redes/.test(block.text)));
 });
 
 test("ingestCourseForgeAttachments usa parser de pdf quando disponivel", async () => {

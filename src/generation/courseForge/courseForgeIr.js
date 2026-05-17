@@ -466,10 +466,20 @@ function chunkSourceText(value = "", maxLength = 320) {
   return chunks.length ? chunks : [normalized];
 }
 
+function normalizeSourceBlocks(blocks = []) {
+  return normalizeArray(blocks)
+    .map((block) => ({
+      blockType: text(block?.blockType) || "paragraph",
+      text: text(block?.text)
+    }))
+    .filter((block) => block.text);
+}
+
 function buildSourceSpans({
   sourceId = "",
   locator = "",
   rawText = "",
+  sourceBlocks = [],
   fallbackText = "",
   baseTopics = [],
   baseAssessmentSignals = [],
@@ -477,15 +487,27 @@ function buildSourceSpans({
   baseTeacherConventions = [],
   confidence = "medium"
 } = {}) {
-  const chunks = chunkSourceText(rawText || fallbackText);
-  return chunks.map((chunk, index) => ({
+  const normalizedBlocks = normalizeSourceBlocks(sourceBlocks);
+  const spanInputs = normalizedBlocks.length
+    ? normalizedBlocks.flatMap((block) =>
+        chunkSourceText(block.text).map((chunk) => ({
+          text: chunk,
+          blockType: block.blockType
+        }))
+      )
+    : chunkSourceText(rawText || fallbackText).map((chunk) => ({
+        text: chunk,
+        blockType: "paragraph"
+      }));
+  return spanInputs.map((spanInput, index) => ({
     spanId: `${sourceId}:span:${index + 1}`,
     locator: locator || `${sourceId}:chunk:${index + 1}`,
-    text: chunk,
-    topics: unique([...baseTopics, ...inferTopicsFromText(chunk)]).slice(0, 8),
-    assessmentSignals: unique([...baseAssessmentSignals, ...inferAssessmentSignals(chunk)]),
-    notationSignals: unique([...baseNotationSignals, ...inferNotationSignals(chunk)]),
-    teacherConventions: unique([...baseTeacherConventions, ...inferTeacherConventions(chunk)]).slice(0, 6),
+    text: spanInput.text,
+    blockType: spanInput.blockType,
+    topics: unique([...baseTopics, ...inferTopicsFromText(spanInput.text)]).slice(0, 8),
+    assessmentSignals: unique([...baseAssessmentSignals, ...inferAssessmentSignals(spanInput.text)]),
+    notationSignals: unique([...baseNotationSignals, ...inferNotationSignals(spanInput.text)]),
+    teacherConventions: unique([...baseTeacherConventions, ...inferTeacherConventions(spanInput.text)]).slice(0, 6),
     confidence
   }));
 }
@@ -517,6 +539,7 @@ export function buildSourceLedgerArtifact({ attachments = [], promptText = "" } 
         sourceId,
         locator: text(item?.fileRef) || `attachment:${index + 1}`,
         rawText: bodyText,
+        sourceBlocks: item?.sourceBlocks,
         fallbackText: title,
         baseTopics: topics,
         baseAssessmentSignals: assessmentSignals,
