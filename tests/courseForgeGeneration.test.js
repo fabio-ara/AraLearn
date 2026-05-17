@@ -15,6 +15,12 @@ import {
   buildAppliedCourseForgeGeneration,
   prepareCourseForgeStructureGeneration
 } from "../src/generation/runtime/courseForgeGenerationRuntime.js";
+import {
+  buildCourseForgeGenerationSuccessState,
+  buildOpenGeneratedCourseViewState,
+  resolveOpenGeneratedCourseTarget,
+  resolvePendingCourseForgeNavigation
+} from "../src/generation/runtime/courseForgeGenerationNavigation.js";
 
 test("resolveCourseForgeGenerationScope usa o menor escopo existente", () => {
   assert.deepEqual(
@@ -211,4 +217,113 @@ test("buildAppliedCourseForgeGeneration compõe resumo, avisos e navegação", (
     moduleKey: "module-a",
     lessonKey: "lesson-a"
   });
+});
+
+test("buildCourseForgeGenerationSuccessState limpa draft e prepara seleção", () => {
+  const successState = buildCourseForgeGenerationSuccessState({
+    draft: {
+      promptText: "gerar",
+      attachments: [{ name: "base.md" }],
+      lastResult: null,
+      isSubmitting: true
+    },
+    applied: {
+      courseKey: "course-a",
+      moduleKey: "module-a",
+      lessonKey: "lesson-a",
+      message: "ok"
+    }
+  });
+
+  assert.equal(successState.draft.promptText, "");
+  assert.deepEqual(successState.draft.attachments, []);
+  assert.equal(successState.draft.lastResult.message, "ok");
+  assert.deepEqual(successState.selection, {
+    courseKey: "course-a",
+    moduleKey: "module-a",
+    lessonKey: "lesson-a",
+    microsequenceKey: null,
+    cardKey: null,
+    cardIndex: 0
+  });
+  assert.deepEqual(successState.pendingGeneratedNavigation, {
+    courseKey: "course-a",
+    moduleKey: "module-a",
+    lessonKey: "lesson-a"
+  });
+});
+
+test("resolveOpenGeneratedCourseTarget valida alvo antes de abrir em cursos", () => {
+  assert.deepEqual(
+    resolveOpenGeneratedCourseTarget({
+      pendingGeneratedNavigation: {
+        courseKey: "course-a",
+        moduleKey: "module-a",
+        lessonKey: "lesson-a",
+        firstMicrosequenceKey: "micro-1"
+      }
+    }),
+    {
+      ok: true,
+      target: {
+        courseKey: "course-a",
+        moduleKey: "module-a",
+        lessonKey: "lesson-a",
+        firstMicrosequenceKey: "micro-1"
+      }
+    }
+  );
+
+  assert.deepEqual(resolveOpenGeneratedCourseTarget({}), {
+    ok: false,
+    errorMessage: "Nenhuma estrutura nova foi gerada para abrir em Cursos."
+  });
+});
+
+test("buildOpenGeneratedCourseViewState prepara navegação final da UI", () => {
+  const viewState = buildOpenGeneratedCourseViewState({
+    courseKey: "course-a",
+    moduleKey: "module-a",
+    lessonKey: "lesson-a",
+    firstMicrosequenceKey: "micro-1"
+  });
+
+  assert.deepEqual(viewState.selection, {
+    courseKey: "course-a",
+    moduleKey: "module-a",
+    lessonKey: "lesson-a",
+    microsequenceKey: null,
+    cardKey: null,
+    cardIndex: 0
+  });
+  assert.deepEqual(viewState.viewState, {
+    homeTab: "courses",
+    generationPanelOpen: false,
+    view: "lesson",
+    entityEditor: null,
+    microsequenceMode: "play",
+    pendingGeneratedNavigation: null
+  });
+  assert.deepEqual(viewState.focusTarget, {
+    view: "lesson",
+    courseKey: "course-a",
+    moduleKey: "module-a",
+    lessonKey: "lesson-a",
+    microsequenceKey: "micro-1"
+  });
+});
+
+test("resolvePendingCourseForgeNavigation normaliza alvo mínimo pendente", () => {
+  assert.deepEqual(
+    resolvePendingCourseForgeNavigation({
+      courseKey: "course-a",
+      moduleKey: "module-a",
+      lessonKey: "lesson-a"
+    }),
+    {
+      courseKey: "course-a",
+      moduleKey: "module-a",
+      lessonKey: "lesson-a"
+    }
+  );
 });

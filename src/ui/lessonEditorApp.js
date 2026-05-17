@@ -122,6 +122,11 @@ import {
   toggleCourseForgeGenerationDraftLevel
 } from "../generation/runtime/courseForgeGenerationDraftState.js";
 import {
+  buildCourseForgeGenerationSuccessState,
+  buildOpenGeneratedCourseViewState,
+  resolveOpenGeneratedCourseTarget
+} from "../generation/runtime/courseForgeGenerationNavigation.js";
+import {
   buildAppliedCourseForgeGeneration,
   prepareCourseForgeStructureGeneration
 } from "../generation/runtime/courseForgeGenerationRuntime.js";
@@ -4307,35 +4312,20 @@ export function createLessonEditorApp({ root, storage, editor }) {
   }
 
   function openGeneratedLesson({ pendingGeneratedNavigation = state.pendingGeneratedNavigation } = {}) {
-    const result = state.generationDraft.lastResult;
-    const target = pendingGeneratedNavigation || result;
-    if (!target?.courseKey || !target?.moduleKey || !target?.lessonKey) {
-      state.generationDraft.errorMessage = "Nenhuma estrutura nova foi gerada para abrir em Cursos.";
+    const openTarget = resolveOpenGeneratedCourseTarget({
+      pendingGeneratedNavigation,
+      lastResult: state.generationDraft.lastResult
+    });
+    if (!openTarget.ok) {
+      state.generationDraft.errorMessage = openTarget.errorMessage;
       render({ preserveState: true });
       return;
     }
 
-    applySelection({
-      courseKey: target.courseKey,
-      moduleKey: target.moduleKey,
-      lessonKey: target.lessonKey,
-      microsequenceKey: null,
-      cardKey: null,
-      cardIndex: 0
-    });
-    state.homeTab = "courses";
-    state.generationPanelOpen = false;
-    state.view = "lesson";
-    state.entityEditor = null;
-    state.microsequenceMode = "play";
-    state.pendingGeneratedNavigation = null;
-    focusStructureTarget({
-      view: "lesson",
-      courseKey: target.courseKey,
-      moduleKey: target.moduleKey,
-      lessonKey: target.lessonKey,
-      microsequenceKey: target.firstMicrosequenceKey || null
-    });
+    const nextOpenState = buildOpenGeneratedCourseViewState(openTarget.target);
+    applySelection(nextOpenState.selection);
+    Object.assign(state, nextOpenState.viewState);
+    focusStructureTarget(nextOpenState.focusTarget);
     render({ preserveState: false });
   }
 
@@ -4498,23 +4488,13 @@ export function createLessonEditorApp({ root, storage, editor }) {
         ingestedAttachments: preparedGeneration.ingestedAttachments,
         scopeState
       });
-
-      applySelection({
-        courseKey: applied.courseKey,
-        moduleKey: applied.moduleKey || null,
-        lessonKey: applied.lessonKey || null,
-        microsequenceKey: null,
-        cardKey: null,
-        cardIndex: 0
+      const successState = buildCourseForgeGenerationSuccessState({
+        draft: state.generationDraft,
+        applied
       });
-      state.generationDraft.promptText = "";
-      state.generationDraft.attachments = [];
-      state.generationDraft.lastResult = applied;
-      state.pendingGeneratedNavigation = {
-        courseKey: applied.courseKey,
-        moduleKey: applied.moduleKey || null,
-        lessonKey: applied.lessonKey || null
-      };
+      applySelection(successState.selection);
+      state.generationDraft = successState.draft;
+      state.pendingGeneratedNavigation = successState.pendingGeneratedNavigation;
     } catch (error) {
       state.pendingGeneratedNavigation = null;
       state.generationDraft.errorMessage = error instanceof Error ? error.message : "Falha ao gerar a estrutura.";
