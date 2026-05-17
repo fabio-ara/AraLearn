@@ -13,5 +13,9 @@
     "codex:local": "node ./scripts/aralearnCodexBridge.mjs",
     "android:debug": "pwsh -NoProfile -File ./scripts/buildAndroidDebug.ps1",
     "pages:build": "pwsh -NoProfile -File ./scripts/buildPages.ps1"
+  },
+  "dependencies": {
+    "mammoth": "^1.12.0",
+    "pdfjs-dist": "^5.7.284"
   }
 }

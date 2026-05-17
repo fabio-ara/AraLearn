@@ -23,7 +23,9 @@ function normalizeAttachments(attachments = []) {
           kind: text(item?.kind) || "attachment",
           mimeType: text(item?.mimeType || item?.type) || "application/octet-stream",
           textContent: text(item?.textContent),
-          fileRef: text(item?.fileRef)
+          fileRef: text(item?.fileRef),
+          ingestionStatus: text(item?.ingestionStatus),
+          ingestionWarnings: Array.isArray(item?.ingestionWarnings) ? item.ingestionWarnings.map(text).filter(Boolean) : []
         }))
         .filter((item) => item.name)
     : [];

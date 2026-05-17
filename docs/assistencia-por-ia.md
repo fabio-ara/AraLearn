@@ -52,6 +52,8 @@ A segunda é a camada `CourseForge`. Ela já existe no código e na suíte autom
 
 Descrever esse ponto com precisão importa. Dizer que o AraLearn “já tem motor top-down completo” é verdadeiro se a referência for o estado interno do repositório e da suíte. Dizer que o usuário final “já opera toda a refatoração top-down pela interface” ainda seria exagero. O correto hoje é: o painel estrutural público já aciona o `CourseForge`, mas a geração contextual de microssequências e a edição local continuam em trilhas próprias.
 
+No estado atual da ingestão, o fluxo estrutural já aceita texto simples e passa a priorizar `PDF` e `DOCX` como formatos reais de uso. O suporte inicial busca extrair texto utilizável com warnings rastreáveis quando a qualidade vier parcial, em vez de prometer leitura perfeita do layout original.
+
 ## Pipeline de cards
 
 O fluxo real da geração de cards é o seguinte:

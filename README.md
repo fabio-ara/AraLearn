@@ -573,6 +573,8 @@ A documentação pública procura expor essa direção com transparência: quand
 
 Hoje isso vale também para a refatoração top-down: o app já usa a camada por fases no painel estrutural público, mas ainda preserva o workbench da microssequência e a geração contextual de `drafts` como trilhas locais separadas.
 
+Na ingestão de fontes, a prioridade operacional atual é texto simples, `PDF` e `DOCX`. O objetivo imediato não é reconstrução visual completa do documento, mas extração textual suficiente para alimentar o `SourceLedger` com grounding auditável e custo controlado.
+
 Versão atual do pacote:
 
 ```text
