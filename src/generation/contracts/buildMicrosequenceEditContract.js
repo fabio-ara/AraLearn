@@ -1,4 +1,4 @@
-import { resolveResourcesForEditPlan } from "../resources/resolveResourcesForEditPlan.js";
+import { resolveResourcesForEditPlan } from "../didactics/microsequenceEditRepresentation.js";
 
 export function buildMicrosequenceEditContract({
   editPlanningContract,
@@ -10,28 +10,28 @@ export function buildMicrosequenceEditContract({
   const plan = validatedEditPlan?.plan || validatedEditPlan;
   const resources = resolveResourcesForEditPlan({
     currentCards,
-    selectedCardKeys: editPlanningContract.request.selectedCardKeys,
-    selectedResourceKeys: editPlanningContract.request.selectedResourceKeys,
+    lessonAllowedResourceTypes: editPlanningContract.context.lesson.resourceTags || [],
     validatedEditPlan: plan,
     userSelectedExtraResourceTypes: editPlanningContract.request.userSelectedExtraResourceTypes
   });
   return {
-    version: "aralearn.microsequence-edit-contract.v1",
+    version: "aralearn.microsequence-edit-contract.v2",
     operation: "edit_microsequence_cards",
     target: editPlanningContract.target,
     context: editPlanningContract.context,
     selectedLessonTopicRefs: editPlanningContract.selectedLessonTopicRefs || [],
     request: {
-      userEditPrompt: editPlanningContract.request.userEditPrompt,
+      userPrompt: editPlanningContract.request.userPrompt,
       selectedCardKeys: editPlanningContract.request.selectedCardKeys,
-      selectedResourceKeys: editPlanningContract.request.selectedResourceKeys
+      selectedResourceKeys: editPlanningContract.request.selectedResourceKeys,
+      userSelectedExtraResourceTypes: editPlanningContract.request.userSelectedExtraResourceTypes || []
     },
     editPlan: plan,
     currentVersion: {
       versionId: editPlanningContract.target.versionId,
       cards: currentCards
     },
-    previousVersionsSummary: editPlanningContract.previousVersionsSummary,
+    versionHistory: editPlanningContract.versionHistory || [],
     previousVersionsLoaded: previousVersionsLoadedWhenRequired,
     requestGovernance: editPlanningContract.requestGovernance,
     resources,
