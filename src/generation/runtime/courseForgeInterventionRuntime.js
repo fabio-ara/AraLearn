@@ -92,7 +92,7 @@ export async function prepareCourseForgeMicrosequenceGeneration({
     selectedModel,
     apiKey: assistConfig.apiKey,
     didacticProfileId: assistConfig.didacticProfileId,
-    customPromptGuidance: assistConfig.customPromptGuidance,
+    profileTuning: assistConfig.profileTuning,
     codexEndpoint: assistConfig.codexEndpoint,
     codexToken: assistConfig.codexToken
   });

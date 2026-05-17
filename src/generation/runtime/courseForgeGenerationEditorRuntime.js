@@ -1,5 +1,6 @@
 import { DEFAULT_CODEX_LOCAL_ENDPOINT, isCodexLocalModel } from "../providers/codexCliConfig.js";
 import { DEFAULT_ENGINE_PROFILE_ID } from "../config/engineProfileRegistry.js";
+import { createCourseForgeProfileTuning } from "./courseForgeProfileTuning.js";
 import {
   applyCourseForgeGenerationScope,
   setCourseForgeGenerationDraftInput,
@@ -48,11 +49,19 @@ function cloneGenerationDraft(draft = {}) {
 }
 
 export function normalizeCourseForgeAssistConfig(config = {}) {
+  const didacticProfileId = text(config.didacticProfileId) || DEFAULT_ENGINE_PROFILE_ID;
   return {
     model: text(config.model) || DEFAULT_ASSIST_MODEL,
     apiKey: typeof config.apiKey === "string" ? config.apiKey.trim() : "",
-    didacticProfileId: text(config.didacticProfileId) || DEFAULT_ENGINE_PROFILE_ID,
-    customPromptGuidance: typeof config.customPromptGuidance === "string" ? config.customPromptGuidance : "",
+    didacticProfileId,
+    profileTuning: createCourseForgeProfileTuning(
+      didacticProfileId,
+      config.profileTuning && typeof config.profileTuning === "object"
+        ? config.profileTuning
+        : {
+            guardrailsText: typeof config.customPromptGuidance === "string" ? config.customPromptGuidance : ""
+          }
+    ),
     codexEndpoint: text(config.codexEndpoint) || DEFAULT_CODEX_LOCAL_ENDPOINT,
     codexToken: typeof config.codexToken === "string" ? config.codexToken.trim() : ""
   };

@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 import { readAssistConfigStorage, writeAssistConfigStorage } from "../src/ui/assistConfigStorage.js";
 import { DEFAULT_ENGINE_PROFILE_ID } from "../src/generation/config/engineProfileRegistry.js";
+import { createCourseForgeProfileTuning } from "../src/generation/runtime/courseForgeProfileTuning.js";
 
 function createMemoryStorage() {
   const data = new Map();
@@ -31,7 +32,7 @@ test("assistConfigStorage lê config legada e injeta defaults do Codex local", (
     model: "gemini-2.5-flash",
     apiKey: "abc",
     didacticProfileId: DEFAULT_ENGINE_PROFILE_ID,
-    customPromptGuidance: "",
+    profileTuning: createCourseForgeProfileTuning(DEFAULT_ENGINE_PROFILE_ID),
     codexEndpoint: "http://127.0.0.1:4183/assist",
     codexToken: ""
   });
@@ -45,7 +46,10 @@ test("assistConfigStorage grava e lê endpoint/token do Codex local", () => {
       model: "codex-cli-local",
       apiKey: "",
       didacticProfileId: "aralearn.engine.ads.systems.v1",
-      customPromptGuidance: "Priorize exemplos operacionais.",
+      profileTuning: createCourseForgeProfileTuning("aralearn.engine.ads.systems.v1", {
+        targetStudentProfile: "estudante operacional",
+        guardrailsText: "Priorize exemplos operacionais."
+      }),
       codexEndpoint: "http://127.0.0.1:4183/assist",
       codexToken: "segredo"
     },
@@ -56,7 +60,10 @@ test("assistConfigStorage grava e lê endpoint/token do Codex local", () => {
     model: "codex-cli-local",
     apiKey: "",
     didacticProfileId: "aralearn.engine.ads.systems.v1",
-    customPromptGuidance: "Priorize exemplos operacionais.",
+    profileTuning: createCourseForgeProfileTuning("aralearn.engine.ads.systems.v1", {
+      targetStudentProfile: "estudante operacional",
+      guardrailsText: "Priorize exemplos operacionais."
+    }),
     codexEndpoint: "http://127.0.0.1:4183/assist",
     codexToken: "segredo"
   });
@@ -67,7 +74,7 @@ test("assistConfigStorage tolera storage ausente, JSON inválido e valores ausen
     model: "gemini-2.5-flash",
     apiKey: "",
     didacticProfileId: DEFAULT_ENGINE_PROFILE_ID,
-    customPromptGuidance: "",
+    profileTuning: createCourseForgeProfileTuning(DEFAULT_ENGINE_PROFILE_ID),
     codexEndpoint: "http://127.0.0.1:4183/assist",
     codexToken: ""
   });
@@ -75,7 +82,7 @@ test("assistConfigStorage tolera storage ausente, JSON inválido e valores ausen
     model: "gemini-2.5-flash",
     apiKey: "",
     didacticProfileId: DEFAULT_ENGINE_PROFILE_ID,
-    customPromptGuidance: "",
+    profileTuning: createCourseForgeProfileTuning(DEFAULT_ENGINE_PROFILE_ID),
     codexEndpoint: "http://127.0.0.1:4183/assist",
     codexToken: ""
   });

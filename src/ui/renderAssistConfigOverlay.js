@@ -48,11 +48,28 @@ function renderIconAction(action, iconName, title) {
   );
 }
 
+function renderBooleanToggle({ field, title, iconName, checked = false } = {}) {
+  return (
+    `<button class="assist-config-toggle-chip${checked ? " is-active" : ""}" type="button" data-action="toggle-assist-config-flag" data-field="${escapeHtml(field)}" aria-pressed="${checked ? "true" : "false"}" title="${escapeHtml(title)}" aria-label="${escapeHtml(title)}">` +
+    renderUiIcon(iconName, "assist-config-toggle-icon") +
+    "</button>"
+  );
+}
+
+function renderNumberField({ field, iconName, title, value } = {}) {
+  return (
+    '<label class="field assist-config-field assist-config-number-field">' +
+    renderUiIcon(iconName, "assist-config-field-icon") +
+    `<input data-field="${escapeHtml(field)}" type="number" min="1" step="1" value="${escapeHtml(value)}" aria-label="${escapeHtml(title)}" title="${escapeHtml(title)}">` +
+    "</label>"
+  );
+}
+
 export function renderAssistConfigOverlay({
   model,
   apiKey,
   didacticProfileId,
-  customPromptGuidance,
+  profileTuning = {},
   codexEndpoint,
   codexToken,
   modelOptions = [],
@@ -74,6 +91,7 @@ export function renderAssistConfigOverlay({
     '<p class="editor-title">IA</p>' +
     '<div class="lesson-top-actions assist-config-head-actions">' +
     statusChip +
+    renderIconAction("assist-config-reset-profile", "draft-state", "Resetar perfil") +
     "</div></header>" +
     '<div class="editor-body assist-config-body">' +
     '<div class="assist-config-grid">' +
@@ -90,29 +108,72 @@ export function renderAssistConfigOverlay({
     "</div>" +
     '<label class="field assist-config-field assist-config-secret-field">' +
     renderUiIcon("intent", "assist-config-field-icon") +
-    '<input data-field="assist-config-api-key" type="password" value="' +
-    escapeHtml(apiKey || "") +
-    '" autocomplete="off" spellcheck="false" placeholder="Chave da API">' +
+    `<input data-field="assist-config-api-key" type="password" value="${escapeHtml(apiKey || "")}" autocomplete="off" spellcheck="false" placeholder="Chave da API">` +
     "</label>" +
-    '<label class="field assist-config-field assist-config-guidance-field">' +
+    '<label class="field assist-config-field assist-config-student-field">' +
     renderUiIcon("prompt", "assist-config-field-icon") +
-    '<textarea data-field="assist-config-custom-prompt-guidance" aria-label="Diretivas extras" title="Diretivas extras" placeholder="Diretivas extras, uma por linha.">' +
-    escapeHtml(customPromptGuidance || "") +
-    "</textarea></label>" +
+    `<input data-field="assist-config-target-student-profile" type="text" value="${escapeHtml(profileTuning.targetStudentProfile || "")}" autocomplete="off" spellcheck="false" placeholder="Perfil do estudante">` +
+    "</label>" +
+    '<div class="assist-config-number-grid">' +
+    renderNumberField({
+      field: "assist-config-conceptual-reappearances",
+      iconName: "card",
+      title: "Retomadas conceituais",
+      value: profileTuning.conceptualReappearances || 3
+    }) +
+    renderNumberField({
+      field: "assist-config-operational-reappearances",
+      iconName: "module",
+      title: "Retomadas operacionais",
+      value: profileTuning.operationalReappearances || 4
+    }) +
+    renderNumberField({
+      field: "assist-config-min-microsequences",
+      iconName: "microsequence",
+      title: "Mínimo de microssequências",
+      value: profileTuning.minMicrosequences || 3
+    }) +
+    renderNumberField({
+      field: "assist-config-target-microsequences",
+      iconName: "lesson",
+      title: "Alvo de microssequências",
+      value: profileTuning.targetMicrosequences || 5
+    }) +
+    renderNumberField({
+      field: "assist-config-max-microsequences",
+      iconName: "folder",
+      title: "Máximo de microssequências",
+      value: profileTuning.maxMicrosequences || 8
+    }) +
+    "</div>" +
+    '<div class="assist-config-toggle-row">' +
+    renderBooleanToggle({
+      field: "requireCoreCoverageBeforeExtensions",
+      title: "Cobertura central antes de extensões",
+      iconName: "ready-state",
+      checked: profileTuning.requireCoreCoverageBeforeExtensions !== false
+    }) +
+    renderBooleanToggle({
+      field: "requireVocabularyMap",
+      title: "Mapa de vocabulário obrigatório",
+      iconName: "title",
+      checked: profileTuning.requireVocabularyMap !== false
+    }) +
+    "</div>" +
+    '<label class="field assist-config-field assist-config-guidance-field">' +
+    renderUiIcon("edit", "assist-config-field-icon") +
+    `<textarea data-field="assist-config-guardrails-text" aria-label="Guardrails do prompt" title="Guardrails do prompt" placeholder="Guardrails do prompt, um por linha.">${escapeHtml(profileTuning.guardrailsText || "")}</textarea>` +
+    "</label>" +
     (isCodexLocal
       ? '<section class="assist-config-local-panel">' +
         '<div class="assist-config-local-grid">' +
         '<label class="field assist-config-field assist-config-secret-field">' +
         renderUiIcon("folder", "assist-config-field-icon") +
-        '<input data-field="assist-config-codex-endpoint" type="text" value="' +
-        escapeHtml(codexEndpoint || "") +
-        '" autocomplete="off" spellcheck="false" placeholder="Endpoint local">' +
+        `<input data-field="assist-config-codex-endpoint" type="text" value="${escapeHtml(codexEndpoint || "")}" autocomplete="off" spellcheck="false" placeholder="Endpoint local">` +
         "</label>" +
         '<label class="field assist-config-field assist-config-secret-field">' +
         renderUiIcon("card", "assist-config-field-icon") +
-        '<input data-field="assist-config-codex-token" type="password" value="' +
-        escapeHtml(codexToken || "") +
-        '" autocomplete="off" spellcheck="false" placeholder="Token local">' +
+        `<input data-field="assist-config-codex-token" type="password" value="${escapeHtml(codexToken || "")}" autocomplete="off" spellcheck="false" placeholder="Token local">` +
         "</label>" +
         "</div>" +
         '<div class="assist-config-local-actions">' +

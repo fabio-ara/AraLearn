@@ -3,16 +3,10 @@ import { createCodexCliProvider } from "../providers/codexCliProvider.js";
 import { createGeminiProvider } from "../providers/geminiProvider.js";
 import { createProviderRegistry, resolveProviderFromModelId } from "../providers/providerRegistry.js";
 import { DEFAULT_ENGINE_PROFILE_ID } from "../config/engineProfileRegistry.js";
+import { buildCourseForgeEngineProfileOverrides } from "./courseForgeProfileTuning.js";
 
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
-}
-
-function normalizePromptGuidanceLines(value = "") {
-  return String(value || "")
-    .split(/\r?\n/u)
-    .map((entry) => text(entry))
-    .filter(Boolean);
 }
 
 const COURSE_FORGE_PHASES_WITH_MODEL_OVERRIDE = Object.freeze([
@@ -50,21 +44,6 @@ export function resolveCourseForgeDidacticProfileId(profileId = "") {
   return text(profileId) || DEFAULT_ENGINE_PROFILE_ID;
 }
 
-export function buildCourseForgeEngineProfileOverrides({ customPromptGuidance = "" } = {}) {
-  const guidanceLines = normalizePromptGuidanceLines(customPromptGuidance);
-  if (!guidanceLines.length) {
-    return {};
-  }
-
-  return {
-    promptPacks: {
-      courseForge: {
-        guardrails: guidanceLines
-      }
-    }
-  };
-}
-
 export function createCourseForgeRuntimeProvider({
   selectedModel,
   apiKey = "",
@@ -90,7 +69,7 @@ export function resolveCourseForgeLaunchConfig({
   selectedModel,
   apiKey = "",
   didacticProfileId = "",
-  customPromptGuidance = "",
+  profileTuning = {},
   codexEndpoint = "",
   codexToken = ""
 } = {}) {
@@ -109,7 +88,7 @@ export function resolveCourseForgeLaunchConfig({
     providerRegistry: createProviderRegistry({ providers: [provider] }),
     selectedTopDownProfileId: resolveCourseForgeTopDownProfileId(modelId),
     didacticProfileId: resolveCourseForgeDidacticProfileId(didacticProfileId),
-    engineProfileOverrides: buildCourseForgeEngineProfileOverrides({ customPromptGuidance }),
+    engineProfileOverrides: buildCourseForgeEngineProfileOverrides({ profileTuning }),
     phaseModelOverrides: buildCourseForgePhaseModelOverrides(modelId)
   };
 }

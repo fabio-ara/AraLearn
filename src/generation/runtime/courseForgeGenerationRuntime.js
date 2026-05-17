@@ -33,7 +33,7 @@ export async function prepareCourseForgeStructureGeneration({
     selectedModel,
     apiKey: assistConfig.apiKey,
     didacticProfileId: assistConfig.didacticProfileId,
-    customPromptGuidance: assistConfig.customPromptGuidance,
+    profileTuning: assistConfig.profileTuning,
     codexEndpoint: assistConfig.codexEndpoint,
     codexToken: assistConfig.codexToken
   });

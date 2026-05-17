@@ -7,12 +7,15 @@ import {
   summarizeCourseForgeTopDownResult
 } from "../src/generation/runtime/courseForgeGenerationState.js";
 import {
-  buildCourseForgeEngineProfileOverrides,
   buildCourseForgePhaseModelOverrides,
   resolveCourseForgeDidacticProfileId,
   resolveCourseForgeLaunchConfig,
   resolveCourseForgeTopDownProfileId
 } from "../src/generation/runtime/courseForgeLaunchConfig.js";
+import {
+  buildCourseForgeEngineProfileOverrides,
+  createCourseForgeProfileTuning
+} from "../src/generation/runtime/courseForgeProfileTuning.js";
 import {
   buildAppliedCourseForgeGeneration,
   prepareCourseForgeStructureGeneration
@@ -72,9 +75,27 @@ test("resolveCourseForgeDidacticProfileId e buildCourseForgeEngineProfileOverrid
   assert.equal(resolveCourseForgeDidacticProfileId(""), "aralearn.engine.ads.general.v3");
   assert.deepEqual(
     buildCourseForgeEngineProfileOverrides({
-      customPromptGuidance: "Priorize contraste.\nMostre passo a passo."
+      profileTuning: createCourseForgeProfileTuning("aralearn.engine.ads.general.v3", {
+        guardrailsText: "Priorize contraste.\nMostre passo a passo."
+      })
     }),
     {
+      didacticPolicy: {
+        targetStudentProfile: "estudante-trabalhador de ADS com pouco tempo, pouca margem para erro e possível fragilidade de base",
+        defaultMinimumReappearances: {
+          conceptual: 3,
+          operational: 4
+        },
+        topDownCourseStrategy: {
+          defaultBudgetByLesson: {
+            minMicrosequences: 3,
+            targetMicrosequences: 5,
+            maxMicrosequences: 8
+          },
+          requireCoreCoverageBeforeExtensions: true,
+          requireVocabularyMap: true
+        }
+      },
       promptPacks: {
         courseForge: {
           guardrails: ["Priorize contraste.", "Mostre passo a passo."]
@@ -89,7 +110,9 @@ test("resolveCourseForgeLaunchConfig monta runtime e intent config fora da UI", 
     selectedModel: "gemini-2.5-flash",
     apiKey: "chave",
     didacticProfileId: "aralearn.engine.ads.programming.v1",
-    customPromptGuidance: "Explique os operadores localmente."
+    profileTuning: createCourseForgeProfileTuning("aralearn.engine.ads.programming.v1", {
+      guardrailsText: "Explique os operadores localmente."
+    })
   });
 
   assert.equal(launchConfig.providerId, "google");
@@ -160,7 +183,9 @@ test("prepareCourseForgeStructureGeneration monta request fora da UI", async () 
       model: "gemini-2.5-flash",
       apiKey: "chave",
       didacticProfileId: "aralearn.engine.ads.programming.v1",
-      customPromptGuidance: "Priorize passo a passo."
+      profileTuning: createCourseForgeProfileTuning("aralearn.engine.ads.programming.v1", {
+        guardrailsText: "Priorize passo a passo."
+      })
     },
     ingestAttachments: async (attachments) => ({
       attachments: attachments.map((item) => ({ ...item, contentText: "conteúdo" })),

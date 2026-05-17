@@ -3898,6 +3898,12 @@ button {
   gap: 10px;
 }
 
+.assist-config-number-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+}
+
 .assist-config-field {
   display: grid;
   gap: 8px;
@@ -3918,6 +3924,43 @@ button {
 .assist-config-guidance-field textarea {
   min-height: 110px;
   resize: vertical;
+}
+
+.assist-config-number-field input {
+  text-align: center;
+}
+
+.assist-config-student-field input {
+  min-height: 40px;
+}
+
+.assist-config-toggle-row {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.assist-config-toggle-chip {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  border: 1px solid rgba(151, 117, 68, 0.28);
+  background: rgba(28, 22, 17, 0.82);
+  color: #d8c29d;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.assist-config-toggle-chip.is-active {
+  border-color: rgba(151, 117, 68, 0.52);
+  background: rgba(80, 61, 31, 0.72);
+  color: #f2d28d;
+}
+
+.assist-config-toggle-icon {
+  width: 16px;
+  height: 16px;
 }
 
 .assist-config-local-panel {
@@ -5938,7 +5981,8 @@ button {
 
 @media (max-width: 520px) {
   .assist-config-grid,
-  .assist-config-local-grid {
+  .assist-config-local-grid,
+  .assist-config-number-grid {
     grid-template-columns: minmax(0, 1fr);
   }
 }

@@ -2,13 +2,17 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { renderAssistConfigOverlay } from "../src/ui/renderAssistConfigOverlay.js";
+import { createCourseForgeProfileTuning } from "../src/generation/runtime/courseForgeProfileTuning.js";
 
-test("renderAssistConfigOverlay expõe motor, perfil e diretivas extras sem texto de bastidor", () => {
+test("renderAssistConfigOverlay expõe motor, perfil e parâmetros do perfil sem diretiva solta", () => {
   const html = renderAssistConfigOverlay({
     model: "gemini-2.5-flash",
     apiKey: "abc",
     didacticProfileId: "aralearn.engine.ads.general.v3",
-    customPromptGuidance: "Priorize contraste.",
+    profileTuning: createCourseForgeProfileTuning("aralearn.engine.ads.general.v3", {
+      targetStudentProfile: "estudante com base irregular",
+      guardrailsText: "Priorize contraste."
+    }),
     codexEndpoint: "http://127.0.0.1:4183/assist",
     codexToken: "",
     localStatus: { ok: false, checking: false, error: "" },
@@ -27,9 +31,12 @@ test("renderAssistConfigOverlay expõe motor, perfil e diretivas extras sem text
   assert.match(html, /data-field="assist-config-model"/);
   assert.match(html, /data-field="assist-config-profile"/);
   assert.match(html, /data-field="assist-config-api-key"/);
-  assert.match(html, /data-field="assist-config-custom-prompt-guidance"/);
+  assert.match(html, /data-field="assist-config-target-student-profile"/);
+  assert.match(html, /data-field="assist-config-conceptual-reappearances"/);
+  assert.match(html, /data-field="assist-config-guardrails-text"/);
+  assert.match(html, /data-action="assist-config-reset-profile"/);
   assert.match(html, /Priorize contraste\./);
-  assert.doesNotMatch(html, /Modo avançado ativo/);
+  assert.doesNotMatch(html, /Diretivas extras/);
 });
 
 test("renderAssistConfigOverlay concentra o setup local no mesmo overlay quando Codex local está ativo", () => {
@@ -37,7 +44,7 @@ test("renderAssistConfigOverlay concentra o setup local no mesmo overlay quando 
     model: "codex-cli-local",
     apiKey: "",
     didacticProfileId: "aralearn.engine.ads.systems.v1",
-    customPromptGuidance: "",
+    profileTuning: createCourseForgeProfileTuning("aralearn.engine.ads.systems.v1"),
     codexEndpoint: "http://127.0.0.1:4183/assist",
     codexToken: "segredo",
     localStatus: { ok: false, checking: false, error: "bridge offline" },

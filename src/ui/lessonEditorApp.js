@@ -136,6 +136,7 @@ import {
   resolveCourseForgeGenerationScopeViewState,
   resolveCourseForgeOpenGeneratedLessonState
 } from "../generation/runtime/courseForgeGenerationEditorRuntime.js";
+import { createCourseForgeProfileTuning } from "../generation/runtime/courseForgeProfileTuning.js";
 import { resolveGenerationPanelScopeFromAction } from "../generation/runtime/courseForgeGenerationViewModel.js";
 import { listMicrosequenceTypes } from "../generation/types/microsequenceTypes.js";
 import { buildLessonDomainCoverageReport } from "../generation/domain/lessonDomainModel.js";
@@ -1671,6 +1672,10 @@ export function createLessonEditorApp({ root, storage, editor }) {
     writeAssistConfigStorage(state.assistConfig);
   }
 
+  function cloneAssistConfig(config = state.assistConfig) {
+    return structuredClone(config || {});
+  }
+
   function getCodexSetupEndpoint() {
     return state.assistConfig.codexEndpoint || DEFAULT_CODEX_LOCAL_ENDPOINT;
   }
@@ -1771,7 +1776,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
   }
 
   function openAssistConfig() {
-    state.assistConfigDraft = { ...state.assistConfig };
+    state.assistConfigDraft = cloneAssistConfig();
     state.assistConfigOpen = true;
     render({ preserveState: true });
   }
@@ -1787,10 +1792,27 @@ export function createLessonEditorApp({ root, storage, editor }) {
       model
     });
     if (state.assistConfigOpen) {
-      state.assistConfigDraft = { ...state.assistConfig };
+      state.assistConfigDraft = cloneAssistConfig();
     }
     persistAssistConfig();
     void handleCodexModelSelection(state.assistConfig.model);
+  }
+
+  function resetAssistProfileTuning(profileId = state.assistConfig.didacticProfileId) {
+    persistAssistConfigValue({
+      didacticProfileId: profileId,
+      profileTuning: createCourseForgeProfileTuning(profileId)
+    });
+    render({ preserveState: true });
+  }
+
+  function updateAssistProfileTuning(patch = {}) {
+    persistAssistConfigValue({
+      profileTuning: {
+        ...(state.assistConfig.profileTuning || {}),
+        ...patch
+      }
+    });
   }
 
   function persistAssistConfigValue(patch = {}) {
@@ -6822,7 +6844,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
             model: state.assistConfigDraft.model,
             apiKey: state.assistConfigDraft.apiKey,
             didacticProfileId: state.assistConfigDraft.didacticProfileId,
-            customPromptGuidance: state.assistConfigDraft.customPromptGuidance,
+            profileTuning: state.assistConfigDraft.profileTuning,
             codexEndpoint: state.assistConfigDraft.codexEndpoint,
             codexToken: state.assistConfigDraft.codexToken,
             modelOptions: ASSIST_MODEL_OPTIONS,
@@ -8236,6 +8258,9 @@ export function createLessonEditorApp({ root, storage, editor }) {
     });
     root.querySelector("[data-action='open-version-history']")?.addEventListener("click", () => openVersionHistory());
     root.querySelector("[data-action='assist-config-close']")?.addEventListener("click", () => closeAssistConfig());
+    root.querySelector("[data-action='assist-config-reset-profile']")?.addEventListener("click", () => {
+      resetAssistProfileTuning(state.assistConfig.didacticProfileId);
+    });
     root.querySelector("[data-action='cancel-external-import']")?.addEventListener("click", () => clearPendingExternalImport());
     root.querySelector("[data-action='confirm-external-import']")?.addEventListener("click", () => confirmPendingExternalImport());
     root.querySelector("[data-action='test-codex-cli-connection']")?.addEventListener("click", () => {
@@ -8254,7 +8279,13 @@ export function createLessonEditorApp({ root, storage, editor }) {
     const assistConfigModel = root.querySelector("[data-field='assist-config-model']");
     const assistConfigProfile = root.querySelector("[data-field='assist-config-profile']");
     const assistConfigApiKey = root.querySelector("[data-field='assist-config-api-key']");
-    const assistConfigCustomPromptGuidance = root.querySelector("[data-field='assist-config-custom-prompt-guidance']");
+    const assistConfigTargetStudentProfile = root.querySelector("[data-field='assist-config-target-student-profile']");
+    const assistConfigConceptualReappearances = root.querySelector("[data-field='assist-config-conceptual-reappearances']");
+    const assistConfigOperationalReappearances = root.querySelector("[data-field='assist-config-operational-reappearances']");
+    const assistConfigMinMicrosequences = root.querySelector("[data-field='assist-config-min-microsequences']");
+    const assistConfigTargetMicrosequences = root.querySelector("[data-field='assist-config-target-microsequences']");
+    const assistConfigMaxMicrosequences = root.querySelector("[data-field='assist-config-max-microsequences']");
+    const assistConfigGuardrailsText = root.querySelector("[data-field='assist-config-guardrails-text']");
     const assistConfigCodexEndpoint = root.querySelector("[data-field='assist-config-codex-endpoint']");
     const assistConfigCodexToken = root.querySelector("[data-field='assist-config-codex-token']");
     if (assistConfigModel) {
@@ -8270,12 +8301,42 @@ export function createLessonEditorApp({ root, storage, editor }) {
     }
     if (assistConfigProfile) {
       assistConfigProfile.addEventListener("change", () => {
-        persistAssistConfigValue({ didacticProfileId: assistConfigProfile.value });
+        resetAssistProfileTuning(assistConfigProfile.value);
       });
     }
-    if (assistConfigCustomPromptGuidance) {
-      assistConfigCustomPromptGuidance.addEventListener("input", () => {
-        persistAssistConfigValue({ customPromptGuidance: assistConfigCustomPromptGuidance.value });
+    if (assistConfigTargetStudentProfile) {
+      assistConfigTargetStudentProfile.addEventListener("input", () => {
+        updateAssistProfileTuning({ targetStudentProfile: assistConfigTargetStudentProfile.value });
+      });
+    }
+    if (assistConfigConceptualReappearances) {
+      assistConfigConceptualReappearances.addEventListener("input", () => {
+        updateAssistProfileTuning({ conceptualReappearances: assistConfigConceptualReappearances.value });
+      });
+    }
+    if (assistConfigOperationalReappearances) {
+      assistConfigOperationalReappearances.addEventListener("input", () => {
+        updateAssistProfileTuning({ operationalReappearances: assistConfigOperationalReappearances.value });
+      });
+    }
+    if (assistConfigMinMicrosequences) {
+      assistConfigMinMicrosequences.addEventListener("input", () => {
+        updateAssistProfileTuning({ minMicrosequences: assistConfigMinMicrosequences.value });
+      });
+    }
+    if (assistConfigTargetMicrosequences) {
+      assistConfigTargetMicrosequences.addEventListener("input", () => {
+        updateAssistProfileTuning({ targetMicrosequences: assistConfigTargetMicrosequences.value });
+      });
+    }
+    if (assistConfigMaxMicrosequences) {
+      assistConfigMaxMicrosequences.addEventListener("input", () => {
+        updateAssistProfileTuning({ maxMicrosequences: assistConfigMaxMicrosequences.value });
+      });
+    }
+    if (assistConfigGuardrailsText) {
+      assistConfigGuardrailsText.addEventListener("input", () => {
+        updateAssistProfileTuning({ guardrailsText: assistConfigGuardrailsText.value });
       });
     }
     if (assistConfigCodexEndpoint) {
@@ -8288,6 +8349,18 @@ export function createLessonEditorApp({ root, storage, editor }) {
         persistAssistConfigValue({ codexToken: assistConfigCodexToken.value });
       });
     }
+    root.querySelectorAll("[data-action='toggle-assist-config-flag']").forEach((node) => {
+      node.addEventListener("click", () => {
+        const field = node.getAttribute("data-field") || "";
+        if (!field) {
+          return;
+        }
+        updateAssistProfileTuning({
+          [field]: state.assistConfig.profileTuning?.[field] !== true
+        });
+        render({ preserveState: true });
+      });
+    });
 
     if (entityEditorModel) {
       const fields = {};

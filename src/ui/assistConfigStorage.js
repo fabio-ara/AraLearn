@@ -1,5 +1,6 @@
 import { DEFAULT_CODEX_LOCAL_ENDPOINT } from "../generation/providers/codexCliConfig.js";
 import { DEFAULT_ENGINE_PROFILE_ID } from "../generation/config/engineProfileRegistry.js";
+import { createCourseForgeProfileTuning } from "../generation/runtime/courseForgeProfileTuning.js";
 
 const ASSIST_CONFIG_STORAGE_KEY = "aralearn.assist-config";
 const DEFAULT_ASSIST_MODEL = "gemini-2.5-flash";
@@ -43,7 +44,16 @@ export function readAssistConfigStorage(storage = globalThis.localStorage) {
       typeof config.didacticProfileId === "string" && config.didacticProfileId.trim()
         ? config.didacticProfileId.trim()
         : DEFAULT_ENGINE_PROFILE_ID,
-    customPromptGuidance: typeof config.customPromptGuidance === "string" ? config.customPromptGuidance : "",
+    profileTuning: createCourseForgeProfileTuning(
+      typeof config.didacticProfileId === "string" && config.didacticProfileId.trim()
+        ? config.didacticProfileId.trim()
+        : DEFAULT_ENGINE_PROFILE_ID,
+      config.profileTuning && typeof config.profileTuning === "object"
+        ? config.profileTuning
+        : {
+            guardrailsText: typeof config.customPromptGuidance === "string" ? config.customPromptGuidance : ""
+          }
+    ),
     codexEndpoint:
       typeof config.codexEndpoint === "string" && config.codexEndpoint.trim()
         ? config.codexEndpoint.trim()
@@ -63,7 +73,12 @@ export function writeAssistConfigStorage(config, storage = globalThis.localStora
         typeof config?.didacticProfileId === "string" && config.didacticProfileId.trim()
           ? config.didacticProfileId.trim()
           : DEFAULT_ENGINE_PROFILE_ID,
-      customPromptGuidance: typeof config?.customPromptGuidance === "string" ? config.customPromptGuidance : "",
+      profileTuning: createCourseForgeProfileTuning(
+        typeof config?.didacticProfileId === "string" && config.didacticProfileId.trim()
+          ? config.didacticProfileId.trim()
+          : DEFAULT_ENGINE_PROFILE_ID,
+        config?.profileTuning && typeof config.profileTuning === "object" ? config.profileTuning : {}
+      ),
       codexEndpoint:
         typeof config?.codexEndpoint === "string" && config.codexEndpoint.trim()
           ? config.codexEndpoint.trim()
