@@ -89,11 +89,11 @@ export function resolveGenerationScopeState({
   const invalidFixedHierarchy = (draft.moduleFixed && !course) || (draft.lessonFixed && !moduleValue);
 
   let actionLabel = "criar curso completo";
-  let actionHelpText = "O top-down gera a estrutura auditada. Os cards ficam para materialização posterior no runtime local.";
+  let actionHelpText = "";
   let actionSummary = "Curso, módulos e lições";
   let actionIconName = "folder";
   let panelTitle = "Gerar estrutura";
-  let panelSubtitle = "O top-down organiza a trilha. A materialização dos cards acontece depois, dentro de cada microssequência.";
+  let panelSubtitle = "";
   let submitLabel = "Gerar estrutura";
 
   if (draft.courseFixed) {
@@ -115,7 +115,7 @@ export function resolveGenerationScopeState({
       actionIconName = "lesson";
     } else {
       actionLabel = "atualizar esta lição e planejar suas microssequências";
-      actionHelpText = "A lição é atualizada e a trilha local é planejada. Os cards são materializados depois, na microssequência escolhida.";
+      actionHelpText = "";
       actionSummary = "Lição e microssequências planejadas";
       actionIconName = "lesson";
     }

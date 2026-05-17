@@ -1,4 +1,5 @@
 import { createDefaultProviderRegistry } from "../providers/providerRegistry.js";
+import { resolveEngineProfile } from "../config/engineProfileRegistry.js";
 import { buildCourseForgePrompt } from "./courseForgePrompts.js";
 import { applyCourseForgePatch } from "./courseForgeApply.js";
 import { createCourseForgeArtifactsStore } from "./courseForgeArtifacts.js";
@@ -973,6 +974,12 @@ export async function runCourseForge({
     assessmentAlignmentAudit: artifactStore.loadArtifact(runId, "assessment-alignment-audit")?.content || null,
     patch: artifactStore.loadArtifact(runId, "patch-final")?.content || null
   };
+  const engineProfile = resolveEngineProfile(intent.didacticProfileId || intent.selectedTopDownProfileId || "", intent.engineProfileOverrides || {});
+  const buildProviderPrompt = (input = {}) =>
+    buildCourseForgePrompt({
+      ...input,
+      engineProfile
+    });
 
   for (const phaseId of phases) {
     const phaseState = (runState.phases || []).find((phase) => phase.phaseId === phaseId);
@@ -1043,7 +1050,7 @@ export async function runCourseForge({
           provider,
           phaseId,
           modelId: phaseModelId,
-          prompt: buildCourseForgePrompt({
+          prompt: buildProviderPrompt({
             role: "Você atua como Tutor local do AraLearn. Responda a dúvida do estudante sem editar o material nem expor bastidor.",
             sourcePack: JSON.stringify(context.sourceLedger || []),
             task: "Explique a dúvida de forma direta, ancore a resposta no contexto atual e reconecte explicitamente à trilha de estudo. Se detectar que o material precisa mudar, sinalize isso sem reescrever o curso.",
@@ -1116,7 +1123,7 @@ export async function runCourseForge({
           provider,
           phaseId,
           modelId: phaseModelId,
-          prompt: buildCourseForgePrompt({
+          prompt: buildProviderPrompt({
             role: "Você planeja a estrutura didática top-down do AraLearn.",
             sourcePack: JSON.stringify(context.sourceLedger || []),
             task: buildArchitecturePromptTask(intent, context.projectDocument),
@@ -1139,7 +1146,7 @@ export async function runCourseForge({
             provider,
             phaseId,
             modelId: phaseModelId,
-            prompt: buildCourseForgePrompt({
+            prompt: buildProviderPrompt({
               role: "Você audita a arquitetura didática proposta para o AraLearn.",
               sourcePack: JSON.stringify(context.sourceLedger || []),
               task: "Revise a arquitetura proposta. Aponte problemas de escopo, progressão, aderência às fontes e vocabulário de bastidor.",
@@ -1165,7 +1172,7 @@ export async function runCourseForge({
             provider,
             phaseId,
             modelId: phaseModelId,
-            prompt: buildCourseForgePrompt({
+            prompt: buildProviderPrompt({
               role: "Você repara a arquitetura didática top-down do AraLearn.",
               sourcePack: JSON.stringify(context.sourceLedger || []),
               task: "Corrija apenas os problemas apontados pela auditoria, sem ampliar o escopo além do pedido.",
@@ -1194,7 +1201,7 @@ export async function runCourseForge({
           provider,
           phaseId,
           modelId: phaseModelId,
-          prompt: buildCourseForgePrompt({
+          prompt: buildProviderPrompt({
             role: "Você normaliza o conjunto de lições planejadas para o AraLearn.",
             sourcePack: JSON.stringify(context.sourceLedger || []),
             task: "Confirme e detalhe o conjunto de lições do curso planejado, sem criar cards.",
@@ -1260,7 +1267,7 @@ export async function runCourseForge({
             provider,
             phaseId,
             modelId: phaseModelId,
-            prompt: buildCourseForgePrompt({
+            prompt: buildProviderPrompt({
               role: "Você audita o CourseGraph do AraLearn.",
               sourcePack: JSON.stringify(context.sourceLedger || []),
               task: "Revise conceitos, objetivos, prerequisitos, assessmentTargets e practiceVariants. Aponte lacunas semânticas, referências quebradas e governança insuficiente por lição.",
@@ -1314,7 +1321,7 @@ export async function runCourseForge({
               provider,
               phaseId,
               modelId: phaseModelId,
-              prompt: buildCourseForgePrompt({
+              prompt: buildProviderPrompt({
                 role: "Você repara o CourseGraph do AraLearn.",
                 sourcePack: JSON.stringify(context.sourceLedger || []),
                 task: "Corrija apenas os problemas apontados pela auditoria do CourseGraph, preservando o escopo das lições e a governança didática.",
@@ -1407,7 +1414,7 @@ export async function runCourseForge({
             provider,
             phaseId,
             modelId: phaseModelId,
-            prompt: buildCourseForgePrompt({
+            prompt: buildProviderPrompt({
               role: "Você planeja microssequências para as lições do AraLearn.",
               sourcePack: JSON.stringify(context.sourceLedger || []),
               task:
@@ -1453,7 +1460,7 @@ export async function runCourseForge({
             provider,
             phaseId,
             modelId: phaseModelId,
-            prompt: buildCourseForgePrompt({
+            prompt: buildProviderPrompt({
               role: "Você audita o planejamento de microssequências do AraLearn.",
               sourcePack: JSON.stringify(context.sourceLedger || []),
               task:
@@ -1540,7 +1547,7 @@ export async function runCourseForge({
             provider,
             phaseId,
             modelId: phaseModelId,
-            prompt: buildCourseForgePrompt({
+            prompt: buildProviderPrompt({
               role: "Você repara o planejamento de microssequências do AraLearn.",
               sourcePack: JSON.stringify(context.sourceLedger || []),
               task: buildMicrosequenceRepairTask(context.microsequenceRepairDirectives),
@@ -1657,7 +1664,7 @@ export async function runCourseForge({
             provider,
             phaseId,
             modelId: phaseModelId,
-            prompt: buildCourseForgePrompt({
+            prompt: buildProviderPrompt({
               role: "Você constrói cards didáticos para uma microssequência do AraLearn.",
               sourcePack: JSON.stringify(context.sourceLedger || []),
               task: "Gere apenas os cards pedidos, em linguagem didática autossuficiente, sem bastidor e obedecendo o recurso de cada posição.",
@@ -1733,7 +1740,7 @@ export async function runCourseForge({
                 provider,
                 phaseId,
                 modelId: phaseModelId,
-                prompt: buildCourseForgePrompt({
+                prompt: buildProviderPrompt({
                   role: "Você repara cards didáticos já planejados para o AraLearn.",
                   sourcePack: JSON.stringify(context.sourceLedger || []),
                   task: "Corrija apenas os problemas apontados pela auditoria, preservando a intenção didática da microssequência.",
@@ -1818,7 +1825,7 @@ export async function runCourseForge({
                 provider,
                 phaseId,
                 modelId: phaseModelId,
-                prompt: buildCourseForgePrompt({
+                prompt: buildProviderPrompt({
                   role: "Você repara aderência editorial e grounding de cards do AraLearn.",
                   sourcePack: JSON.stringify(context.sourceLedger || []),
                   task: "Corrija apenas problemas de sourceRefs, aderência às fontes e formulação editorial associada ao grounding, sem trocar a função didática do card.",

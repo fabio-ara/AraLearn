@@ -218,6 +218,8 @@ test("normalizeCourseForgeAssistConfig e patch consolidam config fora da UI", ()
   assert.deepEqual(normalizeCourseForgeAssistConfig({ codexEndpoint: " " }), {
     model: "gemini-2.5-flash",
     apiKey: "",
+    didacticProfileId: "aralearn.engine.ads.general.v3",
+    customPromptGuidance: "",
     codexEndpoint: "http://127.0.0.1:4183/assist",
     codexToken: ""
   });
@@ -226,17 +228,23 @@ test("normalizeCourseForgeAssistConfig e patch consolidam config fora da UI", ()
     assistConfig: {
       model: "gemini-2.5-flash",
       apiKey: " chave ",
+      didacticProfileId: "aralearn.engine.ads.general.v3",
+      customPromptGuidance: "",
       codexEndpoint: "",
       codexToken: " token "
     },
     patch: {
       model: "codex-cli-local",
-      codexEndpoint: " http://127.0.0.1:9999/assist "
+      codexEndpoint: " http://127.0.0.1:9999/assist ",
+      didacticProfileId: "aralearn.engine.ads.systems.v1",
+      customPromptGuidance: "Use exemplos curtos."
     }
   });
 
   assert.equal(patched.assistConfig.model, "codex-cli-local");
   assert.equal(patched.assistConfig.apiKey, "chave");
+  assert.equal(patched.assistConfig.didacticProfileId, "aralearn.engine.ads.systems.v1");
+  assert.equal(patched.assistConfig.customPromptGuidance, "Use exemplos curtos.");
   assert.equal(patched.assistConfig.codexEndpoint, "http://127.0.0.1:9999/assist");
   assert.equal(patched.assistConfigDraft.codexToken, "token");
 });

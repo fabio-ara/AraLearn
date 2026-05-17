@@ -262,6 +262,25 @@ function renderGenerateIconButton(action, title, content, disabled = false) {
   );
 }
 
+function renderGenerateStatusButton({ selectedModel = "", localStatus = {} } = {}) {
+  const isLocalModel = selectedModel === "codex-cli-local";
+  const title = isLocalModel
+    ? localStatus.checking
+      ? "Codex local: testando"
+      : localStatus.ok
+        ? "Codex local: ativo"
+        : "Codex local: offline"
+    : "Ajustes da IA";
+  const icon = isLocalModel
+    ? localStatus.ok
+      ? renderUiIcon("ready-state", "assist-config-action-icon")
+      : localStatus.checking
+        ? renderUiIcon("progress", "assist-config-action-icon")
+        : renderUiIcon("remove-state", "assist-config-action-icon")
+    : renderUiIcon("tags", "assist-config-action-icon");
+  return renderGenerateIconButton("open-assist-config", title, icon);
+}
+
 function renderGenerateScopeButton({ level, iconName, label, pressed = false, disabled = false }) {
   return (
     '<button class="generate-scope-button' +
@@ -439,9 +458,6 @@ function renderGeneratePane({ project, editorSupport, includeDismissActions = fa
         '<h2 class="card-title">' +
         escapeHtml(generationUiState.panelTitle || "Gerar estrutura") +
         "</h2>" +
-        (generationUiState.panelSubtitle
-          ? '<p class="card-subtitle">' + escapeHtml(generationUiState.panelSubtitle) + "</p>"
-          : "") +
         "</div>" +
         '<div class="lesson-top-actions">' +
         renderGenerateIconButton("clear-generation-scope", "Limpar escopo", "⌂", !hasScopedContext) +
@@ -496,8 +512,7 @@ function renderGeneratePane({ project, editorSupport, includeDismissActions = fa
     renderGenerateIconButton("clear-prompt", "Limpar prompt", "↻") +
     "</div>" +
     '<div class="generate-divider"></div>' +
-    '<div class="generate-action-preview">' +
-    '<p class="tiny muted generate-action-caption">Ação prevista</p>' +
+    '<div class="generate-action-preview generate-action-preview-compact">' +
     '<div class="generate-action-summary">' +
     renderUiIcon(generationUiState.actionIconName || "sparkles", "generate-action-summary-icon") +
     '<span class="generate-action-summary-text">' +
@@ -515,7 +530,10 @@ function renderGeneratePane({ project, editorSupport, includeDismissActions = fa
     '<select data-field="assist-model" aria-label="Modelo" title="Modelo">' +
     modelOptions +
     "</select></label>" +
-    renderGenerateIconButton("open-assist-config", "Configurar IA", "🔑") +
+    renderGenerateStatusButton({
+      selectedModel: editorSupport.selectedModel,
+      localStatus: editorSupport.localProviderStatus || {}
+    }) +
     renderGenerateIconButton("open-generation-attachment-picker", "Anexar documento", renderUiIcon("lesson", "assist-attachment-button-icon")) +
     '<button class="open-main generate-submit" type="button" data-action="generate-structure" aria-label="' +
     escapeHtml(generationUiState.submitLabel || "Gerar estrutura") +

@@ -91,6 +91,8 @@ export async function prepareCourseForgeMicrosequenceGeneration({
   const launchConfig = resolveCourseForgeLaunchConfig({
     selectedModel,
     apiKey: assistConfig.apiKey,
+    didacticProfileId: assistConfig.didacticProfileId,
+    customPromptGuidance: assistConfig.customPromptGuidance,
     codexEndpoint: assistConfig.codexEndpoint,
     codexToken: assistConfig.codexToken
   });
@@ -114,6 +116,8 @@ export async function prepareCourseForgeMicrosequenceGeneration({
         attachments: ingestedAttachments.attachments,
         operation: requestConfig.operation,
         requestedGenerationDepth: requestConfig.requestedGenerationDepth,
+        didacticProfileId: launchConfig.didacticProfileId,
+        engineProfileOverrides: launchConfig.engineProfileOverrides,
         phaseModelOverrides: launchConfig.phaseModelOverrides,
         selectedTopDownProfileId: launchConfig.selectedTopDownProfileId
       },

@@ -3876,6 +3876,120 @@ button {
   z-index: 94;
 }
 
+.assist-config-sheet {
+  width: min(100%, 430px);
+}
+
+.assist-config-head-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.assist-config-body {
+  display: grid;
+  gap: 12px;
+}
+
+.assist-config-grid,
+.assist-config-local-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.assist-config-field {
+  display: grid;
+  gap: 8px;
+}
+
+.assist-config-field-icon {
+  width: 16px;
+  height: 16px;
+  color: #d7b46a;
+}
+
+.assist-config-field select,
+.assist-config-field input,
+.assist-config-field textarea {
+  width: 100%;
+}
+
+.assist-config-guidance-field textarea {
+  min-height: 110px;
+  resize: vertical;
+}
+
+.assist-config-local-panel {
+  display: grid;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid rgba(151, 117, 68, 0.22);
+  border-radius: 16px;
+  background: rgba(23, 18, 14, 0.54);
+}
+
+.assist-config-local-actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.assist-config-icon-action {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+}
+
+.assist-config-action-icon {
+  width: 16px;
+  height: 16px;
+}
+
+.assist-config-status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(151, 117, 68, 0.28);
+  background: rgba(28, 22, 17, 0.82);
+  color: #e9d7b5;
+  font-size: 12px;
+  text-decoration: none;
+}
+
+.assist-config-status-chip.is-ready {
+  border-color: rgba(108, 181, 95, 0.45);
+  color: #cfe8c7;
+}
+
+.assist-config-status-chip.is-offline {
+  border-color: rgba(191, 97, 76, 0.45);
+  color: #f0b4a8;
+}
+
+.assist-config-status-chip.is-checking {
+  border-color: rgba(151, 117, 68, 0.45);
+  color: #f2d28d;
+}
+
+.assist-config-status-chip.is-idle {
+  border-color: rgba(151, 117, 68, 0.28);
+  color: #d8c29d;
+}
+
+.assist-config-status-icon {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+}
+
+.assist-config-status-text {
+  margin: 0;
+}
+
 .action-menu-overlay {
   position: absolute;
   inset: 0;
@@ -5816,6 +5930,17 @@ button {
   margin: 0;
   display: grid;
   gap: 5px;
+}
+
+.generate-action-preview-compact {
+  gap: 0;
+}
+
+@media (max-width: 520px) {
+  .assist-config-grid,
+  .assist-config-local-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .generate-action-caption {

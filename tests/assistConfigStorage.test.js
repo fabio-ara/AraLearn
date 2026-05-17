@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { readAssistConfigStorage, writeAssistConfigStorage } from "../src/ui/assistConfigStorage.js";
+import { DEFAULT_ENGINE_PROFILE_ID } from "../src/generation/config/engineProfileRegistry.js";
 
 function createMemoryStorage() {
   const data = new Map();
@@ -29,6 +30,8 @@ test("assistConfigStorage lê config legada e injeta defaults do Codex local", (
   assert.deepEqual(readAssistConfigStorage(storage), {
     model: "gemini-2.5-flash",
     apiKey: "abc",
+    didacticProfileId: DEFAULT_ENGINE_PROFILE_ID,
+    customPromptGuidance: "",
     codexEndpoint: "http://127.0.0.1:4183/assist",
     codexToken: ""
   });
@@ -41,6 +44,8 @@ test("assistConfigStorage grava e lê endpoint/token do Codex local", () => {
     {
       model: "codex-cli-local",
       apiKey: "",
+      didacticProfileId: "aralearn.engine.ads.systems.v1",
+      customPromptGuidance: "Priorize exemplos operacionais.",
       codexEndpoint: "http://127.0.0.1:4183/assist",
       codexToken: "segredo"
     },
@@ -50,6 +55,8 @@ test("assistConfigStorage grava e lê endpoint/token do Codex local", () => {
   assert.deepEqual(readAssistConfigStorage(storage), {
     model: "codex-cli-local",
     apiKey: "",
+    didacticProfileId: "aralearn.engine.ads.systems.v1",
+    customPromptGuidance: "Priorize exemplos operacionais.",
     codexEndpoint: "http://127.0.0.1:4183/assist",
     codexToken: "segredo"
   });
@@ -59,12 +66,16 @@ test("assistConfigStorage tolera storage ausente, JSON inválido e valores ausen
   assert.deepEqual(readAssistConfigStorage(null), {
     model: "gemini-2.5-flash",
     apiKey: "",
+    didacticProfileId: DEFAULT_ENGINE_PROFILE_ID,
+    customPromptGuidance: "",
     codexEndpoint: "http://127.0.0.1:4183/assist",
     codexToken: ""
   });
   assert.deepEqual(readAssistConfigStorage({ getItem: () => "{" }), {
     model: "gemini-2.5-flash",
     apiKey: "",
+    didacticProfileId: DEFAULT_ENGINE_PROFILE_ID,
+    customPromptGuidance: "",
     codexEndpoint: "http://127.0.0.1:4183/assist",
     codexToken: ""
   });

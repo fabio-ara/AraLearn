@@ -1,4 +1,5 @@
 import { DEFAULT_CODEX_LOCAL_ENDPOINT, isCodexLocalModel } from "../providers/codexCliConfig.js";
+import { DEFAULT_ENGINE_PROFILE_ID } from "../config/engineProfileRegistry.js";
 import {
   applyCourseForgeGenerationScope,
   setCourseForgeGenerationDraftInput,
@@ -50,6 +51,8 @@ export function normalizeCourseForgeAssistConfig(config = {}) {
   return {
     model: text(config.model) || DEFAULT_ASSIST_MODEL,
     apiKey: typeof config.apiKey === "string" ? config.apiKey.trim() : "",
+    didacticProfileId: text(config.didacticProfileId) || DEFAULT_ENGINE_PROFILE_ID,
+    customPromptGuidance: typeof config.customPromptGuidance === "string" ? config.customPromptGuidance : "",
     codexEndpoint: text(config.codexEndpoint) || DEFAULT_CODEX_LOCAL_ENDPOINT,
     codexToken: typeof config.codexToken === "string" ? config.codexToken.trim() : ""
   };

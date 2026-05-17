@@ -156,7 +156,8 @@ test("renderiza o painel contextual de geração com escopo top-down fixável", 
         actionIconName: "lesson"
       },
       modelOptions: [{ value: "gemini-2.5-flash", label: "Gemini 2.5 Flash" }],
-      selectedModel: "gemini-2.5-flash"
+      selectedModel: "gemini-2.5-flash",
+      localProviderStatus: { ok: false, checking: false, error: "" }
     }
   });
 
@@ -168,13 +169,12 @@ test("renderiza o painel contextual de geração com escopo top-down fixável", 
   assert.match(html, /data-field="generate-lesson-input"/);
   assert.match(html, /aria-label="Pedido, conteúdo ou orientação" title="Pedido, conteúdo ou orientação"/);
   assert.match(html, /Álgebra Linear/);
-  assert.match(html, /Ação prevista/);
   assert.match(html, /Lições neste módulo/);
   assert.match(html, /data-action="generate-structure"/);
   assert.match(html, /aria-label="Gerar estrutura" title="Gerar estrutura"/);
   assert.match(html, /data-action="open-generation-attachment-picker" title="Anexar documento" aria-label="Anexar documento"/);
   assert.match(html, /data-action="clear-prompt" title="Limpar prompt" aria-label="Limpar prompt"/);
-  assert.match(html, /data-action="open-assist-config" title="Configurar IA" aria-label="Configurar IA"/);
+  assert.match(html, /data-action="open-assist-config" title="Ajustes da IA" aria-label="Ajustes da IA"/);
   assert.match(html, /data-field="generate-lesson-input"[^>]+disabled aria-disabled="true"/);
 });
 
@@ -210,11 +210,11 @@ test("renderiza o painel contextual sem escopo fixado para geração global", ()
         actionIconName: "folder"
       },
       modelOptions: [{ value: "gemini-2.5-flash", label: "Gemini 2.5 Flash" }],
-      selectedModel: "gemini-2.5-flash"
+      selectedModel: "gemini-2.5-flash",
+      localProviderStatus: { ok: false, checking: false, error: "" }
     }
   });
 
-  assert.match(html, /Ação prevista/);
   assert.match(html, /Curso, módulos e lições/);
   assert.match(html, /data-action="toggle-generate-level" data-level="course"[^>]+aria-pressed="false"/);
   assert.match(html, /data-action="clear-generation-scope"[^>]+disabled aria-disabled="true"/);
@@ -253,11 +253,11 @@ test("renderiza o painel contextual com curso fixado para geração estrutural d
         actionIconName: "module"
       },
       modelOptions: [{ value: "gemini-2.5-flash", label: "Gemini 2.5 Flash" }],
-      selectedModel: "gemini-2.5-flash"
+      selectedModel: "gemini-2.5-flash",
+      localProviderStatus: { ok: false, checking: false, error: "" }
     }
   });
 
-  assert.match(html, /Ação prevista/);
   assert.match(html, /Módulos e lições neste curso/);
   assert.match(html, /data-field="generate-course-input"[^>]+value="Lógica"/);
 });
@@ -310,19 +310,18 @@ test("renderiza o painel contextual com lição fixada no fluxo único do Course
         actionIconName: "lesson",
         generationMode: "generate-top-down-structure",
         panelTitle: "Gerar estrutura",
-        panelSubtitle:
-          "O top-down organiza a trilha. A materialização dos cards acontece depois, dentro de cada microssequência.",
+        panelSubtitle: "",
         submitLabel: "Gerar estrutura"
       },
       modelOptions: [{ value: "gemini-2.5-flash", label: "Gemini 2.5 Flash" }],
-      selectedModel: "gemini-2.5-flash"
+      selectedModel: "gemini-2.5-flash",
+      localProviderStatus: { ok: false, checking: false, error: "" }
     }
   });
 
   assert.match(html, /Gerar estrutura/);
-  assert.match(html, /Ação prevista/);
   assert.match(html, /Lição e microssequências planejadas/);
-  assert.match(html, /A materialização dos cards acontece depois/);
+  assert.doesNotMatch(html, /A materialização dos cards acontece depois/);
   assert.match(html, /generate-action-summary-icon/);
   assert.match(html, /placeholder="Descreva o que você quer gerar neste escopo\."/);
   assert.match(html, /data-action="generate-structure"/);

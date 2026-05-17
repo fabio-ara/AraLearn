@@ -389,7 +389,10 @@ export function resolveCourseForgeIntent(input = {}) {
     interventionRequest: incomingInterventionRequest ? structuredClone(incomingInterventionRequest) : null,
     attachments: normalizedAttachments,
     selectedTopDownProfileId: text(input.selectedTopDownProfileId) || "codex_all",
-    didacticProfileId: text(input.selectedTopDownProfileId) || "codex_all",
+    didacticProfileId: text(input.didacticProfileId || input.selectedTopDownProfileId) || "codex_all",
+    engineProfileOverrides: input.engineProfileOverrides && typeof input.engineProfileOverrides === "object"
+      ? structuredClone(input.engineProfileOverrides)
+      : {},
     phaseModelOverrides: input.phaseModelOverrides && typeof input.phaseModelOverrides === "object"
       ? structuredClone(input.phaseModelOverrides)
       : {},

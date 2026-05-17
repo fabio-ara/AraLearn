@@ -7,7 +7,9 @@ import {
   summarizeCourseForgeTopDownResult
 } from "../src/generation/runtime/courseForgeGenerationState.js";
 import {
+  buildCourseForgeEngineProfileOverrides,
   buildCourseForgePhaseModelOverrides,
+  resolveCourseForgeDidacticProfileId,
   resolveCourseForgeLaunchConfig,
   resolveCourseForgeTopDownProfileId
 } from "../src/generation/runtime/courseForgeLaunchConfig.js";
@@ -66,14 +68,34 @@ test("resolveCourseForgeTopDownProfileId seleciona perfil operacional por provid
   assert.equal(resolveCourseForgeTopDownProfileId("gemini-2.5-flash"), "custom");
 });
 
+test("resolveCourseForgeDidacticProfileId e buildCourseForgeEngineProfileOverrides normalizam customização didática", () => {
+  assert.equal(resolveCourseForgeDidacticProfileId(""), "aralearn.engine.ads.general.v3");
+  assert.deepEqual(
+    buildCourseForgeEngineProfileOverrides({
+      customPromptGuidance: "Priorize contraste.\nMostre passo a passo."
+    }),
+    {
+      promptPacks: {
+        courseForge: {
+          guardrails: ["Priorize contraste.", "Mostre passo a passo."]
+        }
+      }
+    }
+  );
+});
+
 test("resolveCourseForgeLaunchConfig monta runtime e intent config fora da UI", () => {
   const launchConfig = resolveCourseForgeLaunchConfig({
     selectedModel: "gemini-2.5-flash",
-    apiKey: "chave"
+    apiKey: "chave",
+    didacticProfileId: "aralearn.engine.ads.programming.v1",
+    customPromptGuidance: "Explique os operadores localmente."
   });
 
   assert.equal(launchConfig.providerId, "google");
   assert.equal(launchConfig.selectedTopDownProfileId, "custom");
+  assert.equal(launchConfig.didacticProfileId, "aralearn.engine.ads.programming.v1");
+  assert.deepEqual(launchConfig.engineProfileOverrides.promptPacks.courseForge.guardrails, ["Explique os operadores localmente."]);
   assert.equal(launchConfig.phaseModelOverrides.plan_architecture, "gemini-2.5-flash");
   assert.equal(typeof launchConfig.providerRegistry.get("google")?.callJson, "function");
 });
@@ -136,7 +158,9 @@ test("prepareCourseForgeStructureGeneration monta request fora da UI", async () 
     },
     assistConfig: {
       model: "gemini-2.5-flash",
-      apiKey: "chave"
+      apiKey: "chave",
+      didacticProfileId: "aralearn.engine.ads.programming.v1",
+      customPromptGuidance: "Priorize passo a passo."
     },
     ingestAttachments: async (attachments) => ({
       attachments: attachments.map((item) => ({ ...item, contentText: "conteúdo" })),
@@ -147,6 +171,8 @@ test("prepareCourseForgeStructureGeneration monta request fora da UI", async () 
 
   assert.equal(prepared.promptText, "Gerar arquitetura de revisão");
   assert.equal(prepared.launchConfig.providerId, "google");
+  assert.equal(prepared.request.intent.didacticProfileId, "aralearn.engine.ads.programming.v1");
+  assert.deepEqual(prepared.request.intent.engineProfileOverrides.promptPacks.courseForge.guardrails, ["Priorize passo a passo."]);
   assert.deepEqual(prepared.request.intent.scope, {
     level: "module",
     courseKey: "course-a",

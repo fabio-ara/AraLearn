@@ -32,6 +32,8 @@ export async function prepareCourseForgeStructureGeneration({
   const launchConfig = resolveCourseForgeLaunchConfig({
     selectedModel,
     apiKey: assistConfig.apiKey,
+    didacticProfileId: assistConfig.didacticProfileId,
+    customPromptGuidance: assistConfig.customPromptGuidance,
     codexEndpoint: assistConfig.codexEndpoint,
     codexToken: assistConfig.codexToken
   });
@@ -46,6 +48,8 @@ export async function prepareCourseForgeStructureGeneration({
         scope: resolveCourseForgeGenerationScope(scopeState),
         promptText,
         attachments: ingestedAttachments.attachments,
+        didacticProfileId: launchConfig.didacticProfileId,
+        engineProfileOverrides: launchConfig.engineProfileOverrides,
         phaseModelOverrides: launchConfig.phaseModelOverrides,
         selectedTopDownProfileId: launchConfig.selectedTopDownProfileId
       },

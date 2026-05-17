@@ -6,15 +6,13 @@ import { renderVersionCompareOverlay } from "./renderVersionCompareOverlay.js";
 import { renderEntityEditorOverlay } from "./renderEntityEditorOverlay.js";
 import { renderActionMenuOverlay } from "./renderActionMenuOverlay.js";
 import { renderAssistConfigOverlay } from "./renderAssistConfigOverlay.js";
-import { renderCodexCliSetupOverlay } from "./renderCodexCliSetupOverlay.js";
 import { renderExternalImportOverlay } from "./renderExternalImportOverlay.js";
 import { renderUiIcon } from "./renderUiIcons.js";
 import { captureRenderState, restoreRenderState } from "./renderState.js";
 import {
   buildCodexCliHealthCommand,
   buildCodexCliSetupScript,
-  detectCodexCliSetupPlatform,
-  getCodexCliSetupPresentation
+  detectCodexCliSetupPlatform
 } from "./codexCliSetup.js";
 import { handleExternalJsonImportText } from "./externalJsonImport.js";
 import {
@@ -147,6 +145,7 @@ import { detectJsonExchangeFormat } from "../storage/jsonExchange.js";
 import { createStarterContractCard, getContractCardKind, listContractAnswerValues } from "../contract/contractCard.js";
 import { isDraftMicrosequence, isRunnableMicrosequence, resolveMicrosequenceRuntimeIncluded } from "../model/microsequenceStatus.js";
 import { ingestCourseForgeAttachments } from "../generation/ingestion/courseForgeAttachmentIngestion.js";
+import { listEngineProfileSeeds } from "../generation/config/engineProfileRegistry.js";
 import {
   createCourse as createCourseDocument,
   createLesson as createLessonDocument,
@@ -174,9 +173,13 @@ const MAX_CARD_SNAPSHOTS = 6;
 const ASSIST_MODEL_OPTIONS = [
   { value: "gemini-2.5-flash", label: "Gemini 2.5 Flash" },
   { value: "gemini-2.5-flash-lite", label: "Gemini 2.5 Flash-Lite" },
-  { value: "gemini-2.0-flash", label: "Gemini 2.0 Flash · até 2026-06-01" },
-  { value: CODEX_LOCAL_MODEL_ID, label: "Codex CLI local · avançado" }
+  { value: "gemini-2.0-flash", label: "Gemini 2.0 Flash" },
+  { value: CODEX_LOCAL_MODEL_ID, label: "Codex local" }
 ];
+const DIDACTIC_PROFILE_OPTIONS = listEngineProfileSeeds().map((profile) => ({
+  value: profile.profileId,
+  label: profile.label || profile.profileId
+}));
 const ASSIST_USER_MODES = {
   EDIT_MICROSEQUENCE: "edit-microsequence"
 };
@@ -957,7 +960,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
     assistConfigOpen: false,
     assistConfig: initialAssistConfig,
     assistConfigDraft: { ...initialAssistConfig },
-    codexCliSetupOpen: false,
     codexCliSetupStatus: createCourseForgeCodexCliSetupStatus(),
     pendingExternalImport: null,
     microsequenceMode: "play",
@@ -1677,10 +1679,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
     return detectCodexCliSetupPlatform();
   }
 
-  function getCodexSetupPresentation() {
-    return getCodexCliSetupPresentation(getCodexSetupPlatform());
-  }
-
   function getCodexSetupScript() {
     try {
       return buildCodexCliSetupScript({
@@ -1709,23 +1707,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
     state.codexCliSetupStatus = createCourseForgeCodexCliSetupStatus(nextStatus);
   }
 
-  function openCodexCliSetup(errorMessage = "") {
-    state.assistConfigOpen = false;
-    state.codexCliSetupOpen = true;
-    updateCodexCliSetupStatus({
-      ok: false,
-      checking: false,
-      error: errorMessage || state.codexCliSetupStatus.error || "",
-      data: state.codexCliSetupStatus.data
-    });
-    render({ preserveState: true });
-  }
-
-  function closeCodexCliSetup() {
-    state.codexCliSetupOpen = false;
-    render({ preserveState: true });
-  }
-
   async function testCodexCliConnection({ preserveState = true } = {}) {
     updateCodexCliSetupStatus({
       checking: true
@@ -1743,13 +1724,12 @@ export function createLessonEditorApp({ root, storage, editor }) {
 
   async function handleCodexModelSelection(model) {
     if (!isCodexLocalModel(model)) {
+      updateCodexCliSetupStatus({});
+      render({ preserveState: true });
       return;
     }
 
-    const status = await testCodexCliConnection();
-    if (!status.ok) {
-      openCodexCliSetup(status.error || "O bridge local não está ativo.");
-    }
+    await testCodexCliConnection();
   }
 
   async function copyTextToClipboard(text) {
@@ -1791,7 +1771,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
   }
 
   function openAssistConfig() {
-    state.codexCliSetupOpen = false;
     state.assistConfigDraft = { ...state.assistConfig };
     state.assistConfigOpen = true;
     render({ preserveState: true });
@@ -1808,7 +1787,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
       model
     });
     if (state.assistConfigOpen) {
-      state.assistConfigDraft.model = state.assistConfig.model;
+      state.assistConfigDraft = { ...state.assistConfig };
     }
     persistAssistConfig();
     void handleCodexModelSelection(state.assistConfig.model);
@@ -2894,7 +2873,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
     state.versionHistoryOpen = false;
     state.versionCompareOpen = false;
     state.assistConfigOpen = false;
-    state.codexCliSetupOpen = false;
     render({ preserveState: true });
   }
 
@@ -3185,7 +3163,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
     state.versionHistoryExpandedMoreKey = "";
     state.cardCommentOpen = false;
     state.assistConfigOpen = false;
-    state.codexCliSetupOpen = false;
     state.entityEditor = null;
     if (structureReference) {
       state.versionHistorySelectionKey = getStructureVersionEntry(structureReference)?.activeVersionId || "";
@@ -3227,7 +3204,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
     state.versionCompareFocusTarget = null;
     state.cardCommentOpen = false;
     state.assistConfigOpen = false;
-    state.codexCliSetupOpen = false;
     state.entityEditor = null;
     render({ preserveState: true });
   }
@@ -3510,7 +3486,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
     }
 
     state.assistConfigOpen = false;
-    state.codexCliSetupOpen = false;
     state.generationPanelOpen = false;
     state.versionHistoryOpen = false;
     state.versionCompareOpen = false;
@@ -4092,7 +4067,12 @@ export function createLessonEditorApp({ root, storage, editor }) {
       });
 
       if (submission.status === "provider-unready") {
-        openCodexCliSetup(submission.errorMessage || "O bridge local não está ativo.");
+        updateCodexCliSetupStatus({
+          ok: false,
+          checking: false,
+          error: submission.errorMessage || "O local não está ativo."
+        });
+        openAssistConfig();
         return;
       }
 
@@ -4151,7 +4131,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
 
     if (submission.status === "provider-unready" && submission.shouldOpenCodexCliSetup) {
       updateCodexCliSetupStatus(submission.codexCliSetupStatus);
-      openCodexCliSetup(submission.codexCliSetupStatus?.error || "O bridge local não está ativo.");
+      openAssistConfig();
       return;
     }
 
@@ -4905,7 +4885,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
     state.versionHistoryOpen = false;
     state.versionCompareOpen = false;
     state.assistConfigOpen = false;
-    state.codexCliSetupOpen = false;
     state.entityEditor = null;
 
     if (state.view === "microsequence") {
@@ -6842,17 +6821,13 @@ export function createLessonEditorApp({ root, storage, editor }) {
         ? renderAssistConfigOverlay({
             model: state.assistConfigDraft.model,
             apiKey: state.assistConfigDraft.apiKey,
+            didacticProfileId: state.assistConfigDraft.didacticProfileId,
+            customPromptGuidance: state.assistConfigDraft.customPromptGuidance,
             codexEndpoint: state.assistConfigDraft.codexEndpoint,
             codexToken: state.assistConfigDraft.codexToken,
-            modelOptions: ASSIST_MODEL_OPTIONS
-          })
-        : "") +
-      (state.codexCliSetupOpen
-        ? renderCodexCliSetupOverlay({
-            endpoint: getCodexSetupEndpoint(),
-            status: state.codexCliSetupStatus,
-            setupScript: getCodexSetupScript(),
-            presentation: getCodexSetupPresentation()
+            modelOptions: ASSIST_MODEL_OPTIONS,
+            didacticProfileOptions: DIDACTIC_PROFILE_OPTIONS,
+            localStatus: state.codexCliSetupStatus
           })
         : "") +
       (state.pendingExternalImport
@@ -6881,7 +6856,8 @@ export function createLessonEditorApp({ root, storage, editor }) {
               },
               generationUiState: getGenerationScopeState(),
               selectedModel: state.assistConfig.model,
-              modelOptions: ASSIST_MODEL_OPTIONS
+              modelOptions: ASSIST_MODEL_OPTIONS,
+              localProviderStatus: state.codexCliSetupStatus
             }
           })
         : "") +
@@ -7835,10 +7811,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
           closeAssistConfig();
           return;
         }
-        if (state.codexCliSetupOpen) {
-          closeCodexCliSetup();
-          return;
-        }
         if (state.pendingExternalImport) {
           clearPendingExternalImport();
           return;
@@ -8253,7 +8225,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
       root.querySelector("[data-field='generate-attachments']")?.click();
     });
     root.querySelector("[data-action='open-assist-config']")?.addEventListener("click", () => openAssistConfig());
-    root.querySelector("[data-action='open-codex-cli-setup']")?.addEventListener("click", () => openCodexCliSetup());
     root.querySelector("[data-action='apply-assist']")?.addEventListener("click", () => {
       void submitAssistRequest();
     });
@@ -8265,7 +8236,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
     });
     root.querySelector("[data-action='open-version-history']")?.addEventListener("click", () => openVersionHistory());
     root.querySelector("[data-action='assist-config-close']")?.addEventListener("click", () => closeAssistConfig());
-    root.querySelector("[data-action='close-codex-cli-setup']")?.addEventListener("click", () => closeCodexCliSetup());
     root.querySelector("[data-action='cancel-external-import']")?.addEventListener("click", () => clearPendingExternalImport());
     root.querySelector("[data-action='confirm-external-import']")?.addEventListener("click", () => confirmPendingExternalImport());
     root.querySelector("[data-action='test-codex-cli-connection']")?.addEventListener("click", () => {
@@ -8282,7 +8252,9 @@ export function createLessonEditorApp({ root, storage, editor }) {
     });
 
     const assistConfigModel = root.querySelector("[data-field='assist-config-model']");
+    const assistConfigProfile = root.querySelector("[data-field='assist-config-profile']");
     const assistConfigApiKey = root.querySelector("[data-field='assist-config-api-key']");
+    const assistConfigCustomPromptGuidance = root.querySelector("[data-field='assist-config-custom-prompt-guidance']");
     const assistConfigCodexEndpoint = root.querySelector("[data-field='assist-config-codex-endpoint']");
     const assistConfigCodexToken = root.querySelector("[data-field='assist-config-codex-token']");
     if (assistConfigModel) {
@@ -8294,6 +8266,16 @@ export function createLessonEditorApp({ root, storage, editor }) {
     if (assistConfigApiKey) {
       assistConfigApiKey.addEventListener("input", () => {
         persistAssistConfigValue({ apiKey: assistConfigApiKey.value });
+      });
+    }
+    if (assistConfigProfile) {
+      assistConfigProfile.addEventListener("change", () => {
+        persistAssistConfigValue({ didacticProfileId: assistConfigProfile.value });
+      });
+    }
+    if (assistConfigCustomPromptGuidance) {
+      assistConfigCustomPromptGuidance.addEventListener("input", () => {
+        persistAssistConfigValue({ customPromptGuidance: assistConfigCustomPromptGuidance.value });
       });
     }
     if (assistConfigCodexEndpoint) {

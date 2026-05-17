@@ -2,9 +2,17 @@ import { CODEX_LOCAL_MODEL_ID, isCodexLocalModel } from "../providers/codexCliCo
 import { createCodexCliProvider } from "../providers/codexCliProvider.js";
 import { createGeminiProvider } from "../providers/geminiProvider.js";
 import { createProviderRegistry, resolveProviderFromModelId } from "../providers/providerRegistry.js";
+import { DEFAULT_ENGINE_PROFILE_ID } from "../config/engineProfileRegistry.js";
 
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
+}
+
+function normalizePromptGuidanceLines(value = "") {
+  return String(value || "")
+    .split(/\r?\n/u)
+    .map((entry) => text(entry))
+    .filter(Boolean);
 }
 
 const COURSE_FORGE_PHASES_WITH_MODEL_OVERRIDE = Object.freeze([
@@ -38,6 +46,25 @@ export function resolveCourseForgeTopDownProfileId(modelId = "") {
   return isCodexLocalModel(modelId) ? "codex_all" : "custom";
 }
 
+export function resolveCourseForgeDidacticProfileId(profileId = "") {
+  return text(profileId) || DEFAULT_ENGINE_PROFILE_ID;
+}
+
+export function buildCourseForgeEngineProfileOverrides({ customPromptGuidance = "" } = {}) {
+  const guidanceLines = normalizePromptGuidanceLines(customPromptGuidance);
+  if (!guidanceLines.length) {
+    return {};
+  }
+
+  return {
+    promptPacks: {
+      courseForge: {
+        guardrails: guidanceLines
+      }
+    }
+  };
+}
+
 export function createCourseForgeRuntimeProvider({
   selectedModel,
   apiKey = "",
@@ -62,6 +89,8 @@ export function createCourseForgeRuntimeProvider({
 export function resolveCourseForgeLaunchConfig({
   selectedModel,
   apiKey = "",
+  didacticProfileId = "",
+  customPromptGuidance = "",
   codexEndpoint = "",
   codexToken = ""
 } = {}) {
@@ -79,6 +108,8 @@ export function resolveCourseForgeLaunchConfig({
     provider,
     providerRegistry: createProviderRegistry({ providers: [provider] }),
     selectedTopDownProfileId: resolveCourseForgeTopDownProfileId(modelId),
+    didacticProfileId: resolveCourseForgeDidacticProfileId(didacticProfileId),
+    engineProfileOverrides: buildCourseForgeEngineProfileOverrides({ customPromptGuidance }),
     phaseModelOverrides: buildCourseForgePhaseModelOverrides(modelId)
   };
 }
