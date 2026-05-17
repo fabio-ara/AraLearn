@@ -115,6 +115,13 @@ import {
 import { runAssist } from "../assist/assistRuntime.js";
 import { runCourseForge } from "../generation/courseForge/courseForgeRunner.js";
 import {
+  applyCourseForgeGenerationScope,
+  prepareCourseForgeLessonDeepeningDraft,
+  setCourseForgeGenerationDraftInput,
+  syncCourseForgeGenerationDraftHierarchy,
+  toggleCourseForgeGenerationDraftLevel
+} from "../generation/runtime/courseForgeGenerationDraftState.js";
+import {
   buildAppliedCourseForgeGeneration,
   prepareCourseForgeStructureGeneration
 } from "../generation/runtime/courseForgeGenerationRuntime.js";
@@ -4151,21 +4158,15 @@ export function createLessonEditorApp({ root, storage, editor }) {
     moduleKey = "",
     lessonKey = ""
   } = {}) {
-    const draft = state.generationDraft;
-    const course = courseKey ? findCourse(state.project, courseKey) : null;
-    const moduleValue = course && moduleKey ? findModule(state.project, course.key, moduleKey) : null;
-    const lesson = course && moduleValue && lessonKey ? findLesson(state.project, course.key, moduleValue.key, lessonKey) : null;
-
-    draft.courseFixed = Boolean(course);
-    draft.courseInput = course?.title || "";
-    draft.courseKey = course?.key || "";
-    draft.moduleFixed = Boolean(moduleValue);
-    draft.moduleInput = moduleValue?.title || "";
-    draft.moduleKey = moduleValue?.key || "";
-    draft.lessonFixed = Boolean(lesson);
-    draft.lessonInput = lesson?.title || "";
-    draft.lessonKey = lesson?.key || "";
-    syncGenerationDraftHierarchy();
+    state.generationDraft = applyCourseForgeGenerationScope({
+      draft: state.generationDraft,
+      scope: { courseKey, moduleKey, lessonKey },
+      projectDocument: state.project,
+      findCourse,
+      findModule,
+      findLesson,
+      visibleCourses: getVisibleCourses()
+    });
     clearGenerationResult();
   }
 
@@ -4272,77 +4273,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
     state.pendingGeneratedNavigation = null;
   }
 
-  function resolveHierarchyInputMatch(items, inputValue) {
-    const normalizedInput = normalizeComparableText(inputValue);
-    if (!normalizedInput) {
-      return null;
-    }
-
-    return (
-      (items || []).find((item) => {
-        const labels = [item?.title, item?.key].map((value) => normalizeComparableText(value)).filter(Boolean);
-        return labels.includes(normalizedInput);
-      }) || null
-    );
-  }
-
-  function syncGenerationDraftHierarchy() {
-    const draft = state.generationDraft;
-
-    if (!draft.courseFixed) {
-      draft.courseInput = "";
-      draft.courseKey = "";
-      draft.moduleFixed = false;
-      draft.moduleInput = "";
-      draft.moduleKey = "";
-      draft.lessonFixed = false;
-      draft.lessonInput = "";
-      draft.lessonKey = "";
-      return;
-    }
-
-    const course = resolveHierarchyInputMatch(getVisibleCourses(), draft.courseInput);
-    draft.courseKey = course?.key || "";
-
-    if (!course) {
-      draft.moduleFixed = false;
-      draft.moduleInput = "";
-      draft.moduleKey = "";
-      draft.lessonFixed = false;
-      draft.lessonInput = "";
-      draft.lessonKey = "";
-      return;
-    }
-
-    if (!draft.moduleFixed) {
-      draft.moduleInput = "";
-      draft.moduleKey = "";
-      draft.lessonFixed = false;
-      draft.lessonInput = "";
-      draft.lessonKey = "";
-      return;
-    }
-
-    const moduleValue = resolveHierarchyInputMatch(course.modules || [], draft.moduleInput);
-    draft.moduleKey = moduleValue?.key || "";
-
-    if (!moduleValue) {
-      draft.lessonFixed = false;
-      draft.lessonInput = "";
-      draft.lessonKey = "";
-      return;
-    }
-
-    if (!draft.lessonFixed) {
-      draft.lessonInput = "";
-      draft.lessonKey = "";
-      return;
-    }
-
-    const lesson = resolveHierarchyInputMatch(moduleValue.lessons || [], draft.lessonInput);
-    draft.lessonKey = lesson?.key || "";
-  }
-
   function getGenerationScopeState(project = state.project) {
     return resolveGenerationScopeState({
       draft: state.generationDraft,
@@ -4355,53 +4285,23 @@ export function createLessonEditorApp({ root, storage, editor }) {
   }
 
   function setGenerationLevelFixed(level) {
-    const draft = state.generationDraft;
-
-    if (level === "course") {
-      const willEnable = !draft.courseFixed;
-      draft.courseFixed = willEnable;
-      if (!willEnable) {
-        draft.courseInput = "";
-        draft.courseKey = "";
-      }
-    } else if (level === "module") {
-      if (!getGenerationScopeState().moduleToggleEnabled) {
-        return;
-      }
-      const willEnable = !draft.moduleFixed;
-      draft.moduleFixed = willEnable;
-      if (!willEnable) {
-        draft.moduleInput = "";
-        draft.moduleKey = "";
-      }
-    } else if (level === "lesson") {
-      if (!getGenerationScopeState().lessonToggleEnabled) {
-        return;
-      }
-      const willEnable = !draft.lessonFixed;
-      draft.lessonFixed = willEnable;
-      if (!willEnable) {
-        draft.lessonInput = "";
-        draft.lessonKey = "";
-      }
-    }
-
-    syncGenerationDraftHierarchy();
+    state.generationDraft = toggleCourseForgeGenerationDraftLevel({
+      draft: state.generationDraft,
+      level,
+      scopeState: getGenerationScopeState(),
+      visibleCourses: getVisibleCourses()
+    });
     clearGenerationResult();
     render({ preserveState: true });
   }
 
   function setGenerationInput(level, value) {
-    const draft = state.generationDraft;
-    if (level === "course") {
-      draft.courseInput = value;
-    } else if (level === "module") {
-      draft.moduleInput = value;
-    } else if (level === "lesson") {
-      draft.lessonInput = value;
-    }
-
-    syncGenerationDraftHierarchy();
+    state.generationDraft = setCourseForgeGenerationDraftInput({
+      draft: state.generationDraft,
+      level,
+      value,
+      visibleCourses: getVisibleCourses()
+    });
     clearGenerationResult();
     render({ preserveState: true });
   }
@@ -4556,7 +4456,10 @@ export function createLessonEditorApp({ root, storage, editor }) {
   }
 
   async function submitGenerateStructureRequest() {
-    syncGenerationDraftHierarchy();
+    state.generationDraft = syncCourseForgeGenerationDraftHierarchy({
+      draft: state.generationDraft,
+      visibleCourses: getVisibleCourses()
+    });
     const scopeState = getGenerationScopeState();
 
     if (!scopeState.canSubmit) {
@@ -4876,16 +4779,18 @@ export function createLessonEditorApp({ root, storage, editor }) {
     const report = buildLessonDomainCoverageReport(lesson);
 
     state.entityEditor = null;
-    state.generationDraft.courseFixed = true;
-    state.generationDraft.moduleFixed = true;
-    state.generationDraft.lessonFixed = true;
-    state.generationDraft.courseInput = course?.title || courseKey || "";
-    state.generationDraft.courseKey = courseKey || "";
-    state.generationDraft.moduleInput = moduleValue?.title || moduleKey || "";
-    state.generationDraft.moduleKey = moduleKey || "";
-    state.generationDraft.lessonInput = lesson?.title || lessonKey || "";
-    state.generationDraft.lessonKey = lesson?.key || "";
-    state.generationDraft.promptText = buildLessonAuditPrompt(lesson, report);
+    state.generationDraft = prepareCourseForgeLessonDeepeningDraft({
+      draft: state.generationDraft,
+      projectDocument: state.project,
+      courseKey,
+      moduleKey,
+      lessonKey,
+      promptText: buildLessonAuditPrompt(lesson, report),
+      findCourse,
+      findModule,
+      findLesson,
+      visibleCourses: getVisibleCourses()
+    });
     state.generationPanelOpen = true;
     notifyUser(
       report.uncoveredItems.length || report.explainedWithoutPractice.length || report.practiceWithoutVariation.length

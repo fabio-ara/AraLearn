@@ -2,6 +2,12 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  applyCourseForgeGenerationScope,
+  prepareCourseForgeLessonDeepeningDraft,
+  setCourseForgeGenerationDraftInput,
+  toggleCourseForgeGenerationDraftLevel
+} from "../src/generation/runtime/courseForgeGenerationDraftState.js";
+import {
   resolveCourseForgeProviderReadiness,
   resolveGenerationAssistMode,
   resolveGenerationPanelScopeFromAction,
@@ -183,4 +189,185 @@ test("resolveCourseForgeProviderReadiness só valida provider local", async () =
     })
   });
   assert.equal(codex.ok, true);
+});
+
+test("applyCourseForgeGenerationScope fixa escopo resolvido fora da UI", () => {
+  const projectDocument = {
+    courses: [
+      {
+        key: "course-a",
+        title: "Curso A",
+        modules: [
+          {
+            key: "module-a",
+            title: "Módulo A",
+            lessons: [{ key: "lesson-a", title: "Lição A" }]
+          }
+        ]
+      }
+    ]
+  };
+  const visibleCourses = projectDocument.courses;
+  const draft = applyCourseForgeGenerationScope({
+    draft: { promptText: "manter" },
+    scope: { courseKey: "course-a", moduleKey: "module-a", lessonKey: "lesson-a" },
+    projectDocument,
+    visibleCourses,
+    findCourse: (project, key) => project.courses.find((item) => item.key === key) || null,
+    findModule: (project, courseKey, moduleKey) =>
+      project.courses.find((item) => item.key === courseKey)?.modules.find((item) => item.key === moduleKey) || null,
+    findLesson: (project, courseKey, moduleKey, lessonKey) =>
+      project.courses
+        .find((item) => item.key === courseKey)
+        ?.modules.find((item) => item.key === moduleKey)
+        ?.lessons.find((item) => item.key === lessonKey) || null
+  });
+
+  assert.equal(draft.courseFixed, true);
+  assert.equal(draft.moduleFixed, true);
+  assert.equal(draft.lessonFixed, true);
+  assert.equal(draft.courseInput, "Curso A");
+  assert.equal(draft.moduleInput, "Módulo A");
+  assert.equal(draft.lessonInput, "Lição A");
+  assert.equal(draft.promptText, "manter");
+});
+
+test("toggleCourseForgeGenerationDraftLevel limpa hierarquia descendente ao desligar nível pai", () => {
+  const visibleCourses = [
+    {
+      key: "course-a",
+      title: "Curso A",
+      modules: [
+        {
+          key: "module-a",
+          title: "Módulo A",
+          lessons: [{ key: "lesson-a", title: "Lição A" }]
+        }
+      ]
+    }
+  ];
+  const draft = toggleCourseForgeGenerationDraftLevel({
+    draft: {
+      courseFixed: true,
+      moduleFixed: true,
+      lessonFixed: true,
+      courseInput: "Curso A",
+      courseKey: "course-a",
+      moduleInput: "Módulo A",
+      moduleKey: "module-a",
+      lessonInput: "Lição A",
+      lessonKey: "lesson-a"
+    },
+    level: "course",
+    scopeState: {
+      moduleToggleEnabled: true,
+      lessonToggleEnabled: true
+    },
+    visibleCourses
+  });
+
+  assert.equal(draft.courseFixed, false);
+  assert.equal(draft.courseInput, "");
+  assert.equal(draft.moduleFixed, false);
+  assert.equal(draft.moduleInput, "");
+  assert.equal(draft.lessonFixed, false);
+  assert.equal(draft.lessonInput, "");
+});
+
+test("setCourseForgeGenerationDraftInput resolve keys por título no estado puro", () => {
+  const visibleCourses = [
+    {
+      key: "course-a",
+      title: "Curso A",
+      modules: [
+        {
+          key: "module-a",
+          title: "Módulo A",
+          lessons: [{ key: "lesson-a", title: "Lição A" }]
+        }
+      ]
+    }
+  ];
+
+  let draft = setCourseForgeGenerationDraftInput({
+    draft: {
+      courseFixed: true
+    },
+    level: "course",
+    value: "Curso A",
+    visibleCourses
+  });
+  draft = toggleCourseForgeGenerationDraftLevel({
+    draft,
+    level: "module",
+    scopeState: { moduleToggleEnabled: true, lessonToggleEnabled: false },
+    visibleCourses
+  });
+  draft = setCourseForgeGenerationDraftInput({
+    draft,
+    level: "module",
+    value: "Módulo A",
+    visibleCourses
+  });
+  draft = toggleCourseForgeGenerationDraftLevel({
+    draft,
+    level: "lesson",
+    scopeState: { moduleToggleEnabled: true, lessonToggleEnabled: true },
+    visibleCourses
+  });
+  draft = setCourseForgeGenerationDraftInput({
+    draft,
+    level: "lesson",
+    value: "Lição A",
+    visibleCourses
+  });
+
+  assert.equal(draft.courseKey, "course-a");
+  assert.equal(draft.moduleKey, "module-a");
+  assert.equal(draft.lessonKey, "lesson-a");
+});
+
+test("prepareCourseForgeLessonDeepeningDraft monta pedido focado sem depender da UI", () => {
+  const projectDocument = {
+    courses: [
+      {
+        key: "course-a",
+        title: "Curso A",
+        modules: [
+          {
+            key: "module-a",
+            title: "Módulo A",
+            lessons: [{ key: "lesson-a", title: "Lição A" }]
+          }
+        ]
+      }
+    ]
+  };
+  const visibleCourses = projectDocument.courses;
+  const draft = prepareCourseForgeLessonDeepeningDraft({
+    draft: {
+      attachments: [{ name: "base.md" }]
+    },
+    projectDocument,
+    courseKey: "course-a",
+    moduleKey: "module-a",
+    lessonKey: "lesson-a",
+    promptText: "Aprofundar lacunas.",
+    visibleCourses,
+    findCourse: (project, key) => project.courses.find((item) => item.key === key) || null,
+    findModule: (project, courseKey, moduleKey) =>
+      project.courses.find((item) => item.key === courseKey)?.modules.find((item) => item.key === moduleKey) || null,
+    findLesson: (project, courseKey, moduleKey, lessonKey) =>
+      project.courses
+        .find((item) => item.key === courseKey)
+        ?.modules.find((item) => item.key === moduleKey)
+        ?.lessons.find((item) => item.key === lessonKey) || null
+  });
+
+  assert.equal(draft.courseFixed, true);
+  assert.equal(draft.moduleFixed, true);
+  assert.equal(draft.lessonFixed, true);
+  assert.equal(draft.promptText, "Aprofundar lacunas.");
+  assert.equal(draft.lessonKey, "lesson-a");
+  assert.equal(draft.attachments.length, 1);
 });
