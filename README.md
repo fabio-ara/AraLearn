@@ -1,119 +1,128 @@
 # AraLearn
 
-AraLearn é um aplicativo open source para organizar conteúdo didático em trilhas de estudo com flashcards, gerar novos cards quando necessário e permitir que o próprio percurso continue sendo editado, praticado e revisto ao longo do uso.
+AraLearn é um aplicativo open source para transformar materiais dispersos em trilhas de estudo organizadas, praticáveis e revisáveis.
 
-O ponto de partida do produto é simples: muita gente já tem material demais e estrutura de menos. Apostilas, slides, anotações, listas de exercícios, vídeos, artigos, documentação técnica e respostas de modelos de linguagem nem sempre se transformam, por si só, em um caminho estudável. O AraLearn foi pensado para responder a esse problema com organização explícita, prática localizada e autoria possível.
+O ponto de partida é um problema comum a estudantes, professores, autodidatas e pessoas que trabalham com conhecimento: há informação em toda parte, mas nem sempre há forma. Apostilas, slides, anotações, listas de exercícios, artigos, vídeos, documentação técnica e respostas de IA podem se acumular sem se converter em caminho de estudo. O AraLearn foi criado para ajudar o usuário a dar forma a esse material, sem retirar dele o controle sobre o percurso.
 
-Essa proposta é especialmente importante para estudantes-trabalhadores e para outras pessoas que estudam em condições fragmentadas. Como o projeto fica salvo localmente no dispositivo, o app continua útil sem internet para abrir a trilha, reler etapas, revisar cards já existentes e retomar o estudo em deslocamentos, intervalos curtos ou lugares sem sinal. As operações criativas que dependem de modelos de linguagem continuam exigindo conexão ou provider local disponível.
-
-## O que o app faz
-
-O AraLearn organiza o estudo em uma hierarquia explícita:
+O app organiza o estudo assim:
 
 ```text
 curso -> módulo -> lição -> microssequência -> card
 ```
 
-Essa hierarquia não serve apenas para armazenar conteúdo. Ela é a própria arquitetura de contexto do produto. Curso, módulo e lição situam o que a microssequência deve fazer; a microssequência, por sua vez, localiza o card dentro de uma progressão legível, cumulativa e editável.
+Essa árvore não é apenas uma forma de guardar dados. Ela ajuda a situar cada explicação, cada exercício e cada intervenção da IA. Uma microssequência não aparece como card solto nem como resposta avulsa de chat: ela pertence a uma lição, que pertence a um módulo, que pertence a um curso.
 
-A microssequência é a unidade didática central do app. Ela reúne poucos cards em torno de uma mesma função: introduzir um conceito, explicar um procedimento, contrastar ideias próximas, oferecer prática, revisar um ponto frágil ou preparar a continuação da trilha.
+## O que o AraLearn faz
 
-Na prática, o AraLearn combina dois movimentos:
+Com o AraLearn, o usuário pode:
 
-- organizar material amplo em um esqueleto de curso navegável;
-- continuar o trabalho dentro desse esqueleto, materializando, corrigindo, expandindo e reformulando etapas específicas.
+- criar cursos, módulos, lições, microssequências e cards;
+- importar material de apoio e usá-lo como fonte para organização do estudo;
+- pedir à IA que proponha uma estrutura de curso a partir de textos, documentos ou dúvidas;
+- materializar cards dentro de uma microssequência já planejada;
+- revisar, corrigir, expandir e reorganizar o percurso;
+- estudar no próprio app, com prática distribuída em pequenas etapas;
+- manter o projeto salvo no dispositivo e retomar o estudo mesmo sem conexão, quando o conteúdo já estiver disponível.
 
-## O que o AraLearn realmente traz de novo
+As operações que dependem de um modelo de IA remoto continuam exigindo internet ou um provedor local configurado. O estudo, a navegação e a revisão do material já salvo não dependem de conexão contínua.
 
-O AraLearn não se distingue apenas por usar IA para gerar flashcards. Sua originalidade está em juntar, numa mesma arquitetura, organização do percurso, linguagem autoral simples, estudo local e intervenção editorial.
+## Por que ele existe
 
-Primeiro, o app usa uma hierarquia explícita como forma de governar contexto. O que uma microssequência pede não depende só de um prompt momentâneo: depende da lição em que ela está, do módulo a que pertence, do que veio antes e do que ainda falta cobrir. Isso faz com que a geração e a continuação local ocorram sobre um percurso, e não sobre um tema solto.
+AraLearn nasce de uma situação histórica bastante concreta: a internet tornou a informação ubíqua; a inteligência artificial ampliou ainda mais a produção, a recombinação e a disponibilidade de texto. O resultado não é apenas abundância. Muitas vezes é desorientação.
 
-Segundo, o produto se apoia numa linguagem autoral simples em JSON, legível tanto por pessoas quanto por modelos de linguagem. Em vez de depender apenas de texto corrido, o conteúdo pode ser expresso por estruturas como `say`, `code`, `table`, `flow`, `tree`, `plane` e `matrix`. Essa camada intermediária é uma das propostas mais próprias do AraLearn: ela mantém o material compreensível e editável, ao mesmo tempo que permite ao app renderizar experiências bem mais ricas no runtime.
+O problema não é “ter acesso”. O problema é conseguir selecionar, ordenar, praticar, revisar, discordar, corrigir e transformar informação em conhecimento próprio. Sem uma estrutura externa manejável, o usuário tende a ficar diante de blocos excessivos de conteúdo, acumulando material sem prática suficiente ou aceitando respostas prontas com pouca intervenção crítica.
 
-Terceiro, o que o usuário escreve ou o modelo devolve não fica preso a um formato técnico opaco. Um card simples pode virar explicação, tabela ou código; um fluxograma, por exemplo, nasce de uma descrição autoral relativamente acessível e é convertido pelo app em geometria, nós, conexões e prática interativa.
+O AraLearn não resolve esse problema por completo. Ele propõe uma resposta prática: oferecer uma forma de trabalho em que o usuário interage com a informação, organiza o percurso e consolida conhecimento por meio de prática, revisão e autoria.
 
-Quarto, o produto tenta conciliar assistência e autoria legítima. Um usuário iniciante pode apenas fornecer material e deixar o app montar o esqueleto do curso para começar a estudar. Já um professor, pesquisador ou autor mais avançado pode intervir de modo fino no percurso, nos modelos, nos parâmetros, nos prompts e na forma final do conteúdo.
+## A unidade central: microssequência
 
-## Como a IA entra no produto
+O card é a unidade de interação. A microssequência é a unidade didática principal.
 
-A IA é usada principalmente para:
+Uma microssequência reúne alguns cards em torno de uma finalidade clara: introduzir um conceito, explicar um procedimento, comparar ideias parecidas, treinar um passo, corrigir um erro recorrente ou preparar a etapa seguinte. Essa escolha evita dois extremos: cards soltos, sem contexto; e lições grandes demais para orientar prática localizada.
 
-- organizar material amplo em cursos, módulos, lições e microssequências;
-- materializar conteúdo dentro de uma microssequência planejada;
-- corrigir, expandir ou reformular conteúdo localizado;
-- continuar a trilha sem perder o contexto do que já foi estudado.
+A proposta inicial do app foi transformar disciplinas acadêmicas em trilhas de flashcards sem pressupor conhecimento prévio forte do estudante. O usuário pode começar como leigo, seguir uma progressão e praticar antes de avançar. Ao mesmo tempo, a estrutura não é rígida: o usuário pode editar, excluir, reorganizar, complementar e conduzir o percurso conforme sua necessidade.
 
-O ponto decisivo é que isso não acontece como conversa solta. O app prepara a tarefa antes: ingere fontes, distribui contexto, trabalha com contratos explícitos, divide o fluxo em fases, valida o resultado e aplica mudanças por patch. Essa decomposição ajuda a usar melhor orçamento de tokens, separar parsing de geração e reduzir dependência de respostas longas e pouco controláveis.
+## IA como assistência, não como autoridade
 
-## Linguagem autoral e runtime
+A IA entra no AraLearn para reduzir atrito: ajudar a organizar material, propor uma sequência, materializar uma etapa, reformular cards ou continuar um percurso. Ela não substitui a autoria do usuário.
 
-Uma das ideias centrais do AraLearn é que o conteúdo didático não precisa existir apenas como texto livre nem como formato fechado demais para ser editado.
+O app tenta governar a IA por meio da própria estrutura do produto: curso, módulo, lição, microssequência, fontes, contratos e validações. O modelo não recebe apenas um pedido genérico. Ele trabalha sobre um ponto situado da trilha e devolve conteúdo que ainda pode ser revisado, editado e testado pelo usuário.
 
-O contrato público do app usa uma linguagem autoral simples para representar explicações, perguntas, código, tabelas, árvores, planos cartesianos, matrizes e fluxogramas. Isso traz três vantagens ao mesmo tempo:
+Essa distinção é importante. O AraLearn não é um chat educacional com exportação de flashcards. Ele é um ambiente de organização e estudo que pode usar IA como colaboradora.
 
-- o material continua legível para humanos;
-- ele continua utilizável por modelos de linguagem;
-- o runtime pode transformar essa descrição em apresentações e práticas mais sofisticadas.
+## Linguagem autoral simples
 
-Essa escolha permite que autoria humana, assistência algorítmica e renderização interativa trabalhem sobre uma base comum.
+O conteúdo do AraLearn é persistido em uma linguagem autoral simples, baseada em JSON. Ela permite representar texto, perguntas, código, tabelas, fluxogramas, árvores, matrizes e outros recursos de estudo sem prender o usuário a um formato visual difícil de editar.
 
-## Autoria, parametrização e controle
+Essa camada intermediária serve a três públicos ao mesmo tempo:
 
-O AraLearn foi pensado para não reduzir o usuário a consumidor passivo do que o modelo gera.
+- pessoas, que precisam entender e revisar o material;
+- modelos de IA, que trabalham melhor quando recebem contratos explícitos;
+- o app, que transforma a descrição em experiência de estudo.
 
-O produto admite diferentes graus de intervenção. Quem quiser menos atrito pode subir material, pedir a organização do curso e começar a estudar a partir das microssequências planejadas. Quem quiser mais controle pode editar títulos, descrições, orientação da lição, cards, estrutura, parâmetros de geração, provider, modelo e outros campos de configuração.
+O objetivo é manter o conteúdo legível, editável e reutilizável.
 
-Isso é importante também do ponto de vista pedagógico e político. Um produto educacional não deveria impor um único método como destino inevitável. O AraLearn tenta oferecer direção, memória e mediação sem fechar o espaço de apropriação, crítica e correção por parte de quem usa.
+## Inspirações
 
-## Operação local e ingestão de fontes
+O AraLearn dialoga com ferramentas e tradições diferentes.
 
-O AraLearn roda como aplicação web com persistência local no navegador e também pode ser empacotado para Android via `WebView`.
+De sistemas como Anki, retém a importância da revisão ativa e da prática. De produtos como Duolingo, observa o valor de percursos progressivos e retomáveis. De ambientes como Obsidian, conversa com a ideia de conhecimento organizado pelo usuário, não apenas consumido em sequência fixa.
 
-Hoje o projeto já inclui ingestão textual para formatos importantes de estudo, como:
+O projeto também nasce de uma trajetória acadêmica cruzada. Seu autor estudou Letras, com habilitação em Linguística, na USP; foi estudante de Ciências Biológicas na USP; e hoje cursa Tecnologia em Análise e Desenvolvimento de Sistemas no IFSP. Essa combinação aparece no produto: atenção à linguagem, à estrutura conceitual, à aprendizagem, à prática e à implementação.
 
-- `PDF`, com `pdfjs-dist`;
-- `DOCX`, com `mammoth`.
+Há ainda diálogos mais amplos com pesquisas sobre recuperação ativa, carga cognitiva, exemplos resolvidos, prática orientada e autoria assistida. Em outro nível, o projeto também conversa com debates sobre informação, poder, condução dos sujeitos e conhecimento em sociedades saturadas de dados. O AraLearn usa técnicas de organização que podem disciplinar o estudo; ao mesmo tempo, tenta preservar revisão, autoria e discordância para reduzir a passividade diante do conteúdo.
 
-O objetivo não é reproduzir visualmente o documento, e sim aproveitar o texto para organização didática, grounding, auditoria e continuação local do percurso.
+## Para quem pode servir
 
-## O que o usuário encontra
+O AraLearn foi pensado inicialmente para disciplinas acadêmicas, especialmente em contextos como cursos de tecnologia, matemática, programação, lógica e formação geral. Mas sua estrutura permite outros usos:
 
-No app, o usuário pode:
+- preparação para provas e concursos;
+- estudo de línguas estrangeiras;
+- acompanhamento de artigos acadêmicos;
+- organização de documentação técnica;
+- formação profissional;
+- estudo por projetos;
+- criação de trilhas por professores, monitores ou estudantes.
 
-- criar e navegar por cursos, módulos, lições e microssequências;
-- importar e exportar projetos;
-- anexar fontes para orientar a organização do estudo;
-- escolher provider e modelo;
-- abrir microssequências planejadas mesmo antes de elas terem cards;
-- materializar conteúdo sob demanda;
-- corrigir, expandir, reformular e editar cards;
-- estudar os cards no próprio runtime;
-- manter o material salvo localmente no dispositivo.
+Perfis didáticos podem ajustar a ênfase de cada uso: mais prática, mais conceituação, mais vocabulário, mais procedimento, mais comparação de fontes ou mais preparação para exercícios.
+
+## Estado do projeto
+
+O AraLearn é um produto em desenvolvimento. A arquitetura já contempla persistência local, organização hierárquica, importação e exportação, geração assistida por IA, materialização de microssequências e um contrato público em JSON.
+
+O projeto ainda precisa de avaliação empírica mais sistemática. Ele não promete aprendizagem garantida. A proposta é oferecer uma forma melhor de organizar, praticar e revisar informação, mantendo o usuário no centro da decisão.
 
 ## Documentação
 
 - [Visão do produto](docs/visao-do-produto.md)
 - [Guia de uso](docs/uso-do-app.md)
+- [Modelo didático](docs/modelo-didatico.md)
+- [Perfis didáticos](docs/perfis-didaticos.md)
 - [Arquitetura](docs/arquitetura.md)
+- [Arquitetura-alvo](docs/arquitetura-alvo.md)
 - [Assistência por IA](docs/assistencia-por-ia.md)
-- [Fundamentos e evidências](docs/fundamentos-e-evidencias.md)
 - [Contrato público](docs/aralearn-contract.md)
-- [Documentação completa](docs/README.md)
+- [Rascunhos e microssequências](docs/rascunhos-e-microssequencias.md)
+- [Fundamentos e evidências](docs/fundamentos-e-evidencias.md)
+- [Pesquisa e avaliação](docs/pesquisa-e-avaliacao.md)
+- [Abrir com AraLearn no Android](docs/android-share-import.md)
+- [Codex CLI local](docs/codex-cli.md)
+- [Planejamento de Matemática para Informática](docs/planejamento-matematica-para-informatica.md)
+- [Índice da documentação](docs/README.md)
 
-## Execução local
+## Executar localmente
 
 ```bash
 npm install
 npm run dev
 ```
 
-Validação:
+Testes:
 
 ```bash
 npm test
 ```
 
-Versão web publicada:
+Versão publicada:
 
 <https://fabio-ara.github.io/AraLearn/>
