@@ -1,39 +1,68 @@
 # Arquitetura-alvo do AraLearn
 
-## O que este documento registra
+## Finalidade deste documento
 
-Este texto registra a direção arquitetural do produto. Ele descreve a forma que o AraLearn procura consolidar: um sistema em que organização ampla do estudo, linguagem autoral, materialização progressiva e intervenção local pertençam à mesma arquitetura.
+Este documento registra a direção de consolidação do AraLearn. Ele não descreve apenas o que já está pronto; descreve a forma que o produto procura estabilizar.
 
-## A tese central
+A meta é que organização estrutural, geração assistida, estudo, revisão e autoria pertençam ao mesmo sistema, em vez de parecerem módulos sem relação.
 
-O app fica mais coerente quando a trilha estrutural e a ajuda local deixam de parecer produtos paralelos. A mesma lógica que organiza o material precisa continuar válida quando o usuário entra numa microssequência, pede reforço, corrige um card ou materializa uma etapa ainda vazia.
+## Tese central
 
-## Princípios que essa arquitetura tenta preservar
+O AraLearn se torna mais coerente quando a mesma lógica governa dois momentos:
 
-- a microssequência é a unidade didática central;
-- o card é a unidade de interação, não de planejamento;
-- a estrutura pública governa contexto de geração e de estudo;
-- a linguagem autoral simples continua sendo ponte entre autoria, modelo e runtime;
-- a IA ajuda, mas não decide sozinha a didática;
-- o usuário preserva possibilidade real de revisão, correção e reautoria;
-- falha operacional não deve corromper o projeto.
+1. a construção da trilha;
+2. a intervenção dentro de uma microssequência.
 
-## O que isso implica
+No primeiro momento, o usuário organiza cursos, módulos, lições e etapas planejadas. No segundo, ele estuda, corrige, reformula e materializa conteúdo. A arquitetura-alvo exige continuidade entre esses momentos.
 
-Na prática, a arquitetura-alvo pede:
+## Princípios
 
-- um core didático mais estável;
-- um motor de produção por fases;
-- runtimes de provider claramente separados da didática;
-- persistência local com aplicação controlada de mudanças;
-- representação intermediária suficientemente simples para autoria humana e colaboração com modelos.
+A arquitetura-alvo preserva estes princípios:
+
+- a microssequência é a unidade didática principal;
+- o card é unidade de interação;
+- a lição governa o recorte local;
+- a árvore pública situa o contexto;
+- a linguagem autoral mantém o conteúdo legível;
+- a IA assiste, mas não decide sozinha;
+- o usuário pode revisar, corrigir e reorganizar;
+- uma falha operacional não deve corromper o projeto;
+- versões e alterações precisam ser compreensíveis.
+
+## O que precisa se consolidar
+
+### Core didático
+
+O core didático deve concentrar critérios de progressão, prática, suficiência e coerência. Ele precisa ser independente do serviço de IA escolhido.
+
+### Produção por fases
+
+A geração deve continuar dividida em fases menores: ingestão, planejamento, auditoria, reparo, validação e aplicação. Isso reduz dependência de uma única resposta extensa do modelo.
+
+### Orientação por lição
+
+A lição deve carregar orientação suficientemente clara para guiar microssequências: escopo, notação, prática, limites e erros comuns. Essa orientação não deve ser confundida com simples descrição publicitária da lição.
+
+### Materialização progressiva
+
+O app deve permitir que microssequências planejadas existam antes dos cards. O usuário enxerga o caminho, escolhe prioridades e materializa o conteúdo quando fizer sentido.
+
+### Versionamento compreensível
+
+O versionamento deve permitir recuperar decisões anteriores sem confundir o usuário. Alterações em subestruturas devem poder ser reaproveitadas sem obrigar retorno completo a estados antigos da árvore.
+
+### Provedores substituíveis
+
+Serviços de IA remotos ou locais devem poder variar sem reescrever o produto. A didática pertence ao AraLearn; o provedor executa uma parte do fluxo.
 
 ## Critério de sucesso
 
-O AraLearn se aproxima dessa arquitetura quando consegue:
+O produto se aproxima da arquitetura-alvo quando consegue:
 
-- organizar material amplo em trilha navegável;
-- mostrar com clareza o que já está planejado e o que já está pronto para estudo;
-- materializar conteúdo localmente sem replanejar tudo;
-- preservar coerência entre estrutura, prática e intervenção localizada;
-- manter o projeto legível, auditável e editável pelo próprio usuário.
+- transformar material amplo em trilha navegável;
+- mostrar o que está planejado e o que já está pronto para estudo;
+- materializar uma etapa sem replanejar tudo;
+- preservar contexto entre curso, lição e microssequência;
+- permitir correção humana em qualquer ponto relevante;
+- manter o contrato público estável e exportável;
+- continuar útil mesmo quando a IA não está disponível.

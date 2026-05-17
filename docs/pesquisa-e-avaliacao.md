@@ -1,58 +1,97 @@
 # Pesquisa e avaliação
 
-## O que vale pesquisar no AraLearn
+## Por que pesquisar o AraLearn
 
-O AraLearn pode ser estudado ao mesmo tempo como produto pedagógico, ferramenta de autoria assistida e arquitetura de uso governado de modelos de linguagem para organização do estudo.
+O AraLearn pode ser estudado como produto educacional, ambiente de autoria assistida, ferramenta de organização pessoal do conhecimento e arquitetura de uso de IA.
 
-Esse recorte é interessante porque o valor do app não está apenas na geração textual. Ele também está na persistência local, na continuidade do percurso, na linguagem autoral simples, na possibilidade de revisão e na materialização progressiva de conteúdo.
+Seu interesse não está apenas na geração de cards. Está na combinação entre estrutura externa, prática, revisão, persistência no dispositivo, linguagem autoral e intervenção humana.
 
-## Hipóteses plausíveis
+## Hipóteses de design
 
-Entre as hipóteses mais razoáveis de investigação, estão estas:
+O projeto parte de hipóteses que precisam ser testadas:
 
-- estudantes se beneficiam quando dispõem de uma estrutura externa mais explícita;
-- microssequências pequenas e funcionais reduzem atrito para iniciar e retomar o estudo;
-- materialização progressiva aumenta sensação de controle editorial;
-- a distinção entre trilha planejada e conteúdo já materializado melhora a legibilidade do percurso;
-- uma linguagem autoral simples favorece revisão e apropriação do material;
-- o uso de IA dentro de uma estrutura revisável produz relação menos passiva com o conteúdo.
+- uma estrutura externa explícita reduz desorientação diante de material abundante;
+- microssequências ajudam a iniciar e retomar o estudo;
+- separar planejamento e materialização aumenta controle editorial;
+- cards situados em trilha são mais compreensíveis do que cards soltos;
+- a linguagem autoral facilita inspeção e correção;
+- IA com contrato e revisão reduz passividade diante do conteúdo gerado;
+- persistência no dispositivo melhora continuidade em rotinas fragmentadas.
+
+Essas são hipóteses plausíveis, não resultados comprovados.
 
 ## Perguntas de pesquisa
 
-Algumas perguntas úteis seriam:
+Perguntas possíveis:
 
-- o app reduz atrito para começar e retomar uma sessão de estudo?
-- a persistência local melhora continuidade em cenários de conexão irregular?
-- usuários se apropriam mais do percurso quando podem corrigir e expandir localmente?
-- a organização em microssequências produz mais clareza do que coleções soltas de cards?
-- a camada autoral intermediária facilita inspeção, correção e colaboração com modelos?
-- a separação entre estrutura e materialização melhora a qualidade editorial do conteúdo?
+- O app ajuda o usuário a transformar material disperso em percurso estudável?
+- A árvore curso, módulo, lição, microssequência e card melhora a orientação do estudante?
+- A existência de microssequências planejadas antes dos cards aumenta clareza do caminho?
+- O usuário revisa mais quando a estrutura é visível e editável?
+- A materialização por etapa reduz excesso de conteúdo gerado?
+- A prática dentro das microssequências favorece compreensão de procedimentos?
+- A linguagem autoral em JSON é compreensível para usuários avançados?
+- Professores conseguem adaptar o material sem depender integralmente da IA?
+- O app muda a relação do usuário com respostas geradas por modelo?
 
-## Como avaliar
+## Métodos possíveis
 
-O produto admite diferentes formas de avaliação:
+O AraLearn pode ser avaliado por diferentes métodos:
 
-- estudos qualitativos com entrevistas e observação de uso;
-- comparações entre fluxos de estudo com e sem trilha estruturada;
-- estudos longitudinais sobre persistência e retomada;
-- análises do conteúdo gerado e editado;
-- inspeções sobre confiança, clareza e sensação de controle do usuário;
-- estudos sobre autoria docente ou autoria autoral assistida.
+- entrevistas com estudantes;
+- observação de uso;
+- análise de sessões de estudo;
+- comparação entre trilhas estruturadas e coleções soltas de cards;
+- análise de qualidade de microssequências;
+- inspeção de revisões feitas por usuários;
+- estudos de caso com disciplinas específicas;
+- avaliação por professores;
+- análise de erros produzidos por IA e corrigidos pelo app ou pelo usuário;
+- questionários sobre clareza, controle e confiança.
 
-## O que não deve ser alegado sem cuidado
+## Métricas e evidências
 
-Seria inadequado afirmar, sem pesquisa específica:
+Alguns indicadores possíveis:
 
-- melhora garantida de aprendizagem;
-- superioridade universal sobre outras formas de estudo;
-- neutralidade ideológica da organização proposta;
-- equivalência entre aceitar conteúdo e realmente compreendê-lo.
+- tempo até iniciar o estudo após importar material;
+- quantidade de etapas revisadas pelo usuário;
+- proporção de microssequências materializadas;
+- frequência de retorno ao app;
+- erros detectados em conteúdo gerado;
+- número de intervenções manuais;
+- clareza percebida da trilha;
+- sensação de controle sobre o material;
+- qualidade de exercícios segundo avaliadores humanos.
 
-## Um critério de honestidade
+Nenhum indicador isolado basta. O produto precisa ser analisado por um conjunto de evidências.
 
-Ao apresentar o AraLearn em contexto acadêmico, convém separar com clareza:
+## Riscos de avaliação
 
-- o que já está implementado;
-- o que é hipótese de design;
-- o que foi observado empiricamente;
-- o que ainda depende de investigação.
+A pesquisa deve evitar afirmações fáceis.
+
+Um usuário pode gostar da interface sem aprender melhor. Um modelo pode produzir texto fluente e ainda assim didaticamente ruim. Uma trilha pode parecer organizada, mas saltar pressupostos. Uma sequência pode ser eficiente para prova e pobre para formação conceitual.
+
+Por isso, convém distinguir satisfação, uso, qualidade do material, aprendizagem e autonomia.
+
+## O que não alegar sem evidência
+
+Sem pesquisa específica, o AraLearn não deve alegar:
+
+- superioridade geral sobre outros métodos;
+- ganho garantido de desempenho;
+- adaptação perfeita a qualquer usuário;
+- neutralidade da estrutura;
+- confiabilidade automática da IA;
+- substituição de professor, monitor ou revisão humana.
+
+## Critério de honestidade
+
+Ao apresentar o AraLearn em contexto acadêmico ou público, convém separar:
+
+- o que está implementado;
+- o que é direção arquitetural;
+- o que é hipótese pedagógica;
+- o que já foi observado;
+- o que ainda precisa ser avaliado.
+
+Essa separação fortalece o projeto. Ela impede que a apresentação do app dependa de promessa excessiva.

@@ -2,44 +2,74 @@
 
 ## A distinção central
 
-Uma das ideias mais importantes do AraLearn é a separação entre planejar uma etapa da trilha e materializar o conteúdo estudável dessa etapa.
+O AraLearn separa duas tarefas:
 
-Sem essa distinção, o produto tenderia a tratar toda geração como bloco único: ou tudo já vem pronto, ou tudo parece incompleto. O AraLearn tenta escapar desses dois extremos.
+1. planejar uma etapa da trilha;
+2. materializar o conteúdo estudável dessa etapa.
 
-## O que acontece na lição
+Essa separação evita que toda geração vire um bloco único. O app pode primeiro mostrar o percurso e só depois produzir cards para as etapas escolhidas.
 
-No nível da lição, o trabalho é principalmente de organização do percurso. É ali que o app pode:
+## Planejar
 
-- criar microssequências planejadas;
-- revisar ordem e continuidade;
-- ajustar títulos, descrições e orientação;
-- registrar o que aquela parte da trilha precisa cobrir.
+Planejar significa criar ou revisar a arquitetura do estudo.
 
-Nesse nível, o foco está no desenho do caminho.
+No nível da lição, o app pode propor microssequências, ordenar etapas, ajustar títulos, registrar objetivos e indicar o que cada parte deve cobrir. Nesse momento, o foco é o caminho.
 
-## O que acontece na microssequência
+Uma microssequência planejada já tem lugar na trilha. Ela pode ter título, descrição e orientação, mesmo sem cards.
 
-Quando o usuário entra numa microssequência, o foco muda. O problema deixa de ser apenas estrutural e passa a ser local: materializar, corrigir, expandir, reformular ou editar uma unidade específica de estudo.
+## Materializar
 
-É aí que o app aproxima mais intensamente estudo, autoria e revisão.
+Materializar significa transformar uma microssequência planejada em conteúdo estudável.
 
-## Como ler uma microssequência vazia
+Dentro da microssequência, o app pode criar cards, propor prática, usar recursos visuais, corrigir problemas e ajustar a progressão local. Nesse momento, o foco é a execução da etapa.
 
-Uma microssequência sem cards não deve ser lida como erro. Ela é uma etapa planejada da trilha, já visível para o usuário, mas ainda não materializada.
+## Por que uma microssequência pode estar vazia
 
-Isso oferece vantagens concretas:
+Uma microssequência sem cards não é sobra nem erro. Ela representa uma etapa prevista.
 
-- torna o percurso legível antes de gerar tudo;
-- ajuda a escolher por onde continuar;
-- reduz custo e volume de geração prematura;
-- preserva espaço para intervenção autoral posterior.
+Isso permite ao usuário:
 
-## O que significa rascunho
+- ver o percurso antes de gerar conteúdo;
+- revisar a ordem;
+- excluir ou renomear etapas;
+- escolher prioridade;
+- reduzir produção prematura;
+- manter controle sobre custo e volume;
+- materializar apenas o que será estudado agora.
 
-No AraLearn, rascunho é estado de trabalho, não sinônimo de descarte.
+## Rascunho
 
-Ele pode indicar que uma etapa ainda está sendo preparada, que a materialização local ainda precisa de revisão ou que existe uma iteração recente aguardando decisão do usuário.
+Rascunho é estado de trabalho. Não significa descarte.
 
-## Por que isso melhora o produto
+Uma etapa pode estar em rascunho porque ainda precisa de revisão, porque a IA produziu algo insuficiente, porque o usuário ainda não decidiu se a versão será usada ou porque a microssequência está esperando comparação com outra proposta.
 
-Ao separar estrutura e materialização, o AraLearn consegue fazer algo mais forte do que simplesmente despejar cards. Ele mostra o percurso, permite estudá-lo por partes, acolhe correções no meio do caminho e mantém a trilha como referência estável enquanto o conteúdo ganha forma.
+## Versões
+
+Como o AraLearn permite correção e reautoria, versões são importantes.
+
+Uma versão deve ajudar o usuário a responder:
+
+- o que mudou?
+- por que mudou?
+- quando mudou?
+- qual versão está ativa?
+- o que pode ser recuperado sem afetar o restante da árvore?
+
+A implementação deve evitar que recuperar uma subestrutura obrigue retorno completo a estados antigos do curso.
+
+## Relação com a IA
+
+A separação entre planejamento e materialização torna a IA mais controlável.
+
+Na geração estrutural, o modelo propõe o caminho. Na microssequência, ele trabalha em uma tarefa delimitada. O usuário pode revisar a trilha antes de pedir detalhes, e pode revisar os cards antes de estudar.
+
+## Critério de bom fluxo
+
+O fluxo está funcionando quando o usuário entende:
+
+- o que já está planejado;
+- o que já tem cards;
+- o que está pronto para estudo;
+- o que ainda precisa de revisão;
+- onde pedir continuidade;
+- onde intervir manualmente.

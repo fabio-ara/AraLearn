@@ -1,28 +1,44 @@
 # Codex CLI local no AraLearn
 
-O AraLearn suporta um provider local via `Codex CLI`. Esse caminho permite executar parte dos fluxos do app sem depender apenas de providers por API.
+O AraLearn pode usar um provedor local por meio do Codex CLI.
+
+Esse caminho permite executar parte dos fluxos de assistência sem depender exclusivamente de serviços remotos por API. Ele é mais técnico, mas amplia a autonomia de quem deseja configurar o próprio ambiente.
 
 ## Como a integração funciona
 
-O app conversa com um bridge HTTP local, e esse bridge aciona o `Codex CLI`. A interface continua simples, enquanto a execução local fica encapsulada como provider do produto.
+O app se comunica com uma ponte HTTP local. Essa ponte aciona o Codex CLI e devolve a resposta ao AraLearn.
+
+Para o usuário do app, o provedor aparece como uma opção de assistência. A complexidade fica concentrada na configuração local.
 
 ## Por que isso importa
 
-Esse modo amplia a autonomia operacional do app e reforça uma dimensão importante do projeto: a possibilidade de combinar persistência local, autoria do usuário e assistência não inteiramente subordinada a serviços remotos.
+O AraLearn foi desenhado para preservar controle do usuário sobre o material. A possibilidade de usar um provedor local reforça essa direção.
 
-## O que precisa existir
+Ela não elimina todos os limites operacionais, mas permite combinar:
+
+- projeto salvo no dispositivo;
+- autoria humana;
+- assistência por IA;
+- menor dependência de uma plataforma remota específica.
+
+## Requisitos
 
 Para esse modo funcionar, o ambiente precisa ter:
 
-- bridge local ativo;
-- endpoint acessível;
-- `Codex CLI` instalado;
-- ambiente Node funcional para o bridge.
+- Codex CLI instalado;
+- Node funcional;
+- ponte HTTP local em execução;
+- endpoint acessível ao app;
+- configuração correta no painel de provedor.
 
-## Em quais plataformas
+## Plataformas
 
-O princípio é o mesmo em Windows, Linux e Android. No Android, a operação costuma passar por `Termux`; no desktop, pelo ambiente local do sistema.
+O princípio vale para desktop e Android.
 
-## Limite prático
+No desktop, a ponte roda no ambiente local do sistema. No Android, o caminho tende a passar por Termux ou solução equivalente.
 
-Esse caminho continua exigindo preparação técnica do dispositivo. Ele amplia a autonomia do app, mas não elimina a necessidade de setup local.
+## Limites
+
+Esse modo exige configuração técnica. Ele não é o fluxo mais simples para o usuário comum.
+
+Também não dispensa validação. Mesmo com provedor local, o conteúdo gerado deve passar pelo contrato público, pela revisão do usuário e pelas verificações do app.

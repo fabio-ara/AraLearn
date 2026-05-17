@@ -1,45 +1,89 @@
 # Planejamento de Matemática para Informática
 
-Este documento registra um planejamento de referência para um curso no AraLearn. Ele mostra como a arquitetura do app pode organizar um domínio específico sem perder progressão, prática e legibilidade.
+Este documento registra um exemplo de planejamento de curso no AraLearn.
+
+O objetivo é mostrar como a arquitetura do app pode organizar um domínio específico sem perder progressão, prática e legibilidade.
 
 ## Propósito
 
-O curso foi pensado para ajudar o aluno a lidar com procedimentos centrais de lógica proposicional, vetores e matrizes sem pressupor domínio prévio forte de lógica formal ou álgebra linear.
+O curso foi pensado para estudantes que precisam lidar com lógica proposicional, vetores e matrizes sem pressupor domínio prévio forte de lógica formal ou álgebra linear.
 
 O recorte inclui:
 
-- lógica proposicional: proposições, conectivos, tabelas-verdade, equivalências, De Morgan, implicação, contrapositiva, XOR, bicondicional e detecção de equivalência falsa;
-- vetores e matrizes: vetor como lista e seta, soma, multiplicação por escalar, módulo, distância, produto escalar, ortogonalidade, cosseno, matriz como arranjo, transformação linear, composição e inversa simples.
+- proposições;
+- conectivos;
+- tabelas-verdade;
+- equivalências;
+- leis de De Morgan;
+- implicação;
+- contrapositiva;
+- XOR;
+- bicondicional;
+- detecção de equivalência falsa;
+- vetor como lista e como seta;
+- soma de vetores;
+- multiplicação por escalar;
+- módulo;
+- distância;
+- produto escalar;
+- ortogonalidade;
+- cosseno;
+- matriz como arranjo;
+- transformações simples;
+- composição;
+- inversa em casos introdutórios.
 
 ## Critérios de autoria
 
-Cada microssequência deve privilegiar uma progressão curta e funcional:
+Cada microssequência deve ter uma função didática clara.
+
+Uma sequência típica pode conter:
 
 1. conceito ou regra;
 2. exemplo resolvido;
 3. prática guiada;
-4. revisão, contraste ou tratamento de erro comum.
+4. revisão, contraste ou erro comum.
 
-Cada exercício precisa ser autossuficiente. Os dados necessários devem aparecer no próprio card, sem exigir busca retrospectiva em outros pontos da trilha.
+Os dados necessários para resolver um exercício devem aparecer no próprio card ou estar claramente preparados pela microssequência. O estudante não deve depender de pressupostos ocultos.
 
-Quando a regra for abstrata ou pouco intuitiva, a explicação deve começar por caso concreto antes da generalização. Quando o objetivo for demonstrar equivalência ou reescrever expressão, a microssequência deve mostrar a ponte do raciocínio, e não apenas o resultado.
+Quando a regra for abstrata, a explicação deve partir de um caso concreto. Quando o objetivo for demonstrar equivalência ou reescrever expressão, o material deve mostrar a ponte do raciocínio, não apenas o resultado.
 
-## Progressão
+## Progressão em lógica proposicional
 
-### Lógica proposicional
+A sequência pode começar pela ideia de proposição e valor lógico. Depois, avança para conectivos, tabelas-verdade e combinações.
 
-A sequência começa com leitura de valor lógico e conectivos simples, avança para implicação, bicondicional e XOR e depois chega a equivalências e teste de falsidade por linha divergente.
+A implicação merece atenção especial, pois costuma gerar confusão. Bicondicional, XOR, contrapositiva e equivalências devem aparecer depois que o estudante já consegue operar com linhas de tabela e comparar resultados.
 
-### Vetores e matrizes
+A detecção de equivalência falsa deve ser praticada por linha divergente: basta encontrar uma valoração em que as expressões tenham valores diferentes.
 
-A sequência começa com vetor como objeto numérico e geométrico, segue para soma e multiplicação por escalar, depois para módulo, distância, produto escalar e cosseno, e só então consolida o bloco de matrizes e transformações.
+## Progressão em vetores
+
+O curso pode começar com vetor como par ordenado, lista e seta. A notação precisa ser apresentada com cuidado, incluindo formas usadas em aula ou prova.
+
+Depois entram soma, multiplicação por escalar, interpretação geométrica, módulo e distância.
+
+Produto escalar, ortogonalidade e cosseno devem aparecer quando o estudante já reconhece coordenadas e operações básicas.
+
+## Progressão em matrizes
+
+A matriz deve ser apresentada como arranjo espacial de números, não apenas como lista compactada.
+
+O estudante precisa reconhecer linha, coluna, posição, dimensão e operações básicas antes de tratar matriz como transformação. Transformações, composição e inversa devem entrar em exemplos simples, com passos visíveis.
+
+## Representação
+
+Neste curso, a representação visual é parte do conteúdo.
+
+Vetores devem aparecer em notação algébrica e geométrica quando isso for útil. Matrizes devem preservar o arranjo espacial. Tabelas-verdade devem manter colunas claras. O objetivo é aproximar o app da forma como o estudante resolverá exercícios no caderno e na prova.
 
 ## Princípios operacionais
 
-Este planejamento exemplifica princípios que o AraLearn tenta preservar:
+O planejamento deve preservar:
 
-- prática apoiada em preparação suficiente;
-- explicação com notação legível;
-- contraste quando houver risco de confusão;
-- preferência por passos visíveis em vez de respostas abruptas;
-- uso de representações diferentes apenas quando servem à função didática.
+- progressão sem pressupostos ocultos;
+- prática próxima da explicação;
+- exemplos resolvidos com passos;
+- contraste em pontos de confusão;
+- exercícios pequenos e frequentes;
+- fidelidade à notação usada pelo professor;
+- revisão humana antes de considerar a etapa pronta.

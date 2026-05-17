@@ -2,94 +2,111 @@
 
 ## Ideia geral
 
-O AraLearn não foi desenhado para enviar um pedido amplo a um modelo de linguagem e tomar a resposta como produto final. Sua arquitetura tenta colocar mais inteligência no sistema como um todo: estrutura pública do projeto, orientação da lição, ingestão de fontes, linguagem autoral, contratos, auditoria, validação e aplicação controlada de mudanças.
+A arquitetura do AraLearn parte de uma decisão: antes de pedir texto a um modelo de IA, o app organiza a tarefa.
 
-Em termos simples, o app procura organizar a tarefa antes de pedir texto.
+Essa organização passa por estrutura pública do projeto, fontes, orientação da lição, linguagem autoral, contratos, validação e aplicação controlada de mudanças. O objetivo é evitar que a IA produza conteúdo solto, difícil de revisar ou desalinhado com a trilha.
 
-## Estrutura pública como arquitetura de contexto
+Em vez de concentrar toda a inteligência em um prompt, o AraLearn distribui responsabilidade entre produto, usuário, contrato e modelo.
 
-O contrato público organiza o conteúdo em:
+## Estrutura pública
+
+A árvore pública do projeto é:
 
 ```text
 projeto -> curso -> módulo -> lição -> microssequência -> card
 ```
 
-Essa hierarquia tem função arquitetural forte. Ela serve ao mesmo tempo para:
+Essa estrutura serve a quatro funções ao mesmo tempo:
 
-- persistência do material;
-- navegação do usuário;
-- contextualização das operações de geração e edição;
-- continuidade entre planejamento amplo e intervenção local.
+- persistir o material;
+- orientar a navegação;
+- situar a geração de conteúdo;
+- preservar continuidade entre planejamento e estudo.
 
-O modelo não trabalha “sobre qualquer coisa”. Ele trabalha sobre um ponto situado nessa estrutura e, por isso, pode herdar contexto do que veio antes, do que está ao lado e do que ainda falta cobrir.
+Quando o usuário pede uma intervenção, o app sabe onde ela ocorre. Uma edição dentro de uma microssequência pode herdar contexto da lição; uma geração estrutural pode respeitar curso e módulo; uma fonte pode ser ligada a uma etapa específica.
 
-## A linguagem autoral simples
+## Lição como ponto de governança
 
-Outra peça central da arquitetura é a linguagem autoral simples do produto. Em vez de depender apenas de texto corrido ou de formatos visuais de baixo nível, o AraLearn representa conteúdo em estruturas legíveis e editáveis, como `say`, `ask`, `code`, `table`, `flow`, `tree`, `plane` e `matrix`.
+A lição é o ponto em que a arquitetura didática fica mais precisa. Ela pode guardar orientação sobre escopo, notação, prática, limites, erros comuns e fontes.
 
-Essa escolha é importante por três razões:
+Isso evita que cada geração comece do zero. A IA não precisa apenas “entender o tema”; ela recebe a moldura da tarefa. O usuário também se beneficia, pois consegue ver e corrigir a orientação que governa aquela parte do percurso.
 
-- ela é compreensível para pessoas;
-- ela é operável por modelos de linguagem;
-- ela permite ao runtime renderizar experiências mais complexas a partir de uma base intermediária relativamente simples.
+## Linguagem autoral
 
-No caso do fluxograma, por exemplo, a representação autoral não precisa carregar manualmente toda a geometria final. O runtime calcula nós, conexões, layout e prática interativa a partir da descrição estrutural.
+O AraLearn usa uma linguagem autoral simples, baseada em JSON. Ela representa conteúdo didático em estruturas legíveis e persistíveis, como:
 
-## As camadas principais
+- `say`;
+- `ask`;
+- `code`;
+- `table`;
+- `flow`;
+- `tree`;
+- `plane`;
+- `matrix`.
 
-### Core didático
+A linguagem autoral é intermediária. Ela não é texto livre sem controle nem desenho visual de baixo nível. O usuário e a IA podem trabalhar sobre essa forma; o motor de estudo transforma a descrição em apresentação e prática.
 
-O core didático reúne as regras que definem o que conta como progressão aceitável, prática suficiente, contraste útil, revisão legítima, continuidade de trilha e microssequência bem formada.
+## Motor didático
 
-Essa camada existe para que o comportamento do produto não dependa apenas do provider ou do modelo selecionado.
+O motor didático reúne regras e critérios de qualidade do produto. Ele ajuda a avaliar se uma microssequência respeita progressão, prática, suficiência e coerência com a lição.
 
-### Engine de produção
+Essa camada impede que a didática dependa apenas do serviço de IA escolhido. Modelos diferentes podem variar em fluência, mas o produto precisa preservar suas próprias exigências.
 
-O motor de geração, hoje concentrado no `CourseForge`, executa fases menores, auditáveis e retomáveis. Em vez de uma operação única, ele pode separar ingestão, interpretação da intenção, planejamento estrutural, auditoria, reparo, compilação de patch, validação e aplicação.
+## Motor de produção
 
-Essa lógica aproxima o produto de uma arquitetura specification-driven: contratos e etapas explícitas reduzem ambiguidade e permitem governar melhor o que muda no projeto.
+O motor de produção organiza tarefas em fases. Dependendo do fluxo, ele pode:
 
-### Runtime de providers
+1. receber fonte ou pedido do usuário;
+2. extrair texto útil;
+3. delimitar escopo;
+4. propor estrutura;
+5. auditar a proposta;
+6. reparar inconsistências;
+7. gerar alteração controlada;
+8. validar o contrato público;
+9. aplicar a mudança no projeto.
 
-Os providers cuidam da parte operacional:
+Essa decomposição torna o resultado mais revisável e reduz o risco de substituições cegas do material.
 
-- envio de prompt e anexos;
-- adaptação ao modelo;
-- retries, timeout e fallback;
-- integração por API;
-- integração local via `Codex CLI`.
+## Serviços de IA
 
-Eles são importantes, mas não devem definir sozinhos a didática, a representação do conteúdo nem a estrutura do percurso.
+O AraLearn pode conversar com diferentes serviços de IA. Essa camada cuida de envio de prompts, anexos, limites, respostas, tentativas, erros e configuração.
 
-### Runtime de estudo e edição
+A decisão arquitetural importante é separar serviço de IA e didática. O serviço executa uma parte do trabalho; ele não define sozinho a estrutura, o contrato nem o critério de qualidade.
 
-A microssequência não é apenas um lugar onde cards aparecem. Ela é a superfície em que o usuário estuda, revisa, corrige, expande e reformula conteúdo.
+## Fontes e ancoragem
 
-Por isso, o runtime local da microssequência é parte central da arquitetura do produto, e não camada decorativa de interface.
+O app pode usar arquivos e textos como fontes para organizar e materializar conteúdo. Hoje o projeto já contempla extração textual de formatos como PDF e DOCX.
 
-## Ingestão, grounding e divisão da tarefa
+O objetivo não é reproduzir o documento original dentro do app. O objetivo é transformar fonte em orientação de estudo: tópicos, exemplos, definições, procedimentos, limitações e prática.
 
-Antes de acionar o modelo, o AraLearn procura extrair e normalizar o texto das fontes. Hoje o projeto já usa:
+Quando possível, o conteúdo gerado deve manter vínculo com as fontes usadas. Isso facilita inspeção e correção.
 
-- `pdfjs-dist`, para `PDF`;
-- `mammoth`, para `DOCX`.
+## Alterações controladas
 
-O objetivo não é reconstruir visualmente o documento, mas aproveitar o texto como base para organização didática, grounding, auditoria e uso mais cuidadoso de contexto.
+Quando o app muda o projeto, a alteração deve ser compreensível. Sempre que possível, o sistema evita substituir blocos inteiros sem necessidade.
 
-Isso também ajuda a administrar orçamento de tokens. Parte do trabalho é resolvida por parsing e preparação local; parte segue para o modelo já com recorte melhor definido.
+A aplicação controlada de mudanças ajuda em três pontos:
 
-## Parametrização e autoria
+- o usuário entende o que mudou;
+- a validação consegue detectar problemas;
+- versões anteriores podem continuar recuperáveis.
 
-A arquitetura do AraLearn procura manter o produto utilizável para quem quer simplicidade e também fértil para quem quer autoria mais forte.
+Isso é importante porque o AraLearn lida com material de estudo, não apenas com texto descartável.
 
-Por isso, há espaço para parametrização de provider, modelo, perfis, contratos e conteúdo dos prompts, sem que a superfície principal do app precise se transformar num painel confuso para o usuário comum.
+## Persistência no dispositivo
 
-## Por que patch importa
+O projeto fica salvo no dispositivo do usuário. Isso permite abrir, revisar e estudar material já existente sem conexão contínua.
 
-Quando o sistema altera o projeto, a mudança não deveria ser uma substituição cega sempre que possível. A aplicação por patch torna a alteração mais legível, mais auditável e mais segura, sobretudo num produto em que o material pode ser estudado, editado e versionado localmente.
+A geração com IA remota depende de internet. Um provedor local depende de configuração no ambiente. A arquitetura combina autonomia para continuidade do estudo com assistência pontual para produção e reorganização.
 
-## Operação local e continuidade
+## Critério de coerência arquitetural
 
-O AraLearn mantém o projeto salvo no dispositivo do usuário. Essa persistência local permite continuar navegando e estudando mesmo sem internet, desde que o conteúdo já esteja materializado.
+A arquitetura está funcionando quando:
 
-Quando entra em cena um modelo remoto, a conexão volta a ser necessária. A arquitetura, assim, combina autonomia local para continuidade do estudo com dependência pontual de rede para operações criativas.
+- a árvore pública permanece legível;
+- o usuário sabe onde está intervindo;
+- a IA recebe contexto situado;
+- o resultado passa pelo contrato público;
+- o conteúdo pode ser revisado e corrigido;
+- a falha de uma operação não corrompe o projeto.

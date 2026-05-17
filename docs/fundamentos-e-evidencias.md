@@ -1,97 +1,124 @@
 # Fundamentos e evidências
 
-## Como ler este documento
+## Finalidade
 
-O AraLearn tem fundamentos pedagógicos, técnicos, sociais e filosóficos. Este texto não pretende convertê-los em manifesto, mas mostrar as linhas de reflexão que ajudam a entender por que o produto foi desenhado assim e por que ele merece ser lido como algo mais do que ferramenta eficiente de geração.
+Este documento reúne os diálogos que ajudam a entender o AraLearn como produto educacional, ferramenta de autoria e arquitetura de uso de IA.
 
-## Estrutura antes de volume
+Ele não pretende provar que o app melhora aprendizagem em qualquer contexto. Para isso, seriam necessários estudos empíricos específicos. A finalidade aqui é mais modesta: explicitar as tradições, evidências e problemas que orientam o desenho do produto.
 
-Uma convicção central do projeto é que aprender não se reduz a acumular informação. Em muitos casos, o problema mais difícil está em dar forma ao percurso: distinguir pré-requisito de aprofundamento, explicação de prática, passo central de detalhe periférico, visão geral de exercício localizado.
+## Informação demais, forma de menos
 
-Por isso, o AraLearn trata a microssequência como unidade didática central. O card continua importante, mas ganha força quando está situado numa pequena sequência com função clara.
+O AraLearn responde a um problema contemporâneo: a produção e a disponibilidade de informação cresceram mais rápido do que a capacidade individual de organizar, praticar e revisar esse material.
 
-## Microlearning, mas não fragmentação arbitrária
+Herbert Simon formulou uma ideia central para esse debate: abundância de informação consome atenção. Em uma sociedade atravessada por internet, plataformas, documentação permanente e IA generativa, o desafio educacional não é apenas acessar conteúdo. É construir mediações que permitam selecionar, ordenar, exercitar e criticar.
 
-O produto conversa com a literatura de microlearning apenas em parte. A redução de escala interessa ao AraLearn porque diminui carga cognitiva e ajuda a estudar em rotinas fragmentadas. Mas o objetivo não é quebrar conteúdo em pedaços arbitrários.
+O AraLearn propõe uma dessas mediações: uma estrutura externa editável, em que o usuário trabalha sobre a informação.
 
-Uma microssequência faz sentido quando é curta e também funcional. Ela precisa introduzir, explicar, contrastar, praticar, revisar ou preparar continuidade.
+## Aprender não é acumular conteúdo
 
-## Recuperação ativa, prática e progressão
+O app parte da ideia de que estudar exige mais do que exposição.
 
-O desenho do app dialoga com pesquisas sobre retrieval practice, active recall, worked examples, feedback e carga cognitiva. Em linhas gerais, o produto assume que compreensão tende a melhorar quando o estudante:
+Apenas receber explicação, resumo ou resposta pronta pode criar sensação de familiaridade sem consolidação. Por isso, o AraLearn aproxima explicação e prática. A microssequência existe para fazer o usuário operar sobre o conteúdo, ainda que em uma etapa pequena e orientada.
 
-- recupera ativamente uma noção;
-- pratica procedimentos em vez de apenas reler;
-- encontra passos intermediários quando eles são necessários;
-- compara casos próximos;
-- vê erros comuns explicitados;
-- percorre uma progressão que não salta etapas demais.
+Esse desenho dialoga com pesquisas sobre recuperação ativa, prática de teste e dificuldades desejáveis, associadas a autores como Roediger, Karpicke, Robert Bjork e Elizabeth Bjork.
 
-Esse diálogo é compatível com autores e tradições como Robert e Elizabeth Bjork, John Sweller, Richard Mayer e pesquisas sobre worked examples, faded guidance e gestão de carga cognitiva.
+## Carga cognitiva e exemplos resolvidos
 
-## Mediação, autonomia e recusa da imposição
+O AraLearn também dialoga com a teoria da carga cognitiva, associada a John Sweller, e com pesquisas sobre exemplos resolvidos.
 
-O AraLearn também se aproxima de tradições que valorizam mediação e progressão em vez de exposição abrupta. Em termos amplos, isso conversa com debates em didática, psicologia educacional e teorias histórico-culturais do aprendizado.
+Em temas com notação, procedimento ou formalismo, exigir autonomia cedo demais pode gerar sobrecarga. Por isso, o app favorece a sequência: situar, exemplificar, guiar prática e só depois exigir maior independência.
 
-Ao mesmo tempo, o produto procura evitar que uma arquitetura pedagógica mais forte se converta em imposição rígida de método. Essa preocupação é relevante do ponto de vista filosófico e político: uma ferramenta educacional não deveria apenas disciplinar o usuário nem naturalizar um único modo legítimo de estudar.
+Isso é especialmente relevante para programação, lógica, matemática e disciplinas introdutórias.
 
-Por isso, o app tenta equilibrar estrutura e abertura. Ele oferece orientação suficiente para não dissolver tudo em improviso, mas preserva espaço para revisão, reescrita, discordância e autoria situada.
+## Aprendizagem multimídia e representação
 
-## IA sob forma arquitetada
+A linguagem autoral do AraLearn permite usar texto, código, tabela, fluxograma, matriz, árvore e outras formas. Essa escolha conversa com pesquisas sobre aprendizagem multimídia, especialmente as de Richard Mayer, mas com uma restrição prática: representação só deve entrar quando melhora a tarefa didática.
 
-Do ponto de vista técnico, o produto parte da hipótese de que modelos de linguagem funcionam melhor quando a tarefa é decomposta, contextualizada e validada. Daí a ênfase em contratos, artefatos intermediários, auditoria e patch.
+Um fluxograma não deve aparecer para enfeitar. Uma matriz deve preservar a forma que o estudante precisa reconhecer. Uma tabela deve organizar comparação. O recurso visual precisa ter função.
 
-Essa escolha dialoga com discussões recentes sobre specification-driven development e sobre o uso de modelos em pipelines estruturados, em vez de depender apenas de prompt livre.
+## Mediação e autonomia
 
-## Linguagem autoral e legibilidade compartilhada
+O projeto também dialoga com tradições que entendem aprendizagem como processo mediado. Vygotsky, Bruner e debates sobre andaimes didáticos ajudam a pensar a progressão entre orientação e autonomia.
 
-Uma das contribuições mais próprias do AraLearn está em sua linguagem autoral simples. Ela funciona como camada intermediária entre intenção didática, colaboração com modelos e renderização final.
+Ao mesmo tempo, o AraLearn evita transformar mediação em tutela completa. O usuário pode revisar, discordar, corrigir e reorganizar. Essa abertura aproxima o produto de uma visão educacional em que autonomia não é abandono, mas apropriação guiada e progressivamente revisável.
 
-Isso importa porque permite que o material permaneça:
+## Ferramentas de estudo e organização pessoal
 
-- legível por pessoas;
-- processável por modelos de linguagem;
-- editável ao longo do tempo;
-- transformável em experiências interativas mais complexas.
+O AraLearn conversa com ferramentas já conhecidas.
 
-Essa legibilidade compartilhada é relevante tanto tecnicamente quanto pedagogicamente. Ela evita que o conteúdo fique preso a texto corrido opaco ou a formatos visuais difíceis demais de reusar.
+Anki mostra a força de prática e revisão. Duolingo mostra como progressões retomáveis podem reduzir atrito. Obsidian e tradições de notas conectadas mostram a importância de organizar conhecimento com participação ativa do usuário. Sistemas de zettelkasten, ambientes de hipertexto e ideias como o Memex de Vannevar Bush também ajudam a situar a preocupação com memória externa, ligação entre informações e recuperação posterior.
 
-## Grounding, recuperação e limites do rótulo RAG
+O AraLearn combina essas inspirações com uma finalidade própria: transformar material heterogêneo em trilhas editáveis de estudo com assistência de IA.
 
-O app incorpora práticas de grounding: ingestão de fontes, extração textual, preservação de trechos úteis e recuperação localizada de informação para orientar a geração. Isso o aproxima de parte da literatura e da engenharia em torno de RAG.
+## IA, autoria e controle
 
-Ainda assim, o rótulo não dá conta do produto inteiro. O AraLearn não foi pensado principalmente como sistema de pergunta e resposta sobre documentos, e sim como sistema de organização didática, autoria assistida e continuidade do estudo.
+A IA generativa ampliou a facilidade de produzir explicações, resumos, exercícios e respostas. Isso é útil, mas também pode reforçar passividade. O usuário passa a aceitar texto plausível sem examinar estrutura, origem, progressão ou adequação ao seu problema.
 
-## Persistência local, autonomia e continuidade
+O AraLearn procura reduzir esse risco por arquitetura: a IA trabalha dentro de uma árvore, com fontes, orientação, contrato público, validação e revisão humana. O modelo ajuda a retirar atrito da organização externa, mas o usuário mantém o poder de reescrever o caminho.
 
-A persistência local do projeto não é detalhe técnico qualquer. Ela responde a uma situação concreta de uso: estudar com tempo escasso, conexão instável e atenção dividida. Guardar o percurso no dispositivo permite reler, revisar e retomar sem depender continuamente da rede.
+Esse desenho se aproxima de debates sobre human-in-the-loop, geração ancorada em fontes, desenvolvimento orientado por especificação e uso governado de modelos de linguagem.
 
-Essa escolha reforça autonomia, rastreabilidade e controle editorial do material.
+## Foucault, Lyotard e outras tensões
 
-## O que o AraLearn pode afirmar com segurança
+Há tensões filosóficas importantes no projeto.
 
-Hoje o AraLearn pode afirmar, com base em seu desenho e implementação, que foi feito para:
+Foucault ajuda a lembrar que toda técnica de organização do estudo também conduz comportamento. Planejar, sequenciar, avaliar e corrigir são formas de disciplina. O AraLearn, nesse sentido, faz parte daquilo que precisa ser analisado criticamente.
 
-- organizar conteúdo amplo em trilhas de estudo revisáveis;
-- combinar planejamento estrutural com materialização progressiva;
-- preservar autoria e correção humana;
-- usar modelos de linguagem sob forma mais governada;
-- oferecer continuidade real em rotinas de estudo fragmentadas.
+Lyotard ajuda a pensar a relação entre conhecimento, performatividade e sistemas que valorizam eficiência, mensuração e produção de enunciados úteis. Um app de estudo com IA poderia facilmente reduzir conhecimento a desempenho operacional.
 
-O que ele não deve afirmar sem pesquisa específica é que produz melhora garantida de aprendizagem em qualquer público, disciplina ou contexto.
+O AraLearn não elimina essas tensões. Ele tenta responder a elas tornando a condução mais visível e revisável. O usuário vê a estrutura, edita a trilha, corrige cards, escolhe fontes e pode recusar a saída do modelo. A crítica não está fora do produto; ela precisa poder ocorrer dentro do uso.
 
-## Referências e diálogos
+Também são pertinentes debates com Paulo Freire sobre autonomia e educação bancária, com Ivan Illich sobre instituições e ferramentas conviviais, com Gilbert Simondon sobre objetos técnicos e mediação, e com Pierre Lévy sobre tecnologias da inteligência. Essas referências não funcionam como ornamento: ajudam a situar o risco de transformar aprendizagem em consumo de conteúdo e a necessidade de preservar apropriação.
 
-O projeto dialoga, em graus diferentes, com:
+## Linguística, biologia e tecnologia
 
-- literatura sobre microlearning;
-- retrieval practice e active recall;
-- cognitive load theory;
-- worked examples e faded guidance;
-- autoria assistida com human-in-the-loop;
-- grounded generation e recuperação localizada;
-- specification-driven development;
-- software com persistência local e autonomia de uso;
-- debates filosóficos e políticos sobre formação, mediação e técnicas de condução do sujeito.
+A origem do AraLearn também é marcada por uma trajetória formativa híbrida: Linguística, Ciências Biológicas e Desenvolvimento de Sistemas.
 
-Esses diálogos servem para orientar a leitura do produto e para abrir caminho a pesquisa futura. Não substituem revisão bibliográfica formal nem validam automaticamente os efeitos do app.
+Da Linguística vem a atenção à forma, à estrutura, aos sistemas de diferença, à relação entre enunciado e contexto. Das Ciências Biológicas vem a sensibilidade para organização, níveis, processos e progressão. Da computação vem a necessidade de transformar essas intuições em estruturas, contratos, validação e interface.
+
+Essa combinação ajuda a explicar por que o app não é apenas gerador de flashcards. Ele é uma tentativa de desenhar um ambiente em que conhecimento, estrutura e prática permaneçam articulados.
+
+## O que o app pode afirmar
+
+Com base no desenho atual, o AraLearn pode afirmar que procura:
+
+- organizar material disperso em trilhas revisáveis;
+- separar planejamento de materialização;
+- situar cards dentro de microssequências;
+- aproximar explicação e prática;
+- preservar autoria humana;
+- usar IA com contrato e validação;
+- manter o estudo disponível no dispositivo quando o conteúdo já está salvo.
+
+## O que ainda exige pesquisa
+
+O app não deve afirmar, sem investigação específica:
+
+- melhora garantida de aprendizagem;
+- superioridade universal sobre outros métodos;
+- neutralidade pedagógica;
+- adequação automática a qualquer área;
+- confiabilidade plena de conteúdo gerado por IA;
+- substituição da revisão docente ou discente.
+
+## Referências e diálogos bibliográficos
+
+Esta lista registra diálogos pertinentes para o projeto. Ela não é revisão bibliográfica exaustiva.
+
+- Anki e sistemas de repetição espaçada.
+- Bjork, R. A.; Bjork, E. L. Dificuldades desejáveis e aprendizagem.
+- Bruner, J.; Wood, D.; Ross, G. Andaimes didáticos e orientação.
+- Bush, V. “As We May Think”.
+- Duolingo e aprendizagem por percursos retomáveis.
+- Ebbinghaus, H. Memória e esquecimento.
+- Foucault, M. Disciplina, técnicas de si e condução dos sujeitos.
+- Freire, P. Autonomia, prática crítica e crítica à educação bancária.
+- Illich, I. Ferramentas conviviais.
+- Karpicke, J. D.; Roediger, H. L. Prática de recuperação.
+- Lévy, P. Tecnologias da inteligência.
+- Lyotard, J.-F. Conhecimento, performatividade e condição pós-moderna.
+- Mayer, R. E. Aprendizagem multimídia.
+- Obsidian, hipertexto e notas conectadas.
+- Simon, H. A. Atenção em cenários de abundância informacional.
+- Simondon, G. Objetos técnicos e mediação.
+- Sweller, J. Teoria da carga cognitiva.

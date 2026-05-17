@@ -1,36 +1,31 @@
 # Documentação do AraLearn
 
-Esta documentação apresenta o AraLearn como ferramenta educacional, arquitetura de autoria assistida e sistema de organização didática. Os textos procuram mostrar o que o app faz hoje, o que ele tem de mais próprio e como suas escolhas técnicas, pedagógicas e filosóficas se articulam.
+Este diretório reúne a documentação conceitual, didática e técnica do AraLearn.
 
-Quem chega ao projeto apenas para entendê-lo como produto deve começar pelos textos mais públicos. Quem quiser examiná-lo como proposta arquitetural ou como possível objeto acadêmico encontrará também documentos mais conceituais e técnicos.
+O README da raiz apresenta o produto para visitantes do repositório. Os textos deste diretório aprofundam as decisões de desenho, o contrato público, os fluxos de IA, os fundamentos pedagógicos e os caminhos de pesquisa.
 
-## Leitura inicial
+## Para entender o produto
 
-- [Visão do produto](visao-do-produto.md)
-- [Guia de uso do app](uso-do-app.md)
-- [Assistência por IA](assistencia-por-ia.md)
+- [Visão do produto](visao-do-produto.md): apresenta o problema, a resposta do app e a posição educacional do projeto.
+- [Guia de uso](uso-do-app.md): explica o que o usuário faz em cada nível da árvore.
+- [Modelo didático](modelo-didatico.md): descreve a microssequência como unidade central do estudo.
+- [Perfis didáticos](perfis-didaticos.md): mostra como o app pode variar de acordo com área, gênero de material e finalidade.
 
-## Núcleo conceitual
+## Para entender a implementação
 
-- [Arquitetura](arquitetura.md)
-- [Modelo didático](modelo-didatico.md)
-- [Fundamentos e evidências](fundamentos-e-evidencias.md)
-- [Rascunhos e microssequências](rascunhos-e-microssequencias.md)
+- [Arquitetura](arquitetura.md): descreve a estrutura pública, o motor de produção, a linguagem autoral e a aplicação controlada de mudanças.
+- [Arquitetura-alvo](arquitetura-alvo.md): registra a direção de consolidação do produto.
+- [Assistência por IA](assistencia-por-ia.md): explica como a IA participa sem ocupar o lugar de autoridade única.
+- [Contrato público](aralearn-contract.md): documenta a forma persistível do projeto e a linguagem autoral aceita.
+- [Rascunhos e microssequências](rascunhos-e-microssequencias.md): explica a diferença entre planejar uma etapa e materializar cards.
 
-## Contrato, representação e estrutura pública
+## Para uso em dispositivos e integrações
 
-- [Contrato público do AraLearn](aralearn-contract.md)
-- [Perfis didáticos](perfis-didaticos.md)
-- [Arquitetura-alvo](arquitetura-alvo.md)
+- [Abrir com AraLearn no Android](android-share-import.md): descreve o recebimento de arquivos compartilhados por outros apps.
+- [Codex CLI local](codex-cli.md): descreve o uso de um provedor local via bridge HTTP.
 
-## Plataformas e operação
+## Para pesquisa e avaliação
 
-- [Codex CLI local](codex-cli.md)
-- [Abrir com AraLearn no Android](android-share-import.md)
-- [Android wrapper](../android/README.md)
-
-## Pesquisa e exemplos
-
-- [Pesquisa e avaliação](pesquisa-e-avaliacao.md)
-- [Planejamento de Matemática para Informática](planejamento-matematica-para-informatica.md)
-- [Exemplos JSON](examples/)
+- [Fundamentos e evidências](fundamentos-e-evidencias.md): reúne os diálogos pedagógicos, técnicos e filosóficos que orientam o produto.
+- [Pesquisa e avaliação](pesquisa-e-avaliacao.md): propõe hipóteses, perguntas e critérios para investigar o app.
+- [Planejamento de Matemática para Informática](planejamento-matematica-para-informatica.md): exemplo de planejamento de curso dentro da lógica do AraLearn.

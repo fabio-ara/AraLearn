@@ -1,63 +1,85 @@
 # Assistência por IA
 
-## O lugar da IA no AraLearn
+## Papel da IA no AraLearn
 
-O AraLearn não foi concebido como chat educacional que, por acaso, exporta flashcards. A IA entra no produto como parte de uma arquitetura mais ampla de organização didática, materialização localizada e continuidade do estudo.
+A IA no AraLearn não ocupa o lugar de professor, autor ou autoridade final. Ela atua como colaboradora em tarefas que costumam gerar atrito: organizar material, propor etapas, transformar fonte em prática, reformular cards e continuar uma trilha já iniciada.
 
-Isso muda a questão principal. O problema já não é apenas escolher o modelo mais fluente, mas organizar a tarefa de modo que a saída seja útil dentro de uma trilha persistente, editável e auditável.
+O produto não foi concebido como chat educacional que depois exporta flashcards. A IA trabalha dentro de uma arquitetura de estudo.
 
-## O que a IA faz no app
+## O que a IA faz
 
-Hoje a IA é usada principalmente para:
+A assistência pode atuar em quatro frentes principais:
 
-- organizar material amplo em cursos, módulos, lições e microssequências;
-- materializar conteúdo dentro de uma microssequência planejada;
-- corrigir, expandir ou reformular conteúdo já existente;
-- continuar a trilha sem perder o contexto do percurso.
+- organizar materiais em cursos, módulos, lições e microssequências;
+- materializar cards dentro de uma microssequência planejada;
+- corrigir, expandir ou reformular conteúdo existente;
+- ajudar a continuar uma trilha sem perder o contexto.
 
-O valor do produto não está, portanto, em “gerar tudo”, mas em saber onde, quando e como gerar.
+O valor está menos em “gerar conteúdo” e mais em gerar no lugar certo, com escopo claro e possibilidade de revisão.
 
-## Fluxo estruturado em vez de pedido solto
+## O que a IA não deveria fazer sozinha
 
-Boa parte da proposta do AraLearn está em não depender apenas de prompt livre. O app tenta estruturar a tarefa antes de pedir texto ao modelo.
+A IA não deve:
 
-No fluxo estrutural, isso passa por ingestão de fontes, organização do material, distribuição de contexto, contratos, auditoria e aplicação por patch. No fluxo local, passa por escopo menor, reuso da trilha já planejada, intervenção situada e edição mínima sempre que possível.
+- decidir a estrutura inteira sem possibilidade de edição;
+- substituir a revisão do usuário;
+- inserir conteúdo fora do escopo da lição;
+- transformar fonte em resumo passivo;
+- produzir volume que o usuário não consegue inspecionar;
+- esconder incerteza ou origem do material;
+- corromper o projeto quando uma resposta vem malformada.
 
-Essa decomposição dialoga com discussões recentes sobre specification-driven development: em vez de uma conversa única e indiferenciada, o sistema conduz uma sequência de fases mais delimitadas.
+Esses limites orientam o desenho do app.
 
-## Pipeline, orçamento de tokens e divisão da tarefa
+## Estrutura antes do pedido
 
-O AraLearn também trata a administração de contexto e de orçamento como parte da arquitetura, não como detalhe invisível.
+Antes de acionar o modelo, o AraLearn procura preparar a tarefa.
 
-O produto divide trabalho entre parsing, artefatos intermediários, fases do pipeline e chamadas a modelos. Isso ajuda a:
+Isso pode incluir:
 
-- evitar enviar material bruto demais de uma só vez;
-- usar melhor o contexto realmente necessário;
-- separar tarefas que podem ser resolvidas localmente das que precisam de modelo;
-- reduzir custo e ruído na geração.
+- selecionar o ponto da árvore em que a intervenção acontece;
+- extrair texto de fontes;
+- resumir ou recortar contexto;
+- enviar orientação da lição;
+- limitar recursos aceitos;
+- pedir saída em contrato público;
+- validar e reparar a resposta;
+- aplicar a mudança de forma controlada.
 
-Em outras palavras, o app não tenta compensar tudo com uma prompt gigante. Ele busca decompor a tarefa para que o modelo trabalhe melhor e para que o usuário mantenha mais controle sobre o percurso.
+Essa forma de trabalho reduz o peso do prompt livre e aumenta a capacidade de revisão.
 
-## É RAG?
+## Geração estrutural
 
-Há no produto elementos que lembram RAG, porque o app ingere fontes, preserva texto útil, sintetiza trechos relevantes e recupera partes do material durante a geração.
+Na geração estrutural, a IA ajuda a transformar material amplo em percurso. Ela pode propor cursos, módulos, lições e microssequências planejadas.
 
-Mesmo assim, descrever o AraLearn simplesmente como sistema RAG seria insuficiente. O núcleo do produto não é responder perguntas sobre documentos, mas transformar material e intenção de estudo em trilha editável e, depois, intervir localmente nessa trilha. Há grounding e recuperação localizada, mas dentro de uma arquitetura mais ampla de autoria e organização didática.
+A geração estrutural não precisa criar todos os cards. Em muitos casos, o resultado mais útil é uma árvore revisável: o usuário vê o caminho, corrige o que for necessário e materializa etapas depois.
 
-## Linguagem autoral e modelos de linguagem
+## Materialização local
 
-Uma das razões pelas quais o app funciona bem com assistência estruturada é sua linguagem autoral simples. O conteúdo não precisa existir apenas como texto corrido. Ele pode ser representado em JSON por estruturas que continuam inteligíveis para pessoas e também úteis para modelos.
+Na materialização local, o usuário já está em uma microssequência. A tarefa é mais delimitada: produzir cards para aquela etapa, respeitando a lição, os recursos aceitos e o que já existe no percurso.
 
-Isso melhora a colaboração entre autoria humana e geração algorítmica. O modelo não precisa inventar a interface final; ele trabalha sobre uma representação intermediária que o runtime do produto sabe interpretar e renderizar.
+Esse fluxo evita que uma intervenção pequena se torne replanejamento completo do curso.
 
-## Autoria legítima e parametrização
+## Correção e reformulação
 
-O AraLearn procura preservar autoria real, inclusive para usuários mais experientes, como professores, autores de curso ou pesquisadores.
+A IA também pode ajudar a corrigir material ruim, expandir uma explicação insuficiente, alterar o tipo de prática ou adaptar a sequência a uma dificuldade do usuário.
 
-Além de revisar o resultado, o usuário pode interferir em escopo, provider, modelo, parâmetros, orientação da lição e outros campos de configuração. Isso não transforma o produto em ferramenta só para especialistas, mas impede que ele reduza a experiência a uma obediência passiva ao que o modelo devolve.
+Mesmo nesses casos, a alteração precisa permanecer visível e editável. O usuário não deve perder a capacidade de comparar, recusar ou reescrever.
 
-## Operação local e limite prático
+## Fontes e ancoragem
 
-Sem conexão, o app continua útil para estudo, navegação e revisão do que já está salvo localmente. Já as operações criativas que dependem de modelo remoto continuam condicionadas ao provider disponível.
+Quando o usuário fornece fontes, a IA deve trabalhar com elas como apoio, não como material a ser simplesmente comprimido.
 
-Esse limite é importante e deve ser dito com clareza. Ao mesmo tempo, ele não diminui a proposta do AraLearn: a continuidade local do estudo já é parte relevante do produto, não mero efeito colateral da implementação.
+O objetivo é converter fonte em percurso: conceitos, relações, exemplos, procedimentos, erros frequentes e prática. Sempre que possível, a origem do conteúdo deve permanecer rastreável.
+
+## Custos e limites
+
+Modelos de IA têm limites de contexto, custo, disponibilidade e qualidade. Por isso, o AraLearn não deve depender de uma única chamada nem de uma única plataforma.
+
+A arquitetura favorece tarefas delimitadas, contratos explícitos e provedores substituíveis. Isso permite usar modelos mais baratos ou locais em parte dos fluxos, desde que a validação do produto continue ativa.
+
+## Autoria humana
+
+A assistência por IA só faz sentido no AraLearn se o usuário continua capaz de intervir.
+
+O usuário pode revisar a estrutura, ajustar a orientação da lição, editar cards, escolher outro modelo, alterar parâmetros e reorganizar o percurso. A IA reduz esforço operacional; a autoria permanece humana.

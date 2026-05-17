@@ -2,85 +2,124 @@
 
 ## Como o AraLearn se organiza
 
-O app trabalha com cinco níveis visíveis:
+O AraLearn trabalha com cinco níveis:
 
-- cursos;
-- módulos;
-- lições;
-- microssequências;
-- cards.
+```text
+curso -> módulo -> lição -> microssequência -> card
+```
 
-Curso e módulo oferecem a moldura mais ampla do percurso. A lição concentra orientação mais fina. A microssequência organiza uma pequena unidade de estudo. O card é a unidade de interação.
+Cada nível tem um papel.
 
-Essa organização não serve apenas para navegação. Ela também situa a assistência do sistema. O app não responde sobre um tema solto, mas sobre um ponto localizado dentro de uma trilha.
+O curso define o campo geral: uma disciplina, um tema, um projeto de estudo, uma prova ou um corpus. O módulo separa partes desse campo. A lição concentra o recorte em que o estudo começa a ficar operacional. A microssequência transforma esse recorte em uma etapa de prática. O card é a interação concreta.
 
-## O que se faz na tela inicial
+Essa estrutura também situa a assistência por IA. O app não precisa tratar cada pedido como tema solto, pois o pedido está ancorado em uma parte da trilha.
 
-Na tela inicial, o usuário pode:
+## Tela inicial
 
-- ver os cursos do projeto;
-- criar, importar e exportar conteúdo;
-- abrir o painel de geração estrutural;
-- configurar provider e modelo;
-- acessar ações globais de backup e manutenção.
+Na tela inicial, o usuário encontra os cursos do projeto e as ações gerais. É o lugar para:
 
-É o ponto em que o projeto aparece como conjunto.
+- abrir cursos existentes;
+- criar novos cursos;
+- importar e exportar projetos;
+- anexar material;
+- abrir a geração estrutural;
+- configurar o serviço de IA e o modelo;
+- fazer backup e manutenção do conteúdo local.
 
-## O que se faz em curso, módulo e lição
+A tela inicial mostra o projeto como conjunto. A produção de conteúdo detalhado acontece melhor dentro de uma lição ou de uma microssequência.
 
-Nos níveis de curso, módulo e lição, o trabalho é principalmente de organização e orientação. Ali o usuário pode:
+## Curso e módulo
 
-- revisar a estrutura existente;
-- editar títulos e descrições;
+Curso e módulo são níveis de organização. Eles ajudam o usuário a enxergar o campo de estudo e a distribuir temas.
+
+Nesses níveis, o usuário pode:
+
+- revisar títulos e descrições;
+- reorganizar a estrutura;
 - anexar fontes;
-- ajustar a orientação da lição;
-- pedir geração estrutural no escopo selecionado.
+- pedir ao app uma proposta de decomposição;
+- preparar o caminho para lições mais específicas.
 
-Esse fluxo não precisa gerar todos os cards de uma vez. Em muitos casos, o mais valioso é produzir um esqueleto navegável com cursos, módulos, lições e microssequências planejadas, deixando a materialização do conteúdo para depois.
+Esses níveis não precisam conter explicação detalhada. Seu papel principal é dar contexto e ordenar o percurso.
 
-## Por que a lição é tão importante
+## Lição
 
-A lição é o ponto em que o AraLearn concentra governança local. É ali que se registram objetivo, foco de prática, notação preferida, limites do recorte, erros comuns e outras orientações que ajudam o sistema e o próprio usuário a entender o que aquela parte do percurso precisa fazer.
+A lição é o ponto de governança didática mais importante.
 
-Isso também torna o estudo mais transparente. O contexto de uma microssequência não depende apenas do pedido da hora; ele já está ancorado em uma etapa visível e editável da trilha.
+Nela, o usuário pode registrar:
 
-## Como ler uma microssequência planejada
+- objetivo da etapa;
+- recorte do conteúdo;
+- notação preferida;
+- tipos de exercício esperados;
+- erros comuns;
+- limites do que não deve entrar;
+- fontes ou trechos de apoio.
 
-No AraLearn, uma microssequência pode existir antes de ter cards. Isso não é falha.
+Essa orientação ajuda a IA e também ajuda o próprio usuário. A microssequência gerada dentro dessa lição passa a ter uma moldura clara.
 
-Nesse caso, o app está mostrando uma etapa já planejada do percurso, ainda não materializada. Essa escolha é importante porque permite:
+## Microssequência planejada
 
-- ver para onde a trilha está indo;
-- escolher por onde continuar;
-- estudar por partes menores;
-- evitar geração prematura de volume excessivo.
+No AraLearn, uma microssequência pode existir antes de ter cards.
 
-O produto, assim, separa duas tarefas diferentes: planejar a trilha e materializar o conteúdo estudável de cada etapa.
+Isso não é falha. É uma etapa planejada da trilha, ainda sem conteúdo materializado. A vantagem é que o usuário consegue ver o percurso antes de pedir geração detalhada. Ele pode decidir o que vale produzir primeiro, corrigir a ordem, excluir uma etapa ou mudar o foco antes de criar cards.
 
-## O que se faz dentro da microssequência
+Essa separação evita volume prematuro e preserva espaço para autoria.
 
-O painel da microssequência é o centro operacional do estudo local. Ali o usuário pode:
+## Microssequência com cards
 
-- estudar os cards já existentes;
-- materializar uma microssequência ainda vazia;
-- corrigir uma sequência ruim;
+Dentro da microssequência, o trabalho muda de escala. O foco já não é desenhar o curso inteiro, mas estudar e ajustar uma etapa específica.
+
+Nesse ponto, o usuário pode:
+
+- estudar os cards existentes;
+- pedir a materialização de uma etapa vazia;
+- corrigir uma sequência insatisfatória;
 - expandir um ponto insuficiente;
-- reformular a proposta;
+- reformular a abordagem;
 - editar cards manualmente;
-- continuar para a próxima etapa da trilha.
+- comparar versões;
+- preparar a continuação.
 
-É nesse ponto que estudo, autoria e revisão se encontram com mais intensidade.
+É o lugar em que estudo, revisão e autoria se encontram.
 
-## Dois modos legítimos de uso
+## Cards
 
-O AraLearn pode ser usado de maneira simples ou mais autoral.
+O card é a unidade de interação. Ele pode apresentar explicação, pergunta, lacuna, código, tabela, fluxograma, matriz ou outra representação aceita pelo contrato público.
 
-Num uso mais direto, a pessoa fornece material, pede a organização do curso e começa a estudar a partir do esqueleto produzido, materializando cards quando precisar.
+Um bom card no AraLearn não precisa dizer tudo. Ele precisa cumprir sua função dentro da microssequência. Alguns cards situam; outros demonstram; outros exigem prática; outros revisam um erro.
 
-Num uso mais avançado, a pessoa interfere no percurso, na orientação didática, na forma dos cards, nos parâmetros do fluxo e no próprio conteúdo final. Isso torna o app útil tanto para quem quer baixo atrito quanto para quem quer autoria mais forte, inclusive em contexto docente.
+## Uso simples
 
-## O que continua funcionando sem internet
+Um fluxo simples pode ser:
 
-Como o projeto fica salvo localmente, o app continua útil sem conexão para navegar, reler, revisar e retomar o estudo.
+1. criar ou importar um curso;
+2. anexar um PDF, DOCX, texto ou conjunto de anotações;
+3. pedir ao app uma estrutura inicial;
+4. revisar cursos, módulos, lições e microssequências;
+5. escolher uma microssequência;
+6. materializar os cards;
+7. estudar e corrigir o que for necessário.
 
-Quando a operação depende de geração com modelo remoto, a internet volta a ser necessária. Ainda assim, a parte já construída do percurso continua acessível, o que preserva continuidade em situações de mobilidade e conexão instável.
+Esse modo reduz o esforço inicial sem impedir revisão.
+
+## Uso autoral
+
+Um fluxo mais autoral pode incluir:
+
+1. escrever a orientação da lição;
+2. selecionar fontes específicas;
+3. ajustar o perfil didático;
+4. escolher o serviço de IA e o modelo;
+5. materializar uma microssequência por vez;
+6. editar cards;
+7. comparar versões;
+8. reorganizar a estrutura.
+
+Esse modo interessa a estudantes avançados, professores, monitores, pesquisadores e autores de material.
+
+## Uso sem conexão
+
+Como o projeto fica salvo no dispositivo, o usuário pode abrir, navegar, revisar e estudar conteúdo já existente sem conexão.
+
+Operações que dependem de IA remota exigem internet. Operações com provedor local dependem de configuração no próprio ambiente. O ponto central é que o estudo não desaparece quando a rede falha.
