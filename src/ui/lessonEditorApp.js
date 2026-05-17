@@ -114,7 +114,15 @@ import {
 } from "../assist/codexLocalAssistProvider.js";
 import { runAssist } from "../assist/assistRuntime.js";
 import { runCourseForge } from "../generation/courseForge/courseForgeRunner.js";
-import { resolveCourseForgeLaunchConfig } from "../generation/runtime/courseForgeLaunchConfig.js";
+import {
+  buildAppliedCourseForgeGeneration,
+  prepareCourseForgeStructureGeneration
+} from "../generation/runtime/courseForgeGenerationRuntime.js";
+import {
+  resolveCourseForgeProviderReadiness,
+  resolveGenerationPanelScopeFromAction,
+  resolveGenerationScopeState
+} from "../generation/runtime/courseForgeGenerationViewModel.js";
 import { listMicrosequenceTypes } from "../generation/types/microsequenceTypes.js";
 import { buildLessonDomainCoverageReport } from "../generation/domain/lessonDomainModel.js";
 import { validateDidacticDepth } from "../generation/validation/validateDidacticDepth.js";
@@ -123,11 +131,6 @@ import { detectJsonExchangeFormat } from "../storage/jsonExchange.js";
 import { createStarterContractCard, getContractCardKind, listContractAnswerValues } from "../contract/contractCard.js";
 import { isRunnableMicrosequence, resolveMicrosequenceRuntimeIncluded } from "../model/microsequenceStatus.js";
 import { ingestCourseForgeAttachments } from "./courseForgeAttachmentIngestion.js";
-import {
-  resolveCourseForgeGenerationScope,
-  resolveCourseForgeNavigationTarget,
-  summarizeCourseForgeTopDownResult
-} from "./courseForgeGeneration.js";
 import {
   createCourse as createCourseDocument,
   createLesson as createLessonDocument,
@@ -180,12 +183,6 @@ const ASSIST_DIDACTIC_TYPE_OPTIONS = [
     .map((item) => ({ value: item.id, label: item.label }))
 ];
 const COURSES_VIEWS = new Set(["courses", "course", "module", "lesson", "microsequence", "microsequence-assist"]);
-const GENERATION_PANEL_ACTIONS = new Set([
-  "open-generation-panel-global",
-  "open-generation-panel-course",
-  "open-generation-panel-module",
-  "open-generation-panel-lesson"
-]);
 const STRUCTURE_VERSIONING_ACTIVE = false;
 const GENERATED_PENDING_OPERATION = "generated-pending";
 const GENERATED_ACCEPTED_OPERATION = "generated";
@@ -196,41 +193,6 @@ function fail(message) {
 
 function isGeneratedPendingOperation(value) {
   return String(value || "").trim() === GENERATED_PENDING_OPERATION;
-}
-
-export function resolveGenerationPanelScopeFromAction({ action, dataset = {}, selection = {} } = {}) {
-  if (!GENERATION_PANEL_ACTIONS.has(action)) {
-    return null;
-  }
-
-  if (action === "open-generation-panel-global") {
-    return {};
-  }
-
-  const courseKey = dataset.courseKey || selection.courseKey || "";
-  const moduleKey = dataset.moduleKey || selection.moduleKey || "";
-  const lessonKey = dataset.lessonKey || selection.lessonKey || "";
-
-  if (action === "open-generation-panel-course") {
-    return courseKey ? { courseKey } : null;
-  }
-
-  if (action === "open-generation-panel-module") {
-    return courseKey && moduleKey ? { courseKey, moduleKey } : null;
-  }
-
-  if (action === "open-generation-panel-lesson") {
-    return courseKey && moduleKey && lessonKey ? { courseKey, moduleKey, lessonKey } : null;
-  }
-
-  return null;
-}
-
-export function resolveGenerationAssistMode({
-  lessonFixed = false,
-  hasResolvedLesson = false
-} = {}) {
-  return "generate-top-down-structure";
 }
 
 function normalizeComparableText(value) {
@@ -1999,17 +1961,28 @@ export function createLessonEditorApp({ root, storage, editor }) {
   }
 
   async function ensureCodexLocalReady() {
-    if (!isCodexLocalModel(state.assistConfig.model)) {
-      return true;
-    }
-
-    const status = await testCodexCliConnection();
+    const status = await resolveCourseForgeProviderReadiness({
+      selectedModel: state.assistConfig.model,
+      codexEndpoint: state.assistConfig.codexEndpoint,
+      codexToken: state.assistConfig.codexToken,
+      checkCodexLocalHealth
+    });
     if (status.ok) {
       return true;
     }
 
-    openCodexCliSetup(status.error || "O bridge local não está ativo.");
-    return false;
+    if (isCodexLocalModel(state.assistConfig.model)) {
+      updateCodexCliSetupStatus({
+        ok: false,
+        checking: false,
+        error: status.error || "O bridge local não está ativo.",
+        data: status.data ?? null
+      });
+      openCodexCliSetup(status.error || "O bridge local não está ativo.");
+      return false;
+    }
+
+    return true;
   }
 
   async function handleCodexModelSelection(model) {
@@ -4371,80 +4344,14 @@ export function createLessonEditorApp({ root, storage, editor }) {
   }
 
   function getGenerationScopeState(project = state.project) {
-    const draft = state.generationDraft;
-    const courses = getVisibleCourses(project);
-    const course = draft.courseKey ? findCourse(project, draft.courseKey) : null;
-    const modules = course?.modules || [];
-    const moduleValue = draft.moduleKey ? findModule(project, draft.courseKey, draft.moduleKey) : null;
-    const lessons = moduleValue?.lessons || [];
-    const lesson = draft.lessonKey ? findLesson(project, draft.courseKey, draft.moduleKey, draft.lessonKey) : null;
-    const hasPrompt = !!String(draft.promptText || "").trim();
-    const hasAttachments = Array.isArray(draft.attachments) && draft.attachments.length > 0;
-    const hasInputSource = hasPrompt || hasAttachments;
-    const pressedFieldsFilled =
-      (!draft.courseFixed || !!String(draft.courseInput || "").trim()) &&
-      (!draft.moduleFixed || !!String(draft.moduleInput || "").trim()) &&
-      (!draft.lessonFixed || !!String(draft.lessonInput || "").trim());
-    const invalidFixedHierarchy = (draft.moduleFixed && !course) || (draft.lessonFixed && !moduleValue);
-
-    const generationMode = resolveGenerationAssistMode({
-      lessonFixed: draft.lessonFixed === true,
-      hasResolvedLesson: !!lesson
+    return resolveGenerationScopeState({
+      draft: state.generationDraft,
+      projectDocument: project,
+      visibleCourses: getVisibleCourses(project),
+      findCourse,
+      findModule,
+      findLesson
     });
-
-    let actionLabel = "criar curso completo";
-    let actionHelpText = "";
-    let actionSummary = "Curso, módulos e lições";
-    let actionIconName = "folder";
-    let panelTitle = "Gerar estrutura";
-    let panelSubtitle = "";
-    let submitLabel = "Gerar estrutura";
-
-    if (draft.courseFixed) {
-      if (!course) {
-        actionLabel = "criar este curso, módulos e lições";
-        actionSummary = "Curso, módulos e lições";
-        actionIconName = "folder";
-      } else if (!draft.moduleFixed) {
-        actionLabel = "criar módulos e lições neste curso";
-        actionSummary = "Módulos e lições neste curso";
-        actionIconName = "module";
-      } else if (!moduleValue) {
-        actionLabel = "criar este módulo e suas lições";
-        actionSummary = "Módulo e lições";
-        actionIconName = "module";
-      } else if (!draft.lessonFixed) {
-        actionLabel = "criar lições neste módulo";
-        actionSummary = "Lições neste módulo";
-        actionIconName = "lesson";
-      } else {
-        actionLabel = "criar/atualizar esta lição e suas microssequências";
-        actionSummary = "Lição, microssequências e cards";
-        actionIconName = "lesson";
-      }
-    }
-
-    return {
-      courses,
-      course,
-      modules,
-      moduleValue,
-      lessons,
-      lesson,
-      moduleToggleEnabled: !!course,
-      moduleInputEnabled: !!course && draft.moduleFixed,
-      lessonToggleEnabled: !!moduleValue,
-      lessonInputEnabled: !!moduleValue && draft.lessonFixed,
-      canSubmit: hasInputSource && pressedFieldsFilled && !invalidFixedHierarchy,
-      actionLabel,
-      actionHelpText,
-      actionSummary,
-      actionIconName,
-      generationMode,
-      panelTitle,
-      panelSubtitle,
-      submitLabel
-    };
   }
 
   function setGenerationLevelFixed(level) {
@@ -4651,7 +4558,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
   async function submitGenerateStructureRequest() {
     syncGenerationDraftHierarchy();
     const scopeState = getGenerationScopeState();
-    const promptText = String(state.generationDraft.promptText || "").trim();
 
     if (!scopeState.canSubmit) {
       state.generationDraft.errorMessage = "Informe texto e/ou anexo e preencha apenas os níveis fixados válidos antes de gerar a estrutura.";
@@ -4665,59 +4571,30 @@ export function createLessonEditorApp({ root, storage, editor }) {
     render({ preserveState: true });
 
     try {
-      const generationMode = scopeState.generationMode || resolveGenerationAssistMode({
-        lessonFixed: state.generationDraft.lessonFixed === true,
-        hasResolvedLesson: !!scopeState.lesson
-      });
-
       if (!(await ensureCodexLocalReady())) {
         return;
       }
 
-      const selectedModel = String(state.assistConfig.model || "").trim() || "gemini-2.5-flash";
-      const ingestedAttachments = await ingestCourseForgeAttachments(state.generationDraft.attachments);
-      if (!promptText && ingestedAttachments.extractedCount === 0 && ingestedAttachments.attachments.length > 0) {
-        throw new Error(
-          "Os anexos atuais ainda não geraram texto utilizável para o top-down. Use TXT, Markdown, HTML, JSON, CSV ou complemente com um prompt."
-        );
-      }
-      const launchConfig = resolveCourseForgeLaunchConfig({
-        selectedModel,
-        apiKey: state.assistConfig.apiKey,
-        codexEndpoint: state.assistConfig.codexEndpoint,
-        codexToken: state.assistConfig.codexToken
+      const preparedGeneration = await prepareCourseForgeStructureGeneration({
+        scopeState,
+        draft: state.generationDraft,
+        assistConfig: state.assistConfig,
+        ingestAttachments: ingestCourseForgeAttachments
       });
       const courseForgeResult = await runCourseForge({
-        intent: {
-          scope: resolveCourseForgeGenerationScope(scopeState),
-          promptText,
-          attachments: ingestedAttachments.attachments,
-          phaseModelOverrides: launchConfig.phaseModelOverrides,
-          selectedTopDownProfileId: launchConfig.selectedTopDownProfileId
-        },
-        projectDocument: state.project,
-        providerRegistry: launchConfig.providerRegistry,
-        providerId: launchConfig.providerId
+        ...preparedGeneration.request,
+        projectDocument: state.project
       });
       storage.saveProject(courseForgeResult.projectDocument);
       createStructureVersionFromProject(courseForgeResult.projectDocument, getCurrentStructureVersionReference(), {
         operationType: "generated"
       });
       setProject(courseForgeResult.projectDocument);
-      const courseForgeSummary = summarizeCourseForgeTopDownResult(courseForgeResult);
-      const applied = {
-        ...courseForgeSummary,
-        ...(ingestedAttachments.warnings.length
-          ? {
-              message: `${courseForgeSummary.message} Avisos de ingestão: ${ingestedAttachments.warnings.join(" ")}`
-            }
-          : {}),
-        ...resolveCourseForgeNavigationTarget({
-          projectDocument: courseForgeResult.projectDocument,
-          patch: courseForgeResult.patch,
-          scopeState
-        })
-      };
+      const applied = buildAppliedCourseForgeGeneration({
+        courseForgeResult,
+        ingestedAttachments: preparedGeneration.ingestedAttachments,
+        scopeState
+      });
 
       applySelection({
         courseKey: applied.courseKey,

@@ -1,7 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { resolveGenerationAssistMode, resolveGenerationPanelScopeFromAction } from "../src/ui/lessonEditorApp.js";
+import {
+  resolveCourseForgeProviderReadiness,
+  resolveGenerationAssistMode,
+  resolveGenerationPanelScopeFromAction,
+  resolveGenerationScopeState
+} from "../src/generation/runtime/courseForgeGenerationViewModel.js";
 
 test("resolveGenerationPanelScopeFromAction abre painel global sem escopo", () => {
   assert.deepEqual(
@@ -112,4 +117,70 @@ test("resolveGenerationAssistMode mantém geração estrutural fora da lição r
     }),
     "generate-top-down-structure"
   );
+});
+
+test("resolveGenerationScopeState monta o view-model de escopo fora da UI", () => {
+  const projectDocument = {
+    courses: [
+      {
+        key: "course-a",
+        modules: [
+          {
+            key: "module-a",
+            lessons: [{ key: "lesson-a" }]
+          }
+        ]
+      }
+    ]
+  };
+
+  const state = resolveGenerationScopeState({
+    draft: {
+      courseFixed: true,
+      moduleFixed: true,
+      lessonFixed: true,
+      courseInput: "Curso A",
+      moduleInput: "Módulo A",
+      lessonInput: "Lição A",
+      courseKey: "course-a",
+      moduleKey: "module-a",
+      lessonKey: "lesson-a",
+      promptText: "Gerar estrutura.",
+      attachments: []
+    },
+    projectDocument,
+    visibleCourses: projectDocument.courses,
+    findCourse: (project, key) => project.courses.find((item) => item.key === key) || null,
+    findModule: (project, courseKey, moduleKey) =>
+      project.courses.find((item) => item.key === courseKey)?.modules.find((item) => item.key === moduleKey) || null,
+    findLesson: (project, courseKey, moduleKey, lessonKey) =>
+      project.courses
+        .find((item) => item.key === courseKey)
+        ?.modules.find((item) => item.key === moduleKey)
+        ?.lessons.find((item) => item.key === lessonKey) || null
+  });
+
+  assert.equal(state.canSubmit, true);
+  assert.equal(state.actionSummary, "Lição, microssequências e cards");
+  assert.equal(state.lessonInputEnabled, true);
+  assert.equal(state.generationMode, "generate-top-down-structure");
+});
+
+test("resolveCourseForgeProviderReadiness só valida provider local", async () => {
+  const gemini = await resolveCourseForgeProviderReadiness({
+    selectedModel: "gemini-2.5-flash"
+  });
+  assert.equal(gemini.ok, true);
+
+  const codex = await resolveCourseForgeProviderReadiness({
+    selectedModel: "codex-cli-local",
+    codexEndpoint: "http://127.0.0.1:4183/assist",
+    codexToken: "segredo",
+    checkCodexLocalHealth: async ({ endpoint, token }) => ({
+      ok: endpoint === "http://127.0.0.1:4183/assist" && token === "segredo",
+      error: "",
+      data: { ok: true }
+    })
+  });
+  assert.equal(codex.ok, true);
 });
