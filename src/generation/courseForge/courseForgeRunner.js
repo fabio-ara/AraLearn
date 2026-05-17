@@ -487,6 +487,28 @@ function buildPromptBudgetWarnings(promptBudget = null, { label = "" } = {}) {
   return [];
 }
 
+function buildPromptBudgetReviewRecommendation(categoryKey = "", promptBudgetWarnings = []) {
+  const warnings = Array.isArray(promptBudgetWarnings) ? promptBudgetWarnings.filter(Boolean) : [];
+  if (!warnings.length) {
+    return null;
+  }
+  const hasHighPressure = warnings.some((warning) => text(warning?.code) === "high_prompt_budget_pressure");
+  const reasonCodes = [...new Set(warnings.map((warning) => text(warning?.code)).filter(Boolean))];
+  const promptTypes = [...new Set(warnings.map((warning) => text(warning?.promptType)).filter(Boolean))];
+  const normalizedCategoryKey = text(categoryKey);
+  return {
+    category: normalizedCategoryKey,
+    priority: hasHighPressure ? "high" : "medium",
+    reviewRecommended: true,
+    replayRecommended: hasHighPressure,
+    reasonCodes,
+    promptTypes,
+    message: hasHighPressure
+      ? `${normalizedCategoryKey}: budget de prompt com pressão alta; priorizar revisão e replay desse trecho do pipeline.`
+      : `${normalizedCategoryKey}: budget de prompt com poda relevante; considerar revisão local desse trecho do pipeline.`
+  };
+}
+
 export function buildDiagnosticsSummary(context = {}, runState = {}, phases = []) {
   const courseGraphAudit = context.courseGraphAudit || { blockingIssues: [], warnings: [] };
   const planningAudit = mergeCourseForgeAdherenceAudits(
@@ -526,6 +548,13 @@ export function buildDiagnosticsSummary(context = {}, runState = {}, phases = []
   const interventionProviderBudget = summarizePromptBudget(runState?.interventionPromptBudget?.providerTask);
   const interventionAuditBudget = summarizePromptBudget(runState?.interventionPromptBudget?.auditProviderTask);
   const repairBudget = summarizePromptBudget(runState?.repairPromptBudget);
+  const interventionBudgetWarnings = [
+    ...buildPromptBudgetWarnings(interventionProviderBudget, { label: "intervention.providerTask" }),
+    ...buildPromptBudgetWarnings(interventionAuditBudget, { label: "intervention.auditProviderTask" })
+  ];
+  const planningBudgetWarnings = buildPromptBudgetWarnings(repairBudget, { label: "planning.repairPrompt" });
+  const interventionReviewRecommendation = buildPromptBudgetReviewRecommendation("intervention", interventionBudgetWarnings);
+  const planningReviewRecommendation = buildPromptBudgetReviewRecommendation("planning", planningBudgetWarnings);
 
   return {
     categories: {
@@ -538,10 +567,8 @@ export function buildDiagnosticsSummary(context = {}, runState = {}, phases = []
           providerTask: interventionProviderBudget,
           auditProviderTask: interventionAuditBudget
         },
-        budgetWarnings: [
-          ...buildPromptBudgetWarnings(interventionProviderBudget, { label: "intervention.providerTask" }),
-          ...buildPromptBudgetWarnings(interventionAuditBudget, { label: "intervention.auditProviderTask" })
-        ]
+        budgetWarnings: interventionBudgetWarnings,
+        reviewRecommendation: interventionReviewRecommendation
       },
       graph: {
         blockingIssues: blockingByCategory.graph,
@@ -557,7 +584,8 @@ export function buildDiagnosticsSummary(context = {}, runState = {}, phases = []
           ["microsequence-audit", "microsequence-adherence-audit"].includes(name)
         ),
         promptBudget: repairBudget,
-        budgetWarnings: buildPromptBudgetWarnings(repairBudget, { label: "planning.repairPrompt" })
+        budgetWarnings: planningBudgetWarnings,
+        reviewRecommendation: planningReviewRecommendation
       },
       cards: {
         blockingIssues: blockingByCategory.cards,
@@ -584,6 +612,7 @@ export function buildDiagnosticsSummary(context = {}, runState = {}, phases = []
         latestArtifacts: ["assessment-alignment-audit"]
       }
     },
+    reviewCandidates: [interventionReviewRecommendation, planningReviewRecommendation].filter(Boolean),
     lastFailureCategory: text(runState?.metrics?.lastFailureCategory),
     phaseStatus,
     phases

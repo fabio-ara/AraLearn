@@ -1879,6 +1879,10 @@ test("diagnostics summary gera warning quando a poda de prompt de intervencao fi
 
   assert.equal(diagnostics.categories.intervention.budgetWarnings.length, 1);
   assert.equal(diagnostics.categories.intervention.budgetWarnings[0].code, "high_prompt_budget_pressure");
+  assert.equal(diagnostics.categories.intervention.reviewRecommendation?.priority, "high");
+  assert.equal(diagnostics.categories.intervention.reviewRecommendation?.replayRecommended, true);
+  assert.equal(diagnostics.reviewCandidates.length, 1);
+  assert.equal(diagnostics.reviewCandidates[0].category, "intervention");
 });
 
 test("diagnostics summary gera warning quando o reparo omite diretivas por budget", () => {
@@ -1899,6 +1903,10 @@ test("diagnostics summary gera warning quando o reparo omite diretivas por budge
 
   assert.equal(diagnostics.categories.planning.budgetWarnings.length, 1);
   assert.equal(diagnostics.categories.planning.budgetWarnings[0].code, "prompt_budget_truncation");
+  assert.equal(diagnostics.categories.planning.reviewRecommendation?.priority, "medium");
+  assert.equal(diagnostics.categories.planning.reviewRecommendation?.replayRecommended, false);
+  assert.equal(diagnostics.reviewCandidates.length, 1);
+  assert.equal(diagnostics.reviewCandidates[0].category, "planning");
 });
 
 test("intervention_request infere relatedConceptRefs para contraste local", () => {
@@ -4228,6 +4236,7 @@ test("editor consome InterventionRequest pronto sem voltar ao subfluxo do Tutor"
   assert.equal(finalReport.content.diagnosticsSummary.categories.intervention.promptBudget.providerTask.promptType, "intervention_provider_task");
   assert.equal(finalReport.content.diagnosticsSummary.categories.intervention.promptBudget.providerTask.omittedCount, 0);
   assert.deepEqual(finalReport.content.diagnosticsSummary.categories.intervention.budgetWarnings, []);
+  assert.equal(finalReport.content.diagnosticsSummary.categories.intervention.reviewRecommendation, null);
   assert.ok(result.artifacts.some((artifact) => artifact.name === "intervention-plan"));
 });
 
@@ -5951,10 +5960,13 @@ test("audit_source_adherence usa domainMap explícito para fechar cobertura mín
   assert.equal(diagnostics.content.categories.adherence.blockingIssues, 0);
   assert.equal(diagnostics.content.categories.intervention.promptBudget.providerTask, null);
   assert.deepEqual(diagnostics.content.categories.intervention.budgetWarnings, []);
+  assert.equal(diagnostics.content.categories.intervention.reviewRecommendation, null);
   assert.equal(diagnostics.content.categories.planning.promptBudget.promptType, "microsequence_repair_task");
   assert.equal(diagnostics.content.categories.planning.promptBudget.selectedCount, 0);
   assert.equal(diagnostics.content.categories.planning.promptBudget.omittedCount, 0);
   assert.deepEqual(diagnostics.content.categories.planning.budgetWarnings, []);
+  assert.equal(diagnostics.content.categories.planning.reviewRecommendation, null);
+  assert.deepEqual(diagnostics.content.reviewCandidates, []);
 });
 
 test("repair_microsequences chama provider quando a cobertura do domainMap nao e inferivel deterministicamente", async () => {
@@ -6169,6 +6181,7 @@ test("repair_microsequences chama provider quando a cobertura do domainMap nao e
   assert.equal(finalReport.content.diagnosticsSummary.categories.planning.promptBudget.promptType, "microsequence_repair_task");
   assert.equal(finalReport.content.diagnosticsSummary.categories.planning.promptBudget.omittedCount, 0);
   assert.deepEqual(finalReport.content.diagnosticsSummary.categories.planning.budgetWarnings, []);
+  assert.equal(finalReport.content.diagnosticsSummary.categories.planning.reviewRecommendation, null);
 });
 
 test("repair_card_adherence separa grounding tardio de defeito estrutural dos cards", async () => {
