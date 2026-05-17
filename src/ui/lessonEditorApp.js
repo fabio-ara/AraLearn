@@ -1016,7 +1016,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
     centerActiveStructureVersionTabOnRender: true
   };
 
-  state.selection = getFirstPath(state.project);
+  state.selection = resolveFirstSelection(state.project);
 
   function setProject(nextProject, { updateHead = true } = {}) {
     state.project = nextProject;
