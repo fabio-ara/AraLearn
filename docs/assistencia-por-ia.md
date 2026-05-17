@@ -1,131 +1,208 @@
-# Assistência por IA generativa
+# Assistencia por IA
 
-Este documento descreve o papel da IA no AraLearn a partir da arquitetura real do produto e dos limites técnicos que a própria literatura recomenda explicitar.
+Este documento explica como o AraLearn usa LLMs no estado atual do produto.
 
-## A posição do produto
+## Tese central
 
-No AraLearn, a LLM não ocupa o lugar de autora da didática. Ela tampouco ocupa o lugar de fonte de verdade. Seu papel é mais restrito: preencher ou reparar conteúdo dentro de um recorte previamente decidido pelo app.
+No AraLearn, a LLM nao ocupa o lugar de autora soberana da didatica.
 
-Essa escolha nasce de uma constatação prática e teórica. Na prática, pedidos muito amplos tendem a produzir deriva, repetição, generalização vazia e inconsistência estrutural, sobretudo em modelos leves. Na teoria, trabalhos sobre linguagem controlada e sobre heurísticas superficiais em NLP mostram que fluência textual e estrutura formal confiável não coincidem automaticamente (Neuhaus & Barkmeyer, 2013; Njonko et al., 2014; McCoy, Pavlick & Linzen, 2019). Por isso, o AraLearn não delega à IA o desenho do percurso. Ele desloca parte da inteligência da operação para contratos, limites e validações locais.
+Ela entra como componente gerador sob restricao:
 
-## Por que o AraLearn prefere restrição
+- recebe contexto;
+- recebe contrato ou artefato intermediario;
+- responde em JSON restrito;
+- passa por validacao;
+- so entao pode afetar o projeto.
 
-Em vez de pedir ao modelo que imagine sozinho um percurso “completo”, o app define:
+Essa decisao e tecnica e pedagogica ao mesmo tempo.
 
-- o contexto hierárquico;
-- o escopo da lição;
-- o tipo didático permitido;
-- o tamanho da microssequência;
-- o plano determinístico dos cards;
-- os formatos de apresentação e prática disponíveis;
-- as validações que o resultado precisará atravessar.
+## Por que a IA e contida
 
-Esse desenho é compatível com a observação, bastante recorrente em uso real, de que modelos fracos ou baratos se comportam melhor quando a tarefa é estreita, incremental e formalmente delimitada.
+Pedidos amplos demais tendem a produzir:
 
-## Weak model mode
+- deriva;
+- repeticao;
+- falsa completude;
+- texto fluente, mas didaticamente pobre;
+- pouca rastreabilidade;
+- pouca previsibilidade em modelos leves.
 
-O pipeline bottom-up de cards opera em `weakModelMode`. Em termos simples, isso significa que a primeira etapa pede ao modelo apenas uma escolha restrita entre opções fechadas. O plano devolvido é enxuto. O modelo não devolve `cardPlan`, não escolhe livremente a posição dos elementos, não decide sozinho o formato final de cada unidade interativa. Depois da validação desse plano preliminar, o AraLearn monta o `cardPlan` por conta própria e só então pede o preenchimento do conteúdo.
+O AraLearn reage a isso deslocando parte da inteligencia para a arquitetura.
 
-Essa política não é uma admissão de fraqueza do produto; é uma forma de calibrar a operação para o tipo de modelo que o projeto pretende suportar com custo plausível.
+## Dois papeis distintos da LLM
 
-## O papel da lição
+### 1. LLM no top-down
 
-A qualidade da assistência depende fortemente da lição. É a lição que concentra a governança didática principal por meio de `sourceGuideStructured`, tags de formato, tipos de conteúdo, ações de aprendizagem e nível de apoio.
+Aqui a LLM ajuda a organizar material amplo em trilha:
 
-Isso significa que a geração não deve ser lida como evento isolado. Ela é uma operação situada. Quando a lição está mal orientada, a saída tende a ficar difusa. Quando a lição está clara, a LLM precisa improvisar menos.
+- cursos;
+- modulos;
+- licoes;
+- microssequencias planejadas;
+- sinais de progressao, contraste, pratica e cobertura.
 
-## Geração de microssequências e geração de cards
+Ela nao precisa materializar cards por padrao para cumprir esse papel.
 
-O AraLearn usa IA em dois pontos centrais, mas com objetivos diferentes.
+### 2. LLM no runtime local
 
-Na lição, a IA já opera no fluxo estrutural do `CourseForge`. Nesse nível, o sistema pode revisar a governança local e planejar microssequências, sempre dentro do escopo da lição e com auditoria local antes do patch. O sistema considera `sourceGuideStructured`, `domainMap`, cobertura já existente, sinais de prática e risco de redundância. A materialização de cards fica para o runtime local da microssequência.
+Aqui a LLM atua sobre uma microssequencia concreta, durante o estudo.
 
-No painel da microssequência, a IA atua sobre cards. Aqui o objetivo já é muito mais localizado: explicar, demonstrar, praticar, consolidar ou revisar um ponto delimitado pelo próprio percurso.
+Ela pode:
 
-## O estado atual do top-down
+- materializar;
+- corrigir;
+- expandir;
+- reformular;
+- editar localmente.
 
-Hoje o produto tem uma camada estrutural pública única para home, curso, módulo e lição: o painel contextual já aciona o `CourseForge` em todos esses escopos. O motor continua organizado por fases, com intenção própria, artefatos persistíveis, auditoria local e reparo antes da aplicação do patch.
+Esse segundo papel e mais dialogico. O usuario estuda, encontra um problema e pede uma intervencao localizada.
 
-Descrever esse ponto com precisão importa. O correto hoje é: a trilha estrutural pública já foi consolidada no `CourseForge`; o workbench da microssequência continua existindo, mas como superfície local de edição e reparo de cards, não como motor estrutural paralelo da lição.
+## O que vai para o modelo
 
-No estado atual da ingestão, o fluxo estrutural já aceita texto simples e passa a priorizar `PDF` e `DOCX` como formatos reais de uso. O suporte inicial busca extrair texto utilizável com warnings rastreáveis quando a qualidade vier parcial, em vez de prometer leitura perfeita do layout original.
+No AraLearn, o pedido enviado ao modelo nao e apenas um prompt livre. Ele e acompanhado por artefatos estruturados.
 
-## Pipeline de cards
+No fluxo estrutural, isso pode incluir:
 
-O fluxo real da geração de cards é o seguinte:
+- `intent`
+- `sourceLedger`
+- `lessonPlans`
+- `courseGraph`
+- `lessonGovernance`
+- `microsequencePlans`
+- `interventionPlan`
 
-1. o usuário faz um pedido localizado;
-2. o app monta um contrato de planejamento;
-3. a LLM devolve um plano enxuto;
-4. o app valida o plano;
-5. o app monta `cardPlan` determinístico;
-6. o app resolve os formatos permitidos;
-7. o app monta o contrato de geração;
-8. a LLM devolve os cards;
-9. o app normaliza a resposta;
-10. o app executa reparo estrutural determinístico;
-11. o app valida estrutura;
-12. o app valida coerência didática local;
-13. o app valida vínculo mínimo com fonte, quando houver;
-14. se necessário, o app pede reparo ou continuação;
-15. o resultado validado é aplicado.
+No fluxo local, pode incluir:
 
-O que interessa aqui é que a geração não é tratada como bloco único, e sim como operação em camadas.
+- contexto da licao;
+- `sourceGuideStructured`;
+- `domainMap`;
+- metadados da microssequencia;
+- tipo didatico selecionado;
+- pedido local do usuario;
+- anexos.
 
-## Meticulosidade e política didática
+## JSON e especificacao intermediaria
 
-A camada de meticulosidade não existe para pedir mais texto. Ela existe para conter dois riscos muito comuns em geração por LLM: resumo genérico e prolixidade enganosa. Em outras palavras, o problema não é só sair insuficiente; é sair liso, amplo e sem progressão prática.
+Um dos pontos fortes do produto hoje e justamente este: a LLM nao recebe uma arvore inteira sem forma. Ela recebe especificacoes intermediarias pequenas.
 
-Por isso, a política da geração reforça:
+Isso aproxima o app de uma logica de desenvolvimento orientado por especificacao:
 
-- decomposição do ponto didático;
-- rejeição de resumo genérico;
-- exigência de função nova para novas microssequências;
-- separação entre cobertura e repetição;
-- variação de prática com finalidade.
+- primeiro o sistema define a estrutura da tarefa;
+- depois a LLM preenche ou repara dentro desse recorte;
+- depois o app volta a validar o que recebeu.
 
-## Checagens locais de qualidade
+## Top-down estrutural
 
-Uma parte importante da assistência não está no prompt, mas na camada de checagens locais. O AraLearn combina três tipos de inspeção.
+No fluxo top-down, o `CourseForge` organiza o trabalho em fases.
 
-O primeiro tipo é estrutural: contrato, quantidade, posição, formato e campos obrigatórios. O segundo é declarativo: cobertura já registrada, prática ausente, variação insuficiente, duplicação sem função nova. O terceiro é textual, mas com força limitada: padrões evidentes de bastidor, dependência externa, resposta revelada ou genericidade local.
+Em alto nivel:
 
-O ponto decisivo é que esses três tipos não têm o mesmo estatuto. A camada estrutural e parte da camada declarativa podem justificar bloqueio ou continuação automática. A camada textual, por si só, não deve ser confundida com interpretação semântica forte. Ela funciona como apoio, sinal de risco e insumo para revisão, o que é coerente com a cautela sugerida por McCoy, Pavlick e Linzen (2019).
+1. resolve intencao e escopo;
+2. ingere fontes;
+3. deriva governanca local;
+4. planeja microssequencias;
+5. audita cobertura e ordem;
+6. repara quando necessario;
+7. compila patch;
+8. aplica no projeto.
 
-## Continuação automática
+O que interessa aqui e a mudanca de semantica:
 
-Quando a falha é forte o bastante, o app pode acionar continuação automática antes da entrega final. Isso não significa “conversar mais com a LLM até ficar bonito”. Significa restringir ainda mais a tarefa.
+- a LLM ajuda a planejar a trilha;
+- o top-down nao precisa pre-gerar cards;
+- a trilha fica navegavel antes de ficar completamente materializada.
 
-Dependendo do caso, a continuação pode:
+## Runtime local e autoria dialogica
 
-- reescrever posições específicas;
-- inserir uma etapa de preparação;
-- inserir prática mínima;
-- adiar a lacuna para outra microssequência da lição;
-- rejeitar redundância em vez de inflar volume.
+Quando o usuario entra numa microssequencia planejada ou pronta, o fluxo deixa de ser macroorganizacao e vira intervencao local.
 
-Essa continuação existe para preservar o pedido do usuário e reduzir o número de iterações manuais necessárias, não para competir com o que o usuário escreveu.
+Esse e o ponto em que o estudo pode assumir uma especie de dialetica guiada:
 
-## Aplicação direta e responsabilidade editorial
+- a estrutura previa diz o que vem antes e depois;
+- o usuario aponta duvida, erro ou preferencia;
+- a LLM responde no interior desse recorte;
+- o app preserva a trilha como moldura.
 
-O resultado validado é aplicado diretamente na microssequência. Não existe mais uma camada separada de prévia privada. A reversão acontece por iteração ativa: o usuário pode aceitar ou excluir a versão gerada.
+Nao e uma conversa livre com uma IA genérica. E uma conversa situada dentro de um percurso didatico ja arquitetado.
 
-Isso torna a IA parte do fluxo real de autoria, mas não elimina curadoria humana. O usuário continua responsável por julgar fidelidade, clareza, pertinência e adequação do material ao seu próprio percurso.
+## Auditoria e reparo
 
-## Fontes e anexos
+O produto usa auditoria para reduzir dois riscos:
 
-Quando houver fontes e anexos, o AraLearn usa grounding mínimo, não promessa de RAG sofisticado. O objetivo é manter vínculo mínimo entre transformação e origem por `sourceRefs` e `sourceUsePlan`. Isso é suficiente para aumentar rastreabilidade local sem transformar o app em infraestrutura pesada de busca semântica.
+- erro estrutural;
+- deslocamento didatico.
 
-## Codex local
+As checagens podem incluir:
 
-`Codex CLI local` permanece suportado como integração avançada. O fluxo principal do estudante comum continua sendo Gemini/API comum. O provider local interessa sobretudo quando o usuário quer manter a operação mais próxima de seu próprio ambiente.
+- schema e forma do JSON;
+- coerencia de microssequencia e card;
+- aderencia minima a fonte;
+- cobertura e progressao;
+- pratica ausente ou repeticao sem funcao nova;
+- contrastes e prerequisitos quando aplicavel.
 
-No pipeline público atual, esse provider já atende a geração estrutural e a geração de microssequências da lição, além do workbench da microssequência. Na refatoração interna `CourseForge`, ele também já existe como provider real da nova trilha top-down, ao lado de um provider falso de teste usado para validação offline do motor.
+Quando necessario, pode haver:
 
-## Referências centrais
+- reparo deterministico;
+- reparo assistido pelo provider;
+- bloqueio antes da aplicacao.
 
-- RECON / linguagem controlada: https://www.nist.gov/publications/recon-controlled-english-business-rules
-- RuleCNL: https://arxiv.org/abs/1406.2096
-- HANS / heurísticas superficiais: https://aclanthology.org/P19-1334/
-- Feedback e aprendizagem: https://assess.ucr.edu/sites/g/files/rcwecm2336/files/2019-02/hattietimperley_2007.pdf
-- Fundamentos gerais do projeto: [Fundamentos e evidências](fundamentos-e-evidencias.md)
+## Papel do usuario na auditoria
+
+O app nao trata auditoria automatica como substituto de revisao humana.
+
+O usuario ainda pode:
+
+- revisar o que foi criado;
+- editar governanca;
+- intervir no runtime local;
+- aceitar ou descartar iteracoes;
+- excluir ou manter microssequencias fora do estudo.
+
+## Ingestao e grounding
+
+Quando a geracao parte de fontes, o AraLearn faz uma camada previa de ingestao.
+
+Hoje isso inclui:
+
+- texto simples;
+- Markdown;
+- HTML;
+- JSON;
+- CSV;
+- PDF;
+- DOCX.
+
+Parsers open source usados no projeto:
+
+- `pdfjs-dist`
+- `mammoth`
+
+O app nao promete um sistema pesado de RAG. O que ele tenta fazer e grounding minimo rastreavel o bastante para tornar a transformacao menos opaca.
+
+## Providers suportados
+
+O fluxo publico atual contempla:
+
+- Gemini por API;
+- `Codex CLI local` via bridge HTTP.
+
+O provider local e tratado como integracao avancada. O caminho normal do usuario comum continua sendo provider remoto por API.
+
+## O que a documentacao publica afirma com seguranca
+
+Ela pode afirmar com seguranca que:
+
+- a LLM esta subordinada a contratos e validacoes;
+- o top-down estrutural ja existe como fluxo publico real;
+- o runtime local ja concentra a materializacao progressiva da trilha;
+- a autoria humana continua no centro do produto.
+
+Ela nao deve afirmar que toda checagem automatica equivale a entendimento semantico forte. O produto trabalha com mediacao arquitetural, nao com onisciencia do modelo nem do auditor local.
+
+## Leitura complementar
+
+- [Arquitetura](arquitetura.md)
+- [Guia de uso do app](uso-do-app.md)
+- [Fundamentos e evidencias](fundamentos-e-evidencias.md)
+- [Codex CLI local](codex-cli.md)

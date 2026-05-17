@@ -1,94 +1,167 @@
-# Visão do produto
+# Visao do produto
 
-Este documento apresenta o AraLearn como produto, como artefato técnico e como proposta intelectual. Ele foi escrito para quem precisa entender a aplicação antes de entrar no código, na discussão didática ou na avaliação acadêmica.
+Este documento apresenta o AraLearn como produto. Ele foi escrito para quem precisa entender o que o app e, por que ele existe e como sua identidade mudou.
 
-## O problema a que o AraLearn responde
+## Problema
 
-O problema contemporâneo da aprendizagem já não é apenas o acesso à informação. A informação está por toda parte: web aberta, vídeos, documentação, plataformas de curso, fóruns, repositórios, redes sociais e, mais recentemente, modelos de linguagem capazes de produzir explicações, exemplos e respostas em segundos. O que continua difícil é converter esse excesso em percurso.
+O problema que o AraLearn enfrenta nao e apenas falta de informacao. O problema contemporaneo e excesso de material sem percurso.
 
-Muitas pessoas sabem o que querem aprender, mas não sabem:
+Hoje uma pessoa pode ter:
 
-- por onde começar;
-- como delimitar o recorte certo;
-- que parte deve ser explicada antes de ser cobrada;
-- em que formato vale praticar;
-- como revisar;
-- como retomar depois de um intervalo;
-- como organizar, sem se perder, a massa de material que a própria web e as LLMs oferecem com tanta facilidade.
+- ementa;
+- bibliografia;
+- slides;
+- listas de exercicios;
+- artigo cientifico;
+- documentacao tecnica;
+- respostas prontas de LLM.
 
-Esse problema se agrava no caso do estudante trabalhador, cansado, sujeito a interrupções, deslocamentos e múltiplas demandas. Nesses contextos, a dificuldade não é apenas “entender o conteúdo”; é sustentar organização cognitiva e continuidade prática.
+Mesmo assim, ela continua sem saber:
 
-## A resposta do produto
+- por onde comecar;
+- o que entra antes do que;
+- que ponto merece explicacao;
+- que ponto merece pratica;
+- como retomar depois de uma interrupcao;
+- como transformar abundancia em estudo real.
 
-O AraLearn é uma aplicação open source, local-first e mobile-first que transforma dúvidas, materiais e intenções de estudo em percursos didáticos organizados por uma hierarquia explícita:
+## Resposta do produto
+
+O AraLearn tenta resolver isso combinando:
+
+- estrutura externa forte;
+- autoria local;
+- estudo ativo;
+- intervencao assistida por LLM.
+
+O app organiza o percurso em:
 
 ```text
-curso -> módulo -> lição -> microssequência -> card
+curso -> modulo -> licao -> microssequencia -> card
 ```
 
-A unidade didática central não é o card, mas a microssequência. O card é a unidade interativa; a microssequência é a unidade de progressão. Essa distinção é importante porque o produto não trata aprendizagem como coleção plana de itens soltos. O que interessa não é apenas “ter perguntas”, mas articular contexto, explicação, exemplo, prática e retomada.
+A unidade didatica central nao e o card isolado. E a `microssequencia`.
 
-Em vez de servir como repositório passivo de notas, o AraLearn procura funcionar como motor de transformação didática. Conteúdo disponível vira estudo guiado. Dúvida pontual vira prática executável. Material disperso vira organização. Revisão e edição deixam de ser atividades externas ao estudo e passam a ocorrer no mesmo ambiente.
+## Mudanca recente de missao
 
-## Dois movimentos complementares
+O produto deixou de perseguir a ideia de top-down como pre-geracao massiva de cards.
 
-O produto trabalha com dois movimentos que se completam.
+A direcao atual e outra:
 
-O primeiro é top-down. Ele é útil quando o problema é a organização de uma massa maior de conteúdo: disciplina, ementa, conjunto de textos, documentação, plano de curso, trilha de formação. Nesse caso, o usuário precisa montar um percurso mais amplo, distribuído em cursos, módulos e lições.
+- o `top-down` organiza a trilha e planeja microssequencias;
+- o `bottom-up` materializa a trilha durante o estudo;
+- o usuario participa como autor do curso no proprio runtime;
+- a LLM entra como apoio de planejamento e preenchimento, nao como autora soberana.
 
-O segundo é bottom-up. Ele é útil quando o problema já apareceu no estudo concreto: uma dúvida localizada, um procedimento específico, um ponto de notação, um erro recorrente, uma operação que não ficou clara. Nesse caso, não faz sentido pedir ao sistema que reorganize uma disciplina inteira. O que faz sentido é gerar, revisar ou aprofundar uma microssequência localizada no contexto certo.
+Isso muda a identidade do AraLearn de modo importante. Ele continua sendo um motor de geracao didatica, mas agora com uma divisao de trabalho mais nítida:
 
-O AraLearn combina esses dois movimentos porque a aprendizagem real exige os dois. Sem top-down, a pessoa continua afogada em material disperso. Sem bottom-up, a organização ampla não ajuda quando o entendimento trava em um ponto específico.
+- estrutura ampla no top-down;
+- autoria situada e pratica no bottom-up.
 
-## De onde vem essa direção
+## Dois modos de uso
 
-O AraLearn não nasce do vazio. Há influências explícitas de produto, de prática de estudo e de reflexão intelectual.
+### 1. Top-down estrutural
 
-Do lado dos produtos, Anki ajuda a evidenciar o valor da recuperação ativa, em linha com o que Roediger e Karpicke (2006) e Dunlosky et al. (2013) mostram sobre prática de recuperação e estudo distribuído; Duolingo mostra a força de unidades pequenas com recorrência; Obsidian explicita o valor de um repositório pessoal articulado; Wikipédia continua exemplar como estrutura aberta de conhecimento; Git fornece um imaginário forte de versionamento, reversibilidade e histórico; X expõe, em escala radical, um mundo em que a informação circula em fragmentos rápidos, porém raramente chega organizada como aprendizagem.
+Aqui o usuario parte de material amplo e pede ao app que o organize.
 
-Do lado intelectual, o projeto dialoga com a tradição estruturalista e com críticas à circulação contemporânea do saber. Em Saussure e no estruturalismo, uma unidade não se define isoladamente, mas por relações dentro de um sistema; no AraLearn, uma unidade didática também precisa ser lida na estrutura maior em que se insere. Em Lyotard, o saber aparece cada vez mais como informação operacionalizável; esse diagnóstico ajuda a compreender por que hoje é tão fácil obter conteúdo e tão difícil convertê-lo em formação. Em Foucault, qualquer tecnologia que registra, classifica e acompanha trajetórias de sujeitos merece suspeita; no app, isso reaparece como cuidado com rastreabilidade, controle local e recusa de autoridade automática da IA.
+Exemplos:
 
-## A posição do produto
+- uma disciplina universitaria com ementa, bibliografia e slides;
+- um artigo cientifico que precisa virar sequencia estudavel;
+- um manual tecnico;
+- uma trilha de onboarding;
+- um conjunto de documentos de trabalho.
 
-O AraLearn se define por uma aposta precisa: informação disponível precisa ganhar forma estudável. Por isso, a aplicação privilegia decomposição em vez de condensação genérica, progressão em vez de acúmulo, prática em vez de simples exposição e revisão explícita em vez de resposta livre sem contenção. Aula, estudo extensivo de fonte primária e reflexão crítica continuam relevantes; o papel do app é outro. Ele organiza, orienta e transforma material disperso em percurso revisável.
+O top-down produz:
 
-## O que existe hoje
+- cursos;
+- modulos;
+- licoes;
+- microssequencias planejadas;
+- governanca didatica inicial.
 
-No estado atual, o app já reúne um conjunto funcional relevante:
+Ele nao precisa materializar cards por padrao para ser util. Sua funcao principal e dar forma estudavel ao material.
 
-- organização em cursos, módulos, lições, microssequências e cards;
-- contrato JSON público para projetos e recortes estruturais;
-- importação e exportação de estrutura;
-- backup completo do estado local;
-- persistência de progresso no dispositivo;
-- geração estrutural contextual em home, curso, módulo e lição pelo `CourseForge`;
-- geração e edição local de cards no painel da microssequência;
-- aplicação direta de iterações com possibilidade de aceitar ou excluir;
-- separação entre rascunho (`draft`) e conteúdo pronto para estudo;
-- exclusão do estudo por `included: false` sem apagar a microssequência da árvore;
-- formatos de apresentação e prática que incluem texto, escolha, código, tabela, árvore, fluxograma, plano cartesiano e matriz.
+### 2. Bottom-up no runtime
 
-## A função da inteligência artificial
+Aqui o usuario ja esta estudando. O problema nao e organizar a disciplina inteira, mas destravar um ponto local.
 
-No AraLearn, a inteligência artificial não entra como autora soberana do percurso. Ela entra como força de transformação sob restrição. O app define contexto, contratos, formato esperado, recursos permitidos, plano dos cards, critérios de validação e regras de aplicação. A LLM preenche ou repara conteúdo dentro desse envelope.
+Exemplos:
 
-Essa decisão não é apenas técnica; ela é também metodológica. Em vez de pedir ao modelo que “pense didaticamente sobre tudo”, o AraLearn desloca parte da inteligência para a arquitetura. Isso torna mais plausível o uso de modelos leves ou baratos e reduz a dependência de respostas amplas, opacas e difíceis de verificar.
+- "nao entendi este contraste";
+- "essa microssequencia ficou ruim";
+- "quero mais pratica aqui";
+- "gere o conteudo da proxima microssequencia";
+- "reformule este card".
 
-## A experiência desejada
+Esse fluxo faz o estudo ganhar um carater dialogico: o usuario interroga o proprio percurso e a IA responde dentro da estrutura ja criada.
 
-Toda a direção de UI e UX do produto busca reduzir atrito. O estudante não deve precisar aprender uma máquina complicada antes de conseguir estudar. A interface, por isso, procura:
+## O papel do usuario
 
-- preservar hierarquia estável;
-- tornar as ações principais explícitas;
-- concentrar geração no nível apropriado;
-- reduzir passos desnecessários;
-- manter o estudo, a revisão e a edição próximos;
-- facilitar retomada depois de interrupção.
+O AraLearn nao tenta eliminar autoria humana. Ao contrario: ele recoloca a autoria dentro do uso.
 
-Essa simplicidade não é minimalismo vazio. Ela responde a uma finalidade concreta: oferecer estrutura externa para quem já está cognitivamente sobrecarregado.
+O usuario:
+
+- declara objetivo;
+- fornece ou escolhe fonte;
+- revisa a trilha;
+- abre microssequencias planejadas;
+- materializa, corrige e expande localmente;
+- decide o que entra no estudo;
+- preserva ou descarta iteracoes.
+
+Essa participacao e parte essencial da proposta.
+
+## O papel da LLM
+
+A LLM nao decide o curso sozinha. Ela trabalha sob restricao.
+
+O app define:
+
+- contexto;
+- escopo;
+- governanca da licao;
+- tipos didaticos;
+- formatos de recurso;
+- validacoes;
+- limites de aplicacao.
+
+A LLM ajuda a:
+
+- organizar material em trilha;
+- sugerir microssequencias;
+- preencher conteudo local;
+- reparar ou reformular o que nao ficou bom.
+
+## O valor do produto
+
+O valor do AraLearn nao esta em "gerar texto". Esta em aproximar quatro coisas:
+
+- organizacao;
+- estudo;
+- revisao;
+- autoria.
+
+Essas quatro atividades normalmente ficam espalhadas por varias ferramentas. O AraLearn tenta reuni-las num unico ambiente.
+
+## Experiencia desejada
+
+A experiencia desejada e a de um estudante ou autor que:
+
+1. sobe material;
+2. recebe uma trilha organizada;
+3. navega pela trilha antes de materializar tudo;
+4. abre o ponto que deseja estudar;
+5. conversa localmente com a estrutura por meio da IA;
+6. vai construindo o curso enquanto o percorre.
 
 ## Horizonte
 
-O horizonte do AraLearn é claro: transformar informação abundante em percurso de aprendizagem estruturado, revisável, portável e controlado pelo usuário. É um horizonte técnico, didático e também político, no sentido amplo do termo. Técnico, porque depende de arquitetura e validação. Didático, porque depende de progressão, prática e mediação. Político, porque envolve autonomia, rastreabilidade, dependência de plataformas externas e o modo como uma tecnologia educacional trata os dados e os erros de quem aprende.
+O horizonte do produto hoje e claro:
 
-O projeto ainda está em evolução, mas sua identidade já é nítida. Ele não tenta competir com a web em abundância informacional. Tenta oferecer o que a web, sozinha, raramente oferece: forma estudável.
+- transformar informacao em percurso;
+- deslocar a IA para um papel auditavel;
+- manter os dados e a autoria do lado do usuario;
+- aproximar a pratica de estudo de uma construcao guiada, progressiva e revisavel.
+
+Em resumo: o AraLearn nao quer ser mais um gerador de texto. Quer ser um motor de percurso didatico.
