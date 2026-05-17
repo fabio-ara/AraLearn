@@ -1,19 +1,9 @@
-import { getResourceSchemas } from "../resources/cardResourceDefinitions.js";
 import { buildDidacticRepairPromptLines } from "../didactics/didacticGovernance.js";
 import { buildDidacticProductionPromptLines } from "../policies/didacticProductionPolicy.js";
+import { pickAllowedResourceSchemas } from "../didactics/microsequenceGenerationRepresentation.js";
 
 function compactJson(value, modelCapabilities = {}) {
   return modelCapabilities?.preferShortSchemas === true ? JSON.stringify(value || {}) : JSON.stringify(value || {}, null, 2);
-}
-
-function pickAllowedResourceSchemas(generationContract = {}) {
-  const allowed = generationContract?.resources?.allowedResourceTypes || [];
-  const contractSchemas = generationContract?.resources?.resourceSchemas || {};
-  const fallbackSchemas = getResourceSchemas(allowed);
-
-  return Object.fromEntries(
-    allowed.map((resourceType) => [resourceType, contractSchemas[resourceType] || fallbackSchemas[resourceType]]).filter(([, schema]) => schema)
-  );
 }
 
 export function buildGeneratedCardsRepairPrompt({
@@ -25,7 +15,7 @@ export function buildGeneratedCardsRepairPrompt({
   const expectedCardCount = generationContract?.output?.expectedCardCount || 0;
   const cardPlan = generationContract?.didacticPlan?.cardPlan || [];
   const allowedResourceTypes = generationContract?.resources?.allowedResourceTypes || [];
-  const resourceSchemas = pickAllowedResourceSchemas(generationContract);
+  const resourceSchemas = pickAllowedResourceSchemas(generationContract?.resources || {});
   const studyTrackPolicy = generationContract?.studyTrackPolicy || null;
   const productionLines = buildDidacticProductionPromptLines({
     weakModelMode: true,

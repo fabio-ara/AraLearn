@@ -1,6 +1,7 @@
+import { getMicrosequenceCardCount } from "../types/microsequenceSizes.js";
 import { getMicrosequenceType } from "../types/microsequenceTypes.js";
-import { getResourceSchemas, listGenerationResourceDefinitions } from "./cardResourceDefinitions.js";
-import { resolveWeakModelRepresentationPolicy } from "../didactics/resourceRepresentationPolicy.js";
+import { getResourceSchemas, listGenerationResourceDefinitions } from "../resources/cardResourceDefinitions.js";
+import { resolveWeakModelRepresentationPolicy } from "./resourceRepresentationPolicy.js";
 
 function uniqueKnown(items = [], knownIds = new Set()) {
   const seen = new Set();
@@ -84,12 +85,13 @@ export function buildResourceSelectorState({
     resolvedTypeId: type?.id || "simple",
     userSelectedExtraResourceTypes
   });
+  const knownIds = new Set(resourceCatalog.map((resource) => resource.id));
   const base = new Set(
-    uniqueKnown(type?.baseResourceTypes || [], new Set(resourceCatalog.map((resource) => resource.id))).filter((resourceType) =>
+    uniqueKnown(type?.baseResourceTypes || [], knownIds).filter((resourceType) =>
       representationPolicy.safeAllowedResourceTypes.includes(resourceType)
     )
   );
-  const extras = new Set(uniqueKnown(userSelectedExtraResourceTypes, new Set(resourceCatalog.map((resource) => resource.id))));
+  const extras = new Set(uniqueKnown(userSelectedExtraResourceTypes, knownIds));
   return resourceCatalog.map((resource) => {
     const decision = representationPolicy.resourceDecisions.find((item) => item.resourceType === resource.id);
     const policyAllowed = representationPolicy.safeAllowedResourceTypes.includes(resource.id);
@@ -102,4 +104,59 @@ export function buildResourceSelectorState({
       policyReason: decision?.reason || ""
     };
   });
+}
+
+export function pickAllowedResourceSchemas(
+  resourceEnvelope = {},
+  { additionalResourceTypes = [], resourceCatalog = listGenerationResourceDefinitions() } = {}
+) {
+  const knownIds = new Set(resourceCatalog.map((item) => item.id));
+  const allowed = uniqueKnown(
+    [...(resourceEnvelope.allowedResourceTypes || []), ...additionalResourceTypes],
+    knownIds
+  );
+  const declaredSchemas = resourceEnvelope.effectiveResourceSchemas || resourceEnvelope.resourceSchemas || {};
+  const fallbackSchemas = getResourceSchemas(allowed);
+
+  return Object.fromEntries(
+    allowed.map((resourceType) => [resourceType, declaredSchemas[resourceType] || fallbackSchemas[resourceType]]).filter(([, schema]) => schema)
+  );
+}
+
+export function buildMicrosequenceGenerationRepresentation({
+  planningContract,
+  validatedPlan,
+  resourceCatalog = listGenerationResourceDefinitions()
+}) {
+  const plan = validatedPlan?.plan || validatedPlan || {};
+  const type = getMicrosequenceType(plan.typeId);
+  const cardCount = getMicrosequenceCardCount(plan.sizeId);
+  const resourceEnvelope = resolveResourcesForGenerationPlan({
+    resolvedMicrosequenceTypeId: plan.typeId,
+    lessonAllowedResourceTypes: planningContract?.context?.lesson?.resourceTags || [],
+    lessonGuidance: planningContract?.context?.lesson || {},
+    lessonSourceGuideStructured: planningContract?.context?.lesson?.sourceGuideStructured || {},
+    modelCapabilities: planningContract?.model?.capabilities || {},
+    userSelectedExtraResourceTypes: planningContract?.request?.userSelectedExtraResourceTypes || [],
+    planSelectedExtraResourceTypes: plan.selectedExtraResourceTypes,
+    resourceCatalog
+  });
+
+  return {
+    request: {
+      typeId: plan.typeId,
+      sizeId: plan.sizeId,
+      cardCount
+    },
+    didacticPlan: {
+      microsequenceGoal: plan.microsequenceGoal,
+      typeId: plan.typeId,
+      typeLabel: type?.label || plan.typeId,
+      cardPlan: plan.cardPlan
+    },
+    resources: {
+      ...resourceEnvelope,
+      effectiveResourceSchemas: pickAllowedResourceSchemas(resourceEnvelope, { resourceCatalog })
+    }
+  };
 }

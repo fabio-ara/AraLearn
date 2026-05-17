@@ -9,7 +9,7 @@ import { buildMicrosequenceGenerationContract } from "../src/generation/contract
 import { buildMicrosequenceGenerationPrompt } from "../src/generation/prompts/buildMicrosequenceGenerationPrompt.js";
 import { getModelCapabilities } from "../src/generation/providers/modelCapabilities.js";
 import { assertUserSelectedResourcesAllowed, resolveWeakModelRepresentationPolicy } from "../src/generation/didactics/resourceRepresentationPolicy.js";
-import { resolveResourcesForGenerationPlan, buildResourceSelectorState } from "../src/generation/resources/resolveResourcesForGenerationPlan.js";
+import { resolveResourcesForGenerationPlan, buildResourceSelectorState } from "../src/generation/didactics/microsequenceGenerationRepresentation.js";
 import { validateGeneratedCardsStructural } from "../src/generation/validation/validateGeneratedCardsStructural.js";
 import { validateGeneratedCardsDidactic } from "../src/generation/validation/validateGeneratedCardsDidactic.js";
 import { validateGeneratedCardsSourceGrounding } from "../src/generation/validation/validateGeneratedCardsSourceGrounding.js";

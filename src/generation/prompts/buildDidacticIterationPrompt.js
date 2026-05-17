@@ -1,16 +1,8 @@
 import { buildDidacticProductionPromptLines } from "../policies/didacticProductionPolicy.js";
+import { pickAllowedResourceSchemas } from "../didactics/microsequenceGenerationRepresentation.js";
 
 function compactJson(value, multiline = true) {
   return multiline ? JSON.stringify(value || {}, null, 2) : JSON.stringify(value || {});
-}
-
-function pickAllowedResourceSchemas(generationContract = {}, iterationPlan = {}) {
-  const allowed = new Set([
-    ...(generationContract?.resources?.allowedResourceTypes || []),
-    ...((iterationPlan?.cardPlan || []).map((item) => item.resourceType).filter(Boolean))
-  ]);
-  const schemas = generationContract?.resources?.effectiveResourceSchemas || generationContract?.resources?.resourceSchemas || {};
-  return Object.fromEntries([...allowed].map((resourceType) => [resourceType, schemas[resourceType]]).filter(([, schema]) => schema));
 }
 
 export function buildDidacticIterationPrompt({
@@ -68,7 +60,12 @@ export function buildDidacticIterationPrompt({
     compactJson(iterationPlan?.cardPlan || [], pretty),
     "",
     "Schemas permitidos:",
-    compactJson(pickAllowedResourceSchemas(generationContract, iterationPlan), pretty),
+    compactJson(
+      pickAllowedResourceSchemas(generationContract?.resources || {}, {
+        additionalResourceTypes: (iterationPlan?.cardPlan || []).map((item) => item.resourceType).filter(Boolean)
+      }),
+      pretty
+    ),
     ...studyTrackLines,
     "",
     "Cards atuais a preservar ou revisar:",
