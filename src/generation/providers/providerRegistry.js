@@ -1,5 +1,6 @@
 import { createCodexCliProvider } from "./codexCliProvider.js";
 import { createFakeProvider } from "./fakeProvider.js";
+import { createGeminiProvider } from "./geminiProvider.js";
 
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -33,6 +34,7 @@ export function createDefaultProviderRegistry(options = {}) {
   return createProviderRegistry({
     providers: [
       createFakeProvider(options.fakeProvider || {}),
+      ...(options.gemini ? [createGeminiProvider(options.gemini)] : []),
       ...(options.codexCli ? [createCodexCliProvider(options.codexCli)] : [])
     ]
   });

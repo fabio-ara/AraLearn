@@ -114,6 +114,10 @@ import {
   isCodexLocalModel
 } from "../assist/codexLocalAssist.js";
 import { runAssist } from "../assist/runAssist.js";
+import { runCourseForge } from "../generation/courseForge/courseForgeRunner.js";
+import { createProviderRegistry, resolveProviderFromModelId } from "../generation/providers/providerRegistry.js";
+import { createCodexCliProvider } from "../generation/providers/codexCliProvider.js";
+import { createGeminiProvider } from "../generation/providers/geminiProvider.js";
 import { listMicrosequenceTypes } from "../generation/types/microsequenceTypes.js";
 import { buildLessonDomainCoverageReport } from "../generation/domain/lessonDomainModel.js";
 import { validateDidacticDepth } from "../generation/validation/validateDidacticDepth.js";
@@ -121,6 +125,12 @@ import { getLessonProgressCursor, removeLessonProgressEntries, writeLessonProgre
 import { detectJsonExchangeFormat } from "../storage/jsonExchange.js";
 import { createStarterContractCard, getContractCardKind, listContractAnswerValues } from "../contract/contractCard.js";
 import { isRunnableMicrosequence, resolveMicrosequenceRuntimeIncluded } from "../model/microsequenceStatus.js";
+import {
+  buildCourseForgePhaseModelOverrides,
+  resolveCourseForgeGenerationScope,
+  resolveCourseForgeNavigationTarget,
+  summarizeCourseForgeTopDownResult
+} from "./courseForgeGeneration.js";
 import {
   createCourse as createCourseDocument,
   createLesson as createLessonDocument,
@@ -5366,26 +5376,69 @@ export function createLessonEditorApp({ root, storage, editor }) {
         return;
       }
 
-      const result = await runAssist({
-        apiKey: state.assistConfig.apiKey,
-        model: state.assistConfig.model,
-        codexEndpoint: state.assistConfig.codexEndpoint,
-        codexToken: state.assistConfig.codexToken,
-        mode: generationMode,
-        microsequence:
-          generationMode === "generate-lesson-microsequences"
-            ? buildLessonMicrosequenceGenerationContext(scopeState)
-            : buildStructureGenerationContext(scopeState),
-        promptText,
-        attachments: state.generationDraft.attachments
-      });
+      let applied = null;
+      if (
+        generationMode === "generate-lesson-microsequences" ||
+        generationMode === "generate-and-reposition-lesson-microsequences"
+      ) {
+        const result = await runAssist({
+          apiKey: state.assistConfig.apiKey,
+          model: state.assistConfig.model,
+          codexEndpoint: state.assistConfig.codexEndpoint,
+          codexToken: state.assistConfig.codexToken,
+          mode: generationMode,
+          microsequence:
+            generationMode === "generate-lesson-microsequences"
+              ? buildLessonMicrosequenceGenerationContext(scopeState)
+              : buildStructureGenerationContext(scopeState),
+          promptText,
+          attachments: state.generationDraft.attachments
+        });
 
-      const applied =
-        generationMode === "generate-lesson-microsequences"
-          ? applyGeneratedLessonMicrosequences(result, scopeState)
-          : generationMode === "generate-and-reposition-lesson-microsequences"
-            ? applyGeneratedAndRepositionedLessonMicrosequences(result, scopeState)
-            : applyGeneratedStructure(result, scopeState);
+        applied =
+          generationMode === "generate-lesson-microsequences"
+            ? applyGeneratedLessonMicrosequences(result, scopeState)
+            : applyGeneratedAndRepositionedLessonMicrosequences(result, scopeState);
+      } else {
+        const selectedModel = String(state.assistConfig.model || "").trim() || "gemini-2.5-flash";
+        const providerId = resolveProviderFromModelId(selectedModel);
+        const provider = isCodexLocalModel(selectedModel)
+          ? createCodexCliProvider({
+              endpoint: state.assistConfig.codexEndpoint,
+              token: state.assistConfig.codexToken,
+              modelId: selectedModel || CODEX_LOCAL_MODEL_ID
+            })
+          : createGeminiProvider({
+              apiKey: state.assistConfig.apiKey,
+              modelId: selectedModel || "gemini-2.5-flash"
+            });
+        const courseForgeResult = await runCourseForge({
+          intent: {
+            scope: resolveCourseForgeGenerationScope(scopeState),
+            promptText,
+            attachments: state.generationDraft.attachments,
+            phaseModelOverrides: buildCourseForgePhaseModelOverrides(selectedModel),
+            selectedTopDownProfileId: isCodexLocalModel(selectedModel) ? "codex_all" : "custom"
+          },
+          projectDocument: state.project,
+          providerRegistry: createProviderRegistry({ providers: [provider] }),
+          providerId
+        });
+        storage.saveProject(courseForgeResult.projectDocument);
+        createStructureVersionFromProject(courseForgeResult.projectDocument, getCurrentStructureVersionReference(), {
+          operationType: "generated"
+        });
+        setProject(courseForgeResult.projectDocument);
+        applied = {
+          ...summarizeCourseForgeTopDownResult(courseForgeResult),
+          ...resolveCourseForgeNavigationTarget({
+            projectDocument: courseForgeResult.projectDocument,
+            patch: courseForgeResult.patch,
+            scopeState
+          })
+        };
+      }
+
       applySelection({
         courseKey: applied.courseKey,
         moduleKey: applied.moduleKey || null,
