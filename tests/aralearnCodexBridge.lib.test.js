@@ -4,7 +4,6 @@ import assert from "node:assert/strict";
 import {
   buildAttachmentPromptSection,
   buildCodexArgs,
-  buildLessonMicrosequencesPrompt,
   buildTopDownPrompt,
   extractJsonFromText
 } from "../scripts/aralearnCodexBridge.lib.mjs";
@@ -31,17 +30,6 @@ test("buildTopDownPrompt reforça que não deve gerar cards nem microssequência
 
   assert.match(prompt, /Não gere cards\./);
   assert.match(prompt, /Não gere microssequências\./);
-});
-
-test("buildLessonMicrosequencesPrompt reforça que não deve gerar cards", () => {
-  const prompt = buildLessonMicrosequencesPrompt({
-    context: {
-      lessonTitle: "Lição"
-    },
-    promptText: "Gere microssequências."
-  });
-
-  assert.match(prompt, /Não gere cards\./);
 });
 
 test("buildCodexArgs monta o template default exec {prompt}", () => {

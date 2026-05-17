@@ -38,19 +38,15 @@ Isso significa que a geração não deve ser lida como evento isolado. Ela é um
 
 O AraLearn usa IA em dois pontos centrais, mas com objetivos diferentes.
 
-Na lição, a IA pode sugerir microssequências draft. Nesse nível, o foco é organização do percurso, não redação dos cards. O sistema pode considerar `sourceGuideStructured`, `domainMap`, cobertura já existente e risco de redundância.
+Na lição, a IA já opera no fluxo estrutural do `CourseForge`. Nesse nível, o sistema pode revisar a governança local, planejar microssequências e compilar cards quando o pedido exigir, sempre dentro do escopo da lição e com auditoria local antes do patch. O sistema considera `sourceGuideStructured`, `domainMap`, cobertura já existente, sinais de prática e risco de redundância.
 
 No painel da microssequência, a IA atua sobre cards. Aqui o objetivo já é muito mais localizado: explicar, demonstrar, praticar, consolidar ou revisar um ponto delimitado pelo próprio percurso.
 
 ## O estado atual do top-down
 
-Hoje o produto tem duas camadas distintas de geração mais ampla, e a documentação precisa nomeá-las corretamente.
+Hoje o produto tem uma camada estrutural pública única para home, curso, módulo e lição: o painel contextual já aciona o `CourseForge` em todos esses escopos. O motor continua organizado por fases, com intenção própria, artefatos persistíveis, auditoria local e reparo antes da aplicação do patch.
 
-A primeira é a camada já pública na interface. Ela aparece no painel contextual de home, curso e módulo para gerar estrutura, e na lição para gerar microssequências `draft` ou gerar e reposicionar essas microssequências. Essa é a trilha efetivamente visível ao usuário comum no app.
-
-A segunda é a camada `CourseForge`. Ela já existe no código e na suíte automatizada como motor top-down por fases, com intenção própria, artefatos persistíveis, auditoria local e reparo antes da aplicação do patch. Essa camada já vai além da estrutura: ela também alcança planejamento de lições, microssequências, cards e aderência mínima à fonte. No estado atual, ela já sustenta o painel público de geração estrutural, embora ainda não substitua toda a trilha contextual local da lição.
-
-Descrever esse ponto com precisão importa. Dizer que o AraLearn “já tem motor top-down completo” é verdadeiro se a referência for o estado interno do repositório e da suíte. Dizer que o usuário final “já opera toda a refatoração top-down pela interface” ainda seria exagero. O correto hoje é: o painel estrutural público já aciona o `CourseForge`, mas a geração contextual de microssequências e a edição local continuam em trilhas próprias.
+Descrever esse ponto com precisão importa. O correto hoje é: a trilha estrutural pública já foi consolidada no `CourseForge`; o workbench da microssequência continua existindo, mas como superfície local de edição e reparo de cards, não como motor estrutural paralelo da lição.
 
 No estado atual da ingestão, o fluxo estrutural já aceita texto simples e passa a priorizar `PDF` e `DOCX` como formatos reais de uso. O suporte inicial busca extrair texto utilizável com warnings rastreáveis quando a qualidade vier parcial, em vez de prometer leitura perfeita do layout original.
 

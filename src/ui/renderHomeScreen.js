@@ -430,8 +430,6 @@ function renderGeneratePane({ project, editorSupport, includeDismissActions = fa
     '<input data-field="generate-attachments" class="assist-attachment-input" type="file" multiple accept=".pdf,.txt,.md,.json,.csv,.html,.xml,.js,.ts,.py,.java,.c,.cpp,.doc,.docx,.ppt,.pptx,.rtf,.odt,.ods,.odp,text/*,application/pdf,application/json,application/xml">';
   const attachmentChips = renderGenerationAttachmentChips(draft.attachments);
   const hasScopedContext = draft.courseFixed || draft.moduleFixed || draft.lessonFixed;
-  const showMicrosequenceRepositionField = generationUiState.isLessonGenerationMode === true;
-
   return (
     '<section class="home-generate-pane">' +
     '<section class="clean-card generate-card">' +
@@ -485,15 +483,6 @@ function renderGeneratePane({ project, editorSupport, includeDismissActions = fa
       pressed: draft.lessonFixed === true,
       buttonDisabled: !generationUiState.lessonToggleEnabled
     }) +
-    (showMicrosequenceRepositionField
-      ? renderGenerateSingleOptionToggleField({
-          action: "toggle-generate-microsequence-reposition",
-          iconName: "reposition",
-          label: "Gerar e reposicionar microssequências",
-          value: draft.repositionMicrosequences ? "Gerar e reposicionar microssequências" : "",
-          pressed: draft.repositionMicrosequences === true
-        })
-      : "") +
     '<div class="generate-divider"></div>' +
     '<label class="field generate-icon-field generate-prompt-field">' +
     renderGenerateIconLabel("prompt", "Pedido, conteúdo ou orientação") +

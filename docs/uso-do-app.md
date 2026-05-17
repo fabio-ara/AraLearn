@@ -30,11 +30,11 @@ O que não faz sentido na home é gerar diretamente os cards de um problema pont
 
 À medida que o usuário desce na hierarquia, o tipo de ação muda.
 
-No nível do curso, a geração por IA atua sobre módulos e lições. No nível do módulo, atua sobre lições. No nível da lição, atua sobre microssequências draft. Só no nível da microssequência a geração passa a atuar diretamente sobre os cards.
+No nível do curso, a geração por IA atua sobre módulos, lições e o planejamento descendente necessário. No nível do módulo, atua sobre lições e seus desdobramentos. No nível da lição, a geração estrutural já pode atualizar a própria lição, suas microssequências e os cards correspondentes pelo `CourseForge`. Só no nível da microssequência a operação deixa de ser top-down e passa a atuar diretamente sobre o workbench local de cards.
 
 Essa distribuição não é arbitrária. Ela existe para conter a operação no menor escopo útil. Quanto mais localizado o problema, mais localizado deve ser o pedido.
 
-Essa continua sendo a trilha pública principal da interface. A diferença é que o painel estrutural agora já usa o motor `CourseForge` no fluxo top-down, enquanto a geração de microssequências `draft` na lição e o workbench da microssequência seguem em trilha própria. Portanto, o guia de uso do app deve descrever com precisão essa divisão atual da superfície pública.
+Essa continua sendo a trilha pública principal da interface. O painel estrutural agora usa o motor `CourseForge` também no escopo da lição; o workbench da microssequência continua existindo, mas como superfície local de edição e reparo, não como continuação de um branch estrutural legado.
 
 ## A lição como centro da orientação
 
@@ -51,20 +51,11 @@ Na prática, isso significa que a qualidade da geração depende fortemente da q
 
 Por isso, antes de exigir bons resultados da IA, convém verificar se a lição já explicita meta, notação, confusões prováveis e formatos didáticos coerentes com o que se pretende ensinar.
 
-## Gerar microssequências na lição
+## Gerar estrutura na lição
 
-Na tela da lição, o usuário pode pedir geração de microssequências ou geração com reposicionamento. Esse passo ainda não escreve os cards. Ele produz rascunhos.
+Na tela da lição, o painel contextual de geração já opera no fluxo estrutural único. Isso significa que o pedido pode atualizar a governança da lição, criar ou revisar microssequências e, quando o escopo pedir, compilar cards no mesmo ciclo top-down.
 
-Esses rascunhos:
-
-- entram na árvore real da lição;
-- nascem fora do estudo;
-- não abrem automaticamente o painel da microssequência;
-- podem carregar metadados didáticos quando a lição já dispõe de mapa de domínio.
-
-O objetivo desse nível não é redigir o material final, mas estruturar a trilha da lição: que microssequências faltam, que lacunas ainda existem, que sequência precisa ser reorganizada.
-
-Quando a lição já traz `domainMap`, esse passo também pode considerar itens ainda não cobertos, prática insuficiente, variação fraca e risco de redundância. Isso não transforma a geração em “planejamento automático perfeito”; apenas dá ao app memória local mais forte para decidir onde faz sentido abrir novos rascunhos.
+O objetivo desse nível continua sendo estruturar a trilha da lição no menor escopo útil. A diferença é que o app não interrompe mais esse fluxo em um branch separado de rascunhos. Quando a lição já traz `domainMap`, `sourceGuideStructured` e sinais locais de cobertura, o `CourseForge` usa esses dados para decidir lacunas, progressão, prática, contraste e risco de redundância antes de aplicar o patch.
 
 ## O painel da microssequência
 
@@ -91,7 +82,7 @@ Do ponto de vista do usuário, isso significa que a geração não é um salto �
 
 No modo de estudo, o AraLearn considera apenas material pronto para execução. Isso significa que:
 
-- microssequências `draft` ficam fora do estudo;
+- microssequências `draft` continuam fora do estudo quando existirem;
 - microssequências com `included: false` também ficam fora do estudo;
 - o progresso é salvo localmente por caminho completo da lição.
 

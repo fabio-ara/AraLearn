@@ -258,17 +258,39 @@ test("normalizeComposeResult e normalizeEditResult preservam contrato público",
   assert.equal(edited.say, "Conteúdo revisado.");
 });
 
-test("planejamento estrutural do Gemini continua usando responseJsonSchema nativo", async () => {
+test("planejamento estrutural top-down do Gemini continua usando responseJsonSchema nativo", async () => {
   const originalFetch = globalThis.fetch;
   const calls = [];
   globalThis.fetch = async (_url, options = {}) => {
     calls.push(JSON.parse(options.body));
     return makeGeminiTextResponse(
       JSON.stringify({
-        microsequences: [
-          { title: "Base de Git" },
-          { title: "Preparar arquivos" }
-        ]
+        course: {
+          title: "Programação",
+          description: "Curso introdutório.",
+          modules: [
+            {
+              title: "Git",
+              description: "Módulo inicial.",
+              lessons: [
+                {
+                  title: "Primeiros comandos",
+                  description: "Aprender comandos básicos.",
+                  sourceGuideStructured: {
+                    lessonGoal: "Executar os comandos básicos."
+                  }
+                },
+                {
+                  title: "Fluxo básico",
+                  description: "Entender o fluxo principal.",
+                  sourceGuideStructured: {
+                    lessonGoal: "Aplicar o fluxo básico."
+                  }
+                }
+              ]
+            }
+          ]
+        }
       })
     );
   };
@@ -276,20 +298,19 @@ test("planejamento estrutural do Gemini continua usando responseJsonSchema nativ
   try {
     const result = await runGeminiAssist({
       apiKey: "chave",
-      mode: "generate-lesson-microsequences",
+      mode: "generate-top-down-structure",
       microsequence: {
-        actionLabel: "criar microssequências draft nesta lição",
+        actionLabel: "criar/atualizar esta lição e suas microssequências",
         courseTitle: "Programação",
         moduleTitle: "Git",
-        lessonTitle: "Primeiros comandos",
-        existingMicrosequences: []
+        lessonTitle: "Primeiros comandos"
       },
-      promptText: "Monte uma escada inicial de microssequências."
+      promptText: "Monte a estrutura inicial da lição."
     });
 
     assert.ok(calls[0].generationConfig.responseJsonSchema);
     assert.equal(calls[0].generationConfig.responseMimeType, "application/json");
-    assert.equal(result.microsequences.length, 2);
+    assert.equal(result.course.modules[0].lessons.length, 2);
   } finally {
     globalThis.fetch = originalFetch;
   }

@@ -5,7 +5,6 @@ import process from "node:process";
 import {
   buildAttachmentPromptSection,
   buildCodexArgs,
-  buildLessonMicrosequencesPrompt,
   buildTopDownPrompt,
   extractJsonFromText,
   normalizePort,
@@ -172,8 +171,6 @@ const server = http.createServer(async (request, response) => {
     if (!prompt) {
       if (mode === "generate-top-down-structure") {
         prompt = buildTopDownPrompt(payload);
-      } else if (mode === "generate-lesson-microsequences") {
-        prompt = buildLessonMicrosequencesPrompt(payload);
       } else {
         respondJson(response, 400, {
           ok: false,

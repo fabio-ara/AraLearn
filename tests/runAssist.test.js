@@ -17,7 +17,10 @@ test("runAssist roteia para Codex local quando o modelo é codex-cli-local", asy
         return {
           ok: true,
           result: {
-            microsequences: [{ title: "Sequência local", description: "", tags: [] }]
+            course: {
+              title: "Lição local",
+              modules: [{ title: "Módulo local", lessons: [{ title: "Sequência local" }] }]
+            }
           }
         };
       }
@@ -29,17 +32,17 @@ test("runAssist roteia para Codex local quando o modelo é codex-cli-local", asy
       model: "codex-cli-local",
       codexEndpoint: "http://127.0.0.1:4183/assist",
       codexToken: "segredo",
-      mode: "generate-lesson-microsequences",
+      mode: "generate-top-down-structure",
       microsequence: {
         lessonTitle: "Lição local"
       },
-      promptText: "Gere microssequências."
+      promptText: "Gere a estrutura."
     });
 
     assert.equal(capturedRequest.url, "http://127.0.0.1:4183/assist");
     assert.equal(capturedRequest.body.provider, "codex-cli-local");
     assert.equal(capturedRequest.body.context.lessonTitle, "Lição local");
-    assert.equal(result.microsequences[0].title, "Sequência local");
+    assert.equal(result.course.modules[0].lessons[0].title, "Sequência local");
   } finally {
     globalThis.fetch = originalFetch;
   }

@@ -1,7 +1,6 @@
 export {
   buildAttachmentPromptSection,
   buildCodexArgs,
-  buildLessonMicrosequencesPrompt,
   buildStandaloneBridgeSource,
   buildTopDownPrompt,
   extractJsonFromText,

@@ -190,47 +190,6 @@ export function buildTopDownPrompt(payload = {}) {
     .join("\n");
 }
 
-export function buildLessonMicrosequencesPrompt(payload = {}) {
-  const context = payload?.context && typeof payload.context === "object" ? payload.context : payload || {};
-
-  return [
-    "Você gera apenas microssequências draft para uma lição do AraLearn.",
-    "Responda somente JSON válido.",
-    "Não use Markdown.",
-    "Não explique.",
-    "Não gere curso, módulo ou lição.",
-    "Não gere cards.",
-    "Gere de 2 a 7 microssequências.",
-    "",
-    buildHierarchyLine("Curso", context.courseTitle),
-    buildHierarchyLine("Descrição breve do curso", context.courseDescription),
-    buildStructuredLine("Fonte-guia estruturada do curso", context.courseSourceGuideStructured),
-    buildHierarchyLine("Módulo", context.moduleTitle),
-    buildHierarchyLine("Descrição breve do módulo", context.moduleDescription),
-    buildStructuredLine("Fonte-guia estruturada do módulo", context.moduleSourceGuideStructured),
-    buildHierarchyLine("Lição", context.lessonTitle),
-    buildHierarchyLine("Descrição breve da lição", context.lessonDescription),
-    buildStructuredLine("Fonte-guia estruturada da lição", context.lessonSourceGuideStructured),
-    ...buildExistingMicrosequenceLines(context.existingMicrosequences || []),
-    "",
-    "Formato obrigatório:",
-    "{",
-    '  "microsequences": [',
-    "    {",
-    '      "title": "string",',
-    '      "description": "string",',
-    '      "tags": ["string"]',
-    "    }",
-    "  ]",
-    "}",
-    "",
-    "Pedido do usuário:",
-    normalizeText(payload?.promptText)
-  ]
-    .filter(Boolean)
-    .join("\n");
-}
-
 function tokenizeArgsTemplate(template) {
   const input = normalizeText(template);
   if (!input) {
@@ -501,44 +460,6 @@ function buildTopDownPrompt(payload = {}) {
   ].filter(Boolean).join("\\n");
 }
 
-function buildLessonMicrosequencesPrompt(payload = {}) {
-  const context = payload?.context && typeof payload.context === "object" ? payload.context : payload || {};
-  return [
-    "Você gera apenas microssequências draft para uma lição do AraLearn.",
-    "Responda somente JSON válido.",
-    "Não use Markdown.",
-    "Não explique.",
-    "Não gere curso, módulo ou lição.",
-    "Não gere cards.",
-    "Gere de 2 a 7 microssequências.",
-    "",
-    buildHierarchyLine("Curso", context.courseTitle),
-    buildHierarchyLine("Descrição breve do curso", context.courseDescription),
-    buildStructuredLine("Fonte-guia estruturada do curso", context.courseSourceGuideStructured),
-    buildHierarchyLine("Módulo", context.moduleTitle),
-    buildHierarchyLine("Descrição breve do módulo", context.moduleDescription),
-    buildStructuredLine("Fonte-guia estruturada do módulo", context.moduleSourceGuideStructured),
-    buildHierarchyLine("Lição", context.lessonTitle),
-    buildHierarchyLine("Descrição breve da lição", context.lessonDescription),
-    buildStructuredLine("Fonte-guia estruturada da lição", context.lessonSourceGuideStructured),
-    ...buildExistingMicrosequenceLines(context.existingMicrosequences || []),
-    "",
-    "Formato obrigatório:",
-    "{",
-    '  "microsequences": [',
-    "    {",
-    '      "title": "string",',
-    '      "description": "string",',
-    '      "tags": ["string"]',
-    "    }",
-    "  ]",
-    "}",
-    "",
-    "Pedido do usuário:",
-    normalizeText(payload?.promptText)
-  ].filter(Boolean).join("\\n");
-}
-
 function tokenizeArgsTemplate(template) {
   const input = normalizeText(template);
   if (!input) {
@@ -764,8 +685,6 @@ const server = http.createServer(async (request, response) => {
     if (!prompt) {
       if (mode === "generate-top-down-structure") {
         prompt = buildTopDownPrompt(payload);
-      } else if (mode === "generate-lesson-microsequences") {
-        prompt = buildLessonMicrosequencesPrompt(payload);
       } else {
         respondJson(response, 400, {
           ok: false,

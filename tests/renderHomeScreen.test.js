@@ -262,7 +262,7 @@ test("renderiza o painel contextual com curso fixado para geração estrutural d
   assert.match(html, /data-field="generate-course-input"[^>]+value="Lógica"/);
 });
 
-test("renderiza o painel contextual com lição fixada sem entrar no workbench de microssequência", () => {
+test("renderiza o painel contextual com lição fixada no fluxo único do CourseForge", () => {
   const html = renderGenerationPanelOverlay({
     project: {
       contract: "aralearn.contract",
@@ -304,96 +304,26 @@ test("renderiza o painel contextual com lição fixada sem entrar no workbench d
         lessonToggleEnabled: true,
         lessonInputEnabled: true,
         canSubmit: false,
-        actionLabel: "criar microssequências draft nesta lição",
+        actionLabel: "criar/atualizar esta lição e suas microssequências",
         actionHelpText: "",
-        actionSummary: "Microssequências draft sem cards",
-        actionIconName: "microsequence",
-        generationMode: "generate-lesson-microsequences",
-        isLessonMicrosequenceMode: true,
-        isLessonGenerationMode: true,
-        panelTitle: "Gerar microssequências",
+        actionSummary: "Lição, microssequências e cards",
+        actionIconName: "lesson",
+        generationMode: "generate-top-down-structure",
+        panelTitle: "Gerar estrutura",
         panelSubtitle: "",
-        submitLabel: "Gerar microssequências"
+        submitLabel: "Gerar estrutura"
       },
       modelOptions: [{ value: "gemini-2.5-flash", label: "Gemini 2.5 Flash" }],
       selectedModel: "gemini-2.5-flash"
     }
   });
 
-  assert.match(html, /Gerar microssequências/);
+  assert.match(html, /Gerar estrutura/);
   assert.match(html, /Ação prevista/);
-  assert.match(html, /Microssequências draft sem cards/);
-  assert.match(html, /data-action="toggle-generate-microsequence-reposition"/);
-  assert.match(html, /aria-label="Gerar e reposicionar microssequências"/);
+  assert.match(html, /Lição, microssequências e cards/);
   assert.match(html, /generate-action-summary-icon/);
   assert.match(html, /placeholder="Descreva o que você quer gerar neste escopo\."/);
   assert.match(html, /data-action="generate-structure"/);
-  assert.match(html, /aria-label="Gerar microssequências" title="Gerar microssequências"/);
+  assert.match(html, /aria-label="Gerar estrutura" title="Gerar estrutura"/);
   assert.doesNotMatch(html, /data-action="apply-assist"/);
-});
-
-test("renderiza o modo combinado de gerar e reposicionar microssequências na lição", () => {
-  const html = renderGenerationPanelOverlay({
-    project: {
-      contract: "aralearn.contract",
-      version: 1,
-      kind: "project",
-      courses: [
-        {
-          key: "course-logic",
-          title: "Lógica",
-          modules: [
-            {
-              key: "module-intro",
-              title: "Introdução",
-              lessons: [{ key: "lesson-prop", title: "Proposições", microsequences: [] }]
-            }
-          ]
-        }
-      ]
-    },
-    editorSupport: {
-      generationDraft: {
-        courseFixed: true,
-        moduleFixed: true,
-        lessonFixed: true,
-        repositionMicrosequences: true,
-        courseInput: "Lógica",
-        courseKey: "course-logic",
-        moduleInput: "Introdução",
-        moduleKey: "module-intro",
-        lessonInput: "Proposições",
-        lessonKey: "lesson-prop",
-        promptText: "",
-        attachments: []
-      },
-      generationUiState: {
-        modules: [{ key: "module-intro", title: "Introdução", lessons: [{ key: "lesson-prop", title: "Proposições" }] }],
-        lessons: [{ key: "lesson-prop", title: "Proposições" }],
-        moduleToggleEnabled: true,
-        moduleInputEnabled: true,
-        lessonToggleEnabled: true,
-        lessonInputEnabled: true,
-        canSubmit: false,
-        actionLabel: "gerar e reposicionar microssequências nesta lição",
-        actionHelpText: "",
-        actionSummary: "Gerar e reposicionar microssequências",
-        actionIconName: "reposition",
-        generationMode: "generate-and-reposition-lesson-microsequences",
-        isLessonMicrosequenceMode: true,
-        isLessonGenerationMode: true,
-        isLessonRepositionMode: true,
-        panelTitle: "Gerar microssequências",
-        panelSubtitle: "",
-        submitLabel: "Gerar e reposicionar"
-      },
-      modelOptions: [{ value: "gemini-2.5-flash", label: "Gemini 2.5 Flash" }],
-      selectedModel: "gemini-2.5-flash"
-    }
-  });
-
-  assert.match(html, /Gerar e reposicionar microssequências/);
-  assert.match(html, /data-action="toggle-generate-microsequence-reposition"[^>]+aria-pressed="true"/);
-  assert.match(html, /data-field="generate-microsequence-reposition-input"[^>]+readonly disabled/);
-  assert.match(html, /aria-label="Gerar e reposicionar" title="Gerar e reposicionar"/);
 });

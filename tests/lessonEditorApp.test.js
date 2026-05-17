@@ -87,24 +87,13 @@ test("resolveGenerationPanelScopeFromAction rejeita ação sem escopo suficiente
   );
 });
 
-test("resolveGenerationAssistMode usa geração contextual de microssequências quando a lição existe", () => {
+test("resolveGenerationAssistMode mantém a geração estrutural mesmo com lição resolvida", () => {
   assert.equal(
     resolveGenerationAssistMode({
       lessonFixed: true,
       hasResolvedLesson: true
     }),
-    "generate-lesson-microsequences"
-  );
-});
-
-test("resolveGenerationAssistMode usa modo combinado quando a lição existe e o reposicionamento está ligado", () => {
-  assert.equal(
-    resolveGenerationAssistMode({
-      lessonFixed: true,
-      hasResolvedLesson: true,
-      repositionMicrosequences: true
-    }),
-    "generate-and-reposition-lesson-microsequences"
+    "generate-top-down-structure"
   );
 });
 
