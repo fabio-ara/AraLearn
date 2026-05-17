@@ -23,7 +23,8 @@ import { compileCourseStructureToPatch, validateCourseForgePatch } from "../src/
 import { createCourseForgeArtifactsStore } from "../src/generation/courseForge/courseForgeArtifacts.js";
 import { canResumeCourseForgeRun, createCourseForgeRunState } from "../src/generation/courseForge/courseForgeRunState.js";
 import { runCourseForgeQueue } from "../src/generation/courseForge/courseForgeQueue.js";
-import { runCourseForge, buildDiagnosticsSummary, buildMicrosequenceRepairTask } from "../src/generation/courseForge/courseForgeRunner.js";
+import { runCourseForge, buildDiagnosticsSummary } from "../src/generation/courseForge/courseForgeRunner.js";
+import { buildMicrosequenceRepairTask } from "../src/generation/didactics/didacticRepairDirectives.js";
 import { applyCourseForgePatch } from "../src/generation/courseForge/courseForgeApply.js";
 import { buildCourseGraphArtifact, enrichLessonPlansFromSourceLedger } from "../src/generation/courseForge/courseForgeIr.js";
 import {
