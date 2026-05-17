@@ -3,14 +3,13 @@ import assert from "node:assert/strict";
 
 import {
   DEFAULT_ENGINE_PROFILE_ID,
-  getContractPack,
-  getDidacticPolicyConfig,
   getEngineProfileSeed,
-  getPromptPack,
   listEngineProfileSeeds,
-  listPromptPackGuardrails,
   resolveEngineProfile
-} from "../src/generation/config/engineConfigRegistry.js";
+} from "../src/generation/config/engineProfileRegistry.js";
+import { getDidacticPolicyConfig } from "../src/generation/config/didacticPolicyRegistry.js";
+import { getPromptPack, listPromptPackGuardrails } from "../src/generation/config/promptPackRegistry.js";
+import { getContractPack } from "../src/generation/config/contractPackRegistry.js";
 import { buildDidacticProductionPolicy } from "../src/generation/policies/didacticProductionPolicy.js";
 
 test("engine registry expõe perfil default de ADS e packs básicos", () => {

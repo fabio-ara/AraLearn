@@ -1,4 +1,4 @@
-import { listPromptPackGuardrails } from "../config/engineConfigRegistry.js";
+import { listPromptPackGuardrails } from "../config/promptPackRegistry.js";
 import { buildDidacticProductionPolicy } from "../policies/didacticProductionPolicy.js";
 
 function text(value) {

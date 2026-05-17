@@ -1,4 +1,4 @@
-import { getDidacticPolicyConfig } from "../config/engineConfigRegistry.js";
+import { getDidacticPolicyConfig } from "../config/didacticPolicyRegistry.js";
 
 export const DIDACTIC_PRODUCTION_POLICY_ID = "didacticProductionPolicy.v1";
 
