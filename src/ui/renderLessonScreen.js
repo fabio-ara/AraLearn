@@ -1478,17 +1478,19 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
     (semanticActionsPanel ? '<div class="generate-divider workbench-divider"></div>' : "") +
     plannedStatePanel +
     (plannedStatePanel ? '<div class="generate-divider workbench-divider"></div>' : "") +
-    '<label class="field generate-icon-field generate-prompt-field workbench-prompt-field">' +
+    '<label class="field generate-prompt-field workbench-prompt-field">' +
+    '<div class="generate-prompt-layout">' +
     '<div class="workbench-prompt-tools">' +
     renderInlineFieldIcon("prompt", promptLabel) +
     "</div>" +
+    '<div class="generate-prompt-content">' +
     '<textarea data-field="assist-prompt" class="assist-prompt" aria-label="' +
     escapeHtml(promptLabel) +
     '" title="' +
     escapeHtml(promptLabel) +
     '">' +
     escapeHtml(editorSupport.promptText || "") +
-    "</textarea></label>" +
+    "</textarea></div></div></label>" +
     attachmentInput +
     attachmentChips +
     '<div class="generate-divider workbench-divider"></div>' +

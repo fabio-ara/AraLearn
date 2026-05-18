@@ -5471,7 +5471,7 @@ button {
   flex: 0 0 132px;
   min-height: 0;
   max-height: none;
-  align-items: start;
+  align-items: stretch;
 }
 
 .workbench-prompt-tools {
@@ -5555,6 +5555,8 @@ button {
 }
 
 .workbench-editor-panel .assist-prompt {
+  display: block;
+  width: 100%;
   min-height: 118px;
   max-height: 38dvh;
   overflow-y: auto;
