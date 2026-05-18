@@ -7,6 +7,15 @@ const STRUCTURE_PHASES = Object.freeze([
   "plan_architecture",
   "audit_architecture",
   "repair_architecture",
+  "plan_lessons",
+  "build_course_graph",
+  "audit_course_graph",
+  "repair_course_graph",
+  "build_lesson_governance",
+  "plan_microsequences",
+  "audit_microsequences",
+  "repair_microsequences",
+  "audit_prerequisites",
   "compile_patch",
   "validate_patch",
   "apply_patch",
@@ -233,6 +242,17 @@ export function resolveCourseForgePhases(intent = {}) {
       return [...FULL_COURSE_PHASES];
     }
     return [...FULL_PROJECT_PHASES];
+  }
+  if (depth === "structure_only") {
+    if (level === "lesson") {
+      return [...FULL_LESSON_PHASES];
+    }
+    if (level === "module") {
+      return [...FULL_MODULE_PHASES];
+    }
+    if (level === "course") {
+      return [...FULL_COURSE_PHASES];
+    }
   }
   return [...STRUCTURE_PHASES];
 }

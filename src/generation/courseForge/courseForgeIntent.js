@@ -215,7 +215,7 @@ function inferRequestedGenerationDepth({ requestedDepth, operation, promptText, 
     return "tutor_only";
   }
   if (
-    /(so estrutura|só estrutura|apenas estrutura|somente estrutura|sem cards|sem atividades|nao gere conteudo|não gere conteúdo|nao gere microssequencias|não gere microssequências|so modulos|só módulos|so licoes|só lições)/.test(prompt)
+    /(so estrutura|só estrutura|apenas estrutura|somente estrutura|sem cards|sem atividades|nao gere conteudo|não gere conteúdo|so modulos|só módulos|so licoes|só lições)/.test(prompt)
   ) {
     return "structure_only";
   }

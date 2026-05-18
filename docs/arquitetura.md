@@ -38,6 +38,8 @@ Ele não deve pré-materializar a trilha inteira em cards. Isso preserva custo, 
 
 No motor, esse fluxo passa por fases como normalização de intenção, ingestão de fontes, construção de perfil avaliativo, planejamento, auditoria, reparo, compilação de patch, validação e aplicação.
 
+Internamente, `structure_only` significa estrutura sem cards, não estrutura sem microssequências. Portanto, esse roteiro ainda deve passar por planejamento, auditoria e reparo de microssequências. Um top-down que pare em curso, módulo e lição é incompleto para o produto atual, porque deixa o bottom-up sem a unidade didática que ele deve materializar.
+
 ## Bottom-up
 
 O bottom-up começa quando o usuário está dentro de uma microssequência.

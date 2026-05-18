@@ -20,7 +20,7 @@ test("extractJsonFromText aceita JSON embutido em texto", () => {
   assert.deepEqual(extractJsonFromText("Resposta:\n{\"ok\":true}\nFim"), { ok: true });
 });
 
-test("buildTopDownPrompt reforça que não deve gerar cards nem microssequências", () => {
+test("buildTopDownPrompt reforça estrutura com microssequências planejadas sem cards", () => {
   const prompt = buildTopDownPrompt({
     context: {
       courseTitle: "Curso"
@@ -29,7 +29,9 @@ test("buildTopDownPrompt reforça que não deve gerar cards nem microssequência
   });
 
   assert.match(prompt, /Não gere cards\./);
-  assert.match(prompt, /Não gere microssequências\./);
+  assert.match(prompt, /Gere curso, módulos, lições e microssequências planejadas\./);
+  assert.match(prompt, /"microsequences"/);
+  assert.doesNotMatch(prompt, /Não gere microssequências\./);
 });
 
 test("buildCodexArgs monta o template default exec {prompt}", () => {

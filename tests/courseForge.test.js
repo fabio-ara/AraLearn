@@ -345,7 +345,7 @@ test("phaseProfiles resolve perfis esperados", () => {
   assert.equal(resolvePhaseProfile("audit_prerequisites").temperature, 0);
 });
 
-test("phase resolution escolhe subfluxo estrutural e registra fases adiadas", () => {
+test("phase resolution mantém estrutura top-down até microssequências planejadas", () => {
   const structureIntent = resolveCourseForgeIntent({
     scope: { level: "project" },
     promptText: "Só estrutura."
@@ -359,18 +359,15 @@ test("phase resolution escolhe subfluxo estrutural e registra fases adiadas", ()
     promptText: "Quero o curso completo, pronto para estudar."
   });
 
-  assert.deepEqual(resolveCourseForgePhases(structureIntent), [
-    "normalize_intent",
-    "index_sources",
-    "build_assessment_profile",
-    "plan_architecture",
-    "audit_architecture",
-    "repair_architecture",
-    "compile_patch",
-    "validate_patch",
-    "apply_patch",
-    "final_report"
-  ]);
+  assert.equal(structureIntent.generationDepth, "structure_only");
+  assert.ok(resolveCourseForgePhases(structureIntent).includes("plan_lessons"));
+  assert.ok(resolveCourseForgePhases(structureIntent).includes("build_course_graph"));
+  assert.ok(resolveCourseForgePhases(structureIntent).includes("build_lesson_governance"));
+  assert.ok(resolveCourseForgePhases(structureIntent).includes("plan_microsequences"));
+  assert.ok(resolveCourseForgePhases(structureIntent).includes("audit_microsequences"));
+  assert.ok(resolveCourseForgePhases(structureIntent).includes("repair_microsequences"));
+  assert.ok(!resolveCourseForgePhases(structureIntent).includes("compile_card_plans"));
+  assert.ok(!resolveCourseForgePhases(structureIntent).includes("build_cards"));
   assert.ok(resolveCourseForgePhases(fullIntent).includes("plan_microsequences"));
   assert.ok(resolveCourseForgePhases(fullIntent).includes("build_course_graph"));
   assert.ok(resolveCourseForgePhases(fullIntent).includes("audit_course_graph"));
@@ -404,6 +401,12 @@ test("phase resolution escolhe subfluxo estrutural e registra fases adiadas", ()
   assert.ok(!resolveCourseForgePhases(moduleIntent).includes("plan_architecture"));
   assert.ok(resolveCourseForgePhases(courseIntent).includes("plan_microsequences"));
   assert.ok(!resolveCourseForgePhases(courseIntent).includes("plan_architecture"));
+  const structureLessonIntent = resolveCourseForgeIntent({
+    scope: { level: "lesson", courseKey: "c1", moduleKey: "m1", lessonKey: "l1" },
+    promptText: "Só estrutura, sem cards."
+  });
+  assert.ok(resolveCourseForgePhases(structureLessonIntent).includes("plan_microsequences"));
+  assert.ok(!resolveCourseForgePhases(structureLessonIntent).includes("plan_architecture"));
   const repairLessonIntent = resolveCourseForgeIntent({
     scope: { level: "lesson", courseKey: "c1", moduleKey: "m1", lessonKey: "l1" },
     promptText: "Revise esta lição."
@@ -2871,7 +2874,7 @@ test("queue preserva falha parcial sem apagar resultados válidos", async () => 
   assert.equal(result.results[2].value, 3);
 });
 
-test("top-down com fake provider gera curso completo em memória", async () => {
+test("structure_only gera trilha planejada até microssequências sem cards", async () => {
   const provider = createFakeProvider({
     script: {
       plan_architecture: [
@@ -2974,7 +2977,7 @@ test("top-down com fake provider gera curso completo em memória", async () => {
     intent: {
       operation: "create",
       scope: { level: "project" },
-      promptText: "Criar curso de lógica.",
+      promptText: "Criar só estrutura de lógica, sem cards.",
       attachments: [{ id: "src_1", name: "ementa.pdf", type: "application/pdf" }]
     },
     projectDocument: createProject(),
@@ -2988,7 +2991,7 @@ test("top-down com fake provider gera curso completo em memória", async () => {
   assert.equal(result.projectDocument.courses[0].modules[0].lessons[0].microsequences[0].included, false);
   assert.equal(result.projectDocument.courses[0].modules[0].lessons[0].microsequences[0].cards.length, 0);
   const finalReport = result.artifacts.find((item) => item.name === "final-report");
-  assert.equal(finalReport.content.executedGenerationDepth, "full_course");
+  assert.equal(finalReport.content.executedGenerationDepth, "structure_only");
   assert.equal(finalReport.content.deferredGenerationDepth, "");
   assert.equal(finalReport.content.deferredPhases.length, 0);
 

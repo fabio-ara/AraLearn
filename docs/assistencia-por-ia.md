@@ -20,6 +20,8 @@ No top-down, a IA ajuda a transformar intenção e fontes em estrutura:
 
 O objetivo é criar uma trilha revisável. Cards ficam para o bottom-up.
 
+Quando o motor usar a profundidade interna `structure_only`, ela deve ser lida como "sem cards". Ela não autoriza pular microssequências; a saída top-down válida precisa conter as etapas planejadas que o usuário comum vai abrir no runtime.
+
 ### Bottom-up
 
 No bottom-up, a IA atua dentro de uma microssequência.
