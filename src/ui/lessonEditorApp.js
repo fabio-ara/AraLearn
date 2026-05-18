@@ -2379,7 +2379,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
       ? microsequence.tags.slice(0, MAX_ASSIST_DEPENDENCIES)
       : [];
 
-    state.view = "microsequence-assist";
+    state.view = "microsequence";
     state.assistDraft.selectedMode = ASSIST_USER_MODES.EDIT_MICROSEQUENCE;
     state.assistDraft.activeWorkbenchPane = assistOpenState.activeWorkbenchPane;
     state.assistDraft.visualizedVersionId = assistOpenState.visualizedVersionId || "";
@@ -2807,7 +2807,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
       );
     } else {
       const cards =
-        state.view === "microsequence-assist"
+        state.view === "microsequence-assist" || state.view === "microsequence"
           ? getVisualizedMicrosequenceVersion()?.cards || []
           : findMicrosequence(
               state.project,
@@ -3548,7 +3548,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
     state.entityEditor = null;
     if (structureReference) {
       state.versionHistorySelectionKey = getStructureVersionEntry(structureReference)?.activeVersionId || "";
-    } else if (state.view === "microsequence-assist") {
+    } else if (state.view === "microsequence-assist" || state.view === "microsequence") {
       state.versionHistorySelectionKey = getMicrosequenceVersionEntry()?.activeVersionId || "";
     } else {
       const currentHistory = getCurrentCardHistory();
@@ -3617,7 +3617,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
   }
 
   function saveCurrentSnapshotFromHistory() {
-    if (state.view === "microsequence-assist") {
+    if (state.view === "microsequence-assist" || state.view === "microsequence") {
       saveCurrentMicrosequenceSnapshot();
       return;
     }
@@ -4109,7 +4109,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
     state.selection.moduleKey = moduleKey;
     state.selection.lessonKey = lessonKey;
     state.selection.microsequenceKey = microsequenceKey;
-    if (state.view === "microsequence-assist") {
+    if (state.view === "microsequence-assist" || state.view === "microsequence") {
       syncActiveMicrosequenceVersionFromProject();
     }
     ensureCurrentCardSnapshot();
@@ -4565,7 +4565,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
       const nextCard = cards[nextIndex] || null;
       state.selection.cardIndex = nextIndex;
       state.selection.cardKey = nextCard ? nextCard.key : null;
-      if (state.view === "microsequence-assist") {
+      if (state.view === "microsequence-assist" || state.view === "microsequence") {
         syncActiveMicrosequenceVersionFromProject();
       }
       ensureCurrentCardSnapshot();
@@ -4737,7 +4737,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
     setProject(nextProject);
     applySelectionByKeys(nextProject, state.selection);
     syncAssistDraft();
-    if (state.view === "microsequence-assist") {
+    if (state.view === "microsequence-assist" || state.view === "microsequence") {
       syncActiveMicrosequenceVersionFromProject();
     }
     if (state.view === "microsequence" || state.view === "microsequence-assist") {
@@ -5047,10 +5047,10 @@ export function createLessonEditorApp({ root, storage, editor }) {
         return;
       } else if (actionKey === "move-card-up") {
         nextProject = moveSelectedCard(-1);
-        state.view = "microsequence-assist";
+        state.view = "microsequence";
       } else if (actionKey === "move-card-down") {
         nextProject = moveSelectedCard(1);
-        state.view = "microsequence-assist";
+        state.view = "microsequence";
       } else if (actionKey === "create-course") {
         nextProject = structuralEditor.createCourse({
           title: "Novo curso"
@@ -5244,7 +5244,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
           lessonKey,
           microsequenceKey
         });
-        state.view = "microsequence-assist";
+        state.view = "microsequence";
       } else if (actionKey === "delete-card") {
         state.entityEditor = null;
         deleteCurrentCard();
@@ -5260,7 +5260,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
 
   function goBack() {
     if (
-      state.view === "microsequence-assist" &&
+      (state.view === "microsequence-assist" || state.view === "microsequence") &&
       getMicrosequenceEditBaseVersionId() &&
       getMicrosequenceVersionEntry()?.activeVersionId &&
       getMicrosequenceEditBaseVersionId() !== getMicrosequenceVersionEntry()?.activeVersionId
@@ -5275,9 +5275,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
     state.entityEditor = null;
 
     if (state.view === "microsequence") {
-      state.view = "lesson";
-      state.microsequenceMode = "play";
-    } else if (state.view === "microsequence-assist") {
       state.view = "lesson";
       state.microsequenceMode = "play";
     } else if (state.view === "lesson") {
@@ -6912,10 +6909,11 @@ export function createLessonEditorApp({ root, storage, editor }) {
     const assistCatalog = getAssistCatalog();
     const assistModeConfig = getAssistModeOptions();
     const entityEditorModel = makeEntityEditorModel(state);
-    const microsequenceVersionEntry = state.view === "microsequence-assist" ? getMicrosequenceVersionEntry() : null;
-    const visualizedMicrosequenceVersion = state.view === "microsequence-assist" ? getVisualizedMicrosequenceVersion() : null;
+    const isMicrosequenceWorkbenchView = state.view === "microsequence-assist" || state.view === "microsequence";
+    const microsequenceVersionEntry = isMicrosequenceWorkbenchView ? getMicrosequenceVersionEntry() : null;
+    const visualizedMicrosequenceVersion = isMicrosequenceWorkbenchView ? getVisualizedMicrosequenceVersion() : null;
     const visualizedMicrosequenceVersionId = visualizedMicrosequenceVersion?.id || "";
-    const pendingGeneratedVersion = state.view === "microsequence-assist" ? getPendingGeneratedMicrosequenceVersion() : null;
+    const pendingGeneratedVersion = isMicrosequenceWorkbenchView ? getPendingGeneratedMicrosequenceVersion() : null;
     const pendingGeneratedVersionVisible =
       Boolean(pendingGeneratedVersion) &&
       (!visualizedMicrosequenceVersionId || visualizedMicrosequenceVersionId === pendingGeneratedVersion?.id);
@@ -6966,7 +6964,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
           entry: structureVersionEntry,
           versionId: state.versionCompareSelectionKey || getSelectedStructureVersionId()
         })
-        : state.view === "microsequence-assist" && state.versionCompareOpen
+        : isMicrosequenceWorkbenchView && state.versionCompareOpen
           ? buildMicrosequenceVersionComparisonForVersion({
             versions: microsequenceVersionEntry?.versions || [],
             versionId: state.versionCompareSelectionKey || visualizedMicrosequenceVersionId || microsequenceVersionEntry?.activeVersionId || "",
@@ -7080,15 +7078,15 @@ export function createLessonEditorApp({ root, storage, editor }) {
       structureVersionEntry.versions.findIndex((item) => item.id === structureVersionEntry.activeVersionId) > 0;
     const versionHistoryTitle = structureVersionReference
       ? structureHistoryTitle
-      : state.view === "microsequence-assist"
+      : isMicrosequenceWorkbenchView
         ? "Snapshots da microssequência"
         : "Versões do card";
     const versionHistoryItems = structureVersionReference
       ? orderHistoryVersions(structureHistoryVersions)
-      : state.view === "microsequence-assist"
+      : isMicrosequenceWorkbenchView
         ? orderHistoryVersions(microsequenceHistoryVersions)
         : historyVersions;
-    const versionHistoryEmptyLabel = structureVersionReference || state.view === "microsequence-assist" ? "Sem snapshots locais ainda." : "Sem versões anteriores.";
+    const versionHistoryEmptyLabel = structureVersionReference || isMicrosequenceWorkbenchView ? "Sem snapshots locais ainda." : "Sem versões anteriores.";
     const versionHistoryFooter = structureVersionReference
       ? (() => {
         const activeVersion = structureVersionEntry?.versions?.find((item) => item.id === structureVersionEntry?.activeVersionId) || null;
@@ -7097,7 +7095,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
         }
         return `Em uso: ${getVersionDisplayId(activeVersion)} · ${formatOverlayTimestamp(activeVersion.updatedAt)}`;
       })()
-      : state.view === "microsequence-assist"
+      : isMicrosequenceWorkbenchView
         ? (() => {
           const activeVersion = microsequenceVersionEntry?.versions?.find((item) => item.id === microsequenceVersionEntry?.activeVersionId) || null;
           return activeVersion ? `Em uso: ${getVersionDisplayId(activeVersion)} · ${formatOverlayTimestamp(activeVersion.updatedAt)}` : "";
@@ -7130,7 +7128,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
           pendingGeneratedVersionActive: pendingGeneratedVersionVisible,
           versionActionsOpen: state.assistDraft.versionActionsOpen,
           canDeleteVisualizedMicrosequenceVersion:
-            state.view === "microsequence-assist" ? canDeleteMicrosequenceVersion(visualizedMicrosequenceVersionId) : false,
+            isMicrosequenceWorkbenchView ? canDeleteMicrosequenceVersion(visualizedMicrosequenceVersionId) : false,
           selectedDependencyKeys: state.assistDraft.dependencyKeys,
           pendingDependencyKey: state.assistDraft.pendingDependencyKey,
           assistModeOptions: assistModeConfig.options,
@@ -7190,7 +7188,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
             emptyLabel: versionHistoryEmptyLabel,
             versions: versionHistoryItems,
             footer: versionHistoryFooter,
-            primaryAction: structureVersionReference || state.view === "microsequence-assist"
+            primaryAction: structureVersionReference || isMicrosequenceWorkbenchView
               ? { action: "save-version-snapshot", label: "Gravar snapshot", icon: "+" }
               : null
           })
@@ -8489,7 +8487,9 @@ export function createLessonEditorApp({ root, storage, editor }) {
         assistPrompt instanceof HTMLTextAreaElement
           ? assistPrompt.value
           : state.assistDraft.promptText || "";
-      const canEditCurrentView = state.view === "microsequence-assist" && canEditCurrentMicrosequenceVersion();
+      const canEditCurrentView =
+        (state.view === "microsequence-assist" || state.view === "microsequence") &&
+        canEditCurrentMicrosequenceVersion();
       const canSubmitAssist =
         canEditCurrentView &&
         !!String(visibleTitleValue || "").trim() &&

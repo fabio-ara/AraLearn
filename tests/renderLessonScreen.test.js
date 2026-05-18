@@ -599,7 +599,7 @@ test("renderiza o painel da microssequência vazia em modo de geração de cards
     }
   });
 
-  assert.match(html, /<div class="topbar-title">Gerar primeiros cards<\/div>/);
+  assert.match(html, /<div class="topbar-title">Modelo cascata<\/div>/);
   assert.match(html, /data-action="open-version-history"/);
   assert.doesNotMatch(html, /data-action="save-microsequence-snapshot"/);
   assert.doesNotMatch(html, /data-action="open-version-compare"/);
@@ -729,10 +729,10 @@ test("renderiza a aba preview da microssequência dentro da superfície combinad
   assert.match(html, /workbench-surface-tab-icon/);
   assert.doesNotMatch(html, /editor-version-count-value">1\/1<\/span>/);
   assert.doesNotMatch(html, /data-action="open-version-compare"/);
-  assert.match(html, /generator-preview-stage/);
+  assert.match(html, /study-reader-screen/);
   assert.match(html, /runtime-card-title/);
-  assert.match(html, /class="chip-muted editor-card-stage-count" aria-label="Card 1 de 7" title="Card 1 de 7"/);
-  assert.match(html, /editor-card-count-value">1\/7<\/span>/);
+  assert.match(html, /class="study-reader-count" aria-label="Card 1 de 7" title="Card 1 de 7"/);
+  assert.match(html, /study-reader-count-value">1\/7<\/span>/);
   assert.doesNotMatch(html, /<label[^>]*>\s*Tags\s*<\/label>/);
 });
 
