@@ -126,7 +126,7 @@ export function renderAssistConfigPanel({
       ? "edit"
       : profileState === "dirty"
         ? "draft-state"
-        : "ready-state";
+        : "save";
   return (
     '<section class="assist-config-panel assist-config-panel-inline' +
     (inline ? " is-inline" : "") +

@@ -4148,24 +4148,24 @@ button {
 
 .assist-config-range-input::-webkit-slider-thumb {
   -webkit-appearance: none;
-  width: 18px;
-  height: 18px;
+  width: 24px;
+  height: 24px;
   margin-top: 5px;
+  border: 0;
   border-radius: 999px;
-  border: 2px solid rgba(241, 220, 171, 0.96);
-  background: linear-gradient(180deg, #3c2b18, #1d140d);
-  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.25);
+  background: transparent;
+  box-shadow: none;
   cursor: pointer;
   pointer-events: auto;
 }
 
 .assist-config-range-input::-moz-range-thumb {
-  width: 18px;
-  height: 18px;
+  width: 24px;
+  height: 24px;
+  border: 0;
   border-radius: 999px;
-  border: 2px solid rgba(241, 220, 171, 0.96);
-  background: linear-gradient(180deg, #3c2b18, #1d140d);
-  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.25);
+  background: transparent;
+  box-shadow: none;
   cursor: pointer;
   pointer-events: auto;
 }
@@ -4315,9 +4315,9 @@ button {
 }
 
 .assist-config-save-action {
-  border-color: rgba(214, 174, 96, 0.68);
-  background: linear-gradient(180deg, rgba(91, 68, 34, 0.98), rgba(53, 38, 21, 0.99));
-  color: #fff0cf;
+  border-color: rgba(238, 198, 95, 0.78);
+  background: linear-gradient(180deg, rgba(233, 190, 87, 0.98), rgba(195, 151, 55, 0.98));
+  color: #2b1a03;
 }
 
 .assist-config-save-action:disabled,
@@ -4327,21 +4327,30 @@ button {
 }
 
 .assist-config-icon-action.is-primary {
-  border-color: rgba(214, 174, 96, 0.68);
-  background: linear-gradient(180deg, rgba(91, 68, 34, 0.98), rgba(53, 38, 21, 0.99));
-  color: #fff0cf;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  border-color: rgba(238, 198, 95, 0.78);
+  background: linear-gradient(180deg, rgba(233, 190, 87, 0.98), rgba(195, 151, 55, 0.98));
+  color: #2b1a03;
 }
 
 .assist-config-status-action.is-saved {
-  color: #cdbba0;
+  border-color: rgba(78, 168, 113, 0.42);
+  background: linear-gradient(180deg, rgba(23, 44, 30, 0.98), rgba(16, 31, 22, 0.99));
+  color: #78d690;
 }
 
 .assist-config-status-action.is-dirty {
-  color: #f1d0a8;
+  border-color: rgba(204, 89, 89, 0.42);
+  background: linear-gradient(180deg, rgba(51, 21, 21, 0.98), rgba(35, 16, 16, 0.99));
+  color: #f08e8e;
 }
 
 .assist-config-status-action.is-editing {
-  color: #f3ddb0;
+  border-color: rgba(214, 174, 96, 0.5);
+  background: linear-gradient(180deg, rgba(56, 41, 19, 0.98), rgba(36, 27, 14, 0.99));
+  color: #f4d28a;
 }
 
 .assist-config-local-panel {
@@ -4393,8 +4402,8 @@ button {
 }
 
 .assist-config-action-icon {
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
 }
 
 .assist-config-status-chip {
