@@ -1760,7 +1760,8 @@ export async function runCourseForge({
       } else if (phaseId === "audit_source_adherence") {
         const sourceGroundingAudit = auditCourseForgeSourceAdherence({
           cardDrafts: context.cardDrafts || [],
-          sourceLedger: context.sourceLedger || []
+          sourceLedger: context.sourceLedger || [],
+          assessmentProfile: context.assessmentProfile || {}
         });
         context.sourceAdherenceAudit = sourceGroundingAudit;
         runState = updateCourseForgeRunState(runState, {
@@ -1868,7 +1869,8 @@ export async function runCourseForge({
           });
           let postRepairSourceAudit = auditCourseForgeSourceAdherence({
             cardDrafts: repairedDrafts,
-            sourceLedger: context.sourceLedger || []
+            sourceLedger: context.sourceLedger || [],
+            assessmentProfile: context.assessmentProfile || {}
           });
 
           if (hasBlockingIssues(postRepairSourceAudit)) {
@@ -1903,7 +1905,8 @@ export async function runCourseForge({
             repairedDrafts = repairedByProvider;
             postRepairSourceAudit = auditCourseForgeSourceAdherence({
               cardDrafts: repairedDrafts,
-              sourceLedger: context.sourceLedger || []
+              sourceLedger: context.sourceLedger || [],
+              assessmentProfile: context.assessmentProfile || {}
             });
           }
 

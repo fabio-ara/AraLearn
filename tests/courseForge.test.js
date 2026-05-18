@@ -26,7 +26,12 @@ import { runCourseForgeQueue } from "../src/generation/courseForge/courseForgeQu
 import { runCourseForge, buildDiagnosticsSummary } from "../src/generation/courseForge/courseForgeRunner.js";
 import { buildMicrosequenceRepairTask } from "../src/generation/didactics/didacticRepairDirectives.js";
 import { applyCourseForgePatch } from "../src/generation/courseForge/courseForgeApply.js";
-import { buildCourseGraphArtifact, enrichLessonPlansFromSourceLedger } from "../src/generation/courseForge/courseForgeIr.js";
+import {
+  buildAssessmentProfileArtifact,
+  buildCourseGraphArtifact,
+  buildSourceLedgerArtifact,
+  enrichLessonPlansFromSourceLedger
+} from "../src/generation/courseForge/courseForgeIr.js";
 import {
   constrainCourseForgeMicrosequencePlansToInterventionPlan,
   compileCourseForgeEditorInterventionPlan,
@@ -60,8 +65,8 @@ test("resolveCourseForgeIntent normaliza operação, escopo e anexos", () => {
   assert.equal(result.operation, "create");
   assert.equal(result.scope.courseKey, "curso-1");
   assert.equal(result.attachments[0].name, "ementa.pdf");
-  assert.equal(result.requestedGenerationDepth, "full_course");
-  assert.equal(result.generationDepth, "full_course");
+  assert.equal(result.requestedGenerationDepth, "structure_only");
+  assert.equal(result.generationDepth, "structure_only");
 });
 
 test("resolveCourseForgeIntent entende pedido de só estrutura", () => {
@@ -712,6 +717,49 @@ test("audit_source_adherence usa claims sintetizadas para bloquear grounding fra
   assert.ok(result.issues.some((item) => item.type === "weak_claim_grounding"));
 });
 
+test("audit_source_adherence endurece grounding parcial quando a cobranca vem de exercicios", () => {
+  const ledgerResult = validateCourseForgeSourceLedger([
+    {
+      id: "src_1",
+      title: "Lista 1",
+      spans: [
+        {
+          spanId: "src_1:span:1",
+          text: "Exercício: compare rede local e internet.",
+          instructionalRole: "exercise"
+        }
+      ]
+    }
+  ]);
+  const result = auditCourseForgeSourceAdherence({
+    sourceLedger: ledgerResult.sourceLedger,
+    assessmentProfile: {
+      hasExerciseEvidence: true,
+      examTypes: ["exercise_list"]
+    },
+    cardDrafts: [
+      {
+        contractId: "contract-1",
+        courseKey: "course-1",
+        moduleKey: "module-1",
+        lessonKey: "lesson-1",
+        microsequenceKey: "micro-1",
+        cards: [
+          { title: "Card 1", text: "Comparar rede local e internet." },
+          { title: "Card 2", text: "Resumo final." }
+        ],
+        sourceSupport: [
+          [{ sourceId: "src_1", spanId: "src_1:span:1", claimId: "src_1:span:1:claim:1", transformationState: "paraphrase", confidence: "high" }],
+          []
+        ]
+      }
+    ]
+  });
+
+  assert.equal(result.ok, false);
+  assert.ok(result.issues.some((item) => item.type === "partial_grounding"));
+});
+
 test("backstage vocabulary auditor detecta jargão visível", () => {
   const result = auditCourseForgeBackstageVocabulary({
     card: { title: "Pipeline", say: "Este pipeline usa JSON." },
@@ -1007,6 +1055,35 @@ test("enrichLessonPlansFromSourceLedger deriva governanca minima a partir de spa
   assert.equal(lessonPlans[0].sourceGuideStructured.commonErrors, "confundir rede local com internet.");
 });
 
+test("enrichLessonPlansFromSourceLedger usa exercicio como fallback conservador para lessonGoal", () => {
+  const sourceLedgerResult = validateCourseForgeSourceLedger([
+    {
+      id: "src_1",
+      title: "Lista 1",
+      spans: [
+        {
+          text: "Exercício: compare rede local e internet em dois cenários",
+          instructionalRole: "exercise"
+        }
+      ]
+    }
+  ]);
+
+  const [lessonPlan] = enrichLessonPlansFromSourceLedger({
+    lessonPlans: [
+      {
+        lessonKey: "lesson-1",
+        lessonTitle: "Redes básicas",
+        sourceGuideStructured: {},
+        domainMap: {}
+      }
+    ],
+    sourceLedger: sourceLedgerResult.sourceLedger
+  });
+
+  assert.equal(lessonPlan.sourceGuideStructured.lessonGoal, "compare rede local e internet em dois cenários.");
+});
+
 test("course graph deriva objetivo, erro comum e assessmentTargets de exercicio a partir do SourceLedger", () => {
   const sourceLedgerResult = validateCourseForgeSourceLedger([
     {
@@ -1055,6 +1132,86 @@ test("course graph deriva objetivo, erro comum e assessmentTargets de exercicio 
   const exerciseTarget = courseGraph.assessmentTargets.find((item) => item.targetKind === "exercise_prompt");
   assert.equal(exerciseTarget?.description, "compare rede local e internet em dois cenários.");
   assert.ok(Array.isArray(exerciseTarget?.sourceClaimRefs) && exerciseTarget.sourceClaimRefs.length >= 1);
+});
+
+test("buildAssessmentProfileArtifact prioriza exercicios das fontes sobre o prompt", () => {
+  const ledger = buildSourceLedgerArtifact({
+    attachments: [
+      {
+        id: "src_1",
+        name: "lista.md",
+        kind: "attachment",
+        textContent: "Exercício: compare LAN e Internet.\n\nQuestão 2: aplique os conceitos em um cenário.",
+        sourceBlocks: [
+          { blockType: "list_item", instructionalRole: "exercise", text: "Exercício: compare LAN e Internet." },
+          { blockType: "list_item", instructionalRole: "exercise", text: "Questão 2: aplique os conceitos em um cenário." }
+        ]
+      }
+    ],
+    promptText: "Professor rigoroso; quero algo objetivo."
+  });
+
+  const profile = buildAssessmentProfileArtifact({
+    intent: { promptText: "Professor rigoroso; quero algo objetivo." },
+    sourceLedger: ledger
+  });
+
+  assert.equal(profile.hasExerciseEvidence, true);
+  assert.ok(profile.examTypes.includes("exercise_list"));
+  assert.ok(profile.questionTypes.includes("exercise_driven"));
+  assert.equal(profile.evidenceMode, "exercise_anchored");
+});
+
+test("validateCourseForgeCourseGraph bloqueia falta de assessmentTargets quando a fonte e orientada por exercicios", () => {
+  const sourceLedgerResult = validateCourseForgeSourceLedger([
+    {
+      id: "src_1",
+      title: "Lista 1",
+      spans: [
+        {
+          text: "Exercício: compare rede local e internet em dois cenários.",
+          instructionalRole: "exercise"
+        }
+      ]
+    }
+  ]);
+
+  const result = validateCourseForgeCourseGraph({
+    courseGraph: {
+      graphId: "graph-1",
+      concepts: [
+        {
+          conceptId: "concept-lan",
+          label: "Rede local",
+          lessonKey: "lesson-1",
+          sourceRefs: ["src_1"]
+        }
+      ],
+      objectives: [],
+      prerequisiteEdges: [],
+      misconceptions: [],
+      assessmentTargets: [],
+      practiceVariants: []
+    },
+    lessonPlans: [
+      {
+        lessonKey: "lesson-1",
+        lessonTitle: "Redes básicas",
+        sourceGuideStructured: {
+          lessonGoal: "Comparar rede local e internet."
+        }
+      }
+    ],
+    assessmentProfile: {
+      questionTypes: ["exercise_driven"],
+      examTypes: ["exercise_list"],
+      hasExerciseEvidence: true
+    },
+    sourceLedger: sourceLedgerResult.sourceLedger
+  });
+
+  assert.equal(result.ok, false);
+  assert.ok(result.blockingIssues.some((item) => item.type === "missing_assessment_targets"));
 });
 
 test("enrichLessonPlansFromSourceLedger deriva domainMap e practiceVariants a partir de definicoes e exercicios", () => {
@@ -2810,7 +2967,7 @@ test("auditoria de alinhamento avaliativo cobra formato pedido explicitamente", 
   assert.equal(result.ok, false);
   assert.ok(result.issues.some((item) => item.type === "missing_multiple_choice"));
   assert.ok(result.issues.some((item) => item.type === "missing_gap_fill"));
-  assert.ok(result.warnings.some((item) => item.type === "missing_assessment_targets"));
+  assert.ok(result.issues.some((item) => item.type === "missing_assessment_targets"));
 });
 
 test("patch validation bloqueia operação fora do escopo", () => {

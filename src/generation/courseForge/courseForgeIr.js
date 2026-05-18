@@ -481,6 +481,15 @@ function deriveGuideValueFromInstructionalSpans(spans = [], instructionalRole = 
     .find((value) => value.length >= 8) || "";
 }
 
+function deriveGoalValueFromExerciseSpans(spans = []) {
+  return ensureTrailingSentence(
+    normalizeArray(spans)
+      .map((span) => stripInstructionalPrefix(span?.text, "exercise"))
+      .map(text)
+      .find((value) => value.length >= 8) || ""
+  );
+}
+
 function selectMatchingDomainItemIds(span = {}, items = []) {
   const spanTokens = tokenizeForMatch(text(span?.text));
   if (!spanTokens.length) {
@@ -505,27 +514,36 @@ export function enrichLessonPlansFromSourceLedger({ lessonPlans = [], sourceLedg
   const allowSingleLessonFallback = normalizedLessonPlans.length === 1;
   return normalizedLessonPlans.map((lessonPlan) => {
     const sourceGuideStructured = structuredClone(lessonPlan?.sourceGuideStructured || {});
+    const objectiveSpans = findRelevantInstructionalSpans({
+      lessonPlan,
+      sourceLedger,
+      instructionalRole: "objective",
+      allowSingleLessonFallback,
+      maxItems: 1
+    });
+    const misconceptionSpans = findRelevantInstructionalSpans({
+      lessonPlan,
+      sourceLedger,
+      instructionalRole: "misconception",
+      allowSingleLessonFallback,
+      maxItems: 1
+    });
+    const exerciseSpans = findRelevantInstructionalSpans({
+      lessonPlan,
+      sourceLedger,
+      instructionalRole: "exercise",
+      allowSingleLessonFallback,
+      maxItems: 4
+    });
     const derivedGoal = !text(sourceGuideStructured?.lessonGoal)
       ? deriveGuideValueFromInstructionalSpans(
-          findRelevantInstructionalSpans({
-            lessonPlan,
-            sourceLedger,
-            instructionalRole: "objective",
-            allowSingleLessonFallback,
-            maxItems: 1
-          }),
+          objectiveSpans,
           "objective"
-        )
+        ) || deriveGoalValueFromExerciseSpans(exerciseSpans)
       : "";
     const derivedCommonErrors = !text(sourceGuideStructured?.commonErrors)
       ? deriveGuideValueFromInstructionalSpans(
-          findRelevantInstructionalSpans({
-            lessonPlan,
-            sourceLedger,
-            instructionalRole: "misconception",
-            allowSingleLessonFallback,
-            maxItems: 1
-          }),
+          misconceptionSpans,
           "misconception"
         )
       : "";
@@ -547,13 +565,6 @@ export function enrichLessonPlansFromSourceLedger({ lessonPlans = [], sourceLedg
       instructionalRole: "example",
       allowSingleLessonFallback,
       maxItems: 3
-    });
-    const exerciseSpans = findRelevantInstructionalSpans({
-      lessonPlan,
-      sourceLedger,
-      instructionalRole: "exercise",
-      allowSingleLessonFallback,
-      maxItems: 4
     });
     const explicitDomainItems = normalizeArray(lessonPlan?.domainMap?.items).map((item) => structuredClone(item));
     const existingNormalizedLabels = new Set(explicitDomainItems.map((item) => normalizeForMatch(item?.label)));
@@ -770,6 +781,50 @@ function inferTeacherConventions(value = "", { instructionalRole = "" } = {}) {
   return conventions;
 }
 
+function ensureTrailingSentence(value = "") {
+  const normalized = text(value);
+  if (!normalized) {
+    return "";
+  }
+  return /[.!?]$/u.test(normalized) ? normalized : `${normalized}.`;
+}
+
+function isExerciseSpan(span = {}) {
+  return text(span?.instructionalRole) === "exercise"
+    || normalizeArray(span?.assessmentSignals).some((signal) => ["practice_prompt", "assessment_reference"].includes(text(signal)));
+}
+
+function hasExerciseEvidenceInSource(source = {}) {
+  return normalizeArray(source?.spans).some((span) => isExerciseSpan(span))
+    || normalizeArray(source?.teacherConventions).includes("exercise_block")
+    || normalizeArray(source?.assessmentSignals).includes("assessment_reference");
+}
+
+function summarizeSourceLedgerEvidence(sources = []) {
+  const normalizedSources = normalizeArray(sources);
+  const spans = listCourseForgeSourceSpans({ sources: normalizedSources });
+  const attachmentSources = normalizedSources.filter((source) => text(source?.kind) !== "user_instruction");
+  const promptSources = normalizedSources.filter((source) => text(source?.kind) === "user_instruction");
+  const exerciseSpans = spans.filter((span) => isExerciseSpan(span));
+  const exerciseSourceCount = attachmentSources.filter((source) => hasExerciseEvidenceInSource(source)).length;
+  const promptOnly = attachmentSources.length === 0 && promptSources.length > 0;
+  const evidenceMode = promptOnly
+    ? "prompt_only"
+    : exerciseSourceCount > 0
+      ? "exercise_anchored"
+      : attachmentSources.length > 0
+        ? "attachment_anchored"
+        : "empty";
+  return {
+    attachmentSourceCount: attachmentSources.length,
+    promptSourceCount: promptSources.length,
+    exerciseSpanCount: exerciseSpans.length,
+    exerciseSourceCount,
+    promptOnly,
+    evidenceMode
+  };
+}
+
 function chunkSourceText(value = "", maxLength = 320) {
   const normalized = text(value);
   if (!normalized) {
@@ -896,7 +951,7 @@ export function buildSourceLedgerArtifact({ attachments = [], promptText = "" } 
         baseAssessmentSignals: assessmentSignals,
         baseNotationSignals: notationSignals,
         baseTeacherConventions: teacherConventions,
-        confidence: bodyText ? "medium" : "low"
+        confidence: bodyText ? "high" : "low"
       })
     };
   });
@@ -923,10 +978,12 @@ export function buildSourceLedgerArtifact({ attachments = [], promptText = "" } 
         baseAssessmentSignals: inferAssessmentSignals(promptText),
         baseNotationSignals: inferNotationSignals(promptText),
         baseTeacherConventions: inferTeacherConventions(promptText),
-        confidence: "high"
+        confidence: sources.length ? "low" : "medium"
       })
     });
   }
+
+  const evidenceSummary = summarizeSourceLedgerEvidence(sources);
 
   return {
     ledgerId: "courseforge-source-ledger",
@@ -935,24 +992,32 @@ export function buildSourceLedgerArtifact({ attachments = [], promptText = "" } 
       sourceCount: sources.length,
       spanCount: listCourseForgeSourceSpans({ sources }).length,
       topicHints: unique(sources.flatMap((item) => item.extractedTopics)),
-      teacherSignalCount: sources.reduce((count, item) => count + normalizeArray(item.teacherConventions).length, 0)
+      teacherSignalCount: sources.reduce((count, item) => count + normalizeArray(item.teacherConventions).length, 0),
+      ...evidenceSummary
     }
   };
 }
 
 export function buildAssessmentProfileArtifact({ intent = {}, sourceLedger = null } = {}) {
   const sources = listCourseForgeSources(sourceLedger);
+  const attachmentSources = sources.filter((source) => text(source?.kind) !== "user_instruction");
+  const relevantSources = attachmentSources.length ? attachmentSources : sources;
+  const evidenceSummary = summarizeSourceLedgerEvidence(sources);
   const prompt = text(intent?.rawUserText || intent?.promptText);
   const teacherSignals = unique([
-    ...sources.flatMap((item) => item.teacherConventions || []),
-    ...inferTeacherConventions(prompt)
+    ...relevantSources.flatMap((item) => item.teacherConventions || []),
+    ...(attachmentSources.length ? [] : inferTeacherConventions(prompt))
   ]);
+  const spans = listCourseForgeSourceSpans({ sources: relevantSources });
+  const hasExerciseEvidence = evidenceSummary.exerciseSpanCount > 0 || spans.some((span) => isExerciseSpan(span));
   const questionTypes = unique([
     ...(teacherSignals.length ? ["teacher_signaled"] : []),
+    ...(hasExerciseEvidence ? ["exercise_driven"] : []),
     ...((/lacuna|completar/i.test(prompt) && ["gap_fill"]) || []),
     ...((/multipla escolha|múltipla escolha/i.test(prompt) && ["multiple_choice"]) || [])
   ]);
   const examTypes = unique([
+    ...(hasExerciseEvidence ? ["exercise_list"] : []),
     ...((/prova|avaliacao|avaliação/i.test(prompt) && ["exam"]) || []),
     ...((/lista|exercicio|exercício/i.test(prompt) && ["exercise_list"]) || [])
   ]);
@@ -961,11 +1026,17 @@ export function buildAssessmentProfileArtifact({ intent = {}, sourceLedger = nul
     examTypes,
     questionTypes,
     teacherSignals,
+    evidenceMode: evidenceSummary.evidenceMode,
+    hasExerciseEvidence,
     correctionCriteria: unique([
       ...(sources.some((item) => normalizeArray(item.notationSignals).length) ? ["terminological_precision"] : []),
-      ...(sources.some((item) => normalizeArray(item.assessmentSignals).length) ? ["source_adherence"] : [])
+      ...(sources.some((item) => normalizeArray(item.assessmentSignals).length) ? ["source_adherence"] : []),
+      ...(hasExerciseEvidence ? ["assessment_coverage"] : [])
     ]),
-    expectedPrecision: sources.some((item) => normalizeArray(item.notationSignals).length) ? "high" : "medium"
+    expectedPrecision:
+      sources.some((item) => normalizeArray(item.notationSignals).length) || /rigor|formal|notacao|notação/i.test(prompt)
+        ? "high"
+        : "medium"
   };
 }
 
@@ -1208,7 +1279,7 @@ export function buildCourseGraphArtifact({ architectureDraft = {}, lessonPlans =
       sourceLedger,
       instructionalRole: "exercise",
       allowSingleLessonFallback,
-      maxItems: 3
+      maxItems: 8
     }).forEach((span, index) => {
       const description = stripInstructionalPrefix(span?.text, "exercise");
       const normalizedDescription = normalizeForMatch(description);

@@ -374,12 +374,19 @@ export function auditCourseForgeCardDrafts({ cardDrafts = [], microsequenceContr
   };
 }
 
-export function auditCourseForgeSourceAdherence({ cardDrafts = [], sourceLedger = [] } = {}) {
+export function auditCourseForgeSourceAdherence({ cardDrafts = [], sourceLedger = [], assessmentProfile = {} } = {}) {
   const issues = [];
   const warnings = [];
   const sourceIds = listCourseForgeSources(sourceLedger).map((item) => text(item?.sourceId || item?.id)).filter(Boolean);
   const claimMap = buildCourseForgeSourceClaimMap(sourceLedger);
   const hasSources = sourceIds.length > 0;
+  const sourceSpans = listCourseForgeSourceSpans(sourceLedger);
+  const hasAssessmentPressure = assessmentProfile?.hasExerciseEvidence === true
+    || normalizeArray(assessmentProfile?.examTypes).some((examType) => ["exercise_list", "exam"].includes(text(examType)))
+    || sourceSpans.some((span) =>
+      text(span?.instructionalRole) === "exercise"
+      || normalizeArray(span?.assessmentSignals).some((signal) => ["practice_prompt", "assessment_reference"].includes(text(signal)))
+    );
 
   normalizeArray(cardDrafts).forEach((entry) => {
     let cardsWithRefs = 0;
@@ -475,15 +482,18 @@ export function auditCourseForgeSourceAdherence({ cardDrafts = [], sourceLedger 
         )
       );
     } else if (hasSources && cardsWithRefs < normalizeArray(entry?.cards).length) {
-      warnings.push(
-        makeAuditIssue(
-          entry,
-          "partial_grounding",
-          "Nem todos os cards carregam sourceRefs explícitos.",
-          "Verificar se a distribuição do grounding está suficiente.",
-          "warning"
-        )
+      const issue = makeAuditIssue(
+        entry,
+        "partial_grounding",
+        "Nem todos os cards carregam sourceRefs explícitos.",
+        "Distribuir grounding explícito por todos os cards que sustentam a cobrança da microssequência.",
+        hasAssessmentPressure ? "blocking" : "warning"
       );
+      if (hasAssessmentPressure) {
+        issues.push(issue);
+      } else {
+        warnings.push(issue);
+      }
     }
   });
 
@@ -1175,6 +1185,8 @@ export function auditCourseForgeAssessmentAlignment({ cardsFinal = [], assessmen
     /[`∧∨¬→↔=+\-*/]/u.test(`${text(card?.title)} ${text(card?.say)} ${text(card?.after)} ${text(card?.ask)}`)
   );
   const supportsGapFill = lessonPlans.some((lessonPlan) => normalizeArray(lessonPlan?.resourceTags).map(text).includes("block_gap_fill"));
+  const hasAssessmentPressure = assessmentProfile?.hasExerciseEvidence === true
+    || examTypes.some((examType) => ["exercise_list", "exam"].includes(text(examType)));
 
   if (questionTypes.includes("multiple_choice") && !hasMultipleChoice) {
     issues.push(
@@ -1203,15 +1215,18 @@ export function auditCourseForgeAssessmentAlignment({ cardsFinal = [], assessmen
   }
 
   if (examTypes.length && !hasAssessmentTargets) {
-    warnings.push(
-      makeAuditIssue(
-        {},
-        "missing_assessment_targets",
-        "Há sinais de prova ou lista avaliativa, mas o grafo não declarou assessmentTargets explícitos.",
-        "Projetar assessmentTargets no CourseGraph para governar melhor a cobrança.",
-        "warning"
-      )
+    const issue = makeAuditIssue(
+      {},
+      "missing_assessment_targets",
+      "Há sinais de prova ou lista avaliativa, mas o grafo não declarou assessmentTargets explícitos.",
+      "Projetar assessmentTargets no CourseGraph para governar melhor a cobrança.",
+      hasAssessmentPressure ? "blocking" : "warning"
     );
+    if (hasAssessmentPressure) {
+      issues.push(issue);
+    } else {
+      warnings.push(issue);
+    }
   }
 
   if (expectedPrecision === "high" && !hasNotationSensitiveCard) {

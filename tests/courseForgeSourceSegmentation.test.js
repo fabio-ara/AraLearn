@@ -34,3 +34,25 @@ test("buildSourceLedgerArtifact preserva blocos estruturados como spans distinto
   assert.ok(spans[1].teacherConventions.includes("exercise_block"));
   assert.ok(spans[3].teacherConventions.includes("teacher_note_block"));
 });
+
+test("buildSourceLedgerArtifact rebaixa o prompt quando ja existem anexos factuais", () => {
+  const ledger = buildSourceLedgerArtifact({
+    attachments: [
+      {
+        id: "src_1",
+        name: "lista.md",
+        mimeType: "text/markdown",
+        textContent: "Exercício: compare LAN e Internet.",
+        sourceBlocks: [
+          { blockType: "list_item", instructionalRole: "exercise", text: "Exercício: compare LAN e Internet." }
+        ]
+      }
+    ],
+    promptText: "O professor cobra rigor e quer objetividade."
+  });
+
+  const promptSource = ledger.sources.find((item) => item.sourceId === "user_instruction");
+  assert.equal(promptSource?.spans[0]?.confidence, "low");
+  assert.equal(ledger.summary.evidenceMode, "exercise_anchored");
+  assert.equal(ledger.summary.exerciseSpanCount, 1);
+});

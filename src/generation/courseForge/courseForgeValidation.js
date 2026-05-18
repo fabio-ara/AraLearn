@@ -1,6 +1,6 @@
 import { auditCourseForgeBackstageVocabulary } from "./courseForgeBackstageAudit.js";
 import { validateCourseForgePatch } from "./courseForgePatch.js";
-import { buildCourseForgeSourceClaimMap, listCourseForgeSourceClaims, listCourseForgeSources } from "./courseForgeSourceLedger.js";
+import { buildCourseForgeSourceClaimMap, listCourseForgeSourceClaims, listCourseForgeSourceSpans, listCourseForgeSources } from "./courseForgeSourceLedger.js";
 import { validateCourseForgeCardSourceRefs } from "./courseForgeSourceRefs.js";
 import { validateCourseForgeSourceLedger } from "./courseForgeSourceLedger.js";
 
@@ -31,6 +31,31 @@ function tokenizeForMatch(value = "") {
       .filter((item) => item.length >= 3)
       .filter((item) => !new Set(["para", "com", "uma", "das", "dos", "que", "por", "ser", "sao"]).has(item))
   )];
+}
+
+function hasExerciseAssessmentSignal(entry = {}) {
+  return text(entry?.instructionalRole) === "exercise"
+    || normalizeArray(entry?.assessmentSignals).some((signal) => ["practice_prompt", "assessment_reference"].includes(text(signal)))
+    || normalizeArray(entry?.teacherConventions).includes("exercise_block");
+}
+
+function findMatchingSourceSpans(queryValues = [], sourceSpans = [], { minimumOverlap = 1 } = {}) {
+  const queryTokens = [...new Set(normalizeArray(queryValues).flatMap((value) => tokenizeForMatch(value)).filter(Boolean))];
+  if (!queryTokens.length) {
+    return [];
+  }
+  return normalizeArray(sourceSpans)
+    .map((span) => ({
+      ...span,
+      overlap: [
+        ...new Set([
+          ...tokenizeForMatch(text(span?.text)),
+          ...normalizeArray(span?.topics).flatMap((value) => tokenizeForMatch(value))
+        ])
+      ].filter((token) => queryTokens.includes(token)).length
+    }))
+    .filter((span) => span.overlap >= minimumOverlap)
+    .sort((left, right) => right.overlap - left.overlap || text(left?.spanId).localeCompare(text(right?.spanId)));
 }
 
 function findMatchingSourceClaims(queryValues = [], sourceClaims = [], { minimumOverlap = null } = {}) {
@@ -174,6 +199,8 @@ export function validateCourseForgeArchitectureDraft({ architectureDraft = {}, s
   const warnings = [];
   const course = readArchitectureCourse(architectureDraft);
   const hasSources = listCourseForgeSources(sourceLedger).length > 0;
+  const sourceSpans = listCourseForgeSourceSpans(sourceLedger);
+  const hasExerciseEvidence = sourceSpans.some((span) => hasExerciseAssessmentSignal(span));
 
   if (!course) {
     blockingIssues.push(
@@ -278,6 +305,17 @@ export function validateCourseForgeArchitectureDraft({ architectureDraft = {}, s
             "missing_assessment_alignment",
             "Lição com pouca ancoragem explícita nas fontes disponíveis.",
             "Detalhar melhor foco, notação ou erros comuns.",
+            "warning"
+          )
+        );
+      }
+      if (hasExerciseEvidence && !text(guide?.commonErrors)) {
+        warnings.push(
+          makeArchitectureIssue(
+            lessonTarget,
+            "missing_common_errors",
+            "Há exercícios nas fontes, mas a lição não explicitou erros comuns prováveis.",
+            "Extrair ou sintetizar erros comuns mínimos a partir da cobrança e dos exercícios.",
             "warning"
           )
         );
@@ -390,6 +428,10 @@ export function validateCourseForgeCourseGraph({
   const conceptIds = new Set();
   const sourceClaims = listCourseForgeSourceClaims(sourceLedger);
   const sourceClaimMap = buildCourseForgeSourceClaimMap(sourceLedger);
+  const sourceSpans = listCourseForgeSourceSpans(sourceLedger);
+  const hasExerciseEvidence = sourceSpans.some((span) => hasExerciseAssessmentSignal(span))
+    || normalizeArray(assessmentProfile?.examTypes).includes("exercise_list")
+    || assessmentProfile?.hasExerciseEvidence === true;
 
   if (!text(graph.graphId)) {
     blockingIssues.push(
@@ -639,6 +681,16 @@ export function validateCourseForgeCourseGraph({
     const lessonTarget = `lesson:${lessonKey}`;
     const lessonConcepts = concepts.filter((concept) => text(concept?.lessonKey) === lessonKey);
     const lessonAssessmentTargets = assessmentTargets.filter((target) => text(target?.lessonKey) === lessonKey);
+    const lessonExerciseEvidence = findMatchingSourceSpans(
+      [
+        lessonPlan?.lessonTitle,
+        lessonPlan?.lessonDescription,
+        lessonPlan?.sourceGuideStructured?.lessonGoal,
+        lessonPlan?.sourceGuideStructured?.commonErrors
+      ],
+      sourceSpans.filter((span) => hasExerciseAssessmentSignal(span)),
+      { minimumOverlap: 1 }
+    );
     const lessonClaimCount = sourceClaims.filter((claim) =>
       [text(lessonPlan?.lessonTitle), text(lessonPlan?.lessonDescription), text(lessonPlan?.sourceGuideStructured?.lessonGoal)]
         .map(normalizedText)
@@ -656,26 +708,32 @@ export function validateCourseForgeCourseGraph({
       );
     }
     if (lessonClaimCount > 0 && !lessonConcepts.some((concept) => normalizeArray(concept?.sourceClaimRefs).length > 0)) {
-      warnings.push(
-        makeCourseGraphIssue(
-          lessonTarget,
-          "missing_claim_grounding",
-          `CourseGraph sem conceitos ancorados por claim na lição ${lessonKey}, apesar de haver claims relevantes na fonte.`,
-          "Preferir sourceClaimRefs no grafo quando o SourceLedger já fornece grounding por claim.",
-          "warning"
-        )
+      const issue = makeCourseGraphIssue(
+        lessonTarget,
+        "missing_claim_grounding",
+        `CourseGraph sem conceitos ancorados por claim na lição ${lessonKey}, apesar de haver claims relevantes na fonte.`,
+        "Preferir sourceClaimRefs no grafo quando o SourceLedger já fornece grounding por claim.",
+        lessonExerciseEvidence.length ? "blocking" : "warning"
       );
+      if (lessonExerciseEvidence.length) {
+        blockingIssues.push(issue);
+      } else {
+        warnings.push(issue);
+      }
     }
     if (!objectiveLessonKeys.has(lessonKey)) {
-      warnings.push(
-        makeCourseGraphIssue(
-          lessonTarget,
-          "missing_lesson_objective",
-          `CourseGraph sem objetivo explícito para a lição ${lessonKey}.`,
-          "Derivar objetivo a partir de sourceGuideStructured.lessonGoal.",
-          "warning"
-        )
+      const issue = makeCourseGraphIssue(
+        lessonTarget,
+        "missing_lesson_objective",
+        `CourseGraph sem objetivo explícito para a lição ${lessonKey}.`,
+        "Derivar objetivo a partir de sourceGuideStructured.lessonGoal.",
+        lessonExerciseEvidence.length || lessonClaimCount > 0 ? "blocking" : "warning"
       );
+      if (lessonExerciseEvidence.length || lessonClaimCount > 0) {
+        blockingIssues.push(issue);
+      } else {
+        warnings.push(issue);
+      }
     }
     if (containsComparisonSignal(lessonPlan?.sourceGuideStructured?.lessonGoal) && !lessonAssessmentTargets.some((target) => {
       const targetKind = text(target?.targetKind).toLowerCase();
@@ -737,15 +795,18 @@ export function validateCourseForgeCourseGraph({
   });
 
   if (normalizeArray(assessmentProfile?.questionTypes).length && !assessmentTargets.length) {
-    warnings.push(
-      makeCourseGraphIssue(
-        "courseGraph.assessmentTargets",
-        "missing_assessment_targets",
-        "Há sinais de avaliação, mas o CourseGraph não materializou assessmentTargets.",
-        "Projetar alvos de avaliação no grafo.",
-        "warning"
-      )
+    const issue = makeCourseGraphIssue(
+      "courseGraph.assessmentTargets",
+      "missing_assessment_targets",
+      "Há sinais de avaliação, mas o CourseGraph não materializou assessmentTargets.",
+      "Projetar alvos de avaliação no grafo.",
+      hasExerciseEvidence ? "blocking" : "warning"
     );
+    if (hasExerciseEvidence) {
+      blockingIssues.push(issue);
+    } else {
+      warnings.push(issue);
+    }
   }
 
   if (listCourseForgeSources(sourceLedger).length && !concepts.some((concept) => normalizeArray(concept?.sourceRefs).length)) {

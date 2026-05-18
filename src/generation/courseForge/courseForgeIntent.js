@@ -228,7 +228,7 @@ function inferRequestedGenerationDepth({ requestedDepth, operation, promptText, 
   if (operation === "reinforce") {
     return "reinforce_only";
   }
-  return "full_course";
+  return "structure_only";
 }
 
 function resolveEffectiveGenerationDepth(requestedDepth) {
@@ -379,7 +379,7 @@ export function resolveCourseForgeIntent(input = {}) {
     promptText,
     rawUserText: text(incomingInterventionRequest?.studentPrompt || promptText),
     goal: text(incomingInterventionRequest?.rationale || incomingInterventionRequest?.studentPrompt || promptText),
-    audienceLevel: "beginner",
+    audienceLevel: "unknown",
     timeHorizon: "",
     requestedGenerationDepth,
     requestedDepth: requestedGenerationDepth,
