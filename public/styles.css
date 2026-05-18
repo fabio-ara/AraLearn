@@ -4550,9 +4550,11 @@ button {
 .generation-overlay-panel {
   padding: 0;
   overflow: hidden;
-  background: transparent;
+  background:
+    linear-gradient(180deg, rgba(35, 27, 18, 0.995), rgba(21, 16, 12, 0.998)),
+    radial-gradient(circle at top, rgba(228, 186, 104, 0.05), transparent 58%);
   border: 0;
-  border-radius: 0;
+  border-radius: 18px;
   box-shadow: none;
 }
 
@@ -6266,8 +6268,6 @@ button {
     calc(100dvh - var(--safe-top) - var(--safe-bottom-tappable) - 16px),
     860px
   );
-  padding-right: 10px;
-  box-sizing: border-box;
   overflow-y: auto;
   overflow-x: hidden;
   scrollbar-gutter: stable;
