@@ -1,16 +1,16 @@
 const BASE_SAFE_RESOURCE_TYPES = Object.freeze(["paragraph", "block_gap_fill", "multiple_choice"]);
 const CAUTIOUS_RESOURCE_TYPES = Object.freeze(["table", "code_editor"]);
-const ADVANCED_RESOURCE_TYPES = Object.freeze(["flowchart", "tree", "matrix", "plane"]);
+const ADVANCED_RESOURCE_TYPES = Object.freeze(["flowchart", "tree", "matrix", "plane", "graph"]);
 const DEFAULT_SIZE_IDS = Object.freeze(["short", "medium"]);
 const REVIEW_SIZE_IDS = Object.freeze(["short"]);
 
 const TYPE_RESOURCE_JUSTIFICATIONS = Object.freeze({
   assisted: ["paragraph", "block_gap_fill", "multiple_choice", "table", "code_editor"],
   simple: ["paragraph", "multiple_choice", "table"],
-  concept: ["paragraph", "multiple_choice", "table", "matrix", "plane"],
-  procedure: ["paragraph", "multiple_choice", "table", "code_editor", "flowchart", "tree"],
+  concept: ["paragraph", "multiple_choice", "table", "matrix", "plane", "graph"],
+  procedure: ["paragraph", "multiple_choice", "table", "code_editor", "flowchart", "tree", "graph"],
   guided_practice: ["paragraph", "block_gap_fill", "multiple_choice", "table", "code_editor"],
-  comparison: ["paragraph", "multiple_choice", "table", "matrix"],
+  comparison: ["paragraph", "multiple_choice", "table", "matrix", "graph"],
   review: ["paragraph", "block_gap_fill", "multiple_choice", "table"],
   common_mistake: ["paragraph", "multiple_choice", "table"],
   rule_or_policy: ["paragraph", "multiple_choice", "table", "flowchart"],
@@ -41,6 +41,12 @@ const ADVANCED_RESOURCE_SIGNAL_RULES = Object.freeze({
     learningActionTags: ["understand", "use_tool", "read_source"],
     typeIds: ["procedure", "code_or_command"],
     sourceGuideTerms: ["diretório", "diretórios", "árvore", "arquivo", "pastas", "caminho"]
+  },
+  graph: {
+    contentTypeTags: ["concept", "comparison", "calculation", "interpretation"],
+    learningActionTags: ["understand", "solve", "compare", "practice"],
+    typeIds: ["concept", "comparison", "procedure"],
+    sourceGuideTerms: ["grafo", "grafos", "vértice", "vértices", "aresta", "arestas", "dijkstra", "bipartido", "euleriano", "adjacência"]
   }
 });
 
@@ -114,7 +120,11 @@ function hasStrongResourceNeed(resourceType, { lessonGuidance = {}, lessonSource
       normalizedCourseSemantics.operations.includes("build"),
     tree:
       normalizedCourseSemantics.representations.includes("tree") ||
-      normalizedCourseSemantics.operations.includes("classify")
+      normalizedCourseSemantics.operations.includes("classify"),
+    graph:
+      normalizedCourseSemantics.representations.includes("graph") ||
+      normalizedCourseSemantics.operations.includes("trace") ||
+      normalizedCourseSemantics.operations.includes("compare")
   };
   return (
     includesAny(contentTypeTags, rule.contentTypeTags) ||

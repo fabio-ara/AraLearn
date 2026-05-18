@@ -25,7 +25,7 @@ export function hasExampleSignal(card) {
   if (card?.resourceType === "code_editor" && text(card?.code) && text(card?.prompt)) {
     return true;
   }
-  if (card?.resourceType === "table" || card?.resourceType === "matrix" || card?.resourceType === "tree") {
+  if (card?.resourceType === "table" || card?.resourceType === "matrix" || card?.resourceType === "tree" || card?.resourceType === "graph") {
     return true;
   }
   return false;

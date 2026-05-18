@@ -143,7 +143,7 @@ export function pickAllowedResourceTypes(lessonPlan = {}) {
   const allowed = normalizeArray(lessonPlan.resourceTags)
     .map(text)
     .filter(Boolean)
-    .filter((resourceType) => ["paragraph", "multiple_choice", "block_gap_fill", "table", "code_editor", "plane", "matrix", "flowchart", "tree"].includes(resourceType));
+    .filter((resourceType) => ["paragraph", "multiple_choice", "block_gap_fill", "table", "code_editor", "plane", "matrix", "flowchart", "tree", "graph"].includes(resourceType));
   if (allowed.length) {
     return allowed;
   }
@@ -161,7 +161,7 @@ export function pickAllowedResourceTypes(lessonPlan = {}) {
     return ["paragraph", "multiple_choice", "code_editor"];
   }
   if (courseRepresentations.includes("graph")) {
-    return ["paragraph", "multiple_choice", "plane"];
+    return ["paragraph", "multiple_choice", "graph"];
   }
   if (courseRepresentations.includes("table") || courseRepresentations.includes("spreadsheet")) {
     return ["paragraph", "multiple_choice", "table"];
@@ -175,6 +175,9 @@ export function pickAllowedResourceTypes(lessonPlan = {}) {
 function pickPracticeResourceType(allowedResourceTypes = []) {
   if (allowedResourceTypes.includes("matrix")) {
     return "matrix";
+  }
+  if (allowedResourceTypes.includes("graph")) {
+    return "graph";
   }
   if (allowedResourceTypes.includes("flowchart")) {
     return "flowchart";
@@ -197,6 +200,9 @@ function pickPracticeResourceType(allowedResourceTypes = []) {
 function pickExpositoryResourceType(allowedResourceTypes = []) {
   if (allowedResourceTypes.includes("matrix")) {
     return "matrix";
+  }
+  if (allowedResourceTypes.includes("graph")) {
+    return "graph";
   }
   if (allowedResourceTypes.includes("flowchart")) {
     return "flowchart";

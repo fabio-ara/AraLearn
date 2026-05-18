@@ -85,3 +85,12 @@ test("compila árvore pública para runtime interno de diretórios", () => {
   assert.equal(result.compiled.index.cards[0].runtime.blocks[2].kind, "directory_tree");
   assert.equal(result.compiled.index.cards[0].runtime.blocks[2].currentNodeId, "node-a");
 });
+
+test("compila graph público para runtime SVG interno", () => {
+  const result = buildRuntime(readText("./docs/examples/aralearn-contract.graph.json"));
+
+  assert.equal(result.ok, true);
+  assert.equal(result.compiled.index.cards[0].runtime.blocks[1].kind, "graph");
+  assert.equal(result.compiled.index.cards[1].runtime.blocks[2].kind, "graph");
+  assert.equal(result.compiled.index.cards[1].runtime.blocks[2].edges[0].weight, "2");
+});

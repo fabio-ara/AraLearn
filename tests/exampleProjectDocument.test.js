@@ -85,7 +85,7 @@ test("o conteúdo inicial inclui uma lição de teste com todos os exercícios p
   assert.equal(microsequence.cards.every((card) => typeof card.after === "string" && card.after.length > 0), true);
 });
 
-test("o conteúdo inicial inclui uma lição de teste com plane e matrix", () => {
+test("o conteúdo inicial inclui uma lição de teste com graph, plane e matrix", () => {
   const result = validateContractDocument(createExampleProjectDocument());
   assert.equal(result.ok, true);
   const lesson = result.value.courses[0].modules[0].lessons[2];
@@ -94,11 +94,11 @@ test("o conteúdo inicial inclui uma lição de teste com plane e matrix", () =>
     resolveCardRuntime(card).blocks.filter((block) => block.kind !== "button").at(-1)?.kind
   );
 
-  assert.equal(lesson.title, "Plano cartesiano e matrizes");
-  assert.equal(microsequence.title, "Vetores e matrizes");
-  assert.deepEqual(runtimeKinds, ["plane", "plane", "plane", "plane", "matrix", "matrix"]);
-  assert.equal(microsequence.cards[1].plane.sum[0][0], 1);
-  assert.equal(microsequence.cards[4].matrix.highlight, "mainDiagonal");
+  assert.equal(lesson.title, "Grafos, plano cartesiano e matrizes");
+  assert.equal(microsequence.title, "Grafos, vetores e matrizes");
+  assert.deepEqual(runtimeKinds, ["graph", "graph", "plane", "plane", "plane", "plane", "matrix", "matrix"]);
+  assert.equal(microsequence.cards[3].plane.sum[0][0], 1);
+  assert.equal(microsequence.cards[6].matrix.highlight, "mainDiagonal");
 });
 
 test("o conteúdo inicial inclui o curso de matemática para informática", () => {

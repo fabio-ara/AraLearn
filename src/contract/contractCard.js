@@ -12,6 +12,7 @@ export const CONTRACT_CARD_KINDS = Object.freeze([
   "table",
   "tree",
   "flow",
+  "graph",
   "plane",
   "matrix"
 ]);
@@ -60,6 +61,10 @@ const PLANE_ALLOWED_FIELDS = new Set([
 const PLANE_SAFE_ALIAS_FIELDS = new Set(["xRange", "yRange", "label", "labels"]);
 const MATRIX_ALLOWED_FIELDS = new Set(["name", "values", "highlight", "dividerAfterColumn", "sequence"]);
 const MATRIX_SEQUENCE_ITEM_ALLOWED_FIELDS = new Set(["connector", "name", "values", "highlight", "dividerAfterColumn"]);
+const GRAPH_ALLOWED_FIELDS = new Set(["vertices", "edges", "highlight"]);
+const GRAPH_VERTEX_ALLOWED_FIELDS = new Set(["id", "label", "x", "y"]);
+const GRAPH_EDGE_ALLOWED_FIELDS = new Set(["from", "to", "weight", "label"]);
+const GRAPH_HIGHLIGHT_ALLOWED_FIELDS = new Set(["vertices", "edges"]);
 const DISALLOWED_VISUAL_FIELDS = new Set(["html", "svg", "style", "color", "layout", "width", "height"]);
 
 function fail(message) {
@@ -72,6 +77,10 @@ function clone(value) {
 
 function isPlainObject(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function text(value) {
+  return typeof value === "string" ? value.trim() : "";
 }
 
 function hasOwn(value, fieldName) {
@@ -649,6 +658,169 @@ function normalizeMatrix(input) {
   return normalizeMatrixSinglePayload(source);
 }
 
+function clampGraphCoordinate(value, fieldName) {
+  return Math.max(0, Math.min(100, normalizeFiniteNumber(value, fieldName)));
+}
+
+function normalizeGraphLabelValue(value, fieldName) {
+  const label = normalizeOptionalString(value, fieldName);
+  if (!label) {
+    return "";
+  }
+  if (containsMarkupSyntax(label) || label.length > 40) {
+    fail(`Campo opcional inválido: "${fieldName}".`);
+  }
+  return label;
+}
+
+function normalizeGraphWeight(value, fieldName) {
+  if (typeof value === "number") {
+    if (!Number.isFinite(value)) {
+      fail(`Campo opcional inválido: "${fieldName}".`);
+    }
+    return Number(value);
+  }
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed || containsMarkupSyntax(trimmed) || trimmed.length > 24) {
+      fail(`Campo opcional inválido: "${fieldName}".`);
+    }
+    return trimmed;
+  }
+  fail(`Campo opcional inválido: "${fieldName}".`);
+}
+
+function normalizeGraphVertices(value) {
+  if (!Array.isArray(value) || !value.length) {
+    fail('Campo obrigatório inválido: "graph.vertices".');
+  }
+
+  const ids = new Set();
+  return value.map((vertex, index) => {
+    if (!isPlainObject(vertex)) {
+      fail('Campo obrigatório inválido: "graph.vertices".');
+    }
+    assertAllowedFields(vertex, GRAPH_VERTEX_ALLOWED_FIELDS, `graph.vertices[${index}]`);
+    const id = normalizeRequiredString(vertex.id, `graph.vertices[${index}].id`);
+    if (ids.has(id)) {
+      fail('Campo obrigatório inválido: "graph.vertices".');
+    }
+    ids.add(id);
+    const label = normalizeGraphLabelValue(vertex.label, `graph.vertices[${index}].label`) || id;
+
+    return {
+      id,
+      label,
+      ...(vertex.x !== undefined ? { x: clampGraphCoordinate(vertex.x, `graph.vertices[${index}].x`) } : {}),
+      ...(vertex.y !== undefined ? { y: clampGraphCoordinate(vertex.y, `graph.vertices[${index}].y`) } : {})
+    };
+  });
+}
+
+function buildUndirectedGraphEdgeKey(from, to) {
+  return [String(from || ""), String(to || "")].sort().join("::");
+}
+
+function normalizeGraphEdges(value, vertexIds = new Set()) {
+  if (!Array.isArray(value)) {
+    fail('Campo obrigatório inválido: "graph.edges".');
+  }
+
+  const seen = new Set();
+  return value.map((edge, index) => {
+    if (!isPlainObject(edge)) {
+      fail('Campo obrigatório inválido: "graph.edges".');
+    }
+    assertAllowedFields(edge, GRAPH_EDGE_ALLOWED_FIELDS, `graph.edges[${index}]`);
+    const from = normalizeRequiredString(edge.from, `graph.edges[${index}].from`);
+    const to = normalizeRequiredString(edge.to, `graph.edges[${index}].to`);
+    if (!vertexIds.has(from) || !vertexIds.has(to) || from === to) {
+      fail('Campo obrigatório inválido: "graph.edges".');
+    }
+    const key = buildUndirectedGraphEdgeKey(from, to);
+    if (seen.has(key)) {
+      fail('Campo obrigatório inválido: "graph.edges".');
+    }
+    seen.add(key);
+
+    return {
+      from,
+      to,
+      ...(edge.weight !== undefined ? { weight: normalizeGraphWeight(edge.weight, `graph.edges[${index}].weight`) } : {}),
+      ...(edge.label !== undefined ? { label: normalizeGraphLabelValue(edge.label, `graph.edges[${index}].label`) } : {})
+    };
+  });
+}
+
+function normalizeGraphHighlight(value, vertexIds = new Set(), edgeKeys = new Set()) {
+  if (value === undefined || value === null) {
+    return undefined;
+  }
+  if (!isPlainObject(value)) {
+    fail('Campo opcional inválido: "graph.highlight".');
+  }
+  assertAllowedFields(value, GRAPH_HIGHLIGHT_ALLOWED_FIELDS, "graph.highlight");
+
+  const vertices = Array.from(new Set(
+    (Array.isArray(value.vertices) ? value.vertices : [])
+      .map((item) => text(item))
+      .filter((item) => vertexIds.has(item))
+  ));
+  const edges = [];
+  const seenEdges = new Set();
+
+  (Array.isArray(value.edges) ? value.edges : []).forEach((pair) => {
+    if (!Array.isArray(pair) || pair.length !== 2) {
+      return;
+    }
+    const from = text(pair[0]);
+    const to = text(pair[1]);
+    if (!from || !to || from === to) {
+      return;
+    }
+    const key = buildUndirectedGraphEdgeKey(from, to);
+    if (!edgeKeys.has(key) || seenEdges.has(key)) {
+      return;
+    }
+    seenEdges.add(key);
+    edges.push([from, to]);
+  });
+
+  if (!vertices.length && !edges.length) {
+    return undefined;
+  }
+
+  return {
+    ...(vertices.length ? { vertices } : {}),
+    ...(edges.length ? { edges } : {})
+  };
+}
+
+function normalizeGraph(input) {
+  if (!isPlainObject(input.graph)) {
+    fail('Campo obrigatório inválido: "graph".');
+  }
+
+  const source = { ...input.graph };
+  assertDisallowedVisualFields(source, "graph");
+  assertAllowedFields(source, GRAPH_ALLOWED_FIELDS, "graph");
+
+  const vertices = normalizeGraphVertices(source.vertices);
+  const vertexIds = new Set(vertices.map((vertex) => vertex.id));
+  const edges = normalizeGraphEdges(source.edges, vertexIds);
+  const highlight = normalizeGraphHighlight(
+    source.highlight,
+    vertexIds,
+    new Set(edges.map((edge) => buildUndirectedGraphEdgeKey(edge.from, edge.to)))
+  );
+
+  return {
+    vertices,
+    edges,
+    ...(highlight ? { highlight } : {})
+  };
+}
+
 function assertDisallowedVisualFields(source, context) {
   Object.keys(source).forEach((fieldName) => {
     if (DISALLOWED_VISUAL_FIELDS.has(fieldName)) {
@@ -669,6 +841,7 @@ function readCardPrimaryKinds(card) {
   return [
     isPlainObject(card.plane) ? "plane" : "",
     isPlainObject(card.matrix) ? "matrix" : "",
+    isPlainObject(card.graph) ? "graph" : "",
     Array.isArray(card.flow) ? "flow" : "",
     isPlainObject(card.tree) ? "tree" : "",
     isPlainObject(card.table) ? "table" : "",
@@ -701,6 +874,7 @@ export function getContractCardKindLabel(card) {
     table: "table",
     tree: "tree",
     flow: "flow",
+    graph: "graph",
     plane: "plane",
     matrix: "matrix"
   };
@@ -1214,6 +1388,16 @@ function normalizeMatrixCard(input) {
   };
 }
 
+function normalizeGraphCard(input) {
+  const allowed = new Set([...COMMON_CARD_FIELDS, "graph"]);
+  assertAllowedFields(input, allowed);
+
+  return {
+    ...buildBaseCard(input),
+    graph: normalizeGraph(input)
+  };
+}
+
 export function sanitizeContractCard(input) {
   if (!isPlainObject(input)) {
     fail("Card inválido.");
@@ -1247,6 +1431,9 @@ export function sanitizeContractCard(input) {
   if (kind === "flow") {
     return normalizeFlowCard(input);
   }
+  if (kind === "graph") {
+    return normalizeGraphCard(input);
+  }
   if (kind === "plane") {
     return normalizePlaneCard(input);
   }
@@ -1257,7 +1444,7 @@ export function sanitizeContractCard(input) {
     return normalizeSayCard(input);
   }
 
-  fail('Card deve declarar pelo menos um campo de intenção: "say", "ask", "code", "table", "tree", "flow", "plane" ou "matrix".');
+  fail('Card deve declarar pelo menos um campo de intenção: "say", "ask", "code", "table", "tree", "flow", "graph", "plane" ou "matrix".');
 }
 
 export function createStarterContractCard(kind = "say") {
@@ -1331,6 +1518,28 @@ export function createStarterContractCard(kind = "say") {
       say: "Observe o vetor no plano.",
       plane: {
         vector: [3, 2]
+      }
+    };
+  }
+
+  if (safeKind === "graph") {
+    return {
+      title: "Grafo",
+      say: "Observe os vértices e as arestas do grafo.",
+      graph: {
+        vertices: [
+          { id: "A", label: "A", x: 50, y: 12 },
+          { id: "B", label: "B", x: 20, y: 72 },
+          { id: "C", label: "C", x: 80, y: 72 }
+        ],
+        edges: [
+          { from: "A", to: "B" },
+          { from: "A", to: "C", weight: 2 }
+        ],
+        highlight: {
+          vertices: ["A"],
+          edges: [["A", "C"]]
+        }
       }
     };
   }

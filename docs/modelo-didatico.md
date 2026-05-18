@@ -64,7 +64,9 @@ Se isso não acontece, a ação correta é `Corrigir microssequência` ou `Conti
 
 Materializar não é resumir. É transformar a etapa em cards estudáveis.
 
-Um bom conjunto de cards pode combinar explicação, pergunta, lacuna, tabela, código, fluxograma, matriz ou outro recurso aceito. O formato deve servir à função da microssequência.
+Um bom conjunto de cards pode combinar explicação, pergunta, lacuna, tabela, código, fluxograma, grafo, matriz ou outro recurso aceito. O formato deve servir à função da microssequência.
+
+Quando o tópico for Teoria dos Grafos, `graph` é o recurso visual correto para vértices, arestas e pesos. `table` continua responsável por matriz de adjacência e tabelas de procedimento. `flow` continua sendo fluxograma.
 
 ## Criar microssequência extra
 

@@ -80,7 +80,7 @@ const TRAIL_DERIVED_SEMANTICS = Object.freeze({
     primaryDifficulty: "notation",
     secondaryDifficulty: "abstraction",
     preferredPracticeMode: "comparison",
-    preferredResourceTypes: ["matrix", "plane", "table"],
+    preferredResourceTypes: ["graph", "matrix", "plane", "table"],
     discouragedResourceTypes: []
   }),
   problem_solving: Object.freeze({
@@ -128,7 +128,7 @@ const TRAIL_DERIVED_SEMANTICS = Object.freeze({
 const TRAIL_KEYWORDS = Object.freeze({
   procedure: ["procedimento", "workflow", "algoritmo", "passo a passo", "comando", "operacional", "fluxograma", "pseudocodigo", "pseudocódigo", "portugol", "codigo", "código"],
   technical_reading: ["artigo", "paper", "leitura", "evidencia", "evidência", "figura", "metodo", "método", "hipotese", "hipótese"],
-  formalization: ["notacao", "notação", "formula", "fórmula", "formal", "teorema", "matriz", "equacao", "equação"],
+  formalization: ["notacao", "notação", "formula", "fórmula", "formal", "teorema", "matriz", "equacao", "equação", "grafo", "grafos", "vertice", "vértice", "aresta", "dijkstra"],
   problem_solving: ["problema", "exercicio", "exercício", "resolver", "heuristica", "heurística", "caso"],
   complex_project: ["projeto", "arquitetura", "produto", "sistema", "entrega", "implementacao", "implementação"],
   language_communication: ["idioma", "língua", "gramatica", "gramática", "vocabul", "comunica", "texto em"],

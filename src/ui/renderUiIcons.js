@@ -71,6 +71,20 @@ export function renderUiIcon(iconName, className = "ui-icon") {
     );
   }
 
+  if (iconName === "graph") {
+    return (
+      '<svg class="' +
+      classes +
+      '" viewBox="0 0 16 16" aria-hidden="true" focusable="false">' +
+      '<circle cx="3.3" cy="8.2" r="1.5" fill="currentColor"></circle>' +
+      '<circle cx="8" cy="3.4" r="1.5" fill="currentColor"></circle>' +
+      '<circle cx="12.7" cy="8.2" r="1.5" fill="currentColor"></circle>' +
+      '<circle cx="8" cy="12.6" r="1.5" fill="currentColor"></circle>' +
+      '<path d="M4.4 7.1l2.5-2.6M9.1 4.5l2.5 2.6M4.5 9.2l2.3 2.2M9.2 11.4l2.3-2.2M4.8 8.2h6.4" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"></path>' +
+      "</svg>"
+    );
+  }
+
   if (iconName === "add") {
     return (
       '<svg class="' +

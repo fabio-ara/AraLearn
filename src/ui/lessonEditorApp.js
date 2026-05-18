@@ -202,6 +202,7 @@ const ASSIST_CARD_CONTAINER_OPTIONS = [
   { value: "table", label: "Tabela", icon: renderUiIcon("module", "action-menu-svg-icon") },
   { value: "tree", label: "Árvore de diretórios", icon: renderUiIcon("folder", "action-menu-svg-icon") },
   { value: "flow", label: "Fluxograma", icon: renderUiIcon("microsequence", "action-menu-svg-icon") },
+  { value: "graph", label: "Grafo", icon: renderUiIcon("graph", "action-menu-svg-icon") },
   { value: "plane", label: "Plano cartesiano", icon: renderUiIcon("card", "action-menu-svg-icon") },
   { value: "matrix", label: "Matriz", icon: renderUiIcon("card", "action-menu-svg-icon") }
 ];
@@ -303,6 +304,16 @@ function readCardText(card) {
     }
     if (Array.isArray(card.plane.distance) && card.plane.distance.length === 2) {
       return `A(${card.plane.distance[0].join(", ")}) B(${card.plane.distance[1].join(", ")})`;
+    }
+  }
+  if (card.graph && typeof card.graph === "object") {
+    const vertices = Array.isArray(card.graph.vertices) ? card.graph.vertices.map((vertex) => vertex?.label || vertex?.id).filter(Boolean) : [];
+    const edges = Array.isArray(card.graph.edges) ? card.graph.edges.map((edge) => `${edge?.from}-${edge?.to}`).filter((item) => !item.includes("undefined")) : [];
+    if (vertices.length && edges.length) {
+      return `Vértices: ${vertices.join(", ")}\nArestas: ${edges.join(", ")}`;
+    }
+    if (vertices.length) {
+      return `Vértices: ${vertices.join(", ")}`;
     }
   }
   if (card.matrix && typeof card.matrix === "object") {
@@ -685,6 +696,14 @@ function buildCardUpdateFromText(card, title, text) {
     };
   }
 
+  if (kind === "graph") {
+    return {
+      ...base,
+      ...(nextText ? { say: nextText } : card.say ? { say: card.say } : {}),
+      graph: card.graph || createStarterContractCard("graph").graph
+    };
+  }
+
   if (kind === "matrix") {
     return {
       ...base,
@@ -906,6 +925,7 @@ function makeEntityEditorModel(state) {
       ],
       actions: [
         { key: "create-card", label: "Novo card" },
+        { key: "create-graph-card", label: "Novo grafo" },
         { key: "create-plane-card", label: "Novo plano cartesiano" },
         { key: "create-matrix-card", label: "Nova matriz" },
         { key: "delete-microsequence", label: "Excluir microssequência", tone: "danger" }
@@ -931,6 +951,7 @@ function makeEntityEditorModel(state) {
         { key: "edit-microsequence-metadata", label: "Editar microssequência", icon: "&#9998;" },
         { key: "deepen-microsequence", label: "Completar lacunas", icon: "&#9881;" },
         { key: "create-card", label: "Novo card", icon: "&#43;" },
+        { key: "create-graph-card", label: "Novo grafo", icon: renderUiIcon("graph", "action-menu-svg-icon") },
         { key: "create-plane-card", label: "Novo plano cartesiano", icon: "&#9641;" },
         { key: "create-matrix-card", label: "Nova matriz", icon: "&#91;&#93;" },
         { key: "export-microsequence", label: "Exportar microssequência", icon: "&#8681;" },
@@ -973,6 +994,7 @@ function makeEntityEditorModel(state) {
       fields: [],
       actions: [
         { key: "create-card", label: "Novo card após este" },
+        { key: "create-graph-card", label: "Novo grafo" },
         { key: "create-plane-card", label: "Novo plano cartesiano" },
         { key: "create-matrix-card", label: "Nova matriz" },
         ...moveActions,
@@ -5636,9 +5658,11 @@ export function createLessonEditorApp({ root, storage, editor }) {
         setProject(nextProject);
         applySelection(buildNodeSelection({ courseKey, moduleKey, lessonKey }));
         state.view = "lesson";
-      } else if (actionKey === "create-card" || actionKey === "create-plane-card" || actionKey === "create-matrix-card") {
+      } else if (actionKey === "create-card" || actionKey === "create-graph-card" || actionKey === "create-plane-card" || actionKey === "create-matrix-card") {
         const kind =
-          actionKey === "create-plane-card"
+          actionKey === "create-graph-card"
+            ? "graph"
+            : actionKey === "create-plane-card"
             ? "plane"
             : actionKey === "create-matrix-card"
               ? "matrix"

@@ -11,6 +11,7 @@ Este diretório documenta o produto novo do AraLearn: top-down para planejar a t
 - [Assistência por IA](assistencia-por-ia.md): como a IA participa sem virar chat solto.
 - [Contrato público](aralearn-contract.md): estrutura persistível do projeto e metadados aceitos.
 - [Rascunhos e microssequências](rascunhos-e-microssequencias.md): diferença entre etapa planejada e cards materializados.
+- [Exemplo público de graph](examples/aralearn-contract.graph.json): card com grafo simples e grafo ponderado.
 
 ## Complementos
 

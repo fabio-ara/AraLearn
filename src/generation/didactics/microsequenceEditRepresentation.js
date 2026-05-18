@@ -11,7 +11,10 @@ const CONTRACT_TO_RESOURCE = Object.freeze({
   code: "code_editor",
   table: "table",
   flow: "flowchart",
-  tree: "tree"
+  tree: "tree",
+  graph: "graph",
+  plane: "plane",
+  matrix: "matrix"
 });
 
 function uniqueKnown(items = [], knownIds = new Set()) {

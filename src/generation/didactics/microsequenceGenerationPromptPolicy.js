@@ -18,6 +18,10 @@ export function buildMicrosequenceGenerationPromptLines(contract = {}) {
   if (allowedResourceTypes.includes("matrix")) {
     extraLines.push("Em matrix, use values ou sequence; se usar sequence, mantenha o passo crítico no mesmo card.");
   }
+  if (allowedResourceTypes.includes("graph")) {
+    extraLines.push("Em graph, use vertices e edges para grafos matemáticos; reserve table para matriz de adjacência, graus e tabela de Dijkstra.");
+    extraLines.push("Quando o tópico for Teoria dos Grafos e graph estiver disponível, prefira graph para vértices, arestas, pesos e destaques.");
+  }
   if (studyTrackPolicy.mode === "clarify_local_doubt") {
     const anchors = (studyTrackPolicy.requiredAnchors || []).join(", ") || "termos perguntados";
     const bridgeTargets = (studyTrackPolicy.bridgeBackTargets || []).join(", ") || "trilha da lição";

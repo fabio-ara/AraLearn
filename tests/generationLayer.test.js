@@ -137,6 +137,35 @@ test("resource gating rejeita recurso avançado sem permissão da lição", () =
   assert.equal(accepted.ok, true);
 });
 
+test("resource gating libera graph com sinal forte de teoria dos grafos", () => {
+  const lesson = {
+    title: "Introdução a grafos",
+    resourceTags: ["paragraph", "multiple_choice", "graph", "table"],
+    contentTypeTags: ["concept", "calculation"],
+    learningActionTags: ["understand", "solve"],
+    supportLevel: "guided",
+    sourceGuideStructured: {
+      lessonGoal: "Ler vértices, arestas e pesos em grafos simples.",
+      notationRules: "Usar `V`, `E`, grau e caminho com exemplos pequenos."
+    },
+    courseSemantics: {
+      primaryRepresentation: "graph",
+      primaryOperation: "compare"
+    }
+  };
+
+  const policy = resolveWeakModelRepresentationPolicy({
+    lessonGuidance: lesson,
+    lessonSourceGuideStructured: lesson.sourceGuideStructured,
+    modelCapabilities: getModelCapabilities("gemini-2.5-flash"),
+    resolvedTypeId: "concept",
+    userSelectedExtraResourceTypes: ["graph"]
+  });
+
+  assert.equal(policy.safeAllowedResourceTypes.includes("graph"), true);
+  assert.equal(policy.rejectedResourceTypes.includes("graph"), false);
+});
+
 test("resolveResourcesForGenerationPlan envia só recursos efetivos e schemas curtos", () => {
   const { planningContract, generationContract } = buildContractsFromFixture("linux-shell-beginner.json");
   const resources = resolveResourcesForGenerationPlan({
@@ -172,6 +201,58 @@ test("prompt de geração fica enxuto e reforça contrato fechado", () => {
   assert.match(prompt, /Arquitetura pedagógica: planner_builder_auditor_internalizado/);
   assert.match(prompt, /Progressão obrigatória:/);
   assert.doesNotMatch(prompt, /didacticGuardrails/);
+});
+
+test("prompt inclui instrução positiva de graph apenas quando permitido", () => {
+  const lesson = {
+    key: "lesson-graph",
+    title: "Grafos",
+    sourceGuideStructured: {
+      lessonGoal: "Ler grafos simples e ponderados.",
+      notationRules: "Usar vértices e arestas com rótulos curtos."
+    },
+    resourceTags: ["paragraph", "multiple_choice", "graph", "table"],
+    contentTypeTags: ["concept", "calculation"],
+    learningActionTags: ["understand", "solve"],
+    supportLevel: "guided"
+  };
+  const planningContract = buildMicrosequencePlanningContract({
+    selectedCourse: { key: "course-graph", title: "Grafos" },
+    selectedModule: { key: "module-graph", title: "Teoria dos Grafos" },
+    selectedLesson: lesson,
+    targetMicrosequence: { key: "micro-graph", title: "Grafo", status: "draft", included: false },
+    selectedLessonTopicRefs: [],
+    userPrompt: "Explique vértices e arestas.",
+    selectedModel: "gemini-2.5-flash",
+    userSelectedExtraResourceTypes: ["graph"]
+  });
+  const validatedPlan = validateMicrosequencePlan(
+    {
+      typeId: "concept",
+      sizeId: "short",
+      microsequenceGoal: "Explicar vértices, arestas e pesos em um grafo simples.",
+      selectedExtraResourceTypes: ["graph"],
+      sourceUsePlan: [],
+      reason: "Representação visual de grafo."
+    },
+    planningContract
+  );
+  assert.equal(validatedPlan.ok, true);
+  const generationContract = buildMicrosequenceGenerationContract({
+    planningContract,
+    validatedPlan,
+    selectedModel: "gemini-2.5-flash"
+  });
+  const promptWithGraph = buildMicrosequenceGenerationPrompt(generationContract, getModelCapabilities("gemini-2.5-flash"));
+  const promptWithoutGraph = buildMicrosequenceGenerationPrompt(
+    buildContractsFromFixture("logic-beginner.json").generationContract,
+    getModelCapabilities("gemini-2.5-flash")
+  );
+
+  assert.equal(generationContract.resources.allowedResourceTypes.includes("graph"), true);
+  assert.match(promptWithGraph, /Em graph, use vertices e edges para grafos matemáticos/);
+  assert.match(promptWithGraph, /prefira graph para vértices, arestas, pesos e destaques/);
+  assert.doesNotMatch(promptWithoutGraph, /Em graph, use vertices e edges para grafos matemáticos/);
 });
 
 test("dúvida local ancora geração na trilha e bloqueia deslocamento cognitivo", () => {
@@ -496,6 +577,51 @@ test("repairGeneratedCardsDeterministic normaliza posição, ids e feedback ante
   assert.equal(repaired.cards[1].position, 5);
 });
 
+test("repairGeneratedCardsDeterministic saneia graph inválido sem quebrar o card", () => {
+  const generationContract = {
+    didacticPlan: {
+      cardPlan: [
+        { position: 1, resourceType: "graph", label: "Grafo", role: "example" }
+      ]
+    },
+    output: { expectedCardCount: 1 },
+    sources: []
+  };
+  const repaired = repairGeneratedCardsDeterministic(
+    {
+      cards: [
+        {
+          position: 1,
+          resourceType: "graph",
+          title: "Grafo",
+          vertices: [
+            { id: "A", x: -10 },
+            { id: "A", y: 30 },
+            { id: "B", x: 110, y: 70 }
+          ],
+          edges: [
+            { from: "A", to: "A" },
+            { from: "A", to: "B", weight: 2 },
+            { from: "B", to: "A", label: "dup" },
+            { from: "A", to: "Z" }
+          ],
+          highlight: {
+            vertices: ["A", "Z"],
+            edges: [["B", "A"], ["A", "Z"]]
+          }
+        }
+      ]
+    },
+    generationContract
+  );
+
+  assert.equal(repaired.cards[0].vertices.length, 2);
+  assert.equal(repaired.cards[0].vertices[0].x, 0);
+  assert.equal(repaired.cards[0].vertices[1].x, 100);
+  assert.deepEqual(repaired.cards[0].edges, [{ from: "A", to: "B", weight: 2 }]);
+  assert.deepEqual(repaired.cards[0].highlight, { vertices: ["A"], edges: [["B", "A"]] });
+});
+
 test("validateOrRepairGeneratedCards faz reparo determinístico antes de chamar reparo LLM", async () => {
   const { generationContract } = buildContractsFromFixture("git-beginner.json");
   let llmRepairCalls = 0;
@@ -576,7 +702,9 @@ test("catálogo mantém schemas específicos por recurso", () => {
   const definitions = listCardResourceDefinitions();
   const matrix = definitions.find((item) => item.id === "matrix");
   const paragraph = definitions.find((item) => item.id === "paragraph");
+  const graph = definitions.find((item) => item.id === "graph");
 
   assert.equal(Array.isArray(matrix.schema.anyOf), true);
   assert.equal(paragraph.schema.properties.sourceRefs.type, "array");
+  assert.equal(graph.schema.properties.vertices.type, "array");
 });

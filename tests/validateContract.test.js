@@ -65,6 +65,16 @@ test("valida o exemplo público dedicado a plane e matrix", () => {
   assert.equal(result.value.courses[0].modules[0].lessons[0].microsequences[0].cards[4].matrix.highlight, "mainDiagonal");
 });
 
+test("valida o exemplo público dedicado a graph", () => {
+  const document = readJson("./docs/examples/aralearn-contract.graph.json");
+
+  const result = validateContractDocument(document);
+
+  assert.equal(result.ok, true);
+  assert.equal(result.value.courses[0].modules[0].lessons[0].microsequences[0].cards[0].graph.vertices[1].label, "B");
+  assert.equal(result.value.courses[0].modules[0].lessons[0].microsequences[0].cards[1].graph.edges[0].weight, 2);
+});
+
 test("valida o curso público de matemática para informática", () => {
   const document = readJson("./docs/examples/aralearn-contract.logic-plane-matrix-course.json");
 
@@ -171,6 +181,62 @@ test("aceita card flow com estrutura pública composta", () => {
   assert.equal(result.ok, true);
   assert.equal(result.value.courses[0].modules[0].lessons[0].microsequences[0].cards[0].flow[1].if, "x > 0");
   assert.equal(result.value.courses[0].modules[0].lessons[0].microsequences[0].cards[0].flow[1].id, "flow-2");
+});
+
+test("aceita card graph com destaques e normaliza label ausente com id", () => {
+  const result = validateContractDocument(
+    projectWithCards([
+      {
+        title: "Grafo",
+        graph: {
+          vertices: [
+            { id: "A", x: 50, y: 10 },
+            { id: "B" },
+            { id: "C", x: 50, y: 90 }
+          ],
+          edges: [
+            { from: "A", to: "B", weight: 2 },
+            { from: "B", to: "C", label: "bc" }
+          ],
+          highlight: {
+            vertices: ["A", "X"],
+            edges: [["B", "A"], ["A", "X"]]
+          }
+        }
+      }
+    ])
+  );
+
+  assert.equal(result.ok, true);
+  const card = result.value.courses[0].modules[0].lessons[0].microsequences[0].cards[0];
+  assert.equal(card.graph.vertices[1].label, "B");
+  assert.equal(card.graph.edges[0].weight, 2);
+  assert.deepEqual(card.graph.highlight.vertices, ["A"]);
+  assert.deepEqual(card.graph.highlight.edges, [["B", "A"]]);
+});
+
+test("rejeita graph com aresta inválida ou duplicada", () => {
+  const result = validateContractDocument(
+    projectWithCards([
+      {
+        title: "Grafo inválido",
+        graph: {
+          vertices: [{ id: "A" }, { id: "B" }],
+          edges: [
+            { from: "A", to: "A" },
+            { from: "A", to: "B" },
+            { from: "B", to: "A" }
+          ]
+        }
+      }
+    ])
+  );
+
+  assert.equal(result.ok, false);
+  assert.match(
+    result.errors.map((error) => `${error.path}: ${error.message}`).join("\n"),
+    /Campo obrigatório inválido: "graph.edges"/
+  );
 });
 
 test("aceita card plane com vector simples", () => {

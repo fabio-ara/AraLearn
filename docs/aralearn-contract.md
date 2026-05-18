@@ -128,12 +128,31 @@ Recursos públicos aceitos incluem:
 - `code`;
 - `table`;
 - `flow`;
+- `graph`;
 - `tree`;
 - `plane`;
 - `matrix`;
 - lacunas e exercícios aceitos pelo runtime.
 
 O card não deve carregar todo o mapa semântico da lição. Ele deve permanecer simples e renderizável.
+
+### `graph`
+
+`graph` representa grafo matemático estático e não orientado na primeira versão.
+
+Ele usa:
+
+- `vertices` com `id` único, `label` opcional e coordenadas percentuais opcionais;
+- `edges` com `from`, `to`, `weight` opcional e `label` opcional;
+- `highlight` opcional para vértices e arestas.
+
+Use `graph` para vértices, arestas, pesos, caminho, ciclo, bipartição e passos visuais de Dijkstra.
+
+Use `table` para matriz de adjacência, tabela de graus e tabela de Dijkstra.
+
+Use `say` para fórmula, explicação e leitura textual do raciocínio.
+
+Use `flow` para fluxograma. `flow` não substitui `graph`.
 
 ## Fontes
 

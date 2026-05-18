@@ -76,6 +76,13 @@ function sanitizePopupBlock(block) {
       projection: clone(block.projection)
     };
   }
+  if (block.kind === "graph") {
+    return {
+      ...clone(block),
+      vertices: Array.isArray(block.vertices) ? clone(block.vertices) : [],
+      edges: Array.isArray(block.edges) ? clone(block.edges) : []
+    };
+  }
   if (block.kind === "complete" || block.kind === "multiple_choice" || block.kind === "directory_tree") {
     return clone(block);
   }
@@ -529,6 +536,97 @@ function buildPlaneBlock(card) {
   };
 }
 
+function buildGraphEdgeKey(from, to) {
+  return [String(from || ""), String(to || "")].sort().join("::");
+}
+
+function buildGraphAutoLayout(vertexCount, index) {
+  const total = Math.max(1, Number(vertexCount || 1));
+  const angle = (-Math.PI / 2) + ((Math.PI * 2) / total) * index;
+  const radius = total <= 2 ? 30 : 34;
+  return {
+    x: Number((50 + Math.cos(angle) * radius).toFixed(2)),
+    y: Number((50 + Math.sin(angle) * radius).toFixed(2))
+  };
+}
+
+function buildGraphSummary(vertices = [], edges = []) {
+  const vertexList = vertices.map((vertex) => vertex.label || vertex.id).filter(Boolean).join(", ");
+  const edgeList = edges.map((edge) => `${edge.from}-${edge.to}`).join(", ");
+  if (vertexList && edgeList) {
+    return `Grafo com vértices ${vertexList} e arestas ${edgeList}.`;
+  }
+  if (vertexList) {
+    return `Grafo com vértices ${vertexList}.`;
+  }
+  return "Grafo.";
+}
+
+function buildGraphBlock(card) {
+  const graph = card?.graph || {};
+  const sourceVertices = Array.isArray(graph.vertices) ? graph.vertices : [];
+  const sourceEdges = Array.isArray(graph.edges) ? graph.edges : [];
+  const highlightVertexIds = new Set(
+    (Array.isArray(graph?.highlight?.vertices) ? graph.highlight.vertices : [])
+      .map((item) => normalizeText(item).trim())
+      .filter(Boolean)
+  );
+  const highlightEdgeKeys = new Set(
+    (Array.isArray(graph?.highlight?.edges) ? graph.highlight.edges : [])
+      .filter((pair) => Array.isArray(pair) && pair.length === 2)
+      .map((pair) => buildGraphEdgeKey(normalizeText(pair[0]).trim(), normalizeText(pair[1]).trim()))
+      .filter(Boolean)
+  );
+  const useFixedCoordinates = sourceVertices.length > 0 && sourceVertices.every((vertex) =>
+    Number.isFinite(Number(vertex?.x)) && Number.isFinite(Number(vertex?.y))
+  );
+
+  const vertices = sourceVertices.map((vertex, index) => {
+    const layout = useFixedCoordinates
+      ? { x: Number(vertex.x), y: Number(vertex.y) }
+      : buildGraphAutoLayout(sourceVertices.length, index);
+    const id = normalizeText(vertex?.id).trim();
+    const label = normalizeText(vertex?.label).trim() || id;
+    return {
+      id,
+      label,
+      x: layout.x,
+      y: layout.y,
+      highlighted: highlightVertexIds.has(id)
+    };
+  }).filter((vertex) => vertex.id);
+
+  const vertexMap = new Map(vertices.map((vertex) => [vertex.id, vertex]));
+  const seenEdges = new Set();
+  const edges = sourceEdges.map((edge) => {
+    const from = normalizeText(edge?.from).trim();
+    const to = normalizeText(edge?.to).trim();
+    const key = buildGraphEdgeKey(from, to);
+    if (!from || !to || from === to || seenEdges.has(key) || !vertexMap.has(from) || !vertexMap.has(to)) {
+      return null;
+    }
+    seenEdges.add(key);
+    return {
+      from,
+      to,
+      key,
+      label: normalizeText(edge?.label).trim(),
+      weight: typeof edge?.weight === "number" && Number.isFinite(edge.weight)
+        ? formatMathNumber(edge.weight)
+        : normalizeText(edge?.weight).trim(),
+      highlighted: highlightEdgeKeys.has(key)
+    };
+  }).filter(Boolean);
+
+  return {
+    kind: "graph",
+    vertices,
+    edges,
+    summaryText: buildGraphSummary(vertices, edges),
+    ariaLabel: buildGraphSummary(vertices, edges)
+  };
+}
+
 function normalizeMatrixHighlightList(highlight) {
   if (Array.isArray(highlight)) {
     return highlight.map((item) => normalizeText(item)).filter(Boolean);
@@ -670,6 +768,11 @@ function buildCardSpecificBlocks(card) {
     blocks.push(buildPlaneBlock(card));
     return blocks;
   }
+  if (kind === "graph") {
+    appendIntroParagraph(blocks, card);
+    blocks.push(buildGraphBlock(card));
+    return blocks;
+  }
   if (kind === "matrix") {
     appendIntroParagraph(blocks, card);
     blocks.push(buildMatrixBlock(card));
@@ -708,6 +811,9 @@ export function readCardText(card) {
   }
   if (card.matrix && typeof card.matrix === "object") {
     return buildMatrixBlock(card).summaryText || "matrix";
+  }
+  if (card.graph && typeof card.graph === "object") {
+    return buildGraphBlock(card).summaryText || "graph";
   }
   if (card.tree && typeof card.tree === "object") {
     return normalizeText(card.tree.current) || normalizeText(card.tree.base) || "tree";

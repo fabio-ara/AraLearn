@@ -154,15 +154,62 @@ export function createExampleProjectDocument() {
               },
               {
                 key: "lesson-plane-matrix",
-                title: "Plano cartesiano e matrizes",
-                description: "Lição oficial para inspeção manual dos recursos plane e matrix.",
+                title: "Grafos, plano cartesiano e matrizes",
+                description: "Lição oficial para inspeção manual dos recursos graph, plane e matrix.",
                 microsequences: [
                   {
                     key: "microsequence-plane-matrix",
-                    title: "Vetores e matrizes",
-                    tags: ["Teste", "Plane", "Matrix"],
+                    title: "Grafos, vetores e matrizes",
+                    tags: ["Teste", "Graph", "Plane", "Matrix"],
                     status: "ready",
                     cards: [
+                      {
+                        key: "card-graph-grau",
+                        title: "Grau de um vértice",
+                        say: "O destaque mostra o vértice `B` e suas arestas incidentes.",
+                        graph: {
+                          vertices: [
+                            { id: "A", x: 50, y: 10 },
+                            { id: "B", x: 20, y: 55 },
+                            { id: "C", x: 50, y: 90 },
+                            { id: "D", x: 80, y: 55 }
+                          ],
+                          edges: [
+                            { from: "A", to: "B" },
+                            { from: "A", to: "D" },
+                            { from: "B", to: "C" },
+                            { from: "C", to: "D" },
+                            { from: "B", to: "D" }
+                          ],
+                          highlight: {
+                            vertices: ["B"],
+                            edges: [["A", "B"], ["B", "C"], ["B", "D"]]
+                          }
+                        }
+                      },
+                      {
+                        key: "card-graph-dijkstra",
+                        title: "Primeiro passo de Dijkstra",
+                        say: "Observe o caminho destacado a partir de `A` e compare com a tabela do passo.",
+                        graph: {
+                          vertices: [
+                            { id: "A", x: 10, y: 50 },
+                            { id: "B", x: 40, y: 25 },
+                            { id: "C", x: 40, y: 75 },
+                            { id: "D", x: 75, y: 50 }
+                          ],
+                          edges: [
+                            { from: "A", to: "B", weight: 2 },
+                            { from: "A", to: "C", weight: 1 },
+                            { from: "B", to: "D", weight: 4 },
+                            { from: "C", to: "D", weight: 3 }
+                          ],
+                          highlight: {
+                            vertices: ["A", "C"],
+                            edges: [["A", "C"]]
+                          }
+                        }
+                      },
                       {
                         key: "card-plane-vetor",
                         title: "Vetor como seta",

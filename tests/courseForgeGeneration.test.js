@@ -137,7 +137,7 @@ test("resolveCourseForgeDidacticProfileId e buildCourseForgeEngineProfileOverrid
           preferredPracticeMode: "comparison"
         },
         resourcePreferences: {
-          preferredResourceTypes: ["matrix", "plane", "table"],
+          preferredResourceTypes: ["graph", "matrix", "plane", "table"],
           discouragedResourceTypes: []
         }
       }

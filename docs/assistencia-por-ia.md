@@ -62,6 +62,20 @@ O motor usa a estrutura do projeto para restringir a chamada:
 
 Isso permite usar modelos mais baratos em tarefas delimitadas sem entregar toda a didática ao prompt livre.
 
+## Recursos permitidos
+
+Na geração de cards, a IA recebe um envelope fechado de recursos permitidos.
+
+Se `graph` estiver nesse envelope, a IA pode usá-lo para grafos matemáticos: vértices, arestas, pesos e destaques.
+
+Mesmo nesse caso:
+
+- `table` continua sendo o recurso para matriz de adjacência, tabela de graus e tabela de Dijkstra;
+- `say` continua sendo o recurso para fórmulas e explicações;
+- `flow` continua sendo fluxograma, não grafo matemático.
+
+Se `graph` não estiver permitido no envelope, a IA não deve usá-lo.
+
 ## Correção
 
 `Corrigir microssequência` deve atuar localmente. A IA pode reescrever cards, preencher lacunas, ajustar progressão ou trocar materialização inadequada, mas não deve replanejar a lição inteira sem necessidade.

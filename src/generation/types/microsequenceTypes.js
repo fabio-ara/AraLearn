@@ -72,20 +72,20 @@ const TYPES = [
     cardPlansBySize: {
       short: plans([
         ["introduce_idea", "introduzir a ideia", ["paragraph"]],
-        ["translate_notation", "traduzir a notação", ["paragraph", "table", "matrix", "plane"]],
+        ["translate_notation", "traduzir a notação", ["paragraph", "table", "graph", "matrix", "plane"]],
         ["check_understanding", "checar entendimento", ["multiple_choice"]]
       ]),
       medium: plans([
         ["introduce_idea", "introduzir a ideia", ["paragraph"]],
-        ["translate_notation", "traduzir a notação", ["paragraph", "table", "matrix", "plane"]],
-        ["show_minimal_example", "mostrar exemplo mínimo", ["paragraph", "table", "matrix", "plane"]],
+        ["translate_notation", "traduzir a notação", ["paragraph", "table", "graph", "matrix", "plane"]],
+        ["show_minimal_example", "mostrar exemplo mínimo", ["paragraph", "table", "graph", "matrix", "plane"]],
         ["check_understanding", "checar entendimento", ["multiple_choice"]],
         ["consolidate", "consolidar", ["paragraph", "multiple_choice"]]
       ]),
       long: plans([
         ["introduce_idea", "introduzir a ideia", ["paragraph"]],
-        ["translate_notation", "traduzir a notação", ["paragraph", "table", "matrix", "plane"]],
-        ["show_minimal_example", "mostrar exemplo mínimo", ["paragraph", "table", "matrix", "plane"]],
+        ["translate_notation", "traduzir a notação", ["paragraph", "table", "graph", "matrix", "plane"]],
+        ["show_minimal_example", "mostrar exemplo mínimo", ["paragraph", "table", "graph", "matrix", "plane"]],
         ["check_understanding", "checar entendimento", ["multiple_choice"]],
         ["consolidate", "consolidar", ["paragraph", "multiple_choice"]]
       ])
@@ -156,20 +156,20 @@ const TYPES = [
     cardPlansBySize: {
       short: plans([
         ["present_items", "apresentar os itens", ["paragraph"]],
-        ["compare_main_criteria", "comparar critérios principais", ["table", "matrix"]],
+        ["compare_main_criteria", "comparar critérios principais", ["table", "graph", "matrix"]],
         ["check_distinction", "checar distinção", ["multiple_choice"]]
       ]),
       medium: plans([
         ["present_items", "apresentar os itens", ["paragraph"]],
-        ["compare_first_criterion", "comparar o primeiro critério", ["table", "matrix"]],
-        ["compare_second_criterion", "comparar o segundo critério", ["table", "matrix"]],
+        ["compare_first_criterion", "comparar o primeiro critério", ["table", "graph", "matrix"]],
+        ["compare_second_criterion", "comparar o segundo critério", ["table", "graph", "matrix"]],
         ["check_distinction", "checar distinção", ["multiple_choice"]],
         ["consolidate", "consolidar", ["paragraph", "multiple_choice"]]
       ]),
       long: plans([
         ["present_items", "apresentar os itens", ["paragraph"]],
-        ["compare_first_criterion", "comparar o primeiro critério", ["table", "matrix"]],
-        ["compare_second_criterion", "comparar o segundo critério", ["table", "matrix"]],
+        ["compare_first_criterion", "comparar o primeiro critério", ["table", "graph", "matrix"]],
+        ["compare_second_criterion", "comparar o segundo critério", ["table", "graph", "matrix"]],
         ["check_distinction", "checar distinção", ["multiple_choice"]],
         ["consolidate", "consolidar", ["paragraph", "multiple_choice"]]
       ])
