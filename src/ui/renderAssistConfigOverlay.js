@@ -165,7 +165,7 @@ export function renderAssistConfigPanel({
     "</label>" +
     '<label class="field assist-config-field assist-config-student-field">' +
     renderFieldLabel("prompt", "Para quem", "Ajusta a trilha ao nível e ao tempo do estudante") +
-    `<input data-field="assist-config-target-student-profile" type="text" value="${escapeHtml(profileTuning.targetStudentProfile || "")}" autocomplete="off" spellcheck="false" placeholder="Perfil do estudante" title="Ajusta a trilha ao nível e ao tempo do estudante">` +
+    `<textarea data-field="assist-config-target-student-profile" rows="2" autocomplete="off" spellcheck="false" placeholder="Perfil do estudante" title="Ajusta a trilha ao nível e ao tempo do estudante">${escapeHtml(profileTuning.targetStudentProfile || "")}</textarea>` +
     "</label>" +
     '<label class="field assist-config-field">' +
     renderFieldLabel("trail", "Trilha", "Que tipo de trilha didática organiza este curso") +
