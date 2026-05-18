@@ -4480,9 +4480,9 @@ export function createLessonEditorApp({ root, storage, editor }) {
         state.selection.microsequenceKey
       );
       state.assistDraft.lastRequest = {
-        title: hadCardsBefore ? "Cards substituídos" : "Microssequência materializada",
+        title: hadCardsBefore ? "Microssequência continuada" : "Primeiros cards gerados",
         description:
-          `${Array.isArray(nextMicrosequence?.cards) ? nextMicrosequence.cards.length : 0} cards ${hadCardsBefore ? "aplicados" : "materializados"} em ${nextMicrosequence?.title || context.microsequence?.title || "Microssequência"} com ${getAssistModelLabel(state.assistConfig.model)}.`,
+          `${Array.isArray(nextMicrosequence?.cards) ? nextMicrosequence.cards.length : 0} cards ${hadCardsBefore ? "na iteração atual" : "gerados"} em ${nextMicrosequence?.title || context.microsequence?.title || "Microssequência"} com ${getAssistModelLabel(state.assistConfig.model)}.`,
         timestamp: new Date().toISOString()
       };
     } catch (error) {
@@ -4780,11 +4780,18 @@ export function createLessonEditorApp({ root, storage, editor }) {
 
   function buildAssistTemplatePrompt(templateId, microsequence) {
     const title = microsequence?.title || "esta microssequência";
+    if (templateId === "next_cards") {
+      return [
+        `Continue a microssequência "${title}" com os próximos cards, sem repetir os já materializados.`,
+        "Preserve o lugar dela na trilha e avance um degrau didático natural a partir do que já foi explicado.",
+        "Se houver prática ou contraste pendente, use os próximos cards para completar essa progressão antes de encerrar a etapa."
+      ].join(" ");
+    }
     if (templateId === "materialize") {
       return [
-        `Materialize a microssequência "${title}" com cards prontos para estudo.`,
+        `Gere os primeiros cards da microssequência "${title}" com conteúdo pronto para estudo.`,
         "Respeite o lugar dela na trilha, as tags atuais e a progressão já planejada.",
-        "Abra com explicação suficiente e avance para discriminação, prática ou reforço quando isso fizer sentido."
+        "Comece pela base necessária desta etapa antes de avançar para contraste, prática ou reforço."
       ].join(" ");
     }
     if (templateId === "reformulate") {
@@ -4797,12 +4804,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
       return [
         `Corrija a microssequência "${title}" sem mudar desnecessariamente a intenção didática.`,
         "Ajuste explicações confusas, lacunas de preparação, contraste insuficiente ou prática mal alinhada."
-      ].join(" ");
-    }
-    if (templateId === "expand") {
-      return [
-        `Expanda a microssequência "${title}" com novos cards dentro do mesmo foco.`,
-        "Aprofunde a compreensão, reforce contraste quando necessário e adicione prática sem replanejar a trilha inteira."
       ].join(" ");
     }
     return "";
@@ -8577,6 +8578,11 @@ export function createLessonEditorApp({ root, storage, editor }) {
       }
       render({ preserveState: true });
     });
+    root.querySelector("[data-action='fill-assist-template-next-cards']")?.addEventListener("click", () => {
+      state.assistDraft.promptText = buildAssistTemplatePrompt("next_cards", getRenderContext().microsequence);
+      render({ preserveState: true });
+      root.querySelector("[data-field='assist-prompt']")?.focus();
+    });
     root.querySelector("[data-action='fill-assist-template-materialize']")?.addEventListener("click", () => {
       state.assistDraft.promptText = buildAssistTemplatePrompt("materialize", getRenderContext().microsequence);
       render({ preserveState: true });
@@ -8589,11 +8595,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
     });
     root.querySelector("[data-action='fill-assist-template-repair']")?.addEventListener("click", () => {
       state.assistDraft.promptText = buildAssistTemplatePrompt("repair", getRenderContext().microsequence);
-      render({ preserveState: true });
-      root.querySelector("[data-field='assist-prompt']")?.focus();
-    });
-    root.querySelector("[data-action='fill-assist-template-expand']")?.addEventListener("click", () => {
-      state.assistDraft.promptText = buildAssistTemplatePrompt("expand", getRenderContext().microsequence);
       render({ preserveState: true });
       root.querySelector("[data-field='assist-prompt']")?.focus();
     });

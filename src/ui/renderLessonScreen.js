@@ -1079,7 +1079,7 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
     '<div class="study-reader-progress"><span style="width:' +
     String(cardProgressPercent) +
     '%"></span></div>' +
-    '<button class="icon-ghost" type="button" data-action="open-microsequence-assist" title="Editar cards" aria-label="Editar cards">&#9998;</button>' +
+    '<button class="icon-ghost" type="button" data-action="open-microsequence-assist" title="Continuar microssequência" aria-label="Continuar microssequência">&#9998;</button>' +
     '<button class="icon-ghost" type="button" data-action="close-study" title="Fechar leitura" aria-label="Fechar leitura">&times;</button>' +
     "</section>" +
     '<main class="screen-content microsequence-screen">' +
@@ -1241,10 +1241,11 @@ function renderMicrosequenceWorkbenchScreen({
   const nextPlannedMicrosequence = editorSupport.nextPlannedMicrosequence || null;
   const semanticActionsPanel = !isPlanned
     ? '<section class="microsequence-assist-panel assist-status-panel">' +
-      '<p class="tiny muted">Ações rápidas</p>' +
+      '<p class="tiny muted">Microssequência em andamento</p>' +
+      '<p class="muted assist-last-request">Os cards atuais são só o trecho já materializado. Você pode pedir os próximos cards, corrigir o que já existe ou abrir a próxima etapa planejada.</p>' +
       '<div class="assist-actions assist-actions-wide">' +
+      '<button class="open-mini" type="button" data-action="fill-assist-template-next-cards" title="Preparar pedido para gerar os próximos cards desta microssequência" aria-label="Preparar pedido para gerar os próximos cards desta microssequência">Próximos cards</button>' +
       '<button class="open-mini" type="button" data-action="fill-assist-template-repair" title="Preparar pedido para corrigir esta microssequência" aria-label="Preparar pedido para corrigir esta microssequência">Corrigir</button>' +
-      '<button class="open-mini" type="button" data-action="fill-assist-template-expand" title="Preparar pedido para expandir esta microssequência" aria-label="Preparar pedido para expandir esta microssequência">Expandir</button>' +
       (nextPlannedMicrosequence
         ? '<button class="open-mini" type="button" data-action="open-next-planned-microsequence" title="Abrir próxima microssequência planejada" aria-label="Abrir próxima microssequência planejada">Próxima planejada</button>'
         : "") +
@@ -1253,9 +1254,9 @@ function renderMicrosequenceWorkbenchScreen({
   const plannedStatePanel = isPlanned
     ? '<section class="microsequence-assist-panel assist-status-panel">' +
       '<p class="tiny muted">Microssequência planejada</p>' +
-      '<p class="muted assist-last-request">Esta etapa ainda não tem cards. Você pode materializar o conteúdo agora, reformular a proposta ou ajustar tags e foco antes de gerar.</p>' +
+      '<p class="muted assist-last-request">Esta etapa ainda não tem cards. Gere os primeiros cards a partir do plano já definido, ou reformule a proposta antes da primeira materialização.</p>' +
       '<div class="assist-actions assist-actions-wide">' +
-      '<button class="open-mini" type="button" data-action="fill-assist-template-materialize" title="Preparar pedido para materializar esta microssequência" aria-label="Preparar pedido para materializar esta microssequência">Materializar agora</button>' +
+      '<button class="open-mini" type="button" data-action="fill-assist-template-materialize" title="Preparar pedido para gerar os primeiros cards desta microssequência" aria-label="Preparar pedido para gerar os primeiros cards desta microssequência">Primeiros cards</button>' +
       '<button class="open-mini" type="button" data-action="fill-assist-template-reformulate" title="Preparar pedido para reformular esta microssequência" aria-label="Preparar pedido para reformular esta microssequência">Reformular proposta</button>' +
       (nextPlannedMicrosequence
         ? '<button class="open-mini" type="button" data-action="open-next-planned-microsequence" title="Abrir próxima microssequência planejada" aria-label="Abrir próxima microssequência planejada">Próxima planejada</button>'
@@ -1293,7 +1294,7 @@ function renderMicrosequenceWorkbenchScreen({
     (hasCards
       ? renderRuntimeBlocks(activeCard, bodyText)
       : '<p class="runtime-paragraph">' +
-        escapeHtml(isPlanned ? "Envie o pedido para materializar esta microssequência." : "Envie o pedido para gerar os cards da microssequência.") +
+        escapeHtml(isPlanned ? "Envie o pedido para gerar os primeiros cards desta microssequência." : "Envie o pedido para continuar a microssequência com os próximos cards.") +
         "</p>") +
     "</div>" +
     "</article>" +
@@ -1447,10 +1448,10 @@ function renderMicrosequenceAssistScreen({ lesson, microsequence, cards, selecti
   const isPlanned = isPlannedMicrosequence(microsequence);
 
   return renderMicrosequenceWorkbenchScreen({
-    title: hasCards ? "Editar cards" : isPlanned ? "Materializar microssequência" : "Gerar cards",
+    title: hasCards ? "Continuar microssequência" : isPlanned ? "Gerar primeiros cards" : "Gerar cards",
     backTitle: "Voltar para a lição",
-    sendTitle: hasCards ? "Editar cards" : isPlanned ? "Materializar microssequência" : "Gerar cards",
-    promptLabel: isPlanned ? "Pedido de materialização" : "Pedido",
+    sendTitle: hasCards ? "Gerar próximos cards" : isPlanned ? "Gerar primeiros cards" : "Gerar cards",
+    promptLabel: hasCards ? "Pedido dos próximos cards" : isPlanned ? "Pedido dos primeiros cards" : "Pedido",
     lesson,
     microsequence,
     cards,

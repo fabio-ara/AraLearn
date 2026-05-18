@@ -225,7 +225,7 @@ test("rotas visiveis de IA funcionam no navegador real", async (t) => {
   const overlaysAfter = await page.locator("[data-action='close-generation-panel']").count();
   assert.equal(overlaysBefore, 0);
   assert.equal(overlaysAfter, 0);
-  assert.equal(await page.locator(".topbar-title").first().textContent(), "Editar cards");
+  assert.equal(await page.locator(".topbar-title").first().textContent(), "Continuar microssequência");
 });
 
 test("painel contextual de geracao usa largura compativel com celular", async (t) => {

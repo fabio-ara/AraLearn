@@ -443,17 +443,19 @@ test("renderiza o painel da microssequência sem botão próprio de ações e co
   assert.match(html, /data-field="assist-didactic-type" aria-label="Tipo de sequência" title="Tipo de sequência"/);
   assert.match(html, /<option value="">Automático<\/option>/);
   assert.match(html, /<option value="guided_practice" selected>Prática guiada<\/option>/);
-  assert.match(html, /data-field="assist-prompt" class="assist-prompt" aria-label="Pedido" title="Pedido"/);
+  assert.match(html, /Microssequência em andamento/);
+  assert.match(html, /Os cards atuais são só o trecho já materializado\./);
+  assert.match(html, /data-field="assist-prompt" class="assist-prompt" aria-label="Pedido dos próximos cards" title="Pedido dos próximos cards"/);
   assert.match(html, /data-action="open-assist-container-picker" title="Adicionar recursos" aria-label="Adicionar recursos"/);
   assert.match(html, /data-field="assist-attachments" class="assist-attachment-input" type="file" multiple/);
   assert.match(html, /data-action="open-assist-attachment-picker" title="Anexar documentos" aria-label="Anexar documentos"/);
   assert.match(html, /data-action="remove-assist-attachment" data-attachment-index="0"/);
   assert.match(html, /referencia\.pdf/);
+  assert.match(html, /data-action="fill-assist-template-next-cards"/);
   assert.match(html, /data-action="fill-assist-template-repair"/);
-  assert.match(html, /data-action="fill-assist-template-expand"/);
   assert.match(html, /data-action="clear-prompt" title="Limpar prompt" aria-label="Limpar prompt"/);
   assert.match(html, /data-action="open-assist-config" title="Configurar IA" aria-label="Configurar IA"/);
-  assert.match(html, /data-action="apply-assist"[^>]*title="Editar cards" aria-label="Editar cards"/);
+  assert.match(html, /data-action="apply-assist"[^>]*title="Gerar próximos cards" aria-label="Gerar próximos cards"/);
   assert.match(html, /data-action="apply-assist"[^>]*disabled aria-disabled="true"/);
   assert.match(html, /generate-submit-icon/);
   assert.doesNotMatch(html, />Preview<\/button>/);
@@ -597,7 +599,7 @@ test("renderiza o painel da microssequência vazia em modo de geração de cards
     }
   });
 
-  assert.match(html, /<div class="topbar-title">Materializar microssequência<\/div>/);
+  assert.match(html, /<div class="topbar-title">Gerar primeiros cards<\/div>/);
   assert.match(html, /data-action="open-version-history"/);
   assert.doesNotMatch(html, /data-action="save-microsequence-snapshot"/);
   assert.doesNotMatch(html, /data-action="open-version-compare"/);
@@ -607,6 +609,7 @@ test("renderiza o painel da microssequência vazia em modo de geração de cards
   assert.match(html, /data-workbench-pane="edit"/);
   assert.match(html, /Microssequência planejada/);
   assert.match(html, /Esta etapa ainda não tem cards\./);
+  assert.match(html, /Gere os primeiros cards a partir do plano já definido/);
   assert.match(html, /data-action="fill-assist-template-materialize"/);
   assert.match(html, /data-action="fill-assist-template-reformulate"/);
   assert.match(html, /data-action="open-assist-container-picker" title="Adicionar recursos" aria-label="Adicionar recursos"/);
@@ -618,8 +621,8 @@ test("renderiza o painel da microssequência vazia em modo de geração de cards
   assert.doesNotMatch(html, /data-action="select-workbench-pane" data-workbench-pane="preview"/);
   assert.doesNotMatch(html, /Sem cards ainda/);
   assert.doesNotMatch(html, /Envie o pedido para gerar os cards da microssequência\./);
-  assert.match(html, /data-field="assist-prompt" class="assist-prompt" aria-label="Pedido de materialização" title="Pedido de materialização"/);
-  assert.match(html, /data-action="apply-assist"[^>]*title="Materializar microssequência" aria-label="Materializar microssequência"/);
+  assert.match(html, /data-field="assist-prompt" class="assist-prompt" aria-label="Pedido dos primeiros cards" title="Pedido dos primeiros cards"/);
+  assert.match(html, /data-action="apply-assist"[^>]*title="Gerar primeiros cards" aria-label="Gerar primeiros cards"/);
 });
 
 test("renderiza atalho para próxima microssequência planejada no painel de edição", () => {
