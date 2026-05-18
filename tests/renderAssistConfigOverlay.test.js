@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { renderAssistConfigOverlay } from "../src/ui/renderAssistConfigOverlay.js";
 import { createCourseForgeProfileTuning } from "../src/generation/runtime/courseForgeProfileTuning.js";
 
-test("renderAssistConfigOverlay expõe motor, perfil e parâmetros do perfil sem diretiva solta", () => {
+test("renderAssistConfigOverlay expõe contrato discreto do top-down sem setup operacional", () => {
   const html = renderAssistConfigOverlay({
     didacticProfileId: "aralearn.engine.ads.general.v3",
     profileTuning: createCourseForgeProfileTuning("aralearn.engine.ads.general.v3", {
@@ -20,6 +20,15 @@ test("renderAssistConfigOverlay expõe motor, perfil e parâmetros do perfil sem
   assert.match(html, /editor-title">IA<\/p>/);
   assert.match(html, /data-field="assist-config-profile"/);
   assert.match(html, /data-field="assist-config-target-student-profile"/);
+  assert.match(html, /data-field="assist-config-course-model-description"/);
+  assert.match(html, /data-field="assist-config-course-material-nature"/);
+  assert.match(html, /data-field="assist-config-course-progression-mode"/);
+  assert.match(html, /data-field="assist-config-course-primary-representation"/);
+  assert.match(html, /data-field="assist-config-course-secondary-representation"/);
+  assert.match(html, /data-field="assist-config-course-primary-operation"/);
+  assert.match(html, /data-field="assist-config-course-primary-difficulty"/);
+  assert.match(html, /data-field="assist-config-course-secondary-difficulty"/);
+  assert.match(html, /data-field="assist-config-course-preferred-practice-mode"/);
   assert.match(html, /data-field="assist-config-conceptual-reappearances"/);
   assert.match(html, /data-action="assist-config-reset-profile"/);
   assert.match(html, />Planejamento</);
@@ -28,8 +37,12 @@ test("renderAssistConfigOverlay expõe motor, perfil e parâmetros do perfil sem
   assert.match(html, />Para quem</);
   assert.match(html, />Curso</);
   assert.match(html, />Natureza</);
-  assert.match(html, />Formas</);
-  assert.match(html, />Travas</);
+  assert.match(html, />Forma principal</);
+  assert.match(html, />Forma secundária</);
+  assert.match(html, />Operação principal</);
+  assert.match(html, />Prática preferida</);
+  assert.match(html, />Trava principal</);
+  assert.match(html, />Trava secundária</);
   assert.match(html, />Retoma ideia</);
   assert.match(html, />Explica vocabulário</);
   assert.match(html, /assist-config-infer-course-model/);

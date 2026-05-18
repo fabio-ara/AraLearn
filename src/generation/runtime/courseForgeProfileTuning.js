@@ -58,18 +58,28 @@ function resolveCourseModelWithProfileDefaults(defaultCourseModel = {}, input = 
     progressionMode: text(normalizedInput.progressionMode)
       ? normalizedInput.progressionMode
       : defaultCourseModel.progressionMode,
-    centralRepresentations: normalizedInput.centralRepresentations.length
-      ? normalizedInput.centralRepresentations
-      : defaultCourseModel.centralRepresentations,
-    cognitiveOperations: normalizedInput.cognitiveOperations.length
-      ? normalizedInput.cognitiveOperations
-      : defaultCourseModel.cognitiveOperations,
-    expectedDifficulties: normalizedInput.expectedDifficulties.length
-      ? normalizedInput.expectedDifficulties
-      : defaultCourseModel.expectedDifficulties,
-    practiceModes: normalizedInput.practiceModes.length
-      ? normalizedInput.practiceModes
-      : defaultCourseModel.practiceModes
+    primaryRepresentation: text(normalizedInput.primaryRepresentation)
+      ? normalizedInput.primaryRepresentation
+      : defaultCourseModel.primaryRepresentation,
+    secondaryRepresentation:
+      text(normalizedInput.secondaryRepresentation) ||
+      text(normalizedInput.primaryRepresentation)
+        ? normalizedInput.secondaryRepresentation
+        : defaultCourseModel.secondaryRepresentation,
+    primaryOperation: text(normalizedInput.primaryOperation)
+      ? normalizedInput.primaryOperation
+      : defaultCourseModel.primaryOperation,
+    primaryDifficulty: text(normalizedInput.primaryDifficulty)
+      ? normalizedInput.primaryDifficulty
+      : defaultCourseModel.primaryDifficulty,
+    secondaryDifficulty:
+      text(normalizedInput.secondaryDifficulty) ||
+      text(normalizedInput.primaryDifficulty)
+        ? normalizedInput.secondaryDifficulty
+        : defaultCourseModel.secondaryDifficulty,
+    preferredPracticeMode: text(normalizedInput.preferredPracticeMode)
+      ? normalizedInput.preferredPracticeMode
+      : defaultCourseModel.preferredPracticeMode
   });
 }
 

@@ -15,11 +15,10 @@ test("inferCourseModelFromDescription extrai semântica geral sem hardcode de do
   );
 
   assert.equal(model.materialNature, "visual_interpretation");
-  assert.ok(model.centralRepresentations.includes("flowchart"));
-  assert.ok(model.centralRepresentations.includes("pseudocode"));
-  assert.ok(model.centralRepresentations.includes("code"));
-  assert.ok(model.cognitiveOperations.includes("translate"));
-  assert.ok(model.practiceModes.includes("guided_first"));
+  assert.equal(model.primaryRepresentation, "flowchart");
+  assert.equal(model.secondaryRepresentation, "pseudocode");
+  assert.equal(model.primaryOperation, "translate");
+  assert.equal(model.preferredPracticeMode, "guided_first");
 });
 
 test("buildCourseModelPromptLines resume a modelagem em linguagem de produto", () => {
@@ -28,22 +27,24 @@ test("buildCourseModelPromptLines resume a modelagem em linguagem de produto", (
       description: "Leitura técnica com árvores e comparação de hipóteses.",
       materialNature: "technical_reading",
       progressionMode: "reading_to_application",
-      centralRepresentations: ["scientific_article", "tree"],
-      cognitiveOperations: ["interpret", "compare"]
+      primaryRepresentation: "scientific_article",
+      secondaryRepresentation: "tree",
+      primaryOperation: "interpret",
+      primaryDifficulty: "fine_comparison"
     })
   );
 
   assert.match(lines.join("\n"), /Leitura técnica/);
   assert.match(lines.join("\n"), /Artigo/);
   assert.match(lines.join("\n"), /Árvore/);
-  assert.match(lines.join("\n"), /Comparar/);
+  assert.match(lines.join("\n"), /Interpretar evidência/);
 });
 
 test("buildResourcePreferencesFromCourseModel prioriza matrix sem confundir com table", () => {
   const preferences = buildResourcePreferencesFromCourseModel({
-    centralRepresentations: ["matrix"],
-    cognitiveOperations: ["trace"],
-    practiceModes: ["guided_first"]
+    primaryRepresentation: "matrix",
+    primaryOperation: "trace",
+    preferredPracticeMode: "guided_first"
   });
 
   assert.ok(preferences.preferredResourceTypes.includes("matrix"));
@@ -59,9 +60,9 @@ test("resolveWeakModelRepresentationPolicy libera matrix quando a modelagem do c
     },
     resolvedTypeId: "comparison",
     courseSemantics: {
-      centralRepresentations: ["matrix"],
-      cognitiveOperations: ["trace"],
-      practiceModes: []
+      primaryRepresentation: "matrix",
+      primaryOperation: "trace",
+      preferredPracticeMode: ""
     },
     resourcePreferences: {
       preferredResourceTypes: ["matrix"],

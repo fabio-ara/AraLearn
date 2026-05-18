@@ -76,22 +76,6 @@ function renderSectionLabel(iconName, label, title = "") {
   );
 }
 
-function renderToggleList(listName, options = [], selectedValues = [], title = "") {
-  const selectedSet = new Set(Array.isArray(selectedValues) ? selectedValues : []);
-  return (
-    `<div class="assist-config-chip-list" title="${escapeHtml(title)}">` +
-    (Array.isArray(options) ? options : [])
-      .map((option) => (
-        `<button class="assist-config-pick-chip${selectedSet.has(option.value) ? " is-active" : ""}" type="button" ` +
-        `data-action="toggle-assist-course-model-list" data-list="${escapeHtml(listName)}" data-value="${escapeHtml(option.value)}" ` +
-        `title="${escapeHtml(option.label)}" aria-pressed="${selectedSet.has(option.value) ? "true" : "false"}">` +
-        `${escapeHtml(option.label)}</button>`
-      ))
-      .join("") +
-    "</div>"
-  );
-}
-
 export function renderAssistConfigOverlay({
   didacticProfileId,
   profileTuning = {},
@@ -139,42 +123,38 @@ export function renderAssistConfigOverlay({
     renderOptionList([{ value: "", label: "Selecionar" }, ...COURSE_MODEL_OPTIONS.progressionMode], profileTuning.courseModel?.progressionMode || "") +
     "</select></label>" +
     "</div>" +
-    '<section class="assist-config-semantic-section">' +
-    renderFieldLabel("tags", "Formas", "Linguagens e formas centrais; orientam o plano e ajudam a escolher a representação dos cards") +
-    renderToggleList(
-      "centralRepresentations",
-      COURSE_MODEL_OPTIONS.centralRepresentations,
-      profileTuning.courseModel?.centralRepresentations || [],
-      "Linguagens e formas centrais do curso"
-    ) +
-    "</section>" +
-    '<section class="assist-config-semantic-section">' +
-    renderFieldLabel("lesson", "Operações", "O que o estudante mais precisa fazer ao longo da trilha") +
-    renderToggleList(
-      "cognitiveOperations",
-      COURSE_MODEL_OPTIONS.cognitiveOperations,
-      profileTuning.courseModel?.cognitiveOperations || [],
-      "Operações cognitivas prioritárias"
-    ) +
-    "</section>" +
-    '<section class="assist-config-semantic-section">' +
-    renderFieldLabel("intent", "Travas", "Onde o estudante costuma travar") +
-    renderToggleList(
-      "expectedDifficulties",
-      COURSE_MODEL_OPTIONS.expectedDifficulties,
-      profileTuning.courseModel?.expectedDifficulties || [],
-      "Dificuldades esperadas do estudante"
-    ) +
-    "</section>" +
-    '<section class="assist-config-semantic-section">' +
-    renderFieldLabel("ready-state", "Prática", "Como a prática deve aparecer ao longo da trilha") +
-    renderToggleList(
-      "practiceModes",
-      COURSE_MODEL_OPTIONS.practiceModes,
-      profileTuning.courseModel?.practiceModes || [],
-      "Forma de prática preferida"
-    ) +
-    "</section>" +
+    '<div class="assist-config-grid">' +
+    '<label class="field assist-config-field">' +
+    renderFieldLabel("tags", "Forma principal", "Representação dominante da trilha") +
+    '<select data-field="assist-config-course-primary-representation" aria-label="Forma principal" title="Representação dominante da trilha">' +
+    renderOptionList([{ value: "", label: "Selecionar" }, ...COURSE_MODEL_OPTIONS.representations], profileTuning.courseModel?.primaryRepresentation || "") +
+    "</select></label>" +
+    '<label class="field assist-config-field">' +
+    renderFieldLabel("tags", "Forma secundária", "Representação de apoio ou ponte") +
+    '<select data-field="assist-config-course-secondary-representation" aria-label="Forma secundária" title="Representação de apoio ou ponte">' +
+    renderOptionList([{ value: "", label: "Nenhuma" }, ...COURSE_MODEL_OPTIONS.representations], profileTuning.courseModel?.secondaryRepresentation || "") +
+    "</select></label>" +
+    '<label class="field assist-config-field">' +
+    renderFieldLabel("lesson", "Operação principal", "A ação cognitiva dominante da trilha") +
+    '<select data-field="assist-config-course-primary-operation" aria-label="Operação principal" title="A ação cognitiva dominante da trilha">' +
+    renderOptionList([{ value: "", label: "Selecionar" }, ...COURSE_MODEL_OPTIONS.operations], profileTuning.courseModel?.primaryOperation || "") +
+    "</select></label>" +
+    '<label class="field assist-config-field">' +
+    renderFieldLabel("ready-state", "Prática preferida", "A forma de prática que deve dominar a trilha") +
+    '<select data-field="assist-config-course-preferred-practice-mode" aria-label="Prática preferida" title="A forma de prática que deve dominar a trilha">' +
+    renderOptionList([{ value: "", label: "Selecionar" }, ...COURSE_MODEL_OPTIONS.practiceModes], profileTuning.courseModel?.preferredPracticeMode || "") +
+    "</select></label>" +
+    '<label class="field assist-config-field">' +
+    renderFieldLabel("intent", "Trava principal", "A dificuldade dominante do estudante") +
+    '<select data-field="assist-config-course-primary-difficulty" aria-label="Trava principal" title="A dificuldade dominante do estudante">' +
+    renderOptionList([{ value: "", label: "Selecionar" }, ...COURSE_MODEL_OPTIONS.difficulties], profileTuning.courseModel?.primaryDifficulty || "") +
+    "</select></label>" +
+    '<label class="field assist-config-field">' +
+    renderFieldLabel("intent", "Trava secundária", "A dificuldade de apoio logo atrás da principal") +
+    '<select data-field="assist-config-course-secondary-difficulty" aria-label="Trava secundária" title="A dificuldade de apoio logo atrás da principal">' +
+    renderOptionList([{ value: "", label: "Nenhuma" }, ...COURSE_MODEL_OPTIONS.difficulties], profileTuning.courseModel?.secondaryDifficulty || "") +
+    "</select></label>" +
+    "</div>" +
     "</section>" +
     '<section class="assist-config-panel">' +
     renderSectionLabel("progress", "Ritmo", "Parâmetros de densidade, retomada e fechamento do núcleo") +

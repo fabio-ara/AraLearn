@@ -1830,21 +1830,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
     });
   }
 
-  function toggleAssistCourseModelList(listName = "", value = "") {
-    const normalizedListName = String(listName || "").trim();
-    const normalizedValue = String(value || "").trim();
-    if (!normalizedListName || !normalizedValue) {
-      return;
-    }
-    const currentValues = Array.isArray(state.assistConfig.profileTuning?.courseModel?.[normalizedListName])
-      ? state.assistConfig.profileTuning.courseModel[normalizedListName]
-      : [];
-    const nextValues = currentValues.includes(normalizedValue)
-      ? currentValues.filter((entry) => entry !== normalizedValue)
-      : [...currentValues, normalizedValue];
-    updateAssistCourseModel({ [normalizedListName]: nextValues });
-  }
-
   function inferAssistCourseModelFromDescription() {
     const nextCourseModel = inferCourseModelFromDescription(
       state.assistConfig.profileTuning?.courseModel?.description || "",
@@ -8315,31 +8300,22 @@ export function createLessonEditorApp({ root, storage, editor }) {
       void copyTextToClipboard(getCodexSetupHealthCommand());
     });
 
-    const assistConfigModel = root.querySelector("[data-field='assist-config-model']");
     const assistConfigProfile = root.querySelector("[data-field='assist-config-profile']");
-    const assistConfigApiKey = root.querySelector("[data-field='assist-config-api-key']");
     const assistConfigTargetStudentProfile = root.querySelector("[data-field='assist-config-target-student-profile']");
     const assistConfigCourseModelDescription = root.querySelector("[data-field='assist-config-course-model-description']");
     const assistConfigCourseMaterialNature = root.querySelector("[data-field='assist-config-course-material-nature']");
     const assistConfigCourseProgressionMode = root.querySelector("[data-field='assist-config-course-progression-mode']");
+    const assistConfigCoursePrimaryRepresentation = root.querySelector("[data-field='assist-config-course-primary-representation']");
+    const assistConfigCourseSecondaryRepresentation = root.querySelector("[data-field='assist-config-course-secondary-representation']");
+    const assistConfigCoursePrimaryOperation = root.querySelector("[data-field='assist-config-course-primary-operation']");
+    const assistConfigCoursePrimaryDifficulty = root.querySelector("[data-field='assist-config-course-primary-difficulty']");
+    const assistConfigCourseSecondaryDifficulty = root.querySelector("[data-field='assist-config-course-secondary-difficulty']");
+    const assistConfigCoursePreferredPracticeMode = root.querySelector("[data-field='assist-config-course-preferred-practice-mode']");
     const assistConfigConceptualReappearances = root.querySelector("[data-field='assist-config-conceptual-reappearances']");
     const assistConfigOperationalReappearances = root.querySelector("[data-field='assist-config-operational-reappearances']");
     const assistConfigMinMicrosequences = root.querySelector("[data-field='assist-config-min-microsequences']");
     const assistConfigTargetMicrosequences = root.querySelector("[data-field='assist-config-target-microsequences']");
     const assistConfigMaxMicrosequences = root.querySelector("[data-field='assist-config-max-microsequences']");
-    const assistConfigCodexEndpoint = root.querySelector("[data-field='assist-config-codex-endpoint']");
-    const assistConfigCodexToken = root.querySelector("[data-field='assist-config-codex-token']");
-    if (assistConfigModel) {
-      assistConfigModel.addEventListener("change", () => {
-        persistAssistConfigValue({ model: assistConfigModel.value });
-        void handleCodexModelSelection(assistConfigModel.value);
-      });
-    }
-    if (assistConfigApiKey) {
-      assistConfigApiKey.addEventListener("input", () => {
-        persistAssistConfigValue({ apiKey: assistConfigApiKey.value });
-      });
-    }
     if (assistConfigProfile) {
       assistConfigProfile.addEventListener("change", () => {
         resetAssistProfileTuning(assistConfigProfile.value);
@@ -8363,6 +8339,36 @@ export function createLessonEditorApp({ root, storage, editor }) {
     if (assistConfigCourseProgressionMode) {
       assistConfigCourseProgressionMode.addEventListener("change", () => {
         updateAssistCourseModel({ progressionMode: assistConfigCourseProgressionMode.value });
+      });
+    }
+    if (assistConfigCoursePrimaryRepresentation) {
+      assistConfigCoursePrimaryRepresentation.addEventListener("change", () => {
+        updateAssistCourseModel({ primaryRepresentation: assistConfigCoursePrimaryRepresentation.value });
+      });
+    }
+    if (assistConfigCourseSecondaryRepresentation) {
+      assistConfigCourseSecondaryRepresentation.addEventListener("change", () => {
+        updateAssistCourseModel({ secondaryRepresentation: assistConfigCourseSecondaryRepresentation.value });
+      });
+    }
+    if (assistConfigCoursePrimaryOperation) {
+      assistConfigCoursePrimaryOperation.addEventListener("change", () => {
+        updateAssistCourseModel({ primaryOperation: assistConfigCoursePrimaryOperation.value });
+      });
+    }
+    if (assistConfigCoursePrimaryDifficulty) {
+      assistConfigCoursePrimaryDifficulty.addEventListener("change", () => {
+        updateAssistCourseModel({ primaryDifficulty: assistConfigCoursePrimaryDifficulty.value });
+      });
+    }
+    if (assistConfigCourseSecondaryDifficulty) {
+      assistConfigCourseSecondaryDifficulty.addEventListener("change", () => {
+        updateAssistCourseModel({ secondaryDifficulty: assistConfigCourseSecondaryDifficulty.value });
+      });
+    }
+    if (assistConfigCoursePreferredPracticeMode) {
+      assistConfigCoursePreferredPracticeMode.addEventListener("change", () => {
+        updateAssistCourseModel({ preferredPracticeMode: assistConfigCoursePreferredPracticeMode.value });
       });
     }
     if (assistConfigConceptualReappearances) {
@@ -8390,16 +8396,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
         updateAssistProfileTuning({ maxMicrosequences: assistConfigMaxMicrosequences.value });
       });
     }
-    if (assistConfigCodexEndpoint) {
-      assistConfigCodexEndpoint.addEventListener("input", () => {
-        persistAssistConfigValue({ codexEndpoint: assistConfigCodexEndpoint.value });
-      });
-    }
-    if (assistConfigCodexToken) {
-      assistConfigCodexToken.addEventListener("input", () => {
-        persistAssistConfigValue({ codexToken: assistConfigCodexToken.value });
-      });
-    }
     root.querySelectorAll("[data-action='toggle-assist-config-flag']").forEach((node) => {
       node.addEventListener("click", () => {
         const field = node.getAttribute("data-field") || "";
@@ -8409,12 +8405,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
         updateAssistProfileTuning({
           [field]: state.assistConfig.profileTuning?.[field] !== true
         });
-        render({ preserveState: true });
-      });
-    });
-    root.querySelectorAll("[data-action='toggle-assist-course-model-list']").forEach((node) => {
-      node.addEventListener("click", () => {
-        toggleAssistCourseModelList(node.getAttribute("data-list") || "", node.getAttribute("data-value") || "");
         render({ preserveState: true });
       });
     });

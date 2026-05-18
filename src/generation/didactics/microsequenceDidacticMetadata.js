@@ -147,7 +147,10 @@ export function pickAllowedResourceTypes(lessonPlan = {}) {
   if (allowed.length) {
     return allowed;
   }
-  const courseRepresentations = normalizeArray(lessonPlan?.courseSemantics?.centralRepresentations).map(text);
+  const courseRepresentations = [
+    text(lessonPlan?.courseSemantics?.primaryRepresentation),
+    text(lessonPlan?.courseSemantics?.secondaryRepresentation)
+  ].filter(Boolean);
   if (courseRepresentations.includes("matrix")) {
     return ["paragraph", "multiple_choice", "matrix"];
   }

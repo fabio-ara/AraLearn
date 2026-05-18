@@ -85,9 +85,12 @@ function typeSupportsResource(typeId, resourceType) {
 
 function normalizeCourseSemantics(courseSemantics = {}) {
   return {
-    centralRepresentations: list(courseSemantics?.centralRepresentations),
-    cognitiveOperations: list(courseSemantics?.cognitiveOperations),
-    practiceModes: list(courseSemantics?.practiceModes)
+    representations: unique([
+      text(courseSemantics?.primaryRepresentation),
+      text(courseSemantics?.secondaryRepresentation)
+    ]),
+    operations: unique([text(courseSemantics?.primaryOperation)]),
+    practiceModes: unique([text(courseSemantics?.preferredPracticeMode)])
   };
 }
 
@@ -101,17 +104,17 @@ function hasStrongResourceNeed(resourceType, { lessonGuidance = {}, lessonSource
   const guideText = normalizeGuideText(lessonSourceGuideStructured);
   const normalizedCourseSemantics = normalizeCourseSemantics(courseSemantics);
   const courseHints = {
-    matrix: normalizedCourseSemantics.centralRepresentations.includes("matrix"),
+    matrix: normalizedCourseSemantics.representations.includes("matrix"),
     plane:
-      normalizedCourseSemantics.centralRepresentations.includes("graph") ||
-      normalizedCourseSemantics.centralRepresentations.includes("formula"),
+      normalizedCourseSemantics.representations.includes("graph") ||
+      normalizedCourseSemantics.representations.includes("formula"),
     flowchart:
-      normalizedCourseSemantics.centralRepresentations.includes("flowchart") ||
-      normalizedCourseSemantics.cognitiveOperations.includes("trace") ||
-      normalizedCourseSemantics.cognitiveOperations.includes("build"),
+      normalizedCourseSemantics.representations.includes("flowchart") ||
+      normalizedCourseSemantics.operations.includes("trace") ||
+      normalizedCourseSemantics.operations.includes("build"),
     tree:
-      normalizedCourseSemantics.centralRepresentations.includes("tree") ||
-      normalizedCourseSemantics.cognitiveOperations.includes("classify")
+      normalizedCourseSemantics.representations.includes("tree") ||
+      normalizedCourseSemantics.operations.includes("classify")
   };
   return (
     includesAny(contentTypeTags, rule.contentTypeTags) ||

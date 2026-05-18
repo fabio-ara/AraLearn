@@ -83,9 +83,10 @@ test("resolveCourseForgeDidacticProfileId e buildCourseForgeEngineProfileOverrid
           description: "Curso com progressão visual para formal.",
           materialNature: "formal_language",
           progressionMode: "visual_to_formal",
-          centralRepresentations: ["flowchart", "pseudocode", "code"],
-          cognitiveOperations: ["translate", "trace"],
-          practiceModes: ["guided_first", "translation"]
+          primaryRepresentation: "flowchart",
+          secondaryRepresentation: "code",
+          primaryOperation: "translate",
+          preferredPracticeMode: "translation"
         }
       })
     }),
@@ -105,17 +106,19 @@ test("resolveCourseForgeDidacticProfileId e buildCourseForgeEngineProfileOverrid
           requireCoreCoverageBeforeExtensions: true,
           requireVocabularyMap: true
         },
-        courseSemantics: {
-          description: "Curso com progressão visual para formal.",
-          materialNature: "formal_language",
-          progressionMode: "visual_to_formal",
-          centralRepresentations: ["flowchart", "pseudocode", "code"],
-          cognitiveOperations: ["translate", "trace"],
-          expectedDifficulties: ["vocabulary", "abstraction", "transfer"],
-          practiceModes: ["guided_first", "translation"]
-        },
+          courseSemantics: {
+            description: "Curso com progressão visual para formal.",
+            materialNature: "formal_language",
+            progressionMode: "visual_to_formal",
+            primaryRepresentation: "flowchart",
+            secondaryRepresentation: "code",
+            primaryOperation: "translate",
+            primaryDifficulty: "abstraction",
+            secondaryDifficulty: "transfer",
+            preferredPracticeMode: "translation"
+          },
         resourcePreferences: {
-          preferredResourceTypes: ["flowchart", "code_editor", "matrix", "paragraph"],
+          preferredResourceTypes: ["flowchart", "code_editor"],
           discouragedResourceTypes: ["tree"]
         }
       }
@@ -127,28 +130,28 @@ test("createCourseForgeProfileTuning hidrata a modelagem semântica a partir do 
   const defaults = createCourseForgeProfileTuning("aralearn.engine.ads.programming.v1");
   assert.equal(defaults.courseModel.materialNature, "procedure");
   assert.equal(defaults.courseModel.progressionMode, "visual_to_formal");
-  assert.ok(defaults.courseModel.centralRepresentations.includes("flowchart"));
-  assert.ok(defaults.courseModel.cognitiveOperations.includes("translate"));
-  assert.ok(defaults.courseModel.expectedDifficulties.includes("syntax"));
-  assert.ok(defaults.courseModel.practiceModes.includes("translation"));
+  assert.equal(defaults.courseModel.primaryRepresentation, "flowchart");
+  assert.equal(defaults.courseModel.primaryOperation, "translate");
+  assert.equal(defaults.courseModel.primaryDifficulty, "syntax");
+  assert.equal(defaults.courseModel.preferredPracticeMode, "translation");
 
   const customized = createCourseForgeProfileTuning("aralearn.engine.ads.programming.v1", {
     targetStudentProfile: "",
     courseModelEdited: true,
     courseModel: {
       materialNature: "",
-      centralRepresentations: [],
-      cognitiveOperations: ["build"],
-      expectedDifficulties: [],
-      practiceModes: ["case_study"]
+      primaryRepresentation: "",
+      primaryOperation: "build",
+      primaryDifficulty: "",
+      preferredPracticeMode: "case_study"
     }
   });
 
   assert.equal(customized.targetStudentProfile, "");
   assert.equal(customized.courseModel.materialNature, "");
-  assert.deepEqual(customized.courseModel.centralRepresentations, []);
-  assert.deepEqual(customized.courseModel.cognitiveOperations, ["build"]);
-  assert.deepEqual(customized.courseModel.practiceModes, ["case_study"]);
+  assert.equal(customized.courseModel.primaryRepresentation, "");
+  assert.equal(customized.courseModel.primaryOperation, "build");
+  assert.equal(customized.courseModel.preferredPracticeMode, "case_study");
 });
 
 test("resolveCourseForgeLaunchConfig monta runtime e intent config fora da UI", () => {
@@ -168,7 +171,7 @@ test("resolveCourseForgeLaunchConfig monta runtime e intent config fora da UI", 
     launchConfig.engineProfileOverrides.didacticPolicy.targetStudentProfile,
     "estudante que precisa de operadores bem explicados"
   );
-  assert.ok(launchConfig.engineProfileOverrides.didacticPolicy.courseSemantics.centralRepresentations.includes("flowchart"));
+  assert.equal(launchConfig.engineProfileOverrides.didacticPolicy.courseSemantics.primaryRepresentation, "flowchart");
   assert.equal(launchConfig.phaseModelOverrides.plan_architecture, "gemini-2.5-flash");
   assert.equal(typeof launchConfig.providerRegistry.get("google")?.callJson, "function");
 });

@@ -68,13 +68,6 @@ const PRACTICE_MODE_OPTIONS = Object.freeze([
   { value: "commented_reading", label: "Leitura comentada" }
 ]);
 
-const LIST_FIELD_OPTIONS = Object.freeze({
-  centralRepresentations: CENTRAL_REPRESENTATION_OPTIONS,
-  cognitiveOperations: COGNITIVE_OPERATION_OPTIONS,
-  expectedDifficulties: EXPECTED_DIFFICULTY_OPTIONS,
-  practiceModes: PRACTICE_MODE_OPTIONS
-});
-
 const RESOURCE_HINTS_BY_REPRESENTATION = Object.freeze({
   matrix: ["matrix"],
   table: ["table"],
@@ -116,15 +109,6 @@ function text(value) {
   return typeof value === "string" ? value.trim() : "";
 }
 
-function unique(items = []) {
-  return [...new Set(items.filter(Boolean))];
-}
-
-function normalizeList(values = [], options = []) {
-  const allowed = new Set((options || []).map((entry) => entry.value));
-  return unique(Array.isArray(values) ? values.map((item) => text(item)) : []).filter((item) => allowed.has(item));
-}
-
 function normalizeEnum(value = "", options = [], fallback = "") {
   const normalized = text(value);
   return (options || []).some((entry) => entry.value === normalized) ? normalized : fallback;
@@ -134,26 +118,16 @@ function optionLabel(options = [], value = "") {
   return (options || []).find((entry) => entry.value === value)?.label || "";
 }
 
-export function listCourseModelOptions() {
-  return {
-    materialNature: [...MATERIAL_NATURE_OPTIONS],
-    progressionMode: [...PROGRESSION_MODE_OPTIONS],
-    centralRepresentations: [...CENTRAL_REPRESENTATION_OPTIONS],
-    cognitiveOperations: [...COGNITIVE_OPERATION_OPTIONS],
-    expectedDifficulties: [...EXPECTED_DIFFICULTY_OPTIONS],
-    practiceModes: [...PRACTICE_MODE_OPTIONS]
-  };
+function unique(items = []) {
+  return [...new Set(items.filter(Boolean))];
 }
 
-export function createDefaultCourseModel(input = {}) {
+function normalizeDistinctPrimarySecondary(primary, secondary, options = []) {
+  const normalizedPrimary = normalizeEnum(primary, options, "");
+  const normalizedSecondary = normalizeEnum(secondary, options, "");
   return {
-    description: text(input?.description),
-    materialNature: normalizeEnum(text(input?.materialNature), MATERIAL_NATURE_OPTIONS, ""),
-    progressionMode: normalizeEnum(text(input?.progressionMode), PROGRESSION_MODE_OPTIONS, ""),
-    centralRepresentations: normalizeList(input?.centralRepresentations, CENTRAL_REPRESENTATION_OPTIONS),
-    cognitiveOperations: normalizeList(input?.cognitiveOperations, COGNITIVE_OPERATION_OPTIONS),
-    expectedDifficulties: normalizeList(input?.expectedDifficulties, EXPECTED_DIFFICULTY_OPTIONS),
-    practiceModes: normalizeList(input?.practiceModes, PRACTICE_MODE_OPTIONS)
+    primary: normalizedPrimary,
+    secondary: normalizedSecondary && normalizedSecondary !== normalizedPrimary ? normalizedSecondary : ""
   };
 }
 
@@ -165,6 +139,54 @@ function inferKeywordList(description = "", table = {}) {
   return Object.entries(table)
     .filter(([, matchers]) => (matchers || []).some((matcher) => normalized.includes(matcher)))
     .map(([value]) => value);
+}
+
+function twoDistinct(items = []) {
+  const uniqueItems = unique(items.map((item) => text(item)));
+  return {
+    primary: uniqueItems[0] || "",
+    secondary: uniqueItems[1] || ""
+  };
+}
+
+function flattenPreferencePair(primary = "", secondary = "") {
+  return unique([text(primary), text(secondary)]);
+}
+
+export function listCourseModelOptions() {
+  return {
+    materialNature: [...MATERIAL_NATURE_OPTIONS],
+    progressionMode: [...PROGRESSION_MODE_OPTIONS],
+    representations: [...CENTRAL_REPRESENTATION_OPTIONS],
+    operations: [...COGNITIVE_OPERATION_OPTIONS],
+    difficulties: [...EXPECTED_DIFFICULTY_OPTIONS],
+    practiceModes: [...PRACTICE_MODE_OPTIONS]
+  };
+}
+
+export function createDefaultCourseModel(input = {}) {
+  const formPreference = normalizeDistinctPrimarySecondary(
+    input?.primaryRepresentation || input?.formPrimary,
+    input?.secondaryRepresentation || input?.formSecondary,
+    CENTRAL_REPRESENTATION_OPTIONS
+  );
+  const difficultyPreference = normalizeDistinctPrimarySecondary(
+    input?.primaryDifficulty || input?.difficultyPrimary,
+    input?.secondaryDifficulty || input?.difficultySecondary,
+    EXPECTED_DIFFICULTY_OPTIONS
+  );
+
+  return {
+    description: text(input?.description),
+    materialNature: normalizeEnum(text(input?.materialNature), MATERIAL_NATURE_OPTIONS, ""),
+    progressionMode: normalizeEnum(text(input?.progressionMode), PROGRESSION_MODE_OPTIONS, ""),
+    primaryRepresentation: formPreference.primary,
+    secondaryRepresentation: formPreference.secondary,
+    primaryOperation: normalizeEnum(text(input?.primaryOperation), COGNITIVE_OPERATION_OPTIONS, ""),
+    primaryDifficulty: difficultyPreference.primary,
+    secondaryDifficulty: difficultyPreference.secondary,
+    preferredPracticeMode: normalizeEnum(text(input?.preferredPracticeMode), PRACTICE_MODE_OPTIONS, "")
+  };
 }
 
 export function inferCourseModelFromDescription(description = "", baseModel = {}) {
@@ -233,16 +255,28 @@ export function inferCourseModelFromDescription(description = "", baseModel = {}
     theory_to_exercise: ["teoria", "exercicio"],
     structure_to_detail: ["estrutura", "detalhe"]
   });
+  const representationPreference = twoDistinct([
+    current.primaryRepresentation,
+    current.secondaryRepresentation,
+    ...representationCandidates
+  ]);
+  const difficultyPreference = twoDistinct([
+    current.primaryDifficulty,
+    current.secondaryDifficulty,
+    ...difficultyCandidates
+  ]);
 
   return createDefaultCourseModel({
     ...current,
     description: text(description) || current.description,
     materialNature: current.materialNature || materialNatureCandidates[0] || "",
     progressionMode: current.progressionMode || progressionCandidates[0] || "",
-    centralRepresentations: [...current.centralRepresentations, ...representationCandidates],
-    cognitiveOperations: [...current.cognitiveOperations, ...operationCandidates],
-    expectedDifficulties: [...current.expectedDifficulties, ...difficultyCandidates],
-    practiceModes: [...current.practiceModes, ...practiceCandidates]
+    primaryRepresentation: representationPreference.primary,
+    secondaryRepresentation: representationPreference.secondary,
+    primaryOperation: current.primaryOperation || operationCandidates[0] || "",
+    primaryDifficulty: difficultyPreference.primary,
+    secondaryDifficulty: difficultyPreference.secondary,
+    preferredPracticeMode: current.preferredPracticeMode || practiceCandidates[0] || ""
   });
 }
 
@@ -258,37 +292,23 @@ export function buildCourseModelPromptLines(courseModel = {}) {
   if (normalized.progressionMode) {
     lines.push(`Progressão preferida: ${optionLabel(PROGRESSION_MODE_OPTIONS, normalized.progressionMode)}.`);
   }
-  if (normalized.centralRepresentations.length) {
-    lines.push(
-      `Representações centrais do curso: ${normalized.centralRepresentations
-        .map((value) => optionLabel(CENTRAL_REPRESENTATION_OPTIONS, value))
-        .filter(Boolean)
-        .join(", ")}.`
-    );
+  if (normalized.primaryRepresentation) {
+    lines.push(`Forma principal do curso: ${optionLabel(CENTRAL_REPRESENTATION_OPTIONS, normalized.primaryRepresentation)}.`);
   }
-  if (normalized.cognitiveOperations.length) {
-    lines.push(
-      `Operações cognitivas prioritárias: ${normalized.cognitiveOperations
-        .map((value) => optionLabel(COGNITIVE_OPERATION_OPTIONS, value))
-        .filter(Boolean)
-        .join(", ")}.`
-    );
+  if (normalized.secondaryRepresentation) {
+    lines.push(`Forma secundária de apoio: ${optionLabel(CENTRAL_REPRESENTATION_OPTIONS, normalized.secondaryRepresentation)}.`);
   }
-  if (normalized.practiceModes.length) {
-    lines.push(
-      `Forma de prática preferida: ${normalized.practiceModes
-        .map((value) => optionLabel(PRACTICE_MODE_OPTIONS, value))
-        .filter(Boolean)
-        .join(", ")}.`
-    );
+  if (normalized.primaryOperation) {
+    lines.push(`Operação principal do estudante: ${optionLabel(COGNITIVE_OPERATION_OPTIONS, normalized.primaryOperation)}.`);
   }
-  if (normalized.expectedDifficulties.length) {
-    lines.push(
-      `Dificuldades esperadas do estudante: ${normalized.expectedDifficulties
-        .map((value) => optionLabel(EXPECTED_DIFFICULTY_OPTIONS, value))
-        .filter(Boolean)
-        .join(", ")}.`
-    );
+  if (normalized.primaryDifficulty) {
+    lines.push(`Trava principal esperada: ${optionLabel(EXPECTED_DIFFICULTY_OPTIONS, normalized.primaryDifficulty)}.`);
+  }
+  if (normalized.secondaryDifficulty) {
+    lines.push(`Trava secundária esperada: ${optionLabel(EXPECTED_DIFFICULTY_OPTIONS, normalized.secondaryDifficulty)}.`);
+  }
+  if (normalized.preferredPracticeMode) {
+    lines.push(`Prática preferida: ${optionLabel(PRACTICE_MODE_OPTIONS, normalized.preferredPracticeMode)}.`);
   }
   return lines;
 }
@@ -299,28 +319,35 @@ export function buildCourseSemanticsForPolicy(courseModel = {}) {
     description: normalized.description,
     materialNature: normalized.materialNature,
     progressionMode: normalized.progressionMode,
-    centralRepresentations: [...normalized.centralRepresentations],
-    cognitiveOperations: [...normalized.cognitiveOperations],
-    expectedDifficulties: [...normalized.expectedDifficulties],
-    practiceModes: [...normalized.practiceModes]
+    primaryRepresentation: normalized.primaryRepresentation,
+    secondaryRepresentation: normalized.secondaryRepresentation,
+    primaryOperation: normalized.primaryOperation,
+    primaryDifficulty: normalized.primaryDifficulty,
+    secondaryDifficulty: normalized.secondaryDifficulty,
+    preferredPracticeMode: normalized.preferredPracticeMode
   };
 }
 
 export function buildResourcePreferencesFromCourseModel(courseModel = {}) {
   const normalized = createDefaultCourseModel(courseModel);
   const preferred = [];
-
-  normalized.centralRepresentations.forEach((value) => preferred.push(...(RESOURCE_HINTS_BY_REPRESENTATION[value] || [])));
-  normalized.cognitiveOperations.forEach((value) => preferred.push(...(RESOURCE_HINTS_BY_OPERATION[value] || [])));
-  normalized.practiceModes.forEach((value) => preferred.push(...(RESOURCE_HINTS_BY_PRACTICE[value] || [])));
+  flattenPreferencePair(normalized.primaryRepresentation, normalized.secondaryRepresentation).forEach((value) => {
+    preferred.push(...(RESOURCE_HINTS_BY_REPRESENTATION[value] || []));
+  });
+  if (normalized.primaryOperation) {
+    preferred.push(...(RESOURCE_HINTS_BY_OPERATION[normalized.primaryOperation] || []));
+  }
+  if (normalized.preferredPracticeMode) {
+    preferred.push(...(RESOURCE_HINTS_BY_PRACTICE[normalized.preferredPracticeMode] || []));
+  }
 
   const preferredResourceTypes = unique(preferred);
   const discouragedResourceTypes = [];
 
-  if (normalized.centralRepresentations.includes("matrix")) {
+  if (normalized.primaryRepresentation === "matrix") {
     discouragedResourceTypes.push("table");
   }
-  if (normalized.centralRepresentations.includes("flowchart")) {
+  if (normalized.primaryRepresentation === "flowchart") {
     discouragedResourceTypes.push("tree");
   }
 
@@ -328,4 +355,8 @@ export function buildResourcePreferencesFromCourseModel(courseModel = {}) {
     preferredResourceTypes,
     discouragedResourceTypes: unique(discouragedResourceTypes)
   };
+}
+
+export function listCourseSemanticsRepresentations(courseSemantics = {}) {
+  return flattenPreferencePair(courseSemantics?.primaryRepresentation, courseSemantics?.secondaryRepresentation);
 }
