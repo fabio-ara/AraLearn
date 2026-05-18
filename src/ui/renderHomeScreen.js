@@ -264,7 +264,7 @@ function renderGenerateIconButton(action, title, content, disabled = false) {
 
 function renderGenerateStatusButton() {
   const title = "Planejamento didático";
-  const icon = renderUiIcon("tags", "assist-config-action-icon");
+  const icon = renderUiIcon("trail", "assist-config-action-icon");
   return renderGenerateIconButton("open-assist-config", title, icon);
 }
 

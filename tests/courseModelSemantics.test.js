@@ -14,10 +14,11 @@ test("inferCourseModelFromDescription extrai semântica geral sem hardcode de do
     "Curso com fluxograma, portugol e linguagem C, com tradução entre representações e prática guiada antes da autônoma."
   );
 
-  assert.equal(model.materialNature, "visual_interpretation");
+  assert.equal(model.learningTrail, "procedure");
+  assert.equal(model.microsequenceProgression, "demo_guided_autonomy");
   assert.equal(model.primaryRepresentation, "flowchart");
-  assert.equal(model.secondaryRepresentation, "pseudocode");
-  assert.equal(model.primaryOperation, "translate");
+  assert.equal(model.secondaryRepresentation, "code");
+  assert.equal(model.primaryOperation, "apply");
   assert.equal(model.preferredPracticeMode, "guided_first");
 });
 
@@ -25,30 +26,23 @@ test("buildCourseModelPromptLines resume a modelagem em linguagem de produto", (
   const lines = buildCourseModelPromptLines(
     createDefaultCourseModel({
       description: "Leitura técnica com árvores e comparação de hipóteses.",
-      materialNature: "technical_reading",
-      progressionMode: "reading_to_application",
-      primaryRepresentation: "scientific_article",
-      secondaryRepresentation: "tree",
-      primaryOperation: "interpret",
-      primaryDifficulty: "fine_comparison"
+      learningTrail: "technical_reading",
+      microsequenceProgression: "text_figure_comparison_synthesis"
     })
   );
 
   assert.match(lines.join("\n"), /Leitura técnica/);
-  assert.match(lines.join("\n"), /Artigo/);
-  assert.match(lines.join("\n"), /Árvore/);
-  assert.match(lines.join("\n"), /Interpretar evidência/);
+  assert.match(lines.join("\n"), /Progressão de microssequências/);
+  assert.match(lines.join("\n"), /Texto\/figura -> comparação -> síntese/);
 });
 
 test("buildResourcePreferencesFromCourseModel prioriza matrix sem confundir com table", () => {
   const preferences = buildResourcePreferencesFromCourseModel({
-    primaryRepresentation: "matrix",
-    primaryOperation: "trace",
-    preferredPracticeMode: "guided_first"
+    learningTrail: "formalization"
   });
 
   assert.ok(preferences.preferredResourceTypes.includes("matrix"));
-  assert.ok(preferences.discouragedResourceTypes.includes("table"));
+  assert.ok(preferences.preferredResourceTypes.includes("plane"));
 });
 
 test("resolveWeakModelRepresentationPolicy libera matrix quando a modelagem do curso realmente pede isso", () => {
@@ -61,8 +55,8 @@ test("resolveWeakModelRepresentationPolicy libera matrix quando a modelagem do c
     resolvedTypeId: "comparison",
     courseSemantics: {
       primaryRepresentation: "matrix",
-      primaryOperation: "trace",
-      preferredPracticeMode: ""
+      primaryOperation: "compare",
+      preferredPracticeMode: "comparison"
     },
     resourcePreferences: {
       preferredResourceTypes: ["matrix"],

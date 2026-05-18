@@ -8326,8 +8326,8 @@ export function createLessonEditorApp({ root, storage, editor }) {
     const assistConfigProfile = root.querySelector("[data-field='assist-config-profile']");
     const assistConfigTargetStudentProfile = root.querySelector("[data-field='assist-config-target-student-profile']");
     const assistConfigCourseModelDescription = root.querySelector("[data-field='assist-config-course-model-description']");
-    const assistConfigCourseMaterialNature = root.querySelector("[data-field='assist-config-course-material-nature']");
-    const assistConfigCourseProgressionMode = root.querySelector("[data-field='assist-config-course-progression-mode']");
+    const assistConfigCourseLearningTrail = root.querySelector("[data-field='assist-config-course-learning-trail']");
+    const assistConfigCourseMicrosequenceProgression = root.querySelector("[data-field='assist-config-course-microsequence-progression']");
     const assistConfigMinMicrosequences = root.querySelector("[data-field='assist-config-min-microsequences']");
     const assistConfigTargetMicrosequences = root.querySelector("[data-field='assist-config-target-microsequences']");
     const assistConfigMaxMicrosequences = root.querySelector("[data-field='assist-config-max-microsequences']");
@@ -8379,14 +8379,17 @@ export function createLessonEditorApp({ root, storage, editor }) {
         updateAssistCourseModel({ description: assistConfigCourseModelDescription.value });
       });
     }
-    if (assistConfigCourseMaterialNature) {
-      assistConfigCourseMaterialNature.addEventListener("change", () => {
-        updateAssistCourseModel({ materialNature: assistConfigCourseMaterialNature.value });
+    if (assistConfigCourseLearningTrail) {
+      assistConfigCourseLearningTrail.addEventListener("change", () => {
+        updateAssistCourseModel({
+          learningTrail: assistConfigCourseLearningTrail.value,
+          microsequenceProgression: ""
+        });
       });
     }
-    if (assistConfigCourseProgressionMode) {
-      assistConfigCourseProgressionMode.addEventListener("change", () => {
-        updateAssistCourseModel({ progressionMode: assistConfigCourseProgressionMode.value });
+    if (assistConfigCourseMicrosequenceProgression) {
+      assistConfigCourseMicrosequenceProgression.addEventListener("change", () => {
+        updateAssistCourseModel({ microsequenceProgression: assistConfigCourseMicrosequenceProgression.value });
       });
     }
     if (assistConfigMinMicrosequences) {

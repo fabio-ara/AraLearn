@@ -96,21 +96,16 @@ test("assistConfigStorage reidrata defaults semânticos do perfil quando o cours
       profileTuning: {
         courseModel: {
           description: "",
-          materialNature: "",
-          progressionMode: "",
-          primaryRepresentation: "",
-          secondaryRepresentation: "",
-          primaryOperation: "",
-          primaryDifficulty: "",
-          secondaryDifficulty: "",
-          preferredPracticeMode: ""
+          learningTrail: "",
+          microsequenceProgression: ""
         }
       }
     })
   );
 
   const config = readAssistConfigStorage(storage);
-  assert.equal(config.profileTuning.courseModel.materialNature, "formal_language");
+  assert.equal(config.profileTuning.courseModel.learningTrail, "formalization");
+  assert.equal(config.profileTuning.courseModel.microsequenceProgression, "concrete_visual_formal");
   assert.equal(config.profileTuning.courseModel.primaryRepresentation, "formula");
   assert.equal(config.profileTuning.courseModel.secondaryRepresentation, "matrix");
   assert.equal(config.profileTuning.courseModel.primaryDifficulty, "notation");

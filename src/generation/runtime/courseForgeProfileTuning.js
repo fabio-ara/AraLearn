@@ -88,34 +88,12 @@ function resolveCourseModelWithProfileDefaults(defaultCourseModel = {}, input = 
       : hasOwn(input, "courseModelDescription")
         ? text(input.courseModelDescription)
         : defaultCourseModel.description,
-    materialNature: text(normalizedInput.materialNature)
-      ? normalizedInput.materialNature
-      : defaultCourseModel.materialNature,
-    progressionMode: text(normalizedInput.progressionMode)
-      ? normalizedInput.progressionMode
-      : defaultCourseModel.progressionMode,
-    primaryRepresentation: text(normalizedInput.primaryRepresentation)
-      ? normalizedInput.primaryRepresentation
-      : defaultCourseModel.primaryRepresentation,
-    secondaryRepresentation:
-      text(normalizedInput.secondaryRepresentation) ||
-      text(normalizedInput.primaryRepresentation)
-        ? normalizedInput.secondaryRepresentation
-        : defaultCourseModel.secondaryRepresentation,
-    primaryOperation: text(normalizedInput.primaryOperation)
-      ? normalizedInput.primaryOperation
-      : defaultCourseModel.primaryOperation,
-    primaryDifficulty: text(normalizedInput.primaryDifficulty)
-      ? normalizedInput.primaryDifficulty
-      : defaultCourseModel.primaryDifficulty,
-    secondaryDifficulty:
-      text(normalizedInput.secondaryDifficulty) ||
-      text(normalizedInput.primaryDifficulty)
-        ? normalizedInput.secondaryDifficulty
-        : defaultCourseModel.secondaryDifficulty,
-    preferredPracticeMode: text(normalizedInput.preferredPracticeMode)
-      ? normalizedInput.preferredPracticeMode
-      : defaultCourseModel.preferredPracticeMode
+    learningTrail: text(normalizedInput.learningTrail)
+      ? normalizedInput.learningTrail
+      : defaultCourseModel.learningTrail,
+    microsequenceProgression: text(normalizedInput.microsequenceProgression)
+      ? normalizedInput.microsequenceProgression
+      : defaultCourseModel.microsequenceProgression
   });
 }
 

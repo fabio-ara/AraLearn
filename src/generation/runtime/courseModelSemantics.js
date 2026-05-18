@@ -1,108 +1,162 @@
-const MATERIAL_NATURE_OPTIONS = Object.freeze([
+const LEARNING_TRAIL_OPTIONS = Object.freeze([
   { value: "procedure", label: "Procedimento" },
   { value: "technical_reading", label: "Leitura técnica" },
+  { value: "formalization", label: "Formalização" },
   { value: "problem_solving", label: "Resolução de problema" },
-  { value: "formal_language", label: "Linguagem formal" },
-  { value: "visual_interpretation", label: "Interpretação visual" },
-  { value: "applied_tool", label: "Ferramenta aplicada" },
-  { value: "conceptual_argument", label: "Argumentação conceitual" }
+  { value: "complex_project", label: "Projeto/competência complexa" },
+  { value: "language_communication", label: "Línguas/comunicação" },
+  { value: "argumentation_classification", label: "Argumentação/classificação" }
 ]);
 
-const PROGRESSION_MODE_OPTIONS = Object.freeze([
-  { value: "concrete_to_abstract", label: "Concreto -> abstrato" },
-  { value: "visual_to_formal", label: "Visual -> formal" },
-  { value: "example_to_rule", label: "Exemplo -> regra" },
-  { value: "reading_to_application", label: "Leitura -> aplicação" },
-  { value: "theory_to_exercise", label: "Teoria -> exercício" },
-  { value: "structure_to_detail", label: "Estrutura -> detalhe" }
-]);
-
-const CENTRAL_REPRESENTATION_OPTIONS = Object.freeze([
-  { value: "plain_text", label: "Texto" },
-  { value: "formula", label: "Fórmula" },
-  { value: "table", label: "Tabela" },
-  { value: "matrix", label: "Matriz" },
-  { value: "diagram", label: "Diagrama" },
-  { value: "flowchart", label: "Fluxograma" },
-  { value: "pseudocode", label: "Pseudocódigo" },
-  { value: "code", label: "Código" },
-  { value: "tree", label: "Árvore" },
-  { value: "graph", label: "Gráfico" },
-  { value: "spreadsheet", label: "Planilha" },
-  { value: "scientific_article", label: "Artigo" }
-]);
-
-const COGNITIVE_OPERATION_OPTIONS = Object.freeze([
-  { value: "recognize", label: "Reconhecer" },
-  { value: "define", label: "Definir" },
-  { value: "compare", label: "Comparar" },
-  { value: "classify", label: "Classificar" },
-  { value: "translate", label: "Traduzir" },
-  { value: "decompose", label: "Decompor" },
-  { value: "trace", label: "Executar passo a passo" },
-  { value: "diagnose", label: "Diagnosticar erro" },
-  { value: "apply", label: "Aplicar" },
-  { value: "interpret", label: "Interpretar evidência" },
-  { value: "build", label: "Construir solução" }
-]);
-
-const EXPECTED_DIFFICULTY_OPTIONS = Object.freeze([
-  { value: "vocabulary", label: "Vocabulário" },
-  { value: "notation", label: "Notação" },
-  { value: "syntax", label: "Sintaxe" },
-  { value: "abstraction", label: "Abstração" },
-  { value: "figure_reading", label: "Leitura de figura" },
-  { value: "fine_comparison", label: "Comparação fina" },
-  { value: "transfer", label: "Transferência" },
-  { value: "many_steps", label: "Muitos passos" }
-]);
-
-const PRACTICE_MODE_OPTIONS = Object.freeze([
-  { value: "guided_first", label: "Guiada antes" },
-  { value: "short_frequent", label: "Curta e frequente" },
-  { value: "comparison", label: "Comparação" },
-  { value: "error_correction", label: "Correção de erro" },
-  { value: "translation", label: "Tradução" },
-  { value: "case_study", label: "Caso" },
-  { value: "partial_reconstruction", label: "Reconstrução" },
-  { value: "commented_reading", label: "Leitura comentada" }
-]);
-
-const RESOURCE_HINTS_BY_REPRESENTATION = Object.freeze({
-  matrix: ["matrix"],
-  table: ["table"],
-  flowchart: ["flowchart"],
-  pseudocode: ["code_editor"],
-  code: ["code_editor"],
-  tree: ["tree"],
-  graph: ["plane"],
-  formula: ["matrix", "plane"],
-  spreadsheet: ["table"],
-  diagram: ["flowchart", "tree"],
-  scientific_article: ["table"],
-  plain_text: ["paragraph"]
+const MICROSEQUENCE_PROGRESSION_OPTIONS_BY_TRAIL = Object.freeze({
+  procedure: Object.freeze([
+    { value: "demo_guided_autonomy", label: "Demonstração -> guia -> autonomia" },
+    { value: "worked_example_fading_execution", label: "Exemplo resolvido -> fading -> execução" },
+    { value: "isolated_operation_sequence_workflow", label: "Operação isolada -> sequência -> workflow" }
+  ]),
+  technical_reading: Object.freeze([
+    { value: "orientation_guided_reading_interpretation", label: "Orientação -> leitura guiada -> interpretação" },
+    { value: "evidence_argument_conclusion", label: "Evidência -> argumento -> conclusão" },
+    { value: "text_figure_comparison_synthesis", label: "Texto/figura -> comparação -> síntese" }
+  ]),
+  formalization: Object.freeze([
+    { value: "concrete_visual_formal", label: "Concreto/visual -> representacional -> formal" },
+    { value: "example_rule_generalization", label: "Exemplo -> regra -> generalização" },
+    { value: "contrast_criterion_abstraction", label: "Casos contrastivos -> critério -> abstração" }
+  ]),
+  problem_solving: Object.freeze([
+    { value: "worked_example_analogous_variation", label: "Exemplo resolvido -> problema análogo -> variação" },
+    { value: "simple_case_heuristic_new_problem", label: "Caso simples -> heurística -> problema novo" },
+    { value: "attempt_explication_transfer", label: "Tentativa inicial -> explicitação -> transferência" }
+  ]),
+  complex_project: Object.freeze([
+    { value: "whole_task_simple_to_complex", label: "Tarefa inteira simples -> tarefa inteira mais complexa" },
+    { value: "reference_case_adaptation_construction", label: "Caso de referência -> adaptação -> construção" },
+    { value: "model_modification_project", label: "Modelo -> modificação -> projeto" }
+  ]),
+  language_communication: Object.freeze([
+    { value: "reception_mediation_production", label: "Recepção -> mediação -> produção" },
+    { value: "comprehension_guided_interaction_autonomous_production", label: "Compreensão -> interação guiada -> produção autônoma" },
+    { value: "contextual_input_focus_reuse", label: "Input contextual -> foco na forma -> reuso comunicativo" }
+  ]),
+  argumentation_classification: Object.freeze([
+    { value: "cases_contrast_criterion_classification", label: "Casos -> contraste -> critério -> classificação" },
+    { value: "thesis_evidence_objection_position", label: "Tese -> evidência -> objeção -> posição" },
+    { value: "example_distinction_taxonomy", label: "Exemplo -> distinção -> taxonomia" }
+  ])
 });
 
-const RESOURCE_HINTS_BY_OPERATION = Object.freeze({
-  compare: ["table"],
-  classify: ["tree", "table"],
-  translate: ["code_editor", "flowchart"],
-  trace: ["flowchart", "code_editor", "matrix"],
-  diagnose: ["multiple_choice", "code_editor"],
-  interpret: ["table", "plane"],
-  build: ["code_editor", "flowchart"],
-  decompose: ["tree", "table"]
+const TRAIL_DEFAULT_PROGRESSIONS = Object.freeze(
+  Object.fromEntries(
+    Object.entries(MICROSEQUENCE_PROGRESSION_OPTIONS_BY_TRAIL).map(([trail, options]) => [trail, options[0]?.value || ""])
+  )
+);
+
+const TRAIL_DERIVED_SEMANTICS = Object.freeze({
+  procedure: Object.freeze({
+    primaryRepresentation: "flowchart",
+    secondaryRepresentation: "code",
+    primaryOperation: "apply",
+    primaryDifficulty: "syntax",
+    secondaryDifficulty: "many_steps",
+    preferredPracticeMode: "guided_first",
+    preferredResourceTypes: ["flowchart", "code_editor"],
+    discouragedResourceTypes: ["tree"]
+  }),
+  technical_reading: Object.freeze({
+    primaryRepresentation: "scientific_article",
+    secondaryRepresentation: "table",
+    primaryOperation: "interpret",
+    primaryDifficulty: "vocabulary",
+    secondaryDifficulty: "figure_reading",
+    preferredPracticeMode: "commented_reading",
+    preferredResourceTypes: ["paragraph", "table"],
+    discouragedResourceTypes: []
+  }),
+  formalization: Object.freeze({
+    primaryRepresentation: "formula",
+    secondaryRepresentation: "matrix",
+    primaryOperation: "compare",
+    primaryDifficulty: "notation",
+    secondaryDifficulty: "abstraction",
+    preferredPracticeMode: "comparison",
+    preferredResourceTypes: ["matrix", "plane", "table"],
+    discouragedResourceTypes: []
+  }),
+  problem_solving: Object.freeze({
+    primaryRepresentation: "diagram",
+    secondaryRepresentation: "table",
+    primaryOperation: "apply",
+    primaryDifficulty: "abstraction",
+    secondaryDifficulty: "transfer",
+    preferredPracticeMode: "guided_first",
+    preferredResourceTypes: ["table", "paragraph"],
+    discouragedResourceTypes: []
+  }),
+  complex_project: Object.freeze({
+    primaryRepresentation: "code",
+    secondaryRepresentation: "diagram",
+    primaryOperation: "build",
+    primaryDifficulty: "transfer",
+    secondaryDifficulty: "many_steps",
+    preferredPracticeMode: "case_study",
+    preferredResourceTypes: ["code_editor", "flowchart", "tree"],
+    discouragedResourceTypes: []
+  }),
+  language_communication: Object.freeze({
+    primaryRepresentation: "plain_text",
+    secondaryRepresentation: "",
+    primaryOperation: "build",
+    primaryDifficulty: "vocabulary",
+    secondaryDifficulty: "syntax",
+    preferredPracticeMode: "guided_first",
+    preferredResourceTypes: ["paragraph", "table"],
+    discouragedResourceTypes: []
+  }),
+  argumentation_classification: Object.freeze({
+    primaryRepresentation: "table",
+    secondaryRepresentation: "tree",
+    primaryOperation: "compare",
+    primaryDifficulty: "fine_comparison",
+    secondaryDifficulty: "abstraction",
+    preferredPracticeMode: "comparison",
+    preferredResourceTypes: ["table", "tree"],
+    discouragedResourceTypes: []
+  })
 });
 
-const RESOURCE_HINTS_BY_PRACTICE = Object.freeze({
-  guided_first: ["paragraph"],
-  short_frequent: ["block_gap_fill", "multiple_choice"],
-  comparison: ["table"],
-  error_correction: ["code_editor", "multiple_choice"],
-  translation: ["code_editor", "flowchart"],
-  case_study: ["paragraph", "table"],
-  partial_reconstruction: ["block_gap_fill"],
-  commented_reading: ["paragraph", "table"]
+const TRAIL_KEYWORDS = Object.freeze({
+  procedure: ["procedimento", "workflow", "algoritmo", "passo a passo", "comando", "operacional", "fluxograma", "pseudocodigo", "pseudocódigo", "portugol", "codigo", "código"],
+  technical_reading: ["artigo", "paper", "leitura", "evidencia", "evidência", "figura", "metodo", "método", "hipotese", "hipótese"],
+  formalization: ["notacao", "notação", "formula", "fórmula", "formal", "teorema", "matriz", "equacao", "equação"],
+  problem_solving: ["problema", "exercicio", "exercício", "resolver", "heuristica", "heurística", "caso"],
+  complex_project: ["projeto", "arquitetura", "produto", "sistema", "entrega", "implementacao", "implementação"],
+  language_communication: ["idioma", "língua", "gramatica", "gramática", "vocabul", "comunica", "texto em"],
+  argumentation_classification: ["argumento", "tese", "obje", "classifica", "taxonomia", "hipotese", "hipótese"]
+});
+
+const PROGRESSION_KEYWORDS = Object.freeze({
+  demo_guided_autonomy: ["demonstracao", "demonstração", "guia", "autonomia"],
+  worked_example_fading_execution: ["exemplo resolvido", "fading", "execucao", "execução"],
+  isolated_operation_sequence_workflow: ["operacao isolada", "operação isolada", "workflow", "sequencia", "sequência"],
+  orientation_guided_reading_interpretation: ["orientacao", "orientação", "leitura guiada", "interpretacao", "interpretação"],
+  evidence_argument_conclusion: ["evidencia", "evidência", "argumento", "conclusao", "conclusão"],
+  text_figure_comparison_synthesis: ["texto", "figura", "comparacao", "comparação", "sintese", "síntese"],
+  concrete_visual_formal: ["concreto", "visual", "formal"],
+  example_rule_generalization: ["exemplo", "regra", "generalizacao", "generalização"],
+  contrast_criterion_abstraction: ["contraste", "criterio", "critério", "abstracao", "abstração"],
+  worked_example_analogous_variation: ["análogo", "analogo", "variação", "variacao", "exemplo resolvido"],
+  simple_case_heuristic_new_problem: ["caso simples", "heuristica", "heurística", "problema novo"],
+  attempt_explication_transfer: ["tentativa", "explicitação", "explicitação", "transferencia", "transferência"],
+  whole_task_simple_to_complex: ["tarefa inteira", "simples", "complexa", "complexo"],
+  reference_case_adaptation_construction: ["referencia", "referência", "adaptacao", "adaptação", "construcao", "construção"],
+  model_modification_project: ["modelo", "modificacao", "modificação", "projeto"],
+  reception_mediation_production: ["recepcao", "recepção", "mediacao", "mediação", "producao", "produção"],
+  comprehension_guided_interaction_autonomous_production: ["compreensao", "compreensão", "interacao", "interação", "autonoma", "autônoma"],
+  contextual_input_focus_reuse: ["input contextual", "foco na forma", "reuso", "reuse"],
+  cases_contrast_criterion_classification: ["casos", "contraste", "criterio", "critério", "classificacao", "classificação"],
+  thesis_evidence_objection_position: ["tese", "evidencia", "evidência", "objecao", "objeção", "posição", "posicao"],
+  example_distinction_taxonomy: ["exemplo", "distincao", "distinção", "taxonomia"]
 });
 
 function text(value) {
@@ -118,165 +172,91 @@ function optionLabel(options = [], value = "") {
   return (options || []).find((entry) => entry.value === value)?.label || "";
 }
 
-function unique(items = []) {
-  return [...new Set(items.filter(Boolean))];
-}
-
-function normalizeDistinctPrimarySecondary(primary, secondary, options = []) {
-  const normalizedPrimary = normalizeEnum(primary, options, "");
-  const normalizedSecondary = normalizeEnum(secondary, options, "");
-  return {
-    primary: normalizedPrimary,
-    secondary: normalizedSecondary && normalizedSecondary !== normalizedPrimary ? normalizedSecondary : ""
-  };
-}
-
-function inferKeywordList(description = "", table = {}) {
-  const normalized = text(description)
+function normalizeDescription(value = "") {
+  return text(value)
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase();
-  return Object.entries(table)
-    .filter(([, matchers]) => (matchers || []).some((matcher) => normalized.includes(matcher)))
-    .map(([value]) => value);
 }
 
-function twoDistinct(items = []) {
-  const uniqueItems = unique(items.map((item) => text(item)));
+function inferEnumFromKeywords(description = "", keywordMap = {}, allowedValues = []) {
+  const normalized = normalizeDescription(description);
+  return (allowedValues || []).find((value) =>
+    (keywordMap?.[value] || []).some((keyword) => normalized.includes(keyword))
+  ) || "";
+}
+
+export function listCourseModelOptions(trail = "") {
+  const normalizedTrail = normalizeEnum(trail, LEARNING_TRAIL_OPTIONS, "");
   return {
-    primary: uniqueItems[0] || "",
-    secondary: uniqueItems[1] || ""
+    learningTrail: [...LEARNING_TRAIL_OPTIONS],
+    microsequenceProgression: [...(MICROSEQUENCE_PROGRESSION_OPTIONS_BY_TRAIL[normalizedTrail] || [])]
   };
 }
 
-function flattenPreferencePair(primary = "", secondary = "") {
-  return unique([text(primary), text(secondary)]);
+function resolveAllowedProgressionsForTrail(trail = "") {
+  const normalizedTrail = normalizeEnum(trail, LEARNING_TRAIL_OPTIONS, "");
+  return MICROSEQUENCE_PROGRESSION_OPTIONS_BY_TRAIL[normalizedTrail] || [];
 }
 
-export function listCourseModelOptions() {
-  return {
-    materialNature: [...MATERIAL_NATURE_OPTIONS],
-    progressionMode: [...PROGRESSION_MODE_OPTIONS],
-    representations: [...CENTRAL_REPRESENTATION_OPTIONS],
-    operations: [...COGNITIVE_OPERATION_OPTIONS],
-    difficulties: [...EXPECTED_DIFFICULTY_OPTIONS],
-    practiceModes: [...PRACTICE_MODE_OPTIONS]
-  };
+function deriveSemanticsFromTrail(trail = "") {
+  const normalizedTrail = normalizeEnum(trail, LEARNING_TRAIL_OPTIONS, "");
+  return TRAIL_DERIVED_SEMANTICS[normalizedTrail] || {};
 }
 
 export function createDefaultCourseModel(input = {}) {
-  const formPreference = normalizeDistinctPrimarySecondary(
-    input?.primaryRepresentation || input?.formPrimary,
-    input?.secondaryRepresentation || input?.formSecondary,
-    CENTRAL_REPRESENTATION_OPTIONS
+  const description = text(input?.description);
+  const learningTrail = normalizeEnum(
+    input?.learningTrail || input?.trail || input?.materialNature,
+    LEARNING_TRAIL_OPTIONS,
+    ""
   );
-  const difficultyPreference = normalizeDistinctPrimarySecondary(
-    input?.primaryDifficulty || input?.difficultyPrimary,
-    input?.secondaryDifficulty || input?.difficultySecondary,
-    EXPECTED_DIFFICULTY_OPTIONS
+  const allowedProgressions = resolveAllowedProgressionsForTrail(learningTrail);
+  const microsequenceProgression = normalizeEnum(
+    input?.microsequenceProgression || input?.progressionMode,
+    allowedProgressions,
+    ""
   );
+  const derived = deriveSemanticsFromTrail(learningTrail);
 
   return {
-    description: text(input?.description),
-    materialNature: normalizeEnum(text(input?.materialNature), MATERIAL_NATURE_OPTIONS, ""),
-    progressionMode: normalizeEnum(text(input?.progressionMode), PROGRESSION_MODE_OPTIONS, ""),
-    primaryRepresentation: formPreference.primary,
-    secondaryRepresentation: formPreference.secondary,
-    primaryOperation: normalizeEnum(text(input?.primaryOperation), COGNITIVE_OPERATION_OPTIONS, ""),
-    primaryDifficulty: difficultyPreference.primary,
-    secondaryDifficulty: difficultyPreference.secondary,
-    preferredPracticeMode: normalizeEnum(text(input?.preferredPracticeMode), PRACTICE_MODE_OPTIONS, "")
+    description,
+    learningTrail,
+    microsequenceProgression,
+    primaryRepresentation: derived.primaryRepresentation || "",
+    secondaryRepresentation: derived.secondaryRepresentation || "",
+    primaryOperation: derived.primaryOperation || "",
+    primaryDifficulty: derived.primaryDifficulty || "",
+    secondaryDifficulty: derived.secondaryDifficulty || "",
+    preferredPracticeMode: derived.preferredPracticeMode || ""
   };
 }
 
 export function inferCourseModelFromDescription(description = "", baseModel = {}) {
   const current = createDefaultCourseModel(baseModel);
-  const materialNatureCandidates = inferKeywordList(description, {
-    procedure: ["passo a passo", "algoritmo", "procedimento", "workflow", "comando"],
-    technical_reading: ["artigo", "paper", "texto tecnico", "leitura tecnica", "leitura academica"],
-    problem_solving: ["exercicio", "problema", "resolver", "calculo"],
-    formal_language: ["notacao", "linguagem formal", "sintaxe", "gramatica", "formula"],
-    visual_interpretation: ["figura", "diagrama", "grafico", "fluxograma", "arvore"],
-    applied_tool: ["excel", "shell", "terminal", "ferramenta", "software", "planilha"],
-    conceptual_argument: ["hipotese", "argumento", "teoria", "comparar hipoteses", "conceitual"]
-  });
-  const representationCandidates = inferKeywordList(description, {
-    plain_text: ["texto", "texto corrido"],
-    formula: ["formula", "equacao", "notacao"],
-    table: ["tabela", "quadro comparativo"],
-    matrix: ["matriz", "matrizes", "determinante", "vetor"],
-    diagram: ["diagrama"],
-    flowchart: ["fluxograma"],
-    pseudocode: ["pseudocodigo", "portugol", "pseudo codigo"],
-    code: ["codigo", "linguagem c", "python", "java", "javascript"],
-    tree: ["arvore", "taxonomia", "filogen", "diretorio"],
-    graph: ["grafico", "plano cartesiano"],
-    spreadsheet: ["excel", "planilha"],
-    scientific_article: ["artigo", "paper", "metodo", "hipotese"]
-  });
-  const operationCandidates = inferKeywordList(description, {
-    recognize: ["reconhecer", "identificar"],
-    define: ["definir", "conceito", "explicar o que e"],
-    compare: ["comparar", "distinguir", "diferenca"],
-    classify: ["classificar", "categorizar", "taxonomia"],
-    translate: ["traduzir", "traducao", "converter", "passar de"],
-    decompose: ["decompor", "quebrar", "separar em partes"],
-    trace: ["rastrear", "passo a passo", "executar", "simular"],
-    diagnose: ["erro", "depurar", "corrigir"],
-    apply: ["aplicar", "usar em caso", "resolver"],
-    interpret: ["interpretar", "ler evidencia", "analisar"],
-    build: ["construir", "montar", "projetar", "escrever"]
-  });
-  const difficultyCandidates = inferKeywordList(description, {
-    vocabulary: ["vocabulario", "termos tecnicos", "jargao"],
-    notation: ["notacao", "simbolo", "formula"],
-    syntax: ["sintaxe", "palavra-chave", "palavra chave"],
-    abstraction: ["abstracao", "muito abstrato"],
-    figure_reading: ["figura", "grafico", "diagrama", "arvore"],
-    fine_comparison: ["comparar", "distinguir", "hipotese"],
-    transfer: ["aplicar", "transferir", "usar em contexto"],
-    many_steps: ["muitos passos", "procedimento longo", "sequencia longa"]
-  });
-  const practiceCandidates = inferKeywordList(description, {
-    guided_first: ["guiada", "passo a passo", "antes de sozinho"],
-    short_frequent: ["curta", "frequente", "muitas praticas"],
-    comparison: ["comparacao", "comparar alternativas"],
-    error_correction: ["corrigir erro", "diagnosticar erro", "depurar"],
-    translation: ["traduzir", "traducao", "converter"],
-    case_study: ["caso", "cenario"],
-    partial_reconstruction: ["completar", "reconstruir", "preencher"],
-    commented_reading: ["leitura comentada", "ler com comentario"]
-  });
-  const progressionCandidates = inferKeywordList(description, {
-    concrete_to_abstract: ["concreto", "abstrato"],
-    visual_to_formal: ["visual", "formal", "fluxograma", "diagrama"],
-    example_to_rule: ["exemplo", "regra"],
-    reading_to_application: ["leitura", "aplicacao"],
-    theory_to_exercise: ["teoria", "exercicio"],
-    structure_to_detail: ["estrutura", "detalhe"]
-  });
-  const representationPreference = twoDistinct([
-    current.primaryRepresentation,
-    current.secondaryRepresentation,
-    ...representationCandidates
-  ]);
-  const difficultyPreference = twoDistinct([
-    current.primaryDifficulty,
-    current.secondaryDifficulty,
-    ...difficultyCandidates
-  ]);
+  const nextDescription = text(description) || current.description;
+  const learningTrail =
+    current.learningTrail ||
+    inferEnumFromKeywords(
+      nextDescription,
+      TRAIL_KEYWORDS,
+      LEARNING_TRAIL_OPTIONS.map((entry) => entry.value)
+    );
+  const allowedProgressions = resolveAllowedProgressionsForTrail(learningTrail);
+  const microsequenceProgression =
+    normalizeEnum(current.microsequenceProgression, allowedProgressions, "") ||
+    inferEnumFromKeywords(
+      nextDescription,
+      PROGRESSION_KEYWORDS,
+      allowedProgressions.map((entry) => entry.value)
+    ) ||
+    TRAIL_DEFAULT_PROGRESSIONS[learningTrail] ||
+    "";
 
   return createDefaultCourseModel({
-    ...current,
-    description: text(description) || current.description,
-    materialNature: current.materialNature || materialNatureCandidates[0] || "",
-    progressionMode: current.progressionMode || progressionCandidates[0] || "",
-    primaryRepresentation: representationPreference.primary,
-    secondaryRepresentation: representationPreference.secondary,
-    primaryOperation: current.primaryOperation || operationCandidates[0] || "",
-    primaryDifficulty: difficultyPreference.primary,
-    secondaryDifficulty: difficultyPreference.secondary,
-    preferredPracticeMode: current.preferredPracticeMode || practiceCandidates[0] || ""
+    description: nextDescription,
+    learningTrail,
+    microsequenceProgression
   });
 }
 
@@ -286,29 +266,16 @@ export function buildCourseModelPromptLines(courseModel = {}) {
   if (normalized.description) {
     lines.push(`Pedido de modelagem do curso: ${normalized.description}.`);
   }
-  if (normalized.materialNature) {
-    lines.push(`Natureza dominante do curso: ${optionLabel(MATERIAL_NATURE_OPTIONS, normalized.materialNature)}.`);
+  if (normalized.learningTrail) {
+    lines.push(`Trilha dominante do curso: ${optionLabel(LEARNING_TRAIL_OPTIONS, normalized.learningTrail)}.`);
   }
-  if (normalized.progressionMode) {
-    lines.push(`Progressão preferida: ${optionLabel(PROGRESSION_MODE_OPTIONS, normalized.progressionMode)}.`);
-  }
-  if (normalized.primaryRepresentation) {
-    lines.push(`Forma principal do curso: ${optionLabel(CENTRAL_REPRESENTATION_OPTIONS, normalized.primaryRepresentation)}.`);
-  }
-  if (normalized.secondaryRepresentation) {
-    lines.push(`Forma secundária de apoio: ${optionLabel(CENTRAL_REPRESENTATION_OPTIONS, normalized.secondaryRepresentation)}.`);
-  }
-  if (normalized.primaryOperation) {
-    lines.push(`Operação principal do estudante: ${optionLabel(COGNITIVE_OPERATION_OPTIONS, normalized.primaryOperation)}.`);
-  }
-  if (normalized.primaryDifficulty) {
-    lines.push(`Trava principal esperada: ${optionLabel(EXPECTED_DIFFICULTY_OPTIONS, normalized.primaryDifficulty)}.`);
-  }
-  if (normalized.secondaryDifficulty) {
-    lines.push(`Trava secundária esperada: ${optionLabel(EXPECTED_DIFFICULTY_OPTIONS, normalized.secondaryDifficulty)}.`);
-  }
-  if (normalized.preferredPracticeMode) {
-    lines.push(`Prática preferida: ${optionLabel(PRACTICE_MODE_OPTIONS, normalized.preferredPracticeMode)}.`);
+  if (normalized.microsequenceProgression) {
+    lines.push(
+      `Progressão de microssequências: ${optionLabel(
+        resolveAllowedProgressionsForTrail(normalized.learningTrail),
+        normalized.microsequenceProgression
+      )}.`
+    );
   }
   return lines;
 }
@@ -317,8 +284,8 @@ export function buildCourseSemanticsForPolicy(courseModel = {}) {
   const normalized = createDefaultCourseModel(courseModel);
   return {
     description: normalized.description,
-    materialNature: normalized.materialNature,
-    progressionMode: normalized.progressionMode,
+    learningTrail: normalized.learningTrail,
+    microsequenceProgression: normalized.microsequenceProgression,
     primaryRepresentation: normalized.primaryRepresentation,
     secondaryRepresentation: normalized.secondaryRepresentation,
     primaryOperation: normalized.primaryOperation,
@@ -330,33 +297,14 @@ export function buildCourseSemanticsForPolicy(courseModel = {}) {
 
 export function buildResourcePreferencesFromCourseModel(courseModel = {}) {
   const normalized = createDefaultCourseModel(courseModel);
-  const preferred = [];
-  flattenPreferencePair(normalized.primaryRepresentation, normalized.secondaryRepresentation).forEach((value) => {
-    preferred.push(...(RESOURCE_HINTS_BY_REPRESENTATION[value] || []));
-  });
-  if (normalized.primaryOperation) {
-    preferred.push(...(RESOURCE_HINTS_BY_OPERATION[normalized.primaryOperation] || []));
-  }
-  if (normalized.preferredPracticeMode) {
-    preferred.push(...(RESOURCE_HINTS_BY_PRACTICE[normalized.preferredPracticeMode] || []));
-  }
-
-  const preferredResourceTypes = unique(preferred);
-  const discouragedResourceTypes = [];
-
-  if (normalized.primaryRepresentation === "matrix") {
-    discouragedResourceTypes.push("table");
-  }
-  if (normalized.primaryRepresentation === "flowchart") {
-    discouragedResourceTypes.push("tree");
-  }
-
+  const derived = deriveSemanticsFromTrail(normalized.learningTrail);
   return {
-    preferredResourceTypes,
-    discouragedResourceTypes: unique(discouragedResourceTypes)
+    preferredResourceTypes: [...(derived.preferredResourceTypes || [])],
+    discouragedResourceTypes: [...(derived.discouragedResourceTypes || [])]
   };
 }
 
 export function listCourseSemanticsRepresentations(courseSemantics = {}) {
-  return flattenPreferencePair(courseSemantics?.primaryRepresentation, courseSemantics?.secondaryRepresentation);
+  const normalized = createDefaultCourseModel(courseSemantics);
+  return [normalized.primaryRepresentation, normalized.secondaryRepresentation].filter(Boolean);
 }

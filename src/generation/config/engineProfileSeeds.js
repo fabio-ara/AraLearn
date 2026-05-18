@@ -61,14 +61,8 @@ function createAdsProfile(profileId, label, overrides = {}) {
         operational: 4
       },
       courseSemantics: {
-        materialNature: "problem_solving",
-        progressionMode: "example_to_rule",
-        primaryRepresentation: "diagram",
-        secondaryRepresentation: "table",
-        primaryOperation: "apply",
-        primaryDifficulty: "abstraction",
-        secondaryDifficulty: "transfer",
-        preferredPracticeMode: "guided_first"
+        learningTrail: "problem_solving",
+        microsequenceProgression: "worked_example_analogous_variation"
       },
       topDownCourseStrategy: {
         defaultBudgetByLesson: {
@@ -152,14 +146,8 @@ export const ENGINE_PROFILE_SEEDS = Object.freeze({
         operational: 4
       },
       courseSemantics: {
-        materialNature: "formal_language",
-        progressionMode: "concrete_to_abstract",
-        primaryRepresentation: "formula",
-        secondaryRepresentation: "matrix",
-        primaryOperation: "compare",
-        primaryDifficulty: "notation",
-        secondaryDifficulty: "abstraction",
-        preferredPracticeMode: "comparison"
+        learningTrail: "formalization",
+        microsequenceProgression: "concrete_visual_formal"
       },
       topDownCourseStrategy: {
         defaultBudgetByLesson: {
@@ -187,14 +175,8 @@ export const ENGINE_PROFILE_SEEDS = Object.freeze({
         operational: 5
       },
       courseSemantics: {
-        materialNature: "procedure",
-        progressionMode: "visual_to_formal",
-        primaryRepresentation: "flowchart",
-        secondaryRepresentation: "code",
-        primaryOperation: "translate",
-        primaryDifficulty: "syntax",
-        secondaryDifficulty: "many_steps",
-        preferredPracticeMode: "translation"
+        learningTrail: "procedure",
+        microsequenceProgression: "worked_example_fading_execution"
       }
     },
     promptPacks: {
@@ -215,14 +197,8 @@ export const ENGINE_PROFILE_SEEDS = Object.freeze({
         operational: 5
       },
       courseSemantics: {
-        materialNature: "applied_tool",
-        progressionMode: "structure_to_detail",
-        primaryRepresentation: "code",
-        secondaryRepresentation: "tree",
-        primaryOperation: "apply",
-        primaryDifficulty: "syntax",
-        secondaryDifficulty: "many_steps",
-        preferredPracticeMode: "error_correction"
+        learningTrail: "procedure",
+        microsequenceProgression: "isolated_operation_sequence_workflow"
       }
     },
     promptPacks: {
@@ -242,14 +218,8 @@ export const ENGINE_PROFILE_SEEDS = Object.freeze({
         operational: 3
       },
       courseSemantics: {
-        materialNature: "conceptual_argument",
-        progressionMode: "structure_to_detail",
-        primaryRepresentation: "table",
-        secondaryRepresentation: "diagram",
-        primaryOperation: "compare",
-        primaryDifficulty: "abstraction",
-        secondaryDifficulty: "fine_comparison",
-        preferredPracticeMode: "comparison"
+        learningTrail: "argumentation_classification",
+        microsequenceProgression: "cases_contrast_criterion_classification"
       }
     },
     promptPacks: {
@@ -300,14 +270,8 @@ export const ENGINE_PROFILE_SEEDS = Object.freeze({
         operational: 4
       },
       courseSemantics: {
-        materialNature: "formal_language",
-        progressionMode: "example_to_rule",
-        primaryRepresentation: "plain_text",
-        secondaryRepresentation: "",
-        primaryOperation: "build",
-        primaryDifficulty: "syntax",
-        secondaryDifficulty: "vocabulary",
-        preferredPracticeMode: "guided_first"
+        learningTrail: "language_communication",
+        microsequenceProgression: "contextual_input_focus_reuse"
       }
     },
     promptPacks: {
@@ -375,14 +339,8 @@ export const ENGINE_PROFILE_SEEDS = Object.freeze({
         operational: 3
       },
       courseSemantics: {
-        materialNature: "technical_reading",
-        progressionMode: "reading_to_application",
-        primaryRepresentation: "scientific_article",
-        secondaryRepresentation: "tree",
-        primaryOperation: "interpret",
-        primaryDifficulty: "vocabulary",
-        secondaryDifficulty: "figure_reading",
-        preferredPracticeMode: "commented_reading"
+        learningTrail: "technical_reading",
+        microsequenceProgression: "orientation_guided_reading_interpretation"
       }
     },
     promptPacks: {
@@ -429,14 +387,8 @@ export const ENGINE_PROFILE_SEEDS = Object.freeze({
         requireVocabularyMap: true
       },
       courseSemantics: {
-        materialNature: "procedure",
-        progressionMode: "structure_to_detail",
-        primaryRepresentation: "code",
-        secondaryRepresentation: "diagram",
-        primaryOperation: "build",
-        primaryDifficulty: "transfer",
-        secondaryDifficulty: "many_steps",
-        preferredPracticeMode: "case_study"
+        learningTrail: "complex_project",
+        microsequenceProgression: "reference_case_adaptation_construction"
       }
     },
     promptPacks: {

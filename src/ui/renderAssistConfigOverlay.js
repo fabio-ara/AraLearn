@@ -1,7 +1,6 @@
 import { renderUiIcon } from "./renderUiIcons.js";
 import { listCourseModelOptions } from "../generation/runtime/courseModelSemantics.js";
 
-const COURSE_MODEL_OPTIONS = listCourseModelOptions();
 const MICROSEQUENCE_RANGE_MIN = 1;
 const MICROSEQUENCE_RANGE_MAX = 12;
 
@@ -28,15 +27,6 @@ function renderIconAction(action, iconName, title) {
   return (
     `<button class="icon-ghost assist-config-icon-action" type="button" data-action="${escapeHtml(action)}" title="${escapeHtml(title)}" aria-label="${escapeHtml(title)}">` +
     renderUiIcon(iconName, "assist-config-action-icon") +
-    "</button>"
-  );
-}
-
-function renderLabeledAction(action, iconName, label, title) {
-  return (
-    `<button class="assist-config-text-action" type="button" data-action="${escapeHtml(action)}" title="${escapeHtml(title)}" aria-label="${escapeHtml(title)}">` +
-    renderUiIcon(iconName, "assist-config-action-icon") +
-    `<span>${escapeHtml(label)}</span>` +
     "</button>"
   );
 }
@@ -121,21 +111,22 @@ export function renderAssistConfigOverlay({
   profileTuning = {},
   didacticProfileOptions = [],
 } = {}) {
+  const courseModelOptions = listCourseModelOptions(profileTuning.courseModel?.learningTrail || "");
   return (
-    '<section class="editor-overlay assist-config-overlay" aria-label="Ajustes da IA">' +
+    '<section class="editor-overlay assist-config-overlay" aria-label="Planejamento didático">' +
     '<article class="editor-sheet comment-sheet assist-config-sheet" role="dialog" aria-modal="true">' +
     '<header class="editor-head">' +
     '<button class="icon-ghost" type="button" data-action="assist-config-close" title="Fechar" aria-label="Fechar">&times;</button>' +
-    '<p class="editor-title">IA</p>' +
+    '<p class="editor-title">Planejamento didático</p>' +
     '<div class="lesson-top-actions assist-config-head-actions">' +
     renderIconAction("assist-config-reset-profile", "draft-state", "Resetar perfil") +
     "</div></header>" +
     '<div class="editor-body assist-config-body">' +
     '<section class="assist-config-panel">' +
-    renderSectionLabel("tags", "Planejamento", "Parâmetros que entram no planejamento top-down da trilha") +
+    renderSectionLabel("trail", "Planejamento", "Parâmetros que entram no planejamento top-down da trilha") +
     '<div class="assist-config-grid">' +
     '<label class="field assist-config-field">' +
-    renderFieldLabel("tags", "Perfil", "Escolhe o estilo-base da trilha") +
+    renderFieldLabel("trail", "Perfil", "Escolhe o ponto de partida do planejamento") +
     '<select data-field="assist-config-profile" aria-label="Perfil didático" title="Escolhe o estilo-base da trilha">' +
     renderOptionList(didacticProfileOptions, didacticProfileId) +
     "</select></label>" +
@@ -146,21 +137,24 @@ export function renderAssistConfigOverlay({
     "</div>" +
     '<label class="field assist-config-field assist-config-course-request-field">' +
     renderFieldLabel("edit", "Curso", "Descreve o curso para a IA completar a modelagem") +
-    `<textarea data-field="assist-config-course-model-description" aria-label="Modelagem do curso" title="Descreve o curso para a IA completar a modelagem" placeholder="Descreva o tipo de curso, a progressão desejada e o perfil do estudante.">${escapeHtml(profileTuning.courseModel?.description || "")}</textarea>` +
+    `<textarea data-field="assist-config-course-model-description" aria-label="Modelagem do curso" title="Descreve o curso para a IA completar a modelagem" placeholder="Descreva a trilha do curso, a progressão de microssequências e o perfil do estudante.">${escapeHtml(profileTuning.courseModel?.description || "")}</textarea>` +
     '<div class="assist-config-inline-actions">' +
-    renderLabeledAction("assist-config-infer-course-model", "sparkles", "Ler pedido", "Ler o pedido e completar a modelagem do curso") +
+    renderIconAction("assist-config-infer-course-model", "sparkles", "Ler o pedido e completar o planejamento") +
     "</div>" +
     "</label>" +
     '<div class="assist-config-grid">' +
     '<label class="field assist-config-field">' +
-    renderFieldLabel("folder", "Natureza", "Que tipo de curso é este") +
-    '<select data-field="assist-config-course-material-nature" aria-label="Natureza do curso" title="Que tipo de curso é este">' +
-    renderOptionList([{ value: "", label: "Selecionar" }, ...COURSE_MODEL_OPTIONS.materialNature], profileTuning.courseModel?.materialNature || "") +
+    renderFieldLabel("trail", "Trilha", "Que tipo de trilha didática organiza este curso") +
+    '<select data-field="assist-config-course-learning-trail" aria-label="Trilha do curso" title="Que tipo de trilha didática organiza este curso">' +
+    renderOptionList([{ value: "", label: "Selecionar" }, ...courseModelOptions.learningTrail], profileTuning.courseModel?.learningTrail || "") +
     "</select></label>" +
     '<label class="field assist-config-field">' +
-    renderFieldLabel("module", "Progressão", "Como a trilha deve avançar") +
-    '<select data-field="assist-config-course-progression-mode" aria-label="Progressão do curso" title="Como a trilha deve avançar">' +
-    renderOptionList([{ value: "", label: "Selecionar" }, ...COURSE_MODEL_OPTIONS.progressionMode], profileTuning.courseModel?.progressionMode || "") +
+    renderFieldLabel("microsequence", "Progressão de microssequências", "Como uma microssequência sucede a outra nesta trilha") +
+    '<select data-field="assist-config-course-microsequence-progression" aria-label="Progressão de microssequências" title="Como uma microssequência sucede a outra nesta trilha">' +
+    renderOptionList(
+      [{ value: "", label: profileTuning.courseModel?.learningTrail ? "Selecionar" : "Escolha a trilha" }, ...courseModelOptions.microsequenceProgression],
+      profileTuning.courseModel?.microsequenceProgression || ""
+    ) +
     "</select></label>" +
     "</div>" +
     "</section>" +
@@ -171,11 +165,11 @@ export function renderAssistConfigOverlay({
     '<span class="assist-config-toggle-group">' +
     renderBooleanToggle({
       field: "requireCoreCoverageBeforeExtensions",
-      title: "Fecha o núcleo antes de expandir",
+      title: "Esgotar assunto antes de expandir",
       iconName: "ready-state",
       checked: profileTuning.requireCoreCoverageBeforeExtensions !== false
     }) +
-    '<span class="assist-config-toggle-text" title="Fecha o núcleo antes de expandir">Fecha núcleo</span>' +
+    '<span class="assist-config-toggle-text" title="Esgotar assunto antes de expandir">Esgotar assunto antes de expandir</span>' +
     "</span>" +
     "</div>" +
     "</section>" +

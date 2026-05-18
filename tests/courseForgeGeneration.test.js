@@ -100,12 +100,8 @@ test("resolveCourseForgeDidacticProfileId e buildCourseForgeEngineProfileOverrid
         operationalReappearances: 5,
         courseModel: {
           description: "Curso com progressão visual para formal.",
-          materialNature: "formal_language",
-          progressionMode: "visual_to_formal",
-          primaryRepresentation: "flowchart",
-          secondaryRepresentation: "code",
-          primaryOperation: "translate",
-          preferredPracticeMode: "translation"
+          learningTrail: "formalization",
+          microsequenceProgression: "concrete_visual_formal"
         }
       })
     }),
@@ -125,20 +121,20 @@ test("resolveCourseForgeDidacticProfileId e buildCourseForgeEngineProfileOverrid
           requireCoreCoverageBeforeExtensions: true,
           requireVocabularyMap: true
         },
-          courseSemantics: {
-            description: "Curso com progressão visual para formal.",
-            materialNature: "formal_language",
-            progressionMode: "visual_to_formal",
-            primaryRepresentation: "flowchart",
-            secondaryRepresentation: "code",
-            primaryOperation: "translate",
-            primaryDifficulty: "abstraction",
-            secondaryDifficulty: "transfer",
-            preferredPracticeMode: "translation"
-          },
+        courseSemantics: {
+          description: "Curso com progressão visual para formal.",
+          learningTrail: "formalization",
+          microsequenceProgression: "concrete_visual_formal",
+          primaryRepresentation: "formula",
+          secondaryRepresentation: "matrix",
+          primaryOperation: "compare",
+          primaryDifficulty: "notation",
+          secondaryDifficulty: "abstraction",
+          preferredPracticeMode: "comparison"
+        },
         resourcePreferences: {
-          preferredResourceTypes: ["flowchart", "code_editor"],
-          discouragedResourceTypes: ["tree"]
+          preferredResourceTypes: ["matrix", "plane", "table"],
+          discouragedResourceTypes: []
         }
       }
     }
@@ -147,30 +143,28 @@ test("resolveCourseForgeDidacticProfileId e buildCourseForgeEngineProfileOverrid
 
 test("createCourseForgeProfileTuning hidrata a modelagem semântica a partir do perfil e preserva edição explícita", () => {
   const defaults = createCourseForgeProfileTuning("aralearn.engine.ads.programming.v1");
-  assert.equal(defaults.courseModel.materialNature, "procedure");
-  assert.equal(defaults.courseModel.progressionMode, "visual_to_formal");
+  assert.equal(defaults.courseModel.learningTrail, "procedure");
+  assert.equal(defaults.courseModel.microsequenceProgression, "worked_example_fading_execution");
   assert.equal(defaults.courseModel.primaryRepresentation, "flowchart");
-  assert.equal(defaults.courseModel.primaryOperation, "translate");
+  assert.equal(defaults.courseModel.primaryOperation, "apply");
   assert.equal(defaults.courseModel.primaryDifficulty, "syntax");
-  assert.equal(defaults.courseModel.preferredPracticeMode, "translation");
+  assert.equal(defaults.courseModel.preferredPracticeMode, "guided_first");
 
   const customized = createCourseForgeProfileTuning("aralearn.engine.ads.programming.v1", {
     targetStudentProfile: "",
     courseModelEdited: true,
     courseModel: {
-      materialNature: "",
-      primaryRepresentation: "",
-      primaryOperation: "build",
-      primaryDifficulty: "",
-      preferredPracticeMode: "case_study"
+      learningTrail: "",
+      microsequenceProgression: ""
     }
   });
 
   assert.equal(customized.targetStudentProfile, "");
-  assert.equal(customized.courseModel.materialNature, "");
+  assert.equal(customized.courseModel.learningTrail, "");
+  assert.equal(customized.courseModel.microsequenceProgression, "");
   assert.equal(customized.courseModel.primaryRepresentation, "");
-  assert.equal(customized.courseModel.primaryOperation, "build");
-  assert.equal(customized.courseModel.preferredPracticeMode, "case_study");
+  assert.equal(customized.courseModel.primaryOperation, "");
+  assert.equal(customized.courseModel.preferredPracticeMode, "");
 });
 
 test("resolveCourseForgeLaunchConfig monta runtime e intent config fora da UI", () => {

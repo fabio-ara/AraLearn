@@ -57,6 +57,20 @@ export function renderUiIcon(iconName, className = "ui-icon") {
     );
   }
 
+  if (iconName === "trail") {
+    return (
+      '<svg class="' +
+      classes +
+      '" viewBox="0 0 16 16" aria-hidden="true" focusable="false">' +
+      '<circle cx="3.2" cy="12.3" r="1.1" fill="currentColor"></circle>' +
+      '<circle cx="8" cy="7.9" r="1.1" fill="currentColor"></circle>' +
+      '<circle cx="12.8" cy="3.5" r="1.1" fill="currentColor"></circle>' +
+      '<path d="M4.2 11.4l2.9-2.7M8.9 7l2.9-2.7" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"></path>' +
+      '<path d="M2.6 3.6h3.2M2.6 6.2h2.2" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" opacity="0.72"></path>' +
+      "</svg>"
+    );
+  }
+
   if (iconName === "intent") {
     return (
       '<svg class="' +
