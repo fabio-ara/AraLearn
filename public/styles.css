@@ -4085,16 +4085,8 @@ button {
 }
 
 .assist-config-panel-inline.is-inline .field textarea {
-  line-height: 1.45;
   box-sizing: border-box;
-  overflow-y: auto;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-
-.assist-config-panel-inline.is-inline .field textarea::-webkit-scrollbar {
-  width: 0;
-  height: 0;
+  line-height: 1.45;
 }
 
 .assist-config-course-request-field textarea {
@@ -4892,10 +4884,28 @@ button {
 }
 
 .assist-config-panel-inline.is-inline .assist-config-student-field textarea {
-  min-height: 48px;
-  height: 48px;
+  min-height: 52px;
+  height: 52px;
+  padding: 6px 10px 6px 12px;
+  line-height: 1.28;
   resize: none;
-  overflow: hidden;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(172, 131, 67, 0.72) rgba(15, 12, 9, 0.18);
+}
+
+.assist-config-panel-inline.is-inline .assist-config-student-field textarea::-webkit-scrollbar {
+  width: 6px;
+}
+
+.assist-config-panel-inline.is-inline .assist-config-student-field textarea::-webkit-scrollbar-track {
+  background: rgba(15, 12, 9, 0.18);
+  border-radius: 999px;
+}
+
+.assist-config-panel-inline.is-inline .assist-config-student-field textarea::-webkit-scrollbar-thumb {
+  background: rgba(172, 131, 67, 0.72);
+  border-radius: 999px;
 }
 
 .field-hint {
@@ -6287,7 +6297,6 @@ button {
   );
   overflow-y: auto;
   overflow-x: hidden;
-  scrollbar-gutter: stable;
 }
 
 .generate-card {
