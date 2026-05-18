@@ -157,6 +157,7 @@ test("renderiza o painel contextual de geração com escopo top-down fixável", 
       },
       modelOptions: [{ value: "gemini-2.5-flash", label: "Gemini 2.5 Flash" }],
       selectedModel: "gemini-2.5-flash",
+      apiKey: "",
       localProviderStatus: { ok: false, checking: false, error: "" }
     }
   });
@@ -175,6 +176,7 @@ test("renderiza o painel contextual de geração com escopo top-down fixável", 
   assert.match(html, /data-action="open-generation-attachment-picker" title="Anexar documento" aria-label="Anexar documento"/);
   assert.match(html, /data-action="clear-prompt" title="Limpar prompt" aria-label="Limpar prompt"/);
   assert.match(html, /data-action="open-assist-config" title="Abrir planejamento didático" aria-label="Abrir planejamento didático"/);
+  assert.match(html, /data-field="assist-api-key"/);
   assert.match(html, /data-field="generate-lesson-input"[^>]+disabled aria-disabled="true"/);
 });
 
@@ -211,6 +213,7 @@ test("renderiza o painel contextual sem escopo fixado para geração global", ()
       },
       modelOptions: [{ value: "gemini-2.5-flash", label: "Gemini 2.5 Flash" }],
       selectedModel: "gemini-2.5-flash",
+      apiKey: "",
       localProviderStatus: { ok: false, checking: false, error: "" }
     }
   });
@@ -255,7 +258,8 @@ test("renderiza popup de progresso top-down com chamadas ao modelo", () => {
         actionSummary: "Curso, módulos e lições"
       },
       modelOptions: [{ value: "codex-cli-local", label: "Codex local" }],
-      selectedModel: "codex-cli-local"
+      selectedModel: "codex-cli-local",
+      apiKey: ""
     }
   });
 
@@ -299,6 +303,7 @@ test("renderiza o painel contextual com curso fixado para geração estrutural d
       },
       modelOptions: [{ value: "gemini-2.5-flash", label: "Gemini 2.5 Flash" }],
       selectedModel: "gemini-2.5-flash",
+      apiKey: "",
       localProviderStatus: { ok: false, checking: false, error: "" }
     }
   });
@@ -360,6 +365,7 @@ test("renderiza o painel contextual com lição fixada no fluxo único do Course
       },
       modelOptions: [{ value: "gemini-2.5-flash", label: "Gemini 2.5 Flash" }],
       selectedModel: "gemini-2.5-flash",
+      apiKey: "",
       localProviderStatus: { ok: false, checking: false, error: "" }
     }
   });
@@ -407,6 +413,7 @@ test("renderiza o planejamento didático embutido no painel de geração quando 
       },
       selectedModel: "gemini-2.5-flash",
       modelOptions: [{ value: "gemini-2.5-flash", label: "Gemini 2.5 Flash" }],
+      apiKey: "segredo",
       localProviderStatus: { ok: false, checking: false, error: "" },
       assistConfigExpanded: true,
       didacticProfileId: "aralearn.engine.ads.general.v3",
@@ -435,6 +442,8 @@ test("renderiza o planejamento didático embutido no painel de geração quando 
 
   assert.match(html, /generate-assist-config-shell/);
   assert.match(html, />Planejamento didático</);
+  assert.match(html, /data-field="assist-api-key"/);
+  assert.match(html, /value="segredo"/);
   assert.match(html, /data-field="assist-config-course-model-description"/);
   assert.match(html, /data-field="assist-config-profile"/);
   assert.match(html, /data-action="open-assist-config" title="Ocultar planejamento didático" aria-label="Ocultar planejamento didático"/);

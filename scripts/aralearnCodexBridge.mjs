@@ -4,7 +4,7 @@ import process from "node:process";
 
 import {
   buildAttachmentPromptSection,
-  buildCodexArgs,
+  buildCodexSpawnInput,
   buildTopDownPrompt,
   extractJsonFromText,
   normalizePort,
@@ -57,18 +57,28 @@ function readJsonBody(request, maxBodyBytes) {
   });
 }
 
-function runCodex({ command, args, cwd, timeoutMs }) {
+function normalizeCodexExecutionError(error) {
+  const code = normalizeText(error?.code).toUpperCase();
+  const message = normalizeText(error?.message);
+  if (code === "ENAMETOOLONG" || code === "E2BIG" || /ENAMETOOLONG|E2BIG/i.test(message)) {
+    return new Error("A entrada enviada ao Codex local ficou grande demais para a linha de comando. Configure o bridge para usar stdin.");
+  }
+  return error instanceof Error ? error : new Error(message || "Falha inesperada ao executar o Codex.");
+}
+
+function runCodex({ command, args, stdinText, cwd, timeoutMs }) {
   return new Promise((resolve, reject) => {
     const startedAt = Date.now();
     const child = spawn(command, args, {
       shell: false,
       cwd,
       env: process.env,
-      stdio: ["ignore", "pipe", "pipe"]
+      stdio: ["pipe", "pipe", "pipe"]
     });
     let stdout = "";
     let stderr = "";
     let settled = false;
+    child.stdin.end(typeof stdinText === "string" ? stdinText : "");
     const timer = setTimeout(() => {
       if (settled) {
         return;
@@ -90,7 +100,7 @@ function runCodex({ command, args, cwd, timeoutMs }) {
       }
       settled = true;
       clearTimeout(timer);
-      reject(error);
+      reject(normalizeCodexExecutionError(error));
     });
     child.on("close", (code) => {
       if (settled) {
@@ -116,7 +126,7 @@ const port = normalizePort(process.env.ARALEARN_CODEX_PORT);
 const token = normalizeText(process.env.ARALEARN_CODEX_TOKEN);
 const defaultCommand = "codex";
 const command = normalizeText(process.env.ARALEARN_CODEX_COMMAND) || defaultCommand;
-const argsTemplate = normalizeText(process.env.ARALEARN_CODEX_ARGS) || "exec {prompt}";
+const argsTemplate = normalizeText(process.env.ARALEARN_CODEX_ARGS) || "exec -";
 const timeoutMs = normalizeTimeout(process.env.ARALEARN_CODEX_TIMEOUT_MS);
 const maxBodyBytes = Number.parseInt(String(process.env.ARALEARN_CODEX_MAX_BODY_BYTES || "1000000"), 10) || 1000000;
 const cwd = normalizeText(process.env.ARALEARN_CODEX_WORKDIR) || process.cwd();
@@ -195,9 +205,11 @@ const server = http.createServer(async (request, response) => {
       return;
     }
 
+    const codexSpawnInput = buildCodexSpawnInput({ argsTemplate, prompt });
     const codexResult = await runCodex({
       command,
-      args: buildCodexArgs({ argsTemplate, prompt }),
+      args: codexSpawnInput.args,
+      stdinText: codexSpawnInput.stdinText,
       cwd,
       timeoutMs
     });

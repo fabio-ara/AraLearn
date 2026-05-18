@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import {
   buildAttachmentPromptSection,
   buildCodexArgs,
+  buildCodexSpawnInput,
   buildTopDownPrompt,
   extractJsonFromText
 } from "../scripts/aralearnCodexBridge.lib.mjs";
@@ -34,8 +35,15 @@ test("buildTopDownPrompt reforça estrutura com microssequências planejadas sem
   assert.doesNotMatch(prompt, /Não gere microssequências\./);
 });
 
-test("buildCodexArgs monta o template default exec {prompt}", () => {
+test("buildCodexArgs mantém compatibilidade com template explícito em argv", () => {
   assert.deepEqual(buildCodexArgs({ argsTemplate: "exec {prompt}", prompt: "teste" }), ["exec", "teste"]);
+});
+
+test("buildCodexSpawnInput usa stdin por padrão para evitar estouro de argv", () => {
+  assert.deepEqual(buildCodexSpawnInput({ argsTemplate: "", prompt: "teste" }), {
+    args: ["exec", "-"],
+    stdinText: "teste"
+  });
 });
 
 test("buildAttachmentPromptSection inclui conteúdo textual e aviso de truncamento", () => {

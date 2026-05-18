@@ -6866,6 +6866,21 @@ button {
   border-top: 1px solid rgba(151, 117, 68, 0.24);
 }
 
+.generate-provider-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.generate-provider-field {
+  min-width: 0;
+}
+
+.generate-provider-input {
+  width: 100%;
+}
+
 .generate-action-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 36px 44px;

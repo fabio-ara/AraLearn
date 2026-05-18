@@ -7619,6 +7619,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
           })),
           selectedModel: state.assistConfig.model,
           selectedModelLabel: getAssistModelLabel(state.assistConfig.model),
+          apiKey: state.assistConfig.apiKey,
           modelOptions: ASSIST_MODEL_OPTIONS,
           generationDraft: {
             ...state.generationDraft,
@@ -8942,6 +8943,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
 
     const assistMode = root.querySelector("[data-field='assist-mode']");
     const assistModel = root.querySelector("[data-field='assist-model']");
+    const assistApiKey = root.querySelector("[data-field='assist-api-key']");
     const assistActionIntentInputs = root.querySelectorAll("[data-field='assist-action-intent']");
     const assistPreferredContainer = root.querySelector("[data-field='assist-preferred-container']");
     const assistDependencyPicker = root.querySelector("[data-field='assist-dependency-picker']");
@@ -8985,6 +8987,11 @@ export function createLessonEditorApp({ root, storage, editor }) {
       assistModel.addEventListener("change", () => {
         setAssistModel(assistModel.value);
         render({ preserveState: true });
+      });
+    }
+    if (assistApiKey) {
+      assistApiKey.addEventListener("input", () => {
+        persistAssistConfigValue({ apiKey: assistApiKey.value });
       });
     }
     assistActionIntentInputs.forEach((node) => {

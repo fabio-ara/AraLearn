@@ -271,6 +271,21 @@ function renderGenerateStatusButton(expanded = false) {
   return renderGenerateIconButton("open-assist-config", title, icon);
 }
 
+function renderGenerateProviderField({ selectedModel = "", apiKey = "" } = {}) {
+  if (String(selectedModel || "").trim() === "codex-cli-local") {
+    return "";
+  }
+
+  return (
+    '<label class="field generate-icon-field generate-provider-field">' +
+    renderGenerateIconLabel("comment", "Chave da API") +
+    '<input data-field="assist-api-key" type="password" class="generate-provider-input" aria-label="Chave da API" title="Chave da API" placeholder="Chave da API" value="' +
+    escapeHtml(apiKey || "") +
+    '" autocomplete="off" spellcheck="false">' +
+    "</label>"
+  );
+}
+
 function renderGenerateScopeButton({ level, iconName, label, pressed = false, disabled = false }) {
   return (
     '<button class="generate-scope-button' +
@@ -440,6 +455,10 @@ function renderGeneratePane({ project, editorSupport, includeDismissActions = fa
   const attachmentChips = renderGenerationAttachmentChips(draft.attachments);
   const hasScopedContext = draft.courseFixed || draft.moduleFixed || draft.lessonFixed;
   const planningExpanded = editorSupport.assistConfigExpanded === true;
+  const providerField = renderGenerateProviderField({
+    selectedModel: editorSupport.selectedModel,
+    apiKey: editorSupport.apiKey
+  });
   const assistConfigPanel = editorSupport.assistConfigExpanded
     ? '<div class="generate-assist-config-shell">' +
       renderAssistConfigPanel({
@@ -532,6 +551,7 @@ function renderGeneratePane({ project, editorSupport, includeDismissActions = fa
     ) +
     "</span>" +
     "</div></div>" +
+    (providerField ? '<div class="generate-provider-row">' + providerField + "</div>" : "") +
     '<div class="generate-action-row">' +
     '<label class="field generate-icon-field generate-model-field">' +
     renderGenerateIconLabel("intent", "Modelo") +

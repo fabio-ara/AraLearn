@@ -1,6 +1,7 @@
 export {
   buildAttachmentPromptSection,
   buildCodexArgs,
+  buildCodexSpawnInput,
   buildStandaloneBridgeSource,
   buildTopDownPrompt,
   extractJsonFromText,

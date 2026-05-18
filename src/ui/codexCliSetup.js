@@ -195,6 +195,7 @@ echo "[6/6] Iniciando bridge local..."
 export ARALEARN_CODEX_HOST=127.0.0.1
 export ARALEARN_CODEX_PORT=4183
 export ARALEARN_CODEX_COMMAND=codex
+export ARALEARN_CODEX_ARGS='exec -'
 ${tokenExport}
 node "$HOME/aralearn-codex/aralearnCodexBridge.mjs"
 `;
@@ -237,6 +238,7 @@ echo "[4/5] Definindo variáveis do bridge..."
 export ARALEARN_CODEX_HOST=127.0.0.1
 export ARALEARN_CODEX_PORT=4183
 export ARALEARN_CODEX_COMMAND=codex
+export ARALEARN_CODEX_ARGS='exec -'
 ${tokenExport}
 
 echo
@@ -287,6 +289,7 @@ Write-Host "[4/5] Definindo variáveis do bridge..."
 $env:ARALEARN_CODEX_HOST = "127.0.0.1"
 $env:ARALEARN_CODEX_PORT = "4183"
 $env:ARALEARN_CODEX_COMMAND = $codexCommand.Source
+$env:ARALEARN_CODEX_ARGS = "exec -"
 ${tokenCommand}
 
 Write-Host ""
