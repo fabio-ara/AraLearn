@@ -23,9 +23,9 @@ function renderOptionList(items = [], selectedValue = "") {
     .join("");
 }
 
-function renderIconAction(action, iconName, title) {
+function renderIconAction(action, iconName, title, { disabled = false } = {}) {
   return (
-    `<button class="icon-ghost assist-config-icon-action" type="button" data-action="${escapeHtml(action)}" title="${escapeHtml(title)}" aria-label="${escapeHtml(title)}">` +
+    `<button class="icon-ghost assist-config-icon-action" type="button" data-action="${escapeHtml(action)}" title="${escapeHtml(title)}" aria-label="${escapeHtml(title)}"${disabled ? ' disabled aria-disabled="true"' : ""}>` +
     renderUiIcon(iconName, "assist-config-action-icon") +
     "</button>"
   );
@@ -110,10 +110,14 @@ export function renderAssistConfigOverlay({
   didacticProfileId,
   profileTuning = {},
   didacticProfileOptions = [],
-  isCustomProfileSelected = false,
-  customProfileLabel = "",
+  profileEditor = null,
 } = {}) {
   const courseModelOptions = listCourseModelOptions(profileTuning.courseModel?.learningTrail || "");
+  const isProfileEditing = Boolean(profileEditor?.active);
+  const canDeleteProfile = profileEditor?.canDelete === true;
+  const canEditProfile = profileEditor?.canEdit === true && !isProfileEditing;
+  const canSaveProfile = profileEditor?.canSave === true;
+  const profileLabel = profileEditor?.draftLabel || "";
   return (
     '<section class="editor-overlay assist-config-overlay" aria-label="Planejamento didático">' +
     '<article class="editor-sheet comment-sheet assist-config-sheet" role="dialog" aria-modal="true">' +
@@ -130,17 +134,19 @@ export function renderAssistConfigOverlay({
     '<label class="field assist-config-field">' +
     '<span class="assist-config-label-actions">' +
     renderFieldLabel("trail", "Perfil", "Escolhe o ponto de partida do planejamento") +
-    renderIconAction("assist-config-create-custom-profile", "add", "Salvar como novo perfil") +
+    '<span class="assist-config-inline-actions">' +
+    renderIconAction("assist-config-start-create-profile", "add", "Criar novo perfil", { disabled: isProfileEditing }) +
+    renderIconAction("assist-config-delete-profile", "trash", "Excluir perfil selecionado", { disabled: !canDeleteProfile }) +
+    renderIconAction("assist-config-edit-profile", "edit", "Editar nome do perfil selecionado", { disabled: !canEditProfile }) +
+    renderIconAction("assist-config-save-profile", "save", "Salvar perfil", { disabled: !canSaveProfile }) +
     "</span>" +
-    '<select data-field="assist-config-profile" aria-label="Perfil didático" title="Escolhe o estilo-base da trilha">' +
-    renderOptionList(didacticProfileOptions, didacticProfileId) +
-    "</select></label>" +
-    (isCustomProfileSelected
-      ? '<label class="field assist-config-field assist-config-profile-name-field">' +
-        renderFieldLabel("edit", "Nome do perfil", "Renomeia o perfil derivado salvo pelo usuário") +
-        `<input data-field="assist-config-custom-profile-label" type="text" value="${escapeHtml(customProfileLabel)}" autocomplete="off" spellcheck="false" placeholder="Nome do perfil" title="Renomeia o perfil derivado salvo pelo usuário">` +
-        "</label>"
-      : "") +
+    "</span>" +
+    (isProfileEditing
+      ? `<input data-field="assist-config-profile" type="text" value="${escapeHtml(profileLabel)}" autocomplete="off" spellcheck="false" placeholder="Nome do perfil" title="Nome do perfil">`
+      : '<select data-field="assist-config-profile" aria-label="Perfil didático" title="Escolhe o estilo-base da trilha">' +
+        renderOptionList(didacticProfileOptions, didacticProfileId) +
+        "</select>") +
+    "</label>" +
     '<label class="field assist-config-field assist-config-student-field">' +
     renderFieldLabel("prompt", "Para quem", "Ajusta a trilha ao nível e ao tempo do estudante") +
     `<input data-field="assist-config-target-student-profile" type="text" value="${escapeHtml(profileTuning.targetStudentProfile || "")}" autocomplete="off" spellcheck="false" placeholder="Perfil do estudante" title="Ajusta a trilha ao nível e ao tempo do estudante">` +

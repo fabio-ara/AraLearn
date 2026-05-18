@@ -81,6 +81,29 @@ export function renderUiIcon(iconName, className = "ui-icon") {
     );
   }
 
+  if (iconName === "save") {
+    return (
+      '<svg class="' +
+      classes +
+      '" viewBox="0 0 16 16" aria-hidden="true" focusable="false">' +
+      '<path d="M3.2 2.8h8l1.6 1.6v8.8H3.2z" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"></path>' +
+      '<path d="M5 2.8v3.2h5V2.8" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round"></path>' +
+      '<rect x="5.1" y="9" width="5.8" height="2.8" rx="0.6" fill="none" stroke="currentColor" stroke-width="1.1"></rect>' +
+      "</svg>"
+    );
+  }
+
+  if (iconName === "trash") {
+    return (
+      '<svg class="' +
+      classes +
+      '" viewBox="0 0 16 16" aria-hidden="true" focusable="false">' +
+      '<path d="M4.3 4.6h7.4l-.6 8a1 1 0 0 1-1 .9H6a1 1 0 0 1-1-.9z" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"></path>' +
+      '<path d="M3.6 4.6h8.8M6.1 4.6V3.4a.7.7 0 0 1 .7-.7h2.4a.7.7 0 0 1 .7.7v1.2M6.6 7.1v4M9.4 7.1v4" fill="none" stroke="currentColor" stroke-width="1.15" stroke-linecap="round"></path>' +
+      "</svg>"
+    );
+  }
+
   if (iconName === "intent") {
     return (
       '<svg class="' +

@@ -226,6 +226,10 @@ function buildDidacticProfileOptions(customProfiles = []) {
   ];
 }
 
+function buildAssistCustomProfileId() {
+  return `assist.custom.${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+}
+
 function isGeneratedPendingOperation(value) {
   return String(value || "").trim() === GENERATED_PENDING_OPERATION;
 }
@@ -977,6 +981,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
     assistConfigOpen: false,
     assistConfig: initialAssistConfig,
     assistConfigDraft: { ...initialAssistConfig },
+    assistProfileEditor: null,
     codexCliSetupStatus: createCourseForgeCodexCliSetupStatus(),
     pendingExternalImport: null,
     microsequenceMode: "play",
@@ -1700,28 +1705,128 @@ export function createLessonEditorApp({ root, storage, editor }) {
     return Boolean(findAssistCustomProfile(profileId, customProfiles));
   }
 
-  function buildNextCustomProfileLabel(customProfiles = state.assistConfig.customProfiles) {
-    const count = Array.isArray(customProfiles) ? customProfiles.length : 0;
-    return `Meu perfil ${count + 1}`;
+  function getSelectedAssistProfileId(config = state.assistConfig) {
+    return config.selectedProfileId || config.didacticProfileId || DEFAULT_ENGINE_PROFILE_ID;
   }
 
-  function updateAssistCustomProfileLabel(label = "") {
-    const selectedProfileId = state.assistConfig.selectedProfileId;
-    if (!isAssistCustomProfile(selectedProfileId)) {
+  function getAssistProfileEditorViewModel(config = state.assistConfig) {
+    const selectedProfileId = getSelectedAssistProfileId(config);
+    const selectedCustomProfile = findAssistCustomProfile(selectedProfileId, config.customProfiles);
+    const editor = state.assistProfileEditor;
+    const draftLabel = editor?.draftLabel || "";
+    const normalizedLabel = String(draftLabel).trim();
+    const isCreateMode = editor?.mode === "create";
+    const isEditMode = editor?.mode === "edit";
+    const canSave =
+      Boolean(editor?.active) &&
+      Boolean(normalizedLabel) &&
+      ((isCreateMode && Boolean(editor?.profileId)) ||
+        (isEditMode && selectedCustomProfile && normalizedLabel !== String(editor?.originalLabel || "").trim()));
+
+    return {
+      active: Boolean(editor?.active),
+      mode: editor?.mode || "",
+      draftLabel,
+      canEdit: Boolean(selectedCustomProfile),
+      canDelete: Boolean(selectedCustomProfile),
+      canSave
+    };
+  }
+
+  function startAssistCustomProfileCreation() {
+    state.assistProfileEditor = {
+      active: true,
+      mode: "create",
+      profileId: buildAssistCustomProfileId(),
+      draftLabel: "",
+      originalLabel: "",
+      baseProfileId: state.assistConfig.didacticProfileId || DEFAULT_ENGINE_PROFILE_ID
+    };
+    render({ preserveState: true });
+  }
+
+  function startAssistCustomProfileRename() {
+    const selectedProfileId = getSelectedAssistProfileId();
+    const selectedCustomProfile = findAssistCustomProfile(selectedProfileId);
+    if (!selectedCustomProfile) {
+      return;
+    }
+    state.assistProfileEditor = {
+      active: true,
+      mode: "edit",
+      profileId: selectedCustomProfile.id,
+      draftLabel: selectedCustomProfile.label || "",
+      originalLabel: selectedCustomProfile.label || "",
+      baseProfileId: selectedCustomProfile.baseProfileId
+    };
+    render({ preserveState: true });
+  }
+
+  function updateAssistProfileEditorLabel(label = "") {
+    if (!state.assistProfileEditor?.active) {
+      return;
+    }
+    state.assistProfileEditor = {
+      ...state.assistProfileEditor,
+      draftLabel: String(label || "")
+    };
+    render({ preserveState: true });
+  }
+
+  function saveAssistProfileEditor() {
+    const editor = state.assistProfileEditor;
+    if (!editor?.active) {
       return;
     }
 
-    const normalizedLabel = String(label || "").trim() || buildNextCustomProfileLabel(state.assistConfig.customProfiles);
+    const normalizedLabel = String(editor.draftLabel || "").trim();
+    if (!normalizedLabel) {
+      return;
+    }
+
+    if (editor.mode === "create") {
+      const customProfile = {
+        id: editor.profileId || buildAssistCustomProfileId(),
+        label: normalizedLabel,
+        baseProfileId: state.assistConfig.didacticProfileId || DEFAULT_ENGINE_PROFILE_ID,
+        profileTuning: structuredClone(state.assistConfig.profileTuning || createCourseForgeProfileTuning(state.assistConfig.didacticProfileId))
+      };
+      persistAssistConfigValue({
+        selectedProfileId: customProfile.id,
+        customProfiles: [...(state.assistConfig.customProfiles || []), customProfile]
+      });
+    } else if (editor.mode === "edit") {
+      persistAssistConfigValue({
+        customProfiles: (state.assistConfig.customProfiles || []).map((entry) =>
+          entry.id === editor.profileId
+            ? {
+                ...entry,
+                label: normalizedLabel
+              }
+            : entry
+        )
+      });
+    }
+
+    state.assistProfileEditor = null;
+    render({ preserveState: true });
+  }
+
+  function deleteAssistCustomProfile() {
+    const selectedProfileId = getSelectedAssistProfileId();
+    const selectedCustomProfile = findAssistCustomProfile(selectedProfileId);
+    if (!selectedCustomProfile) {
+      return;
+    }
+
     persistAssistConfigValue({
-      customProfiles: (state.assistConfig.customProfiles || []).map((entry) =>
-        entry.id === selectedProfileId
-          ? {
-              ...entry,
-              label: normalizedLabel
-            }
-          : entry
-      )
+      selectedProfileId: selectedCustomProfile.baseProfileId,
+      didacticProfileId: selectedCustomProfile.baseProfileId,
+      profileTuning: createCourseForgeProfileTuning(selectedCustomProfile.baseProfileId),
+      customProfiles: (state.assistConfig.customProfiles || []).filter((entry) => entry.id !== selectedCustomProfile.id)
     });
+    state.assistProfileEditor = null;
+    render({ preserveState: true });
   }
 
   function getCodexSetupEndpoint() {
@@ -1825,12 +1930,14 @@ export function createLessonEditorApp({ root, storage, editor }) {
 
   function openAssistConfig() {
     state.assistConfigDraft = cloneAssistConfig();
+    state.assistProfileEditor = null;
     state.assistConfigOpen = true;
     render({ preserveState: true });
   }
 
   function closeAssistConfig() {
     state.assistConfigOpen = false;
+    state.assistProfileEditor = null;
     render({ preserveState: true });
   }
 
@@ -1922,23 +2029,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
     updateAssistProfileTuning({
       courseModelEdited: true,
       courseModel: nextCourseModel
-    });
-    render({ preserveState: true });
-  }
-
-  function createAssistCustomProfile() {
-    const timestampId = Date.now().toString(36);
-    const selectedSeedOption = DIDACTIC_PROFILE_SEED_OPTIONS.find((entry) => entry.value === state.assistConfig.didacticProfileId);
-    const label = selectedSeedOption?.label ? `${selectedSeedOption.label} personalizado` : buildNextCustomProfileLabel(state.assistConfig.customProfiles);
-    const customProfile = {
-      id: `assist.custom.${timestampId}`,
-      label,
-      baseProfileId: state.assistConfig.didacticProfileId,
-      profileTuning: structuredClone(state.assistConfig.profileTuning || createCourseForgeProfileTuning(state.assistConfig.didacticProfileId))
-    };
-    persistAssistConfigValue({
-      selectedProfileId: customProfile.id,
-      customProfiles: [...(state.assistConfig.customProfiles || []), customProfile]
     });
     render({ preserveState: true });
   }
@@ -6989,15 +7079,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
             didacticProfileId: state.assistConfigDraft.selectedProfileId || state.assistConfigDraft.didacticProfileId,
             profileTuning: state.assistConfigDraft.profileTuning,
             didacticProfileOptions: buildDidacticProfileOptions(state.assistConfigDraft.customProfiles),
-            isCustomProfileSelected: isAssistCustomProfile(
-              state.assistConfigDraft.selectedProfileId || state.assistConfigDraft.didacticProfileId,
-              state.assistConfigDraft.customProfiles
-            ),
-            customProfileLabel:
-              findAssistCustomProfile(
-                state.assistConfigDraft.selectedProfileId || state.assistConfigDraft.didacticProfileId,
-                state.assistConfigDraft.customProfiles
-              )?.label || ""
+            profileEditor: getAssistProfileEditorViewModel(state.assistConfigDraft)
           })
         : "") +
       (state.pendingExternalImport
@@ -8409,8 +8491,17 @@ export function createLessonEditorApp({ root, storage, editor }) {
     root.querySelector("[data-action='assist-config-reset-profile']")?.addEventListener("click", () => {
       resetAssistProfileTuning(state.assistConfig.selectedProfileId || state.assistConfig.didacticProfileId);
     });
-    root.querySelector("[data-action='assist-config-create-custom-profile']")?.addEventListener("click", () => {
-      createAssistCustomProfile();
+    root.querySelector("[data-action='assist-config-start-create-profile']")?.addEventListener("click", () => {
+      startAssistCustomProfileCreation();
+    });
+    root.querySelector("[data-action='assist-config-edit-profile']")?.addEventListener("click", () => {
+      startAssistCustomProfileRename();
+    });
+    root.querySelector("[data-action='assist-config-delete-profile']")?.addEventListener("click", () => {
+      deleteAssistCustomProfile();
+    });
+    root.querySelector("[data-action='assist-config-save-profile']")?.addEventListener("click", () => {
+      saveAssistProfileEditor();
     });
     root.querySelector("[data-action='assist-config-infer-course-model']")?.addEventListener("click", () => {
       inferAssistCourseModelFromDescription();
@@ -8431,7 +8522,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
     });
 
     const assistConfigProfile = root.querySelector("[data-field='assist-config-profile']");
-    const assistConfigCustomProfileLabel = root.querySelector("[data-field='assist-config-custom-profile-label']");
     const assistConfigTargetStudentProfile = root.querySelector("[data-field='assist-config-target-student-profile']");
     const assistConfigCourseModelDescription = root.querySelector("[data-field='assist-config-course-model-description']");
     const assistConfigCourseLearningTrail = root.querySelector("[data-field='assist-config-course-learning-trail']");
@@ -8473,14 +8563,15 @@ export function createLessonEditorApp({ root, storage, editor }) {
       }
     };
     if (assistConfigProfile) {
-      assistConfigProfile.addEventListener("change", () => {
-        selectAssistDidacticProfile(assistConfigProfile.value);
-      });
-    }
-    if (assistConfigCustomProfileLabel) {
-      assistConfigCustomProfileLabel.addEventListener("input", () => {
-        updateAssistCustomProfileLabel(assistConfigCustomProfileLabel.value);
-      });
+      if (assistConfigProfile.tagName === "SELECT") {
+        assistConfigProfile.addEventListener("change", () => {
+          selectAssistDidacticProfile(assistConfigProfile.value);
+        });
+      } else {
+        assistConfigProfile.addEventListener("input", () => {
+          updateAssistProfileEditorLabel(assistConfigProfile.value);
+        });
+      }
     }
     if (assistConfigTargetStudentProfile) {
       assistConfigTargetStudentProfile.addEventListener("input", () => {
