@@ -8692,6 +8692,8 @@ export function createLessonEditorApp({ root, storage, editor }) {
     const assistInterventionType = root.querySelector("[data-field='assist-intervention-type']");
     const assistDomainRef = root.querySelector("[data-field='assist-domain-ref']");
     const assistBridgeTargetRef = root.querySelector("[data-field='assist-bridge-target-ref']");
+    const assistRelatedConceptPicker = root.querySelector("[data-field='assist-related-concept-picker']");
+    const assistPrerequisitePicker = root.querySelector("[data-field='assist-prerequisite-picker']");
     const assistDependencyPicker = root.querySelector("[data-field='assist-dependency-picker']");
     const assistPrompt = root.querySelector("[data-field='assist-prompt']");
     const assistAttachmentInput = root.querySelector("[data-field='assist-attachments']");
@@ -8914,6 +8916,24 @@ export function createLessonEditorApp({ root, storage, editor }) {
         state.assistDraft.prerequisiteRefs = Array.from(current).slice(0, 6);
         render({ preserveState: true });
       });
+    });
+    root.querySelector("[data-action='add-assist-related-concept']")?.addEventListener("click", () => {
+      const conceptRef = assistRelatedConceptPicker instanceof HTMLSelectElement ? assistRelatedConceptPicker.value : "";
+      if (!conceptRef) return;
+      const current = new Set(uniqueTextList(state.assistDraft.relatedConceptRefs));
+      if (current.has(conceptRef) || current.size >= 4) return;
+      current.add(conceptRef);
+      state.assistDraft.relatedConceptRefs = Array.from(current).slice(0, 4);
+      render({ preserveState: true });
+    });
+    root.querySelector("[data-action='add-assist-prerequisite']")?.addEventListener("click", () => {
+      const conceptRef = assistPrerequisitePicker instanceof HTMLSelectElement ? assistPrerequisitePicker.value : "";
+      if (!conceptRef) return;
+      const current = new Set(uniqueTextList(state.assistDraft.prerequisiteRefs));
+      if (current.has(conceptRef) || current.size >= 6) return;
+      current.add(conceptRef);
+      state.assistDraft.prerequisiteRefs = Array.from(current).slice(0, 6);
+      render({ preserveState: true });
     });
     root.querySelector("[data-action='open-next-planned-microsequence']")?.addEventListener("click", () => {
       const context = getRenderContext();
