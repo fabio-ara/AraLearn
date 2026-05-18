@@ -18,6 +18,7 @@ test("renderAssistConfigOverlay expõe contrato discreto do top-down sem setup o
 
   assert.match(html, /class="editor-overlay assist-config-overlay"/);
   assert.match(html, /editor-title">Planejamento didático<\/p>/);
+  assert.match(html, />Planejamento didático</);
   assert.match(html, /data-field="assist-config-profile"/);
   assert.match(html, /data-field="assist-config-target-student-profile"/);
   assert.match(html, /data-action="assist-config-start-create-profile"/);
@@ -28,8 +29,6 @@ test("renderAssistConfigOverlay expõe contrato discreto do top-down sem setup o
   assert.match(html, /data-field="assist-config-course-learning-trail"/);
   assert.match(html, /data-field="assist-config-course-microsequence-progression"/);
   assert.match(html, /data-action="assist-config-reset-profile"/);
-  assert.match(html, />Planejamento</);
-  assert.match(html, />Estrutura</);
   assert.match(html, />Perfil</);
   assert.match(html, />Para quem</);
   assert.match(html, />Curso</);

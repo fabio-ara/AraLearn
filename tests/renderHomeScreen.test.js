@@ -174,7 +174,7 @@ test("renderiza o painel contextual de geração com escopo top-down fixável", 
   assert.match(html, /aria-label="Gerar estrutura" title="Gerar estrutura"/);
   assert.match(html, /data-action="open-generation-attachment-picker" title="Anexar documento" aria-label="Anexar documento"/);
   assert.match(html, /data-action="clear-prompt" title="Limpar prompt" aria-label="Limpar prompt"/);
-  assert.match(html, /data-action="open-assist-config" title="Planejamento didático" aria-label="Planejamento didático"/);
+  assert.match(html, /data-action="open-assist-config" title="Abrir planejamento didático" aria-label="Abrir planejamento didático"/);
   assert.match(html, /data-field="generate-lesson-input"[^>]+disabled aria-disabled="true"/);
 });
 
@@ -327,4 +327,70 @@ test("renderiza o painel contextual com lição fixada no fluxo único do Course
   assert.match(html, /data-action="generate-structure"/);
   assert.match(html, /aria-label="Gerar estrutura" title="Gerar estrutura"/);
   assert.doesNotMatch(html, /data-action="apply-assist"/);
+});
+
+test("renderiza o planejamento didático embutido no painel de geração quando expandido", () => {
+  const html = renderGenerationPanelOverlay({
+    project: {
+      contract: "aralearn.contract",
+      version: 1,
+      kind: "project",
+      courses: []
+    },
+    editorSupport: {
+      generationDraft: {
+        courseFixed: false,
+        moduleFixed: false,
+        lessonFixed: false,
+        courseInput: "",
+        moduleInput: "",
+        lessonInput: "",
+        promptText: "",
+        attachments: []
+      },
+      generationUiState: {
+        modules: [],
+        lessons: [],
+        moduleToggleEnabled: false,
+        moduleInputEnabled: false,
+        lessonToggleEnabled: false,
+        lessonInputEnabled: false,
+        canSubmit: false,
+        actionLabel: "criar curso completo",
+        actionSummary: "Curso, módulos e lições",
+        actionIconName: "folder"
+      },
+      selectedModel: "gemini-2.5-flash",
+      modelOptions: [{ value: "gemini-2.5-flash", label: "Gemini 2.5 Flash" }],
+      localProviderStatus: { ok: false, checking: false, error: "" },
+      assistConfigExpanded: true,
+      didacticProfileId: "aralearn.engine.ads.general.v3",
+      profileTuning: {
+        targetStudentProfile: "",
+        courseModel: {
+          description: "",
+          learningTrail: "",
+          microsequenceProgression: ""
+        },
+        minMicrosequences: 3,
+        targetMicrosequences: 5,
+        maxMicrosequences: 8,
+        requireCoreCoverageBeforeExtensions: true
+      },
+      didacticProfileOptions: [{ value: "aralearn.engine.ads.general.v3", label: "Geral" }],
+      profileEditor: {
+        active: false,
+        draftLabel: "",
+        canEdit: false,
+        canDelete: false,
+        canSave: false
+      }
+    }
+  });
+
+  assert.match(html, /generate-assist-config-shell/);
+  assert.match(html, />Planejamento didático</);
+  assert.match(html, /data-field="assist-config-course-model-description"/);
+  assert.match(html, /data-field="assist-config-profile"/);
+  assert.match(html, /data-action="open-assist-config" title="Ocultar planejamento didático" aria-label="Ocultar planejamento didático"/);
 });

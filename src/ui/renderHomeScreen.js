@@ -2,6 +2,7 @@ import { readLessonProgressEntry } from "../storage/progressStore.js";
 import { isRunnableMicrosequence } from "../model/microsequenceStatus.js";
 import { renderUiIcon } from "./renderUiIcons.js";
 import { buildScopedVersionLineageLabel, splitVersionLineageLabel } from "./versionLineage.js";
+import { renderAssistConfigPanel } from "./renderAssistConfigOverlay.js";
 
 function escapeHtml(value) {
   return String(value)
@@ -246,9 +247,11 @@ function renderGenerateIconLabel(iconName, label) {
   );
 }
 
-function renderGenerateIconButton(action, title, content, disabled = false) {
+function renderGenerateIconButton(action, title, content, disabled = false, extraClassName = "") {
   return (
-    '<button class="icon-ghost tiny-icon generate-inline-icon" type="button" data-action="' +
+    '<button class="icon-ghost tiny-icon generate-inline-icon' +
+    escapeHtml(extraClassName) +
+    '" type="button" data-action="' +
     escapeHtml(action) +
     '" title="' +
     escapeHtml(title) +
@@ -262,10 +265,10 @@ function renderGenerateIconButton(action, title, content, disabled = false) {
   );
 }
 
-function renderGenerateStatusButton() {
-  const title = "Planejamento didático";
+function renderGenerateStatusButton(expanded = false) {
+  const title = expanded ? "Ocultar planejamento didático" : "Abrir planejamento didático";
   const icon = renderUiIcon("trail", "assist-config-action-icon");
-  return renderGenerateIconButton("open-assist-config", title, icon);
+  return renderGenerateIconButton("open-assist-config", title, icon, false, expanded ? " is-pressed" : "");
 }
 
 function renderGenerateScopeButton({ level, iconName, label, pressed = false, disabled = false }) {
@@ -436,6 +439,17 @@ function renderGeneratePane({ project, editorSupport, includeDismissActions = fa
     '<input data-field="generate-attachments" class="assist-attachment-input" type="file" multiple accept=".pdf,.txt,.md,.json,.csv,.html,.xml,.js,.ts,.py,.java,.c,.cpp,.doc,.docx,.ppt,.pptx,.rtf,.odt,.ods,.odp,text/*,application/pdf,application/json,application/xml">';
   const attachmentChips = renderGenerationAttachmentChips(draft.attachments);
   const hasScopedContext = draft.courseFixed || draft.moduleFixed || draft.lessonFixed;
+  const assistConfigPanel = editorSupport.assistConfigExpanded
+    ? '<div class="generate-assist-config-shell">' +
+      renderAssistConfigPanel({
+        didacticProfileId: editorSupport.didacticProfileId,
+        profileTuning: editorSupport.profileTuning,
+        didacticProfileOptions: editorSupport.didacticProfileOptions,
+        profileEditor: editorSupport.profileEditor,
+        inline: true
+      }) +
+      "</div>"
+    : "";
   return (
     '<section class="home-generate-pane">' +
     '<section class="clean-card generate-card">' +
@@ -451,6 +465,7 @@ function renderGeneratePane({ project, editorSupport, includeDismissActions = fa
         renderGenerateIconButton("close-generation-panel", "Fechar painel de geração", "×") +
         "</div></header>"
       : "") +
+    assistConfigPanel +
     renderGenerateComboboxField({
       level: "course",
       iconName: "folder",
@@ -517,10 +532,7 @@ function renderGeneratePane({ project, editorSupport, includeDismissActions = fa
     '<select data-field="assist-model" aria-label="Modelo" title="Modelo">' +
     modelOptions +
     "</select></label>" +
-    renderGenerateStatusButton({
-      selectedModel: editorSupport.selectedModel,
-      localStatus: editorSupport.localProviderStatus || {}
-    }) +
+    renderGenerateStatusButton(editorSupport.assistConfigExpanded === true) +
     renderGenerateIconButton("open-generation-attachment-picker", "Anexar documento", renderUiIcon("lesson", "assist-attachment-button-icon")) +
     '<button class="open-main generate-submit" type="button" data-action="generate-structure" aria-label="' +
     escapeHtml(generationUiState.submitLabel || "Gerar estrutura") +

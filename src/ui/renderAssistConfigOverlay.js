@@ -106,11 +106,12 @@ function renderSectionLabel(iconName, label, title = "") {
   );
 }
 
-export function renderAssistConfigOverlay({
+export function renderAssistConfigPanel({
   didacticProfileId,
   profileTuning = {},
   didacticProfileOptions = [],
   profileEditor = null,
+  inline = false
 } = {}) {
   const courseModelOptions = listCourseModelOptions(profileTuning.courseModel?.learningTrail || "");
   const isProfileEditing = Boolean(profileEditor?.active);
@@ -118,20 +119,29 @@ export function renderAssistConfigOverlay({
   const canEditProfile = profileEditor?.canEdit === true && !isProfileEditing;
   const canSaveProfile = profileEditor?.canSave === true;
   const profileLabel = profileEditor?.draftLabel || "";
+  const profileState = profileEditor?.state || "saved";
   return (
-    '<section class="editor-overlay assist-config-overlay" aria-label="Planejamento didático">' +
-    '<article class="editor-sheet comment-sheet assist-config-sheet" role="dialog" aria-modal="true">' +
-    '<header class="editor-head">' +
-    '<button class="icon-ghost" type="button" data-action="assist-config-close" title="Fechar" aria-label="Fechar">&times;</button>' +
-    '<p class="editor-title">Planejamento didático</p>' +
+    '<section class="assist-config-panel assist-config-panel-inline' +
+    (inline ? " is-inline" : "") +
+    '" aria-label="Planejamento didático">' +
+    '<header class="assist-config-inline-head">' +
+    '<div class="assist-config-inline-heading">' +
+    renderSectionLabel("trail", "Planejamento didático", "Parâmetros que entram no planejamento top-down da trilha") +
+    "</div>" +
     '<div class="lesson-top-actions assist-config-head-actions">' +
     renderIconAction("assist-config-reset-profile", "draft-state", "Resetar perfil") +
     "</div></header>" +
-    '<div class="editor-body assist-config-body">' +
-    '<section class="assist-config-panel">' +
-    renderSectionLabel("trail", "Planejamento", "Parâmetros que entram no planejamento top-down da trilha") +
+    '<label class="field assist-config-field assist-config-course-request-field">' +
+    renderFieldLabel("edit", "Curso", "Descreve o curso para a IA completar a modelagem") +
+    `<textarea data-field="assist-config-course-model-description" aria-label="Modelagem do curso" title="Descreve o curso para a IA completar a modelagem" placeholder="Descreva a trilha do curso, a progressão de microssequências e o perfil do estudante.">${escapeHtml(profileTuning.courseModel?.description || "")}</textarea>` +
+    '<div class="assist-config-inline-actions">' +
+    renderIconAction("assist-config-infer-course-model", "sparkles", "Ler o pedido e completar o planejamento") +
+    "</div>" +
+    "</label>" +
     '<div class="assist-config-profile-stack">' +
-    '<label class="field assist-config-field">' +
+    '<label class="field assist-config-field assist-config-profile-field is-' +
+    escapeHtml(profileState) +
+    '">' +
     '<span class="assist-config-label-actions">' +
     renderFieldLabel("trail", "Perfil", "Escolhe o ponto de partida do planejamento") +
     '<span class="assist-config-inline-actions">' +
@@ -152,13 +162,6 @@ export function renderAssistConfigOverlay({
     `<input data-field="assist-config-target-student-profile" type="text" value="${escapeHtml(profileTuning.targetStudentProfile || "")}" autocomplete="off" spellcheck="false" placeholder="Perfil do estudante" title="Ajusta a trilha ao nível e ao tempo do estudante">` +
     "</label>" +
     "</div>" +
-    '<label class="field assist-config-field assist-config-course-request-field">' +
-    renderFieldLabel("edit", "Curso", "Descreve o curso para a IA completar a modelagem") +
-    `<textarea data-field="assist-config-course-model-description" aria-label="Modelagem do curso" title="Descreve o curso para a IA completar a modelagem" placeholder="Descreva a trilha do curso, a progressão de microssequências e o perfil do estudante.">${escapeHtml(profileTuning.courseModel?.description || "")}</textarea>` +
-    '<div class="assist-config-inline-actions">' +
-    renderIconAction("assist-config-infer-course-model", "sparkles", "Ler o pedido e completar o planejamento") +
-    "</div>" +
-    "</label>" +
     '<div class="assist-config-grid">' +
     '<label class="field assist-config-field">' +
     renderFieldLabel("trail", "Trilha", "Que tipo de trilha didática organiza este curso") +
@@ -174,9 +177,6 @@ export function renderAssistConfigOverlay({
     ) +
     "</select></label>" +
     "</div>" +
-    "</section>" +
-    '<section class="assist-config-panel">' +
-    renderSectionLabel("progress", "Estrutura", "Parâmetros arquiteturais da decomposição top-down") +
     renderMicrosequenceRangeField(profileTuning) +
     '<div class="assist-config-toggle-row assist-config-toggle-row-single">' +
     '<span class="assist-config-toggle-group">' +
@@ -189,7 +189,20 @@ export function renderAssistConfigOverlay({
     '<span class="assist-config-toggle-text" title="Esgotar assunto antes de expandir">Esgotar assunto antes de expandir</span>' +
     "</span>" +
     "</div>" +
-    "</section>" +
+    "</section>"
+  );
+}
+
+export function renderAssistConfigOverlay(options = {}) {
+  return (
+    '<section class="editor-overlay assist-config-overlay" aria-label="Planejamento didático">' +
+    '<article class="editor-sheet comment-sheet assist-config-sheet" role="dialog" aria-modal="true">' +
+    '<header class="editor-head">' +
+    '<button class="icon-ghost" type="button" data-action="assist-config-close" title="Fechar" aria-label="Fechar">&times;</button>' +
+    '<p class="editor-title">Planejamento didático</p>' +
+    "</header>" +
+    '<div class="editor-body assist-config-body">' +
+    renderAssistConfigPanel(options) +
     "</div>" +
     "</article></section>"
   );

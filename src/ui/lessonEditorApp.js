@@ -1718,10 +1718,11 @@ export function createLessonEditorApp({ root, storage, editor }) {
     const isCreateMode = editor?.mode === "create";
     const isEditMode = editor?.mode === "edit";
     const canSave =
-      Boolean(editor?.active) &&
-      Boolean(normalizedLabel) &&
-      ((isCreateMode && Boolean(editor?.profileId)) ||
-        (isEditMode && selectedCustomProfile && normalizedLabel !== String(editor?.originalLabel || "").trim()));
+      (Boolean(editor?.active) &&
+        Boolean(normalizedLabel) &&
+        ((isCreateMode && Boolean(editor?.profileId)) ||
+          (isEditMode && selectedCustomProfile && normalizedLabel !== String(editor?.originalLabel || "").trim()))) ||
+      (!editor?.active && hasUnsavedAssistCustomProfileChanges(config));
 
     return {
       active: Boolean(editor?.active),
@@ -1729,8 +1730,49 @@ export function createLessonEditorApp({ root, storage, editor }) {
       draftLabel,
       canEdit: Boolean(selectedCustomProfile),
       canDelete: Boolean(selectedCustomProfile),
-      canSave
+      canSave,
+      state: editor?.active ? "editing" : canSave ? "dirty" : "saved"
     };
+  }
+
+  function createEmptyAssistProfileTuning() {
+    return createCourseForgeProfileTuning(DEFAULT_ENGINE_PROFILE_ID, {
+      targetStudentProfile: "",
+      minMicrosequences: 3,
+      targetMicrosequences: 5,
+      maxMicrosequences: 8,
+      requireCoreCoverageBeforeExtensions: true,
+      requireVocabularyMap: true,
+      courseModelEdited: true,
+      courseModel: {
+        description: "",
+        learningTrail: "",
+        microsequenceProgression: ""
+      }
+    });
+  }
+
+  function hasUnsavedAssistCustomProfileChanges(config = state.assistConfig) {
+    const selectedProfileId = getSelectedAssistProfileId(config);
+    const selectedCustomProfile = findAssistCustomProfile(selectedProfileId, config.customProfiles);
+    if (!selectedCustomProfile) {
+      return false;
+    }
+    return (
+      selectedCustomProfile.baseProfileId !== config.didacticProfileId ||
+      JSON.stringify(selectedCustomProfile.profileTuning || {}) !== JSON.stringify(config.profileTuning || {})
+    );
+  }
+
+  function cancelAssistProfileEditor() {
+    const snapshot = state.assistProfileEditor?.snapshot;
+    state.assistProfileEditor = null;
+    if (!snapshot) {
+      return;
+    }
+    state.assistConfig = normalizeCourseForgeAssistConfig(snapshot);
+    state.assistConfigDraft = structuredClone(state.assistConfig);
+    persistAssistConfig();
   }
 
   function startAssistCustomProfileCreation() {
@@ -1740,8 +1782,17 @@ export function createLessonEditorApp({ root, storage, editor }) {
       profileId: buildAssistCustomProfileId(),
       draftLabel: "",
       originalLabel: "",
-      baseProfileId: state.assistConfig.didacticProfileId || DEFAULT_ENGINE_PROFILE_ID
+      baseProfileId: DEFAULT_ENGINE_PROFILE_ID,
+      snapshot: cloneAssistConfig()
     };
+    state.assistConfig = normalizeCourseForgeAssistConfig({
+      ...state.assistConfig,
+      selectedProfileId: DEFAULT_ENGINE_PROFILE_ID,
+      didacticProfileId: DEFAULT_ENGINE_PROFILE_ID,
+      profileTuning: createEmptyAssistProfileTuning()
+    });
+    state.assistConfigDraft = structuredClone(state.assistConfig);
+    persistAssistConfig();
     render({ preserveState: true });
   }
 
@@ -1757,7 +1808,8 @@ export function createLessonEditorApp({ root, storage, editor }) {
       profileId: selectedCustomProfile.id,
       draftLabel: selectedCustomProfile.label || "",
       originalLabel: selectedCustomProfile.label || "",
-      baseProfileId: selectedCustomProfile.baseProfileId
+      baseProfileId: selectedCustomProfile.baseProfileId,
+      snapshot: cloneAssistConfig()
     };
     render({ preserveState: true });
   }
@@ -1776,6 +1828,23 @@ export function createLessonEditorApp({ root, storage, editor }) {
   function saveAssistProfileEditor() {
     const editor = state.assistProfileEditor;
     if (!editor?.active) {
+      const selectedProfileId = getSelectedAssistProfileId();
+      const selectedCustomProfile = findAssistCustomProfile(selectedProfileId);
+      if (!selectedCustomProfile || !hasUnsavedAssistCustomProfileChanges()) {
+        return;
+      }
+      persistAssistConfigValue({
+        customProfiles: (state.assistConfig.customProfiles || []).map((entry) =>
+          entry.id === selectedCustomProfile.id
+            ? {
+                ...entry,
+                baseProfileId: state.assistConfig.didacticProfileId,
+                profileTuning: structuredClone(state.assistConfig.profileTuning || {})
+              }
+            : entry
+        )
+      });
+      render({ preserveState: true });
       return;
     }
 
@@ -1801,7 +1870,9 @@ export function createLessonEditorApp({ root, storage, editor }) {
           entry.id === editor.profileId
             ? {
                 ...entry,
-                label: normalizedLabel
+                label: normalizedLabel,
+                baseProfileId: state.assistConfig.didacticProfileId,
+                profileTuning: structuredClone(state.assistConfig.profileTuning || {})
               }
             : entry
         )
@@ -1930,14 +2001,13 @@ export function createLessonEditorApp({ root, storage, editor }) {
 
   function openAssistConfig() {
     state.assistConfigDraft = cloneAssistConfig();
-    state.assistProfileEditor = null;
     state.assistConfigOpen = true;
     render({ preserveState: true });
   }
 
   function closeAssistConfig() {
+    cancelAssistProfileEditor();
     state.assistConfigOpen = false;
-    state.assistProfileEditor = null;
     render({ preserveState: true });
   }
 
@@ -2038,23 +2108,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
       assistConfig: state.assistConfig,
       patch
     });
-    let nextAssistConfig = nextAssistConfigState.assistConfig;
-    if (isAssistCustomProfile(nextAssistConfig.selectedProfileId, nextAssistConfig.customProfiles)) {
-      nextAssistConfig = {
-        ...nextAssistConfig,
-        customProfiles: (nextAssistConfig.customProfiles || []).map((entry) =>
-          entry.id === nextAssistConfig.selectedProfileId
-            ? {
-                ...entry,
-                baseProfileId: nextAssistConfig.didacticProfileId,
-                profileTuning: structuredClone(nextAssistConfig.profileTuning || {})
-              }
-            : entry
-        )
-      };
-      nextAssistConfig = normalizeCourseForgeAssistConfig(nextAssistConfig);
-    }
-    state.assistConfig = nextAssistConfig;
+    state.assistConfig = nextAssistConfigState.assistConfig;
     state.assistConfigDraft = nextAssistConfigState.assistConfigDraft;
     state.assistConfigDraft = structuredClone(state.assistConfig);
     persistAssistConfig();
@@ -4149,9 +4203,13 @@ export function createLessonEditorApp({ root, storage, editor }) {
       preserveGeneratedResult,
       pendingGeneratedNavigation: state.pendingGeneratedNavigation
     });
+    if (state.assistConfigOpen) {
+      cancelAssistProfileEditor();
+    }
     state.generationDraft = nextGenerationPanelState.draft;
     state.pendingGeneratedNavigation = nextGenerationPanelState.pendingGeneratedNavigation;
     state.generationPanelOpen = nextGenerationPanelState.generationPanelOpen;
+    state.assistConfigOpen = false;
     render({ preserveState: true });
   }
 
@@ -7074,7 +7132,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
             }
           })
         : "") +
-      (state.assistConfigOpen
+      (state.assistConfigOpen && !state.generationPanelOpen
         ? renderAssistConfigOverlay({
             didacticProfileId: state.assistConfigDraft.selectedProfileId || state.assistConfigDraft.didacticProfileId,
             profileTuning: state.assistConfigDraft.profileTuning,
@@ -7109,7 +7167,12 @@ export function createLessonEditorApp({ root, storage, editor }) {
               generationUiState: getGenerationScopeState(),
               selectedModel: state.assistConfig.model,
               modelOptions: ASSIST_MODEL_OPTIONS,
-              localProviderStatus: state.codexCliSetupStatus
+              localProviderStatus: state.codexCliSetupStatus,
+              assistConfigExpanded: state.assistConfigOpen === true,
+              didacticProfileId: state.assistConfigDraft.selectedProfileId || state.assistConfigDraft.didacticProfileId,
+              profileTuning: state.assistConfigDraft.profileTuning,
+              didacticProfileOptions: buildDidacticProfileOptions(state.assistConfigDraft.customProfiles),
+              profileEditor: getAssistProfileEditorViewModel(state.assistConfigDraft)
             }
           })
         : "") +
@@ -8476,7 +8539,17 @@ export function createLessonEditorApp({ root, storage, editor }) {
     root.querySelector("[data-action='open-generation-attachment-picker']")?.addEventListener("click", () => {
       root.querySelector("[data-field='generate-attachments']")?.click();
     });
-    root.querySelector("[data-action='open-assist-config']")?.addEventListener("click", () => openAssistConfig());
+    root.querySelector("[data-action='open-assist-config']")?.addEventListener("click", () => {
+      if (state.generationPanelOpen) {
+        if (state.assistConfigOpen) {
+          closeAssistConfig();
+        } else {
+          openAssistConfig();
+        }
+        return;
+      }
+      openAssistConfig();
+    });
     root.querySelector("[data-action='apply-assist']")?.addEventListener("click", () => {
       void submitAssistRequest();
     });
