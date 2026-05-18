@@ -286,7 +286,7 @@ Write-Host ""
 Write-Host "[4/5] Definindo variáveis do bridge..."
 $env:ARALEARN_CODEX_HOST = "127.0.0.1"
 $env:ARALEARN_CODEX_PORT = "4183"
-$env:ARALEARN_CODEX_COMMAND = "codex.cmd"
+$env:ARALEARN_CODEX_COMMAND = $codexCommand.Source
 ${tokenCommand}
 
 Write-Host ""

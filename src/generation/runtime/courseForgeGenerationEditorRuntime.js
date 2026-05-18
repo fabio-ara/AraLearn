@@ -20,6 +20,7 @@ import {
   resolveCourseForgeProviderReadiness,
   resolveGenerationScopeState
 } from "./courseForgeGenerationViewModel.js";
+import { createCourseForgeGenerationProgressState } from "./courseForgeProgressViewModel.js";
 
 const DEFAULT_ASSIST_MODEL = "gemini-2.5-flash";
 const INVALID_STRUCTURE_REQUEST_MESSAGE =
@@ -63,7 +64,8 @@ function cloneGenerationDraft(draft = {}) {
     attachments: Array.isArray(draft.attachments) ? [...draft.attachments] : [],
     lastResult: draft.lastResult || null,
     isSubmitting: draft.isSubmitting === true,
-    errorMessage: typeof draft.errorMessage === "string" ? draft.errorMessage : ""
+    errorMessage: typeof draft.errorMessage === "string" ? draft.errorMessage : "",
+    progress: createCourseForgeGenerationProgressState(draft.progress || {})
   };
 }
 
@@ -144,6 +146,7 @@ export function buildCourseForgeGenerationResultClearedState({
   const nextDraft = cloneGenerationDraft(draft);
   nextDraft.errorMessage = "";
   nextDraft.lastResult = null;
+  nextDraft.progress = createCourseForgeGenerationProgressState();
   return {
     draft: nextDraft,
     pendingGeneratedNavigation: null
@@ -300,7 +303,8 @@ export async function executeCourseForgeStructureGeneration({
   findLesson,
   checkCodexLocalHealth,
   ingestAttachments,
-  runCourseForge
+  runCourseForge,
+  onProgress
 } = {}) {
   const syncedDraft = syncCourseForgeGenerationDraftHierarchy({
     draft,
@@ -363,7 +367,8 @@ export async function executeCourseForgeStructureGeneration({
     });
     const courseForgeResult = await runCourseForge({
       ...preparedGeneration.request,
-      projectDocument
+      projectDocument,
+      onProgress
     });
     const applied = buildAppliedCourseForgeGeneration({
       courseForgeResult,

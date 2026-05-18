@@ -30,6 +30,10 @@ import {
   resolveOpenGeneratedCourseTarget,
   resolvePendingCourseForgeNavigation
 } from "../src/generation/runtime/courseForgeGenerationNavigation.js";
+import {
+  createCourseForgeGenerationProgressState,
+  reduceCourseForgeGenerationProgress
+} from "../src/generation/runtime/courseForgeProgressViewModel.js";
 
 test("resolveCourseForgeGenerationScope usa o menor escopo existente", () => {
   assert.deepEqual(
@@ -274,6 +278,29 @@ test("prepareCourseForgeStructureGeneration monta request fora da UI", async () 
   });
   assert.equal(prepared.request.intent.selectedTopDownProfileId, "custom");
   assert.equal(prepared.request.intent.attachments[0].contentText, "conteúdo");
+});
+
+test("reduceCourseForgeGenerationProgress diferencia fase local e chamada ao modelo", () => {
+  let progress = createCourseForgeGenerationProgressState({ visible: true });
+  progress = reduceCourseForgeGenerationProgress(progress, {
+    type: "phase_started",
+    phaseId: "index_sources",
+    phaseIndex: 2,
+    phaseCount: 19
+  });
+  progress = reduceCourseForgeGenerationProgress(progress, {
+    type: "provider_call_started",
+    phaseId: "plan_architecture",
+    phaseIndex: 4,
+    phaseCount: 19,
+    modelId: "codex-cli-local"
+  });
+
+  assert.equal(progress.status, "running");
+  assert.equal(progress.phaseLabel, "Planejando arquitetura do curso");
+  assert.match(progress.message, /Chamada ao modelo/);
+  assert.match(progress.message, /codex-cli-local/);
+  assert.equal(progress.history.some((item) => /Etapa local do motor/.test(item.message)), true);
 });
 
 test("prepareCourseForgeStructureGeneration rejeita anexo sem texto aproveitável", async () => {

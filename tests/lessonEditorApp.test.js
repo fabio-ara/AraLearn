@@ -641,6 +641,7 @@ test("executeCourseForgeStructureGeneration retorna sucesso aplicável fora da U
     ]
   };
   const visibleCourses = projectDocument.courses;
+  const progressEvents = [];
   const result = await executeCourseForgeStructureGeneration({
     draft: {
       courseFixed: true,
@@ -671,22 +672,32 @@ test("executeCourseForgeStructureGeneration retorna sucesso aplicável fora da U
       extractedCount: 1,
       warnings: []
     }),
-    runCourseForge: async () => ({
-      projectDocument,
-      patch: {
-        operations: [{}],
-        events: [{}],
-        target: {
-          courseKey: "course-a",
-          moduleKey: "module-a",
-          lessonKey: "lesson-a"
+    onProgress: (event) => progressEvents.push(event),
+    runCourseForge: async ({ onProgress }) => {
+      onProgress?.({
+        type: "provider_call_started",
+        phaseId: "plan_architecture",
+        modelId: "gemini-2.5-flash"
+      });
+      return {
+        projectDocument,
+        patch: {
+          operations: [{}],
+          events: [{}],
+          target: {
+            courseKey: "course-a",
+            moduleKey: "module-a",
+            lessonKey: "lesson-a"
+          }
         }
-      }
-    })
+      };
+    }
   });
 
   assert.equal(result.status, "success");
   assert.equal(result.selection.lessonKey, "lesson-a");
   assert.equal(result.pendingGeneratedNavigation.lessonKey, "lesson-a");
   assert.equal(result.draft.lastResult.message, "Fluxo top-down aplicado com 1 operações e 1 evento auditável.");
+  assert.equal(progressEvents[0].type, "provider_call_started");
+  assert.equal(progressEvents[0].phaseId, "plan_architecture");
 });

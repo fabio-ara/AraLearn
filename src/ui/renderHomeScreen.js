@@ -556,6 +556,58 @@ function renderGeneratePane({ project, editorSupport, includeDismissActions = fa
   );
 }
 
+function renderGenerationProgressPopup(progress = {}) {
+  if (!progress?.visible || progress.status === "idle") {
+    return "";
+  }
+
+  const phaseIndex = Number(progress.phaseIndex || 0);
+  const phaseCount = Number(progress.phaseCount || 0);
+  const percent = phaseCount > 0 ? Math.max(4, Math.min(100, (phaseIndex / phaseCount) * 100)) : 8;
+  const statusClass =
+    progress.status === "completed"
+      ? " is-completed"
+      : progress.status === "failed"
+        ? " is-failed"
+        : "";
+  const progressLabel = phaseCount > 0 && phaseIndex > 0 ? `${phaseIndex}/${phaseCount}` : "Iniciando";
+  const historyItems = (Array.isArray(progress.history) ? progress.history : [])
+    .slice(-4)
+    .map((item) => {
+      const isProviderCall = item.type === "provider_call_started" || item.type === "provider_call_completed";
+      return (
+        '<li class="generation-progress-history-item' +
+        (isProviderCall ? " is-provider-call" : "") +
+        '">' +
+        escapeHtml(item.message || item.phaseLabel || "") +
+        "</li>"
+      );
+    })
+    .join("");
+
+  return (
+    '<aside class="generation-progress-popup' +
+    statusClass +
+    '" role="status" aria-live="polite">' +
+    '<div class="generation-progress-head">' +
+    '<span class="generation-progress-kicker">Top-down</span>' +
+    '<span class="generation-progress-count">' +
+    escapeHtml(progressLabel) +
+    "</span></div>" +
+    '<p class="generation-progress-title">' +
+    escapeHtml(progress.phaseLabel || "Preparando geração") +
+    "</p>" +
+    '<p class="generation-progress-message">' +
+    escapeHtml(progress.message || "") +
+    "</p>" +
+    '<div class="generation-progress-bar" aria-hidden="true"><span style="width:' +
+    String(percent) +
+    '%"></span></div>' +
+    (historyItems ? '<ol class="generation-progress-history">' + historyItems + "</ol>" : "") +
+    "</aside>"
+  );
+}
+
 function renderCoursesPane({ project, progress }) {
   const courses = buildHomeCoursePreviews(project, progress)
     .map((course) => {
@@ -595,11 +647,14 @@ function renderCoursesPane({ project, progress }) {
 }
 
 export function renderGenerationPanelOverlay({ project, editorSupport = {} }) {
+  const draft = editorSupport.generationDraft || {};
   return (
     '<section class="overlay-shell" data-action="dismiss-generation-panel">' +
     '<div class="overlay-panel overlay-panel-side generation-overlay-panel">' +
     renderGeneratePane({ project, editorSupport, includeDismissActions: true }) +
-    "</div></section>"
+    "</div>" +
+    renderGenerationProgressPopup(draft.progress) +
+    "</section>"
   );
 }
 

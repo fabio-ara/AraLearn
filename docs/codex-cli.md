@@ -31,11 +31,15 @@ Para esse modo funcionar, o ambiente precisa ter:
 - endpoint acessível ao app;
 - configuração correta no painel de provedor.
 
+No Windows com Codex instalado pelo VS Code, o executável pode estar exposto como `codex.exe`, sem `codex.cmd`. O script de setup detecta o comando disponível e passa o caminho encontrado ao bridge por `ARALEARN_CODEX_COMMAND`.
+
 ## Plataformas
 
 O princípio vale para desktop e Android.
 
 No desktop, a ponte roda no ambiente local do sistema. No Android, o caminho tende a passar por Termux ou solução equivalente.
+
+No fluxo top-down, cada fase do `CourseForge` aparece no popup de progresso. Quando uma fase chama o Codex local, a UI marca explicitamente a chamada ao modelo; fases determinísticas aparecem como etapas locais do motor.
 
 ## Limites
 

@@ -220,6 +220,51 @@ test("renderiza o painel contextual sem escopo fixado para geração global", ()
   assert.match(html, /data-action="clear-generation-scope"[^>]+disabled aria-disabled="true"/);
 });
 
+test("renderiza popup de progresso top-down com chamadas ao modelo", () => {
+  const html = renderGenerationPanelOverlay({
+    project: {
+      contract: "aralearn.contract",
+      version: 1,
+      kind: "project",
+      courses: []
+    },
+    editorSupport: {
+      generationDraft: {
+        promptText: "Gerar curso",
+        attachments: [],
+        isSubmitting: true,
+        progress: {
+          visible: true,
+          status: "running",
+          phaseId: "plan_architecture",
+          phaseLabel: "Planejando arquitetura do curso",
+          message: "Chamada ao modelo: Planejando arquitetura do curso (codex-cli-local).",
+          modelId: "codex-cli-local",
+          phaseIndex: 4,
+          phaseCount: 19,
+          history: [
+            { type: "phase_started", message: "Lendo anexos e fontes. Etapa local do motor." },
+            { type: "provider_call_started", message: "Chamada ao modelo: Planejando arquitetura do curso (codex-cli-local)." }
+          ]
+        }
+      },
+      generationUiState: {
+        modules: [],
+        lessons: [],
+        canSubmit: true,
+        actionSummary: "Curso, módulos e lições"
+      },
+      modelOptions: [{ value: "codex-cli-local", label: "Codex local" }],
+      selectedModel: "codex-cli-local"
+    }
+  });
+
+  assert.match(html, /generation-progress-popup/);
+  assert.match(html, /Planejando arquitetura do curso/);
+  assert.match(html, /Chamada ao modelo/);
+  assert.match(html, /4\/19/);
+});
+
 test("renderiza o painel contextual com curso fixado para geração estrutural dentro do curso", () => {
   const html = renderGenerationPanelOverlay({
     project: {

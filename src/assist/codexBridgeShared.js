@@ -609,7 +609,8 @@ function runCodex({ command, args, cwd, timeoutMs }) {
     const child = spawn(command, args, {
       shell: false,
       cwd,
-      env: process.env
+      env: process.env,
+      stdio: ["ignore", "pipe", "pipe"]
     });
     let stdout = "";
     let stderr = "";
@@ -659,7 +660,7 @@ function runCodex({ command, args, cwd, timeoutMs }) {
 const host = normalizeText(process.env.ARALEARN_CODEX_HOST) || "127.0.0.1";
 const port = normalizePort(process.env.ARALEARN_CODEX_PORT);
 const token = normalizeText(process.env.ARALEARN_CODEX_TOKEN);
-const defaultCommand = process.platform === "win32" ? "codex.cmd" : "codex";
+const defaultCommand = "codex";
 const command = normalizeText(process.env.ARALEARN_CODEX_COMMAND) || defaultCommand;
 const argsTemplate = normalizeText(process.env.ARALEARN_CODEX_ARGS) || "exec {prompt}";
 const timeoutMs = normalizeTimeout(process.env.ARALEARN_CODEX_TIMEOUT_MS);

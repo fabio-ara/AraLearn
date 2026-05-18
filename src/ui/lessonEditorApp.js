@@ -143,6 +143,10 @@ import {
   createCourseForgeProfileTuning
 } from "../generation/runtime/courseForgeProfileTuning.js";
 import { inferCourseForgePlanningProfileTuning } from "../generation/runtime/courseForgePlanningInference.js";
+import {
+  createCourseForgeGenerationProgressState,
+  reduceCourseForgeGenerationProgress
+} from "../generation/runtime/courseForgeProgressViewModel.js";
 import { resolveCourseForgeProviderReadiness, resolveGenerationPanelScopeFromAction } from "../generation/runtime/courseForgeGenerationViewModel.js";
 import { listMicrosequenceTypes } from "../generation/types/microsequenceTypes.js";
 import { buildLessonDomainCoverageReport } from "../generation/domain/lessonDomainModel.js";
@@ -1065,7 +1069,8 @@ export function createLessonEditorApp({ root, storage, editor }) {
       attachments: [],
       lastResult: null,
       isSubmitting: false,
-      errorMessage: ""
+      errorMessage: "",
+      progress: createCourseForgeGenerationProgressState()
     },
     structureDrag: null,
     structureDrop: null,
@@ -4718,7 +4723,19 @@ export function createLessonEditorApp({ root, storage, editor }) {
     state.generationDraft.isSubmitting = true;
     state.generationDraft.errorMessage = "";
     state.generationDraft.lastResult = null;
+    state.generationDraft.progress = reduceCourseForgeGenerationProgress(
+      createCourseForgeGenerationProgressState({ visible: true }),
+      {
+        type: "prepare_request",
+        message: "Preparando anexos, provider e escopo da geração top-down."
+      }
+    );
     render({ preserveState: true });
+
+    const handleCourseForgeProgress = (event = {}) => {
+      state.generationDraft.progress = reduceCourseForgeGenerationProgress(state.generationDraft.progress, event);
+      render({ preserveState: true });
+    };
 
     const submission = await executeCourseForgeStructureGeneration({
       draft: state.generationDraft,
@@ -4730,25 +4747,42 @@ export function createLessonEditorApp({ root, storage, editor }) {
       findLesson,
       checkCodexLocalHealth,
       ingestAttachments: ingestCourseForgeAttachments,
-      runCourseForge
+      runCourseForge,
+      onProgress: handleCourseForgeProgress
     });
 
-    state.generationDraft = submission.draft;
+    const latestProgress = state.generationDraft.progress;
+    state.generationDraft = {
+      ...submission.draft,
+      progress: latestProgress
+    };
     state.pendingGeneratedNavigation = submission.pendingGeneratedNavigation ?? null;
 
     if (submission.status === "provider-unready" && submission.shouldOpenCodexCliSetup) {
+      state.generationDraft.progress = reduceCourseForgeGenerationProgress(state.generationDraft.progress, {
+        type: "run_failed",
+        message: submission.codexCliSetupStatus?.error || "Provider local indisponível."
+      });
       updateCodexCliSetupStatus(submission.codexCliSetupStatus);
       openAssistConfig();
       return;
     }
 
     if (submission.status === "success") {
+      state.generationDraft.progress = reduceCourseForgeGenerationProgress(state.generationDraft.progress, {
+        type: "run_completed"
+      });
       storage.saveProject(submission.courseForgeResult.projectDocument);
       createStructureVersionFromProject(submission.courseForgeResult.projectDocument, getCurrentStructureVersionReference(), {
         operationType: "generated"
       });
       setProject(submission.courseForgeResult.projectDocument);
       applySelection(submission.selection);
+    } else {
+      state.generationDraft.progress = reduceCourseForgeGenerationProgress(state.generationDraft.progress, {
+        type: "run_failed",
+        message: submission.draft?.errorMessage || "Falha ao gerar a estrutura."
+      });
     }
 
     render({ preserveState: submission.status !== "success" });

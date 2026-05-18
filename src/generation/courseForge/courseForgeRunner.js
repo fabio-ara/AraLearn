@@ -68,7 +68,6 @@ function buildArchitecturePromptTask(intent = {}, projectDocument = {}) {
     : "Projeto atual sem cursos.";
   return `${intent.promptText}\n\nContexto do projeto:\n${summary}`;
 }
-
 function readArchitectureValue(payload = {}) {
   if (payload?.architectureFinal?.course) {
     return payload.architectureFinal;
@@ -124,7 +123,6 @@ function buildCourseSemanticFields(engineProfile = {}) {
     resourcePreferences: structuredClone(engineProfile?.didacticPolicy?.resourcePreferences || {})
   };
 }
-
 function buildScopedLessonPlan(projectDocument = {}, scope = {}, engineProfile = {}) {
   const { course, moduleValue, lesson } = findScopedLesson(projectDocument, scope);
   if (!course || !moduleValue || !lesson) {
@@ -146,7 +144,6 @@ function buildScopedLessonPlan(projectDocument = {}, scope = {}, engineProfile =
     ...buildCourseSemanticFields(engineProfile)
   };
 }
-
 function buildScopedLessonPlansFromModule(projectDocument = {}, scope = {}, engineProfile = {}) {
   const { course, moduleValue } = findScopedLesson(projectDocument, {
     courseKey: scope?.courseKey,
@@ -940,7 +937,8 @@ export async function runCourseForge({
   providerRegistry = createDefaultProviderRegistry(),
   providerId = "fake",
   artifactStore = createCourseForgeArtifactsStore(),
-  resumeRunId = ""
+  resumeRunId = "",
+  onProgress
 } = {}) {
   const intent = resolveCourseForgeIntent({ ...rawIntent, projectDocument });
   const phases = resolveCourseForgePhases(intent);
@@ -994,6 +992,47 @@ export async function runCourseForge({
       ...input,
       engineProfile
     });
+  const emitProgress = (event = {}) => {
+    if (typeof onProgress !== "function") {
+      return;
+    }
+    onProgress({
+      runId,
+      timestamp: new Date().toISOString(),
+      phaseCount: phases.length,
+      ...event
+    });
+  };
+  const callProviderPhase = async (input = {}) => {
+    emitProgress({
+      type: "provider_call_started",
+      phaseId: input.phaseId,
+      modelId: input.modelId
+    });
+    try {
+      const response = await executeCourseForgeProviderPhase(input);
+      emitProgress({
+        type: "provider_call_completed",
+        phaseId: input.phaseId,
+        modelId: input.modelId
+      });
+      return response;
+    } catch (error) {
+      emitProgress({
+        type: "provider_call_failed",
+        phaseId: input.phaseId,
+        modelId: input.modelId,
+        message: text(error?.message) || "Falha na chamada ao modelo."
+      });
+      throw error;
+    }
+  };
+
+  emitProgress({
+    type: "run_started",
+    phaseIndex: 0,
+    message: "Preparando geração top-down."
+  });
 
   for (const phaseId of phases) {
     const phaseState = (runState.phases || []).find((phase) => phase.phaseId === phaseId);
@@ -1013,6 +1052,12 @@ export async function runCourseForge({
       artifactIds: []
     });
     artifactStore.saveRun(runId, { runState, intent });
+    emitProgress({
+      type: "phase_started",
+      phaseId,
+      phaseIndex: phases.indexOf(phaseId) + 1,
+      modelId: phaseModelId
+    });
 
     try {
       if (phaseId === "normalize_intent") {
@@ -1060,7 +1105,7 @@ export async function runCourseForge({
         if (!context.microsequencePlans?.length && tutorContext.microsequencePlans.length) {
           context.microsequencePlans = tutorContext.microsequencePlans;
         }
-        const response = await executeCourseForgeProviderPhase({
+        const response = await callProviderPhase({
           provider,
           phaseId,
           modelId: phaseModelId,
@@ -1133,7 +1178,7 @@ export async function runCourseForge({
           throw new Error(context.interventionRequestAudit.errors.join(" "));
         }
       } else if (phaseId === "plan_architecture") {
-        const response = await executeCourseForgeProviderPhase({
+        const response = await callProviderPhase({
           provider,
           phaseId,
           modelId: phaseModelId,
@@ -1156,7 +1201,7 @@ export async function runCourseForge({
         });
         let providerAudit = { approved: true, blockingIssues: [], warnings: [] };
         if (provider?.id !== "fake" || provider?.capabilities?.provider === "fake") {
-          const response = await executeCourseForgeProviderPhase({
+          const response = await callProviderPhase({
             provider,
             phaseId,
             modelId: phaseModelId,
@@ -1182,7 +1227,7 @@ export async function runCourseForge({
           context.architectureFinal = structuredClone(context.architectureDraft || {});
           savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "architecture-final", context.architectureFinal);
         } else {
-          const response = await executeCourseForgeProviderPhase({
+          const response = await callProviderPhase({
             provider,
             phaseId,
             modelId: phaseModelId,
@@ -1211,7 +1256,7 @@ export async function runCourseForge({
           savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "architecture-final", context.architectureFinal);
         }
       } else if (phaseId === "plan_lessons") {
-        const response = await executeCourseForgeProviderPhase({
+        const response = await callProviderPhase({
           provider,
           phaseId,
           modelId: phaseModelId,
@@ -1277,7 +1322,7 @@ export async function runCourseForge({
         });
         let providerAudit = { approved: true, blockingIssues: [], warnings: [] };
         if (provider?.id !== "fake" || provider?.capabilities?.provider === "fake") {
-          const response = await executeCourseForgeProviderPhase({
+          const response = await callProviderPhase({
             provider,
             phaseId,
             modelId: phaseModelId,
@@ -1331,7 +1376,7 @@ export async function runCourseForge({
             sourceLedger: context.sourceLedger || []
           });
           if (!finalAudit.ok) {
-            const response = await executeCourseForgeProviderPhase({
+            const response = await callProviderPhase({
               provider,
               phaseId,
               modelId: phaseModelId,
@@ -1424,7 +1469,7 @@ export async function runCourseForge({
           });
           savePhaseArtifact(artifactStore, runId, phaseArtifactIds, "microsequence-plans", context.microsequencePlans);
         } else {
-          const response = await executeCourseForgeProviderPhase({
+          const response = await callProviderPhase({
             provider,
             phaseId,
             modelId: phaseModelId,
@@ -1470,7 +1515,7 @@ export async function runCourseForge({
         let providerAudit = { approved: true, issues: [], warnings: [] };
         if (provider?.id !== "fake" || provider?.capabilities?.provider === "fake") {
           const interventionPlan = context.interventionPlan || null;
-          const response = await executeCourseForgeProviderPhase({
+          const response = await callProviderPhase({
             provider,
             phaseId,
             modelId: phaseModelId,
@@ -1557,7 +1602,7 @@ export async function runCourseForge({
         let combinedPlanningAudit = mergeCourseForgeAdherenceAudits(adherenceAudit, interventionDidacticAudit);
 
         if (hasBlockingIssues(combinedPlanningAudit)) {
-          const response = await executeCourseForgeProviderPhase({
+          const response = await callProviderPhase({
             provider,
             phaseId,
             modelId: phaseModelId,
@@ -1674,7 +1719,7 @@ export async function runCourseForge({
       } else if (phaseId === "build_cards") {
         context.cardDrafts = [];
         for (const microsequenceContract of context.microsequenceContracts || []) {
-          const response = await executeCourseForgeProviderPhase({
+          const response = await callProviderPhase({
             provider,
             phaseId,
             modelId: phaseModelId,
@@ -1750,7 +1795,7 @@ export async function runCourseForge({
                 repairedByProvider.push(structuredClone(currentDraft));
                 continue;
               }
-              const response = await executeCourseForgeProviderPhase({
+              const response = await callProviderPhase({
                 provider,
                 phaseId,
                 modelId: phaseModelId,
@@ -1835,7 +1880,7 @@ export async function runCourseForge({
                 repairedByProvider.push(structuredClone(currentDraft));
                 continue;
               }
-              const response = await executeCourseForgeProviderPhase({
+              const response = await callProviderPhase({
                 provider,
                 phaseId,
                 modelId: phaseModelId,
@@ -2002,6 +2047,12 @@ export async function runCourseForge({
         artifactIds: phaseArtifactIds
       });
       artifactStore.saveRun(runId, { runState, intent });
+      emitProgress({
+        type: "phase_completed",
+        phaseId,
+        phaseIndex: phases.indexOf(phaseId) + 1,
+        modelId: phaseModelId
+      });
     } catch (error) {
       const failureCategory = inferFailureCategoryFromPhase(phaseId) || runState?.metrics?.lastFailureCategory || "";
       runState = markCourseForgePhase(runState, phaseId, {
@@ -2023,6 +2074,20 @@ export async function runCourseForge({
       });
       artifactStore.saveArtifact(runId, "diagnostics-summary", buildDiagnosticsSummary(context, runState, phases));
       artifactStore.saveRun(runId, { runState, intent });
+      emitProgress({
+        type: "phase_failed",
+        phaseId,
+        phaseIndex: phases.indexOf(phaseId) + 1,
+        modelId: phaseModelId,
+        message: text(error?.message) || "Falha do CourseForge."
+      });
+      emitProgress({
+        type: "run_failed",
+        phaseId,
+        phaseIndex: phases.indexOf(phaseId) + 1,
+        modelId: phaseModelId,
+        message: text(error?.message) || "Falha do CourseForge."
+      });
       const wrapped = new Error(text(error?.message) || "Falha do CourseForge.");
       wrapped.runState = runState;
       wrapped.runId = runId;
@@ -2032,6 +2097,10 @@ export async function runCourseForge({
 
   runState = updateCourseForgeRunState(runState, { status: "completed" });
   artifactStore.saveRun(runId, { runState, intent });
+  emitProgress({
+    type: "run_completed",
+    phaseIndex: phases.length
+  });
   return {
     runId,
     runState,

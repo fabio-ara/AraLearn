@@ -16,6 +16,8 @@ O fluxo top-down começa no painel `Gerar estrutura`.
 
 O usuário informa uma intenção e, quando necessário, anexa fontes. O motor prepara a entrada, escolhe o escopo e pede à IA uma estrutura planejada. O resultado esperado é uma trilha navegável até microssequências, não uma coleção completa de cards.
 
+Durante a geração, o app mostra um popup curto com as fases do motor. Fases locais, como ingestão, validação e aplicação do patch, aparecem separadas das chamadas ao modelo. Quando houver uso de API ou Codex local, o popup indica a chamada ao modelo naquela fase.
+
 Uma geração top-down boa deixa claro:
 
 - quais cursos, módulos e lições existem;

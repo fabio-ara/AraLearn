@@ -1,3 +1,5 @@
+import { createCourseForgeGenerationProgressState } from "./courseForgeProgressViewModel.js";
+
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
 }
@@ -26,7 +28,8 @@ function cloneDraft(draft = {}) {
     attachments: Array.isArray(draft.attachments) ? [...draft.attachments] : [],
     lastResult: draft.lastResult || null,
     isSubmitting: draft.isSubmitting === true,
-    errorMessage: typeof draft.errorMessage === "string" ? draft.errorMessage : ""
+    errorMessage: typeof draft.errorMessage === "string" ? draft.errorMessage : "",
+    progress: createCourseForgeGenerationProgressState(draft.progress || {})
   };
 }
 
