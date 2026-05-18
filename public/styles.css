@@ -4086,6 +4086,15 @@ button {
 
 .assist-config-panel-inline.is-inline .field textarea {
   line-height: 1.45;
+  box-sizing: border-box;
+  overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.assist-config-panel-inline.is-inline .field textarea::-webkit-scrollbar {
+  width: 0;
+  height: 0;
 }
 
 .assist-config-course-request-field textarea {
