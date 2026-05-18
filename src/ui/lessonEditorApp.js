@@ -207,6 +207,21 @@ const ASSIST_DIDACTIC_TYPE_OPTIONS = [
     .filter((item) => item.id !== "assisted")
     .map((item) => ({ value: item.id, label: item.label }))
 ];
+const BOTTOM_UP_TARGET_MODE_OPTIONS = [
+  { value: "current", label: "Nesta etapa" },
+  { value: "new_after_current", label: "Nova etapa depois" }
+];
+const BOTTOM_UP_OPERATION_MODE_OPTIONS = [
+  { value: "reinforce", label: "Continuar/reforçar" },
+  { value: "repair", label: "Corrigir" }
+];
+const BOTTOM_UP_INTERVENTION_TYPE_OPTIONS = [
+  { value: "local_semantic_rewrite", label: "Reescrita local" },
+  { value: "explanatory_bridge", label: "Ponte explicativa" },
+  { value: "guided_practice_bridge", label: "Ponte de prática guiada" },
+  { value: "contrast_reinforcement", label: "Contraste entre conceitos" },
+  { value: "prerequisite_tightening", label: "Preparar pré-requisitos" }
+];
 const COURSES_VIEWS = new Set(["courses", "course", "module", "lesson", "microsequence", "microsequence-assist"]);
 const STRUCTURE_VERSIONING_ACTIVE = false;
 const GENERATED_PENDING_OPERATION = "generated-pending";
@@ -1012,6 +1027,13 @@ export function createLessonEditorApp({ root, storage, editor }) {
       promptText: "",
       didacticTypeId: "",
       preferredContainer: "",
+      interventionTargetMode: "current",
+      operationMode: "reinforce",
+      interventionType: "local_semantic_rewrite",
+      domainRef: "",
+      relatedConceptRefs: [],
+      prerequisiteRefs: [],
+      bridgeTargetRef: "",
       attachments: [],
       dependencyKeys: [],
       pendingDependencyKey: "",
@@ -1693,6 +1715,69 @@ export function createLessonEditorApp({ root, storage, editor }) {
     return ASSIST_CARD_CONTAINER_OPTIONS.find((item) => item.value === container)?.label || "Automático";
   }
 
+  function uniqueTextList(values = []) {
+    return [...new Set((Array.isArray(values) ? values : []).map((item) => String(item || "").trim()).filter(Boolean))];
+  }
+
+  function inferBottomUpInterventionType(microsequence = {}) {
+    const coverageRole = String(microsequence?.coverageRole || "").trim();
+    if (coverageRole === "discriminate") {
+      return "contrast_reinforcement";
+    }
+    if (coverageRole === "practice" || coverageRole === "exam_apply") {
+      return "guided_practice_bridge";
+    }
+    if (coverageRole === "diagnose_error") {
+      return "local_semantic_rewrite";
+    }
+    return "explanatory_bridge";
+  }
+
+  function getCurrentLessonDomainItems(lesson = getRenderContext().lesson) {
+    return Array.isArray(lesson?.domainMap?.items)
+      ? lesson.domainMap.items
+          .map((item) => ({
+            id: String(item?.id || "").trim(),
+            label: String(item?.label || item?.id || "").trim(),
+            prerequisites: Array.isArray(item?.prerequisites)
+              ? item.prerequisites.map((entry) => String(entry || "").trim()).filter(Boolean)
+              : []
+          }))
+          .filter((item) => item.id)
+      : [];
+  }
+
+  function getCurrentLessonDomainItemMap(lesson = getRenderContext().lesson) {
+    return new Map(getCurrentLessonDomainItems(lesson).map((item) => [item.id, item]));
+  }
+
+  function getCurrentBottomUpOptionState() {
+    const context = getRenderContext();
+    const lesson = context.lesson;
+    const microsequence = context.microsequence;
+    const domainItems = getCurrentLessonDomainItems(lesson);
+    const domainItemMap = new Map(domainItems.map((item) => [item.id, item]));
+    const selectedDomainRef = String(state.assistDraft.domainRef || "").trim();
+    const baseDomainRef =
+      selectedDomainRef
+      || String(microsequence?.domainRefs?.[0] || "").trim()
+      || domainItems[0]?.id
+      || "";
+    const selectedRelated = uniqueTextList(state.assistDraft.relatedConceptRefs).filter((ref) => domainItemMap.has(ref));
+    const selectedPrerequisites = uniqueTextList(state.assistDraft.prerequisiteRefs).filter((ref) => domainItemMap.has(ref));
+    const bridgeTargetRef = String(state.assistDraft.bridgeTargetRef || "").trim();
+    const defaultPrerequisites = domainItemMap.get(baseDomainRef)?.prerequisites || [];
+    return {
+      domainItems,
+      domainItemMap,
+      domainRef: baseDomainRef,
+      relatedConceptRefs: selectedRelated,
+      prerequisiteRefs: selectedPrerequisites.length ? selectedPrerequisites : uniqueTextList(defaultPrerequisites),
+      bridgeTargetRef: bridgeTargetRef || baseDomainRef,
+      microsequenceTitle: String(microsequence?.title || "").trim()
+    };
+  }
+
   function persistAssistConfig() {
     writeAssistConfigStorage(state.assistConfig);
   }
@@ -2259,6 +2344,25 @@ export function createLessonEditorApp({ root, storage, editor }) {
     if (!ASSIST_DIDACTIC_TYPE_OPTIONS.some((item) => item.value === state.assistDraft.didacticTypeId)) {
       state.assistDraft.didacticTypeId = "";
     }
+    if (!BOTTOM_UP_TARGET_MODE_OPTIONS.some((item) => item.value === state.assistDraft.interventionTargetMode)) {
+      state.assistDraft.interventionTargetMode = "current";
+    }
+    if (!BOTTOM_UP_OPERATION_MODE_OPTIONS.some((item) => item.value === state.assistDraft.operationMode)) {
+      state.assistDraft.operationMode = "reinforce";
+    }
+    if (!BOTTOM_UP_INTERVENTION_TYPE_OPTIONS.some((item) => item.value === state.assistDraft.interventionType)) {
+      state.assistDraft.interventionType = "local_semantic_rewrite";
+    }
+    const bottomUpState = getCurrentBottomUpOptionState();
+    const validDomainIds = new Set(bottomUpState.domainItems.map((item) => item.id));
+    if (!validDomainIds.has(state.assistDraft.domainRef)) {
+      state.assistDraft.domainRef = bottomUpState.domainRef || "";
+    }
+    state.assistDraft.relatedConceptRefs = uniqueTextList(state.assistDraft.relatedConceptRefs).filter((ref) => validDomainIds.has(ref));
+    state.assistDraft.prerequisiteRefs = uniqueTextList(state.assistDraft.prerequisiteRefs).filter((ref) => validDomainIds.has(ref));
+    if (!validDomainIds.has(state.assistDraft.bridgeTargetRef)) {
+      state.assistDraft.bridgeTargetRef = bottomUpState.bridgeTargetRef || "";
+    }
     state.assistDraft.attachments = normalizeAssistAttachmentList(state.assistDraft.attachments);
   }
 
@@ -2391,6 +2495,16 @@ export function createLessonEditorApp({ root, storage, editor }) {
         ?.cards?.[assistOpenState.cardIndex]?.key || state.selection.cardKey;
     state.assistDraft.attachments = [];
     state.assistDraft.didacticTypeId = "";
+    state.assistDraft.interventionTargetMode = "current";
+    state.assistDraft.operationMode = Array.isArray(microsequence.cards) && microsequence.cards.length ? "reinforce" : "reinforce";
+    state.assistDraft.interventionType = inferBottomUpInterventionType(microsequence);
+    state.assistDraft.domainRef = String(microsequence?.domainRefs?.[0] || "").trim();
+    state.assistDraft.relatedConceptRefs =
+      state.assistDraft.interventionType === "contrast_reinforcement"
+        ? uniqueTextList(microsequence?.domainRefs).slice(0, 3)
+        : [];
+    state.assistDraft.prerequisiteRefs = [];
+    state.assistDraft.bridgeTargetRef = String(microsequence?.domainRefs?.[0] || "").trim();
     state.microsequenceMode = "play";
     ensureCurrentCardSnapshot();
     syncAssistDraft();
@@ -4129,20 +4243,83 @@ export function createLessonEditorApp({ root, storage, editor }) {
     }
   }
 
-  function applyMicrosequenceGeneration({ projectDocument, previousVersionId = "", fallbackTitle = "Microssequência" }) {
+  function resolveGeneratedMicrosequenceSelection({
+    previousProjectDocument,
+    nextProjectDocument,
+    fallbackSelection,
+    targetMode = "current",
+    anchorMicrosequenceKey = ""
+  }) {
+    if (targetMode !== "new_after_current") {
+      return fallbackSelection;
+    }
+    const previousLesson = findLesson(
+      previousProjectDocument,
+      fallbackSelection.courseKey,
+      fallbackSelection.moduleKey,
+      fallbackSelection.lessonKey
+    );
+    const nextLesson = findLesson(
+      nextProjectDocument,
+      fallbackSelection.courseKey,
+      fallbackSelection.moduleKey,
+      fallbackSelection.lessonKey
+    );
+    const previousKeys = new Set((Array.isArray(previousLesson?.microsequences) ? previousLesson.microsequences : []).map((item) => item.key));
+    const nextMicrosequences = Array.isArray(nextLesson?.microsequences) ? nextLesson.microsequences : [];
+    const inserted = nextMicrosequences.filter((item) => item?.key && !previousKeys.has(item.key));
+    const anchoredCandidate =
+      anchorMicrosequenceKey
+        ? (() => {
+            const anchorIndex = nextMicrosequences.findIndex((item) => item?.key === anchorMicrosequenceKey);
+            if (anchorIndex < 0) return null;
+            for (let index = anchorIndex + 1; index < nextMicrosequences.length; index += 1) {
+              const candidate = nextMicrosequences[index];
+              if (candidate?.key && !previousKeys.has(candidate.key)) {
+                return candidate;
+              }
+            }
+            return null;
+          })()
+        : null;
+    const targetMicrosequence = anchoredCandidate || inserted[0] || null;
+    if (!targetMicrosequence?.key) {
+      return fallbackSelection;
+    }
+    return {
+      ...fallbackSelection,
+      microsequenceKey: targetMicrosequence.key
+    };
+  }
+
+  function applyMicrosequenceGeneration({
+    projectDocument,
+    previousProjectDocument = state.project,
+    previousVersionId = "",
+    fallbackTitle = "Microssequência",
+    targetMode = "current",
+    anchorMicrosequenceKey = ""
+  }) {
+    setProject(projectDocument);
+    const resolvedSelection = resolveGeneratedMicrosequenceSelection({
+      previousProjectDocument,
+      nextProjectDocument: projectDocument,
+      fallbackSelection: {
+        courseKey: state.selection.courseKey,
+        moduleKey: state.selection.moduleKey,
+        lessonKey: state.selection.lessonKey,
+        microsequenceKey: state.selection.microsequenceKey,
+        cardKey: null,
+        cardIndex: 0
+      },
+      targetMode,
+      anchorMicrosequenceKey
+    });
+    const nextPath = applySelectionByKeys(projectDocument, resolvedSelection);
     ensureMicrosequenceVersionEntry();
     ensureEditableMicrosequenceBranch({
       operationType: "generated",
       label: "Gerada"
-    });
-    setProject(projectDocument);
-    const nextPath = applySelectionByKeys(projectDocument, {
-      courseKey: state.selection.courseKey,
-      moduleKey: state.selection.moduleKey,
-      lessonKey: state.selection.lessonKey,
-      microsequenceKey: state.selection.microsequenceKey,
-      cardKey: null,
-      cardIndex: 0
     });
     const microsequence = findMicrosequence(
       projectDocument,
@@ -4429,6 +4606,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
   async function submitAssistRequest() {
     const context = getRenderContext();
     const hadCardsBefore = Array.isArray(context.microsequence?.cards) && context.microsequence.cards.length > 0;
+    const previousProjectDocument = structuredClone(state.project);
     const dependencyTitles = getAssistCatalog()
       .filter((item) => state.assistDraft.dependencyKeys.includes(item.key))
       .map((item) => item.title || item.key);
@@ -4438,14 +4616,29 @@ export function createLessonEditorApp({ root, storage, editor }) {
     render({ preserveState: true });
 
     try {
-      const previousVersionId = getMicrosequenceVersionEntry()?.activeVersionId || "";
+      const visibleAssistTitle =
+        getVisualizedMicrosequenceVersion()?.title
+        || context.microsequence?.title
+        || "Microssequência";
+      const previousVersionId =
+        state.assistDraft.interventionTargetMode === "new_after_current"
+          ? ""
+          : getMicrosequenceVersionEntry()?.activeVersionId || "";
       const submission = await executeCourseForgeMicrosequenceGeneration({
         selection: state.selection,
-        draft: state.assistDraft,
+        draft: {
+          ...state.assistDraft,
+          microsequenceTitle: visibleAssistTitle
+        },
         assistConfig: state.assistConfig,
         dependencyTitles,
         selectedDidacticTypeId: state.assistDraft.didacticTypeId,
         preferredContainerLabel: getAssistContainerLabel(state.assistDraft.preferredContainer),
+        lessonContext: {
+          currentMicrosequenceTitle: context.microsequence?.title || "",
+          microsequenceKeys: Array.isArray(context.lesson?.microsequences) ? context.lesson.microsequences.map((item) => item.key) : [],
+          reusableMicrosequenceCount: Array.isArray(context.lesson?.microsequences) ? context.lesson.microsequences.length : 0
+        },
         projectDocument: state.project,
         checkCodexLocalHealth,
         ingestAttachments: ingestCourseForgeAttachments,
@@ -4469,8 +4662,11 @@ export function createLessonEditorApp({ root, storage, editor }) {
       storage.saveProject(submission.courseForgeResult.projectDocument);
       applyMicrosequenceGeneration({
         projectDocument: submission.courseForgeResult.projectDocument,
+        previousProjectDocument,
         previousVersionId,
-        fallbackTitle: context.microsequence?.title || "Microssequência"
+        fallbackTitle: context.microsequence?.title || "Microssequência",
+        targetMode: state.assistDraft.interventionTargetMode,
+        anchorMicrosequenceKey: state.selection.microsequenceKey
       });
       const nextMicrosequence = findMicrosequence(
         submission.courseForgeResult.projectDocument,
@@ -4479,8 +4675,13 @@ export function createLessonEditorApp({ root, storage, editor }) {
         state.selection.lessonKey,
         state.selection.microsequenceKey
       );
+      const createdNewStage = state.assistDraft.interventionTargetMode === "new_after_current";
       state.assistDraft.lastRequest = {
-        title: hadCardsBefore ? "Microssequência continuada" : "Primeiros cards gerados",
+        title: createdNewStage
+          ? "Nova microssequência gerada"
+          : hadCardsBefore
+            ? "Microssequência continuada"
+            : "Primeiros cards gerados",
         description:
           `${Array.isArray(nextMicrosequence?.cards) ? nextMicrosequence.cards.length : 0} cards ${hadCardsBefore ? "na iteração atual" : "gerados"} em ${nextMicrosequence?.title || context.microsequence?.title || "Microssequência"} com ${getAssistModelLabel(state.assistConfig.model)}.`,
         timestamp: new Date().toISOString()
@@ -7102,6 +7303,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
         })()
       : "";
 
+    const currentBottomUpState = getCurrentBottomUpOptionState();
     root.innerHTML =
       '<div class="app-shell">' +
       renderLessonScreen({
@@ -7138,6 +7340,20 @@ export function createLessonEditorApp({ root, storage, editor }) {
           preferredContainer: state.assistDraft.preferredContainer,
           preferredContainerLabel: getAssistContainerLabel(state.assistDraft.preferredContainer),
           selectedDidacticTypeId: state.assistDraft.didacticTypeId,
+          interventionTargetMode: state.assistDraft.interventionTargetMode,
+          operationMode: state.assistDraft.operationMode,
+          interventionType: state.assistDraft.interventionType,
+          domainRef: currentBottomUpState.domainRef,
+          relatedConceptRefs: currentBottomUpState.relatedConceptRefs,
+          prerequisiteRefs: currentBottomUpState.prerequisiteRefs,
+          bridgeTargetRef: currentBottomUpState.bridgeTargetRef,
+          targetModeOptions: BOTTOM_UP_TARGET_MODE_OPTIONS,
+          operationModeOptions: BOTTOM_UP_OPERATION_MODE_OPTIONS,
+          interventionTypeOptions: BOTTOM_UP_INTERVENTION_TYPE_OPTIONS,
+          domainOptions: currentBottomUpState.domainItems.map((item) => ({
+            value: item.id,
+            label: item.label
+          })),
           nextPlannedMicrosequence: findNextPlannedMicrosequenceInLesson(context.lesson, context.microsequence?.key),
           didacticTypeOptions: ASSIST_DIDACTIC_TYPE_OPTIONS,
           attachments: state.assistDraft.attachments.map((item) => ({
@@ -8471,6 +8687,11 @@ export function createLessonEditorApp({ root, storage, editor }) {
     const assistMode = root.querySelector("[data-field='assist-mode']");
     const assistModel = root.querySelector("[data-field='assist-model']");
     const assistDidacticType = root.querySelector("[data-field='assist-didactic-type']");
+    const assistTargetMode = root.querySelector("[data-field='assist-target-mode']");
+    const assistOperationMode = root.querySelector("[data-field='assist-operation-mode']");
+    const assistInterventionType = root.querySelector("[data-field='assist-intervention-type']");
+    const assistDomainRef = root.querySelector("[data-field='assist-domain-ref']");
+    const assistBridgeTargetRef = root.querySelector("[data-field='assist-bridge-target-ref']");
     const assistDependencyPicker = root.querySelector("[data-field='assist-dependency-picker']");
     const assistPrompt = root.querySelector("[data-field='assist-prompt']");
     const assistAttachmentInput = root.querySelector("[data-field='assist-attachments']");
@@ -8521,6 +8742,55 @@ export function createLessonEditorApp({ root, storage, editor }) {
         state.assistDraft.didacticTypeId = ASSIST_DIDACTIC_TYPE_OPTIONS.some((item) => item.value === nextTypeId)
           ? nextTypeId
           : "";
+        render({ preserveState: true });
+      });
+    }
+    if (assistTargetMode) {
+      assistTargetMode.addEventListener("change", () => {
+        const nextValue = assistTargetMode.value;
+        state.assistDraft.interventionTargetMode = BOTTOM_UP_TARGET_MODE_OPTIONS.some((item) => item.value === nextValue)
+          ? nextValue
+          : "current";
+        if (state.assistDraft.interventionTargetMode === "new_after_current" && state.assistDraft.operationMode === "repair") {
+          state.assistDraft.operationMode = "reinforce";
+        }
+        render({ preserveState: true });
+      });
+    }
+    if (assistOperationMode) {
+      assistOperationMode.addEventListener("change", () => {
+        const nextValue = assistOperationMode.value;
+        state.assistDraft.operationMode = BOTTOM_UP_OPERATION_MODE_OPTIONS.some((item) => item.value === nextValue)
+          ? nextValue
+          : "reinforce";
+        render({ preserveState: true });
+      });
+    }
+    if (assistInterventionType) {
+      assistInterventionType.addEventListener("change", () => {
+        const nextValue = assistInterventionType.value;
+        state.assistDraft.interventionType = BOTTOM_UP_INTERVENTION_TYPE_OPTIONS.some((item) => item.value === nextValue)
+          ? nextValue
+          : "local_semantic_rewrite";
+        render({ preserveState: true });
+      });
+    }
+    if (assistDomainRef) {
+      assistDomainRef.addEventListener("change", () => {
+        state.assistDraft.domainRef = assistDomainRef.value;
+        if (!state.assistDraft.bridgeTargetRef) {
+          state.assistDraft.bridgeTargetRef = assistDomainRef.value;
+        }
+        if (!state.assistDraft.prerequisiteRefs.length) {
+          const domainItem = getCurrentLessonDomainItemMap().get(assistDomainRef.value);
+          state.assistDraft.prerequisiteRefs = uniqueTextList(domainItem?.prerequisites || []);
+        }
+        render({ preserveState: true });
+      });
+    }
+    if (assistBridgeTargetRef) {
+      assistBridgeTargetRef.addEventListener("change", () => {
+        state.assistDraft.bridgeTargetRef = assistBridgeTargetRef.value;
         render({ preserveState: true });
       });
     }
@@ -8579,24 +8849,71 @@ export function createLessonEditorApp({ root, storage, editor }) {
       render({ preserveState: true });
     });
     root.querySelector("[data-action='fill-assist-template-next-cards']")?.addEventListener("click", () => {
+      state.assistDraft.interventionTargetMode = "current";
+      state.assistDraft.operationMode = "reinforce";
       state.assistDraft.promptText = buildAssistTemplatePrompt("next_cards", getRenderContext().microsequence);
       render({ preserveState: true });
       root.querySelector("[data-field='assist-prompt']")?.focus();
     });
     root.querySelector("[data-action='fill-assist-template-materialize']")?.addEventListener("click", () => {
+      state.assistDraft.interventionTargetMode = "current";
+      state.assistDraft.operationMode = "reinforce";
       state.assistDraft.promptText = buildAssistTemplatePrompt("materialize", getRenderContext().microsequence);
       render({ preserveState: true });
       root.querySelector("[data-field='assist-prompt']")?.focus();
     });
     root.querySelector("[data-action='fill-assist-template-reformulate']")?.addEventListener("click", () => {
+      state.assistDraft.interventionTargetMode = "current";
+      state.assistDraft.operationMode = "repair";
+      state.assistDraft.interventionType = "local_semantic_rewrite";
       state.assistDraft.promptText = buildAssistTemplatePrompt("reformulate", getRenderContext().microsequence);
       render({ preserveState: true });
       root.querySelector("[data-field='assist-prompt']")?.focus();
     });
     root.querySelector("[data-action='fill-assist-template-repair']")?.addEventListener("click", () => {
+      state.assistDraft.interventionTargetMode = "current";
+      state.assistDraft.operationMode = "repair";
       state.assistDraft.promptText = buildAssistTemplatePrompt("repair", getRenderContext().microsequence);
       render({ preserveState: true });
       root.querySelector("[data-field='assist-prompt']")?.focus();
+    });
+    root.querySelector("[data-action='fill-assist-template-new-stage']")?.addEventListener("click", () => {
+      state.assistDraft.interventionTargetMode = "new_after_current";
+      state.assistDraft.operationMode = "reinforce";
+      state.assistDraft.interventionType = state.assistDraft.interventionType === "local_semantic_rewrite"
+        ? "explanatory_bridge"
+        : state.assistDraft.interventionType;
+      state.assistDraft.promptText = `Insira uma nova microssequência depois de "${getRenderContext().microsequence?.title || "esta etapa"}" para fechar o próximo degrau didático da trilha.`;
+      render({ preserveState: true });
+      root.querySelector("[data-field='assist-prompt']")?.focus();
+    });
+    root.querySelectorAll("[data-action='toggle-assist-related-concept']").forEach((node) => {
+      node.addEventListener("click", () => {
+        const conceptRef = node.getAttribute("data-concept-ref");
+        if (!conceptRef) return;
+        const current = new Set(uniqueTextList(state.assistDraft.relatedConceptRefs));
+        if (current.has(conceptRef)) {
+          current.delete(conceptRef);
+        } else {
+          current.add(conceptRef);
+        }
+        state.assistDraft.relatedConceptRefs = Array.from(current).slice(0, 4);
+        render({ preserveState: true });
+      });
+    });
+    root.querySelectorAll("[data-action='toggle-assist-prerequisite']").forEach((node) => {
+      node.addEventListener("click", () => {
+        const conceptRef = node.getAttribute("data-concept-ref");
+        if (!conceptRef) return;
+        const current = new Set(uniqueTextList(state.assistDraft.prerequisiteRefs));
+        if (current.has(conceptRef)) {
+          current.delete(conceptRef);
+        } else {
+          current.add(conceptRef);
+        }
+        state.assistDraft.prerequisiteRefs = Array.from(current).slice(0, 6);
+        render({ preserveState: true });
+      });
     });
     root.querySelector("[data-action='open-next-planned-microsequence']")?.addEventListener("click", () => {
       const context = getRenderContext();

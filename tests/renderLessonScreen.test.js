@@ -587,6 +587,25 @@ test("renderiza o painel da microssequência vazia em modo de geração de cards
         { value: "", label: "Automático" },
         { value: "guided_practice", label: "Prática guiada" }
       ],
+      targetModeOptions: [
+        { value: "current", label: "Nesta etapa" },
+        { value: "new_after_current", label: "Nova etapa depois" }
+      ],
+      operationModeOptions: [
+        { value: "reinforce", label: "Continuar/reforçar" },
+        { value: "repair", label: "Corrigir" }
+      ],
+      interventionTypeOptions: [
+        { value: "local_semantic_rewrite", label: "Reescrita local" }
+      ],
+      interventionTargetMode: "current",
+      operationMode: "reinforce",
+      interventionType: "local_semantic_rewrite",
+      domainRef: "",
+      relatedConceptRefs: [],
+      prerequisiteRefs: [],
+      bridgeTargetRef: "",
+      domainOptions: [],
       selectedDidacticTypeId: "",
       modelOptions: [{ value: "gemini-2.5-flash", label: "Gemini 2.5 Flash" }],
       selectedModel: "gemini-2.5-flash",
@@ -612,6 +631,10 @@ test("renderiza o painel da microssequência vazia em modo de geração de cards
   assert.match(html, /Gere os primeiros cards a partir do plano já definido/);
   assert.match(html, /data-action="fill-assist-template-materialize"/);
   assert.match(html, /data-action="fill-assist-template-reformulate"/);
+  assert.match(html, /data-action="fill-assist-template-new-stage"/);
+  assert.match(html, /data-field="assist-target-mode" aria-label="Alvo da intervenção" title="Alvo da intervenção"/);
+  assert.match(html, /data-field="assist-operation-mode" aria-label="Operação local" title="Operação local"/);
+  assert.match(html, /data-field="assist-intervention-type" aria-label="Função da intervenção" title="Função da intervenção"/);
   assert.match(html, /data-action="open-assist-container-picker" title="Adicionar recursos" aria-label="Adicionar recursos"/);
   assert.match(html, /data-action="open-assist-attachment-picker" title="Anexar documentos" aria-label="Anexar documentos"/);
   assert.match(html, /data-action="select-workbench-pane" data-workbench-pane="edit" aria-label="Geração" title="Geração"/);

@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  buildCourseForgeInterventionRequestFromDraft,
   buildCourseForgeMicrosequencePrompt,
   executeCourseForgeMicrosequenceGeneration,
   prepareCourseForgeMicrosequenceGeneration,
@@ -29,7 +30,8 @@ test("resolveCourseForgeMicrosequenceRequestConfig escolhe repair_only para pedi
     }),
     {
       operation: "repair",
-      requestedGenerationDepth: "repair_only"
+      requestedGenerationDepth: "repair_only",
+      interventionModeHint: "targeted_single_microsequence"
     }
   );
 
@@ -39,9 +41,42 @@ test("resolveCourseForgeMicrosequenceRequestConfig escolhe repair_only para pedi
     }),
     {
       operation: "reinforce",
-      requestedGenerationDepth: "reinforce_only"
+      requestedGenerationDepth: "reinforce_only",
+      interventionModeHint: "targeted_single_microsequence"
     }
   );
+});
+
+test("buildCourseForgeInterventionRequestFromDraft monta pedido estruturado para nova microssequência", () => {
+  const result = buildCourseForgeInterventionRequestFromDraft({
+    selection: {
+      courseKey: "course-a",
+      moduleKey: "module-a",
+      lessonKey: "lesson-a",
+      microsequenceKey: "micro-atual"
+    },
+    draft: {
+      promptText: "Insira uma ponte antes da prática principal.",
+      interventionTargetMode: "new_after_current",
+      operationMode: "reinforce",
+      interventionType: "guided_practice_bridge",
+      domainRef: "concept-main",
+      bridgeTargetRef: "concept-main",
+      prerequisiteRefs: ["concept-base"]
+    },
+    lessonContext: {
+      microsequenceKeys: ["micro-atual", "micro-seguinte"],
+      reusableMicrosequenceCount: 2
+    }
+  });
+
+  assert.equal(result.recommendedAction, "needs_new_microsequence");
+  assert.equal(result.target.level, "lesson");
+  assert.equal(result.editorIntent.operation, "extend");
+  assert.equal(result.editorIntent.interventionModeHint, "targeted_scope_expansion");
+  assert.equal(result.requestedChanges[0].patchStrategy, "add_microsequence");
+  assert.equal(result.requestedChanges[0].didacticInterventionType, "guided_practice_bridge");
+  assert.deepEqual(result.contextSnapshot.microsequenceKeys, ["micro-atual", "micro-seguinte"]);
 });
 
 test("prepareCourseForgeMicrosequenceGeneration monta request local no escopo da microssequência", async () => {

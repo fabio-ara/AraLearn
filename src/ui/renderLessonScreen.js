@@ -1017,6 +1017,21 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
       ? "edit"
       : "preview"
     : "edit";
+  const targetsNewMicrosequence = editorSupport.interventionTargetMode === "new_after_current";
+  const promptLabel = targetsNewMicrosequence
+    ? "Pedido da nova microssequência"
+    : hasCards
+      ? "Pedido dos próximos cards"
+      : isPlanned
+        ? "Pedido dos primeiros cards"
+        : "Pedido";
+  const submitLabel = targetsNewMicrosequence
+    ? "Gerar nova microssequência"
+    : hasCards
+      ? "Gerar próximos cards"
+      : isPlanned
+        ? "Gerar primeiros cards"
+        : "Gerar cards";
   const lessonStudyCount = visibleCards.length;
   const prevDisabled = safeIndex <= 0;
   const nextDisabled = !hasCards || (microsequenceMode !== "play" && safeIndex >= visibleCards.length - 1);
@@ -1125,6 +1140,88 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
       );
     })
     .join("");
+  const targetModeOptions = (editorSupport.targetModeOptions || [])
+    .map((item) => {
+      return (
+        '<option value="' +
+        escapeHtml(item.value) +
+        '"' +
+        (item.value === editorSupport.interventionTargetMode ? " selected" : "") +
+        ">" +
+        escapeHtml(item.label) +
+        "</option>"
+      );
+    })
+    .join("");
+  const operationModeOptions = (editorSupport.operationModeOptions || [])
+    .map((item) => {
+      return (
+        '<option value="' +
+        escapeHtml(item.value) +
+        '"' +
+        (item.value === editorSupport.operationMode ? " selected" : "") +
+        ">" +
+        escapeHtml(item.label) +
+        "</option>"
+      );
+    })
+    .join("");
+  const interventionTypeOptions = (editorSupport.interventionTypeOptions || [])
+    .map((item) => {
+      return (
+        '<option value="' +
+        escapeHtml(item.value) +
+        '"' +
+        (item.value === editorSupport.interventionType ? " selected" : "") +
+        ">" +
+        escapeHtml(item.label) +
+        "</option>"
+      );
+    })
+    .join("");
+  const domainOptions = (editorSupport.domainOptions || [])
+    .map((item) => {
+      return (
+        '<option value="' +
+        escapeHtml(item.value) +
+        '"' +
+        (item.value === editorSupport.domainRef ? " selected" : "") +
+        ">" +
+        escapeHtml(item.label) +
+        "</option>"
+      );
+    })
+    .join("");
+  const relatedConceptChips = (editorSupport.domainOptions || [])
+    .map((item) => {
+      const active = (editorSupport.relatedConceptRefs || []).includes(item.value);
+      return (
+        '<button class="didactic-tag dependency-tag-chip dependency-chip-button bottomup-chip' +
+        (active ? " is-active" : "") +
+        '" type="button" data-action="toggle-assist-related-concept" data-concept-ref="' +
+        escapeHtml(item.value) +
+        '">' +
+        '<span class="didactic-tag-text dependency-chip-label">' +
+        escapeHtml(item.label) +
+        "</span></button>"
+      );
+    })
+    .join("");
+  const prerequisiteChips = (editorSupport.domainOptions || [])
+    .map((item) => {
+      const active = (editorSupport.prerequisiteRefs || []).includes(item.value);
+      return (
+        '<button class="didactic-tag dependency-tag-chip dependency-chip-button bottomup-chip' +
+        (active ? " is-active" : "") +
+        '" type="button" data-action="toggle-assist-prerequisite" data-concept-ref="' +
+        escapeHtml(item.value) +
+        '">' +
+        '<span class="didactic-tag-text dependency-chip-label">' +
+        escapeHtml(item.label) +
+        "</span></button>"
+      );
+    })
+    .join("");
   const assistWarning = editorSupport.assistError
     ? '<section class="microsequence-assist-panel assist-status-panel is-warning">' +
       '<p class="muted assist-last-request">' +
@@ -1148,6 +1245,7 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
       '<div class="assist-actions assist-actions-wide">' +
       '<button class="open-mini" type="button" data-action="fill-assist-template-next-cards" title="Preparar pedido para gerar os próximos cards desta microssequência" aria-label="Preparar pedido para gerar os próximos cards desta microssequência">Próximos cards</button>' +
       '<button class="open-mini" type="button" data-action="fill-assist-template-repair" title="Preparar pedido para corrigir esta microssequência" aria-label="Preparar pedido para corrigir esta microssequência">Corrigir</button>' +
+      '<button class="open-mini" type="button" data-action="fill-assist-template-new-stage" title="Preparar pedido para inserir uma nova microssequência após esta" aria-label="Preparar pedido para inserir uma nova microssequência após esta">Nova etapa</button>' +
       (nextPlannedMicrosequence
         ? '<button class="open-mini" type="button" data-action="open-next-planned-microsequence" title="Abrir próxima microssequência planejada" aria-label="Abrir próxima microssequência planejada">Próxima planejada</button>'
         : "") +
@@ -1160,6 +1258,7 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
       '<div class="assist-actions assist-actions-wide">' +
       '<button class="open-mini" type="button" data-action="fill-assist-template-materialize" title="Preparar pedido para gerar os primeiros cards desta microssequência" aria-label="Preparar pedido para gerar os primeiros cards desta microssequência">Primeiros cards</button>' +
       '<button class="open-mini" type="button" data-action="fill-assist-template-reformulate" title="Preparar pedido para reformular esta microssequência" aria-label="Preparar pedido para reformular esta microssequência">Reformular proposta</button>' +
+      '<button class="open-mini" type="button" data-action="fill-assist-template-new-stage" title="Preparar pedido para inserir uma nova microssequência após esta" aria-label="Preparar pedido para inserir uma nova microssequência após esta">Nova etapa</button>' +
       (nextPlannedMicrosequence
         ? '<button class="open-mini" type="button" data-action="open-next-planned-microsequence" title="Abrir próxima microssequência planejada" aria-label="Abrir próxima microssequência planejada">Próxima planejada</button>'
         : "") +
@@ -1261,11 +1360,65 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
     selectedDependencyTags +
     "</div></div>" +
     '<div class="generate-divider workbench-divider"></div>' +
+    '<div class="bottomup-grid bottomup-grid-double">' +
+    '<label class="field generate-icon-field workbench-select-field">' +
+    renderInlineFieldIcon("microsequence", "Alvo") +
+    '<select data-field="assist-target-mode" aria-label="Alvo da intervenção" title="Alvo da intervenção">' +
+    targetModeOptions +
+    "</select></label>" +
+    '<label class="field generate-icon-field workbench-select-field">' +
+    renderInlineFieldIcon("intent", "Operação") +
+    '<select data-field="assist-operation-mode" aria-label="Operação local" title="Operação local">' +
+    operationModeOptions +
+    "</select></label>" +
+    "</div>" +
+    '<div class="generate-divider workbench-divider"></div>' +
     '<label class="field generate-icon-field workbench-select-field">' +
     renderInlineFieldIcon("intent", "Tipo de sequência") +
     '<select data-field="assist-didactic-type" aria-label="Tipo de sequência" title="Tipo de sequência">' +
     didacticTypeOptions +
     "</select></label>" +
+    '<div class="generate-divider workbench-divider"></div>' +
+    '<label class="field generate-icon-field workbench-select-field">' +
+    renderInlineFieldIcon("comment", "Função da intervenção") +
+    '<select data-field="assist-intervention-type" aria-label="Função da intervenção" title="Função da intervenção">' +
+    interventionTypeOptions +
+    "</select></label>" +
+    '<div class="generate-divider workbench-divider"></div>' +
+    '<div class="bottomup-grid">' +
+    '<label class="field generate-icon-field workbench-select-field">' +
+    renderInlineFieldIcon("lesson", "Conceito-alvo") +
+    '<select data-field="assist-domain-ref" aria-label="Conceito-alvo" title="Conceito-alvo">' +
+    '<option value="">Selecionar conceito</option>' +
+    domainOptions +
+    "</select></label>" +
+    '<label class="field generate-icon-field workbench-select-field">' +
+    renderInlineFieldIcon("card", "Ponte para") +
+    '<select data-field="assist-bridge-target-ref" aria-label="Ponte para" title="Ponte para">' +
+    '<option value="">Selecionar conceito</option>' +
+    domainOptions +
+    "</select></label>" +
+    "</div>" +
+    '<div class="generate-divider workbench-divider"></div>' +
+    '<section class="microsequence-assist-panel bottomup-focus-panel">' +
+    '<p class="tiny muted">Contrastar com</p>' +
+    '<div class="dependency-chip-row bottomup-chip-row">' +
+    relatedConceptChips +
+    "</div>" +
+    '<p class="tiny muted">Pré-requisitos a preparar</p>' +
+    '<div class="dependency-chip-row bottomup-chip-row">' +
+    prerequisiteChips +
+    "</div>" +
+    "</section>" +
+    '<div class="generate-divider workbench-divider"></div>' +
+    '<section class="microsequence-assist-panel bottomup-focus-panel">' +
+    '<p class="tiny muted">Materialização preferida</p>' +
+    '<div class="bottomup-container-row">' +
+    '<span class="chip-muted bottomup-container-label">' +
+    escapeHtml(editorSupport.preferredContainerLabel || "Automático") +
+    "</span>" +
+    renderPromptContainerButton() +
+    "</div></section>" +
     '<div class="generate-divider workbench-divider"></div>' +
     semanticActionsPanel +
     (semanticActionsPanel ? '<div class="generate-divider workbench-divider"></div>' : "") +
@@ -1273,13 +1426,12 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
     (plannedStatePanel ? '<div class="generate-divider workbench-divider"></div>' : "") +
     '<label class="field generate-icon-field generate-prompt-field workbench-prompt-field">' +
     '<div class="workbench-prompt-tools">' +
-    renderInlineFieldIcon("prompt", hasCards ? "Pedido dos próximos cards" : isPlanned ? "Pedido dos primeiros cards" : "Pedido") +
-    renderPromptContainerButton() +
+    renderInlineFieldIcon("prompt", promptLabel) +
     "</div>" +
     '<textarea data-field="assist-prompt" class="assist-prompt" aria-label="' +
-    escapeHtml(hasCards ? "Pedido dos próximos cards" : isPlanned ? "Pedido dos primeiros cards" : "Pedido") +
+    escapeHtml(promptLabel) +
     '" title="' +
-    escapeHtml(hasCards ? "Pedido dos próximos cards" : isPlanned ? "Pedido dos primeiros cards" : "Pedido") +
+    escapeHtml(promptLabel) +
     '">' +
     escapeHtml(editorSupport.promptText || "") +
     "</textarea></label>" +
@@ -1296,9 +1448,9 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
     renderPromptAttachmentButton() +
     '<button class="icon-ghost tiny-icon generate-inline-icon" type="button" data-action="open-assist-config" title="Configurar IA" aria-label="Configurar IA">&#128273;</button>' +
     '<button class="open-main generate-submit" type="button" data-action="apply-assist" title="' +
-    escapeHtml(hasCards ? "Gerar próximos cards" : isPlanned ? "Gerar primeiros cards" : "Gerar cards") +
+    escapeHtml(submitLabel) +
     '" aria-label="' +
-    escapeHtml(hasCards ? "Gerar próximos cards" : isPlanned ? "Gerar primeiros cards" : "Gerar cards") +
+    escapeHtml(submitLabel) +
     '"' +
     (!String(visualizedTitle || "").trim() || !String(editorSupport.promptText || "").trim() || editorSupport.isSubmitting
       ? ' disabled aria-disabled="true"'
