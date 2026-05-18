@@ -222,6 +222,13 @@ const BOTTOM_UP_INTERVENTION_TYPE_OPTIONS = [
   { value: "contrast_reinforcement", label: "Contraste entre conceitos" },
   { value: "prerequisite_tightening", label: "Preparar pré-requisitos" }
 ];
+const ASSIST_ACTION_INTENTS = Object.freeze({
+  CONTINUE_CURRENT: "continue_current",
+  REPAIR_CURRENT: "repair_current",
+  INSERT_AFTER_CURRENT: "insert_after_current",
+  MATERIALIZE_CURRENT: "materialize_current",
+  REFORMULATE_CURRENT: "reformulate_current"
+});
 const COURSES_VIEWS = new Set(["courses", "course", "module", "lesson", "microsequence", "microsequence-assist"]);
 const STRUCTURE_VERSIONING_ACTIVE = false;
 const GENERATED_PENDING_OPERATION = "generated-pending";
@@ -1024,6 +1031,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
       visualizedVersionId: "",
       editBaseVersionId: "",
       versionActionsOpen: false,
+      actionIntent: "",
       promptText: "",
       didacticTypeId: "",
       preferredContainer: "",
@@ -2319,10 +2327,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
     const dependencies = getAssistDependencies();
     const allowedKeys = new Set(dependencies.map((item) => item.key));
     const filteredKeys = state.assistDraft.dependencyKeys.filter((key) => allowedKeys.has(key));
-    state.assistDraft.dependencyKeys =
-      filteredKeys.length > 0
-        ? filteredKeys.slice(0, MAX_ASSIST_DEPENDENCIES)
-        : getDefaultDependencyKeys(dependencies);
+    state.assistDraft.dependencyKeys = filteredKeys.slice(0, MAX_ASSIST_DEPENDENCIES);
 
     const availableKeys = dependencies
       .filter((item) => !state.assistDraft.dependencyKeys.includes(item.key))
@@ -2352,6 +2357,14 @@ export function createLessonEditorApp({ root, storage, editor }) {
     }
     if (!BOTTOM_UP_INTERVENTION_TYPE_OPTIONS.some((item) => item.value === state.assistDraft.interventionType)) {
       state.assistDraft.interventionType = "local_semantic_rewrite";
+    }
+    const context = getRenderContext();
+    const hasNextPlannedMicrosequence = Boolean(findNextPlannedMicrosequenceInLesson(context.lesson, context.microsequence?.key));
+    if (!isValidAssistActionIntent(state.assistDraft.actionIntent, {
+      microsequence: context.microsequence,
+      hasNextPlannedMicrosequence
+    })) {
+      state.assistDraft.actionIntent = "";
     }
     const bottomUpState = getCurrentBottomUpOptionState();
     const validDomainIds = new Set(bottomUpState.domainItems.map((item) => item.id));
@@ -2494,6 +2507,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
         ?.find((item) => item.id === assistOpenState.visualizedVersionId)
         ?.cards?.[assistOpenState.cardIndex]?.key || state.selection.cardKey;
     state.assistDraft.attachments = [];
+    state.assistDraft.actionIntent = "";
     state.assistDraft.didacticTypeId = "";
     state.assistDraft.interventionTargetMode = "current";
     state.assistDraft.operationMode = Array.isArray(microsequence.cards) && microsequence.cards.length ? "reinforce" : "reinforce";
@@ -5010,6 +5024,147 @@ export function createLessonEditorApp({ root, storage, editor }) {
     return "";
   }
 
+  function getAssistActionIntentOptions({ microsequence, hasNextPlannedMicrosequence = false } = {}) {
+    const isPlanned = isPlannedMicrosequenceForRuntime(microsequence);
+    if (isPlanned) {
+      return [
+        {
+          value: ASSIST_ACTION_INTENTS.MATERIALIZE_CURRENT,
+          label: "Gerar primeiros cards",
+          description: "Materializa esta microssequência planejada sem sair da trilha."
+        },
+        {
+          value: ASSIST_ACTION_INTENTS.REFORMULATE_CURRENT,
+          label: "Reformular esta microssequência",
+          description: "Ajusta o plano didático desta etapa antes de materializar os cards."
+        },
+        {
+          value: ASSIST_ACTION_INTENTS.INSERT_AFTER_CURRENT,
+          label: hasNextPlannedMicrosequence ? "Inserir microssequência intermediária" : "Criar microssequência depois",
+          description: hasNextPlannedMicrosequence
+            ? "Cria uma etapa nova entre esta e a continuação já planejada."
+            : "Cria uma nova etapa depois desta, sem replanejar o restante da lição."
+        }
+      ];
+    }
+    return [
+      {
+        value: ASSIST_ACTION_INTENTS.CONTINUE_CURRENT,
+        label: "Continuar esta microssequência",
+        description: "Gera os próximos cards desta etapa sem repetir o que já foi materializado."
+      },
+      {
+        value: ASSIST_ACTION_INTENTS.REPAIR_CURRENT,
+        label: "Corrigir esta microssequência",
+        description: "Ajusta cards ou explicações locais sem mudar desnecessariamente a intenção didática."
+      },
+      {
+        value: ASSIST_ACTION_INTENTS.INSERT_AFTER_CURRENT,
+        label: hasNextPlannedMicrosequence ? "Inserir microssequência intermediária" : "Criar microssequência depois",
+        description: hasNextPlannedMicrosequence
+          ? "Cria uma etapa nova entre esta e a continuação já planejada."
+          : "Cria uma nova etapa depois desta, sem replanejar o restante da lição."
+      }
+    ];
+  }
+
+  function isValidAssistActionIntent(intent, { microsequence, hasNextPlannedMicrosequence = false } = {}) {
+    return getAssistActionIntentOptions({ microsequence, hasNextPlannedMicrosequence }).some((item) => item.value === intent);
+  }
+
+  function applyAssistActionIntent(intent, microsequence = getRenderContext().microsequence) {
+    state.assistDraft.actionIntent = intent;
+    if (intent === ASSIST_ACTION_INTENTS.MATERIALIZE_CURRENT) {
+      state.assistDraft.interventionTargetMode = "current";
+      state.assistDraft.operationMode = "reinforce";
+      return;
+    }
+    if (intent === ASSIST_ACTION_INTENTS.REFORMULATE_CURRENT) {
+      state.assistDraft.interventionTargetMode = "current";
+      state.assistDraft.operationMode = "repair";
+      state.assistDraft.interventionType = "local_semantic_rewrite";
+      return;
+    }
+    if (intent === ASSIST_ACTION_INTENTS.REPAIR_CURRENT) {
+      state.assistDraft.interventionTargetMode = "current";
+      state.assistDraft.operationMode = "repair";
+      return;
+    }
+    if (intent === ASSIST_ACTION_INTENTS.INSERT_AFTER_CURRENT) {
+      state.assistDraft.interventionTargetMode = "new_after_current";
+      state.assistDraft.operationMode = "reinforce";
+      state.assistDraft.interventionType = state.assistDraft.interventionType === "local_semantic_rewrite"
+        ? "explanatory_bridge"
+        : state.assistDraft.interventionType;
+      return;
+    }
+    if (intent === ASSIST_ACTION_INTENTS.CONTINUE_CURRENT) {
+      state.assistDraft.interventionTargetMode = "current";
+      state.assistDraft.operationMode = "reinforce";
+      return;
+    }
+    state.assistDraft.actionIntent = "";
+    state.assistDraft.interventionTargetMode = "current";
+    state.assistDraft.operationMode = isPlannedMicrosequenceForRuntime(microsequence) ? "reinforce" : "reinforce";
+  }
+
+  function getAssistPromptMetadata({ microsequence, actionIntent, hasNextPlannedMicrosequence = false } = {}) {
+    const options = getAssistActionIntentOptions({ microsequence, hasNextPlannedMicrosequence });
+    const selectedOption = options.find((item) => item.value === actionIntent) || null;
+    if (actionIntent === ASSIST_ACTION_INTENTS.MATERIALIZE_CURRENT) {
+      return {
+        promptLabel: "Pedido dos primeiros cards",
+        submitLabel: "Gerar primeiros cards",
+        promptPlaceholder: buildAssistTemplatePrompt("materialize", microsequence)
+      };
+    }
+    if (actionIntent === ASSIST_ACTION_INTENTS.REFORMULATE_CURRENT) {
+      return {
+        promptLabel: "Pedido de reformulação",
+        submitLabel: "Reformular microssequência",
+        promptPlaceholder: buildAssistTemplatePrompt("reformulate", microsequence)
+      };
+    }
+    if (actionIntent === ASSIST_ACTION_INTENTS.REPAIR_CURRENT) {
+      return {
+        promptLabel: "Pedido de correção",
+        submitLabel: "Corrigir microssequência",
+        promptPlaceholder: buildAssistTemplatePrompt("repair", microsequence)
+      };
+    }
+    if (actionIntent === ASSIST_ACTION_INTENTS.INSERT_AFTER_CURRENT) {
+      return {
+        promptLabel: hasNextPlannedMicrosequence ? "Pedido da microssequência intermediária" : "Pedido da nova microssequência",
+        submitLabel: hasNextPlannedMicrosequence ? "Inserir microssequência intermediária" : "Gerar nova microssequência",
+        promptPlaceholder:
+          hasNextPlannedMicrosequence
+            ? `Insira uma microssequência intermediária depois de "${microsequence?.title || "esta etapa"}" para fechar o próximo degrau didático antes da etapa já planejada.`
+            : `Insira uma nova microssequência depois de "${microsequence?.title || "esta etapa"}" para fechar o próximo degrau didático da trilha.`
+      };
+    }
+    if (actionIntent === ASSIST_ACTION_INTENTS.CONTINUE_CURRENT) {
+      return {
+        promptLabel: "Pedido dos próximos cards",
+        submitLabel: "Gerar próximos cards",
+        promptPlaceholder: buildAssistTemplatePrompt("next_cards", microsequence)
+      };
+    }
+    return {
+      promptLabel: "Pedido",
+      submitLabel: selectedOption ? selectedOption.label : "Enviar pedido",
+      promptPlaceholder: "Descreva com clareza o que deve acontecer nesta intervenção."
+    };
+  }
+
+  function canSubmitAssistRequestFromState({ promptText, actionIntent, dependencyKeys, dependencyOptions, isSubmitting }) {
+    const hasPrompt = !!String(promptText || "").trim();
+    const hasIntent = !!String(actionIntent || "").trim();
+    const availableDependencyCount = Array.isArray(dependencyOptions) ? dependencyOptions.length : 0;
+    const hasDependencies = Array.isArray(dependencyKeys) && dependencyKeys.length > 0;
+    const dependenciesReady = hasDependencies || availableDependencyCount === 0;
+    return hasPrompt && hasIntent && dependenciesReady && !isSubmitting;
+  }
+
   function isPlannedMicrosequenceForRuntime(microsequence) {
     const cards = Array.isArray(microsequence?.cards) ? microsequence.cards : [];
     return isDraftMicrosequence(microsequence) && cards.length === 0;
@@ -7304,6 +7459,16 @@ export function createLessonEditorApp({ root, storage, editor }) {
       : "";
 
     const currentBottomUpState = getCurrentBottomUpOptionState();
+    const nextPlannedMicrosequence = findNextPlannedMicrosequenceInLesson(context.lesson, context.microsequence?.key);
+    const assistActionOptions = getAssistActionIntentOptions({
+      microsequence: context.microsequence,
+      hasNextPlannedMicrosequence: Boolean(nextPlannedMicrosequence)
+    });
+    const assistPromptMetadata = getAssistPromptMetadata({
+      microsequence: context.microsequence,
+      actionIntent: state.assistDraft.actionIntent,
+      hasNextPlannedMicrosequence: Boolean(nextPlannedMicrosequence)
+    });
     root.innerHTML =
       '<div class="app-shell">' +
       renderLessonScreen({
@@ -7339,6 +7504,19 @@ export function createLessonEditorApp({ root, storage, editor }) {
           assistModeLocked: assistModeConfig.locked,
           preferredContainer: state.assistDraft.preferredContainer,
           preferredContainerLabel: getAssistContainerLabel(state.assistDraft.preferredContainer),
+          containerOptions: ASSIST_CARD_CONTAINER_OPTIONS,
+          assistActionOptions,
+          selectedAssistAction: state.assistDraft.actionIntent,
+          assistPromptLabel: assistPromptMetadata.promptLabel,
+          assistSubmitLabel: assistPromptMetadata.submitLabel,
+          assistPromptPlaceholder: assistPromptMetadata.promptPlaceholder,
+          assistRequestReady: canSubmitAssistRequestFromState({
+            promptText: state.assistDraft.promptText,
+            actionIntent: state.assistDraft.actionIntent,
+            dependencyKeys: state.assistDraft.dependencyKeys,
+            dependencyOptions: assistCatalog,
+            isSubmitting: state.assistDraft.isSubmitting
+          }),
           selectedDidacticTypeId: state.assistDraft.didacticTypeId,
           interventionTargetMode: state.assistDraft.interventionTargetMode,
           operationMode: state.assistDraft.operationMode,
@@ -7354,7 +7532,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
             value: item.id,
             label: item.label
           })),
-          nextPlannedMicrosequence: findNextPlannedMicrosequenceInLesson(context.lesson, context.microsequence?.key),
+          nextPlannedMicrosequence,
           didacticTypeOptions: ASSIST_DIDACTIC_TYPE_OPTIONS,
           attachments: state.assistDraft.attachments.map((item) => ({
             name: normalizeAssistAttachmentName(item?.name),
@@ -8686,6 +8864,8 @@ export function createLessonEditorApp({ root, storage, editor }) {
 
     const assistMode = root.querySelector("[data-field='assist-mode']");
     const assistModel = root.querySelector("[data-field='assist-model']");
+    const assistActionIntentInputs = root.querySelectorAll("[data-field='assist-action-intent']");
+    const assistPreferredContainer = root.querySelector("[data-field='assist-preferred-container']");
     const assistDidacticType = root.querySelector("[data-field='assist-didactic-type']");
     const assistTargetMode = root.querySelector("[data-field='assist-target-mode']");
     const assistOperationMode = root.querySelector("[data-field='assist-operation-mode']");
@@ -8702,10 +8882,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
       if (!assistSubmitButton) {
         return;
       }
-      const visibleTitleValue =
-        assistMicrosequenceTitleInput instanceof HTMLInputElement
-          ? assistMicrosequenceTitleInput.value
-          : getVisualizedMicrosequenceVersion()?.title || context.microsequence?.title || "";
       const visiblePromptValue =
         assistPrompt instanceof HTMLTextAreaElement
           ? assistPrompt.value
@@ -8713,11 +8889,13 @@ export function createLessonEditorApp({ root, storage, editor }) {
       const canEditCurrentView =
         (state.view === "microsequence-assist" || state.view === "microsequence") &&
         canEditCurrentMicrosequenceVersion();
-      const canSubmitAssist =
-        canEditCurrentView &&
-        !!String(visibleTitleValue || "").trim() &&
-        !!String(visiblePromptValue || "").trim() &&
-        !state.assistDraft.isSubmitting;
+      const canSubmitAssist = canEditCurrentView && canSubmitAssistRequestFromState({
+        promptText: visiblePromptValue,
+        actionIntent: state.assistDraft.actionIntent,
+        dependencyKeys: state.assistDraft.dependencyKeys,
+        dependencyOptions: getAssistCatalog(),
+        isSubmitting: state.assistDraft.isSubmitting
+      });
       assistSubmitButton.disabled = !canSubmitAssist;
       assistSubmitButton.setAttribute("aria-disabled", canSubmitAssist ? "false" : "true");
     };
@@ -8735,6 +8913,24 @@ export function createLessonEditorApp({ root, storage, editor }) {
     if (assistModel) {
       assistModel.addEventListener("change", () => {
         setAssistModel(assistModel.value);
+        render({ preserveState: true });
+      });
+    }
+    assistActionIntentInputs.forEach((node) => {
+      node.addEventListener("change", () => {
+        if (!(node instanceof HTMLInputElement) || !node.checked) {
+          return;
+        }
+        applyAssistActionIntent(node.value, getRenderContext().microsequence);
+        render({ preserveState: true });
+      });
+    });
+    if (assistPreferredContainer) {
+      assistPreferredContainer.addEventListener("change", () => {
+        const nextContainer = assistPreferredContainer.value;
+        state.assistDraft.preferredContainer = ASSIST_CARD_CONTAINER_OPTIONS.some((item) => item.value === nextContainer)
+          ? nextContainer
+          : "";
         render({ preserveState: true });
       });
     }

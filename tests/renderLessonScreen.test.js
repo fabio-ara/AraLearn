@@ -389,11 +389,21 @@ test("renderiza o painel da microssequência sem botão próprio de ações e co
       canDeleteVisualizedMicrosequenceVersion: true,
       selectedDependencyKeys: [],
       pendingDependencyKey: "",
-      didacticTypeOptions: [
-        { value: "", label: "Automático" },
-        { value: "guided_practice", label: "Prática guiada" }
+      assistActionOptions: [
+        { value: "continue_current", label: "Continuar esta microssequência", description: "Continua a etapa." },
+        { value: "repair_current", label: "Corrigir esta microssequência", description: "Corrige a etapa." },
+        { value: "insert_after_current", label: "Criar microssequência depois", description: "Expande a trilha." }
       ],
-      selectedDidacticTypeId: "guided_practice",
+      selectedAssistAction: "",
+      assistPromptLabel: "Pedido dos próximos cards",
+      assistSubmitLabel: "Gerar próximos cards",
+      assistPromptPlaceholder: "Continue a microssequência.",
+      assistRequestReady: false,
+      containerOptions: [
+        { value: "", label: "Automático" },
+        { value: "ask", label: "Pergunta" }
+      ],
+      preferredContainer: "",
       modelOptions: [{ value: "gemini-2.5-flash", label: "Gemini 2.5 Flash" }],
       selectedModel: "gemini-2.5-flash",
       assistModeOptions: [],
@@ -438,23 +448,18 @@ test("renderiza o painel da microssequência sem botão próprio de ações e co
   assert.doesNotMatch(html, /data-action="edit-card"/);
   assert.doesNotMatch(html, /<span class="editor-version-tab-label">v12<\/span>/);
   assert.doesNotMatch(html, /<span class="editor-version-tab-meta">12\/05 18:41<\/span>/);
-  assert.match(html, /data-field="assist-microsequence-title" type="text" aria-label="Microssequência" title="Microssequência"/);
   assert.match(html, /data-field="assist-dependency-picker" aria-label="Tags" title="Tags"/);
-  assert.match(html, /data-field="assist-didactic-type" aria-label="Tipo de sequência" title="Tipo de sequência"/);
-  assert.match(html, /<option value="">Automático<\/option>/);
-  assert.match(html, /<option value="guided_practice" selected>Prática guiada<\/option>/);
-  assert.match(html, /Microssequência em andamento/);
-  assert.match(html, /class="workbench-quick-actions-panel"/);
-  assert.doesNotMatch(html, /assist-quick-panel/);
+  assert.match(html, /assist-action-options/);
+  assert.match(html, /data-field="assist-action-intent" value="continue_current"/);
+  assert.match(html, /Continuar esta microssequência/);
+  assert.match(html, /data-field="assist-preferred-container" aria-label="Materialização preferida" title="Materialização preferida"/);
+  assert.match(html, /<option value="" selected>Automático<\/option>/);
   assert.doesNotMatch(html, /Os cards atuais são só o trecho já materializado\./);
-  assert.match(html, /data-field="assist-prompt" class="assist-prompt" aria-label="Pedido dos próximos cards" title="Pedido dos próximos cards"/);
-  assert.match(html, /data-action="open-assist-container-picker" title="Adicionar recursos" aria-label="Adicionar recursos"/);
+  assert.match(html, /data-field="assist-prompt" class="assist-prompt" aria-label="Pedido dos próximos cards" title="Pedido dos próximos cards" placeholder="Continue a microssequência\."/);
   assert.match(html, /data-field="assist-attachments" class="assist-attachment-input" type="file" multiple/);
   assert.match(html, /data-action="open-assist-attachment-picker" title="Anexar documentos" aria-label="Anexar documentos"/);
   assert.match(html, /data-action="remove-assist-attachment" data-attachment-index="0"/);
   assert.match(html, /referencia\.pdf/);
-  assert.match(html, /data-action="fill-assist-template-next-cards"/);
-  assert.match(html, /data-action="fill-assist-template-repair"/);
   assert.match(html, /data-action="clear-prompt" title="Limpar prompt" aria-label="Limpar prompt"/);
   assert.match(html, /data-action="open-assist-config" title="Configurar IA" aria-label="Configurar IA"/);
   assert.match(html, /data-action="apply-assist"[^>]*title="Gerar próximos cards" aria-label="Gerar próximos cards"/);
@@ -467,6 +472,11 @@ test("renderiza o painel da microssequência sem botão próprio de ações e co
   assert.doesNotMatch(html, /<label[^>]*>\s*Intenção\s*<\/label>/);
   assert.doesNotMatch(html, /<label[^>]*>\s*Pedido\s*<\/label>/);
   assert.doesNotMatch(html, /data-field="assist-mode"/);
+  assert.doesNotMatch(html, /data-field="assist-didactic-type"/);
+  assert.doesNotMatch(html, /data-field="assist-target-mode"/);
+  assert.doesNotMatch(html, /data-field="assist-operation-mode"/);
+  assert.doesNotMatch(html, /data-field="assist-intervention-type"/);
+  assert.doesNotMatch(html, /data-field="assist-microsequence-title"/);
   assert.doesNotMatch(html, /mini-card-kicker">Card /);
   assert.doesNotMatch(html, /Intenção do usuário/);
   assert.doesNotMatch(html, /Pedido de revisão/);
@@ -585,30 +595,21 @@ test("renderiza o painel da microssequência vazia em modo de geração de cards
       activeMicrosequenceVersionId: "v1",
       selectedDependencyKeys: [],
       pendingDependencyKey: "",
-      didacticTypeOptions: [
+      assistActionOptions: [
+        { value: "materialize_current", label: "Gerar primeiros cards", description: "Materializa a etapa." },
+        { value: "reformulate_current", label: "Reformular esta microssequência", description: "Ajusta o plano." },
+        { value: "insert_after_current", label: "Criar microssequência depois", description: "Expande a trilha." }
+      ],
+      selectedAssistAction: "materialize_current",
+      assistPromptLabel: "Pedido dos primeiros cards",
+      assistSubmitLabel: "Gerar primeiros cards",
+      assistPromptPlaceholder: "Gere os primeiros cards.",
+      assistRequestReady: false,
+      containerOptions: [
         { value: "", label: "Automático" },
-        { value: "guided_practice", label: "Prática guiada" }
+        { value: "ask", label: "Pergunta" }
       ],
-      targetModeOptions: [
-        { value: "current", label: "Nesta etapa" },
-        { value: "new_after_current", label: "Nova etapa depois" }
-      ],
-      operationModeOptions: [
-        { value: "reinforce", label: "Continuar/reforçar" },
-        { value: "repair", label: "Corrigir" }
-      ],
-      interventionTypeOptions: [
-        { value: "local_semantic_rewrite", label: "Reescrita local" }
-      ],
-      interventionTargetMode: "current",
-      operationMode: "reinforce",
-      interventionType: "local_semantic_rewrite",
-      domainRef: "",
-      relatedConceptRefs: [],
-      prerequisiteRefs: [],
-      bridgeTargetRef: "",
-      domainOptions: [],
-      selectedDidacticTypeId: "",
+      preferredContainer: "",
       modelOptions: [{ value: "gemini-2.5-flash", label: "Gemini 2.5 Flash" }],
       selectedModel: "gemini-2.5-flash",
       assistModeOptions: [],
@@ -628,29 +629,27 @@ test("renderiza o painel da microssequência vazia em modo de geração de cards
   assert.doesNotMatch(html, /editor-version-count-value/);
   assert.doesNotMatch(html, /Os cards gerados aparecerão aqui após o envio do prompt\./);
   assert.match(html, /data-workbench-pane="edit"/);
-  assert.match(html, /Microssequência planejada/);
   assert.doesNotMatch(html, /Esta etapa ainda não tem cards\./);
   assert.doesNotMatch(html, /Gere os primeiros cards a partir do plano já definido/);
-  assert.match(html, /data-action="fill-assist-template-materialize"/);
-  assert.match(html, /data-action="fill-assist-template-reformulate"/);
-  assert.match(html, /data-action="fill-assist-template-new-stage"/);
-  assert.match(html, /data-field="assist-target-mode" aria-label="Alvo da intervenção" title="Alvo da intervenção"/);
-  assert.match(html, /data-field="assist-operation-mode" aria-label="Operação local" title="Operação local"/);
-  assert.match(html, /data-field="assist-intervention-type" aria-label="Função da intervenção" title="Função da intervenção"/);
-  assert.match(html, /data-action="open-assist-container-picker" title="Adicionar recursos" aria-label="Adicionar recursos"/);
+  assert.match(html, /data-field="assist-action-intent" value="materialize_current" checked/);
+  assert.match(html, /Gerar primeiros cards/);
+  assert.match(html, /Reformular esta microssequência/);
   assert.match(html, /data-action="open-assist-attachment-picker" title="Anexar documentos" aria-label="Anexar documentos"/);
   assert.match(html, /data-action="select-workbench-pane" data-workbench-pane="edit" aria-label="Geração" title="Geração"/);
-  assert.match(html, /data-field="assist-didactic-type" aria-label="Tipo de sequência" title="Tipo de sequência"/);
   assert.match(html, /<option value="" selected>Automático<\/option>/);
-  assert.match(html, /<option value="guided_practice">Prática guiada<\/option>/);
+  assert.match(html, /data-field="assist-preferred-container" aria-label="Materialização preferida" title="Materialização preferida"/);
   assert.doesNotMatch(html, /data-action="select-workbench-pane" data-workbench-pane="preview"/);
   assert.doesNotMatch(html, /Sem cards ainda/);
   assert.doesNotMatch(html, /Envie o pedido para gerar os cards da microssequência\./);
-  assert.match(html, /data-field="assist-prompt" class="assist-prompt" aria-label="Pedido dos primeiros cards" title="Pedido dos primeiros cards"/);
+  assert.match(html, /data-field="assist-prompt" class="assist-prompt" aria-label="Pedido dos primeiros cards" title="Pedido dos primeiros cards" placeholder="Gere os primeiros cards\."/);
   assert.match(html, /data-action="apply-assist"[^>]*title="Gerar primeiros cards" aria-label="Gerar primeiros cards"/);
+  assert.doesNotMatch(html, /data-field="assist-target-mode"/);
+  assert.doesNotMatch(html, /data-field="assist-operation-mode"/);
+  assert.doesNotMatch(html, /data-field="assist-intervention-type"/);
+  assert.doesNotMatch(html, /data-field="assist-didactic-type"/);
 });
 
-test("renderiza atalho para próxima microssequência planejada no painel de edição", () => {
+test("renderiza ação intermediária quando há próxima microssequência planejada", () => {
   const project = readProject();
   const course = project.courses[0];
   const moduleValue = course.modules[0];
@@ -693,8 +692,18 @@ test("renderiza atalho para próxima microssequência planejada no painel de edi
       activeMicrosequenceVersionId: "v1",
       selectedDependencyKeys: [],
       pendingDependencyKey: "",
-      didacticTypeOptions: [{ value: "", label: "Automático" }],
-      selectedDidacticTypeId: "",
+      assistActionOptions: [
+        { value: "continue_current", label: "Continuar esta microssequência", description: "Continua a etapa." },
+        { value: "repair_current", label: "Corrigir esta microssequência", description: "Corrige a etapa." },
+        { value: "insert_after_current", label: "Inserir microssequência intermediária", description: "Cria uma etapa entre esta e a próxima." }
+      ],
+      selectedAssistAction: "",
+      assistPromptLabel: "Pedido",
+      assistSubmitLabel: "Enviar pedido",
+      assistPromptPlaceholder: "Descreva o pedido.",
+      assistRequestReady: false,
+      containerOptions: [{ value: "", label: "Automático" }],
+      preferredContainer: "",
       modelOptions: [{ value: "gemini-2.5-flash", label: "Gemini 2.5 Flash" }],
       selectedModel: "gemini-2.5-flash",
       assistModeOptions: [],
@@ -707,7 +716,8 @@ test("renderiza atalho para próxima microssequência planejada no painel de edi
     }
   });
 
-  assert.match(html, /data-action="open-next-planned-microsequence"/);
+  assert.match(html, /Inserir microssequência intermediária/);
+  assert.doesNotMatch(html, /data-action="open-next-planned-microsequence"/);
 });
 
 test("renderiza a aba preview da microssequência dentro da superfície combinada", () => {
