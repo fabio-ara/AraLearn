@@ -1106,6 +1106,12 @@ button {
   opacity: 0.9;
 }
 
+.light-tag-more {
+  min-width: 30px;
+  justify-content: center;
+  padding-left: 9px;
+}
+
 .compact-study-tags {
   min-height: 0;
 }
@@ -1425,6 +1431,11 @@ button {
   gap: 8px;
 }
 
+.workbench-preview-pane.study-reader-screen {
+  height: 100%;
+  min-height: 0;
+}
+
 .workbench-preview-pane .editor-card-stage-shell,
 .generator-preview-stage > .editor-card-stage-shell {
   flex: 1 1 auto;
@@ -1727,6 +1738,9 @@ button {
   padding: 0;
   position: relative;
   overflow: hidden;
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .editor-card-stage-shell {
@@ -1829,6 +1843,7 @@ button {
   display: grid;
   gap: 2px;
   padding: 0 4px;
+  flex: 0 0 auto;
 }
 
 .study-reader-line {
@@ -1854,14 +1869,14 @@ button {
   display: block;
   color: #f0c66b;
   font-family: var(--font-display);
-  font-size: var(--type-base);
+  font-size: var(--type-sm);
   font-weight: 600;
   line-height: var(--leading-snug);
   letter-spacing: 0.08em;
   font-variant-caps: all-small-caps;
   text-transform: lowercase;
   text-align: center;
-  padding: 0 52px;
+  padding: 0 46px;
 }
 
 .study-reader-count {
@@ -1928,6 +1943,7 @@ button {
 }
 
 .runtime-card-sheet {
+  height: 100%;
   min-height: 0;
 }
 
@@ -3636,6 +3652,7 @@ button {
 }
 
 .study-reader-footer {
+  flex: 0 0 auto;
   position: relative;
   z-index: 12;
   padding:

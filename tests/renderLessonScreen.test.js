@@ -414,8 +414,8 @@ test("renderiza o painel da microssequência sem botão próprio de ações e co
   assert.doesNotMatch(html, /data-action="editor-next-version"/);
   assert.doesNotMatch(html, /data-action="editor-prev-card"/);
   assert.doesNotMatch(html, /data-action="editor-next-card"/);
-  assert.match(html, /data-action="scroll-card-strip-prev"/);
-  assert.match(html, /data-action="scroll-card-strip-next"/);
+  assert.doesNotMatch(html, /data-action="scroll-card-strip-prev"/);
+  assert.doesNotMatch(html, /data-action="scroll-card-strip-next"/);
   assert.doesNotMatch(html, /data-action="version-tabs-prev"/);
   assert.doesNotMatch(html, /data-action="version-tabs-next"/);
   assert.doesNotMatch(html, /data-action="use-microsequence-version"/);
@@ -430,11 +430,11 @@ test("renderiza o painel da microssequência sem botão próprio de ações e co
   assert.match(html, /data-action="select-workbench-pane" data-workbench-pane="preview" aria-label="Preview" title="Preview"/);
   assert.match(html, /workbench-surface-tab active" type="button" role="tab" aria-selected="true" data-action="select-workbench-pane" data-workbench-pane="edit" aria-label="Edição" title="Edição"/);
   assert.match(html, /workbench-surface-tab-icon/);
-  assert.match(html, /mini-card-kicker-icon/);
-  assert.match(html, /data-action="open-card"/);
-  assert.match(html, /data-structure-draggable="true"/);
-  assert.match(html, /data-structure-level="card"/);
-  assert.match(html, /data-card-key="card-ideia-central"/);
+  assert.doesNotMatch(html, /mini-card-kicker-icon/);
+  assert.doesNotMatch(html, /data-action="open-card"/);
+  assert.doesNotMatch(html, /data-structure-draggable="true"/);
+  assert.doesNotMatch(html, /data-structure-level="card"/);
+  assert.doesNotMatch(html, /data-card-key="card-ideia-central"/);
   assert.doesNotMatch(html, /data-action="edit-card"/);
   assert.doesNotMatch(html, /<span class="editor-version-tab-label">v12<\/span>/);
   assert.doesNotMatch(html, /<span class="editor-version-tab-meta">12\/05 18:41<\/span>/);
@@ -759,7 +759,7 @@ test("renderiza a aba preview da microssequência dentro da superfície combinad
   assert.doesNotMatch(html, /<label[^>]*>\s*Tags\s*<\/label>/);
 });
 
-test("renderiza a execução do card com nome do curso e faixa estável de tags", () => {
+test("renderiza a execução do card com nome do curso e contexto compacto", () => {
   const project = readProject();
   const course = project.courses[0];
   const moduleValue = course.modules[0];
@@ -786,19 +786,29 @@ test("renderiza a execução do card com nome do curso e faixa estável de tags"
       progress: { version: 1, lessons: {} },
       dependencies: [
         { key: "diretorio", title: "Diretório atual e caminhos" },
-        { key: "teste", title: "Teste" }
+        { key: "teste", title: "Teste" },
+        { key: "extra", title: "Dependência extra" }
       ],
+      visualizedMicrosequenceVersion: {
+        id: "v-runtime",
+        title: microsequence.title,
+        tags: ["diretorio", "teste", "extra"],
+        cards: microsequence.cards
+      },
       cardRuntimeOptions: {}
     }
   });
 
   assert.match(html, /<span class="study-reader-context-line study-reader-course-title">Curso renderizável<\/span>/);
   assert.doesNotMatch(html, /Lição experimental - Modelo cascata/);
+  assert.doesNotMatch(html, /editor-step-nav/);
   assert.match(html, /class="study-context-tags compact-study-tags"/);
   assert.match(html, /class="study-reader-count" aria-label="Card 1 de 7" title="Card 1 de 7"/);
   assert.match(html, /study-reader-count-value">1\/7<\/span>/);
   assert.match(html, /Diretório atual e caminhos/);
   assert.match(html, /Teste/);
+  assert.match(html, />\+1<\/span>/);
+  assert.doesNotMatch(html, /Dependência extra/);
 });
 
 test("renderiza CTAs de aceitar e excluir quando a iteracao gerada atual esta pendente", () => {

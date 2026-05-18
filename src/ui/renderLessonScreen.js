@@ -331,26 +331,6 @@ function renderEditorCardStrip(cards, activeIndex, structureContext = {}) {
     .join("");
 }
 
-function renderWorkbenchCardStrip(cards, activeIndex, structureContext = {}) {
-  return (
-    '<div class="editor-card-strip-shell" data-card-strip-shell="true">' +
-    '<button class="editor-card-strip-arrow is-prev" type="button" data-action="scroll-card-strip-prev" title="Mostrar cards anteriores" aria-label="Mostrar cards anteriores" hidden>&larr;</button>' +
-    '<div class="editor-step-strip editor-card-strip-track" data-card-strip="true" data-structure-collection="card" data-course-key="' +
-    escapeHtml(structureContext.courseKey || "") +
-    '" data-module-key="' +
-    escapeHtml(structureContext.moduleKey || "") +
-    '" data-lesson-key="' +
-    escapeHtml(structureContext.lessonKey || "") +
-    '" data-microsequence-key="' +
-    escapeHtml(structureContext.microsequenceKey || "") +
-    '">' +
-    renderEditorCardStrip(cards, activeIndex, structureContext) +
-    "</div>" +
-    '<button class="editor-card-strip-arrow is-next" type="button" data-action="scroll-card-strip-next" title="Mostrar mais cards" aria-label="Mostrar mais cards" hidden>&rarr;</button>' +
-    "</div>"
-  );
-}
-
 function renderWorkbenchPaneIcon(pane) {
   return renderUiIcon(pane === "edit" ? "sparkles" : "preview", "workbench-surface-tab-icon");
 }
@@ -556,19 +536,35 @@ function renderExplicitTags(tags, rowClass = "didactic-tag-row") {
   return '<div class="' + escapeHtml(rowClass) + '">' + tagMarkup + "</div>";
 }
 
-function renderLightDependencyTags(dependencies) {
-  return (dependencies || [])
-    .slice(0, 4)
-    .map((item) => {
-      return (
-        '<span class="didactic-tag dependency-tag-chip light-tag">' +
-        '<span class="didactic-tag-text">' +
-        escapeHtml(item.title || item.key) +
-        "</span>" +
-        "</span>"
-      );
-    })
-    .join("");
+function renderCompactRuntimeTags(tags, dependencies) {
+  const normalizedTags = Array.isArray(tags) ? tags.filter(Boolean) : [];
+  if (!normalizedTags.length) {
+    return "";
+  }
+
+  const dependencyMap = new Map(
+    (dependencies || []).map((item) => [String(item.key || "").trim().toLowerCase(), item.title || item.key || ""])
+  );
+  const labels = normalizedTags.map((tag) => dependencyMap.get(String(tag).trim().toLowerCase()) || String(tag));
+  const visibleLabels = labels.slice(0, 2);
+  const hiddenCount = Math.max(0, labels.length - visibleLabels.length);
+  return (
+    visibleLabels
+      .map((label) => {
+        return (
+          '<span class="didactic-tag dependency-tag-chip light-tag">' +
+          '<span class="didactic-tag-text">' +
+          escapeHtml(label) +
+          "</span></span>"
+        );
+      })
+      .join("") +
+    (hiddenCount
+      ? '<span class="didactic-tag dependency-tag-chip light-tag light-tag-more"><span class="didactic-tag-text">+' +
+        String(hiddenCount) +
+        "</span></span>"
+      : "")
+  );
 }
 
 function renderRuntimeBlocks(card, fallbackText, runtimeOptions = null) {
@@ -1037,7 +1033,7 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
   const nextDisabled = !hasCards || (microsequenceMode !== "play" && safeIndex >= visibleCards.length - 1);
   const cardProgressPercent = lessonStudyCount ? ((safeIndex + 1) / lessonStudyCount) * 100 : 0;
   const bodyText = readCardText(activeCard);
-  const lightDependencyTags = renderLightDependencyTags(editorSupport.dependencies || []);
+  const lightDependencyTags = renderCompactRuntimeTags(visualizedTags, editorSupport.dependencies || []);
   const popupEntry = activeCard ? getRuntimePopupButtonEntry(activeCard) : null;
   const popupBlockKey = editorSupport.continuePopup?.blockKey || `runtime-block::${popupEntry?.index ?? 0}`;
   const runtime = renderCardRuntimeBlocksWithDock(activeCard, {
@@ -1272,16 +1268,6 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
   const attachmentInput =
     '<input data-field="assist-attachments" class="assist-attachment-input" type="file" multiple accept=".pdf,.txt,.md,.json,.csv,.html,.xml,.js,.ts,.py,.java,.c,.cpp,.doc,.docx,.ppt,.pptx,.rtf,.odt,.ods,.odp,text/*,application/pdf,application/json,application/xml">';
   const attachmentChips = renderAssistAttachmentChips(editorSupport.attachments);
-  const stepNavigation = hasCards
-    ? '<section class="editor-step-nav">' +
-      renderWorkbenchCardStrip(visibleCards, safeIndex, {
-        courseKey: selection.courseKey,
-        moduleKey: selection.moduleKey,
-        lessonKey: selection.lessonKey,
-        microsequenceKey: selection.microsequenceKey
-      }) +
-      "</section>"
-    : "";
   const runtimeCardBody =
     hasCards
       ? '<article class="card-portrait-body card-portrait-sheet runtime-card-sheet">' +
@@ -1478,7 +1464,6 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
       ]
     }) +
     '<main class="screen-content microsequence-generator-screen">' +
-    stepNavigation +
     '<section class="workbench-surface" data-workbench-pane="' +
     activeWorkbenchPane +
     '">' +
