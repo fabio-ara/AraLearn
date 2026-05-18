@@ -1830,6 +1830,29 @@ export function createLessonEditorApp({ root, storage, editor }) {
     });
   }
 
+  function normalizeAssistMicrosequenceRange(patch = {}) {
+    const current = state.assistConfig.profileTuning || {};
+    const resolveValue = (value, fallback) => {
+      const numeric = Number.parseInt(String(value ?? ""), 10);
+      return Number.isFinite(numeric) ? Math.max(1, numeric) : fallback;
+    };
+
+    const minMicrosequences = resolveValue(patch.minMicrosequences, resolveValue(current.minMicrosequences, 3));
+    const maxCandidate = resolveValue(patch.maxMicrosequences, resolveValue(current.maxMicrosequences, 8));
+    const maxMicrosequences = Math.max(minMicrosequences, maxCandidate);
+    const targetCandidate = resolveValue(
+      patch.targetMicrosequences,
+      resolveValue(current.targetMicrosequences, 5)
+    );
+    const targetMicrosequences = Math.min(maxMicrosequences, Math.max(minMicrosequences, targetCandidate));
+
+    return {
+      minMicrosequences,
+      targetMicrosequences,
+      maxMicrosequences
+    };
+  }
+
   function inferAssistCourseModelFromDescription() {
     const nextCourseModel = inferCourseModelFromDescription(
       state.assistConfig.profileTuning?.courseModel?.description || "",
@@ -8316,6 +8339,39 @@ export function createLessonEditorApp({ root, storage, editor }) {
     const assistConfigMinMicrosequences = root.querySelector("[data-field='assist-config-min-microsequences']");
     const assistConfigTargetMicrosequences = root.querySelector("[data-field='assist-config-target-microsequences']");
     const assistConfigMaxMicrosequences = root.querySelector("[data-field='assist-config-max-microsequences']");
+    const assistConfigMicrosequenceRangeShell = root.querySelector("[data-field='assist-config-microsequence-range-shell']");
+    const assistConfigMinMicrosequencesLabel = root.querySelector("[data-role='assist-config-min-microsequences-label']");
+    const assistConfigTargetMicrosequencesLabel = root.querySelector("[data-role='assist-config-target-microsequences-label']");
+    const assistConfigMaxMicrosequencesLabel = root.querySelector("[data-role='assist-config-max-microsequences-label']");
+    const syncAssistMicrosequenceRange = (patch = {}) => {
+      const normalized = normalizeAssistMicrosequenceRange(patch);
+      updateAssistProfileTuning(normalized);
+
+      if (assistConfigMinMicrosequences) {
+        assistConfigMinMicrosequences.value = String(normalized.minMicrosequences);
+      }
+      if (assistConfigTargetMicrosequences) {
+        assistConfigTargetMicrosequences.value = String(normalized.targetMicrosequences);
+      }
+      if (assistConfigMaxMicrosequences) {
+        assistConfigMaxMicrosequences.value = String(normalized.maxMicrosequences);
+      }
+      if (assistConfigMinMicrosequencesLabel) {
+        assistConfigMinMicrosequencesLabel.textContent = `Mín ${normalized.minMicrosequences}`;
+      }
+      if (assistConfigTargetMicrosequencesLabel) {
+        assistConfigTargetMicrosequencesLabel.textContent = `Esperado ${normalized.targetMicrosequences}`;
+      }
+      if (assistConfigMaxMicrosequencesLabel) {
+        assistConfigMaxMicrosequencesLabel.textContent = `Máx ${normalized.maxMicrosequences}`;
+      }
+      if (assistConfigMicrosequenceRangeShell) {
+        const toPercent = (value) => (((value - 1) / 11) * 100).toFixed(2);
+        assistConfigMicrosequenceRangeShell.style.setProperty("--assist-range-start", toPercent(normalized.minMicrosequences));
+        assistConfigMicrosequenceRangeShell.style.setProperty("--assist-range-target", toPercent(normalized.targetMicrosequences));
+        assistConfigMicrosequenceRangeShell.style.setProperty("--assist-range-end", toPercent(normalized.maxMicrosequences));
+      }
+    };
     if (assistConfigProfile) {
       assistConfigProfile.addEventListener("change", () => {
         resetAssistProfileTuning(assistConfigProfile.value);
@@ -8383,17 +8439,17 @@ export function createLessonEditorApp({ root, storage, editor }) {
     }
     if (assistConfigMinMicrosequences) {
       assistConfigMinMicrosequences.addEventListener("input", () => {
-        updateAssistProfileTuning({ minMicrosequences: assistConfigMinMicrosequences.value });
+        syncAssistMicrosequenceRange({ minMicrosequences: assistConfigMinMicrosequences.value });
       });
     }
     if (assistConfigTargetMicrosequences) {
       assistConfigTargetMicrosequences.addEventListener("input", () => {
-        updateAssistProfileTuning({ targetMicrosequences: assistConfigTargetMicrosequences.value });
+        syncAssistMicrosequenceRange({ targetMicrosequences: assistConfigTargetMicrosequences.value });
       });
     }
     if (assistConfigMaxMicrosequences) {
       assistConfigMaxMicrosequences.addEventListener("input", () => {
-        updateAssistProfileTuning({ maxMicrosequences: assistConfigMaxMicrosequences.value });
+        syncAssistMicrosequenceRange({ maxMicrosequences: assistConfigMaxMicrosequences.value });
       });
     }
     root.querySelectorAll("[data-action='toggle-assist-config-flag']").forEach((node) => {

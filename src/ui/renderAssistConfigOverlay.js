@@ -2,6 +2,8 @@ import { renderUiIcon } from "./renderUiIcons.js";
 import { listCourseModelOptions } from "../generation/runtime/courseModelSemantics.js";
 
 const COURSE_MODEL_OPTIONS = listCourseModelOptions();
+const MICROSEQUENCE_RANGE_MIN = 1;
+const MICROSEQUENCE_RANGE_MAX = 12;
 
 function escapeHtml(value) {
   return String(value)
@@ -55,6 +57,55 @@ function renderNumberField({ field, iconName, title, value } = {}) {
     `<span>${escapeHtml(title)}</span></span>` +
     `<input data-field="${escapeHtml(field)}" type="number" min="1" step="1" value="${escapeHtml(value)}" aria-label="${escapeHtml(title)}" title="${escapeHtml(title)}">` +
     "</label>"
+  );
+}
+
+function clampInteger(value, fallback, min = MICROSEQUENCE_RANGE_MIN, max = MICROSEQUENCE_RANGE_MAX) {
+  const numeric = Number.parseInt(String(value ?? ""), 10);
+  if (!Number.isFinite(numeric)) {
+    return fallback;
+  }
+  return Math.min(max, Math.max(min, numeric));
+}
+
+function toPercent(value, min = MICROSEQUENCE_RANGE_MIN, max = MICROSEQUENCE_RANGE_MAX) {
+  const span = Math.max(1, max - min);
+  return ((value - min) / span) * 100;
+}
+
+function renderMicrosequenceRangeField(profileTuning = {}) {
+  const minValue = clampInteger(profileTuning.minMicrosequences, 3);
+  const maxValue = Math.max(minValue, clampInteger(profileTuning.maxMicrosequences, 8));
+  const targetValue = Math.min(
+    maxValue,
+    Math.max(minValue, clampInteger(profileTuning.targetMicrosequences, 5))
+  );
+  const style = [
+    `--assist-range-start:${toPercent(minValue)}`,
+    `--assist-range-target:${toPercent(targetValue)}`,
+    `--assist-range-end:${toPercent(maxValue)}`
+  ].join(";");
+
+  return (
+    '<div class="assist-config-field assist-config-microsequence-range-field">' +
+    renderFieldLabel(
+      "microsequence",
+      "Microssequências por lição",
+      "Faixa de granularidade do top-down para cada lição"
+    ) +
+    `<div class="assist-config-range-shell" data-field="assist-config-microsequence-range-shell" style="${style}">` +
+    '<div class="assist-config-range-track" aria-hidden="true"></div>' +
+    '<div class="assist-config-range-band" aria-hidden="true"></div>' +
+    '<div class="assist-config-range-target-marker" aria-hidden="true"></div>' +
+    `<input class="assist-config-range-input assist-config-range-input-min" data-field="assist-config-min-microsequences" type="range" min="${MICROSEQUENCE_RANGE_MIN}" max="${MICROSEQUENCE_RANGE_MAX}" step="1" value="${escapeHtml(minValue)}" aria-label="Microssequências por lição mínimo" title="Mínimo de microssequências por lição">` +
+    `<input class="assist-config-range-input assist-config-range-input-target" data-field="assist-config-target-microsequences" type="range" min="${MICROSEQUENCE_RANGE_MIN}" max="${MICROSEQUENCE_RANGE_MAX}" step="1" value="${escapeHtml(targetValue)}" aria-label="Microssequências por lição esperado" title="Quantidade esperada de microssequências por lição">` +
+    `<input class="assist-config-range-input assist-config-range-input-max" data-field="assist-config-max-microsequences" type="range" min="${MICROSEQUENCE_RANGE_MIN}" max="${MICROSEQUENCE_RANGE_MAX}" step="1" value="${escapeHtml(maxValue)}" aria-label="Microssequências por lição máximo" title="Máximo de microssequências por lição">` +
+    "</div>" +
+    '<div class="assist-config-range-values" aria-hidden="true">' +
+    `<span data-role="assist-config-min-microsequences-label">Mín ${escapeHtml(minValue)}</span>` +
+    `<span data-role="assist-config-target-microsequences-label">Esperado ${escapeHtml(targetValue)}</span>` +
+    `<span data-role="assist-config-max-microsequences-label">Máx ${escapeHtml(maxValue)}</span>` +
+    "</div></div>"
   );
 }
 
@@ -158,7 +209,7 @@ export function renderAssistConfigOverlay({
     "</section>" +
     '<section class="assist-config-panel">' +
     renderSectionLabel("progress", "Ritmo", "Parâmetros de densidade, retomada e fechamento do núcleo") +
-    '<div class="assist-config-number-grid">' +
+    '<div class="assist-config-rhythm-grid">' +
     renderNumberField({
       field: "assist-config-conceptual-reappearances",
       iconName: "card",
@@ -171,25 +222,8 @@ export function renderAssistConfigOverlay({
       title: "Retoma prática",
       value: profileTuning.operationalReappearances || 4
     }) +
-    renderNumberField({
-      field: "assist-config-min-microsequences",
-      iconName: "microsequence",
-      title: "Blocos mín",
-      value: profileTuning.minMicrosequences || 3
-    }) +
-    renderNumberField({
-      field: "assist-config-target-microsequences",
-      iconName: "lesson",
-      title: "Blocos alvo",
-      value: profileTuning.targetMicrosequences || 5
-    }) +
-    renderNumberField({
-      field: "assist-config-max-microsequences",
-      iconName: "folder",
-      title: "Blocos máx",
-      value: profileTuning.maxMicrosequences || 8
-    }) +
     "</div>" +
+    renderMicrosequenceRangeField(profileTuning) +
     '<div class="assist-config-toggle-row">' +
     '<span class="assist-config-toggle-group">' +
     renderBooleanToggle({

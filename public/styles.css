@@ -3933,6 +3933,12 @@ button {
   gap: 10px;
 }
 
+.assist-config-rhythm-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
 .assist-config-field {
   display: grid;
   gap: 8px;
@@ -3975,6 +3981,130 @@ button {
 
 .assist-config-number-field input {
   text-align: center;
+}
+
+.assist-config-microsequence-range-field {
+  gap: 10px;
+}
+
+.assist-config-range-shell {
+  --assist-range-start: 18%;
+  --assist-range-target: 36%;
+  --assist-range-end: 64%;
+  position: relative;
+  min-height: 42px;
+  padding: 4px 0;
+}
+
+.assist-config-range-track,
+.assist-config-range-band {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  top: 20px;
+  height: 4px;
+  border-radius: 999px;
+}
+
+.assist-config-range-track {
+  background: rgba(151, 117, 68, 0.24);
+}
+
+.assist-config-range-band {
+  left: calc(10px + ((100% - 20px) * var(--assist-range-start) / 100));
+  right: calc(10px + ((100% - 20px) * (100 - var(--assist-range-end)) / 100));
+  background: linear-gradient(90deg, rgba(205, 167, 97, 0.88), rgba(146, 115, 61, 0.92));
+}
+
+.assist-config-range-target-marker {
+  position: absolute;
+  top: 13px;
+  left: calc(10px + ((100% - 20px) * var(--assist-range-target) / 100));
+  width: 14px;
+  height: 14px;
+  margin-left: -7px;
+  border-radius: 999px;
+  border: 2px solid rgba(246, 229, 180, 0.92);
+  background: #231a11;
+  box-shadow: 0 0 0 3px rgba(18, 13, 9, 0.65);
+}
+
+.assist-config-range-input {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 6px;
+  width: 100%;
+  height: 28px;
+  margin: 0;
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
+  pointer-events: none;
+}
+
+.assist-config-range-input::-webkit-slider-runnable-track {
+  height: 28px;
+  background: transparent;
+}
+
+.assist-config-range-input::-moz-range-track {
+  height: 28px;
+  background: transparent;
+  border: 0;
+}
+
+.assist-config-range-input::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  margin-top: 5px;
+  border-radius: 999px;
+  border: 2px solid rgba(241, 220, 171, 0.96);
+  background: linear-gradient(180deg, #3c2b18, #1d140d);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.assist-config-range-input::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  border: 2px solid rgba(241, 220, 171, 0.96);
+  background: linear-gradient(180deg, #3c2b18, #1d140d);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.assist-config-range-input-min {
+  z-index: 2;
+}
+
+.assist-config-range-input-target {
+  z-index: 3;
+}
+
+.assist-config-range-input-max {
+  z-index: 4;
+}
+
+.assist-config-range-values {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  color: #d8c29d;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.assist-config-range-values span:nth-child(2) {
+  text-align: center;
+}
+
+.assist-config-range-values span:last-child {
+  text-align: right;
 }
 
 .assist-config-student-field input {
@@ -6109,7 +6239,8 @@ button {
 @media (max-width: 520px) {
   .assist-config-grid,
   .assist-config-local-grid,
-  .assist-config-number-grid {
+  .assist-config-number-grid,
+  .assist-config-rhythm-grid {
     grid-template-columns: minmax(0, 1fr);
   }
 
