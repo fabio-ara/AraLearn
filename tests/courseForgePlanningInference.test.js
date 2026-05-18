@@ -106,6 +106,8 @@ test("inferCourseForgePlanningProfileTuning usa provider para completar o tuning
   assert.equal(calls.length, 1);
   assert.match(calls[0].prompt, /complete todos os parâmetros modificáveis/i);
   assert.match(calls[0].prompt, /material com notação, prova e exemplos graduais/i);
+  assert.match(calls[0].prompt, /introduzir, nomear, expandir abreviações/i);
+  assert.match(calls[0].prompt, /não é mero glossário/i);
   assert.equal(result.profileTuningPatch.courseModel.learningTrail, "formalization");
   assert.equal(result.profileTuningPatch.minMicrosequences, 4);
   assert.equal(result.profileTuningPatch.requireVocabularyMap, true);

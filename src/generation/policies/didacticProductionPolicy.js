@@ -81,6 +81,7 @@ export function buildDidacticProductionPolicy({
   engineProfile = {}
 } = {}) {
   const didacticConfig = getDidacticPolicyConfig(engineProfile);
+  const requireVocabularyMap = engineProfile?.didacticPolicy?.topDownCourseStrategy?.requireVocabularyMap !== false;
   const operationalDiscipline = inferOperationalDiscipline({
     lessonGuidance,
     lessonSourceGuideStructured,
@@ -120,6 +121,7 @@ export function buildDidacticProductionPolicy({
     courseModelLines: buildCourseModelPromptLines(didacticConfig?.courseSemantics || {}),
     explainAcronymsLocally: true,
     explainTechnicalEnglishLocally: technicalEnglishRequired,
+    requireVocabularyGovernance: requireVocabularyMap,
     rejectGenericSummary: true,
     requireBridgeBackToTrack: studyTrackPolicy?.mode === "clarify_local_doubt",
     weakModelCompatible: weakModelMode === true
@@ -140,6 +142,7 @@ export function summarizeDidacticProductionPolicyForPrompt(input = {}) {
     courseModelLines: policy.courseModelLines,
     explainAcronymsLocally: policy.explainAcronymsLocally,
     explainTechnicalEnglishLocally: policy.explainTechnicalEnglishLocally,
+    requireVocabularyGovernance: policy.requireVocabularyGovernance,
     rejectGenericSummary: policy.rejectGenericSummary,
     requireBridgeBackToTrack: policy.requireBridgeBackToTrack,
     operationalExhaustiveness: policy.operationalExhaustiveness
@@ -162,6 +165,14 @@ export function buildDidacticProductionPromptLines(input = {}) {
   }
   if (policy.explainTechnicalEnglishLocally) {
     lines.push("Explique termos técnicos e palavras em inglês de forma funcional e em português claro.");
+  }
+  if (policy.requireVocabularyGovernance) {
+    lines.push(
+      "Antes de cobrar uso autônomo, nomeie o vocabulário técnico relevante, expanda abreviações ou siglas, traduza funcionalmente para o português e conecte o termo ao efeito operacional."
+    );
+    lines.push(
+      "Não aceite aprendizagem por decoração visual; em linguagens e notações, apresente explicitamente o nome técnico do que está sendo usado."
+    );
   }
   if (policy.operationalExhaustiveness.length) {
     lines.push(`Se o conteúdo for operacional, cubra: ${policy.operationalExhaustiveness.join(", ")}.`);

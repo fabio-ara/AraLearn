@@ -93,6 +93,8 @@ function buildPlanningInferencePrompt({
     "TASK:",
     "Leia o pedido do usuário e complete todos os parâmetros modificáveis do planejamento.",
     "Ajuste somente parâmetros, não princípios invariantes do sistema.",
+    "Quando requireVocabularyMap for true, interprete isso como diretriz de trilha para introduzir, nomear, expandir abreviações, traduzir funcionalmente e só depois cobrar o uso de vocabulário técnico da linguagem.",
+    "Use requireVocabularyMap = true quando o curso depender de termos, tags, comandos, operadores, siglas, notação ou palavras-chave que não devam ser aprendidos só por decoração visual.",
     "Use o texto do pedido e os anexos como fonte principal. Use o planejamento atual apenas como fallback quando o pedido não deixar algo claro.",
     "",
     "PLANEJAMENTO ATUAL:",
@@ -128,6 +130,7 @@ function buildPlanningInferencePrompt({
     "- learningTrail deve ser um dos valores permitidos.",
     "- microsequenceProgression deve ser compatível com a learningTrail escolhida.",
     "- minMicrosequences <= targetMicrosequences <= maxMicrosequences.",
+    "- requireVocabularyMap=true significa que a trilha deve reservar espaço para explicação explícita de vocabulário técnico antes do uso autônomo; não é mero glossário.",
     "",
     "JSON SCHEMA ESPERADO:",
     JSON.stringify(

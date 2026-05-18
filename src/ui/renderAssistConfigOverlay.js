@@ -204,7 +204,7 @@ export function renderAssistConfigPanel({
     }) +
     renderBooleanField({
       field: "requireVocabularyMap",
-      title: "Exigir mapa de vocabulário",
+      title: "Explicar vocabulário técnico antes do uso",
       iconName: "comment",
       checked: profileTuning.requireVocabularyMap !== false
     }) +

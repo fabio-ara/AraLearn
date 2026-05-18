@@ -565,11 +565,27 @@ test("CourseForge usa policy pack didático compatível com Planner Builder Audi
   assert.match(policy, /sourceGuideStructured/);
   assert.match(policy, /Perfil-alvo obrigatório/);
   assert.match(policy, /planner_builder_auditor_internalizado/);
-  assert.match(policy, /Explique siglas/);
+  assert.match(policy, /Explique vocabulário técnico antes do uso autônomo/);
   assert.match(policy, /reconecte explicitamente à trilha/);
   assert.match(prompt, /POLICY PACK/);
   assert.match(prompt, /domainRefs e practiceVariantRefs/);
   assert.match(prompt, /artefatos anexos da fase/);
+});
+
+test("CourseForge reforça governança explícita de vocabulário técnico quando o perfil exige isso", () => {
+  const policy = buildCourseForgePolicyPack({
+    engineProfile: {
+      didacticPolicy: {
+        topDownCourseStrategy: {
+          requireVocabularyMap: true
+        }
+      }
+    }
+  });
+
+  assert.match(policy, /Explique vocabulário técnico antes do uso autônomo/);
+  assert.match(policy, /não aceite aprendizagem por decoração visual/i);
+  assert.match(policy, /ul -> unordered list -> lista não ordenada/);
 });
 
 test("fakeProvider devolve resposta roteada por fase", async () => {

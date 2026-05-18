@@ -31,6 +31,7 @@ export function buildCourseForgePolicyPack({
   });
   const registryGuardrails = listPromptPackGuardrails("courseForge", engineProfile);
   const courseModelLines = buildCourseModelPromptLines(engineProfile?.didacticPolicy?.courseSemantics || {});
+  const requireVocabularyGovernance = productionPolicy.requireVocabularyGovernance === true;
 
   return [
     "Contrato didático AraLearn:",
@@ -42,7 +43,12 @@ export function buildCourseForgePolicyPack({
     "- sourceGuideStructured governa meta, notação e confusões prováveis da lição; o pedido do usuário especializa o recorte, mas não substitui a governança.",
     "- domainMap, domainRefs e practiceVariantRefs são contrato de cobertura, não decoração; itens centrais precisam de explicação, prática, variação e retorno cumulativo.",
     "- Todo card deve ser autossuficiente: contexto crítico, dados, regras, fórmulas, critérios, código, tabela ou convenção necessários ficam no próprio card.",
-    "- Explique siglas, termos técnicos, palavras em inglês e notação antes de cobrar uso; em programação, apresente forma técnica, tradução funcional e efeito operacional.",
+    requireVocabularyGovernance
+      ? "- Explique vocabulário técnico antes do uso autônomo: nomeie o termo original, expanda abreviações ou siglas, traduza funcionalmente para o português e conecte ao efeito operacional; não aceite aprendizagem por decoração visual."
+      : "- Explique siglas, termos técnicos, palavras em inglês e notação antes de cobrar uso; em programação, apresente forma técnica, tradução funcional e efeito operacional.",
+    requireVocabularyGovernance
+      ? "- Em linguagem de programação, tags, atributos, comandos, palavras-chave, operadores e notações devem aparecer com nome técnico explícito; exemplo de referência aceitável: ul -> unordered list -> lista não ordenada."
+      : null,
     "- Em conteúdo operacional, comandos, terminal ou linguagem de programação, a prática deve cobrir reconhecimento, leitura, produção guiada, combinação, sequência, erro frequente e revisão cumulativa.",
     "- Use imagem só quando o conteúdo não couber melhor em container público textual, tabela, fluxograma, montagem, editor de código, plano ou matriz.",
     ...courseModelLines.map((line) => `- Modelagem do curso: ${line}`),
@@ -50,7 +56,9 @@ export function buildCourseForgePolicyPack({
     "- A microssequência não pode depender de pressuposto oculto; o que ela usar já deve ter sido explicitado antes ou no próprio card.",
     "- Se surgir dúvida local ou reforço bottom-up, responda a dúvida e reconecte explicitamente à trilha didática planejada.",
     ...registryGuardrails.map((entry) => `- Registry: ${entry}.`)
-  ].join("\n");
+  ]
+    .filter(Boolean)
+    .join("\n");
 }
 
 export function buildCourseForgePrompt({
