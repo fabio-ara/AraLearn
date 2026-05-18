@@ -29,8 +29,6 @@ test("normalizeInferredPlanningProfileTuning preenche todos os parâmetros modif
       courseModelDescription: "curso formal com notação e abstração",
       learningTrail: "formalization",
       microsequenceProgression: "concrete_visual_formal",
-      conceptualReappearancesLevel: "high",
-      operationalReappearancesLevel: "medium",
       minMicrosequences: 4,
       targetMicrosequences: 6,
       maxMicrosequences: 9,
@@ -43,8 +41,8 @@ test("normalizeInferredPlanningProfileTuning preenche todos os parâmetros modif
   assert.equal(patch.courseModelEdited, true);
   assert.equal(patch.courseModel.learningTrail, "formalization");
   assert.equal(patch.courseModel.microsequenceProgression, "concrete_visual_formal");
-  assert.equal(patch.conceptualReappearances, 4);
-  assert.equal(patch.operationalReappearances, 4);
+  assert.equal(patch.conceptualReappearances, undefined);
+  assert.equal(patch.operationalReappearances, undefined);
   assert.equal(patch.minMicrosequences, 4);
   assert.equal(patch.targetMicrosequences, 6);
   assert.equal(patch.maxMicrosequences, 9);
@@ -94,8 +92,6 @@ test("inferCourseForgePlanningProfileTuning usa provider para completar o tuning
             courseModelDescription: "trilha de formalização gradual",
             learningTrail: "formalization",
             microsequenceProgression: "concrete_visual_formal",
-            conceptualReappearancesLevel: "high",
-            operationalReappearancesLevel: "medium",
             minMicrosequences: 4,
             targetMicrosequences: 6,
             maxMicrosequences: 9,

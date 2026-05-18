@@ -1,9 +1,5 @@
 import { resolveCourseForgeLaunchConfig } from "./courseForgeLaunchConfig.js";
-import {
-  createCourseForgeProfileTuning,
-  mapConceptualReappearanceLevelToValue,
-  mapOperationalReappearanceLevelToValue
-} from "./courseForgeProfileTuning.js";
+import { createCourseForgeProfileTuning } from "./courseForgeProfileTuning.js";
 import { createDefaultCourseModel, listCourseModelOptions } from "./courseModelSemantics.js";
 import { callModelWithRetry } from "../providers/callModelWithRetry.js";
 
@@ -47,14 +43,6 @@ function clampMicrosequenceRange(input = {}) {
     targetMicrosequences,
     maxMicrosequences
   };
-}
-
-function normalizeReappearanceLevel(value, fallback = "medium") {
-  const normalized = text(value).toLowerCase();
-  if (["low", "medium", "high"].includes(normalized)) {
-    return normalized;
-  }
-  return fallback;
 }
 
 function buildPlanningOptionsText() {
@@ -115,8 +103,6 @@ function buildPlanningInferencePrompt({
         courseModelDescription: text(currentCourseModel.description),
         learningTrail: text(currentCourseModel.learningTrail),
         microsequenceProgression: text(currentCourseModel.microsequenceProgression),
-        conceptualReappearances: toPositiveInteger(currentProfileTuning?.conceptualReappearances, 3),
-        operationalReappearances: toPositiveInteger(currentProfileTuning?.operationalReappearances, 4),
         minMicrosequences: currentRange.minMicrosequences,
         targetMicrosequences: currentRange.targetMicrosequences,
         maxMicrosequences: currentRange.maxMicrosequences,
@@ -139,7 +125,6 @@ function buildPlanningInferencePrompt({
     "REGRAS DE SAÍDA:",
     "- Responda somente JSON válido.",
     "- Preencha todos os campos do schema.",
-    "- conceptualReappearancesLevel e operationalReappearancesLevel devem ser low, medium ou high.",
     "- learningTrail deve ser um dos valores permitidos.",
     "- microsequenceProgression deve ser compatível com a learningTrail escolhida.",
     "- minMicrosequences <= targetMicrosequences <= maxMicrosequences.",
@@ -151,8 +136,6 @@ function buildPlanningInferencePrompt({
         courseModelDescription: "string",
         learningTrail: "procedure | technical_reading | formalization | problem_solving | complex_project | language_communication | argumentation_classification",
         microsequenceProgression: "string",
-        conceptualReappearancesLevel: "low | medium | high",
-        operationalReappearancesLevel: "low | medium | high",
         minMicrosequences: 3,
         targetMicrosequences: 5,
         maxMicrosequences: 8,
@@ -184,20 +167,6 @@ export function normalizeInferredPlanningProfileTuning({
 
   return {
     targetStudentProfile: text(inferred?.targetStudentProfile) || base.targetStudentProfile,
-    conceptualReappearances: mapConceptualReappearanceLevelToValue(
-      normalizeReappearanceLevel(
-        inferred?.conceptualReappearancesLevel,
-        currentProfileTuning?.conceptualReappearances >= 4 ? "high" : currentProfileTuning?.conceptualReappearances <= 2 ? "low" : "medium"
-      ),
-      base.conceptualReappearances
-    ),
-    operationalReappearances: mapOperationalReappearanceLevelToValue(
-      normalizeReappearanceLevel(
-        inferred?.operationalReappearancesLevel,
-        currentProfileTuning?.operationalReappearances >= 5 ? "high" : currentProfileTuning?.operationalReappearances <= 3 ? "low" : "medium"
-      ),
-      base.operationalReappearances
-    ),
     ...range,
     requireCoreCoverageBeforeExtensions: normalizeBoolean(
       inferred?.requireCoreCoverageBeforeExtensions,

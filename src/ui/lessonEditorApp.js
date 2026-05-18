@@ -140,9 +140,7 @@ import {
   resolveCourseForgeOpenGeneratedLessonState
 } from "../generation/runtime/courseForgeGenerationEditorRuntime.js";
 import {
-  createCourseForgeProfileTuning,
-  mapConceptualReappearanceLevelToValue,
-  mapOperationalReappearanceLevelToValue
+  createCourseForgeProfileTuning
 } from "../generation/runtime/courseForgeProfileTuning.js";
 import { inferCourseForgePlanningProfileTuning } from "../generation/runtime/courseForgePlanningInference.js";
 import { resolveCourseForgeProviderReadiness, resolveGenerationPanelScopeFromAction } from "../generation/runtime/courseForgeGenerationViewModel.js";
@@ -8676,8 +8674,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
     const assistConfigCourseModelDescription = root.querySelector("[data-field='assist-config-course-model-description']");
     const assistConfigCourseLearningTrail = root.querySelector("[data-field='assist-config-course-learning-trail']");
     const assistConfigCourseMicrosequenceProgression = root.querySelector("[data-field='assist-config-course-microsequence-progression']");
-    const assistConfigConceptualReappearances = root.querySelector("[data-field='assist-config-conceptual-reappearances']");
-    const assistConfigOperationalReappearances = root.querySelector("[data-field='assist-config-operational-reappearances']");
     const assistConfigMinMicrosequences = root.querySelector("[data-field='assist-config-min-microsequences']");
     const assistConfigTargetMicrosequences = root.querySelector("[data-field='assist-config-target-microsequences']");
     const assistConfigMaxMicrosequences = root.querySelector("[data-field='assist-config-max-microsequences']");
@@ -8746,20 +8742,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
     if (assistConfigCourseMicrosequenceProgression) {
       assistConfigCourseMicrosequenceProgression.addEventListener("change", () => {
         updateAssistCourseModel({ microsequenceProgression: assistConfigCourseMicrosequenceProgression.value });
-      });
-    }
-    if (assistConfigConceptualReappearances) {
-      assistConfigConceptualReappearances.addEventListener("change", () => {
-        updateAssistProfileTuning({
-          conceptualReappearances: mapConceptualReappearanceLevelToValue(assistConfigConceptualReappearances.value, 3)
-        });
-      });
-    }
-    if (assistConfigOperationalReappearances) {
-      assistConfigOperationalReappearances.addEventListener("change", () => {
-        updateAssistProfileTuning({
-          operationalReappearances: mapOperationalReappearanceLevelToValue(assistConfigOperationalReappearances.value, 4)
-        });
       });
     }
     if (assistConfigMinMicrosequences) {

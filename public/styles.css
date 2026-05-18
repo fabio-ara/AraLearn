@@ -4106,10 +4106,6 @@ button {
   gap: 8px;
 }
 
-.assist-config-compact-field {
-  align-content: start;
-}
-
 .assist-config-inference-hint {
   margin-top: 2px;
 }
