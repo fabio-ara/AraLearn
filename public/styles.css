@@ -4550,6 +4550,10 @@ button {
 .generation-overlay-panel {
   padding: 0;
   overflow: hidden;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
 }
 
 .action-menu-sheet {
@@ -6262,6 +6266,8 @@ button {
     calc(100dvh - var(--safe-top) - var(--safe-bottom-tappable) - 16px),
     860px
   );
+  padding-right: 10px;
+  box-sizing: border-box;
   overflow-y: auto;
   overflow-x: hidden;
   scrollbar-gutter: stable;
@@ -6272,11 +6278,12 @@ button {
   gap: 9px;
   width: 100%;
   padding: 12px;
-  border-top: 0;
-  border-radius: 0 18px 18px 18px;
+  border: 1px solid rgba(90, 73, 54, 0.92);
+  border-radius: 18px;
   background:
     linear-gradient(180deg, rgba(73, 57, 33, 0.68), rgba(31, 24, 17, 0.98)),
     radial-gradient(circle at top, rgba(246, 214, 150, 0.1), transparent 62%);
+  box-shadow: 0 18px 36px rgba(0, 0, 0, 0.34);
 }
 
 .generate-main-stack {
