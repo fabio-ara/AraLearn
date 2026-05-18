@@ -6369,18 +6369,21 @@ button {
 
 .workbench-editor-panel .assist-status-panel {
   display: grid;
-  gap: 8px;
+  gap: 10px;
   min-height: 0;
   max-height: none;
-  overflow: visible;
+  padding: 12px 12px 14px;
+  overflow: hidden;
 }
 
 .workbench-editor-panel .assist-status-panel .assist-icon-actions {
-  padding-top: 2px;
+  min-height: 40px;
+  align-content: flex-start;
+  padding-top: 4px;
 }
 
 .workbench-editor-panel .assist-status-panel .tiny {
-  margin-bottom: 5px;
+  margin: 0;
 }
 
 .assist-status-panel .assist-last-request {
