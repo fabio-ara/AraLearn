@@ -5376,12 +5376,21 @@ button {
   gap: 8px;
 }
 
+.assist-action-heading {
+  grid-template-columns: 34px minmax(0, 1fr);
+  align-items: center;
+}
+
+.assist-action-heading .tiny {
+  margin: 0;
+}
+
 .assist-action-option {
   display: grid;
-  grid-template-columns: 18px minmax(0, 1fr);
-  align-items: start;
+  grid-template-columns: 18px 18px minmax(0, 1fr);
+  align-items: center;
   gap: 10px;
-  padding: 12px;
+  padding: 11px 12px;
   border-radius: 16px;
   border: 1px solid rgba(172, 131, 67, 0.36);
   background: rgba(18, 14, 10, 0.72);
@@ -5404,27 +5413,33 @@ button {
 }
 
 .assist-action-option input {
-  margin: 2px 0 0;
+  margin: 0;
   accent-color: #d6b06d;
 }
 
+.assist-action-icon {
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #d8c29d;
+}
+
+.assist-action-icon-svg {
+  width: 16px;
+  height: 16px;
+}
+
 .assist-action-copy {
-  display: grid;
-  gap: 4px;
   min-width: 0;
 }
 
 .assist-action-title {
   color: #fff1d3;
-  font-size: 0.92rem;
+  font-size: 0.9rem;
   font-weight: 700;
-  line-height: 1.25;
-}
-
-.assist-action-description {
-  color: #ceb897;
-  font-size: 0.78rem;
-  line-height: 1.35;
+  line-height: 1.2;
 }
 
 .bottomup-selection-panel {

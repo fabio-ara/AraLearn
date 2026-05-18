@@ -2510,6 +2510,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
         ?.cards?.[assistOpenState.cardIndex]?.key || state.selection.cardKey;
     state.assistDraft.attachments = [];
     state.assistDraft.actionIntent = "";
+    state.assistDraft.promptText = "";
     state.assistDraft.didacticTypeId = "";
     state.assistDraft.preferredContainer = "";
     state.assistDraft.preferredContainerConfirmed = false;
@@ -5034,40 +5035,36 @@ export function createLessonEditorApp({ root, storage, editor }) {
       return [
         {
           value: ASSIST_ACTION_INTENTS.MATERIALIZE_CURRENT,
-          label: "Gerar primeiros cards",
-          description: "Materializa esta microssequência planejada sem sair da trilha."
+          label: "Continuar na microssequência",
+          icon: "sparkles"
         },
         {
           value: ASSIST_ACTION_INTENTS.REFORMULATE_CURRENT,
-          label: "Reformular esta microssequência",
-          description: "Ajusta o plano didático desta etapa antes de materializar os cards."
+          label: "Corrigir microssequência",
+          icon: "edit"
         },
         {
           value: ASSIST_ACTION_INTENTS.INSERT_AFTER_CURRENT,
-          label: hasNextPlannedMicrosequence ? "Inserir microssequência intermediária" : "Criar microssequência depois",
-          description: hasNextPlannedMicrosequence
-            ? "Cria uma etapa nova entre esta e a continuação já planejada."
-            : "Cria uma nova etapa depois desta, sem replanejar o restante da lição."
+          label: "Ir a nova microssequência",
+          icon: "add"
         }
       ];
     }
     return [
       {
         value: ASSIST_ACTION_INTENTS.CONTINUE_CURRENT,
-        label: "Continuar esta microssequência",
-        description: "Gera os próximos cards desta etapa sem repetir o que já foi materializado."
+        label: "Continuar na microssequência",
+        icon: "sparkles"
       },
       {
         value: ASSIST_ACTION_INTENTS.REPAIR_CURRENT,
-        label: "Corrigir esta microssequência",
-        description: "Ajusta cards ou explicações locais sem mudar desnecessariamente a intenção didática."
+        label: "Corrigir microssequência",
+        icon: "edit"
       },
       {
         value: ASSIST_ACTION_INTENTS.INSERT_AFTER_CURRENT,
-        label: hasNextPlannedMicrosequence ? "Inserir microssequência intermediária" : "Criar microssequência depois",
-        description: hasNextPlannedMicrosequence
-          ? "Cria uma etapa nova entre esta e a continuação já planejada."
-          : "Cria uma nova etapa depois desta, sem replanejar o restante da lição."
+        label: "Ir a nova microssequência",
+        icon: "add"
       }
     ];
   }
@@ -5119,38 +5116,35 @@ export function createLessonEditorApp({ root, storage, editor }) {
       return {
         promptLabel: "Pedido dos primeiros cards",
         submitLabel: "Gerar primeiros cards",
-        promptPlaceholder: buildAssistTemplatePrompt("materialize", microsequence)
+        promptPlaceholder: "Gere os primeiros cards."
       };
     }
     if (actionIntent === ASSIST_ACTION_INTENTS.REFORMULATE_CURRENT) {
       return {
         promptLabel: "Pedido de reformulação",
         submitLabel: "Reformular microssequência",
-        promptPlaceholder: buildAssistTemplatePrompt("reformulate", microsequence)
+        promptPlaceholder: "Diga o que deve ser corrigido."
       };
     }
     if (actionIntent === ASSIST_ACTION_INTENTS.REPAIR_CURRENT) {
       return {
         promptLabel: "Pedido de correção",
         submitLabel: "Corrigir microssequência",
-        promptPlaceholder: buildAssistTemplatePrompt("repair", microsequence)
+        promptPlaceholder: "Diga o que deve ser corrigido."
       };
     }
     if (actionIntent === ASSIST_ACTION_INTENTS.INSERT_AFTER_CURRENT) {
       return {
         promptLabel: hasNextPlannedMicrosequence ? "Pedido da microssequência intermediária" : "Pedido da nova microssequência",
         submitLabel: hasNextPlannedMicrosequence ? "Inserir microssequência intermediária" : "Gerar nova microssequência",
-        promptPlaceholder:
-          hasNextPlannedMicrosequence
-            ? `Insira uma microssequência intermediária depois de "${microsequence?.title || "esta etapa"}" para fechar o próximo degrau didático antes da etapa já planejada.`
-            : `Insira uma nova microssequência depois de "${microsequence?.title || "esta etapa"}" para fechar o próximo degrau didático da trilha.`
+        promptPlaceholder: "Diga a função da nova microssequência."
       };
     }
     if (actionIntent === ASSIST_ACTION_INTENTS.CONTINUE_CURRENT) {
       return {
         promptLabel: "Pedido dos próximos cards",
         submitLabel: "Gerar próximos cards",
-        promptPlaceholder: buildAssistTemplatePrompt("next_cards", microsequence)
+        promptPlaceholder: "Diga o que deve vir agora."
       };
     }
     return {
