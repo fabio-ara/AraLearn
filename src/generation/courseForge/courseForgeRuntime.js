@@ -1,5 +1,6 @@
 import { callModelWithRetry } from "../providers/callModelWithRetry.js";
 import { resolveModelForCourseForgePhase } from "../modelProfiles/modelRouting.js";
+import { getCourseForgePhaseResponseSchema } from "./courseForgePhaseResponseSchemas.js";
 
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -54,7 +55,7 @@ export async function executeCourseForgeProviderPhase({
     modelId,
     request: {
       prompt,
-      schema,
+      schema: schema || getCourseForgePhaseResponseSchema(phaseId),
       artifacts: artifacts.map(buildRuntimeArtifact)
     },
     callModel: async ({ modelId: activeModelId }) =>
@@ -62,7 +63,7 @@ export async function executeCourseForgeProviderPhase({
         phaseId,
         modelId: activeModelId,
         prompt,
-        schema,
+        schema: schema || getCourseForgePhaseResponseSchema(phaseId),
         artifacts: artifacts.map(buildRuntimeArtifact),
         parameters: {}
       }).then((result) => result.value)

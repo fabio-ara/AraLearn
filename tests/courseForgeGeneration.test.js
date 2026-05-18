@@ -34,6 +34,7 @@ import {
   createCourseForgeGenerationProgressState,
   reduceCourseForgeGenerationProgress
 } from "../src/generation/runtime/courseForgeProgressViewModel.js";
+import { executeCourseForgeProviderPhase } from "../src/generation/courseForge/courseForgeRuntime.js";
 
 test("resolveCourseForgeGenerationScope usa o menor escopo existente", () => {
   assert.deepEqual(
@@ -473,4 +474,25 @@ test("resolvePendingCourseForgeNavigation normaliza alvo mínimo pendente", () =
       lessonKey: "lesson-a"
     }
   );
+});
+
+test("executeCourseForgeProviderPhase injeta schema mínimo por fase quando o caller não informa um", async () => {
+  let capturedInput = null;
+  const provider = {
+    async callJson(input = {}) {
+      capturedInput = input;
+      return { value: { architectureDraft: { course: {} } } };
+    }
+  };
+
+  const result = await executeCourseForgeProviderPhase({
+    provider,
+    phaseId: "plan_architecture",
+    modelId: "gemini-2.5-flash",
+    prompt: "Teste"
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(capturedInput.schema?.type, "object");
+  assert.ok(capturedInput.schema?.properties?.architectureDraft);
 });
