@@ -6,19 +6,10 @@ import { createCourseForgeProfileTuning } from "../src/generation/runtime/course
 
 test("renderAssistConfigOverlay expõe motor, perfil e parâmetros do perfil sem diretiva solta", () => {
   const html = renderAssistConfigOverlay({
-    model: "gemini-2.5-flash",
-    apiKey: "",
     didacticProfileId: "aralearn.engine.ads.general.v3",
     profileTuning: createCourseForgeProfileTuning("aralearn.engine.ads.general.v3", {
       targetStudentProfile: "estudante com base irregular"
     }),
-    codexEndpoint: "http://127.0.0.1:4183/assist",
-    codexToken: "",
-    localStatus: { ok: false, checking: false, error: "" },
-    modelOptions: [
-      { value: "gemini-2.5-flash", label: "Gemini 2.5 Flash" },
-      { value: "codex-cli-local", label: "Codex local" }
-    ],
     didacticProfileOptions: [
       { value: "aralearn.engine.ads.general.v3", label: "ADS geral" },
       { value: "aralearn.engine.ads.programming.v1", label: "ADS programação procedural" }
@@ -27,16 +18,12 @@ test("renderAssistConfigOverlay expõe motor, perfil e parâmetros do perfil sem
 
   assert.match(html, /class="editor-overlay assist-config-overlay"/);
   assert.match(html, /editor-title">IA<\/p>/);
-  assert.match(html, /data-field="assist-config-model"/);
   assert.match(html, /data-field="assist-config-profile"/);
-  assert.match(html, /data-field="assist-config-api-key"/);
   assert.match(html, /data-field="assist-config-target-student-profile"/);
   assert.match(html, /data-field="assist-config-conceptual-reappearances"/);
   assert.match(html, /data-action="assist-config-reset-profile"/);
   assert.match(html, />Planejamento</);
   assert.match(html, />Ritmo</);
-  assert.match(html, />Acesso</);
-  assert.match(html, />Motor</);
   assert.match(html, />Perfil</);
   assert.match(html, />Para quem</);
   assert.match(html, />Curso</);
@@ -46,36 +33,27 @@ test("renderAssistConfigOverlay expõe motor, perfil e parâmetros do perfil sem
   assert.match(html, />Retoma ideia</);
   assert.match(html, />Explica vocabulário</);
   assert.match(html, /assist-config-infer-course-model/);
-  assert.match(html, /Sem chave/);
+  assert.doesNotMatch(html, /data-field="assist-config-model"/);
+  assert.doesNotMatch(html, /data-field="assist-config-api-key"/);
+  assert.doesNotMatch(html, />Acesso</);
   assert.doesNotMatch(html, /sourceGuideStructured/);
   assert.doesNotMatch(html, /Diretivas extras/);
   assert.doesNotMatch(html, /assist-config-guardrails-text/);
 });
 
-test("renderAssistConfigOverlay concentra o setup local no mesmo overlay quando Codex local está ativo", () => {
+test("renderAssistConfigOverlay não mistura setup operacional com o contrato didático do top-down", () => {
   const html = renderAssistConfigOverlay({
-    model: "codex-cli-local",
-    apiKey: "",
     didacticProfileId: "aralearn.engine.ads.systems.v1",
     profileTuning: createCourseForgeProfileTuning("aralearn.engine.ads.systems.v1"),
-    codexEndpoint: "http://127.0.0.1:4183/assist",
-    codexToken: "segredo",
-    localStatus: { ok: false, checking: false, error: "bridge offline" },
-    modelOptions: [
-      { value: "gemini-2.5-flash", label: "Gemini 2.5 Flash" },
-      { value: "codex-cli-local", label: "Codex local" }
-    ],
     didacticProfileOptions: [
       { value: "aralearn.engine.ads.systems.v1", label: "ADS terminal e ferramentas" }
     ]
   });
 
-  assert.match(html, /Local offline/);
-  assert.match(html, /data-field="assist-config-codex-endpoint"/);
-  assert.match(html, /data-field="assist-config-codex-token"/);
-  assert.match(html, /data-action="test-codex-cli-connection"/);
-  assert.match(html, /data-action="copy-codex-cli-script"/);
-  assert.match(html, />Script</);
-  assert.match(html, />Endpoint</);
-  assert.match(html, /bridge offline/);
+  assert.doesNotMatch(html, /data-field="assist-config-codex-endpoint"/);
+  assert.doesNotMatch(html, /data-field="assist-config-codex-token"/);
+  assert.doesNotMatch(html, /data-action="test-codex-cli-connection"/);
+  assert.doesNotMatch(html, /data-action="copy-codex-cli-script"/);
+  assert.doesNotMatch(html, />Motor</);
+  assert.doesNotMatch(html, />API</);
 });

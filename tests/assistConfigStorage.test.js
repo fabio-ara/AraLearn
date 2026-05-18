@@ -86,3 +86,31 @@ test("assistConfigStorage tolera storage ausente, JSON inválido e valores ausen
   });
 });
 
+test("assistConfigStorage reidrata defaults semânticos do perfil quando o courseModel legado estava vazio", () => {
+  const storage = createMemoryStorage();
+  storage.setItem(
+    "aralearn.assist-config",
+    JSON.stringify({
+      model: "gemini-2.5-flash",
+      didacticProfileId: "aralearn.engine.ads.math.v1",
+      profileTuning: {
+        courseModel: {
+          description: "",
+          materialNature: "",
+          progressionMode: "",
+          centralRepresentations: [],
+          cognitiveOperations: [],
+          expectedDifficulties: [],
+          practiceModes: []
+        }
+      }
+    })
+  );
+
+  const config = readAssistConfigStorage(storage);
+  assert.equal(config.profileTuning.courseModel.materialNature, "formal_language");
+  assert.ok(config.profileTuning.courseModel.centralRepresentations.includes("matrix"));
+  assert.ok(config.profileTuning.courseModel.expectedDifficulties.includes("notation"));
+  assert.equal(config.profileTuning.courseModelEdited, false);
+});
+

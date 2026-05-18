@@ -1824,7 +1824,10 @@ export function createLessonEditorApp({ root, storage, editor }) {
       ...(state.assistConfig.profileTuning?.courseModel || {}),
       ...patch
     });
-    updateAssistProfileTuning({ courseModel: nextCourseModel });
+    updateAssistProfileTuning({
+      courseModelEdited: true,
+      courseModel: nextCourseModel
+    });
   }
 
   function toggleAssistCourseModelList(listName = "", value = "") {
@@ -1847,7 +1850,10 @@ export function createLessonEditorApp({ root, storage, editor }) {
       state.assistConfig.profileTuning?.courseModel?.description || "",
       state.assistConfig.profileTuning?.courseModel || {}
     );
-    updateAssistProfileTuning({ courseModel: nextCourseModel });
+    updateAssistProfileTuning({
+      courseModelEdited: true,
+      courseModel: nextCourseModel
+    });
     render({ preserveState: true });
   }
 
@@ -6877,15 +6883,9 @@ export function createLessonEditorApp({ root, storage, editor }) {
         : "") +
       (state.assistConfigOpen
         ? renderAssistConfigOverlay({
-            model: state.assistConfigDraft.model,
-            apiKey: state.assistConfigDraft.apiKey,
             didacticProfileId: state.assistConfigDraft.didacticProfileId,
             profileTuning: state.assistConfigDraft.profileTuning,
-            codexEndpoint: state.assistConfigDraft.codexEndpoint,
-            codexToken: state.assistConfigDraft.codexToken,
-            modelOptions: ASSIST_MODEL_OPTIONS,
-            didacticProfileOptions: DIDACTIC_PROFILE_OPTIONS,
-            localStatus: state.codexCliSetupStatus
+            didacticProfileOptions: DIDACTIC_PROFILE_OPTIONS
           })
         : "") +
       (state.pendingExternalImport

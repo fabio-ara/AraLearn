@@ -47,27 +47,27 @@ function resolveCourseModelWithProfileDefaults(defaultCourseModel = {}, input = 
   const normalizedInput = createDefaultCourseModel(inputCourseModel);
 
   return createDefaultCourseModel({
-    description: hasOwn(inputCourseModel, "description")
+    description: text(normalizedInput.description)
       ? normalizedInput.description
       : hasOwn(input, "courseModelDescription")
         ? text(input.courseModelDescription)
         : defaultCourseModel.description,
-    materialNature: hasOwn(inputCourseModel, "materialNature")
+    materialNature: text(normalizedInput.materialNature)
       ? normalizedInput.materialNature
       : defaultCourseModel.materialNature,
-    progressionMode: hasOwn(inputCourseModel, "progressionMode")
+    progressionMode: text(normalizedInput.progressionMode)
       ? normalizedInput.progressionMode
       : defaultCourseModel.progressionMode,
-    centralRepresentations: hasOwn(inputCourseModel, "centralRepresentations")
+    centralRepresentations: normalizedInput.centralRepresentations.length
       ? normalizedInput.centralRepresentations
       : defaultCourseModel.centralRepresentations,
-    cognitiveOperations: hasOwn(inputCourseModel, "cognitiveOperations")
+    cognitiveOperations: normalizedInput.cognitiveOperations.length
       ? normalizedInput.cognitiveOperations
       : defaultCourseModel.cognitiveOperations,
-    expectedDifficulties: hasOwn(inputCourseModel, "expectedDifficulties")
+    expectedDifficulties: normalizedInput.expectedDifficulties.length
       ? normalizedInput.expectedDifficulties
       : defaultCourseModel.expectedDifficulties,
-    practiceModes: hasOwn(inputCourseModel, "practiceModes")
+    practiceModes: normalizedInput.practiceModes.length
       ? normalizedInput.practiceModes
       : defaultCourseModel.practiceModes
   });
@@ -78,6 +78,7 @@ export function createCourseForgeProfileTuning(profileId = DEFAULT_ENGINE_PROFIL
   const didacticPolicy = resolvedProfile?.didacticPolicy || {};
   const budget = didacticPolicy?.topDownCourseStrategy?.defaultBudgetByLesson || {};
   const defaultCourseModel = createDefaultCourseModel(didacticPolicy?.courseSemantics || {});
+  const courseModelEdited = input?.courseModelEdited === true;
 
   return {
     targetStudentProfile: resolveTextOverride(input, "targetStudentProfile", text(didacticPolicy?.targetStudentProfile)),
@@ -116,7 +117,16 @@ export function createCourseForgeProfileTuning(profileId = DEFAULT_ENGINE_PROFIL
       "requireVocabularyMap",
       didacticPolicy?.topDownCourseStrategy?.requireVocabularyMap !== false
     ),
-    courseModel: resolveCourseModelWithProfileDefaults(defaultCourseModel, input)
+    courseModelEdited,
+    courseModel: courseModelEdited
+      ? createDefaultCourseModel(
+          input?.courseModel && typeof input.courseModel === "object"
+            ? input.courseModel
+            : hasOwn(input, "courseModelDescription")
+              ? { description: input.courseModelDescription }
+              : {}
+        )
+      : resolveCourseModelWithProfileDefaults(defaultCourseModel, input)
   };
 }
 

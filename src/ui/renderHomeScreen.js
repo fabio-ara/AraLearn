@@ -262,22 +262,9 @@ function renderGenerateIconButton(action, title, content, disabled = false) {
   );
 }
 
-function renderGenerateStatusButton({ selectedModel = "", localStatus = {} } = {}) {
-  const isLocalModel = selectedModel === "codex-cli-local";
-  const title = isLocalModel
-    ? localStatus.checking
-      ? "Codex local: testando"
-      : localStatus.ok
-        ? "Codex local: ativo"
-        : "Codex local: offline"
-    : "Ajustes da IA";
-  const icon = isLocalModel
-    ? localStatus.ok
-      ? renderUiIcon("ready-state", "assist-config-action-icon")
-      : localStatus.checking
-        ? renderUiIcon("progress", "assist-config-action-icon")
-        : renderUiIcon("remove-state", "assist-config-action-icon")
-    : renderUiIcon("tags", "assist-config-action-icon");
+function renderGenerateStatusButton() {
+  const title = "Planejamento didático";
+  const icon = renderUiIcon("tags", "assist-config-action-icon");
   return renderGenerateIconButton("open-assist-config", title, icon);
 }
 

@@ -22,27 +22,6 @@ function renderOptionList(items = [], selectedValue = "") {
     .join("");
 }
 
-function renderProviderStatusChip({ localStatus = {}, isLocalModel = false, hasApiKey = false } = {}) {
-  if (isLocalModel) {
-    const statusName = localStatus.checking ? "checking" : localStatus.ok ? "ready" : "offline";
-    const label = localStatus.checking ? "Local testando" : localStatus.ok ? "Local ativo" : "Local offline";
-    return (
-      `<button class="assist-config-status-chip is-${statusName}" type="button" data-action="test-codex-cli-connection" title="${escapeHtml(label)}" aria-label="${escapeHtml(label)}">` +
-      renderUiIcon(localStatus.ok ? "ready-state" : localStatus.checking ? "progress" : "remove-state", "assist-config-status-icon") +
-      `<span>${escapeHtml(label)}</span>` +
-      "</button>"
-    );
-  }
-
-  const label = hasApiKey ? "API pronta" : "Sem chave";
-  return (
-    `<span class="assist-config-status-chip is-${hasApiKey ? "ready" : "idle"}" title="${escapeHtml(label)}" aria-label="${escapeHtml(label)}">` +
-    renderUiIcon(hasApiKey ? "ready-state" : "intent", "assist-config-status-icon") +
-    `<span>${escapeHtml(label)}</span>` +
-    "</span>"
-  );
-}
-
 function renderIconAction(action, iconName, title) {
   return (
     `<button class="icon-ghost assist-config-icon-action" type="button" data-action="${escapeHtml(action)}" title="${escapeHtml(title)}" aria-label="${escapeHtml(title)}">` +
@@ -114,23 +93,10 @@ function renderToggleList(listName, options = [], selectedValues = [], title = "
 }
 
 export function renderAssistConfigOverlay({
-  model,
-  apiKey,
   didacticProfileId,
   profileTuning = {},
-  codexEndpoint,
-  codexToken,
-  modelOptions = [],
   didacticProfileOptions = [],
-  localStatus = {}
 } = {}) {
-  const isCodexLocal = model === "codex-cli-local";
-  const statusChip = renderProviderStatusChip({
-    localStatus,
-    isLocalModel: isCodexLocal,
-    hasApiKey: Boolean(String(apiKey || "").trim())
-  });
-
   return (
     '<section class="editor-overlay assist-config-overlay" aria-label="Ajustes da IA">' +
     '<article class="editor-sheet comment-sheet assist-config-sheet" role="dialog" aria-modal="true">' +
@@ -138,7 +104,6 @@ export function renderAssistConfigOverlay({
     '<button class="icon-ghost" type="button" data-action="assist-config-close" title="Fechar" aria-label="Fechar">&times;</button>' +
     '<p class="editor-title">IA</p>' +
     '<div class="lesson-top-actions assist-config-head-actions">' +
-    statusChip +
     renderIconAction("assist-config-reset-profile", "draft-state", "Resetar perfil") +
     "</div></header>" +
     '<div class="editor-body assist-config-body">' +
@@ -265,43 +230,6 @@ export function renderAssistConfigOverlay({
     '<span class="assist-config-toggle-text" title="Explica vocabulário, siglas e notação">Explica vocabulário</span>' +
     "</span>" +
     "</div>" +
-    "</section>" +
-    '<section class="assist-config-panel">' +
-    renderSectionLabel("sparkles", "Acesso", "Parâmetros operacionais do motor; não mudam a didática") +
-    '<div class="assist-config-grid">' +
-    '<label class="field assist-config-field">' +
-    renderFieldLabel("sparkles", "Motor", "Escolhe quem gera a trilha") +
-    '<select data-field="assist-config-model" aria-label="Motor" title="Escolhe quem gera a trilha">' +
-    renderOptionList(modelOptions, model) +
-    "</select></label>" +
-    '<label class="field assist-config-field assist-config-secret-field">' +
-    renderFieldLabel("intent", "API", "Autoriza o uso do motor remoto") +
-    `<input data-field="assist-config-api-key" type="password" value="${escapeHtml(apiKey || "")}" autocomplete="off" spellcheck="false" placeholder="Chave da API" title="Autoriza o uso do motor remoto">` +
-    "</label>" +
-    "</div>" +
-    (isCodexLocal
-      ? '<section class="assist-config-local-panel">' +
-        '<div class="assist-config-local-grid">' +
-        '<label class="field assist-config-field assist-config-secret-field">' +
-        renderFieldLabel("folder", "Endpoint", "Endereço do motor local") +
-        `<input data-field="assist-config-codex-endpoint" type="text" value="${escapeHtml(codexEndpoint || "")}" autocomplete="off" spellcheck="false" placeholder="Endpoint local" title="Endereço do motor local">` +
-        "</label>" +
-        '<label class="field assist-config-field assist-config-secret-field">' +
-        renderFieldLabel("card", "Token", "Chave do motor local") +
-        `<input data-field="assist-config-codex-token" type="password" value="${escapeHtml(codexToken || "")}" autocomplete="off" spellcheck="false" placeholder="Token local" title="Chave do motor local">` +
-        "</label>" +
-        "</div>" +
-        '<div class="assist-config-local-actions">' +
-        renderLabeledAction("test-codex-cli-connection", "progress", "Testar", "Testar local") +
-        renderLabeledAction("copy-codex-cli-script", "lesson", "Script", "Copiar script local") +
-        renderLabeledAction("copy-codex-cli-endpoint", "module", "Endpoint", "Copiar endpoint") +
-        renderLabeledAction("copy-codex-cli-health-command", "prompt", "Comando", "Copiar teste local") +
-        "</div>" +
-        (localStatus.error && !localStatus.checking
-          ? `<p class="tiny muted assist-config-status-text">${escapeHtml(localStatus.error)}</p>`
-          : "") +
-        "</section>"
-      : "") +
     "</section>" +
     "</div>" +
     "</article></section>"

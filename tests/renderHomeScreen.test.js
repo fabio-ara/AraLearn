@@ -174,7 +174,7 @@ test("renderiza o painel contextual de geração com escopo top-down fixável", 
   assert.match(html, /aria-label="Gerar estrutura" title="Gerar estrutura"/);
   assert.match(html, /data-action="open-generation-attachment-picker" title="Anexar documento" aria-label="Anexar documento"/);
   assert.match(html, /data-action="clear-prompt" title="Limpar prompt" aria-label="Limpar prompt"/);
-  assert.match(html, /data-action="open-assist-config" title="Ajustes da IA" aria-label="Ajustes da IA"/);
+  assert.match(html, /data-action="open-assist-config" title="Planejamento didático" aria-label="Planejamento didático"/);
   assert.match(html, /data-field="generate-lesson-input"[^>]+disabled aria-disabled="true"/);
 });
 

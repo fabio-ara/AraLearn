@@ -134,6 +134,7 @@ test("createCourseForgeProfileTuning hidrata a modelagem semântica a partir do 
 
   const customized = createCourseForgeProfileTuning("aralearn.engine.ads.programming.v1", {
     targetStudentProfile: "",
+    courseModelEdited: true,
     courseModel: {
       materialNature: "",
       centralRepresentations: [],
