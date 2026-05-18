@@ -4361,10 +4361,10 @@ button {
 }
 
 .assist-config-icon-action.is-primary {
-  min-width: 38px;
-  min-height: 38px;
-  width: 38px;
-  height: 38px;
+  min-width: 40px;
+  min-height: 40px;
+  width: 40px;
+  height: 40px;
   border-radius: 12px;
   border-color: rgba(238, 198, 95, 0.78);
   background: linear-gradient(180deg, rgba(233, 190, 87, 0.98), rgba(195, 151, 55, 0.98));
