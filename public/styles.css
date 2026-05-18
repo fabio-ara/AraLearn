@@ -6377,21 +6377,39 @@ button {
 }
 
 .assist-quick-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
   gap: 8px;
 }
 
 .assist-quick-panel-head {
-  display: grid;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
   gap: 8px;
+  width: 100%;
   min-width: 0;
 }
 
 .workbench-editor-panel .assist-status-panel .assist-icon-actions {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 40px;
   min-height: 0;
-  align-content: start;
+  align-items: start;
   justify-content: flex-start;
   padding-top: 0;
   margin-left: 0;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 2px;
+}
+
+.workbench-editor-panel .assist-status-panel .assist-quick-action {
+  position: static;
+  margin: 0;
 }
 
 .workbench-editor-panel .assist-status-panel .tiny {
