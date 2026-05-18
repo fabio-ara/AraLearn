@@ -1,13 +1,7 @@
 import { renderUiIcon } from "./renderUiIcons.js";
 import { listCourseModelOptions } from "../generation/runtime/courseModelSemantics.js";
-import {
-  listReappearanceLevelOptions,
-  resolveConceptualReappearanceLevel,
-  resolveOperationalReappearanceLevel
-} from "../generation/runtime/courseForgeProfileTuning.js";
 
 const COURSE_MODEL_OPTIONS = listCourseModelOptions();
-const REAPPEARANCE_LEVEL_OPTIONS = listReappearanceLevelOptions();
 const MICROSEQUENCE_RANGE_MIN = 1;
 const MICROSEQUENCE_RANGE_MAX = 12;
 
@@ -152,7 +146,7 @@ export function renderAssistConfigOverlay({
     "</div>" +
     '<label class="field assist-config-field assist-config-course-request-field">' +
     renderFieldLabel("edit", "Curso", "Descreve o curso para a IA completar a modelagem") +
-    `<textarea data-field="assist-config-course-model-description" aria-label="Modelagem do curso" title="Descreve o curso para a IA completar a modelagem" placeholder="Descreva o tipo de curso, as formas centrais, a progressão e as travas do estudante.">${escapeHtml(profileTuning.courseModel?.description || "")}</textarea>` +
+    `<textarea data-field="assist-config-course-model-description" aria-label="Modelagem do curso" title="Descreve o curso para a IA completar a modelagem" placeholder="Descreva o tipo de curso, a progressão desejada e o perfil do estudante.">${escapeHtml(profileTuning.courseModel?.description || "")}</textarea>` +
     '<div class="assist-config-inline-actions">' +
     renderLabeledAction("assist-config-infer-course-model", "sparkles", "Ler pedido", "Ler o pedido e completar a modelagem do curso") +
     "</div>" +
@@ -169,55 +163,11 @@ export function renderAssistConfigOverlay({
     renderOptionList([{ value: "", label: "Selecionar" }, ...COURSE_MODEL_OPTIONS.progressionMode], profileTuning.courseModel?.progressionMode || "") +
     "</select></label>" +
     "</div>" +
-    '<div class="assist-config-grid">' +
-    '<label class="field assist-config-field">' +
-    renderFieldLabel("tags", "Forma principal", "Representação dominante da trilha") +
-    '<select data-field="assist-config-course-primary-representation" aria-label="Forma principal" title="Representação dominante da trilha">' +
-    renderOptionList([{ value: "", label: "Selecionar" }, ...COURSE_MODEL_OPTIONS.representations], profileTuning.courseModel?.primaryRepresentation || "") +
-    "</select></label>" +
-    '<label class="field assist-config-field">' +
-    renderFieldLabel("tags", "Forma secundária", "Representação de apoio ou ponte") +
-    '<select data-field="assist-config-course-secondary-representation" aria-label="Forma secundária" title="Representação de apoio ou ponte">' +
-    renderOptionList([{ value: "", label: "Nenhuma" }, ...COURSE_MODEL_OPTIONS.representations], profileTuning.courseModel?.secondaryRepresentation || "") +
-    "</select></label>" +
-    '<label class="field assist-config-field">' +
-    renderFieldLabel("lesson", "Operação principal", "A ação cognitiva dominante da trilha") +
-    '<select data-field="assist-config-course-primary-operation" aria-label="Operação principal" title="A ação cognitiva dominante da trilha">' +
-    renderOptionList([{ value: "", label: "Selecionar" }, ...COURSE_MODEL_OPTIONS.operations], profileTuning.courseModel?.primaryOperation || "") +
-    "</select></label>" +
-    '<label class="field assist-config-field">' +
-    renderFieldLabel("ready-state", "Prática preferida", "A forma de prática que deve dominar a trilha") +
-    '<select data-field="assist-config-course-preferred-practice-mode" aria-label="Prática preferida" title="A forma de prática que deve dominar a trilha">' +
-    renderOptionList([{ value: "", label: "Selecionar" }, ...COURSE_MODEL_OPTIONS.practiceModes], profileTuning.courseModel?.preferredPracticeMode || "") +
-    "</select></label>" +
-    '<label class="field assist-config-field">' +
-    renderFieldLabel("intent", "Trava principal", "A dificuldade dominante do estudante") +
-    '<select data-field="assist-config-course-primary-difficulty" aria-label="Trava principal" title="A dificuldade dominante do estudante">' +
-    renderOptionList([{ value: "", label: "Selecionar" }, ...COURSE_MODEL_OPTIONS.difficulties], profileTuning.courseModel?.primaryDifficulty || "") +
-    "</select></label>" +
-    '<label class="field assist-config-field">' +
-    renderFieldLabel("intent", "Trava secundária", "A dificuldade de apoio logo atrás da principal") +
-    '<select data-field="assist-config-course-secondary-difficulty" aria-label="Trava secundária" title="A dificuldade de apoio logo atrás da principal">' +
-    renderOptionList([{ value: "", label: "Nenhuma" }, ...COURSE_MODEL_OPTIONS.difficulties], profileTuning.courseModel?.secondaryDifficulty || "") +
-    "</select></label>" +
-    "</div>" +
     "</section>" +
     '<section class="assist-config-panel">' +
-    renderSectionLabel("progress", "Ritmo", "Parâmetros de densidade, retomada e fechamento do núcleo") +
-    '<div class="assist-config-rhythm-grid">' +
-    '<label class="field assist-config-field">' +
-    renderFieldLabel("card", "Retomada conceitual", "Quanto a trilha tende a voltar ao conceito antes de avançar") +
-    '<select data-field="assist-config-conceptual-reappearances" aria-label="Retomada conceitual" title="Quanto a trilha tende a voltar ao conceito antes de avançar">' +
-    renderOptionList(REAPPEARANCE_LEVEL_OPTIONS, resolveConceptualReappearanceLevel(profileTuning.conceptualReappearances || 3)) +
-    "</select></label>" +
-    '<label class="field assist-config-field">' +
-    renderFieldLabel("module", "Retomada de prática", "Quanto a trilha tende a voltar ao uso antes de avançar") +
-    '<select data-field="assist-config-operational-reappearances" aria-label="Retomada de prática" title="Quanto a trilha tende a voltar ao uso antes de avançar">' +
-    renderOptionList(REAPPEARANCE_LEVEL_OPTIONS, resolveOperationalReappearanceLevel(profileTuning.operationalReappearances || 4)) +
-    "</select></label>" +
-    "</div>" +
+    renderSectionLabel("progress", "Estrutura", "Parâmetros arquiteturais da decomposição top-down") +
     renderMicrosequenceRangeField(profileTuning) +
-    '<div class="assist-config-toggle-row">' +
+    '<div class="assist-config-toggle-row assist-config-toggle-row-single">' +
     '<span class="assist-config-toggle-group">' +
     renderBooleanToggle({
       field: "requireCoreCoverageBeforeExtensions",
@@ -226,15 +176,6 @@ export function renderAssistConfigOverlay({
       checked: profileTuning.requireCoreCoverageBeforeExtensions !== false
     }) +
     '<span class="assist-config-toggle-text" title="Fecha o núcleo antes de expandir">Fecha núcleo</span>' +
-    "</span>" +
-    '<span class="assist-config-toggle-group">' +
-    renderBooleanToggle({
-      field: "requireVocabularyMap",
-      title: "Explica vocabulário, siglas e notação",
-      iconName: "title",
-      checked: profileTuning.requireVocabularyMap !== false
-    }) +
-    '<span class="assist-config-toggle-text" title="Explica vocabulário, siglas e notação">Explica vocabulário</span>' +
     "</span>" +
     "</div>" +
     "</section>" +

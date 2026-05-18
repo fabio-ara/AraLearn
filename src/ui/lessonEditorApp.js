@@ -140,11 +140,7 @@ import {
   resolveCourseForgeGenerationScopeViewState,
   resolveCourseForgeOpenGeneratedLessonState
 } from "../generation/runtime/courseForgeGenerationEditorRuntime.js";
-import {
-  createCourseForgeProfileTuning,
-  mapConceptualReappearanceLevelToValue,
-  mapOperationalReappearanceLevelToValue
-} from "../generation/runtime/courseForgeProfileTuning.js";
+import { createCourseForgeProfileTuning } from "../generation/runtime/courseForgeProfileTuning.js";
 import { resolveGenerationPanelScopeFromAction } from "../generation/runtime/courseForgeGenerationViewModel.js";
 import { listMicrosequenceTypes } from "../generation/types/microsequenceTypes.js";
 import { buildLessonDomainCoverageReport } from "../generation/domain/lessonDomainModel.js";
@@ -8332,14 +8328,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
     const assistConfigCourseModelDescription = root.querySelector("[data-field='assist-config-course-model-description']");
     const assistConfigCourseMaterialNature = root.querySelector("[data-field='assist-config-course-material-nature']");
     const assistConfigCourseProgressionMode = root.querySelector("[data-field='assist-config-course-progression-mode']");
-    const assistConfigCoursePrimaryRepresentation = root.querySelector("[data-field='assist-config-course-primary-representation']");
-    const assistConfigCourseSecondaryRepresentation = root.querySelector("[data-field='assist-config-course-secondary-representation']");
-    const assistConfigCoursePrimaryOperation = root.querySelector("[data-field='assist-config-course-primary-operation']");
-    const assistConfigCoursePrimaryDifficulty = root.querySelector("[data-field='assist-config-course-primary-difficulty']");
-    const assistConfigCourseSecondaryDifficulty = root.querySelector("[data-field='assist-config-course-secondary-difficulty']");
-    const assistConfigCoursePreferredPracticeMode = root.querySelector("[data-field='assist-config-course-preferred-practice-mode']");
-    const assistConfigConceptualReappearances = root.querySelector("[data-field='assist-config-conceptual-reappearances']");
-    const assistConfigOperationalReappearances = root.querySelector("[data-field='assist-config-operational-reappearances']");
     const assistConfigMinMicrosequences = root.querySelector("[data-field='assist-config-min-microsequences']");
     const assistConfigTargetMicrosequences = root.querySelector("[data-field='assist-config-target-microsequences']");
     const assistConfigMaxMicrosequences = root.querySelector("[data-field='assist-config-max-microsequences']");
@@ -8399,50 +8387,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
     if (assistConfigCourseProgressionMode) {
       assistConfigCourseProgressionMode.addEventListener("change", () => {
         updateAssistCourseModel({ progressionMode: assistConfigCourseProgressionMode.value });
-      });
-    }
-    if (assistConfigCoursePrimaryRepresentation) {
-      assistConfigCoursePrimaryRepresentation.addEventListener("change", () => {
-        updateAssistCourseModel({ primaryRepresentation: assistConfigCoursePrimaryRepresentation.value });
-      });
-    }
-    if (assistConfigCourseSecondaryRepresentation) {
-      assistConfigCourseSecondaryRepresentation.addEventListener("change", () => {
-        updateAssistCourseModel({ secondaryRepresentation: assistConfigCourseSecondaryRepresentation.value });
-      });
-    }
-    if (assistConfigCoursePrimaryOperation) {
-      assistConfigCoursePrimaryOperation.addEventListener("change", () => {
-        updateAssistCourseModel({ primaryOperation: assistConfigCoursePrimaryOperation.value });
-      });
-    }
-    if (assistConfigCoursePrimaryDifficulty) {
-      assistConfigCoursePrimaryDifficulty.addEventListener("change", () => {
-        updateAssistCourseModel({ primaryDifficulty: assistConfigCoursePrimaryDifficulty.value });
-      });
-    }
-    if (assistConfigCourseSecondaryDifficulty) {
-      assistConfigCourseSecondaryDifficulty.addEventListener("change", () => {
-        updateAssistCourseModel({ secondaryDifficulty: assistConfigCourseSecondaryDifficulty.value });
-      });
-    }
-    if (assistConfigCoursePreferredPracticeMode) {
-      assistConfigCoursePreferredPracticeMode.addEventListener("change", () => {
-        updateAssistCourseModel({ preferredPracticeMode: assistConfigCoursePreferredPracticeMode.value });
-      });
-    }
-    if (assistConfigConceptualReappearances) {
-      assistConfigConceptualReappearances.addEventListener("change", () => {
-        updateAssistProfileTuning({
-          conceptualReappearances: mapConceptualReappearanceLevelToValue(assistConfigConceptualReappearances.value, 3)
-        });
-      });
-    }
-    if (assistConfigOperationalReappearances) {
-      assistConfigOperationalReappearances.addEventListener("change", () => {
-        updateAssistProfileTuning({
-          operationalReappearances: mapOperationalReappearanceLevelToValue(assistConfigOperationalReappearances.value, 4)
-        });
       });
     }
     if (assistConfigMinMicrosequences) {
