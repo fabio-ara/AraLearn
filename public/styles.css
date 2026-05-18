@@ -6234,8 +6234,9 @@ button {
 .generate-assist-config-shell {
   display: grid;
   gap: 12px;
-  padding: 12px 0 6px;
-  border-bottom: 1px solid rgba(151, 117, 68, 0.24);
+  padding: 12px 0 0;
+  margin-top: 4px;
+  border-top: 1px solid rgba(151, 117, 68, 0.24);
 }
 
 .generate-action-row {

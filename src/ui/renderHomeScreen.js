@@ -465,7 +465,6 @@ function renderGeneratePane({ project, editorSupport, includeDismissActions = fa
         renderGenerateIconButton("close-generation-panel", "Fechar painel de geração", "×") +
         "</div></header>"
       : "") +
-    assistConfigPanel +
     renderGenerateComboboxField({
       level: "course",
       iconName: "folder",
@@ -544,6 +543,7 @@ function renderGeneratePane({ project, editorSupport, includeDismissActions = fa
     renderUiIcon("sparkles", "generate-submit-icon") +
     "</button>" +
     "</div>" +
+    assistConfigPanel +
     "</section>" +
     status +
     "</section>"
