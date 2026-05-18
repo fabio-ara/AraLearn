@@ -160,13 +160,12 @@ export function renderAssistConfigPanel({
     renderIconAction("assist-config-edit-profile", "edit", "Editar nome do perfil selecionado", { disabled: !canEditProfile }) +
     renderIconAction("assist-config-infer-course-model", "sparkles", "Ler o pedido e completar o planejamento", { extraClassName: "is-primary" }) +
     "</div>" +
+    "</div>" +
     "</label>" +
-    '<div class="assist-config-profile-stack">' +
     '<label class="field assist-config-field assist-config-student-field">' +
     renderFieldLabel("prompt", "Para quem", "Ajusta a trilha ao nível e ao tempo do estudante") +
     `<input data-field="assist-config-target-student-profile" type="text" value="${escapeHtml(profileTuning.targetStudentProfile || "")}" autocomplete="off" spellcheck="false" placeholder="Perfil do estudante" title="Ajusta a trilha ao nível e ao tempo do estudante">` +
     "</label>" +
-    "</div>" +
     '<label class="field assist-config-field">' +
     renderFieldLabel("trail", "Trilha", "Que tipo de trilha didática organiza este curso") +
     '<select data-field="assist-config-course-learning-trail" aria-label="Trilha do curso" title="Que tipo de trilha didática organiza este curso">' +
@@ -182,14 +181,18 @@ export function renderAssistConfigPanel({
     "</select></label>" +
     renderMicrosequenceRangeField(profileTuning) +
     '<div class="assist-config-footer">' +
+    '<div class="assist-config-footer-main">' +
     renderBooleanToggle({
       field: "requireCoreCoverageBeforeExtensions",
       title: "Esgotar assunto antes de expandir",
       iconName: "ready-state",
       checked: profileTuning.requireCoreCoverageBeforeExtensions !== false
     }) +
+    "</div>" +
+    '<div class="assist-config-footer-actions">' +
     renderIconAction("assist-config-profile-state", profileStateIconName, `Estado do perfil: ${profileState}`, { extraClassName: `assist-config-status-action is-${profileState}`, disabled: true }) +
     renderIconAction("assist-config-save-profile", "save", "Salvar perfil", { disabled: !canSaveProfile, extraClassName: "assist-config-save-action" }) +
+    "</div>" +
     "</div>" +
     "</section>"
   );

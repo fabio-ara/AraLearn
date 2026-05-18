@@ -3986,15 +3986,10 @@ button {
   gap: 10px;
 }
 
-.assist-config-profile-stack {
-  display: grid;
-  gap: 12px;
-}
-
 .assist-config-profile-toolbar {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: 8px;
+  gap: 6px;
   align-items: end;
 }
 
@@ -4005,7 +4000,8 @@ button {
 .assist-config-profile-toolbar-actions {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
+  flex: 0 0 auto;
 }
 
 .assist-config-label-actions {
@@ -4042,7 +4038,7 @@ button {
 
 .assist-config-field select,
 .assist-config-field input {
-  min-height: 40px;
+  min-height: 38px;
 }
 
 .assist-config-grid .assist-config-inline-label {
@@ -4078,7 +4074,7 @@ button {
 }
 
 .assist-config-course-request-field textarea {
-  min-height: 92px;
+  min-height: 108px;
   resize: vertical;
 }
 
@@ -4101,7 +4097,7 @@ button {
   --assist-range-target: 36%;
   --assist-range-end: 64%;
   position: relative;
-  min-height: 42px;
+  min-height: 44px;
   padding: 8px 0 0;
 }
 
@@ -4228,6 +4224,7 @@ button {
   color: #d8c29d;
   font-size: 11px;
   font-weight: 700;
+  padding: 0 2px;
 }
 
 .assist-config-student-field input {
@@ -4305,9 +4302,16 @@ button {
 .assist-config-footer {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: space-between;
   gap: 8px;
-  padding-top: 2px;
+  padding-top: 4px;
+}
+
+.assist-config-footer-main,
+.assist-config-footer-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .assist-config-save-action {
@@ -4357,9 +4361,9 @@ button {
 }
 
 .assist-config-icon-action {
-  width: 36px;
-  height: 36px;
-  border-radius: 12px;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
 }
 
 .assist-config-text-action {
@@ -6450,9 +6454,14 @@ button {
     align-items: stretch;
   }
 
+  .assist-config-footer-main,
+  .assist-config-footer-actions {
+    justify-content: space-between;
+  }
+
   .assist-config-save-action {
     margin-left: auto;
-    width: 36px;
+    width: 32px;
     align-self: flex-end;
   }
 }

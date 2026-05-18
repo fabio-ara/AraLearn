@@ -59,6 +59,26 @@ test("renderAssistConfigOverlay expõe contrato discreto do top-down sem setup o
   assert.doesNotMatch(html, /Diretivas extras/);
   assert.doesNotMatch(html, /assist-config-guardrails-text/);
   assert.doesNotMatch(html, /assist-config-custom-profile-label/);
+  assert.ok(
+    html.indexOf('data-field="assist-config-target-student-profile"') <
+      html.indexOf('data-field="assist-config-course-learning-trail"')
+  );
+  assert.ok(
+    html.indexOf('data-field="assist-config-course-learning-trail"') <
+      html.indexOf('data-field="assist-config-course-microsequence-progression"')
+  );
+  assert.ok(
+    html.indexOf('data-field="assist-config-course-microsequence-progression"') <
+      html.indexOf('data-field="assist-config-min-microsequences"')
+  );
+  assert.ok(
+    html.indexOf('data-field="assist-config-course-model-description"') <
+      html.indexOf('data-field="assist-config-profile"')
+  );
+  assert.ok(
+    html.indexOf('data-action="assist-config-edit-profile"') <
+      html.indexOf('data-action="assist-config-infer-course-model"')
+  );
 });
 
 test("renderAssistConfigOverlay não mistura setup operacional com o contrato didático do top-down", () => {
