@@ -6373,28 +6373,25 @@ button {
   min-height: 0;
   max-height: none;
   padding: 12px 12px 14px;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .assist-quick-panel {
-  gap: 0;
+  gap: 8px;
 }
 
 .assist-quick-panel-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  flex-wrap: wrap;
+  display: grid;
+  gap: 8px;
   min-width: 0;
 }
 
 .workbench-editor-panel .assist-status-panel .assist-icon-actions {
-  min-height: 40px;
-  align-content: flex-start;
-  justify-content: flex-end;
+  min-height: 0;
+  align-content: start;
+  justify-content: flex-start;
   padding-top: 0;
-  margin-left: auto;
+  margin-left: 0;
 }
 
 .workbench-editor-panel .assist-status-panel .tiny {
