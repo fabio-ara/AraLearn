@@ -579,11 +579,11 @@ function summarizeBottomUpLabel(value, maxLength = 34) {
   return `${compactBase.slice(0, Math.max(12, maxLength - 1)).trimEnd()}…`;
 }
 
-function renderSelectedBottomUpChips(refs, domainOptions, actionName, emptyLabel) {
+function renderSelectedBottomUpChips(refs, domainOptions, actionName) {
   const optionMap = new Map((domainOptions || []).map((item) => [item.value, item.label]));
   const normalizedRefs = Array.isArray(refs) ? refs.filter(Boolean) : [];
   if (!normalizedRefs.length) {
-    return `<p class="tiny muted bottomup-empty-copy">${escapeHtml(emptyLabel)}</p>`;
+    return "";
   }
 
   return normalizedRefs
@@ -1251,14 +1251,12 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
   const relatedConceptChips = renderSelectedBottomUpChips(
     editorSupport.relatedConceptRefs || [],
     editorSupport.domainOptions || [],
-    "toggle-assist-related-concept",
-    "Sem contraste selecionado."
+    "toggle-assist-related-concept"
   );
   const prerequisiteChips = renderSelectedBottomUpChips(
     editorSupport.prerequisiteRefs || [],
     editorSupport.domainOptions || [],
-    "toggle-assist-prerequisite",
-    "Sem pré-requisitos extras."
+    "toggle-assist-prerequisite"
   );
   const assistWarning = editorSupport.assistError
     ? '<section class="microsequence-assist-panel assist-status-panel is-warning">' +
@@ -1279,7 +1277,6 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
   const semanticActionsPanel = !isPlanned
     ? '<section class="microsequence-assist-panel assist-status-panel">' +
       '<p class="tiny muted">Microssequência em andamento</p>' +
-      '<p class="muted assist-last-request">Os cards atuais são só o trecho já materializado. Você pode pedir os próximos cards, corrigir o que já existe ou abrir a próxima etapa planejada.</p>' +
       '<div class="assist-icon-actions">' +
       '<button class="icon-ghost workbench-stack-button assist-quick-action" type="button" data-action="fill-assist-template-next-cards" title="Preparar pedido para gerar os próximos cards desta microssequência" aria-label="Preparar pedido para gerar os próximos cards desta microssequência">' +
       renderUiIcon("sparkles", "assist-quick-action-icon") +
@@ -1300,7 +1297,6 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
   const plannedStatePanel = isPlanned
     ? '<section class="microsequence-assist-panel assist-status-panel">' +
       '<p class="tiny muted">Microssequência planejada</p>' +
-      '<p class="muted assist-last-request">Esta etapa ainda não tem cards. Gere os primeiros cards a partir do plano já definido, ou reformule a proposta antes da primeira materialização.</p>' +
       '<div class="assist-icon-actions">' +
       '<button class="icon-ghost workbench-stack-button assist-quick-action" type="button" data-action="fill-assist-template-materialize" title="Preparar pedido para gerar os primeiros cards desta microssequência" aria-label="Preparar pedido para gerar os primeiros cards desta microssequência">' +
       renderUiIcon("sparkles", "assist-quick-action-icon") +

@@ -444,7 +444,7 @@ test("renderiza o painel da microssequência sem botão próprio de ações e co
   assert.match(html, /<option value="">Automático<\/option>/);
   assert.match(html, /<option value="guided_practice" selected>Prática guiada<\/option>/);
   assert.match(html, /Microssequência em andamento/);
-  assert.match(html, /Os cards atuais são só o trecho já materializado\./);
+  assert.doesNotMatch(html, /Os cards atuais são só o trecho já materializado\./);
   assert.match(html, /data-field="assist-prompt" class="assist-prompt" aria-label="Pedido dos próximos cards" title="Pedido dos próximos cards"/);
   assert.match(html, /data-action="open-assist-container-picker" title="Adicionar recursos" aria-label="Adicionar recursos"/);
   assert.match(html, /data-field="assist-attachments" class="assist-attachment-input" type="file" multiple/);
@@ -627,8 +627,8 @@ test("renderiza o painel da microssequência vazia em modo de geração de cards
   assert.doesNotMatch(html, /Os cards gerados aparecerão aqui após o envio do prompt\./);
   assert.match(html, /data-workbench-pane="edit"/);
   assert.match(html, /Microssequência planejada/);
-  assert.match(html, /Esta etapa ainda não tem cards\./);
-  assert.match(html, /Gere os primeiros cards a partir do plano já definido/);
+  assert.doesNotMatch(html, /Esta etapa ainda não tem cards\./);
+  assert.doesNotMatch(html, /Gere os primeiros cards a partir do plano já definido/);
   assert.match(html, /data-action="fill-assist-template-materialize"/);
   assert.match(html, /data-action="fill-assist-template-reformulate"/);
   assert.match(html, /data-action="fill-assist-template-new-stage"/);

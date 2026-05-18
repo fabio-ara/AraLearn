@@ -6550,10 +6550,12 @@ button {
 .assist-icon-actions {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 8px;
 }
 
 .assist-quick-action {
+  flex: 0 0 auto;
   min-width: 40px;
   width: 40px;
   height: 40px;
