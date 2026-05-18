@@ -6264,7 +6264,7 @@ button {
   );
   overflow-y: auto;
   overflow-x: hidden;
-  scrollbar-gutter: stable both-edges;
+  scrollbar-gutter: stable;
 }
 
 .generate-card {
