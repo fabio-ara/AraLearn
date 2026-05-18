@@ -4002,6 +4002,12 @@ button {
   align-items: center;
   gap: 5px;
   flex: 0 0 auto;
+  flex-wrap: wrap;
+}
+
+.assist-config-profile-toolbar-actions .assist-config-icon-action:not(.is-primary) .assist-config-action-icon {
+  width: 17px;
+  height: 17px;
 }
 
 .assist-config-label-actions {
@@ -4092,42 +4098,66 @@ button {
   gap: 10px;
 }
 
+.assist-config-range-ruler {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+}
+
+.assist-config-range-edge-label {
+  color: #d8c29d;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
 .assist-config-range-shell {
   --assist-range-start: 18%;
   --assist-range-target: 36%;
   --assist-range-end: 64%;
   position: relative;
-  min-height: 44px;
-  padding: 8px 0 0;
+  min-height: 58px;
+  min-width: 0;
+  padding: 8px 0;
 }
 
 .assist-config-range-track,
 .assist-config-range-band {
   position: absolute;
-  left: 10px;
-  right: 10px;
-  top: 20px;
-  height: 4px;
+  left: 15px;
+  right: 15px;
+  top: 28px;
+  height: 6px;
   border-radius: 999px;
 }
 
 .assist-config-range-track {
-  background: rgba(151, 117, 68, 0.24);
+  background:
+    linear-gradient(180deg, rgba(16, 12, 9, 0.92), rgba(38, 28, 18, 0.9));
+  border: 1px solid rgba(151, 117, 68, 0.28);
+  box-shadow:
+    inset 0 1px 1px rgba(255, 245, 223, 0.04),
+    inset 0 -1px 2px rgba(0, 0, 0, 0.4);
 }
 
 .assist-config-range-band {
-  left: calc(10px + ((100% - 20px) * var(--assist-range-start) / 100));
-  right: calc(10px + ((100% - 20px) * (100 - var(--assist-range-end)) / 100));
-  background: linear-gradient(90deg, rgba(205, 167, 97, 0.88), rgba(146, 115, 61, 0.92));
+  left: calc(15px + ((100% - 30px) * var(--assist-range-start) / 100));
+  right: calc(15px + ((100% - 30px) * (100 - var(--assist-range-end)) / 100));
+  background: linear-gradient(90deg, rgba(231, 190, 97, 0.96), rgba(165, 122, 48, 0.98));
+  box-shadow:
+    0 0 0 1px rgba(245, 218, 150, 0.18),
+    0 0 14px rgba(201, 156, 75, 0.18);
 }
 
 .assist-config-range-input {
   position: absolute;
   left: 0;
   right: 0;
-  top: 6px;
+  top: 12px;
   width: 100%;
-  height: 28px;
+  height: 34px;
   margin: 0;
   appearance: none;
   -webkit-appearance: none;
@@ -4136,21 +4166,21 @@ button {
 }
 
 .assist-config-range-input::-webkit-slider-runnable-track {
-  height: 28px;
+  height: 34px;
   background: transparent;
 }
 
 .assist-config-range-input::-moz-range-track {
-  height: 28px;
+  height: 34px;
   background: transparent;
   border: 0;
 }
 
 .assist-config-range-input::-webkit-slider-thumb {
   -webkit-appearance: none;
-  width: 24px;
-  height: 24px;
-  margin-top: 5px;
+  width: 32px;
+  height: 32px;
+  margin-top: 1px;
   border: 0;
   border-radius: 999px;
   background: transparent;
@@ -4160,8 +4190,8 @@ button {
 }
 
 .assist-config-range-input::-moz-range-thumb {
-  width: 24px;
-  height: 24px;
+  width: 32px;
+  height: 32px;
   border: 0;
   border-radius: 999px;
   background: transparent;
@@ -4184,47 +4214,40 @@ button {
 
 .assist-config-range-handle-label {
   position: absolute;
-  top: 0;
-  width: 24px;
-  height: 24px;
-  margin-left: -12px;
+  top: 11px;
+  width: 32px;
+  height: 32px;
+  margin-left: -16px;
   border-radius: 999px;
-  border: 2px solid rgba(241, 220, 171, 0.96);
-  background: linear-gradient(180deg, #3c2b18, #1d140d);
+  border: 1px solid rgba(241, 220, 171, 0.72);
+  background:
+    radial-gradient(circle at 30% 30%, rgba(93, 69, 37, 0.94), rgba(27, 19, 12, 0.98));
   color: #f6ead3;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 800;
   line-height: 1;
   pointer-events: none;
-  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.25);
+  box-shadow:
+    0 8px 18px rgba(0, 0, 0, 0.28),
+    inset 0 1px 0 rgba(255, 244, 225, 0.08);
 }
 
 .assist-config-range-handle-label-min {
-  left: calc(10px + ((100% - 20px) * var(--assist-range-start) / 100));
+  left: calc(15px + ((100% - 30px) * var(--assist-range-start) / 100));
   z-index: 2;
 }
 
 .assist-config-range-handle-label-target {
-  left: calc(10px + ((100% - 20px) * var(--assist-range-target) / 100));
+  left: calc(15px + ((100% - 30px) * var(--assist-range-target) / 100));
   z-index: 3;
 }
 
 .assist-config-range-handle-label-max {
-  left: calc(10px + ((100% - 20px) * var(--assist-range-end) / 100));
+  left: calc(15px + ((100% - 30px) * var(--assist-range-end) / 100));
   z-index: 4;
-}
-
-.assist-config-range-values {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  color: #d8c29d;
-  font-size: 11px;
-  font-weight: 700;
-  padding: 0 2px;
 }
 
 .assist-config-student-field input {
@@ -4516,6 +4539,7 @@ button {
 
 .generation-overlay-panel {
   padding: 0;
+  overflow: hidden;
 }
 
 .action-menu-sheet {
@@ -6224,6 +6248,10 @@ button {
   display: grid;
   gap: 0;
   width: 100%;
+  max-height: inherit;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-gutter: stable;
 }
 
 .generate-card {

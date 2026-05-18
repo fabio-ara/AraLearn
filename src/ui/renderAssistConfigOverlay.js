@@ -72,6 +72,8 @@ function renderMicrosequenceRangeField(profileTuning = {}) {
       "Microssequências por lição",
       "Faixa de granularidade do top-down para cada lição"
     ) +
+    '<div class="assist-config-range-ruler">' +
+    '<span class="assist-config-range-edge-label assist-config-range-edge-label-min" aria-hidden="true">Mín.</span>' +
     `<div class="assist-config-range-shell" data-field="assist-config-microsequence-range-shell" style="${style}">` +
     '<div class="assist-config-range-track" aria-hidden="true"></div>' +
     '<div class="assist-config-range-band" aria-hidden="true"></div>' +
@@ -82,10 +84,9 @@ function renderMicrosequenceRangeField(profileTuning = {}) {
     `<input class="assist-config-range-input assist-config-range-input-target" data-field="assist-config-target-microsequences" type="range" min="${MICROSEQUENCE_RANGE_MIN}" max="${MICROSEQUENCE_RANGE_MAX}" step="1" value="${escapeHtml(targetValue)}" aria-label="Microssequências por lição esperado" title="Quantidade esperada de microssequências por lição">` +
     `<input class="assist-config-range-input assist-config-range-input-max" data-field="assist-config-max-microsequences" type="range" min="${MICROSEQUENCE_RANGE_MIN}" max="${MICROSEQUENCE_RANGE_MAX}" step="1" value="${escapeHtml(maxValue)}" aria-label="Microssequências por lição máximo" title="Máximo de microssequências por lição">` +
     "</div>" +
-    '<div class="assist-config-range-values" aria-hidden="true">' +
-    `<span>Mín. ${escapeHtml(minValue)}</span>` +
-    `<span>Máx. ${escapeHtml(maxValue)}</span>` +
-    "</div></div>"
+    '<span class="assist-config-range-edge-label assist-config-range-edge-label-max" aria-hidden="true">Máx.</span>' +
+    "</div>" +
+    "</div>"
   );
 }
 
