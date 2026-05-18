@@ -453,7 +453,7 @@ test("renderiza o painel da microssequência sem botão próprio de ações e co
   assert.match(html, /data-field="assist-action-intent" value="continue_current"/);
   assert.match(html, /Continuar esta microssequência/);
   assert.match(html, /data-field="assist-preferred-container" aria-label="Materialização preferida" title="Materialização preferida"/);
-  assert.match(html, /<option value="" selected>Automático<\/option>/);
+  assert.match(html, /<option value="__unset__" selected>Selecionar materialização<\/option>/);
   assert.doesNotMatch(html, /Os cards atuais são só o trecho já materializado\./);
   assert.match(html, /data-field="assist-prompt" class="assist-prompt" aria-label="Pedido dos próximos cards" title="Pedido dos próximos cards" placeholder="Continue a microssequência\."/);
   assert.match(html, /data-field="assist-attachments" class="assist-attachment-input" type="file" multiple/);
@@ -636,7 +636,7 @@ test("renderiza o painel da microssequência vazia em modo de geração de cards
   assert.match(html, /Reformular esta microssequência/);
   assert.match(html, /data-action="open-assist-attachment-picker" title="Anexar documentos" aria-label="Anexar documentos"/);
   assert.match(html, /data-action="select-workbench-pane" data-workbench-pane="edit" aria-label="Geração" title="Geração"/);
-  assert.match(html, /<option value="" selected>Automático<\/option>/);
+  assert.match(html, /<option value="__unset__" selected>Selecionar materialização<\/option>/);
   assert.match(html, /data-field="assist-preferred-container" aria-label="Materialização preferida" title="Materialização preferida"/);
   assert.doesNotMatch(html, /data-action="select-workbench-pane" data-workbench-pane="preview"/);
   assert.doesNotMatch(html, /Sem cards ainda/);

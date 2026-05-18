@@ -1035,6 +1035,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
       promptText: "",
       didacticTypeId: "",
       preferredContainer: "",
+      preferredContainerConfirmed: false,
       interventionTargetMode: "current",
       operationMode: "reinforce",
       interventionType: "local_semantic_rewrite",
@@ -2345,6 +2346,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
     }
     if (!ASSIST_CARD_CONTAINER_OPTIONS.some((item) => item.value === state.assistDraft.preferredContainer)) {
       state.assistDraft.preferredContainer = "";
+      state.assistDraft.preferredContainerConfirmed = false;
     }
     if (!ASSIST_DIDACTIC_TYPE_OPTIONS.some((item) => item.value === state.assistDraft.didacticTypeId)) {
       state.assistDraft.didacticTypeId = "";
@@ -2509,6 +2511,8 @@ export function createLessonEditorApp({ root, storage, editor }) {
     state.assistDraft.attachments = [];
     state.assistDraft.actionIntent = "";
     state.assistDraft.didacticTypeId = "";
+    state.assistDraft.preferredContainer = "";
+    state.assistDraft.preferredContainerConfirmed = false;
     state.assistDraft.interventionTargetMode = "current";
     state.assistDraft.operationMode = Array.isArray(microsequence.cards) && microsequence.cards.length ? "reinforce" : "reinforce";
     state.assistDraft.interventionType = inferBottomUpInterventionType(microsequence);
@@ -5156,13 +5160,20 @@ export function createLessonEditorApp({ root, storage, editor }) {
     };
   }
 
-  function canSubmitAssistRequestFromState({ promptText, actionIntent, dependencyKeys, dependencyOptions, isSubmitting }) {
+  function canSubmitAssistRequestFromState({
+    promptText,
+    actionIntent,
+    dependencyKeys,
+    dependencyOptions,
+    preferredContainerConfirmed,
+    isSubmitting
+  }) {
     const hasPrompt = !!String(promptText || "").trim();
     const hasIntent = !!String(actionIntent || "").trim();
     const availableDependencyCount = Array.isArray(dependencyOptions) ? dependencyOptions.length : 0;
     const hasDependencies = Array.isArray(dependencyKeys) && dependencyKeys.length > 0;
     const dependenciesReady = hasDependencies || availableDependencyCount === 0;
-    return hasPrompt && hasIntent && dependenciesReady && !isSubmitting;
+    return hasPrompt && hasIntent && dependenciesReady && !!preferredContainerConfirmed && !isSubmitting;
   }
 
   function isPlannedMicrosequenceForRuntime(microsequence) {
@@ -7503,6 +7514,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
           activeWorkbenchPane: state.assistDraft.activeWorkbenchPane,
           assistModeLocked: assistModeConfig.locked,
           preferredContainer: state.assistDraft.preferredContainer,
+          preferredContainerConfirmed: state.assistDraft.preferredContainerConfirmed,
           preferredContainerLabel: getAssistContainerLabel(state.assistDraft.preferredContainer),
           containerOptions: ASSIST_CARD_CONTAINER_OPTIONS,
           assistActionOptions,
@@ -7515,6 +7527,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
             actionIntent: state.assistDraft.actionIntent,
             dependencyKeys: state.assistDraft.dependencyKeys,
             dependencyOptions: assistCatalog,
+            preferredContainerConfirmed: state.assistDraft.preferredContainerConfirmed,
             isSubmitting: state.assistDraft.isSubmitting
           }),
           selectedDidacticTypeId: state.assistDraft.didacticTypeId,
@@ -8894,6 +8907,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
         actionIntent: state.assistDraft.actionIntent,
         dependencyKeys: state.assistDraft.dependencyKeys,
         dependencyOptions: getAssistCatalog(),
+        preferredContainerConfirmed: state.assistDraft.preferredContainerConfirmed,
         isSubmitting: state.assistDraft.isSubmitting
       });
       assistSubmitButton.disabled = !canSubmitAssist;
@@ -8928,9 +8942,9 @@ export function createLessonEditorApp({ root, storage, editor }) {
     if (assistPreferredContainer) {
       assistPreferredContainer.addEventListener("change", () => {
         const nextContainer = assistPreferredContainer.value;
-        state.assistDraft.preferredContainer = ASSIST_CARD_CONTAINER_OPTIONS.some((item) => item.value === nextContainer)
-          ? nextContainer
-          : "";
+        const isKnownContainer = ASSIST_CARD_CONTAINER_OPTIONS.some((item) => item.value === nextContainer);
+        state.assistDraft.preferredContainer = isKnownContainer ? nextContainer : "";
+        state.assistDraft.preferredContainerConfirmed = isKnownContainer;
         render({ preserveState: true });
       });
     }

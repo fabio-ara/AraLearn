@@ -681,19 +681,20 @@ function renderAssistActionOptions(actionOptions = [], selectedAction = "") {
     .join("");
 }
 
-function renderAssistContainerSelectOptions(options = [], selectedValue = "") {
-  return (options || [])
-    .map((item) => {
+function renderAssistContainerSelectOptions(options = [], selectedValue = "", confirmed = false) {
+  const selectValue = confirmed ? selectedValue : "__unset__";
+  return ['<option value="__unset__"' + (selectValue === "__unset__" ? " selected" : "") + '>Selecionar materialização</option>']
+    .concat((options || []).map((item) => {
       return (
         '<option value="' +
         escapeHtml(item.value) +
         '"' +
-        (item.value === selectedValue ? " selected" : "") +
+        (item.value === selectValue ? " selected" : "") +
         ">" +
         escapeHtml(item.label || item.value) +
         "</option>"
       );
-    })
+    }))
     .join("");
 }
 
@@ -1259,7 +1260,8 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
   );
   const containerOptions = renderAssistContainerSelectOptions(
     editorSupport.containerOptions || [],
-    editorSupport.preferredContainer
+    editorSupport.preferredContainer,
+    editorSupport.preferredContainerConfirmed
   );
   const assistWarning = editorSupport.assistError
     ? '<section class="microsequence-assist-panel assist-status-panel is-warning">' +
