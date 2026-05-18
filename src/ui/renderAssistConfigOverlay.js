@@ -110,6 +110,8 @@ export function renderAssistConfigOverlay({
   didacticProfileId,
   profileTuning = {},
   didacticProfileOptions = [],
+  isCustomProfileSelected = false,
+  customProfileLabel = "",
 } = {}) {
   const courseModelOptions = listCourseModelOptions(profileTuning.courseModel?.learningTrail || "");
   return (
@@ -133,6 +135,12 @@ export function renderAssistConfigOverlay({
     '<select data-field="assist-config-profile" aria-label="Perfil didático" title="Escolhe o estilo-base da trilha">' +
     renderOptionList(didacticProfileOptions, didacticProfileId) +
     "</select></label>" +
+    (isCustomProfileSelected
+      ? '<label class="field assist-config-field assist-config-profile-name-field">' +
+        renderFieldLabel("edit", "Nome do perfil", "Renomeia o perfil derivado salvo pelo usuário") +
+        `<input data-field="assist-config-custom-profile-label" type="text" value="${escapeHtml(customProfileLabel)}" autocomplete="off" spellcheck="false" placeholder="Nome do perfil" title="Renomeia o perfil derivado salvo pelo usuário">` +
+        "</label>"
+      : "") +
     '<label class="field assist-config-field assist-config-student-field">' +
     renderFieldLabel("prompt", "Para quem", "Ajusta a trilha ao nível e ao tempo do estudante") +
     `<input data-field="assist-config-target-student-profile" type="text" value="${escapeHtml(profileTuning.targetStudentProfile || "")}" autocomplete="off" spellcheck="false" placeholder="Perfil do estudante" title="Ajusta a trilha ao nível e ao tempo do estudante">` +

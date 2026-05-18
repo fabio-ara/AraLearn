@@ -1705,6 +1705,25 @@ export function createLessonEditorApp({ root, storage, editor }) {
     return `Meu perfil ${count + 1}`;
   }
 
+  function updateAssistCustomProfileLabel(label = "") {
+    const selectedProfileId = state.assistConfig.selectedProfileId;
+    if (!isAssistCustomProfile(selectedProfileId)) {
+      return;
+    }
+
+    const normalizedLabel = String(label || "").trim() || buildNextCustomProfileLabel(state.assistConfig.customProfiles);
+    persistAssistConfigValue({
+      customProfiles: (state.assistConfig.customProfiles || []).map((entry) =>
+        entry.id === selectedProfileId
+          ? {
+              ...entry,
+              label: normalizedLabel
+            }
+          : entry
+      )
+    });
+  }
+
   function getCodexSetupEndpoint() {
     return state.assistConfig.codexEndpoint || DEFAULT_CODEX_LOCAL_ENDPOINT;
   }
@@ -1908,17 +1927,9 @@ export function createLessonEditorApp({ root, storage, editor }) {
   }
 
   function createAssistCustomProfile() {
-    const suggestedLabel = buildNextCustomProfileLabel(state.assistConfig.customProfiles);
-    const promptedLabel =
-      typeof globalThis.prompt === "function"
-        ? globalThis.prompt("Nome do novo perfil", suggestedLabel)
-        : suggestedLabel;
-    if (promptedLabel === null) {
-      return;
-    }
-
-    const label = String(promptedLabel || "").trim() || suggestedLabel;
     const timestampId = Date.now().toString(36);
+    const selectedSeedOption = DIDACTIC_PROFILE_SEED_OPTIONS.find((entry) => entry.value === state.assistConfig.didacticProfileId);
+    const label = selectedSeedOption?.label ? `${selectedSeedOption.label} personalizado` : buildNextCustomProfileLabel(state.assistConfig.customProfiles);
     const customProfile = {
       id: `assist.custom.${timestampId}`,
       label,
@@ -6977,7 +6988,16 @@ export function createLessonEditorApp({ root, storage, editor }) {
         ? renderAssistConfigOverlay({
             didacticProfileId: state.assistConfigDraft.selectedProfileId || state.assistConfigDraft.didacticProfileId,
             profileTuning: state.assistConfigDraft.profileTuning,
-            didacticProfileOptions: buildDidacticProfileOptions(state.assistConfigDraft.customProfiles)
+            didacticProfileOptions: buildDidacticProfileOptions(state.assistConfigDraft.customProfiles),
+            isCustomProfileSelected: isAssistCustomProfile(
+              state.assistConfigDraft.selectedProfileId || state.assistConfigDraft.didacticProfileId,
+              state.assistConfigDraft.customProfiles
+            ),
+            customProfileLabel:
+              findAssistCustomProfile(
+                state.assistConfigDraft.selectedProfileId || state.assistConfigDraft.didacticProfileId,
+                state.assistConfigDraft.customProfiles
+              )?.label || ""
           })
         : "") +
       (state.pendingExternalImport
@@ -8411,6 +8431,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
     });
 
     const assistConfigProfile = root.querySelector("[data-field='assist-config-profile']");
+    const assistConfigCustomProfileLabel = root.querySelector("[data-field='assist-config-custom-profile-label']");
     const assistConfigTargetStudentProfile = root.querySelector("[data-field='assist-config-target-student-profile']");
     const assistConfigCourseModelDescription = root.querySelector("[data-field='assist-config-course-model-description']");
     const assistConfigCourseLearningTrail = root.querySelector("[data-field='assist-config-course-learning-trail']");
@@ -8454,6 +8475,11 @@ export function createLessonEditorApp({ root, storage, editor }) {
     if (assistConfigProfile) {
       assistConfigProfile.addEventListener("change", () => {
         selectAssistDidacticProfile(assistConfigProfile.value);
+      });
+    }
+    if (assistConfigCustomProfileLabel) {
+      assistConfigCustomProfileLabel.addEventListener("input", () => {
+        updateAssistCustomProfileLabel(assistConfigCustomProfileLabel.value);
       });
     }
     if (assistConfigTargetStudentProfile) {

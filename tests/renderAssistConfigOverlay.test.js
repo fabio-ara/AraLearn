@@ -76,3 +76,20 @@ test("renderAssistConfigOverlay não mistura setup operacional com o contrato di
   assert.doesNotMatch(html, />Motor</);
   assert.doesNotMatch(html, />API</);
 });
+
+test("renderAssistConfigOverlay expõe nome editável quando o perfil derivado está selecionado", () => {
+  const html = renderAssistConfigOverlay({
+    didacticProfileId: "assist.custom.demo",
+    profileTuning: createCourseForgeProfileTuning("aralearn.engine.ads.general.v3"),
+    didacticProfileOptions: [
+      { value: "aralearn.engine.ads.general.v3", label: "ADS geral" },
+      { value: "assist.custom.demo", label: "ADS geral personalizado" }
+    ],
+    isCustomProfileSelected: true,
+    customProfileLabel: "ADS geral personalizado"
+  });
+
+  assert.match(html, /data-field="assist-config-custom-profile-label"/);
+  assert.match(html, />Nome do perfil</);
+  assert.match(html, /value="ADS geral personalizado"/);
+});
