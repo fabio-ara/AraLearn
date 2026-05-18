@@ -20,6 +20,7 @@ test("renderAssistConfigOverlay expõe contrato discreto do top-down sem setup o
   assert.match(html, /editor-title">Planejamento didático<\/p>/);
   assert.match(html, /data-field="assist-config-profile"/);
   assert.match(html, /data-field="assist-config-target-student-profile"/);
+  assert.match(html, /data-action="assist-config-create-custom-profile"/);
   assert.match(html, /data-field="assist-config-course-model-description"/);
   assert.match(html, /data-field="assist-config-course-learning-trail"/);
   assert.match(html, /data-field="assist-config-course-microsequence-progression"/);

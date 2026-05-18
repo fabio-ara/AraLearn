@@ -124,9 +124,12 @@ export function renderAssistConfigOverlay({
     '<div class="editor-body assist-config-body">' +
     '<section class="assist-config-panel">' +
     renderSectionLabel("trail", "Planejamento", "Parâmetros que entram no planejamento top-down da trilha") +
-    '<div class="assist-config-grid">' +
+    '<div class="assist-config-profile-stack">' +
     '<label class="field assist-config-field">' +
+    '<span class="assist-config-label-actions">' +
     renderFieldLabel("trail", "Perfil", "Escolhe o ponto de partida do planejamento") +
+    renderIconAction("assist-config-create-custom-profile", "add", "Salvar como novo perfil") +
+    "</span>" +
     '<select data-field="assist-config-profile" aria-label="Perfil didático" title="Escolhe o estilo-base da trilha">' +
     renderOptionList(didacticProfileOptions, didacticProfileId) +
     "</select></label>" +

@@ -181,7 +181,7 @@ const ASSIST_MODEL_OPTIONS = [
   { value: "gemini-2.0-flash", label: "Gemini 2.0 Flash" },
   { value: CODEX_LOCAL_MODEL_ID, label: "Codex local" }
 ];
-const DIDACTIC_PROFILE_OPTIONS = listEngineProfileSeeds().map((profile) => ({
+const DIDACTIC_PROFILE_SEED_OPTIONS = listEngineProfileSeeds().map((profile) => ({
   value: profile.profileId,
   label: profile.label || profile.profileId
 }));
@@ -212,6 +212,18 @@ const GENERATED_ACCEPTED_OPERATION = "generated";
 
 function fail(message) {
   throw new Error(message);
+}
+
+function buildDidacticProfileOptions(customProfiles = []) {
+  return [
+    ...DIDACTIC_PROFILE_SEED_OPTIONS,
+    ...(Array.isArray(customProfiles)
+      ? customProfiles.map((profile) => ({
+          value: profile.id,
+          label: profile.label || profile.id
+        }))
+      : [])
+  ];
 }
 
 function isGeneratedPendingOperation(value) {
@@ -1680,6 +1692,19 @@ export function createLessonEditorApp({ root, storage, editor }) {
     return structuredClone(config || {});
   }
 
+  function findAssistCustomProfile(profileId = "", customProfiles = state.assistConfig.customProfiles) {
+    return (Array.isArray(customProfiles) ? customProfiles : []).find((entry) => entry.id === String(profileId || "").trim()) || null;
+  }
+
+  function isAssistCustomProfile(profileId = "", customProfiles = state.assistConfig.customProfiles) {
+    return Boolean(findAssistCustomProfile(profileId, customProfiles));
+  }
+
+  function buildNextCustomProfileLabel(customProfiles = state.assistConfig.customProfiles) {
+    const count = Array.isArray(customProfiles) ? customProfiles.length : 0;
+    return `Meu perfil ${count + 1}`;
+  }
+
   function getCodexSetupEndpoint() {
     return state.assistConfig.codexEndpoint || DEFAULT_CODEX_LOCAL_ENDPOINT;
   }
@@ -1802,12 +1827,29 @@ export function createLessonEditorApp({ root, storage, editor }) {
     void handleCodexModelSelection(state.assistConfig.model);
   }
 
-  function resetAssistProfileTuning(profileId = state.assistConfig.didacticProfileId) {
+  function selectAssistDidacticProfile(profileSelectionId = state.assistConfig.selectedProfileId || state.assistConfig.didacticProfileId) {
+    const customProfile = findAssistCustomProfile(profileSelectionId, state.assistConfig.customProfiles);
+    if (customProfile) {
+      persistAssistConfigValue({
+        selectedProfileId: customProfile.id,
+        didacticProfileId: customProfile.baseProfileId,
+        profileTuning: structuredClone(customProfile.profileTuning)
+      });
+      render({ preserveState: true });
+      return;
+    }
+
+    const profileId = String(profileSelectionId || "").trim() || state.assistConfig.didacticProfileId;
     persistAssistConfigValue({
+      selectedProfileId: profileId,
       didacticProfileId: profileId,
       profileTuning: createCourseForgeProfileTuning(profileId)
     });
     render({ preserveState: true });
+  }
+
+  function resetAssistProfileTuning(profileSelectionId = state.assistConfig.selectedProfileId || state.assistConfig.didacticProfileId) {
+    selectAssistDidacticProfile(profileSelectionId);
   }
 
   function updateAssistProfileTuning(patch = {}) {
@@ -1865,13 +1907,55 @@ export function createLessonEditorApp({ root, storage, editor }) {
     render({ preserveState: true });
   }
 
+  function createAssistCustomProfile() {
+    const suggestedLabel = buildNextCustomProfileLabel(state.assistConfig.customProfiles);
+    const promptedLabel =
+      typeof globalThis.prompt === "function"
+        ? globalThis.prompt("Nome do novo perfil", suggestedLabel)
+        : suggestedLabel;
+    if (promptedLabel === null) {
+      return;
+    }
+
+    const label = String(promptedLabel || "").trim() || suggestedLabel;
+    const timestampId = Date.now().toString(36);
+    const customProfile = {
+      id: `assist.custom.${timestampId}`,
+      label,
+      baseProfileId: state.assistConfig.didacticProfileId,
+      profileTuning: structuredClone(state.assistConfig.profileTuning || createCourseForgeProfileTuning(state.assistConfig.didacticProfileId))
+    };
+    persistAssistConfigValue({
+      selectedProfileId: customProfile.id,
+      customProfiles: [...(state.assistConfig.customProfiles || []), customProfile]
+    });
+    render({ preserveState: true });
+  }
+
   function persistAssistConfigValue(patch = {}) {
     const nextAssistConfigState = applyCourseForgeAssistConfigPatch({
       assistConfig: state.assistConfig,
       patch
     });
-    state.assistConfig = nextAssistConfigState.assistConfig;
+    let nextAssistConfig = nextAssistConfigState.assistConfig;
+    if (isAssistCustomProfile(nextAssistConfig.selectedProfileId, nextAssistConfig.customProfiles)) {
+      nextAssistConfig = {
+        ...nextAssistConfig,
+        customProfiles: (nextAssistConfig.customProfiles || []).map((entry) =>
+          entry.id === nextAssistConfig.selectedProfileId
+            ? {
+                ...entry,
+                baseProfileId: nextAssistConfig.didacticProfileId,
+                profileTuning: structuredClone(nextAssistConfig.profileTuning || {})
+              }
+            : entry
+        )
+      };
+      nextAssistConfig = normalizeCourseForgeAssistConfig(nextAssistConfig);
+    }
+    state.assistConfig = nextAssistConfig;
     state.assistConfigDraft = nextAssistConfigState.assistConfigDraft;
+    state.assistConfigDraft = structuredClone(state.assistConfig);
     persistAssistConfig();
   }
 
@@ -6891,9 +6975,9 @@ export function createLessonEditorApp({ root, storage, editor }) {
         : "") +
       (state.assistConfigOpen
         ? renderAssistConfigOverlay({
-            didacticProfileId: state.assistConfigDraft.didacticProfileId,
+            didacticProfileId: state.assistConfigDraft.selectedProfileId || state.assistConfigDraft.didacticProfileId,
             profileTuning: state.assistConfigDraft.profileTuning,
-            didacticProfileOptions: DIDACTIC_PROFILE_OPTIONS
+            didacticProfileOptions: buildDidacticProfileOptions(state.assistConfigDraft.customProfiles)
           })
         : "") +
       (state.pendingExternalImport
@@ -8303,7 +8387,10 @@ export function createLessonEditorApp({ root, storage, editor }) {
     root.querySelector("[data-action='open-version-history']")?.addEventListener("click", () => openVersionHistory());
     root.querySelector("[data-action='assist-config-close']")?.addEventListener("click", () => closeAssistConfig());
     root.querySelector("[data-action='assist-config-reset-profile']")?.addEventListener("click", () => {
-      resetAssistProfileTuning(state.assistConfig.didacticProfileId);
+      resetAssistProfileTuning(state.assistConfig.selectedProfileId || state.assistConfig.didacticProfileId);
+    });
+    root.querySelector("[data-action='assist-config-create-custom-profile']")?.addEventListener("click", () => {
+      createAssistCustomProfile();
     });
     root.querySelector("[data-action='assist-config-infer-course-model']")?.addEventListener("click", () => {
       inferAssistCourseModelFromDescription();
@@ -8366,7 +8453,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
     };
     if (assistConfigProfile) {
       assistConfigProfile.addEventListener("change", () => {
-        resetAssistProfileTuning(assistConfigProfile.value);
+        selectAssistDidacticProfile(assistConfigProfile.value);
       });
     }
     if (assistConfigTargetStudentProfile) {

@@ -29,6 +29,25 @@ function text(value) {
   return typeof value === "string" ? value.trim() : "";
 }
 
+function normalizeAssistCustomProfiles(customProfiles = []) {
+  return (Array.isArray(customProfiles) ? customProfiles : [])
+    .map((entry, index) => {
+      const id = text(entry?.id) || `custom-profile-${index + 1}`;
+      const label = text(entry?.label) || `Meu perfil ${index + 1}`;
+      const baseProfileId = text(entry?.baseProfileId) || DEFAULT_ENGINE_PROFILE_ID;
+      return {
+        id,
+        label,
+        baseProfileId,
+        profileTuning: createCourseForgeProfileTuning(
+          baseProfileId,
+          entry?.profileTuning && typeof entry.profileTuning === "object" ? entry.profileTuning : {}
+        )
+      };
+    })
+    .filter((entry, index, items) => items.findIndex((item) => item.id === entry.id) === index);
+}
+
 function cloneGenerationDraft(draft = {}) {
   return {
     courseFixed: draft.courseFixed === true,
@@ -49,15 +68,22 @@ function cloneGenerationDraft(draft = {}) {
 }
 
 export function normalizeCourseForgeAssistConfig(config = {}) {
-  const didacticProfileId = text(config.didacticProfileId) || DEFAULT_ENGINE_PROFILE_ID;
+  const customProfiles = normalizeAssistCustomProfiles(config.customProfiles);
+  const selectedProfileId = text(config.selectedProfileId) || text(config.didacticProfileId) || DEFAULT_ENGINE_PROFILE_ID;
+  const selectedCustomProfile = customProfiles.find((entry) => entry.id === selectedProfileId) || null;
+  const didacticProfileId = selectedCustomProfile?.baseProfileId || text(config.didacticProfileId) || selectedProfileId || DEFAULT_ENGINE_PROFILE_ID;
   return {
     model: text(config.model) || DEFAULT_ASSIST_MODEL,
     apiKey: typeof config.apiKey === "string" ? config.apiKey.trim() : "",
+    selectedProfileId: selectedCustomProfile?.id || didacticProfileId,
     didacticProfileId,
     profileTuning: createCourseForgeProfileTuning(
       didacticProfileId,
-      config.profileTuning && typeof config.profileTuning === "object" ? config.profileTuning : {}
+      config.profileTuning && typeof config.profileTuning === "object"
+        ? config.profileTuning
+        : selectedCustomProfile?.profileTuning || {}
     ),
+    customProfiles,
     codexEndpoint: text(config.codexEndpoint) || DEFAULT_CODEX_LOCAL_ENDPOINT,
     codexToken: typeof config.codexToken === "string" ? config.codexToken.trim() : ""
   };

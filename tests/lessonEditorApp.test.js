@@ -219,8 +219,10 @@ test("normalizeCourseForgeAssistConfig e patch consolidam config fora da UI", ()
   assert.deepEqual(normalizeCourseForgeAssistConfig({ codexEndpoint: " " }), {
     model: "gemini-2.5-flash",
     apiKey: "",
+    selectedProfileId: "aralearn.engine.ads.general.v3",
     didacticProfileId: "aralearn.engine.ads.general.v3",
     profileTuning: createCourseForgeProfileTuning("aralearn.engine.ads.general.v3"),
+    customProfiles: [],
     codexEndpoint: "http://127.0.0.1:4183/assist",
     codexToken: ""
   });
@@ -229,8 +231,10 @@ test("normalizeCourseForgeAssistConfig e patch consolidam config fora da UI", ()
     assistConfig: {
       model: "gemini-2.5-flash",
       apiKey: " chave ",
+      selectedProfileId: "aralearn.engine.ads.general.v3",
       didacticProfileId: "aralearn.engine.ads.general.v3",
       profileTuning: createCourseForgeProfileTuning("aralearn.engine.ads.general.v3"),
+      customProfiles: [],
       codexEndpoint: "",
       codexToken: " token "
     },
@@ -246,6 +250,7 @@ test("normalizeCourseForgeAssistConfig e patch consolidam config fora da UI", ()
 
   assert.equal(patched.assistConfig.model, "codex-cli-local");
   assert.equal(patched.assistConfig.apiKey, "chave");
+  assert.equal(patched.assistConfig.selectedProfileId, "aralearn.engine.ads.systems.v1");
   assert.equal(patched.assistConfig.didacticProfileId, "aralearn.engine.ads.systems.v1");
   assert.equal(patched.assistConfig.profileTuning.targetStudentProfile, "estudante com pouco tempo");
   assert.equal(patched.assistConfig.codexEndpoint, "http://127.0.0.1:9999/assist");

@@ -31,8 +31,10 @@ test("assistConfigStorage lê config legada e injeta defaults do Codex local", (
   assert.deepEqual(readAssistConfigStorage(storage), {
     model: "gemini-2.5-flash",
     apiKey: "abc",
+    selectedProfileId: DEFAULT_ENGINE_PROFILE_ID,
     didacticProfileId: DEFAULT_ENGINE_PROFILE_ID,
     profileTuning: createCourseForgeProfileTuning(DEFAULT_ENGINE_PROFILE_ID),
+    customProfiles: [],
     codexEndpoint: "http://127.0.0.1:4183/assist",
     codexToken: ""
   });
@@ -45,10 +47,12 @@ test("assistConfigStorage grava e lê endpoint/token do Codex local", () => {
     {
       model: "codex-cli-local",
       apiKey: "",
+      selectedProfileId: "aralearn.engine.ads.systems.v1",
       didacticProfileId: "aralearn.engine.ads.systems.v1",
       profileTuning: createCourseForgeProfileTuning("aralearn.engine.ads.systems.v1", {
         targetStudentProfile: "estudante operacional"
       }),
+      customProfiles: [],
       codexEndpoint: "http://127.0.0.1:4183/assist",
       codexToken: "segredo"
     },
@@ -58,10 +62,12 @@ test("assistConfigStorage grava e lê endpoint/token do Codex local", () => {
   assert.deepEqual(readAssistConfigStorage(storage), {
     model: "codex-cli-local",
     apiKey: "",
+    selectedProfileId: "aralearn.engine.ads.systems.v1",
     didacticProfileId: "aralearn.engine.ads.systems.v1",
     profileTuning: createCourseForgeProfileTuning("aralearn.engine.ads.systems.v1", {
       targetStudentProfile: "estudante operacional"
     }),
+    customProfiles: [],
     codexEndpoint: "http://127.0.0.1:4183/assist",
     codexToken: "segredo"
   });
@@ -71,16 +77,20 @@ test("assistConfigStorage tolera storage ausente, JSON inválido e valores ausen
   assert.deepEqual(readAssistConfigStorage(null), {
     model: "gemini-2.5-flash",
     apiKey: "",
+    selectedProfileId: DEFAULT_ENGINE_PROFILE_ID,
     didacticProfileId: DEFAULT_ENGINE_PROFILE_ID,
     profileTuning: createCourseForgeProfileTuning(DEFAULT_ENGINE_PROFILE_ID),
+    customProfiles: [],
     codexEndpoint: "http://127.0.0.1:4183/assist",
     codexToken: ""
   });
   assert.deepEqual(readAssistConfigStorage({ getItem: () => "{" }), {
     model: "gemini-2.5-flash",
     apiKey: "",
+    selectedProfileId: DEFAULT_ENGINE_PROFILE_ID,
     didacticProfileId: DEFAULT_ENGINE_PROFILE_ID,
     profileTuning: createCourseForgeProfileTuning(DEFAULT_ENGINE_PROFILE_ID),
+    customProfiles: [],
     codexEndpoint: "http://127.0.0.1:4183/assist",
     codexToken: ""
   });
@@ -110,5 +120,37 @@ test("assistConfigStorage reidrata defaults semânticos do perfil quando o cours
   assert.equal(config.profileTuning.courseModel.secondaryRepresentation, "matrix");
   assert.equal(config.profileTuning.courseModel.primaryDifficulty, "notation");
   assert.equal(config.profileTuning.courseModelEdited, false);
+});
+
+test("assistConfigStorage reidrata perfil derivado do usuário sem mutar o seed base", () => {
+  const storage = createMemoryStorage();
+  storage.setItem(
+    "aralearn.assist-config",
+    JSON.stringify({
+      selectedProfileId: "assist.custom.demo",
+      didacticProfileId: "aralearn.engine.ads.programming.v1",
+      profileTuning: {
+        targetStudentProfile: "rascunho temporário"
+      },
+      customProfiles: [
+        {
+          id: "assist.custom.demo",
+          label: "Meu perfil procedural",
+          baseProfileId: "aralearn.engine.ads.programming.v1",
+          profileTuning: {
+            targetStudentProfile: "estudante que precisa de passos curtos",
+            minMicrosequences: 4
+          }
+        }
+      ]
+    })
+  );
+
+  const config = readAssistConfigStorage(storage);
+  assert.equal(config.selectedProfileId, "assist.custom.demo");
+  assert.equal(config.didacticProfileId, "aralearn.engine.ads.programming.v1");
+  assert.equal(config.profileTuning.targetStudentProfile, "rascunho temporário");
+  assert.equal(config.customProfiles[0].label, "Meu perfil procedural");
+  assert.equal(config.customProfiles[0].profileTuning.minMicrosequences, 4);
 });
 

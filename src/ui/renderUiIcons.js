@@ -71,6 +71,16 @@ export function renderUiIcon(iconName, className = "ui-icon") {
     );
   }
 
+  if (iconName === "add") {
+    return (
+      '<svg class="' +
+      classes +
+      '" viewBox="0 0 16 16" aria-hidden="true" focusable="false">' +
+      '<path d="M8 3.1v9.8M3.1 8h9.8" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"></path>' +
+      "</svg>"
+    );
+  }
+
   if (iconName === "intent") {
     return (
       '<svg class="' +

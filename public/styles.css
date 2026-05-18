@@ -3944,6 +3944,18 @@ button {
   gap: 8px;
 }
 
+.assist-config-profile-stack {
+  display: grid;
+  gap: 12px;
+}
+
+.assist-config-label-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
 .assist-config-inline-label {
   display: inline-flex;
   align-items: center;
