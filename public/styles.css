@@ -6376,10 +6376,25 @@ button {
   overflow: hidden;
 }
 
+.assist-quick-panel {
+  gap: 0;
+}
+
+.assist-quick-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
 .workbench-editor-panel .assist-status-panel .assist-icon-actions {
   min-height: 40px;
   align-content: flex-start;
-  padding-top: 4px;
+  justify-content: flex-end;
+  padding-top: 0;
+  margin-left: auto;
 }
 
 .workbench-editor-panel .assist-status-panel .tiny {
