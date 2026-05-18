@@ -228,6 +228,72 @@ test("rotas visiveis de IA funcionam no navegador real", async (t) => {
   assert.equal(await page.locator(".topbar-title").first().textContent(), "Continuar microssequência");
 });
 
+test("assistencia da microssequencia mostra quatro acoes e desabilita a proxima quando nao existe", async (t) => {
+  if (!chromium) {
+    t.skip("Playwright indisponivel neste ambiente.");
+    return;
+  }
+
+  const port = 4204;
+  const server = spawn(process.execPath, ["./scripts/servePublic.js"], {
+    cwd: repoRoot,
+    env: {
+      ...process.env,
+      PORT: String(port)
+    },
+    stdio: ["ignore", "pipe", "pipe"],
+    windowsHide: true
+  });
+  t.after(async () => {
+    if (server.exitCode === null) {
+      server.kill();
+      try {
+        await once(server, "exit");
+      } catch {
+        // noop
+      }
+    }
+  });
+
+  await waitForServerReady(server, port);
+
+  let browser = null;
+  try {
+    browser = await chromium.launch({ headless: true });
+  } catch {
+    t.skip("Chromium do Playwright nao esta instalado.");
+    return;
+  }
+  t.after(async () => {
+    await browser?.close();
+  });
+
+  const page = await browser.newPage({ viewport: { width: 430, height: 932 } });
+  page.setDefaultTimeout(10000);
+  await seedExampleProject(page);
+  await page.goto(`http://127.0.0.1:${port}/`, { waitUntil: "networkidle" });
+  await page.locator("[data-action='open-course']").first().click();
+  await page.locator("[data-action='open-module']").first().click();
+  await page.locator("[data-action='open-lesson']").first().click();
+  await page.locator("[data-action='open-microsequence-assist']").first().click();
+  await page.waitForSelector("[data-field='assist-action-intent']");
+
+  const metrics = await page.evaluate(() => {
+    const inputs = Array.from(document.querySelectorAll("[data-field='assist-action-intent']"));
+    const nextPlanned = inputs.find((node) => node.getAttribute("value") === "next_planned");
+    const option = nextPlanned?.closest(".assist-action-option");
+    return {
+      count: inputs.length,
+      nextPlannedDisabled: !!nextPlanned?.disabled,
+      nextPlannedCopy: option?.textContent?.replace(/\s+/g, " ").trim() || ""
+    };
+  });
+
+  assert.equal(metrics.count, 4);
+  assert.equal(metrics.nextPlannedDisabled, true);
+  assert.match(metrics.nextPlannedCopy, /Sem próxima etapa planejada\./);
+});
+
 test("painel contextual de geracao usa largura compativel com celular", async (t) => {
   if (!chromium) {
     t.skip("Playwright indisponivel neste ambiente.");

@@ -392,7 +392,7 @@ test("renderiza o painel da microssequência sem botão próprio de ações e co
       assistActionOptions: [
         { value: "continue_current", label: "Continuar na microssequência", icon: "sparkles" },
         { value: "repair_current", label: "Corrigir microssequência", icon: "edit" },
-        { value: "next_planned", label: "Ir a nova microssequência", icon: "microsequence" },
+        { value: "next_planned", label: "Ir a nova microssequência", icon: "microsequence", disabled: true },
         { value: "create_after_current", label: "Criar nova microssequência", icon: "add" }
       ],
       selectedAssistAction: "",
@@ -457,6 +457,9 @@ test("renderiza o painel da microssequência sem botão próprio de ações e co
   assert.match(html, /Corrigir microssequência/);
   assert.match(html, /Ir a nova microssequência/);
   assert.match(html, /Criar nova microssequência/);
+  assert.match(html, /data-field="assist-action-intent" value="next_planned" disabled/);
+  assert.match(html, /assist-action-option is-disabled/);
+  assert.match(html, /Sem próxima etapa planejada\./);
   assert.match(html, /data-field="assist-preferred-container" aria-label="Materialização preferida" title="Materialização preferida"/);
   assert.match(html, /<option value="__unset__" selected>Selecionar materialização<\/option>/);
   assert.doesNotMatch(html, /Os cards atuais são só o trecho já materializado\./);
@@ -603,7 +606,7 @@ test("renderiza o painel da microssequência vazia em modo de geração de cards
       assistActionOptions: [
         { value: "materialize_current", label: "Continuar na microssequência", icon: "sparkles" },
         { value: "reformulate_current", label: "Corrigir microssequência", icon: "edit" },
-        { value: "next_planned", label: "Ir a nova microssequência", icon: "microsequence" },
+        { value: "next_planned", label: "Ir a nova microssequência", icon: "microsequence", disabled: true },
         { value: "create_after_current", label: "Criar nova microssequência", icon: "add" }
       ],
       selectedAssistAction: "materialize_current",
@@ -640,6 +643,8 @@ test("renderiza o painel da microssequência vazia em modo de geração de cards
   assert.match(html, /data-field="assist-action-intent" value="materialize_current" checked/);
   assert.match(html, /Continuar na microssequência/);
   assert.match(html, /Corrigir microssequência/);
+  assert.match(html, /Ir a nova microssequência/);
+  assert.match(html, /data-field="assist-action-intent" value="next_planned" disabled/);
   assert.match(html, /data-action="open-assist-attachment-picker" title="Anexar documentos" aria-label="Anexar documentos"/);
   assert.match(html, /data-action="select-workbench-pane" data-workbench-pane="edit" aria-label="Geração" title="Geração"/);
   assert.match(html, /<option value="__unset__" selected>Selecionar materialização<\/option>/);

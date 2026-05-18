@@ -557,12 +557,18 @@ function renderAssistActionOptions(actionOptions = [], selectedAction = "") {
   return actionOptions
     .map((item, index) => {
       const optionId = `assist-action-${index}`;
-      const checked = item.value === selectedAction;
+      const disabled = !!item.disabled;
+      const checked = !disabled && item.value === selectedAction;
       return (
         '<label class="assist-action-option' +
         (checked ? " is-selected" : "") +
+        (disabled ? " is-disabled" : "") +
         '" for="' +
         escapeHtml(optionId) +
+        '"' +
+        (disabled ? ' aria-disabled="true"' : "") +
+        ' title="' +
+        escapeHtml(disabled ? (item.disabledLabel || "Nenhuma próxima microssequência planejada.") : (item.label || item.value)) +
         '">' +
         '<input id="' +
         escapeHtml(optionId) +
@@ -570,6 +576,7 @@ function renderAssistActionOptions(actionOptions = [], selectedAction = "") {
         escapeHtml(item.value) +
         '"' +
         (checked ? " checked" : "") +
+        (disabled ? " disabled" : "") +
         ">" +
         '<span class="assist-action-icon" aria-hidden="true">' +
         renderUiIcon(item.icon || "intent", "assist-action-icon-svg") +
@@ -577,7 +584,9 @@ function renderAssistActionOptions(actionOptions = [], selectedAction = "") {
         '<span class="assist-action-copy">' +
         '<span class="assist-action-title">' +
         escapeHtml(item.label || item.value) +
-        "</span></span></label>"
+        "</span>" +
+        (disabled ? '<span class="assist-action-meta">Sem próxima etapa planejada.</span>' : "") +
+        "</span></label>"
       );
     })
     .join("");

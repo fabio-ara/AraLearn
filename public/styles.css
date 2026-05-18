@@ -5412,6 +5412,16 @@ button {
   box-shadow: inset 0 1px 0 rgba(255, 240, 217, 0.04);
 }
 
+.assist-action-option.is-disabled {
+  opacity: 0.72;
+  cursor: not-allowed;
+}
+
+.assist-action-option.is-disabled:hover {
+  border-color: rgba(172, 131, 67, 0.36);
+  background: rgba(18, 14, 10, 0.72);
+}
+
 .assist-action-option input {
   margin: 0;
   accent-color: #d6b06d;
@@ -5440,6 +5450,14 @@ button {
   font-size: 0.9rem;
   font-weight: 700;
   line-height: 1.2;
+}
+
+.assist-action-meta {
+  display: block;
+  margin-top: 4px;
+  color: rgba(216, 194, 157, 0.78);
+  font-size: 0.72rem;
+  line-height: 1.25;
 }
 
 .bottomup-selection-panel {

@@ -5032,13 +5032,12 @@ export function createLessonEditorApp({ root, storage, editor }) {
 
   function getAssistActionIntentOptions({ microsequence, hasNextPlannedMicrosequence = false } = {}) {
     const isPlanned = isPlannedMicrosequenceForRuntime(microsequence);
-    const nextPlannedOption = hasNextPlannedMicrosequence
-      ? [{
-          value: ASSIST_ACTION_INTENTS.NEXT_PLANNED,
-          label: "Ir a nova microssequência",
-          icon: "microsequence"
-        }]
-      : [];
+    const nextPlannedOption = {
+      value: ASSIST_ACTION_INTENTS.NEXT_PLANNED,
+      label: "Ir a nova microssequência",
+      icon: "microsequence",
+      disabled: !hasNextPlannedMicrosequence
+    };
     const createAfterCurrentOption = {
       value: ASSIST_ACTION_INTENTS.CREATE_AFTER_CURRENT,
       label: "Criar nova microssequência",
@@ -5056,7 +5055,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
           label: "Corrigir microssequência",
           icon: "edit"
         },
-        ...nextPlannedOption,
+        nextPlannedOption,
         createAfterCurrentOption
       ];
     }
@@ -5071,13 +5070,13 @@ export function createLessonEditorApp({ root, storage, editor }) {
         label: "Corrigir microssequência",
         icon: "edit"
       },
-      ...nextPlannedOption,
+      nextPlannedOption,
       createAfterCurrentOption
     ];
   }
 
   function isValidAssistActionIntent(intent, { microsequence, hasNextPlannedMicrosequence = false } = {}) {
-    return getAssistActionIntentOptions({ microsequence, hasNextPlannedMicrosequence }).some((item) => item.value === intent);
+    return getAssistActionIntentOptions({ microsequence, hasNextPlannedMicrosequence }).some((item) => item.value === intent && !item.disabled);
   }
 
   function applyAssistActionIntent(intent, microsequence = getRenderContext().microsequence) {
