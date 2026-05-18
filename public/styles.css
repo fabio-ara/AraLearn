@@ -5477,10 +5477,7 @@ button {
 .workbench-editor-panel .workbench-prompt-field .generate-prompt-layout {
   grid-template-columns: 34px minmax(0, 1fr);
   align-items: start;
-  padding: 10px;
-  border: 1px solid rgba(172, 131, 67, 0.72);
-  border-radius: 16px;
-  background: rgba(15, 12, 9, 0.82);
+  gap: 10px;
 }
 
 .workbench-editor-panel .workbench-prompt-field .generate-prompt-content {
@@ -5572,10 +5569,10 @@ button {
   width: 100%;
   min-height: 118px;
   max-height: 38dvh;
-  padding: 0;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
+  padding: 10px 12px;
+  border: 1px solid rgba(172, 131, 67, 0.72);
+  border-radius: 14px;
+  background: rgba(15, 12, 9, 0.82);
   overflow-y: auto;
   resize: vertical;
 }
