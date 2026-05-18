@@ -3914,6 +3914,30 @@ button {
   gap: 10px;
 }
 
+.assist-config-inline-title-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.assist-config-inline-title-icon {
+  width: 15px;
+  height: 15px;
+  color: #d7b46a;
+  flex: 0 0 auto;
+}
+
+.assist-config-inline-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 0.96rem;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: 0.01em;
+  color: #f6ead6;
+}
+
 .assist-config-section-label {
   display: inline-flex;
   align-items: center;
@@ -4011,8 +4035,35 @@ button {
 }
 
 .assist-config-grid .assist-config-inline-label {
-  min-height: 30px;
+  min-height: 34px;
   align-items: flex-start;
+}
+
+.assist-config-panel-inline.is-inline .assist-config-inline-label,
+.assist-config-panel-inline.is-inline .assist-config-section-label {
+  color: rgba(244, 224, 190, 0.84);
+}
+
+.assist-config-panel-inline.is-inline .assist-config-field-icon,
+.assist-config-panel-inline.is-inline .assist-config-section-icon,
+.assist-config-panel-inline.is-inline .assist-config-inline-title-icon {
+  color: #efc15e;
+}
+
+.assist-config-panel-inline.is-inline .field input,
+.assist-config-panel-inline.is-inline .field select,
+.assist-config-panel-inline.is-inline .field textarea {
+  border-radius: 12px;
+  border: 1px solid rgba(172, 131, 67, 0.72);
+  background: rgba(15, 12, 9, 0.82);
+  color: #fff8ec;
+  font: inherit;
+  font-weight: 400;
+  letter-spacing: 0.01em;
+}
+
+.assist-config-panel-inline.is-inline .field textarea {
+  line-height: 1.45;
 }
 
 .assist-config-course-request-field textarea {
@@ -4431,6 +4482,7 @@ button {
     860px
   );
   overflow: auto;
+  scrollbar-gutter: stable both-edges;
   border-radius: 18px;
   background:
     linear-gradient(180deg, rgba(26, 21, 17, 0.995), rgba(18, 14, 11, 0.998)),
@@ -6167,6 +6219,16 @@ button {
     radial-gradient(circle at top, rgba(246, 214, 150, 0.1), transparent 62%);
 }
 
+.generate-main-stack {
+  display: grid;
+  gap: 9px;
+}
+
+.generate-card.is-planning-expanded .generate-main-stack {
+  opacity: 0.52;
+  filter: saturate(0.78);
+}
+
 .generate-card .field {
   display: grid;
   color: rgba(244, 224, 190, 0.76);
@@ -6213,13 +6275,27 @@ button {
 }
 
 .generate-prompt-field {
-  align-items: start;
+  align-items: stretch;
+}
+
+.generate-prompt-layout {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 10px;
+  align-items: stretch;
 }
 
 .generate-prompt-tools {
   display: grid;
-  gap: 8px;
+  gap: 10px;
   align-content: start;
+  justify-items: center;
+}
+
+.generate-prompt-content {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
 }
 
 .generate-combobox-shell {
@@ -6272,7 +6348,7 @@ button {
 }
 
 .generate-card textarea {
-  min-height: 82px;
+  min-height: 126px;
   padding: 10px 12px;
   resize: vertical;
   line-height: 1.45;
@@ -6294,7 +6370,7 @@ button {
 
 .generate-action-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 36px 36px 44px;
+  grid-template-columns: minmax(0, 1fr) 36px 44px;
   gap: 8px;
   align-items: center;
 }

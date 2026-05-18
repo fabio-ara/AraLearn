@@ -132,7 +132,12 @@ export function renderAssistConfigPanel({
     '" aria-label="Planejamento didático">' +
     '<header class="assist-config-inline-head">' +
     '<div class="assist-config-inline-heading">' +
-    renderSectionLabel("trail", "Planejamento didático", "Parâmetros que entram no planejamento top-down da trilha") +
+    (inline
+      ? '<div class="assist-config-inline-title-row" title="Parâmetros que entram no planejamento top-down da trilha" aria-label="Parâmetros que entram no planejamento top-down da trilha">' +
+        renderUiIcon("trail", "assist-config-inline-title-icon") +
+        '<h3 class="assist-config-inline-title">Planejamento didático</h3>' +
+        "</div>"
+      : renderSectionLabel("trail", "Planejamento didático", "Parâmetros que entram no planejamento top-down da trilha")) +
     "</div>" +
     '<div class="lesson-top-actions assist-config-head-actions">' +
     renderIconAction("assist-config-reset-profile", "draft-state", "Resetar perfil") +

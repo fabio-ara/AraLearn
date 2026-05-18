@@ -268,7 +268,7 @@ function renderGenerateIconButton(action, title, content, disabled = false, extr
 function renderGenerateStatusButton(expanded = false) {
   const title = expanded ? "Ocultar planejamento didático" : "Abrir planejamento didático";
   const icon = renderUiIcon("trail", "assist-config-action-icon");
-  return renderGenerateIconButton("open-assist-config", title, icon, false, expanded ? " is-pressed" : "");
+  return renderGenerateIconButton("open-assist-config", title, icon);
 }
 
 function renderGenerateScopeButton({ level, iconName, label, pressed = false, disabled = false }) {
@@ -439,6 +439,7 @@ function renderGeneratePane({ project, editorSupport, includeDismissActions = fa
     '<input data-field="generate-attachments" class="assist-attachment-input" type="file" multiple accept=".pdf,.txt,.md,.json,.csv,.html,.xml,.js,.ts,.py,.java,.c,.cpp,.doc,.docx,.ppt,.pptx,.rtf,.odt,.ods,.odp,text/*,application/pdf,application/json,application/xml">';
   const attachmentChips = renderGenerationAttachmentChips(draft.attachments);
   const hasScopedContext = draft.courseFixed || draft.moduleFixed || draft.lessonFixed;
+  const planningExpanded = editorSupport.assistConfigExpanded === true;
   const assistConfigPanel = editorSupport.assistConfigExpanded
     ? '<div class="generate-assist-config-shell">' +
       renderAssistConfigPanel({
@@ -452,7 +453,9 @@ function renderGeneratePane({ project, editorSupport, includeDismissActions = fa
     : "";
   return (
     '<section class="home-generate-pane">' +
-    '<section class="clean-card generate-card">' +
+    '<section class="clean-card generate-card' +
+    (planningExpanded ? " is-planning-expanded" : "") +
+    '">' +
     (includeDismissActions
       ? '<header class="generation-overlay-header">' +
         '<div class="generation-overlay-heading">' +
@@ -465,6 +468,7 @@ function renderGeneratePane({ project, editorSupport, includeDismissActions = fa
         renderGenerateIconButton("close-generation-panel", "Fechar painel de geração", "×") +
         "</div></header>"
       : "") +
+    '<div class="generate-main-stack">' +
     renderGenerateComboboxField({
       level: "course",
       iconName: "folder",
@@ -501,17 +505,20 @@ function renderGeneratePane({ project, editorSupport, includeDismissActions = fa
       buttonDisabled: !generationUiState.lessonToggleEnabled
     }) +
     '<div class="generate-divider"></div>' +
-    '<label class="field generate-icon-field generate-prompt-field">' +
+    '<div class="field generate-prompt-field">' +
+    '<div class="generate-prompt-layout">' +
+    '<div class="generate-prompt-tools">' +
     renderGenerateIconLabel("prompt", "Pedido, conteúdo ou orientação") +
+    renderGenerateIconButton("clear-prompt", "Limpar prompt", "↻") +
+    renderGenerateStatusButton(planningExpanded) +
+    "</div>" +
+    '<div class="generate-prompt-content">' +
     '<textarea data-field="generate-prompt" aria-label="Pedido, conteúdo ou orientação" title="Pedido, conteúdo ou orientação" placeholder="Descreva o que você quer gerar neste escopo.">' +
     escapeHtml(draft.promptText || "") +
-    "</textarea></label>" +
+    "</textarea>" +
     attachmentInput +
     attachmentChips +
-    '<div class="generate-inline-action-row">' +
-    '<div class="generate-inline-action-spacer" aria-hidden="true"></div>' +
-    renderGenerateIconButton("clear-prompt", "Limpar prompt", "↻") +
-    "</div>" +
+    "</div></div></div>" +
     '<div class="generate-divider"></div>' +
     '<div class="generate-action-preview generate-action-preview-compact">' +
     '<div class="generate-action-summary">' +
@@ -531,7 +538,6 @@ function renderGeneratePane({ project, editorSupport, includeDismissActions = fa
     '<select data-field="assist-model" aria-label="Modelo" title="Modelo">' +
     modelOptions +
     "</select></label>" +
-    renderGenerateStatusButton(editorSupport.assistConfigExpanded === true) +
     renderGenerateIconButton("open-generation-attachment-picker", "Anexar documento", renderUiIcon("lesson", "assist-attachment-button-icon")) +
     '<button class="open-main generate-submit" type="button" data-action="generate-structure" aria-label="' +
     escapeHtml(generationUiState.submitLabel || "Gerar estrutura") +
@@ -542,7 +548,7 @@ function renderGeneratePane({ project, editorSupport, includeDismissActions = fa
     ">" +
     renderUiIcon("sparkles", "generate-submit-icon") +
     "</button>" +
-    "</div>" +
+    "</div></div>" +
     assistConfigPanel +
     "</section>" +
     status +

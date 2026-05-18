@@ -394,6 +394,12 @@ test("renderiza o planejamento didático embutido no painel de geração quando 
   assert.match(html, /data-field="assist-config-profile"/);
   assert.match(html, /data-action="open-assist-config" title="Ocultar planejamento didático" aria-label="Ocultar planejamento didático"/);
   assert.ok(
+    html.indexOf('data-action="clear-prompt"') < html.indexOf('data-action="open-assist-config"')
+  );
+  assert.ok(
+    html.indexOf('data-action="open-assist-config"') < html.indexOf('data-field="assist-model"')
+  );
+  assert.ok(
     html.indexOf('data-field="generate-course-input"') < html.indexOf('data-field="assist-config-course-model-description"')
   );
 });
