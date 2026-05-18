@@ -4886,7 +4886,7 @@ button {
 .assist-config-panel-inline.is-inline .assist-config-student-field textarea {
   min-height: 52px;
   height: 52px;
-  padding: 6px 10px 6px 12px;
+  padding: 6px 4px 6px 12px;
   line-height: 1.28;
   resize: none;
   overflow-y: auto;
@@ -4895,7 +4895,7 @@ button {
 }
 
 .assist-config-panel-inline.is-inline .assist-config-student-field textarea::-webkit-scrollbar {
-  width: 6px;
+  width: 4px;
 }
 
 .assist-config-panel-inline.is-inline .assist-config-student-field textarea::-webkit-scrollbar-track {
