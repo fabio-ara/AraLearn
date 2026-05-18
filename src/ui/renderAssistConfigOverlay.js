@@ -1,7 +1,13 @@
 import { renderUiIcon } from "./renderUiIcons.js";
 import { listCourseModelOptions } from "../generation/runtime/courseModelSemantics.js";
+import {
+  listReappearanceLevelOptions,
+  resolveConceptualReappearanceLevel,
+  resolveOperationalReappearanceLevel
+} from "../generation/runtime/courseForgeProfileTuning.js";
 
 const COURSE_MODEL_OPTIONS = listCourseModelOptions();
+const REAPPEARANCE_LEVEL_OPTIONS = listReappearanceLevelOptions();
 const MICROSEQUENCE_RANGE_MIN = 1;
 const MICROSEQUENCE_RANGE_MAX = 12;
 
@@ -46,17 +52,6 @@ function renderBooleanToggle({ field, title, iconName, checked = false } = {}) {
     `<button class="assist-config-toggle-chip${checked ? " is-active" : ""}" type="button" data-action="toggle-assist-config-flag" data-field="${escapeHtml(field)}" aria-pressed="${checked ? "true" : "false"}" title="${escapeHtml(title)}" aria-label="${escapeHtml(title)}">` +
     renderUiIcon(iconName, "assist-config-toggle-icon") +
     "</button>"
-  );
-}
-
-function renderNumberField({ field, iconName, title, value } = {}) {
-  return (
-    '<label class="field assist-config-field assist-config-number-field">' +
-    `<span class="assist-config-inline-label" title="${escapeHtml(title)}">` +
-    renderUiIcon(iconName, "assist-config-field-icon") +
-    `<span>${escapeHtml(title)}</span></span>` +
-    `<input data-field="${escapeHtml(field)}" type="number" min="1" step="1" value="${escapeHtml(value)}" aria-label="${escapeHtml(title)}" title="${escapeHtml(title)}">` +
-    "</label>"
   );
 }
 
@@ -210,18 +205,16 @@ export function renderAssistConfigOverlay({
     '<section class="assist-config-panel">' +
     renderSectionLabel("progress", "Ritmo", "Parâmetros de densidade, retomada e fechamento do núcleo") +
     '<div class="assist-config-rhythm-grid">' +
-    renderNumberField({
-      field: "assist-config-conceptual-reappearances",
-      iconName: "card",
-      title: "Retoma ideia",
-      value: profileTuning.conceptualReappearances || 3
-    }) +
-    renderNumberField({
-      field: "assist-config-operational-reappearances",
-      iconName: "module",
-      title: "Retoma prática",
-      value: profileTuning.operationalReappearances || 4
-    }) +
+    '<label class="field assist-config-field">' +
+    renderFieldLabel("card", "Retomada conceitual", "Quanto a trilha tende a voltar ao conceito antes de avançar") +
+    '<select data-field="assist-config-conceptual-reappearances" aria-label="Retomada conceitual" title="Quanto a trilha tende a voltar ao conceito antes de avançar">' +
+    renderOptionList(REAPPEARANCE_LEVEL_OPTIONS, resolveConceptualReappearanceLevel(profileTuning.conceptualReappearances || 3)) +
+    "</select></label>" +
+    '<label class="field assist-config-field">' +
+    renderFieldLabel("module", "Retomada de prática", "Quanto a trilha tende a voltar ao uso antes de avançar") +
+    '<select data-field="assist-config-operational-reappearances" aria-label="Retomada de prática" title="Quanto a trilha tende a voltar ao uso antes de avançar">' +
+    renderOptionList(REAPPEARANCE_LEVEL_OPTIONS, resolveOperationalReappearanceLevel(profileTuning.operationalReappearances || 4)) +
+    "</select></label>" +
     "</div>" +
     renderMicrosequenceRangeField(profileTuning) +
     '<div class="assist-config-toggle-row">' +

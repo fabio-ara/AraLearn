@@ -9,6 +9,18 @@ function text(value) {
   return typeof value === "string" ? value.trim() : "";
 }
 
+const CONCEPTUAL_REAPPEARANCE_LEVEL_MAP = Object.freeze({
+  low: 2,
+  medium: 3,
+  high: 4
+});
+
+const OPERATIONAL_REAPPEARANCE_LEVEL_MAP = Object.freeze({
+  low: 3,
+  medium: 4,
+  high: 5
+});
+
 function toPositiveInteger(value, fallback) {
   const parsed = Number.parseInt(String(value ?? ""), 10);
   if (!Number.isFinite(parsed) || parsed <= 0) {
@@ -35,6 +47,30 @@ function resolveNumberOverride(input = {}, key, fallback) {
 
 function resolveBooleanOverride(input = {}, key, fallback) {
   return hasOwn(input, key) ? normalizeBoolean(input?.[key], fallback) : fallback;
+}
+
+function resolveClosestLevel(value, levelMap, fallback = "medium") {
+  const entries = Object.entries(levelMap || {});
+  const numeric = toPositiveInteger(value, Number.NaN);
+  if (!Number.isFinite(numeric) || !entries.length) {
+    return fallback;
+  }
+
+  let bestLevel = fallback;
+  let bestDistance = Number.POSITIVE_INFINITY;
+  entries.forEach(([level, mapped]) => {
+    const distance = Math.abs(mapped - numeric);
+    if (distance < bestDistance) {
+      bestLevel = level;
+      bestDistance = distance;
+    }
+  });
+  return bestLevel;
+}
+
+function resolveReappearanceValue(level, levelMap, fallback) {
+  const normalizedLevel = text(level);
+  return levelMap?.[normalizedLevel] || fallback;
 }
 
 function resolveCourseModelWithProfileDefaults(defaultCourseModel = {}, input = {}) {
@@ -138,6 +174,30 @@ export function createCourseForgeProfileTuning(profileId = DEFAULT_ENGINE_PROFIL
         )
       : resolveCourseModelWithProfileDefaults(defaultCourseModel, input)
   };
+}
+
+export function listReappearanceLevelOptions() {
+  return [
+    { value: "low", label: "Baixo" },
+    { value: "medium", label: "Médio" },
+    { value: "high", label: "Alto" }
+  ];
+}
+
+export function resolveConceptualReappearanceLevel(value) {
+  return resolveClosestLevel(value, CONCEPTUAL_REAPPEARANCE_LEVEL_MAP, "medium");
+}
+
+export function resolveOperationalReappearanceLevel(value) {
+  return resolveClosestLevel(value, OPERATIONAL_REAPPEARANCE_LEVEL_MAP, "medium");
+}
+
+export function mapConceptualReappearanceLevelToValue(level, fallback = 3) {
+  return resolveReappearanceValue(level, CONCEPTUAL_REAPPEARANCE_LEVEL_MAP, fallback);
+}
+
+export function mapOperationalReappearanceLevelToValue(level, fallback = 4) {
+  return resolveReappearanceValue(level, OPERATIONAL_REAPPEARANCE_LEVEL_MAP, fallback);
 }
 
 export function buildCourseForgeEngineProfileOverrides({ profileTuning = {} } = {}) {

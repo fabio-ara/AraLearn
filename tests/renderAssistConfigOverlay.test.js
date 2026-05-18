@@ -43,7 +43,11 @@ test("renderAssistConfigOverlay expõe contrato discreto do top-down sem setup o
   assert.match(html, />Prática preferida</);
   assert.match(html, />Trava principal</);
   assert.match(html, />Trava secundária</);
-  assert.match(html, />Retoma ideia</);
+  assert.match(html, />Retomada conceitual</);
+  assert.match(html, />Retomada de prática</);
+  assert.match(html, />Baixo</);
+  assert.match(html, />Médio</);
+  assert.match(html, />Alto</);
   assert.match(html, />Microssequências por lição</);
   assert.match(html, /data-field="assist-config-min-microsequences"/);
   assert.match(html, /data-field="assist-config-target-microsequences"/);

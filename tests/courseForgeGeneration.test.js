@@ -14,7 +14,11 @@ import {
 } from "../src/generation/runtime/courseForgeLaunchConfig.js";
 import {
   buildCourseForgeEngineProfileOverrides,
-  createCourseForgeProfileTuning
+  createCourseForgeProfileTuning,
+  mapConceptualReappearanceLevelToValue,
+  mapOperationalReappearanceLevelToValue,
+  resolveConceptualReappearanceLevel,
+  resolveOperationalReappearanceLevel
 } from "../src/generation/runtime/courseForgeProfileTuning.js";
 import {
   buildAppliedCourseForgeGeneration,
@@ -69,6 +73,21 @@ test("buildCourseForgePhaseModelOverrides fixa o mesmo modelo nas fases roteáve
 test("resolveCourseForgeTopDownProfileId seleciona perfil operacional por provider", () => {
   assert.equal(resolveCourseForgeTopDownProfileId("codex-cli-local"), "codex_all");
   assert.equal(resolveCourseForgeTopDownProfileId("gemini-2.5-flash"), "custom");
+});
+
+test("níveis de retomada mapeiam baixo, médio e alto para números estáveis no motor", () => {
+  assert.equal(mapConceptualReappearanceLevelToValue("low"), 2);
+  assert.equal(mapConceptualReappearanceLevelToValue("medium"), 3);
+  assert.equal(mapConceptualReappearanceLevelToValue("high"), 4);
+  assert.equal(mapOperationalReappearanceLevelToValue("low"), 3);
+  assert.equal(mapOperationalReappearanceLevelToValue("medium"), 4);
+  assert.equal(mapOperationalReappearanceLevelToValue("high"), 5);
+  assert.equal(resolveConceptualReappearanceLevel(2), "low");
+  assert.equal(resolveConceptualReappearanceLevel(3), "medium");
+  assert.equal(resolveConceptualReappearanceLevel(4), "high");
+  assert.equal(resolveOperationalReappearanceLevel(3), "low");
+  assert.equal(resolveOperationalReappearanceLevel(4), "medium");
+  assert.equal(resolveOperationalReappearanceLevel(5), "high");
 });
 
 test("resolveCourseForgeDidacticProfileId e buildCourseForgeEngineProfileOverrides normalizam customização didática", () => {

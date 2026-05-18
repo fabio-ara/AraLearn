@@ -140,7 +140,11 @@ import {
   resolveCourseForgeGenerationScopeViewState,
   resolveCourseForgeOpenGeneratedLessonState
 } from "../generation/runtime/courseForgeGenerationEditorRuntime.js";
-import { createCourseForgeProfileTuning } from "../generation/runtime/courseForgeProfileTuning.js";
+import {
+  createCourseForgeProfileTuning,
+  mapConceptualReappearanceLevelToValue,
+  mapOperationalReappearanceLevelToValue
+} from "../generation/runtime/courseForgeProfileTuning.js";
 import { resolveGenerationPanelScopeFromAction } from "../generation/runtime/courseForgeGenerationViewModel.js";
 import { listMicrosequenceTypes } from "../generation/types/microsequenceTypes.js";
 import { buildLessonDomainCoverageReport } from "../generation/domain/lessonDomainModel.js";
@@ -8428,13 +8432,17 @@ export function createLessonEditorApp({ root, storage, editor }) {
       });
     }
     if (assistConfigConceptualReappearances) {
-      assistConfigConceptualReappearances.addEventListener("input", () => {
-        updateAssistProfileTuning({ conceptualReappearances: assistConfigConceptualReappearances.value });
+      assistConfigConceptualReappearances.addEventListener("change", () => {
+        updateAssistProfileTuning({
+          conceptualReappearances: mapConceptualReappearanceLevelToValue(assistConfigConceptualReappearances.value, 3)
+        });
       });
     }
     if (assistConfigOperationalReappearances) {
-      assistConfigOperationalReappearances.addEventListener("input", () => {
-        updateAssistProfileTuning({ operationalReappearances: assistConfigOperationalReappearances.value });
+      assistConfigOperationalReappearances.addEventListener("change", () => {
+        updateAssistProfileTuning({
+          operationalReappearances: mapOperationalReappearanceLevelToValue(assistConfigOperationalReappearances.value, 4)
+        });
       });
     }
     if (assistConfigMinMicrosequences) {
