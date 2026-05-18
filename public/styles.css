@@ -4100,6 +4100,20 @@ button {
   gap: 8px;
 }
 
+.assist-config-inline-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.assist-config-compact-field {
+  align-content: start;
+}
+
+.assist-config-inference-hint {
+  margin-top: 2px;
+}
+
 .assist-config-number-field input {
   text-align: center;
 }
@@ -4369,6 +4383,12 @@ button {
   border-color: rgba(238, 198, 95, 0.78);
   background: linear-gradient(180deg, rgba(233, 190, 87, 0.98), rgba(195, 151, 55, 0.98));
   color: #2b1a03;
+}
+
+.assist-config-icon-action.is-primary:disabled,
+.assist-config-icon-action.is-primary[aria-disabled="true"] {
+  opacity: 0.58;
+  cursor: wait;
 }
 
 .assist-config-status-action.is-saved {
@@ -4913,6 +4933,12 @@ button {
   color: rgba(193, 173, 138, 0.88);
   font-size: 0.76rem;
   line-height: 1.45;
+}
+
+@media (max-width: 420px) {
+  .assist-config-inline-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .entity-action-group {

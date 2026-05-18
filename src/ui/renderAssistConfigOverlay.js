@@ -1,5 +1,10 @@
 import { renderUiIcon } from "./renderUiIcons.js";
 import { listCourseModelOptions } from "../generation/runtime/courseModelSemantics.js";
+import {
+  listReappearanceLevelOptions,
+  resolveConceptualReappearanceLevel,
+  resolveOperationalReappearanceLevel
+} from "../generation/runtime/courseForgeProfileTuning.js";
 
 const MICROSEQUENCE_RANGE_MIN = 1;
 const MICROSEQUENCE_RANGE_MAX = 12;
@@ -90,6 +95,16 @@ function renderMicrosequenceRangeField(profileTuning = {}) {
   );
 }
 
+function renderReappearanceField({ fieldName = "", iconName = "", label = "", title = "", options = [], selectedValue = "" } = {}) {
+  return (
+    '<label class="field assist-config-field assist-config-compact-field">' +
+    renderFieldLabel(iconName, label, title || label) +
+    `<select data-field="${escapeHtml(fieldName)}" aria-label="${escapeHtml(label)}" title="${escapeHtml(title || label)}">` +
+    renderOptionList(options, selectedValue) +
+    "</select></label>"
+  );
+}
+
 function renderFieldLabel(iconName, label, title = "") {
   const resolvedTitle = title || label;
   return (
@@ -113,9 +128,14 @@ export function renderAssistConfigPanel({
   profileTuning = {},
   didacticProfileOptions = [],
   profileEditor = null,
-  inline = false
+  inline = false,
+  planningInferencePending = false,
+  planningInferenceMessage = ""
 } = {}) {
   const courseModelOptions = listCourseModelOptions(profileTuning.courseModel?.learningTrail || "");
+  const reappearanceOptions = listReappearanceLevelOptions();
+  const conceptualReappearanceLevel = resolveConceptualReappearanceLevel(profileTuning.conceptualReappearances);
+  const operationalReappearanceLevel = resolveOperationalReappearanceLevel(profileTuning.operationalReappearances);
   const isProfileEditing = Boolean(profileEditor?.active);
   const canDeleteProfile = profileEditor?.canDelete === true;
   const canEditProfile = profileEditor?.canEdit === true && !isProfileEditing;
@@ -159,9 +179,12 @@ export function renderAssistConfigPanel({
     renderIconAction("assist-config-start-create-profile", "add", "Criar novo perfil", { disabled: isProfileEditing }) +
     renderIconAction("assist-config-delete-profile", "trash", "Excluir perfil selecionado", { disabled: !canDeleteProfile }) +
     renderIconAction("assist-config-edit-profile", "edit", "Editar nome do perfil selecionado", { disabled: !canEditProfile }) +
-    renderIconAction("assist-config-infer-course-model", "sparkles", "Ler o pedido e completar o planejamento", { extraClassName: "is-primary" }) +
+    renderIconAction("assist-config-infer-course-model", "sparkles", planningInferencePending ? "Lendo pedido e completando o planejamento" : "Ler o pedido e completar o planejamento", { disabled: planningInferencePending, extraClassName: "is-primary" }) +
     "</div>" +
     "</div>" +
+    (planningInferenceMessage
+      ? `<p class="field-hint assist-config-inference-hint">${escapeHtml(planningInferenceMessage)}</p>`
+      : "") +
     "</label>" +
     '<label class="field assist-config-field assist-config-student-field">' +
     renderFieldLabel("prompt", "Para quem", "Ajusta a trilha ao nível e ao tempo do estudante") +
@@ -180,6 +203,24 @@ export function renderAssistConfigPanel({
       profileTuning.courseModel?.microsequenceProgression || ""
     ) +
     "</select></label>" +
+    '<div class="assist-config-inline-grid">' +
+    renderReappearanceField({
+      fieldName: "assist-config-conceptual-reappearances",
+      iconName: "trail",
+      label: "Retomada conceitual",
+      title: "Quanto a trilha deve revisitar conceitos centrais",
+      options: reappearanceOptions,
+      selectedValue: conceptualReappearanceLevel
+    }) +
+    renderReappearanceField({
+      fieldName: "assist-config-operational-reappearances",
+      iconName: "module",
+      label: "Retomada operacional",
+      title: "Quanto a trilha deve revisitar procedimentos e execução",
+      options: reappearanceOptions,
+      selectedValue: operationalReappearanceLevel
+    }) +
+    "</div>" +
     renderMicrosequenceRangeField(profileTuning) +
     '<div class="assist-config-footer">' +
     '<div class="assist-config-footer-main">' +
@@ -188,6 +229,12 @@ export function renderAssistConfigPanel({
       title: "Esgotar assunto antes de expandir",
       iconName: "ready-state",
       checked: profileTuning.requireCoreCoverageBeforeExtensions !== false
+    }) +
+    renderBooleanToggle({
+      field: "requireVocabularyMap",
+      title: "Exigir mapa de vocabulário",
+      iconName: "comment",
+      checked: profileTuning.requireVocabularyMap !== false
     }) +
     "</div>" +
     '<div class="assist-config-footer-actions">' +

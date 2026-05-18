@@ -122,8 +122,7 @@ import {
 } from "../generation/runtime/courseForgeGenerationDraftState.js";
 import { executeCourseForgeMicrosequenceGeneration } from "../generation/runtime/courseForgeInterventionRuntime.js";
 import {
-  createDefaultCourseModel,
-  inferCourseModelFromDescription
+  createDefaultCourseModel
 } from "../generation/runtime/courseModelSemantics.js";
 import {
   applyCourseForgeAssistConfigPatch,
@@ -140,8 +139,13 @@ import {
   resolveCourseForgeGenerationScopeViewState,
   resolveCourseForgeOpenGeneratedLessonState
 } from "../generation/runtime/courseForgeGenerationEditorRuntime.js";
-import { createCourseForgeProfileTuning } from "../generation/runtime/courseForgeProfileTuning.js";
-import { resolveGenerationPanelScopeFromAction } from "../generation/runtime/courseForgeGenerationViewModel.js";
+import {
+  createCourseForgeProfileTuning,
+  mapConceptualReappearanceLevelToValue,
+  mapOperationalReappearanceLevelToValue
+} from "../generation/runtime/courseForgeProfileTuning.js";
+import { inferCourseForgePlanningProfileTuning } from "../generation/runtime/courseForgePlanningInference.js";
+import { resolveCourseForgeProviderReadiness, resolveGenerationPanelScopeFromAction } from "../generation/runtime/courseForgeGenerationViewModel.js";
 import { listMicrosequenceTypes } from "../generation/types/microsequenceTypes.js";
 import { buildLessonDomainCoverageReport } from "../generation/domain/lessonDomainModel.js";
 import { validateDidacticDepth } from "../generation/validation/validateDidacticDepth.js";
@@ -981,6 +985,8 @@ export function createLessonEditorApp({ root, storage, editor }) {
     assistConfigOpen: false,
     assistConfig: initialAssistConfig,
     assistConfigDraft: { ...initialAssistConfig },
+    assistPlanningInferencePending: false,
+    assistPlanningInferenceMessage: "",
     assistProfileEditor: null,
     codexCliSetupStatus: createCourseForgeCodexCliSetupStatus(),
     pendingExternalImport: null,
@@ -2004,12 +2010,16 @@ export function createLessonEditorApp({ root, storage, editor }) {
 
   function openAssistConfig() {
     state.assistConfigDraft = cloneAssistConfig();
+    state.assistPlanningInferencePending = false;
+    state.assistPlanningInferenceMessage = "";
     state.assistConfigOpen = true;
     render({ preserveState: true });
   }
 
   function closeAssistConfig() {
     cancelAssistProfileEditor();
+    state.assistPlanningInferencePending = false;
+    state.assistPlanningInferenceMessage = "";
     state.assistConfigOpen = false;
     render({ preserveState: true });
   }
@@ -2071,6 +2081,11 @@ export function createLessonEditorApp({ root, storage, editor }) {
     });
   }
 
+  function setAssistPlanningInferenceState({ pending = false, message = "" } = {}) {
+    state.assistPlanningInferencePending = pending === true;
+    state.assistPlanningInferenceMessage = text(message);
+  }
+
   function normalizeAssistMicrosequenceRange(patch = {}) {
     const current = state.assistConfig.profileTuning || {};
     const resolveValue = (value, fallback) => {
@@ -2094,16 +2109,71 @@ export function createLessonEditorApp({ root, storage, editor }) {
     };
   }
 
-  function inferAssistCourseModelFromDescription() {
-    const nextCourseModel = inferCourseModelFromDescription(
-      state.assistConfig.profileTuning?.courseModel?.description || "",
-      state.assistConfig.profileTuning?.courseModel || {}
-    );
-    updateAssistProfileTuning({
-      courseModelEdited: true,
-      courseModel: nextCourseModel
+  async function inferAssistPlanningFromRequest() {
+    const requestText = text(state.generationDraft.promptText);
+    const currentDescription = text(state.assistConfig.profileTuning?.courseModel?.description);
+    const hasAttachments = Array.isArray(state.generationDraft.attachments) && state.generationDraft.attachments.length > 0;
+    if (!requestText && !currentDescription && !hasAttachments) {
+      setAssistPlanningInferenceState({
+        pending: false,
+        message: "Informe um pedido, escreva no campo Perfil ou anexe material antes de completar o planejamento."
+      });
+      render({ preserveState: true });
+      return;
+    }
+
+    const readiness = await resolveCourseForgeProviderReadiness({
+      selectedModel: state.assistConfig.model,
+      codexEndpoint: state.assistConfig.codexEndpoint,
+      codexToken: state.assistConfig.codexToken,
+      checkCodexLocalHealth
+    });
+    if (!readiness.ok && isCodexLocalModel(state.assistConfig.model)) {
+      state.codexCliSetupStatus = createCourseForgeCodexCliSetupStatus({
+        ok: false,
+        checking: false,
+        error: readiness.error || "O bridge local não está ativo.",
+        data: readiness.data ?? null
+      });
+      setAssistPlanningInferenceState({
+        pending: false,
+        message: state.codexCliSetupStatus.error || "O bridge local não está ativo."
+      });
+      render({ preserveState: true });
+      return;
+    }
+
+    setAssistPlanningInferenceState({
+      pending: true,
+      message: "Lendo o pedido e completando todos os parâmetros do planejamento..."
     });
     render({ preserveState: true });
+
+    try {
+      const result = await inferCourseForgePlanningProfileTuning({
+        assistConfig: state.assistConfig,
+        requestText: [requestText, currentDescription].filter(Boolean).join("\n\n"),
+        attachments: state.generationDraft.attachments || [],
+        ingestAttachments: ingestCourseForgeAttachments
+      });
+      persistAssistConfigValue({
+        profileTuning: {
+          ...(state.assistConfig.profileTuning || {}),
+          ...result.profileTuningPatch
+        }
+      });
+      setAssistPlanningInferenceState({
+        pending: false,
+        message: "Planejamento completado com todos os parâmetros atualizados."
+      });
+      render({ preserveState: true });
+    } catch (error) {
+      setAssistPlanningInferenceState({
+        pending: false,
+        message: text(error?.message) || "Não foi possível completar o planejamento."
+      });
+      render({ preserveState: true });
+    }
   }
 
   function persistAssistConfigValue(patch = {}) {
@@ -7140,7 +7210,9 @@ export function createLessonEditorApp({ root, storage, editor }) {
             didacticProfileId: state.assistConfigDraft.selectedProfileId || state.assistConfigDraft.didacticProfileId,
             profileTuning: state.assistConfigDraft.profileTuning,
             didacticProfileOptions: buildDidacticProfileOptions(state.assistConfigDraft.customProfiles),
-            profileEditor: getAssistProfileEditorViewModel(state.assistConfigDraft)
+            profileEditor: getAssistProfileEditorViewModel(state.assistConfigDraft),
+            planningInferencePending: state.assistPlanningInferencePending,
+            planningInferenceMessage: state.assistPlanningInferenceMessage
           })
         : "") +
       (state.pendingExternalImport
@@ -7175,7 +7247,9 @@ export function createLessonEditorApp({ root, storage, editor }) {
               didacticProfileId: state.assistConfigDraft.selectedProfileId || state.assistConfigDraft.didacticProfileId,
               profileTuning: state.assistConfigDraft.profileTuning,
               didacticProfileOptions: buildDidacticProfileOptions(state.assistConfigDraft.customProfiles),
-              profileEditor: getAssistProfileEditorViewModel(state.assistConfigDraft)
+              profileEditor: getAssistProfileEditorViewModel(state.assistConfigDraft),
+              planningInferencePending: state.assistPlanningInferencePending,
+              planningInferenceMessage: state.assistPlanningInferenceMessage
             }
           })
         : "") +
@@ -8580,7 +8654,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
       saveAssistProfileEditor();
     });
     root.querySelector("[data-action='assist-config-infer-course-model']")?.addEventListener("click", () => {
-      inferAssistCourseModelFromDescription();
+      void inferAssistPlanningFromRequest();
     });
     root.querySelector("[data-action='cancel-external-import']")?.addEventListener("click", () => clearPendingExternalImport());
     root.querySelector("[data-action='confirm-external-import']")?.addEventListener("click", () => confirmPendingExternalImport());
@@ -8602,6 +8676,8 @@ export function createLessonEditorApp({ root, storage, editor }) {
     const assistConfigCourseModelDescription = root.querySelector("[data-field='assist-config-course-model-description']");
     const assistConfigCourseLearningTrail = root.querySelector("[data-field='assist-config-course-learning-trail']");
     const assistConfigCourseMicrosequenceProgression = root.querySelector("[data-field='assist-config-course-microsequence-progression']");
+    const assistConfigConceptualReappearances = root.querySelector("[data-field='assist-config-conceptual-reappearances']");
+    const assistConfigOperationalReappearances = root.querySelector("[data-field='assist-config-operational-reappearances']");
     const assistConfigMinMicrosequences = root.querySelector("[data-field='assist-config-min-microsequences']");
     const assistConfigTargetMicrosequences = root.querySelector("[data-field='assist-config-target-microsequences']");
     const assistConfigMaxMicrosequences = root.querySelector("[data-field='assist-config-max-microsequences']");
@@ -8670,6 +8746,20 @@ export function createLessonEditorApp({ root, storage, editor }) {
     if (assistConfigCourseMicrosequenceProgression) {
       assistConfigCourseMicrosequenceProgression.addEventListener("change", () => {
         updateAssistCourseModel({ microsequenceProgression: assistConfigCourseMicrosequenceProgression.value });
+      });
+    }
+    if (assistConfigConceptualReappearances) {
+      assistConfigConceptualReappearances.addEventListener("change", () => {
+        updateAssistProfileTuning({
+          conceptualReappearances: mapConceptualReappearanceLevelToValue(assistConfigConceptualReappearances.value, 3)
+        });
+      });
+    }
+    if (assistConfigOperationalReappearances) {
+      assistConfigOperationalReappearances.addEventListener("change", () => {
+        updateAssistProfileTuning({
+          operationalReappearances: mapOperationalReappearanceLevelToValue(assistConfigOperationalReappearances.value, 4)
+        });
       });
     }
     if (assistConfigMinMicrosequences) {

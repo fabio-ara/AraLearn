@@ -28,11 +28,15 @@ test("renderAssistConfigOverlay expõe contrato discreto do top-down sem setup o
   assert.match(html, /data-field="assist-config-course-model-description"/);
   assert.match(html, /data-field="assist-config-course-learning-trail"/);
   assert.match(html, /data-field="assist-config-course-microsequence-progression"/);
+  assert.match(html, /data-field="assist-config-conceptual-reappearances"/);
+  assert.match(html, /data-field="assist-config-operational-reappearances"/);
   assert.match(html, /data-action="assist-config-reset-profile"/);
   assert.match(html, />Perfil</);
   assert.match(html, />Para quem</);
   assert.match(html, />Trilha</);
   assert.match(html, />Progressão de microssequências</);
+  assert.match(html, />Retomada conceitual</);
+  assert.match(html, />Retomada operacional</);
   assert.match(html, />Microssequências por lição</);
   assert.match(html, /data-field="assist-config-min-microsequences"/);
   assert.match(html, /data-field="assist-config-target-microsequences"/);
@@ -47,18 +51,15 @@ test("renderAssistConfigOverlay expõe contrato discreto do top-down sem setup o
   assert.doesNotMatch(html, /data-field="assist-config-course-primary-difficulty"/);
   assert.doesNotMatch(html, /data-field="assist-config-course-secondary-difficulty"/);
   assert.doesNotMatch(html, /data-field="assist-config-course-preferred-practice-mode"/);
-  assert.doesNotMatch(html, /data-field="assist-config-conceptual-reappearances"/);
-  assert.doesNotMatch(html, /data-field="assist-config-operational-reappearances"/);
   assert.doesNotMatch(html, />Acesso</);
   assert.doesNotMatch(html, />Forma principal</);
   assert.doesNotMatch(html, />Prática preferida</);
   assert.doesNotMatch(html, />Trava principal</);
-  assert.doesNotMatch(html, />Retomada conceitual</);
-  assert.doesNotMatch(html, />Explica vocabulário</);
   assert.doesNotMatch(html, /sourceGuideStructured/);
   assert.doesNotMatch(html, /Diretivas extras/);
   assert.doesNotMatch(html, /assist-config-guardrails-text/);
   assert.doesNotMatch(html, /assist-config-custom-profile-label/);
+  assert.match(html, /data-field="requireVocabularyMap"/);
   assert.ok(
     html.indexOf('data-field="assist-config-target-student-profile"') <
       html.indexOf('data-field="assist-config-course-learning-trail"')
@@ -69,6 +70,10 @@ test("renderAssistConfigOverlay expõe contrato discreto do top-down sem setup o
   );
   assert.ok(
     html.indexOf('data-field="assist-config-course-microsequence-progression"') <
+      html.indexOf('data-field="assist-config-conceptual-reappearances"')
+  );
+  assert.ok(
+    html.indexOf('data-field="assist-config-conceptual-reappearances"') <
       html.indexOf('data-field="assist-config-min-microsequences"')
   );
   assert.ok(
