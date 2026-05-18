@@ -444,6 +444,8 @@ test("renderiza o painel da microssequência sem botão próprio de ações e co
   assert.match(html, /<option value="">Automático<\/option>/);
   assert.match(html, /<option value="guided_practice" selected>Prática guiada<\/option>/);
   assert.match(html, /Microssequência em andamento/);
+  assert.match(html, /class="workbench-quick-actions-panel"/);
+  assert.doesNotMatch(html, /assist-quick-panel/);
   assert.doesNotMatch(html, /Os cards atuais são só o trecho já materializado\./);
   assert.match(html, /data-field="assist-prompt" class="assist-prompt" aria-label="Pedido dos próximos cards" title="Pedido dos próximos cards"/);
   assert.match(html, /data-action="open-assist-container-picker" title="Adicionar recursos" aria-label="Adicionar recursos"/);

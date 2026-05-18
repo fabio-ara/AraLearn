@@ -6376,42 +6376,6 @@ button {
   overflow: visible;
 }
 
-.assist-quick-panel {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 8px;
-}
-
-.assist-quick-panel-head {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 8px;
-  width: 100%;
-  min-width: 0;
-}
-
-.workbench-editor-panel .assist-status-panel .assist-icon-actions {
-  display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: 40px;
-  min-height: 0;
-  align-items: start;
-  justify-content: flex-start;
-  padding-top: 0;
-  margin-left: 0;
-  max-width: 100%;
-  overflow-x: auto;
-  overflow-y: hidden;
-  padding-bottom: 2px;
-}
-
-.workbench-editor-panel .assist-status-panel .assist-quick-action {
-  position: static;
-  margin: 0;
-}
-
 .workbench-editor-panel .assist-status-panel .tiny {
   margin: 0;
 }
@@ -6419,6 +6383,40 @@ button {
 .assist-status-panel .assist-last-request {
   overflow-wrap: anywhere;
   white-space: normal;
+  margin: 0;
+}
+
+.workbench-quick-actions-panel {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid rgba(86, 69, 51, 0.88);
+  border-radius: 14px;
+  background: rgba(22, 18, 14, 0.86);
+  overflow: visible;
+}
+
+.workbench-quick-actions-panel .tiny {
+  margin: 0;
+  line-height: 1.25;
+}
+
+.workbench-quick-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.workbench-quick-actions .assist-quick-action {
+  position: static;
+  flex: 0 0 40px;
+  min-width: 40px;
+  min-height: 40px;
+  width: 40px;
+  height: 40px;
   margin: 0;
 }
 
@@ -6597,13 +6595,6 @@ button {
   display: grid;
   gap: 8px;
   min-width: 0;
-}
-
-.assist-icon-actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
 }
 
 .assist-quick-action {

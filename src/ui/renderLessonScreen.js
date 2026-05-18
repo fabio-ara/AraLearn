@@ -382,6 +382,32 @@ function renderPromptAttachmentButton() {
   );
 }
 
+function renderAssistQuickAction(action, iconName, title) {
+  return (
+    '<button class="icon-ghost workbench-stack-button assist-quick-action" type="button" data-action="' +
+    escapeHtml(action) +
+    '" title="' +
+    escapeHtml(title) +
+    '" aria-label="' +
+    escapeHtml(title) +
+    '">' +
+    renderUiIcon(iconName, "assist-quick-action-icon") +
+    "</button>"
+  );
+}
+
+function renderAssistQuickPanel(label, actionsHtml) {
+  return (
+    '<section class="workbench-quick-actions-panel">' +
+    '<p class="tiny muted">' +
+    escapeHtml(label) +
+    "</p>" +
+    '<div class="workbench-quick-actions">' +
+    actionsHtml +
+    "</div></section>"
+  );
+}
+
 function renderAssistAttachmentChips(attachments) {
   const items = Array.isArray(attachments) ? attachments : [];
   if (!items.length) {
@@ -1274,51 +1300,52 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
       "</p></section>"
     : "";
   const nextPlannedMicrosequence = editorSupport.nextPlannedMicrosequence || null;
+  const openNextPlannedAction = nextPlannedMicrosequence
+    ? renderAssistQuickAction(
+        "open-next-planned-microsequence",
+        "microsequence",
+        "Abrir próxima microssequência planejada"
+      )
+    : "";
   const currentQuickActions =
-    '<button class="icon-ghost workbench-stack-button assist-quick-action" type="button" data-action="fill-assist-template-next-cards" title="Preparar pedido para gerar os próximos cards desta microssequência" aria-label="Preparar pedido para gerar os próximos cards desta microssequência">' +
-    renderUiIcon("sparkles", "assist-quick-action-icon") +
-    "</button>" +
-    '<button class="icon-ghost workbench-stack-button assist-quick-action" type="button" data-action="fill-assist-template-repair" title="Preparar pedido para corrigir esta microssequência" aria-label="Preparar pedido para corrigir esta microssequência">' +
-    renderUiIcon("edit", "assist-quick-action-icon") +
-    "</button>" +
-    '<button class="icon-ghost workbench-stack-button assist-quick-action" type="button" data-action="fill-assist-template-new-stage" title="Preparar pedido para inserir uma nova microssequência após esta" aria-label="Preparar pedido para inserir uma nova microssequência após esta">' +
-    renderUiIcon("add", "assist-quick-action-icon") +
-    "</button>" +
-    (nextPlannedMicrosequence
-      ? '<button class="icon-ghost workbench-stack-button assist-quick-action" type="button" data-action="open-next-planned-microsequence" title="Abrir próxima microssequência planejada" aria-label="Abrir próxima microssequência planejada">' +
-        renderUiIcon("microsequence", "assist-quick-action-icon") +
-        "</button>"
-      : "");
+    renderAssistQuickAction(
+      "fill-assist-template-next-cards",
+      "sparkles",
+      "Preparar pedido para gerar os próximos cards desta microssequência"
+    ) +
+    renderAssistQuickAction(
+      "fill-assist-template-repair",
+      "edit",
+      "Preparar pedido para corrigir esta microssequência"
+    ) +
+    renderAssistQuickAction(
+      "fill-assist-template-new-stage",
+      "add",
+      "Preparar pedido para inserir uma nova microssequência após esta"
+    ) +
+    openNextPlannedAction;
   const plannedQuickActions =
-    '<button class="icon-ghost workbench-stack-button assist-quick-action" type="button" data-action="fill-assist-template-materialize" title="Preparar pedido para gerar os primeiros cards desta microssequência" aria-label="Preparar pedido para gerar os primeiros cards desta microssequência">' +
-    renderUiIcon("sparkles", "assist-quick-action-icon") +
-    "</button>" +
-    '<button class="icon-ghost workbench-stack-button assist-quick-action" type="button" data-action="fill-assist-template-reformulate" title="Preparar pedido para reformular esta microssequência" aria-label="Preparar pedido para reformular esta microssequência">' +
-    renderUiIcon("edit", "assist-quick-action-icon") +
-    "</button>" +
-    '<button class="icon-ghost workbench-stack-button assist-quick-action" type="button" data-action="fill-assist-template-new-stage" title="Preparar pedido para inserir uma nova microssequência após esta" aria-label="Preparar pedido para inserir uma nova microssequência após esta">' +
-    renderUiIcon("add", "assist-quick-action-icon") +
-    "</button>" +
-    (nextPlannedMicrosequence
-      ? '<button class="icon-ghost workbench-stack-button assist-quick-action" type="button" data-action="open-next-planned-microsequence" title="Abrir próxima microssequência planejada" aria-label="Abrir próxima microssequência planejada">' +
-        renderUiIcon("microsequence", "assist-quick-action-icon") +
-        "</button>"
-      : "");
+    renderAssistQuickAction(
+      "fill-assist-template-materialize",
+      "sparkles",
+      "Preparar pedido para gerar os primeiros cards desta microssequência"
+    ) +
+    renderAssistQuickAction(
+      "fill-assist-template-reformulate",
+      "edit",
+      "Preparar pedido para reformular esta microssequência"
+    ) +
+    renderAssistQuickAction(
+      "fill-assist-template-new-stage",
+      "add",
+      "Preparar pedido para inserir uma nova microssequência após esta"
+    ) +
+    openNextPlannedAction;
   const semanticActionsPanel = !isPlanned
-    ? '<section class="microsequence-assist-panel assist-status-panel assist-quick-panel">' +
-      '<div class="assist-quick-panel-head">' +
-      '<p class="tiny muted">Microssequência em andamento</p>' +
-      '<div class="assist-icon-actions">' +
-      currentQuickActions +
-      "</div></div></section>"
+    ? renderAssistQuickPanel("Microssequência em andamento", currentQuickActions)
     : "";
   const plannedStatePanel = isPlanned
-    ? '<section class="microsequence-assist-panel assist-status-panel assist-quick-panel">' +
-      '<div class="assist-quick-panel-head">' +
-      '<p class="tiny muted">Microssequência planejada</p>' +
-      '<div class="assist-icon-actions">' +
-      plannedQuickActions +
-      "</div></div></section>"
+    ? renderAssistQuickPanel("Microssequência planejada", plannedQuickActions)
     : "";
   const emptyCardsMessage = hasCards
     ? ""
