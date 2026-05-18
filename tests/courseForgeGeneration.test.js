@@ -111,7 +111,7 @@ test("resolveCourseForgeDidacticProfileId e buildCourseForgeEngineProfileOverrid
           progressionMode: "visual_to_formal",
           centralRepresentations: ["flowchart", "pseudocode", "code"],
           cognitiveOperations: ["translate", "trace"],
-          expectedDifficulties: [],
+          expectedDifficulties: ["vocabulary", "abstraction", "transfer"],
           practiceModes: ["guided_first", "translation"]
         },
         resourcePreferences: {
@@ -121,6 +121,33 @@ test("resolveCourseForgeDidacticProfileId e buildCourseForgeEngineProfileOverrid
       }
     }
   );
+});
+
+test("createCourseForgeProfileTuning hidrata a modelagem semântica a partir do perfil e preserva edição explícita", () => {
+  const defaults = createCourseForgeProfileTuning("aralearn.engine.ads.programming.v1");
+  assert.equal(defaults.courseModel.materialNature, "procedure");
+  assert.equal(defaults.courseModel.progressionMode, "visual_to_formal");
+  assert.ok(defaults.courseModel.centralRepresentations.includes("flowchart"));
+  assert.ok(defaults.courseModel.cognitiveOperations.includes("translate"));
+  assert.ok(defaults.courseModel.expectedDifficulties.includes("syntax"));
+  assert.ok(defaults.courseModel.practiceModes.includes("translation"));
+
+  const customized = createCourseForgeProfileTuning("aralearn.engine.ads.programming.v1", {
+    targetStudentProfile: "",
+    courseModel: {
+      materialNature: "",
+      centralRepresentations: [],
+      cognitiveOperations: ["build"],
+      expectedDifficulties: [],
+      practiceModes: ["case_study"]
+    }
+  });
+
+  assert.equal(customized.targetStudentProfile, "");
+  assert.equal(customized.courseModel.materialNature, "");
+  assert.deepEqual(customized.courseModel.centralRepresentations, []);
+  assert.deepEqual(customized.courseModel.cognitiveOperations, ["build"]);
+  assert.deepEqual(customized.courseModel.practiceModes, ["case_study"]);
 });
 
 test("resolveCourseForgeLaunchConfig monta runtime e intent config fora da UI", () => {
@@ -140,7 +167,7 @@ test("resolveCourseForgeLaunchConfig monta runtime e intent config fora da UI", 
     launchConfig.engineProfileOverrides.didacticPolicy.targetStudentProfile,
     "estudante que precisa de operadores bem explicados"
   );
-  assert.deepEqual(launchConfig.engineProfileOverrides.didacticPolicy.courseSemantics.centralRepresentations, []);
+  assert.ok(launchConfig.engineProfileOverrides.didacticPolicy.courseSemantics.centralRepresentations.includes("flowchart"));
   assert.equal(launchConfig.phaseModelOverrides.plan_architecture, "gemini-2.5-flash");
   assert.equal(typeof launchConfig.providerRegistry.get("google")?.callJson, "function");
 });

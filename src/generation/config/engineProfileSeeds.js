@@ -60,6 +60,14 @@ function createAdsProfile(profileId, label, overrides = {}) {
         conceptual: 3,
         operational: 4
       },
+      courseSemantics: {
+        materialNature: "problem_solving",
+        progressionMode: "example_to_rule",
+        centralRepresentations: ["plain_text", "diagram", "table"],
+        cognitiveOperations: ["define", "decompose", "apply"],
+        expectedDifficulties: ["vocabulary", "abstraction", "transfer"],
+        practiceModes: ["guided_first", "short_frequent", "partial_reconstruction"]
+      },
       topDownCourseStrategy: {
         defaultBudgetByLesson: {
           minMicrosequences: 3,
@@ -141,6 +149,14 @@ export const ENGINE_PROFILE_SEEDS = Object.freeze({
         conceptual: 4,
         operational: 4
       },
+      courseSemantics: {
+        materialNature: "formal_language",
+        progressionMode: "concrete_to_abstract",
+        centralRepresentations: ["plain_text", "formula", "matrix", "graph"],
+        cognitiveOperations: ["define", "compare", "trace", "apply"],
+        expectedDifficulties: ["notation", "abstraction", "fine_comparison"],
+        practiceModes: ["guided_first", "comparison", "partial_reconstruction"]
+      },
       topDownCourseStrategy: {
         defaultBudgetByLesson: {
           minMicrosequences: 4,
@@ -165,6 +181,14 @@ export const ENGINE_PROFILE_SEEDS = Object.freeze({
       defaultMinimumReappearances: {
         conceptual: 3,
         operational: 5
+      },
+      courseSemantics: {
+        materialNature: "procedure",
+        progressionMode: "visual_to_formal",
+        centralRepresentations: ["plain_text", "flowchart", "pseudocode", "code"],
+        cognitiveOperations: ["translate", "trace", "diagnose", "build"],
+        expectedDifficulties: ["vocabulary", "syntax", "transfer", "many_steps"],
+        practiceModes: ["guided_first", "translation", "error_correction", "partial_reconstruction"]
       }
     },
     promptPacks: {
@@ -183,6 +207,14 @@ export const ENGINE_PROFILE_SEEDS = Object.freeze({
       defaultMinimumReappearances: {
         conceptual: 3,
         operational: 5
+      },
+      courseSemantics: {
+        materialNature: "applied_tool",
+        progressionMode: "structure_to_detail",
+        centralRepresentations: ["plain_text", "code", "tree"],
+        cognitiveOperations: ["apply", "trace", "diagnose", "build"],
+        expectedDifficulties: ["vocabulary", "syntax", "transfer", "many_steps"],
+        practiceModes: ["guided_first", "error_correction", "case_study"]
       }
     },
     promptPacks: {
@@ -200,6 +232,14 @@ export const ENGINE_PROFILE_SEEDS = Object.freeze({
       defaultMinimumReappearances: {
         conceptual: 4,
         operational: 3
+      },
+      courseSemantics: {
+        materialNature: "conceptual_argument",
+        progressionMode: "structure_to_detail",
+        centralRepresentations: ["plain_text", "table", "diagram", "tree"],
+        cognitiveOperations: ["define", "compare", "classify", "interpret"],
+        expectedDifficulties: ["vocabulary", "abstraction", "fine_comparison"],
+        practiceModes: ["comparison", "commented_reading", "case_study"]
       }
     },
     promptPacks: {
@@ -248,6 +288,14 @@ export const ENGINE_PROFILE_SEEDS = Object.freeze({
       defaultMinimumReappearances: {
         conceptual: 4,
         operational: 4
+      },
+      courseSemantics: {
+        materialNature: "formal_language",
+        progressionMode: "example_to_rule",
+        centralRepresentations: ["plain_text"],
+        cognitiveOperations: ["recognize", "define", "apply", "build"],
+        expectedDifficulties: ["vocabulary", "syntax", "transfer"],
+        practiceModes: ["guided_first", "short_frequent", "partial_reconstruction"]
       }
     },
     promptPacks: {
@@ -313,6 +361,14 @@ export const ENGINE_PROFILE_SEEDS = Object.freeze({
       defaultMinimumReappearances: {
         conceptual: 4,
         operational: 3
+      },
+      courseSemantics: {
+        materialNature: "technical_reading",
+        progressionMode: "reading_to_application",
+        centralRepresentations: ["plain_text", "scientific_article", "table", "tree"],
+        cognitiveOperations: ["define", "compare", "interpret"],
+        expectedDifficulties: ["vocabulary", "figure_reading", "fine_comparison"],
+        practiceModes: ["commented_reading", "comparison", "case_study"]
       }
     },
     promptPacks: {
@@ -357,6 +413,14 @@ export const ENGINE_PROFILE_SEEDS = Object.freeze({
         },
         requireCoreCoverageBeforeExtensions: true,
         requireVocabularyMap: true
+      },
+      courseSemantics: {
+        materialNature: "procedure",
+        progressionMode: "structure_to_detail",
+        centralRepresentations: ["plain_text", "diagram", "pseudocode", "code"],
+        cognitiveOperations: ["decompose", "apply", "diagnose", "build"],
+        expectedDifficulties: ["syntax", "abstraction", "transfer", "many_steps"],
+        practiceModes: ["guided_first", "error_correction", "case_study", "partial_reconstruction"]
       }
     },
     promptPacks: {

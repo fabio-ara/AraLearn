@@ -34,7 +34,7 @@ function renderProviderStatusChip({ localStatus = {}, isLocalModel = false, hasA
     );
   }
 
-  const label = hasApiKey ? "API pronta" : "Chave ausente";
+  const label = hasApiKey ? "API pronta" : "Sem chave";
   return (
     `<span class="assist-config-status-chip is-${hasApiKey ? "ready" : "idle"}" title="${escapeHtml(label)}" aria-label="${escapeHtml(label)}">` +
     renderUiIcon(hasApiKey ? "ready-state" : "intent", "assist-config-status-icon") +
@@ -88,6 +88,15 @@ function renderFieldLabel(iconName, label, title = "") {
   );
 }
 
+function renderSectionLabel(iconName, label, title = "") {
+  const resolvedTitle = title || label;
+  return (
+    `<p class="assist-config-section-label" title="${escapeHtml(resolvedTitle)}" aria-label="${escapeHtml(resolvedTitle)}">` +
+    renderUiIcon(iconName, "assist-config-section-icon") +
+    `<span>${escapeHtml(label)}</span></p>`
+  );
+}
+
 function renderToggleList(listName, options = [], selectedValues = [], title = "") {
   const selectedSet = new Set(Array.isArray(selectedValues) ? selectedValues : []);
   return (
@@ -133,29 +142,22 @@ export function renderAssistConfigOverlay({
     renderIconAction("assist-config-reset-profile", "draft-state", "Resetar perfil") +
     "</div></header>" +
     '<div class="editor-body assist-config-body">' +
+    '<section class="assist-config-panel">' +
+    renderSectionLabel("tags", "Planejamento", "Parâmetros que entram no planejamento top-down da trilha") +
     '<div class="assist-config-grid">' +
-    '<label class="field assist-config-field">' +
-    renderFieldLabel("sparkles", "Motor", "Escolhe quem gera a trilha") +
-    '<select data-field="assist-config-model" aria-label="Motor" title="Escolhe quem gera a trilha">' +
-    renderOptionList(modelOptions, model) +
-    "</select></label>" +
     '<label class="field assist-config-field">' +
     renderFieldLabel("tags", "Perfil", "Escolhe o estilo-base da trilha") +
     '<select data-field="assist-config-profile" aria-label="Perfil didático" title="Escolhe o estilo-base da trilha">' +
     renderOptionList(didacticProfileOptions, didacticProfileId) +
     "</select></label>" +
-    "</div>" +
-    '<label class="field assist-config-field assist-config-secret-field">' +
-    renderFieldLabel("intent", "API", "Autoriza o uso do motor remoto") +
-    `<input data-field="assist-config-api-key" type="password" value="${escapeHtml(apiKey || "")}" autocomplete="off" spellcheck="false" placeholder="Chave da API" title="Autoriza o uso do motor remoto">` +
-    "</label>" +
     '<label class="field assist-config-field assist-config-student-field">' +
     renderFieldLabel("prompt", "Para quem", "Ajusta a trilha ao nível e ao tempo do estudante") +
     `<input data-field="assist-config-target-student-profile" type="text" value="${escapeHtml(profileTuning.targetStudentProfile || "")}" autocomplete="off" spellcheck="false" placeholder="Perfil do estudante" title="Ajusta a trilha ao nível e ao tempo do estudante">` +
     "</label>" +
+    "</div>" +
     '<label class="field assist-config-field assist-config-course-request-field">' +
     renderFieldLabel("edit", "Curso", "Descreve o curso para a IA completar a modelagem") +
-    `<textarea data-field="assist-config-course-model-description" aria-label="Modelagem do curso" title="Descreve o curso para a IA completar a modelagem" placeholder="Descreva o tipo de curso, as representações, a progressão e as dificuldades do estudante.">${escapeHtml(profileTuning.courseModel?.description || "")}</textarea>` +
+    `<textarea data-field="assist-config-course-model-description" aria-label="Modelagem do curso" title="Descreve o curso para a IA completar a modelagem" placeholder="Descreva o tipo de curso, as formas centrais, a progressão e as travas do estudante.">${escapeHtml(profileTuning.courseModel?.description || "")}</textarea>` +
     '<div class="assist-config-inline-actions">' +
     renderLabeledAction("assist-config-infer-course-model", "sparkles", "Ler pedido", "Ler o pedido e completar a modelagem do curso") +
     "</div>" +
@@ -173,41 +175,44 @@ export function renderAssistConfigOverlay({
     "</select></label>" +
     "</div>" +
     '<section class="assist-config-semantic-section">' +
-    renderFieldLabel("tags", "Representações", "Formas centrais do conteúdo") +
+    renderFieldLabel("tags", "Formas", "Linguagens e formas centrais; orientam o plano e ajudam a escolher a representação dos cards") +
     renderToggleList(
       "centralRepresentations",
       COURSE_MODEL_OPTIONS.centralRepresentations,
       profileTuning.courseModel?.centralRepresentations || [],
-      "Formas centrais do conteúdo"
+      "Linguagens e formas centrais do curso"
     ) +
     "</section>" +
     '<section class="assist-config-semantic-section">' +
-    renderFieldLabel("lesson", "Operações", "O que o estudante mais precisa fazer") +
+    renderFieldLabel("lesson", "Operações", "O que o estudante mais precisa fazer ao longo da trilha") +
     renderToggleList(
       "cognitiveOperations",
       COURSE_MODEL_OPTIONS.cognitiveOperations,
       profileTuning.courseModel?.cognitiveOperations || [],
-      "O que o estudante mais precisa fazer"
+      "Operações cognitivas prioritárias"
     ) +
     "</section>" +
     '<section class="assist-config-semantic-section">' +
-    renderFieldLabel("intent", "Dificuldades", "Onde o estudante costuma travar") +
+    renderFieldLabel("intent", "Travas", "Onde o estudante costuma travar") +
     renderToggleList(
       "expectedDifficulties",
       COURSE_MODEL_OPTIONS.expectedDifficulties,
       profileTuning.courseModel?.expectedDifficulties || [],
-      "Onde o estudante costuma travar"
+      "Dificuldades esperadas do estudante"
     ) +
     "</section>" +
     '<section class="assist-config-semantic-section">' +
-    renderFieldLabel("ready-state", "Prática", "Como a prática deve aparecer") +
+    renderFieldLabel("ready-state", "Prática", "Como a prática deve aparecer ao longo da trilha") +
     renderToggleList(
       "practiceModes",
       COURSE_MODEL_OPTIONS.practiceModes,
       profileTuning.courseModel?.practiceModes || [],
-      "Como a prática deve aparecer"
+      "Forma de prática preferida"
     ) +
     "</section>" +
+    "</section>" +
+    '<section class="assist-config-panel">' +
+    renderSectionLabel("progress", "Ritmo", "Parâmetros de densidade, retomada e fechamento do núcleo") +
     '<div class="assist-config-number-grid">' +
     renderNumberField({
       field: "assist-config-conceptual-reappearances",
@@ -260,6 +265,20 @@ export function renderAssistConfigOverlay({
     '<span class="assist-config-toggle-text" title="Explica vocabulário, siglas e notação">Explica vocabulário</span>' +
     "</span>" +
     "</div>" +
+    "</section>" +
+    '<section class="assist-config-panel">' +
+    renderSectionLabel("sparkles", "Acesso", "Parâmetros operacionais do motor; não mudam a didática") +
+    '<div class="assist-config-grid">' +
+    '<label class="field assist-config-field">' +
+    renderFieldLabel("sparkles", "Motor", "Escolhe quem gera a trilha") +
+    '<select data-field="assist-config-model" aria-label="Motor" title="Escolhe quem gera a trilha">' +
+    renderOptionList(modelOptions, model) +
+    "</select></label>" +
+    '<label class="field assist-config-field assist-config-secret-field">' +
+    renderFieldLabel("intent", "API", "Autoriza o uso do motor remoto") +
+    `<input data-field="assist-config-api-key" type="password" value="${escapeHtml(apiKey || "")}" autocomplete="off" spellcheck="false" placeholder="Chave da API" title="Autoriza o uso do motor remoto">` +
+    "</label>" +
+    "</div>" +
     (isCodexLocal
       ? '<section class="assist-config-local-panel">' +
         '<div class="assist-config-local-grid">' +
@@ -283,6 +302,7 @@ export function renderAssistConfigOverlay({
           : "") +
         "</section>"
       : "") +
+    "</section>" +
     "</div>" +
     "</article></section>"
   );
