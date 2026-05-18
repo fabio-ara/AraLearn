@@ -25,6 +25,7 @@ test("renderAssistConfigOverlay expõe contrato discreto do top-down sem setup o
   assert.match(html, /data-action="assist-config-edit-profile"/);
   assert.match(html, /data-action="assist-config-delete-profile"/);
   assert.match(html, /data-action="assist-config-save-profile"/);
+  assert.match(html, />Salvar perfil</);
   assert.match(html, /data-field="assist-config-course-model-description"/);
   assert.match(html, /data-field="assist-config-course-learning-trail"/);
   assert.match(html, /data-field="assist-config-course-microsequence-progression"/);
@@ -93,12 +94,14 @@ test("renderAssistConfigOverlay usa o próprio campo Perfil para editar o nome d
       draftLabel: "Geral personalizado",
       canEdit: true,
       canDelete: true,
-      canSave: true
+      canSave: true,
+      state: "editing"
     }
   });
 
   assert.match(html, /data-field="assist-config-profile" type="text"/);
   assert.match(html, /value="Geral personalizado"/);
+  assert.match(html, /Editando perfil/);
   assert.doesNotMatch(html, />Nome do perfil</);
 });
 

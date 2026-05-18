@@ -3959,25 +3959,18 @@ button {
 }
 
 .assist-config-profile-field {
-  padding: 10px;
-  border: 1px solid rgba(151, 117, 68, 0.18);
-  border-radius: 16px;
-  background: rgba(18, 14, 11, 0.26);
-}
-
-.assist-config-profile-field.is-editing {
-  border-color: rgba(214, 174, 96, 0.72);
-  background: rgba(72, 53, 28, 0.22);
-}
-
-.assist-config-profile-field.is-dirty {
-  border-color: rgba(204, 136, 73, 0.7);
-  background: rgba(78, 45, 25, 0.22);
+  gap: 10px;
 }
 
 .assist-config-profile-stack {
   display: grid;
   gap: 12px;
+}
+
+.assist-config-profile-control-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
 }
 
 .assist-config-label-actions {
@@ -4010,6 +4003,16 @@ button {
 .assist-config-field input,
 .assist-config-field textarea {
   width: 100%;
+}
+
+.assist-config-field select,
+.assist-config-field input {
+  min-height: 40px;
+}
+
+.assist-config-grid .assist-config-inline-label {
+  min-height: 30px;
+  align-items: flex-start;
 }
 
 .assist-config-course-request-field textarea {
@@ -4228,6 +4231,56 @@ button {
   font-size: 12px;
   line-height: 1.2;
   font-weight: 700;
+}
+
+.assist-config-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-top: 2px;
+}
+
+.assist-config-status-pill {
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(151, 117, 68, 0.24);
+  background: rgba(23, 18, 14, 0.56);
+  color: #d8c29d;
+  display: inline-flex;
+  align-items: center;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.assist-config-status-pill.is-editing {
+  border-color: rgba(214, 174, 96, 0.72);
+  background: rgba(72, 53, 28, 0.22);
+  color: #f3ddb0;
+}
+
+.assist-config-status-pill.is-dirty {
+  border-color: rgba(204, 136, 73, 0.7);
+  background: rgba(78, 45, 25, 0.22);
+  color: #f1d0a8;
+}
+
+.assist-config-status-pill.is-saved {
+  border-color: rgba(111, 88, 62, 0.54);
+  background: rgba(19, 15, 11, 0.5);
+  color: #cdbba0;
+}
+
+.assist-config-save-action {
+  margin-left: auto;
+}
+
+.assist-config-save-action:disabled,
+.assist-config-save-action[aria-disabled="true"] {
+  opacity: 0.46;
+  cursor: not-allowed;
 }
 
 .assist-config-local-panel {
@@ -6308,6 +6361,16 @@ button {
   .assist-config-toggle-row,
   .assist-config-local-actions {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .assist-config-footer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .assist-config-save-action {
+    margin-left: 0;
+    width: 100%;
   }
 }
 

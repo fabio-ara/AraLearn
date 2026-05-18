@@ -120,6 +120,12 @@ export function renderAssistConfigPanel({
   const canSaveProfile = profileEditor?.canSave === true;
   const profileLabel = profileEditor?.draftLabel || "";
   const profileState = profileEditor?.state || "saved";
+  const profileStateLabel =
+    profileState === "editing"
+      ? "Editando perfil"
+      : profileState === "dirty"
+        ? "Alterações não salvas"
+        : "Perfil salvo";
   return (
     '<section class="assist-config-panel assist-config-panel-inline' +
     (inline ? " is-inline" : "") +
@@ -139,7 +145,7 @@ export function renderAssistConfigPanel({
     "</div>" +
     "</label>" +
     '<div class="assist-config-profile-stack">' +
-    '<label class="field assist-config-field assist-config-profile-field is-' +
+    '<div class="field assist-config-field assist-config-profile-field is-' +
     escapeHtml(profileState) +
     '">' +
     '<span class="assist-config-label-actions">' +
@@ -148,15 +154,15 @@ export function renderAssistConfigPanel({
     renderIconAction("assist-config-start-create-profile", "add", "Criar novo perfil", { disabled: isProfileEditing }) +
     renderIconAction("assist-config-delete-profile", "trash", "Excluir perfil selecionado", { disabled: !canDeleteProfile }) +
     renderIconAction("assist-config-edit-profile", "edit", "Editar nome do perfil selecionado", { disabled: !canEditProfile }) +
-    renderIconAction("assist-config-save-profile", "save", "Salvar perfil", { disabled: !canSaveProfile }) +
     "</span>" +
     "</span>" +
+    '<div class="assist-config-profile-control-row">' +
     (isProfileEditing
       ? `<input data-field="assist-config-profile" type="text" value="${escapeHtml(profileLabel)}" autocomplete="off" spellcheck="false" placeholder="Nome do perfil" title="Nome do perfil">`
       : '<select data-field="assist-config-profile" aria-label="Perfil didático" title="Escolhe o estilo-base da trilha">' +
         renderOptionList(didacticProfileOptions, didacticProfileId) +
         "</select>") +
-    "</label>" +
+    "</div></div>" +
     '<label class="field assist-config-field assist-config-student-field">' +
     renderFieldLabel("prompt", "Para quem", "Ajusta a trilha ao nível e ao tempo do estudante") +
     `<input data-field="assist-config-target-student-profile" type="text" value="${escapeHtml(profileTuning.targetStudentProfile || "")}" autocomplete="off" spellcheck="false" placeholder="Perfil do estudante" title="Ajusta a trilha ao nível e ao tempo do estudante">` +
@@ -189,6 +195,11 @@ export function renderAssistConfigPanel({
     '<span class="assist-config-toggle-text" title="Esgotar assunto antes de expandir">Esgotar assunto antes de expandir</span>' +
     "</span>" +
     "</div>" +
+    '<div class="assist-config-footer">' +
+    `<span class="assist-config-status-pill is-${escapeHtml(profileState)}" title="${escapeHtml(profileStateLabel)}">${escapeHtml(profileStateLabel)}</span>` +
+    `<button class="assist-config-text-action assist-config-save-action" type="button" data-action="assist-config-save-profile" title="Salvar perfil" aria-label="Salvar perfil"${canSaveProfile ? "" : ' disabled aria-disabled="true"'}>` +
+    renderUiIcon("save", "assist-config-action-icon") +
+    '<span>Salvar perfil</span></button></div>' +
     "</section>"
   );
 }

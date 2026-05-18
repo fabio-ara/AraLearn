@@ -1717,12 +1717,15 @@ export function createLessonEditorApp({ root, storage, editor }) {
     const normalizedLabel = String(draftLabel).trim();
     const isCreateMode = editor?.mode === "create";
     const isEditMode = editor?.mode === "edit";
+    const hasUnsavedChanges = hasUnsavedAssistCustomProfileChanges(config);
     const canSave =
       (Boolean(editor?.active) &&
         Boolean(normalizedLabel) &&
         ((isCreateMode && Boolean(editor?.profileId)) ||
-          (isEditMode && selectedCustomProfile && normalizedLabel !== String(editor?.originalLabel || "").trim()))) ||
-      (!editor?.active && hasUnsavedAssistCustomProfileChanges(config));
+          (isEditMode &&
+            selectedCustomProfile &&
+            (normalizedLabel !== String(editor?.originalLabel || "").trim() || hasUnsavedChanges)))) ||
+      (!editor?.active && hasUnsavedChanges);
 
     return {
       active: Boolean(editor?.active),

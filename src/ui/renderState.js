@@ -1,6 +1,9 @@
 const TRACKED_SCROLL_SELECTORS = [
   ".screen-content",
   ".editor-sheet",
+  ".generation-overlay-panel",
+  ".home-generate-pane",
+  ".generate-card",
   ".editor-step-strip",
   ".editor-version-strip",
   ".workbench-editor-panel",
