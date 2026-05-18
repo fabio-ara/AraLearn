@@ -265,8 +265,10 @@ test("renderiza popup de progresso top-down com chamadas ao modelo", () => {
 
   assert.match(html, /generation-progress-popup/);
   assert.match(html, /Planejando arquitetura do curso/);
-  assert.match(html, /Chamada ao modelo/);
+  assert.match(html, /Aguardando resposta do modelo codex-cli-local/);
   assert.match(html, /4\/19/);
+  assert.match(html, /generation-progress-phase-item is-current/);
+  assert.doesNotMatch(html, /Lendo anexos e fontes\. Etapa local do motor\./);
 });
 
 test("renderiza o painel contextual com curso fixado para geração estrutural dentro do curso", () => {

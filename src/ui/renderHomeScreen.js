@@ -3,6 +3,10 @@ import { isRunnableMicrosequence } from "../model/microsequenceStatus.js";
 import { renderUiIcon } from "./renderUiIcons.js";
 import { buildScopedVersionLineageLabel, splitVersionLineageLabel } from "./versionLineage.js";
 import { renderAssistConfigPanel } from "./renderAssistConfigOverlay.js";
+import {
+  listCourseForgeProgressPhases,
+  summarizeCourseForgeProgressStatus
+} from "../generation/runtime/courseForgeProgressViewModel.js";
 
 function escapeHtml(value) {
   return String(value)
@@ -591,16 +595,26 @@ function renderGenerationProgressPopup(progress = {}) {
         ? " is-failed"
         : "";
   const progressLabel = phaseCount > 0 && phaseIndex > 0 ? `${phaseIndex}/${phaseCount}` : "Iniciando";
-  const historyItems = (Array.isArray(progress.history) ? progress.history : [])
-    .slice(-4)
-    .map((item) => {
-      const isProviderCall = item.type === "provider_call_started" || item.type === "provider_call_completed";
+  const statusLine = summarizeCourseForgeProgressStatus(progress);
+  const phaseItems = listCourseForgeProgressPhases(phaseCount || 0)
+    .map((phase, index) => {
+      const order = index + 1;
+      const itemClass =
+        order < phaseIndex
+          ? " is-completed"
+          : order === phaseIndex
+            ? " is-current"
+            : "";
       return (
-        '<li class="generation-progress-history-item' +
-        (isProviderCall ? " is-provider-call" : "") +
+        '<li class="generation-progress-phase-item' +
+        itemClass +
         '">' +
-        escapeHtml(item.message || item.phaseLabel || "") +
-        "</li>"
+        '<span class="generation-progress-phase-index">' +
+        escapeHtml(String(order)) +
+        "</span>" +
+        '<span class="generation-progress-phase-label">' +
+        escapeHtml(phase.phaseLabel) +
+        "</span></li>"
       );
     })
     .join("");
@@ -618,12 +632,12 @@ function renderGenerationProgressPopup(progress = {}) {
     escapeHtml(progress.phaseLabel || "Preparando geração") +
     "</p>" +
     '<p class="generation-progress-message">' +
-    escapeHtml(progress.message || "") +
+    escapeHtml(statusLine) +
     "</p>" +
     '<div class="generation-progress-bar" aria-hidden="true"><span style="width:' +
     String(percent) +
     '%"></span></div>' +
-    (historyItems ? '<ol class="generation-progress-history">' + historyItems + "</ol>" : "") +
+    (phaseItems ? '<ol class="generation-progress-phases">' + phaseItems + "</ol>" : "") +
     "</aside>"
   );
 }

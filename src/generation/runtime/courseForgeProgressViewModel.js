@@ -20,6 +20,8 @@ const PHASE_LABELS = Object.freeze({
   final_report: "Fechando relatório"
 });
 
+export const COURSE_FORGE_PROGRESS_PHASE_IDS = Object.freeze(Object.keys(PHASE_LABELS));
+
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
 }
@@ -27,6 +29,46 @@ function text(value) {
 export function getCourseForgePhaseLabel(phaseId = "") {
   const normalized = text(phaseId);
   return PHASE_LABELS[normalized] || normalized || "Preparando geração";
+}
+
+export function listCourseForgeProgressPhases(phaseCount = 0) {
+  const normalizedCount = Number.isFinite(Number(phaseCount)) ? Number(phaseCount) : 0;
+  const resolvedCount = normalizedCount > 0 ? normalizedCount : COURSE_FORGE_PROGRESS_PHASE_IDS.length;
+  return Array.from({ length: resolvedCount }, (_, index) => {
+    const phaseId = COURSE_FORGE_PROGRESS_PHASE_IDS[index] || `phase_${index + 1}`;
+    return {
+      phaseId,
+      phaseLabel: COURSE_FORGE_PROGRESS_PHASE_IDS[index] ? getCourseForgePhaseLabel(phaseId) : `Etapa ${index + 1}`
+    };
+  });
+}
+
+export function summarizeCourseForgeProgressStatus(progress = {}) {
+  const history = Array.isArray(progress?.history) ? progress.history : [];
+  const lastProviderEvent = [...history].reverse().find((item) =>
+    ["provider_call_started", "provider_call_completed", "provider_call_failed"].includes(text(item?.type))
+  );
+  const lastCompletedPhase = [...history].reverse().find((item) => text(item?.type) === "phase_completed");
+  const message = text(progress?.message);
+
+  if (progress?.status === "failed") {
+    return message || "A geração top-down falhou.";
+  }
+  if (progress?.status === "completed") {
+    return "Estrutura concluída e aplicada.";
+  }
+  if (lastProviderEvent?.type === "provider_call_started") {
+    return text(progress?.modelId)
+      ? `Aguardando resposta do modelo ${text(progress.modelId)}.`
+      : "Aguardando resposta do modelo.";
+  }
+  if (lastProviderEvent?.type === "provider_call_completed" && lastCompletedPhase?.phaseLabel) {
+    return `${lastCompletedPhase.phaseLabel} concluído. Preparando próxima etapa.`;
+  }
+  if (lastCompletedPhase?.phaseLabel) {
+    return `${lastCompletedPhase.phaseLabel} concluído.`;
+  }
+  return message || "Preparando geração.";
 }
 
 function eventTimestamp(event = {}) {

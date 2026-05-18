@@ -32,7 +32,8 @@ import {
 } from "../src/generation/runtime/courseForgeGenerationNavigation.js";
 import {
   createCourseForgeGenerationProgressState,
-  reduceCourseForgeGenerationProgress
+  reduceCourseForgeGenerationProgress,
+  summarizeCourseForgeProgressStatus
 } from "../src/generation/runtime/courseForgeProgressViewModel.js";
 import { executeCourseForgeProviderPhase } from "../src/generation/courseForge/courseForgeRuntime.js";
 
@@ -302,6 +303,35 @@ test("reduceCourseForgeGenerationProgress diferencia fase local e chamada ao mod
   assert.match(progress.message, /Chamada ao modelo/);
   assert.match(progress.message, /codex-cli-local/);
   assert.equal(progress.history.some((item) => /Etapa local do motor/.test(item.message)), true);
+});
+
+test("sumariza progresso top-down sem repetir log bruto", () => {
+  const running = createCourseForgeGenerationProgressState({
+    visible: true,
+    status: "running",
+    phaseId: "repair_architecture",
+    phaseLabel: "Reparando arquitetura",
+    modelId: "codex-cli-local",
+    phaseIndex: 6,
+    phaseCount: 19,
+    history: [
+      {
+        type: "phase_completed",
+        phaseId: "audit_architecture",
+        phaseLabel: "Auditando arquitetura",
+        message: "Auditando arquitetura concluído."
+      },
+      {
+        type: "provider_call_started",
+        phaseId: "repair_architecture",
+        phaseLabel: "Reparando arquitetura",
+        modelId: "codex-cli-local",
+        message: "Chamada ao modelo: Reparando arquitetura (codex-cli-local)."
+      }
+    ]
+  });
+
+  assert.equal(summarizeCourseForgeProgressStatus(running), "Aguardando resposta do modelo codex-cli-local.");
 });
 
 test("prepareCourseForgeStructureGeneration rejeita anexo sem texto aproveitável", async () => {

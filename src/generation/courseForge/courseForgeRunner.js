@@ -105,6 +105,47 @@ function listArchitectureLessons(architectureDraft = {}) {
   return lessons;
 }
 
+function normalizeLookupLabel(value) {
+  return text(value)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function buildArchitectureLessonIndexes(architectureLessons = []) {
+  const byLessonKey = new Map();
+  const byLessonTitle = new Map();
+
+  architectureLessons.forEach((lessonPlan) => {
+    const lessonKey = text(lessonPlan?.lessonKey);
+    const lessonTitle = normalizeLookupLabel(lessonPlan?.lessonTitle);
+    if (lessonKey) {
+      byLessonKey.set(lessonKey, lessonPlan);
+    }
+    if (lessonTitle) {
+      byLessonTitle.set(lessonTitle, lessonPlan);
+    }
+  });
+
+  return { byLessonKey, byLessonTitle };
+}
+
+function mergeTagList(primary = [], fallback = []) {
+  const values = [...(Array.isArray(primary) ? primary : []), ...(Array.isArray(fallback) ? fallback : [])]
+    .map(text)
+    .filter(Boolean);
+  return [...new Set(values)];
+}
+
+function mergePlainObject(primary = {}, fallback = {}) {
+  return {
+    ...structuredClone(fallback || {}),
+    ...structuredClone(primary || {})
+  };
+}
+
 function findScopedLesson(projectDocument = {}, scope = {}) {
   const courses = Array.isArray(projectDocument?.courses) ? projectDocument.courses : [];
   const course = courses.find((item) => text(item?.key) === text(scope?.courseKey));
@@ -354,29 +395,63 @@ function buildExistingMicrosequencePlansForScope(projectDocument = {}, scope = {
   return [];
 }
 
-function normalizeLessonPlans(payload = {}, architectureDraft = {}, engineProfile = {}) {
+export function normalizeLessonPlans(payload = {}, architectureDraft = {}, engineProfile = {}) {
+  const architectureLessons = listArchitectureLessons(architectureDraft);
+  const { byLessonKey, byLessonTitle } = buildArchitectureLessonIndexes(architectureLessons);
   const explicit = Array.isArray(payload?.lessonPlans) ? payload.lessonPlans : [];
-  if (explicit.length) {
-    return explicit.map((lessonPlan) => ({
-      courseKey: text(lessonPlan?.courseKey),
-      moduleKey: text(lessonPlan?.moduleKey),
-      lessonKey: text(lessonPlan?.lessonKey),
-      lessonTitle: text(lessonPlan?.lessonTitle),
-      lessonDescription: text(lessonPlan?.lessonDescription),
-      sourceGuideStructured: structuredClone(lessonPlan?.sourceGuideStructured || {}),
-      domainMap: structuredClone(lessonPlan?.domainMap || null),
-      resourceTags: structuredClone(lessonPlan?.resourceTags || []),
-      contentTypeTags: structuredClone(lessonPlan?.contentTypeTags || []),
-      learningActionTags: structuredClone(lessonPlan?.learningActionTags || []),
-      supportLevel: text(lessonPlan?.supportLevel),
-      presetId: text(lessonPlan?.presetId),
+
+  if (!explicit.length) {
+    return architectureLessons.map((lessonPlan) => ({
+      ...lessonPlan,
       ...buildCourseSemanticFields(engineProfile)
     }));
   }
-  return listArchitectureLessons(architectureDraft).map((lessonPlan) => ({
-    ...lessonPlan,
-    ...buildCourseSemanticFields(engineProfile)
-  }));
+
+  const normalizedPlans = [];
+  const matchedLessonKeys = new Set();
+
+  explicit.forEach((lessonPlan) => {
+    const explicitLessonKey = text(lessonPlan?.lessonKey || lessonPlan?.key);
+    const explicitLessonTitle = text(lessonPlan?.lessonTitle || lessonPlan?.title);
+    const architectureLesson =
+      byLessonKey.get(explicitLessonKey) ||
+      byLessonTitle.get(normalizeLookupLabel(explicitLessonTitle)) ||
+      null;
+    const resolvedLessonKey = text(architectureLesson?.lessonKey || explicitLessonKey);
+
+    if (resolvedLessonKey) {
+      matchedLessonKeys.add(resolvedLessonKey);
+    }
+
+    normalizedPlans.push({
+      courseKey: text(lessonPlan?.courseKey || architectureLesson?.courseKey),
+      moduleKey: text(lessonPlan?.moduleKey || architectureLesson?.moduleKey),
+      lessonKey: resolvedLessonKey,
+      lessonTitle: text(explicitLessonTitle || architectureLesson?.lessonTitle),
+      lessonDescription: text(lessonPlan?.lessonDescription || lessonPlan?.description || architectureLesson?.lessonDescription),
+      sourceGuideStructured: mergePlainObject(lessonPlan?.sourceGuideStructured || {}, architectureLesson?.sourceGuideStructured || {}),
+      domainMap: structuredClone(lessonPlan?.domainMap || architectureLesson?.domainMap || null),
+      resourceTags: mergeTagList(lessonPlan?.resourceTags, architectureLesson?.resourceTags),
+      contentTypeTags: mergeTagList(lessonPlan?.contentTypeTags, architectureLesson?.contentTypeTags),
+      learningActionTags: mergeTagList(lessonPlan?.learningActionTags, architectureLesson?.learningActionTags),
+      supportLevel: text(lessonPlan?.supportLevel || architectureLesson?.supportLevel),
+      presetId: text(lessonPlan?.presetId || architectureLesson?.presetId),
+      ...buildCourseSemanticFields(engineProfile)
+    });
+  });
+
+  architectureLessons.forEach((lessonPlan) => {
+    const lessonKey = text(lessonPlan?.lessonKey);
+    if (!lessonKey || matchedLessonKeys.has(lessonKey)) {
+      return;
+    }
+    normalizedPlans.push({
+      ...structuredClone(lessonPlan),
+      ...buildCourseSemanticFields(engineProfile)
+    });
+  });
+
+  return normalizedPlans;
 }
 
 function normalizeMicrosequencePlans(payload = {}, lessonPlans = []) {

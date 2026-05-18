@@ -4666,22 +4666,56 @@ button {
   transition: width 0.22s ease;
 }
 
-.generation-progress-history {
+.generation-progress-phases {
   display: grid;
-  gap: 5px;
+  gap: 6px;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-.generation-progress-history-item {
+.generation-progress-phase-item {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
   color: rgba(216, 194, 157, 0.74);
   font-size: 0.74rem;
   line-height: 1.3;
 }
 
-.generation-progress-history-item.is-provider-call {
-  color: rgba(255, 226, 167, 0.92);
+.generation-progress-phase-index {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  border: 1px solid rgba(216, 194, 157, 0.24);
+  color: rgba(216, 194, 157, 0.74);
+  background: rgba(255, 241, 211, 0.04);
+  font-size: 0.69rem;
+  font-weight: 800;
+}
+
+.generation-progress-phase-item.is-current {
+  color: rgba(255, 238, 201, 0.98);
+}
+
+.generation-progress-phase-item.is-current .generation-progress-phase-index {
+  border-color: rgba(214, 174, 96, 0.52);
+  color: #fff1d3;
+  background: rgba(201, 162, 86, 0.18);
+}
+
+.generation-progress-phase-item.is-completed {
+  color: rgba(222, 212, 188, 0.84);
+}
+
+.generation-progress-phase-item.is-completed .generation-progress-phase-index {
+  border-color: rgba(111, 175, 94, 0.42);
+  color: #d8f1cf;
+  background: rgba(111, 175, 94, 0.18);
 }
 
 .action-menu-sheet {

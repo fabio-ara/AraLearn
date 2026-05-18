@@ -23,7 +23,7 @@ import { compileCourseStructureToPatch, validateCourseForgePatch } from "../src/
 import { createCourseForgeArtifactsStore } from "../src/generation/courseForge/courseForgeArtifacts.js";
 import { canResumeCourseForgeRun, createCourseForgeRunState } from "../src/generation/courseForge/courseForgeRunState.js";
 import { runCourseForgeQueue } from "../src/generation/courseForge/courseForgeQueue.js";
-import { runCourseForge, buildDiagnosticsSummary } from "../src/generation/courseForge/courseForgeRunner.js";
+import { runCourseForge, buildDiagnosticsSummary, normalizeLessonPlans } from "../src/generation/courseForge/courseForgeRunner.js";
 import { buildMicrosequenceRepairTask } from "../src/generation/didactics/didacticRepairDirectives.js";
 import { applyCourseForgePatch } from "../src/generation/courseForge/courseForgeApply.js";
 import {
@@ -1082,6 +1082,63 @@ test("enrichLessonPlansFromSourceLedger usa exercicio como fallback conservador 
   });
 
   assert.equal(lessonPlan.sourceGuideStructured.lessonGoal, "compare rede local e internet em dois cenários.");
+});
+
+test("normalizeLessonPlans reconcilia lições sem lessonKey com a arquitetura aprovada", () => {
+  const lessonPlans = normalizeLessonPlans(
+    {
+      lessonPlans: [
+        {
+          title: "O que e um grafo",
+          lessonDescription: "Introduz vertices e arestas.",
+          learningActionTags: ["identificar"]
+        },
+        {
+          lessonTitle: "Graus e contagem",
+          sourceGuideStructured: {
+            lessonGoal: "Calcular graus."
+          }
+        }
+      ]
+    },
+    {
+      course: {
+        key: "course-grafos",
+        modules: [
+          {
+            key: "module-fundamentos",
+            lessons: [
+              {
+                key: "lesson-o-que-e-um-grafo",
+                title: "O que é um grafo",
+                description: "Base conceitual.",
+                learningActionTags: ["reconhecer"]
+              },
+              {
+                key: "lesson-graus-e-contagem",
+                title: "Graus e contagem",
+                description: "Contagem estrutural."
+              },
+              {
+                key: "lesson-isomorfismo",
+                title: "Isomorfismo",
+                description: "Comparar estruturas."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {}
+  );
+
+  assert.equal(lessonPlans.length, 3);
+  assert.equal(lessonPlans[0].lessonKey, "lesson-o-que-e-um-grafo");
+  assert.equal(lessonPlans[0].lessonTitle, "O que e um grafo");
+  assert.deepEqual(lessonPlans[0].learningActionTags, ["identificar", "reconhecer"]);
+  assert.equal(lessonPlans[1].lessonKey, "lesson-graus-e-contagem");
+  assert.equal(lessonPlans[1].sourceGuideStructured.lessonGoal, "Calcular graus.");
+  assert.equal(lessonPlans[2].lessonKey, "lesson-isomorfismo");
 });
 
 test("course graph deriva objetivo, erro comum e assessmentTargets de exercicio a partir do SourceLedger", () => {
