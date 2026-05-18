@@ -19,7 +19,7 @@ test("engine registry expõe perfil default de ADS e packs básicos", () => {
   const lessonPlanningContractPack = getContractPack("lessonPlanning");
 
   assert.equal(profile.profileId, DEFAULT_ENGINE_PROFILE_ID);
-  assert.match(profile.label, /ADS geral/);
+  assert.match(profile.label, /Geral/);
   assert.ok(profile.intendedDomains.includes("álgebra linear"));
   assert.equal(didacticPolicy.productionArchitecture, "planner_builder_auditor_internalizado");
   assert.ok(courseForgePromptPack.guardrails.length > 0);
@@ -40,9 +40,9 @@ test("engine registry resolve perfil nomeado sem perder o seed base", () => {
   const programmingProfile = resolveEngineProfile("aralearn.engine.ads.programming.v1");
   const mathProfile = getEngineProfileSeed("aralearn.engine.ads.math.v1");
 
-  assert.match(programmingProfile.label, /programação procedural/);
+  assert.match(programmingProfile.label, /Programação procedural/);
   assert.equal(programmingProfile.didacticPolicy.defaultMinimumReappearances.operational, 5);
-  assert.match(mathProfile.label, /matemática formal/);
+  assert.match(mathProfile.label, /Matemática/);
   assert.equal(mathProfile.didacticPolicy.defaultMinimumReappearances.conceptual, 4);
 });
 

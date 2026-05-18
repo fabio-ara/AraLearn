@@ -11,8 +11,8 @@ test("renderAssistConfigOverlay expõe contrato discreto do top-down sem setup o
       targetStudentProfile: "estudante com base irregular"
     }),
     didacticProfileOptions: [
-      { value: "aralearn.engine.ads.general.v3", label: "ADS geral" },
-      { value: "aralearn.engine.ads.programming.v1", label: "ADS programação procedural" }
+      { value: "aralearn.engine.ads.general.v3", label: "Geral" },
+      { value: "aralearn.engine.ads.programming.v1", label: "Programação procedural" }
     ]
   });
 
@@ -65,7 +65,7 @@ test("renderAssistConfigOverlay não mistura setup operacional com o contrato di
     didacticProfileId: "aralearn.engine.ads.systems.v1",
     profileTuning: createCourseForgeProfileTuning("aralearn.engine.ads.systems.v1"),
     didacticProfileOptions: [
-      { value: "aralearn.engine.ads.systems.v1", label: "ADS terminal e ferramentas" }
+      { value: "aralearn.engine.ads.systems.v1", label: "Script em terminal" }
     ]
   });
 
@@ -82,14 +82,14 @@ test("renderAssistConfigOverlay expõe nome editável quando o perfil derivado e
     didacticProfileId: "assist.custom.demo",
     profileTuning: createCourseForgeProfileTuning("aralearn.engine.ads.general.v3"),
     didacticProfileOptions: [
-      { value: "aralearn.engine.ads.general.v3", label: "ADS geral" },
-      { value: "assist.custom.demo", label: "ADS geral personalizado" }
+      { value: "aralearn.engine.ads.general.v3", label: "Geral" },
+      { value: "assist.custom.demo", label: "Geral personalizado" }
     ],
     isCustomProfileSelected: true,
-    customProfileLabel: "ADS geral personalizado"
+    customProfileLabel: "Geral personalizado"
   });
 
   assert.match(html, /data-field="assist-config-custom-profile-label"/);
   assert.match(html, />Nome do perfil</);
-  assert.match(html, /value="ADS geral personalizado"/);
+  assert.match(html, /value="Geral personalizado"/);
 });

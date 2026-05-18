@@ -127,7 +127,7 @@ function createAdsProfile(profileId, label, overrides = {}) {
 export const DEFAULT_ENGINE_PROFILE_ID = "aralearn.engine.ads.general.v3";
 
 export const ENGINE_PROFILE_SEEDS = Object.freeze({
-  [DEFAULT_ENGINE_PROFILE_ID]: createAdsProfile(DEFAULT_ENGINE_PROFILE_ID, "ADS geral", {
+  [DEFAULT_ENGINE_PROFILE_ID]: createAdsProfile(DEFAULT_ENGINE_PROFILE_ID, "Geral", {
     intendedDomains: [
       "álgebra linear",
       "engenharia de software",
@@ -138,7 +138,7 @@ export const ENGINE_PROFILE_SEEDS = Object.freeze({
       "administração de empresas"
     ]
   }),
-  "aralearn.engine.ads.math.v1": createAdsProfile("aralearn.engine.ads.math.v1", "ADS matemática formal", {
+  "aralearn.engine.ads.math.v1": createAdsProfile("aralearn.engine.ads.math.v1", "Matemática", {
     didacticPolicy: {
       targetStudentProfile: "estudante de ADS em disciplina matemática formal com dificuldade de abstração e notação",
       defaultMinimumReappearances: {
@@ -167,7 +167,7 @@ export const ENGINE_PROFILE_SEEDS = Object.freeze({
       }
     }
   }),
-  "aralearn.engine.ads.programming.v1": createAdsProfile("aralearn.engine.ads.programming.v1", "ADS programação procedural", {
+  "aralearn.engine.ads.programming.v1": createAdsProfile("aralearn.engine.ads.programming.v1", "Programação procedural", {
     didacticPolicy: {
       targetStudentProfile: "estudante de ADS aprendendo programação passo a passo, com necessidade de explicação palavra por palavra",
       defaultMinimumReappearances: {
@@ -189,7 +189,7 @@ export const ENGINE_PROFILE_SEEDS = Object.freeze({
       }
     }
   }),
-  "aralearn.engine.ads.systems.v1": createAdsProfile("aralearn.engine.ads.systems.v1", "ADS terminal e ferramentas", {
+  "aralearn.engine.ads.systems.v1": createAdsProfile("aralearn.engine.ads.systems.v1", "Script em terminal", {
     didacticPolicy: {
       targetStudentProfile: "estudante de ADS em disciplina operacional de terminal, shell, ferramentas ou workflow",
       defaultMinimumReappearances: {
@@ -210,7 +210,7 @@ export const ENGINE_PROFILE_SEEDS = Object.freeze({
       }
     }
   }),
-  "aralearn.engine.ads.theory.v1": createAdsProfile("aralearn.engine.ads.theory.v1", "ADS teoria e modelagem", {
+  "aralearn.engine.ads.theory.v1": createAdsProfile("aralearn.engine.ads.theory.v1", "Teoria e modelagem", {
     didacticPolicy: {
       targetStudentProfile: "estudante de ADS em disciplina conceitual, analítica ou de modelagem",
       defaultMinimumReappearances: {
