@@ -1,125 +1,88 @@
 # Guia de uso do app
 
-## Como o AraLearn se organiza
+## Organização
 
-O AraLearn trabalha com cinco níveis:
+O AraLearn organiza o estudo em cinco níveis:
 
 ```text
 curso -> módulo -> lição -> microssequência -> card
 ```
 
-Cada nível tem um papel.
+O curso e o módulo organizam o campo geral. A lição governa o recorte didático. A microssequência é a etapa de estudo. O card é a interação concreta.
 
-O curso define o campo geral: uma disciplina, um tema, um projeto de estudo, uma prova ou um corpus. O módulo separa partes desse campo. A lição concentra o recorte em que o estudo começa a ficar operacional. A microssequência transforma esse recorte em uma etapa de prática. O card é a interação concreta.
+## Gerar estrutura
 
-Essa estrutura também situa a assistência por IA. O app não precisa tratar cada pedido como tema solto, pois o pedido está ancorado em uma parte da trilha.
+O fluxo top-down começa no painel `Gerar estrutura`.
 
-## Tela inicial
+O usuário informa uma intenção e, quando necessário, anexa fontes. O motor prepara a entrada, escolhe o escopo e pede à IA uma estrutura planejada. O resultado esperado é uma trilha navegável até microssequências, não uma coleção completa de cards.
 
-Na tela inicial, o usuário encontra os cursos do projeto e as ações gerais. É o lugar para:
+Uma geração top-down boa deixa claro:
 
-- abrir cursos existentes;
-- criar novos cursos;
-- importar e exportar projetos;
-- anexar material;
-- abrir a geração estrutural;
-- configurar o serviço de IA e o modelo;
-- fazer backup e manutenção do conteúdo local.
+- quais cursos, módulos e lições existem;
+- que microssequências pertencem a cada lição;
+- que etapa vem antes e depois;
+- quais microssequências ainda estão vazias;
+- que contexto semântico interno governa a lição.
 
-A tela inicial mostra o projeto como conjunto. A produção de conteúdo detalhado acontece melhor dentro de uma lição ou de uma microssequência.
+## Abrir uma microssequência vazia
 
-## Curso e módulo
+Uma microssequência vazia não é erro. Ela é uma etapa planejada que ainda não virou cards.
 
-Curso e módulo são níveis de organização. Eles ajudam o usuário a enxergar o campo de estudo e a distribuir temas.
+O usuário abre essa etapa e usa a segunda aba para pedir a materialização. Esse pedido é bottom-up: parte da microssequência atual, usa a lição como contexto e deve gerar cards apenas para aquela etapa.
 
-Nesses níveis, o usuário pode:
+## Aba de edição no runtime
 
-- revisar títulos e descrições;
-- reorganizar a estrutura;
-- anexar fontes;
-- pedir ao app uma proposta de decomposição;
-- preparar o caminho para lições mais específicas.
+A aba de edição da microssequência comum mostra só os parâmetros necessários para o pedido:
 
-Esses níveis não precisam conter explicação detalhada. Seu papel principal é dar contexto e ordenar o percurso.
+- pedido em linguagem natural;
+- ação;
+- tags;
+- materialização preferida;
+- anexos;
+- modelo e envio.
 
-## Lição
+As ações principais são:
 
-A lição é o ponto de governança didática mais importante.
+- `Continuar na microssequência`: cria os primeiros cards se a microssequência estiver vazia ou cria mais cards se ela já tiver conteúdo.
+- `Corrigir microssequência`: pede uma correção local dos cards e da progressão da etapa.
+- `Ir a nova microssequência`: abre a próxima microssequência planejada pelo top-down, quando ela existe.
+- `Criar nova microssequência`: pede uma etapa extra depois da atual, útil quando falta um degrau intermediário.
 
-Nela, o usuário pode registrar:
+`Ir a nova microssequência` é navegação. `Criar nova microssequência` é geração por IA.
 
-- objetivo da etapa;
-- recorte do conteúdo;
-- notação preferida;
-- tipos de exercício esperados;
-- erros comuns;
-- limites do que não deve entrar;
-- fontes ou trechos de apoio.
+## Estudar e revisar
 
-Essa orientação ajuda a IA e também ajuda o próprio usuário. A microssequência gerada dentro dessa lição passa a ter uma moldura clara.
+Na primeira aba, o usuário estuda os cards. Na segunda, intervém sobre a microssequência.
 
-## Microssequência planejada
+O ciclo comum é:
 
-No AraLearn, uma microssequência pode existir antes de ter cards.
+1. abrir microssequência planejada;
+2. pedir cards;
+3. estudar;
+4. corrigir se algo ficou ruim;
+5. continuar se faltou conteúdo;
+6. avançar para a próxima microssequência planejada.
 
-Isso não é falha. É uma etapa planejada da trilha, ainda sem conteúdo materializado. A vantagem é que o usuário consegue ver o percurso antes de pedir geração detalhada. Ele pode decidir o que vale produzir primeiro, corrigir a ordem, excluir uma etapa ou mudar o foco antes de criar cards.
+## Tags
 
-Essa separação evita volume prematuro e preserva espaço para autoria.
+As tags visíveis na aba de edição ancoram o pedido. Elas indicam referências locais da microssequência e ajudam o motor a selecionar contexto relevante.
 
-## Microssequência com cards
+O usuário não precisa editar conceitos internos. As tags são a forma simples de controlar ancoragem sem expor a camada semântica completa.
 
-Dentro da microssequência, o trabalho muda de escala. O foco já não é desenhar o curso inteiro, mas estudar e ajustar uma etapa específica.
+## Materialização preferida
 
-Nesse ponto, o usuário pode:
+Materialização preferida indica o formato desejado dos cards, como automático, parágrafo, pergunta, código, tabela, árvore, fluxograma, plano cartesiano ou matriz.
 
-- estudar os cards existentes;
-- pedir a materialização de uma etapa vazia;
-- corrigir uma sequência insatisfatória;
-- expandir um ponto insuficiente;
-- reformular a abordagem;
-- editar cards manualmente;
-- comparar versões;
-- preparar a continuação.
+Essa escolha não substitui a validação didática. Ela orienta o motor quando o formato escolhido ainda faz sentido para o conteúdo.
 
-É o lugar em que estudo, revisão e autoria se encontram.
+## Anexos
 
-## Cards
+Anexos podem complementar o pedido. Eles são ingeridos antes da chamada de IA e entram como fonte ou contexto, conforme o fluxo.
 
-O card é a unidade de interação. Ele pode apresentar explicação, pergunta, lacuna, código, tabela, fluxograma, matriz ou outra representação aceita pelo contrato público.
-
-Um bom card no AraLearn não precisa dizer tudo. Ele precisa cumprir sua função dentro da microssequência. Alguns cards situam; outros demonstram; outros exigem prática; outros revisam um erro.
-
-## Uso simples
-
-Um fluxo simples pode ser:
-
-1. criar ou importar um curso;
-2. anexar um PDF, DOCX, texto ou conjunto de anotações;
-3. pedir ao app uma estrutura inicial;
-4. revisar cursos, módulos, lições e microssequências;
-5. escolher uma microssequência;
-6. materializar os cards;
-7. estudar e corrigir o que for necessário.
-
-Esse modo reduz o esforço inicial sem impedir revisão.
-
-## Uso autoral
-
-Um fluxo mais autoral pode incluir:
-
-1. escrever a orientação da lição;
-2. selecionar fontes específicas;
-3. ajustar o perfil didático;
-4. escolher o serviço de IA e o modelo;
-5. materializar uma microssequência por vez;
-6. editar cards;
-7. comparar versões;
-8. reorganizar a estrutura.
-
-Esse modo interessa a estudantes avançados, professores, monitores, pesquisadores e autores de material.
+Anexos não devem ser tratados como ordem para copiar documento. O objetivo é transformar material em estudo situado.
 
 ## Uso sem conexão
 
-Como o projeto fica salvo no dispositivo, o usuário pode abrir, navegar, revisar e estudar conteúdo já existente sem conexão.
+Projetos e cards já salvos ficam no dispositivo. Navegação, estudo e revisão de conteúdo existente não dependem de conexão contínua.
 
-Operações que dependem de IA remota exigem internet. Operações com provedor local dependem de configuração no próprio ambiente. O ponto central é que o estudo não desaparece quando a rede falha.
+Geração por IA remota exige internet. Provedor local exige configuração local.

@@ -1,101 +1,83 @@
 # Modelo didático
 
-## Ideia central
+## Unidade central
 
 No AraLearn, o card não é a unidade principal de planejamento. A unidade principal é a microssequência.
 
-Um card isolado pode ser útil para memorização. Mas muitos problemas de estudo surgem antes da memorização: o aluno não sabe por onde começar, que passo praticar, como interpretar a notação, quais erros evitar ou como passar de um exemplo resolvido para um exercício.
+Um card isolado pode explicar ou perguntar algo, mas não carrega sozinho uma progressão. A microssequência reúne alguns cards com uma função didática clara.
 
-A microssequência existe para resolver esse intervalo entre explicação e prática.
+## Funções de microssequência
 
-## O que é uma microssequência
+Uma microssequência pode:
 
-Uma microssequência reúne alguns cards com uma finalidade didática comum.
+- introduzir um conceito;
+- explicar um procedimento;
+- demonstrar um exemplo;
+- propor prática guiada;
+- diferenciar ideias parecidas;
+- corrigir erro comum;
+- consolidar uma etapa;
+- preparar a próxima microssequência.
 
-Ela pode servir para:
+O número de cards é secundário. O essencial é que a etapa cumpra sua função antes de o usuário avançar.
 
-- apresentar uma noção;
-- mostrar um procedimento;
-- treinar uma etapa;
-- comparar conceitos próximos;
-- revisar uma confusão recorrente;
-- preparar a próxima parte da trilha.
+## Top-down e bottom-up
 
-A quantidade de cards não é o aspecto decisivo. O decisivo é a função. Uma microssequência boa deixa claro o que o usuário deve entender, praticar ou consolidar antes de avançar.
+O top-down planeja a sequência didática. Ele cria microssequências vazias de cards, mas não vazias de sentido.
 
-## Progressão sem pressupostos ocultos
+O bottom-up materializa a etapa. Ele cria cards quando o usuário abre a microssequência e pede conteúdo para estudar.
 
-O app foi pensado, inicialmente, para transformar disciplinas acadêmicas em trilhas que um estudante leigo pudesse seguir.
+Essa separação permite revisar a trilha antes de produzir detalhes e evita que a IA gere volume demais de uma vez.
 
-Isso exige cuidado com pressupostos. Um card não deve depender de uma ideia que ainda não apareceu na trilha, salvo quando a lição explicitar esse pré-requisito. A progressão precisa mostrar a ponte entre o que o usuário já tem e o que se espera que ele faça.
+## Progressão
 
-Em disciplinas como lógica, programação ou matemática, isso significa apresentar notação, exemplo, passo intermediário e prática antes de exigir resolução autônoma.
+Uma trilha boa reduz pressupostos ocultos.
 
-## Suficiência didática
+Quando um conceito depende de outro, essa relação deve aparecer no `domainMap`, nas microssequências planejadas ou na própria progressão dos cards. O usuário não deveria ser cobrado por uma prática antes de receber base suficiente para executá-la.
 
-O objetivo não é produzir texto em grande quantidade. O objetivo é oferecer material suficiente para que o usuário entenda o ponto da etapa e pratique algo relevante.
+## DomainMap como apoio didático
 
-A suficiência didática depende de três perguntas:
+O `domainMap` registra conceitos, procedimentos, erros comuns, pré-requisitos, evidências esperadas e variantes de prática.
 
-1. O usuário sabe o que está sendo estudado aqui?
-2. O usuário viu um exemplo ou explicação bastante para começar?
-3. O usuário praticou de algum modo antes de seguir?
+Ele ajuda o motor a responder perguntas como:
 
-Quando a resposta é negativa, a microssequência precisa ser revista.
+- que conceito esta microssequência cobre?
+- que pré-requisito precisa aparecer antes?
+- que erro comum deve ser diagnosticado?
+- que tipo de prática é adequado aqui?
+- que representação faz sentido?
 
-## Explicação e prática
+O usuário comum não precisa editar essa camada no runtime.
 
-O AraLearn evita separar explicação e exercício como mundos independentes.
+## Suficiência
 
-Uma microssequência pode começar com orientação, passar por exemplo resolvido, propor uma lacuna, pedir comparação ou revisar um erro. A prática deve aparecer perto da explicação, para que o usuário não permaneça apenas consumindo conteúdo.
+Uma microssequência está suficientemente materializada quando o usuário consegue:
 
-Essa lógica é especialmente importante em contextos com excesso de informação. A prática obriga o usuário a operar sobre o material.
+- reconhecer o foco da etapa;
+- ver explicação ou exemplo suficiente;
+- praticar algo relevante;
+- entender por que pode avançar.
 
-## Exemplos resolvidos e transição para exercício
+Se isso não acontece, a ação correta é `Corrigir microssequência` ou `Continuar na microssequência`.
 
-Em muitos temas, o usuário precisa ver o procedimento antes de executá-lo. Por isso, exemplos resolvidos têm papel importante no app.
+## Materialização
 
-Um bom exemplo resolvido não mostra apenas a resposta. Ele explicita passos. Depois, a prática pode retirar parte da ajuda, pedir uma decisão, solicitar preenchimento de lacunas ou apresentar uma variação.
+Materializar não é resumir. É transformar a etapa em cards estudáveis.
 
-Esse movimento de orientação para autonomia é parte do modelo didático do AraLearn.
+Um bom conjunto de cards pode combinar explicação, pergunta, lacuna, tabela, código, fluxograma, matriz ou outro recurso aceito. O formato deve servir à função da microssequência.
 
-## Representações
+## Criar microssequência extra
 
-O app não trabalha apenas com texto. A linguagem autoral permite usar:
+Às vezes a trilha planejada pula um degrau. Nesse caso, o usuário pode criar uma microssequência extra depois da atual.
 
-- explicação textual;
-- perguntas;
-- lacunas;
-- código;
-- tabelas;
-- fluxogramas;
-- árvores;
-- matrizes;
-- plano cartesiano;
-- outras estruturas aceitas pelo contrato.
-
-A representação deve servir ao conteúdo. Um fluxograma faz sentido quando o problema envolve decisão ou sequência de passos. Uma tabela ajuda quando a comparação é central. Uma matriz deve preservar a forma espacial que o estudante precisa reconhecer no papel.
-
-## Rascunho e materialização
-
-Uma microssequência pode estar planejada sem cards. Nesse estado, ela já pertence ao percurso, mas ainda não virou material estudável.
-
-Essa distinção permite que o usuário revise a arquitetura antes de gerar conteúdo detalhado. Também permite materializar uma etapa por vez, de acordo com necessidade, custo e prioridade.
-
-## Papel da IA
-
-A IA ajuda a propor, preencher e reformular. Mas ela não define sozinha o que conta como boa didática.
-
-O resultado depende da orientação da lição, do contrato público, das validações, da revisão humana e do uso efetivo pelo estudante. A IA é parte do processo, não seu ponto final.
+Essa etapa extra deve continuar ligada à lição e retornar à trilha planejada. Ela não deve virar replanejamento amplo do curso.
 
 ## Critério prático
 
-Uma microssequência está bem formada quando o usuário consegue responder:
+Uma microssequência está bem desenhada quando responde:
 
-- o que esta etapa quer ensinar ou treinar?
-- que conhecimento anterior ela usa?
-- que prática ela propõe?
-- que erro ou contraste ela ajuda a enfrentar?
-- por que ela vem antes da próxima etapa?
-
-Se essas respostas não aparecem, a etapa deve ser reorganizada.
+- o que esta etapa ensina ou treina?
+- que domínio da lição ela cobre?
+- que prática ou evidência ela espera?
+- que erro ou contraste ela previne?
+- por que ela vem antes da próxima?

@@ -1,68 +1,59 @@
 # Arquitetura-alvo do AraLearn
 
-## Finalidade deste documento
+## Direção
 
-Este documento registra a direção de consolidação do AraLearn. Ele não descreve apenas o que já está pronto; descreve a forma que o produto procura estabilizar.
+A arquitetura-alvo do AraLearn é a consolidação de um fluxo único:
 
-A meta é que organização estrutural, geração assistida, estudo, revisão e autoria pertençam ao mesmo sistema, em vez de parecerem módulos sem relação.
+1. planejar top-down até microssequências;
+2. estudar e materializar bottom-up;
+3. aplicar mudanças por patch validado;
+4. manter a camada semântica interna fora da UI comum.
 
-## Tese central
+## Invariantes
 
-O AraLearn se torna mais coerente quando a mesma lógica governa dois momentos:
+- A microssequência é a unidade didática central.
+- O card é unidade de interação.
+- Top-down não deve gerar todos os cards por padrão.
+- Bottom-up deve operar no ponto atual da trilha.
+- `domainMap` governa por baixo, mas não vira formulário comum.
+- Provider não decide didática.
+- Patch inválido não deve corromper o projeto.
+- O projeto público permanece exportável e legível.
 
-1. a construção da trilha;
-2. a intervenção dentro de uma microssequência.
+## Produto esperado
 
-No primeiro momento, o usuário organiza cursos, módulos, lições e etapas planejadas. No segundo, ele estuda, corrige, reformula e materializa conteúdo. A arquitetura-alvo exige continuidade entre esses momentos.
+O usuário comum deve conseguir:
 
-## Princípios
+- gerar uma trilha planejada;
+- reconhecer microssequências ainda vazias;
+- abrir uma microssequência;
+- pedir os primeiros cards;
+- estudar;
+- corrigir;
+- continuar;
+- ir para a próxima microssequência planejada;
+- criar uma microssequência extra quando faltar um degrau.
 
-A arquitetura-alvo preserva estes princípios:
+## Motor esperado
 
-- a microssequência é a unidade didática principal;
-- o card é unidade de interação;
-- a lição governa o recorte local;
-- a árvore pública situa o contexto;
-- a linguagem autoral mantém o conteúdo legível;
-- a IA assiste, mas não decide sozinha;
-- o usuário pode revisar, corrigir e reorganizar;
-- uma falha operacional não deve corromper o projeto;
-- versões e alterações precisam ser compreensíveis.
+O motor deve manter fases pequenas e auditáveis:
 
-## O que precisa se consolidar
+- intenção;
+- ingestão;
+- estrutura;
+- domínio;
+- planejamento de microssequências;
+- contrato local;
+- plano de cards;
+- geração;
+- auditoria;
+- reparo;
+- patch;
+- validação;
+- aplicação.
 
-### Core didático
-
-O core didático deve concentrar critérios de progressão, prática, suficiência e coerência. Ele precisa ser independente do serviço de IA escolhido.
-
-### Produção por fases
-
-A geração deve continuar dividida em fases menores: ingestão, planejamento, auditoria, reparo, validação e aplicação. Isso reduz dependência de uma única resposta extensa do modelo.
-
-### Orientação por lição
-
-A lição deve carregar orientação suficientemente clara para guiar microssequências: escopo, notação, prática, limites e erros comuns. Essa orientação não deve ser confundida com simples descrição publicitária da lição.
-
-### Materialização progressiva
-
-O app deve permitir que microssequências planejadas existam antes dos cards. O usuário enxerga o caminho, escolhe prioridades e materializa o conteúdo quando fizer sentido.
-
-### Versionamento compreensível
-
-O versionamento deve permitir recuperar decisões anteriores sem confundir o usuário. Alterações em subestruturas devem poder ser reaproveitadas sem obrigar retorno completo a estados antigos da árvore.
-
-### Provedores substituíveis
-
-Serviços de IA remotos ou locais devem poder variar sem reescrever o produto. A didática pertence ao AraLearn; o provedor executa uma parte do fluxo.
+Nem todo fluxo usa todas as fases. Top-down estrutural para antes dos cards. Bottom-up local entra nas fases de materialização.
 
 ## Critério de sucesso
 
-O produto se aproxima da arquitetura-alvo quando consegue:
-
-- transformar material amplo em trilha navegável;
-- mostrar o que está planejado e o que já está pronto para estudo;
-- materializar uma etapa sem replanejar tudo;
-- preservar contexto entre curso, lição e microssequência;
-- permitir correção humana em qualquer ponto relevante;
-- manter o contrato público estável e exportável;
-- continuar útil mesmo quando a IA não está disponível.
+O produto está alinhado quando a pessoa usuária não precisa entender a arquitetura para usar o fluxo, mas a arquitetura continua clara para quem precisa auditar, manter ou evoluir o motor.

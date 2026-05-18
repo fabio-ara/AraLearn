@@ -1,112 +1,155 @@
 # Arquitetura do AraLearn
 
-## Ideia geral
+## Tese
 
-A arquitetura do AraLearn parte de uma decisão: antes de pedir texto a um modelo de IA, o app organiza a tarefa.
+O AraLearn é um compilador didático local-first. Ele transforma intenção, fontes e contexto em uma trilha estudável, usando IA como componente de produção, não como centro absoluto da arquitetura.
 
-Essa organização passa por estrutura pública do projeto, fontes, orientação da lição, linguagem autoral, contratos, validação e aplicação controlada de mudanças. O objetivo é evitar que a IA produza conteúdo solto, difícil de revisar ou desalinhado com a trilha.
+A arquitetura existe para manter uma distinção:
 
-Em vez de concentrar toda a inteligência em um prompt, o AraLearn distribui responsabilidade entre produto, usuário, contrato e modelo.
+- `top-down`: planeja a trilha até microssequências;
+- `bottom-up`: materializa ou corrige cards dentro de uma microssequência.
 
 ## Estrutura pública
 
-A árvore pública do projeto é:
+O contrato público segue esta árvore:
 
 ```text
-projeto -> curso -> módulo -> lição -> microssequência -> card
+project
+└── course
+    └── module
+        └── lesson
+            └── microsequence
+                └── card
 ```
 
-Essa estrutura serve a quatro funções ao mesmo tempo:
+Essa estrutura é persistível, exportável e compreensível pelo usuário. O motor interno pode ter artefatos mais ricos, mas a árvore pública precisa continuar pequena e legível.
 
-- persistir o material;
-- orientar a navegação;
-- situar a geração de conteúdo;
-- preservar continuidade entre planejamento e estudo.
+## Top-down
 
-Quando o usuário pede uma intervenção, o app sabe onde ela ocorre. Uma edição dentro de uma microssequência pode herdar contexto da lição; uma geração estrutural pode respeitar curso e módulo; uma fonte pode ser ligada a uma etapa específica.
+O top-down recebe intenção, escopo e fontes. O resultado esperado é estrutura:
 
-## Lição como ponto de governança
+- cursos;
+- módulos;
+- lições;
+- microssequências planejadas;
+- metadados semânticos necessários para manter coerência.
 
-A lição é o ponto em que a arquitetura didática fica mais precisa. Ela pode guardar orientação sobre escopo, notação, prática, limites, erros comuns e fontes.
+Ele não deve pré-materializar a trilha inteira em cards. Isso preserva custo, reduz volume prematuro e permite ao usuário revisar o caminho antes de produzir conteúdo detalhado.
 
-Isso evita que cada geração comece do zero. A IA não precisa apenas “entender o tema”; ela recebe a moldura da tarefa. O usuário também se beneficia, pois consegue ver e corrigir a orientação que governa aquela parte do percurso.
+No motor, esse fluxo passa por fases como normalização de intenção, ingestão de fontes, construção de perfil avaliativo, planejamento, auditoria, reparo, compilação de patch, validação e aplicação.
 
-## Linguagem autoral
+## Bottom-up
 
-O AraLearn usa uma linguagem autoral simples, baseada em JSON. Ela representa conteúdo didático em estruturas legíveis e persistíveis, como:
+O bottom-up começa quando o usuário está dentro de uma microssequência.
 
-- `say`;
-- `ask`;
-- `code`;
-- `table`;
-- `flow`;
-- `tree`;
-- `plane`;
-- `matrix`.
+Ele recebe:
 
-A linguagem autoral é intermediária. Ela não é texto livre sem controle nem desenho visual de baixo nível. O usuário e a IA podem trabalhar sobre essa forma; o motor de estudo transforma a descrição em apresentação e prática.
+- a microssequência atual;
+- a lição que a governa;
+- tags selecionadas;
+- pedido do usuário;
+- materialização preferida;
+- anexos;
+- configuração de provedor/modelo.
 
-## Motor didático
+Com isso, o motor cria ou corrige cards localmente. Se o usuário pedir uma microssequência extra, o alvo sobe para a lição, mas a inserção continua ancorada na microssequência atual.
 
-O motor didático reúne regras e critérios de qualidade do produto. Ele ajuda a avaliar se uma microssequência respeita progressão, prática, suficiência e coerência com a lição.
+## DomainMap
 
-Essa camada impede que a didática dependa apenas do serviço de IA escolhido. Modelos diferentes podem variar em fluência, mas o produto precisa preservar suas próprias exigências.
+`domainMap` é o contrato semântico interno da lição.
 
-## Motor de produção
+Ele pode conter itens como:
 
-O motor de produção organiza tarefas em fases. Dependendo do fluxo, ele pode:
+- `id`;
+- `label`;
+- `kind`;
+- `priority`;
+- `status`;
+- `sourceRefs`;
+- `expectedEvidence`;
+- `commonErrors`;
+- `prerequisites`;
+- `representations`;
+- `assessmentFormats`;
+- `practiceVariants`.
 
-1. receber fonte ou pedido do usuário;
-2. extrair texto útil;
-3. delimitar escopo;
-4. propor estrutura;
-5. auditar a proposta;
-6. reparar inconsistências;
-7. gerar alteração controlada;
-8. validar o contrato público;
-9. aplicar a mudança no projeto.
+Esse mapa não é a UI do usuário comum. Ele serve para o motor saber quais conceitos, procedimentos, contrastes, pré-requisitos e práticas pertencem à lição.
 
-Essa decomposição torna o resultado mais revisável e reduz o risco de substituições cegas do material.
+## Metadados de microssequência
 
-## Serviços de IA
+A microssequência não carrega todo o `domainMap`. Ela carrega referências leves:
 
-O AraLearn pode conversar com diferentes serviços de IA. Essa camada cuida de envio de prompts, anexos, limites, respostas, tentativas, erros e configuração.
+- `domainRefs`: quais itens do mapa aquela etapa cobre;
+- `practiceVariantRefs`: quais variantes de prática ela pode materializar;
+- `didacticPurpose`: para que a etapa existe;
+- `coverageRole`: papel da etapa na progressão, como introduzir, explicar, praticar, discriminar ou consolidar.
 
-A decisão arquitetural importante é separar serviço de IA e didática. O serviço executa uma parte do trabalho; ele não define sozinho a estrutura, o contrato nem o critério de qualidade.
+Esses metadados ajudam a IA a continuar a trilha sem fugir do assunto. Também permitem auditoria de cobertura e reparo determinístico quando a resposta vem incompleta.
 
-## Fontes e ancoragem
+## Cards
 
-O app pode usar arquivos e textos como fontes para organizar e materializar conteúdo. Hoje o projeto já contempla extração textual de formatos como PDF e DOCX.
+Cards materializam a microssequência. Eles devem ser pequenos, estudáveis e ligados à função local da etapa.
 
-O objetivo não é reproduzir o documento original dentro do app. O objetivo é transformar fonte em orientação de estudo: tópicos, exemplos, definições, procedimentos, limitações e prática.
+Um card pode usar recursos como texto, pergunta, código, tabela, fluxograma, árvore, matriz ou plano cartesiano. O formato é meio; a função didática continua sendo decidida pela microssequência e pela lição.
 
-Quando possível, o conteúdo gerado deve manter vínculo com as fontes usadas. Isso facilita inspeção e correção.
+## Fontes
 
-## Alterações controladas
+Fontes entram primeiro como material bruto. A ingestão extrai texto útil, preserva avisos e transforma anexos em contexto para o motor.
 
-Quando o app muda o projeto, a alteração deve ser compreensível. Sempre que possível, o sistema evita substituir blocos inteiros sem necessidade.
+O objetivo não é reproduzir a fonte inteira. O objetivo é converter fonte em trilha: conceitos, relações, exemplos, erros comuns e prática.
 
-A aplicação controlada de mudanças ajuda em três pontos:
+## Patch e validação
 
-- o usuário entende o que mudou;
-- a validação consegue detectar problemas;
-- versões anteriores podem continuar recuperáveis.
+O motor não deve aplicar texto bruto da IA diretamente no projeto.
 
-Isso é importante porque o AraLearn lida com material de estudo, não apenas com texto descartável.
+O caminho esperado é:
 
-## Persistência no dispositivo
+1. compor pedido situado;
+2. receber estrutura ou cards;
+3. normalizar;
+4. auditar;
+5. reparar quando possível;
+6. compilar patch;
+7. validar patch;
+8. aplicar ao projeto.
 
-O projeto fica salvo no dispositivo do usuário. Isso permite abrir, revisar e estudar material já existente sem conexão contínua.
+Esse processo evita que uma resposta malformada substitua o projeto inteiro ou corrompa a árvore.
 
-A geração com IA remota depende de internet. Um provedor local depende de configuração no ambiente. A arquitetura combina autonomia para continuidade do estudo com assistência pontual para produção e reorganização.
+## Providers
 
-## Critério de coerência arquitetural
+Providers executam chamadas a modelos remotos, modelos locais ou providers falsos de teste.
 
-A arquitetura está funcionando quando:
+Provider não decide didática. Ele recebe uma tarefa já governada por contrato, prompt policy, perfil didático e escopo. A troca de modelo pode mudar qualidade, custo e latência, mas não deve mudar a identidade pedagógica do produto.
 
-- a árvore pública permanece legível;
-- o usuário sabe onde está intervindo;
-- a IA recebe contexto situado;
-- o resultado passa pelo contrato público;
-- o conteúdo pode ser revisado e corrigido;
-- a falha de uma operação não corrompe o projeto.
+## UI comum
+
+A UI comum do bottom-up não expõe o `domainMap`.
+
+Ela mostra apenas:
+
+- pedido;
+- ação;
+- tags;
+- materialização preferida;
+- anexos;
+- modelo;
+- envio.
+
+Essa decisão reduz atrito e impede que o usuário comum edite metadados internos sem entender a consequência.
+
+## Persistência
+
+O projeto fica salvo localmente. Configurações de provider e estado transitório de UI não pertencem ao contrato público exportável.
+
+O que deve persistir no projeto é a trilha, as microssequências, cards, fontes referenciadas e metadados didáticos que fazem parte do material. O que pertence à sessão de geração deve ficar fora do contrato público.
+
+## Critério de coerência
+
+A arquitetura está alinhada quando:
+
+- top-down produz microssequências planejadas, não cards em massa;
+- bottom-up materializa uma microssequência por vez;
+- `domainMap` governa por baixo sem aparecer como formulário comum;
+- cards são aplicados por patch validado;
+- o usuário consegue estudar, corrigir, continuar e avançar;
+- falhas de IA não corrompem o projeto.

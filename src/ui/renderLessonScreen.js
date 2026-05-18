@@ -355,20 +355,6 @@ function summarizeIconTitle(label) {
   return match ? match[1].trim() : text;
 }
 
-function renderPromptContainerButton() {
-  const title = "Adicionar recursos";
-  const ariaLabel = "Adicionar recursos";
-  return (
-    '<button class="icon-ghost workbench-stack-button assist-container-button" type="button" data-action="open-assist-container-picker" title="' +
-    escapeHtml(title) +
-    '" aria-label="' +
-    escapeHtml(ariaLabel) +
-    '">' +
-    renderUiIcon("card", "assist-container-button-icon") +
-    "</button>"
-  );
-}
-
 function renderPromptAttachmentButton() {
   const title = "Anexar documentos";
   return (
@@ -379,32 +365,6 @@ function renderPromptAttachmentButton() {
     '">' +
     renderUiIcon("lesson", "assist-attachment-button-icon") +
     "</button>"
-  );
-}
-
-function renderAssistQuickAction(action, iconName, title) {
-  return (
-    '<button class="icon-ghost workbench-stack-button assist-quick-action" type="button" data-action="' +
-    escapeHtml(action) +
-    '" title="' +
-    escapeHtml(title) +
-    '" aria-label="' +
-    escapeHtml(title) +
-    '">' +
-    renderUiIcon(iconName, "assist-quick-action-icon") +
-    "</button>"
-  );
-}
-
-function renderAssistQuickPanel(label, actionsHtml) {
-  return (
-    '<section class="workbench-quick-actions-panel">' +
-    '<p class="tiny muted">' +
-    escapeHtml(label) +
-    "</p>" +
-    '<div class="workbench-quick-actions">' +
-    actionsHtml +
-    "</div></section>"
   );
 }
 
@@ -591,64 +551,6 @@ function renderCompactRuntimeTags(tags, dependencies) {
         "</span></span>"
       : "")
   );
-}
-
-function summarizeBottomUpLabel(value, maxLength = 34) {
-  const textValue = String(value || "").trim();
-  if (!textValue) {
-    return "";
-  }
-  const compactBase = textValue.split(/[.:;]/)[0]?.trim() || textValue;
-  if (compactBase.length <= maxLength) {
-    return compactBase;
-  }
-  return `${compactBase.slice(0, Math.max(12, maxLength - 1)).trimEnd()}…`;
-}
-
-function renderSelectedBottomUpChips(refs, domainOptions, actionName) {
-  const optionMap = new Map((domainOptions || []).map((item) => [item.value, item.label]));
-  const normalizedRefs = Array.isArray(refs) ? refs.filter(Boolean) : [];
-  if (!normalizedRefs.length) {
-    return "";
-  }
-
-  return normalizedRefs
-    .map((ref) => {
-      const fullLabel = optionMap.get(ref) || ref;
-      const shortLabel = summarizeBottomUpLabel(fullLabel);
-      return (
-        '<button class="didactic-tag dependency-tag-chip dependency-chip-button bottomup-selected-chip" type="button" data-action="' +
-        escapeHtml(actionName) +
-        '" data-concept-ref="' +
-        escapeHtml(ref) +
-        '" title="' +
-        escapeHtml(fullLabel) +
-        '" aria-label="Remover ' +
-        escapeHtml(fullLabel) +
-        '">' +
-        '<span class="didactic-tag-text dependency-chip-label">' +
-        escapeHtml(shortLabel) +
-        "</span>" +
-        '<span class="dependency-chip-remove">&times;</span></button>'
-      );
-    })
-    .join("");
-}
-
-function renderBottomUpPickerOptions(domainOptions, selectedRefs = []) {
-  const selected = new Set(Array.isArray(selectedRefs) ? selectedRefs : []);
-  return (domainOptions || [])
-    .filter((item) => !selected.has(item.value))
-    .map((item) => {
-      return (
-        '<option value="' +
-        escapeHtml(item.value) +
-        '">' +
-        escapeHtml(summarizeBottomUpLabel(item.label, 42)) +
-        "</option>"
-      );
-    })
-    .join("");
 }
 
 function renderAssistActionOptions(actionOptions = [], selectedAction = "") {

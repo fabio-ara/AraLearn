@@ -392,7 +392,8 @@ test("renderiza o painel da microssequência sem botão próprio de ações e co
       assistActionOptions: [
         { value: "continue_current", label: "Continuar na microssequência", icon: "sparkles" },
         { value: "repair_current", label: "Corrigir microssequência", icon: "edit" },
-        { value: "insert_after_current", label: "Ir a nova microssequência", icon: "add" }
+        { value: "next_planned", label: "Ir a nova microssequência", icon: "microsequence" },
+        { value: "create_after_current", label: "Criar nova microssequência", icon: "add" }
       ],
       selectedAssistAction: "",
       assistPromptLabel: "Pedido dos próximos cards",
@@ -455,6 +456,7 @@ test("renderiza o painel da microssequência sem botão próprio de ações e co
   assert.match(html, /Continuar na microssequência/);
   assert.match(html, /Corrigir microssequência/);
   assert.match(html, /Ir a nova microssequência/);
+  assert.match(html, /Criar nova microssequência/);
   assert.match(html, /data-field="assist-preferred-container" aria-label="Materialização preferida" title="Materialização preferida"/);
   assert.match(html, /<option value="__unset__" selected>Selecionar materialização<\/option>/);
   assert.doesNotMatch(html, /Os cards atuais são só o trecho já materializado\./);
@@ -601,7 +603,8 @@ test("renderiza o painel da microssequência vazia em modo de geração de cards
       assistActionOptions: [
         { value: "materialize_current", label: "Continuar na microssequência", icon: "sparkles" },
         { value: "reformulate_current", label: "Corrigir microssequência", icon: "edit" },
-        { value: "insert_after_current", label: "Ir a nova microssequência", icon: "add" }
+        { value: "next_planned", label: "Ir a nova microssequência", icon: "microsequence" },
+        { value: "create_after_current", label: "Criar nova microssequência", icon: "add" }
       ],
       selectedAssistAction: "materialize_current",
       assistPromptLabel: "Pedido dos primeiros cards",
@@ -698,7 +701,8 @@ test("renderiza ação intermediária quando há próxima microssequência plane
       assistActionOptions: [
         { value: "continue_current", label: "Continuar na microssequência", icon: "sparkles" },
         { value: "repair_current", label: "Corrigir microssequência", icon: "edit" },
-        { value: "insert_after_current", label: "Ir a nova microssequência", icon: "add" }
+        { value: "next_planned", label: "Ir a nova microssequência", icon: "microsequence" },
+        { value: "create_after_current", label: "Criar nova microssequência", icon: "add" }
       ],
       selectedAssistAction: "",
       assistPromptLabel: "Pedido",
@@ -721,6 +725,78 @@ test("renderiza ação intermediária quando há próxima microssequência plane
 
   assert.match(html, /Ir a nova microssequência/);
   assert.doesNotMatch(html, /data-action="open-next-planned-microsequence"/);
+});
+
+test("renderiza ida para a próxima microssequência planejada sem exigir pedido para IA", () => {
+  const project = readProject();
+  const course = project.courses[0];
+  const moduleValue = course.modules[0];
+  const lesson = structuredClone(moduleValue.lessons[0]);
+  lesson.microsequences = [
+    { ...lesson.microsequences[0] },
+    {
+      key: "microsequence-planejada",
+      title: "Próxima etapa",
+      status: "draft",
+      included: false,
+      tags: ["Contraste"],
+      cards: []
+    }
+  ];
+  const microsequence = lesson.microsequences[0];
+  const html = renderLessonScreen({
+    project,
+    view: "microsequence-assist",
+    selection: {
+      courseKey: course.key,
+      moduleKey: moduleValue.key,
+      lessonKey: lesson.key,
+      microsequenceKey: microsequence.key,
+      cardKey: microsequence.cards[0].key,
+      cardIndex: 0
+    },
+    course,
+    moduleValue: { ...moduleValue, lessons: [lesson] },
+    lesson,
+    microsequence,
+    cards: microsequence.cards,
+    microsequenceMode: "play",
+    editorSupport: {
+      progress: { version: 1, lessons: {} },
+      dependencies: [{ key: "contraste", title: "Contraste" }],
+      microsequenceVersions: [{ id: "v1", label: "Versão 1" }],
+      activeMicrosequenceVersionId: "v1",
+      selectedDependencyKeys: [],
+      pendingDependencyKey: "contraste",
+      assistActionOptions: [
+        { value: "continue_current", label: "Continuar na microssequência", icon: "sparkles" },
+        { value: "repair_current", label: "Corrigir microssequência", icon: "edit" },
+        { value: "next_planned", label: "Ir a nova microssequência", icon: "microsequence" },
+        { value: "create_after_current", label: "Criar nova microssequência", icon: "add" }
+      ],
+      selectedAssistAction: "next_planned",
+      assistPromptLabel: "Próxima microssequência",
+      assistSubmitLabel: "Abrir próxima microssequência",
+      assistPromptPlaceholder: "Sem pedido necessário.",
+      assistRequestReady: true,
+      containerOptions: [{ value: "", label: "Automático" }],
+      preferredContainer: "",
+      preferredContainerConfirmed: false,
+      modelOptions: [{ value: "gemini-2.5-flash", label: "Gemini 2.5 Flash" }],
+      selectedModel: "gemini-2.5-flash",
+      assistModeOptions: [],
+      selectedAssistMode: "edit-microsequence",
+      activeWorkbenchPane: "edit",
+      assistModeLocked: true,
+      attachments: [],
+      promptText: "",
+      nextPlannedMicrosequence: lesson.microsequences[1]
+    }
+  });
+
+  assert.match(html, /data-field="assist-action-intent" value="next_planned" checked/);
+  assert.match(html, /data-action="apply-assist"[^>]*title="Abrir próxima microssequência" aria-label="Abrir próxima microssequência"/);
+  assert.doesNotMatch(html, /data-action="apply-assist"[^>]*disabled aria-disabled="true"/);
 });
 
 test("renderiza a aba preview da microssequência dentro da superfície combinada", () => {

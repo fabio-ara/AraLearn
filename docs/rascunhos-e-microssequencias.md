@@ -1,75 +1,72 @@
 # Rascunhos e microssequências
 
-## A distinção central
+## Distinção central
 
-O AraLearn separa duas tarefas:
+O AraLearn separa:
 
-1. planejar uma etapa da trilha;
-2. materializar o conteúdo estudável dessa etapa.
+1. planejar a microssequência;
+2. materializar seus cards.
 
-Essa separação evita que toda geração vire um bloco único. O app pode primeiro mostrar o percurso e só depois produzir cards para as etapas escolhidas.
+Uma microssequência planejada pode estar vazia. Isso é parte normal do fluxo.
 
-## Planejar
+## Planejada
 
-Planejar significa criar ou revisar a arquitetura do estudo.
+Uma microssequência planejada já tem lugar na trilha. Ela pode ter título, tags, propósito, `domainRefs`, `coverageRole` e relação com a lição.
 
-No nível da lição, o app pode propor microssequências, ordenar etapas, ajustar títulos, registrar objetivos e indicar o que cada parte deve cobrir. Nesse momento, o foco é o caminho.
+Ela ainda não tem cards porque o top-down não deve materializar toda a trilha de uma vez.
 
-Uma microssequência planejada já tem lugar na trilha. Ela pode ter título, descrição e orientação, mesmo sem cards.
+## Materializada
 
-## Materializar
+Uma microssequência materializada tem cards estudáveis.
 
-Materializar significa transformar uma microssequência planejada em conteúdo estudável.
+Ela pode ser estudada, corrigida e continuada. O usuário pode gerar mais cards se a etapa ficou curta ou pedir correção se a progressão ficou ruim.
 
-Dentro da microssequência, o app pode criar cards, propor prática, usar recursos visuais, corrigir problemas e ajustar a progressão local. Nesse momento, o foco é a execução da etapa.
+## Por que deixar vazia
 
-## Por que uma microssequência pode estar vazia
-
-Uma microssequência sem cards não é sobra nem erro. Ela representa uma etapa prevista.
-
-Isso permite ao usuário:
+Microssequências vazias permitem:
 
 - ver o percurso antes de gerar conteúdo;
-- revisar a ordem;
-- excluir ou renomear etapas;
-- escolher prioridade;
-- reduzir produção prematura;
-- manter controle sobre custo e volume;
-- materializar apenas o que será estudado agora.
+- reduzir custo de IA;
+- evitar volume prematuro;
+- priorizar o que será estudado agora;
+- revisar a ordem antes da materialização;
+- manter o top-down como planejamento e o bottom-up como execução.
+
+## Ações no runtime
+
+Na aba de edição, as ações têm papéis distintos:
+
+- `Continuar na microssequência`: cria primeiros cards ou adiciona mais cards à etapa atual.
+- `Corrigir microssequência`: repara a etapa atual.
+- `Ir a nova microssequência`: abre a próxima etapa planejada.
+- `Criar nova microssequência`: insere uma etapa extra depois da atual.
+
+Essa diferença importa: ir para a próxima é navegação; criar uma nova etapa é geração por IA.
 
 ## Rascunho
 
-Rascunho é estado de trabalho. Não significa descarte.
+Rascunho é estado de trabalho, não descarte.
 
-Uma etapa pode estar em rascunho porque ainda precisa de revisão, porque a IA produziu algo insuficiente, porque o usuário ainda não decidiu se a versão será usada ou porque a microssequência está esperando comparação com outra proposta.
+Uma microssequência pode estar em rascunho porque foi planejada, porque ainda precisa de cards, porque uma geração está pendente de aceite ou porque a etapa precisa de revisão.
 
 ## Versões
 
-Como o AraLearn permite correção e reautoria, versões são importantes.
+Versões servem para comparar e recuperar material local sem reverter o projeto inteiro.
 
-Uma versão deve ajudar o usuário a responder:
+O usuário deve conseguir entender:
 
-- o que mudou?
-- por que mudou?
-- quando mudou?
-- qual versão está ativa?
-- o que pode ser recuperado sem afetar o restante da árvore?
-
-A implementação deve evitar que recuperar uma subestrutura obrigue retorno completo a estados antigos do curso.
-
-## Relação com a IA
-
-A separação entre planejamento e materialização torna a IA mais controlável.
-
-Na geração estrutural, o modelo propõe o caminho. Na microssequência, ele trabalha em uma tarefa delimitada. O usuário pode revisar a trilha antes de pedir detalhes, e pode revisar os cards antes de estudar.
+- qual versão está em uso;
+- o que foi gerado;
+- o que foi aceito;
+- o que pode ser descartado.
 
 ## Critério de bom fluxo
 
-O fluxo está funcionando quando o usuário entende:
+O fluxo está correto quando o usuário entende:
 
-- o que já está planejado;
-- o que já tem cards;
-- o que está pronto para estudo;
-- o que ainda precisa de revisão;
-- onde pedir continuidade;
-- onde intervir manualmente.
+- que top-down planejou a trilha;
+- que a microssequência vazia é esperada;
+- que cards são pedidos localmente;
+- que correção e continuação não replanejam o curso inteiro;
+- que avançar para a próxima etapa não precisa de IA;
+- que criar uma microssequência extra é uma intervenção excepcional e situada.

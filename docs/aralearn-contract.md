@@ -1,26 +1,12 @@
 # Contrato público do AraLearn
 
-## O que é o contrato público
+## Finalidade
 
-O contrato público descreve a forma persistível de um projeto AraLearn.
+O contrato público define a forma persistível de um projeto AraLearn. Ele deve ser legível, exportável, importável e estável o bastante para que o material continue pertencendo ao usuário.
 
-Ele define o que precisa permanecer compreensível, exportável, importável e editável. A arquitetura interna pode ter mais detalhes, mas o contrato público deve ser estável o bastante para que o conteúdo continue pertencendo ao usuário.
+O motor interno pode usar artefatos ricos durante uma geração, mas nem tudo isso deve ir para o contrato público.
 
-## Funções do contrato
-
-O contrato existe para:
-
-- representar a árvore do projeto;
-- preservar uma linguagem autoral legível;
-- permitir importação e exportação;
-- separar conteúdo do usuário de estado interno do app;
-- facilitar validação;
-- permitir versionamento;
-- tornar a assistência por IA mais governável.
-
-## Árvore pública
-
-A forma geral é:
+## Árvore
 
 ```text
 project
@@ -31,138 +17,140 @@ project
                 └── card
 ```
 
-Cada nível tem papel próprio.
-
 ## Projeto
 
-O projeto reúne cursos e metadados gerais. Ele é a unidade exportável mais ampla.
+O projeto é a unidade exportável mais ampla. Ele reúne cursos e metadados gerais.
+
+Não deve guardar credenciais, estado transitório de UI nem respostas intermediárias completas de IA.
 
 ## Curso
 
-O curso representa um campo de estudo: disciplina, prova, trilha temática, corpus ou projeto formativo.
+Curso representa um campo de estudo: disciplina, prova, tema, corpus, documentação ou projeto.
 
-Ele oferece contexto amplo, mas não precisa carregar toda a orientação didática fina.
+Ele organiza o escopo amplo. A governança didática fina aparece principalmente na lição.
 
 ## Módulo
 
-O módulo organiza partes do curso. Ele pode representar blocos temáticos, unidades curriculares, etapas de uma prova ou conjuntos de habilidades.
+Módulo divide o curso em blocos. Ele ajuda a navegação e o planejamento, mas não precisa conter conteúdo estudável diretamente.
 
 ## Lição
 
-A lição é o ponto de governança local.
+A lição é o ponto de governança didática local.
 
-Além de título e descrição, ela pode carregar orientação estruturada para o sistema e para o usuário. Essa orientação pode incluir:
+Ela pode conter:
 
-- escopo;
-- objetivos;
-- notação;
-- fontes;
-- tipos de exercício;
-- erros comuns;
-- limites do recorte;
-- relações conceituais relevantes.
+- título e descrição;
+- orientação estruturada;
+- fontes ou referências;
+- `domainMap`;
+- microssequências.
 
-Essa orientação não deve ser tratada como simples texto de apresentação. Ela participa da geração e da revisão de microssequências.
+### `sourceGuideStructured`
 
-## `sourceGuideStructured`
+`sourceGuideStructured` registra orientação didática estruturada, como escopo, notação, erros comuns, foco de prática e limites do recorte.
 
-`sourceGuideStructured` representa orientação didática estruturada. Ele pode registrar o que deve ser respeitado quando o app organiza ou materializa conteúdo.
+Ele ajuda o top-down e o bottom-up a não começarem do zero.
 
-Exemplos de campos possíveis:
+### `domainMap`
 
-- `scope`: o que entra na etapa;
-- `notation`: formas e símbolos preferidos;
-- `expectedSteps`: passos esperados;
-- `commonErrors`: erros comuns;
-- `exclusions`: o que não deve entrar;
-- `practiceFocus`: foco de exercício;
-- `sourceNotes`: observações retiradas das fontes.
+`domainMap` é o mapa semântico interno da lição. Ele pode conter itens de domínio e variantes de prática.
 
-O contrato deve evitar fallback implícito que confunda orientação didática com descrição genérica. Se uma orientação estruturada não existe, o sistema deve tratar essa ausência com clareza.
+Um item de domínio pode registrar:
 
-## `domainMap`
+- `id`;
+- `label`;
+- `kind`;
+- `priority`;
+- `status`;
+- `sourceRefs`;
+- `expectedEvidence`;
+- `commonErrors`;
+- `prerequisites`;
+- `representations`;
+- `assessmentFormats`.
 
-`domainMap` pode registrar o mapa conceitual local da lição. Ele ajuda a representar conceitos, relações, contrastes, pré-requisitos e alvos de prática.
+Uma variante de prática pode registrar:
 
-Esse campo é útil quando a geração precisa distinguir termos próximos ou manter coerência entre etapas.
+- `id`;
+- `domainItemRef`;
+- `variantKind`;
+- `purpose`;
+- `difficulty`;
+- `representation`;
+- `expectedStudentAction`;
+- `commonErrorTarget`.
+
+O `domainMap` não é formulário do usuário comum. Ele é contrato semântico para o motor.
 
 ## Microssequência
 
-A microssequência é a unidade didática principal.
+A microssequência é a unidade didática central.
 
-Ela pode ter título, descrição, status, inclusão no fluxo de estudo, orientação local e cards. Uma microssequência pode existir sem cards: nesse caso, está planejada, mas ainda não materializada.
+Ela pode existir sem cards. Nesse caso, está planejada, mas ainda não materializada.
 
-## `status`
+Campos didáticos possíveis:
 
-O status indica a condição pública da microssequência. Exemplos possíveis:
+- `title`;
+- `description`;
+- `status`;
+- `included`;
+- `tags`;
+- `domainRefs`;
+- `practiceVariantRefs`;
+- `didacticPurpose`;
+- `coverageRole`;
+- `cards`.
 
-- planejada;
-- em rascunho;
-- pronta para estudo;
-- arquivada.
+### `domainRefs`
 
-O app pode usar esse estado para decidir o que aparece no fluxo de estudo.
+`domainRefs` aponta para itens do `domainMap`. Isso diz que a microssequência cobre determinado conceito, procedimento, contraste ou erro.
 
-## `included`
+### `practiceVariantRefs`
 
-`included` indica se aquela microssequência participa do fluxo estudável naquele momento.
+`practiceVariantRefs` aponta para variantes de prática adequadas à etapa.
 
-Isso permite manter etapas no projeto sem obrigar o usuário a estudá-las agora.
+### `didacticPurpose`
+
+`didacticPurpose` resume a função da microssequência em linguagem didática.
+
+### `coverageRole`
+
+`coverageRole` indica o papel da etapa na progressão, por exemplo introduzir, explicar, demonstrar, praticar, discriminar, diagnosticar erro, consolidar ou integrar.
 
 ## Card
 
-O card é a unidade de interação. Ele pode apresentar informação, pedir resposta, criar lacuna, mostrar código, exibir tabela, representar fluxograma, matriz ou outro recurso previsto.
+Card é a unidade de interação. Ele materializa parte da microssequência.
 
-Um card deve permanecer ligado à microssequência. Sua qualidade depende da função que cumpre dentro da sequência.
+Recursos públicos aceitos incluem:
 
-## Recursos públicos
+- `say`;
+- `ask`;
+- `code`;
+- `table`;
+- `flow`;
+- `tree`;
+- `plane`;
+- `matrix`;
+- lacunas e exercícios aceitos pelo runtime.
 
-O contrato aceita recursos que preservam legibilidade e prática. Entre eles:
+O card não deve carregar todo o mapa semântico da lição. Ele deve permanecer simples e renderizável.
 
-- `say`: explicação ou enunciado;
-- `ask`: pergunta;
-- `code`: código ou pseudocódigo;
-- `table`: tabela;
-- `flow`: fluxograma;
-- `tree`: árvore;
-- `plane`: plano cartesiano;
-- `matrix`: matriz;
-- lacunas e variações de prática quando aceitas pelo app.
+## Fontes
 
-Esses recursos formam uma linguagem autoral simples. O objetivo é permitir que pessoas e IA trabalhem sobre uma representação comum.
-
-## `sourceRefs`
-
-`sourceRefs` registram vínculos com fontes usadas na criação ou revisão do conteúdo. Eles ajudam na rastreabilidade e na auditoria.
-
-Não precisam transformar o contrato em sistema bibliográfico complexo. Devem preservar o vínculo mínimo necessário para inspeção.
+`sourceRefs` e referências correlatas preservam vínculo mínimo com fontes usadas. Elas ajudam auditoria e revisão, sem transformar o contrato em sistema bibliográfico completo.
 
 ## O que fica fora
 
-O contrato público não deve carregar:
+Não pertencem ao contrato público:
 
-- estado transitório de interface;
-- detalhes internos do motor de apresentação;
 - credenciais;
-- configuração privada de provedor;
-- respostas intermediárias completas de IA;
-- cálculos visuais de baixo nível;
-- dados que pertencem apenas à execução temporária.
-
-Esses elementos podem existir internamente, mas não devem contaminar o material exportável do usuário.
+- tokens;
+- estado aberto/fechado de painéis;
+- rascunho temporário de prompt;
+- resposta bruta completa de provider;
+- configuração privada de modelo;
+- cálculos visuais de runtime.
 
 ## Validação
 
-Todo projeto importado ou gerado deve passar por validação. Quando possível, o app pode reparar problemas simples. Quando o erro compromete sentido ou estrutura, deve mostrar o problema ao usuário.
-
-A validação preserva a integridade do projeto e evita que uma resposta malformada de IA destrua material existente.
-
-## Critério de bom contrato
-
-O contrato público é bom quando:
-
-- uma pessoa consegue reconhecer a estrutura do curso;
-- o app consegue renderizar e estudar o conteúdo;
-- a IA consegue produzir material dentro de limites claros;
-- o projeto pode ser exportado, importado e versionado;
-- detalhes internos não se misturam com autoria do usuário.
+Todo projeto gerado ou importado deve passar por validação. Quando possível, o app repara problemas estruturais simples. Quando a inconsistência compromete sentido ou segurança do patch, a operação deve falhar sem corromper o projeto.
