@@ -8623,13 +8623,13 @@ export function createLessonEditorApp({ root, storage, editor }) {
         assistConfigMaxMicrosequences.value = String(normalized.maxMicrosequences);
       }
       if (assistConfigMinMicrosequencesLabel) {
-        assistConfigMinMicrosequencesLabel.textContent = `Mín ${normalized.minMicrosequences}`;
+        assistConfigMinMicrosequencesLabel.textContent = String(normalized.minMicrosequences);
       }
       if (assistConfigTargetMicrosequencesLabel) {
-        assistConfigTargetMicrosequencesLabel.textContent = `Esperado ${normalized.targetMicrosequences}`;
+        assistConfigTargetMicrosequencesLabel.textContent = String(normalized.targetMicrosequences);
       }
       if (assistConfigMaxMicrosequencesLabel) {
-        assistConfigMaxMicrosequencesLabel.textContent = `Máx ${normalized.maxMicrosequences}`;
+        assistConfigMaxMicrosequencesLabel.textContent = String(normalized.maxMicrosequences);
       }
       if (assistConfigMicrosequenceRangeShell) {
         const toPercent = (value) => (((value - 1) / 11) * 100).toFixed(2);

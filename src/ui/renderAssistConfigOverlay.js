@@ -23,9 +23,9 @@ function renderOptionList(items = [], selectedValue = "") {
     .join("");
 }
 
-function renderIconAction(action, iconName, title, { disabled = false } = {}) {
+function renderIconAction(action, iconName, title, { disabled = false, extraClassName = "" } = {}) {
   return (
-    `<button class="icon-ghost assist-config-icon-action" type="button" data-action="${escapeHtml(action)}" title="${escapeHtml(title)}" aria-label="${escapeHtml(title)}"${disabled ? ' disabled aria-disabled="true"' : ""}>` +
+    `<button class="icon-ghost assist-config-icon-action ${escapeHtml(extraClassName)}" type="button" data-action="${escapeHtml(action)}" title="${escapeHtml(title)}" aria-label="${escapeHtml(title)}"${disabled ? ' disabled aria-disabled="true"' : ""}>` +
     renderUiIcon(iconName, "assist-config-action-icon") +
     "</button>"
   );
@@ -75,15 +75,16 @@ function renderMicrosequenceRangeField(profileTuning = {}) {
     `<div class="assist-config-range-shell" data-field="assist-config-microsequence-range-shell" style="${style}">` +
     '<div class="assist-config-range-track" aria-hidden="true"></div>' +
     '<div class="assist-config-range-band" aria-hidden="true"></div>' +
-    '<div class="assist-config-range-target-marker" aria-hidden="true"></div>' +
+    `<div class="assist-config-range-handle-label assist-config-range-handle-label-min" data-role="assist-config-min-microsequences-label">${escapeHtml(minValue)}</div>` +
+    `<div class="assist-config-range-handle-label assist-config-range-handle-label-target" data-role="assist-config-target-microsequences-label">${escapeHtml(targetValue)}</div>` +
+    `<div class="assist-config-range-handle-label assist-config-range-handle-label-max" data-role="assist-config-max-microsequences-label">${escapeHtml(maxValue)}</div>` +
     `<input class="assist-config-range-input assist-config-range-input-min" data-field="assist-config-min-microsequences" type="range" min="${MICROSEQUENCE_RANGE_MIN}" max="${MICROSEQUENCE_RANGE_MAX}" step="1" value="${escapeHtml(minValue)}" aria-label="Microssequências por lição mínimo" title="Mínimo de microssequências por lição">` +
     `<input class="assist-config-range-input assist-config-range-input-target" data-field="assist-config-target-microsequences" type="range" min="${MICROSEQUENCE_RANGE_MIN}" max="${MICROSEQUENCE_RANGE_MAX}" step="1" value="${escapeHtml(targetValue)}" aria-label="Microssequências por lição esperado" title="Quantidade esperada de microssequências por lição">` +
     `<input class="assist-config-range-input assist-config-range-input-max" data-field="assist-config-max-microsequences" type="range" min="${MICROSEQUENCE_RANGE_MIN}" max="${MICROSEQUENCE_RANGE_MAX}" step="1" value="${escapeHtml(maxValue)}" aria-label="Microssequências por lição máximo" title="Máximo de microssequências por lição">` +
     "</div>" +
     '<div class="assist-config-range-values" aria-hidden="true">' +
-    `<span data-role="assist-config-min-microsequences-label">Mín ${escapeHtml(minValue)}</span>` +
-    `<span data-role="assist-config-target-microsequences-label">Esperado ${escapeHtml(targetValue)}</span>` +
-    `<span data-role="assist-config-max-microsequences-label">Máx ${escapeHtml(maxValue)}</span>` +
+    `<span>Mín. ${escapeHtml(minValue)}</span>` +
+    `<span>Máx. ${escapeHtml(maxValue)}</span>` +
     "</div></div>"
   );
 }
@@ -120,12 +121,12 @@ export function renderAssistConfigPanel({
   const canSaveProfile = profileEditor?.canSave === true;
   const profileLabel = profileEditor?.draftLabel || "";
   const profileState = profileEditor?.state || "saved";
-  const profileStateLabel =
+  const profileStateIconName =
     profileState === "editing"
-      ? "Editando perfil"
+      ? "edit"
       : profileState === "dirty"
-        ? "Alterações não salvas"
-        : "Perfil salvo";
+        ? "draft-state"
+        : "ready-state";
   return (
     '<section class="assist-config-panel assist-config-panel-inline' +
     (inline ? " is-inline" : "") +
@@ -143,37 +144,29 @@ export function renderAssistConfigPanel({
     renderIconAction("assist-config-reset-profile", "draft-state", "Resetar perfil") +
     "</div></header>" +
     '<label class="field assist-config-field assist-config-course-request-field">' +
-    renderFieldLabel("edit", "Curso", "Descreve o curso para a IA completar a modelagem") +
+    renderFieldLabel("trail", "Perfil", "Descreve o perfil e a trilha para a IA completar a modelagem") +
     `<textarea data-field="assist-config-course-model-description" aria-label="Modelagem do curso" title="Descreve o curso para a IA completar a modelagem" placeholder="Descreva a trilha do curso, a progressão de microssequências e o perfil do estudante.">${escapeHtml(profileTuning.courseModel?.description || "")}</textarea>` +
-    '<div class="assist-config-inline-actions">' +
-    renderIconAction("assist-config-infer-course-model", "sparkles", "Ler o pedido e completar o planejamento") +
-    "</div>" +
-    "</label>" +
-    '<div class="assist-config-profile-stack">' +
-    '<div class="field assist-config-field assist-config-profile-field is-' +
-    escapeHtml(profileState) +
-    '">' +
-    '<span class="assist-config-label-actions">' +
-    renderFieldLabel("trail", "Perfil", "Escolhe o ponto de partida do planejamento") +
-    '<span class="assist-config-inline-actions">' +
-    renderIconAction("assist-config-start-create-profile", "add", "Criar novo perfil", { disabled: isProfileEditing }) +
-    renderIconAction("assist-config-delete-profile", "trash", "Excluir perfil selecionado", { disabled: !canDeleteProfile }) +
-    renderIconAction("assist-config-edit-profile", "edit", "Editar nome do perfil selecionado", { disabled: !canEditProfile }) +
-    "</span>" +
-    "</span>" +
-    '<div class="assist-config-profile-control-row">' +
+    '<div class="assist-config-profile-toolbar">' +
+    '<div class="assist-config-profile-toolbar-main">' +
     (isProfileEditing
       ? `<input data-field="assist-config-profile" type="text" value="${escapeHtml(profileLabel)}" autocomplete="off" spellcheck="false" placeholder="Nome do perfil" title="Nome do perfil">`
       : '<select data-field="assist-config-profile" aria-label="Perfil didático" title="Escolhe o estilo-base da trilha">' +
         renderOptionList(didacticProfileOptions, didacticProfileId) +
         "</select>") +
-    "</div></div>" +
+    "</div>" +
+    '<div class="assist-config-profile-toolbar-actions">' +
+    renderIconAction("assist-config-start-create-profile", "add", "Criar novo perfil", { disabled: isProfileEditing }) +
+    renderIconAction("assist-config-delete-profile", "trash", "Excluir perfil selecionado", { disabled: !canDeleteProfile }) +
+    renderIconAction("assist-config-edit-profile", "edit", "Editar nome do perfil selecionado", { disabled: !canEditProfile }) +
+    renderIconAction("assist-config-infer-course-model", "sparkles", "Ler o pedido e completar o planejamento", { extraClassName: "is-primary" }) +
+    "</div>" +
+    "</label>" +
+    '<div class="assist-config-profile-stack">' +
     '<label class="field assist-config-field assist-config-student-field">' +
     renderFieldLabel("prompt", "Para quem", "Ajusta a trilha ao nível e ao tempo do estudante") +
     `<input data-field="assist-config-target-student-profile" type="text" value="${escapeHtml(profileTuning.targetStudentProfile || "")}" autocomplete="off" spellcheck="false" placeholder="Perfil do estudante" title="Ajusta a trilha ao nível e ao tempo do estudante">` +
     "</label>" +
     "</div>" +
-    '<div class="assist-config-grid">' +
     '<label class="field assist-config-field">' +
     renderFieldLabel("trail", "Trilha", "Que tipo de trilha didática organiza este curso") +
     '<select data-field="assist-config-course-learning-trail" aria-label="Trilha do curso" title="Que tipo de trilha didática organiza este curso">' +
@@ -187,24 +180,17 @@ export function renderAssistConfigPanel({
       profileTuning.courseModel?.microsequenceProgression || ""
     ) +
     "</select></label>" +
-    "</div>" +
     renderMicrosequenceRangeField(profileTuning) +
-    '<div class="assist-config-toggle-row assist-config-toggle-row-single">' +
-    '<span class="assist-config-toggle-group">' +
+    '<div class="assist-config-footer">' +
     renderBooleanToggle({
       field: "requireCoreCoverageBeforeExtensions",
       title: "Esgotar assunto antes de expandir",
       iconName: "ready-state",
       checked: profileTuning.requireCoreCoverageBeforeExtensions !== false
     }) +
-    '<span class="assist-config-toggle-text" title="Esgotar assunto antes de expandir">Esgotar assunto antes de expandir</span>' +
-    "</span>" +
+    renderIconAction("assist-config-profile-state", profileStateIconName, `Estado do perfil: ${profileState}`, { extraClassName: `assist-config-status-action is-${profileState}`, disabled: true }) +
+    renderIconAction("assist-config-save-profile", "save", "Salvar perfil", { disabled: !canSaveProfile, extraClassName: "assist-config-save-action" }) +
     "</div>" +
-    '<div class="assist-config-footer">' +
-    `<span class="assist-config-status-pill is-${escapeHtml(profileState)}" title="${escapeHtml(profileStateLabel)}">${escapeHtml(profileStateLabel)}</span>` +
-    `<button class="assist-config-text-action assist-config-save-action" type="button" data-action="assist-config-save-profile" title="Salvar perfil" aria-label="Salvar perfil"${canSaveProfile ? "" : ' disabled aria-disabled="true"'}>` +
-    renderUiIcon("save", "assist-config-action-icon") +
-    '<span>Salvar perfil</span></button></div>' +
     "</section>"
   );
 }

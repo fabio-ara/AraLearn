@@ -3991,10 +3991,21 @@ button {
   gap: 12px;
 }
 
-.assist-config-profile-control-row {
+.assist-config-profile-toolbar {
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 8px;
+  align-items: end;
+}
+
+.assist-config-profile-toolbar-main {
+  min-width: 0;
+}
+
+.assist-config-profile-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .assist-config-label-actions {
@@ -4091,7 +4102,7 @@ button {
   --assist-range-end: 64%;
   position: relative;
   min-height: 42px;
-  padding: 4px 0;
+  padding: 8px 0 0;
 }
 
 .assist-config-range-track,
@@ -4112,19 +4123,6 @@ button {
   left: calc(10px + ((100% - 20px) * var(--assist-range-start) / 100));
   right: calc(10px + ((100% - 20px) * (100 - var(--assist-range-end)) / 100));
   background: linear-gradient(90deg, rgba(205, 167, 97, 0.88), rgba(146, 115, 61, 0.92));
-}
-
-.assist-config-range-target-marker {
-  position: absolute;
-  top: 13px;
-  left: calc(10px + ((100% - 20px) * var(--assist-range-target) / 100));
-  width: 14px;
-  height: 14px;
-  margin-left: -7px;
-  border-radius: 999px;
-  border: 2px solid rgba(246, 229, 180, 0.92);
-  background: #231a11;
-  box-shadow: 0 0 0 3px rgba(18, 13, 9, 0.65);
 }
 
 .assist-config-range-input {
@@ -4188,32 +4186,52 @@ button {
   z-index: 4;
 }
 
+.assist-config-range-handle-label {
+  position: absolute;
+  top: 0;
+  width: 24px;
+  height: 24px;
+  margin-left: -12px;
+  border-radius: 999px;
+  border: 2px solid rgba(241, 220, 171, 0.96);
+  background: linear-gradient(180deg, #3c2b18, #1d140d);
+  color: #f6ead3;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1;
+  pointer-events: none;
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.25);
+}
+
+.assist-config-range-handle-label-min {
+  left: calc(10px + ((100% - 20px) * var(--assist-range-start) / 100));
+  z-index: 2;
+}
+
+.assist-config-range-handle-label-target {
+  left: calc(10px + ((100% - 20px) * var(--assist-range-target) / 100));
+  z-index: 3;
+}
+
+.assist-config-range-handle-label-max {
+  left: calc(10px + ((100% - 20px) * var(--assist-range-end) / 100));
+  z-index: 4;
+}
+
 .assist-config-range-values {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   color: #d8c29d;
   font-size: 11px;
   font-weight: 700;
 }
 
-.assist-config-range-values span:nth-child(2) {
-  text-align: center;
-}
-
-.assist-config-range-values span:last-child {
-  text-align: right;
-}
-
 .assist-config-student-field input {
   min-height: 40px;
-}
-
-.assist-config-toggle-row {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  flex-wrap: wrap;
-  gap: 8px;
 }
 
 .assist-config-semantic-section {
@@ -4287,51 +4305,39 @@ button {
 .assist-config-footer {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 10px;
+  justify-content: flex-end;
+  gap: 8px;
   padding-top: 2px;
 }
 
-.assist-config-status-pill {
-  min-height: 34px;
-  padding: 0 12px;
-  border-radius: 999px;
-  border: 1px solid rgba(151, 117, 68, 0.24);
-  background: rgba(23, 18, 14, 0.56);
-  color: #d8c29d;
-  display: inline-flex;
-  align-items: center;
-  font-size: 12px;
-  font-weight: 700;
-  white-space: nowrap;
-}
-
-.assist-config-status-pill.is-editing {
-  border-color: rgba(214, 174, 96, 0.72);
-  background: rgba(72, 53, 28, 0.22);
-  color: #f3ddb0;
-}
-
-.assist-config-status-pill.is-dirty {
-  border-color: rgba(204, 136, 73, 0.7);
-  background: rgba(78, 45, 25, 0.22);
-  color: #f1d0a8;
-}
-
-.assist-config-status-pill.is-saved {
-  border-color: rgba(111, 88, 62, 0.54);
-  background: rgba(19, 15, 11, 0.5);
-  color: #cdbba0;
-}
-
 .assist-config-save-action {
-  margin-left: auto;
+  border-color: rgba(214, 174, 96, 0.68);
+  background: linear-gradient(180deg, rgba(91, 68, 34, 0.98), rgba(53, 38, 21, 0.99));
+  color: #fff0cf;
 }
 
 .assist-config-save-action:disabled,
 .assist-config-save-action[aria-disabled="true"] {
   opacity: 0.46;
   cursor: not-allowed;
+}
+
+.assist-config-icon-action.is-primary {
+  border-color: rgba(214, 174, 96, 0.68);
+  background: linear-gradient(180deg, rgba(91, 68, 34, 0.98), rgba(53, 38, 21, 0.99));
+  color: #fff0cf;
+}
+
+.assist-config-status-action.is-saved {
+  color: #cdbba0;
+}
+
+.assist-config-status-action.is-dirty {
+  color: #f1d0a8;
+}
+
+.assist-config-status-action.is-editing {
+  color: #f3ddb0;
 }
 
 .assist-config-local-panel {
@@ -4351,8 +4357,8 @@ button {
 }
 
 .assist-config-icon-action {
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
   border-radius: 12px;
 }
 
@@ -6445,8 +6451,9 @@ button {
   }
 
   .assist-config-save-action {
-    margin-left: 0;
-    width: 100%;
+    margin-left: auto;
+    width: 36px;
+    align-self: flex-end;
   }
 }
 

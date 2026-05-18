@@ -25,21 +25,18 @@ test("renderAssistConfigOverlay expõe contrato discreto do top-down sem setup o
   assert.match(html, /data-action="assist-config-edit-profile"/);
   assert.match(html, /data-action="assist-config-delete-profile"/);
   assert.match(html, /data-action="assist-config-save-profile"/);
-  assert.match(html, />Salvar perfil</);
   assert.match(html, /data-field="assist-config-course-model-description"/);
   assert.match(html, /data-field="assist-config-course-learning-trail"/);
   assert.match(html, /data-field="assist-config-course-microsequence-progression"/);
   assert.match(html, /data-action="assist-config-reset-profile"/);
   assert.match(html, />Perfil</);
   assert.match(html, />Para quem</);
-  assert.match(html, />Curso</);
   assert.match(html, />Trilha</);
   assert.match(html, />Progressão de microssequências</);
   assert.match(html, />Microssequências por lição</);
   assert.match(html, /data-field="assist-config-min-microsequences"/);
   assert.match(html, /data-field="assist-config-target-microsequences"/);
   assert.match(html, /data-field="assist-config-max-microsequences"/);
-  assert.match(html, />Esgotar assunto antes de expandir</);
   assert.match(html, /assist-config-infer-course-model/);
   assert.doesNotMatch(html, />Ler pedido</);
   assert.doesNotMatch(html, /data-field="assist-config-model"/);
@@ -101,7 +98,6 @@ test("renderAssistConfigOverlay usa o próprio campo Perfil para editar o nome d
 
   assert.match(html, /data-field="assist-config-profile" type="text"/);
   assert.match(html, /value="Geral personalizado"/);
-  assert.match(html, /Editando perfil/);
   assert.doesNotMatch(html, />Nome do perfil</);
 });
 
