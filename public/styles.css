@@ -3990,7 +3990,7 @@ button {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 6px;
-  align-items: end;
+  align-items: center;
 }
 
 .assist-config-profile-toolbar-main {
@@ -4000,18 +4000,18 @@ button {
 .assist-config-profile-toolbar-actions {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
   flex: 0 0 auto;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
 }
 
 .assist-config-profile-toolbar-actions .assist-config-icon-action:not(.is-primary) {
-  min-width: 36px;
-  min-height: 36px;
-  width: 36px;
-  height: 36px;
+  min-width: 38px;
+  min-height: 38px;
+  width: 38px;
+  height: 38px;
   padding: 0;
-  border-radius: 11px;
+  border-radius: 12px;
 }
 
 .assist-config-profile-toolbar-actions .assist-config-icon-action:not(.is-primary) .assist-config-action-icon {
@@ -4361,8 +4361,10 @@ button {
 }
 
 .assist-config-icon-action.is-primary {
-  width: 40px;
-  height: 40px;
+  min-width: 38px;
+  min-height: 38px;
+  width: 38px;
+  height: 38px;
   border-radius: 12px;
   border-color: rgba(238, 198, 95, 0.78);
   background: linear-gradient(180deg, rgba(233, 190, 87, 0.98), rgba(195, 151, 55, 0.98));
