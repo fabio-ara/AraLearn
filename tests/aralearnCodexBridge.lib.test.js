@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import {
   buildAttachmentPromptSection,
   buildCodexArgs,
+  buildCodexFilePromptWrapper,
   buildCodexSpawnInput,
   buildTopDownPrompt,
   extractJsonFromText
@@ -44,6 +45,13 @@ test("buildCodexSpawnInput usa stdin por padrão para evitar estouro de argv", (
     args: ["exec", "-"],
     stdinText: "teste"
   });
+});
+
+test("buildCodexFilePromptWrapper reduz o prompt a uma instrução curta apontando para arquivo", () => {
+  const wrapper = buildCodexFilePromptWrapper("C:\\temp\\prompt.md");
+  assert.match(wrapper, /Leia integralmente o arquivo/);
+  assert.match(wrapper, /prompt\.md/);
+  assert.match(wrapper, /Responda somente com o JSON final/);
 });
 
 test("buildAttachmentPromptSection inclui conteúdo textual e aviso de truncamento", () => {

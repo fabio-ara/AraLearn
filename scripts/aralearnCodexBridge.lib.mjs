@@ -1,6 +1,7 @@
 export {
   buildAttachmentPromptSection,
   buildCodexArgs,
+  buildCodexFilePromptWrapper,
   buildCodexSpawnInput,
   buildStandaloneBridgeSource,
   buildTopDownPrompt,

@@ -1,4 +1,6 @@
 import http from "node:http";
+import fs from "node:fs";
+import path from "node:path";
 import { spawn } from "node:child_process";
 import process from "node:process";
 
@@ -8,7 +10,8 @@ import {
   buildTopDownPrompt,
   extractJsonFromText,
   normalizePort,
-  normalizeTimeout
+  normalizeTimeout,
+  buildCodexFilePromptWrapper
 } from "./aralearnCodexBridge.lib.mjs";
 
 function normalizeText(value) {
@@ -66,7 +69,22 @@ function normalizeCodexExecutionError(error) {
   return error instanceof Error ? error : new Error(message || "Falha inesperada ao executar o Codex.");
 }
 
-function runCodex({ command, args, stdinText, cwd, timeoutMs }) {
+function createPromptFileTransport({ prompt = "", cwd = process.cwd() }) {
+  const normalizedPrompt = typeof prompt === "string" ? prompt : "";
+  const promptDir = path.join(cwd, ".tmp", "codex-bridge");
+  fs.mkdirSync(promptDir, { recursive: true });
+  const promptFilePath = path.join(
+    promptDir,
+    `courseforge-prompt-${Date.now()}-${Math.random().toString(36).slice(2, 10)}.md`
+  );
+  fs.writeFileSync(promptFilePath, normalizedPrompt, "utf8");
+  return {
+    promptFilePath,
+    wrapperPrompt: buildCodexFilePromptWrapper(promptFilePath)
+  };
+}
+
+function runCodex({ command, args, stdinText, cwd, timeoutMs, cleanupPaths = [] }) {
   return new Promise((resolve, reject) => {
     const startedAt = Date.now();
     const child = spawn(command, args, {
@@ -103,6 +121,14 @@ function runCodex({ command, args, stdinText, cwd, timeoutMs }) {
       reject(normalizeCodexExecutionError(error));
     });
     child.on("close", (code) => {
+      cleanupPaths.forEach((cleanupPath) => {
+        if (!cleanupPath) {
+          return;
+        }
+        try {
+          fs.unlinkSync(cleanupPath);
+        } catch {}
+      });
       if (settled) {
         return;
       }
@@ -205,13 +231,21 @@ const server = http.createServer(async (request, response) => {
       return;
     }
 
-    const codexSpawnInput = buildCodexSpawnInput({ argsTemplate, prompt });
+    let effectivePrompt = prompt;
+    const cleanupPaths = [];
+    if (effectivePrompt.length > 12000) {
+      const promptFileTransport = createPromptFileTransport({ prompt: effectivePrompt, cwd });
+      effectivePrompt = promptFileTransport.wrapperPrompt;
+      cleanupPaths.push(promptFileTransport.promptFilePath);
+    }
+    const codexSpawnInput = buildCodexSpawnInput({ argsTemplate, prompt: effectivePrompt });
     const codexResult = await runCodex({
       command,
       args: codexSpawnInput.args,
       stdinText: codexSpawnInput.stdinText,
       cwd,
-      timeoutMs
+      timeoutMs,
+      cleanupPaths
     });
     const result = extractJsonFromText(codexResult.stdout);
 
