@@ -4222,9 +4222,9 @@ button {
 .assist-config-range-handle-label {
   position: absolute;
   top: 50%;
-  width: 32px;
-  height: 32px;
-  margin-left: -16px;
+  width: 34px;
+  height: 34px;
+  margin-left: -17px;
   border-radius: 999px;
   border: 2px solid #d5a645;
   background: #2a2015;
@@ -4232,27 +4232,28 @@ button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 800;
   line-height: 1;
   pointer-events: none;
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.18);
   transform: translateY(-50%);
+  z-index: 5;
 }
 
 .assist-config-range-handle-label-min {
   left: calc(15px + ((100% - 30px) * var(--assist-range-start) / 100));
-  z-index: 2;
+  z-index: 6;
 }
 
 .assist-config-range-handle-label-target {
   left: calc(15px + ((100% - 30px) * var(--assist-range-target) / 100));
-  z-index: 3;
+  z-index: 7;
 }
 
 .assist-config-range-handle-label-max {
   left: calc(15px + ((100% - 30px) * var(--assist-range-end) / 100));
-  z-index: 4;
+  z-index: 8;
 }
 
 .assist-config-student-field textarea {
@@ -4879,6 +4880,13 @@ button {
   min-height: 160px;
   resize: vertical;
   font-family: inherit;
+}
+
+.assist-config-panel-inline.is-inline .assist-config-student-field textarea {
+  min-height: 48px;
+  height: 48px;
+  resize: none;
+  overflow: hidden;
 }
 
 .field-hint {
