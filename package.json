@@ -9,6 +9,7 @@
     "dev": "node ./scripts/servePublic.js",
     "test": "node --test",
     "validate:example": "node ./src/contract/validateContract.cli.js ./docs/examples/aralearn-contract.renderable.json",
+    "harness:courseforge": "node ./scripts/runCourseForgeHarness.js",
     "smoke:gemini": "node ./scripts/runGeminiAssistSmoke.js",
     "codex:local": "node ./scripts/aralearnCodexBridge.mjs",
     "android:debug": "pwsh -NoProfile -File ./scripts/buildAndroidDebug.ps1",

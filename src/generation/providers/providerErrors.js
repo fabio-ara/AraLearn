@@ -72,6 +72,9 @@ export function classifyProviderError(error) {
   if (statusCode === 400) {
     return { retryable: false, category: "invalid_request", statusCode, message };
   }
+  if (statusCode === 413 || /payload too large|request too large|context length|token limit|input too large/.test(lower)) {
+    return { retryable: false, category: "payload_too_large", statusCode, message };
+  }
   if (statusCode === 401 || statusCode === 403) {
     return { retryable: false, category: "auth_error", statusCode, message };
   }

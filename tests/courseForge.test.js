@@ -6583,3 +6583,128 @@ test("repair_card_adherence separa grounding tardio de defeito estrutural dos ca
   assert.equal(finalReport.content.metrics.repairCallsByCategory.adherence, 1);
   assert.equal(finalReport.content.diagnosticsSummary.categories.adherence.repaired, true);
 });
+
+test("repair_card_adherence não apaga cards válidos quando o provider devolve payload vazio", async () => {
+  const provider = createFakeProvider({
+    script: {
+      build_cards: [
+        {
+          cards: [
+            {
+              position: 1,
+              resourceType: "paragraph",
+              title: "O que é uma proposição",
+              text: "Uma proposição é um enunciado que pode ser verdadeiro ou falso.",
+              sourceRefs: ["src_shell"]
+            },
+            {
+              position: 2,
+              resourceType: "paragraph",
+              title: "Exemplo",
+              text: "`2 + 2 = 4` é proposição.",
+              sourceRefs: ["src_shell"]
+            },
+            {
+              position: 3,
+              resourceType: "multiple_choice",
+              title: "Identificação",
+              question: "Qual opção é uma proposição?",
+              options: [
+                { optionId: "a", label: "Feche a porta." },
+                { optionId: "b", label: "2 + 2 = 4." },
+                { optionId: "c", label: "Que horas são?" }
+              ],
+              correctOptionId: "b",
+              feedback: "`2 + 2 = 4` admite valor de verdade.",
+              sourceRefs: ["src_shell"]
+            }
+          ]
+        }
+      ]
+    }
+  });
+  const registry = createProviderRegistry({ providers: [provider] });
+  const artifactStore = createCourseForgeArtifactsStore();
+
+  await assert.rejects(
+    () =>
+      runCourseForge({
+        intent: {
+          operation: "repair",
+          scope: {
+            level: "microsequence",
+            courseKey: "course-logica",
+            moduleKey: "module-base",
+            lessonKey: "lesson-proposicoes",
+            microsequenceKey: "microsequence-reconhecimento"
+          },
+          promptText: "Corrigir o grounding desta microssequência.",
+          attachments: [
+            {
+              id: "src_shell",
+              name: "shell.md",
+              type: "text/markdown",
+              textContent: "Shell script automatiza tarefas no terminal. Variáveis de ambiente e pipes organizam comandos. Exercício: combine grep com redirecionamento."
+            }
+          ]
+        },
+        projectDocument: {
+          contract: "aralearn.contract",
+          version: 1,
+          kind: "project",
+          courses: [
+            {
+              key: "course-logica",
+              title: "Lógica",
+              modules: [
+                {
+                  key: "module-base",
+                  title: "Base",
+                  lessons: [
+                    {
+                      key: "lesson-proposicoes",
+                      title: "Proposições",
+                      description: "Lição.",
+                      sourceGuideStructured: {
+                        lessonGoal: "Reconhecer proposições.",
+                        notationRules: "Usar `p` e `q`.",
+                        commonErrors: "Confundir pergunta com proposição."
+                      },
+                      presetId: "default",
+                      resourceTags: ["paragraph", "multiple_choice"],
+                      contentTypeTags: ["theory"],
+                      learningActionTags: ["read"],
+                      supportLevel: "guided",
+                      microsequences: [
+                        {
+                          key: "microsequence-reconhecimento",
+                          title: "Reconhecimento inicial",
+                          description: "Introdução.",
+                          didacticPurpose: "Diferenciar proposições de outros enunciados.",
+                          coverageRole: "explain",
+                          status: "draft",
+                          included: false,
+                          cards: []
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        providerRegistry: registry,
+        providerId: "fake",
+        artifactStore
+      }),
+    (error) => {
+      assert.match(error.message, /cards ainda falharam na aderência editorial/i);
+      assert.doesNotMatch(error.message, /Microssequência sem grounding mínimo/i);
+      const draftsArtifact = artifactStore.listArtifacts(error.runId).find((item) => item.name === "card-drafts");
+      assert.ok(draftsArtifact);
+      assert.equal(draftsArtifact.content[0].cards.length, 3);
+      return true;
+    }
+  );
+});

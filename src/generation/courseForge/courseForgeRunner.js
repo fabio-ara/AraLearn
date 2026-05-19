@@ -50,6 +50,15 @@ import {
   buildMicrosequenceRepairTask,
   selectRepairDirectivesForTask
 } from "../didactics/didacticRepairDirectives.js";
+import {
+  buildCourseSemanticFields,
+  normalizeLessonPlans,
+  normalizeMicrosequencePlans,
+  readArchitectureValue
+} from "./courseForgePlanNormalization.js";
+import { buildCourseForgeSourcePack } from "./courseForgeSourcePack.js";
+
+export { normalizeLessonPlans, normalizeMicrosequencePlans } from "./courseForgePlanNormalization.js";
 
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -62,88 +71,31 @@ function buildInlineSourceLedger(intent = {}) {
   });
 }
 
+function summarizeUserRequest(intent = {}, maxLength = 1200) {
+  const prompt = text(intent.rawUserText || intent.promptText);
+  if (!prompt) {
+    return "Sem pedido textual adicional.";
+  }
+  if (prompt.length <= maxLength) {
+    return prompt;
+  }
+  return `${prompt.slice(0, Math.max(0, maxLength - 1)).trimEnd()}…\n[resumo aplicado pelo motor; o pedido completo segue preservado no SourceLedger.]`;
+}
+
+function keepNonEmptyCardDraft(candidateDraft = {}, fallbackDraft = {}) {
+  const candidateCards = Array.isArray(candidateDraft?.cards) ? candidateDraft.cards : [];
+  const fallbackCards = Array.isArray(fallbackDraft?.cards) ? fallbackDraft.cards : [];
+  if (candidateCards.length || !fallbackCards.length) {
+    return structuredClone(candidateDraft);
+  }
+  return structuredClone(fallbackDraft);
+}
+
 function buildArchitecturePromptTask(intent = {}, projectDocument = {}) {
   const summary = Array.isArray(projectDocument?.courses)
     ? `Cursos atuais no projeto: ${projectDocument.courses.length}.`
     : "Projeto atual sem cursos.";
-  return `${intent.promptText}\n\nContexto do projeto:\n${summary}`;
-}
-function readArchitectureValue(payload = {}) {
-  if (payload?.architectureFinal?.course) {
-    return payload.architectureFinal;
-  }
-  if (payload?.architectureDraft?.course) {
-    return payload.architectureDraft;
-  }
-  if (payload?.course) {
-    return payload;
-  }
-  return payload;
-}
-
-function listArchitectureLessons(architectureDraft = {}) {
-  const course = readArchitectureValue(architectureDraft)?.course;
-  const lessons = [];
-  (Array.isArray(course?.modules) ? course.modules : []).forEach((moduleValue) => {
-    (Array.isArray(moduleValue?.lessons) ? moduleValue.lessons : []).forEach((lesson) => {
-      lessons.push({
-        courseKey: text(course?.key),
-        moduleKey: text(moduleValue?.key),
-        lessonKey: text(lesson?.key),
-        lessonTitle: text(lesson?.title),
-        lessonDescription: text(lesson?.description),
-        sourceGuideStructured: structuredClone(lesson?.sourceGuideStructured || {}),
-        domainMap: structuredClone(lesson?.domainMap || null),
-        resourceTags: structuredClone(lesson?.resourceTags || []),
-        contentTypeTags: structuredClone(lesson?.contentTypeTags || []),
-        learningActionTags: structuredClone(lesson?.learningActionTags || []),
-        supportLevel: text(lesson?.supportLevel),
-        presetId: text(lesson?.presetId)
-      });
-    });
-  });
-  return lessons;
-}
-
-function normalizeLookupLabel(value) {
-  return text(value)
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-}
-
-function buildArchitectureLessonIndexes(architectureLessons = []) {
-  const byLessonKey = new Map();
-  const byLessonTitle = new Map();
-
-  architectureLessons.forEach((lessonPlan) => {
-    const lessonKey = text(lessonPlan?.lessonKey);
-    const lessonTitle = normalizeLookupLabel(lessonPlan?.lessonTitle);
-    if (lessonKey) {
-      byLessonKey.set(lessonKey, lessonPlan);
-    }
-    if (lessonTitle) {
-      byLessonTitle.set(lessonTitle, lessonPlan);
-    }
-  });
-
-  return { byLessonKey, byLessonTitle };
-}
-
-function mergeTagList(primary = [], fallback = []) {
-  const values = [...(Array.isArray(primary) ? primary : []), ...(Array.isArray(fallback) ? fallback : [])]
-    .map(text)
-    .filter(Boolean);
-  return [...new Set(values)];
-}
-
-function mergePlainObject(primary = {}, fallback = {}) {
-  return {
-    ...structuredClone(fallback || {}),
-    ...structuredClone(primary || {})
-  };
+  return `Pedido do usuário:\n${summarizeUserRequest(intent)}\n\nContexto do projeto:\n${summary}`;
 }
 
 function findScopedLesson(projectDocument = {}, scope = {}) {
@@ -158,12 +110,6 @@ function findScopedLesson(projectDocument = {}, scope = {}) {
   };
 }
 
-function buildCourseSemanticFields(engineProfile = {}) {
-  return {
-    courseSemantics: structuredClone(engineProfile?.didacticPolicy?.courseSemantics || {}),
-    resourcePreferences: structuredClone(engineProfile?.didacticPolicy?.resourcePreferences || {})
-  };
-}
 function buildScopedLessonPlan(projectDocument = {}, scope = {}, engineProfile = {}) {
   const { course, moduleValue, lesson } = findScopedLesson(projectDocument, scope);
   if (!course || !moduleValue || !lesson) {
@@ -393,89 +339,6 @@ function buildExistingMicrosequencePlansForScope(projectDocument = {}, scope = {
     );
   }
   return [];
-}
-
-export function normalizeLessonPlans(payload = {}, architectureDraft = {}, engineProfile = {}) {
-  const architectureLessons = listArchitectureLessons(architectureDraft);
-  const { byLessonKey, byLessonTitle } = buildArchitectureLessonIndexes(architectureLessons);
-  const explicit = Array.isArray(payload?.lessonPlans) ? payload.lessonPlans : [];
-
-  if (!explicit.length) {
-    return architectureLessons.map((lessonPlan) => ({
-      ...lessonPlan,
-      ...buildCourseSemanticFields(engineProfile)
-    }));
-  }
-
-  const normalizedPlans = [];
-  const matchedLessonKeys = new Set();
-
-  explicit.forEach((lessonPlan) => {
-    const explicitLessonKey = text(lessonPlan?.lessonKey || lessonPlan?.key);
-    const explicitLessonTitle = text(lessonPlan?.lessonTitle || lessonPlan?.title);
-    const architectureLesson =
-      byLessonKey.get(explicitLessonKey) ||
-      byLessonTitle.get(normalizeLookupLabel(explicitLessonTitle)) ||
-      null;
-    const resolvedLessonKey = text(architectureLesson?.lessonKey || explicitLessonKey);
-
-    if (resolvedLessonKey) {
-      matchedLessonKeys.add(resolvedLessonKey);
-    }
-
-    normalizedPlans.push({
-      courseKey: text(lessonPlan?.courseKey || architectureLesson?.courseKey),
-      moduleKey: text(lessonPlan?.moduleKey || architectureLesson?.moduleKey),
-      lessonKey: resolvedLessonKey,
-      lessonTitle: text(explicitLessonTitle || architectureLesson?.lessonTitle),
-      lessonDescription: text(lessonPlan?.lessonDescription || lessonPlan?.description || architectureLesson?.lessonDescription),
-      sourceGuideStructured: mergePlainObject(lessonPlan?.sourceGuideStructured || {}, architectureLesson?.sourceGuideStructured || {}),
-      domainMap: structuredClone(lessonPlan?.domainMap || architectureLesson?.domainMap || null),
-      resourceTags: mergeTagList(lessonPlan?.resourceTags, architectureLesson?.resourceTags),
-      contentTypeTags: mergeTagList(lessonPlan?.contentTypeTags, architectureLesson?.contentTypeTags),
-      learningActionTags: mergeTagList(lessonPlan?.learningActionTags, architectureLesson?.learningActionTags),
-      supportLevel: text(lessonPlan?.supportLevel || architectureLesson?.supportLevel),
-      presetId: text(lessonPlan?.presetId || architectureLesson?.presetId),
-      ...buildCourseSemanticFields(engineProfile)
-    });
-  });
-
-  architectureLessons.forEach((lessonPlan) => {
-    const lessonKey = text(lessonPlan?.lessonKey);
-    if (!lessonKey || matchedLessonKeys.has(lessonKey)) {
-      return;
-    }
-    normalizedPlans.push({
-      ...structuredClone(lessonPlan),
-      ...buildCourseSemanticFields(engineProfile)
-    });
-  });
-
-  return normalizedPlans;
-}
-
-function normalizeMicrosequencePlans(payload = {}, lessonPlans = []) {
-  const plans = Array.isArray(payload?.microsequencePlans) ? payload.microsequencePlans : Array.isArray(payload) ? payload : [];
-  return plans.map((lessonPlan) => {
-    const lessonKey = text(lessonPlan?.lessonKey);
-    const lessonMeta = lessonPlans.find((item) => text(item?.lessonKey) === lessonKey) || {};
-    return {
-      lessonKey,
-      moduleKey: text(lessonPlan?.moduleKey || lessonMeta.moduleKey),
-      courseKey: text(lessonPlan?.courseKey || lessonMeta.courseKey),
-      microsequences: (Array.isArray(lessonPlan?.microsequences) ? lessonPlan.microsequences : []).map((microsequence, microIndex) => ({
-        key: text(microsequence?.key) || `${lessonKey || "lesson"}-micro-${microIndex + 1}`,
-        title: text(microsequence?.title),
-        description: text(microsequence?.description),
-        objective: text(microsequence?.objective),
-        domainRefs: Array.isArray(microsequence?.domainRefs) ? microsequence.domainRefs.map(text).filter(Boolean) : [],
-        practiceVariantRefs: Array.isArray(microsequence?.practiceVariantRefs) ? microsequence.practiceVariantRefs.map(text).filter(Boolean) : [],
-        didacticPurpose: text(microsequence?.didacticPurpose),
-        coverageRole: text(microsequence?.coverageRole),
-        tags: Array.isArray(microsequence?.tags) ? microsequence.tags.map(text).filter(Boolean) : []
-      }))
-    };
-  });
 }
 
 function hasBlockingIssues(audit = {}) {
@@ -1067,6 +930,20 @@ export async function runCourseForge({
       ...input,
       engineProfile
     });
+  const sourcePackCache = new Map();
+  const buildSourcePackForPhase = (phaseId = "") => {
+    const cacheKey = text(phaseId) || "generic";
+    if (!sourcePackCache.has(cacheKey)) {
+      sourcePackCache.set(
+        cacheKey,
+        buildCourseForgeSourcePack({
+          sourceLedger: context.sourceLedger || [],
+          phaseId: cacheKey
+        }).text
+      );
+    }
+    return sourcePackCache.get(cacheKey);
+  };
   const emitProgress = (event = {}) => {
     if (typeof onProgress !== "function") {
       return;
@@ -1186,7 +1063,7 @@ export async function runCourseForge({
           modelId: phaseModelId,
           prompt: buildProviderPrompt({
             role: "Você atua como Tutor local do AraLearn. Responda a dúvida do estudante sem editar o material nem expor bastidor.",
-            sourcePack: JSON.stringify(context.sourceLedger || []),
+            sourcePack: buildSourcePackForPhase(phaseId),
             task: "Explique a dúvida de forma direta, ancore a resposta no contexto atual e reconecte explicitamente à trilha de estudo. Se detectar que o material precisa mudar, sinalize isso sem reescrever o curso.",
             output: "Responda somente JSON válido com responseText, studyTrackConnection, recommendedAction e rationale."
           }),
@@ -1259,7 +1136,7 @@ export async function runCourseForge({
           modelId: phaseModelId,
           prompt: buildProviderPrompt({
             role: "Você planeja a estrutura didática top-down do AraLearn.",
-            sourcePack: JSON.stringify(context.sourceLedger || []),
+            sourcePack: buildSourcePackForPhase(phaseId),
             task: buildArchitecturePromptTask(intent, context.projectDocument),
             output: "Responda somente JSON válido com architectureDraft ou patch."
           }),
@@ -1282,7 +1159,7 @@ export async function runCourseForge({
             modelId: phaseModelId,
             prompt: buildProviderPrompt({
               role: "Você audita a arquitetura didática proposta para o AraLearn.",
-              sourcePack: JSON.stringify(context.sourceLedger || []),
+              sourcePack: buildSourcePackForPhase(phaseId),
               task: "Revise a arquitetura proposta. Aponte problemas de escopo, progressão, aderência às fontes e vocabulário de bastidor.",
               output: "Responda somente JSON válido com approved, blockingIssues e warnings."
             }),
@@ -1308,7 +1185,7 @@ export async function runCourseForge({
             modelId: phaseModelId,
             prompt: buildProviderPrompt({
               role: "Você repara a arquitetura didática top-down do AraLearn.",
-              sourcePack: JSON.stringify(context.sourceLedger || []),
+              sourcePack: buildSourcePackForPhase(phaseId),
               task: "Corrija apenas os problemas apontados pela auditoria, sem ampliar o escopo além do pedido.",
               output: "Responda somente JSON válido com architectureFinal."
             }),
@@ -1337,7 +1214,7 @@ export async function runCourseForge({
           modelId: phaseModelId,
           prompt: buildProviderPrompt({
             role: "Você normaliza o conjunto de lições planejadas para o AraLearn.",
-            sourcePack: JSON.stringify(context.sourceLedger || []),
+            sourcePack: buildSourcePackForPhase(phaseId),
             task: "Confirme e detalhe o conjunto de lições do curso planejado, sem criar cards.",
             output: "Responda somente JSON válido com lessonPlans."
           }),
@@ -1403,7 +1280,7 @@ export async function runCourseForge({
             modelId: phaseModelId,
             prompt: buildProviderPrompt({
               role: "Você audita o CourseGraph do AraLearn.",
-              sourcePack: JSON.stringify(context.sourceLedger || []),
+              sourcePack: buildSourcePackForPhase(phaseId),
               task: "Revise conceitos, objetivos, prerequisitos, assessmentTargets e practiceVariants. Aponte lacunas semânticas, referências quebradas e governança insuficiente por lição.",
               output: "Responda somente JSON válido com approved, blockingIssues e warnings."
             }),
@@ -1457,7 +1334,7 @@ export async function runCourseForge({
               modelId: phaseModelId,
               prompt: buildProviderPrompt({
                 role: "Você repara o CourseGraph do AraLearn.",
-                sourcePack: JSON.stringify(context.sourceLedger || []),
+                sourcePack: buildSourcePackForPhase(phaseId),
                 task: "Corrija apenas os problemas apontados pela auditoria do CourseGraph, preservando o escopo das lições e a governança didática.",
                 output: "Responda somente JSON válido com courseGraph."
               }),
@@ -1550,7 +1427,7 @@ export async function runCourseForge({
             modelId: phaseModelId,
             prompt: buildProviderPrompt({
               role: "Você planeja microssequências para as lições do AraLearn.",
-              sourcePack: JSON.stringify(context.sourceLedger || []),
+              sourcePack: buildSourcePackForPhase(phaseId),
               task:
                 interventionPlan?.providerTask
                 || "Crie microssequências pequenas, progressivas e sem bastidor para cada lição planejada, cobrindo itens centrais do domínio antes de extensões e distribuindo explicação antes de prática do mesmo item.",
@@ -1596,7 +1473,7 @@ export async function runCourseForge({
             modelId: phaseModelId,
             prompt: buildProviderPrompt({
               role: "Você audita o planejamento de microssequências do AraLearn.",
-              sourcePack: JSON.stringify(context.sourceLedger || []),
+              sourcePack: buildSourcePackForPhase(phaseId),
               task:
                 interventionPlan?.auditProviderTask
                 || "Aponte saltos de progressão, duplicações, escopo excessivo e falta de prática distribuída.",
@@ -1683,7 +1560,7 @@ export async function runCourseForge({
             modelId: phaseModelId,
             prompt: buildProviderPrompt({
               role: "Você repara o planejamento de microssequências do AraLearn.",
-              sourcePack: JSON.stringify(context.sourceLedger || []),
+              sourcePack: buildSourcePackForPhase(phaseId),
               task: buildMicrosequenceRepairTask(context.microsequenceRepairDirectives),
               output: "Responda somente JSON válido com microsequencePlans."
             }),
@@ -1800,7 +1677,7 @@ export async function runCourseForge({
             modelId: phaseModelId,
             prompt: buildProviderPrompt({
               role: "Você constrói cards didáticos para uma microssequência do AraLearn.",
-              sourcePack: JSON.stringify(context.sourceLedger || []),
+              sourcePack: buildSourcePackForPhase(phaseId),
               task: "Gere apenas os cards pedidos, em linguagem didática autossuficiente, sem bastidor e obedecendo o recurso de cada posição.",
               output: "Responda somente JSON válido com cards."
             }),
@@ -1877,7 +1754,7 @@ export async function runCourseForge({
                 modelId: phaseModelId,
                 prompt: buildProviderPrompt({
                   role: "Você repara cards didáticos já planejados para o AraLearn.",
-                  sourcePack: JSON.stringify(context.sourceLedger || []),
+                  sourcePack: buildSourcePackForPhase(phaseId),
                   task: "Corrija apenas os problemas apontados pela auditoria, preservando a intenção didática da microssequência.",
                   output: "Responda somente JSON válido com cards."
                 }),
@@ -1889,7 +1766,12 @@ export async function runCourseForge({
                   { id: "card-issues", name: "card-issues", content: JSON.stringify(relatedIssues) }
                 ]
               });
-              repairedByProvider.push(normalizeCourseForgeCardsPayload(response.value || response || {}, microsequenceContract));
+              repairedByProvider.push(
+                keepNonEmptyCardDraft(
+                  normalizeCourseForgeCardsPayload(response.value || response || {}, microsequenceContract),
+                  currentDraft
+                )
+              );
             }
             repairedDrafts = repairedByProvider;
             postRepairCardsAudit = auditCourseForgeCardDrafts({
@@ -1963,7 +1845,7 @@ export async function runCourseForge({
                 modelId: phaseModelId,
                 prompt: buildProviderPrompt({
                   role: "Você repara aderência editorial e grounding de cards do AraLearn.",
-                  sourcePack: JSON.stringify(context.sourceLedger || []),
+                  sourcePack: buildSourcePackForPhase(phaseId),
                   task: "Corrija apenas problemas de sourceRefs, aderência às fontes e formulação editorial associada ao grounding, sem trocar a função didática do card.",
                   output: "Responda somente JSON válido com cards."
                 }),
@@ -1975,7 +1857,12 @@ export async function runCourseForge({
                   { id: "adherence-issues", name: "adherence-issues", content: JSON.stringify(relatedIssues) }
                 ]
               });
-              repairedByProvider.push(normalizeCourseForgeCardsPayload(response.value || response || {}, microsequenceContract));
+              repairedByProvider.push(
+                keepNonEmptyCardDraft(
+                  normalizeCourseForgeCardsPayload(response.value || response || {}, microsequenceContract),
+                  currentDraft
+                )
+              );
             }
             repairedDrafts = repairedByProvider;
             postRepairSourceAudit = auditCourseForgeSourceAdherence({
