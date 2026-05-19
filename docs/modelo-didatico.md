@@ -1,85 +1,93 @@
 # Modelo didático
 
+O modelo didático do AraLearn parte de uma decisão: o card é a unidade de interação, mas a microssequência é a unidade de planejamento.
+
 ## Unidade central
 
-No AraLearn, o card não é a unidade principal de planejamento. A unidade principal é a microssequência.
+Uma microssequência é uma pequena etapa didática com função definida. Ela pode reunir explicação, exemplo, pergunta, lacuna, tabela, código, fluxograma, grafo ou outro recurso aceito pelo contrato público.
 
-Um card isolado pode explicar ou perguntar algo, mas não carrega sozinho uma progressão. A microssequência reúne alguns cards com uma função didática clara.
+Ela deve responder a uma pergunta simples: que avanço o usuário deve conseguir fazer depois desta etapa?
 
-## Funções de microssequência
+## Funções de uma microssequência
 
-Uma microssequência pode:
+Uma microssequência pode servir para:
 
 - introduzir um conceito;
 - explicar um procedimento;
 - demonstrar um exemplo;
 - propor prática guiada;
 - diferenciar ideias parecidas;
-- corrigir erro comum;
+- diagnosticar erro comum;
 - consolidar uma etapa;
-- preparar a próxima microssequência.
+- preparar a microssequência seguinte.
 
-O número de cards é secundário. O essencial é que a etapa cumpra sua função antes de o usuário avançar.
+A função vem antes do formato. Se o tópico exige notação algébrica, usa-se notação algébrica. Se exige grafo, usa-se `graph`. Se exige comparação, uma tabela pode ser mais adequada.
 
-## Top-down e bottom-up
+## Explicação e prática
 
-O top-down planeja a sequência didática. Ele cria microssequências vazias de cards, mas não vazias de sentido.
+O AraLearn evita separar explicação e prática como blocos desconectados. Uma microssequência adequada aproxima os dois momentos.
 
-O bottom-up materializa a etapa. Ele cria cards quando o usuário abre a microssequência e pede conteúdo para estudar.
+Um padrão possível é:
 
-Essa separação permite revisar a trilha antes de produzir detalhes e evita que a IA gere volume demais de uma vez.
+1. apresentar a ideia ou regra;
+2. mostrar um exemplo resolvido;
+3. propor uma prática controlada;
+4. apontar o erro ou contraste mais provável;
+5. indicar por que a etapa prepara a próxima.
+
+Nem toda microssequência precisa seguir esse padrão, mas toda microssequência precisa ter progressão interna compreensível.
 
 ## Progressão
 
-Uma trilha boa reduz pressupostos ocultos.
+Uma trilha didática deve reduzir pressupostos ocultos. O estudante não deve ser cobrado por algo que ainda não foi preparado pela lição, pela microssequência anterior ou pelo próprio card.
 
-Quando um conceito depende de outro, essa relação deve aparecer no `domainMap`, nas microssequências planejadas ou na própria progressão dos cards. O usuário não deveria ser cobrado por uma prática antes de receber base suficiente para executá-la.
+A progressão pode aparecer em:
 
-## DomainMap como apoio didático
+- ordem das microssequências;
+- dependências entre etapas;
+- escopo declarado no módulo;
+- objetivos da lição;
+- explicações e exemplos dos cards;
+- feedback de exercícios.
 
-O `domainMap` registra conceitos, procedimentos, erros comuns, pré-requisitos, evidências esperadas e variantes de prática.
-
-Ele ajuda o motor a responder perguntas como:
-
-- que conceito esta microssequência cobre?
-- que pré-requisito precisa aparecer antes?
-- que erro comum deve ser diagnosticado?
-- que tipo de prática é adequado aqui?
-- que representação faz sentido?
-
-O usuário comum não precisa editar essa camada no runtime.
-
-## Suficiência
+## Suficiência didática
 
 Uma microssequência está suficientemente materializada quando o usuário consegue:
 
 - reconhecer o foco da etapa;
-- ver explicação ou exemplo suficiente;
-- praticar algo relevante;
-- entender por que pode avançar.
+- entender o conceito ou procedimento principal;
+- praticar algo diretamente ligado ao foco;
+- receber feedback ou contraste quando erra;
+- perceber por que pode avançar.
 
-Se isso não acontece, a ação correta é `Corrigir microssequência` ou `Continuar na microssequência`.
+Se isso não ocorre, a etapa deve ser revisada, complementada ou substituída por outra versão.
 
-## Materialização
+## Recursos renderizáveis
 
-Materializar não é resumir. É transformar a etapa em cards estudáveis.
+O contrato público do AraLearn prevê recursos adequados a diferentes tipos de conteúdo:
 
-Um bom conjunto de cards pode combinar explicação, pergunta, lacuna, tabela, código, fluxograma, grafo, matriz ou outro recurso aceito. O formato deve servir à função da microssequência.
+- `say` para explicações, enunciados e sínteses;
+- `table` para matrizes, tabelas-verdade, quadros comparativos e procedimentos tabulares;
+- `code` para programação, shell, pseudocódigo e exemplos técnicos;
+- `flow` para decisões e processos;
+- `tree` para hierarquias, pastas e estruturas aninhadas;
+- `graph` para vértices, arestas, pesos e relações;
+- `block_gap_fill` para lacunas com opções e feedback.
 
-Quando o tópico for Teoria dos Grafos, `graph` é o recurso visual correto para vértices, arestas e pesos. `table` continua responsável por matriz de adjacência e tabelas de procedimento. `flow` continua sendo fluxograma.
+A escolha do recurso deve aproximar o card da prática real que o estudante terá em exercício, prova, caderno ou ambiente técnico.
 
-## Criar microssequência extra
+## Complementos
 
-Às vezes a trilha planejada pula um degrau. Nesse caso, o usuário pode criar uma microssequência extra depois da atual.
+Quando uma trilha planejada salta uma etapa, o usuário pode criar uma microssequência de apoio. Ela deve tratar uma lacuna local e depois devolver o usuário ao caminho principal.
 
-Essa etapa extra deve continuar ligada à lição e retornar à trilha planejada. Ela não deve virar replanejamento amplo do curso.
+Complemento não é replanejamento amplo. É intervenção situada.
 
-## Critério prático
+## Critério de qualidade
 
-Uma microssequência está bem desenhada quando responde:
+Uma microssequência está bem desenhada quando deixa claro:
 
-- o que esta etapa ensina ou treina?
-- que domínio da lição ela cobre?
-- que prática ou evidência ela espera?
-- que erro ou contraste ela previne?
-- por que ela vem antes da próxima?
+- o que ensina ou treina;
+- que parte da lição cobre;
+- que prática exige;
+- que erro previne;
+- por que vem antes da próxima etapa.
