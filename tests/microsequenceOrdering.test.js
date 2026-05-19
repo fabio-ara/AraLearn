@@ -5,7 +5,7 @@ import {
   resolveLessonMicrosequenceOrder,
   sortLessonMicrosequencesDeterministically
 } from "../src/generation/domain/resolveLessonMicrosequenceOrder.js";
-import { repairCourseForgeMicrosequenceMetadataDeterministically } from "../src/generation/courseForge/courseForgeCards.js";
+import { repairMicrosequenceMetadataDeterministically } from "../src/generation/didactics/repairMicrosequenceMetadata.js";
 
 test("resolveLessonMicrosequenceOrder traz explicação antes de prática no mesmo domainRef", () => {
   const ordered = resolveLessonMicrosequenceOrder({
@@ -112,8 +112,8 @@ test("sortLessonMicrosequencesDeterministically devolve a sequência já reorden
   );
 });
 
-test("repairCourseForgeMicrosequenceMetadataDeterministically reordena microssequências após reparar metadados", () => {
-  const repaired = repairCourseForgeMicrosequenceMetadataDeterministically({
+test("repairMicrosequenceMetadataDeterministically reordena microssequências após reparar metadados", () => {
+  const repaired = repairMicrosequenceMetadataDeterministically({
     lessonPlans: [
       {
         lessonKey: "lesson-vn",

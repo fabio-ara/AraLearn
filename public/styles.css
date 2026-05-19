@@ -4378,6 +4378,11 @@ button {
   gap: 8px;
 }
 
+.provider-config-footer-actions {
+  margin-left: auto;
+  justify-content: flex-end;
+}
+
 .assist-config-save-action {
   border-color: rgba(238, 198, 95, 0.78);
   background: linear-gradient(180deg, rgba(233, 190, 87, 0.98), rgba(195, 151, 55, 0.98));
@@ -5505,6 +5510,22 @@ button {
 
 .assist-action-heading .tiny {
   margin: 0;
+}
+
+.generate-section-title {
+  min-width: 0;
+  margin-bottom: 10px;
+}
+
+.generate-section-title-text {
+  margin: 0;
+  color: #e9c879;
+  font-size: 11px;
+  line-height: 1.1;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .assist-action-option {
@@ -6917,13 +6938,16 @@ button {
 
 .generate-action-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 36px 44px;
+  grid-template-columns: minmax(0, 1fr) 36px 36px 44px;
   gap: 8px;
   align-items: center;
 }
 
 .generate-model-field {
   min-width: 0;
+  width: 248px;
+  max-width: 248px;
+  justify-self: start;
 }
 
 .generate-inline-icon {

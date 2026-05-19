@@ -1,175 +1,113 @@
 # Contrato público do AraLearn
 
-## Finalidade
+## `aralearn.contract` v2
 
-O contrato público define a forma persistível de um projeto AraLearn. Ele deve ser legível, exportável, importável e estável o bastante para que o material continue pertencendo ao usuário.
-
-O motor interno pode usar artefatos ricos durante uma geração, mas nem tudo isso deve ir para o contrato público.
-
-## Árvore
-
-```text
-project
-└── course
-    └── module
-        └── lesson
-            └── microsequence
-                └── card
+```json
+{
+  "contract": "aralearn.contract",
+  "version": 2,
+  "kind": "project",
+  "courses": []
+}
 ```
-
-## Projeto
-
-O projeto é a unidade exportável mais ampla. Ele reúne cursos e metadados gerais.
-
-Não deve guardar credenciais, estado transitório de UI nem respostas intermediárias completas de IA.
 
 ## Curso
 
-Curso representa um campo de estudo: disciplina, prova, tema, corpus, documentação ou projeto.
-
-Ele organiza o escopo amplo. A governança didática fina aparece principalmente na lição.
+- `key`
+- `title`
+- `goal?`
+- `evidencePriority`
+- `modules`
 
 ## Módulo
 
-Módulo divide o curso em blocos. Ele ajuda a navegação e o planejamento, mas não precisa conter conteúdo estudável diretamente.
+- `key`
+- `title`
+- `include: ScopeTerm[]`
+- `exclude: ScopeTerm[]`
+- `notes?`
+- `assessmentStyle`
+- `lessons`
+
+## ScopeTerm
+
+- `id`
+- `label`
+- `normalizedLabel`
 
 ## Lição
 
-A lição é o ponto de governança didática local.
-
-Ela pode conter:
-
-- título e descrição;
-- orientação estruturada;
-- fontes ou referências;
-- `domainMap`;
-- microssequências.
-
-### `sourceGuideStructured`
-
-`sourceGuideStructured` registra orientação didática estruturada, como escopo, notação, erros comuns, foco de prática e limites do recorte.
-
-Ele ajuda o top-down e o bottom-up a não começarem do zero.
-
-### `domainMap`
-
-`domainMap` é o mapa semântico interno da lição. Ele pode conter itens de domínio e variantes de prática.
-
-Um item de domínio pode registrar:
-
-- `id`;
-- `label`;
-- `kind`;
-- `priority`;
-- `status`;
-- `sourceRefs`;
-- `expectedEvidence`;
-- `commonErrors`;
-- `prerequisites`;
-- `representations`;
-- `assessmentFormats`.
-
-Uma variante de prática pode registrar:
-
-- `id`;
-- `domainItemRef`;
-- `variantKind`;
-- `purpose`;
-- `difficulty`;
-- `representation`;
-- `expectedStudentAction`;
-- `commonErrorTarget`.
-
-O `domainMap` não é formulário do usuário comum. Ele é contrato semântico para o motor.
+- `key`
+- `title`
+- `goal`
+- `microsequences`
 
 ## Microssequência
 
-A microssequência é a unidade didática central.
+- `key`
+- `title`
+- `goal`
+- `type: "main" | "support"`
+- `status: "planned" | "generated" | "needs_review" | "ready"`
+- `dependsOn: string[]`
+- `scopeRefs: string[]`
+- `parentMicrosequenceKey?`
+- `supportReason?`
+- `versions`
+- `activeVersionKey?`
 
-Ela pode existir sem cards. Nesse caso, está planejada, mas ainda não materializada.
+## Versão de microssequência
 
-Campos didáticos possíveis:
-
-- `title`;
-- `description`;
-- `status`;
-- `included`;
-- `tags`;
-- `domainRefs`;
-- `practiceVariantRefs`;
-- `didacticPurpose`;
-- `coverageRole`;
-- `cards`.
-
-### `domainRefs`
-
-`domainRefs` aponta para itens do `domainMap`. Isso diz que a microssequência cobre determinado conceito, procedimento, contraste ou erro.
-
-### `practiceVariantRefs`
-
-`practiceVariantRefs` aponta para variantes de prática adequadas à etapa.
-
-### `didacticPurpose`
-
-`didacticPurpose` resume a função da microssequência em linguagem didática.
-
-### `coverageRole`
-
-`coverageRole` indica o papel da etapa na progressão, por exemplo introduzir, explicar, demonstrar, praticar, discriminar, diagnosticar erro, consolidar ou integrar.
+- `key`
+- `createdAt`
+- `source: "llm" | "manual" | "codex"`
+- `mode: "generate" | "improve" | "more_practice" | "support" | "repair"`
+- `userRequest?`
+- `cards`
+- `summary`
+- `validationReport`
 
 ## Card
 
-Card é a unidade de interação. Ele materializa parte da microssequência.
+- `key`
+- `title?`
+- `resourceType`
+- `content`
+- `after?`
 
-Recursos públicos aceitos incluem:
+Recursos públicos mínimos:
 
-- `say`;
-- `ask`;
-- `code`;
-- `table`;
-- `flow`;
-- `graph`;
-- `tree`;
-- `plane`;
-- `matrix`;
-- lacunas e exercícios aceitos pelo runtime.
+- `say`
+- `table`
+- `code`
+- `flow`
+- `tree`
+- `graph`
+- `block_gap_fill`
 
-O card não deve carregar todo o mapa semântico da lição. Ele deve permanecer simples e renderizável.
+## Contrato de escopo
 
-### `graph`
+O top-down não parte do contrato público. Ele parte de `aralearn.scope.v1`.
 
-`graph` representa grafo matemático estático e não orientado na primeira versão.
+Estrutura:
 
-Ele usa:
+```json
+{
+  "schemaVersion": "aralearn.scope.v1",
+  "course": {
+    "title": "Matemática para Informática",
+    "goal": "Estudar a disciplina com foco na cobrança real.",
+    "evidencePriority": ["notebook", "exercise_list", "exam"]
+  },
+  "modules": [
+    {
+      "title": "Lógica Proposicional",
+      "include": ["conectivos", "tabela-verdade"],
+      "exclude": ["lógica de predicados"],
+      "notes": "Professor cobra resolução passo a passo.",
+      "assessmentStyle": "mixed"
+    }
+  ]
+}
+```
 
-- `vertices` com `id` único, `label` opcional e coordenadas percentuais opcionais;
-- `edges` com `from`, `to`, `weight` opcional e `label` opcional;
-- `highlight` opcional para vértices e arestas.
-
-Use `graph` para vértices, arestas, pesos, caminho, ciclo, bipartição e passos visuais de Dijkstra.
-
-Use `table` para matriz de adjacência, tabela de graus e tabela de Dijkstra.
-
-Use `say` para fórmula, explicação e leitura textual do raciocínio.
-
-Use `flow` para fluxograma. `flow` não substitui `graph`.
-
-## Fontes
-
-`sourceRefs` e referências correlatas preservam vínculo mínimo com fontes usadas. Elas ajudam auditoria e revisão, sem transformar o contrato em sistema bibliográfico completo.
-
-## O que fica fora
-
-Não pertencem ao contrato público:
-
-- credenciais;
-- tokens;
-- estado aberto/fechado de painéis;
-- rascunho temporário de prompt;
-- resposta bruta completa de provider;
-- configuração privada de modelo;
-- cálculos visuais de runtime.
-
-## Validação
-
-Todo projeto gerado ou importado deve passar por validação. Quando possível, o app repara problemas estruturais simples. Quando a inconsistência compromete sentido ou segurança do patch, a operação deve falhar sem corromper o projeto.

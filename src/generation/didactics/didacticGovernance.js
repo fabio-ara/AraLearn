@@ -68,8 +68,9 @@ const EDIT_PROMPT_LINES = Object.freeze([
 
 const LESSON_GOVERNANCE_FIELD_LABELS = Object.freeze({
   lessonGoal: "Meta da lição",
-  notationRules: "Sinais e notação",
-  commonErrors: "Confusões prováveis"
+  notationRules: "Incluir",
+  outOfScopeRules: "Não incluir",
+  commonErrors: "Não confundir com"
 });
 
 const DIDACTIC_TEXT_PATTERNS = Object.freeze([
@@ -181,7 +182,7 @@ export function buildLessonRequestGovernance(lessonSourceGuideStructured = {}) {
     userPromptRole: "especializar o recorte imediato e a ênfase dentro da lição atual",
     userPromptLimits: [
       "não ampliar a operação para fora da meta governada pela lição",
-      "não contradizer notação, confusões prováveis nem critério final da lição",
+      'não contradizer o "Incluir", o "Não incluir", o "Não confundir com" nem o critério final da lição',
       "não usar o pedido do usuário para substituir a progressão didática já governada"
     ],
     lessonAnchors: anchors

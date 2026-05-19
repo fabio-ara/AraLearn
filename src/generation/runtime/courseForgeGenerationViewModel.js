@@ -79,46 +79,55 @@ export function resolveGenerationScopeState({
   const moduleValue = draft.moduleKey ? findModule?.(projectDocument, draft.courseKey, draft.moduleKey) || null : null;
   const lessons = moduleValue?.lessons || [];
   const lesson = draft.lessonKey ? findLesson?.(projectDocument, draft.courseKey, draft.moduleKey, draft.lessonKey) || null : null;
+  const includeTopics = Array.isArray(draft.includeTopics) ? draft.includeTopics.filter((item) => text(item)) : [];
+  const excludeTopics = Array.isArray(draft.excludeTopics) ? draft.excludeTopics.filter((item) => text(item)) : [];
   const hasPrompt = !!text(draft.promptText);
   const hasAttachments = Array.isArray(draft.attachments) && draft.attachments.length > 0;
-  const hasInputSource = hasPrompt || hasAttachments;
-  const pressedFieldsFilled =
-    (!draft.courseFixed || !!text(draft.courseInput)) &&
-    (!draft.moduleFixed || !!text(draft.moduleInput)) &&
-    (!draft.lessonFixed || !!text(draft.lessonInput));
-  const invalidFixedHierarchy = (draft.moduleFixed && !course) || (draft.lessonFixed && !moduleValue);
+  const hasStructuredScope = includeTopics.length > 0 || excludeTopics.length > 0;
+  const hasInputSource = hasPrompt || hasAttachments || hasStructuredScope || !!text(draft.lessonInput);
+  const courseInputFilled = !!text(draft.courseInput);
+  const moduleInputFilled = !!text(draft.moduleInput);
+  const lessonInputFilled = !!text(draft.lessonInput);
+  const requiredFieldsFilled = courseInputFilled && moduleInputFilled;
+  const invalidFixedHierarchy = !courseInputFilled || !moduleInputFilled;
 
-  let actionLabel = "criar curso completo";
-  let actionHelpText = "";
-  let actionSummary = "Curso, módulos e lições";
+  let actionLabel = "criar este curso e planejar o primeiro módulo";
+  let actionHelpText = "Descreva o módulo com chips do que entra e do que não entra.";
+  let actionSummary = "Curso novo + módulo planejado";
   let actionIconName = "folder";
   let panelTitle = "Gerar estrutura";
   let panelSubtitle = "";
   let submitLabel = "Gerar estrutura";
 
-  if (draft.courseFixed) {
-    if (!course) {
-      actionLabel = "criar este curso, módulos e lições";
-      actionSummary = "Curso, módulos e lições";
-      actionIconName = "folder";
-    } else if (!draft.moduleFixed) {
-      actionLabel = "criar módulos e lições neste curso";
-      actionSummary = "Módulos e lições neste curso";
-      actionIconName = "module";
-    } else if (!moduleValue) {
-      actionLabel = "criar este módulo e suas lições";
-      actionSummary = "Módulo e lições";
-      actionIconName = "module";
-    } else if (!draft.lessonFixed) {
-      actionLabel = "criar lições neste módulo";
-      actionSummary = "Lições neste módulo";
-      actionIconName = "lesson";
-    } else {
-      actionLabel = "atualizar esta lição e planejar suas microssequências";
-      actionHelpText = "";
-      actionSummary = "Lição e microssequências planejadas";
-      actionIconName = "lesson";
-    }
+  if (courseInputFilled && !course) {
+    actionLabel = moduleInputFilled
+      ? "criar este curso e este módulo"
+      : "criar este curso";
+    actionSummary = moduleInputFilled ? "Curso novo + módulo planejado" : "Curso novo";
+    actionIconName = "folder";
+  } else if (course && !moduleInputFilled) {
+    actionLabel = "complementar este curso com um módulo novo ou existente";
+    actionSummary = "Curso existente";
+    actionHelpText = "Escolha ou digite um módulo para complementar a árvore existente.";
+    actionIconName = "folder";
+  } else if (course && moduleInputFilled && !moduleValue) {
+    actionLabel = "criar este módulo neste curso";
+    actionSummary = "Curso existente + módulo novo";
+    actionHelpText = "Os módulos já existentes aparecem abaixo como contexto.";
+    actionIconName = "module";
+  } else if (course && moduleValue && !lessonInputFilled) {
+    actionLabel = "complementar este módulo";
+    actionSummary = "Módulo existente + novas lições";
+    actionHelpText = "Use os chips do escopo para orientar o que entra e o que não entra.";
+    actionIconName = "module";
+  } else if (course && moduleValue && lessonInputFilled && !lesson) {
+    actionLabel = "criar esta lição neste módulo";
+    actionSummary = "Módulo existente + lição nova";
+    actionIconName = "lesson";
+  } else if (course && moduleValue && lesson) {
+    actionLabel = "complementar esta lição e planejar suas microssequências";
+    actionSummary = "Lição existente + microssequências planejadas";
+    actionIconName = "lesson";
   }
 
   return {
@@ -128,11 +137,11 @@ export function resolveGenerationScopeState({
     moduleValue,
     lessons,
     lesson,
-    moduleToggleEnabled: !!course,
-    moduleInputEnabled: !!course && draft.moduleFixed,
-    lessonToggleEnabled: !!moduleValue,
-    lessonInputEnabled: !!moduleValue && draft.lessonFixed,
-    canSubmit: hasInputSource && pressedFieldsFilled && !invalidFixedHierarchy,
+    moduleToggleEnabled: true,
+    moduleInputEnabled: courseInputFilled,
+    lessonToggleEnabled: true,
+    lessonInputEnabled: courseInputFilled && moduleInputFilled,
+    canSubmit: requiredFieldsFilled && hasInputSource && !invalidFixedHierarchy,
     actionLabel,
     actionHelpText,
     actionSummary,
@@ -144,7 +153,7 @@ export function resolveGenerationScopeState({
     hasPrompt,
     hasAttachments,
     hasInputSource,
-    pressedFieldsFilled,
+    pressedFieldsFilled: requiredFieldsFilled,
     invalidFixedHierarchy
   };
 }

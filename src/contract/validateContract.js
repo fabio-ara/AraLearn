@@ -327,7 +327,7 @@ function validateModule(moduleValue, index, errors, moduleKeys, path) {
 
   assertAllowedFields(
     moduleValue,
-    new Set(["key", "title", "description", "lessons"]),
+    new Set(["key", "title", "description", "include", "exclude", "notes", "assessmentStyle", "lessons"]),
     currentPath,
     errors,
     "módulo"
@@ -335,6 +335,18 @@ function validateModule(moduleValue, index, errors, moduleKeys, path) {
 
   const title = ensureRequiredString(moduleValue.title, `${currentPath}.title`, "title", errors);
   const description = readOptionalString(moduleValue.description, `${currentPath}.description`, "description", errors);
+  const include = normalizeStringList(moduleValue.include, currentPath, "include", errors);
+  const exclude = normalizeStringList(moduleValue.exclude, currentPath, "exclude", errors);
+  const notes = readOptionalString(moduleValue.notes, `${currentPath}.notes`, "notes", errors);
+  const assessmentStyle = readOptionalString(
+    moduleValue.assessmentStyle,
+    `${currentPath}.assessmentStyle`,
+    "assessmentStyle",
+    errors
+  );
+  if (assessmentStyle && !["theoretical", "practical", "mixed"].includes(assessmentStyle)) {
+    errors.push(makeError(`${currentPath}.assessmentStyle`, 'Campo opcional inválido: "assessmentStyle".'));
+  }
   const key = moduleKeys.next(moduleValue.key, title || `module-${index + 1}`, currentPath, errors);
   const lessons = Array.isArray(moduleValue.lessons) ? moduleValue.lessons : [];
 
@@ -351,6 +363,10 @@ function validateModule(moduleValue, index, errors, moduleKeys, path) {
     key,
     title: title ?? "",
     ...(description ? { description } : {}),
+    ...(include.length ? { include } : {}),
+    ...(exclude.length ? { exclude } : {}),
+    ...(notes ? { notes } : {}),
+    ...(assessmentStyle ? { assessmentStyle } : {}),
     lessons: normalizedLessons
   };
 }

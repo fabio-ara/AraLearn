@@ -1,90 +1,97 @@
 # Guia de uso do app
 
-## Organização
+## 1. Criar trilha
 
-O AraLearn organiza o estudo em cinco níveis:
+A tela inicial do fluxo estrutural agora é o builder de escopo.
 
-```text
-curso -> módulo -> lição -> microssequência -> card
-```
+Você preenche:
 
-O curso e o módulo organizam o campo geral. A lição governa o recorte didático. A microssequência é a etapa de estudo. O card é a interação concreta.
+- título do curso
+- objetivo opcional
+- evidência principal
+- módulos
+- chips de `O que entra`
+- chips de `O que não entra`
+- observações
+- estilo de cobrança
 
-## Gerar estrutura
+Você também pode importar um JSON `aralearn.scope.v1`.
 
-O fluxo top-down começa no painel `Gerar estrutura`.
+## 2. Gerar trilha
 
-O usuário informa uma intenção e, quando necessário, anexa fontes. O motor prepara a entrada, escolhe o escopo e pede à IA uma estrutura planejada. O resultado esperado é uma trilha navegável até microssequências, não uma coleção completa de cards.
+Ao clicar em `Gerar trilha`, o app:
 
-Durante a geração, o app mostra um popup curto com as fases do motor. Fases locais, como ingestão, validação e aplicação do patch, aparecem separadas das chamadas ao modelo. Quando houver uso de API ou Codex local, o popup indica a chamada ao modelo naquela fase.
+1. valida o contrato de escopo
+2. chama o provider selecionado
+3. valida a saída top-down
+4. grava o projeto no contrato v2
 
-Uma geração top-down boa deixa claro:
+Resultado:
 
-- quais cursos, módulos e lições existem;
-- que microssequências pertencem a cada lição;
-- que etapa vem antes e depois;
-- quais microssequências ainda estão vazias;
-- que contexto semântico interno governa a lição.
+- curso criado
+- módulos e lições navegáveis
+- microssequências planejadas
+- nenhum card gerado ainda
 
-## Abrir uma microssequência vazia
+## 3. Navegar pela árvore
 
-Uma microssequência vazia não é erro. Ela é uma etapa planejada que ainda não virou cards.
+Depois do top-down, a lateral mostra:
 
-O usuário abre essa etapa e usa a segunda aba para pedir a materialização. Esse pedido é bottom-up: parte da microssequência atual, usa a lição como contexto e deve gerar cards apenas para aquela etapa.
+- curso
+- módulos
+- lições
+- microssequências
 
-## Aba de edição no runtime
+Cada microssequência exibe status:
 
-A aba de edição da microssequência comum mostra só os parâmetros necessários para o pedido:
+- `planned`
+- `generated`
+- `needs_review`
+- `ready`
 
-- pedido em linguagem natural;
-- ação;
-- tags;
-- materialização preferida;
-- anexos;
-- modelo e envio.
+## 4. Estudar uma microssequência
 
-As ações principais são:
+Ao abrir uma microssequência, você pode:
 
-- `Continuar na microssequência`: cria os primeiros cards se a microssequência estiver vazia ou cria mais cards se ela já tiver conteúdo.
-- `Corrigir microssequência`: pede uma correção local dos cards e da progressão da etapa.
-- `Ir a nova microssequência`: abre a próxima microssequência planejada pelo top-down, quando ela existe.
-- `Criar nova microssequência`: pede uma etapa extra depois da atual, útil quando falta um degrau intermediário.
+- `Gerar cards`
+- `Melhorar explicação`
+- `Mais prática`
+- `Criar complemento`
+- `Gerar próxima`
+- `Marcar pronta`
 
-`Ir a nova microssequência` é navegação. `Criar nova microssequência` é geração por IA.
+## 5. O que cada ação faz
 
-## Estudar e revisar
+### Gerar cards
 
-Na primeira aba, o usuário estuda os cards. Na segunda, intervém sobre a microssequência.
+Materializa a microssequência planejada.
 
-O ciclo comum é:
+### Melhorar explicação
 
-1. abrir microssequência planejada;
-2. pedir cards;
-3. estudar;
-4. corrigir se algo ficou ruim;
-5. continuar se faltou conteúdo;
-6. avançar para a próxima microssequência planejada.
+Cria uma nova versão completa da microssequência atual.
 
-## Tags
+### Mais prática
 
-As tags visíveis na aba de edição ancoram o pedido. Elas indicam referências locais da microssequência e ajudam o motor a selecionar contexto relevante.
+Mantém o mesmo tópico e amplia o treino.
 
-O usuário não precisa editar conceitos internos. As tags são a forma simples de controlar ancoragem sem expor a camada semântica completa.
+### Criar complemento
 
-## Materialização preferida
+Insere uma microssequência `support` logo depois da atual.
 
-Materialização preferida indica o formato desejado dos cards, como automático, parágrafo, pergunta, código, tabela, árvore, fluxograma, plano cartesiano ou matriz.
+### Gerar próxima
 
-Essa escolha não substitui a validação didática. Ela orienta o motor quando o formato escolhido ainda faz sentido para o conteúdo.
+Abre a próxima microssequência principal e tenta materializá-la sem exigir prompt livre.
 
-## Anexos
+## 6. Provider
 
-Anexos podem complementar o pedido. Eles são ingeridos antes da chamada de IA e entram como fonte ou contexto, conforme o fluxo.
+Na lateral de provider, você escolhe:
 
-Anexos não devem ser tratados como ordem para copiar documento. O objetivo é transformar material em estudo situado.
+- provider
+- modelo
+- densidade padrão
+- API key ou token
+- base URL
+- endpoint local do Codex
 
-## Uso sem conexão
+Também é possível verificar a saúde do bridge local do Codex.
 
-Projetos e cards já salvos ficam no dispositivo. Navegação, estudo e revisão de conteúdo existente não dependem de conexão contínua.
-
-Geração por IA remota exige internet. Provedor local exige configuração local.

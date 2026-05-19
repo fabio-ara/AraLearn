@@ -1,17 +1,6 @@
 # Arquitetura do AraLearn
 
-## Tese
-
-O AraLearn é um compilador didático local-first. Ele transforma intenção, fontes e contexto em uma trilha estudável, usando IA como componente de produção, não como centro absoluto da arquitetura.
-
-A arquitetura existe para manter uma distinção:
-
-- `top-down`: planeja a trilha até microssequências;
-- `bottom-up`: materializa ou corrige cards dentro de uma microssequência.
-
 ## Estrutura pública
-
-O contrato público segue esta árvore:
 
 ```text
 project
@@ -22,136 +11,121 @@ project
                 └── card
 ```
 
-Essa estrutura é persistível, exportável e compreensível pelo usuário. O motor interno pode ter artefatos mais ricos, mas a árvore pública precisa continuar pequena e legível.
+Essa árvore é o centro do storage e da navegação.
 
-## Top-down
+## Contratos
 
-O top-down recebe intenção, escopo e fontes. O resultado esperado é estrutura:
+O app trabalha com dois contratos principais:
 
-- cursos;
-- módulos;
-- lições;
-- microssequências planejadas;
-- metadados semânticos necessários para manter coerência.
+### `aralearn.scope.v1`
 
-Ele não deve pré-materializar a trilha inteira em cards. Isso preserva custo, reduz volume prematuro e permite ao usuário revisar o caminho antes de produzir conteúdo detalhado.
+Entrada pequena para o top-down:
 
-No motor, esse fluxo passa por fases como normalização de intenção, ingestão de fontes, construção de perfil avaliativo, planejamento, auditoria, reparo, compilação de patch, validação e aplicação.
+- curso
+- objetivo opcional
+- evidência prioritária
+- módulos
+- include/exclude por módulo
+- observações
+- estilo de cobrança
 
-Internamente, `structure_only` significa estrutura sem cards, não estrutura sem microssequências. Portanto, esse roteiro ainda deve passar por planejamento, auditoria e reparo de microssequências. Um top-down que pare em curso, módulo e lição é incompleto para o produto atual, porque deixa o bottom-up sem a unidade didática que ele deve materializar.
+### `aralearn.contract` v2
 
-## Bottom-up
+Projeto persistido:
 
-O bottom-up começa quando o usuário está dentro de uma microssequência.
+- cursos com `evidencePriority`
+- módulos com `include` e `exclude` normalizados
+- lições com `goal`
+- microssequências com `type`, `status`, `dependsOn`, `scopeRefs`
+- versões explícitas por microssequência
+- cards com `resourceType`
 
-Ele recebe:
+## Camadas de código
 
-- a microssequência atual;
-- a lição que a governa;
-- tags selecionadas;
-- pedido do usuário;
-- materialização preferida;
-- anexos;
-- configuração de provedor/modelo.
+### `src/domain/`
 
-Com isso, o motor cria ou corrige cards localmente. Se o usuário pedir uma microssequência extra, o alvo sobe para a lição, mas a inserção continua ancorada na microssequência atual.
+Responsável por:
 
-## DomainMap
+- validação do contrato de escopo
+- validação do contrato público v2
+- normalização de termos
+- cards
+- microssequência
+- versão
 
-`domainMap` é o contrato semântico interno da lição.
+### `src/generation/topDown/`
 
-Ele pode conter itens como:
+Pipeline permitido:
 
-- `id`;
-- `label`;
-- `kind`;
-- `priority`;
-- `status`;
-- `sourceRefs`;
-- `expectedEvidence`;
-- `commonErrors`;
-- `prerequisites`;
-- `representations`;
-- `assessmentFormats`;
-- `practiceVariants`.
+1. validar escopo
+2. montar prompt curto
+3. chamar provider estruturado
+4. validar saída planejada
+5. converter em patch simples de curso
+6. aplicar ao projeto
 
-Esse mapa não é a UI do usuário comum. Ele serve para o motor saber quais conceitos, procedimentos, contrastes, pré-requisitos e práticas pertencem à lição.
+### `src/generation/bottomUp/`
 
-## Metadados de microssequência
+Responsável por:
 
-A microssequência não carrega todo o `domainMap`. Ela carrega referências leves:
+- montar `ContextPacket`
+- gerar cards da microssequência
+- melhorar a versão atual
+- acrescentar prática
+- criar complemento `support`
+- gerar próxima microssequência principal
 
-- `domainRefs`: quais itens do mapa aquela etapa cobre;
-- `practiceVariantRefs`: quais variantes de prática ela pode materializar;
-- `didacticPurpose`: para que a etapa existe;
-- `coverageRole`: papel da etapa na progressão, como introduzir, explicar, praticar, discriminar ou consolidar.
+### `src/generation/providers/`
 
-Esses metadados ajudam a IA a continuar a trilha sem fugir do assunto. Também permitem auditoria de cobertura e reparo determinístico quando a resposta vem incompleta.
+Registry simples com providers:
 
-## Cards
+- `fake`
+- `gemini`
+- `codex-cli`
+- `openai-compatible`
 
-Cards materializam a microssequência. Eles devem ser pequenos, estudáveis e ligados à função local da etapa.
+### `src/ui/`
 
-Um card pode usar recursos como texto, pergunta, código, tabela, fluxograma, árvore, matriz ou plano cartesiano. O formato é meio; a função didática continua sendo decidida pela microssequência e pela lição.
+- `scopeBuilder/`: builder da trilha
+- `courseTree/`: navegação estrutural
+- `study/`: estudo e ações locais
+- `providers/`: configuração de provider
 
-## Fontes
+## Fluxo operacional
 
-Fontes entram primeiro como material bruto. A ingestão extrai texto útil, preserva avisos e transforma anexos em contexto para o motor.
+### Top-down
 
-O objetivo não é reproduzir a fonte inteira. O objetivo é converter fonte em trilha: conceitos, relações, exemplos, erros comuns e prática.
+```text
+scope contract -> planned course -> project patch -> project v2
+```
 
-## Patch e validação
+### Bottom-up
 
-O motor não deve aplicar texto bruto da IA diretamente no projeto.
-
-O caminho esperado é:
-
-1. compor pedido situado;
-2. receber estrutura ou cards;
-3. normalizar;
-4. auditar;
-5. reparar quando possível;
-6. compilar patch;
-7. validar patch;
-8. aplicar ao projeto.
-
-Esse processo evita que uma resposta malformada substitua o projeto inteiro ou corrompa a árvore.
-
-## Providers
-
-Providers executam chamadas a modelos remotos, modelos locais ou providers falsos de teste.
-
-Provider não decide didática. Ele recebe uma tarefa já governada por contrato, prompt policy, perfil didático e escopo. A troca de modelo pode mudar qualidade, custo e latência, mas não deve mudar a identidade pedagógica do produto.
-
-## UI comum
-
-A UI comum do bottom-up não expõe o `domainMap`.
-
-Ela mostra apenas:
-
-- pedido;
-- ação;
-- tags;
-- materialização preferida;
-- anexos;
-- modelo;
-- envio.
-
-Essa decisão reduz atrito e impede que o usuário comum edite metadados internos sem entender a consequência.
+```text
+selection -> context packet -> cards/version -> project update
+```
 
 ## Persistência
 
-O projeto fica salvo localmente. Configurações de provider e estado transitório de UI não pertencem ao contrato público exportável.
+O projeto continua local-first.
 
-O que deve persistir no projeto é a trilha, as microssequências, cards, fontes referenciadas e metadados didáticos que fazem parte do material. O que pertence à sessão de geração deve ficar fora do contrato público.
+Persistido:
 
-## Critério de coerência
+- `aralearn.project.v2`
+- `aralearn.progress.v2`
+- `aralearn.provider-settings.v2`
 
-A arquitetura está alinhada quando:
+## Recursos públicos de card
 
-- top-down produz microssequências planejadas, não cards em massa;
-- bottom-up materializa uma microssequência por vez;
-- `domainMap` governa por baixo sem aparecer como formulário comum;
-- cards são aplicados por patch validado;
-- o usuário consegue estudar, corrigir, continuar e avançar;
-- falhas de IA não corrompem o projeto.
+Recursos mínimos aceitos:
+
+- `say`
+- `table`
+- `code`
+- `flow`
+- `tree`
+- `graph`
+- `block_gap_fill`
+
+O renderer público existente foi preservado e o contrato novo adapta cards para esse runtime.
+

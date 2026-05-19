@@ -8,9 +8,10 @@
     "start": "node ./scripts/servePublic.js",
     "dev": "node ./scripts/servePublic.js",
     "test": "node --test",
-    "validate:example": "node ./src/contract/validateContract.cli.js ./docs/examples/aralearn-contract.renderable.json",
-    "harness:courseforge": "node ./scripts/runCourseForgeHarness.js",
-    "smoke:gemini": "node ./scripts/runGeminiAssistSmoke.js",
+    "validate:scope": "node ./src/generation/schemas/validateScopeContract.cli.js ./docs/examples/scope-contract.matematica-informatica.json",
+    "harness:scope": "node ./scripts/runScopePlanningHarness.js",
+    "harness:bottom-up": "node ./scripts/runBottomUpHarness.js",
+    "smoke:provider": "node ./scripts/runProviderSmoke.js",
     "codex:local": "node ./scripts/aralearnCodexBridge.mjs",
     "android:debug": "pwsh -NoProfile -File ./scripts/buildAndroidDebug.ps1",
     "pages:build": "pwsh -NoProfile -File ./scripts/buildPages.ps1"

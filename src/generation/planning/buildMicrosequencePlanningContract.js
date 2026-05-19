@@ -52,7 +52,7 @@ function buildRequestGovernance() {
       "selectedLessonTopicRefs",
       "request.userPrompt"
     ],
-    lessonGuidePriority: "sourceGuideStructured governa meta, notação e confusões prováveis",
+    lessonGuidePriority: 'sourceGuideStructured governa meta, "Incluir", "Não incluir" e "Não confundir com"',
     lessonTopicRefsPriority: "selectedLessonTopicRefs especializa escopo local",
     userPromptRole: "request.userPrompt apenas especializa o recorte atual"
   };

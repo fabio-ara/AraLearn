@@ -1,6 +1,7 @@
 import { isCodexLocalModel } from "../providers/codexCliConfig.js";
 import { resolveCourseForgeLaunchConfig } from "./courseForgeLaunchConfig.js";
 import { resolveCourseForgeProviderReadiness } from "./courseForgeGenerationViewModel.js";
+import { generateMicrosequenceProjectDocument } from "./projectGenerationRuntime.js";
 
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -290,7 +291,7 @@ export async function executeCourseForgeMicrosequenceGeneration({
   projectDocument = {},
   checkCodexLocalHealth,
   ingestAttachments,
-  runCourseForge
+  provider
 } = {}) {
   const readiness = await resolveCourseForgeProviderReadiness({
     selectedModel: assistConfig.model,
@@ -317,9 +318,16 @@ export async function executeCourseForgeMicrosequenceGeneration({
       lessonContext,
       ingestAttachments
     });
-    const courseForgeResult = await runCourseForge({
-      ...preparedIntervention.request,
-      projectDocument
+    const courseForgeResult = await generateMicrosequenceProjectDocument({
+      selection,
+      draft,
+      assistConfig,
+      projectDocument,
+      provider,
+      dependencyTitles,
+      selectedDidacticTypeId,
+      preferredContainerLabel,
+      ingestAttachments
     });
     return {
       status: "success",

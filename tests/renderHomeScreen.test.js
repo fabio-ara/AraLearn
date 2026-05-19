@@ -151,8 +151,8 @@ test("renderiza o painel contextual de geração com escopo top-down fixável", 
         lessonToggleEnabled: true,
         lessonInputEnabled: false,
         canSubmit: true,
-        actionLabel: "criar lições neste módulo",
-        actionSummary: "Lições neste módulo",
+        actionLabel: "complementar este módulo",
+        actionSummary: "Módulo existente + novas lições",
         actionIconName: "lesson"
       },
       modelOptions: [{ value: "gemini-2.5-flash", label: "Gemini 2.5 Flash" }],
@@ -164,20 +164,23 @@ test("renderiza o painel contextual de geração com escopo top-down fixável", 
 
   assert.match(html, /data-action="close-generation-panel"/);
   assert.match(html, /data-action="clear-generation-scope"/);
-  assert.match(html, /data-action="toggle-generate-level" data-level="course"/);
   assert.match(html, /data-field="generate-course-input"/);
   assert.match(html, /data-field="generate-module-input"/);
   assert.match(html, /data-field="generate-lesson-input"/);
+  assert.match(html, /data-field="generate-include-topic"/);
+  assert.match(html, /data-field="generate-exclude-topic"/);
   assert.match(html, /aria-label="Pedido, conteúdo ou orientação" title="Pedido, conteúdo ou orientação"/);
   assert.match(html, /Álgebra Linear/);
-  assert.match(html, /Lições neste módulo/);
+  assert.match(html, /Módulo existente \+ novas lições/);
   assert.match(html, /data-action="generate-structure"/);
   assert.match(html, /aria-label="Gerar estrutura" title="Gerar estrutura"/);
   assert.match(html, /data-action="open-generation-attachment-picker" title="Anexar documento" aria-label="Anexar documento"/);
   assert.match(html, /data-action="clear-prompt" title="Limpar prompt" aria-label="Limpar prompt"/);
-  assert.match(html, /data-action="open-assist-config" title="Abrir planejamento didático" aria-label="Abrir planejamento didático"/);
-  assert.match(html, /data-field="assist-api-key"/);
-  assert.match(html, /data-field="generate-lesson-input"[^>]+disabled aria-disabled="true"/);
+  assert.match(html, />Destino da árvore</);
+  assert.match(html, />Escopo do módulo</);
+  assert.match(html, /data-action="open-provider-config" title="Configurar IA" aria-label="Configurar IA"/);
+  assert.doesNotMatch(html, /data-field="assist-api-key"/);
+  assert.doesNotMatch(html, /Abrir planejamento didático/);
 });
 
 test("renderiza o painel contextual sem escopo fixado para geração global", () => {
@@ -207,8 +210,8 @@ test("renderiza o painel contextual sem escopo fixado para geração global", ()
         lessonToggleEnabled: false,
         lessonInputEnabled: false,
         canSubmit: false,
-        actionLabel: "criar curso completo",
-        actionSummary: "Curso, módulos e lições",
+        actionLabel: "criar este curso e planejar o primeiro módulo",
+        actionSummary: "Curso novo + módulo planejado",
         actionIconName: "folder"
       },
       modelOptions: [{ value: "gemini-2.5-flash", label: "Gemini 2.5 Flash" }],
@@ -218,9 +221,9 @@ test("renderiza o painel contextual sem escopo fixado para geração global", ()
     }
   });
 
-  assert.match(html, /Curso, módulos e lições/);
-  assert.match(html, /data-action="toggle-generate-level" data-level="course"[^>]+aria-pressed="false"/);
+  assert.match(html, /Curso novo \+ módulo planejado/);
   assert.match(html, /data-action="clear-generation-scope"[^>]+disabled aria-disabled="true"/);
+  assert.match(html, /data-field="generate-module-input"[^>]+disabled aria-disabled="true"/);
 });
 
 test("renderiza popup de progresso top-down com chamadas ao modelo", () => {
@@ -299,8 +302,8 @@ test("renderiza o painel contextual com curso fixado para geração estrutural d
         lessonToggleEnabled: false,
         lessonInputEnabled: false,
         canSubmit: false,
-        actionLabel: "criar módulos e lições neste curso",
-        actionSummary: "Módulos e lições neste curso",
+        actionLabel: "complementar este curso com um módulo novo ou existente",
+        actionSummary: "Curso existente",
         actionIconName: "module"
       },
       modelOptions: [{ value: "gemini-2.5-flash", label: "Gemini 2.5 Flash" }],
@@ -310,7 +313,7 @@ test("renderiza o painel contextual com curso fixado para geração estrutural d
     }
   });
 
-  assert.match(html, /Módulos e lições neste curso/);
+  assert.match(html, /Curso existente/);
   assert.match(html, /data-field="generate-course-input"[^>]+value="Lógica"/);
 });
 
@@ -356,9 +359,9 @@ test("renderiza o painel contextual com lição fixada no fluxo único do Course
         lessonToggleEnabled: true,
         lessonInputEnabled: true,
         canSubmit: false,
-        actionLabel: "atualizar esta lição e planejar suas microssequências",
+        actionLabel: "complementar esta lição e planejar suas microssequências",
         actionHelpText: "",
-        actionSummary: "Lição e microssequências planejadas",
+        actionSummary: "Lição existente + microssequências planejadas",
         actionIconName: "lesson",
         generationMode: "generate-top-down-structure",
         panelTitle: "Gerar estrutura",
@@ -373,7 +376,7 @@ test("renderiza o painel contextual com lição fixada no fluxo único do Course
   });
 
   assert.match(html, /Gerar estrutura/);
-  assert.match(html, /Lição e microssequências planejadas/);
+  assert.match(html, /Lição existente \+ microssequências planejadas/);
   assert.doesNotMatch(html, /A materialização dos cards acontece depois/);
   assert.match(html, /generate-action-summary-icon/);
   assert.match(html, /placeholder="Descreva o que você quer gerar neste escopo\."/);
@@ -382,80 +385,90 @@ test("renderiza o painel contextual com lição fixada no fluxo único do Course
   assert.doesNotMatch(html, /data-action="apply-assist"/);
 });
 
-test("renderiza o planejamento didático embutido no painel de geração quando expandido", () => {
+test("renderiza chips de contexto para complementar curso e módulo existentes", () => {
   const html = renderGenerationPanelOverlay({
     project: {
       contract: "aralearn.contract",
       version: 1,
       kind: "project",
-      courses: []
+      courses: [
+        {
+          key: "course-logic",
+          title: "Lógica",
+          modules: [
+            {
+              key: "module-intro",
+              title: "Introdução",
+              lessons: [
+                {
+                  key: "lesson-prop",
+                  title: "Proposições",
+                  microsequences: [{ key: "micro-a", title: "Base proposicional" }]
+                }
+              ]
+            }
+          ]
+        }
+      ]
     },
     editorSupport: {
       generationDraft: {
-        courseFixed: false,
-        moduleFixed: false,
-        lessonFixed: false,
-        courseInput: "",
-        moduleInput: "",
-        lessonInput: "",
+        courseFixed: true,
+        moduleFixed: true,
+        lessonFixed: true,
+        courseInput: "Lógica",
+        courseKey: "course-logic",
+        moduleInput: "Introdução",
+        moduleKey: "module-intro",
+        lessonInput: "Proposições",
+        lessonKey: "lesson-prop",
+        includeTopics: ["conectivos"],
+        excludeTopics: ["predicados"],
         promptText: "",
         attachments: []
       },
       generationUiState: {
-        modules: [],
-        lessons: [],
-        moduleToggleEnabled: false,
-        moduleInputEnabled: false,
-        lessonToggleEnabled: false,
-        lessonInputEnabled: false,
+        course: {
+          key: "course-logic",
+          title: "Lógica",
+          modules: [{ key: "module-intro", title: "Introdução" }]
+        },
+        moduleValue: {
+          key: "module-intro",
+          title: "Introdução",
+          lessons: [{ key: "lesson-prop", title: "Proposições" }]
+        },
+        lesson: {
+          key: "lesson-prop",
+          title: "Proposições",
+          microsequences: [{ key: "micro-a", title: "Base proposicional" }]
+        },
+        modules: [{ key: "module-intro", title: "Introdução" }],
+        lessons: [{ key: "lesson-prop", title: "Proposições" }],
+        moduleToggleEnabled: true,
+        moduleInputEnabled: true,
+        lessonToggleEnabled: true,
+        lessonInputEnabled: true,
         canSubmit: false,
-        actionLabel: "criar curso completo",
-        actionSummary: "Curso, módulos e lições",
-        actionIconName: "folder"
+        actionLabel: "complementar este módulo",
+        actionSummary: "Módulo existente + novas lições",
+        actionIconName: "module"
       },
       selectedModel: "gemini-2.5-flash",
       modelOptions: [{ value: "gemini-2.5-flash", label: "Gemini 2.5 Flash" }],
       apiKey: "segredo",
-      localProviderStatus: { ok: false, checking: false, error: "" },
-      assistConfigExpanded: true,
-      didacticProfileId: "aralearn.engine.ads.general.v3",
-      profileTuning: {
-        targetStudentProfile: "",
-        courseModel: {
-          description: "",
-          learningTrail: "",
-          microsequenceProgression: ""
-        },
-        minMicrosequences: 3,
-        targetMicrosequences: 5,
-        maxMicrosequences: 8,
-        requireCoreCoverageBeforeExtensions: true
-      },
-      didacticProfileOptions: [{ value: "aralearn.engine.ads.general.v3", label: "Geral" }],
-      profileEditor: {
-        active: false,
-        draftLabel: "",
-        canEdit: false,
-        canDelete: false,
-        canSave: false
-      }
+      localProviderStatus: { ok: false, checking: false, error: "" }
     }
   });
 
-  assert.match(html, /generate-assist-config-shell/);
-  assert.match(html, />Planejamento didático</);
-  assert.match(html, /data-field="assist-api-key"/);
-  assert.match(html, /value="segredo"/);
-  assert.match(html, /data-field="assist-config-course-model-description"/);
-  assert.match(html, /data-field="assist-config-profile"/);
-  assert.match(html, /data-action="open-assist-config" title="Ocultar planejamento didático" aria-label="Ocultar planejamento didático"/);
-  assert.ok(
-    html.indexOf('data-action="clear-prompt"') < html.indexOf('data-action="open-assist-config"')
-  );
-  assert.ok(
-    html.indexOf('data-action="open-assist-config"') < html.indexOf('data-field="assist-model"')
-  );
-  assert.ok(
-    html.indexOf('data-field="generate-course-input"') < html.indexOf('data-field="assist-config-course-model-description"')
-  );
+  assert.match(html, />Destino da árvore</);
+  assert.match(html, />Escopo do módulo</);
+  assert.match(html, /conectivos/);
+  assert.match(html, /predicados/);
+  assert.match(html, /data-action="open-provider-config" title="Configurar IA" aria-label="Configurar IA"/);
+  assert.doesNotMatch(html, /data-field="assist-api-key"/);
+  assert.doesNotMatch(html, /Já existe neste curso/);
+  assert.doesNotMatch(html, /Já existe neste módulo/);
+  assert.doesNotMatch(html, /Micros já planejadas nesta lição/);
+  assert.doesNotMatch(html, /Planejamento didático/);
 });

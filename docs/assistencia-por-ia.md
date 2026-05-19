@@ -2,98 +2,75 @@
 
 ## Papel da IA
 
-A IA no AraLearn executa tarefas didáticas situadas. Ela não é chat geral, não é autoridade final e não deve decidir a arquitetura sozinha.
+A IA no AraLearn executa tarefas pequenas e situadas. Ela não recebe o projeto inteiro nem decide a didática sozinha.
 
-O produto prepara o pedido, define escopo, injeta contexto, exige contrato, valida resposta e aplica patch. A IA produz dentro desse percurso.
+O app a chama em dois contextos:
 
-## Dois fluxos
+- planejamento estrutural do curso
+- materialização local de uma microssequência
 
-### Top-down
+## Top-down
 
-No top-down, a IA ajuda a transformar intenção e fontes em estrutura:
+No top-down, a IA recebe `aralearn.scope.v1` e devolve:
 
-- curso;
-- módulo;
-- lição;
-- microssequência planejada;
-- mapa semântico interno da lição.
+- módulos preservados
+- lições
+- microssequências planejadas
+- objetivos
+- dependências locais
 
-O objetivo é criar uma trilha revisável. Cards ficam para o bottom-up.
+Restrições:
 
-Quando o motor usar a profundidade interna `structure_only`, ela deve ser lida como "sem cards". Ela não autoriza pular microssequências; a saída top-down válida precisa conter as etapas planejadas que o usuário comum vai abrir no runtime.
+- sem cards
+- sem expansão fora de `include`
+- sem tópicos de `exclude`
+- sem módulos novos
 
-### Bottom-up
+## Bottom-up
 
-No bottom-up, a IA atua dentro de uma microssequência.
+No bottom-up, a IA recebe apenas um `ContextPacket` local.
 
-As ações comuns são:
+Ela pode:
 
-- criar os primeiros cards de uma microssequência vazia;
-- continuar uma microssequência que já tem cards;
-- corrigir uma microssequência;
-- criar uma microssequência extra depois da atual.
+- gerar cards
+- melhorar explicação
+- acrescentar prática
+- criar complemento
+- gerar próxima
 
-Avançar para a próxima microssequência planejada é navegação, não chamada de IA.
+Cada operação cria uma nova versão da microssequência, sem apagar a anterior.
 
-## Pedido local
+## Providers
 
-Um pedido bottom-up combina:
+O runtime atual suporta:
 
-- texto do usuário;
-- ação escolhida;
-- tags da microssequência;
-- materialização preferida;
-- anexos ingeridos;
-- contexto da lição;
-- metadados internos como `domainMap` e `domainRefs`.
+- `Gemini`
+- `Codex local`
+- `OpenAI compatível`
+- `Fake`
 
-O usuário comum vê só os parâmetros operacionais. O motor acrescenta a semântica interna.
+Todos expõem a mesma ideia de operação estruturada.
 
-## Como a IA se mantém na trilha
+## Modos do Codex local
 
-O motor usa a estrutura do projeto para restringir a chamada:
+O bridge local do Codex aceita:
 
-- a seleção atual indica curso, módulo, lição e microssequência;
-- a lição fornece governança e `domainMap`;
-- a microssequência fornece `domainRefs`, `coverageRole` e propósito;
-- as tags indicam ancoragem local;
-- o contrato limita formatos de cards;
-- auditorias verificam coerência, fonte, progressão e patch.
+- `plan-scope`
+- `generate-microsequence`
+- `improve-microsequence`
+- `add-practice`
+- `create-support`
+- `generate-next`
 
-Isso permite usar modelos mais baratos em tarefas delimitadas sem entregar toda a didática ao prompt livre.
+## Segurança estrutural
 
-## Recursos permitidos
+O app continua aplicando validação local depois da resposta da IA:
 
-Na geração de cards, a IA recebe um envelope fechado de recursos permitidos.
+- escopo
+- planejamento top-down
+- cards
+- densidade mínima por microssequência
+- tipo de recurso permitido
 
-Se `graph` estiver nesse envelope, a IA pode usá-lo para grafos matemáticos: vértices, arestas, pesos e destaques.
+Quando a validação falha, o projeto anterior é preservado.
 
-Mesmo nesse caso:
-
-- `table` continua sendo o recurso para matriz de adjacência, tabela de graus e tabela de Dijkstra;
-- `say` continua sendo o recurso para fórmulas e explicações;
-- `flow` continua sendo fluxograma, não grafo matemático.
-
-Se `graph` não estiver permitido no envelope, a IA não deve usá-lo.
-
-## Correção
-
-`Corrigir microssequência` deve atuar localmente. A IA pode reescrever cards, preencher lacunas, ajustar progressão ou trocar materialização inadequada, mas não deve replanejar a lição inteira sem necessidade.
-
-## Continuação
-
-`Continuar na microssequência` cria cards adicionais dentro da etapa atual. Em uma microssequência vazia, isso equivale a criar os primeiros cards.
-
-## Criar microssequência extra
-
-`Criar nova microssequência` usa a capacidade de expansão local do motor. Ela deve inserir uma etapa depois da atual, mantendo retorno explícito à trilha planejada.
-
-Essa ação é útil quando a próxima microssequência planejada pressupõe um degrau que o usuário ainda não tem.
-
-## Falhas
-
-Uma falha de provider, resposta inválida ou patch reprovado não deve corromper o projeto. O app deve preservar o estado anterior e mostrar erro operacional compreensível.
-
-## Autoria
-
-A assistência por IA só faz sentido se o usuário continua podendo revisar e recusar. O AraLearn usa IA para diminuir atrito, não para esconder decisões didáticas.

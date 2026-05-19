@@ -21,6 +21,7 @@ import {
   resolveGenerationScopeState
 } from "./courseForgeGenerationViewModel.js";
 import { createCourseForgeGenerationProgressState } from "./courseForgeProgressViewModel.js";
+import { generateStructureProjectDocument } from "./projectGenerationRuntime.js";
 
 const DEFAULT_ASSIST_MODEL = "gemini-2.5-flash";
 const INVALID_STRUCTURE_REQUEST_MESSAGE =
@@ -60,6 +61,10 @@ function cloneGenerationDraft(draft = {}) {
     moduleKey: text(draft.moduleKey),
     lessonInput: typeof draft.lessonInput === "string" ? draft.lessonInput : "",
     lessonKey: text(draft.lessonKey),
+    includeTopics: Array.isArray(draft.includeTopics) ? draft.includeTopics.map((item) => text(item)).filter(Boolean) : [],
+    excludeTopics: Array.isArray(draft.excludeTopics) ? draft.excludeTopics.map((item) => text(item)).filter(Boolean) : [],
+    pendingIncludeTopic: typeof draft.pendingIncludeTopic === "string" ? draft.pendingIncludeTopic : "",
+    pendingExcludeTopic: typeof draft.pendingExcludeTopic === "string" ? draft.pendingExcludeTopic : "",
     promptText: typeof draft.promptText === "string" ? draft.promptText : "",
     attachments: Array.isArray(draft.attachments) ? [...draft.attachments] : [],
     lastResult: draft.lastResult || null,
@@ -303,8 +308,8 @@ export async function executeCourseForgeStructureGeneration({
   findLesson,
   checkCodexLocalHealth,
   ingestAttachments,
-  runCourseForge,
-  onProgress
+  onProgress,
+  provider
 } = {}) {
   const syncedDraft = syncCourseForgeGenerationDraftHierarchy({
     draft,
@@ -359,20 +364,18 @@ export async function executeCourseForgeStructureGeneration({
   }
 
   try {
-    const preparedGeneration = await prepareCourseForgeStructureGeneration({
-      scopeState,
+    const courseForgeResult = await generateStructureProjectDocument({
       draft: syncedDraft,
-      assistConfig,
-      ingestAttachments
-    });
-    const courseForgeResult = await runCourseForge({
-      ...preparedGeneration.request,
+      scopeState,
       projectDocument,
+      assistConfig,
+      ingestAttachments,
+      provider,
       onProgress
     });
     const applied = buildAppliedCourseForgeGeneration({
       courseForgeResult,
-      ingestedAttachments: preparedGeneration.ingestedAttachments,
+      ingestedAttachments: { warnings: [] },
       scopeState
     });
     const successState = buildCourseForgeGenerationSuccessState({

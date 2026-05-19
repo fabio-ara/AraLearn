@@ -9,13 +9,35 @@ export const SOURCE_GUIDE_FIELD_DEFINITIONS_BY_LEVEL = Object.freeze({
   [SOURCE_GUIDE_LEVELS.MODULE]: Object.freeze([]),
   [SOURCE_GUIDE_LEVELS.LESSON]: Object.freeze([
     { name: "lessonGoal", label: "Meta da lição", iconName: "intent", placeholder: "O que esta lição precisa entregar." },
-    { name: "notationRules", label: "Sinais e notação", iconName: "title", placeholder: "Símbolos e leituras obrigatórias." },
-    { name: "commonErrors", label: "Confusões prováveis", iconName: "draft-state", placeholder: "Erros que a lição deve prevenir." }
+    { name: "notationRules", label: "Incluir", iconName: "title", placeholder: "Lista do que entra nesta lição." },
+    { name: "outOfScopeRules", label: "Não incluir", iconName: "module", placeholder: "Lista do que não entra no módulo." },
+    { name: "commonErrors", label: "Não confundir com", iconName: "draft-state", placeholder: "Principal confusão que a lição precisa evitar." }
   ])
 });
 
 function normalizeText(value) {
   return typeof value === "string" ? value.trim() : "";
+}
+
+function normalizeChipList(value) {
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => normalizeText(item))
+      .filter(Boolean)
+      .filter((item, index, list) => list.findIndex((candidate) => candidate.toLowerCase() === item.toLowerCase()) === index);
+  }
+  return normalizeText(value)
+    .split(/\s*[\n;,]\s*/g)
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .filter((item, index, list) => list.findIndex((candidate) => candidate.toLowerCase() === item.toLowerCase()) === index);
+}
+
+function normalizeStructuredFieldValue(fieldName, value) {
+  if (fieldName === "notationRules" || fieldName === "outOfScopeRules") {
+    return normalizeChipList(value).join(", ");
+  }
+  return normalizeText(value);
 }
 
 function getFieldDefinitions(level = SOURCE_GUIDE_LEVELS.LESSON) {
@@ -26,7 +48,7 @@ export function normalizeSourceGuideStructured(value, { level = SOURCE_GUIDE_LEV
   const source = value && typeof value === "object" && !Array.isArray(value) ? value : {};
   return Object.fromEntries(
     getFieldDefinitions(level)
-      .map((field) => [field.name, normalizeText(source[field.name])])
+      .map((field) => [field.name, normalizeStructuredFieldValue(field.name, source[field.name])])
       .filter(([, fieldValue]) => fieldValue)
   );
 }
@@ -64,8 +86,11 @@ export function buildSourceGuideEditorFields(sourceGuideStructured = {}, { level
     label: field.label,
     iconName: field.iconName,
     placeholder: field.placeholder,
-    type: "textarea",
-    value: normalizeText(normalized[field.name]),
+    type: field.name === "notationRules" || field.name === "outOfScopeRules" ? "tokenlist" : "textarea",
+    value:
+      field.name === "notationRules" || field.name === "outOfScopeRules"
+        ? normalizeChipList(normalized[field.name])
+        : normalizeText(normalized[field.name]),
     maxLength: level === SOURCE_GUIDE_LEVELS.COURSE ? 160 : level === SOURCE_GUIDE_LEVELS.MODULE ? 140 : 120
   }));
 }

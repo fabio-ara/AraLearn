@@ -1,5 +1,5 @@
 import { isPracticeCoverageRole } from "../domain/lessonDomainModel.js";
-import { listCourseForgeSourceClaims, listCourseForgeSourceSpans, listCourseForgeSources } from "../courseForge/courseForgeSourceLedger.js";
+import { listSourceClaims, listSourceSpans, listSources } from "../sources/sourceLedger.js";
 import { text } from "./didacticText.js";
 
 function normalizeArray(value) {
@@ -223,9 +223,9 @@ export function buildSimpleCardPlan(microsequence = {}, lessonPlan = {}, sourceL
   const allowedResourceTypes = pickAllowedResourceTypes(lessonPlan);
   const expositoryResourceType = pickExpositoryResourceType(allowedResourceTypes);
   const practiceResourceType = pickPracticeResourceType(allowedResourceTypes);
-  const sourceRefs = listCourseForgeSources(sourceLedger).map((item) => text(item?.sourceId || item?.id)).filter(Boolean);
-  const sourceSpans = listCourseForgeSourceSpans(sourceLedger);
-  const sourceClaims = listCourseForgeSourceClaims(sourceLedger);
+  const sourceRefs = listSources(sourceLedger).map((item) => text(item?.sourceId || item?.id)).filter(Boolean);
+  const sourceSpans = listSourceSpans(sourceLedger);
+  const sourceClaims = listSourceClaims(sourceLedger);
   const firstSourceId = sourceRefs[0] || "";
   const firstSpanId = sourceSpans.find((span) => text(span?.sourceId) === firstSourceId)?.spanId || sourceSpans[0]?.spanId || "";
   const firstClaimId = sourceClaims.find((claim) => text(claim?.spanId) === firstSpanId)?.claimId || "";
