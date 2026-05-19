@@ -1,76 +1,94 @@
 # Assistência por IA
 
+A assistência por IA no AraLearn existe para reduzir atrito na autoria e na revisão de trilhas. Ela é situada, contratual e validada localmente.
+
 ## Papel da IA
 
-A IA no AraLearn executa tarefas pequenas e situadas. Ela não recebe o projeto inteiro nem decide a didática sozinha.
+A IA pode ajudar em dois momentos:
 
-O app a chama em dois contextos:
+1. planejar a estrutura de um curso até microssequências;
+2. gerar ou revisar cards dentro de uma microssequência específica.
 
-- planejamento estrutural do curso
-- materialização local de uma microssequência
+Ela não deve receber liberdade para reescrever o projeto inteiro em toda operação. Também não deve substituir a decisão do usuário sobre escopo, aceite e revisão.
 
-## Top-down
+## Planejamento estrutural
 
-No top-down, a IA recebe `aralearn.scope.v1` e devolve:
+No planejamento estrutural, a IA recebe `aralearn.scope.v1`.
 
-- módulos preservados
-- lições
-- microssequências planejadas
-- objetivos
-- dependências locais
+Ela deve produzir:
 
-Restrições:
+- lições;
+- microssequências planejadas;
+- objetivos;
+- dependências locais;
+- organização coerente dentro do escopo informado.
 
-- sem cards
-- sem expansão fora de `include`
-- sem tópicos de `exclude`
-- sem módulos novos
+Restrições esperadas:
 
-## Bottom-up
+- respeitar `include`;
+- evitar tópicos declarados em `exclude`;
+- preservar módulos informados;
+- não gerar cards nessa etapa;
+- não transformar observações em promessa de completude.
 
-No bottom-up, a IA recebe apenas um `ContextPacket` local.
+## Materialização local
+
+Na materialização local, a IA recebe um pacote de contexto da microssequência selecionada.
 
 Ela pode:
 
-- gerar cards
-- melhorar explicação
-- acrescentar prática
-- criar complemento
-- gerar próxima
+- gerar cards;
+- melhorar explicação;
+- acrescentar prática;
+- criar complemento;
+- gerar a próxima microssequência planejada.
 
-Cada operação cria uma nova versão da microssequência, sem apagar a anterior.
+Cada intervenção cria uma versão nova. A versão anterior permanece disponível.
 
 ## Providers
 
-O runtime atual suporta:
+Providers suportados pelo desenho técnico:
 
-- `Gemini`
-- `Codex local`
-- `OpenAI compatível`
-- `Fake`
+- Gemini;
+- Codex local;
+- OpenAI compatível;
+- Fake provider para testes.
 
-Todos expõem a mesma ideia de operação estruturada.
+A interface de provider deve permitir trocar a origem da resposta sem alterar o contrato do domínio.
 
 ## Modos do Codex local
 
-O bridge local do Codex aceita:
+O bridge local do Codex aceita os modos:
 
-- `plan-scope`
-- `generate-microsequence`
-- `improve-microsequence`
-- `add-practice`
-- `create-support`
-- `generate-next`
+- `plan-scope`;
+- `generate-microsequence`;
+- `improve-microsequence`;
+- `add-practice`;
+- `create-support`;
+- `generate-next`.
+
+Endpoint padrão:
+
+```text
+http://127.0.0.1:4183/assist
+```
 
 ## Segurança estrutural
 
-O app continua aplicando validação local depois da resposta da IA:
+O AraLearn aplica validação local depois de cada resposta.
 
-- escopo
-- planejamento top-down
-- cards
-- densidade mínima por microssequência
-- tipo de recurso permitido
+A validação verifica:
 
-Quando a validação falha, o projeto anterior é preservado.
+- estrutura do projeto;
+- campos obrigatórios;
+- status e tipo de microssequência;
+- cards e recursos permitidos;
+- conteúdo mínimo para materialização.
 
+Quando uma resposta não passa pela validação, o projeto anterior é preservado. A IA sugere e produz, mas não tem permissão automática para corromper o documento local.
+
+## Privacidade e controle
+
+O projeto é local-first. O envio de conteúdo a uma API remota depende do provider configurado pelo usuário.
+
+O app deve deixar claro que operações remotas podem enviar o contexto necessário para a geração. Quando o usuário optar por provider local, a chamada é feita ao bridge local configurado.
