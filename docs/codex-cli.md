@@ -1,35 +1,57 @@
 # Codex CLI local
 
+O provider `codex-cli` permite usar o AraLearn com um bridge HTTP local, sem depender de uma API remota para as operações de geração.
+
 ## Finalidade
 
-O bridge local do Codex permite usar o mesmo fluxo estrutural e o mesmo bottom-up do app sem passar por uma API remota.
+O bridge local recebe uma operação estruturada do AraLearn, encaminha o prompt ao Codex CLI e devolve uma resposta para validação pelo app.
 
-Endpoint padrão:
+Ele usa os mesmos modos esperados pelos providers remotos, o que preserva a arquitetura de geração.
 
-- `http://127.0.0.1:4183/assist`
+## Endpoints
+
+Endpoint de assistência:
+
+```text
+http://127.0.0.1:4183/assist
+```
 
 Health check:
 
-- `http://127.0.0.1:4183/health`
+```text
+http://127.0.0.1:4183/health
+```
 
 ## Modos suportados
 
-- `plan-scope`
-- `generate-microsequence`
-- `improve-microsequence`
-- `add-practice`
-- `create-support`
-- `generate-next`
+- `plan-scope`;
+- `generate-microsequence`;
+- `improve-microsequence`;
+- `add-practice`;
+- `create-support`;
+- `generate-next`.
 
-## Subir o bridge
+## Executar
 
 ```bash
 npm run codex:local
 ```
 
-## Observações
+Depois disso, configure o provider no app usando o endpoint local.
 
-- o bridge envia prompts longos ao Codex via `stdin`;
-- quando o prompt fica grande demais, ele pode usar arquivo temporário local;
-- a UI do app permite configurar endpoint, token e modelo no painel de provider.
+## Configuração
 
+A interface do AraLearn permite informar:
+
+- endpoint;
+- token, quando usado;
+- modelo;
+- densidade padrão;
+- demais parâmetros do provider.
+
+## Observações técnicas
+
+- O bridge envia prompts ao Codex via `stdin`.
+- Quando necessário, o bridge pode usar arquivo temporário local para prompts maiores.
+- A resposta ainda passa pela validação do AraLearn antes de entrar no projeto.
+- O uso local não elimina a necessidade de revisar o conteúdo gerado.
