@@ -8,6 +8,7 @@
     "start": "node ./scripts/servePublic.js",
     "dev": "node ./scripts/servePublic.js",
     "test": "node --test",
+    "validate:example": "node ./scripts/validateExampleProject.js",
     "validate:scope": "node ./src/generation/schemas/validateScopeContract.cli.js ./docs/examples/scope-contract.matematica-informatica.json",
     "harness:scope": "node ./scripts/runScopePlanningHarness.js",
     "harness:bottom-up": "node ./scripts/runBottomUpHarness.js",
