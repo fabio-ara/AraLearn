@@ -56,7 +56,7 @@ As microssequências entram no projeto com:
 
 ## Contrato público
 
-O storage agora usa `aralearn.contract` versão 2.
+O storage agora usa `aralearn.contract` versão 1.
 
 Pontos principais:
 
@@ -101,11 +101,11 @@ O `codex-cli` continua funcionando via bridge local e usa os mesmos modos estrut
 
 ## UI
 
-A home nova foi substituída por três superfícies pequenas:
+A casca de produto atual voltou a ser a shell restaurada do editor, com três superfícies principais de geração:
 
 - `scopeBuilder`: curso e módulos com chips
-- `courseTree`: árvore navegável da trilha
-- `study`: painel da microssequência selecionada
+- árvore navegável da trilha dentro de `lessonEditorApp`
+- painel de estudo e ações locais da microssequência selecionada
 
 Não existe mais o fluxo principal baseado em textarea central e anexos obrigatórios para gerar estrutura.
 
@@ -116,7 +116,7 @@ Não existe mais o fluxo principal baseado em textarea central e anexos obrigat�
 - `domainMap` como eixo obrigatório do top-down
 - `SourceLedger` como dependência estrutural
 - geração estrutural por prompt livre e anexo bruto
-- UI antiga de geração baseada em `Gerar estrutura`
+- painel de planejamento didático separado do fluxo estrutural de produto
 
 ## O que foi preservado
 
@@ -127,3 +127,6 @@ Não existe mais o fluxo principal baseado em textarea central e anexos obrigat�
 - bridge local do Codex
 - harnesses e testes de fluxo novo
 
+Observação:
+
+- alguns módulos de integração ainda preservam o prefixo `CourseForge` no nome por continuidade de código, mas eles apenas adaptam a UI restaurada ao runtime direto atual
