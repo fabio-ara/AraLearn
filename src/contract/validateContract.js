@@ -11,6 +11,8 @@ export const CONTRACT_NAME = "aralearn.contract";
 export const CONTRACT_VERSION = 1;
 export const CONTRACT_KIND_PROJECT = "project";
 const CONTRACT_SCOPES = new Set(["course", "module", "lesson", "microsequence"]);
+const CONTRACT_MICROSEQUENCE_STATUSES = new Set(["draft", "planned", "generated", "needs_review", "ready"]);
+const CONTRACT_MICROSEQUENCE_TYPES = new Set(["main", "support"]);
 
 function isPlainObject(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
@@ -67,6 +69,69 @@ function normalizeStringList(value, path, fieldName, errors) {
         return "";
       }
       return item.trim();
+    })
+    .filter(Boolean);
+}
+
+function normalizeScopeChipList(value, path, fieldName, errors) {
+  if (value === undefined) {
+    return [];
+  }
+  if (!Array.isArray(value)) {
+    errors.push(makeError(path, `Campo opcional inválido: "${fieldName}".`));
+    return [];
+  }
+
+  return value
+    .map((item, index) => {
+      if (typeof item === "string" && item.trim()) {
+        return item.trim();
+      }
+      if (isPlainObject(item) && typeof item.label === "string" && item.label.trim()) {
+        return item.label.trim();
+      }
+      errors.push(makeError(`${path}.${fieldName}[${index}]`, "Valor deve ser texto ou objeto com label."));
+      return "";
+    })
+    .filter(Boolean);
+}
+
+function normalizeVersions(value, path, errors) {
+  if (value === undefined) {
+    return [];
+  }
+  if (!Array.isArray(value)) {
+    errors.push(makeError(path, 'Campo opcional inválido: "versions".'));
+    return [];
+  }
+
+  return value
+    .map((item, index) => {
+      if (!isPlainObject(item)) {
+        errors.push(makeError(`${path}[${index}]`, "Versão deve ser um objeto."));
+        return null;
+      }
+
+      const key = ensureRequiredString(item.key, `${path}[${index}].key`, "key", errors);
+      const cards = Array.isArray(item.cards) ? item.cards : [];
+      if (!Array.isArray(item.cards)) {
+        errors.push(makeError(`${path}[${index}].cards`, 'Campo obrigatório inválido: "cards".'));
+      }
+      const cardKeys = createKeyGenerator("card");
+      const normalizedCards = cards
+        .map((card, cardIndex) => validateCard(card, cardIndex, errors, cardKeys, `${path}[${index}]`))
+        .filter(Boolean);
+
+      return {
+        key: key ?? `version-${index + 1}`,
+        ...(typeof item.createdAt === "string" && item.createdAt.trim() ? { createdAt: item.createdAt.trim() } : {}),
+        ...(typeof item.source === "string" && item.source.trim() ? { source: item.source.trim() } : {}),
+        ...(typeof item.mode === "string" && item.mode.trim() ? { mode: item.mode.trim() } : {}),
+        ...(typeof item.userRequest === "string" && item.userRequest.trim() ? { userRequest: item.userRequest.trim() } : {}),
+        ...(typeof item.summary === "string" && item.summary.trim() ? { summary: item.summary.trim() } : {}),
+        ...(isPlainObject(item.validationReport) ? { validationReport: structuredClone(item.validationReport) } : {}),
+        cards: normalizedCards
+      };
     })
     .filter(Boolean);
 }
@@ -157,14 +222,22 @@ function validateMicrosequence(microsequence, index, errors, microKeys, path) {
     new Set([
       "key",
       "title",
+      "goal",
       "description",
       "tags",
+      "type",
       "status",
       "included",
+      "dependsOn",
+      "scopeRefs",
+      "parentMicrosequenceKey",
+      "supportReason",
       "domainRefs",
       "practiceVariantRefs",
       "didacticPurpose",
       "coverageRole",
+      "versions",
+      "activeVersionKey",
       "cards"
     ]),
     currentPath,
@@ -173,20 +246,53 @@ function validateMicrosequence(microsequence, index, errors, microKeys, path) {
   );
 
   const title = ensureRequiredString(microsequence.title, `${currentPath}.title`, "title", errors);
-  const description = readOptionalString(microsequence.description, `${currentPath}.description`, "description", errors);
+  const goal = readOptionalString(microsequence.goal, `${currentPath}.goal`, "goal", errors);
+  const description = readOptionalString(microsequence.description, `${currentPath}.description`, "description", errors) || goal;
   const tags = normalizeStringList(microsequence.tags, currentPath, "tags", errors);
+  const type = readOptionalString(microsequence.type, `${currentPath}.type`, "type", errors);
   const status = typeof microsequence.status === "string" ? microsequence.status.trim() : "";
-  if (status !== "draft" && status !== "ready") {
+  if (!CONTRACT_MICROSEQUENCE_STATUSES.has(status)) {
     errors.push(makeError(`${currentPath}.status`, 'Campo obrigatório inválido: "status".'));
+  }
+  if (type && !CONTRACT_MICROSEQUENCE_TYPES.has(type)) {
+    errors.push(makeError(`${currentPath}.type`, 'Campo opcional inválido: "type".'));
   }
   const includedValue = microsequence.included;
   if (includedValue !== undefined && typeof includedValue !== "boolean") {
     errors.push(makeError(`${currentPath}.included`, 'Campo opcional inválido: "included".'));
   }
+  const dependsOn = normalizeStringList(microsequence.dependsOn, currentPath, "dependsOn", errors);
+  const scopeRefs = normalizeStringList(microsequence.scopeRefs, currentPath, "scopeRefs", errors);
+  const parentMicrosequenceKey = readOptionalString(
+    microsequence.parentMicrosequenceKey,
+    `${currentPath}.parentMicrosequenceKey`,
+    "parentMicrosequenceKey",
+    errors
+  );
+  const supportReason = readOptionalString(
+    microsequence.supportReason,
+    `${currentPath}.supportReason`,
+    "supportReason",
+    errors
+  );
+  const versions = normalizeVersions(microsequence.versions, `${currentPath}.versions`, errors);
+  const activeVersionKey = readOptionalString(
+    microsequence.activeVersionKey,
+    `${currentPath}.activeVersionKey`,
+    "activeVersionKey",
+    errors
+  );
+  if (activeVersionKey && !versions.some((version) => version.key === activeVersionKey)) {
+    errors.push(makeError(`${currentPath}.activeVersionKey`, "Versão ativa inexistente."));
+  }
   const key = microKeys.next(microsequence.key, title || `microsequence-${index + 1}`, currentPath, errors);
-  const cards = Array.isArray(microsequence.cards) ? microsequence.cards : [];
+  const cards = Array.isArray(microsequence.cards)
+    ? microsequence.cards
+    : Array.isArray(versions[0]?.cards)
+      ? versions[0].cards
+      : [];
 
-  if (!Array.isArray(microsequence.cards)) {
+  if (!Array.isArray(microsequence.cards) && !versions.length) {
     errors.push(makeError(`${currentPath}.cards`, 'Campo obrigatório inválido: "cards".'));
   }
 
@@ -205,14 +311,22 @@ function validateMicrosequence(microsequence, index, errors, microKeys, path) {
   return {
     key,
     title: title ?? "",
+    ...(goal ? { goal } : {}),
     ...(description ? { description } : {}),
     ...(tags.length ? { tags } : {}),
     status: status || "draft",
+    ...(type ? { type } : {}),
     included: typeof includedValue === "boolean" ? includedValue : normalizedCards.length > 0,
+    ...(dependsOn.length ? { dependsOn } : {}),
+    ...(scopeRefs.length ? { scopeRefs } : {}),
+    ...(parentMicrosequenceKey ? { parentMicrosequenceKey } : {}),
+    ...(supportReason ? { supportReason } : {}),
     ...(didacticMeta.domainRefs?.length ? { domainRefs: didacticMeta.domainRefs } : {}),
     ...(didacticMeta.practiceVariantRefs?.length ? { practiceVariantRefs: didacticMeta.practiceVariantRefs } : {}),
     ...(didacticMeta.didacticPurpose ? { didacticPurpose: didacticMeta.didacticPurpose } : {}),
     ...(coverageRole ? { coverageRole } : {}),
+    ...(versions.length ? { versions } : {}),
+    ...(activeVersionKey ? { activeVersionKey } : {}),
     cards: normalizedCards
   };
 }
@@ -258,6 +372,7 @@ function validateLesson(lesson, index, errors, lessonKeys, path) {
     new Set([
       "key",
       "title",
+      "goal",
       "description",
       "sourceGuide",
       "sourceGuideStructured",
@@ -275,7 +390,8 @@ function validateLesson(lesson, index, errors, lessonKeys, path) {
   );
 
   const title = ensureRequiredString(lesson.title, `${currentPath}.title`, "title", errors);
-  const description = readOptionalString(lesson.description, `${currentPath}.description`, "description", errors);
+  const goal = readOptionalString(lesson.goal, `${currentPath}.goal`, "goal", errors);
+  const description = readOptionalString(lesson.description, `${currentPath}.description`, "description", errors) || goal;
   const sourceGuide = readOptionalString(lesson.sourceGuide, `${currentPath}.sourceGuide`, "sourceGuide", errors);
   const sourceGuideStructured = readOptionalSourceGuideStructured(
     lesson.sourceGuideStructured,
@@ -327,7 +443,7 @@ function validateModule(moduleValue, index, errors, moduleKeys, path) {
 
   assertAllowedFields(
     moduleValue,
-    new Set(["key", "title", "description", "lessons"]),
+    new Set(["key", "title", "description", "include", "exclude", "notes", "assessmentStyle", "lessons"]),
     currentPath,
     errors,
     "módulo"
@@ -335,6 +451,18 @@ function validateModule(moduleValue, index, errors, moduleKeys, path) {
 
   const title = ensureRequiredString(moduleValue.title, `${currentPath}.title`, "title", errors);
   const description = readOptionalString(moduleValue.description, `${currentPath}.description`, "description", errors);
+  const include = normalizeScopeChipList(moduleValue.include, currentPath, "include", errors);
+  const exclude = normalizeScopeChipList(moduleValue.exclude, currentPath, "exclude", errors);
+  const notes = readOptionalString(moduleValue.notes, `${currentPath}.notes`, "notes", errors);
+  const assessmentStyle = readOptionalString(
+    moduleValue.assessmentStyle,
+    `${currentPath}.assessmentStyle`,
+    "assessmentStyle",
+    errors
+  );
+  if (assessmentStyle && !["theoretical", "practical", "mixed"].includes(assessmentStyle)) {
+    errors.push(makeError(`${currentPath}.assessmentStyle`, 'Campo opcional inválido: "assessmentStyle".'));
+  }
   const key = moduleKeys.next(moduleValue.key, title || `module-${index + 1}`, currentPath, errors);
   const lessons = Array.isArray(moduleValue.lessons) ? moduleValue.lessons : [];
 
@@ -351,6 +479,10 @@ function validateModule(moduleValue, index, errors, moduleKeys, path) {
     key,
     title: title ?? "",
     ...(description ? { description } : {}),
+    ...(include.length ? { include } : {}),
+    ...(exclude.length ? { exclude } : {}),
+    ...(notes ? { notes } : {}),
+    ...(assessmentStyle ? { assessmentStyle } : {}),
     lessons: normalizedLessons
   };
 }
@@ -365,14 +497,16 @@ function validateCourse(course, index, errors, courseKeys) {
 
   assertAllowedFields(
     course,
-    new Set(["key", "title", "description", "modules"]),
+    new Set(["key", "title", "goal", "description", "evidencePriority", "modules"]),
     currentPath,
     errors,
     "curso"
   );
 
   const title = ensureRequiredString(course.title, `${currentPath}.title`, "title", errors);
-  const description = readOptionalString(course.description, `${currentPath}.description`, "description", errors);
+  const goal = readOptionalString(course.goal, `${currentPath}.goal`, "goal", errors);
+  const description = readOptionalString(course.description, `${currentPath}.description`, "description", errors) || goal;
+  const evidencePriority = normalizeStringList(course.evidencePriority, currentPath, "evidencePriority", errors);
   const key = courseKeys.next(course.key, title || `course-${index + 1}`, currentPath, errors);
   const modules = Array.isArray(course.modules) ? course.modules : [];
 
@@ -388,7 +522,9 @@ function validateCourse(course, index, errors, courseKeys) {
   return {
     key,
     title: title ?? "",
+    ...(goal ? { goal } : {}),
     ...(description ? { description } : {}),
+    ...(evidencePriority.length ? { evidencePriority } : {}),
     modules: normalizedModules
   };
 }

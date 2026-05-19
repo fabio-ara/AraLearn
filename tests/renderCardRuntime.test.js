@@ -636,6 +636,40 @@ test("renderiza plane com vetor simples no quadro cartesiano", () => {
   assert.doesNotMatch(html, /runtime-plane-vector-label/);
 });
 
+test("renderiza graph como SVG responsivo com pesos e destaque", () => {
+  const html = renderCardRuntimeBlocks({
+    title: "Grafo",
+    runtime: {
+      title: "Grafo",
+      blocks: [
+        { kind: "heading", value: "Grafo" },
+        {
+          kind: "graph",
+          summaryText: "Grafo com vértices A, B, C e arestas A-B, A-C.",
+          ariaLabel: "Grafo com vértices A, B, C e arestas A-B, A-C.",
+          vertices: [
+            { id: "A", label: "A", x: 50, y: 14, highlighted: true },
+            { id: "B", label: "B", x: 22, y: 72, highlighted: false },
+            { id: "C", label: "C", x: 78, y: 72, highlighted: false }
+          ],
+          edges: [
+            { from: "A", to: "B", weight: "2", highlighted: true },
+            { from: "A", to: "C", label: "ac", highlighted: false }
+          ]
+        }
+      ]
+    }
+  });
+
+  assert.match(html, /runtime-graph-block/);
+  assert.match(html, /runtime-graph-svg/);
+  assert.match(html, /runtime-graph-edge is-highlighted/);
+  assert.match(html, /runtime-graph-vertex is-highlighted/);
+  assert.match(html, />2<\/text>/);
+  assert.match(html, />ac<\/text>/);
+  assert.match(html, /aria-label="Grafo com vértices A, B, C e arestas A-B, A-C\."/);
+});
+
 test("renderiza plane de distância com guias coloridos e nota explícita", () => {
   const html = renderCardRuntimeBlocks({
     title: "Distância",

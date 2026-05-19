@@ -6,15 +6,14 @@ import { renderVersionCompareOverlay } from "./renderVersionCompareOverlay.js";
 import { renderEntityEditorOverlay } from "./renderEntityEditorOverlay.js";
 import { renderActionMenuOverlay } from "./renderActionMenuOverlay.js";
 import { renderAssistConfigOverlay } from "./renderAssistConfigOverlay.js";
-import { renderCodexCliSetupOverlay } from "./renderCodexCliSetupOverlay.js";
+import { renderProviderConfigOverlay } from "./renderProviderConfigOverlay.js";
 import { renderExternalImportOverlay } from "./renderExternalImportOverlay.js";
 import { renderUiIcon } from "./renderUiIcons.js";
 import { captureRenderState, restoreRenderState } from "./renderState.js";
 import {
   buildCodexCliHealthCommand,
   buildCodexCliSetupScript,
-  detectCodexCliSetupPlatform,
-  getCodexCliSetupPresentation
+  detectCodexCliSetupPlatform
 } from "./codexCliSetup.js";
 import { handleExternalJsonImportText } from "./externalJsonImport.js";
 import {
@@ -23,7 +22,6 @@ import {
   SOURCE_GUIDE_LEVELS
 } from "../sourceGuides/sourceGuideStructured.js";
 import {
-  buildLessonGuidanceEditorFields,
   buildLessonGuidanceFromPreset,
   normalizeLessonGuidance
 } from "../generation/guidance/lessonGuidance.js";
@@ -82,17 +80,23 @@ import {
 } from "../flowchart/flowchartExercise.js";
 import { computeFlowchartAutoFitScale } from "../flowchart/flowchartViewport.js";
 import {
+  buildCourseNavigationState,
+  buildLessonNavigationState,
+  buildModuleNavigationState,
+  buildNavigationViewState,
+  resolveFirstSelection,
+  resolveSelectionByKeys as resolveSelectionByKeysRuntime
+} from "./lessonEditorNavigation.js";
+import {
   buildCardPathKey,
   collectAssistDependencies,
-  collectLessonTopicRefs,
   collectLessonCards,
   findCard,
   findCourse,
   findLesson,
   findMicrosequence,
   findModule,
-  getDefaultDependencyKeys,
-  getFirstPath
+  getDefaultDependencyKeys
 } from "./lessonEditorPaths.js";
 import {
   readAssistConfigStorage,
@@ -111,15 +115,41 @@ import {
   DEFAULT_CODEX_LOCAL_ENDPOINT,
   checkCodexLocalHealth,
   isCodexLocalModel
-} from "../assist/codexLocalAssist.js";
-import { runAssist } from "../assist/runAssist.js";
+} from "../generation/providers/codexCliConfig.js";
+import { executeMicrosequenceGeneration } from "../generation/runtime/interventionRuntime.js";
+import {
+  createDefaultCourseModel
+} from "../generation/runtime/courseModelSemantics.js";
+import {
+  applyAssistConfigPatch,
+  applyGenerationPanelScopeState,
+  buildClosedGenerationPanelState,
+  buildGenerationInputState,
+  buildGenerationResultClearedState,
+  buildOpenedGenerationPanelState,
+  checkCodexCliConnection,
+  createCodexCliSetupStatus,
+  executeStructureGeneration,
+  normalizeAssistConfig,
+  resolveGenerationScopeViewState,
+  resolveOpenGeneratedLessonState
+} from "../generation/runtime/generationEditorRuntime.js";
+import {
+  createProfileTuning
+} from "../generation/runtime/profileTuning.js";
+import { inferPlanningProfileTuning } from "../generation/runtime/planningInference.js";
+import {
+  createGenerationProgressState,
+  reduceGenerationProgress
+} from "../generation/runtime/progressViewModel.js";
+import { resolveGenerationProviderReadiness, resolveGenerationPanelScopeFromAction } from "../generation/runtime/generationViewModel.js";
 import { listMicrosequenceTypes } from "../generation/types/microsequenceTypes.js";
-import { buildLessonDomainCoverageReport } from "../generation/domain/lessonDomainModel.js";
-import { validateDidacticDepth } from "../generation/validation/validateDidacticDepth.js";
 import { getLessonProgressCursor, removeLessonProgressEntries, writeLessonProgressEntry } from "../storage/progressStore.js";
 import { detectJsonExchangeFormat } from "../storage/jsonExchange.js";
 import { createStarterContractCard, getContractCardKind, listContractAnswerValues } from "../contract/contractCard.js";
-import { isRunnableMicrosequence, resolveMicrosequenceRuntimeIncluded } from "../model/microsequenceStatus.js";
+import { isDraftMicrosequence, isRunnableMicrosequence, resolveMicrosequenceRuntimeIncluded } from "../model/microsequenceStatus.js";
+import { ingestAttachments } from "../generation/ingestion/attachmentIngestion.js";
+import { listEngineProfileSeeds } from "../generation/config/engineProfileRegistry.js";
 import {
   createCourse as createCourseDocument,
   createLesson as createLessonDocument,
@@ -147,12 +177,15 @@ const MAX_CARD_SNAPSHOTS = 6;
 const ASSIST_MODEL_OPTIONS = [
   { value: "gemini-2.5-flash", label: "Gemini 2.5 Flash" },
   { value: "gemini-2.5-flash-lite", label: "Gemini 2.5 Flash-Lite" },
-  { value: "gemini-2.0-flash", label: "Gemini 2.0 Flash · até 2026-06-01" },
-  { value: CODEX_LOCAL_MODEL_ID, label: "Codex CLI local · avançado" }
+  { value: "gemini-2.0-flash", label: "Gemini 2.0 Flash" },
+  { value: CODEX_LOCAL_MODEL_ID, label: "Codex local" }
 ];
+const DIDACTIC_PROFILE_SEED_OPTIONS = listEngineProfileSeeds().map((profile) => ({
+  value: profile.profileId,
+  label: profile.label || profile.profileId
+}));
 const ASSIST_USER_MODES = {
-  EDIT_MICROSEQUENCE: "edit-microsequence",
-  REPOSITION: "reposition-in-course"
+  EDIT_MICROSEQUENCE: "edit-microsequence"
 };
 const ASSIST_CARD_CONTAINER_OPTIONS = [
   { value: "", label: "Automático", icon: renderUiIcon("sparkles", "action-menu-svg-icon") },
@@ -162,6 +195,7 @@ const ASSIST_CARD_CONTAINER_OPTIONS = [
   { value: "table", label: "Tabela", icon: renderUiIcon("module", "action-menu-svg-icon") },
   { value: "tree", label: "Árvore de diretórios", icon: renderUiIcon("folder", "action-menu-svg-icon") },
   { value: "flow", label: "Fluxograma", icon: renderUiIcon("microsequence", "action-menu-svg-icon") },
+  { value: "graph", label: "Grafo", icon: renderUiIcon("graph", "action-menu-svg-icon") },
   { value: "plane", label: "Plano cartesiano", icon: renderUiIcon("card", "action-menu-svg-icon") },
   { value: "matrix", label: "Matriz", icon: renderUiIcon("card", "action-menu-svg-icon") }
 ];
@@ -171,73 +205,71 @@ const ASSIST_DIDACTIC_TYPE_OPTIONS = [
     .filter((item) => item.id !== "assisted")
     .map((item) => ({ value: item.id, label: item.label }))
 ];
+const BOTTOM_UP_TARGET_MODE_OPTIONS = [
+  { value: "current", label: "Nesta etapa" },
+  { value: "new_after_current", label: "Nova etapa depois" }
+];
+const BOTTOM_UP_OPERATION_MODE_OPTIONS = [
+  { value: "reinforce", label: "Continuar/reforçar" },
+  { value: "repair", label: "Corrigir" }
+];
+const BOTTOM_UP_INTERVENTION_TYPE_OPTIONS = [
+  { value: "local_semantic_rewrite", label: "Reescrita local" },
+  { value: "explanatory_bridge", label: "Ponte explicativa" },
+  { value: "guided_practice_bridge", label: "Ponte de prática guiada" },
+  { value: "contrast_reinforcement", label: "Contraste entre conceitos" },
+  { value: "prerequisite_tightening", label: "Preparar pré-requisitos" }
+];
+const ASSIST_ACTION_INTENTS = Object.freeze({
+  CONTINUE_CURRENT: "continue_current",
+  REPAIR_CURRENT: "repair_current",
+  NEXT_PLANNED: "next_planned",
+  CREATE_AFTER_CURRENT: "create_after_current",
+  MATERIALIZE_CURRENT: "materialize_current",
+  REFORMULATE_CURRENT: "reformulate_current"
+});
 const COURSES_VIEWS = new Set(["courses", "course", "module", "lesson", "microsequence", "microsequence-assist"]);
-const GENERATION_PANEL_ACTIONS = new Set([
-  "open-generation-panel-global",
-  "open-generation-panel-course",
-  "open-generation-panel-module",
-  "open-generation-panel-lesson"
-]);
 const STRUCTURE_VERSIONING_ACTIVE = false;
 const GENERATED_PENDING_OPERATION = "generated-pending";
 const GENERATED_ACCEPTED_OPERATION = "generated";
+
+export function canSubmitAssistRequestFromState({
+  promptText,
+  actionIntent,
+  attachmentCount = 0,
+  isSubmitting
+}) {
+  if (actionIntent === ASSIST_ACTION_INTENTS.NEXT_PLANNED) {
+    return !isSubmitting;
+  }
+  const hasPrompt = !!String(promptText || "").trim();
+  const hasAttachments = Number(attachmentCount) > 0;
+  const hasIntent = !!String(actionIntent || "").trim();
+  return hasIntent && (hasPrompt || hasAttachments) && !isSubmitting;
+}
 
 function fail(message) {
   throw new Error(message);
 }
 
+function buildDidacticProfileOptions(customProfiles = []) {
+  return [
+    ...DIDACTIC_PROFILE_SEED_OPTIONS,
+    ...(Array.isArray(customProfiles)
+      ? customProfiles.map((profile) => ({
+          value: profile.id,
+          label: profile.label || profile.id
+        }))
+      : [])
+  ];
+}
+
+function buildAssistCustomProfileId() {
+  return `assist.custom.${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+}
+
 function isGeneratedPendingOperation(value) {
   return String(value || "").trim() === GENERATED_PENDING_OPERATION;
-}
-
-export function resolveGenerationPanelScopeFromAction({ action, dataset = {}, selection = {} } = {}) {
-  if (!GENERATION_PANEL_ACTIONS.has(action)) {
-    return null;
-  }
-
-  if (action === "open-generation-panel-global") {
-    return {};
-  }
-
-  const courseKey = dataset.courseKey || selection.courseKey || "";
-  const moduleKey = dataset.moduleKey || selection.moduleKey || "";
-  const lessonKey = dataset.lessonKey || selection.lessonKey || "";
-
-  if (action === "open-generation-panel-course") {
-    return courseKey ? { courseKey } : null;
-  }
-
-  if (action === "open-generation-panel-module") {
-    return courseKey && moduleKey ? { courseKey, moduleKey } : null;
-  }
-
-  if (action === "open-generation-panel-lesson") {
-    return courseKey && moduleKey && lessonKey ? { courseKey, moduleKey, lessonKey } : null;
-  }
-
-  return null;
-}
-
-export function resolveGenerationAssistMode({
-  lessonFixed = false,
-  hasResolvedLesson = false,
-  repositionMicrosequences = false
-} = {}) {
-  if (lessonFixed === true && hasResolvedLesson === true) {
-    return repositionMicrosequences === true
-      ? "generate-and-reposition-lesson-microsequences"
-      : "generate-lesson-microsequences";
-  }
-  return "generate-top-down-structure";
-}
-
-function normalizeComparableText(value) {
-  return String(value || "")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/\s+/g, " ")
-    .trim()
-    .toLowerCase();
 }
 
 function readCardText(card) {
@@ -282,6 +314,16 @@ function readCardText(card) {
       return `A(${card.plane.distance[0].join(", ")}) B(${card.plane.distance[1].join(", ")})`;
     }
   }
+  if (card.graph && typeof card.graph === "object") {
+    const vertices = Array.isArray(card.graph.vertices) ? card.graph.vertices.map((vertex) => vertex?.label || vertex?.id).filter(Boolean) : [];
+    const edges = Array.isArray(card.graph.edges) ? card.graph.edges.map((edge) => `${edge?.from}-${edge?.to}`).filter((item) => !item.includes("undefined")) : [];
+    if (vertices.length && edges.length) {
+      return `Vértices: ${vertices.join(", ")}\nArestas: ${edges.join(", ")}`;
+    }
+    if (vertices.length) {
+      return `Vértices: ${vertices.join(", ")}`;
+    }
+  }
   if (card.matrix && typeof card.matrix === "object") {
     return (Array.isArray(card.matrix.values) ? card.matrix.values : [])
       .map((row) => (Array.isArray(row) ? row.join(" ") : ""))
@@ -312,29 +354,6 @@ function parseTagsText(value) {
 
 function formatTagsText(tags) {
   return Array.isArray(tags) ? tags.join(", ") : "";
-}
-
-function summarizeStructuredLessons(lessons = []) {
-  return Array.isArray(lessons)
-    ? lessons.map((lesson) => ({
-        title: String(lesson?.title || "").trim(),
-        description: String(lesson?.description || "").trim(),
-        sourceGuide: String(lesson?.sourceGuide || "").trim()
-      }))
-      .filter((lesson) => lesson.title || lesson.description || lesson.sourceGuide)
-    : [];
-}
-
-function summarizeStructuredModules(modules = []) {
-  return Array.isArray(modules)
-    ? modules.map((moduleValue) => ({
-        title: String(moduleValue?.title || "").trim(),
-        description: String(moduleValue?.description || "").trim(),
-        sourceGuide: String(moduleValue?.sourceGuide || "").trim(),
-        lessons: summarizeStructuredLessons(moduleValue?.lessons || [])
-      }))
-      .filter((moduleValue) => moduleValue.title || moduleValue.description || moduleValue.sourceGuide || moduleValue.lessons.length)
-    : [];
 }
 
 function slugifyDownloadName(value, fallback = "curso") {
@@ -623,30 +642,6 @@ function normalizeAssistAttachmentList(files = []) {
   return nextItems;
 }
 
-function buildAssistHierarchyContext({ course, moduleValue, lesson, microsequence }) {
-  return {
-    courseTitle: course?.title || course?.key || "",
-    courseDescription: course?.description || "",
-    courseSourceGuide: course?.sourceGuide || "",
-    moduleTitle: moduleValue?.title || moduleValue?.key || "",
-    moduleDescription: moduleValue?.description || "",
-    moduleSourceGuide: moduleValue?.sourceGuide || "",
-    lessonTitle: lesson?.title || lesson?.key || "",
-    lessonDescription: lesson?.description || "",
-    lessonSourceGuide: lesson?.sourceGuide || "",
-    lessonSourceGuideStructured: structuredClone(lesson?.sourceGuideStructured || {}),
-    lessonDomainMap: structuredClone(lesson?.domainMap || {}),
-    title: microsequence?.title || "",
-    description: microsequence?.description || "",
-    tags: Array.isArray(microsequence?.tags) ? microsequence.tags : [],
-    domainRefs: Array.isArray(microsequence?.domainRefs) ? microsequence.domainRefs : [],
-    practiceVariantRefs: Array.isArray(microsequence?.practiceVariantRefs) ? microsequence.practiceVariantRefs : [],
-    didacticPurpose: microsequence?.didacticPurpose || "",
-    coverageRole: microsequence?.coverageRole || "",
-    cards: Array.isArray(microsequence?.cards) ? microsequence.cards : []
-  };
-}
-
 function buildCardUpdateFromText(card, title, text) {
   const base = {
     title: String(title || "").trim() || card?.title || "Novo card"
@@ -706,6 +701,14 @@ function buildCardUpdateFromText(card, title, text) {
       ...base,
       ...(nextText ? { say: nextText } : card.say ? { say: card.say } : {}),
       plane: card.plane || createStarterContractCard("plane").plane
+    };
+  }
+
+  if (kind === "graph") {
+    return {
+      ...base,
+      ...(nextText ? { say: nextText } : card.say ? { say: card.say } : {}),
+      graph: card.graph || createStarterContractCard("graph").graph
     };
   }
 
@@ -870,14 +873,11 @@ function makeEntityEditorModel(state) {
   if (entityEditor.kind === "lesson-source-guide") {
     const lesson = findLesson(project, entityEditor.courseKey || selection.courseKey, entityEditor.moduleKey, entityEditor.lessonKey);
     if (!lesson) return null;
-      return {
-        title: "Fonte-guia da lição",
-        fields: [
-          ...buildSourceGuideEditorFields(lesson.sourceGuideStructured || {}, { level: SOURCE_GUIDE_LEVELS.LESSON }),
-          ...buildLessonGuidanceEditorFields(normalizeLessonGuidance(lesson))
-        ],
-        actions: []
-      };
+    return {
+      title: "Fonte-guia da lição",
+      fields: buildSourceGuideEditorFields(lesson.sourceGuideStructured || {}, { level: SOURCE_GUIDE_LEVELS.LESSON }),
+      actions: []
+    };
   }
 
   if (entityEditor.kind === "lesson-actions") {
@@ -890,7 +890,6 @@ function makeEntityEditorModel(state) {
       fields: [],
       actions: [
         { key: "edit-lesson-metadata", label: "Editar lição", icon: "&#9998;" },
-        { key: "deepen-lesson", label: "Completar lacunas", icon: "&#9881;" },
         { key: "reset-lesson-progress", label: "Zerar progresso da lição", icon: "&#8635;" },
         { key: "export-lesson", label: "Exportar lição", icon: "&#8681;" },
         { key: "delete-lesson", label: "Excluir lição", icon: "&#128465;", tone: "danger" }
@@ -913,30 +912,6 @@ function makeEntityEditorModel(state) {
     };
   }
 
-  if (entityEditor.kind === "microsequence") {
-    const microsequence = findMicrosequence(
-      project,
-      entityEditor.courseKey || selection.courseKey,
-      entityEditor.moduleKey,
-      entityEditor.lessonKey,
-      entityEditor.microsequenceKey
-    );
-    if (!microsequence) return null;
-    return {
-      title: "Microssequência",
-      fields: [
-        { name: "title", label: "Título", type: "text", value: microsequence.title || "" },
-        { name: "tags", label: "Tags", type: "textarea", value: formatTagsText(microsequence.tags) }
-      ],
-      actions: [
-        { key: "create-card", label: "Novo card" },
-        { key: "create-plane-card", label: "Novo plano cartesiano" },
-        { key: "create-matrix-card", label: "Nova matriz" },
-        { key: "delete-microsequence", label: "Excluir microssequência", tone: "danger" }
-      ]
-    };
-  }
-
   if (entityEditor.kind === "microsequence-actions") {
     const microsequence = findMicrosequence(
       project,
@@ -953,10 +928,7 @@ function makeEntityEditorModel(state) {
       fields: [],
       actions: [
         { key: "edit-microsequence-metadata", label: "Editar microssequência", icon: "&#9998;" },
-        { key: "deepen-microsequence", label: "Completar lacunas", icon: "&#9881;" },
         { key: "create-card", label: "Novo card", icon: "&#43;" },
-        { key: "create-plane-card", label: "Novo plano cartesiano", icon: "&#9641;" },
-        { key: "create-matrix-card", label: "Nova matriz", icon: "&#91;&#93;" },
         { key: "export-microsequence", label: "Exportar microssequência", icon: "&#8681;" },
         { key: "delete-microsequence", label: "Excluir microssequência", icon: "&#128465;", tone: "danger" }
       ],
@@ -979,32 +951,6 @@ function makeEntityEditorModel(state) {
     };
   }
 
-  if (entityEditor.kind === "card") {
-    const microsequence = findMicrosequence(
-      project,
-      entityEditor.courseKey || selection.courseKey,
-      entityEditor.moduleKey || selection.moduleKey,
-      entityEditor.lessonKey || selection.lessonKey,
-      entityEditor.microsequenceKey || selection.microsequenceKey
-    );
-    const card = microsequence && (entityEditor.cardKey || selection.cardKey)
-      ? findCard(microsequence, entityEditor.cardKey || selection.cardKey)
-      : null;
-    if (!card) return null;
-    const moveActions = buildMoveActions(microsequence.cards || [], card.key, "move-card-up", "move-card-down");
-    return {
-      title: "Card",
-      fields: [],
-      actions: [
-        { key: "create-card", label: "Novo card após este" },
-        { key: "create-plane-card", label: "Novo plano cartesiano" },
-        { key: "create-matrix-card", label: "Nova matriz" },
-        ...moveActions,
-        { key: "delete-card", label: "Excluir card", tone: "danger" }
-      ]
-    };
-  }
-
   return null;
 }
 
@@ -1014,7 +960,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
   if (!editor) fail("Editor inválido.");
 
   const initialProject = storage.loadProject();
-  const initialAssistConfig = readAssistConfigStorage();
+  const initialAssistConfig = normalizeAssistConfig(readAssistConfigStorage());
   const state = {
     project: initialProject,
     projectHead: initialProject,
@@ -1032,15 +978,13 @@ export function createLessonEditorApp({ root, storage, editor }) {
     versionCompareFocusTarget: null,
     entityEditor: null,
     assistConfigOpen: false,
+    providerConfigOpen: false,
     assistConfig: initialAssistConfig,
     assistConfigDraft: { ...initialAssistConfig },
-    codexCliSetupOpen: false,
-    codexCliSetupStatus: {
-      ok: false,
-      checking: false,
-      error: "",
-      data: null
-    },
+    assistPlanningInferencePending: false,
+    assistPlanningInferenceMessage: "",
+    assistProfileEditor: null,
+    codexCliSetupStatus: createCodexCliSetupStatus(),
     pendingExternalImport: null,
     microsequenceMode: "play",
     cardHistory: readHistoryStorage(),
@@ -1063,9 +1007,18 @@ export function createLessonEditorApp({ root, storage, editor }) {
       visualizedVersionId: "",
       editBaseVersionId: "",
       versionActionsOpen: false,
+      actionIntent: "",
       promptText: "",
       didacticTypeId: "",
       preferredContainer: "",
+      preferredContainerConfirmed: false,
+      interventionTargetMode: "current",
+      operationMode: "reinforce",
+      interventionType: "local_semantic_rewrite",
+      domainRef: "",
+      relatedConceptRefs: [],
+      prerequisiteRefs: [],
+      bridgeTargetRef: "",
       attachments: [],
       dependencyKeys: [],
       pendingDependencyKey: "",
@@ -1077,18 +1030,22 @@ export function createLessonEditorApp({ root, storage, editor }) {
       courseFixed: false,
       moduleFixed: false,
       lessonFixed: false,
-      repositionMicrosequences: false,
       courseInput: "",
       courseKey: "",
       moduleInput: "",
       moduleKey: "",
       lessonInput: "",
       lessonKey: "",
+      includeTopics: [],
+      excludeTopics: [],
+      pendingIncludeTopic: "",
+      pendingExcludeTopic: "",
       promptText: "",
       attachments: [],
       lastResult: null,
       isSubmitting: false,
-      errorMessage: ""
+      errorMessage: "",
+      progress: createGenerationProgressState()
     },
     structureDrag: null,
     structureDrop: null,
@@ -1099,7 +1056,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
     centerActiveStructureVersionTabOnRender: true
   };
 
-  state.selection = getFirstPath(state.project);
+  state.selection = resolveFirstSelection(state.project);
 
   function setProject(nextProject, { updateHead = true } = {}) {
     state.project = nextProject;
@@ -1444,107 +1401,10 @@ export function createLessonEditorApp({ root, storage, editor }) {
     return merged;
   }
 
-  function collectRepositionSlots(project = state.project) {
-    const selectedTagTitles = state.assistDraft.dependencyKeys;
-    if (!selectedTagTitles.length) {
-      return [];
-    }
-
-    const normalizedSelectedTags = new Set(selectedTagTitles.map((item) => normalizeComparableText(item)));
-    const slots = [];
-    const seenSlotIds = new Set();
-
-    (project.courses || []).forEach((course) => {
-      if (!course) {
-        return;
-      }
-
-      (course.modules || []).forEach((moduleValue) => {
-        (moduleValue.lessons || []).forEach((lesson) => {
-          const microsequences = lesson.microsequences || [];
-          microsequences.forEach((microsequence, startIndex) => {
-            const normalizedTitle = normalizeComparableText(microsequence.title || microsequence.key);
-            if (!normalizedSelectedTags.has(normalizedTitle)) {
-              return;
-            }
-
-            const sequence = microsequences.slice(startIndex);
-            const sequenceTitles = sequence.map((item) => item.title || item.key);
-            const beforeSlotId = [
-              "slot",
-              course.key,
-              moduleValue.key,
-              lesson.key,
-              "before",
-              microsequence.key
-            ].join("::");
-            if (!seenSlotIds.has(beforeSlotId)) {
-              seenSlotIds.add(beforeSlotId);
-              slots.push({
-                slotId: beforeSlotId,
-                courseKey: course.key,
-                courseTitle: course.title || course.key,
-                moduleKey: moduleValue.key,
-                moduleTitle: moduleValue.title || moduleValue.key,
-                lessonKey: lesson.key,
-                lessonTitle: lesson.title || lesson.key,
-                insertBeforeMicrosequenceKey: microsequence.key,
-                insertBeforeTitle: microsequence.title || microsequence.key,
-                targetPosition: startIndex,
-                sequenceTitles
-              });
-            }
-
-            sequence.forEach((sequenceItem, relativeIndex) => {
-              const absoluteIndex = startIndex + relativeIndex;
-              const slotId = [
-                "slot",
-                course.key,
-                moduleValue.key,
-                lesson.key,
-                "after",
-                sequenceItem.key
-              ].join("::");
-              if (seenSlotIds.has(slotId)) {
-                return;
-              }
-
-              seenSlotIds.add(slotId);
-              slots.push({
-                slotId,
-                courseKey: course.key,
-                courseTitle: course.title || course.key,
-                moduleKey: moduleValue.key,
-                moduleTitle: moduleValue.title || moduleValue.key,
-                lessonKey: lesson.key,
-                lessonTitle: lesson.title || lesson.key,
-                insertAfterMicrosequenceKey: sequenceItem.key,
-                insertAfterTitle: sequenceItem.title || sequenceItem.key,
-                targetPosition: absoluteIndex + 1,
-                sequenceTitles
-              });
-            });
-          });
-        });
-      });
-    });
-
-    return slots;
-  }
-
   function getAssistModeOptions() {
-    const hasSelectedTags = state.assistDraft.dependencyKeys.length > 0;
-
-    const options = [
-      { value: ASSIST_USER_MODES.EDIT_MICROSEQUENCE, label: "Editar microssequência" }
-    ];
-    if (hasSelectedTags) {
-      options.push({ value: ASSIST_USER_MODES.REPOSITION, label: "Reposicionar em um curso" });
-    }
-
     return {
-      options,
-      locked: options.length === 1
+      options: [{ value: ASSIST_USER_MODES.EDIT_MICROSEQUENCE, label: "Editar microssequência" }],
+      locked: true
     };
   }
 
@@ -1589,109 +1449,44 @@ export function createLessonEditorApp({ root, storage, editor }) {
   }
 
   function applySelectionByKeys(nextProject, desiredSelection = state.selection) {
-    const fallbackPath = getFirstPath(nextProject);
-    const course = findCourse(nextProject, desiredSelection?.courseKey) || findCourse(nextProject, fallbackPath.courseKey);
-    const moduleValue =
-      findModule(nextProject, course?.key, desiredSelection?.moduleKey) ||
-      findModule(nextProject, course?.key, fallbackPath.moduleKey);
-    const lesson =
-      findLesson(nextProject, course?.key, moduleValue?.key, desiredSelection?.lessonKey) ||
-      findLesson(nextProject, course?.key, moduleValue?.key, fallbackPath.lessonKey);
-    const microsequence =
-      findMicrosequence(nextProject, course?.key, moduleValue?.key, lesson?.key, desiredSelection?.microsequenceKey) ||
-      findMicrosequence(nextProject, course?.key, moduleValue?.key, lesson?.key, fallbackPath.microsequenceKey);
-    const cards = microsequence?.cards || [];
-    const fallbackCardIndex = Number.isInteger(fallbackPath.cardIndex) ? fallbackPath.cardIndex : 0;
-    const preferredIndex = Number.isInteger(desiredSelection?.cardIndex) ? desiredSelection.cardIndex : fallbackCardIndex;
-    const cardFromKey = desiredSelection?.cardKey ? findCard(microsequence, desiredSelection.cardKey) : null;
-    const safeCardIndex = cards.length ? Math.max(0, Math.min(preferredIndex, cards.length - 1)) : 0;
-    const selectedCard = cardFromKey || cards[safeCardIndex] || null;
-
-    const nextPath = {
-      courseKey: course?.key || null,
-      moduleKey: moduleValue?.key || null,
-      lessonKey: lesson?.key || null,
-      microsequenceKey: microsequence?.key || null,
-      cardKey: selectedCard?.key || null,
-      cardIndex: selectedCard ? cards.findIndex((item) => item.key === selectedCard.key) : 0
-    };
-
+    const nextPath = resolveSelectionByKeysRuntime(nextProject, desiredSelection);
     applySelection(nextPath);
     return nextPath;
   }
 
   function selectFirstPath(nextProject) {
-    const nextPath = getFirstPath(nextProject);
+    const nextPath = resolveFirstSelection(nextProject);
     applySelection(nextPath);
     return nextPath;
   }
 
   function openCourse(courseKey) {
-    const course = findCourse(state.project, courseKey);
-    if (!course) return;
-    const moduleValue = (course.modules || [])[0] || null;
-    const lesson = moduleValue && moduleValue.lessons ? moduleValue.lessons[0] || null : null;
-    const microsequence = lesson && lesson.microsequences ? lesson.microsequences[0] || null : null;
-    const card = microsequence && microsequence.cards ? microsequence.cards[0] || null : null;
-
-    state.selection.courseKey = course.key;
-    state.selection.moduleKey = moduleValue ? moduleValue.key : null;
-    state.selection.lessonKey = lesson ? lesson.key : null;
-    state.selection.microsequenceKey = microsequence ? microsequence.key : null;
-    state.selection.cardKey = card ? card.key : null;
-    state.selection.cardIndex = 0;
-    state.view = "course";
-    state.cardCommentOpen = false;
-    state.entityEditor = null;
-    state.microsequenceMode = "play";
+    const navigationState = buildCourseNavigationState(state.project, courseKey);
+    if (!navigationState) return;
+    Object.assign(state, buildNavigationViewState(navigationState));
     syncVisibleStructureVersionsFromProject();
     render({ preserveState: false });
   }
 
   function openModule(moduleKey) {
-    const moduleValue = findModule(state.project, state.selection.courseKey, moduleKey);
-    if (!moduleValue) return;
-    const lesson = (moduleValue.lessons || [])[0] || null;
-    const microsequence = lesson && lesson.microsequences ? lesson.microsequences[0] || null : null;
-    const card = microsequence && microsequence.cards ? microsequence.cards[0] || null : null;
-
-    state.selection.moduleKey = moduleValue.key;
-    state.selection.lessonKey = lesson ? lesson.key : null;
-    state.selection.microsequenceKey = microsequence ? microsequence.key : null;
-    state.selection.cardKey = card ? card.key : null;
-    state.selection.cardIndex = 0;
-    state.view = "module";
-    state.cardCommentOpen = false;
-    state.entityEditor = null;
-    state.microsequenceMode = "play";
+    const navigationState = buildModuleNavigationState(state.project, {
+      courseKey: state.selection.courseKey,
+      moduleKey
+    });
+    if (!navigationState) return;
+    Object.assign(state, buildNavigationViewState(navigationState));
     syncVisibleStructureVersionsFromProject();
     render({ preserveState: false });
   }
 
   function openLesson(moduleKey, lessonKey) {
-    const lesson = findLesson(state.project, state.selection.courseKey, moduleKey, lessonKey);
-    if (!lesson) return;
-    const lessonCards = collectLessonCards(lesson);
-    const progressCursor = getLessonProgressCursor(
-      storage.loadProgress(),
-      getLessonProgressReference(state.selection.courseKey, moduleKey, lessonKey),
-      lessonCards.length
-    );
-    const currentEntry = lessonCards[progressCursor] || lessonCards[0] || null;
-    const firstMicrosequence = currentEntry
-      ? findMicrosequence(state.project, state.selection.courseKey, moduleKey, lessonKey, currentEntry.microsequenceKey)
-      : (lesson.microsequences || [])[0] || null;
-    const firstCard = currentEntry ? currentEntry.card : firstMicrosequence && firstMicrosequence.cards ? firstMicrosequence.cards[0] || null : null;
-
-    state.selection.moduleKey = moduleKey;
-    state.selection.lessonKey = lessonKey;
-    state.selection.microsequenceKey = currentEntry ? currentEntry.microsequenceKey : firstMicrosequence ? firstMicrosequence.key : null;
-    state.selection.cardKey = firstCard ? firstCard.key : null;
-    state.selection.cardIndex = currentEntry ? currentEntry.cardIndex : 0;
-    state.view = "lesson";
-    state.cardCommentOpen = false;
-    state.entityEditor = null;
-    state.microsequenceMode = "play";
+    const navigationState = buildLessonNavigationState(state.project, storage.loadProgress(), {
+      courseKey: state.selection.courseKey,
+      moduleKey,
+      lessonKey
+    });
+    if (!navigationState) return;
+    Object.assign(state, buildNavigationViewState(navigationState));
     syncVisibleStructureVersionsFromProject();
     render({ preserveState: false });
   }
@@ -1910,8 +1705,281 @@ export function createLessonEditorApp({ root, storage, editor }) {
     return ASSIST_CARD_CONTAINER_OPTIONS.find((item) => item.value === container)?.label || "Automático";
   }
 
+  function uniqueTextList(values = []) {
+    return [...new Set((Array.isArray(values) ? values : []).map((item) => String(item || "").trim()).filter(Boolean))];
+  }
+
+  function inferBottomUpInterventionType(microsequence = {}) {
+    const coverageRole = String(microsequence?.coverageRole || "").trim();
+    if (coverageRole === "discriminate") {
+      return "contrast_reinforcement";
+    }
+    if (coverageRole === "practice" || coverageRole === "exam_apply") {
+      return "guided_practice_bridge";
+    }
+    if (coverageRole === "diagnose_error") {
+      return "local_semantic_rewrite";
+    }
+    return "explanatory_bridge";
+  }
+
+  function getCurrentLessonDomainItems(lesson = getRenderContext().lesson) {
+    return Array.isArray(lesson?.domainMap?.items)
+      ? lesson.domainMap.items
+          .map((item) => ({
+            id: String(item?.id || "").trim(),
+            label: String(item?.label || item?.id || "").trim(),
+            prerequisites: Array.isArray(item?.prerequisites)
+              ? item.prerequisites.map((entry) => String(entry || "").trim()).filter(Boolean)
+              : []
+          }))
+          .filter((item) => item.id)
+      : [];
+  }
+
+  function getCurrentLessonDomainItemMap(lesson = getRenderContext().lesson) {
+    return new Map(getCurrentLessonDomainItems(lesson).map((item) => [item.id, item]));
+  }
+
+  function getCurrentBottomUpOptionState() {
+    const context = getRenderContext();
+    const lesson = context.lesson;
+    const microsequence = context.microsequence;
+    const domainItems = getCurrentLessonDomainItems(lesson);
+    const domainItemMap = new Map(domainItems.map((item) => [item.id, item]));
+    const selectedDomainRef = String(state.assistDraft.domainRef || "").trim();
+    const baseDomainRef =
+      selectedDomainRef
+      || String(microsequence?.domainRefs?.[0] || "").trim()
+      || domainItems[0]?.id
+      || "";
+    const selectedRelated = uniqueTextList(state.assistDraft.relatedConceptRefs).filter((ref) => domainItemMap.has(ref));
+    const selectedPrerequisites = uniqueTextList(state.assistDraft.prerequisiteRefs).filter((ref) => domainItemMap.has(ref));
+    const bridgeTargetRef = String(state.assistDraft.bridgeTargetRef || "").trim();
+    const defaultPrerequisites = domainItemMap.get(baseDomainRef)?.prerequisites || [];
+    return {
+      domainItems,
+      domainItemMap,
+      domainRef: baseDomainRef,
+      relatedConceptRefs: selectedRelated,
+      prerequisiteRefs: selectedPrerequisites.length ? selectedPrerequisites : uniqueTextList(defaultPrerequisites),
+      bridgeTargetRef: bridgeTargetRef || baseDomainRef,
+      microsequenceTitle: String(microsequence?.title || "").trim()
+    };
+  }
+
   function persistAssistConfig() {
     writeAssistConfigStorage(state.assistConfig);
+  }
+
+  function cloneAssistConfig(config = state.assistConfig) {
+    return structuredClone(config || {});
+  }
+
+  function findAssistCustomProfile(profileId = "", customProfiles = state.assistConfig.customProfiles) {
+    return (Array.isArray(customProfiles) ? customProfiles : []).find((entry) => entry.id === String(profileId || "").trim()) || null;
+  }
+
+  function isAssistCustomProfile(profileId = "", customProfiles = state.assistConfig.customProfiles) {
+    return Boolean(findAssistCustomProfile(profileId, customProfiles));
+  }
+
+  function getSelectedAssistProfileId(config = state.assistConfig) {
+    return config.selectedProfileId || config.didacticProfileId || DEFAULT_ENGINE_PROFILE_ID;
+  }
+
+  function getAssistProfileEditorViewModel(config = state.assistConfig) {
+    const selectedProfileId = getSelectedAssistProfileId(config);
+    const selectedCustomProfile = findAssistCustomProfile(selectedProfileId, config.customProfiles);
+    const editor = state.assistProfileEditor;
+    const draftLabel = editor?.draftLabel || "";
+    const normalizedLabel = String(draftLabel).trim();
+    const isCreateMode = editor?.mode === "create";
+    const isEditMode = editor?.mode === "edit";
+    const hasUnsavedChanges = hasUnsavedAssistCustomProfileChanges(config);
+    const canSave =
+      (Boolean(editor?.active) &&
+        Boolean(normalizedLabel) &&
+        ((isCreateMode && Boolean(editor?.profileId)) ||
+          (isEditMode &&
+            selectedCustomProfile &&
+            (normalizedLabel !== String(editor?.originalLabel || "").trim() || hasUnsavedChanges)))) ||
+      (!editor?.active && hasUnsavedChanges);
+
+    return {
+      active: Boolean(editor?.active),
+      mode: editor?.mode || "",
+      draftLabel,
+      canEdit: Boolean(selectedCustomProfile),
+      canDelete: Boolean(selectedCustomProfile),
+      canSave,
+      state: editor?.active ? "editing" : canSave ? "dirty" : "saved"
+    };
+  }
+
+  function createEmptyAssistProfileTuning() {
+    return createProfileTuning(DEFAULT_ENGINE_PROFILE_ID, {
+      targetStudentProfile: "",
+      minMicrosequences: 3,
+      targetMicrosequences: 5,
+      maxMicrosequences: 8,
+      requireCoreCoverageBeforeExtensions: true,
+      requireVocabularyMap: true,
+      courseModelEdited: true,
+      courseModel: {
+        description: "",
+        learningTrail: "",
+        microsequenceProgression: ""
+      }
+    });
+  }
+
+  function hasUnsavedAssistCustomProfileChanges(config = state.assistConfig) {
+    const selectedProfileId = getSelectedAssistProfileId(config);
+    const selectedCustomProfile = findAssistCustomProfile(selectedProfileId, config.customProfiles);
+    if (!selectedCustomProfile) {
+      return false;
+    }
+    return (
+      selectedCustomProfile.baseProfileId !== config.didacticProfileId ||
+      JSON.stringify(selectedCustomProfile.profileTuning || {}) !== JSON.stringify(config.profileTuning || {})
+    );
+  }
+
+  function cancelAssistProfileEditor() {
+    const snapshot = state.assistProfileEditor?.snapshot;
+    state.assistProfileEditor = null;
+    if (!snapshot) {
+      return;
+    }
+    state.assistConfig = normalizeAssistConfig(snapshot);
+    state.assistConfigDraft = structuredClone(state.assistConfig);
+    persistAssistConfig();
+  }
+
+  function startAssistCustomProfileCreation() {
+    state.assistProfileEditor = {
+      active: true,
+      mode: "create",
+      profileId: buildAssistCustomProfileId(),
+      draftLabel: "",
+      originalLabel: "",
+      baseProfileId: DEFAULT_ENGINE_PROFILE_ID,
+      snapshot: cloneAssistConfig()
+    };
+    state.assistConfig = normalizeAssistConfig({
+      ...state.assistConfig,
+      selectedProfileId: DEFAULT_ENGINE_PROFILE_ID,
+      didacticProfileId: DEFAULT_ENGINE_PROFILE_ID,
+      profileTuning: createEmptyAssistProfileTuning()
+    });
+    state.assistConfigDraft = structuredClone(state.assistConfig);
+    persistAssistConfig();
+    render({ preserveState: true });
+  }
+
+  function startAssistCustomProfileRename() {
+    const selectedProfileId = getSelectedAssistProfileId();
+    const selectedCustomProfile = findAssistCustomProfile(selectedProfileId);
+    if (!selectedCustomProfile) {
+      return;
+    }
+    state.assistProfileEditor = {
+      active: true,
+      mode: "edit",
+      profileId: selectedCustomProfile.id,
+      draftLabel: selectedCustomProfile.label || "",
+      originalLabel: selectedCustomProfile.label || "",
+      baseProfileId: selectedCustomProfile.baseProfileId,
+      snapshot: cloneAssistConfig()
+    };
+    render({ preserveState: true });
+  }
+
+  function updateAssistProfileEditorLabel(label = "") {
+    if (!state.assistProfileEditor?.active) {
+      return;
+    }
+    state.assistProfileEditor = {
+      ...state.assistProfileEditor,
+      draftLabel: String(label || "")
+    };
+    render({ preserveState: true });
+  }
+
+  function saveAssistProfileEditor() {
+    const editor = state.assistProfileEditor;
+    if (!editor?.active) {
+      const selectedProfileId = getSelectedAssistProfileId();
+      const selectedCustomProfile = findAssistCustomProfile(selectedProfileId);
+      if (!selectedCustomProfile || !hasUnsavedAssistCustomProfileChanges()) {
+        return;
+      }
+      persistAssistConfigValue({
+        customProfiles: (state.assistConfig.customProfiles || []).map((entry) =>
+          entry.id === selectedCustomProfile.id
+            ? {
+                ...entry,
+                baseProfileId: state.assistConfig.didacticProfileId,
+                profileTuning: structuredClone(state.assistConfig.profileTuning || {})
+              }
+            : entry
+        )
+      });
+      render({ preserveState: true });
+      return;
+    }
+
+    const normalizedLabel = String(editor.draftLabel || "").trim();
+    if (!normalizedLabel) {
+      return;
+    }
+
+    if (editor.mode === "create") {
+      const customProfile = {
+        id: editor.profileId || buildAssistCustomProfileId(),
+        label: normalizedLabel,
+        baseProfileId: state.assistConfig.didacticProfileId || DEFAULT_ENGINE_PROFILE_ID,
+        profileTuning: structuredClone(state.assistConfig.profileTuning || createProfileTuning(state.assistConfig.didacticProfileId))
+      };
+      persistAssistConfigValue({
+        selectedProfileId: customProfile.id,
+        customProfiles: [...(state.assistConfig.customProfiles || []), customProfile]
+      });
+    } else if (editor.mode === "edit") {
+      persistAssistConfigValue({
+        customProfiles: (state.assistConfig.customProfiles || []).map((entry) =>
+          entry.id === editor.profileId
+            ? {
+                ...entry,
+                label: normalizedLabel,
+                baseProfileId: state.assistConfig.didacticProfileId,
+                profileTuning: structuredClone(state.assistConfig.profileTuning || {})
+              }
+            : entry
+        )
+      });
+    }
+
+    state.assistProfileEditor = null;
+    render({ preserveState: true });
+  }
+
+  function deleteAssistCustomProfile() {
+    const selectedProfileId = getSelectedAssistProfileId();
+    const selectedCustomProfile = findAssistCustomProfile(selectedProfileId);
+    if (!selectedCustomProfile) {
+      return;
+    }
+
+    persistAssistConfigValue({
+      selectedProfileId: selectedCustomProfile.baseProfileId,
+      didacticProfileId: selectedCustomProfile.baseProfileId,
+      profileTuning: createProfileTuning(selectedCustomProfile.baseProfileId),
+      customProfiles: (state.assistConfig.customProfiles || []).filter((entry) => entry.id !== selectedCustomProfile.id)
+    });
+    state.assistProfileEditor = null;
+    render({ preserveState: true });
   }
 
   function getCodexSetupEndpoint() {
@@ -1920,10 +1988,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
 
   function getCodexSetupPlatform() {
     return detectCodexCliSetupPlatform();
-  }
-
-  function getCodexSetupPresentation() {
-    return getCodexCliSetupPresentation(getCodexSetupPlatform());
   }
 
   function getCodexSetupScript() {
@@ -1951,87 +2015,32 @@ export function createLessonEditorApp({ root, storage, editor }) {
   }
 
   function updateCodexCliSetupStatus(nextStatus = {}) {
-    state.codexCliSetupStatus = {
-      ok: nextStatus.ok === true,
-      checking: nextStatus.checking === true,
-      error: typeof nextStatus.error === "string" ? nextStatus.error : "",
-      data: nextStatus.data ?? null
-    };
-  }
-
-  function openCodexCliSetup(errorMessage = "") {
-    state.assistConfigOpen = false;
-    state.codexCliSetupOpen = true;
-    updateCodexCliSetupStatus({
-      ok: false,
-      checking: false,
-      error: errorMessage || state.codexCliSetupStatus.error || "",
-      data: state.codexCliSetupStatus.data
-    });
-    render({ preserveState: true });
-  }
-
-  function closeCodexCliSetup() {
-    state.codexCliSetupOpen = false;
-    render({ preserveState: true });
+    state.codexCliSetupStatus = createCodexCliSetupStatus(nextStatus);
   }
 
   async function testCodexCliConnection({ preserveState = true } = {}) {
     updateCodexCliSetupStatus({
-      ok: false,
-      checking: true,
-      error: "",
-      data: null
+      checking: true
     });
     render({ preserveState });
 
-    let status;
-    try {
-      status = await checkCodexLocalHealth({
-        endpoint: state.assistConfig.codexEndpoint,
-        token: state.assistConfig.codexToken
-      });
-    } catch (error) {
-      status = {
-        ok: false,
-        error: error instanceof Error ? error.message : "Falha ao validar o endpoint local.",
-        status: 0
-      };
-    }
-
-    updateCodexCliSetupStatus({
-      ok: status.ok,
-      checking: false,
-      error: status.ok ? "" : status.error || "Bridge local não encontrado.",
-      data: status.ok ? status.data : null
+    const connection = await checkCodexCliConnection({
+      assistConfig: state.assistConfig,
+      checkCodexLocalHealth
     });
+    updateCodexCliSetupStatus(connection.setupStatus);
     render({ preserveState });
-    return status;
-  }
-
-  async function ensureCodexLocalReady() {
-    if (!isCodexLocalModel(state.assistConfig.model)) {
-      return true;
-    }
-
-    const status = await testCodexCliConnection();
-    if (status.ok) {
-      return true;
-    }
-
-    openCodexCliSetup(status.error || "O bridge local não está ativo.");
-    return false;
+    return connection.status;
   }
 
   async function handleCodexModelSelection(model) {
     if (!isCodexLocalModel(model)) {
+      updateCodexCliSetupStatus({});
+      render({ preserveState: true });
       return;
     }
 
-    const status = await testCodexCliConnection();
-    if (!status.ok) {
-      openCodexCliSetup(status.error || "O bridge local não está ativo.");
-    }
+    await testCodexCliConnection();
   }
 
   async function copyTextToClipboard(text) {
@@ -2045,7 +2054,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
         await globalThis.navigator.clipboard.writeText(safeText);
         return true;
       } catch {
-        // Continua para o fallback legado.
+        // Continua para o fallback anterior.
       }
     }
 
@@ -2073,49 +2082,191 @@ export function createLessonEditorApp({ root, storage, editor }) {
   }
 
   function openAssistConfig() {
-    state.codexCliSetupOpen = false;
-    state.assistConfigDraft = { ...state.assistConfig };
+    state.assistConfigDraft = cloneAssistConfig();
+    state.assistPlanningInferencePending = false;
+    state.assistPlanningInferenceMessage = "";
     state.assistConfigOpen = true;
     render({ preserveState: true });
   }
 
   function closeAssistConfig() {
+    cancelAssistProfileEditor();
+    state.assistPlanningInferencePending = false;
+    state.assistPlanningInferenceMessage = "";
     state.assistConfigOpen = false;
     render({ preserveState: true });
   }
 
+  function openProviderConfig() {
+    state.providerConfigOpen = true;
+    render({ preserveState: true });
+  }
+
+  function closeProviderConfig() {
+    state.providerConfigOpen = false;
+    render({ preserveState: true });
+  }
+
   function setAssistModel(model) {
-    state.assistConfig.model = model || "gemini-2.5-flash";
+    state.assistConfig = normalizeAssistConfig({
+      ...state.assistConfig,
+      model
+    });
     if (state.assistConfigOpen) {
-      state.assistConfigDraft.model = state.assistConfig.model;
+      state.assistConfigDraft = cloneAssistConfig();
     }
     persistAssistConfig();
     void handleCodexModelSelection(state.assistConfig.model);
   }
 
-  function persistAssistConfigValue(patch = {}) {
-    state.assistConfig = {
-      model: patch.model || state.assistConfig.model || "gemini-2.5-flash",
-      apiKey:
-        patch.apiKey !== undefined
-          ? String(patch.apiKey || "").trim()
-          : typeof state.assistConfig.apiKey === "string"
-            ? state.assistConfig.apiKey.trim()
-            : "",
-      codexEndpoint:
-        patch.codexEndpoint !== undefined
-          ? String(patch.codexEndpoint || "").trim() || DEFAULT_CODEX_LOCAL_ENDPOINT
-          : typeof state.assistConfig.codexEndpoint === "string" && state.assistConfig.codexEndpoint.trim()
-            ? state.assistConfig.codexEndpoint.trim()
-            : DEFAULT_CODEX_LOCAL_ENDPOINT,
-      codexToken:
-        patch.codexToken !== undefined
-          ? String(patch.codexToken || "").trim()
-          : typeof state.assistConfig.codexToken === "string"
-            ? state.assistConfig.codexToken.trim()
-            : ""
+  function selectAssistDidacticProfile(profileSelectionId = state.assistConfig.selectedProfileId || state.assistConfig.didacticProfileId) {
+    const customProfile = findAssistCustomProfile(profileSelectionId, state.assistConfig.customProfiles);
+    if (customProfile) {
+      persistAssistConfigValue({
+        selectedProfileId: customProfile.id,
+        didacticProfileId: customProfile.baseProfileId,
+        profileTuning: structuredClone(customProfile.profileTuning)
+      });
+      render({ preserveState: true });
+      return;
+    }
+
+    const profileId = String(profileSelectionId || "").trim() || state.assistConfig.didacticProfileId;
+    persistAssistConfigValue({
+      selectedProfileId: profileId,
+      didacticProfileId: profileId,
+      profileTuning: createProfileTuning(profileId)
+    });
+    render({ preserveState: true });
+  }
+
+  function resetAssistProfileTuning(profileSelectionId = state.assistConfig.selectedProfileId || state.assistConfig.didacticProfileId) {
+    selectAssistDidacticProfile(profileSelectionId);
+  }
+
+  function updateAssistProfileTuning(patch = {}) {
+    persistAssistConfigValue({
+      profileTuning: {
+        ...(state.assistConfig.profileTuning || {}),
+        ...patch
+      }
+    });
+  }
+
+  function updateAssistCourseModel(patch = {}) {
+    const nextCourseModel = createDefaultCourseModel({
+      ...(state.assistConfig.profileTuning?.courseModel || {}),
+      ...patch
+    });
+    updateAssistProfileTuning({
+      courseModelEdited: true,
+      courseModel: nextCourseModel
+    });
+  }
+
+  function setAssistPlanningInferenceState({ pending = false, message = "" } = {}) {
+    state.assistPlanningInferencePending = pending === true;
+    state.assistPlanningInferenceMessage = text(message);
+  }
+
+  function normalizeAssistMicrosequenceRange(patch = {}) {
+    const current = state.assistConfig.profileTuning || {};
+    const resolveValue = (value, fallback) => {
+      const numeric = Number.parseInt(String(value ?? ""), 10);
+      return Number.isFinite(numeric) ? Math.max(1, numeric) : fallback;
     };
-    state.assistConfigDraft = { ...state.assistConfig };
+
+    const minMicrosequences = resolveValue(patch.minMicrosequences, resolveValue(current.minMicrosequences, 3));
+    const maxCandidate = resolveValue(patch.maxMicrosequences, resolveValue(current.maxMicrosequences, 8));
+    const maxMicrosequences = Math.max(minMicrosequences, maxCandidate);
+    const targetCandidate = resolveValue(
+      patch.targetMicrosequences,
+      resolveValue(current.targetMicrosequences, 5)
+    );
+    const targetMicrosequences = Math.min(maxMicrosequences, Math.max(minMicrosequences, targetCandidate));
+
+    return {
+      minMicrosequences,
+      targetMicrosequences,
+      maxMicrosequences
+    };
+  }
+
+  async function inferAssistPlanningFromRequest() {
+    const requestText = text(state.generationDraft.promptText);
+    const currentDescription = text(state.assistConfig.profileTuning?.courseModel?.description);
+    const hasAttachments = Array.isArray(state.generationDraft.attachments) && state.generationDraft.attachments.length > 0;
+    if (!requestText && !currentDescription && !hasAttachments) {
+      setAssistPlanningInferenceState({
+        pending: false,
+        message: "Informe um pedido, escreva no campo Perfil ou anexe material antes de completar o planejamento."
+      });
+      render({ preserveState: true });
+      return;
+    }
+
+    const readiness = await resolveGenerationProviderReadiness({
+      selectedModel: state.assistConfig.model,
+      codexEndpoint: state.assistConfig.codexEndpoint,
+      codexToken: state.assistConfig.codexToken,
+      checkCodexLocalHealth
+    });
+    if (!readiness.ok && isCodexLocalModel(state.assistConfig.model)) {
+      state.codexCliSetupStatus = createCodexCliSetupStatus({
+        ok: false,
+        checking: false,
+        error: readiness.error || "O bridge local não está ativo.",
+        data: readiness.data ?? null
+      });
+      setAssistPlanningInferenceState({
+        pending: false,
+        message: state.codexCliSetupStatus.error || "O bridge local não está ativo."
+      });
+      render({ preserveState: true });
+      return;
+    }
+
+    setAssistPlanningInferenceState({
+      pending: true,
+      message: "Lendo o pedido e completando todos os parâmetros do planejamento..."
+    });
+    render({ preserveState: true });
+
+    try {
+      const result = await inferPlanningProfileTuning({
+        assistConfig: state.assistConfig,
+        requestText: [requestText, currentDescription].filter(Boolean).join("\n\n"),
+        attachments: state.generationDraft.attachments || [],
+        ingestAttachments: ingestAttachments
+      });
+      persistAssistConfigValue({
+        profileTuning: {
+          ...(state.assistConfig.profileTuning || {}),
+          ...result.profileTuningPatch
+        }
+      });
+      setAssistPlanningInferenceState({
+        pending: false,
+        message: "Planejamento completado com todos os parâmetros atualizados."
+      });
+      render({ preserveState: true });
+    } catch (error) {
+      setAssistPlanningInferenceState({
+        pending: false,
+        message: text(error?.message) || "Não foi possível completar o planejamento."
+      });
+      render({ preserveState: true });
+    }
+  }
+
+  function persistAssistConfigValue(patch = {}) {
+    const nextAssistConfigState = applyAssistConfigPatch({
+      assistConfig: state.assistConfig,
+      patch
+    });
+    state.assistConfig = nextAssistConfigState.assistConfig;
+    state.assistConfigDraft = nextAssistConfigState.assistConfigDraft;
+    state.assistConfigDraft = structuredClone(state.assistConfig);
     persistAssistConfig();
   }
 
@@ -2168,10 +2319,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
     const dependencies = getAssistDependencies();
     const allowedKeys = new Set(dependencies.map((item) => item.key));
     const filteredKeys = state.assistDraft.dependencyKeys.filter((key) => allowedKeys.has(key));
-    state.assistDraft.dependencyKeys =
-      filteredKeys.length > 0
-        ? filteredKeys.slice(0, MAX_ASSIST_DEPENDENCIES)
-        : getDefaultDependencyKeys(dependencies);
+    state.assistDraft.dependencyKeys = filteredKeys.slice(0, MAX_ASSIST_DEPENDENCIES);
 
     const availableKeys = dependencies
       .filter((item) => !state.assistDraft.dependencyKeys.includes(item.key))
@@ -2189,9 +2337,37 @@ export function createLessonEditorApp({ root, storage, editor }) {
     }
     if (!ASSIST_CARD_CONTAINER_OPTIONS.some((item) => item.value === state.assistDraft.preferredContainer)) {
       state.assistDraft.preferredContainer = "";
+      state.assistDraft.preferredContainerConfirmed = false;
     }
     if (!ASSIST_DIDACTIC_TYPE_OPTIONS.some((item) => item.value === state.assistDraft.didacticTypeId)) {
       state.assistDraft.didacticTypeId = "";
+    }
+    if (!BOTTOM_UP_TARGET_MODE_OPTIONS.some((item) => item.value === state.assistDraft.interventionTargetMode)) {
+      state.assistDraft.interventionTargetMode = "current";
+    }
+    if (!BOTTOM_UP_OPERATION_MODE_OPTIONS.some((item) => item.value === state.assistDraft.operationMode)) {
+      state.assistDraft.operationMode = "reinforce";
+    }
+    if (!BOTTOM_UP_INTERVENTION_TYPE_OPTIONS.some((item) => item.value === state.assistDraft.interventionType)) {
+      state.assistDraft.interventionType = "local_semantic_rewrite";
+    }
+    const context = getRenderContext();
+    const hasNextPlannedMicrosequence = Boolean(findNextPlannedMicrosequenceInLesson(context.lesson, context.microsequence?.key));
+    if (!isValidAssistActionIntent(state.assistDraft.actionIntent, {
+      microsequence: context.microsequence,
+      hasNextPlannedMicrosequence
+    })) {
+      state.assistDraft.actionIntent = "";
+    }
+    const bottomUpState = getCurrentBottomUpOptionState();
+    const validDomainIds = new Set(bottomUpState.domainItems.map((item) => item.id));
+    if (!validDomainIds.has(state.assistDraft.domainRef)) {
+      state.assistDraft.domainRef = bottomUpState.domainRef || "";
+    }
+    state.assistDraft.relatedConceptRefs = uniqueTextList(state.assistDraft.relatedConceptRefs).filter((ref) => validDomainIds.has(ref));
+    state.assistDraft.prerequisiteRefs = uniqueTextList(state.assistDraft.prerequisiteRefs).filter((ref) => validDomainIds.has(ref));
+    if (!validDomainIds.has(state.assistDraft.bridgeTargetRef)) {
+      state.assistDraft.bridgeTargetRef = bottomUpState.bridgeTargetRef || "";
     }
     state.assistDraft.attachments = normalizeAssistAttachmentList(state.assistDraft.attachments);
   }
@@ -2313,7 +2489,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
       ? microsequence.tags.slice(0, MAX_ASSIST_DEPENDENCIES)
       : [];
 
-    state.view = "microsequence-assist";
+    state.view = "microsequence";
     state.assistDraft.selectedMode = ASSIST_USER_MODES.EDIT_MICROSEQUENCE;
     state.assistDraft.activeWorkbenchPane = assistOpenState.activeWorkbenchPane;
     state.assistDraft.visualizedVersionId = assistOpenState.visualizedVersionId || "";
@@ -2324,7 +2500,21 @@ export function createLessonEditorApp({ root, storage, editor }) {
         ?.find((item) => item.id === assistOpenState.visualizedVersionId)
         ?.cards?.[assistOpenState.cardIndex]?.key || state.selection.cardKey;
     state.assistDraft.attachments = [];
+    state.assistDraft.actionIntent = "";
+    state.assistDraft.promptText = "";
     state.assistDraft.didacticTypeId = "";
+    state.assistDraft.preferredContainer = "";
+    state.assistDraft.preferredContainerConfirmed = false;
+    state.assistDraft.interventionTargetMode = "current";
+    state.assistDraft.operationMode = Array.isArray(microsequence.cards) && microsequence.cards.length ? "reinforce" : "reinforce";
+    state.assistDraft.interventionType = inferBottomUpInterventionType(microsequence);
+    state.assistDraft.domainRef = String(microsequence?.domainRefs?.[0] || "").trim();
+    state.assistDraft.relatedConceptRefs =
+      state.assistDraft.interventionType === "contrast_reinforcement"
+        ? uniqueTextList(microsequence?.domainRefs).slice(0, 3)
+        : [];
+    state.assistDraft.prerequisiteRefs = [];
+    state.assistDraft.bridgeTargetRef = String(microsequence?.domainRefs?.[0] || "").trim();
     state.microsequenceMode = "play";
     ensureCurrentCardSnapshot();
     syncAssistDraft();
@@ -2741,7 +2931,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
       );
     } else {
       const cards =
-        state.view === "microsequence-assist"
+        state.view === "microsequence-assist" || state.view === "microsequence"
           ? getVisualizedMicrosequenceVersion()?.cards || []
           : findMicrosequence(
               state.project,
@@ -3189,7 +3379,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
     state.versionHistoryOpen = false;
     state.versionCompareOpen = false;
     state.assistConfigOpen = false;
-    state.codexCliSetupOpen = false;
     render({ preserveState: true });
   }
 
@@ -3480,11 +3669,10 @@ export function createLessonEditorApp({ root, storage, editor }) {
     state.versionHistoryExpandedMoreKey = "";
     state.cardCommentOpen = false;
     state.assistConfigOpen = false;
-    state.codexCliSetupOpen = false;
     state.entityEditor = null;
     if (structureReference) {
       state.versionHistorySelectionKey = getStructureVersionEntry(structureReference)?.activeVersionId || "";
-    } else if (state.view === "microsequence-assist") {
+    } else if (state.view === "microsequence-assist" || state.view === "microsequence") {
       state.versionHistorySelectionKey = getMicrosequenceVersionEntry()?.activeVersionId || "";
     } else {
       const currentHistory = getCurrentCardHistory();
@@ -3522,7 +3710,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
     state.versionCompareFocusTarget = null;
     state.cardCommentOpen = false;
     state.assistConfigOpen = false;
-    state.codexCliSetupOpen = false;
     state.entityEditor = null;
     render({ preserveState: true });
   }
@@ -3554,7 +3741,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
   }
 
   function saveCurrentSnapshotFromHistory() {
-    if (state.view === "microsequence-assist") {
+    if (state.view === "microsequence-assist" || state.view === "microsequence") {
       saveCurrentMicrosequenceSnapshot();
       return;
     }
@@ -3805,7 +3992,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
     }
 
     state.assistConfigOpen = false;
-    state.codexCliSetupOpen = false;
     state.generationPanelOpen = false;
     state.versionHistoryOpen = false;
     state.versionCompareOpen = false;
@@ -4047,7 +4233,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
     state.selection.moduleKey = moduleKey;
     state.selection.lessonKey = lessonKey;
     state.selection.microsequenceKey = microsequenceKey;
-    if (state.view === "microsequence-assist") {
+    if (state.view === "microsequence-assist" || state.view === "microsequence") {
       syncActiveMicrosequenceVersionFromProject();
     }
     ensureCurrentCardSnapshot();
@@ -4055,56 +4241,90 @@ export function createLessonEditorApp({ root, storage, editor }) {
     return nextProject;
   }
 
-  function createCardAfterCurrent() {
-    const microsequenceKey = state.selection.microsequenceKey;
-    if (!microsequenceKey) return;
-
-    try {
-      createCardAtPosition((Number.isInteger(state.selection.cardIndex) ? state.selection.cardIndex : 0) + 1);
-      render({ preserveState: true });
-    } catch {
-      // Mantém a UI operacional se a criação falhar por estado transitório.
+  function resolveGeneratedMicrosequenceSelection({
+    previousProjectDocument,
+    nextProjectDocument,
+    fallbackSelection,
+    targetMode = "current",
+    anchorMicrosequenceKey = ""
+  }) {
+    if (targetMode !== "new_after_current") {
+      return fallbackSelection;
     }
+    const previousLesson = findLesson(
+      previousProjectDocument,
+      fallbackSelection.courseKey,
+      fallbackSelection.moduleKey,
+      fallbackSelection.lessonKey
+    );
+    const nextLesson = findLesson(
+      nextProjectDocument,
+      fallbackSelection.courseKey,
+      fallbackSelection.moduleKey,
+      fallbackSelection.lessonKey
+    );
+    const previousKeys = new Set((Array.isArray(previousLesson?.microsequences) ? previousLesson.microsequences : []).map((item) => item.key));
+    const nextMicrosequences = Array.isArray(nextLesson?.microsequences) ? nextLesson.microsequences : [];
+    const inserted = nextMicrosequences.filter((item) => item?.key && !previousKeys.has(item.key));
+    const anchoredCandidate =
+      anchorMicrosequenceKey
+        ? (() => {
+            const anchorIndex = nextMicrosequences.findIndex((item) => item?.key === anchorMicrosequenceKey);
+            if (anchorIndex < 0) return null;
+            for (let index = anchorIndex + 1; index < nextMicrosequences.length; index += 1) {
+              const candidate = nextMicrosequences[index];
+              if (candidate?.key && !previousKeys.has(candidate.key)) {
+                return candidate;
+              }
+            }
+            return null;
+          })()
+        : null;
+    const targetMicrosequence = anchoredCandidate || inserted[0] || null;
+    if (!targetMicrosequence?.key) {
+      return fallbackSelection;
+    }
+    return {
+      ...fallbackSelection,
+      microsequenceKey: targetMicrosequence.key
+    };
   }
 
-  function applyMicrosequenceGeneration({ microsequenceTitle, cards }) {
+  function applyMicrosequenceGeneration({
+    projectDocument,
+    previousProjectDocument = state.project,
+    previousVersionId = "",
+    fallbackTitle = "Microssequência",
+    targetMode = "current",
+    anchorMicrosequenceKey = ""
+  }) {
+    setProject(projectDocument);
+    const resolvedSelection = resolveGeneratedMicrosequenceSelection({
+      previousProjectDocument,
+      nextProjectDocument: projectDocument,
+      fallbackSelection: {
+        courseKey: state.selection.courseKey,
+        moduleKey: state.selection.moduleKey,
+        lessonKey: state.selection.lessonKey,
+        microsequenceKey: state.selection.microsequenceKey,
+        cardKey: null,
+        cardIndex: 0
+      },
+      targetMode,
+      anchorMicrosequenceKey
+    });
+    const nextPath = applySelectionByKeys(projectDocument, resolvedSelection);
     ensureMicrosequenceVersionEntry();
-    const previousVersionId = getMicrosequenceVersionEntry()?.activeVersionId || "";
     ensureEditableMicrosequenceBranch({
       operationType: "generated",
       label: "Gerada"
     });
-    const currentMicrosequence = findMicrosequence(
-      state.project,
-      state.selection.courseKey,
-      state.selection.moduleKey,
-      state.selection.lessonKey,
-      state.selection.microsequenceKey
-    );
-    const nextProject = editor.replaceMicrosequenceCards({
-      courseKey: state.selection.courseKey,
-      moduleKey: state.selection.moduleKey,
-      lessonKey: state.selection.lessonKey,
-      microsequenceKey: state.selection.microsequenceKey,
-      title: String(microsequenceTitle || "").trim() || currentMicrosequence?.title || "Microssequência",
-      description: currentMicrosequence?.description || "",
-      tags: structuredClone(Array.isArray(currentMicrosequence?.tags) ? currentMicrosequence.tags : []),
-      domainRefs: structuredClone(Array.isArray(currentMicrosequence?.domainRefs) ? currentMicrosequence.domainRefs : []),
-      practiceVariantRefs: structuredClone(
-        Array.isArray(currentMicrosequence?.practiceVariantRefs) ? currentMicrosequence.practiceVariantRefs : []
-      ),
-      didacticPurpose: currentMicrosequence?.didacticPurpose || "",
-      coverageRole: currentMicrosequence?.coverageRole || "",
-      cards: structuredClone(Array.isArray(cards) ? cards : [])
-    });
-
-    setProject(nextProject);
     const microsequence = findMicrosequence(
-      nextProject,
-      state.selection.courseKey,
-      state.selection.moduleKey,
-      state.selection.lessonKey,
-      state.selection.microsequenceKey
+      projectDocument,
+      nextPath.courseKey,
+      nextPath.moduleKey,
+      nextPath.lessonKey,
+      nextPath.microsequenceKey
     );
     const firstCard = microsequence?.cards?.[0] || null;
     state.selection.cardIndex = 0;
@@ -4121,7 +4341,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
     });
     state.assistDraft.lastRequest = {
       title: "Cards atualizados",
-      description: `${Array.isArray(microsequence?.cards) ? microsequence.cards.length : 0} cards aplicados em ${microsequence?.title || microsequenceTitle || "Microssequência"}. Aceite ou exclua a iteração atual.`,
+      description: `${Array.isArray(microsequence?.cards) ? microsequence.cards.length : 0} cards aplicados em ${microsequence?.title || fallbackTitle}. Aceite ou exclua a iteração atual.`,
       timestamp: new Date().toISOString()
     };
     syncAssistDraft();
@@ -4189,23 +4409,17 @@ export function createLessonEditorApp({ root, storage, editor }) {
     moduleKey = "",
     lessonKey = ""
   } = {}) {
-    const draft = state.generationDraft;
-    const course = courseKey ? findCourse(state.project, courseKey) : null;
-    const moduleValue = course && moduleKey ? findModule(state.project, course.key, moduleKey) : null;
-    const lesson = course && moduleValue && lessonKey ? findLesson(state.project, course.key, moduleValue.key, lessonKey) : null;
-
-    draft.courseFixed = Boolean(course);
-    draft.courseInput = course?.title || "";
-    draft.courseKey = course?.key || "";
-    draft.moduleFixed = Boolean(moduleValue);
-    draft.moduleInput = moduleValue?.title || "";
-    draft.moduleKey = moduleValue?.key || "";
-    draft.lessonFixed = Boolean(lesson);
-    draft.repositionMicrosequences = false;
-    draft.lessonInput = lesson?.title || "";
-    draft.lessonKey = lesson?.key || "";
-    syncGenerationDraftHierarchy();
-    clearGenerationResult();
+    const nextGenerationPanelState = applyGenerationPanelScopeState({
+      draft: state.generationDraft,
+      scope: { courseKey, moduleKey, lessonKey },
+      projectDocument: state.project,
+      visibleCourses: getVisibleCourses(),
+      findCourse,
+      findModule,
+      findLesson
+    });
+    state.generationDraft = nextGenerationPanelState.draft;
+    state.pendingGeneratedNavigation = nextGenerationPanelState.pendingGeneratedNavigation;
   }
 
   function clearGenerationScope() {
@@ -4213,17 +4427,35 @@ export function createLessonEditorApp({ root, storage, editor }) {
   }
 
   function openGenerationPanel(scope = {}) {
-    applyGenerationScope(scope);
-    state.generationPanelOpen = true;
-    state.entityEditor = null;
+    const nextGenerationPanelState = buildOpenedGenerationPanelState({
+      draft: state.generationDraft,
+      scope,
+      projectDocument: state.project,
+      visibleCourses: getVisibleCourses(),
+      findCourse,
+      findModule,
+      findLesson
+    });
+    state.generationDraft = nextGenerationPanelState.draft;
+    state.pendingGeneratedNavigation = nextGenerationPanelState.pendingGeneratedNavigation;
+    state.generationPanelOpen = nextGenerationPanelState.generationPanelOpen;
+    state.entityEditor = nextGenerationPanelState.entityEditor;
     render({ preserveState: true });
   }
 
   function closeGenerationPanel({ preserveGeneratedResult = true } = {}) {
-    state.generationPanelOpen = false;
-    if (!preserveGeneratedResult) {
-      clearGenerationResult();
+    const nextGenerationPanelState = buildClosedGenerationPanelState({
+      draft: state.generationDraft,
+      preserveGeneratedResult,
+      pendingGeneratedNavigation: state.pendingGeneratedNavigation
+    });
+    if (state.assistConfigOpen) {
+      cancelAssistProfileEditor();
     }
+    state.generationDraft = nextGenerationPanelState.draft;
+    state.pendingGeneratedNavigation = nextGenerationPanelState.pendingGeneratedNavigation;
+    state.generationPanelOpen = nextGenerationPanelState.generationPanelOpen;
+    state.assistConfigOpen = false;
     render({ preserveState: true });
   }
 
@@ -4306,389 +4538,171 @@ export function createLessonEditorApp({ root, storage, editor }) {
   }
 
   function clearGenerationResult() {
-    state.generationDraft.errorMessage = "";
-    state.generationDraft.lastResult = null;
-    state.pendingGeneratedNavigation = null;
-  }
-
-  function resolveHierarchyInputMatch(items, inputValue) {
-    const normalizedInput = normalizeComparableText(inputValue);
-    if (!normalizedInput) {
-      return null;
-    }
-
-    return (
-      (items || []).find((item) => {
-        const labels = [item?.title, item?.key].map((value) => normalizeComparableText(value)).filter(Boolean);
-        return labels.includes(normalizedInput);
-      }) || null
-    );
-  }
-
-  function syncGenerationDraftHierarchy() {
-    const draft = state.generationDraft;
-
-    if (!draft.courseFixed) {
-      draft.courseInput = "";
-      draft.courseKey = "";
-      draft.moduleFixed = false;
-      draft.moduleInput = "";
-      draft.moduleKey = "";
-      draft.lessonFixed = false;
-      draft.repositionMicrosequences = false;
-      draft.lessonInput = "";
-      draft.lessonKey = "";
-      return;
-    }
-
-    const course = resolveHierarchyInputMatch(getVisibleCourses(), draft.courseInput);
-    draft.courseKey = course?.key || "";
-
-    if (!course) {
-      draft.moduleFixed = false;
-      draft.moduleInput = "";
-      draft.moduleKey = "";
-      draft.lessonFixed = false;
-      draft.repositionMicrosequences = false;
-      draft.lessonInput = "";
-      draft.lessonKey = "";
-      return;
-    }
-
-    if (!draft.moduleFixed) {
-      draft.moduleInput = "";
-      draft.moduleKey = "";
-      draft.lessonFixed = false;
-      draft.repositionMicrosequences = false;
-      draft.lessonInput = "";
-      draft.lessonKey = "";
-      return;
-    }
-
-    const moduleValue = resolveHierarchyInputMatch(course.modules || [], draft.moduleInput);
-    draft.moduleKey = moduleValue?.key || "";
-
-    if (!moduleValue) {
-      draft.lessonFixed = false;
-      draft.repositionMicrosequences = false;
-      draft.lessonInput = "";
-      draft.lessonKey = "";
-      return;
-    }
-
-    if (!draft.lessonFixed) {
-      draft.repositionMicrosequences = false;
-      draft.lessonInput = "";
-      draft.lessonKey = "";
-      return;
-    }
-
-    const lesson = resolveHierarchyInputMatch(moduleValue.lessons || [], draft.lessonInput);
-    draft.lessonKey = lesson?.key || "";
+    const nextGenerationPanelState = buildGenerationResultClearedState({
+      draft: state.generationDraft,
+      pendingGeneratedNavigation: state.pendingGeneratedNavigation
+    });
+    state.generationDraft = nextGenerationPanelState.draft;
+    state.pendingGeneratedNavigation = nextGenerationPanelState.pendingGeneratedNavigation;
   }
 
   function getGenerationScopeState(project = state.project) {
-    const draft = state.generationDraft;
-    const courses = getVisibleCourses(project);
-    const course = draft.courseKey ? findCourse(project, draft.courseKey) : null;
-    const modules = course?.modules || [];
-    const moduleValue = draft.moduleKey ? findModule(project, draft.courseKey, draft.moduleKey) : null;
-    const lessons = moduleValue?.lessons || [];
-    const lesson = draft.lessonKey ? findLesson(project, draft.courseKey, draft.moduleKey, draft.lessonKey) : null;
-    const hasPrompt = !!String(draft.promptText || "").trim();
-    const hasAttachments = Array.isArray(draft.attachments) && draft.attachments.length > 0;
-    const hasInputSource = hasPrompt || hasAttachments;
-    const pressedFieldsFilled =
-      (!draft.courseFixed || !!String(draft.courseInput || "").trim()) &&
-      (!draft.moduleFixed || !!String(draft.moduleInput || "").trim()) &&
-      (!draft.lessonFixed || !!String(draft.lessonInput || "").trim());
-    const invalidFixedHierarchy = (draft.moduleFixed && !course) || (draft.lessonFixed && !moduleValue);
-
-    const generationMode = resolveGenerationAssistMode({
-      lessonFixed: draft.lessonFixed === true,
-      hasResolvedLesson: !!lesson,
-      repositionMicrosequences: draft.repositionMicrosequences === true
+    return resolveGenerationScopeViewState({
+      draft: state.generationDraft,
+      projectDocument: project,
+      visibleCourses: getVisibleCourses(project),
+      findCourse,
+      findModule,
+      findLesson
     });
-    const isLessonMicrosequenceMode =
-      generationMode === "generate-lesson-microsequences" ||
-      generationMode === "generate-and-reposition-lesson-microsequences";
-    const isLessonRepositionMode = generationMode === "generate-and-reposition-lesson-microsequences";
-
-    let actionLabel = "criar curso completo";
-    let actionHelpText = "";
-    let actionSummary = "Curso, módulos e lições";
-    let actionIconName = "folder";
-    let panelTitle = "Gerar estrutura";
-    let panelSubtitle = "";
-    let submitLabel = "Gerar estrutura";
-
-    if (isLessonMicrosequenceMode) {
-      actionLabel = isLessonRepositionMode
-        ? "gerar e reposicionar microssequências nesta lição"
-        : "criar microssequências draft nesta lição";
-      actionHelpText = "";
-      actionSummary = isLessonRepositionMode
-        ? "Gerar e reposicionar microssequências"
-        : "Microssequências draft sem cards";
-      actionIconName = isLessonRepositionMode ? "reposition" : "microsequence";
-      panelTitle = "Gerar microssequências";
-      panelSubtitle = "";
-      submitLabel = isLessonRepositionMode ? "Gerar e reposicionar" : "Gerar microssequências";
-    } else if (draft.courseFixed) {
-      if (!course) {
-        actionLabel = "criar este curso, módulos e lições";
-        actionSummary = "Curso, módulos e lições";
-        actionIconName = "folder";
-      } else if (!draft.moduleFixed) {
-        actionLabel = "criar módulos e lições neste curso";
-        actionSummary = "Módulos e lições neste curso";
-        actionIconName = "module";
-      } else if (!moduleValue) {
-        actionLabel = "criar este módulo e suas lições";
-        actionSummary = "Módulo e lições";
-        actionIconName = "module";
-      } else if (!draft.lessonFixed) {
-        actionLabel = "criar lições neste módulo";
-        actionSummary = "Lições neste módulo";
-        actionIconName = "lesson";
-      } else {
-        actionLabel = "criar/atualizar esta lição";
-        actionSummary = "Atualizar esta lição";
-        actionIconName = "lesson";
-      }
-    }
-
-    return {
-      courses,
-      course,
-      modules,
-      moduleValue,
-      lessons,
-      lesson,
-      moduleToggleEnabled: !!course,
-      moduleInputEnabled: !!course && draft.moduleFixed,
-      lessonToggleEnabled: !!moduleValue,
-      lessonInputEnabled: !!moduleValue && draft.lessonFixed,
-      canSubmit: hasInputSource && pressedFieldsFilled && !invalidFixedHierarchy,
-      actionLabel,
-      actionHelpText,
-      actionSummary,
-      actionIconName,
-      generationMode,
-      isLessonMicrosequenceMode,
-      isLessonGenerationMode: isLessonMicrosequenceMode,
-      isLessonRepositionMode,
-      panelTitle,
-      panelSubtitle,
-      submitLabel
-    };
-  }
-
-  function setGenerationLevelFixed(level) {
-    const draft = state.generationDraft;
-
-    if (level === "course") {
-      const willEnable = !draft.courseFixed;
-      draft.courseFixed = willEnable;
-      if (!willEnable) {
-        draft.courseInput = "";
-        draft.courseKey = "";
-      }
-    } else if (level === "module") {
-      if (!getGenerationScopeState().moduleToggleEnabled) {
-        return;
-      }
-      const willEnable = !draft.moduleFixed;
-      draft.moduleFixed = willEnable;
-      if (!willEnable) {
-        draft.moduleInput = "";
-        draft.moduleKey = "";
-      }
-    } else if (level === "lesson") {
-      if (!getGenerationScopeState().lessonToggleEnabled) {
-        return;
-      }
-      const willEnable = !draft.lessonFixed;
-      draft.lessonFixed = willEnable;
-      if (!willEnable) {
-        draft.repositionMicrosequences = false;
-        draft.lessonInput = "";
-        draft.lessonKey = "";
-      }
-    }
-
-    syncGenerationDraftHierarchy();
-    clearGenerationResult();
-    render({ preserveState: true });
   }
 
   function setGenerationInput(level, value) {
-    const draft = state.generationDraft;
-    if (level === "course") {
-      draft.courseInput = value;
-    } else if (level === "module") {
-      draft.moduleInput = value;
-    } else if (level === "lesson") {
-      draft.lessonInput = value;
-    }
+    const nextGenerationPanelState = buildGenerationInputState({
+      draft: state.generationDraft,
+      level,
+      value,
+      visibleCourses: getVisibleCourses()
+    });
+    state.generationDraft = nextGenerationPanelState.draft;
+    state.pendingGeneratedNavigation = nextGenerationPanelState.pendingGeneratedNavigation;
+    render({ preserveState: true });
+  }
 
-    syncGenerationDraftHierarchy();
+  function normalizeGenerationTopic(value) {
+    return String(value || "").trim();
+  }
+
+  function addGenerationTopic(type) {
+    const fieldName = type === "exclude" ? "pendingExcludeTopic" : "pendingIncludeTopic";
+    const listName = type === "exclude" ? "excludeTopics" : "includeTopics";
+    const oppositeListName = type === "exclude" ? "includeTopics" : "excludeTopics";
+    const value = normalizeGenerationTopic(state.generationDraft[fieldName]);
+    if (!value) {
+      return;
+    }
+    const nextValues = new Set(
+      (state.generationDraft[listName] || []).map((item) => normalizeGenerationTopic(item)).filter(Boolean)
+    );
+    nextValues.add(value);
+    state.generationDraft[listName] = Array.from(nextValues);
+    state.generationDraft[oppositeListName] = (state.generationDraft[oppositeListName] || []).filter(
+      (item) => normalizeGenerationTopic(item) !== value
+    );
+    state.generationDraft[fieldName] = "";
     clearGenerationResult();
     render({ preserveState: true });
   }
 
-  function toggleGenerationMicrosequenceReposition() {
-    const scopeState = getGenerationScopeState();
-    if (!scopeState.isLessonGenerationMode) {
-      return;
-    }
-
-    state.generationDraft.repositionMicrosequences = state.generationDraft.repositionMicrosequences !== true;
+  function removeGenerationTopic(type, topic) {
+    const listName = type === "exclude" ? "excludeTopics" : "includeTopics";
+    const normalizedTopic = normalizeGenerationTopic(topic);
+    state.generationDraft[listName] = (state.generationDraft[listName] || []).filter(
+      (item) => normalizeGenerationTopic(item) !== normalizedTopic
+    );
     clearGenerationResult();
     render({ preserveState: true });
   }
 
   function openGeneratedLesson({ pendingGeneratedNavigation = state.pendingGeneratedNavigation } = {}) {
-    const result = state.generationDraft.lastResult;
-    const target = pendingGeneratedNavigation || result;
-    if (!target?.courseKey || !target?.moduleKey || !target?.lessonKey) {
-      state.generationDraft.errorMessage = "Nenhuma estrutura nova foi gerada para abrir em Cursos.";
+    const openTarget = resolveOpenGeneratedLessonState({
+      pendingGeneratedNavigation,
+      lastResult: state.generationDraft.lastResult
+    });
+    if (!openTarget.ok) {
+      state.generationDraft.errorMessage = openTarget.errorMessage;
       render({ preserveState: true });
       return;
     }
 
-    applySelection({
-      courseKey: target.courseKey,
-      moduleKey: target.moduleKey,
-      lessonKey: target.lessonKey,
-      microsequenceKey: null,
-      cardKey: null,
-      cardIndex: 0
-    });
-    state.homeTab = "courses";
-    state.generationPanelOpen = false;
-    state.view = "lesson";
-    state.entityEditor = null;
-    state.microsequenceMode = "play";
-    state.pendingGeneratedNavigation = null;
-    focusStructureTarget({
-      view: "lesson",
-      courseKey: target.courseKey,
-      moduleKey: target.moduleKey,
-      lessonKey: target.lessonKey,
-      microsequenceKey: target.firstMicrosequenceKey || null
-    });
+    applySelection(openTarget.selection);
+    Object.assign(state, openTarget.viewState);
+    focusStructureTarget(openTarget.focusTarget);
     render({ preserveState: false });
-  }
-
-  function applyMicrosequenceReposition(slot, renames = []) {
-    if (!slot) {
-      fail("O serviço de IA escolheu um slot de reposicionamento inexistente. Ajuste o pedido e tente de novo.");
-    }
-
-    const moveResult = editor.moveMicrosequence({
-      courseKey: state.selection.courseKey,
-      moduleKey: state.selection.moduleKey,
-      lessonKey: state.selection.lessonKey,
-      microsequenceKey: state.selection.microsequenceKey,
-      targetCourseKey: slot.courseKey,
-      targetModuleKey: slot.moduleKey,
-      targetLessonKey: slot.lessonKey,
-      targetPosition: slot.targetPosition,
-      renames
-    });
-
-    const nextProject = moveResult.document;
-    const movedMicrosequence = moveResult.movedMicrosequence;
-    setProject(nextProject);
-    applySelectionByKeys(nextProject, {
-      courseKey: movedMicrosequence?.courseKey || slot.courseKey,
-      moduleKey: movedMicrosequence?.moduleKey || slot.moduleKey,
-      lessonKey: movedMicrosequence?.lessonKey || slot.lessonKey,
-      microsequenceKey: movedMicrosequence?.microsequenceKey || state.selection.microsequenceKey,
-      cardKey: null,
-      cardIndex: 0
-    });
-    state.view = "microsequence-assist";
-    state.microsequenceMode = "play";
-    syncAssistDraft();
   }
 
   async function submitAssistRequest() {
     const context = getRenderContext();
-    const assistCatalog = getAssistCatalog();
     const hadCardsBefore = Array.isArray(context.microsequence?.cards) && context.microsequence.cards.length > 0;
-    const dependencyTitles = assistCatalog
+    const previousProjectDocument = structuredClone(state.project);
+    const dependencyTitles = getAssistCatalog()
       .filter((item) => state.assistDraft.dependencyKeys.includes(item.key))
       .map((item) => item.title || item.key);
-    const selectedDependencyKeys = new Set(state.assistDraft.dependencyKeys);
-    const selectedLessonTopicRefs = collectLessonTopicRefs(context.lesson, context.microsequence)
-      .filter((item) => selectedDependencyKeys.has(item.refKey) || selectedDependencyKeys.has(item.label));
-    const destinationSlots = collectRepositionSlots();
-    const requestedMode = state.assistDraft.selectedMode;
-    const mode =
-      requestedMode === ASSIST_USER_MODES.REPOSITION
-        ? "reposition-microsequence"
-        : "compose-microsequence";
 
     state.assistDraft.isSubmitting = true;
     state.assistDraft.errorMessage = "";
     render({ preserveState: true });
 
     try {
-      if (mode === "reposition-microsequence" && !destinationSlots.length) {
-        fail("Nenhum slot de reposicionamento foi encontrado a partir das tags escolhidas. Selecione tags válidas e tente de novo.");
-      }
+      const visibleAssistTitle =
+        getVisualizedMicrosequenceVersion()?.title
+        || context.microsequence?.title
+        || "Microssequência";
+      const previousVersionId =
+        state.assistDraft.interventionTargetMode === "new_after_current"
+          ? ""
+          : getMicrosequenceVersionEntry()?.activeVersionId || "";
+      const submission = await executeMicrosequenceGeneration({
+        selection: state.selection,
+        draft: {
+          ...state.assistDraft,
+          microsequenceTitle: visibleAssistTitle
+        },
+        assistConfig: state.assistConfig,
+        dependencyTitles,
+        selectedDidacticTypeId: state.assistDraft.didacticTypeId,
+        preferredContainerLabel: getAssistContainerLabel(state.assistDraft.preferredContainer),
+        lessonContext: {
+          currentMicrosequenceTitle: context.microsequence?.title || "",
+          microsequenceKeys: Array.isArray(context.lesson?.microsequences) ? context.lesson.microsequences.map((item) => item.key) : [],
+          reusableMicrosequenceCount: Array.isArray(context.lesson?.microsequences) ? context.lesson.microsequences.length : 0
+        },
+        projectDocument: state.project,
+        checkCodexLocalHealth,
+        ingestAttachments: ingestAttachments
+      });
 
-      if (!(await ensureCodexLocalReady())) {
+      if (submission.status === "provider-unready") {
+        updateCodexCliSetupStatus({
+          ok: false,
+          checking: false,
+          error: submission.errorMessage || "O local não está ativo."
+        });
+        openProviderConfig();
         return;
       }
 
-      const result = await runAssist({
-        apiKey: state.assistConfig.apiKey,
-        model: state.assistConfig.model,
-        codexEndpoint: state.assistConfig.codexEndpoint,
-        codexToken: state.assistConfig.codexToken,
-        mode,
-        microsequence: buildAssistHierarchyContext({
-          course: context.course,
-          moduleValue: context.moduleValue,
-          lesson: context.lesson,
-          microsequence: context.microsequence
-        }),
-        card: context.card,
-        dependencyTitles,
-        selectedLessonTopicRefs,
-        destinationSlots,
-        promptText: state.assistDraft.promptText,
-        userFixedTypeId: state.assistDraft.didacticTypeId,
-        preferredContainer: state.assistDraft.preferredContainer,
-        attachments: state.assistDraft.attachments
-      });
-
-      if (mode === "compose-microsequence") {
-        applyMicrosequenceGeneration(result);
-        state.assistDraft.lastRequest = {
-          title: hadCardsBefore ? "Cards substituídos" : "Cards gerados",
-          description:
-            `${result.cards.length} cards aplicados diretamente em ${result.microsequenceTitle} com ${getAssistModelLabel(state.assistConfig.model)}.`,
-          timestamp: new Date().toISOString()
-        };
-      } else {
-        const chosenSlot = destinationSlots.find((item) => item.slotId === result.slotId);
-        if (!chosenSlot) {
-          fail("A resposta do serviço de IA devolveu uma posição inválida para reposicionamento. Ajuste o pedido e tente novamente.");
-        }
-
-        applyMicrosequenceReposition(chosenSlot, result.renames);
-        const destinationLesson = findLesson(state.project, chosenSlot.courseKey, chosenSlot.moduleKey, chosenSlot.lessonKey);
-        state.assistDraft.lastRequest = {
-          title: "Microssequência reposicionada",
-          description:
-            `${context.microsequence?.title || "Microssequência"} movida para ${destinationLesson?.title || chosenSlot.lessonKey} com ${getAssistModelLabel(state.assistConfig.model)}.`,
-          timestamp: new Date().toISOString()
-        };
+      if (submission.status !== "success") {
+        throw new Error(submission.errorMessage || "Falha ao chamar o serviço de IA.");
       }
+
+      storage.saveProject(submission.generationResult.projectDocument);
+      applyMicrosequenceGeneration({
+        projectDocument: submission.generationResult.projectDocument,
+        previousProjectDocument,
+        previousVersionId,
+        fallbackTitle: context.microsequence?.title || "Microssequência",
+        targetMode: state.assistDraft.interventionTargetMode,
+        anchorMicrosequenceKey: state.selection.microsequenceKey
+      });
+      const nextMicrosequence = findMicrosequence(
+        submission.generationResult.projectDocument,
+        state.selection.courseKey,
+        state.selection.moduleKey,
+        state.selection.lessonKey,
+        state.selection.microsequenceKey
+      );
+      const createdNewStage = state.assistDraft.interventionTargetMode === "new_after_current";
+      state.assistDraft.lastRequest = {
+        title: createdNewStage
+          ? "Nova microssequência gerada"
+          : hadCardsBefore
+            ? "Microssequência continuada"
+            : "Primeiros cards gerados",
+        description:
+          `${Array.isArray(nextMicrosequence?.cards) ? nextMicrosequence.cards.length : 0} cards ${hadCardsBefore ? "na iteração atual" : "gerados"} em ${nextMicrosequence?.title || context.microsequence?.title || "Microssequência"} com ${getAssistModelLabel(state.assistConfig.model)}.`,
+        timestamp: new Date().toISOString()
+      };
     } catch (error) {
       state.assistDraft.errorMessage = error instanceof Error ? error.message : "Falha ao chamar o serviço de IA.";
     } finally {
@@ -4697,807 +4711,72 @@ export function createLessonEditorApp({ root, storage, editor }) {
     }
   }
 
-  function summarizeStructureChanges(summary, targetCourseTitle) {
-    if (summary.createdCourses > 0) {
-      return `Curso ${targetCourseTitle} estruturado com ${summary.totalModules} módulo(s) e ${summary.totalLessons} lição(ões).`;
-    }
-    if (summary.createdModules > 0 || summary.updatedModules > 0) {
-      return `Estrutura aplicada em ${targetCourseTitle}: ${summary.totalModules} módulo(s) e ${summary.totalLessons} lição(ões).`;
-    }
-    return `Estrutura aplicada em ${targetCourseTitle}: ${summary.totalLessons} lição(ões) atualizada(s).`;
-  }
-
-  function createStructureSummary() {
-    return {
-      createdCourses: 0,
-      updatedCourses: 0,
-      createdModules: 0,
-      updatedModules: 0,
-      createdLessons: 0,
-      updatedLessons: 0,
-      totalModules: 0,
-      totalLessons: 0
-    };
-  }
-
-  function buildStructureGenerationContext(scopeState) {
-    const courseModules = summarizeStructuredModules(scopeState.course?.modules || []);
-    const moduleLessons = summarizeStructuredLessons(scopeState.moduleValue?.lessons || []);
-    return {
-      actionLabel: scopeState.actionLabel,
-      courseFixed: state.generationDraft.courseFixed === true,
-      moduleFixed: state.generationDraft.moduleFixed === true,
-      lessonFixed: state.generationDraft.lessonFixed === true,
-      courseTitle: scopeState.course?.title || String(state.generationDraft.courseInput || "").trim(),
-      courseDescription: scopeState.course?.description || "",
-      courseSourceGuide: scopeState.course?.sourceGuide || "",
-      moduleTitle: scopeState.moduleValue?.title || String(state.generationDraft.moduleInput || "").trim(),
-      moduleDescription: scopeState.moduleValue?.description || "",
-      moduleSourceGuide: scopeState.moduleValue?.sourceGuide || "",
-      courseModules,
-      lessonTitle: scopeState.lesson?.title || String(state.generationDraft.lessonInput || "").trim(),
-      lessonDescription: scopeState.lesson?.description || "",
-      lessonSourceGuide: scopeState.lesson?.sourceGuide || "",
-      lessonSourceGuideStructured: structuredClone(scopeState.lesson?.sourceGuideStructured || {}),
-      lessonResourceTags: Array.isArray(scopeState.lesson?.resourceTags) ? [...scopeState.lesson.resourceTags] : [],
-      lessonContentTypeTags: Array.isArray(scopeState.lesson?.contentTypeTags) ? [...scopeState.lesson.contentTypeTags] : [],
-      lessonLearningActionTags: Array.isArray(scopeState.lesson?.learningActionTags) ? [...scopeState.lesson.learningActionTags] : [],
-      lessonSupportLevel: String(scopeState.lesson?.supportLevel || "").trim(),
-      moduleLessons,
-      lessonMicrosequences: Array.isArray(scopeState.lesson?.microsequences)
-        ? scopeState.lesson.microsequences.map((microsequence) => ({
-            title: String(microsequence?.title || "").trim(),
-            tags: Array.isArray(microsequence?.tags)
-              ? microsequence.tags.map((item) => String(item || "").trim()).filter(Boolean)
-              : []
-          }))
-        : []
-    };
-  }
-
-  function buildLessonMicrosequenceGenerationContext(scopeState) {
-    const domainCoverage = buildLessonDomainCoverageReport(scopeState.lesson || {});
-    return {
-      actionLabel: scopeState.actionLabel,
-      courseTitle: scopeState.course?.title || String(state.generationDraft.courseInput || "").trim(),
-      courseDescription: scopeState.course?.description || "",
-      courseSourceGuide: scopeState.course?.sourceGuide || "",
-      courseSourceGuideStructured: structuredClone(scopeState.course?.sourceGuideStructured || {}),
-      moduleTitle: scopeState.moduleValue?.title || String(state.generationDraft.moduleInput || "").trim(),
-      moduleDescription: scopeState.moduleValue?.description || "",
-      moduleSourceGuide: scopeState.moduleValue?.sourceGuide || "",
-      moduleSourceGuideStructured: structuredClone(scopeState.moduleValue?.sourceGuideStructured || {}),
-      lessonTitle: scopeState.lesson?.title || String(state.generationDraft.lessonInput || "").trim(),
-      lessonDescription: scopeState.lesson?.description || "",
-      lessonSourceGuide: scopeState.lesson?.sourceGuide || "",
-      lessonSourceGuideStructured: structuredClone(scopeState.lesson?.sourceGuideStructured || {}),
-      lessonDomainMap: structuredClone(scopeState.lesson?.domainMap || {}),
-      lessonDomainCoverage: {
-        uncoveredItems: domainCoverage.uncoveredItems,
-        weakItems: domainCoverage.weakItems,
-        explainedWithoutPractice: domainCoverage.explainedWithoutPractice,
-        practiceWithoutVariation: domainCoverage.practiceWithoutVariation,
-        examMissing: domainCoverage.examMissing
-      },
-      lessonResourceTags: Array.isArray(scopeState.lesson?.resourceTags) ? [...scopeState.lesson.resourceTags] : [],
-      lessonContentTypeTags: Array.isArray(scopeState.lesson?.contentTypeTags) ? [...scopeState.lesson.contentTypeTags] : [],
-      lessonLearningActionTags: Array.isArray(scopeState.lesson?.learningActionTags) ? [...scopeState.lesson.learningActionTags] : [],
-      lessonSupportLevel: String(scopeState.lesson?.supportLevel || "").trim(),
-      existingMicrosequences: Array.isArray(scopeState.lesson?.microsequences)
-        ? scopeState.lesson.microsequences.map((microsequence, index) => ({
-            key: String(microsequence?.key || "").trim(),
-            position: index,
-            title: String(microsequence?.title || "").trim(),
-            description: String(microsequence?.description || "").trim(),
-            domainRefs: Array.isArray(microsequence?.domainRefs)
-              ? microsequence.domainRefs.map((item) => String(item || "").trim()).filter(Boolean)
-              : [],
-            practiceVariantRefs: Array.isArray(microsequence?.practiceVariantRefs)
-              ? microsequence.practiceVariantRefs.map((item) => String(item || "").trim()).filter(Boolean)
-              : [],
-            didacticPurpose: String(microsequence?.didacticPurpose || "").trim(),
-            coverageRole: String(microsequence?.coverageRole || "").trim(),
-            tags: Array.isArray(microsequence?.tags)
-              ? microsequence.tags.map((item) => String(item || "").trim()).filter(Boolean)
-              : [],
-            status: String(microsequence?.status || "").trim(),
-            included: microsequence?.included === true
-          }))
-        : []
-    };
-  }
-
-  function findSiblingByTitle(items, title) {
-    const normalizedTitle = normalizeComparableText(title);
-    if (!normalizedTitle) {
-      return null;
-    }
-
-    return (
-      (items || []).find((item) => normalizeComparableText(item?.title || item?.key) === normalizedTitle) || null
-    );
-  }
-
-  function upsertGeneratedModule(courseKey, payload, summary) {
-    const currentCourse = findCourse(state.project, courseKey);
-    const existingModule = findSiblingByTitle(currentCourse?.modules || [], payload.title);
-    let nextProject = null;
-
-    if (existingModule) {
-      nextProject = structuralEditor.updateModule({
-        courseKey,
-        moduleKey: existingModule.key,
-        title: existingModule.title,
-        description: payload.description,
-        sourceGuide: payload.sourceGuide,
-        sourceGuideStructured: payload.sourceGuideStructured
-      });
-      createStructureVersionFromProject(nextProject, {
-        level: "module",
-        courseKey,
-        moduleKey: existingModule.key
-      }, {
-        operationType: "update"
-      });
-      summary.updatedModules += 1;
-    } else {
-      nextProject = structuralEditor.createModule({
-        courseKey,
-        title: payload.title,
-        description: payload.description,
-        sourceGuide: payload.sourceGuide,
-        sourceGuideStructured: payload.sourceGuideStructured
-      });
-      createStructureVersionFromProject(nextProject, {
-        level: "course",
-        courseKey
-      }, {
-        operationType: "create-child"
-      });
-      summary.createdModules += 1;
-    }
-
-    setProject(nextProject);
-    if (!existingModule) {
-      const createdModule = findSiblingByTitle(findCourse(nextProject, courseKey)?.modules || [], payload.title);
-      syncActiveStructureVersionFromProject({
-        level: "module",
-        courseKey,
-        moduleKey: createdModule?.key
-      });
-    }
-    return findSiblingByTitle(findCourse(nextProject, courseKey)?.modules || [], payload.title);
-  }
-
-  function upsertGeneratedLesson(courseKey, moduleKey, payload, summary) {
-    const currentModule = findModule(state.project, courseKey, moduleKey);
-    const existingLesson = findSiblingByTitle(currentModule?.lessons || [], payload.title);
-    let nextProject = null;
-
-    if (existingLesson) {
-      nextProject = structuralEditor.updateLesson({
-        courseKey,
-        moduleKey,
-        lessonKey: existingLesson.key,
-        title: existingLesson.title,
-        description: payload.description,
-        sourceGuide: payload.sourceGuide,
-        sourceGuideStructured: payload.sourceGuideStructured,
-        resourceTags: payload.resourceTags,
-        contentTypeTags: payload.contentTypeTags,
-        learningActionTags: payload.learningActionTags,
-        supportLevel: payload.supportLevel
-      });
-      createStructureVersionFromProject(nextProject, {
-        level: "lesson",
-        courseKey,
-        moduleKey,
-        lessonKey: existingLesson.key
-      }, {
-        operationType: "update"
-      });
-      summary.updatedLessons += 1;
-    } else {
-      nextProject = structuralEditor.createLesson({
-        courseKey,
-        moduleKey,
-        title: payload.title,
-        description: payload.description,
-        sourceGuide: payload.sourceGuide,
-        sourceGuideStructured: payload.sourceGuideStructured,
-        resourceTags: payload.resourceTags,
-        contentTypeTags: payload.contentTypeTags,
-        learningActionTags: payload.learningActionTags,
-        supportLevel: payload.supportLevel
-      });
-      createStructureVersionFromProject(nextProject, {
-        level: "module",
-        courseKey,
-        moduleKey
-      }, {
-        operationType: "create-child"
-      });
-      summary.createdLessons += 1;
-    }
-
-    setProject(nextProject);
-    if (!existingLesson) {
-      const createdLesson = findSiblingByTitle(findModule(nextProject, courseKey, moduleKey)?.lessons || [], payload.title);
-      syncActiveStructureVersionFromProject({
-        level: "lesson",
-        courseKey,
-        moduleKey,
-        lessonKey: createdLesson?.key
-      });
-    }
-    return findSiblingByTitle(findModule(nextProject, courseKey, moduleKey)?.lessons || [], payload.title);
-  }
-
-  function applyGeneratedStructure(result, scopeState) {
-    const draft = state.generationDraft;
-    const generatedCourse = result.course;
-    const generatedModules = generatedCourse.modules || [];
-    const summary = createStructureSummary();
-    let course = scopeState.course;
-    let moduleValue = scopeState.moduleValue;
-    let lesson = scopeState.lesson;
-
-    if (!draft.courseFixed || !course) {
-      const nextProject = structuralEditor.createCourse({
-        title: String(draft.courseInput || "").trim() || generatedCourse.title,
-        description: generatedCourse.description,
-        sourceGuide: generatedCourse.sourceGuide,
-        sourceGuideStructured: generatedCourse.sourceGuideStructured
-      });
-      const createdCourse = nextProject.courses[nextProject.courses.length - 1] || null;
-      setProject(nextProject);
-      syncActiveStructureVersionFromProject({
-        level: "course",
-        courseKey: createdCourse?.key
-      });
-      course = createdCourse;
-      summary.createdCourses += 1;
-    } else {
-      const nextProject = structuralEditor.updateCourse({
-        courseKey: course.key,
-        title: course.title,
-        description: generatedCourse.description,
-        sourceGuide: generatedCourse.sourceGuide,
-        sourceGuideStructured: generatedCourse.sourceGuideStructured
-      });
-      createStructureVersionFromProject(nextProject, {
-        level: "course",
-        courseKey: course.key
-      }, {
-        operationType: "update"
-      });
-      setProject(nextProject);
-      course = findCourse(nextProject, course.key);
-      summary.updatedCourses += 1;
-    }
-
-    if (!course) {
-      fail("Falha ao aplicar o curso gerado.");
-    }
-
-    if (draft.moduleFixed) {
-      const modulePayload = generatedModules[0];
-      if (!modulePayload) {
-        fail("A estrutura gerada não trouxe o módulo esperado.");
-      }
-
-      if (!moduleValue) {
-        const nextProject = structuralEditor.createModule({
-          courseKey: course.key,
-          title: String(draft.moduleInput || "").trim() || modulePayload.title,
-          description: modulePayload.description,
-          sourceGuide: modulePayload.sourceGuide,
-          sourceGuideStructured: modulePayload.sourceGuideStructured
-        });
-        createStructureVersionFromProject(nextProject, {
-          level: "course",
-          courseKey: course.key
-        }, {
-          operationType: "create-child"
-        });
-        setProject(nextProject);
-        moduleValue = nextProject.courses
-          .find((item) => item.key === course.key)
-          ?.modules.at(-1) || null;
-        syncActiveStructureVersionFromProject({
-          level: "module",
-          courseKey: course.key,
-          moduleKey: moduleValue?.key
-        });
-        summary.createdModules += 1;
-      } else {
-        const nextProject = structuralEditor.updateModule({
-          courseKey: course.key,
-          moduleKey: moduleValue.key,
-          title: moduleValue.title,
-          description: modulePayload.description,
-          sourceGuide: modulePayload.sourceGuide,
-          sourceGuideStructured: modulePayload.sourceGuideStructured
-        });
-        createStructureVersionFromProject(nextProject, {
-          level: "module",
-          courseKey: course.key,
-          moduleKey: moduleValue.key
-        }, {
-          operationType: "update"
-        });
-        setProject(nextProject);
-        moduleValue = findModule(nextProject, course.key, moduleValue.key);
-        summary.updatedModules += 1;
-      }
-
-      summary.totalModules += 1;
-
-      if (draft.lessonFixed) {
-        const lessonPayload = (modulePayload.lessons || [])[0];
-        if (!lessonPayload) {
-          fail("A estrutura gerada não trouxe a lição esperada.");
-        }
-
-        if (!lesson) {
-          const nextProject = structuralEditor.createLesson({
-            courseKey: course.key,
-            moduleKey: moduleValue.key,
-            title: String(draft.lessonInput || "").trim() || lessonPayload.title,
-            description: lessonPayload.description,
-            sourceGuide: lessonPayload.sourceGuide,
-            sourceGuideStructured: lessonPayload.sourceGuideStructured,
-            resourceTags: lessonPayload.resourceTags,
-            contentTypeTags: lessonPayload.contentTypeTags,
-            learningActionTags: lessonPayload.learningActionTags,
-            supportLevel: lessonPayload.supportLevel
-          });
-          createStructureVersionFromProject(nextProject, {
-            level: "module",
-            courseKey: course.key,
-            moduleKey: moduleValue.key
-          }, {
-            operationType: "create-child"
-          });
-          setProject(nextProject);
-          lesson = findModule(nextProject, course.key, moduleValue.key)?.lessons.at(-1) || null;
-          syncActiveStructureVersionFromProject({
-            level: "lesson",
-            courseKey: course.key,
-            moduleKey: moduleValue.key,
-            lessonKey: lesson?.key
-          });
-          summary.createdLessons += 1;
-        } else {
-          const nextProject = structuralEditor.updateLesson({
-            courseKey: course.key,
-            moduleKey: moduleValue.key,
-            lessonKey: lesson.key,
-            title: lesson.title,
-            description: lessonPayload.description,
-            sourceGuide: lessonPayload.sourceGuide,
-            sourceGuideStructured: lessonPayload.sourceGuideStructured,
-            resourceTags: lessonPayload.resourceTags,
-            contentTypeTags: lessonPayload.contentTypeTags,
-            learningActionTags: lessonPayload.learningActionTags,
-            supportLevel: lessonPayload.supportLevel
-          });
-          createStructureVersionFromProject(nextProject, {
-            level: "lesson",
-            courseKey: course.key,
-            moduleKey: moduleValue.key,
-            lessonKey: lesson.key
-          }, {
-            operationType: "update"
-          });
-          setProject(nextProject);
-          lesson = findLesson(nextProject, course.key, moduleValue.key, lesson.key);
-          summary.updatedLessons += 1;
-        }
-
-        summary.totalLessons += 1;
-      } else {
-        let firstLesson = null;
-        (modulePayload.lessons || []).forEach((lessonPayload) => {
-          const appliedLesson = upsertGeneratedLesson(course.key, moduleValue.key, lessonPayload, summary);
-          if (!firstLesson && appliedLesson) {
-            firstLesson = appliedLesson;
-          }
-          summary.totalLessons += 1;
-        });
-        lesson = firstLesson;
-      }
-    } else {
-      let firstModule = null;
-      let firstLesson = null;
-      generatedModules.forEach((modulePayload) => {
-        const appliedModule = upsertGeneratedModule(course.key, modulePayload, summary);
-        if (!firstModule && appliedModule) {
-          firstModule = appliedModule;
-        }
-        summary.totalModules += 1;
-
-        (modulePayload.lessons || []).forEach((lessonPayload) => {
-          const appliedLesson = upsertGeneratedLesson(course.key, appliedModule.key, lessonPayload, summary);
-          if (!firstLesson && appliedLesson) {
-            firstLesson = appliedLesson;
-            moduleValue = appliedModule;
-          }
-          summary.totalLessons += 1;
-        });
-      });
-      moduleValue = moduleValue || firstModule;
-      lesson = lesson || firstLesson;
-    }
-
-    return {
-      message: summarizeStructureChanges(summary, course.title || course.key),
-      openActionLabel: "Abrir em Cursos",
-      courseKey: course.key,
-      moduleKey: moduleValue?.key || "",
-      lessonKey: lesson?.key || "",
-      summary
-    };
-  }
-
-  function applyGeneratedLessonMicrosequences(result, scopeState) {
-    const lesson = scopeState.lesson;
-    if (!scopeState.course || !scopeState.moduleValue || !lesson) {
-      fail("A geração contextual da lição exige uma lição válida já existente.");
-    }
-
-    const createdItems = Array.isArray(result?.microsequences) ? result.microsequences.filter(Boolean) : [];
-    if (!createdItems.length) {
-      fail("O serviço de IA não devolveu microssequências válidas para esta lição.");
-    }
-
-    let nextProject = null;
-    for (const item of createdItems) {
-      nextProject = editor.createMicrosequence({
-        courseKey: scopeState.course.key,
-        moduleKey: scopeState.moduleValue.key,
-        lessonKey: lesson.key,
-        title: item.title,
-        description: item.description,
-        tags: Array.isArray(item.tags) ? item.tags : [],
-        domainRefs: Array.isArray(item.domainRefs) ? item.domainRefs : [],
-        practiceVariantRefs: Array.isArray(item.practiceVariantRefs) ? item.practiceVariantRefs : [],
-        didacticPurpose: item.didacticPurpose,
-        coverageRole: item.coverageRole,
-        status: "draft",
-        included: false,
-        cards: []
-      });
-    }
-
-    if (!nextProject) {
-      fail("Falha ao criar microssequências na lição.");
-    }
-
-    createStructureVersionFromProject(
-      nextProject,
-      {
-        level: "lesson",
-        courseKey: scopeState.course.key,
-        moduleKey: scopeState.moduleValue.key,
-        lessonKey: lesson.key
-      },
-      {
-        operationType: "create-child"
-      }
-    );
-    setProject(nextProject);
-
-    return {
-      message:
-        createdItems.length === 1
-          ? `1 microssequência draft criada em ${lesson.title || lesson.key}.`
-          : `${createdItems.length} microssequências draft criadas em ${lesson.title || lesson.key}.`,
-      courseKey: scopeState.course.key,
-      moduleKey: scopeState.moduleValue.key,
-      lessonKey: lesson.key,
-      createdMicrosequences: createdItems.length
-    };
-  }
-
-  function applyGeneratedAndRepositionedLessonMicrosequences(result, scopeState) {
-    const lesson = scopeState.lesson;
-    if (!scopeState.course || !scopeState.moduleValue || !lesson) {
-      fail("A geração contextual da lição exige uma lição válida já existente.");
-    }
-
-    const createdItems = Array.isArray(result?.generatedMicrosequences)
-      ? result.generatedMicrosequences.filter(Boolean)
-      : [];
-    const existingKeys = Array.isArray(lesson.microsequences)
-      ? lesson.microsequences.map((microsequence) => String(microsequence?.key || "").trim()).filter(Boolean)
-      : [];
-    const hasRequestedReorder = Array.isArray(result?.finalOrder) && result.finalOrder.length > 0;
-
-    if (!createdItems.length && !hasRequestedReorder) {
-      fail("O serviço de IA não devolveu microssequências novas nem uma nova ordem para a lição.");
-    }
-
-    let nextProject = state.project;
-    const createdKeyByDraftId = new Map();
-
-    for (const item of createdItems) {
-      nextProject = editor.createMicrosequence({
-        courseKey: scopeState.course.key,
-        moduleKey: scopeState.moduleValue.key,
-        lessonKey: lesson.key,
-        title: item.title,
-        description: item.description,
-        tags: Array.isArray(item.tags) ? item.tags : [],
-        domainRefs: Array.isArray(item.domainRefs) ? item.domainRefs : [],
-        practiceVariantRefs: Array.isArray(item.practiceVariantRefs) ? item.practiceVariantRefs : [],
-        didacticPurpose: item.didacticPurpose,
-        coverageRole: item.coverageRole,
-        status: "draft",
-        included: false,
-        cards: []
-      });
-      const updatedLesson = findLesson(nextProject, scopeState.course.key, scopeState.moduleValue.key, lesson.key);
-      const createdMicrosequence = updatedLesson?.microsequences?.[updatedLesson.microsequences.length - 1] || null;
-      if (createdMicrosequence?.key) {
-        createdKeyByDraftId.set(item.draftId, createdMicrosequence.key);
-      }
-    }
-
-    const lessonAfterCreate = findLesson(nextProject, scopeState.course.key, scopeState.moduleValue.key, lesson.key);
-    const currentOrder = Array.isArray(lessonAfterCreate?.microsequences)
-      ? lessonAfterCreate.microsequences.map((microsequence) => String(microsequence?.key || "").trim()).filter(Boolean)
-      : [];
-    const desiredOrder = [];
-    const desiredSet = new Set();
-
-    for (const entry of result.finalOrder || []) {
-      const resolvedKey =
-        entry.entryType === "generated"
-          ? createdKeyByDraftId.get(entry.draftId) || ""
-          : entry.microsequenceKey || "";
-      if (!resolvedKey || desiredSet.has(resolvedKey) || !currentOrder.includes(resolvedKey)) {
-        continue;
-      }
-      desiredSet.add(resolvedKey);
-      desiredOrder.push(resolvedKey);
-    }
-
-    currentOrder.forEach((key) => {
-      if (!desiredSet.has(key)) {
-        desiredSet.add(key);
-        desiredOrder.push(key);
-      }
-    });
-
-    if (!desiredOrder.length) {
-      fail("O serviço de IA não devolveu uma ordem utilizável para a lição.");
-    }
-
-    let reorderedProject = nextProject;
-    desiredOrder.forEach((microsequenceKey, index) => {
-      reorderedProject = editor.moveMicrosequence({
-        courseKey: scopeState.course.key,
-        moduleKey: scopeState.moduleValue.key,
-        lessonKey: lesson.key,
-        microsequenceKey,
-        targetCourseKey: scopeState.course.key,
-        targetModuleKey: scopeState.moduleValue.key,
-        targetLessonKey: lesson.key,
-        targetPosition: index,
-        renames: []
-      });
-    });
-
-    const movedCount = currentOrder.reduce((count, key, index) => count + (desiredOrder[index] !== key ? 1 : 0), 0);
-    const operationType = createdItems.length > 0 ? "create-child" : "update";
-    createStructureVersionFromProject(
-      reorderedProject,
-      {
-        level: "lesson",
-        courseKey: scopeState.course.key,
-        moduleKey: scopeState.moduleValue.key,
-        lessonKey: lesson.key
-      },
-      {
-        label: "Iteração de microssequências",
-        operationType
-      }
-    );
-    setProject(reorderedProject);
-
-    const messageParts = [];
-    if (createdItems.length > 0) {
-      messageParts.push(
-        createdItems.length === 1 ? "1 microssequência draft criada" : `${createdItems.length} microssequências draft criadas`
-      );
-    }
-    if (movedCount > 0) {
-      messageParts.push(movedCount === 1 ? "1 posição ajustada" : `${movedCount} posições ajustadas`);
-    }
-    if (!messageParts.length) {
-      messageParts.push("Ordem da lição confirmada");
-    }
-
-    return {
-      message: `${messageParts.join(" e ")} em ${lesson.title || lesson.key}.`,
-      courseKey: scopeState.course.key,
-      moduleKey: scopeState.moduleValue.key,
-      lessonKey: lesson.key,
-      createdMicrosequences: createdItems.length,
-      movedMicrosequences: movedCount
-    };
-  }
-
   async function submitGenerateStructureRequest() {
-    syncGenerationDraftHierarchy();
-    const scopeState = getGenerationScopeState();
-    const promptText = String(state.generationDraft.promptText || "").trim();
-
-    if (!scopeState.canSubmit) {
-      state.generationDraft.errorMessage = "Informe texto e/ou anexo e preencha apenas os níveis fixados válidos antes de gerar a estrutura.";
-      render({ preserveState: true });
-      return;
-    }
-
     state.generationDraft.isSubmitting = true;
     state.generationDraft.errorMessage = "";
     state.generationDraft.lastResult = null;
+    state.generationDraft.progress = reduceGenerationProgress(
+      createGenerationProgressState({ visible: true }),
+      {
+        type: "prepare_request",
+        message: "Preparando anexos, provider e escopo da geração top-down."
+      }
+    );
     render({ preserveState: true });
 
-    try {
-      const generationMode = scopeState.generationMode || resolveGenerationAssistMode({
-        lessonFixed: state.generationDraft.lessonFixed === true,
-        hasResolvedLesson: !!scopeState.lesson,
-        repositionMicrosequences: state.generationDraft.repositionMicrosequences === true
-      });
-
-      if (!(await ensureCodexLocalReady())) {
-        return;
-      }
-
-      const result = await runAssist({
-        apiKey: state.assistConfig.apiKey,
-        model: state.assistConfig.model,
-        codexEndpoint: state.assistConfig.codexEndpoint,
-        codexToken: state.assistConfig.codexToken,
-        mode: generationMode,
-        microsequence:
-          generationMode === "generate-lesson-microsequences"
-            ? buildLessonMicrosequenceGenerationContext(scopeState)
-            : buildStructureGenerationContext(scopeState),
-        promptText,
-        attachments: state.generationDraft.attachments
-      });
-
-      const applied =
-        generationMode === "generate-lesson-microsequences"
-          ? applyGeneratedLessonMicrosequences(result, scopeState)
-          : generationMode === "generate-and-reposition-lesson-microsequences"
-            ? applyGeneratedAndRepositionedLessonMicrosequences(result, scopeState)
-            : applyGeneratedStructure(result, scopeState);
-      applySelection({
-        courseKey: applied.courseKey,
-        moduleKey: applied.moduleKey || null,
-        lessonKey: applied.lessonKey || null,
-        microsequenceKey: null,
-        cardKey: null,
-        cardIndex: 0
-      });
-      state.generationDraft.promptText = "";
-      state.generationDraft.attachments = [];
-      if (
-        generationMode === "generate-lesson-microsequences" ||
-        generationMode === "generate-and-reposition-lesson-microsequences"
-      ) {
-        state.generationDraft.lastResult = null;
-        state.pendingGeneratedNavigation = null;
-        state.generationPanelOpen = false;
-        state.view = "lesson";
-        state.microsequenceMode = "play";
-      } else {
-        state.generationDraft.lastResult = applied;
-        state.pendingGeneratedNavigation = {
-          courseKey: applied.courseKey,
-          moduleKey: applied.moduleKey || null,
-          lessonKey: applied.lessonKey || null
-        };
-      }
-    } catch (error) {
-      state.pendingGeneratedNavigation = null;
-      state.generationDraft.errorMessage = error instanceof Error ? error.message : "Falha ao gerar a estrutura.";
-    } finally {
-      state.generationDraft.isSubmitting = false;
-      render({ preserveState: false });
-    }
-  }
-
-  function deleteCurrentCard() {
-    const microsequenceKey = state.selection.microsequenceKey;
-    const cardKey = state.selection.cardKey;
-    if (!microsequenceKey || !cardKey) return;
-
-    try {
-      ensureEditableMicrosequenceBranch({
-        operationType: "edit",
-        label: "Edição local"
-      });
-      const previousIndex = Number.isInteger(state.selection.cardIndex) ? state.selection.cardIndex : 0;
-      const nextProject = editor.deleteCard({
-        courseKey: state.selection.courseKey,
-        moduleKey: state.selection.moduleKey,
-        lessonKey: state.selection.lessonKey,
-        microsequenceKey,
-        cardKey
-      });
-
-      setProject(nextProject);
-      const microsequence = findMicrosequence(
-        nextProject,
-        state.selection.courseKey,
-        state.selection.moduleKey,
-        state.selection.lessonKey,
-        microsequenceKey
-      );
-      const cards = microsequence?.cards || [];
-      const nextIndex = Math.max(0, Math.min(previousIndex, Math.max(0, cards.length - 1)));
-      const nextCard = cards[nextIndex] || null;
-      state.selection.cardIndex = nextIndex;
-      state.selection.cardKey = nextCard ? nextCard.key : null;
-      if (state.view === "microsequence-assist") {
-        syncActiveMicrosequenceVersionFromProject();
-      }
-      ensureCurrentCardSnapshot();
-      syncAssistDraft();
+    const handleGeraçãoProgress = (event = {}) => {
+      state.generationDraft.progress = reduceGenerationProgress(state.generationDraft.progress, event);
       render({ preserveState: true });
-    } catch {
-      // Mantém a UI operacional se a remoção falhar por estado transitório.
-    }
-  }
+    };
 
-  function moveSelectedCard(offset) {
-    const courseKey = state.entityEditor?.courseKey || state.selection.courseKey;
-    const moduleKey = state.entityEditor?.moduleKey || state.selection.moduleKey;
-    const lessonKey = state.entityEditor?.lessonKey || state.selection.lessonKey;
-    const microsequenceKey = state.entityEditor?.microsequenceKey || state.selection.microsequenceKey;
-    const cardKey = state.entityEditor?.cardKey || state.selection.cardKey;
-    const microsequence = findMicrosequence(state.project, courseKey, moduleKey, lessonKey, microsequenceKey);
-    const cards = microsequence?.cards || [];
-    const index = cards.findIndex((item) => item.key === cardKey);
-    if (index < 0) {
-      return null;
+    const submission = await executeStructureGeneration({
+      draft: state.generationDraft,
+      assistConfig: state.assistConfig,
+      projectDocument: state.project,
+      visibleCourses: getVisibleCourses(),
+      findCourse,
+      findModule,
+      findLesson,
+      checkCodexLocalHealth,
+      ingestAttachments: ingestAttachments,
+      onProgress: handleGeraçãoProgress
+    });
+
+    const latestProgress = state.generationDraft.progress;
+    state.generationDraft = {
+      ...submission.draft,
+      progress: latestProgress
+    };
+    state.pendingGeneratedNavigation = submission.pendingGeneratedNavigation ?? null;
+
+    if (submission.status === "provider-unready" && submission.shouldOpenCodexCliSetup) {
+      state.generationDraft.progress = reduceGenerationProgress(state.generationDraft.progress, {
+        type: "run_failed",
+        message: submission.codexCliSetupStatus?.error || "Provider local indisponível."
+      });
+      updateCodexCliSetupStatus(submission.codexCliSetupStatus);
+      openAssistConfig();
+      return;
     }
 
-    const targetIndex = index + offset;
-    if (targetIndex < 0 || targetIndex >= cards.length) {
-      return null;
+    if (submission.status === "success") {
+      state.generationDraft.progress = reduceGenerationProgress(state.generationDraft.progress, {
+        type: "run_completed"
+      });
+      storage.saveProject(submission.generationResult.projectDocument);
+      createStructureVersionFromProject(submission.generationResult.projectDocument, getCurrentStructureVersionReference(), {
+        operationType: "generated"
+      });
+      setProject(submission.generationResult.projectDocument);
+      applySelection(submission.selection);
+    } else {
+      state.generationDraft.progress = reduceGenerationProgress(state.generationDraft.progress, {
+        type: "run_failed",
+        message: submission.draft?.errorMessage || "Falha ao gerar a estrutura."
+      });
     }
 
-    ensureEditableMicrosequenceBranch({
-      operationType: "edit",
-      label: "Edição local"
-    });
-    const nextProject = editor.moveCard({
-      courseKey,
-      moduleKey,
-      lessonKey,
-      microsequenceKey,
-      cardKey,
-      toIndex: targetIndex
-    });
-    setProject(nextProject);
-    applySelectionByKeys(nextProject, {
-      ...state.selection,
-      courseKey,
-      moduleKey,
-      lessonKey,
-      microsequenceKey,
-      cardKey
-    });
-    syncActiveMicrosequenceVersionFromProject();
-    syncAssistDraft();
-    ensureCurrentCardSnapshot();
-    return nextProject;
+    render({ preserveState: submission.status !== "success" });
   }
 
   function applyStructureReorder(drag, target, position) {
@@ -5616,7 +4895,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
     setProject(nextProject);
     applySelectionByKeys(nextProject, state.selection);
     syncAssistDraft();
-    if (state.view === "microsequence-assist") {
+    if (state.view === "microsequence-assist" || state.view === "microsequence") {
       syncActiveMicrosequenceVersionFromProject();
     }
     if (state.view === "microsequence" || state.view === "microsequence-assist") {
@@ -5626,91 +4905,197 @@ export function createLessonEditorApp({ root, storage, editor }) {
     render({ preserveState: true });
   }
 
-  function buildLessonAuditPrompt(lesson, report) {
-    return [
-      "Melhore a lição passo a passo.",
-      "Não faça resumo genérico.",
-      report.uncoveredItems.length ? `Cubra estas lacunas reais: ${report.uncoveredItems.join("; ")}.` : "",
-      report.explainedWithoutPractice.length
-        ? `Adicione prática para: ${report.explainedWithoutPractice.join("; ")}.`
-        : "",
-      report.practiceWithoutVariation.length
-        ? `Varie a prática de: ${report.practiceWithoutVariation.join("; ")}.`
-        : "",
-      report.examMissing.length ? `Inclua formato de prova para: ${report.examMissing.join("; ")}.` : "",
-      `Lição atual: ${lesson?.title || "Lição"}.`
-    ]
-      .filter(Boolean)
-      .join(" ");
+  function buildAssistTemplatePrompt(templateId, microsequence) {
+    const title = microsequence?.title || "esta microssequência";
+    if (templateId === "next_cards") {
+      return [
+        `Continue a microssequência "${title}" com os próximos cards, sem repetir os já materializados.`,
+        "Preserve o lugar dela na trilha e avance um degrau didático natural a partir do que já foi explicado.",
+        "Se houver prática ou contraste pendente, use os próximos cards para completar essa progressão antes de encerrar a etapa."
+      ].join(" ");
+    }
+    if (templateId === "materialize") {
+      return [
+        `Gere os primeiros cards da microssequência "${title}" com conteúdo pronto para estudo.`,
+        "Respeite o lugar dela na trilha, as tags atuais e a progressão já planejada.",
+        "Comece pela base necessária desta etapa antes de avançar para contraste, prática ou reforço."
+      ].join(" ");
+    }
+    if (templateId === "reformulate") {
+      return [
+        `Reformule a proposta da microssequência "${title}" antes de gerar os cards.`,
+        "Preserve o lugar dela na trilha, mas torne o foco didático mais claro, mais estudável e menos ambíguo."
+      ].join(" ");
+    }
+    if (templateId === "repair") {
+      return [
+        `Corrija a microssequência "${title}" sem mudar desnecessariamente a intenção didática.`,
+        "Ajuste explicações confusas, lacunas de preparação, contraste insuficiente ou prática mal alinhada."
+      ].join(" ");
+    }
+    return "";
   }
 
-  function buildMicrosequenceAuditPrompt(microsequence, audit) {
-    return [
-      "Melhore esta microssequência passo a passo.",
-      "Não faça resumo genérico.",
-      audit.shallowErrors[0]?.message || "",
-      audit.missingDepth[0]?.message || "",
-      audit.suggestedActions[0] || "",
-      `Microssequência atual: ${microsequence?.title || "Microssequência"}.`
-    ]
-      .filter(Boolean)
-      .join(" ");
-  }
-
-  function deepenLessonFromAction() {
-    const courseKey = state.entityEditor.courseKey || state.selection.courseKey;
-    const moduleKey = state.entityEditor.moduleKey;
-    const lessonKey = state.entityEditor.lessonKey;
-    const course = findCourse(state.project, courseKey);
-    const moduleValue = findModule(state.project, courseKey, moduleKey);
-    const lesson = findLesson(state.project, courseKey, moduleKey, lessonKey);
-    const report = buildLessonDomainCoverageReport(lesson);
-
-    state.entityEditor = null;
-    state.generationDraft.courseFixed = true;
-    state.generationDraft.moduleFixed = true;
-    state.generationDraft.lessonFixed = true;
-    state.generationDraft.courseInput = course?.title || courseKey || "";
-    state.generationDraft.courseKey = courseKey || "";
-    state.generationDraft.moduleInput = moduleValue?.title || moduleKey || "";
-    state.generationDraft.moduleKey = moduleKey || "";
-    state.generationDraft.lessonInput = lesson?.title || lessonKey || "";
-    state.generationDraft.lessonKey = lesson?.key || "";
-    state.generationDraft.promptText = buildLessonAuditPrompt(lesson, report);
-    state.generationPanelOpen = true;
-    notifyUser(
-      report.uncoveredItems.length || report.explainedWithoutPractice.length || report.practiceWithoutVariation.length
-        ? "Lacunas detectadas. O painel foi preparado com um pedido focado."
-        : "Nenhuma lacuna didática clara foi detectada nesta lição."
-    );
-    render({ preserveState: true });
-  }
-
-  function deepenMicrosequenceFromAction() {
-    const courseKey = state.entityEditor.courseKey || state.selection.courseKey;
-    const moduleKey = state.entityEditor.moduleKey;
-    const lessonKey = state.entityEditor.lessonKey;
-    const microsequenceKey = state.entityEditor.microsequenceKey;
-    const lesson = findLesson(state.project, courseKey, moduleKey, lessonKey);
-    const microsequence = findMicrosequence(state.project, courseKey, moduleKey, lessonKey, microsequenceKey);
-    const audit = validateDidacticDepth({
-      lesson,
-      microsequence,
-      cards: microsequence?.cards || [],
-      existingMicrosequences: lesson?.microsequences || []
-    });
-
-    state.entityEditor = null;
-    openMicrosequenceAssistPage(microsequence.key, 0);
-    state.assistDraft.promptText = buildMicrosequenceAuditPrompt(microsequence, audit);
-    state.assistDraft.lastRequest = {
-      title: audit.ok ? "Sem lacunas claras" : "Lacunas detectadas",
-      description: audit.ok
-        ? "A microssequência já está coesa para o nível atual."
-        : [...audit.shallowErrors, ...audit.missingDepth].map((item) => item.message).slice(0, 2).join(" "),
-      timestamp: new Date().toISOString()
+  function getAssistActionIntentOptions({ microsequence, hasNextPlannedMicrosequence = false } = {}) {
+    const isPlanned = isPlannedMicrosequenceForRuntime(microsequence);
+    const nextPlannedOption = {
+      value: ASSIST_ACTION_INTENTS.NEXT_PLANNED,
+      label: "Ir a nova microssequência",
+      icon: "microsequence",
+      disabled: !hasNextPlannedMicrosequence
     };
-    render({ preserveState: true });
+    const createAfterCurrentOption = {
+      value: ASSIST_ACTION_INTENTS.CREATE_AFTER_CURRENT,
+      label: "Criar nova microssequência",
+      icon: "add"
+    };
+    if (isPlanned) {
+      return [
+        {
+          value: ASSIST_ACTION_INTENTS.MATERIALIZE_CURRENT,
+          label: "Continuar na microssequência",
+          icon: "sparkles"
+        },
+        {
+          value: ASSIST_ACTION_INTENTS.REFORMULATE_CURRENT,
+          label: "Corrigir microssequência",
+          icon: "edit"
+        },
+        nextPlannedOption,
+        createAfterCurrentOption
+      ];
+    }
+    return [
+      {
+        value: ASSIST_ACTION_INTENTS.CONTINUE_CURRENT,
+        label: "Continuar na microssequência",
+        icon: "sparkles"
+      },
+      {
+        value: ASSIST_ACTION_INTENTS.REPAIR_CURRENT,
+        label: "Corrigir microssequência",
+        icon: "edit"
+      },
+      nextPlannedOption,
+      createAfterCurrentOption
+    ];
+  }
+
+  function isValidAssistActionIntent(intent, { microsequence, hasNextPlannedMicrosequence = false } = {}) {
+    return getAssistActionIntentOptions({ microsequence, hasNextPlannedMicrosequence }).some((item) => item.value === intent && !item.disabled);
+  }
+
+  function applyAssistActionIntent(intent, microsequence = getRenderContext().microsequence) {
+    state.assistDraft.actionIntent = intent;
+    if (intent === ASSIST_ACTION_INTENTS.MATERIALIZE_CURRENT) {
+      state.assistDraft.interventionTargetMode = "current";
+      state.assistDraft.operationMode = "reinforce";
+      return;
+    }
+    if (intent === ASSIST_ACTION_INTENTS.REFORMULATE_CURRENT) {
+      state.assistDraft.interventionTargetMode = "current";
+      state.assistDraft.operationMode = "repair";
+      state.assistDraft.interventionType = "local_semantic_rewrite";
+      return;
+    }
+    if (intent === ASSIST_ACTION_INTENTS.REPAIR_CURRENT) {
+      state.assistDraft.interventionTargetMode = "current";
+      state.assistDraft.operationMode = "repair";
+      return;
+    }
+    if (intent === ASSIST_ACTION_INTENTS.NEXT_PLANNED) {
+      state.assistDraft.interventionTargetMode = "current";
+      state.assistDraft.operationMode = "reinforce";
+      return;
+    }
+    if (intent === ASSIST_ACTION_INTENTS.CREATE_AFTER_CURRENT) {
+      state.assistDraft.interventionTargetMode = "new_after_current";
+      state.assistDraft.operationMode = "reinforce";
+      state.assistDraft.interventionType = state.assistDraft.interventionType === "local_semantic_rewrite"
+        ? "explanatory_bridge"
+        : state.assistDraft.interventionType;
+      return;
+    }
+    if (intent === ASSIST_ACTION_INTENTS.CONTINUE_CURRENT) {
+      state.assistDraft.interventionTargetMode = "current";
+      state.assistDraft.operationMode = "reinforce";
+      return;
+    }
+    state.assistDraft.actionIntent = "";
+    state.assistDraft.interventionTargetMode = "current";
+    state.assistDraft.operationMode = isPlannedMicrosequenceForRuntime(microsequence) ? "reinforce" : "reinforce";
+  }
+
+  function getAssistPromptMetadata({ microsequence, actionIntent, hasNextPlannedMicrosequence = false } = {}) {
+    const options = getAssistActionIntentOptions({ microsequence, hasNextPlannedMicrosequence });
+    const selectedOption = options.find((item) => item.value === actionIntent) || null;
+    if (actionIntent === ASSIST_ACTION_INTENTS.MATERIALIZE_CURRENT) {
+      return {
+        promptLabel: "Pedido dos primeiros cards",
+        submitLabel: "Gerar primeiros cards",
+        promptPlaceholder: "Gere os primeiros cards."
+      };
+    }
+    if (actionIntent === ASSIST_ACTION_INTENTS.REFORMULATE_CURRENT) {
+      return {
+        promptLabel: "Pedido de reformulação",
+        submitLabel: "Reformular microssequência",
+        promptPlaceholder: "Diga o que deve ser corrigido."
+      };
+    }
+    if (actionIntent === ASSIST_ACTION_INTENTS.REPAIR_CURRENT) {
+      return {
+        promptLabel: "Pedido de correção",
+        submitLabel: "Corrigir microssequência",
+        promptPlaceholder: "Diga o que deve ser corrigido."
+      };
+    }
+    if (actionIntent === ASSIST_ACTION_INTENTS.NEXT_PLANNED) {
+      return {
+        promptLabel: "Próxima microssequência",
+        submitLabel: "Abrir próxima microssequência",
+        promptPlaceholder: "Sem pedido necessário."
+      };
+    }
+    if (actionIntent === ASSIST_ACTION_INTENTS.CREATE_AFTER_CURRENT) {
+      return {
+        promptLabel: "Pedido da nova microssequência",
+        submitLabel: "Criar nova microssequência",
+        promptPlaceholder: "Diga a função da nova microssequência."
+      };
+    }
+    if (actionIntent === ASSIST_ACTION_INTENTS.CONTINUE_CURRENT) {
+      return {
+        promptLabel: "Pedido dos próximos cards",
+        submitLabel: "Gerar próximos cards",
+        promptPlaceholder: "Diga o que deve vir agora."
+      };
+    }
+    return {
+      promptLabel: "Pedido",
+      submitLabel: selectedOption ? selectedOption.label : "Enviar pedido",
+      promptPlaceholder: "Descreva com clareza o que deve acontecer nesta intervenção."
+    };
+  }
+
+  function isPlannedMicrosequenceForRuntime(microsequence) {
+    const cards = Array.isArray(microsequence?.cards) ? microsequence.cards : [];
+    return isDraftMicrosequence(microsequence) && cards.length === 0;
+  }
+
+  function findNextPlannedMicrosequenceInLesson(lesson, currentMicrosequenceKey) {
+    const microsequences = Array.isArray(lesson?.microsequences) ? lesson.microsequences : [];
+    const currentIndex = microsequences.findIndex((item) => item?.key === currentMicrosequenceKey);
+    if (currentIndex < 0) {
+      return null;
+    }
+    for (let index = currentIndex + 1; index < microsequences.length; index += 1) {
+      const candidate = microsequences[index];
+      if (isPlannedMicrosequenceForRuntime(candidate)) {
+        return candidate;
+      }
+    }
+    return null;
   }
 
   function runEntityAction(actionKey) {
@@ -5791,17 +5176,11 @@ export function createLessonEditorApp({ root, storage, editor }) {
           lessonKey: state.entityEditor.lessonKey
         });
         return;
-      } else if (actionKey === "deepen-lesson") {
-        deepenLessonFromAction();
-        return;
       } else if (actionKey === "edit-microsequence-metadata") {
         openMicrosequenceAssistPage(
           state.entityEditor.microsequenceKey,
           0
         );
-        return;
-      } else if (actionKey === "deepen-microsequence") {
-        deepenMicrosequenceFromAction();
         return;
       } else if (actionKey === "reset-course-progress") {
         const courseKey = state.entityEditor.courseKey || state.selection.courseKey;
@@ -5871,12 +5250,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
         state.entityEditor = null;
         render({ preserveState: true });
         return;
-      } else if (actionKey === "move-card-up") {
-        nextProject = moveSelectedCard(-1);
-        state.view = "microsequence-assist";
-      } else if (actionKey === "move-card-down") {
-        nextProject = moveSelectedCard(1);
-        state.view = "microsequence-assist";
       } else if (actionKey === "create-course") {
         nextProject = structuralEditor.createCourse({
           title: "Novo curso"
@@ -6046,35 +5419,20 @@ export function createLessonEditorApp({ root, storage, editor }) {
         setProject(nextProject);
         applySelection(buildNodeSelection({ courseKey, moduleKey, lessonKey }));
         state.view = "lesson";
-      } else if (actionKey === "create-card" || actionKey === "create-plane-card" || actionKey === "create-matrix-card") {
-        const kind =
-          actionKey === "create-plane-card"
-            ? "plane"
-            : actionKey === "create-matrix-card"
-              ? "matrix"
-              : "say";
+      } else if (actionKey === "create-card") {
         const courseKey = state.entityEditor.courseKey || state.selection.courseKey;
         const moduleKey = state.entityEditor.moduleKey || state.selection.moduleKey;
         const lessonKey = state.entityEditor.lessonKey || state.selection.lessonKey;
         const microsequenceKey = state.entityEditor.microsequenceKey || state.selection.microsequenceKey;
         const microsequence = findMicrosequence(state.project, courseKey, moduleKey, lessonKey, microsequenceKey);
-        const position =
-          state.entityEditor.kind === "card"
-            ? (Number.isInteger(state.selection.cardIndex) ? state.selection.cardIndex : 0) + 1
-            : Array.isArray(microsequence?.cards)
-              ? microsequence.cards.length
-              : 0;
-        createCardAtPosition(position, kind, {
+        const position = Array.isArray(microsequence?.cards) ? microsequence.cards.length : 0;
+        createCardAtPosition(position, "say", {
           courseKey,
           moduleKey,
           lessonKey,
           microsequenceKey
         });
-        state.view = "microsequence-assist";
-      } else if (actionKey === "delete-card") {
-        state.entityEditor = null;
-        deleteCurrentCard();
-        return;
+        state.view = "microsequence";
       }
 
       state.entityEditor = null;
@@ -6086,7 +5444,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
 
   function goBack() {
     if (
-      state.view === "microsequence-assist" &&
+      (state.view === "microsequence-assist" || state.view === "microsequence") &&
       getMicrosequenceEditBaseVersionId() &&
       getMicrosequenceVersionEntry()?.activeVersionId &&
       getMicrosequenceEditBaseVersionId() !== getMicrosequenceVersionEntry()?.activeVersionId
@@ -6098,13 +5456,9 @@ export function createLessonEditorApp({ root, storage, editor }) {
     state.versionHistoryOpen = false;
     state.versionCompareOpen = false;
     state.assistConfigOpen = false;
-    state.codexCliSetupOpen = false;
     state.entityEditor = null;
 
     if (state.view === "microsequence") {
-      state.view = "lesson";
-      state.microsequenceMode = "play";
-    } else if (state.view === "microsequence-assist") {
       state.view = "lesson";
       state.microsequenceMode = "play";
     } else if (state.view === "lesson") {
@@ -6153,17 +5507,12 @@ export function createLessonEditorApp({ root, storage, editor }) {
         });
       } else if (state.entityEditor.kind === "lesson-source-guide") {
         const nextGuide = resolveSourceGuidePayload(payload, { level: SOURCE_GUIDE_LEVELS.LESSON });
-        const lessonGuidance = normalizeLessonGuidance(payload);
         nextProject = structuralEditor.updateLesson({
           courseKey: state.entityEditor.courseKey || state.selection.courseKey,
           moduleKey: state.entityEditor.moduleKey,
           lessonKey: state.entityEditor.lessonKey,
           sourceGuide: nextGuide.sourceGuide,
-          sourceGuideStructured: nextGuide.sourceGuideStructured,
-          resourceTags: lessonGuidance.resourceTags,
-          contentTypeTags: lessonGuidance.contentTypeTags,
-          learningActionTags: lessonGuidance.learningActionTags,
-          supportLevel: lessonGuidance.supportLevel
+          sourceGuideStructured: nextGuide.sourceGuideStructured
         });
       } else if (state.entityEditor.kind === "microsequence") {
         nextProject = editor.updateMicrosequence({
@@ -7739,10 +7088,11 @@ export function createLessonEditorApp({ root, storage, editor }) {
     const assistCatalog = getAssistCatalog();
     const assistModeConfig = getAssistModeOptions();
     const entityEditorModel = makeEntityEditorModel(state);
-    const microsequenceVersionEntry = state.view === "microsequence-assist" ? getMicrosequenceVersionEntry() : null;
-    const visualizedMicrosequenceVersion = state.view === "microsequence-assist" ? getVisualizedMicrosequenceVersion() : null;
+    const isMicrosequenceWorkbenchView = state.view === "microsequence-assist" || state.view === "microsequence";
+    const microsequenceVersionEntry = isMicrosequenceWorkbenchView ? getMicrosequenceVersionEntry() : null;
+    const visualizedMicrosequenceVersion = isMicrosequenceWorkbenchView ? getVisualizedMicrosequenceVersion() : null;
     const visualizedMicrosequenceVersionId = visualizedMicrosequenceVersion?.id || "";
-    const pendingGeneratedVersion = state.view === "microsequence-assist" ? getPendingGeneratedMicrosequenceVersion() : null;
+    const pendingGeneratedVersion = isMicrosequenceWorkbenchView ? getPendingGeneratedMicrosequenceVersion() : null;
     const pendingGeneratedVersionVisible =
       Boolean(pendingGeneratedVersion) &&
       (!visualizedMicrosequenceVersionId || visualizedMicrosequenceVersionId === pendingGeneratedVersion?.id);
@@ -7793,7 +7143,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
           entry: structureVersionEntry,
           versionId: state.versionCompareSelectionKey || getSelectedStructureVersionId()
         })
-        : state.view === "microsequence-assist" && state.versionCompareOpen
+        : isMicrosequenceWorkbenchView && state.versionCompareOpen
           ? buildMicrosequenceVersionComparisonForVersion({
             versions: microsequenceVersionEntry?.versions || [],
             versionId: state.versionCompareSelectionKey || visualizedMicrosequenceVersionId || microsequenceVersionEntry?.activeVersionId || "",
@@ -7907,15 +7257,15 @@ export function createLessonEditorApp({ root, storage, editor }) {
       structureVersionEntry.versions.findIndex((item) => item.id === structureVersionEntry.activeVersionId) > 0;
     const versionHistoryTitle = structureVersionReference
       ? structureHistoryTitle
-      : state.view === "microsequence-assist"
+      : isMicrosequenceWorkbenchView
         ? "Snapshots da microssequência"
         : "Versões do card";
     const versionHistoryItems = structureVersionReference
       ? orderHistoryVersions(structureHistoryVersions)
-      : state.view === "microsequence-assist"
+      : isMicrosequenceWorkbenchView
         ? orderHistoryVersions(microsequenceHistoryVersions)
         : historyVersions;
-    const versionHistoryEmptyLabel = structureVersionReference || state.view === "microsequence-assist" ? "Sem snapshots locais ainda." : "Sem versões anteriores.";
+    const versionHistoryEmptyLabel = structureVersionReference || isMicrosequenceWorkbenchView ? "Sem snapshots locais ainda." : "Sem versões anteriores.";
     const versionHistoryFooter = structureVersionReference
       ? (() => {
         const activeVersion = structureVersionEntry?.versions?.find((item) => item.id === structureVersionEntry?.activeVersionId) || null;
@@ -7924,13 +7274,24 @@ export function createLessonEditorApp({ root, storage, editor }) {
         }
         return `Em uso: ${getVersionDisplayId(activeVersion)} · ${formatOverlayTimestamp(activeVersion.updatedAt)}`;
       })()
-      : state.view === "microsequence-assist"
+      : isMicrosequenceWorkbenchView
         ? (() => {
           const activeVersion = microsequenceVersionEntry?.versions?.find((item) => item.id === microsequenceVersionEntry?.activeVersionId) || null;
           return activeVersion ? `Em uso: ${getVersionDisplayId(activeVersion)} · ${formatOverlayTimestamp(activeVersion.updatedAt)}` : "";
         })()
       : "";
 
+    const currentBottomUpState = getCurrentBottomUpOptionState();
+    const nextPlannedMicrosequence = findNextPlannedMicrosequenceInLesson(context.lesson, context.microsequence?.key);
+    const assistActionOptions = getAssistActionIntentOptions({
+      microsequence: context.microsequence,
+      hasNextPlannedMicrosequence: Boolean(nextPlannedMicrosequence)
+    });
+    const assistPromptMetadata = getAssistPromptMetadata({
+      microsequence: context.microsequence,
+      actionIntent: state.assistDraft.actionIntent,
+      hasNextPlannedMicrosequence: Boolean(nextPlannedMicrosequence)
+    });
     root.innerHTML =
       '<div class="app-shell">' +
       renderLessonScreen({
@@ -7957,7 +7318,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
           pendingGeneratedVersionActive: pendingGeneratedVersionVisible,
           versionActionsOpen: state.assistDraft.versionActionsOpen,
           canDeleteVisualizedMicrosequenceVersion:
-            state.view === "microsequence-assist" ? canDeleteMicrosequenceVersion(visualizedMicrosequenceVersionId) : false,
+            isMicrosequenceWorkbenchView ? canDeleteMicrosequenceVersion(visualizedMicrosequenceVersionId) : false,
           selectedDependencyKeys: state.assistDraft.dependencyKeys,
           pendingDependencyKey: state.assistDraft.pendingDependencyKey,
           assistModeOptions: assistModeConfig.options,
@@ -7965,9 +7326,29 @@ export function createLessonEditorApp({ root, storage, editor }) {
           activeWorkbenchPane: state.assistDraft.activeWorkbenchPane,
           assistModeLocked: assistModeConfig.locked,
           preferredContainer: state.assistDraft.preferredContainer,
+          preferredContainerConfirmed: state.assistDraft.preferredContainerConfirmed,
           preferredContainerLabel: getAssistContainerLabel(state.assistDraft.preferredContainer),
+          containerOptions: ASSIST_CARD_CONTAINER_OPTIONS,
+          assistActionOptions,
+          selectedAssistAction: state.assistDraft.actionIntent,
+          assistPromptLabel: assistPromptMetadata.promptLabel,
+          assistSubmitLabel: assistPromptMetadata.submitLabel,
+          assistPromptPlaceholder: assistPromptMetadata.promptPlaceholder,
+          assistRequestReady: canSubmitAssistRequestFromState({
+            promptText: state.assistDraft.promptText,
+            actionIntent: state.assistDraft.actionIntent,
+            attachmentCount: state.assistDraft.attachments.length,
+            isSubmitting: state.assistDraft.isSubmitting
+          }),
           selectedDidacticTypeId: state.assistDraft.didacticTypeId,
-          didacticTypeOptions: ASSIST_DIDACTIC_TYPE_OPTIONS,
+          interventionTargetMode: state.assistDraft.interventionTargetMode,
+          operationMode: state.assistDraft.operationMode,
+          interventionType: state.assistDraft.interventionType,
+          domainRef: currentBottomUpState.domainRef,
+          relatedConceptRefs: currentBottomUpState.relatedConceptRefs,
+          prerequisiteRefs: currentBottomUpState.prerequisiteRefs,
+          bridgeTargetRef: currentBottomUpState.bridgeTargetRef,
+          nextPlannedMicrosequence,
           attachments: state.assistDraft.attachments.map((item) => ({
             name: normalizeAssistAttachmentName(item?.name),
             size: Number(item?.size || 0),
@@ -7975,6 +7356,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
           })),
           selectedModel: state.assistConfig.model,
           selectedModelLabel: getAssistModelLabel(state.assistConfig.model),
+          apiKey: state.assistConfig.apiKey,
           modelOptions: ASSIST_MODEL_OPTIONS,
           generationDraft: {
             ...state.generationDraft,
@@ -8016,7 +7398,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
             emptyLabel: versionHistoryEmptyLabel,
             versions: versionHistoryItems,
             footer: versionHistoryFooter,
-            primaryAction: structureVersionReference || state.view === "microsequence-assist"
+            primaryAction: structureVersionReference || isMicrosequenceWorkbenchView
               ? { action: "save-version-snapshot", label: "Gravar snapshot", icon: "+" }
               : null
           })
@@ -8030,21 +7412,25 @@ export function createLessonEditorApp({ root, storage, editor }) {
             }
           })
         : "") +
-      (state.assistConfigOpen
+      (state.assistConfigOpen && !state.generationPanelOpen
         ? renderAssistConfigOverlay({
-            model: state.assistConfigDraft.model,
-            apiKey: state.assistConfigDraft.apiKey,
-            codexEndpoint: state.assistConfigDraft.codexEndpoint,
-            codexToken: state.assistConfigDraft.codexToken,
-            modelOptions: ASSIST_MODEL_OPTIONS
+            didacticProfileId: state.assistConfigDraft.selectedProfileId || state.assistConfigDraft.didacticProfileId,
+            profileTuning: state.assistConfigDraft.profileTuning,
+            didacticProfileOptions: buildDidacticProfileOptions(state.assistConfigDraft.customProfiles),
+            profileEditor: getAssistProfileEditorViewModel(state.assistConfigDraft),
+            planningInferencePending: state.assistPlanningInferencePending,
+            planningInferenceMessage: state.assistPlanningInferenceMessage
           })
         : "") +
-      (state.codexCliSetupOpen
-        ? renderCodexCliSetupOverlay({
-            endpoint: getCodexSetupEndpoint(),
-            status: state.codexCliSetupStatus,
-            setupScript: getCodexSetupScript(),
-            presentation: getCodexSetupPresentation()
+      (state.providerConfigOpen
+        ? renderProviderConfigOverlay({
+            selectedModel: state.assistConfig.model,
+            selectedModelLabel: getAssistModelLabel(state.assistConfig.model),
+            apiKey: state.assistConfig.apiKey,
+            baseUrl: state.assistConfig.baseUrl || state.assistConfig.apiBaseUrl || "",
+            codexEndpoint: state.assistConfig.codexEndpoint || DEFAULT_CODEX_LOCAL_ENDPOINT,
+            codexToken: state.assistConfig.codexToken || "",
+            codexStatus: state.codexCliSetupStatus
           })
         : "") +
       (state.pendingExternalImport
@@ -8073,7 +7459,15 @@ export function createLessonEditorApp({ root, storage, editor }) {
               },
               generationUiState: getGenerationScopeState(),
               selectedModel: state.assistConfig.model,
-              modelOptions: ASSIST_MODEL_OPTIONS
+              modelOptions: ASSIST_MODEL_OPTIONS,
+              localProviderStatus: state.codexCliSetupStatus,
+              assistConfigExpanded: state.assistConfigOpen === true,
+              didacticProfileId: state.assistConfigDraft.selectedProfileId || state.assistConfigDraft.didacticProfileId,
+              profileTuning: state.assistConfigDraft.profileTuning,
+              didacticProfileOptions: buildDidacticProfileOptions(state.assistConfigDraft.customProfiles),
+              profileEditor: getAssistProfileEditorViewModel(state.assistConfigDraft),
+              planningInferencePending: state.assistPlanningInferencePending,
+              planningInferenceMessage: state.assistPlanningInferenceMessage
             }
           })
         : "") +
@@ -8232,16 +7626,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
       });
     });
 
-    root.querySelectorAll("[data-action='toggle-generate-level']").forEach((node) => {
-      node.addEventListener("click", () => {
-        const level = node.getAttribute("data-level");
-        if (!level) return;
-        setGenerationLevelFixed(level);
-      });
-    });
-    root.querySelector("[data-action='toggle-generate-microsequence-reposition']")?.addEventListener("click", () => {
-      toggleGenerationMicrosequenceReposition();
-    });
     root.querySelector("[data-field='generate-course-input']")?.addEventListener("input", (event) => {
       setGenerationInput("course", event.target.value);
     });
@@ -8251,10 +7635,23 @@ export function createLessonEditorApp({ root, storage, editor }) {
     root.querySelector("[data-field='generate-lesson-input']")?.addEventListener("input", (event) => {
       setGenerationInput("lesson", event.target.value);
     });
+    root.querySelector("[data-field='generate-include-topic']")?.addEventListener("input", (event) => {
+      state.generationDraft.pendingIncludeTopic = event.target.value;
+    });
+    root.querySelector("[data-field='generate-exclude-topic']")?.addEventListener("input", (event) => {
+      state.generationDraft.pendingExcludeTopic = event.target.value;
+    });
     root.querySelector("[data-field='generate-prompt']")?.addEventListener("input", (event) => {
       state.generationDraft.promptText = event.target.value;
+      const hadVisibleFeedback =
+        Boolean(state.generationDraft.errorMessage) ||
+        Boolean(state.generationDraft.lastResult) ||
+        state.generationDraft.isSubmitting === true ||
+        state.generationDraft.progress?.visible === true;
       clearGenerationResult();
-      render({ preserveState: true });
+      if (hadVisibleFeedback) {
+        render({ preserveState: true });
+      }
     });
     root.querySelector("[data-field='generate-attachments']")?.addEventListener("change", (event) => {
       const nextFiles = Array.from(event.target.files || []);
@@ -8273,6 +7670,36 @@ export function createLessonEditorApp({ root, storage, editor }) {
         state.generationDraft.attachments = state.generationDraft.attachments.filter((_, itemIndex) => itemIndex !== index);
         clearGenerationResult();
         render({ preserveState: true });
+      });
+    });
+    root.querySelector("[data-action='add-generate-include-topic']")?.addEventListener("click", () => {
+      addGenerationTopic("include");
+    });
+    root.querySelector("[data-action='add-generate-exclude-topic']")?.addEventListener("click", () => {
+      addGenerationTopic("exclude");
+    });
+    root.querySelectorAll("[data-action='remove-generate-include-topic']").forEach((node) => {
+      node.addEventListener("click", () => {
+        removeGenerationTopic("include", node.getAttribute("data-topic") || "");
+      });
+    });
+    root.querySelectorAll("[data-action='remove-generate-exclude-topic']").forEach((node) => {
+      node.addEventListener("click", () => {
+        removeGenerationTopic("exclude", node.getAttribute("data-topic") || "");
+      });
+    });
+    root.querySelectorAll("[data-action='select-existing-module']").forEach((node) => {
+      node.addEventListener("click", () => {
+        const title = node.getAttribute("data-module-title");
+        if (!title) return;
+        setGenerationInput("module", title);
+      });
+    });
+    root.querySelectorAll("[data-action='select-existing-lesson']").forEach((node) => {
+      node.addEventListener("click", () => {
+        const title = node.getAttribute("data-lesson-title");
+        if (!title) return;
+        setGenerationInput("lesson", title);
       });
     });
     root.querySelector("[data-action='generate-structure']")?.addEventListener("click", () => {
@@ -8997,17 +8424,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
         toggleSelectedMicrosequenceRuntime(microsequenceKey);
       });
     });
-    root.querySelectorAll("[data-action='edit-microsequence']").forEach((node) => {
-      node.addEventListener("click", () =>
-        openEntityEditor("microsequence", {
-          courseKey: state.selection.courseKey,
-          moduleKey: state.selection.moduleKey,
-          lessonKey: state.selection.lessonKey,
-          microsequenceKey: state.selection.microsequenceKey
-        })
-      );
-    });
-
     root.querySelector("[data-action='entity-editor-close']")?.addEventListener("click", () => closeEntityEditor());
     root.querySelectorAll(".editor-overlay").forEach((node) => {
       node.addEventListener("click", (event) => {
@@ -9028,10 +8444,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
         }
         if (state.assistConfigOpen) {
           closeAssistConfig();
-          return;
-        }
-        if (state.codexCliSetupOpen) {
-          closeCodexCliSetup();
           return;
         }
         if (state.pendingExternalImport) {
@@ -9149,13 +8561,18 @@ export function createLessonEditorApp({ root, storage, editor }) {
       });
     }
     if (assistMicrosequenceTitleInput) {
-      assistMicrosequenceTitleInput.addEventListener("input", () => {
+      const commitAssistMicrosequenceTitle = () => {
         const visibleVersion = getVisualizedMicrosequenceVersion();
         updateMicrosequenceDraft({
           title: assistMicrosequenceTitleInput.value,
           tags: formatTagsText(visibleVersion?.tags || context.microsequence?.tags)
         });
+      };
+      assistMicrosequenceTitleInput.addEventListener("input", () => {
+        syncAssistSubmitState();
       });
+      assistMicrosequenceTitleInput.addEventListener("change", commitAssistMicrosequenceTitle);
+      assistMicrosequenceTitleInput.addEventListener("blur", commitAssistMicrosequenceTitle);
     }
     root.querySelectorAll("[data-flowchart-inline-input='true']").forEach((node) => {
       node.addEventListener("click", () => {
@@ -9299,10 +8716,36 @@ export function createLessonEditorApp({ root, storage, editor }) {
 
     const assistMode = root.querySelector("[data-field='assist-mode']");
     const assistModel = root.querySelector("[data-field='assist-model']");
-    const assistDidacticType = root.querySelector("[data-field='assist-didactic-type']");
+    const assistApiKey = root.querySelector("[data-field='assist-api-key']");
+    const providerConfigBaseUrl = root.querySelector("[data-field='provider-config-base-url']");
+    const providerConfigCodexEndpoint = root.querySelector("[data-field='provider-config-codex-endpoint']");
+    const providerConfigCodexToken = root.querySelector("[data-field='provider-config-codex-token']");
+    const assistActionIntentInputs = root.querySelectorAll("[data-field='assist-action-intent']");
+    const assistPreferredContainer = root.querySelector("[data-field='assist-preferred-container']");
     const assistDependencyPicker = root.querySelector("[data-field='assist-dependency-picker']");
     const assistPrompt = root.querySelector("[data-field='assist-prompt']");
     const assistAttachmentInput = root.querySelector("[data-field='assist-attachments']");
+    const assistSubmitButton = root.querySelector("[data-action='apply-assist']");
+    const syncAssistSubmitState = () => {
+      if (!assistSubmitButton) {
+        return;
+      }
+      const visiblePromptValue =
+        assistPrompt instanceof HTMLTextAreaElement
+          ? assistPrompt.value
+          : state.assistDraft.promptText || "";
+      const canEditCurrentView =
+        (state.view === "microsequence-assist" || state.view === "microsequence") &&
+        canEditCurrentMicrosequenceVersion();
+      const canSubmitAssist = canEditCurrentView && canSubmitAssistRequestFromState({
+        promptText: visiblePromptValue,
+        actionIntent: state.assistDraft.actionIntent,
+        attachmentCount: state.assistDraft.attachments.length,
+        isSubmitting: state.assistDraft.isSubmitting
+      });
+      assistSubmitButton.disabled = !canSubmitAssist;
+      assistSubmitButton.setAttribute("aria-disabled", canSubmitAssist ? "false" : "true");
+    };
     if (assistMode) {
       assistMode.addEventListener("change", () => {
         state.assistDraft.selectedMode = assistMode.value;
@@ -9320,19 +8763,48 @@ export function createLessonEditorApp({ root, storage, editor }) {
         render({ preserveState: true });
       });
     }
-    if (assistDidacticType) {
-      assistDidacticType.addEventListener("change", () => {
-        const nextTypeId = assistDidacticType.value;
-        state.assistDraft.didacticTypeId = ASSIST_DIDACTIC_TYPE_OPTIONS.some((item) => item.value === nextTypeId)
-          ? nextTypeId
-          : "";
+    if (assistApiKey) {
+      assistApiKey.addEventListener("input", () => {
+        persistAssistConfigValue({ apiKey: assistApiKey.value });
+      });
+    }
+    if (providerConfigBaseUrl) {
+      providerConfigBaseUrl.addEventListener("input", () => {
+        persistAssistConfigValue({ baseUrl: providerConfigBaseUrl.value, apiBaseUrl: providerConfigBaseUrl.value });
+      });
+    }
+    if (providerConfigCodexEndpoint) {
+      providerConfigCodexEndpoint.addEventListener("input", () => {
+        persistAssistConfigValue({ codexEndpoint: providerConfigCodexEndpoint.value });
+      });
+    }
+    if (providerConfigCodexToken) {
+      providerConfigCodexToken.addEventListener("input", () => {
+        persistAssistConfigValue({ codexToken: providerConfigCodexToken.value });
+      });
+    }
+    assistActionIntentInputs.forEach((node) => {
+      node.addEventListener("change", () => {
+        if (!(node instanceof HTMLInputElement) || !node.checked) {
+          return;
+        }
+        applyAssistActionIntent(node.value, getRenderContext().microsequence);
+        render({ preserveState: true });
+      });
+    });
+    if (assistPreferredContainer) {
+      assistPreferredContainer.addEventListener("change", () => {
+        const nextContainer = assistPreferredContainer.value;
+        const isKnownContainer = ASSIST_CARD_CONTAINER_OPTIONS.some((item) => item.value === nextContainer);
+        state.assistDraft.preferredContainer = isKnownContainer ? nextContainer : "";
+        state.assistDraft.preferredContainerConfirmed = isKnownContainer;
         render({ preserveState: true });
       });
     }
     if (assistPrompt) {
       assistPrompt.addEventListener("input", () => {
         state.assistDraft.promptText = assistPrompt.value;
-        render({ preserveState: true });
+        syncAssistSubmitState();
       });
     }
     if (assistAttachmentInput) {
@@ -9383,18 +8855,35 @@ export function createLessonEditorApp({ root, storage, editor }) {
       }
       render({ preserveState: true });
     });
-    root.querySelector("[data-action='open-assist-container-picker']")?.addEventListener("click", () => {
-      openEntityEditor("assist-container-picker");
-    });
     root.querySelector("[data-action='open-assist-attachment-picker']")?.addEventListener("click", () => {
       root.querySelector("[data-field='assist-attachments']")?.click();
     });
     root.querySelector("[data-action='open-generation-attachment-picker']")?.addEventListener("click", () => {
       root.querySelector("[data-field='generate-attachments']")?.click();
     });
-    root.querySelector("[data-action='open-assist-config']")?.addEventListener("click", () => openAssistConfig());
-    root.querySelector("[data-action='open-codex-cli-setup']")?.addEventListener("click", () => openCodexCliSetup());
+    root.querySelector("[data-action='open-provider-config']")?.addEventListener("click", () => {
+      openProviderConfig();
+    });
+    root.querySelector("[data-action='open-assist-config']")?.addEventListener("click", () => {
+      if (state.generationPanelOpen) {
+        if (state.assistConfigOpen) {
+          closeAssistConfig();
+        } else {
+          openAssistConfig();
+        }
+        return;
+      }
+      openProviderConfig();
+    });
     root.querySelector("[data-action='apply-assist']")?.addEventListener("click", () => {
+      if (state.assistDraft.actionIntent === ASSIST_ACTION_INTENTS.NEXT_PLANNED) {
+        const context = getRenderContext();
+        const nextPlanned = findNextPlannedMicrosequenceInLesson(context.lesson, context.microsequence?.key);
+        if (nextPlanned) {
+          openMicrosequenceAssistPage(nextPlanned.key, 0);
+        }
+        return;
+      }
       void submitAssistRequest();
     });
     root.querySelector("[data-action='accept-generated-version']")?.addEventListener("click", () => {
@@ -9405,7 +8894,28 @@ export function createLessonEditorApp({ root, storage, editor }) {
     });
     root.querySelector("[data-action='open-version-history']")?.addEventListener("click", () => openVersionHistory());
     root.querySelector("[data-action='assist-config-close']")?.addEventListener("click", () => closeAssistConfig());
-    root.querySelector("[data-action='close-codex-cli-setup']")?.addEventListener("click", () => closeCodexCliSetup());
+    root.querySelector("[data-action='provider-config-close']")?.addEventListener("click", () => closeProviderConfig());
+    root.querySelector("[data-action='provider-config-check-codex']")?.addEventListener("click", () => {
+      void testCodexCliConnection();
+    });
+    root.querySelector("[data-action='assist-config-reset-profile']")?.addEventListener("click", () => {
+      resetAssistProfileTuning(state.assistConfig.selectedProfileId || state.assistConfig.didacticProfileId);
+    });
+    root.querySelector("[data-action='assist-config-start-create-profile']")?.addEventListener("click", () => {
+      startAssistCustomProfileCreation();
+    });
+    root.querySelector("[data-action='assist-config-edit-profile']")?.addEventListener("click", () => {
+      startAssistCustomProfileRename();
+    });
+    root.querySelector("[data-action='assist-config-delete-profile']")?.addEventListener("click", () => {
+      deleteAssistCustomProfile();
+    });
+    root.querySelector("[data-action='assist-config-save-profile']")?.addEventListener("click", () => {
+      saveAssistProfileEditor();
+    });
+    root.querySelector("[data-action='assist-config-infer-course-model']")?.addEventListener("click", () => {
+      void inferAssistPlanningFromRequest();
+    });
     root.querySelector("[data-action='cancel-external-import']")?.addEventListener("click", () => clearPendingExternalImport());
     root.querySelector("[data-action='confirm-external-import']")?.addEventListener("click", () => confirmPendingExternalImport());
     root.querySelector("[data-action='test-codex-cli-connection']")?.addEventListener("click", () => {
@@ -9421,31 +8931,108 @@ export function createLessonEditorApp({ root, storage, editor }) {
       void copyTextToClipboard(getCodexSetupHealthCommand());
     });
 
-    const assistConfigModel = root.querySelector("[data-field='assist-config-model']");
-    const assistConfigApiKey = root.querySelector("[data-field='assist-config-api-key']");
-    const assistConfigCodexEndpoint = root.querySelector("[data-field='assist-config-codex-endpoint']");
-    const assistConfigCodexToken = root.querySelector("[data-field='assist-config-codex-token']");
-    if (assistConfigModel) {
-      assistConfigModel.addEventListener("change", () => {
-        persistAssistConfigValue({ model: assistConfigModel.value });
-        void handleCodexModelSelection(assistConfigModel.value);
+    const assistConfigProfile = root.querySelector("[data-field='assist-config-profile']");
+    const assistConfigTargetStudentProfile = root.querySelector("[data-field='assist-config-target-student-profile']");
+    const assistConfigCourseModelDescription = root.querySelector("[data-field='assist-config-course-model-description']");
+    const assistConfigCourseLearningTrail = root.querySelector("[data-field='assist-config-course-learning-trail']");
+    const assistConfigCourseMicrosequenceProgression = root.querySelector("[data-field='assist-config-course-microsequence-progression']");
+    const assistConfigMinMicrosequences = root.querySelector("[data-field='assist-config-min-microsequences']");
+    const assistConfigTargetMicrosequences = root.querySelector("[data-field='assist-config-target-microsequences']");
+    const assistConfigMaxMicrosequences = root.querySelector("[data-field='assist-config-max-microsequences']");
+    const assistConfigMicrosequenceRangeShell = root.querySelector("[data-field='assist-config-microsequence-range-shell']");
+    const assistConfigMinMicrosequencesLabel = root.querySelector("[data-role='assist-config-min-microsequences-label']");
+    const assistConfigTargetMicrosequencesLabel = root.querySelector("[data-role='assist-config-target-microsequences-label']");
+    const assistConfigMaxMicrosequencesLabel = root.querySelector("[data-role='assist-config-max-microsequences-label']");
+    const syncAssistMicrosequenceRange = (patch = {}) => {
+      const normalized = normalizeAssistMicrosequenceRange(patch);
+      updateAssistProfileTuning(normalized);
+
+      if (assistConfigMinMicrosequences) {
+        assistConfigMinMicrosequences.value = String(normalized.minMicrosequences);
+      }
+      if (assistConfigTargetMicrosequences) {
+        assistConfigTargetMicrosequences.value = String(normalized.targetMicrosequences);
+      }
+      if (assistConfigMaxMicrosequences) {
+        assistConfigMaxMicrosequences.value = String(normalized.maxMicrosequences);
+      }
+      if (assistConfigMinMicrosequencesLabel) {
+        assistConfigMinMicrosequencesLabel.textContent = String(normalized.minMicrosequences);
+      }
+      if (assistConfigTargetMicrosequencesLabel) {
+        assistConfigTargetMicrosequencesLabel.textContent = String(normalized.targetMicrosequences);
+      }
+      if (assistConfigMaxMicrosequencesLabel) {
+        assistConfigMaxMicrosequencesLabel.textContent = String(normalized.maxMicrosequences);
+      }
+      if (assistConfigMicrosequenceRangeShell) {
+        const toPercent = (value) => (((value - 1) / 11) * 100).toFixed(2);
+        assistConfigMicrosequenceRangeShell.style.setProperty("--assist-range-start", toPercent(normalized.minMicrosequences));
+        assistConfigMicrosequenceRangeShell.style.setProperty("--assist-range-target", toPercent(normalized.targetMicrosequences));
+        assistConfigMicrosequenceRangeShell.style.setProperty("--assist-range-end", toPercent(normalized.maxMicrosequences));
+      }
+    };
+    if (assistConfigProfile) {
+      if (assistConfigProfile.tagName === "SELECT") {
+        assistConfigProfile.addEventListener("change", () => {
+          selectAssistDidacticProfile(assistConfigProfile.value);
+        });
+      } else {
+        assistConfigProfile.addEventListener("input", () => {
+          updateAssistProfileEditorLabel(assistConfigProfile.value);
+        });
+      }
+    }
+    if (assistConfigTargetStudentProfile) {
+      assistConfigTargetStudentProfile.addEventListener("input", () => {
+        updateAssistProfileTuning({ targetStudentProfile: assistConfigTargetStudentProfile.value });
       });
     }
-    if (assistConfigApiKey) {
-      assistConfigApiKey.addEventListener("input", () => {
-        persistAssistConfigValue({ apiKey: assistConfigApiKey.value });
+    if (assistConfigCourseModelDescription) {
+      assistConfigCourseModelDescription.addEventListener("input", () => {
+        updateAssistCourseModel({ description: assistConfigCourseModelDescription.value });
       });
     }
-    if (assistConfigCodexEndpoint) {
-      assistConfigCodexEndpoint.addEventListener("input", () => {
-        persistAssistConfigValue({ codexEndpoint: assistConfigCodexEndpoint.value });
+    if (assistConfigCourseLearningTrail) {
+      assistConfigCourseLearningTrail.addEventListener("change", () => {
+        updateAssistCourseModel({
+          learningTrail: assistConfigCourseLearningTrail.value,
+          microsequenceProgression: ""
+        });
       });
     }
-    if (assistConfigCodexToken) {
-      assistConfigCodexToken.addEventListener("input", () => {
-        persistAssistConfigValue({ codexToken: assistConfigCodexToken.value });
+    if (assistConfigCourseMicrosequenceProgression) {
+      assistConfigCourseMicrosequenceProgression.addEventListener("change", () => {
+        updateAssistCourseModel({ microsequenceProgression: assistConfigCourseMicrosequenceProgression.value });
       });
     }
+    if (assistConfigMinMicrosequences) {
+      assistConfigMinMicrosequences.addEventListener("input", () => {
+        syncAssistMicrosequenceRange({ minMicrosequences: assistConfigMinMicrosequences.value });
+      });
+    }
+    if (assistConfigTargetMicrosequences) {
+      assistConfigTargetMicrosequences.addEventListener("input", () => {
+        syncAssistMicrosequenceRange({ targetMicrosequences: assistConfigTargetMicrosequences.value });
+      });
+    }
+    if (assistConfigMaxMicrosequences) {
+      assistConfigMaxMicrosequences.addEventListener("input", () => {
+        syncAssistMicrosequenceRange({ maxMicrosequences: assistConfigMaxMicrosequences.value });
+      });
+    }
+    root.querySelectorAll("[data-action='toggle-assist-config-flag']").forEach((node) => {
+      node.addEventListener("click", () => {
+        const field = node.getAttribute("data-field") || "";
+        if (!field) {
+          return;
+        }
+        updateAssistProfileTuning({
+          [field]: state.assistConfig.profileTuning?.[field] !== true
+        });
+        render({ preserveState: true });
+      });
+    });
 
     if (entityEditorModel) {
       const fields = {};

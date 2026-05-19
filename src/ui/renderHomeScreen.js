@@ -2,6 +2,10 @@ import { readLessonProgressEntry } from "../storage/progressStore.js";
 import { isRunnableMicrosequence } from "../model/microsequenceStatus.js";
 import { renderUiIcon } from "./renderUiIcons.js";
 import { buildScopedVersionLineageLabel, splitVersionLineageLabel } from "./versionLineage.js";
+import {
+  listGenerationProgressPhases,
+  summarizeGenerationProgressStatus
+} from "../generation/runtime/progressViewModel.js";
 
 function escapeHtml(value) {
   return String(value)
@@ -246,9 +250,15 @@ function renderGenerateIconLabel(iconName, label) {
   );
 }
 
-function renderGenerateIconButton(action, title, content, disabled = false) {
+function renderGenerateSectionTitle(title) {
+  return '<div class="generate-section-title"><h3 class="generate-section-title-text">' + escapeHtml(title) + "</h3></div>";
+}
+
+function renderGenerateIconButton(action, title, content, disabled = false, extraClassName = "") {
   return (
-    '<button class="icon-ghost tiny-icon generate-inline-icon" type="button" data-action="' +
+    '<button class="icon-ghost tiny-icon generate-inline-icon' +
+    escapeHtml(extraClassName) +
+    '" type="button" data-action="' +
     escapeHtml(action) +
     '" title="' +
     escapeHtml(title) +
@@ -262,24 +272,87 @@ function renderGenerateIconButton(action, title, content, disabled = false) {
   );
 }
 
-function renderGenerateScopeButton({ level, iconName, label, pressed = false, disabled = false }) {
+function renderGenerateInputField({
+  field,
+  iconName,
+  label,
+  placeholder,
+  value = "",
+  listId = "",
+  options = [],
+  disabled = false
+}) {
   return (
-    '<button class="generate-scope-button' +
-    (pressed ? " is-pressed" : "") +
-    '" type="button" data-action="toggle-generate-level" data-level="' +
-    escapeHtml(level) +
-    '" aria-label="' +
+    '<label class="field generate-icon-field generate-scope-field">' +
+    renderGenerateIconLabel(iconName, label) +
+    '<div class="generate-combobox-shell">' +
+    '<input data-field="' +
+    escapeHtml(field) +
+    '" type="text" class="generate-combobox-input" aria-label="' +
     escapeHtml(label) +
     '" title="' +
     escapeHtml(label) +
-    '" aria-pressed="' +
-    (pressed ? "true" : "false") +
+    '" placeholder="' +
+    escapeHtml(placeholder) +
+    '" value="' +
+    escapeHtml(value) +
     '"' +
+    (listId ? ' list="' + escapeHtml(listId) + '"' : "") +
     (disabled ? ' disabled aria-disabled="true"' : "") +
     ">" +
-    renderUiIcon(iconName, "generate-field-icon") +
-    "</button>"
+    (listId
+      ? '<datalist id="' + escapeHtml(listId) + '">' + renderGenerateComboboxOptions(options) + "</datalist>"
+      : "") +
+    "</div></label>"
   );
+}
+
+function renderStaticChips(items = [], { emptyLabel = "", iconName = "module", action = "", dataField = "" } = {}) {
+  const normalizedItems = (Array.isArray(items) ? items : []).map((item) => String(item || "").trim()).filter(Boolean);
+  if (!normalizedItems.length) {
+    return emptyLabel ? '<p class="tiny muted bottomup-empty-copy">' + escapeHtml(emptyLabel) + "</p>" : "";
+  }
+  return normalizedItems
+    .map((item) => {
+      const attrs =
+        action
+          ? ' type="button" data-action="' + escapeHtml(action) + '" data-' + escapeHtml(dataField) + '="' + escapeHtml(item) + '"'
+          : ' type="button" disabled aria-disabled="true"';
+      return (
+        '<button class="didactic-tag dependency-tag-chip dependency-chip-button"' +
+        attrs +
+        ' title="' +
+        escapeHtml(item) +
+        '" aria-label="' +
+        escapeHtml(item) +
+        '">' +
+        renderUiIcon(iconName, "assist-attachment-button-icon") +
+        '<span class="dependency-chip-label">' +
+        escapeHtml(item) +
+        "</span></button>"
+      );
+    })
+    .join("");
+}
+
+function renderEditableTopicChips(items = [], action = "") {
+  const normalizedItems = (Array.isArray(items) ? items : []).map((item) => String(item || "").trim()).filter(Boolean);
+  if (!normalizedItems.length) {
+    return "";
+  }
+  return normalizedItems
+    .map((item) => (
+      '<button class="didactic-tag dependency-tag-chip dependency-chip-button" type="button" data-action="' +
+      escapeHtml(action) +
+      '" data-topic="' +
+      escapeHtml(item) +
+      '" title="Remover tópico" aria-label="Remover tópico">' +
+      '<span class="dependency-chip-label">' +
+      escapeHtml(item) +
+      "</span>" +
+      '<span class="dependency-chip-remove" aria-hidden="true">&times;</span></button>'
+    ))
+    .join("");
 }
 
 function renderGenerateComboboxOptions(items) {
@@ -315,89 +388,6 @@ function renderGenerationAttachmentChips(attachments = []) {
   return chips ? '<div class="dependency-chip-row workbench-tag-chip-row assist-attachment-chip-row">' + chips + "</div>" : "";
 }
 
-function renderGenerateComboboxField({
-  level,
-  iconName,
-  label,
-  placeholder,
-  value = "",
-  listId,
-  options = [],
-  disabled = false,
-  pressed = false,
-  buttonDisabled = false
-}) {
-  return (
-    '<div class="field generate-icon-field generate-scope-field">' +
-    renderGenerateScopeButton({
-      level,
-      iconName,
-      label: pressed ? `${label} fixado` : `Fixar ${label}`,
-      pressed,
-      disabled: buttonDisabled
-    }) +
-    '<div class="generate-combobox-shell">' +
-    '<input data-field="generate-' +
-    escapeHtml(level) +
-    '-input" type="text" class="generate-combobox-input" aria-label="' +
-    escapeHtml(label) +
-    '" title="' +
-    escapeHtml(label) +
-    '" placeholder="' +
-    escapeHtml(placeholder) +
-    '" value="' +
-    escapeHtml(value) +
-    '" list="' +
-    escapeHtml(listId) +
-    '"' +
-    (disabled ? ' disabled aria-disabled="true"' : "") +
-    ">" +
-    '<datalist id="' +
-    escapeHtml(listId) +
-    '">' +
-    renderGenerateComboboxOptions(options) +
-    "</datalist>" +
-    "</div></div>"
-  );
-}
-
-function renderGenerateSingleOptionToggleField({
-  action,
-  iconName,
-  label,
-  value,
-  pressed = false,
-  disabled = false
-}) {
-  return (
-    '<div class="field generate-icon-field generate-scope-field">' +
-    '<button class="generate-scope-button' +
-    (pressed ? " is-pressed" : "") +
-    '" type="button" data-action="' +
-    escapeHtml(action) +
-    '" aria-label="' +
-    escapeHtml(label) +
-    '" title="' +
-    escapeHtml(label) +
-    '" aria-pressed="' +
-    (pressed ? "true" : "false") +
-    '"' +
-    (disabled ? ' disabled aria-disabled="true"' : "") +
-    ">" +
-    renderUiIcon(iconName, "generate-field-icon") +
-    "</button>" +
-    '<div class="generate-combobox-shell">' +
-    '<input data-field="generate-microsequence-reposition-input" type="text" class="generate-combobox-input" aria-label="' +
-    escapeHtml(label) +
-    '" title="' +
-    escapeHtml(label) +
-    '" value="' +
-    escapeHtml(value) +
-    '" readonly disabled aria-disabled="true">' +
-    "</div></div>"
-  );
-}
-
 function renderGeneratePane({ project, editorSupport, includeDismissActions = false }) {
   const courses = getVisibleCourses(project);
   const draft = editorSupport.generationDraft || {};
@@ -430,8 +420,11 @@ function renderGeneratePane({ project, editorSupport, includeDismissActions = fa
     '<input data-field="generate-attachments" class="assist-attachment-input" type="file" multiple accept=".pdf,.txt,.md,.json,.csv,.html,.xml,.js,.ts,.py,.java,.c,.cpp,.doc,.docx,.ppt,.pptx,.rtf,.odt,.ods,.odp,text/*,application/pdf,application/json,application/xml">';
   const attachmentChips = renderGenerationAttachmentChips(draft.attachments);
   const hasScopedContext = draft.courseFixed || draft.moduleFixed || draft.lessonFixed;
-  const showMicrosequenceRepositionField = generationUiState.isLessonGenerationMode === true;
-
+  const existingModules = (generationUiState.course?.modules || []).map((item) => item.title).filter(Boolean);
+  const existingLessons = (generationUiState.moduleValue?.lessons || []).map((item) => item.title).filter(Boolean);
+  const existingMicrosequences = (generationUiState.lesson?.microsequences || []).map((item) => item.title).filter(Boolean);
+  const includeTopicChips = renderEditableTopicChips(draft.includeTopics, "remove-generate-include-topic");
+  const excludeTopicChips = renderEditableTopicChips(draft.excludeTopics, "remove-generate-exclude-topic");
   return (
     '<section class="home-generate-pane">' +
     '<section class="clean-card generate-card">' +
@@ -441,74 +434,112 @@ function renderGeneratePane({ project, editorSupport, includeDismissActions = fa
         '<h2 class="card-title">' +
         escapeHtml(generationUiState.panelTitle || "Gerar estrutura") +
         "</h2>" +
-        (generationUiState.panelSubtitle
-          ? '<p class="card-subtitle">' + escapeHtml(generationUiState.panelSubtitle) + "</p>"
-          : "") +
         "</div>" +
         '<div class="lesson-top-actions">' +
         renderGenerateIconButton("clear-generation-scope", "Limpar escopo", "⌂", !hasScopedContext) +
         renderGenerateIconButton("close-generation-panel", "Fechar painel de geração", "×") +
         "</div></header>"
       : "") +
-    renderGenerateComboboxField({
-      level: "course",
+    '<div class="generate-main-stack">' +
+    '<section class="microsequence-assist-panel assist-simple-panel">' +
+    renderGenerateSectionTitle("Destino da árvore") +
+    renderGenerateInputField({
+      field: "generate-course-input",
       iconName: "folder",
       label: "Curso",
       placeholder: "Selecione ou digite um curso",
       value: draft.courseInput || "",
       listId: "generate-course-options",
-      options: courses,
-      disabled: !draft.courseFixed,
-      pressed: draft.courseFixed === true
+      options: courses
     }) +
-    renderGenerateComboboxField({
-      level: "module",
+    (draft.courseKey
+      ? '<div class="workbench-tag-layout"><div class="dependency-chip-row workbench-tag-chip-row">' +
+        renderStaticChips(existingModules, {
+          emptyLabel: "Sem módulos neste curso ainda.",
+          iconName: "module",
+          action: "select-existing-module",
+          dataField: "module-title"
+        }) +
+        "</div></div>"
+      : "") +
+    renderGenerateInputField({
+      field: "generate-module-input",
       iconName: "module",
-      label: "Módulo",
-      placeholder: "Selecione ou digite um módulo",
+      label: draft.courseKey ? "Módulo novo ou existente" : "Primeiro módulo",
+      placeholder: draft.courseKey ? "Selecione um módulo existente ou digite um novo" : "Digite o título do módulo",
       value: draft.moduleInput || "",
       listId: "generate-module-options",
       options: modules,
-      disabled: !generationUiState.moduleInputEnabled,
-      pressed: draft.moduleFixed === true,
-      buttonDisabled: !generationUiState.moduleToggleEnabled
+      disabled: !generationUiState.moduleInputEnabled
     }) +
-    renderGenerateComboboxField({
-      level: "lesson",
+    (draft.moduleKey
+      ? '<div class="workbench-tag-layout"><div class="dependency-chip-row workbench-tag-chip-row">' +
+        renderStaticChips(existingLessons, {
+          emptyLabel: "Sem lições neste módulo ainda.",
+          iconName: "lesson",
+          action: "select-existing-lesson",
+          dataField: "lesson-title"
+        }) +
+        "</div></div>"
+      : "") +
+    renderGenerateInputField({
+      field: "generate-lesson-input",
       iconName: "lesson",
-      label: "Lição",
-      placeholder: "Selecione ou digite uma lição",
+      label: "Lição focal (opcional)",
+      placeholder: draft.moduleKey ? "Selecione uma lição existente ou digite uma nova" : "Opcional: digite uma lição para focar a geração",
       value: draft.lessonInput || "",
       listId: "generate-lesson-options",
       options: lessons,
-      disabled: !generationUiState.lessonInputEnabled,
-      pressed: draft.lessonFixed === true,
-      buttonDisabled: !generationUiState.lessonToggleEnabled
+      disabled: !generationUiState.lessonInputEnabled
     }) +
-    (showMicrosequenceRepositionField
-      ? renderGenerateSingleOptionToggleField({
-          action: "toggle-generate-microsequence-reposition",
-          iconName: "reposition",
-          label: "Gerar e reposicionar microssequências",
-          value: draft.repositionMicrosequences ? "Gerar e reposicionar microssequências" : "",
-          pressed: draft.repositionMicrosequences === true
-        })
+    (draft.lessonKey
+      ? '<div class="workbench-tag-layout"><div class="dependency-chip-row workbench-tag-chip-row">' +
+        renderStaticChips(existingMicrosequences, {
+          emptyLabel: "Sem micros planejadas nesta lição ainda.",
+          iconName: "microsequence"
+        }) +
+        "</div></div>"
       : "") +
+    "</section>" +
     '<div class="generate-divider"></div>' +
-    '<label class="field generate-icon-field generate-prompt-field">' +
+    '<section class="microsequence-assist-panel assist-simple-panel">' +
+    renderGenerateSectionTitle("Escopo do módulo") +
+    '<div class="workbench-tag-layout">' +
+    '<div class="workbench-form-row workbench-tag-picker-row">' +
+    renderGenerateIconLabel("ready-state", "O que entra") +
+    '<div class="assist-tag-picker">' +
+    '<input data-field="generate-include-topic" type="text" class="generate-combobox-input" aria-label="O que entra" title="O que entra" placeholder="Adicionar tópico">' +
+    '<button class="icon-ghost tiny-icon" type="button" data-action="add-generate-include-topic" title="Adicionar tópico" aria-label="Adicionar tópico">+</button>' +
+    "</div></div>" +
+    '<div class="dependency-chip-row workbench-tag-chip-row">' +
+    includeTopicChips +
+    "</div></div>" +
+    '<div class="workbench-tag-layout">' +
+    '<div class="workbench-form-row workbench-tag-picker-row">' +
+    renderGenerateIconLabel("excluded-state", "O que não entra") +
+    '<div class="assist-tag-picker">' +
+    '<input data-field="generate-exclude-topic" type="text" class="generate-combobox-input" aria-label="O que não entra" title="O que não entra" placeholder="Adicionar exclusão">' +
+    '<button class="icon-ghost tiny-icon" type="button" data-action="add-generate-exclude-topic" title="Adicionar exclusão" aria-label="Adicionar exclusão">+</button>' +
+    "</div></div>" +
+    '<div class="dependency-chip-row workbench-tag-chip-row">' +
+    excludeTopicChips +
+    "</div></div></section>" +
+    '<div class="generate-divider"></div>' +
+    '<div class="field generate-prompt-field">' +
+    '<div class="generate-prompt-layout">' +
+    '<div class="generate-prompt-tools">' +
     renderGenerateIconLabel("prompt", "Pedido, conteúdo ou orientação") +
-    '<textarea data-field="generate-prompt" aria-label="Pedido, conteúdo ou orientação" title="Pedido, conteúdo ou orientação" placeholder="Descreva o que você quer gerar neste escopo.">' +
-    escapeHtml(draft.promptText || "") +
-    "</textarea></label>" +
-    attachmentInput +
-    attachmentChips +
-    '<div class="generate-inline-action-row">' +
-    '<div class="generate-inline-action-spacer" aria-hidden="true"></div>' +
     renderGenerateIconButton("clear-prompt", "Limpar prompt", "↻") +
     "</div>" +
+    '<div class="generate-prompt-content">' +
+    '<textarea data-field="generate-prompt" aria-label="Pedido, conteúdo ou orientação" title="Pedido, conteúdo ou orientação" placeholder="Descreva o que você quer gerar neste escopo.">' +
+    escapeHtml(draft.promptText || "") +
+    "</textarea>" +
+    attachmentInput +
+    attachmentChips +
+    "</div></div></div>" +
     '<div class="generate-divider"></div>' +
-    '<div class="generate-action-preview">' +
-    '<p class="tiny muted generate-action-caption">Ação prevista</p>' +
+    '<div class="generate-action-preview generate-action-preview-compact">' +
     '<div class="generate-action-summary">' +
     renderUiIcon(generationUiState.actionIconName || "sparkles", "generate-action-summary-icon") +
     '<span class="generate-action-summary-text">' +
@@ -526,8 +557,8 @@ function renderGeneratePane({ project, editorSupport, includeDismissActions = fa
     '<select data-field="assist-model" aria-label="Modelo" title="Modelo">' +
     modelOptions +
     "</select></label>" +
-    renderGenerateIconButton("open-assist-config", "Configurar IA", "🔑") +
     renderGenerateIconButton("open-generation-attachment-picker", "Anexar documento", renderUiIcon("lesson", "assist-attachment-button-icon")) +
+    renderGenerateIconButton("open-provider-config", "Configurar IA", "&#128273;") +
     '<button class="open-main generate-submit" type="button" data-action="generate-structure" aria-label="' +
     escapeHtml(generationUiState.submitLabel || "Gerar estrutura") +
     '" title="' +
@@ -537,10 +568,72 @@ function renderGeneratePane({ project, editorSupport, includeDismissActions = fa
     ">" +
     renderUiIcon("sparkles", "generate-submit-icon") +
     "</button>" +
-    "</div>" +
+    "</div></div>" +
     "</section>" +
     status +
     "</section>"
+  );
+}
+
+function renderGenerationProgressPopup(progress = {}) {
+  if (!progress?.visible || progress.status === "idle") {
+    return "";
+  }
+
+  const phaseIndex = Number(progress.phaseIndex || 0);
+  const phaseCount = Number(progress.phaseCount || 0);
+  const percent = phaseCount > 0 ? Math.max(4, Math.min(100, (phaseIndex / phaseCount) * 100)) : 8;
+  const statusClass =
+    progress.status === "completed"
+      ? " is-completed"
+      : progress.status === "failed"
+        ? " is-failed"
+        : "";
+  const progressLabel = phaseCount > 0 && phaseIndex > 0 ? `${phaseIndex}/${phaseCount}` : "Iniciando";
+  const statusLine = summarizeGenerationProgressStatus(progress);
+  const phaseItems = listGenerationProgressPhases(phaseCount || 0)
+    .map((phase, index) => {
+      const order = index + 1;
+      const itemClass =
+        order < phaseIndex
+          ? " is-completed"
+          : order === phaseIndex
+            ? " is-current"
+            : "";
+      return (
+        '<li class="generation-progress-phase-item' +
+        itemClass +
+        '">' +
+        '<span class="generation-progress-phase-index">' +
+        escapeHtml(String(order)) +
+        "</span>" +
+        '<span class="generation-progress-phase-label">' +
+        escapeHtml(phase.phaseLabel) +
+        "</span></li>"
+      );
+    })
+    .join("");
+
+  return (
+    '<aside class="generation-progress-popup' +
+    statusClass +
+    '" role="status" aria-live="polite">' +
+    '<div class="generation-progress-head">' +
+    '<span class="generation-progress-kicker">Top-down</span>' +
+    '<span class="generation-progress-count">' +
+    escapeHtml(progressLabel) +
+    "</span></div>" +
+    '<p class="generation-progress-title">' +
+    escapeHtml(progress.phaseLabel || "Preparando geração") +
+    "</p>" +
+    '<p class="generation-progress-message">' +
+    escapeHtml(statusLine) +
+    "</p>" +
+    '<div class="generation-progress-bar" aria-hidden="true"><span style="width:' +
+    String(percent) +
+    '%"></span></div>' +
+    (phaseItems ? '<ol class="generation-progress-phases">' + phaseItems + "</ol>" : "") +
+    "</aside>"
   );
 }
 
@@ -583,11 +676,14 @@ function renderCoursesPane({ project, progress }) {
 }
 
 export function renderGenerationPanelOverlay({ project, editorSupport = {} }) {
+  const draft = editorSupport.generationDraft || {};
   return (
     '<section class="overlay-shell" data-action="dismiss-generation-panel">' +
     '<div class="overlay-panel overlay-panel-side generation-overlay-panel">' +
     renderGeneratePane({ project, editorSupport, includeDismissActions: true }) +
-    "</div></section>"
+    "</div>" +
+    renderGenerationProgressPopup(draft.progress) +
+    "</section>"
   );
 }
 

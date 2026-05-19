@@ -2,9 +2,12 @@ const OPERATIONS = new Set(["replace_resource", "add_resource", "rewrite_text", 
 
 export function validateMicrosequenceEditPlan(plan, editPlanningContract) {
   const errors = [];
-  const cardKeys = new Set((editPlanningContract?.currentVersionSummary?.cardsSummary || []).map((item) => item.key));
-  const resourceIds = new Set((editPlanningContract?.availableResources || []).map((item) => item.id));
-  const versionIds = new Set((editPlanningContract?.previousVersionsSummary || []).map((item) => item.versionId));
+  const cardKeys = new Set((editPlanningContract?.currentVersion?.cardsSummary || []).map((item) => item.key));
+  const resourceIds = new Set(
+    (editPlanningContract?.representation?.availableResources || editPlanningContract?.availableResources || []).map((item) => item.id)
+  );
+  const versionIds = new Set((editPlanningContract?.versionHistory || editPlanningContract?.previousVersionsSummary || []).map((item) => item.versionId));
+  const selectedCardKeys = new Set(editPlanningContract?.request?.selectedCardKeys || []);
 
   (plan?.affectedCards || []).forEach((key) => {
     if (!cardKeys.has(key)) errors.push(`Card afetado inexistente: ${key}.`);
@@ -21,6 +24,11 @@ export function validateMicrosequenceEditPlan(plan, editPlanningContract) {
   });
   (editPlanningContract?.request?.userSelectedExtraResourceTypes || []).forEach((resourceId) => {
     if (!(plan?.requiredResourceTypes || []).includes(resourceId)) errors.push(`Recurso extra do usuário não preservado: ${resourceId}.`);
+  });
+  selectedCardKeys.forEach((cardKey) => {
+    if (!(plan?.affectedCards || []).includes(cardKey)) {
+      errors.push(`Card selecionado pelo usuário não preservado em affectedCards: ${cardKey}.`);
+    }
   });
 
   if (errors.length) return { ok: false, errors };

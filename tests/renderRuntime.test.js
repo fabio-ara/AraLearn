@@ -24,3 +24,11 @@ test("renderiza o exemplo do contrato principal com renderer próprio", () => {
   assert.doesNotMatch(result.rendered.html, /aralearn\.intent\.v1/);
   assert.doesNotMatch(result.rendered.html, /card-image/);
 });
+
+test("renderiza o exemplo público de graph com classe própria do card", () => {
+  const result = renderRuntime(readText("./docs/examples/aralearn-contract.graph.json"));
+
+  assert.equal(result.ok, true);
+  assert.match(result.rendered.html, /class="card card-graph"/);
+  assert.match(result.rendered.html, /runtime-graph-svg/);
+});

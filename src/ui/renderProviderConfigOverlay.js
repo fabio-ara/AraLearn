@@ -1,0 +1,84 @@
+import { renderUiIcon } from "./renderUiIcons.js";
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function renderField(label, inputHtml, hint = "") {
+  return (
+    '<label class="field assist-config-field">' +
+    `<span class="assist-config-inline-label"><span>${escapeHtml(label)}</span></span>` +
+    inputHtml +
+    (hint ? `<p class="field-hint">${escapeHtml(hint)}</p>` : "") +
+    "</label>"
+  );
+}
+
+export function renderProviderConfigOverlay({
+  selectedModel = "",
+  selectedModelLabel = "",
+  apiKey = "",
+  baseUrl = "",
+  codexEndpoint = "",
+  codexToken = "",
+  codexStatus = null
+} = {}) {
+  const isCodexLocal = String(selectedModel || "").trim() === "codex-cli-local";
+  const isOpenAiCompatible = String(selectedModel || "").trim().startsWith("openai-compatible");
+  const statusMessage = String(codexStatus?.error || codexStatus?.message || "").trim();
+  const statusClass = codexStatus?.ok ? "is-success" : statusMessage ? "is-warning" : "";
+
+  return (
+    '<section class="editor-overlay assist-config-overlay" aria-label="Configuração de IA">' +
+    '<article class="editor-sheet comment-sheet assist-config-sheet" role="dialog" aria-modal="true">' +
+    '<header class="editor-head">' +
+    '<button class="icon-ghost" type="button" data-action="provider-config-close" title="Fechar" aria-label="Fechar">&times;</button>' +
+    '<p class="editor-title">Configuração de IA</p>' +
+    "</header>" +
+    '<div class="editor-body assist-config-body">' +
+    '<section class="assist-config-panel assist-config-panel-inline" aria-label="Provider">' +
+    '<header class="assist-config-inline-head">' +
+    '<div class="assist-config-inline-heading">' +
+    `<p class="assist-config-section-label"><span>${escapeHtml(selectedModelLabel || selectedModel || "Modelo")}</span></p>` +
+    "</div></header>" +
+    (isCodexLocal
+      ? renderField(
+          "Endpoint local",
+          `<input data-field="provider-config-codex-endpoint" type="text" autocomplete="off" spellcheck="false" value="${escapeHtml(codexEndpoint)}" placeholder="http://127.0.0.1:4183/assist" title="Endpoint local">`,
+          "Use o endpoint do bridge local."
+        ) +
+        renderField(
+          "Token",
+          `<input data-field="provider-config-codex-token" type="password" autocomplete="off" spellcheck="false" value="${escapeHtml(codexToken)}" placeholder="Token opcional" title="Token do bridge local">`,
+          "Cole o token do bridge se ele estiver protegido."
+        ) +
+        '<div class="assist-config-footer">' +
+        '<div class="assist-config-footer-actions provider-config-footer-actions">' +
+        '<button class="icon-ghost assist-config-icon-action provider-config-check-action" type="button" data-action="provider-config-check-codex" title="Verificar bridge local" aria-label="Verificar bridge local">' +
+        renderUiIcon("ready-state", "assist-config-action-icon") +
+        "</button>" +
+        "</div>" +
+        (statusMessage
+          ? `<p class="field-hint ${escapeHtml(statusClass)}">${escapeHtml(statusMessage)}</p>`
+          : "") +
+        "</div>"
+      : renderField(
+          "Chave da API",
+          `<input data-field="assist-api-key" type="password" autocomplete="off" spellcheck="false" value="${escapeHtml(apiKey)}" placeholder="Chave da API" title="Chave da API">`,
+          "Cole a chave da LLM escolhida."
+        ) +
+        (isOpenAiCompatible
+          ? renderField(
+              "Base URL",
+              `<input data-field="provider-config-base-url" type="text" autocomplete="off" spellcheck="false" value="${escapeHtml(baseUrl)}" placeholder="https://..." title="Base URL">`,
+              "Informe a base do provider compatível com OpenAI."
+            )
+          : "")) +
+    "</section></div></article></section>"
+  );
+}

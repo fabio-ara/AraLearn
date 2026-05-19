@@ -1,121 +1,94 @@
-# Assistência por IA generativa
+# Assistência por IA
 
-Este documento descreve o papel da IA no AraLearn a partir da arquitetura real do produto e dos limites técnicos que a própria literatura recomenda explicitar.
+A assistência por IA no AraLearn existe para reduzir atrito na autoria e na revisão de trilhas. Ela é situada, contratual e validada localmente.
 
-## A posição do produto
+## Papel da IA
 
-No AraLearn, a LLM não ocupa o lugar de autora da didática. Ela tampouco ocupa o lugar de fonte de verdade. Seu papel é mais restrito: preencher ou reparar conteúdo dentro de um recorte previamente decidido pelo app.
+A IA pode ajudar em dois momentos:
 
-Essa escolha nasce de uma constatação prática e teórica. Na prática, pedidos muito amplos tendem a produzir deriva, repetição, generalização vazia e inconsistência estrutural, sobretudo em modelos leves. Na teoria, trabalhos sobre linguagem controlada e sobre heurísticas superficiais em NLP mostram que fluência textual e estrutura formal confiável não coincidem automaticamente (Neuhaus & Barkmeyer, 2013; Njonko et al., 2014; McCoy, Pavlick & Linzen, 2019). Por isso, o AraLearn não delega à IA o desenho do percurso. Ele desloca parte da inteligência da operação para contratos, limites e validações locais.
+1. planejar a estrutura de um curso até microssequências;
+2. gerar ou revisar cards dentro de uma microssequência específica.
 
-## Por que o AraLearn prefere restrição
+Ela não deve receber liberdade para reescrever o projeto inteiro em toda operação. Também não deve substituir a decisão do usuário sobre escopo, aceite e revisão.
 
-Em vez de pedir ao modelo que imagine sozinho um percurso “completo”, o app define:
+## Planejamento estrutural
 
-- o contexto hierárquico;
-- o escopo da lição;
-- o tipo didático permitido;
-- o tamanho da microssequência;
-- o plano determinístico dos cards;
-- os formatos de apresentação e prática disponíveis;
-- as validações que o resultado precisará atravessar.
+No planejamento estrutural, a IA recebe `aralearn.scope.v1`.
 
-Esse desenho é compatível com a observação, bastante recorrente em uso real, de que modelos fracos ou baratos se comportam melhor quando a tarefa é estreita, incremental e formalmente delimitada.
+Ela deve produzir:
 
-## Weak model mode
+- lições;
+- microssequências planejadas;
+- objetivos;
+- dependências locais;
+- organização coerente dentro do escopo informado.
 
-O pipeline bottom-up de cards opera em `weakModelMode`. Em termos simples, isso significa que a primeira etapa pede ao modelo apenas uma escolha restrita entre opções fechadas. O plano devolvido é enxuto. O modelo não devolve `cardPlan`, não escolhe livremente a posição dos elementos, não decide sozinho o formato final de cada unidade interativa. Depois da validação desse plano preliminar, o AraLearn monta o `cardPlan` por conta própria e só então pede o preenchimento do conteúdo.
+Restrições esperadas:
 
-Essa política não é uma admissão de fraqueza do produto; é uma forma de calibrar a operação para o tipo de modelo que o projeto pretende suportar com custo plausível.
+- respeitar `include`;
+- evitar tópicos declarados em `exclude`;
+- preservar módulos informados;
+- não gerar cards nessa etapa;
+- não transformar observações em promessa de completude.
 
-## O papel da lição
+## Materialização local
 
-A qualidade da assistência depende fortemente da lição. É a lição que concentra a governança didática principal por meio de `sourceGuideStructured`, tags de formato, tipos de conteúdo, ações de aprendizagem e nível de apoio.
+Na materialização local, a IA recebe um pacote de contexto da microssequência selecionada.
 
-Isso significa que a geração não deve ser lida como evento isolado. Ela é uma operação situada. Quando a lição está mal orientada, a saída tende a ficar difusa. Quando a lição está clara, a LLM precisa improvisar menos.
+Ela pode:
 
-## Geração de microssequências e geração de cards
+- gerar cards;
+- melhorar explicação;
+- acrescentar prática;
+- criar complemento;
+- gerar a próxima microssequência planejada.
 
-O AraLearn usa IA em dois pontos centrais, mas com objetivos diferentes.
+Cada intervenção cria uma versão nova. A versão anterior permanece disponível.
 
-Na lição, a IA pode sugerir microssequências draft. Nesse nível, o foco é organização do percurso, não redação dos cards. O sistema pode considerar `sourceGuideStructured`, `domainMap`, cobertura já existente e risco de redundância.
+## Providers
 
-No painel da microssequência, a IA atua sobre cards. Aqui o objetivo já é muito mais localizado: explicar, demonstrar, praticar, consolidar ou revisar um ponto delimitado pelo próprio percurso.
+Providers suportados pelo desenho técnico:
 
-## Pipeline de cards
+- Gemini;
+- Codex local;
+- OpenAI compatível;
+- Fake provider para testes.
 
-O fluxo real da geração de cards é o seguinte:
+A interface de provider deve permitir trocar a origem da resposta sem alterar o contrato do domínio.
 
-1. o usuário faz um pedido localizado;
-2. o app monta um contrato de planejamento;
-3. a LLM devolve um plano enxuto;
-4. o app valida o plano;
-5. o app monta `cardPlan` determinístico;
-6. o app resolve os formatos permitidos;
-7. o app monta o contrato de geração;
-8. a LLM devolve os cards;
-9. o app normaliza a resposta;
-10. o app executa reparo estrutural determinístico;
-11. o app valida estrutura;
-12. o app valida coerência didática local;
-13. o app valida vínculo mínimo com fonte, quando houver;
-14. se necessário, o app pede reparo ou continuação;
-15. o resultado validado é aplicado.
+## Modos do Codex local
 
-O que interessa aqui é que a geração não é tratada como bloco único, e sim como operação em camadas.
+O bridge local do Codex aceita os modos:
 
-## Meticulosidade e política didática
+- `plan-scope`;
+- `generate-microsequence`;
+- `improve-microsequence`;
+- `add-practice`;
+- `create-support`;
+- `generate-next`.
 
-A camada de meticulosidade não existe para pedir mais texto. Ela existe para conter dois riscos muito comuns em geração por LLM: resumo genérico e prolixidade enganosa. Em outras palavras, o problema não é só sair insuficiente; é sair liso, amplo e sem progressão prática.
+Endpoint padrão:
 
-Por isso, a política da geração reforça:
+```text
+http://127.0.0.1:4183/assist
+```
 
-- decomposição do ponto didático;
-- rejeição de resumo genérico;
-- exigência de função nova para novas microssequências;
-- separação entre cobertura e repetição;
-- variação de prática com finalidade.
+## Segurança estrutural
 
-## Checagens locais de qualidade
+O AraLearn aplica validação local depois de cada resposta.
 
-Uma parte importante da assistência não está no prompt, mas na camada de checagens locais. O AraLearn combina três tipos de inspeção.
+A validação verifica:
 
-O primeiro tipo é estrutural: contrato, quantidade, posição, formato e campos obrigatórios. O segundo é declarativo: cobertura já registrada, prática ausente, variação insuficiente, duplicação sem função nova. O terceiro é textual, mas com força limitada: padrões evidentes de bastidor, dependência externa, resposta revelada ou genericidade local.
+- estrutura do projeto;
+- campos obrigatórios;
+- status e tipo de microssequência;
+- cards e recursos permitidos;
+- conteúdo mínimo para materialização.
 
-O ponto decisivo é que esses três tipos não têm o mesmo estatuto. A camada estrutural e parte da camada declarativa podem justificar bloqueio ou continuação automática. A camada textual, por si só, não deve ser confundida com interpretação semântica forte. Ela funciona como apoio, sinal de risco e insumo para revisão, o que é coerente com a cautela sugerida por McCoy, Pavlick e Linzen (2019).
+Quando uma resposta não passa pela validação, o projeto anterior é preservado. A IA sugere e produz, mas não tem permissão automática para corromper o documento local.
 
-## Continuação automática
+## Privacidade e controle
 
-Quando a falha é forte o bastante, o app pode acionar continuação automática antes da entrega final. Isso não significa “conversar mais com a LLM até ficar bonito”. Significa restringir ainda mais a tarefa.
+O projeto é local-first. O envio de conteúdo a uma API remota depende do provider configurado pelo usuário.
 
-Dependendo do caso, a continuação pode:
-
-- reescrever posições específicas;
-- inserir uma etapa de preparação;
-- inserir prática mínima;
-- adiar a lacuna para outra microssequência da lição;
-- rejeitar redundância em vez de inflar volume.
-
-Essa continuação existe para preservar o pedido do usuário e reduzir o número de iterações manuais necessárias, não para competir com o que o usuário escreveu.
-
-## Aplicação direta e responsabilidade editorial
-
-O resultado validado é aplicado diretamente na microssequência. Não existe mais uma camada separada de prévia privada. A reversão acontece por iteração ativa: o usuário pode aceitar ou excluir a versão gerada.
-
-Isso torna a IA parte do fluxo real de autoria, mas não elimina curadoria humana. O usuário continua responsável por julgar fidelidade, clareza, pertinência e adequação do material ao seu próprio percurso.
-
-## Fontes e anexos
-
-Quando houver fontes e anexos, o AraLearn usa grounding mínimo, não promessa de RAG sofisticado. O objetivo é manter vínculo mínimo entre transformação e origem por `sourceRefs` e `sourceUsePlan`. Isso é suficiente para aumentar rastreabilidade local sem transformar o app em infraestrutura pesada de busca semântica.
-
-## Codex local
-
-`Codex CLI local` permanece suportado como integração avançada. O fluxo principal do estudante comum continua sendo Gemini/API comum. O provider local interessa sobretudo quando o usuário quer manter a operação mais próxima de seu próprio ambiente.
-
-## Referências centrais
-
-- RECON / linguagem controlada: https://www.nist.gov/publications/recon-controlled-english-business-rules
-- RuleCNL: https://arxiv.org/abs/1406.2096
-- HANS / heurísticas superficiais: https://aclanthology.org/P19-1334/
-- Feedback e aprendizagem: https://assess.ucr.edu/sites/g/files/rcwecm2336/files/2019-02/hattietimperley_2007.pdf
-- Fundamentos gerais do projeto: [Fundamentos e evidências](fundamentos-e-evidencias.md)
+O app deve deixar claro que operações remotas podem enviar o contexto necessário para a geração. Quando o usuário optar por provider local, a chamada é feita ao bridge local configurado.

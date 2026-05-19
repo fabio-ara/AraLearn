@@ -12,7 +12,7 @@ test("buildLessonGuidanceFromPreset devolve defaults humanos do modo escolhido",
 
   assert.deepEqual(guidance, {
     presetId: "visual",
-    resourceTags: ["paragraph", "multiple_choice", "table", "matrix", "plane", "flowchart", "tree"],
+    resourceTags: ["paragraph", "multiple_choice", "table", "matrix", "plane", "graph", "flowchart", "tree"],
     contentTypeTags: ["comparison", "interpretation", "classification"],
     learningActionTags: ["understand", "compare"],
     supportLevel: "guided"

@@ -65,6 +65,16 @@ test("valida o exemplo público dedicado a plane e matrix", () => {
   assert.equal(result.value.courses[0].modules[0].lessons[0].microsequences[0].cards[4].matrix.highlight, "mainDiagonal");
 });
 
+test("valida o exemplo público dedicado a graph", () => {
+  const document = readJson("./docs/examples/aralearn-contract.graph.json");
+
+  const result = validateContractDocument(document);
+
+  assert.equal(result.ok, true);
+  assert.equal(result.value.courses[0].modules[0].lessons[0].microsequences[0].cards[0].graph.vertices[1].label, "B");
+  assert.equal(result.value.courses[0].modules[0].lessons[0].microsequences[0].cards[1].graph.edges[0].weight, 2);
+});
+
 test("valida o curso público de matemática para informática", () => {
   const document = readJson("./docs/examples/aralearn-contract.logic-plane-matrix-course.json");
 
@@ -119,7 +129,7 @@ test("aceita sourceGuideStructured e recompila sourceGuide legível", () => {
   assert.equal(result.value.courses[0].sourceGuide, undefined);
   assert.equal(result.value.courses[0].sourceGuideStructured, undefined);
   assert.match(result.value.courses[0].modules[0].lessons[0].sourceGuide, /Meta da lição: Passo a passo simples\./);
-  assert.match(result.value.courses[0].modules[0].lessons[0].sourceGuide, /Confusões prováveis: Não inverter a ordem dos termos\./);
+  assert.match(result.value.courses[0].modules[0].lessons[0].sourceGuide, /Não confundir com: Não inverter a ordem dos termos\./);
 });
 
 test("rejeita sourceGuide textual puro sem sourceGuideStructured", () => {
@@ -130,7 +140,7 @@ test("rejeita sourceGuide textual puro sem sourceGuideStructured", () => {
     courses: [
       {
         title: "Curso",
-        sourceGuide: "Texto corrido legado.",
+        sourceGuide: "Texto corrido antigo.",
         modules: []
       }
     ]
@@ -140,7 +150,7 @@ test("rejeita sourceGuide textual puro sem sourceGuideStructured", () => {
   assert.match(result.errors.map((error) => error.message).join("\n"), /Campo não suportado em curso: "sourceGuide"/);
 });
 
-test("rejeita campos legados de card no contrato principal", () => {
+test("rejeita campos antigos de card no contrato principal", () => {
   const result = validateContractDocument(projectWithCards([{ type: "text", title: "Antigo", text: "x" }]));
 
   assert.equal(result.ok, false);
@@ -171,6 +181,110 @@ test("aceita card flow com estrutura pública composta", () => {
   assert.equal(result.ok, true);
   assert.equal(result.value.courses[0].modules[0].lessons[0].microsequences[0].cards[0].flow[1].if, "x > 0");
   assert.equal(result.value.courses[0].modules[0].lessons[0].microsequences[0].cards[0].flow[1].id, "flow-2");
+});
+
+test("aceita card graph com destaques e normaliza label ausente com id", () => {
+  const result = validateContractDocument(
+    projectWithCards([
+      {
+        title: "Grafo",
+        graph: {
+          vertices: [
+            { id: "A", x: 50, y: 10 },
+            { id: "B" },
+            { id: "C", x: 50, y: 90 }
+          ],
+          edges: [
+            { from: "A", to: "B", weight: 2 },
+            { from: "B", to: "C", label: "bc" }
+          ],
+          highlight: {
+            vertices: ["A", "X"],
+            edges: [["B", "A"], ["A", "X"]]
+          }
+        }
+      }
+    ])
+  );
+
+  assert.equal(result.ok, true);
+  const card = result.value.courses[0].modules[0].lessons[0].microsequences[0].cards[0];
+  assert.equal(card.graph.vertices[1].label, "B");
+  assert.equal(card.graph.edges[0].weight, 2);
+  assert.deepEqual(card.graph.highlight.vertices, ["A"]);
+  assert.deepEqual(card.graph.highlight.edges, [["B", "A"]]);
+});
+
+test("rejeita graph com laço, mas aceita multiaresta quando o caso exigir", () => {
+  const result = validateContractDocument(
+    projectWithCards([
+      {
+        title: "Grafo inválido",
+        graph: {
+          vertices: [{ id: "A" }, { id: "B" }],
+          edges: [
+            { from: "A", to: "A" },
+            { from: "A", to: "B" },
+            { from: "B", to: "A" }
+          ]
+        }
+      }
+    ])
+  );
+
+  assert.equal(result.ok, false);
+  assert.match(
+    result.errors.map((error) => `${error.path}: ${error.message}`).join("\n"),
+    /Campo obrigatório inválido: "graph.edges"/
+  );
+});
+
+test("aceita dependsOn e multiarestas no contrato público v1", () => {
+  const result = validateContractDocument({
+    contract: "aralearn.contract",
+    version: 1,
+    kind: "project",
+    courses: [
+      {
+        title: "Curso",
+        modules: [
+          {
+            title: "Módulo",
+            include: [{ id: "scope-konigsberg", label: "pontes de Königsberg" }],
+            lessons: [
+              {
+                title: "Lição",
+                microsequences: [
+                  {
+                    title: "Modelo",
+                    status: "ready",
+                    dependsOn: ["microsequence-anterior"],
+                    cards: [
+                      {
+                        title: "Königsberg",
+                        graph: {
+                          vertices: [{ id: "A" }, { id: "B" }],
+                          edges: [
+                            { from: "A", to: "B", label: "ponte 1" },
+                            { from: "B", to: "A", label: "ponte 2" }
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  });
+
+  assert.equal(result.ok, true);
+  const microsequence = result.value.courses[0].modules[0].lessons[0].microsequences[0];
+  assert.deepEqual(microsequence.dependsOn, ["microsequence-anterior"]);
+  assert.equal(microsequence.cards[0].graph.edges.length, 2);
 });
 
 test("aceita card plane com vector simples", () => {

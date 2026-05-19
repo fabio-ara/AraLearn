@@ -1,5 +1,7 @@
 import { createCodexCliProvider } from "./codexCliProvider.js";
 import { createFakeProvider } from "./fakeProvider.js";
+import { createGeminiProvider } from "./geminiProvider.js";
+import { createOpenAiCompatibleProvider } from "./openAiCompatibleProvider.js";
 
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -7,11 +9,11 @@ function text(value) {
 
 export function createProviderRegistry({ providers = [] } = {}) {
   const map = new Map();
-  providers.forEach((provider) => {
+  for (const provider of providers) {
     if (provider?.id) {
       map.set(provider.id, provider);
     }
-  });
+  }
   return {
     register(provider) {
       if (!provider?.id) {
@@ -21,7 +23,17 @@ export function createProviderRegistry({ providers = [] } = {}) {
       return provider;
     },
     get(providerId) {
-      return map.get(providerId) || null;
+      const normalized = text(providerId).toLowerCase();
+      if (map.has(providerId)) {
+        return map.get(providerId) || null;
+      }
+      if (normalized === "google") {
+        return map.get("gemini") || null;
+      }
+      if (normalized === "openai") {
+        return map.get("openai-compatible") || null;
+      }
+      return null;
     },
     list() {
       return [...map.values()];
@@ -32,8 +44,10 @@ export function createProviderRegistry({ providers = [] } = {}) {
 export function createDefaultProviderRegistry(options = {}) {
   return createProviderRegistry({
     providers: [
-      createFakeProvider(options.fakeProvider || {}),
-      ...(options.codexCli ? [createCodexCliProvider(options.codexCli)] : [])
+      createFakeProvider(options.fake || options.fakeProvider || {}),
+      createGeminiProvider(options.gemini || {}),
+      createCodexCliProvider(options.codexCli || {}),
+      createOpenAiCompatibleProvider(options.openAiCompatible || {})
     ]
   });
 }
@@ -41,7 +55,7 @@ export function createDefaultProviderRegistry(options = {}) {
 export function resolveProviderFromModelId(modelId = "") {
   const normalized = text(modelId).toLowerCase();
   if (normalized.startsWith("gemini")) return "google";
-  if (normalized.startsWith("openai:")) return "openai";
+  if (normalized.startsWith("openai-compatible") || normalized.startsWith("openai:")) return "openai";
   if (normalized.startsWith("anthropic:")) return "anthropic";
   if (normalized.startsWith("deepseek:")) return "deepseek";
   if (normalized.startsWith("qwen:")) return "qwen";

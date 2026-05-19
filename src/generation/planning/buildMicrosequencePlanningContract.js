@@ -10,9 +10,12 @@ import {
   SOURCE_GUIDE_LEVELS
 } from "../../sourceGuides/sourceGuideStructured.js";
 import { normalizeLessonGuidance } from "../guidance/lessonGuidance.js";
-import { resolveWeakModelModePolicy } from "../policies/weakModelPolicy.js";
+import { getWeakModelModePolicy } from "../policies/weakModelPolicy.js";
+import { resolveWeakModelRepresentationPolicy } from "../didactics/resourceRepresentationPolicy.js";
 import { buildLessonDomainMap } from "../domain/lessonDomainModel.js";
 import { summarizeMeticulousPolicyForPrompt } from "../policies/meticulousDidacticPolicy.js";
+import { buildStudyTrackPolicy } from "../policies/studyTrackPolicy.js";
+import { summarizeDidacticProductionPolicyForPrompt } from "../policies/didacticProductionPolicy.js";
 
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -49,18 +52,18 @@ function buildRequestGovernance() {
       "selectedLessonTopicRefs",
       "request.userPrompt"
     ],
-    lessonGuidePriority: "sourceGuideStructured governa meta, notação e confusões prováveis",
+    lessonGuidePriority: 'sourceGuideStructured governa meta, "Incluir", "Não incluir" e "Não confundir com"',
     lessonTopicRefsPriority: "selectedLessonTopicRefs especializa escopo local",
     userPromptRole: "request.userPrompt apenas especializa o recorte atual"
   };
 }
 
-function resolveAvailableTypes(policy, userFixedTypeId) {
+function resolveAvailableTypes(representationPolicy, userFixedTypeId) {
   const fixedTypeId = text(userFixedTypeId);
   if (fixedTypeId && fixedTypeId !== "assisted") {
     return listMicrosequenceTypeSummaries().filter((item) => item.id === fixedTypeId);
   }
-  return listMicrosequenceTypeSummaries().filter((item) => policy.allowedTypeIds.includes(item.id));
+  return listMicrosequenceTypeSummaries().filter((item) => representationPolicy.allowedTypeIds.includes(item.id));
 }
 
 export function buildMicrosequencePlanningContract({
@@ -86,12 +89,15 @@ export function buildMicrosequencePlanningContract({
   );
   const lessonGuidance = normalizeLessonGuidance(selectedLesson);
   const lessonDomainMap = buildLessonDomainMap(selectedLesson || {});
-  const policy = resolveWeakModelModePolicy({
+  const weakModelMode = getWeakModelModePolicy(capabilities);
+  const representationPolicy = resolveWeakModelRepresentationPolicy({
     lessonGuidance,
     lessonSourceGuideStructured,
     modelCapabilities: capabilities,
     resolvedTypeId: text(userFixedTypeId) && text(userFixedTypeId) !== "assisted" ? text(userFixedTypeId) : "simple",
-    userSelectedExtraResourceTypes
+    userSelectedExtraResourceTypes,
+    courseSemantics: selectedLesson?.courseSemantics || {},
+    resourcePreferences: selectedLesson?.resourcePreferences || {}
   });
   const resolvedSources = resolveReferencedSources({ userPrompt, attachedSources, userSelectedSourceIds });
   const selectedTopics = normalizeSelectedLessonTopicRefs({
@@ -100,6 +106,27 @@ export function buildMicrosequencePlanningContract({
     selectedLessonTags,
     lessonTags,
     availableLessonTopics: selectedLesson?.lessonTopics || selectedLesson?.scopeTags || selectedLesson?.tags || []
+  });
+  const lessonMicrosequenceLine = Array.isArray(selectedLesson?.microsequences)
+    ? selectedLesson.microsequences.map(summarizeMicrosequence)
+    : [];
+  const studyTrackPolicy = buildStudyTrackPolicy({
+    userPrompt,
+    lesson: {
+      ...(selectedLesson || {}),
+      sourceGuideStructured: lessonSourceGuideStructured,
+      domainMap: lessonDomainMap,
+      microsequenceLine: lessonMicrosequenceLine
+    },
+    microsequence: summarizeMicrosequence(targetMicrosequence),
+    selectedLessonTopicRefs: selectedTopics
+  });
+  const didacticProductionPolicy = summarizeDidacticProductionPolicyForPrompt({
+    weakModelMode: true,
+    lessonGuidance,
+    lessonSourceGuideStructured,
+    lessonDomainMap,
+    studyTrackPolicy
   });
 
   return {
@@ -136,10 +163,10 @@ export function buildMicrosequencePlanningContract({
             }
           : {}),
         ...lessonGuidance,
+        ...(selectedLesson?.courseSemantics ? { courseSemantics: structuredClone(selectedLesson.courseSemantics) } : {}),
+        ...(selectedLesson?.resourcePreferences ? { resourcePreferences: structuredClone(selectedLesson.resourcePreferences) } : {}),
         ...(lessonDomainMap.items.length || lessonDomainMap.practiceVariants.length ? { domainMap: lessonDomainMap } : {}),
-        microsequenceLine: Array.isArray(selectedLesson?.microsequences)
-          ? selectedLesson.microsequences.map(summarizeMicrosequence)
-          : []
+        microsequenceLine: lessonMicrosequenceLine
       },
       microsequence: summarizeMicrosequence(targetMicrosequence)
     },
@@ -149,16 +176,20 @@ export function buildMicrosequencePlanningContract({
       userSelectedExtraResourceTypes: [...userSelectedExtraResourceTypes]
     },
     requestGovernance: buildRequestGovernance(),
+    studyTrackPolicy,
+    didacticProductionPolicy,
     selectedLessonTopicRefs: selectedTopics,
     sources: resolvedSources.referencedSources,
-    availableTypes: resolveAvailableTypes(policy, userFixedTypeId),
+    availableTypes: resolveAvailableTypes(representationPolicy, userFixedTypeId),
     availableSizes: listMicrosequenceSizes()
-      .filter((item) => policy.allowedSizeIds.includes(item.id))
+      .filter((item) => representationPolicy.allowedSizeIds.includes(item.id))
       .map(({ id, cardCount }) => ({ id, cardCount })),
-    availableResources: listCardResourceSummaries().filter((item) => policy.safeAllowedResourceTypes.includes(item.id)),
+    availableResources: listCardResourceSummaries().filter((item) => representationPolicy.safeAllowedResourceTypes.includes(item.id)),
     model: { id: capabilities.model, capabilities },
     sourceResolution: resolvedSources,
-    weakModelMode: policy,
-    meticulousPolicy: summarizeMeticulousPolicyForPrompt({ weakModelMode: true })
+    weakModelMode,
+    representationPolicy,
+    meticulousPolicy: summarizeMeticulousPolicyForPrompt({ weakModelMode: true }),
+    productionPolicy: didacticProductionPolicy
   };
 }

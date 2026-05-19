@@ -48,9 +48,10 @@ test("setup do Android inclui Termux, Node, bridge, porta e Codex", () => {
   assert.match(script, /aralearnCodexBridge\.mjs/);
   assert.match(script, /4183/);
   assert.match(script, /command -v codex/);
+  assert.match(script, /ARALEARN_CODEX_ARGS='exec -'/);
 });
 
-test("setup do Windows usa PowerShell e codex.cmd", () => {
+test("setup do Windows usa PowerShell e usa o executável Codex encontrado", () => {
   const script = buildCodexCliSetupScript({
     platform: "windows",
     endpoint: "http://127.0.0.1:4183/assist",
@@ -59,7 +60,8 @@ test("setup do Windows usa PowerShell e codex.cmd", () => {
 
   assert.match(script, /\$ErrorActionPreference = "Stop"/);
   assert.match(script, /Get-Command codex\.cmd/);
-  assert.match(script, /\$env:ARALEARN_CODEX_COMMAND = "codex\.cmd"/);
+  assert.match(script, /\$env:ARALEARN_CODEX_COMMAND = \$codexCommand\.Source/);
+  assert.match(script, /\$env:ARALEARN_CODEX_ARGS = "exec -"/);
   assert.match(script, /Set-Content/);
 });
 
@@ -74,6 +76,7 @@ test("setup do Linux usa shell local sem instalar pacotes automaticamente", () =
   assert.match(script, /command -v codex/);
   assert.doesNotMatch(script, /pkg install/);
   assert.match(script, /export ARALEARN_CODEX_COMMAND=codex/);
+  assert.match(script, /export ARALEARN_CODEX_ARGS='exec -'/);
 });
 
 test("comando health no Windows usa Invoke-RestMethod e no Linux usa curl", () => {

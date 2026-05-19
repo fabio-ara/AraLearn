@@ -71,6 +71,96 @@ function normalizeBlockGapFill(card) {
   };
 }
 
+function clampGraphCoordinate(value) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) {
+    return undefined;
+  }
+  return Math.max(0, Math.min(100, numeric));
+}
+
+function normalizeGraphCard(card) {
+  const vertices = [];
+  const vertexIds = new Set();
+
+  (Array.isArray(card.vertices) ? card.vertices : []).forEach((vertex) => {
+    const id = text(vertex?.id);
+    if (!id || vertexIds.has(id)) {
+      return;
+    }
+    vertexIds.add(id);
+    const nextVertex = {
+      id,
+      label: text(vertex?.label) || id
+    };
+    const x = clampGraphCoordinate(vertex?.x);
+    const y = clampGraphCoordinate(vertex?.y);
+    if (x !== undefined) nextVertex.x = x;
+    if (y !== undefined) nextVertex.y = y;
+    vertices.push(nextVertex);
+  });
+
+  const edgeKeys = new Set();
+  const edges = [];
+  (Array.isArray(card.edges) ? card.edges : []).forEach((edge) => {
+    const from = text(edge?.from);
+    const to = text(edge?.to);
+    if (!from || !to || from === to || !vertexIds.has(from) || !vertexIds.has(to)) {
+      return;
+    }
+    const key = [from, to].sort().join("::");
+    if (edgeKeys.has(key)) {
+      return;
+    }
+    edgeKeys.add(key);
+    const nextEdge = { from, to };
+    if (typeof edge?.weight === "number" && Number.isFinite(edge.weight)) {
+      nextEdge.weight = edge.weight;
+    } else if (text(edge?.weight)) {
+      nextEdge.weight = text(edge.weight).slice(0, 24);
+    }
+    if (text(edge?.label)) {
+      nextEdge.label = text(edge.label).slice(0, 40);
+    }
+    edges.push(nextEdge);
+  });
+
+  const highlightVertices = Array.from(new Set(
+    (Array.isArray(card?.highlight?.vertices) ? card.highlight.vertices : [])
+      .map((item) => text(item))
+      .filter((item) => vertexIds.has(item))
+  ));
+  const highlightEdges = [];
+  const seenHighlightEdges = new Set();
+  (Array.isArray(card?.highlight?.edges) ? card.highlight.edges : []).forEach((pair) => {
+    if (!Array.isArray(pair) || pair.length !== 2) {
+      return;
+    }
+    const from = text(pair[0]);
+    const to = text(pair[1]);
+    const key = [from, to].sort().join("::");
+    if (!from || !to || !edgeKeys.has(key) || seenHighlightEdges.has(key)) {
+      return;
+    }
+    seenHighlightEdges.add(key);
+    highlightEdges.push([from, to]);
+  });
+
+  return {
+    ...card,
+    vertices,
+    edges,
+    ...((highlightVertices.length || highlightEdges.length)
+      ? {
+          highlight: {
+            ...(highlightVertices.length ? { vertices: highlightVertices } : {}),
+            ...(highlightEdges.length ? { edges: highlightEdges } : {})
+          }
+        }
+      : {})
+  };
+}
+
 function allowedCardFields(resourceType) {
   const common = ["position", "resourceType", "title", "sourceRefs", "sourceNote"];
   const byType = {
@@ -79,6 +169,7 @@ function allowedCardFields(resourceType) {
     code_editor: [...common, "prompt", "language", "code", "expectedAnswer"],
     table: [...common, "columns", "rows", "focus"],
     flowchart: [...common, "nodes", "edges"],
+    graph: [...common, "prompt", "vertices", "edges", "highlight"],
     block_gap_fill: [...common, "prompt", "segments", "blocks", "feedbackAfter"],
     tree: [...common, "prompt", "base", "current", "selected", "closed", "rootLabel", "nodes"],
     plane: [...common, "prompt", "vector", "vectors", "sum", "scale", "distance", "result", "x", "y"],
@@ -115,6 +206,9 @@ export function repairGeneratedCardsDeterministic(rawGeneratedResponse, generati
       }
       if (resourceType === "block_gap_fill") {
         return normalizeBlockGapFill(next);
+      }
+      if (resourceType === "graph") {
+        return normalizeGraphCard(next);
       }
       return next;
     })
