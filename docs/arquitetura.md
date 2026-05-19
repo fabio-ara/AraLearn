@@ -29,7 +29,7 @@ Entrada pequena para o top-down:
 - observações
 - estilo de cobrança
 
-### `aralearn.contract` v2
+### `aralearn.contract` v1
 
 Projeto persistido:
 
@@ -47,7 +47,7 @@ Projeto persistido:
 Responsável por:
 
 - validação do contrato de escopo
-- validação do contrato público v2
+- validação do contrato público v1
 - normalização de termos
 - cards
 - microssequência
@@ -96,7 +96,7 @@ Registry simples com providers:
 ### Top-down
 
 ```text
-scope contract -> planned course -> project patch -> project v2
+scope contract -> planned course -> project patch -> project v1
 ```
 
 ### Bottom-up
@@ -128,4 +128,3 @@ Recursos mínimos aceitos:
 - `block_gap_fill`
 
 O renderer público existente foi preservado e o contrato novo adapta cards para esse runtime.
-

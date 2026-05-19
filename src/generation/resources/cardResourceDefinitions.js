@@ -639,7 +639,6 @@ export function validateGraphResource(card) {
     });
   });
 
-  const edgeKeys = new Set();
   edges.forEach((edge) => {
     const from = typeof edge?.from === "string" ? edge.from.trim() : "";
     const to = typeof edge?.to === "string" ? edge.to.trim() : "";
@@ -651,11 +650,6 @@ export function validateGraphResource(card) {
       errors.push("graph não aceita laços na primeira versão.");
       return;
     }
-    const key = [from, to].sort().join("::");
-    if (edgeKeys.has(key)) {
-      errors.push("graph não aceita arestas duplicadas na primeira versão.");
-    }
-    edgeKeys.add(key);
   });
 
   return errors;

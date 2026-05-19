@@ -6,7 +6,7 @@ import { createMicrosequenceVersion } from "../src/domain/microsequenceVersion.j
 
 const project = {
   contract: "aralearn.contract",
-  version: 2,
+  version: 1,
   kind: "project",
   courses: [
     {
@@ -75,4 +75,3 @@ test("context packet usa somente contexto local da microssequência", () => {
   assert.equal(packet.dependsOn, undefined);
   assert.equal(packet.currentMicrosequence.dependsOn[0].summary, "Resumo da etapa anterior.");
 });
-

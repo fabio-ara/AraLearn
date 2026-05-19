@@ -6,7 +6,7 @@ import { MICROSEQUENCE_STATUSES, MICROSEQUENCE_TYPES } from "./microsequence.js"
 import { normalizeScopeTermList } from "./scopeTerms.js";
 
 export const PROJECT_CONTRACT = "aralearn.contract";
-export const PROJECT_VERSION = 2;
+export const PROJECT_VERSION = 1;
 
 function normalizeEvidencePriority(values = []) {
   const source = Array.isArray(values) ? values : [];

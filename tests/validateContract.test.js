@@ -215,7 +215,7 @@ test("aceita card graph com destaques e normaliza label ausente com id", () => {
   assert.deepEqual(card.graph.highlight.edges, [["B", "A"]]);
 });
 
-test("rejeita graph com aresta inválida ou duplicada", () => {
+test("rejeita graph com laço, mas aceita multiaresta quando o caso exigir", () => {
   const result = validateContractDocument(
     projectWithCards([
       {
@@ -237,6 +237,54 @@ test("rejeita graph com aresta inválida ou duplicada", () => {
     result.errors.map((error) => `${error.path}: ${error.message}`).join("\n"),
     /Campo obrigatório inválido: "graph.edges"/
   );
+});
+
+test("aceita dependsOn e multiarestas no contrato público v1", () => {
+  const result = validateContractDocument({
+    contract: "aralearn.contract",
+    version: 1,
+    kind: "project",
+    courses: [
+      {
+        title: "Curso",
+        modules: [
+          {
+            title: "Módulo",
+            include: [{ id: "scope-konigsberg", label: "pontes de Königsberg" }],
+            lessons: [
+              {
+                title: "Lição",
+                microsequences: [
+                  {
+                    title: "Modelo",
+                    status: "ready",
+                    dependsOn: ["microsequence-anterior"],
+                    cards: [
+                      {
+                        title: "Königsberg",
+                        graph: {
+                          vertices: [{ id: "A" }, { id: "B" }],
+                          edges: [
+                            { from: "A", to: "B", label: "ponte 1" },
+                            { from: "B", to: "A", label: "ponte 2" }
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  });
+
+  assert.equal(result.ok, true);
+  const microsequence = result.value.courses[0].modules[0].lessons[0].microsequences[0];
+  assert.deepEqual(microsequence.dependsOn, ["microsequence-anterior"]);
+  assert.equal(microsequence.cards[0].graph.edges.length, 2);
 });
 
 test("aceita card plane com vector simples", () => {

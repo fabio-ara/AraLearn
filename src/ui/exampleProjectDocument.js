@@ -1,3 +1,5 @@
+import { matematicaTeoriaDosGrafosModule } from "./matematicaTeoriaDosGrafosSeed.js";
+
 export function createExampleProjectDocument() {
   const directoryTreeItems = {
     home: {
@@ -283,7 +285,7 @@ export function createMatematicaParaInformaticaCourse() {
   return {
     key: "course-matematica-para-informatica",
     title: "Matemática para Informática",
-    description: "Trilha progressiva de lógica proposicional, vetores e matrizes com foco em procedimentos e compreensão.",
+    description: "Trilha progressiva de lógica proposicional, vetores, matrizes e teoria dos grafos com foco em procedimentos e compreensão.",
     modules: [
       {
         key: "module-logica-proposicional",
@@ -1521,7 +1523,8 @@ export function createMatematicaParaInformaticaCourse() {
             ]
           }
         ]
-      }
+      },
+      structuredClone(matematicaTeoriaDosGrafosModule)
     ]
   };
 }

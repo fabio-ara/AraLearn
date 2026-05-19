@@ -24,7 +24,7 @@ Ao clicar em `Gerar trilha`, o app:
 1. valida o contrato de escopo
 2. chama o provider selecionado
 3. valida a saída top-down
-4. grava o projeto no contrato v2
+4. grava o projeto no contrato v1
 
 Resultado:
 
@@ -94,4 +94,3 @@ Na lateral de provider, você escolhe:
 - endpoint local do Codex
 
 Também é possível verificar a saúde do bridge local do Codex.
-
