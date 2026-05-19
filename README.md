@@ -49,12 +49,14 @@ O `Codex local` continua disponível para o mesmo conjunto de operações do cam
 
 Núcleo relevante:
 
-- `src/domain/`: contratos `scope` e `project v2`, microssequência, versão e cards.
+- `src/domain/`: contratos `scope` e `project v1`, microssequência, versão e cards.
 - `src/generation/topDown/`: planejamento estrutural a partir do contrato de escopo.
 - `src/generation/bottomUp/`: materialização e evolução local por microssequência.
+- `src/generation/runtime/`: integração direta do top-down e do bottom-up com o documento do app.
 - `src/generation/providers/`: registry e adapters de provider.
-- `src/ui/scopeBuilder/`: builder com chips por módulo.
-- `src/ui/study/`: estudo e ações locais.
+- `src/ui/lessonEditorApp.js`: casca principal restaurada do produto.
+- `src/ui/scopeBuilder/`: builder com chips por módulo para o top-down.
+- `src/ui/study/`: estudo e ações locais sobre a microssequência aberta.
 
 ## Scripts
 
@@ -87,4 +89,3 @@ npm run dev
 Versão publicada:
 
 <https://fabio-ara.github.io/AraLearn/>
-

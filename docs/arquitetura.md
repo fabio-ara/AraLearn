@@ -90,6 +90,7 @@ Registry simples com providers:
 - `courseTree/`: navegação estrutural
 - `study/`: estudo e ações locais
 - `providers/`: configuração de provider
+- `lessonEditorApp.js`: shell principal restaurada que orquestra árvore, edição e geração
 
 ## Fluxo operacional
 
@@ -111,9 +112,13 @@ O projeto continua local-first.
 
 Persistido:
 
-- `aralearn.project.v2`
-- `aralearn.progress.v2`
+- `aralearn.project`
+- `aralearn.progress`
 - `aralearn.provider-settings.v2`
+
+Observação:
+
+- o fluxo de produto não usa mais o motor multifase `CourseForge`, mas alguns wrappers internos ainda preservam o prefixo `CourseForge` em nomes de módulo por continuidade de código
 
 ## Recursos públicos de card
 
