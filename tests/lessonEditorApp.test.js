@@ -1,34 +1,34 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createCourseForgeProfileTuning } from "../src/generation/runtime/courseForgeProfileTuning.js";
+import { createProfileTuning } from "../src/generation/runtime/profileTuning.js";
 import { createFakeProvider } from "../src/generation/providers/fakeProvider.js";
 
 import {
-  applyCourseForgeGenerationScope,
-  setCourseForgeGenerationDraftInput,
-  toggleCourseForgeGenerationDraftLevel
-} from "../src/generation/runtime/courseForgeGenerationDraftState.js";
+  applyGenerationScope,
+  setGenerationDraftInput,
+  toggleGenerationDraftLevel
+} from "../src/generation/runtime/generationDraftState.js";
 import { canSubmitAssistRequestFromState } from "../src/ui/lessonEditorApp.js";
 import {
-  applyCourseForgeAssistConfigPatch,
-  buildClosedCourseForgeGenerationPanelState,
-  buildCourseForgeGenerationInputState,
-  buildCourseForgeGenerationLevelState,
-  buildCourseForgeGenerationResultClearedState,
-  buildOpenedCourseForgeGenerationPanelState,
-  checkCourseForgeCodexCliConnection,
-  createCourseForgeCodexCliSetupStatus,
-  executeCourseForgeStructureGeneration,
-  normalizeCourseForgeAssistConfig,
-  resolveCourseForgeGenerationScopeViewState,
-  resolveCourseForgeOpenGeneratedLessonState
-} from "../src/generation/runtime/courseForgeGenerationEditorRuntime.js";
+  applyAssistConfigPatch,
+  buildClosedGenerationPanelState,
+  buildGenerationInputState,
+  buildGenerationLevelState,
+  buildGenerationResultClearedState,
+  buildOpenedGenerationPanelState,
+  checkCodexCliConnection,
+  createCodexCliSetupStatus,
+  executeStructureGeneration,
+  normalizeAssistConfig,
+  resolveGenerationScopeViewState,
+  resolveOpenGeneratedLessonState
+} from "../src/generation/runtime/generationEditorRuntime.js";
 import {
-  resolveCourseForgeProviderReadiness,
+  resolveGenerationProviderReadiness,
   resolveGenerationAssistMode,
   resolveGenerationPanelScopeFromAction,
   resolveGenerationScopeState
-} from "../src/generation/runtime/courseForgeGenerationViewModel.js";
+} from "../src/generation/runtime/generationViewModel.js";
 
 test("canSubmitAssistRequestFromState habilita criação local com intenção e entrada útil", () => {
   assert.equal(
@@ -220,13 +220,13 @@ test("resolveGenerationScopeState monta o view-model de escopo fora da UI", () =
   assert.equal(state.generationMode, "generate-top-down-structure");
 });
 
-test("resolveCourseForgeProviderReadiness só valida provider local", async () => {
-  const gemini = await resolveCourseForgeProviderReadiness({
+test("resolveGenerationProviderReadiness só valida provider local", async () => {
+  const gemini = await resolveGenerationProviderReadiness({
     selectedModel: "gemini-2.5-flash"
   });
   assert.equal(gemini.ok, true);
 
-  const codex = await resolveCourseForgeProviderReadiness({
+  const codex = await resolveGenerationProviderReadiness({
     selectedModel: "codex-cli-local",
     codexEndpoint: "http://127.0.0.1:4183/assist",
     codexToken: "segredo",
@@ -239,8 +239,8 @@ test("resolveCourseForgeProviderReadiness só valida provider local", async () =
   assert.equal(codex.ok, true);
 });
 
-test("createCourseForgeCodexCliSetupStatus normaliza payload transitório", () => {
-  assert.deepEqual(createCourseForgeCodexCliSetupStatus({ checking: true, data: "ignorar" }), {
+test("createCodexCliSetupStatus normaliza payload transitório", () => {
+  assert.deepEqual(createCodexCliSetupStatus({ checking: true, data: "ignorar" }), {
     ok: false,
     checking: true,
     error: "",
@@ -248,25 +248,25 @@ test("createCourseForgeCodexCliSetupStatus normaliza payload transitório", () =
   });
 });
 
-test("normalizeCourseForgeAssistConfig e patch consolidam config fora da UI", () => {
-  assert.deepEqual(normalizeCourseForgeAssistConfig({ codexEndpoint: " " }), {
+test("normalizeAssistConfig e patch consolidam config fora da UI", () => {
+  assert.deepEqual(normalizeAssistConfig({ codexEndpoint: " " }), {
     model: "gemini-2.5-flash",
     apiKey: "",
     selectedProfileId: "aralearn.engine.ads.general.v3",
     didacticProfileId: "aralearn.engine.ads.general.v3",
-    profileTuning: createCourseForgeProfileTuning("aralearn.engine.ads.general.v3"),
+    profileTuning: createProfileTuning("aralearn.engine.ads.general.v3"),
     customProfiles: [],
     codexEndpoint: "http://127.0.0.1:4183/assist",
     codexToken: ""
   });
 
-  const patched = applyCourseForgeAssistConfigPatch({
+  const patched = applyAssistConfigPatch({
     assistConfig: {
       model: "gemini-2.5-flash",
       apiKey: " chave ",
       selectedProfileId: "aralearn.engine.ads.general.v3",
       didacticProfileId: "aralearn.engine.ads.general.v3",
-      profileTuning: createCourseForgeProfileTuning("aralearn.engine.ads.general.v3"),
+      profileTuning: createProfileTuning("aralearn.engine.ads.general.v3"),
       customProfiles: [],
       codexEndpoint: "",
       codexToken: " token "
@@ -275,7 +275,7 @@ test("normalizeCourseForgeAssistConfig e patch consolidam config fora da UI", ()
       model: "codex-cli-local",
       codexEndpoint: " http://127.0.0.1:9999/assist ",
       didacticProfileId: "aralearn.engine.ads.systems.v1",
-      profileTuning: createCourseForgeProfileTuning("aralearn.engine.ads.systems.v1", {
+      profileTuning: createProfileTuning("aralearn.engine.ads.systems.v1", {
         targetStudentProfile: "estudante com pouco tempo"
       })
     }
@@ -290,8 +290,8 @@ test("normalizeCourseForgeAssistConfig e patch consolidam config fora da UI", ()
   assert.equal(patched.assistConfigDraft.codexToken, "token");
 });
 
-test("checkCourseForgeCodexCliConnection normaliza erro do health-check", async () => {
-  const failed = await checkCourseForgeCodexCliConnection({
+test("checkCodexCliConnection normaliza erro do health-check", async () => {
+  const failed = await checkCodexCliConnection({
     assistConfig: {
       codexEndpoint: "http://127.0.0.1:4183/assist",
       codexToken: "segredo"
@@ -323,7 +323,7 @@ test("runtime do painel de geração abre, limpa e fecha sem depender da UI", ()
     ]
   };
   const visibleCourses = projectDocument.courses;
-  const opened = buildOpenedCourseForgeGenerationPanelState({
+  const opened = buildOpenedGenerationPanelState({
     draft: {
       promptText: "manter",
       errorMessage: "erro antigo",
@@ -349,7 +349,7 @@ test("runtime do painel de geração abre, limpa e fecha sem depender da UI", ()
   assert.equal(opened.draft.errorMessage, "");
   assert.equal(opened.pendingGeneratedNavigation, null);
 
-  const scopeViewState = resolveCourseForgeGenerationScopeViewState({
+  const scopeViewState = resolveGenerationScopeViewState({
     draft: opened.draft,
     projectDocument,
     visibleCourses,
@@ -364,7 +364,7 @@ test("runtime do painel de geração abre, limpa e fecha sem depender da UI", ()
   });
   assert.equal(scopeViewState.lessonToggleEnabled, true);
 
-  const changedLevel = buildCourseForgeGenerationLevelState({
+  const changedLevel = buildGenerationLevelState({
     draft: opened.draft,
     level: "lesson",
     projectDocument,
@@ -380,7 +380,7 @@ test("runtime do painel de geração abre, limpa e fecha sem depender da UI", ()
   });
   assert.equal(changedLevel.draft.lessonFixed, true);
 
-  const changedInput = buildCourseForgeGenerationInputState({
+  const changedInput = buildGenerationInputState({
     draft: changedLevel.draft,
     level: "lesson",
     value: "Lição A",
@@ -388,7 +388,7 @@ test("runtime do painel de geração abre, limpa e fecha sem depender da UI", ()
   });
   assert.equal(changedInput.draft.lessonKey, "lesson-a");
 
-  const cleared = buildCourseForgeGenerationResultClearedState({
+  const cleared = buildGenerationResultClearedState({
     draft: {
       ...changedInput.draft,
       errorMessage: "erro",
@@ -400,7 +400,7 @@ test("runtime do painel de geração abre, limpa e fecha sem depender da UI", ()
   assert.equal(cleared.draft.lastResult, null);
   assert.equal(cleared.pendingGeneratedNavigation, null);
 
-  const closed = buildClosedCourseForgeGenerationPanelState({
+  const closed = buildClosedGenerationPanelState({
     draft: changedInput.draft,
     preserveGeneratedResult: true,
     pendingGeneratedNavigation: { lessonKey: "lesson-a" }
@@ -409,12 +409,12 @@ test("runtime do painel de geração abre, limpa e fecha sem depender da UI", ()
   assert.equal(closed.pendingGeneratedNavigation.lessonKey, "lesson-a");
 });
 
-test("resolveCourseForgeOpenGeneratedLessonState valida abertura fora da UI", () => {
-  const failed = resolveCourseForgeOpenGeneratedLessonState({});
+test("resolveOpenGeneratedLessonState valida abertura fora da UI", () => {
+  const failed = resolveOpenGeneratedLessonState({});
   assert.equal(failed.ok, false);
   assert.match(failed.errorMessage, /Nenhuma estrutura nova/);
 
-  const opened = resolveCourseForgeOpenGeneratedLessonState({
+  const opened = resolveOpenGeneratedLessonState({
     pendingGeneratedNavigation: {
       courseKey: "course-a",
       moduleKey: "module-a",
@@ -425,7 +425,7 @@ test("resolveCourseForgeOpenGeneratedLessonState valida abertura fora da UI", ()
   assert.equal(opened.viewState.view, "lesson");
 });
 
-test("applyCourseForgeGenerationScope fixa escopo resolvido fora da UI", () => {
+test("applyGenerationScope fixa escopo resolvido fora da UI", () => {
   const projectDocument = {
     courses: [
       {
@@ -442,7 +442,7 @@ test("applyCourseForgeGenerationScope fixa escopo resolvido fora da UI", () => {
     ]
   };
   const visibleCourses = projectDocument.courses;
-  const draft = applyCourseForgeGenerationScope({
+  const draft = applyGenerationScope({
     draft: { promptText: "manter" },
     scope: { courseKey: "course-a", moduleKey: "module-a", lessonKey: "lesson-a" },
     projectDocument,
@@ -466,7 +466,7 @@ test("applyCourseForgeGenerationScope fixa escopo resolvido fora da UI", () => {
   assert.equal(draft.promptText, "manter");
 });
 
-test("toggleCourseForgeGenerationDraftLevel limpa hierarquia descendente ao desligar nível pai", () => {
+test("toggleGenerationDraftLevel limpa hierarquia descendente ao desligar nível pai", () => {
   const visibleCourses = [
     {
       key: "course-a",
@@ -480,7 +480,7 @@ test("toggleCourseForgeGenerationDraftLevel limpa hierarquia descendente ao desl
       ]
     }
   ];
-  const draft = toggleCourseForgeGenerationDraftLevel({
+  const draft = toggleGenerationDraftLevel({
     draft: {
       courseFixed: true,
       moduleFixed: true,
@@ -508,7 +508,7 @@ test("toggleCourseForgeGenerationDraftLevel limpa hierarquia descendente ao desl
   assert.equal(draft.lessonInput, "");
 });
 
-test("setCourseForgeGenerationDraftInput resolve keys por título no estado puro", () => {
+test("setGenerationDraftInput resolve keys por título no estado puro", () => {
   const visibleCourses = [
     {
       key: "course-a",
@@ -523,7 +523,7 @@ test("setCourseForgeGenerationDraftInput resolve keys por título no estado puro
     }
   ];
 
-  let draft = setCourseForgeGenerationDraftInput({
+  let draft = setGenerationDraftInput({
     draft: {
       courseFixed: true
     },
@@ -531,25 +531,25 @@ test("setCourseForgeGenerationDraftInput resolve keys por título no estado puro
     value: "Curso A",
     visibleCourses
   });
-  draft = toggleCourseForgeGenerationDraftLevel({
+  draft = toggleGenerationDraftLevel({
     draft,
     level: "module",
     scopeState: { moduleToggleEnabled: true, lessonToggleEnabled: false },
     visibleCourses
   });
-  draft = setCourseForgeGenerationDraftInput({
+  draft = setGenerationDraftInput({
     draft,
     level: "module",
     value: "Módulo A",
     visibleCourses
   });
-  draft = toggleCourseForgeGenerationDraftLevel({
+  draft = toggleGenerationDraftLevel({
     draft,
     level: "lesson",
     scopeState: { moduleToggleEnabled: true, lessonToggleEnabled: true },
     visibleCourses
   });
-  draft = setCourseForgeGenerationDraftInput({
+  draft = setGenerationDraftInput({
     draft,
     level: "lesson",
     value: "Lição A",
@@ -561,8 +561,8 @@ test("setCourseForgeGenerationDraftInput resolve keys por título no estado puro
   assert.equal(draft.lessonKey, "lesson-a");
 });
 
-test("executeCourseForgeStructureGeneration bloqueia submissão inválida antes do provider", async () => {
-  const result = await executeCourseForgeStructureGeneration({
+test("executeStructureGeneration bloqueia submissão inválida antes do provider", async () => {
+  const result = await executeStructureGeneration({
     draft: {
       promptText: "",
       attachments: []
@@ -578,11 +578,11 @@ test("executeCourseForgeStructureGeneration bloqueia submissão inválida antes 
   assert.match(result.draft.errorMessage, /Informe texto e\/ou anexo/);
 });
 
-test("executeCourseForgeStructureGeneration abre setup quando provider local não responde", async () => {
+test("executeStructureGeneration abre setup quando provider local não responde", async () => {
   const projectDocument = {
     courses: [{ key: "course-a", title: "Curso A", modules: [] }]
   };
-  const result = await executeCourseForgeStructureGeneration({
+  const result = await executeStructureGeneration({
     draft: {
       courseFixed: true,
       moduleFixed: true,
@@ -611,7 +611,7 @@ test("executeCourseForgeStructureGeneration abre setup quando provider local nã
   assert.equal(result.codexCliSetupStatus.error, "bridge offline");
 });
 
-test("executeCourseForgeStructureGeneration retorna sucesso aplicável fora da UI", async () => {
+test("executeStructureGeneration retorna sucesso aplicável fora da UI", async () => {
   const projectDocument = {
     contract: "aralearn.contract",
     version: 1,
@@ -686,7 +686,7 @@ test("executeCourseForgeStructureGeneration retorna sucesso aplicável fora da U
       }
     }
   });
-  const result = await executeCourseForgeStructureGeneration({
+  const result = await executeStructureGeneration({
     draft: {
       courseFixed: true,
       courseInput: "Curso A",
@@ -724,6 +724,6 @@ test("executeCourseForgeStructureGeneration retorna sucesso aplicável fora da U
   assert.equal(result.selection.lessonKey, "lesson-a");
   assert.equal(result.pendingGeneratedNavigation.lessonKey, "lesson-a");
   assert.equal(result.draft.lastResult.message, "Fluxo top-down aplicado com 1 operações e 1 evento auditável.");
-  assert.equal(result.courseForgeResult.projectDocument.courses[0].modules[0].lessons[0].microsequences.length, 2);
+  assert.equal(result.generationResult.projectDocument.courses[0].modules[0].lessons[0].microsequences.length, 2);
   assert.ok(progressEvents.some((event) => event.type === "provider_call_started" && event.phaseId === "normalize_intent"));
 });

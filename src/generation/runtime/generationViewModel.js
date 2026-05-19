@@ -43,7 +43,7 @@ export function resolveGenerationAssistMode() {
   return "generate-top-down-structure";
 }
 
-export async function resolveCourseForgeProviderReadiness({
+export async function resolveGenerationProviderReadiness({
   selectedModel,
   codexEndpoint = "",
   codexToken = "",

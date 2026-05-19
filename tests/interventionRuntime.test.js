@@ -3,15 +3,15 @@ import assert from "node:assert/strict";
 import { createFakeProvider } from "../src/generation/providers/fakeProvider.js";
 
 import {
-  buildCourseForgeInterventionRequestFromDraft,
-  buildCourseForgeMicrosequencePrompt,
-  executeCourseForgeMicrosequenceGeneration,
-  prepareCourseForgeMicrosequenceGeneration,
-  resolveCourseForgeMicrosequenceRequestConfig
-} from "../src/generation/runtime/courseForgeInterventionRuntime.js";
+  buildInterventionRequestFromDraft,
+  buildMicrosequencePrompt,
+  executeMicrosequenceGeneration,
+  prepareMicrosequenceGeneration,
+  resolveMicrosequenceRequestConfig
+} from "../src/generation/runtime/interventionRuntime.js";
 
-test("buildCourseForgeMicrosequencePrompt acrescenta hints locais sem perder o pedido principal", () => {
-  const prompt = buildCourseForgeMicrosequencePrompt({
+test("buildMicrosequencePrompt acrescenta hints locais sem perder o pedido principal", () => {
+  const prompt = buildMicrosequencePrompt({
     promptText: "Reforce a explicação.",
     dependencyTitles: ["Introdução", "Pré-requisitos"],
     selectedDidacticTypeId: "guided_practice",
@@ -24,9 +24,9 @@ test("buildCourseForgeMicrosequencePrompt acrescenta hints locais sem perder o p
   assert.match(prompt, /Pergunta/);
 });
 
-test("resolveCourseForgeMicrosequenceRequestConfig escolhe repair_only para pedidos de correção", () => {
+test("resolveMicrosequenceRequestConfig escolhe repair_only para pedidos de correção", () => {
   assert.deepEqual(
-    resolveCourseForgeMicrosequenceRequestConfig({
+    resolveMicrosequenceRequestConfig({
       promptText: "Corrija a progressão desta microssequência."
     }),
     {
@@ -37,7 +37,7 @@ test("resolveCourseForgeMicrosequenceRequestConfig escolhe repair_only para pedi
   );
 
   assert.deepEqual(
-    resolveCourseForgeMicrosequenceRequestConfig({
+    resolveMicrosequenceRequestConfig({
       promptText: "Expanda a prática guiada."
     }),
     {
@@ -48,8 +48,8 @@ test("resolveCourseForgeMicrosequenceRequestConfig escolhe repair_only para pedi
   );
 });
 
-test("buildCourseForgeInterventionRequestFromDraft monta pedido estruturado para nova microssequência", () => {
-  const result = buildCourseForgeInterventionRequestFromDraft({
+test("buildInterventionRequestFromDraft monta pedido estruturado para nova microssequência", () => {
+  const result = buildInterventionRequestFromDraft({
     selection: {
       courseKey: "course-a",
       moduleKey: "module-a",
@@ -80,8 +80,8 @@ test("buildCourseForgeInterventionRequestFromDraft monta pedido estruturado para
   assert.deepEqual(result.contextSnapshot.microsequenceKeys, ["micro-atual", "micro-seguinte"]);
 });
 
-test("prepareCourseForgeMicrosequenceGeneration monta request local no escopo da microssequência", async () => {
-  const prepared = await prepareCourseForgeMicrosequenceGeneration({
+test("prepareMicrosequenceGeneration monta request local no escopo da microssequência", async () => {
+  const prepared = await prepareMicrosequenceGeneration({
     selection: {
       courseKey: "course-a",
       moduleKey: "module-a",
@@ -119,10 +119,10 @@ test("prepareCourseForgeMicrosequenceGeneration monta request local no escopo da
   assert.match(prepared.request.intent.promptText, /Base anterior/);
 });
 
-test("prepareCourseForgeMicrosequenceGeneration rejeita falta de alvo ou de entrada útil", async () => {
+test("prepareMicrosequenceGeneration rejeita falta de alvo ou de entrada útil", async () => {
   await assert.rejects(
     () =>
-      prepareCourseForgeMicrosequenceGeneration({
+      prepareMicrosequenceGeneration({
         selection: {},
         draft: { promptText: "Teste" },
         assistConfig: {},
@@ -133,7 +133,7 @@ test("prepareCourseForgeMicrosequenceGeneration rejeita falta de alvo ou de entr
 
   await assert.rejects(
     () =>
-      prepareCourseForgeMicrosequenceGeneration({
+      prepareMicrosequenceGeneration({
         selection: {
           courseKey: "course-a",
           moduleKey: "module-a",
@@ -155,8 +155,8 @@ test("prepareCourseForgeMicrosequenceGeneration rejeita falta de alvo ou de entr
   );
 });
 
-test("executeCourseForgeMicrosequenceGeneration abre setup quando provider local nao responde", async () => {
-  const result = await executeCourseForgeMicrosequenceGeneration({
+test("executeMicrosequenceGeneration abre setup quando provider local nao responde", async () => {
+  const result = await executeMicrosequenceGeneration({
     selection: {
       courseKey: "course-a",
       moduleKey: "module-a",
@@ -181,7 +181,7 @@ test("executeCourseForgeMicrosequenceGeneration abre setup quando provider local
   assert.equal(result.errorMessage, "bridge offline");
 });
 
-test("executeCourseForgeMicrosequenceGeneration executa fluxo local no runtime novo", async () => {
+test("executeMicrosequenceGeneration executa fluxo local no runtime novo", async () => {
   const projectDocument = {
     contract: "aralearn.contract",
     version: 1,
@@ -220,7 +220,7 @@ test("executeCourseForgeMicrosequenceGeneration executa fluxo local no runtime n
     }
   });
 
-  const result = await executeCourseForgeMicrosequenceGeneration({
+  const result = await executeMicrosequenceGeneration({
     selection: {
       courseKey: "course-a",
       moduleKey: "module-a",
@@ -249,7 +249,7 @@ test("executeCourseForgeMicrosequenceGeneration executa fluxo local no runtime n
 
   assert.equal(result.status, "success");
   assert.match(result.preparedIntervention.request.intent.promptText, /Base anterior/);
-  const microsequence = result.courseForgeResult.projectDocument.courses[0].modules[0].lessons[0].microsequences[0];
+  const microsequence = result.generationResult.projectDocument.courses[0].modules[0].lessons[0].microsequences[0];
   assert.equal(microsequence.status, "ready");
   assert.equal(microsequence.cards.length, 4);
 });

@@ -15,14 +15,14 @@ import { buildDidacticProductionPolicy } from "../src/generation/policies/didact
 test("engine registry expõe perfil default de ADS e packs básicos", () => {
   const profile = resolveEngineProfile();
   const didacticPolicy = getDidacticPolicyConfig();
-  const courseForgePromptPack = getPromptPack("courseForge");
+  const generationPromptPack = getPromptPack("generation");
   const lessonPlanningContractPack = getContractPack("lessonPlanning");
 
   assert.equal(profile.profileId, DEFAULT_ENGINE_PROFILE_ID);
   assert.match(profile.label, /Geral/);
   assert.ok(profile.intendedDomains.includes("álgebra linear"));
   assert.equal(didacticPolicy.productionArchitecture, "planner_builder_auditor_internalizado");
-  assert.ok(courseForgePromptPack.guardrails.length > 0);
+  assert.ok(generationPromptPack.guardrails.length > 0);
   assert.equal(lessonPlanningContractPack.maxGeneratedMicrosequences, 7);
 });
 
@@ -55,7 +55,7 @@ test("engine registry aceita override sem mutar o seed", () => {
       }
     },
     promptPacks: {
-      courseForge: {
+      generation: {
         guardrails: ["regra customizada"]
       }
     }
@@ -72,5 +72,5 @@ test("engine registry aceita override sem mutar o seed", () => {
   assert.notEqual(defaultAgain.didacticPolicy.targetStudentProfile, "pesquisador com perfil avançado");
   assert.equal(productionPolicy.targetStudentProfile, "pesquisador com perfil avançado");
   assert.equal(productionPolicy.exhaustiveCardSequence.minimumReappearancesPerCoreItem, 5);
-  assert.deepEqual(listPromptPackGuardrails("courseForge", overridden), ["regra customizada"]);
+  assert.deepEqual(listPromptPackGuardrails("generation", overridden), ["regra customizada"]);
 });

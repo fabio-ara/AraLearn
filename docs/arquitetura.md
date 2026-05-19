@@ -116,10 +116,6 @@ Persistido:
 - `aralearn.progress`
 - `aralearn.provider-settings.v2`
 
-Observação:
-
-- o fluxo de produto não usa mais o motor multifase `CourseForge`, mas alguns wrappers internos ainda preservam o prefixo `CourseForge` em nomes de módulo por continuidade de código
-
 ## Recursos públicos de card
 
 Recursos mínimos aceitos:

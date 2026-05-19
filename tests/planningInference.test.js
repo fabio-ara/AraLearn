@@ -2,9 +2,9 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
-  inferCourseForgePlanningProfileTuning,
+  inferPlanningProfileTuning,
   normalizeInferredPlanningProfileTuning
-} from "../src/generation/runtime/courseForgePlanningInference.js";
+} from "../src/generation/runtime/planningInference.js";
 
 test("normalizeInferredPlanningProfileTuning preenche todos os parâmetros modificáveis do planejamento", () => {
   const patch = normalizeInferredPlanningProfileTuning({
@@ -50,9 +50,9 @@ test("normalizeInferredPlanningProfileTuning preenche todos os parâmetros modif
   assert.equal(patch.requireVocabularyMap, false);
 });
 
-test("inferCourseForgePlanningProfileTuning usa provider para completar o tuning do planejamento", async () => {
+test("inferPlanningProfileTuning usa provider para completar o tuning do planejamento", async () => {
   const calls = [];
-  const result = await inferCourseForgePlanningProfileTuning({
+  const result = await inferPlanningProfileTuning({
     assistConfig: {
       model: "gemini-2.5-flash",
       apiKey: "segredo",

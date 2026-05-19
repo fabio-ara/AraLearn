@@ -1,15 +1,15 @@
-import { resolveCourseForgeLaunchConfig } from "./courseForgeLaunchConfig.js";
+import { resolveGenerationLaunchConfig } from "./launchConfig.js";
 import {
-  resolveCourseForgeGenerationScope,
-  resolveCourseForgeNavigationTarget,
-  summarizeCourseForgeTopDownResult
-} from "./courseForgeGenerationState.js";
+  resolveGenerationScope,
+  resolveGenerationNavigationTarget,
+  summarizeTopDownResult
+} from "./generationState.js";
 
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
 }
 
-export async function prepareCourseForgeStructureGeneration({
+export async function prepareStructureGeneration({
   scopeState = {},
   draft = {},
   assistConfig = {},
@@ -29,7 +29,7 @@ export async function prepareCourseForgeStructureGeneration({
     );
   }
 
-  const launchConfig = resolveCourseForgeLaunchConfig({
+  const launchConfig = resolveGenerationLaunchConfig({
     selectedModel,
     apiKey: assistConfig.apiKey,
     didacticProfileId: assistConfig.didacticProfileId,
@@ -45,7 +45,7 @@ export async function prepareCourseForgeStructureGeneration({
     launchConfig,
     request: {
       intent: {
-        scope: resolveCourseForgeGenerationScope(scopeState),
+        scope: resolveGenerationScope(scopeState),
         promptText,
         attachments: ingestedAttachments.attachments,
         didacticProfileId: launchConfig.didacticProfileId,
@@ -59,22 +59,22 @@ export async function prepareCourseForgeStructureGeneration({
   };
 }
 
-export function buildAppliedCourseForgeGeneration({
-  courseForgeResult = {},
+export function buildAppliedGeneration({
+  generationResult = {},
   ingestedAttachments = {},
   scopeState = {}
 } = {}) {
-  const courseForgeSummary = summarizeCourseForgeTopDownResult(courseForgeResult);
+  const generationSummary = summarizeTopDownResult(generationResult);
   return {
-    ...courseForgeSummary,
+    ...generationSummary,
     ...(Array.isArray(ingestedAttachments.warnings) && ingestedAttachments.warnings.length
       ? {
-          message: `${courseForgeSummary.message} Avisos de ingestão: ${ingestedAttachments.warnings.join(" ")}`
+          message: `${generationSummary.message} Avisos de ingestão: ${ingestedAttachments.warnings.join(" ")}`
         }
       : {}),
-    ...resolveCourseForgeNavigationTarget({
-      projectDocument: courseForgeResult.projectDocument,
-      patch: courseForgeResult.patch,
+    ...resolveGenerationNavigationTarget({
+      projectDocument: generationResult.projectDocument,
+      patch: generationResult.patch,
       scopeState
     })
   };

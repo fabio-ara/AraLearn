@@ -140,7 +140,7 @@ test("rejeita sourceGuide textual puro sem sourceGuideStructured", () => {
     courses: [
       {
         title: "Curso",
-        sourceGuide: "Texto corrido legado.",
+        sourceGuide: "Texto corrido antigo.",
         modules: []
       }
     ]
@@ -150,7 +150,7 @@ test("rejeita sourceGuide textual puro sem sourceGuideStructured", () => {
   assert.match(result.errors.map((error) => error.message).join("\n"), /Campo não suportado em curso: "sourceGuide"/);
 });
 
-test("rejeita campos legados de card no contrato principal", () => {
+test("rejeita campos antigos de card no contrato principal", () => {
   const result = validateContractDocument(projectWithCards([{ type: "text", title: "Antigo", text: "x" }]));
 
   assert.equal(result.ok, false);

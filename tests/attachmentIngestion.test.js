@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { ingestCourseForgeAttachments } from "../src/generation/ingestion/courseForgeAttachmentIngestion.js";
+import { ingestAttachments } from "../src/generation/ingestion/attachmentIngestion.js";
 
 function encodeText(value) {
   return new TextEncoder().encode(value).buffer;
@@ -20,8 +20,8 @@ function makeFile({ name, type, content = "", binaryContent = null }) {
   };
 }
 
-test("ingestCourseForgeAttachments preserva texto simples", async () => {
-  const result = await ingestCourseForgeAttachments([
+test("ingestAttachments preserva texto simples", async () => {
+  const result = await ingestAttachments([
     makeFile({
       name: "ementa.md",
       type: "text/markdown",
@@ -36,8 +36,8 @@ test("ingestCourseForgeAttachments preserva texto simples", async () => {
   assert.deepEqual(result.warnings, []);
 });
 
-test("ingestCourseForgeAttachments extrai texto de html simples", async () => {
-  const result = await ingestCourseForgeAttachments([
+test("ingestAttachments extrai texto de html simples", async () => {
+  const result = await ingestAttachments([
     makeFile({
       name: "pagina.html",
       type: "text/html",
@@ -52,8 +52,8 @@ test("ingestCourseForgeAttachments extrai texto de html simples", async () => {
   assert.ok(result.attachments[0].sourceBlocks.some((block) => /Redes/.test(block.text)));
 });
 
-test("ingestCourseForgeAttachments usa parser de pdf quando disponivel", async () => {
-  const result = await ingestCourseForgeAttachments([
+test("ingestAttachments usa parser de pdf quando disponivel", async () => {
+  const result = await ingestAttachments([
     makeFile({
       name: "apostila.pdf",
       type: "application/pdf",
@@ -92,8 +92,8 @@ test("ingestCourseForgeAttachments usa parser de pdf quando disponivel", async (
   assert.equal(result.attachments[0].ingestionStatus, "supported");
 });
 
-test("ingestCourseForgeAttachments limpa cabecalho repetido, numero de pagina e hifenizacao de pdf", async () => {
-  const result = await ingestCourseForgeAttachments([
+test("ingestAttachments limpa cabecalho repetido, numero de pagina e hifenizacao de pdf", async () => {
+  const result = await ingestAttachments([
     makeFile({
       name: "apostila-limpeza.pdf",
       type: "application/pdf",
@@ -145,8 +145,8 @@ test("ingestCourseForgeAttachments limpa cabecalho repetido, numero de pagina e 
   assert.match(result.attachments[0].textContent, /rede local continua na prática\./i);
 });
 
-test("ingestCourseForgeAttachments usa parser de docx e preserva warnings", async () => {
-  const result = await ingestCourseForgeAttachments([
+test("ingestAttachments usa parser de docx e preserva warnings", async () => {
+  const result = await ingestAttachments([
     makeFile({
       name: "roteiro.docx",
       type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
@@ -173,8 +173,8 @@ test("ingestCourseForgeAttachments usa parser de docx e preserva warnings", asyn
   assert.match(result.warnings[0], /tabela simplificada/i);
 });
 
-test("ingestCourseForgeAttachments propaga papel instrucional de secao para itens de lista", async () => {
-  const result = await ingestCourseForgeAttachments([
+test("ingestAttachments propaga papel instrucional de secao para itens de lista", async () => {
+  const result = await ingestAttachments([
     makeFile({
       name: "lista.md",
       type: "text/markdown",
@@ -187,8 +187,8 @@ test("ingestCourseForgeAttachments propaga papel instrucional de secao para iten
   assert.equal(result.attachments[0].sourceBlocks[2].instructionalRole, "exercise");
 });
 
-test("ingestCourseForgeAttachments sinaliza formato ainda nao suportado", async () => {
-  const result = await ingestCourseForgeAttachments([
+test("ingestAttachments sinaliza formato ainda nao suportado", async () => {
+  const result = await ingestAttachments([
     makeFile({
       name: "quadro.png",
       type: "image/png",

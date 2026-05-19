@@ -3,9 +3,9 @@ import { isRunnableMicrosequence } from "../model/microsequenceStatus.js";
 import { renderUiIcon } from "./renderUiIcons.js";
 import { buildScopedVersionLineageLabel, splitVersionLineageLabel } from "./versionLineage.js";
 import {
-  listCourseForgeProgressPhases,
-  summarizeCourseForgeProgressStatus
-} from "../generation/runtime/courseForgeProgressViewModel.js";
+  listGenerationProgressPhases,
+  summarizeGenerationProgressStatus
+} from "../generation/runtime/progressViewModel.js";
 
 function escapeHtml(value) {
   return String(value)
@@ -590,8 +590,8 @@ function renderGenerationProgressPopup(progress = {}) {
         ? " is-failed"
         : "";
   const progressLabel = phaseCount > 0 && phaseIndex > 0 ? `${phaseIndex}/${phaseCount}` : "Iniciando";
-  const statusLine = summarizeCourseForgeProgressStatus(progress);
-  const phaseItems = listCourseForgeProgressPhases(phaseCount || 0)
+  const statusLine = summarizeGenerationProgressStatus(progress);
+  const phaseItems = listGenerationProgressPhases(phaseCount || 0)
     .map((phase, index) => {
       const order = index + 1;
       const itemClass =

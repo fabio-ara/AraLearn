@@ -113,7 +113,7 @@ test("ignora sourceGuide textual em curso na edição estrutural", () => {
 
   const nextDocument = createCourse(document, {
     title: "Curso textual",
-    sourceGuide: "Texto corrido legado."
+    sourceGuide: "Texto corrido antigo."
   });
 
   const course = nextDocument.courses.at(-1);

@@ -2,12 +2,12 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { renderAssistConfigOverlay } from "../src/ui/renderAssistConfigOverlay.js";
-import { createCourseForgeProfileTuning } from "../src/generation/runtime/courseForgeProfileTuning.js";
+import { createProfileTuning } from "../src/generation/runtime/profileTuning.js";
 
 test("renderAssistConfigOverlay expõe contrato discreto do top-down sem setup operacional", () => {
   const html = renderAssistConfigOverlay({
     didacticProfileId: "aralearn.engine.ads.general.v3",
-    profileTuning: createCourseForgeProfileTuning("aralearn.engine.ads.general.v3", {
+    profileTuning: createProfileTuning("aralearn.engine.ads.general.v3", {
       targetStudentProfile: "estudante com base irregular"
     }),
     didacticProfileOptions: [
@@ -88,7 +88,7 @@ test("renderAssistConfigOverlay expõe contrato discreto do top-down sem setup o
 test("renderAssistConfigOverlay não mistura setup operacional com o contrato didático do top-down", () => {
   const html = renderAssistConfigOverlay({
     didacticProfileId: "aralearn.engine.ads.systems.v1",
-    profileTuning: createCourseForgeProfileTuning("aralearn.engine.ads.systems.v1"),
+    profileTuning: createProfileTuning("aralearn.engine.ads.systems.v1"),
     didacticProfileOptions: [
       { value: "aralearn.engine.ads.systems.v1", label: "Script em terminal" }
     ]
@@ -105,7 +105,7 @@ test("renderAssistConfigOverlay não mistura setup operacional com o contrato di
 test("renderAssistConfigOverlay usa o próprio campo Perfil para editar o nome do rascunho", () => {
   const html = renderAssistConfigOverlay({
     didacticProfileId: "assist.custom.demo",
-    profileTuning: createCourseForgeProfileTuning("aralearn.engine.ads.general.v3"),
+    profileTuning: createProfileTuning("aralearn.engine.ads.general.v3"),
     didacticProfileOptions: [
       { value: "aralearn.engine.ads.general.v3", label: "Geral" },
       { value: "assist.custom.demo", label: "Geral personalizado" }
@@ -128,7 +128,7 @@ test("renderAssistConfigOverlay usa o próprio campo Perfil para editar o nome d
 test("renderAssistConfigOverlay desabilita ações de perfil quando o rascunho ainda não pode ser salvo", () => {
   const html = renderAssistConfigOverlay({
     didacticProfileId: "aralearn.engine.ads.general.v3",
-    profileTuning: createCourseForgeProfileTuning("aralearn.engine.ads.general.v3"),
+    profileTuning: createProfileTuning("aralearn.engine.ads.general.v3"),
     didacticProfileOptions: [{ value: "aralearn.engine.ads.general.v3", label: "Geral" }],
     profileEditor: {
       active: true,

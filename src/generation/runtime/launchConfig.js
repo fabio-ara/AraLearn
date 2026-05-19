@@ -3,7 +3,7 @@ import { createCodexCliProvider } from "../providers/codexCliProvider.js";
 import { createGeminiProvider } from "../providers/geminiProvider.js";
 import { createProviderRegistry, resolveProviderFromModelId } from "../providers/providerRegistry.js";
 import { DEFAULT_ENGINE_PROFILE_ID } from "../config/engineProfileRegistry.js";
-import { buildCourseForgeEngineProfileOverrides } from "./courseForgeProfileTuning.js";
+import { buildEngineProfileOverrides } from "./profileTuning.js";
 
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -28,7 +28,7 @@ const COURSE_FORGE_PHASES_WITH_MODEL_OVERRIDE = Object.freeze([
   "repair_card_adherence"
 ]);
 
-export function buildCourseForgePhaseModelOverrides(modelId = "") {
+export function buildPhaseModelOverrides(modelId = "") {
   const trimmedModelId = text(modelId);
   if (!trimmedModelId) {
     return {};
@@ -36,15 +36,15 @@ export function buildCourseForgePhaseModelOverrides(modelId = "") {
   return Object.fromEntries(COURSE_FORGE_PHASES_WITH_MODEL_OVERRIDE.map((phaseId) => [phaseId, trimmedModelId]));
 }
 
-export function resolveCourseForgeTopDownProfileId(modelId = "") {
+export function resolveTopDownProfileId(modelId = "") {
   return isCodexLocalModel(modelId) ? "codex_all" : "custom";
 }
 
-export function resolveCourseForgeDidacticProfileId(profileId = "") {
+export function resolveDidacticProfileId(profileId = "") {
   return text(profileId) || DEFAULT_ENGINE_PROFILE_ID;
 }
 
-export function createCourseForgeRuntimeProvider({
+export function createGenerationRuntimeProvider({
   selectedModel,
   apiKey = "",
   codexEndpoint = "",
@@ -65,7 +65,7 @@ export function createCourseForgeRuntimeProvider({
   });
 }
 
-export function resolveCourseForgeLaunchConfig({
+export function resolveGenerationLaunchConfig({
   selectedModel,
   apiKey = "",
   didacticProfileId = "",
@@ -74,7 +74,7 @@ export function resolveCourseForgeLaunchConfig({
   codexToken = ""
 } = {}) {
   const modelId = text(selectedModel);
-  const provider = createCourseForgeRuntimeProvider({
+  const provider = createGenerationRuntimeProvider({
     selectedModel: modelId,
     apiKey,
     codexEndpoint,
@@ -86,9 +86,9 @@ export function resolveCourseForgeLaunchConfig({
     providerId: resolveProviderFromModelId(modelId),
     provider,
     providerRegistry: createProviderRegistry({ providers: [provider] }),
-    selectedTopDownProfileId: resolveCourseForgeTopDownProfileId(modelId),
-    didacticProfileId: resolveCourseForgeDidacticProfileId(didacticProfileId),
-    engineProfileOverrides: buildCourseForgeEngineProfileOverrides({ profileTuning }),
-    phaseModelOverrides: buildCourseForgePhaseModelOverrides(modelId)
+    selectedTopDownProfileId: resolveTopDownProfileId(modelId),
+    didacticProfileId: resolveDidacticProfileId(didacticProfileId),
+    engineProfileOverrides: buildEngineProfileOverrides({ profileTuning }),
+    phaseModelOverrides: buildPhaseModelOverrides(modelId)
   };
 }

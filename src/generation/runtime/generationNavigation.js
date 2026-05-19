@@ -2,7 +2,7 @@ function text(value) {
   return typeof value === "string" ? value.trim() : "";
 }
 
-export function resolvePendingCourseForgeNavigation(applied = {}) {
+export function resolvePendingGenerationNavigation(applied = {}) {
   return {
     courseKey: text(applied.courseKey),
     moduleKey: text(applied.moduleKey) || null,
@@ -10,7 +10,7 @@ export function resolvePendingCourseForgeNavigation(applied = {}) {
   };
 }
 
-export function buildCourseForgeGenerationSuccessState({ draft = {}, applied = {} } = {}) {
+export function buildGenerationSuccessState({ draft = {}, applied = {} } = {}) {
   return {
     draft: {
       ...draft,
@@ -26,7 +26,7 @@ export function buildCourseForgeGenerationSuccessState({ draft = {}, applied = {
       cardKey: null,
       cardIndex: 0
     },
-    pendingGeneratedNavigation: resolvePendingCourseForgeNavigation(applied)
+    pendingGeneratedNavigation: resolvePendingGenerationNavigation(applied)
   };
 }
 

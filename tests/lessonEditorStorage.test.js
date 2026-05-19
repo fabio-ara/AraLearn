@@ -21,16 +21,16 @@ function createMemoryStorage() {
   };
 }
 
-test("lessonEditorStorage normaliza versões legadas de microssequência na leitura", () => {
+test("lessonEditorStorage normaliza versões anteriores de microssequência na leitura", () => {
   const storage = createMemoryStorage();
 
   writeMicrosequenceVersionStorage(
     {
       "course::module::lesson::micro": {
-        activeVersionId: "legacy-2",
+        activeVersionId: "old-2",
         versions: [
-          { id: "legacy-1", label: "Iteração 1", title: "Antes", tags: [], cards: [] },
-          { id: "legacy-2", label: "Iteração 2", title: "Depois", tags: [], cards: [] }
+          { id: "old-1", label: "Iteração 1", title: "Antes", tags: [], cards: [] },
+          { id: "old-2", label: "Iteração 2", title: "Depois", tags: [], cards: [] }
         ]
       }
     },
@@ -46,7 +46,7 @@ test("lessonEditorStorage normaliza versões legadas de microssequência na leit
   );
 });
 
-test("lessonEditorStorage normaliza versões estruturais legadas na leitura", () => {
+test("lessonEditorStorage normaliza versões estruturais anteriores na leitura", () => {
   const storage = createMemoryStorage();
 
   writeStructureVersionStorage(
@@ -54,10 +54,10 @@ test("lessonEditorStorage normaliza versões estruturais legadas na leitura", ()
       "course::module": {
         level: "module",
         entityKey: "module-base",
-        activeVersionId: "legacy-1",
+        activeVersionId: "old-1",
         versions: [
           {
-            id: "legacy-1",
+            id: "old-1",
             label: "Iteração 1",
             title: "Módulo A",
             lessons: []

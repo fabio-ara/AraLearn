@@ -1,4 +1,4 @@
-import { createCourseForgeProfileTuning } from "./courseForgeProfileTuning.js";
+import { createProfileTuning } from "./profileTuning.js";
 import { createDefaultCourseModel, listCourseModelOptions } from "./courseModelSemantics.js";
 import { resolveGenerationProviderRuntime } from "./projectGenerationRuntime.js";
 
@@ -155,7 +155,7 @@ export function normalizeInferredPlanningProfileTuning({
   didacticProfileId = "",
   currentProfileTuning = {}
 } = {}) {
-  const base = createCourseForgeProfileTuning(didacticProfileId, currentProfileTuning);
+  const base = createProfileTuning(didacticProfileId, currentProfileTuning);
   const courseModel = createDefaultCourseModel({
     description: text(inferred?.courseModelDescription) || base.courseModel?.description || "",
     learningTrail: text(inferred?.learningTrail) || base.courseModel?.learningTrail || "",
@@ -183,7 +183,7 @@ export function normalizeInferredPlanningProfileTuning({
   };
 }
 
-export async function inferCourseForgePlanningProfileTuning({
+export async function inferPlanningProfileTuning({
   assistConfig = {},
   requestText = "",
   attachments = [],

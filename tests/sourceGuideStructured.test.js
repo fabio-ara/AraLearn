@@ -93,7 +93,7 @@ test("compacta fonte-guia para contexto de modelo sem freeNotes", () => {
   assert.equal(getSourceGuideSchemaPropertiesForModel(SOURCE_GUIDE_LEVELS.LESSON).freeNotes, undefined);
 });
 
-test("não reidrata fonte-guia textual legada sem objeto estruturado", () => {
+test("não reidrata fonte-guia textual anterior sem objeto estruturado", () => {
   const structured = normalizeSourceGuideStructured(undefined, { level: SOURCE_GUIDE_LEVELS.LESSON });
 
   assert.deepEqual(structured, {});

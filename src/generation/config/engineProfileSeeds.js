@@ -80,7 +80,7 @@ function createAdsProfile(profileId, label, overrides = {}) {
       }
     },
     promptPacks: {
-      courseForge: {
+      generation: {
         guardrails: [
           "o aluno vê curso, não mecanismo de autoria",
           "sourceGuideStructured governa meta, notação e confusões prováveis da lição",
@@ -105,7 +105,7 @@ function createAdsProfile(profileId, label, overrides = {}) {
         maxGeneratedMicrosequences: 7,
         minGeneratedMicrosequences: 2
       },
-      courseForge: {
+      generation: {
         enforceDomainCoverage: true,
         enforceSourceAnchoring: true,
         enforceDeterministicRepair: true
@@ -158,7 +158,7 @@ export const ENGINE_PROFILE_SEEDS = Object.freeze({
       }
     },
     promptPacks: {
-      courseForge: {
+      generation: {
         guardrails: [
           "concretizar antes de generalizar",
           "explicar a notação antes de cobrar leitura formal",
@@ -180,7 +180,7 @@ export const ENGINE_PROFILE_SEEDS = Object.freeze({
       }
     },
     promptPacks: {
-      courseForge: {
+      generation: {
         guardrails: [
           "explicar palavra-chave, sigla e termo inglês localmente",
           "mostrar estado operacional antes de abstração",
@@ -202,7 +202,7 @@ export const ENGINE_PROFILE_SEEDS = Object.freeze({
       }
     },
     promptPacks: {
-      courseForge: {
+      generation: {
         guardrails: [
           "cobrir reconhecimento, leitura, produção guiada, combinação, sequência de uso, erro frequente e revisão cumulativa",
           "não pular de conceito para comando composto sem mediação"
@@ -223,7 +223,7 @@ export const ENGINE_PROFILE_SEEDS = Object.freeze({
       }
     },
     promptPacks: {
-      courseForge: {
+      generation: {
         guardrails: [
           "diferenciar conceitos próximos antes de cobrar síntese",
           "usar cenários curtos e contraste entre termos para reduzir abstração oca"
@@ -275,7 +275,7 @@ export const ENGINE_PROFILE_SEEDS = Object.freeze({
       }
     },
     promptPacks: {
-      courseForge: {
+      generation: {
         guardrails: [
           "privilegiar uso contextual antes de taxonomia gramatical",
           "retomar vocabulário e estruturas em novas frases curtas"
@@ -287,7 +287,7 @@ export const ENGINE_PROFILE_SEEDS = Object.freeze({
         maxGeneratedMicrosequences: 8,
         minGeneratedMicrosequences: 3
       },
-      courseForge: {
+      generation: {
         enforceDomainCoverage: true,
         enforceSourceAnchoring: true,
         enforceDeterministicRepair: true
@@ -344,7 +344,7 @@ export const ENGINE_PROFILE_SEEDS = Object.freeze({
       }
     },
     promptPacks: {
-      courseForge: {
+      generation: {
         guardrails: [
           "não pressupor vocabulário acadêmico não explicado",
           "reconstruir argumentos antes de julgar"
@@ -356,7 +356,7 @@ export const ENGINE_PROFILE_SEEDS = Object.freeze({
         maxGeneratedMicrosequences: 8,
         minGeneratedMicrosequences: 3
       },
-      courseForge: {
+      generation: {
         enforceDomainCoverage: true,
         enforceSourceAnchoring: true,
         enforceDeterministicRepair: true
@@ -392,7 +392,7 @@ export const ENGINE_PROFILE_SEEDS = Object.freeze({
       }
     },
     promptPacks: {
-      courseForge: {
+      generation: {
         guardrails: [
           "explicar cada elemento de linguagem conforme entra em uso",
           "alinhar progressão ao raciocínio de projeto, não a lista solta de sintaxe",

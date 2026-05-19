@@ -26,24 +26,24 @@ function text(value) {
   return typeof value === "string" ? value.trim() : "";
 }
 
-export function getCourseForgePhaseLabel(phaseId = "") {
+export function getGenerationPhaseLabel(phaseId = "") {
   const normalized = text(phaseId);
   return PHASE_LABELS[normalized] || normalized || "Preparando geração";
 }
 
-export function listCourseForgeProgressPhases(phaseCount = 0) {
+export function listGenerationProgressPhases(phaseCount = 0) {
   const normalizedCount = Number.isFinite(Number(phaseCount)) ? Number(phaseCount) : 0;
   const resolvedCount = normalizedCount > 0 ? normalizedCount : COURSE_FORGE_PROGRESS_PHASE_IDS.length;
   return Array.from({ length: resolvedCount }, (_, index) => {
     const phaseId = COURSE_FORGE_PROGRESS_PHASE_IDS[index] || `phase_${index + 1}`;
     return {
       phaseId,
-      phaseLabel: COURSE_FORGE_PROGRESS_PHASE_IDS[index] ? getCourseForgePhaseLabel(phaseId) : `Etapa ${index + 1}`
+      phaseLabel: COURSE_FORGE_PROGRESS_PHASE_IDS[index] ? getGenerationPhaseLabel(phaseId) : `Etapa ${index + 1}`
     };
   });
 }
 
-export function summarizeCourseForgeProgressStatus(progress = {}) {
+export function summarizeGenerationProgressStatus(progress = {}) {
   const history = Array.isArray(progress?.history) ? progress.history : [];
   const lastProviderEvent = [...history].reverse().find((item) =>
     ["provider_call_started", "provider_call_completed", "provider_call_failed"].includes(text(item?.type))
@@ -76,7 +76,7 @@ function eventTimestamp(event = {}) {
 }
 
 function buildEventMessage(event = {}) {
-  const phaseLabel = getCourseForgePhaseLabel(event.phaseId);
+  const phaseLabel = getGenerationPhaseLabel(event.phaseId);
   const modelId = text(event.modelId);
 
   if (event.type === "provider_call_started") {
@@ -106,7 +106,7 @@ function buildEventMessage(event = {}) {
   return text(event.message) || phaseLabel;
 }
 
-export function createCourseForgeGenerationProgressState(patch = {}) {
+export function createGenerationProgressState(patch = {}) {
   return {
     visible: patch.visible === true,
     status: text(patch.status) || "idle",
@@ -120,7 +120,7 @@ export function createCourseForgeGenerationProgressState(patch = {}) {
   };
 }
 
-export function reduceCourseForgeGenerationProgress(current = {}, event = {}) {
+export function reduceGenerationProgress(current = {}, event = {}) {
   const type = text(event.type);
   const status =
     type === "run_completed"
@@ -132,13 +132,13 @@ export function reduceCourseForgeGenerationProgress(current = {}, event = {}) {
   const entry = {
     type,
     phaseId,
-    phaseLabel: getCourseForgePhaseLabel(phaseId),
+    phaseLabel: getGenerationPhaseLabel(phaseId),
     message: buildEventMessage(event),
     modelId: text(event.modelId),
     timestamp: eventTimestamp(event)
   };
 
-  return createCourseForgeGenerationProgressState({
+  return createGenerationProgressState({
     ...current,
     visible: type !== "run_started" || current.visible !== false,
     status,

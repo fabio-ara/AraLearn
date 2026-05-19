@@ -621,7 +621,7 @@ test("overlays fecham ao clicar fora do popup", async (t) => {
   await page.waitForFunction(() => !document.querySelector("[data-action-menu-sheet='true']"));
 });
 
-test.skip("geracao estrutural da licao precisa de cenario browser dedicado para o fluxo CourseForge", () => {});
+test.skip("geração estrutural da lição precisa de cenário browser dedicado para o fluxo atual", () => {});
 
 test.skip("projeto vazio cria cursos com ids públicos globais crescentes", async (t) => {
   if (!chromium) {

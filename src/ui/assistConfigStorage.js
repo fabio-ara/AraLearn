@@ -1,5 +1,5 @@
 import { DEFAULT_CODEX_LOCAL_ENDPOINT } from "../generation/providers/codexCliConfig.js";
-import { normalizeCourseForgeAssistConfig } from "../generation/runtime/courseForgeGenerationEditorRuntime.js";
+import { normalizeAssistConfig } from "../generation/runtime/generationEditorRuntime.js";
 
 const ASSIST_CONFIG_STORAGE_KEY = "aralearn.assist-config";
 
@@ -35,7 +35,7 @@ function writeJsonMap(storage, key, value) {
 
 export function readAssistConfigStorage(storage = globalThis.localStorage) {
   const config = readJsonMap(storage, ASSIST_CONFIG_STORAGE_KEY);
-  return normalizeCourseForgeAssistConfig({
+  return normalizeAssistConfig({
     ...config,
     codexEndpoint:
       typeof config.codexEndpoint === "string" && config.codexEndpoint.trim()
@@ -46,7 +46,7 @@ export function readAssistConfigStorage(storage = globalThis.localStorage) {
 }
 
 export function writeAssistConfigStorage(config, storage = globalThis.localStorage) {
-  const normalized = normalizeCourseForgeAssistConfig(config || {});
+  const normalized = normalizeAssistConfig(config || {});
   writeJsonMap(
     storage,
     ASSIST_CONFIG_STORAGE_KEY,

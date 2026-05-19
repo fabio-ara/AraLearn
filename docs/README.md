@@ -13,8 +13,3 @@
 ## Exemplos
 
 - [Scope contract: Matemática para Informática](examples/scope-contract.matematica-informatica.json)
-
-## Documentos históricos
-
-- [Evolução do motor, API e UI/UX](api-uiux-evolucao-do-motor.md): diagnóstico que motivou a reconstrução.
-- [Manual de reconstrução](manual-reconstrucao-aralearn-llm-api.md): especificação usada como base da mudança drástica.
