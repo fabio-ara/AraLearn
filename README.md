@@ -1,83 +1,87 @@
 # AraLearn
 
-AraLearn é um app local-first para montar e estudar trilhas guiadas por LLM sem depender de um top-down pesado.
+AraLearn é um app open source, local-first/offline-first, para transformar materiais, dúvidas e objetivos de estudo em cursos organizados por pequenas etapas didáticas.
 
-A arquitetura atual parte de duas decisões:
-
-- `top-down` planeja a trilha até `microssequência`, sem gerar cards;
-- `bottom-up` gera, melhora, expande e consolida uma microssequência por vez.
-
-Árvore pública:
+Ele parte de uma constatação simples: estudantes e profissionais têm acesso a PDFs, slides, anotações, listas de exercícios, documentação técnica, respostas de IA e páginas da web, mas nem sempre conseguem transformar esse volume de informação em percurso de estudo. O AraLearn propõe uma estrutura externa para esse trabalho.
 
 ```text
 curso -> módulo -> lição -> microssequência -> card
 ```
 
-O fluxo principal deixou de ser “prompt livre + anexos + curso completo”. Agora ele é:
+A microssequência é a unidade didática central do app. Ela reúne alguns cards em torno de uma função precisa: introduzir um conceito, explicar um procedimento, demonstrar um exemplo, propor prática guiada, diferenciar ideias próximas, corrigir erro comum ou preparar a etapa seguinte.
 
-```text
-contrato de escopo pequeno -> trilha planejada -> microssequência selecionada -> cards locais
-```
+## O que o AraLearn faz
 
-## O que o usuário faz
+O AraLearn ajuda o usuário a:
 
-1. Preenche a trilha por módulos com chips de `O que entra` e `O que não entra`.
-2. Gera a estrutura do curso até microssequências planejadas.
-3. Entra em uma microssequência.
-4. Materializa os cards localmente.
-5. Pede melhoria, mais prática, complemento ou próxima microssequência.
+- organizar um tema em curso, módulos, lições e microssequências;
+- delimitar o que entra e o que não entra em cada módulo;
+- gerar uma trilha planejada antes de produzir cards;
+- materializar cards apenas na microssequência que será estudada;
+- revisar, corrigir, ampliar ou complementar uma etapa sem perder versões preservadas;
+- estudar com recursos renderizáveis, como texto explicativo, tabela, código, fluxograma, árvore, grafo e lacunas interativas.
 
-## Providers
+A IA é usada como assistência situada. Ela não substitui a autoria do usuário nem transforma o app em chat genérico. O projeto permanece visível, editável, exportável e validado por contrato.
 
-O app suporta:
+## Para quem o projeto foi pensado
 
-- `Codex local` via bridge HTTP local;
-- `Gemini` por API;
-- `OpenAI compatível`;
-- `Fake` para teste e harness.
+AraLearn pode ser usado por:
 
-O `Codex local` continua disponível para o mesmo conjunto de operações do caminho por API:
+- estudantes de disciplinas acadêmicas, especialmente em cursos de tecnologia;
+- pessoas em preparação para provas, concursos ou avaliações específicas;
+- leitores de artigos, capítulos, documentação técnica e materiais especializados;
+- professores, monitores e estudantes que queiram montar trilhas de estudo revisáveis;
+- interessados em ferramentas locais de organização do conhecimento.
 
-- `plan-scope`
-- `generate-microsequence`
-- `improve-microsequence`
-- `add-practice`
-- `create-support`
-- `generate-next`
+O produto dialoga com práticas conhecidas de flashcards, repetição espaçada, aprendizagem por etapas e organização pessoal do conhecimento, mas seu foco está na transformação de material disperso em percurso estruturado, praticável e auditável.
 
-## Estrutura de código
+## Fluxo de uso
 
-Núcleo relevante:
+1. O usuário informa o curso ou tema.
+2. Define módulos e recortes por meio de expressões do que entra e do que fica fora.
+3. O app gera uma estrutura navegável até microssequências planejadas.
+4. O usuário abre uma microssequência.
+5. A IA, quando configurada, gera ou ajusta cards apenas para aquela etapa.
+6. O usuário estuda, revisa e decide se a etapa está pronta para compor a trilha de execução.
 
-- `src/domain/`: contratos `scope` e `project v1`, microssequência, versão e cards.
-- `src/generation/topDown/`: planejamento estrutural a partir do contrato de escopo.
-- `src/generation/bottomUp/`: materialização e evolução local por microssequência.
-- `src/generation/runtime/`: integração direta do top-down e do bottom-up com o documento do app.
-- `src/generation/providers/`: registry e adapters de provider.
-- `src/ui/lessonEditorApp.js`: casca principal restaurada do produto.
-- `src/ui/scopeBuilder/`: builder com chips por módulo para o top-down.
-- `src/ui/study/`: estudo e ações locais sobre a microssequência aberta.
+Esse desenho evita a geração de um curso inteiro de uma só vez. A estrutura dá orientação; a materialização local preserva controle.
 
-## Scripts
+## Recursos de card
 
-```bash
-npm run dev
-npm test
-npm run validate:scope
-npm run harness:scope
-npm run harness:bottom-up
-npm run smoke:provider
-```
+O contrato público aceita os seguintes recursos renderizáveis:
 
-## Documentação
+- `say`: explicação textual ou enunciado;
+- `table`: tabelas, quadros comparativos e matrizes simples;
+- `code`: blocos de código;
+- `flow`: fluxogramas;
+- `tree`: árvores de pastas, hierarquias e estruturas aninhadas;
+- `graph`: grafos com vértices, arestas e pesos;
+- `block_gap_fill`: parágrafos com lacunas e opções de resposta.
 
-- [Índice](docs/README.md)
-- [Nova arquitetura LLM/API](docs/nova-arquitetura-llm-api.md)
-- [Arquitetura](docs/arquitetura.md)
-- [Uso do app](docs/uso-do-app.md)
-- [Assistência por IA](docs/assistencia-por-ia.md)
-- [Contrato público](docs/aralearn-contract.md)
-- [Codex CLI local](docs/codex-cli.md)
+Esses recursos permitem que a trilha aproxime o estudo da forma como o estudante resolve exercícios no caderno, em prova ou em ambiente técnico.
+
+## Assistência por IA
+
+O app pode operar com diferentes providers:
+
+- Gemini por API;
+- providers compatíveis com OpenAI;
+- Codex local via bridge HTTP;
+- provider falso para testes e harnesses.
+
+A geração é guiada por contratos pequenos e validada localmente. Respostas inválidas não devem substituir o projeto anterior.
+
+## Estrutura técnica
+
+Partes centrais do código:
+
+- `src/domain/`: contratos de projeto, escopo, cards, versões e microssequências;
+- `src/generation/topDown/`: geração estrutural a partir do contrato de escopo;
+- `src/generation/bottomUp/`: geração e revisão de cards dentro de uma microssequência;
+- `src/generation/runtime/`: aplicação das operações ao documento do projeto;
+- `src/generation/providers/`: integração com providers de IA;
+- `src/ui/`: interface de autoria, navegação, estudo e configuração;
+- `docs/`: documentação técnica e conceitual.
 
 ## Executar localmente
 
@@ -86,6 +90,33 @@ npm install
 npm run dev
 ```
 
-Versão publicada:
+Scripts úteis:
+
+```bash
+npm test
+npm run validate:scope
+npm run harness:scope
+npm run harness:bottom-up
+npm run smoke:provider
+npm run codex:local
+```
+
+## Documentação
+
+- [Índice da documentação](docs/README.md)
+- [Visão do produto](docs/visao-do-produto.md)
+- [Modelo didático](docs/modelo-didatico.md)
+- [Arquitetura](docs/arquitetura.md)
+- [Arquitetura de geração por LLM e API](docs/nova-arquitetura-llm-api.md)
+- [Assistência por IA](docs/assistencia-por-ia.md)
+- [Contrato público](docs/aralearn-contract.md)
+- [Uso do app](docs/uso-do-app.md)
+- [Microssequências planejadas e versões](docs/rascunhos-e-microssequencias.md)
+- [Perfis didáticos](docs/perfis-didaticos.md)
+- [Pesquisa e avaliação](docs/pesquisa-e-avaliacao.md)
+- [Codex CLI local](docs/codex-cli.md)
+- [Compartilhamento no Android](docs/android-share-import.md)
+
+## Versão publicada
 
 <https://fabio-ara.github.io/AraLearn/>
