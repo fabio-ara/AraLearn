@@ -1,48 +1,58 @@
-# Rascunhos e microssequências
+# Microssequências planejadas e versões
 
-## Estado normal do produto
+No AraLearn, uma microssequência pode existir antes de seus cards. Isso é parte do desenho do produto.
 
-Uma microssequência pode existir sem cards.
+## Microssequência planejada
 
-Isso não é erro. Significa apenas que ela foi planejada pelo top-down e ainda não foi materializada.
+Uma microssequência planejada indica que a trilha já sabe que aquela etapa precisa existir, mas os cards ainda não foram materializados.
+
+Isso permite que o usuário revise a ordem e o escopo antes de gerar conteúdo detalhado.
 
 ## Estados
 
-- `planned`: existe na trilha, mas ainda sem versão de cards
-- `generated`: versão criada e pronta para inspeção
-- `needs_review`: houve melhoria ou expansão e a nova versão ainda precisa de aceite
-- `ready`: etapa considerada satisfatória
+Status possíveis:
+
+- `planned`: existe na trilha, mas não possui versão de cards;
+- `generated`: possui ao menos uma versão;
+- `needs_review`: recebeu alteração que precisa de inspeção;
+- `ready`: foi considerada satisfatória pelo usuário.
+
+Microssequências com status diferente de `planned` precisam ter ao menos uma versão válida.
 
 ## Versões
 
-Cada intervenção local cria uma nova versão:
+Cada intervenção local pode gerar uma nova versão:
 
-- `generate`
-- `improve`
-- `more_practice`
-- `support`
-- `repair`
+- `generate`: primeira materialização de cards;
+- `improve`: melhoria de explicação ou progressão;
+- `more_practice`: prática adicional no mesmo foco;
+- `support`: complemento para lacuna local;
+- `repair`: correção de problema detectado.
 
-Versões anteriores são preservadas.
+A versão preserva data, fonte, modo, pedido do usuário, cards, resumo e relatório de validação.
+
+## Versão ativa
+
+A microssequência pode apontar para uma versão ativa por meio de `activeVersionKey`.
+
+A versão ativa é a usada para estudo. Preservar versões preservadas ajuda a comparar mudanças, recuperar uma explicação melhor ou auditar a evolução do material.
 
 ## Complementos
 
-Quando o usuário pede um complemento, o app cria uma microssequência `support`.
+Uma microssequência de apoio tem `type: "support"`.
 
-Ela:
+Ela deve ter vínculo com a microssequência de origem, por meio de `parentMicrosequenceKey`, e pode registrar a razão do apoio em `supportReason`.
 
-- não substitui a trilha principal
-- fica ligada à microssequência de origem
-- existe para atacar uma lacuna local
+Complementos são úteis quando a trilha principal pulou uma transição, quando um erro comum precisa de tratamento específico ou quando a prática revelou uma lacuna.
 
-## Regra prática
+## Regra operacional
 
-O AraLearn não tenta pré-gerar a trilha inteira em cards.
+O app não precisa materializar todos os cards no momento em que cria a trilha. A sequência recomendada é:
 
-O uso esperado é:
-
-1. planejar a trilha
-2. abrir uma microssequência
-3. materializar localmente
-4. revisar e continuar
-
+1. definir escopo;
+2. gerar a trilha;
+3. revisar a estrutura;
+4. abrir uma microssequência;
+5. materializar cards;
+6. estudar e revisar;
+7. marcar como pronta ou gerar outra versão.
