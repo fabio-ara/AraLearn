@@ -2,6 +2,8 @@
 
 AraLearn se situa no cruzamento entre estudo por prática, organização pessoal do conhecimento, autoria local e assistência por IA. Este documento registra esse contexto sem transformar referências em filiação direta ou argumento de autoridade.
 
+A discussão crítica mais desenvolvida sobre poder, vigilância, performatividade e riscos educacionais está em [Ética, poder e governança](etica-poder-e-governanca.md).
+
 ## Época
 
 O produto nasce em uma época marcada por abundância informacional. O estudante encontra conteúdo em páginas da web, vídeos, fóruns, plataformas sociais, PDFs, apostilas, documentação técnica e respostas geradas por IA. O problema não é apenas acesso. O problema é converter essa disponibilidade em percurso de estudo.
@@ -57,7 +59,7 @@ O app não pretende ser rede social, wiki, caderno de notas genérico, sistema d
 
 ## Enquadramento filosófico e ético
 
-As referências filosóficas ajudam a formular o problema de época, não a decorar a apresentação do produto. Elas devem ser usadas com precisão.
+As referências filosóficas ajudam a formular a ambivalência do projeto. AraLearn responde a problemas reais de orientação no estudo, mas também pode reproduzir riscos que a filosofia contemporânea associou a sistemas de informação, disciplina e desempenho.
 
 ### Estruturalismo e Saussure
 
@@ -65,17 +67,17 @@ A organização por níveis do AraLearn pode ser aproximada, com cautela, de uma
 
 Essa aproximação não significa que o app aplique teoria linguística. Significa apenas que sua arquitetura reconhece que contexto e posição alteram o valor didático de uma unidade.
 
-### Foucault
-
-Foucault é pertinente quando o problema é a organização dos saberes, os modos de classificação, os regimes de visibilidade e as condições que tornam certas formas de conhecimento acessíveis, legitimadas ou praticáveis.
-
-No AraLearn, essa referência ajuda a lembrar que organizar conhecimento não é ato neutro. Delimitar o que entra, o que fica fora, que ordem seguir e que prática exigir são decisões de poder, autoria e responsabilidade. Por isso, o app deve tornar a estrutura visível e revisável.
-
 ### Lyotard
 
-Lyotard é pertinente para pensar a condição contemporânea em que conhecimento, tecnologia, desempenho e legitimidade se articulam. Em uma sociedade hiperinformacional, a questão não é somente armazenar saber, mas decidir que formas de saber são praticáveis, verificáveis e transmissíveis.
+Lyotard é relevante porque o AraLearn toca o problema da legitimação do conhecimento em sociedades informatizadas. O app pode ajudar o usuário a se orientar no excesso informacional, mas também pode participar da redução do saber a desempenho, eficiência e percurso operacional.
 
-AraLearn não resolve esse problema em escala social. Ele o enfrenta em escala de estudo: transforma excesso de material em percurso manejável, com prática, revisão e autoria.
+O risco não é periférico. Ao transformar conhecimento em trilhas, microssequências, cards, validações e versões, o app pode fortalecer a apropriação crítica do usuário ou apenas adaptar o usuário a uma lógica de performatividade.
+
+### Foucault
+
+Foucault é pertinente porque a organização do estudo também pode ser uma forma de disciplina. Classificar, ordenar, examinar, corrigir, registrar e normalizar são operações que podem apoiar aprendizagem, mas também podem servir a controle e vigilância.
+
+AraLearn deve ser desenhado para ampliar autoria e revisão, não para tornar o usuário mais governável por uma instituição, uma plataforma ou um modelo.
 
 ## Questões éticas
 
