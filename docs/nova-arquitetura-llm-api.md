@@ -1,119 +1,120 @@
-# Nova arquitetura LLM/API do AraLearn
+# Arquitetura de geração por LLM e API
+
+Este documento descreve como o AraLearn usa LLMs por API ou provider local sem entregar a elas o controle integral do projeto.
 
 ## Decisão central
 
-O AraLearn não usa mais um pipeline estrutural longo e caro como fluxo principal.
-
-O desenho atual é:
+A geração é separada em duas responsabilidades:
 
 ```text
-top-down  = planejar curso -> módulo -> lição -> microssequência
-bottom-up = gerar e melhorar cards dentro de uma microssequência
+planejamento estrutural = curso -> módulo -> lição -> microssequência
+materialização local    = cards dentro da microssequência selecionada
 ```
 
-Consequências diretas:
+O planejamento estrutural define o percurso. A materialização local produz ou ajusta os cards no ponto em que o usuário está trabalhando.
 
-- o top-down não gera cards;
-- o top-down não depende de anexo bruto como entrada principal;
-- o usuário governa o escopo por módulo;
-- o bottom-up continua preso à trilha do top-down.
+## Entrada do planejamento estrutural
 
-## Entrada principal do top-down
+A entrada principal é `aralearn.scope.v1`.
 
-O ponto de partida é `aralearn.scope.v1`.
+Esse contrato contém:
 
-Estrutura:
+- curso ou tema;
+- objetivo opcional;
+- prioridade de evidências;
+- módulos;
+- expressões do que entra em cada módulo;
+- expressões do que fica fora;
+- observações;
+- estilo de avaliação ou uso.
 
-- curso
-- objetivo opcional
-- evidência principal
-- módulos
-- para cada módulo:
-  - `O que entra`
-  - `O que não entra`
-  - observações
-  - estilo de cobrança
+O contrato funciona como uma declaração de escopo. Ele evita que a IA tente descobrir sozinha o domínio inteiro a partir de material bruto.
 
-Isso reduz custo, melhora previsibilidade e força a LLM a trabalhar com contexto pequeno.
+## Saída do planejamento estrutural
 
-## Saída do top-down
+O provider deve devolver uma estrutura navegável com:
 
-O top-down devolve apenas:
+- curso;
+- módulos;
+- lições;
+- microssequências planejadas;
+- objetivo de lição;
+- objetivo de microssequência;
+- dependências locais entre microssequências.
 
-- curso
-- módulos
-- lições
-- microssequências planejadas
-- objetivo de lição
-- objetivo de microssequência
-- dependências locais entre microssequências
+As microssequências planejadas entram no projeto com `status: "planned"` e sem versões de cards.
 
-As microssequências entram no projeto com:
+## Materialização local
 
-- `type: "main"`
-- `status: "planned"`
-- `versions: []`
+A materialização local ocorre quando o usuário abre uma microssequência e solicita geração ou revisão.
 
-## Contrato público
+O contexto enviado ao provider pode incluir:
 
-O storage agora usa `aralearn.contract` versão 1.
+- curso;
+- módulo atual;
+- lição atual;
+- microssequência atual;
+- dependências diretas;
+- microssequência anterior e seguinte, quando relevantes;
+- densidade desejada;
+- pedido do usuário.
 
-Pontos principais:
+Esse pacote de contexto deve ser suficiente para a operação local, sem transformar cada chamada em replanejamento do curso.
 
-- módulos carregam `include` e `exclude` como termos de escopo normalizados;
-- lições carregam apenas o necessário para o estudo;
-- microssequências têm `status` e `type`;
-- versões de microssequência são explícitas;
-- cards têm `resourceType` e `content`.
+## Operações
 
-## Bottom-up
+Operações suportadas pelo runtime de geração:
 
-Cada operação bottom-up usa apenas um `ContextPacket` local:
+- `plan-scope`;
+- `generate-microsequence`;
+- `improve-microsequence`;
+- `add-practice`;
+- `create-support`;
+- `generate-next`.
 
-- curso
-- módulo atual
-- lição atual
-- microssequência atual
-- dependências diretas
-- vizinha anterior
-- vizinha seguinte
-- densidade
-- pedido local opcional
-
-Operações visíveis:
-
-- `Gerar cards`
-- `Melhorar explicação`
-- `Mais prática`
-- `Criar complemento`
-- `Gerar próxima`
+Esses modos aparecem também no bridge local do Codex.
 
 ## Providers
 
-Registry atual:
+Providers previstos:
 
-- `fake`
-- `gemini`
-- `codex-cli`
-- `openai-compatible`
+- `fake`, usado em testes e harnesses;
+- `gemini`, para API do Gemini;
+- `openai-compatible`, para endpoints compatíveis com o formato OpenAI;
+- `codex-cli`, para operação local via bridge HTTP.
 
-O `codex-cli` continua funcionando via bridge local e usa os mesmos modos estruturais do runtime por API.
+Todos devem ser tratados como executores de uma operação estruturada. A regra de domínio permanece no app.
 
-## UI
+## Validação
 
-A casca de produto atual voltou a ser a shell restaurada do editor, com três superfícies principais de geração:
+Toda resposta de IA precisa passar por validação local.
 
-- `scopeBuilder`: curso e módulos com chips
-- árvore navegável da trilha dentro de `lessonEditorApp`
-- painel de estudo e ações locais da microssequência selecionada
+A validação cobre:
 
-Não existe mais o fluxo principal baseado em textarea central e anexos obrigatórios para gerar estrutura.
+- contrato de escopo;
+- plano estrutural;
+- status e tipo de microssequência;
+- versão de microssequência;
+- recursos de card;
+- formato do conteúdo.
 
-## O que foi preservado
+Se a validação falhar, a alteração não deve substituir o projeto anterior.
 
-- runtime público dos cards
-- recursos públicos renderizáveis
-- validação determinística
-- versão por microssequência
-- bridge local do Codex
-- harnesses e testes de fluxo novo
+## Vantagens do desenho
+
+Essa arquitetura reduz:
+
+- custo de contexto por chamada;
+- dependência de material extenso;
+- respostas enciclopédicas fora do escopo;
+- geração excessiva antes do estudo;
+- dificuldade de revisão humana.
+
+Ao mesmo tempo, preserva:
+
+- trilha visível;
+- autoria do usuário;
+- geração assistida;
+- versões;
+- operação local;
+- exportação por contrato público.
