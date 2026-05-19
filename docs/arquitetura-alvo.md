@@ -1,59 +1,58 @@
-# Arquitetura-alvo do AraLearn
+# Direção arquitetural
 
-## Direção
+Este documento registra a direção arquitetural do AraLearn para manter coerência entre produto, modelo didático e implementação.
 
-A arquitetura-alvo do AraLearn é a consolidação de um fluxo único:
-
-1. planejar top-down até microssequências;
-2. estudar e materializar bottom-up;
-3. aplicar mudanças por patch validado;
-4. manter a camada semântica interna fora da UI comum.
-
-## Invariantes
+## Princípios
 
 - A microssequência é a unidade didática central.
-- O card é unidade de interação.
-- Top-down não deve gerar todos os cards por padrão.
-- Bottom-up deve operar no ponto atual da trilha.
-- `domainMap` governa por baixo, mas não vira formulário comum.
-- Provider não decide didática.
-- Patch inválido não deve corromper o projeto.
-- O projeto público permanece exportável e legível.
+- O card é a unidade de interação.
+- O planejamento estrutural organiza a trilha antes dos cards.
+- A materialização local opera na microssequência selecionada.
+- O provider executa operações, mas não governa o domínio.
+- Respostas inválidas não substituem o projeto.
+- O contrato público permanece legível, exportável e validável.
+- A interface comum deve mostrar o necessário para estudar e revisar, não todo o aparato interno.
 
 ## Produto esperado
 
-O usuário comum deve conseguir:
+O usuário deve conseguir:
 
+- definir um curso ou tema;
+- recortar módulos por termos que entram e ficam fora;
 - gerar uma trilha planejada;
-- reconhecer microssequências ainda vazias;
+- reconhecer microssequências sem cards;
 - abrir uma microssequência;
-- pedir os primeiros cards;
+- gerar cards;
 - estudar;
-- corrigir;
-- continuar;
-- ir para a próxima microssequência planejada;
-- criar uma microssequência extra quando faltar um degrau.
+- corrigir ou complementar;
+- avançar para a próxima etapa;
+- marcar o que está pronto.
 
 ## Motor esperado
 
-O motor deve manter fases pequenas e auditáveis:
+O motor deve operar por fases pequenas e auditáveis:
 
-- intenção;
-- ingestão;
-- estrutura;
-- domínio;
-- planejamento de microssequências;
-- contrato local;
-- plano de cards;
-- geração;
-- auditoria;
-- reparo;
-- patch;
-- validação;
-- aplicação.
+- validar escopo;
+- montar contexto;
+- chamar provider;
+- validar resposta;
+- reparar quando possível;
+- aplicar alteração ao projeto;
+- preservar versão anterior;
+- registrar relatório de validação.
 
-Nem todo fluxo usa todas as fases. Top-down estrutural para antes dos cards. Bottom-up local entra nas fases de materialização.
+Nem toda operação usa todas as fases. O importante é que a aplicação ao projeto seja sempre controlada.
+
+## Fronteiras
+
+A arquitetura deve evitar três excessos:
+
+1. pedir que a IA descubra todo o curso a partir de material desorganizado;
+2. gerar volume demais antes de o usuário estudar;
+3. expor metadados internos como se fossem parte do uso comum.
+
+Ao mesmo tempo, deve preservar precisão suficiente para que usuários técnicos auditem contratos, providers, versões e recursos de card.
 
 ## Critério de sucesso
 
-O produto está alinhado quando a pessoa usuária não precisa entender a arquitetura para usar o fluxo, mas a arquitetura continua clara para quem precisa auditar, manter ou evoluir o motor.
+A arquitetura está alinhada quando o usuário consegue usar o app sem conhecer seus detalhes internos, mas o projeto continua compreensível para quem precisa manter, auditar, adaptar ou pesquisar o sistema.
