@@ -10,7 +10,7 @@ import { generateNextMicrosequence } from "../src/generation/bottomUp/generateNe
 function createProject() {
   return {
     contract: "aralearn.contract",
-    version: 2,
+    version: 1,
     kind: "project",
     courses: [
       {
@@ -178,4 +178,3 @@ test("gerar próxima não exige prompt livre", async () => {
 
   assert.equal(next.selection.microsequenceKey, "micro-2");
 });
-

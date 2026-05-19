@@ -1,11 +1,11 @@
 # Contrato público do AraLearn
 
-## `aralearn.contract` v2
+## `aralearn.contract` v1
 
 ```json
 {
   "contract": "aralearn.contract",
-  "version": 2,
+  "version": 1,
   "kind": "project",
   "courses": []
 }
@@ -110,4 +110,3 @@ Estrutura:
   ]
 }
 ```
-

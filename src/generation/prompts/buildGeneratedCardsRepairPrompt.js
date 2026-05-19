@@ -71,7 +71,7 @@ export function buildGeneratedCardsRepairPrompt({
     "- resourceType deve estar em allowedResourceTypes;",
     "- block_gap_fill deve usar segments[].kind/value ou kind/blankId/acceptedBlockIds, blocks[].blockId/label e feedbackAfter;",
     "- multiple_choice deve ter correctOptionId apontando para options[].optionId;",
-    "- graph deve ter vertices com id único, edges ligando vértices existentes, sem laços nem arestas duplicadas na primeira versão;",
+    "- graph deve ter vertices com id único, edges ligando vértices existentes e sem laços; multiarestas só são válidas quando representam ligações distintas do caso estudado;",
     "- tree deve ter nodes com id único, label curto e parentId existente quando informado;",
     "- responda somente JSON válido no formato {\"cards\":[...]}.",
     "",

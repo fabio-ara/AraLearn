@@ -726,7 +726,6 @@ function normalizeGraphEdges(value, vertexIds = new Set()) {
     fail('Campo obrigatório inválido: "graph.edges".');
   }
 
-  const seen = new Set();
   return value.map((edge, index) => {
     if (!isPlainObject(edge)) {
       fail('Campo obrigatório inválido: "graph.edges".');
@@ -737,11 +736,6 @@ function normalizeGraphEdges(value, vertexIds = new Set()) {
     if (!vertexIds.has(from) || !vertexIds.has(to) || from === to) {
       fail('Campo obrigatório inválido: "graph.edges".');
     }
-    const key = buildUndirectedGraphEdgeKey(from, to);
-    if (seen.has(key)) {
-      fail('Campo obrigatório inválido: "graph.edges".');
-    }
-    seen.add(key);
 
     return {
       from,
