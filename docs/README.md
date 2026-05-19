@@ -5,6 +5,7 @@ Esta pasta reúne a documentação de produto, arquitetura, modelo didático, co
 ## Para entender o produto
 
 - [Visão do produto](visao-do-produto.md): problema, proposta, público e limites do AraLearn.
+- [Contexto de produto e referências](contexto-produto-e-referencias.md): lugar do AraLearn entre produtos, práticas de estudo, cultura digital e questões filosóficas/éticas.
 - [Modelo didático](modelo-didatico.md): papel da microssequência, relação entre teoria e prática e critérios de suficiência didática.
 - [Perfis didáticos](perfis-didaticos.md): formas de adaptar o app a disciplinas, provas, artigos, documentação técnica e outros contextos.
 
