@@ -1,96 +1,86 @@
-# Guia de uso do app
+# Uso do app
 
-## 1. Criar trilha
+Este guia descreve o fluxo principal de uso do AraLearn: criar escopo, gerar trilha, abrir microssequência, materializar cards e revisar.
 
-A tela inicial do fluxo estrutural agora é o builder de escopo.
+## 1. Criar o escopo
 
-Você preenche:
+O usuário começa informando:
 
-- título do curso
-- objetivo opcional
-- evidência principal
-- módulos
-- chips de `O que entra`
-- chips de `O que não entra`
-- observações
-- estilo de cobrança
+- título do curso ou tema;
+- objetivo opcional;
+- prioridade de evidências;
+- módulos;
+- expressões do que entra em cada módulo;
+- expressões do que fica fora;
+- observações;
+- estilo de avaliação ou uso.
 
-Você também pode importar um JSON `aralearn.scope.v1`.
+Essas informações formam o contrato `aralearn.scope.v1`.
 
-## 2. Gerar trilha
+O escopo pode ser preenchido manualmente ou importado como JSON válido.
 
-Ao clicar em `Gerar trilha`, o app:
+## 2. Gerar a trilha
 
-1. valida o contrato de escopo
-2. chama o provider selecionado
-3. valida a saída top-down
-4. grava o projeto no contrato v1
+Ao solicitar a geração da trilha, o app deve:
 
-Resultado:
+1. validar o contrato de escopo;
+2. chamar o provider configurado;
+3. validar a saída estrutural;
+4. aplicar o resultado ao projeto local.
 
-- curso criado
-- módulos e lições navegáveis
-- microssequências planejadas
-- nenhum card gerado ainda
+O resultado esperado é uma árvore com curso, módulos, lições e microssequências planejadas. Os cards ainda não precisam existir.
 
 ## 3. Navegar pela árvore
 
-Depois do top-down, a lateral mostra:
+Depois da geração estrutural, o usuário navega por:
 
-- curso
-- módulos
-- lições
-- microssequências
+```text
+curso -> módulo -> lição -> microssequência
+```
 
-Cada microssequência exibe status:
+Cada microssequência possui status:
 
-- `planned`
-- `generated`
-- `needs_review`
-- `ready`
+- `planned`: planejada, ainda sem cards;
+- `generated`: possui uma versão de cards;
+- `needs_review`: recebeu alteração que pede revisão;
+- `ready`: foi considerada pronta pelo usuário.
 
 ## 4. Estudar uma microssequência
 
-Ao abrir uma microssequência, você pode:
+Ao abrir uma microssequência, o usuário pode:
 
-- `Gerar cards`
-- `Melhorar explicação`
-- `Mais prática`
-- `Criar complemento`
-- `Gerar próxima`
-- `Marcar pronta`
+- gerar cards;
+- melhorar explicação;
+- acrescentar prática;
+- criar complemento;
+- gerar a próxima microssequência;
+- marcar como pronta.
 
-## 5. O que cada ação faz
+Essas ações operam apenas sobre o ponto selecionado da trilha.
 
-### Gerar cards
+## 5. Revisar versões
 
-Materializa a microssequência planejada.
+Cada geração ou ajuste cria uma nova versão da microssequência. Isso permite comparar resultados e preservar histórico de intervenção.
 
-### Melhorar explicação
+A versão ativa é a usada para estudo. Versões preservadas podem continuar disponíveis para inspeção ou recuperação.
 
-Cria uma nova versão completa da microssequência atual.
+## 6. Criar complemento
 
-### Mais prática
+Quando faltar uma etapa intermediária, o usuário pode criar uma microssequência de apoio.
 
-Mantém o mesmo tópico e amplia o treino.
+Esse complemento fica ligado à microssequência de origem e deve resolver uma lacuna local, sem refazer a organização inteira do curso.
 
-### Criar complemento
+## 7. Configurar provider
 
-Insere uma microssequência `support` logo depois da atual.
+A área de provider permite escolher e configurar:
 
-### Gerar próxima
+- Gemini;
+- OpenAI compatível;
+- Codex local;
+- Fake provider para testes.
 
-Abre a próxima microssequência principal e tenta materializá-la sem exigir prompt livre.
+Dependendo do provider, o usuário informa modelo, chave de API, base URL, token ou endpoint local.
 
-## 6. Provider
+## 8. Exportar e auditar
 
-Na lateral de provider, você escolhe:
-
-- provider
-- modelo
-- densidade padrão
-- API key ou token
-- base URL
-- endpoint local do Codex
-
-Também é possível verificar a saúde do bridge local do Codex.
+Como o projeto segue contrato público, ele pode ser exportado, importado, validado e inspecionado. Isso preserva portabilidade e facilita avaliação técnica.
