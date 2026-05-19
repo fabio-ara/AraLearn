@@ -26,7 +26,7 @@ test("lê progresso apenas pelo caminho completo da lição", () => {
     version: 1,
     lessons: {
       "curso-a::mod-1::licao-2": { cursor: 2, completedCardKeys: ["card-2"] },
-      "licao-legada": { cursor: 1, completedCardKeys: ["card-legacy"] }
+      "licao-anterior": { cursor: 1, completedCardKeys: ["card-legacy"] }
     }
   });
 
@@ -43,7 +43,7 @@ test("lê progresso apenas pelo caminho completo da lição", () => {
     readLessonProgressEntry(progress, {
       courseKey: "curso-b",
       moduleKey: "mod-9",
-      lessonKey: "licao-legada"
+      lessonKey: "licao-anterior"
     }),
     null
   );

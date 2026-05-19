@@ -1709,3 +1709,66 @@ export function createEmbeddedSeedProjectDocument() {
     ]
   };
 }
+
+function isMatematicaParaInformaticaCourse(course) {
+  return course?.key === "course-matematica-para-informatica" || course?.title === "Matemática para Informática";
+}
+
+function hasTeoriaDosGrafosModule(course) {
+  return (course?.modules || []).some(
+    (moduleValue) => moduleValue?.key === "module-teoria-dos-grafos" || moduleValue?.title === "Teoria dos Grafos"
+  );
+}
+
+function appendTeoriaDosGrafosModule(course) {
+  if (!isMatematicaParaInformaticaCourse(course) || hasTeoriaDosGrafosModule(course)) {
+    return course;
+  }
+
+  const seededCourse = createMatematicaParaInformaticaCourse();
+  const seededGraphModule = seededCourse.modules.find(
+    (moduleValue) => moduleValue.key === "module-teoria-dos-grafos"
+  );
+  if (!seededGraphModule) {
+    return course;
+  }
+
+  return {
+    ...structuredClone(course),
+    modules: [...(course.modules || []).map((moduleValue) => structuredClone(moduleValue)), structuredClone(seededGraphModule)]
+  };
+}
+
+export function reconcileEmbeddedSeedProject(project) {
+  if (!project || !Array.isArray(project.courses) || project.courses.length === 0) {
+    return createEmbeddedSeedProjectDocument();
+  }
+
+  if (project.courses.length === 1) {
+    const onlyCourse = project.courses[0];
+    if (onlyCourse?.key === "course-logica-vetores-matrizes") {
+      return createEmbeddedSeedProjectDocument();
+    }
+    if (isMatematicaParaInformaticaCourse(onlyCourse) && !hasTeoriaDosGrafosModule(onlyCourse)) {
+      return createEmbeddedSeedProjectDocument();
+    }
+  }
+
+  let changed = false;
+  const nextCourses = project.courses.map((course) => {
+    const upgradedCourse = appendTeoriaDosGrafosModule(course);
+    if (upgradedCourse !== course) {
+      changed = true;
+    }
+    return upgradedCourse;
+  });
+
+  if (!changed) {
+    return project;
+  }
+
+  return {
+    ...structuredClone(project),
+    courses: nextCourses
+  };
+}

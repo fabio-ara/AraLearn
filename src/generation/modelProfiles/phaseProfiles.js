@@ -31,16 +31,26 @@ export const PHASE_PROFILES = Object.freeze({
 
 export function resolvePhaseProfile(phaseId = "") {
   if (phaseId === "index_sources") return PHASE_PROFILES.source_index;
+  if (phaseId === "build_assessment_profile") return PHASE_PROFILES.source_index;
+  if (phaseId === "answer_locally") return PHASE_PROFILES.architecture_plan;
+  if (phaseId === "audit_intervention") return PHASE_PROFILES.architecture_audit;
   if (phaseId === "plan_architecture") return PHASE_PROFILES.architecture_plan;
   if (phaseId === "audit_architecture") return PHASE_PROFILES.architecture_audit;
   if (phaseId === "plan_lessons") return PHASE_PROFILES.architecture_plan;
+  if (phaseId === "build_course_graph") return PHASE_PROFILES.source_index;
+  if (phaseId === "audit_course_graph") return PHASE_PROFILES.architecture_audit;
+  if (phaseId === "repair_course_graph") return PHASE_PROFILES.repair;
+  if (phaseId === "build_lesson_governance") return PHASE_PROFILES.source_index;
   if (phaseId === "plan_microsequences") return PHASE_PROFILES.architecture_plan;
   if (phaseId === "audit_microsequences") return PHASE_PROFILES.architecture_audit;
   if (phaseId === "repair_microsequences") return PHASE_PROFILES.repair;
   if (phaseId === "build_microsequence_contract") return PHASE_PROFILES.source_index;
+  if (phaseId === "compile_card_plans") return PHASE_PROFILES.source_index;
   if (phaseId === "build_cards") return PHASE_PROFILES.architecture_plan;
   if (phaseId === "audit_cards") return PHASE_PROFILES.architecture_audit;
   if (phaseId === "audit_source_adherence") return PHASE_PROFILES.architecture_audit;
+  if (phaseId === "audit_prerequisites") return PHASE_PROFILES.architecture_audit;
+  if (phaseId === "audit_assessment_alignment") return PHASE_PROFILES.architecture_audit;
   if (phaseId === "repair_card_adherence") return PHASE_PROFILES.repair;
   return PHASE_PROFILES.repair;
 }

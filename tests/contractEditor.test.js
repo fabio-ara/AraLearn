@@ -113,7 +113,7 @@ test("ignora sourceGuide textual em curso na edição estrutural", () => {
 
   const nextDocument = createCourse(document, {
     title: "Curso textual",
-    sourceGuide: "Texto corrido legado."
+    sourceGuide: "Texto corrido antigo."
   });
 
   const course = nextDocument.courses.at(-1);
@@ -144,8 +144,8 @@ test("preserva sourceGuideStructured e recompila o texto derivado na lição", (
     commonErrors: "Não inverter a ordem dos passos."
   });
   assert.match(lesson.sourceGuide, /Meta da lição: Entender o fluxo principal\./);
-  assert.match(lesson.sourceGuide, /Sinais e notação: Usar comandos inline\./);
-  assert.match(lesson.sourceGuide, /Confusões prováveis: Não inverter a ordem dos passos\./);
+  assert.match(lesson.sourceGuide, /Incluir: Usar comandos inline\./);
+  assert.match(lesson.sourceGuide, /Não confundir com: Não inverter a ordem dos passos\./);
 
   const exported = exportLessonDocument(document, {
     courseKey: document.courses[0].key,

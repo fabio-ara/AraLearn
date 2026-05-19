@@ -33,12 +33,12 @@ test("snapshot de microssequência preserva metadados da própria microssequênc
   assert.equal(version.role, "reinforcement");
 });
 
-test("normaliza entrada legada de versões com ids sequenciais e operationType migration", () => {
+test("normaliza entrada anterior de versões com ids sequenciais e operationType migration", () => {
   const entry = normalizeMicrosequenceVersionEntry({
-    activeVersionId: "legacy-2",
+    activeVersionId: "old-2",
     versions: [
-      { id: "legacy-1", label: "Iteração 1", title: "A", tags: [], cards: [] },
-      { id: "legacy-2", label: "Iteração 2", title: "B", tags: [], cards: [] }
+      { id: "old-1", label: "Iteração 1", title: "A", tags: [], cards: [] },
+      { id: "old-2", label: "Iteração 2", title: "B", tags: [], cards: [] }
     ]
   });
 

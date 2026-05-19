@@ -42,6 +42,16 @@ test("classifyProviderError classifica 400, 401 e 403 como não retryable", () =
   assert.equal(forbidden.retryable, false);
 });
 
+test("classifyProviderError classifica payload grande como não retryable", () => {
+  const oversized = classifyProviderError(new ProviderHttpError({ statusCode: 413, message: "Payload too large." }));
+  const tokenLimit = classifyProviderError(new Error("Context length exceeded the token limit."));
+
+  assert.equal(oversized.category, "payload_too_large");
+  assert.equal(oversized.retryable, false);
+  assert.equal(tokenLimit.category, "payload_too_large");
+  assert.equal(tokenLimit.retryable, false);
+});
+
 test("callModelWithRetry tenta novamente em 503 e usa delay injetável", async () => {
   const delays = [];
   let calls = 0;

@@ -1,81 +1,158 @@
 # Arquitetura do AraLearn
 
-O contrato público do AraLearn é propositalmente mais simples do que a sua operação interna. A arquitetura existe justamente para preservar essa assimetria: um JSON autoral enxuto, portável e legível de um lado; uma máquina local responsável por projeção, validação, persistência, assistência e revisão do outro.
+Este documento descreve a arquitetura implementada no AraLearn: estrutura de dados, camadas de código, fluxo de geração, persistência e recursos de card.
 
-## Visão geral
+## Estrutura pública
 
-O núcleo estrutural do produto continua sendo:
+O projeto é organizado por uma árvore simples:
 
 ```text
-curso -> módulo -> lição -> microssequência -> card
+project
+└── course
+    └── module
+        └── lesson
+            └── microsequence
+                └── card
 ```
 
-Essa hierarquia não é só organização da interface. Ela funciona como moldura para persistência, importação e exportação, contexto de geração e progressão de estudo.
+Essa árvore é usada para persistência, navegação, exportação, importação e estudo. Ela também conserva contexto: uma microssequência dentro de uma lição, de um módulo e de um curso já traz informações de escopo que ajudam a orientar a geração por IA.
 
-## Camadas
+## Contratos principais
 
-O repositório se organiza em seis grandes frentes.
+### `aralearn.scope.v1`
 
-`contract/` define e valida o contrato público. `model/` e `render/` projetam esse contrato para leitura. `editor/` executa mutações estruturais. `storage/` preserva projeto, snapshots e progresso local. `assist/` integra os provedores de IA. `generation/` concentra políticas, planejamento, validação e reparo. `ui/` reúne a navegação estrutural, o estudo e o workbench.
+Contrato de entrada para planejamento estrutural.
 
-O ponto importante aqui é que a camada de geração não substitui a arquitetura; ela é apenas uma parte dela.
+Ele contém:
 
-## Uma arquitetura para conter a geração
+- dados do curso;
+- objetivo opcional;
+- prioridade de evidências;
+- módulos;
+- termos de escopo que entram no módulo;
+- termos de escopo que ficam fora;
+- observações;
+- estilo de avaliação ou uso.
 
-Na trilha de cards, o AraLearn foi desenhado para que a LLM não controle a operação em sentido amplo. Ela não define sozinha o percurso, não fixa posições livremente, não decide a forma de todas as unidades interativas e não aplica o resultado por conta própria. O app mantém autoridade sobre:
+Esse contrato reduz ambiguidade antes da chamada ao provider.
 
-- o contexto;
-- a governança da lição;
-- as opções didáticas disponíveis;
-- o plano determinístico dos cards;
-- os formatos permitidos;
-- a validação local;
-- a aplicação final do resultado.
+### `aralearn.contract` v1
 
-Essa decisão arquitetural traduz em software uma convicção metodológica: respostas de linguagem natural precisam ser contidas por estrutura quando o objetivo é produzir material estudável e repetível.
+Contrato persistido do projeto.
 
-## O pipeline real
+Ele contém:
 
-O fluxo real da geração de cards é incremental. Um pedido localizado produz contrato de planejamento; o modelo devolve um plano pequeno; o app valida; o app monta `cardPlan`; o modelo preenche; o app repara e valida; o resultado só então é aplicado.
+- cursos com `evidencePriority`;
+- módulos com `include`, `exclude`, `notes` e `assessmentStyle`;
+- lições com `goal`;
+- microssequências com `type`, `status`, `dependsOn`, `scopeRefs`, versões e versão ativa;
+- cards com `resourceType`, `content` e feedback posterior opcional.
 
-Essa decomposição existe por duas razões. A primeira é pragmática: melhora previsibilidade com modelos mais fracos. A segunda é conceitual: impede que a aplicação terceirize à LLM uma decisão que pertence à arquitetura.
+A validação local fica em `src/domain/aralearnProject.js`.
 
-## Governança da lição
+## Camadas de código
 
-A maior parte da inteligência operacional da geração está ancorada na lição. É a lição que define meta, notação, erros prováveis, formatos permitidos, ações de aprendizagem e nível de apoio. O pedido do usuário continua importante, mas passa a atuar sobre um quadro já delimitado.
+### `src/domain/`
 
-Essa escolha reduz ambiguidade e permite que top-down e bottom-up trabalhem sobre a mesma base local.
+Define e valida entidades do domínio:
 
-## Mapa de domínio
+- contrato de projeto;
+- contrato de escopo;
+- termos de escopo;
+- cards;
+- microssequências;
+- versões;
+- recursos renderizáveis.
 
-Quando presente, o `domainMap` funciona como memória operacional da lição. Ele registra capacidades relevantes, variações de prática, lacunas e estados de cobertura. Isso permite que a aplicação trate a geração de microssequências não como fila cega de títulos, mas como tentativa de cobrir funções reais do percurso.
+### `src/generation/topDown/`
 
-Arquiteturalmente, esse é um ponto importante: o sistema deixa de depender apenas do texto de uma solicitação e passa a usar um estado local persistível sobre o andamento didático da lição.
+Responsável pelo planejamento estrutural a partir do contrato de escopo.
 
-## Checagens locais
+O resultado esperado é uma trilha com cursos, módulos, lições e microssequências planejadas. Nessa fase, a geração não precisa produzir cards.
 
-Uma parte delicada da arquitetura está na camada de checagens locais. Ela precisa ser descrita com precisão. O AraLearn não executa interpretação semântica ampla de texto livre. O que ele faz é combinar checagens estruturais, checagens declarativas e sinais textuais de baixa força.
+### `src/generation/bottomUp/`
 
-As checagens estruturais verificam contrato, quantidade, forma e coerência local. As checagens declarativas verificam relações explicitadas pela própria modelagem, como prática ausente, variação insuficiente ou duplicação sem nova função. Os sinais textuais observam padrões evidentes demais para serem ignorados, mas não são tratados como compreensão forte do enunciado.
+Responsável pela materialização e revisão de uma microssequência específica.
 
-Arquiteturalmente, isso é decisivo porque define o que a aplicação pode fazer de modo legítimo. Ela pode bloquear, reiterar ou recusar quando a base é forte o bastante; pode apenas sinalizar quando a base é fraca demais.
+Operações previstas:
 
-## Continuação automática
+- gerar cards;
+- melhorar uma explicação;
+- acrescentar prática;
+- criar complemento;
+- gerar a próxima microssequência planejada.
 
-A continuação automática da geração não é laço cego de insistência. Ela é política de restrição adicional. Quando a falha remanescente é suficientemente forte, o AraLearn transforma esse diagnóstico em nova operação fechada: reescrever posição específica, inserir mediação mínima, adiar uma lacuna para outra microssequência ou recusar redundância. Quando o problema é apenas textual e fraco, a arquitetura correta é não exagerar o poder da máquina.
+Cada operação trabalha com contexto local e produz nova versão.
 
-## Aplicação direta e reversibilidade
+### `src/generation/runtime/`
 
-O resultado validado é aplicado diretamente na microssequência. Isso recoloca a geração dentro do fluxo real de autoria, em vez de deixá-la num limbo de prévia privada. Ao mesmo tempo, a arquitetura preserva reversibilidade por histórico local: a iteração ativa pode ser aceita ou excluída.
+Integra geração e documento do projeto. Essa camada aplica alterações validadas ao estado local.
 
-Essa combinação de aplicação direta e reversão explícita é uma escolha arquitetural e também de UX. Ela reduz atrito de uso sem abandonar responsabilidade editorial.
+### `src/generation/providers/`
 
-## Local-first
+Contém o registry e os adapters de provider:
 
-O compromisso local-first e offline-first atravessa a arquitetura inteira. Projeto, progresso, snapshots e histórico auxiliar vivem prioritariamente no dispositivo. A rede entra como canal de geração, não como condição permanente de funcionamento do estudo. Essa escolha reforça autonomia, portabilidade e continuidade.
+- `fake`;
+- `gemini`;
+- `codex-cli`;
+- `openai-compatible`.
 
-## O que esta arquitetura de fato sustenta
+A intenção é manter a lógica didática fora do provider. O provider executa uma operação; o contrato e a validação pertencem ao app.
 
-A arquitetura do AraLearn sustenta, com clareza, algumas afirmações: que a tarefa da LLM é restringida; que o sistema valida localmente parte importante da operação; que o estudo pode continuar com material já salvo; que a separação entre rascunho, revisão e execução é parte real do produto.
+### `src/ui/`
 
-Ela não sustenta a afirmação de que o app compreende livremente qualquer texto em sentido forte. E é melhor que não sustente.
+Contém a interface de autoria, navegação, estudo e configuração:
+
+- `scopeBuilder/`: formulário de escopo por curso e módulos;
+- `courseTree/`: navegação estrutural;
+- `study/`: estudo da microssequência selecionada;
+- `providers/`: configuração de provider;
+- `lessonEditorApp.js`: composição principal da aplicação.
+
+## Fluxo operacional
+
+### Planejamento estrutural
+
+```text
+aralearn.scope.v1 -> provider -> plano estrutural -> validação -> aralearn.contract v1
+```
+
+O plano estrutural cria ou atualiza a árvore até microssequências.
+
+### Materialização local
+
+```text
+microssequência selecionada -> contexto local -> provider -> cards -> validação -> nova versão
+```
+
+A materialização não precisa reenviar o projeto inteiro. O contexto vem da posição da microssequência na árvore, de seus objetivos, de suas dependências e do pedido do usuário.
+
+## Persistência
+
+O AraLearn mantém o projeto no dispositivo.
+
+Chaves principais:
+
+- `aralearn.project`;
+- `aralearn.progress`;
+- `aralearn.provider-settings.v2`.
+
+Essa abordagem favorece uso local, inspeção, exportação e continuidade sem depender de servidor próprio.
+
+## Recursos públicos de card
+
+Recursos aceitos:
+
+- `say`;
+- `table`;
+- `code`;
+- `flow`;
+- `tree`;
+- `graph`;
+- `block_gap_fill`.
+
+A lista é definida em `src/domain/resources.js` e validada antes de o conteúdo entrar no projeto.
+
+## Integridade
+
+O app deve preservar o projeto anterior quando uma resposta de IA não passa pela validação. A regra arquitetural é simples: conteúdo gerado só entra no projeto depois de validado.

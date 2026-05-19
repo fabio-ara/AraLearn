@@ -6,8 +6,10 @@ import { buildLessonDomainCoverageReport } from "../src/generation/domain/lesson
 import {
   createEmbeddedSeedProjectDocument,
   createOrganizacaoArquiteturaComputadoresCourse,
-  createOrganizacaoArquiteturaComputadoresProjectDocument
+  createOrganizacaoArquiteturaComputadoresProjectDocument,
+  reconcileEmbeddedSeedProject
 } from "../src/ui/embeddedSeedProjectDocument.js";
+import { createMatematicaParaInformaticaCourse } from "../src/ui/exampleProjectDocument.js";
 
 test("o curso embarcado de organizacao e arquitetura valida no contrato atual", () => {
   const result = validateContractDocument(createOrganizacaoArquiteturaComputadoresProjectDocument());
@@ -40,6 +42,54 @@ test("o seed embarcado do bootstrap preserva multiplos cursos", () => {
     "Organização e Arquitetura de Computadores",
     "Matemática para Informática"
   ]);
+});
+
+test("a reconciliação do seed embarcado acrescenta teoria dos grafos quando ela falta no curso de matemática", () => {
+  const project = {
+    contract: "aralearn.contract",
+    version: 1,
+    kind: "project",
+    courses: [
+      structuredClone(createOrganizacaoArquiteturaComputadoresCourse()),
+      {
+        ...structuredClone(createMatematicaParaInformaticaCourse()),
+        modules: structuredClone(createMatematicaParaInformaticaCourse().modules.slice(0, 2))
+      }
+    ]
+  };
+
+  const reconciled = reconcileEmbeddedSeedProject(project);
+  const matematicaCourse = reconciled.courses[1];
+
+  assert.notEqual(reconciled, project);
+  assert.equal(matematicaCourse.modules.length, 3);
+  assert.deepEqual(
+    matematicaCourse.modules.map((module) => module.title),
+    ["Lógica Proposicional", "Vetores e Matrizes", "Teoria dos Grafos"]
+  );
+});
+
+test("a reconciliação do seed embarcado recompõe o bootstrap antigo de matemática isolada", () => {
+  const project = {
+    contract: "aralearn.contract",
+    version: 1,
+    kind: "project",
+    courses: [
+      {
+        ...structuredClone(createMatematicaParaInformaticaCourse()),
+        modules: structuredClone(createMatematicaParaInformaticaCourse().modules.slice(0, 2))
+      }
+    ]
+  };
+
+  const reconciled = reconcileEmbeddedSeedProject(project);
+
+  assert.equal(reconciled.courses.length, 2);
+  assert.deepEqual(
+    reconciled.courses.map((course) => course.title),
+    ["Organização e Arquitetura de Computadores", "Matemática para Informática"]
+  );
+  assert.equal(reconciled.courses[1].modules.length, 3);
 });
 
 test("a licao de lei de moore nasce sem lacunas declarativas no domainMap", () => {

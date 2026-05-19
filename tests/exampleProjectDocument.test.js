@@ -22,7 +22,10 @@ test("o projeto inicial do app contém apenas o curso de matemática para inform
   assert.equal(document.courses.length, 1);
   assert.equal(document.courses[0].key, "course-matematica-para-informatica");
   assert.equal(document.courses[0].title, "Matemática para Informática");
-  assert.deepEqual(document.courses[0].modules.map((module) => module.title), ["Lógica Proposicional", "Vetores e Matrizes"]);
+  assert.deepEqual(
+    document.courses[0].modules.map((module) => module.title),
+    ["Lógica Proposicional", "Vetores e Matrizes", "Teoria dos Grafos"]
+  );
 });
 
 test("o conteúdo inicial agora mantém um único curso de teste", () => {
@@ -85,7 +88,7 @@ test("o conteúdo inicial inclui uma lição de teste com todos os exercícios p
   assert.equal(microsequence.cards.every((card) => typeof card.after === "string" && card.after.length > 0), true);
 });
 
-test("o conteúdo inicial inclui uma lição de teste com plane e matrix", () => {
+test("o conteúdo inicial inclui uma lição de teste com graph, plane e matrix", () => {
   const result = validateContractDocument(createExampleProjectDocument());
   assert.equal(result.ok, true);
   const lesson = result.value.courses[0].modules[0].lessons[2];
@@ -94,11 +97,11 @@ test("o conteúdo inicial inclui uma lição de teste com plane e matrix", () =>
     resolveCardRuntime(card).blocks.filter((block) => block.kind !== "button").at(-1)?.kind
   );
 
-  assert.equal(lesson.title, "Plano cartesiano e matrizes");
-  assert.equal(microsequence.title, "Vetores e matrizes");
-  assert.deepEqual(runtimeKinds, ["plane", "plane", "plane", "plane", "matrix", "matrix"]);
-  assert.equal(microsequence.cards[1].plane.sum[0][0], 1);
-  assert.equal(microsequence.cards[4].matrix.highlight, "mainDiagonal");
+  assert.equal(lesson.title, "Grafos, plano cartesiano e matrizes");
+  assert.equal(microsequence.title, "Grafos, vetores e matrizes");
+  assert.deepEqual(runtimeKinds, ["graph", "graph", "plane", "plane", "plane", "plane", "matrix", "matrix"]);
+  assert.equal(microsequence.cards[3].plane.sum[0][0], 1);
+  assert.equal(microsequence.cards[6].matrix.highlight, "mainDiagonal");
 });
 
 test("o conteúdo inicial inclui o curso de matemática para informática", () => {
@@ -107,10 +110,12 @@ test("o conteúdo inicial inclui o curso de matemática para informática", () =
   const course = result.value.courses[1];
   const logicModule = course.modules[0];
   const vectorModule = course.modules[1];
+  const graphModule = course.modules[2];
   const truthTableLesson = logicModule.lessons[1];
   const equivalenceLesson = logicModule.lessons[2];
   const measuresLesson = vectorModule.lessons[1];
   const transformationsLesson = vectorModule.lessons[2];
+  const graphLesson = graphModule.lessons[0];
   const learnerFacingText = JSON.stringify(course.modules.flatMap((module) =>
     module.lessons.flatMap((lesson) =>
       lesson.microsequences.flatMap((microsequence) =>
@@ -125,10 +130,11 @@ test("o conteúdo inicial inclui o curso de matemática para informática", () =
   ));
 
   assert.equal(course.title, "Matemática para Informática");
-  assert.equal(course.modules.length, 2);
-  assert.deepEqual(course.modules.map((module) => module.title), ["Lógica Proposicional", "Vetores e Matrizes"]);
+  assert.equal(course.modules.length, 3);
+  assert.deepEqual(course.modules.map((module) => module.title), ["Lógica Proposicional", "Vetores e Matrizes", "Teoria dos Grafos"]);
   assert.equal(logicModule.lessons.length, 3);
   assert.equal(vectorModule.lessons.length, 3);
+  assert.equal(graphModule.lessons.length, 7);
   assert.equal(truthTableLesson.microsequences[1].title, "Montagem de tabela composta");
   assert.equal(truthTableLesson.microsequences[1].cards[0].key, "card-logica-por-que-linhas");
   assert.equal(truthTableLesson.microsequences[1].cards[1].key, "card-logica-numero-linhas");
@@ -164,6 +170,9 @@ test("o conteúdo inicial inclui o curso de matemática para informática", () =
   assert.deepEqual(equivalenceLesson.microsequences[1].cards[0].table.focus.columns, [4, 5]);
   assert.equal(equivalenceLesson.microsequences[1].cards[1].table.columns[2], "`¬q`");
   assert.equal(equivalenceLesson.microsequences[1].cards[2].table.rows[0][4], "F");
+  assert.equal(graphLesson.microsequences[0].dependsOn?.length || 0, 0);
+  assert.equal(graphLesson.microsequences[0].cards[0].graph.edges.length, 7);
+  assert.equal(graphLesson.microsequences[0].cards[0].graph.edges[1].label, "ponte 2");
   assert.doesNotMatch(JSON.stringify(course), /como no caderno|formato de caderno|anotações|notação de aula/);
   assert.equal(vectorModule.lessons[0].microsequences[1].cards[2].key, "card-vetores-soma-geometrica-ideia");
   assert.equal(vectorModule.lessons[0].microsequences[1].cards[3].key, "card-vetores-soma-geometrica");

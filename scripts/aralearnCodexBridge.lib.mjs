@@ -1,9 +1,6 @@
 export {
-  buildAttachmentPromptSection,
-  buildCodexArgs,
-  buildLessonMicrosequencesPrompt,
-  buildStandaloneBridgeSource,
-  buildTopDownPrompt,
+  buildCodexFilePromptWrapper,
+  buildCodexSpawnInput,
   extractJsonFromText,
   normalizePort,
   normalizeTimeout

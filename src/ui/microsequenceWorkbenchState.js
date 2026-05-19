@@ -25,7 +25,7 @@ export function resolveMicrosequenceAssistOpenState(entry, targetIndex = 0) {
 }
 
 export function resolveWorkbenchPaneAfterCardSelection(view, currentPane) {
-  if (view === "microsequence-assist") {
+  if (view === "microsequence-assist" || view === "microsequence") {
     return "preview";
   }
 

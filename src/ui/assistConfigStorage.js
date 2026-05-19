@@ -1,7 +1,7 @@
-import { DEFAULT_CODEX_LOCAL_ENDPOINT } from "../assist/codexLocalAssist.js";
+import { DEFAULT_CODEX_LOCAL_ENDPOINT } from "../generation/providers/codexCliConfig.js";
+import { normalizeAssistConfig } from "../generation/runtime/generationEditorRuntime.js";
 
 const ASSIST_CONFIG_STORAGE_KEY = "aralearn.assist-config";
-const DEFAULT_ASSIST_MODEL = "gemini-2.5-flash";
 
 function readJsonMap(storage, key) {
   if (!storage || typeof storage.getItem !== "function") {
@@ -35,29 +35,30 @@ function writeJsonMap(storage, key, value) {
 
 export function readAssistConfigStorage(storage = globalThis.localStorage) {
   const config = readJsonMap(storage, ASSIST_CONFIG_STORAGE_KEY);
-  return {
-    model: typeof config.model === "string" && config.model.trim() ? config.model.trim() : DEFAULT_ASSIST_MODEL,
-    apiKey: typeof config.apiKey === "string" ? config.apiKey : "",
+  return normalizeAssistConfig({
+    ...config,
     codexEndpoint:
       typeof config.codexEndpoint === "string" && config.codexEndpoint.trim()
         ? config.codexEndpoint.trim()
         : DEFAULT_CODEX_LOCAL_ENDPOINT,
     codexToken: typeof config.codexToken === "string" ? config.codexToken : ""
-  };
+  });
 }
 
 export function writeAssistConfigStorage(config, storage = globalThis.localStorage) {
+  const normalized = normalizeAssistConfig(config || {});
   writeJsonMap(
     storage,
     ASSIST_CONFIG_STORAGE_KEY,
     {
-      model: typeof config?.model === "string" && config.model.trim() ? config.model.trim() : DEFAULT_ASSIST_MODEL,
-      apiKey: typeof config?.apiKey === "string" ? config.apiKey : "",
-      codexEndpoint:
-        typeof config?.codexEndpoint === "string" && config.codexEndpoint.trim()
-          ? config.codexEndpoint.trim()
-          : DEFAULT_CODEX_LOCAL_ENDPOINT,
-      codexToken: typeof config?.codexToken === "string" ? config.codexToken : ""
+      model: normalized.model,
+      apiKey: normalized.apiKey,
+      selectedProfileId: normalized.selectedProfileId,
+      didacticProfileId: normalized.didacticProfileId,
+      profileTuning: normalized.profileTuning,
+      customProfiles: normalized.customProfiles,
+      codexEndpoint: normalized.codexEndpoint || DEFAULT_CODEX_LOCAL_ENDPOINT,
+      codexToken: normalized.codexToken
     }
   );
 }

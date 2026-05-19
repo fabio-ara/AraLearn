@@ -277,6 +277,78 @@ export const CARD_RESOURCE_DEFINITIONS = Object.freeze([
     }
   }),
   Object.freeze({
+    id: "graph",
+    label: "Grafo",
+    shortDescription: "Grafo matemático simples, não orientado, com pesos e destaque opcional.",
+    publicResourceType: "graph",
+    limits: { maxVertices: 10, maxEdges: 18, maxLabelChars: 40 },
+    schema: {
+      type: "object",
+      required: ["resourceType", "title", "vertices", "edges"],
+      properties: {
+        position: { type: "number" },
+        resourceType: { const: "graph" },
+        title: { type: "string" },
+        prompt: { type: "string" },
+        sourceRefs: { type: "array", items: { type: "string" } },
+        sourceNote: { type: "string" },
+        vertices: {
+          type: "array",
+          minItems: 1,
+          maxItems: 10,
+          items: {
+            type: "object",
+            required: ["id"],
+            properties: {
+              id: { type: "string" },
+              label: { type: "string", maxLength: 40 },
+              x: { type: "number", minimum: 0, maximum: 100 },
+              y: { type: "number", minimum: 0, maximum: 100 }
+            },
+            additionalProperties: false
+          }
+        },
+        edges: {
+          type: "array",
+          maxItems: 18,
+          items: {
+            type: "object",
+            required: ["from", "to"],
+            properties: {
+              from: { type: "string" },
+              to: { type: "string" },
+              weight: {
+                anyOf: [
+                  { type: "number" },
+                  { type: "string", maxLength: 24 }
+                ]
+              },
+              label: { type: "string", maxLength: 40 }
+            },
+            additionalProperties: false
+          }
+        },
+        highlight: {
+          type: "object",
+          properties: {
+            vertices: { type: "array", items: { type: "string" } },
+            edges: {
+              type: "array",
+              items: {
+                type: "array",
+                minItems: 2,
+                maxItems: 2,
+                items: { type: "string" }
+              }
+            }
+          },
+          additionalProperties: false
+        }
+      },
+      additionalProperties: false
+    }
+  }),
+  Object.freeze({
     id: "block_gap_fill",
     label: "Lacunas com blocos",
     shortDescription: "Parágrafo com lacunas por opções e comentário posterior.",
@@ -527,6 +599,56 @@ export function validateTreeResource(card) {
     }
     if (parentId && parentId === node?.id) {
       errors.push("Nó de tree não pode apontar para si mesmo.");
+    }
+  });
+
+  return errors;
+}
+
+export function validateGraphResource(card) {
+  const errors = [];
+  if (!card || typeof card !== "object") {
+    return ["graph inválido."];
+  }
+
+  const vertices = Array.isArray(card.vertices) ? card.vertices : [];
+  const edges = Array.isArray(card.edges) ? card.edges : [];
+  if (!vertices.length || vertices.length > 10) {
+    errors.push("graph deve ter entre 1 e 10 vértices.");
+  }
+
+  const ids = new Set();
+  vertices.forEach((vertex) => {
+    const id = typeof vertex?.id === "string" ? vertex.id.trim() : "";
+    const label = typeof vertex?.label === "string" ? vertex.label.trim() : "";
+    if (!id || ids.has(id)) {
+      errors.push("Cada vértice de graph precisa de id único.");
+    }
+    ids.add(id);
+    if (label && label.length > 40) {
+      errors.push("Cada label de vértice em graph deve ser curto.");
+    }
+    ["x", "y"].forEach((fieldName) => {
+      if (vertex?.[fieldName] === undefined) {
+        return;
+      }
+      const value = Number(vertex[fieldName]);
+      if (!Number.isFinite(value) || value < 0 || value > 100) {
+        errors.push(`graph.${fieldName} deve ficar entre 0 e 100.`);
+      }
+    });
+  });
+
+  edges.forEach((edge) => {
+    const from = typeof edge?.from === "string" ? edge.from.trim() : "";
+    const to = typeof edge?.to === "string" ? edge.to.trim() : "";
+    if (!from || !to || !ids.has(from) || !ids.has(to)) {
+      errors.push("Toda aresta de graph deve apontar para vértices existentes.");
+      return;
+    }
+    if (from === to) {
+      errors.push("graph não aceita laços na primeira versão.");
+      return;
     }
   });
 

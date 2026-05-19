@@ -1,3 +1,8 @@
+import {
+  buildDidacticProductionPolicy,
+  summarizeDidacticProductionPolicyForPrompt
+} from "./didacticProductionPolicy.js";
+
 export const METICULOUS_POLICY_ID = "meticulousDidacticPolicy.v1";
 
 const SHALLOW_CRITERIA = Object.freeze([
@@ -28,6 +33,7 @@ const BAD_REPETITION_CRITERIA = Object.freeze([
 ]);
 
 export function buildMeticulousDidacticPolicy({ weakModelMode = true } = {}) {
+  const production = buildDidacticProductionPolicy({ weakModelMode });
   return {
     policyId: METICULOUS_POLICY_ID,
     weakModelCompatible: weakModelMode === true,
@@ -67,12 +73,18 @@ export function buildMeticulousDidacticPolicy({ weakModelMode = true } = {}) {
       "mesmo coverageRole",
       "mesmo practiceVariantRef",
       "mesma finalidade textual"
-    ]
+    ],
+    productionVocabulary: {
+      sequenceLabel: production.exhaustiveCardSequence.label,
+      targetStudentProfile: production.targetStudentProfile,
+      microsequencePrinciple: production.microsequencePrinciple
+    }
   };
 }
 
 export function summarizeMeticulousPolicyForPrompt({ weakModelMode = true } = {}) {
   const policy = buildMeticulousDidacticPolicy({ weakModelMode });
+  const production = summarizeDidacticProductionPolicyForPrompt({ weakModelMode });
   return {
     policyId: policy.policyId,
     rejectGenericSummary: policy.rejectGenericSummary,
@@ -80,6 +92,7 @@ export function summarizeMeticulousPolicyForPrompt({ weakModelMode = true } = {}
     minimumDidacticFunctionsPerMicrosequence: policy.minimumDidacticFunctionsPerMicrosequence,
     minimumPracticeVariantsForCoreItem: policy.minimumPracticeVariantsForCoreItem,
     askForNewMicrosequenceWhen: policy.askForNewMicrosequenceWhen,
-    askForPracticeVariationWhen: policy.askForPracticeVariationWhen
+    askForPracticeVariationWhen: policy.askForPracticeVariationWhen,
+    productionVocabulary: production
   };
 }

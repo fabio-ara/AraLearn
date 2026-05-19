@@ -211,6 +211,55 @@ function adaptMatrix(card) {
   };
 }
 
+function adaptGraph(card) {
+  const vertices = (Array.isArray(card.vertices) ? card.vertices : []).map((vertex) => ({
+    id: text(vertex?.id),
+    ...(text(vertex?.label) ? { label: text(vertex.label) } : {}),
+    ...(Number.isFinite(Number(vertex?.x)) ? { x: Number(vertex.x) } : {}),
+    ...(Number.isFinite(Number(vertex?.y)) ? { y: Number(vertex.y) } : {})
+  })).filter((vertex) => vertex.id);
+
+  const edges = (Array.isArray(card.edges) ? card.edges : []).map((edge) => ({
+    from: text(edge?.from),
+    to: text(edge?.to),
+    ...(edge?.weight !== undefined && edge?.weight !== null && String(edge.weight).trim() !== ""
+      ? {
+          weight: typeof edge.weight === "number" && Number.isFinite(edge.weight)
+            ? edge.weight
+            : text(edge.weight)
+        }
+      : {}),
+    ...(text(edge?.label) ? { label: text(edge.label) } : {})
+  })).filter((edge) => edge.from && edge.to);
+
+  const highlightVertices = Array.isArray(card?.highlight?.vertices)
+    ? card.highlight.vertices.map(text).filter(Boolean)
+    : [];
+  const highlightEdges = Array.isArray(card?.highlight?.edges)
+    ? card.highlight.edges
+        .filter((pair) => Array.isArray(pair) && pair.length === 2)
+        .map((pair) => [text(pair[0]), text(pair[1])].filter(Boolean))
+        .filter((pair) => pair.length === 2)
+    : [];
+
+  return {
+    title: text(card.title) || "Grafo",
+    ...(text(card.prompt) ? { say: text(card.prompt) } : {}),
+    graph: {
+      vertices,
+      edges,
+      ...((highlightVertices.length || highlightEdges.length)
+        ? {
+            highlight: {
+              ...(highlightVertices.length ? { vertices: highlightVertices } : {}),
+              ...(highlightEdges.length ? { edges: highlightEdges } : {})
+            }
+          }
+        : {})
+    }
+  };
+}
+
 export function adaptResourceCardToPublicCard(card) {
   const resourceType = text(card?.resourceType);
   if (resourceType === "paragraph") {
@@ -263,6 +312,9 @@ export function adaptResourceCardToPublicCard(card) {
   }
   if (resourceType === "plane") {
     return sanitizeContractCard(withSourceRefs(adaptPlane(card), card));
+  }
+  if (resourceType === "graph") {
+    return sanitizeContractCard(withSourceRefs(adaptGraph(card), card));
   }
   if (resourceType === "matrix") {
     return sanitizeContractCard(withSourceRefs(adaptMatrix(card), card));

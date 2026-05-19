@@ -1723,6 +1723,125 @@ function renderPlaneBlock(block, renderOptions = {}, blockKey = "runtime-plane")
   return bodyHtml + feedbackHtml + "</div>";
 }
 
+function buildRuntimeGraphEdgeKey(from, to) {
+  return [String(from || ""), String(to || "")].sort().join("::");
+}
+
+function readGraphEdgeDisplayText(edge) {
+  const label = normalizeInlineText(edge?.label);
+  if (label) {
+    return label;
+  }
+  const weight = normalizeInlineText(edge?.weight);
+  return weight;
+}
+
+function renderGraphBlock(block) {
+  const vertices = Array.isArray(block?.vertices) ? block.vertices : [];
+  const edges = Array.isArray(block?.edges) ? block.edges : [];
+  const vertexMap = new Map(vertices.map((vertex) => [vertex.id, vertex]));
+  const ariaLabel = normalizeInlineText(block?.ariaLabel || block?.summaryText) || "Grafo matemático";
+
+  const edgesHtml = edges
+    .map((edge, index) => {
+      const from = vertexMap.get(edge?.from);
+      const to = vertexMap.get(edge?.to);
+      if (!from || !to) {
+        return "";
+      }
+      const labelText = readGraphEdgeDisplayText(edge);
+      const midX = Number(((Number(from.x) + Number(to.x)) / 2).toFixed(2));
+      const midY = Number(((Number(from.y) + Number(to.y)) / 2).toFixed(2));
+      const pillWidth = Math.max(12, Math.min(30, labelText.length * 4.8 + 8));
+      const labelHtml = labelText
+        ? '<g class="runtime-graph-edge-label" transform="translate(' +
+          midX +
+          " " +
+          midY +
+          ')">' +
+          '<rect x="' +
+          Number((-pillWidth / 2).toFixed(2)) +
+          '" y="-7.5" width="' +
+          Number(pillWidth.toFixed(2)) +
+          '" height="15" rx="7.5" ry="7.5" fill="var(--surface-raised, rgba(255,255,255,0.96))" stroke="var(--card-border-soft, rgba(15,23,42,0.14))" stroke-width="0.7"></rect>' +
+          '<text text-anchor="middle" dominant-baseline="middle" y="0.5" fill="var(--text-strong, currentColor)" font-size="5.1" font-weight="600">' +
+          escapeHtml(labelText) +
+          "</text></g>"
+        : "";
+
+      return (
+        '<g class="runtime-graph-edge-group' +
+        (edge?.highlighted ? " is-highlighted" : "") +
+        '" data-edge-key="' +
+        escapeHtml(buildRuntimeGraphEdgeKey(edge?.from, edge?.to) || `edge-${index}`) +
+        '">' +
+        '<line class="runtime-graph-edge' +
+        (edge?.highlighted ? " is-highlighted" : "") +
+        '" x1="' +
+        escapeHtml(from.x) +
+        '" y1="' +
+        escapeHtml(from.y) +
+        '" x2="' +
+        escapeHtml(to.x) +
+        '" y2="' +
+        escapeHtml(to.y) +
+        '" stroke="' +
+        (edge?.highlighted ? "var(--accent-strong, #0f766e)" : "var(--card-border-strong, currentColor)") +
+        '" stroke-width="' +
+        (edge?.highlighted ? "2.6" : "1.9") +
+        '" stroke-linecap="round"></line>' +
+        labelHtml +
+        "</g>"
+      );
+    })
+    .join("");
+
+  const verticesHtml = vertices
+    .map((vertex) => (
+      '<g class="runtime-graph-vertex-group' +
+      (vertex?.highlighted ? " is-highlighted" : "") +
+      '" transform="translate(' +
+      escapeHtml(vertex?.x) +
+      " " +
+      escapeHtml(vertex?.y) +
+      ')">' +
+      '<circle class="runtime-graph-vertex' +
+      (vertex?.highlighted ? " is-highlighted" : "") +
+      '" cx="0" cy="0" r="7.8" fill="' +
+      (vertex?.highlighted ? "var(--accent-soft, rgba(15,118,110,0.14))" : "var(--surface-raised, rgba(255,255,255,0.96))") +
+      '" stroke="' +
+      (vertex?.highlighted ? "var(--accent-strong, #0f766e)" : "var(--card-border-strong, currentColor)") +
+      '" stroke-width="' +
+      (vertex?.highlighted ? "2.2" : "1.7") +
+      '"></circle>' +
+      '<text class="runtime-graph-vertex-label" text-anchor="middle" dominant-baseline="central" y="0.5" fill="var(--text-strong, currentColor)" font-size="5.4" font-weight="700">' +
+      escapeHtml(vertex?.label || vertex?.id || "") +
+      "</text></g>"
+    ))
+    .join("");
+
+  const legend = block?.summaryText
+    ? '<div class="runtime-graph-caption">' + renderMarkdownInline(block.summaryText) + "</div>"
+    : "";
+
+  return (
+    '<div class="runtime-block runtime-graph-block">' +
+    '<div class="runtime-graph-wrap">' +
+    '<svg class="runtime-graph-svg" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet" role="img" aria-label="' +
+    escapeHtmlAttribute(ariaLabel) +
+    '">' +
+    '<title>' +
+    escapeHtml(ariaLabel) +
+    "</title>" +
+    '<rect class="runtime-graph-surface" x="4" y="4" width="92" height="92" rx="18" ry="18" fill="var(--surface-subtle, rgba(148,163,184,0.08))" stroke="var(--card-border-soft, rgba(15,23,42,0.14))" stroke-width="0.8"></rect>' +
+    edgesHtml +
+    verticesHtml +
+    "</svg>" +
+    legend +
+    "</div></div>"
+  );
+}
+
 function renderMatrixBlock(block, renderOptions = {}, blockKey = "runtime-matrix") {
   const usesTextGap = blockUsesTextGapExercise(block);
   const exercise = renderOptions.textGapExerciseStateByBlockKey?.[blockKey] || renderOptions.completeExerciseStateByBlockKey?.[blockKey] || null;
@@ -2644,6 +2763,9 @@ function renderRuntimeBlock(block, renderOptions = {}, blockKey = "runtime-block
   if (block.kind === "plane") {
     return renderPlaneBlock(block, renderOptions, blockKey);
   }
+  if (block.kind === "graph") {
+    return renderGraphBlock(block, renderOptions, blockKey);
+  }
   if (block.kind === "matrix") {
     return renderMatrixBlock(block, renderOptions, blockKey);
   }
@@ -2729,6 +2851,7 @@ export function renderCardRuntimeArticle(card) {
     table: "card-table",
     tree: "card-tree",
     flow: "card-flow",
+    graph: "card-graph",
     plane: "card-plane",
     matrix: "card-matrix"
   };

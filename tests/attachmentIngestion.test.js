@@ -1,0 +1,203 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+
+import { ingestAttachments } from "../src/generation/ingestion/attachmentIngestion.js";
+
+function encodeText(value) {
+  return new TextEncoder().encode(value).buffer;
+}
+
+function makeFile({ name, type, content = "", binaryContent = null }) {
+  return {
+    name,
+    type,
+    async text() {
+      return content;
+    },
+    async arrayBuffer() {
+      return binaryContent || encodeText(content);
+    }
+  };
+}
+
+test("ingestAttachments preserva texto simples", async () => {
+  const result = await ingestAttachments([
+    makeFile({
+      name: "ementa.md",
+      type: "text/markdown",
+      content: "# Lógica\n\n- Proposições\n- Conectivos"
+    })
+  ]);
+
+  assert.equal(result.extractedCount, 1);
+  assert.equal(result.attachments[0].name, "ementa.md");
+  assert.match(result.attachments[0].textContent, /Proposições/);
+  assert.ok(result.attachments[0].sourceBlocks.length >= 2);
+  assert.deepEqual(result.warnings, []);
+});
+
+test("ingestAttachments extrai texto de html simples", async () => {
+  const result = await ingestAttachments([
+    makeFile({
+      name: "pagina.html",
+      type: "text/html",
+      content: "<html><body><h1>Redes</h1><p>LAN conecta um mesmo ambiente.</p></body></html>"
+    })
+  ]);
+
+  assert.equal(result.extractedCount, 1);
+  assert.match(result.attachments[0].textContent, /Redes/);
+  assert.match(result.attachments[0].textContent, /LAN conecta um mesmo ambiente/);
+  assert.ok(result.attachments[0].sourceBlocks.length >= 1);
+  assert.ok(result.attachments[0].sourceBlocks.some((block) => /Redes/.test(block.text)));
+});
+
+test("ingestAttachments usa parser de pdf quando disponivel", async () => {
+  const result = await ingestAttachments([
+    makeFile({
+      name: "apostila.pdf",
+      type: "application/pdf",
+      binaryContent: encodeText("pdf-bytes")
+    })
+  ], {
+    async loadPdfjsModule() {
+      return {
+        GlobalWorkerOptions: {},
+        getDocument() {
+          return {
+            promise: Promise.resolve({
+              numPages: 1,
+              async getPage() {
+                return {
+                  async getTextContent() {
+                    return {
+                      items: [
+                        { str: "Rede", hasEOL: false },
+                        { str: "local", hasEOL: true },
+                        { str: "conecta dispositivos.", hasEOL: false }
+                      ]
+                    };
+                  }
+                };
+              }
+            })
+          };
+        }
+      };
+    }
+  });
+
+  assert.equal(result.extractedCount, 1);
+  assert.match(result.attachments[0].textContent, /Rede local/);
+  assert.equal(result.attachments[0].ingestionStatus, "supported");
+});
+
+test("ingestAttachments limpa cabecalho repetido, numero de pagina e hifenizacao de pdf", async () => {
+  const result = await ingestAttachments([
+    makeFile({
+      name: "apostila-limpeza.pdf",
+      type: "application/pdf",
+      binaryContent: encodeText("pdf-bytes")
+    })
+  ], {
+    async loadPdfjsModule() {
+      return {
+        GlobalWorkerOptions: {},
+        getDocument() {
+          return {
+            promise: Promise.resolve({
+              numPages: 2,
+              async getPage(pageNumber) {
+                return {
+                  async getTextContent() {
+                    if (pageNumber === 1) {
+                      return {
+                        items: [
+                          { str: "Algoritmos 1 - Aula 3", hasEOL: true },
+                          { str: "Intro-", hasEOL: true },
+                          { str: "dução", hasEOL: true },
+                          { str: "rede local", hasEOL: true },
+                          { str: "1", hasEOL: true }
+                        ]
+                      };
+                    }
+                    return {
+                      items: [
+                        { str: "Algoritmos 1 - Aula 3", hasEOL: true },
+                        { str: "continua", hasEOL: true },
+                        { str: "na prática.", hasEOL: true },
+                        { str: "2", hasEOL: true }
+                      ]
+                    };
+                  }
+                };
+              }
+            })
+          };
+        }
+      };
+    }
+  });
+
+  assert.doesNotMatch(result.attachments[0].textContent, /Algoritmos 1 - Aula 3/);
+  assert.doesNotMatch(result.attachments[0].textContent, /^\d$/m);
+  assert.match(result.attachments[0].textContent, /Introdução/);
+  assert.match(result.attachments[0].textContent, /rede local continua na prática\./i);
+});
+
+test("ingestAttachments usa parser de docx e preserva warnings", async () => {
+  const result = await ingestAttachments([
+    makeFile({
+      name: "roteiro.docx",
+      type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      binaryContent: encodeText("docx-bytes")
+    })
+  ], {
+    async loadMammothLib() {
+      return {
+        async extractRawText() {
+          return {
+            value: "Objetivo da lição\n\nComparar LAN e internet.",
+            messages: [{ message: "tabela simplificada durante a extração" }]
+          };
+        }
+      };
+    }
+  });
+
+  assert.equal(result.extractedCount, 1);
+  assert.match(result.attachments[0].textContent, /Comparar LAN e internet/);
+  assert.equal(result.attachments[0].ingestionStatus, "supported");
+  assert.equal(result.attachments[0].sourceBlocks[0].instructionalRole, "objective");
+  assert.equal(result.attachments[0].sourceBlocks[1].instructionalRole, "objective");
+  assert.match(result.warnings[0], /tabela simplificada/i);
+});
+
+test("ingestAttachments propaga papel instrucional de secao para itens de lista", async () => {
+  const result = await ingestAttachments([
+    makeFile({
+      name: "lista.md",
+      type: "text/markdown",
+      content: "Exercícios\n\n1. Compare LAN e WAN.\n2. Identifique o roteador."
+    })
+  ]);
+
+  assert.equal(result.attachments[0].sourceBlocks[0].instructionalRole, "exercise");
+  assert.equal(result.attachments[0].sourceBlocks[1].instructionalRole, "exercise");
+  assert.equal(result.attachments[0].sourceBlocks[2].instructionalRole, "exercise");
+});
+
+test("ingestAttachments sinaliza formato ainda nao suportado", async () => {
+  const result = await ingestAttachments([
+    makeFile({
+      name: "quadro.png",
+      type: "image/png",
+      binaryContent: encodeText("png")
+    })
+  ]);
+
+  assert.equal(result.extractedCount, 0);
+  assert.equal(result.attachments[0].textContent, "");
+  assert.equal(result.attachments[0].ingestionStatus, "unsupported");
+  assert.match(result.warnings[0], /ingestão textual ainda não suportada/i);
+});

@@ -1,7 +1,66 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { createProfileTuning } from "../src/generation/runtime/profileTuning.js";
+import { createFakeProvider } from "../src/generation/providers/fakeProvider.js";
 
-import { resolveGenerationAssistMode, resolveGenerationPanelScopeFromAction } from "../src/ui/lessonEditorApp.js";
+import {
+  applyGenerationScope,
+  setGenerationDraftInput,
+  toggleGenerationDraftLevel
+} from "../src/generation/runtime/generationDraftState.js";
+import { canSubmitAssistRequestFromState } from "../src/ui/lessonEditorApp.js";
+import {
+  applyAssistConfigPatch,
+  buildClosedGenerationPanelState,
+  buildGenerationInputState,
+  buildGenerationLevelState,
+  buildGenerationResultClearedState,
+  buildOpenedGenerationPanelState,
+  checkCodexCliConnection,
+  createCodexCliSetupStatus,
+  executeStructureGeneration,
+  normalizeAssistConfig,
+  resolveGenerationScopeViewState,
+  resolveOpenGeneratedLessonState
+} from "../src/generation/runtime/generationEditorRuntime.js";
+import {
+  resolveGenerationProviderReadiness,
+  resolveGenerationAssistMode,
+  resolveGenerationPanelScopeFromAction,
+  resolveGenerationScopeState
+} from "../src/generation/runtime/generationViewModel.js";
+
+test("canSubmitAssistRequestFromState habilita criação local com intenção e entrada útil", () => {
+  assert.equal(
+    canSubmitAssistRequestFromState({
+      promptText: "Crie uma ponte curta antes da prática principal.",
+      actionIntent: "create_after_current",
+      attachmentCount: 0,
+      isSubmitting: false
+    }),
+    true
+  );
+
+  assert.equal(
+    canSubmitAssistRequestFromState({
+      promptText: "",
+      actionIntent: "next_planned",
+      attachmentCount: 0,
+      isSubmitting: false
+    }),
+    true
+  );
+
+  assert.equal(
+    canSubmitAssistRequestFromState({
+      promptText: "",
+      actionIntent: "create_after_current",
+      attachmentCount: 0,
+      isSubmitting: false
+    }),
+    false
+  );
+});
 
 test("resolveGenerationPanelScopeFromAction abre painel global sem escopo", () => {
   assert.deepEqual(
@@ -87,24 +146,13 @@ test("resolveGenerationPanelScopeFromAction rejeita ação sem escopo suficiente
   );
 });
 
-test("resolveGenerationAssistMode usa geração contextual de microssequências quando a lição existe", () => {
+test("resolveGenerationAssistMode mantém a geração estrutural mesmo com lição resolvida", () => {
   assert.equal(
     resolveGenerationAssistMode({
       lessonFixed: true,
       hasResolvedLesson: true
     }),
-    "generate-lesson-microsequences"
-  );
-});
-
-test("resolveGenerationAssistMode usa modo combinado quando a lição existe e o reposicionamento está ligado", () => {
-  assert.equal(
-    resolveGenerationAssistMode({
-      lessonFixed: true,
-      hasResolvedLesson: true,
-      repositionMicrosequences: true
-    }),
-    "generate-and-reposition-lesson-microsequences"
+    "generate-top-down-structure"
   );
 });
 
@@ -123,4 +171,559 @@ test("resolveGenerationAssistMode mantém geração estrutural fora da lição r
     }),
     "generate-top-down-structure"
   );
+});
+
+test("resolveGenerationScopeState monta o view-model de escopo fora da UI", () => {
+  const projectDocument = {
+    courses: [
+      {
+        key: "course-a",
+        modules: [
+          {
+            key: "module-a",
+            lessons: [{ key: "lesson-a" }]
+          }
+        ]
+      }
+    ]
+  };
+
+  const state = resolveGenerationScopeState({
+    draft: {
+      courseFixed: true,
+      moduleFixed: true,
+      lessonFixed: true,
+      courseInput: "Curso A",
+      moduleInput: "Módulo A",
+      lessonInput: "Lição A",
+      courseKey: "course-a",
+      moduleKey: "module-a",
+      lessonKey: "lesson-a",
+      promptText: "Gerar estrutura.",
+      attachments: []
+    },
+    projectDocument,
+    visibleCourses: projectDocument.courses,
+    findCourse: (project, key) => project.courses.find((item) => item.key === key) || null,
+    findModule: (project, courseKey, moduleKey) =>
+      project.courses.find((item) => item.key === courseKey)?.modules.find((item) => item.key === moduleKey) || null,
+    findLesson: (project, courseKey, moduleKey, lessonKey) =>
+      project.courses
+        .find((item) => item.key === courseKey)
+        ?.modules.find((item) => item.key === moduleKey)
+        ?.lessons.find((item) => item.key === lessonKey) || null
+  });
+
+  assert.equal(state.canSubmit, true);
+  assert.equal(state.actionSummary, "Lição existente + microssequências planejadas");
+  assert.equal(state.lessonInputEnabled, true);
+  assert.equal(state.generationMode, "generate-top-down-structure");
+});
+
+test("resolveGenerationProviderReadiness só valida provider local", async () => {
+  const gemini = await resolveGenerationProviderReadiness({
+    selectedModel: "gemini-2.5-flash"
+  });
+  assert.equal(gemini.ok, true);
+
+  const codex = await resolveGenerationProviderReadiness({
+    selectedModel: "codex-cli-local",
+    codexEndpoint: "http://127.0.0.1:4183/assist",
+    codexToken: "segredo",
+    checkCodexLocalHealth: async ({ endpoint, token }) => ({
+      ok: endpoint === "http://127.0.0.1:4183/assist" && token === "segredo",
+      error: "",
+      data: { ok: true }
+    })
+  });
+  assert.equal(codex.ok, true);
+});
+
+test("createCodexCliSetupStatus normaliza payload transitório", () => {
+  assert.deepEqual(createCodexCliSetupStatus({ checking: true, data: "ignorar" }), {
+    ok: false,
+    checking: true,
+    error: "",
+    data: null
+  });
+});
+
+test("normalizeAssistConfig e patch consolidam config fora da UI", () => {
+  assert.deepEqual(normalizeAssistConfig({ codexEndpoint: " " }), {
+    model: "gemini-2.5-flash",
+    apiKey: "",
+    selectedProfileId: "aralearn.engine.ads.general.v3",
+    didacticProfileId: "aralearn.engine.ads.general.v3",
+    profileTuning: createProfileTuning("aralearn.engine.ads.general.v3"),
+    customProfiles: [],
+    codexEndpoint: "http://127.0.0.1:4183/assist",
+    codexToken: ""
+  });
+
+  const patched = applyAssistConfigPatch({
+    assistConfig: {
+      model: "gemini-2.5-flash",
+      apiKey: " chave ",
+      selectedProfileId: "aralearn.engine.ads.general.v3",
+      didacticProfileId: "aralearn.engine.ads.general.v3",
+      profileTuning: createProfileTuning("aralearn.engine.ads.general.v3"),
+      customProfiles: [],
+      codexEndpoint: "",
+      codexToken: " token "
+    },
+    patch: {
+      model: "codex-cli-local",
+      codexEndpoint: " http://127.0.0.1:9999/assist ",
+      didacticProfileId: "aralearn.engine.ads.systems.v1",
+      profileTuning: createProfileTuning("aralearn.engine.ads.systems.v1", {
+        targetStudentProfile: "estudante com pouco tempo"
+      })
+    }
+  });
+
+  assert.equal(patched.assistConfig.model, "codex-cli-local");
+  assert.equal(patched.assistConfig.apiKey, "chave");
+  assert.equal(patched.assistConfig.selectedProfileId, "aralearn.engine.ads.systems.v1");
+  assert.equal(patched.assistConfig.didacticProfileId, "aralearn.engine.ads.systems.v1");
+  assert.equal(patched.assistConfig.profileTuning.targetStudentProfile, "estudante com pouco tempo");
+  assert.equal(patched.assistConfig.codexEndpoint, "http://127.0.0.1:9999/assist");
+  assert.equal(patched.assistConfigDraft.codexToken, "token");
+});
+
+test("checkCodexCliConnection normaliza erro do health-check", async () => {
+  const failed = await checkCodexCliConnection({
+    assistConfig: {
+      codexEndpoint: "http://127.0.0.1:4183/assist",
+      codexToken: "segredo"
+    },
+    checkCodexLocalHealth: async () => {
+      throw new Error("porta fechada");
+    }
+  });
+
+  assert.equal(failed.status.ok, false);
+  assert.equal(failed.setupStatus.error, "porta fechada");
+  assert.equal(failed.setupStatus.checking, false);
+});
+
+test("runtime do painel de geração abre, limpa e fecha sem depender da UI", () => {
+  const projectDocument = {
+    courses: [
+      {
+        key: "course-a",
+        title: "Curso A",
+        modules: [
+          {
+            key: "module-a",
+            title: "Módulo A",
+            lessons: [{ key: "lesson-a", title: "Lição A" }]
+          }
+        ]
+      }
+    ]
+  };
+  const visibleCourses = projectDocument.courses;
+  const opened = buildOpenedGenerationPanelState({
+    draft: {
+      promptText: "manter",
+      errorMessage: "erro antigo",
+      lastResult: { message: "anterior" }
+    },
+    scope: { courseKey: "course-a", moduleKey: "module-a" },
+    projectDocument,
+    visibleCourses,
+    findCourse: (project, key) => project.courses.find((item) => item.key === key) || null,
+    findModule: (project, courseKey, moduleKey) =>
+      project.courses.find((item) => item.key === courseKey)?.modules.find((item) => item.key === moduleKey) || null,
+    findLesson: (project, courseKey, moduleKey, lessonKey) =>
+      project.courses
+        .find((item) => item.key === courseKey)
+        ?.modules.find((item) => item.key === moduleKey)
+        ?.lessons.find((item) => item.key === lessonKey) || null
+  });
+
+  assert.equal(opened.generationPanelOpen, true);
+  assert.equal(opened.entityEditor, null);
+  assert.equal(opened.draft.courseFixed, true);
+  assert.equal(opened.draft.moduleFixed, true);
+  assert.equal(opened.draft.errorMessage, "");
+  assert.equal(opened.pendingGeneratedNavigation, null);
+
+  const scopeViewState = resolveGenerationScopeViewState({
+    draft: opened.draft,
+    projectDocument,
+    visibleCourses,
+    findCourse: (project, key) => project.courses.find((item) => item.key === key) || null,
+    findModule: (project, courseKey, moduleKey) =>
+      project.courses.find((item) => item.key === courseKey)?.modules.find((item) => item.key === moduleKey) || null,
+    findLesson: (project, courseKey, moduleKey, lessonKey) =>
+      project.courses
+        .find((item) => item.key === courseKey)
+        ?.modules.find((item) => item.key === moduleKey)
+        ?.lessons.find((item) => item.key === lessonKey) || null
+  });
+  assert.equal(scopeViewState.lessonToggleEnabled, true);
+
+  const changedLevel = buildGenerationLevelState({
+    draft: opened.draft,
+    level: "lesson",
+    projectDocument,
+    visibleCourses,
+    findCourse: (project, key) => project.courses.find((item) => item.key === key) || null,
+    findModule: (project, courseKey, moduleKey) =>
+      project.courses.find((item) => item.key === courseKey)?.modules.find((item) => item.key === moduleKey) || null,
+    findLesson: (project, courseKey, moduleKey, lessonKey) =>
+      project.courses
+        .find((item) => item.key === courseKey)
+        ?.modules.find((item) => item.key === moduleKey)
+        ?.lessons.find((item) => item.key === lessonKey) || null
+  });
+  assert.equal(changedLevel.draft.lessonFixed, true);
+
+  const changedInput = buildGenerationInputState({
+    draft: changedLevel.draft,
+    level: "lesson",
+    value: "Lição A",
+    visibleCourses
+  });
+  assert.equal(changedInput.draft.lessonKey, "lesson-a");
+
+  const cleared = buildGenerationResultClearedState({
+    draft: {
+      ...changedInput.draft,
+      errorMessage: "erro",
+      lastResult: { message: "ok" }
+    },
+    pendingGeneratedNavigation: { lessonKey: "lesson-a" }
+  });
+  assert.equal(cleared.draft.errorMessage, "");
+  assert.equal(cleared.draft.lastResult, null);
+  assert.equal(cleared.pendingGeneratedNavigation, null);
+
+  const closed = buildClosedGenerationPanelState({
+    draft: changedInput.draft,
+    preserveGeneratedResult: true,
+    pendingGeneratedNavigation: { lessonKey: "lesson-a" }
+  });
+  assert.equal(closed.generationPanelOpen, false);
+  assert.equal(closed.pendingGeneratedNavigation.lessonKey, "lesson-a");
+});
+
+test("resolveOpenGeneratedLessonState valida abertura fora da UI", () => {
+  const failed = resolveOpenGeneratedLessonState({});
+  assert.equal(failed.ok, false);
+  assert.match(failed.errorMessage, /Nenhuma estrutura nova/);
+
+  const opened = resolveOpenGeneratedLessonState({
+    pendingGeneratedNavigation: {
+      courseKey: "course-a",
+      moduleKey: "module-a",
+      lessonKey: "lesson-a"
+    }
+  });
+  assert.equal(opened.ok, true);
+  assert.equal(opened.viewState.view, "lesson");
+});
+
+test("applyGenerationScope fixa escopo resolvido fora da UI", () => {
+  const projectDocument = {
+    courses: [
+      {
+        key: "course-a",
+        title: "Curso A",
+        modules: [
+          {
+            key: "module-a",
+            title: "Módulo A",
+            lessons: [{ key: "lesson-a", title: "Lição A" }]
+          }
+        ]
+      }
+    ]
+  };
+  const visibleCourses = projectDocument.courses;
+  const draft = applyGenerationScope({
+    draft: { promptText: "manter" },
+    scope: { courseKey: "course-a", moduleKey: "module-a", lessonKey: "lesson-a" },
+    projectDocument,
+    visibleCourses,
+    findCourse: (project, key) => project.courses.find((item) => item.key === key) || null,
+    findModule: (project, courseKey, moduleKey) =>
+      project.courses.find((item) => item.key === courseKey)?.modules.find((item) => item.key === moduleKey) || null,
+    findLesson: (project, courseKey, moduleKey, lessonKey) =>
+      project.courses
+        .find((item) => item.key === courseKey)
+        ?.modules.find((item) => item.key === moduleKey)
+        ?.lessons.find((item) => item.key === lessonKey) || null
+  });
+
+  assert.equal(draft.courseFixed, true);
+  assert.equal(draft.moduleFixed, true);
+  assert.equal(draft.lessonFixed, true);
+  assert.equal(draft.courseInput, "Curso A");
+  assert.equal(draft.moduleInput, "Módulo A");
+  assert.equal(draft.lessonInput, "Lição A");
+  assert.equal(draft.promptText, "manter");
+});
+
+test("toggleGenerationDraftLevel limpa hierarquia descendente ao desligar nível pai", () => {
+  const visibleCourses = [
+    {
+      key: "course-a",
+      title: "Curso A",
+      modules: [
+        {
+          key: "module-a",
+          title: "Módulo A",
+          lessons: [{ key: "lesson-a", title: "Lição A" }]
+        }
+      ]
+    }
+  ];
+  const draft = toggleGenerationDraftLevel({
+    draft: {
+      courseFixed: true,
+      moduleFixed: true,
+      lessonFixed: true,
+      courseInput: "Curso A",
+      courseKey: "course-a",
+      moduleInput: "Módulo A",
+      moduleKey: "module-a",
+      lessonInput: "Lição A",
+      lessonKey: "lesson-a"
+    },
+    level: "course",
+    scopeState: {
+      moduleToggleEnabled: true,
+      lessonToggleEnabled: true
+    },
+    visibleCourses
+  });
+
+  assert.equal(draft.courseFixed, false);
+  assert.equal(draft.courseInput, "");
+  assert.equal(draft.moduleFixed, false);
+  assert.equal(draft.moduleInput, "");
+  assert.equal(draft.lessonFixed, false);
+  assert.equal(draft.lessonInput, "");
+});
+
+test("setGenerationDraftInput resolve keys por título no estado puro", () => {
+  const visibleCourses = [
+    {
+      key: "course-a",
+      title: "Curso A",
+      modules: [
+        {
+          key: "module-a",
+          title: "Módulo A",
+          lessons: [{ key: "lesson-a", title: "Lição A" }]
+        }
+      ]
+    }
+  ];
+
+  let draft = setGenerationDraftInput({
+    draft: {
+      courseFixed: true
+    },
+    level: "course",
+    value: "Curso A",
+    visibleCourses
+  });
+  draft = toggleGenerationDraftLevel({
+    draft,
+    level: "module",
+    scopeState: { moduleToggleEnabled: true, lessonToggleEnabled: false },
+    visibleCourses
+  });
+  draft = setGenerationDraftInput({
+    draft,
+    level: "module",
+    value: "Módulo A",
+    visibleCourses
+  });
+  draft = toggleGenerationDraftLevel({
+    draft,
+    level: "lesson",
+    scopeState: { moduleToggleEnabled: true, lessonToggleEnabled: true },
+    visibleCourses
+  });
+  draft = setGenerationDraftInput({
+    draft,
+    level: "lesson",
+    value: "Lição A",
+    visibleCourses
+  });
+
+  assert.equal(draft.courseKey, "course-a");
+  assert.equal(draft.moduleKey, "module-a");
+  assert.equal(draft.lessonKey, "lesson-a");
+});
+
+test("executeStructureGeneration bloqueia submissão inválida antes do provider", async () => {
+  const result = await executeStructureGeneration({
+    draft: {
+      promptText: "",
+      attachments: []
+    },
+    assistConfig: {
+      model: "gemini-2.5-flash"
+    },
+    projectDocument: { courses: [] },
+    visibleCourses: []
+  });
+
+  assert.equal(result.status, "invalid");
+  assert.match(result.draft.errorMessage, /Informe texto e\/ou anexo/);
+});
+
+test("executeStructureGeneration abre setup quando provider local não responde", async () => {
+  const projectDocument = {
+    courses: [{ key: "course-a", title: "Curso A", modules: [] }]
+  };
+  const result = await executeStructureGeneration({
+    draft: {
+      courseFixed: true,
+      moduleFixed: true,
+      courseInput: "Curso A",
+      courseKey: "course-a",
+      moduleInput: "Módulo novo",
+      promptText: "Gerar estrutura",
+      attachments: []
+    },
+    assistConfig: {
+      model: "codex-cli-local",
+      codexEndpoint: "http://127.0.0.1:4183/assist",
+      codexToken: "segredo"
+    },
+    projectDocument,
+    visibleCourses: projectDocument.courses,
+    checkCodexLocalHealth: async () => ({
+      ok: false,
+      error: "bridge offline",
+      data: { status: 503 }
+    })
+  });
+
+  assert.equal(result.status, "provider-unready");
+  assert.equal(result.shouldOpenCodexCliSetup, true);
+  assert.equal(result.codexCliSetupStatus.error, "bridge offline");
+});
+
+test("executeStructureGeneration retorna sucesso aplicável fora da UI", async () => {
+  const projectDocument = {
+    contract: "aralearn.contract",
+    version: 1,
+    kind: "project",
+    courses: [
+      {
+        key: "course-a",
+        title: "Curso A",
+        modules: [
+          {
+            key: "module-a",
+            title: "Módulo A",
+            lessons: [{ key: "lesson-a", title: "Lição A", microsequences: [] }]
+          }
+        ]
+      }
+    ]
+  };
+  const visibleCourses = projectDocument.courses;
+  const progressEvents = [];
+  const provider = createFakeProvider({
+    script: {
+      "infer-scope-contract": {
+        course: {
+          title: "Curso A",
+          evidencePriority: ["none"]
+        },
+        modules: [
+          {
+            title: "Módulo A",
+            include: ["Lição A", "Estrutura básica"],
+            exclude: [],
+            notes: 'Planeje apenas a lição "Lição A".',
+            assessmentStyle: "mixed"
+          }
+        ]
+      },
+      "plan-scope": {
+        course: {
+          title: "Curso A",
+          modules: [
+            {
+              title: "Módulo A",
+              lessons: [
+                {
+                  title: "Lição A",
+                  goal: "Entender a estrutura.",
+                  sourceGuideStructured: {
+                    lessonGoal: "Fixar o objetivo da lição.",
+                    notationRules: "Lição A, Estrutura básica",
+                    commonErrors: "Não confundir a base com etapas futuras."
+                  },
+                  microsequences: [
+                    {
+                      title: "Primeira microssequência",
+                      goal: "Abrir a lição.",
+                      dependsOnTitles: [],
+                      scopeLabels: ["Lição A"]
+                    },
+                    {
+                      title: "Segunda microssequência",
+                      goal: "Consolidar a estrutura.",
+                      dependsOnTitles: ["Primeira microssequência"],
+                      scopeLabels: ["Estrutura básica"]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  });
+  const result = await executeStructureGeneration({
+    draft: {
+      courseFixed: true,
+      courseInput: "Curso A",
+      courseKey: "course-a",
+      moduleFixed: true,
+      moduleInput: "Módulo A",
+      moduleKey: "module-a",
+      promptText: "Gerar estrutura",
+      attachments: [{ name: "base.md" }]
+    },
+    assistConfig: {
+      model: "gemini-2.5-flash",
+      apiKey: "chave"
+    },
+    projectDocument,
+    visibleCourses,
+    findCourse: (project, key) => project.courses.find((item) => item.key === key) || null,
+    findModule: (project, courseKey, moduleKey) =>
+      project.courses.find((item) => item.key === courseKey)?.modules.find((item) => item.key === moduleKey) || null,
+    findLesson: (project, courseKey, moduleKey, lessonKey) =>
+      project.courses
+        .find((item) => item.key === courseKey)
+        ?.modules.find((item) => item.key === moduleKey)
+        ?.lessons.find((item) => item.key === lessonKey) || null,
+    ingestAttachments: async (attachments) => ({
+      attachments: attachments.map((item) => ({ ...item, contentText: "conteúdo" })),
+      extractedCount: 1,
+      warnings: []
+    }),
+    onProgress: (event) => progressEvents.push(event),
+    provider
+  });
+
+  assert.equal(result.status, "success");
+  assert.equal(result.selection.lessonKey, "lesson-a");
+  assert.equal(result.pendingGeneratedNavigation.lessonKey, "lesson-a");
+  assert.equal(result.draft.lastResult.message, "Fluxo top-down aplicado com 1 operações e 1 evento auditável.");
+  assert.equal(result.generationResult.projectDocument.courses[0].modules[0].lessons[0].microsequences.length, 2);
+  assert.ok(progressEvents.some((event) => event.type === "provider_call_started" && event.phaseId === "normalize_intent"));
 });

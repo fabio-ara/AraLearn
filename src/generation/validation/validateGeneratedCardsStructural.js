@@ -1,4 +1,4 @@
-import { getCardResourceDefinition, validateBlockGapFill, validateTreeResource } from "../resources/cardResourceDefinitions.js";
+import { getCardResourceDefinition, validateBlockGapFill, validateGraphResource, validateTreeResource } from "../resources/cardResourceDefinitions.js";
 
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -96,6 +96,10 @@ function validateMatrix(card, errors, prefix) {
   });
 }
 
+function validateGraph(card, errors, prefix) {
+  validateGraphResource(card).forEach((error) => errors.push(`${prefix} ${error}`));
+}
+
 export function validateGeneratedCardsStructural(rawResponse, generationContract = {}) {
   const parsed = parseResponse(rawResponse);
   if (!parsed.ok) {
@@ -144,6 +148,9 @@ export function validateGeneratedCardsStructural(rawResponse, generationContract
     }
     if (card.resourceType === "matrix") {
       validateMatrix(card, structuralErrors, prefix);
+    }
+    if (card.resourceType === "graph") {
+      validateGraph(card, structuralErrors, prefix);
     }
   });
 

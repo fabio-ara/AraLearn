@@ -57,6 +57,67 @@ export function renderUiIcon(iconName, className = "ui-icon") {
     );
   }
 
+  if (iconName === "trail") {
+    return (
+      '<svg class="' +
+      classes +
+      '" viewBox="0 0 16 16" aria-hidden="true" focusable="false">' +
+      '<circle cx="3.2" cy="12.3" r="1.1" fill="currentColor"></circle>' +
+      '<circle cx="8" cy="7.9" r="1.1" fill="currentColor"></circle>' +
+      '<circle cx="12.8" cy="3.5" r="1.1" fill="currentColor"></circle>' +
+      '<path d="M4.2 11.4l2.9-2.7M8.9 7l2.9-2.7" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"></path>' +
+      '<path d="M2.6 3.6h3.2M2.6 6.2h2.2" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" opacity="0.72"></path>' +
+      "</svg>"
+    );
+  }
+
+  if (iconName === "graph") {
+    return (
+      '<svg class="' +
+      classes +
+      '" viewBox="0 0 16 16" aria-hidden="true" focusable="false">' +
+      '<circle cx="3.3" cy="8.2" r="1.5" fill="currentColor"></circle>' +
+      '<circle cx="8" cy="3.4" r="1.5" fill="currentColor"></circle>' +
+      '<circle cx="12.7" cy="8.2" r="1.5" fill="currentColor"></circle>' +
+      '<circle cx="8" cy="12.6" r="1.5" fill="currentColor"></circle>' +
+      '<path d="M4.4 7.1l2.5-2.6M9.1 4.5l2.5 2.6M4.5 9.2l2.3 2.2M9.2 11.4l2.3-2.2M4.8 8.2h6.4" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"></path>' +
+      "</svg>"
+    );
+  }
+
+  if (iconName === "add") {
+    return (
+      '<svg class="' +
+      classes +
+      '" viewBox="0 0 16 16" aria-hidden="true" focusable="false">' +
+      '<path d="M8 3.1v9.8M3.1 8h9.8" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"></path>' +
+      "</svg>"
+    );
+  }
+
+  if (iconName === "save") {
+    return (
+      '<svg class="' +
+      classes +
+      '" viewBox="0 0 16 16" aria-hidden="true" focusable="false">' +
+      '<path d="M3.2 2.8h8l1.6 1.6v8.8H3.2z" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"></path>' +
+      '<path d="M5 2.8v3.2h5V2.8" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round"></path>' +
+      '<rect x="5.1" y="9" width="5.8" height="2.8" rx="0.6" fill="none" stroke="currentColor" stroke-width="1.1"></rect>' +
+      "</svg>"
+    );
+  }
+
+  if (iconName === "trash") {
+    return (
+      '<svg class="' +
+      classes +
+      '" viewBox="0 0 16 16" aria-hidden="true" focusable="false">' +
+      '<path d="M4.3 4.6h7.4l-.6 8a1 1 0 0 1-1 .9H6a1 1 0 0 1-1-.9z" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"></path>' +
+      '<path d="M3.6 4.6h8.8M6.1 4.6V3.4a.7.7 0 0 1 .7-.7h2.4a.7.7 0 0 1 .7.7v1.2M6.6 7.1v4M9.4 7.1v4" fill="none" stroke="currentColor" stroke-width="1.15" stroke-linecap="round"></path>' +
+      "</svg>"
+    );
+  }
+
   if (iconName === "intent") {
     return (
       '<svg class="' +

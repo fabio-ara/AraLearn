@@ -1,15 +1,15 @@
 import http from "node:http";
+import fs from "node:fs";
+import path from "node:path";
 import { spawn } from "node:child_process";
 import process from "node:process";
 
 import {
-  buildAttachmentPromptSection,
-  buildCodexArgs,
-  buildLessonMicrosequencesPrompt,
-  buildTopDownPrompt,
+  buildCodexSpawnInput,
   extractJsonFromText,
   normalizePort,
-  normalizeTimeout
+  normalizeTimeout,
+  buildCodexFilePromptWrapper
 } from "./aralearnCodexBridge.lib.mjs";
 
 function normalizeText(value) {
@@ -58,17 +58,89 @@ function readJsonBody(request, maxBodyBytes) {
   });
 }
 
-function runCodex({ command, args, cwd, timeoutMs }) {
+function normalizeCodexExecutionError(error) {
+  const code = normalizeText(error?.code).toUpperCase();
+  const message = normalizeText(error?.message);
+  if (code === "ENAMETOOLONG" || code === "E2BIG" || /ENAMETOOLONG|E2BIG/i.test(message)) {
+    return new Error("A entrada enviada ao Codex local ficou grande demais para a linha de comando. Configure o bridge para usar stdin.");
+  }
+  return error instanceof Error ? error : new Error(message || "Falha inesperada ao executar o Codex.");
+}
+
+function createPromptFileTransport({ prompt = "", cwd = process.cwd() }) {
+  const normalizedPrompt = typeof prompt === "string" ? prompt : "";
+  const promptDir = path.join(cwd, ".tmp", "codex-bridge");
+  fs.mkdirSync(promptDir, { recursive: true });
+  const promptFilePath = path.join(
+    promptDir,
+    `courseforge-prompt-${Date.now()}-${Math.random().toString(36).slice(2, 10)}.md`
+  );
+  fs.writeFileSync(promptFilePath, normalizedPrompt, "utf8");
+  return {
+    promptFilePath,
+    wrapperPrompt: buildCodexFilePromptWrapper(promptFilePath)
+  };
+}
+
+function createResultFileTransport({ cwd = process.cwd(), schema = null } = {}) {
+  const promptDir = path.join(cwd, ".tmp", "codex-bridge");
+  fs.mkdirSync(promptDir, { recursive: true });
+  const outputFilePath = path.join(
+    promptDir,
+    `courseforge-output-${Date.now()}-${Math.random().toString(36).slice(2, 10)}.json`
+  );
+  const schemaFilePath =
+    schema && typeof schema === "object"
+      ? path.join(promptDir, `courseforge-schema-${Date.now()}-${Math.random().toString(36).slice(2, 10)}.json`)
+      : "";
+  if (schemaFilePath) {
+    fs.writeFileSync(schemaFilePath, JSON.stringify(schema, null, 2), "utf8");
+  }
+  return {
+    outputFilePath,
+    schemaFilePath
+  };
+}
+
+function injectCodexExecFiles(args = [], { outputFilePath = "", schemaFilePath = "" } = {}) {
+  if (!Array.isArray(args) || !args.length) {
+    return args;
+  }
+  if (args[0] !== "exec") {
+    return args;
+  }
+  const nextArgs = [...args];
+  if (!nextArgs.includes("--ignore-user-config")) {
+    nextArgs.splice(1, 0, "--ignore-user-config");
+  }
+  if (!nextArgs.includes("--disable")) {
+    nextArgs.splice(1, 0, "--disable", "plugins");
+  }
+  if (!nextArgs.includes("--color")) {
+    nextArgs.splice(1, 0, "--color", "never");
+  }
+  if (outputFilePath && !nextArgs.includes("--output-last-message")) {
+    nextArgs.splice(1, 0, "--output-last-message", outputFilePath);
+  }
+  if (schemaFilePath && !nextArgs.includes("--output-schema")) {
+    nextArgs.splice(1, 0, "--output-schema", schemaFilePath);
+  }
+  return nextArgs;
+}
+
+function runCodex({ command, args, stdinText, cwd, timeoutMs }) {
   return new Promise((resolve, reject) => {
     const startedAt = Date.now();
     const child = spawn(command, args, {
       shell: false,
       cwd,
-      env: process.env
+      env: process.env,
+      stdio: ["pipe", "pipe", "pipe"]
     });
     let stdout = "";
     let stderr = "";
     let settled = false;
+    child.stdin.end(typeof stdinText === "string" ? stdinText : "");
     const timer = setTimeout(() => {
       if (settled) {
         return;
@@ -90,7 +162,7 @@ function runCodex({ command, args, cwd, timeoutMs }) {
       }
       settled = true;
       clearTimeout(timer);
-      reject(error);
+      reject(normalizeCodexExecutionError(error));
     });
     child.on("close", (code) => {
       if (settled) {
@@ -98,11 +170,8 @@ function runCodex({ command, args, cwd, timeoutMs }) {
       }
       settled = true;
       clearTimeout(timer);
-      if (code !== 0) {
-        reject(new Error(normalizeText(stderr) || `Codex finalizou com código ${code}.`));
-        return;
-      }
       resolve({
+        code: Number.isInteger(code) ? code : -1,
         stdout,
         stderr,
         elapsedMs: Date.now() - startedAt
@@ -114,9 +183,11 @@ function runCodex({ command, args, cwd, timeoutMs }) {
 const host = normalizeText(process.env.ARALEARN_CODEX_HOST) || "127.0.0.1";
 const port = normalizePort(process.env.ARALEARN_CODEX_PORT);
 const token = normalizeText(process.env.ARALEARN_CODEX_TOKEN);
-const defaultCommand = process.platform === "win32" ? "codex.cmd" : "codex";
+const defaultCommand = "codex";
 const command = normalizeText(process.env.ARALEARN_CODEX_COMMAND) || defaultCommand;
-const argsTemplate = normalizeText(process.env.ARALEARN_CODEX_ARGS) || "exec {prompt}";
+const argsTemplate =
+  normalizeText(process.env.ARALEARN_CODEX_ARGS)
+  || "exec --ignore-user-config --disable plugins --color never -";
 const timeoutMs = normalizeTimeout(process.env.ARALEARN_CODEX_TIMEOUT_MS);
 const maxBodyBytes = Number.parseInt(String(process.env.ARALEARN_CODEX_MAX_BODY_BYTES || "1000000"), 10) || 1000000;
 const cwd = normalizeText(process.env.ARALEARN_CODEX_WORKDIR) || process.cwd();
@@ -166,27 +237,23 @@ const server = http.createServer(async (request, response) => {
     const payload = await readJsonBody(request, maxBodyBytes);
     const mode = normalizeText(payload?.mode);
     const requestPayload = payload?.request && typeof payload.request === "object" ? payload.request : {};
-    const attachmentSection = buildAttachmentPromptSection(requestPayload.attachments || []);
-    let prompt = normalizeText(requestPayload.prebuiltPrompt);
+    const system = normalizeText(requestPayload.system);
+    let prompt = normalizeText(requestPayload.prebuiltPrompt) || normalizeText(requestPayload.prompt);
 
-    if (!prompt) {
-      if (mode === "generate-top-down-structure") {
-        prompt = buildTopDownPrompt(payload);
-      } else if (mode === "generate-lesson-microsequences") {
-        prompt = buildLessonMicrosequencesPrompt(payload);
-      } else {
-        respondJson(response, 400, {
-          ok: false,
-          error: mode
-            ? `Modo ainda não suportado pelo Codex local: ${mode}. Use Gemini ou outro provedor para esta operação.`
-            : "Modo ausente no pedido."
-        });
-        return;
-      }
+    if (!mode) {
+      respondJson(response, 400, {
+        ok: false,
+        error: "Modo ausente no pedido."
+      });
+      return;
     }
 
-    if (attachmentSection) {
-      prompt = `${prompt}\n\n${attachmentSection}`;
+    if (!prompt) {
+      respondJson(response, 400, {
+        ok: false,
+        error: `Modo ${mode} sem prompt.`
+      });
+      return;
     }
 
     if (!prompt) {
@@ -197,13 +264,66 @@ const server = http.createServer(async (request, response) => {
       return;
     }
 
+    if (!normalizeText(requestPayload.prebuiltPrompt)) {
+      prompt = [system, prompt, "Responda somente JSON válido."].filter(Boolean).join("\n\n");
+    }
+
+    let effectivePrompt = prompt;
+    const cleanupPaths = [];
+    let codexSpawnInput = buildCodexSpawnInput({ argsTemplate, prompt: effectivePrompt });
+    const usesStdinPrompt = Array.isArray(codexSpawnInput.args) && codexSpawnInput.args.includes("-");
+    if (effectivePrompt.length > 12000 && !usesStdinPrompt) {
+      const promptFileTransport = createPromptFileTransport({ prompt: effectivePrompt, cwd });
+      effectivePrompt = promptFileTransport.wrapperPrompt;
+      cleanupPaths.push(promptFileTransport.promptFilePath);
+      codexSpawnInput = buildCodexSpawnInput({ argsTemplate, prompt: effectivePrompt });
+    }
+    const resultFileTransport = createResultFileTransport({
+      cwd,
+      schema: requestPayload.schema && typeof requestPayload.schema === "object" ? requestPayload.schema : null
+    });
+    cleanupPaths.push(resultFileTransport.outputFilePath);
+    if (resultFileTransport.schemaFilePath) {
+      cleanupPaths.push(resultFileTransport.schemaFilePath);
+    }
     const codexResult = await runCodex({
       command,
-      args: buildCodexArgs({ argsTemplate, prompt }),
+      args: injectCodexExecFiles(codexSpawnInput.args, resultFileTransport),
+      stdinText: codexSpawnInput.stdinText,
       cwd,
       timeoutMs
     });
-    const result = extractJsonFromText(codexResult.stdout);
+    const outputText = resultFileTransport.outputFilePath && fs.existsSync(resultFileTransport.outputFilePath)
+      ? fs.readFileSync(resultFileTransport.outputFilePath, "utf8")
+      : codexResult.stdout;
+    let result = null;
+    let parseError = null;
+    try {
+      result = extractJsonFromText(outputText);
+    } catch (error) {
+      parseError = error;
+    }
+    cleanupPaths.forEach((cleanupPath) => {
+      if (!cleanupPath) {
+        return;
+      }
+      try {
+        fs.unlinkSync(cleanupPath);
+      } catch {}
+    });
+    if (!result) {
+      const stderrMessage = normalizeText(codexResult.stderr);
+      const parseMessage = normalizeText(parseError?.message);
+      throw new Error(
+        [
+          codexResult.code !== 0 ? `Codex finalizou com código ${codexResult.code}.` : "",
+          parseMessage,
+          stderrMessage
+        ]
+          .filter(Boolean)
+          .join(" ")
+      );
+    }
 
     respondJson(response, 200, {
       ok: true,
@@ -211,7 +331,9 @@ const server = http.createServer(async (request, response) => {
       meta: {
         provider: "codex-cli-local",
         mode,
-        elapsedMs: codexResult.elapsedMs
+        elapsedMs: codexResult.elapsedMs,
+        exitCode: codexResult.code,
+        recoveredFromNonZeroExit: codexResult.code !== 0
       }
     });
   } catch (error) {

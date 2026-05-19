@@ -1,106 +1,110 @@
 # Pesquisa e avaliação
 
-O AraLearn pode ser investigado como produto educacional, como arquitetura sociotécnica e como hipótese sobre o modo como sujeitos aprendem em meio a excesso de informação. Isso já desloca o foco da pergunta tradicional “a IA acerta?” para uma pergunta mais interessante: que tipo de infraestrutura ajuda a transformar informação disponível em percurso estudável, revisável e retomável?
+O AraLearn pode ser avaliado como produto educacional, ambiente de autoria assistida, ferramenta local de organização do conhecimento e arquitetura de uso de IA em estudo.
 
-## Objeto de pesquisa
+## Interesse de pesquisa
 
-O objeto não é apenas a geração automática de conteúdo. O objeto é o ciclo completo:
+O projeto não se resume à geração de cards. Seu interesse está na combinação entre:
 
-```text
-material disponível
-  -> organização
-  -> transformação didática
-  -> prática ativa
-  -> revisão
-  -> edição
-  -> retomada
-  -> consolidação local
-```
+- estrutura externa explícita;
+- microssequências;
+- prática situada;
+- revisão humana;
+- persistência local;
+- contrato exportável;
+- assistência por IA com validação;
+- autoria do usuário.
 
-É por isso que o AraLearn interessa não só para informática na educação, mas também para design instrucional, interação humano-computador, organização do conhecimento, linguística aplicada, filosofia da tecnologia e estudos sobre software local-first.
+## Hipóteses de design
 
-## Hipótese central
+Hipóteses que podem orientar avaliação:
 
-A hipótese central do projeto é que microunidades didáticas organizadas em estrutura explícita podem reduzir atrito no estudo autodirigido, sobretudo em condições de atenção fragmentada. Essa redução de atrito não depende apenas da brevidade. Depende de progressão, prática, revisão, preservação de contexto e possibilidade de reorganização.
+- uma estrutura explícita reduz desorientação diante de material abundante;
+- microssequências ajudam o usuário a iniciar e retomar o estudo;
+- separar planejamento e materialização aumenta controle editorial;
+- cards situados em trilha tendem a ser mais compreensíveis do que cards soltos;
+- revisão por versão favorece inspeção do conteúdo gerado;
+- contratos e validação reduzem passividade diante da IA;
+- persistência local ajuda rotinas de estudo fragmentadas.
+
+Essas hipóteses precisam de pesquisa. Elas não devem ser apresentadas como resultados comprovados sem evidência.
 
 ## Perguntas de pesquisa
 
-Há várias perguntas plausíveis para investigação.
+Perguntas possíveis:
 
-No plano didático:
+- O app ajuda a transformar material disperso em percurso estudável?
+- A árvore de curso, módulo, lição, microssequência e card melhora a orientação?
+- Ver microssequências planejadas antes dos cards aumenta clareza do caminho?
+- O usuário revisa mais quando a estrutura é visível e editável?
+- Materializar uma etapa por vez reduz excesso de conteúdo gerado?
+- A prática dentro das microssequências melhora a compreensão de procedimentos?
+- Professores conseguem adaptar o material sem depender integralmente da IA?
+- O app muda a relação do usuário com respostas geradas por modelo?
 
-- microunidades organizadas como microssequências melhoram retenção e retomada em comparação com explicação livre ou resumo?
-- qual é a relação entre caso guiado, prática apoiada e prática mais autônoma em cada domínio?
-- em que medida contexto local integrado reduz carga extrínseca percebida e melhora desempenho?
+## Métodos possíveis
 
-No plano da geração assistida:
+O AraLearn pode ser investigado por:
 
-- a restrição arquitetural da tarefa melhora a qualidade final em comparação com geração mais aberta?
-- a iteração automática reduz retrabalho editorial ou apenas o desloca?
-- o uso de modelos leves, sob contratos fechados, produz material suficientemente útil para revisão humana?
+- entrevistas com estudantes;
+- observação de uso;
+- estudos de caso em disciplinas específicas;
+- análise de sessões de estudo;
+- comparação entre trilhas estruturadas e coleções soltas de cards;
+- avaliação da qualidade das microssequências;
+- inspeção de versões geradas e revisadas;
+- avaliação por professores;
+- análise de inconsistências em conteúdo gerado;
+- questionários sobre clareza, controle e confiança.
 
-No plano da experiência:
+## Indicadores
 
-- a organização estrutural reduz a sensação de desorientação diante de muitos materiais?
-- a curva de uso do app é de fato baixa para estudantes trabalhadores?
-- o ambiente integrado de estudo, edição e revisão favorece continuidade?
+Indicadores possíveis:
 
-No plano ético e político:
+- tempo até iniciar estudo após importar ou organizar material;
+- número de microssequências revisadas;
+- proporção de microssequências materializadas;
+- frequência de retorno ao app;
+- inconsistências detectadas em conteúdo gerado;
+- número de intervenções manuais;
+- clareza percebida da trilha;
+- sensação de controle sobre o material;
+- qualidade dos exercícios segundo avaliadores humanos.
 
-- como registrar progresso e revisão sem transformar o estudante em mero fornecedor de dados?
-- como preservar autonomia editorial quando a IA participa da escrita do material?
+Nenhum indicador isolado basta. O produto deve ser avaliado por conjunto de evidências.
 
-## Métricas possíveis
+## Riscos de avaliação
 
-As métricas precisam acompanhar essa variedade de perguntas. Medidas puramente quantitativas, como número de itens gerados, são insuficientes.
+A avaliação deve distinguir:
 
-No plano de uso:
+- satisfação com a interface;
+- uso recorrente;
+- qualidade didática do material;
+- aprendizagem;
+- autonomia;
+- confiabilidade do conteúdo gerado.
 
-- tempo até iniciar prática depois de abrir uma lição;
-- número de retornos à mesma microssequência;
-- frequência de retomada depois de interrupção;
-- proporção entre rascunhos criados e rascunhos consolidados.
+Um usuário pode gostar do app sem aprender melhor. Um modelo pode escrever de forma fluente e ainda produzir material didaticamente inadequado. Uma trilha pode parecer organizada e ainda saltar pressupostos. A avaliação precisa observar essas diferenças.
 
-No plano didático:
+## O que não alegar sem evidência
 
-- acerto em atividades de prática;
-- reincidência de erro;
-- necessidade de ver resposta;
-- cobertura de capacidades sem prática ausente;
-- diversidade de prática por capacidade;
-- incidência de expansão por lacuna real e de rejeição por redundância.
+Sem pesquisa específica, o AraLearn não deve alegar:
 
-No plano editorial:
+- superioridade geral sobre outros métodos;
+- ganho garantido de desempenho;
+- adaptação perfeita a qualquer usuário;
+- neutralidade da estrutura;
+- confiabilidade automática da IA;
+- substituição de professor, monitor ou revisão humana.
 
-- proporção entre iterações aceitas e excluídas;
-- número médio de correções humanas após geração;
-- tipos de modificação mais frequentes;
-- divergência entre o plano produzido e o plano desejado pelo usuário.
+## Critério de honestidade
 
-No plano subjetivo:
+Em apresentação pública ou acadêmica, convém separar:
 
-- percepção de clareza;
-- percepção de carga de uso;
-- confiança na organização do material;
-- sensação de continuidade entre dúvida, geração e estudo.
+- o que está implementado;
+- o que é decisão arquitetural;
+- o que é hipótese didática;
+- o que já foi observado;
+- o que ainda precisa ser avaliado.
 
-## Desenhos de estudo
-
-O AraLearn comporta tanto estudos pequenos quanto investigações comparativas mais ambiciosas. Faz sentido pensar em:
-
-- pilotos com poucos usuários e observação qualitativa;
-- comparação entre leitura livre e estudo por microssequência;
-- comparação entre material manual e material gerado com revisão;
-- estudo de caso com estudantes trabalhadores;
-- análise de logs locais anonimizados, quando eticamente viável;
-- avaliação por disciplina, já que o equilíbrio entre texto, visualização e prática tende a variar fortemente por domínio.
-
-## O que não deve ser alegado sem cuidado
-
-O projeto precisa evitar dois excessos. O primeiro é apresentar toda decisão do produto como se fosse dedução direta da literatura. O segundo é descrever escolhas locais como se fossem apenas preferência idiossincrática sem interesse teórico.
-
-O caminho mais responsável é outro: reconhecer que algumas direções são fortemente apoiadas por literatura; reconhecer que várias decisões do produto são soluções arquiteturais e didáticas tomadas para responder a um problema real; e reconhecer que certos efeitos ainda precisam de avaliação situada no próprio AraLearn.
-
-## Um critério de honestidade acadêmica
-
-Uma avaliação séria do AraLearn não deveria perguntar apenas “funciona?”, mas “funciona para quê, para quem, em que condições e com que custo?”. Essa é uma pergunta melhor porque impede que o produto seja julgado por métricas fáceis, porém pobres. O objetivo do app não é maximizar geração. É reduzir atrito entre informação abundante e aprendizagem praticável.
+Essa separação fortalece o projeto e evita promessa excessiva.

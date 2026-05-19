@@ -1,31 +1,31 @@
 # Documentação do AraLearn
 
-Este diretório está organizado por objetivo.
+Esta pasta reúne a documentação de produto, arquitetura, modelo didático, contrato público e operação técnica do AraLearn.
 
 ## Para entender o produto
 
-- [Visão do produto](visao-do-produto.md)
-- [Modelo didático](modelo-didatico.md)
-- [Fundamentos e evidências](fundamentos-e-evidencias.md)
-- [Pesquisa e avaliação](pesquisa-e-avaliacao.md)
+- [Visão do produto](visao-do-produto.md): problema, proposta, público e limites do AraLearn.
+- [Contexto de produto e referências](contexto-produto-e-referencias.md): lugar do AraLearn entre produtos, práticas de estudo, cultura digital e questões filosóficas/éticas.
+- [Ética, poder e governança](etica-poder-e-governanca.md): riscos de performatividade, vigilância, normalização, behaviorismo e delegação da produção do saber à IA.
+- [Modelo didático](modelo-didatico.md): papel da microssequência, relação entre teoria e prática e critérios de suficiência didática.
+- [Perfis didáticos](perfis-didaticos.md): formas de adaptar o app a disciplinas, provas, artigos, documentação técnica e outros contextos.
 
-## Para usar o app
+## Para entender a arquitetura
 
-- [Guia de uso do app](uso-do-app.md)
-- [Rascunhos e microssequências](rascunhos-e-microssequencias.md)
-- [Abrir com AraLearn no Android](android-share-import.md)
-- [Codex CLI local no Android, Windows e Linux](codex-cli.md)
+- [Arquitetura](arquitetura.md): estrutura do projeto, camadas de código, persistência e recursos de card.
+- [Arquitetura de geração por LLM e API](nova-arquitetura-llm-api.md): separação entre planejamento estrutural e materialização local por microssequência.
+- [Contrato público](aralearn-contract.md): formato `aralearn.contract` v1 e contrato de escopo `aralearn.scope.v1`.
+- [Microssequências planejadas e versões](rascunhos-e-microssequencias.md): estados, versões e complementos de uma microssequência.
 
-## Para entender a implementação
+## Para operar e testar
 
-- [Arquitetura](arquitetura.md)
-- [Assistência por IA](assistencia-por-ia.md)
-- [Contrato público](aralearn-contract.md)
+- [Uso do app](uso-do-app.md): fluxo de criação de trilha, navegação e estudo.
+- [Assistência por IA](assistencia-por-ia.md): papel dos providers, modos de operação e validação local.
+- [Codex CLI local](codex-cli.md): uso do bridge HTTP local para operar sem API remota.
+- [Compartilhamento no Android](android-share-import.md): recepção de arquivos enviados por outros apps.
 
-## Para pesquisa, avaliação e planejamento
+## Pesquisa e exemplos
 
-- [Planejamento de referência](planejamento-matematica-para-informatica.md)
-
-## Para exemplos e validação
-
-- [Exemplos JSON](examples/)
+- [Pesquisa e avaliação](pesquisa-e-avaliacao.md): hipóteses de design, perguntas de pesquisa e critérios de honestidade acadêmica.
+- [Planejamento de Matemática para Informática](planejamento-matematica-para-informatica.md): exemplo de planejamento didático para uma disciplina concreta.
+- [Exemplos JSON](examples/): contratos e projetos usados para validação e demonstração.

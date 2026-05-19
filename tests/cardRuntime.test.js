@@ -121,6 +121,44 @@ test("compila card flow para runtime interno com structure validada", () => {
   assert.ok(runtime.blocks[1].projection.links.some((link) => link.role === "yes"));
 });
 
+test("compila card graph para runtime interno com layout e destaque estáveis", () => {
+  const runtime = buildCardRuntime({
+    key: "card-graph",
+    title: "Grafo",
+    graph: {
+      vertices: [
+        { id: "A" },
+        { id: "B" },
+        { id: "C" }
+      ],
+      edges: [
+        { from: "A", to: "B", weight: 2 },
+        { from: "A", to: "C" }
+      ],
+      highlight: {
+        vertices: ["A"],
+        edges: [["B", "A"]]
+      }
+    }
+  });
+
+  assert.equal(runtime.blocks[1].kind, "graph");
+  assert.equal(runtime.blocks[1].vertices.length, 3);
+  assert.equal(runtime.blocks[1].edges.length, 2);
+  assert.equal(runtime.blocks[1].edges[0].weight, "2");
+  assert.equal(runtime.blocks[1].vertices[0].highlighted, true);
+  assert.equal(runtime.blocks[1].edges[0].highlighted, true);
+  assert.match(runtime.blocks[1].summaryText, /arestas A-B, A-C/i);
+  assert.deepEqual(
+    runtime.blocks[1].vertices.map((vertex) => [vertex.id, vertex.x, vertex.y]),
+    [
+      ["A", 50, 16],
+      ["B", 79.44, 67],
+      ["C", 20.56, 67]
+    ]
+  );
+});
+
 test("compila card plane para runtime interno com vetor resultante e texto de resposta", () => {
   const runtime = buildCardRuntime({
     key: "card-plane",

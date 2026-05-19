@@ -1,7 +1,7 @@
 import { listGenerationResourceDefinitions } from "../resources/cardResourceDefinitions.js";
 import { getMicrosequenceSize } from "../types/microsequenceSizes.js";
 import { getMicrosequenceType } from "../types/microsequenceTypes.js";
-import { resolveResourcesForGenerationPlan } from "../resources/resolveResourcesForGenerationPlan.js";
+import { resolveResourcesForGenerationPlan } from "../didactics/microsequenceGenerationRepresentation.js";
 
 function normalizeText(value) {
   return typeof value === "string" ? value.trim() : "";

@@ -1,47 +1,50 @@
-# Rascunhos e microssequências
+# Microssequências planejadas e versões
 
-Uma das distinções operacionais mais importantes do AraLearn é a separação entre estruturar uma lição e escrever as unidades interativas de uma microssequência. Essa distinção impede que a geração vire bloco único indiferenciado.
+No AraLearn, uma microssequência pode existir antes de seus cards. Isso permite planejar a trilha antes de materializar conteúdo detalhado.
 
-## O que acontece na lição
+## Estados
 
-Quando a operação acontece no nível da lição, o resultado esperado não são os cards finais. O resultado são microssequências draft. Elas entram na árvore real, mas ficam fora do estudo. Esse desenho preserva algo importante: a possibilidade de organizar percurso antes de consolidar redação.
+Status possíveis:
 
-No estado atual, esses rascunhos podem carregar não apenas título, mas também descrição e metadados didáticos, especialmente quando a lição já dispõe de mapa de domínio. Isso permite que a própria lição registre por que a sequência existe, que ponto cobre e que função cumpre no percurso.
+- `planned`: etapa planejada, ainda sem versão de cards;
+- `generated`: etapa com ao menos uma versão;
+- `needs_review`: etapa que recebeu alteração e pede inspeção;
+- `ready`: etapa considerada satisfatória pelo usuário.
 
-## O que acontece na microssequência
+Microssequências com status diferente de `planned` precisam ter ao menos uma versão válida.
 
-Quando a operação acontece no workbench da microssequência, o foco muda completamente. Ali o que se gera ou edita são os cards da sequência atual. O fluxo é direto: gerar ou editar, validar, aplicar, revisar a iteração, aceitar ou excluir.
+## Versões
 
-Esse desenho recoloca a geração dentro da prática real do produto. A iteração não fica escondida como prévia abstrata; ela entra no ambiente de trabalho e continua reversível.
+Cada intervenção local pode gerar uma nova versão:
 
-## Por que a distinção importa
+- `generate`: primeira materialização de cards;
+- `improve`: melhoria de explicação ou progressão;
+- `more_practice`: prática adicional no mesmo foco;
+- `support`: complemento para lacuna local;
+- `repair`: ajuste de conteúdo.
 
-Sem essa distinção, o sistema tende a confundir duas tarefas diferentes:
+A versão registra data, fonte, modo, pedido do usuário, cards, resumo e relatório de validação.
 
-- organizar o percurso de uma lição;
-- redigir a unidade interativa de um ponto específico.
+## Versão ativa
 
-No primeiro caso, o problema é cobertura, progressão e posicionamento. No segundo, o problema é mediação, exemplo, prática e clareza local. Misturar os dois níveis empobrece ambos.
+A microssequência pode apontar para uma versão ativa por meio de `activeVersionKey`.
 
-## Como ler um rascunho
+A versão ativa é a usada para estudo. Manter outras versões ajuda a comparar mudanças, consultar uma formulação alternativa ou auditar a evolução do material.
 
-Um rascunho não é erro nem lixo provisório. Ele é estado de trabalho. Sua função é permitir que a lição cresça sem que tudo entre automaticamente no estudo. Isso é especialmente importante quando a geração ainda está explorando lacunas, ordem de exposição, erros comuns ou formatos de prática.
+## Complementos
 
-## Quando uma nova microssequência faz sentido
+Uma microssequência de apoio tem `type: "support"` e pode ser vinculada à microssequência de origem por `parentMicrosequenceKey`.
 
-Uma nova microssequência só se justifica quando acrescenta função real ao percurso. Isso pode acontecer porque ela:
+Complementos tratam lacunas locais sem refazer a organização inteira do curso.
 
-- introduz um subpasso ainda ausente;
-- muda a forma de representação;
-- trabalha contraste que faltava;
-- trata erro comum;
-- cobre caso-limite;
-- aproxima o estudante do formato avaliativo esperado;
-- integra um conteúdo com outro;
-- consolida algo que ainda não ficou estável no percurso.
+## Regra operacional
 
-Sem isso, a criação de nova sequência tende a gerar volume sem ganho.
+O app não precisa materializar todos os cards no momento em que cria a trilha. A sequência recomendada é:
 
-## Aprofundamento e lacunas
-
-A ação pública de aprofundamento da lição ou da microssequência não existe para multiplicar unidades interativas indiscriminadamente. Ela existe para localizar lacunas reais: prática ausente, cobertura fraca, redundância, necessidade de contraste, necessidade de variação. Se o resultado for mais unidades, esse aumento precisa estar a serviço da progressão, não da aparência de completude.
+1. definir escopo;
+2. gerar a trilha;
+3. revisar a estrutura;
+4. abrir uma microssequência;
+5. materializar cards;
+6. estudar e revisar;
+7. marcar como pronta ou gerar outra versão.

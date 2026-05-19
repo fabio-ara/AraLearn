@@ -1,33 +1,4 @@
-function text(value) {
-  return typeof value === "string" ? value.trim() : "";
-}
-
-function list(value, limit = 8) {
-  const seen = new Set();
-  return (Array.isArray(value) ? value : [])
-    .map((item) => text(item))
-    .filter((item) => {
-      if (!item) {
-        return false;
-      }
-      const key = item.toLowerCase();
-      if (seen.has(key)) {
-        return false;
-      }
-      seen.add(key);
-      return true;
-    })
-    .slice(0, limit);
-}
-
-function comparable(value) {
-  return text(value)
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim();
-}
+import { list, normalizedComparable as comparable, text } from "../didactics/didacticText.js";
 
 function signature(microsequence) {
   return JSON.stringify({
@@ -68,6 +39,9 @@ export function validateDidacticRedundancy({ microsequence, existingMicrosequenc
 
   (Array.isArray(existingMicrosequences) ? existingMicrosequences : []).forEach((existing) => {
     if (!existing || existing === microsequence) {
+      return;
+    }
+    if (text(candidate.key) && text(candidate.key) === text(existing.key)) {
       return;
     }
 

@@ -1,8 +1,8 @@
-# Contrato JSON do AraLearn
+# Contrato público do AraLearn
 
-## Envelope raiz
+O contrato público define o formato persistido e exportável de um projeto AraLearn.
 
-Todo documento público válido usa:
+## Documento raiz
 
 ```json
 {
@@ -13,93 +13,201 @@ Todo documento público válido usa:
 }
 ```
 
-## Hierarquia
+Campos:
 
-```text
-project
-  -> course
-    -> module
-      -> lesson
-        -> microsequence
-          -> card
+- `contract`: deve ser `"aralearn.contract"`;
+- `version`: versão numérica do contrato;
+- `kind`: deve ser `"project"`;
+- `courses`: lista de cursos.
+
+## Curso
+
+```json
+{
+  "key": "course-matematica-para-informatica",
+  "title": "Matemática para Informática",
+  "goal": "Estudar a disciplina com foco em exercícios e prova.",
+  "evidencePriority": ["notebook", "exercise_list", "exam"],
+  "modules": []
+}
 ```
-
-## Lição
-
-Campos principais de lição:
-
-- `title`
-- `description`
-- `sourceGuideStructured`
-- `sourceGuide`
-- `presetId`
-- `resourceTags`
-- `contentTypeTags`
-- `learningActionTags`
-- `supportLevel`
-- `microsequences`
-
-`sourceGuideStructured` é a fonte de verdade. `sourceGuide` é texto derivado.
-
-## Presets humanos
-
-O contrato público da lição agora aceita `presetId` com ids simples:
-
-- `guided`
-- `practice`
-- `visual`
-- `code`
-- `review`
-- `source`
-
-O preset não substitui os arrays explícitos. Ele registra o caminho humano simples usado na lição.
-
-## Microssequência
 
 Campos:
 
-- `title`
-- `key`
-- `tags`
-- `status`
-- `included`
-- `cards`
+- `key`: identificador estável;
+- `title`: título exibido;
+- `goal`: objetivo opcional;
+- `evidencePriority`: fontes ou tipos de evidência mais importantes;
+- `modules`: módulos do curso.
 
-`status` aceita:
+## Módulo
 
-- `draft`
-- `ready`
+```json
+{
+  "key": "module-logica-proposicional",
+  "title": "Lógica Proposicional",
+  "include": [],
+  "exclude": [],
+  "notes": "Professor cobra resolução passo a passo.",
+  "assessmentStyle": "mixed",
+  "lessons": []
+}
+```
+
+Campos:
+
+- `key`;
+- `title`;
+- `include`;
+- `exclude`;
+- `notes`;
+- `assessmentStyle`: `"theoretical"`, `"practical"` ou `"mixed"`;
+- `lessons`.
+
+## Termo de escopo
+
+```json
+{
+  "id": "conectivos",
+  "label": "conectivos",
+  "normalizedLabel": "conectivos"
+}
+```
+
+`include` e `exclude` usam termos de escopo normalizados. Isso ajuda a IA e o app a manterem o recorte definido pelo usuário.
+
+## Lição
+
+```json
+{
+  "key": "lesson-tabelas-verdade",
+  "title": "Tabelas-verdade",
+  "goal": "Construir e comparar tabelas-verdade de expressões proposicionais.",
+  "microsequences": []
+}
+```
+
+Campos:
+
+- `key`;
+- `title`;
+- `goal`;
+- `microsequences`.
+
+## Microssequência
+
+```json
+{
+  "key": "microsequence-conjuncao",
+  "title": "Conjunção",
+  "goal": "Entender quando uma conjunção é verdadeira.",
+  "type": "main",
+  "status": "planned",
+  "dependsOn": [],
+  "scopeRefs": ["conectivos"],
+  "versions": []
+}
+```
+
+Campos:
+
+- `key`;
+- `title`;
+- `goal`;
+- `type`: `"main"` ou `"support"`;
+- `status`: `"planned"`, `"generated"`, `"needs_review"` ou `"ready"`;
+- `dependsOn`: chaves de microssequências das quais depende;
+- `scopeRefs`: termos de escopo relacionados;
+- `parentMicrosequenceKey`: usado em complementos;
+- `supportReason`: justificativa do complemento;
+- `versions`: versões de cards;
+- `activeVersionKey`: versão ativa.
+
+## Versão de microssequência
+
+```json
+{
+  "key": "version-001",
+  "createdAt": "2026-05-19T12:00:00.000Z",
+  "source": "llm",
+  "mode": "generate",
+  "userRequest": "Explique com exercício guiado.",
+  "cards": [],
+  "summary": "Introduz conjunção e propõe prática.",
+  "validationReport": {
+    "ok": true,
+    "issues": []
+  }
+}
+```
+
+Campos:
+
+- `key`;
+- `createdAt`;
+- `source`: `"llm"`, `"manual"` ou `"codex"`;
+- `mode`: `"generate"`, `"improve"`, `"more_practice"`, `"support"` ou `"repair"`;
+- `userRequest`;
+- `cards`;
+- `summary`;
+- `validationReport`.
 
 ## Card
 
-Campos comuns:
+```json
+{
+  "key": "card-001",
+  "title": "Quando P ∧ Q é verdadeira?",
+  "resourceType": "say",
+  "content": "A conjunção P ∧ Q só é verdadeira quando P e Q são verdadeiras.",
+  "after": "Avance quando conseguir explicar a regra sem consultar a tabela."
+}
+```
 
-- `key`
-- `title`
-- `say`
-- `after`
-- `sourceRefs`
+Campos:
 
-`sourceRefs` é opcional e registra grounding mínimo quando a geração usou fontes.
+- `key`;
+- `title`;
+- `resourceType`;
+- `content`;
+- `after`.
 
-## Recursos públicos
+## Recursos aceitos
 
-O contrato público continua aceitando:
+`resourceType` pode ser:
 
-- `say`
-- `ask`
-- `code`
-- `table`
-- `tree`
-- `flow`
-- `plane`
-- `matrix`
+- `say`;
+- `table`;
+- `code`;
+- `flow`;
+- `tree`;
+- `graph`;
+- `block_gap_fill`.
 
-O contrato público continua legível. O pipeline interno pode usar aliases de geração, mas a persistência final respeita esse conjunto.
+Cada recurso possui formato próprio em `content`. A validação do domínio rejeita recursos desconhecidos.
 
-## Observações
+## Contrato de escopo
 
-- `description` não substitui `sourceGuideStructured`;
-- `sourceRefs` não transformam o contrato em sistema de RAG avançado;
-- estados de iteração local e histórico auxiliar continuam fora do contrato público;
-- o contrato continua sendo o formato de importação e exportação estrutural.
+O planejamento estrutural usa `aralearn.scope.v1` como entrada.
+
+```json
+{
+  "schemaVersion": "aralearn.scope.v1",
+  "course": {
+    "title": "Matemática para Informática",
+    "goal": "Estudar a disciplina com foco na cobrança real.",
+    "evidencePriority": ["notebook", "exercise_list", "exam"]
+  },
+  "modules": [
+    {
+      "title": "Lógica Proposicional",
+      "include": ["conectivos", "tabela-verdade"],
+      "exclude": ["lógica de predicados"],
+      "notes": "Professor cobra resolução passo a passo.",
+      "assessmentStyle": "mixed"
+    }
+  ]
+}
+```
+
+Esse contrato não substitui o projeto persistido. Ele é uma entrada controlada para gerar ou reorganizar a estrutura.
