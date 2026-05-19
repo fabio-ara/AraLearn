@@ -1,77 +1,90 @@
 # Pesquisa e avaliação
 
-## Por que pesquisar o AraLearn
+O AraLearn pode ser avaliado como produto educacional, ambiente de autoria assistida, ferramenta local de organização do conhecimento e arquitetura de uso de IA em estudo.
 
-O AraLearn pode ser estudado como produto educacional, ambiente de autoria assistida, ferramenta de organização pessoal do conhecimento e arquitetura de uso de IA.
+## Interesse de pesquisa
 
-Seu interesse não está apenas na geração de cards. Está na combinação entre estrutura externa, prática, revisão, persistência no dispositivo, linguagem autoral e intervenção humana.
+O projeto não se resume à geração de cards. Seu interesse está na combinação entre:
+
+- estrutura externa explícita;
+- microssequências;
+- prática situada;
+- revisão humana;
+- persistência local;
+- contrato exportável;
+- assistência por IA com validação;
+- autoria do usuário.
 
 ## Hipóteses de design
 
-O projeto parte de hipóteses que precisam ser testadas:
+Hipóteses que podem orientar avaliação:
 
-- uma estrutura externa explícita reduz desorientação diante de material abundante;
-- microssequências ajudam a iniciar e retomar o estudo;
+- uma estrutura explícita reduz desorientação diante de material abundante;
+- microssequências ajudam o usuário a iniciar e retomar o estudo;
 - separar planejamento e materialização aumenta controle editorial;
-- cards situados em trilha são mais compreensíveis do que cards soltos;
-- a linguagem autoral facilita inspeção e correção;
-- IA com contrato e revisão reduz passividade diante do conteúdo gerado;
-- persistência no dispositivo melhora continuidade em rotinas fragmentadas.
+- cards situados em trilha tendem a ser mais compreensíveis do que cards soltos;
+- revisão por versão favorece inspeção do conteúdo gerado;
+- contratos e validação reduzem passividade diante da IA;
+- persistência local ajuda rotinas de estudo fragmentadas.
 
-Essas são hipóteses plausíveis, não resultados comprovados.
+Essas hipóteses precisam de pesquisa. Elas não devem ser apresentadas como resultados comprovados sem evidência.
 
 ## Perguntas de pesquisa
 
 Perguntas possíveis:
 
-- O app ajuda o usuário a transformar material disperso em percurso estudável?
-- A árvore curso, módulo, lição, microssequência e card melhora a orientação do estudante?
-- A existência de microssequências planejadas antes dos cards aumenta clareza do caminho?
+- O app ajuda a transformar material disperso em percurso estudável?
+- A árvore de curso, módulo, lição, microssequência e card melhora a orientação?
+- Ver microssequências planejadas antes dos cards aumenta clareza do caminho?
 - O usuário revisa mais quando a estrutura é visível e editável?
-- A materialização por etapa reduz excesso de conteúdo gerado?
-- A prática dentro das microssequências favorece compreensão de procedimentos?
-- A linguagem autoral em JSON é compreensível para usuários avançados?
+- Materializar uma etapa por vez reduz excesso de conteúdo gerado?
+- A prática dentro das microssequências melhora a compreensão de procedimentos?
 - Professores conseguem adaptar o material sem depender integralmente da IA?
 - O app muda a relação do usuário com respostas geradas por modelo?
 
 ## Métodos possíveis
 
-O AraLearn pode ser avaliado por diferentes métodos:
+O AraLearn pode ser investigado por:
 
 - entrevistas com estudantes;
 - observação de uso;
+- estudos de caso em disciplinas específicas;
 - análise de sessões de estudo;
 - comparação entre trilhas estruturadas e coleções soltas de cards;
-- análise de qualidade de microssequências;
-- inspeção de revisões feitas por usuários;
-- estudos de caso com disciplinas específicas;
+- avaliação da qualidade das microssequências;
+- inspeção de versões geradas e revisadas;
 - avaliação por professores;
-- análise de erros produzidos por IA e corrigidos pelo app ou pelo usuário;
+- análise de inconsistências em conteúdo gerado;
 - questionários sobre clareza, controle e confiança.
 
-## Métricas e evidências
+## Indicadores
 
-Alguns indicadores possíveis:
+Indicadores possíveis:
 
-- tempo até iniciar o estudo após importar material;
-- quantidade de etapas revisadas pelo usuário;
+- tempo até iniciar estudo após importar ou organizar material;
+- número de microssequências revisadas;
 - proporção de microssequências materializadas;
 - frequência de retorno ao app;
-- erros detectados em conteúdo gerado;
+- inconsistências detectadas em conteúdo gerado;
 - número de intervenções manuais;
 - clareza percebida da trilha;
 - sensação de controle sobre o material;
-- qualidade de exercícios segundo avaliadores humanos.
+- qualidade dos exercícios segundo avaliadores humanos.
 
-Nenhum indicador isolado basta. O produto precisa ser analisado por um conjunto de evidências.
+Nenhum indicador isolado basta. O produto deve ser avaliado por conjunto de evidências.
 
 ## Riscos de avaliação
 
-A pesquisa deve evitar afirmações fáceis.
+A avaliação deve distinguir:
 
-Um usuário pode gostar da interface sem aprender melhor. Um modelo pode produzir texto fluente e ainda assim didaticamente ruim. Uma trilha pode parecer organizada, mas saltar pressupostos. Uma sequência pode ser eficiente para prova e pobre para formação conceitual.
+- satisfação com a interface;
+- uso recorrente;
+- qualidade didática do material;
+- aprendizagem;
+- autonomia;
+- confiabilidade do conteúdo gerado.
 
-Por isso, convém distinguir satisfação, uso, qualidade do material, aprendizagem e autonomia.
+Um usuário pode gostar do app sem aprender melhor. Um modelo pode escrever de forma fluente e ainda produzir material didaticamente inadequado. Uma trilha pode parecer organizada e ainda saltar pressupostos. A avaliação precisa observar essas diferenças.
 
 ## O que não alegar sem evidência
 
@@ -86,12 +99,12 @@ Sem pesquisa específica, o AraLearn não deve alegar:
 
 ## Critério de honestidade
 
-Ao apresentar o AraLearn em contexto acadêmico ou público, convém separar:
+Em apresentação pública ou acadêmica, convém separar:
 
 - o que está implementado;
-- o que é direção arquitetural;
-- o que é hipótese pedagógica;
+- o que é decisão arquitetural;
+- o que é hipótese didática;
 - o que já foi observado;
 - o que ainda precisa ser avaliado.
 
-Essa separação fortalece o projeto. Ela impede que a apresentação do app dependa de promessa excessiva.
+Essa separação fortalece o projeto e evita promessa excessiva.
