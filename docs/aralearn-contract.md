@@ -1,6 +1,8 @@
 # Contrato público do AraLearn
 
-## `aralearn.contract` v1
+O contrato público define o formato persistido e exportável de um projeto AraLearn.
+
+## Documento raiz
 
 ```json
 {
@@ -11,85 +13,182 @@
 }
 ```
 
+Campos:
+
+- `contract`: deve ser `"aralearn.contract"`;
+- `version`: versão numérica do contrato;
+- `kind`: deve ser `"project"`;
+- `courses`: lista de cursos.
+
 ## Curso
 
-- `key`
-- `title`
-- `goal?`
-- `evidencePriority`
-- `modules`
+```json
+{
+  "key": "course-matematica-para-informatica",
+  "title": "Matemática para Informática",
+  "goal": "Estudar a disciplina com foco em exercícios e prova.",
+  "evidencePriority": ["notebook", "exercise_list", "exam"],
+  "modules": []
+}
+```
+
+Campos:
+
+- `key`: identificador estável;
+- `title`: título exibido;
+- `goal`: objetivo opcional;
+- `evidencePriority`: fontes ou tipos de evidência mais importantes;
+- `modules`: módulos do curso.
 
 ## Módulo
 
-- `key`
-- `title`
-- `include: ScopeTerm[]`
-- `exclude: ScopeTerm[]`
-- `notes?`
-- `assessmentStyle`
-- `lessons`
+```json
+{
+  "key": "module-logica-proposicional",
+  "title": "Lógica Proposicional",
+  "include": [],
+  "exclude": [],
+  "notes": "Professor cobra resolução passo a passo.",
+  "assessmentStyle": "mixed",
+  "lessons": []
+}
+```
 
-## ScopeTerm
+Campos:
 
-- `id`
-- `label`
-- `normalizedLabel`
+- `key`;
+- `title`;
+- `include`;
+- `exclude`;
+- `notes`;
+- `assessmentStyle`: `"theoretical"`, `"practical"` ou `"mixed"`;
+- `lessons`.
+
+## Termo de escopo
+
+```json
+{
+  "id": "conectivos",
+  "label": "conectivos",
+  "normalizedLabel": "conectivos"
+}
+```
+
+`include` e `exclude` usam termos de escopo normalizados. Isso ajuda a IA e o app a manterem o recorte definido pelo usuário.
 
 ## Lição
 
-- `key`
-- `title`
-- `goal`
-- `microsequences`
+```json
+{
+  "key": "lesson-tabelas-verdade",
+  "title": "Tabelas-verdade",
+  "goal": "Construir e comparar tabelas-verdade de expressões proposicionais.",
+  "microsequences": []
+}
+```
+
+Campos:
+
+- `key`;
+- `title`;
+- `goal`;
+- `microsequences`.
 
 ## Microssequência
 
-- `key`
-- `title`
-- `goal`
-- `type: "main" | "support"`
-- `status: "planned" | "generated" | "needs_review" | "ready"`
-- `dependsOn: string[]`
-- `scopeRefs: string[]`
-- `parentMicrosequenceKey?`
-- `supportReason?`
-- `versions`
-- `activeVersionKey?`
+```json
+{
+  "key": "microsequence-conjuncao",
+  "title": "Conjunção",
+  "goal": "Entender quando uma conjunção é verdadeira.",
+  "type": "main",
+  "status": "planned",
+  "dependsOn": [],
+  "scopeRefs": ["conectivos"],
+  "versions": []
+}
+```
+
+Campos:
+
+- `key`;
+- `title`;
+- `goal`;
+- `type`: `"main"` ou `"support"`;
+- `status`: `"planned"`, `"generated"`, `"needs_review"` ou `"ready"`;
+- `dependsOn`: chaves de microssequências das quais depende;
+- `scopeRefs`: termos de escopo relacionados;
+- `parentMicrosequenceKey`: usado em complementos;
+- `supportReason`: justificativa do complemento;
+- `versions`: versões de cards;
+- `activeVersionKey`: versão ativa.
 
 ## Versão de microssequência
 
-- `key`
-- `createdAt`
-- `source: "llm" | "manual" | "codex"`
-- `mode: "generate" | "improve" | "more_practice" | "support" | "repair"`
-- `userRequest?`
-- `cards`
-- `summary`
-- `validationReport`
+```json
+{
+  "key": "version-001",
+  "createdAt": "2026-05-19T12:00:00.000Z",
+  "source": "llm",
+  "mode": "generate",
+  "userRequest": "Explique com exercício guiado.",
+  "cards": [],
+  "summary": "Introduz conjunção e propõe prática.",
+  "validationReport": {
+    "ok": true,
+    "issues": []
+  }
+}
+```
+
+Campos:
+
+- `key`;
+- `createdAt`;
+- `source`: `"llm"`, `"manual"` ou `"codex"`;
+- `mode`: `"generate"`, `"improve"`, `"more_practice"`, `"support"` ou `"repair"`;
+- `userRequest`;
+- `cards`;
+- `summary`;
+- `validationReport`.
 
 ## Card
 
-- `key`
-- `title?`
-- `resourceType`
-- `content`
-- `after?`
+```json
+{
+  "key": "card-001",
+  "title": "Quando P ∧ Q é verdadeira?",
+  "resourceType": "say",
+  "content": "A conjunção P ∧ Q só é verdadeira quando P e Q são verdadeiras.",
+  "after": "Avance quando conseguir explicar a regra sem consultar a tabela."
+}
+```
 
-Recursos públicos mínimos:
+Campos:
 
-- `say`
-- `table`
-- `code`
-- `flow`
-- `tree`
-- `graph`
-- `block_gap_fill`
+- `key`;
+- `title`;
+- `resourceType`;
+- `content`;
+- `after`.
+
+## Recursos aceitos
+
+`resourceType` pode ser:
+
+- `say`;
+- `table`;
+- `code`;
+- `flow`;
+- `tree`;
+- `graph`;
+- `block_gap_fill`.
+
+Cada recurso possui formato próprio em `content`. A validação do domínio rejeita recursos desconhecidos.
 
 ## Contrato de escopo
 
-O top-down não parte do contrato público. Ele parte de `aralearn.scope.v1`.
-
-Estrutura:
+O planejamento estrutural usa `aralearn.scope.v1` como entrada.
 
 ```json
 {
@@ -110,3 +209,5 @@ Estrutura:
   ]
 }
 ```
+
+Esse contrato não substitui o projeto persistido. Ele é uma entrada controlada para gerar ou reorganizar a estrutura.
