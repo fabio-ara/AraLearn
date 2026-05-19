@@ -24,6 +24,10 @@ function cloneDraft(draft = {}) {
     moduleKey: text(draft.moduleKey),
     lessonInput: text(draft.lessonInput),
     lessonKey: text(draft.lessonKey),
+    includeTopics: Array.isArray(draft.includeTopics) ? draft.includeTopics.map(text).filter(Boolean) : [],
+    excludeTopics: Array.isArray(draft.excludeTopics) ? draft.excludeTopics.map(text).filter(Boolean) : [],
+    pendingIncludeTopic: text(draft.pendingIncludeTopic),
+    pendingExcludeTopic: text(draft.pendingExcludeTopic),
     promptText: typeof draft.promptText === "string" ? draft.promptText : "",
     attachments: Array.isArray(draft.attachments) ? [...draft.attachments] : [],
     lastResult: draft.lastResult || null,
@@ -66,11 +70,7 @@ export function syncCourseForgeGenerationDraftHierarchy({ draft = {}, visibleCou
   nextDraft.courseKey = text(course?.key);
 
   if (!course) {
-    nextDraft.moduleFixed = false;
-    nextDraft.moduleInput = "";
     nextDraft.moduleKey = "";
-    nextDraft.lessonFixed = false;
-    nextDraft.lessonInput = "";
     nextDraft.lessonKey = "";
     return nextDraft;
   }
@@ -88,8 +88,6 @@ export function syncCourseForgeGenerationDraftHierarchy({ draft = {}, visibleCou
   nextDraft.moduleKey = text(moduleValue?.key);
 
   if (!moduleValue) {
-    nextDraft.lessonFixed = false;
-    nextDraft.lessonInput = "";
     nextDraft.lessonKey = "";
     return nextDraft;
   }
@@ -189,10 +187,13 @@ export function setCourseForgeGenerationDraftInput({
 
   if (level === "course") {
     nextDraft.courseInput = value;
+    nextDraft.courseFixed = !!text(value);
   } else if (level === "module") {
     nextDraft.moduleInput = value;
+    nextDraft.moduleFixed = !!text(value);
   } else if (level === "lesson") {
     nextDraft.lessonInput = value;
+    nextDraft.lessonFixed = !!text(value);
   }
 
   return syncCourseForgeGenerationDraftHierarchy({
@@ -201,37 +202,3 @@ export function setCourseForgeGenerationDraftInput({
   });
 }
 
-export function prepareCourseForgeLessonDeepeningDraft({
-  draft = {},
-  projectDocument = {},
-  courseKey = "",
-  moduleKey = "",
-  lessonKey = "",
-  promptText = "",
-  findCourse,
-  findModule,
-  findLesson,
-  visibleCourses = []
-} = {}) {
-  const nextDraft = applyCourseForgeGenerationScope({
-    draft,
-    scope: { courseKey, moduleKey, lessonKey },
-    projectDocument,
-    findCourse,
-    findModule,
-    findLesson,
-    visibleCourses
-  });
-
-  nextDraft.courseFixed = true;
-  nextDraft.moduleFixed = true;
-  nextDraft.lessonFixed = true;
-  nextDraft.promptText = typeof promptText === "string" ? promptText : "";
-  nextDraft.courseInput = nextDraft.courseInput || text(courseKey);
-  nextDraft.courseKey = nextDraft.courseKey || text(courseKey);
-  nextDraft.moduleInput = nextDraft.moduleInput || text(moduleKey);
-  nextDraft.moduleKey = nextDraft.moduleKey || text(moduleKey);
-  nextDraft.lessonInput = nextDraft.lessonInput || text(lessonKey);
-  nextDraft.lessonKey = nextDraft.lessonKey || text(lessonKey);
-  return nextDraft;
-}

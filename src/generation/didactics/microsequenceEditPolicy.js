@@ -16,7 +16,7 @@ export function buildMicrosequenceEditPlanningPromptLines(contract = {}) {
     "Trate requestGovernance.precedence como ordem obrigatória de leitura do contrato.",
     "Trate requestGovernance.lessonAnchors como âncoras fortes da lição.",
     "Use request.userPrompt apenas para especializar o recorte imediato e a ênfase da edição dentro da lição atual.",
-    "Se request.userPrompt conflitar com a meta, a notação, as confusões prováveis ou o critério final da lição, preserve a governança da lição e reduza o pedido ao escopo governado.",
+    'Se request.userPrompt conflitar com a meta, o "Incluir", o "Não incluir", o "Não confundir com" ou o critério final da lição, preserve a governança da lição e reduza o pedido ao escopo governado.',
     "selectedLessonTopicRefs são assuntos selecionados no escopo da lição, normalmente derivados de títulos e tags de microssequências existentes; use como contexto auxiliar de escopo e terminologia, sem criar tags persistentes.",
     "Use representation.availableResources como envelope fechado de recursos que podem ser pedidos no plano.",
     availableResourceIds.length
@@ -38,7 +38,7 @@ export function buildMicrosequenceEditPromptLines(contract = {}) {
     "Trate requestGovernance.precedence como ordem obrigatória de leitura do contrato.",
     "Trate requestGovernance.lessonAnchors como âncoras fortes da lição.",
     "Use request.userPrompt apenas para especializar o recorte imediato e a ênfase da edição dentro da lição atual.",
-    "Se request.userPrompt conflitar com a meta, a notação, as confusões prováveis ou o critério final da lição, preserve a governança da lição e reduza o pedido ao escopo governado.",
+    'Se request.userPrompt conflitar com a meta, o "Incluir", o "Não incluir", o "Não confundir com" ou o critério final da lição, preserve a governança da lição e reduza o pedido ao escopo governado.',
     "Use context.path como a linha hierárquica completa até a microssequência.",
     "Use context.lesson.sourceGuideStructured como governança principal da lição atual.",
     "Use selectedLessonTopicRefs para orientar escopo e terminologia sem transformar essas referências em tags persistentes da microssequência.",

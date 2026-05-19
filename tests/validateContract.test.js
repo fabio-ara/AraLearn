@@ -129,7 +129,7 @@ test("aceita sourceGuideStructured e recompila sourceGuide legível", () => {
   assert.equal(result.value.courses[0].sourceGuide, undefined);
   assert.equal(result.value.courses[0].sourceGuideStructured, undefined);
   assert.match(result.value.courses[0].modules[0].lessons[0].sourceGuide, /Meta da lição: Passo a passo simples\./);
-  assert.match(result.value.courses[0].modules[0].lessons[0].sourceGuide, /Confusões prováveis: Não inverter a ordem dos termos\./);
+  assert.match(result.value.courses[0].modules[0].lessons[0].sourceGuide, /Não confundir com: Não inverter a ordem dos termos\./);
 });
 
 test("rejeita sourceGuide textual puro sem sourceGuideStructured", () => {

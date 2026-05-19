@@ -1,72 +1,48 @@
 # Rascunhos e microssequências
 
-## Distinção central
+## Estado normal do produto
 
-O AraLearn separa:
+Uma microssequência pode existir sem cards.
 
-1. planejar a microssequência;
-2. materializar seus cards.
+Isso não é erro. Significa apenas que ela foi planejada pelo top-down e ainda não foi materializada.
 
-Uma microssequência planejada pode estar vazia. Isso é parte normal do fluxo.
+## Estados
 
-## Planejada
-
-Uma microssequência planejada já tem lugar na trilha. Ela pode ter título, tags, propósito, `domainRefs`, `coverageRole` e relação com a lição.
-
-Ela ainda não tem cards porque o top-down não deve materializar toda a trilha de uma vez.
-
-## Materializada
-
-Uma microssequência materializada tem cards estudáveis.
-
-Ela pode ser estudada, corrigida e continuada. O usuário pode gerar mais cards se a etapa ficou curta ou pedir correção se a progressão ficou ruim.
-
-## Por que deixar vazia
-
-Microssequências vazias permitem:
-
-- ver o percurso antes de gerar conteúdo;
-- reduzir custo de IA;
-- evitar volume prematuro;
-- priorizar o que será estudado agora;
-- revisar a ordem antes da materialização;
-- manter o top-down como planejamento e o bottom-up como execução.
-
-## Ações no runtime
-
-Na aba de edição, as ações têm papéis distintos:
-
-- `Continuar na microssequência`: cria primeiros cards ou adiciona mais cards à etapa atual.
-- `Corrigir microssequência`: repara a etapa atual.
-- `Ir a nova microssequência`: abre a próxima etapa planejada.
-- `Criar nova microssequência`: insere uma etapa extra depois da atual.
-
-Essa diferença importa: ir para a próxima é navegação; criar uma nova etapa é geração por IA.
-
-## Rascunho
-
-Rascunho é estado de trabalho, não descarte.
-
-Uma microssequência pode estar em rascunho porque foi planejada, porque ainda precisa de cards, porque uma geração está pendente de aceite ou porque a etapa precisa de revisão.
+- `planned`: existe na trilha, mas ainda sem versão de cards
+- `generated`: versão criada e pronta para inspeção
+- `needs_review`: houve melhoria ou expansão e a nova versão ainda precisa de aceite
+- `ready`: etapa considerada satisfatória
 
 ## Versões
 
-Versões servem para comparar e recuperar material local sem reverter o projeto inteiro.
+Cada intervenção local cria uma nova versão:
 
-O usuário deve conseguir entender:
+- `generate`
+- `improve`
+- `more_practice`
+- `support`
+- `repair`
 
-- qual versão está em uso;
-- o que foi gerado;
-- o que foi aceito;
-- o que pode ser descartado.
+Versões anteriores são preservadas.
 
-## Critério de bom fluxo
+## Complementos
 
-O fluxo está correto quando o usuário entende:
+Quando o usuário pede um complemento, o app cria uma microssequência `support`.
 
-- que top-down planejou a trilha;
-- que a microssequência vazia é esperada;
-- que cards são pedidos localmente;
-- que correção e continuação não replanejam o curso inteiro;
-- que avançar para a próxima etapa não precisa de IA;
-- que criar uma microssequência extra é uma intervenção excepcional e situada.
+Ela:
+
+- não substitui a trilha principal
+- fica ligada à microssequência de origem
+- existe para atacar uma lacuna local
+
+## Regra prática
+
+O AraLearn não tenta pré-gerar a trilha inteira em cards.
+
+O uso esperado é:
+
+1. planejar a trilha
+2. abrir uma microssequência
+3. materializar localmente
+4. revisar e continuar
+

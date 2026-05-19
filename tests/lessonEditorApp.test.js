@@ -1,13 +1,14 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createCourseForgeProfileTuning } from "../src/generation/runtime/courseForgeProfileTuning.js";
+import { createFakeProvider } from "../src/generation/providers/fakeProvider.js";
 
 import {
   applyCourseForgeGenerationScope,
-  prepareCourseForgeLessonDeepeningDraft,
   setCourseForgeGenerationDraftInput,
   toggleCourseForgeGenerationDraftLevel
 } from "../src/generation/runtime/courseForgeGenerationDraftState.js";
+import { canSubmitAssistRequestFromState } from "../src/ui/lessonEditorApp.js";
 import {
   applyCourseForgeAssistConfigPatch,
   buildClosedCourseForgeGenerationPanelState,
@@ -28,6 +29,38 @@ import {
   resolveGenerationPanelScopeFromAction,
   resolveGenerationScopeState
 } from "../src/generation/runtime/courseForgeGenerationViewModel.js";
+
+test("canSubmitAssistRequestFromState habilita criação local com intenção e entrada útil", () => {
+  assert.equal(
+    canSubmitAssistRequestFromState({
+      promptText: "Crie uma ponte curta antes da prática principal.",
+      actionIntent: "create_after_current",
+      attachmentCount: 0,
+      isSubmitting: false
+    }),
+    true
+  );
+
+  assert.equal(
+    canSubmitAssistRequestFromState({
+      promptText: "",
+      actionIntent: "next_planned",
+      attachmentCount: 0,
+      isSubmitting: false
+    }),
+    true
+  );
+
+  assert.equal(
+    canSubmitAssistRequestFromState({
+      promptText: "",
+      actionIntent: "create_after_current",
+      attachmentCount: 0,
+      isSubmitting: false
+    }),
+    false
+  );
+});
 
 test("resolveGenerationPanelScopeFromAction abre painel global sem escopo", () => {
   assert.deepEqual(
@@ -182,7 +215,7 @@ test("resolveGenerationScopeState monta o view-model de escopo fora da UI", () =
   });
 
   assert.equal(state.canSubmit, true);
-  assert.equal(state.actionSummary, "Lição e microssequências planejadas");
+  assert.equal(state.actionSummary, "Lição existente + microssequências planejadas");
   assert.equal(state.lessonInputEnabled, true);
   assert.equal(state.generationMode, "generate-top-down-structure");
 });
@@ -528,51 +561,6 @@ test("setCourseForgeGenerationDraftInput resolve keys por título no estado puro
   assert.equal(draft.lessonKey, "lesson-a");
 });
 
-test("prepareCourseForgeLessonDeepeningDraft monta pedido focado sem depender da UI", () => {
-  const projectDocument = {
-    courses: [
-      {
-        key: "course-a",
-        title: "Curso A",
-        modules: [
-          {
-            key: "module-a",
-            title: "Módulo A",
-            lessons: [{ key: "lesson-a", title: "Lição A" }]
-          }
-        ]
-      }
-    ]
-  };
-  const visibleCourses = projectDocument.courses;
-  const draft = prepareCourseForgeLessonDeepeningDraft({
-    draft: {
-      attachments: [{ name: "base.md" }]
-    },
-    projectDocument,
-    courseKey: "course-a",
-    moduleKey: "module-a",
-    lessonKey: "lesson-a",
-    promptText: "Aprofundar lacunas.",
-    visibleCourses,
-    findCourse: (project, key) => project.courses.find((item) => item.key === key) || null,
-    findModule: (project, courseKey, moduleKey) =>
-      project.courses.find((item) => item.key === courseKey)?.modules.find((item) => item.key === moduleKey) || null,
-    findLesson: (project, courseKey, moduleKey, lessonKey) =>
-      project.courses
-        .find((item) => item.key === courseKey)
-        ?.modules.find((item) => item.key === moduleKey)
-        ?.lessons.find((item) => item.key === lessonKey) || null
-  });
-
-  assert.equal(draft.courseFixed, true);
-  assert.equal(draft.moduleFixed, true);
-  assert.equal(draft.lessonFixed, true);
-  assert.equal(draft.promptText, "Aprofundar lacunas.");
-  assert.equal(draft.lessonKey, "lesson-a");
-  assert.equal(draft.attachments.length, 1);
-});
-
 test("executeCourseForgeStructureGeneration bloqueia submissão inválida antes do provider", async () => {
   const result = await executeCourseForgeStructureGeneration({
     draft: {
@@ -583,10 +571,7 @@ test("executeCourseForgeStructureGeneration bloqueia submissão inválida antes 
       model: "gemini-2.5-flash"
     },
     projectDocument: { courses: [] },
-    visibleCourses: [],
-    runCourseForge: async () => {
-      throw new Error("não deveria executar");
-    }
+    visibleCourses: []
   });
 
   assert.equal(result.status, "invalid");
@@ -599,6 +584,11 @@ test("executeCourseForgeStructureGeneration abre setup quando provider local nã
   };
   const result = await executeCourseForgeStructureGeneration({
     draft: {
+      courseFixed: true,
+      moduleFixed: true,
+      courseInput: "Curso A",
+      courseKey: "course-a",
+      moduleInput: "Módulo novo",
       promptText: "Gerar estrutura",
       attachments: []
     },
@@ -613,10 +603,7 @@ test("executeCourseForgeStructureGeneration abre setup quando provider local nã
       ok: false,
       error: "bridge offline",
       data: { status: 503 }
-    }),
-    runCourseForge: async () => {
-      throw new Error("não deveria executar");
-    }
+    })
   });
 
   assert.equal(result.status, "provider-unready");
@@ -626,6 +613,9 @@ test("executeCourseForgeStructureGeneration abre setup quando provider local nã
 
 test("executeCourseForgeStructureGeneration retorna sucesso aplicável fora da UI", async () => {
   const projectDocument = {
+    contract: "aralearn.contract",
+    version: 1,
+    kind: "project",
     courses: [
       {
         key: "course-a",
@@ -634,7 +624,7 @@ test("executeCourseForgeStructureGeneration retorna sucesso aplicável fora da U
           {
             key: "module-a",
             title: "Módulo A",
-            lessons: [{ key: "lesson-a", title: "Lição A" }]
+            lessons: [{ key: "lesson-a", title: "Lição A", microsequences: [] }]
           }
         ]
       }
@@ -642,6 +632,60 @@ test("executeCourseForgeStructureGeneration retorna sucesso aplicável fora da U
   };
   const visibleCourses = projectDocument.courses;
   const progressEvents = [];
+  const provider = createFakeProvider({
+    script: {
+      "infer-scope-contract": {
+        course: {
+          title: "Curso A",
+          evidencePriority: ["none"]
+        },
+        modules: [
+          {
+            title: "Módulo A",
+            include: ["Lição A", "Estrutura básica"],
+            exclude: [],
+            notes: 'Planeje apenas a lição "Lição A".',
+            assessmentStyle: "mixed"
+          }
+        ]
+      },
+      "plan-scope": {
+        course: {
+          title: "Curso A",
+          modules: [
+            {
+              title: "Módulo A",
+              lessons: [
+                {
+                  title: "Lição A",
+                  goal: "Entender a estrutura.",
+                  sourceGuideStructured: {
+                    lessonGoal: "Fixar o objetivo da lição.",
+                    notationRules: "Lição A, Estrutura básica",
+                    commonErrors: "Não confundir a base com etapas futuras."
+                  },
+                  microsequences: [
+                    {
+                      title: "Primeira microssequência",
+                      goal: "Abrir a lição.",
+                      dependsOnTitles: [],
+                      scopeLabels: ["Lição A"]
+                    },
+                    {
+                      title: "Segunda microssequência",
+                      goal: "Consolidar a estrutura.",
+                      dependsOnTitles: ["Primeira microssequência"],
+                      scopeLabels: ["Estrutura básica"]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  });
   const result = await executeCourseForgeStructureGeneration({
     draft: {
       courseFixed: true,
@@ -673,31 +717,13 @@ test("executeCourseForgeStructureGeneration retorna sucesso aplicável fora da U
       warnings: []
     }),
     onProgress: (event) => progressEvents.push(event),
-    runCourseForge: async ({ onProgress }) => {
-      onProgress?.({
-        type: "provider_call_started",
-        phaseId: "plan_architecture",
-        modelId: "gemini-2.5-flash"
-      });
-      return {
-        projectDocument,
-        patch: {
-          operations: [{}],
-          events: [{}],
-          target: {
-            courseKey: "course-a",
-            moduleKey: "module-a",
-            lessonKey: "lesson-a"
-          }
-        }
-      };
-    }
+    provider
   });
 
   assert.equal(result.status, "success");
   assert.equal(result.selection.lessonKey, "lesson-a");
   assert.equal(result.pendingGeneratedNavigation.lessonKey, "lesson-a");
   assert.equal(result.draft.lastResult.message, "Fluxo top-down aplicado com 1 operações e 1 evento auditável.");
-  assert.equal(progressEvents[0].type, "provider_call_started");
-  assert.equal(progressEvents[0].phaseId, "plan_architecture");
+  assert.equal(result.courseForgeResult.projectDocument.courses[0].modules[0].lessons[0].microsequences.length, 2);
+  assert.ok(progressEvents.some((event) => event.type === "provider_call_started" && event.phaseId === "normalize_intent"));
 });

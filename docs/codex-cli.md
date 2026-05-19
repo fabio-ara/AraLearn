@@ -1,48 +1,35 @@
-# Codex CLI local no AraLearn
+# Codex CLI local
 
-O AraLearn pode usar um provedor local por meio do Codex CLI.
+## Finalidade
 
-Esse caminho permite executar parte dos fluxos de assistência sem depender exclusivamente de serviços remotos por API. Ele é mais técnico, mas amplia a autonomia de quem deseja configurar o próprio ambiente.
+O bridge local do Codex permite usar o mesmo fluxo estrutural e o mesmo bottom-up do app sem passar por uma API remota.
 
-## Como a integração funciona
+Endpoint padrão:
 
-O app se comunica com uma ponte HTTP local. Essa ponte aciona o Codex CLI e devolve a resposta ao AraLearn.
+- `http://127.0.0.1:4183/assist`
 
-Para o usuário do app, o provedor aparece como uma opção de assistência. A complexidade fica concentrada na configuração local.
+Health check:
 
-## Por que isso importa
+- `http://127.0.0.1:4183/health`
 
-O AraLearn foi desenhado para preservar controle do usuário sobre o material. A possibilidade de usar um provedor local reforça essa direção.
+## Modos suportados
 
-Ela não elimina todos os limites operacionais, mas permite combinar:
+- `plan-scope`
+- `generate-microsequence`
+- `improve-microsequence`
+- `add-practice`
+- `create-support`
+- `generate-next`
 
-- projeto salvo no dispositivo;
-- autoria humana;
-- assistência por IA;
-- menor dependência de uma plataforma remota específica.
+## Subir o bridge
 
-## Requisitos
+```bash
+npm run codex:local
+```
 
-Para esse modo funcionar, o ambiente precisa ter:
+## Observações
 
-- Codex CLI instalado;
-- Node funcional;
-- ponte HTTP local em execução;
-- endpoint acessível ao app;
-- configuração correta no painel de provedor.
+- o bridge envia prompts longos ao Codex via `stdin`;
+- quando o prompt fica grande demais, ele pode usar arquivo temporário local;
+- a UI do app permite configurar endpoint, token e modelo no painel de provider.
 
-No Windows com Codex instalado pelo VS Code, o executável pode estar exposto como `codex.exe`, sem `codex.cmd`. O script de setup detecta o comando disponível e passa o caminho encontrado ao bridge por `ARALEARN_CODEX_COMMAND`.
-
-## Plataformas
-
-O princípio vale para desktop e Android.
-
-No desktop, a ponte roda no ambiente local do sistema. No Android, o caminho tende a passar por Termux ou solução equivalente.
-
-No fluxo top-down, cada fase do `CourseForge` aparece no popup de progresso. Quando uma fase chama o Codex local, a UI marca explicitamente a chamada ao modelo; fases determinísticas aparecem como etapas locais do motor.
-
-## Limites
-
-Esse modo exige configuração técnica. Ele não é o fluxo mais simples para o usuário comum.
-
-Também não dispensa validação. Mesmo com provedor local, o conteúdo gerado deve passar pelo contrato público, pela revisão do usuário e pelas verificações do app.

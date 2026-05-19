@@ -1,55 +1,33 @@
-function text(value) {
-  return typeof value === "string" ? value.trim() : "";
-}
+import { normalizeWhitespace } from "../../core/text.js";
 
 export function createFakeProvider({ id = "fake", script = {} } = {}) {
   const counters = new Map();
 
-  function nextEntry(phaseId) {
-    const entries = Array.isArray(script[phaseId]) ? script[phaseId] : [script[phaseId]];
-    const index = counters.get(phaseId) || 0;
-    counters.set(phaseId, index + 1);
-    return entries[index];
+  function readStep(mode) {
+    const queue = Array.isArray(script[mode]) ? script[mode] : [script[mode]];
+    const index = counters.get(mode) || 0;
+    counters.set(mode, index + 1);
+    return queue[index];
   }
 
   return {
     id,
+    label: "Fake",
     capabilities: {
-      provider: "fake",
-      model: "fake:model",
-      supportsJsonMode: true,
       supportsJsonSchema: true,
-      supportsStrictJsonSchema: false,
-      contextClass: "test"
+      supportsJsonMode: true,
+      contextClass: "small"
     },
-    async callJson(input = {}) {
-      const phaseId = text(input.phaseId);
-      const entry = nextEntry(phaseId);
-      if (typeof entry === "function") {
-        const result = await entry(input);
-        if (result instanceof Error) {
-          throw result;
-        }
-        if (result && typeof result === "object" && ("ok" in result || "value" in result || "rawText" in result)) {
-          return result;
-        }
-        return {
-          ok: true,
-          value: structuredClone(result ?? {}),
-          rawText: JSON.stringify(result ?? {})
-        };
+    async generateStructured(request = {}) {
+      const mode = normalizeWhitespace(request.mode);
+      const step = readStep(mode);
+      if (typeof step === "function") {
+        return structuredClone(await step(request));
       }
-      if (entry instanceof Error) {
-        throw entry;
+      if (step instanceof Error) {
+        throw step;
       }
-      if (entry && entry.throw) {
-        throw entry.throw;
-      }
-      return {
-        ok: true,
-        value: structuredClone(entry ?? {}),
-        rawText: JSON.stringify(entry ?? {})
-      };
+      return structuredClone(step ?? {});
     }
   };
 }

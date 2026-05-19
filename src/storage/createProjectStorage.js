@@ -1,10 +1,8 @@
 import { normalizeProgressDocument, parseProgressDocument, serializeProgressDocument } from "./progressStore.js";
 import { parseProjectDocument, serializeProjectDocument } from "./projectStore.js";
+import { STORAGE_KEYS } from "../core/storageKeys.js";
 
-const DEFAULT_KEYS = {
-  project: "aralearn.project",
-  progress: "aralearn.progress"
-};
+const DEFAULT_KEYS = STORAGE_KEYS;
 
 function parseEnvelopeJson(rawJson) {
   try {

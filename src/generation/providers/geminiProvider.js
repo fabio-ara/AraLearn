@@ -1,146 +1,118 @@
-import { getModelCapabilities } from "./modelCapabilities.js";
+import { text } from "../../core/text.js";
 import { ProviderHttpError } from "./providerErrors.js";
 
-function text(value) {
-  return typeof value === "string" ? value.trim() : "";
-}
-
-function fail(message) {
-  throw new Error(message);
-}
-
-function extractJsonObjectText(rawText = "") {
-  const start = rawText.indexOf("{");
-  const end = rawText.lastIndexOf("}");
-  if (start < 0 || end <= start) {
-    return "";
-  }
-  return rawText.slice(start, end + 1).trim();
-}
-
-function parseJsonFromModelText(rawText = "") {
+function parseJsonFromText(rawText = "") {
   const candidates = [
     rawText,
-    rawText.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim(),
-    extractJsonObjectText(rawText)
-  ].filter(Boolean);
-
+    rawText.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim()
+  ];
   for (const candidate of candidates) {
+    if (!candidate) {
+      continue;
+    }
     try {
       return JSON.parse(candidate);
-    } catch {
-      // Tenta a próxima forma comum de resposta do modelo.
-    }
+    } catch {}
   }
-
-  fail("O serviço Gemini devolveu JSON inválido.");
+  const firstBrace = rawText.indexOf("{");
+  const lastBrace = rawText.lastIndexOf("}");
+  if (firstBrace >= 0 && lastBrace > firstBrace) {
+    return JSON.parse(rawText.slice(firstBrace, lastBrace + 1));
+  }
+  throw new Error("O serviço Gemini devolveu JSON inválido.");
 }
 
-async function parseGeminiResponse(response) {
-  const data = await response.json().catch(() => null);
-  if (!response.ok) {
-    throw new ProviderHttpError({
-      statusCode: response.status,
-      message: data?.error?.message || `Falha HTTP ${response.status}.`,
-      payload: data
-    });
-  }
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
-  const rawText = (data?.candidates?.[0]?.content?.parts || [])
-    .map((part) => (typeof part?.text === "string" ? part.text : ""))
-    .join("")
-    .trim();
-  if (!rawText) {
-    const reason = data?.candidates?.[0]?.finishReason || data?.promptFeedback?.blockReason || "sem conteúdo";
-    fail(`O serviço Gemini não devolveu conteúdo utilizável (${reason}).`);
+function shouldRetryGemini(error) {
+  if (!(error instanceof ProviderHttpError)) {
+    return false;
   }
+  return [429, 500, 503, 504].includes(Number(error.statusCode));
+}
 
+function readGeminiRetryDelayMs(error) {
+  const message = text(error?.message);
+  const secondsMatch = message.match(/retry in\s+([0-9]+(?:\.[0-9]+)?)s/i);
+  if (secondsMatch) {
+    return Math.max(1000, Math.ceil(Number(secondsMatch[1]) * 1000));
+  }
+  const payloadMessage = text(error?.payload?.error?.message);
+  const payloadMatch = payloadMessage.match(/retry in\s+([0-9]+(?:\.[0-9]+)?)s/i);
+  if (payloadMatch) {
+    return Math.max(1000, Math.ceil(Number(payloadMatch[1]) * 1000));
+  }
+  return 1000;
+}
+
+export function createGeminiProvider({ apiKey = "" } = {}) {
   return {
-    value: parseJsonFromModelText(rawText),
-    rawText
-  };
-}
-
-function buildArtifactsText(artifacts = []) {
-  return (Array.isArray(artifacts) ? artifacts : [])
-    .map((artifact) => {
-      const name = text(artifact?.name || artifact?.id) || "artifact";
-      const content = typeof artifact?.content === "string" ? artifact.content : JSON.stringify(artifact?.content ?? {});
-      return `### ${name}\n${content}`;
-    })
-    .filter(Boolean)
-    .join("\n\n");
-}
-
-function buildGeminiRequestBody({ prompt = "", schema = null, artifacts = [], modelId = "" } = {}) {
-  const capabilities = getModelCapabilities(modelId);
-  const artifactsText = buildArtifactsText(artifacts);
-  const parts = [{ text: text(prompt) }];
-  if (artifactsText) {
-    parts.push({
-      text: `ARTEFATOS DA FASE:\n${artifactsText}`
-    });
-  }
-
-  const generationConfig = {
-    temperature: 0.2,
-    maxOutputTokens: 8192,
-    responseMimeType: capabilities?.responseMimeType || "application/json"
-  };
-  if (schema && capabilities?.supportsResponseJsonSchema !== false) {
-    generationConfig.responseJsonSchema = schema;
-  }
-
-  return {
-    systemInstruction: {
-      parts: [{ text: "Responda somente JSON válido, sem comentário fora do JSON." }]
+    id: "gemini",
+    label: "Gemini",
+    capabilities: {
+      supportsJsonSchema: true,
+      supportsJsonMode: true,
+      contextClass: "large"
     },
-    contents: [
-      {
-        role: "user",
-        parts
+    async generateStructured(request = {}) {
+      const safeApiKey = text(request.apiKey || apiKey);
+      if (!safeApiKey) {
+        throw new Error("Informe a chave da API do Gemini.");
       }
-    ],
-    generationConfig
-  };
-}
-
-export function createGeminiProvider({ apiKey = "", modelId = "gemini-2.5-flash" } = {}) {
-  return {
-    id: "google",
-    capabilities: getModelCapabilities(modelId),
-    async callJson(input = {}) {
-      const trimmedApiKey = text(apiKey);
-      if (!trimmedApiKey) {
-        fail("Informe a chave da API antes de usar o provider Gemini.");
-      }
-
-      const activeModelId = text(input?.modelId) || modelId;
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(activeModelId)}:generateContent`,
-        {
-          method: "POST",
-          headers: {
-            "content-type": "application/json",
-            "x-goog-api-key": trimmedApiKey
-          },
-          body: JSON.stringify(
-            buildGeminiRequestBody({
-              prompt: input?.prompt,
-              schema: input?.schema || null,
-              artifacts: input?.artifacts || [],
-              modelId: activeModelId
+      const modelId = text(request.modelId) || "gemini-2.5-flash";
+      let lastError = null;
+      for (let attempt = 0; attempt < 4; attempt += 1) {
+        const response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(modelId)}:generateContent`,
+          {
+            method: "POST",
+            headers: {
+              "content-type": "application/json",
+              "x-goog-api-key": safeApiKey
+            },
+            body: JSON.stringify({
+              systemInstruction: {
+                parts: [{ text: text(request.system) || "Responda somente JSON válido." }]
+              },
+              contents: [
+                {
+                  role: "user",
+                  parts: [{ text: text(request.prompt) }]
+                }
+              ],
+              generationConfig: {
+                temperature: typeof request.temperature === "number" ? request.temperature : 0.2,
+                responseMimeType: "application/json",
+                ...(request.schema ? { responseJsonSchema: request.schema } : {})
+              }
             })
-          )
+          }
+        );
+        const data = await response.json().catch(() => null);
+        if (response.ok) {
+          const rawText = (data?.candidates?.[0]?.content?.parts || [])
+            .map((part) => (typeof part?.text === "string" ? part.text : ""))
+            .join("")
+            .trim();
+          if (!rawText) {
+            throw new Error("O serviço Gemini não devolveu conteúdo utilizável.");
+          }
+          return parseJsonFromText(rawText);
         }
-      );
 
-      const parsed = await parseGeminiResponse(response);
-      return {
-        ok: true,
-        value: parsed.value,
-        rawText: parsed.rawText
-      };
+        lastError = new ProviderHttpError({
+          statusCode: response.status,
+          message: data?.error?.message || `Falha HTTP ${response.status}.`,
+          payload: data
+        });
+        if (!shouldRetryGemini(lastError) || attempt === 3) {
+          throw lastError;
+        }
+        await sleep(Math.max(readGeminiRetryDelayMs(lastError), 1000 * (attempt + 1)));
+      }
+      throw lastError || new Error("Falha inesperada ao consultar o Gemini.");
     }
   };
 }

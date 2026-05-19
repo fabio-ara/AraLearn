@@ -1,7 +1,6 @@
-import { resolveCourseForgeLaunchConfig } from "./courseForgeLaunchConfig.js";
 import { createCourseForgeProfileTuning } from "./courseForgeProfileTuning.js";
 import { createDefaultCourseModel, listCourseModelOptions } from "./courseModelSemantics.js";
-import { callModelWithRetry } from "../providers/callModelWithRetry.js";
+import { resolveGenerationProviderRuntime } from "./projectGenerationRuntime.js";
 
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -195,46 +194,55 @@ export async function inferCourseForgePlanningProfileTuning({
     throw new Error("Ingestão de anexos indisponível para inferir o planejamento didático.");
   }
 
-  const launchConfig = resolveCourseForgeLaunchConfig({
-    selectedModel: assistConfig.model,
-    apiKey: assistConfig.apiKey,
-    didacticProfileId: assistConfig.didacticProfileId,
-    profileTuning: assistConfig.profileTuning,
-    codexEndpoint: assistConfig.codexEndpoint,
-    codexToken: assistConfig.codexToken
-  });
+  const runtime = resolveGenerationProviderRuntime(assistConfig);
   const ingestedAttachments = await ingestAttachments(Array.isArray(attachments) ? attachments : []);
-  const activeProvider = provider || launchConfig.provider;
+  const activeProvider = provider || runtime.provider;
   const prompt = buildPlanningInferencePrompt({
     requestText,
     attachmentSummary: summarizeAttachments(ingestedAttachments.attachments),
     currentProfileTuning: assistConfig.profileTuning || {},
-    didacticProfileId: launchConfig.didacticProfileId
+    didacticProfileId: text(assistConfig.didacticProfileId)
   });
-
-  const response = await callModelWithRetry({
-    phase: "infer_planning_profile_tuning",
-    modelId: launchConfig.selectedModel,
-    request: {
-      prompt,
-      schema: null,
-      artifacts: []
+  const response = await activeProvider.generateStructured({
+    ...runtime.providerOptions,
+    modelId: runtime.modelId,
+    mode: "infer-planning-profile-tuning",
+    system: "Responda somente JSON válido e preencha todos os campos do planejamento didático.",
+    prompt,
+    schema: {
+      type: "object",
+      additionalProperties: false,
+      required: [
+        "targetStudentProfile",
+        "courseModelDescription",
+        "learningTrail",
+        "microsequenceProgression",
+        "minMicrosequences",
+        "targetMicrosequences",
+        "maxMicrosequences",
+        "requireCoreCoverageBeforeExtensions",
+        "requireVocabularyMap"
+      ],
+      properties: {
+        targetStudentProfile: { type: "string" },
+        courseModelDescription: { type: "string" },
+        learningTrail: { type: "string" },
+        microsequenceProgression: { type: "string" },
+        minMicrosequences: { type: "integer" },
+        targetMicrosequences: { type: "integer" },
+        maxMicrosequences: { type: "integer" },
+        requireCoreCoverageBeforeExtensions: { type: "boolean" },
+        requireVocabularyMap: { type: "boolean" }
+      }
     },
-    callModel: async ({ modelId }) =>
-      activeProvider.callJson({
-        phaseId: "infer_planning_profile_tuning",
-        modelId,
-        prompt,
-        schema: null,
-        artifacts: []
-      }).then((result) => result.value)
+    temperature: 0.2
   });
 
   return {
-    inferred: response.value || {},
+    inferred: response || {},
     profileTuningPatch: normalizeInferredPlanningProfileTuning({
-      inferred: response.value || {},
-      didacticProfileId: launchConfig.didacticProfileId,
+      inferred: response || {},
+      didacticProfileId: text(assistConfig.didacticProfileId),
       currentProfileTuning: assistConfig.profileTuning || {}
     }),
     ingestedAttachments

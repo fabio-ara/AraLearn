@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { createFakeProvider } from "../src/generation/providers/fakeProvider.js";
 
 import {
   buildCourseForgeInterventionRequestFromDraft,
@@ -173,10 +174,7 @@ test("executeCourseForgeMicrosequenceGeneration abre setup quando provider local
     checkCodexLocalHealth: async () => ({
       ok: false,
       error: "bridge offline"
-    }),
-    runCourseForge: async () => {
-      throw new Error("nao deveria executar");
-    }
+    })
   });
 
   assert.equal(result.status, "provider-unready");
@@ -185,16 +183,22 @@ test("executeCourseForgeMicrosequenceGeneration abre setup quando provider local
 
 test("executeCourseForgeMicrosequenceGeneration executa fluxo local no runtime novo", async () => {
   const projectDocument = {
+    contract: "aralearn.contract",
+    version: 1,
+    kind: "project",
     courses: [
       {
         key: "course-a",
+        title: "Curso A",
         modules: [
           {
             key: "module-a",
+            title: "Módulo A",
             lessons: [
               {
                 key: "lesson-a",
-                microsequences: [{ key: "micro-a", cards: [] }]
+                title: "Lição A",
+                microsequences: [{ key: "micro-a", title: "Microssequência A", status: "draft", included: false, cards: [] }]
               }
             ]
           }
@@ -202,6 +206,19 @@ test("executeCourseForgeMicrosequenceGeneration executa fluxo local no runtime n
       }
     ]
   };
+  const provider = createFakeProvider({
+    script: {
+      "generate-microsequence": {
+        summary: "Versão inicial.",
+        cards: [
+          { key: "card-1", resourceType: "say", content: "Primeiro card." },
+          { key: "card-2", resourceType: "code", content: { code: "echo ok", language: "bash" } },
+          { key: "card-3", resourceType: "say", content: "Terceiro card." },
+          { key: "card-4", resourceType: "block_gap_fill", content: "Use [[echo ok::echo ok|echo no]]." }
+        ]
+      }
+    }
+  });
 
   const result = await executeCourseForgeMicrosequenceGeneration({
     selection: {
@@ -222,28 +239,17 @@ test("executeCourseForgeMicrosequenceGeneration executa fluxo local no runtime n
     selectedDidacticTypeId: "explain",
     preferredContainerLabel: "Parágrafo",
     projectDocument,
+    provider,
     ingestAttachments: async (attachments) => ({
       attachments: attachments.map((item) => ({ ...item, textContent: "conteúdo" })),
       extractedCount: 1,
       warnings: []
-    }),
-    runCourseForge: async (request) => ({
-      projectDocument: {
-        ...projectDocument,
-        generated: request.intent.promptText
-      },
-      patch: {
-        target: {
-          courseKey: "course-a",
-          moduleKey: "module-a",
-          lessonKey: "lesson-a",
-          microsequenceKey: "micro-a"
-        }
-      }
     })
   });
 
   assert.equal(result.status, "success");
   assert.match(result.preparedIntervention.request.intent.promptText, /Base anterior/);
-  assert.equal(result.courseForgeResult.projectDocument.generated.includes("Expanda a explicação."), true);
+  const microsequence = result.courseForgeResult.projectDocument.courses[0].modules[0].lessons[0].microsequences[0];
+  assert.equal(microsequence.status, "ready");
+  assert.equal(microsequence.cards.length, 4);
 });

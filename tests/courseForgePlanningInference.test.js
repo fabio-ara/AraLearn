@@ -84,20 +84,18 @@ test("inferCourseForgePlanningProfileTuning usa provider para completar o tuning
       extractedCount: 1
     }),
     provider: {
-      async callJson(input = {}) {
+      async generateStructured(input = {}) {
         calls.push(input);
         return {
-          value: {
-            targetStudentProfile: "estudante de ADS com dificuldade de abstração formal",
-            courseModelDescription: "trilha de formalização gradual",
-            learningTrail: "formalization",
-            microsequenceProgression: "concrete_visual_formal",
-            minMicrosequences: 4,
-            targetMicrosequences: 6,
-            maxMicrosequences: 9,
-            requireCoreCoverageBeforeExtensions: true,
-            requireVocabularyMap: true
-          }
+          targetStudentProfile: "estudante de ADS com dificuldade de abstração formal",
+          courseModelDescription: "trilha de formalização gradual",
+          learningTrail: "formalization",
+          microsequenceProgression: "concrete_visual_formal",
+          minMicrosequences: 4,
+          targetMicrosequences: 6,
+          maxMicrosequences: 9,
+          requireCoreCoverageBeforeExtensions: true,
+          requireVocabularyMap: true
         };
       }
     }

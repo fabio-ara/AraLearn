@@ -418,6 +418,7 @@ test("sourceGuideStructured governa o contrato sem fallback implícito de descri
   assert.deepEqual(planningContract.context.lesson.sourceGuideStructured, {
     lessonGoal: "Reconhecer conectivos básicos e ler a notação em voz alta.",
     notationRules: "Sempre explicar `¬`, `∧` e `∨` antes de cobrar leitura formal.",
+    outOfScopeRules: "Lógica de predicados, tabela-verdade avançada.",
     commonErrors: "Confundir `∨` com exclusão mútua."
   });
   assert.equal(planningContract.context.course.sourceGuideStructured, undefined);
