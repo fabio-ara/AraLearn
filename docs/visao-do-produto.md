@@ -25,6 +25,14 @@ O app separa duas ações:
 
 Essa separação permite que o usuário veja o caminho antes de gerar detalhes, corrija o escopo antes de estudar e peça novas versões apenas onde houver necessidade.
 
+## Lugar no ecossistema
+
+AraLearn se situa entre ferramentas de flashcards, plataformas de prática guiada, sistemas de notas locais, wikis, versionamento e assistentes de IA.
+
+Ele dialoga com esse ecossistema, mas tem uma direção específica: transformar informação heterogênea em percurso de estudo, com recorte explícito, prática situada, revisão e autoria local.
+
+A discussão mais ampla está em [Contexto de produto e referências](contexto-produto-e-referencias.md).
+
 ## Microssequência
 
 A microssequência é a unidade didática central do AraLearn.
