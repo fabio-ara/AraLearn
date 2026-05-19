@@ -7896,8 +7896,15 @@ export function createLessonEditorApp({ root, storage, editor }) {
     });
     root.querySelector("[data-field='generate-prompt']")?.addEventListener("input", (event) => {
       state.generationDraft.promptText = event.target.value;
+      const hadVisibleFeedback =
+        Boolean(state.generationDraft.errorMessage) ||
+        Boolean(state.generationDraft.lastResult) ||
+        state.generationDraft.isSubmitting === true ||
+        state.generationDraft.progress?.visible === true;
       clearGenerationResult();
-      render({ preserveState: true });
+      if (hadVisibleFeedback) {
+        render({ preserveState: true });
+      }
     });
     root.querySelector("[data-field='generate-attachments']")?.addEventListener("change", (event) => {
       const nextFiles = Array.from(event.target.files || []);

@@ -1,6 +1,11 @@
 const TRACKED_SCROLL_SELECTORS = [
   ".screen-content",
   ".editor-sheet",
+  ".overlay-shell",
+  ".overlay-panel",
+  ".editor-overlay",
+  ".assist-config-overlay",
+  ".action-menu-overlay",
   ".generation-overlay-panel",
   ".home-generate-pane",
   ".generate-card",
@@ -79,7 +84,9 @@ function captureFocusedElement(root) {
   return {
     path: getElementPath(root, active),
     selectionStart: typeof active.selectionStart === "number" ? active.selectionStart : null,
-    selectionEnd: typeof active.selectionEnd === "number" ? active.selectionEnd : null
+    selectionEnd: typeof active.selectionEnd === "number" ? active.selectionEnd : null,
+    scrollTop: typeof active.scrollTop === "number" ? active.scrollTop : 0,
+    scrollLeft: typeof active.scrollLeft === "number" ? active.scrollLeft : 0
   };
 }
 
@@ -105,6 +112,13 @@ function restoreFocusedElement(root, snapshot) {
     typeof target.setSelectionRange === "function"
   ) {
     target.setSelectionRange(snapshot.selectionStart, snapshot.selectionEnd);
+  }
+
+  if (typeof snapshot.scrollTop === "number") {
+    target.scrollTop = snapshot.scrollTop;
+  }
+  if (typeof snapshot.scrollLeft === "number") {
+    target.scrollLeft = snapshot.scrollLeft;
   }
 }
 
