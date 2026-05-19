@@ -97,7 +97,7 @@ function resolveCourseModelWithProfileDefaults(defaultCourseModel = {}, input = 
   });
 }
 
-export function createCourseForgeProfileTuning(profileId = DEFAULT_ENGINE_PROFILE_ID, input = {}) {
+export function createProfileTuning(profileId = DEFAULT_ENGINE_PROFILE_ID, input = {}) {
   const resolvedProfile = resolveEngineProfile(profileId || DEFAULT_ENGINE_PROFILE_ID);
   const didacticPolicy = resolvedProfile?.didacticPolicy || {};
   const budget = didacticPolicy?.topDownCourseStrategy?.defaultBudgetByLesson || {};
@@ -178,7 +178,7 @@ export function mapOperationalReappearanceLevelToValue(level, fallback = 4) {
   return resolveReappearanceValue(level, OPERATIONAL_REAPPEARANCE_LEVEL_MAP, fallback);
 }
 
-export function buildCourseForgeEngineProfileOverrides({ profileTuning = {} } = {}) {
+export function buildEngineProfileOverrides({ profileTuning = {} } = {}) {
   const courseSemantics = buildCourseSemanticsForPolicy(profileTuning?.courseModel || {});
   const resourcePreferences = buildResourcePreferencesFromCourseModel(profileTuning?.courseModel || {});
   return {

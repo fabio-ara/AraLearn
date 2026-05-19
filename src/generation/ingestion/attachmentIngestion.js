@@ -512,7 +512,7 @@ function createAttachmentRecord(index, file, overrides = {}) {
   };
 }
 
-export async function ingestCourseForgeAttachments(files = [], options = {}) {
+export async function ingestAttachments(files = [], options = {}) {
   const ingested = [];
   const warnings = [];
   const { loadPdfjsModule = loadPdfjs, loadMammothLib = loadMammoth } = options;

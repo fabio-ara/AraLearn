@@ -109,15 +109,6 @@ A casca de produto atual voltou a ser a shell restaurada do editor, com três su
 
 Não existe mais o fluxo principal baseado em textarea central e anexos obrigatórios para gerar estrutura.
 
-## O que foi removido da arquitetura principal
-
-- `CourseForge`
-- pipeline multifase estrutural antigo
-- `domainMap` como eixo obrigatório do top-down
-- `SourceLedger` como dependência estrutural
-- geração estrutural por prompt livre e anexo bruto
-- painel de planejamento didático separado do fluxo estrutural de produto
-
 ## O que foi preservado
 
 - runtime público dos cards
@@ -126,7 +117,3 @@ Não existe mais o fluxo principal baseado em textarea central e anexos obrigat�
 - versão por microssequência
 - bridge local do Codex
 - harnesses e testes de fluxo novo
-
-Observação:
-
-- alguns módulos de integração ainda preservam o prefixo `CourseForge` no nome por continuidade de código, mas eles apenas adaptam a UI restaurada ao runtime direto atual

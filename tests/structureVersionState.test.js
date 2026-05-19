@@ -30,14 +30,14 @@ function createModule(title = "Módulo base") {
   };
 }
 
-test("normaliza entrada legada de versão estrutural com snapshot e ids sequenciais", () => {
+test("normaliza entrada anterior de versão estrutural com snapshot e ids sequenciais", () => {
   const entry = normalizeStructureVersionEntry({
     level: "module",
     entityKey: "module-base",
-    activeVersionId: "legacy-2",
+    activeVersionId: "old-2",
     versions: [
-      { id: "legacy-1", label: "Iteração 1", title: "Módulo A", lessons: [] },
-      { id: "legacy-2", label: "Iteração 2", title: "Módulo B", lessons: [] }
+      { id: "old-1", label: "Iteração 1", title: "Módulo A", lessons: [] },
+      { id: "old-2", label: "Iteração 2", title: "Módulo B", lessons: [] }
     ]
   });
 

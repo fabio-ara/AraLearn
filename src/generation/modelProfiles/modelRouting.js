@@ -10,7 +10,7 @@ export function getTopDownModelProfile(profileId = "codex_all") {
   return TOP_DOWN_PROFILES[profileId] || TOP_DOWN_PROFILES.codex_all;
 }
 
-export function resolveModelForCourseForgePhase({ selectedTopDownProfileId = "codex_all", phaseId = "", phaseModelOverrides = {} } = {}) {
+export function resolveModelForGenerationPhase({ selectedTopDownProfileId = "codex_all", phaseId = "", phaseModelOverrides = {} } = {}) {
   const override = phaseModelOverrides?.[phaseId];
   if (override) {
     return override;

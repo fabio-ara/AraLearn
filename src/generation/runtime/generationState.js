@@ -2,7 +2,7 @@ function text(value) {
   return typeof value === "string" ? value.trim() : "";
 }
 
-export function resolveCourseForgeGenerationScope(scopeState = {}) {
+export function resolveGenerationScope(scopeState = {}) {
   const courseKey = text(scopeState?.course?.key);
   const moduleKey = text(scopeState?.moduleValue?.key);
   const lessonKey = text(scopeState?.lesson?.key);
@@ -33,7 +33,7 @@ export function resolveCourseForgeGenerationScope(scopeState = {}) {
   };
 }
 
-export function resolveCourseForgeNavigationTarget({ projectDocument = {}, patch = {}, scopeState = {} } = {}) {
+export function resolveGenerationNavigationTarget({ projectDocument = {}, patch = {}, scopeState = {} } = {}) {
   const projectCourses = Array.isArray(projectDocument?.courses) ? projectDocument.courses : [];
   const target = patch?.target || {};
 
@@ -61,7 +61,7 @@ export function resolveCourseForgeNavigationTarget({ projectDocument = {}, patch
   };
 }
 
-export function summarizeCourseForgeTopDownResult(result = {}) {
+export function summarizeTopDownResult(result = {}) {
   const operations = Array.isArray(result?.patch?.operations) ? result.patch.operations.length : 0;
   const events = Array.isArray(result?.patch?.events) ? result.patch.events.length : 0;
   const eventLabel = events === 1 ? "evento auditável" : "eventos auditáveis";

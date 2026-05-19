@@ -1,6 +1,6 @@
 import { isCodexLocalModel } from "../providers/codexCliConfig.js";
-import { resolveCourseForgeLaunchConfig } from "./courseForgeLaunchConfig.js";
-import { resolveCourseForgeProviderReadiness } from "./courseForgeGenerationViewModel.js";
+import { resolveGenerationLaunchConfig } from "./launchConfig.js";
+import { resolveGenerationProviderReadiness } from "./generationViewModel.js";
 import { generateMicrosequenceProjectDocument } from "./projectGenerationRuntime.js";
 
 function text(value) {
@@ -23,7 +23,7 @@ function inferLocalOperation(promptText = "") {
   return "reinforce";
 }
 
-export function buildCourseForgeMicrosequencePrompt({
+export function buildMicrosequencePrompt({
   promptText = "",
   dependencyTitles = [],
   selectedDidacticTypeId = "",
@@ -81,7 +81,7 @@ export function buildCourseForgeMicrosequencePrompt({
   return lines.filter(Boolean).join("\n\n");
 }
 
-export function resolveCourseForgeMicrosequenceRequestConfig({
+export function resolveMicrosequenceRequestConfig({
   promptText = "",
   operationMode = "",
   interventionTargetMode = "current"
@@ -103,7 +103,7 @@ export function resolveCourseForgeMicrosequenceRequestConfig({
   };
 }
 
-export function buildCourseForgeInterventionRequestFromDraft({
+export function buildInterventionRequestFromDraft({
   selection = {},
   draft = {},
   lessonContext = {}
@@ -113,7 +113,7 @@ export function buildCourseForgeInterventionRequestFromDraft({
   const lessonKey = text(selection?.lessonKey);
   const microsequenceKey = text(selection?.microsequenceKey);
   const interventionTargetMode = text(draft?.interventionTargetMode) === "new_after_current" ? "new_after_current" : "current";
-  const requestConfig = resolveCourseForgeMicrosequenceRequestConfig({
+  const requestConfig = resolveMicrosequenceRequestConfig({
     promptText: text(draft?.promptText),
     operationMode: text(draft?.operationMode),
     interventionTargetMode
@@ -184,7 +184,7 @@ export function buildCourseForgeInterventionRequestFromDraft({
   };
 }
 
-export async function prepareCourseForgeMicrosequenceGeneration({
+export async function prepareMicrosequenceGeneration({
   selection = {},
   draft = {},
   assistConfig = {},
@@ -213,7 +213,7 @@ export async function prepareCourseForgeMicrosequenceGeneration({
     throw new Error("Informe um pedido ou anexo com texto utilizável antes de editar a microssequência.");
   }
 
-  const promptText = buildCourseForgeMicrosequencePrompt({
+  const promptText = buildMicrosequencePrompt({
     promptText: rawPromptText,
     dependencyTitles,
     selectedDidacticTypeId,
@@ -227,12 +227,12 @@ export async function prepareCourseForgeMicrosequenceGeneration({
     desiredMicrosequenceTitle: text(draft?.microsequenceTitle),
     currentMicrosequenceTitle: text(lessonContext?.currentMicrosequenceTitle)
   });
-  const requestConfig = resolveCourseForgeMicrosequenceRequestConfig({
+  const requestConfig = resolveMicrosequenceRequestConfig({
     promptText: rawPromptText,
     operationMode: text(draft?.operationMode),
     interventionTargetMode: text(draft?.interventionTargetMode)
   });
-  const interventionRequest = buildCourseForgeInterventionRequestFromDraft({
+  const interventionRequest = buildInterventionRequestFromDraft({
     selection,
     draft: {
       ...draft,
@@ -240,7 +240,7 @@ export async function prepareCourseForgeMicrosequenceGeneration({
     },
     lessonContext
   });
-  const launchConfig = resolveCourseForgeLaunchConfig({
+  const launchConfig = resolveGenerationLaunchConfig({
     selectedModel,
     apiKey: assistConfig.apiKey,
     didacticProfileId: assistConfig.didacticProfileId,
@@ -280,7 +280,7 @@ export async function prepareCourseForgeMicrosequenceGeneration({
   };
 }
 
-export async function executeCourseForgeMicrosequenceGeneration({
+export async function executeMicrosequenceGeneration({
   selection = {},
   draft = {},
   assistConfig = {},
@@ -293,7 +293,7 @@ export async function executeCourseForgeMicrosequenceGeneration({
   ingestAttachments,
   provider
 } = {}) {
-  const readiness = await resolveCourseForgeProviderReadiness({
+  const readiness = await resolveGenerationProviderReadiness({
     selectedModel: assistConfig.model,
     codexEndpoint: assistConfig.codexEndpoint,
     codexToken: assistConfig.codexToken,
@@ -308,7 +308,7 @@ export async function executeCourseForgeMicrosequenceGeneration({
   }
 
   try {
-    const preparedIntervention = await prepareCourseForgeMicrosequenceGeneration({
+    const preparedIntervention = await prepareMicrosequenceGeneration({
       selection,
       draft,
       assistConfig,
@@ -318,7 +318,7 @@ export async function executeCourseForgeMicrosequenceGeneration({
       lessonContext,
       ingestAttachments
     });
-    const courseForgeResult = await generateMicrosequenceProjectDocument({
+    const generationResult = await generateMicrosequenceProjectDocument({
       selection,
       draft,
       assistConfig,
@@ -331,7 +331,7 @@ export async function executeCourseForgeMicrosequenceGeneration({
     });
     return {
       status: "success",
-      courseForgeResult,
+      generationResult,
       preparedIntervention
     };
   } catch (error) {

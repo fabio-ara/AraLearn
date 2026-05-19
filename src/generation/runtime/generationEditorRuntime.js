@@ -1,26 +1,26 @@
 import { DEFAULT_CODEX_LOCAL_ENDPOINT, isCodexLocalModel } from "../providers/codexCliConfig.js";
 import { DEFAULT_ENGINE_PROFILE_ID } from "../config/engineProfileRegistry.js";
-import { createCourseForgeProfileTuning } from "./courseForgeProfileTuning.js";
+import { createProfileTuning } from "./profileTuning.js";
 import {
-  applyCourseForgeGenerationScope,
-  setCourseForgeGenerationDraftInput,
-  syncCourseForgeGenerationDraftHierarchy,
-  toggleCourseForgeGenerationDraftLevel
-} from "./courseForgeGenerationDraftState.js";
+  applyGenerationScope,
+  setGenerationDraftInput,
+  syncGenerationDraftHierarchy,
+  toggleGenerationDraftLevel
+} from "./generationDraftState.js";
 import {
-  buildCourseForgeGenerationSuccessState,
+  buildGenerationSuccessState,
   buildOpenGeneratedCourseViewState,
   resolveOpenGeneratedCourseTarget
-} from "./courseForgeGenerationNavigation.js";
+} from "./generationNavigation.js";
 import {
-  buildAppliedCourseForgeGeneration,
-  prepareCourseForgeStructureGeneration
-} from "./courseForgeGenerationRuntime.js";
+  buildAppliedGeneration,
+  prepareStructureGeneration
+} from "./generationRuntime.js";
 import {
-  resolveCourseForgeProviderReadiness,
+  resolveGenerationProviderReadiness,
   resolveGenerationScopeState
-} from "./courseForgeGenerationViewModel.js";
-import { createCourseForgeGenerationProgressState } from "./courseForgeProgressViewModel.js";
+} from "./generationViewModel.js";
+import { createGenerationProgressState } from "./progressViewModel.js";
 import { generateStructureProjectDocument } from "./projectGenerationRuntime.js";
 
 const DEFAULT_ASSIST_MODEL = "gemini-2.5-flash";
@@ -41,7 +41,7 @@ function normalizeAssistCustomProfiles(customProfiles = []) {
         id,
         label,
         baseProfileId,
-        profileTuning: createCourseForgeProfileTuning(
+        profileTuning: createProfileTuning(
           baseProfileId,
           entry?.profileTuning && typeof entry.profileTuning === "object" ? entry.profileTuning : {}
         )
@@ -70,11 +70,11 @@ function cloneGenerationDraft(draft = {}) {
     lastResult: draft.lastResult || null,
     isSubmitting: draft.isSubmitting === true,
     errorMessage: typeof draft.errorMessage === "string" ? draft.errorMessage : "",
-    progress: createCourseForgeGenerationProgressState(draft.progress || {})
+    progress: createGenerationProgressState(draft.progress || {})
   };
 }
 
-export function normalizeCourseForgeAssistConfig(config = {}) {
+export function normalizeAssistConfig(config = {}) {
   const customProfiles = normalizeAssistCustomProfiles(config.customProfiles);
   const selectedProfileId = text(config.selectedProfileId) || text(config.didacticProfileId) || DEFAULT_ENGINE_PROFILE_ID;
   const selectedCustomProfile = customProfiles.find((entry) => entry.id === selectedProfileId) || null;
@@ -84,7 +84,7 @@ export function normalizeCourseForgeAssistConfig(config = {}) {
     apiKey: typeof config.apiKey === "string" ? config.apiKey.trim() : "",
     selectedProfileId: selectedCustomProfile?.id || didacticProfileId,
     didacticProfileId,
-    profileTuning: createCourseForgeProfileTuning(
+    profileTuning: createProfileTuning(
       didacticProfileId,
       config.profileTuning && typeof config.profileTuning === "object"
         ? config.profileTuning
@@ -96,8 +96,8 @@ export function normalizeCourseForgeAssistConfig(config = {}) {
   };
 }
 
-export function applyCourseForgeAssistConfigPatch({ assistConfig = {}, patch = {} } = {}) {
-  const nextAssistConfig = normalizeCourseForgeAssistConfig({
+export function applyAssistConfigPatch({ assistConfig = {}, patch = {} } = {}) {
+  const nextAssistConfig = normalizeAssistConfig({
     ...assistConfig,
     ...patch
   });
@@ -107,7 +107,7 @@ export function applyCourseForgeAssistConfigPatch({ assistConfig = {}, patch = {
   };
 }
 
-export function createCourseForgeCodexCliSetupStatus(nextStatus = {}) {
+export function createCodexCliSetupStatus(nextStatus = {}) {
   return {
     ok: nextStatus.ok === true,
     checking: nextStatus.checking === true,
@@ -116,8 +116,8 @@ export function createCourseForgeCodexCliSetupStatus(nextStatus = {}) {
   };
 }
 
-export async function checkCourseForgeCodexCliConnection({ assistConfig = {}, checkCodexLocalHealth } = {}) {
-  const normalizedAssistConfig = normalizeCourseForgeAssistConfig(assistConfig);
+export async function checkCodexCliConnection({ assistConfig = {}, checkCodexLocalHealth } = {}) {
+  const normalizedAssistConfig = normalizeAssistConfig(assistConfig);
 
   let status;
   try {
@@ -135,7 +135,7 @@ export async function checkCourseForgeCodexCliConnection({ assistConfig = {}, ch
 
   return {
     status,
-    setupStatus: createCourseForgeCodexCliSetupStatus({
+    setupStatus: createCodexCliSetupStatus({
       ok: status.ok,
       checking: false,
       error: status.ok ? "" : status.error || "Bridge local não encontrado.",
@@ -144,21 +144,21 @@ export async function checkCourseForgeCodexCliConnection({ assistConfig = {}, ch
   };
 }
 
-export function buildCourseForgeGenerationResultClearedState({
+export function buildGenerationResultClearedState({
   draft = {},
   pendingGeneratedNavigation = null
 } = {}) {
   const nextDraft = cloneGenerationDraft(draft);
   nextDraft.errorMessage = "";
   nextDraft.lastResult = null;
-  nextDraft.progress = createCourseForgeGenerationProgressState();
+  nextDraft.progress = createGenerationProgressState();
   return {
     draft: nextDraft,
     pendingGeneratedNavigation: null
   };
 }
 
-export function applyCourseForgeGenerationPanelScopeState({
+export function applyGenerationPanelScopeState({
   draft = {},
   scope = {},
   projectDocument = {},
@@ -167,7 +167,7 @@ export function applyCourseForgeGenerationPanelScopeState({
   findModule,
   findLesson
 } = {}) {
-  const scopedDraft = applyCourseForgeGenerationScope({
+  const scopedDraft = applyGenerationScope({
     draft,
     scope,
     projectDocument,
@@ -176,14 +176,14 @@ export function applyCourseForgeGenerationPanelScopeState({
     findModule,
     findLesson
   });
-  return buildCourseForgeGenerationResultClearedState({
+  return buildGenerationResultClearedState({
     draft: scopedDraft,
     pendingGeneratedNavigation: null
   });
 }
 
-export function buildOpenedCourseForgeGenerationPanelState(options = {}) {
-  const nextState = applyCourseForgeGenerationPanelScopeState(options);
+export function buildOpenedGenerationPanelState(options = {}) {
+  const nextState = applyGenerationPanelScopeState(options);
   return {
     ...nextState,
     generationPanelOpen: true,
@@ -191,7 +191,7 @@ export function buildOpenedCourseForgeGenerationPanelState(options = {}) {
   };
 }
 
-export function buildClosedCourseForgeGenerationPanelState({
+export function buildClosedGenerationPanelState({
   draft = {},
   preserveGeneratedResult = true,
   pendingGeneratedNavigation = null
@@ -201,7 +201,7 @@ export function buildClosedCourseForgeGenerationPanelState({
         draft: cloneGenerationDraft(draft),
         pendingGeneratedNavigation
       }
-    : buildCourseForgeGenerationResultClearedState({
+    : buildGenerationResultClearedState({
         draft,
         pendingGeneratedNavigation
       });
@@ -211,7 +211,7 @@ export function buildClosedCourseForgeGenerationPanelState({
   };
 }
 
-export function resolveCourseForgeGenerationScopeViewState({
+export function resolveGenerationScopeViewState({
   draft = {},
   projectDocument = {},
   visibleCourses = [],
@@ -229,7 +229,7 @@ export function resolveCourseForgeGenerationScopeViewState({
   });
 }
 
-export function buildCourseForgeGenerationLevelState({
+export function buildGenerationLevelState({
   draft = {},
   level = "",
   projectDocument = {},
@@ -238,7 +238,7 @@ export function buildCourseForgeGenerationLevelState({
   findModule,
   findLesson
 } = {}) {
-  const scopeState = resolveCourseForgeGenerationScopeViewState({
+  const scopeState = resolveGenerationScopeViewState({
     draft,
     projectDocument,
     visibleCourses,
@@ -246,37 +246,37 @@ export function buildCourseForgeGenerationLevelState({
     findModule,
     findLesson
   });
-  const nextDraft = toggleCourseForgeGenerationDraftLevel({
+  const nextDraft = toggleGenerationDraftLevel({
     draft,
     level,
     scopeState,
     visibleCourses
   });
-  return buildCourseForgeGenerationResultClearedState({
+  return buildGenerationResultClearedState({
     draft: nextDraft,
     pendingGeneratedNavigation: null
   });
 }
 
-export function buildCourseForgeGenerationInputState({
+export function buildGenerationInputState({
   draft = {},
   level = "",
   value = "",
   visibleCourses = []
 } = {}) {
-  const nextDraft = setCourseForgeGenerationDraftInput({
+  const nextDraft = setGenerationDraftInput({
     draft,
     level,
     value,
     visibleCourses
   });
-  return buildCourseForgeGenerationResultClearedState({
+  return buildGenerationResultClearedState({
     draft: nextDraft,
     pendingGeneratedNavigation: null
   });
 }
 
-export function resolveCourseForgeOpenGeneratedLessonState({
+export function resolveOpenGeneratedLessonState({
   pendingGeneratedNavigation = null,
   lastResult = null
 } = {}) {
@@ -298,7 +298,7 @@ export function resolveCourseForgeOpenGeneratedLessonState({
   };
 }
 
-export async function executeCourseForgeStructureGeneration({
+export async function executeStructureGeneration({
   draft = {},
   assistConfig = {},
   projectDocument = {},
@@ -311,11 +311,11 @@ export async function executeCourseForgeStructureGeneration({
   onProgress,
   provider
 } = {}) {
-  const syncedDraft = syncCourseForgeGenerationDraftHierarchy({
+  const syncedDraft = syncGenerationDraftHierarchy({
     draft,
     visibleCourses
   });
-  const scopeState = resolveCourseForgeGenerationScopeViewState({
+  const scopeState = resolveGenerationScopeViewState({
     draft: syncedDraft,
     projectDocument,
     visibleCourses,
@@ -336,7 +336,7 @@ export async function executeCourseForgeStructureGeneration({
     };
   }
 
-  const readiness = await resolveCourseForgeProviderReadiness({
+  const readiness = await resolveGenerationProviderReadiness({
     selectedModel: assistConfig.model,
     codexEndpoint: assistConfig.codexEndpoint,
     codexToken: assistConfig.codexToken,
@@ -354,7 +354,7 @@ export async function executeCourseForgeStructureGeneration({
       },
       pendingGeneratedNavigation: null,
       shouldOpenCodexCliSetup: true,
-      codexCliSetupStatus: createCourseForgeCodexCliSetupStatus({
+      codexCliSetupStatus: createCodexCliSetupStatus({
         ok: false,
         checking: false,
         error: readiness.error || "O bridge local não está ativo.",
@@ -364,7 +364,7 @@ export async function executeCourseForgeStructureGeneration({
   }
 
   try {
-    const courseForgeResult = await generateStructureProjectDocument({
+    const generationResult = await generateStructureProjectDocument({
       draft: syncedDraft,
       scopeState,
       projectDocument,
@@ -373,12 +373,12 @@ export async function executeCourseForgeStructureGeneration({
       provider,
       onProgress
     });
-    const applied = buildAppliedCourseForgeGeneration({
-      courseForgeResult,
+    const applied = buildAppliedGeneration({
+      generationResult,
       ingestedAttachments: { warnings: [] },
       scopeState
     });
-    const successState = buildCourseForgeGenerationSuccessState({
+    const successState = buildGenerationSuccessState({
       draft: syncedDraft,
       applied
     });
@@ -391,7 +391,7 @@ export async function executeCourseForgeStructureGeneration({
       },
       selection: successState.selection,
       pendingGeneratedNavigation: successState.pendingGeneratedNavigation,
-      courseForgeResult
+      generationResult
     };
   } catch (error) {
     return {

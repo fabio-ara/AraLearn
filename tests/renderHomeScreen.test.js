@@ -317,7 +317,7 @@ test("renderiza o painel contextual com curso fixado para geração estrutural d
   assert.match(html, /data-field="generate-course-input"[^>]+value="Lógica"/);
 });
 
-test("renderiza o painel contextual com lição fixada no fluxo único do CourseForge", () => {
+test("renderiza o painel contextual com lição fixada no fluxo único do Geração", () => {
   const html = renderGenerationPanelOverlay({
     project: {
       contract: "aralearn.contract",

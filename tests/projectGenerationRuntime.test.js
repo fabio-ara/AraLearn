@@ -272,12 +272,12 @@ test("generateMicrosequenceProjectDocument cria suporte adjacente sem quebrar a 
   assert.equal(microsequences[3].key, "micro-next");
 });
 
-test("fluxo de produto não importa runCourseForge nem fallback de CourseForge", () => {
+test("fluxo de produto não importa runner estrutural externo nem fallback paralelo", () => {
   const lessonEditorSource = fs.readFileSync("./src/ui/lessonEditorApp.js", "utf8");
   const directRuntimeSource = fs.readFileSync("./src/generation/runtime/projectGenerationRuntime.js", "utf8");
 
-  assert.doesNotMatch(lessonEditorSource, /courseForgeRunner/);
-  assert.doesNotMatch(lessonEditorSource, /runCourseForge/);
-  assert.doesNotMatch(directRuntimeSource, /runCourseForge/);
-  assert.doesNotMatch(directRuntimeSource, /courseForgePhases/);
+  assert.doesNotMatch(lessonEditorSource, /generationRunner/);
+  assert.doesNotMatch(lessonEditorSource, /runGeneration/);
+  assert.doesNotMatch(directRuntimeSource, /runGeneration/);
+  assert.doesNotMatch(directRuntimeSource, /generationPhases/);
 });

@@ -1,4 +1,4 @@
-import { createCourseForgeGenerationProgressState } from "./courseForgeProgressViewModel.js";
+import { createGenerationProgressState } from "./progressViewModel.js";
 
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -33,7 +33,7 @@ function cloneDraft(draft = {}) {
     lastResult: draft.lastResult || null,
     isSubmitting: draft.isSubmitting === true,
     errorMessage: typeof draft.errorMessage === "string" ? draft.errorMessage : "",
-    progress: createCourseForgeGenerationProgressState(draft.progress || {})
+    progress: createGenerationProgressState(draft.progress || {})
   };
 }
 
@@ -51,7 +51,7 @@ function resolveHierarchyInputMatch(items, inputValue) {
   );
 }
 
-export function syncCourseForgeGenerationDraftHierarchy({ draft = {}, visibleCourses = [] } = {}) {
+export function syncGenerationDraftHierarchy({ draft = {}, visibleCourses = [] } = {}) {
   const nextDraft = cloneDraft(draft);
 
   if (!nextDraft.courseFixed) {
@@ -103,7 +103,7 @@ export function syncCourseForgeGenerationDraftHierarchy({ draft = {}, visibleCou
   return nextDraft;
 }
 
-export function applyCourseForgeGenerationScope({
+export function applyGenerationScope({
   draft = {},
   scope = {},
   projectDocument = {},
@@ -128,13 +128,13 @@ export function applyCourseForgeGenerationScope({
   nextDraft.lessonInput = lesson?.title || "";
   nextDraft.lessonKey = text(lesson?.key);
 
-  return syncCourseForgeGenerationDraftHierarchy({
+  return syncGenerationDraftHierarchy({
     draft: nextDraft,
     visibleCourses
   });
 }
 
-export function toggleCourseForgeGenerationDraftLevel({
+export function toggleGenerationDraftLevel({
   draft = {},
   level = "",
   scopeState = {},
@@ -171,13 +171,13 @@ export function toggleCourseForgeGenerationDraftLevel({
     }
   }
 
-  return syncCourseForgeGenerationDraftHierarchy({
+  return syncGenerationDraftHierarchy({
     draft: nextDraft,
     visibleCourses
   });
 }
 
-export function setCourseForgeGenerationDraftInput({
+export function setGenerationDraftInput({
   draft = {},
   level = "",
   value = "",
@@ -196,7 +196,7 @@ export function setCourseForgeGenerationDraftInput({
     nextDraft.lessonFixed = !!text(value);
   }
 
-  return syncCourseForgeGenerationDraftHierarchy({
+  return syncGenerationDraftHierarchy({
     draft: nextDraft,
     visibleCourses
   });

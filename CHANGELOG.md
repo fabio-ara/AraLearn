@@ -10,8 +10,8 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 - o workflow do GitHub Pages passa a instalar dependências antes de validar testes e gerar o artefato público
 - a build pública do Pages passa a publicar também os assets de `pdfjs-dist` e `mammoth` usados pela ingestão de `PDF` e `DOCX` em runtime
-- o smoke de Gemini deixa de apontar para o stack removido de `assist` e passa a validar o fluxo real do `CourseForge` no runtime atual
-- o `README` e o changelog público passam a descrever o estado atual do produto, com geração estrutural unificada no `CourseForge` e workbench local reduzido à intervenção de cards
+- o smoke de Gemini passa a validar diretamente o fluxo real de geração no runtime atual
+- o `README` e o changelog público passam a descrever o estado atual do produto, com top-down até microssequência e bottom-up local por cards
 
 ## [0.9.23] - 2026-05-15
 
@@ -281,7 +281,7 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 ### Changed
 
 - remoção do runtime, editor, storage, testes e documentação operacionais do antigo `aralearn.intent.v1`
-- `projectNavigation` e o storage auxiliar de configuração substituem helpers ainda nomeados pela trilha legada
+- `projectNavigation` e o storage auxiliar de configuração substituem helpers ainda nomeados pela trilha anterior
 - `validate:example` passa a validar diretamente o exemplo do contrato público atual
 
 ### Tests

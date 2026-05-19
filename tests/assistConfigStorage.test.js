@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 
 import { readAssistConfigStorage, writeAssistConfigStorage } from "../src/ui/assistConfigStorage.js";
 import { DEFAULT_ENGINE_PROFILE_ID } from "../src/generation/config/engineProfileRegistry.js";
-import { createCourseForgeProfileTuning } from "../src/generation/runtime/courseForgeProfileTuning.js";
+import { createProfileTuning } from "../src/generation/runtime/profileTuning.js";
 
 function createMemoryStorage() {
   const data = new Map();
@@ -18,7 +18,7 @@ function createMemoryStorage() {
   };
 }
 
-test("assistConfigStorage lê config legada e injeta defaults do Codex local", () => {
+test("assistConfigStorage lê config mínima e injeta defaults do Codex local", () => {
   const storage = createMemoryStorage();
   storage.setItem(
     "aralearn.assist-config",
@@ -33,7 +33,7 @@ test("assistConfigStorage lê config legada e injeta defaults do Codex local", (
     apiKey: "abc",
     selectedProfileId: DEFAULT_ENGINE_PROFILE_ID,
     didacticProfileId: DEFAULT_ENGINE_PROFILE_ID,
-    profileTuning: createCourseForgeProfileTuning(DEFAULT_ENGINE_PROFILE_ID),
+    profileTuning: createProfileTuning(DEFAULT_ENGINE_PROFILE_ID),
     customProfiles: [],
     codexEndpoint: "http://127.0.0.1:4183/assist",
     codexToken: ""
@@ -49,7 +49,7 @@ test("assistConfigStorage grava e lê endpoint/token do Codex local", () => {
       apiKey: "",
       selectedProfileId: "aralearn.engine.ads.systems.v1",
       didacticProfileId: "aralearn.engine.ads.systems.v1",
-      profileTuning: createCourseForgeProfileTuning("aralearn.engine.ads.systems.v1", {
+      profileTuning: createProfileTuning("aralearn.engine.ads.systems.v1", {
         targetStudentProfile: "estudante operacional"
       }),
       customProfiles: [],
@@ -64,7 +64,7 @@ test("assistConfigStorage grava e lê endpoint/token do Codex local", () => {
     apiKey: "",
     selectedProfileId: "aralearn.engine.ads.systems.v1",
     didacticProfileId: "aralearn.engine.ads.systems.v1",
-    profileTuning: createCourseForgeProfileTuning("aralearn.engine.ads.systems.v1", {
+    profileTuning: createProfileTuning("aralearn.engine.ads.systems.v1", {
       targetStudentProfile: "estudante operacional"
     }),
     customProfiles: [],
@@ -79,7 +79,7 @@ test("assistConfigStorage tolera storage ausente, JSON inválido e valores ausen
     apiKey: "",
     selectedProfileId: DEFAULT_ENGINE_PROFILE_ID,
     didacticProfileId: DEFAULT_ENGINE_PROFILE_ID,
-    profileTuning: createCourseForgeProfileTuning(DEFAULT_ENGINE_PROFILE_ID),
+    profileTuning: createProfileTuning(DEFAULT_ENGINE_PROFILE_ID),
     customProfiles: [],
     codexEndpoint: "http://127.0.0.1:4183/assist",
     codexToken: ""
@@ -89,14 +89,14 @@ test("assistConfigStorage tolera storage ausente, JSON inválido e valores ausen
     apiKey: "",
     selectedProfileId: DEFAULT_ENGINE_PROFILE_ID,
     didacticProfileId: DEFAULT_ENGINE_PROFILE_ID,
-    profileTuning: createCourseForgeProfileTuning(DEFAULT_ENGINE_PROFILE_ID),
+    profileTuning: createProfileTuning(DEFAULT_ENGINE_PROFILE_ID),
     customProfiles: [],
     codexEndpoint: "http://127.0.0.1:4183/assist",
     codexToken: ""
   });
 });
 
-test("assistConfigStorage reidrata defaults semânticos do perfil quando o courseModel legado estava vazio", () => {
+test("assistConfigStorage reidrata defaults semânticos do perfil quando o courseModel anterior estava vazio", () => {
   const storage = createMemoryStorage();
   storage.setItem(
     "aralearn.assist-config",
@@ -153,4 +153,3 @@ test("assistConfigStorage reidrata perfil derivado do usuário sem mutar o seed 
   assert.equal(config.customProfiles[0].label, "Meu perfil procedural");
   assert.equal(config.customProfiles[0].profileTuning.minMicrosequences, 4);
 });
-
