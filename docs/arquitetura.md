@@ -1,6 +1,10 @@
 # Arquitetura do AraLearn
 
+Este documento descreve a arquitetura implementada no AraLearn: estrutura de dados, camadas de código, fluxo de geração, persistência e recursos de card.
+
 ## Estrutura pública
+
+O projeto é organizado por uma árvore simples:
 
 ```text
 project
@@ -11,121 +15,144 @@ project
                 └── card
 ```
 
-Essa árvore é o centro do storage e da navegação.
+Essa árvore é usada para persistência, navegação, exportação, importação e estudo. Ela também conserva contexto: uma microssequência dentro de uma lição, de um módulo e de um curso já traz informações de escopo que ajudam a orientar a geração por IA.
 
-## Contratos
-
-O app trabalha com dois contratos principais:
+## Contratos principais
 
 ### `aralearn.scope.v1`
 
-Entrada pequena para o top-down:
+Contrato de entrada para planejamento estrutural.
 
-- curso
-- objetivo opcional
-- evidência prioritária
-- módulos
-- include/exclude por módulo
-- observações
-- estilo de cobrança
+Ele contém:
+
+- dados do curso;
+- objetivo opcional;
+- prioridade de evidências;
+- módulos;
+- termos de escopo que entram no módulo;
+- termos de escopo que ficam fora;
+- observações;
+- estilo de avaliação ou uso.
+
+Esse contrato reduz ambiguidade antes da chamada ao provider.
 
 ### `aralearn.contract` v1
 
-Projeto persistido:
+Contrato persistido do projeto.
 
-- cursos com `evidencePriority`
-- módulos com `include` e `exclude` normalizados
-- lições com `goal`
-- microssequências com `type`, `status`, `dependsOn`, `scopeRefs`
-- versões explícitas por microssequência
-- cards com `resourceType`
+Ele contém:
+
+- cursos com `evidencePriority`;
+- módulos com `include`, `exclude`, `notes` e `assessmentStyle`;
+- lições com `goal`;
+- microssequências com `type`, `status`, `dependsOn`, `scopeRefs`, versões e versão ativa;
+- cards com `resourceType`, `content` e feedback posterior opcional.
+
+A validação local fica em `src/domain/aralearnProject.js`.
 
 ## Camadas de código
 
 ### `src/domain/`
 
-Responsável por:
+Define e valida entidades do domínio:
 
-- validação do contrato de escopo
-- validação do contrato público v1
-- normalização de termos
-- cards
-- microssequência
-- versão
+- contrato de projeto;
+- contrato de escopo;
+- termos de escopo;
+- cards;
+- microssequências;
+- versões;
+- recursos renderizáveis.
 
 ### `src/generation/topDown/`
 
-Pipeline permitido:
+Responsável pelo planejamento estrutural a partir do contrato de escopo.
 
-1. validar escopo
-2. montar prompt curto
-3. chamar provider estruturado
-4. validar saída planejada
-5. converter em patch simples de curso
-6. aplicar ao projeto
+O resultado esperado é uma trilha com cursos, módulos, lições e microssequências planejadas. Nessa fase, a geração não precisa produzir cards.
 
 ### `src/generation/bottomUp/`
 
-Responsável por:
+Responsável pela materialização e revisão de uma microssequência específica.
 
-- montar `ContextPacket`
-- gerar cards da microssequência
-- melhorar a versão atual
-- acrescentar prática
-- criar complemento `support`
-- gerar próxima microssequência principal
+Operações previstas:
+
+- gerar cards;
+- melhorar uma explicação;
+- acrescentar prática;
+- criar complemento;
+- gerar a próxima microssequência planejada.
+
+Cada operação trabalha com contexto local e produz nova versão.
+
+### `src/generation/runtime/`
+
+Integra geração e documento do projeto. Essa camada aplica alterações validadas ao estado local.
 
 ### `src/generation/providers/`
 
-Registry simples com providers:
+Contém o registry e os adapters de provider:
 
-- `fake`
-- `gemini`
-- `codex-cli`
-- `openai-compatible`
+- `fake`;
+- `gemini`;
+- `codex-cli`;
+- `openai-compatible`.
+
+A intenção é manter a lógica didática fora do provider. O provider executa uma operação; o contrato e a validação pertencem ao app.
 
 ### `src/ui/`
 
-- `scopeBuilder/`: builder da trilha
-- `courseTree/`: navegação estrutural
-- `study/`: estudo e ações locais
-- `providers/`: configuração de provider
-- `lessonEditorApp.js`: shell principal restaurada que orquestra árvore, edição e geração
+Contém a interface de autoria, navegação, estudo e configuração:
+
+- `scopeBuilder/`: formulário de escopo por curso e módulos;
+- `courseTree/`: navegação estrutural;
+- `study/`: estudo da microssequência selecionada;
+- `providers/`: configuração de provider;
+- `lessonEditorApp.js`: composição principal da aplicação.
 
 ## Fluxo operacional
 
-### Top-down
+### Planejamento estrutural
 
 ```text
-scope contract -> planned course -> project patch -> project v1
+aralearn.scope.v1 -> provider -> plano estrutural -> validação -> aralearn.contract v1
 ```
 
-### Bottom-up
+O plano estrutural cria ou atualiza a árvore até microssequências.
+
+### Materialização local
 
 ```text
-selection -> context packet -> cards/version -> project update
+microssequência selecionada -> contexto local -> provider -> cards -> validação -> nova versão
 ```
+
+A materialização não precisa reenviar o projeto inteiro. O contexto vem da posição da microssequência na árvore, de seus objetivos, de suas dependências e do pedido do usuário.
 
 ## Persistência
 
-O projeto continua local-first.
+O AraLearn mantém o projeto no dispositivo.
 
-Persistido:
+Chaves principais:
 
-- `aralearn.project`
-- `aralearn.progress`
-- `aralearn.provider-settings.v2`
+- `aralearn.project`;
+- `aralearn.progress`;
+- `aralearn.provider-settings.v2`.
+
+Essa abordagem favorece uso local, inspeção, exportação e continuidade sem depender de servidor próprio.
 
 ## Recursos públicos de card
 
-Recursos mínimos aceitos:
+Recursos aceitos:
 
-- `say`
-- `table`
-- `code`
-- `flow`
-- `tree`
-- `graph`
-- `block_gap_fill`
+- `say`;
+- `table`;
+- `code`;
+- `flow`;
+- `tree`;
+- `graph`;
+- `block_gap_fill`.
 
-O renderer público existente foi preservado e o contrato novo adapta cards para esse runtime.
+A lista é definida em `src/domain/resources.js` e validada antes de o conteúdo entrar no projeto.
+
+## Integridade
+
+O app deve preservar o projeto anterior quando uma resposta de IA não passa pela validação. A regra arquitetural é simples: conteúdo gerado só entra no projeto depois de validado.
