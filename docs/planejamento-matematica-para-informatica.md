@@ -2,7 +2,7 @@
 
 Este documento registra um exemplo de planejamento de curso no AraLearn.
 
-O objetivo é mostrar como a arquitetura do app pode organizar um domínio específico sem perder progressão, prática e legibilidade.
+O objetivo é mostrar como a arquitetura do app pode organizar uma disciplina concreta sem perder progressão, prática e fidelidade à forma de resolução esperada em aula ou prova.
 
 ## Propósito
 
