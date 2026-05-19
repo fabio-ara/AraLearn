@@ -23,6 +23,12 @@ O AraLearn ajuda o usuário a:
 
 A IA é usada como assistência situada. Ela não substitui a autoria do usuário nem transforma o app em chat genérico. O projeto permanece visível, editável, exportável e validado por contrato.
 
+## Contexto
+
+AraLearn dialoga com práticas e produtos como flashcards, repetição espaçada, aprendizagem por etapas, organização pessoal do conhecimento, hipertexto, versionamento e autoria local. Seu foco, porém, é próprio: transformar material disperso em percurso estruturado, praticável e auditável.
+
+A documentação discute esse contexto em [Contexto de produto e referências](docs/contexto-produto-e-referencias.md), incluindo o lugar do app diante de produtos como Anki, Duolingo, Obsidian, Git, Wikipédia e plataformas de fluxo contínuo, além de questões filosóficas e éticas sobre organização do conhecimento, IA e autoria.
+
 ## Para quem o projeto foi pensado
 
 AraLearn pode ser usado por:
@@ -32,8 +38,6 @@ AraLearn pode ser usado por:
 - leitores de artigos, capítulos, documentação técnica e materiais especializados;
 - professores, monitores e estudantes que queiram montar trilhas de estudo revisáveis;
 - interessados em ferramentas locais de organização do conhecimento.
-
-O produto dialoga com práticas conhecidas de flashcards, repetição espaçada, aprendizagem por etapas e organização pessoal do conhecimento, mas seu foco está na transformação de material disperso em percurso estruturado, praticável e auditável.
 
 ## Fluxo de uso
 
@@ -105,6 +109,7 @@ npm run codex:local
 
 - [Índice da documentação](docs/README.md)
 - [Visão do produto](docs/visao-do-produto.md)
+- [Contexto de produto e referências](docs/contexto-produto-e-referencias.md)
 - [Modelo didático](docs/modelo-didatico.md)
 - [Arquitetura](docs/arquitetura.md)
 - [Arquitetura de geração por LLM e API](docs/nova-arquitetura-llm-api.md)
