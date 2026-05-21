@@ -5556,7 +5556,7 @@ button {
   height: 100%;
   min-height: 0;
   overflow-y: auto;
-  overflow-x: clip;
+  overflow-x: visible;
   padding-right: 2px;
   padding-bottom: max(var(--safe-bottom-tappable), 8px);
 }
@@ -6749,19 +6749,19 @@ button {
   border: 0;
   border-radius: 0 0 17px 17px;
   background:
-    radial-gradient(circle at top right, rgba(166, 115, 42, 0.18), transparent 58%),
-    linear-gradient(180deg, rgba(69, 43, 19, 0.94), rgba(31, 21, 12, 0.96)),
-    rgba(18, 13, 9, 0.96);
-  margin: 0 -14px calc(-1 * max(var(--safe-bottom-tappable), 8px)) -12px;
+    radial-gradient(circle at top right, rgba(208, 188, 151, 0.09), transparent 56%),
+    linear-gradient(180deg, rgba(48, 47, 42, 0.98), rgba(30, 29, 27, 0.99)),
+    rgba(26, 26, 24, 0.99);
+  margin: 0 -14px calc(-12px - max(var(--safe-bottom-tappable), 8px)) -12px;
   padding:
     12px
     14px
-    calc(16px + max(var(--safe-bottom-tappable), 8px))
+    calc(28px + max(var(--safe-bottom-tappable), 8px))
     12px;
   overflow: visible;
   box-shadow:
-    inset 0 1px 0 rgba(255, 225, 166, 0.07),
-    inset 0 12px 22px rgba(122, 75, 24, 0.08);
+    inset 0 1px 0 rgba(255, 240, 212, 0.05),
+    inset 0 12px 22px rgba(0, 0, 0, 0.12);
 }
 
 .assist-feedback-panel.is-warning {
