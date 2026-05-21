@@ -6736,7 +6736,8 @@ button {
 }
 
 .workbench-editor-panel .assist-feedback-panel {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 10px;
   min-height: 0;
   max-height: none;
@@ -6765,6 +6766,15 @@ button {
 
 .assist-feedback-field {
   flex: 0 0 auto;
+  order: 2;
+  width: 100%;
+}
+
+.assist-feedback-actions {
+  order: 3;
+  flex: 0 0 auto;
+  width: 100%;
+  margin-top: 0;
 }
 
 .assist-feedback-textarea[readonly] {
