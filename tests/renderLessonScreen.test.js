@@ -481,6 +481,8 @@ test("renderiza o painel da microssequência sem botão próprio de ações e co
   assert.match(html, /data-action="apply-assist-feedback"[^>]*disabled aria-disabled="true"/);
   assert.match(html, /generate-submit-icon/);
   assert.match(html, /assist-request-actions/);
+  assert.match(html, /<section class="assist-feedback-panel/);
+  assert.doesNotMatch(html, /<section class="microsequence-assist-panel assist-feedback-panel/);
   assert.doesNotMatch(html, /O retorno da intervenção aparecerá aqui após o envio do pedido\./);
   assert.doesNotMatch(html, />Editar<\/button>/);
   assert.ok(
