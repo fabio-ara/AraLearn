@@ -473,6 +473,8 @@ test("renderiza o painel da microssequência sem botão próprio de ações e co
   assert.match(html, /data-action="apply-assist"[^>]*title="Gerar próximos cards" aria-label="Gerar próximos cards"/);
   assert.match(html, /data-action="apply-assist"[^>]*disabled aria-disabled="true"/);
   assert.match(html, /Retorno da intervenção/);
+  assert.match(html, /Feedback da intervenção/);
+  assert.match(html, /assist-feedback-heading/);
   assert.match(html, /data-field="assist-feedback"/);
   assert.match(html, /data-action="toggle-feedback-edit"/);
   assert.match(html, /data-field="assist-feedback-model" aria-label="Modelo" title="Modelo"/);
