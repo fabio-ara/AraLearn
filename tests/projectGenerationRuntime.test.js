@@ -17,35 +17,48 @@ function createProjectDocument() {
       {
         key: "course-a",
         title: "Curso A",
+        goal: "Formar base em arquitetura básica.",
         modules: [
           {
             key: "module-a",
             title: "Módulo A",
+            include: [
+              { id: "scope-pipeline", label: "pipeline de cinco estágios" },
+              { id: "scope-ir", label: "registrador de instruções" }
+            ],
+            exclude: [{ id: "scope-spec", label: "desvio especulativo" }],
+            assessmentStyle: "mixed",
             lessons: [
               {
                 key: "lesson-a",
                 title: "Lição A",
+                goal: "Explicar o caminho básico da instrução.",
                 description: "Base da lição.",
                 sourceGuideStructured: {
                   lessonGoal: "Explicar o conceito atual sem pressupor notação anterior não explicitada.",
-                  notationRules: ["Explique siglas antes do uso autônomo."]
+                  notationRules: "Explique siglas antes do uso autônomo.",
+                  commonErrors: "Não antecipar mecanismos fora do ciclo básico."
                 },
                 microsequences: [
                   {
                     key: "micro-prev",
                     title: "Base anterior",
+                    goal: "Retomar o registrador de instruções.",
                     description: "Pré-requisito já explicitado.",
                     status: "ready",
                     included: true,
                     tags: ["Base", "Pré-requisito"],
+                    scopeRefs: ["scope-ir"],
                     cards: []
                   },
                   {
                     key: "micro-a",
                     title: "Microssequência A",
+                    goal: "Relacionar PC e IR ao ciclo básico.",
                     description: "Versão atual.",
                     tags: ["PC", "IR"],
                     dependsOn: ["micro-prev"],
+                    scopeRefs: ["scope-pipeline", "scope-ir"],
                     status: "draft",
                     included: false,
                     cards: []
@@ -53,8 +66,10 @@ function createProjectDocument() {
                   {
                     key: "micro-next",
                     title: "Microssequência Seguinte",
+                    goal: "Preparar a próxima etapa do ciclo.",
                     description: "Próxima etapa planejada.",
                     tags: ["CPU"],
+                    scopeRefs: ["scope-pipeline"],
                     status: "draft",
                     included: false,
                     cards: []
@@ -172,6 +187,12 @@ test("generateMicrosequenceProjectDocument atualiza cards diretamente no contrat
         assert.match(request.prompt, /selectedLessonTopicRefs/);
         assert.match(request.prompt, /studyTrackPolicy/);
         assert.match(request.prompt, /Não entendi PC e IR/);
+        assert.match(request.prompt, /Formar base em arquitetura básica/);
+        assert.match(request.prompt, /Explicar o caminho básico da instrução/);
+        assert.match(request.prompt, /Relacionar PC e IR ao ciclo básico/);
+        assert.match(request.prompt, /pipeline de cinco estágios/);
+        assert.match(request.prompt, /registrador de instruções/);
+        assert.match(request.prompt, /desvio especulativo/);
         assert.match(request.prompt, /micro-prev/);
         assert.match(request.prompt, /Pré-requisito/);
         assert.match(request.prompt, /Tabela/);
@@ -277,30 +298,34 @@ test("generateMicrosequenceProjectDocument cria suporte adjacente sem quebrar a 
 test("generateMicrosequenceProjectDocument devolve orientação de continuação quando o draft pede nova iteração", async () => {
   const provider = createFakeProvider({
     script: {
-      "add_practice-draft": {
-        steps: [
-          {
-            role: "microtheory",
-            resourceType: "say",
-            purpose: "Retomar o núcleo local.",
-            inCardContext: ["critério local"],
-            usesDependency: [],
-            expectedEvidence: ["explicar o critério"]
-          },
-          {
-            role: "active_practice",
-            resourceType: "block_gap_fill",
-            purpose: "Cobrar uso imediato.",
-            inCardContext: ["dados do exercício"],
-            usesDependency: [],
-            expectedEvidence: ["aplicar o procedimento"]
-          }
-        ],
-        coverageNotes: ["Abrir continuação para variação adicional."],
-        continuationNeeded: true,
-        continuationReason: "Ainda falta prática variada para consolidar a aplicação.",
-        continuationMode: "same_microsequence",
-        continuationPrompt: "Continue a mesma microssequência com novas variações autossuficientes de prática."
+      "add_practice-draft": (request) => {
+        assert.match(request.prompt, /"density": "deep"/);
+        assert.match(request.prompt, /pipeline de cinco estágios/);
+        return {
+          steps: [
+            {
+              role: "microtheory",
+              resourceType: "say",
+              purpose: "Retomar o núcleo local.",
+              inCardContext: ["critério local"],
+              usesDependency: [],
+              expectedEvidence: ["explicar o critério"]
+            },
+            {
+              role: "active_practice",
+              resourceType: "block_gap_fill",
+              purpose: "Cobrar uso imediato.",
+              inCardContext: ["dados do exercício"],
+              usesDependency: [],
+              expectedEvidence: ["aplicar o procedimento"]
+            }
+          ],
+          coverageNotes: ["Abrir continuação para variação adicional."],
+          continuationNeeded: true,
+          continuationReason: "Ainda falta prática variada para consolidar a aplicação.",
+          continuationMode: "same_microsequence",
+          continuationPrompt: "Continue a mesma microssequência com novas variações autossuficientes de prática."
+        };
       },
       "add-practice": {
         summary: "Prática distribuída.",
@@ -336,6 +361,7 @@ test("generateMicrosequenceProjectDocument devolve orientação de continuação
       apiKey: "chave"
     },
     projectDocument: project,
+    density: "deep",
     provider,
     ingestAttachments: async () => ({ attachments: [], extractedCount: 0, warnings: [] })
   });

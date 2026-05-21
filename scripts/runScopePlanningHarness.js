@@ -1,9 +1,32 @@
 import { createFakeProvider } from "../src/generation/providers/fakeProvider.js";
 import { planCourseFromScope } from "../src/generation/topDown/planCourseFromScope.js";
 import { createEmptyProjectDocument } from "../src/domain/aralearnProject.js";
-import { createMatematicaInformaticaGraphScopeContract } from "../src/generation/examples/matematicaInformaticaScopeContracts.js";
 
-const scopeContract = createMatematicaInformaticaGraphScopeContract();
+const scopeContract = {
+  schemaVersion: "aralearn.scope.v1",
+  course: {
+    title: "Matemática para Informática",
+    goal: "Levar um estudante iniciante a resolver a etapa introdutória de Teoria dos Grafos no estilo esperado em prova.",
+    evidencePriority: ["notebook", "exercise_list", "exam"]
+  },
+  modules: [
+    {
+      title: "Teoria dos Grafos",
+      include: [
+        "pontes de Königsberg e modelagem por grafos",
+        "definição formal de grafo",
+        "vértices, arestas, adjacência e incidência"
+      ],
+      exclude: [
+        "grafos direcionados",
+        "planaridade",
+        "coloração"
+      ],
+      notes: "Partir de problemas concretos antes da formalização e manter progressão explícita.",
+      assessmentStyle: "mixed"
+    }
+  ]
+};
 
 const fakeProvider = createFakeProvider({
   script: {

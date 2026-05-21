@@ -120,3 +120,44 @@ test("top-down rejeita cards e dependência futura", () => {
 
   assert.equal(validation.ok, false);
 });
+
+test("top-down rejeita include sem microssequência correspondente", () => {
+  const validation = validatePlannedCourse(
+    {
+      course: {
+        title: "Matemática para Informática",
+        modules: [
+          {
+            title: "Lógica Proposicional",
+            lessons: [
+              {
+                title: "Conectivos",
+                goal: "Entender conectivos.",
+                sourceGuideStructured: {
+                  lessonGoal: "Reconhecer o papel dos conectivos básicos.",
+                  notationRules: "conectivos, tabela-verdade",
+                  commonErrors: "Não confundir conectivo com tópico de lógica de predicados."
+                },
+                microsequences: [
+                  {
+                    title: "Ler proposições",
+                    goal: "Ler proposições simples.",
+                    dependsOnTitles: [],
+                    scopeLabels: ["conectivos"]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    scopeContract
+  );
+
+  assert.equal(validation.ok, false);
+  assert.match(
+    validation.errors.map((error) => error.message).join(" "),
+    /não cobre todos os itens do include do módulo/i
+  );
+});

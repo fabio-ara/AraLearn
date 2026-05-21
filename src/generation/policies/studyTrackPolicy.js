@@ -169,6 +169,7 @@ function collectDomainTerms({ lesson = {}, microsequence = {}, selectedLessonTop
   terms.push(...(Array.isArray(microsequence?.tags) ? microsequence.tags : []));
   terms.push(...(Array.isArray(microsequence?.domainRefs) ? microsequence.domainRefs : []));
   terms.push(...(Array.isArray(microsequence?.practiceVariantRefs) ? microsequence.practiceVariantRefs : []));
+  terms.push(...(Array.isArray(microsequence?.scopeLabels) ? microsequence.scopeLabels : []));
   terms.push(...(Array.isArray(selectedLessonTopicRefs) ? selectedLessonTopicRefs.flatMap((item) => [item?.label, item?.refKey]) : []));
 
   (Array.isArray(domainMap.items) ? domainMap.items : []).forEach((item) => {
@@ -204,7 +205,8 @@ function collectDomainTerms({ lesson = {}, microsequence = {}, selectedLessonTop
       item?.didacticPurpose,
       item?.coverageRole,
       ...(Array.isArray(item?.tags) ? item.tags : []),
-      ...(Array.isArray(item?.domainRefs) ? item.domainRefs : [])
+      ...(Array.isArray(item?.domainRefs) ? item.domainRefs : []),
+      ...(Array.isArray(item?.scopeLabels) ? item.scopeLabels : [])
     );
   });
 
@@ -215,7 +217,9 @@ function collectBridgeTargets({ lesson = {}, microsequence = {}, selectedLessonT
   return unique(
     [
       microsequence?.title,
+      microsequence?.goal,
       microsequence?.didacticPurpose,
+      ...(Array.isArray(microsequence?.scopeLabels) ? microsequence.scopeLabels : []),
       lesson?.title,
       lesson?.sourceGuideStructured?.lessonGoal,
       ...(Array.isArray(selectedLessonTopicRefs) ? selectedLessonTopicRefs.map((item) => item?.label || item?.refKey) : [])

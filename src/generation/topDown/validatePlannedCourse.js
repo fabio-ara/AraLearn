@@ -113,6 +113,7 @@ export function validatePlannedCourse(plannedCourse, scopeContract) {
     }));
     const includeLabels = new Set(includeEntries.map((entry) => entry.normalized).filter(Boolean));
     const excludeLabels = (scopeModule?.exclude || []).map((item) => normalizeLabelToken(item));
+    const coveredIncludeLabels = new Set();
 
     lessons.forEach((lesson, lessonIndex) => {
       const lessonPath = `${path}.lessons[${lessonIndex}]`;
@@ -200,7 +201,9 @@ export function validatePlannedCourse(plannedCourse, scopeContract) {
           }
           if (!includeLabels.has(normalizedScopeLabel)) {
             pushError(errors, `${microPath}.scopeLabels`, `scopeLabel fora de include: "${scopeLabel}".`);
+            return;
           }
+          coveredIncludeLabels.add(normalizedScopeLabel);
         });
 
         if (containsForbiddenTerm(microTitle, excludeLabels) || containsForbiddenTerm(microGoal, excludeLabels)) {
@@ -225,6 +228,17 @@ export function validatePlannedCourse(plannedCourse, scopeContract) {
         }
       });
     });
+
+    const uncoveredIncludeLabels = includeEntries
+      .filter((entry) => entry.normalized && !coveredIncludeLabels.has(entry.normalized))
+      .map((entry) => entry.label);
+    if (uncoveredIncludeLabels.length) {
+      pushError(
+        errors,
+        `${path}.lessons`,
+        `Planejamento não cobre todos os itens do include do módulo: ${uncoveredIncludeLabels.join(", ")}.`
+      );
+    }
   });
 
   return finalizeValidation(errors, {

@@ -150,6 +150,27 @@ function summarizeBottomUpAttachments(attachments = []) {
     .filter(Boolean);
 }
 
+function listScopeTermLabels(items = []) {
+  return uniqueList(
+    (Array.isArray(items) ? items : [])
+      .map((item) => text(item?.label || item))
+      .filter(Boolean)
+  );
+}
+
+function mapScopeRefsToLabels(scopeRefs = [], scopeTerms = []) {
+  const labelById = new Map(
+    (Array.isArray(scopeTerms) ? scopeTerms : [])
+      .map((term) => [text(term?.id), text(term?.label)])
+      .filter(([id, label]) => id && label)
+  );
+  return uniqueList(
+    (Array.isArray(scopeRefs) ? scopeRefs : [])
+      .map((scopeRef) => labelById.get(text(scopeRef)) || "")
+      .filter(Boolean)
+  );
+}
+
 function findCourse(projectDocument = {}, courseKey = "") {
   return (Array.isArray(projectDocument?.courses) ? projectDocument.courses : []).find((item) => item?.key === courseKey) || null;
 }
@@ -617,8 +638,8 @@ function summarizeLegacyDependencyMicrosequence(microsequence = {}) {
   return {
     key: text(microsequence.key),
     title: text(microsequence.title),
-    goal: text(microsequence.didacticPurpose || microsequence.description || microsequence.title),
-    summary: text(microsequence.description || microsequence.didacticPurpose || microsequence.title),
+    goal: text(microsequence.goal || microsequence.didacticPurpose || microsequence.description || microsequence.title),
+    summary: text(microsequence.goal || microsequence.description || microsequence.didacticPurpose || microsequence.title),
     tags: uniqueList(microsequence.tags)
   };
 }
@@ -627,7 +648,7 @@ function summarizeLegacyTrailMicrosequence(microsequence = {}) {
   return {
     key: text(microsequence.key),
     title: text(microsequence.title),
-    goal: text(microsequence.didacticPurpose || microsequence.description || microsequence.title),
+    goal: text(microsequence.goal || microsequence.didacticPurpose || microsequence.description || microsequence.title),
     tags: uniqueList(microsequence.tags),
     status: text(microsequence.status),
     included: microsequence?.included === true
@@ -639,6 +660,7 @@ function buildBottomUpContextPacket(
   selection = {},
   {
     userRequest = "",
+    density = "standard",
     dependencyTitles = [],
     selectedDidacticTypeId = "",
     preferredContainerLabel = "",
@@ -661,6 +683,10 @@ function buildBottomUpContextPacket(
   const dependencyMicrosequences = uniqueList(microsequence.dependsOn)
     .map((dependencyKey) => microsequences.find((item) => item?.key === dependencyKey))
     .filter(Boolean);
+  const moduleIncludeLabels = listScopeTermLabels(moduleValue.include);
+  const moduleExcludeLabels = listScopeTermLabels(moduleValue.exclude);
+  const currentScopeLabels = mapScopeRefsToLabels(microsequence.scopeRefs, moduleValue.include);
+  const dependencyScopeLabels = dependencyMicrosequences.flatMap((item) => mapScopeRefsToLabels(item?.scopeRefs, moduleValue.include));
   const availableLessonTopics = buildLessonTopicRefsFromMicrosequences(microsequences);
   const selectedLessonTopicRefs = normalizeSelectedLessonTopicRefs({
     selectedLessonTopicRefs: [
@@ -675,6 +701,8 @@ function buildBottomUpContextPacket(
         source: "microsequence"
       },
       ...uniqueList([
+        ...currentScopeLabels,
+        ...dependencyScopeLabels,
         ...uniqueList(microsequence.tags),
         ...dependencyMicrosequences.flatMap((item) => [item?.title, ...(Array.isArray(item?.tags) ? item.tags : [])])
       ]).map((label) => ({
@@ -687,28 +715,30 @@ function buildBottomUpContextPacket(
   });
   const lessonForPolicy = {
     title: text(lesson.title),
-    description: text(lesson.description || lesson.title),
-    objective: text(lesson.description || lesson.title),
+    description: text(lesson.goal || lesson.description || lesson.title),
+    objective: text(lesson.goal || lesson.description || lesson.title),
     sourceGuideStructured: lesson?.sourceGuideStructured || {},
     microsequenceLine: microsequences.map((item) => ({
       key: text(item.key),
       title: text(item.title),
-      objective: text(item.didacticPurpose || item.description || item.title),
-      description: text(item.description),
+      objective: text(item.goal || item.didacticPurpose || item.description || item.title),
+      description: text(item.goal || item.description),
       didacticPurpose: text(item.didacticPurpose),
       coverageRole: text(item.coverageRole),
       tags: uniqueList(item.tags),
-      domainRefs: uniqueList(item.domainRefs)
+      domainRefs: uniqueList(item.domainRefs),
+      scopeLabels: mapScopeRefsToLabels(item?.scopeRefs, moduleValue.include)
     }))
   };
   const currentForPolicy = {
     title: text(microsequence.title),
-    description: text(microsequence.description),
-    didacticPurpose: text(microsequence.didacticPurpose || microsequence.description || microsequence.title),
+    description: text(microsequence.goal || microsequence.description),
+    didacticPurpose: text(microsequence.goal || microsequence.didacticPurpose || microsequence.description || microsequence.title),
     coverageRole: text(microsequence.coverageRole),
     tags: uniqueList(microsequence.tags),
     domainRefs: uniqueList(microsequence.domainRefs),
-    practiceVariantRefs: uniqueList(microsequence.practiceVariantRefs)
+    practiceVariantRefs: uniqueList(microsequence.practiceVariantRefs),
+    scopeLabels: currentScopeLabels
   };
   const studyTrackPolicy = buildStudyTrackPolicy({
     userPrompt: userRequest,
@@ -719,14 +749,11 @@ function buildBottomUpContextPacket(
 
   return {
     courseTitle: text(course.title),
-    ...(text(course.description) ? { courseGoal: text(course.description) } : {}),
+    ...(text(course.goal || course.description) ? { courseGoal: text(course.goal || course.description) } : {}),
     module: {
       title: text(moduleValue.title),
-      include:
-        Array.isArray(moduleValue.include) && moduleValue.include.length
-          ? uniqueList(moduleValue.include)
-          : deriveModuleInclude(moduleValue, lesson),
-      exclude: Array.isArray(moduleValue.exclude) ? uniqueList(moduleValue.exclude) : [],
+      include: moduleIncludeLabels.length ? moduleIncludeLabels : deriveModuleInclude(moduleValue, lesson),
+      exclude: moduleExcludeLabels,
       ...(text(moduleValue.notes) ? { notes: text(moduleValue.notes) } : {}),
       assessmentStyle:
         ["theoretical", "practical", "mixed"].includes(text(moduleValue.assessmentStyle))
@@ -735,7 +762,7 @@ function buildBottomUpContextPacket(
     },
     lesson: {
       title: text(lesson.title),
-      goal: text(lesson.description || lesson.title),
+      goal: text(lesson.goal || lesson.description || lesson.title),
       ...(lesson?.sourceGuideStructured && Object.keys(lesson.sourceGuideStructured).length
         ? {
             sourceGuideStructured: clone(lesson.sourceGuideStructured),
@@ -746,10 +773,11 @@ function buildBottomUpContextPacket(
     currentMicrosequence: {
       key: text(microsequence.key),
       title: text(microsequence.title),
-      goal: text(microsequence.didacticPurpose || microsequence.description || microsequence.title),
-      type: "main",
+      goal: text(microsequence.goal || microsequence.didacticPurpose || microsequence.description || microsequence.title),
+      type: text(microsequence.type) || "main",
       tags: uniqueList(microsequence.tags),
       dependsOn: dependencyMicrosequences.map((item) => summarizeLegacyDependencyMicrosequence(item)),
+      scopeLabels: currentScopeLabels,
       didacticKind: text(microsequence.didacticKind),
       practiceMode: text(microsequence.practiceMode),
       representationNeed: text(microsequence.representationNeed),
@@ -763,8 +791,8 @@ function buildBottomUpContextPacket(
             previous: {
               key: text(previous.key),
               title: text(previous.title),
-              goal: text(previous.didacticPurpose || previous.description || previous.title),
-              summary: text(previous.description || previous.didacticPurpose),
+              goal: text(previous.goal || previous.didacticPurpose || previous.description || previous.title),
+              summary: text(previous.goal || previous.description || previous.didacticPurpose),
               tags: uniqueList(previous.tags)
             }
           }
@@ -774,7 +802,7 @@ function buildBottomUpContextPacket(
             next: {
               key: text(next.key),
               title: text(next.title),
-              goal: text(next.didacticPurpose || next.description || next.title),
+              goal: text(next.goal || next.didacticPurpose || next.description || next.title),
               tags: uniqueList(next.tags)
             }
           }
@@ -805,7 +833,7 @@ function buildBottomUpContextPacket(
         }
       : {}),
     allowedResources: ["say", "table", "code", "graph", "block_gap_fill"],
-    density: "standard",
+    density,
     ...(text(userRequest) ? { userRequest: text(userRequest) } : {})
   };
 }
@@ -1319,6 +1347,7 @@ export async function generateMicrosequenceProjectDocument({
   });
   const packet = buildBottomUpContextPacket(projectDocument, selection, {
     userRequest: draft.promptText,
+    density,
     dependencyTitles,
     selectedDidacticTypeId,
     preferredContainerLabel,
