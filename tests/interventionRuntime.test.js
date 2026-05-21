@@ -179,6 +179,9 @@ test("executeMicrosequenceGeneration abre setup quando provider local nao respon
 
   assert.equal(result.status, "provider-unready");
   assert.equal(result.errorMessage, "bridge offline");
+  assert.match(result.interventionFeedback.feedbackText, /Falha na intervenção: bridge offline/);
+  assert.match(result.interventionFeedback.feedbackText, /Pedido para nova tentativa:\nCorrija a progressão\./);
+  assert.equal(result.interventionFeedback.feedbackText, result.interventionFeedback.nextPromptDraft);
 });
 
 test("executeMicrosequenceGeneration executa fluxo local no runtime novo", async () => {

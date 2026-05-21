@@ -480,6 +480,9 @@ test("renderiza o painel da microssequência sem botão próprio de ações e co
   assert.match(html, /data-action="open-assist-feedback-config" title="Configurar IA" aria-label="Configurar IA"/);
   assert.match(html, /data-action="apply-assist-feedback"[^>]*disabled aria-disabled="true"/);
   assert.match(html, /generate-submit-icon/);
+  assert.match(html, /assist-request-actions/);
+  assert.doesNotMatch(html, /O retorno da intervenção aparecerá aqui após o envio do pedido\./);
+  assert.doesNotMatch(html, />Editar<\/button>/);
   assert.doesNotMatch(html, />Preview<\/button>/);
   assert.doesNotMatch(html, />Edição<\/button>/);
   assert.doesNotMatch(html, /<label[^>]*>\s*Microssequência\s*<\/label>/);
@@ -873,12 +876,13 @@ test("renderiza retorno iterável quando a intervenção pede continuação", ()
     }
   });
 
-  assert.match(html, /Continuação recomendada/);
-  assert.match(html, /A etapa atual ainda pede prática variada\./);
   assert.match(html, /data-field="assist-feedback"/);
+  assert.match(html, /Continue a microssequência atual com novas variações autossuficientes\./);
   assert.match(html, /readonly aria-readonly="true"/);
   assert.match(html, /data-action="apply-assist-feedback"[^>]*title="Iterar" aria-label="Iterar"/);
   assert.doesNotMatch(html, /data-action="apply-assist-feedback"[^>]*disabled aria-disabled="true"/);
+  assert.doesNotMatch(html, /Continuação recomendada/);
+  assert.doesNotMatch(html, /A etapa atual ainda pede prática variada\./);
 });
 
 test("renderiza a aba preview da microssequência dentro da superfície combinada", () => {

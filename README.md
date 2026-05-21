@@ -71,7 +71,7 @@ O `top-down` planeja a trilha. Ele recebe o recorte do curso, respeita o que ent
 
 O `bottom-up` materializa uma microssequência específica. Ele recebe o contexto local da etapa, suas dependências, a fonte-guia da lição e o pedido do usuário. Primeiro, monta um rascunho didático intermediário; depois, compila o JSON final dos cards no formato consumido pelo frontend. O resultado esperado do bottom-up é uma microssequência estudável, com cards coerentes, prática autossuficiente quando necessária e retorno claro à trilha planejada.
 
-Na aba `Edição`, o fluxo local agora distingue duas áreas: o pedido atual e o retorno da intervenção. O pedido continua editável; o retorno fica persistido por microssequência, preso à versão-base em que foi gerado e pode sinalizar conclusão, erro recuperável, continuação na mesma etapa, apoio adjacente ou abertura de nova microssequência. Quando a continuação faz sentido, o próprio app oferece nova iteração com o texto-base já preparado, sem desperdiçar o que a chamada anterior produziu.
+Na aba `Edição`, o fluxo local distingue duas áreas: o pedido atual e o retorno da intervenção. O pedido continua editável; o retorno fica persistido por microssequência, preso à versão-base em que foi gerado e pode sinalizar conclusão, erro recuperável, continuação na mesma etapa, apoio adjacente ou abertura de nova microssequência. Esse retorno aparece no próprio campo de iteração, sem mensagens dispersas, e pode ser enviado de novo com troca de modelo, anexos ou configuração.
 
 ## Recursos de card
 

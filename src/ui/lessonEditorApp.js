@@ -1768,7 +1768,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
     saveInterventionSessions();
     state.assistDraft.interventionSession = nextSession;
     if (!state.assistDraft.feedbackEditing) {
-      state.assistDraft.feedbackDraftText = nextSession.nextPromptDraft || nextSession.feedbackText || "";
+      state.assistDraft.feedbackDraftText = nextSession.feedbackText || nextSession.nextPromptDraft || "";
     }
     return nextSession;
   }
@@ -2467,7 +2467,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
     );
     state.assistDraft.interventionSession = nextSession;
     if (!state.assistDraft.feedbackEditing) {
-      state.assistDraft.feedbackDraftText = nextSession.nextPromptDraft || nextSession.feedbackText || "";
+      state.assistDraft.feedbackDraftText = nextSession.feedbackText || nextSession.nextPromptDraft || "";
     }
   }
 
@@ -4876,7 +4876,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
     state.assistDraft.preferredContainerConfirmed = false;
     state.assistDraft.attachments = [];
     state.assistDraft.feedbackEditing = false;
-    state.assistDraft.feedbackDraftText = state.assistDraft.interventionSession?.nextPromptDraft || state.assistDraft.interventionSession?.feedbackText || "";
+    state.assistDraft.feedbackDraftText = state.assistDraft.interventionSession?.feedbackText || state.assistDraft.interventionSession?.nextPromptDraft || "";
     render({ preserveState: true });
   }
 
@@ -4884,8 +4884,8 @@ export function createLessonEditorApp({ root, storage, editor }) {
     state.assistDraft.feedbackEditing = !state.assistDraft.feedbackEditing;
     if (!state.assistDraft.feedbackEditing) {
       state.assistDraft.feedbackDraftText =
-        state.assistDraft.interventionSession?.nextPromptDraft
-        || state.assistDraft.interventionSession?.feedbackText
+        state.assistDraft.interventionSession?.feedbackText
+        || state.assistDraft.interventionSession?.nextPromptDraft
         || "";
     }
     render({ preserveState: true });
@@ -4896,7 +4896,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
     if (!interventionSessionNeedsIteration(session) || state.assistDraft.isSubmitting) {
       return;
     }
-    const nextPrompt = String(state.assistDraft.feedbackDraftText || session?.nextPromptDraft || session?.feedbackText || "").trim();
+    const nextPrompt = String(state.assistDraft.feedbackDraftText || session?.feedbackText || session?.nextPromptDraft || "").trim();
     if (!nextPrompt) {
       return;
     }

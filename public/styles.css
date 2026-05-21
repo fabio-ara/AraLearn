@@ -6582,8 +6582,12 @@ button {
   gap: 5px;
 }
 
+.generate-action-row.assist-actions-wide.assist-request-actions {
+  grid-template-columns: minmax(0, 1fr) 34px 34px 44px;
+}
+
 .generate-action-row.assist-actions-wide.assist-feedback-actions {
-  grid-template-columns: minmax(78px, auto) minmax(0, 1fr) 34px 34px 44px;
+  grid-template-columns: 34px minmax(0, 1fr) 34px 34px 44px;
 }
 
 .generate-action-row.assist-actions-wide .generate-model-field {
@@ -6620,13 +6624,8 @@ button {
 }
 
 .assist-feedback-edit-button {
-  min-height: 38px;
-  border-radius: 12px;
-  border: 1px solid rgba(111, 88, 62, 0.78);
-  background: linear-gradient(180deg, rgba(34, 27, 20, 0.98), rgba(22, 17, 13, 0.99));
-  color: #f5e6cb;
-  font-weight: 600;
-  padding: 0 10px;
+  padding: 0;
+  color: #efc15e;
 }
 
 .generate-action-row.assist-actions-wide .generate-submit {
@@ -6688,8 +6687,12 @@ button {
     gap: 4px;
   }
 
+  .generate-action-row.assist-actions-wide.assist-request-actions {
+    grid-template-columns: minmax(0, 1fr) 32px 32px 42px;
+  }
+
   .generate-action-row.assist-actions-wide.assist-feedback-actions {
-    grid-template-columns: minmax(72px, auto) minmax(0, 1fr) 32px 32px 42px;
+    grid-template-columns: 32px minmax(0, 1fr) 32px 32px 42px;
   }
 
   .microsequence-generator-screen {
@@ -6760,21 +6763,8 @@ button {
   margin: 0;
 }
 
-.assist-feedback-copy {
-  display: grid;
-  gap: 6px;
-}
-
-.assist-feedback-empty-copy,
-.assist-feedback-stale-copy,
-.assist-feedback-copy .assist-last-request {
-  overflow-wrap: anywhere;
-  white-space: normal;
-  margin: 0;
-}
-
 .assist-feedback-field {
-  margin-top: 2px;
+  flex: 0 0 auto;
 }
 
 .assist-feedback-textarea[readonly] {

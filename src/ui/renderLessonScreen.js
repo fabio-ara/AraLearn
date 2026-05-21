@@ -1177,8 +1177,7 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
     editorSupport.preferredContainerConfirmed
   );
   const feedbackSession = editorSupport.feedbackSession || {};
-  const feedbackValue = editorSupport.feedbackDraftText || feedbackSession.nextPromptDraft || feedbackSession.feedbackText || "";
-  const hasFeedback = Boolean(feedbackSession.title || feedbackSession.message || feedbackValue);
+  const feedbackValue = editorSupport.feedbackDraftText || feedbackSession.feedbackText || feedbackSession.nextPromptDraft || "";
   const feedbackStatusClass =
     feedbackSession.status === "blocked"
       ? " is-warning"
@@ -1300,7 +1299,7 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
     containerOptions +
     "</select></label>" +
     '<div class="generate-divider workbench-divider"></div>' +
-    '<div class="generate-action-row assist-actions assist-actions-wide">' +
+    '<div class="generate-action-row assist-actions assist-actions-wide assist-request-actions">' +
     '<label class="field generate-icon-field generate-model-field">' +
     renderInlineFieldIcon("intent", "Modelo") +
     '<select data-field="assist-model" aria-label="Modelo" title="Modelo">' +
@@ -1328,19 +1327,6 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
     renderInlineFieldIcon("prompt", "Retorno da intervenção") +
     '<p class="tiny muted">Retorno da intervenção</p>' +
     "</div>" +
-    (hasFeedback
-      ? '<div class="assist-feedback-copy">' +
-        '<p class="tiny muted">' +
-        escapeHtml(feedbackSession.title || "Sem pendência") +
-        "</p>" +
-        (feedbackSession.message
-          ? '<p class="muted assist-last-request">' + escapeHtml(feedbackSession.message) + "</p>"
-          : "") +
-        (feedbackSession.staleMessage
-          ? '<p class="tiny muted assist-feedback-stale-copy">' + escapeHtml(feedbackSession.staleMessage) + "</p>"
-          : "") +
-        "</div>"
-      : '<p class="tiny muted assist-feedback-empty-copy">O retorno da intervenção aparecerá aqui após o envio do pedido.</p>') +
     '<label class="field generate-prompt-field workbench-prompt-field assist-feedback-field">' +
     '<div class="generate-prompt-layout">' +
     '<div class="workbench-prompt-tools">' +
@@ -1353,13 +1339,15 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
     escapeHtml(feedbackValue) +
     "</textarea></div></div></label>" +
     '<div class="generate-action-row assist-actions assist-actions-wide assist-feedback-actions">' +
-    '<button class="icon-ghost assist-feedback-edit-button" type="button" data-action="toggle-feedback-edit" aria-pressed="' +
+    '<button class="icon-ghost tiny-icon generate-inline-icon assist-feedback-edit-button" type="button" data-action="toggle-feedback-edit" aria-pressed="' +
     (editorSupport.feedbackEditing ? "true" : "false") +
     '" title="' +
     escapeHtml(editorSupport.feedbackEditing ? "Concluir edição do retorno" : "Editar retorno") +
     '" aria-label="' +
     escapeHtml(editorSupport.feedbackEditing ? "Concluir edição do retorno" : "Editar retorno") +
-    '">Editar</button>' +
+    '">' +
+    renderUiIcon(editorSupport.feedbackEditing ? "ready-state" : "edit", "generate-submit-icon") +
+    "</button>" +
     '<label class="field generate-icon-field generate-model-field">' +
     renderInlineFieldIcon("intent", "Modelo") +
     '<select data-field="assist-feedback-model" aria-label="Modelo" title="Modelo">' +

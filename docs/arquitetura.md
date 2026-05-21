@@ -167,7 +167,7 @@ O motor atual é content-agnostic e model-agnostic:
 Além do documento de projeto e das versões de microssequência, a UI persiste uma sessão local de intervenção por microssequência. Essa sessão guarda:
 
 - o retorno classificado da última chamada;
-- o rascunho textual da próxima iteração, quando houver;
+- o texto acionável exibido no campo de retorno, incluindo rascunho de continuação ou pedido de nova tentativa;
 - o modelo usado;
 - a versão-base sobre a qual aquele retorno foi gerado.
 
