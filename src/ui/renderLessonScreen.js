@@ -1328,16 +1328,12 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
     '<p class="tiny muted">Retorno da intervenção</p>' +
     "</div>" +
     '<div class="field generate-prompt-field workbench-prompt-field assist-feedback-field">' +
-    '<div class="generate-prompt-layout">' +
-    '<div class="workbench-prompt-tools">' +
-    renderInlineFieldIcon("sparkles", "Texto base da próxima iteração") +
-    "</div>" +
-    '<div class="generate-prompt-content">' +
+    '<div class="generate-prompt-content assist-feedback-content">' +
     '<textarea data-field="assist-feedback" class="assist-prompt assist-feedback-textarea" aria-label="Retorno da intervenção" title="Retorno da intervenção"' +
     (editorSupport.feedbackEditing ? "" : ' readonly aria-readonly="true"') +
     ">" +
     escapeHtml(feedbackValue) +
-    "</textarea></div></div></div>" +
+    "</textarea></div></div>" +
     '<div class="generate-action-row assist-actions assist-actions-wide assist-feedback-actions">' +
     '<button class="icon-ghost tiny-icon generate-inline-icon assist-feedback-edit-button" type="button" data-action="toggle-feedback-edit" aria-pressed="' +
     (editorSupport.feedbackEditing ? "true" : "false") +

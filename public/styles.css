@@ -6768,6 +6768,12 @@ button {
   flex: 0 0 auto;
   order: 2;
   width: 100%;
+  display: block;
+}
+
+.assist-feedback-content {
+  display: block;
+  width: 100%;
 }
 
 .assist-feedback-actions {
