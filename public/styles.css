@@ -6736,11 +6736,18 @@ button {
 }
 
 .workbench-editor-panel .assist-feedback-panel {
+  box-sizing: border-box;
+  position: relative;
   display: flex;
   flex-direction: column;
+  align-items: stretch;
   gap: 10px;
+  width: 100%;
   min-height: 0;
   max-height: none;
+  border: 1px solid rgba(214, 174, 96, 0.54);
+  border-radius: 16px;
+  background: rgba(43, 30, 17, 0.92);
   padding: 12px 12px 14px;
   overflow: visible;
 }
@@ -6765,10 +6772,13 @@ button {
 }
 
 .assist-feedback-field {
-  flex: 0 0 auto;
+  flex: none;
   order: 2;
   width: 100%;
   display: block;
+  min-height: 0;
+  max-height: none;
+  align-items: stretch;
 }
 
 .assist-feedback-content {

@@ -1320,7 +1320,7 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
     "</button>" +
     "</div>" +
     '<div class="generate-divider workbench-divider"></div>' +
-    '<section class="microsequence-assist-panel assist-feedback-panel' +
+    '<section class="assist-feedback-panel' +
     feedbackStatusClass +
     '">' +
     '<div class="workbench-form-row assist-action-heading">' +
