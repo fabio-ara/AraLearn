@@ -4901,6 +4901,15 @@ button {
   min-width: 0;
 }
 
+.generation-overlay-title {
+  margin: 0;
+  font-size: 1.02rem;
+  font-weight: 700;
+  line-height: 1.08;
+  letter-spacing: 0;
+  color: #fff4e4;
+}
+
 .editor-sheet {
   width: min(100%, 430px);
   max-height: min(94dvh, 860px);
@@ -7031,6 +7040,14 @@ button {
   font-size: 0.84rem;
 }
 
+.generate-plain-section {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 0;
+  box-shadow: none;
+}
+
 .generate-icon-field {
   grid-template-columns: 34px minmax(0, 1fr);
   gap: 6px;
@@ -7164,6 +7181,18 @@ button {
   font-size: 0.9rem;
   resize: vertical;
   line-height: 1.45;
+}
+
+.generate-card .generate-section-title {
+  margin-bottom: 6px;
+}
+
+.generate-card .generate-section-title-text {
+  color: rgba(244, 224, 190, 0.78);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: none;
 }
 
 .generate-divider {

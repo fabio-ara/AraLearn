@@ -431,7 +431,7 @@ function renderGeneratePane({ project, editorSupport, includeDismissActions = fa
     (includeDismissActions
       ? '<header class="generation-overlay-header">' +
         '<div class="generation-overlay-heading">' +
-        '<h2 class="card-title">' +
+        '<h2 class="card-title generation-overlay-title">' +
         escapeHtml(generationUiState.panelTitle || "Gerar estrutura") +
         "</h2>" +
         "</div>" +
@@ -441,7 +441,7 @@ function renderGeneratePane({ project, editorSupport, includeDismissActions = fa
         "</div></header>"
       : "") +
     '<div class="generate-main-stack">' +
-    '<section class="microsequence-assist-panel assist-simple-panel">' +
+    '<section class="microsequence-assist-panel assist-simple-panel generate-plain-section">' +
     renderGenerateSectionTitle("Destino da árvore") +
     renderGenerateInputField({
       field: "generate-course-input",
@@ -502,7 +502,7 @@ function renderGeneratePane({ project, editorSupport, includeDismissActions = fa
       : "") +
     "</section>" +
     '<div class="generate-divider"></div>' +
-    '<section class="microsequence-assist-panel assist-simple-panel">' +
+    '<section class="microsequence-assist-panel assist-simple-panel generate-plain-section">' +
     renderGenerateSectionTitle("Escopo do módulo") +
     '<div class="workbench-tag-layout">' +
     '<div class="workbench-form-row workbench-tag-picker-row">' +
