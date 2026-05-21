@@ -660,7 +660,7 @@ test("renderiza o painel da microssequência vazia em modo de geração de cards
     }
   });
 
-  assert.match(html, /<div class="topbar-title">Modelo cascata<\/div>/);
+  assert.match(html, new RegExp(`<div class="topbar-title">${course.title}</div>`));
   assert.match(html, /data-action="open-version-history"/);
   assert.doesNotMatch(html, /data-action="save-microsequence-snapshot"/);
   assert.doesNotMatch(html, /data-action="open-version-compare"/);
@@ -951,6 +951,7 @@ test("renderiza a aba preview da microssequência dentro da superfície combinad
   assert.doesNotMatch(html, /editor-version-count-value">1\/1<\/span>/);
   assert.doesNotMatch(html, /data-action="open-version-compare"/);
   assert.match(html, /study-reader-screen/);
+  assert.match(html, new RegExp(`<div class="topbar-title">${course.title}</div>`));
   assert.match(html, /runtime-card-title/);
   assert.match(html, /class="study-reader-count" aria-label="Card 1 de 7" title="Card 1 de 7"/);
   assert.match(html, /study-reader-count-value">1\/7<\/span>/);
@@ -997,7 +998,8 @@ test("renderiza a execução do card com nome do curso e contexto compacto", () 
     }
   });
 
-  assert.match(html, /<span class="study-reader-context-line study-reader-course-title">Curso renderizável<\/span>/);
+  assert.match(html, new RegExp(`<div class="topbar-title">${course.title}</div>`));
+  assert.match(html, new RegExp(`<span class="study-reader-context-line study-reader-course-title">${microsequence.title}</span>`));
   assert.doesNotMatch(html, /Lição experimental - Modelo cascata/);
   assert.doesNotMatch(html, /editor-step-nav/);
   assert.match(html, /class="study-context-tags compact-study-tags"/);
