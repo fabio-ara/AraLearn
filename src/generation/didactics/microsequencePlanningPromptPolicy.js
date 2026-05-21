@@ -22,6 +22,7 @@ export function buildMicrosequencePlanningPolicyLines(contract = {}) {
       ? `Use typeId exatamente igual a "${fixedTypeId}".`
       : "Escolha typeId entre availableTypes.",
     "Escolha sizeId entre availableSizes.",
+    "Trate sizeId como orçamento técnico por chamada, não como limite pedagógico do conteúdo.",
     "Preserve recursos extras escolhidos pelo usuário quando continuarem válidos.",
     "Use sourceGuideStructured da lição como governança principal.",
     "Use selectedLessonTopicRefs apenas como contexto auxiliar local.",

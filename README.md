@@ -8,7 +8,19 @@ Ele parte de uma constatação simples: estudantes e profissionais têm acesso a
 curso -> módulo -> lição -> microssequência -> card
 ```
 
-A microssequência é a unidade didática central do app. Ela reúne alguns cards em torno de uma função precisa: introduzir um conceito, explicar um procedimento, demonstrar um exemplo, propor prática guiada, diferenciar ideias próximas, corrigir erro comum ou preparar a etapa seguinte.
+A microssequência é a unidade didática central do app. Ela reúne cards em torno de uma função precisa: introduzir um conceito, explicar um procedimento, demonstrar um caso, propor prática, revisar uma lacuna, corrigir erro comum ou preparar a etapa seguinte.
+
+## Princípio didático atual
+
+O AraLearn não foi desenhado como resumidor. O motor atual trata exaustividade como efeito de:
+
+- decomposição progressiva;
+- prática distribuída;
+- retomada cumulativa;
+- variação suficiente para prova;
+- cards com carga didática controlada.
+
+Isso importa porque o público focal do app inclui estudantes-trabalhadores que estudam em contexto de atenção fragmentada, mas precisam enfrentar avaliações exigentes. No AraLearn, "pequeno" não significa "raso": significa legível, praticável e encadeado.
 
 ## O que o AraLearn faz
 
@@ -17,6 +29,7 @@ O AraLearn ajuda o usuário a:
 - organizar um tema em curso, módulos, lições e microssequências;
 - delimitar o que entra e o que não entra em cada módulo;
 - gerar uma trilha planejada antes de produzir cards;
+- planejar a didática local antes de compilar o JSON final dos cards;
 - materializar cards apenas na microssequência que será estudada;
 - revisar, corrigir, ampliar ou complementar uma etapa sem perder versões preservadas;
 - estudar com recursos renderizáveis, como texto explicativo, tabela, código, fluxograma, árvore, grafo e lacunas interativas.
@@ -45,10 +58,18 @@ AraLearn pode ser usado por:
 2. Define módulos e recortes por meio de expressões do que entra e do que fica fora.
 3. O app gera uma estrutura navegável até microssequências planejadas.
 4. O usuário abre uma microssequência.
-5. A IA, quando configurada, gera ou ajusta cards apenas para aquela etapa.
+5. A IA, quando configurada, primeiro planeja a didática local e depois compila os cards apenas para aquela etapa.
 6. O usuário estuda, revisa e decide se a etapa está pronta para compor a trilha de execução.
 
 Esse desenho evita a geração de um curso inteiro de uma só vez. A estrutura dá orientação; a materialização local preserva controle.
+
+## Top-down e bottom-up
+
+No AraLearn, o motor de geração trabalha em dois níveis complementares.
+
+O `top-down` planeja a trilha. Ele recebe o recorte do curso, respeita o que entra e o que não entra, organiza módulos, lições e microssequências e pode registrar metadados didáticos como função da etapa, necessidade de prática, dependências e evidências esperadas. O resultado esperado do top-down é uma estrutura progressiva e navegável até microssequências. Ele não gera cards.
+
+O `bottom-up` materializa uma microssequência específica. Ele recebe o contexto local da etapa, suas dependências, a fonte-guia da lição e o pedido do usuário. Primeiro, monta um rascunho didático intermediário; depois, compila o JSON final dos cards no formato consumido pelo frontend. O resultado esperado do bottom-up é uma microssequência estudável, com cards coerentes, prática autossuficiente quando necessária e retorno claro à trilha planejada.
 
 ## Recursos de card
 
@@ -73,7 +94,7 @@ O app pode operar com diferentes providers:
 - Codex local via bridge HTTP;
 - provider falso para testes e harnesses.
 
-A geração é guiada por contratos pequenos e validada localmente. Respostas inválidas não devem substituir o projeto anterior.
+A geração é guiada por contratos pequenos e validada localmente. O motor separa planejamento top-down, draft didático bottom-up e compilação final. Respostas inválidas não substituem o projeto anterior.
 
 ## Estrutura técnica
 

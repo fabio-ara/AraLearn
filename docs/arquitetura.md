@@ -70,6 +70,15 @@ Responsável pelo planejamento estrutural a partir do contrato de escopo.
 
 O resultado esperado é uma trilha com cursos, módulos, lições e microssequências planejadas. Nessa fase, a geração não precisa produzir cards.
 
+O top-down atual também pode registrar metadados didáticos opcionais por microssequência, como:
+
+- `didacticKind`;
+- `practiceMode`;
+- `representationNeed`;
+- `dependencyPolicy`;
+- `coverageRole`;
+- `expectedEvidence`.
+
 ### `src/generation/bottomUp/`
 
 Responsável pela materialização e revisão de uma microssequência específica.
@@ -119,13 +128,41 @@ aralearn.scope.v1 -> provider -> plano estrutural -> validação -> aralearn.con
 
 O plano estrutural cria ou atualiza a árvore até microssequências.
 
+Na prática, o que se espera dessa fase é:
+
+- estrutura coerente;
+- progressão entre etapas;
+- dependências explícitas quando necessárias;
+- escopo preservado;
+- nenhum card ainda.
+
 ### Materialização local
 
 ```text
-microssequência selecionada -> contexto local -> provider -> cards -> validação -> nova versão
+microssequência selecionada
+  -> contexto local
+  -> didactic draft intermediário
+  -> card plan determinístico
+  -> compilação do JSON final
+  -> validação estrutural e didática
+  -> nova versão
 ```
 
 A materialização não precisa reenviar o projeto inteiro. O contexto vem da posição da microssequência na árvore, de seus objetivos, de suas dependências e do pedido do usuário.
+
+Na prática, o que se espera dessa fase é:
+
+- uma microssequência final estudável;
+- cards com função didática reconhecível;
+- prática com contexto interno suficiente;
+- continuidade da trilha sem deriva lateral.
+
+O motor atual é content-agnostic e model-agnostic:
+
+- não escolhe recursos por disciplina;
+- não usa regex de conteúdo para decidir contêiner;
+- trata `recommendedMaxCards` e `absoluteMaxCards` como orçamento técnico por chamada, não como verdade pedagógica;
+- prefere decomposição e continuação a concentrar muita carga didática em um único card.
 
 ## Persistência
 

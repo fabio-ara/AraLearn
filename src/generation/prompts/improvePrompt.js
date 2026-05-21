@@ -1,11 +1,15 @@
-export function buildImprovePrompt(packet, reason) {
+export function buildImprovePrompt(packet, reason = "") {
   return [
     "Contexto da microssequência:",
     JSON.stringify(packet, null, 2),
     "",
-    `Motivo da melhoria: ${reason}`,
-    "Reescreva a microssequência inteira, sem mudar o tópico nem avançar a trilha.",
-    "Entregue uma versão melhor, com progressão mais clara.",
-    "Não pressuponha conhecimento fora das dependências explícitas e preserve a aderência à trilha planejada."
-  ].join("\n");
+    reason ? `Motivo da reescrita: ${reason}` : "",
+    "Reescreva a microssequência inteira preservando o objetivo e a trilha.",
+    "Reduza sobrecarga didática por card.",
+    "Distribua melhor explicação, exemplo, prática, correção e fechamento.",
+    "Ajuste resourceTypes ao plano didático e mantenha práticas autossuficientes.",
+    "Não avance para o próximo assunto."
+  ]
+    .filter(Boolean)
+    .join("\n");
 }

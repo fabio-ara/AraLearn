@@ -11,6 +11,58 @@ A IA pode ajudar em dois momentos:
 
 Ela não deve receber liberdade para reescrever o projeto inteiro em toda operação. Também não deve substituir a decisão do usuário sobre escopo, aceite e revisão.
 
+## O que faz cada motor
+
+### Top-down
+
+O top-down é o motor de planejamento.
+
+Ele recebe:
+
+- o contrato de escopo do curso;
+- o que entra e o que não entra em cada módulo;
+- observações de cobrança, foco e contexto;
+- a árvore já existente, quando o usuário está complementando algo.
+
+Ele produz:
+
+- módulos, lições e microssequências;
+- progressão entre etapas;
+- dependências locais entre microssequências;
+- fonte-guia mínima por lição;
+- metadados didáticos opcionais por microssequência.
+
+O que esperar do resultado:
+
+- uma trilha organizada e progressiva;
+- escopo preservado;
+- nenhuma geração de cards nesta fase.
+
+### Bottom-up
+
+O bottom-up é o motor de materialização local.
+
+Ele recebe:
+
+- a microssequência atual;
+- dependências declaradas;
+- posição na trilha;
+- fonte-guia da lição;
+- pedido local do usuário;
+- anexos aproveitáveis, quando houver.
+
+Ele produz:
+
+1. um `didactic draft` intermediário com etapas, papéis didáticos, recursos sugeridos e evidências esperadas;
+2. o JSON final de cards no formato consumido pelo frontend.
+
+O que esperar do resultado:
+
+- uma única microssequência materializada ou retrabalhada;
+- cards com progressão interna clara;
+- prática autossuficiente quando a etapa exige aplicação;
+- aderência à trilha, sem replanejar a lição inteira.
+
 ## Planejamento estrutural
 
 No planejamento estrutural, a IA recebe `aralearn.scope.v1`.
@@ -44,6 +96,13 @@ Ela pode:
 - gerar a próxima microssequência planejada.
 
 Cada intervenção cria uma versão nova. A versão anterior permanece disponível.
+
+O fluxo atual divide essa etapa em duas fases leves:
+
+1. `didactic draft`: a IA propõe etapas, funções didáticas, recursos sugeridos e evidências esperadas;
+2. `compile cards`: a IA devolve o JSON final no formato consumido pelo frontend.
+
+Se o draft falha ou vem incompleto, o runtime usa um card plan determinístico como fallback.
 
 ## Providers
 
@@ -83,9 +142,14 @@ A validação verifica:
 - campos obrigatórios;
 - status e tipo de microssequência;
 - cards e recursos permitidos;
-- conteúdo mínimo para materialização.
+- conteúdo mínimo para materialização;
+- coerência didática básica por card;
+- contexto interno de prática;
+- aderência à trilha e às dependências declaradas.
 
 Quando uma resposta não passa pela validação, o projeto anterior é preservado. A IA sugere e produz, mas não tem permissão automática para corromper o documento local.
+
+Os limites de cards informados por modelo são tratados como orçamento técnico por chamada. Eles não definem, por si só, se uma microssequência está pedagogicamente suficiente.
 
 ## Privacidade e controle
 

@@ -7,12 +7,17 @@ import { createGeminiProvider } from "../providers/geminiProvider.js";
 import { createOpenAiCompatibleProvider } from "../providers/openAiCompatibleProvider.js";
 import { validateMicrosequenceCards } from "../bottomUp/validateMicrosequenceCards.js";
 import {
+  buildBottomUpDidacticDraftSchema,
   buildMicrosequenceCardsSchema,
   buildSupportMicrosequenceSchema,
-  microsequenceCardsSchema,
-  supportMicrosequenceSchema
+  buildTechnicalCardBudget
 } from "../schemas/bottomUpSchema.js";
-import { buildBottomUpSystemPrompt, buildBottomUpUserPrompt } from "../prompts/bottomUpPrompt.js";
+import {
+  buildBottomUpCompileSystemPrompt,
+  buildBottomUpCompileUserPrompt,
+  buildBottomUpDraftSystemPrompt,
+  buildBottomUpDraftUserPrompt
+} from "../prompts/bottomUpPrompt.js";
 import { buildImprovePrompt } from "../prompts/improvePrompt.js";
 import { buildPracticePrompt } from "../prompts/practicePrompt.js";
 import { buildSupportPrompt } from "../prompts/supportPrompt.js";
@@ -20,6 +25,8 @@ import { buildStudyTrackPolicy } from "../policies/studyTrackPolicy.js";
 import { buildLessonTopicRefsFromMicrosequences, normalizeSelectedLessonTopicRefs } from "../tags/selectedLessonTopicRefs.js";
 import { planCourseFromScope } from "../topDown/planCourseFromScope.js";
 import { buildSourceGuideTextForModel, SOURCE_GUIDE_LEVELS } from "../../sourceGuides/sourceGuideStructured.js";
+import { buildDidacticCardPlan } from "../planning/buildDeterministicCardPlan.js";
+import { getModelCapabilities } from "../providers/modelCapabilities.js";
 
 const SCOPE_INFERENCE_SCHEMA = {
   type: "object",
@@ -421,6 +428,7 @@ async function inferScopeContract({ draft = {}, scopeSeed = {}, scopeState = {},
   const runtime = provider
     ? { modelId: text(assistConfig.model) || "gemini-2.5-flash", provider, providerOptions: {} }
     : resolveGenerationProviderRuntime(assistConfig);
+  const modelCapabilities = getModelCapabilities(runtime.modelId);
   const inferred = await runtime.provider.generateStructured({
     ...runtime.providerOptions,
     modelId: runtime.modelId,
@@ -475,6 +483,14 @@ function buildLegacyMicrosequenceFromPlan(plannedMicrosequence = {}, existingLes
     description: text(plannedMicrosequence.goal),
     ...(plannedMicrosequence.scopeLabels?.length ? { tags: uniqueList(plannedMicrosequence.scopeLabels) } : {}),
     didacticPurpose: text(plannedMicrosequence.goal),
+    ...(text(plannedMicrosequence.didacticKind) ? { didacticKind: text(plannedMicrosequence.didacticKind) } : {}),
+    ...(text(plannedMicrosequence.practiceMode) ? { practiceMode: text(plannedMicrosequence.practiceMode) } : {}),
+    ...(text(plannedMicrosequence.representationNeed) ? { representationNeed: text(plannedMicrosequence.representationNeed) } : {}),
+    ...(text(plannedMicrosequence.dependencyPolicy) ? { dependencyPolicy: text(plannedMicrosequence.dependencyPolicy) } : {}),
+    ...(text(plannedMicrosequence.coverageRole) ? { coverageRole: text(plannedMicrosequence.coverageRole) } : {}),
+    ...(Array.isArray(plannedMicrosequence.expectedEvidence) && plannedMicrosequence.expectedEvidence.length
+      ? { expectedEvidence: uniqueList(plannedMicrosequence.expectedEvidence) }
+      : {}),
     status: "draft",
     included: false,
     cards: []
@@ -626,7 +642,8 @@ function buildBottomUpContextPacket(
     dependencyTitles = [],
     selectedDidacticTypeId = "",
     preferredContainerLabel = "",
-    ingestedAttachments = null
+    ingestedAttachments = null,
+    interactionMode = "normal_generation"
   } = {}
 ) {
   const course = findCourse(projectDocument, selection.courseKey);
@@ -732,7 +749,13 @@ function buildBottomUpContextPacket(
       goal: text(microsequence.didacticPurpose || microsequence.description || microsequence.title),
       type: "main",
       tags: uniqueList(microsequence.tags),
-      dependsOn: dependencyMicrosequences.map((item) => summarizeLegacyDependencyMicrosequence(item))
+      dependsOn: dependencyMicrosequences.map((item) => summarizeLegacyDependencyMicrosequence(item)),
+      didacticKind: text(microsequence.didacticKind),
+      practiceMode: text(microsequence.practiceMode),
+      representationNeed: text(microsequence.representationNeed),
+      dependencyPolicy: text(microsequence.dependencyPolicy),
+      coverageRole: text(microsequence.coverageRole),
+      expectedEvidence: uniqueList(microsequence.expectedEvidence)
     },
     neighborMicrosequences: {
       ...(previous
@@ -765,6 +788,7 @@ function buildBottomUpContextPacket(
       allowOnlyDeclaredDependencies: true,
       allowCreateAdjacentMicrosequenceOnly: true
     },
+    interactionMode,
     userFocus: {
       dependencyTitles: uniqueList(dependencyTitles),
       ...(text(selectedDidacticTypeId) ? { selectedDidacticTypeId: text(selectedDidacticTypeId) } : {}),
@@ -811,52 +835,80 @@ function validateSupportPayload(payload = {}) {
   };
 }
 
-function listBottomUpAuditIssues(packet = {}, validatedPayload = {}) {
-  const issues = [];
-  const cards = Array.isArray(validatedPayload?.cards) ? validatedPayload.cards : [];
-  const tags = uniqueList(packet?.currentMicrosequence?.tags);
-  const include = uniqueList(packet?.module?.include);
-  const localText = [
-    text(packet?.currentMicrosequence?.title),
-    text(packet?.currentMicrosequence?.goal),
-    text(packet?.lesson?.title),
-    text(packet?.lesson?.goal),
-    ...tags,
-    ...include
-  ]
-    .join(" ")
-    .toLowerCase();
-
-  const shouldRequireGraph = /(modelagem por grafos|pontes de königsberg|vértices|arestas|grafo completo|grafo bipartido|isomorf)/u.test(localText);
-  if (shouldRequireGraph && !cards.some((card) => text(card?.resourceType) === "graph")) {
-    issues.push("Inclua ao menos um card com resourceType graph e content válido em vertices/edges para representar o caso local.");
+function classifyBottomUpIntervention({ draft = {}, packet = {}, hasCards = false } = {}) {
+  if (text(draft?.interventionTargetMode) === "new_after_current") {
+    return "create_support";
   }
-
-  if (/matriz de adjac|dijkstra|sequência de graus|graus/u.test(localText)) {
-    const tableCount = cards.filter((card) => text(card?.resourceType) === "table").length;
-    const sayCount = cards.filter((card) => text(card?.resourceType) === "say").length;
-    if (!tableCount && !sayCount) {
-      issues.push("Inclua ao menos um card explicativo ou tabular que materialize o procedimento cobrado em prova.");
-    }
+  if (text(draft?.operationMode) === "repair") {
+    return "repair";
   }
-
-  return issues;
+  if (packet?.studyTrackPolicy?.mode === "clarify_local_doubt") {
+    return "answer_local_doubt";
+  }
+  if (hasCards) {
+    return "add_practice";
+  }
+  return "normal_generation";
 }
 
-function shouldRequireLeadingGraph(packet = {}) {
-  const tags = uniqueList(packet?.currentMicrosequence?.tags);
-  const include = uniqueList(packet?.module?.include);
-  const localText = [
-    text(packet?.currentMicrosequence?.title),
-    text(packet?.currentMicrosequence?.goal),
-    text(packet?.lesson?.title),
-    text(packet?.lesson?.goal),
-    ...tags,
-    ...include
-  ]
-    .join(" ")
-    .toLowerCase();
-  return /(modelagem por grafos|pontes de königsberg|vértices|arestas|grafo completo|grafo bipartido|isomorf)/u.test(localText);
+function buildDraftSeed(packet = {}, interactionMode = "normal_generation") {
+  return {
+    didacticKind: text(packet?.currentMicrosequence?.didacticKind) || "concept",
+    practiceMode: text(packet?.currentMicrosequence?.practiceMode) || (interactionMode === "add_practice" ? "variation" : "explanation"),
+    representationNeed: text(packet?.currentMicrosequence?.representationNeed) || "text",
+    dependencyPolicy: text(packet?.currentMicrosequence?.dependencyPolicy) || "self_contained",
+    coverageRole:
+      text(packet?.currentMicrosequence?.coverageRole) ||
+      ({
+        normal_generation: "explain",
+        add_practice: "extend_practice",
+        repair: "repair_gap",
+        create_support: "repair_gap",
+        answer_local_doubt: "repair_gap"
+      }[interactionMode] || "explain"),
+    expectedEvidence: uniqueList(packet?.currentMicrosequence?.expectedEvidence)
+  };
+}
+
+function buildFallbackCardPlan(packet = {}, interactionMode = "normal_generation", technicalBudget = {}) {
+  const seed = buildDraftSeed(packet, interactionMode);
+  return buildDidacticCardPlan(
+    {
+      currentMicrosequence: {
+        ...(packet?.currentMicrosequence || {}),
+        ...seed
+      },
+      preferredContainerLabel: packet?.userFocus?.preferredContainerLabel
+    },
+    {
+      targetCount: Number(technicalBudget?.suggestedCardsPerCall) || 5,
+      allowedResourceTypes: Array.isArray(packet?.allowedResources) ? packet.allowedResources : ["say", "table", "code", "graph", "block_gap_fill"]
+    }
+  );
+}
+
+function normalizeDraftSteps(draft = {}, fallbackCardPlan = []) {
+  const steps = Array.isArray(draft?.steps) ? draft.steps : [];
+  if (steps.length) {
+    return steps.map((step, index) => ({
+      position: index + 1,
+      role: text(step?.role) || fallbackCardPlan[index]?.role || "microtheory",
+      resourceType: text(step?.resourceType) || fallbackCardPlan[index]?.resourceType || "say",
+      purpose: text(step?.purpose) || fallbackCardPlan[index]?.purpose || "",
+      inCardContext: uniqueList(step?.inCardContext),
+      usesDependency: uniqueList(step?.usesDependency),
+      expectedEvidence: uniqueList(step?.expectedEvidence)
+    }));
+  }
+  return fallbackCardPlan.map((item) => ({
+    position: item.position,
+    role: item.role,
+    resourceType: item.resourceType,
+    purpose: text(item?.purpose),
+    inCardContext: [],
+    usesDependency: uniqueList(item?.usesDependency),
+    expectedEvidence: uniqueList(item?.expectedEvidence)
+  }));
 }
 
 function buildBottomUpCorrectionPrompt(basePrompt = "", issues = []) {
@@ -873,17 +925,52 @@ function buildBottomUpCorrectionPrompt(basePrompt = "", issues = []) {
   ].join("\n");
 }
 
+async function generateDidacticDraft({
+  runtime,
+  modelId,
+  packet,
+  interactionMode,
+  fallbackCardPlan,
+  temperature = 0.2
+} = {}) {
+  try {
+    const draft = await runtime.provider.generateStructured({
+      ...runtime.providerOptions,
+      modelId,
+      mode: `${interactionMode}-draft`,
+      system: buildBottomUpDraftSystemPrompt(),
+      prompt: buildBottomUpDraftUserPrompt(packet, { fallbackPlan: fallbackCardPlan }),
+      schema: buildBottomUpDidacticDraftSchema(),
+      temperature
+    });
+    return {
+      steps: normalizeDraftSteps(draft, fallbackCardPlan),
+      coverageNotes: uniqueList(draft?.coverageNotes),
+      continuationNeeded: draft?.continuationNeeded === true,
+      continuationReason: text(draft?.continuationReason)
+    };
+  } catch {
+    return {
+      steps: normalizeDraftSteps({}, fallbackCardPlan),
+      coverageNotes: ["Draft intermediário indisponível; usando plano didático determinístico."],
+      continuationNeeded: false,
+      continuationReason: ""
+    };
+  }
+}
+
 async function generateValidatedBottomUpPayload({
   runtime,
   modelId,
   mode,
-  system,
   basePrompt,
   packet,
   density = "standard",
-  schema,
+  modelCapabilities = {},
+  cardPlan = [],
   temperature = 0.2
 } = {}) {
+  const schema = buildMicrosequenceCardsSchema(density, { modelCapabilities });
   let lastError = null;
   let prompt = basePrompt;
   for (let attempt = 1; attempt <= 3; attempt += 1) {
@@ -891,23 +978,22 @@ async function generateValidatedBottomUpPayload({
       ...runtime.providerOptions,
       modelId,
       mode,
-      system,
+      system: buildBottomUpCompileSystemPrompt(),
       prompt,
       schema,
       temperature
     });
-    const validation = validateMicrosequenceCards(payload, density);
+    const validation = validateMicrosequenceCards(payload, density, {
+      packet,
+      cardPlan,
+      modelCapabilities
+    });
     if (!validation.ok) {
       lastError = new Error(validation.errors.map((error) => error.message).join("; "));
       prompt = buildBottomUpCorrectionPrompt(basePrompt, validation.errors.map((error) => error.message));
       continue;
     }
-    const auditIssues = listBottomUpAuditIssues(packet, validation.value);
-    if (!auditIssues.length) {
-      return validation.value;
-    }
-    lastError = new Error(auditIssues.join("; "));
-    prompt = buildBottomUpCorrectionPrompt(basePrompt, auditIssues);
+    return validation.value;
   }
   throw lastError || new Error("Falha ao validar a microssequência gerada.");
 }
@@ -1046,6 +1132,7 @@ export async function generateMicrosequenceProjectDocument({
   const runtime = provider
     ? { modelId: text(assistConfig.model) || "gemini-2.5-flash", provider, providerOptions: {} }
     : resolveGenerationProviderRuntime(assistConfig);
+  const modelCapabilities = getModelCapabilities(runtime.modelId);
   const ingestedAttachments =
     typeof ingestAttachments === "function"
       ? await ingestAttachments(Array.isArray(draft.attachments) ? draft.attachments : [])
@@ -1053,49 +1140,106 @@ export async function generateMicrosequenceProjectDocument({
   if (!text(draft.promptText) && !ingestedAttachments.extractedCount) {
     throw new Error("Informe um pedido ou anexo com texto utilizável antes de editar a microssequência.");
   }
+  const currentMicrosequence = findMicrosequence(projectDocument, selection);
+  const hasCards = Array.isArray(currentMicrosequence?.cards) && currentMicrosequence.cards.length > 0;
+  const interactionMode = classifyBottomUpIntervention({
+    draft,
+    packet: {
+      studyTrackPolicy: buildStudyTrackPolicy({
+        userPrompt: draft.promptText,
+        lesson: {
+          ...(findLesson(projectDocument, selection.courseKey, selection.moduleKey, selection.lessonKey) || {}),
+          microsequenceLine: (findLesson(projectDocument, selection.courseKey, selection.moduleKey, selection.lessonKey)?.microsequences || []).map((item) => ({
+            key: text(item?.key),
+            title: text(item?.title),
+            objective: text(item?.didacticPurpose || item?.description || item?.title)
+          }))
+        },
+        microsequence: {
+          key: text(currentMicrosequence?.key),
+          title: text(currentMicrosequence?.title),
+          didacticPurpose: text(currentMicrosequence?.didacticPurpose || currentMicrosequence?.description || currentMicrosequence?.title)
+        },
+        selectedLessonTopicRefs: []
+      })
+    },
+    hasCards
+  });
   const packet = buildBottomUpContextPacket(projectDocument, selection, {
     userRequest: draft.promptText,
     dependencyTitles,
     selectedDidacticTypeId,
     preferredContainerLabel,
-    ingestedAttachments
+    ingestedAttachments,
+    interactionMode
   });
-  const isCreateAfter = text(draft.interventionTargetMode) === "new_after_current";
-  const isRepair = text(draft.operationMode) === "repair";
-  const currentMicrosequence = findMicrosequence(projectDocument, selection);
-  const hasCards = Array.isArray(currentMicrosequence?.cards) && currentMicrosequence.cards.length > 0;
+  const technicalBudget = buildTechnicalCardBudget(density, modelCapabilities);
 
-  if (isCreateAfter) {
+  if (interactionMode === "create_support") {
     const payload = await runtime.provider.generateStructured({
       ...runtime.providerOptions,
       modelId: runtime.modelId,
       mode: "create-support",
-      system: buildBottomUpSystemPrompt(),
+      system: buildBottomUpCompileSystemPrompt(),
       prompt: buildSupportPrompt(packet, draft.promptText),
-      schema: buildSupportMicrosequenceSchema(density),
+      schema: buildSupportMicrosequenceSchema(density, { modelCapabilities }),
       temperature: 0.3
     });
     const validated = validateSupportPayload(payload);
     return applySupportMicrosequence(projectDocument, selection, validated);
   }
 
-  const mode = isRepair ? "improve-microsequence" : hasCards ? "add-practice" : "generate-microsequence";
-  const prompt =
-    isRepair
+  const mode =
+    interactionMode === "repair"
+      ? "improve-microsequence"
+      : interactionMode === "add_practice"
+        ? "add-practice"
+        : interactionMode === "answer_local_doubt"
+          ? "answer-local-doubt"
+          : "generate-microsequence";
+  const correctionPrompt =
+    interactionMode === "repair"
       ? buildImprovePrompt(packet, draft.promptText)
-      : hasCards
+      : interactionMode === "add_practice"
         ? buildPracticePrompt(packet, draft.promptText)
-        : buildBottomUpUserPrompt(packet);
-  const requireLeadingGraph = shouldRequireLeadingGraph(packet);
+        : interactionMode === "answer_local_doubt"
+          ? buildImprovePrompt(packet, draft.promptText || "Responder à dúvida local e retornar à trilha.")
+          : "";
+  const fallbackCardPlan = buildFallbackCardPlan(packet, interactionMode, technicalBudget);
+  const draftPlan = await generateDidacticDraft({
+    runtime,
+    modelId: runtime.modelId,
+    packet,
+    interactionMode,
+    fallbackCardPlan,
+    temperature: hasCards ? 0.3 : 0.2
+  });
+  const cardPlan = draftPlan.steps.map((step) => ({
+    position: step.position,
+    role: step.role,
+    resourceType: step.resourceType,
+    purpose: step.purpose,
+    expectedEvidence: step.expectedEvidence
+  }));
+  const prompt = buildBottomUpCompileUserPrompt(
+    packet,
+    draftPlan,
+    {
+      cardPlan,
+      schema: buildMicrosequenceCardsSchema(density, {
+        modelCapabilities
+      })
+    }
+  );
   const validated = await generateValidatedBottomUpPayload({
     runtime,
     modelId: runtime.modelId,
     mode,
-    system: buildBottomUpSystemPrompt(),
-    basePrompt: prompt,
+    basePrompt: correctionPrompt ? `${prompt}\n\nAjuste adicional:\n${correctionPrompt}` : prompt,
     packet,
     density,
-    schema: buildMicrosequenceCardsSchema(density, { requireLeadingGraph }),
+    modelCapabilities,
+    cardPlan,
     temperature: hasCards ? 0.3 : 0.2
   });
   return applyCardsToCurrentMicrosequence(projectDocument, selection, validated);

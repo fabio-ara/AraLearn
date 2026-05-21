@@ -1,7 +1,25 @@
 export const MICROSEQUENCE_SIZES = Object.freeze([
-  Object.freeze({ id: "short", label: "Curta", cardCount: 3 }),
-  Object.freeze({ id: "medium", label: "Média", cardCount: 5 }),
-  Object.freeze({ id: "long", label: "Longa", cardCount: 7 })
+  Object.freeze({
+    id: "short",
+    label: "Lote curto",
+    cardCount: 3,
+    recommendedBatchCards: 3,
+    technicalBudgetOnly: true
+  }),
+  Object.freeze({
+    id: "medium",
+    label: "Lote médio",
+    cardCount: 5,
+    recommendedBatchCards: 5,
+    technicalBudgetOnly: true
+  }),
+  Object.freeze({
+    id: "long",
+    label: "Lote amplo",
+    cardCount: 8,
+    recommendedBatchCards: 8,
+    technicalBudgetOnly: true
+  })
 ]);
 
 export function listMicrosequenceSizes() {
@@ -13,5 +31,5 @@ export function getMicrosequenceSize(sizeId) {
 }
 
 export function getMicrosequenceCardCount(sizeId) {
-  return getMicrosequenceSize(sizeId)?.cardCount || 0;
+  return getMicrosequenceSize(sizeId)?.recommendedBatchCards || 0;
 }
