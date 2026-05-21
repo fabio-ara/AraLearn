@@ -941,6 +941,35 @@ function buildDeterministicSupportPayload(packet = {}, request = "") {
   };
 }
 
+function normalizeCardKeyPrefix(prefix = "") {
+  return text(prefix) || "card";
+}
+
+function cloneLegacyCards(cards = []) {
+  return (Array.isArray(cards) ? cards : []).map((card) => clone(card));
+}
+
+function resequenceLegacyCards(cards = [], prefix = "card") {
+  return cloneLegacyCards(cards).map((card, index) => ({
+    ...card,
+    key: text(card?.key) || `${normalizeCardKeyPrefix(prefix)}-${index + 1}`
+  }));
+}
+
+function buildMergedLegacyCards(currentCards = [], nextCards = [], interactionMode = "normal_generation", microsequenceKey = "") {
+  const legacyNextCards = nextCards.map((card) => toLegacyContractCard(card));
+  if (!legacyNextCards.length) {
+    return resequenceLegacyCards(currentCards, microsequenceKey || "card");
+  }
+  if (interactionMode === "add_practice" || interactionMode === "answer_local_doubt") {
+    return resequenceLegacyCards(
+      [...cloneLegacyCards(currentCards), ...legacyNextCards],
+      microsequenceKey || "card"
+    );
+  }
+  return resequenceLegacyCards(legacyNextCards, microsequenceKey || "card");
+}
+
 function classifyBottomUpIntervention({ draft = {}, packet = {}, hasCards = false } = {}) {
   if (text(draft?.interventionTargetMode) === "new_after_current") {
     return "create_support";
@@ -993,6 +1022,43 @@ function buildFallbackCardPlan(packet = {}, interactionMode = "normal_generation
       allowedResourceTypes: Array.isArray(packet?.allowedResources) ? packet.allowedResources : ["say", "table", "code", "graph", "block_gap_fill"]
     }
   );
+}
+
+function inferContinuationFromFallbackPlan(fallbackCardPlan = [], interactionMode = "normal_generation") {
+  const normalizedMode = text(interactionMode);
+  const practiceRoles = (Array.isArray(fallbackCardPlan) ? fallbackCardPlan : []).filter((step) =>
+    ["active_practice", "analogous_practice", "cumulative_review", "correction"].includes(text(step?.role))
+  );
+  if (normalizedMode === "add_practice") {
+    return {
+      continuationNeeded: true,
+      continuationReason: "A prática extra deve continuar de forma incremental para ampliar cobertura sem condensar a microssequência.",
+      continuationMode: "same_microsequence",
+      continuationPrompt: "Continue a mesma microssequência com nova prática autossuficiente e variação adicional, sem reescrever os cards já úteis."
+    };
+  }
+  if (normalizedMode === "answer_local_doubt") {
+    return {
+      continuationNeeded: true,
+      continuationReason: "A dúvida local foi tratada com fallback; valide se ainda falta um fechamento explícito de retorno à trilha principal.",
+      continuationMode: "same_microsequence",
+      continuationPrompt: "Continue a mesma microssequência respondendo a dúvida local e fechando com retorno explícito à trilha principal, sem apagar os cards já úteis."
+    };
+  }
+  if (practiceRoles.length >= 2) {
+    return {
+      continuationNeeded: true,
+      continuationReason: "O plano determinístico indica que ainda há prática relevante a distribuir sem condensar os cards.",
+      continuationMode: "same_microsequence",
+      continuationPrompt: "Continue a mesma microssequência distribuindo a prática restante em novos cards curtos e autossuficientes."
+    };
+  }
+  return {
+    continuationNeeded: false,
+    continuationReason: "",
+    continuationMode: "none",
+    continuationPrompt: ""
+  };
 }
 
 function normalizeDraftSteps(draft = {}, fallbackCardPlan = []) {
@@ -1212,13 +1278,14 @@ async function generateDidacticDraft({
       continuationPrompt: text(draft?.continuationPrompt)
     };
   } catch {
+    const fallbackContinuation = inferContinuationFromFallbackPlan(fallbackCardPlan, interactionMode);
     return {
       steps: normalizeDraftSteps({}, fallbackCardPlan),
       coverageNotes: ["Draft intermediário indisponível; usando plano didático determinístico."],
-      continuationNeeded: false,
-      continuationReason: "",
-      continuationMode: "none",
-      continuationPrompt: ""
+      continuationNeeded: fallbackContinuation.continuationNeeded,
+      continuationReason: fallbackContinuation.continuationReason,
+      continuationMode: fallbackContinuation.continuationMode,
+      continuationPrompt: fallbackContinuation.continuationPrompt
     };
   }
 }
@@ -1314,7 +1381,12 @@ function applyCardsToCurrentMicrosequence(projectDocument = {}, selection = {}, 
     ...current,
     status: "ready",
     included: true,
-    cards: payload.cards.map((card) => toLegacyContractCard(card))
+    cards: buildMergedLegacyCards(
+      current?.cards,
+      payload.cards,
+      text(payload?.interactionMode),
+      text(current?.key)
+    )
   };
   return {
     projectDocument: nextProject,
@@ -1348,6 +1420,8 @@ function applySupportMicrosequence(projectDocument = {}, selection = {}, payload
     dependsOn: uniqueList([text(current?.key)]),
     parentMicrosequenceKey: text(current?.key),
     supportReason: payload.supportReason,
+    didacticPurpose: payload.goal,
+    coverageRole: "repair_gap",
     cards: payload.cards.map((card) => toLegacyContractCard(card))
   };
   if (existing) {
@@ -1562,7 +1636,10 @@ export async function generateMicrosequenceProjectDocument({
     cardPlan,
     temperature: hasCards ? 0.3 : 0.2
   });
-  const applied = applyCardsToCurrentMicrosequence(projectDocument, selection, validated);
+  const applied = applyCardsToCurrentMicrosequence(projectDocument, selection, {
+    ...validated,
+    interactionMode
+  });
   const appliedMicrosequence = findMicrosequence(applied.projectDocument, applied.target);
   return {
     ...applied,

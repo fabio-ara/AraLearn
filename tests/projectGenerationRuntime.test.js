@@ -292,6 +292,8 @@ test("generateMicrosequenceProjectDocument cria suporte adjacente sem quebrar a 
   assert.equal(microsequences[2].type, "support");
   assert.equal(microsequences[2].parentMicrosequenceKey, "micro-a");
   assert.equal(microsequences[2].supportReason, "Lacuna prévia local");
+  assert.equal(microsequences[2].didacticPurpose, "Explicar a base local antes da continuação.");
+  assert.equal(microsequences[2].coverageRole, "repair_gap");
   assert.deepEqual(microsequences[2].dependsOn, ["micro-a"]);
   assert.deepEqual(microsequences[2].tags, ["PC", "IR"]);
   assert.equal(microsequences[3].key, "micro-next");
@@ -488,6 +490,133 @@ test("generateMicrosequenceProjectDocument devolve orientação de continuação
   assert.equal(result.interventionFeedback.status, "needs_continue_here");
   assert.equal(result.interventionFeedback.recommendedActionIntent, "continue_current");
   assert.match(result.interventionFeedback.nextPromptDraft, /novas variações autossuficientes/);
+  const cards = result.projectDocument.courses[0].modules[0].lessons[0].microsequences[1].cards;
+  assert.equal(cards.length, 5);
+  assert.equal(cards[0].key, "seed-card");
+  assert.match(cards[0].say, /Base local/);
+  assert.match(cards[1].say, /Retomada local/);
+});
+
+test("generateMicrosequenceProjectDocument preserva cards existentes ao responder dúvida local", async () => {
+  const provider = createFakeProvider({
+    script: {
+      "answer-local-doubt-draft": {
+        steps: [
+          {
+            role: "microtheory",
+            resourceType: "say",
+            purpose: "Responder a dúvida local.",
+            inCardContext: ["diferença entre PC e IR"],
+            usesDependency: [],
+            expectedEvidence: ["explicar a diferença"]
+          },
+          {
+            role: "bridge_or_consolidation",
+            resourceType: "say",
+            purpose: "Voltar à trilha.",
+            inCardContext: ["retorno à trilha"],
+            usesDependency: [],
+            expectedEvidence: ["retomar a trilha"]
+          }
+        ],
+        coverageNotes: ["Resposta local curta com retorno à trilha."],
+        continuationNeeded: false,
+        continuationReason: "",
+        continuationMode: "none",
+        continuationPrompt: ""
+      },
+      "answer-local-doubt": {
+        summary: "Esclarecimento local sem apagar a trilha.",
+        cards: [
+          { key: "card-1", position: 1, resourceType: "say", content: "PC indica o próximo endereço; IR guarda a instrução atual." },
+          { key: "card-2", position: 2, resourceType: "say", content: "Com a dúvida local fechada, retome agora a trilha principal da microssequência." }
+        ]
+      }
+    }
+  });
+
+  const project = createProjectDocument();
+  project.courses[0].modules[0].lessons[0].microsequences[1].status = "ready";
+  project.courses[0].modules[0].lessons[0].microsequences[1].included = true;
+  project.courses[0].modules[0].lessons[0].microsequences[1].cards = [
+    { key: "seed-card", title: "Base", say: "Base local já aberta." }
+  ];
+
+  const result = await generateMicrosequenceProjectDocument({
+    selection: {
+      courseKey: "course-a",
+      moduleKey: "module-a",
+      lessonKey: "lesson-a",
+      microsequenceKey: "micro-a"
+    },
+    draft: {
+      promptText: "Não entendi a diferença local entre PC e IR.",
+      operationMode: "reinforce",
+      interventionTargetMode: "current"
+    },
+    assistConfig: {
+      model: "gemini-2.5-flash",
+      apiKey: "chave"
+    },
+    projectDocument: project,
+    provider,
+    ingestAttachments: async () => ({ attachments: [], extractedCount: 0, warnings: [] })
+  });
+
+  const cards = result.projectDocument.courses[0].modules[0].lessons[0].microsequences[1].cards;
+  assert.equal(cards.length, 3);
+  assert.match(cards[0].say, /Base local já aberta/);
+  assert.match(cards[1].say, /PC indica o próximo endereço/);
+  assert.match(cards[2].say, /retome agora a trilha principal/i);
+});
+
+test("generateMicrosequenceProjectDocument usa continuação conservadora quando o draft intermediário falha em add_practice", async () => {
+  const provider = createFakeProvider({
+    script: {
+      "add_practice-draft": () => {
+        throw new Error("draft indisponível");
+      },
+      "add-practice": {
+        summary: "Nova prática incremental.",
+        cards: [
+          { key: "card-1", position: 1, resourceType: "say", content: "Retomada local curta." },
+          { key: "card-2", position: 2, resourceType: "block_gap_fill", content: "Complete: [[IR::IR|PC]]." },
+          { key: "card-3", position: 3, resourceType: "block_gap_fill", content: "Varie: [[PC::PC|IR]]." }
+        ]
+      }
+    }
+  });
+
+  const project = createProjectDocument();
+  project.courses[0].modules[0].lessons[0].microsequences[1].status = "ready";
+  project.courses[0].modules[0].lessons[0].microsequences[1].included = true;
+  project.courses[0].modules[0].lessons[0].microsequences[1].cards = [
+    { key: "seed-card", title: "Base", say: "Base local já aberta." }
+  ];
+
+  const result = await generateMicrosequenceProjectDocument({
+    selection: {
+      courseKey: "course-a",
+      moduleKey: "module-a",
+      lessonKey: "lesson-a",
+      microsequenceKey: "micro-a"
+    },
+    draft: {
+      promptText: "Acrescente mais prática básica.",
+      operationMode: "reinforce",
+      interventionTargetMode: "current"
+    },
+    assistConfig: {
+      model: "gemini-2.5-flash",
+      apiKey: "chave"
+    },
+    projectDocument: project,
+    provider,
+    ingestAttachments: async () => ({ attachments: [], extractedCount: 0, warnings: [] })
+  });
+
+  assert.equal(result.interventionFeedback.status, "needs_continue_here");
+  assert.match(result.interventionFeedback.nextPromptDraft, /nova prática autossuficiente/i);
 });
 
 test("fluxo de produto não importa runner estrutural externo nem fallback paralelo", () => {

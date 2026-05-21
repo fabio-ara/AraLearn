@@ -75,6 +75,9 @@ function isPracticeRole(role = "") {
 }
 
 function requiresPractice(packet = {}, cardPlan = []) {
+  if (text(packet?.interactionMode) === "answer_local_doubt" && !requiresDensePractice(packet)) {
+    return false;
+  }
   const evidenceItems = [
     ...list(packet?.currentMicrosequence?.expectedEvidence),
     ...cardPlan.flatMap((item) => list(item?.expectedEvidence))
@@ -105,6 +108,14 @@ function cardAccumulatesTooMuch(card = {}) {
   if (/\b(resumo|retomada|consolid)\b/u.test(source)) signals += 1;
   const paragraphs = source.split(/\n{2,}/).filter(Boolean).length;
   return signals >= 4 || paragraphs >= 4 || source.length > 900;
+}
+
+function shouldBlockCondensedCard(packet = {}, role = "") {
+  const interactionMode = text(packet?.interactionMode);
+  if (["answer_local_doubt", "add_practice", "repair"].includes(interactionMode)) {
+    return true;
+  }
+  return isPracticeRole(role);
 }
 
 function practiceHasLocalContext(card = {}) {
@@ -160,9 +171,11 @@ export function validateBottomUpDidacticQuality(payload = {}, packet = {}, cardP
       issues.push(buildIssue(path, "Cada card precisa ter função didática reconhecível."));
     }
     if (cardAccumulatesTooMuch(card)) {
-      // Não bloqueie a geração inteira por isso: registre como alerta para permitir
-      // que o fluxo continue, e deixe a correção iterativa/pós-revisão tratar.
-      issues.push(buildIssue(path, "Divida este card: ele acumula explicação, exemplo e prática.", "warning"));
+      issues.push(buildIssue(
+        path,
+        "Divida este card: ele acumula explicação, exemplo e prática.",
+        shouldBlockCondensedCard(packet, role) ? "error" : "warning"
+      ));
     }
     if (isPracticeRole(role) && !practiceHasLocalContext(card)) {
       issues.push(buildIssue(path, "A prática precisa carregar os dados necessários para resposta."));
