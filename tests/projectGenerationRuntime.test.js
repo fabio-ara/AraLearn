@@ -224,6 +224,7 @@ test("generateMicrosequenceProjectDocument atualiza cards diretamente no contrat
   assert.equal(microsequence.included, true);
   assert.equal(microsequence.cards.length, 4);
   assert.deepEqual(microsequence.dependsOn, ["micro-prev"]);
+  assert.equal(result.interventionFeedback.status, "completed");
 });
 
 test("generateMicrosequenceProjectDocument cria suporte adjacente sem quebrar a trilha planejada", async () => {
@@ -270,6 +271,78 @@ test("generateMicrosequenceProjectDocument cria suporte adjacente sem quebrar a 
   assert.deepEqual(microsequences[2].dependsOn, ["micro-a"]);
   assert.deepEqual(microsequences[2].tags, ["PC", "IR"]);
   assert.equal(microsequences[3].key, "micro-next");
+  assert.equal(result.interventionFeedback.status, "completed");
+});
+
+test("generateMicrosequenceProjectDocument devolve orientação de continuação quando o draft pede nova iteração", async () => {
+  const provider = createFakeProvider({
+    script: {
+      "add_practice-draft": {
+        steps: [
+          {
+            role: "microtheory",
+            resourceType: "say",
+            purpose: "Retomar o núcleo local.",
+            inCardContext: ["critério local"],
+            usesDependency: [],
+            expectedEvidence: ["explicar o critério"]
+          },
+          {
+            role: "active_practice",
+            resourceType: "block_gap_fill",
+            purpose: "Cobrar uso imediato.",
+            inCardContext: ["dados do exercício"],
+            usesDependency: [],
+            expectedEvidence: ["aplicar o procedimento"]
+          }
+        ],
+        coverageNotes: ["Abrir continuação para variação adicional."],
+        continuationNeeded: true,
+        continuationReason: "Ainda falta prática variada para consolidar a aplicação.",
+        continuationMode: "same_microsequence",
+        continuationPrompt: "Continue a mesma microssequência com novas variações autossuficientes de prática."
+      },
+      "add-practice": {
+        summary: "Prática distribuída.",
+        cards: [
+          { key: "card-1", position: 1, resourceType: "say", content: "Retomada local." },
+          { key: "card-2", position: 2, resourceType: "block_gap_fill", content: "Complete: [[echo ok::echo ok|echo no]]." }
+        ]
+      }
+    }
+  });
+
+  const project = createProjectDocument();
+  project.courses[0].modules[0].lessons[0].microsequences[1].status = "ready";
+  project.courses[0].modules[0].lessons[0].microsequences[1].included = true;
+  project.courses[0].modules[0].lessons[0].microsequences[1].cards = [
+    { key: "seed-card", title: "Base", say: "Base local." }
+  ];
+
+  const result = await generateMicrosequenceProjectDocument({
+    selection: {
+      courseKey: "course-a",
+      moduleKey: "module-a",
+      lessonKey: "lesson-a",
+      microsequenceKey: "micro-a"
+    },
+    draft: {
+      promptText: "Continue com prática variada.",
+      operationMode: "reinforce",
+      interventionTargetMode: "current"
+    },
+    assistConfig: {
+      model: "gemini-2.5-flash",
+      apiKey: "chave"
+    },
+    projectDocument: project,
+    provider,
+    ingestAttachments: async () => ({ attachments: [], extractedCount: 0, warnings: [] })
+  });
+
+  assert.equal(result.interventionFeedback.status, "needs_continue_here");
+  assert.equal(result.interventionFeedback.recommendedActionIntent, "continue_current");
+  assert.match(result.interventionFeedback.nextPromptDraft, /novas variações autossuficientes/);
 });
 
 test("fluxo de produto não importa runner estrutural externo nem fallback paralelo", () => {

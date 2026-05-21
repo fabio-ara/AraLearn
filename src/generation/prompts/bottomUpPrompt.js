@@ -50,6 +50,9 @@ export function buildBottomUpDraftUserPrompt(packet = {}, options = {}) {
     "Planeje um didactic draft com etapas pequenas e função didática clara.",
     "Para cada etapa, informe role, resourceType, purpose, inCardContext, usesDependency e expectedEvidence.",
     "coverageNotes deve registrar lacunas, retomadas, distribuição de prática ou necessidade de continuação.",
+    "Se precisar de continuação, informe continuationMode como same_microsequence, support_microsequence ou next_microsequence.",
+    "Se não precisar continuar, use continuationMode = none.",
+    "continuationPrompt deve trazer um rascunho curto e acionável para a próxima iteração quando continuationNeeded for true.",
     fallbackPlan.length
       ? "Se o contexto estiver incompleto, use este plano-base como referência mínima de progressão:"
       : "",

@@ -102,14 +102,22 @@ import {
   readAssistConfigStorage,
   readCommentStorage,
   readHistoryStorage,
+  readInterventionSessionStorage,
   readMicrosequenceVersionStorage,
   readStructureVersionStorage,
   writeAssistConfigStorage,
   writeCommentStorage,
   writeHistoryStorage,
+  writeInterventionSessionStorage,
   writeMicrosequenceVersionStorage,
   writeStructureVersionStorage
 } from "./lessonEditorStorage.js";
+import {
+  buildInterventionSessionKey,
+  createEmptyInterventionSession,
+  interventionSessionNeedsIteration,
+  normalizeInterventionSessionEntry
+} from "./interventionSessionState.js";
 import {
   CODEX_LOCAL_MODEL_ID,
   DEFAULT_CODEX_LOCAL_ENDPOINT,
@@ -990,6 +998,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
     cardHistory: readHistoryStorage(),
     microsequenceVersions: readMicrosequenceVersionStorage(),
     structureVersions: readStructureVersionStorage(),
+    interventionSessions: readInterventionSessionStorage(),
     cardComments: readCommentStorage(),
     cardCommentDraft: "",
     flowchartPracticeByBlockKey: {},
@@ -1022,7 +1031,9 @@ export function createLessonEditorApp({ root, storage, editor }) {
       attachments: [],
       dependencyKeys: [],
       pendingDependencyKey: "",
-      lastRequest: null,
+      feedbackEditing: false,
+      feedbackDraftText: "",
+      interventionSession: createEmptyInterventionSession(),
       isSubmitting: false,
       errorMessage: ""
     },
@@ -1540,6 +1551,10 @@ export function createLessonEditorApp({ root, storage, editor }) {
     writeStructureVersionStorage(state.structureVersions);
   }
 
+  function saveInterventionSessions() {
+    writeInterventionSessionStorage(state.interventionSessions);
+  }
+
   function seedAllStructureVersionsFromProject() {
     if (!STRUCTURE_VERSIONING_ACTIVE) {
       return;
@@ -1707,6 +1722,55 @@ export function createLessonEditorApp({ root, storage, editor }) {
 
   function uniqueTextList(values = []) {
     return [...new Set((Array.isArray(values) ? values : []).map((item) => String(item || "").trim()).filter(Boolean))];
+  }
+
+  function getCurrentInterventionReference(reference = state.selection) {
+    return {
+      courseKey: String(reference?.courseKey || "").trim(),
+      moduleKey: String(reference?.moduleKey || "").trim(),
+      lessonKey: String(reference?.lessonKey || "").trim(),
+      microsequenceKey: String(reference?.microsequenceKey || "").trim()
+    };
+  }
+
+  function getCurrentInterventionBaseVersionId(reference = state.selection) {
+    return getMicrosequenceVersionEntry(reference)?.activeVersionId || "";
+  }
+
+  function getInterventionSession(reference = state.selection) {
+    const normalizedReference = getCurrentInterventionReference(reference);
+    const sessionKey = buildInterventionSessionKey(normalizedReference);
+    return normalizeInterventionSessionEntry(state.interventionSessions[sessionKey], {
+      reference: normalizedReference,
+      baseVersionId: getCurrentInterventionBaseVersionId(reference)
+    });
+  }
+
+  function persistInterventionSession(sessionPatch = {}, reference = state.selection) {
+    const normalizedReference = getCurrentInterventionReference(reference);
+    const sessionKey = buildInterventionSessionKey(normalizedReference);
+    const current = getInterventionSession(reference);
+    const now = new Date().toISOString();
+    const nextSession = normalizeInterventionSessionEntry(
+      {
+        ...current,
+        ...sessionPatch,
+        ...normalizedReference,
+        updatedAt: now,
+        createdAt: current.createdAt || now
+      },
+      {
+        reference: normalizedReference,
+        baseVersionId: String(sessionPatch?.baseVersionId || "").trim() || getCurrentInterventionBaseVersionId(reference)
+      }
+    );
+    state.interventionSessions[sessionKey] = nextSession;
+    saveInterventionSessions();
+    state.assistDraft.interventionSession = nextSession;
+    if (!state.assistDraft.feedbackEditing) {
+      state.assistDraft.feedbackDraftText = nextSession.nextPromptDraft || nextSession.feedbackText || "";
+    }
+    return nextSession;
   }
 
   function inferBottomUpInterventionType(microsequence = {}) {
@@ -2370,6 +2434,41 @@ export function createLessonEditorApp({ root, storage, editor }) {
       state.assistDraft.bridgeTargetRef = bottomUpState.bridgeTargetRef || "";
     }
     state.assistDraft.attachments = normalizeAssistAttachmentList(state.assistDraft.attachments);
+    const reference = getCurrentInterventionReference();
+    if (!reference.microsequenceKey) {
+      state.assistDraft.interventionSession = createEmptyInterventionSession();
+      return;
+    }
+    const currentBaseVersionId = getCurrentInterventionBaseVersionId(reference);
+    const storedSession = getInterventionSession(reference);
+    const shouldMarkStale =
+      Boolean(storedSession.baseVersionId) &&
+      Boolean(currentBaseVersionId) &&
+      storedSession.baseVersionId !== currentBaseVersionId &&
+      storedSession.status !== "completed";
+    const nextSession = normalizeInterventionSessionEntry(
+      shouldMarkStale
+        ? {
+            ...storedSession,
+            status: "stale",
+            stale: true,
+            staleMessage: "Esta resposta foi gerada sobre outra versão da microssequência.",
+            baseVersionId: storedSession.baseVersionId
+          }
+        : {
+            ...storedSession,
+            stale: false,
+            staleMessage: ""
+          },
+      {
+        reference,
+        baseVersionId: shouldMarkStale ? storedSession.baseVersionId : currentBaseVersionId
+      }
+    );
+    state.assistDraft.interventionSession = nextSession;
+    if (!state.assistDraft.feedbackEditing) {
+      state.assistDraft.feedbackDraftText = nextSession.nextPromptDraft || nextSession.feedbackText || "";
+    }
   }
 
   function applyCardContent({ title, text }) {
@@ -2417,11 +2516,13 @@ export function createLessonEditorApp({ root, storage, editor }) {
       title: version.title,
       text: version.text
     });
-    state.assistDraft.lastRequest = {
-      title: "Em uso",
-      description: `Editor voltou para ${version.label.toLowerCase()}.`,
-      timestamp: new Date().toISOString()
-    };
+    persistInterventionSession({
+      status: "completed",
+      title: "Versão em uso",
+      message: `Editor voltou para ${version.label.toLowerCase()}.`,
+      feedbackText: `Editor voltou para ${version.label.toLowerCase()}.`,
+      nextPromptDraft: ""
+    });
     render({ preserveState: true });
   }
 
@@ -2515,6 +2616,8 @@ export function createLessonEditorApp({ root, storage, editor }) {
         : [];
     state.assistDraft.prerequisiteRefs = [];
     state.assistDraft.bridgeTargetRef = String(microsequence?.domainRefs?.[0] || "").trim();
+    state.assistDraft.feedbackEditing = false;
+    state.assistDraft.feedbackDraftText = "";
     state.microsequenceMode = "play";
     ensureCurrentCardSnapshot();
     syncAssistDraft();
@@ -4339,11 +4442,14 @@ export function createLessonEditorApp({ root, storage, editor }) {
       visualizedVersionId: getMicrosequenceVersionEntry()?.activeVersionId || "",
       editBaseVersionId: getMicrosequenceVersionEntry()?.activeVersionId || ""
     });
-    state.assistDraft.lastRequest = {
+    persistInterventionSession({
+      status: "completed",
+      baseVersionId: getMicrosequenceVersionEntry()?.activeVersionId || "",
       title: "Cards atualizados",
-      description: `${Array.isArray(microsequence?.cards) ? microsequence.cards.length : 0} cards aplicados em ${microsequence?.title || fallbackTitle}. Aceite ou exclua a iteração atual.`,
-      timestamp: new Date().toISOString()
-    };
+      message: `${Array.isArray(microsequence?.cards) ? microsequence.cards.length : 0} cards aplicados em ${microsequence?.title || fallbackTitle}. Aceite ou exclua a iteração atual.`,
+      feedbackText: `Aceite ou exclua a iteração atual em "${microsequence?.title || fallbackTitle}".`,
+      nextPromptDraft: ""
+    });
     syncAssistDraft();
   }
 
@@ -4357,11 +4463,14 @@ export function createLessonEditorApp({ root, storage, editor }) {
     activeVersion.operationType = GENERATED_ACCEPTED_OPERATION;
     activeVersion.updatedAt = new Date().toISOString();
     saveMicrosequenceVersions();
-    state.assistDraft.lastRequest = {
+    persistInterventionSession({
+      status: "completed",
+      baseVersionId: entry.activeVersionId || "",
       title: "Iteração aceita",
-      description: `${activeVersion.label || "Versão atual"} mantida como estado em uso.`,
-      timestamp: new Date().toISOString()
-    };
+      message: `${activeVersion.label || "Versão atual"} mantida como estado em uso.`,
+      feedbackText: `${activeVersion.label || "Versão atual"} mantida como estado em uso.`,
+      nextPromptDraft: ""
+    });
     render({ preserveState: true });
   }
 
@@ -4392,11 +4501,16 @@ export function createLessonEditorApp({ root, storage, editor }) {
       visualizedVersionId: fallbackVersion.id,
       editBaseVersionId: fallbackVersion.id
     });
-    state.assistDraft.lastRequest = {
+    persistInterventionSession({
+      status: "stale",
+      baseVersionId: fallbackVersion.id,
       title: "Iteração excluída",
-      description: `${activeVersion.label || "Versão atual"} removida; a versão anterior voltou a valer.`,
-      timestamp: new Date().toISOString()
-    };
+      message: `${activeVersion.label || "Versão atual"} removida; a versão anterior voltou a valer.`,
+      feedbackText: `${activeVersion.label || "Versão atual"} foi descartada.`,
+      nextPromptDraft: "",
+      stale: true,
+      staleMessage: "A continuação anterior foi descartada junto com a versão gerada."
+    });
     render({ preserveState: false });
   }
 
@@ -4625,6 +4739,8 @@ export function createLessonEditorApp({ root, storage, editor }) {
     const context = getRenderContext();
     const hadCardsBefore = Array.isArray(context.microsequence?.cards) && context.microsequence.cards.length > 0;
     const previousProjectDocument = structuredClone(state.project);
+    const requestReference = getCurrentInterventionReference();
+    const requestBaseVersionId = getCurrentInterventionBaseVersionId(requestReference);
     const dependencyTitles = getAssistCatalog()
       .filter((item) => state.assistDraft.dependencyKeys.includes(item.key))
       .map((item) => item.title || item.key);
@@ -4663,6 +4779,14 @@ export function createLessonEditorApp({ root, storage, editor }) {
       });
 
       if (submission.status === "provider-unready") {
+        persistInterventionSession(
+          {
+            ...(submission.interventionFeedback || {}),
+            baseVersionId: requestBaseVersionId
+          },
+          requestReference
+        );
+        state.assistDraft.errorMessage = submission.errorMessage || "O bridge local não está ativo.";
         updateCodexCliSetupStatus({
           ok: false,
           checking: false,
@@ -4673,7 +4797,15 @@ export function createLessonEditorApp({ root, storage, editor }) {
       }
 
       if (submission.status !== "success") {
-        throw new Error(submission.errorMessage || "Falha ao chamar o serviço de IA.");
+        persistInterventionSession(
+          {
+            ...(submission.interventionFeedback || {}),
+            baseVersionId: requestBaseVersionId
+          },
+          requestReference
+        );
+        state.assistDraft.errorMessage = submission.errorMessage || "Falha ao chamar o serviço de IA.";
+        return;
       }
 
       storage.saveProject(submission.generationResult.projectDocument);
@@ -4692,23 +4824,87 @@ export function createLessonEditorApp({ root, storage, editor }) {
         state.selection.lessonKey,
         state.selection.microsequenceKey
       );
-      const createdNewStage = state.assistDraft.interventionTargetMode === "new_after_current";
-      state.assistDraft.lastRequest = {
-        title: createdNewStage
-          ? "Nova microssequência gerada"
-          : hadCardsBefore
-            ? "Microssequência continuada"
-            : "Primeiros cards gerados",
-        description:
-          `${Array.isArray(nextMicrosequence?.cards) ? nextMicrosequence.cards.length : 0} cards ${hadCardsBefore ? "na iteração atual" : "gerados"} em ${nextMicrosequence?.title || context.microsequence?.title || "Microssequência"} com ${getAssistModelLabel(state.assistConfig.model)}.`,
-        timestamp: new Date().toISOString()
-      };
+      const targetReference = getCurrentInterventionReference();
+      const targetBaseVersionId = getCurrentInterventionBaseVersionId(targetReference);
+      const runtimeFeedback = submission.generationResult?.interventionFeedback || {};
+      persistInterventionSession(
+        {
+          ...runtimeFeedback,
+          baseVersionId: targetBaseVersionId,
+          title:
+            runtimeFeedback.title
+            || (state.assistDraft.interventionTargetMode === "new_after_current"
+              ? "Nova microssequência gerada"
+              : hadCardsBefore
+                ? "Microssequência continuada"
+                : "Primeiros cards gerados"),
+          message:
+            runtimeFeedback.message
+            || `${Array.isArray(nextMicrosequence?.cards) ? nextMicrosequence.cards.length : 0} cards ${hadCardsBefore ? "na iteração atual" : "gerados"} em ${nextMicrosequence?.title || context.microsequence?.title || "Microssequência"} com ${getAssistModelLabel(state.assistConfig.model)}.`
+        },
+        targetReference
+      );
+      state.assistDraft.feedbackEditing = false;
     } catch (error) {
-      state.assistDraft.errorMessage = error instanceof Error ? error.message : "Falha ao chamar o serviço de IA.";
+      const fallbackMessage = error instanceof Error ? error.message : "Falha ao chamar o serviço de IA.";
+      persistInterventionSession(
+        {
+          status: "needs_retry",
+          baseVersionId: requestBaseVersionId,
+          title: "Nova iteração necessária",
+          message: fallbackMessage,
+          feedbackText: state.assistDraft.promptText || fallbackMessage,
+          nextPromptDraft: state.assistDraft.promptText,
+          recommendedActionIntent: state.assistDraft.operationMode === "repair" ? "repair_current" : "continue_current",
+          recommendedInterventionTargetMode: "current",
+          recommendedOperationMode: state.assistDraft.operationMode === "repair" ? "repair" : "reinforce",
+          recommendedInterventionType: state.assistDraft.interventionType
+        },
+        requestReference
+      );
+      state.assistDraft.errorMessage = fallbackMessage;
     } finally {
       state.assistDraft.isSubmitting = false;
       render({ preserveState: true });
     }
+  }
+
+  function clearAssistRequest() {
+    state.assistDraft.promptText = "";
+    state.assistDraft.actionIntent = "";
+    state.assistDraft.preferredContainer = "";
+    state.assistDraft.preferredContainerConfirmed = false;
+    state.assistDraft.attachments = [];
+    state.assistDraft.feedbackEditing = false;
+    state.assistDraft.feedbackDraftText = state.assistDraft.interventionSession?.nextPromptDraft || state.assistDraft.interventionSession?.feedbackText || "";
+    render({ preserveState: true });
+  }
+
+  function toggleAssistFeedbackEditing() {
+    state.assistDraft.feedbackEditing = !state.assistDraft.feedbackEditing;
+    if (!state.assistDraft.feedbackEditing) {
+      state.assistDraft.feedbackDraftText =
+        state.assistDraft.interventionSession?.nextPromptDraft
+        || state.assistDraft.interventionSession?.feedbackText
+        || "";
+    }
+    render({ preserveState: true });
+  }
+
+  function submitAssistFeedbackIteration() {
+    const session = state.assistDraft.interventionSession;
+    if (!interventionSessionNeedsIteration(session) || state.assistDraft.isSubmitting) {
+      return;
+    }
+    const nextPrompt = String(state.assistDraft.feedbackDraftText || session?.nextPromptDraft || session?.feedbackText || "").trim();
+    if (!nextPrompt) {
+      return;
+    }
+    applyInterventionSessionRecommendation(session);
+    state.assistDraft.promptText = nextPrompt;
+    state.assistDraft.feedbackEditing = false;
+    render({ preserveState: true });
+    void submitAssistRequest();
   }
 
   async function submitGenerateStructureRequest() {
@@ -5026,6 +5222,22 @@ export function createLessonEditorApp({ root, storage, editor }) {
     state.assistDraft.operationMode = isPlannedMicrosequenceForRuntime(microsequence) ? "reinforce" : "reinforce";
   }
 
+  function applyInterventionSessionRecommendation(session = state.assistDraft.interventionSession) {
+    const recommendedActionIntent = String(session?.recommendedActionIntent || "").trim();
+    if (recommendedActionIntent) {
+      applyAssistActionIntent(recommendedActionIntent, getRenderContext().microsequence);
+    }
+    if (String(session?.recommendedInterventionType || "").trim()) {
+      state.assistDraft.interventionType = String(session.recommendedInterventionType).trim();
+    }
+    if (String(session?.recommendedInterventionTargetMode || "").trim()) {
+      state.assistDraft.interventionTargetMode = String(session.recommendedInterventionTargetMode).trim();
+    }
+    if (String(session?.recommendedOperationMode || "").trim()) {
+      state.assistDraft.operationMode = String(session.recommendedOperationMode).trim();
+    }
+  }
+
   function getAssistPromptMetadata({ microsequence, actionIntent, hasNextPlannedMicrosequence = false } = {}) {
     const options = getAssistActionIntentOptions({ microsequence, hasNextPlannedMicrosequence });
     const selectedOption = options.find((item) => item.value === actionIntent) || null;
@@ -5076,6 +5288,20 @@ export function createLessonEditorApp({ root, storage, editor }) {
       submitLabel: selectedOption ? selectedOption.label : "Enviar pedido",
       promptPlaceholder: "Descreva com clareza o que deve acontecer nesta intervenção."
     };
+  }
+
+  function getFeedbackSubmitLabel(session = state.assistDraft.interventionSession) {
+    const status = String(session?.status || "").trim();
+    if (status === "needs_support_microsequence") {
+      return "Criar apoio";
+    }
+    if (status === "needs_new_microsequence") {
+      return "Abrir continuação";
+    }
+    if (status === "needs_retry") {
+      return "Tentar novamente";
+    }
+    return "Iterar";
   }
 
   function isPlannedMicrosequenceForRuntime(microsequence) {
@@ -7368,9 +7594,14 @@ export function createLessonEditorApp({ root, storage, editor }) {
           },
           generationUiState: getGenerationScopeState(),
           promptText: state.assistDraft.promptText,
-          lastRequest: state.assistDraft.lastRequest,
+          feedbackSession: state.assistDraft.interventionSession,
+          feedbackDraftText: state.assistDraft.feedbackDraftText,
+          feedbackEditing: state.assistDraft.feedbackEditing,
+          feedbackRequestReady:
+            interventionSessionNeedsIteration(state.assistDraft.interventionSession) &&
+            !state.assistDraft.isSubmitting,
+          feedbackSubmitLabel: getFeedbackSubmitLabel(state.assistDraft.interventionSession),
           isSubmitting: state.assistDraft.isSubmitting,
-          assistError: state.assistDraft.errorMessage,
           hasApiKey: Boolean(state.assistConfig.apiKey),
           historyCount: historyVersions.length,
           structureHistoryCount: structureVersionEntry?.versions?.length || 0,
@@ -8715,7 +8946,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
     });
 
     const assistMode = root.querySelector("[data-field='assist-mode']");
-    const assistModel = root.querySelector("[data-field='assist-model']");
+    const assistModelInputs = root.querySelectorAll("[data-field='assist-model'], [data-field='assist-feedback-model']");
     const assistApiKey = root.querySelector("[data-field='assist-api-key']");
     const providerConfigBaseUrl = root.querySelector("[data-field='provider-config-base-url']");
     const providerConfigCodexEndpoint = root.querySelector("[data-field='provider-config-codex-endpoint']");
@@ -8724,11 +8955,15 @@ export function createLessonEditorApp({ root, storage, editor }) {
     const assistPreferredContainer = root.querySelector("[data-field='assist-preferred-container']");
     const assistDependencyPicker = root.querySelector("[data-field='assist-dependency-picker']");
     const assistPrompt = root.querySelector("[data-field='assist-prompt']");
+    const assistFeedback = root.querySelector("[data-field='assist-feedback']");
     const assistAttachmentInput = root.querySelector("[data-field='assist-attachments']");
     const assistSubmitButton = root.querySelector("[data-action='apply-assist']");
+    const assistFeedbackSubmitButton = root.querySelector("[data-action='apply-assist-feedback']");
     const syncAssistSubmitState = () => {
       if (!assistSubmitButton) {
-        return;
+        if (!assistFeedbackSubmitButton) {
+          return;
+        }
       }
       const visiblePromptValue =
         assistPrompt instanceof HTMLTextAreaElement
@@ -8743,8 +8978,15 @@ export function createLessonEditorApp({ root, storage, editor }) {
         attachmentCount: state.assistDraft.attachments.length,
         isSubmitting: state.assistDraft.isSubmitting
       });
-      assistSubmitButton.disabled = !canSubmitAssist;
-      assistSubmitButton.setAttribute("aria-disabled", canSubmitAssist ? "false" : "true");
+      if (assistSubmitButton) {
+        assistSubmitButton.disabled = !canSubmitAssist;
+        assistSubmitButton.setAttribute("aria-disabled", canSubmitAssist ? "false" : "true");
+      }
+      if (assistFeedbackSubmitButton) {
+        const canIterate = interventionSessionNeedsIteration(state.assistDraft.interventionSession) && !state.assistDraft.isSubmitting;
+        assistFeedbackSubmitButton.disabled = !canIterate;
+        assistFeedbackSubmitButton.setAttribute("aria-disabled", canIterate ? "false" : "true");
+      }
     };
     if (assistMode) {
       assistMode.addEventListener("change", () => {
@@ -8757,12 +8999,13 @@ export function createLessonEditorApp({ root, storage, editor }) {
         state.assistDraft.pendingDependencyKey = assistDependencyPicker.value;
       });
     }
-    if (assistModel) {
+    assistModelInputs.forEach((assistModel) => {
       assistModel.addEventListener("change", () => {
-        setAssistModel(assistModel.value);
+        const selectedValue = assistModel instanceof HTMLSelectElement ? assistModel.value : "";
+        setAssistModel(selectedValue);
         render({ preserveState: true });
       });
-    }
+    });
     if (assistApiKey) {
       assistApiKey.addEventListener("input", () => {
         persistAssistConfigValue({ apiKey: assistApiKey.value });
@@ -8805,6 +9048,11 @@ export function createLessonEditorApp({ root, storage, editor }) {
       assistPrompt.addEventListener("input", () => {
         state.assistDraft.promptText = assistPrompt.value;
         syncAssistSubmitState();
+      });
+    }
+    if (assistFeedback instanceof HTMLTextAreaElement) {
+      assistFeedback.addEventListener("input", () => {
+        state.assistDraft.feedbackDraftText = assistFeedback.value;
       });
     }
     if (assistAttachmentInput) {
@@ -8850,13 +9098,15 @@ export function createLessonEditorApp({ root, storage, editor }) {
         state.generationDraft.promptText = "";
         clearGenerationResult();
       }
-      if (root.querySelector("[data-field='assist-prompt']")) {
-        state.assistDraft.promptText = "";
-      }
       render({ preserveState: true });
     });
-    root.querySelector("[data-action='open-assist-attachment-picker']")?.addEventListener("click", () => {
-      root.querySelector("[data-field='assist-attachments']")?.click();
+    root.querySelector("[data-action='clear-assist-request']")?.addEventListener("click", () => {
+      clearAssistRequest();
+    });
+    root.querySelectorAll("[data-action='open-assist-attachment-picker'], [data-action='open-assist-feedback-attachment-picker']").forEach((node) => {
+      node.addEventListener("click", () => {
+        root.querySelector("[data-field='assist-attachments']")?.click();
+      });
     });
     root.querySelector("[data-action='open-generation-attachment-picker']")?.addEventListener("click", () => {
       root.querySelector("[data-field='generate-attachments']")?.click();
@@ -8864,16 +9114,18 @@ export function createLessonEditorApp({ root, storage, editor }) {
     root.querySelector("[data-action='open-provider-config']")?.addEventListener("click", () => {
       openProviderConfig();
     });
-    root.querySelector("[data-action='open-assist-config']")?.addEventListener("click", () => {
-      if (state.generationPanelOpen) {
-        if (state.assistConfigOpen) {
-          closeAssistConfig();
-        } else {
-          openAssistConfig();
+    root.querySelectorAll("[data-action='open-assist-config'], [data-action='open-assist-feedback-config']").forEach((node) => {
+      node.addEventListener("click", () => {
+        if (state.generationPanelOpen) {
+          if (state.assistConfigOpen) {
+            closeAssistConfig();
+          } else {
+            openAssistConfig();
+          }
+          return;
         }
-        return;
-      }
-      openProviderConfig();
+        openProviderConfig();
+      });
     });
     root.querySelector("[data-action='apply-assist']")?.addEventListener("click", () => {
       if (state.assistDraft.actionIntent === ASSIST_ACTION_INTENTS.NEXT_PLANNED) {
@@ -8885,6 +9137,12 @@ export function createLessonEditorApp({ root, storage, editor }) {
         return;
       }
       void submitAssistRequest();
+    });
+    root.querySelector("[data-action='toggle-feedback-edit']")?.addEventListener("click", () => {
+      toggleAssistFeedbackEditing();
+    });
+    root.querySelector("[data-action='apply-assist-feedback']")?.addEventListener("click", () => {
+      submitAssistFeedbackIteration();
     });
     root.querySelector("[data-action='accept-generated-version']")?.addEventListener("click", () => {
       acceptPendingGeneratedMicrosequenceVersion();

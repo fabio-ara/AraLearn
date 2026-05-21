@@ -5834,6 +5834,10 @@ button {
   align-content: start;
 }
 
+.workbench-inline-reset {
+  margin-top: 2px;
+}
+
 .workbench-stack-button {
   min-width: 34px;
   min-height: 38px;
@@ -6578,6 +6582,10 @@ button {
   gap: 5px;
 }
 
+.generate-action-row.assist-actions-wide.assist-feedback-actions {
+  grid-template-columns: minmax(78px, auto) minmax(0, 1fr) 34px 34px 44px;
+}
+
 .generate-action-row.assist-actions-wide .generate-model-field {
   width: 100%;
   min-width: 0;
@@ -6609,6 +6617,16 @@ button {
   min-height: 38px;
   width: 34px;
   height: 38px;
+}
+
+.assist-feedback-edit-button {
+  min-height: 38px;
+  border-radius: 12px;
+  border: 1px solid rgba(111, 88, 62, 0.78);
+  background: linear-gradient(180deg, rgba(34, 27, 20, 0.98), rgba(22, 17, 13, 0.99));
+  color: #f5e6cb;
+  font-weight: 600;
+  padding: 0 10px;
 }
 
 .generate-action-row.assist-actions-wide .generate-submit {
@@ -6670,6 +6688,10 @@ button {
     gap: 4px;
   }
 
+  .generate-action-row.assist-actions-wide.assist-feedback-actions {
+    grid-template-columns: minmax(72px, auto) minmax(0, 1fr) 32px 32px 42px;
+  }
+
   .microsequence-generator-screen {
     padding-bottom: calc(var(--safe-bottom-tappable) + 20px);
   }
@@ -6710,12 +6732,7 @@ button {
 
 }
 
-.assist-status-panel.is-warning {
-  border-color: rgba(174, 94, 58, 0.9);
-  background: rgba(52, 24, 18, 0.92);
-}
-
-.workbench-editor-panel .assist-status-panel {
+.workbench-editor-panel .assist-feedback-panel {
   display: grid;
   gap: 10px;
   min-height: 0;
@@ -6724,14 +6741,45 @@ button {
   overflow: visible;
 }
 
-.workbench-editor-panel .assist-status-panel .tiny {
+.assist-feedback-panel.is-warning {
+  border-color: rgba(174, 94, 58, 0.9);
+  background: rgba(52, 24, 18, 0.92);
+}
+
+.assist-feedback-panel.is-attention {
+  border-color: rgba(193, 146, 66, 0.92);
+  background: rgba(48, 34, 20, 0.92);
+}
+
+.assist-feedback-panel.is-muted {
+  border-color: rgba(104, 91, 74, 0.88);
+  background: rgba(25, 20, 17, 0.9);
+}
+
+.workbench-editor-panel .assist-feedback-panel .tiny {
   margin: 0;
 }
 
-.assist-status-panel .assist-last-request {
+.assist-feedback-copy {
+  display: grid;
+  gap: 6px;
+}
+
+.assist-feedback-empty-copy,
+.assist-feedback-stale-copy,
+.assist-feedback-copy .assist-last-request {
   overflow-wrap: anywhere;
   white-space: normal;
   margin: 0;
+}
+
+.assist-feedback-field {
+  margin-top: 2px;
+}
+
+.assist-feedback-textarea[readonly] {
+  opacity: 0.94;
+  cursor: default;
 }
 
 .workbench-quick-actions-panel {

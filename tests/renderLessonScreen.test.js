@@ -468,10 +468,17 @@ test("renderiza o painel da microssequência sem botão próprio de ações e co
   assert.match(html, /data-action="open-assist-attachment-picker" title="Anexar documentos" aria-label="Anexar documentos"/);
   assert.match(html, /data-action="remove-assist-attachment" data-attachment-index="0"/);
   assert.match(html, /referencia\.pdf/);
-  assert.match(html, /data-action="clear-prompt" title="Limpar prompt" aria-label="Limpar prompt"/);
+  assert.match(html, /data-action="clear-assist-request" title="Limpar pedido" aria-label="Limpar pedido"/);
   assert.match(html, /data-action="open-assist-config" title="Configurar IA" aria-label="Configurar IA"/);
   assert.match(html, /data-action="apply-assist"[^>]*title="Gerar próximos cards" aria-label="Gerar próximos cards"/);
   assert.match(html, /data-action="apply-assist"[^>]*disabled aria-disabled="true"/);
+  assert.match(html, /Retorno da intervenção/);
+  assert.match(html, /data-field="assist-feedback"/);
+  assert.match(html, /data-action="toggle-feedback-edit"/);
+  assert.match(html, /data-field="assist-feedback-model" aria-label="Modelo" title="Modelo"/);
+  assert.match(html, /data-action="open-assist-feedback-attachment-picker" title="Anexar documentos" aria-label="Anexar documentos"/);
+  assert.match(html, /data-action="open-assist-feedback-config" title="Configurar IA" aria-label="Configurar IA"/);
+  assert.match(html, /data-action="apply-assist-feedback"[^>]*disabled aria-disabled="true"/);
   assert.match(html, /generate-submit-icon/);
   assert.doesNotMatch(html, />Preview<\/button>/);
   assert.doesNotMatch(html, />Edição<\/button>/);
@@ -802,6 +809,76 @@ test("renderiza ida para a próxima microssequência planejada sem exigir pedido
   assert.match(html, /data-field="assist-action-intent" value="next_planned" checked/);
   assert.match(html, /data-action="apply-assist"[^>]*title="Abrir próxima microssequência" aria-label="Abrir próxima microssequência"/);
   assert.doesNotMatch(html, /data-action="apply-assist"[^>]*disabled aria-disabled="true"/);
+});
+
+test("renderiza retorno iterável quando a intervenção pede continuação", () => {
+  const project = readProject();
+  const course = project.courses[0];
+  const moduleValue = course.modules[0];
+  const lesson = moduleValue.lessons[0];
+  const microsequence = lesson.microsequences[0];
+  const html = renderLessonScreen({
+    project,
+    view: "microsequence-assist",
+    selection: {
+      courseKey: course.key,
+      moduleKey: moduleValue.key,
+      lessonKey: lesson.key,
+      microsequenceKey: microsequence.key,
+      cardKey: microsequence.cards[0].key,
+      cardIndex: 0
+    },
+    course,
+    moduleValue,
+    lesson,
+    microsequence,
+    cards: microsequence.cards,
+    microsequenceMode: "play",
+    editorSupport: {
+      progress: { version: 1, lessons: {} },
+      dependencies: [],
+      microsequenceVersions: [{ id: "v1", label: "Versão 1" }],
+      activeMicrosequenceVersionId: "v1",
+      selectedDependencyKeys: [],
+      pendingDependencyKey: "",
+      assistActionOptions: [
+        { value: "continue_current", label: "Continuar na microssequência", icon: "sparkles" }
+      ],
+      selectedAssistAction: "continue_current",
+      assistPromptLabel: "Pedido dos próximos cards",
+      assistSubmitLabel: "Gerar próximos cards",
+      assistPromptPlaceholder: "Diga o que deve vir agora.",
+      assistRequestReady: true,
+      containerOptions: [{ value: "", label: "Automático" }],
+      preferredContainer: "",
+      modelOptions: [{ value: "gemini-2.5-flash", label: "Gemini 2.5 Flash" }],
+      selectedModel: "gemini-2.5-flash",
+      assistModeOptions: [],
+      selectedAssistMode: "edit-microsequence",
+      activeWorkbenchPane: "edit",
+      assistModeLocked: true,
+      attachments: [],
+      promptText: "",
+      feedbackSession: {
+        status: "needs_continue_here",
+        title: "Continuação recomendada",
+        message: "A etapa atual ainda pede prática variada.",
+        feedbackText: "Continue a microssequência atual com novas variações autossuficientes.",
+        nextPromptDraft: "Continue a microssequência atual com novas variações autossuficientes."
+      },
+      feedbackDraftText: "Continue a microssequência atual com novas variações autossuficientes.",
+      feedbackEditing: false,
+      feedbackRequestReady: true,
+      feedbackSubmitLabel: "Iterar"
+    }
+  });
+
+  assert.match(html, /Continuação recomendada/);
+  assert.match(html, /A etapa atual ainda pede prática variada\./);
+  assert.match(html, /data-field="assist-feedback"/);
+  assert.match(html, /readonly aria-readonly="true"/);
+  assert.match(html, /data-action="apply-assist-feedback"[^>]*title="Iterar" aria-label="Iterar"/);
+  assert.doesNotMatch(html, /data-action="apply-assist-feedback"[^>]*disabled aria-disabled="true"/);
 });
 
 test("renderiza a aba preview da microssequência dentro da superfície combinada", () => {

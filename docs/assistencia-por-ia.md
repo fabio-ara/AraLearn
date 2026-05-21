@@ -104,6 +104,29 @@ O fluxo atual divide essa etapa em duas fases leves:
 
 Se o draft falha ou vem incompleto, o runtime usa um card plan determinístico como fallback.
 
+## Retorno iterável da intervenção
+
+Na aba `Edição`, o bottom-up não termina mais apenas em "deu certo" ou "deu erro". O runtime produz um retorno classificado para a microssequência atual.
+
+Estados principais:
+
+- `completed`: a iteração atual fechou a etapa;
+- `needs_retry`: houve erro recuperável ou resposta insuficiente;
+- `needs_continue_here`: a etapa atual ainda pede nova chamada na mesma microssequência;
+- `needs_support_microsequence`: vale abrir uma etapa de apoio adjacente;
+- `needs_new_microsequence`: a continuação pede nova microssequência;
+- `blocked`: falta provider ou contexto operacional;
+- `stale`: o retorno foi gerado sobre uma versão-base que já não está mais em uso.
+
+O retorno é persistido por microssequência, junto com a versão-base ativa quando a chamada ocorreu. Isso permite sair da tela, estudar outra etapa e voltar depois sem perder:
+
+- o pedido anterior;
+- a proposta de próxima iteração;
+- o modelo usado;
+- a recomendação de ação seguinte.
+
+Quando há continuação segura, o app habilita uma nova iteração a partir do retorno persistido. Quando a versão-base mudou, o retorno continua legível, mas deixa de ser executado cegamente.
+
 ## Providers
 
 Providers suportados pelo desenho técnico:
