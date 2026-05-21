@@ -198,6 +198,15 @@ function repairRepeatsExistingCards(cards = [], packet = {}) {
     && nextSignatures.every((signature, index) => signature && signature === existingSignatures[index]);
 }
 
+function isGenericFallbackArtifact(card = {}) {
+  const source = normalizeToken([
+    text(card?.title),
+    normalizedForbiddenScanText(card)
+  ].filter(Boolean).join(" "));
+  return /\b(localize|localizar)\b.{0,60}\b(titulo|title|objetivo|etapa)\b/u.test(source)
+    || /\b(foco local|termo central|cumpre o objetivo da etapa|use uma palavra do objetivo)\b/u.test(source);
+}
+
 function tablePracticeHasConcreteAction(card = {}) {
   if (text(card?.resourceType) !== "table") {
     return true;
@@ -269,6 +278,9 @@ export function validateBottomUpDidacticQuality(payload = {}, packet = {}, cardP
     }
     if (hasTemplateArtifact(card)) {
       issues.push(buildIssue(path, "Remova artefatos de template e escreva material final pronto para o aluno."));
+    }
+    if (isGenericFallbackArtifact(card)) {
+      issues.push(buildIssue(path, "Reescreva o card: ele ainda está genérico, metalinguístico ou orientado ao plano em vez de ensinar o conteúdo final."));
     }
     if (!hasReadyStudentText(card)) {
       issues.push(buildIssue(path, "Escreva texto didático final no próprio card, não uma rubrica genérica."));

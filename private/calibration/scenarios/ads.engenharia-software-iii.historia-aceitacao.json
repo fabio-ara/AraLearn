@@ -1,0 +1,38 @@
+{
+  "id": "ads-es3-historia-criterio-aceitacao",
+  "label": "ADS - Engenharia de Software III - História de usuário e critério de aceitação",
+  "topDownDraft": {
+    "courseInput": "Engenharia de Software III",
+    "moduleInput": "Histórias de usuário e critérios de aceitação",
+    "lessonInput": "Diferença entre história de usuário, tarefa e critério de aceitação",
+    "includeTopics": [
+      "história de usuário como necessidade do usuário",
+      "estrutura Como quero para em nível introdutório",
+      "critério de aceitação como condição verificável",
+      "diferença entre história de usuário e tarefa técnica"
+    ],
+    "excludeTopics": [
+      "planning poker",
+      "estimativa em story points",
+      "BDD automatizado",
+      "roadmap trimestral"
+    ],
+    "promptText": "Planeje uma lição introdutória para estudante de ADS que ainda mistura requisito, história de usuário, tarefa técnica e critério de aceitação. Mantenha a trilha estritamente dentro do include, não mencione exclude, não gere cards no top-down e prepare o bottom-up para microteoria simples, exemplos concretos e prática abundante de classificação e reescrita curta."
+  },
+  "bottomUp": {
+    "extend_current": {
+      "promptText": "Amplie a microssequência atual com explicação simples, contraste entre conceitos próximos e prática curta abundante. Não presuma conhecimento prévio de Scrum além do que a trilha já tiver explicitado.",
+      "attachmentText": "Explique localmente os termos história de usuário, tarefa e critério de aceitação. Use exemplos curtos de produto digital sem abrir discussão de estimativa, backlog ou processo avançado.",
+      "selectedDidacticTypeId": "explain"
+    },
+    "create_support_branch": {
+      "promptText": "Se surgir lacuna local entre necessidade do usuário, tarefa técnica e critério verificável, crie apoio curto para fechar só essa lacuna e volte explicitamente à trilha planejada."
+    },
+    "repair_current": {
+      "promptText": "Reescreva a microssequência com linguagem ainda mais concreta, separando teoria, exemplo e prática, sem mudar de assunto e sem resumir tudo em um único card."
+    },
+    "generate_planned_next": {
+      "promptText": "Avance somente para a próxima microssequência já planejada, preservando o encadeamento da lição e o foco introdutório."
+    }
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "id": "ads-programacao-web-http-basico",
+  "label": "ADS - Programação Web - Requisição e resposta HTTP",
+  "topDownDraft": {
+    "courseInput": "Programação Web",
+    "moduleInput": "Fundamentos de requisição e resposta HTTP",
+    "lessonInput": "Ciclo básico de uma requisição HTTP",
+    "includeTopics": [
+      "URL como endereço do recurso",
+      "requisição HTTP como pedido do cliente",
+      "resposta HTTP como retorno do servidor",
+      "métodos GET e POST em nível introdutório",
+      "status 200, 404 e 500 em nível introdutório"
+    ],
+    "excludeTopics": [
+      "autenticação OAuth",
+      "WebSocket",
+      "HTTP/2 multiplexing",
+      "cache distribuído"
+    ],
+    "promptText": "Planeje uma lição introdutória para estudante de ADS que ainda confunde navegador, cliente, servidor, requisição e resposta. Respeite rigidamente include e exclude, não gere cards no top-down, monte progressão exaustiva e prepare o bottom-up para teoria simples, exemplos curtos e prática abundante sem pressupor backend prévio."
+  },
+  "bottomUp": {
+    "extend_current": {
+      "promptText": "Amplie a microssequência atual com teoria curta, exemplo concreto e bastante prática básica. Não presuma que o aluno já sabe o que é cliente, servidor ou método HTTP fora do que a trilha já explicitou.",
+      "attachmentText": "Mantenha linguagem simples. Se aparecer GET ou POST, explique no próprio card como tipo de pedido. Se aparecer cliente ou servidor, explique funcionalmente no próprio card.",
+      "selectedDidacticTypeId": "explain"
+    },
+    "create_support_branch": {
+      "promptText": "Se houver lacuna local entre URL, requisição, resposta, cliente e servidor, crie apoio curto para sanar só essa lacuna e volte explicitamente à trilha principal."
+    },
+    "repair_current": {
+      "promptText": "Reescreva a microssequência deixando a microteoria ainda mais simples, separando melhor teoria e prática, sem mudar de assunto nem abrir tópico lateral."
+    },
+    "generate_planned_next": {
+      "promptText": "Avance apenas para a próxima microssequência planejada quando a atual estiver pronta, preservando continuidade e linguagem introdutória."
+    }
+  }
+}

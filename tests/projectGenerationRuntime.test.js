@@ -1384,6 +1384,90 @@ test("generateMicrosequenceProjectDocument não repete compile após timeout em 
   assert.equal(result.projectDocument.courses[0].modules[0].lessons[0].microsequences[2].status, "ready");
 });
 
+test("fallback de generate_planned_next evita cards metalinguísticos genéricos", async () => {
+  const provider = createFakeProvider({
+    script: {
+      "normal_generation-draft": {
+        steps: [
+          {
+            role: "microtheory",
+            resourceType: "say",
+            purpose: "Abrir a etapa seguinte.",
+            inCardContext: ["continuidade planejada"],
+            usesDependency: ["micro-a"],
+            expectedEvidence: ["explicar a etapa seguinte"]
+          },
+          {
+            role: "guided_example",
+            resourceType: "say",
+            purpose: "Exemplo curto.",
+            inCardContext: ["continuidade planejada"],
+            usesDependency: ["micro-a"],
+            expectedEvidence: ["relacionar a base anterior à etapa seguinte"]
+          },
+          {
+            role: "active_practice",
+            resourceType: "block_gap_fill",
+            purpose: "Checar avanço.",
+            inCardContext: ["lacuna"],
+            usesDependency: ["micro-a"],
+            expectedEvidence: ["identificar a etapa seguinte"]
+          },
+          {
+            role: "analogous_practice",
+            resourceType: "say",
+            purpose: "Variação simples.",
+            inCardContext: ["continuidade planejada"],
+            usesDependency: ["micro-a"],
+            expectedEvidence: ["escrever uma variação curta"]
+          }
+        ],
+        coverageNotes: [],
+        continuationNeeded: false,
+        continuationReason: "",
+        continuationMode: "none",
+        continuationPrompt: ""
+      },
+      "generate-microsequence": () => {
+        throw new Error("compile indisponível");
+      }
+    }
+  });
+  const project = createProjectDocument();
+  const current = project.courses[0].modules[0].lessons[0].microsequences[1];
+  current.status = "ready";
+  current.included = true;
+  current.cards = [{ key: "card-1", say: "Conteúdo útil já gerado na etapa atual." }];
+  project.courses[0].modules[0].lessons[0].microsequences[2].dependsOn = ["micro-a"];
+
+  const result = await generateMicrosequenceProjectDocument({
+    selection: {
+      courseKey: "course-a",
+      moduleKey: "module-a",
+      lessonKey: "lesson-a",
+      microsequenceKey: "micro-a"
+    },
+    draft: {
+      promptText: "",
+      actionIntent: "next_planned",
+      operationMode: "reinforce",
+      interventionTargetMode: "current"
+    },
+    assistConfig: {
+      model: "gemini-2.5-flash",
+      apiKey: "chave"
+    },
+    projectDocument: project,
+    provider,
+    ingestAttachments: async () => ({ attachments: [], extractedCount: 0, warnings: [] })
+  });
+
+  const cards = result.projectDocument.courses[0].modules[0].lessons[0].microsequences[2].cards;
+  const combined = cards.map((card) => `${card.title || ""}\n${card.say || ""}`).join("\n");
+  assert.doesNotMatch(combined, /foco local|termo central|cumpre o objetivo da etapa|use uma palavra do objetivo|localize/i);
+  assert.match(combined, /etapa seguinte|continuidade|próxima etapa|base anterior/i);
+});
+
 test("generateMicrosequenceProjectDocument repara a microssequência atual sem alterar a trilha", async () => {
   const provider = createFakeProvider({
     script: {

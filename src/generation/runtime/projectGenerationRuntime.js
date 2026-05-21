@@ -1162,6 +1162,7 @@ function buildFallbackRoleText(step = {}, packet = {}, interactionMode = "normal
   const role = text(step?.role);
   const currentTitle = text(packet?.currentMicrosequence?.title) || "a etapa atual";
   const currentGoal = firstSentence(packet?.currentMicrosequence?.goal) || "entender o objetivo atual";
+  const dependencyTitle = text(packet?.currentMicrosequence?.dependsOn?.[0]?.title);
   const previousTitle = text(packet?.neighborMicrosequences?.previous?.title);
   const nextTitle = text(packet?.neighborMicrosequences?.next?.title);
   const scopeLabel = uniqueList(packet?.currentMicrosequence?.scopeLabels)[0] || currentTitle;
@@ -1177,7 +1178,10 @@ function buildFallbackRoleText(step = {}, packet = {}, interactionMode = "normal
     if (hasInstructionFlow) {
       return "A instrução começa guardada na memória. Para ser tratada, ela precisa chegar à CPU. Dentro da CPU, registradores podem manter informações por pouco tempo enquanto a instrução é tratada.";
     }
-    return `${currentGoal}. Antes de praticar, identifique o ponto principal desta etapa: ${scopeLabel}.`;
+    if (dependencyTitle) {
+      return `${dependencyTitle} abre a base desta etapa. Agora o foco é ${scopeLabel}: ${currentGoal}.`;
+    }
+    return `${scopeLabel}: ${currentGoal}.`;
   }
   if (role === "guided_example") {
     if (hasPcFocus) {
@@ -1186,10 +1190,10 @@ function buildFallbackRoleText(step = {}, packet = {}, interactionMode = "normal
     if (hasInstructionFlow) {
       return "Leia o caso: uma instrução está na memória, é buscada pela CPU e fica temporariamente em registradores internos enquanto é analisada. Esse é o percurso mínimo que esta etapa quer fixar.";
     }
-    return `Caso guiado: quando aparecer "${currentTitle}", localize ${scopeLabel} e explique em uma frase como isso cumpre o objetivo da etapa.`;
+    return `Exemplo guiado: em uma situação simples, ${scopeLabel} aparece para cumprir esta etapa. Explique em uma frase qual papel ${scopeLabel} exerce aqui.`;
   }
   if (role === "example_reading") {
-    return `Leitura guiada: encontre no exemplo o trecho que mostra ${scopeLabel}. Depois escreva uma frase curta explicando por que esse trecho pertence a "${currentTitle}".`;
+    return `Leitura guiada: encontre no exemplo o trecho que mostra ${scopeLabel}. Depois explique com palavras simples o que esse trecho ensina nesta etapa.`;
   }
   if (role === "contrast") {
     if (hasPcFocus) {
@@ -1198,7 +1202,7 @@ function buildFallbackRoleText(step = {}, packet = {}, interactionMode = "normal
     if (hasInstructionFlow) {
       return "Compare os papéis: a memória guarda a instrução antes do uso, a CPU trata a instrução, e os registradores guardam informações temporárias dentro da CPU.";
     }
-    return `Compare dois papéis locais: ${scopeLabel} é o foco desta etapa; qualquer outro papel só deve aparecer se ajudar a cumprir o objetivo "${currentGoal}".`;
+    return `Compare dois papéis: ${scopeLabel} é o foco desta etapa. Diferencie ${scopeLabel} do elemento mais próximo que possa gerar confusão e diga a função de cada um.`;
   }
   if (role === "active_practice") {
     if (hasPcFocus) {
@@ -1207,7 +1211,7 @@ function buildFallbackRoleText(step = {}, packet = {}, interactionMode = "normal
     if (hasInstructionFlow) {
       return "Complete com: memória, CPU, registradores.\n\nA instrução está inicialmente na ____. Para ser tratada, ela chega à ____. Durante o tratamento, informações podem ficar temporariamente em ____.";
     }
-    return `Complete: nesta etapa, o foco local é ____. Use uma palavra do objetivo e confira se a frase ajuda a ${expectedEvidence}.`;
+    return `Complete: ${scopeLabel} é importante nesta etapa porque ____. Sua resposta deve ajudar a ${expectedEvidence}.`;
   }
   if (role === "analogous_practice") {
     if (hasPcFocus) {
@@ -1216,7 +1220,7 @@ function buildFallbackRoleText(step = {}, packet = {}, interactionMode = "normal
     if (hasInstructionFlow) {
       return "Associe cada papel ao componente correto: guardar a instrução antes do uso; tratar a instrução; guardar temporariamente informações internas.";
     }
-    return `Variação curta: escolha o termo central de "${currentTitle}" e escreva uma frase ligando essa escolha ao objetivo "${currentGoal}".`;
+    return `Variação curta: escreva uma frase nova usando ${scopeLabel} para mostrar ${expectedEvidence}.`;
   }
   if (role === "cumulative_review") {
     if (hasPcFocus) {
@@ -1225,7 +1229,7 @@ function buildFallbackRoleText(step = {}, packet = {}, interactionMode = "normal
     if (hasInstructionFlow) {
       return "Retome o percurso em uma frase: a instrução sai da memória, chega à CPU e pode ficar temporariamente em registradores enquanto é tratada.";
     }
-    return `Revise a trilha: explique ${scopeLabel} com suas palavras e conecte a resposta ao objetivo "${currentGoal}".`;
+    return `Retomada final: explique ${scopeLabel} com suas palavras e mostre como isso ajuda a ${currentGoal}.`;
   }
   if (role === "correction") {
     return `Corrija a resposta: se a explicação não menciona ${scopeLabel}, acrescente uma frase dizendo como esse ponto sustenta o objetivo "${currentGoal}".`;
