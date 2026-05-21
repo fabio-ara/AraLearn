@@ -540,6 +540,50 @@ function buildGraphEdgeKey(from, to) {
   return [String(from || ""), String(to || "")].sort().join("::");
 }
 
+function fitGraphCoordinatesToBoard(vertices) {
+  const safeVertices = Array.isArray(vertices) ? vertices : [];
+  if (!safeVertices.length) {
+    return new Map();
+  }
+
+  const BOARD_CENTER = 50;
+  const BOARD_SPAN = 68;
+  const EPSILON = 0.0001;
+  const xValues = safeVertices.map((vertex) => Number(vertex?.x));
+  const yValues = safeVertices.map((vertex) => Number(vertex?.y));
+  const minX = Math.min(...xValues);
+  const maxX = Math.max(...xValues);
+  const minY = Math.min(...yValues);
+  const maxY = Math.max(...yValues);
+  const rangeX = maxX - minX;
+  const rangeY = maxY - minY;
+
+  if (rangeX < EPSILON && rangeY < EPSILON) {
+    return new Map(
+      safeVertices.map((vertex) => [
+        vertex.id,
+        { x: BOARD_CENTER, y: BOARD_CENTER }
+      ])
+    );
+  }
+
+  const scaleX = rangeX < EPSILON ? Number.POSITIVE_INFINITY : BOARD_SPAN / rangeX;
+  const scaleY = rangeY < EPSILON ? Number.POSITIVE_INFINITY : BOARD_SPAN / rangeY;
+  const scale = Math.min(scaleX, scaleY);
+  const midX = (minX + maxX) / 2;
+  const midY = (minY + maxY) / 2;
+
+  return new Map(
+    safeVertices.map((vertex) => {
+      const sourceX = Number(vertex.x);
+      const sourceY = Number(vertex.y);
+      const x = rangeX < EPSILON ? BOARD_CENTER : Number((BOARD_CENTER + (sourceX - midX) * scale).toFixed(2));
+      const y = rangeY < EPSILON ? BOARD_CENTER : Number((BOARD_CENTER + (sourceY - midY) * scale).toFixed(2));
+      return [vertex.id, { x, y }];
+    })
+  );
+}
+
 function buildGraphAutoLayout(vertexCount, index) {
   const total = Math.max(1, Number(vertexCount || 1));
   const angle = (-Math.PI / 2) + ((Math.PI * 2) / total) * index;
@@ -580,10 +624,11 @@ function buildGraphBlock(card) {
   const useFixedCoordinates = sourceVertices.length > 0 && sourceVertices.every((vertex) =>
     Number.isFinite(Number(vertex?.x)) && Number.isFinite(Number(vertex?.y))
   );
+  const fittedCoordinates = useFixedCoordinates ? fitGraphCoordinatesToBoard(sourceVertices) : new Map();
 
   const vertices = sourceVertices.map((vertex, index) => {
     const layout = useFixedCoordinates
-      ? { x: Number(vertex.x), y: Number(vertex.y) }
+      ? fittedCoordinates.get(vertex.id) || { x: Number(vertex.x), y: Number(vertex.y) }
       : buildGraphAutoLayout(sourceVertices.length, index);
     const id = normalizeText(vertex?.id).trim();
     const label = normalizeText(vertex?.label).trim() || id;
@@ -597,15 +642,15 @@ function buildGraphBlock(card) {
   }).filter((vertex) => vertex.id);
 
   const vertexMap = new Map(vertices.map((vertex) => [vertex.id, vertex]));
-  const seenEdges = new Set();
-  const edges = sourceEdges.map((edge) => {
+  const pairCounts = new Map();
+  const rawEdges = sourceEdges.map((edge) => {
     const from = normalizeText(edge?.from).trim();
     const to = normalizeText(edge?.to).trim();
     const key = buildGraphEdgeKey(from, to);
-    if (!from || !to || from === to || seenEdges.has(key) || !vertexMap.has(from) || !vertexMap.has(to)) {
+    if (!from || !to || from === to || !vertexMap.has(from) || !vertexMap.has(to)) {
       return null;
     }
-    seenEdges.add(key);
+    pairCounts.set(key, (pairCounts.get(key) || 0) + 1);
     return {
       from,
       to,
@@ -617,6 +662,17 @@ function buildGraphBlock(card) {
       highlighted: highlightEdgeKeys.has(key)
     };
   }).filter(Boolean);
+
+  const pairSlots = new Map();
+  const edges = rawEdges.map((edge) => {
+    const slot = pairSlots.get(edge.key) || 0;
+    pairSlots.set(edge.key, slot + 1);
+    return {
+      ...edge,
+      parallelIndex: slot,
+      parallelCount: pairCounts.get(edge.key) || 1
+    };
+  });
 
   return {
     kind: "graph",

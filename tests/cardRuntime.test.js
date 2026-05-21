@@ -159,6 +159,45 @@ test("compila card graph para runtime interno com layout e destaque estáveis", 
   );
 });
 
+test("compila graph com coordenadas didáticas pequenas ajustando ao canvas", () => {
+  const runtime = buildCardRuntime({
+    key: "card-graph-small-scale",
+    title: "Königsberg",
+    graph: {
+      vertices: [
+        { id: "N", label: "Margem norte", x: 0, y: 0 },
+        { id: "S", label: "Margem sul", x: 0, y: 4 },
+        { id: "I1", label: "Ilha central", x: 3, y: 1.4 },
+        { id: "I2", label: "Ilha leste", x: 6, y: 2.2 }
+      ],
+      edges: [
+        { from: "N", to: "I1", label: "ponte 1" },
+        { from: "N", to: "I1", label: "ponte 2" },
+        { from: "S", to: "I2", label: "ponte 3" }
+      ]
+    }
+  });
+
+  assert.equal(runtime.blocks[1].kind, "graph");
+  assert.deepEqual(
+    runtime.blocks[1].vertices.map((vertex) => [vertex.id, vertex.x, vertex.y]),
+    [
+      ["N", 16, 27.33],
+      ["S", 16, 72.67],
+      ["I1", 50, 43.2],
+      ["I2", 84, 52.27]
+    ]
+  );
+  assert.equal(runtime.blocks[1].edges.length, 3);
+  assert.deepEqual(
+    runtime.blocks[1].edges.slice(0, 2).map((edge) => [edge.from, edge.to, edge.parallelIndex, edge.parallelCount]),
+    [
+      ["N", "I1", 0, 2],
+      ["N", "I1", 1, 2]
+    ]
+  );
+});
+
 test("compila card plane para runtime interno com vetor resultante e texto de resposta", () => {
   const runtime = buildCardRuntime({
     key: "card-plane",
