@@ -1097,6 +1097,9 @@ function buildBottomUpCorrectionPrompt(basePrompt = "", issues = []) {
     "",
     "CORRECOES OBRIGATORIAS:",
     ...normalizedIssues.map((issue) => `- ${issue}`),
+    "- Se aparecer a orientação para dividir um card, separe teoria, exemplo e prática em cards distintos.",
+    "- Se um card for do tipo table, ele deve ter columns e pelo menos 1 linha com pelo menos 1 célula (rows não pode ser vazio).",
+    "- Se o modelo estiver em dúvida sobre o formato, prefira say ou block_gap_fill em vez de table.",
     "- Reescreva a resposta inteira em JSON valido, sem comentários."
   ].join("\n");
 }
@@ -1153,7 +1156,8 @@ async function generateValidatedBottomUpPayload({
   const schema = buildMicrosequenceCardsSchema(density, { modelCapabilities });
   let lastError = null;
   let prompt = basePrompt;
-  for (let attempt = 1; attempt <= 3; attempt += 1) {
+  // Modelos fracos podem precisar de mais tentativas com correção guiada.
+  for (let attempt = 1; attempt <= 5; attempt += 1) {
     const payload = await runtime.provider.generateStructured({
       ...runtime.providerOptions,
       modelId,
@@ -1213,13 +1217,17 @@ function applySupportMicrosequence(projectDocument = {}, selection = {}, payload
     ...(existing ? clone(existing) : {}),
     key: text(existing?.key) || ensureUniqueKey(lesson.microsequences, "", "microsequence", payload.title),
     title: payload.title,
+    goal: payload.goal,
     description: payload.goal,
     tags: uniqueList(
       Array.isArray(existing?.tags) && existing.tags.length ? existing.tags : current?.tags
     ),
+    type: "support",
     status: "ready",
     included: true,
     dependsOn: uniqueList([text(current?.key)]),
+    parentMicrosequenceKey: text(current?.key),
+    supportReason: payload.supportReason,
     cards: payload.cards.map((card) => toLegacyContractCard(card))
   };
   if (existing) {

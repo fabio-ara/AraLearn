@@ -5,6 +5,12 @@ import { isSupportedResourceType } from "./resources.js";
 function validateTableContent(content, path, errors) {
   if (!isPlainObject(content) || !Array.isArray(content.columns) || !Array.isArray(content.rows)) {
     pushError(errors, path, "Tabela inválida.");
+    return;
+  }
+  const hasColumns = content.columns.length > 0;
+  const hasRowCells = (content.rows || []).some((row) => Array.isArray(row) && row.length > 0);
+  if (!hasColumns || !hasRowCells) {
+    pushError(errors, path, "Tabela inválida.");
   }
 }
 

@@ -235,7 +235,12 @@ function validateMicrosequence(microsequence, index, errors, microKeys, path) {
       "domainRefs",
       "practiceVariantRefs",
       "didacticPurpose",
+      "didacticKind",
+      "practiceMode",
+      "representationNeed",
+      "dependencyPolicy",
       "coverageRole",
+      "expectedEvidence",
       "versions",
       "activeVersionKey",
       "cards"
@@ -324,7 +329,12 @@ function validateMicrosequence(microsequence, index, errors, microKeys, path) {
     ...(didacticMeta.domainRefs?.length ? { domainRefs: didacticMeta.domainRefs } : {}),
     ...(didacticMeta.practiceVariantRefs?.length ? { practiceVariantRefs: didacticMeta.practiceVariantRefs } : {}),
     ...(didacticMeta.didacticPurpose ? { didacticPurpose: didacticMeta.didacticPurpose } : {}),
+    ...(didacticMeta.didacticKind ? { didacticKind: didacticMeta.didacticKind } : {}),
+    ...(didacticMeta.practiceMode ? { practiceMode: didacticMeta.practiceMode } : {}),
+    ...(didacticMeta.representationNeed ? { representationNeed: didacticMeta.representationNeed } : {}),
+    ...(didacticMeta.dependencyPolicy ? { dependencyPolicy: didacticMeta.dependencyPolicy } : {}),
     ...(coverageRole ? { coverageRole } : {}),
+    ...(didacticMeta.expectedEvidence?.length ? { expectedEvidence: didacticMeta.expectedEvidence } : {}),
     ...(versions.length ? { versions } : {}),
     ...(activeVersionKey ? { activeVersionKey } : {}),
     cards: normalizedCards
@@ -340,7 +350,12 @@ function hasLessonDomainMetadata(lesson = {}, microsequences = []) {
       (Array.isArray(item?.domainRefs) && item.domainRefs.length) ||
       (Array.isArray(item?.practiceVariantRefs) && item.practiceVariantRefs.length) ||
       item?.didacticPurpose ||
-      item?.coverageRole
+      item?.didacticKind ||
+      item?.practiceMode ||
+      item?.representationNeed ||
+      item?.dependencyPolicy ||
+      item?.coverageRole ||
+      (Array.isArray(item?.expectedEvidence) && item.expectedEvidence.length)
   );
 }
 

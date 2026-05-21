@@ -554,7 +554,12 @@ test("aceita domainMap da lição e metadados didáticos da microssequência", (
                     domainRefs: ["git-flow"],
                     practiceVariantRefs: ["git-flow-fluency"],
                     didacticPurpose: "Praticar a ordem mínima do fluxo local.",
+                    didacticKind: "procedure",
+                    practiceMode: "execution",
+                    representationNeed: "code",
+                    dependencyPolicy: "self_contained",
                     coverageRole: "practice",
+                    expectedEvidence: ["ordenar comandos", "executar a sequência mínima"],
                     cards: [
                       {
                         title: "Contexto",
@@ -576,8 +581,13 @@ test("aceita domainMap da lição e metadados didáticos da microssequência", (
   const microsequence = lesson.microsequences[0];
   assert.equal(lesson.domainMap.items[0].id, "git-flow");
   assert.equal(lesson.domainMap.practiceVariants[0].id, "git-flow-fluency");
+  assert.equal(microsequence.didacticKind, "procedure");
+  assert.equal(microsequence.practiceMode, "execution");
+  assert.equal(microsequence.representationNeed, "code");
+  assert.equal(microsequence.dependencyPolicy, "self_contained");
   assert.equal(microsequence.coverageRole, "practice");
   assert.deepEqual(microsequence.domainRefs, ["git-flow"]);
+  assert.deepEqual(microsequence.expectedEvidence, ["ordenar comandos", "executar a sequência mínima"]);
 });
 
 test("aceita curso, módulo e lição vazios no contrato público", () => {

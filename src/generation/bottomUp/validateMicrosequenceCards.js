@@ -28,6 +28,21 @@ function normalizedStringContent(card = {}) {
   return "";
 }
 
+function normalizedForbiddenScanText(card = {}) {
+  const base = normalizedStringContent(card);
+  if (text(card?.resourceType) === "table" && card?.content && typeof card.content === "object") {
+    const columns = Array.isArray(card.content?.columns) ? card.content.columns : [];
+    const rows = Array.isArray(card.content?.rows) ? card.content.rows : [];
+    const rowText = rows
+      .flatMap((row) => (Array.isArray(row) ? row : []))
+      .map((cell) => String(cell ?? "").trim())
+      .filter(Boolean)
+      .join(" ");
+    return [base, columns.map((item) => text(item)).filter(Boolean).join(" "), rowText].filter(Boolean).join(" ");
+  }
+  return base;
+}
+
 function inferCardRole(card = {}, planned = {}) {
   if (text(planned?.role)) {
     return text(planned.role);
@@ -91,6 +106,21 @@ function mentionsVolatileMissingContext(card = {}) {
   return /\b(card|tabela|figura|trecho)\s+(anterior|acima)\b/i.test(normalizedStringContent(card));
 }
 
+function normalizeToken(value) {
+  return text(value)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
+function includesForbiddenTerm(sourceText, forbiddenTerms = []) {
+  const normalizedSource = normalizeToken(sourceText);
+  return list(forbiddenTerms).some((term) => {
+    const normalizedTerm = normalizeToken(term);
+    return normalizedTerm && normalizedSource.includes(normalizedTerm);
+  });
+}
+
 function buildIssue(path, message, severity = "error") {
   return { path, message, severity };
 }
@@ -110,7 +140,9 @@ export function validateBottomUpDidacticQuality(payload = {}, packet = {}, cardP
       issues.push(buildIssue(path, "Cada card precisa ter função didática reconhecível."));
     }
     if (cardAccumulatesTooMuch(card)) {
-      issues.push(buildIssue(path, "Divida este card: ele acumula explicação, exemplo e prática."));
+      // Não bloqueie a geração inteira por isso: registre como alerta para permitir
+      // que o fluxo continue, e deixe a correção iterativa/pós-revisão tratar.
+      issues.push(buildIssue(path, "Divida este card: ele acumula explicação, exemplo e prática.", "warning"));
     }
     if (isPracticeRole(role) && !practiceHasLocalContext(card)) {
       issues.push(buildIssue(path, "A prática precisa carregar os dados necessários para resposta."));
@@ -178,6 +210,18 @@ export function validateMicrosequenceCards(payload, density = "standard", option
   didactic.issues
     .filter((issue) => issue.severity !== "warning")
     .forEach((issue) => errors.push({ path: issue.path, message: issue.message }));
+
+  const moduleExclude = Array.isArray(options?.packet?.module?.exclude) ? options.packet.module.exclude : [];
+  if (moduleExclude.length) {
+    const combined = [summary, ...normalizedCards.map((card) => normalizedForbiddenScanText(card))].filter(Boolean).join("\n");
+    const leaked = list(moduleExclude).filter((term) => includesForbiddenTerm(combined, [term]));
+    if (leaked.length) {
+      errors.push({
+        path: "$",
+        message: `Conteúdo fora do escopo (exclude do módulo): ${leaked.join(", ")}.`
+      });
+    }
+  }
 
   return {
     ok: errors.length === 0,

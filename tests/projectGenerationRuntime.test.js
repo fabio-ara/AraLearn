@@ -289,6 +289,9 @@ test("generateMicrosequenceProjectDocument cria suporte adjacente sem quebrar a 
 
   const microsequences = result.projectDocument.courses[0].modules[0].lessons[0].microsequences;
   assert.equal(microsequences[2].title, "Microssequência de apoio");
+  assert.equal(microsequences[2].type, "support");
+  assert.equal(microsequences[2].parentMicrosequenceKey, "micro-a");
+  assert.equal(microsequences[2].supportReason, "Lacuna prévia local");
   assert.deepEqual(microsequences[2].dependsOn, ["micro-a"]);
   assert.deepEqual(microsequences[2].tags, ["PC", "IR"]);
   assert.equal(microsequences[3].key, "micro-next");

@@ -48,6 +48,7 @@ export function buildTopDownUserPrompt(scopeContract) {
     "Cada lição deve ter progressão coerente e cada microssequência deve ter função didática clara.",
     "Cada microssequência deve trazer goal, dependsOnTitles, scopeLabels e, quando útil, os metadados didáticos genéricos.",
     "Cubra cada item de 'Entra' em ao menos uma microssequência; nenhum item do include pode ficar sem scopeLabels correspondentes.",
+    "Em cada lição, sourceGuideStructured.notationRules (campo \"Incluir\") deve conter uma lista separada por vírgulas com pelo menos um item copiado literalmente de 'Entra' (include) do módulo; idealmente liste exatamente os itens tratados naquela lição.",
     "expectedEvidence deve listar evidências observáveis de aprendizagem em frases curtas.",
     "Preserve o escopo declarado e não invente módulos novos.",
     "Evite empacotar tópicos demais em uma única microssequência.",

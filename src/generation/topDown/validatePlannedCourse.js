@@ -1,6 +1,10 @@
 import { finalizeValidation, isPlainObject, pushError } from "../../core/validation.js";
 import { normalizeLabelToken, normalizeWhitespace } from "../../core/text.js";
 
+function uniqueList(values = []) {
+  return [...new Set((Array.isArray(values) ? values : []).map((item) => String(item || "").trim()).filter(Boolean))];
+}
+
 function containsForbiddenTerm(text, forbiddenTerms) {
   const source = normalizeLabelToken(text);
   return forbiddenTerms.some((term) => term && source.includes(term));
@@ -30,6 +34,20 @@ function hasIncludeOverlap(text, includeEntries = []) {
     const normalized = entry?.normalized || "";
     return normalized && (source.includes(normalized) || normalized.includes(source));
   });
+}
+
+function deriveLessonIncludeFromMicrosequences(microsequences = [], includeEntries = []) {
+  const tokens = [];
+  (Array.isArray(microsequences) ? microsequences : []).forEach((microsequence) => {
+    const labels = Array.isArray(microsequence?.scopeLabels) ? microsequence.scopeLabels : [];
+    labels.forEach((scopeLabel) => {
+      const resolved = resolveScopeLabel(scopeLabel, includeEntries) || "";
+      if (resolved) {
+        tokens.push(resolved);
+      }
+    });
+  });
+  return uniqueList(tokens);
 }
 
 function hasCardsDeep(value) {
@@ -124,7 +142,13 @@ export function validatePlannedCourse(plannedCourse, scopeContract) {
         : {};
       const lessonGuideOutOfScope = normalizeWhitespace(scopeModule?.exclude?.join(", "));
       const lessonGuideGoal = normalizeWhitespace(lessonGuide?.lessonGoal);
-      const lessonGuideInclude = normalizeWhitespace(lessonGuide?.notationRules);
+      const microsequences = Array.isArray(lesson?.microsequences) ? lesson.microsequences : [];
+      const derivedLessonInclude = deriveLessonIncludeFromMicrosequences(microsequences, includeEntries);
+      const fallbackLessonInclude = derivedLessonInclude.length
+        ? derivedLessonInclude.join(", ")
+        : (includeEntries[0]?.label || "");
+
+      let lessonGuideInclude = normalizeWhitespace(lessonGuide?.notationRules);
       const lessonGuidePitfall = normalizeWhitespace(lessonGuide?.commonErrors);
       if (lesson?.sourceGuideStructured && typeof lesson.sourceGuideStructured === "object" && lessonGuideOutOfScope) {
         lesson.sourceGuideStructured.outOfScopeRules = lessonGuideOutOfScope;
@@ -138,10 +162,20 @@ export function validatePlannedCourse(plannedCourse, scopeContract) {
       if (!lessonGuideGoal) {
         pushError(errors, `${lessonPath}.sourceGuideStructured.lessonGoal`, "Lição planejada sem meta da lição.");
       }
+      if (!lessonGuideInclude || !hasIncludeOverlap(lessonGuideInclude, includeEntries)) {
+        // Reparação mecânica para modelos fracos: o campo "Incluir" precisa mencionar
+        // literalmente ao menos um item do include do módulo. Derivamos isso de scopeLabels.
+        if (!lesson.sourceGuideStructured || typeof lesson.sourceGuideStructured !== "object") {
+          lesson.sourceGuideStructured = {};
+        }
+        if (fallbackLessonInclude) {
+          lesson.sourceGuideStructured.notationRules = fallbackLessonInclude;
+          lessonGuideInclude = normalizeWhitespace(fallbackLessonInclude);
+        }
+      }
       if (!lessonGuideInclude) {
         pushError(errors, `${lessonPath}.sourceGuideStructured.notationRules`, 'Lição planejada sem campo "Incluir".');
-      }
-      if (lessonGuideInclude && !hasIncludeOverlap(lessonGuideInclude, includeEntries)) {
+      } else if (!hasIncludeOverlap(lessonGuideInclude, includeEntries)) {
         pushError(errors, `${lessonPath}.sourceGuideStructured.notationRules`, 'Campo "Incluir" deve reaproveitar literalmente ao menos um item do include do módulo.');
       }
       if (!lessonGuidePitfall) {
@@ -156,7 +190,6 @@ export function validatePlannedCourse(plannedCourse, scopeContract) {
         pushError(errors, `${lessonPath}.sourceGuideStructured`, "Fonte-guia mínima cita tópico proibido pelo módulo.");
       }
 
-      const microsequences = Array.isArray(lesson?.microsequences) ? lesson.microsequences : [];
       if (!microsequences.length) {
         pushError(errors, `${lessonPath}.microsequences`, "Cada lição precisa ter microssequências.");
       }

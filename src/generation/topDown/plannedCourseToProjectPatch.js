@@ -15,6 +15,10 @@ function mapScopeLabelsToRefs(scopeLabels, includeTerms) {
   return refs;
 }
 
+function uniqueList(values = []) {
+  return [...new Set((Array.isArray(values) ? values : []).map((item) => String(item || "").trim()).filter(Boolean))];
+}
+
 export function plannedCourseToProjectPatch(plannedCourse, scopeContract) {
   const courseKey = buildScopedKey("course", plannedCourse.course.title);
   const course = {
@@ -53,6 +57,17 @@ export function plannedCourseToProjectPatch(plannedCourse, scopeContract) {
                 key,
                 title: plannedMicrosequence.title,
                 goal: plannedMicrosequence.goal,
+                description: plannedMicrosequence.goal,
+                didacticPurpose: plannedMicrosequence.goal,
+                ...(plannedMicrosequence.scopeLabels?.length ? { tags: uniqueList(plannedMicrosequence.scopeLabels) } : {}),
+                ...(plannedMicrosequence.didacticKind ? { didacticKind: plannedMicrosequence.didacticKind } : {}),
+                ...(plannedMicrosequence.practiceMode ? { practiceMode: plannedMicrosequence.practiceMode } : {}),
+                ...(plannedMicrosequence.representationNeed ? { representationNeed: plannedMicrosequence.representationNeed } : {}),
+                ...(plannedMicrosequence.dependencyPolicy ? { dependencyPolicy: plannedMicrosequence.dependencyPolicy } : {}),
+                ...(plannedMicrosequence.coverageRole ? { coverageRole: plannedMicrosequence.coverageRole } : {}),
+                ...(Array.isArray(plannedMicrosequence.expectedEvidence) && plannedMicrosequence.expectedEvidence.length
+                  ? { expectedEvidence: uniqueList(plannedMicrosequence.expectedEvidence) }
+                  : {}),
                 type: "main",
                 status: "planned",
                 dependsOn: [],

@@ -35,11 +35,52 @@ const COVERAGE_ROLES = new Set([
   "diagnose_error",
   "consolidate",
   "exam_apply",
-  "integrate"
+  "integrate",
+  "review",
+  "repair_gap",
+  "extend_practice"
 ]);
 
-const PRACTICE_ROLES = new Set(["practice", "discriminate", "diagnose_error", "consolidate", "exam_apply", "integrate"]);
-const EXPLANATION_ROLES = new Set(["introduce", "explain", "demonstrate"]);
+const PRACTICE_ROLES = new Set([
+  "practice",
+  "discriminate",
+  "diagnose_error",
+  "consolidate",
+  "exam_apply",
+  "integrate",
+  "repair_gap",
+  "extend_practice"
+]);
+const EXPLANATION_ROLES = new Set(["introduce", "explain", "demonstrate", "review"]);
+const DIDACTIC_KINDS = new Set([
+  "concept",
+  "procedure",
+  "discrimination",
+  "formalization",
+  "representation_reading",
+  "cumulative_practice"
+]);
+const PRACTICE_MODES = new Set([
+  "recognition",
+  "guided_production",
+  "execution",
+  "classification",
+  "calculation",
+  "explanation",
+  "construction",
+  "correction",
+  "variation"
+]);
+const REPRESENTATION_NEEDS = new Set([
+  "none",
+  "text",
+  "table",
+  "code",
+  "visual_structure",
+  "sequence",
+  "formula"
+]);
+const DEPENDENCY_POLICIES = new Set(["self_contained", "uses_previous", "cumulative"]);
 
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -140,7 +181,18 @@ function normalizeMicrosequenceDidacticMetadata(value = {}) {
       ? { practiceVariantRefs: list(value.practiceVariantRefs, { limit: 8 }) }
       : {}),
     ...(text(value?.didacticPurpose) ? { didacticPurpose: text(value.didacticPurpose) } : {}),
-    ...(COVERAGE_ROLES.has(text(value?.coverageRole)) ? { coverageRole: text(value.coverageRole) } : {})
+    ...(DIDACTIC_KINDS.has(text(value?.didacticKind)) ? { didacticKind: text(value.didacticKind) } : {}),
+    ...(PRACTICE_MODES.has(text(value?.practiceMode)) ? { practiceMode: text(value.practiceMode) } : {}),
+    ...(REPRESENTATION_NEEDS.has(text(value?.representationNeed))
+      ? { representationNeed: text(value.representationNeed) }
+      : {}),
+    ...(DEPENDENCY_POLICIES.has(text(value?.dependencyPolicy))
+      ? { dependencyPolicy: text(value.dependencyPolicy) }
+      : {}),
+    ...(COVERAGE_ROLES.has(text(value?.coverageRole)) ? { coverageRole: text(value.coverageRole) } : {}),
+    ...(list(value?.expectedEvidence, { limit: 6 }).length
+      ? { expectedEvidence: list(value.expectedEvidence, { limit: 6 }) }
+      : {})
   };
 }
 

@@ -19,10 +19,13 @@ test("classifyProviderError classifica 429 de cota como não retryable", () => {
   assert.equal(result.retryable, false);
 });
 
-test("classifyProviderError classifica 503 e timeout como retryable", () => {
+test("classifyProviderError classifica 502, 503 e timeout como retryable", () => {
+  const badGateway = classifyProviderError(new ProviderHttpError({ statusCode: 502, message: "Bad gateway." }));
   const unavailable = classifyProviderError(new ProviderHttpError({ statusCode: 503, message: "High demand." }));
   const timeout = classifyProviderError(Object.assign(new Error("The operation timed out."), { name: "AbortError" }));
 
+  assert.equal(badGateway.category, "service_unavailable");
+  assert.equal(badGateway.retryable, true);
   assert.equal(unavailable.category, "service_unavailable");
   assert.equal(unavailable.retryable, true);
   assert.equal(timeout.category, "timeout");

@@ -66,7 +66,7 @@ export function classifyProviderError(error) {
     }
     return { retryable: true, category: "rate_limited", statusCode, message };
   }
-  if (statusCode === 503) {
+  if (statusCode === 502 || statusCode === 503) {
     return { retryable: true, category: "service_unavailable", statusCode, message };
   }
   if (statusCode === 400) {

@@ -30,7 +30,7 @@ function shouldRetryGemini(error) {
   if (!(error instanceof ProviderHttpError)) {
     return false;
   }
-  return [429, 500, 503, 504].includes(Number(error.statusCode));
+  return [429, 500, 502, 503, 504].includes(Number(error.statusCode));
 }
 
 function readGeminiRetryDelayMs(error) {
@@ -47,7 +47,54 @@ function readGeminiRetryDelayMs(error) {
   return 1000;
 }
 
-export function createGeminiProvider({ apiKey = "" } = {}) {
+function shouldFallbackGeminiSchema(error) {
+  if (!(error instanceof ProviderHttpError) || Number(error.statusCode) !== 400) {
+    return false;
+  }
+  const message = text(error?.message || error?.payload?.error?.message);
+  return /too many states|constraint that has too many states|responsejsonschema/i.test(message);
+}
+
+function listApiKeys(value) {
+  if (Array.isArray(value)) {
+    return value.map((item) => text(item)).filter(Boolean);
+  }
+  return text(value)
+    .split(/[\r\n,;]+/g)
+    .map((item) => text(item))
+    .filter(Boolean);
+}
+
+function uniqueList(values = []) {
+  return [...new Set((Array.isArray(values) ? values : []).map((item) => text(item)).filter(Boolean))];
+}
+
+function buildGeminiApiKeyCandidates(request = {}, options = {}) {
+  return uniqueList([
+    text(request.apiKey),
+    ...listApiKeys(request.apiKeys),
+    text(options.apiKey),
+    ...listApiKeys(options.apiKeys),
+    text(process?.env?.GEMINI_API_KEY),
+    text(process?.env?.GOOGLE_API_KEY),
+    ...listApiKeys(process?.env?.GEMINI_API_KEY_FALLBACKS),
+    ...listApiKeys(process?.env?.GOOGLE_API_KEY_FALLBACKS)
+  ]);
+}
+
+function shouldRotateGeminiApiKey(error) {
+  if (!(error instanceof ProviderHttpError)) {
+    return false;
+  }
+  const statusCode = Number(error.statusCode);
+  const message = text(error?.message || error?.payload?.error?.message).toLowerCase();
+  if (statusCode === 429) {
+    return true;
+  }
+  return [400, 403].includes(statusCode) && /quota|rate limit|resource exhausted|daily limit|free tier|billing/.test(message);
+}
+
+export function createGeminiProvider({ apiKey = "", apiKeys = [] } = {}) {
   return {
     id: "gemini",
     label: "Gemini",
@@ -57,13 +104,17 @@ export function createGeminiProvider({ apiKey = "" } = {}) {
       contextClass: "large"
     },
     async generateStructured(request = {}) {
-      const safeApiKey = text(request.apiKey || apiKey);
-      if (!safeApiKey) {
+      const apiKeyCandidates = buildGeminiApiKeyCandidates(request, { apiKey, apiKeys });
+      if (!apiKeyCandidates.length) {
         throw new Error("Informe a chave da API do Gemini.");
       }
       const modelId = text(request.modelId) || "gemini-2.5-flash";
       let lastError = null;
-      for (let attempt = 0; attempt < 4; attempt += 1) {
+      let useResponseSchema = Boolean(request.schema);
+      let apiKeyIndex = 0;
+      const maxAttempts = Number.isFinite(request.maxAttempts) ? Number(request.maxAttempts) : 12;
+      for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+        const safeApiKey = apiKeyCandidates[apiKeyIndex];
         const response = await fetch(
           `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(modelId)}:generateContent`,
           {
@@ -85,7 +136,7 @@ export function createGeminiProvider({ apiKey = "" } = {}) {
               generationConfig: {
                 temperature: typeof request.temperature === "number" ? request.temperature : 0.2,
                 responseMimeType: "application/json",
-                ...(request.schema ? { responseJsonSchema: request.schema } : {})
+                ...(useResponseSchema && request.schema ? { responseJsonSchema: request.schema } : {})
               }
             })
           }
@@ -107,7 +158,15 @@ export function createGeminiProvider({ apiKey = "" } = {}) {
           message: data?.error?.message || `Falha HTTP ${response.status}.`,
           payload: data
         });
-        if (!shouldRetryGemini(lastError) || attempt === 3) {
+        if (useResponseSchema && shouldFallbackGeminiSchema(lastError)) {
+          useResponseSchema = false;
+          continue;
+        }
+        if (shouldRotateGeminiApiKey(lastError) && apiKeyIndex < apiKeyCandidates.length - 1) {
+          apiKeyIndex += 1;
+          continue;
+        }
+        if (!shouldRetryGemini(lastError) || attempt === maxAttempts - 1) {
           throw lastError;
         }
         await sleep(Math.max(readGeminiRetryDelayMs(lastError), 1000 * (attempt + 1)));
