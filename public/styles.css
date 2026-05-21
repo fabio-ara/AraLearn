@@ -6748,7 +6748,7 @@ button {
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 10px;
+  gap: 7px;
   width: auto;
   flex: 1 0 auto;
   min-height: 0;
@@ -6761,9 +6761,9 @@ button {
     rgba(15, 12, 9, 0.98);
   margin: 0 0 calc(-12px - max(var(--safe-bottom-tappable), 8px));
   padding:
+    10px
     12px
-    12px
-    calc(18px + max(var(--safe-bottom-tappable), 8px))
+    calc(10px + max(var(--safe-bottom-tappable), 8px))
     12px;
   overflow: hidden;
   box-shadow:
@@ -6804,10 +6804,10 @@ button {
 
 .assist-feedback-heading {
   order: 1;
-  grid-template-columns: 34px minmax(0, 1fr);
-  align-items: center;
-  min-height: 38px;
-  gap: 10px;
+  display: grid;
+  place-items: center;
+  min-height: 22px;
+  text-align: center;
 }
 
 .assist-feedback-field {
@@ -6829,7 +6829,7 @@ button {
   order: 3;
   flex: 0 0 auto;
   width: 100%;
-  margin-top: 0;
+  margin-top: -3px;
 }
 
 .assist-feedback-textarea[readonly] {
