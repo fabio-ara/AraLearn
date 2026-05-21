@@ -6587,7 +6587,7 @@ button {
 }
 
 .generate-action-row.assist-actions-wide.assist-feedback-actions {
-  grid-template-columns: 34px minmax(0, 1fr) 34px 34px 44px;
+  grid-template-columns: minmax(0, 1fr) 34px 34px 44px;
 }
 
 .generate-action-row.assist-actions-wide .generate-model-field {
@@ -6692,7 +6692,7 @@ button {
   }
 
   .generate-action-row.assist-actions-wide.assist-feedback-actions {
-    grid-template-columns: 32px minmax(0, 1fr) 32px 32px 42px;
+    grid-template-columns: minmax(0, 1fr) 32px 32px 42px;
   }
 
   .microsequence-generator-screen {
@@ -6745,10 +6745,12 @@ button {
   width: 100%;
   min-height: 0;
   max-height: none;
-  border: 1px solid rgba(214, 174, 96, 0.54);
+  border: 0;
   border-radius: 16px;
-  background: rgba(43, 30, 17, 0.92);
-  padding: 12px 12px 14px;
+  background:
+    linear-gradient(180deg, rgba(50, 34, 19, 0.72), rgba(25, 19, 13, 0.5)),
+    rgba(22, 18, 14, 0.44);
+  padding: 10px 0 12px;
   overflow: visible;
 }
 
@@ -6772,10 +6774,10 @@ button {
 }
 
 .assist-feedback-field {
-  flex: none;
+  flex: 0 0 132px;
   order: 2;
   width: 100%;
-  display: block;
+  display: grid;
   min-height: 0;
   max-height: none;
   align-items: stretch;

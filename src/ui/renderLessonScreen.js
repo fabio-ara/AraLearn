@@ -1323,18 +1323,10 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
     '<section class="assist-feedback-panel' +
     feedbackStatusClass +
     '">' +
-    '<div class="workbench-form-row assist-action-heading">' +
-    renderInlineFieldIcon("prompt", "Retorno da intervenção") +
-    '<p class="tiny muted">Retorno da intervenção</p>' +
-    "</div>" +
     '<div class="field generate-prompt-field workbench-prompt-field assist-feedback-field">' +
-    '<div class="generate-prompt-content assist-feedback-content">' +
-    '<textarea data-field="assist-feedback" class="assist-prompt assist-feedback-textarea" aria-label="Retorno da intervenção" title="Retorno da intervenção"' +
-    (editorSupport.feedbackEditing ? "" : ' readonly aria-readonly="true"') +
-    ">" +
-    escapeHtml(feedbackValue) +
-    "</textarea></div></div>" +
-    '<div class="generate-action-row assist-actions assist-actions-wide assist-feedback-actions">' +
+    '<div class="generate-prompt-layout">' +
+    '<div class="workbench-prompt-tools">' +
+    renderInlineFieldIcon("prompt", "Retorno da intervenção") +
     '<button class="icon-ghost tiny-icon generate-inline-icon assist-feedback-edit-button" type="button" data-action="toggle-feedback-edit" aria-pressed="' +
     (editorSupport.feedbackEditing ? "true" : "false") +
     '" title="' +
@@ -1344,6 +1336,14 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
     '">' +
     renderUiIcon(editorSupport.feedbackEditing ? "ready-state" : "edit", "generate-submit-icon") +
     "</button>" +
+    "</div>" +
+    '<div class="generate-prompt-content assist-feedback-content">' +
+    '<textarea data-field="assist-feedback" class="assist-prompt assist-feedback-textarea" aria-label="Retorno da intervenção" title="Retorno da intervenção"' +
+    (editorSupport.feedbackEditing ? "" : ' readonly aria-readonly="true"') +
+    ">" +
+    escapeHtml(feedbackValue) +
+    "</textarea></div></div></div>" +
+    '<div class="generate-action-row assist-actions assist-actions-wide assist-request-actions assist-feedback-actions">' +
     '<label class="field generate-icon-field generate-model-field">' +
     renderInlineFieldIcon("intent", "Modelo") +
     '<select data-field="assist-feedback-model" aria-label="Modelo" title="Modelo">' +
