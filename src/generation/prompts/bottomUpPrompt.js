@@ -36,6 +36,7 @@ export function buildBottomUpDraftSystemPrompt() {
     "Explique antes de cobrar uso quando o conteúdo for novo.",
     "Distribua prática, variação e retomada quando houver evidência de aplicação.",
     "Use apenas dependências declaradas e preserve a trilha planejada.",
+    "Trate module.exclude como limite rígido: não mencione termos excluídos nem para negar, delimitar ou contrastar.",
     "Escolha resourceType pela função didática de cada etapa, não por disciplina.",
     "Se o conteúdo pedir mais cobertura do que cabe bem em uma única chamada, sinalize continuação em vez de comprimir demais."
   ].join(" ");
@@ -73,6 +74,7 @@ export function buildBottomUpCompileSystemPrompt() {
     "Quando usar table, graph ou code, inclua content.intro curto e suficiente para o card fazer sentido sozinho.",
     "Coloque no próprio card o contexto necessário para responder às práticas.",
     "Use as dependências declaradas apenas quando o draft disser que elas são necessárias.",
+    "Nunca inclua no summary ou nos cards termos listados em module.exclude, nem como exemplos do que fica fora.",
     "Se um recurso planejado não couber, use fallback justificável sem mudar o objetivo didático.",
     "Prefira decomposição e continuidade a concentrar muita carga didática no mesmo card."
   ].join(" ");

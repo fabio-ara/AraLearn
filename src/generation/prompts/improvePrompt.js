@@ -5,6 +5,7 @@ export function buildImprovePrompt(packet, reason = "") {
     "",
     reason ? `Motivo da reescrita: ${reason}` : "",
     "Reescreva a microssequência inteira preservando o objetivo e a trilha.",
+    "Respeite module.exclude como limite rígido e remova qualquer menção a termos excluídos.",
     "Reduza sobrecarga didática por card.",
     "Distribua melhor explicação, exemplo, prática, correção e fechamento.",
     "Ajuste resourceTypes ao plano didático e mantenha práticas autossuficientes.",

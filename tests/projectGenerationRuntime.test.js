@@ -248,6 +248,91 @@ test("generateMicrosequenceProjectDocument atualiza cards diretamente no contrat
   assert.equal(result.interventionFeedback.status, "completed");
 });
 
+test("generateMicrosequenceProjectDocument entrega artefato avaliável na geração normal", async () => {
+  const provider = createFakeProvider({
+    script: {
+      "normal_generation-draft": {
+        steps: [
+          {
+            role: "microtheory",
+            resourceType: "say",
+            purpose: "Explicar o ponto local.",
+            inCardContext: ["PC e IR no ciclo básico"],
+            usesDependency: [],
+            expectedEvidence: ["distinguir PC e IR"]
+          },
+          {
+            role: "guided_example",
+            resourceType: "say",
+            purpose: "Dar exemplo curto.",
+            inCardContext: ["busca de instrução"],
+            usesDependency: [],
+            expectedEvidence: ["relacionar PC à próxima instrução"]
+          },
+          {
+            role: "active_practice",
+            resourceType: "block_gap_fill",
+            purpose: "Checar reconhecimento.",
+            inCardContext: ["frase com lacuna"],
+            usesDependency: [],
+            expectedEvidence: ["completar PC"]
+          },
+          {
+            role: "bridge_or_consolidation",
+            resourceType: "say",
+            purpose: "Fechar e voltar à trilha.",
+            inCardContext: ["retorno ao objetivo"],
+            usesDependency: [],
+            expectedEvidence: ["retomar a trilha"]
+          }
+        ],
+        coverageNotes: ["Geração normal com teoria, exemplo, prática e fechamento separados."],
+        continuationNeeded: false,
+        continuationReason: "",
+        continuationMode: "none",
+        continuationPrompt: ""
+      },
+      "generate-microsequence": {
+        summary: "Versão inicial separada em cards avaliáveis.",
+        cards: [
+          { key: "card-1", position: 1, resourceType: "say", content: "PC aponta a próxima instrução; IR guarda a instrução atual." },
+          { key: "card-2", position: 2, resourceType: "say", content: "Exemplo: durante a busca, o endereço indicado pelo PC orienta a leitura na memória." },
+          { key: "card-3", position: 3, resourceType: "block_gap_fill", content: "Complete: o registrador que aponta a próxima instrução é o [[PC::PC|IR]]." },
+          { key: "card-4", position: 4, resourceType: "say", content: "Com isso, retome a trilha principal da microssequência." }
+        ]
+      }
+    }
+  });
+
+  const result = await generateMicrosequenceProjectDocument({
+    selection: {
+      courseKey: "course-a",
+      moduleKey: "module-a",
+      lessonKey: "lesson-a",
+      microsequenceKey: "micro-a"
+    },
+    draft: {
+      promptText: "Gere a versão inicial da microssequência.",
+      operationMode: "reinforce",
+      interventionTargetMode: "current"
+    },
+    assistConfig: {
+      model: "gemini-2.5-flash",
+      apiKey: "chave"
+    },
+    projectDocument: createProjectDocument(),
+    provider,
+    ingestAttachments: async () => ({ attachments: [], extractedCount: 0, warnings: [] })
+  });
+
+  const microsequence = result.projectDocument.courses[0].modules[0].lessons[0].microsequences[1];
+  assert.equal(result.interventionFeedback.status, "completed");
+  assert.equal(microsequence.status, "ready");
+  assert.equal(microsequence.included, true);
+  assert.equal(microsequence.cards.length, 4);
+  assert.match(microsequence.cards[2].say, /registrador que aponta/i);
+});
+
 test("generateMicrosequenceProjectDocument cria suporte adjacente sem quebrar a trilha planejada", async () => {
   const provider = createFakeProvider({
     script: {
@@ -294,10 +379,76 @@ test("generateMicrosequenceProjectDocument cria suporte adjacente sem quebrar a 
   assert.equal(microsequences[2].supportReason, "Lacuna prévia local");
   assert.equal(microsequences[2].didacticPurpose, "Explicar a base local antes da continuação.");
   assert.equal(microsequences[2].coverageRole, "repair_gap");
-  assert.deepEqual(microsequences[2].dependsOn, ["micro-a"]);
+  assert.deepEqual(microsequences[2].dependsOn, ["micro-prev"]);
   assert.deepEqual(microsequences[2].tags, ["PC", "IR"]);
   assert.equal(microsequences[3].key, "micro-next");
   assert.equal(result.interventionFeedback.status, "completed");
+  assert.equal(result.interventionFeedback.recommendedActionIntent, "continue_current");
+  assert.equal(result.interventionFeedback.continuationMode, "same_microsequence");
+  assert.match(result.interventionFeedback.nextPromptDraft, /Retome a trilha principal/i);
+});
+
+test("generateMicrosequenceProjectDocument rejeita suporte com termo excluído e corrige com retry", async () => {
+  const provider = createFakeProvider({
+    script: {
+      "create-support": [
+        {
+          title: "Apoio com deriva",
+          goal: "Explicar a base local.",
+          supportReason: "Lacuna local",
+          summary: "Apoio inicial.",
+          cards: [
+            { key: "card-1", resourceType: "say", content: "Primeiro apoio." },
+            { key: "card-2", resourceType: "say", content: "Não precisamos falar de desvio especulativo aqui." },
+            { key: "card-3", resourceType: "say", content: "Terceiro apoio." },
+            { key: "card-4", resourceType: "say", content: "Retorne à trilha principal." }
+          ]
+        },
+        (request) => {
+          assert.match(request.prompt, /desvio especulativo/);
+          assert.match(request.prompt, /Remova totalmente estes termos excluídos/);
+          return {
+            title: "Apoio sem deriva",
+            goal: "Explicar a base local.",
+            supportReason: "Lacuna local",
+            summary: "Apoio corrigido.",
+            cards: [
+              { key: "card-1", resourceType: "say", content: "Primeiro apoio dentro do escopo." },
+              { key: "card-2", resourceType: "say", content: "Separe apenas a base necessária para a etapa atual." },
+              { key: "card-3", resourceType: "block_gap_fill", content: "Complete: este apoio prepara a [[trilha principal::trilha principal|deriva]]." },
+              { key: "card-4", resourceType: "say", content: "Volte agora para a trilha principal da microssequência." }
+            ]
+          };
+        }
+      ]
+    }
+  });
+
+  const result = await generateMicrosequenceProjectDocument({
+    selection: {
+      courseKey: "course-a",
+      moduleKey: "module-a",
+      lessonKey: "lesson-a",
+      microsequenceKey: "micro-a"
+    },
+    draft: {
+      promptText: "Crie uma ponte curta antes de seguir.",
+      operationMode: "reinforce",
+      interventionTargetMode: "new_after_current"
+    },
+    assistConfig: {
+      model: "gemini-2.5-flash",
+      apiKey: "chave"
+    },
+    projectDocument: createProjectDocument(),
+    provider,
+    ingestAttachments: async () => ({ attachments: [], extractedCount: 0, warnings: [] })
+  });
+
+  const supported = result.projectDocument.courses[0].modules[0].lessons[0].microsequences[2];
+  assert.equal(supported.title, "Apoio sem deriva");
+  assert.doesNotMatch(JSON.stringify(supported), /desvio especulativo/i);
+  assert.deepEqual(supported.dependsOn, ["micro-prev"]);
 });
 
 test("generateMicrosequenceProjectDocument usa fallback determinístico quando o suporte vem incompleto", async () => {
@@ -617,6 +768,10 @@ test("generateMicrosequenceProjectDocument usa continuação conservadora quando
 
   assert.equal(result.interventionFeedback.status, "needs_continue_here");
   assert.match(result.interventionFeedback.nextPromptDraft, /nova prática autossuficiente/i);
+  const practiceCards = result.projectDocument.courses[0].modules[0].lessons[0].microsequences[1].cards.filter((card) =>
+    /Complete|Varie/i.test(card.say || "")
+  );
+  assert.equal(practiceCards.length, 2);
 });
 
 test("fluxo de produto não importa runner estrutural externo nem fallback paralelo", () => {

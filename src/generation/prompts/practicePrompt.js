@@ -6,6 +6,7 @@ export function buildPracticePrompt(packet, request = "") {
     request ? `Pedido adicional: ${request}` : "",
     "Amplie a prática do mesmo objetivo.",
     "Mantenha vocabulário, dependências declaradas e escopo local.",
+    "Não mencione termos listados em module.exclude, nem como contraste negativo.",
     "Gere variações autossuficientes com o contexto necessário no próprio card.",
     "Aumente aplicação, correção, contraste ou retomada sem abrir assunto novo.",
     "Termine reconectando a prática ao objetivo já planejado."

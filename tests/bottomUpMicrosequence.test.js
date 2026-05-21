@@ -134,6 +134,7 @@ test("bottom-up gera nova versão sem apagar a anterior", async () => {
   });
   const lessonMicrosequences = supported.project.courses[0].modules[0].lessons[0].microsequences;
   assert.equal(lessonMicrosequences[1].type, "support");
+  assert.deepEqual(lessonMicrosequences[1].dependsOn, []);
 });
 
 test("gerar próxima não exige prompt livre", async () => {

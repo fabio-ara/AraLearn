@@ -6,6 +6,7 @@ export function buildSupportPrompt(packet, request = "") {
     request ? `Pedido do usuário: ${request}` : "",
     "Crie uma microssequência de suporte para uma lacuna local.",
     "Explique apenas o pré-requisito necessário para retomar o ponto atual.",
+    "Não mencione termos listados em module.exclude, nem para dizer que não serão tratados.",
     "Não replaneje a lição inteira.",
     "Não abra um escopo paralelo.",
     "Devolva obrigatoriamente: title, goal, supportReason, summary e cards.",

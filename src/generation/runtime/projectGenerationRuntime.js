@@ -878,19 +878,28 @@ function buildBottomUpContextPacket(
   };
 }
 
-function validateSupportPayload(payload = {}) {
+function validateSupportPayload(payload = {}, { packet = {}, density = "standard", modelCapabilities = {} } = {}) {
   const title = text(payload?.title);
   const goal = text(payload?.goal);
   const supportReason = text(payload?.supportReason);
+  const forbiddenTerms = Array.isArray(packet?.module?.exclude) ? uniqueList(packet.module.exclude) : [];
   const baseValidation = validateMicrosequenceCards({
     summary: text(payload?.summary),
     cards: Array.isArray(payload?.cards) ? payload.cards : []
+  }, density, {
+    packet,
+    modelCapabilities
   });
-  if (!title || !goal || !supportReason || !baseValidation.ok) {
+  const headerText = [title, goal, supportReason].join("\n");
+  const leakedHeaderTerms = forbiddenTerms.filter((term) => normalizeToken(headerText).includes(normalizeToken(term)));
+  if (!title || !goal || !supportReason || leakedHeaderTerms.length || !baseValidation.ok) {
     const messages = [];
     if (!title) messages.push("Título da microssequência de suporte é obrigatório.");
     if (!goal) messages.push("Objetivo da microssequência de suporte é obrigatório.");
     if (!supportReason) messages.push("Motivo de suporte é obrigatório.");
+    if (leakedHeaderTerms.length) {
+      messages.push(`Conteúdo fora do escopo (exclude do módulo): ${leakedHeaderTerms.join(", ")}.`);
+    }
     messages.push(...baseValidation.errors.map((error) => error.message));
     throw new Error(messages.join("; "));
   }
@@ -1118,6 +1127,7 @@ function buildInterventionFeedback({
   attachmentNames = [],
   draftPlan = {},
   microsequenceTitle = "",
+  returnMicrosequenceTitle = "",
   cardCount = 0,
   createdSupport = false
 } = {}) {
@@ -1125,18 +1135,30 @@ function buildInterventionFeedback({
   const continuationMode = text(draftPlan?.continuationMode) || "none";
   const continuationReason = text(draftPlan?.continuationReason);
   if (createdSupport) {
+    const supportTitle = microsequenceTitle || "Microssequência de apoio";
+    const trackTitle = returnMicrosequenceTitle || "a trilha principal";
+    const nextPromptDraft = buildContinuationPrompt({
+      packet: {
+        currentMicrosequence: {
+          title: trackTitle
+        }
+      },
+      interactionMode,
+      continuationMode: "same_microsequence",
+      continuationReason: `Retome a trilha principal depois do apoio em "${supportTitle}".`
+    });
     return {
       status: "completed",
       title: "Microssequência de apoio criada",
-      message: `A etapa de apoio foi criada em "${microsequenceTitle || "Microssequência de apoio"}" e já pode ser iterada localmente.`,
-      feedbackText: `A etapa de apoio foi criada com ${cardCount} cards.`,
-      nextPromptDraft: "",
-      recommendedActionIntent: "",
-      recommendedInterventionTargetMode: "",
-      recommendedOperationMode: "",
-      recommendedInterventionType: "",
-      continuationNeeded: false,
-      continuationMode: "none",
+      message: `A etapa de apoio foi criada em "${supportTitle}" e já pode ser iterada localmente.`,
+      feedbackText: `A etapa de apoio foi criada com ${cardCount} cards. Depois dela, retome a trilha principal.`,
+      nextPromptDraft,
+      recommendedActionIntent: "continue_current",
+      recommendedInterventionTargetMode: "current",
+      recommendedOperationMode: "reinforce",
+      recommendedInterventionType: "return_to_track",
+      continuationNeeded: true,
+      continuationMode: "same_microsequence",
       modelId,
       promptText,
       attachmentNames
@@ -1233,8 +1255,9 @@ function buildInterventionFeedback({
   };
 }
 
-function buildBottomUpCorrectionPrompt(basePrompt = "", issues = []) {
+function buildBottomUpCorrectionPrompt(basePrompt = "", issues = [], packet = {}) {
   const normalizedIssues = uniqueList(issues);
+  const forbiddenTerms = Array.isArray(packet?.module?.exclude) ? uniqueList(packet.module.exclude) : [];
   if (!normalizedIssues.length) {
     return basePrompt;
   }
@@ -1244,11 +1267,14 @@ function buildBottomUpCorrectionPrompt(basePrompt = "", issues = []) {
     "CORRECOES OBRIGATORIAS:",
     ...normalizedIssues.map((issue) => `- ${issue}`),
     "- Se aparecer a orientação para dividir um card, separe teoria, exemplo e prática em cards distintos.",
+    forbiddenTerms.length
+      ? `- Remova totalmente estes termos excluídos do summary e dos cards, inclusive como negação ou contraste: ${forbiddenTerms.join(", ")}.`
+      : "",
     "- Quando usar graph, table ou code, inclua content.intro curto e suficiente para o card fazer sentido sozinho.",
     "- Se um card for do tipo table, ele deve ter columns e pelo menos 1 linha com pelo menos 1 célula (rows não pode ser vazio).",
     "- Se o modelo estiver em dúvida sobre o formato, prefira say ou block_gap_fill em vez de table.",
     "- Reescreva a resposta inteira em JSON valido, sem comentários."
-  ].join("\n");
+  ].filter(Boolean).join("\n");
 }
 
 async function generateDidacticDraft({
@@ -1322,7 +1348,7 @@ async function generateValidatedBottomUpPayload({
     });
     if (!validation.ok) {
       lastError = new Error(validation.errors.map((error) => error.message).join("; "));
-      prompt = buildBottomUpCorrectionPrompt(basePrompt, validation.errors.map((error) => error.message));
+      prompt = buildBottomUpCorrectionPrompt(basePrompt, validation.errors.map((error) => error.message), packet);
       continue;
     }
     return validation.value;
@@ -1353,20 +1379,20 @@ async function generateValidatedSupportPayload({
         schema,
         temperature: 0.2
       });
-      return validateSupportPayload(payload);
+      return validateSupportPayload(payload, { packet, density, modelCapabilities });
     } catch (error) {
       lastError = error;
       prompt = buildBottomUpCorrectionPrompt(basePrompt, [
         error instanceof Error ? error.message : String(error),
         "Devolva obrigatoriamente title, goal, supportReason, summary e cards.",
         "O apoio deve ter pelo menos 4 cards e terminar com retorno explícito à trilha principal."
-      ]);
+      ], packet);
     }
   }
   if (lastError) {
-    return validateSupportPayload(buildDeterministicSupportPayload(packet, request));
+    return validateSupportPayload(buildDeterministicSupportPayload(packet, request), { packet, density, modelCapabilities });
   }
-  return validateSupportPayload(buildDeterministicSupportPayload(packet, request));
+  return validateSupportPayload(buildDeterministicSupportPayload(packet, request), { packet, density, modelCapabilities });
 }
 
 function applyCardsToCurrentMicrosequence(projectDocument = {}, selection = {}, payload = {}) {
@@ -1405,6 +1431,12 @@ function applySupportMicrosequence(projectDocument = {}, selection = {}, payload
   }
   const existing = findByTitle(lesson.microsequences, payload.title);
   const current = lesson.microsequences[currentIndex];
+  const previous = currentIndex > 0 ? lesson.microsequences[currentIndex - 1] : null;
+  const supportDependsOn = uniqueList(
+    (Array.isArray(current?.dependsOn) && current.dependsOn.length)
+      ? current.dependsOn
+      : [text(previous?.key)].filter(Boolean)
+  );
   const nextMicrosequence = {
     ...(existing ? clone(existing) : {}),
     key: text(existing?.key) || ensureUniqueKey(lesson.microsequences, "", "microsequence", payload.title),
@@ -1417,7 +1449,7 @@ function applySupportMicrosequence(projectDocument = {}, selection = {}, payload
     type: "support",
     status: "ready",
     included: true,
-    dependsOn: uniqueList([text(current?.key)]),
+    dependsOn: supportDependsOn,
     parentMicrosequenceKey: text(current?.key),
     supportReason: payload.supportReason,
     didacticPurpose: payload.goal,
@@ -1650,6 +1682,7 @@ export async function generateMicrosequenceProjectDocument({
       attachmentNames: (Array.isArray(ingestedAttachments.attachments) ? ingestedAttachments.attachments : []).map((item) => text(item?.name)).filter(Boolean),
       draftPlan,
       microsequenceTitle: text(appliedMicrosequence?.title || currentMicrosequence?.title),
+      returnMicrosequenceTitle: text(currentMicrosequence?.title),
       cardCount: Array.isArray(validated.cards) ? validated.cards.length : 0
     })
   };

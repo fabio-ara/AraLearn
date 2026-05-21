@@ -31,7 +31,7 @@ export async function createSupportMicrosequence({
     schema: supportMicrosequenceSchema,
     temperature: 0.3
   });
-  const validation = validateMicrosequenceCards({ summary: payload.summary, cards: payload.cards }, density);
+  const validation = validateMicrosequenceCards({ summary: payload.summary, cards: payload.cards }, density, { packet });
   if (!validation.ok) {
     throw new Error(validation.errors.map((error) => error.message).join("; "));
   }
@@ -43,13 +43,22 @@ export async function createSupportMicrosequence({
     summary: validation.value.summary,
     validationReport: validation.report
   });
+  const previous = info.microsequenceIndex > 0 ? info.lesson.microsequences[info.microsequenceIndex - 1] : null;
+  const supportDependsOn = [
+    ...new Set(
+      (Array.isArray(info.microsequence.dependsOn) && info.microsequence.dependsOn.length
+        ? info.microsequence.dependsOn
+        : [previous?.key]
+      ).filter(Boolean)
+    )
+  ];
   const supportMicrosequence = {
     key: buildScopedKey("microsequence", payload.title),
     title: payload.title,
     goal: payload.goal,
     type: "support",
     status: "generated",
-    dependsOn: [info.microsequence.key],
+    dependsOn: supportDependsOn,
     scopeRefs: [...(info.microsequence.scopeRefs || [])],
     parentMicrosequenceKey: info.microsequence.key,
     supportReason: payload.supportReason,

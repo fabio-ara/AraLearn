@@ -233,3 +233,10 @@ test("prompt top-down exige reaproveitar literalmente itens de include em notati
 
   assert.match(prompt, /notationRules.*copiado literalmente de 'Entra'/i);
 });
+
+test("prompt top-down proíbe usar itens excluídos como contraste negativo", () => {
+  const prompt = buildTopDownUserPrompt(scopeContract);
+
+  assert.match(prompt, /Não mencione itens de 'Não entra' fora do campo outOfScopeRules/i);
+  assert.match(prompt, /não use esses termos nem para dizer que não serão tratados/i);
+});
