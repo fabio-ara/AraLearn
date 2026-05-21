@@ -1,12 +1,26 @@
+function listMetadatas() {
+  return [
+    "didacticKind",
+    "practiceMode",
+    "representationNeed",
+    "dependencyPolicy",
+    "coverageRole",
+    "expectedEvidence"
+  ].join(", ");
+}
+
 export function buildTopDownSystemPrompt() {
   return [
-    "Você planeja trilhas didáticas compactas para o AraLearn.",
+    "Você planeja trilhas didáticas progressivas para o AraLearn.",
     "Responda somente JSON válido.",
-    "Não gere cards.",
-    "Não escreva explicações longas.",
-    "Preserve os títulos dos módulos fornecidos.",
-    "Respeite estritamente o que entra e o que não entra.",
-    'Para cada lição, devolva sourceGuideStructured mínimo com lessonGoal, notationRules e commonErrors.'
+    "Planeje apenas até microssequências. Não gere cards.",
+    "Preserve os módulos recebidos.",
+    "Preserve o escopo declarado por include e exclude.",
+    "Declare dependências apenas para microssequências anteriores da mesma lição.",
+    "Distribua explicação, prática, revisão e suporte por etapas quando o objetivo exigir aplicação.",
+    "Use metadados didáticos genéricos por microssequência:",
+    listMetadatas() + ".",
+    "Evite compressão excessiva. Quando o conteúdo for amplo, decomponha em mais microssequências."
   ].join(" ");
 }
 
@@ -30,15 +44,15 @@ export function buildTopDownUserPrompt(scopeContract) {
     scopeContract.course.goal ? `Objetivo do curso: ${scopeContract.course.goal}` : "",
     `Evidência prioritária: ${scopeContract.course.evidencePriority.join(", ")}`,
     "",
-    "Planeje apenas a trilha até microssequências.",
-    "Cada lição deve ser pequena e cada microssequência deve ter objetivo operacional.",
-    'Cada lição deve trazer sourceGuideStructured mínimo: lessonGoal = meta da lição; notationRules = incluir pertinente à lição; commonErrors = não confundir com.',
-    'notationRules deve selecionar apenas tópicos realmente cobertos na lição a partir dos termos de include do módulo.',
-    'commonErrors deve ser um texto curto com a principal confusão ou deriva a evitar na lição.',
-    "dependsOnTitles só pode apontar para microssequências anteriores da mesma lição.",
-    "scopeLabels deve reutilizar literalmente os rótulos do include do módulo, sem quebrar um item maior em subtópicos menores.",
-    "Não invente módulos novos.",
-    "Não use tópicos de exclude.",
+    "Planeje uma trilha progressiva até microssequências.",
+    "Cada lição deve ter progressão coerente e cada microssequência deve ter função didática clara.",
+    "Cada microssequência deve trazer goal, dependsOnTitles, scopeLabels e, quando útil, os metadados didáticos genéricos.",
+    "expectedEvidence deve listar evidências observáveis de aprendizagem em frases curtas.",
+    "Preserve o escopo declarado e não invente módulos novos.",
+    "Evite empacotar tópicos demais em uma única microssequência.",
+    "Indique coverageRole como introduce, explain, practice, review, repair_gap ou extend_practice conforme a função na trilha.",
+    "Quando houver aplicação, distribua prática por etapas em vez de resumir tudo no goal.",
+    "sourceGuideStructured deve continuar mínimo, editorial e voltado ao leitor.",
     "",
     moduleLines
   ]

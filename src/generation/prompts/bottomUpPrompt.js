@@ -1,63 +1,106 @@
-function serializePacket(packet) {
-  return JSON.stringify(packet, null, 2);
+function serialize(value) {
+  return JSON.stringify(value, null, 2);
 }
 
-function listPromptHints(packet = {}) {
-  const tags = Array.isArray(packet?.currentMicrosequence?.tags) ? packet.currentMicrosequence.tags : [];
-  const include = Array.isArray(packet?.module?.include) ? packet.module.include : [];
-  const localText = [
-    packet?.currentMicrosequence?.title,
-    packet?.currentMicrosequence?.goal,
-    packet?.lesson?.title,
-    packet?.lesson?.goal,
-    ...tags,
-    ...include
-  ]
-    .filter((value) => typeof value === "string")
-    .join(" ")
-    .toLowerCase();
-
-  const hints = [];
-  if (/(modelagem por grafos|pontes de königsberg|vértices|arestas|grafo completo|grafo bipartido|isomorf)/u.test(localText)) {
-    hints.push("O primeiro card deve ser resourceType graph, com content válido em vertices e edges, representando explicitamente o caso local da microssequência.");
-    hints.push("Depois do card graph, explique a leitura didática do mesmo caso local sem sair da microssequência.");
-  }
-  if (/matriz de adjac|dijkstra|sequência de graus|graus/u.test(localText)) {
-    hints.push("Se usar table, faça a tabela carregar informação realmente necessária para prova, não apenas paráfrase.");
-  }
-  return hints;
+function listLines(items = []) {
+  return (Array.isArray(items) ? items : [])
+    .map((item) => (typeof item === "string" ? item.trim() : ""))
+    .filter(Boolean);
 }
 
-export function buildBottomUpSystemPrompt() {
+function formatRolePlan(cardPlan = []) {
+  return (Array.isArray(cardPlan) ? cardPlan : [])
+    .map((item) => {
+      const position = Number(item?.position) || "?";
+      const role = typeof item?.role === "string" ? item.role.trim() : "step";
+      const resourceType = typeof item?.resourceType === "string" ? item.resourceType.trim() : "say";
+      const purpose = typeof item?.purpose === "string" ? item.purpose.trim() : "";
+      const evidence = listLines(item?.expectedEvidence);
+      return [
+        `- posição ${position}: ${role} com ${resourceType}`,
+        purpose ? `  propósito: ${purpose}` : "",
+        evidence.length ? `  evidências: ${evidence.join("; ")}` : ""
+      ]
+        .filter(Boolean)
+        .join("\n");
+    })
+    .join("\n");
+}
+
+export function buildBottomUpDraftSystemPrompt() {
   return [
-    "Você materializa uma única microssequência do AraLearn.",
+    "Você planeja a didática de uma única microssequência do AraLearn antes da compilação final.",
     "Responda somente JSON válido.",
-    "Gere somente cards para a microssequência atual.",
-    "Não avance para o próximo assunto.",
-    "Não viole o campo exclude do módulo.",
-    "Use apenas os tipos públicos de recurso solicitados.",
-    "Entregue entre 4 e 6 cards.",
-    "Para resourceType say, use content como string simples.",
-    "Para resourceType table, use content com columns e rows.",
-    "Para resourceType code, use content com code e language.",
-    "Para resourceType graph, use content com vertices e edges.",
-    "Em graph, use vertices com id e, quando útil, label, x e y. Use edges com from e to e, quando útil, weight ou label.",
-    "Para resourceType block_gap_fill, use content como string com lacunas no formato [[resposta::opcao1|opcao2]].",
-    "Se uma explicação procedural não couber bem em graph, table ou block_gap_fill, prefira say.",
-    "Não use [BLANK], steps, flow, tree, objetos de tabela alternativos nem estruturas proprietárias.",
-    "Não pressuponha conhecimento fora da microssequência atual, das dependências explícitas e das etapas anteriores resumidas no contexto.",
-    "Se houver política de trilha local, siga-a e retorne à trilha planejada depois de esclarecer a lacuna."
+    "Não gere o JSON final de cards nesta fase.",
+    "Planeje uma sequência progressiva e autossuficiente.",
+    "Explique antes de cobrar uso quando o conteúdo for novo.",
+    "Distribua prática, variação e retomada quando houver evidência de aplicação.",
+    "Use apenas dependências declaradas e preserve a trilha planejada.",
+    "Escolha resourceType pela função didática de cada etapa, não por disciplina.",
+    "Se o conteúdo pedir mais cobertura do que cabe bem em uma única chamada, sinalize continuação em vez de comprimir demais."
   ].join(" ");
 }
 
-export function buildBottomUpUserPrompt(packet) {
-  const hints = listPromptHints(packet);
+export function buildBottomUpDraftUserPrompt(packet = {}, options = {}) {
+  const fallbackPlan = Array.isArray(options?.fallbackPlan) ? options.fallbackPlan : [];
   return [
-    "Contexto da microssequência:",
-    serializePacket(packet),
+    "Pacote da microssequência:",
+    serialize(packet),
     "",
-    "Crie cards didaticamente progressivos e autossuficientes para a microssequência atual.",
-    "Use apenas dependências explícitas, tags e referências locais do contexto.",
-    ...(hints.length ? ["", "Exigências locais:", ...hints.map((hint) => `- ${hint}`)] : [])
-  ].join("\n");
+    "Planeje um didactic draft com etapas pequenas e função didática clara.",
+    "Para cada etapa, informe role, resourceType, purpose, inCardContext, usesDependency e expectedEvidence.",
+    "coverageNotes deve registrar lacunas, retomadas, distribuição de prática ou necessidade de continuação.",
+    fallbackPlan.length
+      ? "Se o contexto estiver incompleto, use este plano-base como referência mínima de progressão:"
+      : "",
+    fallbackPlan.length ? formatRolePlan(fallbackPlan) : ""
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+export function buildBottomUpCompileSystemPrompt() {
+  return [
+    "Você compila uma única microssequência do AraLearn para o JSON final de cards.",
+    "Responda somente JSON válido.",
+    "Preserve exatamente o formato final esperado pelo frontend.",
+    "Siga o didactic draft e o card plan.",
+    "Mantenha cada card com função didática reconhecível.",
+    "Coloque no próprio card o contexto necessário para responder às práticas.",
+    "Use as dependências declaradas apenas quando o draft disser que elas são necessárias.",
+    "Se um recurso planejado não couber, use fallback justificável sem mudar o objetivo didático.",
+    "Prefira decomposição e continuidade a concentrar muita carga didática no mesmo card."
+  ].join(" ");
+}
+
+export function buildBottomUpCompileUserPrompt(packet = {}, draft = {}, options = {}) {
+  const cardPlan = Array.isArray(options?.cardPlan) ? options.cardPlan : [];
+  const schema = options?.schema || null;
+  return [
+    "Pacote da microssequência:",
+    serialize(packet),
+    "",
+    "Didactic draft:",
+    serialize(draft),
+    "",
+    "Card plan determinístico:",
+    serialize(cardPlan),
+    "",
+    schema ? "Schema final de saída:" : "",
+    schema ? serialize(schema) : "",
+    "",
+    "Compile o JSON final com summary e cards.",
+    "Siga positions e resourceTypes do card plan.",
+    "Se a microssequência precisar continuar depois desta chamada, deixe isso claro em summary sem abrir novo escopo."
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+export function buildBottomUpSystemPrompt() {
+  return buildBottomUpCompileSystemPrompt();
+}
+
+export function buildBottomUpUserPrompt(packet, options = {}) {
+  return buildBottomUpDraftUserPrompt(packet, options);
 }

@@ -45,6 +45,13 @@ Ela pode:
 
 Cada intervenção cria uma versão nova. A versão anterior permanece disponível.
 
+O fluxo atual divide essa etapa em duas fases leves:
+
+1. `didactic draft`: a IA propõe etapas, funções didáticas, recursos sugeridos e evidências esperadas;
+2. `compile cards`: a IA devolve o JSON final no formato consumido pelo frontend.
+
+Se o draft falha ou vem incompleto, o runtime usa um card plan determinístico como fallback.
+
 ## Providers
 
 Providers suportados pelo desenho técnico:
@@ -83,9 +90,14 @@ A validação verifica:
 - campos obrigatórios;
 - status e tipo de microssequência;
 - cards e recursos permitidos;
-- conteúdo mínimo para materialização.
+- conteúdo mínimo para materialização;
+- coerência didática básica por card;
+- contexto interno de prática;
+- aderência à trilha e às dependências declaradas.
 
 Quando uma resposta não passa pela validação, o projeto anterior é preservado. A IA sugere e produz, mas não tem permissão automática para corromper o documento local.
+
+Os limites de cards informados por modelo são tratados como orçamento técnico por chamada. Eles não definem, por si só, se uma microssequência está pedagogicamente suficiente.
 
 ## Privacidade e controle
 

@@ -45,6 +45,19 @@ function hasCardsDeep(value) {
   return Object.values(value).some((item) => hasCardsDeep(item));
 }
 
+const DIDACTIC_KIND = new Set(["concept", "procedure", "discrimination", "formalization", "representation_reading", "cumulative_practice"]);
+const PRACTICE_MODE = new Set(["recognition", "guided_production", "execution", "classification", "calculation", "explanation", "construction", "correction", "variation"]);
+const REPRESENTATION_NEED = new Set(["none", "text", "table", "code", "visual_structure", "sequence", "formula"]);
+const DEPENDENCY_POLICY = new Set(["self_contained", "uses_previous", "cumulative"]);
+const COVERAGE_ROLE = new Set(["introduce", "explain", "practice", "review", "repair_gap", "extend_practice"]);
+
+function validateOptionalEnum(errors, path, value, allowedSet, label) {
+  const normalized = normalizeWhitespace(value);
+  if (normalized && !allowedSet.has(normalized)) {
+    pushError(errors, path, `${label} inválido: "${normalized}".`);
+  }
+}
+
 export function validatePlannedCourse(plannedCourse, scopeContract) {
   const errors = [];
   if (!isPlainObject(plannedCourse) || !isPlainObject(plannedCourse.course)) {
@@ -192,6 +205,23 @@ export function validatePlannedCourse(plannedCourse, scopeContract) {
 
         if (containsForbiddenTerm(microTitle, excludeLabels) || containsForbiddenTerm(microGoal, excludeLabels)) {
           pushError(errors, microPath, "Microssequência cita tópico proibido pelo módulo.");
+        }
+
+        validateOptionalEnum(errors, `${microPath}.didacticKind`, microsequence?.didacticKind, DIDACTIC_KIND, "didacticKind");
+        validateOptionalEnum(errors, `${microPath}.practiceMode`, microsequence?.practiceMode, PRACTICE_MODE, "practiceMode");
+        validateOptionalEnum(errors, `${microPath}.representationNeed`, microsequence?.representationNeed, REPRESENTATION_NEED, "representationNeed");
+        validateOptionalEnum(errors, `${microPath}.dependencyPolicy`, microsequence?.dependencyPolicy, DEPENDENCY_POLICY, "dependencyPolicy");
+        validateOptionalEnum(errors, `${microPath}.coverageRole`, microsequence?.coverageRole, COVERAGE_ROLE, "coverageRole");
+        if (microsequence?.expectedEvidence !== undefined) {
+          if (!Array.isArray(microsequence.expectedEvidence) || !microsequence.expectedEvidence.every((item) => normalizeWhitespace(item))) {
+            pushError(errors, `${microPath}.expectedEvidence`, "expectedEvidence deve ser um array de evidências observáveis.");
+          }
+          if (
+            normalizeWhitespace(microsequence?.coverageRole) === "practice" &&
+            (!Array.isArray(microsequence.expectedEvidence) || microsequence.expectedEvidence.length === 0)
+          ) {
+            pushError(errors, `${microPath}.expectedEvidence`, "Microssequência de prática deve declarar expectedEvidence.");
+          }
         }
       });
     });
