@@ -128,6 +128,14 @@ aralearn.scope.v1 -> provider -> plano estrutural -> validação -> aralearn.con
 
 O plano estrutural cria ou atualiza a árvore até microssequências.
 
+Na prática, o que se espera dessa fase é:
+
+- estrutura coerente;
+- progressão entre etapas;
+- dependências explícitas quando necessárias;
+- escopo preservado;
+- nenhum card ainda.
+
 ### Materialização local
 
 ```text
@@ -141,6 +149,13 @@ microssequência selecionada
 ```
 
 A materialização não precisa reenviar o projeto inteiro. O contexto vem da posição da microssequência na árvore, de seus objetivos, de suas dependências e do pedido do usuário.
+
+Na prática, o que se espera dessa fase é:
+
+- uma microssequência final estudável;
+- cards com função didática reconhecível;
+- prática com contexto interno suficiente;
+- continuidade da trilha sem deriva lateral.
 
 O motor atual é content-agnostic e model-agnostic:
 

@@ -63,6 +63,14 @@ AraLearn pode ser usado por:
 
 Esse desenho evita a geração de um curso inteiro de uma só vez. A estrutura dá orientação; a materialização local preserva controle.
 
+## Top-down e bottom-up
+
+No AraLearn, o motor de geração trabalha em dois níveis complementares.
+
+O `top-down` planeja a trilha. Ele recebe o recorte do curso, respeita o que entra e o que não entra, organiza módulos, lições e microssequências e pode registrar metadados didáticos como função da etapa, necessidade de prática, dependências e evidências esperadas. O resultado esperado do top-down é uma estrutura progressiva e navegável até microssequências. Ele não gera cards.
+
+O `bottom-up` materializa uma microssequência específica. Ele recebe o contexto local da etapa, suas dependências, a fonte-guia da lição e o pedido do usuário. Primeiro, monta um rascunho didático intermediário; depois, compila o JSON final dos cards no formato consumido pelo frontend. O resultado esperado do bottom-up é uma microssequência estudável, com cards coerentes, prática autossuficiente quando necessária e retorno claro à trilha planejada.
+
 ## Recursos de card
 
 O contrato público aceita os seguintes recursos renderizáveis:
