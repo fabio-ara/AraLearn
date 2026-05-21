@@ -60,7 +60,7 @@ export function buildBottomUpDidacticDraftSchema() {
   return {
     type: "object",
     additionalProperties: false,
-    required: ["steps", "coverageNotes", "continuationNeeded", "continuationReason"],
+    required: ["steps", "coverageNotes", "continuationNeeded", "continuationReason", "continuationMode", "continuationPrompt"],
     properties: {
       steps: {
         type: "array",
@@ -69,7 +69,12 @@ export function buildBottomUpDidacticDraftSchema() {
       },
       coverageNotes: { type: "array", items: { type: "string" } },
       continuationNeeded: { type: "boolean" },
-      continuationReason: { type: "string" }
+      continuationReason: { type: "string" },
+      continuationMode: {
+        type: "string",
+        enum: ["none", "same_microsequence", "support_microsequence", "next_microsequence"]
+      },
+      continuationPrompt: { type: "string" }
     }
   };
 }

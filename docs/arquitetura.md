@@ -164,6 +164,15 @@ O motor atual é content-agnostic e model-agnostic:
 - trata `recommendedMaxCards` e `absoluteMaxCards` como orçamento técnico por chamada, não como verdade pedagógica;
 - prefere decomposição e continuação a concentrar muita carga didática em um único card.
 
+Além do documento de projeto e das versões de microssequência, a UI persiste uma sessão local de intervenção por microssequência. Essa sessão guarda:
+
+- o retorno classificado da última chamada;
+- o texto acionável exibido no campo de retorno, incluindo rascunho de continuação ou pedido de nova tentativa;
+- o modelo usado;
+- a versão-base sobre a qual aquele retorno foi gerado.
+
+Isso permite reabrir a aba `Edição` com contexto operacional já recuperado, sem confundir uma continuação válida com uma resposta antiga aplicada sobre versão diferente.
+
 ## Persistência
 
 O AraLearn mantém o projeto no dispositivo.
@@ -172,7 +181,9 @@ Chaves principais:
 
 - `aralearn.project`;
 - `aralearn.progress`;
-- `aralearn.provider-settings.v2`.
+- `aralearn.assist-config`;
+- `aralearn.microsequence-versions.v1`;
+- `aralearn.intervention-sessions.v1`.
 
 Essa abordagem favorece uso local, inspeção, exportação e continuidade sem depender de servidor próprio.
 

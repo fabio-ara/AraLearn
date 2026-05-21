@@ -355,10 +355,12 @@ function summarizeIconTitle(label) {
   return match ? match[1].trim() : text;
 }
 
-function renderPromptAttachmentButton() {
+function renderPromptAttachmentButton(action = "open-assist-attachment-picker") {
   const title = "Anexar documentos";
   return (
-    '<button class="icon-ghost tiny-icon generate-inline-icon" type="button" data-action="open-assist-attachment-picker" title="' +
+    '<button class="icon-ghost tiny-icon generate-inline-icon" type="button" data-action="' +
+    escapeHtml(action) +
+    '" title="' +
     escapeHtml(title) +
     '" aria-label="' +
     escapeHtml(title) +
@@ -584,9 +586,7 @@ function renderAssistActionOptions(actionOptions = [], selectedAction = "") {
         '<span class="assist-action-copy">' +
         '<span class="assist-action-title">' +
         escapeHtml(item.label || item.value) +
-        "</span>" +
-        (disabled ? '<span class="assist-action-meta">Sem próxima etapa planejada.</span>' : "") +
-        "</span></label>"
+        "</span></span></label>"
       );
     })
     .join("");
@@ -1174,21 +1174,17 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
     editorSupport.preferredContainer,
     editorSupport.preferredContainerConfirmed
   );
-  const assistWarning = editorSupport.assistError
-    ? '<section class="microsequence-assist-panel assist-status-panel is-warning">' +
-      '<p class="muted assist-last-request">' +
-      escapeHtml(editorSupport.assistError) +
-      "</p></section>"
-    : "";
-  const assistStatus = editorSupport.lastRequest
-    ? '<section class="microsequence-assist-panel assist-status-panel">' +
-      '<p class="tiny muted">' +
-      escapeHtml(editorSupport.lastRequest.title || "Último pedido") +
-      "</p>" +
-      '<p class="muted assist-last-request">' +
-      escapeHtml(editorSupport.lastRequest.description || "") +
-      "</p></section>"
-    : "";
+  const feedbackSession = editorSupport.feedbackSession || {};
+  const feedbackValue = editorSupport.feedbackDraftText || feedbackSession.feedbackText || feedbackSession.nextPromptDraft || "";
+  const feedbackCanEdit = Boolean(feedbackValue.trim());
+  const feedbackStatusClass =
+    feedbackSession.status === "blocked"
+      ? " is-warning"
+      : feedbackSession.status === "stale"
+        ? " is-muted"
+        : feedbackSession.status && feedbackSession.status !== "completed"
+          ? " is-attention"
+          : "";
   const emptyCardsMessage = hasCards
     ? ""
     : isPlanned
@@ -1259,10 +1255,14 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
     "</section>";
   const editPane =
     '<section class="workbench-editor-panel workbench-editor-pane">' +
+    '<header class="workbench-editor-heading">' +
+    '<h2 class="generation-overlay-title workbench-editor-title">Editar com IA</h2>' +
+    "</header>" +
     '<label class="field generate-prompt-field workbench-prompt-field">' +
     '<div class="generate-prompt-layout">' +
     '<div class="workbench-prompt-tools">' +
     renderInlineFieldIcon("prompt", promptLabel) +
+    '<button class="icon-ghost tiny-icon generate-inline-icon workbench-inline-reset" type="button" data-action="clear-assist-request" title="Limpar pedido" aria-label="Limpar pedido">&#8635;</button>' +
     "</div>" +
     '<div class="generate-prompt-content">' +
     '<textarea data-field="assist-prompt" class="assist-prompt" aria-label="' +
@@ -1276,11 +1276,10 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
     "</textarea></div></div></label>" +
     attachmentInput +
     attachmentChips +
-    '<div class="generate-divider workbench-divider"></div>' +
-    '<section class="microsequence-assist-panel bottomup-focus-panel assist-simple-panel">' +
+    '<section class="microsequence-assist-panel bottomup-focus-panel assist-simple-panel assist-action-panel">' +
     '<div class="workbench-form-row assist-action-heading">' +
     renderInlineFieldIcon("intent", "O que a IA deve fazer agora") +
-    '<p class="tiny muted">O que a IA deve fazer agora</p>' +
+    '<p class="workbench-editor-section-label">O que a IA deve fazer agora</p>' +
     "</div>" +
     '<div class="assist-action-options" role="radiogroup" aria-label="Ação da intervenção">' +
     assistActionOptions +
@@ -1294,21 +1293,18 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
     '<div class="dependency-chip-row workbench-tag-chip-row">' +
     (selectedDependencyTags || '<p class="tiny muted bottomup-empty-copy">Selecione pelo menos uma tag para ancorar o pedido.</p>') +
     "</div></div>" +
-    '<div class="generate-divider workbench-divider"></div>' +
     '<label class="field generate-icon-field workbench-select-field">' +
     renderInlineFieldIcon("card", "Materialização preferida") +
     '<select data-field="assist-preferred-container" aria-label="Materialização preferida" title="Materialização preferida">' +
     containerOptions +
     "</select></label>" +
-    '<div class="generate-divider workbench-divider"></div>' +
-    '<div class="generate-action-row assist-actions assist-actions-wide">' +
-    '<button class="icon-ghost tiny-icon generate-inline-icon" type="button" data-action="clear-prompt" title="Limpar prompt" aria-label="Limpar prompt">&#8635;</button>' +
+    '<div class="generate-action-row assist-actions assist-actions-wide assist-request-actions">' +
     '<label class="field generate-icon-field generate-model-field">' +
     renderInlineFieldIcon("intent", "Modelo") +
     '<select data-field="assist-model" aria-label="Modelo" title="Modelo">' +
     modelOptions +
     "</select></label>" +
-    renderPromptAttachmentButton() +
+    renderPromptAttachmentButton("open-assist-attachment-picker") +
     '<button class="icon-ghost tiny-icon generate-inline-icon" type="button" data-action="open-assist-config" title="Configurar IA" aria-label="Configurar IA">&#128273;</button>' +
     '<button class="open-main generate-submit" type="button" data-action="apply-assist" title="' +
     escapeHtml(submitLabel) +
@@ -1322,8 +1318,52 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
     renderUiIcon("sparkles", "generate-submit-icon") +
     "</button>" +
     "</div>" +
-    assistWarning +
-    assistStatus +
+    '<div class="generate-divider workbench-divider"></div>' +
+    '<section class="assist-feedback-panel' +
+    feedbackStatusClass +
+    '">' +
+    '<div class="assist-feedback-heading">' +
+    '<p class="workbench-editor-section-label">Feedback</p>' +
+    "</div>" +
+    '<div class="field generate-prompt-field workbench-prompt-field assist-feedback-field">' +
+    '<div class="generate-prompt-layout">' +
+    '<div class="workbench-prompt-tools">' +
+    renderInlineFieldIcon("prompt", "Retorno da intervenção") +
+    '<button class="icon-ghost tiny-icon generate-inline-icon assist-feedback-edit-button" type="button" data-action="toggle-feedback-edit" aria-pressed="' +
+    (editorSupport.feedbackEditing ? "true" : "false") +
+    '" title="' +
+    escapeHtml(editorSupport.feedbackEditing ? "Concluir edição do retorno" : "Editar retorno") +
+    '" aria-label="' +
+    escapeHtml(editorSupport.feedbackEditing ? "Concluir edição do retorno" : "Editar retorno") +
+    '"' +
+    (!feedbackCanEdit ? ' disabled aria-disabled="true"' : "") +
+    ">" +
+    renderUiIcon(editorSupport.feedbackEditing ? "ready-state" : "edit", "generate-submit-icon") +
+    "</button>" +
+    "</div>" +
+    '<div class="generate-prompt-content assist-feedback-content">' +
+    '<textarea data-field="assist-feedback" class="assist-prompt assist-feedback-textarea" aria-label="Retorno da intervenção" title="Retorno da intervenção"' +
+    (editorSupport.feedbackEditing ? "" : ' readonly aria-readonly="true"') +
+    ">" +
+    escapeHtml(feedbackValue) +
+    "</textarea></div></div></div>" +
+    '<div class="generate-action-row assist-actions assist-actions-wide assist-request-actions assist-feedback-actions">' +
+    '<label class="field generate-icon-field generate-model-field">' +
+    renderInlineFieldIcon("intent", "Modelo") +
+    '<select data-field="assist-feedback-model" aria-label="Modelo" title="Modelo">' +
+    modelOptions +
+    "</select></label>" +
+    renderPromptAttachmentButton("open-assist-feedback-attachment-picker") +
+    '<button class="icon-ghost tiny-icon generate-inline-icon" type="button" data-action="open-assist-feedback-config" title="Configurar IA" aria-label="Configurar IA">&#128273;</button>' +
+    '<button class="open-main generate-submit" type="button" data-action="apply-assist-feedback" title="' +
+    escapeHtml(editorSupport.feedbackSubmitLabel || "Iterar") +
+    '" aria-label="' +
+    escapeHtml(editorSupport.feedbackSubmitLabel || "Iterar") +
+    '"' +
+    (!editorSupport.feedbackRequestReady ? ' disabled aria-disabled="true"' : "") +
+    ">" +
+    renderUiIcon("sparkles", "generate-submit-icon") +
+    "</button></div></section>" +
     "</section>";
 
   return (

@@ -11,6 +11,15 @@ function uniqueTextList(values = []) {
   return [...new Set((Array.isArray(values) ? values : []).map(text).filter(Boolean))];
 }
 
+function buildRetryFeedbackText({ message = "", promptText = "" } = {}) {
+  const cleanMessage = text(message);
+  const cleanPrompt = text(promptText);
+  if (cleanMessage && cleanPrompt) {
+    return `Falha na intervenção: ${cleanMessage}\n\nPedido para nova tentativa:\n${cleanPrompt}`;
+  }
+  return cleanMessage || cleanPrompt;
+}
+
 function inferLocalOperation(promptText = "") {
   const normalized = text(promptText)
     .normalize("NFD")
@@ -21,6 +30,46 @@ function inferLocalOperation(promptText = "") {
     return "repair";
   }
   return "reinforce";
+}
+
+function buildFailedInterventionFeedback({
+  draft = {},
+  assistConfig = {},
+  status = "needs_retry",
+  title = "Iteração pendente",
+  message = ""
+} = {}) {
+  const promptText = text(draft?.promptText);
+  return {
+    status,
+    title,
+    message,
+    feedbackText: buildRetryFeedbackText({ message, promptText }),
+    nextPromptDraft: buildRetryFeedbackText({ message, promptText }),
+    rawFeedbackText: message,
+    recommendedActionIntent:
+      status === "needs_new_microsequence" || status === "needs_support_microsequence"
+        ? "create_after_current"
+        : text(draft?.operationMode) === "repair"
+          ? "repair_current"
+          : "continue_current",
+    recommendedInterventionTargetMode:
+      status === "needs_new_microsequence" || status === "needs_support_microsequence" ? "new_after_current" : "current",
+    recommendedOperationMode: text(draft?.operationMode) === "repair" ? "repair" : "reinforce",
+    recommendedInterventionType: text(draft?.interventionType),
+    continuationNeeded: status !== "completed" && status !== "blocked",
+    continuationMode:
+      status === "needs_support_microsequence"
+        ? "support_microsequence"
+        : status === "needs_new_microsequence"
+          ? "next_microsequence"
+          : status === "needs_retry" || status === "needs_continue_here"
+            ? "same_microsequence"
+            : "none",
+    modelId: text(assistConfig?.model),
+    promptText,
+    attachmentNames: (Array.isArray(draft?.attachments) ? draft.attachments : []).map((item) => text(item?.name)).filter(Boolean)
+  };
 }
 
 export function buildMicrosequencePrompt({
@@ -303,7 +352,14 @@ export async function executeMicrosequenceGeneration({
   if (!readiness.ok && isCodexLocalModel(assistConfig.model)) {
     return {
       status: "provider-unready",
-      errorMessage: readiness.error || "O bridge local não está ativo."
+      errorMessage: readiness.error || "O bridge local não está ativo.",
+      interventionFeedback: buildFailedInterventionFeedback({
+        draft,
+        assistConfig,
+        status: "blocked",
+        title: "Provider indisponível",
+        message: readiness.error || "O bridge local não está ativo."
+      })
     };
   }
 
@@ -337,7 +393,14 @@ export async function executeMicrosequenceGeneration({
   } catch (error) {
     return {
       status: "error",
-      errorMessage: error instanceof Error ? error.message : "Falha ao chamar o serviço de IA."
+      errorMessage: error instanceof Error ? error.message : "Falha ao chamar o serviço de IA.",
+      interventionFeedback: buildFailedInterventionFeedback({
+        draft,
+        assistConfig,
+        status: "needs_retry",
+        title: "Nova iteração necessária",
+        message: error instanceof Error ? error.message : "Falha ao chamar o serviço de IA."
+      })
     };
   }
 }
