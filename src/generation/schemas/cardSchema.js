@@ -20,6 +20,8 @@ const tableContentSchema = {
   additionalProperties: false,
   required: ["columns", "rows"],
   properties: {
+    intro: { type: "string" },
+    title: { type: "string" },
     columns: {
       type: "array",
       minItems: 1,
@@ -44,6 +46,7 @@ const codeContentSchema = {
   additionalProperties: false,
   required: ["code", "language"],
   properties: {
+    intro: { type: "string" },
     code: { type: "string" },
     language: { type: "string" }
   }
@@ -56,6 +59,7 @@ const graphContentSchema = {
   additionalProperties: false,
   required: ["vertices", "edges"],
   properties: {
+    intro: { type: "string" },
     vertices: {
       type: "array",
       minItems: 2,

@@ -45,6 +45,28 @@ function expandPlanForEvidence(baseRoles = [], evidence = []) {
   return expanded;
 }
 
+function expandPlanForPromptSignals(baseRoles = [], userRequest = "", interactionMode = "normal_generation") {
+  const normalized = text(userRequest).toLowerCase();
+  const expanded = [...baseRoles];
+  const asksMorePractice =
+    interactionMode === "add_practice"
+    || /\b(pratica|prática|exercicio|exercício|treino|fixa[cç][aã]o|variad|guiad)/u.test(normalized);
+  if (!asksMorePractice) {
+    return expanded;
+  }
+  if (!expanded.includes("analogous_practice")) {
+    expanded.splice(Math.max(expanded.length - 1, 1), 0, "analogous_practice");
+  }
+  const practiceCount = expanded.filter((role) => ["active_practice", "analogous_practice", "cumulative_review", "correction"].includes(role)).length;
+  if (practiceCount < 2) {
+    expanded.splice(Math.max(expanded.length - 1, 1), 0, "active_practice");
+  }
+  if (/\b(bastante|muita|mais)\b/u.test(normalized) && !expanded.includes("cumulative_review")) {
+    expanded.splice(Math.max(expanded.length - 1, 1), 0, "cumulative_review");
+  }
+  return expanded;
+}
+
 function resolveBaseRoles(didacticKind = "concept") {
   switch (didacticKind) {
     case "procedure":
@@ -113,7 +135,7 @@ export function chooseResourceTypeForRole(role = "", params = {}) {
   const representationFallback =
     representationNeed === "table" ? "table"
       : representationNeed === "code" ? "code"
-        : representationNeed === "visual_structure" ? pickPreferredResource(["graph", "table", "say"], allowed)
+        : representationNeed === "visual_structure" ? pickPreferredResource(["table", "graph", "say"], allowed)
           : representationNeed === "sequence" ? pickPreferredResource(["table", "say"], allowed)
             : representationNeed === "formula" ? pickPreferredResource(["table", "say"], allowed)
               : "say";
@@ -173,7 +195,11 @@ function buildPlanEntries(roles = [], packet = {}, allowedResourceTypes = []) {
 export function buildDidacticCardPlan(packet = {}, options = {}) {
   const didacticKind = inferDidacticKind(options?.typeId, packet);
   const evidence = defaultEvidence(packet);
-  const baseRoles = expandPlanForEvidence(resolveBaseRoles(didacticKind), evidence);
+  const baseRoles = expandPlanForPromptSignals(
+    expandPlanForEvidence(resolveBaseRoles(didacticKind), evidence),
+    packet?.userRequest,
+    options?.interactionMode
+  );
   const targetCount = Math.max(1, Number(options?.targetCount) || baseRoles.length);
   const allowedResourceTypes = unique(options?.allowedResourceTypes?.length ? options.allowedResourceTypes : ["say", "table", "code", "graph", "block_gap_fill"]);
   const roles = baseRoles.slice(0, targetCount);

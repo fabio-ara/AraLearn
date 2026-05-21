@@ -26,6 +26,12 @@ function validateObjectContent(content, path, errors, label) {
   }
 }
 
+function normalizeWhitespace(value) {
+  return String(value ?? "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function normalizeGeneratedTableContent(content) {
   if (!isPlainObject(content)) {
     return content;
@@ -58,9 +64,85 @@ function normalizeGeneratedTableContent(content) {
   }
   return {
     ...content,
+    ...(typeof content.intro === "string" ? { intro: normalizeWhitespace(content.intro) } : {}),
+    ...(typeof content.title === "string" ? { title: normalizeWhitespace(content.title) } : {}),
     columns,
     rows
   };
+}
+
+function normalizeGeneratedGraphContent(content) {
+  if (!isPlainObject(content)) {
+    return content;
+  }
+  const vertices = Array.isArray(content.vertices)
+    ? content.vertices.map((vertex) =>
+        isPlainObject(vertex)
+          ? {
+              ...vertex,
+              ...(typeof vertex.id === "string" ? { id: normalizeWhitespace(vertex.id) } : {}),
+              ...(typeof vertex.label === "string" ? { label: normalizeWhitespace(vertex.label) } : {})
+            }
+          : vertex
+      )
+    : [];
+  const edges = Array.isArray(content.edges)
+    ? content.edges.map((edge) =>
+        isPlainObject(edge)
+          ? {
+              ...edge,
+              ...(typeof edge.from === "string" ? { from: normalizeWhitespace(edge.from) } : {}),
+              ...(typeof edge.to === "string" ? { to: normalizeWhitespace(edge.to) } : {}),
+              ...(typeof edge.label === "string" ? { label: normalizeWhitespace(edge.label) } : {})
+            }
+          : edge
+      )
+    : [];
+  return {
+    ...content,
+    ...(typeof content.intro === "string" ? { intro: normalizeWhitespace(content.intro) } : {}),
+    vertices,
+    edges
+  };
+}
+
+function serializeStructuredTableAsText(content, fallbackTitle = "") {
+  const intro = normalizeWhitespace(content?.intro);
+  const title = normalizeWhitespace(content?.title) || normalizeWhitespace(fallbackTitle);
+  const columns = Array.isArray(content?.columns) ? content.columns.map((item) => normalizeWhitespace(item)).filter(Boolean) : [];
+  const rows = Array.isArray(content?.rows) ? content.rows : [];
+  const rowLines = rows
+    .map((row) => (Array.isArray(row) ? row.map((cell) => normalizeWhitespace(cell)).filter(Boolean).join(" | ") : ""))
+    .filter(Boolean)
+    .slice(0, 4);
+  const summary =
+    columns.length && rowLines.length
+      ? [`Colunas: ${columns.join(", ")}.`, ...rowLines.map((line, index) => `Linha ${index + 1}: ${line}.`)].join(" ")
+      : "";
+  return [intro, title ? `${title}.` : "", summary].filter(Boolean).join(" ").trim();
+}
+
+function serializeStructuredGraphAsText(content, fallbackTitle = "") {
+  const intro = normalizeWhitespace(content?.intro);
+  const title = normalizeWhitespace(fallbackTitle);
+  const vertices = Array.isArray(content?.vertices)
+    ? content.vertices.map((vertex) => {
+        const id = normalizeWhitespace(vertex?.id);
+        const label = normalizeWhitespace(vertex?.label);
+        return label && label !== id ? `${id} (${label})` : id || label;
+      })
+    : [];
+  const edges = Array.isArray(content?.edges)
+    ? content.edges.map((edge) => {
+        const from = normalizeWhitespace(edge?.from);
+        const to = normalizeWhitespace(edge?.to);
+        const label = normalizeWhitespace(edge?.label);
+        return [from && to ? `${from} -> ${to}` : "", label ? `: ${label}` : ""].join("").trim();
+      })
+    : [];
+  const vertexLine = vertices.filter(Boolean).length ? `Elementos: ${vertices.filter(Boolean).join(", ")}.` : "";
+  const edgeLine = edges.filter(Boolean).length ? `Relações: ${edges.filter(Boolean).slice(0, 4).join("; ")}.` : "";
+  return [intro, title ? `${title}.` : "", vertexLine, edgeLine].filter(Boolean).join(" ").trim();
 }
 
 function serializeStructuredFlowAsText(content) {
@@ -129,6 +211,21 @@ function normalizeGeneratedCard(card = {}) {
   const normalizedType = String(normalized?.resourceType || "").trim();
   if (String(normalized?.resourceType || "").trim() === "table") {
     normalized.content = normalizeGeneratedTableContent(normalized.content);
+    if (isPlainObject(normalized.content) && !normalizeWhitespace(normalized.content.intro)) {
+      normalized.content = {
+        ...normalized.content,
+        intro: serializeStructuredTableAsText(normalized.content, normalized.title)
+      };
+    }
+  }
+  if (normalizedType === "graph") {
+    normalized.content = normalizeGeneratedGraphContent(normalized.content);
+    if (isPlainObject(normalized.content) && !normalizeWhitespace(normalized.content.intro)) {
+      normalized.content = {
+        ...normalized.content,
+        intro: serializeStructuredGraphAsText(normalized.content, normalized.title)
+      };
+    }
   }
   if (normalizedType === "flow") {
     if (
@@ -160,6 +257,12 @@ function normalizeGeneratedCard(card = {}) {
     ) {
       normalized.content = normalized.title.trim();
     }
+  }
+  if (normalizedType === "code" && isPlainObject(normalized.content) && !normalizeWhitespace(normalized.content.intro) && normalizeWhitespace(normalized.title)) {
+    normalized.content = {
+      ...normalized.content,
+      intro: normalizeWhitespace(normalized.title)
+    };
   }
   return normalized;
 }

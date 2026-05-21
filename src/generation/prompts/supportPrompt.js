@@ -8,7 +8,9 @@ export function buildSupportPrompt(packet, request = "") {
     "Explique apenas o pré-requisito necessário para retomar o ponto atual.",
     "Não replaneje a lição inteira.",
     "Não abra um escopo paralelo.",
-    "Termine com ponte explícita de retorno ao objetivo original da trilha."
+    "Devolva obrigatoriamente: title, goal, supportReason, summary e cards.",
+    "Os cards devem ser autossuficientes e terminar com ponte explícita de retorno ao objetivo original da trilha.",
+    "Prefira say e block_gap_fill; use table só quando ela realmente simplificar a explicação."
   ]
     .filter(Boolean)
     .join("\n");

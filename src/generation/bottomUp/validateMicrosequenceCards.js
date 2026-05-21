@@ -40,6 +40,19 @@ function normalizedForbiddenScanText(card = {}) {
       .join(" ");
     return [base, columns.map((item) => text(item)).filter(Boolean).join(" "), rowText].filter(Boolean).join(" ");
   }
+  if (text(card?.resourceType) === "graph" && card?.content && typeof card.content === "object") {
+    const vertices = Array.isArray(card.content?.vertices) ? card.content.vertices : [];
+    const edges = Array.isArray(card.content?.edges) ? card.content.edges : [];
+    const vertexText = vertices
+      .map((vertex) => [text(vertex?.id), text(vertex?.label)].filter(Boolean).join(" "))
+      .filter(Boolean)
+      .join(" ");
+    const edgeText = edges
+      .map((edge) => [text(edge?.from), text(edge?.to), text(edge?.label), text(edge?.weight)].filter(Boolean).join(" "))
+      .filter(Boolean)
+      .join(" ");
+    return [base, vertexText, edgeText].filter(Boolean).join(" ");
+  }
   return base;
 }
 
@@ -74,6 +87,12 @@ function requiresPractice(packet = {}, cardPlan = []) {
   return /\b(aplicar|resolver|construir|corrigir|comparar|classificar|executar|produzir|variation|construction|execution|classification|calculation|correction)\b/u.test(
     evidence
   );
+}
+
+function requiresDensePractice(packet = {}) {
+  const request = text(packet?.userRequest).toLowerCase();
+  return text(packet?.interactionMode) === "add_practice"
+    || /\b(bastante pratica|bastante prática|muita pratica|muita prática|mais pratica|mais prática|pratica variada|prática variada|exercicios|exercícios|treino guiado)\b/u.test(request);
 }
 
 function cardAccumulatesTooMuch(card = {}) {
@@ -130,7 +149,8 @@ export function validateBottomUpDidacticQuality(payload = {}, packet = {}, cardP
   const cards = Array.isArray(payload?.cards) ? payload.cards : [];
   const plannedByPosition = new Map((Array.isArray(cardPlan) ? cardPlan : []).map((item) => [Number(item?.position), item]));
   const expectedPractice = requiresPractice(packet, cardPlan);
-  const hasPractice = cards.some((card) => isPracticeRole(inferCardRole(card, plannedByPosition.get(Number(card?.position)))));
+  const practiceCards = cards.filter((card) => isPracticeRole(inferCardRole(card, plannedByPosition.get(Number(card?.position)))));
+  const hasPractice = practiceCards.length > 0;
 
   cards.forEach((card, index) => {
     const path = `$.cards[${index}]`;
@@ -160,6 +180,9 @@ export function validateBottomUpDidacticQuality(payload = {}, packet = {}, cardP
   }
   if (expectedPractice && !hasPractice) {
     issues.push(buildIssue("$.cards", "A evidência esperada exige aplicação; inclua prática autossuficiente."));
+  }
+  if (requiresDensePractice(packet) && practiceCards.length < 2) {
+    issues.push(buildIssue("$.cards", "O pedido exige mais prática básica; inclua ao menos 2 cards de prática autossuficiente."));
   }
   if (cards.length > 1 && !text(normalizedStringContent(cards[cards.length - 1]))) {
     issues.push(buildIssue("$.cards", "O último trecho deve reconectar a trilha ou consolidar o ponto atual.", "warning"));

@@ -215,6 +215,30 @@ test("aceita card graph com destaques e normaliza label ausente com id", () => {
   assert.deepEqual(card.graph.highlight.edges, [["B", "A"]]);
 });
 
+test("aceita label longa de graph normalizando quebras de linha e espaços", () => {
+  const result = validateContractDocument(
+    projectWithCards([
+      {
+        title: "Grafo com label longa",
+        graph: {
+          vertices: [{ id: "CPU" }, { id: "MEM" }],
+          edges: [
+            {
+              from: "CPU",
+              to: "MEM",
+              label: "Busca de instrução\n e leitura   de dados"
+            }
+          ]
+        }
+      }
+    ])
+  );
+
+  assert.equal(result.ok, true);
+  const edgeLabel = result.value.courses[0].modules[0].lessons[0].microsequences[0].cards[0].graph.edges[0].label;
+  assert.equal(edgeLabel, "Busca de instrução e leitura de dados");
+});
+
 test("rejeita graph com laço, mas aceita multiaresta quando o caso exigir", () => {
   const result = validateContractDocument(
     projectWithCards([

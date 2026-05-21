@@ -76,6 +76,13 @@ function uniqueList(values = []) {
   return [...new Set((Array.isArray(values) ? values : []).map((item) => text(item)).filter(Boolean))];
 }
 
+function normalizeToken(value) {
+  return text(value)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
 function clone(value) {
   return structuredClone(value);
 }
@@ -148,6 +155,34 @@ function summarizeBottomUpAttachments(attachments = []) {
       };
     })
     .filter(Boolean);
+}
+
+function resolveAllowedBottomUpResources({
+  lesson = {},
+  currentMicrosequence = {},
+  preferredContainerLabel = "",
+  selectedDidacticTypeId = ""
+} = {}) {
+  const base = ["say", "table", "code", "block_gap_fill"];
+  const normalizedSignals = [
+    text(preferredContainerLabel),
+    text(selectedDidacticTypeId),
+    text(currentMicrosequence?.representationNeed),
+    text(currentMicrosequence?.didacticKind),
+    text(currentMicrosequence?.goal),
+    text(currentMicrosequence?.title),
+    text(lesson?.title),
+    text(lesson?.goal),
+    text(lesson?.sourceGuide),
+    text(lesson?.sourceGuideStructured?.notationRules)
+  ]
+    .map((item) => normalizeToken(item))
+    .filter(Boolean)
+    .join(" ");
+  const explicitlyWantsGraph =
+    /\bgrafo|grafos|graph|vertice|vertices|aresta|arestas|adjacencia|incidencia|dijkstra|euler/.test(normalizedSignals)
+    || normalizeToken(preferredContainerLabel) === "grafo";
+  return explicitlyWantsGraph ? [...base, "graph"] : base;
 }
 
 function listScopeTermLabels(items = []) {
@@ -832,7 +867,12 @@ function buildBottomUpContextPacket(
           }
         }
       : {}),
-    allowedResources: ["say", "table", "code", "graph", "block_gap_fill"],
+    allowedResources: resolveAllowedBottomUpResources({
+      lesson,
+      currentMicrosequence: microsequence,
+      preferredContainerLabel,
+      selectedDidacticTypeId
+    }),
     density,
     ...(text(userRequest) ? { userRequest: text(userRequest) } : {})
   };
@@ -860,6 +900,44 @@ function validateSupportPayload(payload = {}) {
     supportReason,
     summary: baseValidation.value.summary,
     cards: baseValidation.value.cards
+  };
+}
+
+function buildDeterministicSupportPayload(packet = {}, request = "") {
+  const currentTitle = text(packet?.currentMicrosequence?.title) || "a etapa atual";
+  const currentGoal = text(packet?.currentMicrosequence?.goal) || "o objetivo atual";
+  const supportReason = text(request) || `Pré-requisito local para retomar ${currentTitle}.`;
+  const dependencyTitle =
+    text(packet?.neighborMicrosequences?.previous?.title)
+    || text(packet?.currentMicrosequence?.dependsOn?.[0]?.title)
+    || "a base imediatamente anterior";
+  return {
+    title: `Apoio local para ${currentTitle}`,
+    goal: `Explicar o pré-requisito mínimo necessário para retomar ${currentGoal}.`,
+    supportReason,
+    summary: `Microssequência de apoio curta para retomar ${currentTitle} sem abrir escopo paralelo.`,
+    cards: [
+      {
+        key: "support-card-1",
+        resourceType: "say",
+        content: `Antes de retomar ${currentTitle}, precisamos fixar um pré-requisito local conectado a ${dependencyTitle}.`
+      },
+      {
+        key: "support-card-2",
+        resourceType: "say",
+        content: `Foque no mínimo necessário: ${supportReason}. Explique isso sem abrir temas paralelos e mantendo a relação com ${currentGoal}.`
+      },
+      {
+        key: "support-card-3",
+        resourceType: "block_gap_fill",
+        content: `Complete a ideia central: este apoio existe para retomar [[${currentTitle}::${currentTitle}]].`
+      },
+      {
+        key: "support-card-4",
+        resourceType: "say",
+        content: `Com esse apoio local fechado, volte agora para ${currentTitle} e continue a trilha principal.`
+      }
+    ]
   };
 }
 
@@ -906,10 +984,12 @@ function buildFallbackCardPlan(packet = {}, interactionMode = "normal_generation
         ...(packet?.currentMicrosequence || {}),
         ...seed
       },
-      preferredContainerLabel: packet?.userFocus?.preferredContainerLabel
+      preferredContainerLabel: packet?.userFocus?.preferredContainerLabel,
+      userRequest: packet?.userRequest
     },
     {
       targetCount: Number(technicalBudget?.suggestedCardsPerCall) || 5,
+      interactionMode,
       allowedResourceTypes: Array.isArray(packet?.allowedResources) ? packet.allowedResources : ["say", "table", "code", "graph", "block_gap_fill"]
     }
   );
@@ -1098,6 +1178,7 @@ function buildBottomUpCorrectionPrompt(basePrompt = "", issues = []) {
     "CORRECOES OBRIGATORIAS:",
     ...normalizedIssues.map((issue) => `- ${issue}`),
     "- Se aparecer a orientação para dividir um card, separe teoria, exemplo e prática em cards distintos.",
+    "- Quando usar graph, table ou code, inclua content.intro curto e suficiente para o card fazer sentido sozinho.",
     "- Se um card for do tipo table, ele deve ter columns e pelo menos 1 linha com pelo menos 1 célula (rows não pode ser vazio).",
     "- Se o modelo estiver em dúvida sobre o formato, prefira say ou block_gap_fill em vez de table.",
     "- Reescreva a resposta inteira em JSON valido, sem comentários."
@@ -1180,6 +1261,45 @@ async function generateValidatedBottomUpPayload({
     return validation.value;
   }
   throw lastError || new Error("Falha ao validar a microssequência gerada.");
+}
+
+async function generateValidatedSupportPayload({
+  runtime,
+  modelId,
+  packet,
+  request = "",
+  density = "standard",
+  modelCapabilities = {}
+} = {}) {
+  const schema = buildSupportMicrosequenceSchema(density, { modelCapabilities });
+  const basePrompt = buildSupportPrompt(packet, request);
+  let prompt = basePrompt;
+  let lastError = null;
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    try {
+      const payload = await runtime.provider.generateStructured({
+        ...runtime.providerOptions,
+        modelId,
+        mode: "create-support",
+        system: buildBottomUpCompileSystemPrompt(),
+        prompt,
+        schema,
+        temperature: 0.2
+      });
+      return validateSupportPayload(payload);
+    } catch (error) {
+      lastError = error;
+      prompt = buildBottomUpCorrectionPrompt(basePrompt, [
+        error instanceof Error ? error.message : String(error),
+        "Devolva obrigatoriamente title, goal, supportReason, summary e cards.",
+        "O apoio deve ter pelo menos 4 cards e terminar com retorno explícito à trilha principal."
+      ]);
+    }
+  }
+  if (lastError) {
+    return validateSupportPayload(buildDeterministicSupportPayload(packet, request));
+  }
+  return validateSupportPayload(buildDeterministicSupportPayload(packet, request));
 }
 
 function applyCardsToCurrentMicrosequence(projectDocument = {}, selection = {}, payload = {}) {
@@ -1365,16 +1485,14 @@ export async function generateMicrosequenceProjectDocument({
   const technicalBudget = buildTechnicalCardBudget(density, modelCapabilities);
 
   if (interactionMode === "create_support") {
-    const payload = await runtime.provider.generateStructured({
-      ...runtime.providerOptions,
+    const validated = await generateValidatedSupportPayload({
+      runtime,
       modelId: runtime.modelId,
-      mode: "create-support",
-      system: buildBottomUpCompileSystemPrompt(),
-      prompt: buildSupportPrompt(packet, draft.promptText),
-      schema: buildSupportMicrosequenceSchema(density, { modelCapabilities }),
-      temperature: 0.3
+      packet,
+      request: draft.promptText,
+      density,
+      modelCapabilities
     });
-  const validated = validateSupportPayload(payload);
     const applied = applySupportMicrosequence(projectDocument, selection, validated);
     const targetMicrosequence = findMicrosequence(applied.projectDocument, applied.target);
     return {

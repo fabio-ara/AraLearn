@@ -663,11 +663,11 @@ function clampGraphCoordinate(value, fieldName) {
 }
 
 function normalizeGraphLabelValue(value, fieldName) {
-  const label = normalizeOptionalString(value, fieldName);
+  const label = normalizeOptionalString(value, fieldName).replace(/\s+/g, " ").trim();
   if (!label) {
     return "";
   }
-  if (containsMarkupSyntax(label) || label.length > 40) {
+  if (containsMarkupSyntax(label) || label.length > 120) {
     fail(`Campo opcional inválido: "${fieldName}".`);
   }
   return label;

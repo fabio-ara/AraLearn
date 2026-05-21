@@ -298,6 +298,120 @@ test("generateMicrosequenceProjectDocument cria suporte adjacente sem quebrar a 
   assert.equal(result.interventionFeedback.status, "completed");
 });
 
+test("generateMicrosequenceProjectDocument usa fallback determinístico quando o suporte vem incompleto", async () => {
+  const provider = createFakeProvider({
+    script: {
+      "create-support": {
+        title: "",
+        goal: "",
+        supportReason: "",
+        summary: "",
+        cards: []
+      }
+    }
+  });
+
+  const result = await generateMicrosequenceProjectDocument({
+    selection: {
+      courseKey: "course-a",
+      moduleKey: "module-a",
+      lessonKey: "lesson-a",
+      microsequenceKey: "micro-a"
+    },
+    draft: {
+      promptText: "Explique o pré-requisito local e depois volte.",
+      operationMode: "reinforce",
+      interventionTargetMode: "new_after_current"
+    },
+    assistConfig: {
+      model: "gemini-2.5-flash",
+      apiKey: "chave"
+    },
+    projectDocument: createProjectDocument(),
+    provider,
+    ingestAttachments: async () => ({ attachments: [], extractedCount: 0, warnings: [] })
+  });
+
+  const supported = result.projectDocument.courses[0].modules[0].lessons[0].microsequences[2];
+  assert.match(supported.title, /Apoio local para/);
+  assert.equal(supported.type, "support");
+  assert.equal(supported.cards.length, 4);
+  assert.match(supported.cards[3].say, /volte agora para/i);
+});
+
+test("generateMicrosequenceProjectDocument materializa intro textual para graph e table", async () => {
+  const provider = createFakeProvider({
+    script: {
+      "generate-microsequence": {
+        summary: "Versão inicial com estrutura visual.",
+        cards: [
+          {
+            key: "card-1",
+            position: 1,
+            resourceType: "graph",
+            content: {
+              vertices: [
+                { id: "CPU", label: "CPU" },
+                { id: "MEM", label: "Memória" }
+              ],
+              edges: [
+                { from: "MEM", to: "CPU", label: "Busca de instrução\n e leitura de dados" }
+              ]
+            }
+          },
+          {
+            key: "card-2",
+            position: 2,
+            resourceType: "table",
+            content: {
+              columns: ["Componente", "Função"],
+              rows: [["CPU", "Processa"], ["Memória", "Armazena temporariamente"]]
+            }
+          },
+          {
+            key: "card-3",
+            position: 3,
+            resourceType: "block_gap_fill",
+            content: "Complete: [[CPU::CPU|RAM]]."
+          },
+          {
+            key: "card-4",
+            position: 4,
+            resourceType: "say",
+            content: "Fechamento da etapa."
+          }
+        ]
+      }
+    }
+  });
+
+  const result = await generateMicrosequenceProjectDocument({
+    selection: {
+      courseKey: "course-a",
+      moduleKey: "module-a",
+      lessonKey: "lesson-a",
+      microsequenceKey: "micro-a"
+    },
+    draft: {
+      promptText: "Gere uma versão inicial muito didática com prática básica.",
+      operationMode: "reinforce",
+      interventionTargetMode: "current"
+    },
+    assistConfig: {
+      model: "gemini-2.5-flash",
+      apiKey: "chave"
+    },
+    projectDocument: createProjectDocument(),
+    provider,
+    ingestAttachments: async () => ({ attachments: [], extractedCount: 0, warnings: [] })
+  });
+
+  const cards = result.projectDocument.courses[0].modules[0].lessons[0].microsequences[1].cards;
+  assert.match(cards[0].say, /Relações:/);
+  assert.match(cards[1].say, /Colunas:/);
+  assert.equal(cards[0].graph.edges[0].label, "Busca de instrução e leitura de dados");
+});
+
 test("generateMicrosequenceProjectDocument devolve orientação de continuação quando o draft pede nova iteração", async () => {
   const provider = createFakeProvider({
     script: {
@@ -331,10 +445,12 @@ test("generateMicrosequenceProjectDocument devolve orientação de continuação
         };
       },
       "add-practice": {
-        summary: "Prática distribuída.",
+        summary: "Prática distribuída com variação.",
         cards: [
           { key: "card-1", position: 1, resourceType: "say", content: "Retomada local." },
-          { key: "card-2", position: 2, resourceType: "block_gap_fill", content: "Complete: [[echo ok::echo ok|echo no]]." }
+          { key: "card-2", position: 2, resourceType: "block_gap_fill", content: "Complete: [[echo ok::echo ok|echo no]]." },
+          { key: "card-3", position: 3, resourceType: "block_gap_fill", content: "Agora varie: [[echo yes::echo yes|echo no]]." },
+          { key: "card-4", position: 4, resourceType: "say", content: "Feche a variação e siga a trilha." }
         ]
       }
     }

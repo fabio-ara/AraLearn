@@ -70,6 +70,7 @@ export function buildBottomUpCompileSystemPrompt() {
     "Siga o didactic draft e o card plan.",
     "Mantenha cada card com função didática reconhecível.",
     "Não misture teoria, exemplo e prática no mesmo card: separe em cards curtos com uma função por vez.",
+    "Quando usar table, graph ou code, inclua content.intro curto e suficiente para o card fazer sentido sozinho.",
     "Coloque no próprio card o contexto necessário para responder às práticas.",
     "Use as dependências declaradas apenas quando o draft disser que elas são necessárias.",
     "Se um recurso planejado não couber, use fallback justificável sem mudar o objetivo didático.",
