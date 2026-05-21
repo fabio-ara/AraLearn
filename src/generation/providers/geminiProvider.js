@@ -26,6 +26,18 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function createAbortController(timeoutMs) {
+  if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) {
+    return { controller: null, cancel: () => {} };
+  }
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  return {
+    controller,
+    cancel: () => clearTimeout(timer)
+  };
+}
+
 function shouldRetryGemini(error) {
   if (!(error instanceof ProviderHttpError)) {
     return false;
@@ -57,6 +69,18 @@ function resolveGeminiMaxRetryDelayMs(request = {}) {
     return envValue;
   }
   return 60000;
+}
+
+function resolveGeminiTimeoutMs(request = {}) {
+  const value = Number(request?.timeoutMs);
+  if (Number.isFinite(value) && value > 0) {
+    return value;
+  }
+  const envValue = Number(process?.env?.GEMINI_TIMEOUT_MS);
+  if (Number.isFinite(envValue) && envValue > 0) {
+    return envValue;
+  }
+  return 45000;
 }
 
 function shouldFallbackGeminiSchema(error) {
@@ -126,34 +150,49 @@ export function createGeminiProvider({ apiKey = "", apiKeys = [] } = {}) {
       let apiKeyIndex = 0;
       const maxAttempts = Number.isFinite(request.maxAttempts) ? Number(request.maxAttempts) : 12;
       const maxRetryDelayMs = resolveGeminiMaxRetryDelayMs(request);
+      const timeoutMs = resolveGeminiTimeoutMs(request);
       for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
         const safeApiKey = apiKeyCandidates[apiKeyIndex];
-        const response = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(modelId)}:generateContent`,
-          {
-            method: "POST",
-            headers: {
-              "content-type": "application/json",
-              "x-goog-api-key": safeApiKey
-            },
-            body: JSON.stringify({
-              systemInstruction: {
-                parts: [{ text: text(request.system) || "Responda somente JSON válido." }]
+        const { controller, cancel } = createAbortController(timeoutMs);
+        let response;
+        try {
+          response = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(modelId)}:generateContent`,
+            {
+              method: "POST",
+              headers: {
+                "content-type": "application/json",
+                "x-goog-api-key": safeApiKey
               },
-              contents: [
-                {
-                  role: "user",
-                  parts: [{ text: text(request.prompt) }]
+              signal: controller?.signal,
+              body: JSON.stringify({
+                systemInstruction: {
+                  parts: [{ text: text(request.system) || "Responda somente JSON válido." }]
+                },
+                contents: [
+                  {
+                    role: "user",
+                    parts: [{ text: text(request.prompt) }]
+                  }
+                ],
+                generationConfig: {
+                  temperature: typeof request.temperature === "number" ? request.temperature : 0.2,
+                  responseMimeType: "application/json",
+                  ...(useResponseSchema && request.schema ? { responseJsonSchema: request.schema } : {})
                 }
-              ],
-              generationConfig: {
-                temperature: typeof request.temperature === "number" ? request.temperature : 0.2,
-                responseMimeType: "application/json",
-                ...(useResponseSchema && request.schema ? { responseJsonSchema: request.schema } : {})
-              }
-            })
+              })
+            }
+          );
+        } catch (error) {
+          cancel();
+          if (error?.name === "AbortError") {
+            const timeoutError = new Error(`Gemini request timed out after ${timeoutMs}ms.`);
+            timeoutError.name = "AbortError";
+            throw timeoutError;
           }
-        );
+          throw error;
+        }
+        cancel();
         const data = await response.json().catch(() => null);
         if (response.ok) {
           const rawText = (data?.candidates?.[0]?.content?.parts || [])

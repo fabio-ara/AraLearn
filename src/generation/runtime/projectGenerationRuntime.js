@@ -1495,10 +1495,15 @@ function buildFallbackCardPlan(packet = {}, interactionMode = "normal_generation
     }
   );
   const practiceRoles = new Set(["active_practice", "analogous_practice", "cumulative_review", "correction"]);
+  const canonicalRoute = text(packet?.canonicalRoute);
   const asksPractice = /\b(pratica|prática|exercicio|exercício|exercicios|exercícios|treino)\b/u.test(text(packet?.userRequest).toLowerCase())
     || text(interactionMode) === "add_practice"
-    || text(interactionMode) === "repair";
+    || text(interactionMode) === "repair"
+    || canonicalRoute === "generate_planned_next";
   const practiceCount = plan.filter((item) => practiceRoles.has(text(item?.role))).length;
+  const theoryIndexes = plan
+    .map((item, index) => ({ role: text(item?.role), index }))
+    .filter((item) => item.role === "microtheory" || item.role === "guided_example" || item.role === "example_reading");
   if (asksPractice && practiceCount < 2) {
     const insertAt = Math.max(1, plan.length - 1);
     const extraPractice = {
@@ -1516,9 +1521,21 @@ function buildFallbackCardPlan(packet = {}, interactionMode = "normal_generation
       const replaceAt = Math.max(1, plan.length - 2);
       plan[replaceAt] = extraPractice;
     }
-    return plan.map((item, index) => ({ ...item, position: index + 1 }));
   }
-  return plan;
+  const normalizedPlan = plan.map((item, index) => ({ ...item, position: index + 1 }));
+  const normalizedPracticeCount = normalizedPlan.filter((item) => practiceRoles.has(text(item?.role))).length;
+  if (canonicalRoute === "generate_planned_next" && normalizedPracticeCount < 2 && theoryIndexes.length >= 2) {
+    const replaceIndex = theoryIndexes[theoryIndexes.length - 1].index;
+    normalizedPlan[replaceIndex] = {
+      ...normalizedPlan[replaceIndex],
+      position: replaceIndex + 1,
+      role: "analogous_practice",
+      resourceType: normalizedPlan.some((step) => text(step?.resourceType) === "block_gap_fill") ? "table" : "block_gap_fill",
+      purpose: "consolidar a etapa planejada com segunda prática guiada",
+      expectedEvidence: uniqueList(packet?.currentMicrosequence?.expectedEvidence)
+    };
+  }
+  return normalizedPlan.map((item, index) => ({ ...item, position: index + 1 }));
 }
 
 function inferContinuationFromFallbackPlan(fallbackCardPlan = [], interactionMode = "normal_generation") {
@@ -1586,7 +1603,9 @@ function ensureMinimumPracticeStepsForMode(steps = [], packet = {}, interactionM
   const normalizedSteps = Array.isArray(steps) ? steps : [];
   const practiceRoles = new Set(["active_practice", "analogous_practice", "cumulative_review", "correction"]);
   const request = text(packet?.userRequest).toLowerCase();
+  const canonicalRoute = text(packet?.canonicalRoute);
   const needsExtraPractice = text(interactionMode) === "repair"
+    || canonicalRoute === "generate_planned_next"
     || /\b(mais pratica|mais prática|exercicios|exercícios|treino guiado)\b/u.test(request);
   const practiceCount = normalizedSteps.filter((step) => practiceRoles.has(text(step?.role))).length;
   if (!needsExtraPractice || practiceCount >= 2) {
@@ -1793,6 +1812,12 @@ function buildBottomUpCorrectionPrompt(basePrompt = "", issues = [], packet = {}
   ].filter(Boolean).join("\n");
 }
 
+function isTimeoutLikeError(error) {
+  const message = text(error?.message).toLowerCase();
+  const name = text(error?.name).toLowerCase();
+  return name === "aborterror" || /\btimeout\b|\btimed out\b|\babort/.test(message);
+}
+
 async function generateDidacticDraft({
   runtime,
   modelId,
@@ -1871,6 +1896,9 @@ async function generateValidatedBottomUpPayload({
       return validation.value;
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error));
+      if (isTimeoutLikeError(lastError)) {
+        break;
+      }
       prompt = buildBottomUpCorrectionPrompt(basePrompt, [lastError.message], packet);
     }
   }
@@ -1915,6 +1943,9 @@ async function generateValidatedSupportPayload({
       return validateSupportPayload(payload, { packet, density, modelCapabilities });
     } catch (error) {
       lastError = error;
+      if (isTimeoutLikeError(lastError)) {
+        break;
+      }
       prompt = buildBottomUpCorrectionPrompt(basePrompt, [
         error instanceof Error ? error.message : String(error),
         "Devolva obrigatoriamente title, goal, supportReason, didacticKind, practiceMode, representationNeed, dependencyPolicy, expectedEvidence, summary e cards.",

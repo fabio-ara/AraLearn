@@ -217,3 +217,30 @@ test("provider Gemini não espera janelas longas de retry por cota", async (t) =
   );
   assert.equal(calls.length, 1);
 });
+
+test("provider Gemini aborta chamada lenta com timeout configurado", async (t) => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (_url, options) =>
+    new Promise((_resolve, reject) => {
+      options.signal.addEventListener("abort", () => {
+        const error = new Error("aborted");
+        error.name = "AbortError";
+        reject(error);
+      });
+    });
+  t.after(() => {
+    globalThis.fetch = originalFetch;
+  });
+
+  const provider = createGeminiProvider({ apiKey: "chave" });
+
+  await assert.rejects(
+    () => provider.generateStructured({
+      modelId: "gemini-2.5-flash",
+      system: "Responda somente JSON válido.",
+      prompt: "Teste.",
+      timeoutMs: 10
+    }),
+    /timed out/i
+  );
+});

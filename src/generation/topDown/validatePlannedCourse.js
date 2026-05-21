@@ -146,6 +146,9 @@ export function validatePlannedCourse(plannedCourse, scopeContract) {
       const fallbackLessonInclude = derivedLessonInclude.length
         ? derivedLessonInclude.join(", ")
         : (includeEntries[0]?.label || "");
+      const fallbackOutOfScopeRules = excludeLabels.length
+        ? (scopeModule?.exclude || []).map((item) => normalizeWhitespace(item)).filter(Boolean).join(", ")
+        : "";
 
       let lessonGuideInclude = normalizeWhitespace(lessonGuide?.notationRules);
       const lessonGuidePitfall = normalizeWhitespace(lessonGuide?.commonErrors);
@@ -168,6 +171,12 @@ export function validatePlannedCourse(plannedCourse, scopeContract) {
           lesson.sourceGuideStructured.notationRules = fallbackLessonInclude;
           lessonGuideInclude = normalizeWhitespace(fallbackLessonInclude);
         }
+      }
+      if ((!normalizeWhitespace(lessonGuide?.outOfScopeRules) || fallbackOutOfScopeRules) && fallbackOutOfScopeRules) {
+        if (!lesson.sourceGuideStructured || typeof lesson.sourceGuideStructured !== "object") {
+          lesson.sourceGuideStructured = {};
+        }
+        lesson.sourceGuideStructured.outOfScopeRules = fallbackOutOfScopeRules;
       }
       if (!lessonGuideInclude) {
         pushError(errors, `${lessonPath}.sourceGuideStructured.notationRules`, 'Lição planejada sem campo "Incluir".');

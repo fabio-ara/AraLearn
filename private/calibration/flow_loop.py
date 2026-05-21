@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import subprocess
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -10,6 +11,7 @@ from typing import Any
 
 from calibration_common import REPO_ROOT, run_command
 from autocalibration_common import (
+    build_runtime_env,
     collect_secret_values,
     load_local_config,
     run_codex_exec_patch,
@@ -203,6 +205,8 @@ def summarize_stop_reason(
 ) -> str:
     if probe_report.get("stopReason") == "quota_exhausted":
         return "quota_exhausted"
+    if probe_report.get("stopReason") == "timeout":
+        return "timeout"
     if validation_results is not None and any(not item.get("ok") for item in validation_results):
         return "validation_failed"
     if probe_report.get("stopReason") == "completed":
@@ -265,7 +269,7 @@ def main() -> int:
     cache_root.mkdir(parents=True, exist_ok=True)
 
     config = load_local_config()
-    env = os.environ.copy()
+    env = build_runtime_env(config)
     secret_values = collect_secret_values(config=config, runtime_env=env)
     command_text = " ".join(
         [
@@ -274,6 +278,7 @@ def main() -> int:
             f"--provider {args.provider}",
             f"--auto-fix {str(auto_fix_enabled).lower()}",
             f"--max-cycles {args.max_cycles}",
+            f"--real-budget {args.real_budget}",
         ]
     )
 
@@ -293,14 +298,47 @@ def main() -> int:
     for cycle in range(1, max(1, args.max_cycles) + 1):
         cycle_dir = report_dir / f"cycle-{cycle:02d}"
         cycle_dir.mkdir(parents=True, exist_ok=True)
-        probe_report, probe_command = run_probe(
-            provider=args.provider,
-            report_dir=cycle_dir,
-            cache_root=cache_root,
-            real_budget=real_budget,
-            timeout_seconds=probe_timeout,
-            env=env,
-        )
+        try:
+            probe_report, probe_command = run_probe(
+                provider=args.provider,
+                report_dir=cycle_dir,
+                cache_root=cache_root,
+                real_budget=real_budget,
+                timeout_seconds=probe_timeout,
+                env=env,
+            )
+        except subprocess.TimeoutExpired as error:
+            probe_report = {
+                "completedStages": [],
+                "firstFailure": {
+                    "stageId": "probe",
+                    "route": args.provider,
+                    "error": f"Timeout after {probe_timeout} seconds.",
+                    "fileHint": str(PROBE_PATH),
+                    "expected": {"timeoutSeconds": probe_timeout},
+                    "received": {"timeoutSeconds": probe_timeout, "command": list(error.cmd or [])},
+                    "evidence": "Probe real excedeu o orçamento de tempo.",
+                    "fixArea": "runtime_context",
+                    "testCommand": "npm run harness:bottom-up",
+                    "pedagogicalConstraints": [
+                        "Preservar a trilha top-down como linha principal.",
+                        "Não introduzir assunto fora de include/dependências.",
+                        "Não condensar artificialmente a didática.",
+                        "Manter o contrato público válido.",
+                    ],
+                },
+                "stopReason": "timeout",
+                "usage": {"mode": "real_or_cache", "realCalls": 0, "cacheHits": 0, "callLog": []},
+            }
+            probe_command = {
+                "label": "flow_probe",
+                "command": list(error.cmd or []),
+                "exit_code": "",
+                "ok": False,
+                "stdout": error.output if isinstance(error.output, str) else "",
+                "stderr": error.stderr if isinstance(error.stderr, str) else "",
+                "timeout_seconds": probe_timeout,
+            }
         write_json(cycle_dir / "probe-command.json", sanitize_payload(probe_command, secret_values))
         if probe_report.get("stopReason") == "completed":
             break

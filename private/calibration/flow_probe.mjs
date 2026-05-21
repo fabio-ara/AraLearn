@@ -42,6 +42,13 @@ function writeJsonIfNeeded(filePath, payload) {
   fs.writeFileSync(filePath, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
 }
 
+function updateProgress(reportDir, payload = {}) {
+  writeJsonIfNeeded(path.join(reportDir, "progress.json"), {
+    updatedAt: new Date().toISOString(),
+    ...payload
+  });
+}
+
 function isUsageLimitError(error) {
   const message = error instanceof Error ? error.message : String(error);
   return /usage limit|purchase more credits|try again at|quota exceeded|free[_-]?tier|rate[-\s]?limit/i.test(message);
@@ -813,10 +820,12 @@ function buildFailure(stageId, route, failureSource = {}, extra = {}) {
 }
 
 async function runStage({ stageId, route, reportDir, action, evaluate }) {
+  updateProgress(reportDir, { stageId, route, phase: "running" });
   const result = await action();
   const evaluation = evaluate(result);
   writeJsonIfNeeded(path.join(reportDir, `${stageId}.result.json`), result);
   writeJsonIfNeeded(path.join(reportDir, `${stageId}.evaluation.json`), evaluation);
+  updateProgress(reportDir, { stageId, route, phase: "completed" });
   return { result, evaluation };
 }
 
@@ -843,6 +852,7 @@ async function main() {
 
   try {
     const seedProject = buildSeedProjectDocument();
+    updateProgress(reportDir, { stageId: "top_down", route: "top_down", phase: "starting" });
     const topDownRuntime = buildProviderWrapper({
       providerId,
       route: "top_down",
@@ -1039,6 +1049,7 @@ async function main() {
 
       for (const stage of stages) {
         try {
+          updateProgress(reportDir, { stageId: stage.stageId, route: stage.route, phase: "starting" });
           const context = stage.getContext(previousStage, previousBase);
           const stageResult = await runStage({
             stageId: stage.stageId,

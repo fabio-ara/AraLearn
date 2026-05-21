@@ -93,7 +93,7 @@ test("top-down gera microssequências planned sem cards", async () => {
   assert.equal(practiceMicrosequence.dependencyPolicy, "uses_previous");
   assert.equal(practiceMicrosequence.coverageRole, "practice");
   assert.deepEqual(practiceMicrosequence.expectedEvidence, ["montar as quatro linhas", "ler a coluna final"]);
-  assert.equal(lessonGuide.outOfScopeRules, undefined);
+  assert.equal(lessonGuide.outOfScopeRules, "lógica de predicados");
 });
 
 test("top-down rejeita cards e dependência futura", () => {
@@ -241,7 +241,7 @@ test("prompt top-down proíbe usar itens excluídos como contraste negativo", ()
   assert.match(prompt, /mecanismos avançados fora do escopo imediato/i);
 });
 
-test("top-down não repopula outOfScopeRules com a lista literal de exclude", () => {
+test("top-down repopula outOfScopeRules com a lista literal de exclude", () => {
   const validation = validatePlannedCourse(
     {
       course: {
@@ -282,5 +282,5 @@ test("top-down não repopula outOfScopeRules com a lista literal de exclude", ()
   );
 
   assert.equal(validation.ok, true);
-  assert.equal(validation.value.course.modules[0].lessons[0].sourceGuideStructured.outOfScopeRules, undefined);
+  assert.equal(validation.value.course.modules[0].lessons[0].sourceGuideStructured.outOfScopeRules, "lógica de predicados");
 });
