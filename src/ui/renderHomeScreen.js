@@ -242,10 +242,10 @@ function renderStructureVersionTabs({ tabs = [], activeVersionId = "", emptyLabe
 
 function renderGenerateIconLabel(iconName, label) {
   return (
-    '<span class="generate-icon-label" aria-hidden="true" title="' +
+    '<span class="generate-icon-label workbench-inline-icon" aria-hidden="true" title="' +
     escapeHtml(label) +
     '">' +
-    renderUiIcon(iconName, "generate-field-icon") +
+    renderUiIcon(iconName, "generate-field-icon workbench-inline-icon-svg") +
     "</span>"
   );
 }
@@ -431,7 +431,7 @@ function renderGeneratePane({ project, editorSupport, includeDismissActions = fa
     (includeDismissActions
       ? '<header class="generation-overlay-header">' +
         '<div class="generation-overlay-heading">' +
-        '<h2 class="card-title">' +
+        '<h2 class="card-title generation-overlay-title">' +
         escapeHtml(generationUiState.panelTitle || "Gerar estrutura") +
         "</h2>" +
         "</div>" +
@@ -441,7 +441,7 @@ function renderGeneratePane({ project, editorSupport, includeDismissActions = fa
         "</div></header>"
       : "") +
     '<div class="generate-main-stack">' +
-    '<section class="microsequence-assist-panel assist-simple-panel">' +
+    '<section class="microsequence-assist-panel assist-simple-panel generate-plain-section">' +
     renderGenerateSectionTitle("Destino da árvore") +
     renderGenerateInputField({
       field: "generate-course-input",
@@ -502,7 +502,7 @@ function renderGeneratePane({ project, editorSupport, includeDismissActions = fa
       : "") +
     "</section>" +
     '<div class="generate-divider"></div>' +
-    '<section class="microsequence-assist-panel assist-simple-panel">' +
+    '<section class="microsequence-assist-panel assist-simple-panel generate-plain-section">' +
     renderGenerateSectionTitle("Escopo do módulo") +
     '<div class="workbench-tag-layout">' +
     '<div class="workbench-form-row workbench-tag-picker-row">' +
@@ -525,11 +525,11 @@ function renderGeneratePane({ project, editorSupport, includeDismissActions = fa
     excludeTopicChips +
     "</div></div></section>" +
     '<div class="generate-divider"></div>' +
-    '<div class="field generate-prompt-field">' +
+    '<div class="field generate-prompt-field workbench-prompt-field">' +
     '<div class="generate-prompt-layout">' +
     '<div class="generate-prompt-tools">' +
     renderGenerateIconLabel("prompt", "Pedido, conteúdo ou orientação") +
-    renderGenerateIconButton("clear-prompt", "Limpar prompt", "↻") +
+    renderGenerateIconButton("clear-prompt", "Limpar prompt", "↻", false, " workbench-inline-reset") +
     "</div>" +
     '<div class="generate-prompt-content">' +
     '<textarea data-field="generate-prompt" aria-label="Pedido, conteúdo ou orientação" title="Pedido, conteúdo ou orientação" placeholder="Descreva o que você quer gerar neste escopo.">' +
@@ -551,8 +551,8 @@ function renderGeneratePane({ project, editorSupport, includeDismissActions = fa
     ) +
     "</span>" +
     "</div></div>" +
-    '<div class="generate-action-row">' +
-    '<label class="field generate-icon-field generate-model-field">' +
+    '<div class="generate-action-row assist-actions assist-actions-wide assist-request-actions">' +
+    '<label class="field generate-icon-field generate-model-field workbench-select-field">' +
     renderGenerateIconLabel("intent", "Modelo") +
     '<select data-field="assist-model" aria-label="Modelo" title="Modelo">' +
     modelOptions +
