@@ -11,6 +11,58 @@ A IA pode ajudar em dois momentos:
 
 Ela não deve receber liberdade para reescrever o projeto inteiro em toda operação. Também não deve substituir a decisão do usuário sobre escopo, aceite e revisão.
 
+## O que faz cada motor
+
+### Top-down
+
+O top-down é o motor de planejamento.
+
+Ele recebe:
+
+- o contrato de escopo do curso;
+- o que entra e o que não entra em cada módulo;
+- observações de cobrança, foco e contexto;
+- a árvore já existente, quando o usuário está complementando algo.
+
+Ele produz:
+
+- módulos, lições e microssequências;
+- progressão entre etapas;
+- dependências locais entre microssequências;
+- fonte-guia mínima por lição;
+- metadados didáticos opcionais por microssequência.
+
+O que esperar do resultado:
+
+- uma trilha organizada e progressiva;
+- escopo preservado;
+- nenhuma geração de cards nesta fase.
+
+### Bottom-up
+
+O bottom-up é o motor de materialização local.
+
+Ele recebe:
+
+- a microssequência atual;
+- dependências declaradas;
+- posição na trilha;
+- fonte-guia da lição;
+- pedido local do usuário;
+- anexos aproveitáveis, quando houver.
+
+Ele produz:
+
+1. um `didactic draft` intermediário com etapas, papéis didáticos, recursos sugeridos e evidências esperadas;
+2. o JSON final de cards no formato consumido pelo frontend.
+
+O que esperar do resultado:
+
+- uma única microssequência materializada ou retrabalhada;
+- cards com progressão interna clara;
+- prática autossuficiente quando a etapa exige aplicação;
+- aderência à trilha, sem replanejar a lição inteira.
+
 ## Planejamento estrutural
 
 No planejamento estrutural, a IA recebe `aralearn.scope.v1`.
