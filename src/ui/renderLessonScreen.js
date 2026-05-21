@@ -1220,7 +1220,7 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
     '<section class="study-reader-context">' +
     '<div class="study-reader-line">' +
     '<span class="study-reader-context-line study-reader-course-title">' +
-    escapeHtml(course?.title || course?.key || "Curso") +
+    escapeHtml(visualizedTitle || microsequence?.title || "Microssequência") +
     "</span></div>" +
     '<div class="study-reader-progress"><span style="width:' +
     String(cardProgressPercent) +
@@ -1375,7 +1375,7 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
   return (
     '<section class="screen microsequence-workbench-screen">' +
     renderTopbar({
-      title: microsequence?.title || "Microssequência",
+      title: course?.title || course?.key || "Curso",
       canGoBack: true,
       backTitle: "Voltar para a lição",
       actions: [
