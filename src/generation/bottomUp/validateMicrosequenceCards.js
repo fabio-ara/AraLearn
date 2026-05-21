@@ -74,6 +74,11 @@ function isPracticeRole(role = "") {
   return ["active_practice", "analogous_practice", "cumulative_review", "correction"].includes(text(role));
 }
 
+function cardLooksLikePractice(card = {}) {
+  const source = normalizeToken(normalizedForbiddenScanText(card));
+  return /\b(complete|preencha|classifique|associe|corrija|responda|escolha)\b/u.test(source) || /_{2,}|\[\[/.test(source);
+}
+
 function requiresPractice(packet = {}, cardPlan = []) {
   if (text(packet?.interactionMode) === "answer_local_doubt" && !requiresDensePractice(packet)) {
     return false;
@@ -152,11 +157,46 @@ function includesForbiddenTerm(sourceText, forbiddenTerms = []) {
 }
 
 function hasTemplateArtifact(card = {}) {
+  const rawTitle = text(card?.title);
+  const rawSource = [rawTitle, normalizedForbiddenScanText(card)].filter(Boolean).join(" ");
+  const source = normalizeToken(rawSource);
+  const titleSource = normalizeToken(rawTitle);
+  const repeatedGapMarkup = rawSource.match(/\[\[([^:\]|]+)::([^\]]+)\]\]/gu);
+  const hasRepeatedGapMarkup = (repeatedGapMarkup || []).some((match) => {
+    const [, answer = "", optionsText = ""] = match.match(/\[\[([^:\]|]+)::([^\]]+)\]\]/u) || [];
+    const options = optionsText.split("|").map((item) => normalizeToken(item)).filter(Boolean);
+    const normalizedAnswer = normalizeToken(answer);
+    return options.length > 1 && options.every((option) => option === normalizedAnswer);
+  });
+  if (hasRepeatedGapMarkup) {
+    return true;
+  }
+  return /\b(outro elemento|um detalhe lateral|nesta etapa,\s*explicar que|pedir que o estudante|comparar os elementos minimos|compare os elementos minimos)\b/u.test(source)
+    || /\b(explicar|mostrar|pedir|variar|retomar|consolidar)\b.{0,80}\b(microssequencia|acao observavel|pratica|aluno|estudante)\b/u.test(titleSource);
+}
+
+function tablePracticeHasConcreteAction(card = {}) {
+  if (text(card?.resourceType) !== "table") {
+    return true;
+  }
+  const content = card?.content && typeof card.content === "object" ? card.content : {};
+  const source = normalizeToken(normalizedForbiddenScanText(card));
+  const rows = Array.isArray(content?.rows) ? content.rows : [];
+  if (/\buse a tabela para conferir a funcao local\b/u.test(source)) {
+    return false;
+  }
+  return rows.length > 0;
+}
+
+function hasReadyStudentText(card = {}) {
   const source = normalizeToken([
     text(card?.title),
     normalizedForbiddenScanText(card)
   ].filter(Boolean).join(" "));
-  return /\b(outro elemento|um detalhe lateral|nesta etapa,\s*explicar que|pedir que o estudante|comparar os elementos minimos|compare os elementos minimos)\b/u.test(source);
+  if (!source) {
+    return false;
+  }
+  return !/\b(use a tabela para conferir a funcao local de)\b/u.test(source);
 }
 
 function buildIssue(path, message, severity = "error") {
@@ -168,12 +208,15 @@ export function validateBottomUpDidacticQuality(payload = {}, packet = {}, cardP
   const cards = Array.isArray(payload?.cards) ? payload.cards : [];
   const plannedByPosition = new Map((Array.isArray(cardPlan) ? cardPlan : []).map((item) => [Number(item?.position), item]));
   const expectedPractice = requiresPractice(packet, cardPlan);
-  const practiceCards = cards.filter((card) => isPracticeRole(inferCardRole(card, plannedByPosition.get(Number(card?.position)))));
+  const practiceCards = cards.filter((card, index) => {
+    const planned = plannedByPosition.get(Number(card?.position) || index + 1);
+    return isPracticeRole(inferCardRole(card, planned)) || cardLooksLikePractice(card);
+  });
   const hasPractice = practiceCards.length > 0;
 
   cards.forEach((card, index) => {
     const path = `$.cards[${index}]`;
-    const planned = plannedByPosition.get(Number(card?.position));
+    const planned = plannedByPosition.get(Number(card?.position) || index + 1);
     const role = inferCardRole(card, planned);
     if (!role) {
       issues.push(buildIssue(path, "Cada card precisa ter função didática reconhecível."));
@@ -188,14 +231,20 @@ export function validateBottomUpDidacticQuality(payload = {}, packet = {}, cardP
     if (isPracticeRole(role) && !practiceHasLocalContext(card)) {
       issues.push(buildIssue(path, "A prática precisa carregar os dados necessários para resposta."));
     }
+    if (isPracticeRole(role) && !tablePracticeHasConcreteAction(card)) {
+      issues.push(buildIssue(path, "A prática em tabela precisa ter enunciado direto, lacuna ou alvo observável e dados verificáveis."));
+    }
     if (mentionsVolatileMissingContext(card)) {
       issues.push(buildIssue(path, "A sequência depende de contexto volátil ausente dentro do próprio card."));
     }
     if (hasTemplateArtifact(card)) {
       issues.push(buildIssue(path, "Remova artefatos de template e escreva material final pronto para o aluno."));
     }
+    if (!hasReadyStudentText(card)) {
+      issues.push(buildIssue(path, "Escreva texto didático final no próprio card, não uma rubrica genérica."));
+    }
     if (planned?.resourceType && text(card?.resourceType) !== text(planned.resourceType)) {
-      issues.push(buildIssue(path, "O recurso planejado não foi usado e não há fallback justificável."));
+      issues.push(buildIssue(path, "O recurso planejado não foi usado e não há fallback justificável.", "warning"));
     }
   });
 

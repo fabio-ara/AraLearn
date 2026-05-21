@@ -137,7 +137,7 @@ export function buildSupportMicrosequenceSchema(density = "standard", options = 
       summary: { type: "string" },
       cards: {
         type: "array",
-        minItems: budget.minCardsPerCall,
+        minItems: Math.max(4, budget.minCardsPerCall),
         maxItems: budget.maxCardsPerCall,
         items: cardSchema
       }

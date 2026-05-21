@@ -47,6 +47,18 @@ function readGeminiRetryDelayMs(error) {
   return 1000;
 }
 
+function resolveGeminiMaxRetryDelayMs(request = {}) {
+  const value = Number(request?.maxRetryDelayMs);
+  if (Number.isFinite(value) && value > 0) {
+    return value;
+  }
+  const envValue = Number(process?.env?.GEMINI_MAX_RETRY_DELAY_MS);
+  if (Number.isFinite(envValue) && envValue > 0) {
+    return envValue;
+  }
+  return 60000;
+}
+
 function shouldFallbackGeminiSchema(error) {
   if (!(error instanceof ProviderHttpError) || Number(error.statusCode) !== 400) {
     return false;
@@ -113,6 +125,7 @@ export function createGeminiProvider({ apiKey = "", apiKeys = [] } = {}) {
       let useResponseSchema = Boolean(request.schema);
       let apiKeyIndex = 0;
       const maxAttempts = Number.isFinite(request.maxAttempts) ? Number(request.maxAttempts) : 12;
+      const maxRetryDelayMs = resolveGeminiMaxRetryDelayMs(request);
       for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
         const safeApiKey = apiKeyCandidates[apiKeyIndex];
         const response = await fetch(
@@ -169,7 +182,11 @@ export function createGeminiProvider({ apiKey = "", apiKeys = [] } = {}) {
         if (!shouldRetryGemini(lastError) || attempt === maxAttempts - 1) {
           throw lastError;
         }
-        await sleep(Math.max(readGeminiRetryDelayMs(lastError), 1000 * (attempt + 1)));
+        const retryDelayMs = Math.max(readGeminiRetryDelayMs(lastError), 1000 * (attempt + 1));
+        if (retryDelayMs > maxRetryDelayMs) {
+          throw lastError;
+        }
+        await sleep(retryDelayMs);
       }
       throw lastError || new Error("Falha inesperada ao consultar o Gemini.");
     }

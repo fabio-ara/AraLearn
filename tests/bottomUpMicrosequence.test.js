@@ -188,16 +188,49 @@ test("validador bottom-up rejeita artefatos de template em material final", () =
       {
         key: "card-1",
         resourceType: "say",
+        title: "Pedir uma ação observável",
         content: "Pedir que o estudante complete frases curtas antes de seguir."
       },
       {
         key: "card-2",
         resourceType: "block_gap_fill",
-        content: "Complete: nesta etapa, [[PC::PC|outro elemento]]."
+        content: "Complete: nesta etapa, [[PC::PC|PC]]."
       }
     ]
   });
 
   assert.equal(result.ok, false);
   assert.match(result.errors.map((error) => error.message).join("\n"), /artefatos de template/);
+});
+
+test("validador bottom-up rejeita prática em tabela sem alvo verificável", () => {
+  const result = validateMicrosequenceCards({
+    summary: "Versão com tabela vaga.",
+    cards: [
+      {
+        key: "card-1",
+        position: 1,
+        resourceType: "say",
+        content: "A memória guarda a instrução antes de ela ser usada pela CPU."
+      },
+      {
+        key: "card-2",
+        position: 2,
+        resourceType: "table",
+        content: {
+          intro: "Use a tabela para conferir a função local antes de seguir.",
+          columns: ["Elemento", "Papel"],
+          rows: [["Memória", "Guarda instruções"]]
+        }
+      }
+    ]
+  }, "standard", {
+    cardPlan: [
+      { position: 1, role: "microtheory", resourceType: "say" },
+      { position: 2, role: "active_practice", resourceType: "table" }
+    ]
+  });
+
+  assert.equal(result.ok, false);
+  assert.match(result.errors.map((error) => error.message).join("\n"), /prática em tabela precisa/i);
 });

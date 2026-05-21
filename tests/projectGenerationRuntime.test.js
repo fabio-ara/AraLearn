@@ -726,8 +726,9 @@ test("generateMicrosequenceProjectDocument usa fallback determinístico quando a
   assert.equal(compileCalls, 5);
   assert.equal(result.interventionFeedback.status, "completed");
   assert.equal(cards.length, 3);
-  assert.match(cards[0].say, /Leia essa ideia como o foco local/i);
-  assert.match(cards[1].say, /\[\[/);
+  assert.match(cards[0].say, /Antes de praticar/i);
+  assert.match(cards[1].say, /Complete:/i);
+  assert.doesNotMatch(cards[1].say, /\[\[/);
   assert.doesNotMatch(cards.map((card) => card.say || "").join("\n"), /outro elemento|um detalhe lateral|Compare os elementos mínimos/i);
   assert.match(cards[2].say, /trilha principal/i);
 });
@@ -1019,6 +1020,40 @@ test("generateMicrosequenceProjectDocument preenche a próxima microssequência 
   assert.match(lesson.microsequences[2].cards[0].say, /próxima etapa/i);
 });
 
+test("generateMicrosequenceProjectDocument sinaliza bloqueio explícito quando a próxima depende da atual", async () => {
+  const provider = createFakeProvider({ script: {} });
+  const project = createProjectDocument();
+  project.courses[0].modules[0].lessons[0].microsequences[2].dependsOn = ["micro-a"];
+
+  const result = await generateMicrosequenceProjectDocument({
+    selection: {
+      courseKey: "course-a",
+      moduleKey: "module-a",
+      lessonKey: "lesson-a",
+      microsequenceKey: "micro-a"
+    },
+    draft: {
+      promptText: "",
+      actionIntent: "next_planned",
+      operationMode: "reinforce",
+      interventionTargetMode: "current"
+    },
+    assistConfig: {
+      model: "gemini-2.5-flash",
+      apiKey: "chave"
+    },
+    projectDocument: project,
+    provider,
+    ingestAttachments: async () => ({ attachments: [], extractedCount: 0, warnings: [] })
+  });
+
+  assert.equal(result.route.canonicalRoute, "generate_planned_next");
+  assert.equal(result.blockedBy, "micro-a");
+  assert.equal(result.interventionFeedback.status, "blocked");
+  assert.match(result.interventionFeedback.feedbackText, /Antes de avançar/i);
+  assert.deepEqual(result.projectDocument, project);
+});
+
 test("generateMicrosequenceProjectDocument repara a microssequência atual sem alterar a trilha", async () => {
   const provider = createFakeProvider({
     script: {
@@ -1100,6 +1135,51 @@ test("generateMicrosequenceProjectDocument repara a microssequência atual sem a
   assert.deepEqual(lesson.microsequences.map((item) => item.key), ["micro-prev", "micro-a", "micro-next"]);
   assert.equal(lesson.microsequences[1].cards.length, 3);
   assert.equal(lesson.microsequences[2].cards.length, 0);
+});
+
+test("fallback determinístico de repair gera cards finais sem rubrica interna", async () => {
+  const provider = createFakeProvider({ script: {} });
+  const project = createProjectDocument();
+  const microsequence = project.courses[0].modules[0].lessons[0].microsequences[1];
+  microsequence.title = "Fluxo mínimo de informação para uma instrução";
+  microsequence.goal = "Explicar que uma instrução fica na memória, chega à CPU e fica temporariamente em registradores enquanto é tratada.";
+  microsequence.scopeRefs = [];
+  microsequence.scopeLabels = ["relação mínima entre CPU, memória e registradores"];
+  microsequence.expectedEvidence = [
+    "Descreve o deslocamento da instrução entre componentes",
+    "Usa registradores como armazenamento temporário interno"
+  ];
+  microsequence.status = "ready";
+  microsequence.included = true;
+  microsequence.cards = [{ key: "old-card", say: "Texto ruim." }];
+
+  const result = await generateMicrosequenceProjectDocument({
+    selection: {
+      courseKey: "course-a",
+      moduleKey: "module-a",
+      lessonKey: "lesson-a",
+      microsequenceKey: "micro-a"
+    },
+    draft: {
+      promptText: "Reescreva a microssequência porque a teoria precisa ficar simples e os exercícios mais guiados.",
+      operationMode: "repair",
+      interventionTargetMode: "current"
+    },
+    assistConfig: {
+      model: "gemini-2.5-flash",
+      apiKey: "chave"
+    },
+    projectDocument: project,
+    provider,
+    ingestAttachments: async () => ({ attachments: [], extractedCount: 0, warnings: [] })
+  });
+
+  const cards = result.projectDocument.courses[0].modules[0].lessons[0].microsequences[1].cards;
+  const combined = cards.map((card) => `${card.title || ""}\n${card.say || ""}`).join("\n");
+  assert.doesNotMatch(combined, /Explicar a ideia|Pedir uma ação observável|\[\[/i);
+  assert.match(combined, /memória/i);
+  assert.match(combined, /CPU/i);
+  assert.match(combined, /registradores/i);
 });
 
 test("fluxo de produto não importa runner estrutural externo nem fallback paralelo", () => {

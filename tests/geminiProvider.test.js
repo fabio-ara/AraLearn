@@ -165,3 +165,55 @@ test("provider Gemini troca para a chave secundaria quando a primeira bate em co
   assert.equal(calls[1].headers["x-goog-api-key"], "chave-secundaria");
   assert.deepEqual(result, { ok: true });
 });
+
+test("provider Gemini não espera janelas longas de retry por cota", async (t) => {
+  const calls = [];
+  const originalFetch = globalThis.fetch;
+  const originalEnv = {
+    GEMINI_API_KEY: process.env.GEMINI_API_KEY,
+    GOOGLE_API_KEY: process.env.GOOGLE_API_KEY,
+    GEMINI_API_KEY_FALLBACKS: process.env.GEMINI_API_KEY_FALLBACKS,
+    GOOGLE_API_KEY_FALLBACKS: process.env.GOOGLE_API_KEY_FALLBACKS
+  };
+  delete process.env.GEMINI_API_KEY;
+  delete process.env.GOOGLE_API_KEY;
+  delete process.env.GEMINI_API_KEY_FALLBACKS;
+  delete process.env.GOOGLE_API_KEY_FALLBACKS;
+  globalThis.fetch = async (_url, options) => {
+    calls.push(options);
+    return {
+      ok: false,
+      status: 429,
+      async json() {
+        return {
+          error: {
+            message: "Quota exceeded. Please retry in 3600s."
+          }
+        };
+      }
+    };
+  };
+  t.after(() => {
+    globalThis.fetch = originalFetch;
+    Object.entries(originalEnv).forEach(([key, value]) => {
+      if (value === undefined) {
+        delete process.env[key];
+      } else {
+        process.env[key] = value;
+      }
+    });
+  });
+
+  const provider = createGeminiProvider({ apiKey: "chave" });
+
+  await assert.rejects(
+    () => provider.generateStructured({
+      modelId: "gemini-2.5-flash",
+      system: "Responda somente JSON válido.",
+      prompt: "Teste.",
+      maxRetryDelayMs: 1000
+    }),
+    /retry in 3600s/i
+  );
+  assert.equal(calls.length, 1);
+});
