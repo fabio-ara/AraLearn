@@ -254,6 +254,15 @@ function renderGenerateSectionTitle(title) {
   return '<div class="generate-section-title"><h3 class="generate-section-title-text">' + escapeHtml(title) + "</h3></div>";
 }
 
+function renderNavigationContextHeading(title) {
+  return (
+    '<section class="section-heading-row centered-section-heading-row navigation-heading-row">' +
+    '<h2 class="section-heading">' +
+    escapeHtml(title) +
+    "</h2></section>"
+  );
+}
+
 function renderGenerateIconButton(action, title, content, disabled = false, extraClassName = "") {
   return (
     '<button class="icon-ghost tiny-icon generate-inline-icon' +
@@ -692,6 +701,7 @@ export function renderHomeScreen({ project, progress, editorSupport = {} }) {
     '<section class="screen">' +
     renderCoursesTopbar() +
     '<main class="screen-content courses-home-screen navigation-screen">' +
+    renderNavigationContextHeading("Cursos") +
     '<section class="courses-home-list navigation-list" data-structure-collection="course">' +
     renderCoursesPane({ project, progress }) +
     "</section>" +

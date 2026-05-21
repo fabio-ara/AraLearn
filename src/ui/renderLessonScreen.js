@@ -198,6 +198,10 @@ function renderSectionHeading(title) {
   );
 }
 
+function resolveModuleScreenContextTitle(moduleValue) {
+  return moduleValue?.title || "Módulo";
+}
+
 function countCardsInLesson(lesson) {
   return (lesson.microsequences || []).reduce(
     (total, microsequence) => total + (isRunnableMicrosequence(microsequence) ? (microsequence.cards || []).length : 0),
@@ -805,7 +809,7 @@ function renderCourseScreen({ course, progress, editorSupport }) {
   return (
     '<section class="screen">' +
     renderTopbar({
-      title: course.title || "Curso",
+      title: "Módulos",
       canGoBack: true,
       backAction: editorSupport?.readOnlyBackAction || "go-back",
       subtitle: editorSupport?.readOnlyView ? editorSupport?.readOnlySubtitle || "" : "",
@@ -825,6 +829,7 @@ function renderCourseScreen({ course, progress, editorSupport }) {
     '<main class="screen-content course-screen" data-structure-collection="module" data-course-key="' +
     escapeHtml(course.key) +
     '">' +
+    renderSectionHeading(course.title || "Curso") +
     '<section class="navigation-list structure-navigation-list" data-structure-collection="module" data-course-key="' +
     escapeHtml(course.key) +
     '">' +
@@ -868,7 +873,7 @@ function renderModuleScreen({ course, moduleValue, progress, editorSupport }) {
   return (
     '<section class="screen">' +
     renderTopbar({
-      title: moduleValue.title || "Módulo",
+      title: "Lições",
       canGoBack: true,
       backAction: editorSupport?.readOnlyBackAction || "go-back",
       subtitle: editorSupport?.readOnlyView ? editorSupport?.readOnlySubtitle || "" : "",
@@ -891,6 +896,7 @@ function renderModuleScreen({ course, moduleValue, progress, editorSupport }) {
     '" data-module-key="' +
     escapeHtml(moduleValue.key) +
     '">' +
+    renderSectionHeading(resolveModuleScreenContextTitle(moduleValue)) +
     '<section class="navigation-list structure-navigation-list" data-structure-collection="lesson" data-course-key="' +
     escapeHtml(course.key) +
     '" data-module-key="' +
@@ -989,7 +995,7 @@ function renderLessonScreenView({ course, lesson, moduleValue, progress, editorS
         "</p></section>"
       : "";
   const microsequenceGroups =
-    renderMicrosequenceGroup("Microssequências", groupedMicrosequences.main) +
+    renderMicrosequenceGroup(lesson.title || "Lição", groupedMicrosequences.main) +
     renderMicrosequenceGroup("Reforços", groupedMicrosequences.reinforcement) +
     renderMicrosequenceGroup("Planejadas", groupedMicrosequences.planned) +
     renderMicrosequenceGroup("Rascunhos", groupedMicrosequences.draft) +
@@ -998,7 +1004,7 @@ function renderLessonScreenView({ course, lesson, moduleValue, progress, editorS
   return (
     '<section class="screen">' +
     renderTopbar({
-      title: lesson.title || "Lição",
+      title: "",
       canGoBack: true,
       backAction: editorSupport?.readOnlyBackAction || "go-back",
       subtitle: editorSupport?.readOnlyView ? editorSupport?.readOnlySubtitle || "" : "",
@@ -1214,7 +1220,7 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
     '<section class="study-reader-context">' +
     '<div class="study-reader-line">' +
     '<span class="study-reader-context-line study-reader-course-title">' +
-    escapeHtml(course?.title || course?.key || "Curso") +
+    escapeHtml(visualizedTitle || microsequence?.title || "Microssequência") +
     "</span></div>" +
     '<div class="study-reader-progress"><span style="width:' +
     String(cardProgressPercent) +
@@ -1369,7 +1375,7 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
   return (
     '<section class="screen microsequence-workbench-screen">' +
     renderTopbar({
-      title: microsequence?.title || "Microssequência",
+      title: course?.title || course?.key || "Curso",
       canGoBack: true,
       backTitle: "Voltar para a lição",
       actions: [
