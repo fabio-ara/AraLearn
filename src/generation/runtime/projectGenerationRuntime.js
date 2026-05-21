@@ -240,6 +240,12 @@ function findNextPlannedMainMicrosequence(projectDocument = {}, selection = {}) 
     .find((item) => text(item?.type || "main") === "main") || null;
 }
 
+function isMaterializedLegacyMicrosequence(microsequence = {}) {
+  return ["ready", "generated", "needs_review"].includes(text(microsequence?.status))
+    || microsequence?.included === true
+    || (Array.isArray(microsequence?.cards) && microsequence.cards.length > 0);
+}
+
 function isReadyDependencyStatus(status = "") {
   return ["generated", "ready", "needs_review"].includes(text(status));
 }
@@ -613,11 +619,22 @@ function buildLegacyMicrosequenceFromPlan(plannedMicrosequence = {}, existingLes
 }
 
 function applyPlannedDependenciesToLegacyMicrosequences(plannedLesson = {}, microsequences = []) {
+  const plannedByTitle = new Map(
+    (Array.isArray(plannedLesson?.microsequences) ? plannedLesson.microsequences : [])
+      .map((item) => [normalizeLabelToken(item?.title), item])
+      .filter(([title]) => title)
+  );
   const titleToKey = new Map(
     microsequences.map((item) => [normalizeLabelToken(item?.title), text(item?.key)]).filter((entry) => entry[0] && entry[1])
   );
-  return microsequences.map((microsequence, index) => {
-    const plannedMicrosequence = Array.isArray(plannedLesson?.microsequences) ? plannedLesson.microsequences[index] : null;
+  return microsequences.map((microsequence) => {
+    const plannedMicrosequence = plannedByTitle.get(normalizeLabelToken(microsequence?.title));
+    if (!plannedMicrosequence) {
+      return {
+        ...microsequence,
+        dependsOn: Array.isArray(microsequence?.dependsOn) ? uniqueList(microsequence.dependsOn) : []
+      };
+    }
     return {
       ...microsequence,
       dependsOn: (Array.isArray(plannedMicrosequence?.dependsOnTitles) ? plannedMicrosequence.dependsOnTitles : [])
@@ -629,6 +646,17 @@ function applyPlannedDependenciesToLegacyMicrosequences(plannedLesson = {}, micr
 
 function buildLegacyLessonFromPlan(plannedLesson = {}, existingModule = {}) {
   const existing = findByTitle(existingModule?.lessons, plannedLesson.title);
+  const plannedMicrosequences = (Array.isArray(plannedLesson.microsequences) ? plannedLesson.microsequences : []).map((item) =>
+    buildLegacyMicrosequenceFromPlan(item, existing || {})
+  );
+  const plannedTitles = new Set(
+    (Array.isArray(plannedLesson.microsequences) ? plannedLesson.microsequences : [])
+      .map((item) => normalizeLabelToken(item?.title))
+      .filter(Boolean)
+  );
+  const preservedExistingMicrosequences = (Array.isArray(existing?.microsequences) ? existing.microsequences : [])
+    .filter((item) => !plannedTitles.has(normalizeLabelToken(item?.title)) && isMaterializedLegacyMicrosequence(item))
+    .map((item) => clone(item));
   const normalizedSourceGuideStructured =
     plannedLesson?.sourceGuideStructured && typeof plannedLesson.sourceGuideStructured === "object"
       ? clone(plannedLesson.sourceGuideStructured)
@@ -644,9 +672,7 @@ function buildLegacyLessonFromPlan(plannedLesson = {}, existingModule = {}) {
           sourceGuide: buildSourceGuideTextForModel(normalizedSourceGuideStructured, { level: SOURCE_GUIDE_LEVELS.LESSON })
         }
       : {}),
-    microsequences: (Array.isArray(plannedLesson.microsequences) ? plannedLesson.microsequences : []).map((item) =>
-      buildLegacyMicrosequenceFromPlan(item, existing || {})
-    )
+    microsequences: [...preservedExistingMicrosequences, ...plannedMicrosequences]
   };
   lesson.microsequences = applyPlannedDependenciesToLegacyMicrosequences(plannedLesson, lesson.microsequences);
   return lesson;

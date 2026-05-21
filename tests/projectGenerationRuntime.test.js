@@ -175,9 +175,109 @@ test("generateStructureProjectDocument preserva keys existentes no alvo fixo", a
     notationRules: "Lição A, Estrutura básica",
     commonErrors: "Não confundir o conceito atual com etapas futuras."
   });
-  assert.equal(lesson.microsequences[0].key, "micro-a");
-  assert.deepEqual(lesson.microsequences[1].dependsOn, ["micro-a"]);
-  assert.equal(lesson.microsequences[1].title, "Microssequência B");
+  assert.equal(lesson.microsequences[0].key, "micro-prev");
+  assert.equal(lesson.microsequences[1].key, "micro-a");
+  assert.deepEqual(lesson.microsequences[2].dependsOn, ["micro-a"]);
+  assert.equal(lesson.microsequences[2].title, "Microssequência B");
+});
+
+test("generateStructureProjectDocument preserva microssequências prontas fora do recorte replanejado", async () => {
+  const provider = createFakeProvider({
+    script: {
+      "infer-scope-contract": {
+        course: { title: "Curso A", evidencePriority: ["none"] },
+        modules: [
+          {
+            title: "Módulo A",
+            include: ["PC", "IR", "Memória"],
+            exclude: [],
+            notes: 'Planeje apenas o restante da lição "Lição A".',
+            assessmentStyle: "mixed"
+          }
+        ]
+      },
+      "plan-scope": {
+        course: {
+          title: "Curso A",
+          modules: [
+            {
+              title: "Módulo A",
+              lessons: [
+                {
+                  title: "Lição A",
+                  goal: "Objetivo atualizado da lição.",
+                  sourceGuideStructured: {
+                    lessonGoal: "Conectar PC, IR e memória em ordem didática.",
+                    notationRules: "PC, IR, Memória",
+                    commonErrors: "Não inverter o papel de PC e IR.",
+                    outOfScopeRules: "desvio especulativo"
+                  },
+                  microsequences: [
+                    {
+                      title: "Microssequência A",
+                      goal: "Relacionar PC e IR.",
+                      dependsOnTitles: [],
+                      scopeLabels: ["PC", "IR"]
+                    },
+                    {
+                      title: "Microssequência B",
+                      goal: "Explicar busca na memória.",
+                      dependsOnTitles: ["Microssequência A"],
+                      scopeLabels: ["Memória"]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  });
+
+  const projectDocument = createProjectDocument();
+  projectDocument.courses[0].modules[0].lessons[0].microsequences[0].cards = [
+    { key: "seed-prev", title: "Base", say: "Conteúdo já estudado." }
+  ];
+  projectDocument.courses[0].modules[0].lessons[0].microsequences[0].status = "ready";
+  projectDocument.courses[0].modules[0].lessons[0].microsequences[0].included = true;
+
+  const result = await generateStructureProjectDocument({
+    draft: {
+      courseFixed: true,
+      courseInput: "Curso A",
+      courseKey: "course-a",
+      moduleFixed: true,
+      moduleInput: "Módulo A",
+      moduleKey: "module-a",
+      lessonFixed: true,
+      lessonInput: "Lição A",
+      lessonKey: "lesson-a",
+      includeTopics: ["PC", "IR", "Memória"],
+      promptText: "Planeje a continuação da lição sem apagar a base pronta."
+    },
+    scopeState: {
+      course: { key: "course-a", title: "Curso A" },
+      moduleValue: { key: "module-a", title: "Módulo A" },
+      lesson: { key: "lesson-a", title: "Lição A" }
+    },
+    projectDocument,
+    assistConfig: {
+      model: "gemini-2.5-flash",
+      apiKey: "chave"
+    },
+    ingestAttachments: async () => ({ attachments: [], warnings: [], extractedCount: 0 }),
+    provider
+  });
+
+  const lesson = result.projectDocument.courses[0].modules[0].lessons[0];
+  assert.equal(lesson.microsequences[0].key, "micro-prev");
+  assert.equal(lesson.microsequences[0].status, "ready");
+  assert.equal(lesson.microsequences[0].included, true);
+  assert.equal(lesson.microsequences[0].cards.length, 1);
+  assert.equal(lesson.microsequences[1].title, "Microssequência A");
+  assert.equal(lesson.microsequences[2].title, "Microssequência B");
+  assert.deepEqual(lesson.microsequences[2].dependsOn, [lesson.microsequences[1].key]);
 });
 
 test("generateMicrosequenceProjectDocument atualiza cards diretamente no contrato da UI antiga", async () => {
