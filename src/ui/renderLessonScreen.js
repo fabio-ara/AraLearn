@@ -1178,6 +1178,7 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
   );
   const feedbackSession = editorSupport.feedbackSession || {};
   const feedbackValue = editorSupport.feedbackDraftText || feedbackSession.feedbackText || feedbackSession.nextPromptDraft || "";
+  const feedbackCanEdit = Boolean(feedbackValue.trim());
   const feedbackStatusClass =
     feedbackSession.status === "blocked"
       ? " is-warning"
@@ -1333,7 +1334,9 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
     escapeHtml(editorSupport.feedbackEditing ? "Concluir edição do retorno" : "Editar retorno") +
     '" aria-label="' +
     escapeHtml(editorSupport.feedbackEditing ? "Concluir edição do retorno" : "Editar retorno") +
-    '">' +
+    '"' +
+    (!feedbackCanEdit ? ' disabled aria-disabled="true"' : "") +
+    ">" +
     renderUiIcon(editorSupport.feedbackEditing ? "ready-state" : "edit", "generate-submit-icon") +
     "</button>" +
     "</div>" +
