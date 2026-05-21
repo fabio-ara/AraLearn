@@ -1273,7 +1273,6 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
     "</textarea></div></div></label>" +
     attachmentInput +
     attachmentChips +
-    '<div class="generate-divider workbench-divider"></div>' +
     '<section class="microsequence-assist-panel bottomup-focus-panel assist-simple-panel assist-action-panel">' +
     '<div class="workbench-form-row assist-action-heading">' +
     renderInlineFieldIcon("intent", "O que a IA deve fazer agora") +
@@ -1291,13 +1290,11 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
     '<div class="dependency-chip-row workbench-tag-chip-row">' +
     (selectedDependencyTags || '<p class="tiny muted bottomup-empty-copy">Selecione pelo menos uma tag para ancorar o pedido.</p>') +
     "</div></div>" +
-    '<div class="generate-divider workbench-divider"></div>' +
     '<label class="field generate-icon-field workbench-select-field">' +
     renderInlineFieldIcon("card", "Materialização preferida") +
     '<select data-field="assist-preferred-container" aria-label="Materialização preferida" title="Materialização preferida">' +
     containerOptions +
     "</select></label>" +
-    '<div class="generate-divider workbench-divider"></div>' +
     '<div class="generate-action-row assist-actions assist-actions-wide assist-request-actions">' +
     '<label class="field generate-icon-field generate-model-field">' +
     renderInlineFieldIcon("intent", "Modelo") +
