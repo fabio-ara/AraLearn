@@ -483,6 +483,10 @@ test("renderiza o painel da microssequência sem botão próprio de ações e co
   assert.match(html, /assist-request-actions/);
   assert.doesNotMatch(html, /O retorno da intervenção aparecerá aqui após o envio do pedido\./);
   assert.doesNotMatch(html, />Editar<\/button>/);
+  assert.ok(
+    html.indexOf('data-field="assist-feedback"') < html.indexOf('assist-feedback-actions'),
+    "o campo de retorno deve vir antes da faixa de controles"
+  );
   assert.doesNotMatch(html, />Preview<\/button>/);
   assert.doesNotMatch(html, />Edição<\/button>/);
   assert.doesNotMatch(html, /<label[^>]*>\s*Microssequência\s*<\/label>/);

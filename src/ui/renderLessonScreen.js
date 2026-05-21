@@ -1327,7 +1327,7 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
     renderInlineFieldIcon("prompt", "Retorno da intervenção") +
     '<p class="tiny muted">Retorno da intervenção</p>' +
     "</div>" +
-    '<label class="field generate-prompt-field workbench-prompt-field assist-feedback-field">' +
+    '<div class="field generate-prompt-field workbench-prompt-field assist-feedback-field">' +
     '<div class="generate-prompt-layout">' +
     '<div class="workbench-prompt-tools">' +
     renderInlineFieldIcon("sparkles", "Texto base da próxima iteração") +
@@ -1337,7 +1337,7 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
     (editorSupport.feedbackEditing ? "" : ' readonly aria-readonly="true"') +
     ">" +
     escapeHtml(feedbackValue) +
-    "</textarea></div></div></label>" +
+    "</textarea></div></div></div>" +
     '<div class="generate-action-row assist-actions assist-actions-wide assist-feedback-actions">' +
     '<button class="icon-ghost tiny-icon generate-inline-icon assist-feedback-edit-button" type="button" data-action="toggle-feedback-edit" aria-pressed="' +
     (editorSupport.feedbackEditing ? "true" : "false") +
