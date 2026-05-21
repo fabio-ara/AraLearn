@@ -5450,7 +5450,7 @@ button {
 
 .workbench-select-field {
   color: rgba(244, 224, 190, 0.76);
-  font-size: var(--type-sm);
+  font-size: 0.84rem;
 }
 
 .workbench-select-field input,
@@ -5469,7 +5469,9 @@ button {
 .workbench-select-field input,
 .workbench-editor-panel select {
   min-height: 38px;
-  padding: 0 11px;
+  padding: 0 12px;
+  font-size: 0.9rem;
+  line-height: 1.2;
 }
 
 .workbench-editor-panel textarea {
@@ -5697,7 +5699,7 @@ button {
 
 .assist-action-title {
   color: #fff1d3;
-  font-size: 0.9rem;
+  font-size: 0.86rem;
   font-weight: 700;
   line-height: 1.2;
 }
@@ -6637,8 +6639,8 @@ button {
   min-width: 0;
   min-height: 38px;
   width: 100%;
-  padding: 0 7px;
-  font-size: 0.9rem;
+  padding: 0 12px;
+  font-size: 0.88rem;
 }
 
 .generate-action-row.assist-actions-wide .generate-inline-icon {
