@@ -6441,20 +6441,20 @@ button {
 }
 
 .assist-action-panel .assist-action-option {
-  background: transparent;
+  background: linear-gradient(180deg, rgba(34, 27, 20, 0.98), rgba(22, 17, 13, 0.99));
 }
 
 .assist-action-panel .assist-action-option:hover {
-  background: rgba(28, 21, 15, 0.42);
+  background: linear-gradient(180deg, rgba(39, 31, 24, 0.98), rgba(28, 22, 16, 0.98));
 }
 
 .assist-action-panel .assist-action-option.is-selected {
-  background: rgba(42, 31, 20, 0.46);
+  background: linear-gradient(180deg, rgba(39, 31, 24, 0.98), rgba(28, 22, 16, 0.98));
 }
 
 .assist-action-panel .assist-action-option.is-disabled,
 .assist-action-panel .assist-action-option.is-disabled:hover {
-  background: transparent;
+  background: linear-gradient(180deg, rgba(34, 27, 20, 0.98), rgba(22, 17, 13, 0.99));
 }
 
 .dependency-strip {
