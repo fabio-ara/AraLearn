@@ -484,6 +484,7 @@ test("renderiza o painel da microssequência sem botão próprio de ações e co
   assert.match(html, /<section class="assist-feedback-panel/);
   assert.doesNotMatch(html, /<section class="microsequence-assist-panel assist-feedback-panel/);
   assert.doesNotMatch(html, /O retorno da intervenção aparecerá aqui após o envio do pedido\./);
+  assert.match(html, /data-action="toggle-feedback-edit"[^>]*disabled aria-disabled="true"/);
   assert.doesNotMatch(html, />Editar<\/button>/);
   assert.ok(
     html.indexOf('data-field="assist-feedback"') < html.indexOf('assist-feedback-actions'),
@@ -887,6 +888,7 @@ test("renderiza retorno iterável quando a intervenção pede continuação", ()
   assert.match(html, /data-field="assist-feedback"/);
   assert.match(html, /Continue a microssequência atual com novas variações autossuficientes\./);
   assert.match(html, /readonly aria-readonly="true"/);
+  assert.doesNotMatch(html, /data-action="toggle-feedback-edit"[^>]*disabled aria-disabled="true"/);
   assert.match(html, /data-action="apply-assist-feedback"[^>]*title="Iterar" aria-label="Iterar"/);
   assert.doesNotMatch(html, /data-action="apply-assist-feedback"[^>]*disabled aria-disabled="true"/);
   assert.doesNotMatch(html, /Continuação recomendada/);

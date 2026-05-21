@@ -6742,16 +6742,21 @@ button {
   flex-direction: column;
   align-items: stretch;
   gap: 10px;
-  width: 100%;
+  width: auto;
   min-height: 0;
   max-height: none;
   border: 0;
-  border-radius: 16px;
+  border-radius: 0 0 17px 17px;
   background:
-    linear-gradient(180deg, rgba(50, 34, 19, 0.72), rgba(25, 19, 13, 0.5)),
-    rgba(22, 18, 14, 0.44);
-  padding: 10px 0 12px;
+    radial-gradient(circle at top right, rgba(166, 115, 42, 0.18), transparent 58%),
+    linear-gradient(180deg, rgba(69, 43, 19, 0.94), rgba(31, 21, 12, 0.96)),
+    rgba(18, 13, 9, 0.96);
+  margin: 0 -12px -12px;
+  padding: 12px 12px 16px;
   overflow: visible;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 225, 166, 0.07),
+    inset 0 12px 22px rgba(122, 75, 24, 0.08);
 }
 
 .assist-feedback-panel.is-warning {
