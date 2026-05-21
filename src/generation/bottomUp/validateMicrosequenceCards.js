@@ -151,6 +151,14 @@ function includesForbiddenTerm(sourceText, forbiddenTerms = []) {
   });
 }
 
+function hasTemplateArtifact(card = {}) {
+  const source = normalizeToken([
+    text(card?.title),
+    normalizedForbiddenScanText(card)
+  ].filter(Boolean).join(" "));
+  return /\b(outro elemento|um detalhe lateral|nesta etapa,\s*explicar que|pedir que o estudante|comparar os elementos minimos|compare os elementos minimos)\b/u.test(source);
+}
+
 function buildIssue(path, message, severity = "error") {
   return { path, message, severity };
 }
@@ -182,6 +190,9 @@ export function validateBottomUpDidacticQuality(payload = {}, packet = {}, cardP
     }
     if (mentionsVolatileMissingContext(card)) {
       issues.push(buildIssue(path, "A sequência depende de contexto volátil ausente dentro do próprio card."));
+    }
+    if (hasTemplateArtifact(card)) {
+      issues.push(buildIssue(path, "Remova artefatos de template e escreva material final pronto para o aluno."));
     }
     if (planned?.resourceType && text(card?.resourceType) !== text(planned.resourceType)) {
       issues.push(buildIssue(path, "O recurso planejado não foi usado e não há fallback justificável."));

@@ -6,6 +6,7 @@ import { addPracticeToMicrosequence } from "../src/generation/bottomUp/addPracti
 import { createSupportMicrosequence } from "../src/generation/bottomUp/createSupportMicrosequence.js";
 import { generateMicrosequenceCards } from "../src/generation/bottomUp/generateMicrosequenceCards.js";
 import { generateNextMicrosequence } from "../src/generation/bottomUp/generateNextMicrosequence.js";
+import { validateMicrosequenceCards } from "../src/generation/bottomUp/validateMicrosequenceCards.js";
 
 function createProject() {
   return {
@@ -178,4 +179,25 @@ test("gerar próxima não exige prompt livre", async () => {
   });
 
   assert.equal(next.selection.microsequenceKey, "micro-2");
+});
+
+test("validador bottom-up rejeita artefatos de template em material final", () => {
+  const result = validateMicrosequenceCards({
+    summary: "Versão com placeholder.",
+    cards: [
+      {
+        key: "card-1",
+        resourceType: "say",
+        content: "Pedir que o estudante complete frases curtas antes de seguir."
+      },
+      {
+        key: "card-2",
+        resourceType: "block_gap_fill",
+        content: "Complete: nesta etapa, [[PC::PC|outro elemento]]."
+      }
+    ]
+  });
+
+  assert.equal(result.ok, false);
+  assert.match(result.errors.map((error) => error.message).join("\n"), /artefatos de template/);
 });

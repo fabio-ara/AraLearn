@@ -69,6 +69,8 @@ export function buildBottomUpCompileSystemPrompt() {
     "Responda somente JSON válido.",
     "Preserve exatamente o formato final esperado pelo frontend.",
     "Siga o didactic draft e o card plan.",
+    "Escreva material final para o aluno, não especificações sobre o que o card deveria fazer.",
+    "Não use placeholders como outro elemento, um detalhe lateral, nesta etapa explicar que, ou pedir que o estudante.",
     "Mantenha cada card com função didática reconhecível.",
     "Não misture teoria, exemplo e prática no mesmo card: separe em cards curtos com uma função por vez.",
     "Quando usar table, graph ou code, inclua content.intro curto e suficiente para o card fazer sentido sozinho.",

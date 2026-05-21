@@ -1,5 +1,10 @@
 import { cardSchema } from "./cardSchema.js";
 
+export const DIDACTIC_KIND_ENUM = ["concept", "procedure", "discrimination", "formalization", "representation_reading", "cumulative_practice"];
+export const PRACTICE_MODE_ENUM = ["recognition", "guided_production", "execution", "classification", "calculation", "explanation", "construction", "correction", "variation"];
+export const REPRESENTATION_NEED_ENUM = ["none", "text", "table", "code", "visual_structure", "sequence", "formula"];
+export const DEPENDENCY_POLICY_ENUM = ["self_contained", "uses_previous", "cumulative"];
+
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
 }
@@ -104,11 +109,31 @@ export function buildSupportMicrosequenceSchema(density = "standard", options = 
   return {
     type: "object",
     additionalProperties: false,
-    required: ["title", "goal", "supportReason", "summary", "cards"],
+    required: [
+      "title",
+      "goal",
+      "supportReason",
+      "didacticKind",
+      "practiceMode",
+      "representationNeed",
+      "dependencyPolicy",
+      "expectedEvidence",
+      "summary",
+      "cards"
+    ],
     properties: {
       title: { type: "string", minLength: 1 },
       goal: { type: "string", minLength: 1 },
       supportReason: { type: "string", minLength: 1 },
+      didacticKind: { type: "string", enum: DIDACTIC_KIND_ENUM },
+      practiceMode: { type: "string", enum: PRACTICE_MODE_ENUM },
+      representationNeed: { type: "string", enum: REPRESENTATION_NEED_ENUM },
+      dependencyPolicy: { type: "string", enum: DEPENDENCY_POLICY_ENUM },
+      expectedEvidence: {
+        type: "array",
+        minItems: 1,
+        items: { type: "string", minLength: 1 }
+      },
       summary: { type: "string" },
       cards: {
         type: "array",

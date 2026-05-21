@@ -62,6 +62,14 @@ export async function createSupportMicrosequence({
     scopeRefs: [...(info.microsequence.scopeRefs || [])],
     parentMicrosequenceKey: info.microsequence.key,
     supportReason: payload.supportReason,
+    didacticKind: payload.didacticKind || info.microsequence.didacticKind || "concept",
+    practiceMode: payload.practiceMode || "explanation",
+    representationNeed: payload.representationNeed || "text",
+    dependencyPolicy: payload.dependencyPolicy || "uses_previous",
+    coverageRole: "repair_gap",
+    expectedEvidence: Array.isArray(payload.expectedEvidence) && payload.expectedEvidence.length
+      ? payload.expectedEvidence
+      : [`retomar ${info.microsequence.title}`],
     versions: [version],
     activeVersionKey: version.key
   };

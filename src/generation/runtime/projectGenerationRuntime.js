@@ -10,7 +10,11 @@ import {
   buildBottomUpDidacticDraftSchema,
   buildMicrosequenceCardsSchema,
   buildSupportMicrosequenceSchema,
-  buildTechnicalCardBudget
+  buildTechnicalCardBudget,
+  DEPENDENCY_POLICY_ENUM,
+  DIDACTIC_KIND_ENUM,
+  PRACTICE_MODE_ENUM,
+  REPRESENTATION_NEED_ENUM
 } from "../schemas/bottomUpSchema.js";
 import {
   buildBottomUpCompileSystemPrompt,
@@ -882,6 +886,21 @@ function validateSupportPayload(payload = {}, { packet = {}, density = "standard
   const title = text(payload?.title);
   const goal = text(payload?.goal);
   const supportReason = text(payload?.supportReason);
+  const didacticKind = DIDACTIC_KIND_ENUM.includes(text(payload?.didacticKind))
+    ? text(payload.didacticKind)
+    : text(packet?.currentMicrosequence?.didacticKind) || "concept";
+  const practiceMode = PRACTICE_MODE_ENUM.includes(text(payload?.practiceMode))
+    ? text(payload.practiceMode)
+    : "explanation";
+  const representationNeed = REPRESENTATION_NEED_ENUM.includes(text(payload?.representationNeed))
+    ? text(payload.representationNeed)
+    : "text";
+  const dependencyPolicy = DEPENDENCY_POLICY_ENUM.includes(text(payload?.dependencyPolicy))
+    ? text(payload.dependencyPolicy)
+    : "uses_previous";
+  const expectedEvidence = uniqueList(payload?.expectedEvidence).length
+    ? uniqueList(payload.expectedEvidence)
+    : [`explicar como o apoio permite retomar ${text(packet?.currentMicrosequence?.title) || "a trilha principal"}`];
   const forbiddenTerms = Array.isArray(packet?.module?.exclude) ? uniqueList(packet.module.exclude) : [];
   const baseValidation = validateMicrosequenceCards({
     summary: text(payload?.summary),
@@ -907,6 +926,11 @@ function validateSupportPayload(payload = {}, { packet = {}, density = "standard
     title,
     goal,
     supportReason,
+    didacticKind,
+    practiceMode,
+    representationNeed,
+    dependencyPolicy,
+    expectedEvidence,
     summary: baseValidation.value.summary,
     cards: baseValidation.value.cards
   };
@@ -924,6 +948,11 @@ function buildDeterministicSupportPayload(packet = {}, request = "") {
     title: `Apoio local para ${currentTitle}`,
     goal: `Explicar o pré-requisito mínimo necessário para retomar ${currentGoal}.`,
     supportReason,
+    didacticKind: "concept",
+    practiceMode: "explanation",
+    representationNeed: "text",
+    dependencyPolicy: "uses_previous",
+    expectedEvidence: [`explicar como o apoio permite retomar ${currentTitle}`],
     summary: `Microssequência de apoio curta para retomar ${currentTitle} sem abrir escopo paralelo.`,
     cards: [
       {
@@ -950,6 +979,131 @@ function buildDeterministicSupportPayload(packet = {}, request = "") {
   };
 }
 
+function buildFallbackRoleText(step = {}, packet = {}, interactionMode = "normal_generation") {
+  const role = text(step?.role);
+  const currentTitle = text(packet?.currentMicrosequence?.title) || "a etapa atual";
+  const currentGoal = text(packet?.currentMicrosequence?.goal) || "o objetivo atual";
+  const previousTitle = text(packet?.neighborMicrosequences?.previous?.title);
+  const nextTitle = text(packet?.neighborMicrosequences?.next?.title);
+  const scopeLabel = uniqueList(packet?.currentMicrosequence?.scopeLabels)[0] || currentTitle;
+  const expectedEvidence = uniqueList(step?.expectedEvidence)[0] || "explicar o ponto central";
+
+  if (role === "microtheory") {
+    return `${scopeLabel}: ${currentGoal}. Leia essa ideia como o foco local antes de praticar.`;
+  }
+  if (role === "guided_example") {
+    return `Caso guiado: se ${currentTitle} aparece em uma pergunta básica, identifique primeiro ${scopeLabel} e diga qual parte dele cumpre o objetivo local.`;
+  }
+  if (role === "example_reading") {
+    return `Leitura guiada: marque a palavra ou símbolo que representa ${scopeLabel} e explique em uma frase como ele aparece no ponto atual da trilha.`;
+  }
+  if (role === "contrast") {
+    return `Compare dois papéis locais: ${scopeLabel} cumpre "${currentGoal}"; outro papel só deve ser citado se já estiver declarado nesta microssequência.`;
+  }
+  if (role === "active_practice") {
+    return `Complete a frase: em ${currentTitle}, o foco local é [[${scopeLabel}::${scopeLabel}|${currentTitle}]]. Depois confira se sua escolha ajuda a ${expectedEvidence}.`;
+  }
+  if (role === "analogous_practice") {
+    return `Variação curta: escolha [[${scopeLabel}::${scopeLabel}|${currentTitle}]] e escreva uma frase ligando essa escolha ao objetivo "${currentGoal}".`;
+  }
+  if (role === "cumulative_review") {
+    return `Revise a trilha: ${currentTitle} retoma [[${scopeLabel}::${scopeLabel}|${currentTitle}]] para manter o objetivo local visível.`;
+  }
+  if (role === "correction") {
+    return `Corrija a resposta: se a explicação não menciona ${scopeLabel}, acrescente uma frase dizendo como ele sustenta ${currentGoal}.`;
+  }
+  if (interactionMode === "answer_local_doubt") {
+    return `Dúvida local fechada. Retome agora ${currentTitle} e siga a trilha principal.`;
+  }
+  if (interactionMode === "create_support") {
+    return `Com esse apoio local fechado, volte agora para ${currentTitle} e siga a trilha principal.`;
+  }
+  const bridgeTarget = nextTitle ? ` e prepare a passagem para ${nextTitle}` : "";
+  const dependencyBridge = previousTitle ? ` sem perder a ligação com ${previousTitle}` : "";
+  return `Feche ${currentTitle}${dependencyBridge}${bridgeTarget} e retome a trilha principal.`;
+}
+
+function buildFallbackStructuredCard(step = {}, packet = {}, interactionMode = "normal_generation", index = 0) {
+  const resourceType = text(step?.resourceType) || "say";
+  const title = text(step?.purpose) || `Passo ${index + 1}`;
+  const roleText = buildFallbackRoleText(step, packet, interactionMode);
+  const scopeLabel = uniqueList(packet?.currentMicrosequence?.scopeLabels)[0] || text(packet?.currentMicrosequence?.title) || "ponto atual";
+
+  if (resourceType === "block_gap_fill") {
+    return {
+      key: `fallback-card-${index + 1}`,
+      title,
+      resourceType,
+      content: roleText
+    };
+  }
+  if (resourceType === "table") {
+    return {
+      key: `fallback-card-${index + 1}`,
+      title,
+      resourceType,
+      content: {
+        intro: `Use a tabela para conferir a função local de ${scopeLabel} antes de seguir.`,
+        columns: ["Elemento", "Papel local"],
+        rows: [
+          [scopeLabel, text(packet?.currentMicrosequence?.goal) || "Cumpre o objetivo atual."],
+          [text(packet?.currentMicrosequence?.title) || "Etapa atual", "Organiza a progressão da trilha."]
+        ]
+      }
+    };
+  }
+  if (resourceType === "graph") {
+    return {
+      key: `fallback-card-${index + 1}`,
+      title,
+      resourceType,
+      content: {
+        intro: `Relação mínima para orientar esta etapa.`,
+        vertices: [
+          { id: "ATUAL", label: text(packet?.currentMicrosequence?.title) || "Etapa atual" },
+          { id: "FOCO", label: scopeLabel }
+        ],
+        edges: [
+          { from: "ATUAL", to: "FOCO", label: "foco local" }
+        ]
+      }
+    };
+  }
+  if (resourceType === "code") {
+    return {
+      key: `fallback-card-${index + 1}`,
+      title,
+      resourceType,
+      content: {
+        intro: `Leia o esquema mínimo e diga o papel de cada linha.`,
+        code: `etapa_atual = "${text(packet?.currentMicrosequence?.title) || "etapa"}"\nfoco_local = "${scopeLabel}"`,
+        language: "text"
+      }
+    };
+  }
+  return {
+    key: `fallback-card-${index + 1}`,
+    title,
+    resourceType: "say",
+    content: roleText
+  };
+}
+
+function buildDeterministicBottomUpPayload(packet = {}, cardPlan = [], interactionMode = "normal_generation") {
+  const currentTitle = text(packet?.currentMicrosequence?.title) || "Microssequência";
+  const normalizedPlan = Array.isArray(cardPlan) && cardPlan.length
+    ? cardPlan
+    : [
+        { position: 1, role: "microtheory", resourceType: "say", purpose: "explicar a ideia central" },
+        { position: 2, role: "active_practice", resourceType: "block_gap_fill", purpose: "pedir uma ação observável" },
+        { position: 3, role: "bridge_or_consolidation", resourceType: "say", purpose: "reconectar à trilha" }
+      ];
+  return {
+    summary: `Versão determinística preparada para ${currentTitle} com cards separados por função didática.`,
+    cards: normalizedPlan.map((step, index) => buildFallbackStructuredCard(step, packet, interactionMode, index))
+  };
+}
+
 function normalizeCardKeyPrefix(prefix = "") {
   return text(prefix) || "card";
 }
@@ -958,11 +1112,65 @@ function cloneLegacyCards(cards = []) {
   return (Array.isArray(cards) ? cards : []).map((card) => clone(card));
 }
 
+function legacyCardText(card = {}) {
+  return [
+    text(card?.title),
+    text(card?.say),
+    text(card?.code),
+    Array.isArray(card?.table?.rows) ? card.table.rows.flat().map((cell) => String(cell ?? "").trim()).filter(Boolean).join(" ") : "",
+    Array.isArray(card?.table?.columns) ? card.table.columns.map((cell) => String(cell ?? "").trim()).filter(Boolean).join(" ") : ""
+  ].filter(Boolean).join(" ");
+}
+
+function legacyCardSignature(card = {}) {
+  return normalizeToken([
+    text(card?.say),
+    text(card?.code),
+    Array.isArray(card?.table?.rows) ? card.table.rows.flat().map((cell) => String(cell ?? "").trim()).filter(Boolean).join(" ") : "",
+    Array.isArray(card?.table?.columns) ? card.table.columns.map((cell) => String(cell ?? "").trim()).filter(Boolean).join(" ") : ""
+  ].filter(Boolean).join(" ")).replace(/\s+/g, " ");
+}
+
+function isWeakFallbackLegacyCard(card = {}) {
+  const key = text(card?.key);
+  const source = normalizeToken(legacyCardText(card));
+  return /^fallback-card-\d+$/u.test(key)
+    || /\b(outro elemento|um detalhe lateral|nesta etapa,\s*explicar que|pedir que o estudante|compare os elementos minimos)\b/u.test(source);
+}
+
+function dedupeLegacyCardsByContent(cards = []) {
+  const seen = new Set();
+  const result = [];
+  cloneLegacyCards(cards).forEach((card) => {
+    const signature = legacyCardSignature(card);
+    if (signature && seen.has(signature)) {
+      return;
+    }
+    if (signature) {
+      seen.add(signature);
+    }
+    result.push(card);
+  });
+  return result;
+}
+
 function resequenceLegacyCards(cards = [], prefix = "card") {
-  return cloneLegacyCards(cards).map((card, index) => ({
-    ...card,
-    key: text(card?.key) || `${normalizeCardKeyPrefix(prefix)}-${index + 1}`
-  }));
+  const used = new Set();
+  const normalizedPrefix = normalizeCardKeyPrefix(prefix);
+  return cloneLegacyCards(cards).map((card, index) => {
+    const baseKey = text(card?.key) || `${normalizedPrefix}-${index + 1}`;
+    let key = baseKey;
+    let counter = 2;
+    while (used.has(key)) {
+      key = `${baseKey}-${counter}`;
+      counter += 1;
+    }
+    used.add(key);
+    return {
+      ...card,
+      key
+    };
+  });
 }
 
 function buildMergedLegacyCards(currentCards = [], nextCards = [], interactionMode = "normal_generation", microsequenceKey = "") {
@@ -970,9 +1178,16 @@ function buildMergedLegacyCards(currentCards = [], nextCards = [], interactionMo
   if (!legacyNextCards.length) {
     return resequenceLegacyCards(currentCards, microsequenceKey || "card");
   }
-  if (interactionMode === "add_practice" || interactionMode === "answer_local_doubt") {
+  if (interactionMode === "add_practice") {
     return resequenceLegacyCards(
-      [...cloneLegacyCards(currentCards), ...legacyNextCards],
+      dedupeLegacyCardsByContent([...cloneLegacyCards(currentCards), ...legacyNextCards]),
+      microsequenceKey || "card"
+    );
+  }
+  if (interactionMode === "answer_local_doubt") {
+    const usefulExistingCards = cloneLegacyCards(currentCards).filter((card) => !isWeakFallbackLegacyCard(card));
+    return resequenceLegacyCards(
+      dedupeLegacyCardsByContent([...legacyNextCards, ...usefulExistingCards]),
       microsequenceKey || "card"
     );
   }
@@ -1169,7 +1384,7 @@ function buildInterventionFeedback({
     return {
       status: "completed",
       title: "Intervenção concluída",
-      message: `${cardCount} cards foram preparados em "${microsequenceTitle || "Microssequência"}".`,
+      message: `"${microsequenceTitle || "Microssequência"}" ficou com ${cardCount} cards no total.`,
       feedbackText: `Intervenção concluída em "${microsequenceTitle || "Microssequência"}".`,
       nextPromptDraft: "",
       recommendedActionIntent: "",
@@ -1332,28 +1547,45 @@ async function generateValidatedBottomUpPayload({
   let prompt = basePrompt;
   // Modelos fracos podem precisar de mais tentativas com correção guiada.
   for (let attempt = 1; attempt <= 5; attempt += 1) {
-    const payload = await runtime.provider.generateStructured({
-      ...runtime.providerOptions,
-      modelId,
-      mode,
-      system: buildBottomUpCompileSystemPrompt(),
-      prompt,
-      schema,
-      temperature
-    });
-    const validation = validateMicrosequenceCards(payload, density, {
+    try {
+      const payload = await runtime.provider.generateStructured({
+        ...runtime.providerOptions,
+        modelId,
+        mode,
+        system: buildBottomUpCompileSystemPrompt(),
+        prompt,
+        schema,
+        temperature
+      });
+      const validation = validateMicrosequenceCards(payload, density, {
+        packet,
+        cardPlan,
+        modelCapabilities
+      });
+      if (!validation.ok) {
+        lastError = new Error(validation.errors.map((error) => error.message).join("; "));
+        prompt = buildBottomUpCorrectionPrompt(basePrompt, validation.errors.map((error) => error.message), packet);
+        continue;
+      }
+      return validation.value;
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+      prompt = buildBottomUpCorrectionPrompt(basePrompt, [lastError.message], packet);
+    }
+  }
+  const deterministicValidation = validateMicrosequenceCards(
+    buildDeterministicBottomUpPayload(packet, cardPlan, text(packet?.interactionMode) || mode),
+    density,
+    {
       packet,
       cardPlan,
       modelCapabilities
-    });
-    if (!validation.ok) {
-      lastError = new Error(validation.errors.map((error) => error.message).join("; "));
-      prompt = buildBottomUpCorrectionPrompt(basePrompt, validation.errors.map((error) => error.message), packet);
-      continue;
     }
-    return validation.value;
+  );
+  if (!deterministicValidation.ok) {
+    throw lastError || new Error("Falha ao validar a microssequência gerada.");
   }
-  throw lastError || new Error("Falha ao validar a microssequência gerada.");
+  return deterministicValidation.value;
 }
 
 async function generateValidatedSupportPayload({
@@ -1384,7 +1616,7 @@ async function generateValidatedSupportPayload({
       lastError = error;
       prompt = buildBottomUpCorrectionPrompt(basePrompt, [
         error instanceof Error ? error.message : String(error),
-        "Devolva obrigatoriamente title, goal, supportReason, summary e cards.",
+        "Devolva obrigatoriamente title, goal, supportReason, didacticKind, practiceMode, representationNeed, dependencyPolicy, expectedEvidence, summary e cards.",
         "O apoio deve ter pelo menos 4 cards e terminar com retorno explícito à trilha principal."
       ], packet);
     }
@@ -1453,7 +1685,12 @@ function applySupportMicrosequence(projectDocument = {}, selection = {}, payload
     parentMicrosequenceKey: text(current?.key),
     supportReason: payload.supportReason,
     didacticPurpose: payload.goal,
+    didacticKind: payload.didacticKind,
+    practiceMode: payload.practiceMode,
+    representationNeed: payload.representationNeed,
+    dependencyPolicy: payload.dependencyPolicy,
     coverageRole: "repair_gap",
+    expectedEvidence: uniqueList(payload.expectedEvidence),
     cards: payload.cards.map((card) => toLegacyContractCard(card))
   };
   if (existing) {
@@ -1607,11 +1844,12 @@ export async function generateMicrosequenceProjectDocument({
         interactionMode,
         modelId: runtime.modelId,
         promptText: text(draft.promptText),
-        attachmentNames: (Array.isArray(ingestedAttachments.attachments) ? ingestedAttachments.attachments : []).map((item) => text(item?.name)).filter(Boolean),
-        microsequenceTitle: text(targetMicrosequence?.title || validated.title),
-        cardCount: Array.isArray(validated.cards) ? validated.cards.length : 0,
-        createdSupport: true
-      })
+      attachmentNames: (Array.isArray(ingestedAttachments.attachments) ? ingestedAttachments.attachments : []).map((item) => text(item?.name)).filter(Boolean),
+      microsequenceTitle: text(targetMicrosequence?.title || validated.title),
+      returnMicrosequenceTitle: text(currentMicrosequence?.title),
+      cardCount: Array.isArray(validated.cards) ? validated.cards.length : 0,
+      createdSupport: true
+    })
     };
   }
 
@@ -1683,7 +1921,7 @@ export async function generateMicrosequenceProjectDocument({
       draftPlan,
       microsequenceTitle: text(appliedMicrosequence?.title || currentMicrosequence?.title),
       returnMicrosequenceTitle: text(currentMicrosequence?.title),
-      cardCount: Array.isArray(validated.cards) ? validated.cards.length : 0
+      cardCount: Array.isArray(appliedMicrosequence?.cards) ? appliedMicrosequence.cards.length : 0
     })
   };
 }
