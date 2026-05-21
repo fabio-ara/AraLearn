@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import tempfile
 import unittest
+from pathlib import Path
+from unittest.mock import patch
 
-from flow_loop import FocusedFailure, build_fix_prompt, parse_bool, summarize_stop_reason
+from flow_loop import FocusedFailure, build_fix_prompt, parse_bool, prepare_runtime_env, summarize_stop_reason
 
 
 class FlowLoopTests(unittest.TestCase):
@@ -40,6 +43,36 @@ class FlowLoopTests(unittest.TestCase):
             auto_fix_attempted=True,
         )
         self.assertEqual(stop_reason, "no_progress")
+
+    @patch("flow_loop.ensure_codex_bridge")
+    @patch("flow_loop.collect_secret_values")
+    @patch("flow_loop.build_runtime_env")
+    def test_prepare_runtime_env_bootstraps_codex_bridge(
+        self,
+        build_runtime_env_mock,
+        collect_secret_values_mock,
+        ensure_codex_bridge_mock,
+    ) -> None:
+        base_env = {"ARALEARN_CODEX_COMMAND": "codex"}
+        bridged_env = {
+            "ARALEARN_CODEX_COMMAND": "codex",
+            "ARALEARN_CODEX_ASSIST_URL": "http://127.0.0.1:4183/assist",
+        }
+        build_runtime_env_mock.return_value = base_env
+        collect_secret_values_mock.return_value = ["secret-token"]
+        ensure_codex_bridge_mock.return_value = (bridged_env, object())
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            env, secret_values, managed_bridge = prepare_runtime_env(
+                "codex-cli-local",
+                Path(temp_dir),
+                {"codex_bridge_token": "secret-token"},
+            )
+
+        self.assertEqual(env, bridged_env)
+        self.assertEqual(secret_values, ["secret-token"])
+        self.assertIsNotNone(managed_bridge)
+        ensure_codex_bridge_mock.assert_called_once()
 
 
 if __name__ == "__main__":

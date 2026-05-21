@@ -170,6 +170,7 @@ test("generateStructureProjectDocument preserva keys existentes no alvo fixo", a
   assert.equal(result.patch.target.moduleKey, "module-a");
   assert.equal(result.patch.target.lessonKey, "lesson-a");
   assert.equal(lesson.key, "lesson-a");
+  assert.equal(lesson.goal, "Objetivo da lição.");
   assert.deepEqual(lesson.sourceGuideStructured, {
     lessonGoal: "Fixar o objetivo operacional da lição.",
     notationRules: "Lição A, Estrutura básica",
@@ -177,8 +178,10 @@ test("generateStructureProjectDocument preserva keys existentes no alvo fixo", a
   });
   assert.equal(lesson.microsequences[0].key, "micro-prev");
   assert.equal(lesson.microsequences[1].key, "micro-a");
+  assert.equal(lesson.microsequences[1].goal, "Reaproveitar a etapa existente.");
   assert.deepEqual(lesson.microsequences[2].dependsOn, ["micro-a"]);
   assert.equal(lesson.microsequences[2].title, "Microssequência B");
+  assert.equal(lesson.microsequences[2].goal, "Nova etapa planejada.");
 });
 
 test("generateStructureProjectDocument preserva microssequências prontas fora do recorte replanejado", async () => {

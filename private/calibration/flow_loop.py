@@ -12,7 +12,9 @@ from typing import Any
 from calibration_common import REPO_ROOT, run_command
 from autocalibration_common import (
     build_runtime_env,
+    close_managed_bridge,
     collect_secret_values,
+    ensure_codex_bridge,
     load_local_config,
     run_codex_exec_patch,
     run_node_json,
@@ -260,6 +262,15 @@ def build_summary(
     return "\n".join(lines) + "\n"
 
 
+def prepare_runtime_env(provider: str, report_dir: Path, config: dict[str, Any]) -> tuple[dict[str, str], list[str], Any]:
+    env = build_runtime_env(config)
+    managed_bridge = None
+    if provider.startswith("codex"):
+        env, managed_bridge = ensure_codex_bridge(report_dir, config, env)
+    secret_values = collect_secret_values(config=config, runtime_env=env)
+    return env, secret_values, managed_bridge
+
+
 def main() -> int:
     args = parse_args()
     auto_fix_enabled = parse_bool(args.auto_fix, default=False)
@@ -269,8 +280,6 @@ def main() -> int:
     cache_root.mkdir(parents=True, exist_ok=True)
 
     config = load_local_config()
-    env = build_runtime_env(config)
-    secret_values = collect_secret_values(config=config, runtime_env=env)
     command_text = " ".join(
         [
             "python",
@@ -281,6 +290,57 @@ def main() -> int:
             f"--real-budget {args.real_budget}",
         ]
     )
+    try:
+        env, secret_values, managed_bridge = prepare_runtime_env(args.provider, report_dir, config)
+    except Exception as error:
+        env = build_runtime_env(config)
+        secret_values = collect_secret_values(config=config, runtime_env=env)
+        probe_report = {
+            "completedStages": [],
+            "firstFailure": {
+                "stageId": "bridge_setup",
+                "route": args.provider,
+                "error": str(error),
+                "fileHint": "private/calibration/flow_loop.py",
+                "expected": {"provider": args.provider, "bridgeReady": True},
+                "received": {"provider": args.provider, "bridgeReady": False},
+                "evidence": "Falha ao preparar bridge local do provider real.",
+                "fixArea": "provider_adapter",
+                "testCommand": "npm test",
+                "pedagogicalConstraints": [
+                    "Preservar a trilha top-down como linha principal.",
+                    "Não introduzir assunto fora de include/dependências.",
+                    "Manter o contrato público válido.",
+                ],
+            },
+            "stopReason": "first_failure",
+            "usage": {"mode": "real_or_cache", "realCalls": 0, "cacheHits": 0, "callLog": []},
+        }
+        stop_reason = "first_failure"
+        write_json(report_dir / "run-status.json", sanitize_payload(
+            {
+                "status": stop_reason,
+                "provider": args.provider,
+                "updatedAt": now_iso(),
+                "completedStages": [],
+                "firstFailure": probe_report["firstFailure"],
+                "patchesApplied": 0,
+                "autoFixEnabled": auto_fix_enabled,
+                "autoFixAttempted": False,
+            },
+            secret_values,
+        ))
+        summary = build_summary(
+            command_text=command_text,
+            provider=args.provider,
+            probe_report=probe_report,
+            patch_result=None,
+            tests_run=[],
+            stop_reason=stop_reason,
+        )
+        write_text(report_dir / "summary.md", sanitize_text(summary, secret_values))
+        print(report_dir)
+        return 1
 
     probe_timeout = (
         min(args.real_total_timeout_seconds, args.real_step_timeout_seconds)
@@ -295,147 +355,150 @@ def main() -> int:
     auto_fix_attempted = False
     probe_report: dict[str, Any] = {}
 
-    for cycle in range(1, max(1, args.max_cycles) + 1):
-        cycle_dir = report_dir / f"cycle-{cycle:02d}"
-        cycle_dir.mkdir(parents=True, exist_ok=True)
-        try:
-            probe_report, probe_command = run_probe(
-                provider=args.provider,
-                report_dir=cycle_dir,
-                cache_root=cache_root,
-                real_budget=real_budget,
-                timeout_seconds=probe_timeout,
+    try:
+        for cycle in range(1, max(1, args.max_cycles) + 1):
+            cycle_dir = report_dir / f"cycle-{cycle:02d}"
+            cycle_dir.mkdir(parents=True, exist_ok=True)
+            try:
+                probe_report, probe_command = run_probe(
+                    provider=args.provider,
+                    report_dir=cycle_dir,
+                    cache_root=cache_root,
+                    real_budget=real_budget,
+                    timeout_seconds=probe_timeout,
+                    env=env,
+                )
+            except subprocess.TimeoutExpired as error:
+                probe_report = {
+                    "completedStages": [],
+                    "firstFailure": {
+                        "stageId": "probe",
+                        "route": args.provider,
+                        "error": f"Timeout after {probe_timeout} seconds.",
+                        "fileHint": str(PROBE_PATH),
+                        "expected": {"timeoutSeconds": probe_timeout},
+                        "received": {"timeoutSeconds": probe_timeout, "command": list(error.cmd or [])},
+                        "evidence": "Probe real excedeu o orçamento de tempo.",
+                        "fixArea": "runtime_context",
+                        "testCommand": "npm run harness:bottom-up",
+                        "pedagogicalConstraints": [
+                            "Preservar a trilha top-down como linha principal.",
+                            "Não introduzir assunto fora de include/dependências.",
+                            "Não condensar artificialmente a didática.",
+                            "Manter o contrato público válido.",
+                        ],
+                    },
+                    "stopReason": "timeout",
+                    "usage": {"mode": "real_or_cache", "realCalls": 0, "cacheHits": 0, "callLog": []},
+                }
+                probe_command = {
+                    "label": "flow_probe",
+                    "command": list(error.cmd or []),
+                    "exit_code": "",
+                    "ok": False,
+                    "stdout": error.output if isinstance(error.output, str) else "",
+                    "stderr": error.stderr if isinstance(error.stderr, str) else "",
+                    "timeout_seconds": probe_timeout,
+                }
+            write_json(cycle_dir / "probe-command.json", sanitize_payload(probe_command, secret_values))
+            if probe_report.get("stopReason") == "completed":
+                break
+
+            failure = to_failure(probe_report)
+            if failure is None:
+                break
+
+            invariants_text = load_invariants_text()
+            fix_prompt = build_fix_prompt(failure, invariants_text)
+            write_text(cycle_dir / "fix-prompt.md", sanitize_text(fix_prompt, secret_values))
+
+            if not auto_fix_enabled:
+                break
+
+            auto_fix_attempted = True
+            codex_available = bool(env.get("ARALEARN_CODEX_COMMAND") or shutil_which("codex"))
+            if not codex_available:
+                no_progress_attempts = max(no_progress_attempts, 1)
+                break
+
+            patch_result, last_message, diagnostics = run_codex_exec_patch(
+                iteration_dir=cycle_dir,
+                prompt=fix_prompt,
                 env=env,
+                timeout_seconds=1800,
             )
-        except subprocess.TimeoutExpired as error:
-            probe_report = {
-                "completedStages": [],
-                "firstFailure": {
-                    "stageId": "probe",
-                    "route": args.provider,
-                    "error": f"Timeout after {probe_timeout} seconds.",
-                    "fileHint": str(PROBE_PATH),
-                    "expected": {"timeoutSeconds": probe_timeout},
-                    "received": {"timeoutSeconds": probe_timeout, "command": list(error.cmd or [])},
-                    "evidence": "Probe real excedeu o orçamento de tempo.",
-                    "fixArea": "runtime_context",
-                    "testCommand": "npm run harness:bottom-up",
-                    "pedagogicalConstraints": [
-                        "Preservar a trilha top-down como linha principal.",
-                        "Não introduzir assunto fora de include/dependências.",
-                        "Não condensar artificialmente a didática.",
-                        "Manter o contrato público válido.",
-                    ],
+            patch_result_payload = sanitize_payload(
+                {
+                    **diagnostics,
+                    "label": patch_result.label,
+                    "command": patch_result.command,
+                    "exit_code": patch_result.exit_code,
+                    "ok": patch_result.ok,
+                    "stdout": patch_result.stdout,
+                    "stderr": patch_result.stderr,
+                    "last_message": last_message,
                 },
-                "stopReason": "timeout",
-                "usage": {"mode": "real_or_cache", "realCalls": 0, "cacheHits": 0, "callLog": []},
-            }
-            probe_command = {
-                "label": "flow_probe",
-                "command": list(error.cmd or []),
-                "exit_code": "",
-                "ok": False,
-                "stdout": error.output if isinstance(error.output, str) else "",
-                "stderr": error.stderr if isinstance(error.stderr, str) else "",
-                "timeout_seconds": probe_timeout,
-            }
-        write_json(cycle_dir / "probe-command.json", sanitize_payload(probe_command, secret_values))
+                secret_values,
+            )
+            write_json(cycle_dir / "autofix-result.json", patch_result_payload)
+            patches_applied += 1 if patch_result.ok else 0
+
+            focused_test_payload = run_focused_test(failure.test_command, env)
+            write_json(cycle_dir / "focused-test.json", sanitize_payload(focused_test_payload, secret_values))
+
+            if not patch_result.ok or not focused_test_payload.get("ok"):
+                no_progress_attempts += 1
+            else:
+                no_progress_attempts = 0
+
+            if patches_applied >= args.max_patches or no_progress_attempts >= 2:
+                break
+
+        validation_results = None
         if probe_report.get("stopReason") == "completed":
-            break
+            validation_results = run_validation_suite(env, report_dir, secret_values)
+            write_json(report_dir / "validation-results.json", sanitize_payload(validation_results, secret_values))
 
-        failure = to_failure(probe_report)
-        if failure is None:
-            break
-
-        invariants_text = load_invariants_text()
-        fix_prompt = build_fix_prompt(failure, invariants_text)
-        write_text(cycle_dir / "fix-prompt.md", sanitize_text(fix_prompt, secret_values))
-
-        if not auto_fix_enabled:
-            break
-
-        auto_fix_attempted = True
-        codex_available = bool(env.get("ARALEARN_CODEX_COMMAND") or shutil_which("codex"))
-        if not codex_available:
-            no_progress_attempts = max(no_progress_attempts, 1)
-            break
-
-        patch_result, last_message, diagnostics = run_codex_exec_patch(
-            iteration_dir=cycle_dir,
-            prompt=fix_prompt,
-            env=env,
-            timeout_seconds=1800,
+        stop_reason = summarize_stop_reason(
+            probe_report=probe_report,
+            patches_applied=patches_applied,
+            no_progress_attempts=no_progress_attempts,
+            validation_results=validation_results,
+            auto_fix_enabled=auto_fix_enabled,
+            auto_fix_attempted=auto_fix_attempted,
         )
-        patch_result_payload = sanitize_payload(
+        tests_run = []
+        if focused_test_payload:
+            tests_run.append(str(focused_test_payload.get("label") or "focused"))
+        if validation_results is not None:
+            tests_run.extend(str(item.get("label") or "") for item in validation_results)
+
+        write_json(report_dir / "run-status.json", sanitize_payload(
             {
-                **diagnostics,
-                "label": patch_result.label,
-                "command": patch_result.command,
-                "exit_code": patch_result.exit_code,
-                "ok": patch_result.ok,
-                "stdout": patch_result.stdout,
-                "stderr": patch_result.stderr,
-                "last_message": last_message,
+                "status": stop_reason,
+                "provider": args.provider,
+                "updatedAt": now_iso(),
+                "completedStages": probe_report.get("completedStages") or [],
+                "firstFailure": probe_report.get("firstFailure") or {},
+                "patchesApplied": patches_applied,
+                "autoFixEnabled": auto_fix_enabled,
+                "autoFixAttempted": auto_fix_attempted,
             },
             secret_values,
+        ))
+        summary = build_summary(
+            command_text=command_text,
+            provider=args.provider,
+            probe_report=probe_report,
+            patch_result=patch_result_payload,
+            tests_run=tests_run,
+            stop_reason=stop_reason,
         )
-        write_json(cycle_dir / "autofix-result.json", patch_result_payload)
-        patches_applied += 1 if patch_result.ok else 0
-
-        focused_test_payload = run_focused_test(failure.test_command, env)
-        write_json(cycle_dir / "focused-test.json", sanitize_payload(focused_test_payload, secret_values))
-
-        if not patch_result.ok or not focused_test_payload.get("ok"):
-            no_progress_attempts += 1
-        else:
-            no_progress_attempts = 0
-
-        if patches_applied >= args.max_patches or no_progress_attempts >= 2:
-            break
-
-    validation_results = None
-    if probe_report.get("stopReason") == "completed":
-        validation_results = run_validation_suite(env, report_dir, secret_values)
-        write_json(report_dir / "validation-results.json", sanitize_payload(validation_results, secret_values))
-
-    stop_reason = summarize_stop_reason(
-        probe_report=probe_report,
-        patches_applied=patches_applied,
-        no_progress_attempts=no_progress_attempts,
-        validation_results=validation_results,
-        auto_fix_enabled=auto_fix_enabled,
-        auto_fix_attempted=auto_fix_attempted,
-    )
-    tests_run = []
-    if focused_test_payload:
-        tests_run.append(str(focused_test_payload.get("label") or "focused"))
-    if validation_results is not None:
-        tests_run.extend(str(item.get("label") or "") for item in validation_results)
-
-    write_json(report_dir / "run-status.json", sanitize_payload(
-        {
-            "status": stop_reason,
-            "provider": args.provider,
-            "updatedAt": now_iso(),
-            "completedStages": probe_report.get("completedStages") or [],
-            "firstFailure": probe_report.get("firstFailure") or {},
-            "patchesApplied": patches_applied,
-            "autoFixEnabled": auto_fix_enabled,
-            "autoFixAttempted": auto_fix_attempted,
-        },
-        secret_values,
-    ))
-    summary = build_summary(
-        command_text=command_text,
-        provider=args.provider,
-        probe_report=probe_report,
-        patch_result=patch_result_payload,
-        tests_run=tests_run,
-        stop_reason=stop_reason,
-    )
-    write_text(report_dir / "summary.md", sanitize_text(summary, secret_values))
-    print(report_dir)
-    return 0 if stop_reason == "completed" else 1
+        write_text(report_dir / "summary.md", sanitize_text(summary, secret_values))
+        print(report_dir)
+        return 0 if stop_reason == "completed" else 1
+    finally:
+        close_managed_bridge(managed_bridge)
 
 
 def shutil_which(command: str) -> str:

@@ -601,6 +601,7 @@ function buildLegacyMicrosequenceFromPlan(plannedMicrosequence = {}, existingLes
   return {
     key: text(existing?.key) || buildScopedKey("microsequence", plannedMicrosequence.title),
     title: text(plannedMicrosequence.title),
+    goal: text(plannedMicrosequence.goal || existing?.goal),
     description: text(plannedMicrosequence.goal),
     ...(plannedMicrosequence.scopeLabels?.length ? { tags: uniqueList(plannedMicrosequence.scopeLabels) } : {}),
     didacticPurpose: text(plannedMicrosequence.goal),
@@ -665,6 +666,7 @@ function buildLegacyLessonFromPlan(plannedLesson = {}, existingModule = {}) {
     ...(existing ? clone(existing) : {}),
     key: text(existing?.key) || buildScopedKey("lesson", plannedLesson.title),
     title: text(plannedLesson.title),
+    goal: text(plannedLesson.goal || existing?.goal),
     description: text(plannedLesson.goal),
     ...(Object.keys(normalizedSourceGuideStructured).length
       ? {
@@ -714,6 +716,9 @@ function mergeTopDownResultIntoProject({ projectDocument = {}, plannedCourse = {
     ...(existingCourse ? clone(existingCourse) : {}),
     key: text(existingCourse?.key) || ensureUniqueKey(nextProject.courses, "", "course", plannedCourse.course.title),
     title: text(plannedCourse?.course?.title),
+    ...(text(plannedCourse?.course?.goal || existingCourse?.goal)
+      ? { goal: text(plannedCourse?.course?.goal || existingCourse?.goal) }
+      : {}),
     ...(text(plannedCourse?.course?.goal || existingCourse?.description)
       ? { description: text(plannedCourse?.course?.goal || existingCourse?.description) }
       : {}),
