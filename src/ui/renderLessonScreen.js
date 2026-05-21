@@ -1324,6 +1324,10 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
     '<section class="assist-feedback-panel' +
     feedbackStatusClass +
     '">' +
+    '<div class="workbench-form-row assist-feedback-heading">' +
+    renderInlineFieldIcon("prompt", "Feedback da intervenção") +
+    '<p class="tiny muted">Feedback da intervenção</p>' +
+    "</div>" +
     '<div class="field generate-prompt-field workbench-prompt-field assist-feedback-field">' +
     '<div class="generate-prompt-layout">' +
     '<div class="workbench-prompt-tools">' +
