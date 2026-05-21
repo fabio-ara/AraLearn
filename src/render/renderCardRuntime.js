@@ -1727,7 +1727,50 @@ function buildRuntimeGraphEdgeKey(from, to) {
   return [String(from || ""), String(to || "")].sort().join("::");
 }
 
+function formatGraphCoordinate(value) {
+  return Number(Number(value || 0).toFixed(2));
+}
+
+function buildGraphEdgeGeometry(from, to, edge, vertexRadius = 7.8) {
+  const dx = Number(to.x) - Number(from.x);
+  const dy = Number(to.y) - Number(from.y);
+  const distance = Math.hypot(dx, dy) || 1;
+  const unitX = dx / distance;
+  const unitY = dy / distance;
+  const normalX = -unitY;
+  const normalY = unitX;
+  const startX = Number(from.x) + unitX * vertexRadius;
+  const startY = Number(from.y) + unitY * vertexRadius;
+  const endX = Number(to.x) - unitX * vertexRadius;
+  const endY = Number(to.y) - unitY * vertexRadius;
+  const order = Number(edge?.parallelIndex || 0) - ((Number(edge?.parallelCount || 1) - 1) / 2);
+  const offset = Math.abs(order) < 0.001 ? 0 : order * 8;
+  const midX = (startX + endX) / 2;
+  const midY = (startY + endY) / 2;
+  const controlX = midX + normalX * offset;
+  const controlY = midY + normalY * offset;
+  const labelX = offset === 0 ? midX : (0.25 * startX) + (0.5 * controlX) + (0.25 * endX);
+  const labelY = offset === 0 ? midY : (0.25 * startY) + (0.5 * controlY) + (0.25 * endY);
+
+  return {
+    startX: formatGraphCoordinate(startX),
+    startY: formatGraphCoordinate(startY),
+    endX: formatGraphCoordinate(endX),
+    endY: formatGraphCoordinate(endY),
+    controlX: formatGraphCoordinate(controlX),
+    controlY: formatGraphCoordinate(controlY),
+    labelX: formatGraphCoordinate(labelX),
+    labelY: formatGraphCoordinate(labelY),
+    path: offset === 0
+      ? `M ${formatGraphCoordinate(startX)} ${formatGraphCoordinate(startY)} L ${formatGraphCoordinate(endX)} ${formatGraphCoordinate(endY)}`
+      : `M ${formatGraphCoordinate(startX)} ${formatGraphCoordinate(startY)} Q ${formatGraphCoordinate(controlX)} ${formatGraphCoordinate(controlY)} ${formatGraphCoordinate(endX)} ${formatGraphCoordinate(endY)}`
+  };
+}
+
 function readGraphEdgeDisplayText(edge) {
+  if (Object.prototype.hasOwnProperty.call(edge || {}, "displayLabel")) {
+    return normalizeInlineText(edge?.displayLabel);
+  }
   const label = normalizeInlineText(edge?.label);
   if (label) {
     return label;
@@ -1739,6 +1782,8 @@ function readGraphEdgeDisplayText(edge) {
 function renderGraphBlock(block) {
   const vertices = Array.isArray(block?.vertices) ? block.vertices : [];
   const edges = Array.isArray(block?.edges) ? block.edges : [];
+  const labelLegend = Array.isArray(block?.labelLegend) ? block.labelLegend : [];
+  const edgeLegend = Array.isArray(block?.edgeLegend) ? block.edgeLegend : [];
   const vertexMap = new Map(vertices.map((vertex) => [vertex.id, vertex]));
   const ariaLabel = normalizeInlineText(block?.ariaLabel || block?.summaryText) || "Grafo matemático";
 
@@ -1749,22 +1794,15 @@ function renderGraphBlock(block) {
       if (!from || !to) {
         return "";
       }
+      const geometry = buildGraphEdgeGeometry(from, to, edge);
       const labelText = readGraphEdgeDisplayText(edge);
-      const midX = Number(((Number(from.x) + Number(to.x)) / 2).toFixed(2));
-      const midY = Number(((Number(from.y) + Number(to.y)) / 2).toFixed(2));
-      const pillWidth = Math.max(12, Math.min(30, labelText.length * 4.8 + 8));
       const labelHtml = labelText
         ? '<g class="runtime-graph-edge-label" transform="translate(' +
-          midX +
+          geometry.labelX +
           " " +
-          midY +
+          geometry.labelY +
           ')">' +
-          '<rect x="' +
-          Number((-pillWidth / 2).toFixed(2)) +
-          '" y="-7.5" width="' +
-          Number(pillWidth.toFixed(2)) +
-          '" height="15" rx="7.5" ry="7.5" fill="var(--surface-raised, rgba(255,255,255,0.96))" stroke="var(--card-border-soft, rgba(15,23,42,0.14))" stroke-width="0.7"></rect>' +
-          '<text text-anchor="middle" dominant-baseline="middle" y="0.5" fill="var(--text-strong, currentColor)" font-size="5.1" font-weight="600">' +
+          '<text text-anchor="middle" dominant-baseline="middle" y="-1" fill="#f6ead8" font-size="4.1" font-weight="700">' +
           escapeHtml(labelText) +
           "</text></g>"
         : "";
@@ -1775,21 +1813,15 @@ function renderGraphBlock(block) {
         '" data-edge-key="' +
         escapeHtml(buildRuntimeGraphEdgeKey(edge?.from, edge?.to) || `edge-${index}`) +
         '">' +
-        '<line class="runtime-graph-edge' +
+        '<path class="runtime-graph-edge' +
         (edge?.highlighted ? " is-highlighted" : "") +
-        '" x1="' +
-        escapeHtml(from.x) +
-        '" y1="' +
-        escapeHtml(from.y) +
-        '" x2="' +
-        escapeHtml(to.x) +
-        '" y2="' +
-        escapeHtml(to.y) +
+        '" d="' +
+        escapeHtmlAttribute(geometry.path) +
         '" stroke="' +
         (edge?.highlighted ? "var(--accent-strong, #0f766e)" : "var(--card-border-strong, currentColor)") +
         '" stroke-width="' +
         (edge?.highlighted ? "2.6" : "1.9") +
-        '" stroke-linecap="round"></line>' +
+        '" stroke-linecap="round" stroke-linejoin="round" fill="none"></path>' +
         labelHtml +
         "</g>"
       );
@@ -1815,13 +1847,46 @@ function renderGraphBlock(block) {
       (vertex?.highlighted ? "2.2" : "1.7") +
       '"></circle>' +
       '<text class="runtime-graph-vertex-label" text-anchor="middle" dominant-baseline="central" y="0.5" fill="var(--text-strong, currentColor)" font-size="5.4" font-weight="700">' +
-      escapeHtml(vertex?.label || vertex?.id || "") +
+      escapeHtml(vertex?.id || "") +
       "</text></g>"
     ))
     .join("");
 
-  const legend = block?.summaryText
-    ? '<div class="runtime-graph-caption">' + renderMarkdownInline(block.summaryText) + "</div>"
+  const legend = labelLegend.length
+    ? '<div class="runtime-graph-legend" aria-label="Legenda dos vértices">' +
+      labelLegend
+        .map((item) => (
+          '<span class="runtime-graph-legend-item' +
+          (item?.highlighted ? " is-highlighted" : "") +
+          '">' +
+          '<span class="runtime-graph-legend-key">' +
+          escapeHtml(item?.id || "") +
+          "</span>" +
+          '<span class="runtime-graph-legend-separator">=</span>' +
+          '<span class="runtime-graph-legend-label">' +
+          escapeHtml(item?.label || "") +
+          "</span></span>"
+        ))
+        .join("") +
+      "</div>"
+    : "";
+  const edgeLegendHtml = edgeLegend.length
+    ? '<div class="runtime-graph-legend runtime-graph-edge-legend" aria-label="Legenda das arestas">' +
+      edgeLegend
+        .map((item) => (
+          '<span class="runtime-graph-legend-item runtime-graph-edge-legend-item' +
+          (item?.highlighted ? " is-highlighted" : "") +
+          '">' +
+          '<span class="runtime-graph-legend-key">' +
+          escapeHtml(item?.label || "") +
+          "</span>" +
+          '<span class="runtime-graph-legend-separator">=</span>' +
+          '<span class="runtime-graph-legend-label">' +
+          escapeHtml(`${item?.from || ""}-${item?.to || ""}`) +
+          "</span></span>"
+        ))
+        .join("") +
+      "</div>"
     : "";
 
   return (
@@ -1838,6 +1903,7 @@ function renderGraphBlock(block) {
     verticesHtml +
     "</svg>" +
     legend +
+    edgeLegendHtml +
     "</div></div>"
   );
 }

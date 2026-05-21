@@ -186,6 +186,18 @@ Campos:
 
 Cada recurso possui formato próprio em `content`. A validação do domínio rejeita recursos desconhecidos.
 
+No caso de `graph`, o contrato público permanece propositalmente simples:
+
+- `vertices` com `id`, `label` opcional e `x`/`y` opcionais;
+- `edges` com `from`, `to`, `label` opcional e `weight` opcional;
+- `highlight` com listas de vértices e pares de vértices.
+
+Regras operacionais de `graph`:
+
+- laços não são aceitos;
+- multiarestas entre o mesmo par de vértices são aceitas quando o caso didático exigir;
+- quando `x` e `y` são fornecidos, eles podem ser coordenadas relativas simples do desenho; o runtime ajusta automaticamente o grafo ao canvas do card.
+
 ## Contrato de escopo
 
 O planejamento estrutural usa `aralearn.scope.v1` como entrada.
