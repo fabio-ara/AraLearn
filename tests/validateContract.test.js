@@ -614,6 +614,48 @@ test("aceita domainMap da lição e metadados didáticos da microssequência", (
   assert.deepEqual(microsequence.expectedEvidence, ["ordenar comandos", "executar a sequência mínima"]);
 });
 
+test("microssequência de suporte exige parent, returnTo, supportReason e branchPolicy", () => {
+  const result = validateContractDocument({
+    contract: "aralearn.contract",
+    version: 1,
+    kind: "project",
+    courses: [
+      {
+        title: "Curso",
+        modules: [
+          {
+            title: "Módulo",
+            lessons: [
+              {
+                title: "Lição",
+                microsequences: [
+                  {
+                    title: "Apoio local",
+                    status: "ready",
+                    type: "support",
+                    cards: [
+                      {
+                        title: "Base",
+                        say: "Retome a base local."
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  });
+
+  assert.equal(result.ok, false);
+  const summary = result.errors.map((error) => `${error.path}: ${error.message}`).join("\n");
+  assert.match(summary, /parentMicrosequenceKey/);
+  assert.match(summary, /returnToMicrosequenceKey/);
+  assert.match(summary, /supportReason/);
+});
+
 test("aceita curso, módulo e lição vazios no contrato público", () => {
   const result = validateContractDocument({
     contract: "aralearn.contract",

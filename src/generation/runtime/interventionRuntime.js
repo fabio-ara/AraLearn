@@ -50,6 +50,8 @@ function buildFailedInterventionFeedback({
     recommendedActionIntent:
       status === "needs_new_microsequence" || status === "needs_support_microsequence"
         ? "create_after_current"
+        : text(draft?.actionIntent) === "next_planned"
+          ? "next_planned"
         : text(draft?.operationMode) === "repair"
           ? "repair_current"
           : "continue_current",
@@ -133,8 +135,16 @@ export function buildMicrosequencePrompt({
 export function resolveMicrosequenceRequestConfig({
   promptText = "",
   operationMode = "",
-  interventionTargetMode = "current"
+  interventionTargetMode = "current",
+  actionIntent = ""
 } = {}) {
+  if (text(actionIntent) === "next_planned") {
+    return {
+      operation: "generate_planned_next",
+      requestedGenerationDepth: "planned_next_only",
+      interventionModeHint: "planned_track_advance"
+    };
+  }
   const normalizedOperationMode = text(operationMode);
   const operation =
     interventionTargetMode === "new_after_current"
@@ -165,7 +175,8 @@ export function buildInterventionRequestFromDraft({
   const requestConfig = resolveMicrosequenceRequestConfig({
     promptText: text(draft?.promptText),
     operationMode: text(draft?.operationMode),
-    interventionTargetMode
+    interventionTargetMode,
+    actionIntent: text(draft?.actionIntent)
   });
   const interventionType = text(draft?.interventionType) || "local_semantic_rewrite";
   const reason =
@@ -174,7 +185,15 @@ export function buildInterventionRequestFromDraft({
       ? "Inserir uma nova microssequência local coerente com a progressão atual."
       : "Intervir localmente na microssequência atual sem ampliar desnecessariamente o escopo.");
   const target =
-    interventionTargetMode === "new_after_current"
+    text(draft?.actionIntent) === "next_planned"
+      ? {
+          level: "microsequence",
+          courseKey,
+          moduleKey,
+          lessonKey,
+          microsequenceKey
+        }
+      : interventionTargetMode === "new_after_current"
       ? {
           level: "lesson",
           courseKey,
@@ -198,7 +217,12 @@ export function buildInterventionRequestFromDraft({
     kind: "intervention_request",
     status: "ready",
     source: "editor_surface",
-    recommendedAction: interventionTargetMode === "new_after_current" ? "needs_new_microsequence" : "suggest_editor_patch",
+    recommendedAction:
+      text(draft?.actionIntent) === "next_planned"
+        ? "next_planned"
+        : interventionTargetMode === "new_after_current"
+          ? "needs_new_microsequence"
+          : "suggest_editor_patch",
     studentPrompt: text(draft?.promptText),
     responseText: "",
     studyTrackConnection: "",
@@ -213,9 +237,19 @@ export function buildInterventionRequestFromDraft({
     requestedChanges: [
       {
         changeId: "requested_change_1",
-        type: interventionTargetMode === "new_after_current" ? "add_new_microsequence" : "patch_existing_material",
+        type:
+          text(draft?.actionIntent) === "next_planned"
+            ? "fill_planned_microsequence"
+            : interventionTargetMode === "new_after_current"
+              ? "add_new_microsequence"
+              : "patch_existing_material",
         operation: requestConfig.operation,
-        patchStrategy: interventionTargetMode === "new_after_current" ? "add_microsequence" : "patch_existing_microsequence",
+        patchStrategy:
+          text(draft?.actionIntent) === "next_planned"
+            ? "fill_existing_planned_microsequence"
+            : interventionTargetMode === "new_after_current"
+              ? "add_microsequence"
+              : "patch_existing_microsequence",
         didacticInterventionType: interventionType,
         target,
         reason,
@@ -258,12 +292,12 @@ export async function prepareMicrosequenceGeneration({
   const rawPromptText = text(draft.promptText);
   const selectedModel = text(assistConfig.model) || "gemini-2.5-flash";
   const ingestedAttachments = await ingestAttachments(Array.isArray(draft.attachments) ? draft.attachments : []);
-  if (!rawPromptText && ingestedAttachments.extractedCount === 0) {
+  if (!rawPromptText && ingestedAttachments.extractedCount === 0 && text(draft?.actionIntent) !== "next_planned") {
     throw new Error("Informe um pedido ou anexo com texto utilizável antes de editar a microssequência.");
   }
 
   const promptText = buildMicrosequencePrompt({
-    promptText: rawPromptText,
+    promptText: rawPromptText || (text(draft?.actionIntent) === "next_planned" ? "Preencha a próxima microssequência planejada." : ""),
     dependencyTitles,
     selectedDidacticTypeId,
     preferredContainerLabel,
@@ -279,7 +313,8 @@ export async function prepareMicrosequenceGeneration({
   const requestConfig = resolveMicrosequenceRequestConfig({
     promptText: rawPromptText,
     operationMode: text(draft?.operationMode),
-    interventionTargetMode: text(draft?.interventionTargetMode)
+    interventionTargetMode: text(draft?.interventionTargetMode),
+    actionIntent: text(draft?.actionIntent)
   });
   const interventionRequest = buildInterventionRequestFromDraft({
     selection,

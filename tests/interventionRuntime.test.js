@@ -46,6 +46,18 @@ test("resolveMicrosequenceRequestConfig escolhe repair_only para pedidos de corr
       interventionModeHint: "targeted_single_microsequence"
     }
   );
+
+  assert.deepEqual(
+    resolveMicrosequenceRequestConfig({
+      promptText: "",
+      actionIntent: "next_planned"
+    }),
+    {
+      operation: "generate_planned_next",
+      requestedGenerationDepth: "planned_next_only",
+      interventionModeHint: "planned_track_advance"
+    }
+  );
 });
 
 test("buildInterventionRequestFromDraft monta pedido estruturado para nova microssequência", () => {
@@ -78,6 +90,32 @@ test("buildInterventionRequestFromDraft monta pedido estruturado para nova micro
   assert.equal(result.requestedChanges[0].patchStrategy, "add_microsequence");
   assert.equal(result.requestedChanges[0].didacticInterventionType, "guided_practice_bridge");
   assert.deepEqual(result.contextSnapshot.microsequenceKeys, ["micro-atual", "micro-seguinte"]);
+});
+
+test("buildInterventionRequestFromDraft normaliza avanço para a próxima microssequência planejada", () => {
+  const result = buildInterventionRequestFromDraft({
+    selection: {
+      courseKey: "course-a",
+      moduleKey: "module-a",
+      lessonKey: "lesson-a",
+      microsequenceKey: "micro-atual"
+    },
+    draft: {
+      promptText: "",
+      actionIntent: "next_planned",
+      interventionTargetMode: "current",
+      operationMode: "reinforce"
+    },
+    lessonContext: {
+      microsequenceKeys: ["micro-atual", "micro-seguinte"],
+      reusableMicrosequenceCount: 2
+    }
+  });
+
+  assert.equal(result.recommendedAction, "next_planned");
+  assert.equal(result.editorIntent.operation, "generate_planned_next");
+  assert.equal(result.requestedChanges[0].type, "fill_planned_microsequence");
+  assert.equal(result.requestedChanges[0].patchStrategy, "fill_existing_planned_microsequence");
 });
 
 test("prepareMicrosequenceGeneration monta request local no escopo da microssequência", async () => {

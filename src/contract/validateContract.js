@@ -231,7 +231,9 @@ function validateMicrosequence(microsequence, index, errors, microKeys, path) {
       "dependsOn",
       "scopeRefs",
       "parentMicrosequenceKey",
+      "returnToMicrosequenceKey",
       "supportReason",
+      "branchPolicy",
       "domainRefs",
       "practiceVariantRefs",
       "didacticPurpose",
@@ -274,10 +276,22 @@ function validateMicrosequence(microsequence, index, errors, microKeys, path) {
     "parentMicrosequenceKey",
     errors
   );
+  const returnToMicrosequenceKey = readOptionalString(
+    microsequence.returnToMicrosequenceKey,
+    `${currentPath}.returnToMicrosequenceKey`,
+    "returnToMicrosequenceKey",
+    errors
+  );
   const supportReason = readOptionalString(
     microsequence.supportReason,
     `${currentPath}.supportReason`,
     "supportReason",
+    errors
+  );
+  const branchPolicy = readOptionalString(
+    microsequence.branchPolicy,
+    `${currentPath}.branchPolicy`,
+    "branchPolicy",
     errors
   );
   const versions = normalizeVersions(microsequence.versions, `${currentPath}.versions`, errors);
@@ -312,6 +326,20 @@ function validateMicrosequence(microsequence, index, errors, microKeys, path) {
   if (microsequence.coverageRole !== undefined && !coverageRole) {
     errors.push(makeError(`${currentPath}.coverageRole`, 'Campo opcional inválido: "coverageRole".'));
   }
+  if ((type || "main") === "support") {
+    if (!parentMicrosequenceKey) {
+      errors.push(makeError(`${currentPath}.parentMicrosequenceKey`, "Microssequência de suporte precisa apontar para a etapa principal de origem."));
+    }
+    if (!returnToMicrosequenceKey) {
+      errors.push(makeError(`${currentPath}.returnToMicrosequenceKey`, "Microssequência de suporte precisa declarar para onde a trilha retorna."));
+    }
+    if (!supportReason) {
+      errors.push(makeError(`${currentPath}.supportReason`, "Microssequência de suporte precisa registrar a lacuna que motivou o branch."));
+    }
+    if (branchPolicy && branchPolicy !== "must_return_to_planned_track") {
+      errors.push(makeError(`${currentPath}.branchPolicy`, 'Campo opcional inválido: "branchPolicy".'));
+    }
+  }
 
   return {
     key,
@@ -325,7 +353,9 @@ function validateMicrosequence(microsequence, index, errors, microKeys, path) {
     ...(dependsOn.length ? { dependsOn } : {}),
     ...(scopeRefs.length ? { scopeRefs } : {}),
     ...(parentMicrosequenceKey ? { parentMicrosequenceKey } : {}),
+    ...(returnToMicrosequenceKey ? { returnToMicrosequenceKey } : {}),
     ...(supportReason ? { supportReason } : {}),
+    ...(branchPolicy ? { branchPolicy } : {}),
     ...(didacticMeta.domainRefs?.length ? { domainRefs: didacticMeta.domainRefs } : {}),
     ...(didacticMeta.practiceVariantRefs?.length ? { practiceVariantRefs: didacticMeta.practiceVariantRefs } : {}),
     ...(didacticMeta.didacticPurpose ? { didacticPurpose: didacticMeta.didacticPurpose } : {}),

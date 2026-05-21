@@ -140,7 +140,6 @@ export function validatePlannedCourse(plannedCourse, scopeContract) {
       const lessonGuide = lesson?.sourceGuideStructured && typeof lesson.sourceGuideStructured === "object"
         ? lesson.sourceGuideStructured
         : {};
-      const lessonGuideOutOfScope = normalizeWhitespace(scopeModule?.exclude?.join(", "));
       const lessonGuideGoal = normalizeWhitespace(lessonGuide?.lessonGoal);
       const microsequences = Array.isArray(lesson?.microsequences) ? lesson.microsequences : [];
       const derivedLessonInclude = deriveLessonIncludeFromMicrosequences(microsequences, includeEntries);
@@ -150,9 +149,6 @@ export function validatePlannedCourse(plannedCourse, scopeContract) {
 
       let lessonGuideInclude = normalizeWhitespace(lessonGuide?.notationRules);
       const lessonGuidePitfall = normalizeWhitespace(lessonGuide?.commonErrors);
-      if (lesson?.sourceGuideStructured && typeof lesson.sourceGuideStructured === "object" && lessonGuideOutOfScope) {
-        lesson.sourceGuideStructured.outOfScopeRules = lessonGuideOutOfScope;
-      }
       if (!lessonTitle) {
         pushError(errors, `${lessonPath}.title`, "Lição planejada sem título.");
       }

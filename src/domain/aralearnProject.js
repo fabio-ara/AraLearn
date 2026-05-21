@@ -102,7 +102,9 @@ function validateMicrosequence(microsequence, path, errors) {
     dependsOn: Array.isArray(microsequence.dependsOn) ? microsequence.dependsOn.map((item) => String(item).trim()).filter(Boolean) : [],
     scopeRefs: Array.isArray(microsequence.scopeRefs) ? microsequence.scopeRefs.map((item) => String(item).trim()).filter(Boolean) : [],
     ...(microsequence.parentMicrosequenceKey ? { parentMicrosequenceKey: String(microsequence.parentMicrosequenceKey).trim() } : {}),
+    ...(microsequence.returnToMicrosequenceKey ? { returnToMicrosequenceKey: String(microsequence.returnToMicrosequenceKey).trim() } : {}),
     ...(microsequence.supportReason ? { supportReason: String(microsequence.supportReason).trim() } : {}),
+    ...(microsequence.branchPolicy ? { branchPolicy: String(microsequence.branchPolicy).trim() } : {}),
     versions,
     ...(activeVersionKey || versions[0]?.key ? { activeVersionKey: activeVersionKey || versions[versions.length - 1]?.key } : {})
   };

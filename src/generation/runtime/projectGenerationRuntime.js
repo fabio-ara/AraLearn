@@ -228,6 +228,51 @@ function findMicrosequence(projectDocument = {}, selection = {}) {
   ).find((item) => item?.key === selection.microsequenceKey) || null;
 }
 
+function findNextPlannedMainMicrosequence(projectDocument = {}, selection = {}) {
+  const lesson = findLesson(projectDocument, selection.courseKey, selection.moduleKey, selection.lessonKey);
+  const microsequences = Array.isArray(lesson?.microsequences) ? lesson.microsequences : [];
+  const currentIndex = microsequences.findIndex((item) => item?.key === selection.microsequenceKey);
+  if (currentIndex < 0) {
+    return null;
+  }
+  return microsequences
+    .slice(currentIndex + 1)
+    .find((item) => text(item?.type || "main") === "main") || null;
+}
+
+function isReadyDependencyStatus(status = "") {
+  return ["generated", "ready", "needs_review"].includes(text(status));
+}
+
+function resolveBottomUpTargetSelection(projectDocument = {}, selection = {}, draft = {}) {
+  if (text(draft?.actionIntent) !== "next_planned") {
+    return {
+      targetSelection: { ...selection },
+      routeHint: ""
+    };
+  }
+  const nextMain = findNextPlannedMainMicrosequence(projectDocument, selection);
+  if (!nextMain) {
+    throw new Error("Não existe próxima microssequência principal planejada.");
+  }
+  const lesson = findLesson(projectDocument, selection.courseKey, selection.moduleKey, selection.lessonKey);
+  const microsequences = Array.isArray(lesson?.microsequences) ? lesson.microsequences : [];
+  const missingDependency = uniqueList(nextMain?.dependsOn).find((dependencyKey) => {
+    const dependency = microsequences.find((item) => item?.key === dependencyKey);
+    return !dependency || !isReadyDependencyStatus(dependency.status);
+  });
+  if (missingDependency) {
+    throw new Error(`A próxima microssequência planejada ainda depende de "${missingDependency}".`);
+  }
+  return {
+    targetSelection: {
+      ...selection,
+      microsequenceKey: text(nextMain.key)
+    },
+    routeHint: "generate_planned_next"
+  };
+}
+
 function findByTitle(items = [], title = "") {
   const normalizedTitle = normalizeLabelToken(title);
   return (Array.isArray(items) ? items : []).find((item) => normalizeLabelToken(item?.title) === normalizedTitle) || null;
@@ -1194,20 +1239,41 @@ function buildMergedLegacyCards(currentCards = [], nextCards = [], interactionMo
   return resequenceLegacyCards(legacyNextCards, microsequenceKey || "card");
 }
 
-function classifyBottomUpIntervention({ draft = {}, packet = {}, hasCards = false } = {}) {
+function classifyBottomUpIntervention({ draft = {}, packet = {}, hasCards = false, routeHint = "" } = {}) {
+  if (text(routeHint) === "generate_planned_next" || text(draft?.actionIntent) === "next_planned") {
+    return {
+      legacyMode: "normal_generation",
+      canonicalRoute: "generate_planned_next"
+    };
+  }
   if (text(draft?.interventionTargetMode) === "new_after_current") {
-    return "create_support";
+    return {
+      legacyMode: "create_support",
+      canonicalRoute: "create_support_branch"
+    };
   }
   if (text(draft?.operationMode) === "repair") {
-    return "repair";
+    return {
+      legacyMode: "repair",
+      canonicalRoute: "repair_current"
+    };
   }
   if (packet?.studyTrackPolicy?.mode === "clarify_local_doubt") {
-    return "answer_local_doubt";
+    return {
+      legacyMode: "answer_local_doubt",
+      canonicalRoute: "extend_current"
+    };
   }
   if (hasCards) {
-    return "add_practice";
+    return {
+      legacyMode: "add_practice",
+      canonicalRoute: "extend_current"
+    };
   }
-  return "normal_generation";
+  return {
+    legacyMode: "normal_generation",
+    canonicalRoute: "extend_current"
+  };
 }
 
 function buildDraftSeed(packet = {}, interactionMode = "normal_generation") {
@@ -1337,6 +1403,7 @@ function buildContinuationPrompt({
 
 function buildInterventionFeedback({
   interactionMode = "normal_generation",
+  canonicalRoute = "",
   modelId = "",
   promptText = "",
   attachmentNames = [],
@@ -1374,6 +1441,7 @@ function buildInterventionFeedback({
       recommendedInterventionType: "return_to_track",
       continuationNeeded: true,
       continuationMode: "same_microsequence",
+      canonicalRoute: canonicalRoute || "create_support_branch",
       modelId,
       promptText,
       attachmentNames
@@ -1393,6 +1461,7 @@ function buildInterventionFeedback({
       recommendedInterventionType: "",
       continuationNeeded: false,
       continuationMode: "none",
+      canonicalRoute: canonicalRoute || "extend_current",
       modelId,
       promptText,
       attachmentNames
@@ -1464,6 +1533,7 @@ function buildInterventionFeedback({
     recommendedInterventionType: selected.recommendedInterventionType,
     continuationNeeded: true,
     continuationMode,
+    canonicalRoute: canonicalRoute || "extend_current",
     modelId,
     promptText,
     attachmentNames
@@ -1683,7 +1753,9 @@ function applySupportMicrosequence(projectDocument = {}, selection = {}, payload
     included: true,
     dependsOn: supportDependsOn,
     parentMicrosequenceKey: text(current?.key),
+    returnToMicrosequenceKey: text(current?.key),
     supportReason: payload.supportReason,
+    branchPolicy: "must_return_to_planned_track",
     didacticPurpose: payload.goal,
     didacticKind: payload.didacticKind,
     practiceMode: payload.practiceMode,
@@ -1784,40 +1856,42 @@ export async function generateMicrosequenceProjectDocument({
     ? { modelId: text(assistConfig.model) || "gemini-2.5-flash", provider, providerOptions: {} }
     : resolveGenerationProviderRuntime(assistConfig);
   const modelCapabilities = getModelCapabilities(runtime.modelId);
+  const { targetSelection, routeHint } = resolveBottomUpTargetSelection(projectDocument, selection, draft);
   const ingestedAttachments =
     typeof ingestAttachments === "function"
       ? await ingestAttachments(Array.isArray(draft.attachments) ? draft.attachments : [])
       : { attachments: [], extractedCount: 0, warnings: [] };
-  if (!text(draft.promptText) && !ingestedAttachments.extractedCount) {
+  if (!text(draft.promptText) && !ingestedAttachments.extractedCount && text(draft?.actionIntent) !== "next_planned") {
     throw new Error("Informe um pedido ou anexo com texto utilizável antes de editar a microssequência.");
   }
-  const currentMicrosequence = findMicrosequence(projectDocument, selection);
+  const currentMicrosequence = findMicrosequence(projectDocument, targetSelection);
   const hasCards = Array.isArray(currentMicrosequence?.cards) && currentMicrosequence.cards.length > 0;
-  const interactionMode = classifyBottomUpIntervention({
-    draft,
-    packet: {
-      studyTrackPolicy: buildStudyTrackPolicy({
-        userPrompt: draft.promptText,
-        lesson: {
-          ...(findLesson(projectDocument, selection.courseKey, selection.moduleKey, selection.lessonKey) || {}),
-          microsequenceLine: (findLesson(projectDocument, selection.courseKey, selection.moduleKey, selection.lessonKey)?.microsequences || []).map((item) => ({
-            key: text(item?.key),
-            title: text(item?.title),
-            objective: text(item?.didacticPurpose || item?.description || item?.title)
-          }))
-        },
-        microsequence: {
-          key: text(currentMicrosequence?.key),
-          title: text(currentMicrosequence?.title),
-          didacticPurpose: text(currentMicrosequence?.didacticPurpose || currentMicrosequence?.description || currentMicrosequence?.title)
-        },
-        selectedLessonTopicRefs: []
-      })
-    },
-    hasCards
+  const packet = buildBottomUpContextPacket(projectDocument, targetSelection, {
+    userRequest: text(draft.promptText) || (text(draft?.actionIntent) === "next_planned"
+      ? "Preencha a próxima microssequência planejada sem abrir assunto novo."
+      : ""),
+    density,
+    dependencyTitles,
+    selectedDidacticTypeId,
+    preferredContainerLabel,
+    ingestedAttachments,
+    interactionMode: "normal_generation"
   });
-  const packet = buildBottomUpContextPacket(projectDocument, selection, {
-    userRequest: draft.promptText,
+  const route = classifyBottomUpIntervention({
+    draft,
+    packet,
+    hasCards
+    ,
+    routeHint
+  });
+  packet.interactionMode = route.legacyMode;
+  packet.canonicalRoute = route.canonicalRoute;
+  const interactionMode = route.legacyMode;
+  const promptText = text(draft.promptText) || (route.canonicalRoute === "generate_planned_next"
+    ? `Preencha a próxima microssequência planejada "${text(currentMicrosequence?.title)}" seguindo a trilha top-down sem abrir assunto novo.`
+    : "");
+  const rebuiltPacket = buildBottomUpContextPacket(projectDocument, targetSelection, {
+    userRequest: promptText,
     density,
     dependencyTitles,
     selectedDidacticTypeId,
@@ -1825,14 +1899,15 @@ export async function generateMicrosequenceProjectDocument({
     ingestedAttachments,
     interactionMode
   });
+  rebuiltPacket.canonicalRoute = route.canonicalRoute;
   const technicalBudget = buildTechnicalCardBudget(density, modelCapabilities);
 
   if (interactionMode === "create_support") {
     const validated = await generateValidatedSupportPayload({
       runtime,
       modelId: runtime.modelId,
-      packet,
-      request: draft.promptText,
+      packet: rebuiltPacket,
+      request: promptText,
       density,
       modelCapabilities
     });
@@ -1840,13 +1915,15 @@ export async function generateMicrosequenceProjectDocument({
     const targetMicrosequence = findMicrosequence(applied.projectDocument, applied.target);
     return {
       ...applied,
+      route,
       interventionFeedback: buildInterventionFeedback({
         interactionMode,
+        canonicalRoute: route.canonicalRoute,
         modelId: runtime.modelId,
-        promptText: text(draft.promptText),
-      attachmentNames: (Array.isArray(ingestedAttachments.attachments) ? ingestedAttachments.attachments : []).map((item) => text(item?.name)).filter(Boolean),
-      microsequenceTitle: text(targetMicrosequence?.title || validated.title),
-      returnMicrosequenceTitle: text(currentMicrosequence?.title),
+        promptText,
+        attachmentNames: (Array.isArray(ingestedAttachments.attachments) ? ingestedAttachments.attachments : []).map((item) => text(item?.name)).filter(Boolean),
+        microsequenceTitle: text(targetMicrosequence?.title || validated.title),
+        returnMicrosequenceTitle: text(currentMicrosequence?.title),
       cardCount: Array.isArray(validated.cards) ? validated.cards.length : 0,
       createdSupport: true
     })
@@ -1863,17 +1940,17 @@ export async function generateMicrosequenceProjectDocument({
           : "generate-microsequence";
   const correctionPrompt =
     interactionMode === "repair"
-      ? buildImprovePrompt(packet, draft.promptText)
+      ? buildImprovePrompt(rebuiltPacket, promptText)
       : interactionMode === "add_practice"
-        ? buildPracticePrompt(packet, draft.promptText)
+        ? buildPracticePrompt(rebuiltPacket, promptText)
         : interactionMode === "answer_local_doubt"
-          ? buildImprovePrompt(packet, draft.promptText || "Responder à dúvida local e retornar à trilha.")
+          ? buildImprovePrompt(rebuiltPacket, promptText || "Responder à dúvida local e retornar à trilha.")
           : "";
-  const fallbackCardPlan = buildFallbackCardPlan(packet, interactionMode, technicalBudget);
+  const fallbackCardPlan = buildFallbackCardPlan(rebuiltPacket, interactionMode, technicalBudget);
   const draftPlan = await generateDidacticDraft({
     runtime,
     modelId: runtime.modelId,
-    packet,
+    packet: rebuiltPacket,
     interactionMode,
     fallbackCardPlan,
     temperature: hasCards ? 0.3 : 0.2
@@ -1886,7 +1963,7 @@ export async function generateMicrosequenceProjectDocument({
     expectedEvidence: step.expectedEvidence
   }));
   const prompt = buildBottomUpCompileUserPrompt(
-    packet,
+    rebuiltPacket,
     draftPlan,
     {
       cardPlan,
@@ -1900,23 +1977,25 @@ export async function generateMicrosequenceProjectDocument({
     modelId: runtime.modelId,
     mode,
     basePrompt: correctionPrompt ? `${prompt}\n\nAjuste adicional:\n${correctionPrompt}` : prompt,
-    packet,
+    packet: rebuiltPacket,
     density,
     modelCapabilities,
     cardPlan,
     temperature: hasCards ? 0.3 : 0.2
   });
-  const applied = applyCardsToCurrentMicrosequence(projectDocument, selection, {
+  const applied = applyCardsToCurrentMicrosequence(projectDocument, targetSelection, {
     ...validated,
     interactionMode
   });
   const appliedMicrosequence = findMicrosequence(applied.projectDocument, applied.target);
   return {
     ...applied,
+    route,
     interventionFeedback: buildInterventionFeedback({
       interactionMode,
+      canonicalRoute: route.canonicalRoute,
       modelId: runtime.modelId,
-      promptText: text(draft.promptText),
+      promptText,
       attachmentNames: (Array.isArray(ingestedAttachments.attachments) ? ingestedAttachments.attachments : []).map((item) => text(item?.name)).filter(Boolean),
       draftPlan,
       microsequenceTitle: text(appliedMicrosequence?.title || currentMicrosequence?.title),

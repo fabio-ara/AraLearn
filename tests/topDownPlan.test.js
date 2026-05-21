@@ -93,7 +93,7 @@ test("top-down gera microssequências planned sem cards", async () => {
   assert.equal(practiceMicrosequence.dependencyPolicy, "uses_previous");
   assert.equal(practiceMicrosequence.coverageRole, "practice");
   assert.deepEqual(practiceMicrosequence.expectedEvidence, ["montar as quatro linhas", "ler a coluna final"]);
-  assert.equal(lessonGuide.outOfScopeRules, "lógica de predicados");
+  assert.equal(lessonGuide.outOfScopeRules, undefined);
 });
 
 test("top-down rejeita cards e dependência futura", () => {
@@ -237,6 +237,50 @@ test("prompt top-down exige reaproveitar literalmente itens de include em notati
 test("prompt top-down proíbe usar itens excluídos como contraste negativo", () => {
   const prompt = buildTopDownUserPrompt(scopeContract);
 
-  assert.match(prompt, /Não mencione itens de 'Não entra' fora do campo outOfScopeRules/i);
-  assert.match(prompt, /não use esses termos nem para dizer que não serão tratados/i);
+  assert.match(prompt, /Não mencione itens de 'Não entra' em nenhum campo da resposta/i);
+  assert.match(prompt, /mecanismos avançados fora do escopo imediato/i);
+});
+
+test("top-down não repopula outOfScopeRules com a lista literal de exclude", () => {
+  const validation = validatePlannedCourse(
+    {
+      course: {
+        title: "Matemática para Informática",
+        modules: [
+          {
+            title: "Lógica Proposicional",
+            lessons: [
+              {
+                title: "Conectivos",
+                goal: "Entender conectivos.",
+                sourceGuideStructured: {
+                  lessonGoal: "Reconhecer o papel dos conectivos básicos.",
+                  notationRules: "conectivos, tabela-verdade",
+                  commonErrors: "Não trocar a função de um conectivo por outra já estudada."
+                },
+                microsequences: [
+                  {
+                    title: "Ler proposições",
+                    goal: "Ler proposições simples.",
+                    dependsOnTitles: [],
+                    scopeLabels: ["conectivos"]
+                  },
+                  {
+                    title: "Tabela-verdade básica",
+                    goal: "Montar uma tabela-verdade.",
+                    dependsOnTitles: ["Ler proposições"],
+                    scopeLabels: ["tabela-verdade"]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    scopeContract
+  );
+
+  assert.equal(validation.ok, true);
+  assert.equal(validation.value.course.modules[0].lessons[0].sourceGuideStructured.outOfScopeRules, undefined);
 });

@@ -52,7 +52,7 @@ export function buildTopDownUserPrompt(scopeContract) {
     "Em cada lição, sourceGuideStructured.notationRules (campo \"Incluir\") deve conter uma lista separada por vírgulas com pelo menos um item copiado literalmente de 'Entra' (include) do módulo; idealmente liste exatamente os itens tratados naquela lição.",
     "expectedEvidence deve listar evidências observáveis de aprendizagem em frases curtas.",
     "Preserve o escopo declarado e não invente módulos novos.",
-    "Não mencione itens de 'Não entra' fora do campo outOfScopeRules; não use esses termos nem para dizer que não serão tratados.",
+    "Não mencione itens de 'Não entra' em nenhum campo da resposta; quando precisar delimitar, use formulações genéricas como 'mecanismos avançados fora do escopo imediato'.",
     "Evite empacotar tópicos demais em uma única microssequência.",
     "Indique coverageRole como introduce, explain, practice, review, repair_gap ou extend_practice conforme a função na trilha.",
     "Quando um tópico pedir treino, abra etapas de prática ou consolidação em vez de comprimir tudo numa única exposição.",

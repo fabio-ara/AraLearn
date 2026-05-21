@@ -376,7 +376,9 @@ test("generateMicrosequenceProjectDocument cria suporte adjacente sem quebrar a 
   assert.equal(microsequences[2].title, "Microssequência de apoio");
   assert.equal(microsequences[2].type, "support");
   assert.equal(microsequences[2].parentMicrosequenceKey, "micro-a");
+  assert.equal(microsequences[2].returnToMicrosequenceKey, "micro-a");
   assert.equal(microsequences[2].supportReason, "Lacuna prévia local");
+  assert.equal(microsequences[2].branchPolicy, "must_return_to_planned_track");
   assert.equal(microsequences[2].didacticPurpose, "Explicar a base local antes da continuação.");
   assert.equal(microsequences[2].didacticKind, "concept");
   assert.equal(microsequences[2].practiceMode, "explanation");
@@ -387,6 +389,7 @@ test("generateMicrosequenceProjectDocument cria suporte adjacente sem quebrar a 
   assert.deepEqual(microsequences[2].dependsOn, ["micro-prev"]);
   assert.deepEqual(microsequences[2].tags, ["PC", "IR"]);
   assert.equal(microsequences[3].key, "micro-next");
+  assert.equal(result.route.canonicalRoute, "create_support_branch");
   assert.equal(result.interventionFeedback.status, "completed");
   assert.equal(result.interventionFeedback.recommendedActionIntent, "continue_current");
   assert.equal(result.interventionFeedback.continuationMode, "same_microsequence");
@@ -797,6 +800,7 @@ test("generateMicrosequenceProjectDocument prioriza resposta local e remove fall
   });
 
   const cards = result.projectDocument.courses[0].modules[0].lessons[0].microsequences[1].cards;
+  assert.equal(result.route.canonicalRoute, "extend_current");
   assert.equal(cards.length, 3);
   assert.match(cards[0].say, /PC indica o próximo endereço/);
   assert.match(cards[1].say, /retome agora a trilha principal/i);
@@ -928,6 +932,174 @@ test("generateMicrosequenceProjectDocument usa continuação conservadora quando
     /Complete|Varie/i.test(card.say || "")
   );
   assert.equal(practiceCards.length, 2);
+});
+
+test("generateMicrosequenceProjectDocument preenche a próxima microssequência planejada quando a ação é next_planned", async () => {
+  const provider = createFakeProvider({
+    script: {
+      "normal_generation-draft": {
+        steps: [
+          {
+            role: "microtheory",
+            resourceType: "say",
+            purpose: "Abrir a próxima etapa.",
+            inCardContext: ["próxima etapa do ciclo"],
+            usesDependency: ["micro-a"],
+            expectedEvidence: ["explicar a próxima etapa"]
+          },
+          {
+            role: "active_practice",
+            resourceType: "block_gap_fill",
+            purpose: "Checar compreensão.",
+            inCardContext: ["lacuna guiada"],
+            usesDependency: ["micro-a"],
+            expectedEvidence: ["identificar a próxima etapa"]
+          },
+          {
+            role: "bridge_or_consolidation",
+            resourceType: "say",
+            purpose: "Fechar a etapa.",
+            inCardContext: ["continuidade da trilha"],
+            usesDependency: ["micro-a"],
+            expectedEvidence: ["seguir a trilha"]
+          }
+        ],
+        coverageNotes: ["Preenchimento da próxima etapa planejada."],
+        continuationNeeded: false,
+        continuationReason: "",
+        continuationMode: "none",
+        continuationPrompt: ""
+      },
+      "generate-microsequence": {
+        summary: "Próxima microssequência preenchida.",
+        cards: [
+          { key: "card-1", position: 1, resourceType: "say", content: "A próxima etapa retoma a base anterior antes de avançar." },
+          { key: "card-2", position: 2, resourceType: "block_gap_fill", content: "Complete: esta etapa continua a [[Microssequência Seguinte::Microssequência Seguinte|Base anterior]]." },
+          { key: "card-3", position: 3, resourceType: "say", content: "Com isso, a trilha principal segue para a etapa planejada." }
+        ]
+      }
+    }
+  });
+
+  const project = createProjectDocument();
+  project.courses[0].modules[0].lessons[0].microsequences[1].status = "ready";
+  project.courses[0].modules[0].lessons[0].microsequences[1].included = true;
+  project.courses[0].modules[0].lessons[0].microsequences[1].cards = [
+    { key: "seed-card", title: "Base", say: "Base local já consolidada." }
+  ];
+
+  const result = await generateMicrosequenceProjectDocument({
+    selection: {
+      courseKey: "course-a",
+      moduleKey: "module-a",
+      lessonKey: "lesson-a",
+      microsequenceKey: "micro-a"
+    },
+    draft: {
+      promptText: "",
+      actionIntent: "next_planned",
+      operationMode: "reinforce",
+      interventionTargetMode: "current"
+    },
+    assistConfig: {
+      model: "gemini-2.5-flash",
+      apiKey: "chave"
+    },
+    projectDocument: project,
+    provider,
+    ingestAttachments: async () => ({ attachments: [], extractedCount: 0, warnings: [] })
+  });
+
+  const lesson = result.projectDocument.courses[0].modules[0].lessons[0];
+  assert.equal(result.route.canonicalRoute, "generate_planned_next");
+  assert.equal(result.target.microsequenceKey, "micro-next");
+  assert.equal(lesson.microsequences[1].cards.length, 1);
+  assert.equal(lesson.microsequences[2].status, "ready");
+  assert.equal(lesson.microsequences[2].cards.length, 3);
+  assert.match(lesson.microsequences[2].cards[0].say, /próxima etapa/i);
+});
+
+test("generateMicrosequenceProjectDocument repara a microssequência atual sem alterar a trilha", async () => {
+  const provider = createFakeProvider({
+    script: {
+      "repair-draft": {
+        steps: [
+          {
+            role: "microtheory",
+            resourceType: "say",
+            purpose: "Reescrever a explicação local.",
+            inCardContext: ["ajuste local"],
+            usesDependency: [],
+            expectedEvidence: ["explicar melhor o ponto"]
+          },
+          {
+            role: "active_practice",
+            resourceType: "block_gap_fill",
+            purpose: "Manter prática guiada.",
+            inCardContext: ["checagem curta"],
+            usesDependency: [],
+            expectedEvidence: ["aplicar o ponto"]
+          },
+          {
+            role: "bridge_or_consolidation",
+            resourceType: "say",
+            purpose: "Fechar a mesma etapa.",
+            inCardContext: ["mesma trilha"],
+            usesDependency: [],
+            expectedEvidence: ["seguir na mesma etapa"]
+          }
+        ],
+        coverageNotes: ["Repair local sem mudar a trilha."],
+        continuationNeeded: false,
+        continuationReason: "",
+        continuationMode: "none",
+        continuationPrompt: ""
+      },
+      "improve-microsequence": {
+        summary: "Versão reparada da mesma microssequência.",
+        cards: [
+          { key: "card-1", position: 1, resourceType: "say", content: "Nova explicação local mais simples." },
+          { key: "card-2", position: 2, resourceType: "block_gap_fill", content: "Complete: a correção continua na [[Microssequência A::Microssequência A|Microssequência Seguinte]]." },
+          { key: "card-3", position: 3, resourceType: "say", content: "A trilha segue na mesma microssequência antes de qualquer avanço." }
+        ]
+      }
+    }
+  });
+
+  const project = createProjectDocument();
+  project.courses[0].modules[0].lessons[0].microsequences[1].status = "ready";
+  project.courses[0].modules[0].lessons[0].microsequences[1].included = true;
+  project.courses[0].modules[0].lessons[0].microsequences[1].cards = [
+    { key: "seed-card", title: "Base", say: "Explicação ruim para corrigir." }
+  ];
+
+  const result = await generateMicrosequenceProjectDocument({
+    selection: {
+      courseKey: "course-a",
+      moduleKey: "module-a",
+      lessonKey: "lesson-a",
+      microsequenceKey: "micro-a"
+    },
+    draft: {
+      promptText: "Corrija a explicação ruim sem mudar de assunto.",
+      operationMode: "repair",
+      interventionTargetMode: "current"
+    },
+    assistConfig: {
+      model: "gemini-2.5-flash",
+      apiKey: "chave"
+    },
+    projectDocument: project,
+    provider,
+    ingestAttachments: async () => ({ attachments: [], extractedCount: 0, warnings: [] })
+  });
+
+  const lesson = result.projectDocument.courses[0].modules[0].lessons[0];
+  assert.equal(result.route.canonicalRoute, "repair_current");
+  assert.equal(result.target.microsequenceKey, "micro-a");
+  assert.deepEqual(lesson.microsequences.map((item) => item.key), ["micro-prev", "micro-a", "micro-next"]);
+  assert.equal(lesson.microsequences[1].cards.length, 3);
+  assert.equal(lesson.microsequences[2].cards.length, 0);
 });
 
 test("fluxo de produto não importa runner estrutural externo nem fallback paralelo", () => {
