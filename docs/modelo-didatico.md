@@ -23,6 +23,8 @@ Uma microssequência pode servir para:
 
 A função vem antes do formato. Se o tópico exige notação algébrica, usa-se notação algébrica. Se exige grafo, usa-se `graph`. Se exige comparação, uma tabela pode ser mais adequada.
 
+No motor atual, essa função também pode ser explicitada em metadados didáticos genéricos, como `didacticKind`, `practiceMode`, `representationNeed`, `dependencyPolicy`, `coverageRole` e `expectedEvidence`.
+
 ## Explicação e prática
 
 O AraLearn evita separar explicação e prática como blocos desconectados. Uma microssequência adequada aproxima os dois momentos.
@@ -36,6 +38,15 @@ Um padrão possível é:
 5. indicar por que a etapa prepara a próxima.
 
 Nem toda microssequência precisa seguir esse padrão, mas toda microssequência precisa ter progressão interna compreensível.
+
+## Dois tempos no bottom-up
+
+O bottom-up atual trabalha em dois tempos:
+
+1. a IA devolve um draft didático intermediário com etapas, função de cada etapa, recurso sugerido, contexto interno e evidências esperadas;
+2. a IA compila o JSON final dos cards a partir desse draft e de um card plan determinístico.
+
+Essa separação ajuda modelos baratos a manterem o JSON estável sem empobrecer a didática.
 
 ## Progressão
 
@@ -91,3 +102,10 @@ Uma microssequência está bem desenhada quando deixa claro:
 - que prática exige;
 - que erro previne;
 - por que vem antes da próxima etapa.
+
+No motor atual, a qualidade não é medida por número rígido de cards nem por limite fixo de caracteres. O critério central é carga didática:
+
+- cada card precisa ter função reconhecível;
+- prática precisa carregar o contexto necessário no próprio card;
+- aplicação exige prática real, não só exposição;
+- conteúdo complexo pode ser decomposto em mais cards ou em continuação controlada.

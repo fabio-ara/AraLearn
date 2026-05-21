@@ -6,8 +6,8 @@ export const CARD_RESOURCE_DEFINITIONS = Object.freeze([
   Object.freeze({
     id: "paragraph",
     label: "Parágrafo",
-    shortDescription: "Texto curto com uma ideia principal.",
-    limits: { maxChars: 420 },
+    shortDescription: "Texto focal com uma ideia principal e o contexto didático necessário.",
+    limits: { densityPolicy: "didactic_load" },
     schema: {
       type: "object",
       required: ["resourceType", "title", "text"],
@@ -15,7 +15,7 @@ export const CARD_RESOURCE_DEFINITIONS = Object.freeze([
         position: { type: "number" },
         resourceType: { const: "paragraph" },
         title: { type: "string" },
-        text: { type: "string", maxLength: 420 },
+        text: { type: "string" },
         sourceRefs: { type: "array", items: { type: "string" } },
         sourceNote: { type: "string" }
       },
@@ -25,8 +25,8 @@ export const CARD_RESOURCE_DEFINITIONS = Object.freeze([
   Object.freeze({
     id: "multiple_choice",
     label: "Múltipla escolha",
-    shortDescription: "Pergunta curta com uma alternativa correta.",
-    limits: { minOptions: 3, maxOptions: 4, maxPromptChars: 220 },
+    shortDescription: "Pergunta objetiva com contexto suficiente para decidir.",
+    limits: { minOptions: 3, maxOptions: 4, densityPolicy: "didactic_load" },
     schema: {
       type: "object",
       required: ["resourceType", "title", "question", "options", "correctOptionId", "feedback"],
@@ -34,7 +34,7 @@ export const CARD_RESOURCE_DEFINITIONS = Object.freeze([
         position: { type: "number" },
         resourceType: { const: "multiple_choice" },
         title: { type: "string" },
-        question: { type: "string", maxLength: 220 },
+        question: { type: "string" },
         sourceRefs: { type: "array", items: { type: "string" } },
         sourceNote: { type: "string" },
         options: {
@@ -60,8 +60,8 @@ export const CARD_RESOURCE_DEFINITIONS = Object.freeze([
   Object.freeze({
     id: "code_editor",
     label: "Editor de código",
-    shortDescription: "Trecho curto de código ou comando com linguagem explícita.",
-    limits: { maxLines: 6, maxPromptChars: 260 },
+    shortDescription: "Trecho de código ou comando com linguagem explícita e contexto local.",
+    limits: { densityPolicy: "didactic_load" },
     schema: {
       type: "object",
       required: ["resourceType", "title", "prompt", "language", "code"],
@@ -83,7 +83,7 @@ export const CARD_RESOURCE_DEFINITIONS = Object.freeze([
     id: "table",
     label: "Tabela",
     shortDescription: "Poucas linhas e colunas para comparação ou organização.",
-    limits: { maxColumns: 4, maxRows: 6, maxCellChars: 80 },
+    limits: { maxColumns: 4, maxRows: 6, densityPolicy: "didactic_load" },
     schema: {
       type: "object",
       required: ["resourceType", "title", "columns", "rows"],

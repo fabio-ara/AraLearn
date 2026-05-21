@@ -1,14 +1,14 @@
 const BASE_SAFE_RESOURCE_TYPES = Object.freeze(["paragraph", "block_gap_fill", "multiple_choice"]);
 const CAUTIOUS_RESOURCE_TYPES = Object.freeze(["table", "code_editor"]);
 const ADVANCED_RESOURCE_TYPES = Object.freeze(["flowchart", "tree", "matrix", "plane", "graph"]);
-const DEFAULT_SIZE_IDS = Object.freeze(["short", "medium"]);
-const REVIEW_SIZE_IDS = Object.freeze(["short"]);
+const DEFAULT_SIZE_IDS = Object.freeze(["short", "medium", "long"]);
+const REVIEW_SIZE_IDS = Object.freeze(["short", "medium"]);
 
 const TYPE_RESOURCE_JUSTIFICATIONS = Object.freeze({
   assisted: ["paragraph", "block_gap_fill", "multiple_choice", "table", "code_editor"],
   simple: ["paragraph", "multiple_choice", "table"],
   concept: ["paragraph", "multiple_choice", "table", "matrix", "plane", "graph"],
-  procedure: ["paragraph", "multiple_choice", "table", "code_editor", "flowchart", "tree", "graph"],
+  procedure: ["paragraph", "multiple_choice", "table", "code_editor", "flowchart", "tree"],
   guided_practice: ["paragraph", "block_gap_fill", "multiple_choice", "table", "code_editor"],
   comparison: ["paragraph", "multiple_choice", "table", "matrix", "graph"],
   review: ["paragraph", "block_gap_fill", "multiple_choice", "table"],
@@ -17,36 +17,26 @@ const TYPE_RESOURCE_JUSTIFICATIONS = Object.freeze({
   code_or_command: ["paragraph", "block_gap_fill", "multiple_choice", "code_editor", "tree"]
 });
 
-const ADVANCED_RESOURCE_SIGNAL_RULES = Object.freeze({
+const GENERIC_ADVANCED_RULES = Object.freeze({
   matrix: {
-    contentTypeTags: ["calculation", "comparison"],
-    learningActionTags: ["solve", "compare"],
-    typeIds: ["concept", "comparison"],
-    sourceGuideTerms: ["matriz", "matrizes", "vetor", "vetores", "transformação linear"]
+    representationNeeds: ["table", "formula", "sequence"],
+    practiceModes: ["calculation", "classification"]
   },
   plane: {
-    contentTypeTags: ["calculation", "interpretation"],
-    learningActionTags: ["solve", "compare"],
-    typeIds: ["concept", "comparison"],
-    sourceGuideTerms: ["plano cartesiano", "vetor", "vetores", "distância", "ponto"]
+    representationNeeds: ["visual_structure", "formula"],
+    practiceModes: ["calculation", "variation"]
   },
   flowchart: {
-    contentTypeTags: ["procedure", "classification"],
-    learningActionTags: ["understand", "practice"],
-    typeIds: ["procedure", "rule_or_policy"],
-    sourceGuideTerms: ["fluxo", "decisão", "procedimento", "algoritmo", "passo a passo"]
+    representationNeeds: ["sequence", "visual_structure"],
+    practiceModes: ["execution", "correction"]
   },
   tree: {
-    contentTypeTags: ["classification", "tool_use", "source_reading"],
-    learningActionTags: ["understand", "use_tool", "read_source"],
-    typeIds: ["procedure", "code_or_command"],
-    sourceGuideTerms: ["diretório", "diretórios", "árvore", "arquivo", "pastas", "caminho"]
+    representationNeeds: ["visual_structure", "sequence"],
+    practiceModes: ["classification", "execution"]
   },
   graph: {
-    contentTypeTags: ["concept", "comparison", "calculation", "interpretation"],
-    learningActionTags: ["understand", "solve", "compare", "practice"],
-    typeIds: ["concept", "comparison", "procedure"],
-    sourceGuideTerms: ["grafo", "grafos", "vértice", "vértices", "aresta", "arestas", "dijkstra", "bipartido", "euleriano", "adjacência"]
+    representationNeeds: ["visual_structure", "table"],
+    practiceModes: ["classification", "variation", "calculation"]
   }
 });
 
@@ -78,105 +68,69 @@ function includesAny(values = [], candidates = []) {
   return candidates.some((candidate) => set.has(candidate));
 }
 
-function normalizeGuideText(sourceGuideStructured = {}) {
-  return Object.values(sourceGuideStructured)
-    .map((value) => text(value).toLowerCase())
-    .filter(Boolean)
-    .join(" ");
-}
-
 function typeSupportsResource(typeId, resourceType) {
   return (TYPE_RESOURCE_JUSTIFICATIONS[typeId] || []).includes(resourceType);
 }
 
-function normalizeCourseSemantics(courseSemantics = {}) {
+function resolveMetadata(lessonGuidance = {}) {
   return {
-    representations: unique([
-      text(courseSemantics?.primaryRepresentation),
-      text(courseSemantics?.secondaryRepresentation)
-    ]),
-    operations: unique([text(courseSemantics?.primaryOperation)]),
-    practiceModes: unique([text(courseSemantics?.preferredPracticeMode)])
+    didacticKind: text(lessonGuidance.didacticKind),
+    practiceMode: text(lessonGuidance.practiceMode),
+    representationNeed: text(lessonGuidance.representationNeed),
+    coverageRole: text(lessonGuidance.coverageRole)
   };
 }
 
-function hasStrongResourceNeed(resourceType, { lessonGuidance = {}, lessonSourceGuideStructured = {}, resolvedTypeId = "", courseSemantics = {} } = {}) {
-  const rule = ADVANCED_RESOURCE_SIGNAL_RULES[resourceType];
+function hasStrongResourceNeed(resourceType, { lessonGuidance = {}, resolvedTypeId = "" } = {}) {
+  const rule = GENERIC_ADVANCED_RULES[resourceType];
   if (!rule) {
     return false;
   }
-  const contentTypeTags = list(lessonGuidance.contentTypeTags);
-  const learningActionTags = list(lessonGuidance.learningActionTags);
-  const guideText = normalizeGuideText(lessonSourceGuideStructured);
-  const normalizedCourseSemantics = normalizeCourseSemantics(courseSemantics);
-  const courseHints = {
-    matrix: normalizedCourseSemantics.representations.includes("matrix"),
-    plane:
-      normalizedCourseSemantics.representations.includes("graph") ||
-      normalizedCourseSemantics.representations.includes("formula"),
-    flowchart:
-      normalizedCourseSemantics.representations.includes("flowchart") ||
-      normalizedCourseSemantics.operations.includes("trace") ||
-      normalizedCourseSemantics.operations.includes("build"),
-    tree:
-      normalizedCourseSemantics.representations.includes("tree") ||
-      normalizedCourseSemantics.operations.includes("classify"),
-    graph:
-      normalizedCourseSemantics.representations.includes("graph") ||
-      normalizedCourseSemantics.operations.includes("trace") ||
-      normalizedCourseSemantics.operations.includes("compare")
-  };
+  const metadata = resolveMetadata(lessonGuidance);
+  const courseSemantics = lessonGuidance?.courseSemantics || {};
   return (
-    includesAny(contentTypeTags, rule.contentTypeTags) ||
-    includesAny(learningActionTags, rule.learningActionTags) ||
-    rule.typeIds.includes(text(resolvedTypeId)) ||
-    rule.sourceGuideTerms.some((term) => guideText.includes(term)) ||
-    courseHints[resourceType] === true
+    includesAny([metadata.representationNeed, text(courseSemantics?.primaryRepresentation), text(courseSemantics?.secondaryRepresentation)], rule.representationNeeds) ||
+    includesAny([metadata.practiceMode, text(courseSemantics?.preferredPracticeMode)], rule.practiceModes) ||
+    (resourceType === "graph" && ["comparison", "concept"].includes(text(resolvedTypeId))) ||
+    (resourceType === "matrix" && ["comparison", "concept"].includes(text(resolvedTypeId)))
   );
 }
 
 function resolveAllowedTypeIds(lessonGuidance = {}) {
-  const contentTypeTags = list(lessonGuidance.contentTypeTags);
-  const learningActionTags = list(lessonGuidance.learningActionTags);
-  const allowed = [];
+  const metadata = resolveMetadata(lessonGuidance);
+  const allowed = ["simple", "concept", "procedure", "guided_practice", "comparison", "review", "common_mistake", "rule_or_policy", "code_or_command"];
 
-  if (includesAny(learningActionTags, ["practice", "solve"])) {
-    allowed.push("guided_practice");
+  if (includesAny([metadata.practiceMode], ["guided_production", "execution", "construction", "variation"])) {
+    allowed.unshift("guided_practice");
   }
-  if (includesAny(learningActionTags, ["use_tool"]) || includesAny(contentTypeTags, ["tool_use"])) {
-    allowed.push("code_or_command");
+  if (includesAny([metadata.practiceMode], ["execution"]) || metadata.representationNeed === "code") {
+    allowed.unshift("code_or_command");
   }
-  if (includesAny(contentTypeTags, ["procedure"])) {
-    allowed.push("procedure");
+  if (metadata.didacticKind === "procedure") {
+    allowed.unshift("procedure");
   }
-  if (includesAny(contentTypeTags, ["comparison", "classification"])) {
-    allowed.push("comparison");
+  if (includesAny([metadata.didacticKind, metadata.practiceMode], ["discrimination", "classification", "variation"])) {
+    allowed.unshift("comparison");
   }
-  if (includesAny(learningActionTags, ["review"]) || includesAny(contentTypeTags, ["review"])) {
-    allowed.push("review");
+  if (metadata.coverageRole === "review") {
+    allowed.unshift("review");
   }
-  if (includesAny(contentTypeTags, ["error_diagnosis"])) {
-    allowed.push("common_mistake");
+  if (metadata.coverageRole === "repair_gap" || metadata.practiceMode === "correction") {
+    allowed.unshift("common_mistake");
   }
-  if (includesAny(contentTypeTags, ["concept", "interpretation", "source_reading"])) {
-    allowed.push("concept");
+  if (includesAny([metadata.didacticKind], ["concept", "formalization", "representation_reading", "cumulative_practice"])) {
+    allowed.unshift("concept");
   }
-  allowed.push("simple");
 
   return TYPE_PRIORITY.filter((typeId) => unique(allowed).includes(typeId));
 }
 
 function resolveAllowedSizeIds(lessonGuidance = {}, modelCapabilities = {}) {
   const supportLevel = text(lessonGuidance.supportLevel);
-  const maxCards = Math.min(
-    Number(modelCapabilities.absoluteMaxCards || 7),
-    Number(modelCapabilities.recommendedMaxCards || 5)
-  );
+  const maxCards = Math.max(1, Number(modelCapabilities.absoluteMaxCards || 8));
   const sizeIds = supportLevel === "quick_review" ? REVIEW_SIZE_IDS : DEFAULT_SIZE_IDS;
-  const allowed = sizeIds.filter((sizeId) => {
-    const countBySize = { short: 3, medium: 5, long: 7 };
-    return (countBySize[sizeId] || 99) <= maxCards;
-  });
+  const countBySize = { short: 3, medium: 5, long: 8 };
+  const allowed = sizeIds.filter((sizeId) => (countBySize[sizeId] || 99) <= maxCards);
   return allowed.length ? allowed : ["short"];
 }
 
@@ -187,9 +141,7 @@ function buildResourceDecision(resourceType, context) {
   const typeJustified = typeSupportsResource(context.resolvedTypeId, resourceType);
   const stronglyIndicated = hasStrongResourceNeed(resourceType, {
     lessonGuidance: context.lessonGuidance,
-    lessonSourceGuideStructured: context.lessonSourceGuideStructured,
-    resolvedTypeId: context.resolvedTypeId,
-    courseSemantics: context.courseSemantics
+    resolvedTypeId: context.resolvedTypeId
   });
   const preferredResourceTypes = list(context.resourcePreferences?.preferredResourceTypes);
   const discouragedResourceTypes = list(context.resourcePreferences?.discouragedResourceTypes);
@@ -213,7 +165,7 @@ function buildResourceDecision(resourceType, context) {
       allowed: cautiousAllowed,
       classification: "cautious",
       preferred: preferredByCourse,
-      reason: cautiousAllowed ? "recurso cauteloso permitido" : "recurso cauteloso fora do envelope da lição ou do tipo"
+      reason: cautiousAllowed ? "recurso cauteloso permitido" : "recurso cauteloso fora do envelope didático"
     };
   }
 
@@ -227,13 +179,7 @@ function buildResourceDecision(resourceType, context) {
     allowed: advancedAllowed,
     classification: "advanced",
     preferred: preferredByCourse,
-    reason: advancedAllowed
-      ? explicitlySelectedByUser
-        ? "recurso avançado liberado por tag da lição, tipo compatível e escolha explícita do usuário"
-        : preferredByCourse
-          ? "recurso avançado liberado pela modelagem do curso, pelo tipo compatível e pela indicação didática"
-          : "recurso avançado liberado por tag da lição, tipo compatível e indicação forte da lição"
-      : "recurso avançado bloqueado por padrão"
+    reason: advancedAllowed ? "recurso avançado liberado por necessidade didática genérica" : "recurso avançado bloqueado por padrão"
   };
 }
 
@@ -246,15 +192,19 @@ export function resolveWeakModelRepresentationPolicy({
   courseSemantics = {},
   resourcePreferences = {}
 } = {}) {
-  const allowedTypeIds = resolveAllowedTypeIds(lessonGuidance);
-  const allowedSizeIds = resolveAllowedSizeIds(lessonGuidance, modelCapabilities);
+  const mergedLessonGuidance = {
+    ...lessonGuidance,
+    courseSemantics: { ...(lessonGuidance?.courseSemantics || {}), ...courseSemantics }
+  };
+  const allowedTypeIds = resolveAllowedTypeIds(mergedLessonGuidance);
+  const allowedSizeIds = resolveAllowedSizeIds(mergedLessonGuidance, modelCapabilities);
   const resourceDecisions = [
     ...BASE_SAFE_RESOURCE_TYPES,
     ...CAUTIOUS_RESOURCE_TYPES,
     ...ADVANCED_RESOURCE_TYPES
   ].map((resourceType) =>
     buildResourceDecision(resourceType, {
-      lessonGuidance,
+      lessonGuidance: mergedLessonGuidance,
       lessonSourceGuideStructured,
       userSelectedExtraResourceTypes,
       resolvedTypeId,

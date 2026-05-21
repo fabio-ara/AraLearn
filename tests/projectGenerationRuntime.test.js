@@ -168,7 +168,7 @@ test("generateStructureProjectDocument preserva keys existentes no alvo fixo", a
 test("generateMicrosequenceProjectDocument atualiza cards diretamente no contrato da UI antiga", async () => {
   const provider = createFakeProvider({
     script: {
-      "generate-microsequence": (request) => {
+      "answer-local-doubt": (request) => {
         assert.match(request.prompt, /selectedLessonTopicRefs/);
         assert.match(request.prompt, /studyTrackPolicy/);
         assert.match(request.prompt, /Não entendi PC e IR/);
@@ -177,14 +177,14 @@ test("generateMicrosequenceProjectDocument atualiza cards diretamente no contrat
         assert.match(request.prompt, /Tabela/);
         assert.match(request.prompt, /anexo relevante sobre PC e IR/);
         return {
-        summary: "Primeira versão.",
-        cards: [
-          { key: "card-1", resourceType: "say", content: "Primeiro card." },
-          { key: "card-2", resourceType: "code", content: { code: "echo ok", language: "bash" } },
-          { key: "card-3", resourceType: "say", content: "Terceiro card." },
-          { key: "card-4", resourceType: "block_gap_fill", content: "Use [[echo ok::echo ok|echo no]]." }
-        ]
-      };
+          summary: "Primeira versão.",
+          cards: [
+            { key: "card-1", position: 1, resourceType: "say", content: "PC e IR localizados no ciclo atual." },
+            { key: "card-2", position: 2, resourceType: "code", content: { intro: "Exemplo mínimo.", code: "echo ok", language: "bash" } },
+            { key: "card-3", position: 3, resourceType: "say", content: "A prática usa apenas o contexto já aberto." },
+            { key: "card-4", position: 4, resourceType: "block_gap_fill", content: "Complete: o teste local usa [[echo ok::echo ok|echo no]]." }
+          ]
+        };
       }
     }
   });

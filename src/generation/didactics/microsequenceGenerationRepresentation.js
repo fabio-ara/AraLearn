@@ -150,7 +150,8 @@ export function buildMicrosequenceGenerationRepresentation({
     request: {
       typeId: plan.typeId,
       sizeId: plan.sizeId,
-      cardCount
+      cardCount,
+      technicalBudgetOnly: true
     },
     didacticPlan: {
       microsequenceGoal: plan.microsequenceGoal,
