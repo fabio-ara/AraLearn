@@ -6743,6 +6743,7 @@ button {
   align-items: stretch;
   gap: 10px;
   width: auto;
+  flex: 1 0 auto;
   min-height: 0;
   max-height: none;
   border: 0;
@@ -6751,8 +6752,12 @@ button {
     radial-gradient(circle at top right, rgba(166, 115, 42, 0.18), transparent 58%),
     linear-gradient(180deg, rgba(69, 43, 19, 0.94), rgba(31, 21, 12, 0.96)),
     rgba(18, 13, 9, 0.96);
-  margin: 0 -12px -12px;
-  padding: 12px 12px 16px;
+  margin: 0 -14px calc(-1 * max(var(--safe-bottom-tappable), 8px)) -12px;
+  padding:
+    12px
+    14px
+    calc(16px + max(var(--safe-bottom-tappable), 8px))
+    12px;
   overflow: visible;
   box-shadow:
     inset 0 1px 0 rgba(255, 225, 166, 0.07),
