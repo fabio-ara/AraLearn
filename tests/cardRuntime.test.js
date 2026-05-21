@@ -205,6 +205,14 @@ test("compila graph com coordenadas didáticas pequenas ajustando ao canvas", ()
       ["N", "I1", 1, 2]
     ]
   );
+  assert.deepEqual(
+    runtime.blocks[1].edgeLegend.map((item) => [item.label, item.from, item.to]),
+    [
+      ["ponte 1", "N", "I1"],
+      ["ponte 2", "N", "I1"],
+      ["ponte 3", "S", "I2"]
+    ]
+  );
 });
 
 test("compila card plane para runtime interno com vetor resultante e texto de resposta", () => {

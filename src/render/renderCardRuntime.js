@@ -1768,6 +1768,9 @@ function buildGraphEdgeGeometry(from, to, edge, vertexRadius = 7.8) {
 }
 
 function readGraphEdgeDisplayText(edge) {
+  if (Object.prototype.hasOwnProperty.call(edge || {}, "displayLabel")) {
+    return normalizeInlineText(edge?.displayLabel);
+  }
   const label = normalizeInlineText(edge?.label);
   if (label) {
     return label;
@@ -1780,6 +1783,7 @@ function renderGraphBlock(block) {
   const vertices = Array.isArray(block?.vertices) ? block.vertices : [];
   const edges = Array.isArray(block?.edges) ? block.edges : [];
   const labelLegend = Array.isArray(block?.labelLegend) ? block.labelLegend : [];
+  const edgeLegend = Array.isArray(block?.edgeLegend) ? block.edgeLegend : [];
   const vertexMap = new Map(vertices.map((vertex) => [vertex.id, vertex]));
   const ariaLabel = normalizeInlineText(block?.ariaLabel || block?.summaryText) || "Grafo matemático";
 
@@ -1866,6 +1870,24 @@ function renderGraphBlock(block) {
         .join("") +
       "</div>"
     : "";
+  const edgeLegendHtml = edgeLegend.length
+    ? '<div class="runtime-graph-legend runtime-graph-edge-legend" aria-label="Legenda das arestas">' +
+      edgeLegend
+        .map((item) => (
+          '<span class="runtime-graph-legend-item runtime-graph-edge-legend-item' +
+          (item?.highlighted ? " is-highlighted" : "") +
+          '">' +
+          '<span class="runtime-graph-legend-key">' +
+          escapeHtml(item?.label || "") +
+          "</span>" +
+          '<span class="runtime-graph-legend-separator">=</span>' +
+          '<span class="runtime-graph-legend-label">' +
+          escapeHtml(`${item?.from || ""}-${item?.to || ""}`) +
+          "</span></span>"
+        ))
+        .join("") +
+      "</div>"
+    : "";
 
   return (
     '<div class="runtime-block runtime-graph-block">' +
@@ -1881,6 +1903,7 @@ function renderGraphBlock(block) {
     verticesHtml +
     "</svg>" +
     legend +
+    edgeLegendHtml +
     "</div></div>"
   );
 }

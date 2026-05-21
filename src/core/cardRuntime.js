@@ -606,6 +606,17 @@ function buildGraphSummary(vertices = [], edges = []) {
   return "Grafo.";
 }
 
+function buildGraphEdgeLegend(edges = []) {
+  return edges
+    .filter((edge) => edge.legendLabel)
+    .map((edge) => ({
+      from: edge.from,
+      to: edge.to,
+      label: edge.legendLabel,
+      highlighted: edge.highlighted
+    }));
+}
+
 function buildGraphBlock(card) {
   const graph = card?.graph || {};
   const sourceVertices = Array.isArray(graph.vertices) ? graph.vertices : [];
@@ -671,7 +682,7 @@ function buildGraphBlock(card) {
   }).filter(Boolean);
 
   const pairSlots = new Map();
-  const edges = rawEdges.map((edge) => {
+  let edges = rawEdges.map((edge) => {
     const slot = pairSlots.get(edge.key) || 0;
     pairSlots.set(edge.key, slot + 1);
     return {
@@ -681,11 +692,61 @@ function buildGraphBlock(card) {
     };
   });
 
+  const labeledNonWeightEdges = edges.filter((edge) => edge.label && !edge.weight);
+  const uniqueNonWeightLabels = new Set(labeledNonWeightEdges.map((edge) => edge.label.toLowerCase()));
+  const suppressRepeatedGenericLabels = labeledNonWeightEdges.length > 1 && uniqueNonWeightLabels.size === 1;
+  const shouldMoveNonWeightLabelsToLegend =
+    !suppressRepeatedGenericLabels &&
+    labeledNonWeightEdges.length > 0 &&
+    (
+      labeledNonWeightEdges.length >= 4 ||
+      edges.some((edge) => edge.parallelCount > 1) ||
+      labeledNonWeightEdges.some((edge) => edge.label.length > 6)
+    );
+
+  edges = edges.map((edge) => {
+    if (edge.weight) {
+      return {
+        ...edge,
+        displayLabel: edge.weight,
+        legendLabel: ""
+      };
+    }
+    if (!edge.label) {
+      return {
+        ...edge,
+        displayLabel: "",
+        legendLabel: ""
+      };
+    }
+    if (suppressRepeatedGenericLabels) {
+      return {
+        ...edge,
+        displayLabel: "",
+        legendLabel: ""
+      };
+    }
+    if (shouldMoveNonWeightLabelsToLegend) {
+      return {
+        ...edge,
+        displayLabel: "",
+        legendLabel: edge.label
+      };
+    }
+    return {
+      ...edge,
+      displayLabel: edge.label,
+      legendLabel: ""
+    };
+  });
+  const edgeLegend = buildGraphEdgeLegend(edges);
+
   return {
     kind: "graph",
     vertices,
     edges,
     labelLegend,
+    edgeLegend,
     summaryText: buildGraphSummary(vertices, edges),
     ariaLabel: buildGraphSummary(vertices, edges)
   };

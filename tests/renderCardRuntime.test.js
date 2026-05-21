@@ -684,15 +684,20 @@ test("renderiza graph com multiarestas curvas e legenda externa de vértice", ()
             { id: "I1", label: "Ilha central", highlighted: false },
             { id: "S", label: "Margem sul", highlighted: false }
           ],
+          edgeLegend: [
+            { label: "ponte 1", from: "N", to: "I1", highlighted: true },
+            { label: "ponte 2", from: "N", to: "I1", highlighted: true },
+            { label: "ponte 3", from: "S", to: "I1", highlighted: false }
+          ],
           vertices: [
             { id: "N", label: "Margem norte", x: 16, y: 27.33, highlighted: true },
             { id: "I1", label: "Ilha central", x: 50, y: 43.2, highlighted: false },
             { id: "S", label: "Margem sul", x: 16, y: 72.67, highlighted: false }
           ],
           edges: [
-            { from: "N", to: "I1", label: "ponte 1", highlighted: true, parallelIndex: 0, parallelCount: 2 },
-            { from: "N", to: "I1", label: "ponte 2", highlighted: true, parallelIndex: 1, parallelCount: 2 },
-            { from: "S", to: "I1", label: "ponte 3", highlighted: false, parallelIndex: 0, parallelCount: 1 }
+            { from: "N", to: "I1", label: "ponte 1", displayLabel: "", highlighted: true, parallelIndex: 0, parallelCount: 2 },
+            { from: "N", to: "I1", label: "ponte 2", displayLabel: "", highlighted: true, parallelIndex: 1, parallelCount: 2 },
+            { from: "S", to: "I1", label: "ponte 3", displayLabel: "", highlighted: false, parallelIndex: 0, parallelCount: 1 }
           ]
         }
       ]
@@ -701,11 +706,13 @@ test("renderiza graph com multiarestas curvas e legenda externa de vértice", ()
 
   assert.match(html, /runtime-graph-legend/);
   assert.match(html, /runtime-graph-legend-key/);
+  assert.match(html, /runtime-graph-edge-legend/);
   assert.match(html, />N<\/text>/);
   assert.match(html, /Margem norte/);
   assert.match(html, /d="M [^"]+ Q [^"]+"/);
-  assert.match(html, />ponte 1<\/text>/);
-  assert.match(html, />ponte 2<\/text>/);
+  assert.doesNotMatch(html, /<text[^>]*>ponte 1<\/text>/);
+  assert.match(html, /ponte 1/);
+  assert.match(html, /ponte 2/);
 });
 
 test("renderiza plane de distância com guias coloridos e nota explícita", () => {
