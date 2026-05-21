@@ -72,6 +72,8 @@ test("renderiza a tela de curso mostrando apenas módulos", () => {
   assert.match(html, /data-action="quick-create-module"/);
   assert.match(html, /data-action="open-course-screen-actions"/);
   assert.match(html, new RegExp(`data-action="open-generation-panel-course" data-course-key="${course.key}"`));
+  assert.match(html, /<div class="topbar-title">Módulos<\/div>/);
+  assert.match(html, new RegExp(`<h2 class="section-heading">${course.title}</h2>`));
   assert.doesNotMatch(html, /C1 → C2/);
   assert.doesNotMatch(html, /data-action="select-structure-version"/);
   assert.doesNotMatch(html, /M1 → M2/);
@@ -145,6 +147,8 @@ test("renderiza a tela de módulo mostrando apenas lições", () => {
 
   assert.match(html, /data-action="quick-create-lesson"/);
   assert.match(html, /data-action="open-module-screen-actions"/);
+  assert.match(html, /<div class="topbar-title">Lições<\/div>/);
+  assert.match(html, new RegExp(`<h2 class="section-heading">${moduleValue.title}</h2>`));
   assert.match(
     html,
     new RegExp(`data-action="open-lesson-source-guide" data-course-key="${course.key}" data-module-key="${moduleValue.key}" data-lesson-key="${lesson.key}"`)
@@ -242,7 +246,9 @@ test("renderiza a tela de lição com microssequências agrupadas", () => {
   assert.doesNotMatch(html, /L1 → L2/);
   assert.doesNotMatch(html, /V1 → V2/);
   assert.doesNotMatch(html, /10\/05 18:40/);
-  assert.match(html, /Microssequências/);
+  assert.match(html, /<div class="topbar-title"><\/div>/);
+  assert.match(html, new RegExp(`<h2 class="section-heading">${lesson.title}</h2>`));
+  assert.doesNotMatch(html, /<h2 class="section-heading">Microssequências<\/h2>/);
   assert.match(html, /data-action="structure-drag-handle" data-structure-level="microsequence"/);
   assert.match(html, /data-action="open-microsequence-actions"/);
   assert.match(html, /data-action="open-microsequence-assist"/);

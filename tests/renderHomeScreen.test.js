@@ -58,6 +58,8 @@ test("renderiza a home como lista única de cursos com ações globais e geraç�
   assert.match(html, /data-action="quick-create-course"/);
   assert.match(html, /data-action="open-home-actions"/);
   assert.match(html, /class="topbar home-topbar navigation-topbar"/);
+  assert.match(html, /<span class="brand-text">AraLearn<\/span>/);
+  assert.match(html, /<h2 class="section-heading">Cursos<\/h2>/);
   assert.doesNotMatch(html, /data-action="select-structure-version"/);
   assert.doesNotMatch(html, /C1 → C2/);
   assert.doesNotMatch(html, /10\/05 18:55/);
