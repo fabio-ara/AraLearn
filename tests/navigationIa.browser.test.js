@@ -291,7 +291,8 @@ test("assistencia da microssequencia mostra quatro acoes e desabilita a proxima 
 
   assert.equal(metrics.count, 4);
   assert.equal(metrics.nextPlannedDisabled, true);
-  assert.match(metrics.nextPlannedCopy, /Sem próxima etapa planejada\./);
+  assert.doesNotMatch(metrics.nextPlannedCopy, /Sem próxima etapa planejada\./);
+  assert.match(metrics.nextPlannedCopy, /Ir a nova microssequência/);
 });
 
 test("painel contextual de geracao usa largura compativel com celular", async (t) => {

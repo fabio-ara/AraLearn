@@ -586,9 +586,7 @@ function renderAssistActionOptions(actionOptions = [], selectedAction = "") {
         '<span class="assist-action-copy">' +
         '<span class="assist-action-title">' +
         escapeHtml(item.label || item.value) +
-        "</span>" +
-        (disabled ? '<span class="assist-action-meta">Sem próxima etapa planejada.</span>' : "") +
-        "</span></label>"
+        "</span></span></label>"
       );
     })
     .join("");
@@ -1276,7 +1274,7 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
     attachmentInput +
     attachmentChips +
     '<div class="generate-divider workbench-divider"></div>' +
-    '<section class="microsequence-assist-panel bottomup-focus-panel assist-simple-panel">' +
+    '<section class="microsequence-assist-panel bottomup-focus-panel assist-simple-panel assist-action-panel">' +
     '<div class="workbench-form-row assist-action-heading">' +
     renderInlineFieldIcon("intent", "O que a IA deve fazer agora") +
     '<p class="tiny muted">O que a IA deve fazer agora</p>' +
