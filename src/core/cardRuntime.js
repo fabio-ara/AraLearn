@@ -640,6 +640,13 @@ function buildGraphBlock(card) {
       highlighted: highlightVertexIds.has(id)
     };
   }).filter((vertex) => vertex.id);
+  const labelLegend = vertices
+    .filter((vertex) => vertex.label && vertex.label !== vertex.id)
+    .map((vertex) => ({
+      id: vertex.id,
+      label: vertex.label,
+      highlighted: vertex.highlighted
+    }));
 
   const vertexMap = new Map(vertices.map((vertex) => [vertex.id, vertex]));
   const pairCounts = new Map();
@@ -678,6 +685,7 @@ function buildGraphBlock(card) {
     kind: "graph",
     vertices,
     edges,
+    labelLegend,
     summaryText: buildGraphSummary(vertices, edges),
     ariaLabel: buildGraphSummary(vertices, edges)
   };

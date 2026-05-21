@@ -2733,7 +2733,8 @@ button {
 }
 
 .runtime-plane-block,
-.runtime-matrix-block {
+.runtime-matrix-block,
+.runtime-graph-block {
   display: grid;
   gap: 10px;
   min-width: 0;
@@ -2745,6 +2746,102 @@ button {
   justify-items: center;
   max-width: 100%;
   padding: 2px 0 0;
+}
+
+.runtime-graph-wrap {
+  display: grid;
+  gap: 10px;
+  justify-items: center;
+  max-width: 100%;
+  padding: 2px 0 0;
+}
+
+.runtime-graph-svg {
+  width: min(100%, 328px);
+  max-height: min(38vh, 318px);
+  height: auto;
+  overflow: visible;
+}
+
+.runtime-graph-surface {
+  fill: rgba(27, 22, 17, 0.98);
+  stroke: none;
+}
+
+.runtime-graph-edge {
+  stroke: #f0d293;
+  fill: none;
+  vector-effect: non-scaling-stroke;
+}
+
+.runtime-graph-edge.is-highlighted {
+  stroke: #f2c96d;
+}
+
+.runtime-graph-edge-label text,
+.runtime-graph-vertex-label {
+  font-family: var(--font-ui);
+  paint-order: stroke;
+  stroke: rgba(18, 14, 11, 0.92);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}
+
+.runtime-graph-edge-label text {
+  letter-spacing: 0.01em;
+}
+
+.runtime-graph-vertex {
+  fill: rgba(47, 36, 25, 0.98);
+  stroke: rgba(242, 215, 157, 0.92);
+  vector-effect: non-scaling-stroke;
+}
+
+.runtime-graph-vertex.is-highlighted {
+  fill: rgba(91, 66, 31, 0.98);
+  stroke: #f2c96d;
+}
+
+.runtime-graph-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  max-width: min(100%, 340px);
+}
+
+.runtime-graph-legend-item {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  gap: 5px;
+  padding: 3px 8px;
+  border: 1px solid rgba(113, 88, 55, 0.82);
+  border-radius: 999px;
+  background:
+    linear-gradient(180deg, rgba(43, 33, 23, 0.96), rgba(25, 19, 14, 0.96)),
+    radial-gradient(circle at top, rgba(228, 186, 104, 0.08), transparent 58%);
+  color: #f6ead8;
+  font-size: 0.72rem;
+  line-height: 1.2;
+}
+
+.runtime-graph-legend-item.is-highlighted {
+  border-color: rgba(242, 201, 109, 0.76);
+  color: #fff1d8;
+}
+
+.runtime-graph-legend-key {
+  color: #f2c96d;
+  font-weight: 800;
+}
+
+.runtime-graph-legend-separator {
+  color: rgba(216, 197, 166, 0.72);
+}
+
+.runtime-graph-legend-label {
+  overflow-wrap: anywhere;
 }
 
 .runtime-plane-svg {
@@ -3129,6 +3226,11 @@ button {
     max-height: min(34vh, 296px);
   }
 
+  .runtime-graph-svg {
+    width: min(100%, 304px);
+    max-height: min(34vh, 296px);
+  }
+
   .runtime-plane-axis-label {
     font-size: 12px;
   }
@@ -3142,6 +3244,11 @@ button {
   }
 
   .runtime-plane-legend-item {
+    font-size: 0.68rem;
+    padding: 3px 7px;
+  }
+
+  .runtime-graph-legend-item {
     font-size: 0.68rem;
     padding: 3px 7px;
   }

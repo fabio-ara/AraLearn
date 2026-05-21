@@ -670,7 +670,7 @@ test("renderiza graph como SVG responsivo com pesos e destaque", () => {
   assert.match(html, /aria-label="Grafo com vértices A, B, C e arestas A-B, A-C\."/);
 });
 
-test("renderiza graph com multiarestas curvas e rótulo externo de vértice", () => {
+test("renderiza graph com multiarestas curvas e legenda externa de vértice", () => {
   const html = renderCardRuntimeBlocks({
     title: "Königsberg",
     runtime: {
@@ -679,6 +679,11 @@ test("renderiza graph com multiarestas curvas e rótulo externo de vértice", ()
         {
           kind: "graph",
           summaryText: "Modelo com multiarestas.",
+          labelLegend: [
+            { id: "N", label: "Margem norte", highlighted: true },
+            { id: "I1", label: "Ilha central", highlighted: false },
+            { id: "S", label: "Margem sul", highlighted: false }
+          ],
           vertices: [
             { id: "N", label: "Margem norte", x: 16, y: 27.33, highlighted: true },
             { id: "I1", label: "Ilha central", x: 50, y: 43.2, highlighted: false },
@@ -694,9 +699,10 @@ test("renderiza graph com multiarestas curvas e rótulo externo de vértice", ()
     }
   });
 
-  assert.match(html, /runtime-graph-vertex-name/);
+  assert.match(html, /runtime-graph-legend/);
+  assert.match(html, /runtime-graph-legend-key/);
   assert.match(html, />N<\/text>/);
-  assert.match(html, />Margem norte<\/text>/);
+  assert.match(html, /Margem norte/);
   assert.match(html, /d="M [^"]+ Q [^"]+"/);
   assert.match(html, />ponte 1<\/text>/);
   assert.match(html, />ponte 2<\/text>/);

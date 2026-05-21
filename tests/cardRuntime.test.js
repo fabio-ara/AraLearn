@@ -188,6 +188,15 @@ test("compila graph com coordenadas didáticas pequenas ajustando ao canvas", ()
       ["I2", 84, 52.27]
     ]
   );
+  assert.deepEqual(
+    runtime.blocks[1].labelLegend.map((item) => [item.id, item.label]),
+    [
+      ["N", "Margem norte"],
+      ["S", "Margem sul"],
+      ["I1", "Ilha central"],
+      ["I2", "Ilha leste"]
+    ]
+  );
   assert.equal(runtime.blocks[1].edges.length, 3);
   assert.deepEqual(
     runtime.blocks[1].edges.slice(0, 2).map((edge) => [edge.from, edge.to, edge.parallelIndex, edge.parallelCount]),

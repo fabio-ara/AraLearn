@@ -1731,28 +1731,6 @@ function formatGraphCoordinate(value) {
   return Number(Number(value || 0).toFixed(2));
 }
 
-function buildGraphVertexLabelParts(vertex) {
-  const id = normalizeInlineText(vertex?.id);
-  const label = normalizeInlineText(vertex?.label || id);
-  const compactLabel = label.replace(/\s+/g, " ").trim();
-  if (!compactLabel) {
-    return {
-      innerLabel: id || "",
-      outerLabel: ""
-    };
-  }
-  if (!id || compactLabel === id || compactLabel.length <= 4) {
-    return {
-      innerLabel: compactLabel,
-      outerLabel: ""
-    };
-  }
-  return {
-    innerLabel: id,
-    outerLabel: compactLabel
-  };
-}
-
 function buildGraphEdgeGeometry(from, to, edge, vertexRadius = 7.8) {
   const dx = Number(to.x) - Number(from.x);
   const dy = Number(to.y) - Number(from.y);
@@ -1801,6 +1779,7 @@ function readGraphEdgeDisplayText(edge) {
 function renderGraphBlock(block) {
   const vertices = Array.isArray(block?.vertices) ? block.vertices : [];
   const edges = Array.isArray(block?.edges) ? block.edges : [];
+  const labelLegend = Array.isArray(block?.labelLegend) ? block.labelLegend : [];
   const vertexMap = new Map(vertices.map((vertex) => [vertex.id, vertex]));
   const ariaLabel = normalizeInlineText(block?.ariaLabel || block?.summaryText) || "Grafo matemático";
 
@@ -1813,19 +1792,13 @@ function renderGraphBlock(block) {
       }
       const geometry = buildGraphEdgeGeometry(from, to, edge);
       const labelText = readGraphEdgeDisplayText(edge);
-      const pillWidth = Math.max(12, Math.min(30, labelText.length * 4.8 + 8));
       const labelHtml = labelText
         ? '<g class="runtime-graph-edge-label" transform="translate(' +
           geometry.labelX +
           " " +
           geometry.labelY +
           ')">' +
-          '<rect x="' +
-          Number((-pillWidth / 2).toFixed(2)) +
-          '" y="-7.5" width="' +
-          Number(pillWidth.toFixed(2)) +
-          '" height="15" rx="7.5" ry="7.5" fill="var(--surface-raised, rgba(255,255,255,0.96))" stroke="var(--card-border-soft, rgba(15,23,42,0.14))" stroke-width="0.7"></rect>' +
-          '<text text-anchor="middle" dominant-baseline="middle" y="0.5" fill="var(--text-strong, currentColor)" font-size="5.1" font-weight="600">' +
+          '<text text-anchor="middle" dominant-baseline="middle" y="-1" fill="#f6ead8" font-size="4.1" font-weight="700">' +
           escapeHtml(labelText) +
           "</text></g>"
         : "";
@@ -1852,10 +1825,7 @@ function renderGraphBlock(block) {
     .join("");
 
   const verticesHtml = vertices
-    .map((vertex) => {
-      const { innerLabel, outerLabel } = buildGraphVertexLabelParts(vertex);
-      const outerLabelY = Number(vertex?.y) <= 24 ? 14.5 : -11.5;
-      return (
+    .map((vertex) => (
       '<g class="runtime-graph-vertex-group' +
       (vertex?.highlighted ? " is-highlighted" : "") +
       '" transform="translate(' +
@@ -1873,22 +1843,28 @@ function renderGraphBlock(block) {
       (vertex?.highlighted ? "2.2" : "1.7") +
       '"></circle>' +
       '<text class="runtime-graph-vertex-label" text-anchor="middle" dominant-baseline="central" y="0.5" fill="var(--text-strong, currentColor)" font-size="5.4" font-weight="700">' +
-      escapeHtml(innerLabel || vertex?.id || "") +
-      "</text>" +
-      (outerLabel
-        ? '<text class="runtime-graph-vertex-name" text-anchor="middle" y="' +
-          outerLabelY +
-          '" fill="var(--text-muted, currentColor)" font-size="3.6" font-weight="600">' +
-          escapeHtml(outerLabel) +
-          "</text>"
-        : "") +
-      "</g>"
-    );
-    })
+      escapeHtml(vertex?.id || "") +
+      "</text></g>"
+    ))
     .join("");
 
-  const legend = block?.summaryText
-    ? '<div class="runtime-graph-caption">' + renderMarkdownInline(block.summaryText) + "</div>"
+  const legend = labelLegend.length
+    ? '<div class="runtime-graph-legend" aria-label="Legenda dos vértices">' +
+      labelLegend
+        .map((item) => (
+          '<span class="runtime-graph-legend-item' +
+          (item?.highlighted ? " is-highlighted" : "") +
+          '">' +
+          '<span class="runtime-graph-legend-key">' +
+          escapeHtml(item?.id || "") +
+          "</span>" +
+          '<span class="runtime-graph-legend-separator">=</span>' +
+          '<span class="runtime-graph-legend-label">' +
+          escapeHtml(item?.label || "") +
+          "</span></span>"
+        ))
+        .join("") +
+      "</div>"
     : "";
 
   return (
