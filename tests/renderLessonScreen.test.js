@@ -459,7 +459,8 @@ test("renderiza o painel da microssequência sem botão próprio de ações e co
   assert.match(html, /Criar nova microssequência/);
   assert.match(html, /data-field="assist-action-intent" value="next_planned" disabled/);
   assert.match(html, /assist-action-option is-disabled/);
-  assert.match(html, /Sem próxima etapa planejada\./);
+  assert.match(html, /assist-action-panel/);
+  assert.doesNotMatch(html, /Sem próxima etapa planejada\./);
   assert.match(html, /data-field="assist-preferred-container" aria-label="Materialização preferida" title="Materialização preferida"/);
   assert.match(html, /<option value="__unset__" selected>Selecionar materialização<\/option>/);
   assert.doesNotMatch(html, /Os cards atuais são só o trecho já materializado\./);
