@@ -5556,7 +5556,7 @@ button {
   height: 100%;
   min-height: 0;
   overflow-y: auto;
-  overflow-x: visible;
+  overflow-x: clip;
   padding-right: 2px;
   padding-bottom: max(var(--safe-bottom-tappable), 8px);
 }
@@ -6625,7 +6625,14 @@ button {
 
 .assist-feedback-edit-button {
   padding: 0;
-  color: #efc15e;
+  color: #d8c29d;
+}
+
+.assist-feedback-edit-button:disabled,
+.assist-feedback-edit-button[aria-disabled="true"] {
+  color: rgba(216, 194, 157, 0.36);
+  opacity: 0.56;
+  cursor: not-allowed;
 }
 
 .generate-action-row.assist-actions-wide .generate-submit {
@@ -6750,15 +6757,15 @@ button {
   border-radius: 0 0 17px 17px;
   background:
     radial-gradient(circle at top right, rgba(208, 188, 151, 0.09), transparent 56%),
-    linear-gradient(180deg, rgba(48, 47, 42, 0.98), rgba(30, 29, 27, 0.99)),
-    rgba(26, 26, 24, 0.99);
-  margin: 0 -14px calc(-12px - max(var(--safe-bottom-tappable), 8px)) -12px;
+    linear-gradient(180deg, rgba(56, 55, 50, 0.98), rgba(34, 34, 31, 0.99)),
+    rgba(31, 31, 29, 0.99);
+  margin: 0 0 calc(-12px - max(var(--safe-bottom-tappable), 8px));
   padding:
     12px
-    14px
+    12px
     calc(28px + max(var(--safe-bottom-tappable), 8px))
     12px;
-  overflow: visible;
+  overflow: hidden;
   box-shadow:
     inset 0 1px 0 rgba(255, 240, 212, 0.05),
     inset 0 12px 22px rgba(0, 0, 0, 0.12);
