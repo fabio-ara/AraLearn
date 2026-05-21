@@ -1340,6 +1340,7 @@ button {
   display: flex;
   gap: 0;
   min-width: 0;
+  width: 100%;
 }
 
 .workbench-surface-tab {
@@ -1348,8 +1349,8 @@ button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  flex: 0 0 auto;
-  min-width: 48px;
+  flex: 1 1 50%;
+  min-width: 0;
   min-height: 38px;
   margin-right: -1px;
   padding: 7px 14px 6px;
