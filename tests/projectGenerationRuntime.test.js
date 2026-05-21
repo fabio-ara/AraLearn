@@ -497,8 +497,8 @@ test("generateMicrosequenceProjectDocument usa fallback determinístico quando o
   const supported = result.projectDocument.courses[0].modules[0].lessons[0].microsequences[2];
   assert.match(supported.title, /Apoio local para/);
   assert.equal(supported.type, "support");
-  assert.equal(supported.cards.length, 4);
-  assert.match(supported.cards[3].say, /volte agora para/i);
+  assert.equal(supported.cards.length, 5);
+  assert.match(supported.cards[4].say, /volte agora para/i);
 });
 
 test("generateMicrosequenceProjectDocument materializa intro textual para graph e table", async () => {
@@ -726,7 +726,7 @@ test("generateMicrosequenceProjectDocument usa fallback determinístico quando a
   assert.equal(compileCalls, 5);
   assert.equal(result.interventionFeedback.status, "completed");
   assert.equal(cards.length, 3);
-  assert.match(cards[0].say, /Antes de praticar/i);
+  assert.match(cards[0].say, /contador de programa|PC/i);
   assert.match(cards[1].say, /Complete:/i);
   assert.doesNotMatch(cards[1].say, /\[\[/);
   assert.doesNotMatch(cards.map((card) => card.say || "").join("\n"), /outro elemento|um detalhe lateral|Compare os elementos mínimos/i);
@@ -1054,6 +1054,80 @@ test("generateMicrosequenceProjectDocument sinaliza bloqueio explícito quando a
   assert.deepEqual(result.projectDocument, project);
 });
 
+test("generateMicrosequenceProjectDocument avança para próxima planejada quando a atual tem cards úteis", async () => {
+  const provider = createFakeProvider({
+    script: {
+      "normal_generation-draft": {
+        steps: [
+          {
+            role: "microtheory",
+            resourceType: "say",
+            purpose: "Abrir a etapa seguinte.",
+            inCardContext: ["continuidade planejada"],
+            usesDependency: ["micro-a"],
+            expectedEvidence: ["explicar a etapa seguinte"]
+          },
+          {
+            role: "active_practice",
+            resourceType: "block_gap_fill",
+            purpose: "Checar avanço.",
+            inCardContext: ["lacuna"],
+            usesDependency: ["micro-a"],
+            expectedEvidence: ["identificar a etapa seguinte"]
+          }
+        ],
+        coverageNotes: [],
+        continuationNeeded: false,
+        continuationReason: "",
+        continuationMode: "none",
+        continuationPrompt: ""
+      },
+      "generate-microsequence": {
+        summary: "Etapa seguinte preenchida.",
+        cards: [
+          { key: "card-1", position: 1, resourceType: "say", content: "A próxima etapa usa a base já praticada." },
+          { key: "card-2", position: 2, resourceType: "block_gap_fill", content: "Complete: agora a trilha preenche a [[Microssequência Seguinte::Microssequência Seguinte|Microssequência A]]." }
+        ]
+      }
+    }
+  });
+  const project = createProjectDocument();
+  const current = project.courses[0].modules[0].lessons[0].microsequences[1];
+  current.status = "draft";
+  current.included = true;
+  current.cards = [{ key: "card-1", say: "Conteúdo útil já gerado na etapa atual." }];
+  project.courses[0].modules[0].lessons[0].microsequences[2].dependsOn = ["micro-a"];
+
+  const result = await generateMicrosequenceProjectDocument({
+    selection: {
+      courseKey: "course-a",
+      moduleKey: "module-a",
+      lessonKey: "lesson-a",
+      microsequenceKey: "micro-a"
+    },
+    draft: {
+      promptText: "",
+      actionIntent: "next_planned",
+      operationMode: "reinforce",
+      interventionTargetMode: "current"
+    },
+    assistConfig: {
+      model: "gemini-2.5-flash",
+      apiKey: "chave"
+    },
+    projectDocument: project,
+    provider,
+    ingestAttachments: async () => ({ attachments: [], extractedCount: 0, warnings: [] })
+  });
+
+  const lesson = result.projectDocument.courses[0].modules[0].lessons[0];
+  assert.equal(result.route.canonicalRoute, "generate_planned_next");
+  assert.equal(result.target.microsequenceKey, "micro-next");
+  assert.equal(lesson.microsequences[1].cards.length, 1);
+  assert.equal(lesson.microsequences[2].status, "ready");
+  assert.equal(lesson.microsequences[2].cards.length, 2);
+});
+
 test("generateMicrosequenceProjectDocument repara a microssequência atual sem alterar a trilha", async () => {
   const provider = createFakeProvider({
     script: {
@@ -1135,6 +1209,83 @@ test("generateMicrosequenceProjectDocument repara a microssequência atual sem a
   assert.deepEqual(lesson.microsequences.map((item) => item.key), ["micro-prev", "micro-a", "micro-next"]);
   assert.equal(lesson.microsequences[1].cards.length, 3);
   assert.equal(lesson.microsequences[2].cards.length, 0);
+});
+
+test("generateMicrosequenceProjectDocument rejeita repair que devolve fallback antigo sem reescrita", async () => {
+  const provider = createFakeProvider({
+    script: {
+      "repair-draft": {
+        steps: [
+          {
+            role: "microtheory",
+            resourceType: "say",
+            purpose: "Simplificar a teoria.",
+            inCardContext: ["PC"],
+            usesDependency: [],
+            expectedEvidence: ["explicar PC"]
+          },
+          {
+            role: "active_practice",
+            resourceType: "block_gap_fill",
+            purpose: "Guiar exercício.",
+            inCardContext: ["próxima instrução"],
+            usesDependency: [],
+            expectedEvidence: ["identificar PC"]
+          }
+        ],
+        coverageNotes: [],
+        continuationNeeded: false,
+        continuationReason: "",
+        continuationMode: "none",
+        continuationPrompt: ""
+      },
+      "improve-microsequence": {
+        summary: "Reparo fraco.",
+        cards: [
+          { key: "fallback-card-1", position: 1, resourceType: "say", content: "Explicar que o PC mantém o endereço da próxima instrução." },
+          { key: "fallback-card-2", position: 2, resourceType: "say", content: "Caso guiado: quando aparecer \"Função do contador de programa\", localize Função do contador de programa." }
+        ]
+      }
+    }
+  });
+  const project = createProjectDocument();
+  const microsequence = project.courses[0].modules[0].lessons[0].microsequences[1];
+  microsequence.title = "Função do contador de programa";
+  microsequence.goal = "Explicar que o PC mantém o endereço da próxima instrução na memória.";
+  microsequence.scopeLabels = ["PC e próxima instrução"];
+  microsequence.status = "ready";
+  microsequence.included = true;
+  microsequence.cards = [
+    { key: "fallback-card-1", title: "Ideia central", say: "Explicar que o PC mantém o endereço da próxima instrução." },
+    { key: "fallback-card-2", title: "Exemplo guiado", say: "Caso guiado: quando aparecer \"Função do contador de programa\", localize Função do contador de programa." }
+  ];
+
+  const result = await generateMicrosequenceProjectDocument({
+    selection: {
+      courseKey: "course-a",
+      moduleKey: "module-a",
+      lessonKey: "lesson-a",
+      microsequenceKey: "micro-a"
+    },
+    draft: {
+      promptText: "Reescreva a microssequência com teoria mais simples e exercícios mais guiados.",
+      operationMode: "repair",
+      interventionTargetMode: "current"
+    },
+    assistConfig: {
+      model: "gemini-2.5-flash",
+      apiKey: "chave"
+    },
+    projectDocument: project,
+    provider,
+    ingestAttachments: async () => ({ attachments: [], extractedCount: 0, warnings: [] })
+  });
+
+  const cards = result.projectDocument.courses[0].modules[0].lessons[0].microsequences[1].cards;
+  const combined = cards.map((card) => `${card.key}\n${card.say || ""}`).join("\n");
+  assert.doesNotMatch(combined, /fallback-card/);
+  assert.match(combined, /endereço da próxima instrução/i);
+  assert.match(combined, /CPU/i);
 });
 
 test("fallback determinístico de repair gera cards finais sem rubrica interna", async () => {

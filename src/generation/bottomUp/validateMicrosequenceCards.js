@@ -175,6 +175,29 @@ function hasTemplateArtifact(card = {}) {
     || /\b(explicar|mostrar|pedir|variar|retomar|consolidar)\b.{0,80}\b(microssequencia|acao observavel|pratica|aluno|estudante)\b/u.test(titleSource);
 }
 
+function cardContentSignature(card = {}) {
+  return normalizeToken([
+    text(card?.title),
+    normalizedForbiddenScanText(card)
+  ].filter(Boolean).join(" ")).replace(/\s+/g, " ");
+}
+
+function repairRepeatsExistingCards(cards = [], packet = {}) {
+  if (text(packet?.interactionMode) !== "repair") {
+    return false;
+  }
+  const existing = Array.isArray(packet?.currentMicrosequence?.existingCards)
+    ? packet.currentMicrosequence.existingCards
+    : [];
+  if (!existing.length || !cards.length || existing.length !== cards.length) {
+    return false;
+  }
+  const existingSignatures = existing.map((item) => normalizeToken(item).replace(/\s+/g, " ")).filter(Boolean);
+  const nextSignatures = cards.map((card) => cardContentSignature(card)).filter(Boolean);
+  return existingSignatures.length === nextSignatures.length
+    && nextSignatures.every((signature, index) => signature && signature === existingSignatures[index]);
+}
+
 function tablePracticeHasConcreteAction(card = {}) {
   if (text(card?.resourceType) !== "table") {
     return true;
@@ -213,6 +236,13 @@ export function validateBottomUpDidacticQuality(payload = {}, packet = {}, cardP
     return isPracticeRole(inferCardRole(card, planned)) || cardLooksLikePractice(card);
   });
   const hasPractice = practiceCards.length > 0;
+
+  if (text(packet?.interactionMode) === "repair" && cards.some((card) => /^fallback-card-\d+$/u.test(text(card?.key)))) {
+    issues.push(buildIssue("$.cards", "Repair não pode reutilizar cards genéricos de fallback; reescreva o conteúdo final."));
+  }
+  if (repairRepeatsExistingCards(cards, packet)) {
+    issues.push(buildIssue("$.cards", "Repair precisa mudar substancialmente o conteúdo existente."));
+  }
 
   cards.forEach((card, index) => {
     const path = `$.cards[${index}]`;

@@ -12,7 +12,8 @@ export function buildSupportPrompt(packet, request = "") {
     "Devolva obrigatoriamente: title, goal, supportReason, didacticKind, practiceMode, representationNeed, dependencyPolicy, expectedEvidence, summary e cards.",
     "Preencha metadados didáticos com valores concretos, nunca string vazia; expectedEvidence deve ter pelo menos uma evidência observável.",
     "Os cards devem ser autossuficientes e terminar com ponte explícita de retorno ao objetivo original da trilha.",
-    "Gere pelo menos 4 cards: abertura, explicação, prática curta e fechamento.",
+    "Gere pelo menos 4 cards: abertura, explicação, duas práticas curtas e fechamento.",
+    "As práticas devem consolidar a lacuna local com reconhecimento, classificação ou completar frase; não use tarefas de repetir o título ou o objetivo.",
     "O último card deve dizer explicitamente que a próxima ação é voltar à trilha principal ou ao fluxo principal da microssequência original.",
     "Prefira say e block_gap_fill; use table só quando ela realmente simplificar a explicação."
   ]

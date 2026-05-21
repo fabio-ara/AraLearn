@@ -244,6 +244,11 @@ function isReadyDependencyStatus(status = "") {
   return ["generated", "ready", "needs_review"].includes(text(status));
 }
 
+function isReadyDependencyMicrosequence(microsequence = {}) {
+  return isReadyDependencyStatus(microsequence?.status)
+    || (microsequence?.included === true && Array.isArray(microsequence?.cards) && microsequence.cards.length > 0);
+}
+
 function resolveBottomUpTargetSelection(projectDocument = {}, selection = {}, draft = {}) {
   if (text(draft?.actionIntent) !== "next_planned") {
     return {
@@ -259,7 +264,7 @@ function resolveBottomUpTargetSelection(projectDocument = {}, selection = {}, dr
   const microsequences = Array.isArray(lesson?.microsequences) ? lesson.microsequences : [];
   const missingDependency = uniqueList(nextMain?.dependsOn).find((dependencyKey) => {
     const dependency = microsequences.find((item) => item?.key === dependencyKey);
-    return !dependency || !isReadyDependencyStatus(dependency.status);
+    return !dependency || !isReadyDependencyMicrosequence(dependency);
   });
   if (missingDependency) {
     return {
@@ -723,13 +728,33 @@ function resolveTopDownTarget(projectDocument = {}, plannedCourse = {}, scopeSta
   };
 }
 
+function readLegacyCardContent(card = {}) {
+  return [
+    text(card?.title),
+    text(card?.say),
+    text(card?.content),
+    text(card?.code),
+    Array.isArray(card?.table?.rows) ? card.table.rows.flat().map((cell) => String(cell ?? "").trim()).filter(Boolean).join(" ") : "",
+    Array.isArray(card?.table?.columns) ? card.table.columns.map((cell) => String(cell ?? "").trim()).filter(Boolean).join(" ") : ""
+  ].filter(Boolean).join(" ");
+}
+
+function summarizeLegacyCardsBrief(cards = [], limit = 3) {
+  return (Array.isArray(cards) ? cards : [])
+    .slice(0, limit)
+    .map((card) => readLegacyCardContent(card).replace(/\s+/g, " ").trim())
+    .filter(Boolean)
+    .map((item) => item.length > 180 ? `${item.slice(0, 177)}...` : item);
+}
+
 function summarizeLegacyDependencyMicrosequence(microsequence = {}) {
   return {
     key: text(microsequence.key),
     title: text(microsequence.title),
     goal: text(microsequence.goal || microsequence.didacticPurpose || microsequence.description || microsequence.title),
     summary: text(microsequence.goal || microsequence.description || microsequence.didacticPurpose || microsequence.title),
-    tags: uniqueList(microsequence.tags)
+    tags: uniqueList(microsequence.tags),
+    cardSummary: summarizeLegacyCardsBrief(microsequence.cards)
   };
 }
 
@@ -872,7 +897,8 @@ function buildBottomUpContextPacket(
       representationNeed: text(microsequence.representationNeed),
       dependencyPolicy: text(microsequence.dependencyPolicy),
       coverageRole: text(microsequence.coverageRole),
-      expectedEvidence: uniqueList(microsequence.expectedEvidence)
+      expectedEvidence: uniqueList(microsequence.expectedEvidence),
+      existingCards: summarizeLegacyCardsBrief(microsequence.cards, 8)
     },
     neighborMicrosequences: {
       ...(previous
@@ -1042,6 +1068,11 @@ function buildDeterministicSupportPayload(packet = {}, request = "") {
       },
       {
         key: "support-card-4",
+        resourceType: "block_gap_fill",
+        content: `Escolha o foco correto: para voltar a ${currentTitle}, primeiro confirme [[${dependencyTitle}::${dependencyTitle}|um assunto paralelo]].`
+      },
+      {
+        key: "support-card-5",
         resourceType: "say",
         content: `Com esse apoio local fechado, volte agora para ${currentTitle} e continue a trilha principal.`
       }
@@ -1070,6 +1101,18 @@ function extractInstructionFlowTerms(packet = {}) {
   return uniqueList(terms);
 }
 
+function hasProgramCounterFocus(packet = {}) {
+  const source = [
+    text(packet?.currentMicrosequence?.title),
+    text(packet?.currentMicrosequence?.goal),
+    ...uniqueList(packet?.currentMicrosequence?.expectedEvidence),
+    ...uniqueList(packet?.currentMicrosequence?.scopeLabels),
+    ...uniqueList(packet?.module?.include)
+  ].join(" ");
+  const normalized = normalizeToken(source);
+  return /\b(pc|contador de programa|program counter|proxima instrucao|proximo endereco)\b/u.test(normalized);
+}
+
 function buildFallbackCardTitle(role = "", index = 0) {
   return {
     microtheory: "Ideia central",
@@ -1094,14 +1137,21 @@ function buildFallbackRoleText(step = {}, packet = {}, interactionMode = "normal
   const expectedEvidence = uniqueList(step?.expectedEvidence)[0] || "explicar o ponto central";
   const flowTerms = extractInstructionFlowTerms(packet);
   const hasInstructionFlow = flowTerms.includes("memória") && flowTerms.includes("CPU") && flowTerms.includes("registradores");
+  const hasPcFocus = hasProgramCounterFocus(packet);
 
   if (role === "microtheory") {
+    if (hasPcFocus) {
+      return "O PC, ou contador de programa, é um registrador da CPU que guarda o endereço da próxima instrução a buscar na memória. Ele não guarda a instrução inteira; guarda a referência para onde a CPU deve olhar em seguida.";
+    }
     if (hasInstructionFlow) {
       return "A instrução começa guardada na memória. Para ser tratada, ela precisa chegar à CPU. Dentro da CPU, registradores podem manter informações por pouco tempo enquanto a instrução é tratada.";
     }
     return `${currentGoal}. Antes de praticar, identifique o ponto principal desta etapa: ${scopeLabel}.`;
   }
   if (role === "guided_example") {
+    if (hasPcFocus) {
+      return "Exemplo: se o PC contém o endereço 104, a CPU usa esse número para buscar na memória a instrução que está no endereço 104. Depois da busca, a instrução pode ir para o registrador de instruções, enquanto o PC passa a apontar para a próxima busca.";
+    }
     if (hasInstructionFlow) {
       return "Leia o caso: uma instrução está na memória, é buscada pela CPU e fica temporariamente em registradores internos enquanto é analisada. Esse é o percurso mínimo que esta etapa quer fixar.";
     }
@@ -1111,24 +1161,36 @@ function buildFallbackRoleText(step = {}, packet = {}, interactionMode = "normal
     return `Leitura guiada: encontre no exemplo o trecho que mostra ${scopeLabel}. Depois escreva uma frase curta explicando por que esse trecho pertence a "${currentTitle}".`;
   }
   if (role === "contrast") {
+    if (hasPcFocus) {
+      return "Compare: a memória guarda instruções em endereços; o PC guarda o endereço da próxima instrução; o registrador de instruções guarda a instrução que acabou de ser buscada para ser interpretada.";
+    }
     if (hasInstructionFlow) {
       return "Compare os papéis: a memória guarda a instrução antes do uso, a CPU trata a instrução, e os registradores guardam informações temporárias dentro da CPU.";
     }
     return `Compare dois papéis locais: ${scopeLabel} é o foco desta etapa; qualquer outro papel só deve aparecer se ajudar a cumprir o objetivo "${currentGoal}".`;
   }
   if (role === "active_practice") {
+    if (hasPcFocus) {
+      return "Complete: a CPU consulta o ____ para saber em qual endereço da memória buscar a próxima instrução.";
+    }
     if (hasInstructionFlow) {
       return "Complete com: memória, CPU, registradores.\n\nA instrução está inicialmente na ____. Para ser tratada, ela chega à ____. Durante o tratamento, informações podem ficar temporariamente em ____.";
     }
     return `Complete: nesta etapa, o foco local é ____. Use uma palavra do objetivo e confira se a frase ajuda a ${expectedEvidence}.`;
   }
   if (role === "analogous_practice") {
+    if (hasPcFocus) {
+      return "Classifique cada frase como PC, memória ou registrador de instruções.\n\n1. Guarda o endereço da próxima instrução.\n2. Guarda várias instruções em endereços.\n3. Guarda a instrução que acabou de ser buscada.";
+    }
     if (hasInstructionFlow) {
       return "Associe cada papel ao componente correto: guardar a instrução antes do uso; tratar a instrução; guardar temporariamente informações internas.";
     }
     return `Variação curta: escolha o termo central de "${currentTitle}" e escreva uma frase ligando essa escolha ao objetivo "${currentGoal}".`;
   }
   if (role === "cumulative_review") {
+    if (hasPcFocus) {
+      return "Retome em uma frase: a CPU usa o PC para encontrar na memória a próxima instrução, busca essa instrução e então segue o ciclo básico.";
+    }
     if (hasInstructionFlow) {
       return "Retome o percurso em uma frase: a instrução sai da memória, chega à CPU e pode ficar temporariamente em registradores enquanto é tratada.";
     }
@@ -1152,13 +1214,14 @@ function buildFallbackStructuredCard(step = {}, packet = {}, interactionMode = "
   const resourceType = text(step?.resourceType) || "say";
   const title = buildFallbackCardTitle(step?.role, index);
   const roleText = buildFallbackRoleText(step, packet, interactionMode);
+  const keyPrefix = interactionMode === "repair" ? "repair-card" : "fallback-card";
   const scopeLabel = uniqueList(packet?.currentMicrosequence?.scopeLabels)[0] || text(packet?.currentMicrosequence?.title) || "ponto atual";
   const flowTerms = extractInstructionFlowTerms(packet);
   const hasInstructionFlow = flowTerms.includes("memória") && flowTerms.includes("CPU") && flowTerms.includes("registradores");
 
   if (resourceType === "block_gap_fill") {
     return {
-      key: `fallback-card-${index + 1}`,
+      key: `${keyPrefix}-${index + 1}`,
       title,
       resourceType,
       content: roleText
@@ -1184,7 +1247,7 @@ function buildFallbackStructuredCard(step = {}, packet = {}, interactionMode = "
           ]
         };
     return {
-      key: `fallback-card-${index + 1}`,
+      key: `${keyPrefix}-${index + 1}`,
       title,
       resourceType,
       content: tableContent
@@ -1192,7 +1255,7 @@ function buildFallbackStructuredCard(step = {}, packet = {}, interactionMode = "
   }
   if (resourceType === "graph") {
     return {
-      key: `fallback-card-${index + 1}`,
+      key: `${keyPrefix}-${index + 1}`,
       title,
       resourceType,
       content: {
@@ -1209,7 +1272,7 @@ function buildFallbackStructuredCard(step = {}, packet = {}, interactionMode = "
   }
   if (resourceType === "code") {
     return {
-      key: `fallback-card-${index + 1}`,
+      key: `${keyPrefix}-${index + 1}`,
       title,
       resourceType,
       content: {
@@ -1220,7 +1283,7 @@ function buildFallbackStructuredCard(step = {}, packet = {}, interactionMode = "
     };
   }
   return {
-    key: `fallback-card-${index + 1}`,
+    key: `${keyPrefix}-${index + 1}`,
     title,
     resourceType: "say",
     content: roleText
@@ -1491,6 +1554,30 @@ function normalizeDraftSteps(draft = {}, fallbackCardPlan = []) {
     usesDependency: uniqueList(item?.usesDependency),
     expectedEvidence: uniqueList(item?.expectedEvidence)
   }));
+}
+
+function ensureMinimumPracticeStepsForMode(steps = [], packet = {}, interactionMode = "normal_generation") {
+  const normalizedSteps = Array.isArray(steps) ? steps : [];
+  const practiceRoles = new Set(["active_practice", "analogous_practice", "cumulative_review", "correction"]);
+  const request = text(packet?.userRequest).toLowerCase();
+  const needsExtraPractice = text(interactionMode) === "repair"
+    || /\b(mais pratica|mais prática|exercicios|exercícios|treino guiado)\b/u.test(request);
+  const practiceCount = normalizedSteps.filter((step) => practiceRoles.has(text(step?.role))).length;
+  if (!needsExtraPractice || practiceCount >= 2) {
+    return normalizedSteps;
+  }
+  const insertAt = Math.max(1, normalizedSteps.length - 1);
+  const nextSteps = [...normalizedSteps];
+  nextSteps.splice(insertAt, 0, {
+    position: insertAt + 1,
+    role: "analogous_practice",
+    resourceType: nextSteps.some((step) => text(step?.resourceType) === "block_gap_fill") ? "table" : "block_gap_fill",
+    purpose: "consolidar com segunda prática guiada",
+    inCardContext: [],
+    usesDependency: [],
+    expectedEvidence: uniqueList(packet?.currentMicrosequence?.expectedEvidence)
+  });
+  return nextSteps.map((step, index) => ({ ...step, position: index + 1 }));
 }
 
 function buildContinuationPrompt({
@@ -2103,7 +2190,8 @@ export async function generateMicrosequenceProjectDocument({
     fallbackCardPlan,
     temperature: hasCards ? 0.3 : 0.2
   });
-  const cardPlan = draftPlan.steps.map((step) => ({
+  const plannedSteps = ensureMinimumPracticeStepsForMode(draftPlan.steps, rebuiltPacket, interactionMode);
+  const cardPlan = plannedSteps.map((step) => ({
     position: step.position,
     role: step.role,
     resourceType: step.resourceType,
