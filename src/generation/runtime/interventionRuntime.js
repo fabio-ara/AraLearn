@@ -23,6 +23,45 @@ function inferLocalOperation(promptText = "") {
   return "reinforce";
 }
 
+function buildFailedInterventionFeedback({
+  draft = {},
+  assistConfig = {},
+  status = "needs_retry",
+  title = "Iteração pendente",
+  message = ""
+} = {}) {
+  return {
+    status,
+    title,
+    message,
+    feedbackText: text(draft?.promptText) || message,
+    nextPromptDraft: text(draft?.promptText),
+    rawFeedbackText: message,
+    recommendedActionIntent:
+      status === "needs_new_microsequence" || status === "needs_support_microsequence"
+        ? "create_after_current"
+        : text(draft?.operationMode) === "repair"
+          ? "repair_current"
+          : "continue_current",
+    recommendedInterventionTargetMode:
+      status === "needs_new_microsequence" || status === "needs_support_microsequence" ? "new_after_current" : "current",
+    recommendedOperationMode: text(draft?.operationMode) === "repair" ? "repair" : "reinforce",
+    recommendedInterventionType: text(draft?.interventionType),
+    continuationNeeded: status !== "completed" && status !== "blocked",
+    continuationMode:
+      status === "needs_support_microsequence"
+        ? "support_microsequence"
+        : status === "needs_new_microsequence"
+          ? "next_microsequence"
+          : status === "needs_retry" || status === "needs_continue_here"
+            ? "same_microsequence"
+            : "none",
+    modelId: text(assistConfig?.model),
+    promptText: text(draft?.promptText),
+    attachmentNames: (Array.isArray(draft?.attachments) ? draft.attachments : []).map((item) => text(item?.name)).filter(Boolean)
+  };
+}
+
 export function buildMicrosequencePrompt({
   promptText = "",
   dependencyTitles = [],
@@ -303,7 +342,14 @@ export async function executeMicrosequenceGeneration({
   if (!readiness.ok && isCodexLocalModel(assistConfig.model)) {
     return {
       status: "provider-unready",
-      errorMessage: readiness.error || "O bridge local não está ativo."
+      errorMessage: readiness.error || "O bridge local não está ativo.",
+      interventionFeedback: buildFailedInterventionFeedback({
+        draft,
+        assistConfig,
+        status: "blocked",
+        title: "Provider indisponível",
+        message: readiness.error || "O bridge local não está ativo."
+      })
     };
   }
 
@@ -337,7 +383,14 @@ export async function executeMicrosequenceGeneration({
   } catch (error) {
     return {
       status: "error",
-      errorMessage: error instanceof Error ? error.message : "Falha ao chamar o serviço de IA."
+      errorMessage: error instanceof Error ? error.message : "Falha ao chamar o serviço de IA.",
+      interventionFeedback: buildFailedInterventionFeedback({
+        draft,
+        assistConfig,
+        status: "needs_retry",
+        title: "Nova iteração necessária",
+        message: error instanceof Error ? error.message : "Falha ao chamar o serviço de IA."
+      })
     };
   }
 }

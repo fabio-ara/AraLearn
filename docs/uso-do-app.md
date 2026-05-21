@@ -58,6 +58,13 @@ Ao abrir uma microssequência, o usuário pode:
 
 Essas ações operam apenas sobre o ponto selecionado da trilha.
 
+Na aba `Edição`, o fluxo agora tem duas áreas:
+
+- `Pedido`: o texto editável da intervenção atual, com ação, materialização preferida, anexos e modelo;
+- `Retorno da intervenção`: o feedback persistido da última chamada, somente leitura por padrão, com opção de edição do texto-base da próxima iteração.
+
+Se a geração couber em uma chamada, o retorno marca a etapa como concluída. Se houver erro recuperável ou necessidade de continuação, o app habilita nova iteração diretamente a partir desse retorno, inclusive com troca de modelo quando o usuário quiser.
+
 ## 5. Revisar versões
 
 Cada geração ou ajuste cria uma nova versão da microssequência. Isso permite comparar resultados e preservar histórico de intervenção.

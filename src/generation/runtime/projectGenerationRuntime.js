@@ -911,6 +911,154 @@ function normalizeDraftSteps(draft = {}, fallbackCardPlan = []) {
   }));
 }
 
+function buildContinuationPrompt({
+  packet = {},
+  interactionMode = "normal_generation",
+  continuationMode = "same_microsequence",
+  continuationReason = ""
+} = {}) {
+  const title = text(packet?.currentMicrosequence?.title) || "a microssequência atual";
+  const reason = text(continuationReason);
+  if (continuationMode === "support_microsequence") {
+    return [
+      `Crie uma microssequência de apoio adjacente antes de retomar "${title}".`,
+      reason ? `Foco obrigatório: ${reason}.` : "Explique o pré-requisito local necessário e retorne ao objetivo principal."
+    ].join(" ");
+  }
+  if (continuationMode === "next_microsequence") {
+    return [
+      `Abra uma nova microssequência depois de "${title}" para continuar a trilha sem comprimir conteúdo.`,
+      reason ? `Objetivo da continuação: ${reason}.` : "Continue o objetivo atual com nova etapa e mesma governança local."
+    ].join(" ");
+  }
+  return [
+    `Continue "${title}" sem abrir novo escopo e sem resumir a etapa atual.`,
+    reason ? `Priorize agora: ${reason}.` : "Distribua a continuação com mais decomposição, prática e contexto local."
+  ].join(" ");
+}
+
+function buildInterventionFeedback({
+  interactionMode = "normal_generation",
+  modelId = "",
+  promptText = "",
+  attachmentNames = [],
+  draftPlan = {},
+  microsequenceTitle = "",
+  cardCount = 0,
+  createdSupport = false
+} = {}) {
+  const continuationNeeded = draftPlan?.continuationNeeded === true;
+  const continuationMode = text(draftPlan?.continuationMode) || "none";
+  const continuationReason = text(draftPlan?.continuationReason);
+  if (createdSupport) {
+    return {
+      status: "completed",
+      title: "Microssequência de apoio criada",
+      message: `A etapa de apoio foi criada em "${microsequenceTitle || "Microssequência de apoio"}" e já pode ser iterada localmente.`,
+      feedbackText: `A etapa de apoio foi criada com ${cardCount} cards.`,
+      nextPromptDraft: "",
+      recommendedActionIntent: "",
+      recommendedInterventionTargetMode: "",
+      recommendedOperationMode: "",
+      recommendedInterventionType: "",
+      continuationNeeded: false,
+      continuationMode: "none",
+      modelId,
+      promptText,
+      attachmentNames
+    };
+  }
+
+  if (!continuationNeeded || continuationMode === "none") {
+    return {
+      status: "completed",
+      title: "Intervenção concluída",
+      message: `${cardCount} cards foram preparados em "${microsequenceTitle || "Microssequência"}".`,
+      feedbackText: `Intervenção concluída em "${microsequenceTitle || "Microssequência"}".`,
+      nextPromptDraft: "",
+      recommendedActionIntent: "",
+      recommendedInterventionTargetMode: "",
+      recommendedOperationMode: "",
+      recommendedInterventionType: "",
+      continuationNeeded: false,
+      continuationMode: "none",
+      modelId,
+      promptText,
+      attachmentNames
+    };
+  }
+
+  const mapping = {
+    same_microsequence: {
+      status: "needs_continue_here",
+      title: "Continuação recomendada",
+      recommendedActionIntent: interactionMode === "repair" ? "repair_current" : "continue_current",
+      recommendedInterventionTargetMode: "current",
+      recommendedOperationMode: interactionMode === "repair" ? "repair" : "reinforce",
+      recommendedInterventionType: interactionMode === "repair" ? "local_semantic_rewrite" : "",
+      message: reason =>
+        reason || "A etapa atual ficou didaticamente bem decomposta, mas ainda pede nova iteração na mesma microssequência."
+    },
+    support_microsequence: {
+      status: "needs_support_microsequence",
+      title: "Apoio recomendado",
+      recommendedActionIntent: "create_after_current",
+      recommendedInterventionTargetMode: "new_after_current",
+      recommendedOperationMode: "reinforce",
+      recommendedInterventionType: "explanatory_bridge",
+      message: reason =>
+        reason || "A continuação segura exige uma etapa de apoio antes de retomar o objetivo principal."
+    },
+    next_microsequence: {
+      status: "needs_new_microsequence",
+      title: "Nova microssequência recomendada",
+      recommendedActionIntent: "create_after_current",
+      recommendedInterventionTargetMode: "new_after_current",
+      recommendedOperationMode: "reinforce",
+      recommendedInterventionType: "guided_practice_bridge",
+      message: reason =>
+        reason || "O conteúdo seguinte deve ser aberto em nova microssequência para preservar a carga didática."
+    }
+  };
+  const selected = mapping[continuationMode] || mapping.same_microsequence;
+  return {
+    status: selected.status,
+    title: selected.title,
+    message: selected.message(continuationReason),
+    feedbackText: text(draftPlan?.continuationPrompt)
+      || buildContinuationPrompt({
+        packet: {
+          currentMicrosequence: {
+            title: microsequenceTitle
+          }
+        },
+        interactionMode,
+        continuationMode,
+        continuationReason
+      }),
+    nextPromptDraft: text(draftPlan?.continuationPrompt)
+      || buildContinuationPrompt({
+        packet: {
+          currentMicrosequence: {
+            title: microsequenceTitle
+          }
+        },
+        interactionMode,
+        continuationMode,
+        continuationReason
+      }),
+    recommendedActionIntent: selected.recommendedActionIntent,
+    recommendedInterventionTargetMode: selected.recommendedInterventionTargetMode,
+    recommendedOperationMode: selected.recommendedOperationMode,
+    recommendedInterventionType: selected.recommendedInterventionType,
+    continuationNeeded: true,
+    continuationMode,
+    modelId,
+    promptText,
+    attachmentNames
+  };
+}
+
 function buildBottomUpCorrectionPrompt(basePrompt = "", issues = []) {
   const normalizedIssues = uniqueList(issues);
   if (!normalizedIssues.length) {
@@ -947,14 +1095,18 @@ async function generateDidacticDraft({
       steps: normalizeDraftSteps(draft, fallbackCardPlan),
       coverageNotes: uniqueList(draft?.coverageNotes),
       continuationNeeded: draft?.continuationNeeded === true,
-      continuationReason: text(draft?.continuationReason)
+      continuationReason: text(draft?.continuationReason),
+      continuationMode: text(draft?.continuationMode) || "none",
+      continuationPrompt: text(draft?.continuationPrompt)
     };
   } catch {
     return {
       steps: normalizeDraftSteps({}, fallbackCardPlan),
       coverageNotes: ["Draft intermediário indisponível; usando plano didático determinístico."],
       continuationNeeded: false,
-      continuationReason: ""
+      continuationReason: "",
+      continuationMode: "none",
+      continuationPrompt: ""
     };
   }
 }
@@ -1185,8 +1337,21 @@ export async function generateMicrosequenceProjectDocument({
       schema: buildSupportMicrosequenceSchema(density, { modelCapabilities }),
       temperature: 0.3
     });
-    const validated = validateSupportPayload(payload);
-    return applySupportMicrosequence(projectDocument, selection, validated);
+  const validated = validateSupportPayload(payload);
+    const applied = applySupportMicrosequence(projectDocument, selection, validated);
+    const targetMicrosequence = findMicrosequence(applied.projectDocument, applied.target);
+    return {
+      ...applied,
+      interventionFeedback: buildInterventionFeedback({
+        interactionMode,
+        modelId: runtime.modelId,
+        promptText: text(draft.promptText),
+        attachmentNames: (Array.isArray(ingestedAttachments.attachments) ? ingestedAttachments.attachments : []).map((item) => text(item?.name)).filter(Boolean),
+        microsequenceTitle: text(targetMicrosequence?.title || validated.title),
+        cardCount: Array.isArray(validated.cards) ? validated.cards.length : 0,
+        createdSupport: true
+      })
+    };
   }
 
   const mode =
@@ -1242,5 +1407,18 @@ export async function generateMicrosequenceProjectDocument({
     cardPlan,
     temperature: hasCards ? 0.3 : 0.2
   });
-  return applyCardsToCurrentMicrosequence(projectDocument, selection, validated);
+  const applied = applyCardsToCurrentMicrosequence(projectDocument, selection, validated);
+  const appliedMicrosequence = findMicrosequence(applied.projectDocument, applied.target);
+  return {
+    ...applied,
+    interventionFeedback: buildInterventionFeedback({
+      interactionMode,
+      modelId: runtime.modelId,
+      promptText: text(draft.promptText),
+      attachmentNames: (Array.isArray(ingestedAttachments.attachments) ? ingestedAttachments.attachments : []).map((item) => text(item?.name)).filter(Boolean),
+      draftPlan,
+      microsequenceTitle: text(appliedMicrosequence?.title || currentMicrosequence?.title),
+      cardCount: Array.isArray(validated.cards) ? validated.cards.length : 0
+    })
+  };
 }
