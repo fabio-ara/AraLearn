@@ -473,6 +473,7 @@ test("renderiza o painel da microssequência sem botão próprio de ações e co
   assert.match(html, /data-action="open-assist-config" title="Configurar IA" aria-label="Configurar IA"/);
   assert.match(html, /data-action="apply-assist"[^>]*title="Gerar próximos cards" aria-label="Gerar próximos cards"/);
   assert.match(html, /data-action="apply-assist"[^>]*disabled aria-disabled="true"/);
+  assert.match(html, /Editar com IA/);
   assert.match(html, /Retorno da intervenção/);
   assert.match(html, />Feedback<\/p>/);
   assert.doesNotMatch(html, /Feedback da intervenção/);
