@@ -1255,6 +1255,9 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
     "</section>";
   const editPane =
     '<section class="workbench-editor-panel workbench-editor-pane">' +
+    '<header class="workbench-editor-heading">' +
+    '<h2 class="generation-overlay-title workbench-editor-title">Editar com IA</h2>' +
+    "</header>" +
     '<label class="field generate-prompt-field workbench-prompt-field">' +
     '<div class="generate-prompt-layout">' +
     '<div class="workbench-prompt-tools">' +
@@ -1276,7 +1279,7 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
     '<section class="microsequence-assist-panel bottomup-focus-panel assist-simple-panel assist-action-panel">' +
     '<div class="workbench-form-row assist-action-heading">' +
     renderInlineFieldIcon("intent", "O que a IA deve fazer agora") +
-    '<p class="tiny muted">O que a IA deve fazer agora</p>' +
+    '<p class="workbench-editor-section-label">O que a IA deve fazer agora</p>' +
     "</div>" +
     '<div class="assist-action-options" role="radiogroup" aria-label="Ação da intervenção">' +
     assistActionOptions +
@@ -1320,7 +1323,7 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
     feedbackStatusClass +
     '">' +
     '<div class="assist-feedback-heading">' +
-    '<p class="tiny muted">Feedback</p>' +
+    '<p class="workbench-editor-section-label">Feedback</p>' +
     "</div>" +
     '<div class="field generate-prompt-field workbench-prompt-field assist-feedback-field">' +
     '<div class="generate-prompt-layout">' +
