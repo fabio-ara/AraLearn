@@ -11,6 +11,15 @@ function uniqueTextList(values = []) {
   return [...new Set((Array.isArray(values) ? values : []).map(text).filter(Boolean))];
 }
 
+function buildRetryFeedbackText({ message = "", promptText = "" } = {}) {
+  const cleanMessage = text(message);
+  const cleanPrompt = text(promptText);
+  if (cleanMessage && cleanPrompt) {
+    return `Falha na intervenção: ${cleanMessage}\n\nPedido para nova tentativa:\n${cleanPrompt}`;
+  }
+  return cleanMessage || cleanPrompt;
+}
+
 function inferLocalOperation(promptText = "") {
   const normalized = text(promptText)
     .normalize("NFD")
@@ -30,12 +39,13 @@ function buildFailedInterventionFeedback({
   title = "Iteração pendente",
   message = ""
 } = {}) {
+  const promptText = text(draft?.promptText);
   return {
     status,
     title,
     message,
-    feedbackText: text(draft?.promptText) || message,
-    nextPromptDraft: text(draft?.promptText),
+    feedbackText: buildRetryFeedbackText({ message, promptText }),
+    nextPromptDraft: buildRetryFeedbackText({ message, promptText }),
     rawFeedbackText: message,
     recommendedActionIntent:
       status === "needs_new_microsequence" || status === "needs_support_microsequence"
@@ -57,7 +67,7 @@ function buildFailedInterventionFeedback({
             ? "same_microsequence"
             : "none",
     modelId: text(assistConfig?.model),
-    promptText: text(draft?.promptText),
+    promptText,
     attachmentNames: (Array.isArray(draft?.attachments) ? draft.attachments : []).map((item) => text(item?.name)).filter(Boolean)
   };
 }

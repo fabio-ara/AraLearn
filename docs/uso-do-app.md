@@ -61,9 +61,9 @@ Essas ações operam apenas sobre o ponto selecionado da trilha.
 Na aba `Edição`, o fluxo agora tem duas áreas:
 
 - `Pedido`: o texto editável da intervenção atual, com ação, materialização preferida, anexos e modelo;
-- `Retorno da intervenção`: o feedback persistido da última chamada, somente leitura por padrão, com opção de edição do texto-base da próxima iteração.
+- `Retorno da intervenção`: o feedback persistido da última chamada, somente leitura por padrão, com botão de edição por ícone para ajustar o texto-base da próxima iteração.
 
-Se a geração couber em uma chamada, o retorno marca a etapa como concluída. Se houver erro recuperável ou necessidade de continuação, o app habilita nova iteração diretamente a partir desse retorno, inclusive com troca de modelo quando o usuário quiser.
+Se a geração couber em uma chamada, o retorno marca a etapa como concluída. Se houver erro recuperável ou necessidade de continuação, o campo de retorno mostra o texto acionável da próxima tentativa e o app habilita nova iteração, inclusive com troca de modelo quando o usuário quiser.
 
 ## 5. Revisar versões
 

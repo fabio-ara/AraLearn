@@ -125,7 +125,7 @@ O retorno é persistido por microssequência, junto com a versão-base ativa qua
 - o modelo usado;
 - a recomendação de ação seguinte.
 
-Quando há continuação segura, o app habilita uma nova iteração a partir do retorno persistido. Quando a versão-base mudou, o retorno continua legível, mas deixa de ser executado cegamente.
+Quando há continuação segura, o app habilita uma nova iteração a partir do retorno persistido. O retorno fica no próprio campo de iteração: se houve erro, ele traz a causa e um pedido de nova tentativa; se houve continuação, ele traz o texto-base da próxima chamada. Quando a versão-base mudou, o retorno continua legível, mas deixa de ser executado cegamente.
 
 ## Providers
 
