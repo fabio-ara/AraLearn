@@ -5605,14 +5605,6 @@ button {
   gap: 10px;
 }
 
-.assist-action-panel {
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  padding: 0;
-  box-shadow: none;
-}
-
 .assist-action-options {
   display: grid;
   gap: 8px;
@@ -6438,6 +6430,31 @@ button {
   gap: 7px;
   min-width: 0;
   overflow-x: clip;
+}
+
+.microsequence-assist-panel.assist-action-panel {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 0;
+  box-shadow: none;
+}
+
+.assist-action-panel .assist-action-option {
+  background: transparent;
+}
+
+.assist-action-panel .assist-action-option:hover {
+  background: rgba(28, 21, 15, 0.42);
+}
+
+.assist-action-panel .assist-action-option.is-selected {
+  background: rgba(42, 31, 20, 0.46);
+}
+
+.assist-action-panel .assist-action-option.is-disabled,
+.assist-action-panel .assist-action-option.is-disabled:hover {
+  background: transparent;
 }
 
 .dependency-strip {
