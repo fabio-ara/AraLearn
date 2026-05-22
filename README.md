@@ -98,6 +98,13 @@ O app pode operar com diferentes providers:
 
 A geração é guiada por contratos pequenos e validada localmente. O motor separa planejamento top-down, draft didático bottom-up e compilação final. Respostas inválidas não substituem o projeto anterior.
 
+Suporte operacional atual:
+
+- DeepSeek `v4 Flash`, `v4 Pro` e perfil `DeepSeek Quality`;
+- chamadas estruturadas DeepSeek com schema usam strict tool calling no endpoint beta;
+- no bottom-up, o fluxo DeepSeek prioriza baixa latência: draft, compile e repair operam sem `thinking`;
+- `scope-inference` continua separado como fase de interpretação mais cara, porque acontece com muito menos frequência do que a edição de microssequência.
+
 ## Estrutura técnica
 
 Partes centrais do código:

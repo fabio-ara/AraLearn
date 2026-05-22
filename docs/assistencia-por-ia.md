@@ -132,11 +132,27 @@ Quando há continuação segura, o app habilita uma nova iteração a partir do 
 Providers suportados pelo desenho técnico:
 
 - Gemini;
+- DeepSeek via base compatível com OpenAI;
 - Codex local;
 - OpenAI compatível;
 - Fake provider para testes.
 
 A interface de provider deve permitir trocar a origem da resposta sem alterar o contrato do domínio.
+
+### Observações sobre DeepSeek
+
+O suporte DeepSeek no runtime atual foi calibrado para duas necessidades diferentes:
+
+- confiabilidade estrutural, porque o app depende de JSON validado localmente;
+- latência baixa no bottom-up, porque a microssequência é a parte mais iterada pelo usuário.
+
+Por isso:
+
+- chamadas estruturadas DeepSeek com `schema` usam strict tool calling no endpoint beta da API;
+- o adapter lê a resposta a partir de `tool_calls[].function.arguments`;
+- o adapter sanitiza os schemas para o subset strict aceito pela API;
+- no bottom-up, `draft`, `compile` e `repair` usam `deepseek-v4-flash` sem `thinking`;
+- `scope-inference` pode continuar com raciocínio habilitado, porque é uma etapa menos frequente e mais interpretativa.
 
 ## Modos do Codex local
 
