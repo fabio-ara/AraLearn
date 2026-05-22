@@ -1,121 +1,115 @@
 # AraLearn
 
-AraLearn é um app open source, local-first/offline-first, para transformar materiais, dúvidas e objetivos de estudo em cursos organizados por pequenas etapas didáticas.
+AraLearn é um app open source, local-first/offline-first, para autoria e estudo de trilhas didáticas. Ele ajuda o usuário a transformar ementas, slides, anotações, listas de exercícios, documentação técnica, dúvidas e objetivos de prova em um percurso estudável, persistente e revisável.
 
-Ele parte de uma constatação simples: estudantes e profissionais têm acesso a PDFs, slides, anotações, listas de exercícios, documentação técnica, respostas de IA e páginas da web, mas nem sempre conseguem transformar esse volume de informação em percurso de estudo. O AraLearn propõe uma estrutura externa para esse trabalho.
+O AraLearn não é uma plataforma de conteúdo pronto. O conteúdo é criado, revisado, aceito e estudado pelo usuário. A IA pode ajudar a planejar, organizar, gerar cards, corrigir lacunas e propor prática, mas a autoria continua sendo do usuário.
 
 ```text
 curso -> módulo -> lição -> microssequência -> card
 ```
 
-A microssequência é a unidade didática central do app. Ela reúne cards em torno de uma função precisa: introduzir um conceito, explicar um procedimento, demonstrar um caso, propor prática, revisar uma lacuna, corrigir erro comum ou preparar a etapa seguinte.
+A unidade central do app é a **microssequência**. Uma microssequência reúne cards em torno de uma função didática pequena e clara: introduzir uma ideia, explicar um procedimento, mostrar um exemplo, propor prática, revisar uma lacuna, corrigir um erro comum ou preparar a próxima etapa.
 
-## Princípio didático atual
+## Por que o AraLearn existe
 
-O AraLearn não foi desenhado como resumidor. O motor atual trata exaustividade como efeito de:
+O AraLearn nasceu de uma dificuldade prática: estudar exige mais do que acesso a conteúdo. Um estudante pode ter ementas, slides, anotações, listas de exercícios, respostas de IA, documentação técnica e capítulos de livros, mas ainda assim não ter um caminho claro de estudo.
 
-- decomposição progressiva;
-- prática distribuída;
-- retomada cumulativa;
-- variação suficiente para prova;
-- cards com carga didática controlada.
+Ferramentas como Anki e AnkiDroid dão liberdade, mas criar bons cards exige tempo, critério e energia. Esse trabalho pode competir com o estudo. Apps como Duolingo, SoloLearn, Enki e Encode reduzem o atrito, mas trabalham com trilhas fechadas ou pouco customizáveis. Chats com LLMs ajudam a explicar e gerar exemplos, mas o resultado costuma ficar disperso em conversas, sem virar material persistido, renderizado e estudável offline.
 
-Isso importa porque o público focal do app inclui estudantes-trabalhadores que estudam em contexto de atenção fragmentada, mas precisam enfrentar avaliações exigentes. No AraLearn, "pequeno" não significa "raso": significa legível, praticável e encadeado.
+O AraLearn tenta ocupar esse espaço intermediário: manter a autoria do usuário e reduzir o atrito de planejar, organizar, gerar, revisar e estudar.
+
+## Origem e público
+
+O app é usado pelo autor para estudar disciplinas do curso de Tecnologia em Análise e Desenvolvimento de Sistemas no IFSP. Essa origem influencia o projeto: o AraLearn privilegia estudo técnico, prática progressiva, revisão de lacunas, documentação clara e uso em condições reais de pouco tempo, cansaço e atenção fragmentada.
+
+Apesar dessa origem, o AraLearn foi desenhado para manter caráter geral. Ele pode servir a estudantes de graduação, estudantes-trabalhadores, concurseiros, autodidatas, pesquisadores, professores, monitores e qualquer pessoa que queira planejar, organizar, estudar, revisar e persistir conteúdo com baixo atrito.
+
+## Autoria, conteúdo e modelos
+
+O AraLearn é **content-agnostic**: ele não depende de uma disciplina, curso, instituição, base de conteúdo ou apostila específica. O usuário define o assunto, o escopo, o que entra, o que fica fora e quando uma etapa está pronta.
+
+O AraLearn também é **model-agnostic**: a assistência por IA pode vir de diferentes providers. O app pode operar com APIs remotas, endpoints compatíveis com OpenAI, Gemini, DeepSeek, Codex CLI local ou provider falso de testes. O provider executa uma operação; o contrato, a validação e a decisão de aceitar o resultado pertencem ao app e ao usuário.
+
+## Como o fluxo funciona
+
+O fluxo tem dois momentos. Os termos técnicos aparecem na documentação, mas a ideia é simples:
+
+1. **Planejamento da trilha**: o usuário informa o tema, módulos, recortes e objetivos. A IA pode ajudar a criar uma estrutura com curso, módulos, lições e microssequências. Essa etapa é chamada internamente de `top-down`, porque começa pelo desenho geral do percurso.
+2. **Criação local dos cards**: o usuário abre uma microssequência e gera, melhora, corrige ou amplia cards apenas naquele ponto da trilha. Essa etapa é chamada internamente de `bottom-up`, porque parte da necessidade concreta da etapa em estudo.
+
+Esse desenho evita que o usuário precise criar um curso inteiro antes de começar a estudar. A trilha dá orientação, mas os cards são materializados no ritmo do estudo.
 
 ## O que o AraLearn faz
 
 O AraLearn ajuda o usuário a:
 
-- organizar um tema em curso, módulos, lições e microssequências;
-- delimitar o que entra e o que não entra em cada módulo;
-- gerar uma trilha planejada antes de produzir cards;
-- planejar a didática local antes de compilar o JSON final dos cards;
-- materializar cards apenas na microssequência que será estudada;
-- revisar, corrigir, ampliar ou complementar uma etapa sem perder versões preservadas;
-- estudar com recursos renderizáveis, como texto explicativo, tabela, código, fluxograma, árvore, grafo e lacunas interativas.
+- criar um planejamento didático para qualquer assunto;
+- organizar o estudo em curso, módulos, lições e microssequências;
+- delimitar o que entra e o que fica fora de cada módulo;
+- gerar uma trilha antes de criar os cards;
+- abrir uma microssequência e materializar somente a etapa que será estudada;
+- gerar teoria e prática em cards pequenos, legíveis e executáveis;
+- criar mais cards dentro da microssequência atual;
+- criar uma microssequência adicional quando aparece uma lacuna;
+- corrigir cards já gerados;
+- seguir para a próxima microssequência planejada;
+- estudar offline depois que o conteúdo está persistido;
+- exportar, importar e auditar o projeto em JSON.
 
-A IA é usada como assistência situada. Ela não substitui a autoria do usuário nem transforma o app em chat genérico. O projeto permanece visível, editável, exportável e validado por contrato.
+## O que o AraLearn não faz
 
-## Contexto
+O AraLearn não fornece uma trilha oficial, não substitui professor, bibliografia, monitoria ou revisão humana, e não promete aprendizagem automática. Ele também não deve ser tratado como autoridade sobre o conteúdo gerado.
 
-AraLearn dialoga com práticas e produtos como flashcards, repetição espaçada, aprendizagem por etapas, organização pessoal do conhecimento, hipertexto, versionamento e autoria local. Seu foco, porém, é próprio: transformar material disperso em percurso estruturado, praticável e auditável.
+A função do app é reduzir atrito e dar estrutura. A função da IA é auxiliar. A função de decidir, revisar e estudar continua sendo do usuário.
 
-A documentação discute esse contexto em [Contexto de produto e referências](docs/contexto-produto-e-referencias.md), incluindo o lugar do app diante de produtos como Anki, Duolingo, Obsidian, Git, Wikipédia e plataformas de fluxo contínuo, além de questões filosóficas e éticas sobre organização do conhecimento, IA e autoria.
+## Princípio didático
 
-## Para quem o projeto foi pensado
+O AraLearn não foi desenhado como resumidor. O objetivo não é encurtar o conteúdo até perder cobertura. O motor atual trata cobertura como efeito de:
 
-AraLearn pode ser usado por:
+- decomposição progressiva;
+- prática distribuída;
+- retomada cumulativa;
+- variação suficiente para prova ou aplicação;
+- cards com carga didática controlada.
 
-- estudantes de disciplinas acadêmicas, especialmente em cursos de tecnologia;
-- pessoas em preparação para provas, concursos ou avaliações específicas;
-- leitores de artigos, capítulos, documentação técnica e materiais especializados;
-- professores, monitores e estudantes que queiram montar trilhas de estudo revisáveis;
-- interessados em ferramentas locais de organização do conhecimento.
-
-## Fluxo de uso
-
-1. O usuário informa o curso ou tema.
-2. Define módulos e recortes por meio de expressões do que entra e do que fica fora.
-3. O app gera uma estrutura navegável até microssequências planejadas.
-4. O usuário abre uma microssequência.
-5. A IA, quando configurada, primeiro planeja a didática local e depois compila os cards apenas para aquela etapa.
-6. O usuário estuda, revisa e decide se a etapa está pronta para compor a trilha de execução.
-
-Esse desenho evita a geração de um curso inteiro de uma só vez. A estrutura dá orientação; a materialização local preserva controle.
-
-## Top-down e bottom-up
-
-No AraLearn, o motor de geração trabalha em dois níveis complementares.
-
-O `top-down` planeja a trilha. Ele recebe o recorte do curso, respeita o que entra e o que não entra, organiza módulos, lições e microssequências e pode registrar metadados didáticos como função da etapa, necessidade de prática, dependências e evidências esperadas. O resultado esperado do top-down é uma estrutura progressiva e navegável até microssequências. Ele não gera cards.
-
-O `bottom-up` materializa uma microssequência específica. Ele recebe o contexto local da etapa, suas dependências, a fonte-guia da lição e o pedido do usuário. Primeiro, monta um rascunho didático intermediário; depois, compila o JSON final dos cards no formato consumido pelo frontend. O resultado esperado do bottom-up é uma microssequência estudável, com cards coerentes, prática autossuficiente quando necessária e retorno claro à trilha planejada.
-
-Na aba `Edição`, o fluxo local distingue duas áreas: o pedido atual e o retorno da intervenção. O pedido continua editável; o retorno fica persistido por microssequência, preso à versão-base em que foi gerado e pode sinalizar conclusão, erro recuperável, continuação na mesma etapa, apoio adjacente ou abertura de nova microssequência. Esse retorno aparece no próprio campo de iteração, sem mensagens dispersas, e pode ser enviado de novo com troca de modelo, anexos ou configuração.
+No AraLearn, “pequeno” não significa “raso”. Significa estudável, legível, praticável e encadeado.
 
 ## Recursos de card
 
-O contrato público aceita os seguintes recursos renderizáveis:
+O contrato público aceita recursos renderizáveis simples. Eles podem ser escritos por humanos ou produzidos com auxílio de IA:
 
-- `say`: explicação textual ou enunciado;
-- `table`: tabelas, quadros comparativos e matrizes simples;
-- `code`: blocos de código;
-- `flow`: fluxogramas;
-- `tree`: árvores de pastas, hierarquias e estruturas aninhadas;
-- `graph`: grafos com vértices, arestas e pesos;
-- `block_gap_fill`: parágrafos com lacunas e opções de resposta.
+- `say`: explicação textual, enunciado ou síntese;
+- `table`: tabelas, quadros comparativos e matrizes;
+- `code`: código, comandos, pseudocódigo e exemplos técnicos;
+- `flow`: fluxogramas e decisões;
+- `tree`: hierarquias, pastas e estruturas aninhadas;
+- `graph`: vértices, arestas, pesos e relações;
+- `block_gap_fill`: parágrafos com lacunas e opções.
 
-Esses recursos permitem que a trilha aproxime o estudo da forma como o estudante resolve exercícios no caderno, em prova ou em ambiente técnico.
+Esses recursos não existem para enfeitar o card. Eles aproximam o estudo da forma como o usuário terá de resolver exercícios, provas, problemas de programação, leitura técnica ou análise conceitual.
 
-## Assistência por IA
+## Persistência, importação e exportação
 
-O app pode operar com diferentes providers:
+O projeto AraLearn é persistido como JSON validado por contrato. Antes de salvar ou carregar, o documento passa por validação local. Se uma resposta de IA não respeita o formato esperado, ela não substitui o projeto anterior.
 
-- Gemini por API;
-- providers compatíveis com OpenAI;
-- Codex local via bridge HTTP;
-- provider falso para testes e harnesses.
+Há dois formatos principais de troca:
 
-A geração é guiada por contratos pequenos e validada localmente. O motor separa planejamento top-down, draft didático bottom-up e compilação final. Respostas inválidas não substituem o projeto anterior.
+- **Projeto AraLearn**: contém o documento público do projeto, com `contract: "aralearn.contract"`, `version: 1`, `kind: "project"` e a lista de cursos.
+- **Backup completo**: usa `format: "aralearn.storage"` e inclui projeto, data de exportação e progresso de estudo.
 
-Suporte operacional atual:
+O progresso é separado do conteúdo. Ele registra posição de estudo e cards concluídos, sem misturar o estado de uso com o contrato público do projeto.
 
-- DeepSeek `v4 Flash`, `v4 Pro` e perfil `DeepSeek Quality`;
-- chamadas estruturadas DeepSeek com schema usam strict tool calling no endpoint beta;
-- no bottom-up, o fluxo DeepSeek prioriza baixa latência: draft, compile e repair operam sem `thinking`;
-- `scope-inference` continua separado como fase de interpretação mais cara, porque acontece com muito menos frequência do que a edição de microssequência.
+## Providers de IA
 
-## Estrutura técnica
+O AraLearn pode operar com diferentes providers:
 
-Partes centrais do código:
+- **Gemini**: útil para prototipação, testes e uso inicial; a free tier pode ser suficiente para experimentar, mas seus limites de requisições tendem a restringir estudo dedicado.
+- **DeepSeek**: incluído para reduzir custo e latência em uso real. O projeto contempla `deepseek-v4-flash`, `deepseek-v4-pro` e o perfil `DeepSeek Quality`. No fluxo mais iterado, a prioridade é baixa latência e JSON estruturado validável.
+- **Codex CLI local**: opção para quem já usa assinatura da OpenAI e prefere acionar o Codex por bridge local, sem necessariamente comprar créditos de outra API.
+- **OpenAI compatível**: camada genérica para endpoints que sigam o formato esperado.
+- **Fake provider**: usado em testes e harnesses.
 
-- `src/domain/`: contratos de projeto, escopo, cards, versões e microssequências;
-- `src/generation/topDown/`: geração estrutural a partir do contrato de escopo;
-- `src/generation/bottomUp/`: geração e revisão de cards dentro de uma microssequência;
-- `src/generation/runtime/`: aplicação das operações ao documento do projeto;
-- `src/generation/providers/`: integração com providers de IA;
-- `src/ui/`: interface de autoria, navegação, estudo e configuração;
-- `docs/`: documentação técnica e conceitual.
+A escolha do provider não altera a natureza do AraLearn. O conteúdo continua sendo do usuário e a saída continua sujeita ao contrato e à validação local.
 
 ## Executar localmente
 
@@ -140,15 +134,13 @@ npm run codex:local
 - [Índice da documentação](docs/README.md)
 - [Visão do produto](docs/visao-do-produto.md)
 - [Contexto de produto e referências](docs/contexto-produto-e-referencias.md)
+- [Ética, poder e governança](docs/etica-poder-e-governanca.md)
 - [Modelo didático](docs/modelo-didatico.md)
 - [Arquitetura](docs/arquitetura.md)
 - [Arquitetura de geração por LLM e API](docs/nova-arquitetura-llm-api.md)
 - [Assistência por IA](docs/assistencia-por-ia.md)
 - [Contrato público](docs/aralearn-contract.md)
 - [Uso do app](docs/uso-do-app.md)
-- [Microssequências planejadas e versões](docs/rascunhos-e-microssequencias.md)
-- [Perfis didáticos](docs/perfis-didaticos.md)
-- [Pesquisa e avaliação](docs/pesquisa-e-avaliacao.md)
 - [Codex CLI local](docs/codex-cli.md)
 - [Compartilhamento no Android](docs/android-share-import.md)
 
