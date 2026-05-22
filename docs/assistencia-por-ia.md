@@ -2,111 +2,92 @@
 
 A assistência por IA no AraLearn existe para reduzir atrito na autoria e na revisão de trilhas. Ela é situada, contratual e validada localmente.
 
+A IA não fornece um curso pronto e não substitui a autoria do usuário. Ela é ferramenta. O usuário define escopo, revisa respostas, aceita ou rejeita versões, corrige lacunas e estuda o material persistido.
+
 ## Papel da IA
 
 A IA pode ajudar em dois momentos:
 
 1. planejar a estrutura de um curso até microssequências;
-2. gerar ou revisar cards dentro de uma microssequência específica.
+2. gerar, revisar, ampliar ou corrigir cards dentro de uma microssequência específica.
 
-Ela não deve receber liberdade para reescrever o projeto inteiro em toda operação. Também não deve substituir a decisão do usuário sobre escopo, aceite e revisão.
+Ela não deve receber liberdade para reescrever o projeto inteiro em toda operação. Também não deve substituir a decisão do usuário sobre escopo, aceite, revisão e continuidade.
 
-## O que faz cada motor
+## Model-agnostic
 
-### Top-down
+O AraLearn é model-agnostic. O app não deve depender de um modelo específico para existir.
 
-O top-down é o motor de planejamento.
+A camada de provider deve permitir trocar a origem da resposta sem alterar o contrato do domínio. Gemini, DeepSeek, Codex CLI local, endpoints compatíveis com OpenAI e provider falso de testes são meios de execução. O centro arquitetural continua sendo:
 
-Ele recebe:
+- contrato de entrada;
+- prompt contextualizado;
+- resposta estruturada;
+- validação local;
+- versão persistida;
+- decisão do usuário.
 
-- o contrato de escopo do curso;
-- o que entra e o que não entra em cada módulo;
-- observações de cobrança, foco e contexto;
-- a árvore já existente, quando o usuário está complementando algo.
+## Content-agnostic
 
-Ele produz:
+O AraLearn também é content-agnostic. Ele não carrega um currículo oficial nem depende de uma base fixa de conteúdo. Cursos embarcados podem existir como exemplo ou por uso real do autor, mas não definem o limite do app.
+
+O usuário pode estudar disciplinas acadêmicas, concursos, documentação técnica, artigos, treinamento interno, tópicos de programação ou qualquer conteúdo que possa ser transformado em trilha.
+
+## Planejamento da trilha
+
+Na documentação técnica, essa fase pode aparecer como `top-down`. Em linguagem comum, é o planejamento do caminho.
+
+A IA recebe:
+
+- contrato de escopo do curso;
+- o que entra e o que fica fora em cada módulo;
+- observações de cobrança, foco ou contexto;
+- estrutura já existente, quando o usuário está complementando algo.
+
+Ela deve produzir:
 
 - módulos, lições e microssequências;
 - progressão entre etapas;
-- dependências locais entre microssequências;
-- fonte-guia mínima por lição;
-- metadados didáticos opcionais por microssequência.
+- dependências locais;
+- objetivos de estudo;
+- metadados didáticos opcionais.
 
-O que esperar do resultado:
+O resultado esperado é uma trilha organizada e progressiva, sem gerar cards nessa fase.
 
-- uma trilha organizada e progressiva;
-- escopo preservado;
-- nenhuma geração de cards nesta fase.
+## Materialização local
 
-### Bottom-up
+Na documentação técnica, essa fase pode aparecer como `bottom-up`. Em linguagem comum, é a criação ou revisão dos cards no ponto em que o usuário está estudando.
 
-O bottom-up é o motor de materialização local.
+A IA recebe:
 
-Ele recebe:
-
-- a microssequência atual;
+- microssequência atual;
 - dependências declaradas;
 - posição na trilha;
 - fonte-guia da lição;
 - pedido local do usuário;
 - anexos aproveitáveis, quando houver.
 
-Ele produz:
-
-1. um `didactic draft` intermediário com etapas, papéis didáticos, recursos sugeridos e evidências esperadas;
-2. o JSON final de cards no formato consumido pelo frontend.
-
-O que esperar do resultado:
-
-- uma única microssequência materializada ou retrabalhada;
-- cards com progressão interna clara;
-- prática autossuficiente quando a etapa exige aplicação;
-- aderência à trilha, sem replanejar a lição inteira.
-
-## Planejamento estrutural
-
-No planejamento estrutural, a IA recebe `aralearn.scope.v1`.
-
-Ela deve produzir:
-
-- lições;
-- microssequências planejadas;
-- objetivos;
-- dependências locais;
-- organização coerente dentro do escopo informado.
-
-Restrições esperadas:
-
-- respeitar `include`;
-- evitar tópicos declarados em `exclude`;
-- preservar módulos informados;
-- não gerar cards nessa etapa;
-- não transformar observações em promessa de completude.
-
-## Materialização local
-
-Na materialização local, a IA recebe um pacote de contexto da microssequência selecionada.
-
 Ela pode:
 
-- gerar cards;
-- melhorar explicação;
-- acrescentar prática;
-- criar complemento;
-- gerar a próxima microssequência planejada.
+- gerar cards da etapa;
+- criar mais cards na mesma microssequência;
+- abrir uma microssequência adicional de apoio;
+- corrigir cards existentes;
+- seguir para a próxima microssequência planejada.
 
-Cada intervenção cria uma versão nova. A versão anterior permanece disponível.
+## Draft didático e cards finais
 
-O fluxo atual divide essa etapa em duas fases leves:
+O fluxo pode ser dividido em duas fases:
 
-1. `didactic draft`: a IA propõe etapas, funções didáticas, recursos sugeridos e evidências esperadas;
-2. `compile cards`: a IA devolve o JSON final no formato consumido pelo frontend.
+1. **Draft didático**: a IA propõe etapas, papéis didáticos, recursos sugeridos, evidências esperadas e necessidade de continuação.
+2. **Cards finais**: a IA devolve o JSON final no formato consumido pelo frontend.
 
-Se o draft falha ou vem incompleto, o runtime usa um card plan determinístico como fallback.
+Essa separação existe para preservar qualidade didática e estabilidade técnica. A primeira fase pensa a progressão. A segunda obedece ao contrato.
+
+Se o draft falha ou vem incompleto, o runtime pode usar um card plan determinístico como fallback.
 
 ## Retorno iterável da intervenção
 
-Na aba `Edição`, o bottom-up não termina mais apenas em "deu certo" ou "deu erro". O runtime produz um retorno classificado para a microssequência atual.
+Na aba `Edição`, a intervenção não termina apenas em sucesso ou erro. O runtime produz um retorno classificado para a microssequência atual.
 
 Estados principais:
 
@@ -118,14 +99,7 @@ Estados principais:
 - `blocked`: falta provider ou contexto operacional;
 - `stale`: o retorno foi gerado sobre uma versão-base que já não está mais em uso.
 
-O retorno é persistido por microssequência, junto com a versão-base ativa quando a chamada ocorreu. Isso permite sair da tela, estudar outra etapa e voltar depois sem perder:
-
-- o pedido anterior;
-- a proposta de próxima iteração;
-- o modelo usado;
-- a recomendação de ação seguinte.
-
-Quando há continuação segura, o app habilita uma nova iteração a partir do retorno persistido. O retorno fica no próprio campo de iteração: se houve erro, ele traz a causa e um pedido de nova tentativa; se houve continuação, ele traz o texto-base da próxima chamada. Quando a versão-base mudou, o retorno continua legível, mas deixa de ser executado cegamente.
+O retorno é persistido por microssequência, junto com a versão-base ativa quando a chamada ocorreu. Isso permite sair da tela, estudar outra etapa e voltar depois sem perder o pedido anterior, a recomendação de continuação, o modelo usado e a relação com a versão-base.
 
 ## Providers
 
@@ -133,37 +107,40 @@ Providers suportados pelo desenho técnico:
 
 - Gemini;
 - DeepSeek via base compatível com OpenAI;
-- Codex local;
+- Codex CLI local via bridge HTTP;
 - OpenAI compatível;
 - Fake provider para testes.
 
-A interface de provider deve permitir trocar a origem da resposta sem alterar o contrato do domínio.
+A escolha do provider é operacional. Ela não altera a autoria nem remove a validação local.
 
-### Observações sobre DeepSeek
+## DeepSeek
 
-O suporte DeepSeek no runtime atual foi calibrado para duas necessidades diferentes:
+DeepSeek foi incluído para responder a duas necessidades práticas:
 
-- confiabilidade estrutural, porque o app depende de JSON validado localmente;
-- latência baixa no bottom-up, porque a microssequência é a parte mais iterada pelo usuário.
+- reduzir custo de uso dedicado;
+- reduzir latência no fluxo de estudo.
 
-Por isso:
+No AraLearn, latência não é detalhe secundário. O usuário pode estar estudando em uma sessão curta, cansado ou sem muita disponibilidade. Se a geração da microssequência demora demais, a espera vira atrito.
 
-- chamadas estruturadas DeepSeek com `schema` usam strict tool calling no endpoint beta da API;
-- o adapter lê a resposta a partir de `tool_calls[].function.arguments`;
-- o adapter sanitiza os schemas para o subset strict aceito pela API;
-- no bottom-up, `draft`, `compile` e `repair` usam `deepseek-v4-flash` sem `thinking`;
-- `scope-inference` pode continuar com raciocínio habilitado, porque é uma etapa menos frequente e mais interpretativa.
+O suporte atual contempla:
 
-## Modos do Codex local
+- `deepseek-v4-flash`;
+- `deepseek-v4-pro`;
+- perfil `DeepSeek Quality`;
+- uso de schema/strict tool calling quando aplicável;
+- políticas por fase para equilibrar custo, latência e qualidade.
 
-O bridge local do Codex aceita os modos:
+A política atual privilegia `deepseek-v4-flash` no bottom-up para manter a edição de microssequência rápida. Etapas mais raras e interpretativas, como inferência de escopo ou planejamento amplo, podem receber políticas mais caras.
 
-- `plan-scope`;
-- `generate-microsequence`;
-- `improve-microsequence`;
-- `add-practice`;
-- `create-support`;
-- `generate-next`.
+## Gemini
+
+Gemini continua útil para prototipação, testes e uso inicial. A free tier reduz barreira de entrada, mas pode ter limites de requisições inadequados para estudo dedicado por longos períodos.
+
+## Codex CLI local
+
+Codex CLI local permite operar o AraLearn por bridge HTTP. Esse caminho é útil para quem já usa assinatura da OpenAI e não quer necessariamente comprar créditos de API de outro provider.
+
+O bridge recebe operação estruturada, envia prompt ao Codex CLI e devolve JSON para validação pelo AraLearn.
 
 Endpoint padrão:
 
@@ -188,10 +165,10 @@ A validação verifica:
 
 Quando uma resposta não passa pela validação, o projeto anterior é preservado. A IA sugere e produz, mas não tem permissão automática para corromper o documento local.
 
-Os limites de cards informados por modelo são tratados como orçamento técnico por chamada. Eles não definem, por si só, se uma microssequência está pedagogicamente suficiente.
-
 ## Privacidade e controle
 
 O projeto é local-first. O envio de conteúdo a uma API remota depende do provider configurado pelo usuário.
 
-O app deve deixar claro que operações remotas podem enviar o contexto necessário para a geração. Quando o usuário optar por provider local, a chamada é feita ao bridge local configurado.
+Quando o usuário usa API remota, o contexto necessário para a geração pode ser enviado ao provider escolhido. Quando usa Codex CLI local ou outro provider local, a chamada ocorre no ambiente configurado pelo usuário.
+
+Em todos os casos, a regra de produto deve permanecer clara: a IA auxilia; o usuário é autor e revisor.
