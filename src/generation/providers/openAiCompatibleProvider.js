@@ -1,7 +1,9 @@
 import { text } from "../../core/text.js";
 import {
   buildDeepSeekChatPayload,
+  buildDeepSeekToolPayload,
   isDeepSeekRequest,
+  resolveDeepSeekBaseUrl,
   resolveDeepSeekPhasePolicy
 } from "./deepSeekPolicy.js";
 import { ProviderHttpError } from "./providerErrors.js";
@@ -25,6 +27,17 @@ function parseJsonFromText(rawText = "") {
   throw new Error("O provider compatível com OpenAI devolveu JSON inválido.");
 }
 
+function parseDeepSeekToolArguments(data = {}) {
+  const toolCall = Array.isArray(data?.choices?.[0]?.message?.tool_calls)
+    ? data.choices[0].message.tool_calls[0]
+    : null;
+  const rawArguments = text(toolCall?.function?.arguments);
+  if (!rawArguments) {
+    throw new Error("O DeepSeek não devolveu argumentos de tool call utilizáveis.");
+  }
+  return parseJsonFromText(rawArguments);
+}
+
 export function createOpenAiCompatibleProvider({ baseUrl = "", apiKey = "" } = {}) {
   return {
     id: "openai-compatible",
@@ -46,8 +59,11 @@ export function createOpenAiCompatibleProvider({ baseUrl = "", apiKey = "" } = {
         providerId: request.providerId
       });
       const deepSeekPolicy = isDeepSeek ? resolveDeepSeekPhasePolicy({ phase: request.phase }) : null;
+      const useDeepSeekStrictToolCalling = isDeepSeek && request.schema && typeof request.schema === "object";
       const requestBody = isDeepSeek
-        ? buildDeepSeekChatPayload(request, deepSeekPolicy)
+        ? useDeepSeekStrictToolCalling
+          ? buildDeepSeekToolPayload(request, deepSeekPolicy)
+          : buildDeepSeekChatPayload(request, deepSeekPolicy)
         : {
             model: text(request.modelId),
             temperature: typeof request.temperature === "number" ? request.temperature : 0.2,
@@ -57,8 +73,11 @@ export function createOpenAiCompatibleProvider({ baseUrl = "", apiKey = "" } = {
               { role: "user", content: text(request.prompt) }
             ]
           };
+      const endpointBaseUrl = isDeepSeek
+        ? resolveDeepSeekBaseUrl(targetBaseUrl, { useBeta: useDeepSeekStrictToolCalling })
+        : targetBaseUrl;
 
-      const response = await fetch(`${targetBaseUrl.replace(/\/+$/, "")}/chat/completions`, {
+      const response = await fetch(`${endpointBaseUrl.replace(/\/+$/, "")}/chat/completions`, {
         method: "POST",
         headers: {
           "content-type": "application/json",
@@ -74,15 +93,18 @@ export function createOpenAiCompatibleProvider({ baseUrl = "", apiKey = "" } = {
           payload: data
         });
       }
-      const rawText = text(data?.choices?.[0]?.message?.content);
-      if (!rawText) {
-        throw new Error("O provider compatível com OpenAI não devolveu conteúdo utilizável.");
-      }
       if (text(data?.choices?.[0]?.finish_reason).toLowerCase() === "length") {
         const error = new Error("A resposta JSON foi truncada pelo limite de tokens do provider.");
         error.category = "response_truncated";
         error.finishReason = "length";
         throw error;
+      }
+      if (useDeepSeekStrictToolCalling) {
+        return parseDeepSeekToolArguments(data);
+      }
+      const rawText = text(data?.choices?.[0]?.message?.content);
+      if (!rawText) {
+        throw new Error("O provider compatível com OpenAI não devolveu conteúdo utilizável.");
       }
       return parseJsonFromText(rawText);
     }
