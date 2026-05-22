@@ -2,6 +2,14 @@
 
 O contrato público define o formato persistido e exportável de um projeto AraLearn.
 
+Ele existe por três razões:
+
+1. permitir que o projeto seja salvo e carregado com segurança;
+2. permitir importação, exportação e auditoria em JSON;
+3. dar à IA um alvo estruturado, sem transformar a resposta do modelo em texto solto.
+
+O contrato não é apenas detalhe técnico. Ele preserva a autoria do usuário: o conteúdo produzido ou revisado com auxílio de IA vira um documento controlado, validável e portável.
+
 ## Documento raiz
 
 ```json
@@ -58,11 +66,13 @@ Campos:
 
 - `key`;
 - `title`;
-- `include`;
-- `exclude`;
-- `notes`;
+- `include`: termos que entram no módulo;
+- `exclude`: termos que ficam fora;
+- `notes`: observações do usuário;
 - `assessmentStyle`: `"theoretical"`, `"practical"` ou `"mixed"`;
 - `lessons`.
+
+Declarar `include` e `exclude` é importante. O objetivo não é gerar uma enciclopédia, mas uma trilha com recorte definido pelo usuário.
 
 ## Termo de escopo
 
@@ -123,6 +133,8 @@ Campos:
 - `versions`: versões de cards;
 - `activeVersionKey`: versão ativa.
 
+A microssequência é a unidade didática central. Ela não é só uma pasta de cards. Ela tem objetivo, posição na trilha, estado, versões e possibilidade de apoio.
+
 ## Versão de microssequência
 
 ```json
@@ -152,6 +164,8 @@ Campos:
 - `summary`;
 - `validationReport`.
 
+Versões existem para preservar histórico. Uma melhoria não deve apagar automaticamente a versão anterior.
+
 ## Card
 
 ```json
@@ -172,6 +186,8 @@ Campos:
 - `content`;
 - `after`.
 
+O card é a unidade de interação. A microssequência é a unidade de estudo.
+
 ## Recursos aceitos
 
 `resourceType` pode ser:
@@ -185,6 +201,8 @@ Campos:
 - `block_gap_fill`.
 
 Cada recurso possui formato próprio em `content`. A validação do domínio rejeita recursos desconhecidos.
+
+### `graph`
 
 No caso de `graph`, o contrato público permanece propositalmente simples:
 
@@ -200,7 +218,7 @@ Regras operacionais de `graph`:
 
 ## Contrato de escopo
 
-O planejamento estrutural usa `aralearn.scope.v1` como entrada.
+O planejamento da trilha usa `aralearn.scope.v1` como entrada.
 
 ```json
 {
@@ -223,3 +241,41 @@ O planejamento estrutural usa `aralearn.scope.v1` como entrada.
 ```
 
 Esse contrato não substitui o projeto persistido. Ele é uma entrada controlada para gerar ou reorganizar a estrutura.
+
+## Projeto e backup completo
+
+O AraLearn reconhece dois formatos principais de troca.
+
+### Projeto público
+
+Representa o conteúdo estruturado:
+
+```json
+{
+  "contract": "aralearn.contract",
+  "version": 1,
+  "kind": "project",
+  "courses": []
+}
+```
+
+### Backup completo
+
+Representa projeto e progresso:
+
+```json
+{
+  "format": "aralearn.storage",
+  "exportedAt": "2026-05-22T00:00:00.000Z",
+  "project": {},
+  "progress": {}
+}
+```
+
+O progresso fica separado do conteúdo. Isso permite exportar a trilha como material e, quando necessário, exportar também o estado de estudo.
+
+## Validação
+
+A validação local é parte da arquitetura. Ela impede que um JSON inválido, uma resposta incompleta da IA ou um recurso desconhecido substitua o projeto.
+
+O contrato público é, portanto, uma fronteira entre geração e persistência. A IA pode sugerir. O app valida. O usuário decide.
