@@ -188,10 +188,10 @@ test("provider OpenAI-compatible monta payload DeepSeek para bottom-up draft e c
 
   assert.equal(urls[0], `${DEEPSEEK_BETA_BASE_URL}/chat/completions`);
   assert.equal(urls[1], `${DEEPSEEK_BETA_BASE_URL}/chat/completions`);
-  assert.equal(calls[0].model, DEEPSEEK_V4_PRO);
-  assert.deepEqual(calls[0].thinking, { type: "enabled" });
-  assert.equal(calls[0].reasoning_effort, "high");
-  assert.equal("temperature" in calls[0], false);
+  assert.equal(calls[0].model, DEEPSEEK_V4_FLASH);
+  assert.deepEqual(calls[0].thinking, { type: "disabled" });
+  assert.equal(calls[0].temperature, 0.2);
+  assert.equal("reasoning_effort" in calls[0], false);
   assert.equal(calls[1].model, DEEPSEEK_V4_FLASH);
   assert.deepEqual(calls[1].thinking, { type: "disabled" });
   assert.equal(calls[1].temperature, 0.2);

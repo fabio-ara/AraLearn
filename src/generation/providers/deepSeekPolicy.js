@@ -24,9 +24,9 @@ const DEEPSEEK_PHASE_POLICIES = Object.freeze({
     maxTokens: 24000
   }),
   "bottom-up-draft": Object.freeze({
-    modelId: DEEPSEEK_V4_PRO,
-    thinking: Object.freeze({ type: "enabled" }),
-    reasoningEffort: "high",
+    modelId: DEEPSEEK_V4_FLASH,
+    thinking: Object.freeze({ type: "disabled" }),
+    temperature: 0.2,
     maxTokens: 8000
   }),
   "bottom-up-compile": Object.freeze({
