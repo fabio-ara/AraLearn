@@ -43,15 +43,26 @@ export async function planCourseFromScope({
   let currentPrompt = prompt.prompt;
   let validation = null;
   for (let attempt = 1; attempt <= 3; attempt += 1) {
-    const plannedCourse = await provider.generateStructured({
-      ...providerOptions,
-      modelId,
-      mode: "plan-scope",
-      system: prompt.system,
-      prompt: currentPrompt,
-      schema: plannedCourseSchema,
-      temperature: 0.2
-    });
+    let plannedCourse;
+    try {
+      plannedCourse = await provider.generateStructured({
+        ...providerOptions,
+        modelId,
+        mode: "plan-scope",
+        phase: attempt === 1 ? "top-down-plan" : "top-down-repair",
+        system: prompt.system,
+        prompt: currentPrompt,
+        schema: plannedCourseSchema,
+        temperature: 0.2
+      });
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+      if (attempt >= 3 || lastError?.category !== "response_truncated") {
+        throw lastError;
+      }
+      currentPrompt = buildTopDownCorrectionPrompt(prompt.prompt, [lastError.message]);
+      continue;
+    }
     validation = validatePlannedCourse(plannedCourse, normalizedScope);
     if (validation.ok) {
       break;

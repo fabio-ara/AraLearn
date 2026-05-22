@@ -31,6 +31,8 @@ test("assistConfigStorage lê config mínima e injeta defaults do Codex local", 
   assert.deepEqual(readAssistConfigStorage(storage), {
     model: "gemini-2.5-flash",
     apiKey: "abc",
+    baseUrl: "",
+    apiBaseUrl: "",
     selectedProfileId: DEFAULT_ENGINE_PROFILE_ID,
     didacticProfileId: DEFAULT_ENGINE_PROFILE_ID,
     profileTuning: createProfileTuning(DEFAULT_ENGINE_PROFILE_ID),
@@ -47,6 +49,8 @@ test("assistConfigStorage grava e lê endpoint/token do Codex local", () => {
     {
       model: "codex-cli-local",
       apiKey: "",
+      baseUrl: "https://api.deepseek.com",
+      apiBaseUrl: "https://api.deepseek.com",
       selectedProfileId: "aralearn.engine.ads.systems.v1",
       didacticProfileId: "aralearn.engine.ads.systems.v1",
       profileTuning: createProfileTuning("aralearn.engine.ads.systems.v1", {
@@ -62,6 +66,8 @@ test("assistConfigStorage grava e lê endpoint/token do Codex local", () => {
   assert.deepEqual(readAssistConfigStorage(storage), {
     model: "codex-cli-local",
     apiKey: "",
+    baseUrl: "https://api.deepseek.com",
+    apiBaseUrl: "https://api.deepseek.com",
     selectedProfileId: "aralearn.engine.ads.systems.v1",
     didacticProfileId: "aralearn.engine.ads.systems.v1",
     profileTuning: createProfileTuning("aralearn.engine.ads.systems.v1", {
@@ -77,6 +83,8 @@ test("assistConfigStorage tolera storage ausente, JSON inválido e valores ausen
   assert.deepEqual(readAssistConfigStorage(null), {
     model: "gemini-2.5-flash",
     apiKey: "",
+    baseUrl: "",
+    apiBaseUrl: "",
     selectedProfileId: DEFAULT_ENGINE_PROFILE_ID,
     didacticProfileId: DEFAULT_ENGINE_PROFILE_ID,
     profileTuning: createProfileTuning(DEFAULT_ENGINE_PROFILE_ID),
@@ -87,6 +95,8 @@ test("assistConfigStorage tolera storage ausente, JSON inválido e valores ausen
   assert.deepEqual(readAssistConfigStorage({ getItem: () => "{" }), {
     model: "gemini-2.5-flash",
     apiKey: "",
+    baseUrl: "",
+    apiBaseUrl: "",
     selectedProfileId: DEFAULT_ENGINE_PROFILE_ID,
     didacticProfileId: DEFAULT_ENGINE_PROFILE_ID,
     profileTuning: createProfileTuning(DEFAULT_ENGINE_PROFILE_ID),

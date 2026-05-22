@@ -27,6 +27,10 @@ import { buildPracticePrompt } from "../prompts/practicePrompt.js";
 import { buildSupportPrompt } from "../prompts/supportPrompt.js";
 import { buildStudyTrackPolicy } from "../policies/studyTrackPolicy.js";
 import { buildLessonTopicRefsFromMicrosequences, normalizeSelectedLessonTopicRefs } from "../tags/selectedLessonTopicRefs.js";
+import {
+  DEEPSEEK_BASE_URL,
+  isDeepSeekModelId
+} from "../providers/deepSeekPolicy.js";
 import { planCourseFromScope } from "../topDown/planCourseFromScope.js";
 import { buildSourceGuideTextForModel, SOURCE_GUIDE_LEVELS } from "../../sourceGuides/sourceGuideStructured.js";
 import { buildDidacticCardPlan } from "../planning/buildDeterministicCardPlan.js";
@@ -91,6 +95,26 @@ function clone(value) {
   return structuredClone(value);
 }
 
+function isDeepSeekAssistModel(modelId = "") {
+  return isDeepSeekModelId(modelId);
+}
+
+function resolveAssistBaseUrl(assistConfig = {}) {
+  if (text(assistConfig.baseUrl || assistConfig.apiBaseUrl)) {
+    return text(assistConfig.baseUrl || assistConfig.apiBaseUrl);
+  }
+  return isDeepSeekAssistModel(assistConfig.model) ? DEEPSEEK_BASE_URL : "";
+}
+
+function buildStructuredPhaseRequest(runtime = {}, request = {}, phase = "") {
+  return {
+    ...runtime.providerOptions,
+    ...request,
+    modelId: text(request.modelId) || runtime.modelId,
+    phase
+  };
+}
+
 export function resolveGenerationProviderRuntime(assistConfig = {}) {
   const modelId = text(assistConfig.model) || "gemini-2.5-flash";
   if (modelId.startsWith("codex")) {
@@ -106,16 +130,19 @@ export function resolveGenerationProviderRuntime(assistConfig = {}) {
       }
     };
   }
-  if (modelId.startsWith("openai-compatible") || modelId.startsWith("openai:")) {
+  if (modelId.startsWith("openai-compatible") || modelId.startsWith("openai:") || isDeepSeekAssistModel(modelId)) {
+    const baseUrl = resolveAssistBaseUrl(assistConfig);
+    const providerId = isDeepSeekAssistModel(modelId) ? "deepseek" : "openai-compatible";
     return {
       modelId,
       provider: createOpenAiCompatibleProvider({
-        baseUrl: text(assistConfig.baseUrl || assistConfig.apiBaseUrl),
+        baseUrl,
         apiKey: text(assistConfig.apiKey)
       }),
       providerOptions: {
-        baseUrl: text(assistConfig.baseUrl || assistConfig.apiBaseUrl),
-        apiKey: text(assistConfig.apiKey)
+        baseUrl,
+        apiKey: text(assistConfig.apiKey),
+        providerId
       }
     };
   }
@@ -549,21 +576,34 @@ async function inferScopeContract({ draft = {}, scopeSeed = {}, scopeState = {},
   const runtime = provider
     ? { modelId: text(assistConfig.model) || "gemini-2.5-flash", provider, providerOptions: {} }
     : resolveGenerationProviderRuntime(assistConfig);
-  const modelCapabilities = getModelCapabilities(runtime.modelId);
-  const inferred = await runtime.provider.generateStructured({
-    ...runtime.providerOptions,
-    modelId: runtime.modelId,
-    mode: "infer-scope-contract",
-    system: "Responda somente JSON válido. Converta o pedido em um contrato de escopo do AraLearn.",
-    prompt: buildScopeInferencePrompt({
-      draft,
-      scopeSeed,
-      scopeState,
-      ingestedAttachments
-    }),
-    schema: SCOPE_INFERENCE_SCHEMA,
-    temperature: 0.2
-  });
+  let inferred = null;
+  let lastError = null;
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    try {
+      inferred = await runtime.provider.generateStructured(buildStructuredPhaseRequest(runtime, {
+        modelId: runtime.modelId,
+        mode: "infer-scope-contract",
+        system: "Responda somente JSON válido. Converta o pedido em um contrato de escopo do AraLearn.",
+        prompt: buildScopeInferencePrompt({
+          draft,
+          scopeSeed,
+          scopeState,
+          ingestedAttachments
+        }),
+        schema: SCOPE_INFERENCE_SCHEMA,
+        temperature: 0.2
+      }, "scope-inference"));
+      break;
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+      if (lastError?.category !== "response_truncated") {
+        throw lastError;
+      }
+    }
+  }
+  if (!inferred) {
+    throw lastError || new Error("Falha ao inferir o contrato de escopo.");
+  }
 
   const candidate = {
     schemaVersion: "aralearn.scope.v1",
@@ -1836,15 +1876,14 @@ async function generateDidacticDraft({
   temperature = 0.2
 } = {}) {
   try {
-    const draft = await runtime.provider.generateStructured({
-      ...runtime.providerOptions,
+    const draft = await runtime.provider.generateStructured(buildStructuredPhaseRequest(runtime, {
       modelId,
       mode: `${interactionMode}-draft`,
       system: buildBottomUpDraftSystemPrompt(),
       prompt: buildBottomUpDraftUserPrompt(packet, { fallbackPlan: fallbackCardPlan }),
       schema: buildBottomUpDidacticDraftSchema(),
       temperature
-    });
+    }, "bottom-up-draft"));
     return {
       steps: normalizeDraftSteps(draft, fallbackCardPlan),
       coverageNotes: uniqueList(draft?.coverageNotes),
@@ -1883,15 +1922,14 @@ async function generateValidatedBottomUpPayload({
   // Modelos fracos podem precisar de mais tentativas com correção guiada.
   for (let attempt = 1; attempt <= 5; attempt += 1) {
     try {
-      const payload = await runtime.provider.generateStructured({
-        ...runtime.providerOptions,
+      const payload = await runtime.provider.generateStructured(buildStructuredPhaseRequest(runtime, {
         modelId,
         mode,
         system: buildBottomUpCompileSystemPrompt(),
         prompt,
         schema,
         temperature
-      });
+      }, attempt === 1 ? "bottom-up-compile" : "bottom-up-repair"));
       const validation = validateMicrosequenceCards(payload, density, {
         packet,
         cardPlan,
@@ -1932,23 +1970,36 @@ async function generateValidatedSupportPayload({
   packet,
   request = "",
   density = "standard",
-  modelCapabilities = {}
+  modelCapabilities = {},
+  draftPlan = null
 } = {}) {
   const schema = buildSupportMicrosequenceSchema(density, { modelCapabilities });
-  const basePrompt = buildSupportPrompt(packet, request);
+  const basePrompt = [
+    buildSupportPrompt(packet, request),
+    draftPlan
+      ? [
+          "",
+          "DRAFT DIDATICO OBRIGATORIO:",
+          JSON.stringify({
+            steps: Array.isArray(draftPlan?.steps) ? draftPlan.steps : [],
+            coverageNotes: uniqueList(draftPlan?.coverageNotes)
+          }, null, 2),
+          "Use esse draft como plano intermediário antes de compilar o JSON final."
+        ].join("\n")
+      : ""
+  ].filter(Boolean).join("\n");
   let prompt = basePrompt;
   let lastError = null;
   for (let attempt = 1; attempt <= 3; attempt += 1) {
     try {
-      const payload = await runtime.provider.generateStructured({
-        ...runtime.providerOptions,
+      const payload = await runtime.provider.generateStructured(buildStructuredPhaseRequest(runtime, {
         modelId,
         mode: "create-support",
         system: buildBottomUpCompileSystemPrompt(),
         prompt,
         schema,
         temperature: 0.2
-      });
+      }, attempt === 1 ? "bottom-up-compile" : "bottom-up-repair"));
       return validateSupportPayload(payload, { packet, density, modelCapabilities });
     } catch (error) {
       lastError = error;
@@ -2202,15 +2253,25 @@ export async function generateMicrosequenceProjectDocument({
   });
   rebuiltPacket.canonicalRoute = route.canonicalRoute;
   const technicalBudget = buildTechnicalCardBudget(density, modelCapabilities);
+  const fallbackCardPlan = buildFallbackCardPlan(rebuiltPacket, interactionMode, technicalBudget);
 
   if (interactionMode === "create_support") {
+    const supportDraftPlan = await generateDidacticDraft({
+      runtime,
+      modelId: runtime.modelId,
+      packet: rebuiltPacket,
+      interactionMode,
+      fallbackCardPlan,
+      temperature: 0.2
+    });
     const validated = await generateValidatedSupportPayload({
       runtime,
       modelId: runtime.modelId,
       packet: rebuiltPacket,
       request: promptText,
       density,
-      modelCapabilities
+      modelCapabilities,
+      draftPlan: supportDraftPlan
     });
     const applied = applySupportMicrosequence(projectDocument, selection, validated);
     const targetMicrosequence = findMicrosequence(applied.projectDocument, applied.target);
@@ -2245,9 +2306,8 @@ export async function generateMicrosequenceProjectDocument({
       : interactionMode === "add_practice"
         ? buildPracticePrompt(rebuiltPacket, promptText)
         : interactionMode === "answer_local_doubt"
-          ? buildImprovePrompt(rebuiltPacket, promptText || "Responder à dúvida local e retornar à trilha.")
+        ? buildImprovePrompt(rebuiltPacket, promptText || "Responder à dúvida local e retornar à trilha.")
           : "";
-  const fallbackCardPlan = buildFallbackCardPlan(rebuiltPacket, interactionMode, technicalBudget);
   const draftPlan = await generateDidacticDraft({
     runtime,
     modelId: runtime.modelId,

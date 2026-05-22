@@ -35,3 +35,17 @@ test("renderProviderConfigOverlay mostra endpoint e token para Codex local", () 
   assert.match(html, /bridge offline/);
   assert.doesNotMatch(html, /data-field="assist-api-key"/);
 });
+
+test("renderProviderConfigOverlay mostra chave e base URL para DeepSeek", () => {
+  const html = renderProviderConfigOverlay({
+    selectedModel: "deepseek-quality",
+    selectedModelLabel: "DeepSeek Quality",
+    apiKey: "segredo",
+    baseUrl: "https://api.deepseek.com"
+  });
+
+  assert.match(html, /DeepSeek Quality/);
+  assert.match(html, /data-field="assist-api-key"/);
+  assert.match(html, /data-field="provider-config-base-url"/);
+  assert.match(html, /https:\/\/api\.deepseek\.com/);
+});

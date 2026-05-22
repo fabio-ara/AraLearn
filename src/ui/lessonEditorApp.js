@@ -124,6 +124,7 @@ import {
   checkCodexLocalHealth,
   isCodexLocalModel
 } from "../generation/providers/codexCliConfig.js";
+import { DEEPSEEK_BASE_URL, DEEPSEEK_QUALITY_MODEL, isDeepSeekModelId } from "../generation/providers/deepSeekPolicy.js";
 import { executeMicrosequenceGeneration } from "../generation/runtime/interventionRuntime.js";
 import {
   createDefaultCourseModel
@@ -183,6 +184,9 @@ const MAX_ASSIST_DEPENDENCIES = 5;
 const MAX_ASSIST_ATTACHMENTS = 6;
 const MAX_CARD_SNAPSHOTS = 6;
 const ASSIST_MODEL_OPTIONS = [
+  { value: DEEPSEEK_QUALITY_MODEL, label: "DeepSeek Quality" },
+  { value: "deepseek-v4-flash", label: "DeepSeek v4 Flash" },
+  { value: "deepseek-v4-pro", label: "DeepSeek v4 Pro" },
   { value: "gemini-2.5-flash", label: "Gemini 2.5 Flash" },
   { value: "gemini-2.5-flash-lite", label: "Gemini 2.5 Flash-Lite" },
   { value: "gemini-2.0-flash", label: "Gemini 2.0 Flash" },
@@ -2172,9 +2176,15 @@ export function createLessonEditorApp({ root, storage, editor }) {
   }
 
   function setAssistModel(model) {
+    const shouldDefaultDeepSeekBaseUrl =
+      isDeepSeekModelId(model)
+      && !String(state.assistConfig.baseUrl || state.assistConfig.apiBaseUrl || "").trim();
     state.assistConfig = normalizeAssistConfig({
       ...state.assistConfig,
-      model
+      model,
+      ...(shouldDefaultDeepSeekBaseUrl
+        ? { baseUrl: DEEPSEEK_BASE_URL, apiBaseUrl: DEEPSEEK_BASE_URL }
+        : {})
     });
     if (state.assistConfigOpen) {
       state.assistConfigDraft = cloneAssistConfig();

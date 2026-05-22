@@ -1,4 +1,9 @@
 import { text } from "../../core/text.js";
+import {
+  buildDeepSeekChatPayload,
+  isDeepSeekRequest,
+  resolveDeepSeekPhasePolicy
+} from "./deepSeekPolicy.js";
 import { ProviderHttpError } from "./providerErrors.js";
 
 function parseJsonFromText(rawText = "") {
@@ -35,6 +40,23 @@ export function createOpenAiCompatibleProvider({ baseUrl = "", apiKey = "" } = {
       if (!targetBaseUrl || !targetApiKey) {
         throw new Error("Informe endpoint e chave do provider compatível com OpenAI.");
       }
+      const isDeepSeek = isDeepSeekRequest({
+        modelId: request.modelId,
+        baseUrl: targetBaseUrl,
+        providerId: request.providerId
+      });
+      const deepSeekPolicy = isDeepSeek ? resolveDeepSeekPhasePolicy({ phase: request.phase }) : null;
+      const requestBody = isDeepSeek
+        ? buildDeepSeekChatPayload(request, deepSeekPolicy)
+        : {
+            model: text(request.modelId),
+            temperature: typeof request.temperature === "number" ? request.temperature : 0.2,
+            response_format: { type: "json_object" },
+            messages: [
+              { role: "system", content: text(request.system) || "Responda somente JSON válido." },
+              { role: "user", content: text(request.prompt) }
+            ]
+          };
 
       const response = await fetch(`${targetBaseUrl.replace(/\/+$/, "")}/chat/completions`, {
         method: "POST",
@@ -42,15 +64,7 @@ export function createOpenAiCompatibleProvider({ baseUrl = "", apiKey = "" } = {
           "content-type": "application/json",
           authorization: `Bearer ${targetApiKey}`
         },
-        body: JSON.stringify({
-          model: text(request.modelId),
-          temperature: typeof request.temperature === "number" ? request.temperature : 0.2,
-          response_format: { type: "json_object" },
-          messages: [
-            { role: "system", content: text(request.system) || "Responda somente JSON válido." },
-            { role: "user", content: text(request.prompt) }
-          ]
-        })
+        body: JSON.stringify(requestBody)
       });
       const data = await response.json().catch(() => null);
       if (!response.ok) {
@@ -63,6 +77,12 @@ export function createOpenAiCompatibleProvider({ baseUrl = "", apiKey = "" } = {
       const rawText = text(data?.choices?.[0]?.message?.content);
       if (!rawText) {
         throw new Error("O provider compatível com OpenAI não devolveu conteúdo utilizável.");
+      }
+      if (text(data?.choices?.[0]?.finish_reason).toLowerCase() === "length") {
+        const error = new Error("A resposta JSON foi truncada pelo limite de tokens do provider.");
+        error.category = "response_truncated";
+        error.finishReason = "length";
+        throw error;
       }
       return parseJsonFromText(rawText);
     }

@@ -327,6 +327,7 @@ export async function prepareMicrosequenceGeneration({
   const launchConfig = resolveGenerationLaunchConfig({
     selectedModel,
     apiKey: assistConfig.apiKey,
+    baseUrl: assistConfig.baseUrl || assistConfig.apiBaseUrl,
     didacticProfileId: assistConfig.didacticProfileId,
     profileTuning: assistConfig.profileTuning,
     codexEndpoint: assistConfig.codexEndpoint,

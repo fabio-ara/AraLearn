@@ -252,6 +252,8 @@ test("normalizeAssistConfig e patch consolidam config fora da UI", () => {
   assert.deepEqual(normalizeAssistConfig({ codexEndpoint: " " }), {
     model: "gemini-2.5-flash",
     apiKey: "",
+    baseUrl: "",
+    apiBaseUrl: "",
     selectedProfileId: "aralearn.engine.ads.general.v3",
     didacticProfileId: "aralearn.engine.ads.general.v3",
     profileTuning: createProfileTuning("aralearn.engine.ads.general.v3"),

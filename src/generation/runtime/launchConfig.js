@@ -1,6 +1,8 @@
 import { CODEX_LOCAL_MODEL_ID, isCodexLocalModel } from "../providers/codexCliConfig.js";
 import { createCodexCliProvider } from "../providers/codexCliProvider.js";
 import { createGeminiProvider } from "../providers/geminiProvider.js";
+import { createOpenAiCompatibleProvider } from "../providers/openAiCompatibleProvider.js";
+import { DEEPSEEK_BASE_URL, isDeepSeekModelId } from "../providers/deepSeekPolicy.js";
 import { createProviderRegistry, resolveProviderFromModelId } from "../providers/providerRegistry.js";
 import { DEFAULT_ENGINE_PROFILE_ID } from "../config/engineProfileRegistry.js";
 import { buildEngineProfileOverrides } from "./profileTuning.js";
@@ -47,6 +49,7 @@ export function resolveDidacticProfileId(profileId = "") {
 export function createGenerationRuntimeProvider({
   selectedModel,
   apiKey = "",
+  baseUrl = "",
   codexEndpoint = "",
   codexToken = ""
 } = {}) {
@@ -56,6 +59,12 @@ export function createGenerationRuntimeProvider({
       endpoint: codexEndpoint,
       token: codexToken,
       modelId: modelId || CODEX_LOCAL_MODEL_ID
+    });
+  }
+  if (modelId.startsWith("openai-compatible") || modelId.startsWith("openai:") || isDeepSeekModelId(modelId)) {
+    return createOpenAiCompatibleProvider({
+      apiKey,
+      baseUrl: text(baseUrl) || (isDeepSeekModelId(modelId) ? DEEPSEEK_BASE_URL : "")
     });
   }
 
@@ -68,6 +77,7 @@ export function createGenerationRuntimeProvider({
 export function resolveGenerationLaunchConfig({
   selectedModel,
   apiKey = "",
+  baseUrl = "",
   didacticProfileId = "",
   profileTuning = {},
   codexEndpoint = "",
@@ -77,6 +87,7 @@ export function resolveGenerationLaunchConfig({
   const provider = createGenerationRuntimeProvider({
     selectedModel: modelId,
     apiKey,
+    baseUrl,
     codexEndpoint,
     codexToken
   });
