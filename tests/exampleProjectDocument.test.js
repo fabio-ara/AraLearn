@@ -116,6 +116,7 @@ test("o conteúdo inicial inclui o curso de matemática para informática", () =
   const measuresLesson = vectorModule.lessons[1];
   const transformationsLesson = vectorModule.lessons[2];
   const graphLesson = graphModule.lessons[0];
+  const graphPercursosLesson = graphModule.lessons[2];
   const learnerFacingText = JSON.stringify(course.modules.flatMap((module) =>
     module.lessons.flatMap((lesson) =>
       lesson.microsequences.flatMap((microsequence) =>
@@ -134,7 +135,7 @@ test("o conteúdo inicial inclui o curso de matemática para informática", () =
   assert.deepEqual(course.modules.map((module) => module.title), ["Lógica Proposicional", "Vetores e Matrizes", "Teoria dos Grafos"]);
   assert.equal(logicModule.lessons.length, 3);
   assert.equal(vectorModule.lessons.length, 3);
-  assert.equal(graphModule.lessons.length, 7);
+  assert.equal(graphModule.lessons.length, 4);
   assert.equal(truthTableLesson.microsequences[1].title, "Montagem de tabela composta");
   assert.equal(truthTableLesson.microsequences[1].cards[0].key, "card-logica-por-que-linhas");
   assert.equal(truthTableLesson.microsequences[1].cards[1].key, "card-logica-numero-linhas");
@@ -171,8 +172,13 @@ test("o conteúdo inicial inclui o curso de matemática para informática", () =
   assert.equal(equivalenceLesson.microsequences[1].cards[1].table.columns[2], "`¬q`");
   assert.equal(equivalenceLesson.microsequences[1].cards[2].table.rows[0][4], "F");
   assert.equal(graphLesson.microsequences[0].dependsOn?.length || 0, 0);
-  assert.equal(graphLesson.microsequences[0].cards[0].graph.edges.length, 7);
-  assert.equal(graphLesson.microsequences[0].cards[0].graph.edges[1].label, "ponte 2");
+  assert.equal(graphLesson.microsequences[0].cards.length, 0);
+  assert.deepEqual(
+    graphModule.lessons.map((lesson) => lesson.title),
+    ["Fundamentos de Grafos", "Grafos Especiais e Propriedades", "Representação e Percursos", "Grafos Eulerianos"]
+  );
+  assert.equal(graphPercursosLesson.microsequences[2].title, "Menor Caminho por Dijkstra");
+  assert.equal(graphPercursosLesson.microsequences[2].practiceMode, "execution");
   assert.doesNotMatch(JSON.stringify(course), /como no caderno|formato de caderno|anotações|notação de aula/);
   assert.equal(vectorModule.lessons[0].microsequences[1].cards[2].key, "card-vetores-soma-geometrica-ideia");
   assert.equal(vectorModule.lessons[0].microsequences[1].cards[3].key, "card-vetores-soma-geometrica");
