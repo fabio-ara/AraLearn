@@ -40,6 +40,7 @@ export function buildBottomUpDraftSystemPrompt() {
     "Não planeje tarefas metalinguísticas como localizar o título, repetir o objetivo ou escolher o termo central; planeje uso conceitual observável.",
     "Trate module.exclude como limite rígido: não mencione termos excluídos nem para negar, delimitar ou contrastar.",
     "Escolha resourceType pela função didática de cada etapa, não por disciplina.",
+    "Mantenha cada etapa no menor escopo cognitivo que ainda cumpra completamente o objetivo local, com prática que faça o aluno decidir, classificar, calcular ou preencher algo verificável.",
     "Se o conteúdo pedir mais cobertura do que cabe bem em uma única chamada, sinalize continuação em vez de comprimir demais."
   ].join(" ");
 }
