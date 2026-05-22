@@ -1,69 +1,106 @@
 # Contexto de produto e referências
 
-AraLearn se situa no cruzamento entre estudo por prática, organização pessoal do conhecimento, autoria local e assistência por IA. Este documento registra esse contexto sem transformar referências em filiação direta ou argumento de autoridade.
+AraLearn se situa no cruzamento entre estudo por prática, autoria local, organização pessoal do conhecimento, assistência por IA e crítica da tecnologia educacional. Este documento registra esse contexto sem transformar referências externas em filiação direta ou argumento de autoridade.
 
 A discussão crítica mais desenvolvida sobre poder, vigilância, performatividade e riscos educacionais está em [Ética, poder e governança](etica-poder-e-governanca.md).
 
-## Época
+## Contexto pessoal do projeto
 
-O produto nasce em uma época marcada por abundância informacional. O estudante encontra conteúdo em páginas da web, vídeos, fóruns, plataformas sociais, PDFs, apostilas, documentação técnica e respostas geradas por IA. O problema não é apenas acesso. O problema é converter essa disponibilidade em percurso de estudo.
+O AraLearn nasce de uso real. O autor o utiliza para estudar disciplinas do curso de Tecnologia em Análise e Desenvolvimento de Sistemas no IFSP. Isso influencia o desenho do app: conteúdos técnicos, listas de exercícios, documentação, código, prática progressiva, revisão de lacunas e necessidade de estudar com pouco tempo.
 
-A internet ampliou a circulação de materiais. A IA generativa ampliou a velocidade de produção de explicações, resumos, listas e exemplos. Esse cenário torna mais importante a existência de estruturas externas que ajudem a ordenar, praticar, revisar e corrigir.
+A experiência profissional do autor também compõe o projeto. O trabalho de mais de uma década na área editorial favorece preocupação com texto claro, estrutura, revisão, versão e legibilidade. A atuação atual com automação de negócios no serviço público aproxima o projeto de práticas como levantamento de requisitos com usuários, documentação de fluxos operacionais, formalização de processos que antes existiam informalmente na experiência dos empregados e produção de material de formação.
 
-AraLearn responde a esse cenário com uma arquitetura simples de navegação e autoria:
+Essas origens não tornam o AraLearn restrito a um curso, instituição ou área. Elas explicam o viés inicial: criar uma ferramenta prática, clara e de baixa fricção para transformar material disperso em percurso estudável.
+
+## Contexto de época
+
+O AraLearn também nasce em um momento específico.
+
+A IA generativa tornou mais fácil produzir explicações, exemplos, resumos e exercícios. A educação a distância se expandiu. O smartphone se tornou o dispositivo cotidiano de leitura, comunicação, trabalho e estudo. Ao mesmo tempo, muitos estudantes trabalham, se deslocam em transporte público, estudam cansados e lidam com atenção fragmentada.
+
+Nesse cenário, o problema não é apenas acesso à informação. O estudante pode ter ementas, slides, anotações, listas de exercícios, documentação técnica, vídeos e respostas de IA. Ainda assim, pode faltar uma forma de transformar isso em sequência de estudo, prática, revisão e retomada.
+
+O AraLearn responde a esse problema com uma estrutura simples:
 
 ```text
 curso -> módulo -> lição -> microssequência -> card
 ```
 
-A árvore não é só forma de armazenamento. Ela é uma técnica de orientação.
+A árvore não é só armazenamento. Ela é uma técnica de orientação.
 
-## Nicho de produto
+## Tecnologia como ferramenta política
+
+O AraLearn é um app educacional. Por isso, não pode tratar tecnologia como neutra.
+
+Ferramentas podem ampliar autonomia, mas também podem reforçar controle. Podem ajudar o usuário a organizar o próprio estudo, mas também podem reduzir formação a desempenho, vigilância, normalização e adaptação a métricas externas. Uma tecnologia educacional sempre participa de disputas sobre quem define o conteúdo, quem decide o percurso, quem avalia o resultado e quem conserva o poder de revisar.
+
+A posição do AraLearn é favorecer autoria, revisão e apropriação pelo usuário. O app não deve transformar o estudante em consumidor passivo de trilha fechada nem em executante de comandos de IA. O usuário deve permanecer como autor do projeto.
+
+## Lugar diante de outros produtos
 
 AraLearn dialoga com produtos e práticas já conhecidos, mas não se reduz a nenhum deles.
 
-### Anki
+### Anki e AnkiDroid
 
-Anki tornou familiar a ideia de estudo por cartões, revisão e repetição espaçada. AraLearn compartilha a importância da prática recorrente, mas desloca o centro do card isolado para a microssequência: uma pequena etapa com objetivo didático, explicação, prática e possibilidade de revisão.
+Anki tornou familiar a ideia de estudo por cartões, revisão e repetição espaçada. Ele oferece muita liberdade, especialmente para quem sabe criar bons cards e organizar decks.
 
-### Duolingo
+O problema prático é a fricção. Para muitos estudantes, criar cards de qualidade exige tempo, critério, revisão, consistência e manutenção. Esse trabalho pode competir com o estudo.
 
-Duolingo popularizou a aprendizagem por pequenas etapas, feedback imediato e progressão visível. AraLearn dialoga com essa lógica de avanço gradual, mas é voltado à autoria de trilhas pelo usuário, com recortes definidos por disciplina, prova, documento ou objetivo de estudo.
+AraLearn preserva a ideia de autoria, mas tenta reduzir o custo de criar material. O centro não é o card isolado, e sim a microssequência: uma pequena etapa didática com objetivo, explicação, prática e possibilidade de revisão.
 
-### Obsidian
+### Duolingo, SoloLearn, Enki e Encode
 
-Obsidian representa uma cultura de notas locais, links, organização pessoal do conhecimento e reapropriação do próprio material. AraLearn compartilha a preferência por autonomia local e estrutura editável, mas direciona essa organização para trilhas de estudo com prática.
+Esses apps mostram a força de trilhas curtas, feedback rápido e baixa fricção. O usuário abre o app e começa a estudar.
 
-### Git
+O limite é a autoria. A trilha costuma vir pronta ou ser pouco customizável. Ela não parte da ementa concreta do usuário, da prova que ele fará, da lista de exercícios que recebeu, da aula que perdeu ou da lacuna que percebeu ao estudar.
 
-Git é uma referência para versionamento, histórico e reversibilidade. AraLearn não replica Git como sistema, mas adota uma preocupação semelhante: preservar versões, permitir comparação e evitar que uma alteração apague o percurso anterior sem inspeção.
+AraLearn tenta combinar fluidez de uso com autoria. A trilha é criada a partir do escopo informado pelo usuário e pode ser corrigida durante o estudo.
 
-### Wikipédia
+### Chats com LLM
 
-Wikipédia é um exemplo central de conhecimento hipertextual, público, editável e enciclopédico. AraLearn parte de outro problema: não basta navegar por conexões de conhecimento; para estudar, muitas vezes é preciso transformar o material em sequência, prática e revisão.
+Chats com LLMs ajudam a explicar, exemplificar, comparar e responder dúvidas. Eles são úteis, mas a conversa tende a ser volátil. O material fica espalhado em turnos de chat e não necessariamente vira trilha, card, versão, progresso ou arquivo estudável offline.
 
-### X e plataformas de fluxo contínuo
+AraLearn usa LLM como ferramenta dentro de um motor de autoria. A resposta da IA precisa entrar em uma estrutura persistente, renderizável e validada.
 
-X e outras plataformas de fluxo contínuo exemplificam a circulação rápida, fragmentada e algorítmica de informação. AraLearn opera em sentido diferente: em vez de fluxo incessante, propõe recorte, ordem, pausa, prática e autoria.
+### Obsidian e organização pessoal do conhecimento
+
+Obsidian representa uma cultura de notas locais, links, apropriação do material e organização pessoal do conhecimento. AraLearn compartilha a preferência por autonomia local e estrutura editável, mas direciona essa organização para estudo com prática, não para anotação genérica.
+
+### Git e versionamento
+
+Git é uma referência para histórico, comparação e reversibilidade. AraLearn não replica Git como sistema, mas adota preocupação semelhante: preservar versões, permitir revisão e evitar que uma alteração apague o percurso anterior sem inspeção.
+
+### Wikipédia e hipertexto
+
+Wikipédia mostra a força de conhecimento público, editável e hipertextual. AraLearn parte de outro problema: para estudar, muitas vezes não basta navegar por conhecimento. É preciso transformar material em sequência, prática e revisão.
+
+### Plataformas de fluxo contínuo
+
+Plataformas de fluxo contínuo exemplificam circulação rápida, fragmentada e algorítmica de informação. AraLearn opera em sentido diferente: recorte, pausa, ordem, prática e autoria.
 
 ## Diferença central
 
-A diferença do AraLearn está na combinação de quatro elementos:
+A diferença do AraLearn está na combinação de elementos que normalmente aparecem separados:
 
-1. estrutura hierárquica de estudo;
-2. microssequência como unidade didática;
-3. geração assistida por IA em contexto delimitado;
-4. persistência local com versões e contrato exportável.
+- autoria pelo usuário;
+- baixa fricção de criação;
+- estrutura hierárquica de estudo;
+- microssequência como unidade didática;
+- cards renderizáveis como resultado de uma função didática;
+- assistência por IA em contexto delimitado;
+- persistência local;
+- versões e contrato exportável;
+- independência de conteúdo e de modelo.
 
-O app não pretende ser rede social, wiki, caderno de notas genérico, sistema de flashcards puro ou curso fechado. Ele é uma ferramenta de autoria e estudo para transformar informação em percurso.
+O app não pretende ser rede social, wiki, caderno de notas genérico, sistema puro de flashcards, curso fechado ou chat com IA. Ele é uma ferramenta de autoria e estudo para transformar informação em percurso.
 
 ## Enquadramento filosófico e ético
 
-As referências filosóficas ajudam a formular a ambivalência do projeto. AraLearn responde a problemas reais de orientação no estudo, mas também pode reproduzir riscos que a filosofia contemporânea associou a sistemas de informação, disciplina e desempenho.
+As referências filosóficas ajudam a formular a ambivalência do projeto. AraLearn responde a problemas reais de orientação no estudo, mas também toca riscos presentes em tecnologias educacionais.
 
 ### Estruturalismo e Saussure
 
-A organização por níveis do AraLearn pode ser aproximada, com cautela, de uma intuição estruturalista: os elementos ganham sentido por suas relações dentro de um sistema. Um card não é apenas um bloco isolado; ele pertence a uma microssequência, que pertence a uma lição, que pertence a um módulo e a um curso.
+A organização por níveis pode ser aproximada, com cautela, de uma intuição estruturalista: os elementos ganham sentido por suas relações dentro de um sistema. Um card não é apenas um bloco isolado; ele pertence a uma microssequência, que pertence a uma lição, que pertence a um módulo e a um curso.
 
 Essa aproximação não significa que o app aplique teoria linguística. Significa apenas que sua arquitetura reconhece que contexto e posição alteram o valor didático de uma unidade.
 
@@ -71,17 +108,15 @@ Essa aproximação não significa que o app aplique teoria linguística. Signifi
 
 Lyotard é relevante porque o AraLearn toca o problema da legitimação do conhecimento em sociedades informatizadas. O app pode ajudar o usuário a se orientar no excesso informacional, mas também pode participar da redução do saber a desempenho, eficiência e percurso operacional.
 
-O risco não é periférico. Ao transformar conhecimento em trilhas, microssequências, cards, validações e versões, o app pode fortalecer a apropriação crítica do usuário ou apenas adaptar o usuário a uma lógica de performatividade.
+Esse risco não é periférico. Ao transformar conhecimento em trilhas, microssequências, cards, validações e versões, o app pode fortalecer apropriação crítica ou apenas adaptar o usuário a uma lógica de performatividade.
 
 ### Foucault
 
-Foucault é pertinente porque a organização do estudo também pode ser uma forma de disciplina. Classificar, ordenar, examinar, corrigir, registrar e normalizar são operações que podem apoiar aprendizagem, mas também podem servir a controle e vigilância.
+Foucault é pertinente porque organizar estudo também pode ser uma forma de disciplina. Classificar, ordenar, examinar, corrigir, registrar e normalizar são operações que podem apoiar aprendizagem, mas também podem servir a controle e vigilância.
 
 AraLearn deve ser desenhado para ampliar autoria e revisão, não para tornar o usuário mais governável por uma instituição, uma plataforma ou um modelo.
 
 ## Questões éticas
-
-A arquitetura do AraLearn implica escolhas éticas concretas.
 
 ### Autoria
 
@@ -99,12 +134,12 @@ Conteúdo gerado por IA pode estar errado, incompleto ou didaticamente inadequad
 
 O produto deve evitar reproduzir a lógica de fluxo contínuo das plataformas sociais. O objetivo não é maximizar consumo de conteúdo, mas criar condições para estudo orientado, prática e retomada.
 
-### Escopo
+### Acesso e custo
 
-Declarar o que fica fora é tão importante quanto declarar o que entra. Isso reduz expansão enciclopédica e respeita o objetivo concreto do usuário.
+A escolha de providers mais baratos ou com free tier não é apenas técnica. Ela faz parte de uma preocupação de acesso. O usuário inicialmente pensado não deve precisar de infraestrutura cara para testar ou usar o app. Por isso, o AraLearn busca funcionar com diferentes modelos, diferentes custos e, quando possível, operação local.
 
-## Como usar essas referências na documentação
+## Como usar essas referências
 
-No README, essas referências devem aparecer apenas como contextualização breve. Na documentação, podem ser desenvolvidas com mais cuidado.
+As referências externas servem para esclarecer o lugar do AraLearn no ecossistema de produtos, práticas e problemas contemporâneos. Elas não substituem a descrição do que o app faz.
 
-A regra editorial é: referências externas devem esclarecer o lugar do AraLearn no ecossistema de produtos, práticas e problemas contemporâneos. Elas não devem substituir a descrição do que o app faz, nem transformar a apresentação em ensaio abstrato.
+O ponto central deve permanecer claro: AraLearn é uma ferramenta de autoria e estudo. O usuário cria e revisa o próprio percurso. A IA auxilia. O app estrutura, valida, renderiza e persiste.
