@@ -59,36 +59,36 @@ export function listStructureVersionReferencesForProject(project) {
   const references = [{ level: "project" }];
   const courses = Array.isArray(project?.courses) ? project.courses : [];
   courses.forEach((course) => {
-    if (!course?.key) {
+    if (!course?.id) {
       return;
     }
 
     references.push({
       level: "course",
-      courseKey: course.key
+      courseKey: course.id
     });
 
     (course.modules || []).forEach((moduleValue) => {
-      if (!moduleValue?.key) {
+      if (!moduleValue?.id) {
         return;
       }
 
       references.push({
         level: "module",
-        courseKey: course.key,
-        moduleKey: moduleValue.key
+        courseKey: course.id,
+        moduleKey: moduleValue.id
       });
 
       (moduleValue.lessons || []).forEach((lesson) => {
-        if (!lesson?.key) {
+        if (!lesson?.id) {
           return;
         }
 
         references.push({
           level: "lesson",
-          courseKey: course.key,
-          moduleKey: moduleValue.key,
-          lessonKey: lesson.key
+          courseKey: course.id,
+          moduleKey: moduleValue.id,
+          lessonKey: lesson.id
         });
       });
     });
@@ -113,13 +113,12 @@ export function applyStructureVersionSnapshot(project, reference, snapshot) {
 
   if (reference.level === "course") {
     nextProject.courses = (nextProject.courses || []).map((course) =>
-      course.key === reference.courseKey
+      course.id === reference.courseKey
         ? {
-            key: course.key,
+            id: course.id,
             title: snapshot.title || "",
-            ...(snapshot.description ? { description: snapshot.description } : {}),
-            ...(snapshot.sourceGuide ? { sourceGuide: snapshot.sourceGuide } : {}),
-            ...(snapshot.sourceGuideStructured ? { sourceGuideStructured: structuredClone(snapshot.sourceGuideStructured) } : {}),
+            ...(snapshot.goal ? { goal: snapshot.goal } : {}),
+            ...(snapshot.guide ? { guide: structuredClone(snapshot.guide) } : {}),
             modules: structuredClone(snapshot.modules || [])
           }
         : course
@@ -129,20 +128,19 @@ export function applyStructureVersionSnapshot(project, reference, snapshot) {
 
   if (reference.level === "module") {
     nextProject.courses = (nextProject.courses || []).map((course) => {
-      if (course.key !== reference.courseKey) {
+      if (course.id !== reference.courseKey) {
         return course;
       }
 
       return {
         ...course,
         modules: (course.modules || []).map((moduleValue) =>
-          moduleValue.key === reference.moduleKey
+          moduleValue.id === reference.moduleKey
             ? {
-                key: moduleValue.key,
+                id: moduleValue.id,
                 title: snapshot.title || "",
-                ...(snapshot.description ? { description: snapshot.description } : {}),
-                ...(snapshot.sourceGuide ? { sourceGuide: snapshot.sourceGuide } : {}),
-                ...(snapshot.sourceGuideStructured ? { sourceGuideStructured: structuredClone(snapshot.sourceGuideStructured) } : {}),
+                ...(snapshot.goal ? { goal: snapshot.goal } : {}),
+                ...(snapshot.guide ? { guide: structuredClone(snapshot.guide) } : {}),
                 lessons: structuredClone(snapshot.lessons || [])
               }
             : moduleValue
@@ -154,27 +152,26 @@ export function applyStructureVersionSnapshot(project, reference, snapshot) {
 
   if (reference.level === "lesson") {
     nextProject.courses = (nextProject.courses || []).map((course) => {
-      if (course.key !== reference.courseKey) {
+      if (course.id !== reference.courseKey) {
         return course;
       }
 
       return {
         ...course,
         modules: (course.modules || []).map((moduleValue) => {
-          if (moduleValue.key !== reference.moduleKey) {
+          if (moduleValue.id !== reference.moduleKey) {
             return moduleValue;
           }
 
           return {
             ...moduleValue,
             lessons: (moduleValue.lessons || []).map((lesson) =>
-              lesson.key === reference.lessonKey
+              lesson.id === reference.lessonKey
                 ? {
-                    key: lesson.key,
+                    id: lesson.id,
                     title: snapshot.title || "",
-                    ...(snapshot.description ? { description: snapshot.description } : {}),
-                    ...(snapshot.sourceGuide ? { sourceGuide: snapshot.sourceGuide } : {}),
-                    ...(snapshot.sourceGuideStructured ? { sourceGuideStructured: structuredClone(snapshot.sourceGuideStructured) } : {}),
+                    ...(snapshot.goal ? { goal: snapshot.goal } : {}),
+                    ...(snapshot.guide ? { guide: structuredClone(snapshot.guide) } : {}),
                     microsequences: structuredClone(snapshot.microsequences || [])
                   }
                 : lesson
@@ -202,11 +199,11 @@ function ensureStructureVersionEntry(versionMap, reference, entity, { now = new 
   versionMap[versionKey] = normalizeStructureVersionEntry(
     {
       level: reference.level,
-      entityKey: entity.key,
+      entityKey: entity.id,
       activeVersionId: "v1",
       versions: [
         createStructureVersionRecord(reference.level, entity, {
-          entityKey: entity.key,
+          entityKey: entity.id,
           versionNumber: 1,
           label: "Versão 1",
           operationType: "seed",

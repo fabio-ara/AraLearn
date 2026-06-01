@@ -1,3 +1,4 @@
+import { getActiveMicrosequenceVersion } from "../domain/microsequence.js";
 import { readCardText } from "../core/cardRuntime.js";
 import { renderCardRuntimeBlocks } from "../render/renderCardRuntime.js";
 import { renderLessonScreen } from "./renderLessonScreen.js";
@@ -37,6 +38,26 @@ function renderChip(label) {
   return '<span class="didactic-tag comparison-chip">' + escapeHtml(label) + "</span>";
 }
 
+function buildDependsOnTitleMap(version = {}) {
+  return new Map(
+    (Array.isArray(version?.microsequences) ? version.microsequences : [])
+      .map((item) => [String(item?.id || "").trim().toLowerCase(), item?.title || ""])
+      .filter(([id, title]) => id && title)
+  );
+}
+
+function resolveRefTitles(refIds = [], refTitleMap = new Map()) {
+  return (Array.isArray(refIds) ? refIds : [])
+    .map((refId) => {
+      const normalizedId = String(refId || "").trim();
+      if (!normalizedId) {
+        return "";
+      }
+      return refTitleMap.get(normalizedId.toLowerCase()) || "";
+    })
+    .filter(Boolean);
+}
+
 function renderRuntimeCard(card, emptyMessage) {
   if (!card) {
     return (
@@ -50,7 +71,7 @@ function renderRuntimeCard(card, emptyMessage) {
   return (
     '<article class="card-portrait-body card-portrait-sheet runtime-card-sheet">' +
     '<div class="runtime-card-title">' +
-    escapeHtml(card.title || card.key || "Card") +
+    escapeHtml(card.title || card.id || "Card") +
     "</div>" +
     '<div class="card-sheet-content">' +
     renderCardRuntimeBlocks(card, {
@@ -90,19 +111,18 @@ function renderReadOnlyCardInspection(versionLabel, card, showBack = false) {
   );
 }
 
-function renderReadOnlyMicrosequenceInspection(versionLabel, version, focusTarget = null, showBack = false) {
+function renderReadOnlyMicrosequenceInspection(versionLabel, version, focusTarget = null, showBack = false, refTitles = []) {
   const cards = Array.isArray(version?.cards) ? version.cards : [];
   const targetCard =
     focusTarget?.scope === "card"
-      ? cards.find((item, index) => item?.key === focusTarget.cardKey || index === focusTarget.currentIndex || index === focusTarget.previousIndex) || null
+      ? cards.find((item, index) => item?.id === focusTarget.cardKey || index === focusTarget.currentIndex || index === focusTarget.previousIndex) || null
       : null;
   const selectedCard = targetCard || cards[0] || null;
-  const tags = Array.isArray(version?.tags) ? version.tags : [];
   const cardTabs = cards
     .map((card, index) => {
       return (
         '<span class="editor-version-tab' +
-        (selectedCard?.key === card?.key ? " active" : "") +
+        (selectedCard?.id === card?.id ? " active" : "") +
         '">' +
         '<span class="editor-version-tab-label">' +
         escapeHtml(String(index + 1)) +
@@ -124,8 +144,8 @@ function renderReadOnlyMicrosequenceInspection(versionLabel, version, focusTarge
     '<div class="editor-version-tabbar"><div class="editor-version-strip" role="tablist" aria-label="Versões da microssequência">' +
     cardTabs +
     "</div></div></div>" +
-    (tags.length
-      ? '<div class="didactic-tag-row microsequence-tag-row">' + tags.map((tag) => renderChip(tag)).join("") + "</div>"
+    (refTitles.length
+      ? '<div class="didactic-tag-row microsequence-tag-row">' + refTitles.map((title) => renderChip(title)).join("") + "</div>"
       : "") +
     "</section>" +
     '<section class="workbench-surface" data-workbench-pane="preview">' +
@@ -149,11 +169,11 @@ function createSelectionPath(courseKey = "", moduleKey = "", lessonKey = "", mic
 }
 
 function findModuleInCourse(course, moduleKey) {
-  return (course?.modules || []).find((item) => item?.key === moduleKey) || null;
+  return (course?.modules || []).find((item) => item?.id === moduleKey) || null;
 }
 
 function findLessonInModule(moduleValue, lessonKey) {
-  return (moduleValue?.lessons || []).find((item) => item?.key === lessonKey) || null;
+  return (moduleValue?.lessons || []).find((item) => item?.id === lessonKey) || null;
 }
 
 function buildReadOnlyStructureScreen(comparison, sideKey, focusTarget = null) {
@@ -177,12 +197,12 @@ function buildReadOnlyStructureScreen(comparison, sideKey, focusTarget = null) {
     return renderLessonScreen({
       project: { courses: [rootEntity] },
       view: "course",
-      selection: createSelectionPath(rootEntity.key || "comparison-course"),
+      selection: createSelectionPath(rootEntity.id || "comparison-course"),
       course: rootEntity,
       moduleValue: (rootEntity.modules || [])[0] || null,
       lesson: ((rootEntity.modules || [])[0]?.lessons || [])[0] || null,
       microsequence: (((rootEntity.modules || [])[0]?.lessons || [])[0]?.microsequences || [])[0] || null,
-      cards: ((((rootEntity.modules || [])[0]?.lessons || [])[0]?.microsequences || [])[0]?.cards || []),
+      cards: (getActiveMicrosequenceVersion((((rootEntity.modules || [])[0]?.lessons || [])[0]?.microsequences || [])[0])?.cards || []),
       microsequenceMode: "play",
       editorSupport: commonEditorSupport
     });
@@ -196,19 +216,19 @@ function buildReadOnlyStructureScreen(comparison, sideKey, focusTarget = null) {
     const course =
       comparison.level === "course"
         ? rootEntity
-        : { key: "comparison-course", title: "Curso", modules: moduleValue ? [moduleValue] : [] };
+        : { id: "comparison-course", title: "Curso", modules: moduleValue ? [moduleValue] : [] };
     if (!moduleValue) {
       return '<p class="tiny muted">Este módulo não existe nesta versão.</p>';
     }
     return renderLessonScreen({
       project: { courses: [course] },
       view: "module",
-      selection: createSelectionPath(course.key || "comparison-course", moduleValue.key || ""),
+      selection: createSelectionPath(course.id || "comparison-course", moduleValue.id || ""),
       course,
       moduleValue,
       lesson: (moduleValue.lessons || [])[0] || null,
       microsequence: (((moduleValue.lessons || [])[0]?.microsequences) || [])[0] || null,
-      cards: ((((moduleValue.lessons || [])[0]?.microsequences) || [])[0]?.cards || []),
+      cards: (getActiveMicrosequenceVersion((((moduleValue.lessons || [])[0]?.microsequences) || [])[0])?.cards || []),
       microsequenceMode: "play",
       editorSupport: commonEditorSupport
     });
@@ -219,7 +239,7 @@ function buildReadOnlyStructureScreen(comparison, sideKey, focusTarget = null) {
     let lesson = null;
     if (comparison.level === "lesson") {
       lesson = rootEntity;
-      moduleValue = { key: "comparison-module", title: "Módulo", lessons: [lesson] };
+      moduleValue = { id: "comparison-module", title: "Módulo", lessons: [lesson] };
     } else if (comparison.level === "module") {
       moduleValue = rootEntity;
       lesson = findLessonInModule(moduleValue, target.lessonKey);
@@ -233,16 +253,16 @@ function buildReadOnlyStructureScreen(comparison, sideKey, focusTarget = null) {
     const course =
       comparison.level === "course"
         ? rootEntity
-        : { key: "comparison-course", title: "Curso", modules: [moduleValue] };
+        : { id: "comparison-course", title: "Curso", modules: [moduleValue] };
     return renderLessonScreen({
       project: { courses: [course] },
       view: "lesson",
-      selection: createSelectionPath(course.key || "comparison-course", moduleValue.key || "", lesson.key || ""),
+      selection: createSelectionPath(course.id || "comparison-course", moduleValue.id || "", lesson.id || ""),
       course,
       moduleValue,
       lesson,
       microsequence: (lesson.microsequences || [])[0] || null,
-      cards: ((lesson.microsequences || [])[0]?.cards || []),
+      cards: (getActiveMicrosequenceVersion((lesson.microsequences || [])[0])?.cards || []),
       microsequenceMode: "play",
       editorSupport: commonEditorSupport
     });
@@ -258,16 +278,19 @@ function buildReadOnlyStructureScreen(comparison, sideKey, focusTarget = null) {
     const moduleValue = findModuleInCourse(rootEntity, target.moduleKey);
     lesson = findLessonInModule(moduleValue, target.lessonKey);
   }
-  const microsequence = (lesson?.microsequences || []).find((item) => item?.key === target.microsequenceKey) || null;
+  const microsequence = (lesson?.microsequences || []).find((item) => item?.id === target.microsequenceKey) || null;
   if (!microsequence) {
     return '<p class="tiny muted">Esta microssequência não existe nesta versão.</p>';
   }
+  const refTitleMap = buildDependsOnTitleMap(lesson);
+  const refTitles = resolveRefTitles(microsequence.dependsOn, refTitleMap);
+  const cards = getActiveMicrosequenceVersion(microsequence)?.cards || [];
   if (target.scope === "card") {
     const card =
-      (microsequence.cards || []).find((item, index) => item?.key === target.cardKey || index === target.currentIndex || index === target.previousIndex) || null;
+      cards.find((item, index) => item?.id === target.cardKey || index === target.currentIndex || index === target.previousIndex) || null;
     return renderReadOnlyCardInspection(readVersionTabLabel(version), card, true);
   }
-  return renderReadOnlyMicrosequenceInspection(readVersionTabLabel(version), microsequence, target, true);
+  return renderReadOnlyMicrosequenceInspection(readVersionTabLabel(version), microsequence, target, true, refTitles);
 }
 
 function buildSummaryChips(comparison) {
@@ -294,7 +317,7 @@ function buildSummaryChips(comparison) {
 
   const chips = [];
   if (comparison.summary.titleChanged) chips.push(renderChip("Título alterado"));
-  if (comparison.summary.tagsChanged) chips.push(renderChip("Tags alteradas"));
+  if (comparison.summary.refsChanged) chips.push(renderChip("Refs alteradas"));
   if (comparison.composition.totals.added) chips.push(renderChip(`${comparison.composition.totals.added} card adicionado`));
   if (comparison.composition.totals.removed) chips.push(renderChip(`${comparison.composition.totals.removed} card removido`));
   if (comparison.composition.totals.changed || comparison.composition.totals.moved) {
@@ -424,11 +447,17 @@ function renderVersionTab(comparison, tabId, focusTarget) {
   const version = tabId === "previous" ? comparison.previousVersion : comparison.currentVersion;
   if (focusTarget?.scope === "card") {
     const card =
-      (version.cards || []).find((item, index) => item?.key === focusTarget.cardKey || index === focusTarget.currentIndex || index === focusTarget.previousIndex) || null;
+      (version.cards || []).find((item, index) => item?.id === focusTarget.cardKey || index === focusTarget.currentIndex || index === focusTarget.previousIndex) || null;
     return renderReadOnlyCardInspection(readVersionTabLabel(version), card, true);
   }
 
-  return renderReadOnlyMicrosequenceInspection(readVersionTabLabel(version), version, focusTarget, Boolean(focusTarget));
+  return renderReadOnlyMicrosequenceInspection(
+    readVersionTabLabel(version),
+    version,
+    focusTarget,
+    Boolean(focusTarget),
+    Array.isArray(version?.dependsOnTitles) ? version.dependsOnTitles : []
+  );
 }
 
 export function renderVersionCompareOverlay({ comparison, uiState = {} }) {

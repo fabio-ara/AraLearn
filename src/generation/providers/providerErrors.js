@@ -28,7 +28,7 @@ export class ProviderHttpError extends Error {
 }
 
 export class ProviderOperationError extends Error {
-  constructor({ phase, modelId, details, attempts = 1, fallbackUsed = false, fallbackModelId = "" }) {
+  constructor({ phase, modelId, details, attempts = 1 } = {}) {
     const message = details?.message || "Falha ao chamar o provedor.";
     super(message);
     this.name = "ProviderOperationError";
@@ -36,8 +36,6 @@ export class ProviderOperationError extends Error {
     this.modelId = modelId;
     this.details = details;
     this.attempts = attempts;
-    this.fallbackUsed = fallbackUsed;
-    this.fallbackModelId = fallbackModelId;
   }
 }
 
@@ -66,7 +64,7 @@ export function classifyProviderError(error) {
     }
     return { retryable: true, category: "rate_limited", statusCode, message };
   }
-  if (statusCode === 503) {
+  if (statusCode === 502 || statusCode === 503) {
     return { retryable: true, category: "service_unavailable", statusCode, message };
   }
   if (statusCode === 400) {

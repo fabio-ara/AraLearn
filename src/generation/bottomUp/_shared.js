@@ -1,3 +1,4 @@
+import { cloneMicrosequenceWithVersion } from "../../domain/microsequence.js";
 import { createMicrosequenceVersion } from "../../domain/microsequenceVersion.js";
 
 export function cloneProject(project) {
@@ -5,18 +6,27 @@ export function cloneProject(project) {
 }
 
 export function findSelection(project, selection) {
-  const courseIndex = (project.courses || []).findIndex((item) => item.key === selection.courseKey);
+  const courseIndex = (project.courses || []).findIndex((item) => item.id === selection.courseKey);
   if (courseIndex < 0) return null;
   const course = project.courses[courseIndex];
-  const moduleIndex = (course.modules || []).findIndex((item) => item.key === selection.moduleKey);
+  const moduleIndex = (course.modules || []).findIndex((item) => item.id === selection.moduleKey);
   if (moduleIndex < 0) return null;
   const moduleValue = course.modules[moduleIndex];
-  const lessonIndex = (moduleValue.lessons || []).findIndex((item) => item.key === selection.lessonKey);
+  const lessonIndex = (moduleValue.lessons || []).findIndex((item) => item.id === selection.lessonKey);
   if (lessonIndex < 0) return null;
   const lesson = moduleValue.lessons[lessonIndex];
-  const microsequenceIndex = (lesson.microsequences || []).findIndex((item) => item.key === selection.microsequenceKey);
+  const microsequenceIndex = (lesson.microsequences || []).findIndex((item) => item.id === selection.microsequenceKey);
   if (microsequenceIndex < 0) return null;
-  return { courseIndex, moduleIndex, lessonIndex, microsequenceIndex, course, moduleValue, lesson, microsequence: lesson.microsequences[microsequenceIndex] };
+  return {
+    courseIndex,
+    moduleIndex,
+    lessonIndex,
+    microsequenceIndex,
+    course,
+    moduleValue,
+    lesson,
+    microsequence: lesson.microsequences[microsequenceIndex]
+  };
 }
 
 export function replaceMicrosequence(project, selectionInfo, nextMicrosequence) {
@@ -27,20 +37,14 @@ export function replaceMicrosequence(project, selectionInfo, nextMicrosequence) 
   return nextProject;
 }
 
-export function appendVersion(microsequence, payload, { source, mode, userRequest, status }) {
+export function appendVersion(microsequence, payload, { source = "llm", action = "generate", request = "", status = "generated" } = {}) {
   const version = createMicrosequenceVersion({
     source,
-    mode,
-    userRequest,
+    action,
+    request,
     cards: payload.cards,
     summary: payload.summary,
-    validationReport: payload.validationReport
+    validation: payload.validation || { ok: true, issues: [] }
   });
-  return {
-    ...microsequence,
-    versions: [...(Array.isArray(microsequence.versions) ? microsequence.versions : []), version],
-    activeVersionKey: version.key,
-    status
-  };
+  return cloneMicrosequenceWithVersion(microsequence, version, status);
 }
-

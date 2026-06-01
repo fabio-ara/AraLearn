@@ -2,7 +2,71 @@
 
 Todas as mudanças relevantes deste projeto serão registradas aqui.
 
+## Nota sobre a numeração
+
+Este arquivo reúne dois históricos:
+
+- a série pública atual `0.1.x`, que é a série usada nas tags e nas releases publicadas;
+- uma série histórica interna anterior, com numeração `0.2.0` a `0.9.25`, preservada por valor documental.
+
+Para evitar ambiguidade, a leitura recomendada é:
+
+1. primeiro a série pública atual;
+2. depois, se necessário, a série histórica anterior.
+
 ## [Unreleased]
+
+### Changed
+
+- o curso embarcado `Matemática para Informática` passa a ser reconstruído a partir do novo JSON oficial de `Teoria dos Grafos`, mantendo um único módulo com `11` lições, `72` microssequências e `505` cards
+- os textos visíveis do seed de `Matemática para Informática` foram saneados para remover referências de bastidor a prova e simulado, preservando o conteúdo didático
+
+## Série pública atual (`0.1.x`)
+
+## [0.1.10] - 2026-05-28
+
+### Changed
+
+- a geração assistida passa a usar apenas o engine estruturado textual no caminho ativo, sem reentrada no fluxo amplo anterior
+- os providers `DeepSeek`, `Gemini`, `OpenAI compatível` e `Codex local` passam a operar pelo mesmo contrato textual do engine estruturado
+- o runtime de cards endurece a compilação local com saneamento seguro de slots textuais antes da validação final
+- a interface deixa de ficar em branco quando o estado inicial do projeto vem ausente ou inválido no armazenamento local
+- o bundle do navegador deixa de importar utilitários de uso de tokens dependentes de `node:fs` e `node:path`, removendo a quebra de carregamento na interface web
+
+## [0.1.9] - 2026-05-27
+
+### Changed
+
+- o seed embarcado de `Teoria dos Grafos` foi reforçado pedagogicamente para iniciante, reorganizado em um módulo único com `9` lições e `41` microssequências, e ampliado para `304` cards com prática adicional sobre listas de graus, construção, bipartição, combinatória de `K_n`, isomorfismo, matriz da lista do professor, trilha versus caminho, contingência e critérios eulerianos
+- o runtime de `flow` passou a renderizar as transições com os rótulos reais dos passos, em vez de expor ids internos como `n1 → n2`, e ganhou isolamento visual para impedir marcadores de lista nativa e sobreposição de chips no card de estudo
+- o layout automático de `graph` para caminhos deixou de alinhar vértices longos quase na mesma linha e passou a usar arco aberto, preservando as conexões com arestas mais legíveis em telas estreitas
+- o layout automático de `graph` para caminhos foi ampliado mais uma vez, abrindo mais o arco e afastando melhor as extremidades para aumentar o comprimento visual das arestas em exemplos com 5 vértices ou mais
+- a documentação pública passou a explicitar os dois cursos embarcados oficiais, ambos com microssequências já preenchidas por cards: `Matemática para Informática`, voltado à segunda prova da disciplina no conteúdo de `Teoria dos Grafos`, e `Práticas e Ferramentas de Desenvolvimento de Software`, voltado à apresentação de boas práticas na família Visual Basic, ambas disciplinas do curso de Tecnologia em Análise e Desenvolvimento de Sistemas do IFSP
+
+## [0.1.8] - 2026-05-27
+
+### Changed
+
+- o build Android de release passa a assinar o APK automaticamente, usando keystore configurado por ambiente ou `debug.keystore` local como fallback de build
+- `graph` passa a persistir estrutura em vez de geometria, deixando o motor resolver o layout local dos vértices e arestas
+- entra o recurso `relation_map`, voltado a conjuntos e relações, com visual clássico para leitura didática
+- o seed embarcado público passa a manter `Matemática para Informática` com a trilha materializada de `Teoria dos Grafos` unificada a partir de `9` partes em um módulo único (`9` lições, `41` microssequências e `304` cards), além do curso `Práticas e Ferramentas de Desenvolvimento de Software` com a trilha materializada de apresentação em dupla sobre VBA
+- a documentação pública passa a refletir `graph` estrutural, `relation_map` e o seed oficial inicial do app
+
+## Série histórica anterior
+
+As entradas abaixo pertencem a uma numeração interna anterior à série pública `0.1.x`. Elas foram preservadas como registro histórico do desenvolvimento do projeto.
+
+## [0.9.25] - 2026-05-24
+
+### Changed
+
+- a documentação pública foi reescrita para espelhar com transparência o estado atual do produto, do contrato v3 e dos fluxos top-down e bottom-up
+- o `README` passa a explicar de forma detalhada a proposta do AraLearn, a divisão de responsabilidades entre app e IA, as quatro operações locais do bottom-up e as regras didáticas hoje aplicadas pelo motor
+- a pasta `docs/` passa a descrever minuciosamente o contrato público, a arquitetura do runtime, a assistência por IA, o uso do app e o empacotamento Android no estado atual do repositório
+- o wrapper Android ganha script público de build de release e documentação específica para geração do APK de publicação
+- o bottom-up mantém a divisão em `plan_microsequence`, `draft_cards` e `write_cards`, com escolha de `resource` pela IA no draft e schemas apenas dos recursos efetivamente escolhidos na materialização final
+- a calibragem recente do motor passa a ficar refletida também na documentação pública, incluindo ledger de execução, branch local de microssequência, retorno à trilha principal, mínimo de dois cards de prática em microssequências com três cards ou mais e exigência de indentação consistente em `code`
 
 ## [0.9.24] - 2026-05-17
 
@@ -18,7 +82,7 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 ### Changed
 
 - a lição passa a poder carregar `domainMap` com `domainItem`, `practiceVariant` e `gapSummary` derivados para orientar cobertura didática real
-- microssequências passam a aceitar `description`, `domainRefs`, `practiceVariantRefs`, `didacticPurpose` e `coverageRole`
+- microssequências passam a aceitar novos campos auxiliares de planejamento e cobertura didática
 - a geração de microssequências da lição passa a considerar mapa de domínio, lacunas reais, itens fracos e risco de redundância, em vez de depender só de títulos soltos
 - a camada de geração ganha `meticulousDidacticPolicy`, compatível com `weakModelMode`, para reforçar decomposição, prática suficiente e rejeição de resumo genérico
 - a validação didática passa a incluir auditoria específica de profundidade (`validateDidacticDepth`) e auditoria de redundância (`validateDidacticRedundancy`)
@@ -31,11 +95,11 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 - a camada de geração de cards passa a operar com policy explícita de `weakModelMode`, voltada a modelo fraco e barato
 - `modelCapabilities` deixa de usar flags ambíguas e passa a distinguir `jsonMode`, `responseJsonSchema`, `responseSchema` e força real de schema
 - o planejamento bottom-up fica reduzido a `typeId`, `sizeId`, `microsequenceGoal`, `selectedExtraResourceTypes`, `sourceUsePlan` e `reason`
-- o `cardPlan` passa a ser montado de forma determinística pelo app, com `position` e `resourceType` fixados por política e template
+- o `cardPlan` passa a ser montado de forma determinística pelo app, com posições e recursos fechados por política e template
 - recursos avançados (`flowchart`, `tree`, `matrix`, `plane`) passam a exigir liberação explícita da lição e justificativa operacional
 - a validação de cards foi separada em estrutural, didática e grounding mínimo de fonte
 - o reparo determinístico passa a acontecer antes de qualquer reparo por LLM
-- o contrato público passa a aceitar `presetId` na lição e `sourceRefs` em cards
+- o contrato público amplia campos auxiliares de configuração e grounding
 - a assistência de cards volta a aplicar diretamente na microssequência o resultado validado da geração ou edição, sem estágio intermediário de prévia privada
 - o workbench da microssequência remove os controles de alternância, aplicação e descarte de prévia, mantendo a superfície de preview apenas como leitura do estado já em uso
 - a edição local de título e tags volta a atuar sempre sobre a microssequência persistida, sem bifurcação por rascunho temporário
@@ -48,7 +112,7 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 - fixtures de meticulosidade entram em `tests/fixtures/meticulous/` cobrindo lógica proposicional, soma de matrizes, fluxo Git e navegação Linux
 - a suíte passa a cobrir mapa de domínio, resposta rasa, resposta meticulosa, redundância didática e geração de microssequência para lacuna real
-- a suíte passa a cobrir policy fraca, gating de recursos avançados, `sourceRefs`, validação separada e reparo determinístico
+- a suíte passa a cobrir policy fraca, gating de recursos avançados, validação separada e reparo determinístico
 - fixtures didáticas reais entram em `tests/fixtures/didactics/`
 - a suíte remove os cenários de storage e renderização específicos da prévia privada e passa a validar apenas o fluxo direto de atualização
 - a suíte passa a cobrir os presets humanos da lição e a distinção entre modo pronto e ajuste fino

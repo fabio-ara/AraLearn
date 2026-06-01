@@ -265,7 +265,7 @@ export function createFlowchartLayoutEngine(deps) {
       if (labeledBranch) {
         if (route.startSide === "right") {
           return {
-            x: start[0] + 10,
+            x: start[0] + 6,
             y: start[1] - 10,
             anchor: "start"
           };
@@ -697,6 +697,12 @@ export function createFlowchartLayoutEngine(deps) {
             slots[node.id] = (Number(slots[children[0].toNodeId] || 0) + Number(slots[children[1].toNodeId] || 0)) / 2;
             return;
           }
+          if (isDecision && children.length === 1 && (graph.outgoingByNode[node.id] || []).length > 1) {
+            const branch = children[0];
+            const childSlot = Number(slots[branch.toNodeId] || 0);
+            slots[node.id] = branch.outputSlot === 1 ? childSlot - 1 : childSlot + 1;
+            return;
+          }
           if (children.length === 1) {
             const childIncoming = (graph.incomingByNode[children[0].toNodeId] || []).filter(function (link) {
               return !graph.backEdgeIds[link.id];
@@ -722,6 +728,16 @@ export function createFlowchartLayoutEngine(deps) {
       const placed = {};
       const slotGap = 1;
 
+      function getDecisionSingleForwardBranch(nodeId) {
+        const node = graph.nodeMap[nodeId];
+        if (!node || normalizeFlowchartShapeKey(node.shape) !== "decision") return null;
+        const children = getGraphChildren(graph, nodeId);
+        if (children.length !== 1) return null;
+        const outgoing = (graph.outgoingByNode[nodeId] || []).slice();
+        if (outgoing.length < 2) return null;
+        return children[0];
+      }
+
       function getStructuredWidth(nodeId) {
         if (Object.prototype.hasOwnProperty.call(widths, nodeId)) return widths[nodeId];
 
@@ -738,6 +754,12 @@ export function createFlowchartLayoutEngine(deps) {
             getStructuredWidth(children[0].toNodeId) +
             getStructuredWidth(children[1].toNodeId) +
             slotGap;
+          return widths[nodeId];
+        }
+
+        const singleForwardDecisionLink = getDecisionSingleForwardBranch(nodeId);
+        if (singleForwardDecisionLink) {
+          widths[nodeId] = Math.max(2, getStructuredWidth(singleForwardDecisionLink.toNodeId) + slotGap);
           return widths[nodeId];
         }
 
@@ -773,6 +795,19 @@ export function createFlowchartLayoutEngine(deps) {
           placeNode(rightLink.toNodeId, leftEdge + leftWidth + slotGap);
 
           slots[nodeId] = (Number(slots[leftLink.toNodeId] || 0) + Number(slots[rightLink.toNodeId] || 0)) / 2;
+          return;
+        }
+
+        const singleForwardDecisionLink = getDecisionSingleForwardBranch(nodeId);
+        if (singleForwardDecisionLink) {
+          const childWidth = getStructuredWidth(singleForwardDecisionLink.toNodeId);
+          if (singleForwardDecisionLink.outputSlot === 1) {
+            placeNode(singleForwardDecisionLink.toNodeId, leftEdge + slotGap);
+            slots[nodeId] = leftEdge;
+          } else {
+            placeNode(singleForwardDecisionLink.toNodeId, leftEdge);
+            slots[nodeId] = leftEdge + childWidth;
+          }
           return;
         }
 
@@ -925,6 +960,10 @@ export function createFlowchartLayoutEngine(deps) {
       ];
     }
 
+    function getFlowchartShapeAxisX(metrics, x) {
+      return Number(metrics.offsetX || 0) + x * Number(metrics.scale || 1);
+    }
+
     function getFlowchartShapeFrame(shapeKey) {
       switch (normalizeFlowchartShapeKey(shapeKey)) {
         case "terminal":
@@ -1010,21 +1049,21 @@ export function createFlowchartLayoutEngine(deps) {
       if (shapeKey === "decision") {
         if (side === "top") return projectFlowchartShapePoint(metrics, 60, 6);
         if (side === "bottom") return projectFlowchartShapePoint(metrics, 60, 54);
-        if (side === "left") return projectFlowchartShapePoint(metrics, 12, 30);
-        if (side === "right") return projectFlowchartShapePoint(metrics, 108, 30);
+        if (side === "left") return projectFlowchartShapePoint(metrics, 16, 30);
+        if (side === "right") return projectFlowchartShapePoint(metrics, 104, 30);
       }
 
       if (shapeKey === "loop") {
         if (side === "top") return projectFlowchartShapePoint(metrics, 60, 8);
         if (side === "bottom") return projectFlowchartShapePoint(metrics, 60, 52);
-        if (side === "left") return projectFlowchartShapePoint(metrics, 12, 30);
-        if (side === "right") return projectFlowchartShapePoint(metrics, 108, 30);
+        if (side === "left") return projectFlowchartShapePoint(metrics, 16, 30);
+        if (side === "right") return projectFlowchartShapePoint(metrics, 104, 30);
       }
 
       if (shapeKey === "input_output") {
         if (side === "left") return projectFlowchartShapePoint(metrics, 19, 30);
         if (side === "right") return projectFlowchartShapePoint(metrics, 101, 30);
-        if (side === "bottom" && textBounds) return [textCenterX, snapRouteValue(textBounds.bottom)];
+        if (side === "bottom" && textBounds) return [snapRouteValue(getFlowchartShapeAxisX(metrics, 60)), snapRouteValue(textBounds.bottom)];
         if (side === "bottom") return projectFlowchartShapePoint(metrics, 60, 52);
         return projectFlowchartShapePoint(metrics, 60, 8);
       }
@@ -1032,7 +1071,7 @@ export function createFlowchartLayoutEngine(deps) {
       if (shapeKey === "keyboard_input") {
         if (side === "left") return projectFlowchartShapePoint(metrics, 18, 30);
         if (side === "right") return projectFlowchartShapePoint(metrics, 102, 30);
-        if (side === "bottom" && textBounds) return [textCenterX, snapRouteValue(textBounds.bottom)];
+        if (side === "bottom" && textBounds) return [snapRouteValue(getFlowchartShapeAxisX(metrics, 60)), snapRouteValue(textBounds.bottom)];
         if (side === "bottom") return projectFlowchartShapePoint(metrics, 60, 49);
         return projectFlowchartShapePoint(metrics, 60, 8);
       }
@@ -1056,8 +1095,8 @@ export function createFlowchartLayoutEngine(deps) {
       if (side === "left") return [bounds.left, snapRouteValue((bounds.top + bounds.bottom) / 2)];
       if (side === "right") return [bounds.right, snapRouteValue((bounds.top + bounds.bottom) / 2)];
       // Conectores em "bottom" devem sair do símbolo, não do rodapé da área de texto.
-      if (side === "bottom") return [snapRouteValue((bounds.left + bounds.right) / 2), bounds.bottom];
-      return [snapRouteValue((bounds.left + bounds.right) / 2), bounds.top];
+      if (side === "bottom") return [snapRouteValue(getFlowchartShapeAxisX(metrics, 60)), bounds.bottom];
+      return [snapRouteValue(getFlowchartShapeAxisX(metrics, 60)), bounds.top];
     }
 
     function getNodeConnectors(node, pos, geometry) {
@@ -1199,7 +1238,7 @@ export function createFlowchartLayoutEngine(deps) {
 
       graph.nonBackLinks.forEach(function (link) {
         const fromNode = graph.nodeMap[link.fromNodeId];
-        const route = buildForwardRoute(link, graph, candidatePositions, bundles, geometry);
+        const route = buildForwardRoute(link, graph, candidatePositions, bundles, geometry, routedLinks);
         const label = String(link.label || "").trim() || getFlowchartDefaultOutputLabel(fromNode, link.outputSlot, graph.linkList);
         routedLinks.push({
           link: link,
@@ -1452,6 +1491,91 @@ export function createFlowchartLayoutEngine(deps) {
       return false;
     }
 
+    function flowchartPointsEqual(a, b) {
+      return !!(
+        Array.isArray(a) &&
+        Array.isArray(b) &&
+        Number(a[0]) === Number(b[0]) &&
+        Number(a[1]) === Number(b[1])
+      );
+    }
+
+    function getFlowchartSegmentIntersection(startA, endA, startB, endB) {
+      if (!Array.isArray(startA) || !Array.isArray(endA) || !Array.isArray(startB) || !Array.isArray(endB)) return null;
+      const aVertical = startA[0] === endA[0];
+      const bVertical = startB[0] === endB[0];
+
+      if (aVertical && bVertical) {
+        if (startA[0] !== startB[0]) return null;
+        const aMinY = Math.min(startA[1], endA[1]);
+        const aMaxY = Math.max(startA[1], endA[1]);
+        const bMinY = Math.min(startB[1], endB[1]);
+        const bMaxY = Math.max(startB[1], endB[1]);
+        const overlapMin = Math.max(aMinY, bMinY);
+        const overlapMax = Math.min(aMaxY, bMaxY);
+        if (overlapMin > overlapMax) return null;
+        if (overlapMin === overlapMax) return { kind: "point", point: [startA[0], overlapMin] };
+        return { kind: "overlap", from: [startA[0], overlapMin], to: [startA[0], overlapMax] };
+      }
+
+      if (!aVertical && !bVertical) {
+        if (startA[1] !== startB[1]) return null;
+        const aMinX = Math.min(startA[0], endA[0]);
+        const aMaxX = Math.max(startA[0], endA[0]);
+        const bMinX = Math.min(startB[0], endB[0]);
+        const bMaxX = Math.max(startB[0], endB[0]);
+        const overlapMin = Math.max(aMinX, bMinX);
+        const overlapMax = Math.min(aMaxX, bMaxX);
+        if (overlapMin > overlapMax) return null;
+        if (overlapMin === overlapMax) return { kind: "point", point: [overlapMin, startA[1]] };
+        return { kind: "overlap", from: [overlapMin, startA[1]], to: [overlapMax, startA[1]] };
+      }
+
+      const verticalStart = aVertical ? startA : startB;
+      const verticalEnd = aVertical ? endA : endB;
+      const horizontalStart = aVertical ? startB : startA;
+      const horizontalEnd = aVertical ? endB : endA;
+      const x = verticalStart[0];
+      const y = horizontalStart[1];
+      const verticalMinY = Math.min(verticalStart[1], verticalEnd[1]);
+      const verticalMaxY = Math.max(verticalStart[1], verticalEnd[1]);
+      const horizontalMinX = Math.min(horizontalStart[0], horizontalEnd[0]);
+      const horizontalMaxX = Math.max(horizontalStart[0], horizontalEnd[0]);
+      if (x < horizontalMinX || x > horizontalMaxX || y < verticalMinY || y > verticalMaxY) return null;
+      return { kind: "point", point: [x, y] };
+    }
+
+    function routeHitsRoutedLinks(points, routedLinks, allowedSharedPoints) {
+      const allowed = Array.isArray(allowedSharedPoints) ? allowedSharedPoints : [];
+      for (let pointIndex = 1; pointIndex < points.length; pointIndex += 1) {
+        const start = points[pointIndex - 1];
+        const end = points[pointIndex];
+        for (let routeIndex = 0; routeIndex < (Array.isArray(routedLinks) ? routedLinks.length : 0); routeIndex += 1) {
+          const routePoints = Array.isArray(routedLinks[routeIndex]?.points) ? routedLinks[routeIndex].points : [];
+          for (let segmentIndex = 1; segmentIndex < routePoints.length; segmentIndex += 1) {
+            const otherStart = routePoints[segmentIndex - 1];
+            const otherEnd = routePoints[segmentIndex];
+            const intersection = getFlowchartSegmentIntersection(start, end, otherStart, otherEnd);
+            if (!intersection) continue;
+            if (intersection.kind === "overlap") return true;
+            const point = intersection.point;
+            const isAllowedSharedPoint = allowed.some(function (candidate) {
+              return flowchartPointsEqual(candidate, point);
+            });
+            const touchesCandidateEndpoint = flowchartPointsEqual(point, start) || flowchartPointsEqual(point, end);
+            const touchesOtherEndpoint = flowchartPointsEqual(point, otherStart) || flowchartPointsEqual(point, otherEnd);
+            if (isAllowedSharedPoint && touchesCandidateEndpoint && touchesOtherEndpoint) continue;
+            return true;
+          }
+        }
+      }
+      return false;
+    }
+
+    function routeHitsForbiddenGeometry(points, obstacles, routedLinks, allowedSharedPoints) {
+      return routeHitsObstacles(points, obstacles) || routeHitsRoutedLinks(points, routedLinks, allowedSharedPoints);
+    }
+
     function buildRouteObstacles(positions, nodeMap, geometry, excludedNodeIds) {
       const excluded = excludedNodeIds || {};
       return Object.keys(positions).filter(function (nodeId) {
@@ -1657,7 +1781,7 @@ export function createFlowchartLayoutEngine(deps) {
       return bounds;
     }
 
-    function findClearLaneCoordinate(baseValue, step, attempts, pointsBuilder, obstacles) {
+    function findClearLaneCoordinate(baseValue, step, attempts, pointsBuilder, obstacles, routedLinks, allowedSharedPoints) {
       const values = [snapRouteValue(baseValue)];
       for (let index = 1; index <= attempts; index += 1) {
         values.push(snapRouteValue(baseValue - index * step));
@@ -1666,13 +1790,13 @@ export function createFlowchartLayoutEngine(deps) {
 
       for (let index = 0; index < values.length; index += 1) {
         const points = simplifyFlowchartPolyline(pointsBuilder(values[index]));
-        if (!routeHitsObstacles(points, obstacles)) return values[index];
+        if (!routeHitsForbiddenGeometry(points, obstacles, routedLinks, allowedSharedPoints)) return values[index];
       }
 
       return snapRouteValue(baseValue);
     }
 
-    function findExternalLaneCoordinate(baseValue, step, attempts, laneSide, pointsBuilder, obstacles) {
+    function findExternalLaneCoordinate(baseValue, step, attempts, laneSide, pointsBuilder, obstacles, routedLinks, allowedSharedPoints) {
       const safeLaneSide = laneSide === "right" ? "right" : "left";
       const direction = safeLaneSide === "right" ? 1 : -1;
       const values = [];
@@ -1683,19 +1807,20 @@ export function createFlowchartLayoutEngine(deps) {
 
       for (let index = 0; index < values.length; index += 1) {
         const points = simplifyFlowchartPolyline(pointsBuilder(values[index]));
-        if (!routeHitsObstacles(points, obstacles)) return values[index];
+        if (!routeHitsForbiddenGeometry(points, obstacles, routedLinks, allowedSharedPoints)) return values[index];
       }
 
       return snapRouteValue(baseValue);
     }
 
-    function buildForwardRoute(link, graph, positions, bundles, geometry) {
+    function buildForwardRoute(link, graph, positions, bundles, geometry, routedLinks) {
       const fromNode = graph.nodeMap[link.fromNodeId];
       const toNode = graph.nodeMap[link.toNodeId];
       const fromPos = positions[link.fromNodeId];
       const toPos = positions[link.toNodeId];
       const portSides = getForwardLinkSides(graph, link);
       const startSide = portSides.startSide;
+      const sourceLayoutMeta = getFlowchartNodeLayoutMeta(fromNode);
       const targetLayoutMeta = getFlowchartNodeLayoutMeta(toNode);
       const targetSide =
         targetLayoutMeta && (targetLayoutMeta.semanticKind === "merge" || targetLayoutMeta.semanticKind === "junction")
@@ -1715,9 +1840,24 @@ export function createFlowchartLayoutEngine(deps) {
         [link.fromNodeId]: true,
         [link.toNodeId]: true
       });
+      const allowedSharedPoints = [start, end];
       const laneStep = getFlowchartForwardLaneStep(geometry);
       const sideRouteExitOffset = getFlowchartSideRouteExitOffset(geometry);
       const mirroredLaneX = getIfThenEmptyBranchMirrorLaneX(graph, positions, geometry, link, portSides);
+      const sourceIsLoopControl = !!(
+        sourceLayoutMeta &&
+        (sourceLayoutMeta.semanticKind === "while" || sourceLayoutMeta.semanticKind === "for")
+      );
+      const occupiedBandBounds =
+        sourceIsLoopControl
+          ? getOccupiedBandBounds(
+              graph,
+              positions,
+              geometry,
+              Math.min(getNodeEnvelope(fromNode, fromPos, geometry).top, getNodeEnvelope(toNode, toPos, geometry).top),
+              Math.max(getNodeEnvelope(fromNode, fromPos, geometry).bottom, getNodeEnvelope(toNode, toPos, geometry).bottom)
+            )
+          : null;
 
       if (usesConnectorMerge) {
         const desiredY = end[1];
@@ -1728,7 +1868,7 @@ export function createFlowchartLayoutEngine(deps) {
             [start[0], desiredY],
             end
           ]);
-          if (!routeHitsObstacles(directMergeRoute, obstacles)) {
+          if (!routeHitsForbiddenGeometry(directMergeRoute, obstacles, routedLinks, allowedSharedPoints)) {
             return {
               points: directMergeRoute,
               startSide: startSide,
@@ -1753,7 +1893,9 @@ export function createFlowchartLayoutEngine(deps) {
                 end
               ];
             },
-            obstacles
+            obstacles,
+            routedLinks,
+            allowedSharedPoints
           );
           return {
             points: simplifyFlowchartPolyline([
@@ -1769,22 +1911,54 @@ export function createFlowchartLayoutEngine(deps) {
 
         if (startSide === "left" || startSide === "right") {
           const preferredExitX = mirroredLaneX == null
-            ? start[0] + (startSide === "right" ? sideRouteExitOffset : -sideRouteExitOffset)
+            ? sourceIsLoopControl && occupiedBandBounds && Number.isFinite(occupiedBandBounds.maxX) && Number.isFinite(occupiedBandBounds.minX)
+              ? (
+                  startSide === "right"
+                    ? Math.max(
+                        start[0] + sideRouteExitOffset,
+                        occupiedBandBounds.maxX + getFlowchartColumnCorridorPadding(geometry)
+                      )
+                    : Math.min(
+                        start[0] - sideRouteExitOffset,
+                        occupiedBandBounds.minX - getFlowchartColumnCorridorPadding(geometry)
+                      )
+                )
+              : start[0] + (startSide === "right" ? sideRouteExitOffset : -sideRouteExitOffset)
             : mirroredLaneX;
-          const exitX = findClearLaneCoordinate(
-            preferredExitX,
-            laneStep,
-            10,
-            function (value) {
-              return [
-                start,
-                [value, start[1]],
-                [value, desiredY],
-                end
-              ];
-            },
-            obstacles
-          );
+          const exitX = sourceIsLoopControl
+            ? findExternalLaneCoordinate(
+                preferredExitX,
+                laneStep,
+                10,
+                startSide === "right" ? "right" : "left",
+                function (value) {
+                  return [
+                    start,
+                    [value, start[1]],
+                    [value, desiredY],
+                    end
+                  ];
+                },
+                obstacles,
+                routedLinks,
+                allowedSharedPoints
+              )
+            : findClearLaneCoordinate(
+                preferredExitX,
+                laneStep,
+                10,
+                function (value) {
+                  return [
+                    start,
+                    [value, start[1]],
+                    [value, desiredY],
+                    end
+                  ];
+                },
+                obstacles,
+                routedLinks,
+                allowedSharedPoints
+              );
           return {
             points: simplifyFlowchartPolyline([
               start,
@@ -1799,6 +1973,21 @@ export function createFlowchartLayoutEngine(deps) {
       }
 
       if (startSide === "bottom") {
+        const directVerticalTolerance = Math.max(2, Math.round((Number(FLOWCHART_LAYOUT.routeStep) || 10) * 0.6));
+        if (Math.abs(start[0] - end[0]) <= directVerticalTolerance) {
+          const directVerticalRoute = simplifyFlowchartPolyline([
+            start,
+            [start[0], end[1]],
+            end
+          ]);
+          if (!routeHitsForbiddenGeometry(directVerticalRoute, obstacles, routedLinks, allowedSharedPoints)) {
+            return {
+              points: directVerticalRoute,
+              startSide: startSide,
+              isBackEdge: false
+            };
+          }
+        }
         const preferredY = bundle ? bundle.joinY : Math.round((start[1] + end[1]) / 2);
         const laneY = findClearLaneCoordinate(
           preferredY,
@@ -1812,7 +2001,9 @@ export function createFlowchartLayoutEngine(deps) {
               end
             ];
           },
-          obstacles
+          obstacles,
+          routedLinks,
+          allowedSharedPoints
         );
         const points = [
           start,
@@ -1832,7 +2023,14 @@ export function createFlowchartLayoutEngine(deps) {
           sideRouteExitOffset,
           getFlowchartColumnCorridorPadding(geometry) + Math.max(6, Math.round(laneStep * 0.5))
         );
-        const preferredOuterX = start[0] + (startSide === "right" ? sameSideOuterOffset : -sameSideOuterOffset);
+        const preferredOuterX =
+          sourceIsLoopControl && occupiedBandBounds && Number.isFinite(occupiedBandBounds.maxX) && Number.isFinite(occupiedBandBounds.minX)
+            ? (
+                startSide === "right"
+                  ? Math.max(start[0] + sameSideOuterOffset, occupiedBandBounds.maxX + getFlowchartColumnCorridorPadding(geometry))
+                  : Math.min(start[0] - sameSideOuterOffset, occupiedBandBounds.minX - getFlowchartColumnCorridorPadding(geometry))
+              )
+            : start[0] + (startSide === "right" ? sameSideOuterOffset : -sameSideOuterOffset);
         const outerX = findExternalLaneCoordinate(
           preferredOuterX,
           laneStep,
@@ -1846,7 +2044,9 @@ export function createFlowchartLayoutEngine(deps) {
               end
             ];
           },
-          obstacles
+          obstacles,
+          routedLinks,
+          allowedSharedPoints
         );
         const outerSideRoute = simplifyFlowchartPolyline([
           start,
@@ -1854,7 +2054,7 @@ export function createFlowchartLayoutEngine(deps) {
           [outerX, end[1]],
           end
         ]);
-        if (!routeHitsObstacles(outerSideRoute, obstacles)) {
+        if (!routeHitsForbiddenGeometry(outerSideRoute, obstacles, routedLinks, allowedSharedPoints)) {
           return {
             points: outerSideRoute,
             startSide: startSide,
@@ -1869,7 +2069,7 @@ export function createFlowchartLayoutEngine(deps) {
           [end[0], start[1]],
           end
         ]);
-        if (!routeHitsObstacles(directSideRoute, obstacles)) {
+        if (!routeHitsForbiddenGeometry(directSideRoute, obstacles, routedLinks, allowedSharedPoints)) {
           return {
             points: directSideRoute,
             startSide: startSide,
@@ -1895,7 +2095,9 @@ export function createFlowchartLayoutEngine(deps) {
             end
           ];
         },
-        obstacles
+        obstacles,
+        routedLinks,
+        allowedSharedPoints
       );
       const preferredY = bundle ? bundle.joinY : Math.round((start[1] + end[1]) / 2);
       const laneY = findClearLaneCoordinate(
@@ -1911,7 +2113,9 @@ export function createFlowchartLayoutEngine(deps) {
             end
           ];
         },
-        obstacles
+        obstacles,
+        routedLinks,
+        allowedSharedPoints
       );
       const points = [
         start,
@@ -2069,6 +2273,7 @@ export function createFlowchartLayoutEngine(deps) {
         [link.fromNodeId]: true,
         [link.toNodeId]: true
       });
+      const allowedSharedPoints = [start, end];
       const routeBandBounds =
         isLoopReturn && targetLayoutMeta && targetLayoutMeta.semanticKind === "junction"
           ? getRoutedLinkBandBounds(routedLinks, corridorBounds.minY, corridorBounds.maxY)
@@ -2116,7 +2321,9 @@ export function createFlowchartLayoutEngine(deps) {
         12,
         laneSide,
         buildPointsForLane,
-        nodeObstacles
+        nodeObstacles,
+        routedLinks,
+        allowedSharedPoints
       );
 
       laneUsage[laneSide] = laneIndex;

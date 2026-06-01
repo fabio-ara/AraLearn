@@ -1,6 +1,6 @@
 import { normalizeWhitespace } from "../../core/text.js";
 
-export function createFakeProvider({ id = "fake", script = {} } = {}) {
+export function createFakeProvider({ id = "fake", script = {}, structuredEngine = true } = {}) {
   const counters = new Map();
 
   function readStep(mode) {
@@ -14,20 +14,31 @@ export function createFakeProvider({ id = "fake", script = {} } = {}) {
     id,
     label: "Fake",
     capabilities: {
-      supportsJsonSchema: true,
-      supportsJsonMode: true,
-      contextClass: "small"
+      supportsJsonSchema: false,
+      supportsJsonMode: false,
+      contextClass: "small",
+      structuredEngine
     },
-    async generateStructured(request = {}) {
-      const mode = normalizeWhitespace(request.mode);
+    async generateText(request = {}) {
+      const mode = normalizeWhitespace(request.mode || request.phase || "text");
       const step = readStep(mode);
       if (typeof step === "function") {
-        return structuredClone(await step(request));
+        const value = await step(request);
+        if (typeof value === "string") {
+          return { text: value, usage: {}, raw: value };
+        }
+        return structuredClone(value ?? { text: "", usage: {}, raw: null });
       }
       if (step instanceof Error) {
         throw step;
       }
-      return structuredClone(step ?? {});
+      if (typeof step === "string") {
+        return { text: step, usage: {}, raw: step };
+      }
+      if (step && typeof step === "object" && typeof step.text === "string") {
+        return structuredClone(step);
+      }
+      return structuredClone(step ?? { text: "", usage: {}, raw: null });
     }
   };
 }

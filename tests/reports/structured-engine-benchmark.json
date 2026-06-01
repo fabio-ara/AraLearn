@@ -1,0 +1,307 @@
+{
+  "createdAt": "2026-05-29T04:21:30.656Z",
+  "model": "deepseek-v4-flash",
+  "attemptsPerScenario": 5,
+  "scenarios": [
+    {
+      "id": "matrix-aij",
+      "type": "build",
+      "attempts": 5,
+      "successCount": 5,
+      "retryCount": 0,
+      "failClosedCount": 0,
+      "resourcesUsed": [
+        "matrix",
+        "matrix",
+        "matrix",
+        "matrix",
+        "matrix"
+      ],
+      "templatesFailed": [],
+      "failureKinds": {},
+      "sampleErrors": []
+    },
+    {
+      "id": "graph-path",
+      "type": "build",
+      "attempts": 5,
+      "successCount": 4,
+      "retryCount": 4,
+      "failClosedCount": 1,
+      "resourcesUsed": [
+        "graph",
+        "graph",
+        "graph",
+        "graph"
+      ],
+      "templatesFailed": [
+        "graph_simple"
+      ],
+      "failureKinds": {
+        "semantic_validation": 1
+      },
+      "sampleErrors": [
+        "ambiguidade em graph_simple: múltiplas alternativas válidas (a, b)"
+      ]
+    },
+    {
+      "id": "relation-map",
+      "type": "build",
+      "attempts": 5,
+      "successCount": 5,
+      "retryCount": 0,
+      "failClosedCount": 0,
+      "resourcesUsed": [
+        "relation_map",
+        "relation_map",
+        "relation_map",
+        "relation_map",
+        "relation_map"
+      ],
+      "templatesFailed": [],
+      "failureKinds": {},
+      "sampleErrors": []
+    },
+    {
+      "id": "tree-path",
+      "type": "build",
+      "attempts": 5,
+      "successCount": 5,
+      "retryCount": 0,
+      "failClosedCount": 0,
+      "resourcesUsed": [
+        "tree",
+        "tree",
+        "tree",
+        "tree",
+        "tree"
+      ],
+      "templatesFailed": [],
+      "failureKinds": {},
+      "sampleErrors": []
+    },
+    {
+      "id": "flow-linear",
+      "type": "build",
+      "attempts": 5,
+      "successCount": 5,
+      "retryCount": 0,
+      "failClosedCount": 0,
+      "resourcesUsed": [
+        "flow",
+        "flow",
+        "flow",
+        "flow",
+        "flow"
+      ],
+      "templatesFailed": [],
+      "failureKinds": {},
+      "sampleErrors": []
+    },
+    {
+      "id": "code-output",
+      "type": "build",
+      "attempts": 5,
+      "successCount": 4,
+      "retryCount": 0,
+      "failClosedCount": 1,
+      "resourcesUsed": [
+        "code",
+        "code",
+        "code",
+        "code"
+      ],
+      "templatesFailed": [
+        "code_choice"
+      ],
+      "failureKinds": {
+        "semantic_validation": 1
+      },
+      "sampleErrors": [
+        "$.card.code: code multilinha precisa usar indentação consistente."
+      ]
+    },
+    {
+      "id": "table-choice",
+      "type": "build",
+      "attempts": 5,
+      "successCount": 5,
+      "retryCount": 5,
+      "failClosedCount": 0,
+      "resourcesUsed": [
+        "table",
+        "table",
+        "table",
+        "table",
+        "table"
+      ],
+      "templatesFailed": [],
+      "failureKinds": {},
+      "sampleErrors": []
+    },
+    {
+      "id": "paragraph-gap",
+      "type": "build",
+      "attempts": 5,
+      "successCount": 5,
+      "retryCount": 0,
+      "failClosedCount": 0,
+      "resourcesUsed": [
+        "paragraph",
+        "paragraph",
+        "paragraph",
+        "paragraph",
+        "paragraph"
+      ],
+      "templatesFailed": [],
+      "failureKinds": {},
+      "sampleErrors": []
+    },
+    {
+      "id": "audit-feedback-correction",
+      "type": "audit",
+      "attempts": 5,
+      "successCount": 5,
+      "retryCount": 0,
+      "failClosedCount": 0,
+      "resourcesUsed": [
+        "matrix"
+      ],
+      "templatesFailed": [],
+      "failureKinds": {},
+      "sampleErrors": []
+    },
+    {
+      "id": "top-down-course",
+      "type": "top_down",
+      "attempts": 5,
+      "successCount": 5,
+      "retryCount": 0,
+      "failClosedCount": 0,
+      "resourcesUsed": [],
+      "templatesFailed": [],
+      "failureKinds": {},
+      "sampleErrors": [],
+      "dependencyErrorsBeforeAudit": 10,
+      "dependencyErrorsAfterAudit": 0
+    }
+  ],
+  "resourceUsage": [
+    [
+      "matrix",
+      5
+    ],
+    [
+      "relation_map",
+      5
+    ],
+    [
+      "tree",
+      5
+    ],
+    [
+      "flow",
+      5
+    ],
+    [
+      "table",
+      5
+    ],
+    [
+      "paragraph",
+      5
+    ],
+    [
+      "graph",
+      4
+    ],
+    [
+      "code",
+      4
+    ]
+  ],
+  "templatesFailedMost": [
+    [
+      "graph_simple",
+      1
+    ],
+    [
+      "code_choice",
+      1
+    ]
+  ],
+  "benchmarkStatus": "pass",
+  "criticalFailures": [],
+  "templatePriorityList": [
+    {
+      "id": "graph-path",
+      "templateId": "graph_simple",
+      "successRate": 0.8,
+      "failClosedCount": 1
+    },
+    {
+      "id": "code-output",
+      "templateId": "code_choice",
+      "successRate": 0.8,
+      "failClosedCount": 1
+    },
+    {
+      "id": "matrix-aij",
+      "templateId": "matrix_locate_cell_choice",
+      "successRate": 1,
+      "failClosedCount": 0
+    },
+    {
+      "id": "relation-map",
+      "templateId": "relation_map_simple",
+      "successRate": 1,
+      "failClosedCount": 0
+    },
+    {
+      "id": "tree-path",
+      "templateId": "tree_path",
+      "successRate": 1,
+      "failClosedCount": 0
+    },
+    {
+      "id": "flow-linear",
+      "templateId": "flow_linear",
+      "successRate": 1,
+      "failClosedCount": 0
+    },
+    {
+      "id": "table-choice",
+      "templateId": "table_choice",
+      "successRate": 1,
+      "failClosedCount": 0
+    },
+    {
+      "id": "paragraph-gap",
+      "templateId": "paragraph_gap",
+      "successRate": 1,
+      "failClosedCount": 0
+    }
+  ],
+  "summary": {
+    "formatSuccessRate": 0.96,
+    "parseErrorRate": 0,
+    "missingSlotRate": 0,
+    "invalidSlotRate": 0,
+    "duplicateSlotRate": 0,
+    "extraSlotRate": 0,
+    "retryCount": 10,
+    "failClosedCount": 2,
+    "avoidableFailureCount": 0,
+    "correctFailClosedCount": 2,
+    "semanticValidationRate": 0.95,
+    "structuralLeakRate": 0,
+    "auditPatchRate": 1,
+    "topDownDependencyErrorRate": 2,
+    "averagePromptTokens": 337,
+    "averageCompletionTokens": 170,
+    "promptCacheHitTokens": 20224,
+    "promptCacheMissTokens": 3704,
+    "latencyMs": 2212,
+    "finalValidationRate": 0.96
+  }
+}

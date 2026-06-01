@@ -53,6 +53,8 @@ export function writeAssistConfigStorage(config, storage = globalThis.localStora
     {
       model: normalized.model,
       apiKey: normalized.apiKey,
+      baseUrl: normalized.baseUrl,
+      apiBaseUrl: normalized.apiBaseUrl,
       selectedProfileId: normalized.selectedProfileId,
       didacticProfileId: normalized.didacticProfileId,
       profileTuning: normalized.profileTuning,

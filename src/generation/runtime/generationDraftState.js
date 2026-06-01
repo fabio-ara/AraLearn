@@ -45,7 +45,7 @@ function resolveHierarchyInputMatch(items, inputValue) {
 
   return (
     (items || []).find((item) => {
-      const labels = [item?.title, item?.key].map((value) => normalizeComparableText(value)).filter(Boolean);
+      const labels = [item?.title, item?.id].map((value) => normalizeComparableText(value)).filter(Boolean);
       return labels.includes(normalizedInput);
     }) || null
   );
@@ -67,7 +67,7 @@ export function syncGenerationDraftHierarchy({ draft = {}, visibleCourses = [] }
   }
 
   const course = resolveHierarchyInputMatch(visibleCourses, nextDraft.courseInput);
-  nextDraft.courseKey = text(course?.key);
+  nextDraft.courseKey = text(course?.id);
 
   if (!course) {
     nextDraft.moduleKey = "";
@@ -85,7 +85,7 @@ export function syncGenerationDraftHierarchy({ draft = {}, visibleCourses = [] }
   }
 
   const moduleValue = resolveHierarchyInputMatch(course.modules || [], nextDraft.moduleInput);
-  nextDraft.moduleKey = text(moduleValue?.key);
+  nextDraft.moduleKey = text(moduleValue?.id);
 
   if (!moduleValue) {
     nextDraft.lessonKey = "";
@@ -99,7 +99,7 @@ export function syncGenerationDraftHierarchy({ draft = {}, visibleCourses = [] }
   }
 
   const lesson = resolveHierarchyInputMatch(moduleValue.lessons || [], nextDraft.lessonInput);
-  nextDraft.lessonKey = text(lesson?.key);
+  nextDraft.lessonKey = text(lesson?.id);
   return nextDraft;
 }
 
@@ -114,19 +114,19 @@ export function applyGenerationScope({
 } = {}) {
   const nextDraft = cloneDraft(draft);
   const course = scope.courseKey ? findCourse?.(projectDocument, scope.courseKey) || null : null;
-  const moduleValue = course && scope.moduleKey ? findModule?.(projectDocument, course.key, scope.moduleKey) || null : null;
+  const moduleValue = course && scope.moduleKey ? findModule?.(projectDocument, course.id, scope.moduleKey) || null : null;
   const lesson =
-    course && moduleValue && scope.lessonKey ? findLesson?.(projectDocument, course.key, moduleValue.key, scope.lessonKey) || null : null;
+    course && moduleValue && scope.lessonKey ? findLesson?.(projectDocument, course.id, moduleValue.id, scope.lessonKey) || null : null;
 
   nextDraft.courseFixed = Boolean(course);
   nextDraft.courseInput = course?.title || "";
-  nextDraft.courseKey = text(course?.key);
+  nextDraft.courseKey = text(course?.id);
   nextDraft.moduleFixed = Boolean(moduleValue);
   nextDraft.moduleInput = moduleValue?.title || "";
-  nextDraft.moduleKey = text(moduleValue?.key);
+  nextDraft.moduleKey = text(moduleValue?.id);
   nextDraft.lessonFixed = Boolean(lesson);
   nextDraft.lessonInput = lesson?.title || "";
-  nextDraft.lessonKey = text(lesson?.key);
+  nextDraft.lessonKey = text(lesson?.id);
 
   return syncGenerationDraftHierarchy({
     draft: nextDraft,

@@ -1,3 +1,4 @@
+import { getActiveMicrosequenceVersion } from "../domain/microsequence.js";
 import { renderCardRuntimeArticle } from "./renderCardRuntime.js";
 
 function escapeHtml(value) {
@@ -10,6 +11,7 @@ function escapeHtml(value) {
 }
 
 function renderMicrosequence(microsequence) {
+  const cards = getActiveMicrosequenceVersion(microsequence)?.cards || [];
   return (
     '<section class="microsequence" data-microsequence-id="' +
     escapeHtml(microsequence.id) +
@@ -18,7 +20,7 @@ function renderMicrosequence(microsequence) {
     escapeHtml(microsequence.title) +
     "</h3></header>" +
     '<div class="microsequence-cards">' +
-    microsequence.cards.map((card) => renderCardRuntimeArticle(card)).join("") +
+    cards.map((card) => renderCardRuntimeArticle(card)).join("") +
     "</div></section>"
   );
 }

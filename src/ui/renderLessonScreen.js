@@ -8,8 +8,13 @@ import {
 } from "../render/renderCardRuntime.js";
 import { readLessonProgressEntry } from "../storage/progressStore.js";
 import { renderUiIcon } from "./renderUiIcons.js";
-import { isDraftMicrosequence, isRunnableMicrosequence, resolveMicrosequenceRuntimeIncluded } from "../model/microsequenceStatus.js";
+import {
+  isDraftMicrosequence,
+  isRunnableMicrosequence,
+  resolveMicrosequenceRuntimeIncluded
+} from "../model/microsequenceStatus.js";
 import { buildScopedVersionLineageLabel, splitVersionLineageLabel } from "./versionLineage.js";
+import { getActiveMicrosequenceVersion } from "../domain/microsequence.js";
 
 function escapeHtml(value) {
   return String(value)
@@ -198,34 +203,47 @@ function renderSectionHeading(title) {
   );
 }
 
+function resolveModuleScreenContextTitle(moduleValue) {
+  return moduleValue?.title || "Módulo";
+}
+
+function entityId(entity) {
+  return typeof entity?.id === "string" ? entity.id : "";
+}
+
+function cardsOfMicrosequence(microsequence) {
+  const activeVersion = getActiveMicrosequenceVersion(microsequence);
+  return Array.isArray(activeVersion?.cards) ? activeVersion.cards : [];
+}
+
 function countCardsInLesson(lesson) {
   return (lesson.microsequences || []).reduce(
-    (total, microsequence) => total + (isRunnableMicrosequence(microsequence) ? (microsequence.cards || []).length : 0),
+    (total, microsequence) => total + (isRunnableMicrosequence(microsequence) ? cardsOfMicrosequence(microsequence).length : 0),
     0
   );
 }
 
 function countCardsInMicrosequence(microsequence) {
-  return (microsequence.cards || []).length;
+  return cardsOfMicrosequence(microsequence).length;
 }
 
 function countCompletedCardsInLesson(course, moduleValue, lesson, progress) {
   const entry = readLessonProgressEntry(progress, {
-    courseKey: course.key,
-    moduleKey: moduleValue.key,
-    lessonKey: lesson.key
+    courseKey: entityId(course),
+    moduleKey: entityId(moduleValue),
+    lessonKey: entityId(lesson)
   });
   return entry && Array.isArray(entry.completedCardKeys) ? entry.completedCardKeys.length : 0;
 }
 
 function countCompletedCardsInMicrosequence(course, moduleValue, lesson, microsequence, progress) {
   const entry = readLessonProgressEntry(progress, {
-    courseKey: course.key,
-    moduleKey: moduleValue.key,
-    lessonKey: lesson.key
+    courseKey: entityId(course),
+    moduleKey: entityId(moduleValue),
+    lessonKey: entityId(lesson)
   });
   const completedCardKeys = entry && Array.isArray(entry.completedCardKeys) ? entry.completedCardKeys : [];
-  const cardKeys = new Set((microsequence.cards || []).map((card) => card.key));
+  const cardKeys = new Set(cardsOfMicrosequence(microsequence).map((card) => card.id));
   return completedCardKeys.reduce((total, key) => total + (cardKeys.has(key) ? 1 : 0), 0);
 }
 
@@ -258,20 +276,20 @@ function formatCount(count, singular, plural) {
 }
 
 function getLessonDescription(lesson) {
-  const explicitDescription = normalizeInlineText(lesson.description);
+  const explicitDescription = normalizeInlineText(lesson?.guide?.goal || lesson?.description);
   if (explicitDescription) {
     return truncateText(explicitDescription);
   }
 
   for (const microsequence of lesson.microsequences || []) {
-    const tags = normalizeInlineText((microsequence.tags || []).join(", "));
-    if (tags) {
-      return truncateText(tags);
+    const refs = normalizeInlineText((microsequence.dependsOn || []).join(", "));
+    if (refs) {
+      return truncateText(refs);
     }
   }
 
   for (const microsequence of lesson.microsequences || []) {
-    for (const card of microsequence.cards || []) {
+    for (const card of cardsOfMicrosequence(microsequence)) {
       const text = normalizeInlineText(readCardText(card));
       if (text) {
         return truncateText(text);
@@ -285,10 +303,10 @@ function getLessonDescription(lesson) {
 function renderEditorCardStrip(cards, activeIndex, structureContext = {}) {
   return cards
     .map((card, index) => {
-      const cardTitle = card.title || card.key;
+      const cardTitle = card.title || card.id;
       return (
         '<div class="mini-card-slot" data-structure-target="card" data-card-key="' +
-        escapeHtml(card.key) +
+        escapeHtml(card.id) +
         '" data-course-key="' +
         escapeHtml(structureContext.courseKey || "") +
         '" data-module-key="' +
@@ -309,7 +327,7 @@ function renderEditorCardStrip(cards, activeIndex, structureContext = {}) {
         '" data-microsequence-key="' +
         escapeHtml(structureContext.microsequenceKey || "") +
         '" data-card-key="' +
-        escapeHtml(card.key) +
+        escapeHtml(card.id) +
         '" aria-label="Card ' +
         String(index + 1) +
         ": " +
@@ -355,10 +373,12 @@ function summarizeIconTitle(label) {
   return match ? match[1].trim() : text;
 }
 
-function renderPromptAttachmentButton() {
+function renderPromptAttachmentButton(action = "open-assist-attachment-picker") {
   const title = "Anexar documentos";
   return (
-    '<button class="icon-ghost tiny-icon generate-inline-icon" type="button" data-action="open-assist-attachment-picker" title="' +
+    '<button class="icon-ghost tiny-icon generate-inline-icon" type="button" data-action="' +
+    escapeHtml(action) +
+    '" title="' +
     escapeHtml(title) +
     '" aria-label="' +
     escapeHtml(title) +
@@ -469,7 +489,7 @@ function collectMicrosequenceDependencies(moduleValue, lessonKey, microsequenceK
   const dependencies = [];
   for (const lesson of moduleValue.lessons || []) {
     for (const microsequence of lesson.microsequences || []) {
-      if (lesson.key === lessonKey && microsequence.key === microsequenceKey) {
+      if (lesson.id === lessonKey && microsequence.id === microsequenceKey) {
         return dependencies;
       }
       dependencies.push(microsequence);
@@ -479,7 +499,7 @@ function collectMicrosequenceDependencies(moduleValue, lessonKey, microsequenceK
 }
 
 function renderDidacticTags(moduleValue, lessonKey, microsequence) {
-  const dependencies = collectMicrosequenceDependencies(moduleValue, lessonKey, microsequence.key);
+  const dependencies = collectMicrosequenceDependencies(moduleValue, lessonKey, microsequence.id);
   const visibleDependencies = dependencies.slice(-5);
 
   const dependencyTags = visibleDependencies
@@ -487,7 +507,7 @@ function renderDidacticTags(moduleValue, lessonKey, microsequence) {
       return (
         '<span class="didactic-tag dependency-tag-chip">' +
         '<span class="didactic-tag-text">' +
-        escapeHtml(item.title || item.key) +
+        escapeHtml(item.title || item.id) +
         "</span>" +
         "</span>"
       );
@@ -522,16 +542,29 @@ function renderExplicitTags(tags, rowClass = "didactic-tag-row") {
   return '<div class="' + escapeHtml(rowClass) + '">' + tagMarkup + "</div>";
 }
 
-function renderCompactRuntimeTags(tags, dependencies) {
-  const normalizedTags = Array.isArray(tags) ? tags.filter(Boolean) : [];
-  if (!normalizedTags.length) {
+function buildMicrosequenceTitleMap(lesson = {}) {
+  return new Map(
+    (Array.isArray(lesson?.microsequences) ? lesson.microsequences : [])
+      .map((item) => [String(item?.id || "").trim().toLowerCase(), item?.title || item?.id || ""])
+      .filter((entry) => entry[0] && entry[1])
+  );
+}
+
+function resolveMicrosequenceRefTitles(refIds = [], lesson = {}) {
+  const titleMap = buildMicrosequenceTitleMap(lesson);
+  return (Array.isArray(refIds) ? refIds : []).map((refId) => titleMap.get(String(refId || "").trim().toLowerCase()) || String(refId || "").trim()).filter(Boolean);
+}
+
+function renderCompactRuntimeRefs(refIds, refs) {
+  const normalizedRefIds = Array.isArray(refIds) ? refIds.filter(Boolean) : [];
+  if (!normalizedRefIds.length) {
     return "";
   }
 
   const dependencyMap = new Map(
-    (dependencies || []).map((item) => [String(item.key || "").trim().toLowerCase(), item.title || item.key || ""])
+    (refs || []).map((item) => [String(item.id || "").trim().toLowerCase(), item.title || item.id || ""])
   );
-  const labels = normalizedTags.map((tag) => dependencyMap.get(String(tag).trim().toLowerCase()) || String(tag));
+  const labels = normalizedRefIds.map((refId) => dependencyMap.get(String(refId).trim().toLowerCase()) || String(refId));
   const visibleLabels = labels.slice(0, 2);
   const hiddenCount = Math.max(0, labels.length - visibleLabels.length);
   return (
@@ -584,12 +617,29 @@ function renderAssistActionOptions(actionOptions = [], selectedAction = "") {
         '<span class="assist-action-copy">' +
         '<span class="assist-action-title">' +
         escapeHtml(item.label || item.value) +
-        "</span>" +
-        (disabled ? '<span class="assist-action-meta">Sem próxima etapa planejada.</span>' : "") +
-        "</span></label>"
+        "</span></span></label>"
       );
     })
     .join("");
+}
+
+function renderAssistActionHint(selectedAction = "", { isPlanned = false } = {}) {
+  const text =
+    selectedAction === "repair_current"
+      ? "Corrige os cards já gerados desta microssequência sem sair do foco local."
+      : selectedAction === "next_planned"
+        ? "Materializa a próxima microssequência já prevista na trilha principal."
+        : selectedAction === "branch_after_current"
+          ? "Cria uma microssequência nova fora da trilha principal com base no que o aluno já estudou. Depois, a continuação volta para a próxima etapa prevista na trilha."
+          : selectedAction === "generate_current"
+            ? isPlanned
+              ? "Materializa os primeiros cards desta microssequência prevista na trilha."
+              : "Gera mais cards dentro desta microssequência sem replanejar a trilha."
+            : "";
+  if (!text) {
+    return "";
+  }
+  return '<p class="tiny muted assist-action-hint">' + escapeHtml(text) + "</p>";
 }
 
 function renderAssistContainerSelectOptions(options = [], selectedValue = "", confirmed = false) {
@@ -641,7 +691,7 @@ function renderMicrosequenceStateIcon(microsequence) {
   }
   if (isDraftMicrosequence(microsequence)) {
     return (
-      '<span class="microsequence-state-icon is-draft" aria-label="Rascunho" title="Rascunho">' +
+      '<span class="microsequence-state-icon is-draft" aria-label="Microssequência em revisão" title="Microssequência em revisão">' +
       renderUiIcon("draft-state", "microsequence-state-icon-svg") +
       "</span>"
     );
@@ -782,10 +832,10 @@ function renderCourseScreen({ course, progress, editorSupport }) {
       const moduleTotal = countCardsInModule(moduleValue);
       return renderHierarchyItemCard({
         level: "module",
-        courseKey: course.key,
-        itemKey: moduleValue.key,
-        title: moduleValue.title || moduleValue.key,
-        description: normalizeInlineText(moduleValue.description || ""),
+        courseKey: entityId(course),
+        itemKey: entityId(moduleValue),
+        title: moduleValue.title || entityId(moduleValue),
+        description: normalizeInlineText(moduleValue?.guide?.goal || ""),
         progressPercent: calculateProgressPercent(moduleCompleted, moduleTotal),
         metaHtml: renderMetaLine({
           completed: moduleCompleted,
@@ -795,7 +845,7 @@ function renderCourseScreen({ course, progress, editorSupport }) {
         menuAction: "open-module-actions",
         openAction: "open-module",
         generationAction: "open-generation-panel-module",
-        dragLabel: `Arrastar módulo ${moduleValue.title || moduleValue.key}`,
+        dragLabel: `Arrastar módulo ${moduleValue.title || entityId(moduleValue)}`,
         openTitle: "Abrir módulo",
         readOnly: readOnlyView
       });
@@ -805,7 +855,7 @@ function renderCourseScreen({ course, progress, editorSupport }) {
   return (
     '<section class="screen">' +
     renderTopbar({
-      title: course.title || "Curso",
+      title: "Módulos",
       canGoBack: true,
       backAction: editorSupport?.readOnlyBackAction || "go-back",
       subtitle: editorSupport?.readOnlyView ? editorSupport?.readOnlySubtitle || "" : "",
@@ -815,7 +865,7 @@ function renderCourseScreen({ course, progress, editorSupport }) {
           action: "open-generation-panel-course",
           title: "Abrir geração por IA neste curso",
           icon: renderUiIcon("sparkles", "home-tab-icon"),
-          courseKey: course.key
+          courseKey: entityId(course)
         },
         { action: "quick-create-module", title: "Criar módulo vazio", icon: "＋" },
         { action: "open-version-history", title: "Snapshots do curso", icon: "🕘" },
@@ -823,10 +873,11 @@ function renderCourseScreen({ course, progress, editorSupport }) {
       ].filter(Boolean)
     }) +
     '<main class="screen-content course-screen" data-structure-collection="module" data-course-key="' +
-    escapeHtml(course.key) +
+    escapeHtml(entityId(course)) +
     '">' +
+    renderSectionHeading(course.title || "Curso") +
     '<section class="navigation-list structure-navigation-list" data-structure-collection="module" data-course-key="' +
-    escapeHtml(course.key) +
+    escapeHtml(entityId(course)) +
     '">' +
     (modules || '<section class="clean-card progress-card"><p class="card-subtitle">Sem módulos.</p></section>') +
     "</section>" +
@@ -842,10 +893,10 @@ function renderModuleScreen({ course, moduleValue, progress, editorSupport }) {
       const lessonTotal = countCardsInLesson(lesson);
       return renderHierarchyItemCard({
         level: "lesson",
-        courseKey: course.key,
-        moduleKey: moduleValue.key,
-        itemKey: lesson.key,
-        title: lesson.title || lesson.key,
+        courseKey: entityId(course),
+        moduleKey: entityId(moduleValue),
+        itemKey: entityId(lesson),
+        title: lesson.title || entityId(lesson),
         description: getLessonDescription(lesson),
         progressPercent: calculateProgressPercent(lessonCompleted, lessonTotal),
         metaHtml: renderMetaLine({
@@ -858,7 +909,7 @@ function renderModuleScreen({ course, moduleValue, progress, editorSupport }) {
         menuAction: "open-lesson-actions",
         openAction: "open-lesson",
         generationAction: "open-generation-panel-lesson",
-        dragLabel: `Arrastar lição ${lesson.title || lesson.key}`,
+        dragLabel: `Arrastar lição ${lesson.title || entityId(lesson)}`,
         openTitle: "Abrir lição",
         readOnly: readOnlyView
       });
@@ -868,7 +919,7 @@ function renderModuleScreen({ course, moduleValue, progress, editorSupport }) {
   return (
     '<section class="screen">' +
     renderTopbar({
-      title: moduleValue.title || "Módulo",
+      title: "Lições",
       canGoBack: true,
       backAction: editorSupport?.readOnlyBackAction || "go-back",
       subtitle: editorSupport?.readOnlyView ? editorSupport?.readOnlySubtitle || "" : "",
@@ -878,8 +929,8 @@ function renderModuleScreen({ course, moduleValue, progress, editorSupport }) {
           action: "open-generation-panel-module",
           title: "Abrir geração por IA neste módulo",
           icon: renderUiIcon("sparkles", "home-tab-icon"),
-          courseKey: course.key,
-          moduleKey: moduleValue.key
+          courseKey: entityId(course),
+          moduleKey: entityId(moduleValue)
         },
         { action: "quick-create-lesson", title: "Criar lição vazia", icon: "＋" },
         { action: "open-version-history", title: "Snapshots do módulo", icon: "🕘" },
@@ -887,14 +938,15 @@ function renderModuleScreen({ course, moduleValue, progress, editorSupport }) {
       ].filter(Boolean)
     }) +
     '<main class="screen-content course-screen" data-structure-collection="lesson" data-course-key="' +
-    escapeHtml(course.key) +
+    escapeHtml(entityId(course)) +
     '" data-module-key="' +
-    escapeHtml(moduleValue.key) +
+    escapeHtml(entityId(moduleValue)) +
     '">' +
+    renderSectionHeading(resolveModuleScreenContextTitle(moduleValue)) +
     '<section class="navigation-list structure-navigation-list" data-structure-collection="lesson" data-course-key="' +
-    escapeHtml(course.key) +
+    escapeHtml(entityId(course)) +
     '" data-module-key="' +
-    escapeHtml(moduleValue.key) +
+    escapeHtml(entityId(moduleValue)) +
     '">' +
     (lessons || '<section class="clean-card progress-card"><p class="card-subtitle">Sem lições.</p></section>') +
     "</section>" +
@@ -907,9 +959,8 @@ function renderLessonScreenView({ course, lesson, moduleValue, progress, editorS
   const lessonTotal = countCardsInLesson(lesson);
   const groupedMicrosequences = {
     main: [],
-    reinforcement: [],
+    branch: [],
     planned: [],
-    draft: [],
     paused: []
   };
 
@@ -918,16 +969,12 @@ function renderLessonScreenView({ course, lesson, moduleValue, progress, editorS
       groupedMicrosequences.planned.push(microsequence);
       return;
     }
-    if (isDraftMicrosequence(microsequence)) {
-      groupedMicrosequences.draft.push(microsequence);
-      return;
-    }
     if (!resolveMicrosequenceRuntimeIncluded(microsequence)) {
       groupedMicrosequences.paused.push(microsequence);
       return;
     }
-    if (microsequence.role === "reinforcement") {
-      groupedMicrosequences.reinforcement.push(microsequence);
+    if (microsequence.branchOf || microsequence.role === "support") {
+      groupedMicrosequences.branch.push(microsequence);
       return;
     }
     groupedMicrosequences.main.push(microsequence);
@@ -941,37 +988,44 @@ function renderLessonScreenView({ course, lesson, moduleValue, progress, editorS
       .map((microsequence) => {
       const cardCount = countCardsInMicrosequence(microsequence);
       const microsequenceCompleted = countCompletedCardsInMicrosequence(course, moduleValue, lesson, microsequence, progress);
-      const isDraft = isDraftMicrosequence(microsequence);
       const isPlanned = isPlannedMicrosequence(microsequence);
-      const canPlay = isRunnableMicrosequence(microsequence);
+      const hasRuntimeCards = resolveMicrosequenceRuntimeIncluded(microsequence);
+      const canPlay = isRunnableMicrosequence(microsequence) || hasRuntimeCards;
       const description = normalizeInlineText(
-        microsequence.description || (isPlanned ? "Etapa planejada da trilha. Abra para materializar ou reformular." : "")
+        microsequence.goal || (isPlanned ? "Etapa planejada da trilha. Abra para materializar ou corrigir." : "")
       );
-      const supportingHtml = renderExplicitTags(microsequence.tags, "didactic-tag-row microsequence-tag-row");
+      const supportingHtml = renderExplicitTags(
+        resolveMicrosequenceRefTitles(microsequence.dependsOn, lesson),
+        "didactic-tag-row microsequence-tag-row"
+      );
 
       return renderHierarchyItemCard({
         level: "microsequence",
-        courseKey: course.key,
-        moduleKey: moduleValue.key,
-        lessonKey: lesson.key,
-        itemKey: microsequence.key,
-        title: microsequence.title || microsequence.key,
+        courseKey: entityId(course),
+        moduleKey: entityId(moduleValue),
+        lessonKey: entityId(lesson),
+        itemKey: entityId(microsequence),
+        title: microsequence.title || entityId(microsequence),
         description,
         supportingHtml,
         leadingIconHtml: renderMicrosequenceStateIcon(microsequence),
-        progressPercent: isDraft ? 0 : calculateProgressPercent(microsequenceCompleted, cardCount),
+        progressPercent: isPlanned ? 0 : calculateProgressPercent(microsequenceCompleted, cardCount),
         metaHtml: renderMetaLine({
-          completed: isDraft ? 0 : microsequenceCompleted,
+          completed: isPlanned ? 0 : microsequenceCompleted,
           total: cardCount,
           parts: [renderCountMetric("card", cardCount, "card", "cards")]
         }),
         menuAction: "open-microsequence-actions",
-        openAction: isDraft ? "open-microsequence-assist" : "play-microsequence",
+        openAction: hasRuntimeCards ? "play-microsequence" : "open-microsequence-assist",
         generationAction: "open-microsequence-assist",
-        dragLabel: `Arrastar microssequência ${microsequence.title || microsequence.key}`,
-        openTitle: isPlanned ? "Abrir microssequência planejada" : isDraft ? "Editar rascunho" : "Abrir microssequência",
+        dragLabel: `Arrastar microssequência ${microsequence.title || entityId(microsequence)}`,
+        openTitle: hasRuntimeCards
+          ? "Abrir microssequência"
+          : isPlanned
+            ? "Abrir microssequência planejada"
+            : "Abrir microssequência",
         readOnly: readOnlyView
-      }).replace('>▶</button>', canPlay || isDraft ? '>▶</button>' : ' disabled aria-disabled="true">▶</button>');
+      }).replace('>▶</button>', canPlay || isPlanned ? '>▶</button>' : ' disabled aria-disabled="true">▶</button>');
     })
       .join("");
 
@@ -989,16 +1043,15 @@ function renderLessonScreenView({ course, lesson, moduleValue, progress, editorS
         "</p></section>"
       : "";
   const microsequenceGroups =
-    renderMicrosequenceGroup("Microssequências", groupedMicrosequences.main) +
-    renderMicrosequenceGroup("Reforços", groupedMicrosequences.reinforcement) +
+    renderMicrosequenceGroup(lesson.title || "Lição", groupedMicrosequences.main) +
+    renderMicrosequenceGroup("Apoios", groupedMicrosequences.branch) +
     renderMicrosequenceGroup("Planejadas", groupedMicrosequences.planned) +
-    renderMicrosequenceGroup("Rascunhos", groupedMicrosequences.draft) +
     renderMicrosequenceGroup("Fora do estudo", groupedMicrosequences.paused);
 
   return (
     '<section class="screen">' +
     renderTopbar({
-      title: lesson.title || "Lição",
+      title: "",
       canGoBack: true,
       backAction: editorSupport?.readOnlyBackAction || "go-back",
       subtitle: editorSupport?.readOnlyView ? editorSupport?.readOnlySubtitle || "" : "",
@@ -1008,17 +1061,17 @@ function renderLessonScreenView({ course, lesson, moduleValue, progress, editorS
           action: "open-lesson-source-guide",
           title: "Editar fonte-guia da lição",
           icon: "📎",
-          courseKey: course.key,
-          moduleKey: moduleValue.key,
-          lessonKey: lesson.key
+          courseKey: entityId(course),
+          moduleKey: entityId(moduleValue),
+          lessonKey: entityId(lesson)
         },
         {
           action: "open-generation-panel-lesson",
           title: "Abrir geração por IA nesta lição",
           icon: renderUiIcon("sparkles", "home-tab-icon"),
-          courseKey: course.key,
-          moduleKey: moduleValue.key,
-          lessonKey: lesson.key
+          courseKey: entityId(course),
+          moduleKey: entityId(moduleValue),
+          lessonKey: entityId(lesson)
         },
         { action: "quick-create-microsequence", title: "Criar microssequência vazia", icon: "＋" },
         { action: "open-version-history", title: "Snapshots da lição", icon: "🕘" },
@@ -1028,11 +1081,11 @@ function renderLessonScreenView({ course, lesson, moduleValue, progress, editorS
     '<main class="screen-content lesson-structure-screen navigation-screen">' +
     readyEmptyMessage +
     '<section data-structure-collection="microsequence" data-course-key="' +
-    escapeHtml(course.key) +
+    escapeHtml(entityId(course)) +
     '" data-module-key="' +
-    escapeHtml(moduleValue.key) +
+    escapeHtml(entityId(moduleValue)) +
     '" data-lesson-key="' +
-    escapeHtml(lesson.key) +
+    escapeHtml(entityId(lesson)) +
     '">' +
     (microsequenceGroups || '<section class="clean-card progress-card"><p class="card-subtitle">Sem microssequências.</p></section>') +
     "</section></main></section>"
@@ -1043,7 +1096,12 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
   const visualizedVersion = editorSupport.visualizedMicrosequenceVersion || null;
   const visualizedCards = Array.isArray(visualizedVersion?.cards) ? visualizedVersion.cards : cards;
   const visualizedTitle = visualizedVersion?.title || microsequence?.title || "";
-  const visualizedTags = Array.isArray(visualizedVersion?.tags) ? visualizedVersion.tags : microsequence?.tags || [];
+  const visualizedRefIds = Array.isArray(editorSupport.selectedRefIds) && editorSupport.selectedRefIds.length
+    ? editorSupport.selectedRefIds
+    : Array.isArray(microsequence?.dependsOn)
+      ? microsequence.dependsOn
+      : [];
+  const visualizedRefTitles = resolveMicrosequenceRefTitles(visualizedRefIds, lesson);
   const visibleCards = Array.isArray(visualizedCards) ? visualizedCards : [];
   const activeIndex = Number.isInteger(selection.cardIndex) ? selection.cardIndex : 0;
   const safeIndex = Math.max(0, Math.min(activeIndex, Math.max(0, visibleCards.length - 1)));
@@ -1075,7 +1133,8 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
   const nextDisabled = !hasCards || (microsequenceMode !== "play" && safeIndex >= visibleCards.length - 1);
   const cardProgressPercent = lessonStudyCount ? ((safeIndex + 1) / lessonStudyCount) * 100 : 0;
   const bodyText = readCardText(activeCard);
-  const lightDependencyTags = renderCompactRuntimeTags(visualizedTags, editorSupport.dependencies || []);
+  const lightDependencyTags = renderCompactRuntimeRefs(visualizedRefIds, editorSupport.refs || [])
+    || renderExplicitTags(visualizedRefTitles, "didactic-tag-row");
   const popupEntry = activeCard ? getRuntimePopupButtonEntry(activeCard) : null;
   const popupBlockKey = editorSupport.continuePopup?.blockKey || `runtime-block::${popupEntry?.index ?? 0}`;
   const runtime = renderCardRuntimeBlocksWithDock(activeCard, {
@@ -1103,53 +1162,40 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
         '<button class="open-mini study-continue-popup-btn" type="button" data-action="continue-popup-next" title="Continuar" aria-label="Continuar">&#9654;</button>' +
         "</div></section></div>"
       : "";
-  const pendingGeneratedActions = editorSupport.pendingGeneratedVersionActive
-    ? '<section class="study-reader-footer workbench-preview-footer">' +
-      '<div class="study-action-dock">' +
-      '<div class="study-action-stack">' +
-      '<div class="study-next-wrap workbench-preview-actions">' +
-      '<button class="icon-ghost study-comment-btn" type="button" data-action="discard-generated-version" title="Excluir iteração atual" aria-label="Excluir iteração atual">' +
-      renderUiIcon("remove-state", "generate-submit-icon") +
-      "</button>" +
-      '<button class="open-mini study-continue-btn" type="button" data-action="accept-generated-version" title="Aceitar iteração atual" aria-label="Aceitar iteração atual">' +
-      renderUiIcon("ready-state", "generate-submit-icon") +
-      "</button>" +
-      "</div></div></div></section>"
-    : "";
-  const selectedDependencyTags = (editorSupport.dependencies || [])
-    .filter((item) => visualizedTags.includes(item.key))
+  const selectedDependencyTags = (editorSupport.refs || [])
+    .filter((item) => visualizedRefIds.includes(item.id))
     .map((item) => {
       return (
-        '<button class="didactic-tag dependency-tag-chip dependency-chip-button" type="button" data-action="remove-dependency" data-dependency-key="' +
-        escapeHtml(item.key) +
+        '<button class="didactic-tag dependency-tag-chip dependency-chip-button" type="button" data-action="remove-ref" data-ref-id="' +
+        escapeHtml(item.id) +
         '">' +
         '<span class="didactic-tag-text dependency-chip-label">' +
-        escapeHtml(item.title || item.key) +
+        escapeHtml(item.title || item.id) +
         "</span>" +
         '<span class="dependency-chip-remove">&times;</span></button>'
       );
     })
     .join("");
-  const availableDependencyOptions = (editorSupport.dependencies || [])
-    .filter((item) => !visualizedTags.includes(item.key))
+  const availableDependencyOptions = (editorSupport.refs || [])
+    .filter((item) => !visualizedRefIds.includes(item.id))
     .map((item) => {
       return (
         '<option value="' +
-        escapeHtml(item.key) +
+        escapeHtml(item.id) +
         '"' +
-        (item.key === editorSupport.pendingDependencyKey ? " selected" : "") +
+        (item.id === editorSupport.pendingRefId ? " selected" : "") +
         ">" +
-        escapeHtml(item.title || item.key) +
+        escapeHtml(item.title || item.id) +
         "</option>"
       );
     })
     .join("");
   const dependencyPicker = availableDependencyOptions
     ? '<div class="assist-tag-picker">' +
-      '<select data-field="assist-dependency-picker" aria-label="Tags" title="Tags">' +
+      '<select data-field="assist-ref-picker" aria-label="Refs" title="Refs">' +
       availableDependencyOptions +
       "</select>" +
-      '<button class="icon-ghost tiny-icon" type="button" data-action="add-dependency" title="Adicionar tag" aria-label="Adicionar tag">+</button>' +
+      '<button class="icon-ghost tiny-icon" type="button" data-action="add-ref" title="Adicionar ref" aria-label="Adicionar ref">+</button>' +
       "</div>"
     : "";
   const modelOptions = (editorSupport.modelOptions || [])
@@ -1169,26 +1215,25 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
     editorSupport.assistActionOptions || [],
     editorSupport.selectedAssistAction || ""
   );
+  const assistActionHint = renderAssistActionHint(editorSupport.selectedAssistAction || "", { isPlanned });
   const containerOptions = renderAssistContainerSelectOptions(
     editorSupport.containerOptions || [],
     editorSupport.preferredContainer,
     editorSupport.preferredContainerConfirmed
   );
-  const assistWarning = editorSupport.assistError
-    ? '<section class="microsequence-assist-panel assist-status-panel is-warning">' +
-      '<p class="muted assist-last-request">' +
-      escapeHtml(editorSupport.assistError) +
-      "</p></section>"
-    : "";
-  const assistStatus = editorSupport.lastRequest
-    ? '<section class="microsequence-assist-panel assist-status-panel">' +
-      '<p class="tiny muted">' +
-      escapeHtml(editorSupport.lastRequest.title || "Último pedido") +
-      "</p>" +
-      '<p class="muted assist-last-request">' +
-      escapeHtml(editorSupport.lastRequest.description || "") +
-      "</p></section>"
-    : "";
+  const feedbackSession = editorSupport.feedbackSession || {};
+  const feedbackValue = editorSupport.feedbackEditing
+    ? editorSupport.feedbackDraftText || feedbackSession.nextPromptDraft || ""
+    : feedbackSession.feedbackText || editorSupport.feedbackDraftText || feedbackSession.nextPromptDraft || "";
+  const feedbackCanEdit = Boolean((feedbackSession.nextPromptDraft || feedbackValue).trim());
+  const feedbackStatusClass =
+    feedbackSession.status === "blocked"
+      ? " is-warning"
+      : feedbackSession.status === "stale"
+        ? " is-muted"
+        : feedbackSession.status && feedbackSession.status !== "completed"
+          ? " is-attention"
+          : "";
   const emptyCardsMessage = hasCards
     ? ""
     : isPlanned
@@ -1201,7 +1246,7 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
     hasCards
       ? '<article class="card-portrait-body card-portrait-sheet runtime-card-sheet">' +
         '<div class="runtime-card-title">' +
-        escapeHtml(activeCard ? activeCard.title || activeCard.key : "Sem card") +
+        escapeHtml(activeCard ? activeCard.title || activeCard.id : "Sem card") +
         "</div>" +
         '<div class="card-sheet-content">' +
         runtime.bodyHtml +
@@ -1218,7 +1263,7 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
     '<section class="study-reader-context">' +
     '<div class="study-reader-line">' +
     '<span class="study-reader-context-line study-reader-course-title">' +
-    escapeHtml(course?.title || course?.key || "Curso") +
+    escapeHtml(visualizedTitle || microsequence?.title || "Microssequência") +
     "</span></div>" +
     '<div class="study-reader-progress"><span style="width:' +
     String(cardProgressPercent) +
@@ -1254,15 +1299,17 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
     (nextDisabled ? 'disabled aria-disabled="true"' : "") +
     ' title="Continuar" aria-label="Continuar">&#9654;</button>' +
     continuePopupHtml +
-    "</div></div></div></section>" +
-    pendingGeneratedActions +
-    "</section>";
+    "</div></div></div></section></section>";
   const editPane =
     '<section class="workbench-editor-panel workbench-editor-pane">' +
+    '<header class="workbench-editor-heading">' +
+    '<h2 class="generation-overlay-title workbench-editor-title">Editar com IA</h2>' +
+    "</header>" +
     '<label class="field generate-prompt-field workbench-prompt-field">' +
     '<div class="generate-prompt-layout">' +
     '<div class="workbench-prompt-tools">' +
     renderInlineFieldIcon("prompt", promptLabel) +
+    '<button class="icon-ghost tiny-icon generate-inline-icon workbench-inline-reset" type="button" data-action="clear-assist-request" title="Limpar pedido" aria-label="Limpar pedido">&#8635;</button>' +
     "</div>" +
     '<div class="generate-prompt-content">' +
     '<textarea data-field="assist-prompt" class="assist-prompt" aria-label="' +
@@ -1276,39 +1323,37 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
     "</textarea></div></div></label>" +
     attachmentInput +
     attachmentChips +
-    '<div class="generate-divider workbench-divider"></div>' +
-    '<section class="microsequence-assist-panel bottomup-focus-panel assist-simple-panel">' +
+    '<section class="microsequence-assist-panel bottomup-focus-panel assist-simple-panel assist-action-panel">' +
     '<div class="workbench-form-row assist-action-heading">' +
     renderInlineFieldIcon("intent", "O que a IA deve fazer agora") +
-    '<p class="tiny muted">O que a IA deve fazer agora</p>' +
+    '<p class="workbench-editor-section-label">O que a IA deve fazer agora</p>' +
     "</div>" +
     '<div class="assist-action-options" role="radiogroup" aria-label="Ação da intervenção">' +
     assistActionOptions +
-    "</div></section>" +
+    "</div>" +
+    assistActionHint +
+    "</section>" +
     '<div class="generate-divider workbench-divider"></div>' +
     '<div class="workbench-tag-layout">' +
     '<div class="workbench-form-row workbench-tag-picker-row">' +
-    renderInlineFieldIcon("tags", "Tags") +
+    renderInlineFieldIcon("tags", "Refs") +
     (dependencyPicker || '<div class="workbench-tag-picker-empty"></div>') +
     "</div>" +
     '<div class="dependency-chip-row workbench-tag-chip-row">' +
-    (selectedDependencyTags || '<p class="tiny muted bottomup-empty-copy">Selecione pelo menos uma tag para ancorar o pedido.</p>') +
+    (selectedDependencyTags || '<p class="tiny muted bottomup-empty-copy">Selecione pelo menos uma ref para ancorar o pedido.</p>') +
     "</div></div>" +
-    '<div class="generate-divider workbench-divider"></div>' +
     '<label class="field generate-icon-field workbench-select-field">' +
     renderInlineFieldIcon("card", "Materialização preferida") +
     '<select data-field="assist-preferred-container" aria-label="Materialização preferida" title="Materialização preferida">' +
     containerOptions +
     "</select></label>" +
-    '<div class="generate-divider workbench-divider"></div>' +
-    '<div class="generate-action-row assist-actions assist-actions-wide">' +
-    '<button class="icon-ghost tiny-icon generate-inline-icon" type="button" data-action="clear-prompt" title="Limpar prompt" aria-label="Limpar prompt">&#8635;</button>' +
+    '<div class="generate-action-row assist-actions assist-actions-wide assist-request-actions">' +
     '<label class="field generate-icon-field generate-model-field">' +
     renderInlineFieldIcon("intent", "Modelo") +
     '<select data-field="assist-model" aria-label="Modelo" title="Modelo">' +
     modelOptions +
     "</select></label>" +
-    renderPromptAttachmentButton() +
+    renderPromptAttachmentButton("open-assist-attachment-picker") +
     '<button class="icon-ghost tiny-icon generate-inline-icon" type="button" data-action="open-assist-config" title="Configurar IA" aria-label="Configurar IA">&#128273;</button>' +
     '<button class="open-main generate-submit" type="button" data-action="apply-assist" title="' +
     escapeHtml(submitLabel) +
@@ -1322,14 +1367,58 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
     renderUiIcon("sparkles", "generate-submit-icon") +
     "</button>" +
     "</div>" +
-    assistWarning +
-    assistStatus +
+    '<div class="generate-divider workbench-divider"></div>' +
+    '<section class="assist-feedback-panel' +
+    feedbackStatusClass +
+    '">' +
+    '<div class="assist-feedback-heading">' +
+    '<p class="workbench-editor-section-label">Feedback</p>' +
+    "</div>" +
+    '<div class="field generate-prompt-field workbench-prompt-field assist-feedback-field">' +
+    '<div class="generate-prompt-layout">' +
+    '<div class="workbench-prompt-tools">' +
+    renderInlineFieldIcon("prompt", "Retorno da intervenção") +
+    '<button class="icon-ghost tiny-icon generate-inline-icon assist-feedback-edit-button" type="button" data-action="toggle-feedback-edit" aria-pressed="' +
+    (editorSupport.feedbackEditing ? "true" : "false") +
+    '" title="' +
+    escapeHtml(editorSupport.feedbackEditing ? "Concluir edição do retorno" : "Editar retorno") +
+    '" aria-label="' +
+    escapeHtml(editorSupport.feedbackEditing ? "Concluir edição do retorno" : "Editar retorno") +
+    '"' +
+    (!feedbackCanEdit ? ' disabled aria-disabled="true"' : "") +
+    ">" +
+    renderUiIcon(editorSupport.feedbackEditing ? "ready-state" : "edit", "generate-submit-icon") +
+    "</button>" +
+    "</div>" +
+    '<div class="generate-prompt-content assist-feedback-content">' +
+    '<textarea data-field="assist-feedback" class="assist-prompt assist-feedback-textarea" aria-label="Retorno da intervenção" title="Retorno da intervenção"' +
+    (editorSupport.feedbackEditing ? "" : ' readonly aria-readonly="true"') +
+    ">" +
+    escapeHtml(feedbackValue) +
+    "</textarea></div></div></div>" +
+    '<div class="generate-action-row assist-actions assist-actions-wide assist-request-actions assist-feedback-actions">' +
+    '<label class="field generate-icon-field generate-model-field">' +
+    renderInlineFieldIcon("intent", "Modelo") +
+    '<select data-field="assist-feedback-model" aria-label="Modelo" title="Modelo">' +
+    modelOptions +
+    "</select></label>" +
+    renderPromptAttachmentButton("open-assist-feedback-attachment-picker") +
+    '<button class="icon-ghost tiny-icon generate-inline-icon" type="button" data-action="open-assist-feedback-config" title="Configurar IA" aria-label="Configurar IA">&#128273;</button>' +
+    '<button class="open-main generate-submit" type="button" data-action="apply-assist-feedback" title="' +
+    escapeHtml(editorSupport.feedbackSubmitLabel || "Iterar") +
+    '" aria-label="' +
+    escapeHtml(editorSupport.feedbackSubmitLabel || "Iterar") +
+    '"' +
+    (!editorSupport.feedbackRequestReady ? ' disabled aria-disabled="true"' : "") +
+    ">" +
+    renderUiIcon("sparkles", "generate-submit-icon") +
+    "</button></div></section>" +
     "</section>";
 
   return (
     '<section class="screen microsequence-workbench-screen">' +
     renderTopbar({
-      title: microsequence?.title || "Microssequência",
+      title: course?.title || course?.id || "Curso",
       canGoBack: true,
       backTitle: "Voltar para a lição",
       actions: [

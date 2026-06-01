@@ -1,9 +1,12 @@
-import { validateDidacticDepth } from "./validateDidacticDepth.js";
-import { annotateDidacticIssue } from "./didacticIssueCatalog.js";
-import { validateGeneratedCardsStudyTrack } from "./validateGeneratedCardsStudyTrack.js";
-
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
+}
+
+function normalizeToken(value) {
+  return text(value)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
 }
 
 function collectStrings(value, path = "card") {
@@ -19,140 +22,457 @@ function collectStrings(value, path = "card") {
   return Object.entries(value).flatMap(([key, item]) => collectStrings(item, `${path}.${key}`));
 }
 
-const DIDACTIC_PATTERNS = Object.freeze([
-  { pattern: /\b(card|exemplo|quest[aã]o)\s+anterior\b/i, message: "referência a card anterior." },
-  { pattern: /\b(figura|tabela|trecho)\s+acima\b/i, message: "referência a tabela/figura/trecho acima." },
-  { pattern: /\bcomo vimos\b/i, message: "\"como vimos\"." },
-  { pattern: /\bna aula\b/i, message: "\"na aula\"." },
-  { pattern: /\bno material\b/i, message: "\"no material\"." },
-  { pattern: /\bno pdf\b/i, message: "\"no PDF\"." },
-  { pattern: /\b(prompt|pipeline|schema|json|recurso|container|validador)\b/i, message: "linguagem de bastidor." }
-]);
-
-function gapTooLong(value) {
-  for (const match of text(value).matchAll(/\[\[([\s\S]*?)\]\]/g)) {
-    const answer = text(match[1].split("::")[0]);
-    if (answer.length > 40 || answer.split(/\s+/).filter(Boolean).length > 5) {
-      return true;
-    }
-  }
-  return false;
+function hasGapSyntax(value) {
+  return /\[\[[\s\S]*?\]\]/u.test(text(value));
 }
 
-function cardMainText(card) {
-  return text(card?.text || card?.question || card?.prompt || card?.code || "");
+function collectCompositeBlockStrings(card = {}) {
+  return (Array.isArray(card?.blocks) ? card.blocks : []).flatMap((block) => {
+    const kind = text(block?.kind);
+    if (kind === "heading" || kind === "paragraph") {
+      return [text(block?.value)];
+    }
+    if (kind === "choice") {
+      return [
+        text(block?.question),
+        ...(Array.isArray(block?.options) ? block.options.map((option) => text(option?.text)) : [])
+      ];
+    }
+    return [
+      text(block?.prompt),
+      text(block?.code)
+    ];
+  }).filter(Boolean);
+}
+
+function cardMainText(card = {}) {
+  if (text(card?.resource) === "composite") {
+    return collectCompositeBlockStrings(card).join(" ");
+  }
+  const optionText = Array.isArray(card.options) ? card.options.map((option) => text(option?.text)).filter(Boolean).join(" ") : "";
+  return [card.text, card.question, card.prompt, card.code, optionText].map(text).filter(Boolean).join(" ");
+}
+
+function requiresNarrativePrompt(card = {}) {
+  return ["flow", "tree", "graph", "relation_map", "matrix", "plane"].includes(text(card?.resource));
+}
+
+function cardFullText(card = {}) {
+  return [cardMainText(card), text(card.after)].filter(Boolean).join(" ");
+}
+
+function cardLooksOpenEndedPractice(card = {}) {
+  if (text(card.exercise) === "choice") {
+    return false;
+  }
+  if (text(card.resource) === "paragraph" && hasGapSyntax(card.text)) {
+    return false;
+  }
+  return /\b(explique|responda|justifique|liste|descreva|nomeie|indique|escreva)\b/iu.test(cardMainText(card));
+}
+
+function referencesExternalCase(card = {}) {
+  return /\b(caso|problema|situacao|situação|tabela acima|card anterior|como vimos|no material|no pdf)\b/iu.test(cardMainText(card));
+}
+
+function cardMaterializesContext(card = {}) {
+  if (text(card.resource) === "choice") {
+    return Array.isArray(card.options) && card.options.length >= 3;
+  }
+  if (text(card.resource) === "table") {
+    return Array.isArray(card.rows) && card.rows.length > 0;
+  }
+  if (text(card.resource) === "composite") {
+    const blocks = Array.isArray(card?.blocks) ? card.blocks : [];
+    const hasChoice = blocks.some((block) => text(block?.kind) === "choice");
+    const hasRenderableCase = blocks.some((block) => {
+      const kind = text(block?.kind);
+      if (kind === "graph") {
+        return Array.isArray(block?.vertices) && block.vertices.length > 0 && Array.isArray(block?.edges) && block.edges.length > 0;
+      }
+      if (kind === "table") {
+        return Array.isArray(block?.rows) && block.rows.length > 0;
+      }
+      if (kind === "paragraph") {
+        return text(block?.value).length > 0;
+      }
+      return text(block?.prompt).length > 0;
+    });
+    return hasRenderableCase && (text(card?.exercise) !== "choice" || hasChoice);
+  }
+  if (text(card.resource) === "graph") {
+    return Array.isArray(card.vertices) && card.vertices.length > 0 && Array.isArray(card.edges) && card.edges.length > 0;
+  }
+  if (text(card.resource) === "relation_map") {
+    return (
+      Array.isArray(card?.leftSet?.items) &&
+      card.leftSet.items.length > 0 &&
+      Array.isArray(card?.rightSet?.items) &&
+      card.rightSet.items.length > 0 &&
+      Array.isArray(card?.relations) &&
+      card.relations.length > 0
+    );
+  }
+  if (text(card.resource) === "flow") {
+    return !!(card?.structure && typeof card.structure === "object" && Array.isArray(card.structure.items) && card.structure.items.length > 0);
+  }
+  if (text(card.resource) === "tree") {
+    return Array.isArray(card.nodes) && card.nodes.length > 0;
+  }
+  if (text(card.resource) === "code") {
+    return text(card.code).length > 0;
+  }
+  if (text(card.resource) === "matrix") {
+    return (Array.isArray(card.values) && card.values.length > 0) || (Array.isArray(card.sequence) && card.sequence.length > 0);
+  }
+  if (text(card.resource) === "plane") {
+    return (
+      (Array.isArray(card.x) && card.x.length > 0 && Array.isArray(card.y) && card.y.length > 0) ||
+      (Array.isArray(card.vector) && card.vector.length > 0) ||
+      (Array.isArray(card.vectors) && card.vectors.length > 0) ||
+      (Array.isArray(card.sum) && card.sum.length > 0) ||
+      Boolean(card.scale && typeof card.scale === "object" && Array.isArray(card.scale.vector) && card.scale.vector.length > 0) ||
+      (Array.isArray(card.distance) && card.distance.length > 0) ||
+      (Array.isArray(card.result) && card.result.length > 0) ||
+      (typeof card.result === "string" && text(card.result).length > 0)
+    );
+  }
+  return cardMainText(card).length >= 20;
+}
+
+function containsBackstageLanguage(card = {}) {
+  return /\b(prompt|schema|json|container|validador|pipeline|recurso|llm)\b/iu.test(cardMainText(card));
+}
+
+function mentionsForbiddenTerms(card = {}, terms = []) {
+  const source = normalizeToken(cardMainText(card));
+  return (Array.isArray(terms) ? terms : []).some((term) => {
+    const token = normalizeToken(term);
+    return token && source.includes(token);
+  });
+}
+
+function mentionsKnownSignal(card = {}, signals = []) {
+  const sourceText = cardFullText(card);
+  const source = normalizeToken(sourceText);
+  const sourceTokens = new Set(uniqueNormalizedTokensFromText(sourceText));
+  return (Array.isArray(signals) ? signals : []).some((signal) => {
+    const token = normalizeToken(signal);
+    if (token && source.includes(token)) {
+      return true;
+    }
+    const signalTokens = uniqueNormalizedTokensFromText(signal);
+    if (!signalTokens.length) {
+      return false;
+    }
+    let matches = 0;
+    signalTokens.forEach((item) => {
+      if (sourceTokens.has(item)) {
+        matches += 1;
+      }
+    });
+    return matches >= Math.min(2, signalTokens.length);
+  });
+}
+
+function plannedRoleLooksLikePractice(role = "") {
+  return ["practice", "practice_more", "fix_error", "review"].includes(text(role));
+}
+
+function normalizedList(values = []) {
+  return (Array.isArray(values) ? values : [])
+    .map((item) => normalizeToken(item))
+    .filter(Boolean);
+}
+
+function uniqueNormalizedTokensFromText(value = "") {
+  return [...new Set(
+    normalizeToken(value)
+      .replace(/\[\[[\s\S]*?\]\]/g, " gap ")
+      .split(/[^a-z0-9]+/i)
+      .map((item) => item.trim())
+      .filter((item) => item.length >= 3)
+  )];
+}
+
+function overlapRatio(left = [], right = []) {
+  const leftSet = new Set(left);
+  const rightSet = new Set(right);
+  const union = new Set([...leftSet, ...rightSet]);
+  if (!union.size) {
+    return 0;
+  }
+  let intersection = 0;
+  union.forEach((item) => {
+    if (leftSet.has(item) && rightSet.has(item)) {
+      intersection += 1;
+    }
+  });
+  return intersection / union.size;
+}
+
+function extractGapMetadata(card = {}) {
+  const raw = text(card?.text);
+  const match = raw.match(/\[\[([\s\S]*?)\]\]/u);
+  if (!match) {
+    return null;
+  }
+  const parts = match[1].split("|").map((item) => text(item)).filter(Boolean);
+  const [firstPart = "", ...otherOptions] = parts;
+  const [answer = "", canonical = ""] = firstPart.split("::").map((item) => text(item));
+  const resolvedAnswer = answer || canonical;
+  const options = [canonical || resolvedAnswer, ...otherOptions].map((item) => normalizeToken(item)).filter(Boolean);
+  return {
+    answer: normalizeToken(resolvedAnswer),
+    options,
+    stemTokens: uniqueNormalizedTokensFromText(raw)
+  };
+}
+
+function cardCaseSignature(card = {}) {
+  const resource = text(card?.resource);
+  if (resource === "paragraph") {
+    return JSON.stringify({
+      resource,
+      text: normalizeToken(card?.text)
+    });
+  }
+  if (resource === "choice") {
+    return JSON.stringify({
+      resource,
+      question: normalizeToken(card?.question),
+      options: normalizedList((card.options || []).map((option) => option?.text))
+    });
+  }
+  if (resource === "composite") {
+    return JSON.stringify({
+      resource,
+      blocks: (Array.isArray(card?.blocks) ? card.blocks : []).map((block) => {
+        const kind = text(block?.kind);
+        if (kind === "heading" || kind === "paragraph") {
+          return { kind, value: normalizeToken(block?.value) };
+        }
+        if (kind === "choice") {
+          return {
+            kind,
+            question: normalizeToken(block?.question),
+            options: normalizedList((block.options || []).map((option) => option?.text))
+          };
+        }
+        if (kind === "graph") {
+          return {
+            kind,
+            prompt: normalizeToken(block?.prompt),
+            vertices: (Array.isArray(block?.vertices) ? block.vertices : []).map((item) => normalizeToken(item?.label || item?.id)),
+            edges: (Array.isArray(block?.edges) ? block.edges : []).map((item) => `${normalizeToken(item?.from)}>${normalizeToken(item?.to)}:${normalizeToken(item?.label)}`)
+          };
+        }
+        return {
+          kind,
+          prompt: normalizeToken(block?.prompt),
+          values: JSON.stringify(block || "")
+        };
+      })
+    });
+  }
+  if (resource === "code") {
+    return JSON.stringify({
+      resource,
+      prompt: normalizeToken(card?.prompt),
+      code: normalizeToken(card?.code),
+      question: normalizeToken(card?.question),
+      options: normalizedList((card.options || []).map((option) => option?.text))
+    });
+  }
+  if (resource === "table") {
+    return JSON.stringify({
+      resource,
+      columns: normalizedList(card?.columns),
+      rows: (Array.isArray(card?.rows) ? card.rows : []).map((row) => normalizedList(row)),
+      question: normalizeToken(card?.question),
+      options: normalizedList((card.options || []).map((option) => option?.text))
+    });
+  }
+  if (resource === "graph") {
+    return JSON.stringify({
+      resource,
+      prompt: normalizeToken(card?.prompt),
+      vertices: (Array.isArray(card?.vertices) ? card.vertices : []).map((item) => normalizeToken(item?.label || item?.id)),
+      edges: (Array.isArray(card?.edges) ? card.edges : []).map((item) => `${normalizeToken(item?.from)}>${normalizeToken(item?.to)}:${normalizeToken(item?.label)}`),
+      question: normalizeToken(card?.question),
+      options: normalizedList((card.options || []).map((option) => option?.text))
+    });
+  }
+  if (resource === "relation_map") {
+    return JSON.stringify({
+      resource,
+      prompt: normalizeToken(card?.prompt),
+      leftSet: (Array.isArray(card?.leftSet?.items) ? card.leftSet.items : []).map((item) => normalizeToken(item?.label || item?.id)),
+      rightSet: (Array.isArray(card?.rightSet?.items) ? card.rightSet.items : []).map((item) => normalizeToken(item?.label || item?.id)),
+      relations: (Array.isArray(card?.relations) ? card.relations : []).map((item) => `${normalizeToken(item?.from)}>${normalizeToken(item?.to)}`),
+      pairList: normalizedList(card?.pairList),
+      question: normalizeToken(card?.question),
+      options: normalizedList((card.options || []).map((option) => option?.text))
+    });
+  }
+  if (resource === "matrix") {
+    return JSON.stringify({
+      resource,
+      prompt: normalizeToken(card?.prompt),
+      question: normalizeToken(card?.question),
+      options: normalizedList((card.options || []).map((option) => option?.text)),
+      values: Array.isArray(card?.values) ? card.values : [],
+      sequence: Array.isArray(card?.sequence) ? card.sequence : [],
+      highlight: card?.highlight || null,
+      dividerAfterColumn: Number.isInteger(card?.dividerAfterColumn) ? card.dividerAfterColumn : null
+    });
+  }
+  if (resource === "plane") {
+    return JSON.stringify({
+      resource,
+      prompt: normalizeToken(card?.prompt),
+      question: normalizeToken(card?.question),
+      options: normalizedList((card.options || []).map((option) => option?.text)),
+      x: Array.isArray(card?.x) ? card.x : [],
+      y: Array.isArray(card?.y) ? card.y : [],
+      vector: Array.isArray(card?.vector) ? card.vector : [],
+      vectors: Array.isArray(card?.vectors) ? card.vectors : [],
+      sum: Array.isArray(card?.sum) ? card.sum : [],
+      scale: card?.scale || null,
+      distance: Array.isArray(card?.distance) ? card.distance : [],
+      result: card?.result ?? null
+    });
+  }
+  if (resource === "flow" || resource === "tree") {
+    return JSON.stringify({
+      resource,
+      prompt: normalizeToken(card?.prompt),
+      question: normalizeToken(card?.question),
+      options: normalizedList((card.options || []).map((option) => option?.text)),
+      values: JSON.stringify(resource === "flow" ? (card?.structure || "") : (card?.nodes || ""))
+    });
+  }
+  return normalizeToken(cardMainText(card));
+}
+
+function gapLooksLikeRepeatedCase(current = {}, previous = {}) {
+  const currentGap = extractGapMetadata(current);
+  const previousGap = extractGapMetadata(previous);
+  if (!currentGap || !previousGap) {
+    return false;
+  }
+  if (!currentGap.answer || currentGap.answer !== previousGap.answer) {
+    return false;
+  }
+  if (overlapRatio(currentGap.options, previousGap.options) < 0.66) {
+    return false;
+  }
+  return overlapRatio(currentGap.stemTokens, previousGap.stemTokens) >= 0.5;
 }
 
 export function validateGeneratedCardsDidactic(cards = [], generationContract = {}) {
   const didacticErrors = [];
   const didacticWarnings = [];
   const directIssues = [];
-  const planByPosition = new Map((generationContract?.didacticPlan?.cardPlan || []).map((item) => [item.position, item]));
+  const planByPosition = new Map((Array.isArray(generationContract?.plan) ? generationContract.plan : []).map((item) => [Number(item.position), item]));
+  const guide = generationContract?.guide || {};
+  const knownErrorSignals = [
+    ...(Array.isArray(generationContract?.knownErrors) ? generationContract.knownErrors : []),
+    ...(Array.isArray(generationContract?.microsequence?.checks) ? generationContract.microsequence.checks : []),
+    ...(Array.isArray(generationContract?.plan) ? generationContract.plan.flatMap((item) => item?.checks || []) : []),
+    ...((Array.isArray(generationContract?.context?.refs) ? generationContract.context.refs : []).flatMap((item) => item?.checks || [])),
+    ...(Array.isArray(generationContract?.context?.next?.checks) ? generationContract.context.next.checks : [])
+  ].map((item) => text(item)).filter(Boolean);
+  const firstPlanCard = Array.isArray(generationContract?.plan) ? generationContract.plan[0] : null;
+  const sortedCards = cards.slice().sort((a, b) => Number(a.position) - Number(b.position));
 
   cards.forEach((card, index) => {
     const prefix = `cards[${index}]`;
-    collectStrings(card, prefix).forEach(({ path, value }) => {
-      DIDACTIC_PATTERNS.forEach(({ pattern, message }) => {
-        if (pattern.test(value)) {
-          directIssues.push(
-            annotateDidacticIssue({
-              type: "unstable_or_backstage_reference",
-              target: path,
-              message: `${path} ${message}`
-            })
-          );
-        }
-      });
-      if (gapTooLong(value)) {
-        directIssues.push(
-          annotateDidacticIssue({
-            type: "practice_without_local_context",
-            target: path,
-            message: `${path} lacuna longa.`
-          })
-        );
-      }
-    });
+    const planned = planByPosition.get(Number(card?.position));
+    const looksLikePractice = plannedRoleLooksLikePractice(planned?.role) || text(card.kind) === "exercise";
+    const isFixError = text(planned?.role) === "fix_error";
+    const mentionsAvoid = mentionsForbiddenTerms(card, guide.avoid);
+    const mentionsKnownError = mentionsKnownSignal(card, knownErrorSignals);
+    const explicitErrorFraming = /\b(confus[aã]o|confundir|troca|equ[ii]voco|erro)\b/iu.test(cardFullText(card));
 
-    if (["block_gap_fill", "multiple_choice", "code_editor"].includes(card?.resourceType) && !cardMainText(card)) {
-      directIssues.push(
-        annotateDidacticIssue({
-          type: "practice_without_local_context",
-          target: prefix,
-          message: `${prefix} prática sem contexto local.`
-        })
-      );
+    if (text(card.kind) === "theory" && hasGapSyntax(card.text)) {
+      directIssues.push(`${prefix} kind=theory não pode conter lacunas.`);
     }
-    if (card?.resourceType === "multiple_choice") {
-      const correct = (card.options || []).find((option) => option?.optionId === card.correctOptionId);
-      if (correct && text(card.question).toLowerCase().includes(text(correct.label).toLowerCase())) {
-        directIssues.push(
-          annotateDidacticIssue({
-            type: "answer_revealed_before_practice",
-            target: prefix,
-            message: `${prefix} resposta revelada no mesmo card.`
-          })
-        );
-      }
+    if (text(card.resource) === "paragraph" && !text(card.text)) {
+      directIssues.push(`${prefix} paragraph precisa ter text não vazio.`);
     }
-    const planned = planByPosition.get(card.position);
-    if (
-      planned &&
-      ["guided_gap", "check_understanding", "check_and_consolidate"].includes(planned.role) &&
-      card.position === 1
-    ) {
-      directIssues.push(
-        annotateDidacticIssue({
-          type: "practice_before_explanation",
-          target: prefix,
-          message: `${prefix} prática antes de microteoria.`
-        })
-      );
+    if (text(card.resource) === "choice" && !text(card.question)) {
+      directIssues.push(`${prefix} choice precisa ter question não vazio.`);
+    }
+    if (text(card.kind) === "theory" && requiresNarrativePrompt(card) && !text(card.prompt)) {
+      directIssues.push(`${prefix} card teórico visual precisa ter prompt curto explicando o caso no próprio card.`);
+    }
+    if (text(card.kind) === "exercise" && !["gap", "choice"].includes(text(card.exercise))) {
+      directIssues.push(`${prefix} kind=exercise precisa usar exercise gap ou choice.`);
+    }
+    if (looksLikePractice && cardLooksOpenEndedPractice(card)) {
+      directIssues.push(`${prefix} prática aberta: use lacuna por opções ou choice.`);
+    }
+    if (looksLikePractice && referencesExternalCase(card) && !cardMaterializesContext(card)) {
+      directIssues.push(`${prefix} cita contexto externo sem materializar os dados necessários no próprio card.`);
+    }
+    if (containsBackstageLanguage(card)) {
+      directIssues.push(`${prefix} linguagem de bastidor rejeitada.`);
+    }
+    if (mentionsForbiddenTerms(card, guide.exclude)) {
+      directIssues.push(`${prefix} usa termo proibido de guide.exclude.`);
+    }
+    if (mentionsAvoid && (!isFixError || !mentionsKnownError)) {
+      directIssues.push(`${prefix} usa termo de guide.avoid.`);
+    }
+    if (isFixError && knownErrorSignals.length && explicitErrorFraming && !mentionsKnownError) {
+      directIssues.push(`${prefix} fix_error precisa corrigir erro conhecido do escopo.`);
     }
   });
 
-  const depth = validateDidacticDepth({
-    microsequence: generationContract?.context?.microsequence || {},
-    cards,
-    existingMicrosequences: generationContract?.context?.lesson?.microsequenceLine || [],
-    weakModelMode: generationContract?.weakModelMode?.modeId === "weakModelMode"
-  });
-  const studyTrack = validateGeneratedCardsStudyTrack(cards, generationContract);
-  const allIssues = [...directIssues, ...(studyTrack.issues || []), ...depth.shallowErrors, ...depth.missingDepth];
-  allIssues.forEach((item) => {
-    if (item.blocksValidation === true) {
-      didacticErrors.push(item.message);
+  sortedCards.forEach((card, index) => {
+    if (index === 0) {
       return;
     }
-      didacticWarnings.push(item.message);
+    const currentPlan = planByPosition.get(Number(card?.position));
+    const previousCard = sortedCards[index - 1];
+    const previousPlan = planByPosition.get(Number(previousCard?.position));
+    const currentRole = text(currentPlan?.role);
+    const previousRole = text(previousPlan?.role);
+    if (!["practice_more", "fix_error"].includes(currentRole)) {
+      return;
+    }
+    if (!plannedRoleLooksLikePractice(previousRole)) {
+      return;
+    }
+    if (cardCaseSignature(card) === cardCaseSignature(previousCard)) {
+      directIssues.push(`cards[${index}] ${currentRole} repete o mesmo caso do card anterior sem variação suficiente.`);
+      return;
+    }
+    if (text(card?.resource) === "paragraph" && text(previousCard?.resource) === "paragraph" && gapLooksLikeRepeatedCase(card, previousCard)) {
+      directIssues.push(`cards[${index}] ${currentRole} reaproveita o mesmo caso concreto do card anterior com pouca variação didática.`);
+    }
   });
 
-  const mergedAudit = {
-    ...depth,
-    directIssues,
-    studyTrackIssues: studyTrack.issues || [],
-    blockingIssues: [
-      ...directIssues.filter((item) => item.blocksValidation === true),
-      ...(studyTrack.issues || []).filter((item) => item.blocksValidation === true),
-      ...(depth.blockingIssues || [])
-    ],
-    actionableIssues: [
-      ...directIssues.filter((item) => item.allowsAutoIteration === true),
-      ...(studyTrack.issues || []).filter((item) => item.allowsAutoIteration === true),
-      ...(depth.actionableIssues || [])
-    ],
-    heuristicSignals: [
-      ...directIssues.filter((item) => item.severity === "heuristic_signal"),
-      ...(studyTrack.issues || []).filter((item) => item.severity === "heuristic_signal"),
-      ...(depth.heuristicSignals || [])
-    ],
-    allIssues
-  };
+  if (firstPlanCard && text(firstPlanCard.kind) === "theory") {
+    const firstGenerated = cards.slice().sort((a, b) => Number(a.position) - Number(b.position))[0];
+    if (firstGenerated && text(firstGenerated.kind) !== "theory") {
+      directIssues.push("cards[0] prática antes da explicação inicial.");
+    }
+  }
+
+  didacticErrors.push(...directIssues);
 
   return {
     ok: didacticErrors.length === 0,
     didacticErrors,
     didacticWarnings,
-    didacticAudit: mergedAudit
+    didacticAudit: {
+      directIssues: directIssues.map((message) => ({ message, blocksValidation: true })),
+      blockingIssues: directIssues.map((message) => ({ message, blocksValidation: true })),
+      actionableIssues: [],
+      heuristicSignals: [],
+      allIssues: directIssues.map((message) => ({ message, blocksValidation: true }))
+    }
   };
 }

@@ -1,80 +1,97 @@
 # Visão do produto
 
-AraLearn é um app local-first/offline-first para autoria e estudo de trilhas didáticas. Seu objetivo é ajudar o usuário a transformar informação dispersa em percurso estruturado, revisável e praticável.
+AraLearn nasce de um problema simples de formular e difícil de resolver: hoje é fácil reunir informação, mas continua sendo difícil transformá-la em estudo organizado, retomável e verificável.
 
-## Problema
+Em disciplinas acadêmicas, técnicas e profissionais, o estudante costuma ter acesso a ementas, slides, PDFs, vídeos, documentação, fóruns, listas de exercício, anotações pessoais e respostas produzidas por modelos de linguagem. O obstáculo raramente é apenas “encontrar conteúdo”. O obstáculo é dar forma ao estudo: escolher recorte, definir sequência, decidir onde praticar, registrar erro, preservar revisão e conseguir retomar depois de uma interrupção.
 
-A ubiquidade da internet e dos sistemas de IA ampliou radicalmente o acesso a informação. O problema deixou de ser apenas encontrar conteúdo. O estudante encontra PDFs, apostilas, slides, respostas geradas por modelos, listas de exercícios, documentação técnica e vídeos, mas muitas vezes não consegue ordenar esse material em uma sequência de estudo.
+## O problema que o AraLearn enfrenta
 
-Sem estrutura externa, o acúmulo de informação tende a produzir desorientação. O usuário sabe que há conteúdo disponível, mas não sabe por onde começar, o que ignorar, quando praticar, como retomar ou como avaliar se já pode avançar.
+Ferramentas diferentes resolvem partes desse problema, mas nenhuma delas, isoladamente, fecha o ciclo.
 
-## Proposta
+[Google Search](https://www.google.com/search/about/) e a [Wikipédia](https://www.wikipedia.org/) ajudam a localizar informação e panorama. [NotebookLM](https://notebooklm.google/) aproxima geração textual e fontes explicitamente selecionadas. [Anki](https://apps.ankiweb.net/) consolida bem a revisão por cartões. [Duolingo](https://www.duolingo.com/) e [SoloLearn](https://www.sololearn.com/) mostram a força de percursos guiados com unidades pequenas. [Obsidian](https://obsidian.md/) reforça a autonomia na organização local do conhecimento.
 
-O AraLearn organiza o estudo em uma árvore explícita:
+O AraLearn se instala em outro ponto do ecossistema: ele tenta transformar material heterogêneo em **trilha didática editável**, um percurso em que cada etapa tenha função, ordem, fronteira, continuidade e forma de prática.
+
+## A proposta
+
+O produto organiza o estudo em uma árvore explícita:
 
 ```text
-curso -> módulo -> lição -> microssequência -> card
+curso -> módulo -> lição -> microssequência -> versão -> card
 ```
 
-Essa estrutura não é apenas armazenamento. Ela funciona como forma de orientação. O curso delimita o domínio geral. O módulo recorta uma região. A lição define uma etapa de aprendizagem. A microssequência concentra uma função didática. O card materializa uma interação específica.
+Essa árvore não existe para burocratizar o conteúdo. Ela existe para tornar o estudo manipulável.
 
-O app separa duas ações:
+- O **curso** delimita o campo geral.
+- O **módulo** recorta uma região do curso.
+- A **lição** organiza uma etapa coerente desse recorte.
+- A **microssequência** concentra uma unidade curta de aprendizagem.
+- A **versão** preserva uma materialização específica dessa etapa.
+- O **card** realiza explicação, exemplo, exercício ou representação.
 
-1. planejar uma trilha até microssequências;
-2. materializar cards em uma microssequência escolhida.
+O centro do produto é a microssequência. Ela é grande o bastante para situar um problema local e pequena o bastante para caber no ritmo de quem estuda entre trabalho, deslocamento, aula e obrigações familiares.
 
-Essa separação permite que o usuário veja o caminho antes de gerar detalhes, corrija o escopo antes de estudar e peça novas versões apenas onde houver necessidade.
+## Por que a microssequência é decisiva
 
-## Lugar no ecossistema
+O card isolado é rápido, mas pode perder contexto. O curso inteiro é completo, mas costuma ser grande demais para resolver uma dúvida ou praticar uma operação específica. A microssequência ocupa o espaço intermediário.
 
-AraLearn se situa entre ferramentas de flashcards, plataformas de prática guiada, sistemas de notas locais, wikis, versionamento e assistentes de IA.
+Ela permite:
 
-Ele dialoga com esse ecossistema, mas tem uma direção específica: transformar informação heterogênea em percurso de estudo, com recorte explícito, prática situada, revisão e autoria local.
+- explicar uma regra local;
+- mostrar um caso suficiente;
+- propor prática fechada;
+- corrigir um erro provável;
+- preparar a continuação.
 
-A discussão mais ampla está em [Contexto de produto e referências](contexto-produto-e-referencias.md).
+Com isso, o produto evita dois defeitos comuns: explicação sem aplicação e exercício sem contexto.
 
-## Microssequência
+## Dois momentos de trabalho
 
-A microssequência é a unidade didática central do AraLearn.
+O AraLearn separa o processo em dois movimentos.
 
-Um card isolado pode explicar algo ou fazer uma pergunta, mas normalmente não basta para representar uma progressão. A microssequência reúne cards que trabalham juntos: uma ideia, um procedimento, um contraste, uma prática guiada, uma correção de erro comum ou uma ponte para a etapa seguinte.
+O primeiro é **planejar a trilha**. O usuário define assunto, objetivo, itens que entram, itens que ficam fora, convenções de notação, observações de prova ou de uso profissional. A partir disso, o app pode propor módulos, lições e microssequências.
 
-A pergunta principal não é “quantos cards há?”, mas “esta etapa permite estudar e praticar uma pequena unidade de sentido?”.
+O segundo é **materializar uma etapa local**. O usuário abre uma microssequência específica e pede explicação, prática, correção, apoio local ou continuação. O serviço textual trabalha sobre aquele recorte; o app valida o resultado e preserva a nova versão.
 
-## Papel da IA
+Na documentação técnica, esses movimentos aparecem como `top-down` e `bottom-up`. Essa distinção importa porque evita que uma única chamada ao modelo precise planejar o curso inteiro e escrever todos os cards finais de uma vez.
 
-A IA no AraLearn é um mecanismo de assistência. Ela ajuda a planejar estruturas, gerar cards, melhorar explicações, propor prática e criar complementos. Ela trabalha dentro de contratos e recebe contexto delimitado.
+## Autoria assistida, não delegada
 
-O app não usa a IA como autoridade única sobre o material. O usuário pode revisar, editar, descartar, gerar outra versão e manter o controle sobre a trilha.
+O AraLearn combina autoria humana e assistência textual. O usuário continua sendo autor do projeto: define o recorte, decide o que entra, revisa o que foi produzido, corrige o que julga inadequado e determina quando uma etapa está pronta.
 
-## Autoria e revisão
+O serviço textual ajuda em dois pontos:
 
-AraLearn trata o usuário como autor do projeto de estudo.
+- sugerindo organização da trilha a partir do escopo;
+- materializando cards dentro de uma microssequência aberta.
 
-A autoria aparece em decisões como:
+Essa escolha evita tratar a saída do modelo como material automaticamente confiável. O texto sugerido só entra no projeto depois de passar por contrato, validação e revisão.
 
-- definir o curso e seus módulos;
-- declarar o que entra e o que fica fora;
-- aceitar ou revisar microssequências planejadas;
-- gerar cards apenas quando a etapa será estudada;
-- corrigir explicações ou exercícios;
-- marcar uma microssequência como pronta.
+## Material local e cursos embarcados
 
-A revisão humana é parte do fluxo, não exceção.
+AraLearn foi desenhado com persistência local como referência primária do projeto. O material fica no dispositivo, pode ser exportado em JSON e continua disponível depois de salvo.
 
-## Público
+O app também pode incluir cursos embarcados já materializados. Eles funcionam como ponto de partida editável, não como conteúdo intocável. No estado atual, há três cursos oficiais:
 
-O produto foi pensado para estudantes, professores, monitores, autodidatas, pesquisadores e profissionais que precisam organizar estudo a partir de material heterogêneo.
+- `Matemática para Informática`, com foco em `Teoria dos Grafos`;
+- `Práticas e Ferramentas de Desenvolvimento de Software`, com foco na família Visual Basic;
+- `Organização e Arquitetura de Computadores`, com os módulos `MobileRAG` e `Filosofia da Computação Quântica`.
 
-Casos de uso típicos:
+Esses cursos ajudam a mostrar o que o produto faz sem exigir que todo usuário comece do zero.
 
-- disciplinas acadêmicas;
-- preparação para provas e concursos;
-- estudo de documentação técnica;
-- organização de tópicos de programação;
-- estudo guiado de artigos e capítulos;
-- revisão de conceitos com prática frequente.
+## Onde o AraLearn se distingue
+
+O produto não parte do card como unidade soberana, nem da conversa livre com IA, nem da nota solta, nem do curso fechado.
+
+Ele parte de uma tese mais específica:
+
+> informação só vira estudo sustentado quando ganha forma, progressão, prática, revisão e possibilidade de retomada.
+
+Por isso, sua singularidade não está em “ter IA” ou “ter cards”, mas na maneira como estrutura, geração, validação e persistência local foram articuladas no mesmo documento de projeto.
 
 ## Limites
 
-AraLearn não promete aprendizagem automática nem substitui professor, monitor, bibliografia ou revisão humana. O que ele oferece é uma arquitetura para transformar material em percurso, produzir prática situada e manter o estudo sob controle do usuário.
+O AraLearn não substitui bibliografia, aula, orientação docente, pesquisa, discussão crítica ou revisão humana. Também não garante que o serviço textual sempre produza conteúdo correto.
+
+O que o produto oferece é outra coisa: uma arquitetura de estudo que torna o material editável, versionável, exportável e auditável. O modelo sugere. O sistema delimita e valida. O usuário decide.
+
+Para a fundamentação pedagógica, crítica e bibliográfica dessa proposta, leia [Fundamentos, pesquisa e governança](fundamentos-pesquisa-e-governanca.md).

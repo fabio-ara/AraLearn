@@ -1,5 +1,6 @@
 import { createProfileTuning } from "./profileTuning.js";
 import { createDefaultCourseModel, listCourseModelOptions } from "./courseModelSemantics.js";
+import { parseJsonText } from "../engine/structuredText.js";
 import { resolveGenerationProviderRuntime } from "./projectGenerationRuntime.js";
 
 function text(value) {
@@ -94,7 +95,7 @@ function buildPlanningInferencePrompt({
     "Ajuste somente parâmetros, não princípios invariantes do sistema.",
     "Quando requireVocabularyMap for true, interprete isso como diretriz de trilha para introduzir, nomear, expandir abreviações, traduzir funcionalmente e só depois cobrar o uso de vocabulário técnico da linguagem.",
     "Use requireVocabularyMap = true quando o curso depender de termos, tags, comandos, operadores, siglas, notação ou palavras-chave que não devam ser aprendidos só por decoração visual.",
-    "Use o texto do pedido e os anexos como fonte principal. Use o planejamento atual apenas como fallback quando o pedido não deixar algo claro.",
+    "Use o texto do pedido e os anexos como fonte principal. Use o planejamento atual apenas como apoio secundário quando o pedido não deixar algo claro.",
     "",
     "PLANEJAMENTO ATUAL:",
     JSON.stringify(
@@ -203,40 +204,18 @@ export async function inferPlanningProfileTuning({
     currentProfileTuning: assistConfig.profileTuning || {},
     didacticProfileId: text(assistConfig.didacticProfileId)
   });
-  const response = await activeProvider.generateStructured({
+  if (typeof activeProvider?.generateText !== "function") {
+    throw new Error("Provider sem canal textual para inferir o planejamento didático.");
+  }
+  const response = parseJsonText((await activeProvider.generateText({
     ...runtime.providerOptions,
     modelId: runtime.modelId,
-    mode: "infer-planning-profile-tuning",
+    phase: "infer_planning_profile_tuning",
     system: "Responda somente JSON válido e preencha todos os campos do planejamento didático.",
     prompt,
-    schema: {
-      type: "object",
-      additionalProperties: false,
-      required: [
-        "targetStudentProfile",
-        "courseModelDescription",
-        "learningTrail",
-        "microsequenceProgression",
-        "minMicrosequences",
-        "targetMicrosequences",
-        "maxMicrosequences",
-        "requireCoreCoverageBeforeExtensions",
-        "requireVocabularyMap"
-      ],
-      properties: {
-        targetStudentProfile: { type: "string" },
-        courseModelDescription: { type: "string" },
-        learningTrail: { type: "string" },
-        microsequenceProgression: { type: "string" },
-        minMicrosequences: { type: "integer" },
-        targetMicrosequences: { type: "integer" },
-        maxMicrosequences: { type: "integer" },
-        requireCoreCoverageBeforeExtensions: { type: "boolean" },
-        requireVocabularyMap: { type: "boolean" }
-      }
-    },
-    temperature: 0.2
-  });
+    temperature: 0.2,
+    maxTokens: 2500
+  })).text);
 
   return {
     inferred: response || {},

@@ -82,6 +82,16 @@ export function normalizeAssistConfig(config = {}) {
   return {
     model: text(config.model) || DEFAULT_ASSIST_MODEL,
     apiKey: typeof config.apiKey === "string" ? config.apiKey.trim() : "",
+    baseUrl: typeof config.baseUrl === "string"
+      ? config.baseUrl.trim()
+      : typeof config.apiBaseUrl === "string"
+        ? config.apiBaseUrl.trim()
+        : "",
+    apiBaseUrl: typeof config.apiBaseUrl === "string"
+      ? config.apiBaseUrl.trim()
+      : typeof config.baseUrl === "string"
+        ? config.baseUrl.trim()
+        : "",
     selectedProfileId: selectedCustomProfile?.id || didacticProfileId,
     didacticProfileId,
     profileTuning: createProfileTuning(

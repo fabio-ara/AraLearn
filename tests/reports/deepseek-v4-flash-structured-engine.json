@@ -1,0 +1,1327 @@
+{
+  "createdAt": "2026-05-31T22:08:39.929Z",
+  "model": "deepseek-v4-flash",
+  "baseUrl": "https://api.deepseek.com",
+  "result": "success",
+  "fail_closed": false,
+  "phases": [
+    {
+      "phase": "top_down_structure",
+      "model": "deepseek-v4-flash",
+      "latencyMs": 4503,
+      "total_tokens": 984,
+      "completion_tokens": 711,
+      "prompt_cache_hit_tokens": 256,
+      "prompt_cache_miss_tokens": 17,
+      "slotErrors": [],
+      "slotRetries": 0,
+      "auditPatches": 0,
+      "finalValidation": null,
+      "resourcesUsed": [],
+      "choiceCount": 0,
+      "nonChoiceExerciseCount": 0,
+      "theoryDensityWarnings": [],
+      "scopeWarnings": [],
+      "dependencyWarnings": [],
+      "fail_closed": false,
+      "rawText": "{\n  \"schemaVersion\": \"aralearn.scope.v1\",\n  \"course\": {\n    \"title\": \"Matrizes básicas\",\n    \"goal\": \"Estudar leitura de matriz e posição a_ij.\",\n    \"evidencePriority\": [\"none\"]\n  },\n  \"modules\": [\n    {\n      \"title\": \"Matrizes\",\n      \"lessons\": [\n        {\n          \"title\": \"Introdução a matrizes\",\n          \"microsequences\": [\n            {\n              \"title\": \"Definição de matriz\",\n              \"goal\": \"Compreender o que é uma matriz e sua representação retangular.\",\n              \"role\": \"expositor\",\n              \"dependsOn\": [],\n              \"covers\": [\"matriz\", \"linha\", \"coluna\"],\n              \"checks\": [\"Identificar linhas e colunas em uma matriz dada.\"]\n            },\n            {\n              \"title\": \"Notação de matriz\",\n              \"goal\": \"Reconhecer a notação geral de uma matriz com índices i e j.\",\n              \"role\": \"expositor\",\n              \"dependsOn\": [\"Definição de matriz\"],\n              \"covers\": [\"posição a_ij\", \"índices\"],\n              \"checks\": [\"Dada uma matriz, escrever o elemento a_23.\"]\n            }\n          ]\n        },\n        {\n          \"title\": \"Leitura de posição a_ij\",\n          \"microsequences\": [\n            {\n              \"title\": \"Identificação de elementos\",\n              \"goal\": \"Localizar um elemento específico usando sua posição (i,j).\",\n              \"role\": \"praticante\",\n              \"dependsOn\": [\"Notação de matriz\"],\n              \"covers\": [\"posição a_ij\", \"leitura de matriz\"],\n              \"checks\": [\"Em uma matriz 3x3, encontrar o valor de a_21.\"]\n            },\n            {\n              \"title\": \"Exercícios de posição\",\n              \"goal\": \"Resolver exercícios variados de localização de elementos.\",\n              \"role\": \"praticante\",\n              \"dependsOn\": [\"Identificação de elementos\"],\n              \"covers\": [\"posição a_ij\"],\n              \"checks\": [\"Dada uma matriz, listar todos os elementos de uma linha específica.\"]\n            }\n          ]\n        },\n        {\n          \"title\": \"Matriz transposta\",\n          \"microsequences\": [\n            {\n              \"title\": \"Definição de transposta\",\n              \"goal\": \"Compreender o conceito de matriz transposta e como obtê-la.\",\n              \"role\": \"expositor\",\n              \"dependsOn\": [\"Notação de matriz\"],\n              \"covers\": [\"matriz transposta\", \"linha\", \"coluna\"],\n              \"checks\": [\"Explicar o que acontece com as linhas e colunas na transposição.\"]\n            },\n            {\n              \"title\": \"Cálculo da transposta\",\n              \"goal\": \"Calcular a transposta de uma matriz dada.\",\n              \"role\": \"praticante\",\n              \"dependsOn\": [\"Definição de transposta\"],\n              \"covers\": [\"matriz transposta\"],\n              \"checks\": [\"Dada uma matriz 2x3, escrever sua transposta.\"]\n            }\n          ]\n        }\n      ]\n    }\n  ]\n}",
+      "parsedSlots": null
+    },
+    {
+      "phase": "top_down_structure_audit",
+      "model": "deepseek-v4-flash",
+      "latencyMs": 2599,
+      "total_tokens": 1731,
+      "completion_tokens": 305,
+      "prompt_cache_hit_tokens": 0,
+      "prompt_cache_miss_tokens": 1426,
+      "slotErrors": [],
+      "slotRetries": 0,
+      "auditPatches": 0,
+      "finalValidation": null,
+      "resourcesUsed": [],
+      "choiceCount": 0,
+      "nonChoiceExerciseCount": 0,
+      "theoryDensityWarnings": [],
+      "scopeWarnings": [],
+      "dependencyWarnings": [],
+      "fail_closed": false,
+      "rawText": "PATCH MICROSEQUENCE\ntarget: Definição de matriz\ngoal: Compreender o que é uma matriz e sua representação retangular, incluindo linha e coluna.\ncovers: linha | coluna\nchecks: o aluno reconhece linha | o aluno reconhece coluna\n\nPATCH MICROSEQUENCE\ntarget: Notação de matriz\ngoal: Reconhecer a notação geral de uma matriz com índices i e j, incluindo linha e coluna.\ncovers: linha | coluna\nchecks: o aluno reconhece linha | o aluno reconhece coluna\n\nPATCH MICROSEQUENCE\ntarget: Definição de transposta\ngoal: Compreender o conceito de matriz transposta e como obtê-la, dependendo de noções de linha e coluna.\ndependsOn: Definição de matriz | Notação de matriz\ncovers: matriz transposta | coluna\nchecks: o aluno reconhece matriz transposta | o aluno reconhece coluna\nmoveAfter: Notação de matriz\n\nPATCH MICROSEQUENCE\ntarget: Cálculo da transposta\ngoal: Calcular a transposta de uma matriz dada, dependendo da definição de transposta.\ndependsOn: Definição de transposta\ncovers: matriz transposta\nchecks: o aluno reconhece matriz transposta\nmoveAfter: Definição de transposta",
+      "parsedSlots": {
+        "patches": [
+          {
+            "target": "Definição de matriz",
+            "fields": {
+              "goal": "Compreender o que é uma matriz e sua representação retangular, incluindo linha e coluna.",
+              "covers": "linha | coluna",
+              "checks": "o aluno reconhece linha | o aluno reconhece coluna"
+            }
+          },
+          {
+            "target": "Notação de matriz",
+            "fields": {
+              "goal": "Reconhecer a notação geral de uma matriz com índices i e j, incluindo linha e coluna.",
+              "covers": "linha | coluna",
+              "checks": "o aluno reconhece linha | o aluno reconhece coluna"
+            }
+          },
+          {
+            "target": "Definição de transposta",
+            "fields": {
+              "goal": "Compreender o conceito de matriz transposta e como obtê-la, dependendo de noções de linha e coluna.",
+              "dependsOn": "Definição de matriz | Notação de matriz",
+              "covers": "matriz transposta | coluna",
+              "checks": "o aluno reconhece matriz transposta | o aluno reconhece coluna",
+              "moveAfter": "Notação de matriz"
+            }
+          },
+          {
+            "target": "Cálculo da transposta",
+            "fields": {
+              "goal": "Calcular a transposta de uma matriz dada, dependendo da definição de transposta.",
+              "dependsOn": "Definição de transposta",
+              "covers": "matriz transposta",
+              "checks": "o aluno reconhece matriz transposta",
+              "moveAfter": "Definição de transposta"
+            }
+          }
+        ],
+        "invalidPatches": [],
+        "invalidGlobalLines": [],
+        "status": null
+      }
+    },
+    {
+      "phase": "top_down_structure_audit",
+      "model": "deepseek-v4-flash",
+      "latencyMs": 1481,
+      "total_tokens": 1475,
+      "completion_tokens": 53,
+      "prompt_cache_hit_tokens": 0,
+      "prompt_cache_miss_tokens": 1422,
+      "slotErrors": [],
+      "slotRetries": 0,
+      "auditPatches": 0,
+      "finalValidation": null,
+      "resourcesUsed": [],
+      "choiceCount": 0,
+      "nonChoiceExerciseCount": 0,
+      "theoryDensityWarnings": [],
+      "scopeWarnings": [],
+      "dependencyWarnings": [],
+      "fail_closed": false,
+      "rawText": "PATCH MICROSEQUENCE\ntarget: Definição de transposta\ndependsOn: Notação de matriz\nchecks: o aluno reconhece matriz transposta\no aluno reconhece coluna\nmoveAfter: Exercícios de posição",
+      "parsedSlots": {
+        "patches": [
+          {
+            "target": "Definição de transposta",
+            "fields": {
+              "dependsOn": "Notação de matriz",
+              "checks": "o aluno reconhece matriz transposta",
+              "moveAfter": "Exercícios de posição"
+            }
+          }
+        ],
+        "invalidPatches": [
+          {
+            "raw": "o aluno reconhece coluna",
+            "reason": "linha de patch top-down inválida"
+          }
+        ],
+        "invalidGlobalLines": [],
+        "status": null
+      }
+    },
+    {
+      "phase": "top_down_structure_audit",
+      "model": "deepseek-v4-flash",
+      "latencyMs": 1877,
+      "total_tokens": 1618,
+      "completion_tokens": 214,
+      "prompt_cache_hit_tokens": 256,
+      "prompt_cache_miss_tokens": 1148,
+      "slotErrors": [],
+      "slotRetries": 0,
+      "auditPatches": 0,
+      "finalValidation": null,
+      "resourcesUsed": [],
+      "choiceCount": 0,
+      "nonChoiceExerciseCount": 0,
+      "theoryDensityWarnings": [],
+      "scopeWarnings": [],
+      "dependencyWarnings": [],
+      "fail_closed": false,
+      "rawText": "PATCH MICROSEQUENCE\ntarget: Definição de matriz\ndependsOn: \nchecks: o aluno reconhece linha\n\nPATCH MICROSEQUENCE\ntarget: Notação de matriz\ndependsOn: Definição de matriz\nchecks: o aluno reconhece linha\n\nPATCH MICROSEQUENCE\ntarget: Identificação de elementos\ndependsOn: \nchecks: o aluno reconhece posição a_ij\n\nPATCH MICROSEQUENCE\ntarget: Exercícios de posição\ndependsOn: Identificação de elementos\nchecks: o aluno reconhece posição a_ij\n\nPATCH MICROSEQUENCE\ntarget: Definição de transposta\ndependsOn: \nchecks: o aluno reconhece matriz transposta, o aluno reconhece coluna\n\nPATCH MICROSEQUENCE\ntarget: Cálculo da transposta\ndependsOn: Definição de transposta\nchecks: o aluno reconhece matriz transposta",
+      "parsedSlots": {
+        "patches": [
+          {
+            "target": "Definição de matriz",
+            "fields": {
+              "checks": "o aluno reconhece linha"
+            }
+          },
+          {
+            "target": "Notação de matriz",
+            "fields": {
+              "dependsOn": "Definição de matriz",
+              "checks": "o aluno reconhece linha"
+            }
+          },
+          {
+            "target": "Identificação de elementos",
+            "fields": {
+              "checks": "o aluno reconhece posição a_ij"
+            }
+          },
+          {
+            "target": "Exercícios de posição",
+            "fields": {
+              "dependsOn": "Identificação de elementos",
+              "checks": "o aluno reconhece posição a_ij"
+            }
+          },
+          {
+            "target": "Definição de transposta",
+            "fields": {
+              "checks": "o aluno reconhece matriz transposta, o aluno reconhece coluna"
+            }
+          },
+          {
+            "target": "Cálculo da transposta",
+            "fields": {
+              "dependsOn": "Definição de transposta",
+              "checks": "o aluno reconhece matriz transposta"
+            }
+          }
+        ],
+        "invalidPatches": [],
+        "invalidGlobalLines": [],
+        "status": null
+      }
+    },
+    {
+      "phase": "bottom_up_micro_plan",
+      "model": "deepseek-v4-flash",
+      "latencyMs": 1008,
+      "total_tokens": 313,
+      "completion_tokens": 50,
+      "prompt_cache_hit_tokens": 0,
+      "prompt_cache_miss_tokens": 263,
+      "rawText": "CARD 1\n1: 103\n2: 204\n3: 1103\n4: 402\n5: 502\n6: matrix_locate_cell_choice\n7: matrix_locate_cell_choice",
+      "parsedSlots": {
+        "ok": true,
+        "cards": [
+          {
+            "position": 1,
+            "accepted": {
+              "1": {
+                "raw": "103",
+                "value": 103
+              },
+              "2": {
+                "raw": "204",
+                "value": 204
+              },
+              "3": {
+                "raw": "1103",
+                "value": 1103
+              },
+              "4": {
+                "raw": "402",
+                "value": 402
+              },
+              "5": {
+                "raw": "502",
+                "value": 502
+              },
+              "6": {
+                "raw": "matrix_locate_cell_choice",
+                "value": "matrix_locate_cell_choice"
+              },
+              "7": {
+                "raw": "matrix_locate_cell_choice",
+                "value": "matrix_locate_cell_choice"
+              }
+            },
+            "missing": [],
+            "invalid": [],
+            "duplicate": [],
+            "extra": []
+          }
+        ]
+      },
+      "slotRetries": 0
+    },
+    {
+      "phase": "bottom_up_card_build",
+      "model": "deepseek-v4-flash",
+      "latencyMs": 1410,
+      "total_tokens": 300,
+      "completion_tokens": 103,
+      "prompt_cache_hit_tokens": 0,
+      "prompt_cache_miss_tokens": 197,
+      "rawText": "CARD 1\n1: Localize o elemento\n2: Encontre o valor na posição indicada da matriz.\n3: posicao_matriz\n4: 4 | 7 | 2\n5: 9 | 1 | 5\n6: 2\n7: 1\n8: Qual valor está na linha 2, coluna 1?\n9: 7\n10: 9\n11: 5\n12: Ótimo!",
+      "parsedSlots": {
+        "ok": true,
+        "cards": [
+          {
+            "position": 1,
+            "accepted": {
+              "1": {
+                "raw": "Localize o elemento",
+                "value": "Localize o elemento"
+              },
+              "2": {
+                "raw": "Encontre o valor na posição indicada da matriz.",
+                "value": "Encontre o valor na posição indicada da matriz."
+              },
+              "3": {
+                "raw": "posicao_matriz",
+                "value": "posicao_matriz"
+              },
+              "4": {
+                "raw": "4 | 7 | 2",
+                "value": "4 | 7 | 2"
+              },
+              "5": {
+                "raw": "9 | 1 | 5",
+                "value": "9 | 1 | 5"
+              },
+              "6": {
+                "raw": "2",
+                "value": "2"
+              },
+              "7": {
+                "raw": "1",
+                "value": "1"
+              },
+              "8": {
+                "raw": "Qual valor está na linha 2, coluna 1?",
+                "value": "Qual valor está na linha 2, coluna 1?"
+              },
+              "9": {
+                "raw": "7",
+                "value": "7"
+              },
+              "10": {
+                "raw": "9",
+                "value": "9"
+              },
+              "11": {
+                "raw": "5",
+                "value": "5"
+              },
+              "12": {
+                "raw": "Ótimo!",
+                "value": "Ótimo!"
+              }
+            },
+            "missing": [],
+            "invalid": [],
+            "duplicate": [],
+            "extra": []
+          }
+        ]
+      },
+      "slotRetries": 0
+    },
+    {
+      "phase": "graph_bottom_up_micro_plan",
+      "model": "deepseek-v4-flash",
+      "latencyMs": 1112,
+      "total_tokens": 325,
+      "completion_tokens": 63,
+      "prompt_cache_hit_tokens": 0,
+      "prompt_cache_miss_tokens": 262,
+      "rawText": "CARD 1\n1: 108\n2: 212\n3: 1103\n4: 401\n5: 501\n6: Recurso graph e operação show_graph para praticar caminho simples em grafo pequeno com template graph_simple.\n7: graph_simple",
+      "parsedSlots": {
+        "ok": true,
+        "cards": [
+          {
+            "position": 1,
+            "accepted": {
+              "1": {
+                "raw": "108",
+                "value": 108
+              },
+              "2": {
+                "raw": "212",
+                "value": 212
+              },
+              "3": {
+                "raw": "1103",
+                "value": 1103
+              },
+              "4": {
+                "raw": "401",
+                "value": 401
+              },
+              "5": {
+                "raw": "501",
+                "value": 501
+              },
+              "6": {
+                "raw": "Recurso graph e operação show_graph para praticar caminho simples em grafo pequeno com template graph_simple.",
+                "value": "Recurso graph e operação show_graph para praticar caminho simples em grafo pequeno com template graph_simple."
+              },
+              "7": {
+                "raw": "graph_simple",
+                "value": "graph_simple"
+              }
+            },
+            "missing": [],
+            "invalid": [],
+            "duplicate": [],
+            "extra": []
+          }
+        ]
+      },
+      "slotRetries": 0
+    },
+    {
+      "phase": "graph_bottom_up_card_build",
+      "model": "deepseek-v4-flash",
+      "latencyMs": 1944,
+      "total_tokens": 421,
+      "completion_tokens": 204,
+      "prompt_cache_hit_tokens": 0,
+      "prompt_cache_miss_tokens": 217,
+      "rawText": "CARD 1\n1: Caminho Simples em Grafo Pequeno\n2: Dado o grafo com vértices A, B, C e D e arestas A-B, B-C e C-D, identifique qual sequência representa um caminho simples de A até D.\n3: A, B, C, D\n4: A-B, B-C, C-D\n5: Qual é o caminho simples de A até D?\n6: A-B-C-D\n7: A-B-D\n8: A-B-C-A-D\n9: a\n10: O caminho A-B-C-D é o único que conecta A a D usando apenas arestas existentes, sem repetir vértices. A opção A-B-D falha porque não há aresta direta entre B e D. Já A-B-C-A-D repete o vértice A, o que não é permitido em um caminho simples.",
+      "parsedSlots": {
+        "ok": true,
+        "cards": [
+          {
+            "position": 1,
+            "accepted": {
+              "1": {
+                "raw": "Caminho Simples em Grafo Pequeno",
+                "value": "Caminho Simples em Grafo Pequeno"
+              },
+              "2": {
+                "raw": "Dado o grafo com vértices A, B, C e D e arestas A-B, B-C e C-D, identifique qual sequência representa um caminho simples de A até D.",
+                "value": "Dado o grafo com vértices A, B, C e D e arestas A-B, B-C e C-D, identifique qual sequência representa um caminho simples de A até D."
+              },
+              "3": {
+                "raw": "A, B, C, D",
+                "value": "A | B | C | D"
+              },
+              "4": {
+                "raw": "A-B, B-C, C-D",
+                "value": "A>B | B>C | C>D"
+              },
+              "5": {
+                "raw": "Qual é o caminho simples de A até D?",
+                "value": "Qual é o caminho simples de A até D?"
+              },
+              "6": {
+                "raw": "A-B-C-D",
+                "value": "A-B-C-D"
+              },
+              "7": {
+                "raw": "A-B-D",
+                "value": "A-B-D"
+              },
+              "8": {
+                "raw": "A-B-C-A-D",
+                "value": "A-B-C-A-D"
+              },
+              "9": {
+                "raw": "a",
+                "value": "a"
+              },
+              "10": {
+                "raw": "O caminho A-B-C-D é o único que conecta A a D usando apenas arestas existentes, sem repetir vértices. A opção A-B-D falha porque não há aresta direta entre B e D. Já A-B-C-A-D repete o vértice A, o que não é permitido em um caminho simples.",
+                "value": "O caminho A-B-C-D é o único que conecta A a D usando apenas arestas existentes, sem repetir vértices. A opção A-B-D falha porque não há aresta direta entre B e D. Já A-B-C-A-D repete o vértice A, o que não é permitido em um caminho simples."
+              }
+            },
+            "missing": [],
+            "invalid": [],
+            "duplicate": [],
+            "extra": []
+          }
+        ]
+      },
+      "slotRetries": 0
+    },
+    {
+      "phase": "composite_bottom_up_micro_plan",
+      "model": "deepseek-v4-flash",
+      "latencyMs": 1273,
+      "total_tokens": 326,
+      "completion_tokens": 61,
+      "prompt_cache_hit_tokens": 0,
+      "prompt_cache_miss_tokens": 265,
+      "rawText": "CARD 1\n1: 111\n2: 218\n3: 1103\n4: 406\n5: 505\n6: Composite resource with graph compare operation for closed practice, targeting node/edge confusion with edge connection feedback.\n7: composite_graph_compare_choice",
+      "parsedSlots": {
+        "ok": true,
+        "cards": [
+          {
+            "position": 1,
+            "accepted": {
+              "1": {
+                "raw": "111",
+                "value": 111
+              },
+              "2": {
+                "raw": "218",
+                "value": 218
+              },
+              "3": {
+                "raw": "1103",
+                "value": 1103
+              },
+              "4": {
+                "raw": "406",
+                "value": 406
+              },
+              "5": {
+                "raw": "505",
+                "value": 505
+              },
+              "6": {
+                "raw": "Composite resource with graph compare operation for closed practice, targeting node/edge confusion with edge connection feedback.",
+                "value": "Composite resource with graph compare operation for closed practice, targeting node/edge confusion with edge connection feedback."
+              },
+              "7": {
+                "raw": "composite_graph_compare_choice",
+                "value": "composite_graph_compare_choice"
+              }
+            },
+            "missing": [],
+            "invalid": [],
+            "duplicate": [],
+            "extra": []
+          }
+        ]
+      },
+      "slotRetries": 0
+    },
+    {
+      "phase": "composite_bottom_up_card_build",
+      "model": "deepseek-v4-flash",
+      "latencyMs": 1633,
+      "total_tokens": 537,
+      "completion_tokens": 194,
+      "prompt_cache_hit_tokens": 0,
+      "prompt_cache_miss_tokens": 343,
+      "rawText": "CARD 1\n1: Comparação de Grafos\n2: G1 tem arestas AB, BC e CD; G2 tem arestas 1-2, 2-3 e 3-4; use A -> 1, B -> 2, C -> 3, D -> 4.\n3: G1\n4: A | B | C | D\n5: A-B | B-C | C-D\n6: G2\n7: 1 | 2 | 3 | 4\n8: 1-2 | 2-3 | 3-4\n9: Qual aresta em G2 corresponde à aresta AB de G1?\n10: 2-3\n11: 1-2\n12: 3-4\n13: b\n14: A aresta AB em G1 corresponde à aresta 1-2 em G2.",
+      "parsedSlots": {
+        "ok": true,
+        "cards": [
+          {
+            "position": 1,
+            "accepted": {
+              "1": {
+                "raw": "Comparação de Grafos",
+                "value": "Comparação de Grafos"
+              },
+              "2": {
+                "raw": "G1 tem arestas AB, BC e CD; G2 tem arestas 1-2, 2-3 e 3-4; use A -> 1, B -> 2, C -> 3, D -> 4.",
+                "value": "G1 tem arestas AB, BC e CD; G2 tem arestas 1-2, 2-3 e 3-4; use A -> 1, B -> 2, C -> 3, D -> 4."
+              },
+              "3": {
+                "raw": "G1",
+                "value": "G1"
+              },
+              "4": {
+                "raw": "A | B | C | D",
+                "value": "A | B | C | D"
+              },
+              "5": {
+                "raw": "A-B | B-C | C-D",
+                "value": "A-B | B-C | C-D"
+              },
+              "6": {
+                "raw": "G2",
+                "value": "G2"
+              },
+              "7": {
+                "raw": "1 | 2 | 3 | 4",
+                "value": "1 | 2 | 3 | 4"
+              },
+              "8": {
+                "raw": "1-2 | 2-3 | 3-4",
+                "value": "1-2 | 2-3 | 3-4"
+              },
+              "9": {
+                "raw": "Qual aresta em G2 corresponde à aresta AB de G1?",
+                "value": "Qual aresta em G2 corresponde à aresta AB de G1?"
+              },
+              "10": {
+                "raw": "2-3",
+                "value": "2-3"
+              },
+              "11": {
+                "raw": "1-2",
+                "value": "1-2"
+              },
+              "12": {
+                "raw": "3-4",
+                "value": "3-4"
+              },
+              "13": {
+                "raw": "b",
+                "value": "b"
+              },
+              "14": {
+                "raw": "A aresta AB em G1 corresponde à aresta 1-2 em G2.",
+                "value": "A aresta AB em G1 corresponde à aresta 1-2 em G2."
+              }
+            },
+            "missing": [],
+            "invalid": [],
+            "duplicate": [],
+            "extra": []
+          }
+        ]
+      },
+      "slotRetries": 0
+    },
+    {
+      "phase": "free_resource_selection",
+      "model": "deepseek-v4-flash",
+      "latencyMs": 1757,
+      "total_tokens": 619,
+      "completion_tokens": 124,
+      "prompt_cache_hit_tokens": 0,
+      "prompt_cache_miss_tokens": 495,
+      "rawText": "CARD 1\n1: 103\n2: 204\n3: 1103\n4: 402\n5: 502\n6: O recurso matrix é ideal para ensinar identificação de célula por linha e coluna, e a operação locate_cell permite praticar essa localização. O gesto closed_practice oferece prática guiada, o erro provável confused_row_with_column é comum nesse tema, e o feedback explain_row_before_column corrige diretamente a confusão entre linha e coluna.\n7: matrix_locate_cell_choice",
+      "parsedSlots": {
+        "ok": true,
+        "cards": [
+          {
+            "position": 1,
+            "accepted": {
+              "1": {
+                "raw": "103",
+                "value": 103
+              },
+              "2": {
+                "raw": "204",
+                "value": 204
+              },
+              "3": {
+                "raw": "1103",
+                "value": 1103
+              },
+              "4": {
+                "raw": "402",
+                "value": 402
+              },
+              "5": {
+                "raw": "502",
+                "value": 502
+              },
+              "6": {
+                "raw": "O recurso matrix é ideal para ensinar identificação de célula por linha e coluna, e a operação locate_cell permite praticar essa localização. O gesto closed_practice oferece prática guiada, o erro provável confused_row_with_column é comum nesse tema, e o feedback explain_row_before_column corrige diretamente a confusão entre linha e coluna.",
+                "value": "O recurso matrix é ideal para ensinar identificação de célula por linha e coluna, e a operação locate_cell permite praticar essa localização. O gesto closed_practice oferece prática guiada, o erro provável confused_row_with_column é comum nesse tema, e o feedback explain_row_before_column corrige diretamente a confusão entre linha e coluna."
+              },
+              "7": {
+                "raw": "matrix_locate_cell_choice",
+                "value": "matrix_locate_cell_choice"
+              }
+            },
+            "missing": [],
+            "invalid": [],
+            "duplicate": [],
+            "extra": []
+          }
+        ]
+      },
+      "slotRetries": 0
+    },
+    {
+      "phase": "bottom_up_card_audit",
+      "model": "deepseek-v4-flash",
+      "latencyMs": 1014,
+      "total_tokens": 325,
+      "completion_tokens": 39,
+      "prompt_cache_hit_tokens": 0,
+      "prompt_cache_miss_tokens": 286,
+      "rawText": "AUDIT\nCARD 1\naction: 1209\nreason: feedback genérico\n12: O valor na linha 2, coluna 1 é 9.",
+      "parsedSlots": {
+        "status": null,
+        "cards": [
+          {
+            "cardIndex": 1,
+            "patches": {
+              "12": "O valor na linha 2, coluna 1 é 9."
+            },
+            "action": 1209,
+            "reason": "feedback genérico",
+            "invalidPatches": []
+          }
+        ],
+        "invalidGlobalLines": []
+      },
+      "slotRetries": 0
+    }
+  ],
+  "top_down_structure": {
+    "raw": "{\n  \"schemaVersion\": \"aralearn.scope.v1\",\n  \"course\": {\n    \"title\": \"Matrizes básicas\",\n    \"goal\": \"Estudar leitura de matriz e posição a_ij.\",\n    \"evidencePriority\": [\"none\"]\n  },\n  \"modules\": [\n    {\n      \"title\": \"Matrizes\",\n      \"lessons\": [\n        {\n          \"title\": \"Introdução a matrizes\",\n          \"microsequences\": [\n            {\n              \"title\": \"Definição de matriz\",\n              \"goal\": \"Compreender o que é uma matriz e sua representação retangular.\",\n              \"role\": \"expositor\",\n              \"dependsOn\": [],\n              \"covers\": [\"matriz\", \"linha\", \"coluna\"],\n              \"checks\": [\"Identificar linhas e colunas em uma matriz dada.\"]\n            },\n            {\n              \"title\": \"Notação de matriz\",\n              \"goal\": \"Reconhecer a notação geral de uma matriz com índices i e j.\",\n              \"role\": \"expositor\",\n              \"dependsOn\": [\"Definição de matriz\"],\n              \"covers\": [\"posição a_ij\", \"índices\"],\n              \"checks\": [\"Dada uma matriz, escrever o elemento a_23.\"]\n            }\n          ]\n        },\n        {\n          \"title\": \"Leitura de posição a_ij\",\n          \"microsequences\": [\n            {\n              \"title\": \"Identificação de elementos\",\n              \"goal\": \"Localizar um elemento específico usando sua posição (i,j).\",\n              \"role\": \"praticante\",\n              \"dependsOn\": [\"Notação de matriz\"],\n              \"covers\": [\"posição a_ij\", \"leitura de matriz\"],\n              \"checks\": [\"Em uma matriz 3x3, encontrar o valor de a_21.\"]\n            },\n            {\n              \"title\": \"Exercícios de posição\",\n              \"goal\": \"Resolver exercícios variados de localização de elementos.\",\n              \"role\": \"praticante\",\n              \"dependsOn\": [\"Identificação de elementos\"],\n              \"covers\": [\"posição a_ij\"],\n              \"checks\": [\"Dada uma matriz, listar todos os elementos de uma linha específica.\"]\n            }\n          ]\n        },\n        {\n          \"title\": \"Matriz transposta\",\n          \"microsequences\": [\n            {\n              \"title\": \"Definição de transposta\",\n              \"goal\": \"Compreender o conceito de matriz transposta e como obtê-la.\",\n              \"role\": \"expositor\",\n              \"dependsOn\": [\"Notação de matriz\"],\n              \"covers\": [\"matriz transposta\", \"linha\", \"coluna\"],\n              \"checks\": [\"Explicar o que acontece com as linhas e colunas na transposição.\"]\n            },\n            {\n              \"title\": \"Cálculo da transposta\",\n              \"goal\": \"Calcular a transposta de uma matriz dada.\",\n              \"role\": \"praticante\",\n              \"dependsOn\": [\"Definição de transposta\"],\n              \"covers\": [\"matriz transposta\"],\n              \"checks\": [\"Dada uma matriz 2x3, escrever sua transposta.\"]\n            }\n          ]\n        }\n      ]\n    }\n  ]\n}",
+    "auditRaw": "PATCH MICROSEQUENCE\ntarget: Definição de matriz\ndependsOn: \nchecks: o aluno reconhece linha\n\nPATCH MICROSEQUENCE\ntarget: Notação de matriz\ndependsOn: Definição de matriz\nchecks: o aluno reconhece linha\n\nPATCH MICROSEQUENCE\ntarget: Identificação de elementos\ndependsOn: \nchecks: o aluno reconhece posição a_ij\n\nPATCH MICROSEQUENCE\ntarget: Exercícios de posição\ndependsOn: Identificação de elementos\nchecks: o aluno reconhece posição a_ij\n\nPATCH MICROSEQUENCE\ntarget: Definição de transposta\ndependsOn: \nchecks: o aluno reconhece matriz transposta, o aluno reconhece coluna\n\nPATCH MICROSEQUENCE\ntarget: Cálculo da transposta\ndependsOn: Definição de transposta\nchecks: o aluno reconhece matriz transposta",
+    "parsedAudit": {
+      "patches": [
+        {
+          "target": "Definição de matriz",
+          "fields": {
+            "checks": "o aluno reconhece linha"
+          }
+        },
+        {
+          "target": "Notação de matriz",
+          "fields": {
+            "dependsOn": "Definição de matriz",
+            "checks": "o aluno reconhece linha"
+          }
+        },
+        {
+          "target": "Identificação de elementos",
+          "fields": {
+            "checks": "o aluno reconhece posição a_ij"
+          }
+        },
+        {
+          "target": "Exercícios de posição",
+          "fields": {
+            "dependsOn": "Identificação de elementos",
+            "checks": "o aluno reconhece posição a_ij"
+          }
+        },
+        {
+          "target": "Definição de transposta",
+          "fields": {
+            "checks": "o aluno reconhece matriz transposta, o aluno reconhece coluna"
+          }
+        },
+        {
+          "target": "Cálculo da transposta",
+          "fields": {
+            "dependsOn": "Definição de transposta",
+            "checks": "o aluno reconhece matriz transposta"
+          }
+        }
+      ],
+      "invalidPatches": [],
+      "invalidGlobalLines": [],
+      "status": null
+    },
+    "appliedTopDownPatches": [
+      {
+        "target": "Definição de matriz",
+        "fields": {
+          "checks": "o aluno reconhece linha"
+        }
+      },
+      {
+        "target": "Notação de matriz",
+        "fields": {
+          "dependsOn": "Definição de matriz",
+          "checks": "o aluno reconhece linha"
+        }
+      },
+      {
+        "target": "Identificação de elementos",
+        "fields": {
+          "checks": "o aluno reconhece posição a_ij"
+        }
+      },
+      {
+        "target": "Exercícios de posição",
+        "fields": {
+          "dependsOn": "Identificação de elementos",
+          "checks": "o aluno reconhece posição a_ij"
+        }
+      },
+      {
+        "target": "Definição de transposta",
+        "fields": {
+          "checks": "o aluno reconhece matriz transposta, o aluno reconhece coluna"
+        }
+      },
+      {
+        "target": "Cálculo da transposta",
+        "fields": {
+          "dependsOn": "Definição de transposta",
+          "checks": "o aluno reconhece matriz transposta"
+        }
+      }
+    ]
+  },
+  "bottom_up_matrix": {
+    "raw": "CARD 1\n1: Localize o elemento\n2: Encontre o valor na posição indicada da matriz.\n3: posicao_matriz\n4: 4 | 7 | 2\n5: 9 | 1 | 5\n6: 2\n7: 1\n8: Qual valor está na linha 2, coluna 1?\n9: 7\n10: 9\n11: 5\n12: Ótimo!",
+    "parsedPlan": {
+      "ok": true,
+      "cards": [
+        {
+          "position": 1,
+          "accepted": {
+            "1": {
+              "raw": "103",
+              "value": 103
+            },
+            "2": {
+              "raw": "204",
+              "value": 204
+            },
+            "3": {
+              "raw": "1103",
+              "value": 1103
+            },
+            "4": {
+              "raw": "402",
+              "value": 402
+            },
+            "5": {
+              "raw": "502",
+              "value": 502
+            },
+            "6": {
+              "raw": "matrix_locate_cell_choice",
+              "value": "matrix_locate_cell_choice"
+            },
+            "7": {
+              "raw": "matrix_locate_cell_choice",
+              "value": "matrix_locate_cell_choice"
+            }
+          },
+          "missing": [],
+          "invalid": [],
+          "duplicate": [],
+          "extra": []
+        }
+      ]
+    },
+    "parsedCardSlots": {
+      "ok": true,
+      "cards": [
+        {
+          "position": 1,
+          "accepted": {
+            "1": {
+              "raw": "Localize o elemento",
+              "value": "Localize o elemento"
+            },
+            "2": {
+              "raw": "Encontre o valor na posição indicada da matriz.",
+              "value": "Encontre o valor na posição indicada da matriz."
+            },
+            "3": {
+              "raw": "posicao_matriz",
+              "value": "posicao_matriz"
+            },
+            "4": {
+              "raw": "4 | 7 | 2",
+              "value": "4 | 7 | 2"
+            },
+            "5": {
+              "raw": "9 | 1 | 5",
+              "value": "9 | 1 | 5"
+            },
+            "6": {
+              "raw": "2",
+              "value": "2"
+            },
+            "7": {
+              "raw": "1",
+              "value": "1"
+            },
+            "8": {
+              "raw": "Qual valor está na linha 2, coluna 1?",
+              "value": "Qual valor está na linha 2, coluna 1?"
+            },
+            "9": {
+              "raw": "7",
+              "value": "7"
+            },
+            "10": {
+              "raw": "9",
+              "value": "9"
+            },
+            "11": {
+              "raw": "5",
+              "value": "5"
+            },
+            "12": {
+              "raw": "Ótimo!",
+              "value": "Ótimo!"
+            }
+          },
+          "missing": [],
+          "invalid": [],
+          "duplicate": [],
+          "extra": []
+        }
+      ]
+    },
+    "cardsAfterBuild": [
+      {
+        "position": 1,
+        "resource": "matrix",
+        "kind": "exercise",
+        "exercise": "choice",
+        "title": "Localize o elemento",
+        "question": "Qual valor está na linha 2, coluna 1?",
+        "options": [
+          {
+            "id": "a",
+            "text": "7"
+          },
+          {
+            "id": "b",
+            "text": "9"
+          },
+          {
+            "id": "c",
+            "text": "5"
+          }
+        ],
+        "answer": "b",
+        "prompt": "Encontre o valor na posição indicada da matriz.",
+        "name": "posicao_matriz",
+        "values": [
+          [
+            "4",
+            "7",
+            "2"
+          ],
+          [
+            "9",
+            "1",
+            "5"
+          ]
+        ],
+        "after": "Ótimo!"
+      }
+    ],
+    "resourcesUsed": [
+      "matrix"
+    ],
+    "semanticValidation": true,
+    "computedAnswers": [
+      {
+        "position": 1,
+        "answer": "b",
+        "correctValue": "9",
+        "targetRow": 2,
+        "targetCol": 1
+      }
+    ]
+  },
+  "bottom_up_graph": {
+    "raw": "CARD 1\n1: Caminho Simples em Grafo Pequeno\n2: Dado o grafo com vértices A, B, C e D e arestas A-B, B-C e C-D, identifique qual sequência representa um caminho simples de A até D.\n3: A, B, C, D\n4: A-B, B-C, C-D\n5: Qual é o caminho simples de A até D?\n6: A-B-C-D\n7: A-B-D\n8: A-B-C-A-D\n9: a\n10: O caminho A-B-C-D é o único que conecta A a D usando apenas arestas existentes, sem repetir vértices. A opção A-B-D falha porque não há aresta direta entre B e D. Já A-B-C-A-D repete o vértice A, o que não é permitido em um caminho simples.",
+    "cardsAfterBuild": [
+      {
+        "position": 1,
+        "resource": "graph",
+        "kind": "exercise",
+        "exercise": "choice",
+        "title": "Caminho Simples em Grafo Pequeno",
+        "question": "Qual é o caminho simples de A até D?",
+        "options": [
+          {
+            "id": "a",
+            "text": "A-B-C-D"
+          },
+          {
+            "id": "b",
+            "text": "A-B-D"
+          },
+          {
+            "id": "c",
+            "text": "A-B-C-A-D"
+          }
+        ],
+        "answer": "a",
+        "prompt": "Dado o grafo com vértices A, B, C e D e arestas A-B, B-C e C-D, identifique qual sequência representa um caminho simples de A até D.",
+        "edges": [
+          {
+            "from": "A",
+            "to": "B"
+          },
+          {
+            "from": "B",
+            "to": "C"
+          },
+          {
+            "from": "C",
+            "to": "D"
+          }
+        ],
+        "vertices": [
+          {
+            "id": "A",
+            "label": "A"
+          },
+          {
+            "id": "B",
+            "label": "B"
+          },
+          {
+            "id": "C",
+            "label": "C"
+          },
+          {
+            "id": "D",
+            "label": "D"
+          }
+        ],
+        "after": "O caminho A-B-C-D é o único que conecta A a D usando apenas arestas existentes, sem repetir vértices. A opção A-B-D falha porque não há aresta direta entre B e D. Já A-B-C-A-D repete o vértice A, o que não é permitido em um caminho simples."
+      }
+    ],
+    "resourcesUsed": [
+      "graph"
+    ],
+    "graphSemanticValidation": true,
+    "graphComputedAnswers": [
+      {
+        "position": 1,
+        "answer": "a",
+        "validOptions": [
+          "a"
+        ],
+        "invalidOptions": [
+          "b",
+          "c"
+        ],
+        "graphTask": {
+          "from": "A",
+          "to": "D"
+        }
+      }
+    ],
+    "graphAmbiguityWarnings": []
+  },
+  "bottom_up_composite": {
+    "raw": "CARD 1\n1: Comparação de Grafos\n2: G1 tem arestas AB, BC e CD; G2 tem arestas 1-2, 2-3 e 3-4; use A -> 1, B -> 2, C -> 3, D -> 4.\n3: G1\n4: A | B | C | D\n5: A-B | B-C | C-D\n6: G2\n7: 1 | 2 | 3 | 4\n8: 1-2 | 2-3 | 3-4\n9: Qual aresta em G2 corresponde à aresta AB de G1?\n10: 2-3\n11: 1-2\n12: 3-4\n13: b\n14: A aresta AB em G1 corresponde à aresta 1-2 em G2.",
+    "cardsAfterBuild": [
+      {
+        "position": 1,
+        "resource": "composite",
+        "kind": "exercise",
+        "exercise": "choice",
+        "title": "Comparação de Grafos",
+        "blocks": [
+          {
+            "kind": "paragraph",
+            "value": "G1 tem arestas AB, BC e CD; G2 tem arestas 1-2, 2-3 e 3-4; use A -> 1, B -> 2, C -> 3, D -> 4."
+          },
+          {
+            "kind": "heading",
+            "value": "G1"
+          },
+          {
+            "kind": "graph",
+            "prompt": "Observe G1.",
+            "vertices": [
+              {
+                "id": "A",
+                "label": "A"
+              },
+              {
+                "id": "B",
+                "label": "B"
+              },
+              {
+                "id": "C",
+                "label": "C"
+              },
+              {
+                "id": "D",
+                "label": "D"
+              }
+            ],
+            "edges": [
+              {
+                "from": "A",
+                "to": "B"
+              },
+              {
+                "from": "B",
+                "to": "C"
+              },
+              {
+                "from": "C",
+                "to": "D"
+              }
+            ]
+          },
+          {
+            "kind": "heading",
+            "value": "G2"
+          },
+          {
+            "kind": "graph",
+            "prompt": "Observe G2.",
+            "vertices": [
+              {
+                "id": "1",
+                "label": "1"
+              },
+              {
+                "id": "2",
+                "label": "2"
+              },
+              {
+                "id": "3",
+                "label": "3"
+              },
+              {
+                "id": "4",
+                "label": "4"
+              }
+            ],
+            "edges": [
+              {
+                "from": "1",
+                "to": "2"
+              },
+              {
+                "from": "2",
+                "to": "3"
+              },
+              {
+                "from": "3",
+                "to": "4"
+              }
+            ]
+          },
+          {
+            "kind": "choice",
+            "question": "Qual aresta em G2 corresponde à aresta AB de G1?",
+            "options": [
+              {
+                "id": "a",
+                "text": "2-3"
+              },
+              {
+                "id": "b",
+                "text": "1-2"
+              },
+              {
+                "id": "c",
+                "text": "3-4"
+              }
+            ],
+            "answer": "b"
+          }
+        ],
+        "after": "A aresta AB em G1 corresponde à aresta 1-2 em G2."
+      }
+    ],
+    "resourcesUsed": [
+      "composite"
+    ],
+    "semanticValidation": true,
+    "summary": {
+      "graphCount": 2,
+      "choiceOptions": 3
+    }
+  },
+  "freeResourceSelection": {
+    "raw": "CARD 1\n1: 103\n2: 204\n3: 1103\n4: 402\n5: 502\n6: O recurso matrix é ideal para ensinar identificação de célula por linha e coluna, e a operação locate_cell permite praticar essa localização. O gesto closed_practice oferece prática guiada, o erro provável confused_row_with_column é comum nesse tema, e o feedback explain_row_before_column corrige diretamente a confusão entre linha e coluna.\n7: matrix_locate_cell_choice",
+    "parsed": {
+      "ok": true,
+      "cards": [
+        {
+          "position": 1,
+          "accepted": {
+            "1": {
+              "raw": "103",
+              "value": 103
+            },
+            "2": {
+              "raw": "204",
+              "value": 204
+            },
+            "3": {
+              "raw": "1103",
+              "value": 1103
+            },
+            "4": {
+              "raw": "402",
+              "value": 402
+            },
+            "5": {
+              "raw": "502",
+              "value": 502
+            },
+            "6": {
+              "raw": "O recurso matrix é ideal para ensinar identificação de célula por linha e coluna, e a operação locate_cell permite praticar essa localização. O gesto closed_practice oferece prática guiada, o erro provável confused_row_with_column é comum nesse tema, e o feedback explain_row_before_column corrige diretamente a confusão entre linha e coluna.",
+              "value": "O recurso matrix é ideal para ensinar identificação de célula por linha e coluna, e a operação locate_cell permite praticar essa localização. O gesto closed_practice oferece prática guiada, o erro provável confused_row_with_column é comum nesse tema, e o feedback explain_row_before_column corrige diretamente a confusão entre linha e coluna."
+            },
+            "7": {
+              "raw": "matrix_locate_cell_choice",
+              "value": "matrix_locate_cell_choice"
+            }
+          },
+          "missing": [],
+          "invalid": [],
+          "duplicate": [],
+          "extra": []
+        }
+      ]
+    },
+    "chosenResource": "matrix",
+    "chosenTemplate": "matrix_locate_cell_choice",
+    "accepted": true
+  },
+  "auditPatchScenario": {
+    "raw": "AUDIT\nCARD 1\naction: 1209\nreason: feedback genérico\n12: O valor na linha 2, coluna 1 é 9.",
+    "parsedAudit": {
+      "status": null,
+      "cards": [
+        {
+          "cardIndex": 1,
+          "patches": {
+            "12": "O valor na linha 2, coluna 1 é 9."
+          },
+          "action": 1209,
+          "reason": "feedback genérico",
+          "invalidPatches": []
+        }
+      ],
+      "invalidGlobalLines": []
+    },
+    "invalidAuditPatches": [],
+    "appliedSlotPatches": [
+      {
+        "cardIndex": 1,
+        "action": 1209,
+        "patches": {
+          "12": "O valor na linha 2, coluna 1 é 9."
+        }
+      }
+    ],
+    "cardsBeforeAudit": [
+      {
+        "position": 1,
+        "resource": "matrix",
+        "kind": "exercise",
+        "exercise": "choice",
+        "title": "Posição a_ij",
+        "question": "Qual número está na linha 2, coluna 1?",
+        "options": [
+          {
+            "id": "a",
+            "text": "4"
+          },
+          {
+            "id": "b",
+            "text": "9"
+          },
+          {
+            "id": "c",
+            "text": "1"
+          }
+        ],
+        "answer": "b",
+        "prompt": "Observe a matriz.",
+        "name": "A",
+        "values": [
+          [
+            "4",
+            "7",
+            "2"
+          ],
+          [
+            "9",
+            "1",
+            "5"
+          ]
+        ],
+        "after": "Correto."
+      }
+    ],
+    "cardsAfterAudit": [
+      {
+        "position": 1,
+        "resource": "matrix",
+        "kind": "exercise",
+        "exercise": "choice",
+        "title": "Posição a_ij",
+        "question": "Qual número está na linha 2, coluna 1?",
+        "options": [
+          {
+            "id": "a",
+            "text": "4"
+          },
+          {
+            "id": "b",
+            "text": "9"
+          },
+          {
+            "id": "c",
+            "text": "1"
+          }
+        ],
+        "answer": "b",
+        "prompt": "Observe a matriz.",
+        "name": "A",
+        "values": [
+          [
+            "4",
+            "7",
+            "2"
+          ],
+          [
+            "9",
+            "1",
+            "5"
+          ]
+        ],
+        "after": "O valor na linha 2, coluna 1 é 9."
+      }
+    ]
+  },
+  "finalValidation": true,
+  "semanticValidation": true,
+  "semanticErrors": [],
+  "structuralLeakWarnings": [],
+  "graphSemanticValidation": true,
+  "graphComputedAnswers": [
+    {
+      "position": 1,
+      "answer": "a",
+      "validOptions": [
+        "a"
+      ],
+      "invalidOptions": [
+        "b",
+        "c"
+      ],
+      "graphTask": {
+        "from": "A",
+        "to": "D"
+      }
+    }
+  ],
+  "graphValidOptions": [
+    "a"
+  ],
+  "graphInvalidOptions": [
+    "b",
+    "c"
+  ],
+  "graphAmbiguityWarnings": [],
+  "feedbackContradictions": [],
+  "topDownAuditContradictions": [],
+  "choiceAnswerFallbacks": [],
+  "computedAnswers": [
+    {
+      "position": 1,
+      "answer": "b",
+      "correctValue": "9",
+      "targetRow": 2,
+      "targetCol": 1
+    },
+    {
+      "position": 1,
+      "answer": "b",
+      "correctValue": "9",
+      "targetRow": 2,
+      "targetCol": 1
+    }
+  ],
+  "auditPatchApplied": true
+}

@@ -1,18 +1,4 @@
-import {
-  getContractCardKind,
-  listContractAnswerValues,
-  normalizeFlowForRuntime
-} from "../contract/contractCard.js";
-import {
-  convertPublicFlowToStructure,
-  normalizeFlowchartStructure,
-  validateFlowchartStructureContract
-} from "../flowchart/flowchartStructure.js";
-import { deriveFlowchartProjectionFromStructure } from "../flowchart/flowchartProjection.js";
-import { DIRECTORY_TREE_BASE_NODE_ID } from "./directoryTree.js";
-import { getExerciseOptionStableId } from "./exerciseOptions.js";
-
-function normalizeText(value) {
+function text(value) {
   return typeof value === "string" ? value : "";
 }
 
@@ -20,836 +6,355 @@ function clone(value) {
   return structuredClone(value);
 }
 
-function slugify(value) {
-  return String(value)
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .replace(/-{2,}/g, "-");
-}
-
-function normalizeList(value) {
-  return (Array.isArray(value) ? value : [])
-    .map((item) => normalizeText(item).trim())
-    .filter(Boolean);
-}
-
-function sanitizePopupBlock(block) {
-  if (!block || typeof block !== "object" || Array.isArray(block)) {
-    return null;
+function collectFlowStructureText(node, bucket) {
+  if (!node || typeof node !== "object") return;
+  if (typeof node.text === "string" && node.text.trim()) {
+    bucket.push(node.text.trim());
   }
-
-  if (block.kind === "heading") {
-    return { ...clone(block), value: normalizeText(block.value) };
+  if (typeof node.condition === "string" && node.condition.trim()) {
+    bucket.push(node.condition.trim());
   }
-  if (block.kind === "paragraph") {
-    return { ...clone(block), value: normalizeText(block.value) };
+  if (typeof node.expression === "string" && node.expression.trim()) {
+    bucket.push(node.expression.trim());
   }
-  if (block.kind === "editor") {
-    return { ...clone(block), value: normalizeText(block.value) };
+  if (typeof node.init === "string" && node.init.trim()) {
+    bucket.push(node.init.trim());
   }
-  if (block.kind === "table") {
-    return {
-      ...clone(block),
-      title: normalizeText(block.title),
-      headers: (Array.isArray(block.headers) ? block.headers : []).map((header) => ({
-        ...(header && typeof header === "object" ? clone(header) : {}),
-        value: normalizeText(header?.value)
-      })),
-      rows: (Array.isArray(block.rows) ? block.rows : []).map((row) =>
-        (Array.isArray(row) ? row : []).map((cell) => ({
-          ...(cell && typeof cell === "object" ? clone(cell) : {}),
-          value: normalizeText(cell?.value)
-        }))
-      )
-    };
+  if (typeof node.update === "string" && node.update.trim()) {
+    bucket.push(node.update.trim());
   }
-  if (block.kind === "image") {
-    return clone(block);
+  ["items", "thenBranch", "elseBranch", "body", "defaultBranch"].forEach((fieldName) => {
+    const list = node[fieldName];
+    if (Array.isArray(list)) {
+      list.forEach((item) => collectFlowStructureText(item, bucket));
+    }
+  });
+  if (Array.isArray(node.cases)) {
+    node.cases.forEach((caseItem) => {
+      if (typeof caseItem?.condition === "string" && caseItem.condition.trim()) {
+        bucket.push(caseItem.condition.trim());
+      }
+      if (typeof caseItem?.match === "string" && caseItem.match.trim()) {
+        bucket.push(caseItem.match.trim());
+      }
+      if (Array.isArray(caseItem?.thenBranch)) {
+        caseItem.thenBranch.forEach((item) => collectFlowStructureText(item, bucket));
+      }
+      if (Array.isArray(caseItem?.body)) {
+        caseItem.body.forEach((item) => collectFlowStructureText(item, bucket));
+      }
+    });
   }
-  if (block.kind === "flowchart") {
-    return {
-      ...clone(block),
-      flow: Array.isArray(block.flow) ? clone(block.flow) : block.flow,
-      projection: clone(block.projection)
-    };
-  }
-  if (block.kind === "graph") {
-    return {
-      ...clone(block),
-      vertices: Array.isArray(block.vertices) ? clone(block.vertices) : [],
-      edges: Array.isArray(block.edges) ? clone(block.edges) : []
-    };
-  }
-  if (block.kind === "complete" || block.kind === "multiple_choice" || block.kind === "directory_tree") {
-    return clone(block);
-  }
-
-  return null;
-}
-
-export function sanitizePopupBlocks(popupBlocks = []) {
-  return (Array.isArray(popupBlocks) ? popupBlocks : [])
-    .map((block) => sanitizePopupBlock(block))
-    .filter(Boolean);
 }
 
 function buildHeadingBlock(title) {
   return {
     kind: "heading",
-    value: normalizeText(title).trim() || "Novo card",
-    align: "center"
+    value: text(title).trim() || "Card"
   };
 }
 
-function buildButtonBlock(after) {
-  const popupBlocks = normalizeText(after).trim()
-    ? [buildParagraphBlock(after)]
-    : [];
-  const safePopupBlocks = sanitizePopupBlocks(popupBlocks);
+function buildAfterBlock(after) {
+  const value = text(after).trim();
+  if (!value) {
+    return null;
+  }
   return {
-    kind: "button",
-    popupEnabled: safePopupBlocks.length > 0,
-    popupBlocks: safePopupBlocks
+    kind: "after",
+    value
   };
 }
 
-function buildParagraphBlock(value, extra = {}) {
+function buildParagraphBlock(card) {
   return {
     kind: "paragraph",
-    value: normalizeText(value),
-    ...extra
+    value: text(card.text)
   };
-}
-
-function enrichTextGapsWithWrong(value, wrong) {
-  const wrongValues = normalizeList(wrong);
-  if (!wrongValues.length) {
-    return normalizeText(value);
-  }
-
-  return normalizeText(value).replace(/\[\[([\s\S]*?)\]\]/g, (_, raw) => {
-    const source = normalizeText(raw);
-    if (source.includes("::")) {
-      return `[[${source}]]`;
-    }
-
-    const answer = source.trim();
-    const options = Array.from(new Set([answer, ...wrongValues].filter(Boolean)));
-    return `[[${answer}::${options.join("|")}]]`;
-  });
-}
-
-function buildChoiceOptions(card) {
-  const correctOptions = listContractAnswerValues(card);
-  const wrongOptions = normalizeList(card?.wrong);
-
-  return [
-    ...correctOptions.map((value, index) => ({
-      id: getExerciseOptionStableId({ id: `choice-correct-${index}` }, index),
-      value: normalizeText(value),
-      answer: true
-    })),
-    ...wrongOptions.map((value, index) => ({
-      id: getExerciseOptionStableId({ id: `choice-wrong-${index}` }, correctOptions.length + index),
-      value: normalizeText(value),
-      answer: false
-    }))
-  ].filter((item) => item.value.trim());
 }
 
 function buildChoiceBlock(card) {
-  const answerCount = listContractAnswerValues(card).length;
   return {
-    kind: "multiple_choice",
-    ask: normalizeText(card?.ask),
-    answerState: answerCount > 1 ? "multiple" : "single",
-    options: buildChoiceOptions(card)
+    kind: "choice",
+    question: text(card.question),
+    options: (Array.isArray(card.options) ? card.options : []).map((option) => ({
+      id: text(option?.id),
+      text: text(option?.text)
+    })),
+    answer: text(card.answer)
   };
 }
 
-function buildEditorBlock(card) {
+function buildCodeBlock(card) {
   return {
-    kind: "editor",
-    value: enrichTextGapsWithWrong(card?.code, card?.wrong),
-    language: normalizeText(card?.language) || "text"
+    kind: "code",
+    prompt: text(card.prompt),
+    language: text(card.language) || "text",
+    code: text(card.code)
   };
-}
-
-function buildTableTitle(card) {
-  const title = normalizeText(card?.table?.title).trim();
-  const cardTitle = normalizeText(card?.title).trim();
-  if (!title || title.toLocaleLowerCase("pt-BR") === cardTitle.toLocaleLowerCase("pt-BR")) {
-    return "";
-  }
-  return title;
-}
-
-function buildTableHeaders(card) {
-  const focus = card?.table?.focus || {};
-  const focusedColumns = new Set(
-    [focus.column, ...(Array.isArray(focus.columns) ? focus.columns : [])]
-      .map((value) => Number(value))
-      .filter((value) => Number.isInteger(value) && value >= 1)
-  );
-  return normalizeList(card?.table?.columns).map((column, columnIndex) => ({
-    value: column,
-    align: "center",
-    tone: "default",
-    bold: false,
-    italic: false,
-    focused: focusedColumns.has(columnIndex + 1)
-  }));
-}
-
-function buildTableRows(card) {
-  const focus = card?.table?.focus || {};
-  const focusedRows = new Set(
-    [focus.row, ...(Array.isArray(focus.rows) ? focus.rows : [])]
-      .map((value) => Number(value))
-      .filter((value) => Number.isInteger(value) && value >= 1)
-  );
-  const focusedColumns = new Set(
-    [focus.column, ...(Array.isArray(focus.columns) ? focus.columns : [])]
-      .map((value) => Number(value))
-      .filter((value) => Number.isInteger(value) && value >= 1)
-  );
-  return (Array.isArray(card?.table?.rows) ? card.table.rows : []).map((row, rowIndex) => {
-    const rowFocused = focusedRows.has(rowIndex + 1);
-    return (Array.isArray(row) ? row : []).map((cell, columnIndex) => ({
-      value: normalizeText(cell),
-      align: "center",
-      tone: "default",
-      bold: false,
-      italic: false,
-      blank: false,
-      focusedRow: rowFocused,
-      focusedColumn: focusedColumns.has(columnIndex + 1)
-    }));
-  });
 }
 
 function buildTableBlock(card) {
-  const focus = card?.table?.focus || {};
   return {
     kind: "table",
-    title: buildTableTitle(card),
-    focusLabel: normalizeText(focus?.label).trim(),
-    titleStyle: {
-      align: "center",
-      tone: "default",
-      bold: false,
-      italic: false
-    },
-    headers: buildTableHeaders(card),
-    rows: buildTableRows(card)
+    columns: (Array.isArray(card.columns) ? card.columns : []).map((item) => text(item)),
+    rows: (Array.isArray(card.rows) ? card.rows : []).map((row) => (Array.isArray(row) ? row.map((cell) => String(cell ?? "")) : []))
   };
 }
 
-function normalizeTreeBase(value) {
-  const text = normalizeText(value).trim();
-  return text || "/";
-}
-
-function splitTreePath(value, base = "/") {
-  const safeBase = normalizeTreeBase(base);
-  let text = normalizeText(value).trim().replace(/\\/g, "/");
-  if (!text) {
-    return [];
-  }
-  if (safeBase !== "/" && text.startsWith(safeBase)) {
-    text = text.slice(safeBase.length);
-  }
-  return text
-    .split("/")
-    .map((part) => part.trim())
-    .filter(Boolean);
-}
-
-function buildTreeNodeId(pathParts) {
-  const slug = slugify(pathParts.join("-"));
-  return slug ? `node-${slug}` : DIRECTORY_TREE_BASE_NODE_ID;
-}
-
-function buildTreeNodes(items, parentPath = []) {
-  return Object.entries(items && typeof items === "object" ? items : {}).map(([name, child]) => {
-    const pathParts = parentPath.concat(String(name || "item"));
-    const isFile = child === null;
-    return {
-      id: buildTreeNodeId(pathParts),
-      type: isFile ? "file" : "folder",
-      name: String(name || (isFile ? "arquivo" : "pasta")),
-      ...(isFile ? {} : { children: buildTreeNodes(child, pathParts) })
-    };
-  });
-}
-
-function buildDirectoryTreeBlock(card) {
-  const base = normalizeTreeBase(card?.tree?.base);
-  const currentPath = splitTreePath(card?.tree?.current, base);
-  const selectedPath = splitTreePath(card?.tree?.selected || card?.tree?.current, base);
-  const closed = normalizeList(card?.tree?.closed).map((entry) => buildTreeNodeId(splitTreePath(entry, base)));
-
+function buildFlowBlock(card) {
   return {
-    kind: "directory_tree",
-    base,
-    currentNodeId: currentPath.length ? buildTreeNodeId(currentPath) : DIRECTORY_TREE_BASE_NODE_ID,
-    selectedNodeId: selectedPath.length ? buildTreeNodeId(selectedPath) : DIRECTORY_TREE_BASE_NODE_ID,
-    collapsedNodeIds: closed,
-    nodes: buildTreeNodes(card?.tree?.items)
+    kind: "flow",
+    prompt: text(card.prompt),
+    structure: card.structure && typeof card.structure === "object" ? clone(card.structure) : null
   };
 }
 
-function buildFlowchartBlock(card) {
-  const runtimeFlow = normalizeFlowForRuntime(card?.flow);
-  const publicStructure = convertPublicFlowToStructure(runtimeFlow);
-  const normalizedStructure = normalizeFlowchartStructure(publicStructure);
-  const validation = validateFlowchartStructureContract(normalizedStructure);
-  const projection = validation.valid ? deriveFlowchartProjectionFromStructure(normalizedStructure) : null;
-
+function buildTreeBlock(card) {
   return {
-    kind: "flowchart",
-    flow: Array.isArray(card?.flow) ? clone(card.flow) : [],
-    structureVersion: 1,
-    structure: normalizedStructure,
-    structureValid: validation.valid,
-    structureValidation: validation,
-    projectionVersion: projection ? 1 : 0,
-    projection,
-    projectionValid: !!projection
+    kind: "tree",
+    prompt: text(card.prompt),
+    nodes: clone(Array.isArray(card.nodes) ? card.nodes : [])
   };
-}
-
-function formatMathNumber(value) {
-  const numericValue = Number(value);
-  if (!Number.isFinite(numericValue)) {
-    return normalizeText(value);
-  }
-  if (Number.isInteger(numericValue)) {
-    return String(numericValue);
-  }
-  return String(Number(numericValue.toFixed(2)));
-}
-
-function formatMathCoordinateItem(value) {
-  if (typeof value === "number") {
-    return formatMathNumber(value);
-  }
-  return normalizeText(value);
-}
-
-function formatCoordinatePair(pair = []) {
-  return `(${formatMathCoordinateItem(pair[0])}, ${formatMathCoordinateItem(pair[1])})`;
-}
-
-function readPlaneMode(plane) {
-  if (Array.isArray(plane?.distance)) return "distance";
-  if (plane?.scale && typeof plane.scale === "object") return "scale";
-  if (Array.isArray(plane?.sum)) return "sum";
-  if (Array.isArray(plane?.vectors)) return "vectors";
-  if (Array.isArray(plane?.vector)) return "vector";
-  return "";
-}
-
-function buildPlaneAutoRange(values) {
-  const numericValues = (Array.isArray(values) ? values : [])
-    .map((item) => Number(item))
-    .filter((item) => Number.isFinite(item));
-  const baseMin = numericValues.length ? Math.min(...numericValues, 0) : -1;
-  const baseMax = numericValues.length ? Math.max(...numericValues, 0) : 1;
-  let min = Math.floor(baseMin) - 1;
-  let max = Math.ceil(baseMax) + 1;
-  if (min === max) {
-    min -= 1;
-    max += 1;
-  }
-  return [min, max];
-}
-
-function buildPlaneRanges(plane, points = []) {
-  const xValues = [];
-  const yValues = [];
-  (Array.isArray(points) ? points : []).forEach((point) => {
-    const x = Number(point?.[0]);
-    const y = Number(point?.[1]);
-    if (Number.isFinite(x)) {
-      xValues.push(x);
-    }
-    if (Number.isFinite(y)) {
-      yValues.push(y);
-    }
-  });
-
-  return {
-    x: Array.isArray(plane?.x) ? plane.x : buildPlaneAutoRange(xValues),
-    y: Array.isArray(plane?.y) ? plane.y : buildPlaneAutoRange(yValues)
-  };
-}
-
-function buildPlaneVectorEntry(from, to, label, tone = "primary", role = "vector", extra = {}) {
-  return {
-    from,
-    to,
-    label,
-    tone,
-    role,
-    ...extra
-  };
-}
-
-function assignPlaneVectorTones(vectors = []) {
-  const fallbackTones = ["primary", "secondary", "tertiary", "quaternary"];
-  let nextToneIndex = 0;
-  return vectors.map((vector) => {
-    if (vector?.tone) {
-      return vector;
-    }
-    if (vector?.role === "result") {
-      return { ...vector, tone: "result" };
-    }
-    const tone = fallbackTones[nextToneIndex] || fallbackTones[fallbackTones.length - 1];
-    nextToneIndex += 1;
-    return { ...vector, tone };
-  });
-}
-
-function assignPlanePointTones(points = []) {
-  const fallbackTones = ["primary", "secondary", "tertiary", "quaternary"];
-  return points.map((point, index) => (point?.tone ? point : { ...point, tone: fallbackTones[index] || fallbackTones[fallbackTones.length - 1] }));
-}
-
-function buildPlaneResultText(resultLabel, values) {
-  if (!Array.isArray(values) || values.length !== 2) {
-    return "";
-  }
-  return `${resultLabel} = (${formatMathCoordinateItem(values[0])}, ${formatMathCoordinateItem(values[1])})`;
-}
-
-function buildPlaneDistanceGuides(start, end) {
-  const x1 = Number(start?.[0] || 0);
-  const y1 = Number(start?.[1] || 0);
-  const x2 = Number(end?.[0] || 0);
-  const y2 = Number(end?.[1] || 0);
-  return [
-    {
-      from: [x1, y1],
-      to: [x2, y1],
-      tone: "secondary",
-      dashed: true,
-      role: "guide-horizontal"
-    },
-    {
-      from: [x2, y1],
-      to: [x2, y2],
-      tone: "tertiary",
-      dashed: true,
-      role: "guide-vertical"
-    }
-  ];
-}
-
-function buildPlaneBlock(card) {
-  const plane = card?.plane || {};
-  const mode = readPlaneMode(plane);
-  const block = {
-    kind: "plane",
-    mode,
-    vectors: [],
-    segments: [],
-    points: [],
-    resultText: ""
-  };
-
-  if (mode === "vector") {
-    const vector = plane.vector;
-    block.vectors = [buildPlaneVectorEntry([0, 0], vector, `v=${formatCoordinatePair(vector)}`, "", "vector")];
-    block.summaryText = `Vetor ${formatCoordinatePair(vector)}`;
-  } else if (mode === "vectors") {
-    const labelPool = ["v", "w", "u", "t"];
-    block.vectors = plane.vectors.map((vector, index) =>
-      buildPlaneVectorEntry([0, 0], vector, labelPool[index] || `v${index + 1}`, "", "vector")
-    );
-    block.summaryText = plane.vectors
-      .map((vector, index) => `${labelPool[index] || `v${index + 1}`}=${formatCoordinatePair(vector)}`)
-      .join(", ");
-  } else if (mode === "sum") {
-    const [first, second] = plane.sum;
-    const result = [first[0] + second[0], first[1] + second[1]];
-    const hasExplicitResult = plane.result !== undefined;
-    block.vectors = [
-      buildPlaneVectorEntry([0, 0], first, "v", "", "vector"),
-      buildPlaneVectorEntry([0, 0], second, "w", "", "vector"),
-      buildPlaneVectorEntry(first, result, "w deslocado", "", "vector", { dashed: true }),
-      buildPlaneVectorEntry([0, 0], result, "v+w", "", "result")
-    ];
-    block.resultText = hasExplicitResult ? buildPlaneResultText("v+w", plane.result) : "";
-    block.summaryText = hasExplicitResult ? `v+w=${formatCoordinatePair(result)}` : `v=${formatCoordinatePair(first)}, w=${formatCoordinatePair(second)}`;
-    block.note = `Para somar no desenho, copie w=${formatCoordinatePair(second)} para começar na ponta de v=${formatCoordinatePair(first)}. A ponta dessa cópia marca o vetor soma.`;
-  } else if (mode === "scale") {
-    const vector = plane.scale.vector;
-    const scaled = [plane.scale.k * vector[0], plane.scale.k * vector[1]];
-    const scaleLabel = formatMathNumber(plane.scale.k);
-    block.vectors = [
-      buildPlaneVectorEntry([0, 0], vector, "v", "", "vector"),
-      buildPlaneVectorEntry([0, 0], scaled, `${scaleLabel}v`, "", "result")
-    ];
-    block.summaryText = `${scaleLabel}v=${formatCoordinatePair(scaled)}`;
-  } else if (mode === "distance") {
-    const [start, end] = plane.distance;
-    const dx = Number(end?.[0] || 0) - Number(start?.[0] || 0);
-    const dy = Number(end?.[1] || 0) - Number(start?.[1] || 0);
-    block.points = [
-      { at: start, label: `A${formatCoordinatePair(start)}` },
-      { at: end, label: `B${formatCoordinatePair(end)}` }
-    ];
-    block.segments = [
-      {
-        from: start,
-        to: end,
-        tone: "result",
-        dashed: false,
-        role: "distance"
-      },
-      ...buildPlaneDistanceGuides(start, end)
-    ];
-    block.summaryText = `A${formatCoordinatePair(start)}, B${formatCoordinatePair(end)}`;
-    block.note = `Tracejado laranja: ${formatMathNumber(Math.abs(dx))} em x. Tracejado verde-água: ${formatMathNumber(Math.abs(dy))} em y.`;
-  }
-
-  block.vectors = assignPlaneVectorTones(block.vectors);
-  block.points = assignPlanePointTones(block.points);
-
-  const rangePoints = [
-    [0, 0],
-    ...block.vectors.flatMap((vector) => [vector.from, vector.to]),
-    ...block.points.map((point) => point.at),
-    ...block.segments.flatMap((segment) => [segment.from, segment.to])
-  ];
-  const ranges = buildPlaneRanges(plane, rangePoints);
-
-  return {
-    ...block,
-    xRange: ranges.x,
-    yRange: ranges.y
-  };
-}
-
-function buildGraphEdgeKey(from, to) {
-  return [String(from || ""), String(to || "")].sort().join("::");
-}
-
-function buildGraphAutoLayout(vertexCount, index) {
-  const total = Math.max(1, Number(vertexCount || 1));
-  const angle = (-Math.PI / 2) + ((Math.PI * 2) / total) * index;
-  const radius = total <= 2 ? 30 : 34;
-  return {
-    x: Number((50 + Math.cos(angle) * radius).toFixed(2)),
-    y: Number((50 + Math.sin(angle) * radius).toFixed(2))
-  };
-}
-
-function buildGraphSummary(vertices = [], edges = []) {
-  const vertexList = vertices.map((vertex) => vertex.label || vertex.id).filter(Boolean).join(", ");
-  const edgeList = edges.map((edge) => `${edge.from}-${edge.to}`).join(", ");
-  if (vertexList && edgeList) {
-    return `Grafo com vértices ${vertexList} e arestas ${edgeList}.`;
-  }
-  if (vertexList) {
-    return `Grafo com vértices ${vertexList}.`;
-  }
-  return "Grafo.";
 }
 
 function buildGraphBlock(card) {
-  const graph = card?.graph || {};
-  const sourceVertices = Array.isArray(graph.vertices) ? graph.vertices : [];
-  const sourceEdges = Array.isArray(graph.edges) ? graph.edges : [];
-  const highlightVertexIds = new Set(
-    (Array.isArray(graph?.highlight?.vertices) ? graph.highlight.vertices : [])
-      .map((item) => normalizeText(item).trim())
-      .filter(Boolean)
-  );
-  const highlightEdgeKeys = new Set(
-    (Array.isArray(graph?.highlight?.edges) ? graph.highlight.edges : [])
-      .filter((pair) => Array.isArray(pair) && pair.length === 2)
-      .map((pair) => buildGraphEdgeKey(normalizeText(pair[0]).trim(), normalizeText(pair[1]).trim()))
-      .filter(Boolean)
-  );
-  const useFixedCoordinates = sourceVertices.length > 0 && sourceVertices.every((vertex) =>
-    Number.isFinite(Number(vertex?.x)) && Number.isFinite(Number(vertex?.y))
-  );
-
-  const vertices = sourceVertices.map((vertex, index) => {
-    const layout = useFixedCoordinates
-      ? { x: Number(vertex.x), y: Number(vertex.y) }
-      : buildGraphAutoLayout(sourceVertices.length, index);
-    const id = normalizeText(vertex?.id).trim();
-    const label = normalizeText(vertex?.label).trim() || id;
-    return {
-      id,
-      label,
-      x: layout.x,
-      y: layout.y,
-      highlighted: highlightVertexIds.has(id)
-    };
-  }).filter((vertex) => vertex.id);
-
-  const vertexMap = new Map(vertices.map((vertex) => [vertex.id, vertex]));
-  const seenEdges = new Set();
-  const edges = sourceEdges.map((edge) => {
-    const from = normalizeText(edge?.from).trim();
-    const to = normalizeText(edge?.to).trim();
-    const key = buildGraphEdgeKey(from, to);
-    if (!from || !to || from === to || seenEdges.has(key) || !vertexMap.has(from) || !vertexMap.has(to)) {
-      return null;
-    }
-    seenEdges.add(key);
-    return {
-      from,
-      to,
-      key,
-      label: normalizeText(edge?.label).trim(),
-      weight: typeof edge?.weight === "number" && Number.isFinite(edge.weight)
-        ? formatMathNumber(edge.weight)
-        : normalizeText(edge?.weight).trim(),
-      highlighted: highlightEdgeKeys.has(key)
-    };
-  }).filter(Boolean);
-
   return {
     kind: "graph",
-    vertices,
-    edges,
-    summaryText: buildGraphSummary(vertices, edges),
-    ariaLabel: buildGraphSummary(vertices, edges)
+    prompt: text(card.prompt),
+    vertices: clone(Array.isArray(card.vertices) ? card.vertices : []),
+    edges: clone(Array.isArray(card.edges) ? card.edges : []),
+    highlight: card.highlight && typeof card.highlight === "object" ? clone(card.highlight) : null
   };
 }
 
-function normalizeMatrixHighlightList(highlight) {
-  if (Array.isArray(highlight)) {
-    return highlight.map((item) => normalizeText(item)).filter(Boolean);
-  }
-  const token = normalizeText(highlight);
-  return token ? [token] : [];
-}
-
-function buildMatrixHighlightCells(highlight, rowCount, columnCount) {
-  const selectors = normalizeMatrixHighlightList(highlight);
-  const cells = new Set();
-
-  selectors.forEach((selector) => {
-    if (selector === "mainDiagonal") {
-      const size = Math.min(rowCount, columnCount);
-      for (let index = 0; index < size; index += 1) {
-        cells.add(`${index}:${index}`);
-      }
-      return;
-    }
-    if (selector === "secondaryDiagonal") {
-      const size = Math.min(rowCount, columnCount);
-      for (let index = 0; index < size; index += 1) {
-        cells.add(`${index}:${columnCount - 1 - index}`);
-      }
-      return;
-    }
-
-    const rowMatch = selector.match(/^row:(\d+)$/);
-    if (rowMatch) {
-      const rowIndex = Number(rowMatch[1]) - 1;
-      for (let columnIndex = 0; columnIndex < columnCount; columnIndex += 1) {
-        cells.add(`${rowIndex}:${columnIndex}`);
-      }
-      return;
-    }
-
-    const colMatch = selector.match(/^col:(\d+)$/);
-    if (colMatch) {
-      const columnIndex = Number(colMatch[1]) - 1;
-      for (let rowIndex = 0; rowIndex < rowCount; rowIndex += 1) {
-        cells.add(`${rowIndex}:${columnIndex}`);
-      }
-      return;
-    }
-
-    const cellMatch = selector.match(/^cell:(\d+),(\d+)$/);
-    if (cellMatch) {
-      cells.add(`${Number(cellMatch[1]) - 1}:${Number(cellMatch[2]) - 1}`);
-    }
-  });
-
-  return Array.from(cells);
-}
-
-function buildMatrixRuntimeItem(matrix = {}) {
-  const values = (Array.isArray(matrix.values) ? matrix.values : []).map((row) =>
-    (Array.isArray(row) ? row : []).map((cell) => ({
-      value: typeof cell === "number" ? formatMathNumber(cell) : normalizeText(cell)
-    }))
-  );
-  const rowCount = values.length;
-  const columnCount = values[0]?.length || 0;
-
+function buildRelationMapBlock(card) {
   return {
-    ...(normalizeText(matrix.connector) ? { connector: normalizeText(matrix.connector) } : {}),
-    ...(normalizeText(matrix.name) ? { name: normalizeText(matrix.name) } : {}),
-    values,
-    rowCount,
-    columnCount,
-    highlightCells: buildMatrixHighlightCells(matrix.highlight, rowCount, columnCount),
-    dividerAfterColumn: Number.isInteger(matrix.dividerAfterColumn) ? matrix.dividerAfterColumn : null,
-    summaryText: values.map((row) => row.map((cell) => cell.value).join(" ")).join(" | ")
+    kind: "relation_map",
+    prompt: text(card.prompt),
+    leftSet: card.leftSet && typeof card.leftSet === "object" ? clone(card.leftSet) : null,
+    rightSet: card.rightSet && typeof card.rightSet === "object" ? clone(card.rightSet) : null,
+    relations: clone(Array.isArray(card.relations) ? card.relations : []),
+    pairList: clone(Array.isArray(card.pairList) ? card.pairList : []),
+    relationTable: card.relationTable && typeof card.relationTable === "object" ? clone(card.relationTable) : null,
+    highlight: card.highlight && typeof card.highlight === "object" ? clone(card.highlight) : null
   };
 }
 
 function buildMatrixBlock(card) {
-  const matrix = card?.matrix || {};
-  if (Array.isArray(matrix.sequence)) {
-    const sequence = matrix.sequence.map(buildMatrixRuntimeItem);
-    return {
-      kind: "matrix",
-      ...(normalizeText(matrix.name) ? { name: normalizeText(matrix.name) } : {}),
-      sequence,
-      summaryText: sequence
-        .map((item, index) => [index > 0 ? item.connector || "=" : "", item.name || "", item.summaryText].filter(Boolean).join(" "))
-        .join(" ")
-    };
-  }
-
   return {
     kind: "matrix",
-    ...buildMatrixRuntimeItem(matrix)
+    prompt: text(card.prompt),
+    name: text(card.name),
+    values: clone(Array.isArray(card.values) ? card.values : []),
+    sequence: clone(Array.isArray(card.sequence) ? card.sequence : []),
+    highlight: card.highlight !== undefined ? clone(card.highlight) : null,
+    dividerAfterColumn: card.dividerAfterColumn ?? null
   };
 }
 
-function appendIntroParagraph(blocks, card) {
-  const say = enrichTextGapsWithWrong(card?.say, card?.wrong).trim();
-  if (say) {
-    blocks.push(buildParagraphBlock(say));
+function buildPlaneBlock(card) {
+  return {
+    kind: "plane",
+    prompt: text(card.prompt),
+    x: clone(Array.isArray(card.x) ? card.x : []),
+    y: clone(Array.isArray(card.y) ? card.y : []),
+    vector: clone(Array.isArray(card.vector) ? card.vector : []),
+    vectors: clone(Array.isArray(card.vectors) ? card.vectors : []),
+    sum: clone(Array.isArray(card.sum) ? card.sum : []),
+    scale: card.scale && typeof card.scale === "object" ? clone(card.scale) : null,
+    distance: clone(Array.isArray(card.distance) ? card.distance : []),
+    result: Array.isArray(card.result) || typeof card.result === "string" ? clone(card.result) : null
+  };
+}
+
+function normalizeCompositeBlock(block = {}) {
+  const kind = text(block?.kind);
+  if (kind === "heading" || kind === "paragraph") {
+    return { kind, value: text(block?.value) };
   }
+  if (kind === "choice") {
+    return {
+      kind,
+      question: text(block?.question),
+      options: (Array.isArray(block?.options) ? block.options : []).map((option) => ({
+        id: text(option?.id),
+        text: text(option?.text)
+      })),
+      answer: text(block?.answer)
+    };
+  }
+  if (kind === "code") {
+    return {
+      kind,
+      prompt: text(block?.prompt),
+      language: text(block?.language) || "text",
+      code: text(block?.code)
+    };
+  }
+  if (kind === "table") {
+    return {
+      kind,
+      columns: (Array.isArray(block?.columns) ? block.columns : []).map((item) => text(item)),
+      rows: (Array.isArray(block?.rows) ? block.rows : []).map((row) => (Array.isArray(row) ? row.map((cell) => String(cell ?? "")) : []))
+    };
+  }
+  if (kind === "flow") {
+    return {
+      kind,
+      prompt: text(block?.prompt),
+      structure: block?.structure && typeof block.structure === "object" ? clone(block.structure) : null
+    };
+  }
+  if (kind === "tree") {
+    return {
+      kind,
+      prompt: text(block?.prompt),
+      nodes: clone(Array.isArray(block?.nodes) ? block.nodes : [])
+    };
+  }
+  if (kind === "graph") {
+    return {
+      kind,
+      prompt: text(block?.prompt),
+      vertices: clone(Array.isArray(block?.vertices) ? block.vertices : []),
+      edges: clone(Array.isArray(block?.edges) ? block.edges : []),
+      highlight: block.highlight && typeof block.highlight === "object" ? clone(block.highlight) : null
+    };
+  }
+  if (kind === "relation_map") {
+    return {
+      kind,
+      prompt: text(block?.prompt),
+      leftSet: block.leftSet && typeof block.leftSet === "object" ? clone(block.leftSet) : null,
+      rightSet: block.rightSet && typeof block.rightSet === "object" ? clone(block.rightSet) : null,
+      relations: clone(Array.isArray(block?.relations) ? block.relations : []),
+      pairList: clone(Array.isArray(block?.pairList) ? block.pairList : []),
+      relationTable: block.relationTable && typeof block.relationTable === "object" ? clone(block.relationTable) : null,
+      highlight: block.highlight && typeof block.highlight === "object" ? clone(block.highlight) : null
+    };
+  }
+  if (kind === "matrix") {
+    return {
+      kind,
+      prompt: text(block?.prompt),
+      name: text(block?.name),
+      values: clone(Array.isArray(block?.values) ? block.values : []),
+      sequence: clone(Array.isArray(block?.sequence) ? block.sequence : []),
+      highlight: block.highlight !== undefined ? clone(block.highlight) : null,
+      dividerAfterColumn: block.dividerAfterColumn ?? null
+    };
+  }
+  if (kind === "plane") {
+    return {
+      kind,
+      prompt: text(block?.prompt),
+      x: clone(Array.isArray(block?.x) ? block.x : []),
+      y: clone(Array.isArray(block?.y) ? block.y : []),
+      vector: clone(Array.isArray(block?.vector) ? block.vector : []),
+      vectors: clone(Array.isArray(block?.vectors) ? block.vectors : []),
+      sum: clone(Array.isArray(block?.sum) ? block.sum : []),
+      scale: block.scale && typeof block.scale === "object" ? clone(block.scale) : null,
+      distance: clone(Array.isArray(block?.distance) ? block.distance : []),
+      result: Array.isArray(block.result) || typeof block.result === "string" ? clone(block.result) : null
+    };
+  }
+  return {
+    kind: "paragraph",
+    value: text(block?.value)
+  };
 }
 
 function buildCardSpecificBlocks(card) {
-  if (!card || typeof card !== "object") {
-    return [];
+  switch (card?.resource) {
+    case "paragraph":
+      return [buildParagraphBlock(card)];
+    case "choice":
+      return [buildChoiceBlock(card)];
+    case "composite":
+      return (Array.isArray(card?.blocks) ? card.blocks : []).map((block) => normalizeCompositeBlock(block));
+    case "code":
+      return [buildCodeBlock(card)];
+    case "table":
+      return [buildTableBlock(card)];
+    case "flow":
+      return [buildFlowBlock(card)];
+    case "tree":
+      return [buildTreeBlock(card)];
+    case "graph":
+      return [buildGraphBlock(card)];
+    case "relation_map":
+      return [buildRelationMapBlock(card)];
+    case "matrix":
+      return [buildMatrixBlock(card)];
+    case "plane":
+      return [buildPlaneBlock(card)];
+    default:
+      return [{ kind: "paragraph", value: "" }];
   }
-
-  const kind = getContractCardKind(card);
-  const blocks = [];
-
-  if (kind === "ask") {
-    appendIntroParagraph(blocks, card);
-    blocks.push(buildChoiceBlock(card));
-    return blocks;
-  }
-  if (kind === "code") {
-    appendIntroParagraph(blocks, card);
-    blocks.push(buildEditorBlock(card));
-    return blocks;
-  }
-  if (kind === "table") {
-    appendIntroParagraph(blocks, card);
-    blocks.push(buildTableBlock(card));
-    return blocks;
-  }
-  if (kind === "tree") {
-    appendIntroParagraph(blocks, card);
-    blocks.push(buildDirectoryTreeBlock(card));
-    return blocks;
-  }
-  if (kind === "flow") {
-    appendIntroParagraph(blocks, card);
-    blocks.push(buildFlowchartBlock(card));
-    return blocks;
-  }
-  if (kind === "plane") {
-    appendIntroParagraph(blocks, card);
-    blocks.push(buildPlaneBlock(card));
-    return blocks;
-  }
-  if (kind === "graph") {
-    appendIntroParagraph(blocks, card);
-    blocks.push(buildGraphBlock(card));
-    return blocks;
-  }
-  if (kind === "matrix") {
-    appendIntroParagraph(blocks, card);
-    blocks.push(buildMatrixBlock(card));
-    return blocks;
-  }
-
-  blocks.push(buildParagraphBlock(enrichTextGapsWithWrong(card?.say, card?.wrong)));
-  return blocks;
 }
 
 export function readCardText(card) {
-  if (!card || typeof card !== "object") {
-    return "";
-  }
-
-  if (typeof card.say === "string") {
-    return card.say;
-  }
-  if (typeof card.ask === "string") {
-    return card.ask;
-  }
-  if (typeof card.code === "string") {
-    return card.code;
-  }
-  if (Array.isArray(card?.table?.rows) && card.table.rows.length) {
-    return card.table.rows
-      .map((row) => (Array.isArray(row) ? row.join(" | ") : ""))
-      .filter(Boolean)
-      .join("\n");
-  }
-  if (Array.isArray(card?.table?.columns) && card.table.columns.length) {
-    return card.table.columns.join(" | ");
-  }
-  if (card.plane && typeof card.plane === "object") {
-    return buildPlaneBlock(card).summaryText || "plane";
-  }
-  if (card.matrix && typeof card.matrix === "object") {
-    return buildMatrixBlock(card).summaryText || "matrix";
-  }
-  if (card.graph && typeof card.graph === "object") {
-    return buildGraphBlock(card).summaryText || "graph";
-  }
-  if (card.tree && typeof card.tree === "object") {
-    return normalizeText(card.tree.current) || normalizeText(card.tree.base) || "tree";
-  }
-  if (Array.isArray(card.flow) && card.flow.length) {
-    return card.flow
-      .map((step) => {
-        const [kind] = Object.keys(step || {}).filter((key) => key !== "id" && key !== "blank");
-        return kind ? `${kind}: ${step[kind]}` : "";
+  if (card?.resource === "composite") {
+    return (Array.isArray(card?.blocks) ? card.blocks : [])
+      .flatMap((block) => {
+        if (block?.kind === "paragraph" || block?.kind === "heading") return [text(block?.value)];
+        if (block?.kind === "choice") {
+          return [
+            text(block?.question),
+            ...(Array.isArray(block?.options) ? block.options.map((option) => text(option?.text)) : [])
+          ];
+        }
+        if (block?.kind === "flow") {
+          const flowText = [];
+          collectFlowStructureText(block?.structure, flowText);
+          return [text(block?.prompt), flowText.join(" ")];
+        }
+        return [text(block?.prompt), text(block?.code)];
       })
       .filter(Boolean)
-      .join("\n");
+      .join(" ");
   }
-
+  if (card?.resource === "paragraph") return text(card.text);
+  if (card?.resource === "choice") return text(card.question);
+  if (card?.resource === "code") return [text(card.prompt), text(card.code), text(card.question)].filter(Boolean).join(" ");
+  if (card?.resource === "table") return [(card.rows || []).flat().map((cell) => String(cell ?? "")).join(" "), text(card.question)].filter(Boolean).join(" ");
+  if (card?.resource === "tree") return [text(card.prompt), text(card.question)].filter(Boolean).join(" ");
+  if (card?.resource === "graph") return [text(card.prompt), text(card.question)].filter(Boolean).join(" ");
+  if (card?.resource === "relation_map") return [text(card.prompt), text(card.question)].filter(Boolean).join(" ");
+  if (card?.resource === "matrix") return [text(card.prompt), text(card.question)].filter(Boolean).join(" ");
+  if (card?.resource === "plane") return [text(card.prompt), text(card.question)].filter(Boolean).join(" ");
+  if (card?.resource === "flow") {
+    const flowText = [];
+    collectFlowStructureText(card.structure, flowText);
+    return [text(card.prompt), text(card.question), flowText.join(" ")].filter(Boolean).join(" ");
+  }
   return "";
 }
 
-export function buildCardRuntime(card) {
-  const title = normalizeText(card?.title).trim() || normalizeText(card?.key).trim() || "Novo card";
-  const blocks = [
-    buildHeadingBlock(title),
-    ...buildCardSpecificBlocks(card),
-    buildButtonBlock(card?.after)
-  ];
+function buildExerciseResponseBlock(card) {
+  if (card?.resource === "choice" || card?.resource === "composite" || text(card?.exercise).trim() !== "choice") {
+    return [];
+  }
+  return [buildChoiceBlock(card)];
+}
 
+export function buildCardRuntime(card) {
+  const blocks = [
+    buildHeadingBlock(card?.title),
+    ...buildCardSpecificBlocks(card),
+    ...buildExerciseResponseBlock(card)
+  ];
+  const afterBlock = buildAfterBlock(card?.after);
+  if (afterBlock) {
+    blocks.push(afterBlock);
+  }
   return {
-    title,
+    title: text(card?.title).trim() || "Card",
     blocks,
     fallbackText: readCardText(card)
   };
 }
 
 export function resolveCardRuntime(card) {
-  if (card?.runtime?.blocks && Array.isArray(card.runtime.blocks)) {
-    return clone(card.runtime);
-  }
-
   return buildCardRuntime(card);
 }

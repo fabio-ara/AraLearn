@@ -296,12 +296,20 @@ const server = http.createServer(async (request, response) => {
     const outputText = resultFileTransport.outputFilePath && fs.existsSync(resultFileTransport.outputFilePath)
       ? fs.readFileSync(resultFileTransport.outputFilePath, "utf8")
       : codexResult.stdout;
+    const expectsStructuredJson = requestPayload.schema && typeof requestPayload.schema === "object";
     let result = null;
     let parseError = null;
-    try {
-      result = extractJsonFromText(outputText);
-    } catch (error) {
-      parseError = error;
+    if (expectsStructuredJson) {
+      try {
+        result = extractJsonFromText(outputText);
+      } catch (error) {
+        parseError = error;
+      }
+    } else {
+      result = {
+        text: outputText,
+        usage: {}
+      };
     }
     cleanupPaths.forEach((cleanupPath) => {
       if (!cleanupPath) {

@@ -226,7 +226,7 @@ public class MainActivity extends Activity {
             int right = Math.max(0, systemBars.right);
             int bottom = Math.max(0, Math.max(systemBars.bottom, gestures.bottom));
 
-            // Fallback legado: compensa a WebView por fora e zera os insets entregues ao conteúdo.
+            // Fallback local: compensa a WebView por fora e zera os insets entregues ao conteúdo.
             view.setPadding(left, top, right, bottom);
 
             WindowInsetsCompat.Builder passthrough = new WindowInsetsCompat.Builder(windowInsets);

@@ -1,0 +1,108 @@
+{
+  "contract": "aralearn.contract",
+  "version": 3,
+  "kind": "project",
+  "courses": [
+    {
+      "id": "course-fixture-visual",
+      "title": "Fixture Visual",
+      "goal": "Validar recursos graph, matrix e plane no contrato v3.",
+      "modules": [
+        {
+          "id": "module-fixture-visual",
+          "title": "Visual",
+          "guide": {
+            "goal": "Cobrir recursos visuais simples.",
+            "include": ["graph", "matrix", "plane"],
+            "exclude": [],
+            "notation": ["Use rótulos curtos."],
+            "avoid": ["Não depender de contexto externo."]
+          },
+          "lessons": [
+            {
+              "id": "lesson-fixture-visual",
+              "title": "Visual",
+              "guide": {
+                "goal": "Ler um grafo, uma matriz e um vetor simples.",
+                "include": ["graph", "matrix", "plane"],
+                "exclude": [],
+                "notation": ["Use rótulos curtos."],
+                "avoid": ["Não depender de contexto externo."]
+              },
+              "topics": [],
+              "microsequences": [
+                {
+                  "id": "micro-fixture-visual",
+                  "title": "Recursos visuais",
+                  "goal": "Reconhecer o elemento destacado.",
+                  "role": "explain",
+                  "status": "ready",
+                  "dependsOn": [],
+                  "covers": ["graph", "matrix", "plane"],
+                  "checks": ["o aluno identifica o elemento destacado"],
+                  "versions": [
+                    {
+                      "id": "version-micro-fixture-visual",
+                      "createdAt": "2026-01-01T00:00:00.000Z",
+                      "source": "manual",
+                      "action": "generate",
+                      "request": "",
+                      "summary": "Versão inicial.",
+                      "cards": [
+                        {
+                          "position": 1,
+                          "resource": "graph",
+                          "kind": "theory",
+                          "exercise": "none",
+                          "title": "Grafo simples",
+                          "prompt": "Observe o vértice destacado.",
+                          "vertices": [
+                            { "id": "A", "label": "A", "x": 20, "y": 40 },
+                            { "id": "B", "label": "B", "x": 80, "y": 40 }
+                          ],
+                          "edges": [
+                            { "from": "A", "to": "B", "label": "liga", "weight": "1" }
+                          ],
+                          "highlight": {
+                            "vertices": ["A"],
+                            "edges": [["A", "B"]]
+                          },
+                          "after": "O vértice `A` está ligado a `B`."
+                        },
+                        {
+                          "position": 2,
+                          "resource": "matrix",
+                          "kind": "theory",
+                          "exercise": "none",
+                          "title": "Matriz identidade",
+                          "prompt": "Observe a diagonal principal.",
+                          "values": [["1", "0"], ["0", "1"]],
+                          "after": "A diagonal principal fica com `1`."
+                        },
+                        {
+                          "position": 3,
+                          "resource": "plane",
+                          "kind": "theory",
+                          "exercise": "none",
+                          "title": "Vetor no plano",
+                          "prompt": "Observe o vetor v.",
+                          "vector": [2, 1],
+                          "after": "O vetor aponta para `(2, 1)`."
+                        }
+                      ],
+                      "validation": {
+                        "ok": true,
+                        "issues": []
+                      }
+                    }
+                  ],
+                  "activeVersion": "version-micro-fixture-visual"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

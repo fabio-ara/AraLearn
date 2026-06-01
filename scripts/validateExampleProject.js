@@ -1,5 +1,5 @@
 import { validateContractDocument } from "../src/contract/validateContract.js";
-import { createExampleProjectDocument, createMatematicaParaInformaticaProjectDocument } from "../src/ui/exampleProjectDocument.js";
+import { createExampleProjectDocument, createTeoriaDosGrafosProvaProjectDocument } from "../src/ui/exampleProjectDocument.js";
 import { createEmbeddedSeedProjectDocument } from "../src/ui/embeddedSeedProjectDocument.js";
 
 function assertValid(label, document) {
@@ -16,7 +16,7 @@ function assertValid(label, document) {
 
 const summaries = [
   assertValid("exampleProjectDocument", createExampleProjectDocument()),
-  assertValid("matematicaParaInformaticaProjectDocument", createMatematicaParaInformaticaProjectDocument()),
+  assertValid("teoriaDosGrafosProvaProjectDocument", createTeoriaDosGrafosProvaProjectDocument()),
   assertValid("embeddedSeedProjectDocument", createEmbeddedSeedProjectDocument())
 ];
 

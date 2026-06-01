@@ -1,0 +1,356 @@
+{
+  "createdAt": "2026-05-29T04:18:54.107Z",
+  "scenarios": [
+    {
+      "id": "deepseek-real",
+      "auditPatchApplied": true,
+      "before": {
+        "score": 83,
+        "warnings": [
+          "prática apareceu antes de base mínima",
+          "microssequência introdutória sem card teórico",
+          "card 1: feedback genérico",
+          "card 1: distrator pouco plausível",
+          "card 1: distrator pouco plausível"
+        ],
+        "failConditions": [
+          "practiceDistribution",
+          "feedbackSpecificity",
+          "distractorQuality"
+        ],
+        "suggestions": [
+          "garantir base mínima antes da prática",
+          "explicar o raciocínio ou o erro provável no feedback",
+          "substituir distratores frágeis por erros plausíveis"
+        ],
+        "metrics": {
+          "theoryDensity": {
+            "score": 100,
+            "warnings": [],
+            "failConditions": [],
+            "suggestions": []
+          },
+          "practiceDistribution": {
+            "score": 30,
+            "warnings": [
+              "prática apareceu antes de base mínima",
+              "microssequência introdutória sem card teórico"
+            ],
+            "failConditions": [
+              "practiceDistribution"
+            ],
+            "suggestions": [
+              "garantir base mínima antes da prática"
+            ]
+          },
+          "choiceOveruse": {
+            "score": 100,
+            "warnings": [],
+            "failConditions": [],
+            "suggestions": []
+          },
+          "feedbackSpecificity": {
+            "score": 75,
+            "warnings": [
+              "card 1: feedback genérico"
+            ],
+            "failConditions": [
+              "feedbackSpecificity"
+            ],
+            "suggestions": [
+              "explicar o raciocínio ou o erro provável no feedback"
+            ]
+          },
+          "distractorQuality": {
+            "score": 60,
+            "warnings": [
+              "card 1: distrator pouco plausível",
+              "card 1: distrator pouco plausível"
+            ],
+            "failConditions": [
+              "distractorQuality"
+            ],
+            "suggestions": [
+              "substituir distratores frágeis por erros plausíveis"
+            ]
+          },
+          "scopeFidelity": {
+            "score": 100,
+            "warnings": [],
+            "failConditions": [],
+            "suggestions": []
+          },
+          "dependencyDiscipline": {
+            "score": 100,
+            "warnings": [],
+            "failConditions": [],
+            "suggestions": []
+          },
+          "resourceFit": {
+            "score": 100,
+            "warnings": [],
+            "failConditions": [],
+            "suggestions": []
+          }
+        }
+      },
+      "after": {
+        "score": 86,
+        "warnings": [
+          "prática apareceu antes de base mínima",
+          "microssequência introdutória sem card teórico",
+          "card 1: distrator pouco plausível",
+          "card 1: distrator pouco plausível"
+        ],
+        "failConditions": [
+          "practiceDistribution",
+          "distractorQuality"
+        ],
+        "suggestions": [
+          "garantir base mínima antes da prática",
+          "substituir distratores frágeis por erros plausíveis"
+        ],
+        "metrics": {
+          "theoryDensity": {
+            "score": 100,
+            "warnings": [],
+            "failConditions": [],
+            "suggestions": []
+          },
+          "practiceDistribution": {
+            "score": 30,
+            "warnings": [
+              "prática apareceu antes de base mínima",
+              "microssequência introdutória sem card teórico"
+            ],
+            "failConditions": [
+              "practiceDistribution"
+            ],
+            "suggestions": [
+              "garantir base mínima antes da prática"
+            ]
+          },
+          "choiceOveruse": {
+            "score": 100,
+            "warnings": [],
+            "failConditions": [],
+            "suggestions": []
+          },
+          "feedbackSpecificity": {
+            "score": 100,
+            "warnings": [],
+            "failConditions": [],
+            "suggestions": []
+          },
+          "distractorQuality": {
+            "score": 60,
+            "warnings": [
+              "card 1: distrator pouco plausível",
+              "card 1: distrator pouco plausível"
+            ],
+            "failConditions": [
+              "distractorQuality"
+            ],
+            "suggestions": [
+              "substituir distratores frágeis por erros plausíveis"
+            ]
+          },
+          "scopeFidelity": {
+            "score": 100,
+            "warnings": [],
+            "failConditions": [],
+            "suggestions": []
+          },
+          "dependencyDiscipline": {
+            "score": 100,
+            "warnings": [],
+            "failConditions": [],
+            "suggestions": []
+          },
+          "resourceFit": {
+            "score": 100,
+            "warnings": [],
+            "failConditions": [],
+            "suggestions": []
+          }
+        }
+      }
+    },
+    {
+      "id": "sintetico-densidade-e-feedback",
+      "auditPatchApplied": true,
+      "before": {
+        "score": 79,
+        "warnings": [
+          "card 1: teoria densa",
+          "card 1: feedback genérico",
+          "card 2: feedback genérico",
+          "card 1: template tree_path incompatível com recurso paragraph",
+          "card 1: template fora do catálogo do recurso",
+          "card 2: recurso ou template ausente no catálogo"
+        ],
+        "failConditions": [
+          "theoryDensity",
+          "feedbackSpecificity",
+          "resourceFit"
+        ],
+        "suggestions": [
+          "dividir teoria ou redistribuir explicação entre cards",
+          "explicar o raciocínio ou o erro provável no feedback",
+          "alinhar template escolhido ao catálogo declarativo do recurso"
+        ],
+        "metrics": {
+          "theoryDensity": {
+            "score": 75,
+            "warnings": [
+              "card 1: teoria densa"
+            ],
+            "failConditions": [
+              "theoryDensity"
+            ],
+            "suggestions": [
+              "dividir teoria ou redistribuir explicação entre cards"
+            ]
+          },
+          "practiceDistribution": {
+            "score": 100,
+            "warnings": [],
+            "failConditions": [],
+            "suggestions": []
+          },
+          "choiceOveruse": {
+            "score": 100,
+            "warnings": [],
+            "failConditions": [],
+            "suggestions": []
+          },
+          "feedbackSpecificity": {
+            "score": 50,
+            "warnings": [
+              "card 1: feedback genérico",
+              "card 2: feedback genérico"
+            ],
+            "failConditions": [
+              "feedbackSpecificity"
+            ],
+            "suggestions": [
+              "explicar o raciocínio ou o erro provável no feedback"
+            ]
+          },
+          "distractorQuality": {
+            "score": 100,
+            "warnings": [],
+            "failConditions": [],
+            "suggestions": []
+          },
+          "scopeFidelity": {
+            "score": 100,
+            "warnings": [],
+            "failConditions": [],
+            "suggestions": []
+          },
+          "dependencyDiscipline": {
+            "score": 100,
+            "warnings": [],
+            "failConditions": [],
+            "suggestions": []
+          },
+          "resourceFit": {
+            "score": 10,
+            "warnings": [
+              "card 1: template tree_path incompatível com recurso paragraph",
+              "card 1: template fora do catálogo do recurso",
+              "card 2: recurso ou template ausente no catálogo"
+            ],
+            "failConditions": [
+              "resourceFit"
+            ],
+            "suggestions": [
+              "alinhar template escolhido ao catálogo declarativo do recurso"
+            ]
+          }
+        }
+      },
+      "after": {
+        "score": 89,
+        "warnings": [
+          "card 1: template tree_path incompatível com recurso paragraph",
+          "card 1: template fora do catálogo do recurso",
+          "card 2: recurso ou template ausente no catálogo"
+        ],
+        "failConditions": [
+          "resourceFit"
+        ],
+        "suggestions": [
+          "alinhar template escolhido ao catálogo declarativo do recurso"
+        ],
+        "metrics": {
+          "theoryDensity": {
+            "score": 100,
+            "warnings": [],
+            "failConditions": [],
+            "suggestions": []
+          },
+          "practiceDistribution": {
+            "score": 100,
+            "warnings": [],
+            "failConditions": [],
+            "suggestions": []
+          },
+          "choiceOveruse": {
+            "score": 100,
+            "warnings": [],
+            "failConditions": [],
+            "suggestions": []
+          },
+          "feedbackSpecificity": {
+            "score": 100,
+            "warnings": [],
+            "failConditions": [],
+            "suggestions": []
+          },
+          "distractorQuality": {
+            "score": 100,
+            "warnings": [],
+            "failConditions": [],
+            "suggestions": []
+          },
+          "scopeFidelity": {
+            "score": 100,
+            "warnings": [],
+            "failConditions": [],
+            "suggestions": []
+          },
+          "dependencyDiscipline": {
+            "score": 100,
+            "warnings": [],
+            "failConditions": [],
+            "suggestions": []
+          },
+          "resourceFit": {
+            "score": 10,
+            "warnings": [
+              "card 1: template tree_path incompatível com recurso paragraph",
+              "card 1: template fora do catálogo do recurso",
+              "card 2: recurso ou template ausente no catálogo"
+            ],
+            "failConditions": [
+              "resourceFit"
+            ],
+            "suggestions": [
+              "alinhar template escolhido ao catálogo declarativo do recurso"
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "summary": {
+    "theoryDensityWarningsBefore": 1,
+    "theoryDensityWarningsAfter": 0,
+    "choiceOveruseWarningsBefore": 0,
+    "choiceOveruseWarningsAfter": 0,
+    "feedbackGenericWarningsBefore": 3,
+    "feedbackGenericWarningsAfter": 0
+  }
+}

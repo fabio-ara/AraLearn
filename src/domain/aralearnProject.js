@@ -1,35 +1,60 @@
-import { buildScopedKey, createKeyAllocator } from "../core/ids.js";
+import { buildScopedKey } from "../core/ids.js";
 import { finalizeValidation, isPlainObject, pushError } from "../core/validation.js";
-import { normalizeLabel, normalizeWhitespace } from "../core/text.js";
 import { validateCard } from "./cards.js";
-import { MICROSEQUENCE_STATUSES, MICROSEQUENCE_TYPES } from "./microsequence.js";
-import { normalizeScopeTermList } from "./scopeTerms.js";
+import { normalizeGuide, GUIDE_LEVELS } from "../sourceGuides/sourceGuideStructured.js";
 
 export const PROJECT_CONTRACT = "aralearn.contract";
-export const PROJECT_VERSION = 1;
+export const PROJECT_VERSION = 3;
 
-function normalizeEvidencePriority(values = []) {
-  const source = Array.isArray(values) ? values : [];
-  const unique = [];
+const PROJECT_SCOPES = new Set(["course", "module", "lesson", "microsequence"]);
+const MICROSEQUENCE_ROLES = new Set(["explain", "practice", "review", "support"]);
+const MICROSEQUENCE_STATUSES = new Set(["planned", "generated", "needs_review", "ready"]);
+const TOPIC_KINDS = new Set(["concept", "procedure", "representation", "term"]);
+const VERSION_SOURCES = new Set(["llm", "manual", "codex"]);
+const VERSION_ACTIONS = new Set(["generate", "improve", "practice", "branch", "repair"]);
+
+function text(value) {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function uniqueList(values = []) {
   const seen = new Set();
-  for (const item of source) {
-    const normalized = normalizeWhitespace(item).toLowerCase();
-    if (!normalized || seen.has(normalized)) {
-      continue;
-    }
-    seen.add(normalized);
-    unique.push(normalized);
+  return (Array.isArray(values) ? values : [])
+    .map((item) => text(item))
+    .filter((item) => {
+      const token = item.toLowerCase();
+      if (!item || seen.has(token)) {
+        return false;
+      }
+      seen.add(token);
+      return true;
+    });
+}
+
+function validateGuide(value, path, errors, level = GUIDE_LEVELS.LESSON) {
+  if (!isPlainObject(value)) {
+    pushError(errors, path, "guide inválido.");
+    return normalizeGuide({}, { level });
   }
-  return unique.length ? unique : ["none"];
+  const normalized = normalizeGuide(value, { level });
+  if (!text(normalized.goal)) {
+    pushError(errors, `${path}.goal`, "guide.goal é obrigatório.");
+  }
+  return {
+    goal: text(normalized.goal),
+    include: uniqueList(normalized.include),
+    exclude: uniqueList(normalized.exclude),
+    notation: uniqueList(normalized.notation),
+    avoid: uniqueList(normalized.avoid)
+  };
 }
 
 function validateVersion(version, path, errors) {
   if (!isPlainObject(version)) {
-    pushError(errors, path, "Versão de microssequência inválida.");
+    pushError(errors, path, "Versão inválida.");
     return null;
   }
-  const cards = Array.isArray(version.cards) ? version.cards : [];
-  const normalizedCards = cards
+  const cards = (Array.isArray(version.cards) ? version.cards : [])
     .map((card, index) => {
       const result = validateCard(card, `${path}.cards[${index}]`);
       if (!result.ok) {
@@ -39,20 +64,45 @@ function validateVersion(version, path, errors) {
       return result.value;
     })
     .filter(Boolean);
-
+  const id = text(version.id) || buildScopedKey("version", `${text(version.action) || "generate"}-${Date.now()}`);
+  const source = VERSION_SOURCES.has(text(version.source)) ? text(version.source) : "llm";
+  const action = VERSION_ACTIONS.has(text(version.action)) ? text(version.action) : "generate";
+  const createdAt = text(version.createdAt) || new Date().toISOString();
+  const validation = isPlainObject(version.validation)
+    ? {
+        ok: version.validation.ok !== false,
+        issues: uniqueList(version.validation.issues)
+      }
+    : { ok: true, issues: [] };
   return {
-    key: normalizeLabel(version.key) || `version-${Date.now().toString(36)}`,
-    createdAt: typeof version.createdAt === "string" && version.createdAt.trim() ? version.createdAt.trim() : new Date().toISOString(),
-    source: ["llm", "manual", "codex"].includes(String(version.source || "").trim()) ? String(version.source).trim() : "llm",
-    mode: ["generate", "improve", "more_practice", "support", "repair"].includes(String(version.mode || "").trim())
-      ? String(version.mode).trim()
-      : "generate",
-    ...(typeof version.userRequest === "string" && version.userRequest.trim() ? { userRequest: version.userRequest.trim() } : {}),
-    cards: normalizedCards,
-    summary: typeof version.summary === "string" ? version.summary.trim() : "",
-    validationReport: isPlainObject(version.validationReport)
-      ? structuredClone(version.validationReport)
-      : { ok: true, issues: [] }
+    id,
+    createdAt,
+    source,
+    action,
+    request: text(version.request),
+    summary: text(version.summary),
+    cards,
+    validation
+  };
+}
+
+function validateTopic(topic, path, errors) {
+  if (!isPlainObject(topic)) {
+    pushError(errors, path, "topic inválido.");
+    return null;
+  }
+  const id = text(topic.id) || buildScopedKey("topic", text(topic.label) || "topic");
+  const label = text(topic.label);
+  if (!label) {
+    pushError(errors, `${path}.label`, "topic.label é obrigatório.");
+  }
+  const kind = TOPIC_KINDS.has(text(topic.kind)) ? text(topic.kind) : "concept";
+  return {
+    id,
+    label,
+    kind,
+    checks: uniqueList(topic.checks),
+    errors: uniqueList(topic.errors)
   };
 }
 
@@ -61,50 +111,45 @@ function validateMicrosequence(microsequence, path, errors) {
     pushError(errors, path, "Microssequência inválida.");
     return null;
   }
-
-  const title = normalizeLabel(microsequence.title);
-  const goal = normalizeLabel(microsequence.goal);
+  const id = text(microsequence.id) || buildScopedKey("microsequence", text(microsequence.title) || "microsequence");
+  const title = text(microsequence.title);
+  const goal = text(microsequence.goal);
   if (!title) {
     pushError(errors, `${path}.title`, "Título da microssequência é obrigatório.");
   }
   if (!goal) {
     pushError(errors, `${path}.goal`, "Objetivo da microssequência é obrigatório.");
   }
-
-  const type = normalizeWhitespace(microsequence.type);
-  if (!MICROSEQUENCE_TYPES.includes(type)) {
-    pushError(errors, `${path}.type`, "Tipo de microssequência inválido.");
+  const role = text(microsequence.role);
+  if (!MICROSEQUENCE_ROLES.has(role)) {
+    pushError(errors, `${path}.role`, "role de microssequência inválido.");
   }
-
-  const status = normalizeWhitespace(microsequence.status);
-  if (!MICROSEQUENCE_STATUSES.includes(status)) {
-    pushError(errors, `${path}.status`, "Status de microssequência inválido.");
+  const status = text(microsequence.status);
+  if (!MICROSEQUENCE_STATUSES.has(status)) {
+    pushError(errors, `${path}.status`, "status de microssequência inválido.");
   }
-
   const versions = (Array.isArray(microsequence.versions) ? microsequence.versions : [])
     .map((version, index) => validateVersion(version, `${path}.versions[${index}]`, errors))
     .filter(Boolean);
-
-  const activeVersionKey = typeof microsequence.activeVersionKey === "string" ? microsequence.activeVersionKey.trim() : "";
-  if (activeVersionKey && !versions.some((version) => version.key === activeVersionKey)) {
-    pushError(errors, `${path}.activeVersionKey`, "Versão ativa inexistente.");
+  const activeVersion = text(microsequence.activeVersion);
+  if (activeVersion && !versions.some((version) => version.id === activeVersion)) {
+    pushError(errors, `${path}.activeVersion`, "Versão ativa inexistente.");
   }
   if (status !== "planned" && !versions.length) {
-    pushError(errors, `${path}.versions`, "Microssequências geradas ou prontas precisam ter ao menos uma versão.");
+    pushError(errors, `${path}.versions`, "Microssequência materializada precisa ter versões.");
   }
-
   return {
-    key: normalizeLabel(microsequence.key) || buildScopedKey("microsequence", title),
+    id,
     title,
     goal,
-    type: MICROSEQUENCE_TYPES.includes(type) ? type : "main",
-    status: MICROSEQUENCE_STATUSES.includes(status) ? status : "planned",
-    dependsOn: Array.isArray(microsequence.dependsOn) ? microsequence.dependsOn.map((item) => String(item).trim()).filter(Boolean) : [],
-    scopeRefs: Array.isArray(microsequence.scopeRefs) ? microsequence.scopeRefs.map((item) => String(item).trim()).filter(Boolean) : [],
-    ...(microsequence.parentMicrosequenceKey ? { parentMicrosequenceKey: String(microsequence.parentMicrosequenceKey).trim() } : {}),
-    ...(microsequence.supportReason ? { supportReason: String(microsequence.supportReason).trim() } : {}),
+    role,
+    status,
+    branchOf: text(microsequence.branchOf) || null,
+    dependsOn: uniqueList(microsequence.dependsOn),
+    covers: uniqueList(microsequence.covers),
+    checks: uniqueList(microsequence.checks),
     versions,
-    ...(activeVersionKey || versions[0]?.key ? { activeVersionKey: activeVersionKey || versions[versions.length - 1]?.key } : {})
+    activeVersion: activeVersion || versions.at(-1)?.id || null
   };
 }
 
@@ -113,23 +158,23 @@ function validateLesson(lesson, path, errors) {
     pushError(errors, path, "Lição inválida.");
     return null;
   }
-  const title = normalizeLabel(lesson.title);
-  const goal = normalizeLabel(lesson.goal);
+  const id = text(lesson.id) || buildScopedKey("lesson", text(lesson.title) || "lesson");
+  const title = text(lesson.title);
   if (!title) {
     pushError(errors, `${path}.title`, "Título da lição é obrigatório.");
   }
-  if (!goal) {
-    pushError(errors, `${path}.goal`, "Objetivo da lição é obrigatório.");
-  }
-
+  const guide = validateGuide(lesson.guide, `${path}.guide`, errors, GUIDE_LEVELS.LESSON);
+  const topics = (Array.isArray(lesson.topics) ? lesson.topics : [])
+    .map((topic, index) => validateTopic(topic, `${path}.topics[${index}]`, errors))
+    .filter(Boolean);
   const microsequences = (Array.isArray(lesson.microsequences) ? lesson.microsequences : [])
     .map((item, index) => validateMicrosequence(item, `${path}.microsequences[${index}]`, errors))
     .filter(Boolean);
-
   return {
-    key: normalizeLabel(lesson.key) || buildScopedKey("lesson", title),
+    id,
     title,
-    goal,
+    guide,
+    topics,
     microsequences
   };
 }
@@ -139,28 +184,19 @@ function validateModule(moduleValue, path, errors) {
     pushError(errors, path, "Módulo inválido.");
     return null;
   }
-  const title = normalizeLabel(moduleValue.title);
+  const id = text(moduleValue.id) || buildScopedKey("module", text(moduleValue.title) || "module");
+  const title = text(moduleValue.title);
   if (!title) {
     pushError(errors, `${path}.title`, "Título do módulo é obrigatório.");
   }
-  const include = normalizeScopeTermList(moduleValue.include);
-  if (!include.length) {
-    pushError(errors, `${path}.include`, "Módulo precisa ter termos de escopo em include.");
-  }
-  const exclude = normalizeScopeTermList(moduleValue.exclude);
+  const guide = validateGuide(moduleValue.guide, `${path}.guide`, errors, GUIDE_LEVELS.MODULE);
   const lessons = (Array.isArray(moduleValue.lessons) ? moduleValue.lessons : [])
     .map((lesson, index) => validateLesson(lesson, `${path}.lessons[${index}]`, errors))
     .filter(Boolean);
-
   return {
-    key: normalizeLabel(moduleValue.key) || buildScopedKey("module", title),
+    id,
     title,
-    include,
-    exclude,
-    ...(moduleValue.notes ? { notes: String(moduleValue.notes).trim() } : {}),
-    assessmentStyle: ["theoretical", "practical", "mixed"].includes(String(moduleValue.assessmentStyle || "").trim())
-      ? String(moduleValue.assessmentStyle).trim()
-      : "mixed",
+    guide,
     lessons
   };
 }
@@ -170,21 +206,22 @@ function validateCourse(course, path, errors) {
     pushError(errors, path, "Curso inválido.");
     return null;
   }
-
-  const title = normalizeLabel(course.title);
+  const id = text(course.id) || buildScopedKey("course", text(course.title) || "course");
+  const title = text(course.title);
   if (!title) {
     pushError(errors, `${path}.title`, "Título do curso é obrigatório.");
   }
-
+  const goal = text(course.goal);
+  if (!goal) {
+    pushError(errors, `${path}.goal`, "Objetivo do curso é obrigatório.");
+  }
   const modules = (Array.isArray(course.modules) ? course.modules : [])
     .map((moduleValue, index) => validateModule(moduleValue, `${path}.modules[${index}]`, errors))
     .filter(Boolean);
-
   return {
-    key: normalizeLabel(course.key) || buildScopedKey("course", title),
+    id,
     title,
-    ...(course.goal ? { goal: String(course.goal).trim() } : {}),
-    evidencePriority: normalizeEvidencePriority(course.evidencePriority),
+    goal,
     modules
   };
 }
@@ -194,29 +231,27 @@ export function validateProjectDocument(document) {
   if (!isPlainObject(document)) {
     return { ok: false, errors: [{ path: "$", message: "Projeto deve ser um objeto." }] };
   }
-  if (String(document.contract || "").trim() !== PROJECT_CONTRACT) {
+  if (text(document.contract) !== PROJECT_CONTRACT) {
     pushError(errors, "$.contract", `Contrato esperado: "${PROJECT_CONTRACT}".`);
   }
   if (Number(document.version) !== PROJECT_VERSION) {
     pushError(errors, "$.version", `Versão esperada: ${PROJECT_VERSION}.`);
   }
-  if (String(document.kind || "").trim() !== "project") {
-    pushError(errors, "$.kind", 'Kind esperado: "project".');
+  if (text(document.kind) !== "project") {
+    pushError(errors, "$.kind", 'kind esperado: "project".');
   }
-
-  const allocator = createKeyAllocator("course");
+  const scope = text(document.scope);
+  if (scope && !PROJECT_SCOPES.has(scope)) {
+    pushError(errors, "$.scope", "scope inválido.");
+  }
   const courses = (Array.isArray(document.courses) ? document.courses : [])
     .map((course, index) => validateCourse(course, `$.courses[${index}]`, errors))
-    .filter(Boolean)
-    .map((course) => ({
-      ...course,
-      key: allocator.next(course.key, course.title, "course")
-    }));
-
+    .filter(Boolean);
   return finalizeValidation(errors, {
     contract: PROJECT_CONTRACT,
     version: PROJECT_VERSION,
     kind: "project",
+    ...(scope ? { scope } : {}),
     courses
   });
 }

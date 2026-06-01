@@ -1,12 +1,6 @@
-import { buildMicrosequenceGenerationPromptLines } from "../didactics/microsequenceGenerationPromptPolicy.js";
-
-export function buildMicrosequenceGenerationPrompt(contract, modelCapabilities = contract?.model?.capabilities || {}) {
-  const compact = modelCapabilities?.preferShortSchemas !== false;
-  const body = compact ? JSON.stringify(contract) : JSON.stringify(contract, null, 2);
-
+export function buildMicrosequenceGenerationPrompt(contract) {
   return [
-    ...buildMicrosequenceGenerationPromptLines(contract),
-    "Contrato:",
-    body
+    "Você receberá um contrato JSON. Devolva somente JSON válido no formato pedido.",
+    JSON.stringify(contract)
   ].join("\n");
 }

@@ -1,57 +1,46 @@
-import { validateCard } from "../../domain/cards.js";
+import { validateGeneratedCards } from "../validation/validateGeneratedCards.js";
 
-function densityBounds(density) {
-  if (density === "deep") {
-    return { min: 6, max: 10 };
-  }
-  if (density === "exam") {
-    return { min: 8, max: 14 };
-  }
-  return { min: 4, max: 6 };
+function text(value) {
+  return typeof value === "string" ? value.trim() : "";
 }
 
-export function validateMicrosequenceCards(payload, density = "standard") {
-  const errors = [];
-  const summary = typeof payload?.summary === "string" ? payload.summary.trim() : "";
+function buildFallbackContract(payload = {}, options = {}) {
   const cards = Array.isArray(payload?.cards) ? payload.cards : [];
-  const normalizedCards = cards
-    .map((card, index) => {
-      const result = validateCard(card, `$.cards[${index}]`);
-      if (!result.ok) {
-        result.errors.forEach((error) => errors.push(error));
-        return null;
-      }
-      return result.value;
-    })
-    .filter(Boolean);
-
-  const bounds = densityBounds(density);
-  if (normalizedCards.length < bounds.min || normalizedCards.length > bounds.max) {
-    errors.push({
-      path: "$.cards",
-      message: `Quantidade de cards fora do esperado para ${density}: ${normalizedCards.length} (esperado entre ${bounds.min} e ${bounds.max}).`
-    });
-  }
-  if (!summary) {
-    errors.push({
-      path: "$.summary",
-      message: "Resumo da versão é obrigatório."
-    });
-  }
-
   return {
-    ok: errors.length === 0,
-    errors,
-    value: {
-      summary,
-      cards: normalizedCards
-    },
-    report: {
-      ok: errors.length === 0,
-      density,
-      cardCount: normalizedCards.length,
-      issues: errors.map((error) => error.message)
+    guide: structuredClone(options?.guide || options?.packet?.guide || { goal: "", include: [], exclude: [], notation: [], avoid: [] }),
+    microsequence: structuredClone(options?.packet?.microsequence || { title: "", goal: "", checks: [] }),
+    plan: cards.map((card, index) => ({
+      position: Number(card?.position) || index + 1,
+      role: text(card?.kind) === "exercise" ? "practice" : "explain",
+      resource: text(card?.resource),
+      kind: text(card?.kind),
+      exercise: text(card?.exercise),
+      goal: "",
+      checks: []
+    })),
+    output: {
+      cardCount: cards.length
     }
   };
 }
 
+export function validateMicrosequenceCards(payload, generationContract = {}, options = {}) {
+  const contract =
+    generationContract && Array.isArray(generationContract.plan)
+      ? generationContract
+      : buildFallbackContract(payload, { ...options, packet: generationContract?.packet || options?.packet });
+  const validation = validateGeneratedCards(payload, contract);
+  return {
+    ok: validation.ok,
+    errors: validation.errors.map((message) => ({ message })),
+    value: {
+      summary: text(payload?.summary),
+      cards: validation.cards
+    },
+    report: {
+      structuralErrors: validation.structuralErrors,
+      didacticErrors: validation.didacticErrors,
+      sourceErrors: validation.sourceErrors
+    }
+  };
+}

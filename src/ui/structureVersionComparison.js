@@ -1,3 +1,5 @@
+import { getActiveMicrosequenceVersion } from "../domain/microsequence.js";
+
 function normalizeText(value) {
   return String(value || "").replace(/\s+/g, " ").trim();
 }
@@ -36,14 +38,14 @@ function countMicrosequencesInModule(moduleValue) {
 function countNestedCards(entity, childField) {
   const children = readChildren(entity, childField);
   if (childField === "microsequences") {
-    return children.reduce((total, item) => total + (Array.isArray(item?.cards) ? item.cards.length : 0), 0);
+    return children.reduce((total, item) => total + ((getActiveMicrosequenceVersion(item)?.cards || []).length), 0);
   }
   if (childField === "lessons") {
     return children.reduce(
       (total, item) =>
         total +
         (Array.isArray(item?.microsequences)
-          ? item.microsequences.reduce((sum, microsequence) => sum + (Array.isArray(microsequence?.cards) ? microsequence.cards.length : 0), 0)
+          ? item.microsequences.reduce((sum, microsequence) => sum + ((getActiveMicrosequenceVersion(microsequence)?.cards || []).length), 0)
           : 0),
       0
     );
@@ -57,7 +59,7 @@ function countNestedCards(entity, childField) {
               (lessonTotal, lesson) =>
                 lessonTotal +
                 (Array.isArray(lesson?.microsequences)
-                  ? lesson.microsequences.reduce((sum, microsequence) => sum + (Array.isArray(microsequence?.cards) ? microsequence.cards.length : 0), 0)
+                  ? lesson.microsequences.reduce((sum, microsequence) => sum + ((getActiveMicrosequenceVersion(microsequence)?.cards || []).length), 0)
                   : 0),
               0
             )
@@ -71,7 +73,7 @@ function countNestedCards(entity, childField) {
 function buildChildMap(items) {
   return new Map(
     (Array.isArray(items) ? items : []).map((item, index) => [
-      String(item?.key || `item-${index}`),
+      String(item?.id || `item-${index}`),
       { item, index }
     ])
   );
@@ -177,8 +179,8 @@ function buildLevelMetrics(level, previousEntity, currentEntity) {
 function buildMetadataSummary(metadata) {
   return [
     metadata.titleChanged ? "Título" : "",
-    metadata.descriptionChanged ? "Descrição" : "",
-    metadata.sourceGuideChanged ? "Fonte-guia" : ""
+    metadata.goalChanged ? "Objetivo" : "",
+    metadata.guideChanged ? "Guide" : ""
   ].filter(Boolean);
 }
 
@@ -267,8 +269,8 @@ function collectStructureSummaryEntries(level, previousEntity, currentEntity, pa
   const items = [];
   const metadata = {
     titleChanged: normalizeText(previousEntity?.title) !== normalizeText(currentEntity?.title),
-    descriptionChanged: normalizeText(previousEntity?.description) !== normalizeText(currentEntity?.description),
-    sourceGuideChanged: normalizeText(previousEntity?.sourceGuide) !== normalizeText(currentEntity?.sourceGuide)
+    goalChanged: normalizeText(previousEntity?.goal) !== normalizeText(currentEntity?.goal),
+    guideChanged: !sameValue(previousEntity?.guide || {}, currentEntity?.guide || {})
   };
   const changedFields = buildMetadataSummary(metadata);
 
@@ -313,8 +315,8 @@ function collectStructureSummaryEntries(level, previousEntity, currentEntity, pa
         : { ...pathTitles, lessonTitle: title };
     const nextPathKeys =
       nextLevel === "module"
-        ? { ...pathKeys, moduleKey: currentItem?.key || previousItem?.key || key }
-        : { ...pathKeys, lessonKey: currentItem?.key || previousItem?.key || key };
+        ? { ...pathKeys, moduleKey: currentItem?.id || previousItem?.id || key }
+        : { ...pathKeys, lessonKey: currentItem?.id || previousItem?.id || key };
 
     if (!previousItem && currentItem) {
       items.push(
@@ -378,7 +380,7 @@ function collectMicrosequenceSummaryEntries(previousMicrosequences, currentMicro
     const currentItem = currentEntry?.item || null;
     const title = currentItem?.title || previousItem?.title || key;
     const nextPathTitles = { ...pathTitles, microsequenceTitle: title };
-    const nextPathKeys = { ...pathKeys, microsequenceKey: currentItem?.key || previousItem?.key || key };
+    const nextPathKeys = { ...pathKeys, microsequenceKey: currentItem?.id || previousItem?.id || key };
 
     if (!previousItem && currentItem) {
       items.push(
@@ -424,8 +426,8 @@ function collectMicrosequenceSummaryEntries(previousMicrosequences, currentMicro
     );
     items.push(
       ...collectCardSummaryEntries(
-        Array.isArray(previousItem.cards) ? previousItem.cards : [],
-        Array.isArray(currentItem.cards) ? currentItem.cards : [],
+        getActiveMicrosequenceVersion(previousItem)?.cards || [],
+        getActiveMicrosequenceVersion(currentItem)?.cards || [],
         nextPathTitles,
         nextPathKeys
       )
@@ -441,8 +443,8 @@ export function buildStructureVersionComparison({ level, previousEntity, current
   const currentChildren = readChildren(currentEntity, config.childField);
   const metadata = {
     titleChanged: normalizeText(previousEntity?.title) !== normalizeText(currentEntity?.title),
-    descriptionChanged: normalizeText(previousEntity?.description) !== normalizeText(currentEntity?.description),
-    sourceGuideChanged: normalizeText(previousEntity?.sourceGuide) !== normalizeText(currentEntity?.sourceGuide)
+    goalChanged: normalizeText(previousEntity?.goal) !== normalizeText(currentEntity?.goal),
+    guideChanged: !sameValue(previousEntity?.guide || {}, currentEntity?.guide || {})
   };
   const metrics = buildLevelMetrics(level, previousEntity, currentEntity);
 

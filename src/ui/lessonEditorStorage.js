@@ -1,5 +1,6 @@
 import { normalizeMicrosequenceVersionEntry } from "./microsequenceVersionState.js";
 import { normalizeStructureVersionEntry, normalizeStructureVersionMap } from "./structureVersionState.js";
+import { buildInterventionSessionKey, normalizeInterventionSessionEntry } from "./interventionSessionState.js";
 import {
   readAssistConfigStorage as readSharedAssistConfigStorage,
   writeAssistConfigStorage as writeSharedAssistConfigStorage
@@ -9,6 +10,7 @@ const CARD_HISTORY_STORAGE_KEY = "aralearn.card-history.v1";
 const CARD_COMMENT_STORAGE_KEY = "aralearn.card-comments.v1";
 const MICROSEQUENCE_VERSION_STORAGE_KEY = "aralearn.microsequence-versions.v1";
 const STRUCTURE_VERSION_STORAGE_KEY = "aralearn.structure-versions.v1";
+const INTERVENTION_SESSION_STORAGE_KEY = "aralearn.intervention-sessions.v1";
 
 function readJsonMap(storage, key) {
   if (!storage || typeof storage.getItem !== "function") {
@@ -91,4 +93,22 @@ export function readStructureVersionStorage(storage = globalThis.localStorage) {
 export function writeStructureVersionStorage(versionMap, storage = globalThis.localStorage) {
   normalizeStructureVersionMap(versionMap);
   writeJsonMap(storage, STRUCTURE_VERSION_STORAGE_KEY, versionMap);
+}
+
+export function readInterventionSessionStorage(storage = globalThis.localStorage) {
+  const rawMap = readJsonMap(storage, INTERVENTION_SESSION_STORAGE_KEY);
+  return Object.fromEntries(
+    Object.entries(rawMap)
+      .map(([key, entry]) => {
+        const normalized = normalizeInterventionSessionEntry(entry, {
+          reference: entry
+        });
+        return [buildInterventionSessionKey(normalized) || key, normalized];
+      })
+      .filter(([, entry]) => entry.microsequenceKey)
+  );
+}
+
+export function writeInterventionSessionStorage(sessionMap, storage = globalThis.localStorage) {
+  writeJsonMap(storage, INTERVENTION_SESSION_STORAGE_KEY, sessionMap);
 }

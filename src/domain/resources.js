@@ -1,11 +1,15 @@
 export const RESOURCE_TYPES = Object.freeze([
-  "say",
-  "table",
+  "paragraph",
+  "choice",
+  "composite",
   "code",
+  "table",
   "flow",
   "tree",
   "graph",
-  "block_gap_fill"
+  "relation_map",
+  "matrix",
+  "plane"
 ]);
 
 export function isSupportedResourceType(value) {
@@ -15,4 +19,3 @@ export function isSupportedResourceType(value) {
 export function listSupportedResourceTypes() {
   return [...RESOURCE_TYPES];
 }
-

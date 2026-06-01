@@ -106,7 +106,7 @@ export function getLessonProgressCursor(progressDocument, reference, totalCards 
 
 export function writeLessonProgressEntry(progressDocument, reference, cards = [], reachedIndex = 0) {
   const normalized = normalizeProgressDocument(progressDocument);
-  const normalizedCards = Array.isArray(cards) ? cards.filter((card) => card && typeof card.key === "string" && card.key.trim() !== "") : [];
+  const normalizedCards = Array.isArray(cards) ? cards.filter((card) => card && typeof card.id === "string" && card.id.trim() !== "") : [];
   if (!normalizedCards.length) {
     return normalized;
   }
@@ -124,7 +124,7 @@ export function writeLessonProgressEntry(progressDocument, reference, cards = []
 
   nextLessons[pathKey] = {
     cursor: furthestCursor,
-    completedCardKeys: normalizedCards.slice(0, furthestCursor + 1).map((card) => card.key.trim()),
+    completedCardKeys: normalizedCards.slice(0, furthestCursor + 1).map((card) => card.id.trim()),
     updatedAt: new Date().toISOString()
   };
 

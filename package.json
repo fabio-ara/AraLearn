@@ -1,20 +1,26 @@
 {
   "name": "aralearn",
-  "version": "0.9.24",
+  "version": "0.1.10",
   "private": true,
   "description": "Base inicial pública do AraLearn.",
   "type": "module",
   "scripts": {
     "start": "node ./scripts/servePublic.js",
     "dev": "node ./scripts/servePublic.js",
-    "test": "node --test",
+    "test": "node ./scripts/runV3Tests.mjs",
     "validate:example": "node ./scripts/validateExampleProject.js",
     "validate:scope": "node ./src/generation/schemas/validateScopeContract.cli.js ./docs/examples/scope-contract.matematica-informatica.json",
     "harness:scope": "node ./scripts/runScopePlanningHarness.js",
     "harness:bottom-up": "node ./scripts/runBottomUpHarness.js",
     "smoke:provider": "node ./scripts/runProviderSmoke.js",
+    "smoke:deepseek:real": "node ./scripts/runDeepSeekRealSmoke.js",
+    "smoke:deepseek:structured": "node ./scripts/runDeepSeekStructuredEngineSmoke.js",
+    "benchmark:structured": "node ./scripts/runStructuredEngineBenchmark.js",
+    "benchmark:topdown": "node ./scripts/runTopDownStructuredBenchmark.js",
+    "benchmark:didactic": "node ./scripts/runDidacticQualityBenchmark.js",
     "codex:local": "node ./scripts/aralearnCodexBridge.mjs",
     "android:debug": "pwsh -NoProfile -File ./scripts/buildAndroidDebug.ps1",
+    "android:release": "pwsh -NoProfile -File ./scripts/buildAndroidRelease.ps1",
     "pages:build": "pwsh -NoProfile -File ./scripts/buildPages.ps1"
   },
   "dependencies": {

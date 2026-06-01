@@ -12,8 +12,8 @@ function clampCardIndex(cards, targetIndex = 0) {
   return Math.max(0, Math.min(numericIndex, list.length - 1));
 }
 
-function sameTags(leftTags, rightTags) {
-  return JSON.stringify(Array.isArray(leftTags) ? leftTags : []) === JSON.stringify(Array.isArray(rightTags) ? rightTags : []);
+function sameRefs(leftRefs, rightRefs) {
+  return JSON.stringify(Array.isArray(leftRefs) ? leftRefs : []) === JSON.stringify(Array.isArray(rightRefs) ? rightRefs : []);
 }
 
 function sameCard(leftCard, rightCard) {
@@ -35,7 +35,7 @@ function resolveCardStatus(previousCard, currentCard) {
 function buildCardCompositionMap(cards) {
   return new Map(
     (Array.isArray(cards) ? cards : []).map((card, index) => [
-      String(card?.key || `card-${index}`),
+      String(card?.id || `card-${index}`),
       { card, index }
     ])
   );
@@ -47,8 +47,8 @@ function summarizeCompositionChange(kind, key, previousEntry, currentEntry) {
   const title =
     currentCard?.title ||
     previousCard?.title ||
-    currentCard?.key ||
-    previousCard?.key ||
+    currentCard?.id ||
+    previousCard?.id ||
     key;
 
   return {
@@ -117,7 +117,7 @@ function buildSummaryItem({ id, title, lines = [], target = null, canOpenPreviou
   };
 }
 
-function buildSummaryEntries({ previousVersion, currentVersion, composition, titleChanged, tagsChanged }) {
+function buildSummaryEntries({ previousVersion, currentVersion, composition, titleChanged, refsChanged }) {
   const entries = [];
 
   if (titleChanged) {
@@ -131,12 +131,12 @@ function buildSummaryEntries({ previousVersion, currentVersion, composition, tit
     );
   }
 
-  if (tagsChanged) {
+  if (refsChanged) {
     entries.push(
       buildSummaryItem({
-        id: "microsequence-tags-changed",
+        id: "microsequence-refs-changed",
         title: "Microssequência alterada",
-        lines: ["Tags alteradas"],
+        lines: ["Refs alteradas"],
         target: { scope: "microsequence" }
       })
     );
@@ -221,13 +221,22 @@ export function buildMicrosequenceVersionComparisonForVersion({ versions = [], v
 
   const currentCards = Array.isArray(currentVersion.cards) ? currentVersion.cards : [];
   const previousCards = Array.isArray(previousVersion.cards) ? previousVersion.cards : [];
+  const versionTitleById = new Map(
+    (Array.isArray(versions) ? versions : [])
+      .map((version) => [String(version?.id || "").trim(), version?.title || ""])
+      .filter(([id, title]) => id && title)
+  );
+  const resolveDependsOnTitles = (dependsOn = []) =>
+    (Array.isArray(dependsOn) ? dependsOn : [])
+      .map((dependencyId) => versionTitleById.get(String(dependencyId || "").trim()) || "")
+      .filter(Boolean);
   const safeCardIndex = clampCardIndex(currentCards, cardIndex);
   const currentCard = currentCards[safeCardIndex] || null;
   const previousCard = previousCards[safeCardIndex] || null;
   const cardStatus = resolveCardStatus(previousCard, currentCard);
   const composition = compareComposition(previousCards, currentCards);
   const titleChanged = normalizeText(previousVersion.title) !== normalizeText(currentVersion.title);
-  const tagsChanged = !sameTags(previousVersion.tags, currentVersion.tags);
+  const refsChanged = !sameRefs(previousVersion.dependsOn, currentVersion.dependsOn);
 
   return {
     kind: "microsequence",
@@ -235,7 +244,8 @@ export function buildMicrosequenceVersionComparisonForVersion({ versions = [], v
       id: previousVersion.id || "",
       label: previousVersion.label || previousVersion.id || "Versão anterior",
       title: previousVersion.title || "",
-      tags: Array.isArray(previousVersion.tags) ? previousVersion.tags : [],
+      dependsOn: Array.isArray(previousVersion.dependsOn) ? previousVersion.dependsOn : [],
+      dependsOnTitles: resolveDependsOnTitles(previousVersion.dependsOn),
       cards: previousCards,
       cardCount: previousCards.length
     },
@@ -243,13 +253,14 @@ export function buildMicrosequenceVersionComparisonForVersion({ versions = [], v
       id: currentVersion.id || "",
       label: currentVersion.label || currentVersion.id || "Versão atual",
       title: currentVersion.title || "",
-      tags: Array.isArray(currentVersion.tags) ? currentVersion.tags : [],
+      dependsOn: Array.isArray(currentVersion.dependsOn) ? currentVersion.dependsOn : [],
+      dependsOnTitles: resolveDependsOnTitles(currentVersion.dependsOn),
       cards: currentCards,
       cardCount: currentCards.length
     },
     summary: {
       titleChanged,
-      tagsChanged,
+      refsChanged,
       cardCountDelta: currentCards.length - previousCards.length,
       cardStatus
     },
@@ -258,7 +269,7 @@ export function buildMicrosequenceVersionComparisonForVersion({ versions = [], v
       currentVersion,
       composition,
       titleChanged,
-      tagsChanged
+      refsChanged
     }),
     composition,
     selectedCard: {

@@ -9,19 +9,15 @@ import {
   getContractCardKindLabel,
   sanitizeContractCard
 } from "../contract/contractCard.js";
+import { createEmptyProjectDocument, PROJECT_CONTRACT, PROJECT_VERSION } from "../domain/aralearnProject.js";
+import { getActiveMicrosequenceVersion } from "../domain/microsequence.js";
+import { createMicrosequenceVersion } from "../domain/microsequenceVersion.js";
 import {
   MICROSEQUENCE_STATUS_DRAFT,
   MICROSEQUENCE_STATUS_READY,
-  normalizeMicrosequenceRuntimeIncluded,
   normalizeMicrosequenceStatus
 } from "../model/microsequenceStatus.js";
-import {
-  buildSourceGuideText,
-  normalizeSourceGuideStructured,
-  SOURCE_GUIDE_LEVELS
-} from "../sourceGuides/sourceGuideStructured.js";
-import { normalizeLessonGuidance } from "../generation/guidance/lessonGuidance.js";
-import { normalizeLessonDomainMap, normalizeMicrosequenceDidacticMetadata } from "../generation/domain/lessonDomainModel.js";
+import { normalizeGuide as normalizeGuideFields, GUIDE_LEVELS } from "../sourceGuides/sourceGuideStructured.js";
 
 function clone(value) {
   return structuredClone(value);
@@ -31,8 +27,12 @@ function fail(message) {
   throw new Error(message);
 }
 
+function text(value) {
+  return typeof value === "string" ? value.trim() : "";
+}
+
 function slugify(value) {
-  return String(value)
+  return String(value || "")
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
@@ -41,153 +41,79 @@ function slugify(value) {
     .replace(/-{2,}/g, "-");
 }
 
-function uniqueKey(baseLabel, usedKeys, fallbackPrefix) {
-  const base = slugify(baseLabel) || fallbackPrefix;
-  let candidate = `${fallbackPrefix}-${base}`;
-  let counter = 2;
-
-  while (usedKeys.has(candidate)) {
-    candidate = `${fallbackPrefix}-${base}-${counter}`;
-    counter += 1;
-  }
-
-  return candidate;
+function uniqueList(values = []) {
+  return [...new Set((Array.isArray(values) ? values : []).map((item) => text(item)).filter(Boolean))];
 }
 
 function normalizeText(value, fieldName) {
-  if (typeof value !== "string" || value.trim() === "") {
+  const normalized = text(value);
+  if (!normalized) {
     fail(`Campo obrigatório inválido: "${fieldName}".`);
   }
-
-  return value.trim();
+  return normalized;
 }
 
-function assignOptionalTextField(record, fieldName, value) {
-  if (value === undefined) {
-    return;
-  }
-
-  if (typeof value !== "string") {
-    fail(`Campo opcional inválido: "${fieldName}".`);
-  }
-
-  const nextValue = value.trim();
-  if (nextValue) {
-    record[fieldName] = nextValue;
-  } else {
-    delete record[fieldName];
-  }
-}
-
-function assignOptionalSourceGuide(record, sourceGuide, sourceGuideStructured, level) {
-  if (sourceGuide === undefined && sourceGuideStructured === undefined) {
-    return;
-  }
-
-  if (sourceGuideStructured === undefined) {
-    fail('Campo obrigatório ausente: "sourceGuideStructured".');
-  }
-
-  const structured = normalizeSourceGuideStructured(sourceGuideStructured, { level });
-  const nextText = buildSourceGuideText(structured, { level });
-
-  if (nextText) {
-    record.sourceGuide = nextText;
-  } else {
-    delete record.sourceGuide;
-  }
-
-  if (Object.keys(structured).length) {
-    record.sourceGuideStructured = structured;
-  } else {
-    delete record.sourceGuideStructured;
-  }
-}
-
-function assignLessonGuidance(record, input = {}) {
-  const normalized = normalizeLessonGuidance(input);
-  record.presetId = normalized.presetId;
-  record.resourceTags = normalized.resourceTags;
-  record.contentTypeTags = normalized.contentTypeTags;
-  record.learningActionTags = normalized.learningActionTags;
-  record.supportLevel = normalized.supportLevel;
-}
-
-function assignOptionalDomainMap(record, input = {}, microsequences = record.microsequences || [], sourceGuideStructured = record.sourceGuideStructured || {}) {
-  if (input.domainMap === undefined) {
-    return;
-  }
-  const normalized = normalizeLessonDomainMap(input.domainMap, {
-    lessonMicrosequences: microsequences,
-    sourceGuideStructured
-  });
-  if (normalized.items.length || normalized.practiceVariants.length) {
-    record.domainMap = normalized;
-  } else {
-    delete record.domainMap;
-  }
-}
-
-function normalizeOptionalTags(value) {
+function normalizeOptionalText(value, fieldName) {
   if (value === undefined) {
     return undefined;
   }
-
-  if (!Array.isArray(value)) {
-    fail('Campo opcional inválido: "tags".');
+  if (typeof value !== "string") {
+    fail(`Campo opcional inválido: "${fieldName}".`);
   }
-
-  return value.map((item) => normalizeText(item, "tags"));
+  const normalized = value.trim();
+  return normalized || undefined;
 }
 
-function normalizeOptionalRenames(value) {
+function normalizeOptionalStringArray(value, fieldName) {
   if (value === undefined) {
-    return [];
+    return undefined;
   }
-
   if (!Array.isArray(value)) {
-    fail('Campo opcional inválido: "renames".');
+    fail(`Campo opcional inválido: "${fieldName}".`);
   }
+  return uniqueList(value);
+}
 
-  return value.map((item) => {
-    if (!item || typeof item !== "object" || Array.isArray(item)) {
-      fail('Campo opcional inválido: "renames".');
+function assertNoEntityKey(input = {}) {
+  if (Object.prototype.hasOwnProperty.call(input, "key")) {
+    fail('Campo fora do schema: "key".');
+  }
+}
+
+function collectSiblingIds(items = []) {
+  return new Set((Array.isArray(items) ? items : []).map((item) => text(item?.id)).filter(Boolean));
+}
+
+function resolveRequestedId(input = {}, ...fieldNames) {
+  for (const fieldName of fieldNames) {
+    const value = text(input?.[fieldName]);
+    if (value) {
+      return value;
     }
-
-    return {
-      microsequenceKey: normalizeText(item.microsequenceKey, "microsequenceKey"),
-      title: normalizeText(item.title, "title")
-    };
-  });
-}
-
-function collectSiblingKeys(items) {
-  return new Set((items || []).map((item) => item.key).filter(Boolean));
-}
-
-function normalizeTargetIndex(value, maxIndex) {
-  if (!Number.isInteger(value)) {
-    fail('Campo obrigatório inválido: "toIndex".');
   }
-
-  return Math.max(0, Math.min(value, Math.max(0, maxIndex)));
+  return "";
 }
 
-function reorderSiblingItems(items, itemKey, toIndex, label) {
-  const fromIndex = items.findIndex((item) => item.key === itemKey);
-  if (fromIndex < 0) {
-    fail(`${label} não encontrado: "${itemKey}".`);
+function uniqueId(baseLabel, usedIds, prefix) {
+  const slug = slugify(baseLabel) || prefix;
+  let candidate = `${prefix}-${slug}`;
+  let counter = 2;
+  while (usedIds.has(candidate)) {
+    candidate = `${prefix}-${slug}-${counter}`;
+    counter += 1;
   }
+  return candidate;
+}
 
-  const [item] = items.splice(fromIndex, 1);
-  const safeIndex = normalizeTargetIndex(toIndex, items.length);
-  items.splice(safeIndex, 0, item);
-
-  return {
-    fromIndex,
-    toIndex: safeIndex,
-    item
-  };
+function resolveEntityId(input = {}, usedIds, prefix, baseLabel, ...fieldNames) {
+  const requestedId = resolveRequestedId(input, ...fieldNames);
+  if (requestedId) {
+    if (usedIds.has(requestedId)) {
+      fail(`id duplicado: "${requestedId}".`);
+    }
+    return requestedId;
+  }
+  return uniqueId(baseLabel, usedIds, prefix);
 }
 
 function ensureValidDocument(document) {
@@ -196,12 +122,160 @@ function ensureValidDocument(document) {
     const summary = result.errors.map((error) => `${error.path}: ${error.message}`).join("; ");
     fail(`Documento inválido após edição: ${summary}`);
   }
-
   return result.value;
 }
 
+function normalizeGuide(input = {}, level = GUIDE_LEVELS.LESSON, fallbackGoal = "") {
+  const structured = normalizeGuideFields({
+    goal: text(input?.goal) || fallbackGoal,
+    include: Array.isArray(input?.include) ? input.include : [],
+    exclude: Array.isArray(input?.exclude) ? input.exclude : [],
+    notation: Array.isArray(input?.notation) ? input.notation : [],
+    avoid: Array.isArray(input?.avoid) ? input.avoid : []
+  }, { level });
+  const goal = text(structured.goal) || fallbackGoal;
+  return {
+    goal,
+    include: uniqueList(structured.include),
+    exclude: uniqueList(structured.exclude),
+    notation: uniqueList(structured.notation),
+    avoid: uniqueList(structured.avoid)
+  };
+}
+
+function normalizeCourseDraft(input = {}, usedIds = new Set()) {
+  assertNoEntityKey(input);
+  const title = normalizeText(input.title || "Novo curso", "title");
+  return {
+    id: resolveEntityId(input, usedIds, "course", title, "id"),
+    title,
+    goal: text(input.goal) || `Organizar ${title}.`,
+    modules: []
+  };
+}
+
+function normalizeModuleDraft(input = {}, usedIds = new Set()) {
+  assertNoEntityKey(input);
+  const title = normalizeText(input.title || "Novo módulo", "title");
+  return {
+    id: resolveEntityId(input, usedIds, "module", title, "id"),
+    title,
+    guide: normalizeGuide(input.guide || input, GUIDE_LEVELS.MODULE, text(input.goal) || `Guiar ${title}.`),
+    lessons: []
+  };
+}
+
+function normalizeLessonDraft(input = {}, usedIds = new Set()) {
+  assertNoEntityKey(input);
+  const title = normalizeText(input.title || "Nova lição", "title");
+  return {
+    id: resolveEntityId(input, usedIds, "lesson", title, "id"),
+    title,
+    guide: normalizeGuide(input.guide || input, GUIDE_LEVELS.LESSON, text(input.goal) || `Guiar ${title}.`),
+    topics: Array.isArray(input.topics) ? clone(input.topics) : [],
+    microsequences: []
+  };
+}
+
+function normalizeCardToken(card, index = 0) {
+  return text(card?.id) || `card-${Number(card?.position) || index + 1}`;
+}
+
+function ensureUniqueCardIds(cards = []) {
+  const seen = new Set();
+  return cards.map((card, index) => {
+    const baseId = normalizeCardToken(card, index);
+    let nextId = baseId;
+    let counter = 2;
+    while (seen.has(nextId)) {
+      nextId = `${baseId}-${counter}`;
+      counter += 1;
+    }
+    seen.add(nextId);
+    return {
+      ...card,
+      id: nextId
+    };
+  });
+}
+
+function normalizeCards(cards = []) {
+  const normalized = (Array.isArray(cards) ? cards : []).map((entry, index) => sanitizeContractCard({
+    ...entry,
+    position: index + 1
+  }));
+  return ensureUniqueCardIds(normalized);
+}
+
+function resolveMicrosequenceCards(microsequence) {
+  const version = getActiveMicrosequenceVersion(microsequence);
+  return Array.isArray(version?.cards) ? version.cards : [];
+}
+
+function ensureMicrosequenceVersion(microsequence, cards = [], options = {}) {
+  const normalizedCards = normalizeCards(cards);
+  const versions = Array.isArray(microsequence?.versions) ? microsequence.versions : [];
+  const activeVersionId = text(microsequence?.activeVersion);
+  if (!versions.length) {
+    const version = createMicrosequenceVersion({
+      source: text(options.source) || "manual",
+      action: text(options.action) || "generate",
+      request: text(options.request),
+      summary: text(options.summary),
+      cards: normalizedCards,
+      validation: { ok: true, issues: [] }
+    });
+    microsequence.versions = [version];
+    microsequence.activeVersion = version.id;
+    return version;
+  }
+  const activeIndex = Math.max(0, versions.findIndex((item) => item.id === activeVersionId));
+  const current = versions[activeIndex] || versions.at(-1);
+  const nextVersion = {
+    ...current,
+    cards: normalizedCards,
+    summary: options.summary !== undefined ? text(options.summary) : text(current?.summary),
+    request: options.request !== undefined ? text(options.request) : text(current?.request),
+    validation: { ok: true, issues: [] }
+  };
+  versions[activeIndex >= 0 ? activeIndex : versions.length - 1] = nextVersion;
+  microsequence.versions = versions;
+  microsequence.activeVersion = nextVersion.id;
+  return nextVersion;
+}
+
+function normalizeMicrosequenceDraft(input = {}, usedIds = new Set()) {
+  assertNoEntityKey(input);
+  const title = normalizeText(input.title || "Nova microssequência", "title");
+  const cards = normalizeCards(input.cards);
+  const status = normalizeMicrosequenceStatus(input.status, { versions: cards.length ? [{ cards }] : [] });
+  const role = text(input.role) || "explain";
+  const microsequence = {
+    id: resolveEntityId(input, usedIds, "microsequence", title, "id"),
+    title,
+    goal: text(input.goal) || `Explicar ${title}.`,
+    role,
+    status: cards.length ? status : MICROSEQUENCE_STATUS_DRAFT,
+    dependsOn: uniqueList(input.dependsOn),
+    covers: uniqueList(input.covers),
+    checks: uniqueList(input.checks),
+    versions: [],
+    activeVersion: null
+  };
+  if (cards.length) {
+    ensureMicrosequenceVersion(microsequence, cards, {
+      source: text(input.source) || "manual",
+      action: text(input.action) || "generate",
+      request: text(input.request),
+      summary: text(input.summary)
+    });
+    microsequence.status = status || MICROSEQUENCE_STATUS_READY;
+  }
+  return microsequence;
+}
+
 function findCourse(document, courseKey) {
-  const course = (document.courses || []).find((item) => item.key === courseKey);
+  const course = (document.courses || []).find((item) => item.id === courseKey);
   if (!course) {
     fail(`Curso não encontrado: "${courseKey}".`);
   }
@@ -210,7 +284,7 @@ function findCourse(document, courseKey) {
 
 function findModule(document, courseKey, moduleKey) {
   const course = findCourse(document, courseKey);
-  const moduleValue = course.modules.find((item) => item.key === moduleKey);
+  const moduleValue = (course.modules || []).find((item) => item.id === moduleKey);
   if (!moduleValue) {
     fail(`Módulo não encontrado: "${moduleKey}".`);
   }
@@ -219,7 +293,7 @@ function findModule(document, courseKey, moduleKey) {
 
 function findLesson(document, courseKey, moduleKey, lessonKey) {
   const { moduleValue } = findModule(document, courseKey, moduleKey);
-  const lesson = moduleValue.lessons.find((item) => item.key === lessonKey);
+  const lesson = (moduleValue.lessons || []).find((item) => item.id === lessonKey);
   if (!lesson) {
     fail(`Lição não encontrada: "${lessonKey}".`);
   }
@@ -227,730 +301,417 @@ function findLesson(document, courseKey, moduleKey, lessonKey) {
 }
 
 function findMicrosequence(lesson, microsequenceKey) {
-  const microsequence = lesson.microsequences.find((item) => item.key === microsequenceKey);
+  const microsequence = (lesson.microsequences || []).find((item) => item.id === microsequenceKey);
   if (!microsequence) {
     fail(`Microssequência não encontrada: "${microsequenceKey}".`);
   }
   return microsequence;
 }
 
-function buildUniqueMicrosequenceTitle(lesson, desiredTitle, excludingKey) {
-  const baseTitle = String(desiredTitle || "").replace(/\s+/g, " ").trim();
-  if (!baseTitle) {
-    return "";
-  }
-
-  const titlesInUse = new Set(
-    (lesson.microsequences || [])
-      .filter((item) => item && item.key !== excludingKey)
-      .map((item) => String(item.title || item.key).toLowerCase())
-  );
-
-  if (!titlesInUse.has(baseTitle.toLowerCase())) {
-    return baseTitle;
-  }
-
-  let counter = 2;
-  let candidate = `${baseTitle} (${counter})`;
-  while (titlesInUse.has(candidate.toLowerCase())) {
-    counter += 1;
-    candidate = `${baseTitle} (${counter})`;
-  }
-
-  return candidate;
+function findCardIndex(microsequence, cardKey) {
+  const cards = resolveMicrosequenceCards(microsequence);
+  return cards.findIndex((card, index) => normalizeCardToken(card, index) === cardKey);
 }
 
-function assignUniqueMicrosequenceTitle(lesson, microsequence, title) {
-  const uniqueTitle = buildUniqueMicrosequenceTitle(lesson, title, microsequence.key);
-  if (uniqueTitle) {
-    microsequence.title = uniqueTitle;
-  } else {
-    delete microsequence.title;
+function assignTitleIfProvided(record, title) {
+  const nextTitle = normalizeOptionalText(title, "title");
+  if (nextTitle !== undefined) {
+    record.title = nextTitle;
   }
 }
 
-function createStarterCard() {
-  return sanitizeContractCard(createStarterContractCard());
+function reorderSiblingItems(items, entityId, toIndex, label) {
+  const fromIndex = items.findIndex((item) => item.id === entityId);
+  if (fromIndex < 0) {
+    fail(`${label} não encontrado: "${entityId}".`);
+  }
+  const [item] = items.splice(fromIndex, 1);
+  const safeIndex = Math.max(0, Math.min(Number.isInteger(toIndex) ? toIndex : items.length, items.length));
+  items.splice(safeIndex, 0, item);
+  return { fromIndex, toIndex: safeIndex, item };
 }
 
-function createProjectDocument(courses) {
-  return {
-    contract: CONTRACT_NAME,
-    version: CONTRACT_VERSION,
-    kind: CONTRACT_KIND_PROJECT,
-    courses
-  };
-}
-
-function createScopedProjectDocument(scope, courses) {
-  return {
+function buildProjectSlice(scope, course) {
+  return ensureValidDocument({
     contract: CONTRACT_NAME,
     version: CONTRACT_VERSION,
     kind: CONTRACT_KIND_PROJECT,
     scope,
-    courses
-  };
+    courses: course ? [clone(course)] : []
+  });
 }
 
-function inferContractScope(document) {
-  const explicitScope = typeof document?.scope === "string" ? document.scope.trim() : "";
-  if (explicitScope) {
-    return explicitScope;
-  }
-
-  return "course";
-}
-
-function getScopeLabel(scope) {
-  if (scope === "course") return "curso";
-  if (scope === "module") return "módulo";
-  if (scope === "lesson") return "lição";
-  if (scope === "microsequence") return "microssequência";
-  return "conteúdo";
-}
-
-function assertImportScope(document, expectedScope) {
-  const actualScope = inferContractScope(document);
-  if (actualScope === expectedScope) {
-    return;
-  }
-
-  fail(`Este arquivo contém ${getScopeLabel(actualScope)}. Importe dentro do nível correto para ${getScopeLabel(actualScope)}.`);
-}
-
-function createStarterMicrosequence({ title = "Nova microssequência" } = {}) {
-  return {
-    key: uniqueKey(title, new Set(), "microsequence"),
-    title,
-    status: MICROSEQUENCE_STATUS_DRAFT,
-    included: false,
-    cards: []
-  };
-}
-
-function createStarterLesson({
-  title = "Nova lição",
-  description,
-  sourceGuide,
-  sourceGuideStructured,
-  domainMap,
-  presetId,
-  resourceTags,
-  contentTypeTags,
-  learningActionTags,
-  supportLevel
-} = {}) {
-  const lesson = {
-    key: uniqueKey(title, new Set(), "lesson"),
-    title,
-    ...(description ? { description } : {}),
-    microsequences: []
-  };
-  assignOptionalSourceGuide(lesson, sourceGuide, sourceGuideStructured, SOURCE_GUIDE_LEVELS.LESSON);
-  assignLessonGuidance(lesson, { presetId, resourceTags, contentTypeTags, learningActionTags, supportLevel });
-  assignOptionalDomainMap(lesson, { domainMap }, lesson.microsequences, lesson.sourceGuideStructured || {});
-  return lesson;
-}
-
-function createStarterModule({ title = "Novo módulo", description, sourceGuide, sourceGuideStructured } = {}) {
-  const moduleValue = {
-    key: uniqueKey(title, new Set(), "module"),
-    title,
-    ...(description ? { description } : {}),
-    lessons: []
-  };
-  return moduleValue;
-}
-
-function createStarterCourse({ title = "Novo curso", description, sourceGuide, sourceGuideStructured } = {}) {
-  const course = {
-    key: uniqueKey(title, new Set(), "course"),
-    title,
-    ...(description ? { description } : {}),
-    modules: []
-  };
-  return course;
-}
-
-function normalizeCardForInsert(entry, usedKeys, fallbackLabel = "card") {
-  const normalizedCard = sanitizeContractCard(entry);
-  const title = normalizedCard.title || fallbackLabel;
-  const key = normalizedCard.key || uniqueKey(title, usedKeys, "card");
-
-  if (usedKeys.has(key)) {
-    fail(`Key de card duplicada: "${key}".`);
-  }
-
-  usedKeys.add(key);
-  return {
-    ...normalizedCard,
-    key
-  };
-}
-
-function extractCardInput(input = {}) {
-  const {
-    courseKey,
-    moduleKey,
-    lessonKey,
-    microsequenceKey,
-    cardKey,
-    position,
-    toIndex,
-    targetCourseKey,
-    targetModuleKey,
-    targetLessonKey,
-    targetPosition,
-    renames,
-    ...cardInput
-  } = input || {};
-
-  return cardInput;
+function cloneCourseForImport(course, usedCourseIds) {
+  const nextCourse = clone(course);
+  const nextCourseId = resolveEntityId(nextCourse, usedCourseIds, "course", nextCourse.title || "course", "id");
+  nextCourse.id = nextCourseId;
+  nextCourse.modules = (nextCourse.modules || []).map((moduleValue) => {
+    const usedModuleIds = new Set();
+    const nextModule = clone(moduleValue);
+    nextModule.id = resolveEntityId(nextModule, usedModuleIds, "module", nextModule.title || "module", "id");
+    nextModule.lessons = (nextModule.lessons || []).map((lesson) => {
+      const usedLessonIds = new Set();
+      const nextLesson = clone(lesson);
+      nextLesson.id = resolveEntityId(nextLesson, usedLessonIds, "lesson", nextLesson.title || "lesson", "id");
+      nextLesson.microsequences = (nextLesson.microsequences || []).map((microsequence) => {
+        const usedMicroIds = new Set();
+        const nextMicrosequence = clone(microsequence);
+        nextMicrosequence.id = resolveEntityId(nextMicrosequence, usedMicroIds, "microsequence", nextMicrosequence.title || "microsequence", "id");
+        return nextMicrosequence;
+      });
+      return nextLesson;
+    });
+    return nextModule;
+  });
+  return nextCourse;
 }
 
 export function updateCourse(document, input) {
   const nextDocument = clone(document);
-  const course = findCourse(nextDocument, input.courseKey);
-  assignOptionalTextField(course, "title", input.title);
-  assignOptionalTextField(course, "description", input.description);
+  const courseKey = resolveRequestedId(input, "courseId", "courseKey", "id");
+  const course = findCourse(nextDocument, courseKey);
+  assignTitleIfProvided(course, input.title);
+  if (input.goal !== undefined) {
+    course.goal = normalizeText(input.goal, "goal");
+  }
   return ensureValidDocument(nextDocument);
 }
 
 export function createCourse(document, input = {}) {
   const nextDocument = clone(document);
-  const title = input.title && typeof input.title === "string" && input.title.trim() ? input.title.trim() : "Novo curso";
-  const description =
-    input.description && typeof input.description === "string" && input.description.trim()
-      ? input.description.trim()
-      : "";
-  const usedKeys = collectSiblingKeys(nextDocument.courses || []);
-  const course = createStarterCourse({ title, description });
-  course.key = input.key && typeof input.key === "string" && input.key.trim()
-    ? input.key.trim()
-    : uniqueKey(title, usedKeys, "course");
-
-  if (usedKeys.has(course.key)) {
-    fail(`Key de curso duplicada: "${course.key}".`);
+  if (!Array.isArray(nextDocument.courses)) {
+    nextDocument.courses = [];
   }
-
-  nextDocument.courses.push(course);
+  nextDocument.courses.push(normalizeCourseDraft(input, collectSiblingIds(nextDocument.courses)));
   return ensureValidDocument(nextDocument);
 }
 
 export function importCourses(document, input = {}) {
   const nextDocument = clone(document);
-  const importedDocument = ensureValidDocument(input.document);
-  assertImportScope(importedDocument, "course");
-  const importedCourses = Array.isArray(importedDocument.courses) ? importedDocument.courses : [];
-
-  if (!importedCourses.length) {
-    fail("Documento importado sem cursos.");
-  }
-
-  const usedKeys = collectSiblingKeys(nextDocument.courses || []);
-  importedCourses.forEach((course) => {
-    const importedCourse = clone(course);
-    const preferredKey = typeof importedCourse.key === "string" && importedCourse.key.trim() ? importedCourse.key.trim() : "";
-    if (preferredKey && !usedKeys.has(preferredKey)) {
-      importedCourse.key = preferredKey;
-      usedKeys.add(preferredKey);
-    } else {
-      importedCourse.key = uniqueKey(importedCourse.title || "Curso importado", usedKeys, "course");
-    }
+  const imported = ensureValidDocument(input.document);
+  const usedCourseIds = collectSiblingIds(nextDocument.courses);
+  imported.courses.forEach((course) => {
+    const importedCourse = cloneCourseForImport(course, usedCourseIds);
+    usedCourseIds.add(importedCourse.id);
     nextDocument.courses.push(importedCourse);
   });
-
   return ensureValidDocument(nextDocument);
 }
 
 export function importModules(document, input = {}) {
   const nextDocument = clone(document);
-  const course = findCourse(nextDocument, input.courseKey);
-  const importedDocument = ensureValidDocument(input.document);
-  assertImportScope(importedDocument, "module");
-  const importedModules = importedDocument.courses.flatMap((entry) => entry.modules || []);
-
-  if (!importedModules.length) {
-    fail("Documento importado sem módulos.");
+  const courseKey = resolveRequestedId(input, "courseId", "courseKey");
+  const course = findCourse(nextDocument, courseKey);
+  const imported = ensureValidDocument(input.document);
+  if (imported.courses.length !== 1) {
+    fail("Importação de módulo exige um único curso no recorte.");
   }
-
-  const usedKeys = collectSiblingKeys(course.modules || []);
-  importedModules.forEach((moduleValue) => {
-    const importedModule = clone(moduleValue);
-    const preferredKey = typeof importedModule.key === "string" && importedModule.key.trim() ? importedModule.key.trim() : "";
-    if (preferredKey && !usedKeys.has(preferredKey)) {
-      importedModule.key = preferredKey;
-      usedKeys.add(preferredKey);
-    } else {
-      importedModule.key = uniqueKey(importedModule.title || "Módulo importado", usedKeys, "module");
-    }
-    course.modules.push(importedModule);
+  const usedIds = collectSiblingIds(course.modules);
+  (imported.courses[0].modules || []).forEach((moduleValue) => {
+    const nextModule = clone(moduleValue);
+    nextModule.id = resolveEntityId(nextModule, usedIds, "module", nextModule.title || "module", "id");
+    usedIds.add(nextModule.id);
+    course.modules.push(nextModule);
   });
-
   return ensureValidDocument(nextDocument);
 }
 
 export function importLessons(document, input = {}) {
   const nextDocument = clone(document);
-  const { moduleValue } = findModule(nextDocument, input.courseKey, input.moduleKey);
-  const importedDocument = ensureValidDocument(input.document);
-  assertImportScope(importedDocument, "lesson");
-  const importedLessons = importedDocument.courses.flatMap((course) =>
-    (course.modules || []).flatMap((moduleItem) => moduleItem.lessons || [])
-  );
-
-  if (!importedLessons.length) {
-    fail("Documento importado sem lições.");
+  const courseKey = resolveRequestedId(input, "courseId", "courseKey");
+  const moduleKey = resolveRequestedId(input, "moduleId", "moduleKey");
+  const { moduleValue } = findModule(nextDocument, courseKey, moduleKey);
+  const imported = ensureValidDocument(input.document);
+  if (imported.courses.length !== 1 || (imported.courses[0].modules || []).length !== 1) {
+    fail("Importação de lição exige um único módulo no recorte.");
   }
-
-  const usedKeys = collectSiblingKeys(moduleValue.lessons || []);
-  importedLessons.forEach((lesson) => {
-    const importedLesson = clone(lesson);
-    const preferredKey = typeof importedLesson.key === "string" && importedLesson.key.trim() ? importedLesson.key.trim() : "";
-    if (preferredKey && !usedKeys.has(preferredKey)) {
-      importedLesson.key = preferredKey;
-      usedKeys.add(preferredKey);
-    } else {
-      importedLesson.key = uniqueKey(importedLesson.title || "Lição importada", usedKeys, "lesson");
-    }
-    moduleValue.lessons.push(importedLesson);
+  const usedIds = collectSiblingIds(moduleValue.lessons);
+  (imported.courses[0].modules[0].lessons || []).forEach((lesson) => {
+    const nextLesson = clone(lesson);
+    nextLesson.id = resolveEntityId(nextLesson, usedIds, "lesson", nextLesson.title || "lesson", "id");
+    usedIds.add(nextLesson.id);
+    moduleValue.lessons.push(nextLesson);
   });
-
   return ensureValidDocument(nextDocument);
 }
 
 export function importMicrosequences(document, input = {}) {
   const nextDocument = clone(document);
-  const { lesson } = findLesson(nextDocument, input.courseKey, input.moduleKey, input.lessonKey);
-  const importedDocument = ensureValidDocument(input.document);
-  assertImportScope(importedDocument, "microsequence");
-  const importedMicrosequences = importedDocument.courses.flatMap((course) =>
-    (course.modules || []).flatMap((moduleItem) =>
-      (moduleItem.lessons || []).flatMap((lessonItem) => lessonItem.microsequences || [])
-    )
-  );
-
-  if (!importedMicrosequences.length) {
-    fail("Documento importado sem microssequências.");
+  const courseKey = resolveRequestedId(input, "courseId", "courseKey");
+  const moduleKey = resolveRequestedId(input, "moduleId", "moduleKey");
+  const lessonKey = resolveRequestedId(input, "lessonId", "lessonKey");
+  const { lesson } = findLesson(nextDocument, courseKey, moduleKey, lessonKey);
+  const imported = ensureValidDocument(input.document);
+  if (
+    imported.courses.length !== 1 ||
+    (imported.courses[0].modules || []).length !== 1 ||
+    (imported.courses[0].modules[0].lessons || []).length !== 1
+  ) {
+    fail("Importação de microssequência exige uma única lição no recorte.");
   }
-
-  const usedKeys = collectSiblingKeys(lesson.microsequences || []);
-  importedMicrosequences.forEach((entry) => {
-    const importedMicrosequence = clone(entry);
-    const preferredKey =
-      typeof importedMicrosequence.key === "string" && importedMicrosequence.key.trim()
-        ? importedMicrosequence.key.trim()
-        : "";
-
-    if (preferredKey && !usedKeys.has(preferredKey)) {
-      importedMicrosequence.key = preferredKey;
-      usedKeys.add(preferredKey);
-    } else {
-      importedMicrosequence.key = uniqueKey(importedMicrosequence.title || "Microssequência importada", usedKeys, "microsequence");
-    }
-
-    if (importedMicrosequence.title) {
-      importedMicrosequence.title = buildUniqueMicrosequenceTitle(lesson, importedMicrosequence.title, null);
-    }
-
-    lesson.microsequences.push(importedMicrosequence);
+  const usedIds = collectSiblingIds(lesson.microsequences);
+  (imported.courses[0].modules[0].lessons[0].microsequences || []).forEach((microsequence) => {
+    const nextMicrosequence = clone(microsequence);
+    nextMicrosequence.id = resolveEntityId(nextMicrosequence, usedIds, "microsequence", nextMicrosequence.title || "microsequence", "id");
+    usedIds.add(nextMicrosequence.id);
+    lesson.microsequences.push(nextMicrosequence);
   });
-
   return ensureValidDocument(nextDocument);
 }
 
 export function exportCourseDocument(document, input) {
-  const course = findCourse(document, input.courseKey);
-  return ensureValidDocument(createScopedProjectDocument("course", [clone(course)]));
+  const courseKey = resolveRequestedId(input, "courseId", "courseKey");
+  return buildProjectSlice("course", findCourse(document, courseKey));
 }
 
 export function exportModuleDocument(document, input) {
-  const course = findCourse(document, input.courseKey);
-  const moduleValue = course.modules.find((item) => item.key === input.moduleKey);
-  if (!moduleValue) {
-    fail(`Módulo não encontrado: "${input.moduleKey}".`);
-  }
-
-  return ensureValidDocument(
-    createScopedProjectDocument("module", [
-      {
-        key: course.key,
-        title: course.title,
-        modules: [clone(moduleValue)]
-      }
-    ])
-  );
+  const courseKey = resolveRequestedId(input, "courseId", "courseKey");
+  const moduleKey = resolveRequestedId(input, "moduleId", "moduleKey");
+  const { course, moduleValue } = findModule(document, courseKey, moduleKey);
+  return buildProjectSlice("module", {
+    ...clone(course),
+    modules: [clone(moduleValue)]
+  });
 }
 
 export function exportLessonDocument(document, input) {
-  const course = findCourse(document, input.courseKey);
-  const moduleValue = course.modules.find((item) => item.key === input.moduleKey);
-  if (!moduleValue) {
-    fail(`Módulo não encontrado: "${input.moduleKey}".`);
-  }
-  const lesson = moduleValue.lessons.find((item) => item.key === input.lessonKey);
+  const courseKey = resolveRequestedId(input, "courseId", "courseKey");
+  const moduleKey = resolveRequestedId(input, "moduleId", "moduleKey");
+  const lessonKey = resolveRequestedId(input, "lessonId", "lessonKey");
+  const { course, moduleValue } = findModule(document, courseKey, moduleKey);
+  const lesson = (moduleValue.lessons || []).find((item) => item.id === lessonKey);
   if (!lesson) {
-    fail(`Lição não encontrada: "${input.lessonKey}".`);
+    fail(`Lição não encontrada: "${lessonKey}".`);
   }
-
-  return ensureValidDocument(
-    createScopedProjectDocument("lesson", [
-      {
-        key: course.key,
-        title: course.title,
-        modules: [
-          {
-            key: moduleValue.key,
-            title: moduleValue.title,
-            lessons: [clone(lesson)]
-          }
-        ]
-      }
-    ])
-  );
+  return buildProjectSlice("lesson", {
+    ...clone(course),
+    modules: [{ ...clone(moduleValue), lessons: [clone(lesson)] }]
+  });
 }
 
 export function exportMicrosequenceDocument(document, input) {
-  const course = findCourse(document, input.courseKey);
-  const moduleValue = course.modules.find((item) => item.key === input.moduleKey);
-  if (!moduleValue) {
-    fail(`Módulo não encontrado: "${input.moduleKey}".`);
-  }
-  const lesson = moduleValue.lessons.find((item) => item.key === input.lessonKey);
+  const courseKey = resolveRequestedId(input, "courseId", "courseKey");
+  const moduleKey = resolveRequestedId(input, "moduleId", "moduleKey");
+  const lessonKey = resolveRequestedId(input, "lessonId", "lessonKey");
+  const microsequenceKey = resolveRequestedId(input, "microsequenceId", "microsequenceKey");
+  const { course, moduleValue } = findModule(document, courseKey, moduleKey);
+  const lesson = (moduleValue.lessons || []).find((item) => item.id === lessonKey);
   if (!lesson) {
-    fail(`Lição não encontrada: "${input.lessonKey}".`);
+    fail(`Lição não encontrada: "${lessonKey}".`);
   }
-  const microsequence = lesson.microsequences.find((item) => item.key === input.microsequenceKey);
+  const microsequence = (lesson.microsequences || []).find((item) => item.id === microsequenceKey);
   if (!microsequence) {
-    fail(`Microssequência não encontrada: "${input.microsequenceKey}".`);
+    fail(`Microssequência não encontrada: "${microsequenceKey}".`);
   }
-
-  return ensureValidDocument(
-    createScopedProjectDocument("microsequence", [
-      {
-        key: course.key,
-        title: course.title,
-        modules: [
-          {
-            key: moduleValue.key,
-            title: moduleValue.title,
-            lessons: [
-              {
-                key: lesson.key,
-                title: lesson.title,
-                microsequences: [clone(microsequence)]
-              }
-            ]
-          }
-        ]
-      }
-    ])
-  );
+  return buildProjectSlice("microsequence", {
+    ...clone(course),
+    modules: [{
+      ...clone(moduleValue),
+      lessons: [{
+        ...clone(lesson),
+        microsequences: [clone(microsequence)]
+      }]
+    }]
+  });
 }
 
 export function deleteCourse(document, input) {
   const nextDocument = clone(document);
-  const courseIndex = (nextDocument.courses || []).findIndex((item) => item.key === input.courseKey);
-  if (courseIndex < 0) {
-    fail(`Curso não encontrado: "${input.courseKey}".`);
+  const courseKey = resolveRequestedId(input, "courseId", "courseKey");
+  const index = (nextDocument.courses || []).findIndex((item) => item.id === courseKey);
+  if (index < 0) {
+    fail(`Curso não encontrado: "${courseKey}".`);
   }
-
-  nextDocument.courses.splice(courseIndex, 1);
+  nextDocument.courses.splice(index, 1);
   return ensureValidDocument(nextDocument);
 }
 
 export function moveCourse(document, input) {
   const nextDocument = clone(document);
-  reorderSiblingItems(nextDocument.courses || [], input.courseKey, input.toIndex, "Curso");
+  const courseKey = resolveRequestedId(input, "courseId", "courseKey");
+  reorderSiblingItems(nextDocument.courses || [], courseKey, input.toIndex, "Curso");
   return ensureValidDocument(nextDocument);
 }
 
 export function createModule(document, input) {
   const nextDocument = clone(document);
-  const course = findCourse(nextDocument, input.courseKey);
-  const title = input.title && typeof input.title === "string" && input.title.trim() ? input.title.trim() : "Novo módulo";
-  const description =
-    input.description && typeof input.description === "string" && input.description.trim()
-      ? input.description.trim()
-      : "";
-  const usedKeys = collectSiblingKeys(course.modules);
-  const moduleValue = createStarterModule({ title, description });
-  moduleValue.key = input.key && typeof input.key === "string" && input.key.trim()
-    ? input.key.trim()
-    : uniqueKey(title, usedKeys, "module");
-
-  if (usedKeys.has(moduleValue.key)) {
-    fail(`Key de módulo duplicada: "${moduleValue.key}".`);
-  }
-
-  course.modules.push(moduleValue);
+  const courseKey = resolveRequestedId(input, "courseId", "courseKey");
+  const course = findCourse(nextDocument, courseKey);
+  course.modules.push(normalizeModuleDraft(input, collectSiblingIds(course.modules)));
   return ensureValidDocument(nextDocument);
 }
 
 export function updateModule(document, input) {
   const nextDocument = clone(document);
-  const { moduleValue } = findModule(nextDocument, input.courseKey, input.moduleKey);
-  assignOptionalTextField(moduleValue, "title", input.title);
-  assignOptionalTextField(moduleValue, "description", input.description);
+  const courseKey = resolveRequestedId(input, "courseId", "courseKey");
+  const moduleKey = resolveRequestedId(input, "moduleId", "moduleKey", "id");
+  const { moduleValue } = findModule(nextDocument, courseKey, moduleKey);
+  assignTitleIfProvided(moduleValue, input.title);
+  if (input.guide !== undefined || input.goal !== undefined || input.include !== undefined || input.exclude !== undefined || input.notation !== undefined || input.avoid !== undefined) {
+    moduleValue.guide = normalizeGuide(input.guide || input, GUIDE_LEVELS.MODULE, text(input.goal) || moduleValue.guide.goal);
+  }
   return ensureValidDocument(nextDocument);
 }
 
 export function deleteModule(document, input) {
   const nextDocument = clone(document);
-  const { course } = findModule(nextDocument, input.courseKey, input.moduleKey);
-  const moduleIndex = course.modules.findIndex((item) => item.key === input.moduleKey);
-
-  if (moduleIndex < 0) {
-    fail(`Módulo não encontrado: "${input.moduleKey}".`);
+  const courseKey = resolveRequestedId(input, "courseId", "courseKey");
+  const moduleKey = resolveRequestedId(input, "moduleId", "moduleKey");
+  const course = findCourse(nextDocument, courseKey);
+  const index = (course.modules || []).findIndex((item) => item.id === moduleKey);
+  if (index < 0) {
+    fail(`Módulo não encontrado: "${moduleKey}".`);
   }
-
-  course.modules.splice(moduleIndex, 1);
+  course.modules.splice(index, 1);
   return ensureValidDocument(nextDocument);
 }
 
 export function moveModule(document, input) {
   const nextDocument = clone(document);
-  const course = findCourse(nextDocument, input.courseKey);
-  reorderSiblingItems(course.modules || [], input.moduleKey, input.toIndex, "Módulo");
+  const courseKey = resolveRequestedId(input, "courseId", "courseKey");
+  const moduleKey = resolveRequestedId(input, "moduleId", "moduleKey");
+  const course = findCourse(nextDocument, courseKey);
+  reorderSiblingItems(course.modules || [], moduleKey, input.toIndex, "Módulo");
   return ensureValidDocument(nextDocument);
 }
 
 export function createLesson(document, input) {
   const nextDocument = clone(document);
-  const { moduleValue } = findModule(nextDocument, input.courseKey, input.moduleKey);
-  const title = input.title && typeof input.title === "string" && input.title.trim() ? input.title.trim() : "Nova lição";
-  const description =
-    input.description && typeof input.description === "string" && input.description.trim()
-      ? input.description.trim()
-      : "";
-  const sourceGuide = input.sourceGuide && typeof input.sourceGuide === "string" && input.sourceGuide.trim() ? input.sourceGuide.trim() : undefined;
-  const sourceGuideStructured =
-    input.sourceGuideStructured === undefined
-      ? undefined
-      : normalizeSourceGuideStructured(input.sourceGuideStructured, { level: SOURCE_GUIDE_LEVELS.LESSON });
-  const usedKeys = collectSiblingKeys(moduleValue.lessons);
-  const lesson = createStarterLesson({
-    title,
-    description,
-    sourceGuide,
-    sourceGuideStructured,
-    domainMap: input.domainMap,
-    resourceTags: input.resourceTags,
-    contentTypeTags: input.contentTypeTags,
-    learningActionTags: input.learningActionTags,
-    supportLevel: input.supportLevel
-  });
-  lesson.key = input.key && typeof input.key === "string" && input.key.trim()
-    ? input.key.trim()
-    : uniqueKey(title, usedKeys, "lesson");
-
-  if (usedKeys.has(lesson.key)) {
-    fail(`Key de lição duplicada: "${lesson.key}".`);
-  }
-
-  moduleValue.lessons.push(lesson);
+  const courseKey = resolveRequestedId(input, "courseId", "courseKey");
+  const moduleKey = resolveRequestedId(input, "moduleId", "moduleKey");
+  const { moduleValue } = findModule(nextDocument, courseKey, moduleKey);
+  moduleValue.lessons.push(normalizeLessonDraft(input, collectSiblingIds(moduleValue.lessons)));
   return ensureValidDocument(nextDocument);
 }
 
 export function updateLesson(document, input) {
   const nextDocument = clone(document);
-  const { lesson } = findLesson(nextDocument, input.courseKey, input.moduleKey, input.lessonKey);
-  assignOptionalTextField(lesson, "title", input.title);
-  assignOptionalTextField(lesson, "description", input.description);
-  assignOptionalSourceGuide(lesson, input.sourceGuide, input.sourceGuideStructured, SOURCE_GUIDE_LEVELS.LESSON);
-  assignLessonGuidance(lesson, input);
-  assignOptionalDomainMap(lesson, input, lesson.microsequences, lesson.sourceGuideStructured || {});
+  const courseKey = resolveRequestedId(input, "courseId", "courseKey");
+  const moduleKey = resolveRequestedId(input, "moduleId", "moduleKey");
+  const lessonKey = resolveRequestedId(input, "lessonId", "lessonKey", "id");
+  const { lesson } = findLesson(nextDocument, courseKey, moduleKey, lessonKey);
+  assignTitleIfProvided(lesson, input.title);
+  if (input.guide !== undefined || input.goal !== undefined || input.include !== undefined || input.exclude !== undefined || input.notation !== undefined || input.avoid !== undefined) {
+    lesson.guide = normalizeGuide(input.guide || input, GUIDE_LEVELS.LESSON, text(input.goal) || lesson.guide.goal);
+  }
+  if (input.topics !== undefined) {
+    if (!Array.isArray(input.topics)) {
+      fail('Campo opcional inválido: "topics".');
+    }
+    lesson.topics = clone(input.topics);
+  }
   return ensureValidDocument(nextDocument);
 }
 
 export function deleteLesson(document, input) {
   const nextDocument = clone(document);
-  const { moduleValue } = findLesson(nextDocument, input.courseKey, input.moduleKey, input.lessonKey);
-  const lessonIndex = moduleValue.lessons.findIndex((item) => item.key === input.lessonKey);
-
-  if (lessonIndex < 0) {
-    fail(`Lição não encontrada: "${input.lessonKey}".`);
+  const courseKey = resolveRequestedId(input, "courseId", "courseKey");
+  const moduleKey = resolveRequestedId(input, "moduleId", "moduleKey");
+  const lessonKey = resolveRequestedId(input, "lessonId", "lessonKey");
+  const { moduleValue } = findModule(nextDocument, courseKey, moduleKey);
+  const index = (moduleValue.lessons || []).findIndex((item) => item.id === lessonKey);
+  if (index < 0) {
+    fail(`Lição não encontrada: "${lessonKey}".`);
   }
-
-  moduleValue.lessons.splice(lessonIndex, 1);
+  moduleValue.lessons.splice(index, 1);
   return ensureValidDocument(nextDocument);
 }
 
 export function moveLesson(document, input) {
   const nextDocument = clone(document);
-  const { moduleValue } = findModule(nextDocument, input.courseKey, input.moduleKey);
-  reorderSiblingItems(moduleValue.lessons || [], input.lessonKey, input.toIndex, "Lição");
+  const courseKey = resolveRequestedId(input, "courseId", "courseKey");
+  const moduleKey = resolveRequestedId(input, "moduleId", "moduleKey");
+  const lessonKey = resolveRequestedId(input, "lessonId", "lessonKey");
+  const { moduleValue } = findModule(nextDocument, courseKey, moduleKey);
+  reorderSiblingItems(moduleValue.lessons || [], lessonKey, input.toIndex, "Lição");
   return ensureValidDocument(nextDocument);
 }
 
 export function createMicrosequence(document, input) {
   const nextDocument = clone(document);
-  const { lesson } = findLesson(nextDocument, input.courseKey, input.moduleKey, input.lessonKey);
-  const title = normalizeText(input.title || "Nova microssequência", "title");
-  const usedKeys = collectSiblingKeys(lesson.microsequences);
-  const key = input.key && typeof input.key === "string" && input.key.trim()
-    ? input.key.trim()
-    : uniqueKey(title, usedKeys, "microsequence");
-
-  if (usedKeys.has(key)) {
-    fail(`Key de microssequência duplicada: "${key}".`);
-  }
-
-  const cardInput = Array.isArray(input.cards) ? input.cards : null;
-  const usedCardKeys = new Set();
-  const cards = cardInput ? cardInput.map((entry, index) => normalizeCardForInsert(entry, usedCardKeys, `Card ${index + 1}`)) : [];
-  const tags = normalizeOptionalTags(input.tags);
-  const didacticMeta = normalizeMicrosequenceDidacticMetadata(input);
-  const microsequence = {
-    key,
-    title: buildUniqueMicrosequenceTitle(lesson, title, null),
-    status: normalizeMicrosequenceStatus(input.status || MICROSEQUENCE_STATUS_DRAFT, { cards }),
-    included: normalizeMicrosequenceRuntimeIncluded(input.included, { cards }),
-    ...(tags && tags.length ? { tags } : {}),
-    ...(didacticMeta.description ? { description: didacticMeta.description } : {}),
-    ...(didacticMeta.domainRefs?.length ? { domainRefs: didacticMeta.domainRefs } : {}),
-    ...(didacticMeta.practiceVariantRefs?.length ? { practiceVariantRefs: didacticMeta.practiceVariantRefs } : {}),
-    ...(didacticMeta.didacticPurpose ? { didacticPurpose: didacticMeta.didacticPurpose } : {}),
-    ...(didacticMeta.coverageRole ? { coverageRole: didacticMeta.coverageRole } : {}),
-    cards
-  };
-
-  lesson.microsequences.push(microsequence);
+  const courseKey = resolveRequestedId(input, "courseId", "courseKey");
+  const moduleKey = resolveRequestedId(input, "moduleId", "moduleKey");
+  const lessonKey = resolveRequestedId(input, "lessonId", "lessonKey");
+  const { lesson } = findLesson(nextDocument, courseKey, moduleKey, lessonKey);
+  lesson.microsequences.push(normalizeMicrosequenceDraft(input, collectSiblingIds(lesson.microsequences)));
   return ensureValidDocument(nextDocument);
 }
 
 export function updateMicrosequence(document, input) {
   const nextDocument = clone(document);
-  const { lesson } = findLesson(nextDocument, input.courseKey, input.moduleKey, input.lessonKey);
-  const microsequence = findMicrosequence(lesson, input.microsequenceKey);
-
-  if (input.title !== undefined) {
-    assignUniqueMicrosequenceTitle(lesson, microsequence, normalizeText(input.title, "title"));
+  const courseKey = resolveRequestedId(input, "courseId", "courseKey");
+  const moduleKey = resolveRequestedId(input, "moduleId", "moduleKey");
+  const lessonKey = resolveRequestedId(input, "lessonId", "lessonKey");
+  const microsequenceKey = resolveRequestedId(input, "microsequenceId", "microsequenceKey");
+  const { lesson } = findLesson(nextDocument, courseKey, moduleKey, lessonKey);
+  const microsequence = findMicrosequence(lesson, microsequenceKey);
+  assignTitleIfProvided(microsequence, input.title);
+  if (input.goal !== undefined) {
+    microsequence.goal = normalizeText(input.goal, "goal");
   }
-
-  if (input.tags !== undefined) {
-    const tags = normalizeOptionalTags(input.tags);
-    if (tags && tags.length) {
-      microsequence.tags = tags;
-    } else {
-      delete microsequence.tags;
-    }
+  if (input.role !== undefined) {
+    microsequence.role = normalizeText(input.role, "role");
   }
-
-  const didacticMeta = normalizeMicrosequenceDidacticMetadata(input);
-  if (input.description !== undefined) {
-    assignOptionalTextField(microsequence, "description", input.description);
+  if (input.dependsOn !== undefined) {
+    microsequence.dependsOn = normalizeOptionalStringArray(input.dependsOn, "dependsOn") || [];
   }
-  if (input.domainRefs !== undefined) {
-    if (didacticMeta.domainRefs?.length) {
-      microsequence.domainRefs = didacticMeta.domainRefs;
-    } else {
-      delete microsequence.domainRefs;
-    }
+  if (input.covers !== undefined) {
+    microsequence.covers = normalizeOptionalStringArray(input.covers, "covers") || [];
   }
-  if (input.practiceVariantRefs !== undefined) {
-    if (didacticMeta.practiceVariantRefs?.length) {
-      microsequence.practiceVariantRefs = didacticMeta.practiceVariantRefs;
-    } else {
-      delete microsequence.practiceVariantRefs;
-    }
+  if (input.checks !== undefined) {
+    microsequence.checks = normalizeOptionalStringArray(input.checks, "checks") || [];
   }
-  if (input.didacticPurpose !== undefined) {
-    if (didacticMeta.didacticPurpose) {
-      microsequence.didacticPurpose = didacticMeta.didacticPurpose;
-    } else {
-      delete microsequence.didacticPurpose;
-    }
-  }
-  if (input.coverageRole !== undefined) {
-    if (didacticMeta.coverageRole) {
-      microsequence.coverageRole = didacticMeta.coverageRole;
-    } else {
-      delete microsequence.coverageRole;
-    }
-  }
-
   if (input.status !== undefined) {
     microsequence.status = normalizeMicrosequenceStatus(input.status, microsequence);
   }
-
-  if (input.included !== undefined) {
-    microsequence.included = normalizeMicrosequenceRuntimeIncluded(input.included, microsequence);
-  }
-
   return ensureValidDocument(nextDocument);
 }
 
 export function deleteMicrosequence(document, input) {
   const nextDocument = clone(document);
-  const { lesson } = findLesson(nextDocument, input.courseKey, input.moduleKey, input.lessonKey);
-  const microsequenceIndex = lesson.microsequences.findIndex((item) => item.key === input.microsequenceKey);
-
-  if (microsequenceIndex < 0) {
-    fail(`Microssequência não encontrada: "${input.microsequenceKey}".`);
+  const courseKey = resolveRequestedId(input, "courseId", "courseKey");
+  const moduleKey = resolveRequestedId(input, "moduleId", "moduleKey");
+  const lessonKey = resolveRequestedId(input, "lessonId", "lessonKey");
+  const microsequenceKey = resolveRequestedId(input, "microsequenceId", "microsequenceKey");
+  const { lesson } = findLesson(nextDocument, courseKey, moduleKey, lessonKey);
+  const index = (lesson.microsequences || []).findIndex((item) => item.id === microsequenceKey);
+  if (index < 0) {
+    fail(`Microssequência não encontrada: "${microsequenceKey}".`);
   }
-
-  lesson.microsequences.splice(microsequenceIndex, 1);
+  lesson.microsequences.splice(index, 1);
   return ensureValidDocument(nextDocument);
 }
 
 export function moveMicrosequenceWithResult(document, input) {
   const nextDocument = clone(document);
-  const { lesson: sourceLesson } = findLesson(nextDocument, input.courseKey, input.moduleKey, input.lessonKey);
-  const { lesson: targetLesson } = findLesson(
-    nextDocument,
-    input.targetCourseKey,
-    input.targetModuleKey,
-    input.targetLessonKey
-  );
-  const microsequenceIndex = sourceLesson.microsequences.findIndex((item) => item.key === input.microsequenceKey);
-
-  if (microsequenceIndex < 0) {
-    fail(`Microssequência não encontrada: "${input.microsequenceKey}".`);
+  const sourceCourseKey = resolveRequestedId(input, "courseId", "courseKey");
+  const sourceModuleKey = resolveRequestedId(input, "moduleId", "moduleKey");
+  const sourceLessonKey = resolveRequestedId(input, "lessonId", "lessonKey");
+  const targetCourseKey = resolveRequestedId(input, "targetCourseId", "targetCourseKey");
+  const targetModuleKey = resolveRequestedId(input, "targetModuleId", "targetModuleKey");
+  const targetLessonKey = resolveRequestedId(input, "targetLessonId", "targetLessonKey");
+  const microsequenceKey = resolveRequestedId(input, "microsequenceId", "microsequenceKey");
+  const { lesson: sourceLesson } = findLesson(nextDocument, sourceCourseKey, sourceModuleKey, sourceLessonKey);
+  const { lesson: targetLesson } = findLesson(nextDocument, targetCourseKey, targetModuleKey, targetLessonKey);
+  const index = (sourceLesson.microsequences || []).findIndex((item) => item.id === microsequenceKey);
+  if (index < 0) {
+    fail(`Microssequência não encontrada: "${microsequenceKey}".`);
   }
-
-  const [microsequence] = sourceLesson.microsequences.splice(microsequenceIndex, 1);
-  const originalKey = microsequence.key;
-
-  if (sourceLesson !== targetLesson && !sourceLesson.microsequences.length) {
-    sourceLesson.microsequences.push(createStarterMicrosequence());
+  const [microsequence] = sourceLesson.microsequences.splice(index, 1);
+  const usedIds = collectSiblingIds(targetLesson.microsequences);
+  if (usedIds.has(microsequence.id)) {
+    microsequence.id = uniqueId(microsequence.title || microsequence.id, usedIds, "microsequence");
   }
-
-  const usedKeys = collectSiblingKeys(targetLesson.microsequences);
-  if (usedKeys.has(microsequence.key)) {
-    microsequence.key = uniqueKey(microsequence.title || input.microsequenceKey, usedKeys, "microsequence");
-  }
-
-  const targetPosition = Number.isInteger(input.targetPosition) ? input.targetPosition : targetLesson.microsequences.length;
-  const adjustedTargetPosition =
-    sourceLesson === targetLesson && targetPosition > microsequenceIndex
-      ? targetPosition - 1
-      : targetPosition;
-  const safeIndex = Math.max(0, Math.min(adjustedTargetPosition, targetLesson.microsequences.length));
+  const safeIndex = Math.max(0, Math.min(Number.isInteger(input.targetPosition) ? input.targetPosition : targetLesson.microsequences.length, targetLesson.microsequences.length));
   targetLesson.microsequences.splice(safeIndex, 0, microsequence);
-
-  if (microsequence.title) {
-    assignUniqueMicrosequenceTitle(targetLesson, microsequence, microsequence.title);
-  }
-
-  const renames = normalizeOptionalRenames(input.renames);
-  renames.forEach((rename) => {
-    const targetMicrosequence = targetLesson.microsequences.find((item) => item.key === rename.microsequenceKey);
-    if (!targetMicrosequence) {
-      return;
-    }
-
-    assignUniqueMicrosequenceTitle(targetLesson, targetMicrosequence, rename.title);
-  });
-
   return {
     document: ensureValidDocument(nextDocument),
     movedMicrosequence: {
-      courseKey: input.targetCourseKey,
-      moduleKey: input.targetModuleKey,
-      lessonKey: input.targetLessonKey,
-      microsequenceKey: microsequence.key,
-      previousMicrosequenceKey: originalKey,
+      courseKey: targetCourseKey,
+      moduleKey: targetModuleKey,
+      lessonKey: targetLessonKey,
+      microsequenceKey: microsequence.id,
+      previousMicrosequenceKey: microsequenceKey,
       position: safeIndex
     }
   };
@@ -962,128 +723,133 @@ export function moveMicrosequence(document, input) {
 
 export function replaceMicrosequenceCards(document, input) {
   const nextDocument = clone(document);
-  const { lesson } = findLesson(nextDocument, input.courseKey, input.moduleKey, input.lessonKey);
-  const microsequence = findMicrosequence(lesson, input.microsequenceKey);
-  const cards = Array.isArray(input.cards) ? input.cards : [];
-
+  const courseKey = resolveRequestedId(input, "courseId", "courseKey");
+  const moduleKey = resolveRequestedId(input, "moduleId", "moduleKey");
+  const lessonKey = resolveRequestedId(input, "lessonId", "lessonKey");
+  const microsequenceKey = resolveRequestedId(input, "microsequenceId", "microsequenceKey");
+  const { lesson } = findLesson(nextDocument, courseKey, moduleKey, lessonKey);
+  const microsequence = findMicrosequence(lesson, microsequenceKey);
   if (input.title !== undefined) {
-    assignUniqueMicrosequenceTitle(lesson, microsequence, normalizeText(input.title, "title"));
+    microsequence.title = normalizeText(input.title, "title");
   }
-
-  if (input.tags !== undefined) {
-    const tags = normalizeOptionalTags(input.tags);
-    if (tags && tags.length) {
-      microsequence.tags = tags;
-    } else {
-      delete microsequence.tags;
-    }
+  if (input.goal !== undefined) {
+    microsequence.goal = normalizeText(input.goal, "goal");
   }
-
-  const didacticMeta = normalizeMicrosequenceDidacticMetadata(input);
-  assignOptionalTextField(microsequence, "description", input.description);
-  if (input.domainRefs !== undefined) {
-    if (didacticMeta.domainRefs?.length) {
-      microsequence.domainRefs = didacticMeta.domainRefs;
-    } else {
-      delete microsequence.domainRefs;
-    }
+  if (input.role !== undefined) {
+    microsequence.role = normalizeText(input.role, "role");
   }
-  if (input.practiceVariantRefs !== undefined) {
-    if (didacticMeta.practiceVariantRefs?.length) {
-      microsequence.practiceVariantRefs = didacticMeta.practiceVariantRefs;
-    } else {
-      delete microsequence.practiceVariantRefs;
-    }
+  if (input.dependsOn !== undefined) {
+    microsequence.dependsOn = normalizeOptionalStringArray(input.dependsOn, "dependsOn") || [];
   }
-  if (input.didacticPurpose !== undefined) {
-    if (didacticMeta.didacticPurpose) {
-      microsequence.didacticPurpose = didacticMeta.didacticPurpose;
-    } else {
-      delete microsequence.didacticPurpose;
-    }
+  if (input.covers !== undefined) {
+    microsequence.covers = normalizeOptionalStringArray(input.covers, "covers") || [];
   }
-  if (input.coverageRole !== undefined) {
-    if (didacticMeta.coverageRole) {
-      microsequence.coverageRole = didacticMeta.coverageRole;
-    } else {
-      delete microsequence.coverageRole;
-    }
+  if (input.checks !== undefined) {
+    microsequence.checks = normalizeOptionalStringArray(input.checks, "checks") || [];
   }
-
-  const usedKeys = new Set();
-  microsequence.cards = cards.map((entry, index) => normalizeCardForInsert(entry, usedKeys, `Card ${index + 1}`));
-  microsequence.status = normalizeMicrosequenceStatus(input.status || microsequence.status || MICROSEQUENCE_STATUS_READY, microsequence);
-  microsequence.included = normalizeMicrosequenceRuntimeIncluded(input.included ?? microsequence.included, microsequence);
+  const cards = normalizeCards(input.cards);
+  ensureMicrosequenceVersion(microsequence, cards, {
+    source: text(input.source) || "manual",
+    action: text(input.action) || (microsequence.versions.length ? "improve" : "generate"),
+    request: text(input.request),
+    summary: text(input.summary)
+  });
+  microsequence.status = cards.length
+    ? normalizeMicrosequenceStatus(input.status || microsequence.status || MICROSEQUENCE_STATUS_READY, microsequence)
+    : MICROSEQUENCE_STATUS_DRAFT;
+  if (!cards.length && !microsequence.versions.length) {
+    microsequence.activeVersion = null;
+  }
   return ensureValidDocument(nextDocument);
 }
 
 export function createCardInMicrosequence(document, input) {
   const nextDocument = clone(document);
-  const { lesson } = findLesson(nextDocument, input.courseKey, input.moduleKey, input.lessonKey);
-  const microsequence = findMicrosequence(lesson, input.microsequenceKey);
-  const usedKeys = collectSiblingKeys(microsequence.cards);
-  const cardInput = extractCardInput(input);
-  const card = normalizeCardForInsert(cardInput, usedKeys, cardInput.title || getContractCardKindLabel(cardInput) || "card");
-  const position = Number.isInteger(input.position) ? input.position : microsequence.cards.length;
-  const safeIndex = Math.max(0, Math.min(position, microsequence.cards.length));
-  microsequence.cards.splice(safeIndex, 0, card);
-  microsequence.status = normalizeMicrosequenceStatus(input.status || microsequence.status, microsequence);
-  microsequence.included = normalizeMicrosequenceRuntimeIncluded(input.included ?? microsequence.included, microsequence);
+  const courseKey = resolveRequestedId(input, "courseId", "courseKey");
+  const moduleKey = resolveRequestedId(input, "moduleId", "moduleKey");
+  const lessonKey = resolveRequestedId(input, "lessonId", "lessonKey");
+  const microsequenceKey = resolveRequestedId(input, "microsequenceId", "microsequenceKey");
+  const { lesson } = findLesson(nextDocument, courseKey, moduleKey, lessonKey);
+  const microsequence = findMicrosequence(lesson, microsequenceKey);
+  const cards = resolveMicrosequenceCards(microsequence).slice();
+  const rawCard = input.card && typeof input.card === "object" ? input.card : input;
+  const normalizedCard = sanitizeContractCard({
+    ...createStarterContractCard(text(rawCard?.resource) || "paragraph"),
+    ...rawCard,
+    position: 1
+  });
+  const insertIndex = Math.max(0, Math.min(Number.isInteger(input.position) ? input.position : cards.length, cards.length));
+  cards.splice(insertIndex, 0, normalizedCard);
+  ensureMicrosequenceVersion(microsequence, cards, {
+    source: "manual",
+    action: microsequence.versions.length ? "improve" : "generate"
+  });
+  microsequence.status = normalizeMicrosequenceStatus(input.status || microsequence.status || MICROSEQUENCE_STATUS_READY, microsequence);
   return ensureValidDocument(nextDocument);
 }
 
 export function updateCardInMicrosequence(document, input) {
   const nextDocument = clone(document);
-  const { lesson } = findLesson(nextDocument, input.courseKey, input.moduleKey, input.lessonKey);
-  const microsequence = findMicrosequence(lesson, input.microsequenceKey);
-  const cardIndex = microsequence.cards.findIndex((item) => item.key === input.cardKey);
-
+  const courseKey = resolveRequestedId(input, "courseId", "courseKey");
+  const moduleKey = resolveRequestedId(input, "moduleId", "moduleKey");
+  const lessonKey = resolveRequestedId(input, "lessonId", "lessonKey");
+  const microsequenceKey = resolveRequestedId(input, "microsequenceId", "microsequenceKey");
+  const { lesson } = findLesson(nextDocument, courseKey, moduleKey, lessonKey);
+  const microsequence = findMicrosequence(lesson, microsequenceKey);
+  const cards = resolveMicrosequenceCards(microsequence).slice();
+  const cardIndex = findCardIndex(microsequence, resolveRequestedId(input, "cardId", "cardKey"));
   if (cardIndex < 0) {
-    fail(`Card não encontrado: "${input.cardKey}".`);
+    fail(`Card não encontrado: "${resolveRequestedId(input, "cardId", "cardKey")}".`);
   }
-
-  const currentCard = microsequence.cards[cardIndex];
-  const nextCard = normalizeCardForInsert(
-    {
-      ...currentCard,
-      ...extractCardInput(input),
-      key: currentCard.key
-    },
-    collectSiblingKeys(microsequence.cards.filter((item) => item.key !== currentCard.key)),
-    currentCard.title || getContractCardKindLabel(currentCard)
-  );
-
-  microsequence.cards[cardIndex] = nextCard;
+  const currentCard = cards[cardIndex];
+  const patch = input.card && typeof input.card === "object" ? input.card : input;
+  cards[cardIndex] = sanitizeContractCard({
+    ...currentCard,
+    ...patch,
+    position: currentCard.position
+  });
+  ensureMicrosequenceVersion(microsequence, cards, { source: "manual", action: "improve" });
   return ensureValidDocument(nextDocument);
 }
 
 export function moveCardWithinMicrosequence(document, input) {
   const nextDocument = clone(document);
-  const { lesson } = findLesson(nextDocument, input.courseKey, input.moduleKey, input.lessonKey);
-  const microsequence = findMicrosequence(lesson, input.microsequenceKey);
-  reorderSiblingItems(microsequence.cards || [], input.cardKey, input.toIndex, "Card");
+  const courseKey = resolveRequestedId(input, "courseId", "courseKey");
+  const moduleKey = resolveRequestedId(input, "moduleId", "moduleKey");
+  const lessonKey = resolveRequestedId(input, "lessonId", "lessonKey");
+  const microsequenceKey = resolveRequestedId(input, "microsequenceId", "microsequenceKey");
+  const { lesson } = findLesson(nextDocument, courseKey, moduleKey, lessonKey);
+  const microsequence = findMicrosequence(lesson, microsequenceKey);
+  const cards = resolveMicrosequenceCards(microsequence).slice();
+  const cardKey = resolveRequestedId(input, "cardId", "cardKey");
+  const fromIndex = cards.findIndex((card, index) => normalizeCardToken(card, index) === cardKey);
+  if (fromIndex < 0) {
+    fail(`Card não encontrado: "${cardKey}".`);
+  }
+  const [card] = cards.splice(fromIndex, 1);
+  const safeIndex = Math.max(0, Math.min(Number.isInteger(input.toIndex) ? input.toIndex : cards.length, cards.length));
+  cards.splice(safeIndex, 0, card);
+  ensureMicrosequenceVersion(microsequence, cards, { source: "manual", action: "improve" });
   return ensureValidDocument(nextDocument);
 }
 
 export function deleteCardInMicrosequence(document, input) {
   const nextDocument = clone(document);
-  const { lesson } = findLesson(nextDocument, input.courseKey, input.moduleKey, input.lessonKey);
-  const microsequence = findMicrosequence(lesson, input.microsequenceKey);
-  const fromIndex = microsequence.cards.findIndex((item) => item.key === input.cardKey);
-
-  if (fromIndex < 0) {
-    fail(`Card não encontrado: "${input.cardKey}".`);
+  const courseKey = resolveRequestedId(input, "courseId", "courseKey");
+  const moduleKey = resolveRequestedId(input, "moduleId", "moduleKey");
+  const lessonKey = resolveRequestedId(input, "lessonId", "lessonKey");
+  const microsequenceKey = resolveRequestedId(input, "microsequenceId", "microsequenceKey");
+  const { lesson } = findLesson(nextDocument, courseKey, moduleKey, lessonKey);
+  const microsequence = findMicrosequence(lesson, microsequenceKey);
+  const cards = resolveMicrosequenceCards(microsequence).slice();
+  const cardKey = resolveRequestedId(input, "cardId", "cardKey");
+  const index = cards.findIndex((card, cardIndex) => normalizeCardToken(card, cardIndex) === cardKey);
+  if (index < 0) {
+    fail(`Card não encontrado: "${cardKey}".`);
   }
-
-  microsequence.cards.splice(fromIndex, 1);
-  microsequence.status = normalizeMicrosequenceStatus(
-    microsequence.cards.length ? microsequence.status : MICROSEQUENCE_STATUS_DRAFT,
-    microsequence
-  );
-  microsequence.included = normalizeMicrosequenceRuntimeIncluded(
-    microsequence.cards.length ? microsequence.included : false,
-    microsequence
-  );
+  cards.splice(index, 1);
+  ensureMicrosequenceVersion(microsequence, cards, { source: "manual", action: "improve" });
+  microsequence.status = cards.length ? normalizeMicrosequenceStatus(microsequence.status || MICROSEQUENCE_STATUS_READY, microsequence) : MICROSEQUENCE_STATUS_DRAFT;
   return ensureValidDocument(nextDocument);
 }
 
@@ -1091,7 +857,6 @@ export function createEditorSession(storage) {
   if (!storage || typeof storage.loadProject !== "function" || typeof storage.saveProject !== "function") {
     fail("Storage inválido para sessão de edição.");
   }
-
   return {
     createCourse(input) {
       const nextDocument = createCourse(storage.loadProject(), input);
@@ -1232,3 +997,13 @@ export function createEditorSession(storage) {
     }
   };
 }
+
+export function createContractEditorSession(storage) {
+  return createEditorSession(storage);
+}
+
+export function createBlankProjectDocument() {
+  return createEmptyProjectDocument();
+}
+
+export { PROJECT_CONTRACT, PROJECT_VERSION };
