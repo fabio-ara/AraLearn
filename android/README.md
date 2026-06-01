@@ -1,23 +1,34 @@
 # Android do AraLearn
 
-Este módulo empacota a aplicação web do AraLearn em um `WebView`, preservando a proposta local-first do produto em ambiente Android.
+Este módulo empacota a aplicação web do AraLearn em um `WebView`, preservando a arquitetura central do produto em ambiente Android.
+
+O wrapper não reescreve a lógica do app. Ele entrega no dispositivo móvel o mesmo desenho do runtime web:
+
+- projeto local-first;
+- top-down até microssequências;
+- bottom-up para materialização e correção local;
+- persistência do documento e do progresso;
+- importação e exportação de arquivos;
+- possibilidade de integração com provider local quando o ambiente permitir.
 
 ## O que o wrapper entrega
 
-O wrapper Android existe para levar ao dispositivo móvel a mesma arquitetura central do app:
+O APK existe para levar ao Android o mesmo fluxo do AraLearn:
 
-- organização pedagógica local;
-- persistência no dispositivo;
-- estudo e intervenção em microssequências;
-- integração com arquivos do sistema;
-- possibilidade de uso com provider local quando o ambiente comporta isso.
+- estudar a trilha planejada;
+- abrir microssequências;
+- gerar, corrigir e ampliar cards;
+- criar branch local de aprendizagem e voltar à trilha principal;
+- manter o projeto persistido no dispositivo.
 
-## Build local
+O wrapper não substitui o contrato do domínio. Ele apenas hospeda a aplicação dentro do ambiente Android.
 
-Pré-requisitos:
+## Pré-requisitos para build local
 
 - `JDK 17`
 - Android SDK
+
+## Build de depuração
 
 Na raiz do projeto:
 
@@ -34,7 +45,39 @@ cd android
 
 Saída esperada:
 
-- `app/build/outputs/apk/debug/app-debug.apk`
+- `android/app/build/outputs/apk/debug/app-debug.apk`
+
+## Build de release
+
+Na raiz do projeto:
+
+```powershell
+npm run android:release
+```
+
+O comando agora assina o APK de release automaticamente.
+
+Se estas variáveis estiverem definidas, o build usa o keystore informado:
+
+- `ARALEARN_ANDROID_KEYSTORE_PATH`
+- `ARALEARN_ANDROID_KEYSTORE_PASSWORD`
+- `ARALEARN_ANDROID_KEY_ALIAS`
+- `ARALEARN_ANDROID_KEY_PASSWORD`
+
+Sem essas variáveis, o build local usa `~/.android/debug.keystore` como fallback para gerar um APK assinado e instalável.
+
+Alternativa direta:
+
+```powershell
+cd android
+.\gradlew.bat :app:assembleRelease --no-daemon
+```
+
+Saída esperada:
+
+- `android/app/build/outputs/apk/release/app-release.apk`
+
+Se o ambiente de build gerar variante diferente de nome, o artefato ficará na mesma pasta de saída de release.
 
 ## Persistência e arquivos
 
@@ -42,8 +85,15 @@ O app mantém um espaço de trabalho persistente dentro do `WebView`. Importaç�
 
 ## Integração local
 
-O wrapper libera o necessário para tráfego HTTP local quando o usuário quiser operar com provider local via bridge, inclusive em cenários de `Codex CLI` no Android.
+O wrapper libera o necessário para tráfego HTTP local quando o usuário quiser operar com provider local via bridge, inclusive em cenários de CLI local no Android.
 
-## Observação de layout
+## Layout e teclado
 
-O módulo preserva o comportamento de insets e teclado necessário para que a tela de estudo, a navegação e os painéis do AraLearn funcionem corretamente no `WebView`.
+O módulo preserva o comportamento de insets e teclado necessário para que:
+
+- a árvore do curso;
+- a tela de estudo;
+- a aba de edição;
+- os painéis de feedback e intervenção
+
+funcionem corretamente dentro do `WebView`.

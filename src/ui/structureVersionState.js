@@ -74,9 +74,8 @@ function cloneSnapshot(level, entity) {
 
   return {
     title: entity?.title || "",
-    ...(entity?.description ? { description: entity.description } : {}),
-    ...(entity?.sourceGuide ? { sourceGuide: entity.sourceGuide } : {}),
-    ...(entity?.sourceGuideStructured ? { sourceGuideStructured: structuredClone(entity.sourceGuideStructured) } : {}),
+    ...(entity?.goal ? { goal: entity.goal } : {}),
+    ...(entity?.guide ? { guide: structuredClone(entity.guide) } : {}),
     [childField]: Array.isArray(entity?.[childField]) ? structuredClone(entity[childField]) : []
   };
 }
@@ -138,7 +137,7 @@ export function createStructureVersionRecord(
     ...(parentVersionId ? { parentVersionId: String(parentVersionId).trim() } : {}),
     ...(normalizePublicNumber(publicNumber) ? { publicNumber: normalizePublicNumber(publicNumber) } : {}),
     level: safeLevel,
-    entityKey: String(entityKey || entity?.key || "").trim(),
+    entityKey: String(entityKey || entity?.id || "").trim(),
     snapshot: cloneSnapshot(safeLevel, entity),
     createdAt: createdIso,
     updatedAt: updatedIso
@@ -242,7 +241,7 @@ export function insertStructureVersionAfterActive(
   const lastVersion = getLastVersion(entry);
   const nextVersionNumber = normalizeVersionNumber(lastVersion?.versionNumber, versions.length) + 1;
   const insertedVersion = createStructureVersionRecord(safeLevel, entity, {
-    entityKey: entry?.entityKey || entity?.key || "",
+    entityKey: entry?.entityKey || entity?.id || "",
     versionNumber: nextVersionNumber,
     label,
     operationType,

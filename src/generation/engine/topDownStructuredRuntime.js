@@ -1,0 +1,579 @@
+import { applyProjectPatch } from "../../core/patch.js";
+import { plannedCourseToProjectPatch } from "../topDown/plannedCourseToProjectPatch.js";
+import { validatePlannedCourse } from "../topDown/validatePlannedCourse.js";
+import { parseTopDownAuditText } from "./slotParser.js";
+
+function text(value) {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function parseJson(textValue = "") {
+  const source = text(textValue);
+  try {
+    return JSON.parse(source);
+  } catch {
+    const start = source.indexOf("{");
+    if (start < 0) {
+      throw new Error("Resposta top-down sem JSON utilizável.");
+    }
+    let depth = 0;
+    let inString = false;
+    let escaped = false;
+    for (let index = start; index < source.length; index += 1) {
+      const char = source[index];
+      if (inString) {
+        if (escaped) {
+          escaped = false;
+          continue;
+        }
+        if (char === "\\") {
+          escaped = true;
+          continue;
+        }
+        if (char === "\"") {
+          inString = false;
+        }
+        continue;
+      }
+      if (char === "\"") {
+        inString = true;
+        continue;
+      }
+      if (char === "{") {
+        depth += 1;
+        continue;
+      }
+      if (char === "}") {
+        depth -= 1;
+        if (depth === 0) {
+          return JSON.parse(source.slice(start, index + 1));
+        }
+      }
+    }
+    throw new Error("Resposta top-down com JSON incompleto.");
+  }
+}
+
+function buildTopDownCorrectionPrompt(scopeContract, issues = []) {
+  return [
+    "Fase: top_down_structure",
+    "Corrija somente os problemas abaixo e devolva novamente JSON pequeno válido.",
+    ...issues.map((item) => `- ${item}`),
+    "Use exatamente a quantidade de módulos do escopo.",
+    "Cada módulo precisa de lições.",
+    "Distribua todos os itens de include entre lições e microssequências.",
+    "Não repita o pedido bruto do usuário em guide.goal.",
+    JSON.stringify(scopeContract, null, 2)
+  ].join("\n\n");
+}
+
+function buildTopDownPrompt(scopeContract) {
+  return [
+    "AraLearn top-down structured runtime.",
+    "Responda somente JSON.",
+    "Planeje curso, módulos, lições e microssequências.",
+    "Não gere cards.",
+    "Use exatamente a quantidade de módulos do escopo.",
+    "Cada módulo precisa de lições e cada lição precisa de microssequências.",
+    "Cada microssequência precisa de title, goal, role, dependsOn, covers e checks.",
+    "dependsOn só pode usar títulos anteriores da mesma lição.",
+    JSON.stringify(scopeContract, null, 2)
+  ].join("\n\n");
+}
+
+function buildTopDownAuditReferenceLines(plannedCourse) {
+  return (plannedCourse?.course?.modules || []).flatMap((moduleValue) =>
+    (moduleValue.lessons || []).map((lesson) => `Lição ${lesson.title}: ${(lesson.microsequences || []).map((item) => item.title).join(" | ")}`)
+  );
+}
+
+function buildTopDownAuditPrompt(plannedCourse) {
+  return [
+    "AraLearn top-down structure audit.",
+    "Audite dependências, progressão, cobertura e escopo.",
+    "Responda somente com patches multilinha estritos.",
+    "Não escreva explicação, comentário, introdução, conclusão, lista, markdown nem texto fora do formato.",
+    "Formato obrigatório:",
+    "PATCH MICROSEQUENCE",
+    "target: Título da microssequência",
+    "dependsOn: Título anterior | Outro título anterior",
+    "goal: novo objetivo",
+    "covers: item 1 | item 2",
+    "checks: item 1 | item 2",
+    "moveAfter: Título anterior",
+    "Se não houver correção a fazer, responda apenas: STATUS OK",
+    "Se a ordem e as dependências já estiverem coerentes, não crie novas dependsOn nem moveAfter.",
+    "Não use PATCH MICROSEQUENCE em linha única.",
+    "Não use o campo role em patch de auditoria.",
+    "Nunca deixe dependsOn: ou moveAfter: vazios. Se não usar, omita a linha.",
+    "Nunca use [] em dependsOn. Para não depender de nada, omita o campo.",
+    "dependsOn e moveAfter só podem citar títulos de microssequências, nunca títulos de lições.",
+    "Exemplo válido:",
+    "PATCH MICROSEQUENCE",
+    "target: Exemplo de microssequência",
+    "dependsOn: Microssequência anterior",
+    "checks: o aluno reconhece o conceito-base",
+    "moveAfter: Microssequência anterior",
+    ...buildTopDownAuditReferenceLines(plannedCourse),
+    JSON.stringify(plannedCourse, null, 2)
+  ].join("\n\n");
+}
+
+function normalizeToken(value = "") {
+  return text(value).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+}
+
+function unique(values = []) {
+  return [...new Set((Array.isArray(values) ? values : []).map((item) => text(item)).filter(Boolean))];
+}
+
+function pickDependsOn(microsequence = {}) {
+  return unique(
+    Array.isArray(microsequence?.dependsOn)
+      ? microsequence.dependsOn
+      : typeof microsequence?.dependsOn === "string"
+        ? microsequence.dependsOn.split("|")
+        : []
+  );
+}
+
+function inferIncludeMatches(sourceText = "", include = []) {
+  const normalizedSource = normalizeToken(sourceText);
+  return unique(include).filter((item) => normalizedSource.includes(normalizeToken(item)));
+}
+
+function overlapMatches(left = "", right = "") {
+  const normalizedLeft = normalizeToken(left);
+  const normalizedRight = normalizeToken(right);
+  return normalizedLeft && normalizedRight && (normalizedLeft.includes(normalizedRight) || normalizedRight.includes(normalizedLeft));
+}
+
+function inferRole(microsequence = {}) {
+  const source = normalizeToken(`${microsequence?.title || ""} ${microsequence?.operation || ""} ${microsequence?.questionKind || ""}`);
+  if (/pratica|practice|question|identify|choose|locate|transpose/.test(source)) {
+    return "practice";
+  }
+  return "explain";
+}
+
+function buildChecksFromCovers(covers = []) {
+  return unique(covers).map((item) => `o aluno reconhece ${item}`);
+}
+
+function normalizeTopDownShape(rawPlan, scopeContract) {
+  const scopeModule = Array.isArray(scopeContract?.modules) ? scopeContract.modules[0] : {};
+  const sourceModules = Array.isArray(rawPlan?.course?.modules)
+    ? rawPlan.course.modules
+    : Array.isArray(rawPlan?.modules)
+      ? rawPlan.modules
+      : [];
+  const normalizedModules = sourceModules.slice(0, Math.max(1, (scopeContract?.modules || []).length)).map((moduleValue, moduleIndex) => {
+    const include = unique(moduleValue?.include?.length ? moduleValue.include : scopeModule.include);
+    const exclude = unique(moduleValue?.exclude?.length ? moduleValue.exclude : scopeModule.exclude);
+    const lessons = Array.isArray(moduleValue?.lessons) ? moduleValue.lessons : [];
+    const normalizedLessons = lessons.map((lesson, lessonIndex) => {
+      const lessonSignals = inferIncludeMatches(
+        `${lesson?.title || ""} ${(lesson.microsequences || []).map((item) => item?.title || "").join(" ")}`,
+        include
+      );
+      const lessonInclude = lessonSignals.length ? lessonSignals : [include[Math.min(lessonIndex, Math.max(0, include.length - 1))]].filter(Boolean);
+      const normalizedMicrosequences = (Array.isArray(lesson?.microsequences) ? lesson.microsequences : []).map((microsequence, microIndex) => {
+        const coverSignals = inferIncludeMatches(`${microsequence?.title || ""} ${microsequence?.goal || ""}`, lessonInclude);
+        const covers = coverSignals.length
+          ? coverSignals
+          : [lessonInclude[Math.min(microIndex, Math.max(0, lessonInclude.length - 1))]].filter(Boolean);
+        return {
+          id: text(microsequence?.id),
+          title: text(microsequence?.title) || `Microssequência ${microIndex + 1}`,
+          goal: text(microsequence?.goal) || `Trabalhar ${covers.join(" e ")} em caso curto.`,
+          role: inferRole(microsequence),
+          dependsOn: pickDependsOn(microsequence),
+          covers,
+          checks: buildChecksFromCovers(covers)
+        };
+      });
+      const normalizedLessonInclude = unique([
+        ...lessonInclude,
+        ...normalizedMicrosequences.flatMap((microsequence) => microsequence.covers || [])
+      ]);
+      return {
+        title: text(lesson?.title) || `Lição ${lessonIndex + 1}`,
+        guide: {
+          goal: `Trabalhar ${normalizedLessonInclude.join(" e ")} dentro do recorte do módulo.`,
+          include: normalizedLessonInclude,
+          exclude,
+          notation: [],
+          avoid: []
+        },
+        microsequences: normalizedMicrosequences
+      };
+    });
+    return {
+      title: text(moduleValue?.title) || text(scopeModule?.title) || `Módulo ${moduleIndex + 1}`,
+      guide: {
+        goal: `Cobrir ${include.join(", ")} sem sair do recorte do módulo.`,
+        include,
+        exclude,
+        notation: [],
+        avoid: []
+      },
+      lessons: normalizedLessons
+    };
+  });
+  return {
+    course: {
+      title: text(rawPlan?.course?.title) || text(scopeContract?.course?.title),
+      goal: text(rawPlan?.course?.goal) || text(scopeContract?.course?.goal),
+      modules: normalizedModules
+    }
+  };
+}
+
+function repairLessonDependencies(lessons = []) {
+  return (Array.isArray(lessons) ? lessons : []).map((lesson) => {
+    const seen = [];
+    const microsequences = (Array.isArray(lesson?.microsequences) ? lesson.microsequences : []).map((microsequence) => {
+      const repairedDependsOn = unique(microsequence?.dependsOn).map((dependencyRef) => {
+        const exact = seen.find((item) => normalizeToken(item.title) === normalizeToken(dependencyRef));
+        if (exact) {
+          return exact.title;
+        }
+        const semantic = [...seen].reverse().find((item) =>
+          overlapMatches(item.title, dependencyRef)
+          || (Array.isArray(item.covers) && item.covers.some((cover) => overlapMatches(cover, dependencyRef)))
+        );
+        return semantic?.title || "";
+      }).filter(Boolean);
+      const next = {
+        ...microsequence,
+        dependsOn: repairedDependsOn
+      };
+      seen.push(next);
+      return next;
+    });
+    return {
+      ...lesson,
+      microsequences
+    };
+  });
+}
+
+function repairCoverageGaps(plannedCourse) {
+  const next = structuredClone(plannedCourse);
+  (next?.course?.modules || []).forEach((moduleValue) => {
+    const moduleCovered = new Set();
+    moduleValue.lessons = repairLessonDependencies(moduleValue.lessons || []);
+    (moduleValue.lessons || []).forEach((lesson) => {
+      const lessonCovered = new Set();
+      (lesson.microsequences || []).forEach((microsequence) => {
+        unique(microsequence.covers).forEach((item) => {
+          lessonCovered.add(item);
+          moduleCovered.add(item);
+        });
+      });
+      const missingLessonIncludes = unique(lesson?.guide?.include).filter((item) => !lessonCovered.has(item));
+      if (missingLessonIncludes.length && Array.isArray(lesson.microsequences) && lesson.microsequences.length) {
+        lesson.microsequences[0].covers = unique([...(lesson.microsequences[0].covers || []), ...missingLessonIncludes]);
+        lesson.microsequences[0].checks = unique([...(lesson.microsequences[0].checks || []), ...buildChecksFromCovers(missingLessonIncludes)]);
+      }
+    });
+    const missingModuleIncludes = unique(moduleValue?.guide?.include).filter((item) => !moduleCovered.has(item));
+    if (missingModuleIncludes.length && Array.isArray(moduleValue.lessons) && moduleValue.lessons.length) {
+      const targetLesson = moduleValue.lessons[moduleValue.lessons.length - 1];
+      targetLesson.guide.include = unique([...(targetLesson.guide.include || []), ...missingModuleIncludes]);
+      if (Array.isArray(targetLesson.microsequences) && targetLesson.microsequences.length) {
+        targetLesson.microsequences[0].covers = unique([...(targetLesson.microsequences[0].covers || []), ...missingModuleIncludes]);
+        targetLesson.microsequences[0].checks = unique([...(targetLesson.microsequences[0].checks || []), ...buildChecksFromCovers(missingModuleIncludes)]);
+      }
+    }
+  });
+  return next;
+}
+
+function splitPipeList(value = "") {
+  return value.split("|").map((item) => text(item)).filter(Boolean);
+}
+
+function findMicrosequenceEntries(plannedCourse) {
+  return (plannedCourse?.course?.modules || []).flatMap((moduleValue) =>
+    (moduleValue.lessons || []).flatMap((lesson) =>
+      (lesson.microsequences || []).map((microsequence, index) => ({
+        moduleValue,
+        lesson,
+        microsequence,
+        index
+      }))
+    )
+  );
+}
+
+function countTopDownDependencyErrors(plannedCourse = {}) {
+  let dependencyErrors = 0;
+  (plannedCourse?.course?.modules || []).forEach((moduleValue) => {
+    (moduleValue.lessons || []).forEach((lesson) => {
+      const seenTitles = [];
+      (lesson.microsequences || []).forEach((microsequence) => {
+        const deps = Array.isArray(microsequence?.dependsOn) ? microsequence.dependsOn.map((item) => text(item)).filter(Boolean) : [];
+        deps.forEach((dependency) => {
+          if (!seenTitles.includes(dependency)) {
+            dependencyErrors += 1;
+          }
+        });
+        seenTitles.push(text(microsequence?.title));
+      });
+    });
+  });
+  return dependencyErrors;
+}
+
+function validateTopDownAuditPatches(plannedCourse, parsed = {}) {
+  const errors = [];
+  const entries = findMicrosequenceEntries(plannedCourse);
+  const titleSet = new Set(entries.map((entry) => normalizeToken(entry.microsequence.title)));
+  (parsed.invalidPatches || []).forEach((item) => errors.push(item.reason));
+  (parsed.invalidGlobalLines || []).forEach((item) => errors.push(item.reason));
+  (parsed.patches || []).forEach((patch) => {
+    if (!text(patch.target)) {
+      errors.push("patch top-down sem target.");
+      return;
+    }
+    const targetEntry = entries.find((entry) => normalizeToken(entry.microsequence.title) === normalizeToken(patch.target));
+    if (!targetEntry) {
+      errors.push(`target inexistente no top-down audit: ${patch.target}.`);
+      return;
+    }
+    Object.entries(patch.fields || {}).forEach(([fieldName, fieldValue]) => {
+      if (!text(fieldValue) && fieldName !== "dependsOn") {
+        errors.push(`patch top-down com ${fieldName} vazio em ${patch.target}.`);
+      }
+      if ((fieldName === "dependsOn" || fieldName === "moveAfter") && text(fieldValue)) {
+        splitPipeList(fieldValue).forEach((dependencyRef) => {
+          if (!titleSet.has(normalizeToken(dependencyRef))) {
+            errors.push(`referência inexistente em ${fieldName}: ${dependencyRef}.`);
+          }
+        });
+      }
+    });
+  });
+  return {
+    ok: errors.length === 0,
+    errors
+  };
+}
+
+function applyAuditPatches(plannedCourse, patches = []) {
+  const next = structuredClone(plannedCourse);
+  const appliedPatches = [];
+  const entries = findMicrosequenceEntries(next);
+  (Array.isArray(patches) ? patches : []).forEach((patch) => {
+    const targetEntry = entries.find((entry) => normalizeToken(entry.microsequence.title) === normalizeToken(patch.target));
+    if (!targetEntry) {
+      return;
+    }
+    const target = targetEntry.microsequence;
+    Object.entries(patch.fields || {}).forEach(([fieldName, fieldValue]) => {
+      if (fieldName === "dependsOn" || fieldName === "covers" || fieldName === "checks") {
+        target[fieldName] = splitPipeList(fieldValue);
+        return;
+      }
+      if (fieldName === "moveAfter" && text(fieldValue)) {
+        const lessonItems = targetEntry.lesson.microsequences || [];
+        const currentIndex = lessonItems.findIndex((item) => item.title === target.title);
+        const moveAfterIndex = lessonItems.findIndex((item) => normalizeToken(item.title) === normalizeToken(fieldValue));
+        if (currentIndex >= 0 && moveAfterIndex >= 0 && currentIndex !== moveAfterIndex) {
+          const [item] = lessonItems.splice(currentIndex, 1);
+          lessonItems.splice(moveAfterIndex + 1, 0, item);
+        }
+        return;
+      }
+      target[fieldName] = fieldValue;
+    });
+    appliedPatches.push({
+      target: patch.target,
+      fields: structuredClone(patch.fields || {})
+    });
+  });
+  return {
+    plannedCourse: next,
+    appliedPatches
+  };
+}
+
+function buildTopDownAuditCorrectionPrompt(plannedCourse, issues = []) {
+  return [
+    "AraLearn top-down structure audit correction.",
+    "Corrija somente as dependências, checks, covers ou ordem problemática.",
+    "Responda apenas com PATCH MICROSEQUENCE multilinha ou STATUS OK se nada precisar mudar.",
+    "Se a ordem e as dependências atuais já estiverem coerentes, responda somente STATUS OK.",
+    "Não escreva nenhuma linha fora do formato permitido.",
+    "Não misture PATCH MICROSEQUENCE com STATUS OK.",
+    "Se usar PATCH MICROSEQUENCE, cada campo precisa ficar em sua própria linha com target:, dependsOn:, goal:, covers:, checks: ou moveAfter:.",
+    "Não use o campo role em patch de auditoria.",
+    "Nunca deixe dependsOn: ou moveAfter: vazios. Se não usar, omita a linha.",
+    "Nunca use [] em dependsOn. Para não depender de nada, omita o campo.",
+    "dependsOn e moveAfter só podem citar títulos de microssequências, nunca títulos de lições.",
+    "Exemplo válido:",
+    "PATCH MICROSEQUENCE",
+    "target: Exemplo de microssequência",
+    "dependsOn: Microssequência anterior",
+    "checks: o aluno reconhece o conceito-base",
+    "moveAfter: Microssequência anterior",
+    ...issues.map((item) => `- ${item}`),
+    ...buildTopDownAuditReferenceLines(plannedCourse),
+    JSON.stringify(plannedCourse, null, 2)
+  ].join("\n\n");
+}
+
+export async function planCourseFromScopeStructured({
+  scopeContract,
+  provider,
+  modelId,
+  project,
+  logger
+} = {}) {
+  if (!provider?.generateText) {
+    throw new Error("Provider sem generateText para top-down estruturado.");
+  }
+  const initialStructurePrompt = buildTopDownPrompt(scopeContract);
+  let plannedCourse = null;
+  let validation = null;
+  let structurePrompt = initialStructurePrompt;
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    const startedAt = Date.now();
+    const structureResult = await provider.generateText({
+      modelId,
+      phase: "top_down_structure",
+      system: "Responda somente JSON válido.",
+      prompt: structurePrompt,
+      temperature: attempt === 1 ? 0.1 : 0,
+      maxTokens: 8000
+    });
+    logger?.log({
+      phase: "top_down_structure",
+      model: modelId,
+      usage: structureResult.usage,
+      latencyMs: Date.now() - startedAt,
+      rawText: structureResult.text
+    });
+    plannedCourse = repairCoverageGaps(normalizeTopDownShape(parseJson(structureResult.text), scopeContract));
+    validation = validatePlannedCourse(plannedCourse, scopeContract);
+    if (validation.ok) {
+      break;
+    }
+    if (attempt >= 3) {
+      throw new Error(validation.errors.map((item) => `${item.path}: ${item.message}`).join("; "));
+    }
+    structurePrompt = buildTopDownCorrectionPrompt(
+      scopeContract,
+      validation.errors.map((item) => `${item.path}: ${item.message}`)
+    );
+  }
+
+  let auditPrompt = buildTopDownAuditPrompt(plannedCourse);
+  let appliedTopDownPatches = [];
+  const rejectedTopDownPatches = [];
+  const dependencyErrorsBeforeAudit = countTopDownDependencyErrors(plannedCourse);
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    const auditStartedAt = Date.now();
+    const auditResult = await provider.generateText({
+      modelId,
+      phase: "top_down_structure_audit",
+      system: "Responda somente com patches estruturais multilinha válidos. Sem prosa extra.",
+      prompt: auditPrompt,
+      temperature: 0,
+      maxTokens: 4000
+    });
+    const parsedAudit = parseTopDownAuditText(auditResult.text);
+    logger?.log({
+      phase: "top_down_structure_audit",
+      model: modelId,
+      usage: auditResult.usage,
+      latencyMs: Date.now() - auditStartedAt,
+      rawText: auditResult.text,
+      parsedSlots: parsedAudit
+    });
+    const patchValidation = validateTopDownAuditPatches(plannedCourse, parsedAudit);
+    const canTreatAsNoop =
+      !parsedAudit.patches.length
+      && patchValidation.errors.length > 0
+      && !(parsedAudit.invalidPatches || []).length
+      && !(parsedAudit.invalidGlobalLines || []).length
+      && validatePlannedCourse(plannedCourse, scopeContract).ok;
+    if (canTreatAsNoop) {
+      appliedTopDownPatches = [];
+      validation = validatePlannedCourse(plannedCourse, scopeContract);
+      break;
+    }
+    if (!patchValidation.ok) {
+      if (attempt >= 3) {
+        throw new Error(patchValidation.errors.join("; "));
+      }
+      auditPrompt = [
+        buildTopDownAuditCorrectionPrompt(plannedCourse, patchValidation.errors),
+        "",
+        "Corrija o formato do patch top-down. Não use inline patch."
+      ].join("\n\n");
+      continue;
+    }
+    const patched = applyAuditPatches(plannedCourse, parsedAudit.patches);
+    const dependencyErrorsAfterAudit = countTopDownDependencyErrors(patched.plannedCourse);
+    if (
+      dependencyErrorsAfterAudit > dependencyErrorsBeforeAudit
+      || (dependencyErrorsBeforeAudit === 0 && dependencyErrorsAfterAudit > 0)
+      || (dependencyErrorsBeforeAudit > 0 && dependencyErrorsAfterAudit >= dependencyErrorsBeforeAudit)
+    ) {
+      const rejectionReason = `patch top-down piorou dependências: antes=${dependencyErrorsBeforeAudit}; depois=${dependencyErrorsAfterAudit}`;
+      rejectedTopDownPatches.push({
+        attempt,
+        reason: rejectionReason,
+        patches: structuredClone(parsedAudit.patches || [])
+      });
+      if (attempt >= 3) {
+        throw new Error(rejectionReason);
+      }
+      auditPrompt = buildTopDownAuditCorrectionPrompt(
+        plannedCourse,
+        [rejectionReason, "Corrija dependsOn e moveAfter sem introduzir dependência futura, inexistente ou redundante."]
+      );
+      continue;
+    }
+    const candidateCourse = repairCoverageGaps(patched.plannedCourse);
+    plannedCourse = candidateCourse;
+    appliedTopDownPatches = patched.appliedPatches;
+    validation = validatePlannedCourse(plannedCourse, scopeContract);
+    if (validation.ok) {
+      break;
+    }
+    if (!parsedAudit.patches.length) {
+      if (attempt >= 3) {
+        throw new Error("Auditoria top-down não corrigiu os problemas detectados.");
+      }
+      auditPrompt = buildTopDownAuditCorrectionPrompt(
+        plannedCourse,
+        validation.errors.map((item) => `${item.path}: ${item.message}`)
+      );
+      continue;
+    }
+    if (attempt >= 3) {
+      throw new Error(validation.errors.map((item) => `${item.path}: ${item.message}`).join("; "));
+    }
+    auditPrompt = buildTopDownAuditCorrectionPrompt(
+      plannedCourse,
+      validation.errors.map((item) => `${item.path}: ${item.message}`)
+    );
+  }
+  if (!validation?.ok) {
+    throw new Error(validation.errors.map((item) => `${item.path}: ${item.message}`).join("; "));
+  }
+  const patch = plannedCourseToProjectPatch(validation.value);
+  return {
+    scopeContract,
+    plannedCourse: validation.value,
+    patch,
+    project: applyProjectPatch(project, patch),
+    appliedTopDownPatches,
+    rejectedTopDownPatches,
+    dependencyErrorsBeforeAudit,
+    dependencyErrorsAfterAudit: countTopDownDependencyErrors(validation.value)
+  };
+}

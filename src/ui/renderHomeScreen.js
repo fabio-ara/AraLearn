@@ -2,6 +2,7 @@ import { readLessonProgressEntry } from "../storage/progressStore.js";
 import { isRunnableMicrosequence } from "../model/microsequenceStatus.js";
 import { renderUiIcon } from "./renderUiIcons.js";
 import { buildScopedVersionLineageLabel, splitVersionLineageLabel } from "./versionLineage.js";
+import { getActiveMicrosequenceVersion } from "../domain/microsequence.js";
 import {
   listGenerationProgressPhases,
   summarizeGenerationProgressStatus
@@ -62,6 +63,15 @@ function renderStructureHandle({ level, courseKey, moduleKey = "", lessonKey = "
   );
 }
 
+function entityId(entity) {
+  return typeof entity?.id === "string" ? entity.id : "";
+}
+
+function cardsOfMicrosequence(microsequence) {
+  const activeVersion = getActiveMicrosequenceVersion(microsequence);
+  return Array.isArray(activeVersion?.cards) ? activeVersion.cards : [];
+}
+
 function countLessons(course) {
   return (course.modules || []).reduce((total, moduleValue) => total + (moduleValue.lessons || []).length, 0);
 }
@@ -71,7 +81,7 @@ function countCardsInLesson(lesson) {
     if (!isRunnableMicrosequence(microsequence)) {
       return total;
     }
-    return total + (microsequence.cards || []).length;
+    return total + cardsOfMicrosequence(microsequence).length;
   }, 0);
 }
 
@@ -88,9 +98,9 @@ function countCompletedCardsInCourse(course, progress) {
       total +
       (moduleValue.lessons || []).reduce((lessonTotal, lesson) => {
         const entry = readLessonProgressEntry(progress, {
-          courseKey: course.key,
-          moduleKey: moduleValue.key,
-          lessonKey: lesson.key
+          courseKey: entityId(course),
+          moduleKey: entityId(moduleValue),
+          lessonKey: entityId(lesson)
         });
         const completed = entry && Array.isArray(entry.completedCardKeys) ? entry.completedCardKeys.length : 0;
         return lessonTotal + completed;
@@ -141,8 +151,8 @@ function renderHomeCourseTitle(course) {
     '<div class="course-title-row navigation-title-row">' +
     renderStructureHandle({
       level: "course",
-      courseKey: course.key,
-      label: `Arrastar curso ${course.title || course.key}`
+      courseKey: course.id,
+      label: `Arrastar curso ${course.title || course.id}`
     }) +
     title +
     "</div>"
@@ -154,9 +164,9 @@ function buildHomeCoursePreviews(project, progress) {
     const completedCount = countCompletedCardsInCourse(course, progress);
     const totalCount = countCardsInCourse(course);
     return {
-      key: course.key,
+      id: entityId(course),
       title: course.title || "Curso",
-      description: course.description || "",
+      description: course.goal || "",
       moduleCount: (course.modules || []).length,
       lessonCount: countLessons(course),
       completedCount,
@@ -242,16 +252,25 @@ function renderStructureVersionTabs({ tabs = [], activeVersionId = "", emptyLabe
 
 function renderGenerateIconLabel(iconName, label) {
   return (
-    '<span class="generate-icon-label" aria-hidden="true" title="' +
+    '<span class="generate-icon-label workbench-inline-icon" aria-hidden="true" title="' +
     escapeHtml(label) +
     '">' +
-    renderUiIcon(iconName, "generate-field-icon") +
+    renderUiIcon(iconName, "generate-field-icon workbench-inline-icon-svg") +
     "</span>"
   );
 }
 
 function renderGenerateSectionTitle(title) {
   return '<div class="generate-section-title"><h3 class="generate-section-title-text">' + escapeHtml(title) + "</h3></div>";
+}
+
+function renderNavigationContextHeading(title) {
+  return (
+    '<section class="section-heading-row centered-section-heading-row navigation-heading-row">' +
+    '<h2 class="section-heading">' +
+    escapeHtml(title) +
+    "</h2></section>"
+  );
 }
 
 function renderGenerateIconButton(action, title, content, disabled = false, extraClassName = "") {
@@ -358,7 +377,7 @@ function renderEditableTopicChips(items = [], action = "") {
 function renderGenerateComboboxOptions(items) {
   return (items || [])
     .map((item) => {
-      const value = item?.title || item?.key || "";
+      const value = item?.title || item?.id || "";
       return value ? '<option value="' + escapeHtml(value) + '"></option>' : "";
     })
     .join("");
@@ -412,7 +431,11 @@ function renderGeneratePane({ project, editorSupport, includeDismissActions = fa
         escapeHtml(draft.lastResult.message || "") +
         "</p>" +
         (draft.lastResult.openActionLabel
-          ? '<button type="button" data-action="view-generated-lesson">' + escapeHtml(draft.lastResult.openActionLabel) + "</button>"
+          ? '<button class="open-main generate-feedback-action" type="button" data-action="view-generated-lesson" aria-label="' +
+            escapeHtml(draft.lastResult.openActionLabel) +
+            '" title="' +
+            escapeHtml(draft.lastResult.openActionLabel) +
+            '">▶</button>'
           : "") +
         "</section>"
       : "";
@@ -420,9 +443,9 @@ function renderGeneratePane({ project, editorSupport, includeDismissActions = fa
     '<input data-field="generate-attachments" class="assist-attachment-input" type="file" multiple accept=".pdf,.txt,.md,.json,.csv,.html,.xml,.js,.ts,.py,.java,.c,.cpp,.doc,.docx,.ppt,.pptx,.rtf,.odt,.ods,.odp,text/*,application/pdf,application/json,application/xml">';
   const attachmentChips = renderGenerationAttachmentChips(draft.attachments);
   const hasScopedContext = draft.courseFixed || draft.moduleFixed || draft.lessonFixed;
+  const existingCourses = courses.map((item) => item.title).filter(Boolean);
   const existingModules = (generationUiState.course?.modules || []).map((item) => item.title).filter(Boolean);
   const existingLessons = (generationUiState.moduleValue?.lessons || []).map((item) => item.title).filter(Boolean);
-  const existingMicrosequences = (generationUiState.lesson?.microsequences || []).map((item) => item.title).filter(Boolean);
   const includeTopicChips = renderEditableTopicChips(draft.includeTopics, "remove-generate-include-topic");
   const excludeTopicChips = renderEditableTopicChips(draft.excludeTopics, "remove-generate-exclude-topic");
   return (
@@ -431,7 +454,7 @@ function renderGeneratePane({ project, editorSupport, includeDismissActions = fa
     (includeDismissActions
       ? '<header class="generation-overlay-header">' +
         '<div class="generation-overlay-heading">' +
-        '<h2 class="card-title">' +
+        '<h2 class="card-title generation-overlay-title">' +
         escapeHtml(generationUiState.panelTitle || "Gerar estrutura") +
         "</h2>" +
         "</div>" +
@@ -441,7 +464,7 @@ function renderGeneratePane({ project, editorSupport, includeDismissActions = fa
         "</div></header>"
       : "") +
     '<div class="generate-main-stack">' +
-    '<section class="microsequence-assist-panel assist-simple-panel">' +
+    '<section class="microsequence-assist-panel assist-simple-panel generate-plain-section">' +
     renderGenerateSectionTitle("Destino da árvore") +
     renderGenerateInputField({
       field: "generate-course-input",
@@ -452,16 +475,14 @@ function renderGeneratePane({ project, editorSupport, includeDismissActions = fa
       listId: "generate-course-options",
       options: courses
     }) +
-    (draft.courseKey
-      ? '<div class="workbench-tag-layout"><div class="dependency-chip-row workbench-tag-chip-row">' +
-        renderStaticChips(existingModules, {
-          emptyLabel: "Sem módulos neste curso ainda.",
-          iconName: "module",
-          action: "select-existing-module",
-          dataField: "module-title"
-        }) +
-        "</div></div>"
-      : "") +
+    '<div class="workbench-tag-layout"><div class="dependency-chip-row workbench-tag-chip-row">' +
+    renderStaticChips(existingCourses, {
+      emptyLabel: "Sem cursos ainda.",
+      iconName: "folder",
+      action: "select-existing-course",
+      dataField: "course-title"
+    }) +
+    "</div></div>" +
     renderGenerateInputField({
       field: "generate-module-input",
       iconName: "module",
@@ -472,13 +493,13 @@ function renderGeneratePane({ project, editorSupport, includeDismissActions = fa
       options: modules,
       disabled: !generationUiState.moduleInputEnabled
     }) +
-    (draft.moduleKey
+    (draft.courseKey
       ? '<div class="workbench-tag-layout"><div class="dependency-chip-row workbench-tag-chip-row">' +
-        renderStaticChips(existingLessons, {
-          emptyLabel: "Sem lições neste módulo ainda.",
-          iconName: "lesson",
-          action: "select-existing-lesson",
-          dataField: "lesson-title"
+        renderStaticChips(existingModules, {
+          emptyLabel: "Sem módulos neste curso ainda.",
+          iconName: "module",
+          action: "select-existing-module",
+          dataField: "module-title"
         }) +
         "</div></div>"
       : "") +
@@ -492,17 +513,19 @@ function renderGeneratePane({ project, editorSupport, includeDismissActions = fa
       options: lessons,
       disabled: !generationUiState.lessonInputEnabled
     }) +
-    (draft.lessonKey
+    (draft.moduleKey
       ? '<div class="workbench-tag-layout"><div class="dependency-chip-row workbench-tag-chip-row">' +
-        renderStaticChips(existingMicrosequences, {
-          emptyLabel: "Sem micros planejadas nesta lição ainda.",
-          iconName: "microsequence"
+        renderStaticChips(existingLessons, {
+          emptyLabel: "Sem lições neste módulo ainda.",
+          iconName: "lesson",
+          action: "select-existing-lesson",
+          dataField: "lesson-title"
         }) +
         "</div></div>"
       : "") +
     "</section>" +
     '<div class="generate-divider"></div>' +
-    '<section class="microsequence-assist-panel assist-simple-panel">' +
+    '<section class="microsequence-assist-panel assist-simple-panel generate-plain-section">' +
     renderGenerateSectionTitle("Escopo do módulo") +
     '<div class="workbench-tag-layout">' +
     '<div class="workbench-form-row workbench-tag-picker-row">' +
@@ -525,11 +548,11 @@ function renderGeneratePane({ project, editorSupport, includeDismissActions = fa
     excludeTopicChips +
     "</div></div></section>" +
     '<div class="generate-divider"></div>' +
-    '<div class="field generate-prompt-field">' +
+    '<div class="field generate-prompt-field workbench-prompt-field">' +
     '<div class="generate-prompt-layout">' +
     '<div class="generate-prompt-tools">' +
     renderGenerateIconLabel("prompt", "Pedido, conteúdo ou orientação") +
-    renderGenerateIconButton("clear-prompt", "Limpar prompt", "↻") +
+    renderGenerateIconButton("clear-prompt", "Limpar prompt", "↻", false, " workbench-inline-reset") +
     "</div>" +
     '<div class="generate-prompt-content">' +
     '<textarea data-field="generate-prompt" aria-label="Pedido, conteúdo ou orientação" title="Pedido, conteúdo ou orientação" placeholder="Descreva o que você quer gerar neste escopo.">' +
@@ -551,8 +574,8 @@ function renderGeneratePane({ project, editorSupport, includeDismissActions = fa
     ) +
     "</span>" +
     "</div></div>" +
-    '<div class="generate-action-row">' +
-    '<label class="field generate-icon-field generate-model-field">' +
+    '<div class="generate-action-row assist-actions assist-actions-wide assist-request-actions">' +
+    '<label class="field generate-icon-field generate-model-field workbench-select-field">' +
     renderGenerateIconLabel("intent", "Modelo") +
     '<select data-field="assist-model" aria-label="Modelo" title="Modelo">' +
     modelOptions +
@@ -568,14 +591,15 @@ function renderGeneratePane({ project, editorSupport, includeDismissActions = fa
     ">" +
     renderUiIcon("sparkles", "generate-submit-icon") +
     "</button>" +
-    "</div></div>" +
-    "</section>" +
+    "</div>" +
     status +
-    "</section>"
+    "</div>" +
+    renderGenerationProgressPopup(draft.progress, { embedded: includeDismissActions }) +
+    "</section></section>"
   );
 }
 
-function renderGenerationProgressPopup(progress = {}) {
+function renderGenerationProgressPopup(progress = {}, { embedded = false } = {}) {
   if (!progress?.visible || progress.status === "idle") {
     return "";
   }
@@ -591,7 +615,7 @@ function renderGenerationProgressPopup(progress = {}) {
         : "";
   const progressLabel = phaseCount > 0 && phaseIndex > 0 ? `${phaseIndex}/${phaseCount}` : "Iniciando";
   const statusLine = summarizeGenerationProgressStatus(progress);
-  const phaseItems = listGenerationProgressPhases(phaseCount || 0)
+  const phaseItems = listGenerationProgressPhases(phaseCount || 0, progress.phaseIds || [])
     .map((phase, index) => {
       const order = index + 1;
       const itemClass =
@@ -616,6 +640,7 @@ function renderGenerationProgressPopup(progress = {}) {
 
   return (
     '<aside class="generation-progress-popup' +
+    (embedded ? " is-embedded" : "") +
     statusClass +
     '" role="status" aria-live="polite">' +
     '<div class="generation-progress-head">' +
@@ -642,7 +667,7 @@ function renderCoursesPane({ project, progress }) {
     .map((course) => {
       return (
         '<article class="clean-card course-card progress-card navigation-list-card" data-structure-target="course" data-course-key="' +
-        escapeHtml(course.key) +
+        escapeHtml(course.id) +
         '">' +
         '<div class="card-progress-fill" style="width:' +
         String(course.progressPercent) +
@@ -656,15 +681,15 @@ function renderCoursesPane({ project, progress }) {
         renderHomeCourseMeta(course) +
         '<div class="course-actions navigation-actions">' +
         '<button class="icon-ghost corner-btn" type="button" data-action="open-course-actions" data-course-key="' +
-        escapeHtml(course.key) +
+        escapeHtml(course.id) +
         '" title="Ações do curso" aria-label="Ações do curso">⋯</button>' +
         '<button class="icon-ghost corner-btn" type="button" data-action="open-generation-panel-course" data-course-key="' +
-        escapeHtml(course.key) +
+        escapeHtml(course.id) +
         '" title="Gerar neste curso" aria-label="Gerar neste curso">' +
         renderUiIcon("sparkles", "home-tab-icon") +
         "</button>" +
         '<button class="open-main" type="button" data-action="open-course" data-course-key="' +
-        escapeHtml(course.key) +
+        escapeHtml(course.id) +
         '" title="Abrir curso" aria-label="Abrir curso">▶</button>' +
         "</div>" +
         "</article>"
@@ -676,14 +701,11 @@ function renderCoursesPane({ project, progress }) {
 }
 
 export function renderGenerationPanelOverlay({ project, editorSupport = {} }) {
-  const draft = editorSupport.generationDraft || {};
   return (
-    '<section class="overlay-shell" data-action="dismiss-generation-panel">' +
+    '<section class="overlay-shell generation-overlay-shell" data-action="dismiss-generation-panel">' +
     '<div class="overlay-panel overlay-panel-side generation-overlay-panel">' +
     renderGeneratePane({ project, editorSupport, includeDismissActions: true }) +
-    "</div>" +
-    renderGenerationProgressPopup(draft.progress) +
-    "</section>"
+    "</div></section>"
   );
 }
 
@@ -692,6 +714,7 @@ export function renderHomeScreen({ project, progress, editorSupport = {} }) {
     '<section class="screen">' +
     renderCoursesTopbar() +
     '<main class="screen-content courses-home-screen navigation-screen">' +
+    renderNavigationContextHeading("Cursos") +
     '<section class="courses-home-list navigation-list" data-structure-collection="course">' +
     renderCoursesPane({ project, progress }) +
     "</section>" +

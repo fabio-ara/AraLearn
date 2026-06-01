@@ -8,6 +8,7 @@ import {
   findModule,
   getFirstPath
 } from "./lessonEditorPaths.js";
+import { getActiveMicrosequenceVersion } from "../domain/microsequence.js";
 
 function nullSelection() {
   return {
@@ -20,19 +21,24 @@ function nullSelection() {
   };
 }
 
+function cardsOfMicrosequence(microsequence) {
+  const activeVersion = getActiveMicrosequenceVersion(microsequence);
+  return Array.isArray(activeVersion?.cards) ? activeVersion.cards : [];
+}
+
 export function resolveSelectionByKeys(projectDocument, desiredSelection = {}) {
   const fallbackPath = getFirstPath(projectDocument);
   const course = findCourse(projectDocument, desiredSelection?.courseKey) || findCourse(projectDocument, fallbackPath.courseKey);
   const moduleValue =
-    findModule(projectDocument, course?.key, desiredSelection?.moduleKey) ||
-    findModule(projectDocument, course?.key, fallbackPath.moduleKey);
+    findModule(projectDocument, course?.id, desiredSelection?.moduleKey) ||
+    findModule(projectDocument, course?.id, fallbackPath.moduleKey);
   const lesson =
-    findLesson(projectDocument, course?.key, moduleValue?.key, desiredSelection?.lessonKey) ||
-    findLesson(projectDocument, course?.key, moduleValue?.key, fallbackPath.lessonKey);
+    findLesson(projectDocument, course?.id, moduleValue?.id, desiredSelection?.lessonKey) ||
+    findLesson(projectDocument, course?.id, moduleValue?.id, fallbackPath.lessonKey);
   const microsequence =
-    findMicrosequence(projectDocument, course?.key, moduleValue?.key, lesson?.key, desiredSelection?.microsequenceKey) ||
-    findMicrosequence(projectDocument, course?.key, moduleValue?.key, lesson?.key, fallbackPath.microsequenceKey);
-  const cards = microsequence?.cards || [];
+    findMicrosequence(projectDocument, course?.id, moduleValue?.id, lesson?.id, desiredSelection?.microsequenceKey) ||
+    findMicrosequence(projectDocument, course?.id, moduleValue?.id, lesson?.id, fallbackPath.microsequenceKey);
+  const cards = cardsOfMicrosequence(microsequence);
   const fallbackCardIndex = Number.isInteger(fallbackPath.cardIndex) ? fallbackPath.cardIndex : 0;
   const preferredIndex = Number.isInteger(desiredSelection?.cardIndex) ? desiredSelection.cardIndex : fallbackCardIndex;
   const cardFromKey = desiredSelection?.cardKey ? findCard(microsequence, desiredSelection.cardKey) : null;
@@ -40,12 +46,12 @@ export function resolveSelectionByKeys(projectDocument, desiredSelection = {}) {
   const selectedCard = cardFromKey || cards[safeCardIndex] || null;
 
   return {
-    courseKey: course?.key || null,
-    moduleKey: moduleValue?.key || null,
-    lessonKey: lesson?.key || null,
-    microsequenceKey: microsequence?.key || null,
-    cardKey: selectedCard?.key || null,
-    cardIndex: selectedCard ? cards.findIndex((item) => item.key === selectedCard.key) : 0
+    courseKey: course?.id || null,
+    moduleKey: moduleValue?.id || null,
+    lessonKey: lesson?.id || null,
+    microsequenceKey: microsequence?.id || null,
+    cardKey: selectedCard?.id || null,
+    cardIndex: selectedCard ? cards.findIndex((item) => item.id === selectedCard.id) : 0
   };
 }
 
@@ -61,11 +67,11 @@ export function buildCourseNavigationState(projectDocument, courseKey) {
 
   return {
     selection: resolveSelectionByKeys(projectDocument, {
-      courseKey: course.key,
-      moduleKey: course.modules?.[0]?.key || null,
-      lessonKey: course.modules?.[0]?.lessons?.[0]?.key || null,
-      microsequenceKey: course.modules?.[0]?.lessons?.[0]?.microsequences?.[0]?.key || null,
-      cardKey: course.modules?.[0]?.lessons?.[0]?.microsequences?.[0]?.cards?.[0]?.key || null,
+      courseKey: course.id,
+      moduleKey: course.modules?.[0]?.id || null,
+      lessonKey: course.modules?.[0]?.lessons?.[0]?.id || null,
+      microsequenceKey: course.modules?.[0]?.lessons?.[0]?.microsequences?.[0]?.id || null,
+      cardKey: cardsOfMicrosequence(course.modules?.[0]?.lessons?.[0]?.microsequences?.[0])[0]?.id || null,
       cardIndex: 0
     }),
     view: "course"
@@ -81,10 +87,10 @@ export function buildModuleNavigationState(projectDocument, { courseKey = "", mo
   return {
     selection: resolveSelectionByKeys(projectDocument, {
       courseKey,
-      moduleKey: moduleValue.key,
-      lessonKey: moduleValue.lessons?.[0]?.key || null,
-      microsequenceKey: moduleValue.lessons?.[0]?.microsequences?.[0]?.key || null,
-      cardKey: moduleValue.lessons?.[0]?.microsequences?.[0]?.cards?.[0]?.key || null,
+      moduleKey: moduleValue.id,
+      lessonKey: moduleValue.lessons?.[0]?.id || null,
+      microsequenceKey: moduleValue.lessons?.[0]?.microsequences?.[0]?.id || null,
+      cardKey: cardsOfMicrosequence(moduleValue.lessons?.[0]?.microsequences?.[0])[0]?.id || null,
       cardIndex: 0
     }),
     view: "module"
@@ -105,8 +111,8 @@ export function buildLessonNavigationState(projectDocument, progressState, { cou
     : (lesson.microsequences || [])[0] || null;
   const firstCard = currentEntry
     ? currentEntry.card
-    : firstMicrosequence && firstMicrosequence.cards
-      ? firstMicrosequence.cards[0] || null
+    : firstMicrosequence
+      ? cardsOfMicrosequence(firstMicrosequence)[0] || null
       : null;
 
   return {
@@ -114,8 +120,8 @@ export function buildLessonNavigationState(projectDocument, progressState, { cou
       courseKey,
       moduleKey,
       lessonKey,
-      microsequenceKey: currentEntry ? currentEntry.microsequenceKey : firstMicrosequence ? firstMicrosequence.key : null,
-      cardKey: firstCard ? firstCard.key : null,
+      microsequenceKey: currentEntry ? currentEntry.microsequenceKey : firstMicrosequence ? firstMicrosequence.id : null,
+      cardKey: firstCard ? firstCard.id : null,
       cardIndex: currentEntry ? currentEntry.cardIndex : 0
     },
     view: "lesson"

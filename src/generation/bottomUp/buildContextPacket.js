@@ -1,11 +1,54 @@
 import { getActiveMicrosequenceVersion } from "../../domain/microsequence.js";
 import { listSupportedResourceTypes } from "../../domain/resources.js";
 
+function text(value) {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function uniqueList(values = []) {
+  return [...new Set((Array.isArray(values) ? values : []).map((item) => text(item)).filter(Boolean))];
+}
+
+function summarizeRef(microsequence, { dependency = false, selected = false } = {}) {
+  return {
+    title: text(microsequence?.title),
+    goal: text(microsequence?.goal),
+    role: text(microsequence?.role),
+    covers: uniqueList(microsequence?.covers),
+    checks: uniqueList(microsequence?.checks),
+    dependency: dependency === true,
+    selected: selected === true
+  };
+}
+
+function summarizeExistingCard(card = {}) {
+  return {
+    position: Number(card?.position) || 0,
+    resource: text(card?.resource),
+    kind: text(card?.kind),
+    exercise: text(card?.exercise),
+    title: text(card?.title)
+  };
+}
+
+function summarizeNextTrailMicrosequence(microsequence) {
+  if (!microsequence || typeof microsequence !== "object") {
+    return null;
+  }
+  return {
+    title: text(microsequence?.title),
+    goal: text(microsequence?.goal),
+    role: text(microsequence?.role),
+    covers: uniqueList(microsequence?.covers),
+    checks: uniqueList(microsequence?.checks)
+  };
+}
+
 function findContext(project, selection) {
-  const course = (project.courses || []).find((item) => item.key === selection.courseKey);
-  const moduleValue = (course?.modules || []).find((item) => item.key === selection.moduleKey);
-  const lesson = (moduleValue?.lessons || []).find((item) => item.key === selection.lessonKey);
-  const microsequenceIndex = (lesson?.microsequences || []).findIndex((item) => item.key === selection.microsequenceKey);
+  const course = (project.courses || []).find((item) => item.id === selection.courseKey);
+  const moduleValue = (course?.modules || []).find((item) => item.id === selection.moduleKey);
+  const lesson = (moduleValue?.lessons || []).find((item) => item.id === selection.lessonKey);
+  const microsequenceIndex = (lesson?.microsequences || []).findIndex((item) => item.id === selection.microsequenceKey);
   const microsequence = microsequenceIndex >= 0 ? lesson.microsequences[microsequenceIndex] : null;
   return {
     course,
@@ -16,73 +59,81 @@ function findContext(project, selection) {
   };
 }
 
-function summarizeMicrosequence(microsequence) {
-  const version = getActiveMicrosequenceVersion(microsequence);
-  return {
-    key: microsequence.key,
-    title: microsequence.title,
-    summary: version?.summary || microsequence.goal
-  };
+function flattenCourseMicrosequences(course = {}) {
+  return (course.modules || []).flatMap((moduleValue) =>
+    (moduleValue.lessons || []).flatMap((lesson) => lesson.microsequences || [])
+  );
 }
 
-export function buildContextPacket(project, selection, { density = "standard", userRequest = "" } = {}) {
+function findMicrosequenceById(course, id) {
+  const normalizedId = text(id);
+  if (!normalizedId) {
+    return null;
+  }
+  return flattenCourseMicrosequences(course).find((item) => item?.id === normalizedId) || null;
+}
+
+function findNextTrailMicrosequence(lesson, currentIndex) {
+  const lessonMicrosequences = Array.isArray(lesson?.microsequences) ? lesson.microsequences : [];
+  for (let index = currentIndex + 1; index < lessonMicrosequences.length; index += 1) {
+    const candidate = lessonMicrosequences[index];
+    if (!candidate?.branchOf) {
+      return candidate;
+    }
+  }
+  return null;
+}
+
+export function buildContextPacket(project, selection, { density = "standard", userRequest = "", selectedRefIds = [] } = {}) {
   const { course, moduleValue, lesson, microsequence, microsequenceIndex } = findContext(project, selection);
   if (!course || !moduleValue || !lesson || !microsequence) {
     throw new Error("Microssequência não encontrada.");
   }
 
-  const previous = microsequenceIndex > 0 ? lesson.microsequences[microsequenceIndex - 1] : null;
-  const next = microsequenceIndex >= 0 && microsequenceIndex < lesson.microsequences.length - 1 ? lesson.microsequences[microsequenceIndex + 1] : null;
-  const dependsOn = (Array.isArray(microsequence.dependsOn) ? microsequence.dependsOn : [])
-    .map((key) => (lesson.microsequences || []).find((item) => item.key === key))
-    .filter(Boolean)
-    .map((item) => summarizeMicrosequence(item));
+  const dependencyIds = uniqueList(microsequence.dependsOn);
+  const selectedIds = uniqueList(selectedRefIds);
+  const refIds = uniqueList([...dependencyIds, ...selectedIds]);
+  const refs = refIds
+    .map((refId) => {
+      const item = findMicrosequenceById(course, refId);
+      if (!item) {
+        return null;
+      }
+      return summarizeRef(item, {
+        dependency: dependencyIds.includes(refId),
+        selected: selectedIds.includes(refId)
+      });
+    })
+    .filter(Boolean);
+  const selectedRefTitles = refs.filter((item) => item.selected).map((item) => item.title).filter(Boolean);
+  const nextTrail = findNextTrailMicrosequence(lesson, microsequenceIndex);
 
   return {
-    courseTitle: course.title,
-    ...(course.goal ? { courseGoal: course.goal } : {}),
-    module: {
-      title: moduleValue.title,
-      include: (moduleValue.include || []).map((item) => item.label),
-      exclude: (moduleValue.exclude || []).map((item) => item.label),
-      ...(moduleValue.notes ? { notes: moduleValue.notes } : {}),
-      assessmentStyle: moduleValue.assessmentStyle
+    path: {
+      course: text(course.title),
+      module: text(moduleValue.title),
+      lesson: text(lesson.title),
+      microsequence: text(microsequence.title)
     },
-    lesson: {
-      title: lesson.title,
-      goal: lesson.goal
+    guide: structuredClone(lesson.guide || moduleValue.guide || { goal: "", include: [], exclude: [], notation: [], avoid: [] }),
+    microsequence: {
+      title: text(microsequence.title),
+      goal: text(microsequence.goal),
+      role: text(microsequence.role),
+      branchOf: text(microsequence.branchOf),
+      status: text(microsequence.status),
+      covers: uniqueList(microsequence.covers),
+      checks: uniqueList(microsequence.checks),
+      existingCards: (getActiveMicrosequenceVersion(microsequence)?.cards || []).map(summarizeExistingCard),
+      currentCards: structuredClone(getActiveMicrosequenceVersion(microsequence)?.cards || [])
     },
-    currentMicrosequence: {
-      key: microsequence.key,
-      title: microsequence.title,
-      goal: microsequence.goal,
-      type: microsequence.type,
-      dependsOn
+    refs: {
+      selected: selectedRefTitles,
+      items: refs
     },
-    neighborMicrosequences: {
-      ...(previous
-        ? {
-            previous: {
-              key: previous.key,
-              title: previous.title,
-              goal: previous.goal,
-              summary: getActiveMicrosequenceVersion(previous)?.summary || ""
-            }
-          }
-        : {}),
-      ...(next
-        ? {
-            next: {
-              key: next.key,
-              title: next.title,
-              goal: next.goal
-            }
-          }
-        : {})
-    },
+    next: summarizeNextTrailMicrosequence(nextTrail),
     allowedResources: listSupportedResourceTypes(),
     density,
-    ...(userRequest ? { userRequest } : {})
+    userRequest: text(userRequest)
   };
 }
-

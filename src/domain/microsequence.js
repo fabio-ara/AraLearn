@@ -1,6 +1,4 @@
 import { findMicrosequenceVersion } from "./microsequenceVersion.js";
-
-export const MICROSEQUENCE_TYPES = Object.freeze(["main", "support"]);
 export const MICROSEQUENCE_STATUSES = Object.freeze(["planned", "generated", "needs_review", "ready"]);
 
 export function getActiveMicrosequenceVersion(microsequence) {
@@ -8,10 +6,10 @@ export function getActiveMicrosequenceVersion(microsequence) {
   if (!versions.length) {
     return null;
   }
-  if (!microsequence?.activeVersionKey) {
+  if (!microsequence?.activeVersion) {
     return versions[versions.length - 1];
   }
-  return findMicrosequenceVersion(microsequence, microsequence.activeVersionKey) || versions[versions.length - 1];
+  return findMicrosequenceVersion(microsequence, microsequence.activeVersion) || versions[versions.length - 1];
 }
 
 export function cloneMicrosequenceWithVersion(microsequence, version, nextStatus = "generated") {
@@ -19,7 +17,7 @@ export function cloneMicrosequenceWithVersion(microsequence, version, nextStatus
   return {
     ...microsequence,
     versions,
-    activeVersionKey: version.key,
+    activeVersion: version.id,
     status: nextStatus
   };
 }

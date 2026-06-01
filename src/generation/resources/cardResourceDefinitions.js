@@ -2,453 +2,423 @@ function clone(value) {
   return structuredClone(value);
 }
 
+function pedagogicFields() {
+  return {
+    position: { type: "integer" },
+    resource: { type: "string" },
+    kind: { type: "string", enum: ["theory", "exercise"] },
+    exercise: { type: "string", enum: ["none", "gap", "choice"] },
+    title: { type: "string" },
+    after: { type: "string" },
+    sources: { type: "array", items: { type: "string" } },
+    topics: { type: "array", items: { type: "string" } }
+  };
+}
+
+function contextualChoiceFields() {
+  return {
+    question: { type: "string" },
+    options: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["id", "text"],
+        properties: {
+          id: { type: "string" },
+          text: { type: "string" }
+        }
+      }
+    },
+    answer: { type: "string" }
+  };
+}
+
+function coordinatePairSchema() {
+  return {
+    type: "array",
+    minItems: 2,
+    maxItems: 2,
+    items: { type: "number" }
+  };
+}
+
+function coordinatePairListSchema() {
+  return {
+    type: "array",
+    items: coordinatePairSchema()
+  };
+}
+
+function flowStructureSchema() {
+  return {
+    type: "object",
+    additionalProperties: true,
+    properties: {
+      id: { type: "string" },
+      kind: {
+        type: "string",
+        enum: ["sequence", "start", "end", "input", "output", "process", "if_then", "if_then_else", "while", "for", "do_while", "if_chain", "switch_case"]
+      },
+      text: { type: "string" },
+      condition: { type: "string" },
+      expression: { type: "string" },
+      init: { type: "string" },
+      update: { type: "string" },
+      items: { type: "array", items: { type: "object" } },
+      thenBranch: { type: "array", items: { type: "object" } },
+      elseBranch: { type: "array", items: { type: "object" } },
+      body: { type: "array", items: { type: "object" } },
+      cases: { type: "array", items: { type: "object" } },
+      defaultBranch: { type: "array", items: { type: "object" } }
+    }
+  };
+}
+
+function choiceOptionsSchema() {
+  return {
+    type: "array",
+    items: {
+      type: "object",
+      additionalProperties: false,
+      required: ["id", "text"],
+      properties: {
+        id: { type: "string" },
+        text: { type: "string" }
+      }
+    }
+  };
+}
+
+function graphVertexSchema() {
+  return {
+    type: "object",
+    additionalProperties: true,
+    properties: {
+      id: { type: "string" },
+      label: { type: "string" }
+    }
+  };
+}
+
+function graphEdgeSchema() {
+  return {
+    type: "object",
+    additionalProperties: true,
+    properties: {
+      from: { type: "string" },
+      to: { type: "string" },
+      label: { type: "string" },
+      weight: { type: "string" }
+    }
+  };
+}
+
+function compositeBlockSchema() {
+  return {
+    type: "object",
+    additionalProperties: true,
+    required: ["kind"],
+    properties: {
+      kind: {
+        type: "string",
+        enum: ["heading", "paragraph", "choice", "code", "table", "flow", "tree", "graph", "relation_map", "matrix", "plane"]
+      },
+      value: { type: "string" },
+      question: { type: "string" },
+      options: choiceOptionsSchema(),
+      answer: { type: "string" },
+      prompt: { type: "string" },
+      language: { type: "string" },
+      code: { type: "string" },
+      columns: { type: "array", items: { type: "string" } },
+      rows: { type: "array", items: { type: "array", items: { type: "string" } } },
+      structure: flowStructureSchema(),
+      nodes: { type: "array", items: { type: "object" } },
+      vertices: { type: "array", items: graphVertexSchema() },
+      edges: { type: "array", items: graphEdgeSchema() },
+      highlight: { type: "object" },
+      leftSet: { type: "object" },
+      rightSet: { type: "object" },
+      relations: { type: "array", items: { type: "object" } },
+      pairList: { type: "array", items: { type: "string" } },
+      relationTable: { type: "object" },
+      name: { type: "string" },
+      values: { type: "array", items: { type: "array" } },
+      dividerAfterColumn: { type: "number" },
+      sequence: { type: "array", items: { type: "object" } },
+      x: coordinatePairSchema(),
+      y: coordinatePairSchema(),
+      vector: coordinatePairSchema(),
+      vectors: coordinatePairListSchema(),
+      sum: coordinatePairListSchema(),
+      scale: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          k: { type: "number" },
+          vector: coordinatePairSchema()
+        }
+      },
+      distance: {
+        type: "array",
+        minItems: 2,
+        maxItems: 2,
+        items: coordinatePairSchema()
+      },
+      result: {
+        anyOf: [
+          coordinatePairSchema(),
+          { type: "string" }
+        ]
+      }
+    }
+  };
+}
+
 export const CARD_RESOURCE_DEFINITIONS = Object.freeze([
   Object.freeze({
     id: "paragraph",
     label: "Parágrafo",
-    shortDescription: "Texto curto com uma ideia principal.",
-    limits: { maxChars: 420 },
+    shortDescription: "Texto curto para teoria ou lacuna por opções.",
     schema: {
       type: "object",
-      required: ["resourceType", "title", "text"],
+      additionalProperties: false,
+      required: ["position", "resource", "kind", "exercise", "title", "text", "after"],
       properties: {
-        position: { type: "number" },
-        resourceType: { const: "paragraph" },
-        title: { type: "string" },
-        text: { type: "string", maxLength: 420 },
-        sourceRefs: { type: "array", items: { type: "string" } },
-        sourceNote: { type: "string" }
-      },
-      additionalProperties: false
+        ...pedagogicFields(),
+        resource: { const: "paragraph" },
+        text: { type: "string" }
+      }
     }
   }),
   Object.freeze({
-    id: "multiple_choice",
-    label: "Múltipla escolha",
-    shortDescription: "Pergunta curta com uma alternativa correta.",
-    limits: { minOptions: 3, maxOptions: 4, maxPromptChars: 220 },
+    id: "choice",
+    label: "Escolha",
+    shortDescription: "Pergunta objetiva com 3 ou 4 alternativas.",
     schema: {
       type: "object",
-      required: ["resourceType", "title", "question", "options", "correctOptionId", "feedback"],
+      additionalProperties: false,
+      required: ["position", "resource", "kind", "exercise", "title", "question", "options", "answer", "after"],
       properties: {
-        position: { type: "number" },
-        resourceType: { const: "multiple_choice" },
-        title: { type: "string" },
-        question: { type: "string", maxLength: 220 },
-        sourceRefs: { type: "array", items: { type: "string" } },
-        sourceNote: { type: "string" },
+        ...pedagogicFields(),
+        resource: { const: "choice" },
+        question: { type: "string" },
         options: {
           type: "array",
-          minItems: 3,
-          maxItems: 4,
           items: {
             type: "object",
-            required: ["optionId", "label"],
+            additionalProperties: false,
+            required: ["id", "text"],
             properties: {
-              optionId: { type: "string" },
-              label: { type: "string" }
-            },
-            additionalProperties: false
+              id: { type: "string" },
+              text: { type: "string" }
+            }
           }
         },
-        correctOptionId: { type: "string" },
-        feedback: { type: "string" }
-      },
-      additionalProperties: false
+        answer: { type: "string" }
+      }
     }
   }),
   Object.freeze({
-    id: "code_editor",
-    label: "Editor de código",
-    shortDescription: "Trecho curto de código ou comando com linguagem explícita.",
-    limits: { maxLines: 6, maxPromptChars: 260 },
+    id: "composite",
+    label: "Composto",
+    shortDescription: "Card com múltiplos blocos visuais ou textuais, incluindo repetição do mesmo recurso.",
     schema: {
       type: "object",
-      required: ["resourceType", "title", "prompt", "language", "code"],
+      additionalProperties: false,
+      required: ["position", "resource", "kind", "exercise", "title", "blocks", "after"],
       properties: {
-        position: { type: "number" },
-        resourceType: { const: "code_editor" },
-        title: { type: "string" },
+        ...pedagogicFields(),
+        resource: { const: "composite" },
+        blocks: {
+          type: "array",
+          items: compositeBlockSchema()
+        }
+      }
+    }
+  }),
+  Object.freeze({
+    id: "code",
+    label: "Código",
+    shortDescription: "Trecho de código ou comando com teoria ou pergunta objetiva.",
+    schema: {
+      type: "object",
+      additionalProperties: false,
+      required: ["position", "resource", "kind", "exercise", "title", "prompt", "language", "code", "after"],
+      properties: {
+        ...pedagogicFields(),
+        resource: { const: "code" },
         prompt: { type: "string" },
-        sourceRefs: { type: "array", items: { type: "string" } },
-        sourceNote: { type: "string" },
         language: { type: "string" },
         code: { type: "string" },
-        expectedAnswer: { type: "string" }
-      },
-      additionalProperties: false
+        ...contextualChoiceFields()
+      }
     }
   }),
   Object.freeze({
     id: "table",
     label: "Tabela",
-    shortDescription: "Poucas linhas e colunas para comparação ou organização.",
-    limits: { maxColumns: 4, maxRows: 6, maxCellChars: 80 },
+    shortDescription: "Linhas e colunas curtas com teoria ou pergunta objetiva.",
     schema: {
       type: "object",
-      required: ["resourceType", "title", "columns", "rows"],
+      additionalProperties: false,
+      required: ["position", "resource", "kind", "exercise", "title", "columns", "rows", "after"],
       properties: {
-        position: { type: "number" },
-        resourceType: { const: "table" },
-        title: { type: "string" },
-        sourceRefs: { type: "array", items: { type: "string" } },
-        sourceNote: { type: "string" },
-        columns: { type: "array", minItems: 1, maxItems: 4, items: { type: "string" } },
-        rows: { type: "array", minItems: 1, maxItems: 6, items: { type: "array", items: { type: "string" } } },
-        focus: {
-          type: "object",
-          properties: {
-            label: { type: "string" },
-            row: { type: "integer", minimum: 1 },
-            rows: { type: "array", items: { type: "integer", minimum: 1 } },
-            column: { type: "integer", minimum: 1 },
-            columns: { type: "array", items: { type: "integer", minimum: 1 } }
-          },
-          additionalProperties: false
-        }
-      },
-      additionalProperties: false
+        ...pedagogicFields(),
+        resource: { const: "table" },
+        columns: { type: "array", items: { type: "string" } },
+        rows: { type: "array", items: { type: "array", items: { type: "string" } } },
+        ...contextualChoiceFields()
+      }
     }
   }),
   Object.freeze({
-    id: "plane",
-    label: "Plano cartesiano",
-    shortDescription: "Vetores ou pontos 2D com grade, eixos, setas e resultante derivados pelo motor.",
-    publicResourceType: "plane",
-    limits: { maxVectors: 4, coordinateRange: [-12, 12] },
+    id: "flow",
+    label: "Fluxo",
+    shortDescription: "Fluxograma estrutural com sequência, decisão e laço sem depender de geometria persistida.",
     schema: {
       type: "object",
-      required: ["resourceType", "title"],
+      additionalProperties: false,
+      required: ["position", "resource", "kind", "exercise", "title", "structure", "after"],
       properties: {
-        position: { type: "number" },
-        resourceType: { const: "plane" },
-        title: { type: "string" },
+        ...pedagogicFields(),
+        resource: { const: "flow" },
         prompt: { type: "string" },
-        sourceRefs: { type: "array", items: { type: "string" } },
-        sourceNote: { type: "string" },
-        vector: { type: "array", minItems: 2, maxItems: 2, items: { type: "number" } },
-        vectors: {
-          type: "array",
-          minItems: 1,
-          maxItems: 4,
-          items: { type: "array", minItems: 2, maxItems: 2, items: { type: "number" } }
-        },
-        sum: {
-          type: "array",
-          minItems: 2,
-          maxItems: 2,
-          items: { type: "array", minItems: 2, maxItems: 2, items: { type: "number" } }
-        },
-        scale: {
-          type: "object",
-          required: ["k", "vector"],
-          properties: {
-            k: { type: "number" },
-            vector: { type: "array", minItems: 2, maxItems: 2, items: { type: "number" } }
-          },
-          additionalProperties: false
-        },
-        distance: {
-          type: "array",
-          minItems: 2,
-          maxItems: 2,
-          items: { type: "array", minItems: 2, maxItems: 2, items: { type: "number" } }
-        },
-        result: {
-          type: "array",
-          minItems: 2,
-          maxItems: 2,
-          items: { anyOf: [{ type: "number" }, { type: "string" }] }
-        },
-        x: { type: "array", minItems: 2, maxItems: 2, items: { type: "number" } },
-        y: { type: "array", minItems: 2, maxItems: 2, items: { type: "number" } }
-      },
-      additionalProperties: false
+        structure: flowStructureSchema(),
+        ...contextualChoiceFields()
+      }
     }
   }),
   Object.freeze({
-    id: "matrix",
-    label: "Matriz",
-    shortDescription: "Matriz visual simples ou sequência de matrizes com conectores para resolução no mesmo card.",
-    publicResourceType: "matrix",
-    limits: { maxRows: 4, maxColumns: 5, maxSequenceItems: 5, maxCellChars: 80 },
+    id: "tree",
+    label: "Árvore",
+    shortDescription: "Árvore simples de nós hierárquicos com teoria ou pergunta objetiva.",
     schema: {
       type: "object",
-      required: ["resourceType", "title"],
-      anyOf: [{ required: ["values"] }, { required: ["sequence"] }],
+      additionalProperties: false,
+      required: ["position", "resource", "kind", "exercise", "title", "prompt", "nodes", "after"],
       properties: {
-        position: { type: "number" },
-        resourceType: { const: "matrix" },
-        title: { type: "string" },
+        ...pedagogicFields(),
+        resource: { const: "tree" },
         prompt: { type: "string" },
-        sourceRefs: { type: "array", items: { type: "string" } },
-        sourceNote: { type: "string" },
-        name: { type: "string", maxLength: 12 },
-        values: {
-          type: "array",
-          minItems: 1,
-          maxItems: 4,
-          items: {
-            type: "array",
-            minItems: 1,
-            maxItems: 5,
-            items: { anyOf: [{ type: "number" }, { type: "string", maxLength: 80 }] }
-          }
-        },
-        highlight: {
-          anyOf: [
-            { type: "string" },
-            { type: "array", items: { type: "string" } },
-            {
-              type: "object",
-              properties: {
-                row: { type: "number" },
-                col: { type: "number" },
-                cell: { type: "array", minItems: 2, maxItems: 2, items: { type: "number" } }
-              },
-              additionalProperties: false
-            }
-          ]
-        },
-        dividerAfterColumn: { type: "number" },
-        sequence: {
-          type: "array",
-          minItems: 2,
-          maxItems: 5,
-          items: {
-            type: "object",
-            required: ["values"],
-            properties: {
-              connector: { enum: ["=", "+", "-", "×", "*", "·", "→", "->", "⇒"] },
-              name: { type: "string", maxLength: 12 },
-              values: {
-                type: "array",
-                minItems: 1,
-                maxItems: 4,
-                items: {
-                  type: "array",
-                  minItems: 1,
-                  maxItems: 5,
-                  items: { anyOf: [{ type: "number" }, { type: "string", maxLength: 80 }] }
-                }
-              },
-              highlight: {
-                anyOf: [
-                  { type: "string" },
-                  { type: "array", items: { type: "string" } },
-                  {
-                    type: "object",
-                    properties: {
-                      row: { type: "number" },
-                      col: { type: "number" },
-                      cell: { type: "array", minItems: 2, maxItems: 2, items: { type: "number" } }
-                    },
-                    additionalProperties: false
-                  }
-                ]
-              },
-              dividerAfterColumn: { type: "number" }
-            },
-            additionalProperties: false
-          }
-        }
-      },
-      additionalProperties: false
-    }
-  }),
-  Object.freeze({
-    id: "flowchart",
-    label: "Fluxograma",
-    shortDescription: "Poucos nós com rótulos curtos e conexões simples.",
-    limits: { maxNodes: 7, maxLabelChars: 80 },
-    schema: {
-      type: "object",
-      required: ["resourceType", "title", "nodes", "edges"],
-      properties: {
-        position: { type: "number" },
-        resourceType: { const: "flowchart" },
-        title: { type: "string" },
-        sourceRefs: { type: "array", items: { type: "string" } },
-        sourceNote: { type: "string" },
-        nodes: { type: "array", minItems: 2, maxItems: 7, items: { type: "object" } },
-        edges: { type: "array", minItems: 1, items: { type: "object" } }
-      },
-      additionalProperties: false
+        nodes: { type: "array", items: { type: "object" } },
+        ...contextualChoiceFields()
+      }
     }
   }),
   Object.freeze({
     id: "graph",
     label: "Grafo",
-    shortDescription: "Grafo matemático simples, não orientado, com pesos e destaque opcional.",
-    publicResourceType: "graph",
-    limits: { maxVertices: 10, maxEdges: 18, maxLabelChars: 40 },
+    shortDescription: "Grafo estrutural com layout resolvido pelo motor e pergunta objetiva.",
     schema: {
       type: "object",
-      required: ["resourceType", "title", "vertices", "edges"],
+      additionalProperties: false,
+      required: ["position", "resource", "kind", "exercise", "title", "prompt", "vertices", "edges", "after"],
       properties: {
-        position: { type: "number" },
-        resourceType: { const: "graph" },
-        title: { type: "string" },
+        ...pedagogicFields(),
+        resource: { const: "graph" },
         prompt: { type: "string" },
-        sourceRefs: { type: "array", items: { type: "string" } },
-        sourceNote: { type: "string" },
-        vertices: {
+        vertices: { type: "array", items: { type: "object" } },
+        edges: { type: "array", items: { type: "object" } },
+        highlight: { type: "object" },
+        ...contextualChoiceFields()
+      }
+    }
+  }),
+  Object.freeze({
+    id: "relation_map",
+    label: "Mapa de Relações",
+    shortDescription: "Dois conjuntos com relações explícitas, lista de pares opcional e pergunta objetiva.",
+    schema: {
+      type: "object",
+      additionalProperties: false,
+      required: ["position", "resource", "kind", "exercise", "title", "prompt", "leftSet", "rightSet", "relations", "after"],
+      properties: {
+        ...pedagogicFields(),
+        resource: { const: "relation_map" },
+        prompt: { type: "string" },
+        leftSet: { type: "object" },
+        rightSet: { type: "object" },
+        relations: { type: "array", items: { type: "object" } },
+        pairList: { type: "array", items: { type: "string" } },
+        relationTable: { type: "object" },
+        highlight: { type: "object" },
+        ...contextualChoiceFields()
+      }
+    }
+  }),
+  Object.freeze({
+    id: "matrix",
+    label: "Matriz",
+    shortDescription: "Matriz ou sequência curta de matrizes com teoria ou pergunta objetiva.",
+    schema: {
+      type: "object",
+      additionalProperties: false,
+      required: ["position", "resource", "kind", "exercise", "title", "after"],
+      properties: {
+        ...pedagogicFields(),
+        resource: { const: "matrix" },
+        prompt: { type: "string" },
+        name: { type: "string" },
+        values: { type: "array", items: { type: "array" } },
+        highlight: {},
+        dividerAfterColumn: { type: "number" },
+        sequence: {
           type: "array",
-          minItems: 1,
-          maxItems: 10,
           items: {
             type: "object",
-            required: ["id"],
+            additionalProperties: false,
             properties: {
-              id: { type: "string" },
-              label: { type: "string", maxLength: 40 },
-              x: { type: "number", minimum: 0, maximum: 100 },
-              y: { type: "number", minimum: 0, maximum: 100 }
-            },
-            additionalProperties: false
-          }
-        },
-        edges: {
-          type: "array",
-          maxItems: 18,
-          items: {
-            type: "object",
-            required: ["from", "to"],
-            properties: {
-              from: { type: "string" },
-              to: { type: "string" },
-              weight: {
-                anyOf: [
-                  { type: "number" },
-                  { type: "string", maxLength: 24 }
-                ]
-              },
-              label: { type: "string", maxLength: 40 }
-            },
-            additionalProperties: false
-          }
-        },
-        highlight: {
-          type: "object",
-          properties: {
-            vertices: { type: "array", items: { type: "string" } },
-            edges: {
-              type: "array",
-              items: {
-                type: "array",
-                minItems: 2,
-                maxItems: 2,
-                items: { type: "string" }
-              }
+              name: { type: "string" },
+              connector: { type: "string" },
+              values: { type: "array", items: { type: "array" } }
             }
-          },
-          additionalProperties: false
-        }
-      },
-      additionalProperties: false
+          }
+        },
+        ...contextualChoiceFields()
+      }
     }
   }),
   Object.freeze({
-    id: "block_gap_fill",
-    label: "Lacunas com blocos",
-    shortDescription: "Parágrafo com lacunas por opções e comentário posterior.",
-    publicResourceType: "say",
-    publicMapping: "paragraph_text_gap_options",
-    limits: { maxBlanks: 4, maxBlocks: 8, maxLabelChars: 48 },
+    id: "plane",
+    label: "Plano",
+    shortDescription: "Plano cartesiano simples com teoria ou pergunta objetiva.",
     schema: {
       type: "object",
-      required: ["resourceType", "title", "prompt", "segments", "blocks", "feedbackAfter"],
+      additionalProperties: false,
+      required: ["position", "resource", "kind", "exercise", "title", "after"],
       properties: {
-        position: { type: "number" },
-        resourceType: { const: "block_gap_fill" },
-        title: { type: "string" },
+        ...pedagogicFields(),
+        resource: { const: "plane" },
         prompt: { type: "string" },
-        sourceRefs: { type: "array", items: { type: "string" } },
-        sourceNote: { type: "string" },
-        segments: {
-          type: "array",
-          minItems: 1,
-          items: {
-            anyOf: [
-              {
-                type: "object",
-                required: ["kind", "value"],
-                properties: {
-                  kind: { const: "text" },
-                  value: { type: "string" }
-                },
-                additionalProperties: false
-              },
-              {
-                type: "object",
-                required: ["kind", "blankId", "acceptedBlockIds"],
-                properties: {
-                  kind: { const: "blank" },
-                  blankId: { type: "string" },
-                  acceptedBlockIds: { type: "array", minItems: 1, items: { type: "string" } }
-                },
-                additionalProperties: false
-              }
-            ]
+        x: coordinatePairSchema(),
+        y: coordinatePairSchema(),
+        vector: coordinatePairSchema(),
+        vectors: coordinatePairListSchema(),
+        sum: coordinatePairListSchema(),
+        scale: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            k: { type: "number" },
+            vector: coordinatePairSchema()
           }
         },
-        blocks: {
+        distance: {
           type: "array",
-          minItems: 1,
-          items: {
-            type: "object",
-            required: ["blockId", "label"],
-            properties: {
-              blockId: { type: "string" },
-              label: { type: "string" }
-            },
-            additionalProperties: false
-          }
+          minItems: 2,
+          maxItems: 2,
+          items: coordinatePairSchema()
         },
-        feedbackAfter: { type: "string" }
-      },
-      additionalProperties: false
-    }
-  }),
-  Object.freeze({
-    id: "tree",
-    label: "Árvore de diretórios",
-    shortDescription: "Estrutura hierárquica simples de pastas e arquivos.",
-    publicResourceType: "tree",
-    limits: { maxNodes: 20, maxLabelChars: 48 },
-    schema: {
-      type: "object",
-      required: ["resourceType", "title", "nodes"],
-      properties: {
-        position: { type: "number" },
-        resourceType: { const: "tree" },
-        title: { type: "string" },
-        prompt: { type: "string" },
-        sourceRefs: { type: "array", items: { type: "string" } },
-        sourceNote: { type: "string" },
-        base: { type: "string" },
-        current: { type: "string" },
-        selected: { type: "string" },
-        closed: { type: "array", items: { type: "string" } },
-        rootLabel: { type: "string" },
-        nodes: {
-          type: "array",
-          minItems: 1,
-          maxItems: 20,
-          items: {
-            type: "object",
-            required: ["id", "label"],
-            properties: {
-              id: { type: "string" },
-              label: { type: "string" },
-              parentId: { type: ["string", "null"] },
-              type: { enum: ["folder", "file"] }
-            },
-            additionalProperties: false
-          }
-        }
-      },
-      additionalProperties: false
+        result: {
+          anyOf: [
+            coordinatePairSchema(),
+            { type: "string" }
+          ]
+        },
+        ...contextualChoiceFields()
+      }
     }
   })
 ]);
@@ -458,7 +428,7 @@ export function listCardResourceDefinitions() {
 }
 
 export function listGenerationResourceDefinitions() {
-  return listCardResourceDefinitions().filter((item) => item.generationAvailable !== false);
+  return listCardResourceDefinitions();
 }
 
 export function getCardResourceDefinition(resourceId) {
@@ -466,7 +436,7 @@ export function getCardResourceDefinition(resourceId) {
 }
 
 export function listCardResourceSummaries() {
-  return listGenerationResourceDefinitions().map(({ id, label, shortDescription }) => ({ id, label, shortDescription }));
+  return listCardResourceDefinitions().map(({ id, label, shortDescription }) => ({ id, label, shortDescription }));
 }
 
 export function getResourceSchemas(resourceIds = []) {
@@ -478,179 +448,97 @@ export function getResourceSchemas(resourceIds = []) {
   );
 }
 
-function hasTextGapSyntax(value) {
-  return typeof value === "string" && /\[\[[\s\S]*?\]\]/.test(value);
-}
-
-export function validateBlockGapFill(card) {
-  const errors = [];
-  if (!card || typeof card !== "object") {
-    return ["block_gap_fill inválido."];
-  }
-  const allowedCardFields = new Set(["position", "resourceType", "title", "prompt", "segments", "blocks", "feedbackAfter", "sourceRefs", "sourceNote"]);
-  Object.keys(card).forEach((field) => {
-    if (!allowedCardFields.has(field)) {
-      errors.push(`Campo não suportado em block_gap_fill: ${field}.`);
-    }
-  });
-  if (typeof card.feedbackAfter !== "string" || !card.feedbackAfter.trim()) {
-    errors.push("feedbackAfter é obrigatório.");
-  } else if (hasTextGapSyntax(card.feedbackAfter)) {
-    errors.push("feedbackAfter deve ser texto simples, sem lacunas ou opções.");
-  }
-
-  const blocks = Array.isArray(card.blocks) ? card.blocks : [];
-  const blockIds = new Set();
-  blocks.forEach((block) => {
-    if (!block || typeof block !== "object" || Array.isArray(block)) {
-      errors.push("Cada bloco precisa ser objeto.");
-      return;
-    }
-    Object.keys(block).forEach((field) => {
-      if (!["blockId", "label"].includes(field)) {
-        errors.push(`Campo não suportado em blocks: ${field}.`);
-      }
-    });
-    if (!block?.blockId || blockIds.has(block.blockId)) {
-      errors.push("Cada blockId deve ser único.");
-    }
-    blockIds.add(block?.blockId);
-    if (!block?.label || String(block.label).length > 48) {
-      errors.push("Cada bloco precisa de rótulo curto.");
-    }
-  });
-
-  const segments = Array.isArray(card.segments) ? card.segments : [];
-  const blankIds = new Set();
-  segments.forEach((segment) => {
-    if (!segment || typeof segment !== "object" || Array.isArray(segment)) {
-      errors.push("Cada segmento precisa ser objeto.");
-      return;
-    }
-    if (segment.kind === "text") {
-      Object.keys(segment).forEach((field) => {
-        if (!["kind", "value"].includes(field)) {
-          errors.push(`Campo não suportado em segments.text: ${field}.`);
-        }
-      });
-      if (typeof segment.value !== "string") {
-        errors.push("Segmento de texto precisa de value.");
-      }
-      return;
-    }
-    if (segment.kind !== "blank") {
-      errors.push("Cada segmento precisa usar kind text ou blank.");
-      return;
-    }
-    Object.keys(segment).forEach((field) => {
-      if (!["kind", "blankId", "acceptedBlockIds"].includes(field)) {
-        errors.push(`Campo não suportado em segments.blank: ${field}.`);
-      }
-    });
-    if (!segment.blankId || blankIds.has(segment.blankId)) {
-      errors.push("Cada blankId deve ser único.");
-    }
-    blankIds.add(segment.blankId);
-    if (!Array.isArray(segment.acceptedBlockIds) || !segment.acceptedBlockIds.length) {
-      errors.push("Cada lacuna precisa de acceptedBlockIds.");
-    }
-    (segment.acceptedBlockIds || []).forEach((blockId) => {
-      if (!blockIds.has(blockId)) {
-        errors.push(`acceptedBlockId inexistente: ${blockId}.`);
-      }
-    });
-  });
-  if (blankIds.size === 0 || blankIds.size > 4) {
-    errors.push("O número de lacunas deve ser pequeno e maior que zero.");
-  }
-  return errors;
-}
-
 export function validateTreeResource(card) {
   const errors = [];
-  if (!card || typeof card !== "object") {
-    return ["tree inválido."];
+  const nodes = Array.isArray(card?.nodes) ? card.nodes : [];
+  if (!nodes.length) {
+    errors.push("tree precisa de nodes.");
+    return errors;
   }
-  const nodes = Array.isArray(card.nodes) ? card.nodes : [];
-  if (!nodes.length || nodes.length > 20) {
-    errors.push("tree deve ter entre 1 e 20 nós.");
-  }
-
-  const ids = new Set();
+  const nodeIds = new Set();
   nodes.forEach((node) => {
     const id = typeof node?.id === "string" ? node.id.trim() : "";
     const label = typeof node?.label === "string" ? node.label.trim() : "";
-    if (!id || ids.has(id)) {
+    if (!id || nodeIds.has(id)) {
       errors.push("Cada nó de tree precisa de id único.");
     }
-    ids.add(id);
-    if (!label || label.length > 48) {
-      errors.push("Cada nó de tree precisa de label curto.");
+    nodeIds.add(id);
+    if (!label) {
+      errors.push("Cada nó de tree precisa de label.");
     }
-    if (node?.type && !["folder", "file"].includes(node.type)) {
+    if (!["folder", "file"].includes(String(node?.type || ""))) {
       errors.push("tree.type deve ser folder ou file.");
     }
   });
-
-  nodes.forEach((node) => {
-    const parentId = typeof node?.parentId === "string" ? node.parentId.trim() : "";
-    if (parentId && !ids.has(parentId)) {
-      errors.push(`parentId inexistente em tree: ${parentId}.`);
-    }
-    if (parentId && parentId === node?.id) {
-      errors.push("Nó de tree não pode apontar para si mesmo.");
-    }
-  });
-
   return errors;
 }
 
 export function validateGraphResource(card) {
   const errors = [];
-  if (!card || typeof card !== "object") {
-    return ["graph inválido."];
+  const vertices = Array.isArray(card?.vertices) ? card.vertices : [];
+  const edges = Array.isArray(card?.edges) ? card.edges : [];
+  if (!vertices.length) {
+    errors.push("graph precisa de vertices.");
+    return errors;
   }
-
-  const vertices = Array.isArray(card.vertices) ? card.vertices : [];
-  const edges = Array.isArray(card.edges) ? card.edges : [];
-  if (!vertices.length || vertices.length > 10) {
-    errors.push("graph deve ter entre 1 e 10 vértices.");
-  }
-
   const ids = new Set();
   vertices.forEach((vertex) => {
     const id = typeof vertex?.id === "string" ? vertex.id.trim() : "";
-    const label = typeof vertex?.label === "string" ? vertex.label.trim() : "";
     if (!id || ids.has(id)) {
       errors.push("Cada vértice de graph precisa de id único.");
     }
     ids.add(id);
-    if (label && label.length > 40) {
-      errors.push("Cada label de vértice em graph deve ser curto.");
-    }
-    ["x", "y"].forEach((fieldName) => {
-      if (vertex?.[fieldName] === undefined) {
-        return;
-      }
-      const value = Number(vertex[fieldName]);
-      if (!Number.isFinite(value) || value < 0 || value > 100) {
-        errors.push(`graph.${fieldName} deve ficar entre 0 e 100.`);
-      }
-    });
   });
-
   edges.forEach((edge) => {
     const from = typeof edge?.from === "string" ? edge.from.trim() : "";
     const to = typeof edge?.to === "string" ? edge.to.trim() : "";
     if (!from || !to || !ids.has(from) || !ids.has(to)) {
       errors.push("Toda aresta de graph deve apontar para vértices existentes.");
-      return;
-    }
-    if (from === to) {
-      errors.push("graph não aceita laços na primeira versão.");
-      return;
     }
   });
+  return errors;
+}
 
+function validateRelationSet(setValue, side, errors) {
+  const label = typeof setValue?.label === "string" ? setValue.label.trim() : "";
+  const items = Array.isArray(setValue?.items) ? setValue.items : [];
+  if (!label) {
+    errors.push(`${side}Set precisa de label.`);
+  }
+  if (!items.length) {
+    errors.push(`${side}Set precisa de items.`);
+    return [];
+  }
+  const ids = new Set();
+  items.forEach((item) => {
+    const id = typeof item?.id === "string" ? item.id.trim() : "";
+    const itemLabel = typeof item?.label === "string" ? item.label.trim() : "";
+    if (!id || ids.has(id)) {
+      errors.push(`Cada item de ${side}Set precisa de id único.`);
+    }
+    ids.add(id);
+    if (!itemLabel) {
+      errors.push(`Cada item de ${side}Set precisa de label.`);
+    }
+  });
+  return [...ids];
+}
+
+export function validateRelationMapResource(card) {
+  const errors = [];
+  const leftIds = new Set(validateRelationSet(card?.leftSet, "left", errors));
+  const rightIds = new Set(validateRelationSet(card?.rightSet, "right", errors));
+  const relations = Array.isArray(card?.relations) ? card.relations : [];
+  if (!relations.length) {
+    errors.push("relation_map precisa de relations.");
+    return errors;
+  }
+  relations.forEach((relation) => {
+    const from = typeof relation?.from === "string" ? relation.from.trim() : "";
+    const to = typeof relation?.to === "string" ? relation.to.trim() : "";
+    if (!from || !to || !leftIds.has(from) || !rightIds.has(to)) {
+      errors.push("Toda relação de relation_map deve ligar um item existente do conjunto esquerdo a um item existente do conjunto direito.");
+    }
+  });
   return errors;
 }

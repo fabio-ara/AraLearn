@@ -1,69 +1,124 @@
 import { listMicrosequenceSizes } from "../types/microsequenceSizes.js";
 import { listMicrosequenceTypeSummaries } from "../types/microsequenceTypes.js";
 import { listCardResourceSummaries } from "../resources/cardResourceDefinitions.js";
-import { getModelCapabilities } from "../providers/modelCapabilities.js";
-import { resolveReferencedSources } from "../sources/resolveReferencedSources.js";
-import { normalizeSelectedLessonTopicRefs } from "../tags/selectedLessonTopicRefs.js";
-import {
-  buildSourceGuideTextForModel,
-  sanitizeSourceGuideStructuredForModel,
-  SOURCE_GUIDE_LEVELS
-} from "../../sourceGuides/sourceGuideStructured.js";
-import { normalizeLessonGuidance } from "../guidance/lessonGuidance.js";
-import { getWeakModelModePolicy } from "../policies/weakModelPolicy.js";
-import { resolveWeakModelRepresentationPolicy } from "../didactics/resourceRepresentationPolicy.js";
-import { buildLessonDomainMap } from "../domain/lessonDomainModel.js";
-import { summarizeMeticulousPolicyForPrompt } from "../policies/meticulousDidacticPolicy.js";
-import { buildStudyTrackPolicy } from "../policies/studyTrackPolicy.js";
-import { summarizeDidacticProductionPolicyForPrompt } from "../policies/didacticProductionPolicy.js";
 
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
 }
 
-function key(value) {
-  return text(value?.key) || text(value?.id) || "";
+function unique(values = []) {
+  return [...new Set((Array.isArray(values) ? values : []).map(text).filter(Boolean))];
 }
 
-function objective(value) {
-  return text(value?.objective) || text(value?.description);
+function normalizePreferredResource(value = "") {
+  const normalized = text(value);
+  const lowered = normalized.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  return lowered === "automatico" || lowered === "automatic" ? "" : normalized;
 }
 
-function summarizeMicrosequence(value) {
+function normalizeGuide(source = {}) {
+  const guide = source?.guide && typeof source.guide === "object" ? source.guide : source || {};
   return {
-    key: key(value),
-    title: text(value?.title) || key(value),
-    objective: objective(value),
-    description: text(value?.description),
-    tags: Array.isArray(value?.tags) ? value.tags.map((item) => text(item)).filter(Boolean) : [],
-    domainRefs: Array.isArray(value?.domainRefs) ? value.domainRefs.map((item) => text(item)).filter(Boolean) : [],
-    practiceVariantRefs: Array.isArray(value?.practiceVariantRefs) ? value.practiceVariantRefs.map((item) => text(item)).filter(Boolean) : [],
-    didacticPurpose: text(value?.didacticPurpose),
-    coverageRole: text(value?.coverageRole),
-    status: text(value?.status),
-    included: value?.included === true
+    goal: text(guide.goal),
+    include: Array.isArray(guide.include) ? guide.include.map(text).filter(Boolean) : [],
+    exclude: Array.isArray(guide.exclude) ? guide.exclude.map(text).filter(Boolean) : [],
+    notation: Array.isArray(guide.notation) ? guide.notation.map(text).filter(Boolean) : [],
+    avoid: Array.isArray(guide.avoid) ? guide.avoid.map(text).filter(Boolean) : []
   };
 }
 
-function buildRequestGovernance() {
-  return {
-    precedence: [
-      "context.lesson.sourceGuideStructured",
-      "selectedLessonTopicRefs",
-      "request.userPrompt"
-    ],
-    lessonGuidePriority: 'sourceGuideStructured governa meta, "Incluir", "Não incluir" e "Não confundir com"',
-    lessonTopicRefsPriority: "selectedLessonTopicRefs especializa escopo local",
-    userPromptRole: "request.userPrompt apenas especializa o recorte atual"
-  };
-}
-
-function resolveAvailableTypes(representationPolicy, userFixedTypeId) {
-  const fixedTypeId = text(userFixedTypeId);
-  if (fixedTypeId && fixedTypeId !== "assisted") {
-    return listMicrosequenceTypeSummaries().filter((item) => item.id === fixedTypeId);
+function summarizeText(value = "", maxLength = 240) {
+  const normalized = text(value).replace(/\s+/g, " ");
+  if (normalized.length <= maxLength) {
+    return normalized;
   }
-  return listMicrosequenceTypeSummaries().filter((item) => representationPolicy.allowedTypeIds.includes(item.id));
+  return `${normalized.slice(0, Math.max(0, maxLength - 1)).trimEnd()}…`;
+}
+
+function summarizeSource(item = {}) {
+  const blockSummary = (Array.isArray(item?.sourceBlocks) ? item.sourceBlocks : [])
+    .map((block) => text(block?.text))
+    .filter(Boolean)
+    .slice(0, 3)
+    .join(" ");
+  return summarizeText(blockSummary || text(item?.textContent));
+}
+
+function normalizeSources(attachedSources = [], userSelectedSourceIds = []) {
+  const selected = new Set((Array.isArray(userSelectedSourceIds) ? userSelectedSourceIds : []).map(text).filter(Boolean));
+  return (Array.isArray(attachedSources) ? attachedSources : [])
+    .map((item, index) => {
+      const id = text(item?.id) || text(item?.sourceId) || `source-${index + 1}`;
+      return {
+        id,
+        title: text(item?.displayName || item?.name || id),
+        kind: text(item?.kind),
+        summary: summarizeSource(item),
+        selected: selected.size ? selected.has(id) : true
+      };
+    })
+    .filter((item) => item.selected)
+    .map(({ selected: _selected, ...item }) => item);
+}
+
+function normalizeRequestContext(requestContext = {}) {
+  const preferredResource = normalizePreferredResource(requestContext?.preferredResource);
+  return {
+    mode: text(requestContext?.mode) === "repair" ? "repair" : "generate",
+    prompt: text(requestContext?.prompt),
+    preferredResource,
+    extraResources: unique([
+      ...(Array.isArray(requestContext?.extraResources) ? requestContext.extraResources : []),
+      preferredResource
+    ]),
+    selectedRefs: unique(requestContext?.selectedRefs)
+  };
+}
+
+function normalizeContextPacket(contextPacket = {}) {
+  return {
+    selectedRefs: unique(contextPacket?.refs?.selected),
+    refs: (Array.isArray(contextPacket?.refs?.items) ? contextPacket.refs.items : [])
+      .map((item) => ({
+        title: text(item?.title),
+        goal: text(item?.goal),
+        role: text(item?.role),
+        covers: unique(item?.covers),
+        checks: unique(item?.checks),
+        dependency: item?.dependency === true,
+        selected: item?.selected === true
+      }))
+      .filter((item) => item.title),
+    next: contextPacket?.next && typeof contextPacket.next === "object"
+      ? {
+          title: text(contextPacket.next.title),
+          goal: text(contextPacket.next.goal),
+          role: text(contextPacket.next.role),
+          covers: unique(contextPacket.next.covers),
+          checks: unique(contextPacket.next.checks)
+        }
+      : null,
+    existingCards: (Array.isArray(contextPacket?.microsequence?.existingCards) ? contextPacket.microsequence.existingCards : [])
+      .map((card) => ({
+        position: Number(card?.position) || 0,
+        resource: text(card?.resource),
+        kind: text(card?.kind),
+        exercise: text(card?.exercise),
+        title: text(card?.title)
+      }))
+      .filter((card) => card.position > 0 && card.resource),
+    currentCards: Array.isArray(contextPacket?.microsequence?.currentCards)
+      ? structuredClone(contextPacket.microsequence.currentCards)
+      : []
+  };
+}
+
+function collectKnownErrors(selectedLesson = {}, targetMicrosequence = {}, contextPacket = {}) {
+  return unique([
+    ...((Array.isArray(selectedLesson?.topics) ? selectedLesson.topics : []).flatMap((topic) => (
+      Array.isArray(topic?.errors) ? topic.errors : []
+    )))
+  ]);
 }
 
 export function buildMicrosequencePlanningContract({
@@ -71,125 +126,93 @@ export function buildMicrosequencePlanningContract({
   selectedModule,
   selectedLesson,
   targetMicrosequence,
-  selectedLessonTopicRefs = null,
-  selectedLessonScopeTagRefs = null,
-  selectedLessonTags = null,
-  lessonTags = null,
   userPrompt,
   attachedSources = [],
   userSelectedSourceIds = [],
-  userFixedTypeId = null,
   userSelectedExtraResourceTypes = [],
-  selectedModel
+  requestContext = {},
+  contextPacket = {}
 }) {
-  const capabilities = getModelCapabilities(selectedModel);
-  const lessonSourceGuideStructured = sanitizeSourceGuideStructuredForModel(
-    selectedLesson?.sourceGuideStructured,
-    { level: SOURCE_GUIDE_LEVELS.LESSON }
-  );
-  const lessonGuidance = normalizeLessonGuidance(selectedLesson);
-  const lessonDomainMap = buildLessonDomainMap(selectedLesson || {});
-  const weakModelMode = getWeakModelModePolicy(capabilities);
-  const representationPolicy = resolveWeakModelRepresentationPolicy({
-    lessonGuidance,
-    lessonSourceGuideStructured,
-    modelCapabilities: capabilities,
-    resolvedTypeId: text(userFixedTypeId) && text(userFixedTypeId) !== "assisted" ? text(userFixedTypeId) : "simple",
-    userSelectedExtraResourceTypes,
-    courseSemantics: selectedLesson?.courseSemantics || {},
-    resourcePreferences: selectedLesson?.resourcePreferences || {}
+  const guide = normalizeGuide(selectedLesson?.guide || selectedModule?.guide || {});
+  const normalizedRequestContext = normalizeRequestContext({
+    ...requestContext,
+    prompt: text(requestContext?.prompt) || text(userPrompt),
+    extraResources: [
+      ...(Array.isArray(userSelectedExtraResourceTypes) ? userSelectedExtraResourceTypes : []),
+      ...(Array.isArray(requestContext?.extraResources) ? requestContext.extraResources : [])
+    ]
   });
-  const resolvedSources = resolveReferencedSources({ userPrompt, attachedSources, userSelectedSourceIds });
-  const selectedTopics = normalizeSelectedLessonTopicRefs({
-    selectedLessonTopicRefs,
-    selectedLessonScopeTagRefs,
-    selectedLessonTags,
-    lessonTags,
-    availableLessonTopics: selectedLesson?.lessonTopics || selectedLesson?.scopeTags || selectedLesson?.tags || []
-  });
-  const lessonMicrosequenceLine = Array.isArray(selectedLesson?.microsequences)
-    ? selectedLesson.microsequences.map(summarizeMicrosequence)
-    : [];
-  const studyTrackPolicy = buildStudyTrackPolicy({
-    userPrompt,
-    lesson: {
-      ...(selectedLesson || {}),
-      sourceGuideStructured: lessonSourceGuideStructured,
-      domainMap: lessonDomainMap,
-      microsequenceLine: lessonMicrosequenceLine
-    },
-    microsequence: summarizeMicrosequence(targetMicrosequence),
-    selectedLessonTopicRefs: selectedTopics
-  });
-  const didacticProductionPolicy = summarizeDidacticProductionPolicyForPrompt({
-    weakModelMode: true,
-    lessonGuidance,
-    lessonSourceGuideStructured,
-    lessonDomainMap,
-    studyTrackPolicy
-  });
+  const microsequence = {
+    title: text(targetMicrosequence?.title),
+    goal: text(targetMicrosequence?.goal),
+    role: text(targetMicrosequence?.role),
+    branchOf: text(targetMicrosequence?.branchOf),
+    covers: Array.isArray(targetMicrosequence?.covers) ? targetMicrosequence.covers.map(text).filter(Boolean) : [],
+    checks: Array.isArray(targetMicrosequence?.checks) ? targetMicrosequence.checks.map(text).filter(Boolean) : []
+  };
 
   return {
-    version: "aralearn.microsequence-planning-contract.v2",
-    operation: "plan_microsequence_generation",
-    target: {
-      courseKey: key(selectedCourse),
-      moduleKey: key(selectedModule),
-      lessonKey: key(selectedLesson),
-      microsequenceKey: key(targetMicrosequence)
+    task: "bottom_up_micro_plan",
+    language: "pt-BR",
+    path: {
+      course: text(selectedCourse?.title),
+      module: text(selectedModule?.title),
+      lesson: text(selectedLesson?.title),
+      microsequence: text(targetMicrosequence?.title)
     },
-    context: {
-      path: [
-        { level: "course", key: key(selectedCourse), title: text(selectedCourse?.title) || key(selectedCourse) },
-        { level: "module", key: key(selectedModule), title: text(selectedModule?.title) || key(selectedModule) },
-        { level: "lesson", key: key(selectedLesson), title: text(selectedLesson?.title) || key(selectedLesson) },
-        { level: "microsequence", key: key(targetMicrosequence), title: text(targetMicrosequence?.title) || key(targetMicrosequence) }
-      ],
-      course: {
-        title: text(selectedCourse?.title) || key(selectedCourse),
-        objective: objective(selectedCourse)
-      },
-      module: {
-        title: text(selectedModule?.title) || key(selectedModule),
-        objective: objective(selectedModule)
-      },
-      lesson: {
-        title: text(selectedLesson?.title) || key(selectedLesson),
-        objective: objective(selectedLesson),
-        ...(Object.keys(lessonSourceGuideStructured).length
-          ? {
-              sourceGuideStructured: lessonSourceGuideStructured,
-              sourceGuide: buildSourceGuideTextForModel(lessonSourceGuideStructured, { level: SOURCE_GUIDE_LEVELS.LESSON })
-            }
-          : {}),
-        ...lessonGuidance,
-        ...(selectedLesson?.courseSemantics ? { courseSemantics: structuredClone(selectedLesson.courseSemantics) } : {}),
-        ...(selectedLesson?.resourcePreferences ? { resourcePreferences: structuredClone(selectedLesson.resourcePreferences) } : {}),
-        ...(lessonDomainMap.items.length || lessonDomainMap.practiceVariants.length ? { domainMap: lessonDomainMap } : {}),
-        microsequenceLine: lessonMicrosequenceLine
-      },
-      microsequence: summarizeMicrosequence(targetMicrosequence)
-    },
+    guide,
+    microsequence,
     request: {
-      userPrompt: text(userPrompt),
-      userFixedTypeId: userFixedTypeId || null,
-      userSelectedExtraResourceTypes: [...userSelectedExtraResourceTypes]
+      mode: normalizedRequestContext.mode,
+      prompt: normalizedRequestContext.prompt,
+      preferredResource: normalizedRequestContext.preferredResource,
+      extraResources: normalizedRequestContext.extraResources
     },
-    requestGovernance: buildRequestGovernance(),
-    studyTrackPolicy,
-    didacticProductionPolicy,
-    selectedLessonTopicRefs: selectedTopics,
-    sources: resolvedSources.referencedSources,
-    availableTypes: resolveAvailableTypes(representationPolicy, userFixedTypeId),
-    availableSizes: listMicrosequenceSizes()
-      .filter((item) => representationPolicy.allowedSizeIds.includes(item.id))
-      .map(({ id, cardCount }) => ({ id, cardCount })),
-    availableResources: listCardResourceSummaries().filter((item) => representationPolicy.safeAllowedResourceTypes.includes(item.id)),
-    model: { id: capabilities.model, capabilities },
-    sourceResolution: resolvedSources,
-    weakModelMode,
-    representationPolicy,
-    meticulousPolicy: summarizeMeticulousPolicyForPrompt({ weakModelMode: true }),
-    productionPolicy: didacticProductionPolicy
+    knownErrors: collectKnownErrors(selectedLesson, targetMicrosequence, contextPacket),
+    context: normalizeContextPacket(contextPacket),
+    availableTypes: listMicrosequenceTypeSummaries()
+      .filter((item) => !["assisted", "simple"].includes(text(item?.id)))
+      .map((item) => ({
+        id: item.id,
+        label: item.label,
+        use: item.shortDescription
+      })),
+    availableSizes: listMicrosequenceSizes().map((item) => ({
+      id: item.id,
+      cards: item.cardCount
+    })),
+    availableResources: listCardResourceSummaries().map((item) => ({
+      id: item.id,
+      use: item.shortDescription
+    })),
+    sources: normalizeSources(attachedSources, userSelectedSourceIds),
+    rules: [
+      "Return only valid JSON.",
+      "Return exactly: type, size, goal, extraResources, sources and reason.",
+      "Do not return cardPlan or cards.",
+      "type must be one id from availableTypes.",
+      "size must be one id from availableSizes.",
+      "microsequence.role is context only and must not be copied into type.",
+      "Prefer size=long for explain, support or conceptually dense microsequences so theory can be distributed instead of compressed.",
+      "Prefer size=medium for primarily practical microsequences with one local concept already established.",
+      "Use size=short only when the request is explicitly brief and the local scope is genuinely tiny.",
+      "If the topic needs more explanation, increase the size instead of compressing theory into fewer cards.",
+      "If you add more theory, also add more practice or review later in the same microsequence for consolidation.",
+      "Distribute relevant theory across multiple short steps instead of collapsing everything into one long opening card.",
+      "Prefer plans that alternate explanation and consolidation when that helps the learner carry the same local idea into practice.",
+      "Keep the plan inside guide.include and away from guide.exclude.",
+      ...(microsequence.branchOf
+        ? [
+            "If microsequence.branchOf exists, keep the branch tightly local and reserve a final step that returns the learner to the planned track."
+          ]
+        : []),
+      ...(normalizedRequestContext.mode === "repair"
+        ? [
+            "If request.mode is repair, request.prompt is the main instruction for what must change.",
+            "If request.mode is repair, preserve the current sequence when it already fits the scope and the goal.",
+            "If request.mode is repair, avoid expanding scope or rewriting unaffected parts without need."
+          ]
+        : [])
+    ]
   };
 }

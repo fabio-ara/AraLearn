@@ -34,7 +34,6 @@ export function createGenerationRunState({
     target: targetFromContract(generationContract),
     modelId,
     actualModelId: modelId,
-    fallbackUsed: false,
     planningContract,
     validatedPlan,
     generationContract,

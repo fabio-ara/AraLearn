@@ -10,7 +10,7 @@ export function applyProjectPatch(project, patch) {
   }
 
   const nextCourses = Array.isArray(project.courses) ? [...project.courses] : [];
-  const index = nextCourses.findIndex((course) => course?.key === patch.course?.key);
+  const index = nextCourses.findIndex((course) => course?.id === patch.course?.id);
   if (index >= 0) {
     nextCourses[index] = patch.course;
   } else {

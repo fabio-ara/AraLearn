@@ -1,3 +1,5 @@
+const MICROSEQUENCE_ROLES = ["explain", "practice", "review", "support"];
+
 export const plannedCourseSchema = {
   type: "object",
   additionalProperties: false,
@@ -8,49 +10,61 @@ export const plannedCourseSchema = {
       additionalProperties: false,
       required: ["title", "modules"],
       properties: {
-        title: { type: "string", minLength: 1 },
+        title: { type: "string" },
         goal: { type: "string" },
         modules: {
           type: "array",
-          minItems: 1,
           items: {
             type: "object",
             additionalProperties: false,
-            required: ["title", "lessons"],
+            required: ["title", "guide", "lessons"],
             properties: {
-              title: { type: "string", minLength: 1 },
+              title: { type: "string" },
+              guide: {
+                type: "object",
+                additionalProperties: false,
+                required: ["goal", "include", "exclude", "notation", "avoid"],
+                properties: {
+                  goal: { type: "string" },
+                  include: { type: "array", items: { type: "string" } },
+                  exclude: { type: "array", items: { type: "string" } },
+                  notation: { type: "array", items: { type: "string" } },
+                  avoid: { type: "array", items: { type: "string" } }
+                }
+              },
               lessons: {
                 type: "array",
-                minItems: 1,
                 items: {
                   type: "object",
                   additionalProperties: false,
-                  required: ["title", "goal", "microsequences"],
+                  required: ["title", "guide", "microsequences"],
                   properties: {
-                    title: { type: "string", minLength: 1 },
-                    goal: { type: "string", minLength: 1 },
-                    sourceGuideStructured: {
+                    title: { type: "string" },
+                    guide: {
                       type: "object",
                       additionalProperties: false,
-                      required: ["lessonGoal", "notationRules", "commonErrors"],
+                      required: ["goal", "include", "exclude", "notation", "avoid"],
                       properties: {
-                        lessonGoal: { type: "string", minLength: 1 },
-                        notationRules: { type: "string", minLength: 1 },
-                        commonErrors: { type: "string", minLength: 1 }
+                        goal: { type: "string" },
+                        include: { type: "array", items: { type: "string" } },
+                        exclude: { type: "array", items: { type: "string" } },
+                        notation: { type: "array", items: { type: "string" } },
+                        avoid: { type: "array", items: { type: "string" } }
                       }
                     },
                     microsequences: {
                       type: "array",
-                      minItems: 1,
                       items: {
                         type: "object",
                         additionalProperties: false,
-                        required: ["title", "goal", "dependsOnTitles", "scopeLabels"],
+                        required: ["title", "goal", "role", "dependsOn", "covers", "checks"],
                         properties: {
-                          title: { type: "string", minLength: 1 },
-                          goal: { type: "string", minLength: 1 },
-                          dependsOnTitles: { type: "array", items: { type: "string" } },
-                          scopeLabels: { type: "array", minItems: 1, items: { type: "string" } }
+                          title: { type: "string" },
+                          goal: { type: "string" },
+                          role: { type: "string", enum: MICROSEQUENCE_ROLES },
+                          dependsOn: { type: "array", items: { type: "string" } },
+                          covers: { type: "array", items: { type: "string" } },
+                          checks: { type: "array", items: { type: "string" } }
                         }
                       }
                     }

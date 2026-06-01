@@ -1,16 +1,21 @@
-export const MICROSEQUENCE_STATUS_DRAFT = "draft";
+import { getActiveMicrosequenceVersion } from "../domain/microsequence.js";
+
+export const MICROSEQUENCE_STATUS_DRAFT = "planned";
 export const MICROSEQUENCE_STATUS_READY = "ready";
 
+const VALID_STATUSES = new Set(["planned", "generated", "needs_review", "ready"]);
+
+function activeCards(microsequence) {
+  const version = getActiveMicrosequenceVersion(microsequence);
+  return Array.isArray(version?.cards) ? version.cards : [];
+}
+
 export function resolveMicrosequenceStatus(microsequence) {
-  if (microsequence?.status === MICROSEQUENCE_STATUS_DRAFT) {
-    return MICROSEQUENCE_STATUS_DRAFT;
+  const status = typeof microsequence?.status === "string" ? microsequence.status.trim() : "";
+  if (VALID_STATUSES.has(status)) {
+    return status;
   }
-  if (microsequence?.status === MICROSEQUENCE_STATUS_READY) {
-    return MICROSEQUENCE_STATUS_READY;
-  }
-  return Array.isArray(microsequence?.cards) && microsequence.cards.length
-    ? MICROSEQUENCE_STATUS_READY
-    : MICROSEQUENCE_STATUS_DRAFT;
+  return activeCards(microsequence).length ? MICROSEQUENCE_STATUS_READY : MICROSEQUENCE_STATUS_DRAFT;
 }
 
 export function isDraftMicrosequence(microsequence) {
@@ -18,25 +23,23 @@ export function isDraftMicrosequence(microsequence) {
 }
 
 export function isReadyMicrosequence(microsequence) {
-  return resolveMicrosequenceStatus(microsequence) === MICROSEQUENCE_STATUS_READY;
+  return resolveMicrosequenceRuntimeIncluded(microsequence);
 }
 
 export function normalizeMicrosequenceStatus(value, microsequence) {
-  if (value === MICROSEQUENCE_STATUS_DRAFT || value === MICROSEQUENCE_STATUS_READY) {
-    return value;
+  const status = typeof value === "string" ? value.trim() : "";
+  if (VALID_STATUSES.has(status)) {
+    return status;
   }
   return resolveMicrosequenceStatus(microsequence);
 }
 
 export function resolveMicrosequenceRuntimeIncluded(microsequence) {
-  if (typeof microsequence?.included === "boolean") {
-    return microsequence.included;
-  }
-  return Array.isArray(microsequence?.cards) && microsequence.cards.length > 0;
+  return activeCards(microsequence).length > 0 && resolveMicrosequenceStatus(microsequence) !== MICROSEQUENCE_STATUS_DRAFT;
 }
 
 export function isRunnableMicrosequence(microsequence) {
-  return isReadyMicrosequence(microsequence) && resolveMicrosequenceRuntimeIncluded(microsequence);
+  return resolveMicrosequenceRuntimeIncluded(microsequence);
 }
 
 export function normalizeMicrosequenceRuntimeIncluded(value, microsequence) {

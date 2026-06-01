@@ -1,4 +1,5 @@
-import { getCardResourceDefinition, validateBlockGapFill, validateGraphResource, validateTreeResource } from "../resources/cardResourceDefinitions.js";
+import { normalizeGeneratedCard } from "../../domain/cards.js";
+import { getCardResourceDefinition, validateGraphResource, validateRelationMapResource, validateTreeResource } from "../resources/cardResourceDefinitions.js";
 
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -16,88 +17,24 @@ function parseResponse(rawResponse) {
     return { ok: false, structuralErrors: ["JSON incorreto."] };
   }
   if (!Array.isArray(rawResponse.cards)) {
-    return { ok: false, structuralErrors: ["cards ausentes."] };
+    return { ok: false, structuralErrors: ['A resposta precisa ser {"cards":[...]}.'] };
   }
-  return { ok: true, response: rawResponse, cards: rawResponse.cards };
+  return { ok: true, cards: rawResponse.cards };
 }
 
-function schemaFields(definition) {
-  return new Set(Object.keys(definition?.schema?.properties || {}));
-}
-
-function schemaRequired(definition) {
-  return new Set(definition?.schema?.required || []);
-}
-
-function validateRequiredFields(card, definition, errors, prefix) {
-  schemaRequired(definition).forEach((fieldName) => {
-    if (card?.[fieldName] === undefined || card?.[fieldName] === null || card?.[fieldName] === "") {
-      errors.push(`${prefix} campo obrigatório ausente: ${fieldName}.`);
-    }
-  });
-}
-
-function validateUnknownFields(card, definition, errors, prefix) {
-  const allowed = schemaFields(definition);
+function validateSchemaFields(card, definition, prefix, errors) {
+  const allowed = new Set(Object.keys(definition?.schema?.properties || {}));
+  const required = definition?.schema?.required || [];
   Object.keys(card || {}).forEach((fieldName) => {
     if (!allowed.has(fieldName)) {
       errors.push(`${prefix} campo fora do schema: ${fieldName}.`);
     }
   });
-}
-
-function validateMultipleChoice(card, errors, prefix) {
-  const options = Array.isArray(card.options) ? card.options : [];
-  const optionIds = new Set();
-  options.forEach((option, index) => {
-    const optionId = text(option?.optionId);
-    if (!optionId) {
-      errors.push(`${prefix} optionId inválido em options[${index}].`);
-    }
-    if (optionIds.has(optionId)) {
-      errors.push(`${prefix} optionId duplicado: ${optionId}.`);
-    }
-    optionIds.add(optionId);
-  });
-  if (!optionIds.has(text(card.correctOptionId))) {
-    errors.push(`${prefix} correctOptionId inválido.`);
-  }
-}
-
-function validateBlockGap(card, errors, prefix) {
-  validateBlockGapFill(card).forEach((error) => {
-    if (/blankId/i.test(error)) {
-      errors.push(`${prefix} blankId inválido.`);
-    } else if (/blockId/i.test(error) || /acceptedBlockId/i.test(error)) {
-      errors.push(`${prefix} blockId inválido.`);
-    } else {
-      errors.push(`${prefix} ${error}`);
+  required.forEach((fieldName) => {
+    if (card?.[fieldName] === undefined) {
+      errors.push(`${prefix} campo obrigatório ausente: ${fieldName}.`);
     }
   });
-}
-
-function validateTree(card, errors, prefix) {
-  validateTreeResource(card).forEach((error) => errors.push(`${prefix} ${error}`));
-}
-
-function validateMatrix(card, errors, prefix) {
-  const sequence = Array.isArray(card.sequence) ? card.sequence : [];
-  const highlightValues = [
-    card.highlight,
-    ...sequence.map((item) => item?.highlight)
-  ].filter((value) => value !== undefined);
-  highlightValues.forEach((highlight) => {
-    if (typeof highlight === "object" && highlight !== null && !Array.isArray(highlight)) {
-      const valid = highlight.row !== undefined || highlight.col !== undefined || Array.isArray(highlight.cell);
-      if (!valid) {
-        errors.push(`${prefix} highlight inválido.`);
-      }
-    }
-  });
-}
-
-function validateGraph(card, errors, prefix) {
-  validateGraphResource(card).forEach((error) => errors.push(`${prefix} ${error}`));
 }
 
 export function validateGeneratedCardsStructural(rawResponse, generationContract = {}) {
@@ -107,56 +44,57 @@ export function validateGeneratedCardsStructural(rawResponse, generationContract
   }
 
   const structuralErrors = [];
+  const plan = Array.isArray(generationContract?.plan) ? generationContract.plan : [];
+  const plannedByPosition = new Map(plan.map((item) => [Number(item.position), item]));
+  const expectedCardCount = Number(generationContract?.output?.cardCount || 0);
   const cards = parsed.cards;
-  const expectedCardCount = Number(generationContract?.output?.expectedCardCount || 0);
-  const plannedByPosition = new Map((generationContract?.didacticPlan?.cardPlan || []).map((item) => [item.position, item]));
 
   if (cards.length !== expectedCardCount) {
     structuralErrors.push("quantidade errada.");
   }
 
-  const seenPositions = new Set();
-  cards.forEach((card, index) => {
+  const normalizedCards = cards.map((card, index) => {
     const prefix = `cards[${index}]`;
     const position = Number(card?.position);
     const planned = plannedByPosition.get(position);
-    if (!Number.isInteger(position) || !planned || seenPositions.has(position)) {
+    if (!Number.isInteger(position) || !planned) {
       structuralErrors.push(`${prefix} position errada.`);
+    } else {
+      ["resource", "kind", "exercise"].forEach((fieldName) => {
+        if (text(card?.[fieldName]) !== text(planned?.[fieldName])) {
+          structuralErrors.push(`${prefix} ${fieldName} diferente do plano.`);
+        }
+      });
     }
-    seenPositions.add(position);
-
-    const definition = getCardResourceDefinition(text(card?.resourceType));
+    const definition = getCardResourceDefinition(text(card?.resource));
     if (!definition) {
-      structuralErrors.push(`${prefix} resourceType diferente do plano.`);
-      return;
+      structuralErrors.push(`${prefix} resource inválido.`);
+      return null;
     }
-    if (text(card?.resourceType) !== text(planned?.resourceType)) {
-      structuralErrors.push(`${prefix} resourceType diferente do plano.`);
+    validateSchemaFields(card, definition, prefix, structuralErrors);
+    const result = (() => {
+      try {
+        return normalizeGeneratedCard(card, prefix);
+      } catch (error) {
+        structuralErrors.push(error instanceof Error ? error.message : `${prefix} card inválido.`);
+        return null;
+      }
+    })();
+    if (result?.resource === "tree") {
+      validateTreeResource(result).forEach((entry) => structuralErrors.push(`${prefix} ${entry}`));
     }
-
-    validateUnknownFields(card, definition, structuralErrors, prefix);
-    validateRequiredFields(card, definition, structuralErrors, prefix);
-
-    if (card.resourceType === "multiple_choice") {
-      validateMultipleChoice(card, structuralErrors, prefix);
+    if (result?.resource === "graph") {
+      validateGraphResource(result).forEach((entry) => structuralErrors.push(`${prefix} ${entry}`));
     }
-    if (card.resourceType === "block_gap_fill") {
-      validateBlockGap(card, structuralErrors, prefix);
+    if (result?.resource === "relation_map") {
+      validateRelationMapResource(result).forEach((entry) => structuralErrors.push(`${prefix} ${entry}`));
     }
-    if (card.resourceType === "tree") {
-      validateTree(card, structuralErrors, prefix);
-    }
-    if (card.resourceType === "matrix") {
-      validateMatrix(card, structuralErrors, prefix);
-    }
-    if (card.resourceType === "graph") {
-      validateGraph(card, structuralErrors, prefix);
-    }
-  });
+    return result;
+  }).filter(Boolean);
 
   return {
     ok: structuralErrors.length === 0,
     structuralErrors,
-    cards
+    cards: normalizedCards
   };
 }

@@ -1,4 +1,11 @@
 import { isCodexLocalModel } from "../providers/codexCliConfig.js";
+import { classifyProviderError } from "../providers/providerErrors.js";
+import {
+  appendInterventionRunStep,
+  buildInterventionRunFeedbackText,
+  createInterventionRun,
+  normalizeInterventionRun
+} from "./interventionRunState.js";
 import { resolveGenerationLaunchConfig } from "./launchConfig.js";
 import { resolveGenerationProviderReadiness } from "./generationViewModel.js";
 import { generateMicrosequenceProjectDocument } from "./projectGenerationRuntime.js";
@@ -9,6 +16,37 @@ function text(value) {
 
 function uniqueTextList(values = []) {
   return [...new Set((Array.isArray(values) ? values : []).map(text).filter(Boolean))];
+}
+
+function normalizePreferredResource(value = "") {
+  const normalized = text(value);
+  const lowered = normalized.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  return lowered === "automatico" || lowered === "automatic" ? "" : normalized;
+}
+
+function classifyInterventionFailure(error) {
+  if (error?.details && typeof error.details === "object") {
+    return error.details;
+  }
+  const direct = classifyProviderError(error);
+  if (direct?.category && direct.category !== "unknown") {
+    return direct;
+  }
+  if (error?.cause) {
+    return classifyInterventionFailure(error.cause);
+  }
+  return direct;
+}
+
+function safeClone(value) {
+  if (value === undefined) {
+    return undefined;
+  }
+  try {
+    return JSON.parse(JSON.stringify(value));
+  } catch {
+    return undefined;
+  }
 }
 
 function inferLocalOperation(promptText = "") {
@@ -23,32 +61,68 @@ function inferLocalOperation(promptText = "") {
   return "reinforce";
 }
 
+function buildRecommendedActionIntent({ draft = {}, status = "" } = {}) {
+  if (status === "needs_new_microsequence") {
+    return "branch_after_current";
+  }
+  if (text(draft?.actionIntent) === "next_planned") {
+    return "next_planned";
+  }
+  if (text(draft?.operationMode) === "repair") {
+    return "repair_current";
+  }
+  return "generate_current";
+}
+
+function buildContinuationMode(status = "") {
+  if (status === "needs_new_microsequence") {
+    return "next_microsequence";
+  }
+  if (status === "needs_retry" || status === "needs_continue_here" || status === "running") {
+    return "same_microsequence";
+  }
+  return "none";
+}
+
+function buildInterventionFeedback({
+  draft = {},
+  assistConfig = {},
+  status = "needs_retry",
+  title = "Iteração pendente",
+  message = "",
+  run = null
+} = {}) {
+  const promptText = text(draft?.promptText);
+  const normalizedRun = normalizeInterventionRun(run);
+  const feedbackText = buildInterventionRunFeedbackText(normalizedRun) || text(message) || promptText;
+  return {
+    status,
+    title,
+    message,
+    feedbackText,
+    nextPromptDraft: promptText,
+    rawFeedbackText: message,
+    recommendedActionIntent: buildRecommendedActionIntent({ draft, status }),
+    recommendedInterventionTargetMode: status === "needs_new_microsequence" ? "new_after_current" : "current",
+    recommendedOperationMode: text(draft?.operationMode) === "repair" ? "repair" : "reinforce",
+    continuationNeeded: status !== "completed" && status !== "blocked",
+    continuationMode: buildContinuationMode(status),
+    modelId: text(assistConfig?.model),
+    promptText,
+    attachmentNames: (Array.isArray(draft?.attachments) ? draft.attachments : []).map((item) => text(item?.name)).filter(Boolean),
+    run: normalizedRun
+  };
+}
+
 export function buildMicrosequencePrompt({
   promptText = "",
-  dependencyTitles = [],
-  selectedDidacticTypeId = "",
   preferredContainerLabel = "",
-  interventionType = "",
   interventionTargetMode = "current",
-  domainRef = "",
-  relatedConceptRefs = [],
-  prerequisiteRefs = [],
-  bridgeTargetRef = "",
   desiredMicrosequenceTitle = "",
   currentMicrosequenceTitle = ""
 } = {}) {
   const basePrompt = text(promptText);
   const lines = [basePrompt];
-  const normalizedDependencies = Array.isArray(dependencyTitles)
-    ? dependencyTitles.map(text).filter(Boolean)
-    : [];
-
-  if (normalizedDependencies.length) {
-    lines.push(`Considere como dependências ou referências locais: ${normalizedDependencies.join(", ")}.`);
-  }
-  if (text(selectedDidacticTypeId)) {
-    lines.push(`Priorize função didática compatível com "${text(selectedDidacticTypeId)}" quando isso melhorar a intervenção local.`);
-  }
   if (text(preferredContainerLabel) && !["automatico", "automático"].includes(text(preferredContainerLabel).toLowerCase())) {
     lines.push(`Quando a representação continuar didaticamente adequada, prefira cards no formato "${text(preferredContainerLabel)}".`);
   }
@@ -59,21 +133,6 @@ export function buildMicrosequencePrompt({
         : `Preserve "${text(desiredMicrosequenceTitle)}" como título da microssequência, salvo se o ajuste didático exigir mudança mínima.`
     );
   }
-  if (text(interventionType)) {
-    lines.push(`A intervenção local deve priorizar o padrão didático "${text(interventionType)}".`);
-  }
-  if (text(domainRef)) {
-    lines.push(`Conceito-alvo obrigatório: ${text(domainRef)}.`);
-  }
-  if (uniqueTextList(relatedConceptRefs).length >= 2) {
-    lines.push(`Contraste explicitamente os conceitos: ${uniqueTextList(relatedConceptRefs).join(", ")}.`);
-  }
-  if (uniqueTextList(prerequisiteRefs).length) {
-    lines.push(`Prepare explicitamente estes pré-requisitos antes da cobrança principal: ${uniqueTextList(prerequisiteRefs).join(", ")}.`);
-  }
-  if (text(bridgeTargetRef)) {
-    lines.push(`A ponte guiada deve levar claramente até: ${text(bridgeTargetRef)}.`);
-  }
   if (interventionTargetMode === "new_after_current" && text(currentMicrosequenceTitle)) {
     lines.push(`Insira a nova etapa depois da microssequência atual "${text(currentMicrosequenceTitle)}", sem replanejar o restante da lição.`);
   }
@@ -81,11 +140,36 @@ export function buildMicrosequencePrompt({
   return lines.filter(Boolean).join("\n\n");
 }
 
+function buildPlanningRequestContext({
+  draft = {},
+  promptText = "",
+  selectedRefIds = [],
+  preferredContainerId = "",
+  mode = "generate"
+} = {}) {
+  const preferredResource = normalizePreferredResource(preferredContainerId);
+  return {
+    mode: text(mode) === "repair" ? "repair" : "generate",
+    prompt: text(promptText) || text(draft?.promptText),
+    preferredResource,
+    selectedRefs: uniqueTextList(selectedRefIds),
+    extraResources: uniqueTextList([preferredResource])
+  };
+}
+
 export function resolveMicrosequenceRequestConfig({
   promptText = "",
   operationMode = "",
-  interventionTargetMode = "current"
+  interventionTargetMode = "current",
+  actionIntent = ""
 } = {}) {
+  if (text(actionIntent) === "next_planned") {
+    return {
+      operation: "generate_planned_next",
+      requestedGenerationDepth: "planned_next_only",
+      interventionModeHint: "planned_track_advance"
+    };
+  }
   const normalizedOperationMode = text(operationMode);
   const operation =
     interventionTargetMode === "new_after_current"
@@ -116,16 +200,24 @@ export function buildInterventionRequestFromDraft({
   const requestConfig = resolveMicrosequenceRequestConfig({
     promptText: text(draft?.promptText),
     operationMode: text(draft?.operationMode),
-    interventionTargetMode
+    interventionTargetMode,
+    actionIntent: text(draft?.actionIntent)
   });
-  const interventionType = text(draft?.interventionType) || "local_semantic_rewrite";
   const reason =
     text(draft?.promptText)
     || (interventionTargetMode === "new_after_current"
       ? "Inserir uma nova microssequência local coerente com a progressão atual."
       : "Intervir localmente na microssequência atual sem ampliar desnecessariamente o escopo.");
   const target =
-    interventionTargetMode === "new_after_current"
+    text(draft?.actionIntent) === "next_planned"
+      ? {
+          level: "microsequence",
+          courseKey,
+          moduleKey,
+          lessonKey,
+          microsequenceKey
+        }
+      : interventionTargetMode === "new_after_current"
       ? {
           level: "lesson",
           courseKey,
@@ -149,7 +241,12 @@ export function buildInterventionRequestFromDraft({
     kind: "intervention_request",
     status: "ready",
     source: "editor_surface",
-    recommendedAction: interventionTargetMode === "new_after_current" ? "needs_new_microsequence" : "suggest_editor_patch",
+    recommendedAction:
+      text(draft?.actionIntent) === "next_planned"
+        ? "next_planned"
+        : interventionTargetMode === "new_after_current"
+          ? "needs_new_microsequence"
+          : "suggest_editor_patch",
     studentPrompt: text(draft?.promptText),
     responseText: "",
     studyTrackConnection: "",
@@ -164,16 +261,21 @@ export function buildInterventionRequestFromDraft({
     requestedChanges: [
       {
         changeId: "requested_change_1",
-        type: interventionTargetMode === "new_after_current" ? "add_new_microsequence" : "patch_existing_material",
+        type:
+          text(draft?.actionIntent) === "next_planned"
+            ? "fill_planned_microsequence"
+            : interventionTargetMode === "new_after_current"
+              ? "add_new_microsequence"
+              : "patch_existing_material",
         operation: requestConfig.operation,
-        patchStrategy: interventionTargetMode === "new_after_current" ? "add_microsequence" : "patch_existing_microsequence",
-        didacticInterventionType: interventionType,
+        patchStrategy:
+          text(draft?.actionIntent) === "next_planned"
+            ? "fill_existing_planned_microsequence"
+            : interventionTargetMode === "new_after_current"
+              ? "add_microsequence"
+              : "patch_existing_microsequence",
         target,
-        reason,
-        domainRef: text(draft?.domainRef),
-        relatedConceptRefs: uniqueTextList(draft?.relatedConceptRefs),
-        bridgeTargetRef: text(draft?.bridgeTargetRef),
-        prerequisiteRefs: uniqueTextList(draft?.prerequisiteRefs)
+        reason
       }
     ],
     contextSnapshot: {
@@ -188,8 +290,8 @@ export async function prepareMicrosequenceGeneration({
   selection = {},
   draft = {},
   assistConfig = {},
-  dependencyTitles = [],
-  selectedDidacticTypeId = "",
+  selectedRefIds = [],
+  preferredContainerId = "",
   preferredContainerLabel = "",
   lessonContext = {},
   ingestAttachments
@@ -209,28 +311,36 @@ export async function prepareMicrosequenceGeneration({
   const rawPromptText = text(draft.promptText);
   const selectedModel = text(assistConfig.model) || "gemini-2.5-flash";
   const ingestedAttachments = await ingestAttachments(Array.isArray(draft.attachments) ? draft.attachments : []);
-  if (!rawPromptText && ingestedAttachments.extractedCount === 0) {
+  const allowPromptlessSubmit = draft?.allowPromptlessSubmit === true;
+  if (!rawPromptText && ingestedAttachments.extractedCount === 0 && text(draft?.actionIntent) !== "next_planned" && !allowPromptlessSubmit) {
     throw new Error("Informe um pedido ou anexo com texto utilizável antes de editar a microssequência.");
   }
 
   const promptText = buildMicrosequencePrompt({
-    promptText: rawPromptText,
-    dependencyTitles,
-    selectedDidacticTypeId,
+    promptText:
+      rawPromptText
+      || (text(draft?.actionIntent) === "next_planned"
+        ? "Preencha a próxima microssequência planejada."
+        : allowPromptlessSubmit
+          ? ""
+          : ""),
     preferredContainerLabel,
-    interventionType: text(draft?.interventionType),
     interventionTargetMode: text(draft?.interventionTargetMode),
-    domainRef: text(draft?.domainRef),
-    relatedConceptRefs: uniqueTextList(draft?.relatedConceptRefs),
-    prerequisiteRefs: uniqueTextList(draft?.prerequisiteRefs),
-    bridgeTargetRef: text(draft?.bridgeTargetRef),
     desiredMicrosequenceTitle: text(draft?.microsequenceTitle),
     currentMicrosequenceTitle: text(lessonContext?.currentMicrosequenceTitle)
   });
   const requestConfig = resolveMicrosequenceRequestConfig({
     promptText: rawPromptText,
     operationMode: text(draft?.operationMode),
-    interventionTargetMode: text(draft?.interventionTargetMode)
+    interventionTargetMode: text(draft?.interventionTargetMode),
+    actionIntent: text(draft?.actionIntent)
+  });
+  const requestContext = buildPlanningRequestContext({
+    draft,
+    promptText,
+    selectedRefIds,
+    preferredContainerId,
+    mode: requestConfig.operation
   });
   const interventionRequest = buildInterventionRequestFromDraft({
     selection,
@@ -243,6 +353,7 @@ export async function prepareMicrosequenceGeneration({
   const launchConfig = resolveGenerationLaunchConfig({
     selectedModel,
     apiKey: assistConfig.apiKey,
+    baseUrl: assistConfig.baseUrl || assistConfig.apiBaseUrl,
     didacticProfileId: assistConfig.didacticProfileId,
     profileTuning: assistConfig.profileTuning,
     codexEndpoint: assistConfig.codexEndpoint,
@@ -255,6 +366,7 @@ export async function prepareMicrosequenceGeneration({
     ingestedAttachments,
     launchConfig,
     requestConfig,
+    requestContext,
     request: {
       intent: {
         scope: {
@@ -280,19 +392,166 @@ export async function prepareMicrosequenceGeneration({
   };
 }
 
+function snapshotPreparedIntervention(prepared = {}) {
+  return safeClone({
+    promptText: text(prepared?.promptText),
+    selectedModel: text(prepared?.selectedModel),
+    ingestedAttachments: prepared?.ingestedAttachments || {
+      attachments: [],
+      warnings: [],
+      extractedCount: 0
+    },
+    requestConfig: prepared?.requestConfig || {},
+    requestContext: prepared?.requestContext || {},
+    request: prepared?.request || {}
+  }) || null;
+}
+
+function createInterventionRunController({
+  previousRun = null,
+  draft = {},
+  assistConfig = {},
+  onFeedback
+} = {}) {
+  const initialRun = previousRun?.runId ? normalizeInterventionRun(previousRun) : createInterventionRun();
+  const attemptStartedAt = Date.now();
+  const baseElapsedMs = Number(initialRun.elapsedMs || 0);
+  let currentRun = initialRun;
+
+  function elapsedMs() {
+    return baseElapsedMs + Math.max(0, Date.now() - attemptStartedAt);
+  }
+
+  function publish(status, title, message) {
+    const feedback = buildInterventionFeedback({
+      draft,
+      assistConfig,
+      status,
+      title,
+      message,
+      run: currentRun
+    });
+    if (typeof onFeedback === "function") {
+      onFeedback(feedback);
+    }
+    return feedback;
+  }
+
+  function appendStep({
+    stage = "",
+    status = "ok",
+    message = "",
+    artifacts = {},
+    resumeFrom = ""
+  } = {}) {
+    currentRun = appendInterventionRunStep(
+      {
+        ...currentRun,
+        resumeFrom: text(resumeFrom) || currentRun.resumeFrom
+      },
+      {
+        stage,
+        status,
+        message,
+        elapsedMs: elapsedMs()
+      },
+      {
+        artifacts
+      }
+    );
+    if (status === "failed") {
+      currentRun = {
+        ...currentRun,
+        resumeFrom: text(resumeFrom) || (stage === "validate" ? "compile" : stage)
+      };
+    }
+    if (status === "ok" && stage === "complete") {
+      currentRun = {
+        ...currentRun,
+        resumeFrom: "",
+        currentStage: "complete"
+      };
+    }
+    return currentRun;
+  }
+
+  return {
+    get run() {
+      return currentRun;
+    },
+    progress(event = {}) {
+      appendStep(event);
+      return publish("running", "Intervenção em andamento", text(event?.message) || "Processando a intervenção.");
+    },
+    fail({
+      stage = "prepare",
+      title = "Nova iteração necessária",
+      message = "",
+      status = "needs_retry",
+      resumeFrom = ""
+    } = {}) {
+      const lastStep = Array.isArray(currentRun.steps) ? currentRun.steps[currentRun.steps.length - 1] : null;
+      if (!lastStep || lastStep.status !== "failed" || lastStep.stage !== stage || lastStep.message !== message) {
+        appendStep({
+          stage,
+          status: "failed",
+          message,
+          resumeFrom
+        });
+      } else if (text(resumeFrom)) {
+        currentRun = {
+          ...currentRun,
+          resumeFrom: text(resumeFrom)
+        };
+      }
+      return publish(status, title, message);
+    },
+    complete(message = "Entrega concluída.") {
+      return publish("completed", "Entrega concluída", message);
+    }
+  };
+}
+
 export async function executeMicrosequenceGeneration({
   selection = {},
   draft = {},
   assistConfig = {},
-  dependencyTitles = [],
-  selectedDidacticTypeId = "",
+  selectedRefIds = [],
+  preferredContainerId = "",
   preferredContainerLabel = "",
   lessonContext = {},
   projectDocument = {},
   checkCodexLocalHealth,
   ingestAttachments,
-  provider
+  provider,
+  resumeSession = null,
+  onFeedback
 } = {}) {
+  const resumeRun = normalizeInterventionRun(resumeSession?.run);
+  const runController = createInterventionRunController({
+    previousRun: resumeRun,
+    draft,
+    assistConfig,
+    onFeedback
+  });
+  const isResuming = Boolean(resumeRun?.runId) && Boolean(resumeRun?.resumeFrom);
+  if (isResuming && resumeRun.resumeFrom !== "prepare") {
+    runController.progress({
+      stage: "resume",
+      status: "started",
+      message: `Retomando da etapa ${resumeRun.resumeFrom}.`,
+      artifacts: {
+        resumeFrom: resumeRun.resumeFrom
+      }
+    });
+  } else {
+    runController.progress({
+      stage: "prepare",
+      status: "started",
+      message: "Preparando contexto local."
+    });
+  }
+
   const readiness = await resolveGenerationProviderReadiness({
     selectedModel: assistConfig.model,
     codexEndpoint: assistConfig.codexEndpoint,
@@ -301,43 +560,97 @@ export async function executeMicrosequenceGeneration({
   });
 
   if (!readiness.ok && isCodexLocalModel(assistConfig.model)) {
+    const interventionFeedback = runController.fail({
+      stage: "prepare",
+      status: "blocked",
+      title: "Provider indisponível",
+      message: readiness.error || "O bridge local não está ativo.",
+      resumeFrom: "prepare"
+    });
     return {
       status: "provider-unready",
-      errorMessage: readiness.error || "O bridge local não está ativo."
+      errorMessage: readiness.error || "O bridge local não está ativo.",
+      interventionFeedback
     };
   }
 
   try {
-    const preparedIntervention = await prepareMicrosequenceGeneration({
-      selection,
-      draft,
-      assistConfig,
-      dependencyTitles,
-      selectedDidacticTypeId,
-      preferredContainerLabel,
-      lessonContext,
-      ingestAttachments
-    });
+    const preparedIntervention =
+      isResuming && resumeRun.resumeFrom !== "prepare" && resumeRun.artifacts?.preparedIntervention
+        ? resumeRun.artifacts.preparedIntervention
+        : await prepareMicrosequenceGeneration({
+            selection,
+            draft,
+            assistConfig,
+            selectedRefIds,
+            preferredContainerId,
+            preferredContainerLabel,
+            lessonContext,
+            ingestAttachments
+          });
+    if (isResuming && resumeRun.resumeFrom !== "prepare" && resumeRun.artifacts?.preparedIntervention) {
+      runController.progress({
+        stage: "prepare",
+        status: "ok",
+        message: "Contexto local reaproveitado da etapa anterior.",
+        artifacts: {
+          preparedIntervention
+        }
+      });
+    } else {
+      runController.progress({
+        stage: "prepare",
+        status: "ok",
+        message: "Contexto local preparado.",
+        artifacts: {
+          preparedIntervention: snapshotPreparedIntervention(preparedIntervention)
+        }
+      });
+    }
     const generationResult = await generateMicrosequenceProjectDocument({
       selection,
-      draft,
+      draft: {
+        ...draft,
+        promptText: preparedIntervention.promptText,
+        requestedGenerationDepth: preparedIntervention.requestConfig?.requestedGenerationDepth || draft?.requestedGenerationDepth
+      },
       assistConfig,
       projectDocument,
       provider,
-      dependencyTitles,
-      selectedDidacticTypeId,
-      preferredContainerLabel,
-      ingestAttachments
+      preparedIntervention,
+      resumeState: runController.run,
+      onProgress: (event = {}) => {
+        runController.progress(event);
+      }
     });
+    const interventionFeedback = runController.complete("Fluxo concluído.");
     return {
       status: "success",
-      generationResult,
+      generationResult: {
+        ...generationResult,
+        interventionFeedback
+      },
       preparedIntervention
     };
   } catch (error) {
+    const details = classifyInterventionFailure(error);
+    const isAuthError = details?.category === "auth_error";
+    const authMessage = isAuthError
+      ? "Erro de autenticação do provider. Revise a chave API e a configuração do modelo antes de tentar de novo."
+      : "";
+    const message = authMessage || (error instanceof Error ? error.message : "Falha ao chamar o serviço de IA.");
+    const currentStage = text(runController.run?.resumeFrom) || text(runController.run?.currentStage) || "prepare";
     return {
-      status: "error",
-      errorMessage: error instanceof Error ? error.message : "Falha ao chamar o serviço de IA."
+      status: isAuthError ? "auth-error" : "error",
+      errorMessage: message,
+      shouldOpenProviderConfig: isAuthError,
+      interventionFeedback: runController.fail({
+        stage: currentStage,
+        status: isAuthError ? "blocked" : "needs_retry",
+        title: isAuthError ? "Configuração do provider necessária" : "Nova iteração necessária",
+        message,
+        resumeFrom: currentStage
+      })
     };
   }
 }

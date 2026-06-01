@@ -27,10 +27,10 @@ function buildExistingMicrosequenceLines(items = []) {
     ? items
         .map((item) => ({
           title: normalizeText(item?.title),
-          description: normalizeText(item?.description),
-          tags: Array.isArray(item?.tags) ? item.tags.map((entry) => normalizeText(entry)).filter(Boolean) : [],
+          goal: normalizeText(item?.goal),
+          dependsOn: Array.isArray(item?.dependsOn) ? item.dependsOn.map((entry) => normalizeText(entry)).filter(Boolean) : [],
+          covers: Array.isArray(item?.covers) ? item.covers.map((entry) => normalizeText(entry)).filter(Boolean) : [],
           status: normalizeText(item?.status),
-          included: item?.included === true
         }))
         .filter((item) => item.title)
     : [];
@@ -42,9 +42,10 @@ function buildExistingMicrosequenceLines(items = []) {
   return [
     "Microssequências atuais:",
     ...normalizedItems.map((item, index) => {
-      const description = item.description ? `; descrição: ${item.description}` : "";
-      const tags = item.tags.length ? `; tags: ${item.tags.join(", ")}` : "";
-      return `${index + 1}. ${item.title}; status: ${item.status || "draft"}; included: ${item.included ? "sim" : "não"}${description}${tags}`;
+      const goal = item.goal ? `; objetivo: ${item.goal}` : "";
+      const dependsOn = item.dependsOn.length ? `; dependsOn: ${item.dependsOn.join(", ")}` : "";
+      const covers = item.covers.length ? `; covers: ${item.covers.join(", ")}` : "";
+      return `${index + 1}. ${item.title}; status: ${item.status || "planned"}${goal}${dependsOn}${covers}`;
     })
   ];
 }
@@ -111,95 +112,29 @@ export function extractJsonFromText(text) {
 
 export function buildTopDownPrompt(payload = {}) {
   const context = payload?.context && typeof payload.context === "object" ? payload.context : payload || {};
-  const fixedTitles = [
-    context.courseFixed && normalizeText(context.courseTitle) ? `Curso fixado: ${normalizeText(context.courseTitle)}` : "",
-    context.moduleFixed && normalizeText(context.moduleTitle) ? `Módulo fixado: ${normalizeText(context.moduleTitle)}` : "",
-    context.lessonFixed && normalizeText(context.lessonTitle) ? `Lição fixada: ${normalizeText(context.lessonTitle)}` : ""
-  ].filter(Boolean);
-
   return [
-    "Você gera estrutura top-down para o AraLearn.",
-    "Responda somente JSON válido.",
-    "Não use Markdown.",
-    "Não explique.",
-    "Gere curso, módulos, lições e microssequências planejadas.",
-    "Não gere cards.",
-    "Microssequências devem ficar vazias de cards, com status draft e included false.",
-    "Use descrições breves.",
-    "Preencha sourceGuide e sourceGuideStructured em curso, módulo e lição.",
-    "Em cada lição, escreva lessonGoal, selecione notationRules de forma compatível com os tópicos sugeridos no pedido e redija commonErrors como alerta curto em texto corrido.",
-    "Se o contexto fixar curso, módulo ou lição, preserve os títulos fixados.",
-    "",
-    buildHierarchyLine("Ação", context.actionLabel),
-    buildHierarchyLine("Curso", context.courseTitle),
-    buildHierarchyLine("Descrição breve do curso", context.courseDescription),
-    buildStructuredLine("Fonte-guia estruturada do curso", context.courseSourceGuideStructured),
-    buildHierarchyLine("Módulo", context.moduleTitle),
-    buildHierarchyLine("Descrição breve do módulo", context.moduleDescription),
-    buildStructuredLine("Fonte-guia estruturada do módulo", context.moduleSourceGuideStructured),
-    buildHierarchyLine("Lição", context.lessonTitle),
-    buildHierarchyLine("Descrição breve da lição", context.lessonDescription),
-    buildStructuredLine("Fonte-guia estruturada da lição", context.lessonSourceGuideStructured),
-    fixedTitles.length ? `Títulos fixados: ${fixedTitles.join(" | ")}` : "",
-    "",
-    "Formato obrigatório:",
-    "{",
-    '  "course": {',
-    '    "title": "string",',
-    '    "description": "string",',
-    '    "sourceGuide": "string",',
-    '    "sourceGuideStructured": {',
-    '      "audience": "string",',
-    '      "globalScope": "string",',
-    '      "globalOutOfScope": "string",',
-    '      "sharedNotation": "string"',
-    "    },",
-    '    "modules": [',
-    "      {",
-    '        "title": "string",',
-    '        "description": "string",',
-    '        "sourceGuide": "string",',
-    '        "sourceGuideStructured": {',
-    '          "moduleScope": "string",',
-    '          "modulePrerequisites": "string",',
-    '          "moduleOutOfScope": "string",',
-    '          "lessonProgression": "string"',
-    "        },",
-    '        "lessons": [',
-    "          {",
-    '            "title": "string",',
-    '            "description": "string",',
-    '            "sourceGuide": "string",',
-    '            "sourceGuideStructured": {',
-    '              "lessonGoal": "string",',
-    '              "notationRules": "string",',
-    '              "commonErrors": "string"',
-    "            },",
-    '            "microsequences": [',
-    "              {",
-    '                "title": "string",',
-    '                "description": "string",',
-    '                "objective": "string",',
-    '                "coverageRole": "core",',
-    '                "didacticPurpose": "string",',
-    '                "tags": ["string"],',
-    '                "status": "draft",',
-    '                "included": false,',
-    '                "cards": []',
-    "              }",
-    "            ]",
-    "          }",
-    "        ]",
-    "      }",
-    "    ]",
-    "  }",
-    "}",
-    "",
-    "Pedido do usuário:",
-    normalizeText(payload?.promptText)
-  ]
-    .filter(Boolean)
-    .join("\n");
+    "Você receberá um contrato JSON. Devolva somente JSON válido no formato pedido.",
+    JSON.stringify({
+      task: "plan_course",
+      language: "pt-BR",
+      scope: {
+        action: normalizeText(context.actionLabel),
+        prompt: normalizeText(payload?.promptText),
+        course: {
+          title: normalizeText(context.courseTitle),
+          goal: normalizeText(context.courseDescription)
+        },
+        module: {
+          title: normalizeText(context.moduleTitle),
+          goal: normalizeText(context.moduleDescription)
+        },
+        lesson: {
+          title: normalizeText(context.lessonTitle),
+          goal: normalizeText(context.lessonDescription)
+        }
+      }
+    })
+  ].join("\n");
 }
 
 function tokenizeArgsTemplate(template) {
@@ -369,10 +304,10 @@ function buildExistingMicrosequenceLines(items = []) {
     ? items
         .map((item) => ({
           title: normalizeText(item?.title),
-          description: normalizeText(item?.description),
-          tags: Array.isArray(item?.tags) ? item.tags.map((entry) => normalizeText(entry)).filter(Boolean) : [],
+          goal: normalizeText(item?.goal),
+          dependsOn: Array.isArray(item?.dependsOn) ? item.dependsOn.map((entry) => normalizeText(entry)).filter(Boolean) : [],
+          covers: Array.isArray(item?.covers) ? item.covers.map((entry) => normalizeText(entry)).filter(Boolean) : [],
           status: normalizeText(item?.status),
-          included: item?.included === true
         }))
         .filter((item) => item.title)
     : [];
@@ -384,9 +319,10 @@ function buildExistingMicrosequenceLines(items = []) {
   return [
     "Microssequências atuais:",
     ...normalizedItems.map((item, index) => {
-      const description = item.description ? \`; descrição: \${item.description}\` : "";
-      const tags = item.tags.length ? \`; tags: \${item.tags.join(", ")}\` : "";
-      return \`\${index + 1}. \${item.title}; status: \${item.status || "draft"}; included: \${item.included ? "sim" : "não"}\${description}\${tags}\`;
+      const goal = item.goal ? \`; objetivo: \${item.goal}\` : "";
+      const dependsOn = item.dependsOn.length ? \`; dependsOn: \${item.dependsOn.join(", ")}\` : "";
+      const covers = item.covers.length ? \`; covers: \${item.covers.join(", ")}\` : "";
+      return \`\${index + 1}. \${item.title}; status: \${item.status || "planned"}\${goal}\${dependsOn}\${covers}\`;
     })
   ];
 }
@@ -422,92 +358,28 @@ function buildAttachmentPromptSection(attachments = []) {
 
 function buildTopDownPrompt(payload = {}) {
   const context = payload?.context && typeof payload.context === "object" ? payload.context : payload || {};
-  const fixedTitles = [
-    context.courseFixed && normalizeText(context.courseTitle) ? \`Curso fixado: \${normalizeText(context.courseTitle)}\` : "",
-    context.moduleFixed && normalizeText(context.moduleTitle) ? \`Módulo fixado: \${normalizeText(context.moduleTitle)}\` : "",
-    context.lessonFixed && normalizeText(context.lessonTitle) ? \`Lição fixada: \${normalizeText(context.lessonTitle)}\` : ""
-  ].filter(Boolean);
-
   return [
-    "Você gera estrutura top-down para o AraLearn.",
-    "Responda somente JSON válido.",
-    "Não use Markdown.",
-    "Não explique.",
-    "Gere curso, módulos, lições e microssequências planejadas.",
-    "Não gere cards.",
-    "Microssequências devem ficar vazias de cards, com status draft e included false.",
-    "Use descrições breves.",
-    "Preencha sourceGuide e sourceGuideStructured em curso, módulo e lição.",
-    "Em cada lição, escreva lessonGoal, selecione notationRules de forma compatível com os tópicos sugeridos no pedido e redija commonErrors como alerta curto em texto corrido.",
-    "Se o contexto fixar curso, módulo ou lição, preserve os títulos fixados.",
-    "",
-    buildHierarchyLine("Ação", context.actionLabel),
-    buildHierarchyLine("Curso", context.courseTitle),
-    buildHierarchyLine("Descrição breve do curso", context.courseDescription),
-    buildStructuredLine("Fonte-guia estruturada do curso", context.courseSourceGuideStructured),
-    buildHierarchyLine("Módulo", context.moduleTitle),
-    buildHierarchyLine("Descrição breve do módulo", context.moduleDescription),
-    buildStructuredLine("Fonte-guia estruturada do módulo", context.moduleSourceGuideStructured),
-    buildHierarchyLine("Lição", context.lessonTitle),
-    buildHierarchyLine("Descrição breve da lição", context.lessonDescription),
-    buildStructuredLine("Fonte-guia estruturada da lição", context.lessonSourceGuideStructured),
-    fixedTitles.length ? \`Títulos fixados: \${fixedTitles.join(" | ")}\` : "",
-    "",
-    "Formato obrigatório:",
-    "{",
-    '  "course": {',
-    '    "title": "string",',
-    '    "description": "string",',
-    '    "sourceGuide": "string",',
-    '    "sourceGuideStructured": {',
-    '      "audience": "string",',
-    '      "globalScope": "string",',
-    '      "globalOutOfScope": "string",',
-    '      "sharedNotation": "string"',
-    "    },",
-    '    "modules": [',
-    "      {",
-    '        "title": "string",',
-    '        "description": "string",',
-    '        "sourceGuide": "string",',
-    '        "sourceGuideStructured": {',
-    '          "moduleScope": "string",',
-    '          "modulePrerequisites": "string",',
-    '          "moduleOutOfScope": "string",',
-    '          "lessonProgression": "string"',
-    "        },",
-    '        "lessons": [',
-    "          {",
-    '            "title": "string",',
-    '            "description": "string",',
-    '            "sourceGuide": "string",',
-    '            "sourceGuideStructured": {',
-    '              "lessonGoal": "string",',
-    '              "notationRules": "string",',
-    '              "commonErrors": "string"',
-    "            },",
-    '            "microsequences": [',
-    "              {",
-    '                "title": "string",',
-    '                "description": "string",',
-    '                "objective": "string",',
-    '                "coverageRole": "core",',
-    '                "didacticPurpose": "string",',
-    '                "tags": ["string"],',
-    '                "status": "draft",',
-    '                "included": false,',
-    '                "cards": []',
-    "              }",
-    "            ]",
-    "          }",
-    "        ]",
-    "      }",
-    "    ]",
-    "  }",
-    "}",
-    "",
-    "Pedido do usuário:",
-    normalizeText(payload?.promptText)
+    "Você receberá um contrato JSON. Devolva somente JSON válido no formato pedido.",
+    JSON.stringify({
+      task: "plan_course",
+      language: "pt-BR",
+      scope: {
+        action: normalizeText(context.actionLabel),
+        prompt: normalizeText(payload?.promptText),
+        course: {
+          title: normalizeText(context.courseTitle),
+          goal: normalizeText(context.courseDescription)
+        },
+        module: {
+          title: normalizeText(context.moduleTitle),
+          goal: normalizeText(context.moduleDescription)
+        },
+        lesson: {
+          title: normalizeText(context.lessonTitle),
+          goal: normalizeText(context.lessonDescription)
+        }
+      }
+    })
   ].filter(Boolean).join("\\n");
 }
 

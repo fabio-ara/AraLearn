@@ -1,47 +1,35 @@
 export function buildTopDownSystemPrompt() {
   return [
-    "Você planeja trilhas didáticas compactas para o AraLearn.",
-    "Responda somente JSON válido.",
-    "Não gere cards.",
-    "Não escreva explicações longas.",
-    "Preserve os títulos dos módulos fornecidos.",
-    "Respeite estritamente o que entra e o que não entra.",
-    'Para cada lição, devolva sourceGuideStructured mínimo com lessonGoal, notationRules e commonErrors.'
+    "Você receberá um contrato JSON.",
+    "Devolva somente JSON válido no formato pedido.",
+    "Nunca mencione itens de exclude em guide, lessons ou microsequences, nem como contraste negativo.",
+    "Copie strings de include e exclude exatamente como aparecem no contrato, sem reescrever, sem acentuar de outro modo e sem criar sinônimos."
   ].join(" ");
 }
 
 export function buildTopDownUserPrompt(scopeContract) {
-  const moduleLines = scopeContract.modules
-    .map((moduleValue, index) => {
-      return [
-        `Módulo ${index + 1}: ${moduleValue.title}`,
-        `Entra: ${moduleValue.include.join("; ")}`,
-        `Não entra: ${moduleValue.exclude.join("; ") || "nada explicitado"}`,
-        `Cobrança: ${moduleValue.assessmentStyle}`,
-        moduleValue.notes ? `Observações: ${moduleValue.notes}` : ""
-      ]
-        .filter(Boolean)
-        .join("\n");
-    })
-    .join("\n\n");
-
-  return [
-    `Curso: ${scopeContract.course.title}`,
-    scopeContract.course.goal ? `Objetivo do curso: ${scopeContract.course.goal}` : "",
-    `Evidência prioritária: ${scopeContract.course.evidencePriority.join(", ")}`,
-    "",
-    "Planeje apenas a trilha até microssequências.",
-    "Cada lição deve ser pequena e cada microssequência deve ter objetivo operacional.",
-    'Cada lição deve trazer sourceGuideStructured mínimo: lessonGoal = meta da lição; notationRules = incluir pertinente à lição; commonErrors = não confundir com.',
-    'notationRules deve selecionar apenas tópicos realmente cobertos na lição a partir dos termos de include do módulo.',
-    'commonErrors deve ser um texto curto com a principal confusão ou deriva a evitar na lição.',
-    "dependsOnTitles só pode apontar para microssequências anteriores da mesma lição.",
-    "scopeLabels deve reutilizar literalmente os rótulos do include do módulo, sem quebrar um item maior em subtópicos menores.",
-    "Não invente módulos novos.",
-    "Não use tópicos de exclude.",
-    "",
-    moduleLines
-  ]
-    .filter(Boolean)
-    .join("\n");
+  return JSON.stringify({
+    task: "plan_course",
+    language: "pt-BR",
+    scope: scopeContract,
+    rules: [
+      "Do not generate cards.",
+      "Plan only modules, lessons and microsequences.",
+      "Stay strictly inside scope.include.",
+      "Do not silently drop include items.",
+      "Distribute every include item across lessons and microsequences.",
+      "Use exclude only as a hard boundary.",
+      "Do not invent new topics, aliases, paraphrases or broader subareas outside include.",
+      "Use guide.include and microsequence.covers only with exact strings taken from include.",
+      "Copy include and exclude strings exactly as written in scope, character by character.",
+      "If one include item needs more than one step, repeat the same include string instead of creating synonyms.",
+      "Do not mention exclude items in guide.goal, guide.notation, guide.avoid, titles, goals or covers.",
+      "Do not use exclude items as contrast, warning, comparison or preview.",
+      "Module guide.goal must describe the module itself, not restate the user's raw request or course-wide prompt.",
+      "Keep each lesson local to the allowed include items.",
+      "dependsOn is local to each lesson.",
+      "Each microsequence may depend only on titles declared earlier inside the same lesson.",
+      "Never point dependsOn to titles from another lesson, another module or a future microsequence."
+    ]
+  });
 }

@@ -8,18 +8,18 @@ function escapeHtml(value) {
 }
 
 function renderMicrosequenceItem(selection, course, moduleValue, lesson, microsequence) {
-  const selected = selection?.microsequenceKey === microsequence.key;
+  const selected = selection?.microsequenceKey === microsequence.id;
   return (
     '<button class="tree-item tree-item-microsequence' +
     (selected ? " is-selected" : "") +
     '" type="button" data-action="select-microsequence" data-course-key="' +
-    escapeHtml(course.key) +
+    escapeHtml(course.id) +
     '" data-module-key="' +
-    escapeHtml(moduleValue.key) +
+    escapeHtml(moduleValue.id) +
     '" data-lesson-key="' +
-    escapeHtml(lesson.key) +
+    escapeHtml(lesson.id) +
     '" data-microsequence-key="' +
-    escapeHtml(microsequence.key) +
+    escapeHtml(microsequence.id) +
     '">' +
     '<span class="tree-item-main">' +
     escapeHtml(microsequence.title) +

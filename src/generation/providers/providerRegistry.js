@@ -57,7 +57,7 @@ export function resolveProviderFromModelId(modelId = "") {
   if (normalized.startsWith("gemini")) return "google";
   if (normalized.startsWith("openai-compatible") || normalized.startsWith("openai:")) return "openai";
   if (normalized.startsWith("anthropic:")) return "anthropic";
-  if (normalized.startsWith("deepseek:")) return "deepseek";
+  if (normalized.startsWith("deepseek:") || normalized.startsWith("deepseek-") || normalized === "deepseek-quality") return "deepseek";
   if (normalized.startsWith("qwen:")) return "qwen";
   if (normalized.startsWith("kimi:")) return "kimi";
   if (normalized.startsWith("zai:")) return "zai";

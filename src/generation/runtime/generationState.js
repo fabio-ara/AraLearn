@@ -3,9 +3,9 @@ function text(value) {
 }
 
 export function resolveGenerationScope(scopeState = {}) {
-  const courseKey = text(scopeState?.course?.key);
-  const moduleKey = text(scopeState?.moduleValue?.key);
-  const lessonKey = text(scopeState?.lesson?.key);
+  const courseKey = text(scopeState?.course?.id);
+  const moduleKey = text(scopeState?.moduleValue?.id);
+  const lessonKey = text(scopeState?.lesson?.id);
 
   if (courseKey && moduleKey && lessonKey) {
     return {
@@ -38,30 +38,36 @@ export function resolveGenerationNavigationTarget({ projectDocument = {}, patch 
   const target = patch?.target || {};
 
   const course =
-    projectCourses.find((item) => text(item?.key) === text(target?.courseKey || scopeState?.course?.key)) ||
+    projectCourses.find((item) => text(item?.id) === text(target?.courseKey || scopeState?.course?.id)) ||
     projectCourses[0] ||
     null;
   const moduleValue =
     (Array.isArray(course?.modules) ? course.modules : []).find(
-      (item) => text(item?.key) === text(target?.moduleKey || scopeState?.moduleValue?.key)
+      (item) => text(item?.id) === text(target?.moduleKey || scopeState?.moduleValue?.id)
     ) ||
     (Array.isArray(course?.modules) ? course.modules[0] : null) ||
     null;
   const lesson =
     (Array.isArray(moduleValue?.lessons) ? moduleValue.lessons : []).find(
-      (item) => text(item?.key) === text(target?.lessonKey || scopeState?.lesson?.key)
+      (item) => text(item?.id) === text(target?.lessonKey || scopeState?.lesson?.id)
     ) ||
     (Array.isArray(moduleValue?.lessons) ? moduleValue.lessons[0] : null) ||
     null;
 
   return {
-    courseKey: text(course?.key),
-    moduleKey: text(moduleValue?.key),
-    lessonKey: text(lesson?.key)
+    courseKey: text(course?.id),
+    moduleKey: text(moduleValue?.id),
+    lessonKey: text(lesson?.id)
   };
 }
 
 export function summarizeTopDownResult(result = {}) {
+  if (result?.summary && typeof result.summary === "object") {
+    return {
+      message: text(result.summary.message) || "Estrutura top-down aplicada.",
+      openActionLabel: text(result.summary.openActionLabel) || ""
+    };
+  }
   const operations = Array.isArray(result?.patch?.operations) ? result.patch.operations.length : 0;
   const events = Array.isArray(result?.patch?.events) ? result.patch.events.length : 0;
   const eventLabel = events === 1 ? "evento auditável" : "eventos auditáveis";

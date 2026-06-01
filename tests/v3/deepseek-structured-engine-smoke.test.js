@@ -1,0 +1,31 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
+
+test("smoke estruturado DeepSeek tem script e usa variável de ambiente", () => {
+  const filePath = path.join(process.cwd(), "scripts", "runDeepSeekStructuredEngineSmoke.js");
+  assert.equal(fs.existsSync(filePath), true);
+  const source = fs.readFileSync(filePath, "utf8");
+  assert.match(source, /DEEPSEEK_API_KEY/);
+  assert.match(source, /deepseek-v4-flash/);
+  assert.match(source, /structured-engine/);
+  assert.match(source, /top_down_structure/);
+  assert.match(source, /bottom_up_card_audit/);
+  assert.match(source, /invalidAuditPatches/);
+  assert.match(source, /cardsBeforeAudit/);
+  assert.match(source, /appliedTopDownPatches/);
+  assert.match(source, /free_resource_selection/);
+  assert.match(source, /semanticValidation/);
+  assert.match(source, /graphSemanticValidation/);
+  assert.match(source, /graphComputedAnswers/);
+  assert.match(source, /graphAmbiguityWarnings/);
+  assert.match(source, /graphValidOptions/);
+  assert.match(source, /graphInvalidOptions/);
+  assert.match(source, /feedbackContradictions/);
+  assert.match(source, /choiceAnswerFallbacks/);
+  assert.match(source, /topDownAuditContradictions/);
+  assert.match(source, /computedAnswers/);
+  assert.match(source, /auditPatchApplied/);
+  assert.match(source, /deepseek-v4-flash-structured-engine\.json/);
+});

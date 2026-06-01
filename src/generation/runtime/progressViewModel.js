@@ -31,14 +31,30 @@ export function getGenerationPhaseLabel(phaseId = "") {
   return PHASE_LABELS[normalized] || normalized || "Preparando geração";
 }
 
-export function listGenerationProgressPhases(phaseCount = 0) {
+function normalizePhaseIds(phaseIds = []) {
+  return (Array.isArray(phaseIds) ? phaseIds : []).map((item) => text(item)).filter(Boolean);
+}
+
+function resolvePhaseIndex(phaseId = "", phaseIds = []) {
+  const normalizedPhaseId = text(phaseId);
+  if (!normalizedPhaseId) {
+    return 0;
+  }
+  const normalizedPhaseIds = normalizePhaseIds(phaseIds);
+  const phaseOrder = normalizedPhaseIds.length ? normalizedPhaseIds : COURSE_FORGE_PROGRESS_PHASE_IDS;
+  const index = phaseOrder.indexOf(normalizedPhaseId);
+  return index >= 0 ? index + 1 : 0;
+}
+
+export function listGenerationProgressPhases(phaseCount = 0, phaseIds = []) {
+  const normalizedPhaseIds = normalizePhaseIds(phaseIds);
   const normalizedCount = Number.isFinite(Number(phaseCount)) ? Number(phaseCount) : 0;
-  const resolvedCount = normalizedCount > 0 ? normalizedCount : COURSE_FORGE_PROGRESS_PHASE_IDS.length;
+  const resolvedCount = normalizedPhaseIds.length || (normalizedCount > 0 ? normalizedCount : COURSE_FORGE_PROGRESS_PHASE_IDS.length);
   return Array.from({ length: resolvedCount }, (_, index) => {
-    const phaseId = COURSE_FORGE_PROGRESS_PHASE_IDS[index] || `phase_${index + 1}`;
+    const phaseId = normalizedPhaseIds[index] || COURSE_FORGE_PROGRESS_PHASE_IDS[index] || `phase_${index + 1}`;
     return {
       phaseId,
-      phaseLabel: COURSE_FORGE_PROGRESS_PHASE_IDS[index] ? getGenerationPhaseLabel(phaseId) : `Etapa ${index + 1}`
+      phaseLabel: getGenerationPhaseLabel(phaseId) || `Etapa ${index + 1}`
     };
   });
 }
@@ -116,6 +132,7 @@ export function createGenerationProgressState(patch = {}) {
     modelId: text(patch.modelId),
     phaseIndex: Number.isFinite(Number(patch.phaseIndex)) ? Number(patch.phaseIndex) : 0,
     phaseCount: Number.isFinite(Number(patch.phaseCount)) ? Number(patch.phaseCount) : 0,
+    phaseIds: normalizePhaseIds(patch.phaseIds),
     history: Array.isArray(patch.history) ? patch.history.slice(-6) : []
   };
 }
@@ -128,7 +145,11 @@ export function reduceGenerationProgress(current = {}, event = {}) {
       : type === "run_failed" || type === "provider_call_failed" || type === "phase_failed"
         ? "failed"
         : "running";
-  const phaseId = text(event.phaseId || current.phaseId);
+  const phaseIds = normalizePhaseIds(event.phaseIds).length
+    ? normalizePhaseIds(event.phaseIds)
+    : normalizePhaseIds(current.phaseIds);
+  const phaseId = text(event.phaseId || event.phase || current.phaseId);
+  const inferredPhaseIndex = resolvePhaseIndex(phaseId, phaseIds);
   const entry = {
     type,
     phaseId,
@@ -146,8 +167,13 @@ export function reduceGenerationProgress(current = {}, event = {}) {
     phaseLabel: entry.phaseLabel,
     message: entry.message,
     modelId: entry.modelId,
-    phaseIndex: Number.isFinite(Number(event.phaseIndex)) ? Number(event.phaseIndex) : Number(current.phaseIndex || 0),
-    phaseCount: Number.isFinite(Number(event.phaseCount)) ? Number(event.phaseCount) : Number(current.phaseCount || 0),
+    phaseIndex: Number.isFinite(Number(event.phaseIndex))
+      ? Number(event.phaseIndex)
+      : inferredPhaseIndex || Number(current.phaseIndex || 0),
+    phaseCount: Number.isFinite(Number(event.phaseCount))
+      ? Number(event.phaseCount)
+      : phaseIds.length || Number(current.phaseCount || 0),
+    phaseIds,
     history: [...(Array.isArray(current.history) ? current.history : []), entry].slice(-6)
   });
 }

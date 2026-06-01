@@ -4,40 +4,39 @@ import { generateMicrosequenceCards } from "./generateMicrosequenceCards.js";
 export async function generateNextMicrosequence({
   project,
   selection,
-  provider,
-  modelId,
-  density = "standard",
-  providerOptions = {},
-  source = "llm"
+  ...options
 } = {}) {
   const info = findSelection(project, selection);
   if (!info) {
     throw new Error("Microssequência não encontrada.");
   }
-  const microsequences = info.lesson.microsequences || [];
-  const nextMain = microsequences.slice(info.microsequenceIndex + 1).find((item) => item.type === "main");
+
+  const nextMain = (info.lesson.microsequences || [])
+    .slice(info.microsequenceIndex + 1)
+    .find((item) => !item.branchOf);
+
   if (!nextMain) {
-    throw new Error("Não existe próxima microssequência principal planejada.");
+    throw new Error("Não existe próxima microssequência planejada.");
   }
-  const missingDependency = (nextMain.dependsOn || []).find((dependencyKey) => {
-    const dependency = microsequences.find((item) => item.key === dependencyKey);
-    return !dependency || (dependency.status !== "generated" && dependency.status !== "ready" && dependency.status !== "needs_review");
+
+  const blockedBy = (nextMain.dependsOn || []).find((dependencyId) => {
+    const dependency = (info.lesson.microsequences || []).find((item) => item.id === dependencyId);
+    return !dependency || dependency.status === "planned";
   });
-  if (missingDependency) {
+  if (blockedBy) {
+    const blockedDependency = (info.lesson.microsequences || []).find((item) => item.id === blockedBy) || null;
     return {
-      blockedBy: missingDependency
+      blockedBy,
+      blockedByTitle: blockedDependency?.title || blockedBy
     };
   }
+
   return generateMicrosequenceCards({
+    ...options,
     project,
     selection: {
       ...selection,
-      microsequenceKey: nextMain.key
-    },
-    provider,
-    modelId,
-    density,
-    providerOptions,
-    source
+      microsequenceKey: nextMain.id
+    }
   });
 }

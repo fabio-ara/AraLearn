@@ -83,8 +83,8 @@ function createAdsProfile(profileId, label, overrides = {}) {
       generation: {
         guardrails: [
           "o aluno vê curso, não mecanismo de autoria",
-          "sourceGuideStructured governa meta, notação e confusões prováveis da lição",
-          "domainMap, domainRefs e practiceVariantRefs são contrato de cobertura",
+          "guide governa meta, notação e confusões prováveis da lição",
+          "covers e checks definem o recorte de cobertura",
           "todo card deve ser autossuficiente",
           "explicar siglas, termos técnicos, palavras em inglês e notação antes de cobrar uso",
           "a microssequência não pode depender de pressuposto oculto",

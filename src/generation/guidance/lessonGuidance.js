@@ -21,11 +21,10 @@ function normalizeChoiceList(items = [], allowedIds = new Set()) {
 
 export const LESSON_RESOURCE_TAG_OPTIONS = Object.freeze([
   Object.freeze({ id: "paragraph", label: "Texto" }),
-  Object.freeze({ id: "block_gap_fill", label: "Lacunas" }),
-  Object.freeze({ id: "multiple_choice", label: "Múltipla escolha" }),
+  Object.freeze({ id: "choice", label: "Múltipla escolha" }),
   Object.freeze({ id: "table", label: "Tabela" }),
-  Object.freeze({ id: "code_editor", label: "Editor de código" }),
-  Object.freeze({ id: "flowchart", label: "Fluxograma" }),
+  Object.freeze({ id: "code", label: "Editor de código" }),
+  Object.freeze({ id: "flow", label: "Fluxograma" }),
   Object.freeze({ id: "graph", label: "Grafo" }),
   Object.freeze({ id: "tree", label: "Árvore" }),
   Object.freeze({ id: "matrix", label: "Matriz" }),
@@ -69,7 +68,7 @@ export const LESSON_GUIDANCE_PRESETS = Object.freeze([
   Object.freeze({
     id: "direto",
     label: "Direto",
-    resourceTags: ["paragraph", "multiple_choice"],
+    resourceTags: ["paragraph", "choice"],
     contentTypeTags: ["concept", "procedure"],
     learningActionTags: ["understand"],
     supportLevel: "quick_review"
@@ -77,7 +76,7 @@ export const LESSON_GUIDANCE_PRESETS = Object.freeze([
   Object.freeze({
     id: "passo_a_passo",
     label: "Passo a passo",
-    resourceTags: ["paragraph", "block_gap_fill", "multiple_choice"],
+    resourceTags: ["paragraph", "choice"],
     contentTypeTags: ["procedure", "notation"],
     learningActionTags: ["understand", "practice"],
     supportLevel: "very_guided"
@@ -85,7 +84,7 @@ export const LESSON_GUIDANCE_PRESETS = Object.freeze([
   Object.freeze({
     id: "mais_completo",
     label: "Mais completo",
-    resourceTags: ["paragraph", "block_gap_fill", "multiple_choice", "table"],
+    resourceTags: ["paragraph", "choice", "table"],
     contentTypeTags: ["concept", "procedure", "comparison", "error_diagnosis"],
     learningActionTags: ["understand", "practice", "compare", "fix_error"],
     supportLevel: "guided"
@@ -93,7 +92,7 @@ export const LESSON_GUIDANCE_PRESETS = Object.freeze([
   Object.freeze({
     id: "prova",
     label: "Prova",
-    resourceTags: ["paragraph", "block_gap_fill", "multiple_choice", "table"],
+    resourceTags: ["paragraph", "choice", "table"],
     contentTypeTags: ["procedure", "calculation", "exam_pattern"],
     learningActionTags: ["solve", "practice"],
     supportLevel: "intermediate"
@@ -101,7 +100,7 @@ export const LESSON_GUIDANCE_PRESETS = Object.freeze([
   Object.freeze({
     id: "erro_comum",
     label: "Erro comum",
-    resourceTags: ["paragraph", "block_gap_fill", "multiple_choice", "table"],
+    resourceTags: ["paragraph", "choice", "table"],
     contentTypeTags: ["comparison", "error_diagnosis"],
     learningActionTags: ["compare", "fix_error", "practice"],
     supportLevel: "guided"
@@ -109,7 +108,7 @@ export const LESSON_GUIDANCE_PRESETS = Object.freeze([
   Object.freeze({
     id: "pratica",
     label: "Prática",
-    resourceTags: ["paragraph", "block_gap_fill", "multiple_choice", "table"],
+    resourceTags: ["paragraph", "choice", "table"],
     contentTypeTags: ["procedure", "calculation"],
     learningActionTags: ["practice", "solve"],
     supportLevel: "guided"
@@ -117,7 +116,7 @@ export const LESSON_GUIDANCE_PRESETS = Object.freeze([
   Object.freeze({
     id: "guided",
     label: "Guiado",
-    resourceTags: ["paragraph", "block_gap_fill", "multiple_choice"],
+    resourceTags: ["paragraph", "choice"],
     contentTypeTags: ["concept", "procedure"],
     learningActionTags: ["understand", "practice"],
     supportLevel: "guided"
@@ -125,7 +124,7 @@ export const LESSON_GUIDANCE_PRESETS = Object.freeze([
   Object.freeze({
     id: "practice",
     label: "Prática",
-    resourceTags: ["paragraph", "block_gap_fill", "multiple_choice", "table"],
+    resourceTags: ["paragraph", "choice", "table"],
     contentTypeTags: ["procedure", "calculation"],
     learningActionTags: ["practice", "solve"],
     supportLevel: "guided"
@@ -133,7 +132,7 @@ export const LESSON_GUIDANCE_PRESETS = Object.freeze([
   Object.freeze({
     id: "visual",
     label: "Visual",
-    resourceTags: ["paragraph", "multiple_choice", "table", "matrix", "plane", "graph", "flowchart", "tree"],
+    resourceTags: ["paragraph", "choice", "table", "matrix", "plane", "graph", "flow", "tree"],
     contentTypeTags: ["comparison", "interpretation", "classification"],
     learningActionTags: ["understand", "compare"],
     supportLevel: "guided"
@@ -141,7 +140,7 @@ export const LESSON_GUIDANCE_PRESETS = Object.freeze([
   Object.freeze({
     id: "code",
     label: "Código",
-    resourceTags: ["paragraph", "block_gap_fill", "multiple_choice", "code_editor", "tree"],
+    resourceTags: ["paragraph", "choice", "code", "tree"],
     contentTypeTags: ["procedure", "tool_use"],
     learningActionTags: ["practice", "use_tool"],
     supportLevel: "guided"
@@ -149,7 +148,7 @@ export const LESSON_GUIDANCE_PRESETS = Object.freeze([
   Object.freeze({
     id: "review",
     label: "Revisão",
-    resourceTags: ["paragraph", "block_gap_fill", "multiple_choice"],
+    resourceTags: ["paragraph", "choice"],
     contentTypeTags: ["review", "error_diagnosis"],
     learningActionTags: ["review", "fix_error"],
     supportLevel: "quick_review"
@@ -157,7 +156,7 @@ export const LESSON_GUIDANCE_PRESETS = Object.freeze([
   Object.freeze({
     id: "source",
     label: "Fonte",
-    resourceTags: ["paragraph", "multiple_choice", "table", "tree"],
+    resourceTags: ["paragraph", "choice", "table", "tree"],
     contentTypeTags: ["source_reading", "interpretation"],
     learningActionTags: ["read_source", "understand"],
     supportLevel: "guided"
@@ -166,7 +165,7 @@ export const LESSON_GUIDANCE_PRESETS = Object.freeze([
 
 export const LESSON_GUIDANCE_DEFAULTS = Object.freeze({
   presetId: "passo_a_passo",
-  resourceTags: Object.freeze(["paragraph", "block_gap_fill", "multiple_choice"]),
+  resourceTags: Object.freeze(["paragraph", "choice"]),
   contentTypeTags: Object.freeze(["procedure", "notation"]),
   learningActionTags: Object.freeze(["understand", "practice"]),
   supportLevel: "very_guided"

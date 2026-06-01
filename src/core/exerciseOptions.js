@@ -23,6 +23,20 @@ export function getExerciseOptionStableId(option, index = 0) {
   return String(candidate || `exercise-option-${index}`);
 }
 
+export function getCorrectExerciseOptionIds(options = [], answerId = "") {
+  const normalizedAnswerId = String(answerId || "").trim();
+  return (Array.isArray(options) ? options : [])
+    .map((option, index) => {
+      if (option?.answer === true) {
+        return getExerciseOptionStableId(option, index);
+      }
+      return String(option?.id || "").trim() === normalizedAnswerId
+        ? getExerciseOptionStableId(option, index)
+        : null;
+    })
+    .filter(Boolean);
+}
+
 export function shuffleExerciseOptions(list, seed) {
   const source = Array.isArray(list) ? list.slice() : [];
   if (source.length <= 1) {

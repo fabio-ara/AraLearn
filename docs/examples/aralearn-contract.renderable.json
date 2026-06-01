@@ -1,214 +1,95 @@
 {
   "contract": "aralearn.contract",
-  "version": 1,
+  "version": 3,
   "kind": "project",
   "courses": [
     {
-      "title": "Curso renderizável",
+      "id": "course-renderable",
+      "title": "Curso Renderizável",
+      "goal": "Mostrar paragraph, choice, tree e table no contrato v3.",
       "modules": [
         {
-          "title": "Módulo experimental",
+          "id": "module-renderable",
+          "title": "Recursos básicos",
+          "guide": {
+            "goal": "Cobrir recursos básicos de leitura.",
+            "include": ["paragraph", "choice", "tree", "table"],
+            "exclude": [],
+            "notation": ["Use textos curtos."],
+            "avoid": ["Não depender de contexto externo."]
+          },
           "lessons": [
             {
-              "title": "Lição experimental",
+              "id": "lesson-renderable",
+              "title": "Exemplo renderizável",
+              "guide": {
+                "goal": "Ler cards básicos no runtime.",
+                "include": ["paragraph", "choice", "tree", "table"],
+                "exclude": [],
+                "notation": ["Use textos curtos."],
+                "avoid": ["Não depender de contexto externo."]
+              },
+              "topics": [],
               "microsequences": [
                 {
-                  "title": "Modelo cascata",
-                  "tags": ["Processos de software"],
+                  "id": "micro-renderable",
+                  "title": "Cards básicos",
+                  "goal": "Ler cards simples no runtime.",
+                  "role": "explain",
                   "status": "ready",
-                  "cards": [
+                  "dependsOn": [],
+                  "covers": ["paragraph", "choice", "tree", "table"],
+                  "checks": ["o aluno reconhece o card atual"],
+                  "versions": [
                     {
-                      "title": "Ideia central",
-                      "say": "O modelo cascata organiza o trabalho em fases sequenciais.",
-                      "after": "A ideia importante é reconhecer a ordem das fases antes de discutir exceções."
-                    },
-                    {
-                      "title": "Leitura rápida",
-                      "ask": "Qual estrutura agrupa cards no AraLearn?",
-                      "answer": "Microssequência",
-                      "wrong": ["Curso", "Módulo"]
-                    },
-                    {
-                      "title": "Complete",
-                      "say": "Todo card pertence a uma [[microssequência]].",
-                      "wrong": ["lição", "módulo"]
-                    },
-                    {
-                      "title": "Trecho de código",
-                      "say": "O identificador abaixo aparece no topo do JSON.",
-                      "language": "json",
-                      "code": "{ \"contract\": \"aralearn.contract\" }"
-                    },
-                    {
-                      "title": "Campos principais",
-                      "table": {
-                        "columns": ["Campo", "Uso"],
-                        "rows": [
-                          ["say", "Explicação ou lacuna textual"],
-                          ["ask", "Pergunta de múltipla escolha"],
-                          ["flow", "Fluxograma derivado pelo motor"]
-                        ]
-                      }
-                    },
-                    {
-                      "title": "Fluxo básico",
-                      "flow": [
-                        { "start": "Ler" },
-                        { "process": "Validar", "blank": true },
+                      "id": "version-micro-renderable",
+                      "createdAt": "2026-01-01T00:00:00.000Z",
+                      "source": "manual",
+                      "action": "generate",
+                      "request": "",
+                      "summary": "Versão inicial.",
+                      "cards": [
                         {
-                          "if": "Está correto?",
-                          "blank": { "target": "label", "key": "yes", "options": ["Sim", "Não"] },
-                          "then": [{ "output": "Renderizar" }],
-                          "else": [{ "process": "Revisar" }]
+                          "position": 1,
+                          "resource": "paragraph",
+                          "kind": "theory",
+                          "exercise": "none",
+                          "title": "Regra central",
+                          "text": "O runtime renderiza o texto do parágrafo diretamente.",
+                          "after": "Esse é o recurso textual mais comum."
                         },
-                        { "end": "Fim" }
-                      ]
-                    },
-                    {
-                      "title": "Árvore de diretórios",
-                      "say": "A árvore mostra o diretório atual e alguns arquivos próximos.",
-                      "tree": {
-                        "base": "/",
-                        "current": "/home/aluno/projetos",
-                        "selected": "/home/aluno/projetos/README.txt",
-                        "closed": ["/home/aluno/downloads"],
-                        "items": {
-                          "home": {
-                            "aluno": {
-                              "downloads": {
-                                "pacote.zip": null
-                              },
-                              "projetos": {
-                                "docs": {},
-                                "README.txt": null
-                              }
-                            }
-                          }
+                        {
+                          "position": 2,
+                          "resource": "paragraph",
+                          "kind": "exercise",
+                          "exercise": "gap",
+                          "title": "Complete",
+                          "text": "Para listar arquivos, use [[ls::ls|cd|pwd]].",
+                          "after": "`ls` lista o conteúdo do diretório atual."
+                        },
+                        {
+                          "position": 3,
+                          "resource": "choice",
+                          "kind": "exercise",
+                          "exercise": "choice",
+                          "title": "Escolha",
+                          "question": "Qual comando mostra o diretório atual?",
+                          "options": [
+                            { "id": "a", "text": "pwd" },
+                            { "id": "b", "text": "mkdir" },
+                            { "id": "c", "text": "touch" }
+                          ],
+                          "answer": "a",
+                          "after": "`pwd` imprime o caminho atual."
                         }
-                      }
-                    }
-                  ]
-                }
-              ]
-            },
-            {
-              "title": "Verificação dos exercícios com opções",
-              "microsequences": [
-                {
-                  "title": "Todos os exercícios com opções",
-                  "tags": ["Teste", "Exercícios", "Opções"],
-                  "status": "ready",
-                  "cards": [
-                    {
-                      "title": "Múltipla escolha",
-                      "ask": "Qual comando lista arquivos no diretório atual?",
-                      "answer": "ls",
-                      "wrong": ["cd", "pwd", "mkdir"],
-                      "after": "Correto! `ls` lista o conteúdo do diretório atual."
-                    },
-                    {
-                      "title": "Parágrafo com lacuna",
-                      "say": "Para mudar de diretório no terminal, use [[cd::cd|ls|pwd]].",
-                      "after": "Correto! `cd` altera o diretório atual."
-                    },
-                    {
-                      "title": "Editor com lacuna",
-                      "say": "Complete o comando para inspecionar o estado do repositório Git.",
-                      "language": "bash",
-                      "code": "git [[status::status|commit|clone]]",
-                      "after": "Correto! `git status` mostra o estado atual do repositório."
-                    },
-                    {
-                      "title": "Tabela com lacuna",
-                      "say": "Escolha o comando correto na célula da tabela.",
-                      "table": {
-                        "columns": ["Objetivo", "Comando"],
-                        "rows": [
-                          ["Listar arquivos", "[[ls::ls|cd|touch]]"],
-                          ["Mostrar diretório atual", "pwd"]
-                        ]
-                      },
-                      "after": "Correto! Para listar arquivos, o comando esperado era `ls`."
-                    },
-                    {
-                      "title": "Fluxograma com opções",
-                      "say": "Preencha o fluxograma escolhendo as opções corretas.",
-                      "flow": [
-                        { "start": "Início" },
-                        { "process": "Validar", "blank": { "text": ["Validar", "Executar"] } },
-                        {
-                          "if": "Está correto?",
-                          "blank": { "labels": { "yes": ["Sim", "Não"] } },
-                          "then": [{ "output": "Prosseguir" }],
-                          "else": [{ "process": "Revisar" }]
-                        },
-                        { "end": "Fim" }
                       ],
-                      "after": "Correto! O fluxo valida, segue pelo ramo `Sim` e então prossegue."
-                    }
-                  ]
-                }
-              ]
-            },
-            {
-              "title": "Plano cartesiano e matrizes",
-              "microsequences": [
-                {
-                  "title": "Recursos visuais de matemática",
-                  "tags": ["Teste", "Plane", "Matrix"],
-                  "status": "ready",
-                  "cards": [
-                    {
-                      "title": "Vetor como seta",
-                      "say": "Observe o vetor v = (3,2).",
-                      "plane": {
-                        "vector": [3, 2]
-                      }
-                    },
-                    {
-                      "title": "Soma de vetores",
-                      "say": "Complete o vetor resultante.",
-                      "plane": {
-                        "sum": [[1, 2], [3, 1]],
-                        "result": ["[[4::3|5]]", "[[3::2|4]]"]
-                      }
-                    },
-                    {
-                      "title": "Multiplicação por escalar",
-                      "say": "Compare v com 2v.",
-                      "plane": {
-                        "scale": {
-                          "k": 2,
-                          "vector": [2, 1]
-                        }
-                      }
-                    },
-                    {
-                      "title": "Distância entre pontos",
-                      "say": "Observe a distância entre A e B.",
-                      "plane": {
-                        "distance": [[1, 1], [4, 5]]
-                      }
-                    },
-                    {
-                      "title": "Diagonal principal",
-                      "say": "Observe a diagonal principal.",
-                      "matrix": {
-                        "name": "A",
-                        "values": [[1, 2, 3], [4, 5, 6], [7, 8, 9]],
-                        "highlight": "mainDiagonal"
-                      }
-                    },
-                    {
-                      "title": "Complete a matriz",
-                      "say": "Complete o elemento da linha 2, coluna 3.",
-                      "matrix": {
-                        "name": "A",
-                        "values": [[1, 2, 3], [4, 5, "[[6::5|7|8]]"]],
-                        "highlight": "cell:2,3"
+                      "validation": {
+                        "ok": true,
+                        "issues": []
                       }
                     }
-                  ]
+                  ],
+                  "activeVersion": "version-micro-renderable"
                 }
               ]
             }

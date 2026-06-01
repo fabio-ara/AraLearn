@@ -1,81 +1,82 @@
 {
   "contract": "aralearn.contract",
-  "version": 1,
+  "version": 3,
   "kind": "project",
   "courses": [
     {
-      "title": "Teoria dos Grafos",
+      "id": "course-graph-example",
+      "title": "Graph Example",
+      "goal": "Mostrar o recurso graph no contrato v3.",
       "modules": [
         {
-          "title": "Representações básicas",
+          "id": "module-graph-example",
+          "title": "Grafo",
+          "guide": {
+            "goal": "Cobrir um grafo simples.",
+            "include": ["graph"],
+            "exclude": [],
+            "notation": ["Use rótulos curtos."],
+            "avoid": ["Não depender de contexto externo."]
+          },
           "lessons": [
             {
-              "title": "Grafo simples e ponderado",
+              "id": "lesson-graph-example",
+              "title": "Grafo simples",
+              "guide": {
+                "goal": "Ler um grafo de dois vértices.",
+                "include": ["graph"],
+                "exclude": [],
+                "notation": ["Use rótulos curtos."],
+                "avoid": ["Não depender de contexto externo."]
+              },
+              "topics": [],
               "microsequences": [
                 {
-                  "title": "Leitura de grafos",
+                  "id": "micro-graph-example",
+                  "title": "Aresta única",
+                  "goal": "Reconhecer a ligação entre A e B.",
+                  "role": "explain",
                   "status": "ready",
-                  "cards": [
+                  "dependsOn": [],
+                  "covers": ["graph"],
+                  "checks": ["o aluno identifica a aresta destacada"],
+                  "versions": [
                     {
-                      "key": "card-graph-simple",
-                      "title": "Grau de um vértice",
-                      "graph": {
-                        "vertices": [
-                          { "id": "A", "x": 50, "y": 10 },
-                          { "id": "B", "x": 20, "y": 55 },
-                          { "id": "C", "x": 50, "y": 90 },
-                          { "id": "D", "x": 80, "y": 55 }
-                        ],
-                        "edges": [
-                          { "from": "A", "to": "B" },
-                          { "from": "A", "to": "D" },
-                          { "from": "B", "to": "C" },
-                          { "from": "C", "to": "D" },
-                          { "from": "B", "to": "D" }
-                        ],
-                        "highlight": {
-                          "vertices": ["B"],
-                          "edges": [["A", "B"], ["B", "C"], ["B", "D"]]
+                      "id": "version-micro-graph-example",
+                      "createdAt": "2026-01-01T00:00:00.000Z",
+                      "source": "manual",
+                      "action": "generate",
+                      "request": "",
+                      "summary": "Versão inicial.",
+                      "cards": [
+                        {
+                          "position": 1,
+                          "resource": "graph",
+                          "kind": "theory",
+                          "exercise": "none",
+                          "title": "Ligação A-B",
+                          "prompt": "Observe a aresta destacada.",
+                          "vertices": [
+                            { "id": "A", "label": "A", "x": 20, "y": 40 },
+                            { "id": "B", "label": "B", "x": 80, "y": 40 }
+                          ],
+                          "edges": [
+                            { "from": "A", "to": "B", "label": "liga", "weight": "1" }
+                          ],
+                          "highlight": {
+                            "vertices": ["A"],
+                            "edges": [["A", "B"]]
+                          },
+                          "after": "A ligação destacada conecta `A` a `B`."
                         }
-                      }
-                    },
-                    {
-                      "key": "card-graph-dijkstra",
-                      "title": "Primeiro passo de Dijkstra",
-                      "say": "Use o grafo para localizar as menores distâncias iniciais e confira a tabela logo abaixo.",
-                      "graph": {
-                        "vertices": [
-                          { "id": "A", "x": 10, "y": 50 },
-                          { "id": "B", "x": 40, "y": 25 },
-                          { "id": "C", "x": 40, "y": 75 },
-                          { "id": "D", "x": 75, "y": 50 }
-                        ],
-                        "edges": [
-                          { "from": "A", "to": "B", "weight": 2 },
-                          { "from": "A", "to": "C", "weight": 1 },
-                          { "from": "B", "to": "D", "weight": 4 },
-                          { "from": "C", "to": "D", "weight": 3 }
-                        ],
-                        "highlight": {
-                          "vertices": ["A", "C"],
-                          "edges": [["A", "C"]]
-                        }
-                      }
-                    },
-                    {
-                      "key": "card-graph-table",
-                      "title": "Tabela do passo",
-                      "table": {
-                        "columns": ["Vértice", "Distância", "Vindo de", "Fechado?"],
-                        "rows": [
-                          ["A", "0", "—", "sim"],
-                          ["B", "2", "A", "não"],
-                          ["C", "1", "A", "não"],
-                          ["D", "∞", "—", "não"]
-                        ]
+                      ],
+                      "validation": {
+                        "ok": true,
+                        "issues": []
                       }
                     }
-                  ]
+                  ],
+                  "activeVersion": "version-micro-graph-example"
                 }
               ]
             }

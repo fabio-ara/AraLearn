@@ -1,16 +1,21 @@
+import { getActiveMicrosequenceVersion } from "../domain/microsequence.js";
+
 function nowIso(now = new Date()) {
   return now instanceof Date ? now.toISOString() : new Date(now).toISOString();
 }
 
 function cloneMicrosequenceContent(microsequence) {
+  const activeVersion = getActiveMicrosequenceVersion(microsequence);
   return {
     title: microsequence?.title || "",
-    ...(microsequence?.description ? { description: microsequence.description } : {}),
+    ...(microsequence?.goal ? { goal: microsequence.goal } : {}),
     ...(microsequence?.status ? { status: microsequence.status } : {}),
-    ...(Object.prototype.hasOwnProperty.call(microsequence || {}, "included") ? { included: microsequence.included === true } : {}),
     ...(microsequence?.role ? { role: microsequence.role } : {}),
-    tags: Array.isArray(microsequence?.tags) ? structuredClone(microsequence.tags) : [],
-    cards: Array.isArray(microsequence?.cards) ? structuredClone(microsequence.cards) : []
+    ...(microsequence?.branchOf ? { branchOf: microsequence.branchOf } : {}),
+    dependsOn: Array.isArray(microsequence?.dependsOn) ? structuredClone(microsequence.dependsOn) : [],
+    covers: Array.isArray(microsequence?.covers) ? structuredClone(microsequence.covers) : [],
+    checks: Array.isArray(microsequence?.checks) ? structuredClone(microsequence.checks) : [],
+    cards: Array.isArray(activeVersion?.cards) ? structuredClone(activeVersion.cards) : []
   };
 }
 
@@ -84,6 +89,30 @@ function normalizeParentVersionId(value, versions, fallbackIndex = -1) {
 function getLastVersion(entry) {
   const versions = Array.isArray(entry?.versions) ? entry.versions : [];
   return versions.at(-1) || null;
+}
+
+export function ensureStoredMicrosequenceVersionEntry(entries, versionKey, microsequence, { now = new Date() } = {}) {
+  const safeVersionKey = typeof versionKey === "string" ? versionKey.trim() : "";
+  if (!safeVersionKey || !microsequence || typeof microsequence !== "object") {
+    return null;
+  }
+
+  const currentEntry = entries?.[safeVersionKey];
+  if (currentEntry && Array.isArray(currentEntry.versions) && currentEntry.versions.length) {
+    return currentEntry;
+  }
+
+  const initialVersion = createMicrosequenceVersionRecord(microsequence, {
+    versionNumber: 1,
+    label: "Snapshot 1",
+    operationType: "snapshot",
+    now
+  });
+  entries[safeVersionKey] = {
+    activeVersionId: initialVersion.id,
+    versions: [initialVersion]
+  };
+  return entries[safeVersionKey];
 }
 
 export function createMicrosequenceVersionRecord(

@@ -1,86 +1,168 @@
 # Uso do app
 
-Este guia descreve o fluxo principal de uso do AraLearn: criar escopo, gerar trilha, abrir microssequência, materializar cards e revisar.
+Usar o AraLearn é passar de um tema amplo para uma etapa concreta de estudo. O fluxo do app foi desenhado para reduzir o atrito entre intenção, organização, materialização e revisão.
 
-## 1. Criar o escopo
+## 1. Definir o escopo
 
-O usuário começa informando:
+O primeiro passo é declarar o que será estudado.
 
-- título do curso ou tema;
-- objetivo opcional;
-- prioridade de evidências;
+Um escopo pode conter:
+
+- tema ou disciplina;
+- objetivo;
+- itens que devem entrar;
+- itens que devem ficar fora;
+- observações de prova, notação, fonte ou abordagem.
+
+Em termos práticos, o escopo responde a três perguntas:
+
+```text
+O que quero estudar?
+O que precisa entrar?
+O que precisa ficar fora?
+```
+
+## 2. Planejar a trilha
+
+Depois do escopo, o usuário pode pedir ao app uma proposta de trilha.
+
+Essa etapa cria:
+
+- curso;
 - módulos;
-- expressões do que entra em cada módulo;
-- expressões do que fica fora;
-- observações;
-- estilo de avaliação ou uso.
+- lições;
+- microssequências.
 
-Essas informações formam o contrato `aralearn.scope.v1`.
+Ela não cria cards. Sua função é organizar o caminho antes da produção do material local.
 
-O escopo pode ser preenchido manualmente ou importado como JSON válido.
+## 3. Navegar pela estrutura
 
-## 2. Gerar a trilha
-
-Ao solicitar a geração da trilha, o app deve:
-
-1. validar o contrato de escopo;
-2. chamar o provider configurado;
-3. validar a saída estrutural;
-4. aplicar o resultado ao projeto local.
-
-O resultado esperado é uma árvore com curso, módulos, lições e microssequências planejadas. Os cards ainda não precisam existir.
-
-## 3. Navegar pela árvore
-
-Depois da geração estrutural, o usuário navega por:
+A navegação segue a hierarquia do projeto:
 
 ```text
 curso -> módulo -> lição -> microssequência
 ```
 
-Cada microssequência possui status:
+Cada microssequência aparece com:
 
-- `planned`: planejada, ainda sem cards;
-- `generated`: possui uma versão de cards;
-- `needs_review`: recebeu alteração que pede revisão;
-- `ready`: foi considerada pronta pelo usuário.
+- título;
+- objetivo;
+- papel na trilha;
+- dependências;
+- tópicos cobertos;
+- critérios de verificação;
+- status.
 
-## 4. Estudar uma microssequência
+Os status possíveis são:
 
-Ao abrir uma microssequência, o usuário pode:
+- `planned`
+- `generated`
+- `needs_review`
+- `ready`
 
-- gerar cards;
-- melhorar explicação;
-- acrescentar prática;
-- criar complemento;
-- gerar a próxima microssequência;
-- marcar como pronta.
+## 4. Abrir uma microssequência
 
-Essas ações operam apenas sobre o ponto selecionado da trilha.
+Ao abrir uma microssequência, o usuário passa da estrutura ao trabalho local. É nessa etapa que o estudo deixa de ser apenas plano e vira material estudável.
 
-## 5. Revisar versões
+Quando uma intervenção é pedida, o app considera:
 
-Cada geração ou ajuste cria uma nova versão da microssequência. Isso permite comparar resultados e preservar histórico de intervenção.
+- a microssequência aberta;
+- suas dependências declaradas;
+- o `guide` ativo da lição ou do módulo;
+- referências escolhidas pelo usuário;
+- fontes anexadas e resolvidas explicitamente;
+- a próxima microssequência planejada, quando houver;
+- cards já existentes, se a operação for de correção.
 
-A versão ativa é a usada para estudo. Versões preservadas podem continuar disponíveis para inspeção ou recuperação.
+## 5. Escolher a ação local
 
-## 6. Criar complemento
+O trabalho local pode assumir quatro formas principais.
 
-Quando faltar uma etapa intermediária, o usuário pode criar uma microssequência de apoio.
+### Gerar cards na microssequência atual
 
-Esse complemento fica ligado à microssequência de origem e deve resolver uma lacuna local, sem refazer a organização inteira do curso.
+Usado quando a etapa ainda não tem cards ou quando o usuário quer uma nova versão.
 
-## 7. Configurar provider
+### Corrigir cards da microssequência atual
 
-A área de provider permite escolher e configurar:
+Usado quando já existe versão ativa e o usuário quer ajustar explicação, prática, recurso, feedback ou escopo.
 
-- Gemini;
-- OpenAI compatível;
-- Codex local;
-- Fake provider para testes.
+### Criar uma microssequência de apoio
 
-Dependendo do provider, o usuário informa modelo, chave de API, base URL, token ou endpoint local.
+Usado quando surge uma lacuna local que merece uma etapa própria. Essa etapa não substitui a trilha principal; ela ajuda o usuário a resolver a dificuldade e voltar ao percurso.
 
-## 8. Exportar e auditar
+### Gerar a próxima microssequência planejada
 
-Como o projeto segue contrato público, ele pode ser exportado, importado, validado e inspecionado. Isso preserva portabilidade e facilita avaliação técnica.
+Usado quando o usuário quer continuar a lição sem replanejar o curso inteiro.
+
+## 6. O que acontece durante a geração local
+
+Na experiência do usuário, a geração local pode ser entendida em três movimentos:
+
+1. o app delimita a intervenção;
+2. o serviço textual propõe forma e conteúdo;
+3. o app recompila, valida e salva apenas o que passou pelo contrato.
+
+Isso significa que a resposta não entra diretamente no projeto. Se houver problema de formato, de escopo ou de coerência didática mínima, o sistema tenta correção localizada ou simplesmente rejeita a saída.
+
+## 7. Acompanhar a execução
+
+Cada intervenção registra um histórico com etapa atual, estado e progresso. Em linguagem interna, o fluxo costuma passar por momentos como:
+
+```text
+prepare -> plan -> draft -> compile -> validate -> complete
+```
+
+Para o usuário, o ponto essencial é outro: o projeto anterior permanece íntegro mesmo quando a intervenção falha.
+
+## 8. Revisar versões
+
+Cada geração ou correção cria uma nova versão de cards para aquela microssequência. A versão ativa é a usada no estudo; versões anteriores continuam disponíveis para comparação, restauração ou auditoria.
+
+Isso permite melhorar uma etapa sem apagar automaticamente o que já existia.
+
+## 9. Estudar os cards
+
+Os cards podem usar texto, lacuna, múltipla escolha, código, tabela, matriz, plano, grafo, fluxograma, mapa de relações ou árvore.
+
+O app aplica validações mínimas antes de aceitar uma versão:
+
+- exercício textual deve ser fechado;
+- `choice` precisa de alternativas e resposta válida;
+- recursos visuais precisam de dados suficientes;
+- o contexto local necessário deve aparecer no próprio card;
+- a variação de caso deve existir quando o papel do card a exige.
+
+Essas regras não substituem revisão de conteúdo. Elas funcionam como piso de integridade do material persistido.
+
+## 10. Serviços de geração
+
+O AraLearn pode operar com serviços diferentes sem mudar o contrato do projeto. No estado atual, o repositório prevê integração com:
+
+- [DeepSeek API](https://api-docs.deepseek.com/);
+- [Gemini API](https://ai.google.dev/api/);
+- endpoints compatíveis com a interface de chat da OpenAI;
+- serviço local por linha de comando;
+- serviço falso para testes.
+
+A troca de serviço afeta custo, latência e comportamento do modelo, mas não altera o fluxo central do app.
+
+## 11. Persistência local
+
+O projeto é mantido localmente como referência primária. Isso significa que o material salvo continua disponível no dispositivo, pode ser exportado em JSON e não depende de um servidor central para existir como projeto.
+
+Quando o usuário usa um serviço remoto, apenas o contexto necessário para aquela intervenção é enviado ao serviço configurado.
+
+## Fluxo resumido
+
+```text
+definir escopo
+-> planejar a trilha
+-> abrir uma microssequência
+-> gerar ou corrigir cards
+-> estudar
+-> criar apoio local quando necessário
+-> voltar à trilha principal
+-> continuar
+```
+
+O app foi desenhado para reduzir a distância entre intenção de estudo e material utilizável: uma etapa concreta, ligada a uma trilha maior, pronta para revisão humana e persistida no próprio projeto.

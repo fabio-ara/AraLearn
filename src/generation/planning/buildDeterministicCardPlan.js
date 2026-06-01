@@ -1,72 +1,161 @@
-import { listGenerationResourceDefinitions } from "../resources/cardResourceDefinitions.js";
 import { getMicrosequenceSize } from "../types/microsequenceSizes.js";
-import { getMicrosequenceType } from "../types/microsequenceTypes.js";
-import { resolveResourcesForGenerationPlan } from "../didactics/microsequenceGenerationRepresentation.js";
 
-function normalizeText(value) {
+function text(value) {
   return typeof value === "string" ? value.trim() : "";
 }
 
-function splitSourceRefsAcrossPlan(sourceUsePlan = [], cardCount = 0) {
-  const sourceIds = (Array.isArray(sourceUsePlan) ? sourceUsePlan : [])
-    .map((item) => normalizeText(item?.sourceId))
-    .filter(Boolean);
-  if (sourceIds.length === 1) {
-    return Array.from({ length: cardCount }, () => [sourceIds[0]]);
-  }
-  return Array.from({ length: cardCount }, () => []);
+function isExplicitPracticeRole(role = "") {
+  return ["practice", "practice_more", "fix_error"].includes(text(role));
 }
 
-function pickPreferredResource(
-  preferredResources = [],
-  allowedResourceTypes = [],
-  prioritizedResourceTypes = [],
-  fallbackResourceType = "paragraph"
-) {
-  const allowed = new Set(allowedResourceTypes);
-  const prioritized = preferredResources.find(
-    (resourceType) => prioritizedResourceTypes.includes(resourceType) && allowed.has(resourceType)
-  );
-  return (
-    prioritized ||
-    preferredResources.find((resourceType) => allowed.has(resourceType)) ||
-    (allowed.has(fallbackResourceType) ? fallbackResourceType : allowedResourceTypes[0] || fallbackResourceType)
-  );
+function ensureMinimumPracticeRoles(roles = []) {
+  const nextRoles = [...roles];
+  if (nextRoles.length < 3) {
+    return nextRoles;
+  }
+  const explicitPracticeCount = nextRoles.filter((role) => isExplicitPracticeRole(role)).length;
+  if (explicitPracticeCount >= 2) {
+    return nextRoles;
+  }
+
+  const preferredInsertions = [];
+  if (!nextRoles.includes("practice")) {
+    preferredInsertions.push("practice");
+  }
+  if (!nextRoles.includes("practice_more")) {
+    preferredInsertions.push("practice_more");
+  }
+  if (!nextRoles.includes("fix_error")) {
+    preferredInsertions.push("fix_error");
+  }
+
+  preferredInsertions.forEach((nextRole) => {
+    if (nextRoles.filter((role) => isExplicitPracticeRole(role)).length >= 2) {
+      return;
+    }
+    for (let index = nextRoles.length - 1; index >= 1; index -= 1) {
+      if (isExplicitPracticeRole(nextRoles[index])) {
+        continue;
+      }
+      if (nextRoles[index] === "next" && index === nextRoles.length - 1) {
+        continue;
+      }
+      nextRoles[index] = nextRole;
+      break;
+    }
+  });
+
+  if (nextRoles.filter((role) => isExplicitPracticeRole(role)).length < 2) {
+    nextRoles[nextRoles.length - 2] = "practice";
+    nextRoles[nextRoles.length - 1] = "practice_more";
+  }
+
+  return nextRoles;
+}
+
+function resolveRoleTemplate(type = "", count = 5) {
+  const normalized = text(type);
+  const templates = {
+    concept: {
+      short: ["explain", "practice", "fix_error"],
+      medium: ["explain", "example", "practice", "practice_more", "next"],
+      long: ["explain", "example", "practice", "review", "practice_more", "fix_error", "practice_more", "next"]
+    },
+    procedure: {
+      short: ["explain", "practice", "practice_more"],
+      medium: ["explain", "example", "practice", "practice_more", "next"],
+      long: ["explain", "example", "practice", "review", "practice_more", "fix_error", "practice_more", "next"]
+    },
+    comparison: {
+      short: ["explain", "practice", "review"],
+      medium: ["explain", "example", "practice", "review", "next"],
+      long: ["explain", "example", "practice", "review", "practice_more", "fix_error", "review", "next"]
+    },
+    guided_practice: {
+      short: ["explain", "practice", "practice_more"],
+      medium: ["explain", "practice", "practice_more", "fix_error", "next"],
+      long: ["explain", "example", "practice", "practice_more", "fix_error", "practice_more", "review", "next"]
+    },
+    review: {
+      short: ["review", "practice", "practice_more"],
+      medium: ["review", "example", "practice", "practice_more", "next"],
+      long: ["review", "example", "practice", "review", "practice_more", "fix_error", "review", "next"]
+    },
+    common_mistake: {
+      short: ["explain", "fix_error", "practice"],
+      medium: ["explain", "example", "fix_error", "practice", "next"],
+      long: ["explain", "example", "fix_error", "review", "practice", "practice_more", "review", "next"]
+    },
+    rule_or_policy: {
+      short: ["explain", "practice", "review"],
+      medium: ["explain", "example", "practice", "review", "next"],
+      long: ["explain", "example", "practice", "review", "practice_more", "fix_error", "review", "next"]
+    },
+    code_or_command: {
+      short: ["explain", "practice", "practice_more"],
+      medium: ["explain", "example", "practice", "practice_more", "next"],
+      long: ["explain", "example", "practice", "review", "practice_more", "fix_error", "review", "next"]
+    }
+  };
+  const sizeKey = count >= 8 ? "long" : count <= 3 ? "short" : "medium";
+  const base = templates[normalized]?.[sizeKey] || templates.concept[sizeKey];
+  const result = ensureMinimumPracticeRoles(base.slice(0, count));
+  while (result.length < count) {
+    result.splice(Math.max(result.length - 1, 1), 0, "practice_more");
+  }
+  return result;
+}
+
+function resolveGoal(role, packet = {}) {
+  const microGoal = text(packet?.currentMicrosequence?.goal || packet?.goal || packet?.userRequest);
+  const guides = {
+    explain: "Explicar o ponto central sem abrir outro tópico.",
+    example: "Materializar um caso suficiente no próprio card.",
+    practice: "Cobrar a decisão principal em prática fechada.",
+    practice_more: "Variar a prática no mesmo eixo sem abrir novo assunto.",
+    fix_error: "Contrastar o erro provável com a leitura correta.",
+    review: "Retomar o núcleo da microssequência de forma objetiva.",
+    next: "Consolidar o ponto atual e preparar a continuidade."
+  };
+  return microGoal ? `${guides[role]} ${microGoal}`.trim() : guides[role];
+}
+
+function resolveChecks(role) {
+  const checks = {
+    explain: ["o card cobre só o ponto central"],
+    example: ["o exemplo materializa o contexto no próprio card"],
+    practice: ["há prática fechada verificável no próprio card"],
+    practice_more: ["a variação preserva o mesmo conceito"],
+    fix_error: ["os distratores representam erros plausíveis"],
+    review: ["o card retoma o ponto já explicado"],
+    next: []
+  };
+  return checks[role] || [];
+}
+
+function buildPlanItem(position, role, packet = {}) {
+  return {
+    position,
+    role,
+    goal: resolveGoal(role, packet),
+    checks: resolveChecks(role)
+  };
+}
+
+export function buildDidacticCardPlan(packet = {}, options = {}) {
+  const size = Math.max(1, Number(options?.targetCount) || 5);
+  const roles = resolveRoleTemplate(options?.type, size);
+  return roles.map((role, index) => buildPlanItem(index + 1, role, packet));
 }
 
 export function buildDeterministicCardPlan({
-  typeId,
-  sizeId,
-  selectedExtraResourceTypes = [],
-  userSelectedExtraResourceTypes = [],
-  lessonAllowedResourceTypes = [],
-  lessonGuidance = {},
-  lessonSourceGuideStructured = {},
-  modelCapabilities = {},
-  sourceUsePlan = [],
-  resourceCatalog = listGenerationResourceDefinitions()
+  type,
+  size,
+  packet = {}
 }) {
-  const type = getMicrosequenceType(typeId) || getMicrosequenceType("simple");
-  const size = getMicrosequenceSize(sizeId) || getMicrosequenceSize("short");
-  const planItems = type?.cardPlansBySize?.[size?.id] || type?.cardPlansBySize?.short || [];
-  const resources = resolveResourcesForGenerationPlan({
-    resolvedMicrosequenceTypeId: type?.id || "simple",
-    userSelectedExtraResourceTypes,
-    planSelectedExtraResourceTypes: selectedExtraResourceTypes,
-    lessonAllowedResourceTypes,
-    lessonGuidance,
-    lessonSourceGuideStructured,
-    modelCapabilities,
-    resourceCatalog
+  const selectedSize = getMicrosequenceSize(size) || getMicrosequenceSize("medium");
+  return buildDidacticCardPlan(packet, {
+    type,
+    targetCount: selectedSize?.cardCount || 5
   });
-  const distributedSourceRefs = splitSourceRefsAcrossPlan(sourceUsePlan, size.cardCount);
-  const prioritizedResourceTypes = [...userSelectedExtraResourceTypes, ...selectedExtraResourceTypes];
-
-  return planItems.slice(0, size.cardCount).map((item, index) => ({
-    position: index + 1,
-    role: normalizeText(item?.roleId) || `card_${index + 1}`,
-    label: normalizeText(item?.label) || `Card ${index + 1}`,
-    resourceType: pickPreferredResource(item?.preferredResources || [], resources.allowedResourceTypes, prioritizedResourceTypes),
-    sourceRefs: distributedSourceRefs[index] || []
-  }));
 }

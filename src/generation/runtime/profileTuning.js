@@ -1,7 +1,6 @@
 import { DEFAULT_ENGINE_PROFILE_ID, resolveEngineProfile } from "../config/engineProfileRegistry.js";
 import {
   buildCourseSemanticsForPolicy,
-  buildResourcePreferencesFromCourseModel,
   createDefaultCourseModel
 } from "./courseModelSemantics.js";
 
@@ -180,7 +179,6 @@ export function mapOperationalReappearanceLevelToValue(level, fallback = 4) {
 
 export function buildEngineProfileOverrides({ profileTuning = {} } = {}) {
   const courseSemantics = buildCourseSemanticsForPolicy(profileTuning?.courseModel || {});
-  const resourcePreferences = buildResourcePreferencesFromCourseModel(profileTuning?.courseModel || {});
   return {
     didacticPolicy: {
       targetStudentProfile: text(profileTuning?.targetStudentProfile),
@@ -197,8 +195,7 @@ export function buildEngineProfileOverrides({ profileTuning = {} } = {}) {
         requireCoreCoverageBeforeExtensions: profileTuning?.requireCoreCoverageBeforeExtensions !== false,
         requireVocabularyMap: profileTuning?.requireVocabularyMap !== false
       },
-      courseSemantics,
-      resourcePreferences
+      courseSemantics
     }
   };
 }

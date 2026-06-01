@@ -1,12 +1,6 @@
-import { buildMicrosequencePlanningPolicyLines } from "../didactics/microsequencePlanningPromptPolicy.js";
-
-export function buildMicrosequencePlanningPrompt(contract, modelCapabilities = contract?.model?.capabilities || {}) {
-  const compact = modelCapabilities?.preferShortSchemas !== false;
-  const body = compact ? JSON.stringify(contract) : JSON.stringify(contract, null, 2);
-
+export function buildMicrosequencePlanningPrompt(contract) {
   return [
-    ...buildMicrosequencePlanningPolicyLines(contract),
-    "Contrato:",
-    body
+    "Você receberá um contrato JSON. Devolva somente JSON válido no formato pedido.",
+    JSON.stringify(contract)
   ].join("\n");
 }
