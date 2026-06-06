@@ -18,10 +18,17 @@ Para evitar ambiguidade, a leitura recomendada é:
 
 ### Changed
 
-- o curso embarcado `Matemática para Informática` passa a ser reconstruído a partir do novo JSON oficial de `Teoria dos Grafos`, mantendo um único módulo com `11` lições, `72` microssequências e `505` cards
-- os textos visíveis do seed de `Matemática para Informática` foram saneados para remover referências de bastidor a prova e simulado, preservando o conteúdo didático
+- sem mudanças registradas
 
 ## Série pública atual (`0.1.x`)
+
+## [0.1.11] - 2026-06-06
+
+### Changed
+
+- entra o curso embarcado oficial `Framework Corporativo de IA Generativa`, com `8` módulos, `25` lições, `52` microssequências e `180` cards já materializados
+- o novo seed foi ajustado ao contrato atual de renderização, convertendo todos os cards `flow` do formato legado com `nodes` e `edges` para `structure` semântica válida
+- a trilha de formação continuada do novo curso foi revisada para alinhar nomes e encaminhamento das certificações e produtos Microsoft ao estado oficial atual, incluindo a transição de `AI-900` para `AI-901`
 
 ## [0.1.10] - 2026-05-28
 

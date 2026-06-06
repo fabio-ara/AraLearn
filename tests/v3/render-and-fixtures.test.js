@@ -677,10 +677,12 @@ test("o seed embutido oficial mantém os cursos embarcados já materializados", 
   const organizacaoCourse = project.courses.find(
     (course) => course.id === "course-organizacao-arquitetura-computadores"
   );
+  const frameworkCourse = project.courses.find((course) => course.id === "course-framework-ia-generativa");
 
   assert.ok(teoriaCourse);
   assert.ok(praticasCourse);
   assert.ok(organizacaoCourse);
+  assert.ok(frameworkCourse);
 
   const teoriaMicrosequences = teoriaCourse.modules
     .flatMap((moduleValue) => moduleValue.lessons || [])
@@ -726,6 +728,31 @@ test("o seed embutido oficial mantém os cursos embarcados já materializados", 
   assert.ok(organizacaoMicrosequences.length > 0);
   assert.equal(organizacaoMicrosequences.some((microsequence) => (microsequence.versions || []).length > 0), true);
   assert.equal(organizacaoMicrosequences.some((microsequence) => microsequence.activeVersion), true);
+
+  const frameworkMicrosequences = frameworkCourse.modules
+    .flatMap((moduleValue) => moduleValue.lessons || [])
+    .flatMap((lesson) => lesson.microsequences || []);
+
+  assert.equal(frameworkCourse.modules.length, 8);
+  assert.equal(frameworkCourse.modules.flatMap((moduleValue) => moduleValue.lessons || []).length, 25);
+  assert.equal(frameworkMicrosequences.length, 52);
+  assert.equal(
+    frameworkMicrosequences.reduce((count, microsequence) => {
+      const active =
+        (microsequence.versions || []).find((version) => version.id === microsequence.activeVersion) ||
+        (microsequence.versions || []).at(-1);
+      return count + ((active?.cards || []).length);
+    }, 0),
+    180
+  );
+  assert.equal(
+    frameworkMicrosequences
+      .flatMap((microsequence) => microsequence.versions || [])
+      .flatMap((version) => version.cards || [])
+      .filter((card) => card.resource === "flow")
+      .every((card) => card.structure && !("nodes" in card) && !("edges" in card)),
+    true
+  );
 });
 
 test("o seed de Matemática para Informática mantém textos visíveis focados no conteúdo", () => {
