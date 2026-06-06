@@ -1,11 +1,13 @@
 import { createTeoriaDosGrafosProvaCourse } from "./teoriaDosGrafosProvaSeedCourse.js";
 import { createPraticasFerramentasCourse } from "./praticasFerramentasSeedCourse.js";
 import { createOrganizacaoArquiteturaComputadoresCourse } from "./organizacaoArquiteturaComputadoresSeedCourse.js";
+import { createFrameworkIaGenerativaCourse } from "./frameworkIaGenerativaSeedCourse.js";
 
 const EMBEDDED_SEED_COURSE_FACTORIES = [
   createTeoriaDosGrafosProvaCourse,
   createPraticasFerramentasCourse,
-  createOrganizacaoArquiteturaComputadoresCourse
+  createOrganizacaoArquiteturaComputadoresCourse,
+  createFrameworkIaGenerativaCourse
 ];
 
 function createEmbeddedSeedCourses() {

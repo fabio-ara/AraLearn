@@ -1,0 +1,9622 @@
+const RAW_FRAMEWORK_IA_GENERATIVA_COURSE_JSON = String.raw`
+{
+  "contract": "aralearn.contract",
+  "version": 3,
+  "kind": "project",
+  "scope": "course",
+  "courses": [
+    {
+      "id": "course-framework-ia-generativa",
+      "title": "Framework Corporativo de IA Generativa",
+      "goal": "Preparar profissionais leigos em IA para participar de reuniões de implantação de um framework corporativo de IA generativa, compreendendo conceitos, ferramentas, riscos, custos, governança, dados, responsabilidades e critérios de decisão.",
+      "modules": [
+        {
+          "id": "module-1-framework-necessario",
+          "title": "Por que um framework de IA é necessário",
+          "guide": {
+            "goal": "Entender por que uma companhia de grande porte precisa de um framework corporativo de IA generativa, e não apenas de chatbots isolados.",
+            "include": [
+              "framework corporativo de IA",
+              "meta institucional de implantação",
+              "governança",
+              "segurança",
+              "geração de valor",
+              "redução de riscos",
+              "redução de retrabalho",
+              "auditabilidade",
+              "sustentabilidade",
+              "fases de implantação",
+              "diferença entre ferramenta e framework"
+            ],
+            "exclude": [
+              "nome real da organização",
+              "política oficial inventada",
+              "detalhes contratuais não fornecidos",
+              "valores monetários absolutos",
+              "programação"
+            ],
+            "notation": [
+              "Usar a sequência problema -> público -> dados -> risco -> ferramenta -> fonte oficial -> responsável -> custo -> monitoramento -> manutenção.",
+              "Usar companhia, organização ou companhia de grande porte."
+            ],
+            "avoid": []
+          },
+          "lessons": [
+            {
+              "id": "lesson-1-1-pergunta-certa",
+              "title": "A pergunta certa antes da ferramenta",
+              "guide": {
+                "goal": "Aprender a começar uma discussão de IA pelo problema institucional, não pela ferramenta.",
+                "include": [
+                  "framework corporativo",
+                  "chatbot",
+                  "governança",
+                  "ferramenta",
+                  "sequência de decisão"
+                ],
+                "exclude": [
+                  "nome real da organização",
+                  "detalhes contratuais não fornecidos",
+                  "programação"
+                ],
+                "notation": [
+                  "Usar a sequência problema -> público -> dados -> risco -> ferramenta -> fonte oficial -> responsável -> custo -> monitoramento -> manutenção."
+                ],
+                "avoid": []
+              },
+              "topics": [
+                {
+                  "id": "topic-framework-corporativo",
+                  "label": "framework corporativo de IA",
+                  "kind": "concept",
+                  "checks": [
+                    "distingue framework de ferramenta isolada"
+                  ],
+                  "errors": [
+                    "achar que framework é sinônimo de chatbot"
+                  ]
+                },
+                {
+                  "id": "topic-chatbot",
+                  "label": "chatbot",
+                  "kind": "term",
+                  "checks": [
+                    "reconhece chatbot como uma interface possível"
+                  ],
+                  "errors": [
+                    "tratar qualquer uso de IA como chatbot"
+                  ]
+                },
+                {
+                  "id": "topic-sequencia-decisao",
+                  "label": "sequência de decisão",
+                  "kind": "procedure",
+                  "checks": [
+                    "ordena perguntas antes da escolha de ferramenta"
+                  ],
+                  "errors": [
+                    "escolher ferramenta antes de conhecer dados e público"
+                  ]
+                }
+              ],
+              "microsequences": [
+                {
+                  "id": "micro-framework-nao-chatbot",
+                  "title": "Framework não é só chatbot",
+                  "goal": "Distinguir framework corporativo de IA de um chatbot isolado.",
+                  "role": "explain",
+                  "status": "generated",
+                  "branchOf": null,
+                  "dependsOn": [],
+                  "covers": [
+                    "framework corporativo",
+                    "chatbot",
+                    "governança",
+                    "ferramenta"
+                  ],
+                  "checks": [
+                    "distingue framework de chatbot",
+                    "identifica componentes mínimos de um framework",
+                    "evita a conclusão temos Copilot logo temos IA corporativa"
+                  ],
+                  "versions": [
+                    {
+                      "id": "version-001",
+                      "createdAt": "2026-06-06T00:00:00.000Z",
+                      "source": "llm",
+                      "action": "generate",
+                      "request": "Primeira versão da microssequência.",
+                      "summary": "Conceitos e práticas sobre framework corporativo, chatbot, governança, ferramenta.",
+                      "cards": [
+                        {
+                          "id": "micro-framework-nao-chatbot-card-01",
+                          "position": 1,
+                          "resource": "paragraph",
+                          "kind": "theory",
+                          "exercise": "none",
+                          "title": "Framework é o conjunto de decisões",
+                          "text": "Um framework corporativo de IA generativa é o conjunto de regras, papéis, ferramentas, aprovações, controles, custos, métricas e responsabilidades que orienta o uso de IA na companhia.",
+                          "after": "A definição mostra que a ferramenta é apenas uma parte. O framework também precisa dizer quem decide, quem valida, quem mantém e como o uso será monitorado."
+                        },
+                        {
+                          "id": "micro-framework-nao-chatbot-card-02",
+                          "position": 2,
+                          "resource": "table",
+                          "kind": "theory",
+                          "exercise": "none",
+                          "title": "Chatbot e framework em comparação",
+                          "columns": [
+                            "Elemento",
+                            "Chatbot isolado",
+                            "Framework corporativo"
+                          ],
+                          "rows": [
+                            [
+                              "Escopo",
+                              "Uma interface de conversa",
+                              "Conjunto de regras, papéis, fluxos e controles"
+                            ],
+                            [
+                              "Risco",
+                              "Pode ficar pouco visível",
+                              "É classificado antes da implantação"
+                            ],
+                            [
+                              "Responsabilidade",
+                              "Frequentemente indefinida",
+                              "Atribuída por papel e por caso de uso"
+                            ],
+                            [
+                              "Sustentação",
+                              "Depende de iniciativa local",
+                              "Inclui manutenção, métricas e revisão"
+                            ]
+                          ],
+                          "after": "A comparação evita a ideia de que colocar uma conversa em produção já resolve governança, segurança e valor institucional."
+                        },
+                        {
+                          "id": "micro-framework-nao-chatbot-card-03",
+                          "position": 3,
+                          "resource": "choice",
+                          "kind": "exercise",
+                          "exercise": "choice",
+                          "title": "Proposta incompleta",
+                          "question": "Uma área afirma: “já temos uma ferramenta de conversa, então já temos IA corporativa”. Qual resposta é mais adequada em uma reunião?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "text": "Produtividade individual com IA pode ajudar, mas não substitui framework corporativo com governança, fontes, responsáveis, custos e monitoramento."
+                            },
+                            {
+                              "id": "b",
+                              "text": "A afirmação está correta porque qualquer ferramenta de conversa já resolve o uso institucional de IA."
+                            },
+                            {
+                              "id": "c",
+                              "text": "A ferramenta deve ser publicada primeiro, e governança pode ser discutida apenas se houver erro."
+                            },
+                            {
+                              "id": "d",
+                              "text": "Basta pedir que cada área crie seu próprio agente sem padrão comum."
+                            }
+                          ],
+                          "answer": "a",
+                          "after": "Ferramenta e framework resolvem problemas diferentes: a ferramenta viabiliza uma solução, enquanto o framework define governança, fonte oficial, responsabilidade, custos e controle comum."
+                        },
+                        {
+                          "id": "micro-framework-nao-chatbot-card-04",
+                          "position": 4,
+                          "resource": "paragraph",
+                          "kind": "exercise",
+                          "exercise": "gap",
+                          "title": "Completar a ideia central",
+                          "text": "Em uma companhia de grande porte, o ponto de partida não é “qual chatbot usar”, mas [[framework::framework|ferramenta isolada|lista de prompts]] corporativo com regras, papéis, controles e responsabilidades.",
+                          "after": "Framework reúne decisões institucionais sobre papéis, controles, fontes, custos e manutenção; atalhos isolados e campanhas educativas não sustentam a operação."
+                        }
+                      ],
+                      "validation": {
+                        "ok": true,
+                        "issues": []
+                      }
+                    }
+                  ],
+                  "activeVersion": "version-001"
+                },
+                {
+                  "id": "micro-sequencia-de-decisao",
+                  "title": "A sequência de decisão",
+                  "goal": "Aplicar a sequência institucional de perguntas antes de aprovar um caso de IA.",
+                  "role": "practice",
+                  "status": "generated",
+                  "branchOf": null,
+                  "dependsOn": [
+                    "micro-framework-nao-chatbot"
+                  ],
+                  "covers": [
+                    "problema",
+                    "público",
+                    "dados",
+                    "risco",
+                    "ferramenta",
+                    "fonte oficial",
+                    "responsável",
+                    "custo",
+                    "monitoramento",
+                    "manutenção"
+                  ],
+                  "checks": [
+                    "ordena o raciocínio institucional",
+                    "reconhece etapa ausente em proposta de IA"
+                  ],
+                  "versions": [
+                    {
+                      "id": "version-001",
+                      "createdAt": "2026-06-06T00:00:00.000Z",
+                      "source": "llm",
+                      "action": "generate",
+                      "request": "Primeira versão da microssequência.",
+                      "summary": "Conceitos e práticas sobre problema, público, dados, risco, ferramenta, fonte oficial, responsável, custo, monitoramento, manutenção.",
+                      "cards": [
+                        {
+                          "id": "micro-sequencia-de-decisao-card-01",
+                          "position": 1,
+                          "resource": "flow",
+                          "kind": "theory",
+                          "exercise": "none",
+                          "title": "Sequência mínima para decidir",
+                          "prompt": "Use a sequência para não começar pela ferramenta.",
+                          "structure": {
+                            "id": "flow-struct-12",
+                            "kind": "sequence",
+                            "items": [
+                              {
+                                "id": "flow-struct-13",
+                                "kind": "start",
+                                "text": "Definir o problema institucional"
+                              },
+                              {
+                                "id": "flow-struct-14",
+                                "kind": "process",
+                                "text": "Identificar o público"
+                              },
+                              {
+                                "id": "flow-struct-15",
+                                "kind": "process",
+                                "text": "Mapear os dados"
+                              },
+                              {
+                                "id": "flow-struct-16",
+                                "kind": "process",
+                                "text": "Classificar o risco"
+                              },
+                              {
+                                "id": "flow-struct-17",
+                                "kind": "process",
+                                "text": "Escolher a ferramenta"
+                              },
+                              {
+                                "id": "flow-struct-18",
+                                "kind": "process",
+                                "text": "Definir a fonte oficial"
+                              },
+                              {
+                                "id": "flow-struct-19",
+                                "kind": "process",
+                                "text": "Nomear o responsável"
+                              },
+                              {
+                                "id": "flow-struct-20",
+                                "kind": "process",
+                                "text": "Estimar o custo"
+                              },
+                              {
+                                "id": "flow-struct-21",
+                                "kind": "process",
+                                "text": "Definir o monitoramento"
+                              },
+                              {
+                                "id": "flow-struct-22",
+                                "kind": "end",
+                                "text": "Planejar a manutenção"
+                              }
+                            ]
+                          },
+                          "after": "A ordem reduz decisões prematuras. A ferramenta aparece depois de problema, público, dados e risco."
+                        },
+                        {
+                          "id": "micro-sequencia-de-decisao-card-02",
+                          "position": 2,
+                          "resource": "flow",
+                          "kind": "exercise",
+                          "exercise": "choice",
+                          "title": "Etapa ausente",
+                          "question": "Qual pergunta ainda falta antes de avançar para implantação?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "text": "Quem será responsável por validar, manter e corrigir o caso depois da publicação?"
+                            },
+                            {
+                              "id": "b",
+                              "text": "Qual cor será usada na interface de conversa?"
+                            },
+                            {
+                              "id": "c",
+                              "text": "Qual nome comercial será usado para divulgar o agente?"
+                            },
+                            {
+                              "id": "d",
+                              "text": "Como aumentar o escopo antes de testar o caso?"
+                            }
+                          ],
+                          "answer": "a",
+                          "prompt": "Uma proposta diz: problema definido, público interno, dados identificados, risco médio, ferramenta sugerida, fonte oficial definida e custo estimado.",
+                          "structure": {
+                            "id": "flow-struct-31",
+                            "kind": "sequence",
+                            "items": [
+                              {
+                                "id": "flow-struct-32",
+                                "kind": "process",
+                                "text": "Problema"
+                              },
+                              {
+                                "id": "flow-struct-33",
+                                "kind": "process",
+                                "text": "Público"
+                              },
+                              {
+                                "id": "flow-struct-34",
+                                "kind": "process",
+                                "text": "Dados"
+                              },
+                              {
+                                "id": "flow-struct-35",
+                                "kind": "process",
+                                "text": "Risco"
+                              },
+                              {
+                                "id": "flow-struct-36",
+                                "kind": "process",
+                                "text": "Ferramenta"
+                              },
+                              {
+                                "id": "flow-struct-37",
+                                "kind": "process",
+                                "text": "Fonte oficial"
+                              },
+                              {
+                                "id": "flow-struct-38",
+                                "kind": "end",
+                                "text": "Custo"
+                              }
+                            ]
+                          },
+                          "after": "A sequência segura começa pelo problema e pelo público, passa por dados e risco, e só então trata de ferramenta, fonte, responsável, custo e operação."
+                        },
+                        {
+                          "id": "micro-sequencia-de-decisao-card-03",
+                          "position": 3,
+                          "resource": "paragraph",
+                          "kind": "exercise",
+                          "exercise": "gap",
+                          "title": "Ordem segura",
+                          "text": "A sequência segura começa por problema e público, passa por dados e risco, e só então discute [[ferramenta::ferramenta|divulgação|preferência]].",
+                          "after": "Ferramenta vem depois da classificação do caso. Divulgação e preferência podem distorcer a decisão se aparecerem antes dos critérios."
+                        }
+                      ],
+                      "validation": {
+                        "ok": true,
+                        "issues": []
+                      }
+                    }
+                  ],
+                  "activeVersion": "version-001"
+                }
+              ]
+            },
+            {
+              "id": "lesson-1-2-meta-quatro-fases",
+              "title": "A meta institucional em quatro fases",
+              "guide": {
+                "goal": "Entender as quatro fases de referência para implantar um framework corporativo de IA generativa.",
+                "include": [
+                  "comitê de IA",
+                  "avaliação de maturidade",
+                  "política de IA",
+                  "reuniões periódicas",
+                  "soluções piloto",
+                  "reavaliação"
+                ],
+                "exclude": [
+                  "nome real da organização",
+                  "política oficial inventada",
+                  "detalhes contratuais não fornecidos"
+                ],
+                "notation": [
+                  "Chamar as etapas de Fase 1, Fase 2, Fase 3 e Fase 4."
+                ],
+                "avoid": []
+              },
+              "topics": [
+                {
+                  "id": "topic-comite-ia",
+                  "label": "comitê de IA",
+                  "kind": "concept",
+                  "checks": [
+                    "identifica papel de coordenação e análise de casos"
+                  ],
+                  "errors": [
+                    "tratar o comitê como equipe técnica única"
+                  ]
+                },
+                {
+                  "id": "topic-maturidade-ia",
+                  "label": "avaliação de maturidade",
+                  "kind": "procedure",
+                  "checks": [
+                    "associa maturidade a diagnóstico e reavaliação"
+                  ],
+                  "errors": [
+                    "confundir maturidade com entrega de chatbot"
+                  ]
+                },
+                {
+                  "id": "topic-fases-implantacao",
+                  "label": "fases de implantação",
+                  "kind": "representation",
+                  "checks": [
+                    "associa cada fase às entregas esperadas"
+                  ],
+                  "errors": [
+                    "trocar política, reunião e solução implantada"
+                  ]
+                }
+              ],
+              "microsequences": [
+                {
+                  "id": "micro-fases-implantacao",
+                  "title": "Quatro fases da implantação",
+                  "goal": "Associar cada fase da implantação ao tipo de entrega esperada.",
+                  "role": "explain",
+                  "status": "generated",
+                  "branchOf": null,
+                  "dependsOn": [],
+                  "covers": [
+                    "comitê de IA",
+                    "avaliação de maturidade",
+                    "política de IA",
+                    "reuniões periódicas",
+                    "soluções piloto",
+                    "reavaliação"
+                  ],
+                  "checks": [
+                    "associa cada fase ao tipo de entrega",
+                    "distingue maturidade política reunião e solução implantada"
+                  ],
+                  "versions": [
+                    {
+                      "id": "version-001",
+                      "createdAt": "2026-06-06T00:00:00.000Z",
+                      "source": "llm",
+                      "action": "generate",
+                      "request": "Primeira versão da microssequência.",
+                      "summary": "Conceitos e práticas sobre comitê de IA, avaliação de maturidade, política de IA, reuniões periódicas, soluções piloto, reavaliação.",
+                      "cards": [
+                        {
+                          "id": "micro-fases-implantacao-card-01",
+                          "position": 1,
+                          "resource": "flow",
+                          "kind": "theory",
+                          "exercise": "none",
+                          "title": "Mapa das fases",
+                          "prompt": "As fases organizam a implantação do framework.",
+                          "structure": {
+                            "id": "flow-struct-44",
+                            "kind": "sequence",
+                            "items": [
+                              {
+                                "id": "flow-struct-45",
+                                "kind": "start",
+                                "text": "Fase 1: comitê, maturidade e proposta de política"
+                              },
+                              {
+                                "id": "flow-struct-46",
+                                "kind": "process",
+                                "text": "Fase 2: reuniões periódicas e educação"
+                              },
+                              {
+                                "id": "flow-struct-47",
+                                "kind": "process",
+                                "text": "Fase 3: duas soluções com prompts ou agentes"
+                              },
+                              {
+                                "id": "flow-struct-48",
+                                "kind": "end",
+                                "text": "Fase 4: reavaliação e mais duas soluções"
+                              }
+                            ]
+                          },
+                          "after": "O fluxo separa preparação institucional, discussão recorrente, implantação inicial e expansão com nova avaliação."
+                        },
+                        {
+                          "id": "micro-fases-implantacao-card-02",
+                          "position": 2,
+                          "resource": "table",
+                          "kind": "theory",
+                          "exercise": "none",
+                          "title": "Entregas por fase",
+                          "columns": [
+                            "Fase",
+                            "Entrega principal",
+                            "Tipo de pergunta útil"
+                          ],
+                          "rows": [
+                            [
+                              "1",
+                              "Comitê, maturidade e proposta de política",
+                              "Quem participa e qual diagnóstico inicial?"
+                            ],
+                            [
+                              "2",
+                              "Reuniões e conteúdos educativos",
+                              "Quais casos têm valor e baixo risco para triagem?"
+                            ],
+                            [
+                              "3",
+                              "Duas soluções implantadas",
+                              "Como validar, medir e sustentar os pilotos?"
+                            ],
+                            [
+                              "4",
+                              "Nova maturidade e mais duas soluções",
+                              "O que melhorou e o que deve escalar?"
+                            ]
+                          ],
+                          "after": "Cada fase produz evidências diferentes. Nem toda fase entrega uma solução publicada."
+                        },
+                        {
+                          "id": "micro-fases-implantacao-card-03",
+                          "position": 3,
+                          "resource": "choice",
+                          "kind": "exercise",
+                          "exercise": "choice",
+                          "title": "Reconhecer a fase",
+                          "question": "A companhia já formou o comitê, fez diagnóstico inicial e passou a realizar encontros periódicos para analisar casos de prompts e agentes. Qual fase combina melhor com essa situação?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "text": "Fase 2."
+                            },
+                            {
+                              "id": "b",
+                              "text": "Fase 1."
+                            },
+                            {
+                              "id": "c",
+                              "text": "Fase 3."
+                            },
+                            {
+                              "id": "d",
+                              "text": "Fase 4."
+                            }
+                          ],
+                          "answer": "a",
+                          "after": "A Fase 2 envolve reuniões periódicas e educação. A Fase 1 prepara a base, a Fase 3 implanta soluções iniciais e a Fase 4 reavalia e expande."
+                        },
+                        {
+                          "id": "micro-fases-implantacao-card-04",
+                          "position": 4,
+                          "resource": "paragraph",
+                          "kind": "exercise",
+                          "exercise": "gap",
+                          "title": "Marco de maturidade",
+                          "text": "A maturidade em IA deve ser avaliada no início e reavaliada depois de implantações, para comparar avanço com [[evidência::evidência|opinião|pressa]].",
+                          "after": "Evidência sustenta a decisão. Opinião ou pressa podem ocultar riscos, custos e falhas de governança."
+                        }
+                      ],
+                      "validation": {
+                        "ok": true,
+                        "issues": []
+                      }
+                    }
+                  ],
+                  "activeVersion": "version-001"
+                },
+                {
+                  "id": "micro-papel-do-aluno-nas-reunioes",
+                  "title": "Como participar das reuniões",
+                  "goal": "Escolher perguntas úteis para cada tipo de reunião de implantação.",
+                  "role": "practice",
+                  "status": "generated",
+                  "branchOf": null,
+                  "dependsOn": [
+                    "micro-fases-implantacao"
+                  ],
+                  "covers": [
+                    "perguntas úteis",
+                    "participação em comitê",
+                    "triagem de casos",
+                    "avaliação de risco"
+                  ],
+                  "checks": [
+                    "escolhe pergunta adequada para cada fase",
+                    "reconhece quando deve pedir fonte dono custo ou controle"
+                  ],
+                  "versions": [
+                    {
+                      "id": "version-001",
+                      "createdAt": "2026-06-06T00:00:00.000Z",
+                      "source": "llm",
+                      "action": "generate",
+                      "request": "Primeira versão da microssequência.",
+                      "summary": "Conceitos e práticas sobre perguntas úteis, participação em comitê, triagem de casos, avaliação de risco.",
+                      "cards": [
+                        {
+                          "id": "micro-papel-do-aluno-nas-reunioes-card-01",
+                          "position": 1,
+                          "resource": "table",
+                          "kind": "theory",
+                          "exercise": "none",
+                          "title": "Perguntas que ajudam a reunião",
+                          "columns": [
+                            "Situação",
+                            "Pergunta segura"
+                          ],
+                          "rows": [
+                            [
+                              "Triagem de caso",
+                              "Qual problema será resolvido e para quem?"
+                            ],
+                            [
+                              "Discussão de dados",
+                              "Há dado pessoal, sensível, restrito ou sigiloso?"
+                            ],
+                            [
+                              "Escolha de ferramenta",
+                              "O caso apenas responde, consulta sistema ou executa ação?"
+                            ],
+                            [
+                              "Acompanhamento",
+                              "Quais métricas, logs e responsáveis estão definidos?"
+                            ]
+                          ],
+                          "after": "Boas perguntas reduzem ambiguidades antes de decisões técnicas ou institucionais."
+                        },
+                        {
+                          "id": "micro-papel-do-aluno-nas-reunioes-card-02",
+                          "position": 2,
+                          "resource": "choice",
+                          "kind": "exercise",
+                          "exercise": "choice",
+                          "title": "Pedido genérico de agente",
+                          "question": "Em uma reunião, uma área pede “um agente para ajudar o atendimento” sem explicar fonte, público ou dados. Qual intervenção é mais adequada?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "text": "Pedir a definição de problema, público, dados, fonte oficial e responsável antes de discutir ferramenta."
+                            },
+                            {
+                              "id": "b",
+                              "text": "Aprovar um piloto imediatamente porque todo atendimento se beneficia de IA."
+                            },
+                            {
+                              "id": "c",
+                              "text": "Escolher a ferramenta mais simples para acelerar a publicação."
+                            },
+                            {
+                              "id": "d",
+                              "text": "Permitir que a área publique primeiro e documente depois."
+                            }
+                          ],
+                          "answer": "a",
+                          "after": "A intervenção qualifica o caso antes da ferramenta, pois fonte, público, dados e responsável definem risco, validação e viabilidade."
+                        },
+                        {
+                          "id": "micro-papel-do-aluno-nas-reunioes-card-03",
+                          "position": 3,
+                          "resource": "choice",
+                          "kind": "exercise",
+                          "exercise": "choice",
+                          "title": "Momento de pedir custo",
+                          "question": "Uma proposta já definiu problema, público, fonte oficial, risco, ferramenta provável e responsável. O que faz sentido perguntar antes da aprovação do piloto?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "text": "Quais componentes de custo serão acompanhados, incluindo uso, busca, armazenamento, logs e ambiente?"
+                            },
+                            {
+                              "id": "b",
+                              "text": "Qual nome de fantasia terá o agente?"
+                            },
+                            {
+                              "id": "c",
+                              "text": "Como eliminar qualquer validação humana?"
+                            },
+                            {
+                              "id": "d",
+                              "text": "Como ampliar para todos os canais antes do teste?"
+                            }
+                          ],
+                          "answer": "a",
+                          "after": "Quando o desenho básico existe, custo e monitoramento entram na decisão. Nome, eliminação de validação e ampliação prematura desviam do controle."
+                        }
+                      ],
+                      "validation": {
+                        "ok": true,
+                        "issues": []
+                      }
+                    }
+                  ],
+                  "activeVersion": "version-001"
+                }
+              ]
+            },
+            {
+              "id": "lesson-1-3-valor-risco-responsabilidade",
+              "title": "Valor, risco e responsabilidade",
+              "guide": {
+                "goal": "Relacionar ganho esperado, risco institucional e responsabilidade de sustentação.",
+                "include": [
+                  "produtividade",
+                  "qualidade",
+                  "rapidez",
+                  "riscos operacionais",
+                  "riscos jurídicos",
+                  "riscos reputacionais",
+                  "priorização"
+                ],
+                "exclude": [
+                  "nome real da organização",
+                  "valores monetários absolutos",
+                  "política oficial inventada"
+                ],
+                "notation": [
+                  "Usar valor e risco como eixos de priorização."
+                ],
+                "avoid": []
+              },
+              "topics": [
+                {
+                  "id": "topic-valor-institucional",
+                  "label": "geração de valor",
+                  "kind": "concept",
+                  "checks": [
+                    "identifica ganho esperado em cenário de IA"
+                  ],
+                  "errors": [
+                    "confundir ganho local com valor institucional"
+                  ]
+                },
+                {
+                  "id": "topic-risco-institucional",
+                  "label": "risco institucional",
+                  "kind": "concept",
+                  "checks": [
+                    "associa risco operacional, jurídico e reputacional"
+                  ],
+                  "errors": [
+                    "ignorar risco quando o caso parece simples"
+                  ]
+                },
+                {
+                  "id": "topic-priorizacao-valor-risco",
+                  "label": "priorização por valor e risco",
+                  "kind": "procedure",
+                  "checks": [
+                    "escolhe piloto com valor e risco controlado"
+                  ],
+                  "errors": [
+                    "escolher piloto de alto risco para começar"
+                  ]
+                }
+              ],
+              "microsequences": [
+                {
+                  "id": "micro-valor-e-risco",
+                  "title": "Ganho de valor não elimina risco",
+                  "goal": "Identificar ganho esperado e risco associado em cenários de IA.",
+                  "role": "explain",
+                  "status": "generated",
+                  "branchOf": null,
+                  "dependsOn": [],
+                  "covers": [
+                    "produtividade",
+                    "qualidade",
+                    "rapidez",
+                    "riscos operacionais",
+                    "riscos jurídicos",
+                    "riscos reputacionais"
+                  ],
+                  "checks": [
+                    "identifica ganho esperado e risco associado em cenários de IA"
+                  ],
+                  "versions": [
+                    {
+                      "id": "version-001",
+                      "createdAt": "2026-06-06T00:00:00.000Z",
+                      "source": "llm",
+                      "action": "generate",
+                      "request": "Primeira versão da microssequência.",
+                      "summary": "Conceitos e práticas sobre produtividade, qualidade, rapidez, riscos operacionais, riscos jurídicos, riscos reputacionais.",
+                      "cards": [
+                        {
+                          "id": "micro-valor-e-risco-card-01",
+                          "position": 1,
+                          "resource": "table",
+                          "kind": "theory",
+                          "exercise": "none",
+                          "title": "Valor e risco caminham juntos",
+                          "columns": [
+                            "Cenário",
+                            "Valor possível",
+                            "Risco que precisa ser controlado"
+                          ],
+                          "rows": [
+                            [
+                              "Resumo de atas internas",
+                              "Reduz retrabalho e acelera a análise inicial",
+                              "Resumo pode omitir decisão importante"
+                            ],
+                            [
+                              "FAQ interno sobre norma geral",
+                              "Padroniza orientação",
+                              "Fonte desatualizada pode induzir erro"
+                            ],
+                            [
+                              "Canal externo de atendimento",
+                              "Aumenta disponibilidade",
+                              "Erro pode gerar orientação institucional indevida"
+                            ],
+                            [
+                              "Agente que altera cadastro",
+                              "Acelera processo",
+                              "Ação errada pode afetar direito ou operação"
+                            ]
+                          ],
+                          "after": "Valor não anula risco. Quanto maior o impacto da resposta ou da ação, mais fortes devem ser validação, logs e responsável."
+                        },
+                        {
+                          "id": "micro-valor-e-risco-card-02",
+                          "position": 2,
+                          "resource": "choice",
+                          "kind": "exercise",
+                          "exercise": "choice",
+                          "title": "Ganho com cuidado",
+                          "question": "Uma equipe técnica quer usar IA para resumir documentos longos e apontar pendências antes de reuniões. O ganho provável é alto. Qual cuidado é mais adequado?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "text": "Validar se o resumo cita fonte e se as pendências são conferidas por pessoa responsável antes de decisão."
+                            },
+                            {
+                              "id": "b",
+                              "text": "Aceitar todo resumo como decisão final porque a IA economiza tempo."
+                            },
+                            {
+                              "id": "c",
+                              "text": "Evitar qualquer uso de IA porque todo resumo é perigoso."
+                            },
+                            {
+                              "id": "d",
+                              "text": "Publicar o resumo automaticamente para público externo."
+                            }
+                          ],
+                          "answer": "a",
+                          "after": "O uso pode gerar valor, mas precisa de verificação. Aceitação cega, bloqueio total e publicação externa automática são respostas desproporcionais."
+                        },
+                        {
+                          "id": "micro-valor-e-risco-card-03",
+                          "position": 3,
+                          "resource": "paragraph",
+                          "kind": "exercise",
+                          "exercise": "gap",
+                          "title": "Critério equilibrado",
+                          "text": "Um caso de IA deve ser avaliado por valor e [[risco::risco|velocidade de publicação|preferência por ferramenta]], porque produtividade sem controle pode gerar dano institucional.",
+                          "after": "Risco é o critério que equilibra benefício e responsabilidade; ganho de produtividade sem controle pode gerar dano operacional, jurídico ou reputacional."
+                        },
+                        {
+                          "id": "micro-valor-e-risco-card-04",
+                          "position": 4,
+                          "resource": "choice",
+                          "kind": "exercise",
+                          "exercise": "choice",
+                          "title": "Frase segura",
+                          "question": "Em reunião, alguém diz que o caso deve avançar porque economiza tempo. Qual frase é mais segura?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "text": "O ganho de tempo é relevante, mas precisamos classificar dados, público, risco, fonte oficial e responsável antes de publicar."
+                            },
+                            {
+                              "id": "b",
+                              "text": "Se economiza tempo, o risco deixa de importar."
+                            },
+                            {
+                              "id": "c",
+                              "text": "O valor só pode ser discutido depois de escolher a ferramenta."
+                            },
+                            {
+                              "id": "d",
+                              "text": "A responsabilidade é sempre de quem usa a resposta, sem necessidade de controle."
+                            }
+                          ],
+                          "answer": "a",
+                          "after": "Ganho de tempo é relevante, mas a decisão institucional também depende de dados, público, risco, fonte oficial e responsabilidade."
+                        }
+                      ],
+                      "validation": {
+                        "ok": true,
+                        "issues": []
+                      }
+                    }
+                  ],
+                  "activeVersion": "version-001"
+                },
+                {
+                  "id": "micro-mapa-valor-risco",
+                  "title": "Priorização por valor e risco",
+                  "goal": "Usar um plano valor-risco para escolher pilotos com escopo controlado.",
+                  "role": "practice",
+                  "status": "generated",
+                  "branchOf": null,
+                  "dependsOn": [
+                    "micro-valor-e-risco"
+                  ],
+                  "covers": [
+                    "priorização",
+                    "valor",
+                    "risco",
+                    "piloto",
+                    "caso crítico"
+                  ],
+                  "checks": [
+                    "interpreta posição em plano valor-risco",
+                    "escolhe prioridade de piloto com justificativa objetiva no feedback"
+                  ],
+                  "versions": [
+                    {
+                      "id": "version-001",
+                      "createdAt": "2026-06-06T00:00:00.000Z",
+                      "source": "llm",
+                      "action": "generate",
+                      "request": "Primeira versão da microssequência.",
+                      "summary": "Conceitos e práticas sobre priorização, valor, risco, piloto, caso crítico.",
+                      "cards": [
+                        {
+                          "id": "micro-mapa-valor-risco-card-01",
+                          "position": 1,
+                          "resource": "plane",
+                          "kind": "theory",
+                          "exercise": "none",
+                          "title": "Plano valor-risco",
+                          "prompt": "Eixo horizontal representa valor institucional de 1 a 5; eixo vertical representa risco de 1 a 5. Pontos: checklist interno=(3,1), FAQ com fonte oficial=(4,2), atendimento público anônimo=(5,4), alteração de cadastro=(4,5).",
+                          "vectors": [
+                            [
+                              3,
+                              1
+                            ],
+                            [
+                              4,
+                              2
+                            ],
+                            [
+                              5,
+                              4
+                            ],
+                            [
+                              4,
+                              5
+                            ]
+                          ],
+                          "after": "Pontos com valor alto e risco controlado tendem a ser melhores pilotos. Pontos com risco alto exigem mais desenho, validação e controle."
+                        },
+                        {
+                          "id": "micro-mapa-valor-risco-card-02",
+                          "position": 2,
+                          "resource": "plane",
+                          "kind": "exercise",
+                          "exercise": "choice",
+                          "title": "Escolha de primeiro piloto",
+                          "question": "Qual caso é o melhor primeiro piloto, considerando valor visível e risco controlado?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "text": "FAQ interno com fonte oficial."
+                            },
+                            {
+                              "id": "b",
+                              "text": "Agente que altera cadastro."
+                            },
+                            {
+                              "id": "c",
+                              "text": "Canal público anônimo."
+                            },
+                            {
+                              "id": "d",
+                              "text": "Qualquer caso, porque todos usam IA."
+                            }
+                          ],
+                          "answer": "a",
+                          "prompt": "Eixo horizontal representa valor de 1 a 5; eixo vertical representa risco de 1 a 5. Pontos: checklist interno=(3,1), FAQ interno com fonte oficial=(4,2), canal público anônimo=(5,4), agente que altera cadastro=(4,5).",
+                          "vectors": [
+                            [
+                              3,
+                              1
+                            ],
+                            [
+                              4,
+                              2
+                            ],
+                            [
+                              5,
+                              4
+                            ],
+                            [
+                              4,
+                              5
+                            ]
+                          ],
+                          "after": "O FAQ interno combina valor alto e risco menor. Alteração de cadastro e canal público têm risco mais alto; escolher qualquer caso ignora priorização."
+                        },
+                        {
+                          "id": "micro-mapa-valor-risco-card-03",
+                          "position": 3,
+                          "resource": "choice",
+                          "kind": "exercise",
+                          "exercise": "choice",
+                          "title": "Caso crítico não é começo natural",
+                          "question": "Uma diretoria quer iniciar pela automação de uma ação sensível porque o impacto seria grande. Qual posição é mais adequada?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "text": "Tratar como caso importante, mas exigir desenho robusto antes de piloto; começar pode ser melhor por caso de risco controlado."
+                            },
+                            {
+                              "id": "b",
+                              "text": "Começar imediatamente porque impacto alto sempre justifica risco alto."
+                            },
+                            {
+                              "id": "c",
+                              "text": "Descartar o caso para sempre porque envolve risco."
+                            },
+                            {
+                              "id": "d",
+                              "text": "Transferir toda decisão para a ferramenta escolhida."
+                            }
+                          ],
+                          "answer": "a",
+                          "after": "Valor alto não torna o caso pronto para piloto; ações sensíveis exigem desenho robusto, controles e validação antes de avançar."
+                        }
+                      ],
+                      "validation": {
+                        "ok": true,
+                        "issues": []
+                      }
+                    }
+                  ],
+                  "activeVersion": "version-001"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "module-2-vocabulario-ia-generativa",
+          "title": "Vocabulário essencial de IA generativa",
+          "guide": {
+            "goal": "Construir vocabulário mínimo para compreender reuniões técnicas sobre IA generativa.",
+            "include": [
+              "IA generativa",
+              "prompt",
+              "modelo",
+              "token",
+              "crédito",
+              "agente",
+              "chatbot",
+              "grounding",
+              "RAG",
+              "chunk",
+              "embedding",
+              "índice",
+              "busca híbrida",
+              "API",
+              "conector",
+              "endpoint",
+              "log",
+              "trace",
+              "observabilidade"
+            ],
+            "exclude": [
+              "matemática avançada",
+              "treinamento de modelos do zero",
+              "código de produção",
+              "arquiteturas internas não fornecidas",
+              "nome real da organização"
+            ],
+            "notation": [
+              "Definir siglas na primeira aparição.",
+              "Usar exemplos objetivos de documentos, atendimento e processos internos."
+            ],
+            "avoid": []
+          },
+          "lessons": [
+            {
+              "id": "lesson-2-1-ia-prompt-modelo-token",
+              "title": "IA generativa, prompt, modelo e token",
+              "guide": {
+                "goal": "Entender a relação entre entrada, contexto, modelo, saída gerada, token e custo de uso.",
+                "include": [
+                  "IA generativa",
+                  "prompt",
+                  "modelo",
+                  "resposta gerada",
+                  "token",
+                  "crédito",
+                  "custo por uso"
+                ],
+                "exclude": [
+                  "matemática avançada",
+                  "treinamento de modelos do zero",
+                  "código de produção",
+                  "nome real da organização"
+                ],
+                "notation": [
+                  "Explicar token como pedaço de texto usado no processamento, não como palavra exata."
+                ],
+                "avoid": []
+              },
+              "topics": [
+                {
+                  "id": "topic-ia-generativa",
+                  "label": "IA generativa",
+                  "kind": "concept",
+                  "checks": [
+                    "explica que a IA gera texto, resumo, classificação ou rascunho com base em entrada e contexto"
+                  ],
+                  "errors": [
+                    "achar que IA generativa sempre consulta fonte oficial"
+                  ]
+                },
+                {
+                  "id": "topic-prompt",
+                  "label": "prompt",
+                  "kind": "term",
+                  "checks": [
+                    "identifica prompt como instrução ou pergunta enviada ao modelo"
+                  ],
+                  "errors": [
+                    "confundir prompt com a resposta gerada"
+                  ]
+                },
+                {
+                  "id": "topic-modelo-token",
+                  "label": "modelo e token",
+                  "kind": "term",
+                  "checks": [
+                    "reconhece modelo como motor estatístico e token como unidade de consumo"
+                  ],
+                  "errors": [
+                    "confundir token com palavra exata"
+                  ]
+                }
+              ],
+              "microsequences": [
+                {
+                  "id": "micro-ia-prompt-modelo",
+                  "title": "IA generativa começa com entrada, contexto e modelo",
+                  "goal": "Identificar prompt, modelo e saída gerada em um cenário simples.",
+                  "role": "explain",
+                  "status": "generated",
+                  "branchOf": null,
+                  "dependsOn": [],
+                  "covers": [
+                    "IA generativa",
+                    "prompt",
+                    "modelo",
+                    "resposta gerada"
+                  ],
+                  "checks": [
+                    "identifica prompt modelo e saída em um cenário simples",
+                    "distingue instrução de resposta"
+                  ],
+                  "versions": [
+                    {
+                      "id": "version-001",
+                      "createdAt": "2026-06-06T00:00:00.000Z",
+                      "source": "llm",
+                      "action": "generate",
+                      "request": "Primeira versão da microssequência.",
+                      "summary": "Conceitos e práticas sobre IA generativa, prompt, modelo, resposta gerada.",
+                      "cards": [
+                        {
+                          "id": "micro-ia-prompt-modelo-card-01",
+                          "position": 1,
+                          "resource": "paragraph",
+                          "kind": "theory",
+                          "exercise": "none",
+                          "title": "Entrada, contexto e saída",
+                          "text": "IA generativa é uma tecnologia que gera conteúdo, como texto, resumo, classificação ou rascunho, a partir de uma entrada. A entrada pode ser uma pergunta, uma instrução e um contexto autorizado.",
+                          "after": "A saída gerada não deve ser tratada automaticamente como verdade institucional. Em casos corporativos, ela precisa de fonte, validação e limites."
+                        },
+                        {
+                          "id": "micro-ia-prompt-modelo-card-02",
+                          "position": 2,
+                          "resource": "table",
+                          "kind": "theory",
+                          "exercise": "none",
+                          "title": "Três partes da interação",
+                          "columns": [
+                            "Parte",
+                            "O que significa",
+                            "Exemplo"
+                          ],
+                          "rows": [
+                            [
+                              "Prompt",
+                              "Instrução enviada",
+                              "Resuma estes critérios de atendimento em cinco pontos."
+                            ],
+                            [
+                              "Modelo",
+                              "Sistema que gera a resposta",
+                              "Modelo de linguagem escolhido pela plataforma"
+                            ],
+                            [
+                              "Resposta",
+                              "Conteúdo produzido",
+                              "Resumo com os cinco pontos solicitados"
+                            ]
+                          ],
+                          "after": "Separar as partes ajuda a discutir melhoria de prompt, escolha de modelo e validação da resposta."
+                        },
+                        {
+                          "id": "micro-ia-prompt-modelo-card-03",
+                          "position": 3,
+                          "resource": "choice",
+                          "kind": "exercise",
+                          "exercise": "choice",
+                          "title": "Identificar o prompt",
+                          "question": "Em um cenário, a pessoa digita: “Liste os documentos exigidos para abrir uma solicitação, usando somente a norma anexada”. O sistema devolve uma lista. O que é o prompt?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "text": "A frase digitada com a instrução e a restrição de usar a norma anexada."
+                            },
+                            {
+                              "id": "b",
+                              "text": "A lista gerada pelo sistema."
+                            },
+                            {
+                              "id": "c",
+                              "text": "O nome da plataforma usada para conversar."
+                            },
+                            {
+                              "id": "d",
+                              "text": "O arquivo armazenado pela gestão documental."
+                            }
+                          ],
+                          "answer": "a",
+                          "after": "O prompt é a instrução enviada. A lista é a saída, a plataforma é o ambiente de uso e o arquivo é uma possível fonte."
+                        },
+                        {
+                          "id": "micro-ia-prompt-modelo-card-04",
+                          "position": 4,
+                          "resource": "paragraph",
+                          "kind": "exercise",
+                          "exercise": "gap",
+                          "title": "Nome da saída",
+                          "text": "Quando o sistema produz um resumo depois de receber uma instrução, o resumo é uma [[resposta gerada::resposta gerada|permissão|licença]].",
+                          "after": "Resposta gerada é o conteúdo produzido. Permissão trata de acesso e licença trata de direito de uso ou contratação."
+                        }
+                      ],
+                      "validation": {
+                        "ok": true,
+                        "issues": []
+                      }
+                    }
+                  ],
+                  "activeVersion": "version-001"
+                },
+                {
+                  "id": "micro-token-e-custo-basico",
+                  "title": "Token e custo de uso",
+                  "goal": "Reconhecer que entrada, contexto e saída consomem tokens e podem influenciar custo.",
+                  "role": "practice",
+                  "status": "generated",
+                  "branchOf": null,
+                  "dependsOn": [
+                    "micro-ia-prompt-modelo"
+                  ],
+                  "covers": [
+                    "token",
+                    "entrada",
+                    "saída",
+                    "custo por uso",
+                    "fórmula didática"
+                  ],
+                  "checks": [
+                    "reconhece que pergunta contexto e resposta consomem tokens",
+                    "escolhe fórmula correta sem valores absolutos"
+                  ],
+                  "versions": [
+                    {
+                      "id": "version-001",
+                      "createdAt": "2026-06-06T00:00:00.000Z",
+                      "source": "llm",
+                      "action": "generate",
+                      "request": "Primeira versão da microssequência.",
+                      "summary": "Conceitos e práticas sobre token, entrada, saída, custo por uso, fórmula didática.",
+                      "cards": [
+                        {
+                          "id": "micro-token-e-custo-basico-card-01",
+                          "position": 1,
+                          "resource": "paragraph",
+                          "kind": "theory",
+                          "exercise": "none",
+                          "title": "Token não é palavra exata",
+                          "text": "Um token é um pedaço de texto usado pelo modelo para processar entrada e saída. Uma palavra com poucas letras pode ser um token; uma palavra longa pode virar mais de um token.",
+                          "after": "Para reunião de implantação, o ponto principal é entender que pergunta, contexto recuperado e resposta gerada entram no consumo."
+                        },
+                        {
+                          "id": "micro-token-e-custo-basico-card-02",
+                          "position": 2,
+                          "resource": "code",
+                          "kind": "theory",
+                          "exercise": "none",
+                          "title": "Fórmula didática",
+                          "prompt": "Use a fórmula apenas como raciocínio, sem valores de contrato.",
+                          "language": "text",
+                          "code": "tokens_totais = tokens_da_pergunta + tokens_do_contexto + tokens_da_resposta\ncusto_estimado = tokens_totais × regra_de_cobrança_aplicável",
+                          "after": "A fórmula mostra os componentes de consumo. O valor real depende das regras vigentes e do contrato aplicável."
+                        },
+                        {
+                          "id": "micro-token-e-custo-basico-card-03",
+                          "position": 3,
+                          "resource": "choice",
+                          "kind": "exercise",
+                          "exercise": "choice",
+                          "title": "O que consome tokens",
+                          "question": "Um agente recebe uma pergunta com poucas palavras, recupera três trechos longos de normas e gera uma resposta detalhada. Qual afirmação é correta?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "text": "Pergunta, trechos recuperados e resposta podem consumir tokens."
+                            },
+                            {
+                              "id": "b",
+                              "text": "Somente a pergunta com poucas palavras consome tokens."
+                            },
+                            {
+                              "id": "c",
+                              "text": "Somente a resposta final consome tokens."
+                            },
+                            {
+                              "id": "d",
+                              "text": "Tokens não importam quando existe fonte oficial."
+                            }
+                          ],
+                          "answer": "a",
+                          "after": "O consumo considera entrada, contexto e saída. Fonte oficial ajuda confiabilidade, mas não elimina consumo."
+                        }
+                      ],
+                      "validation": {
+                        "ok": true,
+                        "issues": []
+                      }
+                    }
+                  ],
+                  "activeVersion": "version-001"
+                }
+              ]
+            },
+            {
+              "id": "lesson-2-2-agente-chatbot-acao",
+              "title": "Agente, chatbot e ação",
+              "guide": {
+                "goal": "Diferenciar chatbot informativo, agente com ferramentas e agente que executa ação.",
+                "include": [
+                  "chatbot",
+                  "agente",
+                  "tarefa",
+                  "ferramenta",
+                  "API",
+                  "conector",
+                  "consulta",
+                  "ação",
+                  "auditoria"
+                ],
+                "exclude": [
+                  "código de produção",
+                  "arquiteturas internas não fornecidas",
+                  "nome real da organização"
+                ],
+                "notation": [
+                  "Definir API como interface para sistemas trocarem informações e conector como ligação configurada para uma fonte ou sistema."
+                ],
+                "avoid": []
+              },
+              "topics": [
+                {
+                  "id": "topic-chatbot-agente",
+                  "label": "chatbot e agente",
+                  "kind": "concept",
+                  "checks": [
+                    "diferencia resposta informativa de execução de etapas"
+                  ],
+                  "errors": [
+                    "confundir agente com chatbot informativo"
+                  ]
+                },
+                {
+                  "id": "topic-api-conector",
+                  "label": "API e conector",
+                  "kind": "term",
+                  "checks": [
+                    "associa API e conector a consulta ou ação em sistema"
+                  ],
+                  "errors": [
+                    "usar integração sem controle de acesso"
+                  ]
+                },
+                {
+                  "id": "topic-acao-auditoria",
+                  "label": "ação e auditoria",
+                  "kind": "procedure",
+                  "checks": [
+                    "identifica necessidade de autorização, log e confirmação para ações"
+                  ],
+                  "errors": [
+                    "permitir ação automática sem trilha"
+                  ]
+                }
+              ],
+              "microsequences": [
+                {
+                  "id": "micro-chatbot-agente",
+                  "title": "Chatbot responde; agente pode executar etapas",
+                  "goal": "Diferenciar chatbot informativo de agente que usa ferramentas ou executa etapas.",
+                  "role": "explain",
+                  "status": "generated",
+                  "branchOf": null,
+                  "dependsOn": [],
+                  "covers": [
+                    "chatbot",
+                    "agente",
+                    "tarefa",
+                    "ferramenta",
+                    "autonomia limitada"
+                  ],
+                  "checks": [
+                    "diferencia chatbot informativo de agente que usa ferramentas",
+                    "reconhece aumento de risco quando há ação"
+                  ],
+                  "versions": [
+                    {
+                      "id": "version-001",
+                      "createdAt": "2026-06-06T00:00:00.000Z",
+                      "source": "llm",
+                      "action": "generate",
+                      "request": "Primeira versão da microssequência.",
+                      "summary": "Conceitos e práticas sobre chatbot, agente, tarefa, ferramenta, autonomia limitada.",
+                      "cards": [
+                        {
+                          "id": "micro-chatbot-agente-card-01",
+                          "position": 1,
+                          "resource": "table",
+                          "kind": "theory",
+                          "exercise": "none",
+                          "title": "Chatbot e agente",
+                          "columns": [
+                            "Tipo",
+                            "O que faz",
+                            "Risco típico"
+                          ],
+                          "rows": [
+                            [
+                              "Chatbot informativo",
+                              "Responde perguntas com base em conhecimento definido",
+                              "Pode orientar errado se a fonte estiver ruim"
+                            ],
+                            [
+                              "Agente consultivo",
+                              "Busca informação em documentos ou sistemas autorizados",
+                              "Pode expor dado sem permissão adequada"
+                            ],
+                            [
+                              "Agente transacional",
+                              "Executa ação como abrir chamado ou alterar registro",
+                              "Pode causar impacto operacional se agir errado"
+                            ]
+                          ],
+                          "after": "Quanto mais o sistema passa de responder para agir, maior a necessidade de autorização, confirmação e trilha de auditoria."
+                        },
+                        {
+                          "id": "micro-chatbot-agente-card-02",
+                          "position": 2,
+                          "resource": "choice",
+                          "kind": "exercise",
+                          "exercise": "choice",
+                          "title": "Classificar o caso",
+                          "question": "Uma equipe quer uma conversa que apenas explique a ordem dos passos de um procedimento interno, usando um documento oficial. Qual classificação é mais adequada?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "text": "Chatbot informativo ou agente simples de consulta a conhecimento."
+                            },
+                            {
+                              "id": "b",
+                              "text": "Agente transacional de alto impacto."
+                            },
+                            {
+                              "id": "c",
+                              "text": "Sistema de decisão automática sem validação."
+                            },
+                            {
+                              "id": "d",
+                              "text": "Integração obrigatória com todos os sistemas corporativos."
+                            }
+                          ],
+                          "answer": "a",
+                          "after": "O caso descreve resposta informativa baseada em documento. Não há execução de ação nem necessidade automática de integração ampla."
+                        },
+                        {
+                          "id": "micro-chatbot-agente-card-03",
+                          "position": 3,
+                          "resource": "paragraph",
+                          "kind": "exercise",
+                          "exercise": "gap",
+                          "title": "Risco da ação",
+                          "text": "Quando um agente deixa de apenas responder e passa a executar uma ação, aumenta a necessidade de [[auditoria::auditoria|prompt mais detalhado|fonte mais longa]].",
+                          "after": "Auditoria rastreia o que foi feito, por quem e com qual resultado; prompt mais detalhado e fonte mais longa não controlam execução."
+                        },
+                        {
+                          "id": "micro-chatbot-agente-card-04",
+                          "position": 4,
+                          "resource": "choice",
+                          "kind": "exercise",
+                          "exercise": "choice",
+                          "title": "Autonomia limitada",
+                          "question": "Qual frase descreve melhor um agente corporativo seguro?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "text": "Um agente pode executar etapas dentro de limites, permissões, validações e registros definidos."
+                            },
+                            {
+                              "id": "b",
+                              "text": "Um agente deve ter liberdade total para resolver qualquer tarefa."
+                            },
+                            {
+                              "id": "c",
+                              "text": "Um agente sempre dispensa fonte oficial porque usa raciocínio próprio."
+                            },
+                            {
+                              "id": "d",
+                              "text": "Um agente é apenas outro nome para qualquer tela de chat."
+                            }
+                          ],
+                          "answer": "a",
+                          "after": "A autonomia precisa ser limitada por regras e controles. Liberdade total, ausência de fonte e equivalência com chat ignoram risco."
+                        }
+                      ],
+                      "validation": {
+                        "ok": true,
+                        "issues": []
+                      }
+                    }
+                  ],
+                  "activeVersion": "version-001"
+                },
+                {
+                  "id": "micro-agente-ferramentas",
+                  "title": "Quando o agente usa ferramentas",
+                  "goal": "Classificar se um caso exige resposta, consulta ou execução de ação e apontar controles.",
+                  "role": "practice",
+                  "status": "generated",
+                  "branchOf": null,
+                  "dependsOn": [
+                    "micro-chatbot-agente"
+                  ],
+                  "covers": [
+                    "ferramenta",
+                    "API",
+                    "conector",
+                    "consulta",
+                    "ação",
+                    "auditoria"
+                  ],
+                  "checks": [
+                    "classifica se o caso exige apenas resposta consulta ou execução de ação",
+                    "identifica controle necessário"
+                  ],
+                  "versions": [
+                    {
+                      "id": "version-001",
+                      "createdAt": "2026-06-06T00:00:00.000Z",
+                      "source": "llm",
+                      "action": "generate",
+                      "request": "Primeira versão da microssequência.",
+                      "summary": "Conceitos e práticas sobre ferramenta, API, conector, consulta, ação, auditoria.",
+                      "cards": [
+                        {
+                          "id": "micro-agente-ferramentas-card-01",
+                          "position": 1,
+                          "resource": "flow",
+                          "kind": "theory",
+                          "exercise": "none",
+                          "title": "Escada de capacidade",
+                          "prompt": "Classifique o que o agente precisa fazer antes de escolher ferramenta.",
+                          "structure": {
+                            "id": "flow-struct-53",
+                            "kind": "sequence",
+                            "items": [
+                              {
+                                "id": "flow-struct-54",
+                                "kind": "start",
+                                "text": "Responder com conhecimento"
+                              },
+                              {
+                                "id": "flow-struct-55",
+                                "kind": "process",
+                                "text": "Consultar fonte ou sistema autorizado"
+                              },
+                              {
+                                "id": "flow-struct-56",
+                                "kind": "end",
+                                "text": "Executar ação controlada"
+                              }
+                            ]
+                          },
+                          "after": "Responder, consultar e agir têm controles diferentes. A execução de ação exige mais governança que uma resposta baseada em documento."
+                        },
+                        {
+                          "id": "micro-agente-ferramentas-card-02",
+                          "position": 2,
+                          "resource": "choice",
+                          "kind": "exercise",
+                          "exercise": "choice",
+                          "title": "API e conector",
+                          "question": "Um agente precisa verificar o status de uma solicitação em sistema autenticado, sem alterar dados. Qual controle é mínimo?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "text": "Autenticação, autorização, conector ou API autorizada e registro da consulta."
+                            },
+                            {
+                              "id": "b",
+                              "text": "Permitir acesso anônimo para simplificar a experiência."
+                            },
+                            {
+                              "id": "c",
+                              "text": "Copiar a base inteira para um arquivo sem restrição."
+                            },
+                            {
+                              "id": "d",
+                              "text": "Ignorar logs porque não há alteração de dados."
+                            }
+                          ],
+                          "answer": "a",
+                          "after": "Mesmo consulta sem alteração exige identidade, permissão e registro. Acesso anônimo, cópia ampla e ausência de logs criam risco."
+                        },
+                        {
+                          "id": "micro-agente-ferramentas-card-03",
+                          "position": 3,
+                          "resource": "choice",
+                          "kind": "exercise",
+                          "exercise": "choice",
+                          "title": "Execução de ação",
+                          "question": "Um agente abrirá chamados em nome de usuários internos. Qual desenho é mais seguro?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "text": "Confirmar a intenção do usuário, registrar a ação, limitar campos e definir responsável por falhas."
+                            },
+                            {
+                              "id": "b",
+                              "text": "Abrir qualquer chamado sem confirmação para ganhar velocidade."
+                            },
+                            {
+                              "id": "c",
+                              "text": "Usar a conta de uma pessoa da equipe para todos os chamados."
+                            },
+                            {
+                              "id": "d",
+                              "text": "Dispensar auditoria porque abrir chamado é uma ação simples."
+                            }
+                          ],
+                          "answer": "a",
+                          "after": "Execução de ação precisa de confirmação, registro, limite e responsável para preservar rastreabilidade e reduzir impacto de erro."
+                        }
+                      ],
+                      "validation": {
+                        "ok": true,
+                        "issues": []
+                      }
+                    }
+                  ],
+                  "activeVersion": "version-001"
+                }
+              ]
+            },
+            {
+              "id": "lesson-2-3-rag-grounding-busca",
+              "title": "RAG, grounding e busca",
+              "guide": {
+                "goal": "Entender como respostas podem ser fundamentadas em fontes recuperadas e por que isso não elimina risco.",
+                "include": [
+                  "RAG",
+                  "grounding",
+                  "fonte oficial",
+                  "recuperação",
+                  "geração",
+                  "chunk",
+                  "embedding",
+                  "índice",
+                  "busca vetorial",
+                  "busca por palavra-chave",
+                  "busca híbrida",
+                  "semantic ranking"
+                ],
+                "exclude": [
+                  "matemática avançada",
+                  "treinamento de modelos do zero",
+                  "nome real da organização"
+                ],
+                "notation": [
+                  "Definir RAG como recuperação aumentada por geração.",
+                  "Explicar grounding como fundamentação em contexto recuperado."
+                ],
+                "avoid": []
+              },
+              "topics": [
+                {
+                  "id": "topic-rag-grounding",
+                  "label": "RAG e grounding",
+                  "kind": "concept",
+                  "checks": [
+                    "identifica recuperação de fonte antes da geração"
+                  ],
+                  "errors": [
+                    "achar que RAG elimina alucinação"
+                  ]
+                },
+                {
+                  "id": "topic-chunk-embedding-indice",
+                  "label": "chunk, embedding e índice",
+                  "kind": "term",
+                  "checks": [
+                    "associa cada termo à função correta"
+                  ],
+                  "errors": [
+                    "confundir chunk com documento inteiro"
+                  ]
+                },
+                {
+                  "id": "topic-busca-hibrida",
+                  "label": "busca híbrida e semantic ranking",
+                  "kind": "concept",
+                  "checks": [
+                    "diferencia palavra exata, significado e ranqueamento semântico"
+                  ],
+                  "errors": [
+                    "achar que uma busca simples resolve todos os casos"
+                  ]
+                }
+              ],
+              "microsequences": [
+                {
+                  "id": "micro-rag-em-linguagem-simples",
+                  "title": "RAG é responder com base em fontes recuperadas",
+                  "goal": "Identificar as etapas de recuperação e geração em RAG.",
+                  "role": "explain",
+                  "status": "generated",
+                  "branchOf": null,
+                  "dependsOn": [],
+                  "covers": [
+                    "RAG",
+                    "grounding",
+                    "fonte oficial",
+                    "recuperação",
+                    "geração"
+                  ],
+                  "checks": [
+                    "identifica etapas do RAG",
+                    "reconhece que RAG não corrige fonte ruim"
+                  ],
+                  "versions": [
+                    {
+                      "id": "version-001",
+                      "createdAt": "2026-06-06T00:00:00.000Z",
+                      "source": "llm",
+                      "action": "generate",
+                      "request": "Primeira versão da microssequência.",
+                      "summary": "Conceitos e práticas sobre RAG, grounding, fonte oficial, recuperação, geração.",
+                      "cards": [
+                        {
+                          "id": "micro-rag-em-linguagem-simples-card-01",
+                          "position": 1,
+                          "resource": "paragraph",
+                          "kind": "theory",
+                          "exercise": "none",
+                          "title": "RAG em linguagem simples",
+                          "text": "RAG significa recuperação aumentada por geração. O sistema primeiro recupera trechos de fontes autorizadas e depois gera uma resposta usando esses trechos como contexto.",
+                          "after": "A recuperação ajuda a fundamentar a resposta, mas a qualidade depende da fonte, da atualização, das permissões e da validação."
+                        },
+                        {
+                          "id": "micro-rag-em-linguagem-simples-card-02",
+                          "position": 2,
+                          "resource": "flow",
+                          "kind": "theory",
+                          "exercise": "none",
+                          "title": "Fluxo RAG",
+                          "prompt": "Um fluxo RAG típico antes da resposta.",
+                          "structure": {
+                            "id": "flow-struct-63",
+                            "kind": "sequence",
+                            "items": [
+                              {
+                                "id": "flow-struct-64",
+                                "kind": "start",
+                                "text": "Pergunta do usuário"
+                              },
+                              {
+                                "id": "flow-struct-65",
+                                "kind": "process",
+                                "text": "Recuperar trechos relevantes"
+                              },
+                              {
+                                "id": "flow-struct-66",
+                                "kind": "process",
+                                "text": "Enviar contexto ao modelo"
+                              },
+                              {
+                                "id": "flow-struct-67",
+                                "kind": "process",
+                                "text": "Gerar a resposta"
+                              },
+                              {
+                                "id": "flow-struct-68",
+                                "kind": "end",
+                                "text": "Validar e monitorar"
+                              }
+                            ]
+                          },
+                          "after": "O modelo não deve responder apenas pela memória estatística quando a pergunta exige posição institucional."
+                        },
+                        {
+                          "id": "micro-rag-em-linguagem-simples-card-03",
+                          "position": 3,
+                          "resource": "choice",
+                          "kind": "exercise",
+                          "exercise": "choice",
+                          "title": "Fonte ruim",
+                          "question": "Um agente com RAG usa uma norma antiga que foi revogada. Qual risco continua existindo?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "text": "A resposta pode ficar institucionalmente incorreta, mesmo com RAG."
+                            },
+                            {
+                              "id": "b",
+                              "text": "RAG sempre corrige documentos antigos automaticamente."
+                            },
+                            {
+                              "id": "c",
+                              "text": "A busca vetorial impede qualquer erro de versão."
+                            },
+                            {
+                              "id": "d",
+                              "text": "A fonte antiga deixa de importar quando o modelo é forte."
+                            }
+                          ],
+                          "answer": "a",
+                          "after": "RAG fundamenta a resposta no que recupera. Se a fonte está desatualizada, a resposta pode herdar o erro."
+                        },
+                        {
+                          "id": "micro-rag-em-linguagem-simples-card-04",
+                          "position": 4,
+                          "resource": "paragraph",
+                          "kind": "exercise",
+                          "exercise": "gap",
+                          "title": "Fundamentar resposta",
+                          "text": "Grounding é a tentativa de fundamentar a resposta em [[contexto recuperado::contexto recuperado|opinião livre|layout da tela]].",
+                          "after": "Contexto recuperado é o material usado para apoiar a resposta. Opinião livre e layout não garantem base institucional."
+                        }
+                      ],
+                      "validation": {
+                        "ok": true,
+                        "issues": []
+                      }
+                    }
+                  ],
+                  "activeVersion": "version-001"
+                },
+                {
+                  "id": "micro-chunk-embedding-indice",
+                  "title": "Como documentos viram busca para IA",
+                  "goal": "Associar chunk, embedding, índice e tipos de busca às suas funções.",
+                  "role": "explain",
+                  "status": "generated",
+                  "branchOf": null,
+                  "dependsOn": [
+                    "micro-rag-em-linguagem-simples"
+                  ],
+                  "covers": [
+                    "chunk",
+                    "embedding",
+                    "índice",
+                    "busca vetorial",
+                    "busca por palavra-chave",
+                    "busca híbrida"
+                  ],
+                  "checks": [
+                    "associa cada termo à função correta",
+                    "diferencia busca por significado e busca por palavra exata"
+                  ],
+                  "versions": [
+                    {
+                      "id": "version-001",
+                      "createdAt": "2026-06-06T00:00:00.000Z",
+                      "source": "llm",
+                      "action": "generate",
+                      "request": "Primeira versão da microssequência.",
+                      "summary": "Conceitos e práticas sobre chunk, embedding, índice, busca vetorial, busca por palavra-chave, busca híbrida.",
+                      "cards": [
+                        {
+                          "id": "micro-chunk-embedding-indice-card-01",
+                          "position": 1,
+                          "resource": "relation_map",
+                          "kind": "exercise",
+                          "exercise": "choice",
+                          "title": "Termos e funções",
+                          "question": "Qual relação está correta?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "text": "Embedding -> representação para busca por significado."
+                            },
+                            {
+                              "id": "b",
+                              "text": "Chunk -> estrutura de cobrança por usuário."
+                            },
+                            {
+                              "id": "c",
+                              "text": "Índice -> pessoa responsável pela fonte."
+                            },
+                            {
+                              "id": "d",
+                              "text": "Busca híbrida -> exclusão de palavra-chave."
+                            }
+                          ],
+                          "answer": "a",
+                          "prompt": "Relacione os termos técnicos à função prática.",
+                          "leftSet": {
+                            "label": "Termos",
+                            "items": [
+                              {
+                                "id": "chunk",
+                                "label": "Chunk"
+                              },
+                              {
+                                "id": "embedding",
+                                "label": "Embedding"
+                              },
+                              {
+                                "id": "indice",
+                                "label": "Índice"
+                              },
+                              {
+                                "id": "hibrida",
+                                "label": "Busca híbrida"
+                              }
+                            ]
+                          },
+                          "rightSet": {
+                            "label": "Funções",
+                            "items": [
+                              {
+                                "id": "trecho",
+                                "label": "Trecho menor de documento"
+                              },
+                              {
+                                "id": "vetor",
+                                "label": "Representação para busca por significado"
+                              },
+                              {
+                                "id": "catalogo",
+                                "label": "Estrutura consultável de busca"
+                              },
+                              {
+                                "id": "combinacao",
+                                "label": "Combinação de palavra-chave e significado"
+                              }
+                            ]
+                          },
+                          "relations": [
+                            {
+                              "from": "chunk",
+                              "to": "trecho"
+                            },
+                            {
+                              "from": "embedding",
+                              "to": "vetor"
+                            },
+                            {
+                              "from": "indice",
+                              "to": "catalogo"
+                            },
+                            {
+                              "from": "hibrida",
+                              "to": "combinacao"
+                            }
+                          ],
+                          "pairList": [
+                            "(Chunk, trecho menor)",
+                            "(Embedding, significado)",
+                            "(Índice, busca)",
+                            "(Busca híbrida, combinação)"
+                          ],
+                          "after": "Embedding transforma texto em uma representação útil para busca por significado; chunk, índice e busca híbrida cumprem funções diferentes no RAG."
+                        },
+                        {
+                          "id": "micro-chunk-embedding-indice-card-02",
+                          "position": 2,
+                          "resource": "table",
+                          "kind": "theory",
+                          "exercise": "none",
+                          "title": "Tipos de busca",
+                          "columns": [
+                            "Tipo",
+                            "O que privilegia",
+                            "Quando ajuda"
+                          ],
+                          "rows": [
+                            [
+                              "Busca por palavra-chave",
+                              "Termo exato ou muito próximo",
+                              "Códigos, siglas e nomes específicos"
+                            ],
+                            [
+                              "Busca vetorial",
+                              "Semelhança de significado",
+                              "Perguntas formuladas com palavras diferentes da fonte"
+                            ],
+                            [
+                              "Busca híbrida",
+                              "Combinação de exatidão e significado",
+                              "Documentos corporativos com siglas e linguagem variada"
+                            ],
+                            [
+                              "Semantic ranking (ranqueamento semântico)",
+                              "Ordenação dos melhores trechos",
+                              "Quando há muitos resultados parecidos"
+                            ]
+                          ],
+                          "after": "A busca híbrida costuma ser útil porque documentos corporativos misturam termos exatos, siglas e descrições em linguagem natural; semantic ranking ajuda a ordenar os trechos mais relevantes."
+                        },
+                        {
+                          "id": "micro-chunk-embedding-indice-card-03",
+                          "position": 3,
+                          "resource": "choice",
+                          "kind": "exercise",
+                          "exercise": "choice",
+                          "title": "Escolha de busca",
+                          "question": "Um usuário pergunta “como pedir reembolso de deslocamento” e a norma usa o termo “ressarcimento de transporte”. Qual tipo de busca pode ajudar mais que palavra exata isolada?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "text": "Busca vetorial ou híbrida, porque considera significado além da palavra literal."
+                            },
+                            {
+                              "id": "b",
+                              "text": "Somente busca por palavra-chave, porque significados diferentes devem ser ignorados."
+                            },
+                            {
+                              "id": "c",
+                              "text": "Nenhuma busca, porque RAG só funciona com a mesma frase."
+                            },
+                            {
+                              "id": "d",
+                              "text": "Busca por preço, porque a pergunta envolve dinheiro."
+                            }
+                          ],
+                          "answer": "a",
+                          "after": "Busca vetorial ou híbrida ajuda quando a pergunta e a fonte usam termos diferentes com sentido próximo."
+                        }
+                      ],
+                      "validation": {
+                        "ok": true,
+                        "issues": []
+                      }
+                    }
+                  ],
+                  "activeVersion": "version-001"
+                },
+                {
+                  "id": "micro-rag-erros-provaveis",
+                  "title": "Erros comuns em respostas com RAG",
+                  "goal": "Detectar causas prováveis de resposta ruim em sistemas com RAG.",
+                  "role": "support",
+                  "status": "generated",
+                  "branchOf": null,
+                  "dependsOn": [
+                    "micro-chunk-embedding-indice"
+                  ],
+                  "covers": [
+                    "fonte desatualizada",
+                    "fonte não oficial",
+                    "trecho insuficiente",
+                    "resposta inventada",
+                    "permissão inadequada"
+                  ],
+                  "checks": [
+                    "detecta causa provável de uma resposta ruim",
+                    "escolhe correção institucional adequada"
+                  ],
+                  "versions": [
+                    {
+                      "id": "version-001",
+                      "createdAt": "2026-06-06T00:00:00.000Z",
+                      "source": "llm",
+                      "action": "generate",
+                      "request": "Primeira versão da microssequência.",
+                      "summary": "Conceitos e práticas sobre fonte desatualizada, fonte não oficial, trecho insuficiente, resposta inventada, permissão inadequada.",
+                      "cards": [
+                        {
+                          "id": "micro-rag-erros-provaveis-card-01",
+                          "position": 1,
+                          "resource": "table",
+                          "kind": "theory",
+                          "exercise": "none",
+                          "title": "Sintoma, causa e correção",
+                          "columns": [
+                            "Sintoma",
+                            "Causa provável",
+                            "Correção institucional"
+                          ],
+                          "rows": [
+                            [
+                              "Resposta cita regra antiga",
+                              "Fonte desatualizada",
+                              "Atualizar base e remover versão anterior"
+                            ],
+                            [
+                              "Resposta sem base verificável",
+                              "Fonte não autorizada ou trecho insuficiente",
+                              "Exigir fonte oficial e teste de recuperação"
+                            ],
+                            [
+                              "Usuário vê informação que não deveria",
+                              "Permissão inadequada",
+                              "Revisar identidade, autorização e índice"
+                            ],
+                            [
+                              "Resposta parece inventada",
+                              "Contexto fraco ou fora de escopo",
+                              "Ajustar fallback e avaliação"
+                            ]
+                          ],
+                          "after": "A correção deve atacar a causa: fonte, recuperação, permissão ou comportamento fora de escopo."
+                        },
+                        {
+                          "id": "micro-rag-erros-provaveis-card-02",
+                          "position": 2,
+                          "resource": "choice",
+                          "kind": "exercise",
+                          "exercise": "choice",
+                          "title": "Resposta divergente",
+                          "question": "Um chatbot responde orientação diferente da norma marcada como vigente no cenário. A investigação mostra que duas versões da norma estavam indexadas. Qual ação é mais adequada?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "text": "Remover ou desativar a versão antiga, manter a fonte marcada como vigente no cenário e testar novamente perguntas críticas."
+                            },
+                            {
+                              "id": "b",
+                              "text": "Aumentar o tamanho do texto da resposta."
+                            },
+                            {
+                              "id": "c",
+                              "text": "Trocar o nome do chatbot."
+                            },
+                            {
+                              "id": "d",
+                              "text": "Ignorar o caso porque a resposta veio de uma base documental."
+                            }
+                          ],
+                          "answer": "a",
+                          "after": "O problema é conflito de versão. A correção é governança documental e teste, não mudança estética ou tolerância ao erro."
+                        },
+                        {
+                          "id": "micro-rag-erros-provaveis-card-03",
+                          "position": 3,
+                          "resource": "choice",
+                          "kind": "exercise",
+                          "exercise": "choice",
+                          "title": "Permissão no RAG",
+                          "question": "Um agente usa busca em documentos com níveis diferentes de acesso. Qual desenho é mais seguro?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "text": "A recuperação deve respeitar permissões do usuário ou uma regra aprovada para o canal."
+                            },
+                            {
+                              "id": "b",
+                              "text": "Todos os documentos podem ser recuperados se estiverem no mesmo repositório."
+                            },
+                            {
+                              "id": "c",
+                              "text": "A resposta não precisa considerar permissão quando é apenas resumo."
+                            },
+                            {
+                              "id": "d",
+                              "text": "Permissão só é necessária para sistemas transacionais."
+                            }
+                          ],
+                          "answer": "a",
+                          "after": "RAG também precisa respeitar acesso. Resumo de documento restrito ainda pode vazar informação."
+                        }
+                      ],
+                      "validation": {
+                        "ok": true,
+                        "issues": []
+                      }
+                    }
+                  ],
+                  "activeVersion": "version-001"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "module-3-camadas-uso-organizacao",
+          "title": "Camadas de uso de IA na organização",
+          "guide": {
+            "goal": "Classificar usos de IA por público, risco, dados e complexidade.",
+            "include": [
+              "produtividade individual",
+              "agente local de equipe",
+              "chatbot departamental",
+              "chatbot corporativo",
+              "chatbot público",
+              "agente integrado a sistemas",
+              "consulta a dados",
+              "execução de ações",
+              "escalada de risco"
+            ],
+            "exclude": [
+              "nomes de sistemas internos reais",
+              "decisões automáticas definitivas",
+              "dados pessoais reais",
+              "nome real da organização"
+            ],
+            "notation": [
+              "Usar níveis de risco: baixo, médio, alto, muito alto.",
+              "Usar público: individual, equipe, área, organização, público externo."
+            ],
+            "avoid": []
+          },
+          "lessons": [
+            {
+              "id": "lesson-3-1-produtividade-agente-publico",
+              "title": "Da produtividade individual ao agente público",
+              "guide": {
+                "goal": "Ordenar camadas de uso de IA por alcance, público e risco.",
+                "include": [
+                  "produtividade individual",
+                  "agente de equipe",
+                  "chatbot departamental",
+                  "chatbot corporativo",
+                  "chatbot público",
+                  "agente integrado"
+                ],
+                "exclude": [
+                  "nomes de sistemas internos reais",
+                  "dados pessoais reais",
+                  "nome real da organização"
+                ],
+                "notation": [
+                  "Usar público interno, público externo, usuário autenticado e usuário anônimo."
+                ],
+                "avoid": []
+              },
+              "topics": [
+                {
+                  "id": "topic-camadas-uso",
+                  "label": "camadas de uso",
+                  "kind": "representation",
+                  "checks": [
+                    "ordena usos por alcance e risco"
+                  ],
+                  "errors": [
+                    "classificar todo chatbot como baixo risco"
+                  ]
+                },
+                {
+                  "id": "topic-publico-atendido",
+                  "label": "público atendido",
+                  "kind": "concept",
+                  "checks": [
+                    "distingue público interno, externo, autenticado e anônimo"
+                  ],
+                  "errors": [
+                    "confundir uso interno com atendimento público"
+                  ]
+                },
+                {
+                  "id": "topic-controle-publico",
+                  "label": "controle por público",
+                  "kind": "procedure",
+                  "checks": [
+                    "associa canal externo a controles mais fortes"
+                  ],
+                  "errors": [
+                    "publicar canal externo sem fallback humano"
+                  ]
+                }
+              ],
+              "microsequences": [
+                {
+                  "id": "micro-camadas-de-uso",
+                  "title": "Seis camadas de uso",
+                  "goal": "Ordenar camadas de uso de IA do uso individual ao agente integrado.",
+                  "role": "explain",
+                  "status": "generated",
+                  "branchOf": null,
+                  "dependsOn": [],
+                  "covers": [
+                    "produtividade individual",
+                    "agente de equipe",
+                    "chatbot departamental",
+                    "chatbot corporativo",
+                    "chatbot público",
+                    "agente integrado"
+                  ],
+                  "checks": [
+                    "ordena camadas por alcance e risco",
+                    "escolhe camada adequada para cenário"
+                  ],
+                  "versions": [
+                    {
+                      "id": "version-001",
+                      "createdAt": "2026-06-06T00:00:00.000Z",
+                      "source": "llm",
+                      "action": "generate",
+                      "request": "Primeira versão da microssequência.",
+                      "summary": "Conceitos e práticas sobre produtividade individual, agente de equipe, chatbot departamental, chatbot corporativo, chatbot público, agente integrado.",
+                      "cards": [
+                        {
+                          "id": "micro-camadas-de-uso-card-01",
+                          "position": 1,
+                          "resource": "tree",
+                          "kind": "theory",
+                          "exercise": "none",
+                          "title": "Camadas de uso",
+                          "prompt": "A árvore organiza usos de IA por alcance e complexidade.",
+                          "nodes": [
+                            {
+                              "id": "ia",
+                              "label": "Usos corporativos de IA",
+                              "parentId": null,
+                              "type": "folder"
+                            },
+                            {
+                              "id": "individual",
+                              "label": "Produtividade individual",
+                              "parentId": "ia",
+                              "type": "file"
+                            },
+                            {
+                              "id": "equipe",
+                              "label": "Agente de equipe",
+                              "parentId": "ia",
+                              "type": "file"
+                            },
+                            {
+                              "id": "area",
+                              "label": "Chatbot departamental",
+                              "parentId": "ia",
+                              "type": "file"
+                            },
+                            {
+                              "id": "corp",
+                              "label": "Chatbot corporativo",
+                              "parentId": "ia",
+                              "type": "file"
+                            },
+                            {
+                              "id": "publico",
+                              "label": "Chatbot público",
+                              "parentId": "ia",
+                              "type": "file"
+                            },
+                            {
+                              "id": "integrado",
+                              "label": "Agente integrado a sistemas",
+                              "parentId": "ia",
+                              "type": "file"
+                            }
+                          ],
+                          "after": "O alcance cresce do indivíduo para a organização e para o público externo. A integração com sistemas aumenta a exigência de controle."
+                        },
+                        {
+                          "id": "micro-camadas-de-uso-card-02",
+                          "position": 2,
+                          "resource": "table",
+                          "kind": "theory",
+                          "exercise": "none",
+                          "title": "Alcance e risco",
+                          "columns": [
+                            "Camada",
+                            "Público típico",
+                            "Controle mínimo"
+                          ],
+                          "rows": [
+                            [
+                              "Produtividade individual",
+                              "Pessoa usuária interna",
+                              "Orientação de uso e proteção de dados"
+                            ],
+                            [
+                              "Agente de equipe",
+                              "Equipe ou unidade",
+                              "Fonte, dono e limite de escopo"
+                            ],
+                            [
+                              "Chatbot corporativo",
+                              "Muitas áreas internas",
+                              "Governança, métricas e suporte"
+                            ],
+                            [
+                              "Chatbot público",
+                              "Usuários externos",
+                              "Fonte oficial, fallback humano e logs"
+                            ],
+                            [
+                              "Agente integrado",
+                              "Usuários autenticados e sistemas",
+                              "Autorização, auditoria e reversão"
+                            ]
+                          ],
+                          "after": "A mesma tecnologia pode exigir controles diferentes conforme público, dados e ação."
+                        },
+                        {
+                          "id": "micro-camadas-de-uso-card-03",
+                          "position": 3,
+                          "resource": "tree",
+                          "kind": "exercise",
+                          "exercise": "choice",
+                          "title": "Classificar uma ideia",
+                          "question": "Qual camada inicial é mais provável?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "text": "Agente de equipe ou departamental com fonte e validação de conteúdo."
+                            },
+                            {
+                              "id": "b",
+                              "text": "Chatbot público anônimo."
+                            },
+                            {
+                              "id": "c",
+                              "text": "Agente transacional integrado a sistemas sensíveis."
+                            },
+                            {
+                              "id": "d",
+                              "text": "Uso individual sem responsabilidade da área."
+                            }
+                          ],
+                          "answer": "a",
+                          "prompt": "Uma escola corporativa quer um agente para sugerir trilhas internas e gerar exercícios para empregados autenticados, sem executar ações em sistemas.",
+                          "nodes": [
+                            {
+                              "id": "ia",
+                              "label": "Usos corporativos de IA",
+                              "parentId": null,
+                              "type": "folder"
+                            },
+                            {
+                              "id": "individual",
+                              "label": "Produtividade individual",
+                              "parentId": "ia",
+                              "type": "file"
+                            },
+                            {
+                              "id": "equipe",
+                              "label": "Agente de equipe ou departamental",
+                              "parentId": "ia",
+                              "type": "file"
+                            },
+                            {
+                              "id": "publico",
+                              "label": "Chatbot público",
+                              "parentId": "ia",
+                              "type": "file"
+                            },
+                            {
+                              "id": "integrado",
+                              "label": "Agente integrado a sistemas",
+                              "parentId": "ia",
+                              "type": "file"
+                            }
+                          ],
+                          "after": "O caso atende público interno definido e gera apoio educacional. Não é canal público, não executa ação sensível e não é apenas uso individual."
+                        },
+                        {
+                          "id": "micro-camadas-de-uso-card-04",
+                          "position": 4,
+                          "resource": "paragraph",
+                          "kind": "exercise",
+                          "exercise": "gap",
+                          "title": "Camada muda controle",
+                          "text": "Quanto maior o alcance do público e a capacidade de agir, maior tende a ser o [[controle::controle|atalho|improviso]] exigido.",
+                          "after": "A camada de uso depende de alcance, público, dados e integração; escolher ferramenta antes dessa classificação distorce o risco."
+                        }
+                      ],
+                      "validation": {
+                        "ok": true,
+                        "issues": []
+                      }
+                    }
+                  ],
+                  "activeVersion": "version-001"
+                },
+                {
+                  "id": "micro-classificacao-por-publico",
+                  "title": "Público atendido muda o risco",
+                  "goal": "Escolher controles mínimos conforme público interno, externo, autenticado ou anônimo.",
+                  "role": "practice",
+                  "status": "generated",
+                  "branchOf": null,
+                  "dependsOn": [
+                    "micro-camadas-de-uso"
+                  ],
+                  "covers": [
+                    "público interno",
+                    "público externo",
+                    "usuário autenticado",
+                    "usuário anônimo",
+                    "atendimento humano"
+                  ],
+                  "checks": [
+                    "identifica risco maior em canais externos",
+                    "escolhe controle mínimo para cada público"
+                  ],
+                  "versions": [
+                    {
+                      "id": "version-001",
+                      "createdAt": "2026-06-06T00:00:00.000Z",
+                      "source": "llm",
+                      "action": "generate",
+                      "request": "Primeira versão da microssequência.",
+                      "summary": "Conceitos e práticas sobre público interno, público externo, usuário autenticado, usuário anônimo, atendimento humano.",
+                      "cards": [
+                        {
+                          "id": "micro-classificacao-por-publico-card-01",
+                          "position": 1,
+                          "resource": "table",
+                          "kind": "theory",
+                          "exercise": "none",
+                          "title": "Público e controle",
+                          "columns": [
+                            "Público",
+                            "Exemplo",
+                            "Controle esperado"
+                          ],
+                          "rows": [
+                            [
+                              "Individual interno",
+                              "Resumo de reunião própria",
+                              "Orientação de uso e cuidado com dados"
+                            ],
+                            [
+                              "Atendimento interno de equipe",
+                              "Checklist de procedimento",
+                              "Fonte oficial e responsável funcional"
+                            ],
+                            [
+                              "Organização interna",
+                              "FAQ para várias áreas",
+                              "Publicação controlada e canal de correção"
+                            ],
+                            [
+                              "Público externo",
+                              "Orientação sobre etapas e documentos",
+                              "Fonte oficial, aviso de limitação, fallback humano e logs"
+                            ]
+                          ],
+                          "after": "O risco aumenta quando a resposta representa a companhia perante público amplo ou externo."
+                        },
+                        {
+                          "id": "micro-classificacao-por-publico-card-02",
+                          "position": 2,
+                          "resource": "choice",
+                          "kind": "exercise",
+                          "exercise": "choice",
+                          "title": "Usuário anônimo",
+                          "question": "Um canal externo permitirá perguntas anônimas sobre documentos necessários para iniciar um processo. Qual controle é indispensável?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "text": "Limitar a respostas gerais com fonte oficial, aviso de limitação e encaminhamento humano."
+                            },
+                            {
+                              "id": "b",
+                              "text": "Responder situação individual sem autenticação porque a pergunta é útil."
+                            },
+                            {
+                              "id": "c",
+                              "text": "Usar documentos internos sem validação para enriquecer respostas."
+                            },
+                            {
+                              "id": "d",
+                              "text": "Permitir que o agente execute ações sem identificar o usuário."
+                            }
+                          ],
+                          "answer": "a",
+                          "after": "Canal anônimo deve responder apenas orientação geral e segura. Situação individual, documento interno não validado e ação sem identidade elevam risco."
+                        },
+                        {
+                          "id": "micro-classificacao-por-publico-card-03",
+                          "position": 3,
+                          "resource": "choice",
+                          "kind": "exercise",
+                          "exercise": "choice",
+                          "title": "Público interno autenticado",
+                          "question": "Um agente interno atende empregados autenticados e consulta apenas documentos gerais publicados pela área responsável. Qual risco ainda deve ser tratado?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "text": "Fonte, atualização, registro de uso e canal de correção continuam necessários."
+                            },
+                            {
+                              "id": "b",
+                              "text": "Nenhum risco resta porque todos estão autenticados."
+                            },
+                            {
+                              "id": "c",
+                              "text": "A autenticação permite misturar qualquer dado disponível."
+                            },
+                            {
+                              "id": "d",
+                              "text": "A validação humana nunca é necessária em canal interno."
+                            }
+                          ],
+                          "answer": "a",
+                          "after": "Autenticação reduz alguns riscos, mas não garante fonte atualizada, permissão adequada, qualidade de resposta ou correção."
+                        }
+                      ],
+                      "validation": {
+                        "ok": true,
+                        "issues": []
+                      }
+                    }
+                  ],
+                  "activeVersion": "version-001"
+                }
+              ]
+            },
+            {
+              "id": "lesson-3-2-dados-usados",
+              "title": "Dados usados pelo agente",
+              "guide": {
+                "goal": "Diferenciar informação geral, dado pessoal, dado sensível e dado restrito em decisões de IA.",
+                "include": [
+                  "informação geral",
+                  "dado pessoal",
+                  "dado sensível",
+                  "dado restrito",
+                  "autenticação",
+                  "classificação de dados",
+                  "autorização",
+                  "logs",
+                  "revisão jurídica"
+                ],
+                "exclude": [
+                  "dados pessoais reais",
+                  "nomes de sistemas internos reais",
+                  "nome real da organização"
+                ],
+                "notation": [
+                  "Usar Lei Geral de Proteção de Dados (LGPD) como critério de risco e governança."
+                ],
+                "avoid": []
+              },
+              "topics": [
+                {
+                  "id": "topic-informacao-geral",
+                  "label": "informação geral",
+                  "kind": "concept",
+                  "checks": [
+                    "distingue regra geral de situação individual"
+                  ],
+                  "errors": [
+                    "tratar regra geral como dado pessoal"
+                  ]
+                },
+                {
+                  "id": "topic-dado-pessoal-sensivel",
+                  "label": "dado pessoal e sensível",
+                  "kind": "term",
+                  "checks": [
+                    "reconhece quando envolver jurídico/LGPD"
+                  ],
+                  "errors": [
+                    "achar que dado sensível pode circular em qualquer agente"
+                  ]
+                },
+                {
+                  "id": "topic-controle-por-dado",
+                  "label": "controle por tipo de dado",
+                  "kind": "procedure",
+                  "checks": [
+                    "escolhe autorização, logs e revisão conforme dado"
+                  ],
+                  "errors": [
+                    "rejeitar controle porque usuário está autenticado"
+                  ]
+                }
+              ],
+              "microsequences": [
+                {
+                  "id": "micro-dados-gerais-e-individuais",
+                  "title": "Informação geral é diferente de dado individualizado",
+                  "goal": "Classificar informação geral, dado pessoal, dado sensível e dado restrito.",
+                  "role": "explain",
+                  "status": "generated",
+                  "branchOf": null,
+                  "dependsOn": [],
+                  "covers": [
+                    "informação geral",
+                    "dado pessoal",
+                    "dado sensível",
+                    "dado restrito",
+                    "autenticação"
+                  ],
+                  "checks": [
+                    "diferencia resposta sobre regra geral de resposta sobre situação individual",
+                    "identifica quando LGPD entra na discussão"
+                  ],
+                  "versions": [
+                    {
+                      "id": "version-001",
+                      "createdAt": "2026-06-06T00:00:00.000Z",
+                      "source": "llm",
+                      "action": "generate",
+                      "request": "Primeira versão da microssequência.",
+                      "summary": "Conceitos e práticas sobre informação geral, dado pessoal, dado sensível, dado restrito, autenticação.",
+                      "cards": [
+                        {
+                          "id": "micro-dados-gerais-e-individuais-card-01",
+                          "position": 1,
+                          "resource": "table",
+                          "kind": "theory",
+                          "exercise": "none",
+                          "title": "Tipos de informação",
+                          "columns": [
+                            "Tipo",
+                            "Exemplo genérico",
+                            "Cuidado"
+                          ],
+                          "rows": [
+                            [
+                              "Informação geral",
+                              "Prazo e documentos exigidos por uma norma",
+                              "Fonte oficial e versão vigente"
+                            ],
+                            [
+                              "Dado pessoal",
+                              "Informação vinculada a uma pessoa identificada ou identificável",
+                              "Base legal, necessidade, autorização e controle"
+                            ],
+                            [
+                              "Dado sensível",
+                              "Informação de saúde, biometria ou outra categoria sensível",
+                              "Controle reforçado e análise específica"
+                            ],
+                            [
+                              "Dado restrito",
+                              "Informação interna com acesso limitado",
+                              "Permissão, registro e política de acesso"
+                            ]
+                          ],
+                          "after": "A Lei Geral de Proteção de Dados (LGPD) deve entrar na conversa quando o caso envolver dados pessoais ou sensíveis."
+                        },
+                        {
+                          "id": "micro-dados-gerais-e-individuais-card-02",
+                          "position": 2,
+                          "resource": "choice",
+                          "kind": "exercise",
+                          "exercise": "choice",
+                          "title": "Regra geral ou caso individual",
+                          "question": "Um empregado pergunta em canal interno: “Quais são as regras gerais para solicitar benefício educacional?”. O agente usa uma norma marcada como vigente no cenário, sem consultar dados pessoais. Como classificar?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "text": "Informação geral baseada em fonte oficial."
+                            },
+                            {
+                              "id": "b",
+                              "text": "Dado sensível individualizado."
+                            },
+                            {
+                              "id": "c",
+                              "text": "Ação transacional em sistema."
+                            },
+                            {
+                              "id": "d",
+                              "text": "Atendimento público anônimo."
+                            }
+                          ],
+                          "answer": "a",
+                          "after": "A pergunta busca regra geral e não situação individual. Ainda exige fonte oficial, mas não descreve consulta a dado pessoal do empregado."
+                        },
+                        {
+                          "id": "micro-dados-gerais-e-individuais-card-03",
+                          "position": 3,
+                          "resource": "choice",
+                          "kind": "exercise",
+                          "exercise": "choice",
+                          "title": "Situação individual",
+                          "question": "Uma pessoa pergunta: “Qual é o valor do meu benefício para o período identificado no sistema?”. O agente teria de consultar cadastro individual. Qual cuidado muda?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "text": "Autenticação, autorização, registro e análise de dados pessoais passam a ser necessários."
+                            },
+                            {
+                              "id": "b",
+                              "text": "A pergunta pode ser respondida como regra geral sem controle."
+                            },
+                            {
+                              "id": "c",
+                              "text": "Basta transformar a resposta em texto mais enxuto."
+                            },
+                            {
+                              "id": "d",
+                              "text": "A fonte oficial deixa de importar."
+                            }
+                          ],
+                          "answer": "a",
+                          "after": "Consultar situação individual envolve dado pessoal. Texto mais enxuto não resolve acesso, e fonte oficial continua relevante para regras de cálculo."
+                        },
+                        {
+                          "id": "micro-dados-gerais-e-individuais-card-04",
+                          "position": 4,
+                          "resource": "paragraph",
+                          "kind": "exercise",
+                          "exercise": "gap",
+                          "title": "Critério de dado",
+                          "text": "Pergunta sobre regra geral exige fonte; pergunta sobre situação de uma pessoa exige também [[autorização::autorização|texto mais enxuto|fonte genérica]].",
+                          "after": "Autorização define se o usuário pode acessar aquela informação individual; resumir texto ou usar fonte genérica não resolve permissão."
+                        }
+                      ],
+                      "validation": {
+                        "ok": true,
+                        "issues": []
+                      }
+                    }
+                  ],
+                  "activeVersion": "version-001"
+                },
+                {
+                  "id": "micro-risco-por-dado",
+                  "title": "O tipo de dado muda a ferramenta e o controle",
+                  "goal": "Escolher ação segura conforme tipo de dado e nível de controle necessário.",
+                  "role": "practice",
+                  "status": "generated",
+                  "branchOf": null,
+                  "dependsOn": [
+                    "micro-dados-gerais-e-individuais"
+                  ],
+                  "covers": [
+                    "classificação de dados",
+                    "ferramenta adequada",
+                    "autorização",
+                    "logs",
+                    "revisão jurídica"
+                  ],
+                  "checks": [
+                    "escolhe ação segura conforme tipo de dado",
+                    "rejeita uso indevido de dado sensível"
+                  ],
+                  "versions": [
+                    {
+                      "id": "version-001",
+                      "createdAt": "2026-06-06T00:00:00.000Z",
+                      "source": "llm",
+                      "action": "generate",
+                      "request": "Primeira versão da microssequência.",
+                      "summary": "Conceitos e práticas sobre classificação de dados, ferramenta adequada, autorização, logs, revisão jurídica.",
+                      "cards": [
+                        {
+                          "id": "micro-risco-por-dado-card-01",
+                          "position": 1,
+                          "resource": "matrix",
+                          "kind": "theory",
+                          "exercise": "none",
+                          "title": "Matriz dado x controle",
+                          "prompt": "Linhas indicam tipo de dado; colunas indicam nível de controle esperado.",
+                          "name": "DadoControle",
+                          "values": [
+                            [
+                              "Tipo",
+                              "Controle básico",
+                              "Controle reforçado",
+                              "Escalação"
+                            ],
+                            [
+                              "Geral",
+                              "Fonte oficial",
+                              "Atualização e dono",
+                              "Se canal público"
+                            ],
+                            [
+                              "Pessoal",
+                              "Autenticação",
+                              "Autorização e log",
+                              "Jurídico/LGPD se necessário"
+                            ],
+                            [
+                              "Sensível",
+                              "Restrição forte",
+                              "Avaliação específica",
+                              "Aprovação e monitoramento"
+                            ]
+                          ],
+                          "after": "A matriz mostra que dado sensível não deve seguir o mesmo caminho de uma regra geral."
+                        },
+                        {
+                          "id": "micro-risco-por-dado-card-02",
+                          "position": 2,
+                          "resource": "matrix",
+                          "kind": "exercise",
+                          "exercise": "choice",
+                          "title": "Escolha segura",
+                          "question": "Uma área quer que um agente responda informação de saúde de pessoas individualizadas. Qual decisão é mais segura?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "text": "Escalar para análise jurídica/LGPD e segurança antes de qualquer piloto."
+                            },
+                            {
+                              "id": "b",
+                              "text": "Tratar como FAQ geral porque o agente só responde texto."
+                            },
+                            {
+                              "id": "c",
+                              "text": "Publicar em canal anônimo com aviso genérico."
+                            },
+                            {
+                              "id": "d",
+                              "text": "Usar o mesmo controle de uma norma pública."
+                            }
+                          ],
+                          "answer": "a",
+                          "prompt": "Matriz de controle: Geral exige fonte oficial; Pessoal exige autenticação e autorização; Sensível exige avaliação específica e controle reforçado.",
+                          "name": "DadoControle",
+                          "values": [
+                            [
+                              "Tipo",
+                              "Mínimo",
+                              "Quando escalar"
+                            ],
+                            [
+                              "Geral",
+                              "Fonte vigente",
+                              "Canal externo"
+                            ],
+                            [
+                              "Pessoal",
+                              "Autenticação + autorização",
+                              "Consulta individual"
+                            ],
+                            [
+                              "Sensível",
+                              "Restrição forte + análise",
+                              "Quase sempre antes de piloto"
+                            ]
+                          ],
+                          "after": "Dado sensível individualizado exige análise e controles reforçados. Aviso, canal anônimo ou tratamento como norma geral são insuficientes."
+                        },
+                        {
+                          "id": "micro-risco-por-dado-card-03",
+                          "position": 3,
+                          "resource": "choice",
+                          "kind": "exercise",
+                          "exercise": "choice",
+                          "title": "Ferramenta muda com o dado",
+                          "question": "Um caso usa apenas perguntas frequentes sobre regras gerais, com fonte oficial e público interno. Outro usa dados individuais com consulta autenticada. Qual conclusão é correta?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "text": "Os casos podem exigir ferramentas e controles diferentes, mesmo que ambos usem conversa em linguagem natural."
+                            },
+                            {
+                              "id": "b",
+                              "text": "Ambos devem ter o mesmo controle porque a interface é parecida."
+                            },
+                            {
+                              "id": "c",
+                              "text": "O caso com dado individual é sempre mais simples."
+                            },
+                            {
+                              "id": "d",
+                              "text": "A classificação dos dados não influencia a ferramenta."
+                            }
+                          ],
+                          "answer": "a",
+                          "after": "A interface parecida não iguala riscos. Dado individual exige autenticação, autorização, logs e desenho técnico mais controlado."
+                        }
+                      ],
+                      "validation": {
+                        "ok": true,
+                        "issues": []
+                      }
+                    }
+                  ],
+                  "activeVersion": "version-001"
+                }
+              ]
+            },
+            {
+              "id": "lesson-3-3-integracao-acoes",
+              "title": "Integração e execução de ações",
+              "guide": {
+                "goal": "Distinguir agente informativo, consultivo e transacional, e aplicar controles proporcionais.",
+                "include": [
+                  "consulta",
+                  "execução de ação",
+                  "alteração de cadastro",
+                  "abertura de chamado",
+                  "geração de relatório",
+                  "trilha de auditoria",
+                  "autorização",
+                  "confirmação humana",
+                  "reversão"
+                ],
+                "exclude": [
+                  "nomes de sistemas internos reais",
+                  "decisões automáticas definitivas",
+                  "dados pessoais reais",
+                  "nome real da organização"
+                ],
+                "notation": [
+                  "Usar agente informativo, agente consultivo e agente transacional."
+                ],
+                "avoid": []
+              },
+              "topics": [
+                {
+                  "id": "topic-consulta-execucao",
+                  "label": "consulta e execução",
+                  "kind": "concept",
+                  "checks": [
+                    "distingue consultar informação de alterar estado"
+                  ],
+                  "errors": [
+                    "tratar consulta e ação como mesmo risco"
+                  ]
+                },
+                {
+                  "id": "topic-agente-transacional",
+                  "label": "agente transacional",
+                  "kind": "concept",
+                  "checks": [
+                    "reconhece necessidade de controle proporcional"
+                  ],
+                  "errors": [
+                    "permitir alteração sem confirmação"
+                  ]
+                },
+                {
+                  "id": "topic-trilha-auditoria",
+                  "label": "trilha de auditoria",
+                  "kind": "term",
+                  "checks": [
+                    "associa log e registro a investigação e correção"
+                  ],
+                  "errors": [
+                    "ignorar logs em ações simples"
+                  ]
+                }
+              ],
+              "microsequences": [
+                {
+                  "id": "micro-consultar-ou-executar",
+                  "title": "Consultar não é o mesmo que executar",
+                  "goal": "Distinguir agente informativo, consultivo e transacional.",
+                  "role": "explain",
+                  "status": "generated",
+                  "branchOf": null,
+                  "dependsOn": [],
+                  "covers": [
+                    "consulta",
+                    "execução de ação",
+                    "alteração de cadastro",
+                    "abertura de chamado",
+                    "geração de relatório",
+                    "trilha de auditoria"
+                  ],
+                  "checks": [
+                    "distingue agente informativo consultivo e transacional"
+                  ],
+                  "versions": [
+                    {
+                      "id": "version-001",
+                      "createdAt": "2026-06-06T00:00:00.000Z",
+                      "source": "llm",
+                      "action": "generate",
+                      "request": "Primeira versão da microssequência.",
+                      "summary": "Conceitos e práticas sobre consulta, execução de ação, alteração de cadastro, abertura de chamado, geração de relatório, trilha de auditoria.",
+                      "cards": [
+                        {
+                          "id": "micro-consultar-ou-executar-card-01",
+                          "position": 1,
+                          "resource": "table",
+                          "kind": "theory",
+                          "exercise": "none",
+                          "title": "Três níveis de agente",
+                          "columns": [
+                            "Nível",
+                            "Exemplo",
+                            "Controle decisivo"
+                          ],
+                          "rows": [
+                            [
+                              "Informativo",
+                              "Explica procedimento em documento oficial",
+                              "Fonte e escopo"
+                            ],
+                            [
+                              "Consultivo",
+                              "Consulta status em sistema autorizado",
+                              "Identidade, autorização e log"
+                            ],
+                            [
+                              "Transacional",
+                              "Execução de ação por agente, como abrir chamado ou alterar cadastro",
+                              "Confirmação, auditoria, limite e reversão"
+                            ]
+                          ],
+                          "after": "A passagem de consulta para execução altera o risco porque o agente pode mudar o estado de um processo."
+                        },
+                        {
+                          "id": "micro-consultar-ou-executar-card-02",
+                          "position": 2,
+                          "resource": "flow",
+                          "kind": "theory",
+                          "exercise": "none",
+                          "title": "Da pergunta à ação",
+                          "prompt": "Fluxo de classificação antes de integração com sistema.",
+                          "structure": {
+                            "id": "flow-struct-78",
+                            "kind": "sequence",
+                            "items": [
+                              {
+                                "id": "flow-struct-79",
+                                "kind": "start",
+                                "text": "Receber a pergunta"
+                              },
+                              {
+                                "id": "flow-struct-80",
+                                "kind": "if_then_else",
+                                "condition": "O caso é apenas informacional?",
+                                "thenBranch": [
+                                  {
+                                    "id": "flow-struct-81",
+                                    "kind": "end",
+                                    "text": "Responder com controle proporcional ao risco"
+                                  }
+                                ],
+                                "elseBranch": [
+                                  {
+                                    "id": "flow-struct-82",
+                                    "kind": "if_then_else",
+                                    "condition": "O caso consulta sistema autorizado?",
+                                    "thenBranch": [
+                                      {
+                                        "id": "flow-struct-83",
+                                        "kind": "end",
+                                        "text": "Tratar como consulta com fonte autorizada"
+                                      }
+                                    ],
+                                    "elseBranch": [
+                                      {
+                                        "id": "flow-struct-84",
+                                        "kind": "if_then_else",
+                                        "condition": "O caso executa ação?",
+                                        "thenBranch": [
+                                          {
+                                            "id": "flow-struct-85",
+                                            "kind": "end",
+                                            "text": "Definir controle proporcional para a execução"
+                                          }
+                                        ],
+                                        "elseBranch": [
+                                          {
+                                            "id": "flow-struct-86",
+                                            "kind": "end",
+                                            "text": "Reclassificar o caso antes da integração"
+                                          }
+                                        ]
+                                      }
+                                    ]
+                                  }
+                                ]
+                              }
+                            ]
+                          },
+                          "after": "A pergunta técnica decisiva é o que o agente fará com dados e sistemas, não apenas qual interface será usada."
+                        },
+                        {
+                          "id": "micro-consultar-ou-executar-card-03",
+                          "position": 3,
+                          "resource": "choice",
+                          "kind": "exercise",
+                          "exercise": "choice",
+                          "title": "Relatório sob demanda",
+                          "question": "Um agente gera um relatório de indicadores a partir de dados autorizados, sem alterar registros. Como classificar?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "text": "Agente consultivo ou analítico, com controle de acesso e registro da consulta."
+                            },
+                            {
+                              "id": "b",
+                              "text": "Agente transacional que altera cadastro."
+                            },
+                            {
+                              "id": "c",
+                              "text": "Chatbot público anônimo."
+                            },
+                            {
+                              "id": "d",
+                              "text": "Uso sem risco porque não muda dados."
+                            }
+                          ],
+                          "answer": "a",
+                          "after": "Gerar relatório consulta e organiza dados. Ainda exige acesso e registro; não é alteração de cadastro nem canal público."
+                        },
+                        {
+                          "id": "micro-consultar-ou-executar-card-04",
+                          "position": 4,
+                          "resource": "paragraph",
+                          "kind": "exercise",
+                          "exercise": "gap",
+                          "title": "Mudança de estado",
+                          "text": "Abrir chamado ou alterar cadastro é diferente de responder pergunta porque muda o estado de um [[processo::processo|documento de referência|resumo informativo]].",
+                          "after": "Processo é afetado quando o agente executa ação; documento de referência e resumo informativo apenas apoiam consulta."
+                        }
+                      ],
+                      "validation": {
+                        "ok": true,
+                        "issues": []
+                      }
+                    }
+                  ],
+                  "activeVersion": "version-001"
+                },
+                {
+                  "id": "micro-acao-com-controles",
+                  "title": "Toda ação exige controle proporcional",
+                  "goal": "Escolher controles mínimos para ações de baixo, médio e alto impacto.",
+                  "role": "practice",
+                  "status": "generated",
+                  "branchOf": null,
+                  "dependsOn": [
+                    "micro-consultar-ou-executar"
+                  ],
+                  "covers": [
+                    "autorização",
+                    "confirmação humana",
+                    "logs",
+                    "limite de escopo",
+                    "reversão",
+                    "responsável"
+                  ],
+                  "checks": [
+                    "escolhe controle mínimo para ação de baixo médio e alto impacto"
+                  ],
+                  "versions": [
+                    {
+                      "id": "version-001",
+                      "createdAt": "2026-06-06T00:00:00.000Z",
+                      "source": "llm",
+                      "action": "generate",
+                      "request": "Primeira versão da microssequência.",
+                      "summary": "Conceitos e práticas sobre autorização, confirmação humana, logs, limite de escopo, reversão, responsável.",
+                      "cards": [
+                        {
+                          "id": "micro-acao-com-controles-card-01",
+                          "position": 1,
+                          "resource": "flow",
+                          "kind": "theory",
+                          "exercise": "none",
+                          "title": "Pacote mínimo para ação",
+                          "prompt": "Uma ação executada por agente precisa passar por controles.",
+                          "structure": {
+                            "id": "flow-struct-93",
+                            "kind": "sequence",
+                            "items": [
+                              {
+                                "id": "flow-struct-94",
+                                "kind": "start",
+                                "text": "Identificar o usuário"
+                              },
+                              {
+                                "id": "flow-struct-95",
+                                "kind": "process",
+                                "text": "Verificar permissão"
+                              },
+                              {
+                                "id": "flow-struct-96",
+                                "kind": "process",
+                                "text": "Confirmar intenção"
+                              },
+                              {
+                                "id": "flow-struct-97",
+                                "kind": "process",
+                                "text": "Registrar a ação"
+                              },
+                              {
+                                "id": "flow-struct-98",
+                                "kind": "end",
+                                "text": "Prever correção ou reversão"
+                              }
+                            ]
+                          },
+                          "after": "O pacote reduz risco operacional e facilita investigação se houver erro."
+                        },
+                        {
+                          "id": "micro-acao-com-controles-card-02",
+                          "position": 2,
+                          "resource": "choice",
+                          "kind": "exercise",
+                          "exercise": "choice",
+                          "title": "Ação de baixo impacto",
+                          "question": "Um agente interno abrirá chamado de manutenção predial com descrição fornecida pelo usuário. Qual controle é adequado?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "text": "Confirmar dados do chamado, registrar quem pediu e permitir acompanhamento ou correção."
+                            },
+                            {
+                              "id": "b",
+                              "text": "Abrir chamados ilimitados sem identificar usuário."
+                            },
+                            {
+                              "id": "c",
+                              "text": "Permitir alteração de qualquer cadastro junto com o chamado."
+                            },
+                            {
+                              "id": "d",
+                              "text": "Apagar registros depois da abertura para simplificar."
+                            }
+                          ],
+                          "answer": "a",
+                          "after": "Mesmo uma ação operacional simples precisa de confirmação e registro; escopo amplo ou ausência de rastreabilidade aumenta risco."
+                        },
+                        {
+                          "id": "micro-acao-com-controles-card-03",
+                          "position": 3,
+                          "resource": "choice",
+                          "kind": "exercise",
+                          "exercise": "choice",
+                          "title": "Ação de alto impacto",
+                          "question": "Um agente pretende alterar cadastro funcional com efeitos financeiros. Qual decisão é mais segura?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "text": "Exigir autorização forte, validação humana, logs detalhados, limites claros e mecanismo de correção."
+                            },
+                            {
+                              "id": "b",
+                              "text": "Permitir a alteração se a frase do usuário parecer clara."
+                            },
+                            {
+                              "id": "c",
+                              "text": "Tratar como FAQ porque o agente conversa em linguagem natural."
+                            },
+                            {
+                              "id": "d",
+                              "text": "Dispensar validação para acelerar atendimento."
+                            }
+                          ],
+                          "answer": "a",
+                          "after": "Ação com efeito financeiro é de alto impacto e exige controle forte. Clareza do texto não substitui autorização, validação e auditoria."
+                        }
+                      ],
+                      "validation": {
+                        "ok": true,
+                        "issues": []
+                      }
+                    }
+                  ],
+                  "activeVersion": "version-001"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "module-4-ecossistema-microsoft",
+          "title": "Ecossistema Microsoft para IA corporativa",
+          "guide": {
+            "goal": "Entender quando cada ferramenta Microsoft pode ser adequada em um framework corporativo de IA.",
+            "include": [
+              "Microsoft 365 Copilot",
+              "Agent Builder",
+              "Copilot Studio",
+              "Microsoft AI Foundry",
+              "Azure AI Search",
+              "Entra ID",
+              "RBAC",
+              "DLP",
+              "Purview",
+              "Content Safety",
+              "ambientes",
+              "conectores",
+              "APIs",
+              "observabilidade"
+            ],
+            "exclude": [
+              "tutorial operacional de tela",
+              "preço absoluto",
+              "recomendação contratual definitiva",
+              "nome real da organização",
+              "concorrentes fora do escopo"
+            ],
+            "notation": [
+              "Usar comparação por cenário, risco, dados, integração e observabilidade."
+            ],
+            "avoid": []
+          },
+          "lessons": [
+            {
+              "id": "lesson-4-1-copilot-agent-builder-studio",
+              "title": "Copilot, Agent Builder e Copilot Studio",
+              "guide": {
+                "goal": "Comparar produtividade individual, agentes declarativos e agentes low-code.",
+                "include": [
+                  "Microsoft 365 Copilot",
+                  "Agent Builder",
+                  "Copilot Studio",
+                  "produtividade individual",
+                  "agente declarativo",
+                  "low-code",
+                  "tópicos",
+                  "fontes",
+                  "ações",
+                  "conectores",
+                  "ambientes",
+                  "DLP"
+                ],
+                "exclude": [
+                  "tutorial operacional de tela",
+                  "preço absoluto",
+                  "nome real da organização",
+                  "concorrentes fora do escopo"
+                ],
+                "notation": [
+                  "Explicar low-code como criação com menos escrita técnica, sem tratar como ausência de governança."
+                ],
+                "avoid": []
+              },
+              "topics": [
+                {
+                  "id": "topic-m365-copilot",
+                  "label": "Microsoft 365 Copilot",
+                  "kind": "term",
+                  "checks": [
+                    "reconhece uso de produtividade individual"
+                  ],
+                  "errors": [
+                    "tratar Copilot como plataforma completa de governança"
+                  ]
+                },
+                {
+                  "id": "topic-agent-builder",
+                  "label": "Agent Builder",
+                  "kind": "term",
+                  "checks": [
+                    "diferencia agente declarativo simples"
+                  ],
+                  "errors": [
+                    "usar para caso crítico sem análise"
+                  ]
+                },
+                {
+                  "id": "topic-copilot-studio",
+                  "label": "Copilot Studio",
+                  "kind": "term",
+                  "checks": [
+                    "identifica agente low-code, fontes, tópicos, ações e publicação"
+                  ],
+                  "errors": [
+                    "demonizar ferramenta ou usar sem DLP"
+                  ]
+                }
+              ],
+              "microsequences": [
+                {
+                  "id": "micro-m365-copilot",
+                  "title": "Microsoft 365 Copilot é produtividade individual",
+                  "goal": "Reconhecer usos adequados do Microsoft 365 Copilot sem confundi-lo com framework completo.",
+                  "role": "explain",
+                  "status": "generated",
+                  "branchOf": null,
+                  "dependsOn": [],
+                  "covers": [
+                    "produtividade individual",
+                    "documentos",
+                    "e-mails",
+                    "reuniões",
+                    "limite institucional"
+                  ],
+                  "checks": [
+                    "reconhece usos adequados do Copilot",
+                    "rejeita a ideia de que ele substitui framework"
+                  ],
+                  "versions": [
+                    {
+                      "id": "version-001",
+                      "createdAt": "2026-06-06T00:00:00.000Z",
+                      "source": "llm",
+                      "action": "generate",
+                      "request": "Primeira versão da microssequência.",
+                      "summary": "Conceitos e práticas sobre produtividade individual, documentos, e-mails, reuniões, limite institucional.",
+                      "cards": [
+                        {
+                          "id": "micro-m365-copilot-card-01",
+                          "position": 1,
+                          "resource": "paragraph",
+                          "kind": "theory",
+                          "exercise": "none",
+                          "title": "Produtividade individual",
+                          "text": "Microsoft 365 Copilot apoia atividades individuais e de equipe no Microsoft 365, como rascunhos, resumos, e-mails, apresentações, reuniões e análise de documentos permitidos ao usuário.",
+                          "after": "Esse apoio pode gerar produtividade, mas não define sozinho política, comitê, RAG corporativo, logs de agentes críticos, custos de arquitetura nem ciclo de vida."
+                        },
+                        {
+                          "id": "micro-m365-copilot-card-02",
+                          "position": 2,
+                          "resource": "table",
+                          "kind": "theory",
+                          "exercise": "none",
+                          "title": "Uso adequado e limite",
+                          "columns": [
+                            "Uso adequado",
+                            "Limite para framework"
+                          ],
+                          "rows": [
+                            [
+                              "Resumir reunião interna",
+                              "Não cria governança de agentes"
+                            ],
+                            [
+                              "Rascunhar e-mail",
+                              "Não valida conteúdo institucional"
+                            ],
+                            [
+                              "Apoiar documento no Word",
+                              "Não substitui fonte oficial de atendimento"
+                            ],
+                            [
+                              "Organizar ideias no Teams",
+                              "Não implanta canal público crítico"
+                            ]
+                          ],
+                          "after": "Produtividade individual é uma camada útil, mas não cobre todo o desenho corporativo."
+                        },
+                        {
+                          "id": "micro-m365-copilot-card-03",
+                          "position": 3,
+                          "resource": "choice",
+                          "kind": "exercise",
+                          "exercise": "choice",
+                          "title": "Copilot não é tudo",
+                          "question": "Uma pessoa afirma: “Como a companhia tem Microsoft 365 Copilot, já temos framework corporativo de IA generativa”. Qual resposta é mais adequada?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "text": "Copilot ajuda produtividade individual, mas framework exige governança, papéis, fontes, controles, custos, métricas e manutenção."
+                            },
+                            {
+                              "id": "b",
+                              "text": "A afirmação está correta porque qualquer licença de produtividade cria governança automaticamente."
+                            },
+                            {
+                              "id": "c",
+                              "text": "Copilot deve ser proibido porque existe risco em qualquer uso."
+                            },
+                            {
+                              "id": "d",
+                              "text": "Framework é apenas uma lista de prompts pessoais."
+                            }
+                          ],
+                          "answer": "a",
+                          "after": "Microsoft 365 Copilot apoia produtividade individual, mas framework corporativo exige governança, papéis, fontes, controles, custos, métricas e manutenção."
+                        },
+                        {
+                          "id": "micro-m365-copilot-card-04",
+                          "position": 4,
+                          "resource": "paragraph",
+                          "kind": "exercise",
+                          "exercise": "gap",
+                          "title": "Frase de reunião",
+                          "text": "A frase segura é: produtividade individual com IA não substitui [[framework corporativo::framework corporativo|lista de prompts pessoais|licença de produtividade]].",
+                          "after": "Framework corporativo organiza papéis, riscos, fontes e manutenção; prompts pessoais e licenças de produtividade não sustentam governança institucional."
+                        }
+                      ],
+                      "validation": {
+                        "ok": true,
+                        "issues": []
+                      }
+                    }
+                  ],
+                  "activeVersion": "version-001"
+                },
+                {
+                  "id": "micro-agent-builder-copilot-studio",
+                  "title": "Agent Builder e Copilot Studio",
+                  "goal": "Diferenciar agentes declarativos simples de agentes low-code com fontes, ações e publicação.",
+                  "role": "explain",
+                  "status": "generated",
+                  "branchOf": null,
+                  "dependsOn": [
+                    "micro-m365-copilot"
+                  ],
+                  "covers": [
+                    "agente declarativo",
+                    "low-code",
+                    "tópicos",
+                    "fontes",
+                    "ações",
+                    "conectores",
+                    "ambientes",
+                    "DLP"
+                  ],
+                  "checks": [
+                    "diferencia agente simplificado de agente departamental",
+                    "identifica quando Copilot Studio é suficiente"
+                  ],
+                  "versions": [
+                    {
+                      "id": "version-001",
+                      "createdAt": "2026-06-06T00:00:00.000Z",
+                      "source": "llm",
+                      "action": "generate",
+                      "request": "Primeira versão da microssequência.",
+                      "summary": "Conceitos e práticas sobre agente declarativo, low-code, tópicos, fontes, ações, conectores, ambientes, DLP.",
+                      "cards": [
+                        {
+                          "id": "micro-agent-builder-copilot-studio-card-01",
+                          "position": 1,
+                          "resource": "table",
+                          "kind": "theory",
+                          "exercise": "none",
+                          "title": "Agent Builder e Copilot Studio",
+                          "columns": [
+                            "Ferramenta",
+                            "Tende a servir melhor",
+                            "Atenção"
+                          ],
+                          "rows": [
+                            [
+                              "Agent Builder",
+                              "Agentes pessoais, de equipe ou pilotos simples no ambiente Microsoft 365 Copilot",
+                              "Escopo reduzido e limites claros"
+                            ],
+                            [
+                              "Copilot Studio",
+                              "Agentes e chatbots low-code com tópicos, fontes, ações, conectores e publicação",
+                              "Ambiente, DLP e governança de publicação"
+                            ],
+                            [
+                              "Ambiente",
+                              "Separar desenvolvimento, teste e produção quando aplicável",
+                              "Evitar publicação sem validação"
+                            ],
+                            [
+                              "DLP",
+                              "Prevenir combinações indevidas de dados e conectores",
+                              "Não substitui análise de risco"
+                            ]
+                          ],
+                          "after": "A comparação é por cenário. Simplicidade não elimina necessidade de fonte oficial, responsável e controle."
+                        },
+                        {
+                          "id": "micro-agent-builder-copilot-studio-card-02",
+                          "position": 2,
+                          "resource": "choice",
+                          "kind": "exercise",
+                          "exercise": "choice",
+                          "title": "Piloto simples",
+                          "question": "Uma equipe quer um agente interno para responder checklist de procedimento de baixo risco, com fonte oficial e sem integração a sistemas. Qual caminho inicial pode ser suficiente?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "text": "Agent Builder ou Copilot Studio, com escopo, fonte e validação definidos."
+                            },
+                            {
+                              "id": "b",
+                              "text": "Arquitetura complexa obrigatória antes de qualquer teste."
+                            },
+                            {
+                              "id": "c",
+                              "text": "Canal público anônimo sem revisão."
+                            },
+                            {
+                              "id": "d",
+                              "text": "Uso livre sem dono funcional."
+                            }
+                          ],
+                          "answer": "a",
+                          "after": "Escopo baixo, fonte definida e ausência de integração sensível podem permitir ferramenta simplificada, desde que dono funcional, validação e governança estejam definidos."
+                        },
+                        {
+                          "id": "micro-agent-builder-copilot-studio-card-03",
+                          "position": 3,
+                          "resource": "choice",
+                          "kind": "exercise",
+                          "exercise": "choice",
+                          "title": "DLP na prática",
+                          "question": "Em Copilot Studio, uma área quer combinar um conector de documentos internos com um conector externo sem análise. Qual pergunta é essencial?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "text": "A política de DLP permite essa combinação de dados e conectores no ambiente escolhido?"
+                            },
+                            {
+                              "id": "b",
+                              "text": "O nome do agente já está atraente?"
+                            },
+                            {
+                              "id": "c",
+                              "text": "O agente deve responder sem registrar nada?"
+                            },
+                            {
+                              "id": "d",
+                              "text": "A fonte pode ser substituída por memória do modelo?"
+                            }
+                          ],
+                          "answer": "a",
+                          "after": "DLP trata prevenção de vazamento e combinação de conectores. Nome, ausência de registro e memória sem fonte não resolvem o risco."
+                        }
+                      ],
+                      "validation": {
+                        "ok": true,
+                        "issues": []
+                      }
+                    }
+                  ],
+                  "activeVersion": "version-001"
+                },
+                {
+                  "id": "micro-copilot-studio-limites",
+                  "title": "Limites práticos do Copilot Studio",
+                  "goal": "Decidir quando um caso deve escalar para arquitetura mais robusta.",
+                  "role": "practice",
+                  "status": "generated",
+                  "branchOf": null,
+                  "dependsOn": [
+                    "micro-agent-builder-copilot-studio"
+                  ],
+                  "covers": [
+                    "atendimento público",
+                    "dado individualizado",
+                    "sistema sensível",
+                    "rastreabilidade",
+                    "integração"
+                  ],
+                  "checks": [
+                    "decide quando escalar para arquitetura mais robusta",
+                    "identifica risco de uso inadequado"
+                  ],
+                  "versions": [
+                    {
+                      "id": "version-001",
+                      "createdAt": "2026-06-06T00:00:00.000Z",
+                      "source": "llm",
+                      "action": "generate",
+                      "request": "Primeira versão da microssequência.",
+                      "summary": "Conceitos e práticas sobre atendimento público, dado individualizado, sistema sensível, rastreabilidade, integração.",
+                      "cards": [
+                        {
+                          "id": "micro-copilot-studio-limites-card-01",
+                          "position": 1,
+                          "resource": "table",
+                          "kind": "theory",
+                          "exercise": "none",
+                          "title": "Quando avaliar escalada",
+                          "columns": [
+                            "Sinal",
+                            "Por que aumenta exigência"
+                          ],
+                          "rows": [
+                            [
+                              "Público externo",
+                              "Resposta representa canal institucional amplo"
+                            ],
+                            [
+                              "Dado individualizado",
+                              "Exige autenticação, autorização e proteção de dados"
+                            ],
+                            [
+                              "Sistema sensível",
+                              "Falha pode afetar processo relevante"
+                            ],
+                            [
+                              "Rastreabilidade detalhada",
+                              "Pode exigir logs, traces e avaliação formal"
+                            ],
+                            [
+                              "Múltiplos agentes complexos",
+                              "Arquitetura e operação ficam mais difíceis"
+                            ]
+                          ],
+                          "after": "Copilot Studio pode ser útil em muitos casos, mas sinais de criticidade pedem avaliação mais robusta."
+                        },
+                        {
+                          "id": "micro-copilot-studio-limites-card-02",
+                          "position": 2,
+                          "resource": "choice",
+                          "kind": "exercise",
+                          "exercise": "choice",
+                          "title": "Escalar ou não",
+                          "question": "Um agente atenderá público externo, consultará situação individual autenticada e registrará solicitações. Qual decisão é mais adequada?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "text": "Escalar a análise para arquitetura mais robusta, com segurança, jurídico/LGPD, logs, testes e responsável técnico."
+                            },
+                            {
+                              "id": "b",
+                              "text": "Publicar apenas em Copilot Studio sem análise porque low-code reduz risco."
+                            },
+                            {
+                              "id": "c",
+                              "text": "Tratar como FAQ interno de baixo risco."
+                            },
+                            {
+                              "id": "d",
+                              "text": "Dispensar monitoramento porque o usuário estará autenticado."
+                            }
+                          ],
+                          "answer": "a",
+                          "after": "Público externo, dado individual e ação exigem controle forte. Low-code e autenticação não eliminam riscos de dados, erro ou auditoria."
+                        },
+                        {
+                          "id": "micro-copilot-studio-limites-card-03",
+                          "position": 3,
+                          "resource": "choice",
+                          "kind": "exercise",
+                          "exercise": "choice",
+                          "title": "Não demonizar a ferramenta",
+                          "question": "Um FAQ interno com normas gerais, fonte oficial, baixo risco e escopo departamental foi proposto em Copilot Studio. Qual avaliação é mais equilibrada?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "text": "Pode ser adequado se houver fonte, validação, DLP, publicação controlada e manutenção."
+                            },
+                            {
+                              "id": "b",
+                              "text": "Deve ser recusado porque Copilot Studio nunca serve para uso corporativo."
+                            },
+                            {
+                              "id": "c",
+                              "text": "Pode ser publicado sem teste porque é interno."
+                            },
+                            {
+                              "id": "d",
+                              "text": "Deve virar Foundry obrigatoriamente, sem analisar risco."
+                            }
+                          ],
+                          "answer": "a",
+                          "after": "FAQ interno de baixo risco pode ser adequado em Copilot Studio quando há fonte oficial, validação, DLP, publicação controlada e manutenção."
+                        }
+                      ],
+                      "validation": {
+                        "ok": true,
+                        "issues": []
+                      }
+                    }
+                  ],
+                  "activeVersion": "version-001"
+                }
+              ]
+            },
+            {
+              "id": "lesson-4-2-foundry-azure-arquitetura",
+              "title": "Foundry, Azure e arquitetura robusta",
+              "guide": {
+                "goal": "Entender Microsoft AI Foundry e Azure como opção para aplicações e agentes de IA mais críticos.",
+                "include": [
+                  "Microsoft AI Foundry",
+                  "Azure AI Search",
+                  "projeto",
+                  "modelo",
+                  "endpoint",
+                  "Agent Service",
+                  "avaliação",
+                  "trace",
+                  "observabilidade",
+                  "implantação",
+                  "tenant",
+                  "assinatura",
+                  "recurso"
+                ],
+                "exclude": [
+                  "tutorial operacional de tela",
+                  "preço absoluto",
+                  "recomendação contratual definitiva",
+                  "nome real da organização"
+                ],
+                "notation": [
+                  "Explicar tenant, assinatura, recurso e endpoint em linguagem simples."
+                ],
+                "avoid": []
+              },
+              "topics": [
+                {
+                  "id": "topic-foundry",
+                  "label": "Microsoft AI Foundry",
+                  "kind": "term",
+                  "checks": [
+                    "reconhece Foundry como plataforma técnica para criar, avaliar e monitorar aplicações de IA"
+                  ],
+                  "errors": [
+                    "usar Foundry como resposta automática para todo caso"
+                  ]
+                },
+                {
+                  "id": "topic-azure-conceitos",
+                  "label": "tenant, assinatura, recurso e endpoint",
+                  "kind": "term",
+                  "checks": [
+                    "associa conceitos de Azure a governança e operação"
+                  ],
+                  "errors": [
+                    "confundir endpoint com fonte oficial"
+                  ]
+                },
+                {
+                  "id": "topic-observabilidade",
+                  "label": "avaliação, trace e observabilidade",
+                  "kind": "concept",
+                  "checks": [
+                    "explica por que logs e traces apoiam operação"
+                  ],
+                  "errors": [
+                    "ignorar observabilidade em caso crítico"
+                  ]
+                }
+              ],
+              "microsequences": [
+                {
+                  "id": "micro-foundry-visao-geral",
+                  "title": "Foundry como plataforma de produção",
+                  "goal": "Reconhecer o papel do Microsoft AI Foundry em agentes críticos e aplicações de produção.",
+                  "role": "explain",
+                  "status": "generated",
+                  "branchOf": null,
+                  "dependsOn": [],
+                  "covers": [
+                    "projeto",
+                    "modelo",
+                    "endpoint",
+                    "Agent Service",
+                    "avaliação",
+                    "trace",
+                    "observabilidade",
+                    "implantação"
+                  ],
+                  "checks": [
+                    "reconhece o papel do Foundry em agentes críticos",
+                    "diferencia plataforma técnica de chatbot simples"
+                  ],
+                  "versions": [
+                    {
+                      "id": "version-001",
+                      "createdAt": "2026-06-06T00:00:00.000Z",
+                      "source": "llm",
+                      "action": "generate",
+                      "request": "Primeira versão da microssequência.",
+                      "summary": "Conceitos e práticas sobre projeto, modelo, endpoint, Agent Service, avaliação, trace, observabilidade, implantação.",
+                      "cards": [
+                        {
+                          "id": "micro-foundry-visao-geral-card-01",
+                          "position": 1,
+                          "resource": "paragraph",
+                          "kind": "theory",
+                          "exercise": "none",
+                          "title": "Plataforma técnica para produção",
+                          "text": "Microsoft AI Foundry é uma plataforma mais técnica para criar, testar, avaliar, implantar e monitorar aplicações e agentes de IA em ambiente Azure.",
+                          "after": "Ela tende a ser relevante quando há maior criticidade, integração, necessidade de avaliação formal, RAG controlado, logs detalhados e operação de produção."
+                        },
+                        {
+                          "id": "micro-foundry-visao-geral-card-02",
+                          "position": 2,
+                          "resource": "graph",
+                          "kind": "theory",
+                          "exercise": "none",
+                          "title": "Componentes conectados",
+                          "prompt": "Estrutura simplificada de um projeto de IA em produção.",
+                          "edges": [
+                            {
+                              "from": "projeto",
+                              "to": "modelo"
+                            },
+                            {
+                              "from": "projeto",
+                              "to": "agente"
+                            },
+                            {
+                              "from": "agente",
+                              "to": "ferramenta"
+                            },
+                            {
+                              "from": "agente",
+                              "to": "busca"
+                            },
+                            {
+                              "from": "projeto",
+                              "to": "avaliacao"
+                            },
+                            {
+                              "from": "agente",
+                              "to": "logs"
+                            },
+                            {
+                              "from": "modelo",
+                              "to": "endpoint"
+                            }
+                          ],
+                          "vertices": [
+                            {
+                              "id": "projeto",
+                              "label": "Projeto"
+                            },
+                            {
+                              "id": "modelo",
+                              "label": "Modelo"
+                            },
+                            {
+                              "id": "agente",
+                              "label": "Agente"
+                            },
+                            {
+                              "id": "ferramenta",
+                              "label": "Ferramenta ou API"
+                            },
+                            {
+                              "id": "busca",
+                              "label": "Azure AI Search"
+                            },
+                            {
+                              "id": "avaliacao",
+                              "label": "Avaliação"
+                            },
+                            {
+                              "id": "logs",
+                              "label": "Logs e traces"
+                            },
+                            {
+                              "id": "endpoint",
+                              "label": "Endpoint"
+                            }
+                          ],
+                          "after": "O grafo mostra que produção envolve vários componentes, não apenas uma interface de conversa."
+                        },
+                        {
+                          "id": "micro-foundry-visao-geral-card-03",
+                          "position": 3,
+                          "resource": "table",
+                          "kind": "theory",
+                          "exercise": "none",
+                          "title": "Vocabulário Azure básico",
+                          "columns": [
+                            "Termo",
+                            "Significado prático"
+                          ],
+                          "rows": [
+                            [
+                              "Tenant",
+                              "Limite de identidade da organização"
+                            ],
+                            [
+                              "Assinatura",
+                              "Agrupamento para cobrança, recursos e governança"
+                            ],
+                            [
+                              "Recurso",
+                              "Serviço criado na nuvem, como busca ou modelo"
+                            ],
+                            [
+                              "Endpoint",
+                              "Endereço controlado para uma aplicação ou serviço receber chamadas"
+                            ]
+                          ],
+                          "after": "Esses termos aparecem em reuniões sobre arquitetura, custo, acesso e operação."
+                        },
+                        {
+                          "id": "micro-foundry-visao-geral-card-04",
+                          "position": 4,
+                          "resource": "choice",
+                          "kind": "exercise",
+                          "exercise": "choice",
+                          "title": "Quando faz sentido",
+                          "question": "Um agente precisará atender canal externo, usar RAG controlado, registrar traces, integrar sistema e passar por avaliação formal. Qual plataforma tende a entrar na análise?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "text": "Microsoft AI Foundry com componentes Azure e controles de produção."
+                            },
+                            {
+                              "id": "b",
+                              "text": "Apenas uso individual no Microsoft 365 Copilot."
+                            },
+                            {
+                              "id": "c",
+                              "text": "Somente um documento compartilhado em pasta comum."
+                            },
+                            {
+                              "id": "d",
+                              "text": "Nenhuma plataforma, pois RAG elimina necessidade de operação."
+                            }
+                          ],
+                          "answer": "a",
+                          "after": "O cenário reúne sinais de produção crítica. Uso individual, pasta comum e confiança irrestrita em RAG não atendem aos controles necessários."
+                        }
+                      ],
+                      "validation": {
+                        "ok": true,
+                        "issues": []
+                      }
+                    }
+                  ],
+                  "activeVersion": "version-001"
+                },
+                {
+                  "id": "micro-foundry-casos-adequados",
+                  "title": "Quando Foundry tende a ser mais adequado",
+                  "goal": "Escolher Foundry/Azure em cenários de maior risco, integração ou necessidade de avaliação formal.",
+                  "role": "practice",
+                  "status": "generated",
+                  "branchOf": null,
+                  "dependsOn": [
+                    "micro-foundry-visao-geral"
+                  ],
+                  "covers": [
+                    "caso crítico",
+                    "público externo",
+                    "dados sensíveis",
+                    "integração",
+                    "avaliação formal",
+                    "logs detalhados"
+                  ],
+                  "checks": [
+                    "escolhe Foundry/Azure em cenários de maior risco",
+                    "explica no feedback o critério de decisão"
+                  ],
+                  "versions": [
+                    {
+                      "id": "version-001",
+                      "createdAt": "2026-06-06T00:00:00.000Z",
+                      "source": "llm",
+                      "action": "generate",
+                      "request": "Primeira versão da microssequência.",
+                      "summary": "Conceitos e práticas sobre caso crítico, público externo, dados sensíveis, integração, avaliação formal, logs detalhados.",
+                      "cards": [
+                        {
+                          "id": "micro-foundry-casos-adequados-card-01",
+                          "position": 1,
+                          "resource": "table",
+                          "kind": "theory",
+                          "exercise": "none",
+                          "title": "Critérios de maior robustez",
+                          "columns": [
+                            "Critério",
+                            "Sinal de atenção"
+                          ],
+                          "rows": [
+                            [
+                              "Público",
+                              "Externo, amplo ou anônimo"
+                            ],
+                            [
+                              "Dados",
+                              "Pessoal, sensível ou restrito"
+                            ],
+                            [
+                              "Integração",
+                              "Consulta ou ação em sistemas"
+                            ],
+                            [
+                              "Operação",
+                              "Necessidade de logs, trace, avaliação e monitoramento"
+                            ],
+                            [
+                              "Escala",
+                              "Múltiplos canais ou alto volume"
+                            ]
+                          ],
+                          "after": "Quanto mais critérios aparecem juntos, mais provável é a necessidade de arquitetura robusta."
+                        },
+                        {
+                          "id": "micro-foundry-casos-adequados-card-02",
+                          "position": 2,
+                          "resource": "choice",
+                          "kind": "exercise",
+                          "exercise": "choice",
+                          "title": "Caso crítico",
+                          "question": "Um canal externo dará orientação personalizada a usuários autenticados e consultará status em sistema. Qual escolha inicial é mais prudente?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "text": "Analisar Foundry/Azure ou arquitetura equivalente com segurança, dados, logs, avaliação e fallback humano."
+                            },
+                            {
+                              "id": "b",
+                              "text": "Publicar como agente pessoal porque a conversa será simples."
+                            },
+                            {
+                              "id": "c",
+                              "text": "Dispensar avaliação formal porque o usuário informa a própria pergunta."
+                            },
+                            {
+                              "id": "d",
+                              "text": "Usar qualquer ferramenta sem classificar dados."
+                            }
+                          ],
+                          "answer": "a",
+                          "after": "O caso envolve público externo, personalização e sistema. Ele exige análise técnica e governança mais fortes."
+                        },
+                        {
+                          "id": "micro-foundry-casos-adequados-card-03",
+                          "position": 3,
+                          "resource": "choice",
+                          "kind": "exercise",
+                          "exercise": "choice",
+                          "title": "Caso que não exige tudo",
+                          "question": "Uma área quer resumir minutas internas de baixo risco para apoiar trabalho individual. Qual posição é equilibrada?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "text": "Pode começar por produtividade individual, respeitando orientação de dados e validação humana."
+                            },
+                            {
+                              "id": "b",
+                              "text": "Exige Foundry obrigatoriamente antes de qualquer uso."
+                            },
+                            {
+                              "id": "c",
+                              "text": "Deve ser canal público para ganhar escala."
+                            },
+                            {
+                              "id": "d",
+                              "text": "Não precisa de validação porque é só resumo."
+                            }
+                          ],
+                          "answer": "a",
+                          "after": "O caso é de produtividade individual e baixo risco. Foundry pode ser excesso; ainda assim, dados e validação importam."
+                        }
+                      ],
+                      "validation": {
+                        "ok": true,
+                        "issues": []
+                      }
+                    }
+                  ],
+                  "activeVersion": "version-001"
+                }
+              ]
+            },
+            {
+              "id": "lesson-4-3-seguranca-identidade-governanca",
+              "title": "Segurança, identidade e governança no ecossistema",
+              "guide": {
+                "goal": "Associar identidade, autorização, prevenção de vazamento, governança de dados e segurança de conteúdo a decisões de IA.",
+                "include": [
+                  "Entra ID",
+                  "RBAC",
+                  "DLP",
+                  "Purview",
+                  "autenticação",
+                  "autorização",
+                  "proteção de dados",
+                  "Content Safety",
+                  "moderação",
+                  "canal público"
+                ],
+                "exclude": [
+                  "tutorial operacional de tela",
+                  "preço absoluto",
+                  "nome real da organização",
+                  "concorrentes fora do escopo"
+                ],
+                "notation": [
+                  "Explicar Microsoft Entra ID antes de usar Entra ID; explicar RBAC como controle de acesso baseado em papéis; explicar DLP como prevenção de perda de dados."
+                ],
+                "avoid": []
+              },
+              "topics": [
+                {
+                  "id": "topic-entra-rbac",
+                  "label": "Microsoft Entra ID e RBAC",
+                  "kind": "term",
+                  "checks": [
+                    "associa identidade e autorização a acesso em IA"
+                  ],
+                  "errors": [
+                    "achar que login resolve toda autorização"
+                  ]
+                },
+                {
+                  "id": "topic-dlp-purview",
+                  "label": "DLP e Purview",
+                  "kind": "term",
+                  "checks": [
+                    "associa prevenção de vazamento e governança de dados"
+                  ],
+                  "errors": [
+                    "combinar conectores sem política"
+                  ]
+                },
+                {
+                  "id": "topic-content-safety",
+                  "label": "Content Safety",
+                  "kind": "term",
+                  "checks": [
+                    "reconhece moderação de conteúdo nocivo ou arriscado"
+                  ],
+                  "errors": [
+                    "achar que moderação substitui validação humana"
+                  ]
+                }
+              ],
+              "microsequences": [
+                {
+                  "id": "micro-entra-rbac-dlp-purview",
+                  "title": "Identidade, acesso, DLP e governança de dados",
+                  "goal": "Associar recursos de segurança e governança às perguntas práticas que respondem.",
+                  "role": "explain",
+                  "status": "generated",
+                  "branchOf": null,
+                  "dependsOn": [],
+                  "covers": [
+                    "Entra ID",
+                    "RBAC",
+                    "DLP",
+                    "Purview",
+                    "autenticação",
+                    "autorização",
+                    "proteção de dados"
+                  ],
+                  "checks": [
+                    "associa cada recurso ao problema que resolve",
+                    "reconhece que permissão é parte do design de IA"
+                  ],
+                  "versions": [
+                    {
+                      "id": "version-001",
+                      "createdAt": "2026-06-06T00:00:00.000Z",
+                      "source": "llm",
+                      "action": "generate",
+                      "request": "Primeira versão da microssequência.",
+                      "summary": "Conceitos e práticas sobre Entra ID, RBAC, DLP, Purview, autenticação, autorização, proteção de dados.",
+                      "cards": [
+                        {
+                          "id": "micro-entra-rbac-dlp-purview-card-01",
+                          "position": 1,
+                          "resource": "relation_map",
+                          "kind": "exercise",
+                          "exercise": "choice",
+                          "title": "Segurança como pergunta prática",
+                          "question": "Qual associação está correta?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "text": "RBAC -> o que pode acessar ou administrar."
+                            },
+                            {
+                              "id": "b",
+                              "text": "DLP -> quem é você no login."
+                            },
+                            {
+                              "id": "c",
+                              "text": "Entra ID -> remoção automática de todo risco jurídico."
+                            },
+                            {
+                              "id": "d",
+                              "text": "Purview -> escolha do tom de resposta do agente."
+                            }
+                          ],
+                          "answer": "a",
+                          "prompt": "Relacione cada conceito a uma pergunta prática de governança.",
+                          "leftSet": {
+                            "label": "Conceitos",
+                            "items": [
+                              {
+                                "id": "entra",
+                                "label": "Microsoft Entra ID"
+                              },
+                              {
+                                "id": "rbac",
+                                "label": "RBAC"
+                              },
+                              {
+                                "id": "dlp",
+                                "label": "DLP"
+                              },
+                              {
+                                "id": "purview",
+                                "label": "Purview"
+                              }
+                            ]
+                          },
+                          "rightSet": {
+                            "label": "Perguntas",
+                            "items": [
+                              {
+                                "id": "quem",
+                                "label": "Quem é você?"
+                              },
+                              {
+                                "id": "pode",
+                                "label": "O que pode acessar ou administrar?"
+                              },
+                              {
+                                "id": "combinar",
+                                "label": "Que dados e conectores podem ser combinados?"
+                              },
+                              {
+                                "id": "governar",
+                                "label": "Como classificar, proteger e governar dados?"
+                              }
+                            ]
+                          },
+                          "relations": [
+                            {
+                              "from": "entra",
+                              "to": "quem"
+                            },
+                            {
+                              "from": "rbac",
+                              "to": "pode"
+                            },
+                            {
+                              "from": "dlp",
+                              "to": "combinar"
+                            },
+                            {
+                              "from": "purview",
+                              "to": "governar"
+                            }
+                          ],
+                          "pairList": [
+                            "(Entra ID, quem é você)",
+                            "(RBAC, acesso)",
+                            "(DLP, combinação de dados)",
+                            "(Purview, governança de dados)"
+                          ],
+                          "after": "RBAC controla acesso por papéis. Entra ID trata identidade; DLP trata prevenção de vazamento; Purview apoia governança de dados."
+                        },
+                        {
+                          "id": "micro-entra-rbac-dlp-purview-card-02",
+                          "position": 2,
+                          "resource": "table",
+                          "kind": "theory",
+                          "exercise": "none",
+                          "title": "Definições rápidas",
+                          "columns": [
+                            "Conceito",
+                            "Em linguagem simples"
+                          ],
+                          "rows": [
+                            [
+                              "Microsoft Entra ID",
+                              "Serviço de identidade: autentica usuários e aplicações"
+                            ],
+                            [
+                              "RBAC",
+                              "Controle de acesso baseado em papéis: define permissões"
+                            ],
+                            [
+                              "DLP",
+                              "Prevenção de perda de dados: evita combinações ou vazamentos indevidos"
+                            ],
+                            [
+                              "Purview",
+                              "Governança e proteção de dados: classificação, catálogo e conformidade"
+                            ]
+                          ],
+                          "after": "Permissão é parte do desenho de IA, porque define quem pode consultar, criar, publicar, administrar e auditar."
+                        },
+                        {
+                          "id": "micro-entra-rbac-dlp-purview-card-03",
+                          "position": 3,
+                          "resource": "choice",
+                          "kind": "exercise",
+                          "exercise": "choice",
+                          "title": "Permissão no design",
+                          "question": "Um agente interno consultará documentos restritos. Qual pergunta deve aparecer antes da publicação?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "text": "Quem pode acessar esses documentos e como a autorização será aplicada pelo agente?"
+                            },
+                            {
+                              "id": "b",
+                              "text": "Como copiar os documentos restritos para uma base comum sem revisar permissões?"
+                            },
+                            {
+                              "id": "c",
+                              "text": "Como permitir acesso a todos para reduzir dúvidas?"
+                            },
+                            {
+                              "id": "d",
+                              "text": "Como remover logs para proteger a experiência?"
+                            }
+                          ],
+                          "answer": "a",
+                          "after": "O ponto decisivo é autorização: o agente deve respeitar quem pode acessar cada documento; acesso amplo, cópia sem revisão ou remoção de logs ampliam risco."
+                        },
+                        {
+                          "id": "micro-entra-rbac-dlp-purview-card-04",
+                          "position": 4,
+                          "resource": "paragraph",
+                          "kind": "exercise",
+                          "exercise": "gap",
+                          "title": "RBAC",
+                          "text": "RBAC significa controle de acesso baseado em [[papéis::papéis|preferências|mensagens]], definindo o que cada perfil pode fazer.",
+                          "after": "Papéis são perfis de permissão. Preferências e mensagens não definem autorização."
+                        }
+                      ],
+                      "validation": {
+                        "ok": true,
+                        "issues": []
+                      }
+                    }
+                  ],
+                  "activeVersion": "version-001"
+                },
+                {
+                  "id": "micro-content-safety",
+                  "title": "Content Safety reduz risco, mas não governa sozinho",
+                  "goal": "Reconhecer uso e limites de Content Safety em canais internos e externos.",
+                  "role": "explain",
+                  "status": "generated",
+                  "branchOf": null,
+                  "dependsOn": [
+                    "micro-entra-rbac-dlp-purview"
+                  ],
+                  "covers": [
+                    "moderação",
+                    "conteúdo nocivo",
+                    "canal público",
+                    "ataques",
+                    "limitação de segurança"
+                  ],
+                  "checks": [
+                    "reconhece uso adequado de Content Safety",
+                    "rejeita a ideia de que substitui validação humana e governança"
+                  ],
+                  "versions": [
+                    {
+                      "id": "version-001",
+                      "createdAt": "2026-06-06T00:00:00.000Z",
+                      "source": "llm",
+                      "action": "generate",
+                      "request": "Primeira versão da microssequência.",
+                      "summary": "Conceitos e práticas sobre moderação, conteúdo nocivo, canal público, ataques, limitação de segurança.",
+                      "cards": [
+                        {
+                          "id": "micro-content-safety-card-01",
+                          "position": 1,
+                          "resource": "paragraph",
+                          "kind": "theory",
+                          "exercise": "none",
+                          "title": "Camada de proteção",
+                          "text": "Content Safety é uma camada para detectar e filtrar conteúdo nocivo, inadequado ou arriscado em entradas e saídas de sistemas de IA.",
+                          "after": "Ela é especialmente importante em canais públicos, mas não substitui fonte oficial, validação humana, autorização, logs e governança."
+                        },
+                        {
+                          "id": "micro-content-safety-card-02",
+                          "position": 2,
+                          "resource": "choice",
+                          "kind": "exercise",
+                          "exercise": "choice",
+                          "title": "Canal público",
+                          "question": "Um chatbot público pode receber mensagens ofensivas ou tentativas de induzir respostas perigosas. Qual camada ajuda a reduzir esse risco?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "text": "Content Safety, combinado com limites de escopo, fonte oficial, logs e fallback humano."
+                            },
+                            {
+                              "id": "b",
+                              "text": "Apenas ampliar o prompt para pedir respostas seguras, sem camada de moderação."
+                            },
+                            {
+                              "id": "c",
+                              "text": "Ausência de logs para evitar armazenamento."
+                            },
+                            {
+                              "id": "d",
+                              "text": "Permissão para responder qualquer assunto."
+                            }
+                          ],
+                          "answer": "a",
+                          "after": "Content Safety ajuda a moderar mensagens nocivas ou perigosas, mas precisa atuar junto com limites de escopo, fonte oficial, logs e fallback humano."
+                        },
+                        {
+                          "id": "micro-content-safety-card-03",
+                          "position": 3,
+                          "resource": "choice",
+                          "kind": "exercise",
+                          "exercise": "choice",
+                          "title": "Limite da moderação",
+                          "question": "Um agente usa Content Safety e responde regra desatualizada por causa de fonte antiga. Qual conclusão é correta?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "text": "Content Safety não corrige fonte desatualizada; é preciso governança documental e teste."
+                            },
+                            {
+                              "id": "b",
+                              "text": "Content Safety atualiza documentos automaticamente."
+                            },
+                            {
+                              "id": "c",
+                              "text": "A resposta está segura porque passou pela moderação."
+                            },
+                            {
+                              "id": "d",
+                              "text": "A solução é remover a fonte oficial."
+                            }
+                          ],
+                          "answer": "a",
+                          "after": "Moderação não garante veracidade nem atualização. A correção envolve fonte, índice, avaliação e manutenção."
+                        }
+                      ],
+                      "validation": {
+                        "ok": true,
+                        "issues": []
+                      }
+                    }
+                  ],
+                  "activeVersion": "version-001"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "module-5-dados-fontes-rag",
+          "title": "Dados, fontes oficiais e RAG corporativo",
+          "guide": {
+            "goal": "Entender como documentos, bases e sistemas alimentam agentes de IA, e por que fonte oficial é requisito de confiabilidade.",
+            "include": [
+              "fonte oficial",
+              "dono da fonte",
+              "versão vigente",
+              "documento proibido",
+              "gestão documental",
+              "RAG",
+              "Azure AI Search",
+              "índice",
+              "metadados",
+              "permissões",
+              "dado estruturado",
+              "dado não estruturado",
+              "consulta a sistemas",
+              "atualização de base"
+            ],
+            "exclude": [
+              "dados reais",
+              "nomes de bases internas reais",
+              "instruções para burlar permissão",
+              "detalhes de banco de dados avançado",
+              "nome real da organização"
+            ],
+            "notation": [
+              "Usar documento, base, sistema e fonte oficial de forma distinta."
+            ],
+            "avoid": []
+          },
+          "lessons": [
+            {
+              "id": "lesson-5-1-fonte-oficial-dono",
+              "title": "Fonte oficial e dono da informação",
+              "guide": {
+                "goal": "Reconhecer fonte oficial, versão vigente, dono da fonte e pacote mínimo de solicitação de agente.",
+                "include": [
+                  "fonte oficial",
+                  "versão vigente",
+                  "dono da fonte",
+                  "documento desatualizado",
+                  "gestão documental",
+                  "perguntas reais",
+                  "documentos proibidos",
+                  "riscos",
+                  "responsáveis",
+                  "testes",
+                  "métricas"
+                ],
+                "exclude": [
+                  "dados reais",
+                  "nomes de bases internas reais",
+                  "instruções para burlar permissão",
+                  "nome real da organização"
+                ],
+                "notation": [
+                  "Diferenciar fonte oficial, documento de apoio e material proibido para uso."
+                ],
+                "avoid": []
+              },
+              "topics": [
+                {
+                  "id": "topic-fonte-oficial",
+                  "label": "fonte oficial",
+                  "kind": "concept",
+                  "checks": [
+                    "identifica fonte adequada para resposta institucional"
+                  ],
+                  "errors": [
+                    "usar documento desatualizado como fonte"
+                  ]
+                },
+                {
+                  "id": "topic-dono-fonte",
+                  "label": "dono da fonte",
+                  "kind": "concept",
+                  "checks": [
+                    "reconhece quem valida conteúdo e atualização"
+                  ],
+                  "errors": [
+                    "achar que TI valida regra de negócio sozinha"
+                  ]
+                },
+                {
+                  "id": "topic-pacote-minimo",
+                  "label": "pacote mínimo da área",
+                  "kind": "procedure",
+                  "checks": [
+                    "seleciona informações mínimas para pedir agente"
+                  ],
+                  "errors": [
+                    "pedir chatbot sem público, fonte, dados ou responsável"
+                  ]
+                }
+              ],
+              "microsequences": [
+                {
+                  "id": "micro-fonte-oficial",
+                  "title": "Fonte oficial é requisito, não detalhe",
+                  "goal": "Identificar fonte adequada e rejeitar fonte desatualizada ou sem responsável.",
+                  "role": "explain",
+                  "status": "generated",
+                  "branchOf": null,
+                  "dependsOn": [],
+                  "covers": [
+                    "fonte oficial",
+                    "versão vigente",
+                    "dono da fonte",
+                    "documento desatualizado",
+                    "gestão documental"
+                  ],
+                  "checks": [
+                    "identifica fonte adequada",
+                    "rejeita fonte desatualizada ou sem responsável"
+                  ],
+                  "versions": [
+                    {
+                      "id": "version-001",
+                      "createdAt": "2026-06-06T00:00:00.000Z",
+                      "source": "llm",
+                      "action": "generate",
+                      "request": "Primeira versão da microssequência.",
+                      "summary": "Conceitos e práticas sobre fonte oficial, versão vigente, dono da fonte, documento desatualizado, gestão documental.",
+                      "cards": [
+                        {
+                          "id": "micro-fonte-oficial-card-01",
+                          "position": 1,
+                          "resource": "table",
+                          "kind": "theory",
+                          "exercise": "none",
+                          "title": "O que torna uma fonte confiável",
+                          "columns": [
+                            "Critério",
+                            "Pergunta prática"
+                          ],
+                          "rows": [
+                            [
+                              "Oficialidade",
+                              "A fonte é autorizada para orientar pessoas?"
+                            ],
+                            [
+                              "Vigência",
+                              "A versão está atualizada?"
+                            ],
+                            [
+                              "Dono",
+                              "Quem responde pelo conteúdo?"
+                            ],
+                            [
+                              "Permissão",
+                              "Quem pode acessar?"
+                            ],
+                            [
+                              "Atualização",
+                              "Como mudanças serão refletidas no agente?"
+                            ]
+                          ],
+                          "after": "A fonte oficial é parte do controle institucional. Sem ela, o agente pode produzir respostas frágeis mesmo com modelo forte."
+                        },
+                        {
+                          "id": "micro-fonte-oficial-card-02",
+                          "position": 2,
+                          "resource": "choice",
+                          "kind": "exercise",
+                          "exercise": "choice",
+                          "title": "Documento conflitante",
+                          "question": "A gestão documental identifica duas versões de uma norma com orientações diferentes. Uma área quer usar as duas para treinar o agente. Qual decisão é correta?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "text": "Saneamento documental primeiro: definir versão vigente, dono da fonte e material que não deve ser usado."
+                            },
+                            {
+                              "id": "b",
+                              "text": "Usar as duas versões para o agente escolher a que parecer melhor."
+                            },
+                            {
+                              "id": "c",
+                              "text": "Ignorar a divergência porque o modelo resolve conflito de texto."
+                            },
+                            {
+                              "id": "d",
+                              "text": "Publicar o agente e corrigir apenas se alguém reclamar."
+                            }
+                          ],
+                          "answer": "a",
+                          "after": "Conflito de fonte deve ser resolvido antes da publicação. O modelo não tem autoridade para decidir vigência institucional."
+                        },
+                        {
+                          "id": "micro-fonte-oficial-card-03",
+                          "position": 3,
+                          "resource": "choice",
+                          "kind": "exercise",
+                          "exercise": "choice",
+                          "title": "Dono da fonte",
+                          "question": "Um agente responderá dúvidas sobre norma administrativa. Quem deve validar o conteúdo funcional da fonte?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "text": "A área dona da regra, com apoio de gestão documental e controles técnicos quando necessário."
+                            },
+                            {
+                              "id": "b",
+                              "text": "Apenas a equipe de infraestrutura, porque hospeda a solução."
+                            },
+                            {
+                              "id": "c",
+                              "text": "A pessoa que criou o primeiro prompt, sem revisão."
+                            },
+                            {
+                              "id": "d",
+                              "text": "Usuários aleatórios por votação informal."
+                            }
+                          ],
+                          "answer": "a",
+                          "after": "A área dona da regra valida conteúdo. Equipe técnica apoia plataforma, mas não substitui validação funcional."
+                        },
+                        {
+                          "id": "micro-fonte-oficial-card-04",
+                          "position": 4,
+                          "resource": "paragraph",
+                          "kind": "exercise",
+                          "exercise": "gap",
+                          "title": "Frase segura",
+                          "text": "Uma fonte oficial desatualizada produz respostas institucionalmente frágeis, mesmo com um [[modelo forte::modelo forte|prompt detalhado|agente bem configurado]].",
+                          "after": "Modelo forte não corrige fonte antiga; prompt detalhado e boa configuração não resolvem validade, permissão ou atualização da base."
+                        }
+                      ],
+                      "validation": {
+                        "ok": true,
+                        "issues": []
+                      }
+                    }
+                  ],
+                  "activeVersion": "version-001"
+                },
+                {
+                  "id": "micro-pacote-minimo-area",
+                  "title": "O que a área deve entregar antes de pedir um agente",
+                  "goal": "Selecionar pacote mínimo completo para triagem de um caso de IA.",
+                  "role": "practice",
+                  "status": "generated",
+                  "branchOf": null,
+                  "dependsOn": [
+                    "micro-fonte-oficial"
+                  ],
+                  "covers": [
+                    "problema",
+                    "público",
+                    "perguntas reais",
+                    "fontes oficiais",
+                    "documentos proibidos",
+                    "riscos",
+                    "dados",
+                    "responsáveis",
+                    "testes",
+                    "volume",
+                    "métricas",
+                    "integração"
+                  ],
+                  "checks": [
+                    "seleciona pacote mínimo completo",
+                    "identifica lacuna em solicitação genérica"
+                  ],
+                  "versions": [
+                    {
+                      "id": "version-001",
+                      "createdAt": "2026-06-06T00:00:00.000Z",
+                      "source": "llm",
+                      "action": "generate",
+                      "request": "Primeira versão da microssequência.",
+                      "summary": "Conceitos e práticas sobre problema, público, perguntas reais, fontes oficiais, documentos proibidos, riscos, dados, responsáveis, testes, volume, métricas, integração.",
+                      "cards": [
+                        {
+                          "id": "micro-pacote-minimo-area-card-01",
+                          "position": 1,
+                          "resource": "table",
+                          "kind": "theory",
+                          "exercise": "none",
+                          "title": "Pacote mínimo",
+                          "columns": [
+                            "Item",
+                            "Por que importa"
+                          ],
+                          "rows": [
+                            [
+                              "Problema e público",
+                              "Define objetivo e alcance"
+                            ],
+                            [
+                              "Perguntas reais",
+                              "Permite testar casos concretos"
+                            ],
+                            [
+                              "Fontes oficiais e materiais proibidos",
+                              "Evita resposta sem base ou com documento indevido"
+                            ],
+                            [
+                              "Dados e riscos",
+                              "Orienta ferramenta e controles"
+                            ],
+                            [
+                              "Responsáveis, métricas e manutenção",
+                              "Sustenta operação depois da publicação"
+                            ]
+                          ],
+                          "after": "Um pedido de agente sem pacote mínimo ainda é uma ideia, não um caso pronto para implantação."
+                        },
+                        {
+                          "id": "micro-pacote-minimo-area-card-02",
+                          "position": 2,
+                          "resource": "choice",
+                          "kind": "exercise",
+                          "exercise": "choice",
+                          "title": "Solicitação genérica",
+                          "question": "Uma área pede “um chatbot para responder tudo sobre procedimentos”, sem público, fonte, responsável, risco ou métrica. Qual resposta é adequada?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "text": "Solicitar pacote mínimo com problema, público, perguntas reais, fontes oficiais, dados, riscos, responsáveis, testes e métricas."
+                            },
+                            {
+                              "id": "b",
+                              "text": "Aprovar porque a área conhece suas dúvidas."
+                            },
+                            {
+                              "id": "c",
+                              "text": "Pedir apenas o nome do agente."
+                            },
+                            {
+                              "id": "d",
+                              "text": "Publicar com respostas livres do modelo."
+                            }
+                          ],
+                          "answer": "a",
+                          "after": "A solicitação precisa ser qualificada. Aprovação imediata, nome e respostas livres ignoram fonte, risco e sustentação."
+                        },
+                        {
+                          "id": "micro-pacote-minimo-area-card-03",
+                          "position": 3,
+                          "resource": "choice",
+                          "kind": "exercise",
+                          "exercise": "choice",
+                          "title": "Documento proibido",
+                          "question": "A área informa que um rascunho interno contém orientações antigas e não deve ser usado. Como registrar isso no levantamento?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "text": "Como material fora do escopo do agente, para evitar indexação e respostas indevidas."
+                            },
+                            {
+                              "id": "b",
+                              "text": "Como fonte principal, porque contém muitas explicações."
+                            },
+                            {
+                              "id": "c",
+                              "text": "Como material público, se estiver em formato PDF."
+                            },
+                            {
+                              "id": "d",
+                              "text": "Como documento a ser usado apenas quando a resposta parecer difícil."
+                            }
+                          ],
+                          "answer": "a",
+                          "after": "Material proibido deve ser excluído da base de conhecimento do agente. Formato e tamanho não tornam o documento autorizado."
+                        }
+                      ],
+                      "validation": {
+                        "ok": true,
+                        "issues": []
+                      }
+                    }
+                  ],
+                  "activeVersion": "version-001"
+                }
+              ]
+            },
+            {
+              "id": "lesson-5-2-documento-dado-sistema",
+              "title": "Documento, dado e sistema",
+              "guide": {
+                "goal": "Distinguir documentos, dados estruturados, bases analíticas e sistemas transacionais para decidir entre RAG, API ou combinação.",
+                "include": [
+                  "dado estruturado",
+                  "dado não estruturado",
+                  "documento",
+                  "banco",
+                  "sistema transacional",
+                  "base analítica",
+                  "RAG documental",
+                  "consulta a sistema",
+                  "API",
+                  "conector",
+                  "dado atualizado",
+                  "permissão"
+                ],
+                "exclude": [
+                  "dados reais",
+                  "nomes de bases internas reais",
+                  "detalhes de banco de dados avançado",
+                  "nome real da organização"
+                ],
+                "notation": [
+                  "Usar RAG para documentos e API/conector para consulta a sistema quando necessário."
+                ],
+                "avoid": []
+              },
+              "topics": [
+                {
+                  "id": "topic-documento-dado-sistema",
+                  "label": "documento, dado e sistema",
+                  "kind": "concept",
+                  "checks": [
+                    "classifica fonte por tipo"
+                  ],
+                  "errors": [
+                    "confundir documento com banco ou sistema"
+                  ]
+                },
+                {
+                  "id": "topic-rag-api",
+                  "label": "RAG ou API",
+                  "kind": "procedure",
+                  "checks": [
+                    "escolhe entre RAG, API ou combinação"
+                  ],
+                  "errors": [
+                    "usar documento desatualizado para dado operacional"
+                  ]
+                },
+                {
+                  "id": "topic-dado-estruturado",
+                  "label": "dado estruturado e não estruturado",
+                  "kind": "term",
+                  "checks": [
+                    "diferencia tabela de texto documental"
+                  ],
+                  "errors": [
+                    "achar que todo dado pode ir para RAG documental"
+                  ]
+                }
+              ],
+              "microsequences": [
+                {
+                  "id": "micro-documento-dado-sistema",
+                  "title": "Documento não é banco; banco não é sistema",
+                  "goal": "Classificar fonte por tipo e reconhecer quando RAG documental não basta.",
+                  "role": "explain",
+                  "status": "generated",
+                  "branchOf": null,
+                  "dependsOn": [],
+                  "covers": [
+                    "dado estruturado",
+                    "dado não estruturado",
+                    "documento",
+                    "banco",
+                    "sistema transacional",
+                    "base analítica"
+                  ],
+                  "checks": [
+                    "classifica fonte por tipo",
+                    "reconhece quando RAG documental não basta"
+                  ],
+                  "versions": [
+                    {
+                      "id": "version-001",
+                      "createdAt": "2026-06-06T00:00:00.000Z",
+                      "source": "llm",
+                      "action": "generate",
+                      "request": "Primeira versão da microssequência.",
+                      "summary": "Conceitos e práticas sobre dado estruturado, dado não estruturado, documento, banco, sistema transacional, base analítica.",
+                      "cards": [
+                        {
+                          "id": "micro-documento-dado-sistema-card-01",
+                          "position": 1,
+                          "resource": "table",
+                          "kind": "theory",
+                          "exercise": "none",
+                          "title": "Quatro tipos de fonte",
+                          "columns": [
+                            "Tipo",
+                            "Exemplo genérico",
+                            "Uso típico em IA"
+                          ],
+                          "rows": [
+                            [
+                              "Documento",
+                              "Norma, manual, instrução ou FAQ oficial",
+                              "RAG para responder com trechos"
+                            ],
+                            [
+                              "Dado estruturado",
+                              "Tabela com campos organizados",
+                              "Consulta, relatório ou indicador"
+                            ],
+                            [
+                              "Sistema transacional",
+                              "Sistema que registra solicitação ou cadastro",
+                              "API ou conector com autorização"
+                            ],
+                            [
+                              "Base analítica",
+                              "Base para indicadores agregados",
+                              "Relatórios, análise e métricas"
+                            ]
+                          ],
+                          "after": "Saber o tipo de fonte evita usar RAG documental para uma informação que precisa vir de sistema atualizado."
+                        },
+                        {
+                          "id": "micro-documento-dado-sistema-card-02",
+                          "position": 2,
+                          "resource": "choice",
+                          "kind": "exercise",
+                          "exercise": "choice",
+                          "title": "Classificar fonte",
+                          "question": "Um agente precisa explicar regras de reembolso usando uma norma em PDF marcada como vigente no cenário. Que tipo de fonte é mais provável?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "text": "Documento não estruturado adequado a RAG documental, se for oficial e atualizado."
+                            },
+                            {
+                              "id": "b",
+                              "text": "Sistema transacional que altera cadastro."
+                            },
+                            {
+                              "id": "c",
+                              "text": "Base analítica de indicadores agregados."
+                            },
+                            {
+                              "id": "d",
+                              "text": "Dado sensível individual por definição."
+                            }
+                          ],
+                          "answer": "a",
+                          "after": "Uma norma em PDF é documento. Pode alimentar RAG se houver oficialidade, vigência e permissões."
+                        },
+                        {
+                          "id": "micro-documento-dado-sistema-card-03",
+                          "position": 3,
+                          "resource": "choice",
+                          "kind": "exercise",
+                          "exercise": "choice",
+                          "title": "Status atualizado",
+                          "question": "Um usuário quer saber o status mais recente de sua solicitação. A informação é atualizada continuamente no sistema responsável. Qual abordagem é mais adequada?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "text": "Consulta controlada ao sistema por API ou conector, respeitando autenticação e autorização."
+                            },
+                            {
+                              "id": "b",
+                              "text": "RAG em um PDF antigo exportado uma vez por mês."
+                            },
+                            {
+                              "id": "c",
+                              "text": "Resposta livre do modelo sem consultar fonte."
+                            },
+                            {
+                              "id": "d",
+                              "text": "Perguntar a outro usuário interno."
+                            }
+                          ],
+                          "answer": "a",
+                          "after": "Status dinâmico deve vir do sistema responsável. PDF antigo e resposta livre podem gerar informação desatualizada ou indevida."
+                        },
+                        {
+                          "id": "micro-documento-dado-sistema-card-04",
+                          "position": 4,
+                          "resource": "paragraph",
+                          "kind": "exercise",
+                          "exercise": "gap",
+                          "title": "Fonte certa",
+                          "text": "Regra geral costuma vir de documento oficial; status individual atualizado costuma vir de [[sistema::sistema|rascunho|opinião]].",
+                          "after": "Sistema é a fonte adequada para informação dinâmica. Rascunho e opinião não têm validade operacional."
+                        }
+                      ],
+                      "validation": {
+                        "ok": true,
+                        "issues": []
+                      }
+                    }
+                  ],
+                  "activeVersion": "version-001"
+                },
+                {
+                  "id": "micro-rag-ou-api",
+                  "title": "Quando usar RAG e quando usar API",
+                  "goal": "Escolher entre RAG documental, API/conector ou combinação.",
+                  "role": "practice",
+                  "status": "generated",
+                  "branchOf": null,
+                  "dependsOn": [
+                    "micro-documento-dado-sistema"
+                  ],
+                  "covers": [
+                    "RAG documental",
+                    "consulta a sistema",
+                    "API",
+                    "conector",
+                    "dado atualizado",
+                    "permissão"
+                  ],
+                  "checks": [
+                    "escolhe entre RAG API ou combinação",
+                    "identifica risco de dado desatualizado"
+                  ],
+                  "versions": [
+                    {
+                      "id": "version-001",
+                      "createdAt": "2026-06-06T00:00:00.000Z",
+                      "source": "llm",
+                      "action": "generate",
+                      "request": "Primeira versão da microssequência.",
+                      "summary": "Conceitos e práticas sobre RAG documental, consulta a sistema, API, conector, dado atualizado, permissão.",
+                      "cards": [
+                        {
+                          "id": "micro-rag-ou-api-card-01",
+                          "position": 1,
+                          "resource": "flow",
+                          "kind": "theory",
+                          "exercise": "none",
+                          "title": "Decisão RAG ou API",
+                          "prompt": "Escolha a abordagem conforme a fonte necessária.",
+                          "structure": {
+                            "id": "flow-struct-106",
+                            "kind": "sequence",
+                            "items": [
+                              {
+                                "id": "flow-struct-107",
+                                "kind": "if_then_else",
+                                "condition": "A resposta depende de regra em documento oficial?",
+                                "thenBranch": [
+                                  {
+                                    "id": "flow-struct-108",
+                                    "kind": "process",
+                                    "text": "Usar RAG documental"
+                                  }
+                                ],
+                                "elseBranch": [
+                                  {
+                                    "id": "flow-struct-109",
+                                    "kind": "if_then_else",
+                                    "condition": "A resposta depende de dado atualizado em sistema?",
+                                    "thenBranch": [
+                                      {
+                                        "id": "flow-struct-110",
+                                        "kind": "process",
+                                        "text": "Usar API ou conector autorizado"
+                                      }
+                                    ],
+                                    "elseBranch": [
+                                      {
+                                        "id": "flow-struct-111",
+                                        "kind": "process",
+                                        "text": "Reclassificar a fonte antes de responder"
+                                      }
+                                    ]
+                                  }
+                                ]
+                              },
+                              {
+                                "id": "flow-struct-112",
+                                "kind": "end",
+                                "text": "Combinar RAG para regra e API para situação individual quando o caso exigir os dois"
+                              }
+                            ]
+                          },
+                          "after": "Muitos casos combinam regra geral em documento e situação individual em sistema."
+                        },
+                        {
+                          "id": "micro-rag-ou-api-card-02",
+                          "position": 2,
+                          "resource": "choice",
+                          "kind": "exercise",
+                          "exercise": "choice",
+                          "title": "Caso combinado",
+                          "question": "Um agente deve explicar a regra de prazo e também informar o status individual de uma solicitação autenticada. Qual desenho é mais adequado?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "text": "RAG para a regra oficial e API/conector autorizado para o status individual."
+                            },
+                            {
+                              "id": "b",
+                              "text": "Apenas RAG com documentos exportados ocasionalmente."
+                            },
+                            {
+                              "id": "c",
+                              "text": "Apenas resposta livre sem fonte."
+                            },
+                            {
+                              "id": "d",
+                              "text": "Apenas planilha manual enviada por e-mail."
+                            }
+                          ],
+                          "answer": "a",
+                          "after": "A regra vem de documento; o status vem do sistema. Combinar fontes com permissão reduz desatualização e erro."
+                        },
+                        {
+                          "id": "micro-rag-ou-api-card-03",
+                          "position": 3,
+                          "resource": "choice",
+                          "kind": "exercise",
+                          "exercise": "choice",
+                          "title": "Conector não é permissão automática",
+                          "question": "Uma equipe possui conector para um sistema. Qual afirmação é correta?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "text": "O conector precisa respeitar autenticação, autorização, escopo e logs definidos."
+                            },
+                            {
+                              "id": "b",
+                              "text": "O conector permite acessar qualquer dado do sistema sem análise."
+                            },
+                            {
+                              "id": "c",
+                              "text": "O conector dispensa dono funcional da informação."
+                            },
+                            {
+                              "id": "d",
+                              "text": "O conector transforma dado individual em regra geral."
+                            }
+                          ],
+                          "answer": "a",
+                          "after": "Conector é meio de integração, não autorização ilimitada nem validação funcional."
+                        }
+                      ],
+                      "validation": {
+                        "ok": true,
+                        "issues": []
+                      }
+                    }
+                  ],
+                  "activeVersion": "version-001"
+                }
+              ]
+            },
+            {
+              "id": "lesson-5-3-qualidade-atualizacao-base",
+              "title": "Qualidade da base e atualização",
+              "guide": {
+                "goal": "Diagnosticar problemas de qualidade documental e organizar atualização operacional das fontes.",
+                "include": [
+                  "qualidade documental",
+                  "duplicidade",
+                  "fonte antiga",
+                  "lacuna",
+                  "metadado",
+                  "permissão",
+                  "revisão periódica",
+                  "responsável",
+                  "versionamento",
+                  "remoção de material antigo",
+                  "teste de regressão"
+                ],
+                "exclude": [
+                  "dados reais",
+                  "nomes de bases internas reais",
+                  "instruções para burlar permissão",
+                  "nome real da organização"
+                ],
+                "notation": [
+                  "Usar metadados como data, dono, versão, classificação e validade."
+                ],
+                "avoid": []
+              },
+              "topics": [
+                {
+                  "id": "topic-qualidade-base",
+                  "label": "qualidade da base",
+                  "kind": "concept",
+                  "checks": [
+                    "diagnostica causa documental de resposta ruim"
+                  ],
+                  "errors": [
+                    "achar que modelo forte corrige base ruim"
+                  ]
+                },
+                {
+                  "id": "topic-metadados",
+                  "label": "metadados",
+                  "kind": "term",
+                  "checks": [
+                    "explica metadados como informações sobre documento"
+                  ],
+                  "errors": [
+                    "ignorar versão e dono"
+                  ]
+                },
+                {
+                  "id": "topic-atualizacao-fontes",
+                  "label": "atualização de fontes",
+                  "kind": "procedure",
+                  "checks": [
+                    "ordena fluxo de atualização e teste"
+                  ],
+                  "errors": [
+                    "atualizar fonte sem remover material antigo"
+                  ]
+                }
+              ],
+              "microsequences": [
+                {
+                  "id": "micro-qualidade-base",
+                  "title": "Modelo forte não corrige base ruim",
+                  "goal": "Diagnosticar causas documentais de resposta ruim e escolher ação corretiva.",
+                  "role": "explain",
+                  "status": "generated",
+                  "branchOf": null,
+                  "dependsOn": [],
+                  "covers": [
+                    "qualidade documental",
+                    "duplicidade",
+                    "fonte antiga",
+                    "lacuna",
+                    "metadado",
+                    "permissão"
+                  ],
+                  "checks": [
+                    "diagnostica causa documental de resposta ruim",
+                    "escolhe ação corretiva"
+                  ],
+                  "versions": [
+                    {
+                      "id": "version-001",
+                      "createdAt": "2026-06-06T00:00:00.000Z",
+                      "source": "llm",
+                      "action": "generate",
+                      "request": "Primeira versão da microssequência.",
+                      "summary": "Conceitos e práticas sobre qualidade documental, duplicidade, fonte antiga, lacuna, metadado, permissão.",
+                      "cards": [
+                        {
+                          "id": "micro-qualidade-base-card-01",
+                          "position": 1,
+                          "resource": "table",
+                          "kind": "theory",
+                          "exercise": "none",
+                          "title": "Problemas de base",
+                          "columns": [
+                            "Problema",
+                            "Efeito provável",
+                            "Ação corretiva"
+                          ],
+                          "rows": [
+                            [
+                              "Duplicidade",
+                              "Resposta mistura versões",
+                              "Remover conflito e definir vigente"
+                            ],
+                            [
+                              "Fonte antiga",
+                              "Orientação desatualizada",
+                              "Atualizar índice e testar perguntas"
+                            ],
+                            [
+                              "Lacuna",
+                              "Resposta incompleta ou evasiva",
+                              "Publicar fonte oficial faltante"
+                            ],
+                            [
+                              "Metadado ausente",
+                              "Dificuldade de filtrar por versão ou área",
+                              "Adicionar dono, data, versão e classificação"
+                            ],
+                            [
+                              "Permissão errada",
+                              "Exposição indevida ou bloqueio excessivo",
+                              "Revisar acesso"
+                            ]
+                          ],
+                          "after": "A qualidade da resposta depende da qualidade da base e das regras de recuperação."
+                        },
+                        {
+                          "id": "micro-qualidade-base-card-02",
+                          "position": 2,
+                          "resource": "choice",
+                          "kind": "exercise",
+                          "exercise": "choice",
+                          "title": "Diagnóstico documental",
+                          "question": "Um agente responde ora uma regra antiga, ora uma nova. A base contém documentos duplicados com datas diferentes. Qual causa é mais provável?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "text": "Duplicidade e falta de controle de versão na base."
+                            },
+                            {
+                              "id": "b",
+                              "text": "Token baixo por si só."
+                            },
+                            {
+                              "id": "c",
+                              "text": "Nome pouco criativo do agente."
+                            },
+                            {
+                              "id": "d",
+                              "text": "Ausência de imagens nos documentos."
+                            }
+                          ],
+                          "answer": "a",
+                          "after": "Versões duplicadas geram respostas inconsistentes. O problema central é gestão documental, não estética ou criatividade."
+                        },
+                        {
+                          "id": "micro-qualidade-base-card-03",
+                          "position": 3,
+                          "resource": "choice",
+                          "kind": "exercise",
+                          "exercise": "choice",
+                          "title": "Metadados úteis",
+                          "question": "Quais metadados ajudam a governar documentos usados por um agente?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "text": "Dono, data, versão, classificação de acesso e validade."
+                            },
+                            {
+                              "id": "b",
+                              "text": "Apenas tipo de arquivo e quantidade de páginas, sem dono nem validade."
+                            },
+                            {
+                              "id": "c",
+                              "text": "Apenas o nome simplificado do documento."
+                            },
+                            {
+                              "id": "d",
+                              "text": "A quantidade de páginas, sem contexto."
+                            }
+                          ],
+                          "answer": "a",
+                          "after": "Metadados de dono, data, versão, acesso e validade permitem filtrar, atualizar e auditar fontes."
+                        },
+                        {
+                          "id": "micro-qualidade-base-card-04",
+                          "position": 4,
+                          "resource": "paragraph",
+                          "kind": "exercise",
+                          "exercise": "gap",
+                          "title": "Base ruim",
+                          "text": "Um modelo forte não corrige base documental com versões conflitantes; é preciso saneamento e [[atualização::atualização|prompt mais longo|indexação sem curadoria]].",
+                          "after": "Atualização mantém a fonte definida como vigente no cenário; prompt mais longo e indexação sem curadoria não resolvem conflito de conteúdo."
+                        }
+                      ],
+                      "validation": {
+                        "ok": true,
+                        "issues": []
+                      }
+                    }
+                  ],
+                  "activeVersion": "version-001"
+                },
+                {
+                  "id": "micro-ciclo-atualizacao-fontes",
+                  "title": "Atualização da base faz parte da operação",
+                  "goal": "Ordenar o fluxo de atualização de fonte e identificar etapa ausente.",
+                  "role": "practice",
+                  "status": "generated",
+                  "branchOf": null,
+                  "dependsOn": [
+                    "micro-qualidade-base"
+                  ],
+                  "covers": [
+                    "revisão periódica",
+                    "responsável",
+                    "versionamento",
+                    "remoção de material antigo",
+                    "teste de regressão"
+                  ],
+                  "checks": [
+                    "ordena fluxo de atualização de fonte",
+                    "identifica etapa ausente"
+                  ],
+                  "versions": [
+                    {
+                      "id": "version-001",
+                      "createdAt": "2026-06-06T00:00:00.000Z",
+                      "source": "llm",
+                      "action": "generate",
+                      "request": "Primeira versão da microssequência.",
+                      "summary": "Conceitos e práticas sobre revisão periódica, responsável, versionamento, remoção de material antigo, teste de regressão.",
+                      "cards": [
+                        {
+                          "id": "micro-ciclo-atualizacao-fontes-card-01",
+                          "position": 1,
+                          "resource": "flow",
+                          "kind": "theory",
+                          "exercise": "none",
+                          "title": "Ciclo de atualização",
+                          "prompt": "Fluxo operacional para manter fonte usada por agente.",
+                          "structure": {
+                            "id": "flow-struct-121",
+                            "kind": "sequence",
+                            "items": [
+                              {
+                                "id": "flow-struct-122",
+                                "kind": "start",
+                                "text": "Registrar a mudança na regra"
+                              },
+                              {
+                                "id": "flow-struct-123",
+                                "kind": "process",
+                                "text": "Validar com o dono da fonte"
+                              },
+                              {
+                                "id": "flow-struct-124",
+                                "kind": "process",
+                                "text": "Publicar a versão vigente"
+                              },
+                              {
+                                "id": "flow-struct-125",
+                                "kind": "process",
+                                "text": "Remover ou bloquear a versão antiga"
+                              },
+                              {
+                                "id": "flow-struct-126",
+                                "kind": "process",
+                                "text": "Atualizar o índice"
+                              },
+                              {
+                                "id": "flow-struct-127",
+                                "kind": "process",
+                                "text": "Executar teste de regressão"
+                              },
+                              {
+                                "id": "flow-struct-128",
+                                "kind": "end",
+                                "text": "Comunicar aos responsáveis"
+                              }
+                            ]
+                          },
+                          "after": "Atualizar base não é apenas trocar arquivo. É controlar versão, índice, teste e comunicação."
+                        },
+                        {
+                          "id": "micro-ciclo-atualizacao-fontes-card-02",
+                          "position": 2,
+                          "resource": "choice",
+                          "kind": "exercise",
+                          "exercise": "choice",
+                          "title": "Etapa ausente",
+                          "question": "Uma equipe adicionou a norma nova ao índice, mas manteve a norma antiga recuperável e não testou perguntas críticas. Qual falha é mais relevante?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "text": "Faltou remover ou bloquear a versão antiga e executar teste de regressão."
+                            },
+                            {
+                              "id": "b",
+                              "text": "Faltou mudar o nome do agente."
+                            },
+                            {
+                              "id": "c",
+                              "text": "Faltou aumentar a resposta para mais parágrafos."
+                            },
+                            {
+                              "id": "d",
+                              "text": "Faltou publicar também em canal externo."
+                            }
+                          ],
+                          "answer": "a",
+                          "after": "Manter versão antiga e não testar causa resposta inconsistente. Nome, tamanho e canal externo não corrigem a base."
+                        },
+                        {
+                          "id": "micro-ciclo-atualizacao-fontes-card-03",
+                          "position": 3,
+                          "resource": "choice",
+                          "kind": "exercise",
+                          "exercise": "choice",
+                          "title": "Responsável pela atualização",
+                          "question": "Quem deve ser definido para manter uma fonte oficial usada por agente?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "text": "Dono funcional da fonte, com processo de atualização e apoio técnico para índice e testes."
+                            },
+                            {
+                              "id": "b",
+                              "text": "Usuário final mais frequente, sem processo."
+                            },
+                            {
+                              "id": "c",
+                              "text": "Somente fornecedor da ferramenta."
+                            },
+                            {
+                              "id": "d",
+                              "text": "Ninguém, se o agente já estiver funcionando."
+                            }
+                          ],
+                          "answer": "a",
+                          "after": "A sustentação exige dono funcional e apoio técnico. Sem responsável, a base envelhece e o risco aumenta."
+                        }
+                      ],
+                      "validation": {
+                        "ok": true,
+                        "issues": []
+                      }
+                    }
+                  ],
+                  "activeVersion": "version-001"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "module-6-risco-lgpd-seguranca",
+          "title": "Risco, LGPD, segurança e atendimento público",
+          "guide": {
+            "goal": "Classificar riscos de IA generativa e reconhecer controles necessários para uso interno, externo e com dados sensíveis.",
+            "include": [
+              "LGPD",
+              "dado pessoal",
+              "dado sensível",
+              "dado restrito",
+              "sigilo",
+              "atendimento público",
+              "autenticação",
+              "autorização",
+              "logs",
+              "auditoria",
+              "encaminhamento humano",
+              "aviso de limitação",
+              "validação jurídica",
+              "segurança da informação"
+            ],
+            "exclude": [
+              "aconselhamento jurídico definitivo",
+              "interpretação legal específica",
+              "dados reais",
+              "decisões administrativas automatizadas sem validação",
+              "nome real da organização"
+            ],
+            "notation": [
+              "Tratar LGPD como critério de risco e governança, não como parecer jurídico.",
+              "Usar níveis: baixo, médio, alto, muito alto."
+            ],
+            "avoid": []
+          },
+          "lessons": [
+            {
+              "id": "lesson-6-1-dados-pessoais-sensiveis-restritos",
+              "title": "Dados pessoais, sensíveis e restritos",
+              "guide": {
+                "goal": "Classificar dados e decidir quando uma pergunta exige autenticação, autorização e envolvimento de áreas de controle.",
+                "include": [
+                  "dado pessoal",
+                  "dado sensível",
+                  "dado restrito",
+                  "sigilo",
+                  "risco",
+                  "norma geral",
+                  "caso individual",
+                  "autenticação",
+                  "autorização",
+                  "acesso indevido"
+                ],
+                "exclude": [
+                  "aconselhamento jurídico definitivo",
+                  "interpretação legal específica",
+                  "dados reais",
+                  "nome real da organização"
+                ],
+                "notation": [
+                  "Explicar Lei Geral de Proteção de Dados (LGPD) como referência de governança."
+                ],
+                "avoid": []
+              },
+              "topics": [
+                {
+                  "id": "topic-lgpd-dados",
+                  "label": "LGPD e tipos de dado",
+                  "kind": "concept",
+                  "checks": [
+                    "classifica dados em cenários simples"
+                  ],
+                  "errors": [
+                    "confundir informação geral com dado individualizado"
+                  ]
+                },
+                {
+                  "id": "topic-sigilo-restrito",
+                  "label": "sigilo e dado restrito",
+                  "kind": "term",
+                  "checks": [
+                    "reconhece informação interna com acesso limitado"
+                  ],
+                  "errors": [
+                    "usar dado restrito em canal amplo"
+                  ]
+                },
+                {
+                  "id": "topic-resposta-geral-individual",
+                  "label": "resposta geral ou individual",
+                  "kind": "procedure",
+                  "checks": [
+                    "decide se pergunta exige autenticação e controle"
+                  ],
+                  "errors": [
+                    "responder situação individual como se fosse regra geral"
+                  ]
+                }
+              ],
+              "microsequences": [
+                {
+                  "id": "micro-lgpd-dados",
+                  "title": "O tipo de dado define o cuidado",
+                  "goal": "Classificar dados em cenários simples e reconhecer quando envolver jurídico/LGPD.",
+                  "role": "explain",
+                  "status": "generated",
+                  "branchOf": null,
+                  "dependsOn": [],
+                  "covers": [
+                    "dado pessoal",
+                    "dado sensível",
+                    "dado restrito",
+                    "sigilo",
+                    "risco"
+                  ],
+                  "checks": [
+                    "classifica dados em cenários simples",
+                    "reconhece quando envolver jurídico/LGPD"
+                  ],
+                  "versions": [
+                    {
+                      "id": "version-001",
+                      "createdAt": "2026-06-06T00:00:00.000Z",
+                      "source": "llm",
+                      "action": "generate",
+                      "request": "Primeira versão da microssequência.",
+                      "summary": "Conceitos e práticas sobre dado pessoal, dado sensível, dado restrito, sigilo, risco.",
+                      "cards": [
+                        {
+                          "id": "micro-lgpd-dados-card-01",
+                          "position": 1,
+                          "resource": "table",
+                          "kind": "theory",
+                          "exercise": "none",
+                          "title": "Classificação prática de dados",
+                          "columns": [
+                            "Tipo",
+                            "Descrição simples",
+                            "Exemplo genérico"
+                          ],
+                          "rows": [
+                            [
+                              "Dado pessoal",
+                              "Informação relacionada a pessoa identificada ou identificável",
+                              "Status individual de uma solicitação"
+                            ],
+                            [
+                              "Dado sensível",
+                              "Categoria que exige proteção reforçada",
+                              "Informação de saúde ou biometria"
+                            ],
+                            [
+                              "Dado restrito",
+                              "Informação interna com acesso limitado",
+                              "Relatório interno não público"
+                            ],
+                            [
+                              "Informação geral",
+                              "Regra sem identificar pessoa",
+                              "Lista de documentos exigidos por norma"
+                            ]
+                          ],
+                          "after": "A Lei Geral de Proteção de Dados (LGPD) orienta cuidado com dados pessoais e sensíveis, mas a decisão concreta deve envolver as áreas competentes."
+                        },
+                        {
+                          "id": "micro-lgpd-dados-card-02",
+                          "position": 2,
+                          "resource": "choice",
+                          "kind": "exercise",
+                          "exercise": "choice",
+                          "title": "Classificar dado",
+                          "question": "Um agente responde: “Para solicitar o serviço, apresente documento A e preencha formulário B”, sem consultar pessoa específica. Qual classificação é mais adequada?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "text": "Informação geral, desde que a fonte seja oficial e vigente."
+                            },
+                            {
+                              "id": "b",
+                              "text": "Dado sensível individualizado."
+                            },
+                            {
+                              "id": "c",
+                              "text": "Dado pessoal de alto risco por definição."
+                            },
+                            {
+                              "id": "d",
+                              "text": "Ação de alteração de cadastro."
+                            }
+                          ],
+                          "answer": "a",
+                          "after": "A resposta traz regra geral. Ainda exige fonte oficial, mas não descreve dado pessoal individualizado nem ação."
+                        },
+                        {
+                          "id": "micro-lgpd-dados-card-03",
+                          "position": 3,
+                          "resource": "choice",
+                          "kind": "exercise",
+                          "exercise": "choice",
+                          "title": "Dado sensível",
+                          "question": "Um caso de uso quer responder informações individualizadas de saúde. Qual medida é mais adequada antes de piloto?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "text": "Acionar análise jurídica/LGPD, segurança e dono funcional para definir viabilidade e controles."
+                            },
+                            {
+                              "id": "b",
+                              "text": "Tratar como FAQ público para simplificar."
+                            },
+                            {
+                              "id": "c",
+                              "text": "Permitir resposta anônima sem registro."
+                            },
+                            {
+                              "id": "d",
+                              "text": "Usar qualquer documento disponível porque o objetivo é ajudar."
+                            }
+                          ],
+                          "answer": "a",
+                          "after": "Informação sensível individualizada exige análise e controles reforçados. Canal público, anonimato sem controle e fonte qualquer são inadequados."
+                        },
+                        {
+                          "id": "micro-lgpd-dados-card-04",
+                          "position": 4,
+                          "resource": "paragraph",
+                          "kind": "exercise",
+                          "exercise": "gap",
+                          "title": "Autenticação não basta",
+                          "text": "Autenticação confirma quem acessa, mas a [[autorização::autorização|declaração genérica|confiança no usuário]] define o que essa pessoa pode consultar.",
+                          "after": "Autorização é o controle de permissão; declaração genérica e confiança informal não protegem dados pessoais, sensíveis ou restritos."
+                        }
+                      ],
+                      "validation": {
+                        "ok": true,
+                        "issues": []
+                      }
+                    }
+                  ],
+                  "activeVersion": "version-001"
+                },
+                {
+                  "id": "micro-resposta-geral-ou-individual",
+                  "title": "Regra geral não é situação individual",
+                  "goal": "Decidir se uma pergunta pode ser respondida genericamente ou exige autenticação e controle.",
+                  "role": "practice",
+                  "status": "generated",
+                  "branchOf": null,
+                  "dependsOn": [
+                    "micro-lgpd-dados"
+                  ],
+                  "covers": [
+                    "norma geral",
+                    "caso individual",
+                    "autenticação",
+                    "autorização",
+                    "acesso indevido"
+                  ],
+                  "checks": [
+                    "decide se uma pergunta pode ser respondida genericamente ou exige autenticação e controle"
+                  ],
+                  "versions": [
+                    {
+                      "id": "version-001",
+                      "createdAt": "2026-06-06T00:00:00.000Z",
+                      "source": "llm",
+                      "action": "generate",
+                      "request": "Primeira versão da microssequência.",
+                      "summary": "Conceitos e práticas sobre norma geral, caso individual, autenticação, autorização, acesso indevido.",
+                      "cards": [
+                        {
+                          "id": "micro-resposta-geral-ou-individual-card-01",
+                          "position": 1,
+                          "resource": "table",
+                          "kind": "theory",
+                          "exercise": "none",
+                          "title": "Perguntas e tratamento",
+                          "columns": [
+                            "Pergunta",
+                            "Tratamento seguro"
+                          ],
+                          "rows": [
+                            [
+                              "Quais documentos são exigidos?",
+                              "Resposta geral com fonte oficial"
+                            ],
+                            [
+                              "Meu pedido foi aprovado?",
+                              "Autenticação, autorização e consulta ao sistema"
+                            ],
+                            [
+                              "Qual é a regra de prazo?",
+                              "Resposta geral com versão vigente"
+                            ],
+                            [
+                              "Qual é minha situação funcional?",
+                              "Controle de acesso e registro"
+                            ]
+                          ],
+                          "after": "A forma da pergunta indica se o agente pode responder regra geral ou precisa acessar situação individual."
+                        },
+                        {
+                          "id": "micro-resposta-geral-ou-individual-card-02",
+                          "position": 2,
+                          "resource": "choice",
+                          "kind": "exercise",
+                          "exercise": "choice",
+                          "title": "Pergunta individual",
+                          "question": "Uma pessoa pergunta em canal não autenticado: “Qual é o status do meu pedido?”. Qual resposta segura para o desenho do agente?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "text": "Não consultar situação individual; orientar autenticação por canal apropriado e explicar limites."
+                            },
+                            {
+                              "id": "b",
+                              "text": "Responder usando qualquer dado disponível para ajudar."
+                            },
+                            {
+                              "id": "c",
+                              "text": "Pedir que a pessoa informe dados pessoais no chat anônimo."
+                            },
+                            {
+                              "id": "d",
+                              "text": "Inventar status provável com base em prazos médios."
+                            }
+                          ],
+                          "answer": "a",
+                          "after": "Sem autenticação e autorização, não se deve consultar situação individual. Pedir dados no canal anônimo ou inventar status cria risco."
+                        },
+                        {
+                          "id": "micro-resposta-geral-ou-individual-card-03",
+                          "position": 3,
+                          "resource": "choice",
+                          "kind": "exercise",
+                          "exercise": "choice",
+                          "title": "Regra geral segura",
+                          "question": "Uma pessoa pergunta em canal público: “Quais etapas gerais existem para solicitar atendimento?”. A fonte oficial foi marcada como vigente no cenário. O que é adequado?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "text": "Responder orientação geral, citar base oficial se disponível e oferecer encaminhamento humano."
+                            },
+                            {
+                              "id": "b",
+                              "text": "Consultar registros individuais para personalizar sem autenticação."
+                            },
+                            {
+                              "id": "c",
+                              "text": "Executar uma ação em sistema sem confirmação."
+                            },
+                            {
+                              "id": "d",
+                              "text": "Responder qualquer assunto fora do escopo para parecer útil."
+                            }
+                          ],
+                          "answer": "a",
+                          "after": "Orientação geral com fonte oficial pode ser adequada. Personalização, ação e escopo ilimitado elevam risco."
+                        }
+                      ],
+                      "validation": {
+                        "ok": true,
+                        "issues": []
+                      }
+                    }
+                  ],
+                  "activeVersion": "version-001"
+                }
+              ]
+            },
+            {
+              "id": "lesson-6-2-atendimento-publico-responsabilidade",
+              "title": "Atendimento público e responsabilidade institucional",
+              "guide": {
+                "goal": "Reconhecer que chatbot público fala como canal institucional e exige limites, fonte, aviso e encaminhamento humano.",
+                "include": [
+                  "atendimento público",
+                  "informação oficial",
+                  "aviso de limitação",
+                  "erro de orientação",
+                  "encaminhamento humano",
+                  "fontes oficiais",
+                  "fallback",
+                  "escalonamento humano",
+                  "logs",
+                  "linguagem segura",
+                  "Content Safety"
+                ],
+                "exclude": [
+                  "aconselhamento jurídico definitivo",
+                  "interpretação legal específica",
+                  "dados reais",
+                  "nome real da organização"
+                ],
+                "notation": [
+                  "Usar canal externo, público externo e usuário anônimo."
+                ],
+                "avoid": []
+              },
+              "topics": [
+                {
+                  "id": "topic-chatbot-publico",
+                  "label": "chatbot público",
+                  "kind": "concept",
+                  "checks": [
+                    "identifica riscos de canal público"
+                  ],
+                  "errors": [
+                    "tratar canal público como FAQ interno"
+                  ]
+                },
+                {
+                  "id": "topic-fallback-humano",
+                  "label": "fallback e encaminhamento humano",
+                  "kind": "procedure",
+                  "checks": [
+                    "reconhece quando encaminhar atendimento"
+                  ],
+                  "errors": [
+                    "publicar sem fallback humano"
+                  ]
+                },
+                {
+                  "id": "topic-aviso-limitacao",
+                  "label": "aviso de limitação",
+                  "kind": "term",
+                  "checks": [
+                    "associa aviso de limitação a expectativa segura"
+                  ],
+                  "errors": [
+                    "achar que aviso resolve todos os riscos"
+                  ]
+                }
+              ],
+              "microsequences": [
+                {
+                  "id": "micro-chatbot-publico",
+                  "title": "Chatbot público fala como canal institucional",
+                  "goal": "Identificar riscos de canal público e controles mínimos.",
+                  "role": "explain",
+                  "status": "generated",
+                  "branchOf": null,
+                  "dependsOn": [],
+                  "covers": [
+                    "atendimento público",
+                    "informação oficial",
+                    "aviso de limitação",
+                    "erro de orientação",
+                    "encaminhamento humano"
+                  ],
+                  "checks": [
+                    "identifica riscos de canal público",
+                    "reconhece controles mínimos"
+                  ],
+                  "versions": [
+                    {
+                      "id": "version-001",
+                      "createdAt": "2026-06-06T00:00:00.000Z",
+                      "source": "llm",
+                      "action": "generate",
+                      "request": "Primeira versão da microssequência.",
+                      "summary": "Conceitos e práticas sobre atendimento público, informação oficial, aviso de limitação, erro de orientação, encaminhamento humano.",
+                      "cards": [
+                        {
+                          "id": "micro-chatbot-publico-card-01",
+                          "position": 1,
+                          "resource": "paragraph",
+                          "kind": "theory",
+                          "exercise": "none",
+                          "title": "Canal institucional",
+                          "text": "Um chatbot público não é apenas uma experiência técnica. Para o usuário externo, ele pode parecer a voz institucional da companhia.",
+                          "after": "Por isso, respostas devem ter fonte oficial, limites de escopo, linguagem segura, aviso de limitação e caminho de atendimento humano."
+                        },
+                        {
+                          "id": "micro-chatbot-publico-card-02",
+                          "position": 2,
+                          "resource": "table",
+                          "kind": "theory",
+                          "exercise": "none",
+                          "title": "Riscos de canal público",
+                          "columns": [
+                            "Risco",
+                            "Controle mínimo"
+                          ],
+                          "rows": [
+                            [
+                              "Orientação divergente",
+                              "Fonte oficial e teste de perguntas críticas"
+                            ],
+                            [
+                              "Pergunta fora do escopo",
+                              "Fallback seguro e encaminhamento humano"
+                            ],
+                            [
+                              "Conteúdo nocivo ou ataque",
+                              "Content Safety e limites de entrada"
+                            ],
+                            [
+                              "Dado individual em canal aberto",
+                              "Bloqueio e orientação para canal autenticado"
+                            ],
+                            [
+                              "Erro recorrente",
+                              "Logs, revisão e possibilidade de suspensão"
+                            ]
+                          ],
+                          "after": "Um canal público deve ser desenhado para acertar, recusar com segurança e encaminhar quando necessário."
+                        },
+                        {
+                          "id": "micro-chatbot-publico-card-03",
+                          "position": 3,
+                          "resource": "choice",
+                          "kind": "exercise",
+                          "exercise": "choice",
+                          "title": "Erro de orientação",
+                          "question": "Um chatbot público responde algo diferente da fonte oficial sobre documentos exigidos. Qual ação é mais adequada?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "text": "Registrar o erro, corrigir fonte ou recuperação, testar novamente e avaliar comunicação ou suspensão se houver risco."
+                            },
+                            {
+                              "id": "b",
+                              "text": "Ignorar porque o atendimento público sempre tem margem de erro."
+                            },
+                            {
+                              "id": "c",
+                              "text": "Aumentar a criatividade da resposta."
+                            },
+                            {
+                              "id": "d",
+                              "text": "Remover encaminhamento humano para evitar reclamações."
+                            }
+                          ],
+                          "answer": "a",
+                          "after": "Resposta divergente em canal público exige correção e controle. Ignorar, aumentar criatividade ou remover fallback aumenta risco."
+                        },
+                        {
+                          "id": "micro-chatbot-publico-card-04",
+                          "position": 4,
+                          "resource": "paragraph",
+                          "kind": "exercise",
+                          "exercise": "gap",
+                          "title": "Frase segura",
+                          "text": "Casos públicos, integrados ou com dados pessoais exigem controles mais [[fortes::fortes|proporcionais ao risco|sem validação]].",
+                          "after": "Controles fortes são exigidos porque público externo, integração e dados pessoais ampliam impacto de erro, vazamento ou orientação indevida."
+                        }
+                      ],
+                      "validation": {
+                        "ok": true,
+                        "issues": []
+                      }
+                    }
+                  ],
+                  "activeVersion": "version-001"
+                },
+                {
+                  "id": "micro-controles-publicos",
+                  "title": "Controles mínimos para canal externo",
+                  "goal": "Escolher pacote de controles para atendimento público e rejeitar publicação sem validação.",
+                  "role": "practice",
+                  "status": "generated",
+                  "branchOf": null,
+                  "dependsOn": [
+                    "micro-chatbot-publico"
+                  ],
+                  "covers": [
+                    "fontes oficiais",
+                    "fallback",
+                    "escalonamento humano",
+                    "logs",
+                    "linguagem segura",
+                    "Content Safety"
+                  ],
+                  "checks": [
+                    "escolhe pacote de controles para atendimento público",
+                    "rejeita publicação sem validação"
+                  ],
+                  "versions": [
+                    {
+                      "id": "version-001",
+                      "createdAt": "2026-06-06T00:00:00.000Z",
+                      "source": "llm",
+                      "action": "generate",
+                      "request": "Primeira versão da microssequência.",
+                      "summary": "Conceitos e práticas sobre fontes oficiais, fallback, escalonamento humano, logs, linguagem segura, Content Safety.",
+                      "cards": [
+                        {
+                          "id": "micro-controles-publicos-card-01",
+                          "position": 1,
+                          "resource": "flow",
+                          "kind": "theory",
+                          "exercise": "none",
+                          "title": "Pacote para canal externo",
+                          "prompt": "Antes de publicar canal externo, verifique os controles.",
+                          "structure": {
+                            "id": "flow-struct-136",
+                            "kind": "sequence",
+                            "items": [
+                              {
+                                "id": "flow-struct-137",
+                                "kind": "start",
+                                "text": "Confirmar fonte oficial vigente"
+                              },
+                              {
+                                "id": "flow-struct-138",
+                                "kind": "process",
+                                "text": "Definir escopo e limites"
+                              },
+                              {
+                                "id": "flow-struct-139",
+                                "kind": "process",
+                                "text": "Testar perguntas comuns e difíceis"
+                              },
+                              {
+                                "id": "flow-struct-140",
+                                "kind": "process",
+                                "text": "Aplicar Content Safety"
+                              },
+                              {
+                                "id": "flow-struct-141",
+                                "kind": "process",
+                                "text": "Definir encaminhamento humano"
+                              },
+                              {
+                                "id": "flow-struct-142",
+                                "kind": "end",
+                                "text": "Ativar logs e monitoramento"
+                              }
+                            ]
+                          },
+                          "after": "O pacote reduz risco de orientação errada, abuso, exposição de dados e ausência de correção."
+                        },
+                        {
+                          "id": "micro-controles-publicos-card-02",
+                          "position": 2,
+                          "resource": "choice",
+                          "kind": "exercise",
+                          "exercise": "choice",
+                          "title": "Publicação apressada",
+                          "question": "Uma área quer publicar chatbot público sem testes, sem fallback humano e com documentos ainda em revisão. Qual decisão é correta?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "text": "Não publicar nessa condição; exigir fonte vigente, validação, fallback, logs e escopo definido."
+                            },
+                            {
+                              "id": "b",
+                              "text": "Publicar e avisar que pode estar errado em todas as respostas."
+                            },
+                            {
+                              "id": "c",
+                              "text": "Publicar só para usuários anônimos porque o risco fica menor."
+                            },
+                            {
+                              "id": "d",
+                              "text": "Retirar logs para simplificar implantação."
+                            }
+                          ],
+                          "answer": "a",
+                          "after": "Canal público sem fonte marcada como vigente no cenário, teste e fallback é inseguro. Aviso genérico, anonimato e ausência de logs não resolvem."
+                        },
+                        {
+                          "id": "micro-controles-publicos-card-03",
+                          "position": 3,
+                          "resource": "choice",
+                          "kind": "exercise",
+                          "exercise": "choice",
+                          "title": "Linguagem segura",
+                          "question": "Qual resposta é mais segura quando a pergunta do usuário externo exige análise individual que o chatbot não pode fazer?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "text": "Informar o limite do canal e encaminhar para atendimento humano ou canal autenticado apropriado."
+                            },
+                            {
+                              "id": "b",
+                              "text": "Adivinhar a melhor resposta com base em casos parecidos."
+                            },
+                            {
+                              "id": "c",
+                              "text": "Pedir dados sensíveis no chat para personalizar."
+                            },
+                            {
+                              "id": "d",
+                              "text": "Responder fora do escopo para manter a conversa."
+                            }
+                          ],
+                          "answer": "a",
+                          "after": "Quando o canal não pode tratar o caso, deve limitar e encaminhar. Adivinhação, coleta indevida e escopo amplo elevam risco."
+                        }
+                      ],
+                      "validation": {
+                        "ok": true,
+                        "issues": []
+                      }
+                    }
+                  ],
+                  "activeVersion": "version-001"
+                }
+              ]
+            },
+            {
+              "id": "lesson-6-3-seguranca-trilha-auditoria",
+              "title": "Segurança e trilha de auditoria",
+              "guide": {
+                "goal": "Diferenciar log, trace, observabilidade e auditoria, e decidir resposta proporcional a incidentes.",
+                "include": [
+                  "log",
+                  "trace",
+                  "observabilidade",
+                  "auditoria",
+                  "incidente",
+                  "correção",
+                  "erro grave",
+                  "vazamento",
+                  "resposta divergente",
+                  "restrição",
+                  "suspensão",
+                  "comunicação"
+                ],
+                "exclude": [
+                  "aconselhamento jurídico definitivo",
+                  "interpretação legal específica",
+                  "dados reais",
+                  "nome real da organização"
+                ],
+                "notation": [
+                  "Usar log para registro de evento e trace para caminho de execução."
+                ],
+                "avoid": []
+              },
+              "topics": [
+                {
+                  "id": "topic-log-trace",
+                  "label": "log e trace",
+                  "kind": "term",
+                  "checks": [
+                    "diferencia registro simples de caminho de execução"
+                  ],
+                  "errors": [
+                    "confundir log com observabilidade completa"
+                  ]
+                },
+                {
+                  "id": "topic-observabilidade-auditoria",
+                  "label": "observabilidade e auditoria",
+                  "kind": "concept",
+                  "checks": [
+                    "identifica uso para investigar erro e melhorar agente"
+                  ],
+                  "errors": [
+                    "ignorar monitoramento após publicação"
+                  ]
+                },
+                {
+                  "id": "topic-incidente-suspensao",
+                  "label": "incidente e suspensão",
+                  "kind": "procedure",
+                  "checks": [
+                    "decide corrigir, restringir ou suspender"
+                  ],
+                  "errors": [
+                    "deixar agente crítico ativo após vazamento"
+                  ]
+                }
+              ],
+              "microsequences": [
+                {
+                  "id": "micro-logs-traces-auditoria",
+                  "title": "Log, trace e auditoria",
+                  "goal": "Diferenciar log simples, trace de execução, observabilidade e auditoria.",
+                  "role": "explain",
+                  "status": "generated",
+                  "branchOf": null,
+                  "dependsOn": [],
+                  "covers": [
+                    "log",
+                    "trace",
+                    "observabilidade",
+                    "auditoria",
+                    "incidente",
+                    "correção"
+                  ],
+                  "checks": [
+                    "diferencia log simples de trace de execução",
+                    "identifica utilidade para investigar erro"
+                  ],
+                  "versions": [
+                    {
+                      "id": "version-001",
+                      "createdAt": "2026-06-06T00:00:00.000Z",
+                      "source": "llm",
+                      "action": "generate",
+                      "request": "Primeira versão da microssequência.",
+                      "summary": "Conceitos e práticas sobre log, trace, observabilidade, auditoria, incidente, correção.",
+                      "cards": [
+                        {
+                          "id": "micro-logs-traces-auditoria-card-01",
+                          "position": 1,
+                          "resource": "table",
+                          "kind": "theory",
+                          "exercise": "none",
+                          "title": "Registros de operação",
+                          "columns": [
+                            "Termo",
+                            "Significado prático",
+                            "Uso"
+                          ],
+                          "rows": [
+                            [
+                              "Log",
+                              "Registro de evento, como pergunta, resposta, erro ou ação",
+                              "Investigar e medir uso"
+                            ],
+                            [
+                              "Trace",
+                              "Caminho detalhado de execução, como chamada a ferramenta e recuperação de fonte",
+                              "Entender por que o agente respondeu assim"
+                            ],
+                            [
+                              "Observabilidade",
+                              "Capacidade de acompanhar saúde, custo, qualidade e falhas",
+                              "Operar e melhorar em produção"
+                            ],
+                            [
+                              "Auditoria",
+                              "Verificação posterior com evidências",
+                              "Responsabilização, conformidade e correção"
+                            ]
+                          ],
+                          "after": "Sem registros adequados, um erro de IA fica difícil de explicar, corrigir e prevenir."
+                        },
+                        {
+                          "id": "micro-logs-traces-auditoria-card-02",
+                          "position": 2,
+                          "resource": "choice",
+                          "kind": "exercise",
+                          "exercise": "choice",
+                          "title": "Trace necessário",
+                          "question": "Um agente respondeu com fonte errada. A equipe precisa saber quais trechos foram recuperados e quais ferramentas foram chamadas. O que ajuda mais?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "text": "Trace de execução com recuperação, chamadas e etapas relevantes."
+                            },
+                            {
+                              "id": "b",
+                              "text": "Somente o número de usuários ativos."
+                            },
+                            {
+                              "id": "c",
+                              "text": "O nome escolhido para o agente."
+                            },
+                            {
+                              "id": "d",
+                              "text": "A ausência de logs para proteger a solução."
+                            }
+                          ],
+                          "answer": "a",
+                          "after": "Trace mostra o caminho que levou à resposta. Número de usuários, nome e ausência de logs não explicam a falha."
+                        },
+                        {
+                          "id": "micro-logs-traces-auditoria-card-03",
+                          "position": 3,
+                          "resource": "choice",
+                          "kind": "exercise",
+                          "exercise": "choice",
+                          "title": "Log de ação",
+                          "question": "Um agente abriu um chamado com dados equivocados. Qual registro é importante para auditoria?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "text": "Quem solicitou, qual intenção foi confirmada, quais dados foram enviados e qual ação foi executada."
+                            },
+                            {
+                              "id": "b",
+                              "text": "Apenas a mensagem final enviada ao usuário, sem intenção nem dados usados."
+                            },
+                            {
+                              "id": "c",
+                              "text": "Apenas a data aproximada do erro, sem vínculo com o usuário ou ação."
+                            },
+                            {
+                              "id": "d",
+                              "text": "Nenhum registro, porque chamado pode ser refeito."
+                            }
+                          ],
+                          "answer": "a",
+                          "after": "Auditoria de ação precisa de identidade, intenção confirmada, dados enviados e resultado executado; registros parciais fragilizam correção e responsabilização."
+                        },
+                        {
+                          "id": "micro-logs-traces-auditoria-card-04",
+                          "position": 4,
+                          "resource": "paragraph",
+                          "kind": "exercise",
+                          "exercise": "gap",
+                          "title": "Observabilidade",
+                          "text": "Observabilidade acompanha qualidade, falhas, custos e uso para permitir [[operação::operação|adivinhação|silêncio]] responsável.",
+                          "after": "Operação responsável exige acompanhamento. Adivinhação e silêncio impedem melhoria e correção."
+                        }
+                      ],
+                      "validation": {
+                        "ok": true,
+                        "issues": []
+                      }
+                    }
+                  ],
+                  "activeVersion": "version-001"
+                },
+                {
+                  "id": "micro-incidente-e-suspensao",
+                  "title": "Quando corrigir, restringir ou suspender um agente",
+                  "goal": "Decidir resposta proporcional a incidentes de IA generativa.",
+                  "role": "practice",
+                  "status": "generated",
+                  "branchOf": null,
+                  "dependsOn": [
+                    "micro-logs-traces-auditoria"
+                  ],
+                  "covers": [
+                    "erro grave",
+                    "vazamento",
+                    "resposta divergente",
+                    "correção",
+                    "restrição",
+                    "suspensão",
+                    "comunicação"
+                  ],
+                  "checks": [
+                    "decide resposta proporcional a incidente",
+                    "reconhece quem deve ser acionado"
+                  ],
+                  "versions": [
+                    {
+                      "id": "version-001",
+                      "createdAt": "2026-06-06T00:00:00.000Z",
+                      "source": "llm",
+                      "action": "generate",
+                      "request": "Primeira versão da microssequência.",
+                      "summary": "Conceitos e práticas sobre erro grave, vazamento, resposta divergente, correção, restrição, suspensão, comunicação.",
+                      "cards": [
+                        {
+                          "id": "micro-incidente-e-suspensao-card-01",
+                          "position": 1,
+                          "resource": "flow",
+                          "kind": "theory",
+                          "exercise": "none",
+                          "title": "Resposta a incidente",
+                          "prompt": "Fluxo de reação proporcional.",
+                          "structure": {
+                            "id": "flow-struct-151",
+                            "kind": "sequence",
+                            "items": [
+                              {
+                                "id": "flow-struct-152",
+                                "kind": "start",
+                                "text": "Detectar incidente"
+                              },
+                              {
+                                "id": "flow-struct-153",
+                                "kind": "process",
+                                "text": "Classificar a gravidade"
+                              },
+                              {
+                                "id": "flow-struct-154",
+                                "kind": "process",
+                                "text": "Conter: corrigir, restringir ou suspender"
+                              },
+                              {
+                                "id": "flow-struct-155",
+                                "kind": "process",
+                                "text": "Acionar responsáveis"
+                              },
+                              {
+                                "id": "flow-struct-156",
+                                "kind": "process",
+                                "text": "Corrigir a causa"
+                              },
+                              {
+                                "id": "flow-struct-157",
+                                "kind": "process",
+                                "text": "Comunicar quando necessário"
+                              },
+                              {
+                                "id": "flow-struct-158",
+                                "kind": "end",
+                                "text": "Prevenir recorrência"
+                              }
+                            ]
+                          },
+                          "after": "A reação depende da gravidade. Incidente com vazamento ou orientação crítica pode exigir suspensão até correção."
+                        },
+                        {
+                          "id": "micro-incidente-e-suspensao-card-02",
+                          "position": 2,
+                          "resource": "choice",
+                          "kind": "exercise",
+                          "exercise": "choice",
+                          "title": "Vazamento possível",
+                          "question": "Um agente público exibiu trecho restrito a usuário externo. Qual resposta inicial é mais adequada?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "text": "Restringir ou suspender o agente, preservar evidências e acionar segurança, jurídico/LGPD, dono funcional e responsável técnico."
+                            },
+                            {
+                              "id": "b",
+                              "text": "Manter ativo para coletar mais exemplos sem avisar ninguém."
+                            },
+                            {
+                              "id": "c",
+                              "text": "Apagar logs para reduzir exposição."
+                            },
+                            {
+                              "id": "d",
+                              "text": "Trocar o texto de boas-vindas."
+                            }
+                          ],
+                          "answer": "a",
+                          "after": "Possível vazamento exige contenção e acionamento. Manter ativo, apagar evidências ou mudar texto não trata o risco."
+                        },
+                        {
+                          "id": "micro-incidente-e-suspensao-card-03",
+                          "position": 3,
+                          "resource": "choice",
+                          "kind": "exercise",
+                          "exercise": "choice",
+                          "title": "Erro leve e controlado",
+                          "question": "Um agente interno de baixo risco errou uma resposta de FAQ porque uma pergunta ficou ambígua, sem exposição de dados. Qual resposta pode ser proporcional?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "text": "Corrigir instrução ou fonte, testar o caso e monitorar recorrência."
+                            },
+                            {
+                              "id": "b",
+                              "text": "Suspender todo uso de IA da companhia por tempo indefinido."
+                            },
+                            {
+                              "id": "c",
+                              "text": "Ignorar porque era interno."
+                            },
+                            {
+                              "id": "d",
+                              "text": "Permitir que o agente responda sem fonte para evitar ambiguidade."
+                            }
+                          ],
+                          "answer": "a",
+                          "after": "Erro leve pode ser corrigido e monitorado. Suspensão ampla é excessiva, ignorar é frágil e responder sem fonte piora o controle."
+                        }
+                      ],
+                      "validation": {
+                        "ok": true,
+                        "issues": []
+                      }
+                    }
+                  ],
+                  "activeVersion": "version-001"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "module-7-custos-escala-decisao",
+          "title": "Custos, escala e decisão de ferramenta",
+          "guide": {
+            "goal": "Entender componentes de custo e usar critérios objetivos para decidir entre produtividade individual, Copilot Studio, Foundry/Azure e combinações.",
+            "include": [
+              "licença",
+              "crédito",
+              "token",
+              "consumo",
+              "busca",
+              "embeddings",
+              "armazenamento",
+              "logs",
+              "monitoramento",
+              "conectores",
+              "ambientes de teste e produção",
+              "custo por agente",
+              "volume",
+              "risco",
+              "escala",
+              "matriz de decisão"
+            ],
+            "exclude": [
+              "preços absolutos",
+              "promessa de economia garantida",
+              "negociação contratual",
+              "custo de pessoal",
+              "nome real da organização"
+            ],
+            "notation": [
+              "Usar fórmulas didáticas simples.",
+              "Sempre dizer que o valor real depende de contrato e tabela vigente."
+            ],
+            "avoid": []
+          },
+          "lessons": [
+            {
+              "id": "lesson-7-1-componentes-custo",
+              "title": "Componentes de custo",
+              "guide": {
+                "goal": "Entender que custo de IA pode envolver licença, créditos, tokens, busca, armazenamento, logs, conectores e ambientes.",
+                "include": [
+                  "licença",
+                  "crédito",
+                  "token",
+                  "busca",
+                  "embeddings",
+                  "armazenamento",
+                  "logs",
+                  "monitoramento",
+                  "conectores",
+                  "APIs",
+                  "custo por usuário",
+                  "custo total por componentes"
+                ],
+                "exclude": [
+                  "preços absolutos",
+                  "promessa de economia garantida",
+                  "negociação contratual",
+                  "nome real da organização"
+                ],
+                "notation": [
+                  "Usar fórmulas sem números e indicar dependência de contrato e tabela vigente."
+                ],
+                "avoid": []
+              },
+              "topics": [
+                {
+                  "id": "topic-custo-componentes",
+                  "label": "componentes de custo",
+                  "kind": "concept",
+                  "checks": [
+                    "identifica itens além de licença"
+                  ],
+                  "errors": [
+                    "ignorar custo de logs, busca, armazenamento e ambientes"
+                  ]
+                },
+                {
+                  "id": "topic-token-credito-custo",
+                  "label": "token, crédito e consumo",
+                  "kind": "term",
+                  "checks": [
+                    "reconhece consumo por interação"
+                  ],
+                  "errors": [
+                    "tratar crédito como palavra ou token como usuário"
+                  ]
+                },
+                {
+                  "id": "topic-formula-custo",
+                  "label": "fórmulas de custo",
+                  "kind": "procedure",
+                  "checks": [
+                    "usa fórmula conceitual sem inventar valores"
+                  ],
+                  "errors": [
+                    "usar preço inventado em reunião"
+                  ]
+                }
+              ],
+              "microsequences": [
+                {
+                  "id": "micro-custo-nao-e-so-licenca",
+                  "title": "Custo de IA não é só licença",
+                  "goal": "Identificar componentes de custo que podem aparecer em uma solução de IA.",
+                  "role": "explain",
+                  "status": "generated",
+                  "branchOf": null,
+                  "dependsOn": [],
+                  "covers": [
+                    "licença",
+                    "crédito",
+                    "token",
+                    "busca",
+                    "embeddings",
+                    "armazenamento",
+                    "logs",
+                    "monitoramento",
+                    "conectores",
+                    "APIs"
+                  ],
+                  "checks": [
+                    "identifica itens de custo ocultos",
+                    "rejeita cálculo apenas por licença"
+                  ],
+                  "versions": [
+                    {
+                      "id": "version-001",
+                      "createdAt": "2026-06-06T00:00:00.000Z",
+                      "source": "llm",
+                      "action": "generate",
+                      "request": "Primeira versão da microssequência.",
+                      "summary": "Conceitos e práticas sobre licença, crédito, token, busca, embeddings, armazenamento, logs, monitoramento, conectores, APIs.",
+                      "cards": [
+                        {
+                          "id": "micro-custo-nao-e-so-licenca-card-01",
+                          "position": 1,
+                          "resource": "table",
+                          "kind": "theory",
+                          "exercise": "none",
+                          "title": "Componentes possíveis",
+                          "columns": [
+                            "Componente",
+                            "O que representa"
+                          ],
+                          "rows": [
+                            [
+                              "Licença",
+                              "Direito de uso por pessoa, área ou recurso conforme contrato"
+                            ],
+                            [
+                              "Crédito ou consumo",
+                              "Unidade de cobrança ou capacidade consumida pela plataforma"
+                            ],
+                            [
+                              "Tokens",
+                              "Entrada, contexto e saída processados pelo modelo"
+                            ],
+                            [
+                              "Busca e embeddings",
+                              "Indexação e recuperação de documentos para RAG"
+                            ],
+                            [
+                              "Armazenamento",
+                              "Bases, índices, arquivos e registros"
+                            ],
+                            [
+                              "Logs e monitoramento",
+                              "Operação, observabilidade e auditoria"
+                            ],
+                            [
+                              "Conectores e APIs",
+                              "Integrações com sistemas e fontes"
+                            ],
+                            [
+                              "Ambientes",
+                              "Separação de teste, homologação e produção quando aplicável"
+                            ]
+                          ],
+                          "after": "A pergunta de custo deve olhar o conjunto. O valor real depende de contrato e tabela vigente."
+                        },
+                        {
+                          "id": "micro-custo-nao-e-so-licenca-card-02",
+                          "position": 2,
+                          "resource": "choice",
+                          "kind": "exercise",
+                          "exercise": "choice",
+                          "title": "Cálculo incompleto",
+                          "question": "Uma proposta de agente considera apenas licenças de usuários e ignora busca, embeddings, armazenamento, logs e ambiente de produção. Qual avaliação é correta?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "text": "O cálculo está incompleto porque custo de IA pode ter componentes além da licença."
+                            },
+                            {
+                              "id": "b",
+                              "text": "O cálculo está completo porque toda IA é cobrada só por usuário."
+                            },
+                            {
+                              "id": "c",
+                              "text": "Logs e armazenamento nunca têm custo ou impacto."
+                            },
+                            {
+                              "id": "d",
+                              "text": "Busca é gratuita por definição quando há fonte oficial."
+                            }
+                          ],
+                          "answer": "a",
+                          "after": "Soluções de IA podem consumir licença, modelo, busca, embeddings, armazenamento, logs, conectores e ambientes; cálculo apenas por usuário fica incompleto."
+                        },
+                        {
+                          "id": "micro-custo-nao-e-so-licenca-card-03",
+                          "position": 3,
+                          "resource": "choice",
+                          "kind": "exercise",
+                          "exercise": "choice",
+                          "title": "Pergunta de reunião",
+                          "question": "Qual pergunta ajuda a discutir custo sem inventar números?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "text": "Quais componentes serão consumidos e qual tabela vigente ou contrato define cada cobrança?"
+                            },
+                            {
+                              "id": "b",
+                              "text": "Qual valor devemos anunciar antes de consultar contrato?"
+                            },
+                            {
+                              "id": "c",
+                              "text": "Como ocultar custos de logs para aprovar mais rápido?"
+                            },
+                            {
+                              "id": "d",
+                              "text": "Como escolher ferramenta só pelo menor custo inicial?"
+                            }
+                          ],
+                          "answer": "a",
+                          "after": "A análise de custo deve separar componentes de consumo e a fonte contratual ou tabela definida para cada cobrança; anunciar valores sem base distorce a decisão."
+                        },
+                        {
+                          "id": "micro-custo-nao-e-so-licenca-card-04",
+                          "position": 4,
+                          "resource": "paragraph",
+                          "kind": "exercise",
+                          "exercise": "gap",
+                          "title": "Frase segura",
+                          "text": "O custo não é só licença: pode envolver créditos, tokens, busca, armazenamento, logs, conectores e [[ambientes::ambientes|apenas usuários ativos|somente perguntas feitas]].",
+                          "after": "Ambientes entram porque teste e produção podem exigir recursos separados; contar apenas usuários ou perguntas deixa componentes de operação fora da estimativa."
+                        }
+                      ],
+                      "validation": {
+                        "ok": true,
+                        "issues": []
+                      }
+                    }
+                  ],
+                  "activeVersion": "version-001"
+                },
+                {
+                  "id": "micro-formulas-custo",
+                  "title": "Fórmulas didáticas de custo",
+                  "goal": "Escolher fórmula conceitual correta para estimar custos sem usar valores inventados.",
+                  "role": "practice",
+                  "status": "generated",
+                  "branchOf": null,
+                  "dependsOn": [
+                    "micro-custo-nao-e-so-licenca"
+                  ],
+                  "covers": [
+                    "custo por usuário",
+                    "créditos por interação",
+                    "tokens de entrada e saída",
+                    "custo total por componentes"
+                  ],
+                  "checks": [
+                    "escolhe fórmula correta para cenário",
+                    "reconhece que valores reais dependem de contrato"
+                  ],
+                  "versions": [
+                    {
+                      "id": "version-001",
+                      "createdAt": "2026-06-06T00:00:00.000Z",
+                      "source": "llm",
+                      "action": "generate",
+                      "request": "Primeira versão da microssequência.",
+                      "summary": "Conceitos e práticas sobre custo por usuário, créditos por interação, tokens de entrada e saída, custo total por componentes.",
+                      "cards": [
+                        {
+                          "id": "micro-formulas-custo-card-01",
+                          "position": 1,
+                          "resource": "code",
+                          "kind": "theory",
+                          "exercise": "none",
+                          "title": "Custo por componentes",
+                          "prompt": "Fórmula didática sem valores numéricos.",
+                          "language": "text",
+                          "code": "custo_total = licenças + consumo_de_modelo + busca_e_embeddings + armazenamento + logs_e_monitoramento + conectores + ambientes\n\nvalor_real = aplicar_regras_do_contrato_e_tabelas_vigentes(custo_total)",
+                          "after": "A fórmula não substitui contrato. Ela ajuda a lembrar componentes que precisam ser verificados."
+                        },
+                        {
+                          "id": "micro-formulas-custo-card-02",
+                          "position": 2,
+                          "resource": "code",
+                          "kind": "exercise",
+                          "exercise": "choice",
+                          "title": "Tokens por interação",
+                          "question": "Qual conclusão é correta?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "text": "Contexto recuperado por RAG também pode aumentar tokens consumidos."
+                            },
+                            {
+                              "id": "b",
+                              "text": "Somente a pergunta consome tokens."
+                            },
+                            {
+                              "id": "c",
+                              "text": "Token é igual a usuário licenciado."
+                            },
+                            {
+                              "id": "d",
+                              "text": "A resposta não entra no consumo."
+                            }
+                          ],
+                          "answer": "a",
+                          "prompt": "Fórmula didática para uma interação.",
+                          "language": "text",
+                          "code": "tokens_interacao = tokens_pergunta + tokens_contexto_recuperado + tokens_resposta",
+                          "after": "Pergunta, contexto e resposta podem entrar no consumo. Token não é usuário nem licença."
+                        },
+                        {
+                          "id": "micro-formulas-custo-card-03",
+                          "position": 3,
+                          "resource": "choice",
+                          "kind": "exercise",
+                          "exercise": "choice",
+                          "title": "Custo por agente",
+                          "question": "Um agente terá baixo número de usuários, mas usará muitos documentos, índice grande, logs detalhados e ambiente de produção. Qual alerta faz sentido?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "text": "Poucos usuários não garantem baixo custo total; componentes técnicos também precisam ser estimados."
+                            },
+                            {
+                              "id": "b",
+                              "text": "Poucos usuários eliminam custo de busca e logs."
+                            },
+                            {
+                              "id": "c",
+                              "text": "Ambiente de produção nunca entra em custo."
+                            },
+                            {
+                              "id": "d",
+                              "text": "Custo não deve ser discutido em piloto."
+                            }
+                          ],
+                          "answer": "a",
+                          "after": "Volume de usuários é apenas um fator. Busca, armazenamento, logs e ambientes podem influenciar custo."
+                        }
+                      ],
+                      "validation": {
+                        "ok": true,
+                        "issues": []
+                      }
+                    }
+                  ],
+                  "activeVersion": "version-001"
+                }
+              ]
+            },
+            {
+              "id": "lesson-7-2-copilot-studio-ou-foundry",
+              "title": "Copilot Studio ou Foundry?",
+              "guide": {
+                "goal": "Comparar Copilot Studio, Foundry/Azure, Microsoft 365 Copilot e combinações por cenário, risco, dados e integração.",
+                "include": [
+                  "simplicidade",
+                  "controle",
+                  "risco",
+                  "integração",
+                  "observabilidade",
+                  "público",
+                  "dados",
+                  "escala",
+                  "FAQ interno",
+                  "RH com dado individual",
+                  "atendimento público",
+                  "agente integrado",
+                  "produtividade individual"
+                ],
+                "exclude": [
+                  "preços absolutos",
+                  "promessa de economia garantida",
+                  "negociação contratual",
+                  "nome real da organização"
+                ],
+                "notation": [
+                  "Usar matriz de decisão como apoio, não como regra automática."
+                ],
+                "avoid": []
+              },
+              "topics": [
+                {
+                  "id": "topic-comparativo-ferramentas",
+                  "label": "comparativo de ferramentas",
+                  "kind": "representation",
+                  "checks": [
+                    "compara por risco, dados, integração e observabilidade"
+                  ],
+                  "errors": [
+                    "escolher por preferência abstrata"
+                  ]
+                },
+                {
+                  "id": "topic-decisao-ferramenta",
+                  "label": "decisão de ferramenta",
+                  "kind": "procedure",
+                  "checks": [
+                    "escolhe ferramenta inicial provável por cenário"
+                  ],
+                  "errors": [
+                    "tratar todo caso como Copilot Studio ou todo caso como Foundry"
+                  ]
+                },
+                {
+                  "id": "topic-arquitetura-mista",
+                  "label": "arquitetura mista",
+                  "kind": "concept",
+                  "checks": [
+                    "reconhece quando combinar RAG, API, Foundry ou Copilot Studio"
+                  ],
+                  "errors": [
+                    "ignorar integração e dados"
+                  ]
+                }
+              ],
+              "microsequences": [
+                {
+                  "id": "micro-comparativo-ferramentas",
+                  "title": "Critérios de comparação",
+                  "goal": "Comparar ferramentas por cenário, risco, dados, integração e observabilidade.",
+                  "role": "explain",
+                  "status": "generated",
+                  "branchOf": null,
+                  "dependsOn": [],
+                  "covers": [
+                    "simplicidade",
+                    "controle",
+                    "risco",
+                    "integração",
+                    "observabilidade",
+                    "público",
+                    "dados",
+                    "escala"
+                  ],
+                  "checks": [
+                    "compara Copilot Studio e Foundry/Azure por critério",
+                    "não escolhe por preferência abstrata"
+                  ],
+                  "versions": [
+                    {
+                      "id": "version-001",
+                      "createdAt": "2026-06-06T00:00:00.000Z",
+                      "source": "llm",
+                      "action": "generate",
+                      "request": "Primeira versão da microssequência.",
+                      "summary": "Conceitos e práticas sobre simplicidade, controle, risco, integração, observabilidade, público, dados, escala.",
+                      "cards": [
+                        {
+                          "id": "micro-comparativo-ferramentas-card-01",
+                          "position": 1,
+                          "resource": "table",
+                          "kind": "theory",
+                          "exercise": "none",
+                          "title": "Critérios de decisão",
+                          "columns": [
+                            "Critério",
+                            "Tende a favorecer solução simples",
+                            "Tende a favorecer solução robusta"
+                          ],
+                          "rows": [
+                            [
+                              "Público",
+                              "Equipe interna ou área específica",
+                              "Público externo ou organização inteira"
+                            ],
+                            [
+                              "Dados",
+                              "Normas gerais sem dado individual",
+                              "Dado pessoal, sensível ou restrito"
+                            ],
+                            [
+                              "Integração",
+                              "Sem ação em sistema",
+                              "Consulta ou execução em sistemas"
+                            ],
+                            [
+                              "Observabilidade",
+                              "Monitoramento simples suficiente",
+                              "Trace, avaliação e logs detalhados"
+                            ],
+                            [
+                              "Escala",
+                              "Piloto controlado",
+                              "Alto volume ou múltiplos canais"
+                            ]
+                          ],
+                          "after": "A decisão não é por gosto. É por risco, dados, integração, público, escala e operação."
+                        },
+                        {
+                          "id": "micro-comparativo-ferramentas-card-02",
+                          "position": 2,
+                          "resource": "choice",
+                          "kind": "exercise",
+                          "exercise": "choice",
+                          "title": "Frase de equilíbrio",
+                          "question": "Em uma reunião, há disputa entre “usar sempre a ferramenta mais simples” e “usar sempre a mais robusta”. Qual frase é mais adequada?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "text": "O ponto é classificar risco e escolher a ferramenta adequada ao caso, não escolher uma regra única para tudo."
+                            },
+                            {
+                              "id": "b",
+                              "text": "A ferramenta mais simples sempre é correta porque acelera."
+                            },
+                            {
+                              "id": "c",
+                              "text": "A ferramenta mais robusta sempre é obrigatória porque elimina risco."
+                            },
+                            {
+                              "id": "d",
+                              "text": "A escolha deve ser feita antes de conhecer público e dados."
+                            }
+                          ],
+                          "answer": "a",
+                          "after": "A decisão começa pela classificação de risco, público, dados e integração; simplicidade ou robustez absolutas ignoram o contexto do caso."
+                        },
+                        {
+                          "id": "micro-comparativo-ferramentas-card-03",
+                          "position": 3,
+                          "resource": "choice",
+                          "kind": "exercise",
+                          "exercise": "choice",
+                          "title": "Observabilidade",
+                          "question": "Um agente crítico precisa explicar cada resposta, registrar ferramentas chamadas e medir qualidade. Qual critério pesa mais?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "text": "Observabilidade e trace detalhado."
+                            },
+                            {
+                              "id": "b",
+                              "text": "Apenas facilidade de criar a tela."
+                            },
+                            {
+                              "id": "c",
+                              "text": "Nome simplificado do agente."
+                            },
+                            {
+                              "id": "d",
+                              "text": "Quantidade de emojis na resposta."
+                            }
+                          ],
+                          "answer": "a",
+                          "after": "Em caso crítico, observabilidade e trace ajudam operação e auditoria. Facilidade visual não basta."
+                        },
+                        {
+                          "id": "micro-comparativo-ferramentas-card-04",
+                          "position": 4,
+                          "resource": "paragraph",
+                          "kind": "exercise",
+                          "exercise": "gap",
+                          "title": "Decisão por caso",
+                          "text": "A escolha entre Copilot Studio e Foundry/Azure deve começar pela classificação de público, dados, risco, integração e [[observabilidade::observabilidade|preferência|pressa]].",
+                          "after": "Observabilidade define capacidade de operar e investigar. Preferência e pressa não são critérios suficientes."
+                        }
+                      ],
+                      "validation": {
+                        "ok": true,
+                        "issues": []
+                      }
+                    }
+                  ],
+                  "activeVersion": "version-001"
+                },
+                {
+                  "id": "micro-decisao-ferramenta",
+                  "title": "Escolha da ferramenta por caso de uso",
+                  "goal": "Escolher ferramenta inicial provável e reconhecer quando uma arquitetura mista é necessária.",
+                  "role": "practice",
+                  "status": "generated",
+                  "branchOf": null,
+                  "dependsOn": [
+                    "micro-comparativo-ferramentas"
+                  ],
+                  "covers": [
+                    "FAQ interno",
+                    "RH com dado individual",
+                    "atendimento público",
+                    "agente integrado",
+                    "produtividade individual"
+                  ],
+                  "checks": [
+                    "escolhe ferramenta inicial provável",
+                    "identifica quando uma arquitetura mista é necessária"
+                  ],
+                  "versions": [
+                    {
+                      "id": "version-001",
+                      "createdAt": "2026-06-06T00:00:00.000Z",
+                      "source": "llm",
+                      "action": "generate",
+                      "request": "Primeira versão da microssequência.",
+                      "summary": "Conceitos e práticas sobre FAQ interno, RH com dado individual, atendimento público, agente integrado, produtividade individual.",
+                      "cards": [
+                        {
+                          "id": "micro-decisao-ferramenta-card-01",
+                          "position": 1,
+                          "resource": "matrix",
+                          "kind": "theory",
+                          "exercise": "none",
+                          "title": "Matriz de decisão inicial",
+                          "prompt": "Linhas são casos; colunas resumem direção provável.",
+                          "name": "FerramentaCaso",
+                          "values": [
+                            [
+                              "Caso",
+                              "Direção provável",
+                              "Atenção"
+                            ],
+                            [
+                              "FAQ interno",
+                              "Copilot Studio",
+                              "Fonte e DLP"
+                            ],
+                            [
+                              "Canal público",
+                              "Foundry/Azure ou robusta",
+                              "Fallback e logs"
+                            ],
+                            [
+                              "Status individual",
+                              "Arquitetura mista",
+                              "API e autorização"
+                            ]
+                          ],
+                          "after": "A matriz apoia a conversa inicial. A decisão final depende de contrato, política, dados e desenho técnico."
+                        },
+                        {
+                          "id": "micro-decisao-ferramenta-card-02",
+                          "position": 2,
+                          "resource": "matrix",
+                          "kind": "exercise",
+                          "exercise": "choice",
+                          "title": "Escolher caminho",
+                          "question": "Uma área de RH quer responder situação individual de empregado autenticado, consultando sistema. Qual caminho é mais provável?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "text": "Arquitetura mista ou robusta com autenticação, autorização, API/conector e logs."
+                            },
+                            {
+                              "id": "b",
+                              "text": "Somente FAQ documental sem integração."
+                            },
+                            {
+                              "id": "c",
+                              "text": "Uso individual no editor de texto."
+                            },
+                            {
+                              "id": "d",
+                              "text": "Canal público anônimo."
+                            }
+                          ],
+                          "answer": "a",
+                          "prompt": "Matriz resumida: FAQ interno com norma geral pode começar por Copilot Studio; canal público ou dado individual tende a exigir desenho robusto ou misto.",
+                          "name": "FerramentaCaso",
+                          "values": [
+                            [
+                              "Caso",
+                              "Público",
+                              "Dado",
+                              "Caminho provável"
+                            ],
+                            [
+                              "FAQ",
+                              "Interno",
+                              "Geral",
+                              "Copilot Studio"
+                            ],
+                            [
+                              "Público",
+                              "Externo",
+                              "Geral",
+                              "Robusto"
+                            ],
+                            [
+                              "RH",
+                              "Interno",
+                              "Individual",
+                              "Misto"
+                            ]
+                          ],
+                          "after": "Situação individual com sistema exige integração e controles. FAQ documental, uso individual e canal anônimo não atendem o risco."
+                        },
+                        {
+                          "id": "micro-decisao-ferramenta-card-03",
+                          "position": 3,
+                          "resource": "choice",
+                          "kind": "exercise",
+                          "exercise": "choice",
+                          "title": "Produtividade individual",
+                          "question": "Uma pessoa quer apoio para rascunhar uma apresentação interna a partir de documentos aos quais já tem acesso. Qual ferramenta tende a ser inicial?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "text": "Microsoft 365 Copilot, respeitando orientação de dados e validação humana."
+                            },
+                            {
+                              "id": "b",
+                              "text": "Foundry obrigatório com canal público."
+                            },
+                            {
+                              "id": "c",
+                              "text": "Agente transacional com alteração de cadastro."
+                            },
+                            {
+                              "id": "d",
+                              "text": "API para sistemas sensíveis sem necessidade."
+                            }
+                          ],
+                          "answer": "a",
+                          "after": "O caso é produtividade individual. Não há canal público, ação nem sistema sensível no cenário."
+                        }
+                      ],
+                      "validation": {
+                        "ok": true,
+                        "issues": []
+                      }
+                    }
+                  ],
+                  "activeVersion": "version-001"
+                }
+              ]
+            },
+            {
+              "id": "lesson-7-3-priorizacao-pilotos",
+              "title": "Priorização de pilotos",
+              "guide": {
+                "goal": "Selecionar primeiros pilotos por valor visível, risco controlado, fonte oficial, escopo claro e métrica de sucesso.",
+                "include": [
+                  "piloto",
+                  "baixo risco",
+                  "valor visível",
+                  "fonte oficial",
+                  "escopo controlado",
+                  "métricas",
+                  "valor",
+                  "risco",
+                  "esforço",
+                  "dados",
+                  "dependência de sistema",
+                  "maturidade da área"
+                ],
+                "exclude": [
+                  "preços absolutos",
+                  "promessa de economia garantida",
+                  "negociação contratual",
+                  "nome real da organização"
+                ],
+                "notation": [
+                  "Usar plano de valor x risco e critérios de esforço."
+                ],
+                "avoid": []
+              },
+              "topics": [
+                {
+                  "id": "topic-piloto-bom",
+                  "label": "bom piloto",
+                  "kind": "concept",
+                  "checks": [
+                    "reconhece características de piloto adequado"
+                  ],
+                  "errors": [
+                    "escolher piloto de alto risco para começar"
+                  ]
+                },
+                {
+                  "id": "topic-carteira-casos",
+                  "label": "carteira de casos",
+                  "kind": "representation",
+                  "checks": [
+                    "prioriza casos por valor, risco e esforço"
+                  ],
+                  "errors": [
+                    "priorizar por pressão política sem critérios"
+                  ]
+                },
+                {
+                  "id": "topic-metrica-sucesso",
+                  "label": "métrica de sucesso",
+                  "kind": "term",
+                  "checks": [
+                    "associa piloto a indicador verificável"
+                  ],
+                  "errors": [
+                    "aprovar piloto sem métrica"
+                  ]
+                }
+              ],
+              "microsequences": [
+                {
+                  "id": "micro-piloto-bom",
+                  "title": "Bom piloto não é o caso mais arriscado",
+                  "goal": "Reconhecer características de bom piloto para framework de IA.",
+                  "role": "explain",
+                  "status": "generated",
+                  "branchOf": null,
+                  "dependsOn": [],
+                  "covers": [
+                    "piloto",
+                    "baixo risco",
+                    "valor visível",
+                    "fonte oficial",
+                    "escopo controlado",
+                    "métricas"
+                  ],
+                  "checks": [
+                    "reconhece características de bom piloto",
+                    "rejeita piloto com risco excessivo ou fonte ruim"
+                  ],
+                  "versions": [
+                    {
+                      "id": "version-001",
+                      "createdAt": "2026-06-06T00:00:00.000Z",
+                      "source": "llm",
+                      "action": "generate",
+                      "request": "Primeira versão da microssequência.",
+                      "summary": "Conceitos e práticas sobre piloto, baixo risco, valor visível, fonte oficial, escopo controlado, métricas.",
+                      "cards": [
+                        {
+                          "id": "micro-piloto-bom-card-01",
+                          "position": 1,
+                          "resource": "paragraph",
+                          "kind": "theory",
+                          "exercise": "none",
+                          "title": "Características de bom piloto",
+                          "text": "Um bom piloto de IA generativa tem problema claro, público definido, fonte oficial, escopo controlado, risco proporcional, responsável e métrica de sucesso.",
+                          "after": "O primeiro piloto deve ensinar a organização a operar o framework, não testar todos os riscos de uma só vez."
+                        },
+                        {
+                          "id": "micro-piloto-bom-card-02",
+                          "position": 2,
+                          "resource": "table",
+                          "kind": "theory",
+                          "exercise": "none",
+                          "title": "Sinais de prontidão",
+                          "columns": [
+                            "Sinal",
+                            "Por que ajuda"
+                          ],
+                          "rows": [
+                            [
+                              "Fonte oficial pronta",
+                              "Reduz conflito de resposta"
+                            ],
+                            [
+                              "Dono funcional engajado",
+                              "Permite validação rápida"
+                            ],
+                            [
+                              "Baixa dependência de sistema",
+                              "Simplifica implantação inicial"
+                            ],
+                            [
+                              "Métrica objetiva",
+                              "Permite avaliar valor"
+                            ],
+                            [
+                              "Risco controlado",
+                              "Facilita aprendizado seguro"
+                            ]
+                          ],
+                          "after": "Pilotos bons geram aprendizado e evidência, sem expor a companhia a risco desnecessário."
+                        },
+                        {
+                          "id": "micro-piloto-bom-card-03",
+                          "position": 3,
+                          "resource": "choice",
+                          "kind": "exercise",
+                          "exercise": "choice",
+                          "title": "Escolher piloto",
+                          "question": "Qual caso parece melhor primeiro piloto?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "text": "FAQ interno de norma geral, com fonte oficial, dono funcional e métrica de redução de dúvidas repetidas."
+                            },
+                            {
+                              "id": "b",
+                              "text": "Chatbot público anônimo sem fonte definida."
+                            },
+                            {
+                              "id": "c",
+                              "text": "Agente que altera cadastro sensível sem validação."
+                            },
+                            {
+                              "id": "d",
+                              "text": "Caso sem responsável porque a demanda é urgente."
+                            }
+                          ],
+                          "answer": "a",
+                          "after": "FAQ interno com escopo, fonte oficial, dono funcional e métrica combina valor visível com risco controlado para início de portfólio."
+                        },
+                        {
+                          "id": "micro-piloto-bom-card-04",
+                          "position": 4,
+                          "resource": "paragraph",
+                          "kind": "exercise",
+                          "exercise": "gap",
+                          "title": "Frase segura",
+                          "text": "Um bom piloto deve ter escopo claro, fonte oficial, risco controlado e [[métrica de sucesso::métrica de sucesso|promessa vaga|nome chamativo]].",
+                          "after": "Métrica de sucesso permite avaliar resultado. Promessa vaga e nome chamativo não comprovam valor."
+                        }
+                      ],
+                      "validation": {
+                        "ok": true,
+                        "issues": []
+                      }
+                    }
+                  ],
+                  "activeVersion": "version-001"
+                },
+                {
+                  "id": "micro-carteira-casos",
+                  "title": "Carteira de casos de uso",
+                  "goal": "Priorizar casos em uma carteira e escolher primeiro piloto com critérios objetivos.",
+                  "role": "practice",
+                  "status": "generated",
+                  "branchOf": null,
+                  "dependsOn": [
+                    "micro-piloto-bom"
+                  ],
+                  "covers": [
+                    "valor",
+                    "risco",
+                    "esforço",
+                    "dados",
+                    "dependência de sistema",
+                    "maturidade da área"
+                  ],
+                  "checks": [
+                    "prioriza casos em uma carteira",
+                    "escolhe primeiro piloto e justifica no feedback"
+                  ],
+                  "versions": [
+                    {
+                      "id": "version-001",
+                      "createdAt": "2026-06-06T00:00:00.000Z",
+                      "source": "llm",
+                      "action": "generate",
+                      "request": "Primeira versão da microssequência.",
+                      "summary": "Conceitos e práticas sobre valor, risco, esforço, dados, dependência de sistema, maturidade da área.",
+                      "cards": [
+                        {
+                          "id": "micro-carteira-casos-card-01",
+                          "position": 1,
+                          "resource": "plane",
+                          "kind": "theory",
+                          "exercise": "none",
+                          "title": "Carteira valor-risco",
+                          "prompt": "Eixo horizontal representa valor de 1 a 5; eixo vertical representa risco de 1 a 5. Pontos: trilhas da escola corporativa=(4,2), FAQ financeiro interno=(3,2), atendimento público amplo=(5,4), alteração cadastral=(4,5).",
+                          "vectors": [
+                            [
+                              4,
+                              2
+                            ],
+                            [
+                              3,
+                              2
+                            ],
+                            [
+                              5,
+                              4
+                            ],
+                            [
+                              4,
+                              5
+                            ]
+                          ],
+                          "after": "Casos com bom valor e risco controlado são candidatos melhores para pilotos iniciais."
+                        },
+                        {
+                          "id": "micro-carteira-casos-card-02",
+                          "position": 2,
+                          "resource": "plane",
+                          "kind": "exercise",
+                          "exercise": "choice",
+                          "title": "Primeiro piloto da carteira",
+                          "question": "Qual caso tende a ser melhor primeiro piloto?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "text": "Trilhas da escola corporativa, se houver fonte e dono de conteúdo."
+                            },
+                            {
+                              "id": "b",
+                              "text": "Alteração cadastral, por ter risco alto."
+                            },
+                            {
+                              "id": "c",
+                              "text": "Atendimento público amplo sem começar por escopo menor."
+                            },
+                            {
+                              "id": "d",
+                              "text": "Qualquer caso com maior visibilidade, sem avaliar risco."
+                            }
+                          ],
+                          "answer": "a",
+                          "prompt": "Eixo horizontal é valor; eixo vertical é risco. Pontos: trilhas da escola corporativa=(4,2), FAQ financeiro interno=(3,2), atendimento público amplo=(5,4), alteração cadastral=(4,5).",
+                          "vectors": [
+                            [
+                              4,
+                              2
+                            ],
+                            [
+                              3,
+                              2
+                            ],
+                            [
+                              5,
+                              4
+                            ],
+                            [
+                              4,
+                              5
+                            ]
+                          ],
+                          "after": "A trilha tem valor e risco controlado. Os casos de risco alto podem entrar depois de controles mais robustos."
+                        },
+                        {
+                          "id": "micro-carteira-casos-card-03",
+                          "position": 3,
+                          "resource": "table",
+                          "kind": "exercise",
+                          "exercise": "choice",
+                          "title": "Esforço e dependência",
+                          "question": "Qual caso tem melhor perfil de piloto controlado entre os listados?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "text": "Checklist interno."
+                            },
+                            {
+                              "id": "b",
+                              "text": "Status individual."
+                            },
+                            {
+                              "id": "c",
+                              "text": "Canal externo amplo."
+                            },
+                            {
+                              "id": "d",
+                              "text": "O caso com maior dependência de sistema."
+                            }
+                          ],
+                          "answer": "a",
+                          "columns": [
+                            "Caso",
+                            "Valor",
+                            "Risco",
+                            "Esforço",
+                            "Dependência de sistema"
+                          ],
+                          "rows": [
+                            [
+                              "Checklist interno",
+                              "Médio",
+                              "Baixo",
+                              "Baixo",
+                              "Não"
+                            ],
+                            [
+                              "Status individual",
+                              "Alto",
+                              "Alto",
+                              "Alto",
+                              "Sim"
+                            ],
+                            [
+                              "Canal externo amplo",
+                              "Alto",
+                              "Alto",
+                              "Médio",
+                              "Talvez"
+                            ],
+                            [
+                              "Resumo individual",
+                              "Médio",
+                              "Baixo",
+                              "Baixo",
+                              "Não"
+                            ]
+                          ],
+                          "after": "Checklist interno tem baixo risco e baixo esforço. Status e canal externo exigem mais controles; dependência de sistema aumenta complexidade."
+                        }
+                      ],
+                      "validation": {
+                        "ok": true,
+                        "issues": []
+                      }
+                    }
+                  ],
+                  "activeVersion": "version-001"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "module-8-governanca-ciclo-reunioes",
+          "title": "Governança, ciclo de vida e reuniões de implantação",
+          "guide": {
+            "goal": "Aplicar os conceitos em fluxo de governança, ciclo de vida de agentes, reuniões de comitê e seleção de soluções.",
+            "include": [
+              "comitê de IA",
+              "pontos focais",
+              "TI",
+              "segurança da informação",
+              "jurídico/LGPD",
+              "área de negócio",
+              "gestão documental",
+              "escola corporativa",
+              "atendimento/comunicação",
+              "ciclo de vida de agente",
+              "triagem",
+              "validação",
+              "publicação",
+              "operação",
+              "revisão",
+              "métricas",
+              "maturidade",
+              "trilha de continuidade",
+              "perguntas estratégicas"
+            ],
+            "exclude": [
+              "organograma real",
+              "nome real da organização",
+              "política oficial inventada",
+              "promessa de automação total",
+              "decisões sem validação humana"
+            ],
+            "notation": [
+              "Usar papéis genéricos: diretoria, comitê, TI, segurança, jurídico/LGPD, área de negócio, ponto focal, gestão documental, atendimento/comunicação, escola corporativa."
+            ],
+            "avoid": []
+          },
+          "lessons": [
+            {
+              "id": "lesson-8-1-papeis-responsabilidades",
+              "title": "Papéis e responsabilidades",
+              "guide": {
+                "goal": "Entender governança federada e separar validação de conteúdo, risco, plataforma, fonte, custo e publicação.",
+                "include": [
+                  "governança federada",
+                  "TI",
+                  "áreas de negócio",
+                  "jurídico/LGPD",
+                  "segurança",
+                  "diretoria",
+                  "pontos focais",
+                  "dono funcional",
+                  "responsável técnico",
+                  "validador jurídico",
+                  "gestão documental"
+                ],
+                "exclude": [
+                  "organograma real",
+                  "nome real da organização",
+                  "política oficial inventada",
+                  "decisões sem validação humana"
+                ],
+                "notation": [
+                  "Usar papéis genéricos e responsabilidades por tipo de decisão."
+                ],
+                "avoid": []
+              },
+              "topics": [
+                {
+                  "id": "topic-governanca-federada",
+                  "label": "governança federada",
+                  "kind": "concept",
+                  "checks": [
+                    "identifica responsabilidades compartilhadas por papéis"
+                  ],
+                  "errors": [
+                    "atribuir toda responsabilidade à TI"
+                  ]
+                },
+                {
+                  "id": "topic-dono-funcional",
+                  "label": "dono funcional e responsável técnico",
+                  "kind": "term",
+                  "checks": [
+                    "distingue validação de regra e plataforma"
+                  ],
+                  "errors": [
+                    "confundir dono da fonte com administrador de nuvem"
+                  ]
+                },
+                {
+                  "id": "topic-validacao-papeis",
+                  "label": "quem valida o quê",
+                  "kind": "procedure",
+                  "checks": [
+                    "escolhe responsável correto por fonte, risco, plataforma, custo e publicação"
+                  ],
+                  "errors": [
+                    "permitir publicação sem validação"
+                  ]
+                }
+              ],
+              "microsequences": [
+                {
+                  "id": "micro-governanca-federada",
+                  "title": "Governança federada",
+                  "goal": "Identificar responsabilidade de cada papel sem criar autonomia total nem gargalo total.",
+                  "role": "explain",
+                  "status": "generated",
+                  "branchOf": null,
+                  "dependsOn": [],
+                  "covers": [
+                    "governança federada",
+                    "TI",
+                    "áreas de negócio",
+                    "jurídico/LGPD",
+                    "segurança",
+                    "diretoria",
+                    "pontos focais"
+                  ],
+                  "checks": [
+                    "identifica responsabilidade de cada papel",
+                    "evita extremos de autonomia total ou gargalo total"
+                  ],
+                  "versions": [
+                    {
+                      "id": "version-001",
+                      "createdAt": "2026-06-06T00:00:00.000Z",
+                      "source": "llm",
+                      "action": "generate",
+                      "request": "Primeira versão da microssequência.",
+                      "summary": "Conceitos e práticas sobre governança federada, TI, áreas de negócio, jurídico/LGPD, segurança, diretoria, pontos focais.",
+                      "cards": [
+                        {
+                          "id": "micro-governanca-federada-card-01",
+                          "position": 1,
+                          "resource": "relation_map",
+                          "kind": "exercise",
+                          "exercise": "choice",
+                          "title": "Papéis e responsabilidades",
+                          "question": "Qual associação está correta?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "text": "Área de negócio -> validar conteúdo e regra funcional."
+                            },
+                            {
+                              "id": "b",
+                              "text": "TI -> decidir sozinha a regra de atendimento."
+                            },
+                            {
+                              "id": "c",
+                              "text": "Jurídico/LGPD -> validar regra funcional da área de negócio."
+                            },
+                            {
+                              "id": "d",
+                              "text": "Gestão documental -> dispensar versão da fonte."
+                            }
+                          ],
+                          "answer": "a",
+                          "prompt": "Relacione papéis genéricos a responsabilidades típicas.",
+                          "leftSet": {
+                            "label": "Papéis",
+                            "items": [
+                              {
+                                "id": "comite",
+                                "label": "Comitê de IA"
+                              },
+                              {
+                                "id": "negocio",
+                                "label": "Área de negócio"
+                              },
+                              {
+                                "id": "ti",
+                                "label": "TI"
+                              },
+                              {
+                                "id": "seg",
+                                "label": "Segurança"
+                              },
+                              {
+                                "id": "jur",
+                                "label": "Jurídico/LGPD"
+                              },
+                              {
+                                "id": "doc",
+                                "label": "Gestão documental"
+                              }
+                            ]
+                          },
+                          "rightSet": {
+                            "label": "Responsabilidades",
+                            "items": [
+                              {
+                                "id": "prioriza",
+                                "label": "Priorizar e acompanhar portfólio"
+                              },
+                              {
+                                "id": "conteudo",
+                                "label": "Validar conteúdo e regra funcional"
+                              },
+                              {
+                                "id": "plataforma",
+                                "label": "Governar plataforma e integração técnica"
+                              },
+                              {
+                                "id": "risco",
+                                "label": "Avaliar controles de segurança"
+                              },
+                              {
+                                "id": "dados",
+                                "label": "Orientar risco de dados pessoais"
+                              },
+                              {
+                                "id": "fonte",
+                                "label": "Controlar fonte, versão e metadados"
+                              }
+                            ]
+                          },
+                          "relations": [
+                            {
+                              "from": "comite",
+                              "to": "prioriza"
+                            },
+                            {
+                              "from": "negocio",
+                              "to": "conteudo"
+                            },
+                            {
+                              "from": "ti",
+                              "to": "plataforma"
+                            },
+                            {
+                              "from": "seg",
+                              "to": "risco"
+                            },
+                            {
+                              "from": "jur",
+                              "to": "dados"
+                            },
+                            {
+                              "from": "doc",
+                              "to": "fonte"
+                            }
+                          ],
+                          "pairList": [
+                            "(Comitê, portfólio)",
+                            "(Negócio, conteúdo)",
+                            "(TI, plataforma)",
+                            "(Segurança, controles)",
+                            "(Jurídico/LGPD, dados)",
+                            "(Gestão documental, fonte)"
+                          ],
+                          "after": "Governança federada distribui responsabilidades: comitê prioriza, negócio valida conteúdo, TI governa plataforma, segurança e jurídico avaliam riscos, e gestão documental controla fonte."
+                        },
+                        {
+                          "id": "micro-governanca-federada-card-02",
+                          "position": 2,
+                          "resource": "paragraph",
+                          "kind": "theory",
+                          "exercise": "none",
+                          "title": "O que é governança federada",
+                          "text": "Governança federada combina padrão corporativo com participação das áreas. O centro define diretrizes e controles; as áreas contribuem com conteúdo, prioridades e validação funcional.",
+                          "after": "Esse modelo evita dois extremos: cada área publicar agentes sem padrão, ou toda decisão virar gargalo de uma única equipe."
+                        },
+                        {
+                          "id": "micro-governanca-federada-card-03",
+                          "position": 3,
+                          "resource": "choice",
+                          "kind": "exercise",
+                          "exercise": "choice",
+                          "title": "TI não valida tudo",
+                          "question": "Uma área pede que a TI valide se uma resposta sobre regra de benefício está correta. Qual encaminhamento é mais adequado?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "text": "A área dona da regra valida o conteúdo; TI apoia plataforma, acesso, integração e operação."
+                            },
+                            {
+                              "id": "b",
+                              "text": "TI valida tudo porque o agente roda em tecnologia."
+                            },
+                            {
+                              "id": "c",
+                              "text": "Nenhuma validação é necessária se a fonte estiver em PDF."
+                            },
+                            {
+                              "id": "d",
+                              "text": "Usuários externos validam depois da publicação."
+                            }
+                          ],
+                          "answer": "a",
+                          "after": "Conteúdo funcional é responsabilidade da área dona da regra. TI não deve substituir a validação de negócio."
+                        },
+                        {
+                          "id": "micro-governanca-federada-card-04",
+                          "position": 4,
+                          "resource": "paragraph",
+                          "kind": "exercise",
+                          "exercise": "gap",
+                          "title": "Frase segura",
+                          "text": "A TI governa a plataforma, mas a área de negócio precisa validar conteúdo e [[regras funcionais::regras funcionais|permissões técnicas|métrica isolada]].",
+                          "after": "Regras funcionais determinam como a resposta institucional deve ser validada; a plataforma sozinha não valida conteúdo nem interpretação de negócio."
+                        }
+                      ],
+                      "validation": {
+                        "ok": true,
+                        "issues": []
+                      }
+                    }
+                  ],
+                  "activeVersion": "version-001"
+                },
+                {
+                  "id": "micro-quem-valida-o-que",
+                  "title": "Quem valida conteúdo, risco e plataforma",
+                  "goal": "Escolher responsável correto para fonte, risco, plataforma, custo e publicação.",
+                  "role": "practice",
+                  "status": "generated",
+                  "branchOf": null,
+                  "dependsOn": [
+                    "micro-governanca-federada"
+                  ],
+                  "covers": [
+                    "dono funcional",
+                    "responsável técnico",
+                    "validador jurídico",
+                    "segurança",
+                    "gestão documental"
+                  ],
+                  "checks": [
+                    "escolhe responsável correto para fonte risco plataforma custo e publicação"
+                  ],
+                  "versions": [
+                    {
+                      "id": "version-001",
+                      "createdAt": "2026-06-06T00:00:00.000Z",
+                      "source": "llm",
+                      "action": "generate",
+                      "request": "Primeira versão da microssequência.",
+                      "summary": "Conceitos e práticas sobre dono funcional, responsável técnico, validador jurídico, segurança, gestão documental.",
+                      "cards": [
+                        {
+                          "id": "micro-quem-valida-o-que-card-01",
+                          "position": 1,
+                          "resource": "table",
+                          "kind": "theory",
+                          "exercise": "none",
+                          "title": "Validações por tema",
+                          "columns": [
+                            "Tema",
+                            "Papel principal",
+                            "Apoios frequentes"
+                          ],
+                          "rows": [
+                            [
+                              "Conteúdo e regra",
+                              "Dono funcional",
+                              "Ponto focal e gestão documental"
+                            ],
+                            [
+                              "Plataforma e integração",
+                              "Responsável técnico/TI",
+                              "Segurança e arquitetura"
+                            ],
+                            [
+                              "Dados pessoais e risco jurídico",
+                              "Jurídico/LGPD",
+                              "Dono funcional e segurança"
+                            ],
+                            [
+                              "Controles de segurança",
+                              "Segurança da informação",
+                              "TI e áreas envolvidas"
+                            ],
+                            [
+                              "Publicação e operação",
+                              "Comitê ou fluxo definido",
+                              "TI, negócio e atendimento/comunicação"
+                            ]
+                          ],
+                          "after": "Cada tema exige validação especializada: conteúdo, plataforma, risco jurídico, segurança e operação raramente cabem em um único papel."
+                        },
+                        {
+                          "id": "micro-quem-valida-o-que-card-02",
+                          "position": 2,
+                          "resource": "choice",
+                          "kind": "exercise",
+                          "exercise": "choice",
+                          "title": "Fonte oficial",
+                          "question": "Quem deve confirmar que a norma usada pelo agente está marcada como vigente no cenário e autorizada?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "text": "Dono funcional da fonte, com apoio de gestão documental."
+                            },
+                            {
+                              "id": "b",
+                              "text": "Apenas o modelo de IA."
+                            },
+                            {
+                              "id": "c",
+                              "text": "Usuário que fizer a primeira pergunta."
+                            },
+                            {
+                              "id": "d",
+                              "text": "Equipe de comunicação sem verificar a origem."
+                            }
+                          ],
+                          "answer": "a",
+                          "after": "O dono funcional e a gestão documental confirmam vigência e oficialidade. Modelo, usuário e comunicação não definem validade da fonte."
+                        },
+                        {
+                          "id": "micro-quem-valida-o-que-card-03",
+                          "position": 3,
+                          "resource": "choice",
+                          "kind": "exercise",
+                          "exercise": "choice",
+                          "title": "Custo e publicação",
+                          "question": "Um caso já foi validado funcionalmente, mas ainda não há ambiente, monitoramento nem estimativa de componentes de custo. Quem deve entrar na discussão?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "text": "Responsável técnico/TI, com comitê e área de negócio para decisão de prioridade e sustentação."
+                            },
+                            {
+                              "id": "b",
+                              "text": "Somente usuários finais, sem governança."
+                            },
+                            {
+                              "id": "c",
+                              "text": "Apenas a ferramenta, porque ela calcula tudo sozinha."
+                            },
+                            {
+                              "id": "d",
+                              "text": "Ninguém, porque custo só aparece depois de publicar."
+                            }
+                          ],
+                          "answer": "a",
+                          "after": "Ambiente, monitoramento e custo precisam de responsável técnico e decisão de governança. Publicar antes de estimar é arriscado."
+                        }
+                      ],
+                      "validation": {
+                        "ok": true,
+                        "issues": []
+                      }
+                    }
+                  ],
+                  "activeVersion": "version-001"
+                }
+              ]
+            },
+            {
+              "id": "lesson-8-2-ciclo-vida-agente",
+              "title": "Ciclo de vida de um agente",
+              "guide": {
+                "goal": "Ordenar o ciclo de vida de agente e definir testes antes da publicação.",
+                "include": [
+                  "ideia",
+                  "triagem",
+                  "ferramenta",
+                  "fontes",
+                  "construção",
+                  "validação",
+                  "publicação",
+                  "operação",
+                  "revisão",
+                  "perguntas comuns",
+                  "perguntas difíceis",
+                  "fora de escopo",
+                  "dados proibidos",
+                  "fonte antiga",
+                  "custo",
+                  "fallback"
+                ],
+                "exclude": [
+                  "organograma real",
+                  "nome real da organização",
+                  "promessa de automação total",
+                  "decisões sem validação humana"
+                ],
+                "notation": [
+                  "Usar fluxo do problema à revisão."
+                ],
+                "avoid": []
+              },
+              "topics": [
+                {
+                  "id": "topic-ciclo-vida-agente",
+                  "label": "ciclo de vida de agente",
+                  "kind": "procedure",
+                  "checks": [
+                    "ordena etapas do problema à revisão"
+                  ],
+                  "errors": [
+                    "pular validação antes de publicar"
+                  ]
+                },
+                {
+                  "id": "topic-validacao-testes",
+                  "label": "validação e testes",
+                  "kind": "procedure",
+                  "checks": [
+                    "seleciona conjunto de testes adequado"
+                  ],
+                  "errors": [
+                    "testar apenas perguntas fáceis"
+                  ]
+                },
+                {
+                  "id": "topic-operacao-revisao",
+                  "label": "operação e revisão",
+                  "kind": "concept",
+                  "checks": [
+                    "reconhece monitoramento e manutenção após publicação"
+                  ],
+                  "errors": [
+                    "achar que publicar encerra o trabalho"
+                  ]
+                }
+              ],
+              "microsequences": [
+                {
+                  "id": "micro-ciclo-vida-agente",
+                  "title": "Do problema à revisão",
+                  "goal": "Ordenar etapas do ciclo de vida de um agente corporativo.",
+                  "role": "explain",
+                  "status": "generated",
+                  "branchOf": null,
+                  "dependsOn": [],
+                  "covers": [
+                    "ideia",
+                    "triagem",
+                    "ferramenta",
+                    "fontes",
+                    "construção",
+                    "validação",
+                    "publicação",
+                    "operação",
+                    "revisão"
+                  ],
+                  "checks": [
+                    "ordena etapas do ciclo de vida",
+                    "identifica etapa ausente em proposta"
+                  ],
+                  "versions": [
+                    {
+                      "id": "version-001",
+                      "createdAt": "2026-06-06T00:00:00.000Z",
+                      "source": "llm",
+                      "action": "generate",
+                      "request": "Primeira versão da microssequência.",
+                      "summary": "Conceitos e práticas sobre ideia, triagem, ferramenta, fontes, construção, validação, publicação, operação, revisão.",
+                      "cards": [
+                        {
+                          "id": "micro-ciclo-vida-agente-card-01",
+                          "position": 1,
+                          "resource": "flow",
+                          "kind": "theory",
+                          "exercise": "none",
+                          "title": "Ciclo de vida",
+                          "prompt": "Fluxo básico para um agente corporativo.",
+                          "structure": {
+                            "id": "flow-struct-169",
+                            "kind": "sequence",
+                            "items": [
+                              {
+                                "id": "flow-struct-170",
+                                "kind": "start",
+                                "text": "Problema e público"
+                              },
+                              {
+                                "id": "flow-struct-171",
+                                "kind": "process",
+                                "text": "Triagem de dados e risco"
+                              },
+                              {
+                                "id": "flow-struct-172",
+                                "kind": "process",
+                                "text": "Escolha de ferramenta"
+                              },
+                              {
+                                "id": "flow-struct-173",
+                                "kind": "process",
+                                "text": "Fontes e integrações"
+                              },
+                              {
+                                "id": "flow-struct-174",
+                                "kind": "process",
+                                "text": "Construção"
+                              },
+                              {
+                                "id": "flow-struct-175",
+                                "kind": "process",
+                                "text": "Validação e testes"
+                              },
+                              {
+                                "id": "flow-struct-176",
+                                "kind": "process",
+                                "text": "Publicação controlada"
+                              },
+                              {
+                                "id": "flow-struct-177",
+                                "kind": "process",
+                                "text": "Operação e monitoramento"
+                              },
+                              {
+                                "id": "flow-struct-178",
+                                "kind": "end",
+                                "text": "Revisão e melhoria"
+                              }
+                            ]
+                          },
+                          "after": "Publicar não encerra o ciclo. O agente precisa ser monitorado, corrigido e revisado."
+                        },
+                        {
+                          "id": "micro-ciclo-vida-agente-card-02",
+                          "position": 2,
+                          "resource": "choice",
+                          "kind": "exercise",
+                          "exercise": "choice",
+                          "title": "Etapa pulada",
+                          "question": "Uma área define ferramenta, constrói agente e quer publicar, mas não fez testes com perguntas difíceis, fonte antiga, fora de escopo e dados proibidos. Qual etapa foi pulada?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "text": "Validação e testes antes da publicação."
+                            },
+                            {
+                              "id": "b",
+                              "text": "Escolha do nome comercial."
+                            },
+                            {
+                              "id": "c",
+                              "text": "Criação de uma lista de desejos."
+                            },
+                            {
+                              "id": "d",
+                              "text": "Discussão de estética da página."
+                            }
+                          ],
+                          "answer": "a",
+                          "after": "A etapa crítica faltante é validação. Perguntas difíceis e fora de escopo mostram se o agente se comporta com segurança."
+                        },
+                        {
+                          "id": "micro-ciclo-vida-agente-card-03",
+                          "position": 3,
+                          "resource": "paragraph",
+                          "kind": "exercise",
+                          "exercise": "gap",
+                          "title": "Depois da publicação",
+                          "text": "Após publicação, o agente entra em operação e precisa de monitoramento, correção e [[revisão::revisão|abandono|adivinhação]].",
+                          "after": "Revisão mantém qualidade e atualização. Abandono e adivinhação deixam risco crescer."
+                        },
+                        {
+                          "id": "micro-ciclo-vida-agente-card-04",
+                          "position": 4,
+                          "resource": "choice",
+                          "kind": "exercise",
+                          "exercise": "choice",
+                          "title": "Manutenção",
+                          "question": "Uma fonte oficial muda depois que o agente já está publicado. Qual ação faz parte do ciclo de vida?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "text": "Atualizar base, testar regressão, monitorar respostas e comunicar responsáveis."
+                            },
+                            {
+                              "id": "b",
+                              "text": "Esperar usuários identificarem erro sem processo."
+                            },
+                            {
+                              "id": "c",
+                              "text": "Bloquear todos os agentes da companhia sem análise."
+                            },
+                            {
+                              "id": "d",
+                              "text": "Manter versão antiga para preservar histórico de respostas."
+                            }
+                          ],
+                          "answer": "a",
+                          "after": "Mudança de fonte exige atualização e teste. Esperar erro ou manter fonte antiga compromete confiabilidade."
+                        }
+                      ],
+                      "validation": {
+                        "ok": true,
+                        "issues": []
+                      }
+                    }
+                  ],
+                  "activeVersion": "version-001"
+                },
+                {
+                  "id": "micro-validacao-e-testes",
+                  "title": "Validar antes de publicar",
+                  "goal": "Selecionar conjunto de testes adequado para agentes de IA.",
+                  "role": "practice",
+                  "status": "generated",
+                  "branchOf": null,
+                  "dependsOn": [
+                    "micro-ciclo-vida-agente"
+                  ],
+                  "covers": [
+                    "perguntas comuns",
+                    "perguntas difíceis",
+                    "fora de escopo",
+                    "dados proibidos",
+                    "fonte antiga",
+                    "custo",
+                    "fallback"
+                  ],
+                  "checks": [
+                    "seleciona conjunto de testes adequado",
+                    "identifica teste ausente"
+                  ],
+                  "versions": [
+                    {
+                      "id": "version-001",
+                      "createdAt": "2026-06-06T00:00:00.000Z",
+                      "source": "llm",
+                      "action": "generate",
+                      "request": "Primeira versão da microssequência.",
+                      "summary": "Conceitos e práticas sobre perguntas comuns, perguntas difíceis, fora de escopo, dados proibidos, fonte antiga, custo, fallback.",
+                      "cards": [
+                        {
+                          "id": "micro-validacao-e-testes-card-01",
+                          "position": 1,
+                          "resource": "table",
+                          "kind": "theory",
+                          "exercise": "none",
+                          "title": "Bateria mínima de testes",
+                          "columns": [
+                            "Tipo de teste",
+                            "O que verifica"
+                          ],
+                          "rows": [
+                            [
+                              "Perguntas comuns",
+                              "Se resolve dúvidas frequentes"
+                            ],
+                            [
+                              "Perguntas difíceis",
+                              "Se responde com limite e fonte"
+                            ],
+                            [
+                              "Fora de escopo",
+                              "Se recusa ou encaminha corretamente"
+                            ],
+                            [
+                              "Dados proibidos",
+                              "Se bloqueia coleta ou exposição indevida"
+                            ],
+                            [
+                              "Fonte antiga",
+                              "Se não recupera versão revogada"
+                            ],
+                            [
+                              "Custo e volume",
+                              "Se consumo é monitorável"
+                            ],
+                            [
+                              "Fallback",
+                              "Se encaminha para humano quando necessário"
+                            ]
+                          ],
+                          "after": "Testar apenas o caminho feliz não prepara o agente para uso real."
+                        },
+                        {
+                          "id": "micro-validacao-e-testes-card-02",
+                          "position": 2,
+                          "resource": "choice",
+                          "kind": "exercise",
+                          "exercise": "choice",
+                          "title": "Teste ausente",
+                          "question": "Um agente de FAQ interno foi testado apenas com perguntas perfeitas copiadas da fonte. O que falta?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "text": "Testes com perguntas ambíguas, fora de escopo, fonte antiga e dados que não devem ser usados."
+                            },
+                            {
+                              "id": "b",
+                              "text": "Apenas mudar o título das perguntas."
+                            },
+                            {
+                              "id": "c",
+                              "text": "Remover a fonte para testar criatividade."
+                            },
+                            {
+                              "id": "d",
+                              "text": "Publicar para descobrir falhas em produção."
+                            }
+                          ],
+                          "answer": "a",
+                          "after": "Perguntas reais incluem ambiguidades e limites. Criatividade sem fonte e teste direto em produção são inadequados."
+                        },
+                        {
+                          "id": "micro-validacao-e-testes-card-03",
+                          "position": 3,
+                          "resource": "choice",
+                          "kind": "exercise",
+                          "exercise": "choice",
+                          "title": "Fallback",
+                          "question": "Durante teste, o agente recebe pergunta fora do escopo e tenta inventar resposta. Qual correção é adequada?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "text": "Configurar recusa segura e encaminhamento humano ou canal apropriado."
+                            },
+                            {
+                              "id": "b",
+                              "text": "Aumentar criatividade do modelo."
+                            },
+                            {
+                              "id": "c",
+                              "text": "Adicionar mais saudações."
+                            },
+                            {
+                              "id": "d",
+                              "text": "Remover logs para não registrar o problema."
+                            }
+                          ],
+                          "answer": "a",
+                          "after": "Fora de escopo deve gerar recusa ou encaminhamento. Criatividade e saudações não controlam invenção."
+                        }
+                      ],
+                      "validation": {
+                        "ok": true,
+                        "issues": []
+                      }
+                    }
+                  ],
+                  "activeVersion": "version-001"
+                }
+              ]
+            },
+            {
+              "id": "lesson-8-3-perguntas-estrategicas-reunioes",
+              "title": "Perguntas estratégicas para reuniões",
+              "guide": {
+                "goal": "Associar perguntas estratégicas aos temas certos e praticar intervenções objetivas em reuniões.",
+                "include": [
+                  "ferramenta",
+                  "dados",
+                  "segurança",
+                  "custo",
+                  "jurídico",
+                  "responsabilidade",
+                  "atendimento público",
+                  "caso interno",
+                  "caso público",
+                  "caso com dado pessoal",
+                  "caso com integração",
+                  "caso de capacitação"
+                ],
+                "exclude": [
+                  "organograma real",
+                  "nome real da organização",
+                  "política oficial inventada",
+                  "decisões sem validação humana"
+                ],
+                "notation": [
+                  "Usar decisões fechadas com 3 ou 4 alternativas."
+                ],
+                "avoid": []
+              },
+              "topics": [
+                {
+                  "id": "topic-perguntas-tema",
+                  "label": "perguntas por tema",
+                  "kind": "procedure",
+                  "checks": [
+                    "associa pergunta ao tema correto"
+                  ],
+                  "errors": [
+                    "fazer pergunta incompleta que ignora dados e risco"
+                  ]
+                },
+                {
+                  "id": "topic-cenarios-reuniao",
+                  "label": "cenários de reunião",
+                  "kind": "representation",
+                  "checks": [
+                    "escolhe intervenção adequada em cenário fechado"
+                  ],
+                  "errors": [
+                    "aprovar proposta incompleta"
+                  ]
+                },
+                {
+                  "id": "topic-frases-seguras",
+                  "label": "frases seguras",
+                  "kind": "term",
+                  "checks": [
+                    "usa frases seguras para corrigir direção da reunião"
+                  ],
+                  "errors": [
+                    "responder com generalização absoluta"
+                  ]
+                }
+              ],
+              "microsequences": [
+                {
+                  "id": "micro-perguntas-por-tema",
+                  "title": "Perguntas certas para cada tema",
+                  "goal": "Associar perguntas estratégicas ao tema correto em reuniões de implantação.",
+                  "role": "explain",
+                  "status": "generated",
+                  "branchOf": null,
+                  "dependsOn": [],
+                  "covers": [
+                    "ferramenta",
+                    "dados",
+                    "segurança",
+                    "custo",
+                    "jurídico",
+                    "responsabilidade",
+                    "atendimento público"
+                  ],
+                  "checks": [
+                    "associa pergunta ao tema correto",
+                    "reconhece pergunta incompleta"
+                  ],
+                  "versions": [
+                    {
+                      "id": "version-001",
+                      "createdAt": "2026-06-06T00:00:00.000Z",
+                      "source": "llm",
+                      "action": "generate",
+                      "request": "Primeira versão da microssequência.",
+                      "summary": "Conceitos e práticas sobre ferramenta, dados, segurança, custo, jurídico, responsabilidade, atendimento público.",
+                      "cards": [
+                        {
+                          "id": "micro-perguntas-por-tema-card-01",
+                          "position": 1,
+                          "resource": "table",
+                          "kind": "theory",
+                          "exercise": "none",
+                          "title": "Perguntas estratégicas",
+                          "columns": [
+                            "Tema",
+                            "Pergunta útil"
+                          ],
+                          "rows": [
+                            [
+                              "Problema e público",
+                              "Qual problema será resolvido e quem será atendido?"
+                            ],
+                            [
+                              "Dados",
+                              "Há dado pessoal, sensível, restrito ou sigiloso?"
+                            ],
+                            [
+                              "Fonte",
+                              "Qual é a fonte oficial e quem é o dono?"
+                            ],
+                            [
+                              "Ferramenta",
+                              "O agente responde, consulta sistema ou executa ação?"
+                            ],
+                            [
+                              "Segurança",
+                              "Como serão autenticação, autorização, logs e auditoria?"
+                            ],
+                            [
+                              "Custo",
+                              "Quais componentes de custo serão monitorados?"
+                            ],
+                            [
+                              "Operação",
+                              "Quem corrige, quem suspende e como a base será atualizada?"
+                            ]
+                          ],
+                          "after": "Perguntas estratégicas mantêm a reunião centrada no caso de uso, não na preferência por ferramenta."
+                        },
+                        {
+                          "id": "micro-perguntas-por-tema-card-02",
+                          "position": 2,
+                          "resource": "choice",
+                          "kind": "exercise",
+                          "exercise": "choice",
+                          "title": "Tema correto",
+                          "question": "A pergunta “O público é interno, externo, autenticado ou anônimo?” ajuda principalmente a decidir qual tema?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "text": "Público e risco do canal."
+                            },
+                            {
+                              "id": "b",
+                              "text": "Escopo técnico da ferramenta antes de classificar público."
+                            },
+                            {
+                              "id": "c",
+                              "text": "Quantidade de slides da apresentação."
+                            },
+                            {
+                              "id": "d",
+                              "text": "Escolha de fornecedor antes de avaliar dados e risco."
+                            }
+                          ],
+                          "answer": "a",
+                          "after": "O tipo de público altera risco e controles mínimos; ferramenta e fornecedor só devem ser discutidos depois dessa classificação."
+                        },
+                        {
+                          "id": "micro-perguntas-por-tema-card-03",
+                          "position": 3,
+                          "resource": "choice",
+                          "kind": "exercise",
+                          "exercise": "choice",
+                          "title": "Pergunta incompleta",
+                          "question": "Qual pergunta é incompleta para aprovar um agente corporativo?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "text": "Qual ferramenta parece mais moderna?"
+                            },
+                            {
+                              "id": "b",
+                              "text": "Qual fonte oficial será usada e quem a mantém?"
+                            },
+                            {
+                              "id": "c",
+                              "text": "O agente apenas responde, consulta ou executa ação?"
+                            },
+                            {
+                              "id": "d",
+                              "text": "Como serão logs, auditoria e tratamento de incidentes?"
+                            }
+                          ],
+                          "answer": "a",
+                          "after": "Modernidade percebida não classifica problema, dados, risco, fonte, custo ou responsabilidade."
+                        },
+                        {
+                          "id": "micro-perguntas-por-tema-card-04",
+                          "position": 4,
+                          "resource": "paragraph",
+                          "kind": "exercise",
+                          "exercise": "gap",
+                          "title": "Sequência final",
+                          "text": "A sequência final de decisão termina em monitoramento e [[manutenção::manutenção|aplauso|impulso]], porque o agente precisa continuar confiável.",
+                          "after": "Manutenção é necessária para atualização e correção. Aplauso e impulso não sustentam operação."
+                        }
+                      ],
+                      "validation": {
+                        "ok": true,
+                        "issues": []
+                      }
+                    }
+                  ],
+                  "activeVersion": "version-001"
+                },
+                {
+                  "id": "micro-cenarios-de-reuniao",
+                  "title": "Simulações de reunião",
+                  "goal": "Escolher intervenção adequada em cenários de reunião sobre IA.",
+                  "role": "practice",
+                  "status": "generated",
+                  "branchOf": null,
+                  "dependsOn": [
+                    "micro-perguntas-por-tema"
+                  ],
+                  "covers": [
+                    "caso interno",
+                    "caso público",
+                    "caso com dado pessoal",
+                    "caso com integração",
+                    "caso de capacitação"
+                  ],
+                  "checks": [
+                    "escolhe intervenção adequada em cenário de reunião",
+                    "evita resposta aberta"
+                  ],
+                  "versions": [
+                    {
+                      "id": "version-001",
+                      "createdAt": "2026-06-06T00:00:00.000Z",
+                      "source": "llm",
+                      "action": "generate",
+                      "request": "Primeira versão da microssequência.",
+                      "summary": "Conceitos e práticas sobre caso interno, caso público, caso com dado pessoal, caso com integração, caso de capacitação.",
+                      "cards": [
+                        {
+                          "id": "micro-cenarios-de-reuniao-card-01",
+                          "position": 1,
+                          "resource": "choice",
+                          "kind": "exercise",
+                          "exercise": "choice",
+                          "title": "Cenário: caso interno",
+                          "question": "Uma área técnica quer usar IA para resumir documentos e apontar pendências antes de reuniões internas. A fonte é interna e o público é uma equipe autenticada. Qual intervenção é adequada?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "text": "Confirmar classificação dos documentos, fonte autorizada, validação humana e limite de uso antes de ampliar."
+                            },
+                            {
+                              "id": "b",
+                              "text": "Publicar os resumos automaticamente para público externo."
+                            },
+                            {
+                              "id": "c",
+                              "text": "Dispensar validação porque é apenas resumo."
+                            },
+                            {
+                              "id": "d",
+                              "text": "Exigir integração transacional antes de qualquer teste."
+                            }
+                          ],
+                          "answer": "a",
+                          "after": "O caso pode ser útil, mas exige classificação, fonte e validação. Publicação externa, dispensa de validação e integração desnecessária distorcem o caso."
+                        },
+                        {
+                          "id": "micro-cenarios-de-reuniao-card-02",
+                          "position": 2,
+                          "resource": "choice",
+                          "kind": "exercise",
+                          "exercise": "choice",
+                          "title": "Cenário: caso público",
+                          "question": "Um canal externo quer orientar público sobre documentos e etapas, com perguntas anônimas. Qual intervenção é melhor?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "text": "Exigir fonte oficial, escopo, aviso de limitação, Content Safety, logs e encaminhamento humano."
+                            },
+                            {
+                              "id": "b",
+                              "text": "Permitir consulta de situação individual sem autenticação."
+                            },
+                            {
+                              "id": "c",
+                              "text": "Usar documentos em revisão porque são mais detalhados."
+                            },
+                            {
+                              "id": "d",
+                              "text": "Publicar sem teste para coletar perguntas reais."
+                            }
+                          ],
+                          "answer": "a",
+                          "after": "Canal externo anônimo exige controles. Situação individual, fonte em revisão e publicação sem teste são inadequadas."
+                        },
+                        {
+                          "id": "micro-cenarios-de-reuniao-card-03",
+                          "position": 3,
+                          "resource": "choice",
+                          "kind": "exercise",
+                          "exercise": "choice",
+                          "title": "Cenário: dado pessoal",
+                          "question": "Uma área de RH quer responder “qual é minha situação específica?” para empregados autenticados. Qual intervenção é adequada?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "text": "Pedir análise de dados pessoais, autorização, integração segura, logs, fonte de regra e responsável funcional."
+                            },
+                            {
+                              "id": "b",
+                              "text": "Tratar como FAQ geral porque o público é interno."
+                            },
+                            {
+                              "id": "c",
+                              "text": "Responder sem consultar sistema para evitar integração."
+                            },
+                            {
+                              "id": "d",
+                              "text": "Publicar em canal anônimo para reduzir esforço."
+                            }
+                          ],
+                          "answer": "a",
+                          "after": "Situação específica envolve dado pessoal e possivelmente sistema. Precisa de controles e responsável."
+                        }
+                      ],
+                      "validation": {
+                        "ok": true,
+                        "issues": []
+                      }
+                    }
+                  ],
+                  "activeVersion": "version-001"
+                }
+              ]
+            },
+            {
+              "id": "lesson-8-4-formacao-continuada",
+              "title": "Formação continuada e próximos passos",
+              "guide": {
+                "goal": "Relacionar trilhas oficiais de continuidade à preparação técnica futura e aplicar checklist de prontidão para reunião.",
+                "include": [
+                  "Foundry",
+                  "SC-900",
+                  "AZ-900",
+                  "AI-900 e AI-901",
+                  "DP-900",
+                  "segurança",
+                  "Azure",
+                  "IA em nuvem",
+                  "dados",
+                  "sequência final de decisão",
+                  "perguntas estratégicas",
+                  "papéis",
+                  "custos",
+                  "riscos",
+                  "ferramenta",
+                  "fonte",
+                  "manutenção"
+                ],
+                "exclude": [
+                  "organograma real",
+                  "nome real da organização",
+                  "política oficial inventada",
+                  "promessa de automação total",
+                  "decisões sem validação humana"
+                ],
+                "notation": [
+                  "Usar trilhas oficiais de continuidade como formação complementar, não como substituição de levantamento interno."
+                ],
+                "avoid": []
+              },
+              "topics": [
+                {
+                  "id": "topic-trilha-senai",
+                  "label": "trilha de continuidade",
+                  "kind": "concept",
+                  "checks": [
+                    "associa curso a lacuna de conhecimento"
+                  ],
+                  "errors": [
+                    "achar que curso técnico substitui levantamento interno"
+                  ]
+                },
+                {
+                  "id": "topic-prontidao-reuniao",
+                  "label": "checklist de prontidão",
+                  "kind": "procedure",
+                  "checks": [
+                    "aplica checklist completo antes de aprovar proposta"
+                  ],
+                  "errors": [
+                    "aprovar caso com lacunas essenciais"
+                  ]
+                },
+                {
+                  "id": "topic-sequencia-final",
+                  "label": "sequência final de decisão",
+                  "kind": "representation",
+                  "checks": [
+                    "aplica problema -> público -> dados -> risco -> ferramenta -> fonte oficial -> responsável -> custo -> monitoramento -> manutenção"
+                  ],
+                  "errors": [
+                    "pular dados, fonte ou manutenção"
+                  ]
+                }
+              ],
+              "microsequences": [
+                {
+                  "id": "micro-trilha-senai",
+                  "title": "Como a trilha de continuidade complementa este curso",
+                  "goal": "Associar trilhas oficiais de Microsoft Learn a lacunas de conhecimento técnico e reconhecer seus limites na implantação corporativa.",
+                  "role": "explain",
+                  "status": "generated",
+                  "branchOf": null,
+                  "dependsOn": [],
+                  "covers": [
+                    "Microsoft Foundry",
+                    "SC-900",
+                    "AZ-900",
+                    "AI-900",
+                    "AI-901",
+                    "DP-900",
+                    "segurança",
+                    "Azure",
+                    "IA em nuvem",
+                    "dados"
+                  ],
+                  "checks": [
+                    "associa curso a lacuna de conhecimento",
+                    "entende limites de cada formação"
+                  ],
+                  "versions": [
+                    {
+                      "id": "version-001",
+                      "createdAt": "2026-06-06T00:00:00.000Z",
+                      "source": "llm",
+                      "action": "generate",
+                      "request": "Primeira versão da microssequência.",
+                      "summary": "Conceitos e práticas sobre Microsoft Foundry, SC-900, AZ-900, a transição de AI-900 para AI-901 e DP-900.",
+                      "cards": [
+                        {
+                          "id": "micro-trilha-senai-card-01",
+                          "position": 1,
+                          "resource": "relation_map",
+                          "kind": "exercise",
+                          "exercise": "choice",
+                          "title": "Cursos e lacunas",
+                          "question": "Qual associação está correta?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "text": "SC-900 -> segurança, identidade e conformidade."
+                            },
+                            {
+                              "id": "b",
+                              "text": "DP-900 -> criação de slides de reunião."
+                            },
+                            {
+                              "id": "c",
+                              "text": "AZ-900 -> validação jurídica de dados sensíveis."
+                            },
+                            {
+                              "id": "d",
+                              "text": "Foundry -> substituição de toda governança."
+                            }
+                          ],
+                          "answer": "a",
+                          "prompt": "Relacione trilhas oficiais de Microsoft Learn a lacunas de preparação técnica.",
+                          "leftSet": {
+                            "label": "Cursos",
+                            "items": [
+                              {
+                                "id": "foundry",
+                                "label": "Microsoft Foundry"
+                              },
+                              {
+                                "id": "sc900",
+                                "label": "SC-900: Security, Compliance, and Identity Fundamentals"
+                              },
+                              {
+                                "id": "az900",
+                                "label": "AZ-900: Azure Fundamentals"
+                              },
+                              {
+                                "id": "ai901",
+                                "label": "AI-901: Azure AI Fundamentals (beta)"
+                              },
+                              {
+                                "id": "dp900",
+                                "label": "DP-900: Azure Data Fundamentals"
+                              }
+                            ]
+                          },
+                          "rightSet": {
+                            "label": "Lacunas",
+                            "items": [
+                              {
+                                "id": "agentes",
+                                "label": "Agentes corporativos e produção"
+                              },
+                              {
+                                "id": "seguranca",
+                                "label": "Segurança, identidade e conformidade"
+                              },
+                              {
+                                "id": "azure",
+                                "label": "Azure, recursos, custos e governança básica"
+                              },
+                              {
+                                "id": "ia",
+                                "label": "Fundamentos de IA em nuvem"
+                              },
+                              {
+                                "id": "dados",
+                                "label": "Dados, bases, integração e indicadores"
+                              }
+                            ]
+                          },
+                          "relations": [
+                            {
+                              "from": "foundry",
+                              "to": "agentes"
+                            },
+                            {
+                              "from": "sc900",
+                              "to": "seguranca"
+                            },
+                            {
+                              "from": "az900",
+                              "to": "azure"
+                            },
+                            {
+                              "from": "ai901",
+                              "to": "ia"
+                            },
+                            {
+                              "from": "dp900",
+                              "to": "dados"
+                            }
+                          ],
+                          "pairList": [
+                            "(Microsoft Foundry, agentes)",
+                            "(SC-900, segurança)",
+                            "(AZ-900, Azure)",
+                            "(AI-901, IA)",
+                            "(DP-900, dados)"
+                          ],
+                          "after": "Microsoft Foundry apoia construção e operação de agentes; SC-900 cobre segurança, identidade e conformidade; AZ-900 organiza fundamentos de Azure; AI-901 atualiza a trilha de fundamentos de IA; e DP-900 reforça bases de dados e análise."
+                        },
+                        {
+                          "id": "micro-trilha-senai-card-02",
+                          "position": 2,
+                          "resource": "table",
+                          "kind": "theory",
+                          "exercise": "none",
+                          "title": "Ordem recomendada de continuidade",
+                          "columns": [
+                            "Ordem",
+                            "Curso",
+                            "Por que vem nesse ponto"
+                          ],
+                          "rows": [
+                            [
+                              "1",
+                              "AZ-900: Azure Fundamentals",
+                              "Formar base de nuvem, serviços, custos e governança de Azure"
+                            ],
+                            [
+                              "2",
+                              "SC-900: Security, Compliance, and Identity Fundamentals",
+                              "Entender identidade, conformidade e controles de segurança"
+                            ],
+                            [
+                              "3",
+                              "AI-901: Azure AI Fundamentals (beta)",
+                              "Atualizar fundamentos de IA em Azure; em 6 de junho de 2026, AI-900 está em transição para AI-901"
+                            ],
+                            [
+                              "4",
+                              "DP-900: Azure Data Fundamentals",
+                              "Reforçar dados, integração e leitura de cargas analíticas"
+                            ],
+                            [
+                              "5",
+                              "Microsoft Foundry",
+                              "Entrar em modelos, agentes, ferramentas, avaliação e operação"
+                            ]
+                          ],
+                          "after": "A ordem recomendada parte de base de plataforma, passa por segurança, fundamentos atuais de IA e dados, e só então aprofunda a camada de construção e operação em Foundry."
+                        },
+                        {
+                          "id": "micro-trilha-senai-card-03",
+                          "position": 3,
+                          "resource": "choice",
+                          "kind": "exercise",
+                          "exercise": "choice",
+                          "title": "Limite da formação",
+                          "question": "Depois de fazer os cursos técnicos, o que ainda precisa ser levantado internamente antes de implantar um agente?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "text": "Contratos, licenças, políticas de segurança, fontes, donos das bases, sistemas integráveis, orçamento, risco e aprovações."
+                            },
+                            {
+                              "id": "b",
+                              "text": "Nada, porque cursos técnicos eliminam governança."
+                            },
+                            {
+                              "id": "c",
+                              "text": "Apenas o nome do agente."
+                            },
+                            {
+                              "id": "d",
+                              "text": "Somente o modelo de linguagem preferido pela equipe."
+                            }
+                          ],
+                          "answer": "a",
+                          "after": "Trilhas oficiais ajudam a formar repertório técnico, mas a implantação continua dependendo de contexto local, contratos, dados, sistemas, orçamento, responsáveis e aprovações."
+                        }
+                      ],
+                      "validation": {
+                        "ok": true,
+                        "issues": []
+                      }
+                    }
+                  ],
+                  "activeVersion": "version-001"
+                },
+                {
+                  "id": "micro-prontidao-para-reuniao",
+                  "title": "Checklist de prontidão para reunião",
+                  "goal": "Aplicar checklist completo e identificar lacunas antes de aprovar proposta.",
+                  "role": "review",
+                  "status": "generated",
+                  "branchOf": null,
+                  "dependsOn": [
+                    "micro-trilha-senai"
+                  ],
+                  "covers": [
+                    "sequência final de decisão",
+                    "perguntas estratégicas",
+                    "papéis",
+                    "custos",
+                    "riscos",
+                    "ferramenta",
+                    "fonte",
+                    "manutenção"
+                  ],
+                  "checks": [
+                    "aplica checklist completo",
+                    "identifica lacunas antes de aprovar proposta"
+                  ],
+                  "versions": [
+                    {
+                      "id": "version-001",
+                      "createdAt": "2026-06-06T00:00:00.000Z",
+                      "source": "llm",
+                      "action": "generate",
+                      "request": "Primeira versão da microssequência.",
+                      "summary": "Conceitos e práticas sobre sequência final de decisão, perguntas estratégicas, papéis, custos, riscos, ferramenta, fonte, manutenção.",
+                      "cards": [
+                        {
+                          "id": "micro-prontidao-para-reuniao-card-01",
+                          "position": 1,
+                          "resource": "flow",
+                          "kind": "theory",
+                          "exercise": "none",
+                          "title": "Checklist final",
+                          "prompt": "Use o fluxo para avaliar uma proposta.",
+                          "structure": {
+                            "id": "flow-struct-190",
+                            "kind": "sequence",
+                            "items": [
+                              {
+                                "id": "flow-struct-191",
+                                "kind": "start",
+                                "text": "Problema"
+                              },
+                              {
+                                "id": "flow-struct-192",
+                                "kind": "process",
+                                "text": "Público"
+                              },
+                              {
+                                "id": "flow-struct-193",
+                                "kind": "process",
+                                "text": "Dados"
+                              },
+                              {
+                                "id": "flow-struct-194",
+                                "kind": "process",
+                                "text": "Risco"
+                              },
+                              {
+                                "id": "flow-struct-195",
+                                "kind": "process",
+                                "text": "Ferramenta"
+                              },
+                              {
+                                "id": "flow-struct-196",
+                                "kind": "process",
+                                "text": "Fonte oficial"
+                              },
+                              {
+                                "id": "flow-struct-197",
+                                "kind": "process",
+                                "text": "Responsável"
+                              },
+                              {
+                                "id": "flow-struct-198",
+                                "kind": "process",
+                                "text": "Custo"
+                              },
+                              {
+                                "id": "flow-struct-199",
+                                "kind": "process",
+                                "text": "Monitoramento"
+                              },
+                              {
+                                "id": "flow-struct-200",
+                                "kind": "end",
+                                "text": "Manutenção"
+                              }
+                            ]
+                          },
+                          "after": "Uma proposta madura consegue responder a todos os pontos do fluxo."
+                        },
+                        {
+                          "id": "micro-prontidao-para-reuniao-card-02",
+                          "position": 2,
+                          "resource": "choice",
+                          "kind": "exercise",
+                          "exercise": "choice",
+                          "title": "Proposta com lacuna",
+                          "question": "Uma proposta define problema, público, dados, risco, ferramenta e fonte oficial, mas não define quem corrige erros, quem monitora custo nem como atualizar a base. Qual decisão é mais adequada?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "text": "Não aprovar como pronta; completar responsável, monitoramento, custo e manutenção."
+                            },
+                            {
+                              "id": "b",
+                              "text": "Aprovar porque a ferramenta já foi escolhida."
+                            },
+                            {
+                              "id": "c",
+                              "text": "Publicar primeiro e criar manutenção apenas se houver reclamação."
+                            },
+                            {
+                              "id": "d",
+                              "text": "Trocar a fonte oficial por resposta livre do modelo."
+                            }
+                          ],
+                          "answer": "a",
+                          "after": "Faltam elementos de operação. Escolher ferramenta e fonte não basta sem responsabilidade, monitoramento e manutenção."
+                        },
+                        {
+                          "id": "micro-prontidao-para-reuniao-card-03",
+                          "position": 3,
+                          "resource": "paragraph",
+                          "kind": "exercise",
+                          "exercise": "gap",
+                          "title": "Maturidade do aluno",
+                          "text": "Para cada caso de uso, a pergunta central inclui problema, público, dados, risco, ferramenta, fonte oficial, responsável, custo, monitoramento e [[manutenção::manutenção|improviso|divulgação]].",
+                          "after": "Prontidão para reunião exige problema, público, dados, risco, fonte, responsáveis, custo, monitoramento e manutenção definidos."
+                        }
+                      ],
+                      "validation": {
+                        "ok": true,
+                        "issues": []
+                      }
+                    }
+                  ],
+                  "activeVersion": "version-001"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+`;
+
+export function createFrameworkIaGenerativaCourse() {
+  return JSON.parse(RAW_FRAMEWORK_IA_GENERATIVA_COURSE_JSON).courses[0];
+}
