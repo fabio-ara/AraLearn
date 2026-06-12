@@ -678,11 +678,13 @@ test("o seed embutido oficial mantém os cursos embarcados já materializados", 
     (course) => course.id === "course-organizacao-arquitetura-computadores"
   );
   const frameworkCourse = project.courses.find((course) => course.id === "course-framework-ia-generativa");
+  const oacoBasesCourse = project.courses.find((course) => course.id === "course-oaco-bases-cpu-paralelismo");
 
   assert.ok(teoriaCourse);
   assert.ok(praticasCourse);
   assert.ok(organizacaoCourse);
   assert.ok(frameworkCourse);
+  assert.ok(oacoBasesCourse);
 
   const teoriaMicrosequences = teoriaCourse.modules
     .flatMap((moduleValue) => moduleValue.lessons || [])
@@ -747,6 +749,31 @@ test("o seed embutido oficial mantém os cursos embarcados já materializados", 
   );
   assert.equal(
     frameworkMicrosequences
+      .flatMap((microsequence) => microsequence.versions || [])
+      .flatMap((version) => version.cards || [])
+      .filter((card) => card.resource === "flow")
+      .every((card) => card.structure && !("nodes" in card) && !("edges" in card)),
+    true
+  );
+
+  const oacoBasesMicrosequences = oacoBasesCourse.modules
+    .flatMap((moduleValue) => moduleValue.lessons || [])
+    .flatMap((lesson) => lesson.microsequences || []);
+
+  assert.equal(oacoBasesCourse.modules.length, 1);
+  assert.equal(oacoBasesCourse.modules.flatMap((moduleValue) => moduleValue.lessons || []).length, 1);
+  assert.equal(oacoBasesMicrosequences.length, 10);
+  assert.equal(
+    oacoBasesMicrosequences.reduce((count, microsequence) => {
+      const active =
+        (microsequence.versions || []).find((version) => version.id === microsequence.activeVersion) ||
+        (microsequence.versions || []).at(-1);
+      return count + ((active?.cards || []).length);
+    }, 0),
+    79
+  );
+  assert.equal(
+    oacoBasesMicrosequences
       .flatMap((microsequence) => microsequence.versions || [])
       .flatMap((version) => version.cards || [])
       .filter((card) => card.resource === "flow")

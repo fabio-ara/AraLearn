@@ -22,6 +22,14 @@ Para evitar ambiguidade, a leitura recomendada é:
 
 ## Série pública atual (`0.1.x`)
 
+## [0.1.12] - 2026-06-12
+
+### Changed
+
+- entra o curso embarcado oficial `Organização e Arquitetura de Computadores — bases, CPU e paralelismo`, com `1` módulo, `1` lição, `10` microssequências e `79` cards materializados
+- o novo seed saneia seis cards `flow` do JSON de origem, migrando todos do formato legado com `nodes` e `edges` para `structure` semântica válida
+- o seed também ajusta três exercícios de `choice` sobre porta lógica `OR` para atender ao validador atual, evitando enunciados que revelam literalmente a alternativa correta
+
 ## [0.1.11] - 2026-06-06
 
 ### Changed
