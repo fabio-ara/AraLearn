@@ -2,12 +2,14 @@ import { createTeoriaDosGrafosProvaCourse } from "./teoriaDosGrafosProvaSeedCour
 import { createPraticasFerramentasCourse } from "./praticasFerramentasSeedCourse.js";
 import { createOrganizacaoArquiteturaComputadoresCourse } from "./organizacaoArquiteturaComputadoresSeedCourse.js";
 import { createFrameworkIaGenerativaCourse } from "./frameworkIaGenerativaSeedCourse.js";
+import { createOacoBasesCpuParalelismoCourse } from "./oacoBasesCpuParalelismoSeedCourse.js";
 
 const EMBEDDED_SEED_COURSE_FACTORIES = [
   createTeoriaDosGrafosProvaCourse,
   createPraticasFerramentasCourse,
   createOrganizacaoArquiteturaComputadoresCourse,
-  createFrameworkIaGenerativaCourse
+  createFrameworkIaGenerativaCourse,
+  createOacoBasesCpuParalelismoCourse
 ];
 
 function createEmbeddedSeedCourses() {
