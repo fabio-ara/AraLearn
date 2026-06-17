@@ -22,7 +22,7 @@ Para evitar ambiguidade, a leitura recomendada é:
 
 ## Série pública atual (`0.1.x`)
 
-## [0.1.13] - 2026-06-15
+## [0.1.13] - 2026-06-17
 
 ### Changed
 
@@ -31,6 +31,12 @@ Para evitar ambiguidade, a leitura recomendada é:
 - exemplos e alternativas com código preservam novamente quebra de linha e indentação no runtime de estudo, inclusive em opções de `choice`
 - o renderer passou a destacar de forma mais robusta citações curtas de sintaxe como `main`, formatadores (`%d`, `%f`, `%c`, `%s`) e referências com `&`, reduzindo ambiguidade visual no estudo
 - a suíte ganhou regressões específicas para impedir que o seed oficial reintroduza sintaxe de C sem destaque ou crases quebradas
+- o renderer e o solver de `flow` passaram por nova rodada de correção para manter ortogonalidade rígida das rotas e eliminar diagonais residuais em `switch_case`, conectores e retornos longos
+- o curso embarcado `Lógica de Programação` foi alinhado ao motor atual de `code gap`, com preservação segura de `:`, `||` e `]`, saneamento de alternativas multiline em `choice/code` e revisão de lacunas que ainda materializavam texto descritivo como pseudo-código
+- a superfície móvel de estudo recebeu blindagem adicional contra overflow horizontal: a barra de progresso superior agora é clampada em `0..100`, e títulos longos no leitor passaram a quebrar/encolher sem empurrar a largura útil da tela
+- entra o curso embarcado oficial `Fundamentos de IA e Análise de Dados`, com `2` módulos, `2` lições, `18` microssequências e `119` cards já materializados
+- o novo seed de fundamentos foi saneado para o contrato atual, com correção de `role`, remodelagem de `relation_map`, ajuste de `afterBlocks` e `composite`, revisão de perguntas que revelavam a resposta e substituição de distratores em `code choice` que quebravam a validação
+- a suíte ganhou regressões específicas para ortogonalidade de `flow`, serialização segura de lacunas de código do seed oficial e contenção horizontal do leitor móvel
 
 ## [0.1.12] - 2026-06-12
 
