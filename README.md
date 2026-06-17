@@ -1,104 +1,70 @@
 # AraLearn
 
-AraLearn é um aplicativo de autoria e estudo com persistência local como referência primária do projeto. Ele é publicado como aplicação web e também empacotado como APK Android sobre `WebView`. Seu objetivo é transformar material disperso em trilhas didáticas editáveis, compostas por unidades pequenas o bastante para caber na rotina, mas articuladas o bastante para sustentar continuidade, revisão e prática.
+AraLearn é uma plataforma de estudo autodidata que transforma temas amplos em trilhas de cards organizados por **microssequências**, com apoio de LLMs por API. O estudante define o escopo; o sistema organiza o percurso, gera ou corrige cards dentro de etapas delimitadas, valida o resultado e mantém versões editáveis em JSON.
 
-O núcleo do produto não é o card isolado nem a conversa com um modelo de linguagem. A unidade central é a **microssequência**: uma etapa curta de aprendizagem que situa explicação, exemplo, exercício, correção de erro e passagem para o próximo passo dentro de uma trilha maior.
+A ideia central é simples: ter acesso a conteúdo não significa ter um caminho de estudo. Tutoriais, PDFs, vídeos, fóruns, documentação técnica e respostas de IA podem se acumular sem formar progressão. Simon (1971) observou que a abundância de informação consome atenção. O AraLearn parte desse problema: ajudar o estudante a transformar material disperso em prática organizada, retomável e verificável.
+
+O projeto não é apenas um aplicativo de flashcards, nem um chat livre com IA. Ele combina trilha didática, autoria assistida, contrato JSON, validação, versionamento local e cards capazes de aparecer como texto, código, tabela, matriz, plano cartesiano, grafo, mapa de relações, fluxograma ou árvore.
+
+## O que é uma microssequência
+
+A microssequência é a unidade central do AraLearn.
+
+Ela é uma etapa delimitada dentro de uma lição. Cada microssequência possui objetivo, papel na trilha, dependências, conteúdos cobertos, critérios de verificação e versões de cards. Ela é maior que um card isolado, porque preserva contexto; e menor que uma lição inteira, porque concentra um problema de aprendizagem específico.
+
+Exemplo conceitual:
 
 ```text
 curso -> módulo -> lição -> microssequência -> versão -> card
 ```
 
-Essa estrutura permite tratar o estudo como trabalho organizável. Em vez de acumular anotações, PDFs, respostas de IA, exercícios soltos e links sem ordem clara, o usuário pode construir ou adaptar um percurso em que cada etapa tenha objetivo, fronteira, dependências e forma de prática.
+Em uma microssequência, o estudante pode ver uma regra, acompanhar um exemplo, responder a uma pergunta, corrigir um erro provável e seguir para a próxima etapa. O card não fica solto: ele cumpre uma função dentro de uma sequência.
 
-## Em uma frase
+## Como a IA entra hoje
 
-AraLearn organiza estudo como projeto local versionado: primeiro estrutura o caminho, depois materializa uma etapa específica em cards renderizáveis, validáveis e revisáveis.
+A geração por LLM via API é uma funcionalidade atual do AraLearn. O app trabalha com dois fluxos principais.
 
-## O que o AraLearn oferece
+No **top-down**, o usuário informa tema, objetivo, conteúdos que entram, conteúdos que ficam fora e observações de notação ou abordagem. A LLM ajuda a propor uma estrutura de curso, módulos, lições e microssequências. Essa etapa organiza o caminho; ela não precisa gerar todos os cards finais.
 
-O app permite:
+No **bottom-up**, o usuário abre uma microssequência e pede uma intervenção local: gerar cards, corrigir uma versão, criar apoio para uma dificuldade específica ou continuar a próxima etapa planejada. A LLM recebe um pacote de contexto delimitado; o AraLearn compila a resposta, valida o contrato e salva uma nova versão quando o resultado é aceito.
 
-- criar cursos organizados por módulos, lições, microssequências e cards;
-- planejar uma trilha a partir de um escopo definido pelo usuário;
-- gerar cards com apoio de serviços de geração textual acessados por API;
-- revisar, corrigir, ampliar e versionar o material produzido;
-- estudar em uma interface simples, com foco em etapas pequenas;
-- importar, exportar e preservar o projeto em JSON;
-- partir de cursos embarcados e editá-los localmente.
+O repositório prevê uso com Gemini, serviços compatíveis com a API de chat da OpenAI, DeepSeek por endpoint compatível e uma ponte local para Codex CLI. As documentações oficiais de OpenAI, Google AI for Developers e DeepSeek descrevem recursos de saída estruturada ou JSON que dialogam com essa arquitetura, embora o AraLearn também aplique validação própria depois da resposta do serviço.
 
-O ponto decisivo é a combinação entre estrutura, geração e revisão. O material produzido não entra no projeto como texto descartável: ele precisa caber no contrato público do app, passar por validação e permanecer disponível para nova leitura, correção e reaproveitamento.
+A regra de autoria é: a LLM sugere; o aplicativo delimita, valida e registra; o usuário revisa e decide.
 
-## Como o produto funciona
+## Cards que aparecem como estrutura, não só como texto
 
-O AraLearn organiza o trabalho em dois momentos.
+Alguns conteúdos não ficam claros em parágrafo. Uma matriz precisa preservar linhas e colunas. Um vetor depende da relação com o plano. Um grafo mostra vértices e arestas. Um algoritmo pode pedir código ou fluxograma. Uma relação entre conjuntos pode ficar mais compreensível quando desenhada.
 
-O primeiro é o **planejamento da trilha**. O usuário informa tema, objetivo, itens que entram, itens que ficam fora, convenções e observações. A partir disso, o app pode propor curso, módulos, lições e microssequências.
+Por isso, o AraLearn não pede à LLM uma imagem pronta. A LLM fornece dados: valores da matriz, pontos do plano, vértices do grafo, nós de uma árvore, linhas de uma tabela, comandos de código. O aplicativo lê esses dados e monta o card na tela. Para o estudante, isso aparece como um recurso visual de estudo; para o sistema, é um objeto validável em JSON.
 
-O segundo é a **materialização local de cards**. O usuário abre uma microssequência específica e pede explicação, prática, correção ou apoio local. O serviço textual recebe apenas o contexto delimitado para aquela intervenção; o app recompila o resultado, valida o contrato e só então persiste a nova versão.
+Esse desenho ajuda a reduzir improviso. O conteúdo continua editável, exportável e verificável, em vez de virar uma imagem fechada ou um texto difícil de conferir.
 
-Na documentação técnica, esses dois movimentos aparecem como `top-down` e `bottom-up`. Para quem usa o produto, a lógica é mais direta: primeiro organizar o caminho; depois trabalhar uma etapa concreta.
+## O que o AraLearn oferece hoje
 
-## O papel da geração assistida
+O estado atual do projeto inclui:
 
-AraLearn usa modelos de linguagem como assistência de autoria, não como fonte final de verdade do projeto. O sistema continua responsável por:
-
-- selecionar o contexto da intervenção;
-- montar contratos objetivos para cada etapa;
-- indicar recursos de card e campos permitidos;
-- validar a saída antes de alterar o projeto;
-- preservar versões e histórico de execução.
-
-No fluxo atual, a robustez vem de duas escolhas combinadas:
-
-- **seleção estrutural explícita de contexto**: o app envia a microssequência aberta, suas dependências, as referências escolhidas pelo usuário, a próxima etapa planejada, os cards existentes quando a operação é de correção e as fontes anexadas explicitamente resolvidas;
-- **campos controlados e valores canônicos**: o serviço textual não escreve livremente o documento final inteiro; ele preenche decisões locais dentro de esquemas definidos pelo app, o que reduz ambiguidade e erro.
-
-O repositório já contém integração com [DeepSeek API](https://api-docs.deepseek.com/), [Gemini API](https://ai.google.dev/api/), endpoints compatíveis com a interface de chat da OpenAI e um serviço local por linha de comando. Relatórios de verificação reais ficam em [`tests/reports/`](tests/reports/).
-
-## Recursos de card
-
-Os cards podem assumir formas diferentes porque o conteúdo nem sempre cabe bem em texto corrido. O contrato público hoje aceita:
-
-- `paragraph`
-- `choice`
-- `code`
-- `table`
-- `matrix`
-- `plane`
-- `graph`
-- `relation_map`
-- `flow`
-- `tree`
-
-Esses recursos existem para preservar a representação que o conteúdo exige. Uma matriz deve poder aparecer como matriz; um vetor, como vetor; um fluxograma, como fluxograma; um grafo, como relação entre vértices e arestas. Isso melhora tanto a geração quanto a leitura didática do card.
-
-## Cursos embarcados
-
-O app inclui cursos oficiais já materializados, que funcionam como ponto de partida editável:
-
-- `Matemática para Informática`, com um módulo de `Teoria dos Grafos`, `11` lições, `72` microssequências e `505` cards;
-- `Práticas e Ferramentas de Desenvolvimento de Software`, voltado à família Visual Basic, com foco em VBA, VB 6.0, VB.NET, ambientes, interface e organização de código;
-- `Organização e Arquitetura de Computadores`, com os módulos `MobileRAG`, `Filosofia da Computação Quântica` e `Bases numéricas, arquitetura da CPU e paralelismo`;
-- `Framework Corporativo de IA Generativa`, com `8` módulos, `25` lições, `52` microssequências e `180` cards sobre implantação, governança, dados, risco e operação de IA em contexto institucional.
-- `Lógica de Programação`, com `8` módulos, `29` lições, `170` microssequências e `924` cards sobre programação em C, controle de fluxo, vetores, matrizes, strings, ordenação, `struct`, `typedef`, funções e ponteiros introdutórios.
-
-Esses cursos entram no projeto local como material que pode ser estudado, corrigido, ampliado e reorganizado pelo usuário.
-
-## Estado atual
-
-O projeto já possui:
-
-- contrato público em JSON (`aralearn.contract`, versão `3`);
-- planejamento estrutural de curso, módulo, lição e microssequência;
-- geração local de cards por microssequência;
-- versionamento de cards;
-- validação estrutural e didática;
-- renderer web;
-- wrapper Android em `WebView`;
+- criação e edição de cursos, módulos, lições, microssequências e cards;
+- planejamento top-down por LLM via API;
+- geração e correção bottom-up por LLM via API;
+- contrato público `aralearn.contract`, versão 3;
+- persistência local e exportação/importação em JSON;
+- versionamento de cards por microssequência;
+- validações estruturais e didáticas mínimas;
+- recursos de card: `paragraph`, `choice`, `composite`, `code`, `table`, `flow`, `tree`, `graph`, `relation_map`, `matrix` e `plane`;
+- aplicação web servida localmente;
+- publicação web em GitHub Pages;
+- empacotamento Android por WebView;
 - cursos embarcados editáveis;
-- integração com serviços textuais por API e com serviço falso para testes.
+- testes, validações, harnesses, smoke tests e benchmarks de geração.
 
-Para o enquadramento pedagógico, crítico e bibliográfico do projeto, leia [Fundamentos, pesquisa e governança](docs/fundamentos-pesquisa-e-governanca.md).
+Os cursos embarcados funcionam como material inicial, não como conteúdo intocável. Eles podem ser estudados, corrigidos, ampliados e exportados pelo usuário.
+
+## Para quem o projeto foi pensado
+
+O AraLearn foi concebido a partir de condições reais de estudo: pouco tempo, deslocamento, celular como principal dispositivo, cansaço depois do trabalho, conexão instável e dificuldade de manter continuidade. O público principal é o estudante-trabalhador, especialmente quem precisa estudar conteúdos técnicos sem dispor de longos períodos livres.
+
+Essa escolha não é apenas social; ela afeta a arquitetura. O projeto privilegia etapas delimitadas, persistência local, prática objetiva, retomada rápida, versionamento e redução do contexto enviado à LLM.
 
 ## Rodar localmente
 
@@ -116,6 +82,9 @@ npm run validate:scope
 npm run harness:scope
 npm run harness:bottom-up
 npm run smoke:provider
+npm run benchmark:structured
+npm run benchmark:topdown
+npm run benchmark:didactic
 ```
 
 Smoke real com DeepSeek, se houver chave configurada:
@@ -130,21 +99,46 @@ Build Android de depuração:
 npm run android:debug
 ```
 
+## Estado atual e limites
+
+O AraLearn já possui fluxos de geração por LLM via API, contrato JSON, recursos renderizáveis, validação, versionamento e material embarcado. Ainda assim, permanece em desenvolvimento.
+
+O projeto não substitui aula, professor, bibliografia, revisão humana ou estudo crítico. Também não trata a saída da IA como verdade final. O objetivo é oferecer uma estrutura de autoria e estudo em que o conteúdo possa ser produzido com assistência, conferido, corrigido e retomado.
+
+Há uma direção de pesquisa para reduzir dependência de LLMs externas, com uso mais forte de bases locais e, possivelmente, modelos locais. Isso deve ser lido como horizonte de desenvolvimento, não como capacidade plenamente pronta no estado atual.
+
 ## Documentação
 
-O conjunto de documentação foi organizado por responsabilidade:
+Para conhecer o produto:
 
-- [Mapa de leitura](docs/README.md)
+- [Mapa da documentação](docs/README.md)
 - [Visão do produto](docs/visao-do-produto.md)
 - [Modelo didático](docs/modelo-didatico.md)
 - [Uso do app](docs/uso-do-app.md)
+
+Para entender a implementação:
+
 - [Arquitetura](docs/arquitetura.md)
 - [Assistência por IA](docs/assistencia-por-ia.md)
 - [Fluxos, prompts e contratos de geração](docs/fluxos-prompts-e-contratos.md)
 - [Contrato público](docs/aralearn-contract.md)
 - [Recursos de card](docs/recursos-de-card.md)
+
+Para avaliar fundamentos, limites e pesquisa:
+
 - [Fundamentos, pesquisa e governança](docs/fundamentos-pesquisa-e-governanca.md)
+- [Estado atual e próximos passos](docs/estado-atual-e-roadmap.md)
 
 Publicação web:
 
 <https://fabio-ara.github.io/AraLearn/>
+
+## Referências citadas
+
+DeepSeek. (2026). *JSON Output*. DeepSeek API Docs. <https://api-docs.deepseek.com/guides/json_mode>
+
+Google AI for Developers. (2026). *Structured outputs*. Gemini API Docs. <https://ai.google.dev/gemini-api/docs/structured-output>
+
+OpenAI. (2026). *Structured model outputs*. OpenAI API Documentation. <https://platform.openai.com/docs/guides/structured-outputs>
+
+Simon, H. A. (1971). Designing organizations for an information-rich world. In M. Greenberger (Ed.), *Computers, communication, and the public interest*. Johns Hopkins Press.

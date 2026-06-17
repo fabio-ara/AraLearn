@@ -1,12 +1,10 @@
 # Contrato público do AraLearn
 
-O contrato público do AraLearn é o formato JSON persistido pelo app. Ele serve de base para autoria, importação, exportação, validação, renderização e versionamento. Tudo o que o usuário estuda ou edita precisa caber nele.
+O contrato público é o JSON salvo pelo AraLearn. Ele define o que pode ser persistido, exportado, importado, validado e apresentado na interface. Durante a geração, o app usa contratos transitórios; ao final, o projeto precisa caber neste formato.
 
-Durante a execução, o sistema monta contratos transitórios de planejamento, preenchimento e auditoria, mas a referência final do projeto continua sendo este contrato.
+JSON é um formato textual de dados estruturados, conforme apresenta a MDN Web Docs (2026). JSON Schema define regras sobre esses dados, como campos obrigatórios, tipos e valores aceitos (JSON Schema, 2026). No AraLearn, o contrato cumpre função técnica e didática: ele diz não apenas como salvar o projeto, mas que formas de estudo o sistema aceita.
 
 ## Documento raiz
-
-O documento raiz usa:
 
 ```json
 {
@@ -19,16 +17,20 @@ O documento raiz usa:
 
 Campos obrigatórios:
 
-- `contract`: deve ser `"aralearn.contract"`;
-- `version`: deve ser `3`;
-- `kind`: deve ser `"project"`;
-- `courses`: lista de cursos.
+| Campo | Função |
+|---|---|
+| `contract` | Identifica o contrato. Deve ser `aralearn.contract`. |
+| `version` | Indica a versão do contrato. No estado atual, `3`. |
+| `kind` | Indica o tipo do documento. Deve ser `project`. |
+| `courses` | Lista de cursos do projeto. |
 
-## Hierarquia persistida
+## Hierarquia
 
 ```text
-course -> module -> lesson -> microsequence -> version -> card
+project -> course -> module -> lesson -> microsequence -> version -> card
 ```
+
+Essa hierarquia preserva ordem de estudo, contexto de geração e local de persistência.
 
 ## `course`
 
@@ -41,12 +43,7 @@ course -> module -> lesson -> microsequence -> version -> card
 }
 ```
 
-Campos obrigatórios:
-
-- `id`
-- `title`
-- `goal`
-- `modules`
+Um curso delimita o campo geral. Ele não precisa conter todo o conhecimento sobre uma disciplina; precisa declarar um recorte estudável.
 
 ## `module`
 
@@ -65,12 +62,7 @@ Campos obrigatórios:
 }
 ```
 
-Campos obrigatórios:
-
-- `id`
-- `title`
-- `guide`
-- `lessons`
+O módulo organiza uma região do curso. O `guide` funciona como orientação local: objetivo, inclusões, exclusões, notação e desvios a evitar.
 
 ## `lesson`
 
@@ -90,41 +82,23 @@ Campos obrigatórios:
 }
 ```
 
-Campos obrigatórios:
-
-- `id`
-- `title`
-- `guide`
-- `topics`
-- `microsequences`
+A lição agrupa microssequências de um mesmo recorte. Ela possui `topics` e `guide` próprio.
 
 ## `guide`
 
-`guide` define o recorte didático de módulo ou lição.
+`guide` define fronteiras. Seus campos são:
 
-```json
-{
-  "goal": "Explicar a regra local.",
-  "include": ["conjunção"],
-  "exclude": ["predicados"],
-  "notation": ["Use P e Q."],
-  "avoid": ["Não abrir outro tópico."]
-}
-```
+| Campo | Função |
+|---|---|
+| `goal` | Objetivo local. |
+| `include` | Conteúdos que devem entrar. |
+| `exclude` | Conteúdos que devem ficar fora. |
+| `notation` | Convenções de símbolo, escrita ou representação. |
+| `avoid` | Desvios a evitar. |
 
-Campos:
-
-- `goal`: objetivo local;
-- `include`: itens que devem entrar;
-- `exclude`: fronteiras rígidas;
-- `notation`: convenções de escrita, símbolo ou representação;
-- `avoid`: desvios a evitar.
-
-Regra importante: `exclude` não é lembrete decorativo. O validador rejeita seu uso em títulos, objetivos, enunciados, exemplos e alternativas quando esse uso reintroduz o conteúdo proibido.
+`exclude` não é comentário decorativo. Se uma resposta reintroduz conteúdo excluído em título, objetivo, enunciado, exemplo ou alternativa, o resultado deve ser rejeitado.
 
 ## `topic`
-
-`topics` explicita conceitos, procedimentos, representações e termos relevantes da lição.
 
 ```json
 {
@@ -136,16 +110,16 @@ Regra importante: `exclude` não é lembrete decorativo. O validador rejeita seu
 }
 ```
 
-Valores permitidos em `kind`:
+`topic` explicita conceitos, procedimentos, representações ou termos. O campo `errors` permite registrar erros plausíveis que podem virar objeto de estudo.
 
-- `concept`
-- `procedure`
-- `representation`
-- `term`
+Valores de `kind`:
+
+- `concept`;
+- `procedure`;
+- `representation`;
+- `term`.
 
 ## `microsequence`
-
-`microsequence` é a unidade principal de progressão.
 
 ```json
 {
@@ -162,41 +136,21 @@ Valores permitidos em `kind`:
 }
 ```
 
-Campos obrigatórios:
+Campos principais:
 
-- `id`
-- `title`
-- `goal`
-- `role`
-- `status`
-- `dependsOn`
-- `covers`
-- `checks`
-- `versions`
-- `activeVersion`
+| Campo | Função |
+|---|---|
+| `role` | Papel da etapa: explicar, praticar, revisar ou apoiar. |
+| `status` | Estado da etapa: planejada, gerada, precisando de revisão ou pronta. |
+| `dependsOn` | Microssequências anteriores da mesma lição que servem de pré-requisito. |
+| `covers` | Conteúdos cobertos pela etapa. |
+| `checks` | Critérios mínimos de verificação. |
+| `versions` | Realizações da etapa em cards. |
+| `activeVersion` | Versão usada no estudo. |
 
-Valores permitidos em `role`:
-
-- `explain`
-- `practice`
-- `review`
-- `support`
-
-Valores permitidos em `status`:
-
-- `planned`
-- `generated`
-- `needs_review`
-- `ready`
-
-Regras:
-
-- `dependsOn` aponta apenas para microssequências anteriores da mesma lição;
-- referências inexistentes, auto-dependência, dependência futura e ciclo são rejeitados.
+`dependsOn` existe para preservar ordem local e permitir seleção de contexto sem enviar o curso inteiro à LLM.
 
 ## `version`
-
-Cada geração ou edição de cards cria uma versão.
 
 ```json
 {
@@ -214,74 +168,46 @@ Cada geração ou edição de cards cria uma versão.
 }
 ```
 
-Campos obrigatórios:
-
-- `id`
-- `createdAt`
-- `source`
-- `action`
-- `request`
-- `summary`
-- `cards`
-- `validation`
-
-Valores permitidos em `source`:
-
-- `llm`
-- `manual`
-- `codex`
-
-Valores permitidos em `action`:
-
-- `generate`
-- `improve`
-- `practice`
-- `support`
-- `repair`
-
-`activeVersion` em `microsequence` aponta para a versão usada no estudo.
+A versão permite melhorar uma microssequência sem apagar imediatamente o que já existia. Também registra origem, pedido e validação.
 
 ## Núcleo comum de `card`
 
-Todo card possui este núcleo:
+Todo card possui:
 
-- `position`
-- `resource`
-- `kind`
-- `exercise`
-- `title`
-- `after`
+| Campo | Função |
+|---|---|
+| `position` | Ordem dentro da versão. |
+| `resource` | Forma do card: parágrafo, código, matriz, grafo etc. |
+| `kind` | `theory` ou `exercise`. |
+| `exercise` | `none`, `gap` ou `choice`. |
+| `title` | Título apresentado ao estudante. |
+| `after` | Comentário, síntese ou feedback após o card. |
 
-Valores permitidos em `kind`:
+Campos opcionais comuns:
 
-- `theory`
-- `exercise`
+- `sources`: referências usadas no card;
+- `topics`: tópicos associados;
+- `afterBlocks`: blocos adicionais depois do comentário principal.
 
-Valores permitidos em `exercise`:
+## Recursos aceitos
 
-- `none`
-- `gap`
-- `choice`
+O contrato aceita:
 
-Recursos aceitos:
+- `paragraph`;
+- `choice`;
+- `composite`;
+- `code`;
+- `table`;
+- `flow`;
+- `tree`;
+- `graph`;
+- `relation_map`;
+- `matrix`;
+- `plane`.
 
-- `paragraph`
-- `choice`
-- `composite`
-- `code`
-- `table`
-- `matrix`
-- `plane`
+Cada recurso tem campos próprios, descritos em [Recursos de card](recursos-de-card.md).
 
-Campo opcional comum:
-
-- `afterBlocks`: lista de blocos adicionais renderizáveis depois do `after`, reutilizando os mesmos formatos aceitos em `composite` com exceção de `choice`.
-- `graph`
-- `relation_map`
-- `flow`
-- `tree`
-
-## Exemplos de cards
+## Exemplos mínimos
 
 ### `paragraph` teórico
 
@@ -297,31 +223,11 @@ Campo opcional comum:
 }
 ```
 
-### `paragraph` com lacuna
-
-```json
-{
-  "position": 2,
-  "resource": "paragraph",
-  "kind": "exercise",
-  "exercise": "gap",
-  "title": "Complete a regra",
-  "text": "A conjunção é verdadeira quando [[P e Q são verdadeiras::P e Q são verdadeiras|só P é verdadeira|só Q é verdadeira]].",
-  "after": "As duas partes precisam ser verdadeiras."
-}
-```
-
-Regras:
-
-- `paragraph` de exercício usa `exercise = "gap"`;
-- a lacuna usa a sintaxe `[[resposta::opção correta|distrator 1|distrator 2]]`;
-- teoria em `paragraph` não pode conter lacuna.
-
 ### `choice`
 
 ```json
 {
-  "position": 3,
+  "position": 2,
   "resource": "choice",
   "kind": "exercise",
   "exercise": "choice",
@@ -337,44 +243,11 @@ Regras:
 }
 ```
 
-Regras:
-
-- `choice` usa `kind = "exercise"` e `exercise = "choice"`;
-- deve haver 3 ou 4 opções;
-- cada opção pode ser textual (`{ "id", "text" }`) ou de código (`{ "id", "kind": "code", "language", "code" }`);
-- `answer` aponta para um `id` existente.
-
-### `code`
-
-```json
-{
-  "position": 4,
-  "resource": "code",
-  "kind": "exercise",
-  "exercise": "gap",
-  "title": "Complete o comando",
-  "prompt": "Preencha a lacuna com o comando correto.",
-  "language": "c",
-  "code": "int x;\n[[x = 5;::x = 5;|x == 5;|int = x;]]\nprintf(\"%d\", x);",
-  "after": "`x = 5;` grava o valor antes do `printf`."
-}
-```
-
-Regras:
-
-- `code` teórico usa `kind = "theory"` e `exercise = "none"`;
-- `code` com lacuna usa `kind = "exercise"` e `exercise = "gap"`;
-- `code` com escolha usa `kind = "exercise"` e `exercise = "choice"`;
-- em `code` gap, a lacuna fica dentro do próprio `code`, com a sintaxe `[[resposta::resposta|distrator 1|distrator 2]]`;
-- em `code` choice, não use lacuna embutida; use `question`, `options` e `answer`;
-- opções de `code` choice também podem usar o formato estruturado de código;
-- não use `___` em cards finais.
-
 ### `matrix`
 
 ```json
 {
-  "position": 1,
+  "position": 3,
   "resource": "matrix",
   "kind": "exercise",
   "exercise": "choice",
@@ -392,224 +265,8 @@ Regras:
 }
 ```
 
-Quando houver destaque em `matrix`, use objeto estrutural, por exemplo:
+## Referências citadas
 
-```json
-{ "pattern": "mainDiagonal" }
-```
+JSON Schema. (2026). *What is JSON Schema?* <https://json-schema.org/overview/what-is-jsonschema>
 
-ou:
-
-```json
-{ "cells": [[0, 1]], "rows": [0], "columns": [1] }
-```
-
-### `plane`
-
-```json
-{
-  "position": 1,
-  "resource": "plane",
-  "kind": "exercise",
-  "exercise": "choice",
-  "title": "Vetor no plano",
-  "prompt": "Observe o vetor representado a partir da origem.",
-  "vector": [2, 1],
-  "question": "Qual vetor está representado?",
-  "options": [
-    { "id": "a", "text": "(2, 1)" },
-    { "id": "b", "text": "(1, 2)" },
-    { "id": "c", "text": "(-2, 1)" }
-  ],
-  "answer": "a",
-  "after": "O primeiro valor indica deslocamento horizontal; o segundo indica deslocamento vertical."
-}
-```
-
-### `graph`
-
-```json
-{
-  "position": 1,
-  "resource": "graph",
-  "kind": "theory",
-  "exercise": "none",
-  "title": "Grafo mínimo",
-  "prompt": "Observe os dois vértices e a aresta entre eles.",
-  "vertices": [
-    { "id": "A", "label": "A" },
-    { "id": "B", "label": "B" }
-  ],
-  "edges": [
-    { "from": "A", "to": "B" }
-  ],
-  "after": "A aresta indica relação entre os vértices."
-}
-```
-
-### `relation_map`
-
-```json
-{
-  "position": 1,
-  "resource": "relation_map",
-  "kind": "exercise",
-  "exercise": "choice",
-  "title": "Relação entre conjuntos",
-  "prompt": "Observe os conjuntos e as relações.",
-  "leftSet": {
-    "label": "U",
-    "items": ["A", "B"]
-  },
-  "rightSet": {
-    "label": "V",
-    "items": ["1", "2"]
-  },
-  "relations": [
-    ["A", "1"],
-    ["B", "2"]
-  ],
-  "question": "Qual conjunto de pares corresponde ao diagrama?",
-  "options": [
-    { "id": "a", "text": "{(A,1), (B,2)}" },
-    { "id": "b", "text": "{(A,2), (B,1)}" },
-    { "id": "c", "text": "{(A,1)}" }
-  ],
-  "answer": "a",
-  "after": "Cada ligação indica um par ordenado entre os conjuntos."
-}
-```
-
-### `flow`
-
-```json
-{
-  "position": 1,
-  "resource": "flow",
-  "kind": "theory",
-  "exercise": "none",
-  "title": "Decisão simples",
-  "prompt": "Observe o fluxograma.",
-  "structure": {
-    "kind": "sequence",
-    "items": [
-      { "kind": "start", "text": "Ler a condição" },
-      {
-        "kind": "if_then_else",
-        "condition": "A condição é verdadeira?",
-        "thenBranch": [{ "kind": "end", "text": "Executar ação A" }],
-        "elseBranch": [{ "kind": "end", "text": "Executar ação B" }]
-      }
-    ]
-  },
-  "after": "O fluxograma materializa a decisão no próprio card."
-}
-```
-
-Regras:
-
-- `flow` exige `structure` semântica;
-- a raiz deve ser `kind = "sequence"`;
-- a geometria é derivada pelo motor do app.
-
-## Invariantes de integridade
-
-O app valida:
-
-- estrutura geral do projeto;
-- presença dos campos obrigatórios;
-- coerência de `guide`;
-- dependências entre microssequências;
-- existência e validade de `activeVersion`;
-- contrato dos cards;
-- condições didáticas mínimas.
-
-Entre as regras mais importantes:
-
-- exercício textual aberto falha;
-- `choice` exige resposta válida;
-- recursos visuais precisam de dados suficientes;
-- `flow` deve trazer estrutura semântica válida;
-- resposta inválida do serviço textual não é persistida.
-
-## Exemplo mínimo completo
-
-```json
-{
-  "contract": "aralearn.contract",
-  "version": 3,
-  "kind": "project",
-  "courses": [
-    {
-      "id": "course-logica",
-      "title": "Lógica proposicional",
-      "goal": "Estudar conectivos básicos com teoria e prática.",
-      "modules": [
-        {
-          "id": "module-conectivos",
-          "title": "Conectivos",
-          "guide": {
-            "goal": "Cobrir os conectivos previstos no módulo.",
-            "include": ["conjunção"],
-            "exclude": ["predicados"],
-            "notation": ["Use P e Q."],
-            "avoid": ["Não abrir outro conectivo nesta etapa."]
-          },
-          "lessons": [
-            {
-              "id": "lesson-conjuncao",
-              "title": "Conjunção",
-              "guide": {
-                "goal": "Explicar definição e prática básica da conjunção.",
-                "include": ["definição", "interpretação"],
-                "exclude": ["predicados"],
-                "notation": ["Use P e Q."],
-                "avoid": []
-              },
-              "topics": [],
-              "microsequences": [
-                {
-                  "id": "micro-conjuncao-definicao",
-                  "title": "Definição da conjunção",
-                  "goal": "Explicar quando P e Q é verdadeira.",
-                  "role": "explain",
-                  "status": "generated",
-                  "dependsOn": [],
-                  "covers": ["definição", "interpretação"],
-                  "checks": ["o aluno reconhece a regra central"],
-                  "versions": [
-                    {
-                      "id": "version-1",
-                      "createdAt": "2026-05-24T12:00:00.000Z",
-                      "source": "llm",
-                      "action": "generate",
-                      "request": "Explique e proponha prática suficiente.",
-                      "summary": "Versão inicial da microssequência.",
-                      "cards": [
-                        {
-                          "position": 1,
-                          "resource": "paragraph",
-                          "kind": "theory",
-                          "exercise": "none",
-                          "title": "Regra da conjunção",
-                          "text": "A conjunção P e Q só é verdadeira quando as duas proposições são verdadeiras.",
-                          "after": "A regra exige as duas proposições verdadeiras."
-                        }
-                      ],
-                      "validation": {
-                        "ok": true,
-                        "issues": []
-                      }
-                    }
-                  ],
-                  "activeVersion": "version-1"
-                }
-              ]
-            }
-          ]
-        }
-      ]
-    }
-  ]
-}
-```
+MDN Web Docs. (2026). *Working with JSON*. <https://developer.mozilla.org/en-US/docs/Learn_web_development/Core/Scripting/JSON>

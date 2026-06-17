@@ -1,168 +1,82 @@
 # Uso do app
 
-Usar o AraLearn é passar de um tema amplo para uma etapa concreta de estudo. O fluxo do app foi desenhado para reduzir o atrito entre intenção, organização, materialização e revisão.
+Usar o AraLearn é passar de um tema amplo para uma etapa concreta de estudo. O fluxo básico é: definir escopo, planejar a trilha, abrir uma microssequência, gerar ou corrigir cards, estudar, revisar e continuar.
 
-## 1. Definir o escopo
+Esse desenho se aproxima da aprendizagem autorregulada descrita por Zimmerman (2002): o estudante precisa planejar, monitorar e ajustar o próprio estudo. O app não elimina esse trabalho; ele o organiza.
 
-O primeiro passo é declarar o que será estudado.
+## 1. Definir escopo
 
-Um escopo pode conter:
+O escopo declara o que será estudado. Ele pode conter tema, objetivo, conteúdos que entram, conteúdos que ficam fora, convenções de notação, observações de prova, fonte preferencial ou recorte profissional.
 
-- tema ou disciplina;
-- objetivo;
-- itens que devem entrar;
-- itens que devem ficar fora;
-- observações de prova, notação, fonte ou abordagem.
-
-Em termos práticos, o escopo responde a três perguntas:
+Exemplo:
 
 ```text
-O que quero estudar?
-O que precisa entrar?
-O que precisa ficar fora?
+Quero estudar ponteiros introdutórios em C.
+Entram: endereço, operador &, operador *, ponteiro para int, erro entre valor e endereço.
+Ficam fora: alocação dinâmica e ponteiro para função.
 ```
 
-## 2. Planejar a trilha
+Esse passo é importante porque a LLM precisa de fronteiras. Sem fronteiras, tende a abrir assuntos laterais e transformar uma etapa local em explicação ampla demais.
 
-Depois do escopo, o usuário pode pedir ao app uma proposta de trilha.
+## 2. Planejar a trilha por top-down
 
-Essa etapa cria:
-
-- curso;
-- módulos;
-- lições;
-- microssequências.
-
-Ela não cria cards. Sua função é organizar o caminho antes da produção do material local.
-
-## 3. Navegar pela estrutura
-
-A navegação segue a hierarquia do projeto:
+Depois do escopo, o AraLearn pode acionar uma LLM por API para propor a estrutura inicial:
 
 ```text
 curso -> módulo -> lição -> microssequência
 ```
 
-Cada microssequência aparece com:
+Essa etapa cria caminho. Ela não precisa produzir os cards finais. O usuário deve revisar a estrutura, corrigir títulos, ajustar recortes e verificar se as exclusões foram respeitadas.
 
-- título;
-- objetivo;
-- papel na trilha;
-- dependências;
-- tópicos cobertos;
-- critérios de verificação;
-- status.
+## 3. Abrir uma microssequência
 
-Os status possíveis são:
+Ao abrir uma microssequência, o usuário sai da visão geral e entra em uma etapa específica. A microssequência informa objetivo, papel, dependências, conteúdos cobertos, critérios de verificação, status e versões disponíveis.
 
-- `planned`
-- `generated`
-- `needs_review`
-- `ready`
+É nessa etapa que o AraLearn monta o contexto para a LLM: caminho da etapa, `guide`, dependências, próxima microssequência, referências escolhidas, fontes anexadas e cards existentes quando a operação é de correção.
 
-## 4. Abrir uma microssequência
+## 4. Gerar cards por bottom-up
 
-Ao abrir uma microssequência, o usuário passa da estrutura ao trabalho local. É nessa etapa que o estudo deixa de ser apenas plano e vira material estudável.
+No bottom-up, a LLM recebe uma tarefa local. Ela pode gerar cards, corrigir uma versão, propor apoio para uma dificuldade ou continuar a próxima etapa planejada.
 
-Quando uma intervenção é pedida, o app considera:
+O resultado não entra automaticamente no projeto. O AraLearn confere formato, campos obrigatórios, alternativas, resposta, lacunas, recursos visuais e coerência mínima com o escopo. Quando a validação aceita o resultado, o app cria uma nova versão.
 
-- a microssequência aberta;
-- suas dependências declaradas;
-- o `guide` ativo da lição ou do módulo;
-- referências escolhidas pelo usuário;
-- fontes anexadas e resolvidas explicitamente;
-- a próxima microssequência planejada, quando houver;
-- cards já existentes, se a operação for de correção.
+## 5. Estudar os cards
 
-## 5. Escolher a ação local
+Os cards podem ser explicativos ou interativos. Dependendo do conteúdo, podem aparecer como parágrafo, pergunta objetiva, código, tabela, matriz, plano, grafo, mapa de relações, fluxograma, árvore ou composição de blocos.
 
-O trabalho local pode assumir quatro formas principais.
+Esse ponto se relaciona a uma regra básica de usabilidade: o sistema deve tornar o estado e a ação compreensíveis ao usuário. Nielsen (1994) formulou esse princípio como visibilidade do estado do sistema. No AraLearn, a interface precisa deixar claro onde o estudante está, que etapa está ativa e que versão está sendo usada.
 
-### Gerar cards na microssequência atual
+## 6. Corrigir e versionar
 
-Usado quando a etapa ainda não tem cards ou quando o usuário quer uma nova versão.
+Se a explicação ficou ruim, o exercício saiu do escopo ou o card precisa de outro recurso, o usuário pode pedir correção. A nova resposta cria uma versão. A versão ativa é usada no estudo; versões anteriores continuam disponíveis para comparação ou restauração.
 
-### Corrigir cards da microssequência atual
+Versionar é importante porque melhora uma etapa sem apagar a história do trabalho.
 
-Usado quando já existe versão ativa e o usuário quer ajustar explicação, prática, recurso, feedback ou escopo.
+## 7. Criar apoio local
 
-### Criar uma microssequência de apoio
+Quando uma lacuna aparece, o usuário pode criar uma microssequência de apoio. Essa etapa não substitui a trilha principal. Ela resolve uma dificuldade e permite retornar ao percurso.
 
-Usado quando surge uma lacuna local que merece uma etapa própria. Essa etapa não substitui a trilha principal; ela ajuda o usuário a resolver a dificuldade e voltar ao percurso.
+Exemplo: durante uma lição de ponteiros, o estudante percebe que ainda confunde variável, endereço e valor. Em vez de abandonar a lição, pode criar uma etapa de apoio sobre essa distinção.
 
-### Gerar a próxima microssequência planejada
+## 8. Usar fontes e arquivos
 
-Usado quando o usuário quer continuar a lição sem replanejar o curso inteiro.
+O AraLearn pode usar referências escolhidas pelo usuário e fontes anexadas quando uma intervenção exigir contexto. Se houver uso de API externa, apenas o contexto necessário à chamada deve ser enviado ao serviço configurado. A qualidade da extração depende do formato do arquivo, da clareza do material original e da revisão posterior.
 
-## 6. O que acontece durante a geração local
-
-Na experiência do usuário, a geração local pode ser entendida em três movimentos:
-
-1. o app delimita a intervenção;
-2. o serviço textual propõe forma e conteúdo;
-3. o app recompila, valida e salva apenas o que passou pelo contrato.
-
-Isso significa que a resposta não entra diretamente no projeto. Se houver problema de formato, de escopo ou de coerência didática mínima, o sistema tenta correção localizada ou simplesmente rejeita a saída.
-
-## 7. Acompanhar a execução
-
-Cada intervenção registra um histórico com etapa atual, estado e progresso. Em linguagem interna, o fluxo costuma passar por momentos como:
-
-```text
-prepare -> plan -> draft -> compile -> validate -> complete
-```
-
-Para o usuário, o ponto essencial é outro: o projeto anterior permanece íntegro mesmo quando a intervenção falha.
-
-## 8. Revisar versões
-
-Cada geração ou correção cria uma nova versão de cards para aquela microssequência. A versão ativa é a usada no estudo; versões anteriores continuam disponíveis para comparação, restauração ou auditoria.
-
-Isso permite melhorar uma etapa sem apagar automaticamente o que já existia.
-
-## 9. Estudar os cards
-
-Os cards podem usar texto, lacuna, múltipla escolha, código, tabela, matriz, plano, grafo, fluxograma, mapa de relações ou árvore.
-
-O app aplica validações mínimas antes de aceitar uma versão:
-
-- exercício textual deve ser fechado;
-- `choice` precisa de alternativas e resposta válida;
-- recursos visuais precisam de dados suficientes;
-- o contexto local necessário deve aparecer no próprio card;
-- a variação de caso deve existir quando o papel do card a exige.
-
-Essas regras não substituem revisão de conteúdo. Elas funcionam como piso de integridade do material persistido.
-
-## 10. Serviços de geração
-
-O AraLearn pode operar com serviços diferentes sem mudar o contrato do projeto. No estado atual, o repositório prevê integração com:
-
-- [DeepSeek API](https://api-docs.deepseek.com/);
-- [Gemini API](https://ai.google.dev/api/);
-- endpoints compatíveis com a interface de chat da OpenAI;
-- serviço local por linha de comando;
-- serviço falso para testes.
-
-A troca de serviço afeta custo, latência e comportamento do modelo, mas não altera o fluxo central do app.
-
-## 11. Persistência local
-
-O projeto é mantido localmente como referência primária. Isso significa que o material salvo continua disponível no dispositivo, pode ser exportado em JSON e não depende de um servidor central para existir como projeto.
-
-Quando o usuário usa um serviço remoto, apenas o contexto necessário para aquela intervenção é enviado ao serviço configurado.
-
-## Fluxo resumido
+## 9. Fluxo resumido
 
 ```text
 definir escopo
--> planejar a trilha
--> abrir uma microssequência
--> gerar ou corrigir cards
+-> planejar trilha por top-down
+-> abrir microssequência
+-> gerar ou corrigir cards por bottom-up
 -> estudar
+-> revisar versão
 -> criar apoio local quando necessário
--> voltar à trilha principal
 -> continuar
 ```
 
-O app foi desenhado para reduzir a distância entre intenção de estudo e material utilizável: uma etapa concreta, ligada a uma trilha maior, pronta para revisão humana e persistida no próprio projeto.
+## Referências citadas
+
+Nielsen, J. (1994). *10 usability heuristics for user interface design*. Nielsen Norman Group. <https://www.nngroup.com/articles/ten-usability-heuristics/>
+
+Zimmerman, B. J. (2002). Becoming a self-regulated learner: An overview. *Theory Into Practice*, 41(2), 64-70. <https://doi.org/10.1207/s15430421tip4102_2>

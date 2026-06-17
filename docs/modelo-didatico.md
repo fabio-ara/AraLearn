@@ -1,148 +1,88 @@
 # Modelo didático
 
-O modelo didático do AraLearn parte de uma ideia simples: aprender exige mais do que exposição a conteúdo. É preciso situar o que está sendo estudado, variar casos, pedir recuperação ativa, corrigir erro plausível e manter continuidade entre uma etapa e outra. As referências citadas neste documento aparecem de forma completa em [Fundamentos, pesquisa e governança](fundamentos-pesquisa-e-governanca.md#referências-bibliográficas).
+O modelo didático do AraLearn parte de uma constatação prática: aprender exige mais do que receber explicações. É preciso situar o conteúdo, ver exemplos, praticar, errar, corrigir, revisar e seguir uma ordem que faça sentido. O estudante pode assistir a muitas aulas e ainda não conseguir resolver problemas; pode usar IA e receber respostas plausíveis, mas sem continuidade. O AraLearn tenta organizar esse intervalo entre exposição e apropriação.
 
-## A unidade central: a microssequência
+## Microssequência
 
-A microssequência é a unidade básica de progressão do AraLearn. Ela foi escolhida porque resolve um problema de escala.
+A microssequência é a unidade de progressão do AraLearn. Ela reúne objetivo, papel na trilha, dependências, conteúdos cobertos, critérios de verificação e versões de cards.
 
-- O card sozinho pode ficar solto demais.
-- A lição inteira pode ser grande demais para uma sessão curta.
-- O curso completo é amplo demais para resolver uma dúvida local.
+Ela foi escolhida por uma razão de escala. O card isolado tende a ficar estreito demais para sustentar contexto. A lição inteira pode ser ampla demais para uma sessão de estudo no celular. A microssequência ocupa o meio: trabalha um ponto delimitado e preserva a ligação com o percurso.
 
-A microssequência ocupa o meio do caminho. Ela permite trabalhar um ponto delimitado sem perder a ligação com a trilha.
+Uma microssequência pode servir para:
 
-Uma microssequência possui:
+- introduzir uma regra;
+- apresentar um exemplo suficiente;
+- pedir uma aplicação objetiva;
+- corrigir um erro recorrente;
+- revisar uma etapa anterior;
+- preparar a próxima etapa.
 
-- título;
-- objetivo;
-- papel na trilha;
-- dependências;
-- tópicos cobertos;
-- critérios de verificação;
-- versões de cards.
+## Carga cognitiva
 
-Ela pode servir para explicar uma regra, praticar uma operação, corrigir um erro recorrente, revisar um ponto anterior ou preparar a próxima etapa.
+Sweller (1988) mostrou que a aprendizagem é afetada pelas limitações da memória de trabalho. Sweller, Van Merriënboer e Paas (1998) aprofundaram a relação entre arquitetura cognitiva e desenho instrucional. No AraLearn, isso se traduz em decompor a trilha, explicitar dependências e evitar que o estudante tenha de reconstruir sozinho a ordem do conteúdo.
 
-## O papel dos cards
+Essa escolha é especialmente importante em conteúdos técnicos. Em programação, matemática, lógica, arquitetura de computadores ou governança de IA, parte da dificuldade não está apenas no conceito, mas no excesso de operações periféricas: procurar material, decidir sequência, identificar pré-requisito, alternar fonte, traduzir explicação em exercício e retomar depois de dias.
 
-Os cards existem como peças de uma microssequência, não como fragmentos autônomos sem lugar definido. Cada posição costuma cumprir uma função como:
+## Recuperação ativa
 
-- `explain`
-- `example`
-- `practice`
-- `practice_more`
-- `fix_error`
-- `review`
-- `next`
+Karpicke e Roediger (2008) demonstraram a importância da recuperação ativa para consolidar aprendizagem. Por isso, uma microssequência não deve ser apenas exposição. O padrão desejável é combinar explicação e prática: apresentar uma ideia, mostrar um caso, pedir uma decisão, variar o exemplo quando necessário e oferecer feedback.
 
-Isso permite que a geração e a revisão considerem não apenas o conteúdo do card, mas a tarefa didática que ele precisa cumprir naquele ponto.
+Nem toda etapa precisa conter todos esses movimentos. O princípio, porém, é estável: entender uma explicação não equivale a conseguir usar o conceito.
 
-## Explicação e prática no mesmo percurso
+## Dificuldade útil
 
-O AraLearn evita separar radicalmente teoria e prática. A justificativa não é apenas intuitiva; ela se apoia em evidências de que recuperação ativa e prática de teste são decisivas para consolidação de aprendizagem (KARPICKE; ROEDIGER III, 2008).
+Bjork e Bjork (2011) discutem dificuldades desejáveis: obstáculos que podem melhorar a aprendizagem quando exigem recuperação, discriminação ou reorganização, sem criar atrito gratuito. O AraLearn adota esse cuidado ao evitar perguntas que entregam a resposta no próprio enunciado, exercícios sem variação e sequências longas de recepção passiva.
 
-Por isso, o padrão desejado de uma microssequência é:
+A dificuldade útil é aquela que obriga o estudante a decidir. A dificuldade inútil é aquela que consome energia sem ensinar.
 
-1. situar a ideia local;
-2. mostrar um caso suficiente;
-3. pedir uma primeira decisão ou aplicação;
-4. variar o caso quando necessário;
-5. corrigir erro provável ou preparar continuidade.
+## Representação adequada
 
-Nem toda microssequência precisa conter todos esses movimentos, mas o desenho do produto parte da ideia de que ver uma explicação não basta.
+Mayer (2009) argumenta que palavras e imagens podem favorecer a compreensão quando são combinadas de modo coerente. No AraLearn, essa ideia aparece nos recursos de card. Uma matriz deve preservar linhas e colunas. Um plano cartesiano deve mostrar posição e deslocamento. Um grafo deve preservar vértices e arestas. Um fluxograma deve explicitar sequência, decisão e repetição.
 
-## Dificuldade útil, não atrito gratuito
+A forma não é decoração. Ela participa do conteúdo quando a relação espacial, tabular, hierárquica ou operacional é parte do que se aprende.
 
-O app também dialoga com a noção de dificuldades desejáveis, proposta por Robert A. Bjork e Elizabeth L. Bjork (BJORK; BJORK, 2011). O objetivo não é tornar o estudo artificialmente difícil. O objetivo é evitar facilidades enganosas:
+## Autonomia com suporte
 
-- pergunta cuja resposta já está exposta no enunciado;
-- exercício sem variação de caso;
-- sequência longa de leitura passiva;
-- prática que não exige decisão real.
+Zimmerman (2002) define aprendizagem autorregulada como processo em que o estudante planeja, monitora e ajusta suas estratégias. O AraLearn tenta apoiar essa autorregulação ao oferecer uma estrutura visível: o estudante vê a trilha, escolhe a etapa, gera ou corrige cards, compara versões e continua.
 
-Em outras palavras, o produto tenta reduzir conforto ilusório sem aumentar atrito desnecessário.
+Vygotsky (1978) ajuda a pensar a aprendizagem como processo mediado por instrumentos, linguagem e interação. Bruner (1978) contribui com a noção de apoio gradual. No AraLearn, a microssequência funciona como uma forma de apoio local: delimita o problema, oferece prática e permite retirada progressiva de suporte conforme a trilha avança.
 
-## Progressão e carga cognitiva
+Freire (1996) é relevante por outra razão. Autonomia não significa abandono do estudante, nem consumo passivo de material pronto. O usuário precisa poder revisar, recusar, alterar e assumir autoria sobre o próprio percurso. Por isso, a IA no AraLearn não deve ser tratada como professora automática, mas como ferramenta de autoria assistida.
 
-Em muitos temas, especialmente quando há notação, procedimento ou formalismo, exigir autonomia plena cedo demais aumenta sobrecarga. Nesse ponto, o desenho do AraLearn conversa com a teoria da carga cognitiva associada a John Sweller (SWELLER, 1988).
+## Erro como objeto de estudo
 
-Isso se traduz em escolhas de produto:
+O erro útil é aquele que revela uma distinção importante. Confundir valor e endereço em C, trocar linha por coluna em matriz, inverter origem e destino em uma aresta ou confundir condição de entrada e saída em um laço são erros que podem ensinar.
 
-- a trilha é decomposta em etapas pequenas;
-- a prática aparece depois de um recorte local suficientemente situado;
-- o app favorece exemplos e representações adequadas antes de exigir variação mais ampla;
-- a revisão por versão permite ajustar uma etapa sem reescrever todo o percurso.
+Por isso, o AraLearn admite papéis como correção de erro e campos como `errors` em tópicos. Distratores não devem ser absurdos; devem representar alternativas plausíveis que ajudem o estudante a discriminar o conceito.
 
-## Representação adequada ao conteúdo
+## Cards dentro da microssequência
 
-Nem todo conteúdo deve virar parágrafo. O AraLearn aceita recursos como `matrix`, `plane`, `graph`, `relation_map`, `flow` e `tree` porque a forma também ensina.
+Os cards são peças de uma etapa. Podem cumprir funções como explicar, exemplificar, praticar, revisar, corrigir ou preparar continuidade. Essa organização evita dois extremos: teoria sem aplicação e exercício sem contexto.
 
-Essa escolha conversa com a literatura de aprendizagem multimídia associada a Richard E. Mayer (MAYER, 2009): palavras e representações podem melhorar a compreensão quando preservam a estrutura que o estudante precisa reconhecer. O critério do AraLearn, porém, é estrito: representação não entra para ornamentar o card; ela entra quando a tarefa didática depende dela.
+A microssequência também permite versionamento. Uma etapa pode receber nova explicação, novo conjunto de exercícios ou ajuste de feedback sem apagar imediatamente a versão anterior. Isso transforma revisão em parte do processo, não em remendo ocasional.
 
-Exemplos:
+## Estudante-trabalhador
 
-- matriz deve aparecer como matriz quando linha, coluna ou posição importam;
-- vetor deve aparecer no plano quando a relação espacial importa;
-- grafo deve aparecer como conjunto de vértices e arestas quando a leitura estrutural faz parte do problema;
-- fluxograma deve aparecer como sequência e decisão quando a ordem operacional importa.
+O foco em estudantes-trabalhadores orienta escolhas didáticas. O projeto precisa funcionar para quem estuda no celular, em períodos fragmentados, com cansaço e, muitas vezes, sem conexão confiável. Essa condição favorece etapas delimitadas, prática objetiva, retomada rápida e persistência local.
 
-## Mediação, suporte e autonomia
+O objetivo não é reduzir a aprendizagem a pequenas doses sem continuidade. É o oposto: usar unidades manejáveis para preservar uma trilha mais longa.
 
-O modelo didático do AraLearn também dialoga com tradições que pensam aprendizagem como processo mediado. Vygotsky ajuda a formular que o desempenho depende de instrumentos e mediações, não apenas de uma competência interna fixa (VYGOTSKY, 1978). Bruner ajuda a pensar suporte gradual, retirada de apoio e progressão por andaimes locais (BRUNER, 1978).
+## Referências citadas
 
-No produto, isso aparece em três níveis:
+Bjork, R. A., & Bjork, E. L. (2011). Making things hard on yourself, but in a good way: Creating desirable difficulties to enhance learning. In M. A. Gernsbacher et al. (Eds.), *Psychology and the real world*. Worth.
 
-- a microssequência delimita o apoio;
-- a trilha explicita ordem e dependência;
-- a revisão por versão permite ajustar o suporte sem apagar o percurso.
+Bruner, J. S. (1978). The role of dialogue in language acquisition. In A. Sinclair, R. J. Jarvella, & W. J. M. Levelt (Eds.), *The child's conception of language*. Springer.
 
-Paulo Freire entra aqui por outra razão. Em *Pedagogia da autonomia*, autonomia não é abandono do estudante; é apropriação crítica do processo de aprender e recusa da relação puramente bancária com o saber (FREIRE, 1996). O AraLearn não pretende resolver sozinho esse problema, mas tenta preservar condições mínimas para isso: o usuário vê a estrutura, pode reescrever o percurso, recusar material ruim e manter o comando sobre o próprio projeto.
+Freire, P. (1996). *Pedagogia da autonomia: saberes necessários à prática educativa*. Paz e Terra.
 
-## Prática fechada e uso móvel
+Karpicke, J. D., & Roediger III, H. L. (2008). The critical importance of retrieval for learning. *Science*, 319(5865), 966-968. <https://doi.org/10.1126/science.1152408>
 
-O app privilegia prática fechada porque o uso principal é móvel, intermitente e frequentemente feito em contexto de pouca energia disponível. Exercícios abertos podem ser valiosos em outros ambientes, mas no AraLearn eles costumam gerar fricção operacional maior do que ganho didático.
+Mayer, R. E. (2009). *Multimedia learning* (2nd ed.). Cambridge University Press. <https://doi.org/10.1017/CBO9780511811678>
 
-Por isso:
+Sweller, J. (1988). Cognitive load during problem solving: Effects on learning. *Cognitive Science*, 12(2), 257-285. <https://doi.org/10.1207/s15516709cog1202_4>
 
-- `paragraph` de exercício usa lacuna por opções;
-- `choice` trabalha decisão objetiva;
-- recursos contextuais como `matrix`, `graph`, `plane`, `flow` e `relation_map` recorrem a perguntas fechadas quando entram como exercício;
-- o contexto necessário deve estar materializado no próprio card.
+Sweller, J., Van Merriënboer, J. J. G., & Paas, F. (1998). Cognitive architecture and instructional design. *Educational Psychology Review*, 10, 251-296. <https://doi.org/10.1023/A:1022193728205>
 
-## O erro como objeto de aprendizagem
+Vygotsky, L. S. (1978). *Mind in society: The development of higher psychological processes*. Harvard University Press.
 
-O produto não trata erro apenas como falha a eliminar. Erros plausíveis podem ser matéria de ensino. Por isso existem papéis como `fix_error` e campos como `errors` em `topic`.
-
-Essa escolha evita dois desvios:
-
-- formular distratores absurdos, que nada ensinam;
-- corrigir um erro que o percurso nunca tornou plausível.
-
-O erro útil no AraLearn é aquele que ajuda o estudante a distinguir melhor o conceito ou procedimento em jogo.
-
-## Continuidade e retomada
-
-Uma microssequência não é uma ilha. Ela pode depender de outra (`dependsOn`), preparar a próxima e receber uma etapa de apoio quando surgir lacuna local. Essa continuidade é parte do modelo didático: o usuário não precisa abandonar o curso inteiro para resolver uma dificuldade pontual, nem resolver toda a disciplina antes de começar a praticar.
-
-## Perfis didáticos
-
-Os perfis didáticos do app não mudam a estrutura principal; eles mudam a ênfase da decomposição.
-
-- **Disciplina acadêmica introdutória**: progressão sem pressupostos ocultos, notação explícita, exemplos resolvidos e prática frequente.
-- **Estudante-trabalhador**: baixa fricção, retomada rápida, etapas manejáveis e persistência local.
-- **Prova e concurso**: atenção a tipos de questão, erros recorrentes, variação controlada e revisão cumulativa.
-- **Documentação técnica**: foco em pré-requisitos, comando, arquivo, efeito esperado e erro frequente.
-- **Artigo acadêmico**: foco em tese, conceito, argumento, método e relação entre posições.
-- **Língua estrangeira**: foco em padrão, contraste, reconhecimento e produção controlada.
-- **Treinamento interno**: foco em fluxo operacional, decisão correta e padronização revisável.
-
-## O lugar do professor e do usuário
-
-O AraLearn não substitui aula, professor, bibliografia nem discussão crítica. Ele oferece uma forma de organizar estudo e autoria assistida.
-
-Em termos didáticos, a regra de governança é simples:
-
-- o serviço textual sugere;
-- o sistema delimita e valida;
-- o usuário mantém a autoria final.
+Zimmerman, B. J. (2002). Becoming a self-regulated learner: An overview. *Theory Into Practice*, 41(2), 64-70. <https://doi.org/10.1207/s15430421tip4102_2>

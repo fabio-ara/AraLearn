@@ -1,80 +1,52 @@
 # Documentação do AraLearn
 
-Esta pasta descreve o AraLearn em camadas complementares. Cada documento responde a uma pergunta diferente e deve ser lido pelo problema que resolve, não como duplicata do outro. O objetivo desta organização é permitir leitura seletiva sem perda de contexto principal.
+Esta pasta reúne a documentação pública do AraLearn. Os documentos foram separados por função para evitar repetição: o README do repositório apresenta o projeto; os arquivos abaixo aprofundam produto, modelo didático, uso, arquitetura, IA, contrato e fundamentos.
 
-## Mapa de leitura
+## Caminho recomendado
 
-### 1. O que o produto é
-
-- [Visão do produto](visao-do-produto.md)
-  Explica que problema o AraLearn enfrenta, qual é sua proposta e como ele se posiciona em relação a outras ferramentas de estudo, autoria e consulta.
-
-- [Modelo didático](modelo-didatico.md)
-  Explica por que a microssequência é a unidade central, como teoria e prática se articulam e que papel cada tipo de card cumpre na trilha.
-
-### 2. Como o produto é usado
-
-- [Uso do app](uso-do-app.md)
-  Descreve o fluxo operacional de uso: definir escopo, planejar a trilha, abrir uma microssequência, gerar ou corrigir cards, estudar, revisar versões e seguir adiante.
-
-### 3. Como o sistema é organizado
-
-- [Arquitetura](arquitetura.md)
-  Descreve a organização do software, a persistência do projeto, as camadas de código, o histórico de execução e a relação entre contrato, geração, validação e renderização.
-
-- [Contrato público](aralearn-contract.md)
-  Especifica o formato JSON persistido pelo app, com entidades, campos, invariantes e exemplos.
-
-- [Recursos de card](recursos-de-card.md)
-  Especifica os recursos de card aceitos pelo contrato e a função didática de cada um.
-
-### 4. Como a geração assistida funciona
-
-- [Assistência por IA](assistencia-por-ia.md)
-  Explica o papel do serviço textual, o papel do app, a seleção de contexto, o uso de campos controlados e a governança da autoria assistida.
-
-- [Fluxos, prompts e contratos de geração](fluxos-prompts-e-contratos.md)
-  Detalha os envelopes enviados aos serviços, as etapas do planejamento estrutural e da geração local, e as validações aplicadas em cada fase.
-
-### 5. Em que base teórica e crítica o projeto se apoia
-
-- [Fundamentos, pesquisa e governança](fundamentos-pesquisa-e-governanca.md)
-  Reúne o enquadramento pedagógico, as tensões críticas, as hipóteses de design, as perguntas de pesquisa e a bibliografia consolidada do conjunto.
-
-### 6. Integrações específicas
-
-- [Codex CLI local](integrations/codex-cli.md)
-  Descreve o uso do AraLearn com um serviço local que encaminha pedidos ao Codex CLI.
-
-- [Compartilhamento no Android](integrations/android-share-import.md)
-  Descreve o recebimento de arquivos compartilhados no APK.
-
-## Caminhos sugeridos
-
-Para conhecer o produto:
+Para uma primeira aproximação:
 
 1. [Visão do produto](visao-do-produto.md)
 2. [Modelo didático](modelo-didatico.md)
 3. [Uso do app](uso-do-app.md)
 
-Para entender a implementação:
+Para avaliação técnica:
 
 1. [Arquitetura](arquitetura.md)
-2. [Contrato público](aralearn-contract.md)
-3. [Recursos de card](recursos-de-card.md)
-4. [Fluxos, prompts e contratos de geração](fluxos-prompts-e-contratos.md)
+2. [Assistência por IA](assistencia-por-ia.md)
+3. [Fluxos, prompts e contratos de geração](fluxos-prompts-e-contratos.md)
+4. [Contrato público](aralearn-contract.md)
+5. [Recursos de card](recursos-de-card.md)
 
-Para leitura de fundamentação e pesquisa:
+Para avaliação acadêmica e crítica:
 
-1. [Visão do produto](visao-do-produto.md)
-2. [Modelo didático](modelo-didatico.md)
-3. [Fundamentos, pesquisa e governança](fundamentos-pesquisa-e-governanca.md)
-4. [Arquitetura](arquitetura.md)
+1. [Fundamentos, pesquisa e governança](fundamentos-pesquisa-e-governanca.md)
+2. [Estado atual e próximos passos](estado-atual-e-roadmap.md)
+3. [Visão do produto](visao-do-produto.md)
+4. [Modelo didático](modelo-didatico.md)
 
-## Referências e bibliografia
+## Função de cada documento
 
-As referências a produtos, serviços e tecnologias aparecem distribuídas nos documentos em que são necessárias ao argumento. A bibliografia acadêmica consolidada do conjunto está em [Fundamentos, pesquisa e governança](fundamentos-pesquisa-e-governanca.md#referências-bibliográficas). Quando um autor aparece em outro arquivo por citação abreviada, a entrada completa está ali.
+| Documento | Função |
+|---|---|
+| [README do repositório](../README.md) | Apresentar o AraLearn para quem chega ao projeto pela primeira vez. |
+| [Visão do produto](visao-do-produto.md) | Explicar problema, proposta, público, posição no ecossistema e originalidade. |
+| [Modelo didático](modelo-didatico.md) | Descrever a microssequência, os cards, a prática, o erro, a retomada e os fundamentos pedagógicos. |
+| [Uso do app](uso-do-app.md) | Mostrar o fluxo de uso: escopo, top-down, microssequência, bottom-up, estudo, correção e versão. |
+| [Arquitetura](arquitetura.md) | Explicar como o sistema separa projeto, geração, validação, renderização e persistência. |
+| [Assistência por IA](assistencia-por-ia.md) | Detalhar como as LLMs por API participam hoje e quais limites governam essa participação. |
+| [Fluxos, prompts e contratos de geração](fluxos-prompts-e-contratos.md) | Descrever os contratos transitórios usados nos fluxos top-down e bottom-up. |
+| [Contrato público](aralearn-contract.md) | Especificar o JSON persistido pelo app. |
+| [Recursos de card](recursos-de-card.md) | Explicar os tipos de card aceitos e sua função didática. |
+| [Fundamentos, pesquisa e governança](fundamentos-pesquisa-e-governanca.md) | Situar o projeto em educação, tecnologia, IA, atenção, autonomia e crítica institucional. |
+| [Estado atual e próximos passos](estado-atual-e-roadmap.md) | Separar o que já existe, o que é prática externa e o que pertence ao desenvolvimento futuro. |
 
-## Exemplos e testes
+## Princípio de organização
 
-- [Exemplos JSON](examples/) — contratos e documentos usados em demonstração, validação e testes automatizados.
+O AraLearn é apresentado em três planos complementares.
+
+O primeiro é o produto: uma plataforma de estudo por microssequências, com cards e IA por API.
+
+O segundo é a implementação: contrato JSON, validação, versionamento, recursos renderizáveis e fluxos de geração.
+
+O terceiro é a pesquisa: uma hipótese sobre estudo autodidata em contexto de excesso informacional, trabalho, pouco tempo, cansaço, conexão instável e uso predominante do celular.
