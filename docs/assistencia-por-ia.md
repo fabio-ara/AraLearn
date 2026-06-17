@@ -57,6 +57,8 @@ A distinção importa: hoje, a LLM por API é uma funcionalidade do AraLearn; o 
 
 Quando o usuário usa uma API externa, o contexto necessário à intervenção é enviado ao serviço configurado. Custo, retenção de dados, limites e disponibilidade dependem do fornecedor. Por isso, o projeto mantém persistência local e busca reduzir o contexto enviado.
 
+Essa distinção precisa ficar explícita: a dependência externa recai sobre a assistência de autoria. O projeto salvo, os cursos embarcados e o material já aceito continuam disponíveis localmente para estudo, revisão e edição sem nova chamada à API.
+
 A ambição de diminuir dependência de LLMs externas é coerente com o público do AraLearn: estudantes com poucos recursos, conexão instável e necessidade de continuidade. No estado atual, porém, a geração por API continua sendo a capacidade operacional principal.
 
 ## Governança da autoria

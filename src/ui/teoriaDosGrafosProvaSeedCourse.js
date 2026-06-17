@@ -21938,7 +21938,7 @@ const RAW_TEORIA_DOS_GRAFOS_PROVA_COURSE = Object.freeze(
               "Não pedir desenho manual.",
               "Não usar alternativas binárias simples.",
               "Não omitir feedback explicativo.",
-              "Não usar comentários de bastidor."
+              "Não usar comentários editoriais internos."
             ]
           },
           "topics": [

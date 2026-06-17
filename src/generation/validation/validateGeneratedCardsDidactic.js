@@ -147,7 +147,7 @@ function cardMaterializesContext(card = {}) {
   return cardMainText(card).length >= 20;
 }
 
-function containsBackstageLanguage(card = {}) {
+function containsInternalTechnicalLanguage(card = {}) {
   return /\b(prompt|schema|json|container|validador|pipeline|recurso|llm)\b/iu.test(cardMainText(card));
 }
 
@@ -420,8 +420,8 @@ export function validateGeneratedCardsDidactic(cards = [], generationContract = 
     if (looksLikePractice && referencesExternalCase(card) && !cardMaterializesContext(card)) {
       directIssues.push(`${prefix} cita contexto externo sem materializar os dados necessários no próprio card.`);
     }
-    if (containsBackstageLanguage(card)) {
-      directIssues.push(`${prefix} linguagem de bastidor rejeitada.`);
+    if (containsInternalTechnicalLanguage(card)) {
+      directIssues.push(`${prefix} linguagem técnica interna rejeitada.`);
     }
     if (mentionsForbiddenTerms(card, guide.exclude)) {
       directIssues.push(`${prefix} usa termo proibido de guide.exclude.`);

@@ -32,6 +32,8 @@ O repositório prevê uso com Gemini, serviços compatíveis com a API de chat d
 
 A regra de autoria é: a LLM sugere; o aplicativo delimita, valida e registra; o usuário revisa e decide.
 
+Essa dependência de API vale para planejamento, geração e correção assistida. Em contrapartida, o projeto salvo, os cursos embarcados e as versões já aceitas ficam no dispositivo. Na prática, depois de abrir o app e carregar ou salvar o conteúdo, o estudante pode ler, revisar e editar esse material localmente sem nova chamada externa; a conexão volta a ser necessária quando houver pedido de assistência por IA.
+
 ## Cards que aparecem como estrutura, não só como texto
 
 Alguns conteúdos não ficam claros em parágrafo. Uma matriz precisa preservar linhas e colunas. Um vetor depende da relação com o plano. Um grafo mostra vértices e arestas. Um algoritmo pode pedir código ou fluxograma. Uma relação entre conjuntos pode ficar mais compreensível quando desenhada.

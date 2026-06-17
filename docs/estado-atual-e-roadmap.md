@@ -12,6 +12,7 @@ O AraLearn já possui:
 - contrato público `aralearn.contract`, versão 3;
 - cursos embarcados editáveis;
 - importação e exportação em JSON;
+- estudo, revisão e edição local do material já salvo, sem nova chamada à API;
 - recursos de card: `paragraph`, `choice`, `composite`, `code`, `table`, `flow`, `tree`, `graph`, `relation_map`, `matrix` e `plane`;
 - geração top-down por LLM via API;
 - geração bottom-up por LLM via API;

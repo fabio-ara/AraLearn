@@ -225,7 +225,7 @@ test("matrix_locate_cell_choice deriva answer e rejeita inconsistências semânt
   }), /targetCol/);
 });
 
-test("placeholders e vocabulário de bastidor não chegam ao card final", () => {
+test("placeholders e vocabulário técnico interno não chegam ao card final", () => {
   assert.throws(() => compileCardFromTemplate({
     templateId: "choice_exercise",
     position: 1,
@@ -235,7 +235,7 @@ test("placeholders e vocabulário de bastidor não chegam ao card final", () => 
     templateId: "paragraph_theory",
     position: 2,
     slots: { 1: "Teoria", 2: "Este card explica o schema interno.", 3: "Depois." }
-  }), /bastidor|vazamento estrutural/);
+  }), /linguagem técnica interna|vazamento estrutural/);
   assert.throws(() => compileCardFromTemplate({
     templateId: "graph_simple",
     position: 3,

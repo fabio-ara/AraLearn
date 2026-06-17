@@ -1518,7 +1518,7 @@ test("a reconciliação do seed substitui curso embarcado salvo pela versão ofi
   assert.equal(microsequences.some((microsequence) => microsequence.id === "micro-antiga"), false);
 });
 
-test("o seed de Lógica de Programação evita bastidor nos textos visíveis", () => {
+test("o seed de Lógica de Programação evita linguagem editorial interna nos textos visíveis", () => {
   const project = createEmbeddedSeedProjectDocument();
   const course = project.courses.find((item) => item.id === "course-logica-de-programacao");
 
