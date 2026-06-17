@@ -22,6 +22,23 @@ test("paragraph_gap monta [[...]]", () => {
   assert.match(card.text, /\[\[matriz::matriz\|grafo\|vetor\]\]/);
 });
 
+test("paragraph_gap escapa caracteres reservados da lacuna", () => {
+  const card = compileCardFromTemplate({
+    templateId: "paragraph_gap",
+    position: 1,
+    slots: {
+      1: "Complete",
+      2: "Preencha:",
+      3: "case 2:",
+      4: "default:",
+      5: "case 1:",
+      6: "Revise."
+    }
+  });
+
+  assert.match(card.text, /\[\[case 2\\:::case 2\\:\|default\\:\|case 1\\:\]\]/);
+});
+
 test("choice_exercise exige answer válido e não cai na primeira opção", () => {
   assert.throws(() => compileCardFromTemplate({
     templateId: "choice_exercise",

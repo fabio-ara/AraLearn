@@ -84,6 +84,27 @@ test("exercício textual com lacuna passa", () => {
   assert.equal(result.ok, true);
 });
 
+test("code gap com resposta terminada em dois-pontos, operador lógico e colchete final passa", () => {
+  const result = structural({
+    position: 1,
+    resource: "code",
+    kind: "exercise",
+    exercise: "gap",
+    title: "Complete",
+    prompt: "Preencha a lacuna.",
+    language: "c",
+    code: [
+      "switch (opcao)",
+      "{",
+      "    [[case 2\\:::case 2\\:|default\\:|nota < 0 \\|\\| nota > 10|v[5\\]]]",
+      "}"
+    ].join("\n"),
+    after: ""
+  });
+
+  assert.equal(result.ok, true);
+});
+
 test("choice com answer inválido falha", () => {
   const result = structural({
     position: 1,

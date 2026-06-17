@@ -4,6 +4,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { fileURLToPath } from "node:url";
 
+import { buildTextGapToken, parseTextGapTokens } from "../../src/core/textGaps.js";
 import { validateContractDocument } from "../../src/contract/validateContract.js";
 import {
   getRuntimePopupButtonEntry,
@@ -108,6 +109,20 @@ test("o renderer renderiza paragraph gap corretamente", () => {
   assert.match(html, /runtime-text-gap-choice-blank/);
   assert.match(html, /data-action="text-gap-open-choice"/);
   assert.doesNotMatch(html, /P e Q são verdadeiras\s*<\/span>/);
+});
+
+test("text gap preserva caracteres reservados quando serializa respostas e opções", () => {
+  const token = buildTextGapToken("case 2:", [
+    "case 2:",
+    "default:",
+    "nota < 0 || nota > 10",
+    "v[5]"
+  ]);
+  const parsed = parseTextGapTokens(`Complete ${token}.`);
+
+  assert.equal(parsed.length, 1);
+  assert.equal(parsed[0].answer, "case 2:");
+  assert.deepEqual(parsed[0].options, ["case 2:", "default:", "nota < 0 || nota > 10", "v[5]"]);
 });
 
 test("o renderer renderiza recurso contextual com escolha no próprio card", () => {
@@ -691,6 +706,52 @@ test("o renderer destaca sintaxe inline em paragraph mesmo sem crases explícita
   assert.match(html, /<code>&amp;idade<\/code>/);
   assert.match(html, /<code>\{<\/code>/);
   assert.match(html, /<code>\}<\/code>/);
+});
+
+test("o renderer destaca palavras-chave, comparações e chamadas curtas de C em texto corrido", () => {
+  const html = renderCardRuntimeBlocks({
+    position: 1,
+    resource: "paragraph",
+    kind: "theory",
+    exercise: "none",
+    title: "Sintaxe expandida",
+    text: "Use for(i = 0; i <= 4; i++), while (idade < 18), switch (opcao), case 1:, default:, break, return, typedef, struct, mostrarNota(8.5); e alterar(&idade).",
+    after: ""
+  });
+
+  assert.match(html, /<code>for\(i = 0; i &lt;= 4; i\+\+\)<\/code>/);
+  assert.match(html, /<code>while \(idade &lt; 18\)<\/code>/);
+  assert.match(html, /<code>switch \(opcao\)<\/code>/);
+  assert.match(html, /<code>case 1:<\/code>/);
+  assert.match(html, /<code>default:<\/code>/);
+  assert.match(html, /<code>break<\/code>/);
+  assert.match(html, /<code>return<\/code>/);
+  assert.match(html, /<code>typedef<\/code>/);
+  assert.match(html, /<code>struct<\/code>/);
+  assert.match(html, /<code>mostrarNota\(8\.5\);<\/code>/);
+  assert.match(html, /<code>alterar\(&amp;idade\)<\/code>/);
+});
+
+test("o renderer destaca assinaturas e chamadas de função em alternativas textuais de choice", () => {
+  const html = renderCardRuntimeBlocks({
+    position: 1,
+    resource: "choice",
+    kind: "exercise",
+    exercise: "choice",
+    title: "Assinaturas",
+    question: "Qual alternativa está correta?",
+    options: [
+      { id: "a", text: "void mostrarIdade(int idade)" },
+      { id: "b", text: "mostrarIdade(int idade);" },
+      { id: "c", text: "alterar(&idade);" }
+    ],
+    answer: "a",
+    after: ""
+  });
+
+  assert.match(html, /<code>void<\/code>\s*<code>mostrarIdade\(int idade\)<\/code>/);
+  assert.match(html, /<code>mostrarIdade\(int idade\);<\/code>/);
+  assert.match(html, /<code>alterar\(&amp;idade\);<\/code>/);
 });
 
 test("o renderer preserva quebra e indentação em opções de choice com código", () => {
@@ -1480,6 +1541,104 @@ test("o seed de Lógica de Programação preserva quebra de linha em cards de co
   assert.match(paragraphCard.text, /`int main\(\)`/);
 });
 
+test("o seed de Lógica de Programação preserva lacunas de code com case, operador lógico e colchete final", () => {
+  const project = createEmbeddedSeedProjectDocument();
+  const course = project.courses.find((item) => item.id === "course-logica-de-programacao");
+
+  assert.ok(course);
+
+  const cards = course.modules
+    .flatMap((moduleValue) => moduleValue.lessons || [])
+    .flatMap((lesson) => lesson.microsequences || [])
+    .flatMap((microsequence) => microsequence.versions || [])
+    .flatMap((version) => version.cards || []);
+  const menuCard = cards.find((card) => card.id === "card-menu-switch-02");
+  const whileCard = cards.find((card) => card.id === "card-while-validacao-02");
+  const vectorCard = cards.find((card) => card.id === "card-02-01-05-02");
+
+  assert.ok(menuCard);
+  assert.ok(whileCard);
+  assert.ok(vectorCard);
+
+  const menuToken = parseTextGapTokens(menuCard.code || "")[0];
+  const whileToken = parseTextGapTokens(whileCard.code || "")[0];
+  const vectorToken = parseTextGapTokens(vectorCard.code || "")[0];
+
+  assert.equal(menuToken?.answer, "case 2:");
+  assert.deepEqual(menuToken?.options, ["case 2:", "case 1:", "default:", "break;"]);
+  assert.equal(whileToken?.answer, "nota < 0 || nota > 10");
+  assert.deepEqual(
+    whileToken?.options,
+    ["nota < 0 || nota > 10", "nota >= 0 && nota <= 10", "nota == 10", "nota == 0"]
+  );
+  assert.equal(vectorToken?.answer, "v[i]");
+  assert.deepEqual(vectorToken?.options, ["v[i]", "v", "v(i)", "v[5]"]);
+});
+
+test("o seed de Lógica de Programação mantém lacunas de code com fragmentos exatos de C, sem texto descritivo", () => {
+  const project = createEmbeddedSeedProjectDocument();
+  const course = project.courses.find((item) => item.id === "course-logica-de-programacao");
+
+  assert.ok(course);
+
+  const cards = course.modules
+    .flatMap((moduleValue) => moduleValue.lessons || [])
+    .flatMap((lesson) => lesson.microsequences || [])
+    .flatMap((microsequence) => microsequence.versions || [])
+    .flatMap((version) => version.cards || []);
+  const accessCard = cards.find((card) => card.id === "card-02-01-04-05");
+  const restartCard = cards.find((card) => card.id === "card-02-03-01-05");
+  const maxPositionCard = cards.find((card) => card.id === "card-02-03-04-03");
+  const minPositionCard = cards.find((card) => card.id === "card-02-03-04-04");
+
+  assert.ok(accessCard);
+  assert.ok(restartCard);
+  assert.ok(maxPositionCard);
+  assert.ok(minPositionCard);
+
+  const accessToken = parseTextGapTokens(accessCard.code || "")[0];
+  const restartToken = parseTextGapTokens(restartCard.code || "")[0];
+  const maxPositionToken = parseTextGapTokens(maxPositionCard.code || "")[0];
+  const minPositionToken = parseTextGapTokens(minPositionCard.code || "")[0];
+
+  assert.equal(accessToken?.answer, "v[i]");
+  assert.deepEqual(accessToken?.options, ["v[i]", "v", "v[10]", "valor"]);
+  assert.equal(restartToken?.answer, "soma = 0;");
+  assert.deepEqual(restartToken?.options, ["soma = 0;", "soma = 1;", "soma = v[i];", "soma = i;"]);
+  assert.equal(maxPositionToken?.answer, "i");
+  assert.deepEqual(maxPositionToken?.options, ["i", "v[i]", "maior", "0"]);
+  assert.equal(minPositionToken?.answer, "i");
+  assert.deepEqual(minPositionToken?.options, ["i", "v[i]", "menor", "1"]);
+
+  const accentedGapValues = cards
+    .filter((card) => card.resource === "code" && card.exercise === "gap")
+    .flatMap((card) =>
+      parseTextGapTokens(card.code || "").flatMap((token) => [token.answer, ...token.options].filter((value) => /[À-ÿ]/u.test(value)))
+    );
+
+  assert.deepEqual(accentedGapValues, []);
+});
+
+test("o renderer do seed de Lógica de Programação materializa alternativas multiline de código como blocos", () => {
+  const project = createEmbeddedSeedProjectDocument();
+  const course = project.courses.find((item) => item.id === "course-logica-de-programacao");
+
+  assert.ok(course);
+
+  const cards = course.modules
+    .flatMap((moduleValue) => moduleValue.lessons || [])
+    .flatMap((lesson) => lesson.microsequences || [])
+    .flatMap((microsequence) => microsequence.versions || [])
+    .flatMap((version) => version.cards || []);
+  const codeChoiceCard = cards.find((card) => card.id === "card-m5-04-identificar-erro-getch-fora");
+
+  assert.ok(codeChoiceCard);
+  assert.equal((codeChoiceCard.options || []).every((option) => option.kind === "code"), true);
+
+  const html = renderCardRuntimeBlocks(codeChoiceCard);
+  assert.equal((html.match(/<pre class="multiple-choice-code">/g) || []).length, 4);
+});
+
 test("o seed de Lógica de Programação mantém sintaxe de C destacada e sem crases quebradas nos textos visíveis", () => {
   const project = createEmbeddedSeedProjectDocument();
   const course = project.courses.find((item) => item.id === "course-logica-de-programacao");
@@ -1502,6 +1661,15 @@ test("o seed de Lógica de Programação mantém sintaxe de C destacada e sem cr
     }
     if (/`[A-Za-z_][A-Za-z0-9_]*\[[^\]]+\]`\[/.test(text)) {
       issues.push(`${where}: índice fragmentado`);
+    }
+    if (/`(?:void|int|float|char|double)`\s+[A-Za-z_][A-Za-z0-9_]*\(/u.test(text)) {
+      issues.push(`${where}: assinatura fragmentada`);
+    }
+    if (/[A-Za-z_][A-Za-z0-9_]*\(`(?:&|int|float|char|double)/u.test(text)) {
+      issues.push(`${where}: chamada fragmentada`);
+    }
+    if (/`&[A-Za-z_][A-Za-z0-9_]*`\(/u.test(text)) {
+      issues.push(`${where}: endereço fragmentado`);
     }
     if (/\b(?:printf|scanf|getch|main|#include|puts|gets|strlen|strcmp|strcpy|strupr|int|float|char|struct|typedef)\b/.test(stripped)) {
       issues.push(`${where}: sintaxe sem destaque`);
@@ -1602,6 +1770,24 @@ test("o seed de Lógica de Programação elimina placeholders legados de code e 
 
   const gapCard = cards.find((card) => card.id === "card-m1-04-completar-getch");
   const migratedChoiceCard = cards.find((card) => card.id === "card-programa-escolher-int-correto");
+  const isMultilineCodeOption = (source) =>
+    source.includes("\n") &&
+    /#include|\b(?:main|printf|scanf|getch|for|if|while|switch)\s*\(|\b(?:do|case|default|struct|typedef)\b|[{};]/u.test(source);
+  const mixedCodeChoiceCards = cards.filter((card) =>
+    card.exercise === "choice" &&
+    (card.options || []).some((option) => {
+      const source = String(option?.code ?? option?.text ?? "");
+      return isMultilineCodeOption(source);
+    }) &&
+    !(card.options || []).every((option) => {
+      const source = String(option?.code ?? option?.text ?? "");
+      if (!isMultilineCodeOption(source)) {
+        return true;
+      }
+      return option.kind === "code";
+    })
+  );
+  const printfReviewCard = cards.find((card) => card.id === "card-printf-texto-revisao");
 
   assert.equal(gapCard?.exercise, "gap");
   assert.match(gapCard?.code || "", /\[\[getch\(\);::getch\(\);\|/);
@@ -1614,6 +1800,9 @@ test("o seed de Lógica de Programação elimina placeholders legados de code e 
     (migratedChoiceCard?.options || []).some((option) => option.kind === "code"),
     true
   );
+  assert.deepEqual(mixedCodeChoiceCards.map((card) => card.id), []);
+  assert.match(printfReviewCard?.question || "", /`printf\("Aprovado"\);`/);
+  assert.match(printfReviewCard?.after || "", /`Aprovado`/);
 });
 
 test("a reconciliação incorpora o módulo novo de OACO ao curso principal e remove o curso legado separado", () => {

@@ -1,4 +1,5 @@
 import { getChoiceOptionComparableValue, normalizeChoiceOption, parseChoiceOptionString } from "../../core/choiceOptions.js";
+import { buildTextGapToken, parseTextGapTokens } from "../../core/textGaps.js";
 
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -171,27 +172,38 @@ function cardHasFactualDensity(card = {}) {
 }
 
 function normalizeGapText(value = "") {
-  return String(value || "").replace(/\[\[([\s\S]*?)\]\]/gu, (match, inner) => {
-    const source = text(inner);
-    if (!source) {
-      return match;
+  const source = String(value || "");
+  const tokens = parseTextGapTokens(source);
+  if (!tokens.length) {
+    return source;
+  }
+  let normalized = "";
+  let cursor = 0;
+  tokens.forEach((token) => {
+    normalized += source.slice(cursor, token.start);
+    const rawTokenSource = text(token.source);
+    if (!rawTokenSource) {
+      normalized += token.raw;
+      cursor = token.end;
+      return;
     }
-    const [rawAnswer, rawOptions = ""] = source.includes("::")
-      ? source.split("::")
-      : [source.split("|")[0] || "", source];
-    const rawOptionList = source.includes("::")
-      ? [rawAnswer, ...rawOptions.split("|")]
-      : source.split("|");
+    const rawOptionList = token.hasOptions ? token.options : rawTokenSource.split("|");
     const options = rawOptionList
       .map((item) => summarizeGapOption(item))
       .filter(Boolean)
       .filter((item, index, array) => array.findIndex((entry) => entry.toLowerCase() === item.toLowerCase()) === index);
     if (options.length < 2) {
-      return match;
+      normalized += token.raw;
+      cursor = token.end;
+      return;
     }
-    const answer = summarizeGapOption(rawAnswer) || options[0];
-    return `[[${answer}::${options.join("|")}]]`;
+    const answerSource = token.hasOptions ? token.answer : rawTokenSource.split("|")[0] || "";
+    const answer = summarizeGapOption(answerSource) || options[0];
+    normalized += buildTextGapToken(answer, options);
+    cursor = token.end;
   });
+  normalized += source.slice(cursor);
+  return normalized;
 }
 
 function summarizeGapOption(value = "") {
@@ -239,7 +251,7 @@ function buildGapTextFromChoiceCard(card = {}) {
   if (!wrongSummaries.length) {
     return text(card?.text);
   }
-  return `Complete com a ideia correta: [[${correctSummary}::${[correctSummary, ...wrongSummaries].join("|")}]].`;
+  return `Complete com a ideia correta: ${buildTextGapToken(correctSummary, [correctSummary, ...wrongSummaries])}.`;
 }
 
 function buildGapCodeFromChoiceCard(card = {}) {
@@ -260,7 +272,7 @@ function buildGapCodeFromChoiceCard(card = {}) {
   if (!correctValue || !wrongValues.length) {
     return source;
   }
-  const gapToken = `[[${correctValue}::${[correctValue, ...wrongValues].join("|")}]]`;
+  const gapToken = buildTextGapToken(correctValue, [correctValue, ...wrongValues]);
   return source.replace(/_{3,}/u, gapToken);
 }
 
