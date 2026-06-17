@@ -25,6 +25,14 @@ function escapeHtml(value) {
     .replace(/'/g, "&#39;");
 }
 
+function clampPercent(value) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) {
+    return 0;
+  }
+  return Math.max(0, Math.min(100, numeric));
+}
+
 function getStructureHandleTitle(level) {
   if (level === "course") return "Arrastar curso";
   if (level === "module") return "Arrastar módulo";
@@ -1131,7 +1139,7 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
   const lessonStudyCount = visibleCards.length;
   const prevDisabled = safeIndex <= 0;
   const nextDisabled = !hasCards || (microsequenceMode !== "play" && safeIndex >= visibleCards.length - 1);
-  const cardProgressPercent = lessonStudyCount ? ((safeIndex + 1) / lessonStudyCount) * 100 : 0;
+  const cardProgressPercent = clampPercent(lessonStudyCount ? ((safeIndex + 1) / lessonStudyCount) * 100 : 0);
   const bodyText = readCardText(activeCard);
   const lightDependencyTags = renderCompactRuntimeRefs(visualizedRefIds, editorSupport.refs || [])
     || renderExplicitTags(visualizedRefTitles, "didactic-tag-row");
