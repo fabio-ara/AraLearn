@@ -57,6 +57,7 @@ import {
   getVersionDisplayId
 } from "./versionLineage.js";
 import { getRuntimePopupButtonEntry } from "../render/renderCardRuntime.js";
+import { extractTextGapAnswers, parseTextGapRenderableParts } from "../core/textGaps.js";
 import { resolveCardRuntime } from "../core/cardRuntime.js";
 import {
   cloneDirectoryTreeNodes,
@@ -6123,73 +6124,8 @@ export function createLessonEditorApp({ root, storage, editor }) {
       .filter((entry) => predicate(entry.block));
   }
 
-  function parseTextGapAnswers(text) {
-    const source = String(text || "");
-    const answers = [];
-    let index = 0;
-
-    while (index < source.length) {
-      const start = source.indexOf("[[", index);
-      if (start < 0) {
-        break;
-      }
-
-      const end = source.indexOf("]]", start + 2);
-      if (end < 0) {
-        break;
-      }
-
-      const raw = source.slice(start + 2, end);
-      const delimiterIndex = raw.indexOf("::");
-      answers.push(delimiterIndex >= 0 ? raw.slice(0, delimiterIndex) : raw);
-      index = end + 2;
-    }
-
-    return answers;
-  }
-
   function parseTextGapParts(text) {
-    const source = String(text || "");
-    const parts = [];
-    let index = 0;
-    let blankIndex = 0;
-
-    while (index < source.length) {
-      const start = source.indexOf("[[", index);
-      if (start < 0) {
-        break;
-      }
-
-      const end = source.indexOf("]]", start + 2);
-      if (end < 0) {
-        break;
-      }
-
-      const raw = source.slice(start + 2, end);
-      const delimiterIndex = raw.indexOf("::");
-      const expected = delimiterIndex >= 0 ? raw.slice(0, delimiterIndex) : raw;
-      const options =
-        delimiterIndex >= 0
-          ? Array.from(
-              new Set(
-                [
-                  String(expected || "").trim(),
-                  ...raw
-                    .slice(delimiterIndex + 2)
-                    .split("|")
-                    .map((item) => String(item || "").trim())
-                    .filter(Boolean)
-                ].filter(Boolean)
-              )
-            )
-          : [];
-
-      parts.push({ index: blankIndex, expected, options });
-      blankIndex += 1;
-      index = end + 2;
-    }
-
-    return parts;
+    return parseTextGapRenderableParts(text).filter((part) => part.kind === "blank");
   }
 
   function getTextGapAnswersForBlock(block) {
@@ -6198,29 +6134,32 @@ export function createLessonEditorApp({ root, storage, editor }) {
     }
 
     if (block.kind === "complete") {
-      return parseTextGapAnswers(block.text);
+      return extractTextGapAnswers(block.text);
     }
     if (block.kind === "paragraph" || block.kind === "editor") {
-      return parseTextGapAnswers(block.value);
+      return extractTextGapAnswers(block.value);
+    }
+    if (block.kind === "code") {
+      return extractTextGapAnswers(block.code);
     }
     if (block.kind === "table") {
       const answers = [];
       (Array.isArray(block.rows) ? block.rows : []).forEach((row) => {
         (Array.isArray(row) ? row : []).forEach((cell) => {
-          answers.push(...parseTextGapAnswers(cell?.value || ""));
+          answers.push(...extractTextGapAnswers(cell?.value || ""));
         });
       });
       return answers;
     }
     if (block.kind === "plane") {
-      return parseTextGapAnswers(block.resultText);
+      return extractTextGapAnswers(block.resultText);
     }
     if (block.kind === "matrix") {
       const answers = [];
       getMatrixTextGapItems(block).forEach((matrixItem) => {
         (Array.isArray(matrixItem?.values) ? matrixItem.values : []).forEach((row) => {
           (Array.isArray(row) ? row : []).forEach((cell) => {
-            answers.push(...parseTextGapAnswers(cell?.value || ""));
+            answers.push(...extractTextGapAnswers(cell?.value || ""));
           });
         });
       });
@@ -6259,6 +6198,11 @@ export function createLessonEditorApp({ root, storage, editor }) {
     if (block.kind === "paragraph" || block.kind === "editor") {
       const parts = [];
       appendTextGapBlankParts(parts, block.value);
+      return parts;
+    }
+    if (block.kind === "code") {
+      const parts = [];
+      appendTextGapBlankParts(parts, block.code);
       return parts;
     }
     if (block.kind === "table") {

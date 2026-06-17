@@ -1,3 +1,6 @@
+import { getChoiceOptionComparableValue } from "../../core/choiceOptions.js";
+import { parseTextGapTokens } from "../../core/textGaps.js";
+
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
 }
@@ -23,7 +26,11 @@ function collectStrings(value, path = "card") {
 }
 
 function hasGapSyntax(value) {
-  return /\[\[[\s\S]*?\]\]/u.test(text(value));
+  return parseTextGapTokens(value).length > 0;
+}
+
+function collectChoiceOptionTexts(options = []) {
+  return (Array.isArray(options) ? options : []).map((option, index) => text(getChoiceOptionComparableValue(option, index))).filter(Boolean);
 }
 
 function collectCompositeBlockStrings(card = {}) {
@@ -35,7 +42,7 @@ function collectCompositeBlockStrings(card = {}) {
     if (kind === "choice") {
       return [
         text(block?.question),
-        ...(Array.isArray(block?.options) ? block.options.map((option) => text(option?.text)) : [])
+        ...collectChoiceOptionTexts(block?.options)
       ];
     }
     return [
@@ -49,7 +56,7 @@ function cardMainText(card = {}) {
   if (text(card?.resource) === "composite") {
     return collectCompositeBlockStrings(card).join(" ");
   }
-  const optionText = Array.isArray(card.options) ? card.options.map((option) => text(option?.text)).filter(Boolean).join(" ") : "";
+  const optionText = collectChoiceOptionTexts(card.options).join(" ");
   return [card.text, card.question, card.prompt, card.code, optionText].map(text).filter(Boolean).join(" ");
 }
 
@@ -212,18 +219,15 @@ function overlapRatio(left = [], right = []) {
 }
 
 function extractGapMetadata(card = {}) {
-  const raw = text(card?.text);
-  const match = raw.match(/\[\[([\s\S]*?)\]\]/u);
-  if (!match) {
+  const raw = text(card?.resource) === "code" ? String(card?.code || "") : text(card?.text);
+  const parts = parseTextGapTokens(raw);
+  if (!parts.length) {
     return null;
   }
-  const parts = match[1].split("|").map((item) => text(item)).filter(Boolean);
-  const [firstPart = "", ...otherOptions] = parts;
-  const [answer = "", canonical = ""] = firstPart.split("::").map((item) => text(item));
-  const resolvedAnswer = answer || canonical;
-  const options = [canonical || resolvedAnswer, ...otherOptions].map((item) => normalizeToken(item)).filter(Boolean);
+  const firstToken = parts[0];
+  const options = firstToken.options.map((item) => normalizeToken(item)).filter(Boolean);
   return {
-    answer: normalizeToken(resolvedAnswer),
+    answer: normalizeToken(firstToken.answer),
     options,
     stemTokens: uniqueNormalizedTokensFromText(raw)
   };
@@ -241,7 +245,7 @@ function cardCaseSignature(card = {}) {
     return JSON.stringify({
       resource,
       question: normalizeToken(card?.question),
-      options: normalizedList((card.options || []).map((option) => option?.text))
+      options: normalizedList(collectChoiceOptionTexts(card.options))
     });
   }
   if (resource === "composite") {
@@ -256,7 +260,7 @@ function cardCaseSignature(card = {}) {
           return {
             kind,
             question: normalizeToken(block?.question),
-            options: normalizedList((block.options || []).map((option) => option?.text))
+            options: normalizedList(collectChoiceOptionTexts(block.options))
           };
         }
         if (kind === "graph") {
@@ -281,7 +285,7 @@ function cardCaseSignature(card = {}) {
       prompt: normalizeToken(card?.prompt),
       code: normalizeToken(card?.code),
       question: normalizeToken(card?.question),
-      options: normalizedList((card.options || []).map((option) => option?.text))
+      options: normalizedList(collectChoiceOptionTexts(card.options))
     });
   }
   if (resource === "table") {
@@ -290,7 +294,7 @@ function cardCaseSignature(card = {}) {
       columns: normalizedList(card?.columns),
       rows: (Array.isArray(card?.rows) ? card.rows : []).map((row) => normalizedList(row)),
       question: normalizeToken(card?.question),
-      options: normalizedList((card.options || []).map((option) => option?.text))
+      options: normalizedList(collectChoiceOptionTexts(card.options))
     });
   }
   if (resource === "graph") {
@@ -300,7 +304,7 @@ function cardCaseSignature(card = {}) {
       vertices: (Array.isArray(card?.vertices) ? card.vertices : []).map((item) => normalizeToken(item?.label || item?.id)),
       edges: (Array.isArray(card?.edges) ? card.edges : []).map((item) => `${normalizeToken(item?.from)}>${normalizeToken(item?.to)}:${normalizeToken(item?.label)}`),
       question: normalizeToken(card?.question),
-      options: normalizedList((card.options || []).map((option) => option?.text))
+      options: normalizedList(collectChoiceOptionTexts(card.options))
     });
   }
   if (resource === "relation_map") {
@@ -312,7 +316,7 @@ function cardCaseSignature(card = {}) {
       relations: (Array.isArray(card?.relations) ? card.relations : []).map((item) => `${normalizeToken(item?.from)}>${normalizeToken(item?.to)}`),
       pairList: normalizedList(card?.pairList),
       question: normalizeToken(card?.question),
-      options: normalizedList((card.options || []).map((option) => option?.text))
+      options: normalizedList(collectChoiceOptionTexts(card.options))
     });
   }
   if (resource === "matrix") {
@@ -320,7 +324,7 @@ function cardCaseSignature(card = {}) {
       resource,
       prompt: normalizeToken(card?.prompt),
       question: normalizeToken(card?.question),
-      options: normalizedList((card.options || []).map((option) => option?.text)),
+      options: normalizedList(collectChoiceOptionTexts(card.options)),
       values: Array.isArray(card?.values) ? card.values : [],
       sequence: Array.isArray(card?.sequence) ? card.sequence : [],
       highlight: card?.highlight || null,
@@ -332,7 +336,7 @@ function cardCaseSignature(card = {}) {
       resource,
       prompt: normalizeToken(card?.prompt),
       question: normalizeToken(card?.question),
-      options: normalizedList((card.options || []).map((option) => option?.text)),
+      options: normalizedList(collectChoiceOptionTexts(card.options)),
       x: Array.isArray(card?.x) ? card.x : [],
       y: Array.isArray(card?.y) ? card.y : [],
       vector: Array.isArray(card?.vector) ? card.vector : [],
@@ -348,7 +352,7 @@ function cardCaseSignature(card = {}) {
       resource,
       prompt: normalizeToken(card?.prompt),
       question: normalizeToken(card?.question),
-      options: normalizedList((card.options || []).map((option) => option?.text)),
+      options: normalizedList(collectChoiceOptionTexts(card.options)),
       values: JSON.stringify(resource === "flow" ? (card?.structure || "") : (card?.nodes || ""))
     });
   }

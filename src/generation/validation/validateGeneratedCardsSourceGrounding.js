@@ -1,3 +1,5 @@
+import { getChoiceOptionComparableValue } from "../../core/choiceOptions.js";
+
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
 }
@@ -9,7 +11,10 @@ function collectCompositeBlockStrings(card = {}) {
       return [text(block?.value)];
     }
     if (kind === "choice") {
-      return [text(block?.question), ...(Array.isArray(block?.options) ? block.options.map((option) => text(option?.text)) : [])];
+      return [
+        text(block?.question),
+        ...(Array.isArray(block?.options) ? block.options.map((option, index) => text(getChoiceOptionComparableValue(option, index))) : [])
+      ];
     }
     return [text(block?.prompt), text(block?.code)];
   }).filter(Boolean);

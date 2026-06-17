@@ -1,4 +1,5 @@
 import { parseGraphEdgesSlot, parseGraphVerticesSlot } from "./graphCompiler.js";
+import { compileChoiceOptionsFromSlots } from "./choiceOptionCompiler.js";
 
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -44,11 +45,7 @@ export function compileCompositeCard({ slots = {}, position = 0 }) {
       {
         kind: "choice",
         question: text(slots[9]),
-        options: [
-          { id: "a", text: text(slots[10]) },
-          { id: "b", text: text(slots[11]) },
-          { id: "c", text: text(slots[12]) }
-        ],
+        options: compileChoiceOptionsFromSlots(slots, 10),
         answer: text(slots[13]).toLowerCase()
       }
     ],

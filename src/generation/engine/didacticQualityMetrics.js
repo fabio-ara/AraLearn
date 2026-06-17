@@ -3,6 +3,7 @@ import { getResourceCatalogItemById } from "./resourceCatalog.js";
 import { evaluateChoiceOveruse, evaluateTheoryDensity, validatePracticeDistribution } from "./progressionGuard.js";
 import { buildScopePacket, validateCardScope, validateCovers } from "./scopeGuard.js";
 import { buildDependencyPacket, validateCardPrerequisites } from "./dependencyGuard.js";
+import { getChoiceOptionComparableValue } from "../../core/choiceOptions.js";
 
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -17,7 +18,9 @@ function clampScore(value) {
 }
 
 function collectOptionTexts(card = {}) {
-  return Array.isArray(card?.options) ? card.options.map((option) => text(option?.text)).filter(Boolean) : [];
+  return Array.isArray(card?.options)
+    ? card.options.map((option, index) => text(getChoiceOptionComparableValue(option, index))).filter(Boolean)
+    : [];
 }
 
 function evaluateTheoryDensityMetric(cards = []) {
@@ -122,10 +125,11 @@ function evaluateDistractorQualityMetric(cards = []) {
     .forEach((card) => {
       const answer = text(card?.answer).toLowerCase();
       const options = Array.isArray(card?.options) ? card.options : [];
-      const correctText = text(options.find((option) => text(option?.id).toLowerCase() === answer)?.text);
-      options.forEach((option) => {
+      const correctOptionIndex = options.findIndex((option) => text(option?.id).toLowerCase() === answer);
+      const correctText = correctOptionIndex >= 0 ? text(getChoiceOptionComparableValue(options[correctOptionIndex], correctOptionIndex)) : "";
+      options.forEach((option, index) => {
         const optionId = text(option?.id).toLowerCase();
-        const optionText = text(option?.text);
+        const optionText = text(getChoiceOptionComparableValue(option, index));
         if (!optionText) {
           warnings.push(`card ${card.position}: distrator vazio`);
           return;

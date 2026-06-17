@@ -1,3 +1,5 @@
+import { getChoiceOptionComparableValue, normalizeChoiceOption, parseChoiceOptionString } from "../../core/choiceOptions.js";
+
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
 }
@@ -224,13 +226,13 @@ function buildGapTextFromChoiceCard(card = {}) {
   const options = Array.isArray(card?.options) ? card.options : [];
   const answerId = text(card?.answer);
   const correctOption = options.find((option) => text(option?.id) === answerId) || null;
-  const correctSummary = summarizeGapOption(correctOption?.text);
+  const correctSummary = summarizeGapOption(getChoiceOptionComparableValue(correctOption));
   if (!correctSummary) {
     return text(card?.text);
   }
   const wrongSummaries = options
     .filter((option) => text(option?.id) !== answerId)
-    .map((option) => summarizeGapOption(option?.text))
+    .map((option) => summarizeGapOption(getChoiceOptionComparableValue(option)))
     .filter(Boolean)
     .filter((value, index, array) => array.findIndex((entry) => entry.toLowerCase() === value.toLowerCase()) === index)
     .slice(0, 3);
@@ -240,11 +242,34 @@ function buildGapTextFromChoiceCard(card = {}) {
   return `Complete com a ideia correta: [[${correctSummary}::${[correctSummary, ...wrongSummaries].join("|")}]].`;
 }
 
+function buildGapCodeFromChoiceCard(card = {}) {
+  const source = String(card?.code || "").replace(/\r\n/g, "\n");
+  if (!source || !source.includes("___")) {
+    return source;
+  }
+  const options = Array.isArray(card?.options) ? card.options : [];
+  const answerId = text(card?.answer);
+  const correctOption = options.find((option) => text(option?.id) === answerId) || null;
+  const correctValue = String(getChoiceOptionComparableValue(correctOption) || "").replace(/\r\n/g, "\n").trim();
+  const wrongValues = options
+    .filter((option) => text(option?.id) !== answerId)
+    .map((option) => String(getChoiceOptionComparableValue(option) || "").replace(/\r\n/g, "\n").trim())
+    .filter(Boolean)
+    .filter((value, index, array) => array.findIndex((entry) => entry.toLowerCase() === value.toLowerCase()) === index)
+    .slice(0, 3);
+  if (!correctValue || !wrongValues.length) {
+    return source;
+  }
+  const gapToken = `[[${correctValue}::${[correctValue, ...wrongValues].join("|")}]]`;
+  return source.replace(/_{3,}/u, gapToken);
+}
+
 function allowedFields(resource = "") {
-  const common = ["id", "position", "resource", "kind", "exercise", "title", "after", "sources", "topics"];
+  const common = ["id", "position", "resource", "kind", "exercise", "title", "after", "afterBlocks", "sources", "topics"];
   const byResource = {
     paragraph: [...common, "text"],
     choice: [...common, "question", "options", "answer"],
+    composite: [...common, "blocks"],
     code: [...common, "prompt", "language", "code", "question", "options", "answer"],
     table: [...common, "columns", "rows", "question", "options", "answer"],
     flow: [...common, "prompt", "structure", "question", "options", "answer"],
@@ -260,20 +285,12 @@ function allowedFields(resource = "") {
 function normalizeChoice(card) {
   const options = (Array.isArray(card.options) ? card.options : []).map((option, index) => {
     if (typeof option === "string") {
-      return {
-        id: String.fromCharCode(97 + index),
-        text: text(option) || `Opção ${index + 1}`
-      };
+      return parseChoiceOptionString(option, String.fromCharCode(97 + index));
     }
-    return {
-      id: text(option?.id) || text(option?.value) || String.fromCharCode(97 + index),
-      text:
-        text(option?.text)
-        || text(option?.label)
-        || text(option?.content)
-        || text(option?.value)
-        || `Opção ${index + 1}`
-    };
+    return normalizeChoiceOption({
+      ...option,
+      id: text(option?.id) || text(option?.value) || String.fromCharCode(97 + index)
+    }, index);
   });
   const rawAnswer = card?.answer;
   let answer = text(rawAnswer);
@@ -290,7 +307,7 @@ function normalizeChoice(card) {
   }
   if (answer && !options.some((option) => option.id === answer)) {
     const normalizedAnswer = answer.toLowerCase();
-    const matchedOption = options.find((option) => option.text.toLowerCase() === normalizedAnswer);
+    const matchedOption = options.find((option, index) => getChoiceOptionComparableValue(option, index).toLowerCase() === normalizedAnswer);
     answer = matchedOption?.id || answer;
   }
   answer = answer || options[0]?.id || "";
@@ -299,7 +316,7 @@ function normalizeChoice(card) {
   if (
     question
     && correctOption
-    && questionRevealsChoiceAnswer(question, correctOption.text)
+    && questionRevealsChoiceAnswer(question, getChoiceOptionComparableValue(correctOption))
   ) {
     question = text(card?.resource) === "choice"
       ? "Qual opção está correta?"
@@ -579,6 +596,21 @@ function normalizeParagraphGap(card) {
   };
 }
 
+function normalizeCodeGap(card) {
+  if (text(card?.resource) !== "code" || text(card?.kind) !== "exercise" || text(card?.exercise) !== "gap") {
+    return card;
+  }
+  const rawCode = String(card?.code || "").replace(/\r\n/g, "\n");
+  const normalized = {
+    ...card,
+    code: rawCode.includes("[[") ? rawCode : buildGapCodeFromChoiceCard(card)
+  };
+  delete normalized.question;
+  delete normalized.options;
+  delete normalized.answer;
+  return normalized;
+}
+
 export function repairGeneratedCardsDeterministic(rawGeneratedResponse, generationContract = {}) {
   const parsed = normalizeResponseShape(parseJsonIfNeeded(rawGeneratedResponse));
   const cards = Array.isArray(parsed?.cards) ? parsed.cards : [];
@@ -603,6 +635,7 @@ export function repairGeneratedCardsDeterministic(rawGeneratedResponse, generati
           exercise: text(next.exercise) || text(planned.exercise) || "none",
           title: text(next.title) || `Card ${position}`,
           after: text(next.after),
+          afterBlocks: Array.isArray(next.afterBlocks) ? next.afterBlocks : undefined,
           sources: unique(next.sources)
         };
         if (resource === "paragraph" && text(normalized.exercise) === "gap") {
@@ -619,6 +652,14 @@ export function repairGeneratedCardsDeterministic(rawGeneratedResponse, generati
             ...normalized,
             code: normalizeCodeIndentation(normalized.code, normalized.language)
           };
+          if (text(normalized.exercise) === "gap") {
+            normalized = normalizeCodeGap({
+              ...normalized,
+              options: card?.options,
+              answer: card?.answer,
+              question: card?.question
+            });
+          }
         }
         if (resource === "graph") {
           normalized = normalizeGraph(normalized);

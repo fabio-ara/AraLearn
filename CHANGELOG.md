@@ -22,6 +22,16 @@ Para evitar ambiguidade, a leitura recomendada é:
 
 ## Série pública atual (`0.1.x`)
 
+## [0.1.13] - 2026-06-15
+
+### Changed
+
+- o viewport de `flow` no modo de estudo deixou de anunciar pan vertical ao navegador em Android; o gesto de um dedo sobre o fluxograma volta a priorizar a rolagem principal da leitura, mantendo apenas pan horizontal interno e pinch para zoom
+- o curso embarcado oficial `Lógica de Programação` passou por revisão textual completa no seed, com correção card a card de marcação visível de sintaxe em C
+- exemplos e alternativas com código preservam novamente quebra de linha e indentação no runtime de estudo, inclusive em opções de `choice`
+- o renderer passou a destacar de forma mais robusta citações curtas de sintaxe como `main`, formatadores (`%d`, `%f`, `%c`, `%s`) e referências com `&`, reduzindo ambiguidade visual no estudo
+- a suíte ganhou regressões específicas para impedir que o seed oficial reintroduza sintaxe de C sem destaque ou crases quebradas
+
 ## [0.1.12] - 2026-06-12
 
 ### Changed

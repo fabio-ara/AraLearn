@@ -1,3 +1,5 @@
+import { compileChoiceOptionsFromSlots } from "./choiceOptionCompiler.js";
+
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
 }
@@ -73,11 +75,7 @@ export function compileMatrixCard({ slots = {}, templateId = "", position = 0 })
     kind: "exercise",
     exercise: "choice",
     question: text(slots[8]),
-    options: [
-      { id: "a", text: text(slots[9]) },
-      { id: "b", text: text(slots[10]) },
-      { id: "c", text: text(slots[11]) }
-    ],
+    options: compileChoiceOptionsFromSlots(slots, 9),
     answer: "",
     after: text(slots[12])
   };

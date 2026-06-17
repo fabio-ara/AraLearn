@@ -12,6 +12,7 @@ import { buildScopePacket, buildScopeErrors, validateCardScope, validateCovers }
 import { buildDependencyPacket, validateCardPrerequisites } from "../engine/dependencyGuard.js";
 import { evaluateChoiceOveruse, suggestTheorySplit, validateExerciseClosedness, validatePracticeDistribution } from "../engine/progressionGuard.js";
 import { validateCompiledCardSemantics, findStructuralLeak } from "../engine/templateSemanticValidation.js";
+import { getChoiceOptionComparableValue } from "../../core/choiceOptions.js";
 
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -64,7 +65,7 @@ function buildCardBlueprint(planItems = [], validatedPlan = {}, planningContract
   return (Array.isArray(planItems) ? planItems : []).map((item) => {
     const resource = decodeCode(item.resourceCode)?.id || "paragraph";
     const templateId = text(item.templateId);
-    const shape = templateId === "paragraph_gap"
+    const shape = ["paragraph_gap", "code_gap"].includes(templateId)
       ? { kind: "exercise", exercise: "gap" }
       : ["paragraph_theory", "matrix_theory", "table_theory", "code_theory"].includes(templateId)
         ? { kind: "theory", exercise: "none" }
@@ -173,7 +174,7 @@ function validateStructuredOutcome({
       semanticErrors.push(`card ${card.position}: ${error instanceof Error ? error.message : String(error)}`);
     }
     const leaks = [card.title, card.prompt, card.text, card.question, card.after]
-      .concat(Array.isArray(card.options) ? card.options.map((option) => option?.text) : [])
+      .concat(Array.isArray(card.options) ? card.options.map((option, index) => getChoiceOptionComparableValue(option, index)) : [])
       .map((value) => ({ value: text(value), leak: findStructuralLeak(value) }))
       .filter((entry) => entry.value && entry.leak)
       .map((entry) => `card ${card.position}: ${entry.leak.reason}`);

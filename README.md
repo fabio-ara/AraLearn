@@ -78,8 +78,9 @@ O app inclui cursos oficiais já materializados, que funcionam como ponto de par
 
 - `Matemática para Informática`, com um módulo de `Teoria dos Grafos`, `11` lições, `72` microssequências e `505` cards;
 - `Práticas e Ferramentas de Desenvolvimento de Software`, voltado à família Visual Basic, com foco em VBA, VB 6.0, VB.NET, ambientes, interface e organização de código;
-- `Organização e Arquitetura de Computadores`, com os módulos `MobileRAG` e `Filosofia da Computação Quântica`;
+- `Organização e Arquitetura de Computadores`, com os módulos `MobileRAG`, `Filosofia da Computação Quântica` e `Bases numéricas, arquitetura da CPU e paralelismo`;
 - `Framework Corporativo de IA Generativa`, com `8` módulos, `25` lições, `52` microssequências e `180` cards sobre implantação, governança, dados, risco e operação de IA em contexto institucional.
+- `Lógica de Programação`, com `8` módulos, `29` lições, `170` microssequências e `924` cards sobre programação em C, controle de fluxo, vetores, matrizes, strings, ordenação, `struct`, `typedef`, funções e ponteiros introdutórios.
 
 Esses cursos entram no projeto local como material que pode ser estudado, corrigido, ampliado e reorganizado pelo usuário.
 

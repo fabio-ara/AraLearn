@@ -160,6 +160,17 @@ function buildPromptBase({ generationContract, cardSpec, template }) {
         "Os distratores devem inverter ordem, pular passo ou apontar para passo incorreto."
       ]
     : [];
+  const codeGapInstructions = cardSpec.templateId === "code_gap"
+    ? [
+        "No slot code, escreva o código completo com uma ou mais lacunas usando exatamente [[resposta::resposta|erro1|erro2]].",
+        "Não use ___ e não mova a lacuna para question, options ou answer."
+      ]
+    : [];
+  const choiceOptionInstructions = template.exercise === "choice"
+    ? [
+        "Se uma alternativa precisar ser código, escreva o slot inteiro como bloco cercado por crases triplas com linguagem, por exemplo ```c ... ```."
+      ]
+    : [];
   return [
     buildStablePromptPrefix(),
     "Fase: bottom_up_card_build",
@@ -173,6 +184,8 @@ function buildPromptBase({ generationContract, cardSpec, template }) {
     ...matrixInstructions,
     ...relationInstructions,
     ...flowInstructions,
+    ...codeGapInstructions,
+    ...choiceOptionInstructions,
     "Responda somente com:",
     `CARD ${cardSpec.position}`,
     ...slotSchemaLines
@@ -264,6 +277,9 @@ function buildSemanticRetryInvalids(template = {}, templateId = "", message = ""
   }
   if (template.resource === "graph" && source.includes("feedback contraditório")) {
     return [{ index: 10, raw: "", reason: text(message) }];
+  }
+  if (templateId === "code_gap" && (source.includes("code gap") || source.includes("lacuna") || source.includes("question, options ou answer"))) {
+    return [{ index: 4, raw: "", reason: text(message) }];
   }
   return [];
 }

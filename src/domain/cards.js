@@ -1,4 +1,6 @@
 import { buildScopedKey } from "../core/ids.js";
+import { normalizeChoiceOption, getChoiceOptionComparableValue } from "../core/choiceOptions.js";
+import { hasTextGapSyntax, parseTextGapTokens } from "../core/textGaps.js";
 import { finalizeValidation, isPlainObject, pushError } from "../core/validation.js";
 import { normalizeFlowchartStructure, validateFlowchartStructureContract } from "../flowchart/flowchartStructure.js";
 import {
@@ -11,9 +13,14 @@ import { isSupportedResourceType } from "./resources.js";
 const CARD_KINDS = new Set(["theory", "exercise"]);
 const EXERCISE_KINDS = new Set(CARD_EXERCISE_VALUES);
 const MATRIX_CONNECTORS = new Set(["=", "+", "-", "×", "*", "·", "→", "->", "⇒"]);
+const MATRIX_HIGHLIGHT_PATTERNS = new Set(["mainDiagonal"]);
 
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
+}
+
+function codeText(value) {
+  return typeof value === "string" ? value.replace(/\r\n/g, "\n") : "";
 }
 
 function codeLines(value = "") {
@@ -129,37 +136,35 @@ function validateMatrixValues(values, path, errors) {
   return true;
 }
 
-function hasGapSyntax(value) {
-  return typeof value === "string" && /\[\[[\s\S]*?\]\]/u.test(value);
-}
-
-function parseGapParts(value) {
-  return Array.from(String(value || "").matchAll(/\[\[([\s\S]*?)\]\]/gu)).map((match) => {
-    const source = text(match[1]);
-    const [rawAnswer, rawOptions = ""] = source.split("::");
-    const answer = text(rawAnswer);
-    const options = rawOptions
-      .split("|")
-      .map((item) => text(item))
-      .filter(Boolean);
-    return { answer, options };
-  });
-}
-
-function gapPartsAreValid(value) {
-  const parts = parseGapParts(value);
+function paragraphGapPartsAreValid(value) {
+  const parts = parseTextGapTokens(value);
   if (!parts.length) {
     return false;
   }
-  return parts.every(({ answer, options }) => {
+  return parts.every(({ answer, options, valid }) => {
+    if (!valid) {
+      return false;
+    }
     if (!answer || answer.length > 40 || answer.split(/\s+/).filter(Boolean).length > 5) {
       return false;
     }
-    if (!options.includes(answer)) {
+    return options.filter((item) => item !== answer).length >= 1;
+  });
+}
+
+function codeGapPartsAreValid(value) {
+  const parts = parseTextGapTokens(value);
+  if (!parts.length) {
+    return false;
+  }
+  return parts.every(({ answer, options, valid }) => {
+    if (!valid || !answer || answer.length > 120 || answer.includes("\n")) {
       return false;
     }
-    const wrong = options.filter((item) => item !== answer);
-    return wrong.length >= 1;
+    if (options.some((item) => String(item || "").includes("\n"))) {
+      return false;
+    }
+    return options.filter((item) => item !== answer).length >= 1;
   });
 }
 
@@ -226,7 +231,7 @@ function validateParagraph(card, path, errors) {
     if (text(card?.exercise) !== "none") {
       pushError(errors, `${path}.exercise`, 'paragraph teórico deve usar exercise "none".');
     }
-    if (hasGapSyntax(card?.text)) {
+    if (hasTextGapSyntax(card?.text)) {
       pushError(errors, `${path}.text`, "paragraph teórico não pode conter lacunas.");
     }
   }
@@ -234,10 +239,41 @@ function validateParagraph(card, path, errors) {
     if (text(card?.exercise) !== "gap") {
       pushError(errors, `${path}.exercise`, 'paragraph de exercício deve usar exercise "gap".');
     }
-    if (!gapPartsAreValid(card?.text)) {
+    if (!paragraphGapPartsAreValid(card?.text)) {
       pushError(errors, `${path}.text`, "paragraph de exercício precisa ter lacuna por opções válida.");
     }
   }
+}
+
+function validateChoiceOption(option, path, errors, index = 0) {
+  if (!isPlainObject(option)) {
+    pushError(errors, path, "Opção inválida.");
+    return null;
+  }
+
+  const normalized = normalizeChoiceOption(option, index);
+  if (!normalized.id) {
+    pushError(errors, `${path}.id`, "id é obrigatório em cada opção.");
+    return null;
+  }
+
+  if (normalized.kind === "code") {
+    if (!text(option?.language)) {
+      pushError(errors, `${path}.language`, "language é obrigatório em opção de código.");
+    }
+    if (!normalized.code.trim()) {
+      pushError(errors, `${path}.code`, "code é obrigatório em opção de código.");
+    }
+    if (codeNeedsIndentation(normalized.code, normalized.language)) {
+      pushError(errors, `${path}.code`, "code multilinha da opção precisa usar indentação consistente.");
+    }
+    return normalized;
+  }
+
+  if (!normalized.text) {
+    pushError(errors, `${path}.text`, "text é obrigatório em cada opção textual.");
+  }
+  return normalized;
 }
 
 function validateChoiceQuestion(card, path, errors) {
@@ -249,32 +285,28 @@ function validateChoiceQuestion(card, path, errors) {
     return;
   }
   const optionIds = new Set();
+  const normalizedOptions = [];
   card.options.forEach((option, index) => {
-    if (!isPlainObject(option)) {
-      pushError(errors, `${path}.options[${index}]`, "Opção inválida.");
+    const normalized = validateChoiceOption(option, `${path}.options[${index}]`, errors, index);
+    if (!normalized) {
       return;
     }
-    const id = text(option?.id);
-    if (!id) {
-      pushError(errors, `${path}.options[${index}].id`, "id é obrigatório em cada opção.");
-      return;
-    }
+    const id = text(normalized.id);
     if (optionIds.has(id)) {
       pushError(errors, `${path}.options[${index}].id`, `id duplicado: "${id}".`);
     }
     optionIds.add(id);
-    if (!text(option?.text)) {
-      pushError(errors, `${path}.options[${index}].text`, "text é obrigatório em cada opção.");
-    }
+    normalizedOptions.push(normalized);
   });
   const answer = text(card?.answer);
   if (!answer || !optionIds.has(answer)) {
     pushError(errors, `${path}.answer`, "answer deve apontar para um id existente.");
   }
-  const correctOption = Array.isArray(card.options)
-    ? card.options.find((option) => text(option?.id) === answer)
-    : null;
-  if (correctOption && text(card?.question).toLowerCase().includes(text(correctOption?.text).toLowerCase())) {
+  const correctOption = normalizedOptions.find((option) => text(option?.id) === answer) || null;
+  if (
+    correctOption
+    && text(card?.question).toLowerCase().includes(getChoiceOptionComparableValue(correctOption).toLowerCase())
+  ) {
     pushError(errors, `${path}.question`, "question não pode revelar literalmente a resposta.");
   }
 }
@@ -311,19 +343,48 @@ function validateChoice(card, path, errors) {
 }
 
 function validateCode(card, path, errors) {
+  const normalizedCode = codeText(card?.code);
   if (!text(card?.prompt)) {
     pushError(errors, `${path}.prompt`, "prompt é obrigatório em code.");
   }
   if (!text(card?.language)) {
     pushError(errors, `${path}.language`, "language é obrigatório em code.");
   }
-  if (!text(card?.code)) {
+  if (!normalizedCode.trim()) {
     pushError(errors, `${path}.code`, "code é obrigatório em code.");
   }
-  if (codeNeedsIndentation(card?.code, card?.language)) {
+  if (codeNeedsIndentation(normalizedCode, card?.language)) {
     pushError(errors, `${path}.code`, "code multilinha precisa usar indentação consistente.");
   }
-  validateContextualChoiceExercise(card, path, errors);
+  if (text(card?.kind) === "theory") {
+    if (!isTheoryCardShape(card)) {
+      pushError(errors, `${path}.exercise`, 'code teórico deve usar exercise "none".');
+    }
+    rejectChoiceFields(card, path, errors);
+    if (hasTextGapSyntax(normalizedCode)) {
+      pushError(errors, `${path}.code`, "code teórico não pode conter lacunas.");
+    }
+    return;
+  }
+  if (text(card?.kind) !== "exercise") {
+    pushError(errors, `${path}.kind`, 'code deve usar kind "theory" ou "exercise".');
+    return;
+  }
+  if (text(card?.exercise) === "gap") {
+    rejectChoiceFields(card, path, errors);
+    if (!codeGapPartsAreValid(normalizedCode)) {
+      pushError(errors, `${path}.code`, "code gap precisa ter lacuna por opções válida.");
+    }
+    return;
+  }
+  if (text(card?.exercise) === "choice") {
+    if (hasTextGapSyntax(normalizedCode)) {
+      pushError(errors, `${path}.code`, "code choice não pode conter lacunas interativas.");
+    }
+    validateChoiceQuestion(card, path, errors);
+    return;
+  }
+  pushError(errors, `${path}.exercise`, 'code de exercício deve usar exercise "gap" ou "choice".');
 }
 
 function validateTable(card, path, errors) {
@@ -558,10 +619,7 @@ function normalizeCompositeBlock(block = {}) {
     return {
       kind,
       question: text(block?.question),
-      options: (Array.isArray(block?.options) ? block.options : []).map((option, index) => ({
-        id: text(option?.id) || `option-${index + 1}`,
-        text: text(option?.text)
-      })),
+      options: (Array.isArray(block?.options) ? block.options : []).map((option, index) => normalizeChoiceOption(option, index)),
       answer: text(block?.answer)
     };
   }
@@ -570,7 +628,7 @@ function normalizeCompositeBlock(block = {}) {
       kind,
       prompt: text(block?.prompt),
       language: text(block?.language),
-      code: text(block?.code)
+      code: codeText(block?.code)
     };
   }
   if (kind === "table") {
@@ -789,6 +847,112 @@ function validateComposite(card, path, errors) {
   return normalizedBlocks;
 }
 
+function validateAfterBlocks(card, path, errors) {
+  if (card?.afterBlocks === undefined) {
+    return [];
+  }
+  if (!Array.isArray(card.afterBlocks)) {
+    pushError(errors, `${path}.afterBlocks`, "afterBlocks deve ser array.");
+    return [];
+  }
+  if (!card.afterBlocks.length) {
+    pushError(errors, `${path}.afterBlocks`, "afterBlocks não pode ser vazio quando informado.");
+    return [];
+  }
+  return card.afterBlocks
+    .map((block, index) => {
+      if (text(block?.kind) === "choice") {
+        pushError(errors, `${path}.afterBlocks[${index}].kind`, "afterBlocks não aceita bloco choice.");
+        return null;
+      }
+      return validateCompositeBlock(block, `${path}.afterBlocks[${index}]`, errors);
+    })
+    .filter(Boolean);
+}
+
+function validateMatrixHighlightItemCoordinates(entry, path, errors, rowCount, columnCount) {
+  if (!Array.isArray(entry) || entry.length !== 2) {
+    pushError(errors, path, "cada célula destacada precisa usar [linha, coluna].");
+    return;
+  }
+  const rowIndex = Number(entry[0]);
+  const columnIndex = Number(entry[1]);
+  if (!Number.isInteger(rowIndex) || !Number.isInteger(columnIndex)) {
+    pushError(errors, path, "cada célula destacada precisa usar índices inteiros.");
+    return;
+  }
+  if (rowIndex < 0 || rowIndex >= rowCount || columnIndex < 0 || columnIndex >= columnCount) {
+    pushError(errors, path, "célula destacada fora dos limites da matrix.");
+  }
+}
+
+function validateMatrixHighlight(highlight, path, errors, rowCount, columnCount) {
+  if (highlight === undefined) {
+    return;
+  }
+  if (!isPlainObject(highlight)) {
+    pushError(errors, path, "highlight da matrix precisa ser objeto.");
+    return;
+  }
+
+  const allowedFields = new Set(["pattern", "cells", "rows", "columns"]);
+  Object.keys(highlight).forEach((fieldName) => {
+    if (!allowedFields.has(fieldName)) {
+      pushError(errors, `${path}.${fieldName}`, `campo inválido em matrix.highlight: "${fieldName}".`);
+    }
+  });
+
+  let hasSelection = false;
+  if (highlight.pattern !== undefined) {
+    const pattern = text(highlight.pattern);
+    if (!MATRIX_HIGHLIGHT_PATTERNS.has(pattern)) {
+      pushError(errors, `${path}.pattern`, `pattern inválido em matrix.highlight: "${pattern}".`);
+    } else {
+      hasSelection = true;
+    }
+  }
+  if (highlight.cells !== undefined) {
+    if (!Array.isArray(highlight.cells) || !highlight.cells.length) {
+      pushError(errors, `${path}.cells`, "cells precisa ter ao menos uma coordenada.");
+    } else {
+      highlight.cells.forEach((entry, index) => {
+        validateMatrixHighlightItemCoordinates(entry, `${path}.cells[${index}]`, errors, rowCount, columnCount);
+      });
+      hasSelection = true;
+    }
+  }
+  if (highlight.rows !== undefined) {
+    if (!Array.isArray(highlight.rows) || !highlight.rows.length) {
+      pushError(errors, `${path}.rows`, "rows precisa ter ao menos um índice.");
+    } else {
+      highlight.rows.forEach((rowIndex, index) => {
+        const safeRow = Number(rowIndex);
+        if (!Number.isInteger(safeRow) || safeRow < 0 || safeRow >= rowCount) {
+          pushError(errors, `${path}.rows[${index}]`, "índice de linha destacado fora dos limites da matrix.");
+        }
+      });
+      hasSelection = true;
+    }
+  }
+  if (highlight.columns !== undefined) {
+    if (!Array.isArray(highlight.columns) || !highlight.columns.length) {
+      pushError(errors, `${path}.columns`, "columns precisa ter ao menos um índice.");
+    } else {
+      highlight.columns.forEach((columnIndex, index) => {
+        const safeColumn = Number(columnIndex);
+        if (!Number.isInteger(safeColumn) || safeColumn < 0 || safeColumn >= columnCount) {
+          pushError(errors, `${path}.columns[${index}]`, "índice de coluna destacado fora dos limites da matrix.");
+        }
+      });
+      hasSelection = true;
+    }
+  }
+
+  if (!hasSelection) {
+    pushError(errors, path, "matrix.highlight precisa definir pattern, cells, rows ou columns.");
+  }
+}
+
 function validateMatrix(card, path, errors) {
   if (card?.prompt !== undefined && typeof card.prompt !== "string") {
     pushError(errors, `${path}.prompt`, "prompt deve ser texto.");
@@ -800,6 +964,7 @@ function validateMatrix(card, path, errors) {
   }
   if (hasValues) {
     validateMatrixValues(card.values, `${path}.values`, errors);
+    validateMatrixHighlight(card?.highlight, `${path}.highlight`, errors, card.values.length, card.values[0]?.length || 0);
   }
   if (hasSequence) {
     if (card.sequence.length < 2) {
@@ -817,6 +982,13 @@ function validateMatrix(card, path, errors) {
       if (item?.connector !== undefined && !MATRIX_CONNECTORS.has(text(item.connector))) {
         pushError(errors, `${path}.sequence[${index}].connector`, "connector inválido em sequence.");
       }
+      validateMatrixHighlight(
+        item?.highlight,
+        `${path}.sequence[${index}].highlight`,
+        errors,
+        item.values.length,
+        item.values[0]?.length || 0
+      );
     });
   }
   validateContextualChoiceExercise(card, path, errors);
@@ -893,7 +1065,7 @@ function validatePlane(card, path, errors) {
 }
 
 function buildAllowedFieldSet(resource) {
-  const common = ["id", "position", "resource", "kind", "exercise", "title", "after", "sources", "topics"];
+  const common = ["id", "position", "resource", "kind", "exercise", "title", "after", "afterBlocks", "sources", "topics"];
   const perResource = {
     paragraph: [...common, "text"],
     choice: [...common, "question", "options", "answer"],
@@ -929,6 +1101,7 @@ export function validateCard(card, path = "$.card") {
   validateUnknownFields(card, path, errors, common.resource);
   const sources = validateSources(card, path, errors);
   const topics = validateTopics(card, path, errors);
+  const afterBlocks = validateAfterBlocks(card, path, errors);
 
   if (common.resource === "paragraph") validateParagraph(card, path, errors);
   if (common.resource === "choice") validateChoice(card, path, errors);
@@ -954,16 +1127,13 @@ export function validateCard(card, path = "$.card") {
     ...(common.resource === "composite" ? { blocks: compositeBlocks } : {}),
     ...(Array.isArray(card?.options)
       ? {
-          options: card.options.map((option, index) => ({
-            id: text(option?.id) || `option-${index + 1}`,
-            text: text(option?.text)
-          }))
+          options: card.options.map((option, index) => normalizeChoiceOption(option, index))
         }
       : {}),
     ...(text(card?.answer) ? { answer: text(card.answer) } : {}),
     ...(text(card?.prompt) ? { prompt: text(card.prompt) } : {}),
     ...(text(card?.language) ? { language: text(card.language) } : {}),
-    ...(text(card?.code) ? { code: text(card.code) } : {}),
+    ...(codeText(card?.code).trim() ? { code: codeText(card.code) } : {}),
     ...(Array.isArray(card?.columns) ? { columns: card.columns.map((item) => text(item)) } : {}),
     ...(Array.isArray(card?.rows)
       ? { rows: card.rows.map((row) => (Array.isArray(row) ? row.map((cell) => String(cell ?? "").trim()) : [])) }
@@ -1001,6 +1171,7 @@ export function validateCard(card, path = "$.card") {
     ...(Array.isArray(card?.distance) ? { distance: structuredClone(card.distance) } : {}),
     ...(Array.isArray(card?.result) || typeof card?.result === "string" ? { result: structuredClone(card.result) } : {}),
     after: text(card?.after),
+    ...(afterBlocks.length ? { afterBlocks } : {}),
     ...(sources.length ? { sources } : {}),
     ...(topics.length ? { topics } : {})
   });

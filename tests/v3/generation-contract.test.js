@@ -362,7 +362,7 @@ test("o contrato final exige abertura teórica curta e retorno explícito em bra
     true
   );
   assert.equal(
-    generationContract.rules.some((rule) => String(rule).includes("exactly one [[answer::answer|wrong1|wrong2]] pattern")),
+    generationContract.rules.some((rule) => String(rule).includes("at least one [[answer::answer|wrong1|wrong2]] pattern")),
     true
   );
 });

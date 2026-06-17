@@ -21,7 +21,10 @@ export function computeFlowchartAutoFitScale({
   const safePadding = Math.max(0, Number(padding) || 0);
 
   const availableWidth = Math.max(1, safeViewportWidth - safePadding * 2);
-  const fitScale = availableWidth / safeBaseWidth;
+  const availableHeight = Math.max(1, safeViewportHeight - safePadding * 2);
+  const fitWidthScale = availableWidth / safeBaseWidth;
+  const fitHeightScale = availableHeight / safeBaseHeight;
+  const fitScale = Math.min(fitWidthScale, fitHeightScale);
   const target = Math.min(Number(preferredScale) || 1, fitScale);
   return clamp(target, minScale, maxScale);
 }

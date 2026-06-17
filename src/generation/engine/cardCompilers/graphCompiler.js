@@ -1,4 +1,5 @@
 import { parsePipeList } from "../slotParser.js";
+import { compileChoiceOptionsFromSlots } from "./choiceOptionCompiler.js";
 
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -50,11 +51,7 @@ export function compileGraphCard({ slots = {}, position = 0 }) {
     vertices: vertexLabels.map((label) => ({ id: label, label })),
     edges: parseGraphEdgesSlot(slots[4], vertexLabels),
     question: text(slots[5]),
-    options: [
-      { id: "a", text: text(slots[6]) },
-      { id: "b", text: text(slots[7]) },
-      { id: "c", text: text(slots[8]) }
-    ],
+    options: compileChoiceOptionsFromSlots(slots, 6),
     answer: text(slots[9]).toLowerCase(),
     after: text(slots[10])
   };

@@ -57,13 +57,13 @@ export const RESOURCE_CATALOG = Object.freeze([
   {
     id: "code",
     code: 105,
-    didacticFunction: "Trecho de código ou comando.",
-    useWhen: ["leitura de código", "saída de código", "rastreio simples"],
+    didacticFunction: "Trecho de código, comando ou completamento sintático controlado.",
+    useWhen: ["leitura de código", "saída de código", "rastreio simples", "completar uma linha ou bloco curto"],
     avoidWhen: ["assunto não depende de sintaxe"],
     operations: [209, 216],
-    templates: ["code_theory", "code_choice"],
+    templates: ["code_theory", "code_gap", "code_choice"],
     compilers: ["codeCompiler"],
-    supportedExercises: ["none", "choice"]
+    supportedExercises: ["none", "gap", "choice"]
   },
   {
     id: "flow",

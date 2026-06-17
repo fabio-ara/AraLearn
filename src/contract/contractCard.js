@@ -1,3 +1,5 @@
+import { getChoiceOptionComparableValue } from "../core/choiceOptions.js";
+import { parseTextGapTokens } from "../core/textGaps.js";
 import { normalizeGeneratedCard } from "../domain/cards.js";
 
 export const CONTRACT_CARD_KINDS = Object.freeze([
@@ -44,15 +46,7 @@ function renumberCard(card, position = 1) {
 }
 
 function parseGapOptions(textValue = "") {
-  return Array.from(String(textValue || "").matchAll(/\[\[([\s\S]*?)\]\]/gu))
-    .flatMap((match) => {
-      const source = text(match[1]);
-      const [, rawOptions = ""] = source.split("::");
-      return rawOptions
-        .split("|")
-        .map((item) => text(item))
-        .filter(Boolean);
-    });
+  return parseTextGapTokens(textValue).flatMap((token) => token.options);
 }
 
 function buildStarterCard(kind = "paragraph") {
@@ -288,14 +282,15 @@ export function listContractAnswerValues(card) {
   if (normalized.resource === "composite") {
     const choiceBlock = (Array.isArray(normalized.blocks) ? normalized.blocks : []).find((block) => block?.kind === "choice");
     if (choiceBlock && Array.isArray(choiceBlock.options)) {
-      return choiceBlock.options.map((option) => option.text);
+      return choiceBlock.options.map((option, index) => getChoiceOptionComparableValue(option, index));
     }
   }
   if (normalized.exercise === "choice" && Array.isArray(normalized.options)) {
-    return normalized.options.map((option) => option.text);
+    return normalized.options.map((option, index) => getChoiceOptionComparableValue(option, index));
   }
-  if (normalized.resource === "paragraph" && normalized.exercise === "gap") {
-    return parseGapOptions(normalized.text);
+  if (normalized.exercise === "gap") {
+    const gapSource = normalized.resource === "code" ? normalized.code : normalized.text;
+    return parseGapOptions(gapSource);
   }
   return [];
 }

@@ -60,6 +60,7 @@ Adequado para:
 Regras:
 
 - deve ter 3 ou 4 alternativas;
+- cada alternativa pode ser textual ou um trecho de código estruturado com `kind: "code"`, `language` e `code`;
 - `answer` precisa apontar para um `id` existente;
 - os distratores devem ser plausíveis dentro do conteúdo, não absurdos.
 
@@ -73,6 +74,18 @@ Adequado para:
 - mostrar trecho em C, Python, SQL, shell ou pseudocódigo;
 - comparar sintaxe correta e erro frequente;
 - treinar leitura de código em contexto curto.
+
+Combinações aceitas:
+
+- teoria: `exercise: "none"`;
+- lacuna em código: `exercise: "gap"` com `[[resposta::resposta|distrator 1|distrator 2]]` dentro de `code`;
+- escolha em código: `exercise: "choice"` com `question`, `options` e `answer`.
+
+Regras:
+
+- preserve indentação e quebras de linha;
+- em `code` choice, as opções também podem ser blocos de código estruturados;
+- não use `___` em cards finais.
 
 ## `table`
 
@@ -97,6 +110,8 @@ Adequado para:
 - apoiar exercícios de leitura, soma simples ou rastreamento de posição.
 
 Regra principal: use `matrix` quando transformar a matriz em texto faria o estudante perder a forma espacial relevante.
+
+Quando precisar destacar parte da matriz, use `highlight` como objeto estrutural, por exemplo `{ "pattern": "mainDiagonal" }` ou `{ "cells": [[0, 1]] }`.
 
 ## `plane`
 
@@ -181,6 +196,10 @@ Critérios práticos:
 - relação entre dois conjuntos: `relation_map`;
 - processo com ordem e decisão: `flow`;
 - hierarquia: `tree`.
+
+## `afterBlocks`
+
+Use `afterBlocks` quando o feedback pós-card precisar de mais de um bloco renderizável, por exemplo um parágrafo seguido de uma tabela ou de um novo trecho de código. `after` continua sendo o resumo textual curto; `afterBlocks` materializa complementos estruturados e não aceita bloco `choice`.
 
 ## Relação com a geração estruturada
 

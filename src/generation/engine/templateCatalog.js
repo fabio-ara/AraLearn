@@ -230,6 +230,18 @@ export const TEMPLATE_CATALOG = Object.freeze({
       { index: 5, label: "after" }
     ]
   },
+  code_gap: {
+    resource: "code",
+    kind: "exercise",
+    exercise: "gap",
+    slots: [
+      { index: 1, label: "title" },
+      { index: 2, label: "prompt" },
+      { index: 3, label: "language" },
+      { index: 4, label: "code" },
+      { index: 5, label: "after" }
+    ]
+  },
   code_choice: {
     resource: "code",
     kind: "exercise",

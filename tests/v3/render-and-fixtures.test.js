@@ -12,6 +12,7 @@ import {
 } from "../../src/render/renderCardRuntime.js";
 import { computeFlowchartBoardLayout } from "../../src/flowchart/flowchartLayout.js";
 import { deriveFlowchartProjectionFromStructure } from "../../src/flowchart/flowchartProjection.js";
+import { computeFlowchartAutoFitScale } from "../../src/flowchart/flowchartViewport.js";
 import { renderGenerationPanelOverlay, renderHomeScreen } from "../../src/ui/renderHomeScreen.js";
 import { buildCourseNavigationState } from "../../src/ui/lessonEditorNavigation.js";
 import { renderLessonScreen } from "../../src/ui/renderLessonScreen.js";
@@ -67,6 +68,29 @@ function segmentIntersection(startA, endA, startB, endB) {
   const maxX = Math.max(horizontalStart[0], horizontalEnd[0]);
   if (x < minX || x > maxX || y < minY || y > maxY) return null;
   return { kind: "point", point: [x, y] };
+}
+
+function extractFlowRoutePoints(html) {
+  return [...String(html || "").matchAll(/<polyline class="runtime-flow-route"[^>]*points="([^"]+)"/g)]
+    .map((match) =>
+      String(match[1] || "")
+        .split(/\s+/)
+        .filter(Boolean)
+        .map((pair) => pair.split(",").map(Number))
+    );
+}
+
+function assertFlowRoutesAreOrthogonal(html, context = "flow") {
+  extractFlowRoutePoints(html).forEach((points, routeIndex) => {
+    for (let index = 1; index < points.length; index += 1) {
+      const start = points[index - 1];
+      const end = points[index];
+      assert.ok(
+        start[0] === end[0] || start[1] === end[1],
+        `${context}: rota ${routeIndex} tem segmento diagonal entre ${start.join(",")} e ${end.join(",")}`
+      );
+    }
+  });
 }
 
 test("o renderer renderiza paragraph gap corretamente", () => {
@@ -306,6 +330,74 @@ test("o renderer de relation_map distribui rótulos longos sem manter texto line
   assert.match(html, /<path class="runtime-relation-map-link/);
 });
 
+test("o renderer de matrix destaca linha e coluna quando o card pede faixas inteiras", () => {
+  const lineHtml = renderCardRuntimeBlocks({
+    position: 1,
+    resource: "matrix",
+    kind: "exercise",
+    exercise: "choice",
+    title: "Linha",
+    prompt: "Observe a linha destacada.",
+    name: "M",
+    values: [
+      ["1", "2", "3"],
+      ["4", "5", "6"],
+      ["7", "8", "9"]
+    ],
+    highlight: { rows: [1] },
+    question: "",
+    options: [],
+    answer: "",
+    after: ""
+  });
+  const columnHtml = renderCardRuntimeBlocks({
+    position: 1,
+    resource: "matrix",
+    kind: "exercise",
+    exercise: "choice",
+    title: "Coluna",
+    prompt: "Observe a coluna destacada.",
+    name: "M",
+    values: [
+      ["1", "2", "3"],
+      ["4", "5", "6"],
+      ["7", "8", "9"]
+    ],
+    highlight: { columns: [2] },
+    question: "",
+    options: [],
+    answer: "",
+    after: ""
+  });
+
+  assert.equal((lineHtml.match(/runtime-matrix-cell is-highlighted/g) || []).length, 3);
+  assert.equal((columnHtml.match(/runtime-matrix-cell is-highlighted/g) || []).length, 3);
+});
+
+test("o renderer de matrix posiciona a divisória depois da coluna zero-based informada", () => {
+  const html = renderCardRuntimeBlocks({
+    position: 1,
+    resource: "matrix",
+    kind: "exercise",
+    exercise: "choice",
+    title: "Média",
+    prompt: "Observe a coluna extra.",
+    name: "notas",
+    values: [
+      ["8.0", "7.0", "9.0", "8.0"],
+      ["6.0", "5.0", "7.0", "6.0"]
+    ],
+    dividerAfterColumn: 2,
+    highlight: { columns: [3] },
+    question: "",
+    options: [],
+    answer: "",
+    after: ""
+  });
+
+  assert.match(html, /class="runtime-matrix-divider" style="grid-column:4;grid-row:1 \/ span 2;"/);
+});
+
 test("o renderer de flow usa o board geométrico de fluxograma", () => {
   const html = renderCardRuntimeBlocks({
     position: 1,
@@ -367,6 +459,57 @@ test("o renderer de flow respeita ramos explícitos de decisão", () => {
   assert.match(html, />Não</);
   assert.match(html, /data-link-role="yes"/);
   assert.match(html, /data-link-role="no"/);
+});
+
+test("o layout de switch_case roteia o case horizontal até a lateral do processo", () => {
+  const projection = deriveFlowchartProjectionFromStructure({
+    kind: "sequence",
+    items: [
+      { kind: "start", text: "ler opcao" },
+      {
+        kind: "switch_case",
+        expression: "opcao",
+        cases: [
+          {
+            match: "1",
+            body: [{ kind: "process", text: "executar case 1" }]
+          },
+          {
+            match: "2",
+            body: [{ kind: "process", text: "executar case 2" }]
+          }
+        ],
+        defaultBranch: [{ kind: "process", text: "executar default" }]
+      },
+      { kind: "end", text: "fim" }
+    ]
+  });
+  const layout = computeFlowchartBoardLayout(projection.nodes, projection.links);
+  const labeledRoutes = (layout.routes || []).filter((route) => route.label === "1" || route.label === "2");
+
+  assert.equal(labeledRoutes.length, 2);
+  labeledRoutes.forEach((route) => {
+    assert.equal(route.startSide, "right");
+    assert.equal(route.points.length, 2);
+    assert.equal(route.points[0][1], route.points[1][1]);
+    assert.ok(route.points[1][0] > route.points[0][0]);
+  });
+});
+
+test("o autofit de flow considera também a altura disponível do viewport", () => {
+  const scale = computeFlowchartAutoFitScale({
+    viewportWidth: 420,
+    viewportHeight: 300,
+    baseWidth: 220,
+    baseHeight: 900,
+    preferredScale: 1,
+    padding: 12,
+    minScale: 0.2,
+    maxScale: 1.2
+  });
+
+  assert.equal(scale < 0.35, true);
+  assert.equal(scale > 0.2, true);
 });
 
 test("o layout de flow mantém o ramo forward de decisão com back-edge no lado lógico do slot", () => {
@@ -478,6 +621,42 @@ test("while com decisão interna e junction não cruza nem sobrepõe rotas", () 
   }
 });
 
+test("o renderer de flow mantém rotas ortogonais mesmo com switch_case e merge lateral", () => {
+  const html = renderCardRuntimeBlocks({
+    position: 1,
+    resource: "flow",
+    kind: "theory",
+    exercise: "none",
+    title: "Menu",
+    prompt: "Observe o fluxograma.",
+    structure: {
+      kind: "sequence",
+      items: [
+        { kind: "start", text: "ler opcao" },
+        {
+          kind: "switch_case",
+          expression: "opcao",
+          cases: [
+            {
+              match: "1",
+              body: [{ kind: "process", text: "executar case 1" }]
+            },
+            {
+              match: "2",
+              body: [{ kind: "process", text: "executar case 2" }]
+            }
+          ],
+          defaultBranch: [{ kind: "process", text: "executar default" }]
+        },
+        { kind: "end", text: "fim" }
+      ]
+    },
+    after: ""
+  });
+
+  assertFlowRoutesAreOrthogonal(html, "switch_case");
+});
+
 test("o renderer mantém paragraph teórico sem lacuna como texto normal", () => {
   const html = renderCardRuntimeBlocks({
     position: 1,
@@ -492,6 +671,57 @@ test("o renderer mantém paragraph teórico sem lacuna como texto normal", () =>
   assert.match(html, /runtime-paragraph/);
   assert.match(html, /A conjunção só é verdadeira quando as duas proposições são verdadeiras\./);
   assert.doesNotMatch(html, /runtime-text-gap-blank/);
+});
+
+test("o renderer destaca sintaxe inline em paragraph mesmo sem crases explícitas", () => {
+  const html = renderCardRuntimeBlocks({
+    position: 1,
+    resource: "paragraph",
+    kind: "theory",
+    exercise: "none",
+    title: "Sintaxe",
+    text: "Use #include <stdio.h>, main, main(), %d e &idade dentro do bloco { ... }.",
+    after: ""
+  });
+
+  assert.match(html, /<code>#include &lt;stdio\.h&gt;<\/code>/);
+  assert.match(html, /<code>main<\/code>/);
+  assert.match(html, /<code>main\(\)<\/code>/);
+  assert.match(html, /<code>%d<\/code>/);
+  assert.match(html, /<code>&amp;idade<\/code>/);
+  assert.match(html, /<code>\{<\/code>/);
+  assert.match(html, /<code>\}<\/code>/);
+});
+
+test("o renderer preserva quebra e indentação em opções de choice com código", () => {
+  const html = renderCardRuntimeBlocks({
+    position: 1,
+    resource: "code",
+    kind: "exercise",
+    exercise: "choice",
+    title: "Escolha o código correto",
+    prompt: "Compare as opções.",
+    language: "c",
+    code: "___",
+    question: "Qual opção está correta?",
+    options: [
+      {
+        id: "a",
+        kind: "code",
+        language: "c",
+        code: "#include <stdio.h>\nmain()\n{\n    printf(\"Ola\");\n}"
+      },
+      {
+        id: "b",
+        text: "main()"
+      }
+    ],
+    answer: "a",
+    after: ""
+  });
+
+  assert.match(html, /<pre class="multiple-choice-code"><code data-language="c">#include &lt;stdio\.h&gt;\nmain\(\)\n\{\n    printf\(&quot;Ola&quot;\);\n\}<\/code><\/pre>/);
+  assert.match(html, /<span class="multiple-choice-label"><code>main\(\)<\/code><\/span>/);
 });
 
 test("o renderer expõe after como popup de continuação", () => {
@@ -678,13 +908,14 @@ test("o seed embutido oficial mantém os cursos embarcados já materializados", 
     (course) => course.id === "course-organizacao-arquitetura-computadores"
   );
   const frameworkCourse = project.courses.find((course) => course.id === "course-framework-ia-generativa");
-  const oacoBasesCourse = project.courses.find((course) => course.id === "course-oaco-bases-cpu-paralelismo");
+  const logicaCourse = project.courses.find((course) => course.id === "course-logica-de-programacao");
 
   assert.ok(teoriaCourse);
   assert.ok(praticasCourse);
   assert.ok(organizacaoCourse);
   assert.ok(frameworkCourse);
-  assert.ok(oacoBasesCourse);
+  assert.ok(logicaCourse);
+  assert.equal(project.courses.some((course) => course.id === "course-oaco-bases-cpu-paralelismo"), false);
 
   const teoriaMicrosequences = teoriaCourse.modules
     .flatMap((moduleValue) => moduleValue.lessons || [])
@@ -718,13 +949,17 @@ test("o seed embutido oficial mantém os cursos embarcados já materializados", 
     .flatMap((moduleValue) => moduleValue.lessons || [])
     .flatMap((lesson) => lesson.microsequences || []);
 
-  assert.equal(organizacaoCourse.modules.length, 2);
+  assert.equal(organizacaoCourse.modules.length, 3);
   assert.equal(
     organizacaoCourse.modules.some((moduleValue) => moduleValue.title === "MobileRAG"),
     true
   );
   assert.equal(
     organizacaoCourse.modules.some((moduleValue) => moduleValue.title === "Filosofia da Computação Quântica"),
+    true
+  );
+  assert.equal(
+    organizacaoCourse.modules.some((moduleValue) => moduleValue.title === "Bases numéricas, arquitetura da CPU e paralelismo"),
     true
   );
   assert.ok(organizacaoMicrosequences.length > 0);
@@ -756,28 +991,46 @@ test("o seed embutido oficial mantém os cursos embarcados já materializados", 
     true
   );
 
-  const oacoBasesMicrosequences = oacoBasesCourse.modules
-    .flatMap((moduleValue) => moduleValue.lessons || [])
-    .flatMap((lesson) => lesson.microsequences || []);
-
-  assert.equal(oacoBasesCourse.modules.length, 1);
-  assert.equal(oacoBasesCourse.modules.flatMap((moduleValue) => moduleValue.lessons || []).length, 1);
-  assert.equal(oacoBasesMicrosequences.length, 10);
   assert.equal(
-    oacoBasesMicrosequences.reduce((count, microsequence) => {
-      const active =
-        (microsequence.versions || []).find((version) => version.id === microsequence.activeVersion) ||
-        (microsequence.versions || []).at(-1);
-      return count + ((active?.cards || []).length);
-    }, 0),
-    79
-  );
-  assert.equal(
-    oacoBasesMicrosequences
+    organizacaoMicrosequences
       .flatMap((microsequence) => microsequence.versions || [])
       .flatMap((version) => version.cards || [])
       .filter((card) => card.resource === "flow")
       .every((card) => card.structure && !("nodes" in card) && !("edges" in card)),
+    true
+  );
+
+  const logicaMicrosequences = logicaCourse.modules
+    .flatMap((moduleValue) => moduleValue.lessons || [])
+    .flatMap((lesson) => lesson.microsequences || []);
+
+  assert.equal(logicaCourse.modules.length, 8);
+  assert.equal(logicaCourse.modules.flatMap((moduleValue) => moduleValue.lessons || []).length, 29);
+  assert.equal(logicaMicrosequences.length, 170);
+  assert.equal(
+    logicaMicrosequences
+      .flatMap((microsequence) => microsequence.versions || [])
+      .reduce((count, version) => count + ((version?.cards || []).length), 0),
+    924
+  );
+  assert.equal(
+    logicaMicrosequences
+      .flatMap((microsequence) => microsequence.versions || [])
+      .flatMap((version) => version.cards || [])
+      .filter((card) => card.resource === "flow")
+      .every((card) => card.structure && !("nodes" in card) && !("edges" in card)),
+    true
+  );
+  assert.equal(
+    logicaMicrosequences
+      .flatMap((microsequence) => microsequence.versions || [])
+      .flatMap((version) => version.cards || [])
+      .filter((card) => card.resource === "flow")
+      .every((card) => {
+        const html = renderCardRuntimeBlocks(card);
+        assertFlowRoutesAreOrthogonal(html, card.id);
+        return true;
+      }),
     true
   );
 });
@@ -1180,6 +1433,222 @@ test("a reconciliação do seed substitui curso embarcado salvo pela versão ofi
     .flatMap((moduleValue) => moduleValue.lessons || [])
     .flatMap((lesson) => lesson.microsequences || []);
   assert.equal(microsequences.some((microsequence) => microsequence.id === "micro-antiga"), false);
+});
+
+test("o seed de Lógica de Programação evita bastidor nos textos visíveis", () => {
+  const project = createEmbeddedSeedProjectDocument();
+  const course = project.courses.find((item) => item.id === "course-logica-de-programacao");
+
+  assert.ok(course);
+  assert.doesNotMatch(course.title, /prova|simulado|professor|disciplina/i);
+  assert.doesNotMatch(course.goal, /prova|simulado|professor|disciplina/i);
+
+  course.modules.forEach((moduleValue) => {
+    assert.doesNotMatch(moduleValue.title, /prova|simulado|professor|disciplina/i);
+    assert.doesNotMatch(moduleValue.guide?.goal || "", /prova|simulado|professor|disciplina/i);
+    (moduleValue.lessons || []).forEach((lesson) => {
+      assert.doesNotMatch(lesson.title, /prova|simulado|professor|disciplina/i);
+      assert.doesNotMatch(lesson.guide?.goal || "", /prova|simulado|professor|disciplina/i);
+      (lesson.microsequences || []).forEach((microsequence) => {
+        assert.doesNotMatch(microsequence.title, /prova|simulado|professor|disciplina/i);
+        assert.doesNotMatch(microsequence.goal || "", /prova|simulado|professor|disciplina/i);
+      });
+    });
+  });
+});
+
+test("o seed de Lógica de Programação preserva quebra de linha em cards de code e destaca sintaxe inline em paragraph", () => {
+  const project = createEmbeddedSeedProjectDocument();
+  const course = project.courses.find((item) => item.id === "course-logica-de-programacao");
+
+  assert.ok(course);
+
+  const cards = course.modules
+    .flatMap((moduleValue) => moduleValue.lessons || [])
+    .flatMap((lesson) => lesson.microsequences || [])
+    .flatMap((microsequence) => microsequence.versions || [])
+    .flatMap((version) => version.cards || []);
+
+  const codeCard = cards.find((card) => card.id === "card-m1-02-exemplo-completo");
+  const paragraphCard = cards.find((card) => card.id === "card-m1-01-regra-esqueleto");
+
+  assert.ok(codeCard);
+  assert.ok(paragraphCard);
+  assert.match(codeCard.code, /\n/);
+  assert.match(codeCard.code, /printf\("Mensagem"\);/);
+  assert.match(paragraphCard.text, /`main\(\)`/);
+  assert.match(paragraphCard.text, /`int main\(\)`/);
+});
+
+test("o seed de Lógica de Programação mantém sintaxe de C destacada e sem crases quebradas nos textos visíveis", () => {
+  const project = createEmbeddedSeedProjectDocument();
+  const course = project.courses.find((item) => item.id === "course-logica-de-programacao");
+
+  assert.ok(course);
+
+  const issues = [];
+  const inspect = (value, where) => {
+    const text = String(value || "");
+    const tickCount = (text.match(/`/g) || []).length;
+    const stripped = text
+      .replace(/`[^`]*`/g, "")
+      .replace(/\[\[[\s\S]*?\]\]/g, "");
+
+    if (tickCount % 2 === 1) {
+      issues.push(`${where}: crase sem par`);
+    }
+    if (/`(?:int|float|char)\s+`/.test(text)) {
+      issues.push(`${where}: declaração fragmentada`);
+    }
+    if (/`[A-Za-z_][A-Za-z0-9_]*\[[^\]]+\]`\[/.test(text)) {
+      issues.push(`${where}: índice fragmentado`);
+    }
+    if (/\b(?:printf|scanf|getch|main|#include|puts|gets|strlen|strcmp|strcpy|strupr|int|float|char|struct|typedef)\b/.test(stripped)) {
+      issues.push(`${where}: sintaxe sem destaque`);
+    }
+    if (/%(?:\.\d+)?[dfcs]/.test(stripped)) {
+      issues.push(`${where}: formatador sem destaque`);
+    }
+  };
+
+  course.modules.forEach((moduleValue) => {
+    (moduleValue.lessons || []).forEach((lesson) => {
+      (lesson.microsequences || []).forEach((microsequence) => {
+        const version =
+          (microsequence.versions || []).find((entry) => entry.id === microsequence.activeVersion) ||
+          (microsequence.versions || [])[0];
+        (version?.cards || []).forEach((card) => {
+          ["text", "after", "prompt", "question"].forEach((field) => {
+            if (typeof card?.[field] === "string") {
+              inspect(card[field], `${card.id}.${field}`);
+            }
+          });
+          (card.options || []).forEach((option, index) => {
+            ["text", "value"].forEach((field) => {
+              if (typeof option?.[field] === "string" && !option[field].includes("\n")) {
+                inspect(option[field], `${card.id}.options[${index}].${field}`);
+              }
+            });
+          });
+        });
+      });
+    });
+  });
+
+  assert.deepEqual(issues, []);
+});
+
+test("o seed de Lógica de Programação corrige vícios recorrentes e fragmentos corrompidos nos cards revisados", () => {
+  const project = createEmbeddedSeedProjectDocument();
+  const course = project.courses.find((item) => item.id === "course-logica-de-programacao");
+
+  assert.ok(course);
+
+  const cards = course.modules
+    .flatMap((moduleValue) => moduleValue.lessons || [])
+    .flatMap((lesson) => lesson.microsequences || [])
+    .flatMap((microsequence) => microsequence.versions || [])
+    .flatMap((version) => version.cards || []);
+
+  const visibleTexts = cards.flatMap((card) => [
+    card.title,
+    card.text,
+    card.after,
+    card.prompt,
+    card.question,
+    ...(card.options || []).map((option) => option.text)
+  ].filter((value) => typeof value === "string"));
+
+  visibleTexts.forEach((text) => {
+    assert.doesNotMatch(text, /\bprograma curto\b|\btrecho curto\b/iu);
+    assert.doesNotMatch(text, /\bassinatura\b/iu);
+    assert.doesNotMatch(text, /`(?:int|float|char|void)\s+(?:usa|com|pode|recebe|precisa|e)\b/u);
+    assert.doesNotMatch(text, /`[A-Za-z_][A-Za-z0-9_]*\[[^\]]+\];`\[[^\]]+\];/u);
+    assert.doesNotMatch(text, /ALUNO\.`|`&ALUNO\[[^\]]+\]`\./u);
+    assert.doesNotMatch(text, /`&[A-Za-z_][A-Za-z0-9_]*(?:\[[^\]]+\])?\.`/u);
+    assert.doesNotMatch(text, /`void n`ão/u);
+  });
+
+  const matrixDeclarationCard = cards.find((card) => card.id === "card-declarar-matriz-base");
+  const menuFlowCard = cards.find((card) => card.id === "card-menu-switch-04");
+  const matrixProgramCard = cards.find((card) => card.id === "card-printf-matriz-programa-curto");
+  const menuFlowProjection = menuFlowCard ? deriveFlowchartProjectionFromStructure(menuFlowCard.structure) : null;
+  const menuFlowLabels = (menuFlowProjection?.links || [])
+    .map((link) => link.label)
+    .filter(Boolean);
+
+  assert.equal(matrixDeclarationCard?.text.includes("`int mat[3][4];`"), true);
+  assert.equal(menuFlowCard?.structure?.items?.[1]?.kind, "switch_case");
+  assert.deepEqual(menuFlowLabels, ["1", "2", "Outro caso"]);
+  assert.equal(matrixProgramCard?.title, "Programa simples");
+});
+
+test("o seed de Lógica de Programação elimina placeholders legados de code e usa o contrato novo", () => {
+  const project = createEmbeddedSeedProjectDocument();
+  const course = project.courses.find((item) => item.id === "course-logica-de-programacao");
+
+  assert.ok(course);
+
+  const cards = course.modules
+    .flatMap((moduleValue) => moduleValue.lessons || [])
+    .flatMap((lesson) => lesson.microsequences || [])
+    .flatMap((microsequence) => microsequence.versions || [])
+    .flatMap((version) => version.cards || []);
+
+  assert.equal(
+    cards.some((card) => card.resource === "code" && /_{3,}/.test(String(card.code || ""))),
+    false
+  );
+
+  const gapCard = cards.find((card) => card.id === "card-m1-04-completar-getch");
+  const migratedChoiceCard = cards.find((card) => card.id === "card-programa-escolher-int-correto");
+
+  assert.equal(gapCard?.exercise, "gap");
+  assert.match(gapCard?.code || "", /\[\[getch\(\);::getch\(\);\|/);
+  assert.equal(migratedChoiceCard?.resource, "choice");
+  assert.equal(
+    (migratedChoiceCard?.options || []).every((option) => option.kind === "code" || typeof option.text === "string"),
+    true
+  );
+  assert.equal(
+    (migratedChoiceCard?.options || []).some((option) => option.kind === "code"),
+    true
+  );
+});
+
+test("a reconciliação incorpora o módulo novo de OACO ao curso principal e remove o curso legado separado", () => {
+  const persistedProject = {
+    contract: "aralearn.contract",
+    version: 3,
+    kind: "project",
+    courses: [
+      createEmbeddedSeedProjectDocument().courses.find(
+        (course) => course.id === "course-organizacao-arquitetura-computadores"
+      ),
+      {
+        id: "course-oaco-bases-cpu-paralelismo",
+        title: "Organização e Arquitetura de Computadores — bases, CPU e paralelismo",
+        goal: "curso legado separado",
+        modules: [
+          {
+            id: "module-bases-cpu-paralelismo",
+            title: "Bases numéricas, arquitetura da CPU e paralelismo",
+            lessons: []
+          }
+        ]
+      }
+    ]
+  };
+
+  const reconciled = reconcileEmbeddedSeedProject(persistedProject);
+  const mergedCourse = reconciled.courses.find((course) => course.id === "course-organizacao-arquitetura-computadores");
+
+  assert.ok(mergedCourse);
+  assert.equal(reconciled.courses.some((course) => course.id === "course-oaco-bases-cpu-paralelismo"), false);
+  assert.equal(
+    mergedCourse.modules.some((moduleValue) => moduleValue.id === "module-bases-cpu-paralelismo"),
+    true
+  );
 });
 
 test("microssequência com cards em revisão continua abrindo play", () => {
