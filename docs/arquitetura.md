@@ -1,12 +1,12 @@
 # Arquitetura
 
-A arquitetura do AraLearn existe para preservar uma tese operacional simples: a resposta de um serviço textual só pode alterar o projeto do usuário depois de passar por contrato, recompilação, validação e versionamento. Essa exigência é o que torna o produto auditável, exportável e resistente a saídas convincentes, porém malformadas.
+A arquitetura do AraLearn foi desenhada para que uma resposta de LLM por API não altere diretamente o projeto do usuário. Entre a resposta do serviço e o material salvo há um fluxo de composição, validação, versionamento e renderização. O projeto local em JSON é o registro de referência.
 
-Os envelopes enviados aos serviços estão em [Fluxos, prompts e contratos de geração](fluxos-prompts-e-contratos.md). O formato persistido final está em [Contrato público](aralearn-contract.md). O enquadramento pedagógico e crítico dessas escolhas está em [Fundamentos, pesquisa e governança](fundamentos-pesquisa-e-governanca.md).
+Para o fluxo de geração, consulte [Fluxos, prompts e contratos de geração](fluxos-prompts-e-contratos.md). Para o formato persistido, consulte [Contrato público](aralearn-contract.md).
 
 ## Visão geral
 
-O sistema trabalha sobre um documento raiz persistido localmente:
+O documento raiz do projeto tem este formato:
 
 ```json
 {
@@ -17,7 +17,9 @@ O sistema trabalha sobre um documento raiz persistido localmente:
 }
 ```
 
-O projeto é composto por:
+JSON é um formato textual para representar dados estruturados; a documentação da MDN Web Docs (2026) o apresenta como forma legível de organizar objetos, listas e valores. JSON Schema, por sua vez, define regras para esses dados, como campos obrigatórios e valores aceitos (JSON Schema, 2026).
+
+No AraLearn, essa estrutura organiza a árvore didática:
 
 ```text
 project
@@ -29,244 +31,78 @@ project
                     └── card
 ```
 
-Essa árvore é simultaneamente estrutura didática, estrutura persistida e base de contexto para geração local.
+A mesma árvore serve para três fins: organizar o estudo, salvar o projeto e selecionar contexto para a geração por LLM.
 
-## Responsabilidades principais
+## Responsabilidades
 
-O desenho separa três responsabilidades.
+O usuário define escopo, escolhe a etapa, revisa versões e decide o que fica no projeto.
 
-### 1. O usuário
+A LLM por API propõe estrutura, texto, exemplos, exercícios e correções dentro do contexto enviado.
 
-- define o escopo;
-- revisa a trilha;
-- escolhe a microssequência aberta;
-- decide o pedido local;
-- aprova, corrige ou rejeita o material.
+O AraLearn mantém o projeto local, monta contratos transitórios, escolhe o contexto, compõe a saída, valida campos, preserva versões e apresenta os cards.
 
-### 2. O serviço textual
+Essa divisão evita tratar a resposta da LLM como documento final.
 
-- interpreta o escopo ou o contexto local;
-- propõe trilha ou forma didática;
-- preenche campos de conteúdo nas etapas em que é chamado.
+## Camadas de código
 
-### 3. O app
+A organização do código separa responsabilidades:
 
-- mantém o projeto persistido;
-- monta contratos transitórios de geração;
-- seleciona contexto;
-- recompila o card ou a estrutura final;
-- valida coerência estrutural e didática;
-- preserva versões e histórico;
-- renderiza o material estudável.
+| Camada | Função |
+|---|---|
+| `src/domain/` | Entidades e validações do domínio. |
+| `src/contract/` | Contrato público e validação estrutural. |
+| `src/model/` | Conversões internas para execução e apresentação. |
+| `src/generation/topDown/` | Planejamento de curso, módulos, lições e microssequências. |
+| `src/generation/bottomUp/` | Geração e correção de cards dentro de uma microssequência. |
+| `src/generation/contracts/` | Contratos transitórios enviados às LLMs. |
+| `src/generation/validation/` | Validação estrutural e didática das saídas. |
+| `src/generation/repair/` | Reparos mecânicos permitidos. |
+| `src/generation/runtime/` | Execução, histórico e aplicação do resultado. |
+| `src/render/` | Apresentação dos cards na interface. |
+| `src/ui/` | Navegação, autoria e estudo. |
 
-Essa separação impede que uma resposta textual seja confundida com projeto válido antes da verificação local.
+## Top-down
 
-## Entidades do projeto
+O fluxo top-down começa com escopo. O usuário informa tema, objetivo, inclusões, exclusões e orientações. A LLM propõe curso, módulos, lições e microssequências. O app valida dependências, fronteiras e coerência estrutural antes de aplicar a proposta.
 
-### `course`
+Esse fluxo não precisa gerar cards. Sua função é transformar intenção ampla em trilha revisável.
 
-Delimita o campo geral de estudo.
+## Bottom-up
 
-### `module`
+O fluxo bottom-up começa em uma microssequência aberta. O app monta um contexto local e pede à LLM uma intervenção: gerar cards, corrigir cards, criar apoio ou continuar a próxima etapa.
 
-Organiza uma região do curso e possui `guide` próprio, isto é, um recorte didático local com objetivo, inclusões, exclusões, notação e desvios a evitar.
+O resultado passa por composição e validação. Um card de escolha precisa de alternativas e resposta válida. Uma matriz precisa de valores. Um grafo precisa de vértices e arestas coerentes. Um exercício de lacuna precisa ter opções. Se o resultado falha, o app pode pedir correção localizada ou rejeitar a saída.
 
-### `lesson`
+## Saída estruturada e validação própria
 
-Concentra uma etapa de aprendizagem dentro do módulo, também com `guide`, tópicos e microssequências.
+APIs modernas oferecem recursos para respostas estruturadas. A OpenAI (2026) documenta *Structured Outputs*; a Gemini API documenta geração aderente a schema (Google AI for Developers, 2026); e a DeepSeek documenta *JSON Output* (DeepSeek, 2026). O AraLearn se beneficia desse tipo de recurso quando disponível, mas não depende apenas dele.
 
-### `microsequence`
+Mesmo que o serviço devolva JSON válido, o app ainda verifica se aquele JSON faz sentido dentro do contrato do AraLearn e da microssequência ativa.
 
-É a unidade principal de progressão. Guarda objetivo, papel, dependências, cobertura, critérios de verificação, versões e a versão ativa.
+## Renderização
 
-### `version`
+Renderizar, aqui, significa transformar dados em card visível. O app não precisa receber uma imagem de matriz, grafo ou fluxograma. Ele recebe dados: células, vértices, arestas, nós, pontos, linhas ou blocos. Depois monta a representação na tela.
 
-Preserva uma materialização específica da microssequência, com histórico de origem, pedido, resumo, cards e validação.
+Essa decisão tem duas vantagens. Primeiro, o conteúdo continua editável e exportável. Segundo, o app consegue validar a estrutura antes de mostrá-la ao estudante.
 
-### `card`
+## Versionamento
 
-Materializa explicação, prática ou representação num recurso específico.
+Cada geração ou correção cria uma versão de cards dentro da microssequência. A versão ativa é usada no estudo. Versões anteriores podem servir para comparação, auditoria ou restauração.
 
-## O papel de `guide`
+Esse mecanismo permite experimentar uma nova explicação sem destruir a anterior.
 
-`guide` é o objeto que define o recorte local de módulo e lição:
+## Falhas
 
-```json
-{
-  "goal": "Explicar a regra local.",
-  "include": ["conjunção"],
-  "exclude": ["predicados"],
-  "notation": ["Use P e Q."],
-  "avoid": ["Não abrir outro tópico."]
-}
-```
+O projeto anterior deve permanecer intacto quando uma intervenção falha. Uma resposta truncada, um JSON inválido, um campo fora do contrato ou um exercício malformado não deve substituir material já salvo. A falha precisa ser visível e recuperável.
 
-Em termos arquiteturais, `guide` cumpre duas funções:
+## Referências citadas
 
-- orienta a composição da trilha;
-- limita o que a geração local pode introduzir naquele ponto.
+DeepSeek. (2026). *JSON Output*. DeepSeek API Docs. <https://api-docs.deepseek.com/guides/json_mode>
 
-`exclude` é tratado como fronteira rígida. O validador rejeita uso relevante de itens excluídos em títulos, objetivos, perguntas, exemplos e alternativas.
+Google AI for Developers. (2026). *Structured outputs*. Gemini API Docs. <https://ai.google.dev/gemini-api/docs/structured-output>
 
-## Dependências e ordem local
+JSON Schema. (2026). *What is JSON Schema?* <https://json-schema.org/overview/what-is-jsonschema>
 
-`dependsOn` liga microssequências da mesma lição. O validador rejeita:
+MDN Web Docs. (2026). *Working with JSON*. <https://developer.mozilla.org/en-US/docs/Learn_web_development/Core/Scripting/JSON>
 
-- referência inexistente;
-- auto-dependência;
-- dependência futura;
-- ciclo.
-
-Essa regra é simples, mas importante: ela mantém a trilha auditável e permite que o contexto local seja montado sem recorrer ao curso inteiro.
-
-## Versões
-
-Cada geração ou correção cria uma nova entrada em `versions`.
-
-```json
-{
-  "id": "version-1",
-  "createdAt": "2026-05-24T12:00:00.000Z",
-  "source": "llm",
-  "action": "generate",
-  "request": "Gerar explicação e prática.",
-  "summary": "Primeira versão da etapa.",
-  "cards": [],
-  "validation": {
-    "ok": true,
-    "issues": []
-  }
-}
-```
-
-`activeVersion` aponta para a versão usada no estudo. Isso permite experimentar nova materialização sem destruir automaticamente a anterior.
-
-## Recursos e geometria local
-
-O contrato aceita recursos como `matrix`, `plane`, `graph`, `relation_map`, `flow` e `tree`. Em vários deles, o app persiste principalmente a estrutura e resolve a geometria localmente no runtime de renderização.
-
-Exemplos:
-
-- em `graph`, o contrato prioriza vértices e arestas; a geometria é resolvida pelo motor do app;
-- em `relation_map`, o contrato explicita conjuntos e relações; a disposição visual é calculada localmente;
-- em `flow`, o contrato persiste uma `structure` semântica; o motor deriva fluxograma, portas, ramos e layout.
-
-Essa decisão arquitetural reduz dependência de coordenadas produzidas pelo serviço textual e concentra a coerência visual no runtime do app.
-
-## Camadas do código
-
-O repositório organiza responsabilidades técnicas em camadas relativamente estáveis.
-
-- `src/domain/`
-  Define e valida o domínio persistido.
-
-- `src/contract/`
-  Concentra o contrato público e a validação estrutural principal.
-
-- `src/model/`
-  Compila estruturas internas e contratos persistidos em formas úteis para execução e renderização.
-
-- `src/generation/topDown/`
-  Planeja curso, módulos, lições e microssequências a partir do escopo.
-
-- `src/generation/bottomUp/`
-  Materializa ou corrige cards dentro de uma microssequência.
-
-- `src/generation/contracts/`
-  Monta os envelopes transitórios enviados aos serviços textuais.
-
-- `src/generation/validation/`
-  Aplica validação estrutural e didática nas saídas intermediárias e finais.
-
-- `src/generation/repair/`
-  Executa reparos mecânicos permitidos, sem inventar conteúdo disciplinar.
-
-- `src/generation/runtime/`
-  Coordena execução, histórico, retomada e aplicação do resultado.
-
-- `src/render/`
-  Renderiza cards válidos na interface de estudo.
-
-- `src/ui/`
-  Organiza a experiência de autoria, navegação e estudo.
-
-## O motor estruturado de geração
-
-No código e em parte da documentação técnica, a expressão `Structured Engine` designa o **motor estruturado de geração**. Ele é o caminho principal de produção textual do app.
-
-Seu princípio é simples:
-
-- dividir a geração em etapas menores;
-- trabalhar com catálogos fechados de recursos e operações;
-- pedir ao serviço textual apenas o conteúdo necessário em cada fase;
-- recompilar o objeto final localmente antes de validar e persistir.
-
-Em vez de pedir ao serviço textual que escreva o JSON público completo do card final de uma vez, o app monta um percurso de trabalho com campos controlados e valores canônicos. Isso reduz erro de forma sem empobrecer a liberdade didática local.
-
-## Planejamento estrutural
-
-O planejamento estrutural parte de um escopo informado pelo usuário e produz curso, módulos, lições e microssequências. Esse fluxo não gera cards.
-
-Arquiteturalmente, ele serve para:
-
-- transformar intenção ampla em trilha explícita;
-- registrar fronteiras por `guide`;
-- tornar o percurso inspeccionável antes da materialização local.
-
-## Geração local
-
-A geração local parte de uma microssequência aberta. Ela pode:
-
-- gerar cards;
-- corrigir a versão atual;
-- criar uma microssequência de apoio;
-- materializar a próxima microssequência planejada.
-
-No runtime atual, esse caminho é dividido em três etapas principais:
-
-1. planejamento fino da intervenção;
-2. preenchimento dos campos do template ativo;
-3. auditoria local com correções pontuais.
-
-O serviço textual não devolve diretamente o projeto persistido final. O app recompila, verifica coerência e só então cria a nova versão.
-
-## Montagem de contexto
-
-No fluxo local, o contexto não é reunido de forma opaca. O app monta explicitamente um pacote com:
-
-- caminho da etapa aberta;
-- `guide` ativo;
-- objetivo, papel, cobertura e verificações da microssequência;
-- dependências declaradas;
-- referências escolhidas pelo usuário;
-- próxima microssequência planejada;
-- versão atual e cards existentes, quando a operação é de correção;
-- fontes anexadas e resolvidas.
-
-Essa escolha melhora a auditabilidade do que efetivamente entrou em cada intervenção.
-
-## Histórico e retomada
-
-Cada execução registra estado, etapa e artefatos validados. Um fluxo típico passa por momentos como:
-
-```text
-prepare -> plan -> draft -> compile -> validate -> complete
-```
-
-Se uma etapa falha, o projeto anterior permanece intacto. A retomada reaproveita artefatos já aceitos e refaz apenas o trecho pendente.
-
-## Regras de integridade
-
-O projeto só muda quando a resposta passa por validação. Entre as situações rejeitadas pelo sistema estão:
-
-- campos fora do contrato esperado;
-- dependência incoerente;
-- prática aberta onde o produto exige exercício fechado;
-- recurso visual sem dados suficientes;
-- uso relevante de itens excluídos;
-- contexto insuficiente para resolver a questão no próprio card;
-- repetição indevida de caso em papéis que exigem variação.
-
-## Síntese
-
-A arquitetura do AraLearn não foi desenhada para “embrulhar” respostas de IA. Ela foi desenhada para transformar geração assistida em material estudável, versionado e exportável. O serviço textual interpreta e propõe; o app delimita, recompila, valida e preserva; o usuário mantém o controle editorial do projeto.
+OpenAI. (2026). *Structured model outputs*. OpenAI API Documentation. <https://platform.openai.com/docs/guides/structured-outputs>

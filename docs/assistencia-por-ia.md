@@ -1,144 +1,78 @@
 # Assistência por IA
 
-No AraLearn, a assistência por IA existe para reduzir o trabalho de autoria sem substituir a autoria. O sistema usa serviços textuais para propor trilhas, explicações, exemplos e exercícios, mas o que vale no app é sempre o documento local recompilado, validado e persistido pelo próprio produto.
+A assistência por IA é parte central do AraLearn atual. O app usa LLMs por API para planejar trilhas e gerar ou corrigir cards, mas a resposta do modelo não entra no projeto sem passar por contrato, composição, validação e versionamento.
 
-A especificação dos envelopes de geração está em [Fluxos, prompts e contratos de geração](fluxos-prompts-e-contratos.md). Aqui o foco é outro: o papel do serviço textual, o papel do app, a seleção de contexto e a governança do mecanismo. A base crítica e pedagógica desse desenho está em [Fundamentos, pesquisa e governança](fundamentos-pesquisa-e-governanca.md).
+Para detalhes operacionais, consulte [Fluxos, prompts e contratos de geração](fluxos-prompts-e-contratos.md). Para o formato salvo, consulte [Contrato público](aralearn-contract.md).
 
-## Onde a IA entra
+## Onde a LLM entra
 
-O AraLearn usa serviços textuais em dois momentos:
+Há dois fluxos principais.
 
-1. **planejamento da trilha**: a partir de um escopo, o serviço pode sugerir curso, módulos, lições e microssequências;
-2. **materialização local de cards**: a partir de uma microssequência aberta, o serviço pode propor forma didática e preencher conteúdo para aquela etapa.
+No **top-down**, a LLM recebe um escopo e propõe a estrutura da trilha: curso, módulos, lições e microssequências.
 
-Fora desses momentos, o projeto continua sendo manipulado pelo próprio app e pelo usuário.
+No **bottom-up**, a LLM trabalha sobre uma microssequência aberta. Ela pode gerar cards, corrigir uma versão, propor apoio local ou continuar a próxima etapa planejada.
 
-## O que continua sob responsabilidade do app
+Essa divisão aproveita uma capacidade conhecida dos modelos de linguagem: realizar tarefas variadas a partir de instruções e exemplos, como discutem Brown et al. (2020). Ao mesmo tempo, evita pedir ao modelo uma tarefa grande demais de uma só vez.
 
-O app continua responsável por:
+## Serviços previstos
 
-- manter o projeto persistido;
-- selecionar o contexto da intervenção;
-- montar contratos transitórios objetivos;
-- indicar recursos disponíveis;
-- recompilar a estrutura final;
-- validar a saída;
-- preservar versões;
-- impedir que respostas inválidas alterem o projeto.
+O repositório prevê diferentes formas de geração:
 
-Essa separação é central para o desenho do produto. O serviço textual não é tratado como dono do documento final.
+- Gemini, com integração própria;
+- serviços compatíveis com a API de chat da OpenAI;
+- DeepSeek por endpoint compatível;
+- ponte local para Codex CLI;
+- serviço falso para testes automatizados.
 
-## O que cabe ao serviço textual
+As documentações oficiais de Google AI for Developers, OpenAI e DeepSeek tratam de respostas estruturadas ou JSON. Isso é relevante para o AraLearn porque o app espera dados que possam ser validados. Ainda assim, a validação do provedor não substitui a validação do próprio app.
 
-Ao serviço textual cabe:
+## Seleção de contexto
 
-- interpretar o escopo recebido;
-- sugerir organização da trilha;
-- escolher a forma didática de cada card dentro das opções disponíveis;
-- escrever títulos, enunciados, textos, alternativas e feedbacks nos campos previstos;
-- respeitar as fronteiras declaradas por `guide`, `covers`, `checks` e recursos liberados.
+O AraLearn não precisa enviar o projeto inteiro para cada chamada. No fluxo local, o app monta um pacote com:
 
-Em outras palavras, o serviço textual trabalha como colaborador de autoria dentro de um espaço controlado.
-
-## Seleção estrutural de contexto
-
-No fluxo local atual, o app monta o contexto de modo explícito. Em vez de enviar “o curso inteiro” ou uma massa difusa de histórico, ele reúne:
-
-- o caminho estrutural da etapa aberta: curso, módulo, lição e microssequência;
-- o `guide` ativo;
-- objetivo, papel, cobertura e verificações da microssequência;
-- dependências declaradas em `dependsOn`;
-- referências escolhidas pelo usuário para aquela intervenção;
-- a próxima microssequência planejada, quando houver;
-- a versão atual e os cards existentes, quando a operação é de correção;
+- caminho da etapa aberta;
+- `guide` ativo;
+- objetivo, papel, conteúdos cobertos e critérios da microssequência;
+- dependências declaradas;
+- referências escolhidas pelo usuário;
+- próxima microssequência planejada, quando houver;
+- versão atual e cards existentes, quando a operação é de correção;
 - fontes anexadas e resolvidas explicitamente.
 
-Isso torna auditável a origem do contexto usado em cada chamada.
+Esse recorte melhora custo, privacidade e auditabilidade. Também ajuda a manter a intervenção dentro da etapa escolhida.
 
-## Campos controlados e valores canônicos
+## Campos controlados
 
-Além de selecionar o contexto, o AraLearn reduz margem de erro transformando decisões recorrentes em campos controlados e valores canônicos.
+A LLM não recebe autorização para escrever livremente o projeto final. O AraLearn informa recursos aceitos, modos de exercício, papéis didáticos e campos esperados. Em seguida, recompõe o resultado no contrato público.
 
-Na prática, isso significa que o serviço textual não escreve o projeto inteiro “em prosa”. Ele recebe:
+JSON Schema (2026) é uma referência importante porque mostra como regras de estrutura podem ser descritas formalmente. O AraLearn usa a mesma lógica geral: transformar expectativas de formato em condições verificáveis.
 
-- catálogos fechados de recursos;
-- listas fechadas de operações e papéis;
-- campos específicos para cada etapa;
-- valores estáveis para escolhas repetidas, como tipo de card, modo de exercício e estrutura esperada.
+## RAG externo e conteúdo seed
 
-Esse desenho cumpre duas funções:
+Lewis et al. (2020) definem RAG como geração apoiada por recuperação de informação. No AraLearn, a preparação de conteúdo `seed` pode usar RAGs externos como prática de autoria e curadoria. Isso não deve ser apresentado como RAG interno plenamente implementado no app, a menos que o código passe a oferecer essa capacidade.
 
-- reduz ambiguidade na interpretação da tarefa;
-- permite que o app recompilhe e valide o resultado final com mais segurança.
+A distinção importa: hoje, a LLM por API é uma funcionalidade do AraLearn; o RAG externo é parte do processo de produção de material.
 
-## O motor estruturado de geração
+## Privacidade, custo e dependência
 
-No código e em parte da documentação técnica, a expressão `Structured Engine` designa o **motor estruturado de geração**. Ele é o runtime principal dos serviços textuais já integrados.
+Quando o usuário usa uma API externa, o contexto necessário à intervenção é enviado ao serviço configurado. Custo, retenção de dados, limites e disponibilidade dependem do fornecedor. Por isso, o projeto mantém persistência local e busca reduzir o contexto enviado.
 
-Seu funcionamento pode ser resumido assim:
-
-1. o app delimita a intervenção;
-2. o serviço textual escolhe forma e preenche conteúdo dentro de campos controlados;
-3. o app recompila o card ou a estrutura final;
-4. o app valida e, se necessário, pede correção localizada;
-5. só então a nova versão é persistida.
-
-Essa estratégia foi adotada porque modelos econômicos tendem a errar mais quando recebem contexto excessivo, esquema amplo demais ou tarefa mista demais.
-
-## Por que dividir a geração
-
-Uma única chamada grande exigiria que o serviço textual:
-
-- planejasse a intenção local;
-- escolhesse o recurso adequado;
-- escrevesse todos os cards;
-- mantivesse o formato JSON correto;
-- respeitasse escopo e dependências ao mesmo tempo.
-
-O AraLearn separa essas responsabilidades em etapas menores porque isso melhora robustez e custo operacional.
-
-## Serviços e integrações
-
-O contrato do projeto foi mantido independente do fornecedor de texto. No estado atual, o repositório prevê integração com:
-
-- [DeepSeek API](https://api-docs.deepseek.com/), hoje usada por endpoint compatível com a interface de chat da OpenAI;
-- [Gemini API](https://ai.google.dev/api/), usada por integração nativa;
-- serviços compatíveis com a interface de chat da OpenAI;
-- serviço local por linha de comando;
-- serviço falso para testes.
-
-O repositório também inclui relatórios auditáveis de execução real, especialmente com `deepseek-v4-flash`, em [`tests/reports/`](../tests/reports/).
-
-## Privacidade, custo e persistência
-
-O AraLearn foi desenhado com persistência local como padrão. Isso reduz dependência de servidor e ajuda a manter o projeto disponível depois do uso do serviço remoto.
-
-Quando o usuário opta por uma API externa, o contexto necessário para a intervenção é enviado ao serviço configurado. Por isso, custo e tratamento de dados continuam sujeitos às políticas do fornecedor escolhido.
-
-Essa questão não é periférica. O público inicial do produto inclui estudantes-trabalhadores, o que torna custo e fricção de acesso parte da própria arquitetura de adoção do app.
-
-## Validação e falha fechada
-
-A assistência por IA no AraLearn nunca atua sozinha. Toda resposta passa por validação estrutural e didática mínima.
-
-Se a resposta:
-
-- viola o contrato;
-- usa campos indevidos;
-- produz prática aberta onde o app exige prática fechada;
-- materializa contexto insuficiente;
-- entra em conflito com dependências ou escopo;
-
-então ela é corrigida localmente, se isso for seguro, ou rejeitada. O projeto anterior permanece intacto.
-
-Esse comportamento é intencional. O objetivo não é “salvar qualquer resposta”, mas proteger a integridade do projeto.
+A ambição de diminuir dependência de LLMs externas é coerente com o público do AraLearn: estudantes com poucos recursos, conexão instável e necessidade de continuidade. No estado atual, porém, a geração por API continua sendo a capacidade operacional principal.
 
 ## Governança da autoria
 
-A regra editorial do produto é simples:
+A autoria no AraLearn não é transferida à LLM. O modelo propõe; o app estrutura e verifica; o usuário revisa. Esse arranjo reduz a chance de transformar conveniência técnica em autoridade pedagógica.
 
-- o serviço textual propõe;
-- o app delimita, recompila e valida;
-- o usuário aprova, corrige ou rejeita.
+## Referências citadas
 
-Essa ordem evita confundir conveniência de geração com transferência de autoria.
+Brown, T. B., Mann, B., Ryder, N., Subbiah, M., Kaplan, J., Dhariwal, P., et al. (2020). Language models are few-shot learners. *Advances in Neural Information Processing Systems*, 33, 1877-1901. <https://arxiv.org/abs/2005.14165>
+
+DeepSeek. (2026). *JSON Output*. DeepSeek API Docs. <https://api-docs.deepseek.com/guides/json_mode>
+
+Google AI for Developers. (2026). *Structured outputs*. Gemini API Docs. <https://ai.google.dev/gemini-api/docs/structured-output>
+
+JSON Schema. (2026). *What is JSON Schema?* <https://json-schema.org/overview/what-is-jsonschema>
+
+Lewis, P., Perez, E., Piktus, A., Petroni, F., Karpukhin, V., Goyal, N., et al. (2020). Retrieval-augmented generation for knowledge-intensive NLP tasks. *Advances in Neural Information Processing Systems*, 33, 9459-9474. <https://arxiv.org/abs/2005.11401>
+
+OpenAI. (2026). *Structured model outputs*. OpenAI API Documentation. <https://platform.openai.com/docs/guides/structured-outputs>

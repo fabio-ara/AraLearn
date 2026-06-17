@@ -1,99 +1,68 @@
 # Visão do produto
 
-AraLearn nasce de um problema simples de formular e difícil de resolver: hoje é fácil reunir informação, mas continua sendo difícil transformá-la em estudo organizado, retomável e verificável.
+O AraLearn enfrenta uma dificuldade comum no estudo autodidata: há conteúdo demais e percurso de menos. O estudante encontra PDFs, vídeos, fóruns, documentação oficial, aulas gravadas, anotações e respostas de IA, mas continua tendo de decidir sozinho por onde começar, que pré-requisitos considerar, quando praticar e como retomar depois de uma interrupção.
 
-Em disciplinas acadêmicas, técnicas e profissionais, o estudante costuma ter acesso a ementas, slides, PDFs, vídeos, documentação, fóruns, listas de exercício, anotações pessoais e respostas produzidas por modelos de linguagem. O obstáculo raramente é apenas “encontrar conteúdo”. O obstáculo é dar forma ao estudo: escolher recorte, definir sequência, decidir onde praticar, registrar erro, preservar revisão e conseguir retomar depois de uma interrupção.
+Simon (1971) formulou essa tensão ao mostrar que abundância de informação desloca a escassez para a atenção. Castells (1996) descreveu a sociedade em rede como um ambiente estruturado por fluxos informacionais. Em plataformas digitais, esses fluxos são frequentemente organizados por recomendação algorítmica; Covington, Adams e Sargin (2016), por exemplo, descrevem o sistema de recomendação do YouTube a partir de geração de candidatos e ranqueamento. O AraLearn não tenta imitar essa lógica de fluxo contínuo. Ele tenta converter material disperso em caminho de estudo.
 
-## O problema que o AraLearn enfrenta
+## Proposta
 
-Ferramentas diferentes resolvem partes desse problema, mas nenhuma delas, isoladamente, fecha o ciclo.
-
-[Google Search](https://www.google.com/search/about/) e a [Wikipédia](https://www.wikipedia.org/) ajudam a localizar informação e panorama. [NotebookLM](https://notebooklm.google/) aproxima geração textual e fontes explicitamente selecionadas. [Anki](https://apps.ankiweb.net/) consolida bem a revisão por cartões. [Duolingo](https://www.duolingo.com/) e [SoloLearn](https://www.sololearn.com/) mostram a força de percursos guiados com unidades pequenas. [Obsidian](https://obsidian.md/) reforça a autonomia na organização local do conhecimento.
-
-O AraLearn se instala em outro ponto do ecossistema: ele tenta transformar material heterogêneo em **trilha didática editável**, um percurso em que cada etapa tenha função, ordem, fronteira, continuidade e forma de prática.
-
-## A proposta
-
-O produto organiza o estudo em uma árvore explícita:
+O AraLearn organiza o estudo em uma árvore explícita:
 
 ```text
 curso -> módulo -> lição -> microssequência -> versão -> card
 ```
 
-Essa árvore não existe para burocratizar o conteúdo. Ela existe para tornar o estudo manipulável.
+Essa árvore torna o estudo manipulável. O curso define o campo geral. O módulo recorta uma região. A lição organiza uma etapa coerente. A microssequência concentra um problema local de aprendizagem. A versão preserva uma realização específica dessa etapa. O card apresenta explicação, exemplo, exercício ou representação.
 
-- O **curso** delimita o campo geral.
-- O **módulo** recorta uma região do curso.
-- A **lição** organiza uma etapa coerente desse recorte.
-- A **microssequência** concentra uma unidade curta de aprendizagem.
-- A **versão** preserva uma materialização específica dessa etapa.
-- O **card** realiza explicação, exemplo, exercício ou representação.
+A microssequência é o ponto de equilíbrio. Um card isolado pode perder contexto. Uma lição inteira pode ser grande demais para quem estuda no intervalo entre trabalho, deslocamento e aula. A microssequência permite trabalhar um conteúdo delimitado sem romper a continuidade da trilha.
 
-O centro do produto é a microssequência. Ela é grande o bastante para situar um problema local e pequena o bastante para caber no ritmo de quem estuda entre trabalho, deslocamento, aula e obrigações familiares.
+## O lugar da IA
 
-## Por que a microssequência é decisiva
+A IA entra como assistência de autoria por API. No fluxo top-down, ajuda a transformar escopo em estrutura. No fluxo bottom-up, ajuda a gerar ou corrigir cards dentro de uma microssequência. Essa divisão dialoga com a ideia de reduzir dependência de uma única chamada ampla: em vez de pedir à LLM que planeje tudo e escreva tudo de uma vez, o AraLearn distribui o trabalho em etapas verificáveis.
 
-O card isolado é rápido, mas pode perder contexto. O curso inteiro é completo, mas costuma ser grande demais para resolver uma dúvida ou praticar uma operação específica. A microssequência ocupa o espaço intermediário.
+Lewis et al. (2020) mostram, no contexto de RAG, a importância de apoiar geração em informação recuperada. O AraLearn ainda não deve ser descrito como sistema interno de RAG plenamente implementado; hoje, o uso de RAGs externos aparece como prática de preparação de conteúdo `seed`. A direção do projeto, porém, é clara: reduzir a autoridade autônoma do modelo e ampliar o papel de fontes, contratos, validação e revisão.
 
-Ela permite:
+## O que o estudante vê
 
-- explicar uma regra local;
-- mostrar um caso suficiente;
-- propor prática fechada;
-- corrigir um erro provável;
-- preparar a continuação.
+O estudante não precisa conhecer a arquitetura para usar o produto. Ele vê uma trilha, escolhe uma etapa, gera ou revisa cards e estuda. Quando o conteúdo pede outra forma, o card pode aparecer como tabela, matriz, plano cartesiano, grafo, mapa de relações, árvore, fluxograma ou código.
 
-Com isso, o produto evita dois defeitos comuns: explicação sem aplicação e exercício sem contexto.
+Essa escolha tem base didática. Sweller (1988) e Sweller, Van Merriënboer e Paas (1998) discutem como a carga cognitiva depende do modo como a informação é apresentada. Em temas técnicos, parte do esforço do estudante vem de reconstruir estrutura: onde está a linha da matriz, qual aresta liga dois vértices, que condição conduz a qual ramo do algoritmo. O AraLearn tenta tornar essa estrutura visível.
 
-## Dois momentos de trabalho
+## Posicionamento no ecossistema
 
-O AraLearn separa o processo em dois movimentos.
+Ferramentas existentes resolvem partes do problema. Buscadores e wikis ajudam a localizar informação. Cadernos digitais ajudam a guardar notas. Sistemas de repetição espaçada ajudam a revisar. Chats com IA respondem dúvidas e geram explicações. Plataformas de ensino oferecem cursos fechados.
 
-O primeiro é **planejar a trilha**. O usuário define assunto, objetivo, itens que entram, itens que ficam fora, convenções de notação, observações de prova ou de uso profissional. A partir disso, o app pode propor módulos, lições e microssequências.
+O AraLearn ocupa outro ponto: ele trata o estudo como projeto local, editável e versionado. O interesse não está apenas em responder uma pergunta, mas em organizar uma sequência que o estudante possa continuar, corrigir e auditar.
 
-O segundo é **materializar uma etapa local**. O usuário abre uma microssequência específica e pede explicação, prática, correção, apoio local ou continuação. O serviço textual trabalha sobre aquele recorte; o app valida o resultado e preserva a nova versão.
+## Público principal
 
-Na documentação técnica, esses movimentos aparecem como `top-down` e `bottom-up`. Essa distinção importa porque evita que uma única chamada ao modelo precise planejar o curso inteiro e escrever todos os cards finais de uma vez.
+O público inicial é o estudante-trabalhador: quem estuda com tempo limitado, muitas vezes no celular, em deslocamento, com atenção fragmentada, energia baixa e conexão instável. O projeto não romantiza essas condições; tenta levá-las a sério. Por isso, privilegia etapas delimitadas, persistência local, prática objetiva e retorno à trilha após uma interrupção.
 
-## Autoria assistida, não delegada
+## Originalidade
 
-O AraLearn combina autoria humana e assistência textual. O usuário continua sendo autor do projeto: define o recorte, decide o que entra, revisa o que foi produzido, corrige o que julga inadequado e determina quando uma etapa está pronta.
+A contribuição do AraLearn está na combinação de elementos que, isoladamente, já existem em outras ferramentas:
 
-O serviço textual ajuda em dois pontos:
+- microssequências como unidade intermediária entre card e lição;
+- LLM por API como assistência de autoria, não como autoridade final;
+- fluxos top-down e bottom-up;
+- contrato JSON;
+- validação antes da persistência;
+- versionamento local;
+- cards renderizados a partir de dados verificáveis;
+- foco explícito em estudo móvel e estudantes-trabalhadores.
 
-- sugerindo organização da trilha a partir do escopo;
-- materializando cards dentro de uma microssequência aberta.
+O resultado pretendido é um ambiente em que a abundância de informação possa ser reorganizada como percurso de aprendizagem.
 
-Essa escolha evita tratar a saída do modelo como material automaticamente confiável. O texto sugerido só entra no projeto depois de passar por contrato, validação e revisão.
+## Referências citadas
 
-## Material local e cursos embarcados
+Castells, M. (1996). *The rise of the network society*. Blackwell.
 
-AraLearn foi desenhado com persistência local como referência primária do projeto. O material fica no dispositivo, pode ser exportado em JSON e continua disponível depois de salvo.
+Covington, P., Adams, J., & Sargin, E. (2016). Deep neural networks for YouTube recommendations. *Proceedings of the 10th ACM Conference on Recommender Systems*. <https://doi.org/10.1145/2959100.2959190>
 
-O app também pode incluir cursos embarcados já materializados. Eles funcionam como ponto de partida editável, não como conteúdo intocável. No estado atual, há cinco cursos oficiais:
+Lewis, P., Perez, E., Piktus, A., Petroni, F., Karpukhin, V., Goyal, N., et al. (2020). Retrieval-augmented generation for knowledge-intensive NLP tasks. *Advances in Neural Information Processing Systems*, 33, 9459-9474. <https://arxiv.org/abs/2005.11401>
 
-- `Matemática para Informática`, com foco em `Teoria dos Grafos`;
-- `Práticas e Ferramentas de Desenvolvimento de Software`, com foco na família Visual Basic;
-- `Organização e Arquitetura de Computadores`, com os módulos `MobileRAG` e `Filosofia da Computação Quântica`;
-- `Framework Corporativo de IA Generativa`, voltado a implantação, governança, dados, risco e operação de IA em contexto institucional;
-- `Lógica de Programação`, voltado ao estudo estruturado de programação em C, com sintaxe básica, controle de fluxo, vetores, matrizes, strings, ordenação, `struct`, `typedef`, funções e ponteiros introdutórios.
+Simon, H. A. (1971). Designing organizations for an information-rich world. In M. Greenberger (Ed.), *Computers, communication, and the public interest*. Johns Hopkins Press.
 
-Esses cursos ajudam a mostrar o que o produto faz sem exigir que todo usuário comece do zero.
+Sweller, J. (1988). Cognitive load during problem solving: Effects on learning. *Cognitive Science*, 12(2), 257-285. <https://doi.org/10.1207/s15516709cog1202_4>
 
-## Onde o AraLearn se distingue
-
-O produto não parte do card como unidade soberana, nem da conversa livre com IA, nem da nota solta, nem do curso fechado.
-
-Ele parte de uma tese mais específica:
-
-> informação só vira estudo sustentado quando ganha forma, progressão, prática, revisão e possibilidade de retomada.
-
-Por isso, sua singularidade não está em “ter IA” ou “ter cards”, mas na maneira como estrutura, geração, validação e persistência local foram articuladas no mesmo documento de projeto.
-
-## Limites
-
-O AraLearn não substitui bibliografia, aula, orientação docente, pesquisa, discussão crítica ou revisão humana. Também não garante que o serviço textual sempre produza conteúdo correto.
-
-O que o produto oferece é outra coisa: uma arquitetura de estudo que torna o material editável, versionável, exportável e auditável. O modelo sugere. O sistema delimita e valida. O usuário decide.
-
-Para a fundamentação pedagógica, crítica e bibliográfica dessa proposta, leia [Fundamentos, pesquisa e governança](fundamentos-pesquisa-e-governanca.md).
+Sweller, J., Van Merriënboer, J. J. G., & Paas, F. (1998). Cognitive architecture and instructional design. *Educational Psychology Review*, 10, 251-296. <https://doi.org/10.1023/A:1022193728205>

@@ -1,14 +1,20 @@
 # Recursos de card
 
-No AraLearn, a forma do card faz parte do conteúdo. Este documento descreve os recursos aceitos pelo contrato público, a tarefa didática que cada um sustenta e os dados que o app precisa receber para renderizá-los. A especificação JSON completa do documento persistido está em [Contrato público](aralearn-contract.md).
+Recursos de card são as formas que o conteúdo pode assumir no AraLearn. Eles existem porque nem todo conteúdo técnico se explica bem em texto linear. Quando há relação espacial, tabular, algorítmica ou hierárquica, a forma de apresentação faz parte do que se aprende.
 
-Todo card combina três decisões:
+Mayer (2009) argumenta que palavras e representações visuais podem favorecer a compreensão quando combinadas de modo coerente. No AraLearn, essa ideia aparece como contrato: a LLM fornece dados, o app valida esses dados e monta o card na tela.
 
-- `resource`: forma material do card;
-- `kind`: teoria ou exercício;
-- `exercise`: modo de resposta, quando houver.
+## Núcleo comum
 
-Exemplo mínimo:
+Todo card possui `position`, `resource`, `kind`, `exercise`, `title` e `after`. O recurso define os demais campos. Um `matrix` usa valores em linhas e colunas; um `graph` usa vértices e arestas; um `plane` usa coordenadas; um `code` usa linguagem e trecho de código.
+
+## `paragraph`
+
+Representa explicação textual ou exercício com lacuna por opções.
+
+Use quando o conteúdo pode ser formulado em texto: definição, regra, síntese, contraste ou pergunta de preenchimento.
+
+Exemplo:
 
 ```json
 {
@@ -16,197 +22,288 @@ Exemplo mínimo:
   "resource": "paragraph",
   "kind": "theory",
   "exercise": "none",
-  "title": "Ideia central",
-  "text": "...",
-  "after": "..."
+  "title": "Endereço de uma variável",
+  "text": "Em C, o operador & obtém o endereço de uma variável.",
+  "after": "Endereço é a posição onde o valor está armazenado."
 }
 ```
 
-## `paragraph`
-
-`paragraph` é o recurso textual básico. Serve para explicação, síntese local, transição e exercício com lacuna.
-
-### Uso teórico
-
-Adequado para:
-
-- abrir uma microssequência;
-- definir regra local;
-- distinguir dois casos;
-- preparar o estudante para um exercício;
-- fechar uma etapa sem abrir outro tópico.
-
-### Uso com lacuna
-
-Quando `paragraph` entra como exercício, o modo aceito é `gap`, com sintaxe:
-
-```text
-[[resposta correta::opção correta|distrator 1|distrator 2]]
-```
-
-Esse formato é útil quando a tarefa exige completar uma regra ou reconhecer uma formulação precisa sem recorrer a digitação extensa.
+Erro que ajuda a evitar: transformar todo conteúdo em pergunta objetiva quando uma explicação direta é suficiente.
 
 ## `choice`
 
-`choice` representa decisão objetiva com alternativas.
+Representa uma pergunta objetiva com alternativas.
 
-Adequado para:
+Use quando o estudante precisa tomar uma decisão clara: identificar uma saída, escolher uma definição, reconhecer um erro ou selecionar o próximo passo.
 
-- diferenciar erro plausível;
-- verificar reconhecimento;
-- comparar alternativas próximas;
-- retomar uma regra depois de um exemplo.
+```json
+{
+  "position": 2,
+  "resource": "choice",
+  "kind": "exercise",
+  "exercise": "choice",
+  "title": "Valor ou endereço",
+  "question": "Qual expressão obtém o endereço de x em C?",
+  "options": [
+    { "id": "a", "text": "&x" },
+    { "id": "b", "text": "*x" },
+    { "id": "c", "text": "x++" }
+  ],
+  "answer": "a",
+  "after": "`&x` obtém o endereço da variável."
+}
+```
 
-Regras:
+Erro que ajuda a evitar: pedir resposta aberta em contexto móvel quando o objetivo é discriminar alternativas.
 
-- deve ter 3 ou 4 alternativas;
-- cada alternativa pode ser textual ou um trecho de código estruturado com `kind: "code"`, `language` e `code`;
-- `answer` precisa apontar para um `id` existente;
-- os distratores devem ser plausíveis dentro do conteúdo, não absurdos.
+## `composite`
+
+Representa um card com vários blocos: texto, código, tabela, grafo, matriz ou outro recurso aceito.
+
+Use quando uma etapa precisa combinar explicação e representação no mesmo card.
+
+```json
+{
+  "position": 3,
+  "resource": "composite",
+  "kind": "theory",
+  "exercise": "none",
+  "title": "Variável e memória",
+  "blocks": [
+    { "kind": "paragraph", "value": "A variável guarda um valor." },
+    { "kind": "code", "language": "c", "code": "int x = 5;" }
+  ],
+  "after": "O nome da variável permite acessar o valor armazenado."
+}
+```
+
+Erro que ajuda a evitar: separar artificialmente elementos que precisam ser vistos juntos.
 
 ## `code`
 
-`code` apresenta comando, trecho de programa, pseudocódigo ou configuração textual sensível a sintaxe.
+Representa trecho de código, comando ou exercício com código.
 
-Adequado para:
+Use quando sintaxe, ordem, indentação, comando ou saída esperada fazem parte do conteúdo.
 
-- explicar comando de terminal;
-- mostrar trecho em C, Python, SQL, shell ou pseudocódigo;
-- comparar sintaxe correta e erro frequente;
-- treinar leitura de código em contexto curto.
+```json
+{
+  "position": 4,
+  "resource": "code",
+  "kind": "exercise",
+  "exercise": "gap",
+  "title": "Atribuição",
+  "prompt": "Complete a linha que atribui 5 a x.",
+  "language": "c",
+  "code": "int x;\n[[x = 5;::x = 5;|x == 5;|int = x;]]",
+  "after": "`x = 5;` atribui valor. `x == 5` compara."
+}
+```
 
-Combinações aceitas:
-
-- teoria: `exercise: "none"`;
-- lacuna em código: `exercise: "gap"` com `[[resposta::resposta|distrator 1|distrator 2]]` dentro de `code`;
-- escolha em código: `exercise: "choice"` com `question`, `options` e `answer`.
-
-Regras:
-
-- preserve indentação e quebras de linha;
-- em `code` choice, as opções também podem ser blocos de código estruturados;
-- não use `___` em cards finais.
+Erro que ajuda a evitar: explicar programação sem mostrar forma concreta de código.
 
 ## `table`
 
-`table` organiza informação em linhas e colunas.
+Representa informação em linhas e colunas.
 
-Adequado para:
+Use quando a relação tabular é essencial: comparação, tabela-verdade, parâmetros, comandos ou casos.
 
-- tabela-verdade;
-- comparação entre casos;
-- critérios de classificação;
-- dados que precisam manter alinhamento visual.
+```json
+{
+  "position": 5,
+  "resource": "table",
+  "kind": "theory",
+  "exercise": "none",
+  "title": "Tabela-verdade da conjunção",
+  "columns": ["P", "Q", "P && Q"],
+  "rows": [["V", "V", "V"], ["V", "F", "F"], ["F", "V", "F"], ["F", "F", "F"]],
+  "after": "A conjunção só é verdadeira quando P e Q são verdadeiras."
+}
+```
+
+Erro que ajuda a evitar: descrever relações tabulares em prosa difícil de comparar.
 
 ## `matrix`
 
-`matrix` representa matrizes, linhas, colunas, posições e sequências matriciais.
+Representa matriz ou sequência de matrizes.
 
-Adequado para:
+Use quando posição, linha, coluna, diagonal ou transformação matricial importam.
 
-- localizar valores por linha e coluna;
-- trabalhar matriz 2x2, 3x3 ou retangular pequena;
-- manter a forma matricial quando ela faz parte do problema;
-- apoiar exercícios de leitura, soma simples ou rastreamento de posição.
+```json
+{
+  "position": 6,
+  "resource": "matrix",
+  "kind": "exercise",
+  "exercise": "choice",
+  "title": "Linha e coluna",
+  "prompt": "Observe a matriz.",
+  "values": [["1", "2"], ["3", "4"]],
+  "question": "Qual valor está na segunda linha e primeira coluna?",
+  "options": [
+    { "id": "a", "text": "3" },
+    { "id": "b", "text": "2" },
+    { "id": "c", "text": "4" }
+  ],
+  "answer": "a",
+  "after": "Segunda linha e primeira coluna indica o valor 3."
+}
+```
 
-Regra principal: use `matrix` quando transformar a matriz em texto faria o estudante perder a forma espacial relevante.
-
-Quando precisar destacar parte da matriz, use `highlight` como objeto estrutural, por exemplo `{ "pattern": "mainDiagonal" }` ou `{ "cells": [[0, 1]] }`.
+Erro que ajuda a evitar: perder a estrutura espacial da matriz em texto corrido.
 
 ## `plane`
 
-`plane` representa ponto, vetor, deslocamento, soma vetorial, escala e distância no plano cartesiano.
+Representa plano cartesiano, ponto, vetor, soma, escala ou distância.
 
-Adequado para:
+Use quando a relação espacial é parte do conceito.
 
-- ler coordenadas;
-- reconhecer vetor 2D;
-- praticar soma vetorial;
-- trabalhar interpretação espacial em casos pequenos.
+```json
+{
+  "position": 7,
+  "resource": "plane",
+  "kind": "exercise",
+  "exercise": "choice",
+  "title": "Vetor no plano",
+  "prompt": "Observe o vetor representado a partir da origem.",
+  "vector": [2, 1],
+  "question": "Qual vetor está representado?",
+  "options": [
+    { "id": "a", "text": "(2, 1)" },
+    { "id": "b", "text": "(1, 2)" },
+    { "id": "c", "text": "(-2, 1)" }
+  ],
+  "answer": "a",
+  "after": "O primeiro valor indica deslocamento horizontal; o segundo, deslocamento vertical."
+}
+```
+
+Erro que ajuda a evitar: tratar vetor como par abstrato antes de o estudante reconhecer deslocamento.
 
 ## `graph`
 
-`graph` representa vértices e arestas. O contrato prioriza a estrutura; a geometria é resolvida pelo motor do app.
+Representa grafo com vértices e arestas.
 
-Adequado para:
+Use em teoria dos grafos, dependências, redes, relações e estruturas conectadas.
 
-- adjacência;
-- caminho;
-- ciclo;
-- grau;
-- componente;
-- leitura estrutural de grafos em geral.
+```json
+{
+  "position": 8,
+  "resource": "graph",
+  "kind": "theory",
+  "exercise": "none",
+  "title": "Grafo mínimo",
+  "prompt": "Observe os dois vértices e a aresta entre eles.",
+  "vertices": [
+    { "id": "A", "label": "A" },
+    { "id": "B", "label": "B" }
+  ],
+  "edges": [
+    { "from": "A", "to": "B" }
+  ],
+  "after": "A aresta indica relação entre os vértices."
+}
+```
 
-Essa separação entre estrutura persistida e geometria local existe para evitar dependência excessiva de coordenadas produzidas pelo serviço textual.
+Erro que ajuda a evitar: falar de relações sem mostrar as conexões.
 
 ## `relation_map`
 
-`relation_map` representa dois conjuntos e as relações entre seus elementos.
+Representa dois conjuntos e relações entre seus elementos.
 
-Adequado para:
+Use quando o estudante precisa ver pares, domínio, contradomínio, imagem ou correspondência.
 
-- pares ordenados;
-- relações entre conjuntos;
-- preparação para grafo bipartido;
-- comparação entre lista de pares, diagrama e tabela de relação.
+```json
+{
+  "position": 9,
+  "resource": "relation_map",
+  "kind": "exercise",
+  "exercise": "choice",
+  "title": "Relação entre conjuntos",
+  "prompt": "Observe os conjuntos e as relações.",
+  "leftSet": {
+    "label": "U",
+    "items": [{ "id": "A", "label": "A" }, { "id": "B", "label": "B" }]
+  },
+  "rightSet": {
+    "label": "V",
+    "items": [{ "id": "1", "label": "1" }, { "id": "2", "label": "2" }]
+  },
+  "relations": [
+    { "from": "A", "to": "1" },
+    { "from": "B", "to": "2" }
+  ],
+  "question": "Qual conjunto de pares corresponde ao diagrama?",
+  "options": [
+    { "id": "a", "text": "{(A,1), (B,2)}" },
+    { "id": "b", "text": "{(A,2), (B,1)}" },
+    { "id": "c", "text": "{(A,1)}" }
+  ],
+  "answer": "a",
+  "after": "Cada ligação indica um par ordenado entre os conjuntos."
+}
+```
 
-O contrato explicita conjuntos e relações; o motor do app calcula a disposição visual.
+Erro que ajuda a evitar: confundir relação visual com lista de pares sem correspondência clara.
 
 ## `flow`
 
-`flow` representa processo, sequência e decisão por meio de estrutura semântica.
+Representa sequência, decisão ou repetição em forma de fluxo.
 
-Adequado para:
+Use para algoritmo, processo, regra operacional, procedimento administrativo ou desvio condicional.
 
-- algoritmo em fluxograma;
-- procedimento administrativo;
-- decisão condicional;
-- decomposição de processo.
+```json
+{
+  "position": 10,
+  "resource": "flow",
+  "kind": "theory",
+  "exercise": "none",
+  "title": "Decisão simples",
+  "prompt": "Observe o teste condicional.",
+  "structure": {
+    "kind": "sequence",
+    "items": [
+      {
+        "kind": "if_then_else",
+        "condition": "x > 0",
+        "thenBranch": [{ "kind": "process", "text": "imprimir positivo" }],
+        "elseBranch": [{ "kind": "process", "text": "imprimir não positivo" }]
+      }
+    ]
+  },
+  "after": "A condição decide qual ramo será executado."
+}
+```
 
-Regras importantes:
-
-- `flow` persiste `structure`, não uma geometria pronta;
-- a raiz deve ser `kind: "sequence"`;
-- o motor do app deriva nós, ramos, portas e layout a partir dessa estrutura.
+Erro que ajuda a evitar: explicar controle de fluxo sem mostrar a ramificação.
 
 ## `tree`
 
-`tree` representa hierarquia.
+Representa estrutura hierárquica.
 
-Adequado para:
+Use para pastas e arquivos, sintaxe, classificação, árvore de decisão ou decomposição de conteúdo.
 
-- pastas e arquivos;
-- organogramas simples;
-- dependência hierárquica;
-- classificação em níveis.
+```json
+{
+  "position": 11,
+  "resource": "tree",
+  "kind": "theory",
+  "exercise": "none",
+  "title": "Estrutura de arquivos",
+  "prompt": "Observe a hierarquia.",
+  "nodes": [
+    { "id": "root", "label": "projeto", "type": "folder", "parentId": null },
+    { "id": "src", "label": "src", "type": "folder", "parentId": "root" },
+    { "id": "app", "label": "app.js", "type": "file", "parentId": "src" }
+  ],
+  "after": "A árvore mostra relação de pertencimento entre pasta e arquivo."
+}
+```
 
-## Como escolher o recurso
+Erro que ajuda a evitar: descrever hierarquia sem deixar visível o nível de cada elemento.
 
-O recurso deve ser escolhido pela natureza da tarefa didática, não pela familiaridade de quem escreve o card.
+## Critério didático
 
-Critérios práticos:
+A pergunta para escolher um recurso não é “qual fica mais bonito?”, mas “qual forma preserva melhor a estrutura que o estudante precisa compreender?”. Se a estrutura não importa, `paragraph` ou `choice` costumam bastar. Se a estrutura importa, o recurso visual ou composto deixa de ser complemento e passa a fazer parte do ensino.
 
-- regra, transição ou síntese curta: `paragraph`;
-- decisão objetiva: `choice`;
-- sintaxe e comando: `code`;
-- comparação tabular: `table`;
-- forma matricial: `matrix`;
-- relação espacial no plano: `plane`;
-- relação entre vértices e arestas: `graph`;
-- relação entre dois conjuntos: `relation_map`;
-- processo com ordem e decisão: `flow`;
-- hierarquia: `tree`.
+## Referências citadas
 
-## `afterBlocks`
-
-Use `afterBlocks` quando o feedback pós-card precisar de mais de um bloco renderizável, por exemplo um parágrafo seguido de uma tabela ou de um novo trecho de código. `after` continua sendo o resumo textual curto; `afterBlocks` materializa complementos estruturados e não aceita bloco `choice`.
-
-## Relação com a geração estruturada
-
-No runtime atual, o serviço textual não escreve diretamente o card público completo em todos os detalhes. Ele escolhe o recurso e preenche os campos do template ativo. Depois disso, o app recompila, valida e persiste o resultado final.
-
-Essa escolha reduz erro de forma e permite verificações adicionais, por exemplo:
-
-- derivar resposta correta em exercícios matriciais de localização;
-- verificar unicidade da alternativa correta em exercícios de caminho em grafos;
-- rejeitar material estruturalmente insuficiente para o recurso escolhido.
+Mayer, R. E. (2009). *Multimedia learning* (2nd ed.). Cambridge University Press. <https://doi.org/10.1017/CBO9780511811678>
