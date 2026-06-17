@@ -182,15 +182,27 @@ export function createFlowchartLayoutEngine(deps) {
 
     function simplifyFlowchartPolyline(points) {
       const compact = [];
+      let firstOriginal = null;
+      let lastOriginal = null;
 
       (Array.isArray(points) ? points : []).forEach(function (point) {
         if (!point) return;
+        const rawPoint = [Number(point[0] || 0), Number(point[1] || 0)];
+        if (!firstOriginal) firstOriginal = rawPoint;
+        lastOriginal = rawPoint;
         const x = snapRouteValue(point[0]);
         const y = snapRouteValue(point[1]);
         const last = compact[compact.length - 1];
         if (last && last[0] === x && last[1] === y) return;
         compact.push([x, y]);
       });
+
+      if (compact.length && firstOriginal) {
+        compact[0] = firstOriginal;
+      }
+      if (compact.length > 1 && lastOriginal) {
+        compact[compact.length - 1] = lastOriginal;
+      }
 
       if (compact.length < 3) return compact;
 
@@ -1427,6 +1439,20 @@ export function createFlowchartLayoutEngine(deps) {
           };
         }
       }
+      if (layoutMeta && (layoutMeta.semanticKind === "switch_case" || layoutMeta.semanticKind === "switch_case_case")) {
+        if (link.role === "case-match" || link.outputSlot === 1) {
+          if (targetLayoutMeta && targetLayoutMeta.semanticKind === "merge") {
+            return {
+              startSide: "right",
+              targetSide: "top"
+            };
+          }
+          return {
+            startSide: "right",
+            targetSide: "left"
+          };
+        }
+      }
       const outgoing = (graph.outgoingByNode[fromNode.id] || []).filter(function (item) {
         return !graph.backEdgeIds[item.id];
       });
@@ -1860,56 +1886,75 @@ export function createFlowchartLayoutEngine(deps) {
           : null;
 
       if (usesConnectorMerge) {
-        const desiredY = end[1];
-
         if (startSide === "bottom") {
-          const directMergeRoute = simplifyFlowchartPolyline([
-            start,
-            [start[0], desiredY],
-            end
-          ]);
-          if (!routeHitsForbiddenGeometry(directMergeRoute, obstacles, routedLinks, allowedSharedPoints)) {
-            return {
-              points: directMergeRoute,
-              startSide: startSide,
-              isBackEdge: false
-            };
+          const candidateTargetSides = [targetSide, "top"];
+          if (targetSide === "left") {
+            candidateTargetSides.push("right");
+          } else if (targetSide === "right") {
+            candidateTargetSides.push("left");
           }
 
-          const preferredExitX = start[0] < end[0]
-            ? start[0] - sideRouteExitOffset
-            : start[0] > end[0]
-              ? start[0] + sideRouteExitOffset
-              : start[0];
-          const exitX = findClearLaneCoordinate(
-            preferredExitX,
-            laneStep,
-            10,
-            function (value) {
-              return [
-                start,
-                [value, start[1]],
-                [value, desiredY],
-                end
-              ];
-            },
-            obstacles,
-            routedLinks,
-            allowedSharedPoints
-          );
-          return {
-            points: simplifyFlowchartPolyline([
+          const seenTargetSides = Object.create(null);
+          for (let candidateIndex = 0; candidateIndex < candidateTargetSides.length; candidateIndex += 1) {
+            const candidateTargetSide = String(candidateTargetSides[candidateIndex] || "").trim();
+            if (!candidateTargetSide || seenTargetSides[candidateTargetSide]) continue;
+            seenTargetSides[candidateTargetSide] = true;
+
+            const mergeEnd = connectorsTo[candidateTargetSide] || connectorsTo.top;
+            const mergeAllowedSharedPoints = [start, mergeEnd];
+            const desiredY = mergeEnd[1];
+            const directMergeRoute = simplifyFlowchartPolyline([
+              start,
+              [start[0], desiredY],
+              mergeEnd
+            ]);
+            if (!routeHitsForbiddenGeometry(directMergeRoute, obstacles, routedLinks, mergeAllowedSharedPoints)) {
+              return {
+                points: directMergeRoute,
+                startSide: startSide,
+                isBackEdge: false
+              };
+            }
+
+            const preferredExitX = start[0] < mergeEnd[0]
+              ? start[0] - sideRouteExitOffset
+              : start[0] > mergeEnd[0]
+                ? start[0] + sideRouteExitOffset
+                : start[0];
+            const exitX = findClearLaneCoordinate(
+              preferredExitX,
+              laneStep,
+              10,
+              function (value) {
+                return [
+                  start,
+                  [value, start[1]],
+                  [value, desiredY],
+                  mergeEnd
+                ];
+              },
+              obstacles,
+              routedLinks,
+              mergeAllowedSharedPoints
+            );
+            const candidateRoute = simplifyFlowchartPolyline([
               start,
               [exitX, start[1]],
               [exitX, desiredY],
-              end
-            ]),
-            startSide: startSide,
-            isBackEdge: false
-          };
+              mergeEnd
+            ]);
+            if (!routeHitsForbiddenGeometry(candidateRoute, obstacles, routedLinks, mergeAllowedSharedPoints)) {
+              return {
+                points: candidateRoute,
+                startSide: startSide,
+                isBackEdge: false
+              };
+            }
+          }
         }
 
         if (startSide === "left" || startSide === "right") {
+          const desiredY = end[1];
           const preferredExitX = mirroredLaneX == null
             ? sourceIsLoopControl && occupiedBandBounds && Number.isFinite(occupiedBandBounds.maxX) && Number.isFinite(occupiedBandBounds.minX)
               ? (
@@ -2064,6 +2109,24 @@ export function createFlowchartLayoutEngine(deps) {
       }
 
       if (!bundle && !usesConnectorMerge) {
+        if (
+          (startSide === "right" || startSide === "left") &&
+          (targetSide === "right" || targetSide === "left") &&
+          Math.abs(end[1] - start[1]) <= laneStep
+        ) {
+          const flatSideRoute = simplifyFlowchartPolyline([
+            start,
+            [end[0], start[1]]
+          ]);
+          if (!routeHitsForbiddenGeometry(flatSideRoute, obstacles, routedLinks, allowedSharedPoints)) {
+            return {
+              points: flatSideRoute,
+              startSide: startSide,
+              isBackEdge: false
+            };
+          }
+        }
+
         const directSideRoute = simplifyFlowchartPolyline([
           start,
           [end[0], start[1]],

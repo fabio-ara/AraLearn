@@ -66,7 +66,7 @@ function buildCardSpecificRules(plan = []) {
       }
       if (role === "practice") {
         return exercise === "gap"
-          ? [`Card ${position} role practice: use a short completion target and plausible wrong options.`]
+          ? [`Card ${position} role practice: use a short completion target and plausible wrong options inside the main field itself.`]
           : [`Card ${position} role practice: ask about the case shown in the card, not broad trivia.`];
       }
       if (role === "practice_more") {
@@ -103,27 +103,38 @@ function buildCardSpecificRules(plan = []) {
       return [
         ...roleRules,
         `Card ${position} is exercise choice: return exactly 3 or 4 options.`,
-        `Card ${position} options must be full text alternatives, not only binary tokens.`
+        `Card ${position} options must be full alternatives, not only binary tokens.`,
+        `Card ${position} options may be plain text or code; if an option is code, use { id, kind: "code", language, code }.`
       ];
     }
     if (exercise === "gap") {
+      const gapField = text(item?.resource) === "code" ? "code" : "text";
+      const resourceLabel = text(item?.resource) === "code" ? "code gap" : "paragraph gap";
       return [
         ...roleRules,
-        `Card ${position} is paragraph gap: text must contain exactly one [[answer::answer|wrong1|wrong2]] pattern.`,
-        `Card ${position} is paragraph gap: write the completion target inside the paragraph text itself, not as a plain question stem.`,
-        `Card ${position} is paragraph gap: do not use question, options or answer fields, and do not write a gap without the double-bracket pattern.`
+        `Card ${position} is ${resourceLabel}: ${gapField} must contain at least one [[answer::answer|wrong1|wrong2]] pattern.`,
+        `Card ${position} is ${resourceLabel}: write the completion target inside ${gapField} itself, not as a plain question stem.`,
+        `Card ${position} is ${resourceLabel}: do not use question, options or answer fields, and do not write ___ placeholders.`,
+        ...(text(item?.resource) === "code"
+          ? [
+              `Card ${position} resource code: if code has multiple lines, indent nested lines consistently with spaces.`,
+              `Card ${position} resource code: preserve line breaks in code; do not linearize the snippet into one sentence.`
+            ]
+          : [])
       ];
     }
     if (text(item?.resource) === "code") {
       return [
         ...roleRules,
-        `Card ${position} resource code: if code has multiple lines, indent nested lines consistently with spaces.`
+        `Card ${position} resource code: if code has multiple lines, indent nested lines consistently with spaces.`,
+        `Card ${position} resource code: preserve line breaks in code; do not linearize the snippet into one sentence.`
       ];
     }
     if (text(item?.resource) === "matrix") {
       return [
         ...roleRules,
-        `Card ${position} resource matrix: return a complete matrix object with values or sequence, not a textual substitute.`
+        `Card ${position} resource matrix: return a complete matrix object with values or sequence, not a textual substitute.`,
+        `Card ${position} resource matrix: if highlight exists, use only { pattern }, { cells }, { rows } or { columns } inside matrix.highlight.`
       ];
     }
     if (text(item?.resource) === "graph") {
@@ -261,13 +272,17 @@ export function buildMicrosequenceGenerationContract({ planningContract, validat
       "Use exactly the given position, resource, kind and exercise.",
       "Do not add fields outside schemas.",
       "If kind is theory, do not return question, options or answer, even as empty values.",
-      "If exercise is gap, text must contain exactly one [[answer::answer|wrong1|wrong2]] pattern.",
-      "If exercise is gap, write the completion target inside text itself instead of using a plain question stem.",
+      "If resource is paragraph and exercise is gap, text must contain at least one [[answer::answer|wrong1|wrong2]] pattern.",
+      "If resource is code and exercise is gap, code must contain at least one [[answer::answer|wrong1|wrong2]] pattern.",
+      "If exercise is gap, write the completion target inside the main field itself instead of using a plain question stem.",
       "If exercise is choice and resource is not composite, return question, options and answer in the same card.",
       "If resource is composite and exercise is choice, keep the final question, options and answer inside exactly one choice block.",
       "If exercise is choice, return exactly 3 or 4 options.",
-      "Each choice option must be an object with id and text.",
+      "Each textual choice option must be an object with id and text.",
+      "If a choice option is code, use { id, kind: \"code\", language, code }.",
       "Do not use binary option sets like only yes/no or only true/false.",
+      "Use after for short follow-up text and inline code with backticks; if you need block content such as code, matrix, table, flow or multi-part continuation, use afterBlocks.",
+      "Do not use ___ placeholders in final cards.",
       "Do not leave the main instructional field empty: paragraph needs text; choice needs question; composite needs blocks; code/table/graph/relation_map/matrix/plane need their own concrete payload.",
       "If the first card is theory, open with a short local explanation before charging the learner with an exercise.",
       "Keep the first theory card short enough for initial study: no long summary block in the opening.",

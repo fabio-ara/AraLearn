@@ -2,6 +2,62 @@ function clone(value) {
   return structuredClone(value);
 }
 
+function choiceOptionSchema() {
+  return {
+    type: "object",
+    required: ["id"],
+    anyOf: [
+      {
+        additionalProperties: false,
+        required: ["id", "text"],
+        properties: {
+          id: { type: "string" },
+          kind: { type: "string", enum: ["text"] },
+          text: { type: "string" }
+        }
+      },
+      {
+        additionalProperties: false,
+        required: ["id", "kind", "language", "code"],
+        properties: {
+          id: { type: "string" },
+          kind: { const: "code" },
+          language: { type: "string" },
+          code: { type: "string" }
+        }
+      }
+    ]
+  };
+}
+
+function matrixHighlightSchema() {
+  return {
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      pattern: { type: "string", enum: ["mainDiagonal"] },
+      cells: {
+        type: "array",
+        items: {
+          type: "array",
+          minItems: 2,
+          maxItems: 2,
+          items: { type: "integer" }
+        }
+      },
+      rows: { type: "array", items: { type: "integer" } },
+      columns: { type: "array", items: { type: "integer" } }
+    }
+  };
+}
+
+function afterBlocksSchema() {
+  return {
+    type: "array",
+    items: compositeBlockSchema()
+  };
+}
+
 function pedagogicFields() {
   return {
     position: { type: "integer" },
@@ -10,6 +66,7 @@ function pedagogicFields() {
     exercise: { type: "string", enum: ["none", "gap", "choice"] },
     title: { type: "string" },
     after: { type: "string" },
+    afterBlocks: afterBlocksSchema(),
     sources: { type: "array", items: { type: "string" } },
     topics: { type: "array", items: { type: "string" } }
   };
@@ -20,15 +77,7 @@ function contextualChoiceFields() {
     question: { type: "string" },
     options: {
       type: "array",
-      items: {
-        type: "object",
-        additionalProperties: false,
-        required: ["id", "text"],
-        properties: {
-          id: { type: "string" },
-          text: { type: "string" }
-        }
-      }
+      items: choiceOptionSchema()
     },
     answer: { type: "string" }
   };
@@ -78,15 +127,7 @@ function flowStructureSchema() {
 function choiceOptionsSchema() {
   return {
     type: "array",
-    items: {
-      type: "object",
-      additionalProperties: false,
-      required: ["id", "text"],
-      properties: {
-        id: { type: "string" },
-        text: { type: "string" }
-      }
-    }
+    items: choiceOptionSchema()
   };
 }
 
@@ -146,7 +187,19 @@ function compositeBlockSchema() {
       name: { type: "string" },
       values: { type: "array", items: { type: "array" } },
       dividerAfterColumn: { type: "number" },
-      sequence: { type: "array", items: { type: "object" } },
+      sequence: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            name: { type: "string" },
+            connector: { type: "string" },
+            values: { type: "array", items: { type: "array" } },
+            highlight: matrixHighlightSchema()
+          }
+        }
+      },
       x: coordinatePairSchema(),
       y: coordinatePairSchema(),
       vector: coordinatePairSchema(),
@@ -204,18 +257,7 @@ export const CARD_RESOURCE_DEFINITIONS = Object.freeze([
         ...pedagogicFields(),
         resource: { const: "choice" },
         question: { type: "string" },
-        options: {
-          type: "array",
-          items: {
-            type: "object",
-            additionalProperties: false,
-            required: ["id", "text"],
-            properties: {
-              id: { type: "string" },
-              text: { type: "string" }
-            }
-          }
-        },
+        options: choiceOptionsSchema(),
         answer: { type: "string" }
       }
     }
@@ -241,7 +283,7 @@ export const CARD_RESOURCE_DEFINITIONS = Object.freeze([
   Object.freeze({
     id: "code",
     label: "Código",
-    shortDescription: "Trecho de código ou comando com teoria ou pergunta objetiva.",
+    shortDescription: "Trecho de código ou comando com teoria, lacuna por opções ou pergunta objetiva.",
     schema: {
       type: "object",
       additionalProperties: false,
@@ -362,7 +404,7 @@ export const CARD_RESOURCE_DEFINITIONS = Object.freeze([
         prompt: { type: "string" },
         name: { type: "string" },
         values: { type: "array", items: { type: "array" } },
-        highlight: {},
+        highlight: matrixHighlightSchema(),
         dividerAfterColumn: { type: "number" },
         sequence: {
           type: "array",
@@ -372,7 +414,8 @@ export const CARD_RESOURCE_DEFINITIONS = Object.freeze([
             properties: {
               name: { type: "string" },
               connector: { type: "string" },
-              values: { type: "array", items: { type: "array" } }
+              values: { type: "array", items: { type: "array" } },
+              highlight: matrixHighlightSchema()
             }
           }
         },

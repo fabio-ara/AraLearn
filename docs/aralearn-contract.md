@@ -249,6 +249,8 @@ Todo card possui este núcleo:
 - `resource`
 - `kind`
 - `exercise`
+- `title`
+- `after`
 
 Valores permitidos em `kind`:
 
@@ -265,10 +267,15 @@ Recursos aceitos:
 
 - `paragraph`
 - `choice`
+- `composite`
 - `code`
 - `table`
 - `matrix`
 - `plane`
+
+Campo opcional comum:
+
+- `afterBlocks`: lista de blocos adicionais renderizáveis depois do `after`, reutilizando os mesmos formatos aceitos em `composite` com exceção de `choice`.
 - `graph`
 - `relation_map`
 - `flow`
@@ -334,7 +341,34 @@ Regras:
 
 - `choice` usa `kind = "exercise"` e `exercise = "choice"`;
 - deve haver 3 ou 4 opções;
+- cada opção pode ser textual (`{ "id", "text" }`) ou de código (`{ "id", "kind": "code", "language", "code" }`);
 - `answer` aponta para um `id` existente.
+
+### `code`
+
+```json
+{
+  "position": 4,
+  "resource": "code",
+  "kind": "exercise",
+  "exercise": "gap",
+  "title": "Complete o comando",
+  "prompt": "Preencha a lacuna com o comando correto.",
+  "language": "c",
+  "code": "int x;\n[[x = 5;::x = 5;|x == 5;|int = x;]]\nprintf(\"%d\", x);",
+  "after": "`x = 5;` grava o valor antes do `printf`."
+}
+```
+
+Regras:
+
+- `code` teórico usa `kind = "theory"` e `exercise = "none"`;
+- `code` com lacuna usa `kind = "exercise"` e `exercise = "gap"`;
+- `code` com escolha usa `kind = "exercise"` e `exercise = "choice"`;
+- em `code` gap, a lacuna fica dentro do próprio `code`, com a sintaxe `[[resposta::resposta|distrator 1|distrator 2]]`;
+- em `code` choice, não use lacuna embutida; use `question`, `options` e `answer`;
+- opções de `code` choice também podem usar o formato estruturado de código;
+- não use `___` em cards finais.
 
 ### `matrix`
 
@@ -356,6 +390,18 @@ Regras:
   "answer": "a",
   "after": "A posição (2, 1) indica segunda linha e primeira coluna."
 }
+```
+
+Quando houver destaque em `matrix`, use objeto estrutural, por exemplo:
+
+```json
+{ "pattern": "mainDiagonal" }
+```
+
+ou:
+
+```json
+{ "cells": [[0, 1]], "rows": [0], "columns": [1] }
 ```
 
 ### `plane`

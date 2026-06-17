@@ -1,3 +1,5 @@
+import { getChoiceOptionComparableValue, normalizeChoiceOption } from "./choiceOptions.js";
+
 function text(value) {
   return typeof value === "string" ? value : "";
 }
@@ -54,14 +56,21 @@ function buildHeadingBlock(title) {
   };
 }
 
-function buildAfterBlock(after) {
-  const value = text(after).trim();
-  if (!value) {
+function buildAfterBlock(card = {}) {
+  const blocks = [];
+  const afterValue = text(card?.after).trim();
+  if (afterValue) {
+    blocks.push({ kind: "paragraph", value: afterValue });
+  }
+  if (Array.isArray(card?.afterBlocks)) {
+    blocks.push(...card.afterBlocks.map((block) => normalizeCompositeBlock(block)));
+  }
+  if (!blocks.length) {
     return null;
   }
   return {
     kind: "after",
-    value
+    blocks
   };
 }
 
@@ -76,10 +85,7 @@ function buildChoiceBlock(card) {
   return {
     kind: "choice",
     question: text(card.question),
-    options: (Array.isArray(card.options) ? card.options : []).map((option) => ({
-      id: text(option?.id),
-      text: text(option?.text)
-    })),
+    options: (Array.isArray(card.options) ? card.options : []).map((option, index) => normalizeChoiceOption(option, index)),
     answer: text(card.answer)
   };
 }
@@ -176,10 +182,7 @@ function normalizeCompositeBlock(block = {}) {
     return {
       kind,
       question: text(block?.question),
-      options: (Array.isArray(block?.options) ? block.options : []).map((option) => ({
-        id: text(option?.id),
-        text: text(option?.text)
-      })),
+      options: (Array.isArray(block?.options) ? block.options : []).map((option, index) => normalizeChoiceOption(option, index)),
       answer: text(block?.answer)
     };
   }
@@ -301,7 +304,7 @@ export function readCardText(card) {
         if (block?.kind === "choice") {
           return [
             text(block?.question),
-            ...(Array.isArray(block?.options) ? block.options.map((option) => text(option?.text)) : [])
+            ...(Array.isArray(block?.options) ? block.options.map((option, index) => getChoiceOptionComparableValue(option, index)) : [])
           ];
         }
         if (block?.kind === "flow") {
@@ -344,7 +347,7 @@ export function buildCardRuntime(card) {
     ...buildCardSpecificBlocks(card),
     ...buildExerciseResponseBlock(card)
   ];
-  const afterBlock = buildAfterBlock(card?.after);
+  const afterBlock = buildAfterBlock(card);
   if (afterBlock) {
     blocks.push(afterBlock);
   }

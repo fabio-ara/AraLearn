@@ -54,23 +54,27 @@ function compactPlan(cardPlan = []) {
       ["explain", "example", "next"].includes(text(item?.role))
         ? "kind=theory, exercise=none"
         : ["practice", "practice_more", "fix_error"].includes(text(item?.role))
-          ? "kind=exercise; if resource=paragraph then exercise=gap; otherwise exercise=choice"
+          ? "kind=exercise; if resource=paragraph or resource=code then exercise=gap; otherwise exercise=choice"
           : text(item?.role) === "review"
-            ? "use either theory/none, paragraph/gap or contextual resource with kind=exercise and exercise=choice"
+            ? "use either theory/none, paragraph/gap, code/gap or contextual resource with kind=exercise and exercise=choice"
             : ""
   }));
 }
 
 function contextualExerciseResourceList(resources = []) {
-  return (Array.isArray(resources) ? resources : []).filter((resource) => text(resource) !== "paragraph");
+  return (Array.isArray(resources) ? resources : []).filter((resource) => !["paragraph", "code"].includes(text(resource)));
 }
 
 function buildExerciseRule(resources = [], role = "practice") {
   const exerciseResources = contextualExerciseResourceList(resources);
+  const gapResources = [
+    resources.includes("paragraph") ? "paragraph/gap" : "",
+    resources.includes("code") ? "code/gap" : ""
+  ].filter(Boolean);
   const roleLabel =
     role === "review"
-      ? "For review, you may use theory/none, paragraph/gap"
-      : "For practice, practice_more and fix_error, use paragraph/gap";
+      ? `For review, you may use theory/none${gapResources.length ? `, ${gapResources.join(", ")}` : ""}`
+      : `For practice, practice_more and fix_error, use ${gapResources.join(" or ") || "closed exercise"}`;
   if (!exerciseResources.length) {
     return `${roleLabel}.`;
   }
@@ -178,8 +182,8 @@ export function buildMicrosequenceDraftContract({ planningContract, validatedPla
       "Choose the resource that best matches the content and the goal of each slot.",
       "For explain, example and next, use kind theory and exercise none.",
       "For practice, practice_more and fix_error, always use kind exercise.",
-      "If a practice card uses paragraph, exercise must be gap.",
-      "If a practice card uses choice, code, table, flow, tree, graph, relation_map, matrix or plane, exercise must be choice.",
+      "If a practice card uses paragraph or code, exercise must be gap.",
+      "If a practice card uses choice, table, flow, tree, graph, relation_map, matrix, plane or composite, exercise must be choice.",
       ...(firstPlanItem && text(firstPlanItem.kind) === "theory" && resources.includes("paragraph")
         ? [
             "If the first slot is theory and paragraph is allowed, use resource=paragraph for the opening card.",

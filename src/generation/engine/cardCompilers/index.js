@@ -28,6 +28,7 @@ const COMPILERS = Object.freeze({
   table_theory: compileTableCard,
   table_choice: compileTableCard,
   code_theory: compileCodeCard,
+  code_gap: compileCodeCard,
   code_choice: compileCodeCard
 });
 

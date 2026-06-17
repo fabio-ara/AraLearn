@@ -1,4 +1,5 @@
 import { parsePipeList } from "../slotParser.js";
+import { compileChoiceOptionsFromSlots } from "./choiceOptionCompiler.js";
 
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -117,11 +118,7 @@ export function compileRelationMapCard({ slots = {}, position = 0 }) {
     rightSet,
     relations,
     question: text(slots[6]),
-    options: [
-      { id: "a", text: text(slots[7]) },
-      { id: "b", text: text(slots[8]) },
-      { id: "c", text: text(slots[9]) }
-    ],
+    options: compileChoiceOptionsFromSlots(slots, 7),
     answer: text(slots[10]).toLowerCase(),
     after: text(slots[11])
   };

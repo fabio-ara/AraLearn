@@ -1,3 +1,6 @@
+import { getChoiceOptionComparableValue, normalizeChoiceOption } from "../../core/choiceOptions.js";
+import { parseTextGapTokens } from "../../core/textGaps.js";
+
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
 }
@@ -146,7 +149,7 @@ function validateOptionTexts(card = {}) {
   if (!Array.isArray(card?.options)) {
     return [];
   }
-  const optionTexts = card.options.map((option) => text(option?.text));
+  const optionTexts = card.options.map((option, index) => getChoiceOptionComparableValue(normalizeChoiceOption(option, index), index));
   const errors = [];
   optionTexts.forEach((optionText, index) => {
     if (!optionText) {
@@ -198,7 +201,9 @@ export function validateMatrixLocateCellChoice(card = {}, slotPacket = {}) {
     throw new Error("targetCol fora dos limites da matriz");
   }
   const correctValue = text(rows[targetRow - 1][targetCol - 1]);
-  const matchingOptions = (Array.isArray(card?.options) ? card.options : []).filter((option) => text(option?.text) === correctValue);
+  const matchingOptions = (Array.isArray(card?.options) ? card.options : []).filter((option, index) =>
+    text(getChoiceOptionComparableValue(option, index)) === correctValue
+  );
   if (!matchingOptions.length) {
     throw new Error("nenhuma opção corresponde ao valor correto da célula alvo");
   }
@@ -342,7 +347,7 @@ export function validateGraphSimpleChoice(card = {}, slotPacket = {}) {
   const task = inferGraphPathTask(card);
   const evaluatedOptions = (Array.isArray(card?.options) ? card.options : []).map((option) => {
     const optionId = text(option?.id).toLowerCase();
-    const path = parseGraphPathOption(option?.text);
+    const path = parseGraphPathOption(getChoiceOptionComparableValue(option));
     const valid = isValidGraphPath({
       path,
       vertices: card.vertices,
@@ -352,7 +357,7 @@ export function validateGraphSimpleChoice(card = {}, slotPacket = {}) {
     return {
       id: optionId,
       path,
-      text: text(option?.text),
+      text: text(getChoiceOptionComparableValue(option)),
       valid
     };
   });
@@ -444,7 +449,7 @@ export function validateRelationMapSimpleChoice(card = {}) {
   const invalidOptions = [];
   (Array.isArray(card?.options) ? card.options : []).forEach((option) => {
     const optionId = text(option?.id).toLowerCase();
-    const parsed = parseRelationOption(option?.text);
+    const parsed = parseRelationOption(getChoiceOptionComparableValue(option));
     let valid = false;
     if (task.type === "rightForLeft") {
       const expectedRights = relationLookup.relationPairs.filter((pair) => pair.left === task.left).map((pair) => pair.right);
@@ -551,7 +556,7 @@ export function validateFlowLinearChoice(card = {}) {
   const invalidOptions = [];
   (Array.isArray(card?.options) ? card.options : []).forEach((option) => {
     const optionId = text(option?.id).toLowerCase();
-    const parsed = parseFlowOption(option?.text);
+    const parsed = parseFlowOption(getChoiceOptionComparableValue(option));
     let valid = false;
     if (task?.type === "nextAfter") {
       const index = steps.findIndex((step) => looseLabelMatches(step, task.step));
@@ -585,22 +590,34 @@ export function validateFlowLinearChoice(card = {}) {
 }
 
 function validateParagraphGap(card = {}) {
-  const source = text(card?.text);
-  const match = source.match(/\[\[([^:\]]+)::([^\]|]+)\|([^\]]+)\]\]/u);
-  if (!match) {
+  const parts = parseTextGapTokens(card?.text);
+  if (!parts.length) {
     throw new Error("lacuna compilada ausente");
   }
-  const answer = text(match[2]);
-  const distractors = match[3].split("|").map((item) => text(item)).filter(Boolean);
-  if (!answer) {
-    throw new Error("resposta da lacuna vazia");
+  parts.forEach((part) => {
+    if (!part.valid) {
+      throw new Error("lacuna compilada inválida");
+    }
+    if (!text(part.answer)) {
+      throw new Error("resposta da lacuna vazia");
+    }
+    if (part.options.filter((item) => text(item) !== text(part.answer)).length < 1) {
+      throw new Error("lacuna precisa de ao menos um distrator");
+    }
+  });
+  return true;
+}
+
+function validateCodeGap(card = {}) {
+  const parts = parseTextGapTokens(card?.code);
+  if (!parts.length) {
+    throw new Error("code gap sem lacuna compilada");
   }
-  if (distractors.length < 2) {
-    throw new Error("lacuna precisa de dois distratores");
-  }
-  if (distractors.includes(answer)) {
-    throw new Error("distrator repete a resposta da lacuna");
-  }
+  parts.forEach((part) => {
+    if (!part.valid) {
+      throw new Error("code gap inválido");
+    }
+  });
   return true;
 }
 
@@ -675,6 +692,9 @@ export function validateCompiledCardSemantics(card, { templateId = "", slotPacke
   }
   if (templateId === "paragraph_gap") {
     return validateParagraphGap(card);
+  }
+  if (templateId === "code_gap") {
+    return validateCodeGap(card);
   }
   if (templateId === "choice_exercise") {
     return validateChoiceExercise(card);

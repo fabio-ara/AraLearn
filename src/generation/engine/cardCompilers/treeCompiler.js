@@ -1,4 +1,5 @@
 import { parsePipeList } from "../slotParser.js";
+import { compileChoiceOptionsFromSlots } from "./choiceOptionCompiler.js";
 
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -21,11 +22,7 @@ export function compileTreeCard({ slots = {}, position = 0 }) {
     prompt: text(slots[2]),
     nodes,
     question: text(slots[4]),
-    options: [
-      { id: "a", text: text(slots[5]) },
-      { id: "b", text: text(slots[6]) },
-      { id: "c", text: text(slots[7]) }
-    ],
+    options: compileChoiceOptionsFromSlots(slots, 5),
     answer: text(slots[8]).toLowerCase(),
     after: text(slots[9])
   };

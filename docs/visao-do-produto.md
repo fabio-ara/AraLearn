@@ -70,12 +70,13 @@ Essa escolha evita tratar a saída do modelo como material automaticamente confi
 
 AraLearn foi desenhado com persistência local como referência primária do projeto. O material fica no dispositivo, pode ser exportado em JSON e continua disponível depois de salvo.
 
-O app também pode incluir cursos embarcados já materializados. Eles funcionam como ponto de partida editável, não como conteúdo intocável. No estado atual, há quatro cursos oficiais:
+O app também pode incluir cursos embarcados já materializados. Eles funcionam como ponto de partida editável, não como conteúdo intocável. No estado atual, há cinco cursos oficiais:
 
 - `Matemática para Informática`, com foco em `Teoria dos Grafos`;
 - `Práticas e Ferramentas de Desenvolvimento de Software`, com foco na família Visual Basic;
 - `Organização e Arquitetura de Computadores`, com os módulos `MobileRAG` e `Filosofia da Computação Quântica`;
-- `Framework Corporativo de IA Generativa`, voltado a implantação, governança, dados, risco e operação de IA em contexto institucional.
+- `Framework Corporativo de IA Generativa`, voltado a implantação, governança, dados, risco e operação de IA em contexto institucional;
+- `Lógica de Programação`, voltado ao estudo estruturado de programação em C, com sintaxe básica, controle de fluxo, vetores, matrizes, strings, ordenação, `struct`, `typedef`, funções e ponteiros introdutórios.
 
 Esses cursos ajudam a mostrar o que o produto faz sem exigir que todo usuário comece do zero.
 

@@ -1,7 +1,9 @@
 import { resolveCardRuntime } from "../core/cardRuntime.js";
+import { getChoiceOptionComparableValue, isChoiceCodeOption, normalizeChoiceOption } from "../core/choiceOptions.js";
 import { getContractCardKind } from "../contract/contractCard.js";
 import { getExerciseOptionStableId, shuffleExerciseOptions } from "../core/exerciseOptions.js";
-import { computeFlowchartBoardLayout } from "../flowchart/flowchartLayout.js";
+import { parseTextGapRenderableParts } from "../core/textGaps.js";
+import { computeFlowchartBoardLayout, FLOWCHART_LAYOUT } from "../flowchart/flowchartLayout.js";
 import { deriveFlowchartProjectionFromStructure } from "../flowchart/flowchartProjection.js";
 import { getFlowchartShapeLabel, normalizeFlowchartShapeKey, renderFlowchartShapeSvg } from "../flowchart/flowchartShapes.js";
 
@@ -18,12 +20,30 @@ function escapeHtmlAttribute(value) {
   return escapeHtml(value).replace(/\r?\n/g, "&#10;");
 }
 
+function wrapPlainInlineSyntax(escapedText) {
+  return String(escapedText || "")
+    .replace(/\bint main\(\)/g, "@@INLINE_INT_MAIN@@")
+    .replace(/\bmain\(\)/g, "@@INLINE_MAIN@@")
+    .replace(/#include\s*&lt;[^&]+&gt;/g, "<code>$&</code>")
+    .replace(/\bmain\b/g, "<code>$&</code>")
+    .replace(/\bprintf\([^<]*?\);/g, "<code>$&</code>")
+    .replace(/\bscanf\([^<]*?\);/g, "<code>$&</code>")
+    .replace(/\bgetch\(\);/g, "<code>$&</code>")
+    .replace(/%(?:\.\d+)?[dfcs]/g, "<code>$&</code>")
+    .replace(/&amp;[A-Za-z_][A-Za-z0-9_.]*(?:\[[^\]]+\])*/g, "<code>$&</code>")
+    .replace(/\b(?:int|float|char|double|void)\s+[A-Za-z_][A-Za-z0-9_]*(?:\[[^\]]+\])?;?/g, "<code>$&</code>")
+    .replace(/\b[A-Za-z_][A-Za-z0-9_]*\[[^\]]+\]/g, "<code>$&</code>")
+    .replace(/(^|[\s(])([{}])(?=$|[\s).,;:])/g, "$1<code>$2</code>")
+    .replace(/@@INLINE_MAIN@@/g, "<code>main()</code>")
+    .replace(/@@INLINE_INT_MAIN@@/g, "<code>int main()</code>");
+}
+
 function normalizeInlineText(value) {
   return String(value || "").replace(/\s+/g, " ").trim();
 }
 
 function renderMarkdownInlineMarkup(text) {
-  return escapeHtml(text || "")
+  return wrapPlainInlineSyntax(escapeHtml(text || ""))
     .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
     .replace(/\*([^*]+)\*/g, "<em>$1</em>")
     .replace(/\n/g, "<br>");
@@ -128,56 +148,17 @@ function buildExerciseShuffleSeed(renderOptions, scope) {
 }
 
 function parseTextGapParts(text) {
-  const source = String(text || "");
-  const parts = [];
-  let index = 0;
-  let blankIndex = 0;
-
-  while (index < source.length) {
-    const start = source.indexOf("[[", index);
-    if (start < 0) {
-      const tail = source.slice(index);
-      if (tail) parts.push({ kind: "text", value: tail });
-      break;
-    }
-    if (start > index) {
-      parts.push({ kind: "text", value: source.slice(index, start) });
-    }
-
-    const end = source.indexOf("]]", start + 2);
-    if (end < 0) {
-      parts.push({ kind: "text", value: source.slice(start) });
-      break;
-    }
-
-    const raw = source.slice(start + 2, end);
-    const separatorIndex = raw.indexOf("::");
-    const expected = separatorIndex >= 0 ? raw.slice(0, separatorIndex) : raw;
-    const options = separatorIndex >= 0
-      ? Array.from(
-          new Set(
-            [
-              String(expected || "").trim(),
-              ...raw.slice(separatorIndex + 2).split("|").map((item) => String(item || "").trim())
-            ].filter(Boolean)
-          )
-        )
-      : [];
-    parts.push({
-      kind: "blank",
-      expected: String(expected || "").trim(),
-      options,
-      index: blankIndex
-    });
-    blankIndex += 1;
-    index = end + 2;
-  }
-
-  return parts;
+  return parseTextGapRenderableParts(text);
 }
 
 function blockUsesTextGapExercise(block) {
-  return block?.kind === "paragraph" && parseTextGapParts(block.value).some((part) => part.kind === "blank");
+  if (block?.kind === "paragraph") {
+    return parseTextGapParts(block.value).some((part) => part.kind === "blank");
+  }
+  if (block?.kind === "code") {
+    return parseTextGapParts(block.code).some((part) => part.kind === "blank");
+  }
+  return false;
 }
 
 function renderTextGapChoicePrompt(blockKey, part, value, renderOptions = {}) {
@@ -314,12 +295,14 @@ function normalizeChoiceBlock(block) {
   return {
     ask: String(block?.question || "").trim(),
     options: (Array.isArray(block?.options) ? block.options : [])
-      .map((option) => ({
-        id: String(option?.id || "").trim(),
-        value: String(option?.text || "").trim(),
-        answer: String(option?.id || "").trim() === answerId
-      }))
-      .filter((option) => option.value)
+      .map((option, index) => {
+        const normalized = normalizeChoiceOption(option, index);
+        return {
+          ...normalized,
+          answer: normalized.id === answerId
+        };
+      })
+      .filter((option) => getChoiceOptionComparableValue(option).trim())
   };
 }
 
@@ -343,6 +326,24 @@ function renderMultipleChoiceFeedback(feedback, blockKey) {
     '" title="Tentar de novo" aria-label="Tentar de novo">&#8635;</button>' +
     "</div></div>"
   );
+}
+
+function renderChoiceOptionValue(option) {
+  const normalized = normalizeChoiceOption(option);
+  if (isChoiceCodeOption(normalized)) {
+    return (
+      '<pre class="multiple-choice-code"><code data-language="' +
+      escapeHtml(normalized.language || "text") +
+      '">' +
+      escapeHtml(normalized.code || "") +
+      "</code></pre>"
+    );
+  }
+  const source = String(normalized.text || "");
+  if (source.includes("\n")) {
+    return renderMarkdownParagraph(source);
+  }
+  return renderMarkdownInline(source);
 }
 
 function renderChoiceBlock(block, renderOptions = {}, blockKey = "runtime-choice") {
@@ -388,7 +389,7 @@ function renderChoiceBlock(block, renderOptions = {}, blockKey = "runtime-choice
       mark +
       "</span>" +
       '<span class="multiple-choice-label">' +
-      renderMarkdownInline(option.value) +
+      renderChoiceOptionValue(option) +
       "</span></button>"
     );
   }).join("");
@@ -410,16 +411,47 @@ function renderChoiceBlock(block, renderOptions = {}, blockKey = "runtime-choice
   return bodyHtml;
 }
 
-function renderCodeBlock(block) {
-  return (
-    '<div class="runtime-block runtime-code-block">' +
-    (block?.prompt ? '<p class="runtime-code-prompt">' + renderMarkdownInline(block.prompt) + "</p>" : "") +
-    '<pre><code data-language="' +
+function renderCodeBlock(block, renderOptions = {}, blockKey = "runtime-code") {
+  const code = String(block?.code || "");
+  const promptHtml = block?.prompt ? '<p class="runtime-code-prompt">' + renderMarkdownInline(block.prompt) + "</p>" : "";
+  if (!blockUsesTextGapExercise(block)) {
+    return (
+      '<div class="runtime-block runtime-code-block">' +
+      promptHtml +
+      '<pre><code data-language="' +
+      escapeHtml(block?.language || "text") +
+      '">' +
+      escapeHtml(code) +
+      "</code></pre></div>"
+    );
+  }
+
+  const exercise = renderOptions.textGapExerciseStateByBlockKey?.[blockKey] || renderOptions.completeExerciseStateByBlockKey?.[blockKey] || null;
+  const values = Array.isArray(exercise?.values) ? exercise.values : [];
+  const feedback = exercise?.feedback || null;
+  const dockExerciseParts = Array.isArray(renderOptions.dockExerciseParts) ? renderOptions.dockExerciseParts : null;
+  const feedbackHtml = renderTextGapFeedback(blockKey, feedback);
+  const bodyRenderOptions = feedbackHtml && dockExerciseParts ? { ...renderOptions, suppressTextGapPrompt: true } : renderOptions;
+  const bodyHtml =
+    '<div class="runtime-block runtime-code-block runtime-code-gap-block">' +
+    promptHtml +
+    '<pre class="runtime-code-gap"><code data-language="' +
     escapeHtml(block?.language || "text") +
     '">' +
-    escapeHtml(block?.code || "") +
-    "</code></pre></div>"
-  );
+    renderTextGapParts(
+      parseTextGapParts(code),
+      blockKey,
+      values,
+      escapeHtml,
+      "runtime-text-gap-blank runtime-code-gap-blank",
+      bodyRenderOptions
+    ) +
+    "</code></pre>";
+  if (feedbackHtml && dockExerciseParts) {
+    dockExerciseParts.push(feedbackHtml);
+    return bodyHtml + "</div>";
+  }
+  return bodyHtml + feedbackHtml + "</div>";
 }
 
 function renderTableBlock(block) {
@@ -1131,17 +1163,57 @@ function renderRelationMapBlock(block) {
 }
 
 function normalizeMatrixHighlightCells(highlight, rowCount, columnCount) {
-  const entries = Array.isArray(highlight) ? highlight : typeof highlight === "string" ? [highlight] : [];
   const cells = new Set();
-  entries.forEach((entry) => {
+
+  function addCell(rowIndex, columnIndex) {
+    const safeRow = Number(rowIndex);
+    const safeColumn = Number(columnIndex);
+    if (!Number.isInteger(safeRow) || !Number.isInteger(safeColumn)) return;
+    if (safeRow < 0 || safeRow >= rowCount) return;
+    if (safeColumn < 0 || safeColumn >= columnCount) return;
+    cells.add(`${safeRow}:${safeColumn}`);
+  }
+
+  function addRow(rowIndex) {
+    const safeRow = Number(rowIndex);
+    if (!Number.isInteger(safeRow) || safeRow < 0 || safeRow >= rowCount) return;
+    for (let columnIndex = 0; columnIndex < columnCount; columnIndex += 1) {
+      addCell(safeRow, columnIndex);
+    }
+  }
+
+  function addColumn(columnIndex) {
+    const safeColumn = Number(columnIndex);
+    if (!Number.isInteger(safeColumn) || safeColumn < 0 || safeColumn >= columnCount) return;
+    for (let rowIndex = 0; rowIndex < rowCount; rowIndex += 1) {
+      addCell(rowIndex, safeColumn);
+    }
+  }
+
+  function addNamedSelection(entry) {
     const value = normalizeInlineText(entry);
-    if (value === "mainDiagonal") {
-      const size = Math.min(rowCount, columnCount);
-      for (let index = 0; index < size; index += 1) {
-        cells.add(`${index}:${index}`);
-      }
+    if (value !== "mainDiagonal") return;
+    const size = Math.min(rowCount, columnCount);
+    for (let index = 0; index < size; index += 1) {
+      addCell(index, index);
+    }
+  }
+
+  if (!highlight || typeof highlight !== "object") {
+    return cells;
+  }
+
+  if (highlight.pattern !== undefined) {
+    addNamedSelection(highlight.pattern);
+  }
+  (Array.isArray(highlight.rows) ? highlight.rows : []).forEach((rowIndex) => addRow(rowIndex));
+  (Array.isArray(highlight.columns) ? highlight.columns : []).forEach((columnIndex) => addColumn(columnIndex));
+  (Array.isArray(highlight.cells) ? highlight.cells : []).forEach((entry) => {
+    if (Array.isArray(entry) && entry.length >= 2) {
+      addCell(entry[0], entry[1]);
     }
   });
+
   return cells;
 }
 
@@ -1160,11 +1232,15 @@ function normalizeMatrixItem(item = {}) {
 
 function renderMatrixShell(matrixItem) {
   const dividerAfterColumn = Number.isInteger(matrixItem?.dividerAfterColumn) ? matrixItem.dividerAfterColumn : null;
-  const displayColumns = matrixItem.columnCount + (dividerAfterColumn ? 1 : 0);
+  const hasDivider =
+    Number.isInteger(dividerAfterColumn) &&
+    dividerAfterColumn >= 0 &&
+    dividerAfterColumn < Math.max(0, matrixItem.columnCount - 1);
+  const displayColumns = matrixItem.columnCount + (hasDivider ? 1 : 0);
   const cellsHtml = matrixItem.values
     .map((row, rowIndex) =>
       row.map((cell, columnIndex) => {
-        const scopedColumn = columnIndex + 1 + (dividerAfterColumn && columnIndex + 1 > dividerAfterColumn ? 1 : 0);
+        const scopedColumn = columnIndex + 1 + (hasDivider && columnIndex > dividerAfterColumn ? 1 : 0);
         return (
           '<div class="runtime-matrix-cell' +
           (matrixItem.highlightCells.has(`${rowIndex}:${columnIndex}`) ? " is-highlighted" : "") +
@@ -1179,9 +1255,9 @@ function renderMatrixShell(matrixItem) {
       }).join("")
     )
     .join("");
-  const dividerHtml = dividerAfterColumn
+  const dividerHtml = hasDivider
     ? '<div class="runtime-matrix-divider" style="grid-column:' +
-      (dividerAfterColumn + 1) +
+      (dividerAfterColumn + 2) +
       ';grid-row:1 / span ' +
       matrixItem.rowCount +
       ';"></div>'
@@ -1469,7 +1545,7 @@ function getFlowchartArrowGeometry(start, end, targetNode) {
   const headOnlyTarget = targetShapeKey === "connector" || targetShapeKey === "page_connector";
   const headLength = Math.min(8, Math.max(4, length * 0.7));
   const headHalfWidth = Math.min(4, Math.max(2.5, headLength * 0.48));
-  const headTipOffset = headOnlyTarget ? 5 : 6;
+  const headTipOffset = headOnlyTarget ? 7 : 6;
   const renderEndX = Number(end[0] || 0) - unitX * headTipOffset;
   const renderEndY = Number(end[1] || 0) - unitY * headTipOffset;
   const baseX = renderEndX - unitX * headLength;
@@ -1489,8 +1565,275 @@ function getFlowchartArrowGeometry(start, end, targetNode) {
   };
 }
 
-function getFlowchartDisplayedRoutePoints(route, targetNode) {
-  const points = (Array.isArray(route?.points) ? route.points : []).map((point) => [Number(point[0] || 0), Number(point[1] || 0)]);
+function snapFlowchartRouteValue(value) {
+  const step = Math.max(1, Number(FLOWCHART_LAYOUT?.routeStep) || 1);
+  return Math.round(Number(value || 0) / step) * step;
+}
+
+function getFlowchartRenderShapeFrame(shapeKey) {
+  switch (normalizeFlowchartShapeKey(shapeKey)) {
+    case "terminal":
+      return { left: 10, top: 8, right: 110, bottom: 52 };
+    case "process":
+      return { left: 12, top: 8, right: 108, bottom: 52 };
+    case "input_output":
+      return { left: 12, top: 8, right: 108, bottom: 52 };
+    case "keyboard_input":
+      return { left: 12, top: 8, right: 108, bottom: 52 };
+    case "screen_output":
+      return { left: 14, top: 8, right: 106, bottom: 52 };
+    case "printed_output":
+      return { left: 12, top: 8, right: 108, bottom: 52 };
+    case "decision":
+      return { left: 12, top: 6, right: 108, bottom: 54 };
+    case "loop":
+      return { left: 12, top: 8, right: 108, bottom: 52 };
+    case "connector":
+      return { left: 38, top: 8, right: 82, bottom: 52 };
+    case "page_connector":
+      return { left: 18, top: 8, right: 102, bottom: 54 };
+    default:
+      return { left: 12, top: 8, right: 108, bottom: 52 };
+  }
+}
+
+function getFlowchartRenderViewportMetrics(position, geometry) {
+  const scale = Math.min(
+    Number(geometry?.shapeWidth || 0) / 120,
+    Number(geometry?.shapeHeight || 0) / 60
+  );
+  return {
+    scale,
+    offsetX: Number(position?.shapeLeft || 0) + (Number(geometry?.shapeWidth || 0) - 120 * scale) / 2,
+    offsetY: Number(position?.shapeTop || 0) + (Number(geometry?.shapeHeight || 0) - 60 * scale) / 2
+  };
+}
+
+function projectFlowchartRenderPoint(metrics, x, y) {
+  return [
+    snapFlowchartRouteValue(Number(metrics?.offsetX || 0) + x * Number(metrics?.scale || 1)),
+    snapFlowchartRouteValue(Number(metrics?.offsetY || 0) + y * Number(metrics?.scale || 1))
+  ];
+}
+
+function getFlowchartRenderAxisX(metrics, x) {
+  return Number(metrics?.offsetX || 0) + x * Number(metrics?.scale || 1);
+}
+
+function getFlowchartRenderedShapeBounds(node, position, geometry) {
+  const frame = getFlowchartRenderShapeFrame(node?.shape);
+  const metrics = getFlowchartRenderViewportMetrics(position, geometry);
+  const topLeft = projectFlowchartRenderPoint(metrics, frame.left, frame.top);
+  const bottomRight = projectFlowchartRenderPoint(metrics, frame.right, frame.bottom);
+  return {
+    left: Math.min(topLeft[0], bottomRight[0]),
+    top: Math.min(topLeft[1], bottomRight[1]),
+    right: Math.max(topLeft[0], bottomRight[0]),
+    bottom: Math.max(topLeft[1], bottomRight[1])
+  };
+}
+
+function getFlowchartRenderedTextBounds(position, geometry) {
+  return {
+    left: Number(position?.textLeft || 0),
+    top: Number(position?.textTop || 0),
+    right: Number(position?.textLeft || 0) + Number(geometry?.textWidth || 0),
+    bottom: Number(position?.textTop || 0) + Number(geometry?.textHeight || 0)
+  };
+}
+
+function flowchartNodeHidesTextSurface(node) {
+  const semanticKind = String(node?.layoutMeta?.semanticKind || "").trim().toLowerCase();
+  return semanticKind === "junction";
+}
+
+function flowchartNodeHasVisibleTextSurface(node) {
+  if (flowchartNodeHidesTextSurface(node)) return false;
+  const shapeKey = normalizeFlowchartShapeKey(node?.shape);
+  if (shapeKey === "connector") {
+    return String(node?.text || "").trim().length > 0;
+  }
+  return true;
+}
+
+function getFlowchartRenderedConnectorPoint(node, position, geometry, side) {
+  const shapeKey = normalizeFlowchartShapeKey(node?.shape);
+  const metrics = getFlowchartRenderViewportMetrics(position, geometry);
+  const textBounds = flowchartNodeHasVisibleTextSurface(node)
+    ? getFlowchartRenderedTextBounds(position, geometry)
+    : null;
+
+  if (shapeKey === "connector") {
+    const center = projectFlowchartRenderPoint(metrics, 60, 30);
+    const radius = 22 * Number(metrics?.scale || 1);
+    if (side === "top") return [center[0], snapFlowchartRouteValue(center[1] - radius)];
+    if (side === "bottom") return [center[0], snapFlowchartRouteValue(center[1] + radius)];
+    if (side === "left") return [snapFlowchartRouteValue(center[0] - radius), center[1]];
+    if (side === "right") return [snapFlowchartRouteValue(center[0] + radius), center[1]];
+  }
+
+  if (shapeKey === "decision") {
+    if (side === "top") return projectFlowchartRenderPoint(metrics, 60, 6);
+    if (side === "bottom") return projectFlowchartRenderPoint(metrics, 60, 54);
+    if (side === "left") return projectFlowchartRenderPoint(metrics, 16, 30);
+    if (side === "right") return projectFlowchartRenderPoint(metrics, 104, 30);
+  }
+
+  if (shapeKey === "loop") {
+    if (side === "top") return projectFlowchartRenderPoint(metrics, 60, 8);
+    if (side === "bottom") return projectFlowchartRenderPoint(metrics, 60, 52);
+    if (side === "left") return projectFlowchartRenderPoint(metrics, 16, 30);
+    if (side === "right") return projectFlowchartRenderPoint(metrics, 104, 30);
+  }
+
+  if (shapeKey === "input_output") {
+    if (side === "left") return projectFlowchartRenderPoint(metrics, 19, 30);
+    if (side === "right") return projectFlowchartRenderPoint(metrics, 101, 30);
+    if (side === "bottom" && textBounds) {
+      return [
+        snapFlowchartRouteValue(getFlowchartRenderAxisX(metrics, 60)),
+        snapFlowchartRouteValue(textBounds.bottom)
+      ];
+    }
+    if (side === "bottom") return projectFlowchartRenderPoint(metrics, 60, 52);
+    return projectFlowchartRenderPoint(metrics, 60, 8);
+  }
+
+  if (shapeKey === "keyboard_input") {
+    if (side === "left") return projectFlowchartRenderPoint(metrics, 18, 30);
+    if (side === "right") return projectFlowchartRenderPoint(metrics, 102, 30);
+    if (side === "bottom" && textBounds) {
+      return [
+        snapFlowchartRouteValue(getFlowchartRenderAxisX(metrics, 60)),
+        snapFlowchartRouteValue(textBounds.bottom)
+      ];
+    }
+    if (side === "bottom") return projectFlowchartRenderPoint(metrics, 60, 49);
+    return projectFlowchartRenderPoint(metrics, 60, 8);
+  }
+
+  if (shapeKey === "screen_output") {
+    if (side === "left") return projectFlowchartRenderPoint(metrics, 14, 30);
+    if (side === "right") return projectFlowchartRenderPoint(metrics, 106, 30);
+    if (side === "bottom") return projectFlowchartRenderPoint(metrics, 60, 52);
+    return projectFlowchartRenderPoint(metrics, 60, 8);
+  }
+
+  if (shapeKey === "page_connector") {
+    if (side === "top") return projectFlowchartRenderPoint(metrics, 60, 8);
+    if (side === "bottom") return projectFlowchartRenderPoint(metrics, 60, 54);
+    if (side === "left") return projectFlowchartRenderPoint(metrics, 18, 22);
+    if (side === "right") return projectFlowchartRenderPoint(metrics, 102, 22);
+  }
+
+  const bounds = getFlowchartRenderedShapeBounds(node, position, geometry);
+  if (side === "left") return [bounds.left, snapFlowchartRouteValue((bounds.top + bounds.bottom) / 2)];
+  if (side === "right") return [bounds.right, snapFlowchartRouteValue((bounds.top + bounds.bottom) / 2)];
+  if (side === "bottom") return [snapFlowchartRouteValue(getFlowchartRenderAxisX(metrics, 60)), bounds.bottom];
+  return [snapFlowchartRouteValue(getFlowchartRenderAxisX(metrics, 60)), bounds.top];
+}
+
+function inferFlowchartRouteTargetSide(points) {
+  if (!Array.isArray(points) || points.length < 2) return "top";
+  const prev = points[points.length - 2];
+  const end = points[points.length - 1];
+  const dx = Number(end?.[0] || 0) - Number(prev?.[0] || 0);
+  const dy = Number(end?.[1] || 0) - Number(prev?.[1] || 0);
+  if (Math.abs(dx) >= Math.abs(dy)) {
+    return dx >= 0 ? "left" : "right";
+  }
+  return dy >= 0 ? "top" : "bottom";
+}
+
+function simplifyOrthogonalFlowchartRoutePoints(points = []) {
+  const compact = [];
+  (Array.isArray(points) ? points : []).forEach((point) => {
+    if (!Array.isArray(point) || point.length < 2) return;
+    const x = Number(point[0] || 0);
+    const y = Number(point[1] || 0);
+    const last = compact[compact.length - 1];
+    if (last && last[0] === x && last[1] === y) return;
+    compact.push([x, y]);
+  });
+  if (compact.length < 3) return compact;
+
+  const simplified = [compact[0]];
+  for (let index = 1; index < compact.length - 1; index += 1) {
+    const prev = simplified[simplified.length - 1];
+    const current = compact[index];
+    const next = compact[index + 1];
+    const sameX = prev[0] === current[0] && current[0] === next[0];
+    const sameY = prev[1] === current[1] && current[1] === next[1];
+    if (!sameX && !sameY) simplified.push(current);
+  }
+  simplified.push(compact[compact.length - 1]);
+  return simplified;
+}
+
+function inferOrthogonalFlowchartSegmentOrientation(start, end) {
+  const dx = Math.abs(Number(end?.[0] || 0) - Number(start?.[0] || 0));
+  const dy = Math.abs(Number(end?.[1] || 0) - Number(start?.[1] || 0));
+  if (dx >= dy) return "horizontal";
+  return "vertical";
+}
+
+function orthogonalizeFlowchartRouteEndpoints(points, originalPoints) {
+  if (!Array.isArray(points) || points.length < 2) return points;
+
+  const sourcePoints = Array.isArray(originalPoints) && originalPoints.length >= 2 ? originalPoints : points;
+  const startOrientation = inferOrthogonalFlowchartSegmentOrientation(sourcePoints[0], sourcePoints[1]);
+  const nextPoint = points[1];
+  if (startOrientation === "horizontal") {
+    nextPoint[1] = points[0][1];
+  } else {
+    nextPoint[0] = points[0][0];
+  }
+
+  const penultimateIndex = points.length - 2;
+  const penultimatePoint = points[penultimateIndex];
+  const lastPoint = points[points.length - 1];
+  const endOrientation = inferOrthogonalFlowchartSegmentOrientation(
+    sourcePoints[sourcePoints.length - 2],
+    sourcePoints[sourcePoints.length - 1]
+  );
+  if (endOrientation === "horizontal") {
+    penultimatePoint[1] = lastPoint[1];
+  } else {
+    penultimatePoint[0] = lastPoint[0];
+  }
+
+  return simplifyOrthogonalFlowchartRoutePoints(points);
+}
+
+function getFlowchartRenderedRoutePoints(route, sourceNode, targetNode, layout) {
+  const originalPoints = (Array.isArray(route?.points) ? route.points : []).map((point) => [Number(point[0] || 0), Number(point[1] || 0)]);
+  const points = originalPoints.map((point) => [point[0], point[1]]);
+  if (points.length < 2) return points;
+  const geometry = layout?.geometry;
+  if (!geometry) return points;
+
+  const sourcePosition = sourceNode?.id ? layout?.positions?.[sourceNode.id] : null;
+  if (sourceNode && sourcePosition && route?.startSide) {
+    const renderedStart = getFlowchartRenderedConnectorPoint(sourceNode, sourcePosition, geometry, route.startSide);
+    if (renderedStart) {
+      points[0] = renderedStart;
+    }
+  }
+
+  const targetPosition = targetNode?.id ? layout?.positions?.[targetNode.id] : null;
+  if (targetNode && targetPosition) {
+    const targetSide = inferFlowchartRouteTargetSide(points);
+    const renderedEnd = getFlowchartRenderedConnectorPoint(targetNode, targetPosition, geometry, targetSide);
+    if (renderedEnd) {
+      points[points.length - 1] = renderedEnd;
+    }
+  }
+
+  return orthogonalizeFlowchartRouteEndpoints(points, originalPoints);
+}
+
+function getFlowchartDisplayedRoutePoints(route, sourceNode, targetNode, layout) {
+  const points = getFlowchartRenderedRoutePoints(route, sourceNode, targetNode, layout);
   if (points.length < 2) return points;
   for (let index = points.length - 1; index > 0; index -= 1) {
     const geometry = getFlowchartArrowGeometry(points[index - 1], points[index], targetNode);
@@ -1501,8 +1844,8 @@ function getFlowchartDisplayedRoutePoints(route, targetNode) {
   return points;
 }
 
-function renderFlowchartRoute(route, targetNode) {
-  const points = getFlowchartDisplayedRoutePoints(route, targetNode);
+function renderFlowchartRoute(route, sourceNode, targetNode, layout) {
+  const points = getFlowchartDisplayedRoutePoints(route, sourceNode, targetNode, layout);
   if (points.length < 2) return "";
   const label = String(route?.label || route?.link?.label || "").trim();
   const labelPos = route?.labelPos;
@@ -1528,8 +1871,8 @@ function renderFlowchartRoute(route, targetNode) {
   );
 }
 
-function renderFlowchartArrowOverlay(route, targetNode) {
-  const points = Array.isArray(route?.points) ? route.points : [];
+function renderFlowchartArrowOverlay(route, sourceNode, targetNode, layout) {
+  const points = getFlowchartRenderedRoutePoints(route, sourceNode, targetNode, layout);
   if (points.length < 2) return "";
   for (let index = points.length - 1; index > 0; index -= 1) {
     const geometry = getFlowchartArrowGeometry(points[index - 1], points[index], targetNode);
@@ -1595,8 +1938,12 @@ function renderProjectedFlowchart(block) {
   const scaledWidth = Math.max(1, Math.round(layout.width * viewportScale));
   const scaledHeight = Math.max(1, Math.round(layout.height * viewportScale));
   const routeEntries = layout.routes.map((route) => route);
-  const routesSvg = routeEntries.map((route) => renderFlowchartRoute(route, nodeById[route?.link?.toNodeId])).join("");
-  const arrowsSvg = routeEntries.map((route) => renderFlowchartArrowOverlay(route, nodeById[route?.link?.toNodeId])).join("");
+  const routesSvg = routeEntries
+    .map((route) => renderFlowchartRoute(route, nodeById[route?.link?.fromNodeId], nodeById[route?.link?.toNodeId], layout))
+    .join("");
+  const arrowsSvg = routeEntries
+    .map((route) => renderFlowchartArrowOverlay(route, nodeById[route?.link?.fromNodeId], nodeById[route?.link?.toNodeId], layout))
+    .join("");
   const nodesHtml = layout.nodes.map((node) => renderFlowchartBoardNode({ ...node, ...(node?.id ? nodeById[node.id] : null) }, layout)).join("");
 
   return (
@@ -1670,16 +2017,12 @@ function renderTreeBlock(block) {
   );
 }
 
-function renderPopupParagraph(block) {
-  return '<p class="runtime-block runtime-paragraph">' + renderMarkdownParagraph(block?.value || "") + "</p>";
-}
-
 function getPopupBlocksFromCard(card) {
   const runtime = resolveCardRuntime(card);
   const blocks = Array.isArray(runtime?.blocks) ? runtime.blocks : [];
-  const after = blocks.find((block) => block?.kind === "after" && normalizeInlineText(block?.value));
+  const after = blocks.find((block) => block?.kind === "after" && Array.isArray(block?.blocks) && block.blocks.length);
   if (!after) return [];
-  return [{ kind: "paragraph", value: after.value }];
+  return after.blocks;
 }
 
 function renderRuntimeBlock(block, renderOptions = {}, blockKey = "runtime-block") {
@@ -1719,7 +2062,7 @@ function renderRuntimeBlock(block, renderOptions = {}, blockKey = "runtime-block
     return bodyHtml + feedbackHtml + "</div>";
   }
   if (block.kind === "choice") return renderChoiceBlock(block, renderOptions, blockKey);
-  if (block.kind === "code") return renderCodeBlock(block);
+  if (block.kind === "code") return renderCodeBlock(block, renderOptions, blockKey);
   if (block.kind === "table") return renderTableBlock(block);
   if (block.kind === "flow") return renderFlowBlock(block);
   if (block.kind === "tree") return renderTreeBlock(block);
@@ -1783,7 +2126,10 @@ export function renderPopupButtonDock(block, options = {}) {
     return { bodyHtml: "", dockHtml: "" };
   }
   return {
-    bodyHtml: popupBlocks.map((popupBlock) => renderPopupParagraph(popupBlock, options)).join(""),
+    bodyHtml: renderRuntimeBlockList(popupBlocks, "", {
+      ...options,
+      blockKeyPrefix: String(options.blockKeyPrefix || "runtime-popup-block")
+    }),
     dockHtml: ""
   };
 }
