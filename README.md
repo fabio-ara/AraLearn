@@ -133,6 +133,10 @@ Publicação web:
 
 <https://fabio-ara.github.io/AraLearn/>
 
+## Contribuição
+
+Mudanças no repositório público devem entrar por branch temática, com histórico revisado antes do merge. O guia curto de contribuição está em [CONTRIBUTING.md](CONTRIBUTING.md).
+
 ## Referências citadas
 
 DeepSeek. (2026). *JSON Output*. DeepSeek API Docs. <https://api-docs.deepseek.com/guides/json_mode>
