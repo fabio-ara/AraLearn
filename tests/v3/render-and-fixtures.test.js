@@ -1951,3 +1951,65 @@ test("microssequências geradas com cards continuam na trilha principal da liç�
   assert.doesNotMatch(html, /Em revisão/);
   assert.match(html, new RegExp(lesson.title));
 });
+
+test("o leitor clampa a barra de progresso e protege títulos longos contra vazamento horizontal", () => {
+  const project = createEmbeddedSeedProjectDocument();
+  const course = project.courses[0];
+  const moduleValue = course.modules[0];
+  const lesson = moduleValue.lessons[0];
+  const microsequence = lesson.microsequences[0];
+  microsequence.title = "Microssequência com um título extremamente longo para validar contenção horizontal no leitor móvel sem estourar a largura útil";
+  microsequence.versions = [
+    {
+      id: "version-manual",
+      createdAt: "2026-06-17T00:00:00.000Z",
+      source: "manual",
+      action: "generate",
+      request: "",
+      summary: "teste",
+      cards: [
+        {
+          id: "card-1",
+          position: 1,
+          resource: "paragraph",
+          kind: "theory",
+          exercise: "none",
+          title: "Título de card muito grande para confirmar wrap e contenção horizontal dentro da superfície do leitor",
+          text: "Texto.",
+          after: ""
+        }
+      ],
+      validation: { ok: true, issues: [] }
+    }
+  ];
+  microsequence.activeVersion = "version-manual";
+  microsequence.status = "generated";
+
+  renderLessonScreen({
+    project,
+    view: "lesson",
+    selection: {
+      courseKey: course.id,
+      moduleKey: moduleValue.id,
+      lessonKey: lesson.id,
+      microsequenceKey: microsequence.id,
+      cardKey: "card-1",
+      cardIndex: 999
+    },
+    course,
+    moduleValue,
+    lesson,
+    microsequence,
+    cards: microsequence.versions[0].cards,
+    microsequenceMode: "play",
+    editorSupport: { progress: {} }
+  });
+
+  const stylesPath = path.join(__dirname, "../../public/styles.css");
+  const styles = fs.readFileSync(stylesPath, "utf8");
+  const lessonScreenSource = fs.readFileSync(path.join(__dirname, "../../src/ui/renderLessonScreen.js"), "utf8");
+  assert.match(lessonScreenSource, /function clampPercent\(value\)/);
+  assert.match(lessonScreenSource, /const cardProgressPercent = clampPercent\(/);
+  assert.match(styles, /\.study-reader-course-title\s*\{[\s\S]*width:\s*100%;[\s\S]*min-width:\s*0;[\s\S]*max-width:\s*100%;/);
+  assert.match(styles, /\.runtime-card-title\s*\{[\s\S]*overflow-wrap:\s*anywhere;[\s\S]*word-break:\s*break-word;[\s\S]*white-space:\s*normal;/);
+});
