@@ -970,12 +970,14 @@ test("o seed embutido oficial mantém os cursos embarcados já materializados", 
   );
   const frameworkCourse = project.courses.find((course) => course.id === "course-framework-ia-generativa");
   const logicaCourse = project.courses.find((course) => course.id === "course-logica-de-programacao");
+  const fundamentosCourse = project.courses.find((course) => course.id === "course-fundamentos-ia-analise-dados");
 
   assert.ok(teoriaCourse);
   assert.ok(praticasCourse);
   assert.ok(organizacaoCourse);
   assert.ok(frameworkCourse);
   assert.ok(logicaCourse);
+  assert.ok(fundamentosCourse);
   assert.equal(project.courses.some((course) => course.id === "course-oaco-bases-cpu-paralelismo"), false);
 
   const teoriaMicrosequences = teoriaCourse.modules
@@ -1093,6 +1095,26 @@ test("o seed embutido oficial mantém os cursos embarcados já materializados", 
         return true;
       }),
     true
+  );
+
+  const fundamentosMicrosequences = fundamentosCourse.modules
+    .flatMap((moduleValue) => moduleValue.lessons || [])
+    .flatMap((lesson) => lesson.microsequences || []);
+
+  assert.equal(fundamentosCourse.title, "Fundamentos de IA e Análise de Dados");
+  assert.equal(fundamentosCourse.modules.length, 2);
+  assert.equal(fundamentosCourse.modules.flatMap((moduleValue) => moduleValue.lessons || []).length, 2);
+  assert.equal(fundamentosMicrosequences.length, 18);
+  assert.equal(fundamentosMicrosequences.some((microsequence) => (microsequence.versions || []).length > 0), true);
+  assert.equal(fundamentosMicrosequences.some((microsequence) => microsequence.activeVersion), true);
+  assert.equal(
+    fundamentosMicrosequences.reduce((count, microsequence) => {
+      const active =
+        (microsequence.versions || []).find((version) => version.id === microsequence.activeVersion) ||
+        (microsequence.versions || []).at(-1);
+      return count + ((active?.cards || []).length);
+    }, 0),
+    119
   );
 });
 

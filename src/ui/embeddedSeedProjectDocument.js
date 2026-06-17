@@ -4,6 +4,7 @@ import { createOrganizacaoArquiteturaComputadoresCourse } from "./organizacaoArq
 import { createFrameworkIaGenerativaCourse } from "./frameworkIaGenerativaSeedCourse.js";
 import { createOacoBasesCpuParalelismoCourse } from "./oacoBasesCpuParalelismoSeedCourse.js";
 import { createLogicaProgramacaoCourse } from "./logicaProgramacaoSeedCourse.js";
+import { createFundamentosIaAnaliseDadosCourse } from "./fundamentosIaAnaliseDadosSeedCourse.js";
 
 const ORGANIZACAO_ARQUITETURA_COMPUTADORES_COURSE_ID = "course-organizacao-arquitetura-computadores";
 const OACO_BASES_CPU_PARALELISMO_COURSE_ID = "course-oaco-bases-cpu-paralelismo";
@@ -24,7 +25,8 @@ const EMBEDDED_SEED_COURSE_FACTORIES = [
   createPraticasFerramentasCourse,
   createMergedOrganizacaoArquiteturaComputadoresCourse,
   createFrameworkIaGenerativaCourse,
-  createLogicaProgramacaoCourse
+  createLogicaProgramacaoCourse,
+  createFundamentosIaAnaliseDadosCourse
 ];
 
 function createEmbeddedSeedCourses() {
