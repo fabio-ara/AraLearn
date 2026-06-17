@@ -20,22 +20,48 @@ function escapeHtmlAttribute(value) {
   return escapeHtml(value).replace(/\r?\n/g, "&#10;");
 }
 
+function createInlineSyntaxPlaceholder(value, replacements) {
+  const index = replacements.push(`<code>${value}</code>`) - 1;
+  return `@@INLINE_SYNTAX_${index}@@`;
+}
+
+function restoreInlineSyntaxPlaceholders(value, replacements = []) {
+  return replacements.reduce(
+    (current, replacement, index) => current.replaceAll(`@@INLINE_SYNTAX_${index}@@`, replacement),
+    String(value || "")
+  );
+}
+
 function wrapPlainInlineSyntax(escapedText) {
-  return String(escapedText || "")
-    .replace(/\bint main\(\)/g, "@@INLINE_INT_MAIN@@")
-    .replace(/\bmain\(\)/g, "@@INLINE_MAIN@@")
-    .replace(/#include\s*&lt;[^&]+&gt;/g, "<code>$&</code>")
-    .replace(/\bmain\b/g, "<code>$&</code>")
-    .replace(/\bprintf\([^<]*?\);/g, "<code>$&</code>")
-    .replace(/\bscanf\([^<]*?\);/g, "<code>$&</code>")
-    .replace(/\bgetch\(\);/g, "<code>$&</code>")
-    .replace(/%(?:\.\d+)?[dfcs]/g, "<code>$&</code>")
-    .replace(/&amp;[A-Za-z_][A-Za-z0-9_.]*(?:\[[^\]]+\])*/g, "<code>$&</code>")
-    .replace(/\b(?:int|float|char|double|void)\s+[A-Za-z_][A-Za-z0-9_]*(?:\[[^\]]+\])?;?/g, "<code>$&</code>")
-    .replace(/\b[A-Za-z_][A-Za-z0-9_]*\[[^\]]+\]/g, "<code>$&</code>")
-    .replace(/(^|[\s(])([{}])(?=$|[\s).,;:])/g, "$1<code>$2</code>")
-    .replace(/@@INLINE_MAIN@@/g, "<code>main()</code>")
-    .replace(/@@INLINE_INT_MAIN@@/g, "<code>int main()</code>");
+  const replacements = [];
+  let next = String(escapedText || "");
+  const protect = (pattern) => {
+    next = next.replace(pattern, (match) => createInlineSyntaxPlaceholder(match, replacements));
+  };
+
+  protect(/#include\s*&lt;[^&]+&gt;/g);
+  protect(/\b(?:for|while|if|switch)\s*\([^<\n)]*?\)/g);
+  protect(/\b(?:printf|scanf|getch|puts|gets|strlen|strcmp|strcpy|strupr|main)\s*\([^<\n)]*?\);?/g);
+  protect(/\b[A-Za-z_][A-Za-z0-9_]*\s*\([^<\n)]*?\);?/g);
+  protect(/\bcase\s+(?:'[^']+'|-?\d+(?:\.\d+)?)\s*:?/g);
+  protect(/\bdefault:?/g);
+  protect(/%(?:\.\d+)?[dfcs]/g);
+  protect(/&amp;[A-Za-z_][A-Za-z0-9_.]*(?:\[[^\]]+\])*(?:\.[A-Za-z_][A-Za-z0-9_]*(?:\[[^\]]+\])*)*/g);
+  protect(/\b[A-Za-z_][A-Za-z0-9_]*(?:\[[^\]\n]+\])+(?:\.[A-Za-z_][A-Za-z0-9_]*(?:\[[^\]\n]+\])*)*/g);
+  protect(/\b[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*(?:\[[^\]\n]+\])*)+/g);
+  protect(/\*[A-Za-z_][A-Za-z0-9_]*/g);
+  protect(/\b[A-Za-z_][A-Za-z0-9_]*\+\+/g);
+  protect(/\b[A-Za-z_][A-Za-z0-9_]*--\b/g);
+  protect(
+    /\b[A-Za-z_][A-Za-z0-9_]*(?:\[[^\]\n]+\])?\s*(?:==|!=|&lt;=?|&gt;=?)\s*(?:-?\d+(?:\.\d+)?|[A-Za-z_][A-Za-z0-9_]*(?:\[[^\]\n]+\])?)(?:\s*(?:&amp;&amp;|\|\|)\s*[A-Za-z_][A-Za-z0-9_]*(?:\[[^\]\n]+\])?\s*(?:==|!=|&lt;=?|&gt;=?)\s*(?:-?\d+(?:\.\d+)?|[A-Za-z_][A-Za-z0-9_]*(?:\[[^\]\n]+\])?))*/g
+  );
+  protect(/\b[A-Za-z_][A-Za-z0-9_]*(?:\[[^\]\n]+\])?\s*=\s*(?:-?\d+(?:\.\d+)?|[A-Za-z_][A-Za-z0-9_]*(?:\[[^\]\n]+\])?)/g);
+  protect(/&lt;=?|(?<!-)&gt;=?|==|!=|&amp;&amp;|\|\|/g);
+  protect(/\b(?:printf|scanf|getch|puts|gets|strlen|strcmp|strcpy|strupr|main|for|while|if|else|switch|case|default|break|return|typedef|struct|void|int|float|char|double|continue)\b/g);
+  next = next.replace(/(^|[\s(])([{}])(?=$|[\s).,;:])/g, (match, prefix, brace) => (
+    `${prefix}${createInlineSyntaxPlaceholder(brace, replacements)}`
+  ));
+  return { text: next, replacements };
 }
 
 function normalizeInlineText(value) {
@@ -43,10 +69,12 @@ function normalizeInlineText(value) {
 }
 
 function renderMarkdownInlineMarkup(text) {
-  return wrapPlainInlineSyntax(escapeHtml(text || ""))
+  const wrapped = wrapPlainInlineSyntax(escapeHtml(text || ""));
+  const html = wrapped.text
     .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
     .replace(/\*([^*]+)\*/g, "<em>$1</em>")
     .replace(/\n/g, "<br>");
+  return restoreInlineSyntaxPlaceholders(html, wrapped.replacements);
 }
 
 function renderMarkdownInlineWithCodeState(text, state) {

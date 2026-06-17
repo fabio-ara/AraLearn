@@ -1,3 +1,5 @@
+import { buildTextGapToken } from "../../../core/textGaps.js";
+
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
 }
@@ -12,7 +14,7 @@ export function compileParagraphCard({ slots = {}, templateId = "", position = 0
       kind: "exercise",
       exercise: "gap",
       title: text(slots[1]),
-      text: `${text(slots[2])} [[${answer}::${answer}|${distractors.join("|")}]].`,
+      text: `${text(slots[2])} ${buildTextGapToken(answer, [answer, ...distractors])}.`,
       after: text(slots[6])
     };
   }

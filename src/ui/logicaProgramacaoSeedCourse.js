@@ -1,3 +1,5 @@
+import { buildTextGapToken } from "../core/textGaps.js";
+
 const RAW_LOGICA_PROGRAMACAO_COURSE = Object.freeze(
 {
   "id": "course-logica-de-programacao",
@@ -38480,6 +38482,18 @@ const LOGICA_PROGRAMACAO_REGEX_REPLACEMENTS = [
   [/\btrecho curto\b/gu, "trecho simples"],
   [/\bVersão curta\b/gu, "Versão simples"],
   [/\bversão curta\b/gu, "versão simples"],
+  [
+    /`(void|int|float|char|double)`\s+([A-Za-z_][A-Za-z0-9_]*)\(([^)]*)\)(;?)/gu,
+    (match, type, name, params, suffix) => `\`${type} ${name}(${String(params || "").replace(/`/gu, "")})${suffix || ""}\``
+  ],
+  [
+    /([A-Za-z_][A-Za-z0-9_]*)\(`([^`]+)`([^)]*)\)(;?)/gu,
+    (match, name, head, tail, suffix) => `\`${name}(${head}${tail})${suffix || ""}\``
+  ],
+  [
+    /`(&?[A-Za-z_][A-Za-z0-9_]*)`\(([^)]*)\)(;?)/gu,
+    (match, name, args, suffix) => `\`${name}(${String(args || "").replace(/`/gu, "")})${suffix || ""}\``
+  ],
   [/`(int|float|char|void)\s+(usa|com|pode|recebe|precisa|e|combina|declara|executa)`/gu, "`$1` $2"],
   [/`printf\("Texto"\);\s*e\s*getch\(\);`/gu, "`printf(\"Texto\");` e `getch();`"],
   [/`((?:int|float|char)\s+[A-Za-z_][A-Za-z0-9_]*)`,\s*([A-Za-z_][A-Za-z0-9_]*(?:\s*,\s*[A-Za-z_][A-Za-z0-9_]*)*);/gu, "`$1, $2;`"],
@@ -38565,47 +38579,12 @@ function normalizeLegacyCodeChoiceValue(value) {
     .trim();
 }
 
-function legacyCodeLines(value = "") {
-  return String(value || "").replace(/\r\n/g, "\n").split("\n");
-}
-
-function legacyCodeIndent(line = "") {
-  const match = String(line || "").match(/^[ \t]*/u);
-  return match ? match[0].length : 0;
-}
-
-function isLegacyCodeBlockStarter(line = "") {
-  const trimmed = String(line || "").trim();
-  return Boolean(trimmed) && (/[{[]\s*$/u.test(trimmed) || /:\s*$/u.test(trimmed));
-}
-
-function legacyCodeNeedsIndentation(value = "") {
-  const lines = legacyCodeLines(value).filter((line) => String(line || "").trim());
-  if (lines.length < 2) {
+function looksSafeLegacyCodeGapPart(value) {
+  const normalized = normalizeLegacyCodeChoiceValue(value);
+  if (!normalized) {
     return false;
   }
-  for (let index = 0; index < lines.length - 1; index += 1) {
-    const current = lines[index];
-    if (!isLegacyCodeBlockStarter(current)) {
-      continue;
-    }
-    const currentIndent = legacyCodeIndent(current);
-    for (let nextIndex = index + 1; nextIndex < lines.length; nextIndex += 1) {
-      const nextLine = lines[nextIndex];
-      if (!String(nextLine || "").trim()) {
-        continue;
-      }
-      const nextIndent = legacyCodeIndent(nextLine);
-      if (String(nextLine || "").trim().startsWith("}")) {
-        break;
-      }
-      if (nextIndent <= currentIndent) {
-        return true;
-      }
-      break;
-    }
-  }
-  return false;
+  return !/[À-ÿ]/u.test(normalized);
 }
 
 function looksLikeLegacyCodeOption(value) {
@@ -38620,19 +38599,65 @@ function looksLikeLegacyCodeOption(value) {
   return LOGICA_PROGRAMACAO_CODE_OPTION_HINTS.some((hint) => compact.includes(hint));
 }
 
+function normalizeLegacyCodeOptionIndentation(value) {
+  const lines = String(value || "").replace(/\r\n/g, "\n").split("\n");
+  let indentLevel = 0;
+  return lines.map((line) => {
+    const trimmed = String(line || "").trim();
+    if (!trimmed) {
+      return "";
+    }
+    const isCaseLabel = /^(?:case\b|default\b).*:\s*$/iu.test(trimmed);
+    if (trimmed.startsWith("}") || isCaseLabel) {
+      indentLevel = Math.max(0, indentLevel - 1);
+    }
+    if (trimmed.startsWith("#")) {
+      return trimmed;
+    }
+    const normalizedLine = `${"    ".repeat(indentLevel)}${trimmed}`;
+    if (/[{[]\s*$/u.test(trimmed) || isCaseLabel) {
+      indentLevel += 1;
+    }
+    return normalizedLine;
+  }).join("\n");
+}
+
 function normalizeLegacyCodeChoiceOption(option, language = "text") {
   const normalizedValue = normalizeLegacyCodeChoiceValue(option?.text);
-  if (looksLikeLegacyCodeOption(normalizedValue) && !legacyCodeNeedsIndentation(normalizedValue)) {
+  if (looksLikeLegacyCodeOption(normalizedValue)) {
     return {
       id: String(option?.id || "").trim(),
       kind: "code",
       language: String(language || "text").trim() || "text",
-      code: normalizedValue
+      code: normalizeLegacyCodeOptionIndentation(normalizedValue)
     };
   }
   return {
     id: String(option?.id || "").trim(),
     text: normalizedValue
+  };
+}
+
+function looksLikeMultilineCodeChoiceOption(value) {
+  const normalized = normalizeLegacyCodeChoiceValue(value);
+  if (!normalized.includes("\n")) {
+    return false;
+  }
+  return /#include|\b(?:main|printf|scanf|getch|for|if|while|switch)\s*\(|\b(?:do|case|default|struct|typedef)\b|[{};]/u.test(
+    normalized
+  );
+}
+
+function normalizeMultilineCodeChoiceOption(option, language = "c") {
+  const normalizedValue = normalizeLegacyCodeChoiceValue(option?.text);
+  if (!looksLikeMultilineCodeChoiceOption(normalizedValue)) {
+    return option;
+  }
+  return {
+    id: String(option?.id || "").trim(),
+    kind: "code",
+    language: String(language || "c").trim() || "c",
+    code: normalizeLegacyCodeOptionIndentation(normalizedValue)
   };
 }
 
@@ -38649,6 +38674,13 @@ function mergeLegacyPromptAndQuestion(card) {
     return question;
   }
   return `${prompt}\n\n${question}`;
+}
+
+function setCardOptionText(card, optionId, nextText) {
+  const option = (Array.isArray(card?.options) ? card.options : []).find((item) => String(item?.id || "").trim() === optionId);
+  if (option && typeof option === "object") {
+    option.text = nextText;
+  }
 }
 
 function splitLegacyGapOptionParts(value, placeholderCount) {
@@ -38690,7 +38722,7 @@ function buildLegacyGapToken(answer, distractors = []) {
   if (!normalizedAnswer || !uniqueDistractors.length) {
     throw new Error("Não foi possível construir lacuna de código do seed de Lógica de Programação.");
   }
-  return `[[${normalizedAnswer}::${normalizedAnswer}|${uniqueDistractors.join("|")}]]`;
+  return buildTextGapToken(normalizedAnswer, [normalizedAnswer, ...uniqueDistractors]);
 }
 
 function buildLegacyCodeGapTokens(card, placeholderCount) {
@@ -38704,11 +38736,15 @@ function buildLegacyCodeGapTokens(card, placeholderCount) {
   if (answerParts.length !== placeholderCount) {
     throw new Error(`Card ${card?.id || "(sem id)"} não pôde ser convertido para code gap.`);
   }
+  if (answerParts.some((part) => !looksSafeLegacyCodeGapPart(part))) {
+    return null;
+  }
   if (answerParts.some((part) => part.includes("\n"))) {
     return null;
   }
   const distractorsByIndex = Array.from({ length: placeholderCount }, () => []);
   let hasMultilineDistractor = false;
+  let hasUnsafeDistractor = false;
   options.forEach((option) => {
     if (String(option?.id || "").trim() === answerId) {
       return;
@@ -38721,11 +38757,15 @@ function buildLegacyCodeGapTokens(card, placeholderCount) {
       hasMultilineDistractor = true;
       return;
     }
+    if (parts.some((part) => !looksSafeLegacyCodeGapPart(part))) {
+      hasUnsafeDistractor = true;
+      return;
+    }
     parts.forEach((part, index) => {
       distractorsByIndex[index].push(part);
     });
   });
-  if (hasMultilineDistractor) {
+  if (hasMultilineDistractor || hasUnsafeDistractor) {
     return null;
   }
   return answerParts.map((answerPart, index) => buildLegacyGapToken(answerPart, distractorsByIndex[index]));
@@ -38790,8 +38830,44 @@ function migrateLogicaProgramacaoLegacyCodeExercises(course) {
   });
 }
 
+function normalizeLogicaProgramacaoChoiceOptions(course) {
+  forEachLogicaProgramacaoCard(course, (card) => {
+    if (!Array.isArray(card?.options)) {
+      return;
+    }
+    const optionLanguage = String(card?.language || "c").trim() || "c";
+    card.options = card.options.map((option) => {
+      if (!option || typeof option !== "object" || option.kind === "code" || typeof option.text !== "string") {
+        return option;
+      }
+      return normalizeMultilineCodeChoiceOption(option, optionLanguage);
+    });
+  });
+}
+
 function applyLogicaProgramacaoCardOverrides(course) {
   forEachLogicaProgramacaoCard(course, (card) => {
+    if (card.id === "card-02-01-04-05") {
+      card.code = "valor = ___;";
+      setCardOptionText(card, "a", "v[i]");
+      setCardOptionText(card, "b", "v");
+      setCardOptionText(card, "c", "v[10]");
+      setCardOptionText(card, "d", "valor");
+    }
+
+    if (card.id === "card-02-03-01-05") {
+      setCardOptionText(card, "b", "soma = 1;");
+    }
+
+    if (card.id === "card-02-03-04-03" || card.id === "card-02-03-04-04") {
+      setCardOptionText(card, "a", "i");
+    }
+
+    if (card.id === "card-printf-texto-revisao") {
+      card.question = "Em `printf(\"Aprovado\");`, qual trecho aparece na tela?";
+      card.after = "O texto exibido na tela é a string entre aspas duplas: `Aprovado`.";
+    }
+
     if (card.id === "card-menu-switch-04") {
       card.after = "O caminho `default` recebe a opção diferente de 1 e de 2.";
       card.structure = {
@@ -38857,6 +38933,7 @@ function normalizeLogicaProgramacaoCourse(course) {
   const normalizedCourse = normalizeLogicaProgramacaoNode(course);
   applyLogicaProgramacaoCardOverrides(normalizedCourse);
   migrateLogicaProgramacaoLegacyCodeExercises(normalizedCourse);
+  normalizeLogicaProgramacaoChoiceOptions(normalizedCourse);
   return normalizedCourse;
 }
 
