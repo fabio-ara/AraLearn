@@ -33,7 +33,7 @@ function createAdsProfile(profileId, label, overrides = {}) {
         "consolidar e reconectar à trilha"
       ],
       hardRules: [
-        "bastidor zero no texto do aluno",
+        "nenhum comentário técnico interno no texto do aluno",
         "card autossuficiente",
         "explicação antes de prática",
         "siglas e termos técnicos explicados localmente",
@@ -254,7 +254,7 @@ export const ENGINE_PROFILE_SEEDS = Object.freeze({
         "retomar e variar"
       ],
       hardRules: [
-        "bastidor zero no texto do aluno",
+        "nenhum comentário técnico interno no texto do aluno",
         "card autossuficiente",
         "exposição antes de produção",
         "explicação funcional antes de regra abstrata",
@@ -322,7 +322,7 @@ export const ENGINE_PROFILE_SEEDS = Object.freeze({
         "retomar com contraste"
       ],
       hardRules: [
-        "bastidor zero no texto do aluno",
+        "nenhum comentário técnico interno no texto do aluno",
         "card autossuficiente",
         "conceito antes de avaliação crítica",
         "jargão explicado localmente",

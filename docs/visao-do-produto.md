@@ -34,6 +34,8 @@ Ferramentas existentes resolvem partes do problema. Buscadores e wikis ajudam a 
 
 O AraLearn ocupa outro ponto: ele trata o estudo como projeto local, editável e versionado. O interesse não está apenas em responder uma pergunta, mas em organizar uma sequência que o estudante possa continuar, corrigir e auditar.
 
+Esse caráter local importa também para o uso prático. Quando o conteúdo já está salvo no dispositivo ou vem embarcado no app, leitura, revisão e edição podem continuar sem nova chamada externa. A conexão é exigida nas etapas em que o usuário pede assistência por IA.
+
 ## Público principal
 
 O público inicial é o estudante-trabalhador: quem estuda com tempo limitado, muitas vezes no celular, em deslocamento, com atenção fragmentada, energia baixa e conexão instável. O projeto não romantiza essas condições; tenta levá-las a sério. Por isso, privilegia etapas delimitadas, persistência local, prática objetiva e retorno à trilha após uma interrupção.

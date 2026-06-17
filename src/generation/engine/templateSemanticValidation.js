@@ -52,13 +52,13 @@ const BLOCKED_STRUCTURAL_PATTERNS = [
   { pattern: /\bSTATUS\s+OK\b/iu, reason: "marcador estrutural STATUS OK" },
   { pattern: /^\s*\d+\s*:/mu, reason: "linha estrutural de slot numérico" },
   { pattern: /```json/iu, reason: "bloco json" },
-  { pattern: /\bJSON\b/iu, reason: "termo de bastidor JSON" },
-  { pattern: /\bprompt\b/iu, reason: "termo de bastidor prompt" },
-  { pattern: /\bschema\b/iu, reason: "termo de bastidor schema" },
-  { pattern: /\bpipeline\b/iu, reason: "termo de bastidor pipeline" },
-  { pattern: /\bcontainer\b/iu, reason: "termo de bastidor container" },
-  { pattern: /\bLLM\b/iu, reason: "termo de bastidor LLM" },
-  { pattern: /\bvalidador\b/iu, reason: "termo de bastidor validador" }
+  { pattern: /\bJSON\b/iu, reason: "termo técnico interno JSON" },
+  { pattern: /\bprompt\b/iu, reason: "termo técnico interno prompt" },
+  { pattern: /\bschema\b/iu, reason: "termo técnico interno schema" },
+  { pattern: /\bpipeline\b/iu, reason: "termo técnico interno pipeline" },
+  { pattern: /\bcontainer\b/iu, reason: "termo técnico interno container" },
+  { pattern: /\bLLM\b/iu, reason: "termo técnico interno LLM" },
+  { pattern: /\bvalidador\b/iu, reason: "termo técnico interno validador" }
 ];
 
 const BLOCKED_ARTIFICIAL_PATTERNS = [

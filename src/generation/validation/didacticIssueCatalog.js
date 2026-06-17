@@ -17,7 +17,7 @@ const DIDACTIC_ISSUE_META = Object.freeze({
     blocksValidation: true,
     allowsAutoIteration: true
   },
-  unstable_or_backstage_reference: {
+  unstable_or_internal_reference: {
     basis: "pattern_policy",
     severity: "hard_error",
     blocksValidation: true,

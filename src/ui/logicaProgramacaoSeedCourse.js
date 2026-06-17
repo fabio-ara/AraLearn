@@ -33530,7 +33530,7 @@ const RAW_LOGICA_PROGRAMACAO_COURSE = Object.freeze(
           "não criar exercício que dependa de informação invisível ao aluno",
           "não usar itens de guide.exclude",
           "não criar campos fora do contrato AraLearn",
-          "não usar marcas de bastidor como autor, prompt, Builder ou arquivo"
+          "não usar marcas editoriais internas como autor, prompt, Builder ou arquivo"
         ]
       },
       "lessons": [

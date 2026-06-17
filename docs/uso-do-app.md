@@ -46,6 +46,8 @@ Os cards podem ser explicativos ou interativos. Dependendo do conteúdo, podem a
 
 Esse ponto se relaciona a uma regra básica de usabilidade: o sistema deve tornar o estado e a ação compreensíveis ao usuário. Nielsen (1994) formulou esse princípio como visibilidade do estado do sistema. No AraLearn, a interface precisa deixar claro onde o estudante está, que etapa está ativa e que versão está sendo usada.
 
+Quando o conteúdo já está salvo no projeto ou vem embarcado no app, o estudo dessa etapa pode seguir localmente. A conexão volta a ser necessária quando o usuário pede planejamento, geração ou correção assistida por IA.
+
 ## 6. Corrigir e versionar
 
 Se a explicação ficou ruim, o exercício saiu do escopo ou o card precisa de outro recurso, o usuário pode pedir correção. A nova resposta cria uma versão. A versão ativa é usada no estudo; versões anteriores continuam disponíveis para comparação ou restauração.

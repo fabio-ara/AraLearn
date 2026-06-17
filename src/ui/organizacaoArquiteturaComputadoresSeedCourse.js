@@ -2774,7 +2774,7 @@ const RAW_ORGANIZACAO_ARQUITETURA_COMPUTADORES_COURSE = Object.freeze(
                   "source": "llm",
                   "action": "repair",
                   "request": "Corrigir linguagem visível, progressão didática, distratores e feedback dos cards, preservando a hierarquia do módulo.",
-                  "summary": "Versão reparada com linguagem adequada a aluno iniciante, sem texto de bastidor nos cards, com frases úteis para apresentação oral, distratores plausíveis e after explicativo.",
+                  "summary": "Versão reparada com linguagem adequada a aluno iniciante, sem marcas editoriais internas nos cards, com frases úteis para apresentação oral, distratores plausíveis e after explicativo.",
                   "cards": [
                     {
                       "id": "card-m1-1-tese",
@@ -2980,7 +2980,7 @@ const RAW_ORGANIZACAO_ARQUITETURA_COMPUTADORES_COURSE = Object.freeze(
                   "source": "llm",
                   "action": "repair",
                   "request": "Corrigir linguagem visível, progressão didática, distratores e feedback dos cards, preservando a hierarquia do módulo.",
-                  "summary": "Versão reparada com linguagem adequada a aluno iniciante, sem texto de bastidor nos cards, com frases úteis para apresentação oral, distratores plausíveis e after explicativo.",
+                  "summary": "Versão reparada com linguagem adequada a aluno iniciante, sem marcas editoriais internas nos cards, com frases úteis para apresentação oral, distratores plausíveis e after explicativo.",
                   "cards": [
                     {
                       "id": "card-m2-1-tres-modos",
@@ -3273,7 +3273,7 @@ const RAW_ORGANIZACAO_ARQUITETURA_COMPUTADORES_COURSE = Object.freeze(
                   "source": "llm",
                   "action": "repair",
                   "request": "Corrigir linguagem visível, progressão didática, distratores e feedback dos cards, preservando a hierarquia do módulo.",
-                  "summary": "Versão reparada com linguagem adequada a aluno iniciante, sem texto de bastidor nos cards, com frases úteis para apresentação oral, distratores plausíveis e after explicativo.",
+                  "summary": "Versão reparada com linguagem adequada a aluno iniciante, sem marcas editoriais internas nos cards, com frases úteis para apresentação oral, distratores plausíveis e after explicativo.",
                   "cards": [
                     {
                       "id": "card-m3-1-bit-qubit",
@@ -3450,7 +3450,7 @@ const RAW_ORGANIZACAO_ARQUITETURA_COMPUTADORES_COURSE = Object.freeze(
                   "source": "llm",
                   "action": "repair",
                   "request": "Corrigir linguagem visível, progressão didática, distratores e feedback dos cards, preservando a hierarquia do módulo.",
-                  "summary": "Versão reparada com linguagem adequada a aluno iniciante, sem texto de bastidor nos cards, com frases úteis para apresentação oral, distratores plausíveis e after explicativo.",
+                  "summary": "Versão reparada com linguagem adequada a aluno iniciante, sem marcas editoriais internas nos cards, com frases úteis para apresentação oral, distratores plausíveis e after explicativo.",
                   "cards": [
                     {
                       "id": "card-m4-1-regra-normalizacao",
@@ -3676,7 +3676,7 @@ const RAW_ORGANIZACAO_ARQUITETURA_COMPUTADORES_COURSE = Object.freeze(
                   "source": "llm",
                   "action": "repair",
                   "request": "Corrigir linguagem visível, progressão didática, distratores e feedback dos cards, preservando a hierarquia do módulo.",
-                  "summary": "Versão reparada com linguagem adequada a aluno iniciante, sem texto de bastidor nos cards, com frases úteis para apresentação oral, distratores plausíveis e after explicativo.",
+                  "summary": "Versão reparada com linguagem adequada a aluno iniciante, sem marcas editoriais internas nos cards, com frases úteis para apresentação oral, distratores plausíveis e after explicativo.",
                   "cards": [
                     {
                       "id": "card-m5-1-portas-papeis",
@@ -3937,7 +3937,7 @@ const RAW_ORGANIZACAO_ARQUITETURA_COMPUTADORES_COURSE = Object.freeze(
                   "source": "llm",
                   "action": "repair",
                   "request": "Corrigir linguagem visível, progressão didática, distratores e feedback dos cards, preservando a hierarquia do módulo.",
-                  "summary": "Versão reparada com linguagem adequada a aluno iniciante, sem texto de bastidor nos cards, com frases úteis para apresentação oral, distratores plausíveis e after explicativo.",
+                  "summary": "Versão reparada com linguagem adequada a aluno iniciante, sem marcas editoriais internas nos cards, com frases úteis para apresentação oral, distratores plausíveis e after explicativo.",
                   "cards": [
                     {
                       "id": "card-m6-1-fluxo-geral",
@@ -4233,7 +4233,7 @@ const RAW_ORGANIZACAO_ARQUITETURA_COMPUTADORES_COURSE = Object.freeze(
                   "source": "llm",
                   "action": "repair",
                   "request": "Corrigir linguagem visível, progressão didática, distratores e feedback dos cards, preservando a hierarquia do módulo.",
-                  "summary": "Versão reparada com linguagem adequada a aluno iniciante, sem texto de bastidor nos cards, com frases úteis para apresentação oral, distratores plausíveis e after explicativo.",
+                  "summary": "Versão reparada com linguagem adequada a aluno iniciante, sem marcas editoriais internas nos cards, com frases úteis para apresentação oral, distratores plausíveis e after explicativo.",
                   "cards": [
                     {
                       "id": "card-m7-1-arvore-modelos",
@@ -4532,7 +4532,7 @@ const RAW_ORGANIZACAO_ARQUITETURA_COMPUTADORES_COURSE = Object.freeze(
                   "source": "llm",
                   "action": "repair",
                   "request": "Corrigir linguagem visível, progressão didática, distratores e feedback dos cards, preservando a hierarquia do módulo.",
-                  "summary": "Versão reparada com linguagem adequada a aluno iniciante, sem texto de bastidor nos cards, com frases úteis para apresentação oral, distratores plausíveis e after explicativo.",
+                  "summary": "Versão reparada com linguagem adequada a aluno iniciante, sem marcas editoriais internas nos cards, com frases úteis para apresentação oral, distratores plausíveis e after explicativo.",
                   "cards": [
                     {
                       "id": "card-m8-1-crescimentos",
@@ -4757,7 +4757,7 @@ const RAW_ORGANIZACAO_ARQUITETURA_COMPUTADORES_COURSE = Object.freeze(
                   "source": "llm",
                   "action": "repair",
                   "request": "Corrigir linguagem visível, progressão didática, distratores e feedback dos cards, preservando a hierarquia do módulo.",
-                  "summary": "Versão reparada com linguagem adequada a aluno iniciante, sem texto de bastidor nos cards, com frases úteis para apresentação oral, distratores plausíveis e after explicativo.",
+                  "summary": "Versão reparada com linguagem adequada a aluno iniciante, sem marcas editoriais internas nos cards, com frases úteis para apresentação oral, distratores plausíveis e after explicativo.",
                   "cards": [
                     {
                       "id": "card-m9-1-interpretacoes",
@@ -5007,7 +5007,7 @@ const RAW_ORGANIZACAO_ARQUITETURA_COMPUTADORES_COURSE = Object.freeze(
                   "source": "llm",
                   "action": "repair",
                   "request": "Corrigir linguagem visível, progressão didática, distratores e feedback dos cards, preservando a hierarquia do módulo.",
-                  "summary": "Versão reparada com linguagem adequada a aluno iniciante, sem texto de bastidor nos cards, com frases úteis para apresentação oral, distratores plausíveis e after explicativo.",
+                  "summary": "Versão reparada com linguagem adequada a aluno iniciante, sem marcas editoriais internas nos cards, com frases úteis para apresentação oral, distratores plausíveis e after explicativo.",
                   "cards": [
                     {
                       "id": "card-m10-1-medicao-modelos",
@@ -5348,7 +5348,7 @@ const RAW_ORGANIZACAO_ARQUITETURA_COMPUTADORES_COURSE = Object.freeze(
                   "source": "llm",
                   "action": "repair",
                   "request": "Corrigir linguagem visível, progressão didática, distratores e feedback dos cards, preservando a hierarquia do módulo.",
-                  "summary": "Versão reparada com linguagem adequada a aluno iniciante, sem texto de bastidor nos cards, com frases úteis para apresentação oral, distratores plausíveis e after explicativo.",
+                  "summary": "Versão reparada com linguagem adequada a aluno iniciante, sem marcas editoriais internas nos cards, com frases úteis para apresentação oral, distratores plausíveis e after explicativo.",
                   "cards": [
                     {
                       "id": "card-m11-1-cautela",
@@ -5566,7 +5566,7 @@ const RAW_ORGANIZACAO_ARQUITETURA_COMPUTADORES_COURSE = Object.freeze(
                   "source": "llm",
                   "action": "repair",
                   "request": "Corrigir linguagem visível, progressão didática, distratores e feedback dos cards, preservando a hierarquia do módulo.",
-                  "summary": "Versão reparada com linguagem adequada a aluno iniciante, sem texto de bastidor nos cards, com frases úteis para apresentação oral, distratores plausíveis e after explicativo.",
+                  "summary": "Versão reparada com linguagem adequada a aluno iniciante, sem marcas editoriais internas nos cards, com frases úteis para apresentação oral, distratores plausíveis e after explicativo.",
                   "cards": [
                     {
                       "id": "card-m12-1-limites",
