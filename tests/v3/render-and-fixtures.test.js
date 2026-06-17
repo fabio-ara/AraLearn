@@ -111,6 +111,21 @@ test("o renderer renderiza paragraph gap corretamente", () => {
   assert.doesNotMatch(html, /P e Q são verdadeiras\s*<\/span>/);
 });
 
+test("o renderer não destaca 'for' em prosa portuguesa quando a palavra não é sintaxe", () => {
+  const html = renderCardRuntimeBlocks({
+    position: 1,
+    resource: "paragraph",
+    kind: "theory",
+    exercise: "none",
+    title: "Decisão",
+    text: "`if` pode ser entendido como “se”: se o teste for verdadeiro, o bloco associado é executado.",
+    after: ""
+  });
+
+  assert.match(html, /<code>if<\/code>/);
+  assert.doesNotMatch(html, /<code>for<\/code> verdadeiro/);
+});
+
 test("text gap preserva caracteres reservados quando serializa respostas e opções", () => {
   const token = buildTextGapToken("case 2:", [
     "case 2:",
@@ -1116,6 +1131,21 @@ test("o seed embutido oficial mantém os cursos embarcados já materializados", 
     }, 0),
     119
   );
+
+  const fundamentosCards = fundamentosMicrosequences
+    .flatMap((microsequence) => microsequence.versions || [])
+    .flatMap((version) => version.cards || []);
+
+  const cardVariavelTemporaria = fundamentosCards.find((card) => card.id === "card-a01-08-07");
+  assert.ok(cardVariavelTemporaria);
+  assert.equal(cardVariavelTemporaria.resource, "code");
+  assert.match(cardVariavelTemporaria.code || "", /for temperatura in temperaturas:/);
+
+  const cardChamadaFuncao = fundamentosCards.find((card) => card.id === "card-a02-08-04");
+  assert.ok(cardChamadaFuncao);
+  assert.equal(cardChamadaFuncao.resource, "code");
+  assert.match(cardChamadaFuncao.code || "", /def mostrar_mensagem\(\):/);
+  assert.match(cardChamadaFuncao.code || "", /mostrar_mensagem\(\)/);
 });
 
 test("o seed de Matemática para Informática mantém textos visíveis focados no conteúdo", () => {

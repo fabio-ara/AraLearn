@@ -1824,11 +1824,14 @@ const RAW_FUNDAMENTOS_IA_ANALISE_DADOS_COURSE = Object.freeze(
                     {
                       "id": "card-a01-08-07",
                       "position": 7,
-                      "resource": "choice",
+                      "resource": "code",
                       "kind": "exercise",
                       "exercise": "choice",
                       "title": "Identifique a variável temporária",
-                      "question": "No trecho `for temperatura in temperaturas:`, qual é o papel de `temperatura`?",
+                      "prompt": "Observe o trecho e identifique o papel de `temperatura`.",
+                      "language": "python",
+                      "code": "temperaturas = [72, 84, 79]\n\nfor temperatura in temperaturas:\n    print(temperatura)",
+                      "question": "No trecho mostrado, qual é o papel de `temperatura`?",
                       "options": [
                         {
                           "id": "a",
@@ -3762,11 +3765,14 @@ const RAW_FUNDAMENTOS_IA_ANALISE_DADOS_COURSE = Object.freeze(
                     {
                       "id": "card-a02-08-04",
                       "position": 4,
-                      "resource": "choice",
+                      "resource": "code",
                       "kind": "exercise",
                       "exercise": "choice",
                       "title": "Identifique a chamada",
-                      "question": "Qual linha executa a função já definida no trecho mostrado?",
+                      "prompt": "Observe a definição e a linha que executa a função.",
+                      "language": "python",
+                      "code": "def mostrar_mensagem():\n    print(\"Análise iniciada\")\n\nmostrar_mensagem()",
+                      "question": "Qual linha executa a função mostrada no próprio card?",
                       "options": [
                         {
                           "id": "a",

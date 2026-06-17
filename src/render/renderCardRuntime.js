@@ -57,7 +57,7 @@ function wrapPlainInlineSyntax(escapedText) {
   );
   protect(/\b[A-Za-z_][A-Za-z0-9_]*(?:\[[^\]\n]+\])?\s*=\s*(?:-?\d+(?:\.\d+)?|[A-Za-z_][A-Za-z0-9_]*(?:\[[^\]\n]+\])?)/g);
   protect(/&lt;=?|(?<!-)&gt;=?|==|!=|&amp;&amp;|\|\|/g);
-  protect(/\b(?:printf|scanf|getch|puts|gets|strlen|strcmp|strcpy|strupr|main|for|while|if|else|switch|case|default|break|return|typedef|struct|void|int|float|char|double|continue)\b/g);
+  protect(/\b(?:printf|scanf|getch|puts|gets|strlen|strcmp|strcpy|strupr|main|break|return|typedef|struct|void|int|float|char|double|continue)\b/g);
   next = next.replace(/(^|[\s(])([{}])(?=$|[\s).,;:])/g, (match, prefix, brace) => (
     `${prefix}${createInlineSyntaxPlaceholder(brace, replacements)}`
   ));
