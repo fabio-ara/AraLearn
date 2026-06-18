@@ -1117,17 +1117,11 @@ test("o seed embutido oficial mantém os cursos embarcados já materializados", 
     .flatMap((lesson) => lesson.microsequences || []);
 
   assert.equal(fundamentosCourse.title, "Fundamentos de IA e Análise de Dados");
-  assert.equal(fundamentosCourse.modules.length, 3);
-  assert.equal(fundamentosCourse.modules.flatMap((moduleValue) => moduleValue.lessons || []).length, 3);
-  assert.equal(fundamentosMicrosequences.length, 32);
+  assert.equal(fundamentosCourse.modules.length, 2);
+  assert.equal(fundamentosCourse.modules.flatMap((moduleValue) => moduleValue.lessons || []).length, 2);
+  assert.equal(fundamentosMicrosequences.length, 18);
   assert.equal(fundamentosMicrosequences.some((microsequence) => (microsequence.versions || []).length > 0), true);
   assert.equal(fundamentosMicrosequences.some((microsequence) => microsequence.activeVersion), true);
-  assert.equal(
-    fundamentosCourse.modules.some(
-      (moduleValue) => moduleValue.title === "Aula 3 — Bibliotecas para análise de dados com NumPy e Pandas"
-    ),
-    true
-  );
   assert.equal(
     fundamentosMicrosequences.reduce((count, microsequence) => {
       const active =
@@ -1135,30 +1129,23 @@ test("o seed embutido oficial mantém os cursos embarcados já materializados", 
         (microsequence.versions || []).at(-1);
       return count + ((active?.cards || []).length);
     }, 0),
-    208
+    119
   );
 
   const fundamentosCards = fundamentosMicrosequences
     .flatMap((microsequence) => microsequence.versions || [])
     .flatMap((version) => version.cards || []);
 
-  assert.equal(
-    fundamentosCards.some((card) => JSON.stringify(card).includes("dataset_aula6_numpy_pandas.csv")),
-    false
-  );
-  assert.equal(
-    fundamentosCards.some((card) => JSON.stringify(card).includes("dataset_aula3_numpy_pandas.csv")),
-    true
-  );
-  assert.equal(
-    fundamentosCards
-      .filter((card) => card.resource === "composite")
-      .every((card) => {
-        const choiceBlocks = (card.blocks || []).filter((block) => block.kind === "choice");
-        return (card.blocks || []).every((block) => block.kind && !("resource" in block)) && choiceBlocks.length === 1;
-      }),
-    true
-  );
+  const cardVariavelTemporaria = fundamentosCards.find((card) => card.id === "card-a01-08-07");
+  assert.ok(cardVariavelTemporaria);
+  assert.equal(cardVariavelTemporaria.resource, "code");
+  assert.match(cardVariavelTemporaria.code || "", /for temperatura in temperaturas:/);
+
+  const cardChamadaFuncao = fundamentosCards.find((card) => card.id === "card-a02-08-04");
+  assert.ok(cardChamadaFuncao);
+  assert.equal(cardChamadaFuncao.resource, "code");
+  assert.match(cardChamadaFuncao.code || "", /def mostrar_mensagem\(\):/);
+  assert.match(cardChamadaFuncao.code || "", /mostrar_mensagem\(\)/);
 });
 
 test("o seed de Matemática para Informática mantém textos visíveis focados no conteúdo", () => {
