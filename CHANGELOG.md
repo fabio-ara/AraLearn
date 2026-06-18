@@ -13,8 +13,10 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 ### Changed
 
 - atualização do curso embarcado `Fundamentos de IA e Análise de Dados`, agora com `3` módulos, `3` lições, `32` microssequências e a nova Aula 3 sobre NumPy e Pandas;
-- saneamento do seed de Fundamentos para o contrato atual do app, com normalização de `role`, `composite`, `afterBlocks` e alternativas incompatíveis de `code choice`;
-- geração da nova APK pública de release com o curso atualizado no seed oficial.
+- Aula 3 cobrindo leitura de CSV, métricas em colunas, filtros, classificação com `np.where()` e agrupamento por setor;
+- revisão dos enunciados para manter a trilha focada no conteúdo, sem formulações editoriais de bastidor;
+- cards da Aula 3 agora repetem no próprio card os quadros e resumos necessários aos exercícios;
+- APK pública de release atualizada com a versão corrigida do curso.
 
 ## [0.0.1] - 2026-06-17
 
