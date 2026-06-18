@@ -1183,6 +1183,177 @@ test("o seed de Matemática para Informática mantém textos visíveis focados n
   });
 });
 
+test("o seed de Fundamentos evita texto de bastidor e vocabulário proibido nos textos visíveis", () => {
+  const project = createEmbeddedSeedProjectDocument();
+  const course = project.courses.find((item) => item.id === "course-fundamentos-ia-analise-dados");
+
+  assert.ok(course);
+
+  const visibleTexts = [
+    course.title,
+    course.goal,
+    ...course.modules.flatMap((moduleValue) => [
+      moduleValue.title,
+      moduleValue.guide?.goal,
+      ...(moduleValue.lessons || []).flatMap((lesson) => [
+        lesson.title,
+        lesson.guide?.goal,
+        ...(lesson.microsequences || []).flatMap((microsequence) => [
+          microsequence.title,
+          microsequence.goal,
+          ...(microsequence.versions || []).flatMap((version) =>
+            (version.cards || []).flatMap((card) => [
+              card.title,
+              card.text,
+              card.after,
+              card.prompt,
+              card.question,
+              ...(card.options || []).flatMap((option) => [option.text, option.value]),
+              ...(card.blocks || []).flatMap((block) => [block.value, block.prompt, block.question]),
+              ...(card.afterBlocks || []).flatMap((block) => [block.value, block.prompt, block.question])
+            ])
+          )
+        ])
+      ])
+    ])
+  ].filter((value) => typeof value === "string");
+
+  const forbiddenPatterns = [
+    /materializar/iu,
+    /curso aprovado/iu,
+    /no contexto da aula/iu,
+    /^A leitura\b/iu,
+    /\bprograma curto\b|\btrecho curto\b/iu,
+    /\bassinatura\b/iu,
+    /\bo aluno deve\b/iu
+  ];
+
+  visibleTexts.forEach((text) => {
+    forbiddenPatterns.forEach((pattern) => {
+      assert.doesNotMatch(text, pattern);
+    });
+  });
+});
+
+test("o seed de Fundamentos também remove texto de bastidor dos metadados internos", () => {
+  const project = createEmbeddedSeedProjectDocument();
+  const course = project.courses.find((item) => item.id === "course-fundamentos-ia-analise-dados");
+
+  assert.ok(course);
+
+  const forbiddenPatterns = [
+    /materializar/iu,
+    /curso aprovado/iu,
+    /no contexto da aula/iu,
+    /^A leitura\b/iu,
+    /\bprograma curto\b|\btrecho curto\b/iu,
+    /\bassinatura\b/iu,
+    /\bo aluno deve\b/iu,
+    /\bhandoff\b/iu,
+    /prompt_builder/iu,
+    /materializada/iu
+  ];
+  const hits = [];
+
+  function walk(value, path = []) {
+    if (typeof value === "string") {
+      if (forbiddenPatterns.some((pattern) => pattern.test(value))) {
+        hits.push({ path: path.join("."), value });
+      }
+      return;
+    }
+    if (Array.isArray(value)) {
+      value.forEach((item, index) => walk(item, [...path, index]));
+      return;
+    }
+    if (value && typeof value === "object") {
+      Object.entries(value).forEach(([key, nestedValue]) => {
+        walk(nestedValue, [...path, key]);
+      });
+    }
+  }
+
+  walk(course);
+  assert.deepEqual(hits, []);
+});
+
+test("exercícios de Fundamentos que dependem de contexto mostrado trazem esse contexto no próprio card", () => {
+  const project = createEmbeddedSeedProjectDocument();
+  const course = project.courses.find((item) => item.id === "course-fundamentos-ia-analise-dados");
+
+  assert.ok(course);
+
+  const cards = course.modules
+    .flatMap((moduleValue) => moduleValue.lessons || [])
+    .flatMap((lesson) => lesson.microsequences || [])
+    .flatMap((microsequence) => microsequence.versions || [])
+    .flatMap((version) => version.cards || []);
+  const contextMarkers = [
+    /\bobserve\b/iu,
+    /\bcompare\b/iu,
+    /\bquadro\b/iu,
+    /\bregra mostrada\b/iu,
+    /\bresumo mostrado\b/iu,
+    /\bmostrad[ao]\b/iu
+  ];
+  const contextKinds = new Set(["code", "table", "graph", "flow", "matrix", "relation_map", "plane", "tree"]);
+
+  function hasLocalContext(card) {
+    if (contextKinds.has(card.resource)) {
+      return true;
+    }
+    return (card.blocks || []).some((block) => contextKinds.has(block.kind) && block.kind !== "choice");
+  }
+
+  const cardsWithShownContext = cards.filter((card) => {
+    if (card.kind !== "exercise") return false;
+    const texts = [
+      card.title,
+      card.text,
+      card.prompt,
+      card.question,
+      ...(card.blocks || []).flatMap((block) => [block.value, block.prompt, block.question])
+    ].filter((value) => typeof value === "string");
+    return texts.some((text) => contextMarkers.some((pattern) => pattern.test(text)));
+  });
+
+  assert.ok(cardsWithShownContext.length > 0);
+  cardsWithShownContext.forEach((card) => {
+    assert.equal(hasLocalContext(card), true, `card ${card.id} precisa materializar o contexto no próprio card`);
+  });
+});
+
+test("cards de Fundamentos com resultados globais da base repetem o contexto no próprio card", () => {
+  const project = createEmbeddedSeedProjectDocument();
+  const course = project.courses.find((item) => item.id === "course-fundamentos-ia-analise-dados");
+
+  assert.ok(course);
+
+  const cards = course.modules
+    .flatMap((moduleValue) => moduleValue.lessons || [])
+    .flatMap((lesson) => lesson.microsequences || [])
+    .flatMap((microsequence) => microsequence.versions || [])
+    .flatMap((version) => version.cards || []);
+
+  const targetIds = [
+    "card-a03-09-media-verificavel",
+    "card-a03-10-contagens-filtros",
+    "card-a03-11-contagem-classificacao",
+    "card-a03-12-contagem-setor",
+    "card-a03-14-resultados-chave"
+  ];
+
+  targetIds.forEach((cardId) => {
+    const card = cards.find((entry) => entry.id === cardId);
+    assert.ok(card, `card ${cardId} ausente`);
+    assert.equal(card.resource, "composite");
+    const kinds = new Set((card.blocks || []).map((block) => block.kind));
+    assert.ok(kinds.has("table"), `card ${cardId} deve repetir o quadro de contexto`);
+    assert.ok(kinds.has("choice"), `card ${cardId} deve manter a decisão no próprio card`);
+    assert.equal((card.blocks || []).every((block) => block.kind && !("resource" in block)), true);
+  });
+});
+
 test("cards de grafo que prometem subgrafo destacado no seed materializam esse destaque", () => {
   const project = createEmbeddedSeedProjectDocument();
   const course = project.courses.find((item) => item.id === "course-matematica-para-informatica");

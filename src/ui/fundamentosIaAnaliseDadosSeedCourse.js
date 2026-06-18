@@ -7703,6 +7703,271 @@ const RAW_FUNDAMENTOS_IA_ANALISE_DADOS_COURSE = Object.freeze(
 }
 );
 
+function forEachFundamentosCard(course, callback) {
+  (course.modules || []).forEach((moduleValue) => {
+    (moduleValue.lessons || []).forEach((lesson) => {
+      (lesson.microsequences || []).forEach((microsequence) => {
+        (microsequence.versions || []).forEach((version) => {
+          (version.cards || []).forEach((card, cardIndex) => {
+            callback(card, { moduleValue, lesson, microsequence, version, cardIndex });
+          });
+        });
+      });
+    });
+  });
+}
+
+function forEachFundamentosVersion(course, callback) {
+  (course.modules || []).forEach((moduleValue) => {
+    (moduleValue.lessons || []).forEach((lesson) => {
+      (lesson.microsequences || []).forEach((microsequence) => {
+        (microsequence.versions || []).forEach((version) => {
+          callback(version, { moduleValue, lesson, microsequence });
+        });
+      });
+    });
+  });
+}
+
+function replaceFundamentosCard(version, cardIndex, nextCard) {
+  version.cards[cardIndex] = nextCard;
+}
+
+function createChoiceBlock(question, options, answer) {
+  return {
+    kind: "choice",
+    question,
+    options,
+    answer
+  };
+}
+
+function createTableBlock(columns, rows) {
+  return {
+    kind: "table",
+    columns,
+    rows
+  };
+}
+
+function ensureFundamentosSentence(text) {
+  const trimmedText = String(text || "").trim();
+  if (!trimmedText) return "";
+  return /[.!?]$/.test(trimmedText) ? trimmedText : `${trimmedText}.`;
+}
+
+function normalizeFundamentosIaAnaliseDadosCourse(course) {
+  const normalizedCourse = structuredClone(course);
+  const moduleAula03 = (normalizedCourse.modules || []).find((moduleValue) => moduleValue.id === "module-aula-03-bibliotecas-analise-dados");
+  const lessonAula03 = moduleAula03?.lessons?.find((lesson) => lesson.id === "lesson-aula-03-numpy-pandas");
+  const microAula03Final = lessonAula03?.microsequences?.find((microsequence) => microsequence.id === "micro-a03-14-atividade-final");
+
+  if (moduleAula03?.guide) {
+    moduleAula03.guide.goal =
+      "Usar NumPy e Pandas para ler, explorar e transformar dados tabulares com operações iniciais de análise.";
+  }
+  if (lessonAula03?.guide) {
+    lessonAula03.guide.goal =
+      "Ler um CSV, inspecionar colunas, calcular métricas simples, filtrar linhas, criar classificações e agrupar dados por setor com NumPy e Pandas.";
+  }
+  if (microAula03Final) {
+    microAula03Final.title = "Integração de leitura, métricas, filtro e classificação";
+  }
+
+  forEachFundamentosVersion(normalizedCourse, (version, context) => {
+    const normalizedGoal = ensureFundamentosSentence(context.microsequence?.goal);
+    const normalizedTitle = ensureFundamentosSentence(context.microsequence?.title);
+
+    version.request = normalizedGoal
+      ? `Foco didático da microssequência: ${normalizedGoal}`
+      : "Foco didático da microssequência.";
+    version.summary = normalizedTitle
+      ? `Versão centrada em ${normalizedTitle}`
+      : "Versão centrada no objetivo da microssequência.";
+  });
+
+  forEachFundamentosCard(normalizedCourse, (card, context) => {
+    if (card.id === "card-a03-12-describe-sentido") {
+      card.question = "Qual alternativa descreve melhor o tipo de resumo produzido por `df.describe()`?";
+    }
+
+    if (card.id === "card-a03-14-script-final") {
+      card.title = "Script integrado da base";
+      card.question = "Qual script reúne leitura da base, métricas, filtro de falhas e classificação de temperatura?";
+    }
+
+    if (card.id === "card-a03-14-fechamento") {
+      card.text =
+        "Nesta aula, o trabalho com `dataset_aula3_numpy_pandas.csv` combina leitura, inspeção de `df.shape`, cálculo de métricas em colunas, filtros e agrupamento por [[setor::setor|falha|id_registro]].";
+    }
+
+    if (card.id === "card-a03-09-media-verificavel") {
+      replaceFundamentosCard(context.version, context.cardIndex, {
+        id: card.id,
+        position: card.position,
+        resource: "composite",
+        kind: "exercise",
+        exercise: "choice",
+        title: "Interpretar métricas calculadas",
+        blocks: [
+          createTableBlock(
+            ["Indicador", "Expressão", "Valor observado"],
+            [
+              ["Média da temperatura", "`df[\"temperatura_c\"].mean()`", "`72.53`"],
+              ["Maior produção", "`df[\"producao_dia\"].max()`", "`159`"],
+              ["Menor tempo de ciclo", "`df[\"tempo_ciclo_s\"].min()`", "`27.20`"]
+            ]
+          ),
+          createChoiceBlock(
+            "Qual linha do quadro corresponde à média de `temperatura_c`?",
+            [
+              { id: "a", kind: "text", text: "A linha `Média da temperatura`, com valor `72.53`." },
+              { id: "b", kind: "text", text: "A linha `Maior produção`, com valor `159`." },
+              { id: "c", kind: "text", text: "A linha `Menor tempo de ciclo`, com valor `27.20`." },
+              { id: "d", kind: "text", text: "Nenhuma linha do quadro representa média." }
+            ],
+            "a"
+          )
+        ],
+        after:
+          "A média de `temperatura_c` aparece como `72.53`. Já `159` representa o maior valor de `producao_dia`, e `27.20` representa o menor valor de `tempo_ciclo_s`."
+      });
+    }
+
+    if (card.id === "card-a03-10-contagens-filtros") {
+      replaceFundamentosCard(context.version, context.cardIndex, {
+        id: card.id,
+        position: card.position,
+        resource: "composite",
+        kind: "exercise",
+        exercise: "choice",
+        title: "Interpretar contagens de filtros",
+        blocks: [
+          createTableBlock(
+            ["Filtro aplicado", "Contagem observada"],
+            [
+              ["`df[df[\"temperatura_c\"] > 75]`", "`15` linhas"],
+              ["`df[df[\"falha\"] == 1]`", "`12` linhas"]
+            ]
+          ),
+          createChoiceBlock(
+            "Qual leitura interpreta corretamente as contagens do quadro?",
+            [
+              { id: "a", kind: "text", text: "Há mais registros com `temperatura_c > 75` do que registros com `falha == 1`." },
+              { id: "b", kind: "text", text: "Há mais registros com `falha == 1` do que registros com `temperatura_c > 75`." },
+              { id: "c", kind: "text", text: "As duas contagens são iguais." },
+              { id: "d", kind: "text", text: "O quadro mostra que todas as `40` linhas entram nos dois filtros." }
+            ],
+            "a"
+          )
+        ],
+        after:
+          "O filtro `temperatura_c > 75` seleciona `15` registros, enquanto `falha == 1` seleciona `12`. As contagens são próximas, mas não iguais."
+      });
+    }
+
+    if (card.id === "card-a03-11-contagem-classificacao") {
+      replaceFundamentosCard(context.version, context.cardIndex, {
+        id: card.id,
+        position: card.position,
+        resource: "composite",
+        kind: "exercise",
+        exercise: "choice",
+        title: "Interpretar a nova coluna",
+        blocks: [
+          createTableBlock(
+            ["Rótulo em `classificacao_temp`", "Contagem observada"],
+            [
+              ["`ALTA`", "`15`"],
+              ["`NORMAL`", "`25`"]
+            ]
+          ),
+          createChoiceBlock(
+            "Qual leitura combina com o resumo mostrado para `classificacao_temp`?",
+            [
+              { id: "a", kind: "text", text: "A maioria dos registros ficou em `NORMAL`." },
+              { id: "b", kind: "text", text: "A maioria dos registros ficou em `ALTA`." },
+              { id: "c", kind: "text", text: "As duas categorias têm a mesma quantidade." },
+              { id: "d", kind: "text", text: "Nenhum registro recebeu `NORMAL`." }
+            ],
+            "a"
+          )
+        ],
+        after:
+          "Com a regra `temperatura_c >= 75`, a nova coluna fica concentrada em `NORMAL`: são `25` registros, contra `15` em `ALTA`."
+      });
+    }
+
+    if (card.id === "card-a03-12-contagem-setor") {
+      replaceFundamentosCard(context.version, context.cardIndex, {
+        id: card.id,
+        position: card.position,
+        resource: "composite",
+        kind: "exercise",
+        exercise: "choice",
+        title: "Interpretar o resumo por setor",
+        blocks: [
+          createTableBlock(
+            ["Setor", "Registros observados"],
+            [
+              ["`Usinagem`", "`17`"],
+              ["`Inspeção`", "`12`"],
+              ["`Montagem`", "`11`"]
+            ]
+          ),
+          createChoiceBlock(
+            "Qual leitura interpreta corretamente esse resumo por setor?",
+            [
+              { id: "a", kind: "text", text: "`Usinagem` tem mais registros, e o total mostrado é `40`." },
+              { id: "b", kind: "text", text: "`Inspeção` tem mais registros, e o total mostrado é `28`." },
+              { id: "c", kind: "text", text: "`Montagem` tem mais registros, e o total mostrado é `17`." },
+              { id: "d", kind: "text", text: "Os três setores aparecem com a mesma quantidade." }
+            ],
+            "a"
+          )
+        ],
+        after:
+          "O quadro soma `40` linhas. `Usinagem` aparece como o setor mais frequente, com `17` registros."
+      });
+    }
+
+    if (card.id === "card-a03-14-resultados-chave") {
+      replaceFundamentosCard(context.version, context.cardIndex, {
+        id: card.id,
+        position: card.position,
+        resource: "composite",
+        kind: "exercise",
+        exercise: "choice",
+        title: "Sintetizar os resultados principais",
+        blocks: [
+          createTableBlock(
+            ["Indicador", "Valor observado"],
+            [
+              ["Média de `temperatura_c`", "`72.53`"],
+              ["Maior valor de `producao_dia`", "`159`"],
+              ["Registros com `falha == 1`", "`12`"]
+            ]
+          ),
+          createChoiceBlock(
+            "Qual síntese corresponde ao quadro de resultados?",
+            [
+              { id: "a", kind: "text", text: "Média `72.53`, maior produção `159` e `12` registros com falha." },
+              { id: "b", kind: "text", text: "Média `159`, maior produção `72.53` e `15` registros com falha." },
+              { id: "c", kind: "text", text: "Média `27.20`, maior produção `40` e `6` registros com falha." },
+              { id: "d", kind: "text", text: "Média `75.00`, maior produção `28` e `17` registros com falha." }
+            ],
+            "a"
+          )
+        ],
+        after:
+          "Os três resultados do quadro usam medidas diferentes: média para `temperatura_c`, máximo para `producao_dia` e contagem de linhas para `falha == 1`."
+      });
+    }
+  });
+
+  return normalizedCourse;
+}
+
 export function createFundamentosIaAnaliseDadosCourse() {
-  return structuredClone(RAW_FUNDAMENTOS_IA_ANALISE_DADOS_COURSE);
+  return normalizeFundamentosIaAnaliseDadosCourse(RAW_FUNDAMENTOS_IA_ANALISE_DADOS_COURSE);
 }
