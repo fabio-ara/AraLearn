@@ -2,7 +2,7 @@ const RAW_FUNDAMENTOS_IA_ANALISE_DADOS_COURSE = Object.freeze(
 {
   "id": "course-fundamentos-ia-analise-dados",
   "title": "Fundamentos de IA e Análise de Dados",
-  "goal": "Desenvolver autonomia inicial e intermediária em Python para ler, completar, explicar e escrever pequenos scripts de análise de dados usando variáveis, controle de fluxo, coleções, funções nativas, métodos, parâmetros, argumentos e retorno.",
+  "goal": "Desenvolver autonomia inicial e intermediária em Python, NumPy e Pandas para ler, inspecionar, transformar e interpretar dados tabulares em listas, CSVs e planilhas Excel.",
   "modules": [
     {
       "id": "module-aula-01-python-fundamentos",
@@ -236,8 +236,8 @@ const RAW_FUNDAMENTOS_IA_ANALISE_DADOS_COURSE = Object.freeze(
                   "createdAt": "2026-06-18T02:19:23.000Z",
                   "source": "llm",
                   "action": "generate",
-                  "request": "Correção e reforço das aulas 1 e 2 conforme handoff v20260617-230801 e notebooks anexados.",
-                  "summary": "Cria a base conceitual de Python como linguagem interpretada, com execução sequencial e tipagem dinâmica.",
+                  "request": "Foco didático da microssequência: Entender que Python executa instruções em ordem, usa indentação para blocos e associa tipos aos valores.",
+                  "summary": "Versão centrada em Python, execução e tipagem.",
                   "cards": [
                     {
                       "id": "card-a01-01-python-linguagem",
@@ -483,8 +483,8 @@ const RAW_FUNDAMENTOS_IA_ANALISE_DADOS_COURSE = Object.freeze(
                   "createdAt": "2026-06-18T02:19:23.000Z",
                   "source": "llm",
                   "action": "improve",
-                  "request": "Correção e reforço das aulas 1 e 2 conforme handoff v20260617-230801 e notebooks anexados.",
-                  "summary": "Reforça criação de variáveis, saída com `print()` e uso inicial de f-strings.",
+                  "request": "Foco didático da microssequência: Criar variáveis, exibir valores e montar mensagens simples com f-strings.",
+                  "summary": "Versão centrada em Variáveis, `print()` e f-strings.",
                   "cards": [
                     {
                       "id": "card-a01-02-variavel-atribuicao",
@@ -684,8 +684,8 @@ const RAW_FUNDAMENTOS_IA_ANALISE_DADOS_COURSE = Object.freeze(
                   "createdAt": "2026-06-18T02:19:23.000Z",
                   "source": "llm",
                   "action": "repair",
-                  "request": "Correção e reforço das aulas 1 e 2 conforme handoff v20260617-230801 e notebooks anexados.",
-                  "summary": "Adiciona microteoria explícita sobre chamada de função, argumento, parênteses e retorno observável.",
+                  "request": "Foco didático da microssequência: Entender a forma `funcao(argumento)` antes de usar `print()`, `input()`, `type()` e conversões.",
+                  "summary": "Versão centrada em Funções nativas, argumentos e resultado observável.",
                   "cards": [
                     {
                       "id": "card-a01-03-funcao-nativa-gramatica",
@@ -913,8 +913,8 @@ const RAW_FUNDAMENTOS_IA_ANALISE_DADOS_COURSE = Object.freeze(
                   "createdAt": "2026-06-18T02:19:23.000Z",
                   "source": "llm",
                   "action": "improve",
-                  "request": "Correção e reforço das aulas 1 e 2 conforme handoff v20260617-230801 e notebooks anexados.",
-                  "summary": "Amplia operadores de comparação com operadores lógicos básicos, conforme reforço solicitado.",
+                  "request": "Foco didático da microssequência: Usar operadores de comparação e operadores lógicos para produzir decisões corretas.",
+                  "summary": "Versão centrada em Comparação e lógica booleana.",
                   "cards": [
                     {
                       "id": "card-a01-04-comparacao-logica",
@@ -1160,8 +1160,8 @@ const RAW_FUNDAMENTOS_IA_ANALISE_DADOS_COURSE = Object.freeze(
                   "createdAt": "2026-06-18T02:19:23.000Z",
                   "source": "llm",
                   "action": "improve",
-                  "request": "Correção e reforço das aulas 1 e 2 conforme handoff v20260617-230801 e notebooks anexados.",
-                  "summary": "Reforça condicionais com foco em sintaxe, indentação e previsão de saída.",
+                  "request": "Foco didático da microssequência: Usar `if`, `elif` e `else` com indentação correta e previsão de caminho executado.",
+                  "summary": "Versão centrada em Condicionais e blocos indentados.",
                   "cards": [
                     {
                       "id": "card-a01-05-if-indentacao",
@@ -1386,8 +1386,8 @@ const RAW_FUNDAMENTOS_IA_ANALISE_DADOS_COURSE = Object.freeze(
                   "createdAt": "2026-06-18T02:19:23.000Z",
                   "source": "llm",
                   "action": "repair",
-                  "request": "Correção e reforço das aulas 1 e 2 conforme handoff v20260617-230801 e notebooks anexados.",
-                  "summary": "Consolida entrada de dados, conversões e erros comuns de tipo.",
+                  "request": "Foco didático da microssequência: Consolidar que `input()` devolve texto e que `int()`, `float()` e `str()` transformam valores.",
+                  "summary": "Versão centrada em Entrada, conversão e tipo do valor.",
                   "cards": [
                     {
                       "id": "card-a01-06-input-texto",
@@ -1588,8 +1588,8 @@ const RAW_FUNDAMENTOS_IA_ANALISE_DADOS_COURSE = Object.freeze(
                   "createdAt": "2026-06-18T02:19:23.000Z",
                   "source": "llm",
                   "action": "improve",
-                  "request": "Correção e reforço das aulas 1 e 2 conforme handoff v20260617-230801 e notebooks anexados.",
-                  "summary": "Reforça estruturas de repetição com foco sintático e previsão de saída.",
+                  "request": "Foco didático da microssequência: Usar laços simples, prever sequências de `range()` e manter indentação correta.",
+                  "summary": "Versão centrada em Repetição com `while`, `for` e `range()`.",
                   "cards": [
                     {
                       "id": "card-a01-07-while-for-range",
@@ -1812,8 +1812,8 @@ const RAW_FUNDAMENTOS_IA_ANALISE_DADOS_COURSE = Object.freeze(
                   "createdAt": "2026-06-18T02:19:23.000Z",
                   "source": "llm",
                   "action": "improve",
-                  "request": "Correção e reforço das aulas 1 e 2 conforme handoff v20260617-230801 e notebooks anexados.",
-                  "summary": "Consolida listas simples, item atual no laço e mini desafio de classificação.",
+                  "request": "Foco didático da microssequência: Percorrer listas simples, comparar o item atual e montar um script final de classificação.",
+                  "summary": "Versão centrada em Listas simples com `for + if`.",
                   "cards": [
                     {
                       "id": "card-a01-08-lista-basica-for-if",
@@ -2211,8 +2211,8 @@ const RAW_FUNDAMENTOS_IA_ANALISE_DADOS_COURSE = Object.freeze(
                   "createdAt": "2026-06-18T02:19:23.000Z",
                   "source": "llm",
                   "action": "generate",
-                  "request": "Correção e reforço das aulas 1 e 2 conforme handoff v20260617-230801 e notebooks anexados.",
-                  "summary": "Introduz função nativa, método, objeto, argumento, retorno e efeito em coleções.",
+                  "request": "Foco didático da microssequência: Construir a gramática mental para ler `len(lista)`, `lista.append(85)` e `maquina.items()`.",
+                  "summary": "Versão centrada em Ler chamadas: função, método e argumento.",
                   "cards": [
                     {
                       "id": "card-a02-00-gramatica-chamada",
@@ -2429,8 +2429,8 @@ const RAW_FUNDAMENTOS_IA_ANALISE_DADOS_COURSE = Object.freeze(
                   "createdAt": "2026-06-18T02:19:23.000Z",
                   "source": "llm",
                   "action": "improve",
-                  "request": "Correção e reforço das aulas 1 e 2 conforme handoff v20260617-230801 e notebooks anexados.",
-                  "summary": "Amplia a prática de listas com criação, acesso, alteração, adição e remoção.",
+                  "request": "Foco didático da microssequência: Criar listas, acessar por índice e praticar `append()`, `remove()` e `pop()` com foco sintático.",
+                  "summary": "Versão centrada em Listas: criar, acessar e modificar.",
                   "cards": [
                     {
                       "id": "card-a02-01-lista-mutavel",
@@ -2597,8 +2597,8 @@ const RAW_FUNDAMENTOS_IA_ANALISE_DADOS_COURSE = Object.freeze(
                   "createdAt": "2026-06-18T02:19:23.000Z",
                   "source": "llm",
                   "action": "improve",
-                  "request": "Correção e reforço das aulas 1 e 2 conforme handoff v20260617-230801 e notebooks anexados.",
-                  "summary": "Explicita particularidades de tuplas e conjuntos, com prática simples de criação e uso.",
+                  "request": "Foco didático da microssequência: Distinguir tuplas e conjuntos, criando valores fixos e coleções sem repetição.",
+                  "summary": "Versão centrada em Tuplas e conjuntos.",
                   "cards": [
                     {
                       "id": "card-a02-02-lista-tupla-set",
@@ -2788,8 +2788,8 @@ const RAW_FUNDAMENTOS_IA_ANALISE_DADOS_COURSE = Object.freeze(
                   "createdAt": "2026-06-18T02:45:34Z",
                   "source": "llm",
                   "action": "repair",
-                  "request": "Correção pontual solicitada pela auditoria v20260617-233830: precisar `set.remove(valor)`, ausência de índice e ausência de ordem garantida.",
-                  "summary": "Repara a precisão didática sobre conjuntos, reforçando valores únicos, ausência de índice confiável e remoção por valor existente.",
+                  "request": "Foco didático da microssequência: Distinguir tuplas e conjuntos, criando valores fixos e coleções sem repetição.",
+                  "summary": "Versão centrada em Tuplas e conjuntos.",
                   "cards": [
                     {
                       "id": "card-a02-02-lista-tupla-set",
@@ -3064,8 +3064,8 @@ const RAW_FUNDAMENTOS_IA_ANALISE_DADOS_COURSE = Object.freeze(
                   "createdAt": "2026-06-18T02:19:23.000Z",
                   "source": "llm",
                   "action": "improve",
-                  "request": "Correção e reforço das aulas 1 e 2 conforme handoff v20260617-230801 e notebooks anexados.",
-                  "summary": "Reforça dicionários como pares chave-valor e diferencia `pop()` de lista e dicionário.",
+                  "request": "Foco didático da microssequência: Criar dicionários, acessar campos, alterar valores, adicionar campos, usar `pop()` por chave e percorrer com `.items()`.",
+                  "summary": "Versão centrada em Dicionários: chave, valor e atualização.",
                   "cards": [
                     {
                       "id": "card-a02-03-dicionario-chave-valor",
@@ -3227,8 +3227,8 @@ const RAW_FUNDAMENTOS_IA_ANALISE_DADOS_COURSE = Object.freeze(
                   "createdAt": "2026-06-18T02:19:23.000Z",
                   "source": "llm",
                   "action": "repair",
-                  "request": "Correção e reforço das aulas 1 e 2 conforme handoff v20260617-230801 e notebooks anexados.",
-                  "summary": "Acrescenta prática de funções nativas de medida e cálculo de média com `sum()` e `len()`.",
+                  "request": "Foco didático da microssequência: Usar funções nativas para extrair medidas simples de listas numéricas.",
+                  "summary": "Versão centrada em Medir coleções com `len()`, `sum()`, `min()` e `max()`.",
                   "cards": [
                     {
                       "id": "card-a02-04-nativas-colecoes",
@@ -3453,8 +3453,8 @@ const RAW_FUNDAMENTOS_IA_ANALISE_DADOS_COURSE = Object.freeze(
                   "createdAt": "2026-06-18T02:19:23.000Z",
                   "source": "llm",
                   "action": "repair",
-                  "request": "Correção e reforço das aulas 1 e 2 conforme handoff v20260617-230801 e notebooks anexados.",
-                  "summary": "Consolida métodos de lista e dicionário, incluindo distinção de `pop()` por índice e por chave.",
+                  "request": "Foco didático da microssequência: Consolidar `append()`, `remove()`, `pop()` e `.items()` como métodos chamados a partir de objetos.",
+                  "summary": "Versão centrada em Métodos de lista e dicionário em uso.",
                   "cards": [
                     {
                       "id": "card-a02-05-metodos-tabela",
@@ -3639,8 +3639,8 @@ const RAW_FUNDAMENTOS_IA_ANALISE_DADOS_COURSE = Object.freeze(
                   "createdAt": "2026-06-18T02:45:34Z",
                   "source": "llm",
                   "action": "repair",
-                  "request": "Correção pontual solicitada pela auditoria v20260617-233830: reforçar `pop()` sem argumento, `pop(indice)`, `pop(chave)`, previsão de saída e escolha entre `remove(valor)` e `pop(indice)`.",
-                  "summary": "Repara a distinção entre métodos de remoção em lista, dicionário e conjunto, com foco em `pop()` como ação que remove e devolve valor.",
+                  "request": "Foco didático da microssequência: Consolidar `append()`, `remove()`, `pop()` e `.items()` como métodos chamados a partir de objetos.",
+                  "summary": "Versão centrada em Métodos de lista e dicionário em uso.",
                   "cards": [
                     {
                       "id": "card-a02-05-metodos-tabela",
@@ -3982,8 +3982,8 @@ const RAW_FUNDAMENTOS_IA_ANALISE_DADOS_COURSE = Object.freeze(
                   "createdAt": "2026-06-18T02:19:23.000Z",
                   "source": "llm",
                   "action": "improve",
-                  "request": "Correção e reforço das aulas 1 e 2 conforme handoff v20260617-230801 e notebooks anexados.",
-                  "summary": "Inclui treino explícito de `for` com `range()` e com cada agrupamento básico.",
+                  "request": "Foco didático da microssequência: Treinar `for` com `range()`, listas, tuplas, conjuntos e dicionários.",
+                  "summary": "Versão centrada em `for` com `range()` e cada coleção.",
                   "cards": [
                     {
                       "id": "card-a02-06-for-range-colecoes",
@@ -4183,8 +4183,8 @@ const RAW_FUNDAMENTOS_IA_ANALISE_DADOS_COURSE = Object.freeze(
                   "createdAt": "2026-06-18T02:19:23.000Z",
                   "source": "llm",
                   "action": "repair",
-                  "request": "Correção e reforço das aulas 1 e 2 conforme handoff v20260617-230801 e notebooks anexados.",
-                  "summary": "Explicita a diferença entre parâmetro e argumento e inclui função simples sem retorno explícito.",
+                  "request": "Foco didático da microssequência: Diferenciar nome interno declarado pela função e valor real passado para ela.",
+                  "summary": "Versão centrada em Parâmetro na definição, argumento na chamada.",
                   "cards": [
                     {
                       "id": "card-a02-07-parametro-argumento-teoria",
@@ -4383,8 +4383,8 @@ const RAW_FUNDAMENTOS_IA_ANALISE_DADOS_COURSE = Object.freeze(
                   "createdAt": "2026-06-18T02:19:23.000Z",
                   "source": "llm",
                   "action": "repair",
-                  "request": "Correção e reforço das aulas 1 e 2 conforme handoff v20260617-230801 e notebooks anexados.",
-                  "summary": "Inclui retorno simples com média e contraste explícito entre `print()` e `return`.",
+                  "request": "Foco didático da microssequência: Diferenciar função que apenas exibe de função que devolve resultado reutilizável.",
+                  "summary": "Versão centrada em Mostrar com `print()` ou devolver com `return`.",
                   "cards": [
                     {
                       "id": "card-a02-08-print-return-teoria",
@@ -4627,8 +4627,8 @@ const RAW_FUNDAMENTOS_IA_ANALISE_DADOS_COURSE = Object.freeze(
                   "createdAt": "2026-06-18T02:19:23.000Z",
                   "source": "llm",
                   "action": "repair",
-                  "request": "Correção e reforço das aulas 1 e 2 conforme handoff v20260617-230801 e notebooks anexados.",
-                  "summary": "Integra coleções e funções em desafio final com critérios, depuração e escolha de script completo.",
+                  "request": "Foco didático da microssequência: Resolver uma tarefa final com lista, funções nativas, laço, condição, parâmetro, argumento e retorno simples.",
+                  "summary": "Versão centrada em Função de análise de produções.",
                   "cards": [
                     {
                       "id": "card-a02-09-criterios-desafio",
@@ -4903,7 +4903,7 @@ const RAW_FUNDAMENTOS_IA_ANALISE_DADOS_COURSE = Object.freeze(
       "id": "module-aula-03-bibliotecas-analise-dados",
       "title": "Aula 3 — Bibliotecas para análise de dados com NumPy e Pandas",
       "guide": {
-        "goal": "Materializar a Aula 3 como continuação do curso aprovado, mantendo foco em operações iniciais de NumPy e Pandas.",
+        "goal": "Usar NumPy e Pandas para ler, explorar e transformar dados tabulares com operações iniciais de análise.",
         "include": [
           "NumPy básico",
           "Pandas básico",
@@ -4938,7 +4938,7 @@ const RAW_FUNDAMENTOS_IA_ANALISE_DADOS_COURSE = Object.freeze(
           "id": "lesson-aula-03-numpy-pandas",
           "title": "NumPy e Pandas para operar bases tabulares",
           "guide": {
-            "goal": "Ensinar uso básico e correto de NumPy e Pandas para análise inicial de dados tabulares com o CSV da aula 3.",
+            "goal": "Ler um CSV, inspecionar colunas, calcular métricas simples, filtrar linhas, criar classificações e agrupar dados por setor com NumPy e Pandas.",
             "include": [
               "imports com aliases",
               "arrays NumPy",
@@ -5118,8 +5118,8 @@ const RAW_FUNDAMENTOS_IA_ANALISE_DADOS_COURSE = Object.freeze(
                   "createdAt": "2026-06-18T03:21:02.140Z",
                   "source": "llm",
                   "action": "generate",
-                  "request": "Materializar Aula 3 a partir do handoff fundamentos-ia-analise-dados__aula03__prompt_builder__v20260617-230801.md.",
-                  "summary": "Microssequência Importar bibliotecas com aliases materializada com progressão local e exercícios verificáveis.",
+                  "request": "Foco didático da microssequência: Usar `import numpy as np` e `import pandas as pd`, entendendo `import`, `as`, `np` e `pd`.",
+                  "summary": "Versão centrada em Importar bibliotecas com aliases.",
                   "cards": [
                     {
                       "id": "card-a03-01-import-as-aliases",
@@ -5289,8 +5289,8 @@ const RAW_FUNDAMENTOS_IA_ANALISE_DADOS_COURSE = Object.freeze(
                   "createdAt": "2026-06-18T03:21:02.140Z",
                   "source": "llm",
                   "action": "generate",
-                  "request": "Materializar Aula 3 a partir do handoff fundamentos-ia-analise-dados__aula03__prompt_builder__v20260617-230801.md.",
-                  "summary": "Microssequência Criar e observar array NumPy materializada com progressão local e exercícios verificáveis.",
+                  "request": "Foco didático da microssequência: Criar `temperaturas = np.array([68, 72, 75, 81, 90])` e observar o tipo.",
+                  "summary": "Versão centrada em Criar e observar array NumPy.",
                   "cards": [
                     {
                       "id": "card-a03-02-array-sentido",
@@ -5437,8 +5437,8 @@ const RAW_FUNDAMENTOS_IA_ANALISE_DADOS_COURSE = Object.freeze(
                   "createdAt": "2026-06-18T03:21:02.140Z",
                   "source": "llm",
                   "action": "generate",
-                  "request": "Materializar Aula 3 a partir do handoff fundamentos-ia-analise-dados__aula03__prompt_builder__v20260617-230801.md.",
-                  "summary": "Microssequência Soma, média, máximo e mínimo com NumPy materializada com progressão local e exercícios verificáveis.",
+                  "request": "Foco didático da microssequência: Calcular `np.sum`, `np.mean`, `np.max` e `np.min`.",
+                  "summary": "Versão centrada em Soma, média, máximo e mínimo com NumPy.",
                   "cards": [
                     {
                       "id": "card-a03-03-funcoes-numpy",
@@ -5631,8 +5631,8 @@ const RAW_FUNDAMENTOS_IA_ANALISE_DADOS_COURSE = Object.freeze(
                   "createdAt": "2026-06-18T03:21:02.140Z",
                   "source": "llm",
                   "action": "generate",
-                  "request": "Materializar Aula 3 a partir do handoff fundamentos-ia-analise-dados__aula03__prompt_builder__v20260617-230801.md.",
-                  "summary": "Microssequência Somar valor a todos os elementos materializada com progressão local e exercícios verificáveis.",
+                  "request": "Foco didático da microssequência: Entender operação vetorizada com `temperaturas + 2`.",
+                  "summary": "Versão centrada em Somar valor a todos os elementos.",
                   "cards": [
                     {
                       "id": "card-a03-04-operacao-vetorizada",
@@ -5807,8 +5807,8 @@ const RAW_FUNDAMENTOS_IA_ANALISE_DADOS_COURSE = Object.freeze(
                   "createdAt": "2026-06-18T03:21:02.140Z",
                   "source": "llm",
                   "action": "generate",
-                  "request": "Materializar Aula 3 a partir do handoff fundamentos-ia-analise-dados__aula03__prompt_builder__v20260617-230801.md.",
-                  "summary": "Microssequência Criar DataFrame a partir de dicionário materializada com progressão local e exercícios verificáveis.",
+                  "request": "Foco didático da microssequência: Criar tabela com `pd.DataFrame(dados)` usando colunas `maquina`, `temperatura` e `status`.",
+                  "summary": "Versão centrada em Criar DataFrame a partir de dicionário.",
                   "cards": [
                     {
                       "id": "card-a03-05-dataframe-sentido",
@@ -5974,8 +5974,8 @@ const RAW_FUNDAMENTOS_IA_ANALISE_DADOS_COURSE = Object.freeze(
                   "createdAt": "2026-06-18T03:21:02.140Z",
                   "source": "llm",
                   "action": "generate",
-                  "request": "Materializar Aula 3 a partir do handoff fundamentos-ia-analise-dados__aula03__prompt_builder__v20260617-230801.md.",
-                  "summary": "Microssequência Ler a base da aula com `pd.read_csv()` materializada com progressão local e exercícios verificáveis.",
+                  "request": "Foco didático da microssequência: Abrir o CSV correto e guardar em `df`.",
+                  "summary": "Versão centrada em Ler a base da aula com `pd.read_csv()`.",
                   "cards": [
                     {
                       "id": "card-a03-06-read-csv-sentido",
@@ -6131,8 +6131,8 @@ const RAW_FUNDAMENTOS_IA_ANALISE_DADOS_COURSE = Object.freeze(
                   "createdAt": "2026-06-18T03:21:02.140Z",
                   "source": "llm",
                   "action": "generate",
-                  "request": "Materializar Aula 3 a partir do handoff fundamentos-ia-analise-dados__aula03__prompt_builder__v20260617-230801.md.",
-                  "summary": "Microssequência Ver primeiras linhas, formato, colunas e tipos materializada com progressão local e exercícios verificáveis.",
+                  "request": "Foco didático da microssequência: Usar `head()`, `shape`, `columns` e `dtypes` para diagnosticar o DataFrame.",
+                  "summary": "Versão centrada em Ver primeiras linhas, formato, colunas e tipos.",
                   "cards": [
                     {
                       "id": "card-a03-07-termos-estrutura",
@@ -6303,8 +6303,8 @@ const RAW_FUNDAMENTOS_IA_ANALISE_DADOS_COURSE = Object.freeze(
                   "createdAt": "2026-06-18T03:21:02.140Z",
                   "source": "llm",
                   "action": "generate",
-                  "request": "Materializar Aula 3 a partir do handoff fundamentos-ia-analise-dados__aula03__prompt_builder__v20260617-230801.md.",
-                  "summary": "Microssequência Selecionar uma ou várias colunas materializada com progressão local e exercícios verificáveis.",
+                  "request": "Foco didático da microssequência: Usar `df[\"temperatura_c\"]` e `df[[\"setor\", \"temperatura_c\", \"producao_dia\"]]`.",
+                  "summary": "Versão centrada em Selecionar uma ou várias colunas.",
                   "cards": [
                     {
                       "id": "card-a03-08-simples-duplos",
@@ -6501,8 +6501,8 @@ const RAW_FUNDAMENTOS_IA_ANALISE_DADOS_COURSE = Object.freeze(
                   "createdAt": "2026-06-18T03:21:02.140Z",
                   "source": "llm",
                   "action": "generate",
-                  "request": "Materializar Aula 3 a partir do handoff fundamentos-ia-analise-dados__aula03__prompt_builder__v20260617-230801.md.",
-                  "summary": "Microssequência Calcular métricas em colunas materializada com progressão local e exercícios verificáveis.",
+                  "request": "Foco didático da microssequência: Calcular média de temperatura, maior produção e menor tempo de ciclo.",
+                  "summary": "Versão centrada em Calcular métricas em colunas.",
                   "cards": [
                     {
                       "id": "card-a03-09-metricas-colunas",
@@ -6550,35 +6550,65 @@ const RAW_FUNDAMENTOS_IA_ANALISE_DADOS_COURSE = Object.freeze(
                     {
                       "id": "card-a03-09-media-verificavel",
                       "position": 3,
-                      "resource": "choice",
+                      "resource": "composite",
                       "kind": "exercise",
                       "exercise": "choice",
-                      "title": "Média da temperatura",
-                      "question": "Qual valor corresponde à média de `temperatura_c` da base, arredondada a duas casas?",
-                      "options": [
+                      "title": "Interpretar métricas calculadas",
+                      "blocks": [
                         {
-                          "id": "a",
-                          "kind": "text",
-                          "text": "`72.53`"
+                          "kind": "table",
+                          "columns": [
+                            "Indicador",
+                            "Expressão",
+                            "Valor observado"
+                          ],
+                          "rows": [
+                            [
+                              "Média da temperatura",
+                              "`df[\"temperatura_c\"].mean()`",
+                              "`72.53`"
+                            ],
+                            [
+                              "Maior produção",
+                              "`df[\"producao_dia\"].max()`",
+                              "`159`"
+                            ],
+                            [
+                              "Menor tempo de ciclo",
+                              "`df[\"tempo_ciclo_s\"].min()`",
+                              "`27.20`"
+                            ]
+                          ]
                         },
                         {
-                          "id": "b",
-                          "kind": "text",
-                          "text": "`159`"
-                        },
-                        {
-                          "id": "c",
-                          "kind": "text",
-                          "text": "`27.20`"
-                        },
-                        {
-                          "id": "d",
-                          "kind": "text",
-                          "text": "`40.00`"
+                          "kind": "choice",
+                          "question": "Qual linha do quadro corresponde à média de `temperatura_c`?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "kind": "text",
+                              "text": "A linha `Média da temperatura`, com valor `72.53`."
+                            },
+                            {
+                              "id": "b",
+                              "kind": "text",
+                              "text": "A linha `Maior produção`, com valor `159`."
+                            },
+                            {
+                              "id": "c",
+                              "kind": "text",
+                              "text": "A linha `Menor tempo de ciclo`, com valor `27.20`."
+                            },
+                            {
+                              "id": "d",
+                              "kind": "text",
+                              "text": "Nenhuma linha do quadro representa média."
+                            }
+                          ],
+                          "answer": "a"
                         }
                       ],
-                      "answer": "a",
-                      "after": "A média da coluna `temperatura_c` é aproximadamente `72.53`. `159` é a maior produção e `27.20` é o menor tempo de ciclo."
+                      "after": "A média de `temperatura_c` aparece como `72.53`. Já `159` representa o maior valor de `producao_dia`, e `27.20` representa o menor valor de `tempo_ciclo_s`."
                     },
                     {
                       "id": "card-a03-09-script-metricas",
@@ -6670,8 +6700,8 @@ const RAW_FUNDAMENTOS_IA_ANALISE_DADOS_COURSE = Object.freeze(
                   "createdAt": "2026-06-18T03:21:02.140Z",
                   "source": "llm",
                   "action": "generate",
-                  "request": "Materializar Aula 3 a partir do handoff fundamentos-ia-analise-dados__aula03__prompt_builder__v20260617-230801.md.",
-                  "summary": "Microssequência Filtrar linhas com condições booleanas materializada com progressão local e exercícios verificáveis.",
+                  "request": "Foco didático da microssequência: Criar filtros para `temperatura_c > 75` e `falha == 1`.",
+                  "summary": "Versão centrada em Filtrar linhas com condições booleanas.",
                   "cards": [
                     {
                       "id": "card-a03-10-fluxo-filtro",
@@ -6772,35 +6802,57 @@ const RAW_FUNDAMENTOS_IA_ANALISE_DADOS_COURSE = Object.freeze(
                     {
                       "id": "card-a03-10-contagens-filtros",
                       "position": 5,
-                      "resource": "choice",
+                      "resource": "composite",
                       "kind": "exercise",
                       "exercise": "choice",
-                      "title": "Contagens após filtros",
-                      "question": "Na base da aula, quantas linhas satisfazem `temperatura_c > 75` e quantas têm `falha == 1`?",
-                      "options": [
+                      "title": "Interpretar contagens de filtros",
+                      "blocks": [
                         {
-                          "id": "a",
-                          "kind": "text",
-                          "text": "`15` linhas acima de `75` e `12` linhas com falha."
+                          "kind": "table",
+                          "columns": [
+                            "Filtro aplicado",
+                            "Contagem observada"
+                          ],
+                          "rows": [
+                            [
+                              "`df[df[\"temperatura_c\"] > 75]`",
+                              "`15` linhas"
+                            ],
+                            [
+                              "`df[df[\"falha\"] == 1]`",
+                              "`12` linhas"
+                            ]
+                          ]
                         },
                         {
-                          "id": "b",
-                          "kind": "text",
-                          "text": "`12` linhas acima de `75` e `15` linhas com falha."
-                        },
-                        {
-                          "id": "c",
-                          "kind": "text",
-                          "text": "`28` linhas acima de `75` e `17` linhas com falha."
-                        },
-                        {
-                          "id": "d",
-                          "kind": "text",
-                          "text": "`40` linhas acima de `75` e `6` linhas com falha."
+                          "kind": "choice",
+                          "question": "Qual leitura interpreta corretamente as contagens do quadro?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "kind": "text",
+                              "text": "Há mais registros com `temperatura_c > 75` do que registros com `falha == 1`."
+                            },
+                            {
+                              "id": "b",
+                              "kind": "text",
+                              "text": "Há mais registros com `falha == 1` do que registros com `temperatura_c > 75`."
+                            },
+                            {
+                              "id": "c",
+                              "kind": "text",
+                              "text": "As duas contagens são iguais."
+                            },
+                            {
+                              "id": "d",
+                              "kind": "text",
+                              "text": "O quadro mostra que todas as `40` linhas entram nos dois filtros."
+                            }
+                          ],
+                          "answer": "a"
                         }
                       ],
-                      "answer": "a",
-                      "after": "A condição de temperatura acima de `75` seleciona `15` registros. A coluna `falha` tem `12` registros com valor `1`."
+                      "after": "O filtro `temperatura_c > 75` seleciona `15` registros, enquanto `falha == 1` seleciona `12`. As contagens são próximas, mas não iguais."
                     }
                   ],
                   "validation": {
@@ -6840,8 +6892,8 @@ const RAW_FUNDAMENTOS_IA_ANALISE_DADOS_COURSE = Object.freeze(
                   "createdAt": "2026-06-18T03:21:02.140Z",
                   "source": "llm",
                   "action": "generate",
-                  "request": "Materializar Aula 3 a partir do handoff fundamentos-ia-analise-dados__aula03__prompt_builder__v20260617-230801.md.",
-                  "summary": "Microssequência Criar coluna com `np.where()` materializada com progressão local e exercícios verificáveis.",
+                  "request": "Foco didático da microssequência: Criar `classificacao_temp` com `ALTA` para `temperatura_c >= 75` e `NORMAL` caso contrário.",
+                  "summary": "Versão centrada em Criar coluna com `np.where()`.",
                   "cards": [
                     {
                       "id": "card-a03-11-where-sentido",
@@ -7008,35 +7060,57 @@ const RAW_FUNDAMENTOS_IA_ANALISE_DADOS_COURSE = Object.freeze(
                     {
                       "id": "card-a03-11-contagem-classificacao",
                       "position": 6,
-                      "resource": "choice",
+                      "resource": "composite",
                       "kind": "exercise",
                       "exercise": "choice",
-                      "title": "Contagem da nova coluna",
-                      "question": "Com a regra `temperatura_c >= 75`, qual contagem deve aparecer para `classificacao_temp`?",
-                      "options": [
+                      "title": "Interpretar a nova coluna",
+                      "blocks": [
                         {
-                          "id": "a",
-                          "kind": "text",
-                          "text": "`ALTA = 15` e `NORMAL = 25`"
+                          "kind": "table",
+                          "columns": [
+                            "Rótulo em `classificacao_temp`",
+                            "Contagem observada"
+                          ],
+                          "rows": [
+                            [
+                              "`ALTA`",
+                              "`15`"
+                            ],
+                            [
+                              "`NORMAL`",
+                              "`25`"
+                            ]
+                          ]
                         },
                         {
-                          "id": "b",
-                          "kind": "text",
-                          "text": "`ALTA = 25` e `NORMAL = 15`"
-                        },
-                        {
-                          "id": "c",
-                          "kind": "text",
-                          "text": "`ALTA = 12` e `NORMAL = 28`"
-                        },
-                        {
-                          "id": "d",
-                          "kind": "text",
-                          "text": "`ALTA = 17` e `NORMAL = 23`"
+                          "kind": "choice",
+                          "question": "Qual leitura combina com o resumo mostrado para `classificacao_temp`?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "kind": "text",
+                              "text": "A maioria dos registros ficou em `NORMAL`."
+                            },
+                            {
+                              "id": "b",
+                              "kind": "text",
+                              "text": "A maioria dos registros ficou em `ALTA`."
+                            },
+                            {
+                              "id": "c",
+                              "kind": "text",
+                              "text": "As duas categorias têm a mesma quantidade."
+                            },
+                            {
+                              "id": "d",
+                              "kind": "text",
+                              "text": "Nenhum registro recebeu `NORMAL`."
+                            }
+                          ],
+                          "answer": "a"
                         }
                       ],
-                      "answer": "a",
-                      "after": "A base tem `15` registros com temperatura maior ou igual a `75`. Os outros `25` registros recebem `NORMAL`."
+                      "after": "Com a regra `temperatura_c >= 75`, a nova coluna fica concentrada em `NORMAL`: são `25` registros, contra `15` em `ALTA`."
                     }
                   ],
                   "validation": {
@@ -7077,8 +7151,8 @@ const RAW_FUNDAMENTOS_IA_ANALISE_DADOS_COURSE = Object.freeze(
                   "createdAt": "2026-06-18T03:21:02.140Z",
                   "source": "llm",
                   "action": "generate",
-                  "request": "Materializar Aula 3 a partir do handoff fundamentos-ia-analise-dados__aula03__prompt_builder__v20260617-230801.md.",
-                  "summary": "Microssequência Contar categorias e resumir colunas numéricas materializada com progressão local e exercícios verificáveis.",
+                  "request": "Foco didático da microssequência: Usar `value_counts()` e `describe()`.",
+                  "summary": "Versão centrada em Contar categorias e resumir colunas numéricas.",
                   "cards": [
                     {
                       "id": "card-a03-12-value-describe",
@@ -7126,35 +7200,61 @@ const RAW_FUNDAMENTOS_IA_ANALISE_DADOS_COURSE = Object.freeze(
                     {
                       "id": "card-a03-12-contagem-setor",
                       "position": 3,
-                      "resource": "choice",
+                      "resource": "composite",
                       "kind": "exercise",
                       "exercise": "choice",
-                      "title": "Contagem por setor",
-                      "question": "Qual contagem por setor é esperada na base da aula?",
-                      "options": [
+                      "title": "Interpretar o resumo por setor",
+                      "blocks": [
                         {
-                          "id": "a",
-                          "kind": "text",
-                          "text": "`Usinagem = 17`, `Inspeção = 12`, `Montagem = 11`"
+                          "kind": "table",
+                          "columns": [
+                            "Setor",
+                            "Registros observados"
+                          ],
+                          "rows": [
+                            [
+                              "`Usinagem`",
+                              "`17`"
+                            ],
+                            [
+                              "`Inspeção`",
+                              "`12`"
+                            ],
+                            [
+                              "`Montagem`",
+                              "`11`"
+                            ]
+                          ]
                         },
                         {
-                          "id": "b",
-                          "kind": "text",
-                          "text": "`Usinagem = 12`, `Inspeção = 17`, `Montagem = 11`"
-                        },
-                        {
-                          "id": "c",
-                          "kind": "text",
-                          "text": "`Usinagem = 11`, `Inspeção = 12`, `Montagem = 17`"
-                        },
-                        {
-                          "id": "d",
-                          "kind": "text",
-                          "text": "`Usinagem = 28`, `Inspeção = 12`, `Montagem = 0`"
+                          "kind": "choice",
+                          "question": "Qual leitura interpreta corretamente esse resumo por setor?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "kind": "text",
+                              "text": "`Usinagem` tem mais registros, e o total mostrado é `40`."
+                            },
+                            {
+                              "id": "b",
+                              "kind": "text",
+                              "text": "`Inspeção` tem mais registros, e o total mostrado é `28`."
+                            },
+                            {
+                              "id": "c",
+                              "kind": "text",
+                              "text": "`Montagem` tem mais registros, e o total mostrado é `17`."
+                            },
+                            {
+                              "id": "d",
+                              "kind": "text",
+                              "text": "Os três setores aparecem com a mesma quantidade."
+                            }
+                          ],
+                          "answer": "a"
                         }
                       ],
-                      "answer": "a",
-                      "after": "A coluna `setor` tem `17` registros de Usinagem, `12` de Inspeção e `11` de Montagem. Esses totais somam `40` linhas."
+                      "after": "O quadro soma `40` linhas. `Usinagem` aparece como o setor mais frequente, com `17` registros."
                     },
                     {
                       "id": "card-a03-12-describe-gap",
@@ -7175,7 +7275,7 @@ const RAW_FUNDAMENTOS_IA_ANALISE_DADOS_COURSE = Object.freeze(
                       "kind": "exercise",
                       "exercise": "choice",
                       "title": "Função de `describe()`",
-                      "question": "Qual alternativa descreve melhor `df.describe()` no contexto da aula?",
+                      "question": "Qual alternativa descreve melhor o tipo de resumo produzido por `df.describe()`?",
                       "options": [
                         {
                           "id": "a",
@@ -7240,8 +7340,8 @@ const RAW_FUNDAMENTOS_IA_ANALISE_DADOS_COURSE = Object.freeze(
                   "createdAt": "2026-06-18T03:21:02.140Z",
                   "source": "llm",
                   "action": "generate",
-                  "request": "Materializar Aula 3 a partir do handoff fundamentos-ia-analise-dados__aula03__prompt_builder__v20260617-230801.md.",
-                  "summary": "Microssequência Agrupar por setor e calcular média materializada com progressão local e exercícios verificáveis.",
+                  "request": "Foco didático da microssequência: Usar `df.groupby(\"setor\")[\"temperatura_c\"].mean()`.",
+                  "summary": "Versão centrada em Agrupar por setor e calcular média.",
                   "cards": [
                     {
                       "id": "card-a03-13-fluxo-groupby",
@@ -7405,7 +7505,7 @@ const RAW_FUNDAMENTOS_IA_ANALISE_DADOS_COURSE = Object.freeze(
             },
             {
               "id": "micro-a03-14-atividade-final",
-              "title": "Atividade final integrada",
+              "title": "Integração de leitura, métricas, filtro e classificação",
               "goal": "Integrar importação, leitura do CSV, métricas, filtro de falhas e nova coluna.",
               "role": "review",
               "status": "generated",
@@ -7440,8 +7540,8 @@ const RAW_FUNDAMENTOS_IA_ANALISE_DADOS_COURSE = Object.freeze(
                   "createdAt": "2026-06-18T03:21:02.140Z",
                   "source": "llm",
                   "action": "generate",
-                  "request": "Materializar Aula 3 a partir do handoff fundamentos-ia-analise-dados__aula03__prompt_builder__v20260617-230801.md.",
-                  "summary": "Microssequência Atividade final integrada materializada com progressão local e exercícios verificáveis.",
+                  "request": "Foco didático da microssequência: Integrar importação, leitura do CSV, métricas, filtro de falhas e nova coluna.",
+                  "summary": "Versão centrada em Integração de leitura, métricas, filtro e classificação.",
                   "cards": [
                     {
                       "id": "card-a03-14-requisitos-integrados",
@@ -7516,12 +7616,12 @@ const RAW_FUNDAMENTOS_IA_ANALISE_DADOS_COURSE = Object.freeze(
                       "resource": "code",
                       "kind": "exercise",
                       "exercise": "choice",
-                      "title": "Script final completo",
+                      "title": "Script integrado da base",
                       "prompt": "Compare as versões completas.",
                       "language": "python",
                       "code": "# Escolha o script que resolve a atividade final.",
                       "after": "A versão correta junta imports, leitura do CSV da aula 3, métricas, filtro de falha e criação de `classificacao_temp` com `np.where()`.",
-                      "question": "Qual script atende aos critérios da atividade final?",
+                      "question": "Qual script reúne leitura da base, métricas, filtro de falhas e classificação de temperatura?",
                       "options": [
                         {
                           "id": "a",
@@ -7573,35 +7673,61 @@ const RAW_FUNDAMENTOS_IA_ANALISE_DADOS_COURSE = Object.freeze(
                     {
                       "id": "card-a03-14-resultados-chave",
                       "position": 4,
-                      "resource": "choice",
+                      "resource": "composite",
                       "kind": "exercise",
                       "exercise": "choice",
-                      "title": "Resultados esperados",
-                      "question": "Quais resultados devem aparecer para média de temperatura, maior produção e quantidade de falhas?",
-                      "options": [
+                      "title": "Sintetizar os resultados principais",
+                      "blocks": [
                         {
-                          "id": "a",
-                          "kind": "text",
-                          "text": "Média `72.53`, maior produção `159` e `12` registros com falha."
+                          "kind": "table",
+                          "columns": [
+                            "Indicador",
+                            "Valor observado"
+                          ],
+                          "rows": [
+                            [
+                              "Média de `temperatura_c`",
+                              "`72.53`"
+                            ],
+                            [
+                              "Maior valor de `producao_dia`",
+                              "`159`"
+                            ],
+                            [
+                              "Registros com `falha == 1`",
+                              "`12`"
+                            ]
+                          ]
                         },
                         {
-                          "id": "b",
-                          "kind": "text",
-                          "text": "Média `159`, maior produção `72.53` e `15` registros com falha."
-                        },
-                        {
-                          "id": "c",
-                          "kind": "text",
-                          "text": "Média `27.20`, maior produção `40` e `6` registros com falha."
-                        },
-                        {
-                          "id": "d",
-                          "kind": "text",
-                          "text": "Média `75.00`, maior produção `28` e `17` registros com falha."
+                          "kind": "choice",
+                          "question": "Qual síntese corresponde ao quadro de resultados?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "kind": "text",
+                              "text": "Média `72.53`, maior produção `159` e `12` registros com falha."
+                            },
+                            {
+                              "id": "b",
+                              "kind": "text",
+                              "text": "Média `159`, maior produção `72.53` e `15` registros com falha."
+                            },
+                            {
+                              "id": "c",
+                              "kind": "text",
+                              "text": "Média `27.20`, maior produção `40` e `6` registros com falha."
+                            },
+                            {
+                              "id": "d",
+                              "kind": "text",
+                              "text": "Média `75.00`, maior produção `28` e `17` registros com falha."
+                            }
+                          ],
+                          "answer": "a"
                         }
                       ],
-                      "answer": "a",
-                      "after": "Esses valores conferem se a base correta foi usada: `temperatura_c` tem média aproximada `72.53`, `producao_dia` tem máximo `159` e `falha == 1` ocorre `12` vezes."
+                      "after": "Os três resultados do quadro usam medidas diferentes: média para `temperatura_c`, máximo para `producao_dia` e contagem de linhas para `falha == 1`."
                     },
                     {
                       "id": "card-a03-14-checagem-final",
@@ -7683,7 +7809,7 @@ const RAW_FUNDAMENTOS_IA_ANALISE_DADOS_COURSE = Object.freeze(
                       "kind": "exercise",
                       "exercise": "gap",
                       "title": "Fechamento da aula",
-                      "text": "Ao concluir a atividade, o aluno deve conseguir carregar `dataset_aula3_numpy_pandas.csv`, explorar `df.shape`, calcular métricas em colunas, filtrar linhas e agrupar por [[setor::setor|falha|id_registro]].",
+                      "text": "Nesta aula, o trabalho com `dataset_aula3_numpy_pandas.csv` combina leitura, inspeção de `df.shape`, cálculo de métricas em colunas, filtros e agrupamento por [[setor::setor|falha|id_registro]].",
                       "after": "`setor` é a categoria usada no agrupamento final. `falha` é usada no filtro, e `id_registro` identifica linhas."
                     }
                   ],
@@ -7698,276 +7824,3863 @@ const RAW_FUNDAMENTOS_IA_ANALISE_DADOS_COURSE = Object.freeze(
           ]
         }
       ]
+    },
+    {
+      "id": "module-aula-04-fundamentos-dados-excel",
+      "title": "Aula 4 — Fundamentos de dados, tipos, Excel e análise com Pandas",
+      "guide": {
+        "goal": "Ler planilhas Excel com Pandas, inspecionar estrutura e tipos, aplicar filtros, calcular estatísticas e agrupar resultados em bases tabulares.",
+        "include": [
+          "dataset `dataset_producao_limpo.xlsx`",
+          "leitura com `pd.read_excel()`",
+          "inspeção de estrutura",
+          "tipos técnicos e didáticos",
+          "filtros booleanos",
+          "estatísticas básicas",
+          "agrupamento com `groupby()`",
+          "qualidade simples sem arquivo extra"
+        ],
+        "exclude": [
+          "arquivos ausentes como dependência",
+          "Matplotlib",
+          "Seaborn",
+          "Plotly",
+          "Scikit-learn",
+          "regressão",
+          "merge",
+          "join",
+          "pivot_table",
+          "funções lambda",
+          "programação orientada a objetos"
+        ],
+        "notation": [
+          "Arquivo usado nos exemplos: `dataset_producao_limpo.xlsx`.",
+          "Variável de caminho: `arquivo_limpo`.",
+          "Aliases convencionais: `pd` para Pandas."
+        ],
+        "avoid": [
+          "Não alterar Aulas 1–3.",
+          "Não depender de arquivos citados no notebook, mas não anexados.",
+          "Não gerar continuidade mínima sem próxima parte declarada."
+        ]
+      },
+      "lessons": [
+        {
+          "id": "lesson-aula-04-dados-tipos-excel-pandas",
+          "title": "Dados reais em planilhas: tipos, leitura, filtros e estatísticas básicas",
+          "guide": {
+            "goal": "Ler uma planilha Excel, inspecionar `shape`, `columns` e `dtypes`, converter datas, filtrar linhas, calcular estatísticas e agrupar dados com Pandas.",
+            "include": [
+              "dados como registros de fatos, medições e características",
+              "dados estruturados, semiestruturados e não estruturados",
+              "linha, coluna, célula/valor e tabela",
+              "Excel como fonte de dados",
+              "`pd.read_excel()`",
+              "variável `arquivo_limpo`",
+              "`DataFrame`",
+              "`head()`",
+              "`shape`",
+              "`columns`",
+              "`tolist()`",
+              "`dtypes`",
+              "`int64`, `float64`, `object`, `datetime64`",
+              "tipos didáticos: identificador, data, categórico, texto/código, numérico discreto, numérico contínuo e binário",
+              "`pd.to_datetime()`",
+              "seleção de coluna com `df[\"coluna\"]`",
+              "filtros booleanos com `==`, `>`, `<`, `>=`, `<=`",
+              "`&` com parênteses",
+              "`loc`",
+              "`isna()`, `any()`, `sum()`",
+              "`duplicated()`",
+              "`mean()`, `mode()`, `std()`, `max()`, `value_counts()` e `describe()`",
+              "`groupby()`",
+              "`sort_values(ascending=False)`",
+              "interpretação em contexto de produção",
+              "erros comuns de sintaxe e interpretação"
+            ],
+            "exclude": [
+              "modelos de machine learning",
+              "Scikit-learn",
+              "regressão",
+              "classificação preditiva",
+              "métricas de modelo",
+              "gráficos obrigatórios",
+              "Matplotlib",
+              "Seaborn",
+              "Plotly",
+              "bancos SQL",
+              "APIs reais",
+              "limpeza avançada",
+              "imputação avançada",
+              "normalização estatística avançada",
+              "joins",
+              "merge",
+              "pivot tables",
+              "funções lambda",
+              "programação orientada a objetos",
+              "web scraping",
+              "arquivos externos ausentes como dependência"
+            ],
+            "notation": [
+              "Usar crases em textos renderizáveis para identificadores, funções, métodos, colunas, operadores, arquivos e literais.",
+              "Usar lacunas no padrão `[[resposta::resposta|distrator]]`.",
+              "Usar `code gap` quando a resposta pertence ao ponto exato da sintaxe.",
+              "Usar alternativas estruturadas para código."
+            ],
+            "avoid": [
+              "Não exigir `dataset_qualidade_problemas.xlsx` ou `gabarito_tipos_dados.xlsx`.",
+              "Não transformar a aula em lista decorativa de métodos.",
+              "Não criar continuidade mínima sem próxima parte declarada."
+            ]
+          },
+          "topics": [
+            {
+              "id": "topic-a04-dados-tabelas",
+              "label": "dados e estrutura tabular",
+              "kind": "concept",
+              "checks": [
+                "diferencia dado, linha, coluna e célula"
+              ],
+              "errors": [
+                "achar que dado é apenas número"
+              ]
+            },
+            {
+              "id": "topic-a04-leitura-excel",
+              "label": "leitura de Excel com Pandas",
+              "kind": "skill",
+              "checks": [
+                "usa `pd.read_excel(arquivo_limpo)`"
+              ],
+              "errors": [
+                "passar `df` antes de existir"
+              ]
+            },
+            {
+              "id": "topic-a04-inspecao",
+              "label": "inspeção de estrutura",
+              "kind": "skill",
+              "checks": [
+                "interpreta `shape`, `columns` e `tolist()`"
+              ],
+              "errors": [
+                "usar `df.shape()`"
+              ]
+            },
+            {
+              "id": "topic-a04-tipos",
+              "label": "tipos técnicos e analíticos",
+              "kind": "concept",
+              "checks": [
+                "distingue `dtype` de sentido analítico"
+              ],
+              "errors": [
+                "somar identificadores"
+              ]
+            },
+            {
+              "id": "topic-a04-data",
+              "label": "conversão de data",
+              "kind": "skill",
+              "checks": [
+                "usa `pd.to_datetime()` com atribuição"
+              ],
+              "errors": [
+                "não atribuir o retorno"
+              ]
+            },
+            {
+              "id": "topic-a04-filtros",
+              "label": "filtros booleanos",
+              "kind": "skill",
+              "checks": [
+                "usa `==`, `&` e parênteses"
+              ],
+              "errors": [
+                "usar `and` com `Series`"
+              ]
+            },
+            {
+              "id": "topic-a04-estatisticas",
+              "label": "estatísticas em Series",
+              "kind": "skill",
+              "checks": [
+                "aplica `mean()`, `mode()`, `std()`, `max()`, `value_counts()` e `describe()`"
+              ],
+              "errors": [
+                "aplicar métrica no objeto errado"
+              ]
+            },
+            {
+              "id": "topic-a04-groupby",
+              "label": "agrupamento e ordenação",
+              "kind": "skill",
+              "checks": [
+                "usa `groupby()` com agregação e `sort_values()`"
+              ],
+              "errors": [
+                "trocar grupo e medida"
+              ]
+            },
+            {
+              "id": "topic-a04-qualidade",
+              "label": "qualidade simples de dados",
+              "kind": "skill",
+              "checks": [
+                "usa `isna().sum()` e `duplicated().sum()`"
+              ],
+              "errors": [
+                "depender de arquivo ausente"
+              ]
+            },
+            {
+              "id": "topic-a04-analise-integrada",
+              "label": "mini análise integrada",
+              "kind": "review",
+              "checks": [
+                "combina leitura, filtro, métrica e interpretação"
+              ],
+              "errors": [
+                "calcular antes de carregar `df`"
+              ]
+            }
+          ],
+          "microsequences": [
+            {
+              "id": "micro-a04-01-dados-tabelas-fontes",
+              "title": "Dados reais, fontes e estrutura tabular",
+              "goal": "Entender dados como registros de fatos e reconhecer tabela como organização em linhas e colunas.",
+              "role": "support",
+              "status": "generated",
+              "dependsOn": [],
+              "covers": [
+                "dados",
+                "registro",
+                "fonte de dados",
+                "planilha",
+                "tabela",
+                "linha",
+                "coluna",
+                "célula/valor",
+                "dados estruturados, semiestruturados e não estruturados"
+              ],
+              "checks": [
+                "Diferencia dado, coluna, linha e valor.",
+                "Reconhece planilha Excel como fonte estruturada.",
+                "Distingue dados estruturados de textos/imagens livres."
+              ],
+              "errors": [
+                "achar que dado é apenas número",
+                "confundir coluna com linha",
+                "tratar qualquer arquivo como tabela estruturada"
+              ],
+              "versions": [
+                {
+                  "id": "version-a04-002-revisado",
+                  "createdAt": "2026-06-23T19:28:39.749Z",
+                  "source": "llm",
+                  "action": "improve",
+                  "request": "Foco didático da microssequência: Entender dados como registros de fatos e reconhecer tabela como organização em linhas e colunas.",
+                  "summary": "Versão centrada em Dados reais, fontes e estrutura tabular.",
+                  "cards": [
+                    {
+                      "id": "card-a04-01-dado-registro-tabela",
+                      "position": 1,
+                      "resource": "paragraph",
+                      "kind": "exercise",
+                      "exercise": "gap",
+                      "title": "Dado, registro e tabela",
+                      "text": "Um dado é um registro de fato, medição ou característica. Em uma planilha de produção, uma [[linha::linha|coluna|fonte]] costuma representar um registro observado, enquanto uma [[coluna::coluna|célula|linha]] representa um campo como `temperatura_c`, `turno` ou `falha`.",
+                      "after": "A linha reúne os valores de um registro; a coluna guarda o mesmo tipo de informação para vários registros."
+                    },
+                    {
+                      "id": "card-a04-01-estruturas-dados",
+                      "position": 2,
+                      "resource": "table",
+                      "kind": "theory",
+                      "exercise": "none",
+                      "title": "Formas de organização dos dados",
+                      "columns": [
+                        "Forma",
+                        "Como aparece",
+                        "Exemplo didático",
+                        "Uso na aula"
+                      ],
+                      "rows": [
+                        [
+                          "Estruturado",
+                          "Linhas e colunas",
+                          "Planilha Excel de produção",
+                          "Pode ser lido como tabela no Pandas."
+                        ],
+                        [
+                          "Semiestruturado",
+                          "Campos com alguma organização, mas sem grade fixa",
+                          "Objeto com pares `chave: valor`",
+                          "Exige interpretação da estrutura antes de virar tabela."
+                        ],
+                        [
+                          "Não estruturado",
+                          "Sem colunas fixas",
+                          "Texto livre ou imagem",
+                          "Não é o formato praticado na análise tabular desta aula."
+                        ]
+                      ],
+                      "after": "A planilha Excel usada na aula é estruturada porque já organiza registros em linhas e campos em colunas."
+                    },
+                    {
+                      "id": "card-a04-01-fonte-estruturada",
+                      "position": 3,
+                      "resource": "choice",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Fonte estruturada",
+                      "question": "Qual fonte já chega mais próxima do formato tabular necessário para `pd.read_excel()`?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "text",
+                          "text": "Uma planilha Excel com colunas `data_producao`, `produto` e `quantidade_produzida`."
+                        },
+                        {
+                          "id": "b",
+                          "kind": "text",
+                          "text": "Um texto livre descrevendo verbalmente cada turno."
+                        },
+                        {
+                          "id": "c",
+                          "kind": "text",
+                          "text": "Uma imagem de uma máquina sem campos identificados."
+                        },
+                        {
+                          "id": "d",
+                          "kind": "text",
+                          "text": "Um áudio de reunião sobre produção."
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "A alternativa correta já possui colunas nomeadas e registros organizados, o que combina com a leitura tabular em Pandas."
+                    },
+                    {
+                      "id": "card-a04-01-celula-valor",
+                      "position": 4,
+                      "resource": "paragraph",
+                      "kind": "exercise",
+                      "exercise": "gap",
+                      "title": "Célula como valor observado",
+                      "text": "Em uma tabela, a interseção entre uma linha e uma coluna forma uma [[célula::célula|fonte|biblioteca]]. Se a linha é o registro 6 e a coluna é `falha`, o valor dessa célula informa se houve falha naquele registro.",
+                      "after": "A célula contém o valor específico de um campo para um registro específico; não representa a coluna inteira."
+                    },
+                    {
+                      "id": "card-a04-01-confusao-linha-coluna",
+                      "position": 5,
+                      "resource": "choice",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Linha não é coluna",
+                      "question": "No dataset de produção, `temperatura_c` é o quê?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "text",
+                          "text": "Uma coluna, porque nomeia um campo medido em vários registros."
+                        },
+                        {
+                          "id": "b",
+                          "kind": "text",
+                          "text": "Uma linha, porque aparece escrita na primeira linha."
+                        },
+                        {
+                          "id": "c",
+                          "kind": "text",
+                          "text": "Uma célula, porque contém todos os valores da temperatura."
+                        },
+                        {
+                          "id": "d",
+                          "kind": "text",
+                          "text": "Um arquivo, porque guarda valores de produção."
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "`temperatura_c` é o nome de um campo. Os valores abaixo desse nome aparecem em várias linhas."
+                    },
+                    {
+                      "id": "card-a04-01-forma-fonte-risco",
+                      "position": 6,
+                      "resource": "table",
+                      "kind": "theory",
+                      "exercise": "none",
+                      "title": "Forma do dado e cuidado de análise",
+                      "columns": [
+                        "Forma",
+                        "Exemplo no contexto de produção",
+                        "Cuidado"
+                      ],
+                      "rows": [
+                        [
+                          "Estruturado",
+                          "`dataset_producao_limpo.xlsx` com linhas e colunas",
+                          "Pode ser lido como tabela e filtrado por coluna."
+                        ],
+                        [
+                          "Semiestruturado",
+                          "Registro em texto com campos como `turno: manhã` e `falha: 1`",
+                          "Tem partes organizadas, mas pode exigir preparo antes da tabela."
+                        ],
+                        [
+                          "Não estruturado",
+                          "Foto da máquina ou relato livre de manutenção",
+                          "Não vira coluna automaticamente só por estar em um arquivo."
+                        ]
+                      ],
+                      "after": "O ponto decisivo é a forma de organização. A planilha já traz campos comparáveis; textos livres e imagens exigem outra etapa antes da análise tabular."
+                    },
+                    {
+                      "id": "card-a04-01-linha-coluna-valor",
+                      "position": 7,
+                      "resource": "paragraph",
+                      "kind": "exercise",
+                      "exercise": "gap",
+                      "title": "Registro, campo e valor",
+                      "text": "Em uma tabela de produção, cada registro observado costuma ocupar uma [[linha::linha|coluna|função]], cada característica medida fica em uma [[coluna::coluna|linha|biblioteca]] e cada célula guarda um valor.",
+                      "after": "A linha reúne os valores de um registro; a coluna reúne valores do mesmo campo. Confundir os dois dificulta filtros, médias e contagens."
+                    }
+                  ],
+                  "validation": {
+                    "ok": true,
+                    "issues": []
+                  }
+                }
+              ],
+              "activeVersion": "version-a04-002-revisado"
+            },
+            {
+              "id": "micro-a04-02-ler-excel-dataframe",
+              "title": "Ler Excel real com Pandas",
+              "goal": "Usar `pd.read_excel()` para carregar `dataset_producao_limpo.xlsx` em um `DataFrame`.",
+              "role": "explain",
+              "status": "generated",
+              "dependsOn": [
+                "micro-a04-01-dados-tabelas-fontes"
+              ],
+              "covers": [
+                "import pandas as pd",
+                "variável de caminho `arquivo_limpo`",
+                "`pd.read_excel(arquivo_limpo)`",
+                "argumento da função",
+                "DataFrame",
+                "`df.head(10)`"
+              ],
+              "checks": [
+                "Completa a chamada `pd.read_excel(arquivo_limpo)`.",
+                "Explica que o argumento informa qual arquivo será lido.",
+                "Entende que `df` guarda a tabela carregada."
+              ],
+              "errors": [
+                "colocar o nome do arquivo sem aspas quando não usa variável",
+                "esquecer parênteses da função",
+                "passar `df` como argumento antes de ele existir",
+                "achar que `head()` lê o arquivo"
+              ],
+              "versions": [
+                {
+                  "id": "version-a04-003-corrigido-auditoria",
+                  "createdAt": "2026-06-23T19:35:17.256336Z",
+                  "source": "llm",
+                  "action": "repair",
+                  "request": "Foco didático da microssequência: Usar `pd.read_excel()` para carregar `dataset_producao_limpo.xlsx` em um `DataFrame`.",
+                  "summary": "Versão centrada em Ler Excel real com Pandas.",
+                  "cards": [
+                    {
+                      "id": "card-a04-02-funcao-metodo-argumento",
+                      "position": 1,
+                      "resource": "table",
+                      "kind": "theory",
+                      "exercise": "none",
+                      "title": "Função, método, argumento e retorno",
+                      "columns": [
+                        "Elemento",
+                        "Exemplo",
+                        "Função na sintaxe"
+                      ],
+                      "rows": [
+                        [
+                          "Função de biblioteca",
+                          "`pd.read_excel(arquivo_limpo)`",
+                          "`read_excel()` pode ser lido como “ler Excel”: recebe um caminho e devolve um `DataFrame`."
+                        ],
+                        [
+                          "Argumento",
+                          "`arquivo_limpo`",
+                          "Valor passado entre parênteses para dizer qual arquivo será lido."
+                        ],
+                        [
+                          "Retorno",
+                          "`df`",
+                          "Resultado produzido pela função e guardado em uma variável."
+                        ],
+                        [
+                          "Método de objeto",
+                          "`df.head(10)`",
+                          "`head()` sugere “cabeça/início”: mostra as primeiras linhas do `DataFrame`."
+                        ]
+                      ],
+                      "after": "A chamada só funciona quando o argumento aponta para o arquivo e o retorno é guardado antes de usar métodos como `head()`."
+                    },
+                    {
+                      "id": "card-a04-02-exemplo-leitura-excel",
+                      "position": 2,
+                      "resource": "code",
+                      "kind": "theory",
+                      "exercise": "none",
+                      "title": "Leitura do Excel real",
+                      "prompt": "Execute a sequência para carregar a planilha disponível e visualizar as primeiras linhas.",
+                      "language": "python",
+                      "code": "import pandas as pd\n\narquivo_limpo = \"dataset_producao_limpo.xlsx\"\ndf = pd.read_excel(arquivo_limpo)\n\ndf.head(10)",
+                      "after": "`df` passa a guardar a tabela carregada. `head(10)` não lê o arquivo; ele apenas mostra dez linhas iniciais do `DataFrame`."
+                    },
+                    {
+                      "id": "card-a04-02-gap-read-excel",
+                      "position": 3,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "gap",
+                      "title": "Completar o argumento da leitura",
+                      "prompt": "Complete a chamada usando a variável que guarda o caminho do Excel.",
+                      "language": "python",
+                      "code": "arquivo_limpo = \"dataset_producao_limpo.xlsx\"\ndf = pd.read_excel([[arquivo_limpo::arquivo_limpo|\"dataset_producao_limpo.xlsx\"|df]])",
+                      "after": "Como `arquivo_limpo` já contém o texto do caminho, ele entra como argumento de `pd.read_excel()`. Usar `df` ali seria tentar ler uma tabela que ainda não existe."
+                    },
+                    {
+                      "id": "card-a04-02-identificar-papeis",
+                      "position": 4,
+                      "resource": "choice",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Papel de cada parte",
+                      "question": "Em `df = pd.read_excel(arquivo_limpo)`, qual afirmação está correta?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "text",
+                          "text": "`pd.read_excel()` é a função chamada, `arquivo_limpo` é o argumento e `df` recebe o retorno."
+                        },
+                        {
+                          "id": "b",
+                          "kind": "text",
+                          "text": "`df` é o argumento da função e `arquivo_limpo` recebe o retorno."
+                        },
+                        {
+                          "id": "c",
+                          "kind": "text",
+                          "text": "`head()` é a função responsável por abrir o arquivo Excel."
+                        },
+                        {
+                          "id": "d",
+                          "kind": "text",
+                          "text": "`arquivo_limpo` é um método do `DataFrame`."
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "A ordem lógica é: chamar a função da biblioteca, passar o caminho como argumento e guardar o retorno em `df`."
+                    },
+                    {
+                      "id": "card-a04-02-escolher-script-correto",
+                      "position": 5,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Erros comuns ao ler Excel",
+                      "prompt": "Compare as versões completas.",
+                      "language": "python",
+                      "code": "# Escolha o script que carrega a planilha e mostra as primeiras linhas.",
+                      "after": "A versão correta cria o caminho como texto, chama `pd.read_excel()` com parênteses e só depois usa `df.head(10)`.",
+                      "question": "Qual versão usa `pd.read_excel()` corretamente?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "import pandas as pd\n\narquivo_limpo = \"dataset_producao_limpo.xlsx\"\ndf = pd.read_excel(arquivo_limpo)\n\ndf.head(10)"
+                        },
+                        {
+                          "id": "b",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "import pandas as pd\n\ndf = pd.read_excel(df)\ndf.head(10)"
+                        },
+                        {
+                          "id": "c",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "import pandas as pd\n\narquivo_limpo = dataset_producao_limpo.xlsx\ndf = pd.read_excel(arquivo_limpo)\ndf.head(10)"
+                        },
+                        {
+                          "id": "d",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "import pandas as pd\n\narquivo_limpo = \"dataset_producao_limpo.xlsx\"\ndf = pd.read_excel\n\ndf.head(10)"
+                        }
+                      ],
+                      "answer": "a",
+                      "afterBlocks": [
+                        {
+                          "kind": "code",
+                          "prompt": "Veja a versão corrigida.",
+                          "language": "python",
+                          "code": "arquivo_limpo = \"dataset_producao_limpo.xlsx\"\ndf = pd.read_excel(arquivo_limpo)\ndf.head(10)"
+                        }
+                      ]
+                    },
+                    {
+                      "id": "card-a04-02-ponte-read-csv-read-excel",
+                      "position": 6,
+                      "resource": "table",
+                      "kind": "theory",
+                      "exercise": "none",
+                      "title": "Da leitura de CSV para a leitura de Excel",
+                      "columns": [
+                        "Chamada",
+                        "Fonte esperada",
+                        "Ideia comum"
+                      ],
+                      "rows": [
+                        [
+                          "`pd.read_csv(\"arquivo.csv\")`",
+                          "arquivo de texto separado por vírgulas ou outro separador",
+                          "A função lê uma fonte externa e devolve um `DataFrame`."
+                        ],
+                        [
+                          "`pd.read_excel(\"arquivo.xlsx\")`",
+                          "arquivo de planilha Excel",
+                          "A função lê uma fonte externa e devolve um `DataFrame`."
+                        ]
+                      ],
+                      "after": "A ideia reaproveitada aqui é o padrão: `pd` chama uma função de leitura, o argumento indica o arquivo e o retorno deve ser guardado em uma variável."
+                    },
+                    {
+                      "id": "card-a04-02-gap-padrao-leitura-excel",
+                      "position": 7,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "gap",
+                      "title": "Trocar a função sem trocar o raciocínio",
+                      "prompt": "Complete a leitura do Excel usando a variável de caminho.",
+                      "language": "python",
+                      "code": "import pandas as pd\n\narquivo_limpo = \"dataset_producao_limpo.xlsx\"\ndf = pd.[[read_excel::read_excel|read_csv|head]](arquivo_limpo)",
+                      "after": "`read_excel()` é a função adequada para arquivo Excel. A lógica é parecida com `read_csv()`, mas o formato do arquivo muda."
+                    },
+                    {
+                      "id": "card-a04-02-identificar-argumento",
+                      "position": 8,
+                      "resource": "choice",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Argumento da leitura",
+                      "question": "Na chamada `pd.read_excel(arquivo_limpo)`, qual parte é o argumento passado para a função?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "text",
+                          "text": "`arquivo_limpo`, porque aparece entre parênteses e informa qual arquivo deve ser lido."
+                        },
+                        {
+                          "id": "b",
+                          "kind": "text",
+                          "text": "`pd`, porque é o nome da variável que receberá a tabela."
+                        },
+                        {
+                          "id": "c",
+                          "kind": "text",
+                          "text": "`read_excel`, porque é o resultado final da leitura."
+                        },
+                        {
+                          "id": "d",
+                          "kind": "text",
+                          "text": "`df`, porque já existe antes da chamada."
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "O argumento é o valor entregue à função. Nesse caso, `arquivo_limpo` contém o caminho do arquivo Excel."
+                    },
+                    {
+                      "id": "card-a04-02-escolher-leitura-robusta",
+                      "position": 9,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Escolher a leitura correta",
+                      "prompt": "Compare versões completas.",
+                      "language": "python",
+                      "code": "# Objetivo: carregar dataset_producao_limpo.xlsx em df",
+                      "question": "Qual versão carrega a planilha em `df` sem usar objeto antes de existir?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "import pandas as pd\n\narquivo_limpo = \"dataset_producao_limpo.xlsx\"\ndf = pd.read_excel(arquivo_limpo)\ndf.head(10)"
+                        },
+                        {
+                          "id": "b",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "import pandas as pd\n\ndf = pd.read_excel(df)\ndf.head(10)"
+                        },
+                        {
+                          "id": "c",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "import pandas as pd\n\narquivo_limpo = dataset_producao_limpo.xlsx\ndf = pd.read_excel(arquivo_limpo)"
+                        },
+                        {
+                          "id": "d",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "import pandas as pd\n\narquivo_limpo = \"dataset_producao_limpo.xlsx\"\ndf.head(10)\ndf = pd.read_excel(arquivo_limpo)"
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "A versão correta cria a variável de caminho, chama `pd.read_excel()` com esse argumento, guarda o retorno em `df` e só depois usa `df.head(10)`.",
+                      "afterBlocks": [
+                        {
+                          "kind": "code",
+                          "prompt": "Veja a versão corrigida.",
+                          "language": "python",
+                          "code": "import pandas as pd\n\narquivo_limpo = \"dataset_producao_limpo.xlsx\"\ndf = pd.read_excel(arquivo_limpo)\ndf.head(10)"
+                        }
+                      ]
+                    }
+                  ],
+                  "validation": {
+                    "ok": true,
+                    "issues": []
+                  }
+                }
+              ],
+              "activeVersion": "version-a04-003-corrigido-auditoria"
+            },
+            {
+              "id": "micro-a04-03-inspecionar-estrutura",
+              "title": "Inspecionar linhas, colunas e nomes de campos",
+              "goal": "Usar `shape`, `columns` e `tolist()` para entender a estrutura inicial da tabela.",
+              "role": "practice",
+              "status": "generated",
+              "dependsOn": [
+                "micro-a04-02-ler-excel-dataframe"
+              ],
+              "covers": [
+                "`df.shape`",
+                "tupla `(linhas, colunas)`",
+                "`df.columns`",
+                "`df.columns.tolist()`",
+                "nomes reais das colunas"
+              ],
+              "checks": [
+                "Interpreta `df.shape` como quantidade de linhas e colunas.",
+                "Reconhece `columns` como nomes de campos.",
+                "Usa `tolist()` para visualizar nomes como lista Python."
+              ],
+              "errors": [
+                "chamar `df.shape()` como método",
+                "achar que `shape` mostra tipos",
+                "confundir `columns` com dados das colunas"
+              ],
+              "versions": [
+                {
+                  "id": "version-a04-004-corrigido-verificacao",
+                  "createdAt": "2026-06-23T19:44:40.113068Z",
+                  "source": "llm",
+                  "action": "repair",
+                  "request": "Foco didático da microssequência: Usar `shape`, `columns` e `tolist()` para entender a estrutura inicial da tabela.",
+                  "summary": "Versão centrada em Inspecionar linhas, colunas e nomes de campos.",
+                  "cards": [
+                    {
+                      "id": "card-a04-03-inspecao-comandos",
+                      "position": 1,
+                      "resource": "table",
+                      "kind": "theory",
+                      "exercise": "none",
+                      "title": "Comandos para inspecionar a estrutura",
+                      "columns": [
+                        "Comando",
+                        "Tipo de elemento",
+                        "O que devolve",
+                        "Ponte lexical"
+                      ],
+                      "rows": [
+                        [
+                          "`df.shape`",
+                          "atributo/propriedade",
+                          "Uma tupla `(linhas, colunas)`",
+                          "`shape` significa “forma”: a forma da tabela."
+                        ],
+                        [
+                          "`df.columns`",
+                          "atributo/propriedade",
+                          "Os nomes das colunas",
+                          "`columns` significa “colunas”."
+                        ],
+                        [
+                          "`df.columns.tolist()`",
+                          "método aplicado ao índice de colunas",
+                          "Lista Python com os nomes",
+                          "`tolist()` sugere “to list”: transformar em lista."
+                        ]
+                      ],
+                      "after": "`shape`, `columns` e `dtypes` são acessados sem parênteses porque são atributos; `tolist()` usa parênteses porque executa um método."
+                    },
+                    {
+                      "id": "card-a04-03-gap-shape-columns",
+                      "position": 2,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "gap",
+                      "title": "Consultar forma e nomes",
+                      "prompt": "Complete a inspeção inicial da tabela.",
+                      "language": "python",
+                      "code": "print(\"Linhas e colunas:\", df.[[shape::shape|shape()|columns]])\nnomes = df.columns.[[tolist::tolist|head|shape]]()\nprint(nomes)",
+                      "after": "`df.shape` não recebe parênteses. Já `tolist()` é método e precisa de parênteses para produzir a lista."
+                    },
+                    {
+                      "id": "card-a04-03-shape-nao-metodo",
+                      "position": 3,
+                      "resource": "choice",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "`shape` sem parênteses",
+                      "question": "Qual opção evita o erro de tratar `shape` como método?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "text",
+                          "text": "`df.shape`"
+                        },
+                        {
+                          "id": "b",
+                          "kind": "text",
+                          "text": "`df.shape()`"
+                        },
+                        {
+                          "id": "c",
+                          "kind": "text",
+                          "text": "`df.shape(10)`"
+                        },
+                        {
+                          "id": "d",
+                          "kind": "text",
+                          "text": "`df.head.shape()`"
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "`shape` é uma propriedade do `DataFrame`; por isso a forma correta é `df.shape`, sem chamada."
+                    },
+                    {
+                      "id": "card-a04-03-interpretar-tupla",
+                      "position": 4,
+                      "resource": "paragraph",
+                      "kind": "exercise",
+                      "exercise": "gap",
+                      "title": "Interpretar `(linhas, colunas)`",
+                      "text": "Quando `df.shape` devolve `(120, 13)`, o primeiro número indica [[linhas::linhas|colunas|tipos]] e o segundo indica [[colunas::colunas|linhas|valores ausentes]].",
+                      "after": "A convenção do Pandas para `shape` é sempre `(quantidade de linhas, quantidade de colunas)`."
+                    },
+                    {
+                      "id": "card-a04-03-columns-nao-dados",
+                      "position": 5,
+                      "resource": "choice",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Nome de campo não é conteúdo da coluna",
+                      "question": "O que `df.columns.tolist()` mostra?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "text",
+                          "text": "Os nomes das colunas, como `id_registro`, `data_producao` e `falha`."
+                        },
+                        {
+                          "id": "b",
+                          "kind": "text",
+                          "text": "Todas as 120 linhas da planilha."
+                        },
+                        {
+                          "id": "c",
+                          "kind": "text",
+                          "text": "As médias das colunas numéricas."
+                        },
+                        {
+                          "id": "d",
+                          "kind": "text",
+                          "text": "O tipo técnico de cada valor."
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "`columns` aponta para os rótulos dos campos. Para ver valores, é preciso selecionar uma coluna ou usar `head()`."
+                    },
+                    {
+                      "id": "card-a04-03-interpretar-shape-real",
+                      "position": 6,
+                      "resource": "composite",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Interpretar a forma da tabela",
+                      "blocks": [
+                        {
+                          "language": "python",
+                          "code": "df.shape",
+                          "kind": "code",
+                          "prompt": "Observe o trecho antes de responder."
+                        },
+                        {
+                          "language": "text",
+                          "code": "(120, 13)",
+                          "kind": "code",
+                          "prompt": "Observe o trecho antes de responder."
+                        },
+                        {
+                          "kind": "choice",
+                          "question": "Qual interpretação está correta?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "kind": "text",
+                              "text": "A tabela tem `120` linhas e `13` colunas."
+                            },
+                            {
+                              "id": "b",
+                              "kind": "text",
+                              "text": "A tabela tem `13` linhas e `120` colunas."
+                            },
+                            {
+                              "id": "c",
+                              "kind": "text",
+                              "text": "`120` é a quantidade de tipos técnicos e `13` é a quantidade de filtros."
+                            },
+                            {
+                              "id": "d",
+                              "kind": "text",
+                              "text": "`shape` mostra os nomes das colunas, não a dimensão."
+                            }
+                          ],
+                          "answer": "a"
+                        }
+                      ],
+                      "after": "`shape` significa forma da tabela no Pandas e devolve uma tupla na ordem `(linhas, colunas)`."
+                    },
+                    {
+                      "id": "card-a04-03-gap-columns-tolist",
+                      "position": 7,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "gap",
+                      "title": "Ver nomes de colunas como lista",
+                      "prompt": "Complete o comando para transformar os nomes de colunas em uma lista Python.",
+                      "language": "python",
+                      "code": "nomes_colunas = df.[[columns::columns|shape|dtypes]].[[tolist::tolist|head|mean]]()\nprint(nomes_colunas)",
+                      "after": "`columns` acessa os nomes dos campos; `tolist()` transforma esse índice de colunas em lista, útil para conferir nomes exatos antes de filtrar."
+                    },
+                    {
+                      "id": "card-a04-03-atributo-ou-metodo",
+                      "position": 8,
+                      "resource": "choice",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Atributo não usa parênteses",
+                      "question": "Qual comando está escrito de acordo com a sintaxe de `shape`?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "text",
+                          "text": "`df.shape`, porque `shape` é um atributo/propriedade."
+                        },
+                        {
+                          "id": "b",
+                          "kind": "text",
+                          "text": "`df.shape()`, porque todo acesso no Pandas exige parênteses."
+                        },
+                        {
+                          "id": "c",
+                          "kind": "text",
+                          "text": "`df(\"shape\")`, porque `shape` é argumento do `DataFrame`."
+                        },
+                        {
+                          "id": "d",
+                          "kind": "text",
+                          "text": "`pd.shape(df)`, porque `shape` é função de biblioteca."
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "`df.shape` não é chamada de método. Parênteses são usados em métodos como `df.head(10)` ou `df.columns.tolist()`."
+                    }
+                  ],
+                  "validation": {
+                    "ok": true,
+                    "issues": []
+                  }
+                }
+              ],
+              "activeVersion": "version-a04-004-corrigido-verificacao"
+            },
+            {
+              "id": "micro-a04-04-tipos-tecnicos-e-didaticos",
+              "title": "Tipos técnicos do Pandas e tipos analíticos",
+              "goal": "Diferenciar o tipo técnico mostrado por `dtypes` do sentido analítico de cada coluna.",
+              "role": "explain",
+              "status": "generated",
+              "dependsOn": [
+                "micro-a04-03-inspecionar-estrutura"
+              ],
+              "covers": [
+                "`df.dtypes`",
+                "`int64`",
+                "`float64`",
+                "`object`",
+                "`datetime64`",
+                "identificador",
+                "data",
+                "categoria",
+                "texto/código",
+                "numérico",
+                "binário"
+              ],
+              "checks": [
+                "Entende que `id_registro` é numérico tecnicamente, mas identificador analiticamente.",
+                "Entende que `falha` pode aparecer como número, mas tem sentido binário.",
+                "Entende que categorias e códigos não devem ser tratados como medidas contínuas."
+              ],
+              "errors": [
+                "concluir que todo `int64` deve ser somado",
+                "tratar `falha` como quantidade contínua",
+                "ignorar o sentido da coluna"
+              ],
+              "versions": [
+                {
+                  "id": "version-a04-004-corrigido-verificacao",
+                  "createdAt": "2026-06-23T19:44:40.113068Z",
+                  "source": "llm",
+                  "action": "repair",
+                  "request": "Foco didático da microssequência: Diferenciar o tipo técnico mostrado por `dtypes` do sentido analítico de cada coluna.",
+                  "summary": "Versão centrada em Tipos técnicos do Pandas e tipos analíticos.",
+                  "cards": [
+                    {
+                      "id": "card-a04-04-dtypes-sentido",
+                      "position": 1,
+                      "resource": "paragraph",
+                      "kind": "exercise",
+                      "exercise": "gap",
+                      "title": "`dtypes` e sentido analítico",
+                      "text": "`dtype` vem de `data type`: é o tipo técnico que o Pandas usa para armazenar uma coluna. A análise também precisa do sentido didático: `id_registro` pode ser `int64`, mas funciona como [[identificador::identificador|média|temperatura]].",
+                      "after": "O tipo técnico diz como a ferramenta armazenou o dado; o tipo analítico diz que decisão faz sentido com a coluna."
+                    },
+                    {
+                      "id": "card-a04-04-classificacao-colunas",
+                      "position": 2,
+                      "resource": "table",
+                      "kind": "theory",
+                      "exercise": "none",
+                      "title": "Classificação técnica e didática",
+                      "columns": [
+                        "Coluna",
+                        "Tipo técnico provável",
+                        "Tipo didático",
+                        "Uso analítico"
+                      ],
+                      "rows": [
+                        [
+                          "`id_registro`",
+                          "`int64`",
+                          "identificador",
+                          "Distingue registros; não deve ser somado como produção."
+                        ],
+                        [
+                          "`data_producao`",
+                          "`object` ou `datetime64` após conversão",
+                          "data",
+                          "Permite análise temporal depois de `pd.to_datetime()`."
+                        ],
+                        [
+                          "`linha_producao`",
+                          "`object`",
+                          "categórico",
+                          "Compara linhas como `L1` e `L2`."
+                        ],
+                        [
+                          "`turno`",
+                          "`object`",
+                          "categórico",
+                          "Compara turnos como categorias."
+                        ],
+                        [
+                          "`operador`",
+                          "`object`",
+                          "categórico/código",
+                          "Agrupa registros por operador."
+                        ],
+                        [
+                          "`produto`",
+                          "`object`",
+                          "categórico/código",
+                          "Compara tipos de produto."
+                        ],
+                        [
+                          "`quantidade_produzida`",
+                          "`int64`",
+                          "numérico discreto",
+                          "Mede quantidade produzida."
+                        ],
+                        [
+                          "`temperatura_c`",
+                          "`float64`",
+                          "numérico contínuo",
+                          "Mede temperatura do processo."
+                        ],
+                        [
+                          "`umidade_pct`",
+                          "`float64`",
+                          "numérico contínuo",
+                          "Mede umidade percentual."
+                        ],
+                        [
+                          "`tempo_ciclo_s`",
+                          "`float64`",
+                          "numérico contínuo",
+                          "Mede tempo de ciclo."
+                        ],
+                        [
+                          "`consumo_energia_kwh`",
+                          "`float64`",
+                          "numérico contínuo",
+                          "Mede consumo de energia."
+                        ],
+                        [
+                          "`status_maquina`",
+                          "`object`",
+                          "categórico",
+                          "Indica estado operacional."
+                        ],
+                        [
+                          "`falha`",
+                          "`int64`",
+                          "binário",
+                          "`1` indica presença de falha e `0` ausência."
+                        ]
+                      ],
+                      "after": "A mesma representação técnica pode ter usos diferentes. `int64` em `quantidade_produzida` mede produção; `int64` em `id_registro` identifica registros."
+                    },
+                    {
+                      "id": "card-a04-04-identificador-nao-medida",
+                      "position": 3,
+                      "resource": "composite",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Número que identifica não é métrica",
+                      "blocks": [
+                        {
+                          "kind": "table",
+                          "columns": [
+                            "Coluna",
+                            "Exemplo de valor",
+                            "Pergunta possível"
+                          ],
+                          "rows": [
+                            [
+                              "`id_registro`",
+                              "`17`",
+                              "Qual linha do registro?"
+                            ],
+                            [
+                              "`quantidade_produzida`",
+                              "`230`",
+                              "Quanto foi produzido?"
+                            ]
+                          ]
+                        },
+                        {
+                          "kind": "choice",
+                          "question": "Qual interpretação evita uma conclusão estatística enganosa?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "kind": "text",
+                              "text": "`id_registro` identifica registros; `quantidade_produzida` é a coluna adequada para média de produção."
+                            },
+                            {
+                              "id": "b",
+                              "kind": "text",
+                              "text": "`id_registro` deve ser somado para medir produção total."
+                            },
+                            {
+                              "id": "c",
+                              "kind": "text",
+                              "text": "`quantidade_produzida` deve ser tratada como texto livre."
+                            },
+                            {
+                              "id": "d",
+                              "kind": "text",
+                              "text": "`id_registro` e `falha` têm sempre o mesmo significado analítico."
+                            }
+                          ],
+                          "answer": "a"
+                        }
+                      ],
+                      "after": "Nem todo número representa medida. O detalhe decisivo é perguntar se o valor quantifica algo ou apenas rotula um registro."
+                    },
+                    {
+                      "id": "card-a04-04-falha-binaria",
+                      "position": 4,
+                      "resource": "paragraph",
+                      "kind": "exercise",
+                      "exercise": "gap",
+                      "title": "`falha` como variável binária",
+                      "text": "Na coluna `falha`, o valor `1` representa presença de falha e o valor `0` representa ausência. Por isso, o sentido didático dessa coluna é [[binário::binário|contínuo|texto livre]].",
+                      "after": "Embora apareça como número, `falha` não mede uma quantidade contínua; ela marca dois estados possíveis."
+                    },
+                    {
+                      "id": "card-a04-04-categorias-codigos",
+                      "position": 5,
+                      "resource": "choice",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Categorias e códigos",
+                      "question": "Qual conjunto reúne apenas colunas com uso categórico ou de código?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "text",
+                          "text": "`linha_producao`, `turno`, `operador`, `produto` e `status_maquina`."
+                        },
+                        {
+                          "id": "b",
+                          "kind": "text",
+                          "text": "`temperatura_c`, `umidade_pct` e `tempo_ciclo_s`."
+                        },
+                        {
+                          "id": "c",
+                          "kind": "text",
+                          "text": "`quantidade_produzida`, `consumo_energia_kwh` e `temperatura_c`."
+                        },
+                        {
+                          "id": "d",
+                          "kind": "text",
+                          "text": "`id_registro`, `quantidade_produzida` e `tempo_ciclo_s`."
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "Essas colunas descrevem grupos, códigos ou estados; por isso costumam ser usadas em filtros, contagens e agrupamentos."
+                    },
+                    {
+                      "id": "card-a04-04-tecnico-analitico-pergunta",
+                      "position": 6,
+                      "resource": "table",
+                      "kind": "theory",
+                      "exercise": "none",
+                      "title": "Tipo técnico não decide sozinho a análise",
+                      "columns": [
+                        "Coluna",
+                        "Pode aparecer tecnicamente como",
+                        "Uso analítico adequado"
+                      ],
+                      "rows": [
+                        [
+                          "`id_registro`",
+                          "`int64`",
+                          "identificador; serve para localizar registro, não para média"
+                        ],
+                        [
+                          "`falha`",
+                          "`int64`",
+                          "binário; indica ausência ou presença de falha"
+                        ],
+                        [
+                          "`temperatura_c`",
+                          "`float64`",
+                          "numérico contínuo; pode ter média, máximo e dispersão"
+                        ],
+                        [
+                          "`status_maquina`",
+                          "`object`",
+                          "categórico; pede contagem ou filtro por valor"
+                        ]
+                      ],
+                      "after": "`dtype` vem de `data type`: descreve o tipo técnico. A decisão analítica também depende do significado da coluna no processo produtivo."
+                    },
+                    {
+                      "id": "card-a04-04-id-nao-media",
+                      "position": 7,
+                      "resource": "choice",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Identificador não é medida",
+                      "question": "Por que `id_registro` não deve ser usado para calcular uma média de produção?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "text",
+                          "text": "Porque identifica registros; o número é código de controle, não uma grandeza produzida."
+                        },
+                        {
+                          "id": "b",
+                          "kind": "text",
+                          "text": "Porque toda coluna `int64` é sempre texto e nunca pode ser filtrada."
+                        },
+                        {
+                          "id": "c",
+                          "kind": "text",
+                          "text": "Porque `id_registro` mede a temperatura da máquina."
+                        },
+                        {
+                          "id": "d",
+                          "kind": "text",
+                          "text": "Porque identificadores só podem aparecer em arquivos CSV."
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "O erro comum é olhar apenas o tipo técnico. Mesmo sendo numérico, `id_registro` não representa quantidade, consumo, tempo ou temperatura."
+                    },
+                    {
+                      "id": "card-a04-04-falha-como-evento-binario-extra",
+                      "position": 8,
+                      "resource": "paragraph",
+                      "kind": "exercise",
+                      "exercise": "gap",
+                      "title": "Coluna binária",
+                      "text": "A coluna `falha` pode usar `0` e `1`, mas o sentido analítico é [[binário::binário|contínuo|identificador]]: normalmente `1` representa presença de falha e `0` ausência.",
+                      "after": "O valor é numérico, mas a pergunta típica é contagem, proporção ou filtro de eventos, não uma medida contínua."
+                    },
+                    {
+                      "id": "card-a04-04-ler-dtypes-com-sentido",
+                      "position": 9,
+                      "resource": "composite",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Ler `dtypes` com interpretação",
+                      "blocks": [
+                        {
+                          "language": "text",
+                          "code": "id_registro              int64\nproduto                 object\nquantidade_produzida     int64\ntemperatura_c          float64\nfalha                    int64",
+                          "kind": "code",
+                          "prompt": "Observe o trecho antes de responder."
+                        },
+                        {
+                          "kind": "choice",
+                          "question": "Qual conclusão combina tipo técnico e sentido analítico?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "kind": "text",
+                              "text": "`quantidade_produzida` pode ser medida numérica; `produto` é categoria; `falha` é evento binário."
+                            },
+                            {
+                              "id": "b",
+                              "kind": "text",
+                              "text": "`produto` deve receber `mean()` porque aparece como `object`."
+                            },
+                            {
+                              "id": "c",
+                              "kind": "text",
+                              "text": "`falha` deve ser tratada como temperatura contínua porque aparece como `int64`."
+                            },
+                            {
+                              "id": "d",
+                              "kind": "text",
+                              "text": "`id_registro` é a principal medida de desempenho por ser `int64`."
+                            }
+                          ],
+                          "answer": "a"
+                        }
+                      ],
+                      "after": "`dtypes` ajuda a conferir a ferramenta, mas a escolha da métrica depende da pergunta de análise e do significado de cada campo."
+                    }
+                  ],
+                  "validation": {
+                    "ok": true,
+                    "issues": []
+                  }
+                }
+              ],
+              "activeVersion": "version-a04-004-corrigido-verificacao"
+            },
+            {
+              "id": "micro-a04-05-converter-data",
+              "title": "Converter data para tipo próprio",
+              "goal": "Usar `pd.to_datetime()` para transformar `data_producao` em coluna temporal adequada.",
+              "role": "practice",
+              "status": "generated",
+              "dependsOn": [
+                "micro-a04-04-tipos-tecnicos-e-didaticos"
+              ],
+              "covers": [
+                "`pd.to_datetime()`",
+                "atribuição de volta à mesma coluna",
+                "`df[\"data_producao\"]`",
+                "checagem com `df.dtypes`"
+              ],
+              "checks": [
+                "Completa `df[\"data_producao\"] = pd.to_datetime(df[\"data_producao\"])`.",
+                "Explica por que converter data ajuda filtros e análises temporais.",
+                "Diferencia texto ou serial de Excel de tipo temporal no Pandas."
+              ],
+              "errors": [
+                "esquecer aspas no nome da coluna",
+                "converter coluna errada",
+                "chamar `pd.datetime()` em vez de `pd.to_datetime()`",
+                "fazer a conversão sem atribuir de volta ao `df`"
+              ],
+              "versions": [
+                {
+                  "id": "version-a04-003-corrigido-auditoria",
+                  "createdAt": "2026-06-23T19:35:17.256612Z",
+                  "source": "llm",
+                  "action": "repair",
+                  "request": "Foco didático da microssequência: Usar `pd.to_datetime()` para transformar `data_producao` em coluna temporal adequada.",
+                  "summary": "Versão centrada em Converter data para tipo próprio.",
+                  "cards": [
+                    {
+                      "id": "card-a04-05-exemplo-conversao-data",
+                      "position": 1,
+                      "resource": "code",
+                      "kind": "theory",
+                      "exercise": "none",
+                      "title": "Converter a coluna de data",
+                      "prompt": "`to_datetime()` pode ser entendido como converter “para data e hora”. Execute a atribuição para gravar o resultado convertido na própria coluna.",
+                      "language": "python",
+                      "code": "df[\"data_producao\"] = pd.to_datetime(df[\"data_producao\"])\ndf.dtypes",
+                      "after": "A conversão só fica registrada no `DataFrame` porque o resultado de `pd.to_datetime()` é atribuído de volta a `df[\"data_producao\"]`."
+                    },
+                    {
+                      "id": "card-a04-05-gap-to-datetime",
+                      "position": 2,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "gap",
+                      "title": "Completar a conversão",
+                      "prompt": "Complete a função e o nome da coluna no ponto exato da sintaxe.",
+                      "language": "python",
+                      "code": "df[\"[[data_producao::data_producao|data|produto]]\"] = pd.[[to_datetime::to_datetime|datetime|read_excel]](df[\"[[data_producao::data_producao|data|produto]]\"])\ndf.dtypes",
+                      "after": "A coluna deve ser selecionada com aspas dentro de `df[...]`, e a função correta é `pd.to_datetime()`."
+                    },
+                    {
+                      "id": "card-a04-05-escolher-conversao-correta",
+                      "position": 3,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Escolher a versão correta",
+                      "prompt": "Compare as versões completas.",
+                      "language": "python",
+                      "code": "# Escolha a conversão que altera a coluna no DataFrame.",
+                      "after": "A alternativa correta seleciona a coluna por nome, usa `pd.to_datetime()` e atribui o retorno à própria coluna.",
+                      "question": "Qual código converte `data_producao` e guarda o resultado?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "df[\"data_producao\"] = pd.to_datetime(df[\"data_producao\"])\ndf.dtypes"
+                        },
+                        {
+                          "id": "b",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "pd.to_datetime(df[\"data_producao\"])\ndf.dtypes"
+                        },
+                        {
+                          "id": "c",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "df[data_producao] = pd.to_datetime(df[data_producao])\ndf.dtypes"
+                        },
+                        {
+                          "id": "d",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "df[\"produto\"] = pd.datetime(df[\"produto\"])\ndf.dtypes"
+                        }
+                      ],
+                      "answer": "a",
+                      "afterBlocks": [
+                        {
+                          "kind": "code",
+                          "prompt": "Veja a versão corrigida.",
+                          "language": "python",
+                          "code": "df[\"data_producao\"] = pd.to_datetime(df[\"data_producao\"])\ndf.dtypes"
+                        }
+                      ]
+                    },
+                    {
+                      "id": "card-a04-05-por-que-converter",
+                      "position": 4,
+                      "resource": "choice",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Por que converter data",
+                      "question": "Por que é útil converter `data_producao` para tipo temporal?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "text",
+                          "text": "Porque filtros e análises por data passam a usar um tipo próprio do Pandas."
+                        },
+                        {
+                          "id": "b",
+                          "kind": "text",
+                          "text": "Porque todo texto do dataset vira número contínuo."
+                        },
+                        {
+                          "id": "c",
+                          "kind": "text",
+                          "text": "Porque `head()` passa a ler o arquivo novamente."
+                        },
+                        {
+                          "id": "d",
+                          "kind": "text",
+                          "text": "Porque `falha` deixa de ser binária."
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "Datas em tipo temporal ficam mais adequadas para comparação, ordenação e interpretação temporal."
+                    },
+                    {
+                      "id": "card-a04-05-checar-dtypes",
+                      "position": 5,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "gap",
+                      "title": "Checar o resultado técnico",
+                      "prompt": "Complete a propriedade que permite verificar se a coluna passou a aparecer como tipo temporal.",
+                      "language": "python",
+                      "code": "df[\"data_producao\"] = pd.to_datetime(df[\"data_producao\"])\ndf.[[dtypes::dtypes|columns|shape]]",
+                      "after": "`df.dtypes` lista o tipo técnico das colunas. Depois da conversão, `data_producao` deve aparecer como tipo de data, por exemplo `datetime64`."
+                    },
+                    {
+                      "id": "card-a04-05-gap-conversao-com-atribuicao",
+                      "position": 6,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "gap",
+                      "title": "Converter e manter o resultado",
+                      "prompt": "Complete a conversão da coluna de data e atribua o resultado de volta ao `DataFrame`.",
+                      "language": "python",
+                      "code": "coluna_data = [[\"data_producao\"::\"data_producao\"|\"temperatura_c\"|\"turno\"]]\ndf[coluna_data] = pd.[[to_datetime::to_datetime|datetime|read_excel]](df[coluna_data])\ndf.dtypes",
+                      "after": "A variável `coluna_data` guarda o nome da coluna. A conversão precisa ser atribuída de volta a `df[coluna_data]`; sem atribuição, o resultado pode ser calculado, mas a coluna original permanece sem alteração."
+                    },
+                    {
+                      "id": "card-a04-05-escolher-conversao-que-persiste",
+                      "position": 7,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Conversão que persiste",
+                      "prompt": "Compare versões completas.",
+                      "language": "python",
+                      "code": "# Objetivo: converter data_producao para tipo temporal no DataFrame",
+                      "question": "Qual versão realmente altera a coluna `data_producao` no `df`?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "df[\"data_producao\"] = pd.to_datetime(df[\"data_producao\"])\ndf.dtypes"
+                        },
+                        {
+                          "id": "b",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "pd.to_datetime(df[\"data_producao\"])\ndf.dtypes"
+                        },
+                        {
+                          "id": "c",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "df[\"data_producao\"] = pd.datetime(df[\"data_producao\"])\ndf.dtypes"
+                        },
+                        {
+                          "id": "d",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "df[data_producao] = pd.to_datetime(df[data_producao])\ndf.dtypes"
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "A função correta é `pd.to_datetime()` e o retorno precisa voltar para a coluna. As aspas preservam o nome literal da coluna."
+                    },
+                    {
+                      "id": "card-a04-05-por-que-converter-data",
+                      "position": 8,
+                      "resource": "choice",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Uso analítico da data",
+                      "question": "Qual é uma razão prática para converter `data_producao` com `pd.to_datetime()`?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "text",
+                          "text": "Permitir filtros e operações temporais mais confiáveis sobre a coluna de data."
+                        },
+                        {
+                          "id": "b",
+                          "kind": "text",
+                          "text": "Transformar automaticamente todas as colunas categóricas em números."
+                        },
+                        {
+                          "id": "c",
+                          "kind": "text",
+                          "text": "Somar `id_registro` com `produto` sem erro."
+                        },
+                        {
+                          "id": "d",
+                          "kind": "text",
+                          "text": "Fazer `head()` ler novamente o arquivo Excel."
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "`to_datetime()` pode ser entendido como converter para data e hora. Isso evita tratar datas como texto comum quando a pergunta é temporal."
+                    }
+                  ],
+                  "validation": {
+                    "ok": true,
+                    "issues": []
+                  }
+                }
+              ],
+              "activeVersion": "version-a04-003-corrigido-auditoria"
+            },
+            {
+              "id": "micro-a04-06-relacionar-colunas-a-uso-pratico",
+              "title": "Relacionar coluna, tipo e pergunta de negócio",
+              "goal": "Conectar tipos de dados a perguntas reais de produção.",
+              "role": "review",
+              "status": "generated",
+              "dependsOn": [
+                "micro-a04-05-converter-data"
+              ],
+              "covers": [
+                "`quantidade_produzida`",
+                "`temperatura_c`",
+                "`tempo_ciclo_s`",
+                "`consumo_energia_kwh`",
+                "`status_maquina`",
+                "`falha`",
+                "uso prático de cada coluna"
+              ],
+              "checks": [
+                "Associa `quantidade_produzida` a produção.",
+                "Associa `temperatura_c` a monitoramento do processo.",
+                "Associa `falha` a evento binário de interesse.",
+                "Escolhe métrica adequada conforme tipo."
+              ],
+              "errors": [
+                "calcular média de `status_maquina`",
+                "interpretar `operador` como número",
+                "usar `falha` sem explicar `1` e `0`"
+              ],
+              "versions": [
+                {
+                  "id": "version-a04-002-revisado",
+                  "createdAt": "2026-06-23T19:28:39.749Z",
+                  "source": "llm",
+                  "action": "improve",
+                  "request": "Foco didático da microssequência: Conectar tipos de dados a perguntas reais de produção.",
+                  "summary": "Versão centrada em Relacionar coluna, tipo e pergunta de negócio.",
+                  "cards": [
+                    {
+                      "id": "card-a04-06-coluna-uso-pratico",
+                      "position": 1,
+                      "resource": "table",
+                      "kind": "theory",
+                      "exercise": "none",
+                      "title": "Coluna, tipo e pergunta de produção",
+                      "columns": [
+                        "Coluna",
+                        "Tipo didático",
+                        "Pergunta prática adequada"
+                      ],
+                      "rows": [
+                        [
+                          "`quantidade_produzida`",
+                          "numérico discreto",
+                          "Qual foi a produção média ou máxima?"
+                        ],
+                        [
+                          "`temperatura_c`",
+                          "numérico contínuo",
+                          "Qual temperatura foi registrada no processo?"
+                        ],
+                        [
+                          "`tempo_ciclo_s`",
+                          "numérico contínuo",
+                          "O ciclo está demorando mais em algum grupo?"
+                        ],
+                        [
+                          "`consumo_energia_kwh`",
+                          "numérico contínuo",
+                          "Qual é o consumo médio de energia?"
+                        ],
+                        [
+                          "`status_maquina`",
+                          "categórico",
+                          "Quantos registros estão em cada estado?"
+                        ],
+                        [
+                          "`falha`",
+                          "binário",
+                          "Quantos registros têm falha marcada como `1`?"
+                        ]
+                      ],
+                      "after": "A escolha da métrica depende do tipo analítico: média faz sentido para medidas; contagem por valor faz sentido para categorias e binários."
+                    },
+                    {
+                      "id": "card-a04-06-mapa-colunas-usos",
+                      "position": 2,
+                      "resource": "relation_map",
+                      "kind": "theory",
+                      "exercise": "none",
+                      "title": "Ligar coluna a uso analítico",
+                      "leftSet": {
+                        "label": "Coluna",
+                        "items": [
+                          {
+                            "id": "qtd",
+                            "label": "quantidade_produzida"
+                          },
+                          {
+                            "id": "temp",
+                            "label": "temperatura_c"
+                          },
+                          {
+                            "id": "status",
+                            "label": "status_maquina"
+                          },
+                          {
+                            "id": "falha",
+                            "label": "falha"
+                          }
+                        ]
+                      },
+                      "rightSet": {
+                        "label": "Uso analítico",
+                        "items": [
+                          {
+                            "id": "media",
+                            "label": "média de produção"
+                          },
+                          {
+                            "id": "monitor",
+                            "label": "monitoramento do processo"
+                          },
+                          {
+                            "id": "contagem",
+                            "label": "contagem por estado"
+                          },
+                          {
+                            "id": "evento",
+                            "label": "evento binário"
+                          }
+                        ]
+                      },
+                      "relations": [
+                        {
+                          "from": "qtd",
+                          "to": "media"
+                        },
+                        {
+                          "from": "temp",
+                          "to": "monitor"
+                        },
+                        {
+                          "from": "status",
+                          "to": "contagem"
+                        },
+                        {
+                          "from": "falha",
+                          "to": "evento"
+                        }
+                      ],
+                      "after": "O mapa separa colunas de perguntas. Isso ajuda a evitar aplicar uma métrica numérica a uma coluna categórica.",
+                      "prompt": "Observe as ligações entre campos da planilha e usos de análise."
+                    },
+                    {
+                      "id": "card-a04-06-falha-evento",
+                      "position": 3,
+                      "resource": "paragraph",
+                      "kind": "exercise",
+                      "exercise": "gap",
+                      "title": "`falha` como evento de interesse",
+                      "text": "Ao interpretar `falha`, use a convenção: `1` indica [[presença de falha::presença de falha|quantidade produzida|operador mais frequente]] e `0` indica ausência.",
+                      "after": "O valor binário precisa de significado explícito; sem essa convenção, uma contagem de `1` pode ser interpretada de forma errada."
+                    },
+                    {
+                      "id": "card-a04-06-metrica-inadequada",
+                      "position": 4,
+                      "resource": "choice",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Métrica adequada ao tipo",
+                      "question": "Qual operação é a menos adequada como interpretação principal?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "text",
+                          "text": "Calcular média de `status_maquina`."
+                        },
+                        {
+                          "id": "b",
+                          "kind": "text",
+                          "text": "Calcular média de `quantidade_produzida`."
+                        },
+                        {
+                          "id": "c",
+                          "kind": "text",
+                          "text": "Contar valores de `falha`."
+                        },
+                        {
+                          "id": "d",
+                          "kind": "text",
+                          "text": "Agrupar por `operador` e calcular média de `quantidade_produzida`."
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "`status_maquina` é categoria. A operação mais natural é contagem por estado, não média."
+                    },
+                    {
+                      "id": "card-a04-06-escolher-pergunta",
+                      "position": 5,
+                      "resource": "choice",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Pergunta orientada por coluna",
+                      "question": "Para responder “qual produto aparece mais vezes?”, qual coluna e método são mais coerentes?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "text",
+                          "text": "`df[\"produto\"].value_counts()`"
+                        },
+                        {
+                          "id": "b",
+                          "kind": "text",
+                          "text": "`df[\"produto\"].mean()`"
+                        },
+                        {
+                          "id": "c",
+                          "kind": "text",
+                          "text": "`df[\"temperatura_c\"].mode()[0]`"
+                        },
+                        {
+                          "id": "d",
+                          "kind": "text",
+                          "text": "`df[\"id_registro\"].std()`"
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "`produto` é categórico; `value_counts()` conta quantas vezes cada categoria aparece."
+                    },
+                    {
+                      "id": "card-a04-06-escolher-metrica-por-pergunta",
+                      "position": 6,
+                      "resource": "choice",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Pergunta de negócio e métrica",
+                      "question": "A pergunta é: “qual linha de produção tem maior média de quantidade produzida?”. Qual combinação faz sentido?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "text",
+                          "text": "Agrupar por `linha_producao` e calcular `mean()` de `quantidade_produzida`."
+                        },
+                        {
+                          "id": "b",
+                          "kind": "text",
+                          "text": "Calcular `mean()` de `status_maquina` sem agrupar."
+                        },
+                        {
+                          "id": "c",
+                          "kind": "text",
+                          "text": "Agrupar por `quantidade_produzida` e calcular média de `linha_producao`."
+                        },
+                        {
+                          "id": "d",
+                          "kind": "text",
+                          "text": "Usar `id_registro` como métrica principal de produção."
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "A coluna de grupo é categórica (`linha_producao`) e a medida é numérica (`quantidade_produzida`). Trocar essas funções muda o sentido da análise."
+                    },
+                    {
+                      "id": "card-a04-06-mapa-coluna-pergunta",
+                      "position": 7,
+                      "resource": "relation_map",
+                      "kind": "theory",
+                      "exercise": "none",
+                      "title": "Colunas ligadas a perguntas de produção",
+                      "leftSet": {
+                        "label": "Coluna",
+                        "items": [
+                          {
+                            "id": "l1",
+                            "label": "`temperatura_c`"
+                          },
+                          {
+                            "id": "l2",
+                            "label": "`tempo_ciclo_s`"
+                          },
+                          {
+                            "id": "l3",
+                            "label": "`status_maquina`"
+                          },
+                          {
+                            "id": "l4",
+                            "label": "`falha`"
+                          }
+                        ]
+                      },
+                      "rightSet": {
+                        "label": "Uso analítico",
+                        "items": [
+                          {
+                            "id": "r1",
+                            "label": "monitorar condição do processo"
+                          },
+                          {
+                            "id": "r2",
+                            "label": "avaliar duração do ciclo"
+                          },
+                          {
+                            "id": "r3",
+                            "label": "contar categorias de estado"
+                          },
+                          {
+                            "id": "r4",
+                            "label": "filtrar eventos de falha"
+                          }
+                        ]
+                      },
+                      "relations": [
+                        {
+                          "from": "l1",
+                          "to": "r1"
+                        },
+                        {
+                          "from": "l2",
+                          "to": "r2"
+                        },
+                        {
+                          "from": "l3",
+                          "to": "r3"
+                        },
+                        {
+                          "from": "l4",
+                          "to": "r4"
+                        }
+                      ],
+                      "after": "O mapa separa campos e usos. Uma boa análise começa escolhendo a coluna que responde à pergunta, não o método mais conhecido.",
+                      "prompt": "Observe como cada coluna sugere um tipo de pergunta analítica."
+                    }
+                  ],
+                  "validation": {
+                    "ok": true,
+                    "issues": []
+                  }
+                }
+              ],
+              "activeVersion": "version-a04-002-revisado"
+            },
+            {
+              "id": "micro-a04-07-filtros-booleanos",
+              "title": "Filtrar linhas por condição",
+              "goal": "Construir filtros simples e compostos no `DataFrame`.",
+              "role": "practice",
+              "status": "generated",
+              "dependsOn": [
+                "micro-a04-06-relacionar-colunas-a-uso-pratico"
+              ],
+              "covers": [
+                "`df[\"status_maquina\"] == \"OK\"`",
+                "`df[\"linha_producao\"] == \"L1\"`",
+                "`df[\"falha\"] == 1`",
+                "combinação com `&`",
+                "parênteses obrigatórios em filtros compostos",
+                "`df[condicao]`"
+              ],
+              "checks": [
+                "Completa filtro de status `OK`.",
+                "Completa filtro de linha `L1`.",
+                "Usa parênteses ao combinar condições.",
+                "Entende que o resultado são linhas que satisfazem a condição."
+              ],
+              "errors": [
+                "usar `=` em vez de `==`",
+                "esquecer aspas em `\"OK\"` ou `\"L1\"`",
+                "esquecer parênteses ao usar `&`",
+                "usar `and` em vez de `&`",
+                "comparar a tabela inteira com uma string"
+              ],
+              "versions": [
+                {
+                  "id": "version-a04-004-corrigido-verificacao",
+                  "createdAt": "2026-06-23T19:44:40.113068Z",
+                  "source": "llm",
+                  "action": "repair",
+                  "request": "Foco didático da microssequência: Construir filtros simples e compostos no `DataFrame`.",
+                  "summary": "Versão centrada em Filtrar linhas por condição.",
+                  "cards": [
+                    {
+                      "id": "card-a04-07-fluxo-filtro",
+                      "position": 1,
+                      "resource": "flow",
+                      "kind": "theory",
+                      "exercise": "none",
+                      "title": "Como nasce um filtro booleano",
+                      "prompt": "O filtro cria uma sequência de valores verdadeiro/falso e usa isso para manter apenas algumas linhas.",
+                      "structure": {
+                        "kind": "sequence",
+                        "items": [
+                          {
+                            "kind": "start",
+                            "text": "Definir a pergunta do filtro"
+                          },
+                          {
+                            "kind": "process",
+                            "text": "Escolher a coluna, como `status_maquina`"
+                          },
+                          {
+                            "kind": "process",
+                            "text": "Comparar com `==`, `>`, `<`, `>=` ou `<=`"
+                          },
+                          {
+                            "kind": "process",
+                            "text": "Combinar condições com `&` usando parênteses"
+                          },
+                          {
+                            "kind": "output",
+                            "text": "Aplicar a condição em `df[condicao]`"
+                          },
+                          {
+                            "kind": "end",
+                            "text": "Interpretar as linhas retornadas"
+                          }
+                        ]
+                      },
+                      "after": "Cada comparação produz uma `Series` booleana. Ao colocar essa condição dentro de `df[...]`, o Pandas devolve somente as linhas em que a condição é verdadeira."
+                    },
+                    {
+                      "id": "card-a04-07-filtro-status-ok",
+                      "position": 2,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "gap",
+                      "title": "Filtrar máquinas em estado `OK`",
+                      "prompt": "Complete o operador de comparação e o valor textual.",
+                      "language": "python",
+                      "code": "df[df[\"status_maquina\"] [[==::==|=|>=]] \"[[OK::OK|L1|falha]]\"]",
+                      "after": "Use `==` para comparar. O texto `OK` precisa de aspas porque é um literal textual."
+                    },
+                    {
+                      "id": "card-a04-07-filtro-composto",
+                      "position": 3,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "gap",
+                      "title": "Combinar `status_maquina` e `linha_producao`",
+                      "prompt": "Complete o filtro composto com parênteses em cada comparação.",
+                      "language": "python",
+                      "code": "df[(df[\"status_maquina\"] == \"OK\") [[&::&|and|+]] (df[\"linha_producao\"] == \"[[L1::L1|OK|OP_01]]\")]",
+                      "after": "Em Pandas, condições sobre colunas são combinadas com `&`. Os parênteses não são decoração: eles delimitam cada comparação antes da combinação."
+                    },
+                    {
+                      "id": "card-a04-07-escolher-filtro-correto",
+                      "position": 4,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Escolher filtro composto correto",
+                      "prompt": "Compare as versões completas.",
+                      "language": "python",
+                      "code": "# Escolha o filtro que retorna registros `OK` da linha `L1`.",
+                      "after": "A versão correta compara cada coluna separadamente, usa aspas nos textos e combina as condições com `&` entre parênteses.",
+                      "question": "Qual versão usa sintaxe correta para duas condições?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "df[(df[\"status_maquina\"] == \"OK\") & (df[\"linha_producao\"] == \"L1\")]"
+                        },
+                        {
+                          "id": "b",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "df[df[\"status_maquina\"] = \"OK\" & df[\"linha_producao\"] = \"L1\"]"
+                        },
+                        {
+                          "id": "c",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "df[df[\"status_maquina\"] == OK and df[\"linha_producao\"] == L1]"
+                        },
+                        {
+                          "id": "d",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "df[\"status_maquina\" == \"OK\" & \"linha_producao\" == \"L1\"]"
+                        }
+                      ],
+                      "answer": "a",
+                      "afterBlocks": [
+                        {
+                          "kind": "code",
+                          "prompt": "Veja a versão corrigida.",
+                          "language": "python",
+                          "code": "df[(df[\"status_maquina\"] == \"OK\") & (df[\"linha_producao\"] == \"L1\")]"
+                        }
+                      ]
+                    },
+                    {
+                      "id": "card-a04-07-parenteses",
+                      "position": 5,
+                      "resource": "choice",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Por que usar parênteses",
+                      "question": "Qual afirmação explica o uso dos parênteses em filtros compostos?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "text",
+                          "text": "Eles delimitam cada comparação antes de combinar os resultados booleanos com `&`."
+                        },
+                        {
+                          "id": "b",
+                          "kind": "text",
+                          "text": "Eles servem apenas para deixar o código visualmente mais bonito."
+                        },
+                        {
+                          "id": "c",
+                          "kind": "text",
+                          "text": "Eles transformam `status_maquina` em número."
+                        },
+                        {
+                          "id": "d",
+                          "kind": "text",
+                          "text": "Eles substituem as aspas em textos como `OK` e `L1`."
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "Sem os parênteses, a precedência dos operadores pode fazer o Pandas interpretar a expressão de modo incorreto."
+                    },
+                    {
+                      "id": "card-a04-07-comparacao-nao-atribuicao",
+                      "position": 6,
+                      "resource": "paragraph",
+                      "kind": "exercise",
+                      "exercise": "gap",
+                      "title": "`=` e `==`",
+                      "text": "Dentro de um filtro, o operador correto para testar igualdade é [[==::==|=|:]]. O operador `=` é usado em atribuições, como `arquivo_limpo = \"dataset_producao_limpo.xlsx\"`.",
+                      "after": "A comparação devolve verdadeiro ou falso para cada linha; a atribuição guarda um valor em uma variável."
+                    },
+                    {
+                      "id": "card-a04-07-gap-status-ok-extra",
+                      "position": 7,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "gap",
+                      "title": "Filtro simples por status",
+                      "prompt": "Complete a condição que mantém apenas registros com máquina em `OK`.",
+                      "language": "python",
+                      "code": "condicao_ok = df[\"status_maquina\"] [[==::==|=|!=]] \"OK\"\ndf_ok = df[condicao_ok]",
+                      "after": "`==` compara valores. O operador `=` faria atribuição e não cria a `Series` booleana necessária para filtrar linhas."
+                    },
+                    {
+                      "id": "card-a04-07-gap-producao-minima",
+                      "position": 8,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "gap",
+                      "title": "Filtro numérico",
+                      "prompt": "Complete o filtro para manter registros com produção maior ou igual a `100`.",
+                      "language": "python",
+                      "code": "alta_producao = df[df[\"quantidade_produzida\"] [[>=::>=|=>|==]] 100]",
+                      "after": "Filtros numéricos usam comparadores como `>=`. A coluna precisa ser selecionada antes da comparação."
+                    },
+                    {
+                      "id": "card-a04-07-escolher-filtro-composto-parenteses",
+                      "position": 9,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Filtro composto com duas condições",
+                      "prompt": "Compare versões completas.",
+                      "language": "python",
+                      "code": "# Objetivo: selecionar registros da linha L1 com falha",
+                      "question": "Qual versão combina as duas condições de forma correta no Pandas?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "df[(df[\"linha_producao\"] == \"L1\") & (df[\"falha\"] == 1)]"
+                        },
+                        {
+                          "id": "b",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "df[df[\"linha_producao\"] == \"L1\" & df[\"falha\"] == 1]"
+                        },
+                        {
+                          "id": "c",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "df[(df[\"linha_producao\"] = \"L1\") & (df[\"falha\"] = 1)]"
+                        },
+                        {
+                          "id": "d",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "df[(df[\"linha_producao\"] == L1) and (df[\"falha\"] == 1)]"
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "Os parênteses delimitam cada comparação antes de combinar com `&`. Em Pandas, use `&` para combinar `Series` booleanas."
+                    },
+                    {
+                      "id": "card-a04-07-usar-loc-com-colunas",
+                      "position": 10,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Filtrar linhas e escolher colunas",
+                      "prompt": "Compare versões completas.",
+                      "language": "python",
+                      "code": "# Objetivo: ver apenas data, linha e quantidade dos registros com falha",
+                      "question": "Qual versão usa `loc` para localizar linhas por condição e escolher colunas por rótulo?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "df.loc[df[\"falha\"] == 1, [\"data_producao\", \"linha_producao\", \"quantidade_produzida\"]]"
+                        },
+                        {
+                          "id": "b",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "df.loc[[\"falha\"] == 1, \"data_producao\", \"linha_producao\"]"
+                        },
+                        {
+                          "id": "c",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "df[df.loc(\"falha\") == 1, [\"data_producao\", \"linha_producao\"]]"
+                        },
+                        {
+                          "id": "d",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "df.loc[df[\"falha\"] = 1, [\"data_producao\", \"linha_producao\", \"quantidade_produzida\"]]"
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "`loc` localiza por rótulo: antes da vírgula vai a condição de linhas; depois da vírgula vai a lista de colunas desejadas."
+                    },
+                    {
+                      "id": "card-a04-07-mini-tabela-filtrar-logica",
+                      "position": 11,
+                      "resource": "composite",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Prever linhas retornadas",
+                      "blocks": [
+                        {
+                          "columns": [
+                            "`id_registro`",
+                            "`linha_producao`",
+                            "`status_maquina`",
+                            "`falha`"
+                          ],
+                          "rows": [
+                            [
+                              "`1`",
+                              "`L1`",
+                              "`OK`",
+                              "`0`"
+                            ],
+                            [
+                              "`2`",
+                              "`L1`",
+                              "`ALERTA`",
+                              "`1`"
+                            ],
+                            [
+                              "`3`",
+                              "`L2`",
+                              "`OK`",
+                              "`1`"
+                            ],
+                            [
+                              "`4`",
+                              "`L1`",
+                              "`OK`",
+                              "`1`"
+                            ]
+                          ],
+                          "kind": "table"
+                        },
+                        {
+                          "language": "python",
+                          "code": "df[(df[\"linha_producao\"] == \"L1\") & (df[\"falha\"] == 1)]",
+                          "kind": "code",
+                          "prompt": "Observe o trecho antes de responder."
+                        },
+                        {
+                          "kind": "choice",
+                          "question": "Quais registros seriam mantidos pelo filtro?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "kind": "text",
+                              "text": "`id_registro` `2` e `4`, porque ambos são da `L1` e têm `falha == 1`."
+                            },
+                            {
+                              "id": "b",
+                              "kind": "text",
+                              "text": "`id_registro` `1` e `4`, porque ambos têm `status_maquina == \"OK\"`."
+                            },
+                            {
+                              "id": "c",
+                              "kind": "text",
+                              "text": "Apenas `id_registro` `3`, porque tem `falha == 1`."
+                            },
+                            {
+                              "id": "d",
+                              "kind": "text",
+                              "text": "Todos os registros da tabela, porque `&` não altera o resultado."
+                            }
+                          ],
+                          "answer": "a"
+                        }
+                      ],
+                      "after": "O filtro exige que as duas comparações sejam verdadeiras ao mesmo tempo. O status não faz parte dessa condição."
+                    },
+                    {
+                      "id": "card-a04-07-and-versus-e-comercial",
+                      "position": 12,
+                      "resource": "choice",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "`and` não combina `Series` Pandas",
+                      "question": "Por que `df[(condicao1) and (condicao2)]` não é a forma adequada para filtros Pandas?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "text",
+                          "text": "Porque `and` tenta avaliar um único verdadeiro/falso; `&` combina os valores booleanos linha a linha."
+                        },
+                        {
+                          "id": "b",
+                          "kind": "text",
+                          "text": "Porque `and` só funciona com arquivos Excel e `&` só funciona com CSV."
+                        },
+                        {
+                          "id": "c",
+                          "kind": "text",
+                          "text": "Porque `and` transforma automaticamente a coluna em texto."
+                        },
+                        {
+                          "id": "d",
+                          "kind": "text",
+                          "text": "Porque `&` elimina a necessidade de parênteses."
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "Cada condição Pandas produz uma `Series` booleana. O operador `&` combina essas séries linha a linha, com parênteses em cada comparação."
+                    },
+                    {
+                      "id": "card-a04-07-gap-tres-condicoes",
+                      "position": 13,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "gap",
+                      "title": "Três condições no mesmo filtro",
+                      "prompt": "Complete o filtro para registros `OK`, da linha `L1`, com falha.",
+                      "language": "python",
+                      "code": "criticos_l1 = df[(df[\"status_maquina\"] == \"OK\") [[&::&|and|+]] (df[\"linha_producao\"] == \"L1\") & (df[\"falha\"] == 1)]",
+                      "after": "Com três condições, a regra permanece: cada comparação fica entre parênteses e as condições são combinadas com `&`."
+                    }
+                  ],
+                  "validation": {
+                    "ok": true,
+                    "issues": []
+                  }
+                }
+              ],
+              "activeVersion": "version-a04-004-corrigido-verificacao"
+            },
+            {
+              "id": "micro-a04-08-estatisticas-series",
+              "title": "Estatísticas básicas em colunas",
+              "goal": "Calcular e interpretar estatísticas simples em uma coluna/`Series`.",
+              "role": "practice",
+              "status": "generated",
+              "dependsOn": [
+                "micro-a04-07-filtros-booleanos"
+              ],
+              "covers": [
+                "seleção de coluna `df[\"quantidade_produzida\"]`",
+                "`mean()`",
+                "`mode()`",
+                "`std()`",
+                "`max()`",
+                "`value_counts()`",
+                "`describe()`",
+                "`print()` com resultado"
+              ],
+              "checks": [
+                "Completa `df[\"quantidade_produzida\"].mean()`.",
+                "Completa `df[\"operador\"].mode()[0]`.",
+                "Completa `std()`, `max()` e `value_counts()`.",
+                "Interpreta que `describe()` resume uma coluna numérica."
+              ],
+              "errors": [
+                "esquecer parênteses de método",
+                "aplicar `mean()` diretamente em coluna categórica",
+                "esquecer `[0]` ao extrair a moda",
+                "confundir `std()` com média",
+                "usar `value_counts` sem parênteses"
+              ],
+              "versions": [
+                {
+                  "id": "version-a04-004-corrigido-verificacao",
+                  "createdAt": "2026-06-23T19:44:40.113068Z",
+                  "source": "llm",
+                  "action": "repair",
+                  "request": "Foco didático da microssequência: Calcular e interpretar estatísticas simples em uma coluna/`Series`.",
+                  "summary": "Versão centrada em Estatísticas básicas em colunas.",
+                  "cards": [
+                    {
+                      "id": "card-a04-08-metodos-estatisticos",
+                      "position": 1,
+                      "resource": "table",
+                      "kind": "theory",
+                      "exercise": "none",
+                      "title": "Métodos e perguntas respondidas",
+                      "columns": [
+                        "Método",
+                        "Ponte lexical",
+                        "Coluna típica",
+                        "Pergunta respondida"
+                      ],
+                      "rows": [
+                        [
+                          "`mean()`",
+                          "média",
+                          "`quantidade_produzida`",
+                          "Qual é o valor médio?"
+                        ],
+                        [
+                          "`mode()`",
+                          "moda",
+                          "`operador`",
+                          "Qual valor aparece com mais frequência?"
+                        ],
+                        [
+                          "`std()`",
+                          "`standard deviation`: desvio padrão",
+                          "`quantidade_produzida`",
+                          "Quanto os valores variam em torno da média?"
+                        ],
+                        [
+                          "`max()`",
+                          "máximo",
+                          "`temperatura_c`",
+                          "Qual é o maior valor?"
+                        ],
+                        [
+                          "`value_counts()`",
+                          "contar valores",
+                          "`falha`",
+                          "Quantas ocorrências há por categoria ou valor?"
+                        ],
+                        [
+                          "`describe()`",
+                          "descrever resumidamente",
+                          "`quantidade_produzida`",
+                          "Quais estatísticas resumem a coluna?"
+                        ]
+                      ],
+                      "after": "A forma geral é selecionar uma coluna, como `df[\"quantidade_produzida\"]`, e aplicar o método adequado para a pergunta."
+                    },
+                    {
+                      "id": "card-a04-08-media-producao",
+                      "position": 2,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "gap",
+                      "title": "Média de produção",
+                      "prompt": "Complete o método que calcula a média da coluna numérica.",
+                      "language": "python",
+                      "code": "print(\"A média de produção é\", df[\"quantidade_produzida\"].[[mean::mean|mode|value_counts]]())",
+                      "after": "`mean()` soma os valores da coluna e divide pela quantidade de registros válidos."
+                    },
+                    {
+                      "id": "card-a04-08-moda-operador",
+                      "position": 3,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "gap",
+                      "title": "Operador mais frequente",
+                      "prompt": "Complete o método e o índice para extrair o primeiro valor da moda.",
+                      "language": "python",
+                      "code": "moda_operador = df[\"operador\"].[[mode::mode|mean|std]]()\nposicao = [[0::0|1|-1]]\nprint(f\"Operador mais frequente: {moda_operador[posicao]}\")",
+                      "after": "`mode()` devolve uma sequência de valores mais frequentes. A posição `0` pega o primeiro resultado dessa sequência."
+                    },
+                    {
+                      "id": "card-a04-08-variacao-maximo-contagem",
+                      "position": 4,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "gap",
+                      "title": "Variação, máximo e contagem",
+                      "prompt": "Complete cada método de acordo com a pergunta.",
+                      "language": "python",
+                      "code": "variacao = df[\"quantidade_produzida\"].[[std::std|mean|max]]()\ntemperatura_maxima = df[\"temperatura_c\"].[[max::max|mode|tolist]]()\ncontagem_falhas = df[\"falha\"].[[value_counts::value_counts|describe|shape]]()",
+                      "after": "`std()` mede variação, `max()` retorna o maior valor e `value_counts()` conta quantas vezes cada valor de `falha` aparece."
+                    },
+                    {
+                      "id": "card-a04-08-describe-interpretacao",
+                      "position": 5,
+                      "resource": "composite",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "`describe()` como resumo numérico",
+                      "blocks": [
+                        {
+                          "kind": "code",
+                          "language": "python",
+                          "code": "df[\"quantidade_produzida\"].describe()",
+                          "prompt": "Observe o trecho antes de responder."
+                        },
+                        {
+                          "kind": "table",
+                          "columns": [
+                            "Item do resumo",
+                            "Sentido"
+                          ],
+                          "rows": [
+                            [
+                              "`count`",
+                              "quantidade de valores considerados"
+                            ],
+                            [
+                              "`mean`",
+                              "média"
+                            ],
+                            [
+                              "`std`",
+                              "desvio padrão"
+                            ],
+                            [
+                              "`min` e `max`",
+                              "menor e maior valor"
+                            ]
+                          ]
+                        },
+                        {
+                          "kind": "choice",
+                          "question": "Qual interpretação está correta?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "kind": "text",
+                              "text": "`describe()` resume estatísticas de uma coluna numérica, sem substituir a interpretação do contexto."
+                            },
+                            {
+                              "id": "b",
+                              "kind": "text",
+                              "text": "`describe()` transforma `operador` em número contínuo."
+                            },
+                            {
+                              "id": "c",
+                              "kind": "text",
+                              "text": "`describe()` abre o arquivo Excel novamente."
+                            },
+                            {
+                              "id": "d",
+                              "kind": "text",
+                              "text": "`describe()` remove automaticamente linhas duplicadas."
+                            }
+                          ],
+                          "answer": "a"
+                        }
+                      ],
+                      "after": "O resumo ajuda a enxergar distribuição e extremos, mas a conclusão precisa considerar o significado da coluna."
+                    },
+                    {
+                      "id": "card-a04-08-metodo-para-categoria",
+                      "position": 6,
+                      "resource": "choice",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Método para coluna categórica",
+                      "question": "Para contar quantos registros existem por `status_maquina`, qual chamada é mais adequada?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "text",
+                          "text": "`df[\"status_maquina\"].value_counts()`"
+                        },
+                        {
+                          "id": "b",
+                          "kind": "text",
+                          "text": "`df[\"status_maquina\"].mean()`"
+                        },
+                        {
+                          "id": "c",
+                          "kind": "text",
+                          "text": "`df[\"status_maquina\"].std()`"
+                        },
+                        {
+                          "id": "d",
+                          "kind": "text",
+                          "text": "`df[\"status_maquina\"].max() + df.shape`"
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "`status_maquina` é categórica. A pergunta natural é contar ocorrências por estado."
+                    },
+                    {
+                      "id": "card-a04-08-media-em-subconjunto",
+                      "position": 7,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "gap",
+                      "title": "Média depois de filtrar",
+                      "prompt": "Complete o cálculo da média de produção apenas nos registros com `status_maquina == \"OK\"`.",
+                      "language": "python",
+                      "code": "df_ok = df[df[\"status_maquina\"] == \"OK\"]\nmedia_ok = df_ok[\"quantidade_produzida\"].[[mean::mean|mode|value_counts]]()\nprint(media_ok)",
+                      "after": "A média é calculada sobre a `Series` selecionada depois do filtro. Isso responde a uma pergunta mais específica do que a média geral."
+                    },
+                    {
+                      "id": "card-a04-08-moda-com-primeiro-valor",
+                      "position": 8,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "gap",
+                      "title": "Moda e primeiro valor",
+                      "prompt": "Complete o código para exibir o operador mais frequente.",
+                      "language": "python",
+                      "code": "indice_primeiro = [[0::0|1|\"operador\"]]\noperador_mais_frequente = df[\"operador\"].mode()[indice_primeiro]\nprint(operador_mais_frequente)",
+                      "after": "`mode()` devolve uma sequência de valores mais frequentes. O índice `0` pega o primeiro resultado para exibir diretamente, e guardar esse índice em `indice_primeiro` evita colar a lacuna aos colchetes da seleção."
+                    },
+                    {
+                      "id": "card-a04-08-metodo-para-contar-falhas",
+                      "position": 9,
+                      "resource": "choice",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Contar valores de falha",
+                      "question": "Qual método responde melhor à pergunta “quantos registros têm `falha == 0` e quantos têm `falha == 1`?”",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "text",
+                          "text": "`df[\"falha\"].value_counts()`"
+                        },
+                        {
+                          "id": "b",
+                          "kind": "text",
+                          "text": "`df[\"falha\"].mean()`"
+                        },
+                        {
+                          "id": "c",
+                          "kind": "text",
+                          "text": "`df[\"falha\"].std()`"
+                        },
+                        {
+                          "id": "d",
+                          "kind": "text",
+                          "text": "`df[\"falha\"].head()`"
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "`value_counts()` conta ocorrências por valor. Para evento binário, ele mostra a frequência de ausência e presença de falha."
+                    },
+                    {
+                      "id": "card-a04-08-std-nao-e-media",
+                      "position": 10,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Escolher medida de variação",
+                      "prompt": "Compare versões completas.",
+                      "language": "python",
+                      "code": "# Objetivo: medir a variação da quantidade produzida",
+                      "question": "Qual versão calcula o desvio padrão de `quantidade_produzida`?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "variacao = df[\"quantidade_produzida\"].std()\nprint(variacao)"
+                        },
+                        {
+                          "id": "b",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "variacao = df[\"quantidade_produzida\"].mean()\nprint(variacao)"
+                        },
+                        {
+                          "id": "c",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "variacao = df[\"operador\"].std()\nprint(variacao)"
+                        },
+                        {
+                          "id": "d",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "variacao = df[\"quantidade_produzida\"].value_counts\nprint(variacao)"
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "`std()` abrevia `standard deviation`, desvio padrão. Ele mede dispersão; `mean()` mede média."
+                    },
+                    {
+                      "id": "card-a04-08-interpretar-describe",
+                      "position": 11,
+                      "resource": "composite",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Interpretar resumo numérico",
+                      "blocks": [
+                        {
+                          "language": "python",
+                          "code": "df[\"quantidade_produzida\"].describe()",
+                          "kind": "code",
+                          "prompt": "Observe o trecho antes de responder."
+                        },
+                        {
+                          "columns": [
+                            "estatística",
+                            "valor"
+                          ],
+                          "rows": [
+                            [
+                              "`count`",
+                              "`120`"
+                            ],
+                            [
+                              "`mean`",
+                              "`101.5`"
+                            ],
+                            [
+                              "`std`",
+                              "`8.2`"
+                            ],
+                            [
+                              "`min`",
+                              "`82`"
+                            ],
+                            [
+                              "`max`",
+                              "`123`"
+                            ]
+                          ],
+                          "kind": "table"
+                        },
+                        {
+                          "kind": "choice",
+                          "question": "Qual interpretação está de acordo com o resumo?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "kind": "text",
+                              "text": "Há `120` registros resumidos, média de `101.5` e maior valor igual a `123`."
+                            },
+                            {
+                              "id": "b",
+                              "kind": "text",
+                              "text": "`count` é a média e `mean` é a quantidade de linhas."
+                            },
+                            {
+                              "id": "c",
+                              "kind": "text",
+                              "text": "`std` indica o operador mais frequente."
+                            },
+                            {
+                              "id": "d",
+                              "kind": "text",
+                              "text": "`max` indica quantas vezes houve falha."
+                            }
+                          ],
+                          "answer": "a"
+                        }
+                      ],
+                      "after": "`describe()` reúne estatísticas de uma coluna numérica. A interpretação depende do rótulo de cada linha do resumo."
+                    },
+                    {
+                      "id": "card-a04-08-print-com-fstring",
+                      "position": 12,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "gap",
+                      "title": "Consumo médio de energia",
+                      "prompt": "Complete o método que calcula o consumo médio de energia a partir da coluna real do dataset.",
+                      "language": "python",
+                      "code": "print(\"Consumo médio de energia:\", df[\"consumo_energia_kwh\"].[[mean::mean|mode|value_counts]]())",
+                      "after": "`mean()` calcula a média de uma coluna numérica. `consumo_energia_kwh` é uma medida contínua de consumo, por isso a média responde à pergunta sobre consumo médio de energia."
+                    },
+                    {
+                      "id": "card-a04-08-escolher-estatistica-por-coluna",
+                      "position": 13,
+                      "resource": "composite",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Métrica compatível com a coluna",
+                      "blocks": [
+                        {
+                          "columns": [
+                            "Pergunta",
+                            "Coluna"
+                          ],
+                          "rows": [
+                            [
+                              "maior temperatura registrada",
+                              "`temperatura_c`"
+                            ],
+                            [
+                              "operador mais frequente",
+                              "`operador`"
+                            ],
+                            [
+                              "distribuição de falhas",
+                              "`falha`"
+                            ]
+                          ],
+                          "kind": "table"
+                        },
+                        {
+                          "kind": "choice",
+                          "question": "Qual sequência de métodos combina com as três perguntas, na ordem?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "kind": "text",
+                              "text": "`max()`, `mode()[0]`, `value_counts()`"
+                            },
+                            {
+                              "id": "b",
+                              "kind": "text",
+                              "text": "`mean()`, `std()`, `head()`"
+                            },
+                            {
+                              "id": "c",
+                              "kind": "text",
+                              "text": "`value_counts()`, `max()`, `tolist()`"
+                            },
+                            {
+                              "id": "d",
+                              "kind": "text",
+                              "text": "`shape`, `columns`, `dtypes`"
+                            }
+                          ],
+                          "answer": "a"
+                        }
+                      ],
+                      "after": "A pergunta orienta o método: maior valor pede `max()`, valor mais frequente pede `mode()[0]` e distribuição de categorias pede `value_counts()`."
+                    }
+                  ],
+                  "validation": {
+                    "ok": true,
+                    "issues": []
+                  }
+                }
+              ],
+              "activeVersion": "version-a04-004-corrigido-verificacao"
+            },
+            {
+              "id": "micro-a04-09-groupby-ordenacao",
+              "title": "Agrupar dados e ordenar resultados",
+              "goal": "Usar `groupby()` para comparar produção média por operador, linha ou produto.",
+              "role": "review",
+              "status": "generated",
+              "dependsOn": [
+                "micro-a04-08-estatisticas-series"
+              ],
+              "covers": [
+                "`df.groupby(\"operador\")[\"quantidade_produzida\"].mean()`",
+                "`sort_values(ascending=False)`",
+                "agregação por grupo",
+                "interpretação do maior valor"
+              ],
+              "checks": [
+                "Identifica coluna de agrupamento.",
+                "Identifica coluna numérica agregada.",
+                "Completa `mean()` e `sort_values(ascending=False)`.",
+                "Interpreta resultado como comparação entre grupos."
+              ],
+              "errors": [
+                "trocar agrupamento e coluna medida",
+                "usar `groupby()` sem agregação",
+                "ordenar crescente quando a pergunta pede maior",
+                "achar que `groupby` altera permanentemente o `DataFrame`"
+              ],
+              "versions": [
+                {
+                  "id": "version-a04-004-corrigido-verificacao",
+                  "createdAt": "2026-06-23T19:44:40.113068Z",
+                  "source": "llm",
+                  "action": "repair",
+                  "request": "Foco didático da microssequência: Usar `groupby()` para comparar produção média por operador, linha ou produto.",
+                  "summary": "Versão centrada em Agrupar dados e ordenar resultados.",
+                  "cards": [
+                    {
+                      "id": "card-a04-09-fluxo-groupby",
+                      "position": 1,
+                      "resource": "flow",
+                      "kind": "theory",
+                      "exercise": "none",
+                      "title": "Agrupar antes de calcular",
+                      "prompt": "`groupby()` significa “agrupar por”: separar as linhas por uma categoria antes de calcular uma métrica.",
+                      "structure": {
+                        "kind": "sequence",
+                        "items": [
+                          {
+                            "kind": "start",
+                            "text": "Escolher a categoria de comparação"
+                          },
+                          {
+                            "kind": "process",
+                            "text": "Usar `groupby(\"operador\")` para separar linhas por operador"
+                          },
+                          {
+                            "kind": "process",
+                            "text": "Selecionar a medida `quantidade_produzida`"
+                          },
+                          {
+                            "kind": "process",
+                            "text": "Calcular uma agregação, como `mean()`"
+                          },
+                          {
+                            "kind": "process",
+                            "text": "Ordenar com `sort_values(ascending=False)`"
+                          },
+                          {
+                            "kind": "end",
+                            "text": "Interpretar o maior valor como maior média do grupo"
+                          }
+                        ]
+                      },
+                      "after": "O agrupamento não altera permanentemente o `DataFrame`; ele organiza temporariamente os registros para calcular uma métrica por grupo."
+                    },
+                    {
+                      "id": "card-a04-09-media-por-operador",
+                      "position": 2,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "gap",
+                      "title": "Produção média por operador",
+                      "prompt": "Complete a coluna de agrupamento, a coluna medida e a agregação.",
+                      "language": "python",
+                      "code": "df.groupby(\"[[operador::operador|quantidade_produzida|temperatura_c]]\")[\"[[quantidade_produzida::quantidade_produzida|operador|status_maquina]]\"].[[mean::mean|value_counts|tolist]]()",
+                      "after": "`operador` define os grupos; `quantidade_produzida` é a medida numérica usada para calcular a média."
+                    },
+                    {
+                      "id": "card-a04-09-ordenar-maior-menor",
+                      "position": 3,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "gap",
+                      "title": "Ordenar do maior para o menor",
+                      "prompt": "Complete a ordenação para ver os maiores valores primeiro.",
+                      "language": "python",
+                      "code": "df.groupby(\"operador\")[\"quantidade_produzida\"].mean().sort_values(ascending=[[False::False|True|\"maior\"]])",
+                      "after": "`ascending=False` significa não crescente; na prática, a lista fica do maior para o menor."
+                    },
+                    {
+                      "id": "card-a04-09-escolher-groupby-correto",
+                      "position": 4,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Escolher agrupamento correto",
+                      "prompt": "Compare as versões completas.",
+                      "language": "python",
+                      "code": "# Escolha o código que compara produção média por operador, do maior para o menor.",
+                      "after": "A versão correta separa por `operador`, calcula média em `quantidade_produzida` e ordena o resultado do maior para o menor.",
+                      "question": "Qual versão responde à pergunta corretamente?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "df.groupby(\"operador\")[\"quantidade_produzida\"].mean().sort_values(ascending=False)"
+                        },
+                        {
+                          "id": "b",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "df.groupby(\"quantidade_produzida\")[\"operador\"].mean().sort_values(ascending=False)"
+                        },
+                        {
+                          "id": "c",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "df.groupby(\"operador\")[\"quantidade_produzida\"].sort_values(ascending=False)"
+                        },
+                        {
+                          "id": "d",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "df[\"operador\"].groupby(\"quantidade_produzida\").mean()"
+                        }
+                      ],
+                      "answer": "a",
+                      "afterBlocks": [
+                        {
+                          "kind": "code",
+                          "prompt": "Veja a versão corrigida.",
+                          "language": "python",
+                          "code": "df.groupby(\"operador\")[\"quantidade_produzida\"].mean().sort_values(ascending=False)"
+                        }
+                      ]
+                    },
+                    {
+                      "id": "card-a04-09-interpretar-maior-grupo",
+                      "position": 5,
+                      "resource": "choice",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Interpretar resultado ordenado",
+                      "question": "Depois de executar o código correto, o primeiro índice do resultado representa o quê?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "text",
+                          "text": "O operador com maior média de `quantidade_produzida` entre os grupos calculados."
+                        },
+                        {
+                          "id": "b",
+                          "kind": "text",
+                          "text": "A primeira linha original da planilha Excel."
+                        },
+                        {
+                          "id": "c",
+                          "kind": "text",
+                          "text": "O operador que aparece alfabeticamente primeiro."
+                        },
+                        {
+                          "id": "d",
+                          "kind": "text",
+                          "text": "A coluna que possui mais valores ausentes."
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "Como o resultado foi ordenado com `ascending=False`, o topo mostra a maior média calculada entre os grupos."
+                    },
+                    {
+                      "id": "card-a04-09-gap-media-por-linha",
+                      "position": 6,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "gap",
+                      "title": "Produção média por linha",
+                      "prompt": "Complete a análise que compara produção média por linha e ordena do maior para o menor.",
+                      "language": "python",
+                      "code": "media_por_linha = df.groupby(\"linha_producao\")[\"quantidade_produzida\"].[[mean::mean|mode|head]]().sort_values(ascending=[[False::False|True|None]])\nprint(media_por_linha)",
+                      "after": "`groupby(\"linha_producao\")` separa os registros por linha; `mean()` calcula a média da medida; `ascending=False` ordena do maior para o menor."
+                    },
+                    {
+                      "id": "card-a04-09-agrupamento-e-medida",
+                      "position": 7,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Não trocar grupo e medida",
+                      "prompt": "Compare versões completas.",
+                      "language": "python",
+                      "code": "# Objetivo: comparar consumo médio de energia por produto",
+                      "question": "Qual versão usa `produto` como grupo e `consumo_energia_kwh` como medida?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "df.groupby(\"produto\")[\"consumo_energia_kwh\"].mean().sort_values(ascending=False)"
+                        },
+                        {
+                          "id": "b",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "df.groupby(\"consumo_energia_kwh\")[\"produto\"].mean().sort_values(ascending=False)"
+                        },
+                        {
+                          "id": "c",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "df[\"produto\"].groupby(\"consumo_energia_kwh\").mean()"
+                        },
+                        {
+                          "id": "d",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "df.groupby(\"produto\").sort_values(ascending=False)"
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "A categoria de comparação entra no `groupby()`. A coluna numérica fica depois, antes da agregação."
+                    },
+                    {
+                      "id": "card-a04-09-interpretar-ranking",
+                      "position": 8,
+                      "resource": "composite",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Interpretar ranking agrupado",
+                      "blocks": [
+                        {
+                          "language": "python",
+                          "code": "df.groupby(\"operador\")[\"quantidade_produzida\"].mean().sort_values(ascending=False)",
+                          "kind": "code",
+                          "prompt": "Observe o trecho antes de responder."
+                        },
+                        {
+                          "language": "text",
+                          "code": "operador\nOP_03    108.4\nOP_01    102.7\nOP_02     96.9",
+                          "kind": "code",
+                          "prompt": "Observe o trecho antes de responder."
+                        },
+                        {
+                          "kind": "choice",
+                          "question": "Qual interpretação é compatível com o resultado?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "kind": "text",
+                              "text": "`OP_03` tem a maior média de `quantidade_produzida` entre os operadores listados."
+                            },
+                            {
+                              "id": "b",
+                              "kind": "text",
+                              "text": "`OP_02` produziu mais porque aparece por último."
+                            },
+                            {
+                              "id": "c",
+                              "kind": "text",
+                              "text": "`sort_values(ascending=False)` ordenou do menor para o maior."
+                            },
+                            {
+                              "id": "d",
+                              "kind": "text",
+                              "text": "`groupby()` alterou permanentemente a ordem das linhas originais do `df`."
+                            }
+                          ],
+                          "answer": "a"
+                        }
+                      ],
+                      "after": "`ascending=False` significa ordenação não crescente; na prática, o maior valor aparece primeiro."
+                    },
+                    {
+                      "id": "card-a04-09-groupby-precisa-agregar",
+                      "position": 9,
+                      "resource": "choice",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "`groupby()` precisa de agregação",
+                      "question": "Por que `df.groupby(\"operador\")` sozinho ainda não responde “qual operador tem maior média de produção”?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "text",
+                          "text": "Porque ele só cria o agrupamento; ainda falta selecionar a medida, calcular `mean()` e ordenar."
+                        },
+                        {
+                          "id": "b",
+                          "kind": "text",
+                          "text": "Porque `groupby()` apaga as colunas numéricas imediatamente."
+                        },
+                        {
+                          "id": "c",
+                          "kind": "text",
+                          "text": "Porque `groupby()` só funciona com datas convertidas."
+                        },
+                        {
+                          "id": "d",
+                          "kind": "text",
+                          "text": "Porque a média deve ser calculada com `columns.tolist()`."
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "`groupby()` organiza os registros por categoria. A resposta analítica surge quando uma agregação, como `mean()`, é aplicada a uma coluna medida."
+                    }
+                  ],
+                  "validation": {
+                    "ok": true,
+                    "issues": []
+                  }
+                }
+              ],
+              "activeVersion": "version-a04-004-corrigido-verificacao"
+            },
+            {
+              "id": "micro-a04-10-qualidade-dados-sem-arquivo-extra",
+              "title": "Reconhecer ausentes e duplicatas sem depender de arquivo extra",
+              "goal": "Ensinar a sintaxe de checagem de qualidade de dados usando o dataset disponível e mini exemplos internos.",
+              "role": "support",
+              "status": "generated",
+              "dependsOn": [
+                "micro-a04-09-groupby-ordenacao"
+              ],
+              "covers": [
+                "`isna()`",
+                "`sum()`",
+                "`duplicated()`",
+                "`df.loc[:, df.isna().any(axis=0)]`",
+                "mini exemplo de `DataFrame` com valor ausente ou duplicado",
+                "interpretação de ausência e duplicata"
+              ],
+              "checks": [
+                "Completa `df.isna().sum()`.",
+                "Completa `df.duplicated().sum()`.",
+                "Entende que ausência pode prejudicar cálculo e filtro.",
+                "Entende que duplicata pode distorcer totais, médias e frequências."
+              ],
+              "errors": [
+                "esperar que todo dataset tenha ausentes",
+                "achar que resultado zero torna o método inútil",
+                "usar arquivo externo ausente",
+                "confundir `isna()` com remoção automática"
+              ],
+              "versions": [
+                {
+                  "id": "version-a04-004-corrigido-verificacao",
+                  "createdAt": "2026-06-23T19:44:40.113068Z",
+                  "source": "llm",
+                  "action": "repair",
+                  "request": "Foco didático da microssequência: Ensinar a sintaxe de checagem de qualidade de dados usando o dataset disponível e mini exemplos internos.",
+                  "summary": "Versão centrada em Reconhecer ausentes e duplicatas sem depender de arquivo extra.",
+                  "cards": [
+                    {
+                      "id": "card-a04-10-qualidade-sem-arquivo-extra",
+                      "position": 1,
+                      "resource": "paragraph",
+                      "kind": "theory",
+                      "exercise": "none",
+                      "title": "Checagem de qualidade no arquivo disponível",
+                      "text": "Mesmo quando o dataset limpo não tiver ausentes ou duplicatas, os métodos continuam úteis. `isna()` pode ser lido como “is NA?”: verifica se há valor ausente; `duplicated()` verifica linhas repetidas.",
+                      "after": "Resultado zero não torna o método inútil; ele apenas indica que, nessa checagem, não foram encontrados problemas daquele tipo."
+                    },
+                    {
+                      "id": "card-a04-10-gap-isna-duplicated",
+                      "position": 2,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "gap",
+                      "title": "Contar ausentes e duplicatas",
+                      "prompt": "Complete os métodos para checar o `DataFrame` real.",
+                      "language": "python",
+                      "code": "print(df.[[isna::isna|duplicated|head]]().[[sum::sum|mean|tolist]]())\nprint(\"Quantidade de duplicatas:\", df.[[duplicated::duplicated|isna|columns]]().[[sum::sum|shape|head]]())",
+                      "after": "`isna().sum()` conta ausentes por coluna. `duplicated().sum()` conta quantas linhas são marcadas como duplicadas."
+                    },
+                    {
+                      "id": "card-a04-10-mini-exemplo-ausente",
+                      "position": 3,
+                      "resource": "composite",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Mini exemplo interno com valor ausente",
+                      "blocks": [
+                        {
+                          "kind": "code",
+                          "language": "python",
+                          "code": "exemplo = pd.DataFrame({\n    \"operador\": [\"OP_01\", \"OP_02\", None],\n    \"quantidade_produzida\": [100, 120, 120]\n})\n\nexemplo.isna().sum()",
+                          "prompt": "Observe o trecho antes de responder."
+                        },
+                        {
+                          "kind": "table",
+                          "columns": [
+                            "Coluna",
+                            "Resultado esperado"
+                          ],
+                          "rows": [
+                            [
+                              "`operador`",
+                              "`1` valor ausente"
+                            ],
+                            [
+                              "`quantidade_produzida`",
+                              "`0` valores ausentes"
+                            ]
+                          ]
+                        },
+                        {
+                          "kind": "choice",
+                          "question": "Qual coluna possui valor ausente no mini exemplo?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "kind": "text",
+                              "text": "`operador`."
+                            },
+                            {
+                              "id": "b",
+                              "kind": "text",
+                              "text": "`quantidade_produzida`."
+                            },
+                            {
+                              "id": "c",
+                              "kind": "text",
+                              "text": "`data_producao`."
+                            },
+                            {
+                              "id": "d",
+                              "kind": "text",
+                              "text": "`status_maquina`."
+                            }
+                          ],
+                          "answer": "a"
+                        }
+                      ],
+                      "after": "`None` aparece na coluna `operador`, por isso `exemplo.isna().sum()` conta um ausente nessa coluna."
+                    },
+                    {
+                      "id": "card-a04-10-localizar-colunas-com-ausentes",
+                      "position": 4,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "gap",
+                      "title": "Selecionar colunas que têm ausentes",
+                      "prompt": "Complete a expressão com `loc` para localizar todas as linhas e apenas as colunas com algum ausente.",
+                      "language": "python",
+                      "code": "df.[[loc::loc|iloc|head]][:, df.isna().[[any::any|sum|duplicated]](axis=0)]",
+                      "after": "`loc` localiza linhas e colunas por rótulos/condições. O `:` mantém todas as linhas, e `df.isna().any(axis=0)` escolhe colunas com pelo menos um ausente."
+                    },
+                    {
+                      "id": "card-a04-10-zero-nao-inutil",
+                      "position": 5,
+                      "resource": "choice",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Quando a checagem dá zero",
+                      "question": "Se `df.duplicated().sum()` retornar `0`, qual interpretação é correta?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "text",
+                          "text": "Não foram encontradas linhas duplicadas nessa checagem."
+                        },
+                        {
+                          "id": "b",
+                          "kind": "text",
+                          "text": "`duplicated()` apagou todas as duplicatas automaticamente."
+                        },
+                        {
+                          "id": "c",
+                          "kind": "text",
+                          "text": "O dataset deixou de ter colunas numéricas."
+                        },
+                        {
+                          "id": "d",
+                          "kind": "text",
+                          "text": "`sum()` falhou porque duplicata não pode ser contada."
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "`duplicated()` apenas marca linhas repetidas como verdadeiro ou falso. A soma conta quantas marcações verdadeiras apareceram."
+                    },
+                    {
+                      "id": "card-a04-10-isna-nao-remove",
+                      "position": 6,
+                      "resource": "choice",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "`isna()` não limpa sozinho",
+                      "question": "Qual afirmação evita um erro comum sobre `isna()`?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "text",
+                          "text": "`isna()` verifica ausências; ele não remove nem preenche valores por conta própria."
+                        },
+                        {
+                          "id": "b",
+                          "kind": "text",
+                          "text": "`isna()` troca automaticamente todo texto por `0`."
+                        },
+                        {
+                          "id": "c",
+                          "kind": "text",
+                          "text": "`isna()` ordena os grupos do maior para o menor."
+                        },
+                        {
+                          "id": "d",
+                          "kind": "text",
+                          "text": "`isna()` transforma `falha` em data."
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "A checagem mostra onde há ausências. Remover ou preencher valores seria outra decisão, fora do objetivo desta aula."
+                    },
+                    {
+                      "id": "card-a04-10-gap-loc-colunas-ausentes",
+                      "position": 7,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "gap",
+                      "title": "Localizar colunas que têm ausentes",
+                      "prompt": "Complete o comando que mostra apenas colunas com ao menos um valor ausente.",
+                      "language": "python",
+                      "code": "colunas_com_ausentes = df.loc[:, df.[[isna::isna|duplicated|head]]().any(axis=0)]\ncolunas_com_ausentes.head()",
+                      "after": "`isna()` cria marcações de ausente; `any(axis=0)` verifica coluna por coluna; `loc[:, ...]` mantém todas as linhas e seleciona as colunas marcadas."
+                    },
+                    {
+                      "id": "card-a04-10-mini-duplicatas",
+                      "position": 8,
+                      "resource": "composite",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Contar duplicatas em exemplo interno",
+                      "blocks": [
+                        {
+                          "language": "python",
+                          "code": "exemplo = pd.DataFrame({\n    \"operador\": [\"OP_01\", \"OP_01\", \"OP_02\"],\n    \"quantidade_produzida\": [100, 100, 120]\n})\n\nexemplo.duplicated().sum()",
+                          "kind": "code",
+                          "prompt": "Observe o trecho antes de responder."
+                        },
+                        {
+                          "columns": [
+                            "linha",
+                            "`operador`",
+                            "`quantidade_produzida`"
+                          ],
+                          "rows": [
+                            [
+                              "`0`",
+                              "`OP_01`",
+                              "`100`"
+                            ],
+                            [
+                              "`1`",
+                              "`OP_01`",
+                              "`100`"
+                            ],
+                            [
+                              "`2`",
+                              "`OP_02`",
+                              "`120`"
+                            ]
+                          ],
+                          "kind": "table"
+                        },
+                        {
+                          "kind": "choice",
+                          "question": "Qual resultado é esperado para `exemplo.duplicated().sum()`?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "kind": "text",
+                              "text": "`1`, porque a segunda linha repete todos os valores da primeira."
+                            },
+                            {
+                              "id": "b",
+                              "kind": "text",
+                              "text": "`2`, porque há dois operadores diferentes."
+                            },
+                            {
+                              "id": "c",
+                              "kind": "text",
+                              "text": "`0`, porque o índice das linhas é diferente."
+                            },
+                            {
+                              "id": "d",
+                              "kind": "text",
+                              "text": "`3`, porque toda linha de `DataFrame` é duplicada por padrão."
+                            }
+                          ],
+                          "answer": "a"
+                        }
+                      ],
+                      "after": "`duplicated()` marca repetições de linhas já vistas. O índice não torna a linha analítica diferente quando os valores das colunas se repetem."
+                    }
+                  ],
+                  "validation": {
+                    "ok": true,
+                    "issues": []
+                  }
+                }
+              ],
+              "activeVersion": "version-a04-004-corrigido-verificacao"
+            },
+            {
+              "id": "micro-a04-11-analise-integrada",
+              "title": "Mini análise integrada da planilha de produção",
+              "goal": "Consolidar leitura, inspeção, tipos, filtros, métricas, agrupamento e interpretação em uma análise integrada.",
+              "role": "review",
+              "status": "generated",
+              "dependsOn": [
+                "micro-a04-10-qualidade-dados-sem-arquivo-extra"
+              ],
+              "covers": [
+                "carregar Excel",
+                "converter data",
+                "filtrar `status_maquina == \"OK\"`",
+                "filtrar `falha == 1`",
+                "calcular média de produção",
+                "contar falhas",
+                "agrupar produção por operador ou linha",
+                "registrar interpretação objetiva no `after`"
+              ],
+              "checks": [
+                "Completa um script integrado sem misturar objetos.",
+                "Usa nomes reais de colunas.",
+                "Interpreta resultados como evidências de produção."
+              ],
+              "errors": [
+                "tentar calcular antes de carregar `df`",
+                "usar nomes de colunas inexistentes",
+                "aplicar método na tabela inteira sem selecionar coluna",
+                "confundir filtro com coluna"
+              ],
+              "versions": [
+                {
+                  "id": "version-a04-004-corrigido-verificacao",
+                  "createdAt": "2026-06-23T19:44:40.113068Z",
+                  "source": "llm",
+                  "action": "repair",
+                  "request": "Foco didático da microssequência: Consolidar leitura, inspeção, tipos, filtros, métricas, agrupamento e interpretação em uma análise integrada.",
+                  "summary": "Versão centrada em Mini análise integrada da planilha de produção.",
+                  "cards": [
+                    {
+                      "id": "card-a04-11-fluxo-analise-integrada",
+                      "position": 1,
+                      "resource": "flow",
+                      "kind": "theory",
+                      "exercise": "none",
+                      "title": "Sequência de análise integrada",
+                      "prompt": "A mini análise combina leitura, tipo, filtro, métrica, agrupamento e interpretação.",
+                      "structure": {
+                        "kind": "sequence",
+                        "items": [
+                          {
+                            "kind": "start",
+                            "text": "Importar Pandas e carregar Excel"
+                          },
+                          {
+                            "kind": "process",
+                            "text": "Converter `data_producao`"
+                          },
+                          {
+                            "kind": "process",
+                            "text": "Inspecionar `shape`, `columns` e `dtypes`"
+                          },
+                          {
+                            "kind": "process",
+                            "text": "Filtrar `status_maquina == \"OK\"` e `falha == 1`"
+                          },
+                          {
+                            "kind": "process",
+                            "text": "Calcular média, contagem e agrupamento"
+                          },
+                          {
+                            "kind": "end",
+                            "text": "Escrever interpretação baseada nos resultados"
+                          }
+                        ]
+                      },
+                      "after": "A ordem evita usar objetos antes de existirem: primeiro `pd` e `df`, depois conversão, filtros e métricas."
+                    },
+                    {
+                      "id": "card-a04-11-script-integrado-gap",
+                      "position": 2,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "gap",
+                      "title": "Completar script integrado",
+                      "prompt": "Complete os pontos críticos sem trocar nomes reais de colunas.",
+                      "language": "python",
+                      "code": "import pandas as pd\n\narquivo_limpo = \"dataset_producao_limpo.xlsx\"\ndf = pd.[[read_excel::read_excel|read_csv|DataFrame]](arquivo_limpo)\n\ndf[\"data_producao\"] = pd.[[to_datetime::to_datetime|datetime|read_excel]](df[\"data_producao\"])\n\ncondicao_ok = df[\"status_maquina\"] [[==::==|=|>=]] \"OK\"\nok = df[condicao_ok]\n\ncondicao_falha = df[\"falha\"] == [[1::1|0|\"OK\"]]\nfalhas = df[condicao_falha]\n\nmedia_producao = df[\"quantidade_produzida\"].[[mean::mean|mode|columns]]()\nfalhas_por_valor = df[\"falha\"].[[value_counts::value_counts|mean|shape]]()\nmedia_por_operador = df.groupby(\"operador\")[\"quantidade_produzida\"].mean().sort_values(ascending=False)",
+                      "after": "O script respeita a sequência: carrega o Excel, converte data, cria condições booleanas, aplica filtros, calcula métricas e compara operadores por produção média."
+                    },
+                    {
+                      "id": "card-a04-11-escolher-script-final",
+                      "position": 3,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Escolher análise completa correta",
+                      "prompt": "Compare as versões completas.",
+                      "language": "python",
+                      "code": "# Escolha o script que realiza a mini análise integrada.",
+                      "after": "A versão correta usa `pd.read_excel()` antes de operar em `df`, seleciona colunas reais e aplica cada método no objeto adequado.",
+                      "question": "Qual versão não mistura objetos, colunas e métodos?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "import pandas as pd\n\narquivo_limpo = \"dataset_producao_limpo.xlsx\"\ndf = pd.read_excel(arquivo_limpo)\ndf[\"data_producao\"] = pd.to_datetime(df[\"data_producao\"])\n\nok = df[df[\"status_maquina\"] == \"OK\"]\nfalhas = df[df[\"falha\"] == 1]\nmedia_producao = df[\"quantidade_produzida\"].mean()\nfalhas_por_valor = df[\"falha\"].value_counts()\nmedia_por_operador = df.groupby(\"operador\")[\"quantidade_produzida\"].mean().sort_values(ascending=False)\n\nprint(media_producao)\nprint(falhas_por_valor)\nprint(media_por_operador.head())"
+                        },
+                        {
+                          "id": "b",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "df = pd.read_excel(df)\nfalhas = df[df[\"falha\"] = 1]\nmedia_producao = df.mean(\"quantidade_produzida\")"
+                        },
+                        {
+                          "id": "c",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "import pandas as pd\narquivo_limpo = \"dataset_producao_limpo.xlsx\"\ndf = pd.read_excel(arquivo_limpo)\nfalhas = df[\"falha\" == 1]\nmedia_por_operador = df.groupby(\"quantidade_produzida\")[\"operador\"].mean()"
+                        },
+                        {
+                          "id": "d",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "import pandas as pd\narquivo_limpo = \"dataset_producao_limpo.xlsx\"\ndf = pd.read_excel(arquivo_limpo)\ndf[\"produto\"] = pd.to_datetime(df[\"produto\"])\nok = df[df[\"status_maquina\"] == OK]"
+                        }
+                      ],
+                      "answer": "a",
+                      "afterBlocks": [
+                        {
+                          "kind": "code",
+                          "prompt": "Veja a versão corrigida.",
+                          "language": "python",
+                          "code": "import pandas as pd\n\narquivo_limpo = \"dataset_producao_limpo.xlsx\"\ndf = pd.read_excel(arquivo_limpo)\ndf[\"data_producao\"] = pd.to_datetime(df[\"data_producao\"])\n\nok = df[df[\"status_maquina\"] == \"OK\"]\nfalhas = df[df[\"falha\"] == 1]\nmedia_producao = df[\"quantidade_produzida\"].mean()\nfalhas_por_valor = df[\"falha\"].value_counts()\nmedia_por_operador = df.groupby(\"operador\")[\"quantidade_produzida\"].mean().sort_values(ascending=False)"
+                        }
+                      ]
+                    },
+                    {
+                      "id": "card-a04-11-interpretar-evidencias",
+                      "position": 4,
+                      "resource": "composite",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Interpretar saídas de produção",
+                      "blocks": [
+                        {
+                          "kind": "table",
+                          "columns": [
+                            "Resultado calculado",
+                            "Interpretação permitida"
+                          ],
+                          "rows": [
+                            [
+                              "`media_producao`",
+                              "Produção média por registro considerado."
+                            ],
+                            [
+                              "`falhas_por_valor`",
+                              "Quantidade de registros com `falha` igual a `0` e `1`."
+                            ],
+                            [
+                              "`media_por_operador.head()`",
+                              "Operadores com maiores médias após ordenação decrescente."
+                            ]
+                          ]
+                        },
+                        {
+                          "kind": "code",
+                          "language": "python",
+                          "code": "print(media_producao)\nprint(falhas_por_valor)\nprint(media_por_operador.head())",
+                          "prompt": "Observe o trecho antes de responder."
+                        },
+                        {
+                          "kind": "choice",
+                          "question": "Qual conclusão é compatível com essas saídas?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "kind": "text",
+                              "text": "Elas são evidências descritivas da planilha e precisam ser interpretadas no contexto de produção."
+                            },
+                            {
+                              "id": "b",
+                              "kind": "text",
+                              "text": "Elas provam causalidade entre operador e falha."
+                            },
+                            {
+                              "id": "c",
+                              "kind": "text",
+                              "text": "Elas decidem automaticamente a causa das falhas."
+                            },
+                            {
+                              "id": "d",
+                              "kind": "text",
+                              "text": "Elas substituem a necessidade de verificar tipos e filtros."
+                            }
+                          ],
+                          "answer": "a"
+                        }
+                      ],
+                      "after": "Média, contagem e agrupamento descrevem o que está registrado. A interpretação deve permanecer ligada às colunas analisadas e ao filtro aplicado."
+                    },
+                    {
+                      "id": "card-a04-11-fechamento-sintaxe-objeto",
+                      "position": 5,
+                      "resource": "paragraph",
+                      "kind": "exercise",
+                      "exercise": "gap",
+                      "title": "Fechamento: objeto certo para a pergunta certa",
+                      "text": "Uma análise correta combina objeto, sintaxe e pergunta: `DataFrame` para linhas, coluna/`Series` para métricas e filtro booleano para selecionar registros. Em `df[\"falha\"].value_counts()`, o objeto principal é a [[coluna/Series::coluna/Series|tabela inteira|função de leitura]].",
+                      "after": "`df[\"falha\"]` seleciona uma coluna, e `value_counts()` conta os valores dessa coluna. Essa leitura evita aplicar métodos no objeto errado."
+                    },
+                    {
+                      "id": "card-a04-11-gap-analise-ok-por-linha",
+                      "position": 6,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "gap",
+                      "title": "Análise integrada: produção em registros `OK`",
+                      "prompt": "Complete a sequência para filtrar máquinas `OK` e comparar produção média por linha.",
+                      "language": "python",
+                      "code": "df_ok = df[df[\"status_maquina\"] == \"OK\"]\nmedia_ok_por_linha = df_ok.groupby(\"linha_producao\")[\"quantidade_produzida\"].mean().sort_values(ascending=[[False::False|True|None]])\nprint(media_ok_por_linha)",
+                      "after": "A análise combina filtro, agrupamento, média e ordenação. O filtro define o subconjunto; o `groupby()` compara linhas dentro dele."
+                    },
+                    {
+                      "id": "card-a04-11-escolher-roteiro-falhas",
+                      "position": 7,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Roteiro para analisar falhas",
+                      "prompt": "Compare versões completas.",
+                      "language": "python",
+                      "code": "# Objetivo: contar falhas por linha de produção",
+                      "question": "Qual script responde diretamente à pergunta?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "falhas = df[df[\"falha\"] == 1]\nfalhas_por_linha = falhas[\"linha_producao\"].value_counts()\nprint(falhas_por_linha)"
+                        },
+                        {
+                          "id": "b",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "falhas = df[\"falha\" == 1]\nfalhas_por_linha = falhas.mean()\nprint(falhas_por_linha)"
+                        },
+                        {
+                          "id": "c",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "falhas_por_linha = df.groupby(\"quantidade_produzida\")[\"linha_producao\"].mean()\nprint(falhas_por_linha)"
+                        },
+                        {
+                          "id": "d",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "falhas = df.head(10)\nfalhas_por_linha = df.shape\nprint(falhas_por_linha)"
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "Primeiro o script filtra os eventos com `falha == 1`; depois conta a coluna categórica `linha_producao` com `value_counts()`."
+                    },
+                    {
+                      "id": "card-a04-11-interpretar-evidencia",
+                      "position": 8,
+                      "resource": "composite",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Da saída para uma conclusão",
+                      "blocks": [
+                        {
+                          "language": "text",
+                          "code": "linha_producao\nL2    14\nL1     9\nL3     5",
+                          "kind": "code",
+                          "prompt": "Observe o trecho antes de responder."
+                        },
+                        {
+                          "kind": "paragraph",
+                          "value": "A saída acima veio de uma contagem de registros com `falha == 1` por `linha_producao`."
+                        },
+                        {
+                          "kind": "choice",
+                          "question": "Qual conclusão é sustentada pela saída?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "kind": "text",
+                              "text": "`L2` aparece com mais registros de falha nesse resultado."
+                            },
+                            {
+                              "id": "b",
+                              "kind": "text",
+                              "text": "`L3` tem a maior média de produção."
+                            },
+                            {
+                              "id": "c",
+                              "kind": "text",
+                              "text": "`L1` não teve nenhuma falha."
+                            },
+                            {
+                              "id": "d",
+                              "kind": "text",
+                              "text": "A saída prova a causa das falhas."
+                            }
+                          ],
+                          "answer": "a"
+                        }
+                      ],
+                      "after": "A contagem indica frequência observada por linha. Ela não prova causa; para causa seriam necessárias novas variáveis e outro desenho de análise."
+                    },
+                    {
+                      "id": "card-a04-11-ordem-analitica-segura",
+                      "position": 9,
+                      "resource": "flow",
+                      "kind": "theory",
+                      "exercise": "none",
+                      "title": "Ordem segura para não misturar objetos",
+                      "prompt": "Uma análise com Pandas fica mais controlada quando cada objeto nasce antes de ser usado.",
+                      "structure": {
+                        "kind": "sequence",
+                        "items": [
+                          {
+                            "kind": "start",
+                            "text": "Carregar `df` com `pd.read_excel()`"
+                          },
+                          {
+                            "kind": "process",
+                            "text": "Converter `data_producao` se a pergunta envolver tempo"
+                          },
+                          {
+                            "kind": "process",
+                            "text": "Criar filtros, como `df[\"falha\"] == 1`"
+                          },
+                          {
+                            "kind": "process",
+                            "text": "Selecionar coluna medida ou categoria"
+                          },
+                          {
+                            "kind": "process",
+                            "text": "Aplicar métrica, contagem ou agrupamento"
+                          },
+                          {
+                            "kind": "end",
+                            "text": "Interpretar somente o que a saída permite afirmar"
+                          }
+                        ]
+                      },
+                      "after": "O erro comum é pular etapas: calcular antes de carregar, agrupar sem escolher medida ou concluir mais do que a saída mostra."
+                    }
+                  ],
+                  "validation": {
+                    "ok": true,
+                    "issues": []
+                  }
+                }
+              ],
+              "activeVersion": "version-a04-004-corrigido-verificacao"
+            }
+          ]
+        }
+      ]
     }
   ]
 }
 );
 
-function forEachFundamentosCard(course, callback) {
-  (course.modules || []).forEach((moduleValue) => {
-    (moduleValue.lessons || []).forEach((lesson) => {
-      (lesson.microsequences || []).forEach((microsequence) => {
-        (microsequence.versions || []).forEach((version) => {
-          (version.cards || []).forEach((card, cardIndex) => {
-            callback(card, { moduleValue, lesson, microsequence, version, cardIndex });
-          });
-        });
-      });
-    });
-  });
-}
-
-function forEachFundamentosVersion(course, callback) {
-  (course.modules || []).forEach((moduleValue) => {
-    (moduleValue.lessons || []).forEach((lesson) => {
-      (lesson.microsequences || []).forEach((microsequence) => {
-        (microsequence.versions || []).forEach((version) => {
-          callback(version, { moduleValue, lesson, microsequence });
-        });
-      });
-    });
-  });
-}
-
-function replaceFundamentosCard(version, cardIndex, nextCard) {
-  version.cards[cardIndex] = nextCard;
-}
-
-function createChoiceBlock(question, options, answer) {
-  return {
-    kind: "choice",
-    question,
-    options,
-    answer
-  };
-}
-
-function createTableBlock(columns, rows) {
-  return {
-    kind: "table",
-    columns,
-    rows
-  };
-}
-
-function ensureFundamentosSentence(text) {
-  const trimmedText = String(text || "").trim();
-  if (!trimmedText) return "";
-  return /[.!?]$/.test(trimmedText) ? trimmedText : `${trimmedText}.`;
-}
-
-function normalizeFundamentosIaAnaliseDadosCourse(course) {
-  const normalizedCourse = structuredClone(course);
-  const moduleAula03 = (normalizedCourse.modules || []).find((moduleValue) => moduleValue.id === "module-aula-03-bibliotecas-analise-dados");
-  const lessonAula03 = moduleAula03?.lessons?.find((lesson) => lesson.id === "lesson-aula-03-numpy-pandas");
-  const microAula03Final = lessonAula03?.microsequences?.find((microsequence) => microsequence.id === "micro-a03-14-atividade-final");
-
-  if (moduleAula03?.guide) {
-    moduleAula03.guide.goal =
-      "Usar NumPy e Pandas para ler, explorar e transformar dados tabulares com operações iniciais de análise.";
-  }
-  if (lessonAula03?.guide) {
-    lessonAula03.guide.goal =
-      "Ler um CSV, inspecionar colunas, calcular métricas simples, filtrar linhas, criar classificações e agrupar dados por setor com NumPy e Pandas.";
-  }
-  if (microAula03Final) {
-    microAula03Final.title = "Integração de leitura, métricas, filtro e classificação";
-  }
-
-  forEachFundamentosVersion(normalizedCourse, (version, context) => {
-    const normalizedGoal = ensureFundamentosSentence(context.microsequence?.goal);
-    const normalizedTitle = ensureFundamentosSentence(context.microsequence?.title);
-
-    version.request = normalizedGoal
-      ? `Foco didático da microssequência: ${normalizedGoal}`
-      : "Foco didático da microssequência.";
-    version.summary = normalizedTitle
-      ? `Versão centrada em ${normalizedTitle}`
-      : "Versão centrada no objetivo da microssequência.";
-  });
-
-  forEachFundamentosCard(normalizedCourse, (card, context) => {
-    if (card.id === "card-a03-12-describe-sentido") {
-      card.question = "Qual alternativa descreve melhor o tipo de resumo produzido por `df.describe()`?";
-    }
-
-    if (card.id === "card-a03-14-script-final") {
-      card.title = "Script integrado da base";
-      card.question = "Qual script reúne leitura da base, métricas, filtro de falhas e classificação de temperatura?";
-    }
-
-    if (card.id === "card-a03-14-fechamento") {
-      card.text =
-        "Nesta aula, o trabalho com `dataset_aula3_numpy_pandas.csv` combina leitura, inspeção de `df.shape`, cálculo de métricas em colunas, filtros e agrupamento por [[setor::setor|falha|id_registro]].";
-    }
-
-    if (card.id === "card-a03-09-media-verificavel") {
-      replaceFundamentosCard(context.version, context.cardIndex, {
-        id: card.id,
-        position: card.position,
-        resource: "composite",
-        kind: "exercise",
-        exercise: "choice",
-        title: "Interpretar métricas calculadas",
-        blocks: [
-          createTableBlock(
-            ["Indicador", "Expressão", "Valor observado"],
-            [
-              ["Média da temperatura", "`df[\"temperatura_c\"].mean()`", "`72.53`"],
-              ["Maior produção", "`df[\"producao_dia\"].max()`", "`159`"],
-              ["Menor tempo de ciclo", "`df[\"tempo_ciclo_s\"].min()`", "`27.20`"]
-            ]
-          ),
-          createChoiceBlock(
-            "Qual linha do quadro corresponde à média de `temperatura_c`?",
-            [
-              { id: "a", kind: "text", text: "A linha `Média da temperatura`, com valor `72.53`." },
-              { id: "b", kind: "text", text: "A linha `Maior produção`, com valor `159`." },
-              { id: "c", kind: "text", text: "A linha `Menor tempo de ciclo`, com valor `27.20`." },
-              { id: "d", kind: "text", text: "Nenhuma linha do quadro representa média." }
-            ],
-            "a"
-          )
-        ],
-        after:
-          "A média de `temperatura_c` aparece como `72.53`. Já `159` representa o maior valor de `producao_dia`, e `27.20` representa o menor valor de `tempo_ciclo_s`."
-      });
-    }
-
-    if (card.id === "card-a03-10-contagens-filtros") {
-      replaceFundamentosCard(context.version, context.cardIndex, {
-        id: card.id,
-        position: card.position,
-        resource: "composite",
-        kind: "exercise",
-        exercise: "choice",
-        title: "Interpretar contagens de filtros",
-        blocks: [
-          createTableBlock(
-            ["Filtro aplicado", "Contagem observada"],
-            [
-              ["`df[df[\"temperatura_c\"] > 75]`", "`15` linhas"],
-              ["`df[df[\"falha\"] == 1]`", "`12` linhas"]
-            ]
-          ),
-          createChoiceBlock(
-            "Qual leitura interpreta corretamente as contagens do quadro?",
-            [
-              { id: "a", kind: "text", text: "Há mais registros com `temperatura_c > 75` do que registros com `falha == 1`." },
-              { id: "b", kind: "text", text: "Há mais registros com `falha == 1` do que registros com `temperatura_c > 75`." },
-              { id: "c", kind: "text", text: "As duas contagens são iguais." },
-              { id: "d", kind: "text", text: "O quadro mostra que todas as `40` linhas entram nos dois filtros." }
-            ],
-            "a"
-          )
-        ],
-        after:
-          "O filtro `temperatura_c > 75` seleciona `15` registros, enquanto `falha == 1` seleciona `12`. As contagens são próximas, mas não iguais."
-      });
-    }
-
-    if (card.id === "card-a03-11-contagem-classificacao") {
-      replaceFundamentosCard(context.version, context.cardIndex, {
-        id: card.id,
-        position: card.position,
-        resource: "composite",
-        kind: "exercise",
-        exercise: "choice",
-        title: "Interpretar a nova coluna",
-        blocks: [
-          createTableBlock(
-            ["Rótulo em `classificacao_temp`", "Contagem observada"],
-            [
-              ["`ALTA`", "`15`"],
-              ["`NORMAL`", "`25`"]
-            ]
-          ),
-          createChoiceBlock(
-            "Qual leitura combina com o resumo mostrado para `classificacao_temp`?",
-            [
-              { id: "a", kind: "text", text: "A maioria dos registros ficou em `NORMAL`." },
-              { id: "b", kind: "text", text: "A maioria dos registros ficou em `ALTA`." },
-              { id: "c", kind: "text", text: "As duas categorias têm a mesma quantidade." },
-              { id: "d", kind: "text", text: "Nenhum registro recebeu `NORMAL`." }
-            ],
-            "a"
-          )
-        ],
-        after:
-          "Com a regra `temperatura_c >= 75`, a nova coluna fica concentrada em `NORMAL`: são `25` registros, contra `15` em `ALTA`."
-      });
-    }
-
-    if (card.id === "card-a03-12-contagem-setor") {
-      replaceFundamentosCard(context.version, context.cardIndex, {
-        id: card.id,
-        position: card.position,
-        resource: "composite",
-        kind: "exercise",
-        exercise: "choice",
-        title: "Interpretar o resumo por setor",
-        blocks: [
-          createTableBlock(
-            ["Setor", "Registros observados"],
-            [
-              ["`Usinagem`", "`17`"],
-              ["`Inspeção`", "`12`"],
-              ["`Montagem`", "`11`"]
-            ]
-          ),
-          createChoiceBlock(
-            "Qual leitura interpreta corretamente esse resumo por setor?",
-            [
-              { id: "a", kind: "text", text: "`Usinagem` tem mais registros, e o total mostrado é `40`." },
-              { id: "b", kind: "text", text: "`Inspeção` tem mais registros, e o total mostrado é `28`." },
-              { id: "c", kind: "text", text: "`Montagem` tem mais registros, e o total mostrado é `17`." },
-              { id: "d", kind: "text", text: "Os três setores aparecem com a mesma quantidade." }
-            ],
-            "a"
-          )
-        ],
-        after:
-          "O quadro soma `40` linhas. `Usinagem` aparece como o setor mais frequente, com `17` registros."
-      });
-    }
-
-    if (card.id === "card-a03-14-resultados-chave") {
-      replaceFundamentosCard(context.version, context.cardIndex, {
-        id: card.id,
-        position: card.position,
-        resource: "composite",
-        kind: "exercise",
-        exercise: "choice",
-        title: "Sintetizar os resultados principais",
-        blocks: [
-          createTableBlock(
-            ["Indicador", "Valor observado"],
-            [
-              ["Média de `temperatura_c`", "`72.53`"],
-              ["Maior valor de `producao_dia`", "`159`"],
-              ["Registros com `falha == 1`", "`12`"]
-            ]
-          ),
-          createChoiceBlock(
-            "Qual síntese corresponde ao quadro de resultados?",
-            [
-              { id: "a", kind: "text", text: "Média `72.53`, maior produção `159` e `12` registros com falha." },
-              { id: "b", kind: "text", text: "Média `159`, maior produção `72.53` e `15` registros com falha." },
-              { id: "c", kind: "text", text: "Média `27.20`, maior produção `40` e `6` registros com falha." },
-              { id: "d", kind: "text", text: "Média `75.00`, maior produção `28` e `17` registros com falha." }
-            ],
-            "a"
-          )
-        ],
-        after:
-          "Os três resultados do quadro usam medidas diferentes: média para `temperatura_c`, máximo para `producao_dia` e contagem de linhas para `falha == 1`."
-      });
-    }
-  });
-
-  return normalizedCourse;
-}
-
-export function createFundamentosIaAnaliseDadosCourse() {
-  return normalizeFundamentosIaAnaliseDadosCourse(RAW_FUNDAMENTOS_IA_ANALISE_DADOS_COURSE);
-}
+function forEachFundamentosCard(course, callback) {   (course.modules || []).forEach((moduleValue) => {     (moduleValue.lessons || []).forEach((lesson) => {       (lesson.microsequences || []).forEach((microsequence) => {         (microsequence.versions || []).forEach((version) => {           (version.cards || []).forEach((card, cardIndex) => {             callback(card, { moduleValue, lesson, microsequence, version, cardIndex });           });         });       });     });   }); }  function forEachFundamentosVersion(course, callback) {   (course.modules || []).forEach((moduleValue) => {     (moduleValue.lessons || []).forEach((lesson) => {       (lesson.microsequences || []).forEach((microsequence) => {         (microsequence.versions || []).forEach((version) => {           callback(version, { moduleValue, lesson, microsequence });         });       });     });   }); }  function replaceFundamentosCard(version, cardIndex, nextCard) {   version.cards[cardIndex] = nextCard; }  function createChoiceBlock(question, options, answer) {   return {     kind: "choice",     question,     options,     answer   }; }  function createTableBlock(columns, rows) {   return {     kind: "table",     columns,     rows   }; }  function ensureFundamentosSentence(text) {   const trimmedText = String(text || "").trim();   if (!trimmedText) return "";   return /[.!?]$/.test(trimmedText) ? trimmedText : `${trimmedText}.`; }  function normalizeFundamentosIaAnaliseDadosCourse(course) {   const normalizedCourse = structuredClone(course);   const moduleAula03 = (normalizedCourse.modules || []).find((moduleValue) => moduleValue.id === "module-aula-03-bibliotecas-analise-dados");   const lessonAula03 = moduleAula03?.lessons?.find((lesson) => lesson.id === "lesson-aula-03-numpy-pandas");   const microAula03Final = lessonAula03?.microsequences?.find((microsequence) => microsequence.id === "micro-a03-14-atividade-final");    if (moduleAula03?.guide) {     moduleAula03.guide.goal =       "Usar NumPy e Pandas para ler, explorar e transformar dados tabulares com operações iniciais de análise.";   }   if (lessonAula03?.guide) {     lessonAula03.guide.goal =       "Ler um CSV, inspecionar colunas, calcular métricas simples, filtrar linhas, criar classificações e agrupar dados por setor com NumPy e Pandas.";   }   if (microAula03Final) {     microAula03Final.title = "Integração de leitura, métricas, filtro e classificação";   }    forEachFundamentosVersion(normalizedCourse, (version, context) => {     const normalizedGoal = ensureFundamentosSentence(context.microsequence?.goal);     const normalizedTitle = ensureFundamentosSentence(context.microsequence?.title);      version.request = normalizedGoal       ? `Foco didático da microssequência: ${normalizedGoal}`       : "Foco didático da microssequência.";     version.summary = normalizedTitle       ? `Versão centrada em ${normalizedTitle}`       : "Versão centrada no objetivo da microssequência.";   });    forEachFundamentosCard(normalizedCourse, (card, context) => {     if (card.id === "card-a03-12-describe-sentido") {       card.question = "Qual alternativa descreve melhor o tipo de resumo produzido por `df.describe()`?";     }      if (card.id === "card-a03-14-script-final") {       card.title = "Script integrado da base";       card.question = "Qual script reúne leitura da base, métricas, filtro de falhas e classificação de temperatura?";     }      if (card.id === "card-a03-14-fechamento") {       card.text =         "Nesta aula, o trabalho com `dataset_aula3_numpy_pandas.csv` combina leitura, inspeção de `df.shape`, cálculo de métricas em colunas, filtros e agrupamento por [[setor::setor|falha|id_registro]].";     }      if (card.id === "card-a03-09-media-verificavel") {       replaceFundamentosCard(context.version, context.cardIndex, {         id: card.id,         position: card.position,         resource: "composite",         kind: "exercise",         exercise: "choice",         title: "Interpretar métricas calculadas",         blocks: [           createTableBlock(             ["Indicador", "Expressão", "Valor observado"],             [               ["Média da temperatura", "`df[\"temperatura_c\"].mean()`", "`72.53`"],               ["Maior produção", "`df[\"producao_dia\"].max()`", "`159`"],               ["Menor tempo de ciclo", "`df[\"tempo_ciclo_s\"].min()`", "`27.20`"]             ]           ),           createChoiceBlock(             "Qual linha do quadro corresponde à média de `temperatura_c`?",             [               { id: "a", kind: "text", text: "A linha `Média da temperatura`, com valor `72.53`." },               { id: "b", kind: "text", text: "A linha `Maior produção`, com valor `159`." },               { id: "c", kind: "text", text: "A linha `Menor tempo de ciclo`, com valor `27.20`." },               { id: "d", kind: "text", text: "Nenhuma linha do quadro representa média." }             ],             "a"           )         ],         after:           "A média de `temperatura_c` aparece como `72.53`. Já `159` representa o maior valor de `producao_dia`, e `27.20` representa o menor valor de `tempo_ciclo_s`."       });     }      if (card.id === "card-a03-10-contagens-filtros") {       replaceFundamentosCard(context.version, context.cardIndex, {         id: card.id,         position: card.position,         resource: "composite",         kind: "exercise",         exercise: "choice",         title: "Interpretar contagens de filtros",         blocks: [           createTableBlock(             ["Filtro aplicado", "Contagem observada"],             [               ["`df[df[\"temperatura_c\"] > 75]`", "`15` linhas"],               ["`df[df[\"falha\"] == 1]`", "`12` linhas"]             ]           ),           createChoiceBlock(             "Qual leitura interpreta corretamente as contagens do quadro?",             [               { id: "a", kind: "text", text: "Há mais registros com `temperatura_c > 75` do que registros com `falha == 1`." },               { id: "b", kind: "text", text: "Há mais registros com `falha == 1` do que registros com `temperatura_c > 75`." },               { id: "c", kind: "text", text: "As duas contagens são iguais." },               { id: "d", kind: "text", text: "O quadro mostra que todas as `40` linhas entram nos dois filtros." }             ],             "a"           )         ],         after:           "O filtro `temperatura_c > 75` seleciona `15` registros, enquanto `falha == 1` seleciona `12`. As contagens são próximas, mas não iguais."       });     }      if (card.id === "card-a03-11-contagem-classificacao") {       replaceFundamentosCard(context.version, context.cardIndex, {         id: card.id,         position: card.position,         resource: "composite",         kind: "exercise",         exercise: "choice",         title: "Interpretar a nova coluna",         blocks: [           createTableBlock(             ["Rótulo em `classificacao_temp`", "Contagem observada"],             [               ["`ALTA`", "`15`"],               ["`NORMAL`", "`25`"]             ]           ),           createChoiceBlock(             "Qual leitura combina com o resumo mostrado para `classificacao_temp`?",             [               { id: "a", kind: "text", text: "A maioria dos registros ficou em `NORMAL`." },               { id: "b", kind: "text", text: "A maioria dos registros ficou em `ALTA`." },               { id: "c", kind: "text", text: "As duas categorias têm a mesma quantidade." },               { id: "d", kind: "text", text: "Nenhum registro recebeu `NORMAL`." }             ],             "a"           )         ],         after:           "Com a regra `temperatura_c >= 75`, a nova coluna fica concentrada em `NORMAL`: são `25` registros, contra `15` em `ALTA`."       });     }      if (card.id === "card-a03-12-contagem-setor") {       replaceFundamentosCard(context.version, context.cardIndex, {         id: card.id,         position: card.position,         resource: "composite",         kind: "exercise",         exercise: "choice",         title: "Interpretar o resumo por setor",         blocks: [           createTableBlock(             ["Setor", "Registros observados"],             [               ["`Usinagem`", "`17`"],               ["`Inspeção`", "`12`"],               ["`Montagem`", "`11`"]             ]           ),           createChoiceBlock(             "Qual leitura interpreta corretamente esse resumo por setor?",             [               { id: "a", kind: "text", text: "`Usinagem` tem mais registros, e o total mostrado é `40`." },               { id: "b", kind: "text", text: "`Inspeção` tem mais registros, e o total mostrado é `28`." },               { id: "c", kind: "text", text: "`Montagem` tem mais registros, e o total mostrado é `17`." },               { id: "d", kind: "text", text: "Os três setores aparecem com a mesma quantidade." }             ],             "a"           )         ],         after:           "O quadro soma `40` linhas. `Usinagem` aparece como o setor mais frequente, com `17` registros."       });     }      if (card.id === "card-a03-14-resultados-chave") {       replaceFundamentosCard(context.version, context.cardIndex, {         id: card.id,         position: card.position,         resource: "composite",         kind: "exercise",         exercise: "choice",         title: "Sintetizar os resultados principais",         blocks: [           createTableBlock(             ["Indicador", "Valor observado"],             [               ["Média de `temperatura_c`", "`72.53`"],               ["Maior valor de `producao_dia`", "`159`"],               ["Registros com `falha == 1`", "`12`"]             ]           ),           createChoiceBlock(             "Qual síntese corresponde ao quadro de resultados?",             [               { id: "a", kind: "text", text: "Média `72.53`, maior produção `159` e `12` registros com falha." },               { id: "b", kind: "text", text: "Média `159`, maior produção `72.53` e `15` registros com falha." },               { id: "c", kind: "text", text: "Média `27.20`, maior produção `40` e `6` registros com falha." },               { id: "d", kind: "text", text: "Média `75.00`, maior produção `28` e `17` registros com falha." }             ],             "a"           )         ],         after:           "Os três resultados do quadro usam medidas diferentes: média para `temperatura_c`, máximo para `producao_dia` e contagem de linhas para `falha == 1`."       });     }   });    return normalizedCourse; }  export function createFundamentosIaAnaliseDadosCourse() {   return normalizeFundamentosIaAnaliseDadosCourse(RAW_FUNDAMENTOS_IA_ANALISE_DADOS_COURSE); }

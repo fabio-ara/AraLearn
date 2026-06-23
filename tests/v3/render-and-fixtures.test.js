@@ -1117,14 +1117,20 @@ test("o seed embutido oficial mantém os cursos embarcados já materializados", 
     .flatMap((lesson) => lesson.microsequences || []);
 
   assert.equal(fundamentosCourse.title, "Fundamentos de IA e Análise de Dados");
-  assert.equal(fundamentosCourse.modules.length, 3);
-  assert.equal(fundamentosCourse.modules.flatMap((moduleValue) => moduleValue.lessons || []).length, 3);
-  assert.equal(fundamentosMicrosequences.length, 32);
+  assert.equal(fundamentosCourse.modules.length, 4);
+  assert.equal(fundamentosCourse.modules.flatMap((moduleValue) => moduleValue.lessons || []).length, 4);
+  assert.equal(fundamentosMicrosequences.length, 43);
   assert.equal(fundamentosMicrosequences.some((microsequence) => (microsequence.versions || []).length > 0), true);
   assert.equal(fundamentosMicrosequences.some((microsequence) => microsequence.activeVersion), true);
   assert.equal(
     fundamentosCourse.modules.some(
       (moduleValue) => moduleValue.title === "Aula 3 — Bibliotecas para análise de dados com NumPy e Pandas"
+    ),
+    true
+  );
+  assert.equal(
+    fundamentosCourse.modules.some(
+      (moduleValue) => moduleValue.title === "Aula 4 — Fundamentos de dados, tipos, Excel e análise com Pandas"
     ),
     true
   );
@@ -1135,7 +1141,7 @@ test("o seed embutido oficial mantém os cursos embarcados já materializados", 
         (microsequence.versions || []).at(-1);
       return count + ((active?.cards || []).length);
     }, 0),
-    208
+    308
   );
 
   const fundamentosCards = fundamentosMicrosequences
@@ -1149,6 +1155,18 @@ test("o seed embutido oficial mantém os cursos embarcados já materializados", 
   assert.equal(
     fundamentosCards.some((card) => JSON.stringify(card).includes("dataset_aula3_numpy_pandas.csv")),
     true
+  );
+  assert.equal(
+    fundamentosCards.some((card) => JSON.stringify(card).includes("dataset_producao_limpo.xlsx")),
+    true
+  );
+  assert.equal(
+    fundamentosCards.some((card) => JSON.stringify(card).includes("dataset_qualidade_problemas.xlsx")),
+    false
+  );
+  assert.equal(
+    fundamentosCards.some((card) => JSON.stringify(card).includes("gabarito_tipos_dados.xlsx")),
+    false
   );
   assert.equal(
     fundamentosCards
@@ -1219,11 +1237,11 @@ test("o seed de Fundamentos evita texto de bastidor e vocabulário proibido nos 
   ].filter((value) => typeof value === "string");
 
   const forbiddenPatterns = [
+    /\bcurto\b|\bcurta\b/iu,
     /materializar/iu,
     /curso aprovado/iu,
     /no contexto da aula/iu,
     /^A leitura\b/iu,
-    /\bprograma curto\b|\btrecho curto\b/iu,
     /\bassinatura\b/iu,
     /\bo aluno deve\b/iu
   ];
@@ -1242,11 +1260,11 @@ test("o seed de Fundamentos também remove texto de bastidor dos metadados inter
   assert.ok(course);
 
   const forbiddenPatterns = [
+    /\bcurto\b|\bcurta\b/iu,
     /materializar/iu,
     /curso aprovado/iu,
     /no contexto da aula/iu,
     /^A leitura\b/iu,
-    /\bprograma curto\b|\btrecho curto\b/iu,
     /\bassinatura\b/iu,
     /\bo aluno deve\b/iu,
     /\bhandoff\b/iu,
