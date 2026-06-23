@@ -8,6 +8,15 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 - sem mudanças registradas
 
+## [0.0.3] - 2026-06-23
+
+### Changed
+
+- atualização do curso embarcado `Fundamentos de IA e Análise de Dados`, agora com `4` módulos, `4` lições, `43` microssequências e a nova Aula 4 sobre dados em planilhas Excel com Pandas;
+- Aula 4 cobrindo estrutura tabular, leitura de Excel, inspeção de `shape`, `columns` e `dtypes`, conversão de datas, filtros, estatísticas, agrupamentos e checagens simples de qualidade;
+- revisão editorial do seed de `Fundamentos` para remover bastidor e vocabulário artificial também na nova aula, além de corrigir a ponte entre leitura de CSV e leitura de Excel;
+- APK pública de release atualizada com a quarta aula integrada ao curso.
+
 ## [0.0.2] - 2026-06-18
 
 ### Changed
