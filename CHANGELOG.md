@@ -8,6 +8,17 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 - sem mudanças registradas
 
+## [0.0.4] - 2026-06-26
+
+### Changed
+
+- migração dos cursos embarcados oficiais para arquivos JSON separados em `src/data/embedded-courses`, com loaders JS mínimos e acesso direto no repositório;
+- atualização do curso embarcado `Fundamentos de IA e Análise de Dados`, agora com `6` módulos, `6` lições, `68` microssequências e `415` cards ativos;
+- substituição das Aulas 3 e 4 pelos pacotes corrigidos mais recentes e inclusão das novas Aulas 5 e 6 sobre tratamento de dados com Pandas/PySpark e visualização com Matplotlib/Seaborn;
+- saneamento contratual das novas aulas: papéis legados de microssequência mapeados para o contrato atual, `composite` de exercício com bloco `choice` interno, `afterBlocks` normalizados, `prompt` garantido em blocos `code` e remoção de texto de bastidor;
+- reforço de regressões automatizadas para validar a presença dos JSONs embarcados, os novos totais do curso de Fundamentos e a ausência de bastidor nos textos e metadados internos;
+- APK pública de release atualizada com o seed embarcado reorganizado em JSON e com as aulas 5 e 6 disponíveis no app.
+
 ## [0.0.3] - 2026-06-23
 
 ### Changed

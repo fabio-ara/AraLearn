@@ -994,6 +994,17 @@ test("o seed embutido oficial mantém os cursos embarcados já materializados", 
   assert.ok(logicaCourse);
   assert.ok(fundamentosCourse);
   assert.equal(project.courses.some((course) => course.id === "course-oaco-bases-cpu-paralelismo"), false);
+  assert.deepEqual(
+    fs.readdirSync(path.resolve(__dirname, "../../src/data/embedded-courses")).filter((fileName) => fileName.endsWith(".json")).sort(),
+    [
+      "framework-ia-generativa-seed-course.json",
+      "fundamentos-ia-analise-dados-seed-course.json",
+      "logica-programacao-seed-course.json",
+      "organizacao-arquitetura-computadores-seed-course.json",
+      "praticas-ferramentas-seed-course.json",
+      "teoria-dos-grafos-prova.json"
+    ]
+  );
 
   const teoriaMicrosequences = teoriaCourse.modules
     .flatMap((moduleValue) => moduleValue.lessons || [])
@@ -1117,9 +1128,9 @@ test("o seed embutido oficial mantém os cursos embarcados já materializados", 
     .flatMap((lesson) => lesson.microsequences || []);
 
   assert.equal(fundamentosCourse.title, "Fundamentos de IA e Análise de Dados");
-  assert.equal(fundamentosCourse.modules.length, 4);
-  assert.equal(fundamentosCourse.modules.flatMap((moduleValue) => moduleValue.lessons || []).length, 4);
-  assert.equal(fundamentosMicrosequences.length, 43);
+  assert.equal(fundamentosCourse.modules.length, 6);
+  assert.equal(fundamentosCourse.modules.flatMap((moduleValue) => moduleValue.lessons || []).length, 6);
+  assert.equal(fundamentosMicrosequences.length, 68);
   assert.equal(fundamentosMicrosequences.some((microsequence) => (microsequence.versions || []).length > 0), true);
   assert.equal(fundamentosMicrosequences.some((microsequence) => microsequence.activeVersion), true);
   assert.equal(
@@ -1135,13 +1146,25 @@ test("o seed embutido oficial mantém os cursos embarcados já materializados", 
     true
   );
   assert.equal(
+    fundamentosCourse.modules.some(
+      (moduleValue) => moduleValue.title === "Aula 5 — Tratamento e Preparação de Dados com Pandas e introdução ao PySpark"
+    ),
+    true
+  );
+  assert.equal(
+    fundamentosCourse.modules.some(
+      (moduleValue) => moduleValue.title === "Aula 6 — Visualização de Dados com Matplotlib e Seaborn"
+    ),
+    true
+  );
+  assert.equal(
     fundamentosMicrosequences.reduce((count, microsequence) => {
       const active =
         (microsequence.versions || []).find((version) => version.id === microsequence.activeVersion) ||
         (microsequence.versions || []).at(-1);
       return count + ((active?.cards || []).length);
     }, 0),
-    308
+    415
   );
 
   const fundamentosCards = fundamentosMicrosequences
@@ -1157,7 +1180,11 @@ test("o seed embutido oficial mantém os cursos embarcados já materializados", 
     true
   );
   assert.equal(
-    fundamentosCards.some((card) => JSON.stringify(card).includes("dataset_producao_limpo.xlsx")),
+    fundamentosCards.some((card) => JSON.stringify(card).includes("dataset_aula4_qualidade_inspecao.xlsx")),
+    true
+  );
+  assert.equal(
+    fundamentosCards.some((card) => JSON.stringify(card).includes("SparkSession.builder")),
     true
   );
   assert.equal(
@@ -1176,6 +1203,10 @@ test("o seed embutido oficial mantém os cursos embarcados já materializados", 
         return (card.blocks || []).every((block) => block.kind && !("resource" in block)) && choiceBlocks.length === 1;
       }),
     true
+  );
+  assert.equal(
+    JSON.stringify(fundamentosCourse).match(/handoff|materializad|materializar/gi),
+    null
   );
 });
 
