@@ -6,7 +6,9 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ### Changed
 
-- sem mudanças registradas
+- correção do runtime para impedir `after` e `afterBlocks` com sintaxe de lacuna interativa, evitando travas de progressão no popup de continuação;
+- saneamento automático de projetos persistidos com esse defeito legado, convertendo o feedback em texto estático antes da validação;
+- APK da release `0.0.4` republicada com `versionCode` maior para permitir atualização sobre a instalação anterior.
 
 ## [0.0.4] - 2026-06-26
 
