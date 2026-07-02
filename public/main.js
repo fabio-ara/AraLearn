@@ -3,6 +3,7 @@ import { createProjectStorage } from "../src/storage/createProjectStorage.js";
 import { createEditorSession } from "../src/editor/contractEditor.js";
 import { createLessonEditorApp } from "../src/ui/lessonEditorApp.js";
 import { createEmbeddedSeedProjectDocument } from "../src/ui/embeddedSeedProjectDocument.js";
+import { syncEmbeddedSeedProjectDocument } from "../src/ui/syncEmbeddedSeedProjectDocument.js";
 
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -77,6 +78,11 @@ try {
   if (!project) {
     project = createEmbeddedSeedProjectDocument();
     storage.saveProject(project);
+  }
+
+  const syncedProject = syncEmbeddedSeedProjectDocument(project);
+  if (syncedProject.changed) {
+    project = storage.saveProject(syncedProject.projectDocument);
   }
 
   createLessonEditorApp({
