@@ -15100,6 +15100,3029 @@
           ]
         }
       ]
+    },
+    {
+      "id": "module-aula07-estatistica-aplicada",
+      "title": "Aula 7 — Estatística Aplicada",
+      "guide": {
+        "goal": "Desenvolver autonomia para calcular e interpretar medidas estatísticas descritivas, probabilidades simples e histograma em um dataset industrial usando Pandas e Seaborn.",
+        "include": [
+          "import pandas as pd",
+          "import numpy as np",
+          "import matplotlib.pyplot as plt",
+          "import seaborn as sns",
+          "pd.read_csv()",
+          "df.head()",
+          "df.shape",
+          "df.columns",
+          "df[\"coluna\"]",
+          "Series.mean()",
+          "Series.median()",
+          "Series.mode()",
+          ".mode()[0]",
+          "Series.min()",
+          "Series.max()",
+          "max() - min()",
+          "Series.var()",
+          "Series.std()",
+          "Series.quantile()",
+          "quartis 0.25, 0.50, 0.75",
+          "percentil 90 com 0.90",
+          "coluna binária `falha`",
+          "probabilidade como proporção",
+          "máscara booleana",
+          ".mean() sobre booleanos",
+          "porcentagem com * 100",
+          "sns.histplot()",
+          "kde=True",
+          "interpretação objetiva de média, mediana, dispersão e histograma"
+        ],
+        "exclude": [
+          "testes de hipótese",
+          "p-valor",
+          "intervalo de confiança",
+          "regressão",
+          "correlação",
+          "causalidade",
+          "machine learning",
+          "Scikit-learn",
+          "treino/teste",
+          "modelo preditivo",
+          "estatística inferencial formal",
+          "distribuição normal formal",
+          "z-score",
+          "padronização",
+          "assimetria formal",
+          "curtose",
+          "P(A|B)",
+          "Bayes",
+          "combinatória",
+          "tratamento de outliers",
+          "imputação",
+          "engenharia de atributos",
+          "PySpark",
+          "groupby",
+          "customização visual complexa",
+          "fórmulas matemáticas longas",
+          "dataset inventado",
+          "colunas inexistentes"
+        ],
+        "notation": [
+          "Usar `df` como nome padrão do `DataFrame`.",
+          "Usar crases em textos renderizáveis para identificadores, funções, operadores, literais, arquivos e colunas.",
+          "Usar lacunas no padrão `[[resposta::resposta|distrator]]` apenas em `paragraph.text` e `code.code`.",
+          "Usar `flow.structure` semântico, sem coordenadas manuais.",
+          "Usar alternativas de código estruturadas em `options[].kind: \"code\"`."
+        ],
+        "avoid": [
+          "Não usar `code: \"___\"` como lacuna.",
+          "Não usar dados inventados quando o exercício se refere ao CSV da aula.",
+          "Não exigir execução real do notebook como única forma de responder.",
+          "Não usar `matrix`, `plane`, `graph` ou `relation_map` nesta aula."
+        ]
+      },
+      "lessons": [
+        {
+          "id": "lesson-aula07-estatistica-aplicada-pandas",
+          "title": "Aula 7 — Estatística aplicada com Pandas",
+          "guide": {
+            "goal": "Desenvolver autonomia para calcular e interpretar medidas estatísticas descritivas, probabilidades simples e histograma em um dataset industrial usando Pandas e Seaborn.",
+            "include": [
+              "import pandas as pd",
+              "import numpy as np",
+              "import matplotlib.pyplot as plt",
+              "import seaborn as sns",
+              "pd.read_csv()",
+              "df.head()",
+              "df.shape",
+              "df.columns",
+              "df[\"coluna\"]",
+              "Series.mean()",
+              "Series.median()",
+              "Series.mode()",
+              ".mode()[0]",
+              "Series.min()",
+              "Series.max()",
+              "max() - min()",
+              "Series.var()",
+              "Series.std()",
+              "Series.quantile()",
+              "quartis 0.25, 0.50, 0.75",
+              "percentil 90 com 0.90",
+              "coluna binária `falha`",
+              "probabilidade como proporção",
+              "máscara booleana",
+              ".mean() sobre booleanos",
+              "porcentagem com * 100",
+              "sns.histplot()",
+              "kde=True",
+              "interpretação objetiva de média, mediana, dispersão e histograma",
+              "desafio de revisão com cenário industrial"
+            ],
+            "exclude": [
+              "testes de hipótese",
+              "p-valor",
+              "intervalo de confiança",
+              "regressão",
+              "correlação",
+              "causalidade",
+              "machine learning",
+              "Scikit-learn",
+              "treino/teste",
+              "modelo preditivo",
+              "estatística inferencial formal",
+              "distribuição normal formal",
+              "z-score",
+              "padronização",
+              "assimetria formal",
+              "curtose",
+              "P(A|B)",
+              "Bayes",
+              "combinatória",
+              "tratamento de outliers",
+              "imputação",
+              "engenharia de atributos",
+              "PySpark",
+              "groupby",
+              "customização visual complexa",
+              "fórmulas matemáticas longas",
+              "dataset inventado",
+              "colunas inexistentes"
+            ],
+            "notation": [
+              "Nos exemplos, o CSV aparece como `dataset_aula7_estatistica.csv`.",
+              "Variância e desvio padrão usam o padrão do Pandas em `.var()` e `.std()`.",
+              "Para moda escalar, usar `.mode()[0]` quando necessário.",
+              "Para condição booleana, usar `(df[\"temperatura_c\"] > valor).mean()`."
+            ],
+            "avoid": [
+              "Não chamar a condição booleana simples de fórmula de probabilidade composta.",
+              "Não antecipar conteúdo de aula posterior.",
+              "Não usar perguntas abertas como exercício principal."
+            ]
+          },
+          "topics": [
+            {
+              "id": "topic-a07-base-estatistica",
+              "label": "leitura e inspeção da base",
+              "kind": "concept",
+              "checks": [
+                "reconhece estrutura do CSV e colunas reais"
+              ],
+              "errors": [
+                "usar caminho ou coluna inexistente"
+              ]
+            },
+            {
+              "id": "topic-a07-tendencia-central",
+              "label": "média, mediana e moda",
+              "kind": "concept",
+              "checks": [
+                "calcula e interpreta medidas de tendência central"
+              ],
+              "errors": [
+                "confundir média, mediana e moda"
+              ]
+            },
+            {
+              "id": "topic-a07-dispersao",
+              "label": "amplitude, variância e desvio padrão",
+              "kind": "concept",
+              "checks": [
+                "calcula e interpreta dispersão"
+              ],
+              "errors": [
+                "comparar unidades sem cuidado"
+              ]
+            },
+            {
+              "id": "topic-a07-posicao",
+              "label": "quartis e percentis",
+              "kind": "concept",
+              "checks": [
+                "usa `.quantile()` com escala decimal"
+              ],
+              "errors": [
+                "usar `90` em vez de `0.90`"
+              ]
+            },
+            {
+              "id": "topic-a07-probabilidade",
+              "label": "probabilidade como proporção",
+              "kind": "concept",
+              "checks": [
+                "usa média de `0/1` e booleanos"
+              ],
+              "errors": [
+                "confundir proporção decimal com porcentagem"
+              ]
+            },
+            {
+              "id": "topic-a07-distribuicao",
+              "label": "histograma e leitura visual",
+              "kind": "concept",
+              "checks": [
+                "constrói histograma de `temperatura_c`"
+              ],
+              "errors": [
+                "usar coluna inexistente ou `kde` como texto"
+              ]
+            },
+            {
+              "id": "topic-a07-atividade-integrada",
+              "label": "solução integrada e interpretação",
+              "kind": "concept",
+              "checks": [
+                "integra comandos e interpretações seguras"
+              ],
+              "errors": [
+                "misturar colunas e medidas"
+              ]
+            }
+          ],
+          "microsequences": [
+            {
+              "id": "micro-a07-01-contexto-leitura-base",
+              "title": "Preparar a base da Aula 7",
+              "goal": "Importar bibliotecas, ler o CSV e reconhecer a estrutura da base antes de calcular estatísticas.",
+              "role": "support",
+              "status": "generated",
+              "dependsOn": [],
+              "covers": [
+                "import pandas as pd",
+                "import numpy as np",
+                "import matplotlib.pyplot as plt",
+                "import seaborn as sns",
+                "pd.read_csv()",
+                "df.head()",
+                "df.shape",
+                "df.columns",
+                "colunas reais do dataset"
+              ],
+              "checks": [
+                "importa as bibliotecas com aliases corretos",
+                "lê o arquivo `dataset_aula7_estatistica.csv`",
+                "identifica quantidade de registros e colunas",
+                "distingue variável numérica, categórica e binária no dataset"
+              ],
+              "versions": [
+                {
+                  "id": "micro-a07-01-contexto-leitura-base__v20260702-163000",
+                  "createdAt": "2026-07-02T16:30:00.000000-03:00",
+                  "source": "llm",
+                  "action": "improve",
+                  "request": "Corrigir detalhes apontados pela auditoria e expandir moderadamente a Aula 7 para 70–80 cards, preservando o conteúdo aprovado.",
+                  "summary": "Importar bibliotecas, ler o CSV e reconhecer a estrutura da base antes de calcular estatísticas.",
+                  "cards": [
+                    {
+                      "id": "card-a07-01-01-importacoes",
+                      "position": 1,
+                      "resource": "code",
+                      "kind": "theory",
+                      "exercise": "none",
+                      "title": "Bibliotecas da aula",
+                      "prompt": "Use os aliases que serão retomados nos comandos de estatística e gráfico.",
+                      "language": "python",
+                      "code": "import pandas as pd\nimport numpy as np\nimport matplotlib.pyplot as plt\nimport seaborn as sns",
+                      "after": "`pd` aponta para Pandas, `np` para NumPy, `plt` para Matplotlib e `sns` para Seaborn. Esses aliases reduzem repetição e evitam comandos longos."
+                    },
+                    {
+                      "id": "card-a07-01-02-ler-csv",
+                      "position": 2,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "gap",
+                      "title": "Ler o CSV em `df`",
+                      "prompt": "Complete a função que carrega o arquivo da Aula 7.",
+                      "language": "python",
+                      "code": "df = [[pd.read_csv::pd.read_csv|pd.load_csv|read_csv]](\"dataset_aula7_estatistica.csv\")",
+                      "after": "`pd.read_csv()` lê o arquivo tabular e cria o `DataFrame` chamado `df`. Sem essa linha, os cálculos seguintes ainda não têm base de dados."
+                    },
+                    {
+                      "id": "card-a07-01-03-inspecao-inicial",
+                      "position": 3,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Inspecionar estrutura",
+                      "prompt": "Compare as versões completas de inspeção inicial.",
+                      "language": "python",
+                      "code": "# escolha uma alternativa",
+                      "question": "Qual versão mostra primeiras linhas, formato e nomes de colunas do `df`?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "display(df.head())\nprint(df.shape)\nprint(df.columns)"
+                        },
+                        {
+                          "id": "b",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "df.header()\ndf.size()\ndf.column_names"
+                        },
+                        {
+                          "id": "c",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "df[\"head\"]\ndf[\"shape\"]\ndf[\"columns\"]"
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "`display(df.head())` mostra as primeiras linhas no notebook. `print(df.shape)` e `print(df.columns)` explicitam o formato e os nomes de campo da base; os outros trechos confundem métodos e atributos com campos que não existem na base."
+                    },
+                    {
+                      "id": "card-a07-01-04-colunas-reais",
+                      "position": 4,
+                      "resource": "table",
+                      "kind": "theory",
+                      "exercise": "none",
+                      "title": "Colunas disponíveis no CSV",
+                      "columns": [
+                        "Coluna",
+                        "Tipo observado",
+                        "Uso didático"
+                      ],
+                      "rows": [
+                        [
+                          "`id_registro`",
+                          "inteiro",
+                          "identificador; não é variável principal para resumo estatístico"
+                        ],
+                        [
+                          "`setor`",
+                          "texto",
+                          "categoria de processo"
+                        ],
+                        [
+                          "`temperatura_c`",
+                          "decimal",
+                          "medidas de tendência central, dispersão, posição e histograma"
+                        ],
+                        [
+                          "`tempo_ciclo_s`",
+                          "decimal",
+                          "mediana, amplitude, desvio padrão e quartis"
+                        ],
+                        [
+                          "`producao_dia`",
+                          "inteiro",
+                          "média, mediana, moda, desvio padrão e percentil"
+                        ],
+                        [
+                          "`consumo_kwh`",
+                          "decimal",
+                          "variável numérica secundária"
+                        ],
+                        [
+                          "`falha`",
+                          "inteiro `0/1`",
+                          "proporção de ocorrência de falha"
+                        ]
+                      ],
+                      "after": "A escrita exata da coluna importa: `temperatura_c` existe no CSV, enquanto `temperatura` não existe."
+                    },
+                    {
+                      "id": "card-a07-01-05-tipo-variavel",
+                      "position": 5,
+                      "resource": "choice",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Tipo de variável",
+                      "question": "Qual classificação está correta para as colunas da base?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "text",
+                          "text": "`temperatura_c` é numérica, `setor` é categórica e `falha` é binária."
+                        },
+                        {
+                          "id": "b",
+                          "kind": "text",
+                          "text": "`setor` é numérica, `falha` é texto livre e `id_registro` é a principal medida estatística."
+                        },
+                        {
+                          "id": "c",
+                          "kind": "text",
+                          "text": "`temperatura_c` é categórica porque tem casas decimais."
+                        },
+                        {
+                          "id": "d",
+                          "kind": "text",
+                          "text": "`producao_dia` é binária porque contém números inteiros."
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "`temperatura_c` aceita cálculos numéricos, `setor` identifica grupos e `falha` usa `0/1` para representar ausência ou ocorrência."
+                    },
+                    {
+                      "id": "card-a07-01-06-ponte-pandas-estatistica",
+                      "position": 6,
+                      "resource": "table",
+                      "kind": "theory",
+                      "exercise": "none",
+                      "title": "Da coluna ao resumo estatístico",
+                      "columns": [
+                        "Passo em Pandas",
+                        "Objeto analisado",
+                        "Decisão estatística"
+                      ],
+                      "rows": [
+                        [
+                          "`df[\"temperatura_c\"]`",
+                          "`Series` numérica",
+                          "calcular centro, variação, posição ou histograma"
+                        ],
+                        [
+                          "`df[\"setor\"]`",
+                          "`Series` categórica",
+                          "buscar o valor mais frequente com `.mode()`"
+                        ],
+                        [
+                          "`df[\"falha\"]`",
+                          "`Series` binária `0/1`",
+                          "calcular proporção de `1` com `.mean()`"
+                        ],
+                        [
+                          "`df.shape`",
+                          "formato do `DataFrame`",
+                          "conferir se a base tem `80` registros e `7` colunas"
+                        ]
+                      ],
+                      "after": "A ponte entre Pandas e estatística começa na seleção correta da coluna. Depois de obter uma `Series`, o método escolhido responde a uma pergunta específica sobre essa coluna."
+                    },
+                    {
+                      "id": "card-a07-01-07-coluna-para-falha",
+                      "position": 7,
+                      "resource": "choice",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Escolher a coluna antes da estatística",
+                      "question": "Para responder “qual proporção de registros teve falha?”, qual coluna do CSV deve ser usada?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "text",
+                          "text": "`falha`, porque é a coluna binária em que `1` representa ocorrência."
+                        },
+                        {
+                          "id": "b",
+                          "kind": "text",
+                          "text": "`id_registro`, porque identifica cada linha e deve ser usado como medida principal."
+                        },
+                        {
+                          "id": "c",
+                          "kind": "text",
+                          "text": "`setor`, porque rótulos de texto podem ser promediados diretamente."
+                        },
+                        {
+                          "id": "d",
+                          "kind": "text",
+                          "text": "`consumo_kwh`, porque qualquer coluna decimal mede ocorrência."
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "`falha` já codifica ausência e ocorrência como `0/1`. Isso permite usar média como proporção observada de registros com valor `1`."
+                    }
+                  ],
+                  "validation": {
+                    "ok": true,
+                    "issues": []
+                  }
+                }
+              ],
+              "activeVersion": "micro-a07-01-contexto-leitura-base__v20260702-163000"
+            },
+            {
+              "id": "micro-a07-02-vocabulario-estatistico",
+              "title": "Variável, distribuição e estatística descritiva",
+              "goal": "Construir vocabulário mínimo para entender por que calculamos tendência central, dispersão e posição.",
+              "role": "support",
+              "status": "generated",
+              "dependsOn": [
+                "micro-a07-01-contexto-leitura-base"
+              ],
+              "covers": [
+                "estatística descritiva",
+                "variável numérica",
+                "variável categórica",
+                "variável binária",
+                "distribuição",
+                "tendência central",
+                "dispersão",
+                "posição"
+              ],
+              "checks": [
+                "reconhece que `temperatura_c` é numérica",
+                "reconhece que `setor` é categórica",
+                "reconhece que `falha` é binária",
+                "diferencia valor típico de variação dos valores"
+              ],
+              "versions": [
+                {
+                  "id": "micro-a07-02-vocabulario-estatistico__v20260702-163000",
+                  "createdAt": "2026-07-02T16:30:00.000000-03:00",
+                  "source": "llm",
+                  "action": "improve",
+                  "request": "Corrigir detalhes apontados pela auditoria e expandir moderadamente a Aula 7 para 70–80 cards, preservando o conteúdo aprovado.",
+                  "summary": "Construir vocabulário mínimo para entender por que calculamos tendência central, dispersão e posição.",
+                  "cards": [
+                    {
+                      "id": "card-a07-02-01-vocabulario-base",
+                      "position": 1,
+                      "resource": "paragraph",
+                      "kind": "theory",
+                      "exercise": "none",
+                      "title": "Vocabulário estatístico mínimo",
+                      "text": "Estatística descritiva organiza dados já observados. Uma variável é uma característica registrada em cada linha, e uma distribuição mostra como os valores dessa variável se espalham ou se concentram.",
+                      "after": "A Aula 7 usa esse vocabulário para escolher comandos em Pandas: primeiro identificar a variável, depois escolher a medida adequada."
+                    },
+                    {
+                      "id": "card-a07-02-02-tipos-e-comandos",
+                      "position": 2,
+                      "resource": "table",
+                      "kind": "theory",
+                      "exercise": "none",
+                      "title": "Tipo de variável e comando possível",
+                      "columns": [
+                        "Tipo",
+                        "Exemplo no CSV",
+                        "Pergunta adequada",
+                        "Comando típico"
+                      ],
+                      "rows": [
+                        [
+                          "numérica",
+                          "`temperatura_c`",
+                          "Qual é o valor típico ou a variação?",
+                          "`.mean()`, `.median()`, `.std()`"
+                        ],
+                        [
+                          "categórica",
+                          "`setor`",
+                          "Qual valor aparece com mais frequência?",
+                          "`.mode()`"
+                        ],
+                        [
+                          "binária",
+                          "`falha`",
+                          "Qual proporção de ocorrência?",
+                          "`.mean()` sobre `0/1`"
+                        ]
+                      ],
+                      "after": "A escolha da medida depende do tipo de variável. Média em `setor` não faz sentido porque os valores são rótulos de texto."
+                    },
+                    {
+                      "id": "card-a07-02-03-lacuna-dispersao",
+                      "position": 3,
+                      "resource": "paragraph",
+                      "kind": "exercise",
+                      "exercise": "gap",
+                      "title": "Valor típico ou variação",
+                      "text": "Média e mediana resumem tendência central; amplitude, variância e desvio padrão resumem [[dispersão::dispersão|categoria|identificador]].",
+                      "after": "`Dispersão` indica quanto os valores variam. Ela responde a uma pergunta diferente da média ou da mediana."
+                    },
+                    {
+                      "id": "card-a07-02-04-escolha-metrica",
+                      "position": 4,
+                      "resource": "choice",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Escolher a métrica pelo objetivo",
+                      "question": "Para saber se a `temperatura_c` varia muito entre registros, qual família de medida é mais adequada?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "text",
+                          "text": "Medidas de dispersão, como amplitude e desvio padrão."
+                        },
+                        {
+                          "id": "b",
+                          "kind": "text",
+                          "text": "Apenas a moda de `setor`."
+                        },
+                        {
+                          "id": "c",
+                          "kind": "text",
+                          "text": "Somente `df.columns`."
+                        },
+                        {
+                          "id": "d",
+                          "kind": "text",
+                          "text": "O identificador `id_registro`."
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "Variação pede dispersão. `df.columns` apenas lista nomes, e `id_registro` serve para identificar linhas, não para resumir o comportamento da temperatura."
+                    },
+                    {
+                      "id": "card-a07-02-05-operacao-pandas-estatistica",
+                      "position": 5,
+                      "resource": "table",
+                      "kind": "theory",
+                      "exercise": "none",
+                      "title": "Operação em Pandas e pergunta estatística",
+                      "columns": [
+                        "Operação",
+                        "Exemplo",
+                        "Pergunta respondida"
+                      ],
+                      "rows": [
+                        [
+                          "selecionar coluna",
+                          "`df[\"producao_dia\"]`",
+                          "qual variável será resumida?"
+                        ],
+                        [
+                          "agregar valores",
+                          "`.mean()`, `.median()`, `.std()`",
+                          "qual síntese numérica será calculada?"
+                        ],
+                        [
+                          "filtrar por condição",
+                          "`df[\"temperatura_c\"] > 74`",
+                          "quais linhas satisfazem o critério?"
+                        ],
+                        [
+                          "tirar média de booleanos",
+                          "`(df[\"temperatura_c\"] > 74).mean()`",
+                          "qual proporção de linhas satisfaz o critério?"
+                        ]
+                      ],
+                      "after": "O mesmo gesto de Pandas pode virar uma pergunta estatística. A coluna define o objeto; o método define a medida; a interpretação transforma o número em leitura do processo."
+                    },
+                    {
+                      "id": "card-a07-02-06-pergunta-define-metrica",
+                      "position": 6,
+                      "resource": "choice",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "A pergunta define a métrica",
+                      "question": "Um relatório quer saber o valor central de `tempo_ciclo_s` depois de ordenar os `80` registros. Qual medida responde melhor?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "text",
+                          "text": "Mediana, porque representa o valor central após a ordenação."
+                        },
+                        {
+                          "id": "b",
+                          "kind": "text",
+                          "text": "Moda, porque sempre mede o centro de uma coluna numérica."
+                        },
+                        {
+                          "id": "c",
+                          "kind": "text",
+                          "text": "Desvio padrão, porque informa o valor central em segundos."
+                        },
+                        {
+                          "id": "d",
+                          "kind": "text",
+                          "text": "Amplitude, porque substitui a ordenação por uma diferença entre extremos."
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "A pista é “valor central depois de ordenar”. Essa é a definição operacional de mediana, calculada em Pandas com `.median()`."
+                    }
+                  ],
+                  "validation": {
+                    "ok": true,
+                    "issues": []
+                  }
+                }
+              ],
+              "activeVersion": "micro-a07-02-vocabulario-estatistico__v20260702-163000"
+            },
+            {
+              "id": "micro-a07-03-media-mediana",
+              "title": "Média e mediana em colunas numéricas",
+              "goal": "Calcular e interpretar média e mediana com `.mean()` e `.median()`.",
+              "role": "practice",
+              "status": "generated",
+              "dependsOn": [
+                "micro-a07-02-vocabulario-estatistico"
+              ],
+              "covers": [
+                ".mean()",
+                ".median()",
+                "df[\"temperatura_c\"]",
+                "df[\"producao_dia\"]",
+                "df[\"tempo_ciclo_s\"]",
+                "diferença entre média e mediana"
+              ],
+              "checks": [
+                "calcula média de `temperatura_c`",
+                "calcula média de `producao_dia`",
+                "calcula mediana de `temperatura_c`",
+                "calcula mediana de `tempo_ciclo_s`",
+                "interpreta que a mediana é o valor central depois da ordenação"
+              ],
+              "versions": [
+                {
+                  "id": "micro-a07-03-media-mediana__v20260702-163000",
+                  "createdAt": "2026-07-02T16:30:00.000000-03:00",
+                  "source": "llm",
+                  "action": "improve",
+                  "request": "Corrigir detalhes apontados pela auditoria e expandir moderadamente a Aula 7 para 70–80 cards, preservando o conteúdo aprovado.",
+                  "summary": "Calcular e interpretar média e mediana com `.mean()` e `.median()`.",
+                  "cards": [
+                    {
+                      "id": "card-a07-03-01-regra-media-mediana",
+                      "position": 1,
+                      "resource": "paragraph",
+                      "kind": "theory",
+                      "exercise": "none",
+                      "title": "Média e mediana",
+                      "text": "`mean` pode ser entendido como média: uma síntese numérica dos valores. `median` indica mediana: o valor central depois de ordenar a coluna.",
+                      "after": "Média e mediana podem ser próximas ou diferentes. A comparação ajuda a ler a posição dos valores, mas cada uma responde a uma pergunta específica."
+                    },
+                    {
+                      "id": "card-a07-03-02-media-temperatura",
+                      "position": 2,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "gap",
+                      "title": "Média de temperatura",
+                      "prompt": "Complete o método para calcular a média de `temperatura_c`.",
+                      "language": "python",
+                      "code": "media_temperatura = df[\"temperatura_c\"].[[mean()::mean()|median()|mode()]]\nmedia_temperatura",
+                      "after": "`.mean()` calcula a média da coluna selecionada. No CSV de conferência, o resultado fica próximo de `71.63`."
+                    },
+                    {
+                      "id": "card-a07-03-03-mediana-tempo",
+                      "position": 3,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "gap",
+                      "title": "Mediana do tempo de ciclo",
+                      "prompt": "Complete o método para encontrar o valor central de `tempo_ciclo_s`.",
+                      "language": "python",
+                      "code": "mediana_tempo = df[\"tempo_ciclo_s\"].[[median()::median()|mean()|std()]]\nmediana_tempo",
+                      "after": "`.median()` ordena a ideia da coluna e retorna o valor central. No CSV de conferência, a mediana de `tempo_ciclo_s` fica próxima de `34.02`."
+                    },
+                    {
+                      "id": "card-a07-03-04-media-producao",
+                      "position": 4,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Selecionar coluna antes da média",
+                      "prompt": "Compare as versões completas.",
+                      "language": "python",
+                      "code": "# escolha uma alternativa",
+                      "question": "Qual trecho calcula a média de `producao_dia` sem trocar a coluna?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "df[\"producao_dia\"].mean()"
+                        },
+                        {
+                          "id": "b",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "df[\"temperatura_c\"].mean()"
+                        },
+                        {
+                          "id": "c",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "df.mean"
+                        },
+                        {
+                          "id": "d",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "df[\"producao\"].mean()"
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "O trecho correto seleciona `producao_dia` e chama `.mean()` com parênteses. `df.mean` sem parênteses não executa o cálculo, e `producao` não é coluna do CSV."
+                    },
+                    {
+                      "id": "card-a07-03-05-interpretar-mediana",
+                      "position": 5,
+                      "resource": "choice",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Interpretação da mediana",
+                      "question": "O que a mediana representa em uma coluna numérica?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "text",
+                          "text": "O valor central depois de ordenar os valores da coluna."
+                        },
+                        {
+                          "id": "b",
+                          "kind": "text",
+                          "text": "A metade da média da coluna."
+                        },
+                        {
+                          "id": "c",
+                          "kind": "text",
+                          "text": "O valor mais frequente em qualquer coluna."
+                        },
+                        {
+                          "id": "d",
+                          "kind": "text",
+                          "text": "A diferença entre o maior e o menor valor."
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "Mediana é posição central. O valor mais frequente é moda, e a diferença entre maior e menor valor é amplitude."
+                    },
+                    {
+                      "id": "card-a07-03-06-interpretar-centro-temperatura",
+                      "position": 6,
+                      "resource": "choice",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Interpretar centro da temperatura",
+                      "question": "No CSV, a média de `temperatura_c` é aproximadamente `71.63` e a mediana é `71.90`. Qual interpretação é mais segura?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "text",
+                          "text": "O centro numérico e o centro ordenado da temperatura estão próximos, em torno de `72` graus Celsius."
+                        },
+                        {
+                          "id": "b",
+                          "kind": "text",
+                          "text": "A mediana mostra que metade da média é aproximadamente `35.95` graus Celsius."
+                        },
+                        {
+                          "id": "c",
+                          "kind": "text",
+                          "text": "A média prova que todos os registros têm temperatura próxima de `71.63`."
+                        },
+                        {
+                          "id": "d",
+                          "kind": "text",
+                          "text": "A proximidade entre média e mediana elimina a necessidade de verificar variação."
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "Média e mediana próximas indicam centros semelhantes para essa coluna. Isso não diz que todos os valores são iguais; para variação, use amplitude, variância ou desvio padrão."
+                    },
+                    {
+                      "id": "card-a07-03-07-erro-mediana-metade-media",
+                      "position": 7,
+                      "resource": "choice",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Evitar confusão entre média e mediana",
+                      "question": "Qual frase corrige o erro de dizer que “mediana é metade da média”?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "text",
+                          "text": "Mediana é o valor central após ordenar os dados; ela não é calculada dividindo a média por `2`."
+                        },
+                        {
+                          "id": "b",
+                          "kind": "text",
+                          "text": "Mediana é sempre o mesmo valor da moda quando a coluna é numérica."
+                        },
+                        {
+                          "id": "c",
+                          "kind": "text",
+                          "text": "Mediana é o maior valor menos o menor valor."
+                        },
+                        {
+                          "id": "d",
+                          "kind": "text",
+                          "text": "Mediana é a proporção de registros acima de um limite."
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "A mediana depende da posição dos valores ordenados. A média depende da soma dos valores dividida pela quantidade de registros."
+                    }
+                  ],
+                  "validation": {
+                    "ok": true,
+                    "issues": []
+                  }
+                }
+              ],
+              "activeVersion": "micro-a07-03-media-mediana__v20260702-163000"
+            },
+            {
+              "id": "micro-a07-04-moda-categorias-binarias",
+              "title": "Moda em valores frequentes",
+              "goal": "Calcular moda em colunas categóricas e binárias usando `.mode()`.",
+              "role": "practice",
+              "status": "generated",
+              "dependsOn": [
+                "micro-a07-03-media-mediana"
+              ],
+              "covers": [
+                ".mode()",
+                ".mode()[0]",
+                "moda de `setor`",
+                "moda de `falha`",
+                "valor mais frequente"
+              ],
+              "checks": [
+                "calcula moda de `setor`",
+                "calcula moda de `falha`",
+                "reconhece que `.mode()` pode devolver uma `Series`",
+                "usa `[0]` quando precisa do primeiro valor modal"
+              ],
+              "versions": [
+                {
+                  "id": "micro-a07-04-moda-categorias-binarias__v20260702-163000",
+                  "createdAt": "2026-07-02T16:30:00.000000-03:00",
+                  "source": "llm",
+                  "action": "improve",
+                  "request": "Corrigir detalhes apontados pela auditoria e expandir moderadamente a Aula 7 para 70–80 cards, preservando o conteúdo aprovado.",
+                  "summary": "Calcular moda em colunas categóricas e binárias usando `.mode()`.",
+                  "cards": [
+                    {
+                      "id": "card-a07-04-01-ponte-moda",
+                      "position": 1,
+                      "resource": "paragraph",
+                      "kind": "theory",
+                      "exercise": "none",
+                      "title": "Moda como frequência",
+                      "text": "`mode` indica moda: o valor que mais aparece. Em Pandas, `.mode()` pode devolver uma `Series`, porque uma coluna pode ter mais de um valor empatado em frequência.",
+                      "after": "Quando a atividade pede apenas um valor escalar, usar `.mode()[0]` pega o primeiro valor modal retornado."
+                    },
+                    {
+                      "id": "card-a07-04-02-moda-setor",
+                      "position": 2,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "gap",
+                      "title": "Moda de `setor`",
+                      "prompt": "Complete o método para obter o setor mais frequente como valor escalar.",
+                      "language": "python",
+                      "code": "moda_setor = df[\"setor\"].[[mode()::mode()|mean()|median()]][0]\nmoda_setor",
+                      "after": "`setor` é categórica, então `.mode()` é adequado. No CSV de conferência, o primeiro valor modal é `Usinagem`."
+                    },
+                    {
+                      "id": "card-a07-04-03-falha-zero",
+                      "position": 3,
+                      "resource": "choice",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Interpretar `falha = 0`",
+                      "question": "Se a moda da coluna `falha` é `0`, qual interpretação é adequada?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "text",
+                          "text": "O valor mais frequente é ausência de falha registrada."
+                        },
+                        {
+                          "id": "b",
+                          "kind": "text",
+                          "text": "Não há linhas no CSV."
+                        },
+                        {
+                          "id": "c",
+                          "kind": "text",
+                          "text": "A coluna `falha` deve ser texto."
+                        },
+                        {
+                          "id": "d",
+                          "kind": "text",
+                          "text": "A média da produção é zero."
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "Na coluna binária `falha`, `0` representa ausência de falha e `1` representa ocorrência. Moda igual a `0` indica que esse valor aparece mais vezes."
+                    },
+                    {
+                      "id": "card-a07-04-04-series-ou-escalar",
+                      "position": 4,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Quando usar `[0]`",
+                      "prompt": "Compare as versões completas.",
+                      "language": "python",
+                      "code": "# escolha uma alternativa",
+                      "question": "Qual trecho retorna diretamente o primeiro valor modal de `falha`?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "df[\"falha\"].mode()[0]"
+                        },
+                        {
+                          "id": "b",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "df[\"falha\"].mean()[0]"
+                        },
+                        {
+                          "id": "c",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "df[\"falha\"].mode"
+                        },
+                        {
+                          "id": "d",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "df[\"falha\"][0].mode()"
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "`.mode()` calcula os valores modais e `[0]` seleciona o primeiro deles. `.mode` sem parênteses não executa o método."
+                    },
+                    {
+                      "id": "card-a07-04-05-saida-esperada",
+                      "position": 5,
+                      "resource": "code",
+                      "kind": "theory",
+                      "exercise": "none",
+                      "title": "Saída esperada de moda",
+                      "prompt": "Compare a ideia de saída para `setor` e `falha`.",
+                      "language": "python",
+                      "code": "print(df[\"setor\"].mode()[0])\nprint(df[\"falha\"].mode()[0])",
+                      "after": "`print()` explicita as duas saídas no notebook: `Usinagem` para `setor` e `0` para `falha`.",
+                      "afterBlocks": [
+                        {
+                          "columns": [
+                            "Comando",
+                            "Valor esperado"
+                          ],
+                          "rows": [
+                            [
+                              "`df[\"setor\"].mode()[0]`",
+                              "`Usinagem`"
+                            ],
+                            [
+                              "`df[\"falha\"].mode()[0]`",
+                              "`0`"
+                            ]
+                          ],
+                          "kind": "table"
+                        }
+                      ]
+                    },
+                    {
+                      "id": "card-a07-04-06-moda-setor-contexto",
+                      "position": 6,
+                      "resource": "choice",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Moda de `setor` em contexto",
+                      "question": "Se `df[\"setor\"].mode()[0]` retorna `Usinagem`, o que esse resultado revela sobre o CSV?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "text",
+                          "text": "`Usinagem` é o setor que aparece com mais frequência entre os registros."
+                        },
+                        {
+                          "id": "b",
+                          "kind": "text",
+                          "text": "`Usinagem` tem necessariamente maior produção diária."
+                        },
+                        {
+                          "id": "c",
+                          "kind": "text",
+                          "text": "`Usinagem` tem temperatura média igual à moda de `temperatura_c`."
+                        },
+                        {
+                          "id": "d",
+                          "kind": "text",
+                          "text": "`Usinagem` é o primeiro setor do arquivo, independentemente das frequências."
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "Moda é frequência. Ela identifica o valor mais repetido, sem concluir desempenho, temperatura média ou ordem temporal."
+                    }
+                  ],
+                  "validation": {
+                    "ok": true,
+                    "issues": []
+                  }
+                }
+              ],
+              "activeVersion": "micro-a07-04-moda-categorias-binarias__v20260702-163000"
+            },
+            {
+              "id": "micro-a07-05-amplitude",
+              "title": "Amplitude como maior menos menor",
+              "goal": "Calcular amplitude usando `max() - min()` e interpretar alcance dos valores.",
+              "role": "practice",
+              "status": "generated",
+              "dependsOn": [
+                "micro-a07-04-moda-categorias-binarias"
+              ],
+              "covers": [
+                ".max()",
+                ".min()",
+                "amplitude",
+                "`temperatura_c`",
+                "alcance de valores"
+              ],
+              "checks": [
+                "calcula menor e maior valor de `temperatura_c`",
+                "calcula amplitude de `temperatura_c`",
+                "interpreta amplitude como distância entre extremos",
+                "evita confundir amplitude com média"
+              ],
+              "versions": [
+                {
+                  "id": "micro-a07-05-amplitude__v20260702-163000",
+                  "createdAt": "2026-07-02T16:30:00.000000-03:00",
+                  "source": "llm",
+                  "action": "improve",
+                  "request": "Corrigir detalhes apontados pela auditoria e expandir moderadamente a Aula 7 para 70–80 cards, preservando o conteúdo aprovado.",
+                  "summary": "Calcular amplitude usando `max() - min()` e interpretar alcance dos valores.",
+                  "cards": [
+                    {
+                      "id": "card-a07-05-01-fluxo-amplitude",
+                      "position": 1,
+                      "resource": "flow",
+                      "kind": "theory",
+                      "exercise": "none",
+                      "title": "Como calcular amplitude",
+                      "prompt": "A amplitude mede a distância entre extremos.",
+                      "structure": {
+                        "kind": "sequence",
+                        "items": [
+                          {
+                            "kind": "start",
+                            "text": "Selecionar `temperatura_c`"
+                          },
+                          {
+                            "kind": "process",
+                            "text": "Calcular maior valor com `.max()`"
+                          },
+                          {
+                            "kind": "process",
+                            "text": "Calcular menor valor com `.min()`"
+                          },
+                          {
+                            "kind": "process",
+                            "text": "Subtrair menor do maior"
+                          },
+                          {
+                            "kind": "output",
+                            "text": "Amplitude da coluna"
+                          },
+                          {
+                            "kind": "end",
+                            "text": "Interpretar alcance dos valores"
+                          }
+                        ]
+                      },
+                      "after": "A ordem é decisiva: amplitude é maior menos menor. Inverter a subtração gera valor negativo."
+                    },
+                    {
+                      "id": "card-a07-05-02-calculo-amplitude",
+                      "position": 2,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "gap",
+                      "title": "Amplitude de `temperatura_c`",
+                      "prompt": "Complete o cálculo da amplitude.",
+                      "language": "python",
+                      "code": "amplitude_temp = df[\"temperatura_c\"].[[max()::max()|min()|mean()]] - df[\"temperatura_c\"].[[min()::min()|max()|std()]]\namplitude_temp",
+                      "after": "`max() - min()` calcula o alcance entre extremos. No CSV de conferência, a amplitude de `temperatura_c` fica próxima de `28.27`."
+                    },
+                    {
+                      "id": "card-a07-05-03-interpretacao-amplitude",
+                      "position": 3,
+                      "resource": "choice",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Interpretar amplitude",
+                      "question": "Qual afirmação interpreta corretamente a amplitude de `temperatura_c`?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "text",
+                          "text": "Ela mede a distância entre o maior e o menor valor de temperatura."
+                        },
+                        {
+                          "id": "b",
+                          "kind": "text",
+                          "text": "Ela mede o valor mais frequente de temperatura."
+                        },
+                        {
+                          "id": "c",
+                          "kind": "text",
+                          "text": "Ela mede a quantidade de colunas da base."
+                        },
+                        {
+                          "id": "d",
+                          "kind": "text",
+                          "text": "Ela mede a média de temperatura."
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "Amplitude não é frequência, média nem contagem de colunas. Ela resume apenas os extremos da coluna."
+                    },
+                    {
+                      "id": "card-a07-05-04-erro-ordem",
+                      "position": 4,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Evitar inversão da subtração",
+                      "prompt": "Compare as versões completas.",
+                      "language": "python",
+                      "code": "# escolha uma alternativa",
+                      "question": "Qual trecho evita amplitude negativa?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "df[\"temperatura_c\"].max() - df[\"temperatura_c\"].min()"
+                        },
+                        {
+                          "id": "b",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "df[\"temperatura_c\"].min() - df[\"temperatura_c\"].max()"
+                        },
+                        {
+                          "id": "c",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "df[\"setor\"].max() - df[\"setor\"].min()"
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "A amplitude usa maior menos menor. A alternativa com `setor` tenta aplicar subtração a uma coluna categórica."
+                    },
+                    {
+                      "id": "card-a07-05-05-amplitude-producao-contexto",
+                      "position": 5,
+                      "resource": "choice",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Amplitude de produção em contexto",
+                      "question": "A amplitude de `producao_dia` é `79`. Qual leitura é adequada?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "text",
+                          "text": "A diferença entre o maior e o menor valor de produção diária no CSV é `79`."
+                        },
+                        {
+                          "id": "b",
+                          "kind": "text",
+                          "text": "A produção média diária é `79`."
+                        },
+                        {
+                          "id": "c",
+                          "kind": "text",
+                          "text": "Há exatamente `79` registros na base."
+                        },
+                        {
+                          "id": "d",
+                          "kind": "text",
+                          "text": "O desvio padrão da produção diária é `79`."
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "Amplitude usa apenas os extremos: `máximo - mínimo`. Ela descreve alcance, não média, contagem de linhas ou variação típica."
+                    }
+                  ],
+                  "validation": {
+                    "ok": true,
+                    "issues": []
+                  }
+                }
+              ],
+              "activeVersion": "micro-a07-05-amplitude__v20260702-163000"
+            },
+            {
+              "id": "micro-a07-06-variancia-desvio-padrao",
+              "title": "Variância e desvio padrão",
+              "goal": "Calcular variância e desvio padrão com `.var()` e `.std()` e interpretar dispersão sem formalismo excessivo.",
+              "role": "practice",
+              "status": "generated",
+              "dependsOn": [
+                "micro-a07-05-amplitude"
+              ],
+              "covers": [
+                ".var()",
+                ".std()",
+                "dispersão",
+                "unidade ao quadrado",
+                "unidade original",
+                "`temperatura_c`",
+                "`producao_dia`"
+              ],
+              "checks": [
+                "calcula variância de `temperatura_c`",
+                "calcula desvio padrão de `temperatura_c`",
+                "calcula desvio padrão de `producao_dia`",
+                "reconhece que maior desvio padrão indica maior variação típica",
+                "entende que Pandas usa padrão amostral por padrão"
+              ],
+              "versions": [
+                {
+                  "id": "micro-a07-06-variancia-desvio-padrao__v20260702-163000",
+                  "createdAt": "2026-07-02T16:30:00.000000-03:00",
+                  "source": "llm",
+                  "action": "improve",
+                  "request": "Corrigir detalhes apontados pela auditoria e expandir moderadamente a Aula 7 para 70–80 cards, preservando o conteúdo aprovado.",
+                  "summary": "Calcular variância e desvio padrão com `.var()` e `.std()` e interpretar dispersão sem formalismo excessivo.",
+                  "cards": [
+                    {
+                      "id": "card-a07-06-01-comparacao-dispersao",
+                      "position": 1,
+                      "resource": "table",
+                      "kind": "theory",
+                      "exercise": "none",
+                      "title": "Três medidas de dispersão",
+                      "columns": [
+                        "Medida",
+                        "Comando",
+                        "Ideia",
+                        "Unidade"
+                      ],
+                      "rows": [
+                        [
+                          "amplitude",
+                          "`.max() - .min()`",
+                          "distância entre extremos",
+                          "mesma unidade da coluna"
+                        ],
+                        [
+                          "variância",
+                          "`.var()`",
+                          "variação média em torno da média",
+                          "unidade ao quadrado"
+                        ],
+                        [
+                          "desvio padrão",
+                          "`.std()`",
+                          "variação típica em torno da média",
+                          "unidade original"
+                        ]
+                      ],
+                      "after": "Pandas usa variância e desvio padrão amostrais por padrão em `.var()` e `.std()`. O foco aqui é interpretar a dispersão, não expandir fórmula."
+                    },
+                    {
+                      "id": "card-a07-06-02-variancia-temperatura",
+                      "position": 2,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "gap",
+                      "title": "Variância de temperatura",
+                      "prompt": "Complete o método para calcular variância de `temperatura_c`.",
+                      "language": "python",
+                      "code": "variancia_temp = df[\"temperatura_c\"].[[var()::var()|std()|mean()]]\nvariancia_temp",
+                      "after": "`.var()` calcula a variância. No CSV de conferência, o valor fica próximo de `30.15`, em unidades de temperatura ao quadrado."
+                    },
+                    {
+                      "id": "card-a07-06-03-desvio-producao",
+                      "position": 3,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "gap",
+                      "title": "Desvio padrão de produção",
+                      "prompt": "Complete o método para calcular desvio padrão de `producao_dia`.",
+                      "language": "python",
+                      "code": "desvio_producao = df[\"producao_dia\"].[[std()::std()|var()|median()]]\ndesvio_producao",
+                      "after": "`.std()` calcula o desvio padrão na unidade original da coluna. Para `producao_dia`, o valor de conferência fica próximo de `25.28` unidades de produção."
+                    },
+                    {
+                      "id": "card-a07-06-04-interpretar-desvio",
+                      "position": 4,
+                      "resource": "choice",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Ler dispersão",
+                      "question": "Entre duas colunas na mesma unidade, o que indica maior desvio padrão?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "text",
+                          "text": "Os valores costumam variar mais em torno da média."
+                        },
+                        {
+                          "id": "b",
+                          "kind": "text",
+                          "text": "A coluna tem necessariamente média maior."
+                        },
+                        {
+                          "id": "c",
+                          "kind": "text",
+                          "text": "A coluna é categórica."
+                        },
+                        {
+                          "id": "d",
+                          "kind": "text",
+                          "text": "A coluna tem menos registros."
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "Desvio padrão fala de variação típica, não de valor médio, tipo categórico ou quantidade de linhas."
+                    },
+                    {
+                      "id": "card-a07-06-05-unidades",
+                      "position": 5,
+                      "resource": "choice",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Unidade de variância e desvio",
+                      "question": "Qual comparação está correta?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "text",
+                          "text": "Variância fica em unidade ao quadrado; desvio padrão volta para a unidade original."
+                        },
+                        {
+                          "id": "b",
+                          "kind": "text",
+                          "text": "Variância e desvio padrão sempre têm a mesma unidade."
+                        },
+                        {
+                          "id": "c",
+                          "kind": "text",
+                          "text": "Desvio padrão é sempre menor que a mediana."
+                        },
+                        {
+                          "id": "d",
+                          "kind": "text",
+                          "text": "Variância substitui a média em colunas categóricas."
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "A unidade é o detalhe decisivo: a variância é útil para cálculo de dispersão, mas o desvio padrão costuma ser mais direto para interpretação na unidade da coluna."
+                    },
+                    {
+                      "id": "card-a07-06-06-desvio-nao-e-erro",
+                      "position": 6,
+                      "resource": "choice",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Desvio padrão não é erro de medição",
+                      "question": "O desvio padrão de `producao_dia` é aproximadamente `25.28`. Qual interpretação está correta?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "text",
+                          "text": "A produção diária varia tipicamente em torno da média nessa ordem de grandeza, na unidade original da coluna."
+                        },
+                        {
+                          "id": "b",
+                          "kind": "text",
+                          "text": "Cada registro de produção contém um erro de `25.28` peças."
+                        },
+                        {
+                          "id": "c",
+                          "kind": "text",
+                          "text": "A média da produção é obrigatoriamente `25.28`."
+                        },
+                        {
+                          "id": "d",
+                          "kind": "text",
+                          "text": "O valor `25.28` é uma porcentagem de falhas."
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "Desvio padrão resume dispersão na unidade da variável. Ele não deve ser lido automaticamente como erro de medição ou porcentagem."
+                    },
+                    {
+                      "id": "card-a07-06-07-escolher-medida-na-unidade",
+                      "position": 7,
+                      "resource": "choice",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Escolher medida na unidade original",
+                      "question": "Para comunicar a variação típica de `tempo_ciclo_s` ainda em segundos, qual medida é mais adequada?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "text",
+                          "text": "Desvio padrão, calculado com `df[\"tempo_ciclo_s\"].std()`."
+                        },
+                        {
+                          "id": "b",
+                          "kind": "text",
+                          "text": "Variância, porque sempre fica na mesma unidade original."
+                        },
+                        {
+                          "id": "c",
+                          "kind": "text",
+                          "text": "Moda de `setor`, porque é categórica."
+                        },
+                        {
+                          "id": "d",
+                          "kind": "text",
+                          "text": "Média de `falha`, porque resulta em segundos."
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "O desvio padrão preserva a unidade original da coluna, neste caso segundos. A variância fica em unidade ao quadrado."
+                    }
+                  ],
+                  "validation": {
+                    "ok": true,
+                    "issues": []
+                  }
+                }
+              ],
+              "activeVersion": "micro-a07-06-variancia-desvio-padrao__v20260702-163000"
+            },
+            {
+              "id": "micro-a07-07-quartis-percentis",
+              "title": "Quartis e percentis com `.quantile()`",
+              "goal": "Calcular quartis e percentil 90 usando `.quantile()` e interpretar posição acumulada.",
+              "role": "practice",
+              "status": "generated",
+              "dependsOn": [
+                "micro-a07-06-variancia-desvio-padrao"
+              ],
+              "covers": [
+                ".quantile(0.25)",
+                ".quantile(0.50)",
+                ".quantile(0.75)",
+                ".quantile(0.90)",
+                "quartis de `temperatura_c`",
+                "percentil 90 de `producao_dia`",
+                "quartis de `producao_dia`",
+                "quartis de `tempo_ciclo_s`"
+              ],
+              "checks": [
+                "calcula Q1, Q2 e Q3 de `temperatura_c`",
+                "calcula percentil 90 de `producao_dia`",
+                "reconhece que `0.90` representa 90%",
+                "interpreta Q2 como mediana"
+              ],
+              "versions": [
+                {
+                  "id": "micro-a07-07-quartis-percentis__v20260702-163000",
+                  "createdAt": "2026-07-02T16:30:00.000000-03:00",
+                  "source": "llm",
+                  "action": "improve",
+                  "request": "Corrigir detalhes apontados pela auditoria e expandir moderadamente a Aula 7 para 70–80 cards, preservando o conteúdo aprovado.",
+                  "summary": "Calcular quartis e percentil 90 usando `.quantile()` e interpretar posição acumulada.",
+                  "cards": [
+                    {
+                      "id": "card-a07-07-01-ponte-quantile",
+                      "position": 1,
+                      "resource": "paragraph",
+                      "kind": "theory",
+                      "exercise": "none",
+                      "title": "Posição acumulada",
+                      "text": "`quantile` calcula um corte de posição acumulada. Quartis dividem a coluna ordenada em quatro partes; percentil indica uma posição percentual, como `0.90` para 90%.",
+                      "after": "Q2 é o quantil `0.50`, a mesma posição da mediana. O número passado para `.quantile()` deve ficar entre `0` e `1`."
+                    },
+                    {
+                      "id": "card-a07-07-02-tabela-quantis",
+                      "position": 2,
+                      "resource": "table",
+                      "kind": "theory",
+                      "exercise": "none",
+                      "title": "Quantis usados na aula",
+                      "columns": [
+                        "Chamada",
+                        "Nome",
+                        "Significado"
+                      ],
+                      "rows": [
+                        [
+                          "`.quantile(0.25)`",
+                          "Q1",
+                          "25% dos valores ficam até esse corte"
+                        ],
+                        [
+                          "`.quantile(0.50)`",
+                          "Q2",
+                          "posição central, equivalente à mediana"
+                        ],
+                        [
+                          "`.quantile(0.75)`",
+                          "Q3",
+                          "75% dos valores ficam até esse corte"
+                        ],
+                        [
+                          "`.quantile(0.90)`",
+                          "P90",
+                          "90% dos valores ficam até esse corte"
+                        ]
+                      ],
+                      "after": "`0.90` não é `90`. Em Pandas, `90` seria uma posição fora da escala esperada para esse uso."
+                    },
+                    {
+                      "id": "card-a07-07-03-percentil-producao",
+                      "position": 3,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "gap",
+                      "title": "Percentil 90 de produção",
+                      "prompt": "Complete o argumento para calcular o percentil 90 de `producao_dia`.",
+                      "language": "python",
+                      "code": "p90_producao = df[\"producao_dia\"].quantile([[0.90::0.90|90|0.09]])\np90_producao",
+                      "after": "`0.90` representa 90%. No CSV de conferência, o percentil 90 de `producao_dia` fica próximo de `158.10`."
+                    },
+                    {
+                      "id": "card-a07-07-04-q2-mediana",
+                      "position": 4,
+                      "resource": "choice",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Q2 e mediana",
+                      "question": "Qual interpretação de `df['temperatura_c'].quantile(0.50)` está correta?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "text",
+                          "text": "É o mesmo corte de posição da mediana de `temperatura_c`."
+                        },
+                        {
+                          "id": "b",
+                          "kind": "text",
+                          "text": "É sempre o maior valor de `temperatura_c`."
+                        },
+                        {
+                          "id": "c",
+                          "kind": "text",
+                          "text": "É a moda de `setor`."
+                        },
+                        {
+                          "id": "d",
+                          "kind": "text",
+                          "text": "É a quantidade de registros da base."
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "O quantil `0.50` é o ponto central da coluna ordenada. Maior valor seria obtido com `.max()`."
+                    },
+                    {
+                      "id": "card-a07-07-05-quartis-temperatura",
+                      "position": 5,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Quartis de temperatura",
+                      "prompt": "Compare as versões completas.",
+                      "language": "python",
+                      "code": "# escolha uma alternativa",
+                      "question": "Qual trecho calcula Q1, Q2 e Q3 de `temperatura_c`?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "df[\"temperatura_c\"].quantile([0.25, 0.50, 0.75])"
+                        },
+                        {
+                          "id": "b",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "df[\"temperatura_c\"].quartile([25, 50, 75])"
+                        },
+                        {
+                          "id": "c",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "df[\"tempo_ciclo_s\"].quantile([0.25, 0.50, 0.75])"
+                        },
+                        {
+                          "id": "d",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "df[\"temperatura\"].quantile([0.25, 0.50, 0.75])"
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "O método correto é `.quantile()`, a coluna pedida é `temperatura_c` e os cortes são escritos como decimais entre `0` e `1`."
+                    },
+                    {
+                      "id": "card-a07-07-06-escala-do-percentil",
+                      "position": 6,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Escala correta do percentil",
+                      "prompt": "Compare formas de calcular o percentil 90 de `producao_dia`.",
+                      "language": "python",
+                      "code": "# escolha uma alternativa",
+                      "question": "Qual versão usa a escala esperada por `.quantile()`?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "p90_prod = df[\"producao_dia\"].quantile(0.90)"
+                        },
+                        {
+                          "id": "b",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "p90_prod = df[\"producao_dia\"].quantile(90)"
+                        },
+                        {
+                          "id": "c",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "p90_prod = df[\"producao_dia\"].percentile(90)"
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "Em `.quantile()`, `0.90` representa 90%. Usar `90` troca a escala, e `.percentile()` não é o método usado nesta aula."
+                    },
+                    {
+                      "id": "card-a07-07-07-interpretar-p90-producao",
+                      "position": 7,
+                      "resource": "choice",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Interpretar percentil 90",
+                      "question": "O percentil 90 de `producao_dia` é aproximadamente `158.10`. Qual leitura é adequada?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "text",
+                          "text": "Cerca de 90% dos registros têm produção diária até aproximadamente `158.10`."
+                        },
+                        {
+                          "id": "b",
+                          "kind": "text",
+                          "text": "O maior valor de `producao_dia` é sempre `158.10`."
+                        },
+                        {
+                          "id": "c",
+                          "kind": "text",
+                          "text": "Exatamente 90 registros têm produção `158.10`."
+                        },
+                        {
+                          "id": "d",
+                          "kind": "text",
+                          "text": "A média de `producao_dia` é `158.10`."
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "Percentil é posição acumulada. O P90 marca um corte: aproximadamente 90% dos valores ficam até esse nível."
+                    }
+                  ],
+                  "validation": {
+                    "ok": true,
+                    "issues": []
+                  }
+                }
+              ],
+              "activeVersion": "micro-a07-07-quartis-percentis__v20260702-163000"
+            },
+            {
+              "id": "micro-a07-08-probabilidade-proporcao",
+              "title": "Probabilidade como proporção",
+              "goal": "Calcular probabilidade de falha e de uma condição booleana usando média de `0/1` ou booleanos.",
+              "role": "practice",
+              "status": "generated",
+              "dependsOn": [
+                "micro-a07-07-quartis-percentis"
+              ],
+              "covers": [
+                "coluna binária `falha`",
+                "df[\"falha\"].mean()",
+                "probabilidade de falha",
+                "porcentagem com `* 100`",
+                "máscara booleana",
+                "(df[\"temperatura_c\"] > 75).mean()",
+                "(df[\"temperatura_c\"] > 74).mean()"
+              ],
+              "checks": [
+                "calcula probabilidade de `falha == 1`",
+                "converte probabilidade para porcentagem",
+                "calcula proporção de registros com `temperatura_c > 75`",
+                "calcula exercício com `temperatura_c > 74`",
+                "explica por que `True` conta como `1` e `False` como `0` em média booleana"
+              ],
+              "versions": [
+                {
+                  "id": "micro-a07-08-probabilidade-proporcao__v20260702-163000",
+                  "createdAt": "2026-07-02T16:30:00.000000-03:00",
+                  "source": "llm",
+                  "action": "improve",
+                  "request": "Corrigir detalhes apontados pela auditoria e expandir moderadamente a Aula 7 para 70–80 cards, preservando o conteúdo aprovado.",
+                  "summary": "Calcular probabilidade de falha e de uma condição booleana usando média de `0/1` ou booleanos.",
+                  "cards": [
+                    {
+                      "id": "card-a07-08-01-fluxo-proporcao",
+                      "position": 1,
+                      "resource": "flow",
+                      "kind": "theory",
+                      "exercise": "none",
+                      "title": "Da condição à proporção",
+                      "prompt": "A média de valores `0/1` ou booleanos pode ser usada como proporção.",
+                      "structure": {
+                        "kind": "sequence",
+                        "items": [
+                          {
+                            "kind": "start",
+                            "text": "Definir evento de interesse"
+                          },
+                          {
+                            "kind": "process",
+                            "text": "Gerar `0/1` ou valores `True`/`False`"
+                          },
+                          {
+                            "kind": "process",
+                            "text": "Aplicar `.mean()`"
+                          },
+                          {
+                            "kind": "process",
+                            "text": "Multiplicar por `100`, se quiser porcentagem"
+                          },
+                          {
+                            "kind": "output",
+                            "text": "Proporção ou porcentagem do evento"
+                          },
+                          {
+                            "kind": "end",
+                            "text": "Interpretar sem trocar decimal por porcentagem"
+                          }
+                        ]
+                      },
+                      "after": "Em média booleana, `True` conta como `1` e `False` conta como `0`. Por isso a média vira proporção de casos verdadeiros."
+                    },
+                    {
+                      "id": "card-a07-08-02-probabilidade-falha",
+                      "position": 2,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "gap",
+                      "title": "Probabilidade de falha",
+                      "prompt": "Complete o método para calcular a proporção de `falha == 1` usando a coluna binária.",
+                      "language": "python",
+                      "code": "prob_falha = df[\"falha\"].[[mean()::mean()|sum()|mode()]]\nprob_falha_percentual = prob_falha * 100",
+                      "after": "Como `falha` usa `1` para ocorrência, a média da coluna é a proporção de falhas. No CSV de conferência, `0.225` corresponde a `22.50%`."
+                    },
+                    {
+                      "id": "card-a07-08-03-probabilidade-temperatura",
+                      "position": 3,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "gap",
+                      "title": "Temperatura maior que `75`",
+                      "prompt": "Complete a condição booleana e o cálculo de proporção.",
+                      "language": "python",
+                      "code": "prob_temp_maior_75 = (df[\"temperatura_c\"] [[>::>|==|<]] 75).[[mean()::mean()|sum()|median()]]\nprob_temp_maior_75",
+                      "after": "A expressão `df['temperatura_c'] > 75` gera `True` ou `False` em cada linha. A média calcula a proporção de registros verdadeiros."
+                    },
+                    {
+                      "id": "card-a07-08-04-decimal-porcentagem",
+                      "position": 4,
+                      "resource": "choice",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Decimal e porcentagem",
+                      "question": "Se a proporção é `0.2375`, qual porcentagem corresponde a esse valor?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "text",
+                          "text": "`23.75%`"
+                        },
+                        {
+                          "id": "b",
+                          "kind": "text",
+                          "text": "`237.5%`"
+                        },
+                        {
+                          "id": "c",
+                          "kind": "text",
+                          "text": "`0.2375%`"
+                        },
+                        {
+                          "id": "d",
+                          "kind": "text",
+                          "text": "`2.375%`"
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "Para converter proporção em porcentagem, multiplique por `100`. Assim, `0.2375 * 100 = 23.75`."
+                    },
+                    {
+                      "id": "card-a07-08-05-exercicio-maior-74",
+                      "position": 5,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Exercício com `temperatura_c > 74`",
+                      "prompt": "Compare as versões completas.",
+                      "language": "python",
+                      "code": "# escolha uma alternativa",
+                      "question": "Qual trecho calcula a proporção de registros com `temperatura_c > 74`?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "(df[\"temperatura_c\"] > 74).mean()"
+                        },
+                        {
+                          "id": "b",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "(df[\"temperatura_c\"] == 74).mean()"
+                        },
+                        {
+                          "id": "c",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "(df[\"temperatura\"] > 74).mean()"
+                        },
+                        {
+                          "id": "d",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "df[\"temperatura_c\"].mean() > 74"
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "A pergunta pede proporção de linhas que satisfazem `> 74`. No CSV de conferência, o resultado é `0.3125`, ou `31.25%`."
+                    },
+                    {
+                      "id": "card-a07-08-06-filtro-e-proporcao",
+                      "position": 6,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Filtrar e calcular proporção",
+                      "prompt": "Compare formas de calcular a proporção de registros com `temperatura_c > 74`.",
+                      "language": "python",
+                      "code": "# escolha uma alternativa",
+                      "question": "Qual código calcula diretamente a proporção observada?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "prop_temp_74 = (df[\"temperatura_c\"] > 74).mean()"
+                        },
+                        {
+                          "id": "b",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "prop_temp_74 = df[\"temperatura_c\"] > 74.mean()"
+                        },
+                        {
+                          "id": "c",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "prop_temp_74 = (df[\"temperatura_c\"] > 74).sum()"
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "A comparação gera valores booleanos; a média de booleanos calcula a fração de `True`. `.sum()` conta ocorrências, mas não divide pelo total."
+                    },
+                    {
+                      "id": "card-a07-08-07-media-binaria-falha",
+                      "position": 7,
+                      "resource": "choice",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Por que a média de `falha` funciona",
+                      "question": "Por que `df[\"falha\"].mean()` calcula a probabilidade observada de falha?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "text",
+                          "text": "Porque `falha` usa `1` para ocorrência e `0` para ausência; a média vira proporção de `1`."
+                        },
+                        {
+                          "id": "b",
+                          "kind": "text",
+                          "text": "Porque `falha` é texto e `.mean()` conta categorias automaticamente."
+                        },
+                        {
+                          "id": "c",
+                          "kind": "text",
+                          "text": "Porque a média ignora todos os valores `0` e devolve a quantidade de linhas."
+                        },
+                        {
+                          "id": "d",
+                          "kind": "text",
+                          "text": "Porque `id_registro` define o valor de falha de cada linha."
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "Em uma coluna binária `0/1`, somar e dividir pela quantidade equivale à média. O resultado decimal pode ser multiplicado por `100` para porcentagem."
+                    }
+                  ],
+                  "validation": {
+                    "ok": true,
+                    "issues": []
+                  }
+                }
+              ],
+              "activeVersion": "micro-a07-08-probabilidade-proporcao__v20260702-163000"
+            },
+            {
+              "id": "micro-a07-09-histograma-temperatura",
+              "title": "Histograma da temperatura",
+              "goal": "Criar histograma de `temperatura_c` com Seaborn e interpretar distribuição sem inferir mais do que os dados mostram.",
+              "role": "practice",
+              "status": "generated",
+              "dependsOn": [
+                "micro-a07-08-probabilidade-proporcao"
+              ],
+              "covers": [
+                "sns.histplot()",
+                "data=df",
+                "x=\"temperatura_c\"",
+                "kde=True",
+                "plt.show()",
+                "distribuição de frequência",
+                "concentração de valores"
+              ],
+              "checks": [
+                "escreve chamada correta de `sns.histplot(data=df, x=\"temperatura_c\", kde=True)`",
+                "entende que histograma agrupa valores por faixas",
+                "reconhece que `kde=True` adiciona uma curva suavizada",
+                "evita afirmar padrão além da descrição visual"
+              ],
+              "versions": [
+                {
+                  "id": "micro-a07-09-histograma-temperatura__v20260702-163000",
+                  "createdAt": "2026-07-02T16:30:00.000000-03:00",
+                  "source": "llm",
+                  "action": "improve",
+                  "request": "Corrigir detalhes apontados pela auditoria e expandir moderadamente a Aula 7 para 70–80 cards, preservando o conteúdo aprovado.",
+                  "summary": "Criar histograma de `temperatura_c` com Seaborn e interpretar distribuição sem inferir mais do que os dados mostram.",
+                  "cards": [
+                    {
+                      "id": "card-a07-09-01-ideia-histograma",
+                      "position": 1,
+                      "resource": "paragraph",
+                      "kind": "theory",
+                      "exercise": "none",
+                      "title": "Histograma e `kde`",
+                      "text": "Um histograma agrupa valores numéricos por faixas e mostra frequências. Em `sns.histplot()`, `kde=True` adiciona uma curva suavizada de densidade para ajudar a ver concentração.",
+                      "after": "Interprete apenas o que o gráfico mostra: faixas com mais ou menos registros de `temperatura_c`."
+                    },
+                    {
+                      "id": "card-a07-09-02-completar-histplot",
+                      "position": 2,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "gap",
+                      "title": "Histograma com Seaborn",
+                      "prompt": "Complete a coluna e o argumento booleano.",
+                      "language": "python",
+                      "code": "sns.histplot(data=df, x=[[\"temperatura_c\"::\"temperatura_c\"|\"temperatura\"|\"setor\"]], kde=[[True::True|False|\"True\"]])\nplt.show()",
+                      "after": "`x='temperatura_c'` usa a coluna real do CSV. `kde=True` é booleano, não texto entre aspas."
+                    },
+                    {
+                      "id": "card-a07-09-03-leitura-visual",
+                      "position": 3,
+                      "resource": "choice",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Ler o histograma",
+                      "question": "Qual interpretação é adequada para um histograma de `temperatura_c`?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "text",
+                          "text": "Ele mostra em quais faixas de temperatura há mais registros."
+                        },
+                        {
+                          "id": "b",
+                          "kind": "text",
+                          "text": "Ele mostra uma sequência temporal obrigatória dos registros."
+                        },
+                        {
+                          "id": "c",
+                          "kind": "text",
+                          "text": "Ele substitui a média e dispensa qualquer medida numérica."
+                        },
+                        {
+                          "id": "d",
+                          "kind": "text",
+                          "text": "Ele mostra categorias de `setor` no eixo `x`."
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "Histograma é distribuição de frequência por faixas numéricas. Ele complementa medidas como média e desvio padrão, mas não as substitui."
+                    },
+                    {
+                      "id": "card-a07-09-04-versao-completa-hist",
+                      "position": 4,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Versão correta do histograma",
+                      "prompt": "Compare as versões completas.",
+                      "language": "python",
+                      "code": "# escolha uma alternativa",
+                      "question": "Qual trecho cria o histograma de `temperatura_c` com curva suavizada?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "sns.histplot(data=df, x=\"temperatura_c\", kde=True)\nplt.show()"
+                        },
+                        {
+                          "id": "b",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "sns.histplot(df, y=\"temperatura_c\", kde=\"True\")\nplt.show()"
+                        },
+                        {
+                          "id": "c",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "sns.lineplot(data=df, x=\"temperatura_c\")\nplt.show()"
+                        },
+                        {
+                          "id": "d",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "sns.histplot(data=df, x=\"temperatura\", kde=True)\nplt.show()"
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "A chamada correta informa `data=df`, usa `x='temperatura_c'` e passa `kde=True` como booleano.",
+                      "afterBlocks": [
+                        {
+                          "language": "python",
+                          "code": "sns.histplot(data=df, x=\"temperatura_c\", kde=True)\nplt.show()",
+                          "kind": "code",
+                          "prompt": "Trecho completo"
+                        }
+                      ]
+                    },
+                    {
+                      "id": "card-a07-09-05-histograma-nao-temporal",
+                      "position": 5,
+                      "resource": "choice",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Histograma não é linha do tempo",
+                      "question": "Qual interpretação evita confundir histograma com gráfico temporal?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "text",
+                          "text": "O histograma agrupa `temperatura_c` por faixas e mostra quantos registros caem em cada faixa."
+                        },
+                        {
+                          "id": "b",
+                          "kind": "text",
+                          "text": "O histograma mostra a sequência dos registros ao longo do tempo de coleta."
+                        },
+                        {
+                          "id": "c",
+                          "kind": "text",
+                          "text": "O histograma calcula automaticamente a mediana de `tempo_ciclo_s`."
+                        },
+                        {
+                          "id": "d",
+                          "kind": "text",
+                          "text": "O histograma substitui a probabilidade de falha por uma contagem de setores."
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "O histograma é uma distribuição de frequências por faixas de valor. Ele não mostra ordem temporal dos registros."
+                    },
+                    {
+                      "id": "card-a07-09-06-coluna-real-no-histograma",
+                      "position": 6,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "gap",
+                      "title": "Coluna real no histograma",
+                      "prompt": "Complete o parâmetro `x` com a coluna de temperatura existente no CSV.",
+                      "language": "python",
+                      "code": "sns.histplot(data=df, x=[[\"temperatura_c\"::\"temperatura_c\"|\"temperatura\"|\"temp_c\"]], kde=True)\nplt.show()",
+                      "after": "O nome da coluna é `temperatura_c`. Em código, a string precisa corresponder exatamente ao nome no `DataFrame`."
+                    }
+                  ],
+                  "validation": {
+                    "ok": true,
+                    "issues": []
+                  }
+                }
+              ],
+              "activeVersion": "micro-a07-09-histograma-temperatura__v20260702-163000"
+            },
+            {
+              "id": "micro-a07-10-exercicios-guiados",
+              "title": "Exercícios guiados da Aula 7",
+              "goal": "Praticar medidas de produção, tempo de ciclo, quartis e probabilidade com variação controlada.",
+              "role": "practice",
+              "status": "generated",
+              "dependsOn": [
+                "micro-a07-09-histograma-temperatura"
+              ],
+              "covers": [
+                "média, mediana e moda de `producao_dia`",
+                "amplitude e desvio padrão de `tempo_ciclo_s`",
+                "quartis de `producao_dia`",
+                "probabilidade de falha",
+                "probabilidade de `temperatura_c > 74`"
+              ],
+              "checks": [
+                "seleciona coluna correta para cada exercício",
+                "escolhe comando estatístico adequado",
+                "mantém o padrão de probabilidade como proporção",
+                "confere resultados com valores plausíveis"
+              ],
+              "versions": [
+                {
+                  "id": "micro-a07-10-exercicios-guiados__v20260702-163000",
+                  "createdAt": "2026-07-02T16:30:00.000000-03:00",
+                  "source": "llm",
+                  "action": "improve",
+                  "request": "Corrigir detalhes apontados pela auditoria e expandir moderadamente a Aula 7 para 70–80 cards, preservando o conteúdo aprovado.",
+                  "summary": "Praticar medidas de produção, tempo de ciclo, quartis e probabilidade com variação controlada.",
+                  "cards": [
+                    {
+                      "id": "card-a07-10-01-mapa-exercicios",
+                      "position": 1,
+                      "resource": "table",
+                      "kind": "theory",
+                      "exercise": "none",
+                      "title": "Mapa dos exercícios guiados",
+                      "columns": [
+                        "Exercício",
+                        "Coluna",
+                        "Comando principal"
+                      ],
+                      "rows": [
+                        [
+                          "média, mediana e moda",
+                          "`producao_dia`",
+                          "`.mean()`, `.median()`, `.mode()[0]`"
+                        ],
+                        [
+                          "amplitude e desvio padrão",
+                          "`tempo_ciclo_s`",
+                          "`.max() - .min()`, `.std()`"
+                        ],
+                        [
+                          "quartis",
+                          "`producao_dia`",
+                          "`.quantile([0.25, 0.50, 0.75])`"
+                        ],
+                        [
+                          "probabilidade de falha",
+                          "`falha`",
+                          "`.mean()`"
+                        ],
+                        [
+                          "temperatura maior que `74`",
+                          "`temperatura_c`",
+                          "máscara booleana e `.mean()`"
+                        ]
+                      ],
+                      "after": "O mapa evita trocar a coluna quando a métrica muda. A variação controlada está em escolher coluna e comando adequados."
+                    },
+                    {
+                      "id": "card-a07-10-02-producao-tres-medidas",
+                      "position": 2,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Produção: média, mediana e moda",
+                      "prompt": "Compare as versões completas.",
+                      "language": "python",
+                      "code": "# escolha uma alternativa",
+                      "question": "Qual versão calcula as três medidas pedidas para `producao_dia`?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "media = df[\"producao_dia\"].mean()\nmediana = df[\"producao_dia\"].median()\nmoda = df[\"producao_dia\"].mode()[0]"
+                        },
+                        {
+                          "id": "b",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "media = df[\"temperatura_c\"].mean()\nmediana = df[\"temperatura_c\"].median()\nmoda = df[\"temperatura_c\"].mode()[0]"
+                        },
+                        {
+                          "id": "c",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "media = df[\"producao\"].mean()\nmediana = df[\"producao\"].median()\nmoda = df[\"producao\"].mode()[0]"
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "A alternativa correta mantém a coluna `producao_dia` nas três linhas. Os valores de conferência ficam próximos de `121.97`, `119.00` e `97`."
+                    },
+                    {
+                      "id": "card-a07-10-03-tempo-amplitude-desvio",
+                      "position": 3,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "gap",
+                      "title": "Tempo de ciclo: amplitude e desvio",
+                      "prompt": "Complete os métodos para `tempo_ciclo_s`.",
+                      "language": "python",
+                      "code": "amplitude_tempo = df[\"tempo_ciclo_s\"].[[max()::max()|mean()|std()]] - df[\"tempo_ciclo_s\"].[[min()::min()|median()|mode()]]\ndesvio_tempo = df[\"tempo_ciclo_s\"].[[std()::std()|var()|mean()]]",
+                      "after": "A amplitude usa extremos; o desvio padrão usa `.std()`. No CSV de conferência, os valores ficam próximos de `25.78` e `5.03`."
+                    },
+                    {
+                      "id": "card-a07-10-04-quartis-producao",
+                      "position": 4,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Quartis de produção",
+                      "prompt": "Compare as versões completas.",
+                      "language": "python",
+                      "code": "# escolha uma alternativa",
+                      "question": "Qual trecho calcula os quartis de `producao_dia`?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "df[\"producao_dia\"].quantile([0.25, 0.50, 0.75])"
+                        },
+                        {
+                          "id": "b",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "df[\"producao_dia\"].quantile([25, 50, 75])"
+                        },
+                        {
+                          "id": "c",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "df[\"tempo_ciclo_s\"].quantile([0.25, 0.50, 0.75])"
+                        },
+                        {
+                          "id": "d",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "df[\"producao_dia\"].quartile([0.25, 0.50, 0.75])"
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "Os quartis usam `.quantile()` com valores decimais entre `0` e `1`. No CSV de conferência: `98.75`, `119.00` e `145.50`."
+                    },
+                    {
+                      "id": "card-a07-10-05-probabilidade-exercicio",
+                      "position": 5,
+                      "resource": "choice",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Conferir proporção",
+                      "question": "A expressão `(df['temperatura_c'] > 74).mean()` retorna `0.3125`. Qual leitura está correta?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "text",
+                          "text": "Aproximadamente `31.25%` dos registros têm `temperatura_c > 74`."
+                        },
+                        {
+                          "id": "b",
+                          "kind": "text",
+                          "text": "`312.5%` dos registros têm `temperatura_c > 74`."
+                        },
+                        {
+                          "id": "c",
+                          "kind": "text",
+                          "text": "Exatamente `0.3125%` dos registros têm `temperatura_c > 74`."
+                        },
+                        {
+                          "id": "d",
+                          "kind": "text",
+                          "text": "A temperatura média é `31.25` graus."
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "`0.3125` é proporção. Multiplicar por `100` dá `31.25%`, sem mudar a pergunta original."
+                    },
+                    {
+                      "id": "card-a07-10-06-cenario-medida-tempo",
+                      "position": 6,
+                      "resource": "choice",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Cenário: variação do tempo de ciclo",
+                      "question": "Um supervisor quer resumir a variação típica de `tempo_ciclo_s` em segundos. Qual comando responde à pergunta?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "text",
+                          "text": "`df[\"tempo_ciclo_s\"].std()`"
+                        },
+                        {
+                          "id": "b",
+                          "kind": "text",
+                          "text": "`df[\"tempo_ciclo_s\"].mode()[0]`"
+                        },
+                        {
+                          "id": "c",
+                          "kind": "text",
+                          "text": "`df[\"setor\"].mean()`"
+                        },
+                        {
+                          "id": "d",
+                          "kind": "text",
+                          "text": "`df[\"falha\"].quantile(0.90)`"
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "A expressão “variação típica” aponta para desvio padrão. Como a coluna é `tempo_ciclo_s`, o resultado fica em segundos."
+                    }
+                  ],
+                  "validation": {
+                    "ok": true,
+                    "issues": []
+                  }
+                }
+              ],
+              "activeVersion": "micro-a07-10-exercicios-guiados__v20260702-163000"
+            },
+            {
+              "id": "micro-a07-11-atividade-final-integrada",
+              "title": "Atividade final de estatística aplicada",
+              "goal": "Integrar tendência central, dispersão, quartis, percentil, probabilidade e histograma em uma tarefa única.",
+              "role": "review",
+              "status": "generated",
+              "dependsOn": [
+                "micro-a07-10-exercicios-guiados"
+              ],
+              "covers": [
+                "média, mediana e moda de `temperatura_c`",
+                "amplitude, variância e desvio padrão de `producao_dia`",
+                "quartis de `tempo_ciclo_s`",
+                "percentil 90 de `temperatura_c`",
+                "probabilidade de falha",
+                "histograma de `temperatura_c`"
+              ],
+              "checks": [
+                "resolve a lista de tarefas com comandos corretos",
+                "usa cada coluna solicitada",
+                "evita misturar medida de tendência central com dispersão",
+                "produz código organizado e legível"
+              ],
+              "versions": [
+                {
+                  "id": "micro-a07-11-atividade-final-integrada__v20260702-163000",
+                  "createdAt": "2026-07-02T16:30:00.000000-03:00",
+                  "source": "llm",
+                  "action": "improve",
+                  "request": "Corrigir detalhes apontados pela auditoria e expandir moderadamente a Aula 7 para 70–80 cards, preservando o conteúdo aprovado.",
+                  "summary": "Integrar tendência central, dispersão, quartis, percentil, probabilidade e histograma em uma tarefa única.",
+                  "cards": [
+                    {
+                      "id": "card-a07-11-01-script-integrado",
+                      "position": 1,
+                      "resource": "composite",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Script integrado da atividade final",
+                      "blocks": [
+                        {
+                          "columns": [
+                            "Bloco",
+                            "Coluna",
+                            "Medidas"
+                          ],
+                          "rows": [
+                            [
+                              "tendência central",
+                              "`temperatura_c`",
+                              "média, mediana e moda"
+                            ],
+                            [
+                              "dispersão",
+                              "`producao_dia`",
+                              "amplitude, variância e desvio padrão"
+                            ],
+                            [
+                              "posição",
+                              "`tempo_ciclo_s`",
+                              "quartis"
+                            ],
+                            [
+                              "percentil",
+                              "`temperatura_c`",
+                              "percentil 90"
+                            ],
+                            [
+                              "probabilidade",
+                              "`falha`",
+                              "proporção de `1`"
+                            ],
+                            [
+                              "distribuição",
+                              "`temperatura_c`",
+                              "histograma com `kde=True`"
+                            ]
+                          ],
+                          "kind": "table"
+                        },
+                        {
+                          "kind": "choice",
+                          "question": "Qual script atende às tarefas sem trocar colunas ou escala de percentil?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "kind": "code",
+                              "language": "python",
+                              "code": "media_temp = df[\"temperatura_c\"].mean()\nmediana_temp = df[\"temperatura_c\"].median()\nmoda_temp = df[\"temperatura_c\"].mode()[0]\n\namplitude_prod = df[\"producao_dia\"].max() - df[\"producao_dia\"].min()\nvariancia_prod = df[\"producao_dia\"].var()\ndesvio_prod = df[\"producao_dia\"].std()\n\nquartis_tempo = df[\"tempo_ciclo_s\"].quantile([0.25, 0.50, 0.75])\np90_temp = df[\"temperatura_c\"].quantile(0.90)\nprob_falha = df[\"falha\"].mean()\n\nsns.histplot(data=df, x=\"temperatura_c\", kde=True)\nplt.show()"
+                            },
+                            {
+                              "id": "b",
+                              "kind": "code",
+                              "language": "python",
+                              "code": "media_temp = df[\"temperatura\"].mean()\nmediana_temp = df[\"temperatura\"].median()\nmoda_temp = df[\"temperatura\"].mode()[0]\n\namplitude_prod = df[\"tempo_ciclo_s\"].max() - df[\"tempo_ciclo_s\"].min()\nvariancia_prod = df[\"producao_dia\"].std()\ndesvio_prod = df[\"producao_dia\"].var()\n\nquartis_tempo = df[\"tempo_ciclo_s\"].quantile([25, 50, 75])\np90_temp = df[\"temperatura_c\"].quantile(90)\nprob_falha = df[\"falha\"].sum()\n\nsns.histplot(data=df, x=\"temperatura\", kde=\"True\")\nplt.show()"
+                            },
+                            {
+                              "id": "c",
+                              "kind": "code",
+                              "language": "python",
+                              "code": "media_temp = df[\"temperatura_c\"].mean()\nmediana_temp = df[\"tempo_ciclo_s\"].median()\nmoda_temp = df[\"setor\"].mode()[0]\n\namplitude_prod = df[\"producao_dia\"].mean() - df[\"producao_dia\"].min()\nvariancia_prod = df[\"producao_dia\"].mean()\ndesvio_prod = df[\"producao_dia\"].median()\n\nquartis_tempo = df[\"producao_dia\"].quantile([0.25, 0.50, 0.75])\np90_temp = df[\"temperatura_c\"].max()\nprob_falha = df[\"falha\"].mode()[0]\n\nsns.histplot(data=df, x=\"tempo_ciclo_s\", kde=True)\nplt.show()"
+                            }
+                          ],
+                          "answer": "a"
+                        }
+                      ],
+                      "after": "O script correto preserva cada coluna solicitada, usa `.quantile(0.90)` para percentil 90 e calcula probabilidade como proporção.",
+                      "afterBlocks": [
+                        {
+                          "columns": [
+                            "Item",
+                            "Valor aproximado"
+                          ],
+                          "rows": [
+                            [
+                              "média de `temperatura_c`",
+                              "`71.63`"
+                            ],
+                            [
+                              "mediana de `temperatura_c`",
+                              "`71.90`"
+                            ],
+                            [
+                              "moda de `temperatura_c`",
+                              "`74.92`"
+                            ],
+                            [
+                              "amplitude de `producao_dia`",
+                              "`79`"
+                            ],
+                            [
+                              "variância de `producao_dia`",
+                              "`639.27`"
+                            ],
+                            [
+                              "desvio padrão de `producao_dia`",
+                              "`25.28`"
+                            ],
+                            [
+                              "percentil 90 de `temperatura_c`",
+                              "`78.44`"
+                            ],
+                            [
+                              "probabilidade de falha",
+                              "`22.50%`"
+                            ]
+                          ],
+                          "kind": "table"
+                        }
+                      ]
+                    },
+                    {
+                      "id": "card-a07-11-02-percentil-final",
+                      "position": 2,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "gap",
+                      "title": "Percentil final de temperatura",
+                      "prompt": "Complete a chamada usada na atividade integrada.",
+                      "language": "python",
+                      "code": "p90_temp = df[\"temperatura_c\"].[[quantile::quantile|quartile|percentile]](0.90)\np90_temp",
+                      "after": "O método em Pandas é `.quantile()`. O argumento `0.90` representa o percentil 90."
+                    },
+                    {
+                      "id": "card-a07-11-03-histograma-final",
+                      "position": 3,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "gap",
+                      "title": "Histograma final",
+                      "prompt": "Complete a chamada para manter o gráfico solicitado.",
+                      "language": "python",
+                      "code": "sns.histplot(data=df, x=\"temperatura_c\", kde=[[True::True|False|\"True\"]])\nplt.show()",
+                      "after": "`kde=True` adiciona a curva suavizada. Em exemplo didático, `plt.show()` explicita a exibição do gráfico."
+                    },
+                    {
+                      "id": "card-a07-11-04-diagnostico-erros",
+                      "position": 4,
+                      "resource": "choice",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Diagnosticar erro provável",
+                      "question": "Um aluno escreveu `df['temperatura_c'].quantile(90)`. Qual correção preserva a intenção de percentil 90?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "text",
+                          "text": "Usar `df['temperatura_c'].quantile(0.90)`."
+                        },
+                        {
+                          "id": "b",
+                          "kind": "text",
+                          "text": "Usar `df['temperatura_c'].mean(90)`."
+                        },
+                        {
+                          "id": "c",
+                          "kind": "text",
+                          "text": "Usar `df['temperatura_c'].max(90)`."
+                        },
+                        {
+                          "id": "d",
+                          "kind": "text",
+                          "text": "Usar `df['temperatura'].quantile(0.90)`."
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "Percentil em `.quantile()` usa escala decimal. Além disso, a coluna correta no CSV é `temperatura_c`."
+                    }
+                  ],
+                  "validation": {
+                    "ok": true,
+                    "issues": []
+                  }
+                }
+              ],
+              "activeVersion": "micro-a07-11-atividade-final-integrada__v20260702-163000"
+            },
+            {
+              "id": "micro-a07-12-interpretacao-final",
+              "title": "Interpretar resultados sem exagerar conclusões",
+              "goal": "Transformar medidas e histograma em interpretações objetivas e verificáveis.",
+              "role": "review",
+              "status": "generated",
+              "dependsOn": [
+                "micro-a07-11-atividade-final-integrada"
+              ],
+              "covers": [
+                "média como síntese numérica",
+                "mediana como valor central",
+                "diferença entre média e mediana",
+                "dispersão como variação",
+                "histograma como distribuição de frequências",
+                "limite entre descrever dados e concluir origem dos resultados"
+              ],
+              "checks": [
+                "explica o que a média representa",
+                "identifica quando média e mediana estão próximas",
+                "interpreta desvio padrão como variação típica",
+                "lê histograma como concentração por faixas",
+                "evita afirmar origem ou previsão sem análise própria para isso"
+              ],
+              "versions": [
+                {
+                  "id": "micro-a07-12-interpretacao-final__v20260702-163000",
+                  "createdAt": "2026-07-02T16:30:00.000000-03:00",
+                  "source": "llm",
+                  "action": "improve",
+                  "request": "Corrigir detalhes apontados pela auditoria e expandir moderadamente a Aula 7 para 70–80 cards, preservando o conteúdo aprovado.",
+                  "summary": "Transformar medidas e histograma em interpretações objetivas e verificáveis.",
+                  "cards": [
+                    {
+                      "id": "card-a07-12-01-termos-interpretacao",
+                      "position": 1,
+                      "resource": "paragraph",
+                      "kind": "exercise",
+                      "exercise": "gap",
+                      "title": "Termos de interpretação",
+                      "text": "A média sintetiza os valores; a [[mediana::mediana|amplitude|variância]] indica o valor central depois de ordenar; o desvio padrão descreve variação típica.",
+                      "after": "Cada termo responde a uma pergunta. Trocar mediana por amplitude muda de posição central para alcance dos extremos."
+                    },
+                    {
+                      "id": "card-a07-12-02-interpretacoes-seguras",
+                      "position": 2,
+                      "resource": "table",
+                      "kind": "theory",
+                      "exercise": "none",
+                      "title": "Resultado observado e interpretação segura",
+                      "columns": [
+                        "Resultado",
+                        "Interpretação segura"
+                      ],
+                      "rows": [
+                        [
+                          "média e mediana de `temperatura_c` próximas",
+                          "o centro numérico e o centro ordenado estão em faixa semelhante"
+                        ],
+                        [
+                          "desvio padrão maior",
+                          "os valores variam mais em torno da média, quando a unidade é comparável"
+                        ],
+                        [
+                          "histograma com barras concentradas em certas faixas",
+                          "há mais registros nessas faixas"
+                        ],
+                        [
+                          "probabilidade de falha em porcentagem",
+                          "proporção observada de linhas com `falha = 1`"
+                        ]
+                      ],
+                      "after": "A interpretação segura descreve o que foi calculado. Ela não transforma resumo descritivo em explicação da origem dos resultados."
+                    },
+                    {
+                      "id": "card-a07-12-03-media-mediana-proximas",
+                      "position": 3,
+                      "resource": "choice",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Média e mediana próximas",
+                      "question": "Se a média de `temperatura_c` fica perto de `71.63` e a mediana perto de `71.90`, qual interpretação é mais adequada?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "text",
+                          "text": "As duas medidas apontam para centro numérico semelhante na coluna."
+                        },
+                        {
+                          "id": "b",
+                          "kind": "text",
+                          "text": "A moda precisa ser igual à média."
+                        },
+                        {
+                          "id": "c",
+                          "kind": "text",
+                          "text": "A amplitude da temperatura é zero."
+                        },
+                        {
+                          "id": "d",
+                          "kind": "text",
+                          "text": "Todos os registros têm a mesma temperatura."
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "Média e mediana próximas indicam centros semelhantes, mas não significam que todos os valores sejam iguais."
+                    },
+                    {
+                      "id": "card-a07-12-04-limite-conclusao",
+                      "position": 4,
+                      "resource": "choice",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Evitar conclusão exagerada",
+                      "question": "Qual frase respeita o limite da estatística descritiva nesta aula?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "text",
+                          "text": "A proporção de `falha = 1` descreve quantas linhas tiveram falha observada na base."
+                        },
+                        {
+                          "id": "b",
+                          "kind": "text",
+                          "text": "O histograma prova sozinho a origem das falhas."
+                        },
+                        {
+                          "id": "c",
+                          "kind": "text",
+                          "text": "A média de `temperatura_c` prevê todos os próximos registros."
+                        },
+                        {
+                          "id": "d",
+                          "kind": "text",
+                          "text": "O desvio padrão alto sempre indica erro de coleta."
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "A frase correta descreve a base observada. As demais afirmam origem, previsão ou erro sem análise específica para isso."
+                    },
+                    {
+                      "id": "card-a07-12-05-fechamento",
+                      "position": 5,
+                      "resource": "paragraph",
+                      "kind": "theory",
+                      "exercise": "none",
+                      "title": "Fechamento da Aula 7",
+                      "text": "Ao final da Aula 7, a sequência completa é: carregar o CSV, inspecionar colunas, escolher a variável, calcular a medida adequada, converter proporções quando necessário e conferir a distribuição por histograma.",
+                      "after": "Essa rotina consolida estatística aplicada com Pandas e Seaborn usando as colunas reais do dataset industrial da aula."
+                    }
+                  ],
+                  "validation": {
+                    "ok": true,
+                    "issues": []
+                  }
+                }
+              ],
+              "activeVersion": "micro-a07-12-interpretacao-final__v20260702-163000"
+            },
+            {
+              "id": "micro-a07-13-desafio-revisao-cenario-industrial",
+              "title": "Desafio de revisão com cenário industrial",
+              "goal": "Ler um cenário, escolher métricas, escrever comandos e interpretar resultados sem extrapolar.",
+              "role": "review",
+              "status": "generated",
+              "dependsOn": [
+                "micro-a07-12-interpretacao-final"
+              ],
+              "covers": [
+                "leitura de cenário industrial",
+                "escolha de métrica",
+                "cálculo com Pandas",
+                "interpretação de tendência central",
+                "interpretação de dispersão",
+                "probabilidade como proporção",
+                "histograma de temperatura"
+              ],
+              "checks": [
+                "escolhe métrica adequada para a pergunta",
+                "usa a coluna real solicitada",
+                "calcula proporção com coluna binária ou máscara booleana",
+                "interpreta resultados sem extrapolar",
+                "mantém comandos legíveis em Pandas"
+              ],
+              "versions": [
+                {
+                  "id": "micro-a07-13-desafio-revisao-cenario-industrial__v20260702-163000",
+                  "createdAt": "2026-07-02T16:30:00.000000-03:00",
+                  "source": "llm",
+                  "action": "improve",
+                  "request": "Expandir moderadamente a Aula 7 para 70–80 cards, com mais interpretação, erros prováveis, ponte Pandas-estatística, uso do dataset real e consolidação final.",
+                  "summary": "Desafio final com cenário industrial, escolha de métricas, comandos em Pandas e interpretação verificável.",
+                  "cards": [
+                    {
+                      "id": "card-a07-13-01-cenario-desafio",
+                      "position": 1,
+                      "resource": "composite",
+                      "kind": "theory",
+                      "exercise": "none",
+                      "title": "Cenário do desafio",
+                      "blocks": [
+                        {
+                          "kind": "table",
+                          "columns": [
+                            "Pergunta do processo",
+                            "Coluna",
+                            "Resposta esperada"
+                          ],
+                          "rows": [
+                            [
+                              "qual é o centro da temperatura?",
+                              "`temperatura_c`",
+                              "média e mediana"
+                            ],
+                            [
+                              "qual é a variação da produção diária?",
+                              "`producao_dia`",
+                              "amplitude e desvio padrão"
+                            ],
+                            [
+                              "qual é a proporção de falhas?",
+                              "`falha`",
+                              "média da coluna binária"
+                            ],
+                            [
+                              "qual proporção passou de `74` graus?",
+                              "`temperatura_c`",
+                              "máscara booleana e `.mean()`"
+                            ],
+                            [
+                              "como os valores de temperatura se distribuem?",
+                              "`temperatura_c`",
+                              "histograma com `kde=True`"
+                            ]
+                          ]
+                        }
+                      ],
+                      "after": "O desafio combina pergunta, coluna e medida. A resposta correta começa pela escolha da coluna antes do comando estatístico."
+                    },
+                    {
+                      "id": "card-a07-13-02-escolher-pacote-metricas",
+                      "position": 2,
+                      "resource": "choice",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Escolher o pacote de métricas",
+                      "question": "Qual pacote de métricas atende ao cenário sem trocar coluna nem tipo de medida?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "text",
+                          "text": "`temperatura_c`: `.mean()` e `.median()`; `producao_dia`: amplitude e `.std()`; `falha`: `.mean()`; `temperatura_c > 74`: média da máscara."
+                        },
+                        {
+                          "id": "b",
+                          "kind": "text",
+                          "text": "`setor`: `.mean()`; `id_registro`: `.std()`; `falha`: `.max()`; `temperatura_c > 74`: `.mode()[0]`."
+                        },
+                        {
+                          "id": "c",
+                          "kind": "text",
+                          "text": "`temperatura_c`: `.mode()[0]` apenas; `producao_dia`: `.median()` apenas; `falha`: `.sum()` como porcentagem; histograma de `setor`."
+                        },
+                        {
+                          "id": "d",
+                          "kind": "text",
+                          "text": "`tempo_ciclo_s`: `.quantile(90)`; `producao_dia`: `.var()` como média; `falha`: `.median()` como proporção."
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "A alternativa correta combina pergunta, coluna e medida: centro para temperatura, dispersão para produção, proporção para `falha` e máscara booleana para o limite de temperatura."
+                    },
+                    {
+                      "id": "card-a07-13-03-comando-proporcao-desafio",
+                      "position": 3,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "gap",
+                      "title": "Proporção acima de `74` graus",
+                      "prompt": "Complete o comando que calcula a proporção de registros com `temperatura_c > 74`.",
+                      "language": "python",
+                      "code": "prop_temp_74 = [[(df[\"temperatura_c\"] > 74).mean()::(df[\"temperatura_c\"] > 74).mean()|df[\"temperatura_c\"].mean() > 74|df[\"temperatura_c\"].sum() > 74]]",
+                      "after": "A máscara booleana identifica linha a linha se a condição é verdadeira. A média transforma essa sequência de `True` e `False` em proporção."
+                    },
+                    {
+                      "id": "card-a07-13-04-script-minimo-desafio",
+                      "position": 4,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Script mínimo do desafio",
+                      "prompt": "Compare scripts para responder ao cenário com comandos diretos.",
+                      "language": "python",
+                      "code": "# escolha uma alternativa",
+                      "question": "Qual script calcula as medidas do cenário de forma coerente?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "centro_temp = df[\"temperatura_c\"].mean(), df[\"temperatura_c\"].median()\namplitude_prod = df[\"producao_dia\"].max() - df[\"producao_dia\"].min()\ndesvio_prod = df[\"producao_dia\"].std()\nprob_falha = df[\"falha\"].mean()\nprop_temp_74 = (df[\"temperatura_c\"] > 74).mean()\n\nsns.histplot(data=df, x=\"temperatura_c\", kde=True)\nplt.show()"
+                        },
+                        {
+                          "id": "b",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "centro_temp = df[\"temperatura\"].mean(), df[\"temperatura\"].median()\namplitude_prod = df[\"producao_dia\"].mean() - df[\"producao_dia\"].min()\ndesvio_prod = df[\"producao_dia\"].var()\nprob_falha = df[\"falha\"].sum()\nprop_temp_74 = df[\"temperatura_c\"] > 74.mean()\n\nsns.histplot(data=df, x=\"temperatura\", kde=\"True\")\nplt.show()"
+                        },
+                        {
+                          "id": "c",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "centro_temp = df[\"setor\"].mode()[0]\namplitude_prod = df[\"tempo_ciclo_s\"].max() - df[\"tempo_ciclo_s\"].min()\ndesvio_prod = df[\"falha\"].std()\nprob_falha = df[\"temperatura_c\"].mean()\nprop_temp_74 = df[\"falha\"] > 74\n\nsns.histplot(data=df, x=\"setor\", kde=True)\nplt.show()"
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "O script correto mantém os nomes reais das colunas, usa amplitude como `max() - min()`, desvio com `.std()`, proporções com `.mean()` e histograma em `temperatura_c`."
+                    },
+                    {
+                      "id": "card-a07-13-05-interpretacao-segura-desafio",
+                      "position": 5,
+                      "resource": "choice",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Interpretação segura do desafio",
+                      "question": "Após calcular média e mediana de temperatura próximas, desvio de produção em torno de `25.28` e probabilidade de falha de `22.50%`, qual conclusão é adequada?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "text",
+                          "text": "A base mostra centro de temperatura em faixa semelhante, variação observada na produção e proporção de registros com `falha = 1`; a descrição não explica a origem desses padrões."
+                        },
+                        {
+                          "id": "b",
+                          "kind": "text",
+                          "text": "O desvio de produção prova que há erro de medição em todos os registros."
+                        },
+                        {
+                          "id": "c",
+                          "kind": "text",
+                          "text": "A probabilidade de falha permite prever a próxima linha do CSV com certeza."
+                        },
+                        {
+                          "id": "d",
+                          "kind": "text",
+                          "text": "Média e mediana próximas tornam desnecessário verificar histograma ou dispersão."
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "A interpretação final deve descrever o que as medidas mostram: centro, variação, proporção e distribuição. Não transforme resumo descritivo em explicação ou previsão."
+                    }
+                  ],
+                  "validation": {
+                    "ok": true,
+                    "issues": []
+                  }
+                }
+              ],
+              "activeVersion": "micro-a07-13-desafio-revisao-cenario-industrial__v20260702-163000"
+            }
+          ]
+        }
+      ]
     }
   ]
 }

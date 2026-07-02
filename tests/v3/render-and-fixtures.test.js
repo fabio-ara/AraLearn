@@ -1141,9 +1141,9 @@ test("o seed embutido oficial mantém os cursos embarcados já materializados", 
     .flatMap((lesson) => lesson.microsequences || []);
 
   assert.equal(fundamentosCourse.title, "Fundamentos de IA e Análise de Dados");
-  assert.equal(fundamentosCourse.modules.length, 6);
-  assert.equal(fundamentosCourse.modules.flatMap((moduleValue) => moduleValue.lessons || []).length, 6);
-  assert.equal(fundamentosMicrosequences.length, 68);
+  assert.equal(fundamentosCourse.modules.length, 7);
+  assert.equal(fundamentosCourse.modules.flatMap((moduleValue) => moduleValue.lessons || []).length, 7);
+  assert.equal(fundamentosMicrosequences.length, 81);
   assert.equal(fundamentosMicrosequences.some((microsequence) => (microsequence.versions || []).length > 0), true);
   assert.equal(fundamentosMicrosequences.some((microsequence) => microsequence.activeVersion), true);
   assert.equal(
@@ -1171,13 +1171,17 @@ test("o seed embutido oficial mantém os cursos embarcados já materializados", 
     true
   );
   assert.equal(
+    fundamentosCourse.modules.some((moduleValue) => moduleValue.title === "Aula 7 — Estatística Aplicada"),
+    true
+  );
+  assert.equal(
     fundamentosMicrosequences.reduce((count, microsequence) => {
       const active =
         (microsequence.versions || []).find((version) => version.id === microsequence.activeVersion) ||
         (microsequence.versions || []).at(-1);
       return count + ((active?.cards || []).length);
     }, 0),
-    415
+    493
   );
 
   const fundamentosCards = fundamentosMicrosequences
@@ -1201,6 +1205,10 @@ test("o seed embutido oficial mantém os cursos embarcados já materializados", 
     true
   );
   assert.equal(
+    fundamentosCards.some((card) => JSON.stringify(card).includes("dataset_aula7_estatistica.csv")),
+    true
+  );
+  assert.equal(
     fundamentosCards.some((card) => JSON.stringify(card).includes("dataset_qualidade_problemas.xlsx")),
     false
   );
@@ -1213,7 +1221,22 @@ test("o seed embutido oficial mantém os cursos embarcados já materializados", 
       .filter((card) => card.resource === "composite")
       .every((card) => {
         const choiceBlocks = (card.blocks || []).filter((block) => block.kind === "choice");
-        return (card.blocks || []).every((block) => block.kind && !("resource" in block)) && choiceBlocks.length === 1;
+        const hasNormalizedBlocks = (card.blocks || []).every((block) => block.kind && !("resource" in block));
+        if (card.kind === "exercise" && card.exercise === "choice") {
+          return (
+            hasNormalizedBlocks &&
+            choiceBlocks.length === 1 &&
+            !("question" in card) &&
+            !("options" in card) &&
+            !("answer" in card)
+          );
+        }
+        return (
+          hasNormalizedBlocks &&
+          !("question" in card) &&
+          !("options" in card) &&
+          !("answer" in card)
+        );
       }),
     true
   );

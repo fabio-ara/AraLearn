@@ -6,7 +6,8 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ### Changed
 
-- sem mudanças registradas
+- integração da Aula 7 ao curso embarcado `Fundamentos de IA e Análise de Dados`, agora com `7` módulos, `7` lições, `81` microssequências e `493` cards ativos;
+- auditoria e saneamento da entrega bruta da Aula 7 antes da incorporação ao seed oficial: remoção de metadados de bastidor na raiz e correção do `composite` de exercício para o shape compatível com o contrato atual.
 
 ## [0.0.4] - 2026-07-02
 
