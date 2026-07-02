@@ -2,7 +2,7 @@ import { createBrowserLocalStorageStore } from "../src/storage/createBrowserLoca
 import { createProjectStorage } from "../src/storage/createProjectStorage.js";
 import { createEditorSession } from "../src/editor/contractEditor.js";
 import { createLessonEditorApp } from "../src/ui/lessonEditorApp.js";
-import { createEmbeddedSeedProjectDocument, reconcileEmbeddedSeedProject } from "../src/ui/embeddedSeedProjectDocument.js";
+import { createEmbeddedSeedProjectDocument } from "../src/ui/embeddedSeedProjectDocument.js";
 
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -72,12 +72,6 @@ try {
   if (!project || !Array.isArray(project.courses) || project.courses.length === 0) {
     project = createEmbeddedSeedProjectDocument();
     storage.saveProject(project);
-  } else {
-    const reconciledProject = reconcileEmbeddedSeedProject(project);
-    if (reconciledProject !== project) {
-      project = reconciledProject;
-      storage.saveProject(project);
-    }
   }
 
   if (!project) {
