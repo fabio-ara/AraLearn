@@ -1141,9 +1141,9 @@ test("o seed embutido oficial mantém os cursos embarcados já materializados", 
     .flatMap((lesson) => lesson.microsequences || []);
 
   assert.equal(fundamentosCourse.title, "Fundamentos de IA e Análise de Dados");
-  assert.equal(fundamentosCourse.modules.length, 7);
-  assert.equal(fundamentosCourse.modules.flatMap((moduleValue) => moduleValue.lessons || []).length, 7);
-  assert.equal(fundamentosMicrosequences.length, 81);
+  assert.equal(fundamentosCourse.modules.length, 8);
+  assert.equal(fundamentosCourse.modules.flatMap((moduleValue) => moduleValue.lessons || []).length, 8);
+  assert.equal(fundamentosMicrosequences.length, 96);
   assert.equal(fundamentosMicrosequences.some((microsequence) => (microsequence.versions || []).length > 0), true);
   assert.equal(fundamentosMicrosequences.some((microsequence) => microsequence.activeVersion), true);
   assert.equal(
@@ -1175,13 +1175,17 @@ test("o seed embutido oficial mantém os cursos embarcados já materializados", 
     true
   );
   assert.equal(
+    fundamentosCourse.modules.some((moduleValue) => moduleValue.title === "Aula 8 — Análise Exploratória de Dados (EDA)"),
+    true
+  );
+  assert.equal(
     fundamentosMicrosequences.reduce((count, microsequence) => {
       const active =
         (microsequence.versions || []).find((version) => version.id === microsequence.activeVersion) ||
         (microsequence.versions || []).at(-1);
       return count + ((active?.cards || []).length);
     }, 0),
-    493
+    582
   );
 
   const fundamentosCards = fundamentosMicrosequences
@@ -1206,6 +1210,10 @@ test("o seed embutido oficial mantém os cursos embarcados já materializados", 
   );
   assert.equal(
     fundamentosCards.some((card) => JSON.stringify(card).includes("dataset_aula7_estatistica.csv")),
+    true
+  );
+  assert.equal(
+    fundamentosCards.some((card) => JSON.stringify(card).includes("dataset_aula8_eda.csv")),
     true
   );
   assert.equal(

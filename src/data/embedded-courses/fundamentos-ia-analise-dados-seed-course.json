@@ -18123,6 +18123,3041 @@
           ]
         }
       ]
+    },
+    {
+      "id": "module-aula-08-analise-exploratoria-dados",
+      "title": "Aula 8 — Análise Exploratória de Dados (EDA)",
+      "guide": {
+        "goal": "Desenvolver autonomia inicial e intermediária para conduzir uma análise exploratória de dados com Pandas, Matplotlib e Seaborn, articulando inspeção, estatística descritiva, valores ausentes, categorias, distribuições, correlações, outliers, grupos e interpretação responsável.",
+        "include": [
+          "EDA",
+          "pd.read_csv()",
+          "df.head()",
+          "df.shape",
+          "df.columns",
+          "df.dtypes",
+          "df.info()",
+          "df.describe()",
+          "df.isna().sum()",
+          "value_counts()",
+          "sns.histplot()",
+          "df[numeric_cols].corr()",
+          "sns.heatmap()",
+          "sns.scatterplot()",
+          "hue=\"falha\"",
+          "sns.boxplot()",
+          "IQR",
+          "groupby()",
+          "agg()",
+          "conclusão responsável"
+        ],
+        "exclude": [
+          "Scikit-learn",
+          "p-valor",
+          "intervalo de confiança",
+          "PySpark",
+          "SQL",
+          "dashboards",
+          "Plotly",
+          "PCA",
+          "clusterização",
+          "redes neurais"
+        ],
+        "notation": [
+          "Usar lacunas no padrão `[[resposta::resposta|distrator]]` em `paragraph.text` e `code.code`.",
+          "Usar crases em textos renderizáveis para comandos, colunas, literais e nomes de arquivos.",
+          "Preservar indentação Python em blocos `code`."
+        ],
+        "avoid": [
+          "Não usar `id_registro` como variável analítica principal.",
+          "Não tratar `falha` como texto.",
+          "Não afirmar causalidade a partir de correlação ou gráfico.",
+          "Não usar colunas inexistentes como resposta correta."
+        ]
+      },
+      "lessons": [
+        {
+          "id": "lesson-aula-08-eda-pandas-matplotlib-seaborn",
+          "title": "Aula 8 — EDA com Pandas, Matplotlib e Seaborn",
+          "guide": {
+            "goal": "Desenvolver autonomia inicial e intermediária em análise exploratória de dados a partir de `dataset_aula8_eda.csv`.",
+            "include": [
+              "importação de bibliotecas",
+              "leitura de CSV",
+              "inspeção inicial",
+              "estatística descritiva",
+              "valores ausentes",
+              "contagens categóricas",
+              "histogramas",
+              "correlação",
+              "heatmap",
+              "dispersão com `hue`",
+              "boxplot",
+              "outliers por IQR",
+              "análise por grupo",
+              "projeto final de EDA",
+              "interpretação cautelosa"
+            ],
+            "exclude": [
+              "modelos preditivos",
+              "teste de hipótese",
+              "imputação avançada",
+              "normalização",
+              "engenharia de atributos",
+              "mapas interativos",
+              "animações",
+              "exercícios abertos sem resposta verificável"
+            ],
+            "notation": [
+              "Arquivo da aula: `dataset_aula8_eda.csv`.",
+              "Coluna `falha` é binária numérica: `0` e `1`.",
+              "Lista de correlação interpretável: `temperatura_c`, `tempo_ciclo_s`, `producao_dia`, `consumo_kwh`, `vibracao_mm_s`, `falha`."
+            ],
+            "avoid": [
+              "Não usar marcador visual de lacuna fora da gramática AraLearn.",
+              "Não antecipar conteúdo da próxima aula.",
+              "Não usar vocabulário artificial."
+            ]
+          },
+          "topics": [
+            {
+              "id": "topic-a08-eda",
+              "label": "EDA",
+              "kind": "concept",
+              "checks": [
+                "organiza perguntas de exploração"
+              ],
+              "errors": [
+                "procurar conclusão antes de inspecionar dados"
+              ]
+            },
+            {
+              "id": "topic-a08-estrutura",
+              "label": "estrutura do dataset",
+              "kind": "skill",
+              "checks": [
+                "confere linhas, colunas e tipos"
+              ],
+              "errors": [
+                "usar coluna inexistente"
+              ]
+            },
+            {
+              "id": "topic-a08-descricao",
+              "label": "resumo estatístico",
+              "kind": "skill",
+              "checks": [
+                "interpreta média, mediana, quartis e dispersão"
+              ],
+              "errors": [
+                "confundir `50%` com taxa"
+              ]
+            },
+            {
+              "id": "topic-a08-ausentes-categorias",
+              "label": "ausentes e categorias",
+              "kind": "skill",
+              "checks": [
+                "usa `isna().sum()` e `value_counts()`"
+              ],
+              "errors": [
+                "confundir `0` de `falha` com ausente"
+              ]
+            },
+            {
+              "id": "topic-a08-visualizacao",
+              "label": "visualização exploratória",
+              "kind": "skill",
+              "checks": [
+                "escolhe histograma, heatmap, dispersão e boxplot"
+              ],
+              "errors": [
+                "usar gráfico incompatível com a pergunta"
+              ]
+            },
+            {
+              "id": "topic-a08-outliers",
+              "label": "outliers por IQR",
+              "kind": "skill",
+              "checks": [
+                "calcula limites e filtra registros"
+              ],
+              "errors": [
+                "usar `or` em filtro Pandas"
+              ]
+            },
+            {
+              "id": "topic-a08-grupos",
+              "label": "análise por grupo",
+              "kind": "skill",
+              "checks": [
+                "calcula média e taxa por grupo"
+              ],
+              "errors": [
+                "confundir taxa com contagem"
+              ]
+            },
+            {
+              "id": "topic-a08-interpretacao",
+              "label": "interpretação responsável",
+              "kind": "review",
+              "checks": [
+                "usa evidência e cautela"
+              ],
+              "errors": [
+                "afirmar causalidade"
+              ]
+            }
+          ],
+          "microsequences": [
+            {
+              "id": "micro-a08-01-eda-fluxo-perguntas",
+              "title": "EDA como ciclo de perguntas",
+              "goal": "Entender EDA como investigação inicial com perguntas sobre estrutura, distribuição, relação, grupos e outliers.",
+              "role": "support",
+              "status": "generated",
+              "dependsOn": [],
+              "covers": [
+                "EDA",
+                "pergunta analítica",
+                "inspeção",
+                "distribuição",
+                "correlação",
+                "outlier",
+                "grupo",
+                "conclusão responsável"
+              ],
+              "checks": [
+                "reconhece EDA como etapa exploratória",
+                "distingue exploração de ajuste algorítmico",
+                "escolhe pergunta adequada para cada bloco da aula"
+              ],
+              "versions": [
+                {
+                  "id": "micro-a08-01-eda-fluxo-perguntas__v20260702-164812",
+                  "createdAt": "2026-07-02T16:48:12.000-03:00",
+                  "source": "llm",
+                  "action": "generate",
+                  "request": "Aprimorar a Aula 8 com correções estruturais, compatibilidade contratual e cobertura didática verificável.",
+                  "summary": "Introduz o ciclo de perguntas da EDA.",
+                  "cards": [
+                    {
+                      "id": "a08-01-c01",
+                      "position": 1,
+                      "resource": "paragraph",
+                      "kind": "theory",
+                      "exercise": "none",
+                      "title": "EDA como investigação inicial",
+                      "text": "EDA, de `Exploratory Data Analysis`, pode ser entendida como análise exploratória: uma sequência de perguntas para conhecer a base antes de tomar decisões analíticas. Na Aula 8, a base tem produção industrial, consumo, vibração, temperatura, categorias e o indicador `falha`.",
+                      "after": "A ideia central não é buscar uma conclusão pronta, mas verificar estrutura, qualidade, distribuição, relações aparentes e diferenças entre grupos."
+                    },
+                    {
+                      "id": "a08-01-c02",
+                      "position": 2,
+                      "resource": "flow",
+                      "kind": "theory",
+                      "exercise": "none",
+                      "title": "Ciclo de perguntas da EDA",
+                      "prompt": "Observe a ordem de investigação que organiza a aula.",
+                      "structure": {
+                        "kind": "sequence",
+                        "items": [
+                          {
+                            "kind": "start",
+                            "text": "Carregar a base"
+                          },
+                          {
+                            "kind": "process",
+                            "text": "Inspecionar linhas, colunas e tipos"
+                          },
+                          {
+                            "kind": "process",
+                            "text": "Verificar ausentes e categorias"
+                          },
+                          {
+                            "kind": "process",
+                            "text": "Descrever e visualizar distribuições"
+                          },
+                          {
+                            "kind": "process",
+                            "text": "Examinar correlações, dispersões e outliers"
+                          },
+                          {
+                            "kind": "process",
+                            "text": "Comparar grupos"
+                          },
+                          {
+                            "kind": "end",
+                            "text": "Registrar conclusões com cautela"
+                          }
+                        ]
+                      },
+                      "after": "O fluxo evita pular direto para interpretação. Cada etapa reduz um tipo de incerteza sobre os dados."
+                    },
+                    {
+                      "id": "a08-01-c03",
+                      "position": 3,
+                      "resource": "choice",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Pergunta adequada ao bloco",
+                      "question": "Qual pergunta combina melhor com o início da EDA?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "text",
+                          "text": "Quais colunas existem, quantas linhas há e quais tipos foram lidos?"
+                        },
+                        {
+                          "id": "b",
+                          "kind": "text",
+                          "text": "Qual algoritmo deve ser usado para prever `falha`?"
+                        },
+                        {
+                          "id": "c",
+                          "kind": "text",
+                          "text": "Qual coluna deve ser alterada sem inspecionar seus valores?"
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "A primeira decisão é reconhecer a estrutura da base. Sem isso, comandos seguintes podem usar colunas erradas ou interpretar variáveis de modo inadequado."
+                    },
+                    {
+                      "id": "a08-01-c04",
+                      "position": 4,
+                      "resource": "table",
+                      "kind": "theory",
+                      "exercise": "none",
+                      "title": "Perguntas e comandos prováveis",
+                      "columns": [
+                        "Pergunta de EDA",
+                        "Comando ou recurso"
+                      ],
+                      "rows": [
+                        [
+                          "Qual é o formato da base?",
+                          "`df.shape`"
+                        ],
+                        [
+                          "Há valores ausentes?",
+                          "`df.isna().sum()`"
+                        ],
+                        [
+                          "Como os valores se distribuem?",
+                          "histograma"
+                        ],
+                        [
+                          "Há associação linear aparente?",
+                          "`df.corr()`"
+                        ],
+                        [
+                          "Há diferença entre grupos?",
+                          "`groupby()` ou boxplot por categoria"
+                        ]
+                      ],
+                      "after": "A tabela conecta pergunta analítica e ferramenta. A EDA fica mais sólida quando o comando responde a uma pergunta explícita."
+                    },
+                    {
+                      "id": "a08-01-c05",
+                      "position": 5,
+                      "resource": "paragraph",
+                      "kind": "exercise",
+                      "exercise": "gap",
+                      "title": "Conclusão responsável",
+                      "text": "Uma correlação ou um gráfico de dispersão pode sugerir associação, mas não deve ser usado sozinho para afirmar [[causa::causa|arquivo|coluna]].",
+                      "after": "A palavra decisiva é `causa`: EDA ajuda a levantar hipóteses e evidências descritivas, não a provar que uma variável produz outra."
+                    }
+                  ],
+                  "validation": {
+                    "ok": true,
+                    "issues": []
+                  }
+                }
+              ],
+              "activeVersion": "micro-a08-01-eda-fluxo-perguntas__v20260702-164812"
+            },
+            {
+              "id": "micro-a08-02-importar-ler-csv",
+              "title": "Importar bibliotecas e ler o dataset",
+              "goal": "Preparar o ambiente com Pandas, NumPy, Matplotlib e Seaborn e carregar `dataset_aula8_eda.csv`.",
+              "role": "practice",
+              "status": "generated",
+              "dependsOn": [
+                "micro-a08-01-eda-fluxo-perguntas"
+              ],
+              "covers": [
+                "import pandas as pd",
+                "import numpy as np",
+                "import matplotlib.pyplot as plt",
+                "import seaborn as sns",
+                "pd.read_csv()"
+              ],
+              "checks": [
+                "completa imports com aliases corretos",
+                "lê CSV em `df`",
+                "evita trocar `read_csv()` por outro leitor"
+              ],
+              "versions": [
+                {
+                  "id": "micro-a08-02-importar-ler-csv__v20260702-164812",
+                  "createdAt": "2026-07-02T16:48:12.000-03:00",
+                  "source": "llm",
+                  "action": "generate",
+                  "request": "Aprimorar a Aula 8 com correções estruturais, compatibilidade contratual e cobertura didática verificável.",
+                  "summary": "Pratica imports e leitura do CSV.",
+                  "cards": [
+                    {
+                      "id": "a08-02-c01",
+                      "position": 1,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "gap",
+                      "title": "Importar Pandas",
+                      "prompt": "Complete o alias usado ao longo da aula.",
+                      "language": "python",
+                      "code": "import pandas [[as::as|from|with]] pd",
+                      "after": "`as pd` cria o apelido esperado para chamar `pd.read_csv()` e outras funções do Pandas."
+                    },
+                    {
+                      "id": "a08-02-c02",
+                      "position": 2,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "gap",
+                      "title": "Importar bibliotecas da aula",
+                      "prompt": "Complete os aliases e módulos esperados para análise e visualização.",
+                      "language": "python",
+                      "code": "import pandas as pd\nimport numpy [[as::as|from|with]] np\nimport matplotlib.pyplot as plt\nimport seaborn as sns",
+                      "after": "Os aliases `pd`, `np`, `plt` e `sns` deixam os comandos do notebook consistentes com a prática da aula."
+                    },
+                    {
+                      "id": "a08-02-c03",
+                      "position": 3,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "gap",
+                      "title": "Ler o arquivo CSV",
+                      "prompt": "Complete a função correta para carregar `dataset_aula8_eda.csv` em `df`.",
+                      "language": "python",
+                      "code": "df = pd.[[read_csv::read_csv|read_excel|DataFrame]](\"dataset_aula8_eda.csv\")",
+                      "after": "`pd.read_csv()` é apropriado porque o arquivo da aula é um CSV. `read_excel()` espera outro formato."
+                    },
+                    {
+                      "id": "a08-02-c04",
+                      "position": 4,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Escolher a leitura correta",
+                      "prompt": "Compare versões completas de leitura.",
+                      "language": "python",
+                      "code": "Compare as versões completas.",
+                      "question": "Qual versão carrega o dataset em um `DataFrame` chamado `df`?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "df = pd.read_csv(\"dataset_aula8_eda.csv\")"
+                        },
+                        {
+                          "id": "b",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "df = read_csv(\"dataset_aula8_eda.csv\")"
+                        },
+                        {
+                          "id": "c",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "dataset = pd.read_excel(\"dataset_aula8_eda.csv\")"
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "A versão correta usa `pd.` e mantém o resultado em `df`, nome usado nas etapas seguintes."
+                    },
+                    {
+                      "id": "a08-02-c05",
+                      "position": 5,
+                      "resource": "paragraph",
+                      "kind": "theory",
+                      "exercise": "none",
+                      "title": "Base carregada e objeto de trabalho",
+                      "text": "Depois da leitura, `df` representa a tabela da aula. Cada linha corresponde a um registro de produção; cada coluna traz uma característica, como `setor`, `turno`, `temperatura_c`, `consumo_kwh` ou `falha`.",
+                      "after": "Nomear o objeto como `df` permite que as próximas células usem comandos previsíveis, como `df.head()`, `df.shape` e `df.describe()`."
+                    }
+                  ],
+                  "validation": {
+                    "ok": true,
+                    "issues": []
+                  }
+                }
+              ],
+              "activeVersion": "micro-a08-02-importar-ler-csv__v20260702-164812"
+            },
+            {
+              "id": "micro-a08-03-inspecao-inicial",
+              "title": "Primeira inspeção: linhas, formato e colunas",
+              "goal": "Usar `head()`, `shape`, `columns`, `dtypes` e `info()` para reconhecer a estrutura do dataset.",
+              "role": "practice",
+              "status": "generated",
+              "dependsOn": [
+                "micro-a08-02-importar-ler-csv"
+              ],
+              "covers": [
+                "display(df.head())",
+                "df.shape",
+                "df.columns",
+                "df.dtypes",
+                "df.info()",
+                "dimensão `(120, 9)`"
+              ],
+              "checks": [
+                "identifica 120 linhas e 9 colunas",
+                "usa `display()` e `print()` em múltiplas saídas",
+                "diferencia coluna, linha, tipo e identificador"
+              ],
+              "versions": [
+                {
+                  "id": "micro-a08-03-inspecao-inicial__v20260702-164812",
+                  "createdAt": "2026-07-02T16:48:12.000-03:00",
+                  "source": "llm",
+                  "action": "generate",
+                  "request": "Aprimorar a Aula 8 com correções estruturais, compatibilidade contratual e cobertura didática verificável.",
+                  "summary": "Confere estrutura, colunas e dimensões.",
+                  "cards": [
+                    {
+                      "id": "a08-03-c01",
+                      "position": 1,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "gap",
+                      "title": "Primeiras linhas",
+                      "prompt": "Complete a chamada para visualizar o começo da tabela.",
+                      "language": "python",
+                      "code": "display(df.[[head()::head()|head|shape]])",
+                      "after": "`df.head()` executa o método e mostra as primeiras linhas. Sem parênteses, o método não é chamado."
+                    },
+                    {
+                      "id": "a08-03-c02",
+                      "position": 2,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "gap",
+                      "title": "Formato da base",
+                      "prompt": "Complete o atributo que informa quantidade de linhas e colunas.",
+                      "language": "python",
+                      "code": "print(df.[[shape::shape|columns|dtypes]])",
+                      "after": "`df.shape` retorna uma tupla. Nesta base, o resultado esperado é `(120, 9)`."
+                    },
+                    {
+                      "id": "a08-03-c03",
+                      "position": 3,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "gap",
+                      "title": "Colunas da base",
+                      "prompt": "Complete o atributo que lista os nomes das colunas.",
+                      "language": "python",
+                      "code": "print(df.[[columns::columns|index|values]])",
+                      "after": "`df.columns` permite conferir grafia real das colunas antes de escrever seleções como `df[\"consumo_kwh\"]`."
+                    },
+                    {
+                      "id": "a08-03-c04",
+                      "position": 4,
+                      "resource": "table",
+                      "kind": "theory",
+                      "exercise": "none",
+                      "title": "Colunas reais e papéis didáticos",
+                      "columns": [
+                        "Coluna",
+                        "Tipo lido",
+                        "Uso principal na EDA"
+                      ],
+                      "rows": [
+                        [
+                          "`id_registro`",
+                          "inteiro",
+                          "identificador; não interpretar como comportamento"
+                        ],
+                        [
+                          "`setor`",
+                          "texto",
+                          "categoria para contagem e grupos"
+                        ],
+                        [
+                          "`turno`",
+                          "texto",
+                          "categoria para contagem"
+                        ],
+                        [
+                          "`temperatura_c`",
+                          "decimal",
+                          "histograma, boxplot, IQR e grupo"
+                        ],
+                        [
+                          "`tempo_ciclo_s`",
+                          "decimal",
+                          "estatística e IQR"
+                        ],
+                        [
+                          "`producao_dia`",
+                          "inteiro",
+                          "estatística e distribuição"
+                        ],
+                        [
+                          "`consumo_kwh`",
+                          "decimal",
+                          "histograma, dispersão, boxplot e IQR"
+                        ],
+                        [
+                          "`vibracao_mm_s`",
+                          "decimal",
+                          "estatística e correlação"
+                        ],
+                        [
+                          "`falha`",
+                          "inteiro `0/1`",
+                          "indicador binário para taxa e correlação com cautela"
+                        ]
+                      ],
+                      "after": "A conferência de nomes evita criar comandos com colunas inexistentes e também evita interpretar `id_registro` como medida operacional."
+                    },
+                    {
+                      "id": "a08-03-c05",
+                      "position": 5,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Múltiplas saídas de inspeção",
+                      "prompt": "Compare versões completas para mostrar linhas iniciais, formato e colunas.",
+                      "language": "python",
+                      "code": "Compare as versões completas.",
+                      "question": "Qual versão executa as três inspeções?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "display(df.head())\nprint(df.shape)\nprint(df.columns)"
+                        },
+                        {
+                          "id": "b",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "display(df.head)\nprint(df.shape())\nprint(df.column)"
+                        },
+                        {
+                          "id": "c",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "print(df.describe())\nprint(df.info)\nprint(df.index)"
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "`head()` é método, `shape` é atributo e `columns` é atributo. Misturar essas formas gera erro ou não entrega a inspeção desejada."
+                    },
+                    {
+                      "id": "a08-03-c06",
+                      "position": 6,
+                      "resource": "choice",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Dimensão conferida",
+                      "question": "Após `print(df.shape)`, o resultado conferido é `(120, 9)`. O que isso significa?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "text",
+                          "text": "A base tem 120 linhas e 9 colunas."
+                        },
+                        {
+                          "id": "b",
+                          "kind": "text",
+                          "text": "A base tem 9 linhas e 120 colunas."
+                        },
+                        {
+                          "id": "c",
+                          "kind": "text",
+                          "text": "A base tem 120 valores ausentes e 9 categorias."
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "Em Pandas, `shape` segue a ordem `(linhas, colunas)`. Esse dado define o tamanho da base antes das análises."
+                    }
+                  ],
+                  "validation": {
+                    "ok": true,
+                    "issues": []
+                  }
+                }
+              ],
+              "activeVersion": "micro-a08-03-inspecao-inicial__v20260702-164812"
+            },
+            {
+              "id": "micro-a08-04-describe-resumo-estatistico",
+              "title": "`describe()` e leitura do resumo numérico",
+              "goal": "Usar `df.describe()` para ler média, quartis, mínimo, máximo e dispersão em variáveis numéricas.",
+              "role": "practice",
+              "status": "generated",
+              "dependsOn": [
+                "micro-a08-03-inspecao-inicial"
+              ],
+              "covers": [
+                "df.describe()",
+                "count",
+                "mean",
+                "std",
+                "min",
+                "25%",
+                "50%",
+                "75%",
+                "max"
+              ],
+              "checks": [
+                "executa `df.describe()`",
+                "identifica média, mediana e extremos",
+                "interpreta sem exagerar conclusão"
+              ],
+              "versions": [
+                {
+                  "id": "micro-a08-04-describe-resumo-estatistico__v20260702-164812",
+                  "createdAt": "2026-07-02T16:48:12.000-03:00",
+                  "source": "llm",
+                  "action": "generate",
+                  "request": "Aprimorar a Aula 8 com correções estruturais, compatibilidade contratual e cobertura didática verificável.",
+                  "summary": "Pratica leitura de resumo estatístico.",
+                  "cards": [
+                    {
+                      "id": "a08-04-c01",
+                      "position": 1,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "gap",
+                      "title": "Resumo estatístico",
+                      "prompt": "Complete o método que resume variáveis numéricas.",
+                      "language": "python",
+                      "code": "df.[[describe()::describe()|info()|value_counts()]]",
+                      "after": "`df.describe()` mostra `count`, `mean`, `std`, mínimo, quartis e máximo para colunas numéricas."
+                    },
+                    {
+                      "id": "a08-04-c02",
+                      "position": 2,
+                      "resource": "table",
+                      "kind": "theory",
+                      "exercise": "none",
+                      "title": "Leitura dos campos de `describe()`",
+                      "columns": [
+                        "Campo",
+                        "Interpretação"
+                      ],
+                      "rows": [
+                        [
+                          "`count`",
+                          "quantidade de valores não ausentes"
+                        ],
+                        [
+                          "`mean`",
+                          "média"
+                        ],
+                        [
+                          "`std`",
+                          "desvio padrão"
+                        ],
+                        [
+                          "`min` e `max`",
+                          "menor e maior valor"
+                        ],
+                        [
+                          "`25%`, `50%`, `75%`",
+                          "quartis; `50%` é a mediana"
+                        ]
+                      ],
+                      "after": "`50%` em `describe()` não é taxa de falha; é a mediana da variável analisada."
+                    },
+                    {
+                      "id": "a08-04-c03",
+                      "position": 3,
+                      "resource": "choice",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Mediana em `describe()`",
+                      "question": "No resumo de `temperatura_c`, `50%` está próximo de `74.06`. Qual leitura é adequada?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "text",
+                          "text": "A mediana de `temperatura_c` fica em torno de `74.06`."
+                        },
+                        {
+                          "id": "b",
+                          "kind": "text",
+                          "text": "`74.06%` dos registros têm falha."
+                        },
+                        {
+                          "id": "c",
+                          "kind": "text",
+                          "text": "`temperatura_c` tem 74 colunas."
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "A linha `50%` representa o ponto central da distribuição numérica, não uma porcentagem de registros com falha."
+                    },
+                    {
+                      "id": "a08-04-c04",
+                      "position": 4,
+                      "resource": "choice",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Extremos e cautela",
+                      "question": "`consumo_kwh` tem mínimo próximo de `69.07` e máximo `205.0`. Qual frase é mais responsável?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "text",
+                          "text": "Há uma grande amplitude em `consumo_kwh`; vale investigar a distribuição e possíveis outliers."
+                        },
+                        {
+                          "id": "b",
+                          "kind": "text",
+                          "text": "`205.0` prova erro de digitação e deve ser removido sem inspeção."
+                        },
+                        {
+                          "id": "c",
+                          "kind": "text",
+                          "text": "O consumo aumenta obrigatoriamente quando a temperatura aumenta."
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "Extremos pedem investigação. A EDA registra evidência descritiva e só depois decide se há ponto fora do padrão ou valor válido."
+                    },
+                    {
+                      "id": "a08-04-c05",
+                      "position": 5,
+                      "resource": "paragraph",
+                      "kind": "exercise",
+                      "exercise": "gap",
+                      "title": "Dispersão no resumo",
+                      "text": "Em `df.describe()`, `std` indica [[dispersão::dispersão|categoria|caminho]] dos valores em torno da média.",
+                      "after": "O desvio padrão ajuda a comparar variabilidade. Ele não é uma mensagem de erro do código."
+                    }
+                  ],
+                  "validation": {
+                    "ok": true,
+                    "issues": []
+                  }
+                }
+              ],
+              "activeVersion": "micro-a08-04-describe-resumo-estatistico__v20260702-164812"
+            },
+            {
+              "id": "micro-a08-05-valores-ausentes",
+              "title": "Verificar valores ausentes",
+              "goal": "Verificar nulos com `df.isna().sum()` e interpretar que o dataset atual não exige tratamento de ausentes.",
+              "role": "practice",
+              "status": "generated",
+              "dependsOn": [
+                "micro-a08-04-describe-resumo-estatistico"
+              ],
+              "covers": [
+                "isna()",
+                "sum()",
+                "nulos por coluna",
+                "ausência de nulos"
+              ],
+              "checks": [
+                "completa `df.isna().sum()`",
+                "interpreta soma zero",
+                "evita aplicar tratamento sem necessidade"
+              ],
+              "versions": [
+                {
+                  "id": "micro-a08-05-valores-ausentes__v20260702-164812",
+                  "createdAt": "2026-07-02T16:48:12.000-03:00",
+                  "source": "llm",
+                  "action": "generate",
+                  "request": "Aprimorar a Aula 8 com correções estruturais, compatibilidade contratual e cobertura didática verificável.",
+                  "summary": "Consolida verificação e interpretação de ausentes.",
+                  "cards": [
+                    {
+                      "id": "a08-05-c01",
+                      "position": 1,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "gap",
+                      "title": "Soma de ausentes por coluna",
+                      "prompt": "Complete o comando para contar valores ausentes em cada coluna.",
+                      "language": "python",
+                      "code": "df.[[isna()::isna()|describe()|value_counts()]].sum()",
+                      "after": "`isna()` marca ausentes e `sum()` soma quantos aparecem por coluna."
+                    },
+                    {
+                      "id": "a08-05-c02",
+                      "position": 2,
+                      "resource": "table",
+                      "kind": "theory",
+                      "exercise": "none",
+                      "title": "Resultado conferido de ausentes",
+                      "columns": [
+                        "Coluna",
+                        "Nulos"
+                      ],
+                      "rows": [
+                        [
+                          "`id_registro`",
+                          "`0`"
+                        ],
+                        [
+                          "`setor`",
+                          "`0`"
+                        ],
+                        [
+                          "`turno`",
+                          "`0`"
+                        ],
+                        [
+                          "`temperatura_c`",
+                          "`0`"
+                        ],
+                        [
+                          "`tempo_ciclo_s`",
+                          "`0`"
+                        ],
+                        [
+                          "`producao_dia`",
+                          "`0`"
+                        ],
+                        [
+                          "`consumo_kwh`",
+                          "`0`"
+                        ],
+                        [
+                          "`vibracao_mm_s`",
+                          "`0`"
+                        ],
+                        [
+                          "`falha`",
+                          "`0`"
+                        ]
+                      ],
+                      "after": "Todas as colunas têm soma `0`, então esta base não exige tratamento de ausentes antes da EDA."
+                    },
+                    {
+                      "id": "a08-05-c03",
+                      "position": 3,
+                      "resource": "choice",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "`0` em `falha` não é ausente",
+                      "question": "A coluna `falha` usa `0` e `1`. O que significa `0` nesse contexto?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "text",
+                          "text": "`0` é uma categoria numérica válida: indica ausência de ocorrência de falha."
+                        },
+                        {
+                          "id": "b",
+                          "kind": "text",
+                          "text": "`0` é valor ausente e deve ser contado por `isna()`."
+                        },
+                        {
+                          "id": "c",
+                          "kind": "text",
+                          "text": "`0` significa que a linha inteira está vazia."
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "`isna()` procura ausentes reais. O valor `0` em uma coluna binária é informação válida."
+                    },
+                    {
+                      "id": "a08-05-c04",
+                      "position": 4,
+                      "resource": "flow",
+                      "kind": "theory",
+                      "exercise": "none",
+                      "title": "Decisão após verificar ausentes",
+                      "prompt": "Siga a decisão local para o dataset atual.",
+                      "structure": {
+                        "kind": "sequence",
+                        "items": [
+                          {
+                            "kind": "start",
+                            "text": "Executar `df.isna().sum()`"
+                          },
+                          {
+                            "kind": "if_then_else",
+                            "condition": "Alguma coluna tem soma maior que `0`?",
+                            "thenBranch": [
+                              {
+                                "kind": "process",
+                                "text": "Registrar colunas afetadas e planejar tratamento"
+                              }
+                            ],
+                            "elseBranch": [
+                              {
+                                "kind": "process",
+                                "text": "Seguir para categorias e distribuições"
+                              }
+                            ]
+                          },
+                          {
+                            "kind": "end",
+                            "text": "Evitar tratamento sem diagnóstico"
+                          }
+                        ]
+                      },
+                      "after": "Como o resultado conferido é zero em todas as colunas, a sequência correta é seguir a análise."
+                    },
+                    {
+                      "id": "a08-05-c05",
+                      "position": 5,
+                      "resource": "choice",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Evitar tratamento desnecessário",
+                      "question": "Depois de confirmar `0` nulos em todas as colunas, qual ação combina com a EDA da aula?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "text",
+                          "text": "Registrar que não há ausentes e continuar para contagens e distribuições."
+                        },
+                        {
+                          "id": "b",
+                          "kind": "text",
+                          "text": "Aplicar remoção de linhas sem verificar impacto."
+                        },
+                        {
+                          "id": "c",
+                          "kind": "text",
+                          "text": "Substituir todos os `0` de `falha` por média."
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "Tratamento vem depois do diagnóstico. Nesta base, a soma de ausentes não indica ação de correção."
+                    }
+                  ],
+                  "validation": {
+                    "ok": true,
+                    "issues": []
+                  }
+                }
+              ],
+              "activeVersion": "micro-a08-05-valores-ausentes__v20260702-164812"
+            },
+            {
+              "id": "micro-a08-06-categorias-value-counts",
+              "title": "Contar categorias: setor, turno e falha",
+              "goal": "Usar `value_counts()` para entender frequências em colunas categóricas e binárias.",
+              "role": "practice",
+              "status": "generated",
+              "dependsOn": [
+                "micro-a08-05-valores-ausentes"
+              ],
+              "covers": [
+                "df[\"setor\"].value_counts()",
+                "df[\"turno\"].value_counts()",
+                "df[\"falha\"].value_counts()",
+                "frequência absoluta",
+                "classe binária"
+              ],
+              "checks": [
+                "conta categorias reais",
+                "reconhece `falha` como `0/1`",
+                "interpreta distribuição de `setor` e `turno`"
+              ],
+              "versions": [
+                {
+                  "id": "micro-a08-06-categorias-value-counts__v20260702-164812",
+                  "createdAt": "2026-07-02T16:48:12.000-03:00",
+                  "source": "llm",
+                  "action": "generate",
+                  "request": "Aprimorar a Aula 8 com correções estruturais, compatibilidade contratual e cobertura didática verificável.",
+                  "summary": "Pratica contagens categóricas e binárias.",
+                  "cards": [
+                    {
+                      "id": "a08-06-c01",
+                      "position": 1,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "gap",
+                      "title": "Contar setores",
+                      "prompt": "Complete a seleção da coluna e o método de contagem.",
+                      "language": "python",
+                      "code": "coluna = [[\"setor\"::\"setor\"|\"temperatura_c\"|\"setores\"]]\ndf[coluna].[[value_counts()::value_counts()|mean()|describe()]]",
+                      "after": "`setor` é coluna categórica real; `value_counts()` retorna a frequência de cada categoria. Usar uma variável intermediária evita ambiguidade entre a lacuna e os colchetes de seleção do Pandas."
+                    },
+                    {
+                      "id": "a08-06-c02",
+                      "position": 2,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "gap",
+                      "title": "Contar turnos",
+                      "prompt": "Complete o comando para contar os valores de `turno`.",
+                      "language": "python",
+                      "code": "df[\"turno\"].[[value_counts()::value_counts()|sum()|corr()]]",
+                      "after": "`value_counts()` é adequado para frequência absoluta em categorias como `A`, `B` e `C`."
+                    },
+                    {
+                      "id": "a08-06-c03",
+                      "position": 3,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "gap",
+                      "title": "Contar indicador binário",
+                      "prompt": "Complete o comando para contar `0` e `1` em `falha`.",
+                      "language": "python",
+                      "code": "df[\"falha\"].[[value_counts()::value_counts()|isna()|hist()]]",
+                      "after": "A coluna `falha` é binária numérica. A contagem mostra quantos registros têm `0` e quantos têm `1`."
+                    },
+                    {
+                      "id": "a08-06-c04",
+                      "position": 4,
+                      "resource": "table",
+                      "kind": "theory",
+                      "exercise": "none",
+                      "title": "Frequências conferidas",
+                      "columns": [
+                        "Coluna",
+                        "Valores conferidos"
+                      ],
+                      "rows": [
+                        [
+                          "`setor`",
+                          "`Montagem`: 48; `Usinagem`: 47; `Inspeção`: 25"
+                        ],
+                        [
+                          "`turno`",
+                          "`B`: 45; `C`: 44; `A`: 31"
+                        ],
+                        [
+                          "`falha`",
+                          "`0`: 97; `1`: 23"
+                        ]
+                      ],
+                      "after": "Essas frequências ajudam a perceber equilíbrio ou concentração antes de comparar grupos."
+                    },
+                    {
+                      "id": "a08-06-c05",
+                      "position": 5,
+                      "resource": "choice",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Taxa aproximada de falha",
+                      "question": "`falha` tem 23 registros com `1` em 120 linhas. Qual taxa aproximada corresponde a essa contagem?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "text",
+                          "text": "`19,17%`"
+                        },
+                        {
+                          "id": "b",
+                          "kind": "text",
+                          "text": "`23%` exatamente"
+                        },
+                        {
+                          "id": "c",
+                          "kind": "text",
+                          "text": "`97%`"
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "A taxa é `23 / 120`, aproximadamente `19,17%`. Em uma coluna `0/1`, a média também retorna essa proporção."
+                    },
+                    {
+                      "id": "a08-06-c06",
+                      "position": 6,
+                      "resource": "choice",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Erro provável em `falha`",
+                      "question": "Qual comparação deve ser evitada neste dataset?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "text",
+                          "text": "`df[\"falha\"] == \"sim\"`"
+                        },
+                        {
+                          "id": "b",
+                          "kind": "text",
+                          "text": "`df[\"falha\"] == 1`"
+                        },
+                        {
+                          "id": "c",
+                          "kind": "text",
+                          "text": "`df[\"falha\"].mean()`"
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "`falha` não usa texto. Ela foi lida como inteiro binário, então `0` e `1` são os valores corretos."
+                    }
+                  ],
+                  "validation": {
+                    "ok": true,
+                    "issues": []
+                  }
+                }
+              ],
+              "activeVersion": "micro-a08-06-categorias-value-counts__v20260702-164812"
+            },
+            {
+              "id": "micro-a08-07-histogramas-distribuicoes",
+              "title": "Histogramas para variáveis numéricas",
+              "goal": "Criar histogramas e interpretar forma, concentração e valores extremos em variáveis numéricas.",
+              "role": "practice",
+              "status": "generated",
+              "dependsOn": [
+                "micro-a08-06-categorias-value-counts"
+              ],
+              "covers": [
+                "sns.histplot()",
+                "plt.hist()",
+                "df[numeric_cols].hist()",
+                "colunas numéricas contínuas",
+                "distribuição"
+              ],
+              "checks": [
+                "escolhe colunas numéricas reais",
+                "exclui `id_registro` de interpretação",
+                "interpreta histograma como distribuição"
+              ],
+              "versions": [
+                {
+                  "id": "micro-a08-07-histogramas-distribuicoes__v20260702-164812",
+                  "createdAt": "2026-07-02T16:48:12.000-03:00",
+                  "source": "llm",
+                  "action": "generate",
+                  "request": "Aprimorar a Aula 8 com correções estruturais, compatibilidade contratual e cobertura didática verificável.",
+                  "summary": "Pratica histogramas e leitura de distribuição.",
+                  "cards": [
+                    {
+                      "id": "a08-07-c01",
+                      "position": 1,
+                      "resource": "paragraph",
+                      "kind": "theory",
+                      "exercise": "none",
+                      "title": "Histograma como distribuição",
+                      "text": "Um histograma agrupa valores numéricos em intervalos e mostra quantos registros caem em cada faixa. Para a Aula 8, faz sentido usar variáveis como `temperatura_c`, `tempo_ciclo_s`, `producao_dia`, `consumo_kwh` e `vibracao_mm_s`.",
+                      "after": "O eixo horizontal representa faixas de valores; a altura das barras representa frequência."
+                    },
+                    {
+                      "id": "a08-07-c02",
+                      "position": 2,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "gap",
+                      "title": "Histograma com Seaborn",
+                      "prompt": "Complete a coluna numérica para visualizar a distribuição de temperatura.",
+                      "language": "python",
+                      "code": "sns.histplot(data=df, x=[[\"temperatura_c\"::\"temperatura_c\"|\"setor\"|\"id_registro\"]], bins=15)\nplt.show()",
+                      "after": "`temperatura_c` é numérica contínua. `setor` é categoria e `id_registro` é identificador, não variável de comportamento."
+                    },
+                    {
+                      "id": "a08-07-c03",
+                      "position": 3,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "gap",
+                      "title": "Lista de colunas numéricas para gráficos",
+                      "prompt": "Complete a lista sem incluir `id_registro`.",
+                      "language": "python",
+                      "code": "numeric_cols = [\n    \"temperatura_c\",\n    \"tempo_ciclo_s\",\n    \"producao_dia\",\n    \"consumo_kwh\",\n    [[\"vibracao_mm_s\"::\"vibracao_mm_s\"|\"id_registro\"|\"setor\"]]\n]",
+                      "after": "A lista prioriza medidas analisáveis. `id_registro` é numérico, mas funciona como identificador."
+                    },
+                    {
+                      "id": "a08-07-c04",
+                      "position": 4,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Histogramas de várias variáveis",
+                      "prompt": "Compare versões para gerar histogramas interpretáveis.",
+                      "language": "python",
+                      "code": "Compare as versões completas.",
+                      "question": "Qual versão cria histogramas de variáveis numéricas sem usar o identificador como variável analítica?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "numeric_cols = [\"temperatura_c\", \"tempo_ciclo_s\", \"producao_dia\", \"consumo_kwh\", \"vibracao_mm_s\"]\ndf[numeric_cols].hist(bins=15)\nplt.show()"
+                        },
+                        {
+                          "id": "b",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "numeric_cols = [\"id_registro\", \"setor\", \"turno\"]\ndf[numeric_cols].hist(bins=15)\nplt.show()"
+                        },
+                        {
+                          "id": "c",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "df[\"setor\"].hist(bins=15)\nplt.show()"
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "A alternativa correta usa colunas numéricas reais e deixa `id_registro` fora da interpretação. `setor` é coluna real, mas categórica; não responde à pergunta de histogramas numéricos."
+                    },
+                    {
+                      "id": "a08-07-c05",
+                      "position": 5,
+                      "resource": "choice",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Leitura do eixo",
+                      "question": "Em um histograma de `consumo_kwh`, o que a altura de uma barra indica?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "text",
+                          "text": "A quantidade de registros dentro de uma faixa de consumo."
+                        },
+                        {
+                          "id": "b",
+                          "kind": "text",
+                          "text": "O valor exato de um único registro."
+                        },
+                        {
+                          "id": "c",
+                          "kind": "text",
+                          "text": "A ordem temporal dos registros."
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "O histograma resume frequências por intervalo. Ele não mostra sequência temporal nem identifica cada linha isoladamente."
+                    },
+                    {
+                      "id": "a08-07-c06",
+                      "position": 6,
+                      "resource": "table",
+                      "kind": "theory",
+                      "exercise": "none",
+                      "title": "Variável e gráfico coerente",
+                      "columns": [
+                        "Pergunta",
+                        "Gráfico adequado"
+                      ],
+                      "rows": [
+                        [
+                          "Como `temperatura_c` se distribui?",
+                          "histograma"
+                        ],
+                        [
+                          "Há pontos extremos em `consumo_kwh`?",
+                          "boxplot"
+                        ],
+                        [
+                          "Como `temperatura_c` e `consumo_kwh` se relacionam visualmente?",
+                          "dispersão"
+                        ],
+                        [
+                          "A distribuição muda entre `setor`?",
+                          "boxplot por grupo"
+                        ]
+                      ],
+                      "after": "A escolha do gráfico depende da pergunta: distribuição, relação, outlier ou comparação entre grupos."
+                    }
+                  ],
+                  "validation": {
+                    "ok": true,
+                    "issues": []
+                  }
+                }
+              ],
+              "activeVersion": "micro-a08-07-histogramas-distribuicoes__v20260702-164812"
+            },
+            {
+              "id": "micro-a08-08-correlacao-matriz",
+              "title": "Matriz de correlação",
+              "goal": "Calcular e interpretar correlações entre variáveis numéricas, com cuidado para não afirmar causalidade.",
+              "role": "practice",
+              "status": "generated",
+              "dependsOn": [
+                "micro-a08-07-histogramas-distribuicoes"
+              ],
+              "covers": [
+                "numeric_cols",
+                "df[numeric_cols].corr()",
+                "correlação positiva",
+                "correlação negativa",
+                "diagonal 1.0"
+              ],
+              "checks": [
+                "calcula matriz sem `id_registro`",
+                "reconhece diagonal `1.0`",
+                "identifica correlações de referência",
+                "evita causalidade"
+              ],
+              "versions": [
+                {
+                  "id": "micro-a08-08-correlacao-matriz__v20260702-164812",
+                  "createdAt": "2026-07-02T16:48:12.000-03:00",
+                  "source": "llm",
+                  "action": "generate",
+                  "request": "Aprimorar a Aula 8 com correções estruturais, compatibilidade contratual e cobertura didática verificável.",
+                  "summary": "Pratica cálculo e leitura da matriz de correlação.",
+                  "cards": [
+                    {
+                      "id": "a08-08-c01",
+                      "position": 1,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "gap",
+                      "title": "Colunas para correlação",
+                      "prompt": "Complete a lista de colunas numéricas interpretáveis.",
+                      "language": "python",
+                      "code": "numeric_cols = [\n    \"temperatura_c\",\n    \"tempo_ciclo_s\",\n    \"producao_dia\",\n    \"consumo_kwh\",\n    \"vibracao_mm_s\",\n    [[\"falha\"::\"falha\"|\"setor\"|\"id_registro\"]]\n]",
+                      "after": "`falha` pode entrar com cautela por ser `0/1`; `setor` é texto e `id_registro` não deve orientar interpretação."
+                    },
+                    {
+                      "id": "a08-08-c02",
+                      "position": 2,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "gap",
+                      "title": "Calcular matriz de correlação",
+                      "prompt": "Complete o método para calcular correlações entre as colunas selecionadas.",
+                      "language": "python",
+                      "code": "correlacoes = df[numeric_cols].[[corr()::corr()|describe()|value_counts()]]",
+                      "after": "`corr()` calcula associação linear entre pares de colunas numéricas."
+                    },
+                    {
+                      "id": "a08-08-c03",
+                      "position": 3,
+                      "resource": "matrix",
+                      "kind": "theory",
+                      "exercise": "none",
+                      "title": "Diagonal da correlação",
+                      "values": [
+                        [
+                          "",
+                          "temperatura_c",
+                          "consumo_kwh",
+                          "falha"
+                        ],
+                        [
+                          "temperatura_c",
+                          "1.00",
+                          "-0.15",
+                          "0.03"
+                        ],
+                        [
+                          "consumo_kwh",
+                          "-0.15",
+                          "1.00",
+                          "0.34"
+                        ],
+                        [
+                          "falha",
+                          "0.03",
+                          "0.34",
+                          "1.00"
+                        ]
+                      ],
+                      "highlight": {
+                        "cells": [
+                          [
+                            1,
+                            1
+                          ],
+                          [
+                            2,
+                            2
+                          ],
+                          [
+                            3,
+                            3
+                          ]
+                        ]
+                      },
+                      "after": "A diagonal vale `1.00` porque cada variável tem correlação perfeita consigo mesma. O destaque usa células estruturais da diagonal de dados."
+                    },
+                    {
+                      "id": "a08-08-c04",
+                      "position": 4,
+                      "resource": "choice",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Associação positiva",
+                      "question": "A correlação entre `consumo_kwh` e `falha` é aproximadamente `0.342`. Qual leitura é adequada?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "text",
+                          "text": "Há associação linear positiva moderada o bastante para investigar, sem afirmar causa."
+                        },
+                        {
+                          "id": "b",
+                          "kind": "text",
+                          "text": "`consumo_kwh` explica sozinho todas as falhas."
+                        },
+                        {
+                          "id": "c",
+                          "kind": "text",
+                          "text": "O resultado está errado porque toda correlação precisa ser `1.0`."
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "Um valor positivo indica que valores maiores de uma variável tendem a aparecer com valores maiores da outra, mas isso não basta para afirmar causa."
+                    },
+                    {
+                      "id": "a08-08-c05",
+                      "position": 5,
+                      "resource": "choice",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Correlação negativa fraca",
+                      "question": "`temperatura_c` e `consumo_kwh` têm correlação aproximada de `-0.146`. O que isso sugere?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "text",
+                          "text": "Associação linear negativa fraca no dataset atual."
+                        },
+                        {
+                          "id": "b",
+                          "kind": "text",
+                          "text": "Ausência obrigatória de qualquer relação entre variáveis."
+                        },
+                        {
+                          "id": "c",
+                          "kind": "text",
+                          "text": "Erro de leitura porque correlação não pode ser negativa."
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "Correlação negativa é possível. Como o valor está perto de zero, a associação linear é fraca."
+                    },
+                    {
+                      "id": "a08-08-c06",
+                      "position": 6,
+                      "resource": "paragraph",
+                      "kind": "exercise",
+                      "exercise": "gap",
+                      "title": "Correlação não é causa",
+                      "text": "Na EDA, `df.corr()` ajuda a observar [[associação::associação|causa comprovada|coluna ausente]] linear entre variáveis numéricas.",
+                      "after": "O termo adequado é `associação`. Mesmo quando o valor parece relevante, a conclusão precisa manter cautela."
+                    }
+                  ],
+                  "validation": {
+                    "ok": true,
+                    "issues": []
+                  }
+                }
+              ],
+              "activeVersion": "micro-a08-08-correlacao-matriz__v20260702-164812"
+            },
+            {
+              "id": "micro-a08-09-heatmap-correlacao",
+              "title": "Heatmap para visualizar correlações",
+              "goal": "Usar `sns.heatmap()` para transformar a matriz de correlação em leitura visual.",
+              "role": "practice",
+              "status": "generated",
+              "dependsOn": [
+                "micro-a08-08-correlacao-matriz"
+              ],
+              "covers": [
+                "sns.heatmap(correlacoes, annot=True)",
+                "anotação",
+                "leitura de células",
+                "cor como intensidade visual"
+              ],
+              "checks": [
+                "cria variável `correlacoes`",
+                "passa a matriz ao `heatmap`",
+                "interpreta a célula, não a linha inteira isoladamente"
+              ],
+              "versions": [
+                {
+                  "id": "micro-a08-09-heatmap-correlacao__v20260702-164812",
+                  "createdAt": "2026-07-02T16:48:12.000-03:00",
+                  "source": "llm",
+                  "action": "generate",
+                  "request": "Aprimorar a Aula 8 com correções estruturais, compatibilidade contratual e cobertura didática verificável.",
+                  "summary": "Consolida visualização de correlações com heatmap.",
+                  "cards": [
+                    {
+                      "id": "a08-09-c01",
+                      "position": 1,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "gap",
+                      "title": "Guardar correlações antes do gráfico",
+                      "prompt": "Complete a variável que recebe a matriz de correlação.",
+                      "language": "python",
+                      "code": "[[correlacoes::correlacoes|heatmap|grafico]] = df[numeric_cols].corr()",
+                      "after": "Guardar a matriz em `correlacoes` permite passá-la para `sns.heatmap()` na sequência."
+                    },
+                    {
+                      "id": "a08-09-c02",
+                      "position": 2,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "gap",
+                      "title": "Criar heatmap",
+                      "prompt": "Complete o objeto passado ao heatmap.",
+                      "language": "python",
+                      "code": "sns.heatmap([[correlacoes::correlacoes|df|numeric_cols]], annot=True)\nplt.show()",
+                      "after": "`sns.heatmap()` deve receber a matriz de correlação. `annot=True` mostra os valores nas células."
+                    },
+                    {
+                      "id": "a08-09-c03",
+                      "position": 3,
+                      "resource": "matrix",
+                      "kind": "theory",
+                      "exercise": "none",
+                      "title": "Célula específica no heatmap",
+                      "values": [
+                        [
+                          "",
+                          "consumo_kwh",
+                          "vibracao_mm_s",
+                          "falha"
+                        ],
+                        [
+                          "consumo_kwh",
+                          "1.00",
+                          "-0.07",
+                          "0.34"
+                        ],
+                        [
+                          "vibracao_mm_s",
+                          "-0.07",
+                          "1.00",
+                          "0.31"
+                        ],
+                        [
+                          "falha",
+                          "0.34",
+                          "0.31",
+                          "1.00"
+                        ]
+                      ],
+                      "highlight": {
+                        "cells": [
+                          [
+                            1,
+                            3
+                          ],
+                          [
+                            3,
+                            1
+                          ]
+                        ]
+                      },
+                      "after": "As células destacadas mostram o mesmo par em posições simétricas: `consumo_kwh` com `falha`."
+                    },
+                    {
+                      "id": "a08-09-c04",
+                      "position": 4,
+                      "resource": "choice",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Leitura de heatmap",
+                      "question": "Ao ler um heatmap de correlação, qual procedimento é adequado?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "text",
+                          "text": "Escolher uma célula pelo cruzamento entre duas variáveis e ler valor e intensidade visual."
+                        },
+                        {
+                          "id": "b",
+                          "kind": "text",
+                          "text": "Interpretar a cor de uma linha inteira como uma conclusão única."
+                        },
+                        {
+                          "id": "c",
+                          "kind": "text",
+                          "text": "Tratar a cor mais forte como prova automática de causa."
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "Cada célula representa um par de variáveis. A cor ajuda a localizar intensidade, mas a interpretação continua sendo descritiva."
+                    },
+                    {
+                      "id": "a08-09-c05",
+                      "position": 5,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Ordem correta para o heatmap",
+                      "prompt": "Compare as versões completas.",
+                      "language": "python",
+                      "code": "Compare as versões completas.",
+                      "question": "Qual versão calcula a matriz antes de desenhar o heatmap?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "correlacoes = df[numeric_cols].corr()\nsns.heatmap(correlacoes, annot=True)\nplt.show()"
+                        },
+                        {
+                          "id": "b",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "sns.heatmap(correlacoes, annot=True)\ncorrelacoes = df[numeric_cols].corr()\nplt.show()"
+                        },
+                        {
+                          "id": "c",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "sns.heatmap(df, annot=True)\nplt.show()"
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "A matriz precisa existir antes do gráfico. Passar `df` inteiro também mistura colunas de texto e não responde à pergunta de correlação.",
+                      "afterBlocks": [
+                        {
+                          "kind": "code",
+                          "language": "python",
+                          "code": "numeric_cols = [\n    \"temperatura_c\",\n    \"tempo_ciclo_s\",\n    \"producao_dia\",\n    \"consumo_kwh\",\n    \"vibracao_mm_s\",\n    \"falha\"\n]\ncorrelacoes = df[numeric_cols].corr()",
+                          "prompt": "Observe o trecho de referência."
+                        }
+                      ]
+                    }
+                  ],
+                  "validation": {
+                    "ok": true,
+                    "issues": []
+                  }
+                }
+              ],
+              "activeVersion": "micro-a08-09-heatmap-correlacao__v20260702-164812"
+            },
+            {
+              "id": "micro-a08-10-dispersao-hue-falha",
+              "title": "Dispersão entre temperatura e consumo com `hue`",
+              "goal": "Criar gráfico de dispersão de `temperatura_c` por `consumo_kwh` destacando `falha`.",
+              "role": "practice",
+              "status": "generated",
+              "dependsOn": [
+                "micro-a08-09-heatmap-correlacao"
+              ],
+              "covers": [
+                "sns.scatterplot()",
+                "x=\"temperatura_c\"",
+                "y=\"consumo_kwh\"",
+                "hue=\"falha\"",
+                "associação visual",
+                "sobreposição"
+              ],
+              "checks": [
+                "usa colunas reais",
+                "entende `hue` como agrupamento visual por cor",
+                "interpreta padrão visual sem concluir causalidade"
+              ],
+              "versions": [
+                {
+                  "id": "micro-a08-10-dispersao-hue-falha__v20260702-164812",
+                  "createdAt": "2026-07-02T16:48:12.000-03:00",
+                  "source": "llm",
+                  "action": "generate",
+                  "request": "Aprimorar a Aula 8 com correções estruturais, compatibilidade contratual e cobertura didática verificável.",
+                  "summary": "Pratica dispersão com destaque visual por indicador binário.",
+                  "cards": [
+                    {
+                      "id": "a08-10-c01",
+                      "position": 1,
+                      "resource": "paragraph",
+                      "kind": "theory",
+                      "exercise": "none",
+                      "title": "Dispersão para pares numéricos",
+                      "text": "O gráfico de dispersão posiciona cada registro como ponto. Nesta aula, `temperatura_c` pode ficar no eixo `x` e `consumo_kwh` no eixo `y`; `hue=\"falha\"` separa visualmente registros com `0` e `1`.",
+                      "after": "A dispersão ajuda a observar tendência, sobreposição e pontos extremos sem resumir tudo em uma média."
+                    },
+                    {
+                      "id": "a08-10-c02",
+                      "position": 2,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "gap",
+                      "title": "Dispersão com eixos reais",
+                      "prompt": "Complete os eixos da dispersão.",
+                      "language": "python",
+                      "code": "sns.scatterplot(\n    data=df,\n    x=[[\"temperatura_c\"::\"temperatura_c\"|\"setor\"|\"temperaturas\"]],\n    y=[[\"consumo_kwh\"::\"consumo_kwh\"|\"turno\"|\"consumo\"]]\n)\nplt.show()",
+                      "after": "`temperatura_c` e `consumo_kwh` são colunas reais e numéricas. Colunas de texto exigem outro tipo de visualização."
+                    },
+                    {
+                      "id": "a08-10-c03",
+                      "position": 3,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "gap",
+                      "title": "Destacar falha com `hue`",
+                      "prompt": "Complete o parâmetro que separa visualmente os pontos por `falha`.",
+                      "language": "python",
+                      "code": "sns.scatterplot(\n    data=df,\n    x=\"temperatura_c\",\n    y=\"consumo_kwh\",\n    hue=[[\"falha\"::\"falha\"|\"sim\"|\"id_registro\"]]\n)\nplt.show()",
+                      "after": "`hue=\"falha\"` usa o indicador `0/1` para diferenciar visualmente os pontos."
+                    },
+                    {
+                      "id": "a08-10-c04",
+                      "position": 4,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Versão completa da dispersão",
+                      "prompt": "Compare versões completas.",
+                      "language": "python",
+                      "code": "Compare as versões completas.",
+                      "question": "Qual versão responde à pergunta: relação visual entre temperatura e consumo, destacando falha?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "sns.scatterplot(\n    data=df,\n    x=\"temperatura_c\",\n    y=\"consumo_kwh\",\n    hue=\"falha\"\n)\nplt.show()"
+                        },
+                        {
+                          "id": "b",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "sns.scatterplot(\n    data=df,\n    x=\"setor\",\n    y=\"turno\",\n    hue=\"falha\"\n)\nplt.show()"
+                        },
+                        {
+                          "id": "c",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "sns.scatterplot(\n    data=df,\n    x=\"id_registro\",\n    y=\"consumo_kwh\",\n    hue=\"falha\"\n)\nplt.show()"
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "A versão correta usa nomes reais e variáveis numéricas de comportamento nos eixos: `temperatura_c` e `consumo_kwh`. `id_registro` existe, mas é identificador, não variável analítica principal para essa pergunta."
+                    },
+                    {
+                      "id": "a08-10-c05",
+                      "position": 5,
+                      "resource": "choice",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Interpretação com sobreposição",
+                      "question": "Se pontos com `falha=0` e `falha=1` aparecem misturados na dispersão, qual interpretação é responsável?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "text",
+                          "text": "Há sobreposição; o gráfico sozinho não separa claramente os grupos."
+                        },
+                        {
+                          "id": "b",
+                          "kind": "text",
+                          "text": "`falha=1` causa maior consumo em todos os registros."
+                        },
+                        {
+                          "id": "c",
+                          "kind": "text",
+                          "text": "O gráfico não pode ser usado porque `falha` é numérica."
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "Sobreposição visual sugere cautela. O `hue` destaca grupos, mas não transforma o gráfico em prova de separação perfeita."
+                    },
+                    {
+                      "id": "a08-10-c06",
+                      "position": 6,
+                      "resource": "choice",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "O que `hue` faz",
+                      "question": "No `sns.scatterplot()`, qual é a função de `hue=\"falha\"`?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "text",
+                          "text": "Usar a coluna `falha` para diferenciar pontos por cor."
+                        },
+                        {
+                          "id": "b",
+                          "kind": "text",
+                          "text": "Trocar automaticamente o eixo `x` pelo eixo `y`."
+                        },
+                        {
+                          "id": "c",
+                          "kind": "text",
+                          "text": "Calcular a média de `consumo_kwh` por setor."
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "`hue` altera o agrupamento visual. Ele não calcula estatística nem muda a escolha dos eixos."
+                    }
+                  ],
+                  "validation": {
+                    "ok": true,
+                    "issues": []
+                  }
+                }
+              ],
+              "activeVersion": "micro-a08-10-dispersao-hue-falha__v20260702-164812"
+            },
+            {
+              "id": "micro-a08-11-boxplot-outliers-visuais",
+              "title": "Boxplot para dispersão e possíveis outliers",
+              "goal": "Usar boxplots de `temperatura_c` e `consumo_kwh` para reconhecer mediana, caixa, bigodes e pontos extremos.",
+              "role": "practice",
+              "status": "generated",
+              "dependsOn": [
+                "micro-a08-10-dispersao-hue-falha"
+              ],
+              "covers": [
+                "sns.boxplot()",
+                "variável numérica",
+                "mediana",
+                "quartis",
+                "bigodes",
+                "outliers visuais"
+              ],
+              "checks": [
+                "cria boxplots para colunas reais",
+                "identifica pontos fora dos bigodes como candidatos a outlier",
+                "não confunde boxplot com histograma"
+              ],
+              "versions": [
+                {
+                  "id": "micro-a08-11-boxplot-outliers-visuais__v20260702-164812",
+                  "createdAt": "2026-07-02T16:48:12.000-03:00",
+                  "source": "llm",
+                  "action": "generate",
+                  "request": "Aprimorar a Aula 8 com correções estruturais, compatibilidade contratual e cobertura didática verificável.",
+                  "summary": "Consolida leitura visual de dispersão e outliers.",
+                  "cards": [
+                    {
+                      "id": "a08-11-c01",
+                      "position": 1,
+                      "resource": "paragraph",
+                      "kind": "theory",
+                      "exercise": "none",
+                      "title": "Boxplot como resumo visual",
+                      "text": "O boxplot resume uma variável numérica com mediana, quartis, bigodes e pontos fora do padrão visual. Ele é útil para `temperatura_c` e `consumo_kwh`, duas colunas contínuas da base.",
+                      "after": "O boxplot mostra dispersão e possíveis outliers, não a ordem dos registros no tempo."
+                    },
+                    {
+                      "id": "a08-11-c02",
+                      "position": 2,
+                      "resource": "table",
+                      "kind": "theory",
+                      "exercise": "none",
+                      "title": "Partes do boxplot",
+                      "columns": [
+                        "Elemento",
+                        "Leitura"
+                      ],
+                      "rows": [
+                        [
+                          "linha central da caixa",
+                          "mediana"
+                        ],
+                        [
+                          "limites da caixa",
+                          "quartis `Q1` e `Q3`"
+                        ],
+                        [
+                          "bigodes",
+                          "faixa usual pelo critério do gráfico"
+                        ],
+                        [
+                          "pontos fora dos bigodes",
+                          "candidatos a outlier"
+                        ]
+                      ],
+                      "after": "Um ponto fora dos bigodes é candidato a outlier; a decisão final pede conferência por regra ou contexto."
+                    },
+                    {
+                      "id": "a08-11-c03",
+                      "position": 3,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "gap",
+                      "title": "Boxplot de temperatura",
+                      "prompt": "Complete a coluna para criar o boxplot de temperatura.",
+                      "language": "python",
+                      "code": "sns.boxplot(data=df, y=[[\"temperatura_c\"::\"temperatura_c\"|\"setor\"|\"temperatura\"]])\nplt.show()",
+                      "after": "`temperatura_c` é uma coluna numérica real. O eixo `y` mostra a escala da variável."
+                    },
+                    {
+                      "id": "a08-11-c04",
+                      "position": 4,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "gap",
+                      "title": "Boxplot de consumo",
+                      "prompt": "Complete a coluna para criar o boxplot de consumo.",
+                      "language": "python",
+                      "code": "sns.boxplot(data=df, y=[[\"consumo_kwh\"::\"consumo_kwh\"|\"turno\"|\"consumo\"]])\nplt.show()",
+                      "after": "`consumo_kwh` é adequado para boxplot porque é numérica e pode apresentar valores extremos."
+                    },
+                    {
+                      "id": "a08-11-c05",
+                      "position": 5,
+                      "resource": "choice",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Leitura de ponto extremo",
+                      "question": "Em um boxplot, um ponto aparece fora dos bigodes. Qual frase é mais adequada?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "text",
+                          "text": "É um candidato a outlier e deve ser investigado."
+                        },
+                        {
+                          "id": "b",
+                          "kind": "text",
+                          "text": "É sempre erro e deve ser removido automaticamente."
+                        },
+                        {
+                          "id": "c",
+                          "kind": "text",
+                          "text": "Representa a média da coluna."
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "O boxplot sinaliza pontos fora do padrão visual. A remoção sem análise pode descartar um valor real importante."
+                    },
+                    {
+                      "id": "a08-11-c06",
+                      "position": 6,
+                      "resource": "choice",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Boxplot não é histograma",
+                      "question": "Qual diferença está correta?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "text",
+                          "text": "Histograma mostra frequência por faixas; boxplot resume quartis, mediana e possíveis outliers."
+                        },
+                        {
+                          "id": "b",
+                          "kind": "text",
+                          "text": "Boxplot mostra frequência por barras; histograma mostra apenas mediana."
+                        },
+                        {
+                          "id": "c",
+                          "kind": "text",
+                          "text": "Os dois gráficos sempre têm exatamente a mesma leitura."
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "Os dois ajudam a entender distribuição, mas usam representações diferentes. A escolha depende da pergunta local."
+                    }
+                  ],
+                  "validation": {
+                    "ok": true,
+                    "issues": []
+                  }
+                }
+              ],
+              "activeVersion": "micro-a08-11-boxplot-outliers-visuais__v20260702-164812"
+            },
+            {
+              "id": "micro-a08-12-iqr-calculo-outliers",
+              "title": "Cálculo de outliers por IQR",
+              "goal": "Calcular `Q1`, `Q3`, `IQR`, limites e filtrar outliers por regra de 1,5 vez o IQR.",
+              "role": "practice",
+              "status": "generated",
+              "dependsOn": [
+                "micro-a08-11-boxplot-outliers-visuais"
+              ],
+              "covers": [
+                "quantile(0.25)",
+                "quantile(0.75)",
+                "IQR = Q3 - Q1",
+                "limite inferior",
+                "limite superior",
+                "filtro booleano"
+              ],
+              "checks": [
+                "calcula limites corretamente",
+                "filtra outliers de variáveis reais",
+                "evita aplicar IQR a `falha` e `id_registro`"
+              ],
+              "versions": [
+                {
+                  "id": "micro-a08-12-iqr-calculo-outliers__v20260702-164812",
+                  "createdAt": "2026-07-02T16:48:12.000-03:00",
+                  "source": "llm",
+                  "action": "generate",
+                  "request": "Aprimorar a Aula 8 com correções estruturais, compatibilidade contratual e cobertura didática verificável.",
+                  "summary": "Pratica cálculo de limites e filtros de outliers.",
+                  "cards": [
+                    {
+                      "id": "a08-12-c01",
+                      "position": 1,
+                      "resource": "flow",
+                      "kind": "theory",
+                      "exercise": "none",
+                      "title": "Regra do IQR",
+                      "prompt": "Observe a sequência de cálculo para detectar outliers por IQR.",
+                      "structure": {
+                        "kind": "sequence",
+                        "items": [
+                          {
+                            "kind": "start",
+                            "text": "Escolher variável numérica contínua"
+                          },
+                          {
+                            "kind": "process",
+                            "text": "Calcular `Q1 = quantile(0.25)`"
+                          },
+                          {
+                            "kind": "process",
+                            "text": "Calcular `Q3 = quantile(0.75)`"
+                          },
+                          {
+                            "kind": "process",
+                            "text": "Calcular `IQR = Q3 - Q1`"
+                          },
+                          {
+                            "kind": "process",
+                            "text": "Definir limites: `Q1 - 1.5 * IQR` e `Q3 + 1.5 * IQR`"
+                          },
+                          {
+                            "kind": "process",
+                            "text": "Filtrar valores fora dos limites"
+                          },
+                          {
+                            "kind": "end",
+                            "text": "Investigar registros encontrados"
+                          }
+                        ]
+                      },
+                      "after": "A regra transforma a leitura visual do boxplot em um filtro verificável."
+                    },
+                    {
+                      "id": "a08-12-c02",
+                      "position": 2,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "gap",
+                      "title": "Calcular `Q1`",
+                      "prompt": "Complete o quantil inferior para `consumo_kwh`.",
+                      "language": "python",
+                      "code": "q1 = df[\"consumo_kwh\"].quantile([[0.25::0.25|0.50|0.75]])",
+                      "after": "`Q1` é o quartil de `25%`. Para `consumo_kwh`, o valor conferido é próximo de `102.56`."
+                    },
+                    {
+                      "id": "a08-12-c03",
+                      "position": 3,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "gap",
+                      "title": "Calcular `Q3`",
+                      "prompt": "Complete o quantil superior para `consumo_kwh`.",
+                      "language": "python",
+                      "code": "q3 = df[\"consumo_kwh\"].quantile([[0.75::0.75|0.25|1.50]])",
+                      "after": "`Q3` é o quartil de `75%`. Para `consumo_kwh`, o valor conferido é próximo de `133.66`."
+                    },
+                    {
+                      "id": "a08-12-c04",
+                      "position": 4,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "gap",
+                      "title": "Calcular o IQR",
+                      "prompt": "Complete a operação correta.",
+                      "language": "python",
+                      "code": "iqr = q3 [[-::-|+|*]] q1",
+                      "after": "`IQR` é a amplitude interquartil: `Q3 - Q1`. Para `consumo_kwh`, fica próximo de `31.10`."
+                    },
+                    {
+                      "id": "a08-12-c05",
+                      "position": 5,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "gap",
+                      "title": "Limites por 1,5 vez IQR",
+                      "prompt": "Complete os dois limites.",
+                      "language": "python",
+                      "code": "limite_inferior = q1 - 1.5 * iqr\nlimite_superior = q3 [[+::+|-|/]] 1.5 * iqr",
+                      "after": "O limite inferior subtrai e o superior soma `1.5 * IQR`. Para `consumo_kwh`, os limites ficam próximos de `55.90` e `180.31`."
+                    },
+                    {
+                      "id": "a08-12-c06",
+                      "position": 6,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Filtro booleano para outliers",
+                      "prompt": "Compare versões completas do filtro de outliers em `consumo_kwh`.",
+                      "language": "python",
+                      "code": "Compare as versões completas.",
+                      "question": "Qual versão combina corretamente as duas condições em Pandas?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "outliers = df[\n    (df[\"consumo_kwh\"] < limite_inferior) |\n    (df[\"consumo_kwh\"] > limite_superior)\n]"
+                        },
+                        {
+                          "id": "b",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "outliers = df[\n    df[\"consumo_kwh\"] < limite_inferior or\n    df[\"consumo_kwh\"] > limite_superior\n]"
+                        },
+                        {
+                          "id": "c",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "outliers = df[\n    df[\"consumo_kwh\"] > limite_inferior &\n    df[\"consumo_kwh\"] < limite_superior\n]"
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "Em filtros Pandas, `|` combina condições com OU elemento a elemento. Cada condição precisa ficar entre parênteses para preservar a ordem de avaliação."
+                    },
+                    {
+                      "id": "a08-12-c07",
+                      "position": 7,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Versão completa do IQR",
+                      "prompt": "Compare versões completas para detectar outliers de `temperatura_c`.",
+                      "language": "python",
+                      "code": "Compare as versões completas.",
+                      "question": "Qual versão calcula e filtra outliers corretamente?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "q1 = df[\"temperatura_c\"].quantile(0.25)\nq3 = df[\"temperatura_c\"].quantile(0.75)\niqr = q3 - q1\nlimite_inferior = q1 - 1.5 * iqr\nlimite_superior = q3 + 1.5 * iqr\noutliers = df[(df[\"temperatura_c\"] < limite_inferior) | (df[\"temperatura_c\"] > limite_superior)]"
+                        },
+                        {
+                          "id": "b",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "q1 = df[\"temperatura_c\"].quantile(0.75)\nq3 = df[\"temperatura_c\"].quantile(0.25)\niqr = q1 - q3\noutliers = df[df[\"temperatura_c\"] == iqr]"
+                        },
+                        {
+                          "id": "c",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "q1 = df[\"falha\"].quantile(0.25)\nq3 = df[\"falha\"].quantile(0.75)\niqr = q3 - q1\noutliers = df[df[\"falha\"] > iqr]"
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "A versão correta calcula `Q1`, `Q3`, `IQR`, limites e usa filtro com duas condições. `falha` não é bom exemplo principal para IQR por ser binária.",
+                      "afterBlocks": [
+                        {
+                          "kind": "table",
+                          "columns": [
+                            "Variável",
+                            "Limites aproximados",
+                            "Registros fora dos limites"
+                          ],
+                          "rows": [
+                            [
+                              "`temperatura_c`",
+                              "`59.52` a `88.59`",
+                              "`71`, `82`, `103`, `105`"
+                            ],
+                            [
+                              "`tempo_ciclo_s`",
+                              "`22.13` a `46.12`",
+                              "`10`, `60`, `113`"
+                            ],
+                            [
+                              "`consumo_kwh`",
+                              "`55.90` a `180.31`",
+                              "`15`, `98`"
+                            ]
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "id": "a08-12-c08",
+                      "position": 8,
+                      "resource": "choice",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Variável adequada para IQR",
+                      "question": "Qual escolha é mais adequada para praticar IQR nesta aula?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "text",
+                          "text": "`consumo_kwh`, porque é numérica contínua e tem extremos conferidos."
+                        },
+                        {
+                          "id": "b",
+                          "kind": "text",
+                          "text": "`id_registro`, porque cresce de `1` a `120`."
+                        },
+                        {
+                          "id": "c",
+                          "kind": "text",
+                          "text": "`falha`, porque só tem `0` e `1`."
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "`consumo_kwh` representa uma medida operacional. `id_registro` é identificador e `falha` é indicador binário, por isso não são exemplos principais para IQR."
+                    }
+                  ],
+                  "validation": {
+                    "ok": true,
+                    "issues": []
+                  }
+                }
+              ],
+              "activeVersion": "micro-a08-12-iqr-calculo-outliers__v20260702-164812"
+            },
+            {
+              "id": "micro-a08-13-analise-por-grupo",
+              "title": "Médias e taxa de falha por grupo",
+              "goal": "Usar `groupby()` para comparar setores por média de temperatura e taxa de falha.",
+              "role": "practice",
+              "status": "generated",
+              "dependsOn": [
+                "micro-a08-12-iqr-calculo-outliers"
+              ],
+              "covers": [
+                "df.groupby(\"setor\")[\"temperatura_c\"].mean()",
+                "df.groupby(\"setor\")[\"falha\"].mean()",
+                "taxa em coluna binária",
+                "agg()"
+              ],
+              "checks": [
+                "agrupa por coluna categórica real",
+                "calcula média numérica por grupo",
+                "interpreta média de `falha` como taxa de falha"
+              ],
+              "versions": [
+                {
+                  "id": "micro-a08-13-analise-por-grupo__v20260702-164812",
+                  "createdAt": "2026-07-02T16:48:12.000-03:00",
+                  "source": "llm",
+                  "action": "generate",
+                  "request": "Aprimorar a Aula 8 com correções estruturais, compatibilidade contratual e cobertura didática verificável.",
+                  "summary": "Consolida agrupamentos, médias e taxa binária.",
+                  "cards": [
+                    {
+                      "id": "a08-13-c01",
+                      "position": 1,
+                      "resource": "paragraph",
+                      "kind": "theory",
+                      "exercise": "none",
+                      "title": "Análise por grupo",
+                      "text": "`groupby()` separa a base por uma coluna categórica e depois aplica uma agregação, como média. Na Aula 8, `setor` é adequado para comparar `temperatura_c` e taxa de `falha`.",
+                      "after": "Agrupar por categoria permite comparar grupos sem misturar todos os registros em uma única média geral."
+                    },
+                    {
+                      "id": "a08-13-c02",
+                      "position": 2,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "gap",
+                      "title": "Média de temperatura por setor",
+                      "prompt": "Complete a coluna de agrupamento.",
+                      "language": "python",
+                      "code": "df.groupby([[\"setor\"::\"setor\"|\"temperatura_c\"|\"falha\"]])[\"temperatura_c\"].mean()",
+                      "after": "`setor` define os grupos; `temperatura_c` é a variável numérica agregada por média."
+                    },
+                    {
+                      "id": "a08-13-c03",
+                      "position": 3,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "gap",
+                      "title": "Taxa de falha por setor",
+                      "prompt": "Complete a coluna binária usada para taxa.",
+                      "language": "python",
+                      "code": "coluna = [[\"falha\"::\"falha\"|\"sim\"|\"id_registro\"]]\ndf.groupby(\"setor\")[coluna].mean() * 100",
+                      "after": "Como `falha` é `0/1`, a média retorna a proporção de registros com `1`; multiplicar por `100` expressa percentual. `sim` não é coluna do CSV e não deve ser usado como seleção correta."
+                    },
+                    {
+                      "id": "a08-13-c04",
+                      "position": 4,
+                      "resource": "table",
+                      "kind": "theory",
+                      "exercise": "none",
+                      "title": "Resultados conferidos por setor",
+                      "columns": [
+                        "Setor",
+                        "Média de `temperatura_c`",
+                        "Taxa de `falha`"
+                      ],
+                      "rows": [
+                        [
+                          "`Inspeção`",
+                          "`73.94`",
+                          "`24.0%`"
+                        ],
+                        [
+                          "`Montagem`",
+                          "`74.82`",
+                          "`18.8%`"
+                        ],
+                        [
+                          "`Usinagem`",
+                          "`73.67`",
+                          "`17.0%`"
+                        ]
+                      ],
+                      "after": "Os valores permitem comparar grupos, mas a diferença observada não deve ser descrita como causa."
+                    },
+                    {
+                      "id": "a08-13-c05",
+                      "position": 5,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "gap",
+                      "title": "Agregação com `agg()`",
+                      "prompt": "Complete a agregação para resumir temperatura e falha por `setor`.",
+                      "language": "python",
+                      "code": "df.groupby(\"setor\").agg(\n    media_temperatura=(\"temperatura_c\", \"mean\"),\n    taxa_falha=(\"falha\", [[\"mean\"::\"mean\"|\"value_counts\"|\"corr\"]])\n)",
+                      "after": "`agg()` permite nomear resultados. A média de `falha` mantém a leitura de taxa porque a coluna é binária."
+                    },
+                    {
+                      "id": "a08-13-c06",
+                      "position": 6,
+                      "resource": "choice",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Contagem não é taxa",
+                      "question": "Qual comando calcula taxa de falha por `setor`?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "text",
+                          "text": "`df.groupby(\"setor\")[\"falha\"].mean() * 100`"
+                        },
+                        {
+                          "id": "b",
+                          "kind": "text",
+                          "text": "`df.groupby(\"setor\")[\"falha\"].value_counts()`"
+                        },
+                        {
+                          "id": "c",
+                          "kind": "text",
+                          "text": "`df.groupby(\"temperatura_c\")[\"setor\"].mean()`"
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "`value_counts()` conta frequências. Para taxa em uma coluna `0/1`, a média é a operação direta."
+                    },
+                    {
+                      "id": "a08-13-c07",
+                      "position": 7,
+                      "resource": "choice",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Interpretação por turno",
+                      "question": "A taxa de falha por `turno` é aproximadamente `A`: `25.8%`, `B`: `15.6%`, `C`: `18.2%`. Qual frase é responsável?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "text",
+                          "text": "`A` tem a maior taxa observada neste dataset e merece investigação descritiva."
+                        },
+                        {
+                          "id": "b",
+                          "kind": "text",
+                          "text": "`A` causa falhas em todas as linhas."
+                        },
+                        {
+                          "id": "c",
+                          "kind": "text",
+                          "text": "`B` não tem nenhuma falha."
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "A comparação por grupo mostra diferença observada. A formulação correta evita extrapolar além do resumo dos dados."
+                    }
+                  ],
+                  "validation": {
+                    "ok": true,
+                    "issues": []
+                  }
+                }
+              ],
+              "activeVersion": "micro-a08-13-analise-por-grupo__v20260702-164812"
+            },
+            {
+              "id": "micro-a08-14-boxplot-por-setor",
+              "title": "Visualização por grupo com boxplot",
+              "goal": "Criar boxplot de `temperatura_c` por `setor` e interpretar diferenças entre grupos.",
+              "role": "practice",
+              "status": "generated",
+              "dependsOn": [
+                "micro-a08-13-analise-por-grupo"
+              ],
+              "covers": [
+                "sns.boxplot(data=df, x=\"setor\", y=\"temperatura_c\")",
+                "comparação visual",
+                "mediana por grupo",
+                "dispersão por grupo"
+              ],
+              "checks": [
+                "escolhe `setor` no eixo categórico",
+                "escolhe `temperatura_c` no eixo numérico",
+                "interpreta comparação sem afirmar causa"
+              ],
+              "versions": [
+                {
+                  "id": "micro-a08-14-boxplot-por-setor__v20260702-164812",
+                  "createdAt": "2026-07-02T16:48:12.000-03:00",
+                  "source": "llm",
+                  "action": "generate",
+                  "request": "Aprimorar a Aula 8 com correções estruturais, compatibilidade contratual e cobertura didática verificável.",
+                  "summary": "Pratica boxplot por grupo e leitura responsável.",
+                  "cards": [
+                    {
+                      "id": "a08-14-c01",
+                      "position": 1,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "gap",
+                      "title": "Boxplot por setor",
+                      "prompt": "Complete o eixo categórico para comparar temperatura por setor.",
+                      "language": "python",
+                      "code": "sns.boxplot(data=df, x=[[\"setor\"::\"setor\"|\"temperatura_c\"|\"id_registro\"]], y=\"temperatura_c\")\nplt.show()",
+                      "after": "`setor` fica no eixo categórico e `temperatura_c` no eixo numérico."
+                    },
+                    {
+                      "id": "a08-14-c02",
+                      "position": 2,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Versão completa por grupo",
+                      "prompt": "Compare versões completas.",
+                      "language": "python",
+                      "code": "Compare as versões completas.",
+                      "question": "Qual versão cria o boxplot de `temperatura_c` por `setor`?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "sns.boxplot(data=df, x=\"setor\", y=\"temperatura_c\")\nplt.show()"
+                        },
+                        {
+                          "id": "b",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "sns.boxplot(data=df, x=\"temperatura_c\", y=\"setor\")\nplt.show()"
+                        },
+                        {
+                          "id": "c",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "sns.boxplot(data=df, x=\"turno\", y=\"falha\")\nplt.show()"
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "A versão correta responde à pergunta pedida: compara a distribuição de temperatura entre setores."
+                    },
+                    {
+                      "id": "a08-14-c03",
+                      "position": 3,
+                      "resource": "choice",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Comparação visual entre grupos",
+                      "question": "No boxplot por `setor`, o que pode ser comparado de forma apropriada?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "text",
+                          "text": "Mediana, dispersão e possíveis pontos extremos de `temperatura_c` em cada setor."
+                        },
+                        {
+                          "id": "b",
+                          "kind": "text",
+                          "text": "Ordem temporal das medições dentro de cada setor."
+                        },
+                        {
+                          "id": "c",
+                          "kind": "text",
+                          "text": "Quantidade exata de linhas sem consultar contagem."
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "Boxplot por grupo compara distribuição. Para contagem exata, use `value_counts()` ou agregação."
+                    },
+                    {
+                      "id": "a08-14-c04",
+                      "position": 4,
+                      "resource": "table",
+                      "kind": "theory",
+                      "exercise": "none",
+                      "title": "Eixos coerentes",
+                      "columns": [
+                        "Elemento",
+                        "Escolha na aula"
+                      ],
+                      "rows": [
+                        [
+                          "eixo `x`",
+                          "`setor`, porque é categoria"
+                        ],
+                        [
+                          "eixo `y`",
+                          "`temperatura_c`, porque é numérica"
+                        ],
+                        [
+                          "pergunta",
+                          "comparar distribuição de temperatura entre setores"
+                        ]
+                      ],
+                      "after": "Manter categoria em um eixo e medida numérica no outro melhora a leitura do boxplot por grupo."
+                    },
+                    {
+                      "id": "a08-14-c05",
+                      "position": 5,
+                      "resource": "choice",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Limite da conclusão por grupo",
+                      "question": "Qual frase mantém cautela após observar diferenças entre setores?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "text",
+                          "text": "Os setores apresentam distribuições de temperatura comparáveis, com diferenças observadas na base."
+                        },
+                        {
+                          "id": "b",
+                          "kind": "text",
+                          "text": "`setor` determina diretamente a temperatura de cada registro."
+                        },
+                        {
+                          "id": "c",
+                          "kind": "text",
+                          "text": "O boxplot substitui a verificação de outliers por IQR."
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "A visualização compara grupos, mas não prova mecanismo causal nem substitui o cálculo quando a regra de outlier é exigida."
+                    }
+                  ],
+                  "validation": {
+                    "ok": true,
+                    "issues": []
+                  }
+                }
+              ],
+              "activeVersion": "micro-a08-14-boxplot-por-setor__v20260702-164812"
+            },
+            {
+              "id": "micro-a08-15-projeto-final-eda",
+              "title": "Projeto final de EDA",
+              "goal": "Integrar resumo estatístico, correlação, gráficos, outliers, grupos e conclusões responsáveis em uma mini-análise final.",
+              "role": "review",
+              "status": "generated",
+              "dependsOn": [
+                "micro-a08-14-boxplot-por-setor"
+              ],
+              "covers": [
+                "checklist de EDA",
+                "3 gráficos",
+                "correlação",
+                "IQR",
+                "grupo",
+                "conclusão",
+                "limite da interpretação"
+              ],
+              "checks": [
+                "organiza um roteiro de análise",
+                "escolhe gráficos coerentes",
+                "identifica outliers por método",
+                "escreve conclusão com evidência e cautela"
+              ],
+              "versions": [
+                {
+                  "id": "micro-a08-15-projeto-final-eda__v20260702-164812",
+                  "createdAt": "2026-07-02T16:48:12.000-03:00",
+                  "source": "llm",
+                  "action": "generate",
+                  "request": "Aprimorar a Aula 8 com correções estruturais, compatibilidade contratual e cobertura didática verificável.",
+                  "summary": "Integra a aula em um projeto final verificável.",
+                  "cards": [
+                    {
+                      "id": "a08-15-c01",
+                      "position": 1,
+                      "resource": "table",
+                      "kind": "theory",
+                      "exercise": "none",
+                      "title": "Checklist verificável de EDA",
+                      "columns": [
+                        "Etapa",
+                        "Evidência esperada"
+                      ],
+                      "rows": [
+                        [
+                          "estrutura",
+                          "`df.shape`, `df.columns`, `df.dtypes` ou `df.info()`"
+                        ],
+                        [
+                          "resumo numérico",
+                          "`df.describe()`"
+                        ],
+                        [
+                          "ausentes",
+                          "`df.isna().sum()`"
+                        ],
+                        [
+                          "categorias",
+                          "`value_counts()` de `setor`, `turno` e `falha`"
+                        ],
+                        [
+                          "visualizações",
+                          "histograma, heatmap, dispersão ou boxplot"
+                        ],
+                        [
+                          "outliers",
+                          "IQR em variável numérica adequada"
+                        ],
+                        [
+                          "grupos",
+                          "`groupby()` ou boxplot por `setor`"
+                        ],
+                        [
+                          "conclusão",
+                          "frase com evidência e cautela"
+                        ]
+                      ],
+                      "after": "O projeto final deve combinar comando e interpretação. Apenas listar funções não completa a análise."
+                    },
+                    {
+                      "id": "a08-15-c02",
+                      "position": 2,
+                      "resource": "composite",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Roteiro mínimo do projeto",
+                      "blocks": [
+                        {
+                          "kind": "table",
+                          "columns": [
+                            "Já feito",
+                            "Trecho"
+                          ],
+                          "rows": [
+                            [
+                              "estrutura",
+                              "`display(df.head())`, `print(df.shape)`, `print(df.columns)`"
+                            ],
+                            [
+                              "resumo",
+                              "`df.describe()`"
+                            ],
+                            [
+                              "categorias",
+                              "`df[\"setor\"].value_counts()`"
+                            ],
+                            [
+                              "visualização",
+                              "histograma e dispersão"
+                            ],
+                            [
+                              "grupos",
+                              "`df.groupby(\"setor\")[\"falha\"].mean() * 100`"
+                            ]
+                          ]
+                        },
+                        {
+                          "kind": "choice",
+                          "question": "Qual etapa importante ainda precisa aparecer no roteiro?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "kind": "text",
+                              "text": "Verificar valores ausentes com `df.isna().sum()`."
+                            },
+                            {
+                              "id": "b",
+                              "kind": "text",
+                              "text": "Trocar `falha` por texto antes de contar."
+                            },
+                            {
+                              "id": "c",
+                              "kind": "text",
+                              "text": "Usar `id_registro` como principal explicação operacional."
+                            }
+                          ],
+                          "answer": "a"
+                        }
+                      ],
+                      "after": "A verificação de ausentes faz parte do diagnóstico básico. Ela deve ocorrer antes de afirmar que a base está pronta para análise."
+                    },
+                    {
+                      "id": "a08-15-c03",
+                      "position": 3,
+                      "resource": "code",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Projeto com comandos coerentes",
+                      "prompt": "Compare versões completas de um bloco de EDA.",
+                      "language": "python",
+                      "code": "Compare as versões completas.",
+                      "question": "Qual versão combina resumo, correlação e outliers com colunas reais?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "display(df.describe())\nnumeric_cols = [\"temperatura_c\", \"tempo_ciclo_s\", \"producao_dia\", \"consumo_kwh\", \"vibracao_mm_s\", \"falha\"]\ncorrelacoes = df[numeric_cols].corr()\nq1 = df[\"consumo_kwh\"].quantile(0.25)\nq3 = df[\"consumo_kwh\"].quantile(0.75)\niqr = q3 - q1"
+                        },
+                        {
+                          "id": "b",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "display(df.describe())\ncorrelacoes = df[[\"setor\", \"turno\"]].corr()\nq1 = df[\"falha\"].quantile(0.25)\nq3 = df[\"falha\"].quantile(0.75)"
+                        },
+                        {
+                          "id": "c",
+                          "kind": "code",
+                          "language": "python",
+                          "code": "display(df.descricao())\ncorrelacoes = df[[\"temperatura\", \"consumo\"]].corr()\niqr = df[\"id_registro\"].mean()"
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "A alternativa correta usa métodos existentes, colunas reais e aplica IQR a uma variável operacional numérica."
+                    },
+                    {
+                      "id": "a08-15-c04",
+                      "position": 4,
+                      "resource": "choice",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Escolha de três gráficos",
+                      "question": "Qual conjunto de três gráficos cobre distribuição, relação e grupo?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "text",
+                          "text": "Histograma de `consumo_kwh`, dispersão `temperatura_c` × `consumo_kwh` com `hue=\"falha\"` e boxplot de `temperatura_c` por `setor`."
+                        },
+                        {
+                          "id": "b",
+                          "kind": "text",
+                          "text": "Três histogramas de `id_registro` com números de barras diferentes."
+                        },
+                        {
+                          "id": "c",
+                          "kind": "text",
+                          "text": "Um heatmap de `df` inteiro com texto, um gráfico sem eixos e uma contagem sem coluna."
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "O conjunto correto cobre três perguntas diferentes: distribuição, relação visual e comparação entre grupos."
+                    },
+                    {
+                      "id": "a08-15-c05",
+                      "position": 5,
+                      "resource": "composite",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Conclusão com evidência",
+                      "blocks": [
+                        {
+                          "kind": "table",
+                          "columns": [
+                            "Achado",
+                            "Valor conferido"
+                          ],
+                          "rows": [
+                            [
+                              "taxa geral de `falha`",
+                              "aprox. `19,17%`"
+                            ],
+                            [
+                              "`consumo_kwh` × `falha`",
+                              "correlação aprox. `0.342`"
+                            ],
+                            [
+                              "outliers de `consumo_kwh`",
+                              "registros `15` e `98` pelo IQR"
+                            ],
+                            [
+                              "maior taxa por `setor`",
+                              "`Inspeção`, aprox. `24.0%`"
+                            ]
+                          ]
+                        },
+                        {
+                          "kind": "choice",
+                          "question": "Qual frase é mais adequada para o relatório final?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "kind": "text",
+                              "text": "A base mostra associação positiva entre `consumo_kwh` e `falha`, além de outliers em `consumo_kwh`; os achados pedem investigação sem afirmar causa."
+                            },
+                            {
+                              "id": "b",
+                              "kind": "text",
+                              "text": "`consumo_kwh` causa todas as falhas e os registros `15` e `98` devem ser removidos sempre."
+                            },
+                            {
+                              "id": "c",
+                              "kind": "text",
+                              "text": "`Inspeção` não tem falhas, pois sua média de temperatura é menor que a de `Montagem`."
+                            }
+                          ],
+                          "answer": "a"
+                        }
+                      ],
+                      "after": "A frase correta usa evidência específica e preserva cautela. Ela não transforma correlação, grupo ou outlier em explicação definitiva."
+                    },
+                    {
+                      "id": "a08-15-c06",
+                      "position": 6,
+                      "resource": "flow",
+                      "kind": "theory",
+                      "exercise": "none",
+                      "title": "Fluxo de escrita da conclusão",
+                      "prompt": "Organize a conclusão final em uma sequência verificável.",
+                      "structure": {
+                        "kind": "sequence",
+                        "items": [
+                          {
+                            "kind": "start",
+                            "text": "Citar evidência numérica ou visual"
+                          },
+                          {
+                            "kind": "process",
+                            "text": "Dizer o padrão observado"
+                          },
+                          {
+                            "kind": "process",
+                            "text": "Indicar limite da interpretação"
+                          },
+                          {
+                            "kind": "process",
+                            "text": "Sugerir investigação descritiva adicional, se necessário"
+                          },
+                          {
+                            "kind": "end",
+                            "text": "Evitar afirmação causal"
+                          }
+                        ]
+                      },
+                      "after": "Uma conclusão forte em EDA é objetiva: mostra de onde veio o achado e diz o que ainda não pode ser afirmado."
+                    },
+                    {
+                      "id": "a08-15-c07",
+                      "position": 7,
+                      "resource": "choice",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Erro a evitar no relatório",
+                      "question": "Qual item representa um erro provável no projeto final?",
+                      "options": [
+                        {
+                          "id": "a",
+                          "kind": "text",
+                          "text": "Usar `df[\"falha\"] == \"sim\"` para filtrar falhas."
+                        },
+                        {
+                          "id": "b",
+                          "kind": "text",
+                          "text": "Calcular `df[\"falha\"].mean()` para taxa geral."
+                        },
+                        {
+                          "id": "c",
+                          "kind": "text",
+                          "text": "Criar boxplot com `x=\"setor\"` e `y=\"temperatura_c\"`."
+                        }
+                      ],
+                      "answer": "a",
+                      "after": "`falha` é `0/1`, não texto. As outras duas opções são coerentes com a aula."
+                    },
+                    {
+                      "id": "a08-15-c08",
+                      "position": 8,
+                      "resource": "composite",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Fechamento da Aula 8",
+                      "blocks": [
+                        {
+                          "kind": "table",
+                          "columns": [
+                            "Competência",
+                            "Exemplo"
+                          ],
+                          "rows": [
+                            [
+                              "inspecionar",
+                              "`df.shape`, `df.columns`, `df.dtypes`"
+                            ],
+                            [
+                              "descrever",
+                              "`df.describe()`"
+                            ],
+                            [
+                              "contar",
+                              "`value_counts()`"
+                            ],
+                            [
+                              "visualizar",
+                              "histograma, heatmap, dispersão, boxplot"
+                            ],
+                            [
+                              "detectar outliers",
+                              "IQR"
+                            ],
+                            [
+                              "comparar grupos",
+                              "`groupby()`"
+                            ]
+                          ]
+                        },
+                        {
+                          "kind": "choice",
+                          "question": "Qual postura final combina com a Aula 8?",
+                          "options": [
+                            {
+                              "id": "a",
+                              "kind": "text",
+                              "text": "Conectar comandos, resultados e interpretação cautelosa em torno de perguntas de EDA."
+                            },
+                            {
+                              "id": "b",
+                              "kind": "text",
+                              "text": "Executar gráficos sem verificar colunas, tipos ou valores."
+                            },
+                            {
+                              "id": "c",
+                              "kind": "text",
+                              "text": "Usar apenas uma estatística e ignorar ausentes, grupos e outliers."
+                            }
+                          ],
+                          "answer": "a"
+                        }
+                      ],
+                      "after": "A Aula 8 consolida autonomia: a análise precisa de sequência, evidência e limites claros de interpretação.",
+                      "afterBlocks": [
+                        {
+                          "kind": "code",
+                          "language": "python",
+                          "code": "display(df.head())\nprint(df.shape)\nprint(df.columns)\n\ndf.describe()\ndf.isna().sum()\ndf[\"setor\"].value_counts()\ndf.groupby(\"setor\")[\"falha\"].mean() * 100",
+                          "prompt": "Observe o trecho de referência."
+                        }
+                      ]
+                    }
+                  ],
+                  "validation": {
+                    "ok": true,
+                    "issues": []
+                  }
+                }
+              ],
+              "activeVersion": "micro-a08-15-projeto-final-eda__v20260702-164812"
+            }
+          ]
+        }
+      ]
     }
   ]
 }
