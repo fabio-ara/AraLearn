@@ -870,6 +870,16 @@ function validateAfterBlocks(card, path, errors) {
     .filter(Boolean);
 }
 
+function validateAfter(card, path, errors) {
+  if (card?.after !== undefined && typeof card.after !== "string") {
+    pushError(errors, `${path}.after`, "after deve ser texto.");
+    return;
+  }
+  if (hasTextGapSyntax(card?.after)) {
+    pushError(errors, `${path}.after`, "after não pode conter lacunas interativas.");
+  }
+}
+
 function validateMatrixHighlightItemCoordinates(entry, path, errors, rowCount, columnCount) {
   if (!Array.isArray(entry) || entry.length !== 2) {
     pushError(errors, path, "cada célula destacada precisa usar [linha, coluna].");
@@ -1101,6 +1111,7 @@ export function validateCard(card, path = "$.card") {
   validateUnknownFields(card, path, errors, common.resource);
   const sources = validateSources(card, path, errors);
   const topics = validateTopics(card, path, errors);
+  validateAfter(card, path, errors);
   const afterBlocks = validateAfterBlocks(card, path, errors);
 
   if (common.resource === "paragraph") validateParagraph(card, path, errors);

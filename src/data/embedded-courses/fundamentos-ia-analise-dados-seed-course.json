@@ -6483,7 +6483,7 @@
                       "prompt": "Compare versões completas.",
                       "language": "python",
                       "code": "# Objetivo: selecionar `setor` e `temperatura_c` mantendo um DataFrame.",
-                      "after": "Para várias colunas, o Pandas recebe uma lista de rótulos dentro dos colchetes externos: `df[[...]]`.",
+                      "after": "Para várias colunas, o Pandas recebe uma lista de rótulos dentro dos colchetes externos, como em `df[colunas]`.",
                       "question": "Qual alternativa usa colchetes corretamente?",
                       "options": [
                         {

@@ -4,7 +4,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { fileURLToPath } from "node:url";
 
-import { buildTextGapToken, parseTextGapTokens } from "../../src/core/textGaps.js";
+import { buildTextGapToken, hasTextGapSyntax, parseTextGapTokens } from "../../src/core/textGaps.js";
 import { validateContractDocument } from "../../src/contract/validateContract.js";
 import {
   getRuntimePopupButtonEntry,
@@ -1422,6 +1422,31 @@ test("cards de Fundamentos com resultados globais da base repetem o contexto no 
     assert.ok(kinds.has("table"), `card ${cardId} deve repetir o quadro de contexto`);
     assert.ok(kinds.has("choice"), `card ${cardId} deve manter a decisão no próprio card`);
     assert.equal((card.blocks || []).every((block) => block.kind && !("resource" in block)), true);
+  });
+});
+
+test("o seed de Fundamentos não mantém lacunas em after nem em afterBlocks", () => {
+  const project = createEmbeddedSeedProjectDocument();
+  const course = project.courses.find((item) => item.id === "course-fundamentos-ia-analise-dados");
+
+  assert.ok(course);
+
+  const cards = course.modules
+    .flatMap((moduleValue) => moduleValue.lessons || [])
+    .flatMap((lesson) => lesson.microsequences || [])
+    .flatMap((microsequence) => microsequence.versions || [])
+    .flatMap((version) => version.cards || []);
+
+  cards.forEach((card) => {
+    assert.equal(hasTextGapSyntax(card.after || ""), false, `${card.id}.after`);
+    (card.afterBlocks || []).forEach((block, index) => {
+      if (typeof block?.value === "string") {
+        assert.equal(hasTextGapSyntax(block.value), false, `${card.id}.afterBlocks[${index}].value`);
+      }
+      if (typeof block?.code === "string") {
+        assert.equal(hasTextGapSyntax(block.code), false, `${card.id}.afterBlocks[${index}].code`);
+      }
+    });
   });
 });
 

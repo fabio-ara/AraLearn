@@ -379,6 +379,20 @@ test("kind=theory com lacuna falha", () => {
   assert.match(result.structuralErrors.join("\n"), /não pode conter lacunas/);
 });
 
+test("after com lacuna falha", () => {
+  const result = structural({
+    position: 1,
+    resource: "paragraph",
+    kind: "theory",
+    exercise: "none",
+    title: "Feedback inválido",
+    text: "Texto estático.",
+    after: "Revise [[setor::setor|valor]]."
+  });
+  assert.equal(result.ok, false);
+  assert.match(result.structuralErrors.join("\n"), /after não pode conter lacunas interativas/);
+});
+
 test("paragraph + kind=exercise + exercise=none falha", () => {
   const result = structural({
     position: 1,

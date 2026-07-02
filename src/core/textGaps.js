@@ -140,6 +140,24 @@ export function extractTextGapAnswers(value = "") {
   return parseTextGapTokens(value).map((token) => token.answer);
 }
 
+export function stripTextGapSyntax(value = "") {
+  const source = String(value || "");
+  const tokens = scanTextGapTokens(source);
+  if (!tokens.length) {
+    return source;
+  }
+
+  let cursor = 0;
+  let result = "";
+  tokens.forEach((token) => {
+    result += source.slice(cursor, token.start);
+    result += parseGapBody(token.source).answer;
+    cursor = token.end;
+  });
+  result += source.slice(cursor);
+  return result;
+}
+
 export function escapeTextGapValue(value = "") {
   return String(value ?? "").replace(/\\/g, "\\\\").replace(/:/g, "\\:").replace(/\|/g, "\\|").replace(/\]/g, "\\]");
 }
