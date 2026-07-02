@@ -1,4 +1,3 @@
-const RAW_PRATICAS_E_FERRAMENTAS_COURSE = Object.freeze(
 {
   "id": "course-praticas-e-ferramentas-de-desenvolvimento-de-software",
   "title": "Práticas e Ferramentas de Desenvolvimento de Software",
@@ -4435,9 +4434,3 @@ const RAW_PRATICAS_E_FERRAMENTAS_COURSE = Object.freeze(
     }
   ]
 }
-);
-
-export function createPraticasFerramentasCourse() {
-  return structuredClone(RAW_PRATICAS_E_FERRAMENTAS_COURSE);
-}
-

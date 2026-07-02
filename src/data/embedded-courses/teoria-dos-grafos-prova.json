@@ -1,4 +1,3 @@
-const RAW_TEORIA_DOS_GRAFOS_PROVA_COURSE = Object.freeze(
 {
   "id": "course-matematica-para-informatica",
   "title": "Matemática para Informática",
@@ -25588,9 +25587,4 @@ const RAW_TEORIA_DOS_GRAFOS_PROVA_COURSE = Object.freeze(
       ]
     }
   ]
-}
-);
-
-export function createTeoriaDosGrafosProvaCourse() {
-  return structuredClone(RAW_TEORIA_DOS_GRAFOS_PROVA_COURSE);
 }

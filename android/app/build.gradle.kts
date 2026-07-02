@@ -39,8 +39,8 @@ android {
         applicationId = "com.aralearn.app"
         minSdk = 24
         targetSdk = 36
-        versionCode = 117
-        versionName = "0.0.3"
+        versionCode = 120
+        versionName = "0.0.4"
     }
 
     signingConfigs {

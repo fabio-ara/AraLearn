@@ -4,7 +4,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { fileURLToPath } from "node:url";
 
-import { buildTextGapToken, parseTextGapTokens } from "../../src/core/textGaps.js";
+import { buildTextGapToken, hasTextGapSyntax, parseTextGapTokens } from "../../src/core/textGaps.js";
 import { validateContractDocument } from "../../src/contract/validateContract.js";
 import {
   getRuntimePopupButtonEntry,
@@ -22,7 +22,8 @@ import {
   createLogicPlaneMatrixTestProjectDocument,
   createTeoriaDosGrafosProvaProjectDocument
 } from "../../src/ui/exampleProjectDocument.js";
-import { createEmbeddedSeedProjectDocument, reconcileEmbeddedSeedProject } from "../../src/ui/embeddedSeedProjectDocument.js";
+import { loadEmbeddedSeedManifest } from "../../src/ui/embeddedSeedCourseLoader.js";
+import { createEmbeddedSeedProjectDocument } from "../../src/ui/embeddedSeedProjectDocument.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -976,6 +977,7 @@ test("a navegação de curso resolve seleção válida a partir de ids do v3", (
 
 test("o seed embutido oficial mantém os cursos embarcados já materializados", () => {
   const project = createEmbeddedSeedProjectDocument();
+  const manifest = loadEmbeddedSeedManifest();
   const teoriaCourse = project.courses.find((course) => course.id === "course-matematica-para-informatica");
   const praticasCourse = project.courses.find(
     (course) => course.id === "course-praticas-e-ferramentas-de-desenvolvimento-de-software"
@@ -993,7 +995,29 @@ test("o seed embutido oficial mantém os cursos embarcados já materializados", 
   assert.ok(frameworkCourse);
   assert.ok(logicaCourse);
   assert.ok(fundamentosCourse);
-  assert.equal(project.courses.some((course) => course.id === "course-oaco-bases-cpu-paralelismo"), false);
+  assert.deepEqual(
+    fs
+      .readdirSync(path.resolve(__dirname, "../../src/data/embedded-courses"))
+      .filter((fileName) => fileName.endsWith(".json") && fileName !== "embedded-seed-manifest.json")
+      .sort(),
+    [
+      "framework-ia-generativa-seed-course.json",
+      "fundamentos-ia-analise-dados-seed-course.json",
+      "logica-programacao-seed-course.json",
+      "organizacao-arquitetura-computadores-seed-course.json",
+      "praticas-ferramentas-seed-course.json",
+      "teoria-dos-grafos-prova.json"
+    ]
+  );
+  assert.deepEqual(manifest.courseFiles, [
+    "teoria-dos-grafos-prova.json",
+    "praticas-ferramentas-seed-course.json",
+    "organizacao-arquitetura-computadores-seed-course.json",
+    "framework-ia-generativa-seed-course.json",
+    "logica-programacao-seed-course.json",
+    "fundamentos-ia-analise-dados-seed-course.json"
+  ]);
+  assert.equal(project.courses.length, manifest.courseFiles.length);
 
   const teoriaMicrosequences = teoriaCourse.modules
     .flatMap((moduleValue) => moduleValue.lessons || [])
@@ -1117,9 +1141,9 @@ test("o seed embutido oficial mantém os cursos embarcados já materializados", 
     .flatMap((lesson) => lesson.microsequences || []);
 
   assert.equal(fundamentosCourse.title, "Fundamentos de IA e Análise de Dados");
-  assert.equal(fundamentosCourse.modules.length, 4);
-  assert.equal(fundamentosCourse.modules.flatMap((moduleValue) => moduleValue.lessons || []).length, 4);
-  assert.equal(fundamentosMicrosequences.length, 43);
+  assert.equal(fundamentosCourse.modules.length, 6);
+  assert.equal(fundamentosCourse.modules.flatMap((moduleValue) => moduleValue.lessons || []).length, 6);
+  assert.equal(fundamentosMicrosequences.length, 68);
   assert.equal(fundamentosMicrosequences.some((microsequence) => (microsequence.versions || []).length > 0), true);
   assert.equal(fundamentosMicrosequences.some((microsequence) => microsequence.activeVersion), true);
   assert.equal(
@@ -1135,13 +1159,25 @@ test("o seed embutido oficial mantém os cursos embarcados já materializados", 
     true
   );
   assert.equal(
+    fundamentosCourse.modules.some(
+      (moduleValue) => moduleValue.title === "Aula 5 — Tratamento e Preparação de Dados com Pandas e introdução ao PySpark"
+    ),
+    true
+  );
+  assert.equal(
+    fundamentosCourse.modules.some(
+      (moduleValue) => moduleValue.title === "Aula 6 — Visualização de Dados com Matplotlib e Seaborn"
+    ),
+    true
+  );
+  assert.equal(
     fundamentosMicrosequences.reduce((count, microsequence) => {
       const active =
         (microsequence.versions || []).find((version) => version.id === microsequence.activeVersion) ||
         (microsequence.versions || []).at(-1);
       return count + ((active?.cards || []).length);
     }, 0),
-    308
+    415
   );
 
   const fundamentosCards = fundamentosMicrosequences
@@ -1157,7 +1193,11 @@ test("o seed embutido oficial mantém os cursos embarcados já materializados", 
     true
   );
   assert.equal(
-    fundamentosCards.some((card) => JSON.stringify(card).includes("dataset_producao_limpo.xlsx")),
+    fundamentosCards.some((card) => JSON.stringify(card).includes("dataset_aula4_qualidade_inspecao.xlsx")),
+    true
+  );
+  assert.equal(
+    fundamentosCards.some((card) => JSON.stringify(card).includes("SparkSession.builder")),
     true
   );
   assert.equal(
@@ -1177,6 +1217,19 @@ test("o seed embutido oficial mantém os cursos embarcados já materializados", 
       }),
     true
   );
+  assert.equal(
+    JSON.stringify(fundamentosCourse).match(/handoff|materializad|materializar/gi),
+    null
+  );
+});
+
+test("os cursos embarcados não dependem mais de wrappers por curso em src/ui", () => {
+  const seedWrapperFiles = fs
+    .readdirSync(path.resolve(__dirname, "../../src/ui"))
+    .filter((fileName) => /SeedCourse\.js$/u.test(fileName))
+    .sort();
+
+  assert.deepEqual(seedWrapperFiles, []);
 });
 
 test("o seed de Matemática para Informática mantém textos visíveis focados no conteúdo", () => {
@@ -1369,6 +1422,31 @@ test("cards de Fundamentos com resultados globais da base repetem o contexto no 
     assert.ok(kinds.has("table"), `card ${cardId} deve repetir o quadro de contexto`);
     assert.ok(kinds.has("choice"), `card ${cardId} deve manter a decisão no próprio card`);
     assert.equal((card.blocks || []).every((block) => block.kind && !("resource" in block)), true);
+  });
+});
+
+test("o seed de Fundamentos não mantém lacunas em after nem em afterBlocks", () => {
+  const project = createEmbeddedSeedProjectDocument();
+  const course = project.courses.find((item) => item.id === "course-fundamentos-ia-analise-dados");
+
+  assert.ok(course);
+
+  const cards = course.modules
+    .flatMap((moduleValue) => moduleValue.lessons || [])
+    .flatMap((lesson) => lesson.microsequences || [])
+    .flatMap((microsequence) => microsequence.versions || [])
+    .flatMap((version) => version.cards || []);
+
+  cards.forEach((card) => {
+    assert.equal(hasTextGapSyntax(card.after || ""), false, `${card.id}.after`);
+    (card.afterBlocks || []).forEach((block, index) => {
+      if (typeof block?.value === "string") {
+        assert.equal(hasTextGapSyntax(block.value), false, `${card.id}.afterBlocks[${index}].value`);
+      }
+      if (typeof block?.code === "string") {
+        assert.equal(hasTextGapSyntax(block.code), false, `${card.id}.afterBlocks[${index}].code`);
+      }
+    });
   });
 });
 
@@ -1658,96 +1736,6 @@ test("microssequências anteriores repetem o grafo-base quando a prática depend
       assert.ok(kinds.has("choice"), `card ${cardId} deve manter o exercício de escolha`);
     });
   });
-});
-
-test("a reconciliação do seed substitui curso embarcado salvo pela versão oficial atual", () => {
-  const persistedProject = {
-    contract: "aralearn.contract",
-    version: 3,
-    kind: "project",
-    courses: [
-      {
-        id: "course-matematica-para-informatica",
-        title: "Matemática para Informática",
-        goal: "Versão antiga salva localmente.",
-        modules: [
-          {
-            id: "module-antigo",
-            title: "Módulo antigo",
-            guide: {
-              goal: "Estrutura antiga",
-              include: [],
-              exclude: [],
-              notation: [],
-              avoid: []
-            },
-            lessons: [
-              {
-                id: "lesson-antiga",
-                title: "Lição antiga",
-                guide: {
-                  goal: "Estrutura antiga",
-                  include: [],
-                  exclude: [],
-                  notation: [],
-                  avoid: []
-                },
-                topics: [],
-                microsequences: [
-                  {
-                    id: "micro-antiga",
-                    title: "Micro antiga",
-                    goal: "Conteúdo antigo",
-                    role: "explain",
-                    status: "generated",
-                    dependsOn: [],
-                    covers: [],
-                    checks: [],
-                    versions: [
-                      {
-                        id: "version-micro-antiga",
-                        createdAt: "2026-05-20T00:00:00.000Z",
-                        source: "manual",
-                        action: "generate",
-                        request: "",
-                        summary: "",
-                        cards: [
-                          {
-                            id: "card-antigo",
-                            position: 1,
-                            resource: "paragraph",
-                            kind: "theory",
-                            exercise: "none",
-                            title: "Card antigo",
-                            text: "Curso embarcado antigo.",
-                            after: ""
-                          }
-                        ],
-                        validation: { ok: true, issues: [] }
-                      }
-                    ],
-                    activeVersion: "version-micro-antiga"
-                  }
-                ]
-              }
-            ]
-          }
-        ]
-      }
-    ]
-  };
-
-  const reconciled = reconcileEmbeddedSeedProject(persistedProject);
-  const course = reconciled.courses.find((item) => item.id === "course-matematica-para-informatica");
-
-  assert.ok(course);
-  assert.equal(course.modules.length, 1);
-  assert.equal(course.modules[0].title, "Teoria dos Grafos");
-  assert.notEqual(course.modules[0].id, "module-antigo");
-  const microsequences = course.modules
-    .flatMap((moduleValue) => moduleValue.lessons || [])
-    .flatMap((lesson) => lesson.microsequences || []);
-  assert.equal(microsequences.some((microsequence) => microsequence.id === "micro-antiga"), false);
 });
 
 test("o seed de Lógica de Programação evita linguagem editorial interna nos textos visíveis", () => {
@@ -2057,41 +2045,6 @@ test("o seed de Lógica de Programação elimina placeholders legados de code e 
   assert.deepEqual(mixedCodeChoiceCards.map((card) => card.id), []);
   assert.match(printfReviewCard?.question || "", /`printf\("Aprovado"\);`/);
   assert.match(printfReviewCard?.after || "", /`Aprovado`/);
-});
-
-test("a reconciliação incorpora o módulo novo de OACO ao curso principal e remove o curso legado separado", () => {
-  const persistedProject = {
-    contract: "aralearn.contract",
-    version: 3,
-    kind: "project",
-    courses: [
-      createEmbeddedSeedProjectDocument().courses.find(
-        (course) => course.id === "course-organizacao-arquitetura-computadores"
-      ),
-      {
-        id: "course-oaco-bases-cpu-paralelismo",
-        title: "Organização e Arquitetura de Computadores — bases, CPU e paralelismo",
-        goal: "curso legado separado",
-        modules: [
-          {
-            id: "module-bases-cpu-paralelismo",
-            title: "Bases numéricas, arquitetura da CPU e paralelismo",
-            lessons: []
-          }
-        ]
-      }
-    ]
-  };
-
-  const reconciled = reconcileEmbeddedSeedProject(persistedProject);
-  const mergedCourse = reconciled.courses.find((course) => course.id === "course-organizacao-arquitetura-computadores");
-
-  assert.ok(mergedCourse);
-  assert.equal(reconciled.courses.some((course) => course.id === "course-oaco-bases-cpu-paralelismo"), false);
-  assert.equal(
-    mergedCourse.modules.some((moduleValue) => moduleValue.id === "module-bases-cpu-paralelismo"),
-    true
-  );
 });
 
 test("microssequência com cards em revisão continua abrindo play", () => {
