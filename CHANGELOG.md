@@ -6,7 +6,7 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ### Changed
 
-- sem mudanças registradas
+- o runtime público no navegador passa a sobreviver a falhas de quota do `localStorage`, usando fallback em memória para manter a sessão ativa quando o seed embarcado ou a cota da origem do GitHub Pages excedem o limite disponível.
 
 ## [0.0.5] - 2026-07-03
 

@@ -1,6 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
+import { createBrowserLocalStorageStore } from "../../src/storage/createBrowserLocalStorageStore.js";
+import { createProjectStorage } from "../../src/storage/createProjectStorage.js";
 import { parseProjectDocument } from "../../src/storage/projectStore.js";
 import { createEmbeddedSeedProjectDocument } from "../../src/ui/embeddedSeedProjectDocument.js";
 import { syncEmbeddedSeedProjectDocument } from "../../src/ui/syncEmbeddedSeedProjectDocument.js";
@@ -114,4 +116,46 @@ test("a sincronização de seed embarcado atualiza cursos oficiais ao carregar p
     8
   );
   assert.deepEqual(result.projectDocument.courses.at(-1), extraCourse);
+});
+
+test("o storage do navegador mantém a sessão funcional quando localStorage estoura quota", () => {
+  const backingStore = new Map();
+  const failingStorage = {
+    getItem(key) {
+      return backingStore.has(key) ? backingStore.get(key) : null;
+    },
+    setItem(key, value) {
+      if (String(key) === "aralearn.project") {
+        throw new Error("QuotaExceededError");
+      }
+      backingStore.set(String(key), String(value));
+    },
+    removeItem(key) {
+      backingStore.delete(String(key));
+    },
+    clear() {
+      backingStore.clear();
+    }
+  };
+
+  const kvStore = createBrowserLocalStorageStore(failingStorage);
+  const storage = createProjectStorage(kvStore);
+  const project = {
+    contract: "aralearn.contract",
+    version: 3,
+    kind: "project",
+    courses: [
+      {
+        id: "course-local",
+        title: "Curso local",
+        goal: "Manter a sessão ativa.",
+        modules: []
+      }
+    ]
+  };
+
+  storage.saveProject(project);
+
+  assert.equal(backingStore.has("aralearn.project"), false);
+  assert.deepEqual(storage.loadProject(), project);
 });
