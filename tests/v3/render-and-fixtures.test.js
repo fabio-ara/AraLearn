@@ -917,7 +917,7 @@ test("o painel de geração mostra cursos por padrão e não exibe chips de micr
   assert.match(html, /data-action="select-existing-lesson"/);
   assert.match(html, /data-lesson-title="Vértices, arestas e graus"/);
   assert.doesNotMatch(html, /Sem micros planejadas nesta lição ainda\./);
-  assert.doesNotMatch(html, /icon-microsequence|data-microsequence-title|Micros/);
+  assert.doesNotMatch(html, /icon-microsequence|data-microsequence-title|Microssequ/);
 });
 
 test("o painel de geração embute o progresso e renderiza CTA final como botão principal", () => {
@@ -988,6 +988,7 @@ test("o seed embutido oficial mantém os cursos embarcados já materializados", 
   const frameworkCourse = project.courses.find((course) => course.id === "course-framework-ia-generativa");
   const logicaCourse = project.courses.find((course) => course.id === "course-logica-de-programacao");
   const fundamentosCourse = project.courses.find((course) => course.id === "course-fundamentos-ia-analise-dados");
+  const ai900Course = project.courses.find((course) => course.id === "course-microsoft-azure-ai-fundamentals-ai900");
 
   assert.ok(teoriaCourse);
   assert.ok(praticasCourse);
@@ -995,6 +996,7 @@ test("o seed embutido oficial mantém os cursos embarcados já materializados", 
   assert.ok(frameworkCourse);
   assert.ok(logicaCourse);
   assert.ok(fundamentosCourse);
+  assert.ok(ai900Course);
   assert.deepEqual(
     fs
       .readdirSync(path.resolve(__dirname, "../../src/data/embedded-courses"))
@@ -1004,6 +1006,7 @@ test("o seed embutido oficial mantém os cursos embarcados já materializados", 
       "framework-ia-generativa-seed-course.json",
       "fundamentos-ia-analise-dados-seed-course.json",
       "logica-programacao-seed-course.json",
+      "microsoft-azure-ai-fundamentals-ai900-seed-course.json",
       "organizacao-arquitetura-computadores-seed-course.json",
       "praticas-ferramentas-seed-course.json",
       "teoria-dos-grafos-prova.json"
@@ -1015,7 +1018,8 @@ test("o seed embutido oficial mantém os cursos embarcados já materializados", 
     "organizacao-arquitetura-computadores-seed-course.json",
     "framework-ia-generativa-seed-course.json",
     "logica-programacao-seed-course.json",
-    "fundamentos-ia-analise-dados-seed-course.json"
+    "fundamentos-ia-analise-dados-seed-course.json",
+    "microsoft-azure-ai-fundamentals-ai900-seed-course.json"
   ]);
   assert.equal(project.courses.length, manifest.courseFiles.length);
 
@@ -1038,6 +1042,47 @@ test("o seed embutido oficial mantém os cursos embarcados já materializados", 
     }, 0),
     505
   );
+
+  const ai900Microsequences = ai900Course.modules
+    .flatMap((moduleValue) => moduleValue.lessons || [])
+    .flatMap((lesson) => lesson.microsequences || []);
+
+  assert.equal(ai900Course.title, "Microsoft Azure AI Fundamentals (AI-900)");
+  assert.equal(ai900Course.modules.length, 2);
+  assert.equal(ai900Course.modules.flatMap((moduleValue) => moduleValue.lessons || []).length, 4);
+  assert.equal(ai900Microsequences.length, 24);
+  assert.equal(
+    ai900Microsequences.reduce((count, microsequence) => {
+      const active =
+        (microsequence.versions || []).find((version) => version.id === microsequence.activeVersion) ||
+        (microsequence.versions || []).at(-1);
+      return count + ((active?.cards || []).length);
+    }, 0),
+    269
+  );
+  ai900Microsequences.forEach((microsequence) => {
+    (microsequence.versions || []).forEach((version) => {
+      assert.equal(version.source, "manual");
+      assert.equal(version.action, "repair");
+      assert.equal(version.request, "");
+      const visibleTexts = [
+        microsequence.title,
+        microsequence.goal,
+        version.summary,
+        ...(version.cards || []).flatMap((card) => [
+          card.title,
+          card.text,
+          card.prompt,
+          card.question,
+          card.after,
+          ...(card.options || []).map((option) => option.text)
+        ])
+      ].filter((value) => typeof value === "string");
+      visibleTexts.forEach((value) => {
+        assert.doesNotMatch(value, /handoff|planner\/auditor|materializar|json completo/iu);
+      });
+    });
+  });
 
   const praticasMicrosequences = praticasCourse.modules
     .flatMap((moduleValue) => moduleValue.lessons || [])
