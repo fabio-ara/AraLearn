@@ -1,6 +1,6 @@
 {
   "id": "course-logica-de-programacao",
-  "title": "Lógica de Programação",
+  "title": "Lógica de Programação 1",
   "goal": "Estudo estruturado de programação em C, cobrindo sintaxe básica, controle de fluxo, vetores, matrizes, strings, ordenação, estruturas, funções e ponteiros introdutórios.",
   "modules": [
     {

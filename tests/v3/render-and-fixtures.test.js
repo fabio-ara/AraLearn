@@ -914,7 +914,7 @@ test("o painel de geração mostra cursos por padrão e não exibe chips de micr
   });
 
   assert.match(html, /data-action="select-existing-course"/);
-  assert.match(html, /data-course-title="Lógica de Programação"/);
+  assert.match(html, /data-course-title="Lógica de Programação 1"/);
   assert.match(html, /data-action="select-existing-module"/);
   assert.match(html, new RegExp(`data-module-title="${moduleValue?.title}"`));
   assert.match(html, /data-action="select-existing-lesson"/);
