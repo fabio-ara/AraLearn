@@ -4,10 +4,6 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ## [Unreleased]
 
-### Changed
-
-- o runtime público no navegador passa a sobreviver a falhas de quota do `localStorage`, usando fallback em memória para manter a sessão ativa quando o seed embarcado ou a cota da origem do GitHub Pages excedem o limite disponível.
-
 ## [0.0.5] - 2026-07-03
 
 ### Changed
@@ -16,7 +12,9 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 - auditoria e saneamento das entregas parciais do curso AI-900 antes da incorporação ao seed oficial, com normalização de `role`, conversão de `tree`, `relation_map` e `plane` para o contrato atual e limpeza de bastidor em textos e metadados;
 - adição do compilador reutilizável `scripts/compileEmbeddedCourseFromParts.mjs` para recompilar cursos embarcados a partir de partes em `json` ou `zip` nas próximas rodadas;
 - manifesto oficial dos cursos embarcados atualizado para carregar o novo curso AI-900 diretamente no app;
-- APK pública de release atualizada com o curso AI-900 já embarcado.
+- os cursos `Matemática para Informática`, `Práticas e Ferramentas de Desenvolvimento de Software`, `Organização e Arquitetura de Computadores` e `Framework Corporativo de IA Generativa` saem temporariamente do seed persistido e passam a morar em `src/data/non-persisted-courses`, com limpeza automática desses cursos no bootstrap quando ainda vierem salvos de versões anteriores;
+- o seed persistido do app passa a embarcar apenas `Lógica de Programação`, `Fundamentos de IA e Análise de Dados` e `Microsoft Azure AI Fundamentals (AI-900)`, reduzindo o volume gravado no `localStorage` sem fallback em memória;
+- APK pública de release atualizada com o curso AI-900 já embarcado, o seed persistido reduzido e `versionCode` maior para permitir atualização sobre a APK anterior da mesma linha `0.0.5`.
 
 ## [0.0.4] - 2026-07-02
 

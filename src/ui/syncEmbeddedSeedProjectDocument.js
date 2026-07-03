@@ -1,4 +1,5 @@
 import { createEmbeddedSeedProjectDocument } from "./embeddedSeedProjectDocument.js";
+import { loadNonPersistedCourseManifest } from "./embeddedSeedCourseLoader.js";
 
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -28,8 +29,12 @@ function sameCourseList(left = [], right = []) {
 export function syncEmbeddedSeedProjectDocument(projectDocument, embeddedSeedProject = createEmbeddedSeedProjectDocument()) {
   const embeddedCourses = Array.isArray(embeddedSeedProject?.courses) ? embeddedSeedProject.courses : [];
   const storedCourses = Array.isArray(projectDocument?.courses) ? projectDocument.courses : [];
+  const nonPersistedIds = new Set(loadNonPersistedCourseManifest().courseIds);
   const embeddedIds = new Set(embeddedCourses.map((course) => text(course?.id)).filter(Boolean));
-  const extraCourses = storedCourses.filter((course) => !embeddedIds.has(text(course?.id)));
+  const extraCourses = storedCourses.filter((course) => {
+    const courseId = text(course?.id);
+    return courseId && !embeddedIds.has(courseId) && !nonPersistedIds.has(courseId);
+  });
   const nextCourses = [...embeddedCourses, ...extraCourses];
 
   if (!projectDocument || typeof projectDocument !== "object" || Array.isArray(projectDocument)) {

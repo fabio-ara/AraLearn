@@ -1,0 +1,14 @@
+{
+  "courseFiles": [
+    "teoria-dos-grafos-prova.json",
+    "praticas-ferramentas-seed-course.json",
+    "organizacao-arquitetura-computadores-seed-course.json",
+    "framework-ia-generativa-seed-course.json"
+  ],
+  "courseIds": [
+    "course-matematica-para-informatica",
+    "course-praticas-e-ferramentas-de-desenvolvimento-de-software",
+    "course-organizacao-arquitetura-computadores",
+    "course-framework-ia-generativa"
+  ]
+}
