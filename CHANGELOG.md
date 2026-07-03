@@ -8,6 +8,16 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 - sem mudanças registradas
 
+## [0.0.5] - 2026-07-03
+
+### Changed
+
+- inclusão do curso embarcado `Microsoft Azure AI Fundamentals (AI-900)`, já compilado a partir das Partes 01 a 04, com `2` módulos, `4` lições, `24` microssequências e `269` cards ativos;
+- auditoria e saneamento das entregas parciais do curso AI-900 antes da incorporação ao seed oficial, com normalização de `role`, conversão de `tree`, `relation_map` e `plane` para o contrato atual e limpeza de bastidor em textos e metadados;
+- adição do compilador reutilizável `scripts/compileEmbeddedCourseFromParts.mjs` para recompilar cursos embarcados a partir de partes em `json` ou `zip` nas próximas rodadas;
+- manifesto oficial dos cursos embarcados atualizado para carregar o novo curso AI-900 diretamente no app;
+- APK pública de release atualizada com o curso AI-900 já embarcado.
+
 ## [0.0.4] - 2026-07-02
 
 ### Changed
