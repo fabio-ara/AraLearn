@@ -6,7 +6,8 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ### Changed
 
-- o runtime público no navegador passa a sobreviver a falhas de quota do `localStorage`, usando fallback em memória para manter a sessão ativa quando o seed embarcado ou a cota da origem do GitHub Pages excedem o limite disponível.
+- os cursos `Matemática para Informática`, `Práticas e Ferramentas de Desenvolvimento de Software`, `Organização e Arquitetura de Computadores` e `Framework Corporativo de IA Generativa` saem temporariamente do seed persistido e passam a morar em `src/data/non-persisted-courses`, com limpeza automática desses cursos no bootstrap quando ainda vierem salvos de versões anteriores;
+- o seed persistido do app passa a embarcar apenas `Lógica de Programação`, `Fundamentos de IA e Análise de Dados` e `Microsoft Azure AI Fundamentals (AI-900)`, reduzindo o volume gravado no `localStorage` e eliminando a dependência de fallback em memória.
 
 ## [0.0.5] - 2026-07-03
 

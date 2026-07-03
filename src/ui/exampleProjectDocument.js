@@ -1,11 +1,11 @@
-import { loadEmbeddedCourseFromJson } from "./embeddedSeedCourseLoader.js";
+import { loadNonPersistedCourseFromJson } from "./embeddedSeedCourseLoader.js";
 
 export function createTeoriaDosGrafosProvaProjectDocument() {
   return {
     contract: "aralearn.contract",
     version: 3,
     kind: "project",
-    courses: [loadEmbeddedCourseFromJson("teoria-dos-grafos-prova.json")]
+    courses: [loadNonPersistedCourseFromJson("teoria-dos-grafos-prova.json")]
   };
 }
 

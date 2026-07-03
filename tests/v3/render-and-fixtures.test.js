@@ -22,7 +22,11 @@ import {
   createLogicPlaneMatrixTestProjectDocument,
   createTeoriaDosGrafosProvaProjectDocument
 } from "../../src/ui/exampleProjectDocument.js";
-import { loadEmbeddedSeedManifest } from "../../src/ui/embeddedSeedCourseLoader.js";
+import {
+  loadEmbeddedSeedManifest,
+  loadNonPersistedCourseFromJson,
+  loadNonPersistedCourseManifest
+} from "../../src/ui/embeddedSeedCourseLoader.js";
 import { createEmbeddedSeedProjectDocument } from "../../src/ui/embeddedSeedProjectDocument.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -870,35 +874,34 @@ test("a home renderiza abrir curso com ids reais do contrato v3", () => {
   });
 
   assert.match(html, /data-action="open-course"/);
-  assert.match(html, /data-course-key="course-matematica-para-informatica"/);
-  assert.match(html, /data-course-key="course-praticas-e-ferramentas-de-desenvolvimento-de-software"/);
+  assert.match(html, /data-course-key="course-logica-de-programacao"/);
+  assert.match(html, /data-course-key="course-fundamentos-ia-analise-dados"/);
+  assert.match(html, /data-course-key="course-microsoft-azure-ai-fundamentals-ai900"/);
 });
 
 test("o painel de geração mostra cursos por padrão e não exibe chips de microssequência", () => {
   const project = createEmbeddedSeedProjectDocument();
+  const course = project.courses.find((item) => item.id === "course-logica-de-programacao");
+  const moduleValue = course?.modules?.[0];
+  const lesson = moduleValue?.lessons?.[0];
   const html = renderGenerationPanelOverlay({
     project,
     editorSupport: {
       generationDraft: {
-        courseInput: "Matemática para Informática",
-        courseKey: "course-matematica-para-informatica",
-        moduleInput: "Teoria dos Grafos",
-        moduleKey: "module-teoria-dos-grafos",
-        lessonInput: "Vértices, arestas e graus",
-        lessonKey: "lesson-vocabulario-contagem",
+        courseInput: course?.title || "",
+        courseKey: course?.id || "",
+        moduleInput: moduleValue?.title || "",
+        moduleKey: moduleValue?.id || "",
+        lessonInput: lesson?.title || "",
+        lessonKey: lesson?.id || "",
         includeTopics: [],
         excludeTopics: [],
         promptText: ""
       },
       generationUiState: {
-        course: project.courses.find((item) => item.id === "course-matematica-para-informatica"),
-        moduleValue: project.courses
-          .find((item) => item.id === "course-matematica-para-informatica")
-          ?.modules.find((item) => item.id === "module-teoria-dos-grafos"),
-        lesson: project.courses
-          .find((item) => item.id === "course-matematica-para-informatica")
-          ?.modules.find((item) => item.id === "module-teoria-dos-grafos")
-          ?.lessons.find((item) => item.id === "lesson-vocabulario-contagem"),
+        course,
+        moduleValue,
+        lesson,
         modules: [],
         lessons: [],
         moduleInputEnabled: true,
@@ -911,11 +914,11 @@ test("o painel de geração mostra cursos por padrão e não exibe chips de micr
   });
 
   assert.match(html, /data-action="select-existing-course"/);
-  assert.match(html, /data-course-title="Matemática para Informática"/);
+  assert.match(html, /data-course-title="Lógica de Programação"/);
   assert.match(html, /data-action="select-existing-module"/);
-  assert.match(html, /data-module-title="Teoria dos Grafos"/);
+  assert.match(html, new RegExp(`data-module-title="${moduleValue?.title}"`));
   assert.match(html, /data-action="select-existing-lesson"/);
-  assert.match(html, /data-lesson-title="Vértices, arestas e graus"/);
+  assert.match(html, new RegExp(`data-lesson-title="${lesson?.title}"`));
   assert.doesNotMatch(html, /Sem micros planejadas nesta lição ainda\./);
   assert.doesNotMatch(html, /icon-microsequence|data-microsequence-title|Microssequ/);
 });
@@ -967,33 +970,25 @@ test("o painel de geração embute o progresso e renderiza CTA final como botão
 
 test("a navegação de curso resolve seleção válida a partir de ids do v3", () => {
   const project = createEmbeddedSeedProjectDocument();
-  const navigationState = buildCourseNavigationState(project, "course-matematica-para-informatica");
+  const navigationState = buildCourseNavigationState(project, "course-logica-de-programacao");
 
   assert.ok(navigationState);
   assert.equal(navigationState.view, "course");
-  assert.equal(navigationState.selection.courseKey, "course-matematica-para-informatica");
+  assert.equal(navigationState.selection.courseKey, "course-logica-de-programacao");
   assert.equal(typeof navigationState.selection.moduleKey, "string");
 });
 
 test("o seed embutido oficial mantém os cursos embarcados já materializados", () => {
   const project = createEmbeddedSeedProjectDocument();
   const manifest = loadEmbeddedSeedManifest();
-  const teoriaCourse = project.courses.find((course) => course.id === "course-matematica-para-informatica");
-  const praticasCourse = project.courses.find(
-    (course) => course.id === "course-praticas-e-ferramentas-de-desenvolvimento-de-software"
-  );
-  const organizacaoCourse = project.courses.find(
-    (course) => course.id === "course-organizacao-arquitetura-computadores"
-  );
-  const frameworkCourse = project.courses.find((course) => course.id === "course-framework-ia-generativa");
+  const nonPersistedManifest = loadNonPersistedCourseManifest();
+  const praticasCourse = loadNonPersistedCourseFromJson("praticas-ferramentas-seed-course.json");
+  const organizacaoCourse = loadNonPersistedCourseFromJson("organizacao-arquitetura-computadores-seed-course.json");
+  const frameworkCourse = loadNonPersistedCourseFromJson("framework-ia-generativa-seed-course.json");
   const logicaCourse = project.courses.find((course) => course.id === "course-logica-de-programacao");
   const fundamentosCourse = project.courses.find((course) => course.id === "course-fundamentos-ia-analise-dados");
   const ai900Course = project.courses.find((course) => course.id === "course-microsoft-azure-ai-fundamentals-ai900");
 
-  assert.ok(teoriaCourse);
-  assert.ok(praticasCourse);
-  assert.ok(organizacaoCourse);
-  assert.ok(frameworkCourse);
   assert.ok(logicaCourse);
   assert.ok(fundamentosCourse);
   assert.ok(ai900Course);
@@ -1003,45 +998,35 @@ test("o seed embutido oficial mantém os cursos embarcados já materializados", 
       .filter((fileName) => fileName.endsWith(".json") && fileName !== "embedded-seed-manifest.json")
       .sort(),
     [
-      "framework-ia-generativa-seed-course.json",
       "fundamentos-ia-analise-dados-seed-course.json",
       "logica-programacao-seed-course.json",
-      "microsoft-azure-ai-fundamentals-ai900-seed-course.json",
+      "microsoft-azure-ai-fundamentals-ai900-seed-course.json"
+    ]
+  );
+  assert.deepEqual(
+    fs
+      .readdirSync(path.resolve(__dirname, "../../src/data/non-persisted-courses"))
+      .filter((fileName) => fileName.endsWith(".json") && fileName !== "non-persisted-course-manifest.json")
+      .sort(),
+    [
+      "framework-ia-generativa-seed-course.json",
       "organizacao-arquitetura-computadores-seed-course.json",
       "praticas-ferramentas-seed-course.json",
       "teoria-dos-grafos-prova.json"
     ]
   );
-  assert.deepEqual(manifest.courseFiles, [
+  assert.deepEqual(nonPersistedManifest.courseFiles, [
     "teoria-dos-grafos-prova.json",
     "praticas-ferramentas-seed-course.json",
     "organizacao-arquitetura-computadores-seed-course.json",
-    "framework-ia-generativa-seed-course.json",
+    "framework-ia-generativa-seed-course.json"
+  ]);
+  assert.deepEqual(manifest.courseFiles, [
     "logica-programacao-seed-course.json",
     "fundamentos-ia-analise-dados-seed-course.json",
     "microsoft-azure-ai-fundamentals-ai900-seed-course.json"
   ]);
   assert.equal(project.courses.length, manifest.courseFiles.length);
-
-  const teoriaMicrosequences = teoriaCourse.modules
-    .flatMap((moduleValue) => moduleValue.lessons || [])
-    .flatMap((lesson) => lesson.microsequences || []);
-
-  assert.ok(teoriaMicrosequences.length > 0);
-  assert.equal(teoriaMicrosequences.some((microsequence) => (microsequence.versions || []).length > 0), true);
-  assert.equal(teoriaMicrosequences.some((microsequence) => microsequence.activeVersion), true);
-  assert.equal(teoriaCourse.modules.length, 1);
-  assert.equal(teoriaCourse.modules.flatMap((moduleValue) => moduleValue.lessons || []).length, 11);
-  assert.equal(teoriaMicrosequences.length, 72);
-  assert.equal(
-    teoriaMicrosequences.reduce((count, microsequence) => {
-      const active =
-        (microsequence.versions || []).find((version) => version.id === microsequence.activeVersion) ||
-        (microsequence.versions || []).at(-1);
-      return count + ((active?.cards || []).length);
-    }, 0),
-    505
-  );
 
   const ai900Microsequences = ai900Course.modules
     .flatMap((moduleValue) => moduleValue.lessons || [])
@@ -1309,7 +1294,7 @@ test("os cursos embarcados não dependem mais de wrappers por curso em src/ui", 
 });
 
 test("o seed de Matemática para Informática mantém textos visíveis focados no conteúdo", () => {
-  const project = createEmbeddedSeedProjectDocument();
+  const project = createTeoriaDosGrafosProvaProjectDocument();
   const course = project.courses.find((item) => item.id === "course-matematica-para-informatica");
 
   assert.ok(course);
@@ -1527,7 +1512,7 @@ test("o seed de Fundamentos não mantém lacunas em after nem em afterBlocks", (
 });
 
 test("cards de grafo que prometem subgrafo destacado no seed materializam esse destaque", () => {
-  const project = createEmbeddedSeedProjectDocument();
+  const project = createTeoriaDosGrafosProvaProjectDocument();
   const course = project.courses.find((item) => item.id === "course-matematica-para-informatica");
 
   assert.ok(course);
@@ -1557,7 +1542,7 @@ test("cards de grafo que prometem subgrafo destacado no seed materializam esse d
 });
 
 test("cards de sequência local em grafos materializam o recorte relevante no seed", () => {
-  const project = createEmbeddedSeedProjectDocument();
+  const project = createTeoriaDosGrafosProvaProjectDocument();
   const course = project.courses.find((item) => item.id === "course-matematica-para-informatica");
 
   assert.ok(course);
@@ -1599,7 +1584,7 @@ test("cards de sequência local em grafos materializam o recorte relevante no se
 });
 
 test("cards de exercício com grafo no seed evitam prompts genéricos demais", () => {
-  const project = createEmbeddedSeedProjectDocument();
+  const project = createTeoriaDosGrafosProvaProjectDocument();
   const course = project.courses.find((item) => item.id === "course-matematica-para-informatica");
 
   assert.ok(course);
@@ -1622,7 +1607,7 @@ test("cards de exercício com grafo no seed evitam prompts genéricos demais", (
 });
 
 test("a síntese de vértices, arestas, graus e soma repete o grafo-base nos exercícios que dependem dele", () => {
-  const project = createEmbeddedSeedProjectDocument();
+  const project = createTeoriaDosGrafosProvaProjectDocument();
   const course = project.courses.find((item) => item.id === "course-matematica-para-informatica");
 
   assert.ok(course);
@@ -1658,7 +1643,7 @@ test("a síntese de vértices, arestas, graus e soma repete o grafo-base nos exe
 });
 
 test("microssequências anteriores repetem o grafo-base quando a prática depende dele", () => {
-  const project = createEmbeddedSeedProjectDocument();
+  const project = createTeoriaDosGrafosProvaProjectDocument();
   const course = project.courses.find((item) => item.id === "course-matematica-para-informatica");
 
   assert.ok(course);

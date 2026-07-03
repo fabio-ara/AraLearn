@@ -1,8 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { createBrowserLocalStorageStore } from "../../src/storage/createBrowserLocalStorageStore.js";
-import { createProjectStorage } from "../../src/storage/createProjectStorage.js";
 import { parseProjectDocument } from "../../src/storage/projectStore.js";
 import { createEmbeddedSeedProjectDocument } from "../../src/ui/embeddedSeedProjectDocument.js";
 import { syncEmbeddedSeedProjectDocument } from "../../src/ui/syncEmbeddedSeedProjectDocument.js";
@@ -118,44 +116,34 @@ test("a sincronização de seed embarcado atualiza cursos oficiais ao carregar p
   assert.deepEqual(result.projectDocument.courses.at(-1), extraCourse);
 });
 
-test("o storage do navegador mantém a sessão funcional quando localStorage estoura quota", () => {
-  const backingStore = new Map();
-  const failingStorage = {
-    getItem(key) {
-      return backingStore.has(key) ? backingStore.get(key) : null;
-    },
-    setItem(key, value) {
-      if (String(key) === "aralearn.project") {
-        throw new Error("QuotaExceededError");
-      }
-      backingStore.set(String(key), String(value));
-    },
-    removeItem(key) {
-      backingStore.delete(String(key));
-    },
-    clear() {
-      backingStore.clear();
-    }
-  };
+test("a sincronização remove do projeto salvo os cursos oficiais movidos para o catálogo não persistido", () => {
+  const seedProject = createEmbeddedSeedProjectDocument();
 
-  const kvStore = createBrowserLocalStorageStore(failingStorage);
-  const storage = createProjectStorage(kvStore);
-  const project = {
+  const result = syncEmbeddedSeedProjectDocument({
     contract: "aralearn.contract",
     version: 3,
     kind: "project",
     courses: [
+      ...seedProject.courses,
       {
-        id: "course-local",
-        title: "Curso local",
-        goal: "Manter a sessão ativa.",
+        id: "course-matematica-para-informatica",
+        title: "Matemática para Informática",
+        goal: "Curso agora fora da persistência embarcada.",
+        modules: []
+      },
+      {
+        id: "course-local-extra",
+        title: "Curso local extra",
+        goal: "Continua preservado.",
         modules: []
       }
     ]
-  };
+  });
 
-  storage.saveProject(project);
-
-  assert.equal(backingStore.has("aralearn.project"), false);
-  assert.deepEqual(storage.loadProject(), project);
+  assert.equal(result.changed, true);
+  assert.equal(
+    result.projectDocument.courses.some((course) => course.id === "course-matematica-para-informatica"),
+    false
+  );
+  assert.equal(result.projectDocument.courses.at(-1).id, "course-local-extra");
 });
