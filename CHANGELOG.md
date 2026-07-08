@@ -4,6 +4,16 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ## [Unreleased]
 
+## [0.0.6] - 2026-07-08
+
+### Changed
+
+- expansão do curso embarcado `Microsoft Azure AI Fundamentals (AI-900)` das Partes 01 a 04 para as Partes 01 a 12, agora com `9` módulos, `12` lições, `72` microssequências e `858` cards ativos;
+- integração das Partes 05 a 12 feita sobre o seed já saneado das Partes 01 a 04, evitando reintroduzir tabelas vazias e outros defeitos estruturais presentes nas entregas brutas iniciais;
+- correção estrutural do runtime e do contrato para não aceitar mais `table` com linhas vazias ou desalinhadas e para renderizar `tree` como hierarquia real em vez de lista plana;
+- suíte pública atualizada com regressões específicas para o AI-900 expandido e para os cenários de tabela inválida e árvore hierárquica;
+- APK pública de release atualizada com a versão completa do curso AI-900 até a Parte 12 e `versionCode` maior para permitir atualização sobre a linha `0.0.5`.
+
 ## [0.0.5] - 2026-07-03
 
 ### Changed

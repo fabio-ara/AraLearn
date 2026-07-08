@@ -306,6 +306,34 @@ test("table de exercício com exercise inválido falha", () => {
   assert.match(result.structuralErrors.join("\n"), /table de exercício deve usar exercise "choice"/);
 });
 
+test("table com linhas vazias ou desalinhadas falha", () => {
+  const emptyRowResult = structural({
+    position: 1,
+    resource: "table",
+    kind: "theory",
+    exercise: "none",
+    title: "Tabela inválida",
+    columns: ["Coluna A", "Coluna B"],
+    rows: [[]],
+    after: ""
+  });
+  const unevenRowResult = structural({
+    position: 1,
+    resource: "table",
+    kind: "theory",
+    exercise: "none",
+    title: "Tabela inválida",
+    columns: ["Coluna A", "Coluna B"],
+    rows: [["A"]],
+    after: ""
+  });
+
+  assert.equal(emptyRowResult.ok, false);
+  assert.match(emptyRowResult.structuralErrors.join("\n"), /cada linha da table precisa ter ao menos uma célula/);
+  assert.equal(unevenRowResult.ok, false);
+  assert.match(unevenRowResult.structuralErrors.join("\n"), /precisa ter 2 células/);
+});
+
 test("relation_map teórico válido passa", () => {
   const result = structural({
     position: 1,

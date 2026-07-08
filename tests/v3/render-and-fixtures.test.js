@@ -169,6 +169,28 @@ test("o renderer renderiza recurso contextual com escolha no próprio card", () 
   assert.match(html, /Qual linha mostra o caso verdadeiro da conjunção/);
 });
 
+test("o renderer reconstrói tree como hierarquia aninhada", () => {
+  const html = renderCardRuntimeBlocks({
+    position: 1,
+    resource: "tree",
+    kind: "theory",
+    exercise: "none",
+    title: "Árvore",
+    prompt: "Observe a estrutura.",
+    nodes: [
+      { id: "root", label: "workspace", parentId: null, type: "folder" },
+      { id: "src", label: "src", parentId: "root", type: "folder" },
+      { id: "file", label: "index.js", parentId: "src", type: "file" }
+    ],
+    after: ""
+  });
+
+  assert.match(html, /runtime-tree-block/);
+  assert.equal((html.match(/<ul class="runtime-tree-list">/g) || []).length, 3);
+  assert.match(html, /runtime-tree-node-chip">dir<\/span><span class="runtime-tree-node-label">workspace/);
+  assert.match(html, /runtime-tree-node-chip">file<\/span><span class="runtime-tree-node-label">index\.js/);
+});
+
 test("o renderer renderiza card composto com recursos repetidos", () => {
   const html = renderCardRuntimeBlocks({
     position: 1,
@@ -1033,9 +1055,9 @@ test("o seed embutido oficial mantém os cursos embarcados já materializados", 
     .flatMap((lesson) => lesson.microsequences || []);
 
   assert.equal(ai900Course.title, "Microsoft Azure AI Fundamentals (AI-900)");
-  assert.equal(ai900Course.modules.length, 2);
-  assert.equal(ai900Course.modules.flatMap((moduleValue) => moduleValue.lessons || []).length, 4);
-  assert.equal(ai900Microsequences.length, 24);
+  assert.equal(ai900Course.modules.length, 9);
+  assert.equal(ai900Course.modules.flatMap((moduleValue) => moduleValue.lessons || []).length, 12);
+  assert.equal(ai900Microsequences.length, 72);
   assert.equal(
     ai900Microsequences.reduce((count, microsequence) => {
       const active =
@@ -1043,8 +1065,27 @@ test("o seed embutido oficial mantém os cursos embarcados já materializados", 
         (microsequence.versions || []).at(-1);
       return count + ((active?.cards || []).length);
     }, 0),
-    269
+    858
   );
+  const ai900TableProblems = ai900Microsequences.flatMap((microsequence) =>
+    (microsequence.versions || []).flatMap((version) =>
+      (version.cards || [])
+        .filter((card) => card.resource === "table")
+        .flatMap((card) => {
+          const columns = Array.isArray(card.columns) ? card.columns.length : 0;
+          return (card.rows || []).flatMap((row, rowIndex) => {
+            if (!Array.isArray(row) || !row.length) {
+              return [`${card.id}.rows[${rowIndex}] vazia`];
+            }
+            if (columns && row.length !== columns) {
+              return [`${card.id}.rows[${rowIndex}] com ${row.length} células para ${columns} colunas`];
+            }
+            return [];
+          });
+        })
+    )
+  );
+  assert.deepEqual(ai900TableProblems, []);
   ai900Microsequences.forEach((microsequence) => {
     (microsequence.versions || []).forEach((version) => {
       assert.equal(version.source, "manual");

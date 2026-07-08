@@ -393,6 +393,21 @@ function validateTable(card, path, errors) {
   }
   if (!Array.isArray(card?.rows) || !card.rows.length) {
     pushError(errors, `${path}.rows`, "table precisa de rows.");
+  } else {
+    const expectedColumns = Array.isArray(card?.columns) ? card.columns.length : 0;
+    card.rows.forEach((row, rowIndex) => {
+      if (!Array.isArray(row) || !row.length) {
+        pushError(errors, `${path}.rows[${rowIndex}]`, "cada linha da table precisa ter ao menos uma célula.");
+        return;
+      }
+      if (expectedColumns && row.length !== expectedColumns) {
+        pushError(
+          errors,
+          `${path}.rows[${rowIndex}]`,
+          `cada linha da table precisa ter ${expectedColumns} células para acompanhar columns.`
+        );
+      }
+    });
   }
   validateContextualChoiceExercise(card, path, errors);
 }
