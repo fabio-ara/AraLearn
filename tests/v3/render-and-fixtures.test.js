@@ -1055,9 +1055,9 @@ test("o seed embutido oficial mantém os cursos embarcados já materializados", 
     .flatMap((lesson) => lesson.microsequences || []);
 
   assert.equal(ai900Course.title, "Microsoft Azure AI Fundamentals (AI-900)");
-  assert.equal(ai900Course.modules.length, 2);
-  assert.equal(ai900Course.modules.flatMap((moduleValue) => moduleValue.lessons || []).length, 4);
-  assert.equal(ai900Microsequences.length, 24);
+  assert.equal(ai900Course.modules.length, 9);
+  assert.equal(ai900Course.modules.flatMap((moduleValue) => moduleValue.lessons || []).length, 12);
+  assert.equal(ai900Microsequences.length, 72);
   assert.equal(
     ai900Microsequences.reduce((count, microsequence) => {
       const active =
@@ -1065,7 +1065,7 @@ test("o seed embutido oficial mantém os cursos embarcados já materializados", 
         (microsequence.versions || []).at(-1);
       return count + ((active?.cards || []).length);
     }, 0),
-    269
+    858
   );
   const ai900TableProblems = ai900Microsequences.flatMap((microsequence) =>
     (microsequence.versions || []).flatMap((version) =>
