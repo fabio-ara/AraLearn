@@ -2033,15 +2033,69 @@ function renderFlowBlock(block) {
   return renderProjectedFlowchart(block);
 }
 
+function buildRuntimeTreeNodes(nodes = []) {
+  const normalizedNodes = (Array.isArray(nodes) ? nodes : []).map((node, index) => ({
+    id: String(node?.id || `node-${index + 1}`),
+    label: String(node?.label || node?.id || `node-${index + 1}`),
+    parentId: node?.parentId === null || node?.parentId === undefined ? null : String(node.parentId),
+    type: node?.type === "file" ? "file" : "folder",
+    children: [],
+    order: index
+  }));
+  const nodeById = new Map(normalizedNodes.map((node) => [node.id, node]));
+  const roots = [];
+
+  normalizedNodes.forEach((node) => {
+    if (!node.parentId || node.parentId === node.id) {
+      roots.push(node);
+      return;
+    }
+    const parent = nodeById.get(node.parentId);
+    if (!parent) {
+      roots.push(node);
+      return;
+    }
+    parent.children.push(node);
+  });
+
+  return roots.sort((left, right) => left.order - right.order);
+}
+
+function renderRuntimeTreeList(nodes = []) {
+  if (!Array.isArray(nodes) || !nodes.length) {
+    return "";
+  }
+  return (
+    '<ul class="runtime-tree-list">' +
+    nodes.map((node) => {
+      const childHtml = renderRuntimeTreeList(node.children);
+      return (
+        '<li class="runtime-tree-item" data-node-id="' +
+        escapeHtml(node.id) +
+        '" data-type="' +
+        escapeHtml(node.type) +
+        '">' +
+        '<div class="runtime-tree-entry">' +
+        '<span class="runtime-tree-node-chip">' +
+        escapeHtml(node.type === "folder" ? "dir" : "file") +
+        "</span>" +
+        '<span class="runtime-tree-node-label">' +
+        escapeHtml(node.label) +
+        "</span></div>" +
+        childHtml +
+        "</li>"
+      );
+    }).join("") +
+    "</ul>"
+  );
+}
+
 function renderTreeBlock(block) {
   return (
     '<div class="runtime-block runtime-tree-block">' +
     (block?.prompt ? `<p class="runtime-tree-prompt">${renderMarkdownInline(block.prompt)}</p>` : "") +
-    '<ul class="runtime-tree-list">' +
-    (Array.isArray(block?.nodes) ? block.nodes : [])
-      .map((node) => `<li data-node-id="${escapeHtml(node?.id || "")}" data-parent-id="${escapeHtml(node?.parentId ?? "")}" data-type="${escapeHtml(node?.type || "folder")}">${escapeHtml(node?.label || node?.id || "")}</li>`)
-      .join("") +
-    "</ul></div>"
+    renderRuntimeTreeList(buildRuntimeTreeNodes(block?.nodes)) +
+    "</div>"
   );
 }
 

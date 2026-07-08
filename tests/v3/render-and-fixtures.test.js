@@ -169,6 +169,28 @@ test("o renderer renderiza recurso contextual com escolha no próprio card", () 
   assert.match(html, /Qual linha mostra o caso verdadeiro da conjunção/);
 });
 
+test("o renderer reconstrói tree como hierarquia aninhada", () => {
+  const html = renderCardRuntimeBlocks({
+    position: 1,
+    resource: "tree",
+    kind: "theory",
+    exercise: "none",
+    title: "Árvore",
+    prompt: "Observe a estrutura.",
+    nodes: [
+      { id: "root", label: "workspace", parentId: null, type: "folder" },
+      { id: "src", label: "src", parentId: "root", type: "folder" },
+      { id: "file", label: "index.js", parentId: "src", type: "file" }
+    ],
+    after: ""
+  });
+
+  assert.match(html, /runtime-tree-block/);
+  assert.equal((html.match(/<ul class="runtime-tree-list">/g) || []).length, 3);
+  assert.match(html, /runtime-tree-node-chip">dir<\/span><span class="runtime-tree-node-label">workspace/);
+  assert.match(html, /runtime-tree-node-chip">file<\/span><span class="runtime-tree-node-label">index\.js/);
+});
+
 test("o renderer renderiza card composto com recursos repetidos", () => {
   const html = renderCardRuntimeBlocks({
     position: 1,
@@ -1045,6 +1067,25 @@ test("o seed embutido oficial mantém os cursos embarcados já materializados", 
     }, 0),
     269
   );
+  const ai900TableProblems = ai900Microsequences.flatMap((microsequence) =>
+    (microsequence.versions || []).flatMap((version) =>
+      (version.cards || [])
+        .filter((card) => card.resource === "table")
+        .flatMap((card) => {
+          const columns = Array.isArray(card.columns) ? card.columns.length : 0;
+          return (card.rows || []).flatMap((row, rowIndex) => {
+            if (!Array.isArray(row) || !row.length) {
+              return [`${card.id}.rows[${rowIndex}] vazia`];
+            }
+            if (columns && row.length !== columns) {
+              return [`${card.id}.rows[${rowIndex}] com ${row.length} células para ${columns} colunas`];
+            }
+            return [];
+          });
+        })
+    )
+  );
+  assert.deepEqual(ai900TableProblems, []);
   ai900Microsequences.forEach((microsequence) => {
     (microsequence.versions || []).forEach((version) => {
       assert.equal(version.source, "manual");

@@ -4728,9 +4728,21 @@
                         "Exemplo em previsão de vendas"
                       ],
                       "rows": [
-                        [],
-                        [],
-                        []
+                        [
+                          "feature",
+                          "entrada usada pelo modelo",
+                          "temperatura, promoção e dia da semana"
+                        ],
+                        [
+                          "label",
+                          "alvo conhecido no treino",
+                          "quantidade de vendas do dia"
+                        ],
+                        [
+                          "nova observação",
+                          "caso que recebe inferência",
+                          "dados de amanhã ainda sem venda observada"
+                        ]
                       ],
                       "after": "`Feature` pode ser entendido como pista de entrada; `label` é o valor-alvo usado como referência no treino supervisionado."
                     },
@@ -5149,9 +5161,21 @@
                         "Tipo provável"
                       ],
                       "rows": [
-                        [],
-                        [],
-                        []
+                        [
+                          "Prever preço de imóvel",
+                          "sim",
+                          "supervisionado (regressão)"
+                        ],
+                        [
+                          "Classificar e-mail como spam ou não spam",
+                          "sim",
+                          "supervisionado (classificação)"
+                        ],
+                        [
+                          "Descobrir grupos de clientes semelhantes",
+                          "não",
+                          "não supervisionado (`clustering`)"
+                        ]
                       ],
                       "after": "A primeira pergunta de prova é: existe alvo conhecido para aprender? Depois vem a natureza da saída: número, classe ou grupo descoberto."
                     },
@@ -5415,9 +5439,21 @@
                         "Pegadinha"
                       ],
                       "rows": [
-                        [],
-                        [],
-                        []
+                        [
+                          "`MAE`",
+                          "erro médio absoluto",
+                          "é intuitiva, mas não penaliza erros grandes ao quadrado"
+                        ],
+                        [
+                          "`MSE`",
+                          "média dos erros ao quadrado",
+                          "penaliza mais fortemente erros grandes"
+                        ],
+                        [
+                          "`RMSE`",
+                          "raiz do erro quadrático médio",
+                          "volta à escala do alvo, mas continua sensível a erros altos"
+                        ]
                       ],
                       "after": "`MAE`, `MSE` e `RMSE` pertencem ao vocabulário de erro numérico, não à avaliação principal de classes."
                     },
@@ -5711,9 +5747,24 @@
                         "Métrica comum"
                       ],
                       "rows": [
-                        [],
-                        [],
-                        []
+                        [
+                          "Regressão",
+                          "número",
+                          "prever demanda semanal",
+                          "`MAE` ou `RMSE`"
+                        ],
+                        [
+                          "Classificação binária",
+                          "duas classes",
+                          "fraude ou legítima",
+                          "`precision`, `recall` ou `F1-score`"
+                        ],
+                        [
+                          "Classificação multiclasse",
+                          "três ou mais classes",
+                          "baixo, médio ou alto",
+                          "acurácia ou `F1-score`"
+                        ]
                       ],
                       "after": "A comparação separa saída numérica de saída categórica e evita trocar métrica de regressão por métrica de classificação."
                     },
@@ -6076,9 +6127,21 @@
                         "`Clustering`"
                       ],
                       "rows": [
-                        [],
-                        [],
-                        []
+                        [
+                          "Há categorias corretas no treino?",
+                          "sim",
+                          "não"
+                        ],
+                        [
+                          "Objetivo",
+                          "atribuir uma classe conhecida",
+                          "descobrir grupos por similaridade"
+                        ],
+                        [
+                          "Exemplo",
+                          "detectar spam",
+                          "segmentar clientes sem rótulos prévios"
+                        ]
                       ],
                       "after": "A confusão comum ocorre porque ambos separam observações. A diferença é se as categorias já existiam como `labels`."
                     },
@@ -6437,9 +6500,21 @@
                         "Cuidado de prova"
                       ],
                       "rows": [
-                        [],
-                        [],
-                        []
+                        [
+                          "`CNN`",
+                          "visão computacional e imagens",
+                          "não é a única opção para toda tarefa visual"
+                        ],
+                        [
+                          "`RNN` ou sequência",
+                          "dados sequenciais e linguagem ao longo do tempo",
+                          "não significa que todo NLP moderno use RNN"
+                        ],
+                        [
+                          "transformers",
+                          "contexto amplo em linguagem e IA generativa",
+                          "não se resumem a chatbot nem dispensam avaliação"
+                        ]
                       ],
                       "after": "A Parte 03 usa esses termos para reconhecer cenários, não para treinar arquitetura em código."
                     },

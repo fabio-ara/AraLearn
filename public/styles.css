@@ -2821,6 +2821,72 @@ button {
   background: rgba(24, 18, 13, 0.94);
 }
 
+.runtime-tree-block {
+  display: grid;
+  gap: 10px;
+}
+
+.runtime-tree-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.runtime-tree-item > .runtime-tree-list {
+  margin-top: 6px;
+  margin-left: 12px;
+  padding-left: 14px;
+  border-left: 1px solid rgba(228, 186, 104, 0.18);
+}
+
+.runtime-tree-entry {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  max-width: 100%;
+  padding: 6px 10px;
+  border: 1px solid rgba(116, 90, 57, 0.48);
+  border-radius: 12px;
+  background:
+    linear-gradient(180deg, rgba(34, 27, 20, 0.94), rgba(21, 17, 13, 0.98)),
+    radial-gradient(circle at top, rgba(228, 186, 104, 0.04), transparent 56%);
+  box-shadow: inset 0 1px 0 rgba(255, 244, 225, 0.04);
+}
+
+.runtime-tree-item[data-type="file"] > .runtime-tree-entry {
+  background:
+    linear-gradient(180deg, rgba(27, 22, 18, 0.92), rgba(18, 14, 11, 0.98)),
+    radial-gradient(circle at top, rgba(228, 186, 104, 0.03), transparent 56%);
+}
+
+.runtime-tree-node-chip {
+  flex: 0 0 auto;
+  min-width: 32px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  border: 1px solid rgba(228, 186, 104, 0.22);
+  background: rgba(228, 186, 104, 0.08);
+  color: #f2d79d;
+  font-family: var(--font-ui);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-align: center;
+}
+
+.runtime-tree-node-label {
+  min-width: 0;
+  color: #f5ead5;
+  font-size: 0.92rem;
+  line-height: 1.42;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
 .runtime-table-cell-gap {
   font-size: 0.9rem;
   line-height: 1.42;
