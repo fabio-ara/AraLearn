@@ -11,6 +11,12 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 - curso embarcado `Concurso Dataprev`, com o módulo inicial `Segurança da Informação`, composto por `8` lições, `71` microssequências e `423` cards validados;
 - APK pública atualizada com o novo curso e `versionCode` maior para permitir atualização sobre a versão `0.0.6`.
 
+### Changed
+
+- o curso embarcado passa a se chamar `Dataprev: Analista de Processamento` e tem objetivo alinhado à preparação completa para o cargo;
+- o módulo inicial `Segurança da Informação` permanece estruturado nos dez tópicos do edital: políticas, procedimentos e gerenciamento, redes, vulnerabilidades e ataques, criptografia, softwares maliciosos, certificação digital, LGPD, IDS/IPS/SIEM e NIST Cybersecurity Framework 1.1;
+- APK pública da versão `0.0.7` atualizada com `versionCode` maior para permitir atualização sobre a primeira publicação da mesma versão.
+
 ## [0.0.6] - 2026-07-08
 
 ### Changed
