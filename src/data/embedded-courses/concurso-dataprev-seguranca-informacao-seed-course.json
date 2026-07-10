@@ -1,7 +1,7 @@
 {
   "id": "course-dataprev-2026-analista-processamento-seguranca-informacao",
-  "title": "Concurso Dataprev",
-  "goal": "Desenvolver domínio conceitual e capacidade de aplicação em Segurança da Informação para o conteúdo específico do cargo de Analista de Processamento da Dataprev.",
+  "title": "Dataprev: Analista de Processamento",
+  "goal": "Preparação para o cargo de Analista de Processamento da Dataprev: Segurança da Informação, Gestão de Servidores, Computação em Nuvem e Virtualização, Redes de Computadores, Banco de Dados, Inteligência de Negócios e Gestão e Governança de Tecnologia da Informação.",
   "modules": [
     {
       "id": "module-seguranca-informacao",
