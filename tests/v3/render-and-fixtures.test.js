@@ -1060,11 +1060,28 @@ test("o seed embutido oficial mantém os cursos embarcados já materializados", 
     .flatMap((moduleValue) => moduleValue.lessons || [])
     .flatMap((lesson) => lesson.microsequences || []);
 
-  assert.equal(dataprevCourse.title, "Concurso Dataprev");
+  assert.equal(dataprevCourse.title, "Dataprev: Analista de Processamento");
+  assert.equal(
+    dataprevCourse.goal,
+    "Preparação para o cargo de Analista de Processamento da Dataprev: Segurança da Informação, Gestão de Servidores, Computação em Nuvem e Virtualização, Redes de Computadores, Banco de Dados, Inteligência de Negócios e Gestão e Governança de Tecnologia da Informação."
+  );
   assert.equal(dataprevCourse.modules.length, 1);
   assert.equal(dataprevCourse.modules[0].title, "Segurança da Informação");
   assert.equal(dataprevCourse.modules[0].lessons.length, 8);
   assert.equal(dataprevMicrosequences.length, 71);
+  assert.deepEqual(
+    dataprevCourse.modules[0].lessons.map((lesson) => lesson.title),
+    [
+      "Fundamentos, pilares e vocabulário de segurança",
+      "Políticas, procedimentos e gerenciamento de segurança",
+      "Segurança de redes e redes sem fio",
+      "Vulnerabilidades, ataques e softwares maliciosos",
+      "Criptografia e certificação digital",
+      "LGPD aplicada à Segurança da Informação",
+      "IDS, IPS e SIEM",
+      "NIST Cybersecurity Framework 1.1 e revisão integrada"
+    ]
+  );
 
   const ai900Microsequences = ai900Course.modules
     .flatMap((moduleValue) => moduleValue.lessons || [])
