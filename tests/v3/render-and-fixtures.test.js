@@ -1010,16 +1010,21 @@ test("o seed embutido oficial mantém os cursos embarcados já materializados", 
   const logicaCourse = project.courses.find((course) => course.id === "course-logica-de-programacao");
   const fundamentosCourse = project.courses.find((course) => course.id === "course-fundamentos-ia-analise-dados");
   const ai900Course = project.courses.find((course) => course.id === "course-microsoft-azure-ai-fundamentals-ai900");
+  const dataprevCourse = project.courses.find(
+    (course) => course.id === "course-dataprev-2026-analista-processamento-seguranca-informacao"
+  );
 
   assert.ok(logicaCourse);
   assert.ok(fundamentosCourse);
   assert.ok(ai900Course);
+  assert.ok(dataprevCourse);
   assert.deepEqual(
     fs
       .readdirSync(path.resolve(__dirname, "../../src/data/embedded-courses"))
       .filter((fileName) => fileName.endsWith(".json") && fileName !== "embedded-seed-manifest.json")
       .sort(),
     [
+      "concurso-dataprev-seguranca-informacao-seed-course.json",
       "fundamentos-ia-analise-dados-seed-course.json",
       "logica-programacao-seed-course.json",
       "microsoft-azure-ai-fundamentals-ai900-seed-course.json"
@@ -1046,9 +1051,20 @@ test("o seed embutido oficial mantém os cursos embarcados já materializados", 
   assert.deepEqual(manifest.courseFiles, [
     "logica-programacao-seed-course.json",
     "fundamentos-ia-analise-dados-seed-course.json",
-    "microsoft-azure-ai-fundamentals-ai900-seed-course.json"
+    "microsoft-azure-ai-fundamentals-ai900-seed-course.json",
+    "concurso-dataprev-seguranca-informacao-seed-course.json"
   ]);
   assert.equal(project.courses.length, manifest.courseFiles.length);
+
+  const dataprevMicrosequences = dataprevCourse.modules
+    .flatMap((moduleValue) => moduleValue.lessons || [])
+    .flatMap((lesson) => lesson.microsequences || []);
+
+  assert.equal(dataprevCourse.title, "Concurso Dataprev");
+  assert.equal(dataprevCourse.modules.length, 1);
+  assert.equal(dataprevCourse.modules[0].title, "Segurança da Informação");
+  assert.equal(dataprevCourse.modules[0].lessons.length, 8);
+  assert.equal(dataprevMicrosequences.length, 71);
 
   const ai900Microsequences = ai900Course.modules
     .flatMap((moduleValue) => moduleValue.lessons || [])
