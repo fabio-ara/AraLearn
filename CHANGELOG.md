@@ -4,6 +4,14 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ## [Unreleased]
 
+## [0.0.8] - 2026-07-10
+
+### Changed
+
+- o curso embarcado passa a se chamar `Dataprev: Analista de Processamento` e tem objetivo alinhado à preparação completa para o cargo;
+- o módulo inicial `Segurança da Informação` permanece estruturado nos dez tópicos do edital: políticas, procedimentos e gerenciamento, redes, vulnerabilidades e ataques, criptografia, softwares maliciosos, certificação digital, LGPD, IDS/IPS/SIEM e NIST Cybersecurity Framework 1.1;
+- APK pública atualizada com `versionCode` maior para permitir atualização sobre a versão `0.0.7`.
+
 ## [0.0.7] - 2026-07-10
 
 ### Added
