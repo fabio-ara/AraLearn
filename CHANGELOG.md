@@ -4,6 +4,13 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ## [Unreleased]
 
+## [0.0.7] - 2026-07-10
+
+### Added
+
+- curso embarcado `Concurso Dataprev`, com o módulo inicial `Segurança da Informação`, composto por `8` lições, `71` microssequências e `423` cards validados;
+- APK pública atualizada com o novo curso e `versionCode` maior para permitir atualização sobre a versão `0.0.6`.
+
 ## [0.0.6] - 2026-07-08
 
 ### Changed
