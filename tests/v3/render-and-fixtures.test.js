@@ -1059,16 +1059,18 @@ test("o seed embutido oficial mantém os cursos embarcados já materializados", 
   const dataprevMicrosequences = dataprevCourse.modules
     .flatMap((moduleValue) => moduleValue.lessons || [])
     .flatMap((lesson) => lesson.microsequences || []);
+  const dataprevServerLessons = dataprevCourse.modules[1].lessons || [];
+  const dataprevServerMicrosequences = dataprevServerLessons.flatMap((lesson) => lesson.microsequences || []);
 
   assert.equal(dataprevCourse.title, "Dataprev: Analista de Processamento");
   assert.equal(
     dataprevCourse.goal,
     "Preparação para o cargo de Analista de Processamento da Dataprev: Segurança da Informação, Gestão de Servidores, Computação em Nuvem e Virtualização, Redes de Computadores, Banco de Dados, Inteligência de Negócios e Gestão e Governança de Tecnologia da Informação."
   );
-  assert.equal(dataprevCourse.modules.length, 1);
+  assert.equal(dataprevCourse.modules.length, 2);
   assert.equal(dataprevCourse.modules[0].title, "Segurança da Informação");
   assert.equal(dataprevCourse.modules[0].lessons.length, 8);
-  assert.equal(dataprevMicrosequences.length, 71);
+  assert.equal(dataprevMicrosequences.length, 135);
   assert.deepEqual(
     dataprevCourse.modules[0].lessons.map((lesson) => lesson.title),
     [
@@ -1081,6 +1083,19 @@ test("o seed embutido oficial mantém os cursos embarcados já materializados", 
       "IDS, IPS e SIEM",
       "NIST Cybersecurity Framework 1.1 e revisão integrada"
     ]
+  );
+  assert.equal(dataprevCourse.modules[1].id, "module-gestao-de-servidores");
+  assert.equal(dataprevCourse.modules[1].title, "Gestão de Servidores");
+  assert.equal(dataprevServerLessons.length, 8);
+  assert.equal(dataprevServerMicrosequences.length, 64);
+  assert.equal(
+    dataprevServerMicrosequences.reduce(
+      (count, microsequence) =>
+        count +
+        ((microsequence.versions || []).find((version) => version.id === microsequence.activeVersion)?.cards || []).length,
+      0
+    ),
+    322
   );
 
   const ai900Microsequences = ai900Course.modules
