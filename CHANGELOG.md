@@ -9,6 +9,7 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 ### Added
 
 - curso embarcado `Concurso Dataprev`, com o módulo inicial `Segurança da Informação`, composto por `8` lições, `71` microssequências e `423` cards validados;
+- módulo `Gestão de Servidores` no curso `Dataprev: Analista de Processamento`, com `8` lições, `64` microssequências e `322` cards sobre sistemas operacionais, Linux, Windows Server, diretórios, automação, contêineres, Docker, Kubernetes e Rancher;
 - APK pública atualizada com o novo curso e `versionCode` maior para permitir atualização sobre a versão `0.0.6`.
 
 ### Changed
