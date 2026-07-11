@@ -14,6 +14,7 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ### Changed
 
+- o seed persistido passa a conter `Microsoft Azure AI Fundamentals (AI-900)` e `Dataprev: Analista de Processamento`; `Lógica de Programação 1` e `Fundamentos de IA e Análise de Dados` ficam disponíveis no catálogo não persistido;
 - o curso embarcado passa a se chamar `Dataprev: Analista de Processamento` e tem objetivo alinhado à preparação completa para o cargo;
 - o módulo inicial `Segurança da Informação` permanece estruturado nos dez tópicos do edital: políticas, procedimentos e gerenciamento, redes, vulnerabilidades e ataques, criptografia, softwares maliciosos, certificação digital, LGPD, IDS/IPS/SIEM e NIST Cybersecurity Framework 1.1;
 - APK pública da versão `0.0.7` atualizada com `versionCode` maior para permitir atualização sobre a primeira publicação da mesma versão.
