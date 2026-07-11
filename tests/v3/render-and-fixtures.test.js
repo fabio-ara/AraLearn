@@ -896,14 +896,13 @@ test("a home renderiza abrir curso com ids reais do contrato v3", () => {
   });
 
   assert.match(html, /data-action="open-course"/);
-  assert.match(html, /data-course-key="course-logica-de-programacao"/);
-  assert.match(html, /data-course-key="course-fundamentos-ia-analise-dados"/);
   assert.match(html, /data-course-key="course-microsoft-azure-ai-fundamentals-ai900"/);
+  assert.match(html, /data-course-key="course-dataprev-2026-analista-processamento-seguranca-informacao"/);
 });
 
 test("o painel de geração mostra cursos por padrão e não exibe chips de microssequência", () => {
   const project = createEmbeddedSeedProjectDocument();
-  const course = project.courses.find((item) => item.id === "course-logica-de-programacao");
+  const course = project.courses.find((item) => item.id === "course-microsoft-azure-ai-fundamentals-ai900");
   const moduleValue = course?.modules?.[0];
   const lesson = moduleValue?.lessons?.[0];
   const html = renderGenerationPanelOverlay({
@@ -936,7 +935,7 @@ test("o painel de geração mostra cursos por padrão e não exibe chips de micr
   });
 
   assert.match(html, /data-action="select-existing-course"/);
-  assert.match(html, /data-course-title="Lógica de Programação 1"/);
+  assert.match(html, /data-course-title="Microsoft Azure AI Fundamentals \(AI-900\)"/);
   assert.match(html, /data-action="select-existing-module"/);
   assert.match(html, new RegExp(`data-module-title="${moduleValue?.title}"`));
   assert.match(html, /data-action="select-existing-lesson"/);
@@ -992,11 +991,11 @@ test("o painel de geração embute o progresso e renderiza CTA final como botão
 
 test("a navegação de curso resolve seleção válida a partir de ids do v3", () => {
   const project = createEmbeddedSeedProjectDocument();
-  const navigationState = buildCourseNavigationState(project, "course-logica-de-programacao");
+  const navigationState = buildCourseNavigationState(project, "course-microsoft-azure-ai-fundamentals-ai900");
 
   assert.ok(navigationState);
   assert.equal(navigationState.view, "course");
-  assert.equal(navigationState.selection.courseKey, "course-logica-de-programacao");
+  assert.equal(navigationState.selection.courseKey, "course-microsoft-azure-ai-fundamentals-ai900");
   assert.equal(typeof navigationState.selection.moduleKey, "string");
 });
 
@@ -1007,15 +1006,13 @@ test("o seed embutido oficial mantém os cursos embarcados já materializados", 
   const praticasCourse = loadNonPersistedCourseFromJson("praticas-ferramentas-seed-course.json");
   const organizacaoCourse = loadNonPersistedCourseFromJson("organizacao-arquitetura-computadores-seed-course.json");
   const frameworkCourse = loadNonPersistedCourseFromJson("framework-ia-generativa-seed-course.json");
-  const logicaCourse = project.courses.find((course) => course.id === "course-logica-de-programacao");
-  const fundamentosCourse = project.courses.find((course) => course.id === "course-fundamentos-ia-analise-dados");
+  const logicaCourse = loadNonPersistedCourseFromJson("logica-programacao-seed-course.json");
+  const fundamentosCourse = loadNonPersistedCourseFromJson("fundamentos-ia-analise-dados-seed-course.json");
   const ai900Course = project.courses.find((course) => course.id === "course-microsoft-azure-ai-fundamentals-ai900");
   const dataprevCourse = project.courses.find(
     (course) => course.id === "course-dataprev-2026-analista-processamento-seguranca-informacao"
   );
 
-  assert.ok(logicaCourse);
-  assert.ok(fundamentosCourse);
   assert.ok(ai900Course);
   assert.ok(dataprevCourse);
   assert.deepEqual(
@@ -1024,9 +1021,7 @@ test("o seed embutido oficial mantém os cursos embarcados já materializados", 
       .filter((fileName) => fileName.endsWith(".json") && fileName !== "embedded-seed-manifest.json")
       .sort(),
     [
-      "concurso-dataprev-seguranca-informacao-seed-course.json",
-      "fundamentos-ia-analise-dados-seed-course.json",
-      "logica-programacao-seed-course.json",
+      "dataprev-analista-processamento-seed-course.json",
       "microsoft-azure-ai-fundamentals-ai900-seed-course.json"
     ]
   );
@@ -1037,6 +1032,8 @@ test("o seed embutido oficial mantém os cursos embarcados já materializados", 
       .sort(),
     [
       "framework-ia-generativa-seed-course.json",
+      "fundamentos-ia-analise-dados-seed-course.json",
+      "logica-programacao-seed-course.json",
       "organizacao-arquitetura-computadores-seed-course.json",
       "praticas-ferramentas-seed-course.json",
       "teoria-dos-grafos-prova.json"
@@ -1044,15 +1041,15 @@ test("o seed embutido oficial mantém os cursos embarcados já materializados", 
   );
   assert.deepEqual(nonPersistedManifest.courseFiles, [
     "teoria-dos-grafos-prova.json",
+    "logica-programacao-seed-course.json",
+    "fundamentos-ia-analise-dados-seed-course.json",
     "praticas-ferramentas-seed-course.json",
     "organizacao-arquitetura-computadores-seed-course.json",
     "framework-ia-generativa-seed-course.json"
   ]);
   assert.deepEqual(manifest.courseFiles, [
-    "logica-programacao-seed-course.json",
-    "fundamentos-ia-analise-dados-seed-course.json",
     "microsoft-azure-ai-fundamentals-ai900-seed-course.json",
-    "concurso-dataprev-seguranca-informacao-seed-course.json"
+    "dataprev-analista-processamento-seed-course.json"
   ]);
   assert.equal(project.courses.length, manifest.courseFiles.length);
 
@@ -1405,8 +1402,7 @@ test("o seed de Matemática para Informática mantém textos visíveis focados n
 });
 
 test("o seed de Fundamentos evita texto de bastidor e vocabulário proibido nos textos visíveis", () => {
-  const project = createEmbeddedSeedProjectDocument();
-  const course = project.courses.find((item) => item.id === "course-fundamentos-ia-analise-dados");
+  const course = loadNonPersistedCourseFromJson("fundamentos-ia-analise-dados-seed-course.json");
 
   assert.ok(course);
 
@@ -1457,8 +1453,7 @@ test("o seed de Fundamentos evita texto de bastidor e vocabulário proibido nos 
 });
 
 test("o seed de Fundamentos também remove texto de bastidor dos metadados internos", () => {
-  const project = createEmbeddedSeedProjectDocument();
-  const course = project.courses.find((item) => item.id === "course-fundamentos-ia-analise-dados");
+  const course = loadNonPersistedCourseFromJson("fundamentos-ia-analise-dados-seed-course.json");
 
   assert.ok(course);
 
@@ -1499,8 +1494,7 @@ test("o seed de Fundamentos também remove texto de bastidor dos metadados inter
 });
 
 test("exercícios de Fundamentos que dependem de contexto mostrado trazem esse contexto no próprio card", () => {
-  const project = createEmbeddedSeedProjectDocument();
-  const course = project.courses.find((item) => item.id === "course-fundamentos-ia-analise-dados");
+  const course = loadNonPersistedCourseFromJson("fundamentos-ia-analise-dados-seed-course.json");
 
   assert.ok(course);
 
@@ -1545,8 +1539,7 @@ test("exercícios de Fundamentos que dependem de contexto mostrado trazem esse c
 });
 
 test("cards de Fundamentos com resultados globais da base repetem o contexto no próprio card", () => {
-  const project = createEmbeddedSeedProjectDocument();
-  const course = project.courses.find((item) => item.id === "course-fundamentos-ia-analise-dados");
+  const course = loadNonPersistedCourseFromJson("fundamentos-ia-analise-dados-seed-course.json");
 
   assert.ok(course);
 
@@ -1576,8 +1569,7 @@ test("cards de Fundamentos com resultados globais da base repetem o contexto no 
 });
 
 test("o seed de Fundamentos não mantém lacunas em after nem em afterBlocks", () => {
-  const project = createEmbeddedSeedProjectDocument();
-  const course = project.courses.find((item) => item.id === "course-fundamentos-ia-analise-dados");
+  const course = loadNonPersistedCourseFromJson("fundamentos-ia-analise-dados-seed-course.json");
 
   assert.ok(course);
 
@@ -1889,8 +1881,7 @@ test("microssequências anteriores repetem o grafo-base quando a prática depend
 });
 
 test("o seed de Lógica de Programação evita linguagem editorial interna nos textos visíveis", () => {
-  const project = createEmbeddedSeedProjectDocument();
-  const course = project.courses.find((item) => item.id === "course-logica-de-programacao");
+  const course = loadNonPersistedCourseFromJson("logica-programacao-seed-course.json");
 
   assert.ok(course);
   assert.doesNotMatch(course.title, /prova|simulado|professor|disciplina/i);
@@ -1911,8 +1902,7 @@ test("o seed de Lógica de Programação evita linguagem editorial interna nos t
 });
 
 test("o seed de Lógica de Programação preserva quebra de linha em cards de code e destaca sintaxe inline em paragraph", () => {
-  const project = createEmbeddedSeedProjectDocument();
-  const course = project.courses.find((item) => item.id === "course-logica-de-programacao");
+  const course = loadNonPersistedCourseFromJson("logica-programacao-seed-course.json");
 
   assert.ok(course);
 
@@ -1934,8 +1924,7 @@ test("o seed de Lógica de Programação preserva quebra de linha em cards de co
 });
 
 test("o seed de Lógica de Programação preserva lacunas de code com case, operador lógico e colchete final", () => {
-  const project = createEmbeddedSeedProjectDocument();
-  const course = project.courses.find((item) => item.id === "course-logica-de-programacao");
+  const course = loadNonPersistedCourseFromJson("logica-programacao-seed-course.json");
 
   assert.ok(course);
 
@@ -1968,8 +1957,7 @@ test("o seed de Lógica de Programação preserva lacunas de code com case, oper
 });
 
 test("o seed de Lógica de Programação mantém lacunas de code com fragmentos exatos de C, sem texto descritivo", () => {
-  const project = createEmbeddedSeedProjectDocument();
-  const course = project.courses.find((item) => item.id === "course-logica-de-programacao");
+  const course = loadNonPersistedCourseFromJson("logica-programacao-seed-course.json");
 
   assert.ok(course);
 
@@ -2012,8 +2000,7 @@ test("o seed de Lógica de Programação mantém lacunas de code com fragmentos 
 });
 
 test("o renderer do seed de Lógica de Programação materializa alternativas multiline de código como blocos", () => {
-  const project = createEmbeddedSeedProjectDocument();
-  const course = project.courses.find((item) => item.id === "course-logica-de-programacao");
+  const course = loadNonPersistedCourseFromJson("logica-programacao-seed-course.json");
 
   assert.ok(course);
 
@@ -2032,8 +2019,7 @@ test("o renderer do seed de Lógica de Programação materializa alternativas mu
 });
 
 test("o seed de Lógica de Programação mantém sintaxe de C destacada e sem crases quebradas nos textos visíveis", () => {
-  const project = createEmbeddedSeedProjectDocument();
-  const course = project.courses.find((item) => item.id === "course-logica-de-programacao");
+  const course = loadNonPersistedCourseFromJson("logica-programacao-seed-course.json");
 
   assert.ok(course);
 
@@ -2099,8 +2085,7 @@ test("o seed de Lógica de Programação mantém sintaxe de C destacada e sem cr
 });
 
 test("o seed de Lógica de Programação corrige vícios recorrentes e fragmentos corrompidos nos cards revisados", () => {
-  const project = createEmbeddedSeedProjectDocument();
-  const course = project.courses.find((item) => item.id === "course-logica-de-programacao");
+  const course = loadNonPersistedCourseFromJson("logica-programacao-seed-course.json");
 
   assert.ok(course);
 
@@ -2144,8 +2129,7 @@ test("o seed de Lógica de Programação corrige vícios recorrentes e fragmento
 });
 
 test("o seed de Lógica de Programação elimina placeholders legados de code e usa o contrato novo", () => {
-  const project = createEmbeddedSeedProjectDocument();
-  const course = project.courses.find((item) => item.id === "course-logica-de-programacao");
+  const course = loadNonPersistedCourseFromJson("logica-programacao-seed-course.json");
 
   assert.ok(course);
 
