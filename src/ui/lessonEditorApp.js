@@ -895,8 +895,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
     activeTextGapPrompt: null,
     cardExerciseLoadVersion: 0,
     continuePopup: null,
-    forwardCardAdvanceLocked: false,
-    forwardCardAdvanceLockToken: 0,
     assistDraft: {
       selectedMode: ASSIST_USER_MODES.EDIT_MICROSEQUENCE,
       activeWorkbenchPane: "preview",
@@ -2427,24 +2425,31 @@ export function createLessonEditorApp({ root, storage, editor }) {
     return true;
   }
 
-  function lockForwardCardAdvance() {
-    const token = state.forwardCardAdvanceLockToken + 1;
-    state.forwardCardAdvanceLockToken = token;
-    state.forwardCardAdvanceLocked = true;
-
-    // Alguns WebViews móveis podem entregar uma segunda ativação depois que o
-    // DOM do card de destino já foi desenhado. A janela curta descarta apenas
-    // essa ativação residual; o avanço legítimo já ocorreu.
-    globalThis.setTimeout(() => {
-      if (state.forwardCardAdvanceLockToken === token) {
-        state.forwardCardAdvanceLocked = false;
-      }
-    }, 900);
-  }
-
   function advanceToNextCard(event) {
     event?.preventDefault();
     event?.stopImmediatePropagation();
+    stepCard(1);
+  }
+
+  function isCurrentContinuePopupOpen(popupEntry = getCurrentPopupRuntimeButtonEntry()) {
+    return (
+      !!popupEntry &&
+      !!state.continuePopup &&
+      state.continuePopup.cardPathKey === buildCardPathKey(state.selection) &&
+      state.continuePopup.blockKey === popupEntry.blockKey
+    );
+  }
+
+  function continueFromPopup(event) {
+    event?.preventDefault();
+    event?.stopImmediatePropagation();
+
+    // A ação do popup pertence estritamente ao card que o abriu. Se o DOM já
+    // mudou, um evento residual não pode virar um novo pedido de avanço.
+    if (!isCurrentContinuePopupOpen()) {
+      return;
+    }
+
     stepCard(1);
   }
 
@@ -2452,10 +2457,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
     // No modo de estudo, o card só pode avançar quando os exercícios do card atual
     // estiverem completos e validados como corretos.
     if (delta > 0) {
-      if (state.forwardCardAdvanceLocked) {
-        return;
-      }
-
       const flowcharts = getCurrentCardRuntimeFlowcharts();
       for (const entry of flowcharts) {
         const projection = entry?.block?.projection;
@@ -2508,11 +2509,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
       }
 
       const popupEntry = getCurrentPopupRuntimeButtonEntry();
-      const popupIsOpen =
-        !!popupEntry &&
-        !!state.continuePopup &&
-        state.continuePopup.cardPathKey === buildCardPathKey(state.selection) &&
-        state.continuePopup.blockKey === popupEntry.blockKey;
+      const popupIsOpen = isCurrentContinuePopupOpen(popupEntry);
 
       if (popupEntry && !popupIsOpen) {
         state.continuePopup = {
@@ -2594,20 +2591,13 @@ export function createLessonEditorApp({ root, storage, editor }) {
         findLessonCardEntryIndex(lessonCards, state.selection)
       );
       if (delta > 0 && currentIndex >= lessonCards.length - 1) {
-        lockForwardCardAdvance();
         goBack();
         return;
-      }
-      if (delta > 0) {
-        lockForwardCardAdvance();
       }
       openCardByIndex(currentIndex + delta);
       return;
     }
 
-    if (delta > 0) {
-      lockForwardCardAdvance();
-    }
     openCardByIndex((Number.isInteger(state.selection.cardIndex) ? state.selection.cardIndex : 0) + delta);
   }
 
@@ -6391,7 +6381,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
     });
 
     root.querySelector("[data-action='prev-card']")?.addEventListener("click", () => stepCard(-1));
-    root.querySelector("[data-action='continue-popup-next']")?.addEventListener("click", advanceToNextCard);
+    root.querySelector("[data-action='continue-popup-next']")?.addEventListener("click", continueFromPopup);
     root.querySelector("[data-action='next-card']")?.addEventListener("click", advanceToNextCard);
     root.querySelector("[data-action='close-study']")?.addEventListener("click", () => goBack());
     root.querySelector("[data-action='go-home']")?.addEventListener("click", () => goBack());
