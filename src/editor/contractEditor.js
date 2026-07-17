@@ -10,8 +10,6 @@ import {
   sanitizeContractCard
 } from "../contract/contractCard.js";
 import { createEmptyProjectDocument, PROJECT_CONTRACT, PROJECT_VERSION } from "../domain/aralearnProject.js";
-import { getActiveMicrosequenceVersion } from "../domain/microsequence.js";
-import { createMicrosequenceVersion } from "../domain/microsequenceVersion.js";
 import {
   MICROSEQUENCE_STATUS_DRAFT,
   MICROSEQUENCE_STATUS_READY,
@@ -208,47 +206,19 @@ function normalizeCards(cards = []) {
 }
 
 function resolveMicrosequenceCards(microsequence) {
-  const version = getActiveMicrosequenceVersion(microsequence);
-  return Array.isArray(version?.cards) ? version.cards : [];
+  return Array.isArray(microsequence?.cards) ? microsequence.cards : [];
 }
 
-function ensureMicrosequenceVersion(microsequence, cards = [], options = {}) {
-  const normalizedCards = normalizeCards(cards);
-  const versions = Array.isArray(microsequence?.versions) ? microsequence.versions : [];
-  const activeVersionId = text(microsequence?.activeVersion);
-  if (!versions.length) {
-    const version = createMicrosequenceVersion({
-      source: text(options.source) || "manual",
-      action: text(options.action) || "generate",
-      request: text(options.request),
-      summary: text(options.summary),
-      cards: normalizedCards,
-      validation: { ok: true, issues: [] }
-    });
-    microsequence.versions = [version];
-    microsequence.activeVersion = version.id;
-    return version;
-  }
-  const activeIndex = Math.max(0, versions.findIndex((item) => item.id === activeVersionId));
-  const current = versions[activeIndex] || versions.at(-1);
-  const nextVersion = {
-    ...current,
-    cards: normalizedCards,
-    summary: options.summary !== undefined ? text(options.summary) : text(current?.summary),
-    request: options.request !== undefined ? text(options.request) : text(current?.request),
-    validation: { ok: true, issues: [] }
-  };
-  versions[activeIndex >= 0 ? activeIndex : versions.length - 1] = nextVersion;
-  microsequence.versions = versions;
-  microsequence.activeVersion = nextVersion.id;
-  return nextVersion;
+function replaceMicrosequenceCardsDirectly(microsequence, cards = []) {
+  microsequence.cards = normalizeCards(cards);
+  return microsequence.cards;
 }
 
 function normalizeMicrosequenceDraft(input = {}, usedIds = new Set()) {
   assertNoEntityKey(input);
   const title = normalizeText(input.title || "Nova microssequência", "title");
   const cards = normalizeCards(input.cards);
-  const status = normalizeMicrosequenceStatus(input.status, { versions: cards.length ? [{ cards }] : [] });
+  const status = normalizeMicrosequenceStatus(input.status, { cards });
   const role = text(input.role) || "explain";
   const microsequence = {
     id: resolveEntityId(input, usedIds, "microsequence", title, "id"),
@@ -259,18 +229,9 @@ function normalizeMicrosequenceDraft(input = {}, usedIds = new Set()) {
     dependsOn: uniqueList(input.dependsOn),
     covers: uniqueList(input.covers),
     checks: uniqueList(input.checks),
-    versions: [],
-    activeVersion: null
+    cards
   };
-  if (cards.length) {
-    ensureMicrosequenceVersion(microsequence, cards, {
-      source: text(input.source) || "manual",
-      action: text(input.action) || "generate",
-      request: text(input.request),
-      summary: text(input.summary)
-    });
-    microsequence.status = status || MICROSEQUENCE_STATUS_READY;
-  }
+  if (cards.length) microsequence.status = status || MICROSEQUENCE_STATUS_READY;
   return microsequence;
 }
 
@@ -748,18 +709,10 @@ export function replaceMicrosequenceCards(document, input) {
     microsequence.checks = normalizeOptionalStringArray(input.checks, "checks") || [];
   }
   const cards = normalizeCards(input.cards);
-  ensureMicrosequenceVersion(microsequence, cards, {
-    source: text(input.source) || "manual",
-    action: text(input.action) || (microsequence.versions.length ? "improve" : "generate"),
-    request: text(input.request),
-    summary: text(input.summary)
-  });
+  replaceMicrosequenceCardsDirectly(microsequence, cards);
   microsequence.status = cards.length
     ? normalizeMicrosequenceStatus(input.status || microsequence.status || MICROSEQUENCE_STATUS_READY, microsequence)
     : MICROSEQUENCE_STATUS_DRAFT;
-  if (!cards.length && !microsequence.versions.length) {
-    microsequence.activeVersion = null;
-  }
   return ensureValidDocument(nextDocument);
 }
 
@@ -780,10 +733,7 @@ export function createCardInMicrosequence(document, input) {
   });
   const insertIndex = Math.max(0, Math.min(Number.isInteger(input.position) ? input.position : cards.length, cards.length));
   cards.splice(insertIndex, 0, normalizedCard);
-  ensureMicrosequenceVersion(microsequence, cards, {
-    source: "manual",
-    action: microsequence.versions.length ? "improve" : "generate"
-  });
+  replaceMicrosequenceCardsDirectly(microsequence, cards);
   microsequence.status = normalizeMicrosequenceStatus(input.status || microsequence.status || MICROSEQUENCE_STATUS_READY, microsequence);
   return ensureValidDocument(nextDocument);
 }
@@ -808,7 +758,7 @@ export function updateCardInMicrosequence(document, input) {
     ...patch,
     position: currentCard.position
   });
-  ensureMicrosequenceVersion(microsequence, cards, { source: "manual", action: "improve" });
+  replaceMicrosequenceCardsDirectly(microsequence, cards);
   return ensureValidDocument(nextDocument);
 }
 
@@ -829,7 +779,7 @@ export function moveCardWithinMicrosequence(document, input) {
   const [card] = cards.splice(fromIndex, 1);
   const safeIndex = Math.max(0, Math.min(Number.isInteger(input.toIndex) ? input.toIndex : cards.length, cards.length));
   cards.splice(safeIndex, 0, card);
-  ensureMicrosequenceVersion(microsequence, cards, { source: "manual", action: "improve" });
+  replaceMicrosequenceCardsDirectly(microsequence, cards);
   return ensureValidDocument(nextDocument);
 }
 
@@ -848,7 +798,7 @@ export function deleteCardInMicrosequence(document, input) {
     fail(`Card não encontrado: "${cardKey}".`);
   }
   cards.splice(index, 1);
-  ensureMicrosequenceVersion(microsequence, cards, { source: "manual", action: "improve" });
+  replaceMicrosequenceCardsDirectly(microsequence, cards);
   microsequence.status = cards.length ? normalizeMicrosequenceStatus(microsequence.status || MICROSEQUENCE_STATUS_READY, microsequence) : MICROSEQUENCE_STATUS_DRAFT;
   return ensureValidDocument(nextDocument);
 }

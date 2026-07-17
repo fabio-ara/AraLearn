@@ -13,10 +13,22 @@
           "title": "Exemplo integrado",
           "guide": {
             "goal": "Cobrir recursos básicos sem abrir tópicos fora do recorte.",
-            "include": ["conjunção", "graph", "plane", "matrix"],
-            "exclude": ["predicados"],
-            "notation": ["Use P e Q.", "Use rótulos curtos."],
-            "avoid": ["Não depender de contexto externo."]
+            "include": [
+              "conjunção",
+              "graph",
+              "plane",
+              "matrix"
+            ],
+            "exclude": [
+              "predicados"
+            ],
+            "notation": [
+              "Use P e Q.",
+              "Use rótulos curtos."
+            ],
+            "avoid": [
+              "Não depender de contexto externo."
+            ]
           },
           "lessons": [
             {
@@ -24,10 +36,22 @@
               "title": "Exemplo integrado",
               "guide": {
                 "goal": "Alternar texto, prática fechada e recursos visuais simples.",
-                "include": ["conjunção", "graph", "plane", "matrix"],
-                "exclude": ["predicados"],
-                "notation": ["Use P e Q.", "Use rótulos curtos."],
-                "avoid": ["Não depender de contexto externo."]
+                "include": [
+                  "conjunção",
+                  "graph",
+                  "plane",
+                  "matrix"
+                ],
+                "exclude": [
+                  "predicados"
+                ],
+                "notation": [
+                  "Use P e Q.",
+                  "Use rótulos curtos."
+                ],
+                "avoid": [
+                  "Não depender de contexto externo."
+                ]
               },
               "topics": [],
               "microsequences": [
@@ -38,83 +62,109 @@
                   "role": "explain",
                   "status": "ready",
                   "dependsOn": [],
-                  "covers": ["conjunção", "graph", "plane", "matrix"],
-                  "checks": ["o aluno reconhece a regra central"],
-                  "versions": [
+                  "covers": [
+                    "conjunção",
+                    "graph",
+                    "plane",
+                    "matrix"
+                  ],
+                  "checks": [
+                    "o aluno reconhece a regra central"
+                  ],
+                  "cards": [
                     {
-                      "id": "version-micro-logic-plane-matrix-example",
-                      "createdAt": "2026-01-01T00:00:00.000Z",
-                      "source": "manual",
-                      "action": "generate",
-                      "request": "",
-                      "summary": "Versão inicial.",
-                      "cards": [
+                      "position": 1,
+                      "resource": "paragraph",
+                      "kind": "theory",
+                      "exercise": "none",
+                      "title": "Regra central",
+                      "text": "A conjunção só é verdadeira quando as duas proposições são verdadeiras.",
+                      "after": "Se uma delas for falsa, a conjunção inteira é falsa."
+                    },
+                    {
+                      "position": 2,
+                      "resource": "paragraph",
+                      "kind": "exercise",
+                      "exercise": "gap",
+                      "title": "Complete",
+                      "text": "A conjunção é verdadeira quando [[as duas são verdadeiras::as duas são verdadeiras|só P é verdadeira|só Q é verdadeira]].",
+                      "after": "As duas partes precisam ser verdadeiras."
+                    },
+                    {
+                      "position": 3,
+                      "resource": "graph",
+                      "kind": "theory",
+                      "exercise": "none",
+                      "title": "Grafo simples",
+                      "prompt": "Observe a aresta destacada.",
+                      "vertices": [
                         {
-                          "position": 1,
-                          "resource": "paragraph",
-                          "kind": "theory",
-                          "exercise": "none",
-                          "title": "Regra central",
-                          "text": "A conjunção só é verdadeira quando as duas proposições são verdadeiras.",
-                          "after": "Se uma delas for falsa, a conjunção inteira é falsa."
+                          "id": "A",
+                          "label": "A",
+                          "x": 20,
+                          "y": 40
                         },
                         {
-                          "position": 2,
-                          "resource": "paragraph",
-                          "kind": "exercise",
-                          "exercise": "gap",
-                          "title": "Complete",
-                          "text": "A conjunção é verdadeira quando [[as duas são verdadeiras::as duas são verdadeiras|só P é verdadeira|só Q é verdadeira]].",
-                          "after": "As duas partes precisam ser verdadeiras."
-                        },
-                        {
-                          "position": 3,
-                          "resource": "graph",
-                          "kind": "theory",
-                          "exercise": "none",
-                          "title": "Grafo simples",
-                          "prompt": "Observe a aresta destacada.",
-                          "vertices": [
-                            { "id": "A", "label": "A", "x": 20, "y": 40 },
-                            { "id": "B", "label": "B", "x": 80, "y": 40 }
-                          ],
-                          "edges": [
-                            { "from": "A", "to": "B", "label": "liga", "weight": "1" }
-                          ],
-                          "highlight": {
-                            "vertices": ["A"],
-                            "edges": [["A", "B"]]
-                          },
-                          "after": "A ligação destacada conecta `A` a `B`."
-                        },
-                        {
-                          "position": 4,
-                          "resource": "plane",
-                          "kind": "theory",
-                          "exercise": "none",
-                          "title": "Vetor v",
-                          "prompt": "Observe o vetor v.",
-                          "vector": [2, 1],
-                          "after": "O vetor aponta para `(2, 1)`."
-                        },
-                        {
-                          "position": 5,
-                          "resource": "matrix",
-                          "kind": "theory",
-                          "exercise": "none",
-                          "title": "Matriz identidade",
-                          "prompt": "Observe a diagonal principal.",
-                          "values": [["1", "0"], ["0", "1"]],
-                          "after": "A diagonal principal fica com `1`."
+                          "id": "B",
+                          "label": "B",
+                          "x": 80,
+                          "y": 40
                         }
                       ],
-                      "validation": {
-                        "ok": true,
-                        "issues": []
-                      }
+                      "edges": [
+                        {
+                          "from": "A",
+                          "to": "B",
+                          "label": "liga",
+                          "weight": "1"
+                        }
+                      ],
+                      "highlight": {
+                        "vertices": [
+                          "A"
+                        ],
+                        "edges": [
+                          [
+                            "A",
+                            "B"
+                          ]
+                        ]
+                      },
+                      "after": "A ligação destacada conecta `A` a `B`."
+                    },
+                    {
+                      "position": 4,
+                      "resource": "plane",
+                      "kind": "theory",
+                      "exercise": "none",
+                      "title": "Vetor v",
+                      "prompt": "Observe o vetor v.",
+                      "vector": [
+                        2,
+                        1
+                      ],
+                      "after": "O vetor aponta para `(2, 1)`."
+                    },
+                    {
+                      "position": 5,
+                      "resource": "matrix",
+                      "kind": "theory",
+                      "exercise": "none",
+                      "title": "Matriz identidade",
+                      "prompt": "Observe a diagonal principal.",
+                      "values": [
+                        [
+                          "1",
+                          "0"
+                        ],
+                        [
+                          "0",
+                          "1"
+                        ]
+                      ],
+                      "after": "A diagonal principal fica com `1`."
                     }
-                  ],
-                  "activeVersion": "version-micro-logic-plane-matrix-example"
+                  ]
                 }
               ]
             }

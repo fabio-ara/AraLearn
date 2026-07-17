@@ -10,8 +10,6 @@ const PROJECT_SCOPES = new Set(["course", "module", "lesson", "microsequence"]);
 const MICROSEQUENCE_ROLES = new Set(["explain", "practice", "review", "support"]);
 const MICROSEQUENCE_STATUSES = new Set(["planned", "generated", "needs_review", "ready"]);
 const TOPIC_KINDS = new Set(["concept", "procedure", "representation", "term"]);
-const VERSION_SOURCES = new Set(["llm", "manual", "codex"]);
-const VERSION_ACTIONS = new Set(["generate", "improve", "practice", "branch", "repair"]);
 
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -46,43 +44,6 @@ function validateGuide(value, path, errors, level = GUIDE_LEVELS.LESSON) {
     exclude: uniqueList(normalized.exclude),
     notation: uniqueList(normalized.notation),
     avoid: uniqueList(normalized.avoid)
-  };
-}
-
-function validateVersion(version, path, errors) {
-  if (!isPlainObject(version)) {
-    pushError(errors, path, "Versão inválida.");
-    return null;
-  }
-  const cards = (Array.isArray(version.cards) ? version.cards : [])
-    .map((card, index) => {
-      const result = validateCard(card, `${path}.cards[${index}]`);
-      if (!result.ok) {
-        result.errors.forEach((error) => errors.push(error));
-        return null;
-      }
-      return result.value;
-    })
-    .filter(Boolean);
-  const id = text(version.id) || buildScopedKey("version", `${text(version.action) || "generate"}-${Date.now()}`);
-  const source = VERSION_SOURCES.has(text(version.source)) ? text(version.source) : "llm";
-  const action = VERSION_ACTIONS.has(text(version.action)) ? text(version.action) : "generate";
-  const createdAt = text(version.createdAt) || new Date().toISOString();
-  const validation = isPlainObject(version.validation)
-    ? {
-        ok: version.validation.ok !== false,
-        issues: uniqueList(version.validation.issues)
-      }
-    : { ok: true, issues: [] };
-  return {
-    id,
-    createdAt,
-    source,
-    action,
-    request: text(version.request),
-    summary: text(version.summary),
-    cards,
-    validation
   };
 }
 
@@ -128,15 +89,18 @@ function validateMicrosequence(microsequence, path, errors) {
   if (!MICROSEQUENCE_STATUSES.has(status)) {
     pushError(errors, `${path}.status`, "status de microssequência inválido.");
   }
-  const versions = (Array.isArray(microsequence.versions) ? microsequence.versions : [])
-    .map((version, index) => validateVersion(version, `${path}.versions[${index}]`, errors))
+  const cards = (Array.isArray(microsequence.cards) ? microsequence.cards : [])
+    .map((card, index) => {
+      const result = validateCard(card, `${path}.cards[${index}]`);
+      if (!result.ok) {
+        result.errors.forEach((error) => errors.push(error));
+        return null;
+      }
+      return result.value;
+    })
     .filter(Boolean);
-  const activeVersion = text(microsequence.activeVersion);
-  if (activeVersion && !versions.some((version) => version.id === activeVersion)) {
-    pushError(errors, `${path}.activeVersion`, "Versão ativa inexistente.");
-  }
-  if (status !== "planned" && !versions.length) {
-    pushError(errors, `${path}.versions`, "Microssequência materializada precisa ter versões.");
+  if (status !== "planned" && !cards.length) {
+    pushError(errors, `${path}.cards`, "Microssequência materializada precisa ter cards.");
   }
   return {
     id,
@@ -148,8 +112,7 @@ function validateMicrosequence(microsequence, path, errors) {
     dependsOn: uniqueList(microsequence.dependsOn),
     covers: uniqueList(microsequence.covers),
     checks: uniqueList(microsequence.checks),
-    versions,
-    activeVersion: activeVersion || versions.at(-1)?.id || null
+    cards
   };
 }
 

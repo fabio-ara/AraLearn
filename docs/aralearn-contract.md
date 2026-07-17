@@ -131,8 +131,7 @@ Valores de `kind`:
   "dependsOn": [],
   "covers": ["definição", "interpretação da conjunção"],
   "checks": ["o aluno reconhece a regra principal"],
-  "versions": [],
-  "activeVersion": null
+  "cards": []
 }
 ```
 
@@ -145,30 +144,9 @@ Campos principais:
 | `dependsOn` | Microssequências anteriores da mesma lição que servem de pré-requisito. |
 | `covers` | Conteúdos cobertos pela etapa. |
 | `checks` | Critérios mínimos de verificação. |
-| `versions` | Realizações da etapa em cards. |
-| `activeVersion` | Versão usada no estudo. |
+| `cards` | Cards da etapa, em ordem de estudo. |
 
 `dependsOn` existe para preservar ordem local e permitir seleção de contexto sem enviar o curso inteiro à LLM.
-
-## `version`
-
-```json
-{
-  "id": "version-2026-05-24T10-30-00Z",
-  "createdAt": "2026-05-24T10:30:00.000Z",
-  "source": "llm",
-  "action": "generate",
-  "request": "Explique a regra e proponha prática suficiente.",
-  "summary": "Versão inicial com explicação, exemplo e prática.",
-  "cards": [],
-  "validation": {
-    "ok": true,
-    "issues": []
-  }
-}
-```
-
-A versão permite melhorar uma microssequência sem apagar imediatamente o que já existia. Também registra origem, pedido e validação.
 
 ## Núcleo comum de `card`
 
@@ -176,7 +154,7 @@ Todo card possui:
 
 | Campo | Função |
 |---|---|
-| `position` | Ordem dentro da versão. |
+| `position` | Ordem dentro da microssequência. |
 | `resource` | Forma do card: parágrafo, código, matriz, grafo etc. |
 | `kind` | `theory` ou `exercise`. |
 | `exercise` | `none`, `gap` ou `choice`. |

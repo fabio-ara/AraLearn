@@ -6,7 +6,7 @@ import { addPracticeToMicrosequence } from "../bottomUp/addPracticeToMicrosequen
 import { createBranchMicrosequence } from "../bottomUp/createBranchMicrosequence.js";
 import { generateMicrosequenceCards } from "../bottomUp/generateMicrosequenceCards.js";
 import { generateNextMicrosequence } from "../bottomUp/generateNextMicrosequence.js";
-import { improveMicrosequenceVersion } from "../bottomUp/improveMicrosequenceVersion.js";
+import { repairMicrosequenceCards } from "../bottomUp/repairMicrosequenceCards.js";
 import { createEmptyProjectDocument } from "../../domain/aralearnProject.js";
 import { planCourseFromScope } from "../topDown/planCourseFromScope.js";
 
@@ -253,7 +253,7 @@ export async function generateMicrosequenceProjectDocument({
       : action === "branch"
         ? await createBranchMicrosequence(common)
         : action === "repair"
-          ? await improveMicrosequenceVersion({
+          ? await repairMicrosequenceCards({
               ...common,
               reason: text(preparedIntervention?.promptText) || text(draft.promptText) || "Melhorar a microssequência atual."
             })

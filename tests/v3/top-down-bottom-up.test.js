@@ -70,8 +70,7 @@ function projectWithPlannedMicrosequence() {
                     dependsOn: [],
                     covers: ["conjunção"],
                     checks: ["o aluno reconhece a linha verdadeira"],
-                    versions: [],
-                    activeVersion: null
+                    cards: []
                   }
                 ]
               }
@@ -139,8 +138,7 @@ test("top-down estruturado materializa apenas a trilha e preserva microssequênc
 
   const lesson = result.project.courses[0].modules[0].lessons[0];
   assert.deepEqual(Object.keys(lesson.guide), ["goal", "include", "exclude", "notation", "avoid"]);
-  assert.deepEqual(lesson.microsequences[0].versions, []);
-  assert.equal(lesson.microsequences[0].activeVersion, null);
+  assert.deepEqual(lesson.microsequences[0].cards, []);
 });
 
 test("top-down continua rejeitando exclude usado como contraste negativo", () => {
@@ -219,5 +217,5 @@ test("bottom-up estruturado rejeita card inválido sem alterar o projeto", async
     provider,
     modelId: "fake:model"
   }));
-  assert.equal(project.courses[0].modules[0].lessons[0].microsequences[0].versions.length, 0);
+  assert.equal(project.courses[0].modules[0].lessons[0].microsequences[0].cards.length, 0);
 });

@@ -1,23 +1,13 @@
-import { findMicrosequenceVersion } from "./microsequenceVersion.js";
 export const MICROSEQUENCE_STATUSES = Object.freeze(["planned", "generated", "needs_review", "ready"]);
 
-export function getActiveMicrosequenceVersion(microsequence) {
-  const versions = Array.isArray(microsequence?.versions) ? microsequence.versions : [];
-  if (!versions.length) {
-    return null;
-  }
-  if (!microsequence?.activeVersion) {
-    return versions[versions.length - 1];
-  }
-  return findMicrosequenceVersion(microsequence, microsequence.activeVersion) || versions[versions.length - 1];
+export function getMicrosequenceCards(microsequence) {
+  return Array.isArray(microsequence?.cards) ? microsequence.cards : [];
 }
 
-export function cloneMicrosequenceWithVersion(microsequence, version, nextStatus = "generated") {
-  const versions = Array.isArray(microsequence?.versions) ? [...microsequence.versions, version] : [version];
+export function replaceMicrosequenceCards(microsequence, nextCards, nextStatus = "generated") {
   return {
     ...microsequence,
-    versions,
-    activeVersion: version.id,
+    cards: Array.isArray(nextCards?.cards) ? nextCards.cards : Array.isArray(nextCards) ? nextCards : [],
     status: nextStatus
   };
 }

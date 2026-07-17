@@ -13,10 +13,18 @@
           "title": "Módulo",
           "guide": {
             "goal": "Cobrir um único conceito.",
-            "include": ["conjunção"],
-            "exclude": ["predicados"],
-            "notation": ["Use P e Q."],
-            "avoid": ["Não abrir outro tópico."]
+            "include": [
+              "conjunção"
+            ],
+            "exclude": [
+              "predicados"
+            ],
+            "notation": [
+              "Use P e Q."
+            ],
+            "avoid": [
+              "Não abrir outro tópico."
+            ]
           },
           "lessons": [
             {
@@ -24,18 +32,30 @@
               "title": "Lição",
               "guide": {
                 "goal": "Explicar a conjunção.",
-                "include": ["conjunção"],
-                "exclude": ["predicados"],
-                "notation": ["Use P e Q."],
-                "avoid": ["Não abrir outro tópico."]
+                "include": [
+                  "conjunção"
+                ],
+                "exclude": [
+                  "predicados"
+                ],
+                "notation": [
+                  "Use P e Q."
+                ],
+                "avoid": [
+                  "Não abrir outro tópico."
+                ]
               },
               "topics": [
                 {
                   "id": "topic-conjuncao",
                   "label": "conjunção",
                   "kind": "concept",
-                  "checks": ["o aluno reconhece a regra central"],
-                  "errors": ["confundir com disjunção"]
+                  "checks": [
+                    "o aluno reconhece a regra central"
+                  ],
+                  "errors": [
+                    "confundir com disjunção"
+                  ]
                 }
               ],
               "microsequences": [
@@ -46,43 +66,32 @@
                   "role": "explain",
                   "status": "ready",
                   "dependsOn": [],
-                  "covers": ["conjunção"],
-                  "checks": ["o aluno reconhece a linha verdadeira"],
-                  "versions": [
-                    {
-                      "id": "version-micro-fixture-minimal",
-                      "createdAt": "2026-01-01T00:00:00.000Z",
-                      "source": "manual",
-                      "action": "generate",
-                      "request": "",
-                      "summary": "Versão inicial.",
-                      "cards": [
-                        {
-                          "position": 1,
-                          "resource": "paragraph",
-                          "kind": "theory",
-                          "exercise": "none",
-                          "title": "Regra central",
-                          "text": "A conjunção só é verdadeira quando as duas proposições são verdadeiras.",
-                          "after": "Se uma delas for falsa, a conjunção inteira é falsa."
-                        },
-                        {
-                          "position": 2,
-                          "resource": "paragraph",
-                          "kind": "exercise",
-                          "exercise": "gap",
-                          "title": "Complete",
-                          "text": "A conjunção é verdadeira quando [[as duas são verdadeiras::as duas são verdadeiras|só P é verdadeira|só Q é verdadeira]].",
-                          "after": "As duas partes precisam ser verdadeiras."
-                        }
-                      ],
-                      "validation": {
-                        "ok": true,
-                        "issues": []
-                      }
-                    }
+                  "covers": [
+                    "conjunção"
                   ],
-                  "activeVersion": "version-micro-fixture-minimal"
+                  "checks": [
+                    "o aluno reconhece a linha verdadeira"
+                  ],
+                  "cards": [
+                    {
+                      "position": 1,
+                      "resource": "paragraph",
+                      "kind": "theory",
+                      "exercise": "none",
+                      "title": "Regra central",
+                      "text": "A conjunção só é verdadeira quando as duas proposições são verdadeiras.",
+                      "after": "Se uma delas for falsa, a conjunção inteira é falsa."
+                    },
+                    {
+                      "position": 2,
+                      "resource": "paragraph",
+                      "kind": "exercise",
+                      "exercise": "gap",
+                      "title": "Complete",
+                      "text": "A conjunção é verdadeira quando [[as duas são verdadeiras::as duas são verdadeiras|só P é verdadeira|só Q é verdadeira]].",
+                      "after": "As duas partes precisam ser verdadeiras."
+                    }
+                  ]
                 }
               ]
             }

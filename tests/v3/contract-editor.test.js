@@ -128,7 +128,7 @@ test("o editor estrutural normaliza ids duplicados de cards na mesma versão", (
     }
   );
 
-  const cards = project.courses[0].modules[0].lessons[0].microsequences[0].versions[0].cards;
+  const cards = project.courses[0].modules[0].lessons[0].microsequences[0].cards;
   assert.deepEqual(
     cards.map((card) => card.id),
     ["card-repetido", "card-repetido-2"]

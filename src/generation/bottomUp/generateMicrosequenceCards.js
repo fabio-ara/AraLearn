@@ -2,7 +2,7 @@ import { buildMicrosequencePlanningContract } from "../planning/buildMicrosequen
 import { validateMicrosequencePlan } from "../planning/validateMicrosequencePlan.js";
 import { validateGeneratedCards } from "../validation/validateGeneratedCards.js";
 import { buildContextPacket } from "./buildContextPacket.js";
-import { appendVersion, findSelection, replaceMicrosequence } from "./_shared.js";
+import { findSelection, replaceGeneratedCards, replaceMicrosequence } from "./_shared.js";
 import { createDeepSeekUsageLogger } from "../engine/deepSeekUsageLogger.js";
 import { runBottomUpMicroPlan } from "../engine/bottomUpPlanRuntime.js";
 import { compileCardsFromSlotPackets, runBottomUpCardBuild } from "../engine/bottomUpBuildRuntime.js";
@@ -459,14 +459,11 @@ export async function generateMicrosequenceCards({
   });
 
   const summary = text(validatedPlan.plan.reason) || text(validatedPlan.plan.goal);
-  const nextMicrosequence = appendVersion(info.microsequence, {
+  const nextMicrosequence = replaceGeneratedCards(info.microsequence, {
     cards: quality.validation.cards,
     summary,
     validation: { ok: true, issues: [] }
   }, {
-    source,
-    action: versionAction || (info.microsequence.versions?.length ? "improve" : "generate"),
-    request: userRequest,
     status: "generated"
   });
 
@@ -475,7 +472,7 @@ export async function generateMicrosequenceCards({
     status: "ok",
     message: "Entrega concluída.",
     artifacts: {
-      version: nextMicrosequence.versions[nextMicrosequence.versions.length - 1]
+      cards: nextMicrosequence.cards
     }
   });
 
@@ -492,7 +489,7 @@ export async function generateMicrosequenceCards({
       structured: true
     },
     generationContract: materializationEnvelope,
-    version: nextMicrosequence.versions[nextMicrosequence.versions.length - 1],
+    cards: nextMicrosequence.cards,
     usageReport
   };
 }
