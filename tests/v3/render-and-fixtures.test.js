@@ -23,6 +23,7 @@ import {
   createTeoriaDosGrafosProvaProjectDocument
 } from "../../src/ui/exampleProjectDocument.js";
 import {
+  loadEmbeddedCourseFromJson,
   loadEmbeddedSeedManifest,
   loadNonPersistedCourseFromJson,
   loadNonPersistedCourseManifest
@@ -1007,7 +1008,7 @@ test("o seed embutido oficial mantém os cursos embarcados já materializados", 
   const organizacaoCourse = loadNonPersistedCourseFromJson("organizacao-arquitetura-computadores-seed-course.json");
   const frameworkCourse = loadNonPersistedCourseFromJson("framework-ia-generativa-seed-course.json");
   const logicaCourse = loadNonPersistedCourseFromJson("logica-programacao-seed-course.json");
-  const fundamentosCourse = loadNonPersistedCourseFromJson("fundamentos-ia-analise-dados-seed-course.json");
+  const fundamentosCourse = loadEmbeddedCourseFromJson("fundamentos-ia-analise-dados-seed-course.json");
   const ai900Course = project.courses.find((course) => course.id === "course-microsoft-azure-ai-fundamentals-ai900");
   const dataprevCourse = project.courses.find(
     (course) => course.id === "course-dataprev-2026-analista-processamento-seguranca-informacao"
@@ -1022,6 +1023,7 @@ test("o seed embutido oficial mantém os cursos embarcados já materializados", 
       .sort(),
     [
       "dataprev-analista-processamento-seed-course.json",
+      "fundamentos-ia-analise-dados-seed-course.json",
       "microsoft-azure-ai-fundamentals-ai900-seed-course.json"
     ]
   );
@@ -1032,7 +1034,6 @@ test("o seed embutido oficial mantém os cursos embarcados já materializados", 
       .sort(),
     [
       "framework-ia-generativa-seed-course.json",
-      "fundamentos-ia-analise-dados-seed-course.json",
       "logica-programacao-seed-course.json",
       "organizacao-arquitetura-computadores-seed-course.json",
       "praticas-ferramentas-seed-course.json",
@@ -1042,14 +1043,14 @@ test("o seed embutido oficial mantém os cursos embarcados já materializados", 
   assert.deepEqual(nonPersistedManifest.courseFiles, [
     "teoria-dos-grafos-prova.json",
     "logica-programacao-seed-course.json",
-    "fundamentos-ia-analise-dados-seed-course.json",
     "praticas-ferramentas-seed-course.json",
     "organizacao-arquitetura-computadores-seed-course.json",
     "framework-ia-generativa-seed-course.json"
   ]);
   assert.deepEqual(manifest.courseFiles, [
     "microsoft-azure-ai-fundamentals-ai900-seed-course.json",
-    "dataprev-analista-processamento-seed-course.json"
+    "dataprev-analista-processamento-seed-course.json",
+    "fundamentos-ia-analise-dados-seed-course.json"
   ]);
   assert.equal(project.courses.length, manifest.courseFiles.length + nonPersistedManifest.courseFiles.length);
 
@@ -1360,6 +1361,11 @@ test("o seed embutido oficial mantém os cursos embarcados já materializados", 
   );
 });
 
+test("o editor não chama scrollers removidos com o versionamento", () => {
+  const source = fs.readFileSync(path.resolve(__dirname, "../../src/ui/lessonEditorApp.js"), "utf8");
+  assert.doesNotMatch(source, /syncVersionTabScroller|syncStructureVersionStripScroller/);
+});
+
 test("os cursos embarcados não dependem mais de wrappers por curso em src/ui", () => {
   const seedWrapperFiles = fs
     .readdirSync(path.resolve(__dirname, "../../src/ui"))
@@ -1392,7 +1398,7 @@ test("o seed de Matemática para Informática mantém textos visíveis focados n
 });
 
 test("o seed de Fundamentos evita texto de bastidor e vocabulário proibido nos textos visíveis", () => {
-  const course = loadNonPersistedCourseFromJson("fundamentos-ia-analise-dados-seed-course.json");
+  const course = loadEmbeddedCourseFromJson("fundamentos-ia-analise-dados-seed-course.json");
 
   assert.ok(course);
 
@@ -1443,7 +1449,7 @@ test("o seed de Fundamentos evita texto de bastidor e vocabulário proibido nos 
 });
 
 test("o seed de Fundamentos também remove texto de bastidor dos metadados internos", () => {
-  const course = loadNonPersistedCourseFromJson("fundamentos-ia-analise-dados-seed-course.json");
+  const course = loadEmbeddedCourseFromJson("fundamentos-ia-analise-dados-seed-course.json");
 
   assert.ok(course);
 
@@ -1484,7 +1490,7 @@ test("o seed de Fundamentos também remove texto de bastidor dos metadados inter
 });
 
 test("exercícios de Fundamentos que dependem de contexto mostrado trazem esse contexto no próprio card", () => {
-  const course = loadNonPersistedCourseFromJson("fundamentos-ia-analise-dados-seed-course.json");
+  const course = loadEmbeddedCourseFromJson("fundamentos-ia-analise-dados-seed-course.json");
 
   assert.ok(course);
 
@@ -1529,7 +1535,7 @@ test("exercícios de Fundamentos que dependem de contexto mostrado trazem esse c
 });
 
 test("cards de Fundamentos com resultados globais da base repetem o contexto no próprio card", () => {
-  const course = loadNonPersistedCourseFromJson("fundamentos-ia-analise-dados-seed-course.json");
+  const course = loadEmbeddedCourseFromJson("fundamentos-ia-analise-dados-seed-course.json");
 
   assert.ok(course);
 
@@ -1559,7 +1565,7 @@ test("cards de Fundamentos com resultados globais da base repetem o contexto no 
 });
 
 test("o seed de Fundamentos não mantém lacunas em after nem em afterBlocks", () => {
-  const course = loadNonPersistedCourseFromJson("fundamentos-ia-analise-dados-seed-course.json");
+  const course = loadEmbeddedCourseFromJson("fundamentos-ia-analise-dados-seed-course.json");
 
   assert.ok(course);
 
