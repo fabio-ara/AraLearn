@@ -1366,6 +1366,16 @@ test("o editor não chama scrollers removidos com o versionamento", () => {
   assert.doesNotMatch(source, /syncVersionTabScroller|syncStructureVersionStripScroller/);
 });
 
+test("o avanço de card descarta a ativação residual do WebView após trocar o DOM", () => {
+  const source = fs.readFileSync(path.resolve(__dirname, "../../src/ui/lessonEditorApp.js"), "utf8");
+
+  assert.match(source, /function lockForwardCardAdvance\(\)/);
+  assert.match(source, /if \(state\.forwardCardAdvanceLocked\) \{\s*return;/);
+  assert.match(source, /data-action='continue-popup-next'.*advanceToNextCard/);
+  assert.match(source, /data-action='next-card'.*advanceToNextCard/);
+  assert.doesNotMatch(source, /continuePopupAdvanceLocked|continueFromPopup/);
+});
+
 test("os cursos embarcados não dependem mais de wrappers por curso em src/ui", () => {
   const seedWrapperFiles = fs
     .readdirSync(path.resolve(__dirname, "../../src/ui"))

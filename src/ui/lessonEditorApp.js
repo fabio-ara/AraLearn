@@ -895,7 +895,8 @@ export function createLessonEditorApp({ root, storage, editor }) {
     activeTextGapPrompt: null,
     cardExerciseLoadVersion: 0,
     continuePopup: null,
-    continuePopupAdvanceLocked: false,
+    forwardCardAdvanceLocked: false,
+    forwardCardAdvanceLockToken: 0,
     assistDraft: {
       selectedMode: ASSIST_USER_MODES.EDIT_MICROSEQUENCE,
       activeWorkbenchPane: "preview",
@@ -2426,10 +2427,35 @@ export function createLessonEditorApp({ root, storage, editor }) {
     return true;
   }
 
+  function lockForwardCardAdvance() {
+    const token = state.forwardCardAdvanceLockToken + 1;
+    state.forwardCardAdvanceLockToken = token;
+    state.forwardCardAdvanceLocked = true;
+
+    // Alguns WebViews móveis podem entregar uma segunda ativação depois que o
+    // DOM do card de destino já foi desenhado. A janela curta descarta apenas
+    // essa ativação residual; o avanço legítimo já ocorreu.
+    globalThis.setTimeout(() => {
+      if (state.forwardCardAdvanceLockToken === token) {
+        state.forwardCardAdvanceLocked = false;
+      }
+    }, 900);
+  }
+
+  function advanceToNextCard(event) {
+    event?.preventDefault();
+    event?.stopImmediatePropagation();
+    stepCard(1);
+  }
+
   function stepCard(delta) {
     // No modo de estudo, o card só pode avançar quando os exercícios do card atual
     // estiverem completos e validados como corretos.
     if (delta > 0) {
+      if (state.forwardCardAdvanceLocked) {
+        return;
+      }
+
       const flowcharts = getCurrentCardRuntimeFlowcharts();
       for (const entry of flowcharts) {
         const projection = entry?.block?.projection;
@@ -2568,13 +2594,20 @@ export function createLessonEditorApp({ root, storage, editor }) {
         findLessonCardEntryIndex(lessonCards, state.selection)
       );
       if (delta > 0 && currentIndex >= lessonCards.length - 1) {
+        lockForwardCardAdvance();
         goBack();
         return;
+      }
+      if (delta > 0) {
+        lockForwardCardAdvance();
       }
       openCardByIndex(currentIndex + delta);
       return;
     }
 
+    if (delta > 0) {
+      lockForwardCardAdvance();
+    }
     openCardByIndex((Number.isInteger(state.selection.cardIndex) ? state.selection.cardIndex : 0) + delta);
   }
 
@@ -3228,24 +3261,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
         lessonKey: lesson.id
       }))
     );
-  }
-
-  function continueFromPopup(event) {
-    event?.preventDefault();
-    event?.stopImmediatePropagation();
-
-    // Alguns WebViews móveis podem despachar uma segunda ativação logo após o
-    // DOM ser redesenhado. Sem esta trava, ela é aplicada ao card seguinte e
-    // abre o respectivo feedback imediatamente.
-    if (state.continuePopupAdvanceLocked) {
-      return;
-    }
-
-    state.continuePopupAdvanceLocked = true;
-    globalThis.setTimeout(() => {
-      state.continuePopupAdvanceLocked = false;
-    }, 400);
-    stepCard(1);
   }
 
   function resetCourseProgress(courseKey) {
@@ -6376,8 +6391,8 @@ export function createLessonEditorApp({ root, storage, editor }) {
     });
 
     root.querySelector("[data-action='prev-card']")?.addEventListener("click", () => stepCard(-1));
-    root.querySelector("[data-action='continue-popup-next']")?.addEventListener("click", continueFromPopup);
-    root.querySelector("[data-action='next-card']")?.addEventListener("click", () => stepCard(1));
+    root.querySelector("[data-action='continue-popup-next']")?.addEventListener("click", advanceToNextCard);
+    root.querySelector("[data-action='next-card']")?.addEventListener("click", advanceToNextCard);
     root.querySelector("[data-action='close-study']")?.addEventListener("click", () => goBack());
     root.querySelector("[data-action='go-home']")?.addEventListener("click", () => goBack());
     root.querySelector("[data-action='open-card-comment']")?.addEventListener("click", () => openCardComment());
