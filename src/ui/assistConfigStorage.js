@@ -3,6 +3,10 @@ import { normalizeAssistConfig } from "../generation/runtime/generationEditorRun
 
 const ASSIST_CONFIG_STORAGE_KEY = "aralearn.assist-config";
 
+function defaultStorage() {
+  return globalThis.AraLearnStorage;
+}
+
 function readJsonMap(storage, key) {
   if (!storage || typeof storage.getItem !== "function") {
     return {};
@@ -33,7 +37,7 @@ function writeJsonMap(storage, key, value) {
   }
 }
 
-export function readAssistConfigStorage(storage = globalThis.localStorage) {
+export function readAssistConfigStorage(storage = defaultStorage()) {
   const config = readJsonMap(storage, ASSIST_CONFIG_STORAGE_KEY);
   return normalizeAssistConfig({
     ...config,
@@ -45,7 +49,7 @@ export function readAssistConfigStorage(storage = globalThis.localStorage) {
   });
 }
 
-export function writeAssistConfigStorage(config, storage = globalThis.localStorage) {
+export function writeAssistConfigStorage(config, storage = defaultStorage()) {
   const normalized = normalizeAssistConfig(config || {});
   writeJsonMap(
     storage,

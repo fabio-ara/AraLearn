@@ -13,8 +13,6 @@ import {
   isRunnableMicrosequence,
   resolveMicrosequenceRuntimeIncluded
 } from "../model/microsequenceStatus.js";
-import { buildScopedVersionLineageLabel, splitVersionLineageLabel } from "./versionLineage.js";
-import { getActiveMicrosequenceVersion } from "../domain/microsequence.js";
 
 function escapeHtml(value) {
   return String(value)
@@ -116,91 +114,13 @@ function renderTopbar({
   );
 }
 
-function formatVersionTabTimestamp(value) {
-  const iso = String(value || "").trim();
-  const match = iso.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
-  if (match) {
-    const [, , month, day, hour, minute] = match;
-    return `${day}/${month} ${hour}:${minute}`;
-  }
 
-  const parsed = new Date(iso);
-  if (Number.isNaN(parsed.getTime())) {
-    return "";
-  }
 
-  const pad = (item) => String(item).padStart(2, "0");
-  return `${pad(parsed.getDate())}/${pad(parsed.getMonth() + 1)} ${pad(parsed.getHours())}:${pad(parsed.getMinutes())}`;
-}
 
-function buildHistoryTopbarAction(historyTitle, historyCount, payload = {}) {
-  return {
-    action: "open-version-history",
-    title: historyTitle,
-    icon: "🕘",
-    ...payload,
-    ...(Number.isInteger(historyCount) ? { historyCount } : {})
-  };
-}
 
-function renderStructureVersionContext(contextTabs = []) {
-  const items = (contextTabs || []).filter((item) => item?.label);
-  if (!items.length) {
-    return "";
-  }
 
-  return items.map((item) => String(item.label || "").trim()).filter(Boolean).join(" · ");
-}
 
-function renderStructureVersionTabs({ tabs = [], activeVersionId = "", ariaLabel = "Versões" } = {}) {
-  const items = Array.isArray(tabs) ? tabs : [];
-  if (!items.length) {
-    return "";
-  }
 
-  return (
-    '<section class="structure-version-tabbar">' +
-    '<div class="structure-version-strip-shell" data-structure-version-strip-shell="true">' +
-    '<div class="editor-version-strip structure-version-strip" role="tablist" aria-label="' +
-    escapeHtml(ariaLabel) +
-    '" data-structure-version-strip="true">' +
-    items
-      .map((item, index) => {
-        const label = item.lineage || item.displayId || buildScopedVersionLineageLabel(item, items, "V", index);
-        const labelParts = splitVersionLineageLabel(label);
-        const timestamp = item.timestampLabel || formatVersionTabTimestamp(item.updatedAt || item.createdAt || "");
-        const isActive = item.isActive === true || item.versionId === activeVersionId;
-        return (
-          '<button class="editor-version-tab structure-version-tab' +
-          (isActive ? " active" : "") +
-          '" type="button" role="tab" aria-selected="' +
-          (isActive ? "true" : "false") +
-          '" data-action="' +
-          escapeHtml(item.action || "select-structure-version") +
-          '"' +
-          (item.versionId ? ' data-version-key="' + escapeHtml(item.versionId) + '"' : "") +
-          (item.courseKey ? ' data-course-key="' + escapeHtml(item.courseKey) + '"' : "") +
-          (item.moduleKey ? ' data-module-key="' + escapeHtml(item.moduleKey) + '"' : "") +
-          (item.lessonKey ? ' data-lesson-key="' + escapeHtml(item.lessonKey) + '"' : "") +
-          (item.microsequenceKey ? ' data-microsequence-key="' + escapeHtml(item.microsequenceKey) + '"' : "") +
-          ' data-structure-tab="true" title="' +
-          escapeHtml(label) +
-          '" aria-label="' +
-          escapeHtml(label) +
-          '">' +
-          '<span class="editor-version-tab-main">' +
-          (labelParts.origin ? '<span class="editor-version-tab-origin">' + escapeHtml(labelParts.origin) + "</span>" : "") +
-          '<span class="editor-version-tab-label">' +
-          escapeHtml(labelParts.destination || label) +
-          "</span></span>" +
-          (timestamp ? '<span class="editor-version-tab-meta">' + escapeHtml(timestamp) + "</span>" : "") +
-          "</button>"
-        );
-      })
-      .join("") +
-    "</div></div></section>"
-  );
-}
 
 function renderSectionHeading(title) {
   return (
@@ -220,8 +140,7 @@ function entityId(entity) {
 }
 
 function cardsOfMicrosequence(microsequence) {
-  const activeVersion = getActiveMicrosequenceVersion(microsequence);
-  return Array.isArray(activeVersion?.cards) ? activeVersion.cards : [];
+  return Array.isArray(microsequence?.cards) ? microsequence.cards : [];
 }
 
 function countCardsInLesson(lesson) {
@@ -876,7 +795,7 @@ function renderCourseScreen({ course, progress, editorSupport }) {
           courseKey: entityId(course)
         },
         { action: "quick-create-module", title: "Criar módulo vazio", icon: "＋" },
-        { action: "open-version-history", title: "Snapshots do curso", icon: "🕘" },
+        { action: "future-sync", title: "Sincronização em breve", icon: "◌" },
         { action: "open-course-screen-actions", title: "Ações do curso", icon: "⋯" }
       ].filter(Boolean)
     }) +
@@ -941,7 +860,7 @@ function renderModuleScreen({ course, moduleValue, progress, editorSupport }) {
           moduleKey: entityId(moduleValue)
         },
         { action: "quick-create-lesson", title: "Criar lição vazia", icon: "＋" },
-        { action: "open-version-history", title: "Snapshots do módulo", icon: "🕘" },
+        { action: "future-sync", title: "Sincronização em breve", icon: "◌" },
         { action: "open-module-screen-actions", title: "Ações do módulo", icon: "⋯" }
       ].filter(Boolean)
     }) +
@@ -1082,7 +1001,7 @@ function renderLessonScreenView({ course, lesson, moduleValue, progress, editorS
           lessonKey: entityId(lesson)
         },
         { action: "quick-create-microsequence", title: "Criar microssequência vazia", icon: "＋" },
-        { action: "open-version-history", title: "Snapshots da lição", icon: "🕘" },
+        { action: "future-sync", title: "Sincronização em breve", icon: "◌" },
         { action: "open-lesson-screen-actions", title: "Ações da lição", icon: "⋯" }
       ].filter(Boolean)
     }) +
@@ -1101,9 +1020,8 @@ function renderLessonScreenView({ course, lesson, moduleValue, progress, editorS
 }
 
 function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selection, microsequenceMode, editorSupport }) {
-  const visualizedVersion = editorSupport.visualizedMicrosequenceVersion || null;
-  const visualizedCards = Array.isArray(visualizedVersion?.cards) ? visualizedVersion.cards : cards;
-  const visualizedTitle = visualizedVersion?.title || microsequence?.title || "";
+  const visualizedCards = Array.isArray(cards) ? cards : [];
+  const visualizedTitle = microsequence?.title || "";
   const visualizedRefIds = Array.isArray(editorSupport.selectedRefIds) && editorSupport.selectedRefIds.length
     ? editorSupport.selectedRefIds
     : Array.isArray(microsequence?.dependsOn)
@@ -1431,9 +1349,9 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
       backTitle: "Voltar para a lição",
       actions: [
         {
-          action: "open-version-history",
-          title: "Snapshots da microssequência",
-          icon: "🕘"
+          action: "future-sync",
+          title: "Sincronização em breve",
+          icon: "◌"
         }
       ]
     }) +

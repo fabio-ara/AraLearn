@@ -45,10 +45,8 @@ function sanitizeStoredProjectDocument(document) {
           ...lesson,
           microsequences: (Array.isArray(lesson?.microsequences) ? lesson.microsequences : []).map((microsequence) => ({
             ...microsequence,
-            versions: (Array.isArray(microsequence?.versions) ? microsequence.versions : []).map((version) => ({
-              ...version,
-              cards: (Array.isArray(version?.cards) ? version.cards : []).map((card) => sanitizeStoredCard(card))
-            }))
+            cards: (Array.isArray(microsequence?.cards) ? microsequence.cards : [])
+              .map((card) => sanitizeStoredCard(card))
           }))
         }))
       }))

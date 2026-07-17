@@ -1,8 +1,6 @@
 import { readLessonProgressEntry } from "../storage/progressStore.js";
 import { isRunnableMicrosequence } from "../model/microsequenceStatus.js";
 import { renderUiIcon } from "./renderUiIcons.js";
-import { buildScopedVersionLineageLabel, splitVersionLineageLabel } from "./versionLineage.js";
-import { getActiveMicrosequenceVersion } from "../domain/microsequence.js";
 import {
   listGenerationProgressPhases,
   summarizeGenerationProgressStatus
@@ -17,22 +15,7 @@ function escapeHtml(value) {
     .replace(/'/g, "&#39;");
 }
 
-function formatVersionTabTimestamp(value) {
-  const iso = String(value || "").trim();
-  const match = iso.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
-  if (match) {
-    const [, , month, day, hour, minute] = match;
-    return `${day}/${month} ${hour}:${minute}`;
-  }
 
-  const parsed = new Date(iso);
-  if (Number.isNaN(parsed.getTime())) {
-    return "";
-  }
-
-  const pad = (item) => String(item).padStart(2, "0");
-  return `${pad(parsed.getDate())}/${pad(parsed.getMonth() + 1)} ${pad(parsed.getHours())}:${pad(parsed.getMinutes())}`;
-}
 
 function getStructureHandleTitle(level) {
   if (level === "course") return "Arrastar curso";
@@ -68,8 +51,7 @@ function entityId(entity) {
 }
 
 function cardsOfMicrosequence(microsequence) {
-  const activeVersion = getActiveMicrosequenceVersion(microsequence);
-  return Array.isArray(activeVersion?.cards) ? activeVersion.cards : [];
+  return Array.isArray(microsequence?.cards) ? microsequence.cards : [];
 }
 
 function countLessons(course) {
@@ -195,60 +177,14 @@ function renderCoursesTopbar() {
     renderUiIcon("sparkles", "home-tab-icon") +
     "</button>" +
     '<button class="icon-ghost" type="button" data-action="quick-create-course" title="Criar curso vazio" aria-label="Criar curso vazio">＋</button>' +
-    '<button class="icon-ghost" type="button" data-action="open-version-history" title="Snapshots do projeto" aria-label="Snapshots do projeto">🕘</button>' +
+    '<button class="icon-ghost" type="button" data-action="future-sync" title="Sincronização em breve" aria-label="Sincronização em breve">◌</button>' +
     '<button class="icon-ghost" type="button" data-action="open-home-actions" title="Ações do app" aria-label="Ações do app">⋯</button>' +
     "</div>" +
     "</header>"
   );
 }
 
-function renderStructureVersionTabs({ tabs = [], activeVersionId = "", emptyLabel = "" } = {}) {
-  const items = Array.isArray(tabs) ? tabs : [];
-  if (!items.length) {
-    return emptyLabel ? '<section class="structure-version-tabbar"><p class="card-subtitle">' + escapeHtml(emptyLabel) + "</p></section>" : "";
-  }
 
-  return (
-    '<section class="structure-version-tabbar">' +
-    '<div class="structure-version-strip-shell" data-structure-version-strip-shell="true">' +
-    '<div class="editor-version-strip structure-version-strip" role="tablist" aria-label="Versões" data-structure-version-strip="true">' +
-    items
-      .map((item, index) => {
-        const isActive = item.isActive === true || item.versionId === activeVersionId;
-        const label = item.lineage || buildScopedVersionLineageLabel(item, items, "C", index);
-        const labelParts = splitVersionLineageLabel(label);
-        const timestamp = item.timestampLabel || formatVersionTabTimestamp(item.updatedAt || item.createdAt || "");
-        return (
-          '<button class="editor-version-tab structure-version-tab' +
-          (isActive ? " active" : "") +
-          '" type="button" role="tab" aria-selected="' +
-          (isActive ? "true" : "false") +
-          '" data-action="' +
-          escapeHtml(item.action || "select-structure-version") +
-          '"' +
-          (item.versionId ? ' data-version-key="' + escapeHtml(item.versionId) + '"' : "") +
-          (item.courseKey ? ' data-course-key="' + escapeHtml(item.courseKey) + '"' : "") +
-          (item.moduleKey ? ' data-module-key="' + escapeHtml(item.moduleKey) + '"' : "") +
-          (item.lessonKey ? ' data-lesson-key="' + escapeHtml(item.lessonKey) + '"' : "") +
-          (item.microsequenceKey ? ' data-microsequence-key="' + escapeHtml(item.microsequenceKey) + '"' : "") +
-          ' data-structure-tab="true" title="' +
-          escapeHtml(label) +
-          '" aria-label="' +
-          escapeHtml(label) +
-          '">' +
-          '<span class="editor-version-tab-main">' +
-          (labelParts.origin ? '<span class="editor-version-tab-origin">' + escapeHtml(labelParts.origin) + "</span>" : "") +
-          '<span class="editor-version-tab-label">' +
-          escapeHtml(labelParts.destination || label) +
-          "</span></span>" +
-          (timestamp ? '<span class="editor-version-tab-meta">' + escapeHtml(timestamp) + "</span>" : "") +
-          "</button>"
-        );
-      })
-      .join("") +
-    "</div></div></section>"
-  );
-}
 
 function renderGenerateIconLabel(iconName, label) {
   return (

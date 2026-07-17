@@ -35,23 +35,42 @@ function normalizeImportEnvelope(parsed) {
   };
 }
 
-export function createProjectStorage(store, keys = DEFAULT_KEYS) {
+export function createProjectStorage(store, keys = DEFAULT_KEYS, officialProject = null) {
   if (!store || typeof store.getItem !== "function" || typeof store.setItem !== "function") {
     throw new Error("Store inválido para persistência.");
   }
 
   const storageKeys = { ...DEFAULT_KEYS, ...keys };
+  const officialCourses = Array.isArray(officialProject?.courses) ? officialProject.courses : [];
+  const officialCourseIds = new Set(officialCourses.map((course) => course?.id).filter(Boolean));
+
+  function mergeWithOfficialCourses(projectDocument) {
+    const customCourses = Array.isArray(projectDocument?.courses) ? projectDocument.courses : [];
+    return {
+      ...(officialProject || projectDocument),
+      courses: [...officialCourses, ...customCourses.filter((course) => !officialCourseIds.has(course?.id))]
+    };
+  }
+
+  function onlyCustomCourses(projectDocument) {
+    return {
+      ...projectDocument,
+      courses: (projectDocument?.courses || []).filter((course) => !officialCourseIds.has(course?.id))
+    };
+  }
 
   return {
     saveProject(projectDocument) {
-      const serialized = serializeProjectDocument(projectDocument);
+      const normalized = parseProjectDocument(serializeProjectDocument(projectDocument));
+      const serialized = serializeProjectDocument(onlyCustomCourses(normalized));
       store.setItem(storageKeys.project, serialized);
-      return parseProjectDocument(serialized);
+      return normalized;
     },
 
     loadProject() {
       const rawProject = store.getItem(storageKeys.project);
-      return parseProjectDocument(rawProject);
+      const storedProject = parseProjectDocument(rawProject);
+      return storedProject ? mergeWithOfficialCourses(storedProject) : null;
     },
 
     saveProgress(progressDocument) {
