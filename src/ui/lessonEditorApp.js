@@ -1267,6 +1267,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
     activeTextGapPrompt: null,
     cardExerciseLoadVersion: 0,
     continuePopup: null,
+    continuePopupAdvanceLocked: false,
     assistDraft: {
       selectedMode: ASSIST_USER_MODES.EDIT_MICROSEQUENCE,
       activeWorkbenchPane: "preview",
@@ -4481,6 +4482,24 @@ export function createLessonEditorApp({ root, storage, editor }) {
         lessonKey: lesson.id
       }))
     );
+  }
+
+  function continueFromPopup(event) {
+    event?.preventDefault();
+    event?.stopImmediatePropagation();
+
+    // Alguns WebViews móveis podem despachar uma segunda ativação logo após o
+    // DOM ser redesenhado. Sem esta trava, ela é aplicada ao card seguinte e
+    // abre o respectivo feedback imediatamente.
+    if (state.continuePopupAdvanceLocked) {
+      return;
+    }
+
+    state.continuePopupAdvanceLocked = true;
+    globalThis.setTimeout(() => {
+      state.continuePopupAdvanceLocked = false;
+    }, 400);
+    stepCard(1);
   }
 
   function resetCourseProgress(courseKey) {
@@ -8200,7 +8219,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
     });
 
     root.querySelector("[data-action='prev-card']")?.addEventListener("click", () => stepCard(-1));
-    root.querySelector("[data-action='continue-popup-next']")?.addEventListener("click", () => stepCard(1));
+    root.querySelector("[data-action='continue-popup-next']")?.addEventListener("click", continueFromPopup);
     root.querySelector("[data-action='next-card']")?.addEventListener("click", () => stepCard(1));
     root.querySelector("[data-action='close-study']")?.addEventListener("click", () => goBack());
     root.querySelector("[data-action='go-home']")?.addEventListener("click", () => goBack());
