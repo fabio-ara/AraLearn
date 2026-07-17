@@ -1,8 +1,6 @@
 import { renderLessonScreen } from "./renderLessonScreen.js";
 import { renderGenerationPanelOverlay } from "./renderHomeScreen.js";
 import { renderCardCommentOverlay } from "./renderCardCommentOverlay.js";
-import { renderCardVersionOverlay } from "./renderCardVersionOverlay.js";
-import { renderVersionCompareOverlay } from "./renderVersionCompareOverlay.js";
 import { renderEntityEditorOverlay } from "./renderEntityEditorOverlay.js";
 import { renderActionMenuOverlay } from "./renderActionMenuOverlay.js";
 import { renderAssistConfigOverlay } from "./renderAssistConfigOverlay.js";
@@ -27,35 +25,6 @@ import {
   buildLessonGuidanceFromPreset,
   normalizeLessonGuidance
 } from "../generation/guidance/lessonGuidance.js";
-import {
-  createMicrosequenceVersionRecord,
-  ensureStoredMicrosequenceVersionEntry,
-  insertMicrosequenceVersionAfterActive,
-  removeMicrosequenceVersion,
-  setActiveMicrosequenceVersion,
-  replaceActiveMicrosequenceVersion
-} from "./microsequenceVersionState.js";
-import {
-  applyStructureVersionSnapshot,
-  buildStructureVersionKey,
-  createStructureSnapshot,
-  seedStructureVersionMapFromProject,
-  recordStructureVersionTransition,
-  syncStructureVersionSnapshot
-} from "./structureVersioning.js";
-import { removeStructureVersion, setActiveStructureVersion } from "./structureVersionState.js";
-import { buildMicrosequenceVersionComparisonForVersion } from "./microsequenceVersionComparison.js";
-import { buildStructureVersionComparisonForVersion } from "./structureVersionComparison.js";
-import {
-  resolveMicrosequenceAssistOpenState,
-  resolveWorkbenchPaneAfterCardSelection
-} from "./microsequenceWorkbenchState.js";
-import {
-  buildScopedVersionLineageLabel,
-  buildVersionLineageLabel,
-  getScopedVersionDisplayId,
-  getVersionDisplayId
-} from "./versionLineage.js";
 import { getRuntimePopupButtonEntry } from "../render/renderCardRuntime.js";
 import { extractTextGapAnswers, parseTextGapRenderableParts } from "../core/textGaps.js";
 import { resolveCardRuntime } from "../core/cardRuntime.js";
@@ -106,23 +75,10 @@ import {
 import {
   readAssistConfigStorage,
   readCommentStorage,
-  readHistoryStorage,
-  readInterventionSessionStorage,
-  readMicrosequenceVersionStorage,
-  readStructureVersionStorage,
   writeAssistConfigStorage,
-  writeCommentStorage,
-  writeHistoryStorage,
-  writeInterventionSessionStorage,
-  writeMicrosequenceVersionStorage,
-  writeStructureVersionStorage
+  writeCommentStorage
 } from "./lessonEditorStorage.js";
-import {
-  buildInterventionSessionKey,
-  createEmptyInterventionSession,
-  interventionSessionNeedsIteration,
-  normalizeInterventionSessionEntry
-} from "./interventionSessionState.js";
+import { createEmptyInterventionSession, interventionSessionNeedsIteration } from "./interventionSessionState.js";
 import {
   CODEX_LOCAL_MODEL_ID,
   DEFAULT_CODEX_LOCAL_ENDPOINT,
@@ -190,7 +146,6 @@ import {
 
 const MAX_ASSIST_REFS = 5;
 const MAX_ASSIST_ATTACHMENTS = 6;
-const MAX_CARD_SNAPSHOTS = 6;
 const TEORIA_DOS_GRAFOS_MODULE_KEY = "module-teoria-dos-grafos";
 const GRAFOS_FUNDAMENTOS_LESSON_KEY = "lesson-fundamentos-de-grafos";
 const GRAFOS_INTRO_MICROSEQUENCE_KEY = "microsequence-definicao-e-vocabulario-basico";
@@ -270,28 +225,7 @@ export function canSubmitAssistRequestFromState({
   return hasIntent && (hasPrompt || hasAttachments) && !isSubmitting;
 }
 
-export function canEditCurrentMicrosequenceVersionState({
-  microsequenceKey = "",
-  activeVersionId = "",
-  visualizedVersionId = "",
-  editBaseVersionId = ""
-} = {}) {
-  const normalizedMicrosequenceKey = String(microsequenceKey || "").trim();
-  if (!normalizedMicrosequenceKey) {
-    return false;
-  }
 
-  const normalizedActiveVersionId = String(activeVersionId || "").trim();
-  const normalizedVisualizedVersionId = String(visualizedVersionId || "").trim() || normalizedActiveVersionId;
-  const normalizedEditBaseVersionId = String(editBaseVersionId || "").trim() || normalizedActiveVersionId;
-
-  if (!normalizedActiveVersionId) {
-    return true;
-  }
-
-  return normalizedVisualizedVersionId === normalizedActiveVersionId
-    && normalizedEditBaseVersionId === normalizedActiveVersionId;
-}
 
 function fail(message) {
   throw new Error(message);
@@ -317,85 +251,7 @@ function looksLikeBrokenGrafosIntroCard(card = {}) {
   return BROKEN_GRAFOS_CARD_PATTERNS.some((pattern) => pattern.test(source));
 }
 
-export function sanitizeBrokenTeoriaDosGrafosIntroState(projectDocument, microsequenceVersions = {}, interventionSessions = {}) {
-  if (!projectDocument || !Array.isArray(projectDocument.courses)) {
-    return {
-      projectDocument,
-      microsequenceVersions,
-      interventionSessions,
-      changed: false
-    };
-  }
 
-  const courseIndex = projectDocument.courses.findIndex((course) =>
-    Array.isArray(course?.modules) && course.modules.some((moduleValue) => moduleValue?.id === TEORIA_DOS_GRAFOS_MODULE_KEY)
-  );
-  if (courseIndex < 0) {
-    return {
-      projectDocument,
-      microsequenceVersions,
-      interventionSessions,
-      changed: false
-    };
-  }
-
-  const moduleIndex = projectDocument.courses[courseIndex].modules.findIndex(
-    (moduleValue) => moduleValue?.id === TEORIA_DOS_GRAFOS_MODULE_KEY
-  );
-  const lessonIndex = projectDocument.courses[courseIndex].modules[moduleIndex].lessons.findIndex(
-    (lessonValue) => lessonValue?.id === GRAFOS_FUNDAMENTOS_LESSON_KEY
-  );
-  const microsequenceIndex =
-    lessonIndex < 0
-      ? -1
-      : projectDocument.courses[courseIndex].modules[moduleIndex].lessons[lessonIndex].microsequences.findIndex(
-          (microsequenceValue) => microsequenceValue?.id === GRAFOS_INTRO_MICROSEQUENCE_KEY
-        );
-  if (moduleIndex < 0 || lessonIndex < 0 || microsequenceIndex < 0) {
-    return {
-      projectDocument,
-      microsequenceVersions,
-      interventionSessions,
-      changed: false
-    };
-  }
-
-  const currentMicrosequence =
-    projectDocument.courses[courseIndex].modules[moduleIndex].lessons[lessonIndex].microsequences[microsequenceIndex];
-  const cards =
-    Array.isArray(currentMicrosequence?.versions?.at?.(-1)?.cards)
-      ? currentMicrosequence.versions.at(-1).cards
-      : [];
-  if (!cards.length || !cards.some((card) => looksLikeBrokenGrafosIntroCard(card))) {
-    return {
-      projectDocument,
-      microsequenceVersions,
-      interventionSessions,
-      changed: false
-    };
-  }
-
-  const nextProject = structuredClone(projectDocument);
-  const targetMicrosequence =
-    nextProject.courses[courseIndex].modules[moduleIndex].lessons[lessonIndex].microsequences[microsequenceIndex];
-  targetMicrosequence.versions = [];
-  targetMicrosequence.activeVersion = null;
-  targetMicrosequence.status = "planned";
-
-  const nextVersions = { ...(microsequenceVersions || {}) };
-  delete nextVersions[GRAFOS_INTRO_MICROSEQUENCE_KEY];
-
-  const nextSessions = Object.fromEntries(
-    Object.entries(interventionSessions || {}).filter(([, entry]) => entry?.microsequenceKey !== GRAFOS_INTRO_MICROSEQUENCE_KEY)
-  );
-
-  return {
-    projectDocument: nextProject,
-    microsequenceVersions: nextVersions,
-    interventionSessions: nextSessions,
-    changed: true
-  };
-}
 
 function buildDidacticProfileOptions(customProfiles = []) {
   return [
@@ -535,217 +391,13 @@ function normalizeAssistAttachmentName(value, fallback = "documento") {
   return normalized || fallback;
 }
 
-function describeStructureVersionOperation(operationType) {
-  const normalized = String(operationType || "").trim();
-  if (normalized === "manual-restore") {
-    return {
-      kind: "manual",
-      label: "Variação",
-      shortLabel: "Variação",
-      shortIcon: "⧉",
-      detailLabel: "Criar variação",
-      detailIcon: "⧉",
-      detailTone: "manual-detail"
-    };
-  }
-  if (normalized === "seed") {
-    return {
-      kind: "automatic",
-      label: "Inicial",
-      shortLabel: "Inicial",
-      shortIcon: "◉",
-      detailLabel: "Versão inicial",
-      detailIcon: "◉",
-      detailTone: "automatic-detail"
-    };
-  }
-  if (normalized === "update") {
-    return {
-      kind: "automatic",
-      label: "Editar",
-      shortLabel: "Editar",
-      shortIcon: "✎",
-      detailLabel: "Edição estrutural",
-      detailIcon: "✎",
-      detailTone: "automatic-detail"
-    };
-  }
-  if (normalized === "create-child") {
-    return {
-      kind: "automatic",
-      label: "Filho+",
-      shortLabel: "Filho+",
-      shortIcon: "+",
-      detailLabel: "Inclusão de filho",
-      detailIcon: "+",
-      detailTone: "automatic-detail"
-    };
-  }
-  if (normalized === "remove-child") {
-    return {
-      kind: "automatic",
-      label: "Filho-",
-      shortLabel: "Filho-",
-      shortIcon: "−",
-      detailLabel: "Remoção de filho",
-      detailIcon: "−",
-      detailTone: "automatic-detail"
-    };
-  }
-  if (normalized === "reorder-children") {
-    return {
-      kind: "automatic",
-      label: "Ordem",
-      shortLabel: "Ordem",
-      shortIcon: "↕",
-      detailLabel: "Reordenação",
-      detailIcon: "↕",
-      detailTone: "automatic-detail"
-    };
-  }
-  if (normalized === "generated") {
-    return {
-      kind: "automatic",
-      label: "Gerada",
-      shortLabel: "Gerada",
-      shortIcon: "✦",
-      detailLabel: "Gerada",
-      detailIcon: "✦",
-      detailTone: "automatic-detail"
-    };
-  }
-  if (normalized === "migration") {
-    return {
-      kind: "automatic",
-      label: "Migrada",
-      shortLabel: "Migrada",
-      shortIcon: "⇄",
-      detailLabel: "Migração local",
-      detailIcon: "⇄",
-      detailTone: "automatic-detail"
-    };
-  }
-  if (normalized === "snapshot") {
-    return {
-      kind: "automatic",
-      label: "Editar",
-      shortLabel: "Editar",
-      shortIcon: "✎",
-      detailLabel: "Snapshot local",
-      detailIcon: "◌",
-      detailTone: "automatic-detail"
-    };
-  }
 
-  return {
-    kind: "automatic",
-    label: normalized || "Editar",
-    shortLabel: normalized || "Editar",
-    shortIcon: "•",
-    detailLabel: "Local",
-    detailIcon: "•",
-    detailTone: "default"
-  };
-}
 
-function getStructureVersionPrefix(level) {
-  if (level === "project") return "C";
-  if (level === "course") return "M";
-  if (level === "module") return "L";
-  if (level === "lesson") return "V";
-  return "V";
-}
 
-function getStableStructureEntryDisplayId(entry, prefix = getStructureVersionPrefix(entry?.level)) {
-  const versions = Array.isArray(entry?.versions) ? entry.versions : [];
-  if (!versions.length) {
-    return `${String(prefix || "V").trim() || "V"}?`;
-  }
 
-  const firstVersion =
-    versions
-      .filter(Boolean)
-      .slice()
-      .sort((left, right) => {
-        const leftNumber = Number.isInteger(left?.publicNumber) ? left.publicNumber : Number.MAX_SAFE_INTEGER;
-        const rightNumber = Number.isInteger(right?.publicNumber) ? right.publicNumber : Number.MAX_SAFE_INTEGER;
-        if (leftNumber !== rightNumber) {
-          return leftNumber - rightNumber;
-        }
 
-        const leftVersionNumber = Number.isInteger(left?.versionNumber) ? left.versionNumber : Number.MAX_SAFE_INTEGER;
-        const rightVersionNumber = Number.isInteger(right?.versionNumber) ? right.versionNumber : Number.MAX_SAFE_INTEGER;
-        return leftVersionNumber - rightVersionNumber;
-      })[0] || versions[0];
 
-  return getScopedVersionDisplayId(firstVersion, prefix, 0);
-}
 
-function buildStructureTabsForEntry(entry, { prefix = getStructureVersionPrefix(entry?.level), action = "select-structure-version" } = {}) {
-  const versions = Array.isArray(entry?.versions) ? entry.versions : [];
-  return versions.map((version, index) => ({
-    versionId: version.id,
-    action,
-    displayId: getScopedVersionDisplayId(version, prefix, index),
-    lineage: buildScopedVersionLineageLabel(version, versions, prefix, index),
-    updatedAt: version.updatedAt || "",
-    createdAt: version.createdAt || ""
-  }));
-}
-
-function buildStructureContextTab(entry) {
-  if (!entry?.activeVersionId) {
-    return null;
-  }
-
-  const versions = Array.isArray(entry?.versions) ? entry.versions : [];
-  const activeIndex = versions.findIndex((item) => item.id === entry.activeVersionId);
-  const activeVersion = activeIndex >= 0 ? versions[activeIndex] : versions.at(-1);
-  if (!activeVersion) {
-    return null;
-  }
-
-  const prefix = getStructureVersionPrefix(entry.level);
-  const label =
-    entry.level === "project"
-      ? buildScopedVersionLineageLabel(activeVersion, versions, prefix, Math.max(activeIndex, 0))
-      : getStableStructureEntryDisplayId(entry, prefix);
-  return {
-    level: entry.level,
-    versionId: activeVersion.id,
-    label
-  };
-}
-
-function buildChildStructureTabs(versionMap, items = [], resolveReference, prefix, action, activeKey = "") {
-  return (Array.isArray(items) ? items : [])
-    .map((item) => {
-      const reference = resolveReference(item);
-      if (!reference) {
-        return null;
-      }
-      const entry = versionMap?.[buildStructureVersionKey(reference)];
-      const versions = Array.isArray(entry?.versions) ? entry.versions : [];
-      const activeIndex = versions.findIndex((version) => version.id === entry?.activeVersionId);
-      const activeVersion = activeIndex >= 0 ? versions[activeIndex] : versions.at(-1);
-      if (!activeVersion) {
-        return null;
-      }
-
-      return {
-        action,
-        isActive: item?.key === activeKey,
-        courseKey: reference.courseKey || "",
-        moduleKey: reference.moduleKey || "",
-        lessonKey: reference.lessonKey || "",
-        displayId: getStableStructureEntryDisplayId(entry, prefix),
-        lineage: getStableStructureEntryDisplayId(entry, prefix),
-        updatedAt: activeVersion.updatedAt || "",
-        createdAt: activeVersion.createdAt || ""
-      };
-    })
-    .filter(Boolean);
-}
 
 function formatOverlayTimestamp(value) {
   const iso = String(value || "").trim();
@@ -1211,20 +863,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
     loadedProject = createEmbeddedSeedProjectDocument();
     storage.saveProject(loadedProject);
   }
-  const loadedMicrosequenceVersions = readMicrosequenceVersionStorage();
-  const loadedInterventionSessions = readInterventionSessionStorage();
-  const sanitizedInitialState = sanitizeBrokenTeoriaDosGrafosIntroState(
-    loadedProject,
-    loadedMicrosequenceVersions,
-    loadedInterventionSessions
-  );
-  if (sanitizedInitialState.changed) {
-    storage.saveProject(sanitizedInitialState.projectDocument);
-    writeMicrosequenceVersionStorage(sanitizedInitialState.microsequenceVersions);
-    writeInterventionSessionStorage(sanitizedInitialState.interventionSessions);
-  }
-
-  const initialProject = sanitizedInitialState.projectDocument;
+  const initialProject = loadedProject;
   const initialAssistConfig = normalizeAssistConfig(readAssistConfigStorage());
   const state = {
     project: initialProject,
@@ -1234,13 +873,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
     generationPanelOpen: false,
     selection: null,
     cardCommentOpen: false,
-    versionHistoryOpen: false,
-    versionCompareOpen: false,
-    versionHistorySelectionKey: "",
-    versionHistoryExpandedMoreKey: "",
-    versionCompareSelectionKey: "",
-    versionCompareTab: "summary",
-    versionCompareFocusTarget: null,
     entityEditor: null,
     assistConfigOpen: false,
     providerConfigOpen: false,
@@ -1252,10 +884,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
     codexCliSetupStatus: createCodexCliSetupStatus(),
     pendingExternalImport: null,
     microsequenceMode: "play",
-    cardHistory: readHistoryStorage(),
-    microsequenceVersions: sanitizedInitialState.microsequenceVersions,
-    structureVersions: readStructureVersionStorage(),
-    interventionSessions: sanitizedInitialState.interventionSessions,
     cardComments: readCommentStorage(),
     cardCommentDraft: "",
     flowchartPracticeByBlockKey: {},
@@ -1267,12 +895,10 @@ export function createLessonEditorApp({ root, storage, editor }) {
     activeTextGapPrompt: null,
     cardExerciseLoadVersion: 0,
     continuePopup: null,
+    continuePopupAdvanceLocked: false,
     assistDraft: {
       selectedMode: ASSIST_USER_MODES.EDIT_MICROSEQUENCE,
       activeWorkbenchPane: "preview",
-      visualizedVersionId: "",
-      editBaseVersionId: "",
-      versionActionsOpen: false,
       actionIntent: "",
       promptText: "",
       preferredContainer: "",
@@ -1314,8 +940,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
     lastCoursesView: "courses",
     pendingGeneratedNavigation: null,
     pendingStructureFocus: null,
-    pendingExerciseFocus: null,
-    centerActiveStructureVersionTabOnRender: true
+    pendingExerciseFocus: null
   };
 
   state.selection = resolveFirstSelection(state.project);
@@ -1324,9 +949,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
     state.project = nextProject;
     if (updateHead) {
       state.projectHead = nextProject;
-    }
-    if (STRUCTURE_VERSIONING_ACTIVE) {
-      seedAllStructureVersionsFromProject();
     }
   }
 
@@ -1672,7 +1294,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
     const navigationState = buildCourseNavigationState(state.project, courseKey);
     if (!navigationState) return;
     Object.assign(state, buildNavigationViewState(navigationState));
-    syncVisibleStructureVersionsFromProject();
+
     render({ preserveState: false });
   }
 
@@ -1683,7 +1305,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
     });
     if (!navigationState) return;
     Object.assign(state, buildNavigationViewState(navigationState));
-    syncVisibleStructureVersionsFromProject();
+
     render({ preserveState: false });
   }
 
@@ -1695,7 +1317,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
     });
     if (!navigationState) return;
     Object.assign(state, buildNavigationViewState(navigationState));
-    syncVisibleStructureVersionsFromProject();
+
     render({ preserveState: false });
   }
 
@@ -1736,178 +1358,31 @@ export function createLessonEditorApp({ root, storage, editor }) {
     storage.saveProgress(nextProgress);
   }
 
-  function saveCardHistory() {
-    writeHistoryStorage(state.cardHistory);
-  }
 
-  function saveMicrosequenceVersions() {
-    writeMicrosequenceVersionStorage(state.microsequenceVersions);
-  }
 
-  function saveStructureVersions() {
-    writeStructureVersionStorage(state.structureVersions);
-  }
 
-  function saveInterventionSessions() {
-    writeInterventionSessionStorage(state.interventionSessions);
-  }
 
-  function seedAllStructureVersionsFromProject() {
-    if (!STRUCTURE_VERSIONING_ACTIVE) {
-      return;
-    }
-    const changed = seedStructureVersionMapFromProject(state.structureVersions, state.projectHead);
-    if (changed) {
-      saveStructureVersions();
-    }
-  }
 
-  function syncActiveStructureVersionFromProject(reference) {
-    if (!STRUCTURE_VERSIONING_ACTIVE) {
-      return;
-    }
-    if (!reference?.level) {
-      return;
-    }
 
-    const entry = syncStructureVersionSnapshot(state.structureVersions, state.projectHead, reference);
-    if (entry) {
-      saveStructureVersions();
-    }
-  }
 
-  function createStructureVersionFromProject(nextProject, reference, options = {}) {
-    if (!STRUCTURE_VERSIONING_ACTIVE) {
-      return;
-    }
-    if (!nextProject) {
-      return;
-    }
 
-    const references = [{ level: "project" }, ...(reference?.level ? [reference] : [])];
-    let changed = false;
-    references.forEach((targetReference) => {
-      const entry = recordStructureVersionTransition(state.structureVersions, {
-        beforeProject: state.project,
-        afterProject: nextProject,
-        reference: targetReference,
-        ...options
-      });
-      if (entry) {
-        changed = true;
-      }
-    });
-    if (changed) {
-      saveStructureVersions();
-    }
-  }
 
-  function getCurrentStructureVersionReference() {
-    if (state.view === "courses") {
-      return {
-        level: "project"
-      };
-    }
 
-    if (state.view === "course" && state.selection.courseKey) {
-      return {
-        level: "course",
-        courseKey: state.selection.courseKey
-      };
-    }
 
-    if (state.view === "module" && state.selection.courseKey && state.selection.moduleKey) {
-      return {
-        level: "module",
-        courseKey: state.selection.courseKey,
-        moduleKey: state.selection.moduleKey
-      };
-    }
 
-    if (state.view === "lesson" && state.selection.courseKey && state.selection.moduleKey && state.selection.lessonKey) {
-      return {
-        level: "lesson",
-        courseKey: state.selection.courseKey,
-        moduleKey: state.selection.moduleKey,
-        lessonKey: state.selection.lessonKey
-      };
-    }
 
-    return null;
-  }
 
-  function listVisibleStructureVersionReferences() {
-    const references = [];
-    if (state.view === "courses") {
-      references.push({ level: "project" });
-      return references;
-    }
 
-    if (state.selection.courseKey) {
-      references.push({ level: "project" });
-      references.push({
-        level: "course",
-        courseKey: state.selection.courseKey
-      });
-    }
 
-    if ((state.view === "module" || state.view === "lesson") && state.selection.courseKey && state.selection.moduleKey) {
-      references.push({
-        level: "module",
-        courseKey: state.selection.courseKey,
-        moduleKey: state.selection.moduleKey
-      });
-    }
 
-    if (state.view === "lesson" && state.selection.courseKey && state.selection.moduleKey && state.selection.lessonKey) {
-      references.push({
-        level: "lesson",
-        courseKey: state.selection.courseKey,
-        moduleKey: state.selection.moduleKey,
-        lessonKey: state.selection.lessonKey
-      });
-    }
 
-    return references;
-  }
 
-  function syncVisibleStructureVersionsFromProject() {
-    if (!STRUCTURE_VERSIONING_ACTIVE) {
-      return;
-    }
 
-    seedAllStructureVersionsFromProject();
-    listVisibleStructureVersionReferences().forEach((reference) => syncActiveStructureVersionFromProject(reference));
-  }
 
-  function getStructureVersionEntry(reference = getCurrentStructureVersionReference()) {
-    const versionKey = buildStructureVersionKey(reference);
-    if (!versionKey) {
-      return null;
-    }
 
-    return state.structureVersions[versionKey] || null;
-  }
 
-  function getSelectedStructureVersionId() {
-    const entry = getStructureVersionEntry();
-    return String(state.versionHistorySelectionKey || entry?.activeVersionId || "").trim();
-  }
 
-  function getSelectedStructureVersion(reference = getCurrentStructureVersionReference()) {
-    const entry = getStructureVersionEntry(reference);
-    if (!entry) {
-      return null;
-    }
 
-    const selectedVersionId = getSelectedStructureVersionId();
-    return (
-      entry.versions.find((item) => item.id === selectedVersionId) ||
-      entry.versions.find((item) => item.id === entry.activeVersionId) ||
-      entry.versions[0] ||
-      null
-    );
-  }
 
   function getAssistModelLabel(model) {
     return ASSIST_MODEL_OPTIONS.find((item) => item.value === model)?.label || model;
@@ -1930,39 +1405,15 @@ export function createLessonEditorApp({ root, storage, editor }) {
     };
   }
 
-  function getCurrentInterventionBaseVersionId(reference = state.selection) {
-    return getMicrosequenceVersionEntry(reference)?.activeVersionId || "";
-  }
+
 
   function getInterventionSession(reference = state.selection) {
-    const normalizedReference = getCurrentInterventionReference(reference);
-    const sessionKey = buildInterventionSessionKey(normalizedReference);
-    return normalizeInterventionSessionEntry(state.interventionSessions[sessionKey], {
-      reference: normalizedReference,
-      baseVersionId: getCurrentInterventionBaseVersionId(reference)
-    });
+    return state.assistDraft.interventionSession || createEmptyInterventionSession();
   }
 
   function persistInterventionSession(sessionPatch = {}, reference = state.selection) {
-    const normalizedReference = getCurrentInterventionReference(reference);
-    const sessionKey = buildInterventionSessionKey(normalizedReference);
     const current = getInterventionSession(reference);
-    const now = new Date().toISOString();
-    const nextSession = normalizeInterventionSessionEntry(
-      {
-        ...current,
-        ...sessionPatch,
-        ...normalizedReference,
-        updatedAt: now,
-        createdAt: current.createdAt || now
-      },
-      {
-        reference: normalizedReference,
-        baseVersionId: String(sessionPatch?.baseVersionId || "").trim() || getCurrentInterventionBaseVersionId(reference)
-      }
-    );
-    state.interventionSessions[sessionKey] = nextSession;
-    saveInterventionSessions();
+    const nextSession = { ...current, ...sessionPatch };
     state.assistDraft.interventionSession = nextSession;
     if (!state.assistDraft.feedbackEditing) {
       state.assistDraft.feedbackDraftText = nextSession.nextPromptDraft || nextSession.feedbackText || "";
@@ -2478,46 +1929,11 @@ export function createLessonEditorApp({ root, storage, editor }) {
     persistAssistConfig();
   }
 
-  function getCurrentCardHistory() {
-    const pathKey = buildCardPathKey(state.selection);
-    return Array.isArray(state.cardHistory[pathKey]) ? state.cardHistory[pathKey] : [];
-  }
 
-  function recordCurrentCardSnapshot(label, source) {
-    const context = getRenderContext();
-    if (!context.card) {
-      return;
-    }
 
-    const pathKey = buildCardPathKey(state.selection);
-    const history = getCurrentCardHistory();
-    const snapshot = {
-      id: `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
-      label,
-      source,
-      title: context.card.title || "",
-      text: readCardText(context.card),
-      savedAt: new Date().toISOString()
-    };
 
-    if (history[0] && history[0].title === snapshot.title && history[0].text === snapshot.text) {
-      return;
-    }
 
-    state.cardHistory[pathKey] = [snapshot, ...history].slice(0, MAX_CARD_SNAPSHOTS);
-    saveCardHistory();
-  }
 
-  function ensureCurrentCardSnapshot() {
-    const context = getRenderContext();
-    if (!context.card) {
-      return;
-    }
-
-    if (!getCurrentCardHistory().length) {
-      recordCurrentCardSnapshot("Inicial", "base");
-    }
-  }
 
   function getAssistRefs() {
     return getAssistCatalog();
@@ -2567,32 +1983,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
       state.assistDraft.interventionSession = createEmptyInterventionSession();
       return;
     }
-    const currentBaseVersionId = getCurrentInterventionBaseVersionId(reference);
-    const storedSession = getInterventionSession(reference);
-    const shouldMarkStale =
-      Boolean(storedSession.baseVersionId) &&
-      Boolean(currentBaseVersionId) &&
-      storedSession.baseVersionId !== currentBaseVersionId &&
-      storedSession.status !== "completed";
-    const nextSession = normalizeInterventionSessionEntry(
-      shouldMarkStale
-        ? {
-            ...storedSession,
-            status: "stale",
-            stale: true,
-            staleMessage: "Esta resposta foi gerada sobre outra versão da microssequência.",
-            baseVersionId: storedSession.baseVersionId
-          }
-        : {
-            ...storedSession,
-            stale: false,
-            staleMessage: ""
-          },
-      {
-        reference,
-        baseVersionId: shouldMarkStale ? storedSession.baseVersionId : currentBaseVersionId
-      }
-    );
+    const nextSession = getInterventionSession(reference);
     state.assistDraft.interventionSession = nextSession;
     if (!state.assistDraft.feedbackEditing) {
       state.assistDraft.feedbackDraftText = nextSession.nextPromptDraft || nextSession.feedbackText || "";
@@ -2629,30 +2020,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
     }
   }
 
-  function restoreCardVersion(versionKey) {
-    if (!versionKey || versionKey === "current") {
-      return;
-    }
 
-    const version = getCurrentCardHistory().find((item) => item.id === versionKey);
-    if (!version) {
-      return;
-    }
-
-    recordCurrentCardSnapshot("Antes de retomar", "manual");
-    applyCardContent({
-      title: version.title,
-      text: version.text
-    });
-    persistInterventionSession({
-      status: "completed",
-      title: "Versão em uso",
-      message: `Editor voltou para ${version.label.toLowerCase()}.`,
-      feedbackText: `Editor voltou para ${version.label.toLowerCase()}.`,
-      nextPromptDraft: ""
-    });
-    render({ preserveState: true });
-  }
 
   function selectMicrosequenceCard(microsequenceKey, targetIndex = 0) {
     const microsequence = findMicrosequence(
@@ -2664,15 +2032,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
     );
     if (!microsequence) return;
 
-    const reference = {
-      courseKey: state.selection.courseKey,
-      moduleKey: state.selection.moduleKey,
-      lessonKey: state.selection.lessonKey,
-      microsequenceKey
-    };
-    ensureMicrosequenceVersionEntry(reference, microsequence);
-    syncActiveMicrosequenceVersionFromProject(reference);
-    const cards = getActiveMicrosequenceCards(reference);
+    const cards = Array.isArray(microsequence.cards) ? microsequence.cards : [];
     const safeIndex = Math.max(0, Math.min(targetIndex, Math.max(0, cards.length - 1)));
     const card = cards[safeIndex] || null;
 
@@ -2692,7 +2052,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
 
     state.view = "microsequence";
     state.microsequenceMode = mode;
-    ensureCurrentCardSnapshot();
     syncAssistDraft();
     state.cardCommentOpen = false;
     state.entityEditor = null;
@@ -2713,14 +2072,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
     );
     if (!microsequence) return;
     state.selection.microsequenceKey = microsequence.id;
-    const reference = {
-      courseKey: state.selection.courseKey,
-      moduleKey: state.selection.moduleKey,
-      lessonKey: state.selection.lessonKey,
-      microsequenceKey: microsequence.id
-    };
-    const entry = ensureMicrosequenceVersionEntry(reference, microsequence);
-    const assistOpenState = resolveMicrosequenceAssistOpenState(entry, targetIndex);
     selectMicrosequenceCard(microsequenceKey, targetIndex);
     state.assistDraft.selectedRefIds = Array.isArray(microsequence.dependsOn)
       ? microsequence.dependsOn.slice(0, MAX_ASSIST_REFS)
@@ -2728,14 +2079,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
 
     state.view = "microsequence";
     state.assistDraft.selectedMode = ASSIST_USER_MODES.EDIT_MICROSEQUENCE;
-    state.assistDraft.activeWorkbenchPane = assistOpenState.activeWorkbenchPane;
-    state.assistDraft.visualizedVersionId = assistOpenState.visualizedVersionId || "";
-    state.assistDraft.editBaseVersionId = assistOpenState.editBaseVersionId || "";
-    state.selection.cardIndex = assistOpenState.cardIndex;
-    state.selection.cardKey =
-      entry?.versions
-        ?.find((item) => item.id === assistOpenState.visualizedVersionId)
-        ?.cards?.[assistOpenState.cardIndex]?.id || state.selection.cardKey;
+    state.assistDraft.activeWorkbenchPane = "content";
     state.assistDraft.attachments = [];
     state.assistDraft.actionIntent = "";
     state.assistDraft.promptText = "";
@@ -2746,7 +2090,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
     state.assistDraft.feedbackEditing = false;
     state.assistDraft.feedbackDraftText = "";
     state.microsequenceMode = "play";
-    ensureCurrentCardSnapshot();
     syncAssistDraft();
     state.cardCommentOpen = false;
     state.entityEditor = null;
@@ -2757,122 +2100,13 @@ export function createLessonEditorApp({ root, storage, editor }) {
     render({ preserveState: false });
   }
 
-  function buildMicrosequenceVersionKey(reference = state.selection) {
-    if (!reference?.courseKey || !reference?.moduleKey || !reference?.lessonKey || !reference?.microsequenceKey) {
-      return "";
-    }
 
-    return [
-      reference.courseKey,
-      reference.moduleKey,
-      reference.lessonKey,
-      reference.microsequenceKey
-    ].join("::");
-  }
 
-  function ensureMicrosequenceVersionEntry(reference = state.selection, microsequence = null) {
-    const versionKey = buildMicrosequenceVersionKey(reference);
-    if (!versionKey) {
-      return null;
-    }
 
-    const currentMicrosequence =
-      microsequence ||
-      findMicrosequence(
-        state.project,
-        reference.courseKey,
-        reference.moduleKey,
-        reference.lessonKey,
-        reference.microsequenceKey
-      );
-    if (!currentMicrosequence) {
-      return null;
-    }
 
-    const nextEntry = ensureStoredMicrosequenceVersionEntry(
-      state.microsequenceVersions,
-      versionKey,
-      currentMicrosequence
-    );
-    saveMicrosequenceVersions();
-    return nextEntry;
-  }
 
-  function getMicrosequenceVersionEntry(reference = state.selection) {
-    const versionKey = buildMicrosequenceVersionKey(reference);
-    if (!versionKey) {
-      return null;
-    }
-    return state.microsequenceVersions[versionKey] || null;
-  }
-
-  function getActiveMicrosequenceVersion(reference = state.selection) {
-    const entry = getMicrosequenceVersionEntry(reference);
-    if (!entry) {
-      return null;
-    }
-
-    return entry.versions.find((item) => item.id === entry.activeVersionId) || entry.versions[0] || null;
-  }
 
   function getActiveMicrosequenceCards(reference = state.selection) {
-    const version = getActiveMicrosequenceVersion(reference);
-    return Array.isArray(version?.cards) ? version.cards : [];
-  }
-
-  function getPendingGeneratedMicrosequenceVersion(reference = state.selection) {
-    const activeVersion = getActiveMicrosequenceVersion(reference);
-    return activeVersion && isGeneratedPendingOperation(activeVersion.operationType) ? activeVersion : null;
-  }
-
-  function getVisualizedMicrosequenceVersionId() {
-    return String(state.assistDraft.visualizedVersionId || "").trim();
-  }
-
-  function getVisualizedMicrosequenceVersion(reference = state.selection) {
-    const entry = getMicrosequenceVersionEntry(reference);
-    if (!entry) {
-      return null;
-    }
-
-    const visualizedVersionId = getVisualizedMicrosequenceVersionId();
-    return visualizedVersionId ? entry.versions.find((item) => item.id === visualizedVersionId) || null : null;
-  }
-
-  function getMicrosequenceEditBaseVersionId() {
-    return String(state.assistDraft.editBaseVersionId || "").trim();
-  }
-
-  function canEditCurrentMicrosequenceVersion(reference = state.selection) {
-    const entry = getMicrosequenceVersionEntry(reference);
-    return canEditCurrentMicrosequenceVersionState({
-      microsequenceKey: reference?.microsequenceKey,
-      activeVersionId: entry?.activeVersionId || "",
-      visualizedVersionId: getVisualizedMicrosequenceVersionId(),
-      editBaseVersionId: getMicrosequenceEditBaseVersionId()
-    });
-  }
-
-  function setMicrosequenceVersionViewState({
-    visualizedVersionId = getVisualizedMicrosequenceVersionId(),
-    editBaseVersionId = getMicrosequenceEditBaseVersionId()
-  } = {}) {
-    state.assistDraft.visualizedVersionId = String(visualizedVersionId || "").trim();
-    state.assistDraft.editBaseVersionId = String(editBaseVersionId || state.assistDraft.visualizedVersionId || "").trim();
-    state.assistDraft.versionActionsOpen = false;
-  }
-
-  function toggleMicrosequenceVersionMore() {
-    state.assistDraft.versionActionsOpen = !state.assistDraft.versionActionsOpen;
-    render({ preserveState: true });
-  }
-
-  function syncActiveMicrosequenceVersionFromProject(reference = state.selection) {
-    const entry = getMicrosequenceVersionEntry(reference);
-    if (!entry) {
-      return null;
-    }
-
     const microsequence = findMicrosequence(
       state.project,
       reference.courseKey,
@@ -2880,315 +2114,42 @@ export function createLessonEditorApp({ root, storage, editor }) {
       reference.lessonKey,
       reference.microsequenceKey
     );
-    if (!microsequence) {
-      return null;
-    }
-
-    const activeVersion = replaceActiveMicrosequenceVersion(entry, microsequence);
-    if (!activeVersion) {
-      return null;
-    }
-
-    saveMicrosequenceVersions();
-    return activeVersion;
+    return Array.isArray(microsequence?.cards) ? microsequence.cards : [];
   }
 
-  function applyMicrosequenceVersion(reference, version, targetCardIndex = 0) {
-    if (!reference || !version) {
-      return;
-    }
 
-    const nextProject = editor.replaceMicrosequenceCards({
-      courseKey: reference.courseKey,
-      moduleKey: reference.moduleKey,
-      lessonKey: reference.lessonKey,
-      microsequenceKey: reference.microsequenceKey,
-      title: version.title || "Microssequência",
-      goal: version.goal || "",
-      role: version.role || "",
-      dependsOn: structuredClone(version.dependsOn || []),
-      covers: structuredClone(version.covers || []),
-      checks: structuredClone(version.checks || []),
-      status: version.status,
-      cards: structuredClone(version.cards || [])
-    });
-    setProject(nextProject);
 
-    const nextMicrosequence = findMicrosequence(
-      nextProject,
-      reference.courseKey,
-      reference.moduleKey,
-      reference.lessonKey,
-      reference.microsequenceKey
-    );
-    const nextCards = getActiveMicrosequenceCards(reference);
-    const safeIndex = Math.max(0, Math.min(targetCardIndex, Math.max(0, nextCards.length - 1)));
-    const nextCard = nextCards[safeIndex] || null;
-    applySelection({
-      courseKey: reference.courseKey,
-      moduleKey: reference.moduleKey,
-      lessonKey: reference.lessonKey,
-      microsequenceKey: reference.microsequenceKey,
-      cardKey: nextCard?.id || null,
-      cardIndex: safeIndex
-    });
-  }
 
-  function createMicrosequenceVersionFromCurrentProject({
-    parentVersionId = "",
-    operationType = "snapshot",
-    label = ""
-  } = {}) {
-    const reference = {
-      courseKey: state.selection.courseKey,
-      moduleKey: state.selection.moduleKey,
-      lessonKey: state.selection.lessonKey,
-      microsequenceKey: state.selection.microsequenceKey
-    };
-    const hadEntry = Boolean(getMicrosequenceVersionEntry(reference));
-    const entry = getMicrosequenceVersionEntry(reference);
-    const microsequence = findMicrosequence(
-      state.project,
-      reference.courseKey,
-      reference.moduleKey,
-      reference.lessonKey,
-      reference.microsequenceKey
-    );
-    if (!entry || !microsequence) {
-      return;
-    }
 
-    if (!hadEntry && (entry.versions || []).length === 1 && entry.versions[0]?.label === "Snapshot 1") {
-      replaceActiveMicrosequenceVersion(entry, microsequence);
-    } else {
-      insertMicrosequenceVersionAfterActive(entry, microsequence, {
-        label: label || `Snapshot ${entry.versions.length + 1}`,
-        operationType,
-        parentVersionId: String(parentVersionId || "").trim()
-      });
-    }
-    saveMicrosequenceVersions();
-    setMicrosequenceVersionViewState({
-      visualizedVersionId: entry.activeVersionId,
-      editBaseVersionId: entry.activeVersionId
-    });
-  }
 
-  function ensureEditableMicrosequenceBranch({
-    operationType = "snapshot",
-    label = ""
-  } = {}) {
-    const reference = {
-      courseKey: state.selection.courseKey,
-      moduleKey: state.selection.moduleKey,
-      lessonKey: state.selection.lessonKey,
-      microsequenceKey: state.selection.microsequenceKey
-    };
-    const entry = getMicrosequenceVersionEntry(reference);
-    const editBaseVersionId = getMicrosequenceEditBaseVersionId();
-    if (!entry || !editBaseVersionId) {
-      return null;
-    }
 
-    if (entry.activeVersionId === editBaseVersionId) {
-      return entry.versions.find((item) => item.id === entry.activeVersionId) || null;
-    }
 
-    return null;
-  }
 
-  function selectMicrosequenceVersion(versionId, { preserveCardIndex = true } = {}) {
-    const reference = {
-      courseKey: state.selection.courseKey,
-      moduleKey: state.selection.moduleKey,
-      lessonKey: state.selection.lessonKey,
-      microsequenceKey: state.selection.microsequenceKey
-    };
-    const entry = getMicrosequenceVersionEntry(reference);
-    if (!entry) {
-      return;
-    }
 
-    const version = entry.versions.find((item) => item.id === versionId);
-    if (!version) {
-      return;
-    }
 
-    setMicrosequenceVersionViewState({
-      visualizedVersionId: version.id,
-      editBaseVersionId: getMicrosequenceEditBaseVersionId()
-    });
-    const targetCardIndex = preserveCardIndex && Number.isInteger(state.selection.cardIndex) ? state.selection.cardIndex : 0;
-    const safeIndex = Math.max(0, Math.min(targetCardIndex, Math.max(0, (version.cards || []).length - 1)));
-    state.selection.cardIndex = safeIndex;
-    state.selection.cardKey = (version.cards || [])[safeIndex]?.id || null;
-    state.assistDraft.versionActionsOpen = false;
-    render({ preserveState: false });
-  }
 
-  function useMicrosequenceVersion(versionId) {
-    const reference = {
-      courseKey: state.selection.courseKey,
-      moduleKey: state.selection.moduleKey,
-      lessonKey: state.selection.lessonKey,
-      microsequenceKey: state.selection.microsequenceKey
-    };
-    const entry = getMicrosequenceVersionEntry(reference);
-    if (!entry) {
-      return;
-    }
 
-    const version = entry.versions.find((item) => item.id === versionId);
-    if (!version || version.id === entry.activeVersionId) {
-      return;
-    }
 
-    setActiveMicrosequenceVersion(entry, version.id);
-    saveMicrosequenceVersions();
-    applyMicrosequenceVersion(reference, version, Number.isInteger(state.selection.cardIndex) ? state.selection.cardIndex : 0);
-    const currentMicrosequence = findMicrosequence(
-      state.project,
-      reference.courseKey,
-      reference.moduleKey,
-      reference.lessonKey,
-      reference.microsequenceKey
-    );
-    state.assistDraft.selectedRefIds = Array.isArray(currentMicrosequence?.dependsOn)
-      ? currentMicrosequence.dependsOn.slice(0, MAX_ASSIST_REFS)
-      : [];
-    setMicrosequenceVersionViewState({
-      visualizedVersionId: version.id,
-      editBaseVersionId: version.id
-    });
-    state.assistDraft.versionActionsOpen = false;
-    render({ preserveState: false });
-  }
 
-  function editMicrosequenceFromVersion(versionId) {
-    const reference = {
-      courseKey: state.selection.courseKey,
-      moduleKey: state.selection.moduleKey,
-      lessonKey: state.selection.lessonKey,
-      microsequenceKey: state.selection.microsequenceKey
-    };
-    const entry = getMicrosequenceVersionEntry(reference);
-    if (!entry) {
-      return;
-    }
 
-    const version = entry.versions.find((item) => item.id === versionId);
-    if (!version) {
-      return;
-    }
 
-    applyMicrosequenceVersion(reference, version, 0);
-    const currentMicrosequence = findMicrosequence(
-      state.project,
-      reference.courseKey,
-      reference.moduleKey,
-      reference.lessonKey,
-      reference.microsequenceKey
-    );
-    state.assistDraft.selectedRefIds = Array.isArray(currentMicrosequence?.dependsOn)
-      ? currentMicrosequence.dependsOn.slice(0, MAX_ASSIST_REFS)
-      : [];
-    setMicrosequenceVersionViewState({
-      visualizedVersionId: version.id,
-      editBaseVersionId: version.id
-    });
-    state.assistDraft.activeWorkbenchPane = "edit";
-    render({ preserveState: false });
-  }
 
-  function canDeleteMicrosequenceVersion(versionId) {
-    const entry = getMicrosequenceVersionEntry();
-    if (!entry || !Array.isArray(entry.versions) || entry.versions.length <= 1) {
-      return false;
-    }
-    return Boolean(versionId);
-  }
 
-  function deleteMicrosequenceVersion(versionId) {
-    const reference = {
-      courseKey: state.selection.courseKey,
-      moduleKey: state.selection.moduleKey,
-      lessonKey: state.selection.lessonKey,
-      microsequenceKey: state.selection.microsequenceKey
-    };
-    const entry = getMicrosequenceVersionEntry(reference);
-    if (!entry || !canDeleteMicrosequenceVersion(versionId)) {
-      return;
-    }
 
-    const fallbackVersion = removeMicrosequenceVersion(entry, versionId);
-    if (!fallbackVersion) {
-      return;
-    }
 
-    saveMicrosequenceVersions();
-    const nextVisualized =
-      getVisualizedMicrosequenceVersionId() === versionId
-        ? fallbackVersion.id
-        : getVisualizedMicrosequenceVersionId();
-    setMicrosequenceVersionViewState({
-      visualizedVersionId: nextVisualized,
-      editBaseVersionId:
-        getMicrosequenceEditBaseVersionId() === versionId ? fallbackVersion.id : getMicrosequenceEditBaseVersionId()
-    });
-    state.assistDraft.versionActionsOpen = false;
-    render({ preserveState: true });
-  }
 
-  function stepMicrosequenceVersion(delta) {
-    const entry = getMicrosequenceVersionEntry();
-    if (!entry || !Array.isArray(entry.versions) || entry.versions.length <= 1) {
-      return;
-    }
 
-    const visualizedVersionId = getVisualizedMicrosequenceVersionId();
-    const currentIndex = Math.max(0, entry.versions.findIndex((item) => item.id === visualizedVersionId));
-    const nextIndex = Math.max(0, Math.min(currentIndex + delta, entry.versions.length - 1));
-    const nextVersion = entry.versions[nextIndex];
-    if (!nextVersion || nextVersion.id === visualizedVersionId) {
-      return;
-    }
 
-    selectMicrosequenceVersion(nextVersion.id);
-  }
 
-  function restoreMicrosequenceProjectToActiveVersion() {
-    const reference = {
-      courseKey: state.selection.courseKey,
-      moduleKey: state.selection.moduleKey,
-      lessonKey: state.selection.lessonKey,
-      microsequenceKey: state.selection.microsequenceKey
-    };
-    const entry = getMicrosequenceVersionEntry(reference);
-    if (!entry) {
-      return;
-    }
 
-    const activeVersion = entry.versions.find((item) => item.id === entry.activeVersionId);
-    if (!activeVersion) {
-      return;
-    }
 
-    applyMicrosequenceVersion(reference, activeVersion, Number.isInteger(state.selection.cardIndex) ? state.selection.cardIndex : 0);
-    const currentMicrosequence = findMicrosequence(
-      state.project,
-      reference.courseKey,
-      reference.moduleKey,
-      reference.lessonKey,
-      reference.microsequenceKey
-    );
-    state.assistDraft.selectedRefIds = Array.isArray(currentMicrosequence?.dependsOn)
-      ? currentMicrosequence.dependsOn.slice(0, MAX_ASSIST_REFS)
-      : [];
-    setMicrosequenceVersionViewState({
-      visualizedVersionId: activeVersion.id,
-      editBaseVersionId: activeVersion.id
-    });
-  }
+
+
+
+
+
+
+
 
   function openCardByIndex(targetIndex) {
     const lesson = findLesson(
@@ -3211,29 +2172,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
       state.selection.microsequenceKey = entry.microsequenceKey;
       state.selection.cardKey = entry.cardKey;
       state.selection.cardIndex = entry.cardIndex;
-      const targetReference = {
-        courseKey: state.selection.courseKey,
-        moduleKey: state.selection.moduleKey,
-        lessonKey: state.selection.lessonKey,
-        microsequenceKey: entry.microsequenceKey
-      };
-      const targetMicrosequence = findMicrosequence(
-        state.project,
-        targetReference.courseKey,
-        targetReference.moduleKey,
-        targetReference.lessonKey,
-        targetReference.microsequenceKey
-      );
-      if (targetMicrosequence) {
-        ensureMicrosequenceVersionEntry(targetReference, targetMicrosequence);
-        const activeVersion = syncActiveMicrosequenceVersionFromProject(targetReference);
-        if (activeVersion?.id) {
-          setMicrosequenceVersionViewState({
-            visualizedVersionId: activeVersion.id,
-            editBaseVersionId: activeVersion.id
-          });
-        }
-      }
       persistLessonProgress(
         getLessonProgressReference(state.selection.courseKey, state.selection.moduleKey, state.selection.lessonKey),
         lessonCards,
@@ -3242,7 +2180,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
     } else {
       const cards =
         state.view === "microsequence-assist" || state.view === "microsequence"
-          ? getVisualizedMicrosequenceVersion()?.cards || []
+          ? getActiveMicrosequenceCards(state.selection)
           : getActiveMicrosequenceCards(state.selection);
       const safeIndex = Math.max(0, Math.min(targetIndex, Math.max(0, cards.length - 1)));
       const card = cards[safeIndex] || null;
@@ -3255,7 +2193,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
       state.assistDraft.activeWorkbenchPane
     );
 
-    ensureCurrentCardSnapshot();
     syncAssistDraft();
     state.continuePopup = null;
     state.activeFlowchartPrompt = null;
@@ -3645,7 +2582,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
     const pathKey = buildCardPathKey(state.selection);
     state.cardCommentDraft = typeof state.cardComments[pathKey] === "string" ? state.cardComments[pathKey] : "";
     state.cardCommentOpen = true;
-    state.versionHistoryOpen = false;
     state.entityEditor = null;
     render({ preserveState: true });
   }
@@ -3680,80 +2616,19 @@ export function createLessonEditorApp({ root, storage, editor }) {
       cardKey: target.cardKey || state.selection.cardKey
     };
     state.cardCommentOpen = false;
-    state.versionHistoryOpen = false;
-    state.versionCompareOpen = false;
     state.assistConfigOpen = false;
     render({ preserveState: true });
   }
 
-  function selectVersionHistoryItem(versionKey) {
-    if (!versionKey) {
-      return;
-    }
 
-    state.versionHistorySelectionKey = versionKey;
-    render({ preserveState: true });
-  }
 
-  function toggleVersionHistoryMore(versionKey) {
-    state.versionHistoryExpandedMoreKey = state.versionHistoryExpandedMoreKey === versionKey ? "" : String(versionKey || "");
-    render({ preserveState: true });
-  }
 
-  function useStructureVersion(versionKey) {
-    const reference = getCurrentStructureVersionReference();
-    const entry = getStructureVersionEntry(reference);
-    if (!reference || !entry || !versionKey || versionKey === entry.activeVersionId) {
-      return;
-    }
 
-    const version = setActiveStructureVersion(entry, versionKey);
-    if (!version?.snapshot) {
-      return;
-    }
 
-    const nextProject = applyStructureVersionSnapshot(state.projectHead, reference, version.snapshot);
-    setProject(nextProject, { updateHead: false });
-    applySelectionByKeys(nextProject, state.selection);
-    syncAssistDraft();
-    state.versionHistorySelectionKey = version.id;
-    render({
-      preserveState: true,
-      preserveScrollSelectors: [
-        ".screen-content",
-        ".editor-sheet",
-        ".editor-step-strip",
-        ".workbench-editor-panel",
-        ".assist-prompt",
-        ".card-sheet-content",
-        ".dependency-strip",
-        ".dependency-chip-row"
-      ],
-      preserveFocus: false
-    });
-  }
 
-  function deleteStructureVersion(versionKey) {
-    const reference = getCurrentStructureVersionReference();
-    const entry = getStructureVersionEntry(reference);
-    if (!reference || !entry || !versionKey || (entry.versions || []).length <= 1) {
-      return;
-    }
 
-    const removed = removeStructureVersion(entry, versionKey);
-    if (!removed) {
-      return;
-    }
 
-    saveStructureVersions();
-    state.versionHistorySelectionKey = entry.activeVersionId || "";
-    render({ preserveState: true });
-  }
 
-  function selectStructureVersionTab(versionKey, { centerActiveTab = true } = {}) {
-    state.centerActiveStructureVersionTabOnRender = centerActiveTab;
-    useStructureVersion(versionKey);
-  }
 
   function closeEntityEditor() {
     state.entityEditor = null;
@@ -3965,153 +2840,27 @@ export function createLessonEditorApp({ root, storage, editor }) {
     }
   }
 
-  function openVersionHistory() {
-    const structureReference = getCurrentStructureVersionReference();
-    state.versionHistoryOpen = true;
-    state.versionCompareOpen = false;
-    state.versionCompareSelectionKey = "";
-    state.versionHistoryExpandedMoreKey = "";
-    state.cardCommentOpen = false;
-    state.assistConfigOpen = false;
-    state.entityEditor = null;
-    if (structureReference) {
-      state.versionHistorySelectionKey = getStructureVersionEntry(structureReference)?.activeVersionId || "";
-    } else if (state.view === "microsequence-assist" || state.view === "microsequence") {
-      state.versionHistorySelectionKey = getMicrosequenceVersionEntry()?.activeVersionId || "";
-    } else {
-      const currentHistory = getCurrentCardHistory();
-      state.versionHistorySelectionKey = currentHistory[0]?.id || "";
-    }
-    render({ preserveState: true });
-  }
 
-  function closeVersionHistory() {
-    state.versionHistoryOpen = false;
-    state.versionHistorySelectionKey = "";
-    state.versionHistoryExpandedMoreKey = "";
-    render({ preserveState: true });
-  }
 
-  function openVersionCompare() {
-    const structureReference = getCurrentStructureVersionReference();
-    const comparison = structureReference
-      ? buildStructureVersionComparisonForVersion({
-        entry: getStructureVersionEntry(structureReference),
-        versionId: state.versionCompareSelectionKey || getSelectedStructureVersionId()
-      })
-      : buildMicrosequenceVersionComparisonForVersion({
-        versions: getMicrosequenceVersionEntry()?.versions || [],
-        versionId: state.versionCompareSelectionKey || getVisualizedMicrosequenceVersionId(),
-        cardIndex: Number.isInteger(state.selection?.cardIndex) ? state.selection.cardIndex : 0
-      });
-    if (!comparison) {
-      return;
-    }
 
-    state.versionCompareOpen = true;
-    state.versionHistoryOpen = false;
-    state.versionCompareTab = "summary";
-    state.versionCompareFocusTarget = null;
-    state.cardCommentOpen = false;
-    state.assistConfigOpen = false;
-    state.entityEditor = null;
-    render({ preserveState: true });
-  }
 
-  function saveCurrentStructureSnapshot() {
-    const reference = getCurrentStructureVersionReference();
-    if (!reference) {
-      return;
-    }
 
-    const entry = createStructureSnapshot(state.structureVersions, {
-      project: state.project,
-      reference
-    });
-    if (!entry) {
-      return;
-    }
 
-    saveStructureVersions();
-    state.versionHistorySelectionKey = entry.activeVersionId || "";
-    render({ preserveState: true });
-  }
 
-  function saveCurrentMicrosequenceSnapshot() {
-    createMicrosequenceVersionFromCurrentProject({
-      operationType: "snapshot"
-    });
-    render({ preserveState: true });
-  }
 
-  function saveCurrentSnapshotFromHistory() {
-    if (state.view === "microsequence-assist" || state.view === "microsequence") {
-      saveCurrentMicrosequenceSnapshot();
-      return;
-    }
 
-    saveCurrentStructureSnapshot();
-  }
 
-  function closeVersionCompare() {
-    state.versionCompareOpen = false;
-    state.versionCompareSelectionKey = "";
-    state.versionCompareTab = "summary";
-    state.versionCompareFocusTarget = null;
-    render({ preserveState: true });
-  }
 
-  function selectVersionCompareTab(tabId) {
-    const safeTab = tabId === "previous" || tabId === "current" ? tabId : "summary";
-    state.versionCompareTab = safeTab;
-    render({ preserveState: true });
-  }
 
-  function openVersionCompareTarget(target, tab = "current") {
-    if (!target || typeof target !== "object") {
-      return;
-    }
 
-    state.versionCompareFocusTarget = structuredClone(target);
-    state.versionCompareTab = tab === "previous" ? "previous" : "current";
-    render({ preserveState: true });
-  }
 
-  function backToVersionCompareSummary() {
-    state.versionCompareFocusTarget = null;
-    state.versionCompareTab = "summary";
-    render({ preserveState: true });
-  }
 
-  function useVersionCompareSide(side) {
-    const structureReference = getCurrentStructureVersionReference();
-    const comparison = structureReference
-      ? buildStructureVersionComparisonForVersion({
-        entry: getStructureVersionEntry(structureReference),
-        versionId: state.versionCompareSelectionKey || getSelectedStructureVersionId()
-      })
-      : buildMicrosequenceVersionComparisonForVersion({
-        versions: getMicrosequenceVersionEntry()?.versions || [],
-        versionId: state.versionCompareSelectionKey || getVisualizedMicrosequenceVersionId(),
-        cardIndex: Number.isInteger(state.selection?.cardIndex) ? state.selection.cardIndex : 0
-      });
-    if (!comparison) {
-      return;
-    }
 
-    const versionId = side === "previous" ? comparison.previousVersion?.id : comparison.currentVersion?.id;
-    if (!versionId) {
-      return;
-    }
 
-    if (structureReference) {
-      useStructureVersion(versionId);
-    } else {
-      useMicrosequenceVersion(versionId);
-    }
 
-    closeVersionCompare();
-  }
+
+
+
 
   function notifyUser(message) {
     if (typeof globalThis.alert === "function") {
@@ -4223,7 +2972,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
     const moduleValue = importedCourse?.modules?.[0] || null;
     const lesson = moduleValue?.lessons?.[0] || null;
     const microsequence = lesson?.microsequences?.[0] || null;
-    const card = microsequence?.versions?.[0]?.cards?.[0] || null;
+    const card = microsequence?.cards?.[0] || null;
 
     if (importedCourse && moduleValue && lesson && microsequence && card) {
       applySelection({
@@ -4297,8 +3046,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
 
     state.assistConfigOpen = false;
     state.generationPanelOpen = false;
-    state.versionHistoryOpen = false;
-    state.versionCompareOpen = false;
     state.cardCommentOpen = false;
     state.entityEditor = null;
     render({ preserveState: true });
@@ -4368,7 +3115,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
     const moduleValue = course.modules[course.modules.length - 1];
     const lesson = moduleValue?.lessons?.[0] || null;
     const microsequence = lesson?.microsequences?.[0] || null;
-    const card = microsequence?.versions?.[0]?.cards?.[0] || null;
+    const card = microsequence?.cards?.[0] || null;
     applySelection({
       courseKey,
       moduleKey: moduleValue?.id || null,
@@ -4396,7 +3143,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
     const moduleValue = findModule(nextProject, courseKey, moduleKey);
     const lesson = moduleValue.lessons[moduleValue.lessons.length - 1];
     const microsequence = lesson?.microsequences?.[0] || null;
-    const card = microsequence?.versions?.[0]?.cards?.[0] || null;
+    const card = microsequence?.cards?.[0] || null;
     applySelection({
       courseKey,
       moduleKey,
@@ -4424,7 +3171,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
     setProject(nextProject);
     const lesson = findLesson(nextProject, courseKey, moduleKey, lessonKey);
     const microsequence = lesson.microsequences[lesson.microsequences.length - 1];
-    const card = microsequence?.versions?.[0]?.cards?.[0] || null;
+    const card = microsequence?.cards?.[0] || null;
     applySelection({
       courseKey,
       moduleKey,
@@ -4483,6 +3230,24 @@ export function createLessonEditorApp({ root, storage, editor }) {
     );
   }
 
+  function continueFromPopup(event) {
+    event?.preventDefault();
+    event?.stopImmediatePropagation();
+
+    // Alguns WebViews móveis podem despachar uma segunda ativação logo após o
+    // DOM ser redesenhado. Sem esta trava, ela é aplicada ao card seguinte e
+    // abre o respectivo feedback imediatamente.
+    if (state.continuePopupAdvanceLocked) {
+      return;
+    }
+
+    state.continuePopupAdvanceLocked = true;
+    globalThis.setTimeout(() => {
+      state.continuePopupAdvanceLocked = false;
+    }, 400);
+    stepCard(1);
+  }
+
   function resetCourseProgress(courseKey) {
     const course = findCourse(state.project, courseKey);
     const lessonReferences = collectLessonProgressReferencesInCourse(course);
@@ -4504,11 +3269,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
     const lessonKey = reference.lessonKey || state.selection.lessonKey;
     const microsequenceKey = reference.microsequenceKey || state.selection.microsequenceKey;
     if (!microsequenceKey) return null;
-    ensureEditableMicrosequenceBranch({
-      operationType: "edit",
-      label: "Edição local"
-    });
-
     const starterCard = createStarterContractCard(kind);
 
     const nextProject = editor.createCard({
@@ -4542,10 +3302,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
     state.selection.moduleKey = moduleKey;
     state.selection.lessonKey = lessonKey;
     state.selection.microsequenceKey = microsequenceKey;
-    if (state.view === "microsequence-assist" || state.view === "microsequence") {
-      syncActiveMicrosequenceVersionFromProject();
-    }
-    ensureCurrentCardSnapshot();
     syncAssistDraft();
     return nextProject;
   }
@@ -4602,7 +3358,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
   function applyMicrosequenceGeneration({
     projectDocument,
     previousProjectDocument = state.project,
-    previousVersionId = "",
     fallbackTitle = "Microssequência",
     targetMode = "current",
     anchorMicrosequenceKey = ""
@@ -4623,11 +3378,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
       anchorMicrosequenceKey
     });
     const nextPath = applySelectionByKeys(projectDocument, resolvedSelection);
-    ensureMicrosequenceVersionEntry();
-    ensureEditableMicrosequenceBranch({
-      operationType: "generated",
-      label: "Gerada"
-    });
     const microsequence = findMicrosequence(
       projectDocument,
       nextPath.courseKey,
@@ -4639,93 +3389,19 @@ export function createLessonEditorApp({ root, storage, editor }) {
     state.selection.cardIndex = 0;
     state.selection.cardKey = firstCard ? firstCard.id : null;
     state.assistDraft.activeWorkbenchPane = "preview";
-    createMicrosequenceVersionFromCurrentProject({
-      parentVersionId: previousVersionId,
-      operationType: GENERATED_PENDING_OPERATION,
-      label: `Gerada ${getMicrosequenceVersionEntry()?.versions?.length ? getMicrosequenceVersionEntry().versions.length + 1 : ""}`.trim()
-    });
-    setMicrosequenceVersionViewState({
-      visualizedVersionId: getMicrosequenceVersionEntry()?.activeVersionId || "",
-      editBaseVersionId: getMicrosequenceVersionEntry()?.activeVersionId || ""
-    });
     persistInterventionSession({
       status: "completed",
-      baseVersionId: getMicrosequenceVersionEntry()?.activeVersionId || "",
       title: "Cards atualizados",
-      message: `${Array.isArray(getActiveMicrosequenceCards(state.selection)) ? getActiveMicrosequenceCards(state.selection).length : 0} cards aplicados em ${microsequence?.title || fallbackTitle}. Aceite ou exclua a iteração atual.`,
-      feedbackText: `Aceite ou exclua a iteração atual em "${microsequence?.title || fallbackTitle}".`,
+      message: `${Array.isArray(getActiveMicrosequenceCards(state.selection)) ? getActiveMicrosequenceCards(state.selection).length : 0} cards aplicados em ${microsequence?.title || fallbackTitle}.`,
+      feedbackText: `Cards aplicados em "${microsequence?.title || fallbackTitle}".`,
       nextPromptDraft: ""
     });
     syncAssistDraft();
   }
 
-  function acceptPendingGeneratedMicrosequenceVersion() {
-    const entry = getMicrosequenceVersionEntry();
-    const activeVersion = getPendingGeneratedMicrosequenceVersion();
-    if (!entry || !activeVersion) {
-      return;
-    }
 
-    activeVersion.operationType = GENERATED_ACCEPTED_OPERATION;
-    activeVersion.updatedAt = new Date().toISOString();
-    saveMicrosequenceVersions();
-    persistInterventionSession({
-      status: "completed",
-      baseVersionId: entry.activeVersionId || "",
-      title: "Iteração aceita",
-      message: `${activeVersion.label || "Versão atual"} mantida como estado em uso.`,
-      feedbackText: `${activeVersion.label || "Versão atual"} mantida como estado em uso.`,
-      nextPromptDraft: ""
-    });
-    render({ preserveState: true });
-  }
 
-  function discardPendingGeneratedMicrosequenceVersion() {
-    const reference = {
-      courseKey: state.selection.courseKey,
-      moduleKey: state.selection.moduleKey,
-      lessonKey: state.selection.lessonKey,
-      microsequenceKey: state.selection.microsequenceKey
-    };
-    const entry = getMicrosequenceVersionEntry(reference);
-    const activeVersion = getPendingGeneratedMicrosequenceVersion(reference);
-    if (!entry || !activeVersion || !canDeleteMicrosequenceVersion(activeVersion.id)) {
-      return;
-    }
 
-    const fallbackVersion = removeMicrosequenceVersion(entry, activeVersion.id);
-    if (!fallbackVersion) {
-      return;
-    }
-
-    saveMicrosequenceVersions();
-    applyMicrosequenceVersion(reference, fallbackVersion, Number.isInteger(state.selection.cardIndex) ? state.selection.cardIndex : 0);
-    const currentMicrosequence = findMicrosequence(
-      state.project,
-      reference.courseKey,
-      reference.moduleKey,
-      reference.lessonKey,
-      reference.microsequenceKey
-    );
-    state.assistDraft.selectedRefIds = Array.isArray(currentMicrosequence?.dependsOn)
-      ? currentMicrosequence.dependsOn.slice(0, MAX_ASSIST_REFS)
-      : [];
-    setMicrosequenceVersionViewState({
-      visualizedVersionId: fallbackVersion.id,
-      editBaseVersionId: fallbackVersion.id
-    });
-    persistInterventionSession({
-      status: "stale",
-      baseVersionId: fallbackVersion.id,
-      title: "Iteração excluída",
-      message: `${activeVersion.label || "Versão atual"} removida; a versão anterior voltou a valer.`,
-      feedbackText: `${activeVersion.label || "Versão atual"} foi descartada.`,
-      nextPromptDraft: "",
-      stale: true,
-      staleMessage: "A continuação anterior foi descartada junto com a versão gerada."
-    });
-    render({ preserveState: false });
-  }
 
   function getVisibleCourses(project = state.project) {
     return project.courses || [];
@@ -4957,7 +3633,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
     const hadCardsBefore = Array.isArray(context.cards) && context.cards.length > 0;
     const previousProjectDocument = structuredClone(state.project);
     const requestReference = getCurrentInterventionReference();
-    const requestBaseVersionId = getCurrentInterventionBaseVersionId(requestReference);
     const selectedRefIds = getAssistCatalog()
       .filter((item) => state.assistDraft.selectedRefIds.includes(item.id))
       .map((item) => item.id);
@@ -4967,14 +3642,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
     render({ preserveState: true });
 
     try {
-      const visibleAssistTitle =
-        getVisualizedMicrosequenceVersion()?.title
-        || context.microsequence?.title
-        || "Microssequência";
-      const previousVersionId =
-        state.assistDraft.interventionTargetMode === "new_after_current"
-          ? ""
-          : getMicrosequenceVersionEntry()?.activeVersionId || "";
+      const visibleAssistTitle = context.microsequence?.title || "Microssequência";
       const submission = await executeMicrosequenceGeneration({
         selection: state.selection,
         draft: {
@@ -4998,8 +3666,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
         onFeedback: (feedback = {}) => {
           persistInterventionSession(
             {
-              ...feedback,
-              baseVersionId: requestBaseVersionId
+              ...feedback
             },
             requestReference
           );
@@ -5010,8 +3677,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
       if (submission.status === "provider-unready") {
         persistInterventionSession(
           {
-            ...(submission.interventionFeedback || {}),
-            baseVersionId: requestBaseVersionId
+            ...(submission.interventionFeedback || {})
           },
           requestReference
         );
@@ -5028,8 +3694,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
       if (submission.status === "auth-error") {
         persistInterventionSession(
           {
-            ...(submission.interventionFeedback || {}),
-            baseVersionId: requestBaseVersionId
+            ...(submission.interventionFeedback || {})
           },
           requestReference
         );
@@ -5041,8 +3706,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
       if (submission.status !== "success") {
         persistInterventionSession(
           {
-            ...(submission.interventionFeedback || {}),
-            baseVersionId: requestBaseVersionId
+            ...(submission.interventionFeedback || {})
           },
           requestReference
         );
@@ -5054,7 +3718,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
       applyMicrosequenceGeneration({
         projectDocument: submission.generationResult.projectDocument,
         previousProjectDocument,
-        previousVersionId,
         fallbackTitle: context.microsequence?.title || "Microssequência",
         targetMode: state.assistDraft.interventionTargetMode,
         anchorMicrosequenceKey: state.selection.microsequenceKey
@@ -5067,12 +3730,10 @@ export function createLessonEditorApp({ root, storage, editor }) {
         state.selection.microsequenceKey
       );
       const targetReference = getCurrentInterventionReference();
-      const targetBaseVersionId = getCurrentInterventionBaseVersionId(targetReference);
       const runtimeFeedback = submission.generationResult?.interventionFeedback || {};
       persistInterventionSession(
         {
           ...runtimeFeedback,
-          baseVersionId: targetBaseVersionId,
           title:
             runtimeFeedback.title
             || (state.assistDraft.interventionTargetMode === "new_after_current"
@@ -5092,7 +3753,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
       persistInterventionSession(
         {
           status: "needs_retry",
-          baseVersionId: requestBaseVersionId,
           title: "Nova iteração necessária",
           message: fallbackMessage,
           feedbackText: state.assistDraft.promptText || fallbackMessage,
@@ -5202,9 +3862,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
         phaseId: "final_report"
       });
       storage.saveProject(submission.generationResult.projectDocument);
-      createStructureVersionFromProject(submission.generationResult.projectDocument, getCurrentStructureVersionReference(), {
-        operationType: "generated"
-      });
+
       setProject(submission.generationResult.projectDocument);
       applySelection(submission.selection);
       state.generationDraft.progress = createGenerationProgressState();
@@ -5225,7 +3883,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
     }
 
     let nextProject = null;
-    let versionReference = null;
 
     if (drag.level === "course") {
       const items = state.project.courses || [];
@@ -5248,10 +3905,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
         moduleKey: drag.moduleKey,
         toIndex
       });
-      versionReference = {
-        level: "course",
-        courseKey: drag.courseKey
-      };
     } else if (drag.level === "lesson") {
       const moduleValue = findModule(state.project, drag.courseKey, drag.moduleKey);
       const items = moduleValue?.lessons || [];
@@ -5266,11 +3919,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
         lessonKey: drag.lessonKey,
         toIndex
       });
-      versionReference = {
-        level: "module",
-        courseKey: drag.courseKey,
-        moduleKey: drag.moduleKey
-      };
     } else if (drag.level === "microsequence") {
       const lesson = findLesson(state.project, drag.courseKey, drag.moduleKey, drag.lessonKey);
       const items = lesson?.microsequences || [];
@@ -5290,12 +3938,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
         targetPosition: toIndex
       });
       nextProject = moveResult.document;
-      versionReference = {
-        level: "lesson",
-        courseKey: drag.courseKey,
-        moduleKey: drag.moduleKey,
-        lessonKey: drag.lessonKey
-      };
     } else if (drag.level === "card") {
       const microsequence = findMicrosequence(
         state.project,
@@ -5331,20 +3973,9 @@ export function createLessonEditorApp({ root, storage, editor }) {
     }
 
     state.entityEditor = null;
-    if (versionReference) {
-      createStructureVersionFromProject(nextProject, versionReference, {
-        operationType: "reorder-children"
-      });
-    }
     setProject(nextProject);
     applySelectionByKeys(nextProject, state.selection);
     syncAssistDraft();
-    if (state.view === "microsequence-assist" || state.view === "microsequence") {
-      syncActiveMicrosequenceVersionFromProject();
-    }
-    if (state.view === "microsequence" || state.view === "microsequence-assist") {
-      ensureCurrentCardSnapshot();
-    }
     resetStructureDragState();
     render({ preserveState: true });
   }
@@ -5662,10 +4293,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
         });
         const course = nextProject.courses[nextProject.courses.length - 1];
         setProject(nextProject);
-        syncActiveStructureVersionFromProject({
-          level: "course",
-          courseKey: course?.id
-        });
+
         applySelection(buildNodeSelection({ courseKey: course.id }));
         state.view = "courses";
       } else if (actionKey === "delete-course") {
@@ -5682,20 +4310,11 @@ export function createLessonEditorApp({ root, storage, editor }) {
           courseKey,
           title: "Novo módulo"
         });
-        createStructureVersionFromProject(nextProject, {
-          level: "course",
-          courseKey
-        }, {
-          operationType: "create-child"
-        });
+
         setProject(nextProject);
         const course = findCourse(nextProject, courseKey);
         const moduleValue = course.modules[course.modules.length - 1];
-        syncActiveStructureVersionFromProject({
-          level: "module",
-          courseKey,
-          moduleKey: moduleValue?.id
-        });
+
         applySelection(buildNodeSelection({ courseKey: course.id, moduleKey: moduleValue.id }));
         state.view = "course";
       } else if (actionKey === "delete-module") {
@@ -5705,12 +4324,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
           courseKey,
           moduleKey: state.entityEditor.moduleKey
         });
-        createStructureVersionFromProject(nextProject, {
-          level: "course",
-          courseKey
-        }, {
-          operationType: "remove-child"
-        });
+
         setProject(nextProject);
         applySelection(buildNodeSelection({ courseKey }));
         state.view = "course";
@@ -5722,22 +4336,11 @@ export function createLessonEditorApp({ root, storage, editor }) {
           moduleKey,
           title: "Nova lição"
         });
-        createStructureVersionFromProject(nextProject, {
-          level: "module",
-          courseKey,
-          moduleKey
-        }, {
-          operationType: "create-child"
-        });
+
         setProject(nextProject);
         const moduleValue = findModule(nextProject, courseKey, moduleKey);
         const lesson = moduleValue.lessons[moduleValue.lessons.length - 1];
-        syncActiveStructureVersionFromProject({
-          level: "lesson",
-          courseKey,
-          moduleKey,
-          lessonKey: lesson?.id
-        });
+
         applySelection(
           buildNodeSelection({
             courseKey,
@@ -5759,13 +4362,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
           moduleKey,
           lessonKey: state.entityEditor.lessonKey
         });
-        createStructureVersionFromProject(nextProject, {
-          level: "module",
-          courseKey,
-          moduleKey
-        }, {
-          operationType: "remove-child"
-        });
+
         setProject(nextProject);
         applySelection(buildNodeSelection({ courseKey, moduleKey }));
         state.view = "module";
@@ -5777,14 +4374,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
           title: "Nova microssequência",
           status: "planned"
         });
-        createStructureVersionFromProject(nextProject, {
-          level: "lesson",
-          courseKey: state.entityEditor.courseKey || state.selection.courseKey,
-          moduleKey: state.entityEditor.moduleKey,
-          lessonKey: state.entityEditor.lessonKey
-        }, {
-          operationType: "create-child"
-        });
+
         setProject(nextProject);
         const lesson = findLesson(
           nextProject,
@@ -5812,14 +4402,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
           lessonKey,
           microsequenceKey: state.entityEditor.microsequenceKey
         });
-        createStructureVersionFromProject(nextProject, {
-          level: "lesson",
-          courseKey,
-          moduleKey,
-          lessonKey
-        }, {
-          operationType: "remove-child"
-        });
+
         setProject(nextProject);
         applySelection(buildNodeSelection({ courseKey, moduleKey, lessonKey }));
         state.view = "lesson";
@@ -5851,18 +4434,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
   }
 
   function goBack() {
-    if (
-      (state.view === "microsequence-assist" || state.view === "microsequence") &&
-      getMicrosequenceEditBaseVersionId() &&
-      getMicrosequenceVersionEntry()?.activeVersionId &&
-      getMicrosequenceEditBaseVersionId() !== getMicrosequenceVersionEntry()?.activeVersionId
-    ) {
-      restoreMicrosequenceProjectToActiveVersion();
-    }
-
     state.cardCommentOpen = false;
-    state.versionHistoryOpen = false;
-    state.versionCompareOpen = false;
     state.assistConfigOpen = false;
     state.entityEditor = null;
 
@@ -5877,7 +4449,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
       state.view = "courses";
     }
 
-    syncVisibleStructureVersionsFromProject();
     render({ preserveState: true });
   }
 
@@ -5942,25 +4513,13 @@ export function createLessonEditorApp({ root, storage, editor }) {
           state.entityEditor.kind === "course" ||
           state.entityEditor.kind === "course-metadata"
         ) {
-          syncActiveStructureVersionFromProject({
-            level: "course",
-            courseKey: state.entityEditor.courseKey || state.selection.courseKey
-          });
+
         } else if (state.entityEditor.kind === "module") {
-          syncActiveStructureVersionFromProject({
-            level: "module",
-            courseKey: state.entityEditor.courseKey || state.selection.courseKey,
-            moduleKey: state.entityEditor.moduleKey
-          });
+
         } else if (state.entityEditor.kind === "lesson" || state.entityEditor.kind === "lesson-source-guide") {
-          syncActiveStructureVersionFromProject({
-            level: "lesson",
-            courseKey: state.entityEditor.courseKey || state.selection.courseKey,
-            moduleKey: state.entityEditor.moduleKey,
-            lessonKey: state.entityEditor.lessonKey
-          });
+
         } else if (state.entityEditor.kind === "microsequence") {
-          syncActiveMicrosequenceVersionFromProject();
+
         }
       }
     } catch {
@@ -5973,10 +4532,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
     if (!microsequenceKey) return;
 
     try {
-      ensureEditableMicrosequenceBranch({
-        operationType: "edit",
-        label: "Edição local"
-      });
       const nextProject = editor.updateMicrosequence({
         courseKey: state.selection.courseKey,
         moduleKey: state.selection.moduleKey,
@@ -5986,13 +4541,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
       });
 
       setProject(nextProject);
-      syncActiveStructureVersionFromProject({
-        level: "lesson",
-        courseKey: state.selection.courseKey,
-        moduleKey: state.selection.moduleKey,
-        lessonKey: state.selection.lessonKey
-      });
-      syncActiveMicrosequenceVersionFromProject();
+
     } catch {
       // Evita quebrar a digitação durante estados transitórios inválidos.
     }
@@ -7227,62 +5776,9 @@ export function createLessonEditorApp({ root, storage, editor }) {
     return { course, moduleValue, lesson, microsequence, cards, card, dependencies };
   }
 
-  function syncVersionTabScroller() {
-    const strip = root.querySelector("[data-version-strip='true']");
-    if (!strip) {
-      return;
-    }
 
-    const activeTab = strip.querySelector("[data-action='select-microsequence-version'][aria-selected='true']");
 
-    requestAnimationFrame(() => {
-      if (!activeTab) {
-        return;
-      }
 
-      const visibleLeft = strip.scrollLeft;
-      const visibleRight = visibleLeft + strip.clientWidth;
-      const tabLeft = activeTab.offsetLeft;
-      const tabRight = tabLeft + activeTab.offsetWidth;
-
-      if (tabLeft < visibleLeft) {
-        strip.scrollTo({ left: Math.max(0, tabLeft), behavior: "auto" });
-        return;
-      }
-
-      if (tabRight > visibleRight) {
-        strip.scrollTo({ left: Math.max(0, tabRight - strip.clientWidth), behavior: "auto" });
-      }
-    });
-  }
-
-  function syncStructureVersionStripScroller({ centerActiveTab = false } = {}) {
-    const strip = root.querySelector("[data-structure-version-strip='true']");
-    if (!strip) {
-      return;
-    }
-
-    const shell = strip.closest("[data-structure-version-strip-shell='true']");
-    const activeTab = strip.querySelector("[data-structure-tab='true'].active");
-    const updateOverflowState = () => {
-      const maxScrollLeft = Math.max(0, strip.scrollWidth - strip.clientWidth);
-      const canScroll = maxScrollLeft > 4;
-
-      if (shell) {
-        shell.setAttribute("data-structure-version-overflowing", canScroll ? "true" : "false");
-      }
-    };
-
-    updateOverflowState();
-
-    if (centerActiveTab && activeTab) {
-      const maxScrollLeft = Math.max(0, strip.scrollWidth - strip.clientWidth);
-      const tabCenter = activeTab.offsetLeft + activeTab.offsetWidth / 2;
-      const targetScrollLeft = Math.max(0, Math.min(maxScrollLeft, tabCenter - strip.clientWidth / 2));
-      strip.scrollLeft = targetScrollLeft;
-      updateOverflowState();
-    }
-  }
 
   function syncCardStripScroller({ keepActiveCardInView = false } = {}) {
     const strip = root.querySelector("[data-card-strip='true']");
@@ -7408,198 +5904,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
     const assistModeConfig = getAssistModeOptions();
     const entityEditorModel = makeEntityEditorModel(state);
     const isMicrosequenceWorkbenchView = state.view === "microsequence-assist" || state.view === "microsequence";
-    const microsequenceVersionEntry = isMicrosequenceWorkbenchView ? getMicrosequenceVersionEntry() : null;
-    const visualizedMicrosequenceVersion = isMicrosequenceWorkbenchView ? getVisualizedMicrosequenceVersion() : null;
-    const visualizedMicrosequenceVersionId = visualizedMicrosequenceVersion?.id || "";
-    const pendingGeneratedVersion = isMicrosequenceWorkbenchView ? getPendingGeneratedMicrosequenceVersion() : null;
-    const pendingGeneratedVersionVisible =
-      Boolean(pendingGeneratedVersion) &&
-      (!visualizedMicrosequenceVersionId || visualizedMicrosequenceVersionId === pendingGeneratedVersion?.id);
-    const structureVersionReference = getCurrentStructureVersionReference();
-    const structureVersionEntry = getStructureVersionEntry(structureVersionReference);
-    const visibleStructureReferences = listVisibleStructureVersionReferences();
-    const visibleStructureEntries = visibleStructureReferences
-      .map((reference) => getStructureVersionEntry(reference))
-      .filter(Boolean);
-    const structureVersionTabs =
-      state.view === "courses"
-        ? buildStructureTabsForEntry(structureVersionEntry, { prefix: "C" })
-        : state.view === "course"
-          ? buildChildStructureTabs(
-            state.structureVersions,
-            context.course?.modules || [],
-            (item) => ({
-              level: "module",
-              courseKey: context.course?.id || "",
-              moduleKey: item?.id || ""
-            }),
-            "M",
-            "open-module",
-            state.selection.moduleKey
-          )
-          : state.view === "module"
-            ? buildChildStructureTabs(
-              state.structureVersions,
-              context.moduleValue?.lessons || [],
-              (item) => ({
-                level: "lesson",
-                courseKey: context.course?.id || "",
-                moduleKey: context.moduleValue?.id || "",
-                lessonKey: item?.id || ""
-              }),
-              "L",
-              "open-lesson",
-              state.selection.lessonKey
-            )
-            : buildStructureTabsForEntry(structureVersionEntry, { prefix: "V" });
-    const structureVersionContextTabs =
-      state.view === "courses"
-        ? []
-        : visibleStructureEntries.slice(0, -1).map((entry) => buildStructureContextTab(entry)).filter(Boolean);
-    const versionComparison =
-      state.versionCompareOpen && structureVersionReference
-        ? buildStructureVersionComparisonForVersion({
-          entry: structureVersionEntry,
-          versionId: state.versionCompareSelectionKey || getSelectedStructureVersionId()
-        })
-        : isMicrosequenceWorkbenchView && state.versionCompareOpen
-          ? buildMicrosequenceVersionComparisonForVersion({
-            versions: microsequenceVersionEntry?.versions || [],
-            versionId: state.versionCompareSelectionKey || visualizedMicrosequenceVersionId || microsequenceVersionEntry?.activeVersionId || "",
-            cardIndex: Number.isInteger(state.selection?.cardIndex) ? state.selection.cardIndex : 0
-          })
-          : null;
-    const versionComparisonViewModel = versionComparison
-      ? {
-        ...versionComparison,
-        activeVersionId: structureVersionReference
-          ? structureVersionEntry?.activeVersionId || ""
-          : microsequenceVersionEntry?.activeVersionId || ""
-      }
-      : null;
-    const structureHistoryTitle =
-      state.view === "courses"
-        ? "Snapshots do projeto"
-        : state.view === "course"
-        ? "Versões do curso"
-        : state.view === "module"
-          ? "Versões do módulo"
-          : state.view === "lesson"
-            ? "Versões da lição"
-            : "Versões do card";
-    const historyVersions = getCurrentCardHistory().map((item, index) => ({
-      key: item.id,
-      label: item.label,
-      versionLabel: item.label,
-      origin: `Snapshot ${index + 1}`,
-      meta: [item.source, formatOverlayTimestamp(item.savedAt)].filter(Boolean).join(" · "),
-      selected: item.id === state.versionHistorySelectionKey,
-      actions: [
-        {
-          action: "restore-version",
-          label: "Usar",
-          icon: "✓"
-        }
-      ]
-    }));
-    const structureHistoryVersions = (structureVersionEntry?.versions || []).map((item) => {
-      const operationInfo = describeStructureVersionOperation(item.operationType);
-      const isActive = item.id === structureVersionEntry?.activeVersionId;
-      return {
-        key: item.id,
-        label: item.label || `Versão ${item.versionNumber || 1}`,
-        origin: buildVersionLineageLabel(item, structureVersionEntry?.versions || []),
-        versionLabel: getVersionDisplayId(item),
-        meta: [formatOverlayTimestamp(item.updatedAt), operationInfo.label].filter(Boolean).join(" · "),
-        sortKey: item.updatedAt || item.createdAt || "",
-        summary: item.id === state.versionHistorySelectionKey ? "Selecionada para inspeção." : "",
-        inUse: isActive,
-        selected: item.id === state.versionHistorySelectionKey,
-        actions: [
-          {
-            action: "use-structure-version",
-            label: "Usar",
-            icon: "✓",
-            disabled: isActive
-          },
-          {
-            action: "delete-structure-version",
-            label: "Excluir",
-            icon: "×",
-            tone: "danger",
-            disabled: (structureVersionEntry?.versions || []).length <= 1
-          }
-        ],
-        moreExpanded: item.id === state.versionHistoryExpandedMoreKey
-      };
-    });
-    const orderHistoryVersions = (items) => {
-      const list = Array.isArray(items) ? items.slice() : [];
-      return list.sort((left, right) => {
-        if (left.inUse && !right.inUse) return -1;
-        if (!left.inUse && right.inUse) return 1;
-        return String(right.sortKey || "").localeCompare(String(left.sortKey || ""));
-      });
-    };
-    const microsequenceHistoryVersions = (microsequenceVersionEntry?.versions || []).map((item) => {
-      const isActive = item.id === microsequenceVersionEntry?.activeVersionId;
-      return {
-        key: item.id,
-        label: item.label || `Snapshot ${item.versionNumber || 1}`,
-        origin: buildVersionLineageLabel(item, microsequenceVersionEntry?.versions || []),
-        versionLabel: getVersionDisplayId(item),
-        meta: formatOverlayTimestamp(item.updatedAt),
-        sortKey: item.updatedAt || item.createdAt || "",
-        summary: item.id === state.versionHistorySelectionKey ? "Selecionada para inspeção." : "",
-        inUse: isActive,
-        selected: item.id === state.versionHistorySelectionKey,
-        actions: [
-          {
-            action: "use-microsequence-version",
-            label: "Usar",
-            icon: "✓",
-            disabled: isActive
-          },
-          {
-            action: "delete-microsequence-version",
-            label: "Excluir",
-            icon: "×",
-            tone: "danger",
-            disabled: (microsequenceVersionEntry?.versions || []).length <= 1
-          }
-        ],
-        moreExpanded: item.id === state.versionHistoryExpandedMoreKey
-      };
-    });
-    const structureComparisonAvailable =
-      Array.isArray(structureVersionEntry?.versions) &&
-      structureVersionEntry.versions.findIndex((item) => item.id === structureVersionEntry.activeVersionId) > 0;
-    const versionHistoryTitle = structureVersionReference
-      ? structureHistoryTitle
-      : isMicrosequenceWorkbenchView
-        ? "Snapshots da microssequência"
-        : "Versões do card";
-    const versionHistoryItems = structureVersionReference
-      ? orderHistoryVersions(structureHistoryVersions)
-      : isMicrosequenceWorkbenchView
-        ? orderHistoryVersions(microsequenceHistoryVersions)
-        : historyVersions;
-    const versionHistoryEmptyLabel = structureVersionReference || isMicrosequenceWorkbenchView ? "Sem snapshots locais ainda." : "Sem versões anteriores.";
-    const versionHistoryFooter = structureVersionReference
-      ? (() => {
-        const activeVersion = structureVersionEntry?.versions?.find((item) => item.id === structureVersionEntry?.activeVersionId) || null;
-        if (!activeVersion) {
-          return "";
-        }
-        return `Em uso: ${getVersionDisplayId(activeVersion)} · ${formatOverlayTimestamp(activeVersion.updatedAt)}`;
-      })()
-      : isMicrosequenceWorkbenchView
-        ? (() => {
-          const activeVersion = microsequenceVersionEntry?.versions?.find((item) => item.id === microsequenceVersionEntry?.activeVersionId) || null;
-          return activeVersion ? `Em uso: ${getVersionDisplayId(activeVersion)} · ${formatOverlayTimestamp(activeVersion.updatedAt)}` : "";
-        })()
-      : "";
-
     const nextPlannedMicrosequence = findNextPlannedMicrosequenceInLesson(context.lesson, context.microsequence?.id);
     const assistActionOptions = getAssistActionIntentOptions({
       microsequence: context.microsequence,
@@ -7627,16 +5931,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
         editorSupport: {
           progress: storage.loadProgress(),
           refs: assistCatalog,
-          microsequenceVersions: microsequenceVersionEntry?.versions || [],
-          activeMicrosequenceVersionId: microsequenceVersionEntry?.activeVersionId || "",
-          visualizedMicrosequenceVersionId,
-          editBaseMicrosequenceVersionId: getMicrosequenceEditBaseVersionId(),
-          visualizedMicrosequenceVersion,
-          pendingGeneratedVersionId: pendingGeneratedVersion?.id || "",
-          pendingGeneratedVersionActive: pendingGeneratedVersionVisible,
-          versionActionsOpen: state.assistDraft.versionActionsOpen,
-          canDeleteVisualizedMicrosequenceVersion:
-            isMicrosequenceWorkbenchView ? canDeleteMicrosequenceVersion(visualizedMicrosequenceVersionId) : false,
           selectedRefIds: state.assistDraft.selectedRefIds,
           pendingRefId: state.assistDraft.pendingRefId,
           assistModeOptions: assistModeConfig.options,
@@ -7690,12 +5984,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
           feedbackSubmitLabel: getFeedbackSubmitLabel(state.assistDraft.interventionSession),
           isSubmitting: state.assistDraft.isSubmitting,
           hasApiKey: Boolean(state.assistConfig.apiKey),
-          historyCount: historyVersions.length,
-          structureHistoryCount: structureVersionEntry?.versions?.length || 0,
-          structureComparisonAvailable,
-          structureVersionTabs,
-          structureVersionContextTabs,
-          activeStructureVersionId: structureVersionEntry?.activeVersionId || "",
           cardRuntimeOptions: currentCardRuntimeOptions,
           continuePopup: {
             open:
@@ -7708,26 +5996,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
       (state.cardCommentOpen
         ? renderCardCommentOverlay({
             value: state.cardCommentDraft
-          })
-        : "") +
-      (state.versionHistoryOpen
-        ? renderCardVersionOverlay({
-            title: versionHistoryTitle,
-            emptyLabel: versionHistoryEmptyLabel,
-            versions: versionHistoryItems,
-            footer: versionHistoryFooter,
-            primaryAction: structureVersionReference || isMicrosequenceWorkbenchView
-              ? { action: "save-version-snapshot", label: "Gravar snapshot", icon: "+" }
-              : null
-          })
-        : "") +
-      (versionComparison
-        ? renderVersionCompareOverlay({
-            comparison: versionComparisonViewModel,
-            uiState: {
-              activeTab: state.versionCompareTab,
-              focusTarget: state.versionCompareFocusTarget
-            }
           })
         : "") +
       (state.assistConfigOpen && !state.generationPanelOpen
@@ -7831,15 +6099,12 @@ export function createLessonEditorApp({ root, storage, editor }) {
     root.querySelectorAll("[data-action='quick-create-course']").forEach((node) => {
       node.addEventListener("click", () => {
         const nextProject = structuralEditor.createCourse({ title: "Novo curso" });
-        createStructureVersionFromProject(nextProject, null, {
-          label: "Iteração de cursos",
-          operationType: "create-child"
-        });
+
         setProject(nextProject);
         const course = nextProject.courses[nextProject.courses.length - 1];
         applySelection(buildNodeSelection({ courseKey: course?.id || null }));
         state.view = "courses";
-        syncVisibleStructureVersionsFromProject();
+
         render({ preserveState: false });
       });
     });
@@ -7847,23 +6112,13 @@ export function createLessonEditorApp({ root, storage, editor }) {
       node.addEventListener("click", () => {
         if (!state.selection.courseKey) return;
         const nextProject = structuralEditor.createModule({ courseKey: state.selection.courseKey, title: "Novo módulo" });
-        createStructureVersionFromProject(
-          nextProject,
-          {
-            level: "course",
-            courseKey: state.selection.courseKey
-          },
-          {
-            label: "Iteração de módulos",
-            operationType: "create-child"
-          }
-        );
+
         setProject(nextProject);
         const course = findCourse(nextProject, state.selection.courseKey);
         const moduleValue = course?.modules?.[course.modules.length - 1] || null;
         applySelection(buildNodeSelection({ courseKey: course?.id || null, moduleKey: moduleValue?.id || null }));
         state.view = "course";
-        syncVisibleStructureVersionsFromProject();
+
         render({ preserveState: false });
       });
     });
@@ -7875,18 +6130,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
           moduleKey: state.selection.moduleKey,
           title: "Nova lição"
         });
-        createStructureVersionFromProject(
-          nextProject,
-          {
-            level: "module",
-            courseKey: state.selection.courseKey,
-            moduleKey: state.selection.moduleKey
-          },
-          {
-            label: "Iteração de lições",
-            operationType: "create-child"
-          }
-        );
+
         setProject(nextProject);
         const moduleValue = findModule(nextProject, state.selection.courseKey, state.selection.moduleKey);
         const lesson = moduleValue?.lessons?.[moduleValue.lessons.length - 1] || null;
@@ -7898,7 +6142,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
           })
         );
         state.view = "module";
-        syncVisibleStructureVersionsFromProject();
+
         render({ preserveState: false });
       });
     });
@@ -7912,19 +6156,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
           title: "Nova microssequência",
           status: "planned"
         });
-        createStructureVersionFromProject(
-          nextProject,
-          {
-            level: "lesson",
-            courseKey: state.selection.courseKey,
-            moduleKey: state.selection.moduleKey,
-            lessonKey: state.selection.lessonKey
-          },
-          {
-            label: "Iteração de microssequências",
-            operationType: "create-child"
-          }
-        );
+
         setProject(nextProject);
         const lesson = findLesson(nextProject, state.selection.courseKey, state.selection.moduleKey, state.selection.lessonKey);
         const microsequence = lesson?.microsequences?.[lesson.microsequences.length - 1] || null;
@@ -7937,7 +6169,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
           })
         );
         state.view = "lesson";
-        syncVisibleStructureVersionsFromProject();
+
         render({ preserveState: false });
       });
     });
@@ -8091,25 +6323,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
         openModule(moduleKey);
       });
     });
-    root.querySelectorAll("[data-action='select-structure-version']").forEach((node) => {
-      node.addEventListener("click", () => {
-        const versionKey = node.getAttribute("data-version-key");
-        if (!versionKey) return;
-        selectStructureVersionTab(versionKey, { centerActiveTab: true });
-      });
-    });
-    root.querySelectorAll("[data-structure-tab='true']").forEach((node) => {
-      node.addEventListener("pointerdown", (event) => {
-        event.preventDefault();
-      });
-      node.addEventListener("mousedown", (event) => {
-        event.preventDefault();
-      });
-    });
-    root.querySelector("[data-structure-version-strip='true']")?.addEventListener("scroll", () => {
-      syncStructureVersionStripScroller();
-    });
-
     root.querySelectorAll("[data-action='open-microsequence']").forEach((node) => {
       node.addEventListener("click", () => {
         const microsequenceKey = node.getAttribute("data-microsequence-key");
@@ -8147,42 +6360,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
         openCardByIndex(index);
       });
     });
-    root.querySelectorAll("[data-action='select-microsequence-version']").forEach((node) => {
-      node.addEventListener("click", () => {
-        const versionId = node.getAttribute("data-version-id");
-        if (!versionId) return;
-        selectMicrosequenceVersion(versionId);
-      });
-    });
-    root.querySelector("[data-action='editor-prev-version']")?.addEventListener("click", () => {
-      stepMicrosequenceVersion(-1);
-    });
-    root.querySelector("[data-action='editor-next-version']")?.addEventListener("click", () => {
-      stepMicrosequenceVersion(1);
-    });
-    root.querySelector("[data-action='delete-microsequence-version']")?.addEventListener("click", () => {
-      const versionId =
-        root.querySelector("[data-action='delete-microsequence-version']")?.getAttribute("data-version-id") ||
-        getVisualizedMicrosequenceVersionId();
-      if (!versionId) return;
-      deleteMicrosequenceVersion(versionId);
-    });
-    root.querySelector("[data-action='open-version-compare']")?.addEventListener("click", () => {
-      state.versionCompareSelectionKey = getVisualizedMicrosequenceVersionId();
-      openVersionCompare();
-    });
-    root.querySelector("[data-action='open-microsequence-version-compare']")?.addEventListener("click", () => {
-      state.versionCompareSelectionKey = getVisualizedMicrosequenceVersionId();
-      openVersionCompare();
-    });
-    root.querySelector("[data-action='toggle-microsequence-version-more']")?.addEventListener("click", () => {
-      toggleMicrosequenceVersionMore();
-    });
-    root.querySelector("[data-action='use-microsequence-version']")?.addEventListener("click", () => {
-      const versionId = root.querySelector("[data-action='use-microsequence-version']")?.getAttribute("data-version-id");
-      if (!versionId) return;
-      useMicrosequenceVersion(versionId);
-    });
     root.querySelectorAll("[data-action='select-workbench-pane']").forEach((node) => {
       node.addEventListener("click", () => {
         setAssistWorkbenchPane(node.getAttribute("data-workbench-pane"));
@@ -8200,7 +6377,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
     });
 
     root.querySelector("[data-action='prev-card']")?.addEventListener("click", () => stepCard(-1));
-    root.querySelector("[data-action='continue-popup-next']")?.addEventListener("click", () => stepCard(1));
+    root.querySelector("[data-action='continue-popup-next']")?.addEventListener("click", continueFromPopup);
     root.querySelector("[data-action='next-card']")?.addEventListener("click", () => stepCard(1));
     root.querySelector("[data-action='close-study']")?.addEventListener("click", () => goBack());
     root.querySelector("[data-action='go-home']")?.addEventListener("click", () => goBack());
@@ -8782,14 +6959,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
         if (event.target !== node) {
           return;
         }
-        if (state.versionCompareOpen) {
-          closeVersionCompare();
-          return;
-        }
-        if (state.versionHistoryOpen) {
-          closeVersionHistory();
-          return;
-        }
         if (state.cardCommentOpen) {
           closeCardComment();
           return;
@@ -8823,87 +6992,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
     });
     root.querySelector("[data-action='comment-close']")?.addEventListener("click", () => closeCardComment());
     root.querySelector("[data-action='comment-save']")?.addEventListener("click", () => saveCardComment());
-    root.querySelector("[data-action='version-history-close']")?.addEventListener("click", () => closeVersionHistory());
-    root.querySelector("[data-action='version-compare-close']")?.addEventListener("click", () => closeVersionCompare());
-    root.querySelector("[data-action='back-to-comparison']")?.addEventListener("click", () => backToVersionCompareSummary());
-    root.querySelectorAll("[data-action='use-version-compare-side']").forEach((node) => {
-      node.addEventListener("click", () => {
-        const side = node.getAttribute("data-compare-side");
-        if (!side) return;
-        useVersionCompareSide(side);
-      });
-    });
-    root.querySelectorAll("[data-action='select-version-compare-tab']").forEach((node) => {
-      node.addEventListener("click", () => {
-        selectVersionCompareTab(node.getAttribute("data-compare-tab"));
-      });
-    });
-    root.querySelectorAll("[data-action='open-version-compare-target']").forEach((node) => {
-      node.addEventListener("click", () => {
-        const rawTarget = node.getAttribute("data-compare-target");
-        const tabId = node.getAttribute("data-compare-tab") || "current";
-        if (!rawTarget) return;
-        try {
-          openVersionCompareTarget(JSON.parse(rawTarget), tabId);
-        } catch {
-          // noop
-        }
-      });
-    });
-    root.querySelectorAll("[data-action='select-version-history-item']").forEach((node) => {
-      node.addEventListener("click", () => {
-        const versionKey = node.getAttribute("data-version-key");
-        if (!versionKey) return;
-        selectVersionHistoryItem(versionKey);
-      });
-    });
-    root.querySelectorAll("[data-action='toggle-version-history-more']").forEach((node) => {
-      node.addEventListener("click", () => {
-        const versionKey = node.getAttribute("data-version-key");
-        if (!versionKey) return;
-        toggleVersionHistoryMore(versionKey);
-      });
-    });
-    root.querySelectorAll("[data-action='restore-version']").forEach((node) => {
-      node.addEventListener("click", () => {
-        const versionKey = node.getAttribute("data-version-key");
-        if (!versionKey) return;
-        closeVersionHistory();
-        restoreCardVersion(versionKey);
-      });
-    });
-    root.querySelectorAll("[data-action='save-version-snapshot']").forEach((node) => {
-      node.addEventListener("click", () => saveCurrentSnapshotFromHistory());
-    });
-    root.querySelectorAll("[data-action='use-structure-version']").forEach((node) => {
-      node.addEventListener("click", () => {
-        const versionKey = node.getAttribute("data-version-key");
-        if (!versionKey) return;
-        useStructureVersion(versionKey);
-      });
-    });
-    root.querySelectorAll("[data-action='delete-structure-version']").forEach((node) => {
-      node.addEventListener("click", () => {
-        const versionKey = node.getAttribute("data-version-key");
-        if (!versionKey) return;
-        deleteStructureVersion(versionKey);
-      });
-    });
-    root.querySelectorAll("[data-action='use-microsequence-version'][data-version-key]").forEach((node) => {
-      node.addEventListener("click", () => {
-        const versionKey = node.getAttribute("data-version-key");
-        if (!versionKey) return;
-        useMicrosequenceVersion(versionKey);
-      });
-    });
-    root.querySelectorAll("[data-action='delete-microsequence-version'][data-version-key]").forEach((node) => {
-      node.addEventListener("click", () => {
-        const versionKey = node.getAttribute("data-version-key");
-        if (!versionKey) return;
-        deleteMicrosequenceVersion(versionKey);
-      });
-    });
-
     const cardCommentInput = root.querySelector("[data-field='card-comment']");
     const assistMicrosequenceTitleInput = root.querySelector("[data-field='assist-microsequence-title']");
     if (cardCommentInput) {
@@ -9256,13 +7344,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
     root.querySelector("[data-action='apply-assist-feedback']")?.addEventListener("click", () => {
       submitAssistFeedbackIteration();
     });
-    root.querySelector("[data-action='accept-generated-version']")?.addEventListener("click", () => {
-      acceptPendingGeneratedMicrosequenceVersion();
-    });
-    root.querySelector("[data-action='discard-generated-version']")?.addEventListener("click", () => {
-      discardPendingGeneratedMicrosequenceVersion();
-    });
-    root.querySelector("[data-action='open-version-history']")?.addEventListener("click", () => openVersionHistory());
     root.querySelector("[data-action='assist-config-close']")?.addEventListener("click", () => closeAssistConfig());
     root.querySelector("[data-action='provider-config-close']")?.addEventListener("click", () => closeProviderConfig());
     root.querySelector("[data-action='provider-config-check-codex']")?.addEventListener("click", () => {
@@ -9442,7 +7523,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
     syncPendingStructureFocus();
   }
 
-  ensureCurrentCardSnapshot();
   syncAssistDraft();
   globalThis.AraLearnAndroidImport = {
     receiveSharedJson(rawText, sourceName) {
@@ -9459,6 +7539,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
   root.addEventListener("click", (event) => {
     void handleGenerationPanelActionClick(event);
   });
-  syncVisibleStructureVersionsFromProject();
+
   render({ preserveState: false });
 }

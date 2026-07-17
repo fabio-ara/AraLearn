@@ -118,8 +118,7 @@ export async function createBranchMicrosequence({
     dependsOn: [info.microsequence.id],
     covers: validatedBranch.value.covers,
     checks: validatedBranch.value.checks,
-    versions: [],
-    activeVersion: null
+    cards: []
   };
 
   lessonMicrosequences.splice(info.microsequenceIndex + 1, 0, branchMicrosequence);

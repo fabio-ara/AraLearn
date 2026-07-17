@@ -8,7 +8,6 @@ import {
   findModule,
   getFirstPath
 } from "./lessonEditorPaths.js";
-import { getActiveMicrosequenceVersion } from "../domain/microsequence.js";
 
 function nullSelection() {
   return {
@@ -22,8 +21,7 @@ function nullSelection() {
 }
 
 function cardsOfMicrosequence(microsequence) {
-  const activeVersion = getActiveMicrosequenceVersion(microsequence);
-  return Array.isArray(activeVersion?.cards) ? activeVersion.cards : [];
+  return Array.isArray(microsequence?.cards) ? microsequence.cards : [];
 }
 
 export function resolveSelectionByKeys(projectDocument, desiredSelection = {}) {

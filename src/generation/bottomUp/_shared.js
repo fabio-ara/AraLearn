@@ -1,5 +1,3 @@
-import { cloneMicrosequenceWithVersion } from "../../domain/microsequence.js";
-import { createMicrosequenceVersion } from "../../domain/microsequenceVersion.js";
 
 export function cloneProject(project) {
   return structuredClone(project);
@@ -37,14 +35,10 @@ export function replaceMicrosequence(project, selectionInfo, nextMicrosequence) 
   return nextProject;
 }
 
-export function appendVersion(microsequence, payload, { source = "llm", action = "generate", request = "", status = "generated" } = {}) {
-  const version = createMicrosequenceVersion({
-    source,
-    action,
-    request,
-    cards: payload.cards,
-    summary: payload.summary,
-    validation: payload.validation || { ok: true, issues: [] }
-  });
-  return cloneMicrosequenceWithVersion(microsequence, version, status);
+export function replaceGeneratedCards(microsequence, payload, { status = "generated" } = {}) {
+  return {
+    ...microsequence,
+    cards: Array.isArray(payload?.cards) ? payload.cards : [],
+    status
+  };
 }

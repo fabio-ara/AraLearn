@@ -53,8 +53,7 @@ export function plannedCourseToProjectPatch(plannedCourse) {
           dependsOn: unique(plannedMicrosequence.dependsOn),
           covers: unique(plannedMicrosequence.covers),
           checks: unique(plannedMicrosequence.checks),
-          versions: [],
-          activeVersion: null
+          cards: []
         }))
       }))
     }))

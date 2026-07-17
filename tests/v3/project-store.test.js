@@ -2,10 +2,10 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { parseProjectDocument } from "../../src/storage/projectStore.js";
+import { createProjectStorage } from "../../src/storage/createProjectStorage.js";
 import { createEmbeddedSeedProjectDocument } from "../../src/ui/embeddedSeedProjectDocument.js";
-import { syncEmbeddedSeedProjectDocument } from "../../src/ui/syncEmbeddedSeedProjectDocument.js";
 
-test("o parser saneia lacunas legadas em after e afterBlocks antes de validar o projeto", () => {
+test("o parser saneia lacunas em after e afterBlocks antes de validar o projeto", () => {
   const parsed = parseProjectDocument(JSON.stringify({
     contract: "aralearn.contract",
     version: 3,
@@ -33,12 +33,7 @@ test("o parser saneia lacunas legadas em after e afterBlocks antes de validar o 
                     goal: "Praticar.",
                     role: "practice",
                     status: "ready",
-                    versions: [
-                      {
-                        id: "version-1",
-                        source: "manual",
-                        action: "repair",
-                        cards: [
+                    cards: [
                           {
                             id: "card-1",
                             position: 1,
@@ -61,11 +56,7 @@ test("o parser saneia lacunas legadas em after e afterBlocks antes de validar o 
                               }
                             ]
                           }
-                        ],
-                        validation: { ok: true, issues: [] }
-                      }
                     ],
-                    activeVersion: "version-1"
                   }
                 ]
               }
@@ -76,23 +67,19 @@ test("o parser saneia lacunas legadas em after e afterBlocks antes de validar o 
     ]
   }));
 
-  const card = parsed.courses[0].modules[0].lessons[0].microsequences[0].versions[0].cards[0];
+  const card = parsed.courses[0].modules[0].lessons[0].microsequences[0].cards[0];
   assert.equal(card.after, "Revise setor.");
   assert.equal(card.afterBlocks[0].value, "Resumo: matriz.");
   assert.equal(card.afterBlocks[1].code, "const nome = 'dado';");
 });
 
-test("a sincronização de seed embarcado atualiza cursos oficiais ao carregar projeto salvo", () => {
+test("o armazenamento mantém cursos oficiais fora do documento persistido", () => {
   const seedProject = createEmbeddedSeedProjectDocument();
   const ai900Course = seedProject.courses.find(
     (course) => course.id === "course-microsoft-azure-ai-fundamentals-ai900"
   );
   assert.ok(ai900Course, "curso AI-900 não encontrado no seed atual");
 
-  const outdatedAi900Course = {
-    ...ai900Course,
-    modules: ai900Course.modules.slice(0, 6)
-  };
   const extraCourse = {
     id: "course-local-extra",
     title: "Curso local extra",
@@ -100,55 +87,14 @@ test("a sincronização de seed embarcado atualiza cursos oficiais ao carregar p
     modules: []
   };
 
-  const result = syncEmbeddedSeedProjectDocument({
-    contract: "aralearn.contract",
-    version: 3,
-    kind: "project",
-    courses: seedProject.courses
-      .map((course) =>
-        course.id === "course-microsoft-azure-ai-fundamentals-ai900" ? outdatedAi900Course : course
-      )
-      .concat(extraCourse)
-  });
-
-  assert.equal(result.changed, true);
-  assert.equal(result.projectDocument.courses[0].id, seedProject.courses[0].id);
-  assert.equal(
-    result.projectDocument.courses.find((course) => course.id === "course-microsoft-azure-ai-fundamentals-ai900")
-      .modules.length,
-    9
-  );
-  assert.deepEqual(result.projectDocument.courses.at(-1), extraCourse);
-});
-
-test("a sincronização remove do projeto salvo os cursos oficiais movidos para o catálogo não persistido", () => {
-  const seedProject = createEmbeddedSeedProjectDocument();
-
-  const result = syncEmbeddedSeedProjectDocument({
-    contract: "aralearn.contract",
-    version: 3,
-    kind: "project",
-    courses: [
-      ...seedProject.courses,
-      {
-        id: "course-matematica-para-informatica",
-        title: "Matemática para Informática",
-        goal: "Curso agora fora da persistência embarcada.",
-        modules: []
-      },
-      {
-        id: "course-local-extra",
-        title: "Curso local extra",
-        goal: "Continua preservado.",
-        modules: []
-      }
-    ]
-  });
-
-  assert.equal(result.changed, true);
-  assert.equal(
-    result.projectDocument.courses.some((course) => course.id === "course-matematica-para-informatica"),
-    false
-  );
-  assert.equal(result.projectDocument.courses.at(-1).id, "course-local-extra");
+  const values = new Map();
+  const storage = createProjectStorage({
+    getItem: (key) => values.get(key) || null,
+    setItem: (key, value) => values.set(key, value),
+    removeItem: (key) => values.delete(key)
+  }, undefined, seedProject);
+  storage.saveProject({ ...seedProject, courses: [...seedProject.courses, extraCourse] });
+  const persisted = JSON.parse(values.get("aralearn.project"));
+  assert.deepEqual(persisted.courses, [extraCourse]);
+  assert.equal(storage.loadProject().courses.at(-1).id, "course-local-extra");
 });

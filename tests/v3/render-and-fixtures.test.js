@@ -1051,7 +1051,7 @@ test("o seed embutido oficial mantém os cursos embarcados já materializados", 
     "microsoft-azure-ai-fundamentals-ai900-seed-course.json",
     "dataprev-analista-processamento-seed-course.json"
   ]);
-  assert.equal(project.courses.length, manifest.courseFiles.length);
+  assert.equal(project.courses.length, manifest.courseFiles.length + nonPersistedManifest.courseFiles.length);
 
   const dataprevMicrosequences = dataprevCourse.modules
     .flatMap((moduleValue) => moduleValue.lessons || [])
@@ -1089,7 +1089,7 @@ test("o seed embutido oficial mantém os cursos embarcados já materializados", 
     dataprevServerMicrosequences.reduce(
       (count, microsequence) =>
         count +
-        ((microsequence.versions || []).find((version) => version.id === microsequence.activeVersion)?.cards || []).length,
+        (microsequence.cards || []).length,
       0
     ),
     322
@@ -1105,15 +1105,13 @@ test("o seed embutido oficial mantém os cursos embarcados já materializados", 
   assert.equal(ai900Microsequences.length, 72);
   assert.equal(
     ai900Microsequences.reduce((count, microsequence) => {
-      const active =
-        (microsequence.versions || []).find((version) => version.id === microsequence.activeVersion) ||
-        (microsequence.versions || []).at(-1);
+      const active = microsequence;
       return count + ((active?.cards || []).length);
     }, 0),
     858
   );
   const ai900TableProblems = ai900Microsequences.flatMap((microsequence) =>
-    (microsequence.versions || []).flatMap((version) =>
+    [{ cards: microsequence.cards || [] }].flatMap((version) =>
       (version.cards || [])
         .filter((card) => card.resource === "table")
         .flatMap((card) => {
@@ -1132,14 +1130,10 @@ test("o seed embutido oficial mantém os cursos embarcados já materializados", 
   );
   assert.deepEqual(ai900TableProblems, []);
   ai900Microsequences.forEach((microsequence) => {
-    (microsequence.versions || []).forEach((version) => {
-      assert.equal(version.source, "manual");
-      assert.equal(version.action, "repair");
-      assert.equal(version.request, "");
+    [{ cards: microsequence.cards || [] }].forEach((version) => {
       const visibleTexts = [
         microsequence.title,
         microsequence.goal,
-        version.summary,
         ...(version.cards || []).flatMap((card) => [
           card.title,
           card.text,
@@ -1160,8 +1154,8 @@ test("o seed embutido oficial mantém os cursos embarcados já materializados", 
     .flatMap((lesson) => lesson.microsequences || []);
 
   assert.ok(praticasMicrosequences.length > 0);
-  assert.equal(praticasMicrosequences.some((microsequence) => (microsequence.versions || []).length > 0), true);
-  assert.equal(praticasMicrosequences.some((microsequence) => microsequence.activeVersion), true);
+  assert.equal(praticasMicrosequences.some((microsequence) => (microsequence.cards || []).length > 0), true);
+  assert.equal(praticasMicrosequences.some((microsequence) => (microsequence.cards || []).length > 0), true);
 
   const organizacaoMicrosequences = organizacaoCourse.modules
     .flatMap((moduleValue) => moduleValue.lessons || [])
@@ -1181,8 +1175,8 @@ test("o seed embutido oficial mantém os cursos embarcados já materializados", 
     true
   );
   assert.ok(organizacaoMicrosequences.length > 0);
-  assert.equal(organizacaoMicrosequences.some((microsequence) => (microsequence.versions || []).length > 0), true);
-  assert.equal(organizacaoMicrosequences.some((microsequence) => microsequence.activeVersion), true);
+  assert.equal(organizacaoMicrosequences.some((microsequence) => (microsequence.cards || []).length > 0), true);
+  assert.equal(organizacaoMicrosequences.some((microsequence) => (microsequence.cards || []).length > 0), true);
 
   const frameworkMicrosequences = frameworkCourse.modules
     .flatMap((moduleValue) => moduleValue.lessons || [])
@@ -1193,16 +1187,14 @@ test("o seed embutido oficial mantém os cursos embarcados já materializados", 
   assert.equal(frameworkMicrosequences.length, 52);
   assert.equal(
     frameworkMicrosequences.reduce((count, microsequence) => {
-      const active =
-        (microsequence.versions || []).find((version) => version.id === microsequence.activeVersion) ||
-        (microsequence.versions || []).at(-1);
+      const active = microsequence;
       return count + ((active?.cards || []).length);
     }, 0),
     180
   );
   assert.equal(
     frameworkMicrosequences
-      .flatMap((microsequence) => microsequence.versions || [])
+      .map((microsequence) => ({ cards: microsequence.cards || [] }))
       .flatMap((version) => version.cards || [])
       .filter((card) => card.resource === "flow")
       .every((card) => card.structure && !("nodes" in card) && !("edges" in card)),
@@ -1211,7 +1203,7 @@ test("o seed embutido oficial mantém os cursos embarcados já materializados", 
 
   assert.equal(
     organizacaoMicrosequences
-      .flatMap((microsequence) => microsequence.versions || [])
+      .map((microsequence) => ({ cards: microsequence.cards || [] }))
       .flatMap((version) => version.cards || [])
       .filter((card) => card.resource === "flow")
       .every((card) => card.structure && !("nodes" in card) && !("edges" in card)),
@@ -1227,13 +1219,13 @@ test("o seed embutido oficial mantém os cursos embarcados já materializados", 
   assert.equal(logicaMicrosequences.length, 170);
   assert.equal(
     logicaMicrosequences
-      .flatMap((microsequence) => microsequence.versions || [])
+      .map((microsequence) => ({ cards: microsequence.cards || [] }))
       .reduce((count, version) => count + ((version?.cards || []).length), 0),
     924
   );
   assert.equal(
     logicaMicrosequences
-      .flatMap((microsequence) => microsequence.versions || [])
+      .map((microsequence) => ({ cards: microsequence.cards || [] }))
       .flatMap((version) => version.cards || [])
       .filter((card) => card.resource === "flow")
       .every((card) => card.structure && !("nodes" in card) && !("edges" in card)),
@@ -1241,7 +1233,7 @@ test("o seed embutido oficial mantém os cursos embarcados já materializados", 
   );
   assert.equal(
     logicaMicrosequences
-      .flatMap((microsequence) => microsequence.versions || [])
+      .map((microsequence) => ({ cards: microsequence.cards || [] }))
       .flatMap((version) => version.cards || [])
       .filter((card) => card.resource === "flow")
       .every((card) => {
@@ -1260,8 +1252,8 @@ test("o seed embutido oficial mantém os cursos embarcados já materializados", 
   assert.equal(fundamentosCourse.modules.length, 8);
   assert.equal(fundamentosCourse.modules.flatMap((moduleValue) => moduleValue.lessons || []).length, 8);
   assert.equal(fundamentosMicrosequences.length, 96);
-  assert.equal(fundamentosMicrosequences.some((microsequence) => (microsequence.versions || []).length > 0), true);
-  assert.equal(fundamentosMicrosequences.some((microsequence) => microsequence.activeVersion), true);
+  assert.equal(fundamentosMicrosequences.some((microsequence) => (microsequence.cards || []).length > 0), true);
+  assert.equal(fundamentosMicrosequences.some((microsequence) => (microsequence.cards || []).length > 0), true);
   assert.equal(
     fundamentosCourse.modules.some(
       (moduleValue) => moduleValue.title === "Aula 3 — Bibliotecas para análise de dados com NumPy e Pandas"
@@ -1296,16 +1288,14 @@ test("o seed embutido oficial mantém os cursos embarcados já materializados", 
   );
   assert.equal(
     fundamentosMicrosequences.reduce((count, microsequence) => {
-      const active =
-        (microsequence.versions || []).find((version) => version.id === microsequence.activeVersion) ||
-        (microsequence.versions || []).at(-1);
+      const active = microsequence;
       return count + ((active?.cards || []).length);
     }, 0),
     582
   );
 
   const fundamentosCards = fundamentosMicrosequences
-    .flatMap((microsequence) => microsequence.versions || [])
+    .map((microsequence) => ({ cards: microsequence.cards || [] }))
     .flatMap((version) => version.cards || []);
 
   assert.equal(
@@ -1418,7 +1408,7 @@ test("o seed de Fundamentos evita texto de bastidor e vocabulário proibido nos 
         ...(lesson.microsequences || []).flatMap((microsequence) => [
           microsequence.title,
           microsequence.goal,
-          ...(microsequence.versions || []).flatMap((version) =>
+          ...[{ cards: microsequence.cards || [] }].flatMap((version) =>
             (version.cards || []).flatMap((card) => [
               card.title,
               card.text,
@@ -1501,7 +1491,7 @@ test("exercícios de Fundamentos que dependem de contexto mostrado trazem esse c
   const cards = course.modules
     .flatMap((moduleValue) => moduleValue.lessons || [])
     .flatMap((lesson) => lesson.microsequences || [])
-    .flatMap((microsequence) => microsequence.versions || [])
+    .map((microsequence) => ({ cards: microsequence.cards || [] }))
     .flatMap((version) => version.cards || []);
   const contextMarkers = [
     /\bobserve\b/iu,
@@ -1546,7 +1536,7 @@ test("cards de Fundamentos com resultados globais da base repetem o contexto no 
   const cards = course.modules
     .flatMap((moduleValue) => moduleValue.lessons || [])
     .flatMap((lesson) => lesson.microsequences || [])
-    .flatMap((microsequence) => microsequence.versions || [])
+    .map((microsequence) => ({ cards: microsequence.cards || [] }))
     .flatMap((version) => version.cards || []);
 
   const targetIds = [
@@ -1576,7 +1566,7 @@ test("o seed de Fundamentos não mantém lacunas em after nem em afterBlocks", (
   const cards = course.modules
     .flatMap((moduleValue) => moduleValue.lessons || [])
     .flatMap((lesson) => lesson.microsequences || [])
-    .flatMap((microsequence) => microsequence.versions || [])
+    .map((microsequence) => ({ cards: microsequence.cards || [] }))
     .flatMap((version) => version.cards || []);
 
   cards.forEach((card) => {
@@ -1601,7 +1591,7 @@ test("cards de grafo que prometem subgrafo destacado no seed materializam esse d
   const cards = course.modules
     .flatMap((moduleValue) => moduleValue.lessons || [])
     .flatMap((lesson) => lesson.microsequences || [])
-    .flatMap((microsequence) => microsequence.versions || [])
+    .map((microsequence) => ({ cards: microsequence.cards || [] }))
     .flatMap((version) => version.cards || []);
 
   const highlightedGraphCards = cards.filter((card) => {
@@ -1642,7 +1632,7 @@ test("cards de sequência local em grafos materializam o recorte relevante no se
   const cards = course.modules
     .flatMap((moduleValue) => moduleValue.lessons || [])
     .flatMap((lesson) => lesson.microsequences || [])
-    .flatMap((microsequence) => microsequence.versions || [])
+    .map((microsequence) => ({ cards: microsequence.cards || [] }))
     .flatMap((version) => version.cards || []);
 
   cards.forEach((card) => {
@@ -1673,7 +1663,7 @@ test("cards de exercício com grafo no seed evitam prompts genéricos demais", (
   const graphExerciseCards = course.modules
     .flatMap((moduleValue) => moduleValue.lessons || [])
     .flatMap((lesson) => lesson.microsequences || [])
-    .flatMap((microsequence) => microsequence.versions || [])
+    .map((microsequence) => ({ cards: microsequence.cards || [] }))
     .flatMap((version) => version.cards || [])
     .filter((card) => card?.resource === "graph" && ["exercise", "practice", "review"].includes(String(card?.kind || "")));
 
@@ -1701,7 +1691,7 @@ test("a síntese de vértices, arestas, graus e soma repete o grafo-base nos exe
   const micro = (lesson.microsequences || []).find((entry) => entry.id === "micro-revisao-fundamentos-graus-prova");
   assert.ok(micro);
 
-  const version = (micro.versions || [])[0];
+  const version = { cards: micro.cards || [] };
   assert.ok(version);
 
   const requiredIds = [
@@ -1866,8 +1856,8 @@ test("microssequências anteriores repetem o grafo-base quando a prática depend
     const micro = microById.get(microId);
     assert.ok(micro, `microssequência ${microId} ausente`);
 
-    const version = (micro.versions || [])[0];
-    assert.ok(version, `versão ausente em ${microId}`);
+    const version = { cards: micro.cards || [] };
+    assert.ok(version.cards.length, `cards ausentes em ${microId}`);
 
     cardIds.forEach((cardId) => {
       const card = (version.cards || []).find((entry) => entry.id === cardId);
@@ -1909,7 +1899,7 @@ test("o seed de Lógica de Programação preserva quebra de linha em cards de co
   const cards = course.modules
     .flatMap((moduleValue) => moduleValue.lessons || [])
     .flatMap((lesson) => lesson.microsequences || [])
-    .flatMap((microsequence) => microsequence.versions || [])
+    .map((microsequence) => ({ cards: microsequence.cards || [] }))
     .flatMap((version) => version.cards || []);
 
   const codeCard = cards.find((card) => card.id === "card-m1-02-exemplo-completo");
@@ -1931,7 +1921,7 @@ test("o seed de Lógica de Programação preserva lacunas de code com case, oper
   const cards = course.modules
     .flatMap((moduleValue) => moduleValue.lessons || [])
     .flatMap((lesson) => lesson.microsequences || [])
-    .flatMap((microsequence) => microsequence.versions || [])
+    .map((microsequence) => ({ cards: microsequence.cards || [] }))
     .flatMap((version) => version.cards || []);
   const menuCard = cards.find((card) => card.id === "card-menu-switch-02");
   const whileCard = cards.find((card) => card.id === "card-while-validacao-02");
@@ -1964,7 +1954,7 @@ test("o seed de Lógica de Programação mantém lacunas de code com fragmentos 
   const cards = course.modules
     .flatMap((moduleValue) => moduleValue.lessons || [])
     .flatMap((lesson) => lesson.microsequences || [])
-    .flatMap((microsequence) => microsequence.versions || [])
+    .map((microsequence) => ({ cards: microsequence.cards || [] }))
     .flatMap((version) => version.cards || []);
   const accessCard = cards.find((card) => card.id === "card-02-01-04-05");
   const restartCard = cards.find((card) => card.id === "card-02-03-01-05");
@@ -2007,7 +1997,7 @@ test("o renderer do seed de Lógica de Programação materializa alternativas mu
   const cards = course.modules
     .flatMap((moduleValue) => moduleValue.lessons || [])
     .flatMap((lesson) => lesson.microsequences || [])
-    .flatMap((microsequence) => microsequence.versions || [])
+    .map((microsequence) => ({ cards: microsequence.cards || [] }))
     .flatMap((version) => version.cards || []);
   const codeChoiceCard = cards.find((card) => card.id === "card-m5-04-identificar-erro-getch-fora");
 
@@ -2061,7 +2051,7 @@ test("o seed de Lógica de Programação mantém sintaxe de C destacada e sem cr
     (moduleValue.lessons || []).forEach((lesson) => {
       (lesson.microsequences || []).forEach((microsequence) => {
         const version =
-          (microsequence.versions || []).find((entry) => entry.id === microsequence.activeVersion) ||
+          (microsequence.versions || []).find((entry) => entry.id === (microsequence.cards || []).length > 0) ||
           (microsequence.versions || [])[0];
         (version?.cards || []).forEach((card) => {
           ["text", "after", "prompt", "question"].forEach((field) => {
@@ -2092,7 +2082,7 @@ test("o seed de Lógica de Programação corrige vícios recorrentes e fragmento
   const cards = course.modules
     .flatMap((moduleValue) => moduleValue.lessons || [])
     .flatMap((lesson) => lesson.microsequences || [])
-    .flatMap((microsequence) => microsequence.versions || [])
+    .map((microsequence) => ({ cards: microsequence.cards || [] }))
     .flatMap((version) => version.cards || []);
 
   const visibleTexts = cards.flatMap((card) => [
@@ -2136,7 +2126,7 @@ test("o seed de Lógica de Programação elimina placeholders legados de code e 
   const cards = course.modules
     .flatMap((moduleValue) => moduleValue.lessons || [])
     .flatMap((lesson) => lesson.microsequences || [])
-    .flatMap((microsequence) => microsequence.versions || [])
+    .map((microsequence) => ({ cards: microsequence.cards || [] }))
     .flatMap((version) => version.cards || []);
 
   assert.equal(
@@ -2210,7 +2200,6 @@ test("microssequência com cards em revisão continua abrindo play", () => {
       validation: { ok: true, issues: [] }
     }
   ];
-  microsequence.activeVersion = "version-manual";
   microsequence.status = "generated";
 
   const html = renderLessonScreen({
@@ -2265,7 +2254,6 @@ test("microssequências geradas com cards continuam na trilha principal da liç�
       validation: { ok: true, issues: [] }
     }
   ];
-  microsequence.activeVersion = "version-manual";
   microsequence.status = "generated";
 
   const html = renderLessonScreen({
@@ -2323,7 +2311,6 @@ test("o leitor clampa a barra de progresso e protege títulos longos contra vaza
       validation: { ok: true, issues: [] }
     }
   ];
-  microsequence.activeVersion = "version-manual";
   microsequence.status = "generated";
 
   renderLessonScreen({

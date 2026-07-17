@@ -1,4 +1,4 @@
-import { getActiveMicrosequenceVersion } from "../../domain/microsequence.js";
+import { getMicrosequenceCards } from "../../domain/microsequence.js";
 import { listSupportedResourceTypes } from "../../domain/resources.js";
 
 function text(value) {
@@ -124,8 +124,8 @@ export function buildContextPacket(project, selection, { density = "standard", u
       status: text(microsequence.status),
       covers: uniqueList(microsequence.covers),
       checks: uniqueList(microsequence.checks),
-      existingCards: (getActiveMicrosequenceVersion(microsequence)?.cards || []).map(summarizeExistingCard),
-      currentCards: structuredClone(getActiveMicrosequenceVersion(microsequence)?.cards || [])
+      existingCards: getMicrosequenceCards(microsequence).map(summarizeExistingCard),
+      currentCards: structuredClone(getMicrosequenceCards(microsequence))
     },
     refs: {
       selected: selectedRefTitles,

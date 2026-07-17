@@ -12,13 +12,7 @@ function buildMicrosequence(id, cards, status = "ready") {
     id,
     title: id,
     status,
-    activeVersion: "version-1",
-    versions: [
-      {
-        id: "version-1",
-        cards
-      }
-    ]
+    cards
   };
 }
 

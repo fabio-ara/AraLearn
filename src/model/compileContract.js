@@ -32,11 +32,7 @@ export function compileContractDocument(document) {
               order: lessonIndex,
               microsequences: lesson.microsequences.map((microsequence, microsequenceIndex) => {
                 const microsequenceId = makeNodeId(["microsequence", course.id, moduleValue.id, lesson.id, microsequence.id]);
-                const activeVersion =
-                  (microsequence.versions || []).find((version) => version.id === microsequence.activeVersion)
-                  || microsequence.versions.at(-1)
-                  || null;
-                const activeCards = Array.isArray(activeVersion?.cards) ? activeVersion.cards : [];
+                const cardsOfMicrosequence = Array.isArray(microsequence.cards) ? microsequence.cards : [];
 
                 const sequenceEntry = {
                   id: microsequenceId,
@@ -58,10 +54,8 @@ export function compileContractDocument(document) {
                   dependsOn: [...(microsequence.dependsOn || [])],
                   covers: [...(microsequence.covers || [])],
                   checks: [...(microsequence.checks || [])],
-                  versions: structuredClone(microsequence.versions),
-                  activeVersion: microsequence.activeVersion,
                   order: microsequenceIndex,
-                  cards: activeCards.map((card, cardIndex) => {
+                  cards: cardsOfMicrosequence.map((card, cardIndex) => {
                     const cardId = makeNodeId(["card", course.id, moduleValue.id, lesson.id, microsequence.id, card.id]);
                     const compiledCard = {
                       ...structuredClone(card),

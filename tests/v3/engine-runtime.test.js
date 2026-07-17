@@ -48,8 +48,7 @@ function projectWithPlannedMicrosequence() {
                     dependsOn: [],
                     covers: ["matriz"],
                     checks: ["ler posição"],
-                    versions: [],
-                    activeVersion: null
+                    cards: []
                   }
                 ]
               }
@@ -61,7 +60,7 @@ function projectWithPlannedMicrosequence() {
   };
 }
 
-test("runtime estruturado aplica versão quando validação final ok", async () => {
+test("runtime estruturado aplica cards quando validação final ok", async () => {
   const provider = createFakeProvider({
     structuredEngine: true,
     script: {
@@ -118,9 +117,8 @@ CARD 3
     modelId: "gemini-2.5-flash"
   });
 
-  assert.equal(result.version.validation.ok, true);
-  assert.equal(result.version.cards.length, 3);
-  assert.equal(result.version.cards[0].resource, "matrix");
+  assert.equal(result.cards.length, 3);
+  assert.equal(result.cards[0].resource, "matrix");
 });
 
 test("runtime não altera projeto em fail_closed", async () => {
@@ -153,7 +151,7 @@ test("runtime não altera projeto em fail_closed", async () => {
     provider,
     modelId: "gemini-2.5-flash"
   }), /fail_closed|determinante/);
-  assert.equal(project.courses[0].modules[0].lessons[0].microsequences[0].versions.length, 0);
+  assert.equal(project.courses[0].modules[0].lessons[0].microsequences[0].cards.length, 0);
 });
 
 test("auditoria aplica patch de slot e recompila o card final", async () => {
@@ -211,7 +209,7 @@ CARD 3
     modelId: "fake:model"
   });
 
-  assert.equal(result.version.cards[0].after, "Primeiro vem a linha e depois a coluna.");
+  assert.equal(result.cards[0].after, "Primeiro vem a linha e depois a coluna.");
 });
 
 test("auditoria normaliza aspas externas em patch textual", async () => {
@@ -269,7 +267,7 @@ CARD 3
     modelId: "fake:model"
   });
 
-  assert.equal(result.version.cards[0].after, "Ele disse \"correto\" no exemplo.");
+  assert.equal(result.cards[0].after, "Ele disse \"correto\" no exemplo.");
 });
 
 test("runtime estruturado falha quando a auditoria devolve patch inválido não numérico", async () => {

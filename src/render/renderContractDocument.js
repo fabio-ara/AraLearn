@@ -1,4 +1,4 @@
-import { getActiveMicrosequenceVersion } from "../domain/microsequence.js";
+import { getMicrosequenceCards } from "../domain/microsequence.js";
 import { renderCardRuntimeArticle } from "./renderCardRuntime.js";
 
 function escapeHtml(value) {
@@ -11,7 +11,7 @@ function escapeHtml(value) {
 }
 
 function renderMicrosequence(microsequence) {
-  const cards = getActiveMicrosequenceVersion(microsequence)?.cards || [];
+  const cards = getMicrosequenceCards(microsequence);
   return (
     '<section class="microsequence" data-microsequence-id="' +
     escapeHtml(microsequence.id) +

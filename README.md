@@ -1,21 +1,21 @@
 # AraLearn
 
-AraLearn é uma plataforma de estudo autodidata que transforma temas amplos em trilhas de cards organizados por **microssequências**, com apoio de LLMs por API. O estudante define o escopo; o sistema organiza o percurso, gera ou corrige cards dentro de etapas delimitadas, valida o resultado e mantém versões editáveis em JSON.
+AraLearn é uma plataforma de estudo autodidata que transforma temas amplos em trilhas de cards organizados por **microssequências**, com apoio de LLMs por API. O estudante define o escopo; o sistema organiza o percurso, gera ou corrige cards dentro de etapas delimitadas e valida o resultado em JSON.
 
 A ideia central é simples: ter acesso a conteúdo não significa ter um caminho de estudo. Tutoriais, PDFs, vídeos, fóruns, documentação técnica e respostas de IA podem se acumular sem formar progressão. Simon (1971) observou que a abundância de informação consome atenção. O AraLearn parte desse problema: ajudar o estudante a transformar material disperso em prática organizada, retomável e verificável.
 
-O projeto não é apenas um aplicativo de flashcards, nem um chat livre com IA. Ele combina trilha didática, autoria assistida, contrato JSON, validação, versionamento local e cards capazes de aparecer como texto, código, tabela, matriz, plano cartesiano, grafo, mapa de relações, fluxograma ou árvore.
+O projeto não é apenas um aplicativo de flashcards, nem um chat livre com IA. Ele combina trilha didática, autoria assistida, contrato JSON, validação e cards capazes de aparecer como texto, código, tabela, matriz, plano cartesiano, grafo, mapa de relações, fluxograma ou árvore.
 
 ## O que é uma microssequência
 
 A microssequência é a unidade central do AraLearn.
 
-Ela é uma etapa delimitada dentro de uma lição. Cada microssequência possui objetivo, papel na trilha, dependências, conteúdos cobertos, critérios de verificação e versões de cards. Ela é maior que um card isolado, porque preserva contexto; e menor que uma lição inteira, porque concentra um problema de aprendizagem específico.
+Ela é uma etapa delimitada dentro de uma lição. Cada microssequência possui objetivo, papel na trilha, dependências, conteúdos cobertos, critérios de verificação e seus cards. Ela é maior que um card isolado, porque preserva contexto; e menor que uma lição inteira, porque concentra um problema de aprendizagem específico.
 
 Exemplo conceitual:
 
 ```text
-curso -> módulo -> lição -> microssequência -> versão -> card
+curso -> módulo -> lição -> microssequência -> card
 ```
 
 Em uma microssequência, o estudante pode ver uma regra, acompanhar um exemplo, responder a uma pergunta, corrigir um erro provável e seguir para a próxima etapa. O card não fica solto: ele cumpre uma função dentro de uma sequência.
@@ -26,13 +26,13 @@ A geração por LLM via API é uma funcionalidade atual do AraLearn. O app traba
 
 No **top-down**, o usuário informa tema, objetivo, conteúdos que entram, conteúdos que ficam fora e observações de notação ou abordagem. A LLM ajuda a propor uma estrutura de curso, módulos, lições e microssequências. Essa etapa organiza o caminho; ela não precisa gerar todos os cards finais.
 
-No **bottom-up**, o usuário abre uma microssequência e pede uma intervenção local: gerar cards, corrigir uma versão, criar apoio para uma dificuldade específica ou continuar a próxima etapa planejada. A LLM recebe um pacote de contexto delimitado; o AraLearn compila a resposta, valida o contrato e salva uma nova versão quando o resultado é aceito.
+No **bottom-up**, o usuário abre uma microssequência e pede uma intervenção local: gerar cards, corrigir cards, criar apoio para uma dificuldade específica ou continuar a próxima etapa planejada. A LLM recebe um pacote de contexto delimitado; o AraLearn compila a resposta, valida o contrato e aplica os cards resultantes.
 
 O repositório prevê uso com Gemini, serviços compatíveis com a API de chat da OpenAI, DeepSeek por endpoint compatível e uma ponte local para Codex CLI. As documentações oficiais de OpenAI, Google AI for Developers e DeepSeek descrevem recursos de saída estruturada ou JSON que dialogam com essa arquitetura, embora o AraLearn também aplique validação própria depois da resposta do serviço.
 
 A regra de autoria é: a LLM sugere; o aplicativo delimita, valida e registra; o usuário revisa e decide.
 
-Essa dependência de API vale para planejamento, geração e correção assistida. Em contrapartida, o projeto salvo, os cursos embarcados e as versões já aceitas ficam no dispositivo. Na prática, depois de abrir o app e carregar ou salvar o conteúdo, o estudante pode ler, revisar e editar esse material localmente sem nova chamada externa; a conexão volta a ser necessária quando houver pedido de assistência por IA.
+Essa dependência de API vale para planejamento, geração e correção assistida. Em contrapartida, os cursos embarcados, o progresso, os comentários e os cursos do usuário ficam no dispositivo. Na prática, depois de abrir o app, o estudante pode ler e editar esse material localmente sem nova chamada externa; a conexão volta a ser necessária quando houver pedido de assistência por IA.
 
 ## Cards que aparecem como estrutura, não só como texto
 
@@ -51,7 +51,6 @@ O estado atual do projeto inclui:
 - geração e correção bottom-up por LLM via API;
 - contrato público `aralearn.contract`, versão 3;
 - persistência local e exportação/importação em JSON;
-- versionamento de cards por microssequência;
 - validações estruturais e didáticas mínimas;
 - recursos de card: `paragraph`, `choice`, `composite`, `code`, `table`, `flow`, `tree`, `graph`, `relation_map`, `matrix` e `plane`;
 - aplicação web servida localmente;
@@ -66,7 +65,7 @@ Os cursos embarcados funcionam como material inicial, não como conteúdo intoc�
 
 O AraLearn foi concebido a partir de condições reais de estudo: pouco tempo, deslocamento, celular como principal dispositivo, cansaço depois do trabalho, conexão instável e dificuldade de manter continuidade. O público principal é o estudante-trabalhador, especialmente quem precisa estudar conteúdos técnicos sem dispor de longos períodos livres.
 
-Essa escolha não é apenas social; ela afeta a arquitetura. O projeto privilegia etapas delimitadas, persistência local, prática objetiva, retomada rápida, versionamento e redução do contexto enviado à LLM.
+Essa escolha não é apenas social; ela afeta a arquitetura. O projeto privilegia etapas delimitadas, persistência local, prática objetiva, retomada rápida e redução do contexto enviado à LLM.
 
 ## Rodar localmente
 
@@ -103,7 +102,7 @@ npm run android:debug
 
 ## Estado atual e limites
 
-O AraLearn já possui fluxos de geração por LLM via API, contrato JSON, recursos renderizáveis, validação, versionamento e material embarcado. Ainda assim, permanece em desenvolvimento.
+O AraLearn já possui fluxos de geração por LLM via API, contrato JSON, recursos renderizáveis, validação e material embarcado. Ainda assim, permanece em desenvolvimento.
 
 O projeto não substitui aula, professor, bibliografia, revisão humana ou estudo crítico. Também não trata a saída da IA como verdade final. O objetivo é oferecer uma estrutura de autoria e estudo em que o conteúdo possa ser produzido com assistência, conferido, corrigido e retomado.
 

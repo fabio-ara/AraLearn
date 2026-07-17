@@ -13,10 +13,19 @@
           "title": "Recursos básicos",
           "guide": {
             "goal": "Cobrir recursos básicos de leitura.",
-            "include": ["paragraph", "choice", "tree", "table"],
+            "include": [
+              "paragraph",
+              "choice",
+              "tree",
+              "table"
+            ],
             "exclude": [],
-            "notation": ["Use textos curtos."],
-            "avoid": ["Não depender de contexto externo."]
+            "notation": [
+              "Use textos curtos."
+            ],
+            "avoid": [
+              "Não depender de contexto externo."
+            ]
           },
           "lessons": [
             {
@@ -24,10 +33,19 @@
               "title": "Exemplo renderizável",
               "guide": {
                 "goal": "Ler cards básicos no runtime.",
-                "include": ["paragraph", "choice", "tree", "table"],
+                "include": [
+                  "paragraph",
+                  "choice",
+                  "tree",
+                  "table"
+                ],
                 "exclude": [],
-                "notation": ["Use textos curtos."],
-                "avoid": ["Não depender de contexto externo."]
+                "notation": [
+                  "Use textos curtos."
+                ],
+                "avoid": [
+                  "Não depender de contexto externo."
+                ]
               },
               "topics": [],
               "microsequences": [
@@ -38,58 +56,59 @@
                   "role": "explain",
                   "status": "ready",
                   "dependsOn": [],
-                  "covers": ["paragraph", "choice", "tree", "table"],
-                  "checks": ["o aluno reconhece o card atual"],
-                  "versions": [
+                  "covers": [
+                    "paragraph",
+                    "choice",
+                    "tree",
+                    "table"
+                  ],
+                  "checks": [
+                    "o aluno reconhece o card atual"
+                  ],
+                  "cards": [
                     {
-                      "id": "version-micro-renderable",
-                      "createdAt": "2026-01-01T00:00:00.000Z",
-                      "source": "manual",
-                      "action": "generate",
-                      "request": "",
-                      "summary": "Versão inicial.",
-                      "cards": [
+                      "position": 1,
+                      "resource": "paragraph",
+                      "kind": "theory",
+                      "exercise": "none",
+                      "title": "Regra central",
+                      "text": "O runtime renderiza o texto do parágrafo diretamente.",
+                      "after": "Esse é o recurso textual mais comum."
+                    },
+                    {
+                      "position": 2,
+                      "resource": "paragraph",
+                      "kind": "exercise",
+                      "exercise": "gap",
+                      "title": "Complete",
+                      "text": "Para listar arquivos, use [[ls::ls|cd|pwd]].",
+                      "after": "`ls` lista o conteúdo do diretório atual."
+                    },
+                    {
+                      "position": 3,
+                      "resource": "choice",
+                      "kind": "exercise",
+                      "exercise": "choice",
+                      "title": "Escolha",
+                      "question": "Qual comando mostra o diretório atual?",
+                      "options": [
                         {
-                          "position": 1,
-                          "resource": "paragraph",
-                          "kind": "theory",
-                          "exercise": "none",
-                          "title": "Regra central",
-                          "text": "O runtime renderiza o texto do parágrafo diretamente.",
-                          "after": "Esse é o recurso textual mais comum."
+                          "id": "a",
+                          "text": "pwd"
                         },
                         {
-                          "position": 2,
-                          "resource": "paragraph",
-                          "kind": "exercise",
-                          "exercise": "gap",
-                          "title": "Complete",
-                          "text": "Para listar arquivos, use [[ls::ls|cd|pwd]].",
-                          "after": "`ls` lista o conteúdo do diretório atual."
+                          "id": "b",
+                          "text": "mkdir"
                         },
                         {
-                          "position": 3,
-                          "resource": "choice",
-                          "kind": "exercise",
-                          "exercise": "choice",
-                          "title": "Escolha",
-                          "question": "Qual comando mostra o diretório atual?",
-                          "options": [
-                            { "id": "a", "text": "pwd" },
-                            { "id": "b", "text": "mkdir" },
-                            { "id": "c", "text": "touch" }
-                          ],
-                          "answer": "a",
-                          "after": "`pwd` imprime o caminho atual."
+                          "id": "c",
+                          "text": "touch"
                         }
                       ],
-                      "validation": {
-                        "ok": true,
-                        "issues": []
-                      }
+                      "answer": "a",
+                      "after": "`pwd` imprime o caminho atual."
                     }
-                  ],
-                  "activeVersion": "version-micro-renderable"
+                  ]
                 }
               ]
             }

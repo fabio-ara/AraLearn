@@ -13,10 +13,16 @@
           "title": "Grafo",
           "guide": {
             "goal": "Cobrir um grafo simples.",
-            "include": ["graph"],
+            "include": [
+              "graph"
+            ],
             "exclude": [],
-            "notation": ["Use rótulos curtos."],
-            "avoid": ["Não depender de contexto externo."]
+            "notation": [
+              "Use rótulos curtos."
+            ],
+            "avoid": [
+              "Não depender de contexto externo."
+            ]
           },
           "lessons": [
             {
@@ -24,10 +30,16 @@
               "title": "Grafo simples",
               "guide": {
                 "goal": "Ler um grafo de dois vértices.",
-                "include": ["graph"],
+                "include": [
+                  "graph"
+                ],
                 "exclude": [],
-                "notation": ["Use rótulos curtos."],
-                "avoid": ["Não depender de contexto externo."]
+                "notation": [
+                  "Use rótulos curtos."
+                ],
+                "avoid": [
+                  "Não depender de contexto externo."
+                ]
               },
               "topics": [],
               "microsequences": [
@@ -38,45 +50,56 @@
                   "role": "explain",
                   "status": "ready",
                   "dependsOn": [],
-                  "covers": ["graph"],
-                  "checks": ["o aluno identifica a aresta destacada"],
-                  "versions": [
+                  "covers": [
+                    "graph"
+                  ],
+                  "checks": [
+                    "o aluno identifica a aresta destacada"
+                  ],
+                  "cards": [
                     {
-                      "id": "version-micro-graph-example",
-                      "createdAt": "2026-01-01T00:00:00.000Z",
-                      "source": "manual",
-                      "action": "generate",
-                      "request": "",
-                      "summary": "Versão inicial.",
-                      "cards": [
+                      "position": 1,
+                      "resource": "graph",
+                      "kind": "theory",
+                      "exercise": "none",
+                      "title": "Ligação A-B",
+                      "prompt": "Observe a aresta destacada.",
+                      "vertices": [
                         {
-                          "position": 1,
-                          "resource": "graph",
-                          "kind": "theory",
-                          "exercise": "none",
-                          "title": "Ligação A-B",
-                          "prompt": "Observe a aresta destacada.",
-                          "vertices": [
-                            { "id": "A", "label": "A", "x": 20, "y": 40 },
-                            { "id": "B", "label": "B", "x": 80, "y": 40 }
-                          ],
-                          "edges": [
-                            { "from": "A", "to": "B", "label": "liga", "weight": "1" }
-                          ],
-                          "highlight": {
-                            "vertices": ["A"],
-                            "edges": [["A", "B"]]
-                          },
-                          "after": "A ligação destacada conecta `A` a `B`."
+                          "id": "A",
+                          "label": "A",
+                          "x": 20,
+                          "y": 40
+                        },
+                        {
+                          "id": "B",
+                          "label": "B",
+                          "x": 80,
+                          "y": 40
                         }
                       ],
-                      "validation": {
-                        "ok": true,
-                        "issues": []
-                      }
+                      "edges": [
+                        {
+                          "from": "A",
+                          "to": "B",
+                          "label": "liga",
+                          "weight": "1"
+                        }
+                      ],
+                      "highlight": {
+                        "vertices": [
+                          "A"
+                        ],
+                        "edges": [
+                          [
+                            "A",
+                            "B"
+                          ]
+                        ]
+                      },
+                      "after": "A ligação destacada conecta `A` a `B`."
                     }
-                  ],
-                  "activeVersion": "version-micro-graph-example"
+                  ]
                 }
               ]
             }

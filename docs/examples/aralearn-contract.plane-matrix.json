@@ -13,10 +13,17 @@
           "title": "Plano e matriz",
           "guide": {
             "goal": "Cobrir um vetor e uma matriz simples.",
-            "include": ["plane", "matrix"],
+            "include": [
+              "plane",
+              "matrix"
+            ],
             "exclude": [],
-            "notation": ["Use coordenadas curtas."],
-            "avoid": ["Não depender de contexto externo."]
+            "notation": [
+              "Use coordenadas curtas."
+            ],
+            "avoid": [
+              "Não depender de contexto externo."
+            ]
           },
           "lessons": [
             {
@@ -24,10 +31,17 @@
               "title": "Recursos visuais",
               "guide": {
                 "goal": "Ler um vetor simples e uma matriz identidade.",
-                "include": ["plane", "matrix"],
+                "include": [
+                  "plane",
+                  "matrix"
+                ],
                 "exclude": [],
-                "notation": ["Use coordenadas curtas."],
-                "avoid": ["Não depender de contexto externo."]
+                "notation": [
+                  "Use coordenadas curtas."
+                ],
+                "avoid": [
+                  "Não depender de contexto externo."
+                ]
               },
               "topics": [],
               "microsequences": [
@@ -38,45 +52,47 @@
                   "role": "explain",
                   "status": "ready",
                   "dependsOn": [],
-                  "covers": ["plane", "matrix"],
-                  "checks": ["o aluno identifica o elemento destacado"],
-                  "versions": [
-                    {
-                      "id": "version-micro-plane-matrix-example",
-                      "createdAt": "2026-01-01T00:00:00.000Z",
-                      "source": "manual",
-                      "action": "generate",
-                      "request": "",
-                      "summary": "Versão inicial.",
-                      "cards": [
-                        {
-                          "position": 1,
-                          "resource": "plane",
-                          "kind": "theory",
-                          "exercise": "none",
-                          "title": "Vetor v",
-                          "prompt": "Observe o vetor v.",
-                          "vector": [3, 2],
-                          "after": "O vetor aponta para `(3, 2)`."
-                        },
-                        {
-                          "position": 2,
-                          "resource": "matrix",
-                          "kind": "theory",
-                          "exercise": "none",
-                          "title": "Matriz identidade",
-                          "prompt": "Observe a diagonal principal.",
-                          "values": [["1", "0"], ["0", "1"]],
-                          "after": "A diagonal principal fica com `1`."
-                        }
-                      ],
-                      "validation": {
-                        "ok": true,
-                        "issues": []
-                      }
-                    }
+                  "covers": [
+                    "plane",
+                    "matrix"
                   ],
-                  "activeVersion": "version-micro-plane-matrix-example"
+                  "checks": [
+                    "o aluno identifica o elemento destacado"
+                  ],
+                  "cards": [
+                    {
+                      "position": 1,
+                      "resource": "plane",
+                      "kind": "theory",
+                      "exercise": "none",
+                      "title": "Vetor v",
+                      "prompt": "Observe o vetor v.",
+                      "vector": [
+                        3,
+                        2
+                      ],
+                      "after": "O vetor aponta para `(3, 2)`."
+                    },
+                    {
+                      "position": 2,
+                      "resource": "matrix",
+                      "kind": "theory",
+                      "exercise": "none",
+                      "title": "Matriz identidade",
+                      "prompt": "Observe a diagonal principal.",
+                      "values": [
+                        [
+                          "1",
+                          "0"
+                        ],
+                        [
+                          "0",
+                          "1"
+                        ]
+                      ],
+                      "after": "A diagonal principal fica com `1`."
+                    }
+                  ]
                 }
               ]
             }

@@ -1,4 +1,3 @@
-import { getActiveMicrosequenceVersion } from "../domain/microsequence.js";
 
 export const MICROSEQUENCE_STATUS_DRAFT = "planned";
 export const MICROSEQUENCE_STATUS_READY = "ready";
@@ -6,8 +5,7 @@ export const MICROSEQUENCE_STATUS_READY = "ready";
 const VALID_STATUSES = new Set(["planned", "generated", "needs_review", "ready"]);
 
 function activeCards(microsequence) {
-  const version = getActiveMicrosequenceVersion(microsequence);
-  return Array.isArray(version?.cards) ? version.cards : [];
+  return Array.isArray(microsequence?.cards) ? microsequence.cards : [];
 }
 
 export function resolveMicrosequenceStatus(microsequence) {

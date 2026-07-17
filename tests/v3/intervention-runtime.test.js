@@ -451,7 +451,7 @@ test("a primeira materialização aceita prompt vazio quando allowPromptlessSubm
   assert.equal(result.preparedIntervention.promptText.includes("Preserve"), true);
 });
 
-test("repair_current gera nova versão com action repair", async () => {
+test("repair_current atualiza os cards diretamente", async () => {
   const provider = basicStructuredProvider();
   const project = projectWithGeneratedCurrentAndPlannedNext();
   const result = await executeMicrosequenceGeneration({
@@ -489,7 +489,8 @@ test("repair_current gera nova versão com action repair", async () => {
 
   assert.equal(result.status, "success");
   const repairedMicrosequence = result.generationResult.projectDocument.courses[0].modules[0].lessons[0].microsequences[0];
-  assert.equal(repairedMicrosequence.versions.at(-1)?.action, "repair");
+  assert.ok(Array.isArray(repairedMicrosequence.cards));
+  assert.ok(repairedMicrosequence.cards.length > 0);
 });
 
 test("branch_after_current cria uma nova microssequência local antes de voltar à trilha principal", async () => {

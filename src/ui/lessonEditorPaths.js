@@ -1,4 +1,3 @@
-import { getActiveMicrosequenceVersion } from "../domain/microsequence.js";
 import { isRunnableMicrosequence } from "../model/microsequenceStatus.js";
 
 export const DEFAULT_ASSIST_REFS = 3;
@@ -12,8 +11,7 @@ function cardToken(card, index = 0) {
 }
 
 function activeCards(microsequence) {
-  const version = getActiveMicrosequenceVersion(microsequence);
-  return Array.isArray(version?.cards) ? version.cards : [];
+  return Array.isArray(microsequence?.cards) ? microsequence.cards : [];
 }
 
 export function buildCardPathKey(selection) {

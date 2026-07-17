@@ -1,32 +1,16 @@
-import { createBrowserLocalStorageStore } from "../src/storage/createBrowserLocalStorageStore.js";
+import { createBrowserIndexedDbStore } from "../src/storage/createBrowserIndexedDbStore.js";
 import { createProjectStorage } from "../src/storage/createProjectStorage.js";
 import { createEditorSession } from "../src/editor/contractEditor.js";
 import { createLessonEditorApp } from "../src/ui/lessonEditorApp.js";
 import { createEmbeddedSeedProjectDocument } from "../src/ui/embeddedSeedProjectDocument.js";
-import { syncEmbeddedSeedProjectDocument } from "../src/ui/syncEmbeddedSeedProjectDocument.js";
 
-function text(value) {
-  return typeof value === "string" ? value.trim() : "";
-}
+let localStore = null;
 
-function clearAraLearnLocalState(storage = globalThis.localStorage) {
-  if (!storage || typeof storage.length !== "number" || typeof storage.key !== "function") {
+function clearAraLearnLocalState(storage = localStore) {
+  if (!storage || typeof storage.clear !== "function") {
     return;
   }
-  const keys = [];
-  for (let index = 0; index < storage.length; index += 1) {
-    const key = storage.key(index);
-    if (text(key).startsWith("aralearn.")) {
-      keys.push(key);
-    }
-  }
-  keys.forEach((key) => {
-    try {
-      storage.removeItem(key);
-    } catch {
-      // Mantém a tela de recuperação mesmo se uma chave específica não puder ser removida.
-    }
-  });
+  storage.clear();
 }
 
 function renderStartupFailure(root, error) {
@@ -49,7 +33,7 @@ function renderStartupFailure(root, error) {
     globalThis.location.reload();
   });
   root.querySelector('[data-action="reset-aralearn-local-state"]')?.addEventListener("click", () => {
-    clearAraLearnLocalState(globalThis.localStorage);
+    clearAraLearnLocalState();
     globalThis.location.reload();
   });
 }
@@ -60,8 +44,11 @@ if (!root) {
 }
 
 try {
-  const kvStore = createBrowserLocalStorageStore(globalThis.localStorage);
-  const storage = createProjectStorage(kvStore);
+  const kvStore = await createBrowserIndexedDbStore();
+  localStore = kvStore;
+  globalThis.AraLearnStorage = kvStore;
+  const embeddedProject = createEmbeddedSeedProjectDocument();
+  const storage = createProjectStorage(kvStore, undefined, embeddedProject);
   const editor = createEditorSession(storage);
   let project = null;
   try {
@@ -71,18 +58,13 @@ try {
   }
 
   if (!project || !Array.isArray(project.courses) || project.courses.length === 0) {
-    project = createEmbeddedSeedProjectDocument();
+    project = embeddedProject;
     storage.saveProject(project);
   }
 
   if (!project) {
-    project = createEmbeddedSeedProjectDocument();
+    project = embeddedProject;
     storage.saveProject(project);
-  }
-
-  const syncedProject = syncEmbeddedSeedProjectDocument(project);
-  if (syncedProject.changed) {
-    project = storage.saveProject(syncedProject.projectDocument);
   }
 
   createLessonEditorApp({

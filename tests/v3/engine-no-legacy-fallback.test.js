@@ -9,7 +9,7 @@ const TARGET_FILES = [
   "src/generation/bottomUp/generateMicrosequenceCards.js",
   "src/generation/bottomUp/createBranchMicrosequence.js",
   "src/generation/bottomUp/generateNextMicrosequence.js",
-  "src/generation/bottomUp/improveMicrosequenceVersion.js",
+  "src/generation/bottomUp/repairMicrosequenceCards.js",
   "src/generation/bottomUp/addPracticeToMicrosequence.js",
   "src/generation/topDown/planCourseFromScope.js",
   "src/generation/engine/bottomUpPlanRuntime.js",
