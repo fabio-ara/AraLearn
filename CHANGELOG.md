@@ -10,6 +10,8 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 - persistência local migrada para IndexedDB, preservando cursos do usuário, progresso e comentários sem tentar gravar o catálogo embarcado em `localStorage`;
 - remoção do fluxo de versionamento local da interface e do contrato de cursos; o controle visual reservado para sincronização futura permanece inativo;
 - catálogo embarcado reunido na inicialização sem duplicar o curso inteiro no armazenamento do navegador;
+- curso embarcado `Fundamentos de IA e Análise de Dados` reintegrado ao catálogo oficial;
+- inicialização do editor corrigida para não chamar controles removidos junto com o versionamento local.
 - correção da progressão após o feedback de prática e atualização das regressões do editor, do contrato e da persistência.
 
 ## [0.0.7] - 2026-07-10

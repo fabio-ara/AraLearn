@@ -6074,7 +6074,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
       )
       .forEach((node) => bindGenerationPanelTrigger(node));
 
-    syncVersionTabScroller();
     syncCardStripScroller({ keepActiveCardInView: true });
     syncPendingExerciseFocus();
 
@@ -7518,8 +7517,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
       }
     }
 
-    syncStructureVersionStripScroller({ centerActiveTab: state.centerActiveStructureVersionTabOnRender !== false });
-    state.centerActiveStructureVersionTabOnRender = true;
     syncPendingStructureFocus();
   }
 
@@ -7531,8 +7528,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
   };
   if (typeof window !== "undefined" && typeof window.addEventListener === "function") {
     window.addEventListener("resize", () => {
-      syncVersionTabScroller();
-      syncStructureVersionStripScroller({ centerActiveTab: true });
       syncCardStripScroller({ keepActiveCardInView: true });
     });
   }
