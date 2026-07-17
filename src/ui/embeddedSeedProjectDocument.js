@@ -1,14 +1,10 @@
 import {
   loadEmbeddedCourseFromJson,
-  loadEmbeddedSeedManifest,
-  loadNonPersistedCourseFromJson,
-  loadNonPersistedCourseManifest
+  loadEmbeddedSeedManifest
 } from "./embeddedSeedCourseLoader.js";
 
 function createEmbeddedSeedCourses() {
-  const primaryCourses = loadEmbeddedSeedManifest().courseFiles.map((fileName) => loadEmbeddedCourseFromJson(fileName));
-  const additionalCourses = loadNonPersistedCourseManifest().courseFiles.map((fileName) => loadNonPersistedCourseFromJson(fileName));
-  return [...primaryCourses, ...additionalCourses];
+  return loadEmbeddedSeedManifest().courseFiles.map((fileName) => loadEmbeddedCourseFromJson(fileName));
 }
 
 export function createEmbeddedSeedProjectDocument() {
