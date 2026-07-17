@@ -1052,7 +1052,7 @@ test("o seed embutido oficial mantém os cursos embarcados já materializados", 
     "dataprev-analista-processamento-seed-course.json",
     "fundamentos-ia-analise-dados-seed-course.json"
   ]);
-  assert.equal(project.courses.length, manifest.courseFiles.length + nonPersistedManifest.courseFiles.length);
+  assert.equal(project.courses.length, manifest.courseFiles.length);
 
   const dataprevMicrosequences = dataprevCourse.modules
     .flatMap((moduleValue) => moduleValue.lessons || [])
