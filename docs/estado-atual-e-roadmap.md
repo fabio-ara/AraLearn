@@ -10,8 +10,9 @@ O AraLearn já possui:
 - publicação web em GitHub Pages;
 - empacotamento Android por WebView;
 - contrato público `aralearn.contract`, versão 3;
-- cursos embarcados editáveis;
+- catálogo de cursos embarcados;
 - importação e exportação em JSON;
+- persistência do projeto e do progresso em IndexedDB;
 - estudo, revisão e edição local do material já salvo, sem nova chamada à API;
 - recursos de card: `paragraph`, `choice`, `composite`, `code`, `table`, `flow`, `tree`, `graph`, `relation_map`, `matrix` e `plane`;
 - geração top-down por LLM via API;
@@ -21,7 +22,7 @@ O AraLearn já possui:
 - ponte local para Codex CLI;
 - serviço falso para testes;
 - validações estruturais e didáticas;
-- versionamento de cards;
+- cards armazenados diretamente nas microssequências;
 - scripts de validação, harnesses, smoke tests e benchmarks.
 
 ## Prática externa de autoria
@@ -41,7 +42,7 @@ As próximas direções técnicas incluem:
 - investigar modelos locais ou parcialmente locais;
 - amadurecer a experiência Android;
 - melhorar a edição manual de cards;
-- criar instrumentos melhores para comparação de versões.
+- preparar a futura sincronização seletiva com um catálogo remoto.
 
 A eventual execução local de LLM no smartphone deve ser tratada como horizonte de desenvolvimento. No estado atual, a geração por API continua sendo o mecanismo operacional principal.
 
@@ -54,7 +55,7 @@ Perguntas úteis:
 - a microssequência ajuda o estudante a retomar o estudo?
 - os cards visuais melhoram compreensão de conteúdos estruturais?
 - a geração por LLM reduz esforço de autoria sem reduzir qualidade?
-- o versionamento ajuda revisão ou cria excesso de opções?
+- a persistência local torna a retomada previsível entre sessões?
 - o estudante entende o que foi produzido pela IA e o que precisa revisar?
 
 ## Direções sociais e éticas

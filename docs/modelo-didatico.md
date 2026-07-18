@@ -4,7 +4,7 @@ O modelo didático do AraLearn parte de uma constatação prática: aprender exi
 
 ## Microssequência
 
-A microssequência é a unidade de progressão do AraLearn. Ela reúne objetivo, papel na trilha, dependências, conteúdos cobertos, critérios de verificação e versões de cards.
+A microssequência é a unidade de progressão do AraLearn. Ela reúne objetivo, papel na trilha, dependências, conteúdos cobertos, critérios de verificação e cards ordenados.
 
 Ela foi escolhida por uma razão de escala. O card isolado tende a ficar estreito demais para sustentar contexto. A lição inteira pode ser ampla demais para uma sessão de estudo no celular. A microssequência ocupa o meio: trabalha um ponto delimitado e preserva a ligação com o percurso.
 
@@ -43,7 +43,7 @@ A forma não é decoração. Ela participa do conteúdo quando a relação espac
 
 ## Autonomia com suporte
 
-Zimmerman (2002) define aprendizagem autorregulada como processo em que o estudante planeja, monitora e ajusta suas estratégias. O AraLearn tenta apoiar essa autorregulação ao oferecer uma estrutura visível: o estudante vê a trilha, escolhe a etapa, gera ou corrige cards, compara versões e continua.
+Zimmerman (2002) define aprendizagem autorregulada como processo em que o estudante planeja, monitora e ajusta suas estratégias. O AraLearn tenta apoiar essa autorregulação ao oferecer uma estrutura visível: o estudante vê a trilha, escolhe a etapa, gera ou corrige cards, revisa o resultado e continua.
 
 Vygotsky (1978) ajuda a pensar a aprendizagem como processo mediado por instrumentos, linguagem e interação. Bruner (1978) contribui com a noção de apoio gradual. No AraLearn, a microssequência funciona como uma forma de apoio local: delimita o problema, oferece prática e permite retirada progressiva de suporte conforme a trilha avança.
 
@@ -59,7 +59,7 @@ Por isso, o AraLearn admite papéis como correção de erro e campos como `error
 
 Os cards são peças de uma etapa. Podem cumprir funções como explicar, exemplificar, praticar, revisar, corrigir ou preparar continuidade. Essa organização evita dois extremos: teoria sem aplicação e exercício sem contexto.
 
-A microssequência também permite versionamento. Uma etapa pode receber nova explicação, novo conjunto de exercícios ou ajuste de feedback sem apagar imediatamente a versão anterior. Isso transforma revisão em parte do processo, não em remendo ocasional.
+A microssequência mantém teoria, prática e feedback no mesmo recorte didático. Uma correção validada atualiza os cards da etapa, preservando a ordem de estudo e a relação com seus objetivos, dependências e critérios de verificação.
 
 ## Estudante-trabalhador
 

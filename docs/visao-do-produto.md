@@ -9,10 +9,10 @@ Simon (1971) formulou essa tensão ao mostrar que abundância de informação de
 O AraLearn organiza o estudo em uma árvore explícita:
 
 ```text
-curso -> módulo -> lição -> microssequência -> versão -> card
+curso -> módulo -> lição -> microssequência -> card
 ```
 
-Essa árvore torna o estudo manipulável. O curso define o campo geral. O módulo recorta uma região. A lição organiza uma etapa coerente. A microssequência concentra um problema local de aprendizagem. A versão preserva uma realização específica dessa etapa. O card apresenta explicação, exemplo, exercício ou representação.
+Essa árvore torna o estudo manipulável. O curso define o campo geral. O módulo recorta uma região. A lição organiza uma etapa coerente. A microssequência concentra um problema local de aprendizagem. O card apresenta explicação, exemplo, exercício ou representação dentro dessa etapa.
 
 A microssequência é o ponto de equilíbrio. Um card isolado pode perder contexto. Uma lição inteira pode ser grande demais para quem estuda no intervalo entre trabalho, deslocamento e aula. A microssequência permite trabalhar um conteúdo delimitado sem romper a continuidade da trilha.
 
@@ -32,7 +32,7 @@ Essa escolha tem base didática. Sweller (1988) e Sweller, Van Merriënboer e Pa
 
 Ferramentas existentes resolvem partes do problema. Buscadores e wikis ajudam a localizar informação. Cadernos digitais ajudam a guardar notas. Sistemas de repetição espaçada ajudam a revisar. Chats com IA respondem dúvidas e geram explicações. Plataformas de ensino oferecem cursos fechados.
 
-O AraLearn ocupa outro ponto: ele trata o estudo como projeto local, editável e versionado. O interesse não está apenas em responder uma pergunta, mas em organizar uma sequência que o estudante possa continuar, corrigir e auditar.
+O AraLearn ocupa outro ponto: ele trata o estudo como projeto local e editável. O interesse não está apenas em responder uma pergunta, mas em organizar uma sequência que o estudante possa continuar, corrigir e auditar.
 
 Esse caráter local importa também para o uso prático. Quando o conteúdo já está salvo no dispositivo ou vem embarcado no app, leitura, revisão e edição podem continuar sem nova chamada externa. A conexão é exigida nas etapas em que o usuário pede assistência por IA.
 
@@ -49,7 +49,7 @@ A contribuição do AraLearn está na combinação de elementos que, isoladament
 - fluxos top-down e bottom-up;
 - contrato JSON;
 - validação antes da persistência;
-- versionamento local;
+- persistência local em IndexedDB;
 - cards renderizados a partir de dados verificáveis;
 - foco explícito em estudo móvel e estudantes-trabalhadores.
 

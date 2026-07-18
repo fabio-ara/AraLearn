@@ -27,10 +27,10 @@ Campos obrigatórios:
 ## Hierarquia
 
 ```text
-project -> course -> module -> lesson -> microsequence -> version -> card
+project -> course -> module -> lesson -> microsequence -> card
 ```
 
-Essa hierarquia preserva ordem de estudo, contexto de geração e local de persistência.
+Os cards pertencem diretamente à microssequência e seguem a ordem declarada em `position`. Essa hierarquia preserva ordem de estudo, contexto de geração e local de persistência.
 
 ## `course`
 
@@ -131,6 +131,7 @@ Valores de `kind`:
   "dependsOn": [],
   "covers": ["definição", "interpretação da conjunção"],
   "checks": ["o aluno reconhece a regra principal"],
+  "errors": ["confundir a conjunção com uma regra que aceita apenas uma proposição verdadeira"],
   "cards": []
 }
 ```
@@ -144,6 +145,7 @@ Campos principais:
 | `dependsOn` | Microssequências anteriores da mesma lição que servem de pré-requisito. |
 | `covers` | Conteúdos cobertos pela etapa. |
 | `checks` | Critérios mínimos de verificação. |
+| `errors` | Erros plausíveis ligados à etapa que devem orientar explicação, prática e feedback. |
 | `cards` | Cards da etapa, em ordem de estudo. |
 
 `dependsOn` existe para preservar ordem local e permitir seleção de contexto sem enviar o curso inteiro à LLM.

@@ -71,4 +71,4 @@ Do ponto de vista do projeto, a resposta continua precisando respeitar o contrat
 
 ## Segurança e autoria
 
-O Codex CLI deve ser tratado como serviço de geração, não como dono da trilha. O app continua responsável por montar contexto, pedir saída textual no formato esperado, compilar a estrutura final, validar resposta, preservar versões e permitir revisão pelo usuário.
+O Codex CLI deve ser tratado como serviço de geração, não como dono da trilha. O app continua responsável por montar contexto, pedir saída textual no formato esperado, compilar a estrutura final, validar a resposta, aplicar os cards à microssequência e permitir revisão pelo usuário.

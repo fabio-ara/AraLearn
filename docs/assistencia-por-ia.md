@@ -1,6 +1,6 @@
 # Assistência por IA
 
-A assistência por IA é parte central do AraLearn atual. O app usa LLMs por API para planejar trilhas e gerar ou corrigir cards, mas a resposta do modelo não entra no projeto sem passar por contrato, composição, validação e versionamento.
+A assistência por IA é parte central do AraLearn atual. O app usa LLMs por API para planejar trilhas e gerar ou corrigir cards, mas a resposta do modelo não entra no projeto sem passar por contrato, composição e validação.
 
 Para detalhes operacionais, consulte [Fluxos, prompts e contratos de geração](fluxos-prompts-e-contratos.md). Para o formato salvo, consulte [Contrato público](aralearn-contract.md).
 
@@ -10,7 +10,7 @@ Há dois fluxos principais.
 
 No **top-down**, a LLM recebe um escopo e propõe a estrutura da trilha: curso, módulos, lições e microssequências.
 
-No **bottom-up**, a LLM trabalha sobre uma microssequência aberta. Ela pode gerar cards, corrigir uma versão, propor apoio local ou continuar a próxima etapa planejada.
+No **bottom-up**, a LLM trabalha sobre uma microssequência aberta. Ela pode gerar ou corrigir cards, propor apoio local ou continuar a próxima etapa planejada.
 
 Essa divisão aproveita uma capacidade conhecida dos modelos de linguagem: realizar tarefas variadas a partir de instruções e exemplos, como discutem Brown et al. (2020). Ao mesmo tempo, evita pedir ao modelo uma tarefa grande demais de uma só vez.
 
@@ -36,7 +36,7 @@ O AraLearn não precisa enviar o projeto inteiro para cada chamada. No fluxo loc
 - dependências declaradas;
 - referências escolhidas pelo usuário;
 - próxima microssequência planejada, quando houver;
-- versão atual e cards existentes, quando a operação é de correção;
+- cards existentes, quando a operação é de correção;
 - fontes anexadas e resolvidas explicitamente.
 
 Esse recorte melhora custo, privacidade e auditabilidade. Também ajuda a manter a intervenção dentro da etapa escolhida.
@@ -55,7 +55,7 @@ A distinção importa: hoje, a LLM por API é uma funcionalidade do AraLearn; o 
 
 ## Privacidade, custo e dependência
 
-Quando o usuário usa uma API externa, o contexto necessário à intervenção é enviado ao serviço configurado. Custo, retenção de dados, limites e disponibilidade dependem do fornecedor. Por isso, o projeto mantém persistência local e busca reduzir o contexto enviado.
+Quando o usuário usa uma API externa, o contexto necessário à intervenção é enviado ao serviço configurado. Custo, retenção de dados, limites e disponibilidade dependem do fornecedor. Por isso, o projeto mantém persistência local em IndexedDB e busca reduzir o contexto enviado.
 
 Essa distinção precisa ficar explícita: a dependência externa recai sobre a assistência de autoria. O projeto salvo, os cursos embarcados e o material já aceito continuam disponíveis localmente para estudo, revisão e edição sem nova chamada à API.
 

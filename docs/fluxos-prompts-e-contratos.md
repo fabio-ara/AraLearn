@@ -12,7 +12,7 @@ Esse arranjo evita três problemas frequentes:
 
 - pedir ao modelo que planeje e escreva tudo de uma vez;
 - aceitar JSON válido, mas incoerente com a trilha;
-- perder controle sobre versões e revisão humana.
+- perder controle sobre o conteúdo aplicado e a revisão humana.
 
 ## Fluxo 1: top-down
 
@@ -68,12 +68,12 @@ O objetivo é produzir uma trilha revisável, não uma estrutura definitiva e im
 
 ## Fluxo 2: bottom-up
 
-O bottom-up começa em uma microssequência aberta. O app já sabe onde o estudante está, quais dependências existem, que tópicos a etapa cobre e que versão está ativa. A LLM recebe apenas o necessário para uma intervenção local.
+O bottom-up começa em uma microssequência aberta. O app já sabe onde o estudante está, quais dependências existem, que tópicos a etapa cobre e quais cards já pertencem à etapa. A LLM recebe apenas o necessário para uma intervenção local.
 
 O fluxo pode atender quatro operações:
 
 - gerar cards para a microssequência atual;
-- corrigir a versão ativa;
+- corrigir os cards atuais;
 - criar uma microssequência de apoio;
 - gerar a próxima microssequência planejada.
 
@@ -184,7 +184,7 @@ Quando a resposta falha, o app pode pedir correção da etapa específica, aplic
 
 ## Por que esse desenho importa
 
-O desenho reduz custo, ambiguidade e fragilidade. Também preserva autoria: o usuário não recebe uma massa textual opaca, mas uma etapa editável, com dados verificáveis e versão própria.
+O desenho reduz custo, ambiguidade e fragilidade. Também preserva autoria: o usuário não recebe uma massa textual opaca, mas uma etapa editável, com dados verificáveis e cards próprios.
 
 ## Referências citadas
 
