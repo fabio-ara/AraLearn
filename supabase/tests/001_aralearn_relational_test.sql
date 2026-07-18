@@ -254,7 +254,7 @@ select is(
     select count(*)
     from public.sync_changes
     where course_id = (select personal_course_id from test_state)
-      and entity_type not in ('courses', 'memberships')
+      and entity_type not in ('courses', 'course_memberships')
   ),
   0::bigint,
   'clone anuncia membership sem duplicar a árvore inteira no feed'
