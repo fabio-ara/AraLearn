@@ -175,6 +175,47 @@ async function rpc(projectUrl, serviceRoleKey, functionName, payload, {
   throw lastError || new Error(`${functionName} falhou sem resposta.`);
 }
 
+async function importFlowGraphs(fixture, importId, projectUrl, serviceRoleKey, fetchImpl, progress) {
+  const preparation = await rpc(projectUrl, serviceRoleKey, "begin_official_course_import_flow", {
+    p_import_id: importId
+  }, { fetchImpl });
+  if (preparation?.status === "complete") {
+    progress(`${fixture.fileName}: flowNodes/flowCases já confirmados`);
+    return;
+  }
+  const nodesByBlock = new Map();
+  const casesByBlock = new Map();
+  for (const node of fixture.rows.flowNodes || []) {
+    const blockId = String(node.blockId || "");
+    if (!nodesByBlock.has(blockId)) nodesByBlock.set(blockId, []);
+    nodesByBlock.get(blockId).push(node);
+  }
+  for (const flowCase of fixture.rows.flowCases || []) {
+    const blockId = String(flowCase.blockId || "");
+    if (!casesByBlock.has(blockId)) casesByBlock.set(blockId, []);
+    casesByBlock.get(blockId).push(flowCase);
+  }
+  const blockIds = [...new Set([...nodesByBlock.keys(), ...casesByBlock.keys()])].sort();
+  for (const [chunkIndex, blockId] of blockIds.entries()) {
+    const nodes = nodesByBlock.get(blockId) || [];
+    if (!nodes.length) {
+      throw new Error(`Flow ${blockId || "sem bloco"} contém cases sem os nós correspondentes.`);
+    }
+    await rpc(projectUrl, serviceRoleKey, "apply_official_course_import_flow_chunk", {
+      p_import_id: importId,
+      p_chunk_index: chunkIndex,
+      p_nodes: nodes,
+      p_cases: casesByBlock.get(blockId) || []
+    }, { fetchImpl });
+  }
+  if (blockIds.length) {
+    progress(
+      `${fixture.fileName}: flowNodes (${fixture.rows.flowNodes?.length || 0}), ` +
+      `flowCases (${fixture.rows.flowCases?.length || 0})`
+    );
+  }
+}
+
 export async function importPreparedCatalogFixture(fixture, {
   publish,
   fetchImpl = globalThis.fetch,
@@ -196,6 +237,11 @@ export async function importPreparedCatalogFixture(fixture, {
   if (["published", "draft"].includes(begin?.status)) return begin;
 
   for (const storeName of IMPORT_STORE_NAMES) {
+    if (storeName === "flowNodes") {
+      await importFlowGraphs(fixture, importId, projectUrl, serviceRoleKey, fetchImpl, progress);
+      continue;
+    }
+    if (storeName === "flowCases") continue;
     const rows = fixture.rows[storeName] || [];
     for (let offset = 0; offset < rows.length; offset += IMPORT_CHUNK_SIZE) {
       const chunkIndex = Math.floor(offset / IMPORT_CHUNK_SIZE);

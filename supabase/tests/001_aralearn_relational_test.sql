@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 set search_path = public, extensions, pg_catalog;
-select plan(165);
+select plan(170);
 
 select has_table('public', 'courses', 'courses existe');
 select has_table('public', 'modules', 'modules existe');
@@ -2811,6 +2811,105 @@ select is(
    where import_id = '66000000-0000-5000-8000-000000000001'),
   1::bigint,
   'falha final preserva chunks confirmados para retomada'
+);
+select ok(
+  not has_function_privilege(
+    'authenticated',
+    'public.apply_official_course_import_flow_chunk(uuid,integer,jsonb,jsonb)',
+    'EXECUTE'
+  ),
+  'usuário comum não aplica grafo de flow no staging oficial'
+);
+
+create temp table staged_flow_manifest as
+select jsonb_object_agg(
+  store_name,
+  case store_name when 'flowNodes' then 2 when 'flowCases' then 1 else 0 end
+) payload
+from unnest(private.official_import_store_names()) store_name;
+insert into private.official_catalog_imports (
+  import_id, course_id, contract_key, source_hash, expected_counts, publish_requested
+) values (
+  '67000000-0000-5000-8000-000000000001',
+  '10000000-0000-4000-8000-000000000001',
+  'curso-staging-flow-ciclico', repeat('b', 64),
+  (select payload from staged_flow_manifest), true
+);
+select is(
+  public.begin_official_course_import_flow(
+    '67000000-0000-5000-8000-000000000001'
+  ) ->> 'status',
+  'reset',
+  'preparação de flow remove somente tentativa parcial do staging'
+);
+create temp table staged_flow_payload as
+select
+  jsonb_build_array(
+    jsonb_build_object(
+      'id','67000000-0000-5000-8000-000000000002',
+      'courseId','10000000-0000-4000-8000-000000000001',
+      'blockId', block.id,
+      'identityKey','staged-flow/root',
+      'branch','root','position',0,'nodeKind','sequence'
+    ),
+    jsonb_build_object(
+      'id','67000000-0000-5000-8000-000000000003',
+      'courseId','10000000-0000-4000-8000-000000000001',
+      'blockId', block.id,
+      'parentCaseId','67000000-0000-5000-8000-000000000004',
+      'identityKey','staged-flow/case/body',
+      'branch','body','position',0,'nodeKind','process'
+    )
+  ) nodes,
+  jsonb_build_array(
+    jsonb_build_object(
+      'id','67000000-0000-5000-8000-000000000004',
+      'courseId','10000000-0000-4000-8000-000000000001',
+      'blockId', block.id,
+      'flowNodeId','67000000-0000-5000-8000-000000000002',
+      'identityKey','staged-flow/case',
+      'position',0,'caseKind','switch'
+    )
+  ) flow_cases
+from public.card_blocks block
+where block.course_id = '10000000-0000-4000-8000-000000000001'
+  and block.deleted_at is null
+order by block.id limit 1;
+create temp table staged_flow_result as
+select public.apply_official_course_import_flow_chunk(
+  '67000000-0000-5000-8000-000000000001', 0,
+  (select nodes from staged_flow_payload),
+  (select flow_cases from staged_flow_payload)
+) payload;
+select ok(
+  (select payload ->> 'status' = 'applied' and not (payload ->> 'idempotent')::boolean
+   from staged_flow_result)
+  and exists (
+    select 1 from public.flow_nodes
+    where id = '67000000-0000-5000-8000-000000000003'
+      and parent_case_id = '67000000-0000-5000-8000-000000000004'
+  )
+  and exists (
+    select 1 from public.flow_cases
+    where id = '67000000-0000-5000-8000-000000000004'
+      and flow_node_id = '67000000-0000-5000-8000-000000000002'
+  ),
+  'nós e cases cíclicos são confirmados atomicamente no mesmo bloco'
+);
+select ok(
+  (public.apply_official_course_import_flow_chunk(
+    '67000000-0000-5000-8000-000000000001', 0,
+    (select nodes from staged_flow_payload),
+    (select flow_cases from staged_flow_payload)
+  ) ->> 'idempotent')::boolean,
+  'repetição do mesmo bloco de flow é idempotente'
+);
+select is(
+  public.begin_official_course_import_flow(
+    '67000000-0000-5000-8000-000000000001'
+  ) ->> 'status',
+  'complete',
+  'flow completo não é apagado ao retomar depois de outra etapa'
 );
 select set_config('request.jwt.claim.role', 'authenticated', true);
 

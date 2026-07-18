@@ -60,6 +60,30 @@ test("a importação administrativa retoma chunk após timeout sem duplicar a et
         contractKey: "module-staged",
         position: 0,
         title: "Módulo"
+      }],
+      flowNodes: [{
+        id: "30000000-0000-5000-8000-000000000001",
+        courseId,
+        blockId: "40000000-0000-5000-8000-000000000001",
+        branch: "root",
+        position: 0,
+        nodeKind: "sequence"
+      }, {
+        id: "30000000-0000-5000-8000-000000000002",
+        courseId,
+        blockId: "40000000-0000-5000-8000-000000000001",
+        parentCaseId: "50000000-0000-5000-8000-000000000001",
+        branch: "body",
+        position: 0,
+        nodeKind: "process"
+      }],
+      flowCases: [{
+        id: "50000000-0000-5000-8000-000000000001",
+        courseId,
+        blockId: "40000000-0000-5000-8000-000000000001",
+        flowNodeId: "30000000-0000-5000-8000-000000000001",
+        position: 0,
+        caseKind: "switch"
       }]
     }
   };
@@ -78,9 +102,14 @@ test("a importação administrativa retoma chunk após timeout sem duplicar a et
     "begin_official_course_import",
     "apply_official_course_import_chunk",
     "apply_official_course_import_chunk",
+    "begin_official_course_import_flow",
+    "apply_official_course_import_flow_chunk",
     "finalize_official_course_import"
   ]);
   assert.deepEqual(calls[1].payload, calls[2].payload);
   assert.equal(calls[1].payload.p_chunk_index, 0);
   assert.equal(calls[1].payload.p_rows.length, 1);
+  assert.equal(calls[4].payload.p_nodes.length, 2);
+  assert.equal(calls[4].payload.p_cases.length, 1);
+  assert.equal(calls[4].payload.p_nodes[0].blockId, calls[4].payload.p_cases[0].blockId);
 });
