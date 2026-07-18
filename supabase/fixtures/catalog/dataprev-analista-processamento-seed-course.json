@@ -16028,7 +16028,7 @@
               "title": "Arquitetura e interfaces",
               "goal": "Compreender e aplicar os critérios fundamentais de arquitetura e interfaces.",
               "role": "explain",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [],
               "covers": [
@@ -16253,7 +16253,7 @@
               "title": "Processos e threads",
               "goal": "Compreender e aplicar os critérios fundamentais de processos e threads.",
               "role": "explain",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "p01-ms01-arquitetura-e-interfaces"
@@ -16469,7 +16469,7 @@
               "title": "Escalonamento da CPU",
               "goal": "Compreender e aplicar os critérios fundamentais de escalonamento da cpu.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "p01-ms02-processos-e-threads"
@@ -16769,7 +16769,7 @@
               "title": "Concorrência, sincronização e deadlock",
               "goal": "Compreender e aplicar os critérios fundamentais de concorrência, sincronização e deadlock.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "p01-ms03-escalonamento"
@@ -17060,7 +17060,7 @@
               "title": "Endereçamento, paginação e segmentação",
               "goal": "Compreender e aplicar os critérios fundamentais de endereçamento, paginação e segmentação.",
               "role": "explain",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "p01-ms04-concorrencia-e-deadlock"
@@ -17282,7 +17282,7 @@
               "title": "Substituição de páginas e thrashing",
               "goal": "Compreender e aplicar os critérios fundamentais de substituição de páginas e thrashing.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "p01-ms05-enderecamento-e-paginacao"
@@ -17492,7 +17492,7 @@
               "title": "Entrada e saída",
               "goal": "Compreender e aplicar os critérios fundamentais de entrada e saída.",
               "role": "explain",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "p01-ms06-substituicao-e-thrashing"
@@ -17719,7 +17719,7 @@
               "title": "Arquivos, diretórios e persistência",
               "goal": "Compreender e aplicar os critérios fundamentais de arquivos, diretórios e persistência.",
               "role": "explain",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "p01-ms07-entrada-e-saida"
@@ -17946,7 +17946,7 @@
               "title": "Revisão integrada dos recursos",
               "goal": "Compreender e aplicar os critérios fundamentais de revisão integrada dos recursos.",
               "role": "review",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "p01-ms08-arquivos-e-diretorios"
@@ -18472,7 +18472,7 @@
               "title": "Boot Linux e systemd",
               "goal": "Distinguir as etapas do boot e interpretar estado, habilitação e alvo do systemd.",
               "role": "explain",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [],
               "covers": [
@@ -18701,7 +18701,7 @@
               "title": "FHS, caminhos e busca",
               "goal": "Interpretar caminhos, funções de diretórios e operações de navegação e busca.",
               "role": "explain",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "p02-ms01-boot-e-systemd"
@@ -18913,7 +18913,7 @@
               "title": "Identidades, sudo e PAM",
               "goal": "Distinguir identidade, autenticação, autorização e sessão em administração Linux.",
               "role": "explain",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "p02-ms02-fhs-e-navegacao"
@@ -19144,7 +19144,7 @@
               "title": "Permissões, ACL e atributos",
               "goal": "Calcular e interpretar controles de acesso tradicionais e complementares.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "p02-ms03-identidades-sudo-pam"
@@ -19360,7 +19360,7 @@
               "title": "Processos, jobs e sinais",
               "goal": "Interpretar estado, parentesco, prioridade, descritores e sinais de processos Linux.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "p02-ms04-permissoes-acl-atributos"
@@ -19613,7 +19613,7 @@
               "title": "Serviços, logs e agendamento",
               "goal": "Administrar unidades, dependências, logs e formas de agendamento.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "p02-ms05-processos-jobs-sinais"
@@ -19844,7 +19844,7 @@
               "title": "Armazenamento, montagem e LVM",
               "goal": "Distinguir camadas de armazenamento e decidir operações seguras de montagem e capacidade.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "p02-ms06-servicos-logs-agendamento"
@@ -20086,7 +20086,7 @@
               "title": "Rede e diagnóstico",
               "goal": "Separar endereço, rota, DNS e disponibilidade de serviço em diagnóstico Linux.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "p02-ms07-armazenamento-lvm"
@@ -20328,7 +20328,7 @@
               "title": "Pacotes por família de distribuição",
               "goal": "Distinguir ferramentas de pacote e repositório e revisar decisões administrativas da lição.",
               "role": "review",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "p02-ms08-rede-diagnostico"
@@ -20718,7 +20718,7 @@
               "title": "Instalação e opções do Windows Server",
               "goal": "Selecionar edição, opção de instalação e método de implantação para Windows Server 2019 ou 2022.",
               "role": "explain",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [],
               "covers": [
@@ -20912,7 +20912,7 @@
               "title": "Server Manager, funções e recursos",
               "goal": "Distinguir ferramentas de gerenciamento, funções, serviços de função e recursos.",
               "role": "explain",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "p03-ms01-instalacao-e-opcoes"
@@ -21144,7 +21144,7 @@
               "title": "Processos, serviços, eventos e desempenho",
               "goal": "Relacionar execução, serviços, tarefas, eventos e contadores sem confundir evidência com causa.",
               "role": "explain",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "p03-ms02-server-manager-roles-features"
@@ -21381,7 +21381,7 @@
               "title": "Identidades e políticas locais",
               "goal": "Administrar contas, grupos, direitos e políticas no escopo correto.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "p03-ms03-processos-servicos-eventos-desempenho"
@@ -21614,7 +21614,7 @@
               "title": "NTFS, ReFS e compartilhamentos",
               "goal": "Distinguir sistema de arquivos, herança, compartilhamento e acesso efetivo.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "p03-ms04-identidades-e-politicas-locais"
@@ -21839,7 +21839,7 @@
               "title": "Discos, Storage Spaces, backup e recuperação",
               "goal": "Separar as camadas de armazenamento, disponibilidade e proteção de dados.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "p03-ms05-ntfs-refs-e-compartilhamentos"
@@ -22077,7 +22077,7 @@
               "title": "DNS, DHCP e rede",
               "goal": "Diagnosticar configuração, concessão, resolução e disponibilidade de serviço em camadas.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "p03-ms06-discos-storage-spaces-backup"
@@ -22327,7 +22327,7 @@
               "title": "Atualização, firewall e hardening",
               "goal": "Aplicar controles de manutenção e segurança sem ampliar exposição desnecessariamente.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "p03-ms07-dns-dhcp-e-rede"
@@ -22558,7 +22558,7 @@
               "title": "Administração remota e troubleshooting",
               "goal": "Diagnosticar administração remota sem saltar etapas e revisar as camadas da lição.",
               "role": "review",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "p03-ms08-atualizacao-firewall-hardening"
@@ -23034,7 +23034,7 @@
               "title": "Modelo LDAP e árvore de diretório",
               "goal": "Interpretar a árvore de informações do diretório e distinguir nomes, atributos, classes e schema.",
               "role": "explain",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [],
               "covers": [
@@ -23276,7 +23276,7 @@
               "title": "Operações, filtros e LDIF",
               "goal": "Selecionar a operação LDAP, o filtro e o registro LDIF compatíveis com o resultado pretendido.",
               "role": "explain",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "p04-ms01-modelo-ldap-e-dit"
@@ -23494,7 +23494,7 @@
               "title": "Segurança da sessão LDAP",
               "goal": "Separar transporte protegido, autenticação e autorização em uma sessão LDAP.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "p04-ms02-operacoes-filtros-e-ldif"
@@ -23771,7 +23771,7 @@
               "title": "Estruturas lógicas e topologia de sites",
               "goal": "Escolher floresta, domínio, OU ou site conforme limite, delegação, namespace e localização de rede.",
               "role": "explain",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "p04-ms03-seguranca-ldap"
@@ -24075,7 +24075,7 @@
               "title": "Controladores, DNS e replicação",
               "goal": "Diagnosticar descoberta de controladores e replicação usando DNS, sites, sub-redes e partições.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "p04-ms04-florestas-dominios-ous-sites"
@@ -24373,7 +24373,7 @@
               "title": "Objetos, grupos e delegação",
               "goal": "Aplicar escopos de grupo e delegação ao domínio, à OU e ao recurso corretos.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "p04-ms05-controladores-dns-replicacao"
@@ -24637,7 +24637,7 @@
               "title": "GPO, trusts e funções FSMO",
               "goal": "Distinguir aplicação de política, autenticação entre domínios e operações concentradas em funções FSMO.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "p04-ms06-objetos-grupos-delegacao"
@@ -24917,7 +24917,7 @@
               "title": "Recuperação e interoperabilidade Linux",
               "goal": "Selecionar recuperação de AD DS e diagnosticar integração Linux por DNS, tempo, Kerberos e resolução de identidades.",
               "role": "review",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "p04-ms07-gpo-trusts-fsmo"
@@ -25313,7 +25313,7 @@
               "title": "Fundamentos de shells",
               "goal": "Distinguir os elementos que compõem comandos e scripts administrativos.",
               "role": "explain",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [],
               "covers": [
@@ -25545,7 +25545,7 @@
               "title": "Objetos e pipeline no PowerShell",
               "goal": "Interpretar objetos, propriedades, métodos e ligação de pipeline em tarefas administrativas.",
               "role": "explain",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "p05-ms01-fundamentos-de-shells"
@@ -25787,7 +25787,7 @@
               "title": "Cmdlets, providers e módulos",
               "goal": "Selecionar mecanismos de descoberta e acesso a armazenamentos no PowerShell.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "p05-ms02-objetos-e-pipeline-powershell"
@@ -26045,7 +26045,7 @@
               "title": "Scripts, erros e remoting no PowerShell",
               "goal": "Controlar falhas locais e diagnosticar execução remota por etapas.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "p05-ms03-cmdlets-providers-e-modulos"
@@ -26275,7 +26275,7 @@
               "title": "Expansões e pipeline no Bash",
               "goal": "Prever quoting, expansões, redirecionamentos e fluxos textuais no Bash.",
               "role": "explain",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "p05-ms04-scripts-erros-e-remoting"
@@ -26454,7 +26454,7 @@
               "title": "Controle e funções no Bash",
               "goal": "Interpretar testes, condições, laços, funções, parâmetros e arrays pelo estado executado.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "p05-ms05-expansoes-e-pipeline-bash"
@@ -26662,7 +26662,7 @@
               "title": "Scripts administrativos robustos",
               "goal": "Selecionar controles de robustez e comparar pipelines de objetos e texto.",
               "role": "review",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "p05-ms06-controle-e-funcoes-bash"
@@ -27052,7 +27052,7 @@
               "title": "Camadas da automação",
               "goal": "Distinguir configuração, aprovisionamento, implantação e orquestração.",
               "role": "explain",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [],
               "covers": [
@@ -27353,7 +27353,7 @@
               "title": "Estado desejado e drift",
               "goal": "Aplicar estado desejado, convergência, idempotência e drift em execuções sucessivas.",
               "role": "explain",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "p06-ms01-camadas-da-automacao"
@@ -27595,7 +27595,7 @@
               "title": "Inventário, templates e variáveis",
               "goal": "Organizar alvos, dependências e dados sem confundir inventário com estado real.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "p06-ms02-estado-desejado-e-drift"
@@ -27790,7 +27790,7 @@
               "title": "Modelos de execução",
               "goal": "Distinguir agent-based, agentless, push e pull sem equivalências automáticas.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "p06-ms03-inventario-templates-e-variaveis"
@@ -28039,7 +28039,7 @@
               "title": "Infraestrutura mutável e imutável",
               "goal": "Escolher alteração no lugar ou substituição controlada conforme dados e rollback.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "p06-ms04-modelos-de-execucao"
@@ -28284,7 +28284,7 @@
               "title": "Infraestrutura como código",
               "goal": "Aplicar versionamento, revisão, plano, estado e promoção entre ambientes.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "p06-ms05-infraestrutura-mutavel-e-imutavel"
@@ -28538,7 +28538,7 @@
               "title": "Validação, segredos e recuperação",
               "goal": "Integrar teste, observabilidade, falha parcial, rollback e limite da orquestração.",
               "role": "review",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "p06-ms06-infraestrutura-como-codigo"
@@ -28939,7 +28939,7 @@
               "title": "Isolamento e virtualização",
               "goal": "Distinguir contêineres de máquinas virtuais pela camada isolada e pelo kernel utilizado.",
               "role": "explain",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [],
               "covers": [
@@ -29207,7 +29207,7 @@
               "title": "Arquitetura e ciclo de vida",
               "goal": "Interpretar cliente, daemon, API, registry e processo principal no ciclo do contêiner.",
               "role": "explain",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "p07-ms01-isolamento-e-virtualizacao"
@@ -29442,7 +29442,7 @@
               "title": "Imagens, contêineres e registries",
               "goal": "Distinguir template, instância, tag, camada gravável e persistência.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "p07-ms02-arquitetura-e-ciclo-de-vida"
@@ -29710,7 +29710,7 @@
               "title": "Dockerfile, camadas e build",
               "goal": "Aplicar instruções, cache e multi-stage sem confundir build e execução.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "p07-ms03-imagens-conteineres-e-registries"
@@ -29906,7 +29906,7 @@
               "title": "Armazenamento e rede",
               "goal": "Escolher volume, bind mount, rede e publicação de porta conforme origem e alcance.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "p07-ms04-dockerfile-camadas-e-build"
@@ -30145,7 +30145,7 @@
               "title": "Aplicações com Compose",
               "goal": "Modelar serviços, redes, volumes e dependências com prontidão verificável.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "p07-ms05-armazenamento-e-rede"
@@ -30302,7 +30302,7 @@
               "title": "Segurança e troubleshooting",
               "goal": "Diagnosticar falhas por evidências e aplicar controles de menor privilégio.",
               "role": "review",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "p07-ms06-compose"
@@ -30744,7 +30744,7 @@
               "title": "Componentes e API",
               "goal": "Relacionar control plane, nós, componentes e objetos declarativos.",
               "role": "explain",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [],
               "covers": [
@@ -31013,7 +31013,7 @@
               "title": "Pods, controladores e workloads",
               "goal": "Escolher o controlador adequado por identidade, distribuição e término.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "p08-ms01-componentes-e-api"
@@ -31229,7 +31229,7 @@
               "title": "Services, DNS e Ingress",
               "goal": "Rastrear tráfego interno e externo sem depender de IPs efêmeros de Pods.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "p08-ms02-pods-controladores-e-workloads"
@@ -31483,7 +31483,7 @@
               "title": "Configuração, segredos e armazenamento",
               "goal": "Selecionar ConfigMap, Secret, PV e PVC conforme confidencialidade e persistência.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "p08-ms03-services-dns-e-ingress"
@@ -31727,7 +31727,7 @@
               "title": "Scheduling, recursos e probes",
               "goal": "Decidir placement, capacidade e efeitos de probes sem confundir mecanismos.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "p08-ms04-configuracao-segredos-e-armazenamento"
@@ -31959,7 +31959,7 @@
               "title": "RBAC e segurança",
               "goal": "Aplicar menor privilégio a sujeitos, workloads e tráfego.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "p08-ms05-scheduling-recursos-e-probes"
@@ -32181,7 +32181,7 @@
               "title": "Troubleshooting e Rancher",
               "goal": "Investigar sintomas no cluster certo e distinguir gestão central de estado local.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "p08-ms06-rbac-e-seguranca"
@@ -32456,7 +32456,7 @@
               "title": "Revisão integrada",
               "goal": "Localizar a primeira divergência entre host, automação, contêiner, Kubernetes e gestão multicluster.",
               "role": "review",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "p08-ms07-troubleshooting-e-rancher"
@@ -33028,7 +33028,7 @@
               "title": "Componentes e meios de transmissão",
               "goal": "Distinguir dispositivos, enlaces, protocolos e meios guiados e não guiados.",
               "role": "explain",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [],
               "covers": [
@@ -33310,7 +33310,7 @@
               "title": "Classificação por alcance e acesso",
               "goal": "Classificar redes locais, de longa distância e locais sem fio em cenários organizacionais.",
               "role": "explain",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "dataprev-redes-l01-ms01"
@@ -33642,7 +33642,7 @@
               "title": "Topologia física, lógica e estruturas fundamentais",
               "goal": "Reconhecer topologias pelas conexões e analisar efeitos básicos de falha e redundância.",
               "role": "explain",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "dataprev-redes-l01-ms02"
@@ -34189,7 +34189,7 @@
               "title": "Decisões integradas de alcance, meio e topologia",
               "goal": "Aplicar simultaneamente alcance, meio e topologia sem confundir dimensões.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "dataprev-redes-l01-ms03"
@@ -34566,7 +34566,7 @@
               "title": "Revisão e ponte para interconexão",
               "goal": "Consolidar classificação e topologias e preparar a análise dos dispositivos de interconexão.",
               "role": "review",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "dataprev-redes-l01-ms04"
@@ -35003,7 +35003,7 @@
               "title": "Repetição de sinal e compartilhamento",
               "goal": "Distinguir repetidor e hub pela forma como tratam o sinal e as portas.",
               "role": "explain",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [],
               "covers": [
@@ -35265,7 +35265,7 @@
               "title": "Comutação e domínios",
               "goal": "Relacionar aprendizado de endereços e portas de switch a domínios de colisão e broadcast.",
               "role": "explain",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "dataprev-redes-l02-ms01-repetidores-e-hubs"
@@ -35651,7 +35651,7 @@
               "title": "Encaminhamento entre redes",
               "goal": "Distinguir roteamento por destino IP da comutação de quadros dentro da rede local.",
               "role": "explain",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "dataprev-redes-l02-ms02-switches-e-dominios"
@@ -35981,7 +35981,7 @@
               "title": "Segmentação lógica e enlaces trunk",
               "goal": "Aplicar VLAN, portas de acesso e trunks em cenários de segmentação de rede local.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "dataprev-redes-l02-ms03-roteadores"
@@ -36363,7 +36363,7 @@
               "title": "Organização do cabeamento e revisão",
               "goal": "Reconhecer subsistemas do cabeamento estruturado e integrar dispositivos, VLANs e infraestrutura física.",
               "role": "review",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "dataprev-redes-l02-ms04-vlans"
@@ -36784,7 +36784,7 @@
               "title": "Camadas e ordem funcional",
               "goal": "Ordenar as sete camadas OSI e associar cada uma à sua função essencial.",
               "role": "explain",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [],
               "covers": [
@@ -37108,7 +37108,7 @@
               "title": "Encapsulamento e unidades de dados",
               "goal": "Acompanhar encapsulamento e desencapsulação e usar corretamente os nomes didáticos das unidades de dados.",
               "role": "explain",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "dataprev-redes-l03-ms01-camadas-e-ordem"
@@ -37452,7 +37452,7 @@
               "title": "Funções das camadas inferiores",
               "goal": "Distinguir Física, Enlace e Rede em cenários de sinal, quadro e encaminhamento.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "dataprev-redes-l03-ms02-encapsulamento-e-pdus"
@@ -37817,7 +37817,7 @@
               "title": "Funções das camadas superiores",
               "goal": "Distinguir Transporte, Sessão, Apresentação e Aplicação por suas funções centrais.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "dataprev-redes-l03-ms03-camadas-inferiores"
@@ -38140,7 +38140,7 @@
               "title": "Famílias IEEE 802 e revisão",
               "goal": "Relacionar IEEE 802.1, 802.3 e 802.11 e distinguir as variantes 802.11a/b/g/n/ac.",
               "role": "review",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "dataprev-redes-l03-ms04-camadas-superiores"
@@ -38662,7 +38662,7 @@
               "title": "Localização da camada Internet",
               "goal": "Localizar a camada Internet na arquitetura TCP/IP e distingui-la da entrega no enlace, sem antecipar protocolos de Transporte ou Aplicação.",
               "role": "explain",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [],
               "covers": [
@@ -38969,7 +38969,7 @@
               "title": "IPv4 e endereçamento",
               "goal": "Interpretar a estrutura básica de endereços IPv4 e prefixos CIDR.",
               "role": "explain",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "dataprev-redes-l04-ms01-pilha-tcpip"
@@ -39225,7 +39225,7 @@
               "title": "Prefixos e sub-redes",
               "goal": "Decidir se endereços pertencem à mesma sub-rede em casos básicos com prefixo explícito.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "dataprev-redes-l04-ms02-ipv4"
@@ -39527,7 +39527,7 @@
               "title": "IPv6 e representação hexadecimal",
               "goal": "Reconhecer a estrutura de endereços IPv6 e aplicar regras básicas de abreviação.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "dataprev-redes-l04-ms03-prefixos-subredes"
@@ -39779,7 +39779,7 @@
               "title": "Roteamento e escolha de próximo salto",
               "goal": "Interpretar uma tabela simples e escolher a rota de prefixo mais específico.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "dataprev-redes-l04-ms04-ipv6"
@@ -40147,7 +40147,7 @@
               "title": "IPsec e proteção na camada IP",
               "goal": "Explicar os modos gerais do IPsec e, ao final, integrar endereçamento, roteamento e segurança na camada IP.",
               "role": "explain",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "dataprev-redes-l04-ms05-roteamento"
@@ -40585,7 +40585,7 @@
               "title": "TCP e UDP",
               "goal": "Distinguir os serviços de transporte oferecidos por TCP e UDP em cenários objetivos.",
               "role": "explain",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [],
               "covers": [
@@ -40904,7 +40904,7 @@
               "title": "Portas e multiplexação",
               "goal": "Relacionar endereços IP, portas, serviços e fluxos sem confundir suas funções.",
               "role": "explain",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "dataprev-redes-l05-ms01-tcp-udp"
@@ -41219,7 +41219,7 @@
               "title": "DNS, DHCP e sistemas de nomes",
               "goal": "Distinguir resolução de nomes e configuração automática de hosts.",
               "role": "explain",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "dataprev-redes-l05-ms02-portas"
@@ -41529,7 +41529,7 @@
               "title": "Transferência e acesso remoto",
               "goal": "Distinguir FTP, SSH e RDP pela operação principal.",
               "role": "explain",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "dataprev-redes-l05-ms03-dns-dhcp"
@@ -41858,7 +41858,7 @@
               "title": "Envio e acesso a mensagens",
               "goal": "Distinguir SMTP, POP3 e IMAP pela etapa do correio eletrônico.",
               "role": "explain",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "dataprev-redes-l05-ms04-ftp-ssh-rdp"
@@ -42173,7 +42173,7 @@
               "title": "Web, proteção do canal e revisão",
               "goal": "Distinguir HTTP, HTTPS, TLS e SSL histórico, integrando a lição.",
               "role": "explain",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "dataprev-redes-l05-ms05-correio"
@@ -42584,7 +42584,7 @@
               "title": "Modelo de gerência de redes",
               "goal": "Distinguir gerente, agente, objeto gerenciado, solicitação, resposta e notificação em cenários de gerência.",
               "role": "explain",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [],
               "covers": [
@@ -43161,7 +43161,7 @@
               "title": "SNMP, MIB e operações",
               "goal": "Relacionar objetos da MIB às operações de consulta, alteração, resposta e notificação do SNMP.",
               "role": "explain",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "dataprev-redes-l06-ms01-modelo-gerencia"
@@ -43685,7 +43685,7 @@
               "title": "RMON e coleta remota",
               "goal": "Reconhecer probes, coleta local, histórico, alarmes, eventos e grupos funcionais da MIB RMON.",
               "role": "explain",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "dataprev-redes-l06-ms02-snmp"
@@ -44219,7 +44219,7 @@
               "title": "Contraste e integração de SNMP e RMON",
               "goal": "Escolher SNMP, RMON ou uso combinado conforme objeto, operação, histórico e condição de monitoramento.",
               "role": "review",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "dataprev-redes-l06-ms03-rmon"
@@ -44868,7 +44868,7 @@
               "title": "Telefonia digital",
               "goal": "Distinguir amostragem, quantização, codificação e compressão em nível conceitual.",
               "role": "explain",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [],
               "covers": [
@@ -45438,7 +45438,7 @@
               "title": "Voz sobre IP",
               "goal": "Reconhecer voz empacotada em redes IP e separar técnica, mídia e terminal.",
               "role": "explain",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "dataprev-redes-l07-ms01-telefonia-digital"
@@ -46017,7 +46017,7 @@
               "title": "Telefonia IP",
               "goal": "Relacionar terminais, controle de chamadas, infraestrutura IP e gateways em um serviço de telefonia.",
               "role": "explain",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "dataprev-redes-l07-ms02-voip"
@@ -46622,7 +46622,7 @@
               "title": "Comunicações unificadas",
               "goal": "Reconhecer integração de voz, vídeo, presença, mensagens e colaboração e revisar os contrastes da lição.",
               "role": "explain",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "dataprev-redes-l07-ms03-telefonia-ip"
@@ -47361,7 +47361,7 @@
               "title": "Videoconferência e fluxos de mídia",
               "goal": "Distinguir coordenação de sessão, transporte de mídia e requisitos de tempo real em videoconferência.",
               "role": "explain",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [],
               "covers": [
@@ -47746,7 +47746,7 @@
               "title": "Sinalização com SIP",
               "goal": "Reconhecer SIP como sinalização de sessão e relacionar métodos básicos às respectivas funções.",
               "role": "explain",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "dataprev-redes-l08-ms01-videoconferencia"
@@ -48121,7 +48121,7 @@
               "title": "Sistema multimídia H.323",
               "goal": "Reconhecer H.323 como recomendação de sistema multimídia e distinguir seus componentes de codecs e protocolos isolados.",
               "role": "explain",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "dataprev-redes-l08-ms02-sip"
@@ -48506,7 +48506,7 @@
               "title": "Qualidade de serviço",
               "goal": "Diagnosticar atraso, variação de atraso, perda e capacidade e reconhecer mecanismos conceituais de classificação e priorização.",
               "role": "explain",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "dataprev-redes-l08-ms03-h323"
@@ -48873,7 +48873,7 @@
               "title": "Revisão integrada",
               "goal": "Selecionar protocolo, componente ou mecanismo coerente em cenários integrados de videoconferência.",
               "role": "review",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "dataprev-redes-l08-ms04-qos"

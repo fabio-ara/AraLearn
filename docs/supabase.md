@@ -154,7 +154,7 @@ Os dois comandos devem ficar sem resultados de segredo ou catálogo operacional.
 
 ## Publicação inicial das fixtures oficiais
 
-As três fixtures de curso em `supabase/fixtures/catalog/` nunca são lidas pelo app. Primeiro valide localmente o contrato, o round-trip, o hash canônico e todas as relações:
+As três fixtures de curso em `supabase/fixtures/catalog/` nunca são lidas pelo app. Primeiro valide localmente o contrato, o round-trip, o hash canônico, todas as relações e o estado editorial. A validação exige `status: "ready"` em todas as microssequências antes de qualquer chamada ao banco:
 
 ```bash
 npm run catalog:validate

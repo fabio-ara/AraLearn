@@ -207,7 +207,7 @@
               "title": "Python, execução e tipagem",
               "goal": "Entender que Python executa instruções em ordem, usa indentação para blocos e associa tipos aos valores.",
               "role": "support",
-              "status": "generated",
+              "status": "ready",
               "dependsOn": [],
               "covers": [
                 "Python como linguagem",
@@ -439,7 +439,7 @@
               "title": "Variáveis, `print()` e f-strings",
               "goal": "Criar variáveis, exibir valores e montar mensagens simples com f-strings.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "dependsOn": [
                 "micro-a01-python-modo-linguagem-tipagem"
               ],
@@ -624,7 +624,7 @@
               "title": "Funções nativas, argumentos e resultado observável",
               "goal": "Entender a forma `funcao(argumento)` antes de usar `print()`, `input()`, `type()` e conversões.",
               "role": "support",
-              "status": "generated",
+              "status": "ready",
               "dependsOn": [
                 "micro-a01-print-variaveis-fstrings"
               ],
@@ -835,7 +835,7 @@
               "title": "Comparação e lógica booleana",
               "goal": "Usar operadores de comparação e operadores lógicos para produzir decisões corretas.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "dependsOn": [
                 "micro-a01-reforco-funcoes-nativas-chamada"
               ],
@@ -1069,7 +1069,7 @@
               "title": "Condicionais e blocos indentados",
               "goal": "Usar `if`, `elif` e `else` com indentação correta e previsão de caminho executado.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "dependsOn": [
                 "micro-a01-operadores-comparacao-logicos"
               ],
@@ -1282,7 +1282,7 @@
               "title": "Entrada, conversão e tipo do valor",
               "goal": "Consolidar que `input()` devolve texto e que `int()`, `float()` e `str()` transformam valores.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "dependsOn": [
                 "micro-a01-condicionais-indentacao"
               ],
@@ -1468,7 +1468,7 @@
               "title": "Repetição com `while`, `for` e `range()`",
               "goal": "Usar laços simples, prever sequências de `range()` e manter indentação correta.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "dependsOn": [
                 "micro-a01-reforco-conversoes-entrada"
               ],
@@ -1678,7 +1678,7 @@
               "title": "Listas simples com `for + if`",
               "goal": "Percorrer listas simples, comparar o item atual e montar um script final de classificação.",
               "role": "review",
-              "status": "generated",
+              "status": "ready",
               "dependsOn": [
                 "micro-a01-repeticao-while-for-range"
               ],
@@ -2062,7 +2062,7 @@
               "title": "Ler chamadas: função, método e argumento",
               "goal": "Construir a gramática mental para ler `len(lista)`, `lista.append(85)` e `maquina.items()`.",
               "role": "support",
-              "status": "generated",
+              "status": "ready",
               "dependsOn": [],
               "covers": [
                 "função nativa",
@@ -2263,7 +2263,7 @@
               "title": "Listas: criar, acessar e modificar",
               "goal": "Criar listas, acessar por índice e praticar `append()`, `remove()` e `pop()` com foco sintático.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "dependsOn": [
                 "micro-a02-00-vocabulario-funcao-metodo-argumento"
               ],
@@ -2410,7 +2410,7 @@
               "title": "Tuplas e conjuntos",
               "goal": "Distinguir tuplas e conjuntos, criando valores fixos e coleções sem repetição.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "dependsOn": [
                 "micro-a02-listas-operacoes-basicas"
               ],
@@ -2675,7 +2675,7 @@
               "title": "Dicionários: chave, valor e atualização",
               "goal": "Criar dicionários, acessar campos, alterar valores, adicionar campos, usar `pop()` por chave e percorrer com `.items()`.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "dependsOn": [
                 "micro-a02-tuplas-sets"
               ],
@@ -2828,7 +2828,7 @@
               "title": "Medir coleções com `len()`, `sum()`, `min()` e `max()`",
               "goal": "Usar funções nativas para extrair medidas simples de listas numéricas.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "dependsOn": [
                 "micro-a02-listas-operacoes-basicas"
               ],
@@ -3032,7 +3032,7 @@
               "title": "Métodos de lista e dicionário em uso",
               "goal": "Consolidar `append()`, `remove()`, `pop()` e `.items()` como métodos chamados a partir de objetos.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "dependsOn": [
                 "micro-a02-dicionarios-chave-valor"
               ],
@@ -3363,7 +3363,7 @@
               "title": "`for` com `range()` e cada coleção",
               "goal": "Treinar `for` com `range()`, listas, tuplas, conjuntos e dicionários.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "dependsOn": [
                 "micro-a02-reforco-metodos-lista-dicionario"
               ],
@@ -3552,7 +3552,7 @@
               "title": "Parâmetro na definição, argumento na chamada",
               "goal": "Diferenciar nome interno declarado pela função e valor real passado para ela.",
               "role": "explain",
-              "status": "generated",
+              "status": "ready",
               "dependsOn": [
                 "micro-a02-for-range-e-colecoes"
               ],
@@ -3738,7 +3738,7 @@
               "title": "Mostrar com `print()` ou devolver com `return`",
               "goal": "Diferenciar função que apenas exibe de função que devolve resultado reutilizável.",
               "role": "review",
-              "status": "generated",
+              "status": "ready",
               "dependsOn": [
                 "micro-a02-reforco-parametro-argumento"
               ],
@@ -3962,7 +3962,7 @@
               "title": "Função de análise de produções",
               "goal": "Resolver uma tarefa final com lista, funções nativas, laço, condição, parâmetro, argumento e retorno simples.",
               "role": "review",
-              "status": "generated",
+              "status": "ready",
               "dependsOn": [
                 "micro-a02-reforco-return-print"
               ],
@@ -4538,7 +4538,7 @@
               "title": "Importar bibliotecas com aliases",
               "goal": "Entender `import`, `as`, `alias`, `np` e `pd` antes de chamar NumPy ou Pandas.",
               "role": "support",
-              "status": "generated",
+              "status": "ready",
               "dependsOn": [],
               "covers": [
                 "`import numpy as np`",
@@ -4702,7 +4702,7 @@
               "title": "Lista Python versus array NumPy",
               "goal": "Criar `np.array()` sabendo que a lista é entrada e o array NumPy é o objeto retornado.",
               "role": "explain",
-              "status": "generated",
+              "status": "ready",
               "dependsOn": [
                 "micro-a03-01-imports-aliases"
               ],
@@ -4836,7 +4836,7 @@
               "title": "Funções NumPy para cálculo numérico",
               "goal": "Aplicar `np.sum()`, `np.mean()`, `np.max()` e `np.min()` a um array.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "dependsOn": [
                 "micro-a03-02-array-numpy"
               ],
@@ -5023,7 +5023,7 @@
               "title": "Operação vetorizada",
               "goal": "Entender que `temperaturas + 2` soma `2` a cada elemento do array.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "dependsOn": [
                 "micro-a03-02-array-numpy"
               ],
@@ -5188,7 +5188,7 @@
               "title": "DataFrame manual: tabela, linhas, colunas e Series",
               "goal": "Criar `pd.DataFrame(dados)` entendendo tabela, coluna, linha, índice e Series.",
               "role": "explain",
-              "status": "generated",
+              "status": "ready",
               "dependsOn": [
                 "micro-a03-01-imports-aliases"
               ],
@@ -5349,7 +5349,7 @@
               "title": "Ler CSV com `pd.read_csv()`",
               "goal": "Ler o CSV da Aula 3 e guardar o DataFrame em `df`.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "dependsOn": [
                 "micro-a03-05-dataframe-manual"
               ],
@@ -5484,7 +5484,7 @@
               "title": "Inspecionar estrutura: método versus atributo",
               "goal": "Usar `head()`, `shape`, `columns` e `dtypes` entendendo método e atributo.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "dependsOn": [
                 "micro-a03-06-ler-csv"
               ],
@@ -5650,7 +5650,7 @@
               "title": "Selecionar uma coluna ou várias colunas",
               "goal": "Distinguir `df[\"coluna\"]` e `df[[\"coluna1\", \"coluna2\"]]`.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "dependsOn": [
                 "micro-a03-07-explorar-estrutura"
               ],
@@ -5839,7 +5839,7 @@
               "title": "Métricas em colunas Pandas",
               "goal": "Aplicar `.mean()`, `.max()` e `.min()` a Series numéricas.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "dependsOn": [
                 "micro-a03-08-selecionar-colunas"
               ],
@@ -6028,7 +6028,7 @@
               "title": "Máscara booleana e filtro",
               "goal": "Entender `df[\"temperatura_c\"] > 75` como máscara e `df[mascara]` como filtro.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "dependsOn": [
                 "micro-a03-09-calculos-colunas"
               ],
@@ -6230,7 +6230,7 @@
               "title": "Criar coluna com `np.where()`",
               "goal": "Criar `classificacao_temp` sabendo a ordem condição, valor se verdadeiro e valor se falso.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "dependsOn": [
                 "micro-a03-10-filtrar-linhas"
               ],
@@ -6477,7 +6477,7 @@
               "title": "Contar categorias e resumir números",
               "goal": "Usar `value_counts()` para categorias e `describe()` para resumo numérico.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "dependsOn": [
                 "micro-a03-11-nova-coluna-np-where"
               ],
@@ -6657,7 +6657,7 @@
               "title": "Agrupar por setor e calcular média",
               "goal": "Usar `groupby(\"setor\")[\"temperatura_c\"].mean()` seguindo separar, escolher valor e agregar.",
               "role": "review",
-              "status": "generated",
+              "status": "ready",
               "dependsOn": [
                 "micro-a03-12-contagens-resumo"
               ],
@@ -6836,7 +6836,7 @@
               "title": "Atividade final integrada",
               "goal": "Verificar autonomia em leitura, inspeção, métrica, filtro, nova coluna e interpretação.",
               "role": "review",
-              "status": "generated",
+              "status": "ready",
               "dependsOn": [
                 "micro-a03-13-groupby-setor"
               ],
@@ -7369,7 +7369,7 @@
               "title": "Dados, dataset e estrutura tabular",
               "goal": "Entender dados como registros de fatos e planilha como fonte tabular.",
               "role": "support",
-              "status": "generated",
+              "status": "ready",
               "dependsOn": [],
               "covers": [
                 "dados",
@@ -7564,7 +7564,7 @@
               "title": "Ler Excel com Pandas e obter um DataFrame",
               "goal": "Ler um arquivo Excel com `pd.read_excel()` e entender o retorno como `DataFrame`.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "dependsOn": [
                 "micro-a04-01-dados-tabelas-fontes"
               ],
@@ -7746,7 +7746,7 @@
               "title": "Inspecionar estrutura: primeiras linhas, dimensões e colunas",
               "goal": "Usar `head()`, `shape`, `columns` e `columns.tolist()` para entender a estrutura da tabela.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "dependsOn": [
                 "micro-a04-02-ler-excel-dataframe"
               ],
@@ -7942,7 +7942,7 @@
               "title": "Tipo técnico (`dtype`) e sentido analítico da coluna",
               "goal": "Diferenciar o tipo técnico do Pandas do papel da coluna no problema.",
               "role": "support",
-              "status": "generated",
+              "status": "ready",
               "dependsOn": [
                 "micro-a04-03-inspecionar-estrutura"
               ],
@@ -8143,7 +8143,7 @@
               "title": "Data de inspeção: data, serial do Excel e conversão",
               "goal": "Entender por que datas vindas do Excel podem exigir conversão antes de análise temporal.",
               "role": "support",
-              "status": "generated",
+              "status": "ready",
               "dependsOn": [
                 "micro-a04-04-tipos-tecnicos-e-analiticos"
               ],
@@ -8311,7 +8311,7 @@
               "title": "Ausentes e duplicatas: detectar antes de analisar",
               "goal": "Usar `isna().sum()` e `duplicated().sum()` para detectar problemas de qualidade.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "dependsOn": [
                 "micro-a04-04-tipos-tecnicos-e-analiticos"
               ],
@@ -8518,7 +8518,7 @@
               "title": "Filtrar linhas por condição",
               "goal": "Construir filtros simples e compostos no DataFrame usando máscaras booleanas.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "dependsOn": [
                 "micro-a04-06-qualidade-ausentes-duplicatas"
               ],
@@ -8706,7 +8706,7 @@
               "title": "Estatísticas básicas em uma Series",
               "goal": "Calcular e interpretar estatísticas simples na coluna `defeitos_encontrados` e contagens em colunas categóricas.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "dependsOn": [
                 "micro-a04-07-filtros-booleanos"
               ],
@@ -8900,7 +8900,7 @@
               "title": "Agrupar por produto ou lote e ordenar resultados",
               "goal": "Usar `groupby()` para comparar média de defeitos por grupo e `sort_values()` para ordenar.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "dependsOn": [
                 "micro-a04-08-estatisticas-series"
               ],
@@ -9114,7 +9114,7 @@
               "title": "Mini análise integrada de qualidade de inspeção",
               "goal": "Integrar leitura, inspeção, qualidade, filtros, estatísticas e agrupamento em uma sequência de análise.",
               "role": "review",
-              "status": "generated",
+              "status": "ready",
               "dependsOn": [
                 "micro-a04-09-groupby-ordenacao"
               ],
@@ -9530,7 +9530,7 @@
               "title": "ETL e por que dados precisam de tratamento",
               "goal": "Entender o problema prático que motiva limpar dados antes de analisar.",
               "role": "support",
-              "status": "generated",
+              "status": "ready",
               "dependsOn": [],
               "covers": [
                 "ETL",
@@ -9707,7 +9707,7 @@
               "title": "Ler CSV e inspecionar a estrutura da base",
               "goal": "Usar `pd.read_csv()`, `head()`, `shape`, `dtypes` e `info()` para conhecer a base.",
               "role": "explain",
-              "status": "generated",
+              "status": "ready",
               "dependsOn": [
                 "micro-a05-etl-problema-dados-brutos"
               ],
@@ -9897,7 +9897,7 @@
               "title": "Contar valores ausentes com `isnull().sum()`",
               "goal": "Entender `NaN`, booleanos e soma de `True`/`False` para contar ausentes por coluna.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "dependsOn": [
                 "micro-a05-read-csv-inspecao-inicial"
               ],
@@ -10107,7 +10107,7 @@
               "title": "Identificar duplicatas com `duplicated().sum()`",
               "goal": "Contar linhas duplicadas e entender por que duplicata distorce análise.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "dependsOn": [
                 "micro-a05-ausentes-isnull-sum"
               ],
@@ -10229,7 +10229,7 @@
               "title": "Ver linhas com problemas usando máscara booleana",
               "goal": "Entender `df[df.isnull().any(axis=1)]` como filtro de linhas com ao menos um ausente.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "dependsOn": [
                 "micro-a05-duplicatas-duplicated-sum"
               ],
@@ -10385,7 +10385,7 @@
               "title": "Copiar a base e remover duplicatas com segurança",
               "goal": "Criar `df_tratado` com `copy()` e usar `drop_duplicates()` atribuindo o retorno.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "dependsOn": [
                 "micro-a05-linhas-problematicas-axis-any"
               ],
@@ -10522,7 +10522,7 @@
               "title": "Converter texto em número com `pd.to_numeric()`",
               "goal": "Corrigir `tempo_ciclo` quando a coluna foi lida como `object` por conter números textuais e valores inválidos.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "dependsOn": [
                 "micro-a05-copy-drop-duplicates"
               ],
@@ -10694,7 +10694,7 @@
               "title": "Preencher ausentes numéricos com média",
               "goal": "Usar `fillna()` com `mean()` em colunas numéricas, entendendo retorno e atribuição.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "dependsOn": [
                 "micro-a05-to-numeric-coerce"
               ],
@@ -10808,7 +10808,7 @@
               "title": "Padronizar textos com `.str.upper()` e verificar `unique()`",
               "goal": "Padronizar valores textuais da coluna `status` para reduzir categorias duplicadas por variação de maiúsculas/minúsculas.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "dependsOn": [
                 "micro-a05-fillna-media"
               ],
@@ -10930,7 +10930,7 @@
               "title": "Verificar a base tratada e salvar CSV externo",
               "goal": "Consolidar o fluxo com verificação final de ausentes/duplicatas e `to_csv(index=False)`.",
               "role": "review",
-              "status": "generated",
+              "status": "ready",
               "dependsOn": [
                 "micro-a05-str-upper-unique"
               ],
@@ -11080,7 +11080,7 @@
               "title": "Introdução ao PySpark: sessão e leitura de CSV",
               "goal": "Entender Spark em comparação com Pandas e criar leitura inicial com `SparkSession` e `spark.read.csv()`.",
               "role": "support",
-              "status": "generated",
+              "status": "ready",
               "dependsOn": [
                 "micro-a05-verificacao-salvamento"
               ],
@@ -11226,7 +11226,7 @@
               "title": "Transformações Spark: schema, duplicatas e conversão de tipo",
               "goal": "Usar `printSchema()`, `dropDuplicates()`, `withColumn()`, `col()` e `cast(\"double\")` em nível introdutório.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "dependsOn": [
                 "micro-a05-pyspark-sessao-leitura"
               ],
@@ -11361,7 +11361,7 @@
               "title": "Desafio final: roteiro de tratamento de dados",
               "goal": "Revisar a sequência completa de limpeza em Pandas e reconhecer equivalentes introdutórios em Spark.",
               "role": "review",
-              "status": "generated",
+              "status": "ready",
               "dependsOn": [
                 "micro-a05-pyspark-transformacoes"
               ],
@@ -11812,7 +11812,7 @@
               "title": "Visualização como tradução de dados para forma visual",
               "goal": "Entender que um gráfico mapeia colunas de uma tabela para elementos visuais, como eixo, barra, ponto, cor ou caixa.",
               "role": "support",
-              "status": "generated",
+              "status": "ready",
               "dependsOn": [],
               "covers": [
                 "visualização de dados",
@@ -12009,7 +12009,7 @@
               "title": "Importar bibliotecas e ler o CSV",
               "goal": "Importar `pandas`, `matplotlib.pyplot` e `seaborn`, ler o CSV com `pd.read_csv()` e inspecionar a estrutura inicial.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "dependsOn": [
                 "micro-a06-00-visualizacao-como-mapeamento"
               ],
@@ -12149,7 +12149,7 @@
               "title": "Escolher gráfico pela pergunta e pelo tipo de coluna",
               "goal": "Associar pergunta analítica, tipo de variável e gráfico adequado.",
               "role": "support",
-              "status": "generated",
+              "status": "ready",
               "dependsOn": [
                 "micro-a06-01-importar-bibliotecas-e-ler-base"
               ],
@@ -12365,7 +12365,7 @@
               "title": "Gráfico de barras com Matplotlib para contar setores",
               "goal": "Criar gráfico de barras para a contagem de registros por `setor` usando `value_counts()` e Matplotlib.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "dependsOn": [
                 "micro-a06-02-escolher-grafico-pela-pergunta"
               ],
@@ -12505,7 +12505,7 @@
               "title": "Gráfico de linha para observar sequência de temperatura",
               "goal": "Criar gráfico de linha de `temperatura_c` e interpretar a sequência de registros com cautela.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "dependsOn": [
                 "micro-a06-03-barras-matplotlib-setor"
               ],
@@ -12628,7 +12628,7 @@
               "title": "Histograma para distribuição da temperatura",
               "goal": "Criar histograma de `temperatura_c` e interpretar concentração, dispersão e frequência.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "dependsOn": [
                 "micro-a06-04-grafico-linha-temperatura"
               ],
@@ -12744,7 +12744,7 @@
               "title": "Gráfico de dispersão entre temperatura e produção",
               "goal": "Criar gráfico de dispersão entre `temperatura_c` e `producao_dia`, lendo pontos, eixos e associação visual sem concluir causalidade.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "dependsOn": [
                 "micro-a06-05-histograma-temperatura"
               ],
@@ -12858,7 +12858,7 @@
               "title": "Seaborn: tema visual e `countplot()`",
               "goal": "Configurar tema com `sns.set_theme()` e criar contagem de `setor` com `sns.countplot()`.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "dependsOn": [
                 "micro-a06-06-dispersao-temperatura-producao"
               ],
@@ -12965,7 +12965,7 @@
               "title": "Boxplot para comparar temperatura por setor",
               "goal": "Criar boxplot de `temperatura_c` por `setor` e interpretar mediana, dispersão e possíveis extremos sem excesso de formalismo.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "dependsOn": [
                 "micro-a06-07-seaborn-countplot-tema"
               ],
@@ -13083,7 +13083,7 @@
               "title": "Histograma com Seaborn para tempo de ciclo",
               "goal": "Criar distribuição de `tempo_ciclo_s` com `sns.histplot()` e comparar com `plt.hist()`.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "dependsOn": [
                 "micro-a06-08-boxplot-temperatura-por-setor"
               ],
@@ -13194,7 +13194,7 @@
               "title": "Dispersão com cor para destacar falhas",
               "goal": "Criar `scatterplot` com `hue=\"falha\"` para observar produção, consumo e grupos de falha.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "dependsOn": [
                 "micro-a06-09-histplot-tempo-ciclo"
               ],
@@ -13311,7 +13311,7 @@
               "title": "Praticar a escolha e adaptação dos gráficos",
               "goal": "Aplicar os moldes em novas colunas do mesmo dataset.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "dependsOn": [
                 "micro-a06-10-scatterplot-hue-falha"
               ],
@@ -13529,7 +13529,7 @@
               "title": "Interpretar três gráficos com responsabilidade",
               "goal": "Consolidar a aula com uma atividade final: escolher três gráficos, explicar o que cada um mostra e declarar uma limitação.",
               "role": "review",
-              "status": "generated",
+              "status": "ready",
               "dependsOn": [
                 "micro-a06-11-praticas-de-transferencia"
               ],
@@ -13949,7 +13949,7 @@
               "title": "Preparar a base da Aula 7",
               "goal": "Importar bibliotecas, ler o CSV e reconhecer a estrutura da base antes de calcular estatísticas.",
               "role": "support",
-              "status": "generated",
+              "status": "ready",
               "dependsOn": [],
               "covers": [
                 "import pandas as pd",
@@ -14187,7 +14187,7 @@
               "title": "Variável, distribuição e estatística descritiva",
               "goal": "Construir vocabulário mínimo para entender por que calculamos tendência central, dispersão e posição.",
               "role": "support",
-              "status": "generated",
+              "status": "ready",
               "dependsOn": [
                 "micro-a07-01-contexto-leitura-base"
               ],
@@ -14372,7 +14372,7 @@
               "title": "Média e mediana em colunas numéricas",
               "goal": "Calcular e interpretar média e mediana com `.mean()` e `.median()`.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "dependsOn": [
                 "micro-a07-02-vocabulario-estatistico"
               ],
@@ -14572,7 +14572,7 @@
               "title": "Moda em valores frequentes",
               "goal": "Calcular moda em colunas categóricas e binárias usando `.mode()`.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "dependsOn": [
                 "micro-a07-03-media-mediana"
               ],
@@ -14756,7 +14756,7 @@
               "title": "Amplitude como maior menos menor",
               "goal": "Calcular amplitude usando `max() - min()` e interpretar alcance dos valores.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "dependsOn": [
                 "micro-a07-04-moda-categorias-binarias"
               ],
@@ -14932,7 +14932,7 @@
               "title": "Variância e desvio padrão",
               "goal": "Calcular variância e desvio padrão com `.var()` e `.std()` e interpretar dispersão sem formalismo excessivo.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "dependsOn": [
                 "micro-a07-05-amplitude"
               ],
@@ -15151,7 +15151,7 @@
               "title": "Quartis e percentis com `.quantile()`",
               "goal": "Calcular quartis e percentil 90 usando `.quantile()` e interpretar posição acumulada.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "dependsOn": [
                 "micro-a07-06-variancia-desvio-padrao"
               ],
@@ -15377,7 +15377,7 @@
               "title": "Probabilidade como proporção",
               "goal": "Calcular probabilidade de falha e de uma condição booleana usando média de `0/1` ou booleanos.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "dependsOn": [
                 "micro-a07-07-quartis-percentis"
               ],
@@ -15608,7 +15608,7 @@
               "title": "Histograma da temperatura",
               "goal": "Criar histograma de `temperatura_c` com Seaborn e interpretar distribuição sem inferir mais do que os dados mostram.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "dependsOn": [
                 "micro-a07-08-probabilidade-proporcao"
               ],
@@ -15783,7 +15783,7 @@
               "title": "Exercícios guiados da Aula 7",
               "goal": "Praticar medidas de produção, tempo de ciclo, quartis e probabilidade com variação controlada.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "dependsOn": [
                 "micro-a07-09-histograma-temperatura"
               ],
@@ -16001,7 +16001,7 @@
               "title": "Atividade final de estatística aplicada",
               "goal": "Integrar tendência central, dispersão, quartis, percentil, probabilidade e histograma em uma tarefa única.",
               "role": "review",
-              "status": "generated",
+              "status": "ready",
               "dependsOn": [
                 "micro-a07-10-exercicios-guiados"
               ],
@@ -16203,7 +16203,7 @@
               "title": "Interpretar resultados sem exagerar conclusões",
               "goal": "Transformar medidas e histograma em interpretações objetivas e verificáveis.",
               "role": "review",
-              "status": "generated",
+              "status": "ready",
               "dependsOn": [
                 "micro-a07-11-atividade-final-integrada"
               ],
@@ -16347,7 +16347,7 @@
               "title": "Desafio de revisão com cenário industrial",
               "goal": "Ler um cenário, escolher métricas, escrever comandos e interpretar resultados sem extrapolar.",
               "role": "review",
-              "status": "generated",
+              "status": "ready",
               "dependsOn": [
                 "micro-a07-12-interpretacao-final"
               ],
@@ -16723,7 +16723,7 @@
               "title": "EDA como ciclo de perguntas",
               "goal": "Entender EDA como investigação inicial com perguntas sobre estrutura, distribuição, relação, grupos e outliers.",
               "role": "support",
-              "status": "generated",
+              "status": "ready",
               "dependsOn": [],
               "covers": [
                 "EDA",
@@ -16874,7 +16874,7 @@
               "title": "Importar bibliotecas e ler o dataset",
               "goal": "Preparar o ambiente com Pandas, NumPy, Matplotlib e Seaborn e carregar `dataset_aula8_eda.csv`.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "dependsOn": [
                 "micro-a08-01-eda-fluxo-perguntas"
               ],
@@ -16978,7 +16978,7 @@
               "title": "Primeira inspeção: linhas, formato e colunas",
               "goal": "Usar `head()`, `shape`, `columns`, `dtypes` e `info()` para reconhecer a estrutura do dataset.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "dependsOn": [
                 "micro-a08-02-importar-ler-csv"
               ],
@@ -17162,7 +17162,7 @@
               "title": "`describe()` e leitura do resumo numérico",
               "goal": "Usar `df.describe()` para ler média, quartis, mínimo, máximo e dispersão em variáveis numéricas.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "dependsOn": [
                 "micro-a08-03-inspecao-inicial"
               ],
@@ -17303,7 +17303,7 @@
               "title": "Verificar valores ausentes",
               "goal": "Verificar nulos com `df.isna().sum()` e interpretar que o dataset atual não exige tratamento de ausentes.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "dependsOn": [
                 "micro-a08-04-describe-resumo-estatistico"
               ],
@@ -17484,7 +17484,7 @@
               "title": "Contar categorias: setor, turno e falha",
               "goal": "Usar `value_counts()` para entender frequências em colunas categóricas e binárias.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "dependsOn": [
                 "micro-a08-05-valores-ausentes"
               ],
@@ -17627,7 +17627,7 @@
               "title": "Histogramas para variáveis numéricas",
               "goal": "Criar histogramas e interpretar forma, concentração e valores extremos em variáveis numéricas.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "dependsOn": [
                 "micro-a08-06-categorias-value-counts"
               ],
@@ -17778,7 +17778,7 @@
               "title": "Matriz de correlação",
               "goal": "Calcular e interpretar correlações entre variáveis numéricas, com cuidado para não afirmar causalidade.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "dependsOn": [
                 "micro-a08-07-histogramas-distribuicoes"
               ],
@@ -17944,7 +17944,7 @@
               "title": "Heatmap para visualizar correlações",
               "goal": "Usar `sns.heatmap()` para transformar a matriz de correlação em leitura visual.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "dependsOn": [
                 "micro-a08-08-correlacao-matriz"
               ],
@@ -18108,7 +18108,7 @@
               "title": "Dispersão entre temperatura e consumo com `hue`",
               "goal": "Criar gráfico de dispersão de `temperatura_c` por `consumo_kwh` destacando `falha`.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "dependsOn": [
                 "micro-a08-09-heatmap-correlacao"
               ],
@@ -18257,7 +18257,7 @@
               "title": "Boxplot para dispersão e possíveis outliers",
               "goal": "Usar boxplots de `temperatura_c` e `consumo_kwh` para reconhecer mediana, caixa, bigodes e pontos extremos.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "dependsOn": [
                 "micro-a08-10-dispersao-hue-falha"
               ],
@@ -18403,7 +18403,7 @@
               "title": "Cálculo de outliers por IQR",
               "goal": "Calcular `Q1`, `Q3`, `IQR`, limites e filtrar outliers por regra de 1,5 vez o IQR.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "dependsOn": [
                 "micro-a08-11-boxplot-outliers-visuais"
               ],
@@ -18642,7 +18642,7 @@
               "title": "Médias e taxa de falha por grupo",
               "goal": "Usar `groupby()` para comparar setores por média de temperatura e taxa de falha.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "dependsOn": [
                 "micro-a08-12-iqr-calculo-outliers"
               ],
@@ -18798,7 +18798,7 @@
               "title": "Visualização por grupo com boxplot",
               "goal": "Criar boxplot de `temperatura_c` por `setor` e interpretar diferenças entre grupos.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "dependsOn": [
                 "micro-a08-13-analise-por-grupo"
               ],
@@ -18950,7 +18950,7 @@
               "title": "Projeto final de EDA",
               "goal": "Integrar resumo estatístico, correlação, gráficos, outliers, grupos e conclusões responsáveis em uma mini-análise final.",
               "role": "review",
-              "status": "generated",
+              "status": "ready",
               "dependsOn": [
                 "micro-a08-14-boxplot-por-setor"
               ],

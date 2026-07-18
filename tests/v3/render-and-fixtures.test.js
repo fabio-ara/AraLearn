@@ -1067,6 +1067,19 @@ test("as fixtures de publicação mantêm os cursos oficiais materializados fora
 
   assert.ok(ai900Course);
   assert.ok(dataprevCourse);
+  for (const course of project.courses) {
+    for (const module of course.modules) {
+      for (const lesson of module.lessons) {
+        for (const microsequence of lesson.microsequences) {
+          assert.equal(
+            microsequence.status,
+            "ready",
+            `${course.id}/${module.id}/${lesson.id}/${microsequence.id} precisa estar pronta para publicação`
+          );
+        }
+      }
+    }
+  }
   assert.deepEqual(
     fs
       .readdirSync(path.resolve(__dirname, "../../supabase/fixtures/catalog"))

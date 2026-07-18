@@ -121,7 +121,7 @@
               "title": "Do curso AI-900 ao exame AI-901",
               "goal": "Entender o recorte do curso, a substituição do AI-900 e a ponte para AI-901.",
               "role": "support",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [],
               "covers": [
@@ -367,7 +367,7 @@
               "title": "Workloads de IA em nuvem",
               "goal": "Distinguir os principais workloads antes de escolher serviços.",
               "role": "support",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "p01-ms01-exame-e-ponte-ai900-ai901"
@@ -791,7 +791,7 @@
               "title": "Serviço certo para cada cenário",
               "goal": "Associar workloads a serviços Azure e Foundry sem aprofundar implementação.",
               "role": "explain",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "p01-ms02-workloads-de-ia"
@@ -1321,7 +1321,7 @@
               "title": "Recursos, chaves, endpoints e studios",
               "goal": "Entender o mínimo operacional para usar serviços Azure AI.",
               "role": "support",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "p01-ms03-servicos-azure-por-cenario"
@@ -1641,7 +1641,7 @@
               "title": "Diagnóstico de prova: primeiras decisões",
               "goal": "Medir as confusões iniciais do aluno com questões objetivas integradas.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "p01-ms04-recurso-chave-endpoint-studio"
@@ -2016,7 +2016,7 @@
               "title": "Mapa de revisão das próximas partes",
               "goal": "Consolidar o mapa do curso e preparar a continuidade.",
               "role": "review",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "p01-ms05-diagnostico-inicial"
@@ -2287,7 +2287,7 @@
               "title": "Seis princípios de Responsible AI",
               "goal": "Reconhecer os seis princípios Microsoft de IA responsável e escolher o princípio adequado em cenários de prova.",
               "role": "support",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [],
               "covers": [
@@ -2597,7 +2597,7 @@
               "title": "Danos, viés e fairness em modelos",
               "goal": "Distinguir dano de alocação, dano de qualidade de serviço, métricas por subgrupo e limites de métricas em decisões de IA.",
               "role": "explain",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "p02-ms01-principios-responsible-ai"
@@ -2918,7 +2918,7 @@
               "title": "Content Safety e moderação segura",
               "goal": "Entender quando usar Azure AI Content Safety e como categorias, severidade, filtros, blocklists e Studio aparecem em cenários seguros.",
               "role": "explain",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "p02-ms02-harms-e-fairness"
@@ -3337,7 +3337,7 @@
               "title": "Responsabilidade compartilhada em nuvem e IA",
               "goal": "Distinguir responsabilidades da Microsoft e do cliente em SaaS, PaaS, IaaS e soluções de IA.",
               "role": "support",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "p02-ms03-content-safety-e-moderacao"
@@ -3691,7 +3691,7 @@
               "title": "Transparência, avaliação e mitigação em IA generativa",
               "goal": "Reconhecer Transparency Notes, avaliação de danos, groundedness, jailbreak, testes adversariais e mitigação em camadas.",
               "role": "explain",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "p02-ms04-modelo-responsabilidade-compartilhada"
@@ -3975,7 +3975,7 @@
               "title": "Treino de prova: distratores de Responsible AI e segurança",
               "goal": "Consolidar decisões de prova integrando princípios, danos, Content Safety, responsabilidade compartilhada e avaliação generativa.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "p02-ms05-transparency-notes-e-avaliacoes"
@@ -4487,7 +4487,7 @@
               "title": "Dados, features, labels e inferência",
               "goal": "Entender como um problema de ML é formulado a partir de exemplos, atributos de entrada e alvo a prever.",
               "role": "support",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [],
               "covers": [
@@ -4858,7 +4858,7 @@
               "title": "Aprendizagem supervisionada e não supervisionada",
               "goal": "Distinguir problemas com rótulo conhecido de problemas de descoberta de grupos ou padrões sem rótulo.",
               "role": "explain",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "p03-ms01-dados-features-labels"
@@ -5168,7 +5168,7 @@
               "title": "Regressão: prever valores numéricos",
               "goal": "Reconhecer problemas de regressão e interpretar erro de previsão sem cálculo pesado.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "p03-ms02-supervisionado-vs-nao-supervisionado"
@@ -5459,7 +5459,7 @@
               "title": "Classificação: categorias, probabilidades e métricas",
               "goal": "Diferenciar classificação binária e multiclasse, interpretar confiança/probabilidade e reconhecer métricas iniciais de classificação.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "p03-ms02-supervisionado-vs-nao-supervisionado"
@@ -5801,7 +5801,7 @@
               "title": "Clustering: agrupar por similaridade",
               "goal": "Reconhecer clustering como aprendizagem não supervisionada para descobrir grupos em dados sem labels.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "p03-ms02-supervisionado-vs-nao-supervisionado"
@@ -6089,7 +6089,7 @@
               "title": "Deep learning e função de perda",
               "goal": "Entender deep learning como ML com redes neurais e reconhecer a função de perda como medida usada no treinamento.",
               "role": "review",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "p03-ms01-dados-features-labels"
@@ -6552,7 +6552,7 @@
               "title": "Azure Machine Learning como ambiente de projeto",
               "goal": "Distinguir Azure Machine Learning de serviços cognitivos prontos e reconhecer os elementos básicos de um projeto de ML em Azure.",
               "role": "support",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [],
               "covers": [
@@ -6865,7 +6865,7 @@
               "title": "AutoML: automatizar treino sem apagar decisões",
               "goal": "Explicar o que AutoML automatiza e o que o usuário ainda precisa definir.",
               "role": "explain",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "ms04-01-azure-ml-workspace"
@@ -7228,7 +7228,7 @@
               "title": "Avaliação: treino, validação, teste e métricas",
               "goal": "Consolidar como avaliar modelos no Azure ML sem confundir dados, métricas e finalidade.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "ms04-02-automl-fluxo"
@@ -7620,7 +7620,7 @@
               "title": "Compute, jobs e custo operacional",
               "goal": "Reconhecer os recursos de execução usados no Azure ML e as escolhas que afetam escala, custo e disponibilidade.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "ms04-03-avaliacao-validacao"
@@ -7964,7 +7964,7 @@
               "title": "Registro, versionamento e implantação de modelos",
               "goal": "Entender o caminho de um modelo treinado até inferência em produção ou em lote.",
               "role": "review",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "ms04-04-compute-jobs"
@@ -8393,7 +8393,7 @@
               "title": "MLOps: reprodutibilidade, lineage e monitoramento",
               "goal": "Consolidar o ciclo de vida de ML como operação contínua, auditável e monitorada.",
               "role": "explain",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "ms04-05-modelos-endpoints"
@@ -8918,7 +8918,7 @@
               "title": "Recurso, assinatura e modelo de serviços",
               "goal": "Compreender o que é um recurso Azure para serviços de IA e diferenciar recurso específico, recurso agrupado e Foundry resource em questões de prova.",
               "role": "support",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [],
               "covers": [
@@ -9259,7 +9259,7 @@
               "title": "Chave, endpoint e formas de chamada",
               "goal": "Entender como aplicações acessam serviços de IA por key, endpoint, identidades, REST API, SDK, CLI e containers.",
               "role": "explain",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "p05-ms01-modelo-de-recursos-azure-ai"
@@ -9576,7 +9576,7 @@
               "title": "Studios, portal e superfícies de trabalho",
               "goal": "Diferenciar Azure portal, Foundry portal, Vision Studio, Language Studio, Speech Studio e superfícies de experimentação/configuração.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "p05-ms02-chave-endpoint-autenticacao"
@@ -9939,7 +9939,7 @@
               "title": "Microsoft Foundry como camada unificada",
               "goal": "Introduzir Foundry em nível operacional, sem entrar ainda em prompts, agentes e Azure OpenAI em profundidade.",
               "role": "review",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "p05-ms03-studios-portais-e-superficies"
@@ -10282,7 +10282,7 @@
               "title": "Billing, isolamento e governança",
               "goal": "Resolver cenários de prova sobre custo separado, agrupamento, região, SKU, throughput, acesso e isolamento administrativo.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "p05-ms04-foundry-visao-geral-operacional"
@@ -10655,7 +10655,7 @@
               "title": "Matriz de serviços e pegadinhas de prova",
               "goal": "Consolidar a parte com uma matriz de workloads, serviços, entradas, saídas e pegadinhas, preparando as partes específicas seguintes.",
               "role": "explain",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "p05-ms05-custos-billing-isolamento-governanca"
@@ -11270,7 +11270,7 @@
               "title": "Imagem como pixels, canais e valores",
               "goal": "Entender que uma imagem, para um programa, é uma estrutura numérica formada por pixels e canais.",
               "role": "support",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [],
               "covers": [
@@ -11588,7 +11588,7 @@
               "title": "Filtros, CNN e classificação visual",
               "goal": "Explicar por que redes convolucionais e filtros aprendidos são úteis para classificar imagens.",
               "role": "support",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "p06-ms01-imagem-como-pixels"
@@ -11928,7 +11928,7 @@
               "title": "Image Analysis: tags, captions e recorte inteligente",
               "goal": "Distinguir saídas comuns de análise de imagem: tags, captions, descrição e smart crop.",
               "role": "explain",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "p06-ms02-filtros-cnn-e-classificacao"
@@ -12230,7 +12230,7 @@
               "title": "Classificação customizada e alternativas atuais",
               "goal": "Entender quando uma classificação visual precisa de rótulos próprios e quais caminhos Microsoft considerar.",
               "role": "explain",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "p06-ms03-image-analysis-tags-captions-smart-crop"
@@ -12615,7 +12615,7 @@
               "title": "Workflow serverless para análise de imagens",
               "goal": "Ler e completar um fluxo Azure simples para processar imagens enviadas a uma aplicação.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "p06-ms04-classificacao-customizada-e-alternativas-atuais"
@@ -12970,7 +12970,7 @@
               "title": "Cenários de prova em visão computacional",
               "goal": "Consolidar decisões de serviço/capacidade para cenários de visão computacional, sem entrar nos tópicos da Parte 07.",
               "role": "review",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "p06-ms05-workflow-serverless-de-visao"
@@ -13385,7 +13385,7 @@
               "title": "Detecção, tags e classificação visual",
               "goal": "Diferenciar `object detection`, `tagging`, captions e classificação de imagem em cenários de prova.",
               "role": "support",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [],
               "covers": [
@@ -13754,7 +13754,7 @@
               "title": "Bounding boxes, coordenadas e limitações",
               "goal": "Interpretar bounding boxes e reconhecer limites práticos de detecção de objetos.",
               "role": "explain",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "micro-07-01-deteccao-tags-classificacao"
@@ -14043,7 +14043,7 @@
               "title": "OCR, Read API e estrutura dos resultados",
               "goal": "Entender OCR/`Read` como extração de texto e reconhecer sua saída típica.",
               "role": "support",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [],
               "covers": [
@@ -14361,7 +14361,7 @@
               "title": "Face detection, retângulo e landmarks",
               "goal": "Reconhecer o que Face detection retorna e como interpretar retângulos, landmarks e qualidade de entrada.",
               "role": "explain",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [],
               "covers": [
@@ -14706,7 +14706,7 @@
               "title": "Verificação, identificação, liveness e acesso limitado",
               "goal": "Diferenciar operações de Face e entender limites responsáveis e de acesso.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "micro-07-04-face-detection-rectangle-landmarks"
@@ -15077,7 +15077,7 @@
               "title": "Cenários integrados de prova",
               "goal": "Consolidar a escolha de serviço/recurso em cenários que misturam Vision, OCR, Face, Document Intelligence e outros serviços.",
               "role": "explain",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "micro-07-01-deteccao-tags-classificacao",
@@ -15581,7 +15581,7 @@
               "title": "Do OCR ao documento estruturado",
               "goal": "Distinguir OCR simples de Document Intelligence e reconhecer saídas estruturais de documentos.",
               "role": "support",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [],
               "covers": [
@@ -15872,7 +15872,7 @@
               "title": "Modelos prebuilt, custom e classificação documental",
               "goal": "Escolher entre modelo prebuilt, custom extraction e custom classifier conforme tipo e variabilidade do documento.",
               "role": "explain",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "micro-08-01-document-intelligence-visao-geral"
@@ -16238,7 +16238,7 @@
               "title": "Tradução de documentos: síncrono, batch e formato preservado",
               "goal": "Distinguir fluxos de Document Translation e reconhecer quando usar Blob Storage, glossário e retorno direto.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [],
               "covers": [
@@ -16517,7 +16517,7 @@
               "title": "Content Understanding: extração multimodal com analyzer e schema",
               "goal": "Explicar Content Understanding como Foundry Tool para transformar conteúdo multimodal em saída estruturada.",
               "role": "support",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [],
               "covers": [
@@ -16859,7 +16859,7 @@
               "title": "Confiança, grounding e revisão humana",
               "goal": "Ensinar como confidence score, grounding e revisão humana reduzem risco em automações de extração.",
               "role": "review",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "micro-08-04-content-understanding-foundry-tools"
@@ -17123,7 +17123,7 @@
               "title": "Treino integrado de cenários de documentos e extração",
               "goal": "Consolidar a escolha correta de serviço/modelo por cenário, com distratores de prova.",
               "role": "explain",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "micro-08-05-confidence-grounding-human-review"
@@ -17704,7 +17704,7 @@
               "title": "NLP e Azure Language em Foundry Tools",
               "goal": "Reconhecer NLP como workload de IA para entender/analisar linguagem natural e situar Azure Language no ecossistema Foundry.",
               "role": "support",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [],
               "covers": [
@@ -18057,7 +18057,7 @@
               "title": "Detecção de idioma, frases-chave e sumarização",
               "goal": "Diferenciar três capacidades frequentemente confundidas: detectar idioma, extrair ideias centrais e produzir resumo.",
               "role": "explain",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "ms09-01-nlp-language-foundry"
@@ -18344,7 +18344,7 @@
               "title": "NER, entity linking e NER customizado",
               "goal": "Reconhecer entidades em texto, diferenciar categorização de desambiguação e escolher NER customizado quando categorias do domínio exigirem treino.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "ms09-02-deteccao-idioma-frases-chave-sumarizacao"
@@ -18661,7 +18661,7 @@
               "title": "Sentiment analysis e opinion mining",
               "goal": "Distinguir sentimento geral de opiniões por aspecto e interpretar rótulos/confiança em saídas de sentimento.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "ms09-03-ner-entity-linking-custom"
@@ -18967,7 +18967,7 @@
               "title": "PII, PHI e Text Analytics for Health",
               "goal": "Reconhecer capacidades de privacidade e saúde textual, respeitando limites de uso responsável.",
               "role": "review",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "ms09-04-sentimento-opinion-mining"
@@ -19326,7 +19326,7 @@
               "title": "Fluxo de implementação e escolha de capacidade em prova",
               "goal": "Consolidar a seleção da capacidade correta e o fluxo de implementação mínima com Foundry, REST e SDK.",
               "role": "explain",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "ms09-05-pii-phi-health"
@@ -19832,7 +19832,7 @@
               "title": "IA conversacional: resposta, diálogo e ação",
               "goal": "Distinguir análise de texto, question answering, bot e agente conversacional.",
               "role": "support",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [],
               "covers": [
@@ -20161,7 +20161,7 @@
               "title": "Question answering e knowledge base",
               "goal": "Escolher e explicar question answering quando a necessidade é responder perguntas sobre conteúdo existente.",
               "role": "explain",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "p10-ms01-conversational-ai"
@@ -20534,7 +20534,7 @@
               "title": "Bot, canais e integração com Language",
               "goal": "Entender a função do Azure AI Bot Service/Bot Framework em uma solução de suporte e suas limitações atuais.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "p10-ms02-question-answering"
@@ -20832,7 +20832,7 @@
               "title": "CLU: utterance, intent, entity e predição",
               "goal": "Aplicar CLU para entender intenção do usuário e extrair informações relevantes.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "p10-ms01-conversational-ai"
@@ -21221,7 +21221,7 @@
               "title": "Orquestração entre habilidades conversacionais",
               "goal": "Escolher orchestration workflow quando a solução precisa rotear solicitações para projetos/skills diferentes.",
               "role": "review",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "p10-ms02-question-answering",
@@ -21575,7 +21575,7 @@
               "title": "Ponte moderna: Foundry Agent Service e decisão final de arquitetura",
               "goal": "Consolidar a escolha entre CQA, CLU, bot clássico e agente moderno no contexto AI-901.",
               "role": "explain",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "p10-ms03-bot-service",
@@ -22185,7 +22185,7 @@
               "title": "Speech-to-text: transcrição, legenda e chamadas",
               "goal": "Distinguir `speech-to-text` de outras capacidades e escolher transcrição em tempo real, rápida ou batch conforme o cenário.",
               "role": "support",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [],
               "covers": [
@@ -22515,7 +22515,7 @@
               "title": "Text-to-speech: voz neural, leitura em voz alta e SSML",
               "goal": "Escolher `text-to-speech` quando a saída é áudio falado e reconhecer ajustes básicos de voz, `SSML` e Custom Voice.",
               "role": "explain",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "p11-ms01-speech-to-text-transcricao"
@@ -22799,7 +22799,7 @@
               "title": "Tradução de fala, identificação de idioma e Translator",
               "goal": "Distinguir `speech translation`, text translation e document translation, com foco em entrada/saída.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "p11-ms02-text-to-speech-vozes-neurais-ssml"
@@ -23195,7 +23195,7 @@
               "title": "Quem fala, como pronuncia e cuidados com voz",
               "goal": "Reconhecer cenários de speaker recognition, pronunciation assessment e limites/responsabilidades de voz.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "p11-ms03-speech-translation-language-identification-translator"
@@ -23521,7 +23521,7 @@
               "title": "Implementação: Foundry, Speech Studio, SDK, REST e containers",
               "goal": "Reconhecer o fluxo mínimo de implementação e escolher ferramenta/implantação conforme restrição técnica.",
               "role": "review",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "p11-ms04-speaker-recognition-pronunciation-e-voz-responsavel"
@@ -23950,7 +23950,7 @@
               "title": "Treino integrado de prova: Speech, Translator, Language e Bots",
               "goal": "Consolidar decisões por cenário com distratores próximos e abundantes.",
               "role": "explain",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "p11-ms05-implementacao-foundry-speech-studio-sdk-rest-containers"
@@ -24542,7 +24542,7 @@
               "title": "Knowledge Mining e papel do Azure AI Search",
               "goal": "Explicar knowledge mining como ingestão, enriquecimento, indexação e descoberta de conteúdo, e situar Azure AI Search no ecossistema Foundry/Azure AI.",
               "role": "support",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [],
               "covers": [
@@ -24866,7 +24866,7 @@
               "title": "Index, indexer, data source e ingestão",
               "goal": "Fazer o aluno distinguir `index`, `indexer`, `data source`, push/pull e JSON documents em cenários de prova.",
               "role": "explain",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "p12-ms01-knowledge-mining-search"
@@ -25201,7 +25201,7 @@
               "title": "Skillsets, enriquecimento de IA e knowledge store",
               "goal": "Ensinar como skills enriquecem documentos durante a indexação e quando persistir enriquecimentos em `knowledge store`.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "p12-ms02-index-indexer-datasource"
@@ -25550,7 +25550,7 @@
               "title": "Consultas, relevância, vetores e busca híbrida",
               "goal": "Diferenciar busca textual, vetorial, híbrida e ranqueamento semântico, com foco em escolha de recurso por cenário.",
               "role": "practice",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "p12-ms03-skillsets-ai-enrichment-knowledge-store"
@@ -25903,7 +25903,7 @@
               "title": "RAG, grounding, chunks, embeddings e segurança",
               "goal": "Mostrar como Azure AI Search ajuda RAG ao recuperar trechos relevantes, respeitar tokens e permissões, e fornecer grounding/citações.",
               "role": "review",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "p12-ms04-consultas-relevancia-vetores"
@@ -26238,7 +26238,7 @@
               "title": "Agentic retrieval, knowledge sources e revisão de prova",
               "goal": "Consolidar Azure AI Search moderno com Foundry IQ/agentic retrieval e revisar pegadinhas integradas de prova.",
               "role": "explain",
-              "status": "generated",
+              "status": "ready",
               "branchOf": null,
               "dependsOn": [
                 "p12-ms05-rag-grounding-seguranca"

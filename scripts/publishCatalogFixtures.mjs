@@ -47,6 +47,26 @@ function publicProject(course) {
   return { contract: "aralearn.contract", version: 3, kind: "project", courses: [course] };
 }
 
+export function assertPublicationReady(course, fileName = course?.id || "fixture") {
+  const pending = [];
+  for (const module of course?.modules || []) {
+    for (const lesson of module?.lessons || []) {
+      for (const microsequence of lesson?.microsequences || []) {
+        if (microsequence?.status !== "ready") {
+          pending.push(microsequence?.id || "sem-id");
+        }
+      }
+    }
+  }
+  if (pending.length) {
+    const preview = pending.slice(0, 5).join(", ");
+    const suffix = pending.length > 5 ? ` e mais ${pending.length - 5}` : "";
+    throw new Error(
+      `${fileName} não está pronta para publicação: ${pending.length} microssequência(s) sem status ready (${preview}${suffix}).`
+    );
+  }
+}
+
 function rowCount(rows) {
   return Object.values(rows).reduce((total, entries) => total + (Array.isArray(entries) ? entries.length : 0), 0);
 }
@@ -59,6 +79,7 @@ async function prepareFixture(fileName) {
     const details = contractValidation.errors.map((entry) => `${entry.path}: ${entry.message}`).join("; ");
     throw new Error(`${fileName} viola o contrato v3: ${details}`);
   }
+  assertPublicationReady(course, fileName);
   const rows = contractToRelationalRows(project);
   assertValidRelationalCourse(rows);
   return {
