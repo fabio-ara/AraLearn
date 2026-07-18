@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 set search_path = public, extensions, pg_catalog;
-select plan(170);
+select plan(172);
 
 select has_table('public', 'courses', 'courses existe');
 select has_table('public', 'modules', 'modules existe');
@@ -238,6 +238,26 @@ select is(
   ),
   (select personal_course_id from test_state),
   'replay do clone retorna o mesmo curso'
+);
+select ok(
+  (
+    select bool_and('statement_timeout=60s' = any(coalesce(proconfig, '{}'::text[])))
+    from pg_proc
+    where pronamespace = 'public'::regnamespace
+      and proname = 'clone_catalog_course'
+      and pronargs in (1, 2)
+  ),
+  'RPCs de clone possuem prazo explícito para catálogos grandes'
+);
+select is(
+  (
+    select count(*)
+    from public.sync_changes
+    where course_id = (select personal_course_id from test_state)
+      and entity_type not in ('courses', 'memberships')
+  ),
+  0::bigint,
+  'clone anuncia membership sem duplicar a árvore inteira no feed'
 );
 select isnt(
   (select contract_key from public.courses where id = (select personal_course_id from test_state)),
