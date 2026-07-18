@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 set search_path = public, extensions, pg_catalog;
-select plan(136);
+select plan(156);
 
 select has_table('public', 'courses', 'courses existe');
 select has_table('public', 'modules', 'modules existe');
@@ -11,6 +11,12 @@ select has_table('public', 'flow_practices', 'flow_practices existe');
 select has_table('public', 'sync_changes', 'sync_changes existe');
 select has_function('public', 'clone_catalog_course', array['uuid'], 'RPC de clone existe');
 select has_function('public', 'apply_sync_batch', array['uuid','jsonb'], 'RPC de push existe');
+select has_function('public', 'bootstrap_replica', array['uuid'], 'RPC de bootstrap existe');
+select has_function(
+  'public', 'compact_sync_history', array['boolean','timestamp with time zone'],
+  'RPC administrativa de compactação existe'
+);
+select has_function('public', 'sync_storage_diagnostics', array[]::text[], 'RPC de diagnóstico existe');
 select has_function(
   'public', 'refresh_personal_course_from_source', array['uuid','uuid'],
   'RPC idempotente de refresh existe'
@@ -52,6 +58,10 @@ select ok(
 );
 select col_type_is('public', 'courses', 'id', 'uuid', 'identidade persistida é UUID');
 select col_type_is(
+  'public', 'sync_devices', 'inactive_at', 'timestamp with time zone',
+  'dispositivo possui desativação persistente'
+);
+select col_type_is(
   'public', 'microsequences', 'cards_revision', 'bigint',
   'microssequência possui token agregado exclusivo da subárvore de cards'
 );
@@ -75,6 +85,34 @@ select ok(
     where table_schema = 'public' and grantee in ('anon', 'PUBLIC')
   ),
   'anon não possui privilégios nas tabelas'
+);
+select ok(
+  not exists (
+    select 1 from information_schema.table_privileges
+    where table_schema = 'public' and grantee = 'authenticated'
+  ),
+  'authenticated acessa dados somente pelas RPCs autorizadas'
+);
+select ok(
+  not has_table_privilege('authenticated', 'public.sync_devices', 'SELECT')
+  and not has_table_privilege('authenticated', 'public.sync_mutations', 'SELECT')
+  and not has_table_privilege('authenticated', 'public.sync_changes', 'SELECT'),
+  'tabelas internas de sincronização não têm leitura direta para authenticated'
+);
+select ok(
+  not has_function_privilege('anon', 'public.clone_catalog_course(uuid,uuid)', 'EXECUTE')
+  and not has_function_privilege('anon', 'public.apply_sync_batch(uuid,jsonb)', 'EXECUTE')
+  and not has_function_privilege(
+    'anon', 'public.pull_sync_changes(bigint,integer,uuid)', 'EXECUTE'
+  )
+  and not has_function_privilege('anon', 'public.bootstrap_replica(uuid)', 'EXECUTE')
+  and not has_function_privilege(
+    'anon', 'public.replace_microsequence_cards(uuid,uuid,jsonb,bigint,uuid)', 'EXECUTE'
+  )
+  and not has_function_privilege(
+    'anon', 'public.delete_personal_course(uuid,bigint,uuid)', 'EXECUTE'
+  ),
+  'anon não executa RPCs sensíveis de dados ou sincronização'
 );
 
 insert into auth.users (
@@ -952,6 +990,7 @@ rollback to position_scope_shapes;
 
 create temp table rls_course_count (value bigint);
 grant select, insert, delete on rls_course_count to authenticated;
+grant select on public.courses to authenticated;
 select set_config('request.jwt.claim.sub', '20000000-0000-4000-8000-000000000002', true);
 set local role authenticated;
 insert into rls_course_count select count(*) from public.courses
@@ -971,6 +1010,7 @@ select is(
   (select value from rls_course_count),
   1::bigint, 'RLS permite leitura ao proprietário'
 );
+revoke select on public.courses from authenticated;
 
 select ok(
   not exists (
@@ -1015,18 +1055,7 @@ select public.apply_sync_batch(
         where course_id = (select personal_course_id from test_state)
           and contract_key <> 'module-reorder-test' and deleted_at is null limit 1),
       'changedFields', jsonb_build_array('position'),
-      'payload', jsonb_build_object(
-        'position', 1,
-        'contractKey', (select contract_key from public.modules
-          where course_id = (select personal_course_id from test_state)
-            and contract_key <> 'module-reorder-test' and deleted_at is null limit 1),
-        'title', (select title from public.modules
-          where course_id = (select personal_course_id from test_state)
-            and contract_key <> 'module-reorder-test' and deleted_at is null limit 1),
-        'identityKey', (select identity_key from public.modules
-          where course_id = (select personal_course_id from test_state)
-            and contract_key <> 'module-reorder-test' and deleted_at is null limit 1)
-      )
+      'payload', jsonb_build_object('position', 1)
     ),
     jsonb_build_object(
       'mutationId', '31000000-0000-4000-8000-000000000012',
@@ -1034,12 +1063,7 @@ select public.apply_sync_batch(
       'entityType', 'modules', 'entityId', '32000000-0000-4000-8000-000000000010',
       'operation', 'update', 'baseRevision', 1,
       'changedFields', jsonb_build_array('position'),
-      'payload', jsonb_build_object(
-        'position', 0, 'contractKey', 'module-reorder-test', 'title', 'Módulo para reorder',
-        'identityKey', 'course:' || (
-          select contract_key from public.courses where id = (select personal_course_id from test_state)
-        ) || '/module:reorder-test'
-      )
+      'payload', jsonb_build_object('position', 0)
     )
   )
 ) payload;
@@ -1099,14 +1123,7 @@ select public.apply_sync_batch(
     'operation', 'upsert',
     'baseRevision', (select revision from public.card_blocks where id = (select old_block_id from test_state)),
     'changedFields', jsonb_build_array('value'),
-    'payload', jsonb_build_object(
-      'id', (select old_block_id from test_state),
-      'courseId', (select personal_course_id from test_state),
-      'cardId', (select old_card_id from test_state),
-      'identityKey', (select identity_key from public.card_blocks where id = (select old_block_id from test_state)),
-      'region', 'primary', 'position', 0, 'blockType', 'paragraph', 'isPrimary', true,
-      'value', 'Texto alterado em uma única linha.', 'hasValue', true
-    )
+    'payload', jsonb_build_object('value', 'Texto alterado em uma única linha.')
   ))
 ) payload;
 select is(
@@ -1149,11 +1166,7 @@ select public.apply_sync_batch(
       'entityType','blocks','entityId',(select old_block_id from test_state),
       'operation','update','baseRevision',(select block_revision from aggregate_batch_before),
       'changedFields',jsonb_build_array('value'),
-      'payload',(
-        select private.local_row('blocks', to_jsonb(block))
-               || jsonb_build_object('value','Filho alterado antes do pai no mesmo lote.')
-        from public.card_blocks block where block.id = (select old_block_id from test_state)
-      )
+      'payload',jsonb_build_object('value','Filho alterado antes do pai no mesmo lote.')
     ),
     jsonb_build_object(
       'mutationId','63100000-0000-4000-8000-000000000002',
@@ -1161,11 +1174,7 @@ select public.apply_sync_batch(
       'entityType','cards','entityId',(select old_card_id from test_state),
       'operation','update','baseRevision',(select card_revision from aggregate_batch_before),
       'changedFields',jsonb_build_array('title'),
-      'payload',(
-        select private.local_row('cards', to_jsonb(card))
-               || jsonb_build_object('title','Pai alterado depois do filho')
-        from public.cards card where card.id = (select old_card_id from test_state)
-      )
+      'payload',jsonb_build_object('title','Pai alterado depois do filho')
     )
   )
 ) payload;
@@ -1197,11 +1206,7 @@ select public.apply_sync_batch(
       'entityType','cards','entityId',(select old_card_id from test_state),
       'operation','update','baseRevision',(select card_revision from interleaved_batch_before),
       'changedFields',jsonb_build_array('title'),
-      'payload',(
-        select private.local_row('cards', to_jsonb(card))
-               || jsonb_build_object('title','Primeira edição direta do pai')
-        from public.cards card where card.id = (select old_card_id from test_state)
-      )
+      'payload',jsonb_build_object('title','Primeira edição direta do pai')
     ),
     jsonb_build_object(
       'mutationId','63100000-0000-4000-8000-000000000004',
@@ -1209,11 +1214,7 @@ select public.apply_sync_batch(
       'entityType','blocks','entityId',(select old_block_id from test_state),
       'operation','update','baseRevision',(select block_revision from interleaved_batch_before),
       'changedFields',jsonb_build_array('value'),
-      'payload',(
-        select private.local_row('blocks', to_jsonb(block))
-               || jsonb_build_object('value','Filho intercalado entre duas edições do pai.')
-        from public.card_blocks block where block.id = (select old_block_id from test_state)
-      )
+      'payload',jsonb_build_object('value','Filho intercalado entre duas edições do pai.')
     ),
     jsonb_build_object(
       'mutationId','63100000-0000-4000-8000-000000000005',
@@ -1221,11 +1222,7 @@ select public.apply_sync_batch(
       'entityType','cards','entityId',(select old_card_id from test_state),
       'operation','update','baseRevision',(select card_revision + 1 from interleaved_batch_before),
       'changedFields',jsonb_build_array('title'),
-      'payload',(
-        select private.local_row('cards', to_jsonb(card))
-               || jsonb_build_object('title','Segunda edição direta do pai')
-        from public.cards card where card.id = (select old_card_id from test_state)
-      )
+      'payload',jsonb_build_object('title','Segunda edição direta do pai')
     )
   )
 ) payload;
@@ -1282,14 +1279,7 @@ select public.apply_sync_batch(
       'entityType','cards','entityId','63200000-0000-4000-8000-000000000001',
       'operation','update','baseRevision',1,
       'changedFields',jsonb_build_array('title'),
-      'payload',jsonb_build_object(
-        'lessonId',(select lesson_id from test_state),
-        'microsequenceId',(select microsequence_id from test_state),
-        'identityKey','course:sync/card:insert-parent',
-        'contractKey','card-insert-parent','position',2,'resource','paragraph',
-        'cardKind','theory','exercise','none',
-        'title','Card novo atualizado após inserir o filho','after','','hasAfter',true
-      )
+      'payload',jsonb_build_object('title','Card novo atualizado após inserir o filho')
     )
   )
 ) payload;
@@ -1509,6 +1499,23 @@ select ok(
 create temp table replay_push as
 select public.apply_sync_batch(
   '30000000-0000-4000-8000-000000000001',
+  jsonb_build_array((
+    select request from public.sync_mutations
+    where user_id = auth.uid()
+      and mutation_id = '31000000-0000-4000-8000-000000000001'
+  ))
+) payload;
+select ok(
+  (select (payload -> 'results' -> 0 ->> 'idempotent')::boolean from replay_push),
+  'mutationId repetido é idempotente'
+);
+select is(
+  (select revision from public.card_blocks where id = (select old_block_id from test_state)),
+  (select block_revision + 1 from test_state), 'repetição não incrementa revision'
+);
+create temp table incompatible_replay_push as
+select public.apply_sync_batch(
+  '30000000-0000-4000-8000-000000000001',
   jsonb_build_array(jsonb_build_object(
     'mutationId', '31000000-0000-4000-8000-000000000001',
     'courseId', (select personal_course_id from test_state),
@@ -1519,12 +1526,11 @@ select public.apply_sync_batch(
   ))
 ) payload;
 select ok(
-  (select (payload -> 'results' -> 0 ->> 'idempotent')::boolean from replay_push),
-  'mutationId repetido é idempotente'
-);
-select is(
-  (select revision from public.card_blocks where id = (select old_block_id from test_state)),
-  (select block_revision + 1 from test_state), 'repetição não incrementa revision'
+  (select payload -> 'results' -> 0 ->> 'status' = 'rejected'
+      and payload -> 'results' -> 0 ->> 'code' = '23505'
+      and payload -> 'results' -> 0 ->> 'reason' = 'mutation_id_reuse'
+   from incompatible_replay_push),
+  'mutationId reutilizado com payload incompatível é rejeitado definitivamente'
 );
 
 create temp table conflict_push as
@@ -1576,6 +1582,42 @@ select public.apply_sync_batch(
 select is(
   (select payload -> 'results' -> 0 ->> 'status' from unknown_changed_field_push),
   'rejected', 'sync rejeita changedFields desconhecido'
+);
+create temp table payload_outside_changed_fields as
+select public.apply_sync_batch(
+  '30000000-0000-4000-8000-000000000001',
+  jsonb_build_array(jsonb_build_object(
+    'mutationId','31000000-0000-4000-8000-000000000022',
+    'courseId',(select personal_course_id from test_state),
+    'entityType','blocks','entityId',(select old_block_id from test_state),
+    'operation','update',
+    'baseRevision',(select revision from public.card_blocks where id = (select old_block_id from test_state)),
+    'changedFields',jsonb_build_array('value'),
+    'payload',jsonb_build_object('value','não aplicar','position',99)
+  ))
+) payload;
+select ok(
+  (select payload -> 'results' -> 0 ->> 'status' = 'rejected'
+      and payload -> 'results' -> 0 ->> 'code' = '22023'
+   from payload_outside_changed_fields),
+  'payload rejeita campo mutável conhecido ausente de changedFields'
+);
+create temp table changed_field_without_payload as
+select public.apply_sync_batch(
+  '30000000-0000-4000-8000-000000000001',
+  jsonb_build_array(jsonb_build_object(
+    'mutationId','31000000-0000-4000-8000-000000000023',
+    'courseId',(select personal_course_id from test_state),
+    'entityType','blocks','entityId',(select old_block_id from test_state),
+    'operation','update',
+    'baseRevision',(select revision from public.card_blocks where id = (select old_block_id from test_state)),
+    'changedFields',jsonb_build_array('value'),
+    'payload','{}'::jsonb
+  ))
+) payload;
+select is(
+  (select payload -> 'results' -> 0 ->> 'status' from changed_field_without_payload),
+  'rejected', 'changedFields não pode declarar campo ausente do patch'
 );
 select is(
   (select count(*) from public.sync_mutations
@@ -1714,6 +1756,46 @@ select ok(
 )
 from bootstrap_graph;
 
+create temp table replica_bootstrap as
+select public.bootstrap_replica('63800000-0000-4000-8000-000000000001') payload;
+select ok(
+  (select payload ->> 'status' = 'applied'
+      and jsonb_typeof(payload -> 'snapshot') = 'object'
+      and jsonb_typeof(payload -> 'snapshot' -> 'courses') = 'array'
+      and jsonb_array_length(payload -> 'snapshot' -> 'courses') >= 1
+      and jsonb_array_length(payload -> 'snapshot' -> 'memberships') >= 1
+   from replica_bootstrap)
+  and (select count(*) = 1 from replica_bootstrap,
+       jsonb_array_elements(payload -> 'snapshot' -> 'courses') course
+       where course ->> 'courseId' = (select personal_course_id::text from test_state))
+  and (select last_pulled_sequence from public.sync_devices
+       where id = '63800000-0000-4000-8000-000000000001')
+      = (select (payload ->> 'highWaterSequence')::bigint from replica_bootstrap),
+  'bootstrap materializa snapshot autorizado e cursor no mesmo high-water'
+);
+create temp table pull_after_bootstrap as
+select public.pull_sync_changes(
+  (select (payload ->> 'highWaterSequence')::bigint from replica_bootstrap),
+  10, '63800000-0000-4000-8000-000000000001'
+) payload;
+select ok(
+  (select jsonb_array_length(payload -> 'changes') = 0
+      and (payload ->> 'nextSequence')::bigint >=
+          (select (payload ->> 'highWaterSequence')::bigint from replica_bootstrap)
+   from pull_after_bootstrap),
+  'pull posterior ao bootstrap começa somente depois do high-water'
+);
+select set_config('request.jwt.claim.sub', '20000000-0000-4000-8000-000000000002', true);
+create temp table isolated_replica_bootstrap as
+select public.bootstrap_replica('63800000-0000-4000-8000-000000000002') payload;
+select is(
+  (select count(*) from isolated_replica_bootstrap,
+    jsonb_array_elements(payload -> 'snapshot' -> 'courses') course
+    where course ->> 'courseId' = (select personal_course_id::text from test_state)),
+  0::bigint, 'bootstrap não inclui curso pessoal de outro usuário'
+);
+select set_config('request.jwt.claim.sub', '20000000-0000-4000-8000-000000000001', true);
+
 savepoint direct_cell_hash;
 insert into public.block_cells (
   id, course_id, block_id, matrix_item_id, row_index, column_index, cell_role,
@@ -1828,14 +1910,7 @@ select public.apply_sync_batch(
     'operation','update',
     'baseRevision',(select revision from public.card_blocks where id = (select old_block_id from test_state)),
     'changedFields',jsonb_build_array('value'),
-    'payload',jsonb_build_object(
-      'id',(select old_block_id from test_state),
-      'courseId',(select personal_course_id from test_state),
-      'cardId',(select old_card_id from test_state),
-      'identityKey',(select identity_key from public.card_blocks where id = (select old_block_id from test_state)),
-      'region','primary','position',0,'blockType','paragraph','isPrimary',true,
-      'value','Mudança remota posterior ao baseline composto.','hasValue',true
-    )
+    'payload',jsonb_build_object('value','Mudança remota posterior ao baseline composto.')
   ))
 ) payload;
 create temp table aggregate_replace_conflict as
@@ -1870,19 +1945,25 @@ select public.replace_microsequence_cards(
   (select fragment from replacement_request), (select base_revision from replacement_request),
   '43000000-0000-4000-8000-000000000001'
 ) payload;
-select is(
-  (select payload from replay_replace), (select payload from first_replace),
-  'replay da substituição retorna exatamente o resultado original'
+select ok(
+  (select payload - 'idempotent' from replay_replace)
+    = (select payload - 'idempotent' from first_replace)
+  and (select (payload ->> 'idempotent')::boolean from replay_replace),
+  'replay da substituição retorna o resultado original como idempotente'
 );
-select throws_ok(
-  $$select public.replace_microsequence_cards(
+create temp table incompatible_replace_replay as
+select public.replace_microsequence_cards(
     (select personal_course_id from test_state), (select microsequence_id from test_state),
     (select fragment from replacement_request) || jsonb_build_object('payloadDivergente', true),
     (select base_revision from replacement_request),
     '43000000-0000-4000-8000-000000000001'
-  )$$,
-  '23505', 'mutationId já foi usado com outro payload.',
-  'mutationId não pode ser reutilizado com payload divergente'
+) payload;
+select ok(
+  (select payload ->> 'status' = 'rejected'
+      and payload ->> 'code' = '23505'
+      and payload ->> 'reason' = 'mutation_id_reuse'
+   from incompatible_replace_replay),
+  'mutationId de substituição não pode ser reutilizado com payload divergente'
 );
 create temp table replace_conflict as
 select public.replace_microsequence_cards(
@@ -1955,6 +2036,69 @@ select ok(
   exists (select 1 from public.cards where id = '41000000-0000-4000-8000-000000000001' and deleted_at is null),
   'estado anterior sobrevive à substituição inválida'
 );
+create temp table rejected_invalid_fragment as
+select public.replace_microsequence_cards(
+  (select personal_course_id from test_state),
+  (select microsequence_id from test_state),
+  jsonb_build_object('cards', jsonb_build_array(jsonb_build_object(
+    'id','41000000-0000-4000-8000-000000000012',
+    'courseId',(select personal_course_id from test_state),
+    'microsequenceId',(select microsequence_id from test_state),
+    'identityKey','course:test/card:rejeitado',
+    'contractKey','card-rejeitado','position',1,'resource','paragraph',
+    'cardKind','theory','exercise','none','title','Rejeitado','after','','hasAfter',true,
+    'lessonId',(select lesson_id from test_state)
+  ))),
+  (select cards_revision from public.microsequences where id = (select microsequence_id from test_state)),
+  '43000000-0000-4000-8000-000000000021'
+) payload;
+select ok(
+  (select payload ->> 'status' = 'rejected'
+      and payload ->> 'code' = '23514'
+      and payload ->> 'reason' = 'structural_violation'
+   from rejected_invalid_fragment),
+  'fragmento inválido retorna rejeição definitiva estruturada'
+);
+create temp table rejected_missing_microsequence as
+select public.replace_microsequence_cards(
+  (select personal_course_id from test_state),
+  '43000000-0000-4000-8000-000000000099',
+  (select fragment from replacement_request), 1,
+  '43000000-0000-4000-8000-000000000022'
+) payload;
+select ok(
+  (select payload ->> 'status' = 'rejected'
+      and payload ->> 'code' = '22023'
+      and payload ->> 'reason' = 'entity_missing'
+   from rejected_missing_microsequence),
+  'microssequência removida ou inexistente retorna rejeição definitiva'
+);
+savepoint revoked_replace_authorization;
+insert into public.course_memberships (
+  id, course_id, user_id, role, position, deleted_at
+) values (
+  '43000000-0000-4000-8000-000000000023',
+  (select personal_course_id from test_state),
+  '20000000-0000-4000-8000-000000000004', 'editor', 9, now()
+);
+select set_config('request.jwt.claim.sub', '20000000-0000-4000-8000-000000000004', true);
+create temp table rejected_revoked_editor as
+select public.replace_microsequence_cards(
+  (select personal_course_id from test_state),
+  (select microsequence_id from test_state),
+  (select fragment from replacement_request),
+  (select cards_revision from public.microsequences where id = (select microsequence_id from test_state)),
+  '43000000-0000-4000-8000-000000000024'
+) payload;
+select ok(
+  (select payload ->> 'status' = 'rejected'
+      and payload ->> 'code' = '42501'
+      and payload ->> 'reason' = 'authorization_denied'
+   from rejected_revoked_editor),
+  'autorização revogada retorna rejeição definitiva estruturada'
+);
+select set_config('request.jwt.claim.sub', '20000000-0000-4000-8000-000000000001', true);
+rollback to revoked_replace_authorization;
 select ok(
   not exists (select 1 from public.sync_changes where entity_revision <= 0),
   'feed sempre transporta revisão positiva'
@@ -2031,6 +2175,7 @@ insert into public.card_comments (
 select set_config('request.jwt.claim.sub', '20000000-0000-4000-8000-000000000002', true);
 create temp table learner_membership_visibility (only_self boolean not null);
 grant insert, select on learner_membership_visibility to authenticated;
+grant select on public.course_memberships to authenticated;
 set local role authenticated;
 insert into learner_membership_visibility
 select count(*) = 1 and bool_and(user_id = auth.uid())
@@ -2038,6 +2183,7 @@ select count(*) = 1 and bool_and(user_id = auth.uid())
    where course_id = (select personal_course_id from test_state)
      and deleted_at is null;
 reset role;
+revoke select on public.course_memberships from authenticated;
 select ok(
   (select only_self from learner_membership_visibility),
   'RLS de memberships deixa learner consultar somente a própria associação'
@@ -2442,6 +2588,123 @@ select ok(
   'learner recebe tombstone compartilhado mesmo após deleted_at do curso'
 );
 select set_config('request.jwt.claim.sub', '20000000-0000-4000-8000-000000000001', true);
+
+select set_config('request.jwt.claim.role', 'service_role', true);
+update public.sync_devices set inactive_at = now() where inactive_at is null;
+insert into public.sync_devices (
+  id, user_id, label, last_pulled_sequence, last_seen_at
+) values
+  ('65000000-0000-4000-8000-000000000001', '20000000-0000-4000-8000-000000000001',
+   'active-retention-test', 0, now()),
+  ('65000000-0000-4000-8000-000000000002', '20000000-0000-4000-8000-000000000001',
+   'stale-retention-test', 0, now() - interval '200 days');
+create temp table old_compaction_changes as
+with inserted as (
+  insert into public.sync_changes (
+    audience_user_id, course_id, entity_type, entity_id, operation,
+    entity_revision, row_data, changed_at
+  ) values
+    ('20000000-0000-4000-8000-000000000001', null, 'retention_probe',
+     '65000000-0000-4000-8000-000000000010', 'update', 1,
+     '{"id":"65000000-0000-4000-8000-000000000010","revision":1}'::jsonb,
+     now() - interval '40 days'),
+    ('20000000-0000-4000-8000-000000000001', null, 'retention_tombstone_probe',
+     '65000000-0000-4000-8000-000000000011', 'delete', 1,
+     '{"id":"65000000-0000-4000-8000-000000000011","revision":1,"deleted_at":"2025-01-01T00:00:00Z"}'::jsonb,
+     now() - interval '40 days')
+  returning sequence
+)
+select min(sequence) min_sequence, max(sequence) max_sequence from inserted;
+update public.sync_devices
+set last_pulled_sequence = (select max_sequence from old_compaction_changes)
+where id = '65000000-0000-4000-8000-000000000001';
+insert into public.sync_changes (
+  audience_user_id, entity_type, entity_id, operation, entity_revision, row_data, changed_at
+) values (
+  '20000000-0000-4000-8000-000000000001', 'retention_recent_probe',
+  '65000000-0000-4000-8000-000000000012', 'update', 1,
+  '{"id":"65000000-0000-4000-8000-000000000012","revision":1}'::jsonb, now()
+);
+insert into public.sync_mutations (
+  mutation_id, user_id, device_id, entity_type, entity_id, operation,
+  base_revision, status, request, result, created_at
+) values
+  (
+    '65000000-0000-4000-8000-000000000020',
+    '20000000-0000-4000-8000-000000000001',
+    '65000000-0000-4000-8000-000000000002', 'retention_probe',
+    '65000000-0000-4000-8000-000000000010', 'update', 1, 'applied',
+    '{}'::jsonb, '{"status":"applied"}'::jsonb, now() - interval '200 days'
+  ),
+  (
+    '65000000-0000-4000-8000-000000000022',
+    '20000000-0000-4000-8000-000000000001',
+    '65000000-0000-4000-8000-000000000001', 'active_retention_probe',
+    '65000000-0000-4000-8000-000000000013', 'update', 1, 'applied',
+    '{}'::jsonb, '{"status":"applied"}'::jsonb, now() - interval '200 days'
+  );
+insert into private.rpc_idempotency (
+  user_id, mutation_id, operation, request_course_id, result_course_id,
+  result_payload, created_at
+) values (
+  '20000000-0000-4000-8000-000000000001',
+  '65000000-0000-4000-8000-000000000021', 'clone_catalog_course',
+  '10000000-0000-4000-8000-000000000001',
+  '10000000-0000-4000-8000-000000000001',
+  '{"status":"applied"}'::jsonb, now() - interval '400 days'
+);
+create temp table retention_dry_run as
+select public.compact_sync_history(true, now()) payload;
+select ok(
+  (select (payload ->> 'staleDevices')::bigint = 1
+      and (payload ->> 'changeCandidates')::bigint >= 2
+      and (payload ->> 'mutationCandidates')::bigint >= 2
+      and (payload ->> 'rpcIdempotencyCandidates')::bigint >= 1
+      and (payload ->> 'deletedChanges')::bigint = 0
+   from retention_dry_run),
+  'dry-run calcula watermark e candidatos sem remover histórico'
+);
+create temp table retention_real_run as
+select public.compact_sync_history(false, now()) payload;
+select ok(
+  (select inactive_at is not null from public.sync_devices
+   where id = '65000000-0000-4000-8000-000000000002')
+  and not exists (
+    select 1 from public.sync_changes
+    where sequence between (select min_sequence from old_compaction_changes)
+                       and (select max_sequence from old_compaction_changes)
+  )
+  and exists (
+    select 1 from public.sync_changes
+    where entity_type = 'retention_recent_probe'
+      and entity_id = '65000000-0000-4000-8000-000000000012'
+  ),
+  'compactação desativa dispositivo stale e remove somente feed abaixo do watermark e retenção'
+);
+select ok(
+  not exists (
+    select 1 from public.sync_mutations
+    where mutation_id = '65000000-0000-4000-8000-000000000022'
+  ),
+  'retenção expira ledger terminal mesmo quando o dispositivo continua ativo'
+);
+select ok(
+  not exists (
+    select 1 from public.sync_mutations
+    where mutation_id = '65000000-0000-4000-8000-000000000020'
+  )
+  and not exists (
+    select 1 from private.rpc_idempotency
+    where mutation_id = '65000000-0000-4000-8000-000000000021'
+  )
+  and exists (
+    select 1 from public.courses
+    where id = (select personal_course_id from test_state) and deleted_at is not null
+  )
+  and (select (payload ->> 'tombstoneRowsDeleted')::integer = 0 from retention_real_run),
+  'retenção limpa ledgers expirados sem apagar tombstones relacionais'
+);
+select set_config('request.jwt.claim.role', 'authenticated', true);
 
 select * from finish();
 rollback;

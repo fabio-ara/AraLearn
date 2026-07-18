@@ -5,7 +5,8 @@ export const AUTH_SESSION_STATE_KEY = "auth.session";
 export const AUTH_PKCE_STATE_KEY = "auth.pkce";
 const AUTH_BROADCAST_CHANNEL = "aralearn-auth-v1";
 const AUTH_REFRESH_LOCK = "aralearn-auth-refresh-v1";
-const AUTH_CALLBACK_QUERY_FIELDS = ["code", "error", "error_code", "error_description"];
+const AUTH_CALLBACK_QUERY_FIELDS = ["code", "auth_state", "error", "error_code", "error_description"];
+const AUTH_PKCE_MAX_AGE_MS = 15 * 60 * 1000;
 
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -71,7 +72,7 @@ function authParameters(locationValue) {
     };
   }
   const code = query.get("code");
-  if (code) return { code };
+  if (code) return { code, state: query.get("auth_state") || "" };
   if (fragment.get("access_token")) return { implicitToken: true };
   return null;
 }
@@ -103,13 +104,20 @@ async function createPkcePair(cryptoValue) {
   ) {
     throw new Error("PKCE exige Web Crypto com SHA-256.");
   }
-  const random = cryptoValue.getRandomValues(new Uint8Array(32));
-  const verifier = base64Url(random);
+  const verifier = base64Url(cryptoValue.getRandomValues(new Uint8Array(32)));
+  const state = base64Url(cryptoValue.getRandomValues(new Uint8Array(32)));
   const digest = await cryptoValue.subtle.digest(
     "SHA-256",
     new globalThis.TextEncoder().encode(verifier)
   );
-  return { verifier, challenge: base64Url(new Uint8Array(digest)) };
+  return { verifier, challenge: base64Url(new Uint8Array(digest)), state };
+}
+
+function redirectWithAuthState(redirectTo, state) {
+  if (!redirectTo) return "";
+  const redirect = new URL(redirectTo);
+  redirect.searchParams.set("auth_state", state);
+  return redirect.toString();
 }
 
 function authPath(path, redirectTo) {
@@ -194,6 +202,7 @@ export class SupabaseAuthClient {
     const pair = await createPkcePair(this.cryptoValue);
     await this.sessionStore.putSyncState(AUTH_PKCE_STATE_KEY, {
       verifier: pair.verifier,
+      state: pair.state,
       type,
       createdAt: new Date(this.clock()).toISOString()
     });
@@ -220,7 +229,14 @@ export class SupabaseAuthClient {
       this.cleanCallbackUrl();
     } else if (callback?.code) {
       const pkce = await this.sessionStore.getSyncState(AUTH_PKCE_STATE_KEY);
-      if (!pkce?.verifier) {
+      const createdAt = Date.parse(pkce?.createdAt || "");
+      const stateMatches = Boolean(
+        callback.state && pkce?.state && callback.state === pkce.state
+      );
+      const stateIsFresh = Number.isFinite(createdAt) &&
+        createdAt <= this.clock() + 60_000 &&
+        this.clock() - createdAt <= AUTH_PKCE_MAX_AGE_MS;
+      if (!pkce?.verifier || !stateMatches || !stateIsFresh) {
         this.redirectError = "O código de autenticação não pertence a este dispositivo ou expirou.";
         this.cleanCallbackUrl();
       } else {
@@ -297,7 +313,10 @@ export class SupabaseAuthClient {
     const pkce = await this.createPkceState("signup");
     let payload;
     try {
-      payload = await this.http.request(authPath("/auth/v1/signup", redirectTo), {
+      payload = await this.http.request(authPath(
+        "/auth/v1/signup",
+        redirectWithAuthState(redirectTo, pkce.state)
+      ), {
         method: "POST",
         body: {
           email: normalizeEmail(email),
@@ -325,7 +344,10 @@ export class SupabaseAuthClient {
   async resendConfirmation({ email, redirectTo = buildAuthRedirectUrl() }) {
     const pkce = await this.createPkceState("signup");
     try {
-      return await this.http.request(authPath("/auth/v1/resend", redirectTo), {
+      return await this.http.request(authPath(
+        "/auth/v1/resend",
+        redirectWithAuthState(redirectTo, pkce.state)
+      ), {
         method: "POST",
         body: {
           type: "signup",
@@ -345,7 +367,10 @@ export class SupabaseAuthClient {
   async requestPasswordReset({ email, redirectTo = buildAuthRedirectUrl() }) {
     const pkce = await this.createPkceState("recovery");
     try {
-      return await this.http.request(authPath("/auth/v1/recover", redirectTo), {
+      return await this.http.request(authPath(
+        "/auth/v1/recover",
+        redirectWithAuthState(redirectTo, pkce.state)
+      ), {
         method: "POST",
         body: {
           email: normalizeEmail(email),

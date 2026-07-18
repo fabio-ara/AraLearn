@@ -5,7 +5,8 @@ import { IDBFactory } from "fake-indexeddb";
 import {
   IndexedDbRelationalStore,
   RELATIONAL_DATABASE_NAME,
-  RELATIONAL_STORE_DEFINITIONS
+  RELATIONAL_STORE_DEFINITIONS,
+  relationalDatabaseNameForUser
 } from "../../src/persistence/IndexedDbRelationalStore.js";
 
 const REQUIRED_STORES = [
@@ -131,26 +132,43 @@ test("syncState conserva apenas valores do novo banco e não consulta o banco le
   assert.equal(await store.getSyncState("auth.session"), null);
 });
 
-test("troca de usuário sela a réplica e não expõe linhas da conta anterior", async (context) => {
-  const store = await IndexedDbRelationalStore.open(new IDBFactory());
-  context.after(() => store.close());
-  await store.bindReplicaToUser("user-a", { access_token: "token-a", user: { id: "user-a" } });
-  await store.put("courses", {
-    id: uuid(60), courseId: uuid(60), contractKey: "privado-a", revision: 1, deletedAt: null
+test("cada UUID de usuário mantém réplica física persistente sem visibilidade cruzada", async () => {
+  const indexedDb = new IDBFactory();
+  const userA = uuid(901);
+  const userB = uuid(902);
+  const courseA = uuid(903);
+  const courseB = uuid(904);
+  const storeA = await IndexedDbRelationalStore.open(indexedDb, { userId: userA });
+  await storeA.bindReplicaToUser(userA);
+  await storeA.put("courses", {
+    id: courseA, courseId: courseA, contractKey: "privado-a", revision: 1, deletedAt: null
   });
-  await store.put("outbox", {
-    mutationId: uuid(61), entityType: "courses", entityId: uuid(60),
-    status: "pending", operation: "upsert", payload: { id: uuid(60) }
+  await storeA.put("outbox", {
+    mutationId: uuid(905), entityType: "courses", entityId: courseA, courseId: courseA,
+    status: "pending", operation: "upsert", payload: { id: courseA }
   });
+  storeA.close();
 
-  assert.equal(
-    await store.bindReplicaToUser("user-b", { access_token: "token-b", user: { id: "user-b" } }),
-    true
-  );
-  assert.deepEqual(await store.getAll("courses"), []);
-  assert.deepEqual(await store.getAll("outbox"), []);
-  assert.equal((await store.getSyncState("auth.session")).access_token, "token-b");
-  assert.equal(await store.getSyncState("replica.userId"), "user-b");
+  const storeB = await IndexedDbRelationalStore.open(indexedDb, { userId: userB });
+  await storeB.bindReplicaToUser(userB);
+  assert.equal(storeB.name, relationalDatabaseNameForUser(userB));
+  assert.deepEqual(await storeB.getAll("courses"), []);
+  assert.deepEqual(await storeB.getAll("outbox"), []);
+  await storeB.put("courses", {
+    id: courseB, courseId: courseB, contractKey: "privado-b", revision: 1, deletedAt: null
+  });
+  storeB.close();
+
+  const returnedA = await IndexedDbRelationalStore.open(indexedDb, { userId: userA });
+  assert.equal((await returnedA.get("courses", courseA)).contractKey, "privado-a");
+  assert.equal(await returnedA.get("courses", courseB), undefined);
+  assert.equal((await returnedA.get("outbox", uuid(905))).status, "pending");
+  returnedA.close();
+
+  const returnedB = await IndexedDbRelationalStore.open(indexedDb, { userId: userB });
+  assert.equal((await returnedB.get("courses", courseB)).contractKey, "privado-b");
+  assert.equal(await returnedB.get("courses", courseA), undefined);
+  returnedB.close();
 });
 
 test("outbox ordena pais antes dos filhos e tombstones na ordem inversa", async (context) => {
@@ -673,4 +691,429 @@ test("colisão natural remapeia UUID legado para a identidade canônica", async 
   assert.equal(await store.get("lessonProgress", localId), undefined);
   assert.deepEqual(await store.get("lessonProgress", canonicalId), remoteRow);
   assert.equal((await store.get("cardProgress", cardProgressId)).lessonProgressId, canonicalId);
+});
+
+test("snapshot remoto preserva curso quando há outbox, conflito, rejeição ou edição suja", async () => {
+  const blockerKinds = ["pending", "conflict", "rejected", "dirty"];
+  for (const [offset, blockerKind] of blockerKinds.entries()) {
+    const store = await IndexedDbRelationalStore.open(new IDBFactory());
+    const courseId = uuid(300 + offset);
+    const mutationId = uuid(310 + offset);
+    await store.put("courses", {
+      id: courseId,
+      courseId,
+      contractKey: `local-${blockerKind}`,
+      title: "Trabalho local",
+      revision: 2,
+      deletedAt: null
+    });
+    if (blockerKind === "dirty") {
+      await store.putCourseDirtyState(courseId, true);
+    } else {
+      await store.put("outbox", {
+        mutationId,
+        sequence: 1,
+        courseId,
+        entityType: "courses",
+        entityId: courseId,
+        operation: "upsert",
+        baseRevision: 1,
+        payload: { id: courseId, courseId, title: "Trabalho local", revision: 2 },
+        previousRow: { id: courseId, courseId, title: "Anterior", revision: 1 },
+        status: blockerKind
+      });
+    }
+    const result = await store.replaceCourseSnapshot(courseId, {
+      courses: [{
+        id: courseId,
+        courseId,
+        contractKey: `remote-${blockerKind}`,
+        title: "Remoto",
+        revision: 9,
+        deletedAt: null
+      }]
+    }, { uuidFactory: () => uuid(350 + offset) });
+    assert.equal(result.status, "reconciliation_required", blockerKind);
+    assert.equal((await store.get("courses", courseId)).title, "Trabalho local", blockerKind);
+    assert.equal((await store.listRemoteReconciliationRows(courseId)).length, 1, blockerKind);
+    assert.equal((await store.listConflicts({ courseId })).at(-1).reason, "local_work_pending");
+    store.close();
+  }
+});
+
+test("bootstrap bloqueado não aplica snapshot parcial nem avança high-water", async (context) => {
+  const store = await IndexedDbRelationalStore.open(new IDBFactory());
+  context.after(() => store.close());
+  const localCourseId = uuid(360);
+  const otherCourseId = uuid(361);
+  const mutationId = uuid(362);
+  await store.put("courses", {
+    id: localCourseId, courseId: localCourseId, contractKey: "local", revision: 2, deletedAt: null
+  });
+  await store.put("outbox", {
+    mutationId,
+    sequence: 1,
+    courseId: localCourseId,
+    entityType: "courses",
+    entityId: localCourseId,
+    operation: "upsert",
+    baseRevision: 1,
+    payload: { id: localCourseId, courseId: localCourseId, contractKey: "local", revision: 2 },
+    status: "pending"
+  });
+  const result = await store.applyReplicaBootstrap({
+    snapshot: {
+      courses: [
+        { id: localCourseId, courseId: localCourseId, contractKey: "remoto", revision: 3, deletedAt: null },
+        { id: otherCourseId, courseId: otherCourseId, contractKey: "outro", revision: 1, deletedAt: null }
+      ]
+    },
+    highWaterSequence: 77,
+    deviceId: uuid(363),
+    syncStateId: `sync.cursor:${uuid(363)}`,
+    uuidFactory: (() => {
+      let next = 364;
+      return () => uuid(next++);
+    })()
+  });
+  assert.equal(result.status, "reconciliation_required");
+  assert.equal((await store.get("courses", localCourseId)).contractKey, "local");
+  assert.equal(await store.get("courses", otherCourseId), undefined);
+  assert.equal(await store.get("syncState", `sync.cursor:${uuid(363)}`), undefined);
+});
+
+test("bootstrap não ressuscita curso tombstonado com exclusão pessoal pendente", async (context) => {
+  const store = await IndexedDbRelationalStore.open(new IDBFactory());
+  context.after(() => store.close());
+  const courseId = uuid(365);
+  const mutationId = uuid(366);
+  const deviceId = uuid(367);
+  const deletedAt = "2026-07-18T12:00:00.000Z";
+  await store.put("courses", {
+    id: courseId,
+    courseId,
+    contractKey: "exclusao-local",
+    revision: 3,
+    deletedAt
+  });
+  await store.put("outbox", {
+    mutationId,
+    sequence: 1,
+    courseId,
+    entityType: "personalCourseDeletion",
+    entityId: courseId,
+    operation: "delete",
+    baseRevision: 2,
+    payload: { courseId, affectedEntities: [] },
+    status: "pending",
+    createdAt: deletedAt
+  });
+
+  const result = await store.applyReplicaBootstrap({
+    snapshot: {
+      courses: [{
+        id: courseId,
+        courseId,
+        contractKey: "versao-remota",
+        revision: 4,
+        deletedAt: null
+      }]
+    },
+    highWaterSequence: 79,
+    deviceId,
+    syncStateId: `sync.cursor:${deviceId}`,
+    uuidFactory: () => uuid(368)
+  });
+
+  assert.equal(result.status, "reconciliation_required");
+  assert.equal((await store.get("courses", courseId)).deletedAt, deletedAt);
+  assert.equal((await store.get("outbox", mutationId)).status, "pending");
+  assert.equal(await store.get("syncState", `sync.cursor:${deviceId}`), undefined);
+  assert.equal((await store.listConflicts({ courseId })).at(-1).reason, "bootstrap_local_work_pending");
+});
+
+test("conflito remoto usa primeira mutação causal, não a ordem lexical do UUID", async (context) => {
+  const store = await IndexedDbRelationalStore.open(new IDBFactory());
+  context.after(() => store.close());
+  const courseId = uuid(370);
+  const entityId = uuid(371);
+  const firstMutationId = "ffffffff-ffff-4fff-8fff-ffffffffffff";
+  const secondMutationId = "00000000-0000-4000-8000-000000000001";
+  await store.put("blocks", { id: entityId, courseId, value: "mais recente", revision: 3, deletedAt: null });
+  await store.putMany("outbox", [
+    {
+      mutationId: firstMutationId,
+      sequence: 1,
+      courseId,
+      entityType: "blocks",
+      entityId,
+      operation: "upsert",
+      baseRevision: 1,
+      payload: { id: entityId, courseId, value: "primeira", revision: 2 },
+      status: "pending",
+      createdAt: "2026-07-18T00:00:00.000Z"
+    },
+    {
+      mutationId: secondMutationId,
+      sequence: 2,
+      courseId,
+      entityType: "blocks",
+      entityId,
+      operation: "upsert",
+      baseRevision: 2,
+      payload: { id: entityId, courseId, value: "segunda", revision: 3 },
+      status: "pending",
+      createdAt: "2026-07-18T00:00:01.000Z"
+    }
+  ]);
+  await store.applyRemotePage({
+    changes: [{
+      storeName: "blocks",
+      entityId,
+      courseId,
+      revision: 4,
+      row: { id: entityId, courseId, value: "remoto", revision: 4, deletedAt: null }
+    }],
+    cursor: 1,
+    uuidFactory: () => uuid(372)
+  });
+  const conflict = (await store.listConflicts())[0];
+  assert.equal(conflict.mutationId, firstMutationId);
+  assert.equal((await store.get("outbox", firstMutationId)).status, "conflict");
+  assert.equal((await store.get("outbox", secondMutationId)).status, "pending");
+  assert.deepEqual(await store.listPendingOutbox(), []);
+});
+
+test("revogação limpa toda a árvore quando não há trabalho local", async (context) => {
+  const store = await IndexedDbRelationalStore.open(new IDBFactory());
+  context.after(() => store.close());
+  const userId = uuid(380);
+  const courseId = uuid(381);
+  const membershipId = uuid(382);
+  const moduleId = uuid(383);
+  const lessonId = uuid(384);
+  await store.putSyncState("replica.userId", userId);
+  await store.put("courses", { id: courseId, courseId, contractKey: "revogado", revision: 1, deletedAt: null });
+  await store.put("memberships", {
+    id: membershipId, courseId, userId, role: "learner", revision: 1, deletedAt: null
+  });
+  await store.put("modules", { id: moduleId, courseId, position: 0, revision: 1, deletedAt: null });
+  await store.put("lessons", {
+    id: lessonId, courseId, moduleId, position: 0, revision: 1, deletedAt: null
+  });
+  await store.put("lessonProgress", {
+    id: uuid(385), courseId, lessonId, userId, revision: 1, deletedAt: null
+  });
+  await store.put("comments", {
+    id: uuid(386), courseId, cardId: uuid(387), userId, body: "local", revision: 1, deletedAt: null
+  });
+  const deletedAt = "2026-07-19T01:00:00.000Z";
+  await store.applyRemotePage({
+    changes: [{
+      storeName: "memberships",
+      entityId: membershipId,
+      courseId,
+      operation: "delete",
+      revision: 2,
+      deletedAt,
+      row: { id: membershipId, courseId, userId, role: "learner", revision: 2, deletedAt }
+    }],
+    cursor: 20,
+    receivedAt: deletedAt
+  });
+  assert.equal(await store.get("courses", courseId), undefined);
+  assert.equal(await store.get("modules", moduleId), undefined);
+  assert.equal(await store.get("lessons", lessonId), undefined);
+  assert.deepEqual(await store.getAll("lessonProgress"), []);
+  assert.deepEqual(await store.getAll("comments"), []);
+  assert.equal((await store.get("memberships", membershipId)).deletedAt, deletedAt);
+  assert.equal(await store.getSyncState(`revoked.course:${courseId}`), true);
+});
+
+test("revogação com mutação pendente oculta membership e preserva trabalho para reconciliação", async (context) => {
+  const store = await IndexedDbRelationalStore.open(new IDBFactory());
+  context.after(() => store.close());
+  const userId = uuid(390);
+  const courseId = uuid(391);
+  const membershipId = uuid(392);
+  const moduleId = uuid(393);
+  await store.putSyncState("replica.userId", userId);
+  await store.put("courses", { id: courseId, courseId, contractKey: "local", revision: 1, deletedAt: null });
+  await store.put("memberships", {
+    id: membershipId, courseId, userId, role: "editor", revision: 1, deletedAt: null
+  });
+  await store.put("modules", { id: moduleId, courseId, title: "trabalho", revision: 2, deletedAt: null });
+  await store.put("outbox", {
+    mutationId: uuid(394), sequence: 1, courseId, entityType: "modules", entityId: moduleId,
+    operation: "upsert", baseRevision: 1,
+    payload: { id: moduleId, courseId, title: "trabalho", revision: 2 }, status: "pending"
+  });
+  const deletedAt = "2026-07-19T02:00:00.000Z";
+  await store.applyRemotePage({
+    changes: [{
+      storeName: "memberships", entityId: membershipId, courseId, operation: "delete", revision: 2,
+      deletedAt, row: { id: membershipId, courseId, userId, role: "editor", revision: 2, deletedAt }
+    }],
+    cursor: 21,
+    receivedAt: deletedAt,
+    uuidFactory: (() => { let next = 395; return () => uuid(next++); })()
+  });
+  assert.equal((await store.get("memberships", membershipId)).deletedAt, deletedAt);
+  assert.equal((await store.get("modules", moduleId)).title, "trabalho");
+  assert.equal((await store.get("outbox", uuid(394))).status, "pending");
+  assert.equal((await store.listConflicts({ courseId })).at(-1).reason, "membership_revoked_with_local_work");
+});
+
+test("descarte explícito de rejeição restaura a linha anterior e remove descendentes", async (context) => {
+  const store = await IndexedDbRelationalStore.open(new IDBFactory());
+  context.after(() => store.close());
+  const courseId = uuid(400);
+  const blockId = uuid(401);
+  const rejectedId = uuid(402);
+  const descendantId = uuid(403);
+  const previousRow = { id: blockId, courseId, value: "anterior", revision: 1, deletedAt: null };
+  await store.put("blocks", { ...previousRow, value: "posterior", revision: 3 });
+  await store.putMany("outbox", [
+    {
+      mutationId: rejectedId, sequence: 1, courseId, entityType: "blocks", entityId: blockId,
+      operation: "upsert", baseRevision: 1, previousRow,
+      payload: { ...previousRow, value: "rejeitado", revision: 2 }, status: "rejected"
+    },
+    {
+      mutationId: descendantId, sequence: 2, courseId, entityType: "blocks", entityId: blockId,
+      operation: "upsert", baseRevision: 2,
+      previousRow: { ...previousRow, value: "rejeitado", revision: 2 },
+      payload: { ...previousRow, value: "posterior", revision: 3 }, status: "pending"
+    }
+  ]);
+  const result = await store.discardRejectedMutation(rejectedId);
+  assert.deepEqual(result.discardedDescendantIds, [descendantId]);
+  assert.deepEqual(await store.get("blocks", blockId), previousRow);
+  assert.equal(await store.get("outbox", rejectedId), undefined);
+  assert.equal(await store.get("outbox", descendantId), undefined);
+});
+
+test("manter versão local após conflito reenfileira somente o patch declarado", async (context) => {
+  const store = await IndexedDbRelationalStore.open(new IDBFactory());
+  context.after(() => store.close());
+  const courseId = uuid(400);
+  const cardId = uuid(401);
+  const blockId = uuid(402);
+  const mutationId = uuid(403);
+  const localRow = {
+    id: blockId,
+    courseId,
+    cardId,
+    position: 0,
+    value: "Texto local",
+    prompt: "Contexto preservado",
+    revision: 3,
+    updatedAt: "2026-07-19T00:01:00.000Z",
+    deletedAt: null
+  };
+  await store.put("blocks", localRow);
+  await store.put("outbox", {
+    mutationId,
+    sequence: 1,
+    courseId,
+    entityType: "blocks",
+    entityId: blockId,
+    operation: "upsert",
+    baseRevision: 2,
+    changedFields: ["value"],
+    previousRow: { ...localRow, value: "Texto base", revision: 2 },
+    payload: { value: "Texto local" },
+    status: "pending",
+    createdAt: "2026-07-19T00:01:00.000Z"
+  });
+  const remoteRow = {
+    ...localRow,
+    value: "Texto remoto",
+    revision: 3,
+    updatedAt: "2026-07-19T00:02:00.000Z"
+  };
+  const remote = await store.applyRemotePage({
+    changes: [{
+      storeName: "blocks",
+      entityId: blockId,
+      courseId,
+      operation: "upsert",
+      revision: 3,
+      row: remoteRow
+    }],
+    cursor: 30,
+    receivedAt: "2026-07-19T00:02:00.000Z",
+    uuidFactory: () => uuid(404)
+  });
+
+  const resolution = await store.resolveConflict(remote.conflicts[0].id, "keepLocal", {
+    resolvedAt: "2026-07-19T00:03:00.000Z",
+    uuidFactory: () => uuid(405)
+  });
+
+  assert.deepEqual(resolution.queuedMutation.changedFields, ["value"]);
+  assert.deepEqual(resolution.queuedMutation.payload, { value: "Texto local" });
+  assert.equal((await store.get("blocks", blockId)).prompt, "Contexto preservado");
+  assert.equal((await store.get("blocks", blockId)).revision, 4);
+});
+
+test("aceitar snapshot remoto explicitamente substitui curso e descarta a cadeia local", async (context) => {
+  const store = await IndexedDbRelationalStore.open(new IDBFactory());
+  context.after(() => store.close());
+  const courseId = uuid(410);
+  const mutationId = uuid(411);
+  await store.put("courses", {
+    id: courseId, courseId, contractKey: "local", title: "Local", revision: 2, deletedAt: null
+  });
+  await store.put("outbox", {
+    mutationId, sequence: 1, courseId, entityType: "courses", entityId: courseId,
+    operation: "upsert", baseRevision: 1,
+    payload: { id: courseId, courseId, contractKey: "local", title: "Local", revision: 2 },
+    status: "pending"
+  });
+  const replacement = await store.replaceCourseSnapshot(courseId, {
+    courses: [{
+      id: courseId, courseId, contractKey: "remoto", title: "Remoto", revision: 8, deletedAt: null
+    }]
+  }, { uuidFactory: (() => { let next = 412; return () => uuid(next++); })() });
+  await store.resolveConflict(replacement.conflict.id, "acceptRemote");
+  assert.equal((await store.get("courses", courseId)).title, "Remoto");
+  assert.equal(await store.get("outbox", mutationId), undefined);
+  assert.deepEqual(await store.listRemoteReconciliationRows(courseId), []);
+  assert.equal((await store.get("conflicts", replacement.conflict.id)).status, "resolved");
+});
+
+test("manter trabalho após revogação encerra reconciliação e torna a fila rejeitada", async (context) => {
+  const store = await IndexedDbRelationalStore.open(new IDBFactory());
+  context.after(() => store.close());
+  const userId = uuid(420);
+  const courseId = uuid(421);
+  const membershipId = uuid(422);
+  const mutationId = uuid(423);
+  await store.putSyncState("replica.userId", userId);
+  await store.put("courses", { id: courseId, courseId, contractKey: "local", revision: 1, deletedAt: null });
+  await store.put("memberships", {
+    id: membershipId, courseId, userId, role: "editor", revision: 1, deletedAt: null
+  });
+  await store.put("outbox", {
+    mutationId, sequence: 1, courseId, entityType: "courses", entityId: courseId,
+    operation: "upsert", baseRevision: 1,
+    payload: { id: courseId, courseId, contractKey: "local", revision: 2 }, status: "pending"
+  });
+  const deletedAt = "2026-07-19T03:00:00.000Z";
+  const result = await store.applyRemotePage({
+    changes: [{
+      storeName: "memberships", entityId: membershipId, courseId, operation: "delete", revision: 2,
+      deletedAt, row: { id: membershipId, courseId, userId, role: "editor", revision: 2, deletedAt }
+    }],
+    cursor: 22,
+    receivedAt: deletedAt,
+    uuidFactory: (() => { let next = 424; return () => uuid(next++); })()
+  });
+  const conflict = result.conflicts.find((entry) => entry.entityType === "courseSnapshot");
+  await store.resolveConflict(conflict.id, "keepLocal");
+  assert.equal((await store.get("courses", courseId)).contractKey, "local");
+  assert.equal((await store.get("outbox", mutationId)).status, "rejected");
+  assert.equal((await store.get("outbox", mutationId)).rejectionReason, "membership_revoked");
+  assert.equal((await store.get("conflicts", conflict.id)).status, "resolved");
 });

@@ -14,6 +14,7 @@ if (rootArgumentIndex >= 0 && !requestedRoot) {
 }
 const artifactMode = Boolean(requestedRoot);
 const serverRoot = artifactMode ? path.resolve(repoRoot, requestedRoot) : repoRoot;
+const CSP_CONNECT_SOURCE_PLACEHOLDER = "__ARALEARN_CONNECT_SRC__";
 if (artifactMode && serverRoot !== path.resolve(repoRoot, ".pages")) {
   throw new Error("O servidor de artefato aceita somente o diretório .pages.");
 }
@@ -50,11 +51,15 @@ async function tryReadFile(absolutePath) {
   }
 }
 
-function developmentRuntimeConfig() {
-  const config = readSupabaseRuntimeConfig({
+function developmentConfig() {
+  return readSupabaseRuntimeConfig({
     supabaseUrl: process.env.ARALEARN_SUPABASE_URL || "",
     supabasePublishableKey: process.env.ARALEARN_SUPABASE_PUBLISHABLE_KEY || ""
   });
+}
+
+function developmentRuntimeConfig() {
+  const config = developmentConfig();
   return Buffer.from(
     `globalThis.__ARALEARN_ENV__ ??= Object.freeze(${JSON.stringify({
       supabaseUrl: config.projectUrl,
@@ -62,6 +67,14 @@ function developmentRuntimeConfig() {
     }, null, 2)});\n`,
     "utf8"
   );
+}
+
+function applyDevelopmentContentSecurityPolicy(data) {
+  const source = data.toString("utf8");
+  if (!source.includes(CSP_CONNECT_SOURCE_PLACEHOLDER)) return data;
+  const config = developmentConfig();
+  const connectSource = config.projectUrl ? new URL(config.projectUrl).origin : "";
+  return Buffer.from(source.replaceAll(CSP_CONNECT_SOURCE_PLACEHOLDER, connectSource), "utf8");
 }
 
 const server = http.createServer(async (req, res) => {
@@ -103,6 +116,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     const ext = path.extname(resolved).toLowerCase();
+    if (ext === ".html") data = applyDevelopmentContentSecurityPolicy(data);
     const contentType = MIME_BY_EXT.get(ext) || "application/octet-stream";
     res.writeHead(200, {
       "Content-Type": contentType,

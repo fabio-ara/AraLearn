@@ -45,6 +45,16 @@ function clone(value) {
   return value == null ? value : structuredClone(value);
 }
 
+function normalizedValue(value) {
+  if (Array.isArray(value)) return value.map(normalizedValue);
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.keys(value).sort().map((key) => [key, normalizedValue(value[key])])
+    );
+  }
+  return value;
+}
+
 function validationError(result) {
   const details = (result.errors || [])
     .map((entry) => `${entry.path}: ${entry.message}`)
@@ -86,6 +96,16 @@ function rowsEqual(left, right) {
 
 function makeMutation(storeName, previousRow, nextRow) {
   const row = nextRow || previousRow;
+  const changedFields = [...new Set([
+    ...Object.keys(previousRow || {}),
+    ...Object.keys(nextRow || {})
+  ])]
+    .filter((fieldName) => !INTERNAL_ROW_FIELDS.has(fieldName))
+    .filter((fieldName) =>
+      JSON.stringify(normalizedValue(previousRow?.[fieldName])) !==
+      JSON.stringify(normalizedValue(nextRow?.[fieldName]))
+    )
+    .sort();
   return {
     storeName,
     entityType: storeName,
@@ -95,11 +115,12 @@ function makeMutation(storeName, previousRow, nextRow) {
     baseRevision: Number(previousRow?.revision || 0),
     previousRow: clone(previousRow),
     nextRow: clone(nextRow),
-    changedFields: [...new Set([
-      ...Object.keys(previousRow || {}),
-      ...Object.keys(nextRow || {})
-    ])].filter((fieldName) => !INTERNAL_ROW_FIELDS.has(fieldName)).sort()
+    changedFields
   };
+}
+
+function isEffectiveMutation(mutation) {
+  return mutation.operation !== "upsert" || !mutation.previousRow || mutation.changedFields.length > 0;
 }
 
 function diffRowMaps(storeName, previousMap, nextRows) {
@@ -235,7 +256,11 @@ export class RelationalProjectRepository {
   #membershipRows = new Map();
   #progress = createEmptyProgressDocument();
   #tail = Promise.resolve();
-  #pendingErrors = [];
+  #pendingWrites = 0;
+  #durabilityError = null;
+  #failedDurabilityTasks = [];
+  #durabilityListeners = new Set();
+  #durabilityChangedAt = null;
   #latestProjectSave = 0;
   #latestProgressSave = 0;
 
@@ -374,13 +399,92 @@ export class RelationalProjectRepository {
     }
   }
 
-  #enqueue(task, onFailure = null) {
+  #committedProgressDocument() {
+    return progressDocumentFromRows(
+      this.#lessonProgressRows,
+      this.#cardProgressRows,
+      this.userId
+    );
+  }
+
+  #hasUncommittedMemory() {
+    return JSON.stringify(this.#project) !== JSON.stringify(this.#committedProject) ||
+      JSON.stringify(this.#progress) !== JSON.stringify(this.#committedProgressDocument());
+  }
+
+  #durabilityStatus() {
+    if (this.#pendingWrites > 0) return "pending";
+    if (this.#durabilityError) return "error";
+    if (this.#hasUncommittedMemory()) return "pending";
+    return "saved";
+  }
+
+  #notifyDurability() {
+    this.#durabilityChangedAt = timestamp(this.clock);
+    const state = this.getDurabilityState();
+    this.#durabilityListeners.forEach((listener) => {
+      try {
+        listener(state);
+      } catch (error) {
+        console.error("Listener de durabilidade falhou.", error);
+      }
+    });
+  }
+
+  getDurabilityState() {
+    this.#assertInitialized();
+    return Object.freeze({
+      status: this.#durabilityStatus(),
+      pendingWrites: this.#pendingWrites,
+      hasUncommittedMemory: this.#hasUncommittedMemory(),
+      error: this.#durabilityError
+        ? Object.freeze({
+            name: this.#durabilityError.name || "Error",
+            message: this.#durabilityError.message || String(this.#durabilityError)
+          })
+        : null,
+      changedAt: this.#durabilityChangedAt
+    });
+  }
+
+  onDurabilityChange(listener) {
+    this.#assertInitialized();
+    if (typeof listener !== "function") {
+      throw new TypeError("Listener de durabilidade inválido.");
+    }
+    this.#durabilityListeners.add(listener);
+    listener(this.getDurabilityState());
+    return () => this.#durabilityListeners.delete(listener);
+  }
+
+  #enqueue(task, onFailure = null, { retryable = false } = {}) {
+    this.#pendingWrites += 1;
+    this.#notifyDurability();
     const operation = this.#tail.then(task);
+    // A interface atual dispara algumas gravações sem await para manter a edição
+    // síncrona. O estado de durabilidade conserva a falha, enquanto este
+    // observador impede uma rejeição global não tratada. Quem aguarda a Promise
+    // original continua recebendo a rejeição normalmente.
+    void operation.catch(() => undefined);
     this.#tail = operation.then(
-      () => undefined,
+      () => {
+        this.#pendingWrites -= 1;
+        this.#failedDurabilityTasks = this.#failedDurabilityTasks.filter(
+          (failedTask) => failedTask !== task
+        );
+        if (!this.#hasUncommittedMemory() && this.#failedDurabilityTasks.length === 0) {
+          this.#durabilityError = null;
+        }
+        this.#notifyDurability();
+      },
       (error) => {
-        this.#pendingErrors.push(error);
+        this.#pendingWrites -= 1;
+        this.#durabilityError = error instanceof Error ? error : new Error(String(error));
+        if (retryable && !this.#failedDurabilityTasks.includes(task)) {
+          this.#failedDurabilityTasks.push(task);
+        }
         onFailure?.(error);
+        this.#notifyDurability();
       }
     );
     return operation;
@@ -602,7 +706,7 @@ export class RelationalProjectRepository {
     const saveNumber = ++this.#latestProjectSave;
     this.#project = clone(snapshot);
 
-    this.#enqueue(async () => {
+    const operation = this.#enqueue(async () => {
       const diff = this.differ.diff(this.#committedProject, snapshot, {
         previousRows: this.#projectRows,
         ...(scope ? { scope } : {})
@@ -708,12 +812,9 @@ export class RelationalProjectRepository {
         ? normalizeProject(this.assembler.assemble(this.#projectRows))
         : clone(snapshot);
       if (saveNumber === this.#latestProjectSave) this.#project = clone(this.#committedProject);
-    }, () => {
-      if (saveNumber === this.#latestProjectSave) {
-        this.#project = clone(this.#committedProject);
-      }
+      return clone(snapshot);
     });
-    return clone(snapshot);
+    return operation;
   }
 
   replaceMicrosequenceCards(projectDocument, microsequenceId) {
@@ -874,7 +975,7 @@ export class RelationalProjectRepository {
     const saveNumber = ++this.#latestProgressSave;
     this.#progress = clone(snapshot);
 
-    this.#enqueue(async () => {
+    const operation = this.#enqueue(async () => {
       const desired = await this.#progressRowsFromDocument(snapshot, removedPathKeys);
       const userLessons = new Map(
         activeRows(this.#lessonProgressRows, this.userId).map((row) => [row.id, row])
@@ -896,16 +997,9 @@ export class RelationalProjectRepository {
           this.userId
         );
       }
-    }, () => {
-      if (saveNumber === this.#latestProgressSave) {
-        this.#progress = progressDocumentFromRows(
-          this.#lessonProgressRows,
-          this.#cardProgressRows,
-          this.userId
-        );
-      }
+      return clone(snapshot);
     });
-    return clone(snapshot);
+    return operation;
   }
 
   removeProgressEntries(lessonReferences) {
@@ -975,66 +1069,72 @@ export class RelationalProjectRepository {
     });
   }
 
-  async saveLessonProgress(row) {
+  saveLessonProgress(row) {
     this.#assertInitialized();
-    const progressUserId = row.userId ?? this.userId;
-    const rowId = row.id || await this.#naturalEntityId(
-      "lessonProgress",
-      progressUserId,
-      row.lessonId
-    );
-    const previous = this.#lessonProgressRows.get(rowId) || activeRows(
-      this.#lessonProgressRows,
-      progressUserId
-    ).find((entry) => entry.lessonId === row.lessonId) || null;
-    const next = {
-      ...clone(row),
-      id: previous?.id || rowId,
-      userId: progressUserId,
-      sourceEntityId: row.sourceEntityId ?? previous?.sourceEntityId ?? null,
-      revision: Number(previous?.revision || 0),
-      updatedAt: previous?.updatedAt ?? null,
-      deletedAt: null
-    };
-    const result = await this.mutations.applyRowChange("lessonProgress", previous, next);
-    replaceAppliedRows(this.#lessonProgressRows, result.appliedRows, "lessonProgress");
-    this.#progress = progressDocumentFromRows(
-      this.#lessonProgressRows,
-      this.#cardProgressRows,
-      this.userId
-    );
-    return clone(result.appliedRows[0]?.row || next);
+    const input = clone(row);
+    return this.#enqueue(async () => {
+      const progressUserId = input.userId ?? this.userId;
+      const rowId = input.id || await this.#naturalEntityId(
+        "lessonProgress",
+        progressUserId,
+        input.lessonId
+      );
+      const previous = this.#lessonProgressRows.get(rowId) || activeRows(
+        this.#lessonProgressRows,
+        progressUserId
+      ).find((entry) => entry.lessonId === input.lessonId) || null;
+      const next = {
+        ...input,
+        id: previous?.id || rowId,
+        userId: progressUserId,
+        sourceEntityId: input.sourceEntityId ?? previous?.sourceEntityId ?? null,
+        revision: Number(previous?.revision || 0),
+        updatedAt: previous?.updatedAt ?? null,
+        deletedAt: null
+      };
+      const result = await this.mutations.applyRowChange("lessonProgress", previous, next);
+      replaceAppliedRows(this.#lessonProgressRows, result.appliedRows, "lessonProgress");
+      this.#progress = progressDocumentFromRows(
+        this.#lessonProgressRows,
+        this.#cardProgressRows,
+        this.userId
+      );
+      return clone(result.appliedRows[0]?.row || next);
+    }, null, { retryable: true });
   }
 
-  async saveCardProgress(row) {
+  saveCardProgress(row) {
     this.#assertInitialized();
-    const progressUserId = row.userId ?? this.userId;
-    const rowId = row.id || await this.#naturalEntityId(
-      "cardProgress",
-      progressUserId,
-      row.cardId
-    );
-    const previous = this.#cardProgressRows.get(rowId) || activeRows(
-      this.#cardProgressRows,
-      progressUserId
-    ).find((entry) => entry.cardId === row.cardId) || null;
-    const next = {
-      ...clone(row),
-      id: previous?.id || rowId,
-      userId: progressUserId,
-      sourceEntityId: row.sourceEntityId ?? previous?.sourceEntityId ?? null,
-      revision: Number(previous?.revision || 0),
-      updatedAt: previous?.updatedAt ?? null,
-      deletedAt: null
-    };
-    const result = await this.mutations.applyRowChange("cardProgress", previous, next);
-    replaceAppliedRows(this.#cardProgressRows, result.appliedRows, "cardProgress");
-    this.#progress = progressDocumentFromRows(
-      this.#lessonProgressRows,
-      this.#cardProgressRows,
-      this.userId
-    );
-    return clone(result.appliedRows[0]?.row || next);
+    const input = clone(row);
+    return this.#enqueue(async () => {
+      const progressUserId = input.userId ?? this.userId;
+      const rowId = input.id || await this.#naturalEntityId(
+        "cardProgress",
+        progressUserId,
+        input.cardId
+      );
+      const previous = this.#cardProgressRows.get(rowId) || activeRows(
+        this.#cardProgressRows,
+        progressUserId
+      ).find((entry) => entry.cardId === input.cardId) || null;
+      const next = {
+        ...input,
+        id: previous?.id || rowId,
+        userId: progressUserId,
+        sourceEntityId: input.sourceEntityId ?? previous?.sourceEntityId ?? null,
+        revision: Number(previous?.revision || 0),
+        updatedAt: previous?.updatedAt ?? null,
+        deletedAt: null
+      };
+      const result = await this.mutations.applyRowChange("cardProgress", previous, next);
+      replaceAppliedRows(this.#cardProgressRows, result.appliedRows, "cardProgress");
+      this.#progress = progressDocumentFromRows(
+        this.#lessonProgressRows,
+        this.#cardProgressRows,
+        this.userId
+      );
+      return clone(result.appliedRows[0]?.row || next);
+    }, null, { retryable: true });
   }
 
   #recordCardActivity(reference, { attempt = false, completed = false, result = null } = {}) {
@@ -1121,7 +1221,7 @@ export class RelationalProjectRepository {
       const mutationResult = await this.mutations.applyMutations([
         makeMutation("lessonProgress", previousLesson, lessonRow),
         makeMutation("cardProgress", previousCard, cardRow)
-      ]);
+      ].filter(isEffectiveMutation));
       replaceAppliedRows(this.#lessonProgressRows, mutationResult.appliedRows, "lessonProgress");
       replaceAppliedRows(this.#cardProgressRows, mutationResult.appliedRows, "cardProgress");
       this.#progress = progressDocumentFromRows(
@@ -1130,7 +1230,7 @@ export class RelationalProjectRepository {
         this.userId
       );
       return clone(cardRow);
-    });
+    }, null, { retryable: true });
   }
 
   recordCardView(reference) {
@@ -1181,40 +1281,45 @@ export class RelationalProjectRepository {
     });
   }
 
-  async saveComment(comment) {
+  saveComment(comment) {
     this.#assertInitialized();
     if (!comment?.cardId) throw new Error("Comentário relacional exige cardId.");
-    const commentUserId = comment.userId ?? this.userId;
-    const commentId = comment.id || await this.#naturalEntityId(
-      "comments",
-      commentUserId,
-      comment.cardId
-    );
-    const previous = this.#commentRows.get(commentId) || activeRows(
-      this.#commentRows,
-      commentUserId
-    ).find((row) => row.cardId === comment.cardId);
-    const next = {
-      ...clone(comment),
-      id: previous?.id || commentId,
-      userId: commentUserId,
-      sourceEntityId: comment.sourceEntityId ?? previous?.sourceEntityId ?? null,
-      revision: Number(previous?.revision || 0),
-      updatedAt: previous?.updatedAt ?? null,
-      deletedAt: null
-    };
-    const result = await this.mutations.applyRowChange("comments", previous, next);
-    replaceAppliedRows(this.#commentRows, result.appliedRows, "comments");
-    return clone(result.appliedRows[0]?.row || next);
+    const input = clone(comment);
+    return this.#enqueue(async () => {
+      const commentUserId = input.userId ?? this.userId;
+      const commentId = input.id || await this.#naturalEntityId(
+        "comments",
+        commentUserId,
+        input.cardId
+      );
+      const previous = this.#commentRows.get(commentId) || activeRows(
+        this.#commentRows,
+        commentUserId
+      ).find((row) => row.cardId === input.cardId);
+      const next = {
+        ...input,
+        id: previous?.id || commentId,
+        userId: commentUserId,
+        sourceEntityId: input.sourceEntityId ?? previous?.sourceEntityId ?? null,
+        revision: Number(previous?.revision || 0),
+        updatedAt: previous?.updatedAt ?? null,
+        deletedAt: null
+      };
+      const result = await this.mutations.applyRowChange("comments", previous, next);
+      replaceAppliedRows(this.#commentRows, result.appliedRows, "comments");
+      return clone(result.appliedRows[0]?.row || next);
+    }, null, { retryable: true });
   }
 
-  async deleteComment(commentId) {
+  deleteComment(commentId) {
     this.#assertInitialized();
-    const previous = this.#commentRows.get(commentId);
-    if (!previous || !isActive(previous)) return null;
-    const result = await this.mutations.applyRowChange("comments", previous, null);
-    replaceAppliedRows(this.#commentRows, result.appliedRows, "comments");
-    return clone(result.appliedRows[0]?.row || null);
+    return this.#enqueue(async () => {
+      const previous = this.#commentRows.get(commentId);
+      if (!previous || !isActive(previous)) return null;
+      const result = await this.mutations.applyRowChange("comments", previous, null);
+      replaceAppliedRows(this.#commentRows, result.appliedRows, "comments");
+      return clone(result.appliedRows[0]?.row || null);
+    }, null, { retryable: true });
   }
 
   exportJson() {
@@ -1222,7 +1327,7 @@ export class RelationalProjectRepository {
     return JSON.stringify(this.loadProject(), null, 2);
   }
 
-  importJson(rawJson) {
+  async importJson(rawJson) {
     this.#assertInitialized();
     let parsed;
     try {
@@ -1233,18 +1338,43 @@ export class RelationalProjectRepository {
     if (parsed?.format === "aralearn.storage") {
       throw new Error("O pacote documental legado não é aceito; importe um contrato AraLearn v3.");
     }
-    const project = this.saveProject(parsed);
+    const project = await this.saveProject(parsed);
     return { project, progress: this.loadProgress() };
   }
 
   async flush() {
     this.#assertInitialized();
     await this.#tail;
-    await this.store.flush();
-    if (this.#pendingErrors.length) {
-      const [error] = this.#pendingErrors.splice(0);
-      throw error;
+    try {
+      await this.store.flush();
+    } catch (error) {
+      this.#durabilityError = error instanceof Error ? error : new Error(String(error));
+      this.#notifyDurability();
     }
+    if (this.#durabilityError) {
+      throw this.#durabilityError;
+    }
+  }
+
+  async retryDurability() {
+    this.#assertInitialized();
+    const failedTasks = this.#failedDurabilityTasks.splice(0);
+    this.#durabilityError = null;
+    const operations = [];
+    failedTasks.forEach((task) => {
+      operations.push(this.#enqueue(task, null, { retryable: true }));
+    });
+    if (JSON.stringify(this.#project) !== JSON.stringify(this.#committedProject)) {
+      operations.push(this.saveProject(this.#project));
+    }
+    if (JSON.stringify(this.#progress) !== JSON.stringify(this.#committedProgressDocument())) {
+      operations.push(this.saveProgress(this.#progress));
+    }
+    if (!operations.length) this.#notifyDurability();
+    if (operations.length) await Promise.all(operations);
+    await this.flush();
+    this.#notifyDurability();
+    return this.getDurabilityState();
   }
 
   async close() {

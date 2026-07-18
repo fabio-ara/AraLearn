@@ -254,6 +254,8 @@ textarea {
 }
 
 .remote-library-trigger {
+  display: grid;
+  place-items: center;
   width: var(--tap);
   height: var(--tap);
   border: 1px solid var(--line);
@@ -321,6 +323,37 @@ textarea {
 
 .startup-sync-warning:empty {
   display: none;
+}
+
+.local-durability {
+  position: fixed;
+  z-index: 81;
+  left: max(18px, var(--safe-left));
+  bottom: max(18px, var(--safe-bottom));
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: min(460px, calc(100vw - 36px));
+  padding: 9px 12px;
+  border: 1px solid var(--line-soft);
+  border-radius: 12px;
+  background: var(--surface-2);
+  color: var(--muted);
+  box-shadow: var(--shadow);
+  font-size: var(--type-xs);
+}
+
+.local-durability[data-state="pending"] {
+  color: var(--accent-strong);
+}
+
+.local-durability[data-state="error"] {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.local-durability .icon-ghost {
+  flex: 0 0 auto;
 }
 
 .remote-library-header p,
@@ -395,16 +428,25 @@ textarea {
 }
 
 .remote-course-action {
+  display: grid;
+  place-items: center;
   justify-self: start;
-  min-height: var(--tap);
+  width: var(--tap);
+  height: var(--tap);
   margin-top: 5px;
-  padding: 9px 14px;
+  padding: 10px;
   border: 1px solid var(--field-border);
   border-radius: 999px;
   background: var(--accent-soft);
   color: var(--accent-strong);
   cursor: pointer;
   font-weight: 700;
+}
+
+.remote-library-action-icon {
+  display: block;
+  width: 19px;
+  height: 19px;
 }
 
 .remote-course-badge,

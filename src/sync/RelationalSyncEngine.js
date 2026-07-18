@@ -141,6 +141,92 @@ function errorMessage(error) {
   return error instanceof Error ? error.message : String(error || "Falha de sincronização.");
 }
 
+export const SYNC_FAILURE_KIND = Object.freeze({
+  RETRYABLE: "retryable",
+  CONFLICT: "conflict",
+  REJECTED: "rejected",
+  BOOTSTRAP_REQUIRED: "bootstrap_required"
+});
+
+function failureReason(error, code, status) {
+  const normalizedMessage = errorMessage(error).toLowerCase();
+  if (error instanceof TypeError) return "invalid_payload";
+  if (code === "42501" || status === 401 || status === 403) return "authorization_denied";
+  if (code === "23503") return "invalid_reference";
+  if (code === "23514") return "structural_violation";
+  if (["P0002", "02000"].includes(code) || status === 404 || status === 410) return "entity_missing";
+  if (normalizedMessage.includes("mutation") && normalizedMessage.includes("reutil")) {
+    return "mutation_id_reuse";
+  }
+  if (normalizedMessage.includes("fragment")) return "invalid_fragment";
+  if (status === 400 || status === 422 || code.startsWith("22")) return "invalid_payload";
+  if (status === 409 || code === "40001") return "revision_mismatch";
+  return "deterministic_failure";
+}
+
+export function classifySyncFailure(error) {
+  const status = Number(error?.status ?? error?.response?.status ?? 0);
+  const code = String(error?.code || error?.response?.code || "").toUpperCase();
+  const message = errorMessage(error).toLowerCase();
+  const networkTypeError = error instanceof TypeError &&
+    /(?:failed to fetch|fetch failed|network|offline|load failed|connection|socket)/u.test(message);
+  if (code === "55000") {
+    return { kind: SYNC_FAILURE_KIND.BOOTSTRAP_REQUIRED, status, code, reason: "bootstrap_required" };
+  }
+  if (status === 409 || code === "40001") {
+    return { kind: SYNC_FAILURE_KIND.CONFLICT, status, code, reason: "revision_mismatch" };
+  }
+  if (
+    networkTypeError ||
+    error?.name === "AbortError" ||
+    status === 0 && ["REQUEST_TIMEOUT", "NETWORK_ERROR", "ECONNRESET", "ETIMEDOUT"].includes(code) ||
+    [408, 425, 429].includes(status) ||
+    status >= 500 ||
+    [
+      "40P01", "55P03", "57014", "57P01", "57P02", "57P03",
+      "08000", "08001", "08003", "08006"
+    ].includes(code)
+  ) {
+    return { kind: SYNC_FAILURE_KIND.RETRYABLE, status, code, reason: "temporary_failure" };
+  }
+  return {
+    kind: SYNC_FAILURE_KIND.REJECTED,
+    status,
+    code,
+    reason: failureReason(error, code, status)
+  };
+}
+
+function snapshotStoreName(remoteName, row) {
+  return changeStoreName({ tableName: remoteName }, row);
+}
+
+function normalizeReplicaSnapshot(rawSnapshot) {
+  const snapshot = firstObject(rawSnapshot);
+  const normalized = {};
+  Object.entries(snapshot).forEach(([remoteName, rawRows]) => {
+    if (!Array.isArray(rawRows)) return;
+    rawRows.forEach((rawRow) => {
+      const row = camelize(rawRow);
+      const storeName = snapshotStoreName(remoteName, row);
+      if (!normalized[storeName]) normalized[storeName] = [];
+      normalized[storeName].push(row);
+    });
+  });
+  return normalized;
+}
+
+function normalizeBootstrapResponse(rawResponse) {
+  const response = firstObject(rawResponse);
+  const highWaterSequence = Number(
+    response.highWaterSequence ?? response.high_water_sequence ?? response.highWater ?? response.high_water ?? 0
+  );
+  return {
+    snapshot: normalizeReplicaSnapshot(response.snapshot || response.rows || response.replica || {}),
+    highWaterSequence
+  };
+}
+
 export class SupabaseSyncTransport {
   constructor(remoteCatalog) {
     if (!remoteCatalog || typeof remoteCatalog.rpc !== "function") {
@@ -230,7 +316,8 @@ export class SupabaseSyncTransport {
           status: "applied"
         });
       } catch (error) {
-        if (error?.code === "40001" || error?.status === 409) {
+        const failure = classifySyncFailure(error);
+        if (failure.kind === SYNC_FAILURE_KIND.CONFLICT) {
           results.push({
             mutationId: mutation.mutationId,
             entityType: mutation.entityType,
@@ -238,12 +325,25 @@ export class SupabaseSyncTransport {
             courseId: mutation.courseId,
             baseRevision: mutation.baseRevision,
             status: "conflict",
-            reason: "revision_mismatch",
+            code: failure.code,
+            reason: failure.reason,
             message: error.message
           });
           break;
-        } else {
+        } else if (failure.kind === SYNC_FAILURE_KIND.RETRYABLE) {
           throw error;
+        } else {
+          results.push({
+            mutationId: mutation.mutationId,
+            entityType: mutation.entityType,
+            entityId: mutation.entityId,
+            courseId: mutation.courseId,
+            status: "rejected",
+            code: failure.code,
+            reason: failure.reason,
+            message: errorMessage(error)
+          });
+          break;
         }
       }
     }
@@ -257,6 +357,10 @@ export class SupabaseSyncTransport {
       p_after_sequence: afterSequence,
       p_limit: limit
     });
+  }
+
+  bootstrapReplica({ deviceId }) {
+    return this.remote.rpc("bootstrap_replica", { p_device_id: deviceId });
   }
 
   downloadCourseGraph(courseId) {
@@ -397,6 +501,9 @@ export class RelationalSyncEngine {
           ...pending,
           status: causallyBlocked ? "pending" : "rejected",
           attemptCount: Number(pending.attemptCount || 0) + 1,
+          rejectionCode: causallyBlocked ? null : String(rejection.code || ""),
+          rejectionReason: causallyBlocked ? null : String(rejection.reason || "deterministic_failure"),
+          rejectedAt: causallyBlocked ? null : now,
           lastError: String(rejection.message || rejection.reason || "Mutação rejeitada pelo servidor"),
           updatedAt: now
         });
@@ -412,6 +519,10 @@ export class RelationalSyncEngine {
 
   listRejectedMutations(options = {}) {
     return this.store.listRejectedOutbox(options);
+  }
+
+  discardRejectedMutation(mutationId, options = {}) {
+    return this.store.discardRejectedMutation(mutationId, options);
   }
 
   resolveConflict(conflictId, resolution) {
@@ -432,8 +543,47 @@ export class RelationalSyncEngine {
       try {
         rawResponse = await this.transport.applySyncBatch({ deviceId: this.deviceId, mutations: pending });
       } catch (error) {
-        await this.markPushFailures(pending, error);
-        throw error;
+        const failure = classifySyncFailure(error);
+        if (failure.kind === SYNC_FAILURE_KIND.RETRYABLE) {
+          await this.markPushFailures(pending, error);
+          throw error;
+        }
+        if (failure.kind === SYNC_FAILURE_KIND.BOOTSTRAP_REQUIRED) {
+          await this.store.putSyncState(`sync.bootstrap.required:${this.deviceId}`, true);
+          return {
+            accepted: acceptedCount,
+            conflicts: conflictCount,
+            rejected: rejectedCount,
+            bootstrapRequired: true,
+            failure,
+            message: errorMessage(error)
+          };
+        }
+        const first = pending[0];
+        if (failure.kind === SYNC_FAILURE_KIND.CONFLICT) {
+          const recorded = await this.recordPushConflicts([{
+            mutationId: first.mutationId,
+            entityType: first.entityType,
+            entityId: first.entityId,
+            courseId: first.courseId,
+            baseRevision: first.baseRevision,
+            status: "conflict",
+            code: failure.code,
+            reason: failure.reason,
+            message: errorMessage(error)
+          }]);
+          conflictCount += recorded.length;
+        } else {
+          const rejected = await this.recordPushRejections([{
+            mutationId: first.mutationId,
+            status: "rejected",
+            code: failure.code,
+            reason: failure.reason,
+            message: errorMessage(error)
+          }]);
+          rejectedCount += rejected.length;
+        }
+        continue;
       }
       const result = normalizePushResponse(rawResponse);
       const sentIds = new Set(pending.map((entry) => entry.mutationId));
@@ -453,53 +603,93 @@ export class RelationalSyncEngine {
   async pull() {
     let cursor = await this.currentCursor();
     const initialCursor = cursor;
-    const pendingChanges = [];
+    let appliedCount = 0;
+    let conflictCount = 0;
+    let pageCount = 0;
+    const membershipCourseIds = new Set();
     while (true) {
       const previousCursor = cursor;
-      const response = normalizePullResponse(
-        await this.transport.pullSyncChanges({
+      let rawResponse;
+      try {
+        rawResponse = await this.transport.pullSyncChanges({
           deviceId: this.deviceId,
           afterSequence: cursor,
           limit: this.pageSize
-        }),
-        cursor
-      );
+        });
+      } catch (error) {
+        if (classifySyncFailure(error).kind === SYNC_FAILURE_KIND.BOOTSTRAP_REQUIRED) {
+          await this.store.putSyncState(`sync.bootstrap.required:${this.deviceId}`, true);
+        }
+        throw error;
+      }
+      const response = normalizePullResponse(rawResponse, cursor);
       if (response.nextCursor < cursor) throw new Error("O servidor retornou um cursor de sincronização regressivo.");
-      pendingChanges.push(...response.changes);
+      response.changes
+        .filter((change) =>
+          change.storeName === "memberships" &&
+          change.operation !== "delete" &&
+          change.deletedAt == null &&
+          change.row?.deletedAt == null
+        )
+        .map((change) => String(change.courseId || change.row?.courseId || ""))
+        .filter(Boolean)
+        .forEach((courseId) => membershipCourseIds.add(courseId));
       cursor = response.nextCursor;
+      const result = await this.store.applyRemotePage({
+        changes: response.changes,
+        cursor,
+        deviceId: this.deviceId,
+        syncStateId: this.cursorStateId(),
+        receivedAt: timestamp(this.clock),
+        uuidFactory: this.uuidFactory
+      });
+      appliedCount += result.applied.length;
+      conflictCount += result.conflicts.length;
+      pageCount += 1;
       if (!response.hasMore) break;
       if (!response.changes.length && response.nextCursor === previousCursor) {
         throw new Error("Paginação remota não avançou o cursor.");
       }
     }
-    const result = await this.store.applyRemotePage({
-      changes: pendingChanges,
+    return {
+      applied: appliedCount,
+      conflicts: conflictCount,
+      pages: pageCount,
       cursor,
+      previousCursor: initialCursor,
+      membershipCourseIds: [...membershipCourseIds]
+    };
+  }
+
+  async bootstrapReplicaIfNeeded({ force = false } = {}) {
+    if (
+      typeof this.transport.bootstrapReplica !== "function" ||
+      typeof this.store.applyReplicaBootstrap !== "function"
+    ) return { status: "unavailable" };
+    const bootstrapRequired = await this.store.getSyncState(`sync.bootstrap.required:${this.deviceId}`);
+    const bootstrapState = await this.store.getSyncState(`sync.bootstrap:${this.deviceId}`);
+    if (!force && !bootstrapRequired && bootstrapState) {
+      return { status: "already_bootstrapped", cursor: await this.currentCursor() };
+    }
+    const currentCursor = await this.currentCursor();
+    if (!force && !bootstrapRequired && currentCursor > 0) {
+      await this.store.putSyncState(`sync.bootstrap:${this.deviceId}`, true);
+      return { status: "already_materialized", cursor: currentCursor };
+    }
+    const response = normalizeBootstrapResponse(
+      await this.transport.bootstrapReplica({ deviceId: this.deviceId })
+    );
+    return this.store.applyReplicaBootstrap({
+      snapshot: response.snapshot,
+      highWaterSequence: response.highWaterSequence,
       deviceId: this.deviceId,
       syncStateId: this.cursorStateId(),
       receivedAt: timestamp(this.clock),
       uuidFactory: this.uuidFactory
     });
-    return {
-      applied: result.applied.length,
-      conflicts: result.conflicts.length,
-      cursor,
-      previousCursor: initialCursor,
-      membershipCourseIds: [...new Set(
-        pendingChanges
-          .filter((change) =>
-            change.storeName === "memberships" &&
-            change.operation !== "delete" &&
-            change.deletedAt == null &&
-            change.row?.deletedAt == null
-          )
-          .map((change) => String(change.courseId || change.row?.courseId || ""))
-          .filter(Boolean)
-      )]
-    };
   }
 
-  async bootstrapMissingCourses(forceCourseIds = []) {
+  async bootstrapMissingCourses(candidateCourseIds = null) {
     if (
       typeof this.transport.downloadCourseGraph !== "function" ||
       typeof this.store.replaceCourseSnapshot !== "function"
@@ -519,27 +709,102 @@ export class RelationalSyncEngine {
         .map((row) => String(row.courseId))
         .filter(Boolean)
     );
-    const forced = new Set(forceCourseIds.map(String));
-    const missingCourseIds = [...activeMembershipCourseIds].filter(
-      (courseId) => !availableCourseIds.has(courseId) || forced.has(courseId)
+    const candidates = Array.isArray(candidateCourseIds) && candidateCourseIds.length
+      ? new Set(candidateCourseIds.map(String))
+      : null;
+    const missingCourseIds = [...activeMembershipCourseIds]
+      .filter((courseId) => !candidates || candidates.has(courseId))
+      .filter(
+      (courseId) => !availableCourseIds.has(courseId)
     );
     for (const courseId of missingCourseIds) {
       const snapshot = firstObject(await this.transport.downloadCourseGraph(courseId));
-      await this.store.replaceCourseSnapshot(courseId, snapshot);
+      const result = await this.store.replaceCourseSnapshot(courseId, snapshot, {
+        receivedAt: timestamp(this.clock),
+        uuidFactory: this.uuidFactory
+      });
+      if (result.status !== "applied") return missingCourseIds.indexOf(courseId);
     }
     return missingCourseIds.length;
   }
 
-  synchronize() {
+  synchronize({ expectedCourseIds = [] } = {}) {
+    if (!Array.isArray(expectedCourseIds)) {
+      throw new TypeError("expectedCourseIds deve ser uma lista.");
+    }
     if (this.#activeSynchronization) return this.#activeSynchronization;
     this.#activeSynchronization = this.initialize()
       .then(async () => {
-        const pushed = await this.push();
-        const pulled = await this.pull();
-        const bootstrappedCourses = await this.bootstrapMissingCourses(
-          pulled.membershipCourseIds
-        );
-        return { pushed, pulled, bootstrappedCourses, deviceId: this.deviceId };
+        let pushed;
+        try {
+          pushed = await this.push();
+        } catch (error) {
+          const failure = classifySyncFailure(error);
+          if (failure.kind !== SYNC_FAILURE_KIND.RETRYABLE) throw error;
+          pushed = {
+            accepted: 0,
+            conflicts: 0,
+            rejected: 0,
+            retryable: true,
+            failure,
+            message: errorMessage(error)
+          };
+        }
+        let bootstrap;
+        try {
+          bootstrap = await this.bootstrapReplicaIfNeeded();
+        } catch (error) {
+          const failure = classifySyncFailure(error);
+          if (failure.kind !== SYNC_FAILURE_KIND.RETRYABLE) throw error;
+          bootstrap = {
+            status: "retryable_failure",
+            failure,
+            message: errorMessage(error)
+          };
+        }
+        if (["reconciliation_required", "retryable_failure"].includes(bootstrap.status)) {
+          return {
+            pushed,
+            bootstrap,
+            pulled: null,
+            bootstrappedCourses: 0,
+            deviceId: this.deviceId
+          };
+        }
+        let pulled;
+        try {
+          pulled = await this.pull();
+        } catch (error) {
+          if (classifySyncFailure(error).kind !== SYNC_FAILURE_KIND.BOOTSTRAP_REQUIRED) throw error;
+          try {
+            bootstrap = await this.bootstrapReplicaIfNeeded({ force: true });
+          } catch (bootstrapError) {
+            const failure = classifySyncFailure(bootstrapError);
+            if (failure.kind !== SYNC_FAILURE_KIND.RETRYABLE) throw bootstrapError;
+            bootstrap = {
+              status: "retryable_failure",
+              failure,
+              message: errorMessage(bootstrapError)
+            };
+          }
+          if (["reconciliation_required", "retryable_failure"].includes(bootstrap.status)) {
+            return {
+              pushed,
+              bootstrap,
+              pulled: null,
+              bootstrappedCourses: 0,
+              deviceId: this.deviceId
+            };
+          }
+          pulled = await this.pull();
+        }
+        const bootstrappedCourses = await this.bootstrapMissingCourses([
+          ...new Set([
+            ...pulled.membershipCourseIds,
+            ...expectedCourseIds.map(String).filter(Boolean)
+          ])
+        ]);
+        return { pushed, bootstrap, pulled, bootstrappedCourses, deviceId: this.deviceId };
       })
       .finally(() => { this.#activeSynchronization = null; });
     return this.#activeSynchronization;

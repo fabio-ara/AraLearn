@@ -4,6 +4,7 @@ import { defaultUuidFactory } from "./relationalSchema.js";
 
 const LOCAL_ONLY_STORE_NAMES = new Set(["projectMeta", "entityMappings"]);
 const OUTBOX_SEQUENCE_STATE_ID = "outbox.sequence";
+const NON_DOMAIN_FIELDS = new Set(["revision", "updatedAt", "deletedAt", "projectId"]);
 
 function clone(value) {
   return value == null ? value : structuredClone(value);
@@ -12,6 +13,51 @@ function clone(value) {
 function timestamp(clock) {
   const value = clock();
   return value instanceof Date ? value.toISOString() : String(value);
+}
+
+function normalizedValue(value) {
+  if (Array.isArray(value)) return value.map(normalizedValue);
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.keys(value).sort().map((key) => [key, normalizedValue(value[key])])
+    );
+  }
+  return value;
+}
+
+function rowChangedFields(previousRow, nextRow) {
+  const fields = new Set([
+    ...Object.keys(previousRow || {}),
+    ...Object.keys(nextRow || {})
+  ]);
+  return [...fields]
+    .filter((fieldName) => !NON_DOMAIN_FIELDS.has(fieldName))
+    .filter((fieldName) =>
+      JSON.stringify(normalizedValue(previousRow?.[fieldName])) !==
+      JSON.stringify(normalizedValue(nextRow?.[fieldName]))
+    )
+    .sort();
+}
+
+function mutationPayload(mutation, persistedRow) {
+  if (
+    mutation.operation !== "upsert" ||
+    !mutation.previousRow ||
+    Number(mutation.baseRevision || 0) === 0
+  ) {
+    return clone(persistedRow);
+  }
+  return Object.fromEntries(
+    [...new Set(mutation.changedFields || [])]
+      .filter((fieldName) => !NON_DOMAIN_FIELDS.has(fieldName))
+      .sort()
+      .map((fieldName) => [
+        fieldName,
+        Object.prototype.hasOwnProperty.call(persistedRow || {}, fieldName)
+          ? clone(persistedRow[fieldName])
+          : null
+      ])
+  );
 }
 
 function assertMutation(mutation) {
@@ -88,7 +134,7 @@ function makeOutboxEntry(mutation, persistedRow, mutationId, sequence, now) {
     baseRevision: Number(mutation.baseRevision || 0),
     changedFields: [...(mutation.changedFields || [])],
     previousRow: clone(mutation.previousRow),
-    payload: clone(persistedRow),
+    payload: mutationPayload(mutation, persistedRow),
     status: "pending",
     attemptCount: 0,
     lastError: null,
@@ -225,7 +271,7 @@ export class DomainMutationService {
         baseRevision: Number(previousRow?.revision || 0),
         previousRow: clone(previousRow),
         nextRow: clone(nextRow),
-        changedFields: Object.keys(nextRow || previousRow || {}).sort()
+        changedFields: nextRow ? rowChangedFields(previousRow, nextRow) : []
       }],
       options
     );

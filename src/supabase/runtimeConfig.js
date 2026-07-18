@@ -1,4 +1,5 @@
 const LOCAL_HOSTS = new Set(["127.0.0.1", "localhost", "10.0.2.2"]);
+export const ANDROID_AUTH_REDIRECT_URL = "aralearn://auth/callback";
 
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -56,9 +57,18 @@ export function readSupabaseRuntimeConfig(source = globalThis.__ARALEARN_ENV__ |
   });
 }
 
-export function buildAuthRedirectUrl(locationValue = globalThis.location) {
-  if (globalThis.AndroidHost) {
-    return "aralearn://auth/callback";
+export function buildAuthRedirectUrl(
+  locationValue = globalThis.location,
+  { androidHost = globalThis.AndroidHost, androidRedirectUrl = ANDROID_AUTH_REDIRECT_URL } = {}
+) {
+  if (androidHost) {
+    const parsed = new URL(androidRedirectUrl);
+    const supportedCustomCallback = parsed.protocol === "aralearn:" &&
+      parsed.hostname === "auth" && parsed.pathname === "/callback";
+    if (!supportedCustomCallback && parsed.protocol !== "https:") {
+      throw new Error("O callback Android deve usar o esquema atual exato ou um App Link HTTPS.");
+    }
+    return parsed.toString();
   }
   if (!locationValue?.origin || !locationValue?.pathname) return "";
   return `${locationValue.origin}${locationValue.pathname}`;

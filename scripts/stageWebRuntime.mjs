@@ -5,6 +5,7 @@ import { parse as parseJavaScript } from "espree";
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(scriptDirectory, "..");
+const CSP_CONNECT_SOURCE_PLACEHOLDER = "__ARALEARN_CONNECT_SRC__";
 
 const runtimeDependencies = [
   "node_modules/pdfjs-dist/build/pdf.mjs",
@@ -253,6 +254,21 @@ async function writeRuntimeConfig(publicDestination) {
   await fs.writeFile(path.join(publicDestination, "runtime-config.js"), source, "utf8");
 }
 
+async function writeExactContentSecurityPolicy(publicDestination) {
+  const config = publicRuntimeConfig();
+  const indexPath = path.join(publicDestination, "index.html");
+  const source = await fs.readFile(indexPath, "utf8");
+  if (!source.includes(CSP_CONNECT_SOURCE_PLACEHOLDER)) {
+    fail("Placeholder da CSP ausente em public/index.html.");
+  }
+  const connectSource = config.supabaseUrl ? new URL(config.supabaseUrl).origin : "";
+  const rewritten = source.replaceAll(CSP_CONNECT_SOURCE_PLACEHOLDER, connectSource);
+  if (/connect-src[^;]*\bhttps:\s/u.test(rewritten)) {
+    fail("A CSP não pode liberar conexões para qualquer origem HTTPS.");
+  }
+  await fs.writeFile(indexPath, rewritten, "utf8");
+}
+
 async function validateArtifact(runtimeRoot) {
   const artifactFiles = await listFiles(runtimeRoot);
   const relativeFiles = artifactFiles.map((filePath) => normalizeArtifactPath(path.relative(runtimeRoot, filePath)));
@@ -303,6 +319,7 @@ async function stageRuntime({ target, outputPath }) {
   await fs.mkdir(outputPath, { recursive: true });
   await copyTree(path.join(repositoryRoot, "public"), publicDestination);
   await writeRuntimeConfig(publicDestination);
+  await writeExactContentSecurityPolicy(publicDestination);
   await copyRuntimeJavaScript(runtimeRoot);
   await copyRuntimeDependencies(runtimeRoot);
 

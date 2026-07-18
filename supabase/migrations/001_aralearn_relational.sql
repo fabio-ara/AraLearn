@@ -858,6 +858,7 @@ create table public.sync_devices (
   label text not null default '',
   last_pulled_sequence bigint not null default 0,
   last_seen_at timestamptz not null default now(),
+  inactive_at timestamptz,
   revision bigint not null default 1,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
@@ -868,6 +869,12 @@ create table public.sync_devices (
 );
 
 create index sync_devices_user_idx on public.sync_devices (user_id, deleted_at, last_seen_at desc);
+create index sync_devices_active_cursor_idx
+  on public.sync_devices (last_pulled_sequence, last_seen_at)
+  where deleted_at is null and inactive_at is null;
+create index sync_devices_active_seen_idx
+  on public.sync_devices (last_seen_at, last_pulled_sequence)
+  where deleted_at is null and inactive_at is null;
 
 create table public.sync_mutations (
   id uuid primary key default gen_random_uuid(),
@@ -897,6 +904,8 @@ create table public.sync_mutations (
 
 create index sync_mutations_user_device_idx
   on public.sync_mutations (user_id, device_id, created_at desc);
+create index sync_mutations_retention_idx
+  on public.sync_mutations (created_at, user_id, device_id);
 
 create table public.sync_changes (
   sequence bigint generated always as identity primary key,
@@ -920,6 +929,8 @@ create index sync_changes_course_sequence_idx
   on public.sync_changes (course_id, sequence);
 create index sync_changes_entity_idx
   on public.sync_changes (entity_type, entity_id, sequence desc);
+create index sync_changes_retention_idx
+  on public.sync_changes (changed_at, sequence);
 
 create table private.rpc_idempotency (
   user_id uuid not null references auth.users(id) on delete cascade,
@@ -947,9 +958,31 @@ create table private.rpc_idempotency (
   ),
   constraint rpc_idempotency_course_shape check (
     operation = 'delete_personal_course'
+    or (operation = 'replace_microsequence_cards' and result_payload ->> 'status' = 'rejected')
     or (request_course_id is not null and result_course_id is not null)
   )
 );
+create index rpc_idempotency_created_at_idx
+  on private.rpc_idempotency (created_at);
+
+-- A stale device is never allowed to resume from an arbitrarily old cursor:
+-- it must bootstrap a fresh snapshot first.  This invariant lets compaction
+-- advance below the minimum cursor of active devices without allowing an old
+-- replica to resurrect rows whose tombstones have already left the feed.
+create table private.sync_retention_policy (
+  singleton boolean primary key default true check (singleton),
+  active_device_window interval not null default interval '90 days'
+    check (active_device_window >= interval '1 day'),
+  minimum_change_retention interval not null default interval '30 days'
+    check (minimum_change_retention >= interval '1 day'),
+  mutation_retention interval not null default interval '180 days'
+    check (mutation_retention >= interval '30 days'),
+  rpc_idempotency_retention interval not null default interval '365 days'
+    check (rpc_idempotency_retention >= interval '90 days'),
+  updated_at timestamptz not null default now()
+);
+
+insert into private.sync_retention_policy (singleton) values (true);
 
 -- Lossless local-row projection.  These typed columns preserve the presence
 -- flags and scalar variants required to reconstruct every AraLearn v3 field;
@@ -1861,6 +1894,14 @@ begin
     when tg_op = 'INSERT' then 'insert'
     else 'update'
   end;
+
+  -- Sequence values are allocated before commit.  Serializing feed-producing
+  -- transactions prevents a later committed sequence from making an earlier,
+  -- still-uncommitted change invisible after a client advances its cursor.
+  -- Bootstrap and pull take the same lock before choosing their high-water.
+  perform pg_advisory_xact_lock(
+    hashtextextended('aralearn-sync-feed-commit-order', 0)
+  );
 
   insert into public.sync_changes (
     audience_user_id, course_id, entity_type, entity_id, operation,
@@ -3456,7 +3497,11 @@ begin
 end;
 $$;
 
-create or replace function private.shape_store_payload(p_store_name text, p_payload jsonb)
+create or replace function private.shape_store_payload(
+  p_store_name text,
+  p_payload jsonb,
+  p_operation text default 'insert'
+)
 returns jsonb
 language plpgsql
 immutable
@@ -3467,59 +3512,73 @@ declare
   v_identity text := coalesce(nullif(p_payload ->> 'identity_key', ''), nullif(p_payload ->> 'id', ''));
 begin
   return v_payload || case p_store_name
-    when 'guides' then jsonb_build_object(
+    when 'guides' then case when p_payload ?| array['owner_type','owner_id'] then jsonb_build_object(
       'module_id', case when p_payload ->> 'owner_type' = 'module' then p_payload -> 'owner_id' else 'null'::jsonb end,
       'lesson_id', case when p_payload ->> 'owner_type' = 'lesson' then p_payload -> 'owner_id' else 'null'::jsonb end
-    )
-    when 'guideItems' then jsonb_build_object('item_kind', p_payload -> 'item_type')
-    when 'topics' then jsonb_build_object('kind', p_payload -> 'topic_kind')
-    when 'topicStatements' then jsonb_build_object('statement_kind', p_payload -> 'statement_type')
-    when 'microsequenceStatements' then jsonb_build_object('statement_kind', p_payload -> 'statement_type')
-    when 'cards' then jsonb_build_object(
-      'kind', p_payload -> 'card_kind', 'after_text', coalesce(p_payload -> 'after', '""'::jsonb)
-    )
-    when 'blocks' then jsonb_build_object(
-      'contract_key', coalesce(nullif(p_payload ->> 'contract_key', ''), v_identity),
-      'role', case p_payload ->> 'region' when 'content' then 'composite' else p_payload ->> 'region' end,
-      'value_text', p_payload -> 'value', 'scale_factor', p_payload -> 'scale_k'
-    )
-    when 'options' then jsonb_build_object('text_value', p_payload -> 'text')
-    when 'flowPractices' then jsonb_build_object(
+    ) else '{}'::jsonb end
+    when 'guideItems' then case when p_payload ? 'item_type'
+      then jsonb_build_object('item_kind', p_payload -> 'item_type') else '{}'::jsonb end
+    when 'topics' then case when p_payload ? 'topic_kind'
+      then jsonb_build_object('kind', p_payload -> 'topic_kind') else '{}'::jsonb end
+    when 'topicStatements' then case when p_payload ? 'statement_type'
+      then jsonb_build_object('statement_kind', p_payload -> 'statement_type') else '{}'::jsonb end
+    when 'microsequenceStatements' then case when p_payload ? 'statement_type'
+      then jsonb_build_object('statement_kind', p_payload -> 'statement_type') else '{}'::jsonb end
+    when 'cards' then
+      (case when p_payload ? 'card_kind' then jsonb_build_object('kind', p_payload -> 'card_kind') else '{}'::jsonb end) ||
+      (case when p_payload ? 'after' then jsonb_build_object('after_text', p_payload -> 'after')
+            when p_operation = 'insert' then jsonb_build_object('after_text', '') else '{}'::jsonb end)
+    when 'blocks' then
+      (case when p_payload ?| array['contract_key','id'] then jsonb_build_object(
+        'contract_key', coalesce(nullif(p_payload ->> 'contract_key', ''), v_identity)
+      ) else '{}'::jsonb end) ||
+      (case when p_payload ? 'region' then jsonb_build_object(
+        'role', case p_payload ->> 'region' when 'content' then 'composite' else p_payload ->> 'region' end
+      ) else '{}'::jsonb end) ||
+      (case when p_payload ? 'value' then jsonb_build_object('value_text', p_payload -> 'value') else '{}'::jsonb end) ||
+      (case when p_payload ? 'scale_k' then jsonb_build_object('scale_factor', p_payload -> 'scale_k') else '{}'::jsonb end)
+    when 'options' then case when p_payload ? 'text'
+      then jsonb_build_object('text_value', p_payload -> 'text') else '{}'::jsonb end
+    when 'flowPractices' then case when p_payload ?| array['owner_type','owner_id'] then jsonb_build_object(
       'flow_node_id', case when p_payload ->> 'owner_type' = 'node' then p_payload -> 'owner_id' else 'null'::jsonb end,
       'flow_case_id', case when p_payload ->> 'owner_type' = 'case' then p_payload -> 'owner_id' else 'null'::jsonb end
-    )
-    when 'flowPracticeOptions' then jsonb_build_object(
-      'item_kind', 'option', 'flow_practice_id', null
-    )
-    when 'flowPracticeVariants' then jsonb_build_object(
-      'item_kind', 'variant', 'flow_practice_id', null
-    )
-    when 'flowShapeOptions' then jsonb_build_object(
-      'entry_id', null, 'flow_practice_id', p_payload -> 'practice_id',
-      'item_kind', 'shape_option'
-    )
-    when 'edges' then jsonb_build_object(
-      'contract_key', v_identity, 'edge_role', p_payload -> 'edge_scope'
-    )
-    when 'matrixItems' then jsonb_build_object(
-      'contract_key', v_identity,
-      'item_kind', case when coalesce((p_payload ->> 'is_sequence')::boolean, false) then 'sequence' else 'matrix' end
-    )
-    when 'cells' then jsonb_build_object(
+    ) else '{}'::jsonb end
+    when 'flowPracticeOptions' then case when p_operation = 'insert'
+      then jsonb_build_object('item_kind', 'option', 'flow_practice_id', null) else '{}'::jsonb end
+    when 'flowPracticeVariants' then case when p_operation = 'insert'
+      then jsonb_build_object('item_kind', 'variant', 'flow_practice_id', null) else '{}'::jsonb end
+    when 'flowShapeOptions' then
+      (case when p_operation = 'insert' then jsonb_build_object('entry_id', null, 'item_kind', 'shape_option') else '{}'::jsonb end) ||
+      (case when p_payload ? 'practice_id' then jsonb_build_object('flow_practice_id', p_payload -> 'practice_id') else '{}'::jsonb end)
+    when 'edges' then
+      (case when p_payload ?| array['identity_key','id'] then jsonb_build_object('contract_key', v_identity) else '{}'::jsonb end) ||
+      (case when p_payload ? 'edge_scope' then jsonb_build_object('edge_role', p_payload -> 'edge_scope') else '{}'::jsonb end)
+    when 'matrixItems' then
+      (case when p_payload ?| array['identity_key','id'] then jsonb_build_object('contract_key', v_identity) else '{}'::jsonb end) ||
+      (case when p_payload ? 'is_sequence' then jsonb_build_object(
+        'item_kind', case when coalesce((p_payload ->> 'is_sequence')::boolean, false) then 'sequence' else 'matrix' end
+      ) else '{}'::jsonb end)
+    when 'cells' then case when p_payload ? 'row_index' then jsonb_build_object(
       'cell_role', case when (p_payload ->> 'row_index')::integer = -1 then 'header' else 'value' end
-    )
-    when 'points' then jsonb_build_object('contract_key', v_identity, 'point_kind', p_payload -> 'point_role')
-    when 'lines' then jsonb_build_object('contract_key', v_identity, 'line_kind', p_payload -> 'line_role')
-    when 'highlights' then jsonb_build_object(
-      'target_kind', case p_payload ->> 'selection_type'
-        when 'leftItem' then 'left_item' when 'rightItem' then 'right_item'
-        when 'vertex' then 'node' else p_payload ->> 'selection_type' end,
-      'text_value', p_payload -> 'value'
-    )
-    when 'cardSources' then jsonb_build_object('ref_kind', 'source')
-    when 'cardTopics' then jsonb_build_object(
-      'ref_kind', 'topic', 'value', p_payload -> 'topic_contract_key'
-    )
+    ) else '{}'::jsonb end
+    when 'points' then
+      (case when p_payload ?| array['identity_key','id'] then jsonb_build_object('contract_key', v_identity) else '{}'::jsonb end) ||
+      (case when p_payload ? 'point_role' then jsonb_build_object('point_kind', p_payload -> 'point_role') else '{}'::jsonb end)
+    when 'lines' then
+      (case when p_payload ?| array['identity_key','id'] then jsonb_build_object('contract_key', v_identity) else '{}'::jsonb end) ||
+      (case when p_payload ? 'line_role' then jsonb_build_object('line_kind', p_payload -> 'line_role') else '{}'::jsonb end)
+    when 'highlights' then
+      (case when p_payload ? 'selection_type' then jsonb_build_object(
+        'target_kind', case p_payload ->> 'selection_type'
+          when 'leftItem' then 'left_item' when 'rightItem' then 'right_item'
+          when 'vertex' then 'node' else p_payload ->> 'selection_type' end
+      ) else '{}'::jsonb end) ||
+      (case when p_payload ? 'value' then jsonb_build_object('text_value', p_payload -> 'value') else '{}'::jsonb end)
+    when 'cardSources' then case when p_operation = 'insert'
+      then jsonb_build_object('ref_kind', 'source') else '{}'::jsonb end
+    when 'cardTopics' then
+      (case when p_operation = 'insert' then jsonb_build_object('ref_kind', 'topic') else '{}'::jsonb end) ||
+      (case when p_payload ? 'topic_contract_key' then jsonb_build_object('value', p_payload -> 'topic_contract_key') else '{}'::jsonb end)
     else '{}'::jsonb
   end;
 end;
@@ -3548,6 +3607,25 @@ begin
 end;
 $$;
 
+create or replace function private.sync_rejection_reason(p_code text, p_message text)
+returns text
+language sql
+immutable
+set search_path = pg_catalog
+as $$
+  select case
+    when coalesce(p_message, '') ilike '%mutationId%' then 'mutation_id_reuse'
+    when coalesce(p_message, '') ilike '%não encontrad%'
+      or coalesce(p_message, '') ilike '%entidade removida%' then 'entity_missing'
+    when p_code = '42501' then 'authorization_denied'
+    when p_code = '23503' then 'invalid_reference'
+    when p_code = '23514' then 'structural_violation'
+    when p_code = '23505' then 'structural_violation'
+    when p_code = '22023' or p_code like '22%' then 'invalid_payload'
+    else 'deterministic_failure'
+  end;
+$$;
+
 create or replace function private.apply_one_sync_mutation(
   p_user_id uuid,
   p_store_name text,
@@ -3558,7 +3636,8 @@ create or replace function private.apply_one_sync_mutation(
   p_changed_fields jsonb,
   p_payload jsonb,
   p_batch_expected_revision bigint default null,
-  p_allow_batch_expected_revision boolean default false
+  p_allow_batch_expected_revision boolean default false,
+  p_enforce_changed_fields boolean default false
 )
 returns jsonb
 language plpgsql
@@ -3568,7 +3647,7 @@ as $$
 declare
   v_table regclass := private.table_for_store(p_store_name);
   v_raw_payload jsonb := private.jsonb_to_snake(coalesce(p_payload, '{}'::jsonb));
-  v_payload jsonb := private.shape_store_payload(p_store_name, v_raw_payload);
+  v_payload jsonb := private.shape_store_payload(p_store_name, v_raw_payload, p_operation);
   v_current jsonb;
   v_canonical jsonb;
   v_natural_entity_id uuid;
@@ -3576,6 +3655,13 @@ declare
   v_columns text;
   v_expressions text;
   v_is_admin boolean := public.is_app_admin();
+  v_changed_snake text[];
+  v_immutable_keys constant text[] := array[
+    'id','course_id','user_id','revision','created_at','updated_at','deleted_at',
+    'source_entity_id','cards_revision','source_course_id','source_publication_seq',
+    'source_content_hash','baseline_content_hash','publication_seq','content_hash',
+    'personalized_at','owner_id'
+  ];
 begin
   if v_table is null or p_entity_id is null or p_course_id is null then
     raise exception 'Entidade de sincronização inválida: %.', p_store_name using errcode = '22023';
@@ -3607,6 +3693,51 @@ begin
     )
   ) then
     raise exception 'changedFields contém campo desconhecido para %.', p_store_name using errcode = '22023';
+  end if;
+  select coalesce(array_agg(private.snake_key(changed_field)), '{}'::text[])
+  into v_changed_snake
+  from jsonb_array_elements_text(coalesce(p_changed_fields, '[]'::jsonb)) changed_field;
+
+  if p_operation = 'update' and p_enforce_changed_fields then
+    if cardinality(v_changed_snake) = 0 then
+      raise exception 'Atualização exige ao menos um changedField.' using errcode = '22023';
+    end if;
+    if exists (
+      select 1 from unnest(v_changed_snake) changed_field
+      where changed_field = any(v_immutable_keys)
+        or (p_store_name = 'courses' and changed_field in ('kind', 'status'))
+    ) then
+      raise exception 'changedFields contém campo imutável.' using errcode = '22023';
+    end if;
+    if exists (
+      select 1 from jsonb_object_keys(v_raw_payload) payload_key
+      where (payload_key = any(v_immutable_keys)
+          or (p_store_name = 'courses' and payload_key in ('kind', 'status')))
+        and payload_key not in ('id', 'course_id')
+    ) then
+      raise exception 'Payload de atualização contém campo imutável.' using errcode = '22023';
+    end if;
+    if exists (
+      select 1 from jsonb_object_keys(v_raw_payload) payload_key
+      where payload_key not in ('id', 'course_id')
+        and not (payload_key = any(v_changed_snake))
+    ) then
+      raise exception 'Payload contém campo mutável ausente de changedFields.' using errcode = '22023';
+    end if;
+    if exists (
+      select 1 from unnest(v_changed_snake) changed_field
+      where not (v_raw_payload ? changed_field)
+    ) then
+      raise exception 'changedFields declara campo ausente do payload.' using errcode = '22023';
+    end if;
+  end if;
+  if v_raw_payload ? 'id'
+     and private.try_uuid(v_raw_payload ->> 'id') is distinct from p_entity_id then
+    raise exception 'Payload tenta alterar a identidade da entidade.' using errcode = '22023';
+  end if;
+  if v_raw_payload ? 'course_id'
+     and private.try_uuid(v_raw_payload ->> 'course_id') is distinct from p_course_id then
+    raise exception 'Payload tenta alterar a identidade do curso.' using errcode = '22023';
   end if;
   if p_store_name = 'courses' and p_operation = 'delete' then
     raise exception 'Exclusão de curso exige delete_personal_course transacional.' using errcode = '42501';
@@ -3676,7 +3807,8 @@ begin
       if v_canonical is not null
          and private.try_uuid(v_canonical ->> 'id') is distinct from p_entity_id then
         return jsonb_build_object(
-          'status', 'conflict', 'entityType', p_store_name, 'entityId', p_entity_id,
+          'status', 'conflict', 'code', '23505',
+          'entityType', p_store_name, 'entityId', p_entity_id,
           'canonicalEntityId', v_canonical ->> 'id', 'reason', 'natural_key_exists',
           'remoteRevision', (v_canonical ->> 'revision')::bigint,
           'remoteRow', private.local_row(p_store_name, v_canonical)
@@ -3728,14 +3860,16 @@ begin
   if p_operation = 'insert' then
     if v_current is not null then
       return jsonb_build_object(
-        'status', 'conflict', 'entityType', p_store_name, 'entityId', p_entity_id,
+        'status', 'conflict', 'code', '23505',
+        'entityType', p_store_name, 'entityId', p_entity_id,
         'reason', 'entity_exists', 'remoteRevision', (v_current ->> 'revision')::bigint,
         'remoteRow', private.local_row(p_store_name, v_current)
       );
     end if;
   elsif v_current is null then
     return jsonb_build_object(
-      'status', 'conflict', 'entityType', p_store_name, 'entityId', p_entity_id,
+      'status', 'rejected', 'code', '22023',
+      'entityType', p_store_name, 'entityId', p_entity_id,
       'reason', 'entity_missing', 'remoteRevision', null, 'remoteRow', null
     );
   elsif (v_current ->> 'revision')::bigint <> p_base_revision
@@ -3745,7 +3879,8 @@ begin
           and (v_current ->> 'revision')::bigint >= p_batch_expected_revision
         ) then
     return jsonb_build_object(
-      'status', 'conflict', 'entityType', p_store_name, 'entityId', p_entity_id,
+      'status', 'conflict', 'code', '40001',
+      'entityType', p_store_name, 'entityId', p_entity_id,
       'reason', 'revision_mismatch', 'remoteRevision', (v_current ->> 'revision')::bigint,
       'remoteRow', private.local_row(p_store_name, v_current)
     );
@@ -3829,7 +3964,8 @@ begin
           raise;
         end if;
         return jsonb_build_object(
-          'status', 'conflict', 'entityType', p_store_name, 'entityId', p_entity_id,
+          'status', 'conflict', 'code', '23505',
+          'entityType', p_store_name, 'entityId', p_entity_id,
           'canonicalEntityId', v_canonical ->> 'id', 'reason', 'natural_key_exists',
           'remoteRevision', (v_canonical ->> 'revision')::bigint,
           'remoteRow', private.local_row(p_store_name, v_canonical)
@@ -3889,11 +4025,13 @@ declare
   v_base_revision bigint;
   v_result jsonb;
   v_existing jsonb;
+  v_existing_request jsonb;
   v_results jsonb := '[]'::jsonb;
   v_saved_results jsonb;
   v_final_results jsonb := '[]'::jsonb;
   v_saved_result jsonb;
   v_message text;
+  v_code text;
   v_batch_blocked boolean := false;
   v_atomic_failed boolean := false;
   v_was_existing boolean;
@@ -3921,9 +4059,15 @@ begin
   insert into public.sync_devices (id, user_id, last_seen_at)
   values (p_device_id, v_user_id, now())
   on conflict (id) do update set last_seen_at = now()
-  where sync_devices.user_id = excluded.user_id;
-  if not exists (select 1 from public.sync_devices where id = p_device_id and user_id = v_user_id) then
-    raise exception 'Dispositivo pertence a outro usuário.' using errcode = '42501';
+  where sync_devices.user_id = excluded.user_id
+    and sync_devices.deleted_at is null and sync_devices.inactive_at is null;
+  if not exists (
+    select 1 from public.sync_devices
+    where id = p_device_id and user_id = v_user_id
+      and deleted_at is null and inactive_at is null
+  ) then
+    raise exception 'Dispositivo inativo ou pertencente a outro usuário; bootstrap obrigatório.'
+      using errcode = '55000';
   end if;
 
   -- Serialize every writer that targets the same course.  Entity-level locks
@@ -3983,11 +4127,21 @@ begin
           raise exception 'mutationId é obrigatório.' using errcode = '22023';
         end if;
 
-        select result into v_existing from public.sync_mutations
+        select request, result into v_existing_request, v_existing from public.sync_mutations
         where user_id = v_user_id and mutation_id = v_mutation_id;
         v_was_existing := found;
         if v_was_existing then
-          v_result := v_existing || jsonb_build_object('idempotent', true);
+          if v_existing_request is distinct from v_mutation then
+            v_result := jsonb_build_object(
+              'mutationId', v_mutation_id, 'status', 'rejected', 'code', '23505',
+              'entityType', v_store_name, 'entityId', v_entity_id,
+              'reason', 'mutation_id_reuse',
+              'message', 'mutationId já foi usado com outro payload.',
+              'idempotent', true
+            );
+          else
+            v_result := v_existing || jsonb_build_object('idempotent', true);
+          end if;
         else
           v_entity_key := v_store_name || ':' || v_entity_id::text;
           v_initial_revision := private.try_bigint(v_initial_revisions ->> v_entity_key, null);
@@ -3997,7 +4151,7 @@ begin
             v_user_id, v_store_name, v_entity_id, v_course_id, v_operation,
             v_base_revision, coalesce(v_mutation -> 'changedFields', '[]'),
             coalesce(v_mutation -> 'payload', '{}'),
-            v_expected_revision, true
+            v_expected_revision, true, true
           ) || jsonb_build_object('mutationId', v_mutation_id, 'idempotent', false);
 
           insert into public.sync_mutations (
@@ -4013,12 +4167,25 @@ begin
             );
           end if;
         end if;
-      exception when others then
-        get stacked diagnostics v_message = message_text;
+      exception
+      when serialization_failure then
+        get stacked diagnostics v_message = message_text, v_code = returned_sqlstate;
+        v_result := jsonb_build_object(
+          'mutationId', v_mutation ->> 'mutationId', 'status', 'conflict',
+          'code', v_code,
+          'entityType', v_mutation ->> 'entityType', 'entityId', v_mutation ->> 'entityId',
+          'reason', 'revision_mismatch', 'message', v_message, 'idempotent', false
+        );
+      when deadlock_detected or lock_not_available or query_canceled then
+        raise;
+      when others then
+        get stacked diagnostics v_message = message_text, v_code = returned_sqlstate;
         v_result := jsonb_build_object(
           'mutationId', v_mutation ->> 'mutationId', 'status', 'rejected',
+          'code', v_code,
           'entityType', v_mutation ->> 'entityType', 'entityId', v_mutation ->> 'entityId',
-          'reason', 'validation_error', 'message', v_message, 'idempotent', false
+          'reason', private.sync_rejection_reason(v_code, v_message),
+          'message', v_message, 'idempotent', false
         );
         if private.try_uuid(v_mutation ->> 'mutationId') is not null then
           insert into public.sync_mutations (
@@ -4075,11 +4242,12 @@ begin
       end;
 
       v_existing := null;
+      v_existing_request := null;
       if v_mutation_id is not null then
-        select result into v_existing from public.sync_mutations
+        select request, result into v_existing_request, v_existing from public.sync_mutations
         where user_id = v_user_id and mutation_id = v_mutation_id;
       end if;
-      if v_existing is not null then
+      if v_existing is not null and v_existing_request is not distinct from v_mutation then
         v_result := v_existing || jsonb_build_object('idempotent', true);
       else
         v_saved_result := null;
@@ -4181,21 +4349,33 @@ declare
   v_changes jsonb := '[]'::jsonb;
   v_count integer := 0;
   v_last_sequence bigint := greatest(coalesce(p_after_sequence, 0), 0);
+  v_high_water bigint := 0;
   v_has_more boolean := false;
 begin
   if v_user_id is null then
     raise exception 'Autenticação obrigatória.' using errcode = '42501';
   end if;
+
+  -- See capture_sync_change(): this barrier guarantees that a cursor never
+  -- jumps over a lower sequence from a transaction that has not committed yet.
+  perform pg_advisory_xact_lock(
+    hashtextextended('aralearn-sync-feed-commit-order', 0)
+  );
+  select coalesce(max(sequence), 0) into v_high_water from public.sync_changes;
+
   if p_device_id is not null then
     insert into public.sync_devices (id, user_id, last_seen_at)
     values (p_device_id, v_user_id, now())
-    on conflict (id) do update set last_seen_at = now(), deleted_at = null
-    where sync_devices.user_id = excluded.user_id;
+    on conflict (id) do update set last_seen_at = now()
+    where sync_devices.user_id = excluded.user_id
+      and sync_devices.deleted_at is null and sync_devices.inactive_at is null;
     if not exists (
       select 1 from public.sync_devices
-      where id = p_device_id and user_id = v_user_id and deleted_at is null
+      where id = p_device_id and user_id = v_user_id
+        and deleted_at is null and inactive_at is null
     ) then
-      raise exception 'Dispositivo pertence a outro usuário.' using errcode = '42501';
+      raise exception 'Dispositivo inativo ou pertencente a outro usuário; bootstrap obrigatório.'
+        using errcode = '55000';
     end if;
   end if;
 
@@ -4203,6 +4383,7 @@ begin
     select change.*
     from public.sync_changes change
     where change.sequence > greatest(coalesce(p_after_sequence, 0), 0)
+      and change.sequence <= v_high_water
       and (
         change.audience_user_id = v_user_id
         or (
@@ -4247,6 +4428,13 @@ begin
     v_changes := v_changes || jsonb_build_array(v_item);
   end loop;
 
+  if not v_has_more then
+    -- It is safe to skip sequences that were not visible to this user.  A new
+    -- membership is itself a later change and materializes through clone or a
+    -- fresh bootstrap, never by replaying another user's historical feed.
+    v_last_sequence := greatest(v_last_sequence, v_high_water);
+  end if;
+
   if p_device_id is not null then
     update public.sync_devices
     set last_pulled_sequence = greatest(last_pulled_sequence, v_last_sequence), last_seen_at = now()
@@ -4255,6 +4443,7 @@ begin
   return jsonb_build_object(
     'afterSequence', greatest(coalesce(p_after_sequence, 0), 0),
     'nextSequence', v_last_sequence,
+    'highWaterSequence', v_high_water,
     'hasMore', v_has_more,
     'changes', v_changes
   );
@@ -4819,6 +5008,9 @@ declare
   v_existing private.rpc_idempotency%rowtype;
   v_fingerprint text;
   v_result jsonb;
+  v_message text;
+  v_code text;
+  v_idempotency_course_id uuid;
 begin
   if v_user_id is null or p_mutation_id is null then
     raise exception 'Autenticação e mutationId são obrigatórios.' using errcode = '42501';
@@ -4837,9 +5029,13 @@ begin
     if v_existing.operation <> 'replace_microsequence_cards'
        or v_existing.request_course_id <> p_course_id
        or v_existing.request_fingerprint is distinct from v_fingerprint then
-      raise exception 'mutationId já foi usado com outro payload.' using errcode = '23505';
+      return jsonb_build_object(
+        'status', 'rejected', 'mutationId', p_mutation_id, 'code', '23505',
+        'reason', 'mutation_id_reuse',
+        'message', 'mutationId já foi usado com outro payload.'
+      );
     end if;
-    return v_existing.result_payload;
+    return v_existing.result_payload || jsonb_build_object('idempotent', true);
   end if;
 
   begin
@@ -4850,6 +5046,8 @@ begin
     select jsonb_build_object(
       'status', 'conflict',
       'mutationId', p_mutation_id,
+      'code', '40001',
+      'reason', 'revision_mismatch',
       'courseId', p_course_id,
       'microsequenceId', p_microsequence_id,
       'remoteRevision', microsequence.cards_revision,
@@ -4859,17 +5057,33 @@ begin
     from public.microsequences microsequence
     where microsequence.id = p_microsequence_id and microsequence.course_id = p_course_id;
     if v_result is null then
-      raise;
+      v_result := jsonb_build_object(
+        'status', 'rejected', 'mutationId', p_mutation_id, 'code', '22023',
+        'reason', 'entity_missing', 'message', 'Microssequência não encontrada.',
+        'courseId', p_course_id, 'microsequenceId', p_microsequence_id
+      );
     end if;
+  when deadlock_detected or lock_not_available or query_canceled then
+    raise;
+  when others then
+    get stacked diagnostics v_message = message_text, v_code = returned_sqlstate;
+    v_result := jsonb_build_object(
+      'status', 'rejected', 'mutationId', p_mutation_id, 'code', v_code,
+      'reason', private.sync_rejection_reason(v_code, v_message),
+      'message', v_message, 'courseId', p_course_id,
+      'microsequenceId', p_microsequence_id
+    );
   end;
+  select id into v_idempotency_course_id from public.courses where id = p_course_id;
   insert into private.rpc_idempotency (
     user_id, mutation_id, operation, request_course_id, result_course_id,
     request_fingerprint, result_payload
   ) values (
-    v_user_id, p_mutation_id, 'replace_microsequence_cards', p_course_id, p_course_id,
+    v_user_id, p_mutation_id, 'replace_microsequence_cards',
+    v_idempotency_course_id, v_idempotency_course_id,
     v_fingerprint, v_result
   );
-  return v_result;
+  return v_result || jsonb_build_object('idempotent', false);
 end;
 $$;
 
@@ -4964,9 +5178,9 @@ begin
 end;
 $$;
 
--- RLS is enabled for every table in the exposed public schema.  Writes are
--- intentionally funneled through transactional RPCs; direct reads remain
--- useful for diagnostics and are still course/user scoped.
+-- RLS is enabled for every table in the exposed public schema as defense in
+-- depth. Browser access is nevertheless funneled through the explicit RPCs;
+-- authenticated clients receive no broad direct table grant.
 do $$
 declare
   v_table text;
@@ -5072,7 +5286,6 @@ create policy sync_changes_select on public.sync_changes for select to authentic
   );
 
 revoke all privileges on all tables in schema public from anon, authenticated;
-grant select on all tables in schema public to authenticated;
 revoke all privileges on all sequences in schema public from anon, authenticated;
 revoke all privileges on all functions in schema public from public, anon, authenticated;
 
@@ -5476,6 +5689,263 @@ $$;
 
 revoke all on function public.get_personal_course_graph(uuid) from public, anon, authenticated;
 grant execute on function public.get_personal_course_graph(uuid) to authenticated;
+
+create or replace function public.bootstrap_replica(p_device_id uuid)
+returns jsonb
+language plpgsql
+security definer
+set search_path = pg_catalog, public, private, auth
+as $$
+declare
+  v_user_id uuid := auth.uid();
+  v_course_id uuid;
+  v_graph jsonb;
+  v_snapshot jsonb := jsonb_build_object('schemaVersion', 1);
+  v_store_name text;
+  v_store_names constant text[] := array[
+    'courses','memberships','modules','lessons','guides','guideItems','topics',
+    'topicStatements','microsequences','dependencies','microsequenceStatements',
+    'cards','blocks','options','nodes','flowNodes','flowCases','flowPractices',
+    'flowPracticeEntries','flowPracticeOptions','flowPracticeVariants','flowShapeOptions',
+    'edges','matrixItems','cells','points','lines','highlights','cardSources','cardTopics',
+    'lessonProgress','cardProgress','comments'
+  ];
+  v_high_water bigint;
+begin
+  if v_user_id is null or p_device_id is null then
+    raise exception 'Autenticação e deviceId são obrigatórios.' using errcode = '42501';
+  end if;
+
+  -- One transaction-level barrier covers both the materialized rows and the
+  -- high-water.  Feed producers take this lock before allocating a sequence.
+  perform pg_advisory_xact_lock(
+    hashtextextended('aralearn-sync-feed-commit-order', 0)
+  );
+
+  foreach v_store_name in array v_store_names loop
+    v_snapshot := jsonb_set(v_snapshot, array[v_store_name], '[]'::jsonb, true);
+  end loop;
+
+  for v_course_id in
+    select course.id
+    from public.courses course
+    where course.kind = 'personal' and course.deleted_at is null
+      and (
+        course.owner_id = v_user_id
+        or exists (
+          select 1 from public.course_memberships membership
+          where membership.course_id = course.id and membership.user_id = v_user_id
+            and membership.deleted_at is null
+        )
+      )
+    order by course.id
+  loop
+    v_graph := public.get_personal_course_graph(v_course_id);
+    foreach v_store_name in array v_store_names loop
+      v_snapshot := jsonb_set(
+        v_snapshot,
+        array[v_store_name],
+        coalesce(v_snapshot -> v_store_name, '[]'::jsonb)
+          || coalesce(v_graph -> v_store_name, '[]'::jsonb),
+        true
+      );
+    end loop;
+  end loop;
+
+  select coalesce(max(sequence), 0) into v_high_water from public.sync_changes;
+
+  insert into public.sync_devices (
+    id, user_id, last_pulled_sequence, last_seen_at, inactive_at, deleted_at
+  ) values (
+    p_device_id, v_user_id, v_high_water, now(), null, null
+  )
+  on conflict (id) do update
+  set last_pulled_sequence = excluded.last_pulled_sequence,
+      last_seen_at = excluded.last_seen_at,
+      inactive_at = null,
+      deleted_at = null
+  where sync_devices.user_id = excluded.user_id;
+
+  if not exists (
+    select 1 from public.sync_devices
+    where id = p_device_id and user_id = v_user_id
+      and deleted_at is null and inactive_at is null
+  ) then
+    raise exception 'Dispositivo pertence a outro usuário.' using errcode = '42501';
+  end if;
+
+  return jsonb_build_object(
+    'status', 'applied',
+    'deviceId', p_device_id,
+    'snapshot', v_snapshot,
+    'highWaterSequence', v_high_water
+  );
+end;
+$$;
+
+create or replace function private.safe_sync_watermark(p_now timestamptz default now())
+returns bigint
+language sql
+stable
+security definer
+set search_path = pg_catalog, public, private
+as $$
+  with policy as (
+    select active_device_window from private.sync_retention_policy where singleton
+  ), active_devices as (
+    select device.last_pulled_sequence
+    from public.sync_devices device cross join policy
+    where device.deleted_at is null and device.inactive_at is null
+      and device.last_seen_at >= p_now - policy.active_device_window
+  )
+  select coalesce(
+    (select min(last_pulled_sequence) from active_devices),
+    (select coalesce(max(sequence), 0) from public.sync_changes)
+  );
+$$;
+
+create or replace function public.sync_storage_diagnostics()
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = pg_catalog, public, private, auth
+as $$
+declare
+  v_policy private.sync_retention_policy%rowtype;
+begin
+  if not public.is_app_admin() then
+    raise exception 'Diagnóstico de sincronização exige administração.' using errcode = '42501';
+  end if;
+  select * into v_policy from private.sync_retention_policy where singleton;
+  return jsonb_build_object(
+    'safeWatermark', private.safe_sync_watermark(now()),
+    'activeDevices', (
+      select count(*) from public.sync_devices
+      where deleted_at is null and inactive_at is null
+        and last_seen_at >= now() - v_policy.active_device_window
+    ),
+    'inactiveDevices', (
+      select count(*) from public.sync_devices
+      where deleted_at is not null or inactive_at is not null
+        or last_seen_at < now() - v_policy.active_device_window
+    ),
+    'changeRows', (select count(*) from public.sync_changes),
+    'mutationRows', (select count(*) from public.sync_mutations),
+    'rpcIdempotencyRows', (select count(*) from private.rpc_idempotency),
+    'changeBytes', pg_total_relation_size('public.sync_changes'::regclass),
+    'mutationBytes', pg_total_relation_size('public.sync_mutations'::regclass),
+    'policy', jsonb_build_object(
+      'activeDeviceWindow', v_policy.active_device_window,
+      'minimumChangeRetention', v_policy.minimum_change_retention,
+      'mutationRetention', v_policy.mutation_retention,
+      'rpcIdempotencyRetention', v_policy.rpc_idempotency_retention
+    )
+  );
+end;
+$$;
+
+create or replace function public.compact_sync_history(
+  p_dry_run boolean default true,
+  p_now timestamptz default now()
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = pg_catalog, public, private, auth
+as $$
+declare
+  v_policy private.sync_retention_policy%rowtype;
+  v_watermark bigint;
+  v_stale_devices bigint;
+  v_change_candidates bigint;
+  v_mutation_candidates bigint;
+  v_idempotency_candidates bigint;
+  v_deleted_changes bigint := 0;
+  v_deleted_mutations bigint := 0;
+  v_deleted_idempotency bigint := 0;
+begin
+  if not public.is_app_admin() then
+    raise exception 'Compactação de sincronização exige administração.' using errcode = '42501';
+  end if;
+
+  perform pg_advisory_xact_lock(
+    hashtextextended('aralearn-sync-feed-commit-order', 0)
+  );
+  select * into v_policy from private.sync_retention_policy where singleton for update;
+
+  select count(*) into v_stale_devices
+  from public.sync_devices
+  where deleted_at is null and inactive_at is null
+    and last_seen_at < p_now - v_policy.active_device_window;
+
+  if not p_dry_run then
+    update public.sync_devices
+    set inactive_at = p_now
+    where deleted_at is null and inactive_at is null
+      and last_seen_at < p_now - v_policy.active_device_window;
+  end if;
+
+  -- Dry-run computes the same watermark as a real run by excluding devices
+  -- that would be deactivated by this invocation.
+  select coalesce(
+    min(device.last_pulled_sequence) filter (
+      where device.deleted_at is null and device.inactive_at is null
+        and device.last_seen_at >= p_now - v_policy.active_device_window
+    ),
+    (select coalesce(max(sequence), 0) from public.sync_changes)
+  ) into v_watermark
+  from public.sync_devices device;
+
+  select count(*) into v_change_candidates
+  from public.sync_changes change
+  where change.sequence <= v_watermark
+    and change.changed_at < p_now - v_policy.minimum_change_retention;
+
+  select count(*) into v_mutation_candidates
+  from public.sync_mutations mutation
+  where mutation.created_at < p_now - v_policy.mutation_retention;
+
+  select count(*) into v_idempotency_candidates
+  from private.rpc_idempotency entry
+  where entry.created_at < p_now - v_policy.rpc_idempotency_retention;
+
+  if not p_dry_run then
+    delete from public.sync_changes change
+    where change.sequence <= v_watermark
+      and change.changed_at < p_now - v_policy.minimum_change_retention;
+    get diagnostics v_deleted_changes = row_count;
+
+    delete from public.sync_mutations mutation
+    where mutation.created_at < p_now - v_policy.mutation_retention;
+    get diagnostics v_deleted_mutations = row_count;
+
+    delete from private.rpc_idempotency entry
+    where entry.created_at < p_now - v_policy.rpc_idempotency_retention;
+    get diagnostics v_deleted_idempotency = row_count;
+  end if;
+
+  return jsonb_build_object(
+    'dryRun', p_dry_run,
+    'safeWatermark', v_watermark,
+    'staleDevices', v_stale_devices,
+    'changeCandidates', v_change_candidates,
+    'mutationCandidates', v_mutation_candidates,
+    'rpcIdempotencyCandidates', v_idempotency_candidates,
+    'deletedChanges', v_deleted_changes,
+    'deletedMutations', v_deleted_mutations,
+    'deletedRpcIdempotency', v_deleted_idempotency,
+    'tombstoneRowsDeleted', 0
+  );
+end;
+$$;
+
+revoke all on function public.bootstrap_replica(uuid) from public, anon, authenticated;
+grant execute on function public.bootstrap_replica(uuid) to authenticated;
+revoke all on function public.sync_storage_diagnostics() from public, anon, authenticated;
+grant execute on function public.sync_storage_diagnostics() to authenticated, service_role;
+revoke all on function public.compact_sync_history(boolean, timestamptz) from public, anon, authenticated;
+grant execute on function public.compact_sync_history(boolean, timestamptz) to authenticated, service_role;
 revoke all privileges on all functions in schema private from public, anon, authenticated;
 
 commit;

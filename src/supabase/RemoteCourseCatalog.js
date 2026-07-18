@@ -5,9 +5,23 @@ function mutationId() {
   return defaultUuidFactory();
 }
 
+const SUPABASE_USER_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
+
+function authenticatedUserId(authClient) {
+  const userId = String(authClient.getSession?.()?.user?.id || "").trim().toLowerCase();
+  if (!SUPABASE_USER_ID_PATTERN.test(userId)) {
+    throw new Error("A operação idempotente exige o UUID da sessão Supabase atual.");
+  }
+  return userId;
+}
+
 export class RemoteCourseCatalog {
   constructor({ projectUrl, publishableKey, authClient, fetchImpl = globalThis.fetch } = {}) {
-    if (!authClient || typeof authClient.getAccessToken !== "function") {
+    if (
+      !authClient ||
+      typeof authClient.getAccessToken !== "function" ||
+      typeof authClient.getSession !== "function"
+    ) {
       throw new TypeError("Cliente de autenticação obrigatório.");
     }
     this.authClient = authClient;
@@ -43,7 +57,8 @@ export class RemoteCourseCatalog {
     requestMutationId = null,
     additionalParameters = {}
   ) {
-    const stateKey = `rpc.pending.${operation}:${courseId}`;
+    const userId = authenticatedUserId(this.authClient);
+    const stateKey = `rpc.pending.${userId}:${operation}:${courseId}`;
     const sessionStore = this.authClient.sessionStore;
     let effectiveMutationId = requestMutationId;
     if (!effectiveMutationId && typeof sessionStore?.getSyncState === "function") {

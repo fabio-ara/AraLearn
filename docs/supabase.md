@@ -43,6 +43,8 @@ npm run dev
 
 Durante `npm run dev`, o servidor gera a resposta de `/runtime-config.js` em memória a partir dessas variáveis; não é necessário nem correto preencher o arquivo fonte. Nos builds, o staging gera `runtime-config.js` dentro do artefato. A configuração em `public/runtime-config.js` permanece vazia para impedir o commit acidental de configuração. Tanto o servidor quanto o build rejeitam chave com papel `service_role`. Fora de `localhost`, `127.0.0.1` e do endereço especial do emulador Android, a Project URL precisa usar HTTPS; a release Android exige configuração completa e HTTPS mesmo para um host local.
 
+O mesmo staging gera a diretiva `connect-src` da CSP com a origem exata extraída de `ARALEARN_SUPABASE_URL`. Não existe `connect-src https:` nem wildcard de host local: um Supabase remoto permite apenas `https://<project-ref>.supabase.co`, e um stack local permite somente a origem e porta local efetivamente configuradas. Scripts continuam restritos a `'self'` e nenhuma chave administrativa entra na página.
+
 ## Auth
 
 Habilite login por e-mail e senha. Em **Authentication → URL Configuration**, cadastre os destinos utilizados:
@@ -53,7 +55,9 @@ https://<domínio-da-aplicação>/<caminho>/
 aralearn://auth/callback
 ```
 
-O esquema customizado mantém o fluxo funcional no APK sem domínio próprio. O app usa PKCE: o redirect leva apenas um código curto e de uso único, enquanto o verifier necessário à troca permanece no IndexedDB do dispositivo que iniciou o fluxo. Callbacks implícitos com bearer no fragmento são recusados, e o Service Worker não grava navegações com query de autenticação no CacheStorage. Para produção pública, ainda é preferível um Android App Link HTTPS verificado em domínio controlado, eliminando a possibilidade de outro aplicativo interromper o callback; então atualize conjuntamente o redirect do Supabase, `buildAuthRedirectUrl` e o `intent-filter` Android.
+O esquema customizado mantém o fluxo funcional no APK sem domínio próprio. O app usa PKCE: o redirect leva apenas um código curto e de uso único, enquanto o verifier necessário à troca permanece no IndexedDB do dispositivo que iniciou o fluxo. Cada solicitação também cria um `auth_state` aleatório, de uso único e validade máxima de quinze minutos. O callback só troca o código quando state, verifier e prazo correspondem ao estado local; callbacks implícitos com bearer no fragmento são recusados, e o Service Worker não grava navegações com query de autenticação no CacheStorage.
+
+O esquema `aralearn://` não prova ao Android que o AraLearn é seu único proprietário. PKCE impede que um aplicativo que intercepte o link troque o código sem o verifier, e a verificação de state impede a associação com outra tentativa, mas o interceptor ainda pode causar negação de serviço. Antes da distribuição pública, substitua-o por Android App Link HTTPS verificado em domínio controlado. `buildAuthRedirectUrl` já aceita um callback HTTPS validado; a migração futura precisa atualizar em conjunto o redirect permitido no Supabase, a constante do runtime, o `intent-filter` com `android:autoVerify="true"` e o arquivo `assetlinks.json` do domínio.
 
 O app implementa cadastro, confirmação, reenvio de confirmação, recuperação e troca de senha, login, renovação, sessão persistida e saída. Sem sessão, somente a porta de autenticação é renderizada. Não existe catálogo anônimo.
 
@@ -82,16 +86,40 @@ Este corte implanta somente migrations, RLS, RPCs e os artefatos web/Android da 
 - `delete_personal_course`: remove por tombstones uma cópia pertencente ao owner, de forma idempotente e condicionada à revisão-base;
 - `apply_sync_batch`: aplica um lote ordenado, idempotente, causal e atômico com revisão otimista;
 - `pull_sync_changes`: pagina o feed incremental e seus tombstones;
+- `bootstrap_replica`: devolve o snapshot relacional autorizado e o `highWaterSequence` da mesma visão transacional;
 - `replace_microsequence_cards`: troca o fragmento validado de uma microssequência usando `cards_revision`, separado da revisão de metadados;
 - `validate_course_graph`: verifica integridade e completude da árvore;
 - `publish_official_course`: publica atomicamente somente um curso completo e válido;
 - `list_catalog_courses`: retorna apenas metadados publicados;
 - `list_user_course_summaries`: retorna metadados e estado de atualização das cópias do usuário;
-- `get_personal_course_graph`: disponibiliza a árvore relacional autorizada para a primeira réplica.
+- `get_personal_course_graph`: disponibiliza uma árvore relacional autorizada para operações escopadas;
+- `sync_storage_diagnostics`: informa watermark seguro, dispositivos e volume do histórico para administradores;
+- `compact_sync_history`: simula ou executa a compactação administrativa abaixo do watermark seguro.
 
 As funções de dados de usuário exigem JWT autenticado. Operações administrativas de publicação não são concedidas a `anon` nem a usuários comuns.
 
 `apply_sync_batch` serializa as escritas autorais por curso, captura as revisões antes da primeira mutação e reconhece os efeitos causais das mutações anteriores do próprio lote. Conflito ou rejeição desfaz toda a transação: somente a bloqueadora recebe estado terminal, e as mutações irmãs permanecem repetíveis na outbox. `delete_personal_course` também falha fechado em revisão divergente e retorna a versão remota para resolução explícita; nunca exclui parcialmente uma árvore que mudou em outro dispositivo.
+
+As falhas retornadas ao runtime são classificadas como retentáveis, conflitos ou rejeições definitivas. Rede, timeout, 429 e 5xx conservam `pending`; revisão divergente, `40001` e 409 geram `conflict`; erros determinísticos de payload, estrutura, referência, autorização ou idempotência incompatível geram `rejected` e não são reenviados. A interface exige correção ou descarte explícito da rejeição. O pull incremental pode continuar após falha de push quando a autenticação e a conexão ainda são válidas.
+
+## Retenção operacional da sincronização
+
+Os padrões versionados são: dispositivo ativo por 90 dias, `sync_changes` por no mínimo 30 dias, `sync_mutations` por 180 dias e envelopes de idempotência por 365 dias. A compactação usa o menor cursor de dispositivos ativos como watermark e nunca apaga tombstones relacionais apenas por idade. Um dispositivo vencido é marcado inativo e precisa de `bootstrap_replica` antes de voltar ao feed; trabalho local pendente bloqueia a substituição por snapshot e abre reconciliação.
+
+Execute primeiro o diagnóstico e o dry-run com uma sessão de administrador da aplicação:
+
+```sql
+select public.sync_storage_diagnostics();
+select public.compact_sync_history(true, now());
+```
+
+Somente depois de revisar o watermark e as contagens, execute:
+
+```sql
+select public.compact_sync_history(false, now());
+```
+
+Essas RPCs são `SECURITY DEFINER`, fixam `search_path` e verificam `is_app_admin()` internamente. Embora o PostgREST conheça suas assinaturas, `anon` e usuários autenticados comuns são recusados; as tabelas internas de feed e idempotência também não possuem leitura direta para o cliente.
 
 ## Publicação web e Android
 
@@ -103,6 +131,8 @@ ARALEARN_SUPABASE_PUBLISHABLE_KEY
 ```
 
 O workflow recusa o deploy se alguma delas estiver vazia. São valores públicos; não cadastre a service role nesse local. A CI de validação inicia o Supabase em runner Linux, reaplica migration/seed e executa o pgTAP sem usar credenciais do projeto remoto.
+
+O job `supabase` também executa `npm run test:supabase:smoke` contra Auth, PostgREST e RPCs reais. O smoke cria temporariamente usuários autenticados A e B no stack local e comprova: negação para `anon`; efeito real de `auth.uid()`; isolamento de leitura, escrita e feed entre A e B; encapsulamento das tabelas internas; clone autorizado do catálogo; rejeição de clone/edição indevidos; e autorização das funções `SECURITY DEFINER`. Os usuários temporários são desativados no encerramento. A service role usada para criar esses sujeitos de teste vem apenas de `supabase status` no runner local e nunca entra no build.
 
 PowerShell:
 
@@ -163,8 +193,11 @@ npm run pages:build
 npm run test:e2e
 npm run android:debug
 .\android\gradlew.bat -p .\android :app:lintDebug --no-daemon
+npx --yes supabase@2.109.1 start
 npx --yes supabase@2.109.1 db reset
 npx --yes supabase@2.109.1 test db
+npm run test:supabase:smoke
+npx --yes supabase@2.109.1 stop --no-backup
 ```
 
-Se Docker ou Supabase CLI não estiverem disponíveis, as duas últimas verificações devem ser feitas em outra máquina ou na CI antes da implantação. Isso não autoriza aplicar a migration diretamente em produção sem o teste local.
+`npm run test:supabase:smoke` descobre URL, anon key e service role do stack iniciado por `supabase status`; não use segredos do projeto remoto para esse teste. Se Docker ou Supabase CLI não estiverem disponíveis, `start`, `db reset`, pgTAP e smoke devem ser executados em outra máquina ou no job `supabase` da CI antes da implantação. Isso não autoriza aplicar a migration diretamente em produção sem validar o banco iniciado do zero e a interface HTTP real.

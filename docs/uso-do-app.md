@@ -10,6 +10,8 @@ Sem sessão, o app mostra somente a porta de autenticação. É possível criar 
 
 Depois da autenticação, o app identifica o dispositivo, envia mutações pendentes e busca alterações remotas desde o último cursor. A primeira sincronização requer rede; cursos já replicados continuam disponíveis no IndexedDB quando a conexão cai.
 
+O indicador de gravação distingue “Salvando neste dispositivo”, “Salvo neste dispositivo” e falha local. “Salvo” só aparece depois do commit IndexedDB. Se a gravação falhar, o trabalho permanece em memória e o indicador oferece nova tentativa; a saída da conta é interrompida até que a fila local possa ser concluída. Um logout normal fecha, mas não apaga, a réplica isolada pelo UUID da conta.
+
 ## 2. Escolher ou criar um curso
 
 O catálogo lista somente metadados de cursos oficiais publicados no Supabase. Ao adicionar um deles, o servidor cria uma cópia pessoal completa em uma transação, com UUIDs próprios e rastreamento de origem. O app não contém catálogo operacional embarcado e não baixa as árvores de todos os cursos só para montar a lista.

@@ -7,7 +7,10 @@ import {
 } from "../../src/supabase/SupabaseAuthClient.js";
 import { SupabaseHttpClient } from "../../src/supabase/SupabaseHttpClient.js";
 import { RemoteCourseCatalog } from "../../src/supabase/RemoteCourseCatalog.js";
-import { readSupabaseRuntimeConfig } from "../../src/supabase/runtimeConfig.js";
+import {
+  buildAuthRedirectUrl,
+  readSupabaseRuntimeConfig
+} from "../../src/supabase/runtimeConfig.js";
 
 function response(status, body) {
   return new Response(body === null ? null : JSON.stringify(body), {
@@ -130,7 +133,11 @@ test("cadastro, reenvio e recuperação passam redirect_to na URL do GoTrue", as
   await auth.requestPasswordReset({ email: "nova@example.com", redirectTo });
 
   assert.equal(requests.length, 3);
-  requests.forEach(({ url }) => assert.equal(new URL(url).searchParams.get("redirect_to"), redirectTo));
+  requests.forEach(({ url }) => {
+    const callback = new URL(new URL(url).searchParams.get("redirect_to"));
+    assert.equal(`${callback.origin}${callback.pathname}`, redirectTo);
+    assert.match(callback.searchParams.get("auth_state"), /^[A-Za-z0-9_-]{43}$/u);
+  });
   assert.equal(new URL(requests[0].url).pathname, "/auth/v1/signup");
   assert.equal(new URL(requests[1].url).pathname, "/auth/v1/resend");
   assert.equal(new URL(requests[2].url).pathname, "/auth/v1/recover");
@@ -253,6 +260,8 @@ test("callback PKCE troca código com o verifier local e nunca recebe token no d
   const store = createSessionStore();
   await store.putSyncState(AUTH_PKCE_STATE_KEY, {
     verifier: "verifier-local-secreto",
+    state: "estado-local-secreto",
+    createdAt: "2023-11-14T22:13:20.000Z",
     type: "recovery"
   });
   const requests = [];
@@ -268,11 +277,12 @@ test("callback PKCE troca código com o verifier local e nunca recebe token no d
     locationValue: {
       hash: "",
       pathname: "/app/",
-      search: "?code=codigo-curto&origem=email"
+      search: "?code=codigo-curto&auth_state=estado-local-secreto&origem=email"
     },
     historyValue: {
       replaceState(...args) { historyCalls.push(args); }
-    }
+    },
+    clock: () => 1_700_000_000_000
   });
 
   const restored = await auth.initialize();
@@ -311,11 +321,81 @@ test("reenvio autônomo cria verifier compatível com a troca PKCE posterior", a
       exchangeBody = JSON.parse(options.body);
       return response(200, session());
     },
-    locationValue: { hash: "", pathname: "/app/", search: "?code=codigo-do-reenvio" },
+    locationValue: {
+      hash: "",
+      pathname: "/app/",
+      search: `?code=codigo-do-reenvio&auth_state=${generatedState.state}`
+    },
     historyValue: { replaceState() {} }
   });
   assert.equal((await receiver.initialize()).user.id, "user-1");
   assert.equal(exchangeBody.code_verifier, generatedState.verifier);
+});
+
+test("callback PKCE rejeita state divergente ou expirado sem trocar o código", async () => {
+  for (const pkce of [
+    {
+      verifier: "verifier-local",
+      state: "estado-correto",
+      createdAt: "2023-11-14T22:13:20.000Z",
+      callbackState: "estado-forjado",
+      now: 1_700_000_000_000
+    },
+    {
+      verifier: "verifier-local",
+      state: "estado-correto",
+      createdAt: "2023-11-14T21:13:20.000Z",
+      callbackState: "estado-correto",
+      now: 1_700_000_000_000
+    }
+  ]) {
+    const store = createSessionStore();
+    await store.putSyncState(AUTH_PKCE_STATE_KEY, {
+      verifier: pkce.verifier,
+      state: pkce.state,
+      createdAt: pkce.createdAt,
+      type: "signup"
+    });
+    let requests = 0;
+    const auth = new SupabaseAuthClient({
+      projectUrl: "https://projeto.supabase.co",
+      publishableKey: "public-key",
+      sessionStore: store,
+      fetchImpl: async () => { requests += 1; return response(200, session()); },
+      locationValue: {
+        hash: "",
+        pathname: "/app/",
+        search: `?code=codigo&auth_state=${pkce.callbackState}`
+      },
+      historyValue: { replaceState() {} },
+      clock: () => pkce.now
+    });
+
+    assert.equal(await auth.initialize(), null);
+    assert.equal(requests, 0);
+    assert.match(auth.redirectError, /não pertence a este dispositivo ou expirou/u);
+  }
+});
+
+test("callback Android aceita apenas o esquema exato atual ou App Link HTTPS", () => {
+  assert.equal(
+    buildAuthRedirectUrl(null, { androidHost: {}, androidRedirectUrl: "aralearn://auth/callback" }),
+    "aralearn://auth/callback"
+  );
+  assert.equal(
+    buildAuthRedirectUrl(null, {
+      androidHost: {},
+      androidRedirectUrl: "https://app.aralearn.example/auth/callback"
+    }),
+    "https://app.aralearn.example/auth/callback"
+  );
+  assert.throws(
+    () => buildAuthRedirectUrl(null, {
+      androidHost: {},
+      androidRedirectUrl: "aralearn://outro/callback"
+    }),
+    /callback Android/u
+  );
 });
 
 test("callback sem verifier não encerra uma sessão válida nem propaga logout", async () => {
@@ -503,6 +583,7 @@ test("saída é propagada para as demais abas sem compartilhar bearer", async ()
 
 test("retry de clone reutiliza mutationId persistente após resposta perdida", async () => {
   const sessionStore = createSessionStore();
+  const userId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
   const mutationIds = [];
   let attempts = 0;
   const catalog = new RemoteCourseCatalog({
@@ -510,6 +591,7 @@ test("retry de clone reutiliza mutationId persistente após resposta perdida", a
     publishableKey: "public-key",
     authClient: {
       sessionStore,
+      getSession() { return { user: { id: userId } }; },
       async getAccessToken() { return "access-token"; }
     },
     fetchImpl: async (_url, options) => {
@@ -527,10 +609,58 @@ test("retry de clone reutiliza mutationId persistente após resposta perdida", a
   assert.match(mutationIds[0], /^[0-9a-f]{8}-[0-9a-f-]{27}$/u);
   assert.equal(
     await sessionStore.getSyncState(
-      "rpc.pending.clone_catalog_course:bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"
+      `rpc.pending.${userId}:clone_catalog_course:bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb`
     ),
     null
   );
+});
+
+test("mutationId pendente de catálogo permanece isolado por UUID ao trocar de usuário", async () => {
+  const sessionStore = createSessionStore();
+  const userA = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+  const userB = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+  const courseId = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
+  let activeUserId = userA;
+  let firstAttemptOfA = true;
+  const attempts = [];
+  const catalog = new RemoteCourseCatalog({
+    projectUrl: "https://projeto.supabase.co",
+    publishableKey: "public-key",
+    authClient: {
+      sessionStore,
+      getSession() { return { user: { id: activeUserId } }; },
+      async getAccessToken() { return `access-token-${activeUserId}`; }
+    },
+    fetchImpl: async (_url, options) => {
+      const request = JSON.parse(options.body);
+      attempts.push({ userId: activeUserId, mutationId: request.p_mutation_id });
+      if (activeUserId === userA && firstAttemptOfA) {
+        firstAttemptOfA = false;
+        throw new TypeError("resposta de A perdida");
+      }
+      return response(200, "dddddddd-dddd-4ddd-8ddd-dddddddddddd");
+    }
+  });
+
+  await assert.rejects(() => catalog.cloneCourse(courseId), /resposta de A perdida/u);
+  const keyA = `rpc.pending.${userA}:clone_catalog_course:${courseId}`;
+  const pendingA = await sessionStore.getSyncState(keyA);
+  assert.match(pendingA, /^[0-9a-f-]{36}$/u);
+
+  activeUserId = userB;
+  await catalog.cloneCourse(courseId);
+  assert.equal(await sessionStore.getSyncState(keyA), pendingA);
+  assert.equal(
+    await sessionStore.getSyncState(`rpc.pending.${userB}:clone_catalog_course:${courseId}`),
+    null
+  );
+
+  activeUserId = userA;
+  await catalog.cloneCourse(courseId);
+  assert.equal(attempts.length, 3);
+  assert.equal(attempts[0].mutationId, attempts[2].mutationId);
+  assert.notEqual(attempts[0].mutationId, attempts[1].mutationId);
+  assert.equal(await sessionStore.getSyncState(keyA), null);
 });
 
 test("negação de domínio 403 preserva a sessão e a réplica autenticada", async () => {
@@ -541,6 +671,9 @@ test("negação de domínio 403 preserva a sessão e a réplica autenticada", as
     publishableKey: "public-key",
     authClient: {
       sessionStore: createSessionStore(),
+      getSession() {
+        return { user: { id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa" } };
+      },
       async getAccessToken() { return "access-token"; },
       async clearSession() { cleared += 1; },
       emit(event) { events.push(event); }

@@ -9,10 +9,15 @@ import { readSupabaseRuntimeConfig } from "../src/supabase/runtimeConfig.js";
 import { renderAuthGate } from "../src/ui/AuthGate.js";
 import { createLessonEditorApp } from "../src/ui/lessonEditorApp.js";
 import { createRemoteLibraryOverlay } from "../src/ui/RemoteLibraryOverlay.js";
+import { renderUiIcon } from "../src/ui/renderUiIcons.js";
 
+let authStore = null;
 let relationalStore = null;
 let repository = null;
 let authenticationShutdown = null;
+let activeUserId = null;
+let durabilityUnsubscribe = null;
+let lifecycleAbortController = null;
 
 function wait(milliseconds) {
   return new Promise((resolve) => globalThis.setTimeout(resolve, milliseconds));
@@ -20,21 +25,58 @@ function wait(milliseconds) {
 
 async function closeAraLearnLocalConnections() {
   if (repository) {
-    await repository.close().catch(() => undefined);
+    await repository.close();
     repository = null;
     relationalStore = null;
   } else if (relationalStore) {
     relationalStore.close();
     relationalStore = null;
   }
+  durabilityUnsubscribe?.();
+  durabilityUnsubscribe = null;
+  lifecycleAbortController?.abort();
+  lifecycleAbortController = null;
+  if (authStore) {
+    authStore.close();
+    authStore = null;
+  }
 }
 
 async function clearAraLearnLocalState() {
+  const userId = activeUserId;
   await closeAraLearnLocalConnections();
+  if (userId) {
+    await IndexedDbRelationalStore.deleteDatabase(globalThis.indexedDB, { userId });
+  }
   await IndexedDbRelationalStore.deleteDatabase(globalThis.indexedDB);
 }
 
-function shutDownAuthenticatedRuntime(root, { deleteReplica }) {
+function renderShutdownDurabilityFailure(root, error) {
+  root.innerHTML = `
+    <main class="auth-shell">
+      <section class="auth-card" aria-live="assertive">
+        <header class="auth-brand"><img src="assets/brand/aralearn-mark.png" alt=""><span>AraLearn</span></header>
+        <h1>A saída foi interrompida</h1>
+        <p class="auth-copy" data-shutdown-durability-error></p>
+        <button class="auth-primary" type="button" data-shutdown-retry title="Tentar gravar novamente" aria-label="Tentar gravar novamente">${renderUiIcon("save", "auth-button-icon")}</button>
+      </section>
+    </main>
+  `;
+  const message = error instanceof Error ? error.message : String(error);
+  root.querySelector("[data-shutdown-durability-error]").textContent =
+    `O AraLearn não conseguiu concluir a gravação local: ${message}. Tente novamente antes de fechar.`;
+  root.querySelector("[data-shutdown-retry]")?.addEventListener("click", async (event) => {
+    event.currentTarget.disabled = true;
+    try {
+      await repository?.retryDurability();
+      await shutDownAuthenticatedRuntime(root);
+    } catch (retryError) {
+      renderShutdownDurabilityFailure(root, retryError);
+    }
+  });
+}
+
+function shutDownAuthenticatedRuntime(root) {
   if (authenticationShutdown) return authenticationShutdown;
   authenticationShutdown = (async () => {
     root.innerHTML = `
@@ -46,15 +88,15 @@ function shutDownAuthenticatedRuntime(root, { deleteReplica }) {
         </section>
       </main>
     `;
-    await closeAraLearnLocalConnections();
-    if (deleteReplica) {
-      // Dá às outras abas tempo para fechar suas conexões após o broadcast.
-      await wait(150);
-      await IndexedDbRelationalStore.deleteDatabase(globalThis.indexedDB);
-    } else {
-      // A aba que iniciou a saída é responsável pela exclusão compartilhada.
-      await wait(300);
+    try {
+      await closeAraLearnLocalConnections();
+    } catch (error) {
+      authenticationShutdown = null;
+      renderShutdownDurabilityFailure(root, error);
+      return;
     }
+    // Dá às demais abas tempo para receber a revogação sem apagar nenhuma réplica.
+    await wait(150);
     globalThis.location.reload();
   })();
   return authenticationShutdown;
@@ -192,9 +234,58 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
     <div id="aralearn-editor-root"></div>
     <div id="aralearn-remote-library-root"></div>
     <p class="startup-sync-warning" data-startup-sync-warning role="status" aria-live="polite"></p>
+    <aside class="local-durability" data-local-durability data-state="saved" role="status" aria-live="polite">
+      <span data-local-durability-message>Salvo neste dispositivo.</span>
+      <button class="icon-ghost" type="button" data-local-durability-retry hidden title="Tentar gravar novamente" aria-label="Tentar gravar novamente">${renderUiIcon("save", "remote-library-action-icon")}</button>
+    </aside>
   `;
   const editorRoot = root.querySelector("#aralearn-editor-root");
   const libraryRoot = root.querySelector("#aralearn-remote-library-root");
+  const durabilityRoot = root.querySelector("[data-local-durability]");
+  const durabilityMessage = root.querySelector("[data-local-durability-message]");
+  const durabilityRetry = root.querySelector("[data-local-durability-retry]");
+  durabilityUnsubscribe = repository.onDurabilityChange((state) => {
+    durabilityRoot.dataset.state = state.status;
+    durabilityRetry.hidden = state.status !== "error";
+    if (state.status === "pending") {
+      durabilityMessage.textContent = "Salvando neste dispositivo…";
+    } else if (state.status === "error") {
+      durabilityMessage.textContent = `Falha ao salvar localmente: ${state.error?.message || "erro desconhecido"}.`;
+    } else {
+      durabilityMessage.textContent = "Salvo neste dispositivo.";
+    }
+  });
+  durabilityRetry.addEventListener("click", async () => {
+    durabilityRetry.disabled = true;
+    try {
+      await repository.retryDurability();
+    } catch {
+      // O estado persistente do repositório mantém a falha visível e repetível.
+    } finally {
+      durabilityRetry.disabled = false;
+    }
+  });
+
+  const bestEffortFlush = () => {
+    if (!repository) return Promise.resolve();
+    return repository.flush().catch(() => undefined);
+  };
+  lifecycleAbortController = new AbortController();
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") void bestEffortFlush();
+  }, { signal: lifecycleAbortController.signal });
+  globalThis.addEventListener("pagehide", () => {
+    void bestEffortFlush();
+  }, { signal: lifecycleAbortController.signal });
+  globalThis.AraLearnAndroid = {
+    flush: bestEffortFlush,
+    handleBackPress() {
+      void repository.flush()
+        .then(() => globalThis.AndroidHost?.finishApp?.())
+        .catch(() => undefined);
+      return true;
+    }
+  };
   if (startupSyncError) {
     const warning = root.querySelector("[data-startup-sync-warning]");
     warning.textContent = "Modo offline: alterações pendentes serão sincronizadas quando a conexão voltar.";
@@ -234,7 +325,7 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
     },
     async onSignedOut() {
       globalThis.clearTimeout(automaticSyncTimer);
-      await shutDownAuthenticatedRuntime(root, { deleteReplica: true });
+      await shutDownAuthenticatedRuntime(root);
     }
   });
 
@@ -245,7 +336,7 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
 }
 
 async function start(root) {
-  relationalStore = await IndexedDbRelationalStore.open(globalThis.indexedDB);
+  authStore = await IndexedDbRelationalStore.open(globalThis.indexedDB);
   const config = readSupabaseRuntimeConfig();
   if (!config.configured) {
     renderAuthGate({ root, configured: false });
@@ -254,20 +345,20 @@ async function start(root) {
   const authClient = new SupabaseAuthClient({
     projectUrl: config.projectUrl,
     publishableKey: config.publishableKey,
-    sessionStore: relationalStore
+    sessionStore: authStore
   });
   authClient.onAuthStateChange((event) => {
     if (event === "SIGNED_OUT_REMOTE") {
-      void shutDownAuthenticatedRuntime(root, { deleteReplica: false });
+      void shutDownAuthenticatedRuntime(root);
     } else if (event === "SESSION_INVALID") {
-      void shutDownAuthenticatedRuntime(root, { deleteReplica: false });
+      void shutDownAuthenticatedRuntime(root);
     } else if (event === "SIGNED_OUT") {
-      void shutDownAuthenticatedRuntime(root, { deleteReplica: true });
+      void shutDownAuthenticatedRuntime(root);
     }
   });
   const session = await authClient.initialize();
   if (!session && authClient.sessionInvalidated) {
-    await shutDownAuthenticatedRuntime(root, { deleteReplica: false });
+    await shutDownAuthenticatedRuntime(root);
     return;
   }
   if (!session || authClient.recoveryMode) {
@@ -286,6 +377,10 @@ async function start(root) {
     renderAuthGate({ root, authClient, configured: true });
     return;
   }
+  activeUserId = session.user.id;
+  relationalStore = await IndexedDbRelationalStore.open(globalThis.indexedDB, {
+    userId: activeUserId
+  });
   await relationalStore.bindReplicaToUser(session.user.id, session);
   await renderAuthenticatedApplication(root, config, authClient, session);
 }

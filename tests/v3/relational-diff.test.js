@@ -335,7 +335,7 @@ test("substituição escopada alcança somente cards e filhos da microssequênci
   });
 });
 
-test("repositório mantém API síncrona, aplica tombstones e não toca no progresso externo", async (context) => {
+test("repositório devolve a Promise durável, aplica tombstones e não toca no progresso externo", async (context) => {
   const repository = await RelationalProjectRepository.open({
     indexedDb: new IDBFactory(),
     userId: "user-a"
@@ -344,7 +344,7 @@ test("repositório mantém API síncrona, aplica tombstones e não toca no progr
   const previous = buildProject();
 
   assert.deepEqual(repository.loadProject(), createEmptyProjectDocument());
-  assert.deepEqual(repository.saveProject(previous), previous);
+  assert.deepEqual(await repository.saveProject(previous), previous);
   assert.deepEqual(repository.loadProject(), previous);
   await repository.flush();
   assert.equal(
@@ -704,6 +704,50 @@ test("conflito de revisão preserva as duas versões sem sobrescrever a linha", 
   assert.equal(conflict.remoteRow.value, block.value);
 });
 
+test("patch de linha envia somente o campo realmente alterado", async (context) => {
+  const repository = await RelationalProjectRepository.open({ indexedDb: new IDBFactory() });
+  context.after(() => repository.store.close());
+  repository.saveProject(buildProject());
+  await repository.flush();
+  const initialOutbox = await repository.store.getAll("outbox");
+  await repository.store.acknowledgeOutbox(initialOutbox.map((entry) => entry.mutationId));
+  const previous = (await repository.store.getAll("blocks"))[0];
+  const mutationService = new DomainMutationService({ store: repository.store });
+
+  const result = await mutationService.applyRowChange(
+    "blocks",
+    previous,
+    { ...previous, value: "Somente este texto mudou." }
+  );
+
+  assert.equal(result.outboxEntries.length, 1);
+  assert.deepEqual(result.outboxEntries[0].changedFields, ["value"]);
+  assert.deepEqual(result.outboxEntries[0].payload, { value: "Somente este texto mudou." });
+});
+
+test("remoção de campo opcional envia null no patch declarado", async (context) => {
+  const repository = await RelationalProjectRepository.open({ indexedDb: new IDBFactory() });
+  context.after(() => repository.store.close());
+  repository.saveProject(buildProject());
+  await repository.flush();
+  await repository.store.acknowledgeOutbox(
+    (await repository.store.getAll("outbox")).map((entry) => entry.mutationId)
+  );
+  const mutationService = new DomainMutationService({ store: repository.store });
+  const original = (await repository.store.getAll("blocks"))[0];
+  const withPrompt = { ...original, prompt: "Campo opcional temporário" };
+  const setup = await mutationService.applyRowChange("blocks", original, withPrompt);
+  await repository.store.acknowledgeOutbox(setup.outboxEntries.map((entry) => entry.mutationId));
+  const persisted = await repository.store.get("blocks", original.id);
+  const withoutPrompt = { ...persisted };
+  delete withoutPrompt.prompt;
+
+  const result = await mutationService.applyRowChange("blocks", persisted, withoutPrompt);
+
+  assert.deepEqual(result.outboxEntries[0].changedFields, ["prompt"]);
+  assert.deepEqual(result.outboxEntries[0].payload, { prompt: null });
+});
+
 test("comentários são linhas por card e usuário resolvidas a partir do caminho público", async (context) => {
   const repository = await RelationalProjectRepository.open({
     indexedDb: new IDBFactory(),
@@ -789,6 +833,53 @@ test("visualização e tentativas são granulares e não concluem o card antecip
   lessonRow = repository.loadLessonProgress(repository.resolveCardReference(secondReference).lessonId);
   assert.equal(lessonRow.cursor, 1);
   assert.equal(lessonRow.completedAt, "2026-07-18T15:00:00.000Z");
+});
+
+test("segunda atividade envia patches mínimos de progresso sem identidades imutáveis", async (context) => {
+  let currentTime = "2026-07-18T15:10:00.000Z";
+  const repository = await RelationalProjectRepository.open({
+    indexedDb: new IDBFactory(),
+    userId: "user-a",
+    clock: () => new Date(currentTime)
+  });
+  context.after(() => repository.store.close());
+  await repository.saveProject(buildProject());
+  await repository.store.acknowledgeOutbox(
+    (await repository.store.getAll("outbox")).map((row) => row.mutationId)
+  );
+  const reference = {
+    courseKey: "course-a",
+    moduleKey: "module-a",
+    lessonKey: "lesson-a",
+    microsequenceKey: "micro-a",
+    cardKey: "card-a"
+  };
+
+  await repository.recordCardView(reference);
+  await repository.store.acknowledgeOutbox(
+    (await repository.store.getAll("outbox")).map((row) => row.mutationId)
+  );
+  currentTime = "2026-07-18T15:11:00.000Z";
+  await repository.recordCardAttempt(reference, "wrong");
+
+  const patches = await repository.store.getAll("outbox");
+  const lessonPatch = patches.find((row) => row.entityType === "lessonProgress");
+  const cardPatch = patches.find((row) => row.entityType === "cardProgress");
+  assert.deepEqual(lessonPatch.changedFields, ["lastActivityAt"]);
+  assert.deepEqual(lessonPatch.payload, {
+    lastActivityAt: "2026-07-18T15:11:00.000Z"
+  });
+  assert.deepEqual(cardPatch.changedFields, ["attempts", "lastActivityAt", "lastResult"]);
+  assert.deepEqual(cardPatch.payload, {
+    attempts: 1,
+    lastActivityAt: "2026-07-18T15:11:00.000Z",
+    lastResult: "wrong"
+  });
+  for (const patch of patches) {
+    assert.equal(Object.hasOwn(patch.payload, "id"), false);
+    assert.equal(Object.hasOwn(patch.payload, "courseId"), false);
+    assert.equal(Object.hasOwn(patch.payload, "userId"), false);
+  }
 });
 
 test("salvar conclusões preserva progresso relacional de cards apenas visualizados", async (context) => {

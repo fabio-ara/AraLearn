@@ -4,7 +4,8 @@ import { contractToRelationalRows } from "../../src/persistence/contractToRelati
 import { createExampleProjectDocument } from "../support/exampleProjectDocument.js";
 
 const USER_ID = "77777777-7777-4777-8777-777777777777";
-const PROJECT_URL = "https://project.supabase.test";
+const PROJECT_URL = process.env.ARALEARN_SUPABASE_URL || "https://project.supabase.test";
+const PROJECT_KEY = process.env.ARALEARN_SUPABASE_PUBLISHABLE_KEY || "sb_publishable_e2e";
 
 function accessToken() {
   const encode = (value) => Buffer.from(JSON.stringify(value)).toString("base64url");
@@ -29,7 +30,7 @@ async function mockSupabase(page, { catalog = [] } = {}) {
     globalThis.__ARALEARN_ENV__ = Object.freeze(config);
   }, {
     supabaseUrl: PROJECT_URL,
-    supabasePublishableKey: "sb_publishable_e2e"
+    supabasePublishableKey: PROJECT_KEY
   });
   await page.route(`${PROJECT_URL}/**`, async (route) => {
     const request = route.request();
@@ -53,6 +54,13 @@ async function mockSupabase(page, { catalog = [] } = {}) {
         body: JSON.stringify(body.p_after_sequence === 0
           ? { changes, nextCursor: 1, hasMore: false }
           : { changes: [], nextCursor: 1, hasMore: false })
+      });
+      return;
+    }
+    if (pathname.endsWith("/rpc/bootstrap_replica")) {
+      await route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({ snapshot: contractToRelationalRows(createExampleProjectDocument()), highWaterSequence: 1 })
       });
       return;
     }
@@ -123,8 +131,8 @@ test("concluir um card cria somente mutações granulares de progresso", async (
   await page.locator('[data-action="continue-popup-next"]').tap();
   await expect(page.locator(".runtime-card-title")).toHaveText("Um grafo pequeno");
 
-  const outbox = await page.evaluate(async () => {
-    const request = indexedDB.open("aralearn-relational-v1", 1);
+  const outbox = await page.evaluate(async (userId) => {
+    const request = indexedDB.open(`aralearn-relational-v1:user:${userId}`);
     const database = await new Promise((resolve, reject) => {
       request.onsuccess = () => resolve(request.result);
       request.onerror = () => reject(request.error);
@@ -137,7 +145,7 @@ test("concluir um card cria somente mutações granulares de progresso", async (
     });
     database.close();
     return rows;
-  });
+  }, USER_ID);
   expect(outbox.length).toBeGreaterThan(0);
   expect(new Set(outbox.map((entry) => entry.entityType))).toEqual(new Set(["lessonProgress", "cardProgress"]));
   expect(outbox.every((entry) => !entry.payload?.courses && !entry.payload?.lessons)).toBe(true);

@@ -54,6 +54,10 @@ public class MainActivity extends ComponentActivity {
         "(function(){try{return !!(window.AraLearnAndroid && " +
         "window.AraLearnAndroid.handleBackPress && " +
         "window.AraLearnAndroid.handleBackPress());}catch(_error){return false;}})();";
+    private static final String RUNTIME_FLUSH_SCRIPT =
+        "(function(){try{if(window.AraLearnAndroid&&window.AraLearnAndroid.flush){" +
+        "Promise.resolve(window.AraLearnAndroid.flush()).catch(function(){});" +
+        "return true;}}catch(_error){}return false;})();";
 
     private WebView webView;
     private ValueCallback<Uri[]> filePathCallback;
@@ -206,6 +210,14 @@ public class MainActivity extends ComponentActivity {
                 });
             }
         });
+    }
+
+    @Override
+    protected void onPause() {
+        if (webView != null) {
+            webView.evaluateJavascript(RUNTIME_FLUSH_SCRIPT, null);
+        }
+        super.onPause();
     }
 
     private String resolveAuthCallbackUrl(Intent intent) {

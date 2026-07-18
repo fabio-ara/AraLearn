@@ -69,13 +69,27 @@ Exemplos:
 
 Uma falha de validação encerra a transação sem modificar o estado anterior. O progresso e os comentários externos ao escopo permanecem intactos.
 
+## Durabilidade local explícita
+
+`saveProject` e `saveProgress` atualizam a visão de domínio imediatamente para manter a interface responsiva, mas devolvem uma `Promise` que só resolve depois do commit da transação IndexedDB. O repositório publica três estados distintos: `pending`, enquanto há gravação local em voo; `saved`, somente quando memória e linhas persistidas coincidem; e `error`, quando o commit falha. Em erro, o trabalho continua na memória, a falha permanece visível e `retryDurability` repete o estado desejado sem anunciar uma gravação inexistente.
+
+`flush()` aguarda toda a fila e propaga a falha persistente. A saída da conta e a troca controlada de runtime precisam concluir esse flush; se ele falhar, a saída é interrompida e a interface oferece nova tentativa. `visibilitychange` e `pagehide` solicitam flush como melhor esforço. No APK, o botão voltar aguarda a mesma Promise antes de pedir à Activity que finalize, e `onPause` dispara um flush adicional como proteção para encerramentos controlados pelo Android.
+
+## Isolamento da réplica por usuário
+
+Sessão e estado PKCE ficam no banco global `aralearn-relational-v1`, aberto antes de se conhecer o usuário. Depois da autenticação, a réplica de dados é aberta em um banco físico derivado exclusivamente do UUID Supabase: `aralearn-relational-v1:user:<uuid>`. E-mail não participa do nome nem da autorização local.
+
+Os `mutationId` pendentes de RPCs idempotentes do catálogo também ficam no banco global, mas cada chave inclui obrigatoriamente o UUID da sessão. Assim, trocar de A para B não reutiliza, remove nem oculta a tentativa pendente de A; ao retornar, A repete a operação com o mesmo identificador.
+
+O logout fecha as conexões, mas não apaga curso, outbox, conflitos, rejeições, progresso ou comentários. Ao entrar novamente, a mesma conta reabre sua réplica; outra conta abre outro banco e não enxerga os object stores da anterior. Exclusão da réplica é uma ação destrutiva separada, explícita e confirmada, nunca um efeito normal da troca de usuário.
+
 Uma microssequência possui dois tokens de concorrência. `revision` cobre metadados e relações gerais; `cards_revision` cobre somente a subárvore de cards e seus filhos. Alterar título, objetivo ou dependências não invalida por si só uma substituição de cards já preparada. Alterar card, bloco, opção ou recurso filho incrementa `cards_revision`, e `replace_microsequence_cards` compara e avança esse token estreito de forma transacional.
 
 ## Catálogo e cópias pessoais
 
 A listagem inicial consulta somente metadados de cursos oficiais publicados no servidor. A árvore didática não é baixada para compor o catálogo.
 
-`clone_catalog_course` executa no PostgreSQL uma cópia transacional da árvore publicada. A cópia recebe UUIDs novos, registra a associação do usuário e guarda `source_entity_id` em cada entidade clonável. O cliente nunca tenta reproduzir essa operação com uma série de requisições independentes.
+`clone_catalog_course` executa no PostgreSQL uma cópia transacional da árvore publicada. A cópia recebe UUIDs novos, registra a associação do usuário e guarda `source_entity_id` em cada entidade clonável. O UUID pessoal devolvido pela RPC direciona a sincronização que recebe a árvore; se o feed já a materializou, nenhum snapshot duplicado é baixado. O cliente nunca tenta reproduzir a clonagem com uma série de requisições independentes.
 
 O hash atual da cópia é comparado ao hash de origem. Uma cópia não personalizada pode ser atualizada transacionalmente por `refresh_personal_course_from_source`. Se houver personalização, o servidor não sobrescreve nem faz merge automático: a interface oferece criar uma nova cópia da publicação, preservando a anterior.
 
@@ -95,13 +109,40 @@ Cada instalação recebe um UUID de dispositivo persistido. A sincronização se
 4. aplica as mutações na ordem enviada, comparando `baseRevision` com esse snapshot e com as mutações diretas anteriores do mesmo lote;
 5. diante de conflito ou rejeição real, desfaz atomicamente todo o lote; somente a mutação bloqueadora vira conflito terminal, enquanto as irmãs revertidas ou ainda não executadas continuam pendentes;
 6. confirma as mutações somente quando o lote conclui sem bloqueio;
-7. lê `pull_sync_changes` a partir do último número de sequência;
-8. acumula as páginas sem expor árvore parcial e aplica o ciclo inteiro em uma única transação IndexedDB;
-9. persiste o cursor somente depois do commit local.
+7. em dispositivo novo, recebe de `bootstrap_replica` um snapshot autorizado e o `highWaterSequence` da mesma visão lógica e grava ambos numa única transação local;
+8. nos ciclos seguintes, lê `pull_sync_changes` somente depois desse high-water;
+9. aplica uma página por transação IndexedDB e persiste o cursor após cada commit, sem acumular o histórico inteiro em memória;
+10. se houver interrupção, retoma da última página confirmada, sem materializar o mesmo curso novamente por snapshot e feed.
 
 O snapshot inicial torna causal uma sequência como inserir card, inserir bloco filho e depois atualizar o mesmo card: o incremento agregado provocado pelo filho não é confundido com escrita de outro dispositivo. As operações compostas de substituição de cards e exclusão de curso respeitam a mesma ordem da outbox e não atravessam um conflito granular anterior. Se qualquer etapa bloquear, o cliente não envia silenciosamente as mutações causais posteriores.
 
 Exclusões são tombstones com `deleted_at`. Repetir uma chamada depois de falha é seguro. Em revisão divergente, o servidor não usa última gravação silenciosa: o estado remoto permanece canônico, a mutação local permanece registrada e uma linha em `conflicts` conserva as duas versões para resolução explícita.
+
+### Classificação de falhas do push
+
+O cliente classifica cada resultado antes de alterar a outbox. A classificação não depende apenas de uma exceção HTTP: as RPCs compostas devolvem, sempre que possível, `status`, `mutationId`, `code`, `reason` e `message` estruturados.
+
+- **Retentável:** indisponibilidade de rede ou serviço, timeout, HTTP 429 e HTTP 5xx mantêm a mutação como `pending`. A repetição usa o mesmo `mutationId`; quando a sessão e a conexão ainda permitem, uma falha de push não impede o pull seguro das alterações remotas.
+- **Conflito:** revisão divergente, SQLSTATE `40001`, HTTP 409 ou conflito otimista explícito movem a mutação para `conflict`. As versões local e remota ficam preservadas, e as mutações causais descendentes não atravessam a bloqueadora.
+- **Rejeição definitiva:** payload ou fragmento inválido, violação estrutural, referência ou entidade inexistente/removida, autorização revogada, reutilização incompatível de `mutationId` e outras falhas determinísticas movem a mutação para `rejected`. Ela deixa a fila automática e não volta a `pending` sem uma nova ação do usuário.
+
+A biblioteca mostra conflitos e rejeições como estados que exigem atenção. Uma rejeição só é removida por descarte explícito e confirmado; o descarte restaura o último estado local confirmado e trata deterministicamente sua cadeia causal. Não existe loop automático para uma mutação que o servidor já recusou de forma definitiva.
+
+### Snapshot, revogação e reconciliação
+
+`bootstrap_replica` monta todas as memberships, árvores, progressos e comentários autorizados sob a mesma barreira transacional que determina `highWaterSequence`. O IndexedDB aplica snapshot e cursor numa única transação. Depois disso, o feed começa estritamente depois do high-water e cada página confirma seu próprio cursor; o cliente nunca acumula o histórico completo antes de aplicar.
+
+Um snapshot remoto só substitui um curso local quando ele ainda não existe, quando a réplica está comprovadamente limpa ou após restauração explicitamente confirmada. Outbox pendente, conflito, rejeição ou edição local ainda não confirmada bloqueiam a substituição: o curso local é preservado, o snapshot remoto fica disponível para comparação e uma reconciliação é registrada.
+
+Quando chega o tombstone da membership, o curso deixa de ser visível imediatamente. Se não há trabalho local, uma única transação remove curso, árvore, progresso, comentários e índices relacionados. Se há trabalho não sincronizado, a árvore necessária à reconciliação é preservada sem voltar à biblioteca, e a interface exige decisão explícita. O tombstone mínimo da revogação impede que páginas antigas ressuscitem o acesso.
+
+### Retenção e compactação remota
+
+A política versionada em `private.sync_retention_policy` usa, por padrão, janela de dispositivo ativo de 90 dias, retenção mínima de 30 dias para `sync_changes`, 180 dias para mutações e 365 dias para idempotência de RPC. `private.safe_sync_watermark` calcula o menor cursor entre dispositivos ainda ativos; alterações do feed só podem ser eliminadas quando estão abaixo desse watermark **e** além da retenção mínima.
+
+`compact_sync_history(true, now())` é o dry-run administrativo e informa candidatos sem excluir. `compact_sync_history(false, now())` desativa dispositivos vencidos e compacta mudanças abaixo do watermark, mutações antigas e registros antigos de idempotência de acordo com a política. `sync_storage_diagnostics()` informa watermark, quantidade e tamanho das tabelas, dispositivos ativos/inativos e os intervalos vigentes. Ambas exigem um usuário marcado como administrador da aplicação ou contexto administrativo no servidor; `anon` e usuários comuns não recebem essa capacidade.
+
+Dispositivo inativo não pode retomar de um cursor anterior à compactação: precisa executar novo bootstrap. Se houver trabalho local não resolvido, o rebootstrap é bloqueado e vira reconciliação em vez de sobrescrever a réplica. Tombstones das entidades relacionais não são apagados somente por idade; a compactação remove entradas antigas do feed já protegidas pelo watermark, mantendo a condição necessária para impedir ressurreição. Conflitos resolvidos deixam de bloquear a outbox, mas permanecem na réplica isolada do usuário como registro local até uma limpeza destrutiva explicitamente solicitada.
 
 ## Segurança
 

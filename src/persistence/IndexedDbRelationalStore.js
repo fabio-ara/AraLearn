@@ -2,7 +2,7 @@ import { RelationalTransaction } from "./RelationalTransaction.js";
 import { defaultUuidFactory } from "./relationalSchema.js";
 
 export const RELATIONAL_DATABASE_NAME = "aralearn-relational-v1";
-export const RELATIONAL_DATABASE_VERSION = 1;
+export const RELATIONAL_DATABASE_VERSION = 2;
 
 const index = (name, keyPath, options = {}) => ({ name, keyPath, options });
 
@@ -26,12 +26,64 @@ const NON_DEPENDENCY_ID_FIELDS = new Set([
   "deviceId"
 ]);
 const OUTBOX_SEQUENCE_STATE_ID = "outbox.sequence";
+const REPLICA_USER_STATE_ID = "replica.userId";
+const REMOTE_RECONCILIATION_STORE = "remoteReconciliation";
+const NON_PATCH_FIELDS = new Set([
+  "id",
+  "courseId",
+  "userId",
+  "revision",
+  "createdAt",
+  "updatedAt",
+  "deletedAt",
+  "sourceEntityId",
+  "cardsRevision",
+  "sourceCourseId",
+  "sourcePublicationSeq",
+  "sourceContentHash",
+  "baselineContentHash",
+  "publicationSeq",
+  "contentHash",
+  "personalizedAt",
+  "ownerId",
+  "projectId"
+]);
+const LOCAL_INTERNAL_STORE_NAMES = new Set([
+  "outbox",
+  "syncState",
+  "conflicts",
+  REMOTE_RECONCILIATION_STORE
+]);
+const SUPABASE_USER_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
+
+export function relationalDatabaseNameForUser(userId) {
+  if (userId === null || userId === undefined || userId === "") return RELATIONAL_DATABASE_NAME;
+  const normalizedUserId = String(userId).trim().toLowerCase();
+  if (!SUPABASE_USER_ID_PATTERN.test(normalizedUserId)) {
+    throw new TypeError("A réplica local exige o UUID autenticado do usuário.");
+  }
+  return `${RELATIONAL_DATABASE_NAME}:user:${normalizedUserId}`;
+}
 
 function outboxSequence(entry) {
   const explicit = Number(entry?.sequence);
   if (Number.isFinite(explicit)) return explicit;
   const timestamp = Date.parse(entry?.createdAt || "");
   return Number.isFinite(timestamp) ? timestamp : Number.MAX_SAFE_INTEGER;
+}
+
+function compareOutboxCausally(left, right) {
+  return outboxSequence(left) - outboxSequence(right) ||
+    String(left?.createdAt || "").localeCompare(String(right?.createdAt || "")) ||
+    String(left?.mutationId || "").localeCompare(String(right?.mutationId || ""));
+}
+
+function unresolvedOutboxStatus(status) {
+  return ["pending", "inflight", "conflict", "rejected"].includes(String(status || ""));
+}
+
+function reconciliationRowId(batchId, storeName, rowId) {
+  return `${batchId}:${encodeURIComponent(storeName)}:${encodeURIComponent(String(rowId))}`;
 }
 
 function referencedEntityIds(entry) {
@@ -71,7 +123,7 @@ function compositeEntityIds(entry) {
 }
 
 function entryDependsOn(candidate, blocker) {
-  if (outboxSequence(candidate) <= outboxSequence(blocker)) return false;
+  if (compareOutboxCausally(candidate, blocker) <= 0) return false;
   if (candidate.entityId === blocker.entityId) return true;
   if (referencedEntityIds(candidate).includes(blocker.entityId)) return true;
   const candidateCompositeIds = compositeEntityIds(candidate);
@@ -102,7 +154,7 @@ function fragmentStoreRows(fragment) {
   if (!fragment || typeof fragment !== "object") return [];
   return Object.entries(fragment).flatMap(([storeName, rows]) => {
     if (!Object.prototype.hasOwnProperty.call(RELATIONAL_STORE_DEFINITIONS, storeName)) return [];
-    if (["outbox", "syncState", "conflicts"].includes(storeName) || !Array.isArray(rows)) return [];
+    if (LOCAL_INTERNAL_STORE_NAMES.has(storeName) || !Array.isArray(rows)) return [];
     return rows.filter((row) => row?.id).map((row) => ({ storeName, row }));
   });
 }
@@ -146,7 +198,7 @@ async function rollbackOutboxEntry(transaction, entry) {
   }
   const storeName = String(entry?.entityType || "");
   if (!Object.prototype.hasOwnProperty.call(RELATIONAL_STORE_DEFINITIONS, storeName)) return;
-  if (["outbox", "syncState", "conflicts"].includes(storeName)) return;
+  if (LOCAL_INTERNAL_STORE_NAMES.has(storeName)) return;
   if (Object.prototype.hasOwnProperty.call(entry, "previousRow")) {
     if (entry.previousRow) await transaction.put(storeName, structuredClone(entry.previousRow));
     else await transaction.delete(storeName, entry.entityId);
@@ -179,7 +231,7 @@ function replaceEntityReference(value, previousId, canonicalId, fieldName = "") 
 async function remapEntityReferences(transaction, previousId, canonicalId) {
   if (!canonicalId || canonicalId === previousId) return;
   for (const storeName of RELATIONAL_STORE_NAMES) {
-    if (["outbox", "syncState", "conflicts"].includes(storeName)) continue;
+    if (LOCAL_INTERNAL_STORE_NAMES.has(storeName)) continue;
     const rows = await transaction.getAll(storeName);
     for (const row of rows) {
       if (row.id === previousId) continue;
@@ -233,7 +285,7 @@ function orderOutboxEntries(entries) {
     byEntityId.get(node.entry.entityId).push(node);
   });
   byEntityId.forEach((entityNodes) => {
-    entityNodes.sort((left, right) => outboxSequence(left.entry) - outboxSequence(right.entry));
+    entityNodes.sort((left, right) => compareOutboxCausally(left.entry, right.entry));
     for (let index = 1; index < entityNodes.length; index += 1) {
       entityNodes[index].dependencies.add(entityNodes[index - 1]);
     }
@@ -242,10 +294,9 @@ function orderOutboxEntries(entries) {
   nodes.forEach((composite) => {
     const covered = compositeEntityIds(composite.entry);
     if (!covered.size) return;
-    const compositeSequence = outboxSequence(composite.entry);
     nodes.forEach((candidate) => {
       if (candidate === composite || !covered.has(String(candidate.entry.entityId))) return;
-      if (outboxSequence(candidate.entry) < compositeSequence) {
+      if (compareOutboxCausally(candidate.entry, composite.entry) < 0) {
         composite.dependencies.add(candidate);
       } else {
         candidate.dependencies.add(composite);
@@ -278,7 +329,7 @@ function orderOutboxEntries(entries) {
   const compare = (left, right) => {
     const operationDelta = Number(left.entry.operation !== "delete") - Number(right.entry.operation !== "delete");
     return operationDelta ||
-      outboxSequence(left.entry) - outboxSequence(right.entry) ||
+      compareOutboxCausally(left.entry, right.entry) ||
       left.index - right.index;
   };
   const ordered = [];
@@ -603,6 +654,15 @@ export const RELATIONAL_STORE_DEFINITIONS = Object.freeze({
       index("byCreatedAt", "createdAt")
     ]
   },
+  remoteReconciliation: {
+    keyPath: "id",
+    indexes: [
+      index("byBatchId", "batchId"),
+      index("byCourseId", "courseId"),
+      index("byEntity", ["storeName", "entityId"]),
+      index("byReceivedAt", "receivedAt")
+    ]
+  },
   entityMappings: {
     keyPath: "id",
     indexes: [
@@ -625,7 +685,8 @@ export const PROJECT_ROW_STORE_NAMES = Object.freeze(
       "comments",
       "outbox",
       "syncState",
-      "conflicts"
+      "conflicts",
+      REMOTE_RECONCILIATION_STORE
     ].includes(name)
   )
 );
@@ -638,9 +699,128 @@ const COURSE_SNAPSHOT_STORE_NAMES = Object.freeze([
   "comments"
 ]);
 
-function openDatabase(indexedDb) {
+function rowCourseId(storeName, row) {
+  return String(storeName === "courses" ? row?.id || "" : row?.courseId || "");
+}
+
+function normalizeCourseSnapshot(courseId, snapshot) {
+  return Object.fromEntries(
+    COURSE_SNAPSHOT_STORE_NAMES.map((storeName) => {
+      const rows = snapshot?.[storeName] ?? [];
+      if (!Array.isArray(rows)) throw new TypeError(`Snapshot inválido em ${storeName}.`);
+      rows.forEach((row) => {
+        if (!row?.id || rowCourseId(storeName, row) !== courseId) {
+          throw new Error(`Linha de ${storeName} fora do curso do snapshot.`);
+        }
+      });
+      return [storeName, rows.map((row) => structuredClone(row))];
+    })
+  );
+}
+
+function normalizeReplicaSnapshot(snapshot) {
+  if (!snapshot || typeof snapshot !== "object" || Array.isArray(snapshot)) {
+    throw new TypeError("Snapshot relacional da réplica inválido.");
+  }
+  return Object.fromEntries(
+    COURSE_SNAPSHOT_STORE_NAMES.map((storeName) => {
+      const rows = snapshot[storeName] ?? [];
+      if (!Array.isArray(rows)) throw new TypeError(`Snapshot inválido em ${storeName}.`);
+      rows.forEach((row) => {
+        if (!row?.id || !rowCourseId(storeName, row)) {
+          throw new Error(`Linha de ${storeName} sem identidade de curso no snapshot.`);
+        }
+      });
+      return [storeName, rows.map((row) => structuredClone(row))];
+    })
+  );
+}
+
+async function unresolvedCourseWork(transaction, courseId) {
+  const [outboxRows, conflictRows, dirtyState] = await Promise.all([
+    transaction.getAll("outbox"),
+    transaction.getAll("conflicts"),
+    transaction.get("syncState", `local.dirty:${courseId}`)
+  ]);
+  return {
+    outbox: outboxRows.filter(
+      (row) => String(row.courseId || "") === courseId && unresolvedOutboxStatus(row.status)
+    ).sort(compareOutboxCausally),
+    conflicts: conflictRows.filter(
+      (row) => String(row.courseId || "") === courseId && row.status === "open"
+    ),
+    dirty: Boolean(dirtyState?.value ?? dirtyState?.dirty)
+  };
+}
+
+function hasUnresolvedWork(blockers) {
+  return Boolean(blockers?.outbox?.length || blockers?.conflicts?.length || blockers?.dirty);
+}
+
+async function preserveRemoteRowsForReconciliation(transaction, {
+  courseId,
+  normalizedRows,
+  reason,
+  receivedAt,
+  uuidFactory,
+  remoteRow = null
+}) {
+  const existing = (await transaction.getAll("conflicts")).find(
+    (row) => row.status === "open" && row.entityType === "courseSnapshot" && row.courseId === courseId
+  );
+  const batchId = existing?.remoteBatchId || uuidFactory();
+  const conflictId = existing?.id || uuidFactory();
+  const previousRemoteRows = (await transaction.getAll(REMOTE_RECONCILIATION_STORE))
+    .filter((row) => row.batchId === batchId);
+  for (const row of previousRemoteRows) {
+    await transaction.delete(REMOTE_RECONCILIATION_STORE, row.id);
+  }
+  for (const [storeName, rows] of Object.entries(normalizedRows || {})) {
+    for (const row of rows) {
+      await transaction.put(REMOTE_RECONCILIATION_STORE, {
+        id: reconciliationRowId(batchId, storeName, row.id),
+        batchId,
+        courseId,
+        storeName,
+        entityId: row.id,
+        row: structuredClone(row),
+        receivedAt
+      });
+    }
+  }
+  const conflict = {
+    ...(existing || {}),
+    id: conflictId,
+    courseId,
+    entityType: "courseSnapshot",
+    entityId: courseId,
+    mutationId: null,
+    status: "open",
+    reason,
+    remoteBatchId: batchId,
+    remoteRow: remoteRow ? structuredClone(remoteRow) : existing?.remoteRow || null,
+    createdAt: existing?.createdAt || receivedAt,
+    updatedAt: receivedAt,
+    resolvedAt: null,
+    resolution: null
+  };
+  await transaction.put("conflicts", conflict);
+  return conflict;
+}
+
+async function deleteCourseRows(transaction, courseId, { preserveMembership = null } = {}) {
+  for (const storeName of COURSE_SNAPSHOT_STORE_NAMES) {
+    const existing = await transaction.getAll(storeName);
+    for (const row of existing) {
+      if (rowCourseId(storeName, row) === courseId) await transaction.delete(storeName, row.id);
+    }
+  }
+  if (preserveMembership) await transaction.put("memberships", structuredClone(preserveMembership));
+}
+
+function openDatabase(indexedDb, databaseName) {
   return new Promise((resolve, reject) => {
-    const request = indexedDb.open(RELATIONAL_DATABASE_NAME, RELATIONAL_DATABASE_VERSION);
+    const request = indexedDb.open(databaseName, RELATIONAL_DATABASE_VERSION);
     request.addEventListener("upgradeneeded", () => {
       const database = request.result;
       for (const [storeName, definition] of Object.entries(RELATIONAL_STORE_DEFINITIONS)) {
@@ -684,20 +864,23 @@ function normalizeStoreNames(storeNames) {
 export class IndexedDbRelationalStore {
   #database;
   #closed = false;
+  #userId;
 
-  constructor(database) {
+  constructor(database, { userId = null } = {}) {
     if (!database || typeof database.transaction !== "function") {
       throw new TypeError("Banco IndexedDB relacional inválido.");
     }
     this.#database = database;
+    this.#userId = userId ? String(userId).toLowerCase() : null;
     database.addEventListener("versionchange", () => this.close(), { once: true });
   }
 
-  static async open(indexedDb = globalThis.indexedDB) {
+  static async open(indexedDb = globalThis.indexedDB, { userId = null } = {}) {
     if (!indexedDb || typeof indexedDb.open !== "function") {
       throw new Error("IndexedDB não está disponível neste ambiente.");
     }
-    return new IndexedDbRelationalStore(await openDatabase(indexedDb));
+    const databaseName = relationalDatabaseNameForUser(userId);
+    return new IndexedDbRelationalStore(await openDatabase(indexedDb, databaseName), { userId });
   }
 
   get name() {
@@ -710,6 +893,10 @@ export class IndexedDbRelationalStore {
 
   get objectStoreNames() {
     return Array.from(this.#database.objectStoreNames);
+  }
+
+  get userId() {
+    return this.#userId;
   }
 
   #assertOpen() {
@@ -763,6 +950,9 @@ export class IndexedDbRelationalStore {
   }
 
   put(storeName, value) {
+    if (storeName === "outbox" && !Number.isFinite(Number(value?.sequence))) {
+      return this.#putOutboxWithCausalSequence([value]).then((keys) => keys[0]);
+    }
     return this.transaction([storeName], "readwrite", (transaction) => transaction.put(storeName, value));
   }
 
@@ -773,9 +963,45 @@ export class IndexedDbRelationalStore {
   }
 
   putMany(storeName, values) {
+    if (
+      storeName === "outbox" &&
+      Array.isArray(values) &&
+      values.some((value) => !Number.isFinite(Number(value?.sequence)))
+    ) {
+      return this.#putOutboxWithCausalSequence(values);
+    }
     return this.transaction([storeName], "readwrite", (transaction) =>
       transaction.putMany(storeName, values)
     );
+  }
+
+  async #putOutboxWithCausalSequence(values) {
+    if (!Array.isArray(values)) throw new TypeError("A outbox exige uma lista de mutações.");
+    return this.transaction(["outbox", "syncState"], "readwrite", async (transaction) => {
+      const state = await transaction.get("syncState", OUTBOX_SEQUENCE_STATE_ID);
+      const existing = await transaction.getAll("outbox");
+      let nextSequence = Math.max(
+        Number(state?.value || 0),
+        ...existing.map((row) => Number(row.sequence || 0)).filter(Number.isFinite)
+      );
+      const normalized = values.map((value) => {
+        const explicit = Number(value?.sequence);
+        if (Number.isSafeInteger(explicit) && explicit > 0) {
+          nextSequence = Math.max(nextSequence, explicit);
+          return value;
+        }
+        nextSequence += 1;
+        return { ...value, sequence: nextSequence };
+      });
+      const keys = await transaction.putMany("outbox", normalized);
+      await transaction.put("syncState", {
+        id: OUTBOX_SEQUENCE_STATE_ID,
+        key: OUTBOX_SEQUENCE_STATE_ID,
+        value: nextSequence,
+        updatedAt: new Date().toISOString()
+      });
+      return keys;
+    });
   }
 
   async getSyncState(key) {
@@ -802,66 +1028,194 @@ export class IndexedDbRelationalStore {
     return structuredClone(value);
   }
 
-  async bindReplicaToUser(userId, session) {
-    const normalizedUserId = String(userId || "");
-    if (!normalizedUserId) throw new TypeError("A réplica exige um userId autenticado.");
-    const stateId = "replica.userId";
-    const currentUserId = await this.getSyncState(stateId);
-    if (currentUserId === normalizedUserId) return false;
+  async bindReplicaToUser(userId) {
+    const normalizedUserId = String(userId || "").trim().toLowerCase();
+    relationalDatabaseNameForUser(normalizedUserId);
+    if (!this.#userId || this.#userId !== normalizedUserId) {
+      throw new Error(
+        "A réplica deve ser aberta no banco físico do usuário antes de ser vinculada."
+      );
+    }
+    const currentUserId = await this.getSyncState(REPLICA_USER_STATE_ID);
+    if (currentUserId && currentUserId !== normalizedUserId) {
+      throw new Error("O banco relacional pertence a outra conta e não pode ser reutilizado.");
+    }
     const updatedAt = new Date().toISOString();
-    await this.transaction(RELATIONAL_STORE_NAMES, "readwrite", async (transaction) => {
-      for (const storeName of RELATIONAL_STORE_NAMES) {
-        await transaction.clear(storeName);
-      }
+    await this.transaction(["syncState"], "readwrite", async (transaction) => {
       await transaction.put("syncState", {
-        id: "auth.session",
-        key: "auth.session",
-        value: structuredClone(session),
-        updatedAt
-      });
-      await transaction.put("syncState", {
-        id: stateId,
-        key: stateId,
+        id: REPLICA_USER_STATE_ID,
+        key: REPLICA_USER_STATE_ID,
         value: normalizedUserId,
         updatedAt
       });
     });
-    return true;
+    return currentUserId !== normalizedUserId;
   }
 
-  async replaceCourseSnapshot(courseId, snapshot) {
+  async hasUnresolvedCourseWork(courseId) {
+    const normalizedCourseId = String(courseId || "");
+    if (!normalizedCourseId) throw new TypeError("O curso é obrigatório.");
+    return this.transaction(["outbox", "conflicts", "syncState"], "readonly", async (transaction) => {
+      const blockers = await unresolvedCourseWork(transaction, normalizedCourseId);
+      return { ...blockers, unresolved: hasUnresolvedWork(blockers) };
+    });
+  }
+
+  putCourseDirtyState(courseId, dirty = true) {
+    const normalizedCourseId = String(courseId || "");
+    if (!normalizedCourseId) throw new TypeError("O curso é obrigatório.");
+    return this.putSyncState(`local.dirty:${normalizedCourseId}`, Boolean(dirty));
+  }
+
+  async listRemoteReconciliationRows(courseId) {
+    const normalizedCourseId = String(courseId || "");
+    return (await this.getAll(REMOTE_RECONCILIATION_STORE))
+      .filter((row) => !normalizedCourseId || row.courseId === normalizedCourseId)
+      .sort((left, right) =>
+        String(left.storeName).localeCompare(String(right.storeName)) ||
+        String(left.entityId).localeCompare(String(right.entityId))
+      );
+  }
+
+  async replaceCourseSnapshot(courseId, snapshot, {
+    force = false,
+    receivedAt = new Date().toISOString(),
+    uuidFactory = defaultUuidFactory
+  } = {}) {
     const normalizedCourseId = String(courseId || "");
     if (!normalizedCourseId || !snapshot || typeof snapshot !== "object" || Array.isArray(snapshot)) {
       throw new TypeError("Snapshot relacional de curso inválido.");
     }
-    const normalizedRows = Object.fromEntries(
-      COURSE_SNAPSHOT_STORE_NAMES.map((storeName) => {
-        const rows = snapshot[storeName] ?? [];
-        if (!Array.isArray(rows)) throw new TypeError(`Snapshot inválido em ${storeName}.`);
-        rows.forEach((row) => {
-          const rowCourseId = storeName === "courses" ? row?.id : row?.courseId;
-          if (!row?.id || String(rowCourseId || "") !== normalizedCourseId) {
-            throw new Error(`Linha de ${storeName} fora do curso do snapshot.`);
-          }
+    const normalizedRows = normalizeCourseSnapshot(normalizedCourseId, snapshot);
+    const transactionStores = [...new Set([
+      ...COURSE_SNAPSHOT_STORE_NAMES,
+      "outbox",
+      "conflicts",
+      "syncState",
+      REMOTE_RECONCILIATION_STORE
+    ])];
+    const outcome = await this.transaction(transactionStores, "readwrite", async (transaction) => {
+      const currentCourse = await transaction.get("courses", normalizedCourseId);
+      const blockers = await unresolvedCourseWork(transaction, normalizedCourseId);
+      if (currentCourse && hasUnresolvedWork(blockers) && !force) {
+        const conflict = await preserveRemoteRowsForReconciliation(transaction, {
+          courseId: normalizedCourseId,
+          normalizedRows,
+          reason: "local_work_pending",
+          receivedAt,
+          uuidFactory
         });
-        return [storeName, rows.map((row) => structuredClone(row))];
-      })
-    );
-    await this.transaction(COURSE_SNAPSHOT_STORE_NAMES, "readwrite", async (transaction) => {
+        return { status: "reconciliation_required", conflict, blockers };
+      }
+      await deleteCourseRows(transaction, normalizedCourseId);
       for (const storeName of COURSE_SNAPSHOT_STORE_NAMES) {
-        const existing = await transaction.getAll(storeName);
-        for (const row of existing) {
-          const rowCourseId = storeName === "courses" ? row?.id : row?.courseId;
-          if (String(rowCourseId || "") === normalizedCourseId) {
-            await transaction.delete(storeName, row.id);
-          }
-        }
         await transaction.putMany(storeName, normalizedRows[storeName]);
       }
+      await transaction.delete("syncState", `local.dirty:${normalizedCourseId}`);
+      return { status: "applied" };
     });
-    return Object.fromEntries(
-      Object.entries(normalizedRows).map(([storeName, rows]) => [storeName, rows.map((row) => structuredClone(row))])
-    );
+    return {
+      ...outcome,
+      ...(outcome.status === "applied" ? Object.fromEntries(
+        Object.entries(normalizedRows).map(([storeName, rows]) => [
+          storeName,
+          rows.map((row) => structuredClone(row))
+        ])
+      ) : {})
+    };
+  }
+
+  async applyReplicaBootstrap({
+    snapshot,
+    highWaterSequence,
+    deviceId,
+    syncStateId,
+    receivedAt = new Date().toISOString(),
+    uuidFactory = defaultUuidFactory
+  } = {}) {
+    const highWater = Number(highWaterSequence);
+    if (!Number.isSafeInteger(highWater) || highWater < 0) {
+      throw new TypeError("O bootstrap exige um high-water sequence válido.");
+    }
+    if (!deviceId || !syncStateId) throw new TypeError("O bootstrap exige dispositivo e cursor.");
+    const normalizedRows = normalizeReplicaSnapshot(snapshot);
+    const courseIds = [...new Set(normalizedRows.courses.map((row) => String(row.id)))];
+    const transactionStores = [...new Set([
+      ...COURSE_SNAPSHOT_STORE_NAMES,
+      "outbox",
+      "conflicts",
+      "syncState",
+      REMOTE_RECONCILIATION_STORE
+    ])];
+    return this.transaction(transactionStores, "readwrite", async (transaction) => {
+      const blocked = [];
+      const [localCourses, localOutbox, localConflicts, localSyncState] = await Promise.all([
+        transaction.getAll("courses"),
+        transaction.getAll("outbox"),
+        transaction.getAll("conflicts"),
+        transaction.getAll("syncState")
+      ]);
+      const localCourseIds = [...new Set([
+        ...localCourses.map((row) => String(row.id || "")),
+        ...localOutbox
+          .filter((row) => unresolvedOutboxStatus(row.status))
+          .map((row) => String(row.courseId || "")),
+        ...localConflicts
+          .filter((row) => row.status === "open")
+          .map((row) => String(row.courseId || "")),
+        ...localSyncState
+          .filter((row) => String(row.id || "").startsWith("local.dirty:") && row.value)
+          .map((row) => String(row.id).slice("local.dirty:".length))
+      ].filter(Boolean))];
+      for (const courseId of localCourseIds) {
+        const blockers = await unresolvedCourseWork(transaction, courseId);
+        if (hasUnresolvedWork(blockers)) blocked.push({ courseId, blockers });
+      }
+      if (blocked.length) {
+        for (const entry of blocked) {
+          const courseRows = Object.fromEntries(Object.entries(normalizedRows).map(([storeName, rows]) => [
+            storeName,
+            rows.filter((row) => rowCourseId(storeName, row) === entry.courseId)
+          ]));
+          await preserveRemoteRowsForReconciliation(transaction, {
+            courseId: entry.courseId,
+            normalizedRows: courseRows,
+            reason: courseIds.includes(entry.courseId)
+              ? "bootstrap_local_work_pending"
+              : "bootstrap_membership_revoked_with_local_work",
+            receivedAt,
+            uuidFactory
+          });
+        }
+        return { status: "reconciliation_required", blocked, highWaterSequence: highWater };
+      }
+      for (const storeName of COURSE_SNAPSHOT_STORE_NAMES) {
+        await transaction.clear(storeName);
+        await transaction.putMany(storeName, normalizedRows[storeName]);
+      }
+      await transaction.put("syncState", {
+        id: syncStateId,
+        key: syncStateId,
+        cursor: highWater,
+        deviceId,
+        updatedAt: receivedAt
+      });
+      await transaction.put("syncState", {
+        id: `sync.bootstrap:${deviceId}`,
+        key: `sync.bootstrap:${deviceId}`,
+        value: true,
+        cursor: highWater,
+        deviceId,
+        updatedAt: receivedAt
+      });
+      await transaction.delete("syncState", `sync.bootstrap.required:${deviceId}`);
+      return {
+        status: "applied",
+        highWaterSequence: highWater,
+        courseCount: courseIds.length,
+        rowCount: Object.values(normalizedRows).reduce((total, rows) => total + rows.length, 0)
+      };
+    });
   }
 
   async listPendingOutbox({ courseId, limit = 100 } = {}) {
@@ -918,7 +1272,49 @@ export class IndexedDbRelationalStore {
     return rows
       .filter((row) => row.status === "rejected")
       .filter((row) => courseId === undefined || row.courseId === courseId)
-      .sort((left, right) => outboxSequence(left) - outboxSequence(right));
+      .sort(compareOutboxCausally);
+  }
+
+  async discardRejectedMutation(mutationId, {
+    rollbackLocal = true,
+    discardedAt = new Date().toISOString()
+  } = {}) {
+    const normalizedMutationId = String(mutationId || "");
+    if (!normalizedMutationId) throw new TypeError("A mutação rejeitada é obrigatória.");
+    return this.transaction(RELATIONAL_STORE_NAMES, "readwrite", async (transaction) => {
+      const rejected = await transaction.get("outbox", normalizedMutationId);
+      if (!rejected || rejected.status !== "rejected") {
+        throw new Error("Mutação rejeitada não encontrada.");
+      }
+      const allOutbox = await transaction.getAll("outbox");
+      const descendants = [...causalDescendants(allOutbox, [rejected])]
+        .sort((left, right) => compareOutboxCausally(right, left));
+      if (rollbackLocal) {
+        for (const descendant of descendants) await rollbackOutboxEntry(transaction, descendant);
+        await rollbackOutboxEntry(transaction, rejected);
+      }
+      for (const descendant of descendants) await transaction.delete("outbox", descendant.mutationId);
+      await transaction.delete("outbox", normalizedMutationId);
+      const relatedConflicts = await transaction.getAll("conflicts");
+      for (const conflict of relatedConflicts) {
+        if (conflict.status !== "open") continue;
+        if (![normalizedMutationId, ...descendants.map((row) => row.mutationId)].includes(conflict.mutationId)) {
+          continue;
+        }
+        await transaction.put("conflicts", {
+          ...conflict,
+          status: "resolved",
+          resolution: "discardRejected",
+          resolvedAt: discardedAt,
+          updatedAt: discardedAt
+        });
+      }
+      return {
+        mutationId: normalizedMutationId,
+        discardedDescendantIds: descendants.map((row) => row.mutationId),
+        rolledBack: rollbackLocal
+      };
+    });
   }
 
   async resolveConflict(
@@ -937,6 +1333,9 @@ export class IndexedDbRelationalStore {
       throw new Error("Conflito aberto não encontrado.");
     }
     const storeName = String(conflict.entityType || "");
+    if (storeName === "courseSnapshot") {
+      return this.resolveCourseSnapshotConflict(conflictId, resolution, { resolvedAt });
+    }
     const compositeReplacement = storeName === "microsequenceCardReplacement";
     const compositeDeletion = storeName === "personalCourseDeletion";
     const compositeMutation = compositeReplacement || compositeDeletion;
@@ -969,7 +1368,7 @@ export class IndexedDbRelationalStore {
           const discardedEntries = [
             ...descendants,
             ...(conflictedMutation ? [conflictedMutation] : [])
-          ].sort((left, right) => outboxSequence(right) - outboxSequence(left));
+          ].sort((left, right) => compareOutboxCausally(right, left));
           for (const discarded of discardedEntries) {
             if (discarded === conflictedMutation && !compositeMutation) continue;
             await rollbackOutboxEntry(transaction, discarded);
@@ -1125,8 +1524,13 @@ export class IndexedDbRelationalStore {
           const nextSequence = Number(sequenceState?.value || 0) + 1;
           const sameEntityDescendants = [...descendants]
             .filter((row) => row.entityType === storeName && row.entityId === currentConflict.entityId)
-            .sort((left, right) => outboxSequence(left) - outboxSequence(right));
-          const latestLocalPayload = sameEntityDescendants.at(-1)?.payload;
+            .sort(compareOutboxCausally);
+          const causalMutations = [conflictedMutation, ...sameEntityDescendants].filter(Boolean);
+          const currentLocalRow = await transaction.get(storeName, currentConflict.entityId);
+          const localPayload = causalMutations.reduce(
+            (row, mutation) => ({ ...row, ...(mutation.payload || {}) }),
+            { ...(currentLocalRow || {}), ...(currentConflict.localRow || {}) }
+          );
           for (const descendant of sameEntityDescendants) {
             await transaction.delete("outbox", descendant.mutationId);
             descendants.delete(descendant);
@@ -1136,11 +1540,21 @@ export class IndexedDbRelationalStore {
             currentConflict.canonicalEntityId || currentConflict.remoteRow?.id || currentConflict.entityId
           );
           const localRow = {
-            ...(latestLocalPayload || currentConflict.localRow || {}),
+            ...localPayload,
             id: canonicalEntityId,
-            revision: Math.max(Number(currentConflict.localRow?.revision || 0), remoteRevision + 1),
+            revision: Math.max(Number(localPayload.revision || 0), remoteRevision + 1),
             updatedAt: resolvedAt
           };
+          const changedFields = [...new Set(
+            causalMutations.flatMap((mutation) => mutation.changedFields || [])
+          )]
+            .filter((fieldName) => !NON_PATCH_FIELDS.has(fieldName))
+            .filter((fieldName) => storeName !== "courses" || !["kind", "status"].includes(fieldName))
+            .filter((fieldName) => Object.prototype.hasOwnProperty.call(localRow, fieldName))
+            .sort();
+          const patch = Object.fromEntries(
+            changedFields.map((fieldName) => [fieldName, structuredClone(localRow[fieldName])])
+          );
           if (canonicalEntityId !== currentConflict.entityId) {
             await remapEntityReferences(
               transaction,
@@ -1158,10 +1572,8 @@ export class IndexedDbRelationalStore {
             entityId: canonicalEntityId,
             operation: localRow.deletedAt ? "delete" : "upsert",
             baseRevision: remoteRevision,
-            changedFields: Object.keys(localRow)
-              .filter((fieldName) => !["revision", "updatedAt", "deletedAt"].includes(fieldName))
-              .sort(),
-            payload: structuredClone(localRow),
+            changedFields: localRow.deletedAt ? [] : changedFields,
+            payload: localRow.deletedAt ? structuredClone(localRow) : patch,
             status: "pending",
             attemptCount: 0,
             lastError: null,
@@ -1193,6 +1605,97 @@ export class IndexedDbRelationalStore {
     );
   }
 
+  async resolveCourseSnapshotConflict(
+    conflictId,
+    resolution,
+    { resolvedAt = new Date().toISOString() } = {}
+  ) {
+    if (!new Set(["acceptRemote", "keepLocal"]).has(resolution)) {
+      throw new TypeError("A resolução deve ser acceptRemote ou keepLocal.");
+    }
+    const stores = [...new Set([
+      ...COURSE_SNAPSHOT_STORE_NAMES,
+      "outbox",
+      "conflicts",
+      "syncState",
+      REMOTE_RECONCILIATION_STORE
+    ])];
+    return this.transaction(stores, "readwrite", async (transaction) => {
+      const conflict = await transaction.get("conflicts", conflictId);
+      if (!conflict || conflict.status !== "open" || conflict.entityType !== "courseSnapshot") {
+        throw new Error("Reconciliação de snapshot aberta não encontrada.");
+      }
+      const courseId = String(conflict.courseId || conflict.entityId || "");
+      const remoteRows = (await transaction.getAll(REMOTE_RECONCILIATION_STORE))
+        .filter((row) => row.batchId === conflict.remoteBatchId);
+      const membershipRevoked = String(conflict.reason || "").includes("membership_revoked");
+      if (resolution === "acceptRemote") {
+        const remoteMembership = conflict.remoteRow?.userId ? conflict.remoteRow : null;
+        await deleteCourseRows(transaction, courseId, {
+          preserveMembership: membershipRevoked ? remoteMembership : null
+        });
+        for (const entry of remoteRows) {
+          if (!COURSE_SNAPSHOT_STORE_NAMES.includes(entry.storeName)) continue;
+          await transaction.put(entry.storeName, structuredClone(entry.row));
+        }
+        for (const mutation of await transaction.getAll("outbox")) {
+          if (String(mutation.courseId || "") === courseId) {
+            await transaction.delete("outbox", mutation.mutationId);
+          }
+        }
+        if (membershipRevoked) {
+          await transaction.put("syncState", {
+            id: `revoked.course:${courseId}`,
+            key: `revoked.course:${courseId}`,
+            value: true,
+            courseId,
+            updatedAt: resolvedAt
+          });
+        } else {
+          await transaction.delete("syncState", `revoked.course:${courseId}`);
+          await transaction.delete("syncState", `local.dirty:${courseId}`);
+        }
+      } else if (membershipRevoked) {
+        for (const mutation of await transaction.getAll("outbox")) {
+          if (String(mutation.courseId || "") !== courseId || !unresolvedOutboxStatus(mutation.status)) continue;
+          await transaction.put("outbox", {
+            ...mutation,
+            status: "rejected",
+            rejectionReason: "membership_revoked",
+            rejectedAt: resolvedAt,
+            lastError: "O acesso ao curso foi revogado; o trabalho local foi preservado.",
+            updatedAt: resolvedAt
+          });
+        }
+      }
+      for (const entry of remoteRows) {
+        await transaction.delete(REMOTE_RECONCILIATION_STORE, entry.id);
+      }
+      const relatedConflicts = await transaction.getAll("conflicts");
+      for (const related of relatedConflicts) {
+        if (related.status !== "open" || String(related.courseId || "") !== courseId) continue;
+        if (related.id !== conflict.id && resolution === "keepLocal" && !membershipRevoked) continue;
+        await transaction.put("conflicts", {
+          ...related,
+          status: "resolved",
+          resolution,
+          resolvedAt,
+          updatedAt: resolvedAt
+        });
+      }
+      return {
+        conflict: {
+          ...conflict,
+          status: "resolved",
+          resolution,
+          resolvedAt,
+          updatedAt: resolvedAt
+        },
+        queuedMutation: null
+      };
+    });
+  }
+
   async applyRemotePage({
     changes,
     cursor,
@@ -1210,7 +1713,7 @@ export class IndexedDbRelationalStore {
       if (!Object.prototype.hasOwnProperty.call(RELATIONAL_STORE_DEFINITIONS, storeName)) {
         throw new Error(`Entidade remota desconhecida: "${storeName}".`);
       }
-      if (["outbox", "syncState", "conflicts"].includes(storeName)) {
+      if (LOCAL_INTERNAL_STORE_NAMES.has(storeName)) {
         throw new Error(`A página remota não pode gravar o store interno "${storeName}".`);
       }
       const row = change.row || change.payload;
@@ -1218,16 +1721,26 @@ export class IndexedDbRelationalStore {
       if (!entityId) throw new Error("Alteração remota sem entityId.");
       return { ...change, storeName, entityId, row };
     });
+    const includesMembershipChange = normalizedChanges.some((change) => change.storeName === "memberships");
     const storeNames = [...new Set([
       ...normalizedChanges.map((change) => change.storeName),
+      ...(includesMembershipChange ? COURSE_SNAPSHOT_STORE_NAMES : []),
       "outbox",
       "conflicts",
-      "syncState"
+      "syncState",
+      REMOTE_RECONCILIATION_STORE
     ])];
 
     return this.transaction(storeNames, "readwrite", async (transaction) => {
-      const pending = (await transaction.getAll("outbox")).filter(
-        (row) => ["pending", "inflight", "conflict"].includes(row.status)
+      const pending = (await transaction.getAll("outbox"))
+        .filter((row) => unresolvedOutboxStatus(row.status))
+        .sort(compareOutboxCausally);
+      const replicaUserState = await transaction.get("syncState", REPLICA_USER_STATE_ID);
+      const replicaUserId = String(replicaUserState?.value || "");
+      const revokedCourseIds = new Set(
+        (await transaction.getAll("syncState"))
+          .filter((row) => String(row.id || "").startsWith("revoked.course:") && row.value)
+          .map((row) => String(row.id).slice("revoked.course:".length))
       );
       const compositeStates = pending
         .filter((row) => [
@@ -1273,6 +1786,15 @@ export class IndexedDbRelationalStore {
         if (!remoteRow || Object.keys(remoteRow).length === 1) {
           throw new Error(`Alteração remota sem payload para ${change.storeName}:${change.entityId}.`);
         }
+        const changeCourseId = String(
+          change.courseId ?? remoteRow.courseId ?? currentRow?.courseId ??
+          (change.storeName === "courses" ? change.entityId : courseId) ?? ""
+        );
+        const membershipForReplica = change.storeName === "memberships" &&
+          Boolean(replicaUserId) && String(remoteRow.userId || currentRow?.userId || "") === replicaUserId;
+        if (change.storeName !== "memberships" && changeCourseId && revokedCourseIds.has(changeCourseId)) {
+          continue;
+        }
         const pendingMutation = pending.find(
           (row) => row.entityType === change.storeName && row.entityId === change.entityId
         );
@@ -1303,12 +1825,14 @@ export class IndexedDbRelationalStore {
             resolution: null
           };
           await transaction.put("conflicts", conflict);
-          await transaction.put("outbox", {
-            ...pendingMutation,
-            status: "conflict",
-            lastError: "Conflito de revisão",
-            updatedAt: receivedAt
-          });
+          if (pendingMutation.status !== "rejected") {
+            await transaction.put("outbox", {
+              ...pendingMutation,
+              status: "conflict",
+              lastError: "Conflito de revisão",
+              updatedAt: receivedAt
+            });
+          }
           conflictsByMutationId.set(pendingMutation.mutationId, conflict);
           conflicts.push(conflict);
           continue;
@@ -1380,6 +1904,35 @@ export class IndexedDbRelationalStore {
           await transaction.put(change.storeName, remoteRow);
           applied.push({ storeName: change.storeName, row: remoteRow });
         }
+        if (membershipForReplica && changeCourseId) {
+          if (remoteRow.deletedAt || change.operation === "delete") {
+            revokedCourseIds.add(changeCourseId);
+            await transaction.put("syncState", {
+              id: `revoked.course:${changeCourseId}`,
+              key: `revoked.course:${changeCourseId}`,
+              value: true,
+              courseId: changeCourseId,
+              updatedAt: receivedAt
+            });
+            const blockers = await unresolvedCourseWork(transaction, changeCourseId);
+            if (hasUnresolvedWork(blockers)) {
+              const conflict = await preserveRemoteRowsForReconciliation(transaction, {
+                courseId: changeCourseId,
+                normalizedRows: {},
+                reason: "membership_revoked_with_local_work",
+                receivedAt,
+                uuidFactory,
+                remoteRow
+              });
+              if (!conflicts.some((entry) => entry.id === conflict.id)) conflicts.push(conflict);
+            } else {
+              await deleteCourseRows(transaction, changeCourseId, { preserveMembership: remoteRow });
+            }
+          } else {
+            revokedCourseIds.delete(changeCourseId);
+            await transaction.delete("syncState", `revoked.course:${changeCourseId}`);
+          }
+        }
       }
       await transaction.put("syncState", {
         id: syncStateId,
@@ -1413,12 +1966,12 @@ export class IndexedDbRelationalStore {
     }
   }
 
-  static deleteDatabase(indexedDb = globalThis.indexedDB) {
+  static deleteDatabase(indexedDb = globalThis.indexedDB, { userId = null } = {}) {
     if (!indexedDb || typeof indexedDb.deleteDatabase !== "function") {
       throw new Error("IndexedDB não está disponível neste ambiente.");
     }
     return new Promise((resolve, reject) => {
-      const request = indexedDb.deleteDatabase(RELATIONAL_DATABASE_NAME);
+      const request = indexedDb.deleteDatabase(relationalDatabaseNameForUser(userId));
       request.addEventListener("success", () => resolve(), { once: true });
       request.addEventListener(
         "blocked",
@@ -1434,6 +1987,6 @@ export class IndexedDbRelationalStore {
   }
 }
 
-export async function createIndexedDbRelationalStore(indexedDb = globalThis.indexedDB) {
-  return IndexedDbRelationalStore.open(indexedDb);
+export async function createIndexedDbRelationalStore(indexedDb = globalThis.indexedDB, options = {}) {
+  return IndexedDbRelationalStore.open(indexedDb, options);
 }

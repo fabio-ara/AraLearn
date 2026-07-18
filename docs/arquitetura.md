@@ -107,6 +107,8 @@ Microssequências mantêm `revision` para metadados gerais e `cards_revision` pa
 
 Na web e no Android, o banco IndexedDB `aralearn-relational-v1` replica as tabelas necessárias ao uso local. Cada mutação recebe identificador idempotente e revisão-base, é aplicada em transação local e entra na outbox. O push em lote e o pull por sequência são paginados; o cursor só avança depois da aplicação local atômica.
 
+O banco global guarda somente a sessão/PKCE; cada UUID autenticado usa uma réplica física `aralearn-relational-v1:user:<uuid>`. Salvar produz uma Promise de durabilidade e os estados `pending`, `saved` ou `error`. Logout e fechamento controlado aguardam `flush`; uma falha permanece visível e repetível, e sair não apaga a réplica da conta.
+
 `apply_sync_batch` preserva a ordem causal: captura as revisões no início do lote, reconhece os incrementos produzidos por mutações anteriores do mesmo lote e desfaz o lote inteiro se uma mutação realmente conflitar ou for rejeitada. A bloqueadora fica registrada como conflito; as mutações revertidas ou ainda não executadas continuam pendentes. A exclusão de curso segue a mesma regra com uma operação composta e revisão-base própria, sem apagar a árvore quando o curso remoto mudou.
 
 Uma divergência de revisão não é resolvida por última gravação silenciosa. O estado remoto continua canônico, a intenção local é preservada e o dispositivo registra as duas versões em `conflicts`. Depois da primeira sincronização, a árvore já replicada e as novas mutações permanecem utilizáveis sem rede.

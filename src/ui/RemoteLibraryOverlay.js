@@ -1,3 +1,5 @@
+import { renderUiIcon } from "./renderUiIcons.js";
+
 function array(value) {
   return Array.isArray(value) ? value : [];
 }
@@ -44,6 +46,30 @@ function errorMessage(error) {
   return error instanceof Error ? error.message : String(error || "Operação indisponível.");
 }
 
+const ACTION_ICONS = Object.freeze({
+  acceptRemote: "ready-state",
+  clone: "add",
+  close: "remove-state",
+  keepLocal: "save",
+  library: "folder",
+  rejectDiscard: "trash",
+  refresh: "reposition",
+  signout: "excluded-state",
+  sync: "progress"
+});
+
+function iconMarkup(action, className = "remote-library-action-icon") {
+  return renderUiIcon(ACTION_ICONS[action] || "preview", className);
+}
+
+function sectionWithHeading(label) {
+  const section = document.createElement("section");
+  const heading = document.createElement("h3");
+  heading.textContent = label;
+  section.append(heading);
+  return section;
+}
+
 export function createRemoteLibraryOverlay({
   root,
   catalog,
@@ -60,21 +86,21 @@ export function createRemoteLibraryOverlay({
 
   root.innerHTML = `
     <div class="remote-library-tools">
-      <button class="remote-library-trigger" type="button" data-library-open title="Abrir biblioteca de cursos" aria-label="Abrir biblioteca de cursos"><span aria-hidden="true">☁</span></button>
+      <button class="remote-library-trigger" type="button" data-library-open title="Abrir biblioteca de cursos" aria-label="Abrir biblioteca de cursos">${iconMarkup("library")}</button>
     </div>
     <section class="remote-library-overlay" data-library-overlay hidden aria-labelledby="remote-library-title">
       <div class="remote-library-backdrop" data-library-close></div>
       <div class="remote-library-panel" role="dialog" aria-modal="true">
         <header class="remote-library-header">
           <div><p>Fonte compartilhada</p><h2 id="remote-library-title">Biblioteca AraLearn</h2></div>
-          <button class="icon-ghost" type="button" data-library-close title="Fechar biblioteca" aria-label="Fechar biblioteca"><span aria-hidden="true">×</span></button>
+          <button class="icon-ghost" type="button" data-library-close title="Fechar biblioteca" aria-label="Fechar biblioteca">${iconMarkup("close")}</button>
         </header>
         <p class="remote-library-account" data-library-account></p>
         <p class="remote-library-status" data-library-status role="status" aria-live="polite"></p>
         <div class="remote-library-content" data-library-content></div>
         <footer class="remote-library-footer">
-          <button class="auth-link" type="button" data-library-sync title="Sincronizar agora" aria-label="Sincronizar agora"><span aria-hidden="true">↻</span> Sincronizar</button>
-          <button class="auth-link" type="button" data-library-signout title="Sair da conta" aria-label="Sair da conta"><span aria-hidden="true">⇥</span> Sair</button>
+          <button class="icon-ghost" type="button" data-library-sync title="Sincronizar agora" aria-label="Sincronizar agora">${iconMarkup("sync")}</button>
+          <button class="icon-ghost" type="button" data-library-signout title="Sair da conta" aria-label="Sair da conta">${iconMarkup("signout")}</button>
         </footer>
       </div>
     </section>
@@ -112,11 +138,11 @@ export function createRemoteLibraryOverlay({
       wrapper.append(badge);
     }
     if (action === "clone") {
-      wrapper.append(actionButton("+", "Adicionar curso", "clone", sourceId));
+      wrapper.append(actionButton("Adicionar curso", "clone", sourceId));
     } else if (updateAction.action === "clone") {
-      wrapper.append(actionButton("⧉", updateAction.label, "clone", sourceId));
+      wrapper.append(actionButton(updateAction.label, "clone", sourceId));
     } else if (updateAction.action === "refresh") {
-      wrapper.append(actionButton("↻", updateAction.label, "refresh", id));
+      wrapper.append(actionButton(updateAction.label, "refresh", id));
     } else {
       const current = document.createElement("span");
       current.className = "remote-course-current";
@@ -126,7 +152,7 @@ export function createRemoteLibraryOverlay({
     return wrapper;
   };
 
-  const actionButton = (icon, label, action, id) => {
+  const actionButton = (label, action, id) => {
     const button = document.createElement("button");
     button.type = "button";
     button.className = "remote-course-action";
@@ -134,7 +160,7 @@ export function createRemoteLibraryOverlay({
     button.dataset.courseId = id;
     button.title = label;
     button.setAttribute("aria-label", label);
-    button.innerHTML = `<span aria-hidden="true">${icon}</span> ${label}`;
+    button.innerHTML = iconMarkup(action);
     return button;
   };
 
@@ -150,11 +176,9 @@ export function createRemoteLibraryOverlay({
       ]);
       content.replaceChildren();
       const personalIds = new Set(array(libraryCourses).map((course) => field(course, "source_course_id", "sourceCourseId")));
-      const personalSection = document.createElement("section");
-      personalSection.innerHTML = "<h3>Meus cursos</h3>";
+      const personalSection = sectionWithHeading("Meus cursos");
       array(libraryCourses).forEach((course) => personalSection.append(courseCard(course, "library")));
-      const catalogSection = document.createElement("section");
-      catalogSection.innerHTML = "<h3>Catálogo oficial</h3>";
+      const catalogSection = sectionWithHeading("Catálogo oficial");
       array(catalogCourses)
         .filter((course) => !personalIds.has(field(course, "course_id", "courseId", "id")))
         .forEach((course) => catalogSection.append(courseCard(course)));
@@ -174,8 +198,8 @@ export function createRemoteLibraryOverlay({
           description.textContent = `Conflito em ${conflict.entityType}:${conflict.entityId}. Escolha qual versão preservar.`;
           issue.append(
             description,
-            conflictResolutionButton("↓", "Aceitar versão remota", conflict.id, "acceptRemote"),
-            conflictResolutionButton("↑", "Manter versão local", conflict.id, "keepLocal")
+            conflictResolutionButton("Aceitar versão remota", conflict.id, "acceptRemote"),
+            conflictResolutionButton("Manter versão local", conflict.id, "keepLocal")
           );
           issuesSection.append(issue);
         });
@@ -183,8 +207,12 @@ export function createRemoteLibraryOverlay({
           const issue = document.createElement("article");
           issue.className = "remote-sync-issue";
           const description = document.createElement("p");
-          description.textContent = `Mutação rejeitada em ${mutation.entityType}:${mutation.entityId}: ${mutation.lastError || "payload inválido"}.`;
+          description.textContent = `Mutação rejeitada em ${mutation.entityType}:${mutation.entityId}: ${mutation.lastError || "payload inválido"}. Ela não será reenviada; corrija ou descarte explicitamente a alteração.`;
           issue.append(description);
+          const mutationId = text(field(mutation, "mutationId", "mutation_id", "id"));
+          if (mutationId && syncEngine?.discardRejectedMutation) {
+            issue.append(rejectedMutationButton(mutationId));
+          }
           issuesSection.append(issue);
         });
         content.append(issuesSection);
@@ -202,7 +230,7 @@ export function createRemoteLibraryOverlay({
     return paragraph;
   };
 
-  const conflictResolutionButton = (icon, label, conflictId, resolution) => {
+  const conflictResolutionButton = (label, conflictId, resolution) => {
     const button = document.createElement("button");
     button.type = "button";
     button.className = "remote-course-action";
@@ -210,12 +238,23 @@ export function createRemoteLibraryOverlay({
     button.dataset.conflictResolution = resolution;
     button.title = label;
     button.setAttribute("aria-label", label);
-    button.innerHTML = `<span aria-hidden="true">${icon}</span> ${label}`;
+    button.innerHTML = iconMarkup(resolution);
     return button;
   };
 
-  const synchronizeAndReload = async () => {
-    if (syncEngine?.synchronize) await syncEngine.synchronize();
+  const rejectedMutationButton = (mutationId) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "remote-course-action";
+    button.dataset.rejectedMutationId = mutationId;
+    button.title = "Descartar alteração rejeitada";
+    button.setAttribute("aria-label", "Descartar alteração rejeitada");
+    button.innerHTML = iconMarkup("rejectDiscard");
+    return button;
+  };
+
+  const synchronizeAndReload = async (options = undefined) => {
+    if (syncEngine?.synchronize) await syncEngine.synchronize(options);
     await onChanged();
   };
 
@@ -240,8 +279,8 @@ export function createRemoteLibraryOverlay({
         if (
           pendingCount > 0 &&
           !globalThis.confirm(
-            "Há alterações, conflitos ou rejeições ainda preservados somente neste dispositivo. " +
-            "Sair agora descartará esse estado local. Deseja continuar?"
+            "Há alterações, conflitos ou rejeições preservados neste dispositivo. " +
+            "Eles permanecerão associados a esta conta e voltarão quando ela entrar novamente. Deseja sair?"
           )
         ) {
           setBusy(false, "Saída cancelada; as alterações locais foram preservadas.");
@@ -277,11 +316,31 @@ export function createRemoteLibraryOverlay({
       }
       return;
     }
+    if (button.dataset.rejectedMutationId) {
+      if (!globalThis.confirm(
+        "Descartar esta alteração rejeitada e restaurar localmente o último estado confirmado?"
+      )) return;
+      setBusy(true, "Descartando alteração rejeitada…");
+      try {
+        await syncEngine.discardRejectedMutation(
+          button.dataset.rejectedMutationId,
+          { rollbackLocal: true }
+        );
+        await synchronizeAndReload();
+      } catch (error) {
+        setBusy(false, errorMessage(error));
+      }
+      return;
+    }
     if (button.dataset.courseAction === "clone" || button.dataset.courseAction === "refresh") {
       setBusy(true, button.dataset.courseAction === "clone" ? "Criando cópia relacional…" : "Atualizando cópia…");
       try {
-        if (button.dataset.courseAction === "clone") await catalog.cloneCourse(button.dataset.courseId);
-        else {
+        if (button.dataset.courseAction === "clone") {
+          const clonedCourseId = text(await catalog.cloneCourse(button.dataset.courseId));
+          if (!clonedCourseId) throw new Error("A clonagem não retornou o UUID do curso pessoal.");
+          await synchronizeAndReload({ expectedCourseIds: [clonedCourseId] });
+          return;
+        } else {
           await beforeRemoteRead();
           await catalog.refreshCourse(button.dataset.courseId);
         }

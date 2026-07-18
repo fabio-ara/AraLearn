@@ -83,6 +83,14 @@ jobs:
       - name: Executar testes pgTAP
         run: npx --yes supabase@2.109.1 test db
 
+      - name: Testar Auth, PostgREST, RPCs e RLS
+        shell: bash
+        run: |
+          set -a
+          eval "$(npx --yes supabase@2.109.1 status -o env)"
+          set +a
+          npm run test:supabase:smoke
+
       - name: Encerrar stack Supabase
         if: always()
         run: npx --yes supabase@2.109.1 stop --no-backup
