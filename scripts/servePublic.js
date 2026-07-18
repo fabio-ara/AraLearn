@@ -2,6 +2,7 @@ import http from "node:http";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { readSupabaseRuntimeConfig } from "../src/supabase/runtimeConfig.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -49,10 +50,32 @@ async function tryReadFile(absolutePath) {
   }
 }
 
+function developmentRuntimeConfig() {
+  const config = readSupabaseRuntimeConfig({
+    supabaseUrl: process.env.ARALEARN_SUPABASE_URL || "",
+    supabasePublishableKey: process.env.ARALEARN_SUPABASE_PUBLISHABLE_KEY || ""
+  });
+  return Buffer.from(
+    `globalThis.__ARALEARN_ENV__ ??= Object.freeze(${JSON.stringify({
+      supabaseUrl: config.projectUrl,
+      supabasePublishableKey: config.publishableKey
+    }, null, 2)});\n`,
+    "utf8"
+  );
+}
+
 const server = http.createServer(async (req, res) => {
   try {
     const urlPath = req.url || "/";
     const targetPath = urlPath === "/" ? (artifactMode ? "/index.html" : "/public/index.html") : urlPath;
+    if (!artifactMode && targetPath.split("?")[0] === "/runtime-config.js") {
+      res.writeHead(200, {
+        "Content-Type": "text/javascript; charset=utf-8",
+        "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0"
+      });
+      res.end(developmentRuntimeConfig());
+      return;
+    }
     let resolved = safeResolve(targetPath);
     if (!resolved) {
       res.writeHead(400, { "Content-Type": "text/plain; charset=utf-8" });

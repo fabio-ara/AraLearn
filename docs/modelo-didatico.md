@@ -63,7 +63,7 @@ A microssequência mantém teoria, prática e feedback no mesmo recorte didátic
 
 ## Estudante-trabalhador
 
-O foco em estudantes-trabalhadores orienta escolhas didáticas. O projeto precisa funcionar para quem estuda no celular, em períodos fragmentados, com cansaço e, muitas vezes, sem conexão confiável. Essa condição favorece etapas delimitadas, prática objetiva, retomada rápida e persistência local.
+O foco em estudantes-trabalhadores orienta escolhas didáticas. O projeto precisa funcionar para quem estuda no celular, em períodos fragmentados, com cansaço e, muitas vezes, sem conexão confiável. Essa condição favorece etapas delimitadas, prática objetiva, retomada rápida e uma réplica offline do estado relacional.
 
 O objetivo não é reduzir a aprendizagem a pequenas doses sem continuidade. É o oposto: usar unidades manejáveis para preservar uma trilha mais longa.
 

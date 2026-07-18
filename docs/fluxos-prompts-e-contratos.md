@@ -6,7 +6,7 @@ OpenAI (2026), Google AI for Developers (2026) e DeepSeek (2026) documentam meca
 
 ## Princípio operacional
 
-Cada chamada deve ter escopo limitado. O app informa tarefa, idioma, contexto, recursos disponíveis, regras e formato esperado. A LLM responde. O app compõe o resultado, valida e só então altera o projeto local.
+Cada chamada deve ter escopo limitado. O app informa tarefa, idioma, contexto, recursos disponíveis, regras e formato esperado. A LLM responde. O app compõe o resultado, valida e só então calcula e persiste mutações relacionais no escopo afetado.
 
 Esse arranjo evita três problemas frequentes:
 
@@ -165,7 +165,7 @@ A LLM fornece dados; o app compõe o objeto final no contrato público.
 
 ## Compilação e validação
 
-A compilação transforma a resposta transitória em projeto AraLearn. A validação confere o resultado.
+A compilação transforma a resposta transitória em um fragmento do contrato AraLearn montado em memória. A validação confere o resultado antes de qualquer transação. Depois da aprovação, a normalização atualiza somente as linhas da microssequência, do card ou do filho afetado e registra a mutação na outbox.
 
 Exemplos de rejeição:
 

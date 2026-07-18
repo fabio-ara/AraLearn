@@ -67,6 +67,7 @@
                   ],
                   "cards": [
                     {
+                      "id": "card-renderable-rule",
                       "position": 1,
                       "resource": "paragraph",
                       "kind": "theory",
@@ -76,6 +77,7 @@
                       "after": "Esse é o recurso textual mais comum."
                     },
                     {
+                      "id": "card-renderable-gap",
                       "position": 2,
                       "resource": "paragraph",
                       "kind": "exercise",
@@ -85,6 +87,7 @@
                       "after": "`ls` lista o conteúdo do diretório atual."
                     },
                     {
+                      "id": "card-renderable-choice",
                       "position": 3,
                       "resource": "choice",
                       "kind": "exercise",

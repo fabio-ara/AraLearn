@@ -40,6 +40,11 @@ jobs:
       - name: Analisar código
         run: npm run lint
 
+      - name: Validar corte relacional e fixtures
+        run: |
+          npm run validate:cutover
+          npm run catalog:validate
+
       - name: Instalar Chromium para testes de interface
         run: npx playwright install chromium
 
@@ -49,5 +54,35 @@ jobs:
       - name: Compilar aplicativo Android
         run: npm run android:debug
 
+      - name: Analisar aplicativo Android
+        working-directory: android
+        run: .\gradlew.bat :app:lintDebug --no-daemon
+
       - name: Validar exemplo público
         run: npm run validate:example
+
+  supabase:
+    name: Testar Supabase local
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Baixar repositório
+        uses: actions/checkout@v4
+
+      - name: Preparar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Iniciar stack Supabase
+        run: npx --yes supabase@2.109.1 start
+
+      - name: Reaplicar migration e seed
+        run: npx --yes supabase@2.109.1 db reset
+
+      - name: Executar testes pgTAP
+        run: npx --yes supabase@2.109.1 test db
+
+      - name: Encerrar stack Supabase
+        if: always()
+        run: npx --yes supabase@2.109.1 stop --no-backup

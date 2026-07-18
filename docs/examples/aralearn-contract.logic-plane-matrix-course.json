@@ -73,6 +73,7 @@
                   ],
                   "cards": [
                     {
+                      "id": "card-logic-rule",
                       "position": 1,
                       "resource": "paragraph",
                       "kind": "theory",
@@ -82,6 +83,7 @@
                       "after": "Se uma delas for falsa, a conjunção inteira é falsa."
                     },
                     {
+                      "id": "card-logic-gap",
                       "position": 2,
                       "resource": "paragraph",
                       "kind": "exercise",
@@ -91,6 +93,7 @@
                       "after": "As duas partes precisam ser verdadeiras."
                     },
                     {
+                      "id": "card-logic-graph",
                       "position": 3,
                       "resource": "graph",
                       "kind": "theory",
@@ -133,6 +136,7 @@
                       "after": "A ligação destacada conecta `A` a `B`."
                     },
                     {
+                      "id": "card-logic-plane",
                       "position": 4,
                       "resource": "plane",
                       "kind": "theory",
@@ -146,6 +150,7 @@
                       "after": "O vetor aponta para `(2, 1)`."
                     },
                     {
+                      "id": "card-logic-matrix",
                       "position": 5,
                       "resource": "matrix",
                       "kind": "theory",

@@ -5,3 +5,11 @@ node_modules/
 .pages/
 playwright-report/
 test-results/
+
+# Configurações e material de assinatura locais: nunca versionar.
+.env
+.env.*
+!.env.example
+*.jks
+*.keystore
+android/keystore.properties

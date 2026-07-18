@@ -20,7 +20,7 @@ A microssequência é o ponto de equilíbrio. Um card isolado pode perder contex
 
 A IA entra como assistência de autoria por API. No fluxo top-down, ajuda a transformar escopo em estrutura. No fluxo bottom-up, ajuda a gerar ou corrigir cards dentro de uma microssequência. Essa divisão dialoga com a ideia de reduzir dependência de uma única chamada ampla: em vez de pedir à LLM que planeje tudo e escreva tudo de uma vez, o AraLearn distribui o trabalho em etapas verificáveis.
 
-Lewis et al. (2020) mostram, no contexto de RAG, a importância de apoiar geração em informação recuperada. O AraLearn ainda não deve ser descrito como sistema interno de RAG plenamente implementado; hoje, o uso de RAGs externos aparece como prática de preparação de conteúdo `seed`. A direção do projeto, porém, é clara: reduzir a autoridade autônoma do modelo e ampliar o papel de fontes, contratos, validação e revisão.
+Lewis et al. (2020) mostram, no contexto de RAG, a importância de apoiar geração em informação recuperada. O AraLearn ainda não deve ser descrito como sistema interno de RAG plenamente implementado; o uso de RAGs externos aparece como prática de preparação de fixtures ou de conteúdo para publicação. A direção do projeto, porém, é clara: reduzir a autoridade autônoma do modelo e ampliar o papel de fontes, contratos, validação e revisão.
 
 ## O que o estudante vê
 
@@ -32,13 +32,13 @@ Essa escolha tem base didática. Sweller (1988) e Sweller, Van Merriënboer e Pa
 
 Ferramentas existentes resolvem partes do problema. Buscadores e wikis ajudam a localizar informação. Cadernos digitais ajudam a guardar notas. Sistemas de repetição espaçada ajudam a revisar. Chats com IA respondem dúvidas e geram explicações. Plataformas de ensino oferecem cursos fechados.
 
-O AraLearn ocupa outro ponto: ele trata o estudo como projeto local e editável. O interesse não está apenas em responder uma pergunta, mas em organizar uma sequência que o estudante possa continuar, corrigir e auditar.
+O AraLearn ocupa outro ponto: ele trata o estudo como projeto pessoal, editável e sincronizável. O interesse não está apenas em responder uma pergunta, mas em organizar uma sequência que o estudante possa continuar, corrigir e auditar.
 
-Esse caráter local importa também para o uso prático. Quando o conteúdo já está salvo no dispositivo ou vem embarcado no app, leitura, revisão e edição podem continuar sem nova chamada externa. A conexão é exigida nas etapas em que o usuário pede assistência por IA.
+Esse caráter offline-first importa também para o uso prático. Depois da autenticação e da primeira sincronização, leitura, revisão e edição do conteúdo replicado podem continuar sem rede; as mutações ficam na outbox até a reconexão. O catálogo é remoto e nenhum curso operacional vem embarcado no app.
 
 ## Público principal
 
-O público inicial é o estudante-trabalhador: quem estuda com tempo limitado, muitas vezes no celular, em deslocamento, com atenção fragmentada, energia baixa e conexão instável. O projeto não romantiza essas condições; tenta levá-las a sério. Por isso, privilegia etapas delimitadas, persistência local, prática objetiva e retorno à trilha após uma interrupção.
+O público inicial é o estudante-trabalhador: quem estuda com tempo limitado, muitas vezes no celular, em deslocamento, com atenção fragmentada, energia baixa e conexão instável. O projeto não romantiza essas condições; tenta levá-las a sério. Por isso, privilegia etapas delimitadas, réplica offline, prática objetiva e retorno à trilha após uma interrupção.
 
 ## Originalidade
 
@@ -47,9 +47,9 @@ A contribuição do AraLearn está na combinação de elementos que, isoladament
 - microssequências como unidade intermediária entre card e lição;
 - LLM por API como assistência de autoria, não como autoridade final;
 - fluxos top-down e bottom-up;
-- contrato JSON;
+- contrato JSON público para intercâmbio e validação;
 - validação antes da persistência;
-- persistência local em IndexedDB;
+- PostgreSQL/Supabase canônico com réplica relacional offline em IndexedDB;
 - cards renderizados a partir de dados verificáveis;
 - foco explícito em estudo móvel e estudantes-trabalhadores.
 

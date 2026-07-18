@@ -58,6 +58,7 @@
                   ],
                   "cards": [
                     {
+                      "id": "card-graph-example-1",
                       "position": 1,
                       "resource": "graph",
                       "kind": "theory",

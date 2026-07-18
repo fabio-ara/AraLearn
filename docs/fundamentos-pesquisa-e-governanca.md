@@ -1,8 +1,8 @@
 # Fundamentos, pesquisa e governança
 
-O AraLearn pode ser entendido como produto, artefato técnico e hipótese de pesquisa. Há software funcionando, contrato definido, cursos embarcados e integração por LLM via API. Ao mesmo tempo, há perguntas abertas sobre aprendizagem autodidata, estudo móvel, dependência de IA, privacidade, autoria e avaliação.
+O AraLearn pode ser entendido como produto, artefato técnico e hipótese de pesquisa. Há software funcionando, contrato definido, catálogo remoto, persistência relacional com réplica offline e integração por LLM via API. Ao mesmo tempo, há perguntas abertas sobre aprendizagem autodidata, estudo móvel, dependência de IA, privacidade, autoria e avaliação.
 
-O ponto de partida é social: muitos estudantes trabalham, estudam à noite, usam o celular como principal dispositivo, dependem de intervalos fragmentados e nem sempre têm conexão estável. O projeto nasce dessas condições e tenta respondê-las com uma arquitetura de estudo local, editável e assistida por IA.
+O ponto de partida é social: muitos estudantes trabalham, estudam à noite, usam o celular como principal dispositivo, dependem de intervalos fragmentados e nem sempre têm conexão estável. O projeto nasce dessas condições e tenta respondê-las com uma arquitetura de estudo editável, compartilhada e capaz de operar offline depois da primeira sincronização.
 
 ## Informação, atenção e plataformas
 
@@ -30,7 +30,7 @@ A arquitetura Transformer de Vaswani et al. (2017) tornou-se base relevante para
 
 O AraLearn não trata a IA como fonte final de verdade. A LLM por API ajuda a propor estrutura e conteúdo; o app valida; o usuário revisa. A intenção é reduzir o esforço de autoria sem apagar responsabilidade editorial.
 
-Lewis et al. (2020) são relevantes para pensar RAG como geração apoiada por recuperação de informação. O uso atual de RAGs externos na preparação de conteúdo `seed` aponta uma direção: apoiar a geração em fontes mais controladas. Isso ainda deve ser distinguido das capacidades internas já implementadas.
+Lewis et al. (2020) são relevantes para pensar RAG como geração apoiada por recuperação de informação. O uso de RAGs externos na preparação de fixtures e de conteúdo destinado à publicação aponta uma direção: apoiar a geração em fontes mais controladas. Isso ainda deve ser distinguido das capacidades internas já implementadas.
 
 A UNESCO (2023) recomenda cautela no uso de IA generativa em educação e pesquisa, com atenção a qualidade, equidade, privacidade e responsabilidade humana. Esses critérios se aplicam diretamente ao AraLearn.
 
@@ -38,7 +38,7 @@ A UNESCO (2023) recomenda cautela no uso de IA generativa em educação e pesqui
 
 Uma formulação possível é:
 
-> De que modo uma plataforma móvel, local e orientada por microssequências, com cards renderizáveis e assistência de LLM por API, pode apoiar o estudo autodidata de conteúdos técnicos em contextos de excesso informacional, pouco tempo, atenção fragmentada e conectividade instável?
+> De que modo uma plataforma móvel, offline-first e orientada por microssequências, com estado relacional compartilhado, cards renderizáveis e assistência de LLM por API, pode apoiar o estudo autodidata de conteúdos técnicos em contextos de excesso informacional, pouco tempo, atenção fragmentada e conectividade instável?
 
 Essa pergunta não pretende provar eficácia geral do projeto em larga escala. Ela delimita uma investigação de desenvolvimento sobre desenho, uso, limites e percepção do estudante.
 
@@ -50,8 +50,8 @@ As hipóteses de design são:
 2. O contrato JSON torna conteúdo gerado por IA mais auditável.
 3. A divisão top-down/bottom-up reduz ambiguidade e custo de geração.
 4. Recursos visuais baseados em dados ajudam em conteúdos estruturais.
-5. Progresso e comentários locais apoiam retomada e revisão do estudo.
-6. Persistência local favorece estudantes com conexão instável.
+5. Progresso e comentários granulares apoiam retomada e revisão do estudo.
+6. Uma réplica relacional offline favorece estudantes com conexão instável sem renunciar a uma fonte canônica compartilhada.
 7. A LLM por API deve atuar como assistência, não como autoridade final.
 
 A metodologia adequada se aproxima de design-based research, conforme o Design-Based Research Collective (2003): o artefato é concebido, testado, analisado e ajustado em ciclos.

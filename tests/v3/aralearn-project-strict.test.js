@@ -175,9 +175,9 @@ test("microsequence.errors pertence ao contrato e é preservado", () => {
   );
 });
 
-test("os três cursos embarcados satisfazem a fronteira estrita", async () => {
-  const catalogDirectory = new URL("../../src/data/embedded-courses/", import.meta.url);
-  const manifest = JSON.parse(await fs.readFile(new URL("embedded-seed-manifest.json", catalogDirectory), "utf8"));
+test("as três fixtures de publicação satisfazem a fronteira estrita", async () => {
+  const catalogDirectory = new URL("../../supabase/fixtures/catalog/", import.meta.url);
+  const manifest = JSON.parse(await fs.readFile(new URL("catalog-fixtures.json", catalogDirectory), "utf8"));
   assert.equal(manifest.courseFiles.length, 3);
 
   let preservedMicrosequenceErrors = 0;

@@ -2,6 +2,33 @@
 
 Todas as mudanças relevantes deste projeto serão registradas aqui.
 
+## [0.1.0] - 2026-07-18
+
+### Added
+
+- schema relacional PostgreSQL/Supabase para a árvore didática, progresso, comentários, dispositivos, mutações idempotentes e feed incremental de alterações;
+- autenticação por e-mail e senha com cadastro, confirmação, recuperação, sessão persistida, renovação e saída no runtime JavaScript compartilhado pela web e pelo APK;
+- réplica relacional `aralearn-relational-v1` no IndexedDB, com outbox, cursor de sincronização, tombstones e preservação explícita de conflitos;
+- conversores completos entre o contrato público v3 e linhas relacionais, com round-trip sem perda, validação e hash canônico;
+- RPCs transacionais e autorizadas para catálogo, clonagem, atualização de cópia pessoal, sincronização e substituição de cards de uma microssequência;
+- documentação de desenvolvimento local, implantação Supabase, segurança, sincronização e corte de legado.
+
+### Changed
+
+- PostgreSQL/Supabase passa a ser a fonte canônica compartilhada; o IndexedDB funciona como réplica offline e nunca como documento único do projeto;
+- o catálogo passa a ser exclusivamente remoto e lista somente metadados de cursos oficiais publicados;
+- cursos escolhidos são clonados no servidor com novos UUIDs e `source_entity_id`, sem montagem da cópia por requisições independentes do cliente;
+- mudanças bottom-up, progresso e comentários passam a atualizar somente as linhas afetadas;
+- o contrato JSON `aralearn.contract` versão 3 permanece como formato público de importação e exportação, contexto de geração, validação e visão de domínio em memória.
+
+### Removed
+
+- catálogo operacional embarcado nos artefatos web e Android;
+- persistência documental de projeto, progresso e comentários;
+- leitura automática e migração do banco IndexedDB legado;
+- funcionamento anônimo e caminhos de compatibilidade com o catálogo local anterior;
+- compilador e loaders do catálogo embarcado, incluindo `scripts/compileEmbeddedCourseFromParts.mjs`.
+
 ## [0.0.8] - 2026-07-18
 
 ### Changed

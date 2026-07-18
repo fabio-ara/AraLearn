@@ -1,6 +1,6 @@
 {
   "name": "aralearn",
-  "version": "0.0.8",
+  "version": "0.1.0",
   "private": true,
   "description": "Aplicativo de autoria e estudo em microssequências.",
   "type": "module",
@@ -11,6 +11,9 @@
     "test:e2e": "npm run pages:build && playwright test",
     "lint": "eslint .",
     "validate:example": "node ./scripts/validateExampleProject.js",
+    "validate:cutover": "node ./scripts/validateRelationalCutover.mjs",
+    "catalog:validate": "node ./scripts/publishCatalogFixtures.mjs --dry-run",
+    "catalog:publish": "node ./scripts/publishCatalogFixtures.mjs --publish",
     "validate:scope": "node ./src/generation/schemas/validateScopeContract.cli.js ./docs/examples/scope-contract.matematica-informatica.json",
     "harness:scope": "node ./scripts/runScopePlanningHarness.js",
     "harness:bottom-up": "node ./scripts/runBottomUpHarness.js",

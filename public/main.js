@@ -1,45 +1,90 @@
-import {
-  createBrowserIndexedDbStore,
-  deleteBrowserIndexedDbDatabase
-} from "../src/storage/createBrowserIndexedDbStore.js";
-import { createProjectStorage } from "../src/storage/createProjectStorage.js";
 import { createEditorSession } from "../src/editor/contractEditor.js";
+import { IndexedDbRelationalStore } from "../src/persistence/IndexedDbRelationalStore.js";
+import { RelationalProjectRepository } from "../src/persistence/RelationalProjectRepository.js";
+import { registerAraLearnServiceWorker } from "../src/runtime/registerServiceWorker.js";
+import { RelationalSyncEngine, SupabaseSyncTransport } from "../src/sync/RelationalSyncEngine.js";
+import { RemoteCourseCatalog } from "../src/supabase/RemoteCourseCatalog.js";
+import { SupabaseAuthClient } from "../src/supabase/SupabaseAuthClient.js";
+import { readSupabaseRuntimeConfig } from "../src/supabase/runtimeConfig.js";
+import { renderAuthGate } from "../src/ui/AuthGate.js";
 import { createLessonEditorApp } from "../src/ui/lessonEditorApp.js";
-import { loadEmbeddedSeedProjectDocument } from "../src/ui/embeddedSeedProjectDocument.js";
+import { createRemoteLibraryOverlay } from "../src/ui/RemoteLibraryOverlay.js";
 
-let localStore = null;
+let relationalStore = null;
+let repository = null;
+let authenticationShutdown = null;
 
-async function clearAraLearnLocalState(storage = localStore) {
-  if (storage) {
-    try {
-      await storage.clear();
-      await storage.flush();
-    } catch {
-      // O banco inteiro será removido abaixo; não há estado a preservar nesta ação.
-    } finally {
-      try {
-        await storage.close();
-      } catch {
-        // A conexão é fechada pelo próprio store mesmo quando o flush falha.
-      }
-      localStore = null;
-    }
+function wait(milliseconds) {
+  return new Promise((resolve) => globalThis.setTimeout(resolve, milliseconds));
+}
+
+async function closeAraLearnLocalConnections() {
+  if (repository) {
+    await repository.close().catch(() => undefined);
+    repository = null;
+    relationalStore = null;
+  } else if (relationalStore) {
+    relationalStore.close();
+    relationalStore = null;
   }
-  await deleteBrowserIndexedDbDatabase(globalThis.indexedDB);
+}
+
+async function clearAraLearnLocalState() {
+  await closeAraLearnLocalConnections();
+  await IndexedDbRelationalStore.deleteDatabase(globalThis.indexedDB);
+}
+
+function shutDownAuthenticatedRuntime(root, { deleteReplica }) {
+  if (authenticationShutdown) return authenticationShutdown;
+  authenticationShutdown = (async () => {
+    root.innerHTML = `
+      <main class="auth-shell">
+        <section class="auth-card" aria-live="polite">
+          <header class="auth-brand"><img src="assets/brand/aralearn-mark.png" alt=""><span>AraLearn</span></header>
+          <h1>Sessão encerrada</h1>
+          <p class="auth-copy">Fechando com segurança a réplica deste dispositivo…</p>
+        </section>
+      </main>
+    `;
+    await closeAraLearnLocalConnections();
+    if (deleteReplica) {
+      // Dá às outras abas tempo para fechar suas conexões após o broadcast.
+      await wait(150);
+      await IndexedDbRelationalStore.deleteDatabase(globalThis.indexedDB);
+    } else {
+      // A aba que iniciou a saída é responsável pela exclusão compartilhada.
+      await wait(300);
+    }
+    globalThis.location.reload();
+  })();
+  return authenticationShutdown;
+}
+
+function authSessionWasRejected(error, authClient) {
+  const code = String(error?.code || error?.response?.code || "").toLowerCase();
+  return !authClient.getSession() ||
+    error?.status === 401 ||
+    (error?.status === 400 && [
+      "invalid_grant",
+      "bad_jwt",
+      "refresh_token_not_found",
+      "refresh_token_already_used",
+      "session_not_found"
+    ].includes(code));
 }
 
 function renderStartupFailure(root, error) {
   const message = error instanceof Error ? error.message : String(error);
   root.innerHTML = `
-    <section style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;background:#f4efe7;color:#1f2937;font-family:Georgia,serif;">
-      <div style="max-width:720px;width:100%;background:#fffdf8;border:1px solid #d6c9b4;border-radius:18px;padding:28px;box-shadow:0 18px 40px rgba(66,44,12,0.12);">
-        <p style="margin:0 0 8px 0;font-size:12px;letter-spacing:0.12em;text-transform:uppercase;color:#8a6a3f;">Falha de inicialização</p>
-        <h1 style="margin:0 0 12px 0;font-size:28px;line-height:1.2;">O app não conseguiu abrir o estado local.</h1>
-        <p style="margin:0 0 16px 0;font-size:16px;line-height:1.6;">Os cursos do usuário, o progresso ou os comentários salvos no navegador não puderam ser lidos. Você pode limpar apenas os dados locais do AraLearn e recarregar a página.</p>
-        <pre data-startup-error-details style="margin:0 0 20px 0;white-space:pre-wrap;word-break:break-word;background:#f7f1e7;border-radius:12px;padding:14px;font-size:13px;line-height:1.5;color:#6b4f2a;"></pre>
+    <section style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;background:#120f0c;color:#f4eee6;font-family:var(--font-ui, sans-serif);">
+      <div style="max-width:720px;width:100%;background:#1d1712;border:1px solid #433628;border-radius:18px;padding:28px;box-shadow:0 18px 40px rgba(0,0,0,0.3);">
+        <p style="margin:0 0 8px 0;font-size:12px;letter-spacing:0.12em;text-transform:uppercase;color:#e4ba68;">Falha de inicialização</p>
+        <h1 style="margin:0 0 12px 0;font-size:28px;line-height:1.2;">O AraLearn não conseguiu abrir a réplica relacional.</h1>
+        <p style="margin:0 0 16px 0;font-size:16px;line-height:1.6;color:#b9aa95;">Tente novamente primeiro. Limpar a réplica remove também alterações offline ainda não sincronizadas; os dados já enviados permanecem no Supabase.</p>
+        <pre data-startup-error-details style="margin:0 0 20px 0;white-space:pre-wrap;word-break:break-word;background:#17120e;border-radius:12px;padding:14px;font-size:13px;line-height:1.5;color:#d8c6aa;"></pre>
         <div style="display:flex;gap:12px;flex-wrap:wrap;">
-          <button type="button" data-action="reset-aralearn-local-state" style="border:0;border-radius:999px;padding:12px 18px;background:#1f2937;color:#fffdf8;font-size:14px;cursor:pointer;">Limpar estado local do AraLearn</button>
-          <button type="button" data-action="reload-page" style="border:1px solid #c8b79c;border-radius:999px;padding:12px 18px;background:#fffdf8;color:#1f2937;font-size:14px;cursor:pointer;">Tentar novamente</button>
+          <button type="button" data-action="reload-page" title="Tentar novamente" aria-label="Tentar novamente" style="border:0;border-radius:999px;padding:12px 18px;background:#e4ba68;color:#2c1b04;font-size:14px;cursor:pointer;"><span aria-hidden="true">↻</span> Tentar novamente</button>
+          <button type="button" data-action="reset-aralearn-local-state" title="Limpar réplica relacional local" aria-label="Limpar réplica relacional local" style="border:1px solid #6d5840;border-radius:999px;padding:12px 18px;background:#1d1712;color:#f4eee6;font-size:14px;cursor:pointer;"><span aria-hidden="true">⌫</span> Limpar réplica local</button>
         </div>
       </div>
     </section>
@@ -49,6 +94,7 @@ function renderStartupFailure(root, error) {
     globalThis.location.reload();
   });
   root.querySelector('[data-action="reset-aralearn-local-state"]')?.addEventListener("click", async (event) => {
+    if (!globalThis.confirm("Limpar a réplica local e descartar alterações offline ainda não sincronizadas?")) return;
     event.currentTarget.disabled = true;
     try {
       await clearAraLearnLocalState();
@@ -59,31 +105,199 @@ function renderStartupFailure(root, error) {
   });
 }
 
-const root = document.getElementById("app-root");
-if (!root) {
-  throw new Error("Elemento raiz não encontrado.");
-}
-
-try {
-  const kvStore = await createBrowserIndexedDbStore(globalThis.indexedDB, {
-    onError(error) {
-      console.error("Falha de persistência no IndexedDB.", error);
-    }
+async function renderAuthenticatedApplication(root, config, authClient, session) {
+  const remoteCatalog = new RemoteCourseCatalog({
+    projectUrl: config.projectUrl,
+    publishableKey: config.publishableKey,
+    authClient
   });
-  localStore = kvStore;
-  const embeddedProject = await loadEmbeddedSeedProjectDocument();
-  const storage = createProjectStorage(kvStore, undefined, embeddedProject);
-  const editor = createEditorSession(storage);
-  const project = storage.loadProject();
+  const syncEngine = new RelationalSyncEngine({
+    store: relationalStore,
+    transport: new SupabaseSyncTransport(remoteCatalog)
+  });
+  let editorApp = null;
+  let automaticSyncTimer = null;
+  let automaticSyncRetryCount = 0;
+  const synchronizeReplica = async ({ reloadWhenDomainChanges = true } = {}) => {
+    if (repository) await repository.flush();
+    const result = await syncEngine.synchronize();
+    if (repository) {
+      const refreshed = await repository.refreshFromReplica();
+      if (reloadWhenDomainChanges && (refreshed.documentChanged || refreshed.progressChanged)) {
+        if (editorApp?.replaceProject) editorApp.replaceProject(refreshed.project);
+        else globalThis.location.reload();
+      }
+    }
+    return result;
+  };
+  const runAutomaticSync = async () => {
+    try {
+      await synchronizeReplica();
+      automaticSyncRetryCount = 0;
+    } catch (error) {
+      if (authSessionWasRejected(error, authClient)) {
+        if (authClient.getSession()) await authClient.clearSession();
+        authClient.emit("SESSION_INVALID");
+        return;
+      }
+      const retryable =
+        error instanceof TypeError ||
+        error?.name === "AbortError" ||
+        error?.status === 0 ||
+        error?.status === 429 ||
+        Number(error?.status) >= 500;
+      if (retryable && repository) {
+        automaticSyncRetryCount += 1;
+        const delay = Math.min(30_000, 1_000 * (2 ** Math.min(automaticSyncRetryCount, 5)));
+        globalThis.clearTimeout(automaticSyncTimer);
+        automaticSyncTimer = globalThis.setTimeout(() => void runAutomaticSync(), delay);
+      }
+      console.warn("Sincronização automática adiada.", error);
+    }
+  };
+  const scheduleAutomaticSync = () => {
+    automaticSyncRetryCount = 0;
+    globalThis.clearTimeout(automaticSyncTimer);
+    automaticSyncTimer = globalThis.setTimeout(() => void runAutomaticSync(), 800);
+  };
+  let startupSyncError = null;
+  try {
+    await syncEngine.synchronize();
+  } catch (error) {
+    if (authSessionWasRejected(error, authClient)) {
+      if (authClient.getSession()) await authClient.clearSession();
+      authClient.emit("SESSION_INVALID");
+      return;
+    }
+    const recoverable =
+      error instanceof TypeError ||
+      error?.name === "AbortError" ||
+      error?.status === 0 ||
+      error?.status === 429 ||
+      Number(error?.status) >= 500;
+    if (!recoverable) throw error;
+    startupSyncError = error;
+    console.warn("A inicialização continuará com a réplica offline.", error);
+  }
 
-  createLessonEditorApp({
-    root,
-    storage,
-    localStore: kvStore,
+  repository = new RelationalProjectRepository({
+    store: relationalStore,
+    userId: session.user?.id || null,
+    onLocalCommit: scheduleAutomaticSync
+  });
+  await repository.initialize();
+  const project = repository.loadProject();
+  const editor = createEditorSession(repository);
+  root.innerHTML = `
+    <div id="aralearn-editor-root"></div>
+    <div id="aralearn-remote-library-root"></div>
+    <p class="startup-sync-warning" data-startup-sync-warning role="status" aria-live="polite"></p>
+  `;
+  const editorRoot = root.querySelector("#aralearn-editor-root");
+  const libraryRoot = root.querySelector("#aralearn-remote-library-root");
+  if (startupSyncError) {
+    const warning = root.querySelector("[data-startup-sync-warning]");
+    warning.textContent = "Modo offline: alterações pendentes serão sincronizadas quando a conexão voltar.";
+  }
+
+  editorApp = createLessonEditorApp({
+    root: editorRoot,
+    storage: repository,
     editor,
     initialProject: project
   });
-} catch (error) {
+  createRemoteLibraryOverlay({
+    root: libraryRoot,
+    catalog: remoteCatalog,
+    authClient,
+    syncEngine,
+    async beforeRemoteRead() {
+      return synchronizeReplica();
+    },
+    async beforeSignOut() {
+      await repository.flush();
+      try {
+        await synchronizeReplica();
+      } catch (error) {
+        console.warn("Não foi possível enviar toda a fila antes da saída.", error);
+      }
+      const [pending, conflicts, rejected] = await Promise.all([
+        relationalStore.listPendingOutbox(),
+        relationalStore.listConflicts(),
+        relationalStore.listRejectedOutbox()
+      ]);
+      return pending.length + conflicts.length + rejected.length;
+    },
+    async onChanged() {
+      await repository.flush();
+      globalThis.location.reload();
+    },
+    async onSignedOut() {
+      globalThis.clearTimeout(automaticSyncTimer);
+      await shutDownAuthenticatedRuntime(root, { deleteReplica: true });
+    }
+  });
+
+  globalThis.addEventListener("online", () => {
+    automaticSyncRetryCount = 0;
+    void runAutomaticSync();
+  });
+}
+
+async function start(root) {
+  relationalStore = await IndexedDbRelationalStore.open(globalThis.indexedDB);
+  const config = readSupabaseRuntimeConfig();
+  if (!config.configured) {
+    renderAuthGate({ root, configured: false });
+    return;
+  }
+  const authClient = new SupabaseAuthClient({
+    projectUrl: config.projectUrl,
+    publishableKey: config.publishableKey,
+    sessionStore: relationalStore
+  });
+  authClient.onAuthStateChange((event) => {
+    if (event === "SIGNED_OUT_REMOTE") {
+      void shutDownAuthenticatedRuntime(root, { deleteReplica: false });
+    } else if (event === "SESSION_INVALID") {
+      void shutDownAuthenticatedRuntime(root, { deleteReplica: false });
+    } else if (event === "SIGNED_OUT") {
+      void shutDownAuthenticatedRuntime(root, { deleteReplica: true });
+    }
+  });
+  const session = await authClient.initialize();
+  if (!session && authClient.sessionInvalidated) {
+    await shutDownAuthenticatedRuntime(root, { deleteReplica: false });
+    return;
+  }
+  if (!session || authClient.recoveryMode) {
+    renderAuthGate({
+      root,
+      authClient,
+      configured: true,
+      onAuthenticated() {
+        globalThis.location.reload();
+      }
+    });
+    return;
+  }
+  if (!session.user?.id) {
+    await authClient.clearSession();
+    renderAuthGate({ root, authClient, configured: true });
+    return;
+  }
+  await relationalStore.bindReplicaToUser(session.user.id, session);
+  await renderAuthenticatedApplication(root, config, authClient, session);
+}
+
+const root = document.getElementById("app-root");
+if (!root) throw new Error("Elemento raiz não encontrado.");
+
+registerAraLearnServiceWorker().catch((error) => {
+  console.warn("O shell offline não pôde ser registrado.", error);
+});
+
+start(root).catch((error) => {
   console.error("Falha fatal ao iniciar a UI do AraLearn.", error);
   renderStartupFailure(root, error);
-}
+});

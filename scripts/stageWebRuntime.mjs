@@ -2,18 +2,9 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { parse as parseJavaScript } from "espree";
-import {
-  CONTRACT_KIND_PROJECT,
-  CONTRACT_NAME,
-  CONTRACT_VERSION,
-  validateContractDocument
-} from "../src/contract/validateContract.js";
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(scriptDirectory, "..");
-const embeddedCatalogDirectory = path.join(repositoryRoot, "src", "data", "embedded-courses");
-const embeddedManifestName = "embedded-seed-manifest.json";
-const embeddedManifestPath = path.join(embeddedCatalogDirectory, embeddedManifestName);
 
 const runtimeDependencies = [
   "node_modules/pdfjs-dist/build/pdf.mjs",
@@ -78,65 +69,6 @@ function resolveSafeOutput(target, outputValue) {
   }
 
   return outputPath;
-}
-
-async function readJson(filePath, label) {
-  let source;
-  try {
-    source = await fs.readFile(filePath, "utf8");
-  } catch (error) {
-    fail(`${label} ausente: ${error.message}`);
-  }
-
-  try {
-    return JSON.parse(source);
-  } catch (error) {
-    fail(`${label} contém JSON inválido: ${error.message}`);
-  }
-}
-
-function validateCourseFileName(value) {
-  const fileName = typeof value === "string" ? value.trim() : "";
-  if (
-    !fileName ||
-    fileName !== path.basename(fileName) ||
-    !fileName.endsWith(".json") ||
-    fileName === embeddedManifestName
-  ) {
-    fail(`Arquivo inválido no manifesto de cursos embarcados: ${String(value || "")}`);
-  }
-  return fileName;
-}
-
-async function readEmbeddedManifest() {
-  const manifest = await readJson(embeddedManifestPath, "Manifesto de cursos embarcados");
-  if (!manifest || typeof manifest !== "object" || Array.isArray(manifest)) {
-    fail("Manifesto de cursos embarcados deve ser um objeto.");
-  }
-  if (!Array.isArray(manifest.courseFiles) || !manifest.courseFiles.length) {
-    fail("Manifesto de cursos embarcados não contém courseFiles.");
-  }
-
-  const courseFiles = manifest.courseFiles.map((value) => validateCourseFileName(value));
-  if (new Set(courseFiles).size !== courseFiles.length) {
-    fail("Manifesto de cursos embarcados contém arquivos duplicados.");
-  }
-
-  const courses = await Promise.all(
-    courseFiles.map((fileName) => readJson(path.join(embeddedCatalogDirectory, fileName), `Curso embarcado ${fileName}`))
-  );
-  const validation = validateContractDocument({
-    contract: CONTRACT_NAME,
-    version: CONTRACT_VERSION,
-    kind: CONTRACT_KIND_PROJECT,
-    courses
-  });
-  if (!validation.ok) {
-    const details = validation.errors.map((error) => `${error.path}: ${error.message}`).join("; ");
-    fail(`Catálogo embarcado inválido: ${details}`);
-  }
-
-  return { courseFiles };
 }
 
 async function listFiles(directoryPath) {
@@ -241,14 +173,6 @@ async function copyRuntimeJavaScript(runtimeRoot) {
   }
 }
 
-async function copyEmbeddedCatalog(runtimeRoot, courseFiles) {
-  const destinationDirectory = path.join(runtimeRoot, "src", "data", "embedded-courses");
-  await copyFile(embeddedManifestPath, path.join(destinationDirectory, embeddedManifestName));
-  for (const fileName of courseFiles) {
-    await copyFile(path.join(embeddedCatalogDirectory, fileName), path.join(destinationDirectory, fileName));
-  }
-}
-
 async function copyRuntimeDependencies(runtimeRoot) {
   for (const relativePath of runtimeDependencies) {
     const sourcePath = path.join(repositoryRoot, relativePath);
@@ -272,15 +196,81 @@ function normalizeArtifactPath(value) {
   return value.split(path.sep).join("/");
 }
 
-async function validateArtifact(runtimeRoot, courseFiles) {
+async function writePagesAssetManifest(runtimeRoot) {
+  const files = await listFiles(runtimeRoot);
+  const assets = files
+    .map((filePath) => normalizeArtifactPath(path.relative(runtimeRoot, filePath)))
+    .filter((relativePath) => relativePath !== "asset-manifest.json")
+    .filter((relativePath) => !relativePath.endsWith(".map"))
+    .map((relativePath) => `./${relativePath}`)
+    .sort();
+  await fs.writeFile(
+    path.join(runtimeRoot, "asset-manifest.json"),
+    `${JSON.stringify({ assets }, null, 2)}\n`,
+    "utf8"
+  );
+}
+
+function decodeJwtPayload(token) {
+  const parts = String(token || "").split(".");
+  if (parts.length !== 3) return null;
+  try {
+    return JSON.parse(Buffer.from(parts[1], "base64url").toString("utf8"));
+  } catch {
+    return null;
+  }
+}
+
+function publicRuntimeConfig() {
+  const supabaseUrl = String(process.env.ARALEARN_SUPABASE_URL || "").trim().replace(/\/+$/, "");
+  const supabasePublishableKey = String(process.env.ARALEARN_SUPABASE_PUBLISHABLE_KEY || "").trim();
+  const payload = decodeJwtPayload(supabasePublishableKey);
+  if (
+    payload?.role === "service_role" ||
+    /service[_-]?role/i.test(supabasePublishableKey) ||
+    /^sb_secret_/i.test(supabasePublishableKey)
+  ) {
+    fail("ARALEARN_SUPABASE_PUBLISHABLE_KEY não pode ser uma service role key.");
+  }
+  if (supabaseUrl) {
+    let parsed;
+    try {
+      parsed = new URL(supabaseUrl);
+    } catch {
+      fail("ARALEARN_SUPABASE_URL deve ser uma URL válida.");
+    }
+    const local = new Set(["localhost", "127.0.0.1", "10.0.2.2"]).has(parsed.hostname);
+    if (parsed.protocol !== "https:" && !(local && parsed.protocol === "http:")) {
+      fail("ARALEARN_SUPABASE_URL deve usar HTTPS fora do desenvolvimento local.");
+    }
+  }
+  return { supabaseUrl, supabasePublishableKey };
+}
+
+async function writeRuntimeConfig(publicDestination) {
+  const config = publicRuntimeConfig();
+  const source = `globalThis.__ARALEARN_ENV__ ??= Object.freeze(${JSON.stringify(config, null, 2)});\n`;
+  await fs.writeFile(path.join(publicDestination, "runtime-config.js"), source, "utf8");
+}
+
+async function validateArtifact(runtimeRoot) {
   const artifactFiles = await listFiles(runtimeRoot);
   const relativeFiles = artifactFiles.map((filePath) => normalizeArtifactPath(path.relative(runtimeRoot, filePath)));
-  const forbiddenSegments = new Set(["fixtures", "_old"]);
+  const forbiddenSegments = new Set(["fixtures", "_old", "embedded-courses"]);
+  const forbiddenRuntimeFiles = new Set([
+    "embeddedseedcourseloader.js",
+    "embeddedseedprojectdocument.js",
+    "createbrowserindexeddbstore.js",
+    "createprojectstorage.js"
+  ]);
 
   for (const relativePath of relativeFiles) {
     const segments = relativePath.split("/").map((segment) => segment.toLowerCase());
     if (segments.some((segment) => forbiddenSegments.has(segment))) {
       fail(`Artefato proibido no runtime: ${relativePath}`);
+    }
+    if (forbiddenRuntimeFiles.has(segments.at(-1))) {
+      fail(`Caminho documental ou catálogo legado presente no runtime: ${relativePath}`);
     }
   }
 
@@ -289,27 +279,12 @@ async function validateArtifact(runtimeRoot, courseFiles) {
     fail(`Módulo exclusivo de linha de comando presente no runtime: ${commandLineModules.join(", ")}.`);
   }
 
-  const catalogPrefix = "src/data/embedded-courses/";
-  const packagedCatalogFiles = relativeFiles
-    .filter((relativePath) => relativePath.startsWith(catalogPrefix))
-    .map((relativePath) => relativePath.slice(catalogPrefix.length))
-    .sort();
-  const expectedCatalogFiles = [embeddedManifestName, ...courseFiles].sort();
-
-  if (JSON.stringify(packagedCatalogFiles) !== JSON.stringify(expectedCatalogFiles)) {
-    fail(
-      "Catálogo empacotado diverge do manifesto. " +
-      `Esperado: ${expectedCatalogFiles.join(", ")}. ` +
-      `Encontrado: ${packagedCatalogFiles.join(", ")}.`
-    );
-  }
-
-  const unlistedCourseFiles = relativeFiles.filter((relativePath) => {
+  const packagedCourseFiles = relativeFiles.filter((relativePath) => {
     const fileName = path.posix.basename(relativePath);
-    return /(?:seed-)?course\.json$/i.test(fileName) && !relativePath.startsWith(catalogPrefix);
+    return /(?:seed-)?course(?:s)?(?:[.-][^/]*)?\.json$/i.test(fileName) || /catalog.*\.json$/i.test(fileName);
   });
-  if (unlistedCourseFiles.length) {
-    fail(`Curso não listado no manifesto foi empacotado: ${unlistedCourseFiles.join(", ")}`);
+  if (packagedCourseFiles.length) {
+    fail(`Curso ou catálogo operacional presente no artefato: ${packagedCourseFiles.join(", ")}.`);
   }
 
   for (const relativePath of runtimeDependencies) {
@@ -320,37 +295,36 @@ async function validateArtifact(runtimeRoot, courseFiles) {
   }
 }
 
-async function stageRuntime({ target, outputPath, courseFiles }) {
+async function stageRuntime({ target, outputPath }) {
   const runtimeRoot = target === "android" ? path.join(outputPath, "www") : outputPath;
   const publicDestination = target === "android" ? path.join(runtimeRoot, "public") : runtimeRoot;
 
   await fs.rm(outputPath, { recursive: true, force: true });
   await fs.mkdir(outputPath, { recursive: true });
   await copyTree(path.join(repositoryRoot, "public"), publicDestination);
+  await writeRuntimeConfig(publicDestination);
   await copyRuntimeJavaScript(runtimeRoot);
-  await copyEmbeddedCatalog(runtimeRoot, courseFiles);
   await copyRuntimeDependencies(runtimeRoot);
 
   if (target === "pages") {
     await rewritePagesMainImport(runtimeRoot);
+    await writePagesAssetManifest(runtimeRoot);
   }
 
-  await validateArtifact(runtimeRoot, courseFiles);
+  await validateArtifact(runtimeRoot);
   return runtimeRoot;
 }
 
 async function main() {
   const options = parseArguments(process.argv.slice(2));
   const outputPath = resolveSafeOutput(options.target, options.output);
-  const manifest = await readEmbeddedManifest();
   const runtimeRoot = await stageRuntime({
     target: options.target,
-    outputPath,
-    courseFiles: manifest.courseFiles
+    outputPath
   });
   const relativeRuntimeRoot = normalizeArtifactPath(path.relative(repositoryRoot, runtimeRoot));
   console.log(`Runtime ${options.target} gerado em ${relativeRuntimeRoot || "."}.`);
-  console.log(`Cursos embarcados: ${manifest.courseFiles.length}.`);
+  console.log("Catálogo embarcado: ausente.");
 }
 
 main().catch((error) => {

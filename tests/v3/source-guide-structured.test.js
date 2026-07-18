@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { normalizeGuide, GUIDE_LEVELS } from "../../src/sourceGuides/sourceGuideStructured.js";
-import { getEmbeddedSeedProjectFixture } from "../support/embeddedCatalogFixture.js";
+import { getCatalogFixtureProject } from "../support/catalogPublicationFixture.js";
 
 test("a normalização preserva todas as listas da fonte-guia", () => {
   const guide = normalizeGuide({
@@ -23,7 +23,7 @@ test("a normalização preserva todas as listas da fonte-guia", () => {
 });
 
 test("o catálogo validado mantém as orientações do campo avoid", () => {
-  const project = getEmbeddedSeedProjectFixture();
+  const project = getCatalogFixtureProject();
   const avoidEntries = project.courses.flatMap((course) =>
     course.modules.flatMap((moduleValue) => [
       ...(moduleValue.guide?.avoid || []),

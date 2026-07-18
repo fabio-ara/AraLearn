@@ -32,7 +32,7 @@ O repositório prevê uso com Gemini, serviços compatíveis com a API de chat d
 
 A regra de autoria é: a LLM sugere; o aplicativo delimita, valida e registra; o usuário revisa e decide.
 
-Essa dependência de API vale para planejamento, geração e correção assistida. Em contrapartida, os cursos embarcados, o progresso, os comentários e os cursos do usuário ficam no dispositivo. Na prática, depois de abrir o app, o estudante pode ler e editar esse material localmente sem nova chamada externa; a conexão volta a ser necessária quando houver pedido de assistência por IA.
+Essa dependência de API vale para planejamento, geração e correção assistida. A aplicação também precisa de conexão para autenticar, consultar o catálogo remoto e fazer a primeira sincronização. Depois disso, as linhas relacionais já sincronizadas, o progresso, os comentários e as mutações pendentes permanecem no IndexedDB e permitem continuar o estudo offline. Quando a conexão volta, a outbox é enviada ao PostgreSQL do Supabase, que é a fonte canônica compartilhada.
 
 ## Cards que aparecem como estrutura, não só como texto
 
@@ -46,20 +46,24 @@ Esse desenho ajuda a reduzir improviso. O conteúdo continua editável, exportá
 
 O estado atual do projeto inclui:
 
+- autenticação Supabase com cadastro, confirmação, recuperação, sessão persistida e renovação;
 - criação e edição de cursos, módulos, lições, microssequências e cards;
 - planejamento top-down por LLM via API;
 - geração e correção bottom-up por LLM via API;
 - contrato público `aralearn.contract`, versão 3;
-- persistência local do projeto e do progresso em IndexedDB, com exportação/importação em JSON;
+- PostgreSQL/Supabase como fonte canônica compartilhada, protegido por autenticação e RLS;
+- réplica relacional offline em IndexedDB, com outbox, cursores e registro explícito de conflitos;
+- persistência granular de estrutura, progresso e comentários, sem salvar o curso inteiro a cada alteração;
+- importação e exportação pelo contrato JSON v3, sem usar o documento como unidade persistida;
 - validações estruturais e didáticas mínimas;
 - recursos de card: `paragraph`, `choice`, `composite`, `code`, `table`, `flow`, `tree`, `graph`, `relation_map`, `matrix` e `plane`;
 - aplicação web servida localmente;
 - publicação web em GitHub Pages;
 - empacotamento Android por WebView;
-- catálogo de cursos embarcados disponível offline;
+- catálogo exclusivamente remoto, consultado por metadados, com clonagem transacional de cursos oficiais;
 - testes, validações, harnesses, smoke tests e benchmarks de geração.
 
-Os cursos embarcados funcionam como material inicial disponível no próprio pacote. Cursos criados ou importados pelo usuário e o respectivo progresso ficam persistidos no IndexedDB do dispositivo.
+O app e o APK não incluem catálogo operacional. Uma pessoa autenticada escolhe um curso oficial publicado e o servidor cria uma cópia pessoal completa com novos UUIDs e rastreamento de origem. O JSON v3 continua sendo o contrato público para validação, importação, exportação, contexto de LLM e visão de domínio montada em memória.
 
 ## Para quem o projeto foi pensado
 
@@ -74,15 +78,22 @@ npm install
 npm run dev
 ```
 
+O runtime requer a URL pública do projeto Supabase e a publishable key. A configuração local e os comandos de migration estão em [Supabase: desenvolvimento e implantação](docs/supabase.md).
+
 Comandos úteis:
 
 ```bash
 npm test
+npm run lint
 npm run validate:example
+npm run validate:cutover
+npm run catalog:validate
+npm run test:e2e
+npm run pages:build
 npm run validate:scope
 npm run harness:scope
 npm run harness:bottom-up
-npm run smoke:provider
+npm run smoke:deepseek:structured
 npm run benchmark:structured
 npm run benchmark:topdown
 npm run benchmark:didactic
@@ -102,7 +113,7 @@ npm run android:debug
 
 ## Estado atual e limites
 
-O AraLearn já possui fluxos de geração por LLM via API, contrato JSON, recursos renderizáveis, validação e material embarcado. Ainda assim, permanece em desenvolvimento.
+O AraLearn já possui fluxos de geração por LLM via API, contrato JSON, recursos renderizáveis, validação e persistência relacional compartilhada com réplica offline. Ainda assim, permanece em desenvolvimento. O funcionamento autenticado depende de um projeto Supabase configurado; o uso offline pressupõe que a primeira sincronização do curso tenha sido concluída.
 
 O projeto não substitui aula, professor, bibliografia, revisão humana ou estudo crítico. Também não trata a saída da IA como verdade final. O objetivo é oferecer uma estrutura de autoria e estudo em que o conteúdo possa ser produzido com assistência, conferido, corrigido e retomado.
 
@@ -124,6 +135,8 @@ Para entender a implementação:
 - [Fluxos, prompts e contratos de geração](docs/fluxos-prompts-e-contratos.md)
 - [Contrato público](docs/aralearn-contract.md)
 - [Recursos de card](docs/recursos-de-card.md)
+- [Persistência relacional e sincronização](docs/persistencia-relacional.md)
+- [Supabase: desenvolvimento e implantação](docs/supabase.md)
 
 Para avaliar fundamentos, limites e pesquisa:
 

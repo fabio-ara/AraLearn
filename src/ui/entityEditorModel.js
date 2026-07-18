@@ -81,14 +81,28 @@ function metadataFields(entity, description) {
   ];
 }
 
+function resolveCoursePermissions(state, courseKey) {
+  const fallback = { role: "owner", canEdit: true, canDelete: true };
+  if (!courseKey) return fallback;
+  const permissionsById = state?.coursePermissionsById;
+  const permissions = permissionsById instanceof Map
+    ? permissionsById.get(courseKey)
+    : permissionsById?.[courseKey];
+  return permissions || state?.coursePermissions || fallback;
+}
+
 export function buildEntityEditorModel(state = {}) {
   const { project, selection = {}, entityEditor } = state;
   if (!entityEditor) return null;
 
-  const staticActionMenu = ACTION_MENUS[entityEditor.kind];
-  if (staticActionMenu) return actionMenu(staticActionMenu);
-
   const courseKey = entityEditor.courseKey || selection.courseKey;
+  const permissions = resolveCoursePermissions(state, courseKey);
+  const staticActionMenu = ACTION_MENUS[entityEditor.kind];
+  if (staticActionMenu) {
+    if (entityEditor.kind !== "home-actions" && !permissions.canEdit) return null;
+    return actionMenu(staticActionMenu);
+  }
+
   const course = findCourse(project, courseKey);
 
   if (entityEditor.kind === "course-actions") {
@@ -97,16 +111,20 @@ export function buildEntityEditorModel(state = {}) {
       title: "Ações do curso",
       placement: "bottom",
       actions: [
-        { key: "edit-course-metadata", label: "Editar curso", icon: "&#9998;" },
+        permissions.canEdit
+          ? { key: "edit-course-metadata", label: "Editar curso", icon: "&#9998;" }
+          : null,
         { key: "reset-course-progress", label: "Zerar progresso do curso", icon: "&#8635;" },
         { key: "export-course", label: "Exportar curso", icon: "&#8681;" },
-        { key: "delete-course", label: "Excluir curso", icon: "&#128465;", tone: "danger" }
-      ]
+        permissions.canDelete
+          ? { key: "delete-course", label: "Excluir curso", icon: "&#128465;", tone: "danger" }
+          : null
+      ].filter(Boolean)
     });
   }
 
   if (entityEditor.kind === "course-metadata" || entityEditor.kind === "course") {
-    if (!course) return null;
+    if (!course || !permissions.canEdit) return null;
     return {
       title: "Curso",
       fields: metadataFields(course, course.goal),
@@ -122,7 +140,7 @@ export function buildEntityEditorModel(state = {}) {
 
   const moduleValue = findModule(project, courseKey, entityEditor.moduleKey);
   if (entityEditor.kind === "module") {
-    if (!moduleValue) return null;
+    if (!moduleValue || !permissions.canEdit) return null;
     return {
       title: "Módulo",
       fields: metadataFields(moduleValue, moduleValue.guide?.goal),
@@ -136,18 +154,24 @@ export function buildEntityEditorModel(state = {}) {
       title: "Ações do módulo",
       placement: "bottom",
       actions: [
-        { key: "edit-module-metadata", label: "Editar módulo", icon: "&#9998;" },
-        { key: "create-lesson", label: "Adicionar lição", icon: "&#43;" },
+        permissions.canEdit
+          ? { key: "edit-module-metadata", label: "Editar módulo", icon: "&#9998;" }
+          : null,
+        permissions.canEdit
+          ? { key: "create-lesson", label: "Adicionar lição", icon: "&#43;" }
+          : null,
         { key: "reset-module-progress", label: "Zerar progresso do módulo", icon: "&#8635;" },
         { key: "export-module", label: "Exportar módulo", icon: "&#8681;" },
-        { key: "delete-module", label: "Excluir módulo", icon: "&#128465;", tone: "danger" }
-      ]
+        permissions.canEdit
+          ? { key: "delete-module", label: "Excluir módulo", icon: "&#128465;", tone: "danger" }
+          : null
+      ].filter(Boolean)
     });
   }
 
   const lesson = findLesson(project, courseKey, entityEditor.moduleKey, entityEditor.lessonKey);
   if (entityEditor.kind === "lesson") {
-    if (!lesson) return null;
+    if (!lesson || !permissions.canEdit) return null;
     return {
       title: "Lição",
       fields: metadataFields(lesson, lesson.guide?.goal),
@@ -156,7 +180,7 @@ export function buildEntityEditorModel(state = {}) {
   }
 
   if (entityEditor.kind === "lesson-source-guide") {
-    if (!lesson) return null;
+    if (!lesson || !permissions.canEdit) return null;
     return {
       title: "Fonte-guia da lição",
       fields: buildGuideEditorFields(lesson.guide || {}, { level: GUIDE_LEVELS.LESSON }),
@@ -170,11 +194,15 @@ export function buildEntityEditorModel(state = {}) {
       title: "Ações da lição",
       placement: "bottom",
       actions: [
-        { key: "edit-lesson-metadata", label: "Editar lição", icon: "&#9998;" },
+        permissions.canEdit
+          ? { key: "edit-lesson-metadata", label: "Editar lição", icon: "&#9998;" }
+          : null,
         { key: "reset-lesson-progress", label: "Zerar progresso da lição", icon: "&#8635;" },
         { key: "export-lesson", label: "Exportar lição", icon: "&#8681;" },
-        { key: "delete-lesson", label: "Excluir lição", icon: "&#128465;", tone: "danger" }
-      ]
+        permissions.canEdit
+          ? { key: "delete-lesson", label: "Excluir lição", icon: "&#128465;", tone: "danger" }
+          : null
+      ].filter(Boolean)
     });
   }
 
@@ -186,7 +214,7 @@ export function buildEntityEditorModel(state = {}) {
     entityEditor.microsequenceKey
   );
   if (entityEditor.kind === "microsequence") {
-    if (!course || !moduleValue || !lesson || !microsequence) return null;
+    if (!course || !moduleValue || !lesson || !microsequence || !permissions.canEdit) return null;
     const refOptions = collectAssistRefs(course, moduleValue, lesson, microsequence).map((item) => ({
       id: item.id,
       label: item.scope ? `${item.title} · ${item.scope}` : item.title
@@ -239,15 +267,22 @@ export function buildEntityEditorModel(state = {}) {
       title: "Ações da microssequência",
       placement: "bottom",
       actions: [
-        { key: "edit-microsequence-metadata", label: "Editar microssequência", icon: "&#9998;" },
-        { key: "create-card", label: "Novo card", icon: "&#43;" },
+        permissions.canEdit
+          ? { key: "edit-microsequence-metadata", label: "Editar microssequência", icon: "&#9998;" }
+          : null,
+        permissions.canEdit
+          ? { key: "create-card", label: "Novo card", icon: "&#43;" }
+          : null,
         { key: "export-microsequence", label: "Exportar microssequência", icon: "&#8681;" },
-        { key: "delete-microsequence", label: "Excluir microssequência", icon: "&#128465;", tone: "danger" }
-      ]
+        permissions.canEdit
+          ? { key: "delete-microsequence", label: "Excluir microssequência", icon: "&#128465;", tone: "danger" }
+          : null
+      ].filter(Boolean)
     });
   }
 
   if (entityEditor.kind === "assist-container-picker") {
+    if (!permissions.canEdit) return null;
     return actionMenu({
       title: "Adicionar recursos",
       placement: "bottom",

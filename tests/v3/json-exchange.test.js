@@ -30,6 +30,9 @@ test("a troca JSON reconhece exclusivamente o contrato de projeto atual", () => 
   );
 });
 
-test("a troca JSON reconhece o pacote de armazenamento atual", () => {
-  assert.equal(detectJsonExchangeFormat({ format: "aralearn.storage" }), "storage");
+test("a troca JSON rejeita o pacote de armazenamento documental legado", () => {
+  assert.throws(
+    () => detectJsonExchangeFormat({ format: "aralearn.storage" }),
+    /JSON inválido para importação/u
+  );
 });

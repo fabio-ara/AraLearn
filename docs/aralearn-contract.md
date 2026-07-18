@@ -1,8 +1,8 @@
 # Contrato público do AraLearn
 
-O contrato público é o JSON salvo pelo AraLearn. Ele define o que pode ser persistido, exportado, importado, validado e apresentado na interface. Durante a geração, o app usa contratos transitórios; ao final, o projeto precisa caber neste formato.
+O contrato público é a representação JSON interoperável do AraLearn. Ele define o que pode ser importado, exportado, validado, enviado como contexto e apresentado como visão de domínio na interface. Durante a geração, o app usa contratos transitórios; ao final, o projeto montado em memória precisa caber neste formato. O JSON não é a unidade de persistência.
 
-JSON é um formato textual de dados estruturados, conforme apresenta a MDN Web Docs (2026). JSON Schema define regras sobre esses dados, como campos obrigatórios, tipos e valores aceitos (JSON Schema, 2026). No AraLearn, o contrato cumpre função técnica e didática: ele diz não apenas como salvar o projeto, mas que formas de estudo o sistema aceita.
+JSON é um formato textual de dados estruturados, conforme apresenta a MDN Web Docs (2026). JSON Schema define regras sobre esses dados, como campos obrigatórios, tipos e valores aceitos (JSON Schema, 2026). No AraLearn, o contrato cumpre função técnica e didática: ele descreve um documento portátil e as formas de estudo que o sistema aceita.
 
 ## Documento raiz
 
@@ -30,7 +30,13 @@ Campos obrigatórios:
 project -> course -> module -> lesson -> microsequence -> card
 ```
 
-Os cards pertencem diretamente à microssequência e seguem a ordem declarada em `position`. Essa hierarquia preserva ordem de estudo, contexto de geração e local de persistência.
+Os cards pertencem diretamente à microssequência na visão pública e seguem a ordem declarada em `position`. Essa hierarquia preserva ordem de estudo e contexto de geração. Na persistência, cada nível e cada recurso estruturado é normalizado em linhas relacionadas.
+
+## Relação com a persistência
+
+No PostgreSQL e no IndexedDB, as identidades persistidas são UUIDs. Os valores textuais de `id` do contrato são preservados como `contract_key`, mas não funcionam como chave global. Chaves estrangeiras ligam a árvore e `position` ordena as coleções.
+
+Uma importação válida é normalizada imediatamente. Uma exportação percorre as linhas, remonta o documento v3 e o valida novamente. Campos desconhecidos ou sem mapeamento são rejeitados; não há descarte silencioso. Consulte [Persistência relacional e sincronização](persistencia-relacional.md) para o mapa completo.
 
 ## `course`
 
@@ -166,8 +172,10 @@ Todo card possui:
 Campos opcionais comuns:
 
 - `sources`: referências usadas no card;
-- `topics`: tópicos associados;
+- `topics`: tags textuais associadas;
 - `afterBlocks`: blocos adicionais depois do comentário principal.
+
+`card.topics` é um array de strings únicas e não vazias. Essas strings são tags livres: podem repetir o `id` de um objeto estruturado em `lesson.topics`, caso em que a camada relacional registra também a referência, mas não precisam fazê-lo. Uma tag sem tópico correspondente continua válida e é preservada integralmente no round-trip. Isso é diferente de `lesson.topics`, cujos itens são objetos com `id`, `label`, `kind`, `checks` e `errors`.
 
 ## Recursos aceitos
 

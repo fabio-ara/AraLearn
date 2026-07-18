@@ -2,7 +2,7 @@
 
 A assistência por IA é parte central do AraLearn atual. O app usa LLMs por API para planejar trilhas e gerar ou corrigir cards, mas a resposta do modelo não entra no projeto sem passar por contrato, composição e validação.
 
-Para detalhes operacionais, consulte [Fluxos, prompts e contratos de geração](fluxos-prompts-e-contratos.md). Para o formato salvo, consulte [Contrato público](aralearn-contract.md).
+Para detalhes operacionais, consulte [Fluxos, prompts e contratos de geração](fluxos-prompts-e-contratos.md). Para o formato público de intercâmbio, consulte [Contrato público](aralearn-contract.md).
 
 ## Onde a LLM entra
 
@@ -43,21 +43,21 @@ Esse recorte melhora custo, privacidade e auditabilidade. Também ajuda a manter
 
 ## Campos controlados
 
-A LLM não recebe autorização para escrever livremente o projeto final. O AraLearn informa recursos aceitos, modos de exercício, papéis didáticos e campos esperados. Em seguida, recompõe o resultado no contrato público.
+A LLM não recebe autorização para escrever livremente o estado persistido. O AraLearn informa recursos aceitos, modos de exercício, papéis didáticos e campos esperados. Em seguida, recompõe o resultado no contrato público em memória, valida-o e calcula as mutações relacionais necessárias.
 
 JSON Schema (2026) é uma referência importante porque mostra como regras de estrutura podem ser descritas formalmente. O AraLearn usa a mesma lógica geral: transformar expectativas de formato em condições verificáveis.
 
-## RAG externo e conteúdo seed
+## RAG externo e conteúdo de publicação
 
-Lewis et al. (2020) definem RAG como geração apoiada por recuperação de informação. No AraLearn, a preparação de conteúdo `seed` pode usar RAGs externos como prática de autoria e curadoria. Isso não deve ser apresentado como RAG interno plenamente implementado no app, a menos que o código passe a oferecer essa capacidade.
+Lewis et al. (2020) definem RAG como geração apoiada por recuperação de informação. No AraLearn, a preparação de fixtures ou de conteúdo destinado à publicação oficial pode usar RAGs externos como prática de autoria e curadoria. Isso não deve ser apresentado como RAG interno plenamente implementado no app, a menos que o código passe a oferecer essa capacidade.
 
 A distinção importa: hoje, a LLM por API é uma funcionalidade do AraLearn; o RAG externo é parte do processo de produção de material.
 
 ## Privacidade, custo e dependência
 
-Quando o usuário usa uma API externa, o contexto necessário à intervenção é enviado ao serviço configurado. Custo, retenção de dados, limites e disponibilidade dependem do fornecedor. Por isso, o projeto mantém persistência local em IndexedDB e busca reduzir o contexto enviado.
+Quando o usuário usa uma API externa, o contexto necessário à intervenção é enviado ao serviço configurado. Custo, retenção de dados, limites e disponibilidade dependem do fornecedor. Por isso, o projeto mantém uma réplica relacional offline em IndexedDB e busca reduzir o contexto enviado.
 
-Essa distinção precisa ficar explícita: a dependência externa recai sobre a assistência de autoria. O projeto salvo, os cursos embarcados e o material já aceito continuam disponíveis localmente para estudo, revisão e edição sem nova chamada à API.
+Essa distinção precisa ficar explícita: a geração depende do provedor escolhido; autenticação, catálogo e sincronização dependem do Supabase. Depois da primeira sincronização, o material replicado, o progresso, os comentários e as edições pendentes continuam disponíveis localmente sem nova chamada à API. Não existe catálogo operacional embarcado.
 
 A ambição de diminuir dependência de LLMs externas é coerente com o público do AraLearn: estudantes com poucos recursos, conexão instável e necessidade de continuidade. No estado atual, porém, a geração por API continua sendo a capacidade operacional principal.
 

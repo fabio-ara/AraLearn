@@ -2,7 +2,7 @@
 
 O serviço `codex-cli` permite usar o AraLearn com uma ponte HTTP local, isto é, um pequeno serviço rodando na própria máquina que recebe pedidos do app e os repassa ao Codex CLI. Ele é útil para quem já usa Codex CLI e quer integrar essa ferramenta ao fluxo de autoria e estudo do AraLearn.
 
-Mesmo nesse modo, a regra permanece: o usuário é autor, a IA é ferramenta, e a resposta só entra no projeto depois de validação local.
+Mesmo nesse modo, a regra permanece: o usuário é autor, a IA é ferramenta, e a resposta só produz mutações relacionais depois de validação local.
 
 ## Finalidade
 
@@ -65,7 +65,7 @@ Do ponto de vista do projeto, a resposta continua precisando respeitar o contrat
 
 - A ponte envia prompts ao Codex via `stdin`.
 - Quando necessário, pode usar arquivo temporário local para prompts maiores.
-- A resposta passa pela validação do AraLearn antes de entrar no projeto.
+- A resposta passa pela validação do AraLearn antes de alterar as linhas da microssequência.
 - O uso local não elimina revisão humana.
 - O uso local pode reduzir dependência de uma API remota específica, mas não torna a IA automaticamente confiável.
 

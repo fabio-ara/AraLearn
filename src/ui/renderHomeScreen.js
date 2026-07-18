@@ -131,20 +131,31 @@ function renderHomeCourseTitle(course) {
   const title = '<h3 class="card-title">' + escapeHtml(course.title || "Curso") + "</h3>";
   return (
     '<div class="course-title-row navigation-title-row">' +
-    renderStructureHandle({
-      level: "course",
-      courseKey: course.id,
-      label: `Arrastar curso ${course.title || course.id}`
-    }) +
+    (course.readOnly
+      ? ""
+      : renderStructureHandle({
+          level: "course",
+          courseKey: course.id,
+          label: `Arrastar curso ${course.title || course.id}`
+        })) +
     title +
     "</div>"
   );
 }
 
-function buildHomeCoursePreviews(project, progress) {
+function resolveCoursePermissions(editorSupport, courseId) {
+  const permissionsById = editorSupport?.coursePermissionsById;
+  const permissions = permissionsById instanceof Map
+    ? permissionsById.get(courseId)
+    : permissionsById?.[courseId];
+  return permissions || { role: "owner", canEdit: true, canDelete: true };
+}
+
+function buildHomeCoursePreviews(project, progress, editorSupport) {
   return (project.courses || []).map((course) => {
     const completedCount = countCompletedCardsInCourse(course, progress);
     const totalCount = countCardsInCourse(course);
+    const permissions = resolveCoursePermissions(editorSupport, entityId(course));
     return {
       id: entityId(course),
       title: course.title || "Curso",
@@ -153,13 +164,16 @@ function buildHomeCoursePreviews(project, progress) {
       lessonCount: countLessons(course),
       completedCount,
       totalCount,
-      progressPercent: totalCount ? Math.max(0, Math.min(100, (completedCount / totalCount) * 100)) : 0
+      progressPercent: totalCount ? Math.max(0, Math.min(100, (completedCount / totalCount) * 100)) : 0,
+      readOnly: !permissions.canEdit
     };
   });
 }
 
-function getVisibleCourses(project) {
-  return project.courses || [];
+function getVisibleCourses(project, editorSupport = {}) {
+  return (project.courses || []).filter((course) => (
+    resolveCoursePermissions(editorSupport, entityId(course)).canEdit
+  ));
 }
 
 function renderCoursesTopbar() {
@@ -177,7 +191,7 @@ function renderCoursesTopbar() {
     renderUiIcon("sparkles", "home-tab-icon") +
     "</button>" +
     '<button class="icon-ghost" type="button" data-action="quick-create-course" title="Criar curso vazio" aria-label="Criar curso vazio">＋</button>' +
-    '<button class="icon-ghost" type="button" data-action="future-sync" title="Sincronização em breve" aria-label="Sincronização em breve">◌</button>' +
+    '<button class="icon-ghost" type="button" data-action="future-sync" title="Abrir biblioteca e sincronização" aria-label="Abrir biblioteca e sincronização">☁</button>' +
     '<button class="icon-ghost" type="button" data-action="open-home-actions" title="Ações do app" aria-label="Ações do app">⋯</button>' +
     "</div>" +
     "</header>"
@@ -344,7 +358,7 @@ function renderGenerationAttachmentChips(attachments = []) {
 }
 
 function renderGeneratePane({ project, editorSupport, includeDismissActions = false }) {
-  const courses = getVisibleCourses(project);
+  const courses = getVisibleCourses(project, editorSupport);
   const draft = editorSupport.generationDraft || {};
   const generationUiState = editorSupport.generationUiState || {};
   const modules = generationUiState.modules || [];
@@ -598,8 +612,8 @@ function renderGenerationProgressPopup(progress = {}, { embedded = false } = {})
   );
 }
 
-function renderCoursesPane({ project, progress }) {
-  const courses = buildHomeCoursePreviews(project, progress)
+function renderCoursesPane({ project, progress, editorSupport }) {
+  const courses = buildHomeCoursePreviews(project, progress, editorSupport)
     .map((course) => {
       return (
         '<article class="clean-card course-card progress-card navigation-list-card" data-structure-target="course" data-course-key="' +
@@ -619,11 +633,13 @@ function renderCoursesPane({ project, progress }) {
         '<button class="icon-ghost corner-btn" type="button" data-action="open-course-actions" data-course-key="' +
         escapeHtml(course.id) +
         '" title="Ações do curso" aria-label="Ações do curso">⋯</button>' +
-        '<button class="icon-ghost corner-btn" type="button" data-action="open-generation-panel-course" data-course-key="' +
-        escapeHtml(course.id) +
-        '" title="Gerar neste curso" aria-label="Gerar neste curso">' +
-        renderUiIcon("sparkles", "home-tab-icon") +
-        "</button>" +
+        (course.readOnly
+          ? ""
+          : '<button class="icon-ghost corner-btn" type="button" data-action="open-generation-panel-course" data-course-key="' +
+            escapeHtml(course.id) +
+            '" title="Gerar neste curso" aria-label="Gerar neste curso">' +
+            renderUiIcon("sparkles", "home-tab-icon") +
+            "</button>") +
         '<button class="open-main" type="button" data-action="open-course" data-course-key="' +
         escapeHtml(course.id) +
         '" title="Abrir curso" aria-label="Abrir curso">▶</button>' +
@@ -645,14 +661,14 @@ export function renderGenerationPanelOverlay({ project, editorSupport = {} }) {
   );
 }
 
-export function renderHomeScreen({ project, progress }) {
+export function renderHomeScreen({ project, progress, editorSupport = {} }) {
   return (
     '<section class="screen">' +
     renderCoursesTopbar() +
     '<main class="screen-content courses-home-screen navigation-screen">' +
     renderNavigationContextHeading("Cursos") +
     '<section class="courses-home-list navigation-list" data-structure-collection="course">' +
-    renderCoursesPane({ project, progress }) +
+    renderCoursesPane({ project, progress, editorSupport }) +
     "</section>" +
     "</main></section>"
   );

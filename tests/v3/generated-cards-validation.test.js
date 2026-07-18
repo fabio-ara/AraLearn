@@ -125,6 +125,63 @@ test("choice com answer inválido falha", () => {
   assert.match(result.structuralErrors.join("\n"), /answer deve apontar para um id existente/);
 });
 
+test("choice rejeita kind e campos de opção fora do contrato", () => {
+  const card = {
+    position: 1,
+    resource: "choice",
+    kind: "exercise",
+    exercise: "choice",
+    title: "Escolha",
+    question: "Qual opção está correta?",
+    options: [
+      { id: "a", kind: "bogus", text: "A", color: "red" },
+      { id: "b", text: "B" },
+      { id: "c", text: "C" }
+    ],
+    answer: "a",
+    after: ""
+  };
+  const result = structural(card);
+  assert.equal(result.ok, false);
+  assert.match(result.structuralErrors.join("\n"), /kind da opção deve ser/);
+  assert.match(result.structuralErrors.join("\n"), /Campo fora do schema da opção/);
+});
+
+test("graph rejeita coordenadas não finitas", () => {
+  const result = structural({
+    position: 1,
+    resource: "graph",
+    kind: "theory",
+    exercise: "none",
+    title: "Grafo",
+    prompt: "Observe.",
+    vertices: [{ id: "a", label: "A", x: "abc", y: 1 }],
+    edges: [],
+    after: ""
+  });
+  assert.equal(result.ok, false);
+  assert.match(result.structuralErrors.join("\n"), /x deve ser número finito/);
+});
+
+test("flow rejeita escalares internos que não sejam strings", () => {
+  const result = structural({
+    position: 1,
+    resource: "flow",
+    kind: "theory",
+    exercise: "none",
+    title: "Fluxo",
+    prompt: "Observe.",
+    structure: {
+      id: "root",
+      kind: "sequence",
+      items: [{ id: "step", kind: "process", text: 123 }]
+    },
+    after: ""
+  });
+  assert.equal(result.ok, false);
+  assert.match(result.structuralErrors.join("\n"), /expected_string/);
+});
+
 test("choice correto passa", () => {
   const result = structural({
     position: 1,

@@ -8,6 +8,8 @@ O usuário escolhe um arquivo em outro app e usa a ação de compartilhar com o 
 
 O aproveitamento posterior depende do tipo de arquivo, da extração disponível e da ação escolhida pelo usuário.
 
+Quando o arquivo é um documento `aralearn.contract` v3, o app valida o conteúdo e o normaliza imediatamente em linhas relacionais. O JSON recebido não permanece como unidade persistida.
+
 ## Quando é útil
 
 O compartilhamento ajuda quando o estudo começa fora do AraLearn, por exemplo:
@@ -15,7 +17,7 @@ O compartilhamento ajuda quando o estudo começa fora do AraLearn, por exemplo:
 - abrir uma apostila em PDF no celular;
 - enviar um DOCX para servir de base a uma lição;
 - aproveitar arquivo recebido por mensagem;
-- importar projeto salvo anteriormente;
+- importar um projeto JSON v3 exportado anteriormente;
 - transformar anotações em fonte para uma trilha.
 
 ## Relação com a geração
@@ -38,6 +40,6 @@ Quando a extração não for suficiente, o usuário deve revisar e corrigir a or
 
 ## Privacidade
 
-O recurso foi pensado para operar com material no próprio dispositivo. Compartilhar um arquivo com o AraLearn não cria sincronização contínua com fonte externa.
+O arquivo compartilhado é lido no próprio dispositivo. Compartilhá-lo com o AraLearn não cria sincronização contínua com a fonte original; se o conteúdo for importado, suas linhas entram na réplica e seguem o protocolo normal de sincronização com o Supabase canônico.
 
 Operações com IA remota, quando usadas, dependem do serviço configurado pelo usuário e das políticas desse serviço.
