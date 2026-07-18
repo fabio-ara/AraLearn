@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 set search_path = public, extensions, pg_catalog;
-select plan(156);
+select plan(164);
 
 select has_table('public', 'courses', 'courses existe');
 select has_table('public', 'modules', 'modules existe');
@@ -2703,6 +2703,114 @@ select ok(
   )
   and (select (payload ->> 'tombstoneRowsDeleted')::integer = 0 from retention_real_run),
   'retenção limpa ledgers expirados sem apagar tombstones relacionais'
+);
+select set_config('request.jwt.claim.role', 'authenticated', true);
+
+select ok(
+  not has_function_privilege(
+    'authenticated',
+    'public.begin_official_course_import(uuid,jsonb,text,jsonb,boolean)',
+    'EXECUTE'
+  ),
+  'usuário comum não inicia staging de catálogo oficial'
+);
+select ok(
+  has_function_privilege(
+    'service_role',
+    'public.begin_official_course_import(uuid,jsonb,text,jsonb,boolean)',
+    'EXECUTE'
+  ),
+  'service role pode iniciar staging administrativo de catálogo'
+);
+
+select set_config('request.jwt.claim.role', 'service_role', true);
+create temp table staged_catalog_manifest as
+select jsonb_object_agg(
+  store_name,
+  case when store_name = 'modules' then 1 else 0 end
+) payload
+from unnest(private.official_import_store_names()) store_name;
+create temp table staged_catalog_begin as
+select public.begin_official_course_import(
+  '66000000-0000-5000-8000-000000000001',
+  jsonb_build_object(
+    'id','66000000-0000-5000-8000-000000000002',
+    'contractKey','curso-staging-incompleto',
+    'identityKey','course:curso-staging-incompleto',
+    'title','Curso em staging',
+    'goal','Validar retomada administrativa.',
+    'position',0
+  ),
+  repeat('a', 64),
+  (select payload from staged_catalog_manifest),
+  true
+) payload;
+select ok(
+  (select payload ->> 'status' = 'staging' and not (payload ->> 'idempotent')::boolean
+   from staged_catalog_begin),
+  'staging cria draft oculto com manifesto persistido'
+);
+
+create temp table staged_catalog_chunk as
+select public.apply_official_course_import_chunk(
+  '66000000-0000-5000-8000-000000000001',
+  'modules',
+  0,
+  jsonb_build_array(jsonb_build_object(
+    'id','66000000-0000-5000-8000-000000000003',
+    'courseId','66000000-0000-5000-8000-000000000002',
+    'identityKey','course:curso-staging-incompleto/module:modulo',
+    'contractKey','modulo',
+    'position',0,
+    'title','Módulo'
+  ))
+) payload;
+select ok(
+  (select payload ->> 'status' = 'applied' and not (payload ->> 'idempotent')::boolean
+   from staged_catalog_chunk),
+  'chunk administrativo aplica somente o lote declarado'
+);
+select ok(
+  (public.apply_official_course_import_chunk(
+    '66000000-0000-5000-8000-000000000001',
+    'modules',
+    0,
+    jsonb_build_array(jsonb_build_object(
+      'id','66000000-0000-5000-8000-000000000003',
+      'courseId','66000000-0000-5000-8000-000000000002',
+      'identityKey','course:curso-staging-incompleto/module:modulo',
+      'contractKey','modulo',
+      'position',0,
+      'title','Módulo'
+    ))
+  ) ->> 'idempotent')::boolean,
+  'repetição do mesmo chunk é idempotente'
+);
+select throws_like(
+  $$select public.apply_official_course_import_chunk(
+    '66000000-0000-5000-8000-000000000001',
+    'modules',
+    0,
+    '[{"id":"66000000-0000-5000-8000-000000000003","courseId":"66000000-0000-5000-8000-000000000002","identityKey":"course:curso-staging-incompleto/module:modulo","contractKey":"modulo","position":0,"title":"Outro módulo"}]'::jsonb
+  )$$,
+  'Chunk reutilizado com payload incompatível.%',
+  'reuso incompatível de chunk é rejeitado'
+);
+select throws_like(
+  $$select public.finalize_official_course_import('66000000-0000-5000-8000-000000000001')$$,
+  'Curso importado é inválido:%',
+  'staging estruturalmente incompleto não pode ser publicado'
+);
+select is(
+  (select status::text from public.courses where id = '66000000-0000-5000-8000-000000000002'),
+  'draft',
+  'falha de finalização conserva o curso fora do catálogo'
+);
+select is(
+  (select count(*) from private.official_catalog_import_chunks
+   where import_id = '66000000-0000-5000-8000-000000000001'),
+  1::bigint,
+  'falha final preserva chunks confirmados para retomada'
 );
 select set_config('request.jwt.claim.role', 'authenticated', true);
 

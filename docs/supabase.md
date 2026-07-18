@@ -160,7 +160,7 @@ As três fixtures de curso em `supabase/fixtures/catalog/` nunca são lidas pelo
 npm run catalog:validate
 ```
 
-Depois de aplicar a migration, um processo administrativo local pode importar e publicar cada curso em uma única transação por meio de `import_official_course`. A service role é aceita somente nesse processo de terminal; ela não pode ser reutilizada nas variáveis públicas de build.
+Depois de aplicar as migrations, um processo administrativo local importa cursos pequenos ou grandes sem depender de uma única requisição longa. `begin_official_course_import` cria um draft privado, `apply_official_course_import_chunk` confirma lotes idempotentes e retomáveis, e `finalize_official_course_import` só publica depois de conferir o manifesto e validar integralmente o grafo. Um timeout pode repetir o mesmo lote sem duplicá-lo; nenhum staging parcial aparece no catálogo. A service role é aceita somente nesse processo de terminal e não pode ser reutilizada nas variáveis públicas de build.
 
 PowerShell:
 

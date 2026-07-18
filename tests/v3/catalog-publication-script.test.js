@@ -1,7 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { assertPublicationReady } from "../../scripts/publishCatalogFixtures.mjs";
+import {
+  assertPublicationReady,
+  importPreparedCatalogFixture
+} from "../../scripts/publishCatalogFixtures.mjs";
 
 function courseWithStatus(status) {
   return {
@@ -22,4 +25,62 @@ test("a publicação administrativa aceita somente microssequências ready", () 
     () => assertPublicationReady(courseWithStatus("generated"), "fixture-generated.json"),
     /fixture-generated\.json não está pronta para publicação: 1 microssequência\(s\) sem status ready/u
   );
+});
+
+test("a importação administrativa retoma chunk após timeout sem duplicar a etapa", async () => {
+  const calls = [];
+  let chunkAttempt = 0;
+  const fetchImpl = async (url, options) => {
+    const functionName = new URL(url).pathname.split("/").at(-1);
+    const payload = JSON.parse(options.body);
+    calls.push({ functionName, payload });
+    if (functionName === "apply_official_course_import_chunk" && chunkAttempt++ === 0) {
+      return { ok: false, status: 504, text: async () => JSON.stringify({ message: "upstream timeout" }) };
+    }
+    const status = functionName === "finalize_official_course_import" ? "published" :
+      functionName === "begin_official_course_import" ? "staging" : "applied";
+    return { ok: true, status: 200, text: async () => JSON.stringify({ status }) };
+  };
+  const courseId = "10000000-0000-5000-8000-000000000001";
+  const fixture = {
+    fileName: "fixture-staged.json",
+    course: { id: "course-staged" },
+    hash: "a".repeat(64),
+    rows: {
+      courses: [{
+        id: courseId,
+        courseId,
+        contractKey: "course-staged",
+        title: "Curso",
+        goal: "Validar importação em partes."
+      }],
+      modules: [{
+        id: "20000000-0000-5000-8000-000000000001",
+        courseId,
+        contractKey: "module-staged",
+        position: 0,
+        title: "Módulo"
+      }]
+    }
+  };
+
+  const result = await importPreparedCatalogFixture(fixture, {
+    publish: true,
+    fetchImpl,
+    environment: {
+      ARALEARN_SUPABASE_URL: "https://project.supabase.co",
+      SUPABASE_SERVICE_ROLE_KEY: "service-role-for-test"
+    }
+  });
+
+  assert.equal(result.status, "published");
+  assert.deepEqual(calls.map((call) => call.functionName), [
+    "begin_official_course_import",
+    "apply_official_course_import_chunk",
+    "apply_official_course_import_chunk",
+    "finalize_official_course_import"
+  ]);
+  assert.deepEqual(calls[1].payload, calls[2].payload);
+  assert.equal(calls[1].payload.p_chunk_index, 0);
+  assert.equal(calls[1].payload.p_rows.length, 1);
 });
