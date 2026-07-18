@@ -7,6 +7,33 @@ function text(value) {
   return typeof value === "string" ? value.trim() : "";
 }
 
+function truncate(value = "", maxLength = 12000) {
+  const normalized = text(value);
+  return normalized.length <= maxLength
+    ? normalized
+    : `${normalized.slice(0, maxLength)}\n[conteúdo truncado pelo limite de contexto]`;
+}
+
+function buildGenerationContext(attachments = [], didacticPolicy = {}) {
+  const sourceSections = (Array.isArray(attachments) ? attachments : [])
+    .map((attachment, index) => {
+      const content = truncate(attachment?.textContent);
+      if (!content) {
+        return "";
+      }
+      const title = text(attachment?.displayName || attachment?.name) || `Anexo ${index + 1}`;
+      return `### ${title}\n${content}`;
+    })
+    .filter(Boolean);
+  return [
+    "CONTEXTO DIDÁTICO CONFIGURADO:",
+    JSON.stringify(didacticPolicy && typeof didacticPolicy === "object" ? didacticPolicy : {}, null, 2),
+    "",
+    "FONTES EXTRAÍDAS DOS ANEXOS:",
+    sourceSections.length ? sourceSections.join("\n\n") : "(sem anexo textual)"
+  ].join("\n");
+}
+
 function parseJson(textValue = "") {
   const source = text(textValue);
   try {
@@ -54,7 +81,7 @@ function parseJson(textValue = "") {
   }
 }
 
-function buildTopDownCorrectionPrompt(scopeContract, issues = []) {
+function buildTopDownCorrectionPrompt(scopeContract, issues = [], generationContext = "") {
   return [
     "Fase: top_down_structure",
     "Corrija somente os problemas abaixo e devolva novamente JSON pequeno válido.",
@@ -63,11 +90,12 @@ function buildTopDownCorrectionPrompt(scopeContract, issues = []) {
     "Cada módulo precisa de lições.",
     "Distribua todos os itens de include entre lições e microssequências.",
     "Não repita o pedido bruto do usuário em guide.goal.",
+    generationContext,
     JSON.stringify(scopeContract, null, 2)
   ].join("\n\n");
 }
 
-function buildTopDownPrompt(scopeContract) {
+function buildTopDownPrompt(scopeContract, generationContext = "") {
   return [
     "AraLearn top-down structured runtime.",
     "Responda somente JSON.",
@@ -77,6 +105,8 @@ function buildTopDownPrompt(scopeContract) {
     "Cada módulo precisa de lições e cada lição precisa de microssequências.",
     "Cada microssequência precisa de title, goal, role, dependsOn, covers e checks.",
     "dependsOn só pode usar títulos anteriores da mesma lição.",
+    "Use as fontes e o contexto didático abaixo para delimitar profundidade, progressão e vocabulário.",
+    generationContext,
     JSON.stringify(scopeContract, null, 2)
   ].join("\n\n");
 }
@@ -87,7 +117,7 @@ function buildTopDownAuditReferenceLines(plannedCourse) {
   );
 }
 
-function buildTopDownAuditPrompt(plannedCourse) {
+function buildTopDownAuditPrompt(plannedCourse, generationContext = "") {
   return [
     "AraLearn top-down structure audit.",
     "Audite dependências, progressão, cobertura e escopo.",
@@ -114,6 +144,7 @@ function buildTopDownAuditPrompt(plannedCourse) {
     "dependsOn: Microssequência anterior",
     "checks: o aluno reconhece o conceito-base",
     "moveAfter: Microssequência anterior",
+    generationContext,
     ...buildTopDownAuditReferenceLines(plannedCourse),
     JSON.stringify(plannedCourse, null, 2)
   ].join("\n\n");
@@ -399,7 +430,7 @@ function applyAuditPatches(plannedCourse, patches = []) {
   };
 }
 
-function buildTopDownAuditCorrectionPrompt(plannedCourse, issues = []) {
+function buildTopDownAuditCorrectionPrompt(plannedCourse, issues = [], generationContext = "") {
   return [
     "AraLearn top-down structure audit correction.",
     "Corrija somente as dependências, checks, covers ou ordem problemática.",
@@ -419,6 +450,7 @@ function buildTopDownAuditCorrectionPrompt(plannedCourse, issues = []) {
     "checks: o aluno reconhece o conceito-base",
     "moveAfter: Microssequência anterior",
     ...issues.map((item) => `- ${item}`),
+    generationContext,
     ...buildTopDownAuditReferenceLines(plannedCourse),
     JSON.stringify(plannedCourse, null, 2)
   ].join("\n\n");
@@ -429,12 +461,15 @@ export async function planCourseFromScopeStructured({
   provider,
   modelId,
   project,
-  logger
+  logger,
+  attachments = [],
+  didacticPolicy = {}
 } = {}) {
   if (!provider?.generateText) {
     throw new Error("Provider sem generateText para top-down estruturado.");
   }
-  const initialStructurePrompt = buildTopDownPrompt(scopeContract);
+  const generationContext = buildGenerationContext(attachments, didacticPolicy);
+  const initialStructurePrompt = buildTopDownPrompt(scopeContract, generationContext);
   let plannedCourse = null;
   let validation = null;
   let structurePrompt = initialStructurePrompt;
@@ -465,11 +500,12 @@ export async function planCourseFromScopeStructured({
     }
     structurePrompt = buildTopDownCorrectionPrompt(
       scopeContract,
-      validation.errors.map((item) => `${item.path}: ${item.message}`)
+      validation.errors.map((item) => `${item.path}: ${item.message}`),
+      generationContext
     );
   }
 
-  let auditPrompt = buildTopDownAuditPrompt(plannedCourse);
+  let auditPrompt = buildTopDownAuditPrompt(plannedCourse, generationContext);
   let appliedTopDownPatches = [];
   const rejectedTopDownPatches = [];
   const dependencyErrorsBeforeAudit = countTopDownDependencyErrors(plannedCourse);
@@ -509,7 +545,7 @@ export async function planCourseFromScopeStructured({
         throw new Error(patchValidation.errors.join("; "));
       }
       auditPrompt = [
-        buildTopDownAuditCorrectionPrompt(plannedCourse, patchValidation.errors),
+        buildTopDownAuditCorrectionPrompt(plannedCourse, patchValidation.errors, generationContext),
         "",
         "Corrija o formato do patch top-down. Não use inline patch."
       ].join("\n\n");
@@ -533,7 +569,8 @@ export async function planCourseFromScopeStructured({
       }
       auditPrompt = buildTopDownAuditCorrectionPrompt(
         plannedCourse,
-        [rejectionReason, "Corrija dependsOn e moveAfter sem introduzir dependência futura, inexistente ou redundante."]
+        [rejectionReason, "Corrija dependsOn e moveAfter sem introduzir dependência futura, inexistente ou redundante."],
+        generationContext
       );
       continue;
     }
@@ -550,7 +587,8 @@ export async function planCourseFromScopeStructured({
       }
       auditPrompt = buildTopDownAuditCorrectionPrompt(
         plannedCourse,
-        validation.errors.map((item) => `${item.path}: ${item.message}`)
+        validation.errors.map((item) => `${item.path}: ${item.message}`),
+        generationContext
       );
       continue;
     }
@@ -559,7 +597,8 @@ export async function planCourseFromScopeStructured({
     }
     auditPrompt = buildTopDownAuditCorrectionPrompt(
       plannedCourse,
-      validation.errors.map((item) => `${item.path}: ${item.message}`)
+      validation.errors.map((item) => `${item.path}: ${item.message}`),
+      generationContext
     );
   }
   if (!validation?.ok) {

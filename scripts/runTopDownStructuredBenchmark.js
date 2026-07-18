@@ -225,7 +225,7 @@ async function main() {
       id: "git-basico",
       scopeContract: {
         schemaVersion: "aralearn.scope.v1",
-        course: { title: "Git básico", goal: "Explicar fluxo mínimo de versionamento local." },
+        course: { title: "Git básico", goal: "Explicar o fluxo mínimo de trabalho em um repositório local." },
         modules: [
           { title: "Repositório local", include: ["repositório", "commit"], exclude: ["rebase"], notes: "Sem pressupor terminal avançado.", assessmentStyle: "mixed" },
           { title: "Sincronização", include: ["branch", "push"], exclude: ["submódulos"], notes: "Fechar com prática curta.", assessmentStyle: "mixed" }

@@ -1,4 +1,4 @@
-import org.gradle.api.tasks.Sync
+import org.gradle.api.tasks.Exec
 import java.io.File
 
 plugins {
@@ -8,27 +8,38 @@ plugins {
 val webProjectDir = rootProject.projectDir.parentFile
 val generatedWebAssetsDir = layout.buildDirectory.dir("generated/web-assets/main")
 val generatedWebAssetsRoot = generatedWebAssetsDir.get().asFile
-val userHome = System.getProperty("user.home") ?: ""
-val debugKeystoreFile = File(userHome, ".android/debug.keystore")
 val releaseKeystorePath = System.getenv("ARALEARN_ANDROID_KEYSTORE_PATH")?.trim().orEmpty()
-val releaseStorePassword = System.getenv("ARALEARN_ANDROID_KEYSTORE_PASSWORD")?.trim().orEmpty()
+val releaseStorePassword = System.getenv("ARALEARN_ANDROID_KEYSTORE_PASSWORD").orEmpty()
 val releaseKeyAlias = System.getenv("ARALEARN_ANDROID_KEY_ALIAS")?.trim().orEmpty()
-val releaseKeyPassword = System.getenv("ARALEARN_ANDROID_KEY_PASSWORD")?.trim().orEmpty()
-val hasCustomReleaseKeystore =
+val releaseKeyPassword = System.getenv("ARALEARN_ANDROID_KEY_PASSWORD").orEmpty()
+val releaseCredentialsAreComplete =
     releaseKeystorePath.isNotEmpty() &&
     releaseStorePassword.isNotEmpty() &&
     releaseKeyAlias.isNotEmpty() &&
     releaseKeyPassword.isNotEmpty()
-val canUseDebugFallback = debugKeystoreFile.isFile
+val releaseKeystoreFile = releaseKeystorePath.takeIf(String::isNotEmpty)?.let(::file)
+val releaseSigningIsReady = releaseCredentialsAreComplete && releaseKeystoreFile?.isFile == true
 
-val syncWebAssets by tasks.registering(Sync::class) {
-    from(File(webProjectDir, "public")) {
-        into("public")
-    }
-    from(File(webProjectDir, "src")) {
-        into("src")
-    }
-    into(generatedWebAssetsRoot.resolve("www"))
+val stageWebRuntime by tasks.registering(Exec::class) {
+    val stagingScript = File(webProjectDir, "scripts/stageWebRuntime.mjs")
+    workingDir(webProjectDir)
+    commandLine(
+        "node",
+        stagingScript.absolutePath,
+        "--target",
+        "android",
+        "--output",
+        generatedWebAssetsRoot.absolutePath
+    )
+    inputs.file(stagingScript)
+    inputs.dir(File(webProjectDir, "public"))
+    inputs.dir(File(webProjectDir, "src"))
+    inputs.files(
+        File(webProjectDir, "node_modules/pdfjs-dist/build/pdf.mjs"),
+        File(webProjectDir, "node_modules/pdfjs-dist/build/pdf.worker.mjs"),
+        File(webProjectDir, "node_modules/mammoth/mammoth.browser.js")
+    )
+    outputs.dir(generatedWebAssetsRoot)
 }
 
 android {
@@ -44,30 +55,12 @@ android {
     }
 
     signingConfigs {
-        create("release") {
-            when {
-                hasCustomReleaseKeystore -> {
-                    storeFile = file(releaseKeystorePath)
-                    storePassword = releaseStorePassword
-                    keyAlias = releaseKeyAlias
-                    keyPassword = releaseKeyPassword
-                }
-                canUseDebugFallback -> {
-                    storeFile = debugKeystoreFile
-                    storePassword = "android"
-                    keyAlias = "androiddebugkey"
-                    keyPassword = "android"
-                }
-                else -> {
-                    throw GradleException(
-                        "Nenhum keystore de release disponível. " +
-                            "Defina ARALEARN_ANDROID_KEYSTORE_PATH, " +
-                            "ARALEARN_ANDROID_KEYSTORE_PASSWORD, " +
-                            "ARALEARN_ANDROID_KEY_ALIAS e " +
-                            "ARALEARN_ANDROID_KEY_PASSWORD, " +
-                            "ou disponibilize ~/.android/debug.keystore."
-                    )
-                }
+        if (releaseSigningIsReady) {
+            create("release") {
+                storeFile = releaseKeystoreFile
+                storePassword = releaseStorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
             }
         }
     }
@@ -75,7 +68,9 @@ android {
     buildTypes {
         release {
             isMinifyEnabled = false
-            signingConfig = signingConfigs.getByName("release")
+            if (releaseSigningIsReady) {
+                signingConfig = signingConfigs.getByName("release")
+            }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -94,7 +89,7 @@ android {
 
     sourceSets {
         getByName("main") {
-            assets.srcDir(generatedWebAssetsRoot)
+            assets.directories.add(generatedWebAssetsRoot.absolutePath)
         }
     }
 
@@ -106,10 +101,45 @@ android {
 }
 
 dependencies {
-    implementation("androidx.core:core:1.15.0")
+    implementation("androidx.activity:activity:1.12.4")
+    implementation("androidx.core:core:1.17.0")
     implementation("androidx.webkit:webkit:1.15.0")
 }
 
 tasks.named("preBuild") {
-    dependsOn(syncWebAssets)
+    dependsOn(stageWebRuntime)
+}
+
+val requireReleaseSigning by tasks.registering {
+    doLast {
+        val buildRoot = layout.buildDirectory.get().asFile.canonicalFile
+        val releaseArtifactDirectories = listOf(
+            buildRoot.resolve("outputs/apk/release"),
+            buildRoot.resolve("outputs/bundle/release")
+        )
+        releaseArtifactDirectories.forEach { directory ->
+            val resolvedDirectory = directory.canonicalFile
+            if (resolvedDirectory == buildRoot || !resolvedDirectory.toPath().startsWith(buildRoot.toPath())) {
+                throw GradleException("Diretório de artefatos de release inválido: $resolvedDirectory")
+            }
+            delete(resolvedDirectory)
+        }
+
+        if (!releaseCredentialsAreComplete) {
+            throw GradleException(
+                "A assinatura de release exige ARALEARN_ANDROID_KEYSTORE_PATH, " +
+                    "ARALEARN_ANDROID_KEYSTORE_PASSWORD, ARALEARN_ANDROID_KEY_ALIAS e " +
+                    "ARALEARN_ANDROID_KEY_PASSWORD."
+            )
+        }
+        if (releaseKeystoreFile?.isFile != true) {
+            throw GradleException(
+                "ARALEARN_ANDROID_KEYSTORE_PATH deve apontar para um arquivo de keystore existente."
+            )
+        }
+    }
+}
+
+tasks.matching { it.name == "preReleaseBuild" }.configureEach {
+    dependsOn(requireReleaseSigning)
 }

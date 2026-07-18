@@ -12,19 +12,6 @@ function normalizeToken(value) {
     .toLowerCase();
 }
 
-function collectStrings(value, path = "card") {
-  if (typeof value === "string") {
-    return [{ path, value }];
-  }
-  if (!value || typeof value !== "object") {
-    return [];
-  }
-  if (Array.isArray(value)) {
-    return value.flatMap((item, index) => collectStrings(item, `${path}[${index}]`));
-  }
-  return Object.entries(value).flatMap(([key, item]) => collectStrings(item, `${path}.${key}`));
-}
-
 function hasGapSyntax(value) {
   return parseTextGapTokens(value).length > 0;
 }

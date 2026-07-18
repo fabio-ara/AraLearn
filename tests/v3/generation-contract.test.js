@@ -1468,7 +1468,7 @@ test("o reparo mecânico indenta code multilinha sem indentação mínima", () =
     ]
   }, generationContract);
 
-  assert.match(repaired.cards[1].code, /if \(x > 0\) \{\n  System\.out\.println\(x\);\n\}/);
+  assert.match(repaired.cards[1].code, /if \(x > 0\) \{\n {2}System\.out\.println\(x\);\n\}/);
   const validation = validateGeneratedCards(repaired, generationContract);
   assert.equal(validation.ok, true);
 });

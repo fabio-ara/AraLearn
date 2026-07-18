@@ -343,7 +343,9 @@ function normalizeChoice(card) {
 }
 
 function normalizeGraph(card) {
-  const { nodes: _nodes, links: _links, ...baseCard } = card || {};
+  const baseCard = { ...(card || {}) };
+  delete baseCard.nodes;
+  delete baseCard.links;
   const rawVertices = Array.isArray(card?.vertices)
     ? card.vertices
     : Array.isArray(card?.nodes)
@@ -410,12 +412,10 @@ function normalizeRelationSet(rawSet, fallbackLabel, sidePrefix) {
 }
 
 function normalizeRelationMap(card) {
-  const {
-    left: _left,
-    right: _right,
-    pairs: _pairs,
-    ...baseCard
-  } = card || {};
+  const baseCard = { ...(card || {}) };
+  delete baseCard.left;
+  delete baseCard.right;
+  delete baseCard.pairs;
   const leftSet = normalizeRelationSet(card?.leftSet || card?.left, "U", "u");
   const rightSet = normalizeRelationSet(card?.rightSet || card?.right, "V", "v");
   const leftLabels = new Map(leftSet.items.map((item) => [normalizeComparableText(item.label), item.id]));

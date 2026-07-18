@@ -82,16 +82,7 @@ export function normalizeAssistConfig(config = {}) {
   return {
     model: text(config.model) || DEFAULT_ASSIST_MODEL,
     apiKey: typeof config.apiKey === "string" ? config.apiKey.trim() : "",
-    baseUrl: typeof config.baseUrl === "string"
-      ? config.baseUrl.trim()
-      : typeof config.apiBaseUrl === "string"
-        ? config.apiBaseUrl.trim()
-        : "",
-    apiBaseUrl: typeof config.apiBaseUrl === "string"
-      ? config.apiBaseUrl.trim()
-      : typeof config.baseUrl === "string"
-        ? config.baseUrl.trim()
-        : "",
+    baseUrl: typeof config.baseUrl === "string" ? config.baseUrl.trim() : "",
     selectedProfileId: selectedCustomProfile?.id || didacticProfileId,
     didacticProfileId,
     profileTuning: createProfileTuning(
@@ -154,10 +145,7 @@ export async function checkCodexCliConnection({ assistConfig = {}, checkCodexLoc
   };
 }
 
-export function buildGenerationResultClearedState({
-  draft = {},
-  pendingGeneratedNavigation = null
-} = {}) {
+export function buildGenerationResultClearedState({ draft = {} } = {}) {
   const nextDraft = cloneGenerationDraft(draft);
   nextDraft.errorMessage = "";
   nextDraft.lastResult = null;
@@ -187,8 +175,7 @@ export function applyGenerationPanelScopeState({
     findLesson
   });
   return buildGenerationResultClearedState({
-    draft: scopedDraft,
-    pendingGeneratedNavigation: null
+    draft: scopedDraft
   });
 }
 
@@ -212,8 +199,7 @@ export function buildClosedGenerationPanelState({
         pendingGeneratedNavigation
       }
     : buildGenerationResultClearedState({
-        draft,
-        pendingGeneratedNavigation
+        draft
       });
   return {
     ...nextState,
@@ -263,8 +249,7 @@ export function buildGenerationLevelState({
     visibleCourses
   });
   return buildGenerationResultClearedState({
-    draft: nextDraft,
-    pendingGeneratedNavigation: null
+    draft: nextDraft
   });
 }
 
@@ -281,8 +266,7 @@ export function buildGenerationInputState({
     visibleCourses
   });
   return buildGenerationResultClearedState({
-    draft: nextDraft,
-    pendingGeneratedNavigation: null
+    draft: nextDraft
   });
 }
 
@@ -374,18 +358,23 @@ export async function executeStructureGeneration({
   }
 
   try {
+    const preparedGeneration = await prepareStructureGeneration({
+      scopeState,
+      draft: syncedDraft,
+      assistConfig,
+      ingestAttachments,
+      provider
+    });
     const generationResult = await generateStructureProjectDocument({
       draft: syncedDraft,
       scopeState,
       projectDocument,
-      assistConfig,
-      ingestAttachments,
-      provider,
+      preparedGeneration,
       onProgress
     });
     const applied = buildAppliedGeneration({
       generationResult,
-      ingestedAttachments: { warnings: [] },
+      ingestedAttachments: preparedGeneration.ingestedAttachments,
       scopeState
     });
     const successState = buildGenerationSuccessState({

@@ -2,7 +2,12 @@ import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 
-import { validateContractDocument } from "../src/contract/validateContract.js";
+import {
+  CONTRACT_KIND_PROJECT,
+  CONTRACT_NAME,
+  CONTRACT_VERSION,
+  validateContractDocument
+} from "../src/contract/validateContract.js";
 
 function fail(message) {
   throw new Error(message);
@@ -234,24 +239,10 @@ function normalizeCard(card) {
 }
 
 function normalizeMicrosequence(microsequence) {
-  const versions = Array.isArray(microsequence?.versions) ? microsequence.versions : [];
-  const normalizedVersions = versions.map((version, index) => ({
-    id: text(version?.id) || `version-${String(index + 1).padStart(3, "0")}`,
-    createdAt: text(version?.createdAt) || new Date().toISOString(),
-    source: "manual",
-    action: "repair",
-    request: "",
-    summary: sanitizeTextValue(text(version?.summary)),
-    cards: (Array.isArray(version?.cards) ? version.cards : []).map((card) => normalizeCard(card)),
-    validation: { ok: true, issues: [] }
-  }));
-  const activeVersion = text(microsequence?.activeVersion) || normalizedVersions.at(-1)?.id || null;
   return {
     ...sanitizeDeep(structuredClone(microsequence)),
     role: normalizeRole(microsequence?.role),
-    status: normalizedVersions.length ? "generated" : "planned",
-    versions: normalizedVersions,
-    activeVersion
+    cards: (Array.isArray(microsequence?.cards) ? microsequence.cards : []).map((card) => normalizeCard(card))
   };
 }
 
@@ -327,9 +318,9 @@ function main() {
   const parts = args.inputs.map((input) => loadSourceDocument(input));
   const course = mergeCourseParts(parts, args);
   const validation = validateContractDocument({
-    contract: "aralearn.contract",
-    version: 3,
-    kind: "project",
+    contract: CONTRACT_NAME,
+    version: CONTRACT_VERSION,
+    kind: CONTRACT_KIND_PROJECT,
     courses: [course]
   });
   if (!validation.ok) {
@@ -350,12 +341,10 @@ function main() {
       sum + moduleValue.lessons.reduce(
         (lessonSum, lesson) =>
           lessonSum +
-          lesson.microsequences.reduce((microSum, microsequence) => {
-            const active =
-              (microsequence.versions || []).find((version) => version.id === microsequence.activeVersion) ||
-              (microsequence.versions || []).at(-1);
-            return microSum + ((active?.cards || []).length);
-          }, 0),
+          lesson.microsequences.reduce(
+            (microSum, microsequence) => microSum + ((microsequence.cards || []).length),
+            0
+          ),
         0
       ),
     0

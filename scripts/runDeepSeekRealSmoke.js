@@ -65,8 +65,7 @@ function projectWithSinglePlannedMicrosequence() {
                     dependsOn: [],
                     covers: ["vetor 2D", "matriz 2x2"],
                     checks: ["o aluno lê coordenadas no plano", "o aluno localiza valores por linha e coluna"],
-                    versions: [],
-                    activeVersion: null
+                    cards: []
                   }
                 ]
               }
@@ -106,11 +105,9 @@ function buildMarkdownReport(report = {}) {
     "## Resumo",
     "",
     `- Status: ${report.summary?.resultStatus || ""}`,
-    `- Ação da versão: ${report.summary?.versionAction || ""}`,
     `- Quantidade de cards: ${report.summary?.cardCount ?? ""}`,
     `- Recursos usados: ${resources}`,
     `- Validação ok: ${report.summary?.validationOk === true ? "sim" : "não"}`,
-    `- Fallback: ${report.summary?.fallback === true ? "sim" : "não"}`,
     `- Retomada: ${report.summary?.resumeFrom || "nenhuma"}`,
     "",
     "## Falhas estruturais ou didáticas",
@@ -148,7 +145,7 @@ async function main() {
 
   const feedback = [];
   let summary = null;
-  let status = "unknown";
+  let status;
   let errorInfo = null;
 
   try {
@@ -190,17 +187,16 @@ async function main() {
     status = result.status;
     const generationResult = result.generationResult || {};
     const run = generationResult.interventionFeedback?.run || result.interventionFeedback?.run || null;
-    const version = generationResult.projectDocument?.courses?.[0]?.modules?.[0]?.lessons?.[0]?.microsequences?.[0]?.versions?.at(-1) || null;
+    const microsequence = generationResult.projectDocument?.courses?.[0]?.modules?.[0]?.lessons?.[0]?.microsequences?.[0] || null;
+    const cards = Array.isArray(microsequence?.cards) ? microsequence.cards : [];
     summary = {
       resultStatus: result.status,
-      versionAction: version?.action || null,
-      cardCount: Array.isArray(version?.cards) ? version.cards.length : 0,
-      resources: Array.isArray(version?.cards) ? [...new Set(version.cards.map((card) => card.resource))] : [],
-      validationOk: version?.validation?.ok ?? null,
-      validationIssues: Array.isArray(version?.validation?.issues) ? version.validation.issues : [],
+      cardCount: cards.length,
+      resources: [...new Set(cards.map((card) => card.resource))],
+      validationOk: result.status === "success",
+      validationIssues: [],
       resumeFrom: run?.resumeFrom || null,
-      feedbackLines: Array.isArray(run?.steps) ? run.steps.length : feedback.length,
-      fallback: String(generationResult.interventionFeedback?.feedbackText || "").includes("validate:fallback")
+      feedbackLines: Array.isArray(run?.steps) ? run.steps.length : feedback.length
     };
   } catch (error) {
     status = "error";

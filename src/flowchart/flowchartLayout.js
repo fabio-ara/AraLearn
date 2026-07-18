@@ -1,5 +1,5 @@
 import { normalizeFlowchartShapeKey } from "./flowchartShapes.js";
-import { createFlowchartLayoutEngine } from "./flowchartLayoutLegacy.browser.js";
+import { createFlowchartLayoutEngine } from "./flowchartLayoutEngine.js";
 
 export const FLOWCHART_LAYOUT = Object.freeze({
   columns: 3,
@@ -61,15 +61,6 @@ function getFlowchartNodeMap(nodes) {
   }, {});
 }
 
-function getFlowchartNodeOutputLinks(links, nodeId) {
-  const slots = [null, null];
-  (Array.isArray(links) ? links : []).map(normalizeFlowchartLink).forEach((link) => {
-    if (!link || link.fromNodeId !== nodeId || !link.toNodeId) return;
-    if (!slots[link.outputSlot]) slots[link.outputSlot] = link;
-  });
-  return slots;
-}
-
 function getFlowchartDefaultOutputLabel(node, slot) {
   return node && normalizeFlowchartShapeKey(node.shape) === "decision"
     ? slot === 0
@@ -86,7 +77,6 @@ const engine = createFlowchartLayoutEngine({
   getFlowchartNodeMap,
   normalizeFlowchartLink,
   isFlowchartLinkAllowed: (link, nodeMap) => !!(nodeMap[link.fromNodeId] && nodeMap[link.toNodeId] && link.fromNodeId !== link.toNodeId),
-  getFlowchartNodeOutputLinks,
   normalizeFlowchartShapeKey,
   getFlowchartDefaultOutputLabel,
   clone

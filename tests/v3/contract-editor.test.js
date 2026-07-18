@@ -8,8 +8,10 @@ import {
   createMicrosequence,
   createModule,
   replaceMicrosequenceCards,
+  updateCardInMicrosequence,
   updateCourse,
   updateLesson,
+  updateMicrosequence,
   updateModule
 } from "../../src/editor/contractEditor.js";
 
@@ -70,6 +72,73 @@ test("o editor estrutural atualiza curso, módulo e lição pelos campos canôni
   assert.equal(lesson.guide.goal, "Novo objetivo da lição.");
 });
 
+test("o editor estrutural exige as chaves canônicas de cada nível", () => {
+  const project = buildProject();
+
+  assert.throws(
+    () => updateCourse(project, { title: "Sem chave" }),
+    /Curso não encontrado: ""/u
+  );
+  assert.throws(
+    () => updateModule(project, { courseKey: "course-a", title: "Sem chave" }),
+    /Módulo não encontrado: ""/u
+  );
+  assert.throws(
+    () => updateLesson(project, {
+      courseKey: "course-a",
+      moduleKey: "module-a",
+      title: "Sem chave"
+    }),
+    /Lição não encontrada: ""/u
+  );
+
+  const projectWithCards = replaceMicrosequenceCards(
+    createMicrosequence(project, {
+      courseKey: "course-a",
+      moduleKey: "module-a",
+      lessonKey: "lesson-a",
+      id: "micro-a",
+      title: "Microssequência A"
+    }),
+    {
+      courseKey: "course-a",
+      moduleKey: "module-a",
+      lessonKey: "lesson-a",
+      microsequenceKey: "micro-a",
+      cards: [{
+        id: "card-a",
+        position: 1,
+        resource: "paragraph",
+        kind: "theory",
+        exercise: "none",
+        title: "Card A",
+        text: "Explicação.",
+        after: ""
+      }]
+    }
+  );
+
+  assert.throws(
+    () => updateMicrosequence(projectWithCards, {
+      courseKey: "course-a",
+      moduleKey: "module-a",
+      lessonKey: "lesson-a",
+      title: "Sem chave"
+    }),
+    /Microssequência não encontrada: ""/u
+  );
+  assert.throws(
+    () => updateCardInMicrosequence(projectWithCards, {
+      courseKey: "course-a",
+      moduleKey: "module-a",
+      lessonKey: "lesson-a",
+      microsequenceKey: "micro-a",
+      card: { title: "Sem chave" }
+    }),
+    /Card não encontrado: ""/u
+  );
+});
+
 test('o editor estrutural rejeita "key" como campo fora do schema', () => {
   assert.throws(
     () => createCourse(createEmptyProjectDocument(), { key: "course-antigo", title: "Curso antigo" }),
@@ -89,7 +158,7 @@ test('o editor estrutural rejeita "key" como campo fora do schema', () => {
   );
 });
 
-test("o editor estrutural normaliza ids duplicados de cards na mesma versão", () => {
+test("o editor estrutural normaliza ids duplicados na mesma microssequência", () => {
   const project = replaceMicrosequenceCards(
     createMicrosequence(buildProject(), {
       courseKey: "course-a",

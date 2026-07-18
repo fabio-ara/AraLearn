@@ -1,7 +1,3 @@
-import { createCodexCliProvider } from "../providers/codexCliProvider.js";
-import { createGeminiProvider } from "../providers/geminiProvider.js";
-import { createOpenAiCompatibleProvider } from "../providers/openAiCompatibleProvider.js";
-import { DEEPSEEK_BASE_URL, isDeepSeekModelId } from "../providers/deepSeekPolicy.js";
 import { addPracticeToMicrosequence } from "../bottomUp/addPracticeToMicrosequence.js";
 import { createBranchMicrosequence } from "../bottomUp/createBranchMicrosequence.js";
 import { generateMicrosequenceCards } from "../bottomUp/generateMicrosequenceCards.js";
@@ -35,64 +31,6 @@ function selectedExtraResources(preparedIntervention = {}, draft = {}) {
     preparedIntervention?.requestContext?.preferredResource,
     normalizePreferredResource(draft?.preferredContainer)
   ]);
-}
-
-function resolveAssistBaseUrl(assistConfig = {}) {
-  if (text(assistConfig.baseUrl || assistConfig.apiBaseUrl)) {
-    return text(assistConfig.baseUrl || assistConfig.apiBaseUrl);
-  }
-  return isDeepSeekModelId(assistConfig.model) ? DEEPSEEK_BASE_URL : "";
-}
-
-export function resolveGenerationProviderRuntime(assistConfig = {}) {
-  const modelId = text(assistConfig.model) || "gemini-2.5-flash";
-  if (modelId.startsWith("codex")) {
-    return {
-      modelId,
-      provider: createCodexCliProvider({
-        endpoint: text(assistConfig.codexEndpoint),
-        token: text(assistConfig.codexToken)
-      }),
-      providerOptions: {
-        endpoint: text(assistConfig.codexEndpoint),
-        token: text(assistConfig.codexToken)
-      }
-    };
-  }
-  if (modelId.startsWith("openai-compatible") || modelId.startsWith("openai:") || isDeepSeekModelId(modelId)) {
-    return {
-      modelId,
-      provider: createOpenAiCompatibleProvider({
-        baseUrl: resolveAssistBaseUrl(assistConfig),
-        apiKey: text(assistConfig.apiKey)
-      }),
-      providerOptions: {
-        baseUrl: resolveAssistBaseUrl(assistConfig),
-        apiKey: text(assistConfig.apiKey)
-      }
-    };
-  }
-  return {
-    modelId,
-    provider: createGeminiProvider({
-      apiKey: text(assistConfig.apiKey)
-    }),
-    providerOptions: {
-      apiKey: text(assistConfig.apiKey)
-    }
-  };
-}
-
-function resolveProvider(provider, assistConfig = {}) {
-  if (provider) {
-    const runtime = resolveGenerationProviderRuntime(assistConfig);
-    return {
-      provider,
-      modelId: runtime.modelId,
-      providerOptions: runtime.providerOptions
-    };
-  }
-  return resolveGenerationProviderRuntime(assistConfig);
 }
 
 const STRUCTURE_PROGRESS_PHASE_IDS = Object.freeze([
@@ -169,27 +107,36 @@ export async function generateStructureProjectDocument({
   draft = {},
   scopeState = {},
   projectDocument = createEmptyProjectDocument(),
-  assistConfig = {},
-  provider,
+  preparedGeneration = {},
   onProgress
 } = {}) {
-  const runtime = resolveProvider(provider, assistConfig);
+  const launchConfig = preparedGeneration?.launchConfig;
+  if (typeof launchConfig?.provider?.generateText !== "function") {
+    throw new Error("Geração estrutural não preparada.");
+  }
   emitStructurePhase(onProgress, "normalize_intent", "phase_started");
-  const scopeContract = buildScopeContract({ draft, scopeState });
+  const scopeContract = buildScopeContract({
+    draft: {
+      ...draft,
+      promptText: preparedGeneration.promptText
+    },
+    scopeState
+  });
   emitStructurePhase(onProgress, "normalize_intent", "phase_completed");
   emitStructurePhase(onProgress, "index_sources", "phase_started");
   emitStructurePhase(onProgress, "index_sources", "phase_completed");
   emitStructurePhase(onProgress, "build_assessment_profile", "phase_started");
   emitStructurePhase(onProgress, "build_assessment_profile", "phase_completed");
-  emitStructurePhase(onProgress, "plan_architecture", "phase_started", { modelId: runtime.modelId });
+  emitStructurePhase(onProgress, "plan_architecture", "phase_started", { modelId: launchConfig.modelId });
   const result = await planCourseFromScope({
     scopeContract,
-    provider: runtime.provider,
-    modelId: runtime.modelId,
-    providerOptions: runtime.providerOptions,
-    project: projectDocument
+    provider: launchConfig.provider,
+    modelId: launchConfig.modelId,
+    project: projectDocument,
+    attachments: preparedGeneration.ingestedAttachments?.attachments,
+    didacticPolicy: launchConfig.didacticPolicy
   });
-  emitStructurePhase(onProgress, "plan_architecture", "phase_completed", { modelId: runtime.modelId });
+  emitStructurePhase(onProgress, "plan_architecture", "phase_completed", { modelId: launchConfig.modelId });
   emitStructurePhase(onProgress, "compile_patch", "phase_started");
   const target = buildPatchTargetFromProject(result.project);
   emitStructurePhase(onProgress, "compile_patch", "phase_completed");
@@ -217,14 +164,15 @@ export async function generateStructureProjectDocument({
 export async function generateMicrosequenceProjectDocument({
   selection = {},
   draft = {},
-  assistConfig = {},
   projectDocument = createEmptyProjectDocument(),
-  provider,
   preparedIntervention = {},
   resumeState = null,
   onProgress
 } = {}) {
-  const runtime = resolveProvider(provider, assistConfig);
+  const launchConfig = preparedIntervention?.launchConfig;
+  if (typeof launchConfig?.provider?.generateText !== "function") {
+    throw new Error("Intervenção local não preparada.");
+  }
   const action = resolveMicrosequenceAction(draft);
   const attachedSources = Array.isArray(preparedIntervention?.ingestedAttachments?.attachments)
     ? preparedIntervention.ingestedAttachments.attachments
@@ -232,14 +180,14 @@ export async function generateMicrosequenceProjectDocument({
   const common = {
     project: projectDocument,
     selection,
-    provider: runtime.provider,
-    modelId: runtime.modelId,
-    providerOptions: runtime.providerOptions,
+    provider: launchConfig.provider,
+    modelId: launchConfig.modelId,
     userRequest: text(preparedIntervention?.promptText) || text(draft.promptText),
     source: "llm",
     onProgress,
     resumeState
   };
+  common.didacticPolicy = launchConfig.didacticPolicy;
   common.attachedSources = attachedSources;
   common.userSelectedSourceIds = selectedSourceIds(attachedSources);
   common.userSelectedExtraResourceTypes = selectedExtraResources(preparedIntervention, draft);

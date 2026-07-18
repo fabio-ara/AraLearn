@@ -1,11 +1,10 @@
 package com.aralearn.app;
 
 import android.annotation.SuppressLint;
-import android.app.Activity;
 import android.content.ActivityNotFoundException;
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ApplicationInfo;
-import android.content.pm.PackageInfo;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
@@ -22,12 +21,13 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.Toast;
 
-import androidx.core.graphics.Insets;
-import androidx.core.view.ViewCompat;
-import androidx.core.view.WindowInsetsCompat;
+import androidx.activity.ComponentActivity;
+import androidx.activity.OnBackPressedCallback;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.core.content.IntentCompat;
 import androidx.core.view.WindowCompat;
 import androidx.webkit.WebViewAssetLoader;
-import androidx.webkit.WebViewCompat;
 
 import org.json.JSONObject;
 
@@ -38,15 +38,14 @@ import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 
-public class MainActivity extends Activity {
+public class MainActivity extends ComponentActivity {
     private static final String APP_URL =
         "https://appassets.androidplatform.net/assets/www/public/index.html";
-    private static final int REQUEST_FILE_CHOOSER = 1001;
-    private static final int REQUEST_EXPORT_DOCUMENT = 1002;
     private static final String DEFAULT_EXPORT_NAME = "aralearn-export.json";
     private static final String DEFAULT_EXPORT_MIME = "application/json";
+    private static final String JAVASCRIPT_MODULE_SUFFIX = ".mjs";
+    private static final String JAVASCRIPT_MIME_TYPE = "text/javascript";
     private static final int MAX_SHARED_IMPORT_BYTES = 5 * 1024 * 1024;
-    private static final int WEBVIEW_PLATFORM_INSETS_MILESTONE = 140;
     private static final String BACK_PRESS_SCRIPT =
         "(function(){try{return !!(window.AraLearnAndroid && " +
         "window.AraLearnAndroid.handleBackPress && " +
@@ -56,9 +55,16 @@ public class MainActivity extends Activity {
     private ValueCallback<Uri[]> filePathCallback;
     private PendingDocumentWrite pendingExport;
     private WebViewAssetLoader assetLoader;
-    private InsetCapabilities insetCapabilities = new InsetCapabilities(false, 0);
     private String pendingSharedImportText;
     private String pendingSharedImportSourceName;
+    private final ActivityResultLauncher<Intent> fileChooserLauncher = registerForActivityResult(
+        new ActivityResultContracts.StartActivityForResult(),
+        result -> completeFileChooser(result.getResultCode(), result.getData())
+    );
+    private final ActivityResultLauncher<Intent> exportDocumentLauncher = registerForActivityResult(
+        new ActivityResultContracts.StartActivityForResult(),
+        result -> completeExportDocument(result.getResultCode(), result.getData())
+    );
 
     private static final class PendingDocumentWrite {
         final byte[] bytes;
@@ -72,16 +78,20 @@ public class MainActivity extends Activity {
         }
     }
 
-    private static final class InsetCapabilities {
-        final boolean usesPlatformInsets;
-        final int webViewMajorVersion;
+    private static final class RuntimeAssetPathHandler implements WebViewAssetLoader.PathHandler {
+        private final WebViewAssetLoader.AssetsPathHandler assetsPathHandler;
 
-        InsetCapabilities(
-            boolean usesPlatformInsets,
-            int webViewMajorVersion
-        ) {
-            this.usesPlatformInsets = usesPlatformInsets;
-            this.webViewMajorVersion = webViewMajorVersion;
+        RuntimeAssetPathHandler(Context context) {
+            assetsPathHandler = new WebViewAssetLoader.AssetsPathHandler(context);
+        }
+
+        @Override
+        public WebResourceResponse handle(String path) {
+            WebResourceResponse response = assetsPathHandler.handle(path);
+            if (response != null && path.endsWith(JAVASCRIPT_MODULE_SUFFIX)) {
+                response.setMimeType(JAVASCRIPT_MIME_TYPE);
+            }
+            return response;
         }
     }
 
@@ -92,13 +102,12 @@ public class MainActivity extends Activity {
         setContentView(R.layout.activity_main);
 
         webView = findViewById(R.id.main_webview);
-        insetCapabilities = detectInsetCapabilities();
         assetLoader = new WebViewAssetLoader.Builder()
-            .addPathHandler("/assets/", new WebViewAssetLoader.AssetsPathHandler(this))
+            .addPathHandler("/assets/", new RuntimeAssetPathHandler(this))
             .build();
 
         configureWebView();
-        configureInsetsHandling();
+        configureBackNavigation();
         WebView.setWebContentsDebuggingEnabled(isDebuggableApp());
 
         if (savedInstanceState == null) {
@@ -144,54 +153,35 @@ public class MainActivity extends Activity {
         super.onDestroy();
     }
 
-    @Override
-    public void onBackPressed() {
-        if (webView == null) {
-            super.onBackPressed();
-            return;
-        }
-
-        webView.evaluateJavascript(BACK_PRESS_SCRIPT, value -> {
-            if (!"true".equals(value)) {
-                MainActivity.super.onBackPressed();
-            }
-        });
-    }
-
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-
-        if (requestCode == REQUEST_FILE_CHOOSER) {
-            ValueCallback<Uri[]> callback = filePathCallback;
-            filePathCallback = null;
-            if (callback != null) {
-                callback.onReceiveValue(WebChromeClient.FileChooserParams.parseResult(resultCode, data));
-            }
-            return;
-        }
-
-        if (requestCode == REQUEST_EXPORT_DOCUMENT) {
-            if (resultCode == RESULT_OK && data != null && data.getData() != null) {
-                savePendingExport(data.getData());
-            } else {
-                pendingExport = null;
-            }
-        }
-    }
-
     @SuppressLint({"SetJavaScriptEnabled", "AddJavascriptInterface"})
     private void configureWebView() {
         WebSettings settings = webView.getSettings();
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
-        settings.setAllowFileAccess(false);
         settings.setAllowContentAccess(true);
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
 
         webView.addJavascriptInterface(new AndroidHostBridge(), "AndroidHost");
         webView.setWebViewClient(new AraLearnWebViewClient());
         webView.setWebChromeClient(new AraLearnWebChromeClient());
+    }
+
+    private void configureBackNavigation() {
+        getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
+            @Override
+            public void handleOnBackPressed() {
+                if (webView == null) {
+                    finish();
+                    return;
+                }
+
+                webView.evaluateJavascript(BACK_PRESS_SCRIPT, value -> {
+                    if (!"true".equals(value)) {
+                        finish();
+                    }
+                });
+            }
+        });
     }
 
     private void clearFilePathCallback() {
@@ -201,63 +191,20 @@ public class MainActivity extends Activity {
         }
     }
 
-    private void configureInsetsHandling() {
-        if (webView == null) return;
-
-        if (insetCapabilities.usesPlatformInsets) {
-            webView.setPadding(0, 0, 0, 0);
-            return;
+    private void completeFileChooser(int resultCode, Intent data) {
+        ValueCallback<Uri[]> callback = filePathCallback;
+        filePathCallback = null;
+        if (callback != null) {
+            callback.onReceiveValue(WebChromeClient.FileChooserParams.parseResult(resultCode, data));
         }
-
-        installLegacyInsetsFallback();
     }
 
-    private void installLegacyInsetsFallback() {
-        ViewCompat.setOnApplyWindowInsetsListener(webView, (view, windowInsets) -> {
-            if (windowInsets == null) return WindowInsetsCompat.CONSUMED;
-
-            Insets systemBars = windowInsets.getInsets(
-                WindowInsetsCompat.Type.systemBars() | WindowInsetsCompat.Type.displayCutout()
-            );
-            Insets gestures = windowInsets.getInsets(WindowInsetsCompat.Type.mandatorySystemGestures());
-
-            int left = Math.max(0, systemBars.left);
-            int top = Math.max(0, systemBars.top);
-            int right = Math.max(0, systemBars.right);
-            int bottom = Math.max(0, Math.max(systemBars.bottom, gestures.bottom));
-
-            // Fallback local: compensa a WebView por fora e zera os insets entregues ao conteúdo.
-            view.setPadding(left, top, right, bottom);
-
-            WindowInsetsCompat.Builder passthrough = new WindowInsetsCompat.Builder(windowInsets);
-            passthrough.setInsets(
-                WindowInsetsCompat.Type.systemBars() | WindowInsetsCompat.Type.displayCutout(),
-                Insets.NONE
-            );
-            passthrough.setInsets(WindowInsetsCompat.Type.mandatorySystemGestures(), Insets.NONE);
-            return passthrough.build();
-        });
-        ViewCompat.requestApplyInsets(webView);
-    }
-
-    private InsetCapabilities detectInsetCapabilities() {
-        PackageInfo currentPackage = WebViewCompat.getCurrentWebViewPackage(this);
-        int webViewMajorVersion = parseWebViewMajorVersion(currentPackage != null ? currentPackage.versionName : null);
-        boolean usesPlatformInsets = webViewMajorVersion >= WEBVIEW_PLATFORM_INSETS_MILESTONE;
-        return new InsetCapabilities(usesPlatformInsets, webViewMajorVersion);
-    }
-
-    private int parseWebViewMajorVersion(String versionName) {
-        if (versionName == null || versionName.isEmpty()) {
-            return 0;
-        }
-
-        int separatorIndex = versionName.indexOf('.');
-        String majorToken = separatorIndex >= 0 ? versionName.substring(0, separatorIndex) : versionName;
-        try {
-            return Math.max(0, Integer.parseInt(majorToken));
-        } catch (NumberFormatException error) {
-            return 0;
+    private void completeExportDocument(int resultCode, Intent data) {
+        Uri destination = data == null ? null : data.getData();
+        if (resultCode == RESULT_OK && destination != null) {
+            savePendingExport(destination);
+        } else {
+            pendingExport = null;
         }
     }
 
@@ -270,7 +217,7 @@ public class MainActivity extends Activity {
         intent.putExtra(Intent.EXTRA_TITLE, exportData.fileName);
 
         try {
-            startActivityForResult(intent, REQUEST_EXPORT_DOCUMENT);
+            exportDocumentLauncher.launch(intent);
         } catch (ActivityNotFoundException error) {
             pendingExport = null;
             showToast(getString(R.string.export_unavailable));
@@ -298,12 +245,12 @@ public class MainActivity extends Activity {
         }
     }
 
-    private String sanitizeFileName(String value, String fallback) {
+    private String sanitizeFileName(String value, String defaultValue) {
         String raw = value == null ? "" : value.trim();
-        if (raw.isEmpty()) return fallback;
+        if (raw.isEmpty()) return defaultValue;
 
         String cleaned = raw.replaceAll("[\\\\/:*?\"<>|]+", "_");
-        return cleaned.isEmpty() ? fallback : cleaned;
+        return cleaned.isEmpty() ? defaultValue : cleaned;
     }
 
     private String sanitizeMimeType(String value) {
@@ -327,7 +274,7 @@ public class MainActivity extends Activity {
         }
 
         if (Intent.ACTION_SEND.equals(action)) {
-            Uri streamUri = intent.getParcelableExtra(Intent.EXTRA_STREAM);
+            Uri streamUri = IntentCompat.getParcelableExtra(intent, Intent.EXTRA_STREAM, Uri.class);
             if (streamUri != null) {
                 captureSharedImportFromUri(intent, streamUri);
                 return;
@@ -342,7 +289,7 @@ public class MainActivity extends Activity {
         }
 
         if (Intent.ACTION_SEND_MULTIPLE.equals(action)) {
-            ArrayList<Uri> streams = intent.getParcelableArrayListExtra(Intent.EXTRA_STREAM);
+            ArrayList<Uri> streams = IntentCompat.getParcelableArrayListExtra(intent, Intent.EXTRA_STREAM, Uri.class);
             if (streams != null) {
                 for (Uri candidate : streams) {
                     if (candidate == null) {
@@ -459,7 +406,7 @@ public class MainActivity extends Activity {
                 }
             }
         } catch (RuntimeException ignored) {
-            // Alguns providers não expõem metadados estáveis; o fallback usa lastPathSegment.
+            // Alguns providers não expõem metadados estáveis; nesse caso, usa-se lastPathSegment.
         }
         return "";
     }
@@ -533,9 +480,8 @@ public class MainActivity extends Activity {
             }
 
             try {
-                startActivityForResult(
-                    Intent.createChooser(chooserIntent, getString(R.string.file_picker_title)),
-                    REQUEST_FILE_CHOOSER
+                fileChooserLauncher.launch(
+                    Intent.createChooser(chooserIntent, getString(R.string.file_picker_title))
                 );
                 return true;
             } catch (ActivityNotFoundException error) {

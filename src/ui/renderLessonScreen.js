@@ -2,7 +2,6 @@ import { renderHomeScreen } from "./renderHomeScreen.js";
 import { readCardText } from "../core/cardRuntime.js";
 import {
   getRuntimePopupButtonEntry,
-  renderCardRuntimeBlocks,
   renderCardRuntimeBlocksWithDock,
   renderPopupButtonDock
 } from "../render/renderCardRuntime.js";
@@ -227,61 +226,8 @@ function getLessonDescription(lesson) {
   return "";
 }
 
-function renderEditorCardStrip(cards, activeIndex, structureContext = {}) {
-  return cards
-    .map((card, index) => {
-      const cardTitle = card.title || card.id;
-      return (
-        '<div class="mini-card-slot" data-structure-target="card" data-card-key="' +
-        escapeHtml(card.id) +
-        '" data-course-key="' +
-        escapeHtml(structureContext.courseKey || "") +
-        '" data-module-key="' +
-        escapeHtml(structureContext.moduleKey || "") +
-        '" data-lesson-key="' +
-        escapeHtml(structureContext.lessonKey || "") +
-        '" data-microsequence-key="' +
-        escapeHtml(structureContext.microsequenceKey || "") +
-        '">' +
-        '<button class="mini-card thumb' +
-        (index === activeIndex ? " active" : "") +
-        '" type="button" draggable="true" data-structure-draggable="true" data-action="open-card" data-structure-level="card" data-course-key="' +
-        escapeHtml(structureContext.courseKey || "") +
-        '" data-module-key="' +
-        escapeHtml(structureContext.moduleKey || "") +
-        '" data-lesson-key="' +
-        escapeHtml(structureContext.lessonKey || "") +
-        '" data-microsequence-key="' +
-        escapeHtml(structureContext.microsequenceKey || "") +
-        '" data-card-key="' +
-        escapeHtml(card.id) +
-        '" aria-label="Card ' +
-        String(index + 1) +
-        ": " +
-        escapeHtml(cardTitle) +
-        '" title="Arrastar card' +
-        '" data-card-index="' +
-        String(index) +
-        '">' +
-        '<div class="mini-card-kicker" aria-hidden="true">' +
-        renderWorkbenchIcon("card", "mini-card-kicker-icon") +
-        "</div>" +
-        '<div class="mini-card-title">' +
-        escapeHtml(cardTitle) +
-        "</div>" +
-        "</button>" +
-        "</div>"
-      );
-    })
-    .join("");
-}
-
 function renderWorkbenchPaneIcon(pane) {
   return renderUiIcon(pane === "edit" ? "sparkles" : "preview", "workbench-surface-tab-icon");
-}
-
-function renderWorkbenchIcon(iconName, className = "workbench-icon") {
-  return renderUiIcon(iconName, className);
 }
 
 function renderInlineFieldIcon(iconName, label) {
@@ -363,20 +309,6 @@ function renderCountMetric(iconName, count, singular, plural) {
   return renderMetaMetric(iconName, String(count), formatCount(count, singular, plural));
 }
 
-function renderContextMetric(iconName, value, label) {
-  return (
-    '<span class="context-chip-metric" aria-label="' +
-    escapeHtml(label) +
-    '" title="' +
-    escapeHtml(summarizeIconTitle(label)) +
-    '">' +
-    renderUiIcon(iconName, "context-chip-icon") +
-    '<span class="context-chip-value">' +
-    escapeHtml(value) +
-    "</span></span>"
-  );
-}
-
 function renderWorkbenchPaneTabs(activePane) {
   return (
     '<div class="workbench-surface-tabbar">' +
@@ -408,42 +340,6 @@ function renderGenerationPaneTab() {
     renderWorkbenchPaneIcon("edit") +
     "</button>" +
     "</div>" +
-    "</div>"
-  );
-}
-
-function collectMicrosequenceDependencies(moduleValue, lessonKey, microsequenceKey) {
-  const dependencies = [];
-  for (const lesson of moduleValue.lessons || []) {
-    for (const microsequence of lesson.microsequences || []) {
-      if (lesson.id === lessonKey && microsequence.id === microsequenceKey) {
-        return dependencies;
-      }
-      dependencies.push(microsequence);
-    }
-  }
-  return dependencies;
-}
-
-function renderDidacticTags(moduleValue, lessonKey, microsequence) {
-  const dependencies = collectMicrosequenceDependencies(moduleValue, lessonKey, microsequence.id);
-  const visibleDependencies = dependencies.slice(-5);
-
-  const dependencyTags = visibleDependencies
-    .map((item) => {
-      return (
-        '<span class="didactic-tag dependency-tag-chip">' +
-        '<span class="didactic-tag-text">' +
-        escapeHtml(item.title || item.id) +
-        "</span>" +
-        "</span>"
-      );
-    })
-    .join("");
-
-  return (
-    '<div class="didactic-tag-row">' +
-    dependencyTags +
     "</div>"
   );
 }
@@ -584,14 +480,6 @@ function renderAssistContainerSelectOptions(options = [], selectedValue = "", co
       );
     }))
     .join("");
-}
-
-function renderRuntimeBlocks(card, fallbackText, runtimeOptions = null) {
-  return renderCardRuntimeBlocks(card, {
-    omitRepeatedHeading: true,
-    fallbackText,
-    ...(runtimeOptions || {})
-  });
 }
 
 function renderMetaLine({ completed, total, parts = [] }) {
@@ -1160,11 +1048,6 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
         : feedbackSession.status && feedbackSession.status !== "completed"
           ? " is-attention"
           : "";
-  const emptyCardsMessage = hasCards
-    ? ""
-    : isPlanned
-      ? "Esta microssequência foi planejada, mas ainda não foi materializada."
-      : "Os cards gerados aparecerão aqui após o envio do prompt.";
   const attachmentInput =
     '<input data-field="assist-attachments" class="assist-attachment-input" type="file" multiple accept=".pdf,.txt,.md,.json,.csv,.html,.xml,.js,.ts,.py,.java,.c,.cpp,.doc,.docx,.ppt,.pptx,.rtf,.odt,.ods,.odp,text/*,application/pdf,application/json,application/xml">';
   const attachmentChips = renderAssistAttachmentChips(editorSupport.attachments);
@@ -1366,10 +1249,6 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
   );
 }
 
-function renderMicrosequenceAssistScreen({ course, lesson, microsequence, cards, selection, editorSupport }) {
-  return renderMicrosequenceScreen({ course, lesson, microsequence, cards, selection, microsequenceMode: "play", editorSupport });
-}
-
 export function renderLessonScreen({ project, view, selection, course, moduleValue, lesson, microsequence, cards, microsequenceMode, editorSupport }) {
   if (view === "courses") {
     return renderHomeScreen({
@@ -1389,10 +1268,6 @@ export function renderLessonScreen({ project, view, selection, course, moduleVal
 
   if (view === "lesson") {
     return renderLessonScreenView({ course, lesson, moduleValue, progress: editorSupport.progress, editorSupport });
-  }
-
-  if (view === "microsequence-assist") {
-    return renderMicrosequenceAssistScreen({ course, lesson, microsequence, cards, selection, editorSupport });
   }
 
   return renderMicrosequenceScreen({ course, lesson, microsequence, cards, selection, microsequenceMode, editorSupport });

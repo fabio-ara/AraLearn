@@ -164,7 +164,7 @@ function validateOptionTexts(card = {}) {
 }
 
 function normalizeGraphToken(value = "") {
-  return text(value).replace(/^[(\[]|[)\]]$/g, "").trim();
+  return text(value).replace(/^[([]|[)\]]$/g, "").trim();
 }
 
 function normalizeRelationToken(value = "") {
@@ -338,7 +338,7 @@ export function validateChoiceFeedbackConsistency(card = {}, { computedAnswer = 
   return true;
 }
 
-export function validateGraphSimpleChoice(card = {}, slotPacket = {}) {
+export function validateGraphSimpleChoice(card = {}) {
   validateGraphCard(card);
   const optionErrors = validateOptionTexts(card);
   if (optionErrors.length) {
@@ -450,7 +450,7 @@ export function validateRelationMapSimpleChoice(card = {}) {
   (Array.isArray(card?.options) ? card.options : []).forEach((option) => {
     const optionId = text(option?.id).toLowerCase();
     const parsed = parseRelationOption(getChoiceOptionComparableValue(option));
-    let valid = false;
+    let valid;
     if (task.type === "rightForLeft") {
       const expectedRights = relationLookup.relationPairs.filter((pair) => pair.left === task.left).map((pair) => pair.right);
       valid = parsed.kind === "single" && expectedRights.includes(parsed.items[0]);
@@ -557,7 +557,7 @@ export function validateFlowLinearChoice(card = {}) {
   (Array.isArray(card?.options) ? card.options : []).forEach((option) => {
     const optionId = text(option?.id).toLowerCase();
     const parsed = parseFlowOption(getChoiceOptionComparableValue(option));
-    let valid = false;
+    let valid;
     if (task?.type === "nextAfter") {
       const index = steps.findIndex((step) => looseLabelMatches(step, task.step));
       valid = index >= 0 && index < steps.length - 1 && parsed.length === 1 && looseLabelMatches(parsed[0], steps[index + 1]);
@@ -667,28 +667,28 @@ export function validateNoStructuralLeakInCard(card = {}) {
   return true;
 }
 
-export function validateCompiledCardSemantics(card, { templateId = "", slotPacket = {}, planItem = {} } = {}) {
+export function validateCompiledCardSemantics(card, { templateId = "", slotPacket = {} } = {}) {
   validateNoStructuralLeakInCard(card);
   if ((card?.exercise === "choice" || templateId === "choice_exercise") && !["matrix_locate_cell_choice"].includes(templateId)) {
     validateChoiceExercise(card);
   }
   if (templateId === "matrix_locate_cell_choice") {
-    return validateMatrixLocateCellChoice(card, slotPacket, planItem);
+    return validateMatrixLocateCellChoice(card, slotPacket);
   }
   if (templateId === "graph_simple") {
     validateChoiceExercise(card);
-    return validateGraphSimpleChoice(card, slotPacket, planItem);
+    return validateGraphSimpleChoice(card);
   }
   if (templateId === "composite_graph_compare_choice") {
     return validateCompositeGraphCompareChoice(card);
   }
   if (templateId === "relation_map_simple") {
     validateChoiceExercise(card);
-    return validateRelationMapSimpleChoice(card, slotPacket, planItem);
+    return validateRelationMapSimpleChoice(card);
   }
   if (templateId === "flow_linear") {
     validateChoiceExercise(card);
-    return validateFlowLinearChoice(card, slotPacket, planItem);
+    return validateFlowLinearChoice(card);
   }
   if (templateId === "paragraph_gap") {
     return validateParagraphGap(card);

@@ -47,8 +47,7 @@ function projectWithSinglePlannedMicrosequence() {
                     dependsOn: [],
                     covers: ["conjunção"],
                     checks: ["o aluno reconhece a linha verdadeira"],
-                    versions: [],
-                    activeVersion: null
+                    cards: []
                   },
                   {
                     id: "micro-next",
@@ -59,8 +58,7 @@ function projectWithSinglePlannedMicrosequence() {
                     dependsOn: ["micro-a"],
                     covers: ["tabela-verdade"],
                     checks: ["o aluno encontra a linha verdadeira"],
-                    versions: [],
-                    activeVersion: null
+                    cards: []
                   }
                 ]
               }
@@ -83,29 +81,17 @@ function projectWithGeneratedCurrentAndPlannedNext() {
     dependsOn: [],
     covers: ["conjunção"],
     checks: ["o aluno reconhece a regra"],
-    versions: [
+    cards: [
       {
-        id: "version-a",
-        createdAt: "2026-05-23T00:00:00.000Z",
-        source: "manual",
-        action: "generate",
-        request: "",
-        summary: "Base pronta.",
-        cards: [
-          {
-            position: 1,
-            resource: "paragraph",
-            kind: "theory",
-            exercise: "none",
-            title: "Base",
-            text: "Explicação objetiva da regra local.",
-            after: ""
-          }
-        ],
-        validation: { ok: true, issues: [] }
+        position: 1,
+        resource: "paragraph",
+        kind: "theory",
+        exercise: "none",
+        title: "Base",
+        text: "Explicação objetiva da regra local.",
+        after: ""
       }
-    ],
-    activeVersion: "version-a"
+    ]
   };
   project.courses[0].modules[0].lessons[0].microsequences[1] = {
     id: "micro-b",
@@ -116,8 +102,7 @@ function projectWithGeneratedCurrentAndPlannedNext() {
     dependsOn: ["micro-a"],
     covers: ["tabela-verdade"],
     checks: ["o aluno aplica a regra na tabela"],
-    versions: [],
-    activeVersion: null
+    cards: []
   };
   return project;
 }

@@ -34,11 +34,17 @@ jobs:
       - name: Validar testes
         run: npm test
 
+      - name: Analisar código
+        run: npm run lint
+
+      - name: Instalar Chromium para testes de interface
+        run: npx playwright install chromium
+
+      - name: Gerar e testar o artefato no navegador
+        run: npm run test:e2e
+
       - name: Validar exemplo público
         run: npm run validate:example
-
-      - name: Gerar site
-        run: npm run pages:build
 
       - name: Configurar Pages
         uses: actions/configure-pages@v5

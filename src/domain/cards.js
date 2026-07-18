@@ -876,11 +876,18 @@ function validateAfterBlocks(card, path, errors) {
   }
   return card.afterBlocks
     .map((block, index) => {
+      const blockPath = `${path}.afterBlocks[${index}]`;
       if (text(block?.kind) === "choice") {
-        pushError(errors, `${path}.afterBlocks[${index}].kind`, "afterBlocks não aceita bloco choice.");
+        pushError(errors, `${blockPath}.kind`, "afterBlocks não aceita bloco choice.");
         return null;
       }
-      return validateCompositeBlock(block, `${path}.afterBlocks[${index}]`, errors);
+      if (text(block?.kind) === "paragraph" && hasTextGapSyntax(block?.value)) {
+        pushError(errors, `${blockPath}.value`, "afterBlocks não pode conter lacunas interativas.");
+      }
+      if (text(block?.kind) === "code" && hasTextGapSyntax(block?.code)) {
+        pushError(errors, `${blockPath}.code`, "afterBlocks não pode conter lacunas interativas.");
+      }
+      return validateCompositeBlock(block, blockPath, errors);
     })
     .filter(Boolean);
 }

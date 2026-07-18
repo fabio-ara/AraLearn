@@ -1,7 +1,7 @@
 import { createProfileTuning } from "./profileTuning.js";
 import { createDefaultCourseModel, listCourseModelOptions } from "./courseModelSemantics.js";
 import { parseJsonText } from "../engine/structuredText.js";
-import { resolveGenerationProviderRuntime } from "./projectGenerationRuntime.js";
+import { resolveGenerationLaunchConfig } from "./launchConfig.js";
 
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -195,21 +195,25 @@ export async function inferPlanningProfileTuning({
     throw new Error("Ingestão de anexos indisponível para inferir o planejamento didático.");
   }
 
-  const runtime = resolveGenerationProviderRuntime(assistConfig);
+  const launchConfig = resolveGenerationLaunchConfig({
+    selectedModel: assistConfig.model,
+    apiKey: assistConfig.apiKey,
+    baseUrl: assistConfig.baseUrl,
+    didacticProfileId: assistConfig.didacticProfileId,
+    profileTuning: assistConfig.profileTuning,
+    codexEndpoint: assistConfig.codexEndpoint,
+    codexToken: assistConfig.codexToken,
+    provider
+  });
   const ingestedAttachments = await ingestAttachments(Array.isArray(attachments) ? attachments : []);
-  const activeProvider = provider || runtime.provider;
   const prompt = buildPlanningInferencePrompt({
     requestText,
     attachmentSummary: summarizeAttachments(ingestedAttachments.attachments),
     currentProfileTuning: assistConfig.profileTuning || {},
     didacticProfileId: text(assistConfig.didacticProfileId)
   });
-  if (typeof activeProvider?.generateText !== "function") {
-    throw new Error("Provider sem canal textual para inferir o planejamento didático.");
-  }
-  const response = parseJsonText((await activeProvider.generateText({
-    ...runtime.providerOptions,
-    modelId: runtime.modelId,
+  const response = parseJsonText((await launchConfig.provider.generateText({
+    modelId: launchConfig.modelId,
     phase: "infer_planning_profile_tuning",
     system: "Responda somente JSON válido e preencha todos os campos do planejamento didático.",
     prompt,

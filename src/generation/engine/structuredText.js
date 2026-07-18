@@ -14,7 +14,9 @@ export function parseJsonText(rawText = "") {
     }
     try {
       return JSON.parse(candidate);
-    } catch {}
+    } catch {
+      continue;
+    }
   }
   const firstBrace = source.indexOf("{");
   if (firstBrace < 0) {

@@ -28,7 +28,7 @@ export function getFlowchartShapeLabel(shape) {
 
 export function renderFlowchartShapeSvg(shape) {
   const key = normalizeFlowchartShapeKey(shape);
-  let body = "";
+  let body;
 
   switch (key) {
     case "terminal":

@@ -6,10 +6,9 @@ import {
 } from "../contract/validateContract.js";
 import {
   createStarterContractCard,
-  getContractCardKindLabel,
   sanitizeContractCard
 } from "../contract/contractCard.js";
-import { createEmptyProjectDocument, PROJECT_CONTRACT, PROJECT_VERSION } from "../domain/aralearnProject.js";
+import { PROJECT_CONTRACT, PROJECT_VERSION } from "../domain/aralearnProject.js";
 import {
   MICROSEQUENCE_STATUS_DRAFT,
   MICROSEQUENCE_STATUS_READY,
@@ -82,16 +81,6 @@ function collectSiblingIds(items = []) {
   return new Set((Array.isArray(items) ? items : []).map((item) => text(item?.id)).filter(Boolean));
 }
 
-function resolveRequestedId(input = {}, ...fieldNames) {
-  for (const fieldName of fieldNames) {
-    const value = text(input?.[fieldName]);
-    if (value) {
-      return value;
-    }
-  }
-  return "";
-}
-
 function uniqueId(baseLabel, usedIds, prefix) {
   const slug = slugify(baseLabel) || prefix;
   let candidate = `${prefix}-${slug}`;
@@ -103,8 +92,8 @@ function uniqueId(baseLabel, usedIds, prefix) {
   return candidate;
 }
 
-function resolveEntityId(input = {}, usedIds, prefix, baseLabel, ...fieldNames) {
-  const requestedId = resolveRequestedId(input, ...fieldNames);
+function resolveEntityId(input = {}, usedIds, prefix, baseLabel) {
+  const requestedId = text(input?.id);
   if (requestedId) {
     if (usedIds.has(requestedId)) {
       fail(`id duplicado: "${requestedId}".`);
@@ -145,7 +134,7 @@ function normalizeCourseDraft(input = {}, usedIds = new Set()) {
   assertNoEntityKey(input);
   const title = normalizeText(input.title || "Novo curso", "title");
   return {
-    id: resolveEntityId(input, usedIds, "course", title, "id"),
+    id: resolveEntityId(input, usedIds, "course", title),
     title,
     goal: text(input.goal) || `Organizar ${title}.`,
     modules: []
@@ -156,7 +145,7 @@ function normalizeModuleDraft(input = {}, usedIds = new Set()) {
   assertNoEntityKey(input);
   const title = normalizeText(input.title || "Novo módulo", "title");
   return {
-    id: resolveEntityId(input, usedIds, "module", title, "id"),
+    id: resolveEntityId(input, usedIds, "module", title),
     title,
     guide: normalizeGuide(input.guide || input, GUIDE_LEVELS.MODULE, text(input.goal) || `Guiar ${title}.`),
     lessons: []
@@ -167,7 +156,7 @@ function normalizeLessonDraft(input = {}, usedIds = new Set()) {
   assertNoEntityKey(input);
   const title = normalizeText(input.title || "Nova lição", "title");
   return {
-    id: resolveEntityId(input, usedIds, "lesson", title, "id"),
+    id: resolveEntityId(input, usedIds, "lesson", title),
     title,
     guide: normalizeGuide(input.guide || input, GUIDE_LEVELS.LESSON, text(input.goal) || `Guiar ${title}.`),
     topics: Array.isArray(input.topics) ? clone(input.topics) : [],
@@ -221,7 +210,7 @@ function normalizeMicrosequenceDraft(input = {}, usedIds = new Set()) {
   const status = normalizeMicrosequenceStatus(input.status, { cards });
   const role = text(input.role) || "explain";
   const microsequence = {
-    id: resolveEntityId(input, usedIds, "microsequence", title, "id"),
+    id: resolveEntityId(input, usedIds, "microsequence", title),
     title,
     goal: text(input.goal) || `Explicar ${title}.`,
     role,
@@ -304,20 +293,20 @@ function buildProjectSlice(scope, course) {
 
 function cloneCourseForImport(course, usedCourseIds) {
   const nextCourse = clone(course);
-  const nextCourseId = resolveEntityId(nextCourse, usedCourseIds, "course", nextCourse.title || "course", "id");
+  const nextCourseId = resolveEntityId(nextCourse, usedCourseIds, "course", nextCourse.title || "course");
   nextCourse.id = nextCourseId;
   nextCourse.modules = (nextCourse.modules || []).map((moduleValue) => {
     const usedModuleIds = new Set();
     const nextModule = clone(moduleValue);
-    nextModule.id = resolveEntityId(nextModule, usedModuleIds, "module", nextModule.title || "module", "id");
+    nextModule.id = resolveEntityId(nextModule, usedModuleIds, "module", nextModule.title || "module");
     nextModule.lessons = (nextModule.lessons || []).map((lesson) => {
       const usedLessonIds = new Set();
       const nextLesson = clone(lesson);
-      nextLesson.id = resolveEntityId(nextLesson, usedLessonIds, "lesson", nextLesson.title || "lesson", "id");
+      nextLesson.id = resolveEntityId(nextLesson, usedLessonIds, "lesson", nextLesson.title || "lesson");
       nextLesson.microsequences = (nextLesson.microsequences || []).map((microsequence) => {
         const usedMicroIds = new Set();
         const nextMicrosequence = clone(microsequence);
-        nextMicrosequence.id = resolveEntityId(nextMicrosequence, usedMicroIds, "microsequence", nextMicrosequence.title || "microsequence", "id");
+        nextMicrosequence.id = resolveEntityId(nextMicrosequence, usedMicroIds, "microsequence", nextMicrosequence.title || "microsequence");
         return nextMicrosequence;
       });
       return nextLesson;
@@ -329,7 +318,7 @@ function cloneCourseForImport(course, usedCourseIds) {
 
 export function updateCourse(document, input) {
   const nextDocument = clone(document);
-  const courseKey = resolveRequestedId(input, "courseId", "courseKey", "id");
+  const courseKey = text(input?.courseKey);
   const course = findCourse(nextDocument, courseKey);
   assignTitleIfProvided(course, input.title);
   if (input.goal !== undefined) {
@@ -361,7 +350,7 @@ export function importCourses(document, input = {}) {
 
 export function importModules(document, input = {}) {
   const nextDocument = clone(document);
-  const courseKey = resolveRequestedId(input, "courseId", "courseKey");
+  const courseKey = text(input?.courseKey);
   const course = findCourse(nextDocument, courseKey);
   const imported = ensureValidDocument(input.document);
   if (imported.courses.length !== 1) {
@@ -370,7 +359,7 @@ export function importModules(document, input = {}) {
   const usedIds = collectSiblingIds(course.modules);
   (imported.courses[0].modules || []).forEach((moduleValue) => {
     const nextModule = clone(moduleValue);
-    nextModule.id = resolveEntityId(nextModule, usedIds, "module", nextModule.title || "module", "id");
+    nextModule.id = resolveEntityId(nextModule, usedIds, "module", nextModule.title || "module");
     usedIds.add(nextModule.id);
     course.modules.push(nextModule);
   });
@@ -379,8 +368,8 @@ export function importModules(document, input = {}) {
 
 export function importLessons(document, input = {}) {
   const nextDocument = clone(document);
-  const courseKey = resolveRequestedId(input, "courseId", "courseKey");
-  const moduleKey = resolveRequestedId(input, "moduleId", "moduleKey");
+  const courseKey = text(input?.courseKey);
+  const moduleKey = text(input?.moduleKey);
   const { moduleValue } = findModule(nextDocument, courseKey, moduleKey);
   const imported = ensureValidDocument(input.document);
   if (imported.courses.length !== 1 || (imported.courses[0].modules || []).length !== 1) {
@@ -389,7 +378,7 @@ export function importLessons(document, input = {}) {
   const usedIds = collectSiblingIds(moduleValue.lessons);
   (imported.courses[0].modules[0].lessons || []).forEach((lesson) => {
     const nextLesson = clone(lesson);
-    nextLesson.id = resolveEntityId(nextLesson, usedIds, "lesson", nextLesson.title || "lesson", "id");
+    nextLesson.id = resolveEntityId(nextLesson, usedIds, "lesson", nextLesson.title || "lesson");
     usedIds.add(nextLesson.id);
     moduleValue.lessons.push(nextLesson);
   });
@@ -398,9 +387,9 @@ export function importLessons(document, input = {}) {
 
 export function importMicrosequences(document, input = {}) {
   const nextDocument = clone(document);
-  const courseKey = resolveRequestedId(input, "courseId", "courseKey");
-  const moduleKey = resolveRequestedId(input, "moduleId", "moduleKey");
-  const lessonKey = resolveRequestedId(input, "lessonId", "lessonKey");
+  const courseKey = text(input?.courseKey);
+  const moduleKey = text(input?.moduleKey);
+  const lessonKey = text(input?.lessonKey);
   const { lesson } = findLesson(nextDocument, courseKey, moduleKey, lessonKey);
   const imported = ensureValidDocument(input.document);
   if (
@@ -413,7 +402,7 @@ export function importMicrosequences(document, input = {}) {
   const usedIds = collectSiblingIds(lesson.microsequences);
   (imported.courses[0].modules[0].lessons[0].microsequences || []).forEach((microsequence) => {
     const nextMicrosequence = clone(microsequence);
-    nextMicrosequence.id = resolveEntityId(nextMicrosequence, usedIds, "microsequence", nextMicrosequence.title || "microsequence", "id");
+    nextMicrosequence.id = resolveEntityId(nextMicrosequence, usedIds, "microsequence", nextMicrosequence.title || "microsequence");
     usedIds.add(nextMicrosequence.id);
     lesson.microsequences.push(nextMicrosequence);
   });
@@ -421,13 +410,13 @@ export function importMicrosequences(document, input = {}) {
 }
 
 export function exportCourseDocument(document, input) {
-  const courseKey = resolveRequestedId(input, "courseId", "courseKey");
+  const courseKey = text(input?.courseKey);
   return buildProjectSlice("course", findCourse(document, courseKey));
 }
 
 export function exportModuleDocument(document, input) {
-  const courseKey = resolveRequestedId(input, "courseId", "courseKey");
-  const moduleKey = resolveRequestedId(input, "moduleId", "moduleKey");
+  const courseKey = text(input?.courseKey);
+  const moduleKey = text(input?.moduleKey);
   const { course, moduleValue } = findModule(document, courseKey, moduleKey);
   return buildProjectSlice("module", {
     ...clone(course),
@@ -436,9 +425,9 @@ export function exportModuleDocument(document, input) {
 }
 
 export function exportLessonDocument(document, input) {
-  const courseKey = resolveRequestedId(input, "courseId", "courseKey");
-  const moduleKey = resolveRequestedId(input, "moduleId", "moduleKey");
-  const lessonKey = resolveRequestedId(input, "lessonId", "lessonKey");
+  const courseKey = text(input?.courseKey);
+  const moduleKey = text(input?.moduleKey);
+  const lessonKey = text(input?.lessonKey);
   const { course, moduleValue } = findModule(document, courseKey, moduleKey);
   const lesson = (moduleValue.lessons || []).find((item) => item.id === lessonKey);
   if (!lesson) {
@@ -451,10 +440,10 @@ export function exportLessonDocument(document, input) {
 }
 
 export function exportMicrosequenceDocument(document, input) {
-  const courseKey = resolveRequestedId(input, "courseId", "courseKey");
-  const moduleKey = resolveRequestedId(input, "moduleId", "moduleKey");
-  const lessonKey = resolveRequestedId(input, "lessonId", "lessonKey");
-  const microsequenceKey = resolveRequestedId(input, "microsequenceId", "microsequenceKey");
+  const courseKey = text(input?.courseKey);
+  const moduleKey = text(input?.moduleKey);
+  const lessonKey = text(input?.lessonKey);
+  const microsequenceKey = text(input?.microsequenceKey);
   const { course, moduleValue } = findModule(document, courseKey, moduleKey);
   const lesson = (moduleValue.lessons || []).find((item) => item.id === lessonKey);
   if (!lesson) {
@@ -478,7 +467,7 @@ export function exportMicrosequenceDocument(document, input) {
 
 export function deleteCourse(document, input) {
   const nextDocument = clone(document);
-  const courseKey = resolveRequestedId(input, "courseId", "courseKey");
+  const courseKey = text(input?.courseKey);
   const index = (nextDocument.courses || []).findIndex((item) => item.id === courseKey);
   if (index < 0) {
     fail(`Curso não encontrado: "${courseKey}".`);
@@ -489,14 +478,14 @@ export function deleteCourse(document, input) {
 
 export function moveCourse(document, input) {
   const nextDocument = clone(document);
-  const courseKey = resolveRequestedId(input, "courseId", "courseKey");
+  const courseKey = text(input?.courseKey);
   reorderSiblingItems(nextDocument.courses || [], courseKey, input.toIndex, "Curso");
   return ensureValidDocument(nextDocument);
 }
 
 export function createModule(document, input) {
   const nextDocument = clone(document);
-  const courseKey = resolveRequestedId(input, "courseId", "courseKey");
+  const courseKey = text(input?.courseKey);
   const course = findCourse(nextDocument, courseKey);
   course.modules.push(normalizeModuleDraft(input, collectSiblingIds(course.modules)));
   return ensureValidDocument(nextDocument);
@@ -504,8 +493,8 @@ export function createModule(document, input) {
 
 export function updateModule(document, input) {
   const nextDocument = clone(document);
-  const courseKey = resolveRequestedId(input, "courseId", "courseKey");
-  const moduleKey = resolveRequestedId(input, "moduleId", "moduleKey", "id");
+  const courseKey = text(input?.courseKey);
+  const moduleKey = text(input?.moduleKey);
   const { moduleValue } = findModule(nextDocument, courseKey, moduleKey);
   assignTitleIfProvided(moduleValue, input.title);
   if (input.guide !== undefined || input.goal !== undefined || input.include !== undefined || input.exclude !== undefined || input.notation !== undefined || input.avoid !== undefined) {
@@ -516,8 +505,8 @@ export function updateModule(document, input) {
 
 export function deleteModule(document, input) {
   const nextDocument = clone(document);
-  const courseKey = resolveRequestedId(input, "courseId", "courseKey");
-  const moduleKey = resolveRequestedId(input, "moduleId", "moduleKey");
+  const courseKey = text(input?.courseKey);
+  const moduleKey = text(input?.moduleKey);
   const course = findCourse(nextDocument, courseKey);
   const index = (course.modules || []).findIndex((item) => item.id === moduleKey);
   if (index < 0) {
@@ -529,8 +518,8 @@ export function deleteModule(document, input) {
 
 export function moveModule(document, input) {
   const nextDocument = clone(document);
-  const courseKey = resolveRequestedId(input, "courseId", "courseKey");
-  const moduleKey = resolveRequestedId(input, "moduleId", "moduleKey");
+  const courseKey = text(input?.courseKey);
+  const moduleKey = text(input?.moduleKey);
   const course = findCourse(nextDocument, courseKey);
   reorderSiblingItems(course.modules || [], moduleKey, input.toIndex, "Módulo");
   return ensureValidDocument(nextDocument);
@@ -538,8 +527,8 @@ export function moveModule(document, input) {
 
 export function createLesson(document, input) {
   const nextDocument = clone(document);
-  const courseKey = resolveRequestedId(input, "courseId", "courseKey");
-  const moduleKey = resolveRequestedId(input, "moduleId", "moduleKey");
+  const courseKey = text(input?.courseKey);
+  const moduleKey = text(input?.moduleKey);
   const { moduleValue } = findModule(nextDocument, courseKey, moduleKey);
   moduleValue.lessons.push(normalizeLessonDraft(input, collectSiblingIds(moduleValue.lessons)));
   return ensureValidDocument(nextDocument);
@@ -547,9 +536,9 @@ export function createLesson(document, input) {
 
 export function updateLesson(document, input) {
   const nextDocument = clone(document);
-  const courseKey = resolveRequestedId(input, "courseId", "courseKey");
-  const moduleKey = resolveRequestedId(input, "moduleId", "moduleKey");
-  const lessonKey = resolveRequestedId(input, "lessonId", "lessonKey", "id");
+  const courseKey = text(input?.courseKey);
+  const moduleKey = text(input?.moduleKey);
+  const lessonKey = text(input?.lessonKey);
   const { lesson } = findLesson(nextDocument, courseKey, moduleKey, lessonKey);
   assignTitleIfProvided(lesson, input.title);
   if (input.guide !== undefined || input.goal !== undefined || input.include !== undefined || input.exclude !== undefined || input.notation !== undefined || input.avoid !== undefined) {
@@ -566,9 +555,9 @@ export function updateLesson(document, input) {
 
 export function deleteLesson(document, input) {
   const nextDocument = clone(document);
-  const courseKey = resolveRequestedId(input, "courseId", "courseKey");
-  const moduleKey = resolveRequestedId(input, "moduleId", "moduleKey");
-  const lessonKey = resolveRequestedId(input, "lessonId", "lessonKey");
+  const courseKey = text(input?.courseKey);
+  const moduleKey = text(input?.moduleKey);
+  const lessonKey = text(input?.lessonKey);
   const { moduleValue } = findModule(nextDocument, courseKey, moduleKey);
   const index = (moduleValue.lessons || []).findIndex((item) => item.id === lessonKey);
   if (index < 0) {
@@ -580,9 +569,9 @@ export function deleteLesson(document, input) {
 
 export function moveLesson(document, input) {
   const nextDocument = clone(document);
-  const courseKey = resolveRequestedId(input, "courseId", "courseKey");
-  const moduleKey = resolveRequestedId(input, "moduleId", "moduleKey");
-  const lessonKey = resolveRequestedId(input, "lessonId", "lessonKey");
+  const courseKey = text(input?.courseKey);
+  const moduleKey = text(input?.moduleKey);
+  const lessonKey = text(input?.lessonKey);
   const { moduleValue } = findModule(nextDocument, courseKey, moduleKey);
   reorderSiblingItems(moduleValue.lessons || [], lessonKey, input.toIndex, "Lição");
   return ensureValidDocument(nextDocument);
@@ -590,9 +579,9 @@ export function moveLesson(document, input) {
 
 export function createMicrosequence(document, input) {
   const nextDocument = clone(document);
-  const courseKey = resolveRequestedId(input, "courseId", "courseKey");
-  const moduleKey = resolveRequestedId(input, "moduleId", "moduleKey");
-  const lessonKey = resolveRequestedId(input, "lessonId", "lessonKey");
+  const courseKey = text(input?.courseKey);
+  const moduleKey = text(input?.moduleKey);
+  const lessonKey = text(input?.lessonKey);
   const { lesson } = findLesson(nextDocument, courseKey, moduleKey, lessonKey);
   lesson.microsequences.push(normalizeMicrosequenceDraft(input, collectSiblingIds(lesson.microsequences)));
   return ensureValidDocument(nextDocument);
@@ -600,10 +589,10 @@ export function createMicrosequence(document, input) {
 
 export function updateMicrosequence(document, input) {
   const nextDocument = clone(document);
-  const courseKey = resolveRequestedId(input, "courseId", "courseKey");
-  const moduleKey = resolveRequestedId(input, "moduleId", "moduleKey");
-  const lessonKey = resolveRequestedId(input, "lessonId", "lessonKey");
-  const microsequenceKey = resolveRequestedId(input, "microsequenceId", "microsequenceKey");
+  const courseKey = text(input?.courseKey);
+  const moduleKey = text(input?.moduleKey);
+  const lessonKey = text(input?.lessonKey);
+  const microsequenceKey = text(input?.microsequenceKey);
   const { lesson } = findLesson(nextDocument, courseKey, moduleKey, lessonKey);
   const microsequence = findMicrosequence(lesson, microsequenceKey);
   assignTitleIfProvided(microsequence, input.title);
@@ -630,10 +619,10 @@ export function updateMicrosequence(document, input) {
 
 export function deleteMicrosequence(document, input) {
   const nextDocument = clone(document);
-  const courseKey = resolveRequestedId(input, "courseId", "courseKey");
-  const moduleKey = resolveRequestedId(input, "moduleId", "moduleKey");
-  const lessonKey = resolveRequestedId(input, "lessonId", "lessonKey");
-  const microsequenceKey = resolveRequestedId(input, "microsequenceId", "microsequenceKey");
+  const courseKey = text(input?.courseKey);
+  const moduleKey = text(input?.moduleKey);
+  const lessonKey = text(input?.lessonKey);
+  const microsequenceKey = text(input?.microsequenceKey);
   const { lesson } = findLesson(nextDocument, courseKey, moduleKey, lessonKey);
   const index = (lesson.microsequences || []).findIndex((item) => item.id === microsequenceKey);
   if (index < 0) {
@@ -645,13 +634,13 @@ export function deleteMicrosequence(document, input) {
 
 export function moveMicrosequenceWithResult(document, input) {
   const nextDocument = clone(document);
-  const sourceCourseKey = resolveRequestedId(input, "courseId", "courseKey");
-  const sourceModuleKey = resolveRequestedId(input, "moduleId", "moduleKey");
-  const sourceLessonKey = resolveRequestedId(input, "lessonId", "lessonKey");
-  const targetCourseKey = resolveRequestedId(input, "targetCourseId", "targetCourseKey");
-  const targetModuleKey = resolveRequestedId(input, "targetModuleId", "targetModuleKey");
-  const targetLessonKey = resolveRequestedId(input, "targetLessonId", "targetLessonKey");
-  const microsequenceKey = resolveRequestedId(input, "microsequenceId", "microsequenceKey");
+  const sourceCourseKey = text(input?.courseKey);
+  const sourceModuleKey = text(input?.moduleKey);
+  const sourceLessonKey = text(input?.lessonKey);
+  const targetCourseKey = text(input?.targetCourseKey);
+  const targetModuleKey = text(input?.targetModuleKey);
+  const targetLessonKey = text(input?.targetLessonKey);
+  const microsequenceKey = text(input?.microsequenceKey);
   const { lesson: sourceLesson } = findLesson(nextDocument, sourceCourseKey, sourceModuleKey, sourceLessonKey);
   const { lesson: targetLesson } = findLesson(nextDocument, targetCourseKey, targetModuleKey, targetLessonKey);
   const index = (sourceLesson.microsequences || []).findIndex((item) => item.id === microsequenceKey);
@@ -684,10 +673,10 @@ export function moveMicrosequence(document, input) {
 
 export function replaceMicrosequenceCards(document, input) {
   const nextDocument = clone(document);
-  const courseKey = resolveRequestedId(input, "courseId", "courseKey");
-  const moduleKey = resolveRequestedId(input, "moduleId", "moduleKey");
-  const lessonKey = resolveRequestedId(input, "lessonId", "lessonKey");
-  const microsequenceKey = resolveRequestedId(input, "microsequenceId", "microsequenceKey");
+  const courseKey = text(input?.courseKey);
+  const moduleKey = text(input?.moduleKey);
+  const lessonKey = text(input?.lessonKey);
+  const microsequenceKey = text(input?.microsequenceKey);
   const { lesson } = findLesson(nextDocument, courseKey, moduleKey, lessonKey);
   const microsequence = findMicrosequence(lesson, microsequenceKey);
   if (input.title !== undefined) {
@@ -718,10 +707,10 @@ export function replaceMicrosequenceCards(document, input) {
 
 export function createCardInMicrosequence(document, input) {
   const nextDocument = clone(document);
-  const courseKey = resolveRequestedId(input, "courseId", "courseKey");
-  const moduleKey = resolveRequestedId(input, "moduleId", "moduleKey");
-  const lessonKey = resolveRequestedId(input, "lessonId", "lessonKey");
-  const microsequenceKey = resolveRequestedId(input, "microsequenceId", "microsequenceKey");
+  const courseKey = text(input?.courseKey);
+  const moduleKey = text(input?.moduleKey);
+  const lessonKey = text(input?.lessonKey);
+  const microsequenceKey = text(input?.microsequenceKey);
   const { lesson } = findLesson(nextDocument, courseKey, moduleKey, lessonKey);
   const microsequence = findMicrosequence(lesson, microsequenceKey);
   const cards = resolveMicrosequenceCards(microsequence).slice();
@@ -740,16 +729,17 @@ export function createCardInMicrosequence(document, input) {
 
 export function updateCardInMicrosequence(document, input) {
   const nextDocument = clone(document);
-  const courseKey = resolveRequestedId(input, "courseId", "courseKey");
-  const moduleKey = resolveRequestedId(input, "moduleId", "moduleKey");
-  const lessonKey = resolveRequestedId(input, "lessonId", "lessonKey");
-  const microsequenceKey = resolveRequestedId(input, "microsequenceId", "microsequenceKey");
+  const courseKey = text(input?.courseKey);
+  const moduleKey = text(input?.moduleKey);
+  const lessonKey = text(input?.lessonKey);
+  const microsequenceKey = text(input?.microsequenceKey);
   const { lesson } = findLesson(nextDocument, courseKey, moduleKey, lessonKey);
   const microsequence = findMicrosequence(lesson, microsequenceKey);
   const cards = resolveMicrosequenceCards(microsequence).slice();
-  const cardIndex = findCardIndex(microsequence, resolveRequestedId(input, "cardId", "cardKey"));
+  const cardKey = text(input?.cardKey);
+  const cardIndex = findCardIndex(microsequence, cardKey);
   if (cardIndex < 0) {
-    fail(`Card não encontrado: "${resolveRequestedId(input, "cardId", "cardKey")}".`);
+    fail(`Card não encontrado: "${cardKey}".`);
   }
   const currentCard = cards[cardIndex];
   const patch = input.card && typeof input.card === "object" ? input.card : input;
@@ -764,14 +754,14 @@ export function updateCardInMicrosequence(document, input) {
 
 export function moveCardWithinMicrosequence(document, input) {
   const nextDocument = clone(document);
-  const courseKey = resolveRequestedId(input, "courseId", "courseKey");
-  const moduleKey = resolveRequestedId(input, "moduleId", "moduleKey");
-  const lessonKey = resolveRequestedId(input, "lessonId", "lessonKey");
-  const microsequenceKey = resolveRequestedId(input, "microsequenceId", "microsequenceKey");
+  const courseKey = text(input?.courseKey);
+  const moduleKey = text(input?.moduleKey);
+  const lessonKey = text(input?.lessonKey);
+  const microsequenceKey = text(input?.microsequenceKey);
   const { lesson } = findLesson(nextDocument, courseKey, moduleKey, lessonKey);
   const microsequence = findMicrosequence(lesson, microsequenceKey);
   const cards = resolveMicrosequenceCards(microsequence).slice();
-  const cardKey = resolveRequestedId(input, "cardId", "cardKey");
+  const cardKey = text(input?.cardKey);
   const fromIndex = cards.findIndex((card, index) => normalizeCardToken(card, index) === cardKey);
   if (fromIndex < 0) {
     fail(`Card não encontrado: "${cardKey}".`);
@@ -785,14 +775,14 @@ export function moveCardWithinMicrosequence(document, input) {
 
 export function deleteCardInMicrosequence(document, input) {
   const nextDocument = clone(document);
-  const courseKey = resolveRequestedId(input, "courseId", "courseKey");
-  const moduleKey = resolveRequestedId(input, "moduleId", "moduleKey");
-  const lessonKey = resolveRequestedId(input, "lessonId", "lessonKey");
-  const microsequenceKey = resolveRequestedId(input, "microsequenceId", "microsequenceKey");
+  const courseKey = text(input?.courseKey);
+  const moduleKey = text(input?.moduleKey);
+  const lessonKey = text(input?.lessonKey);
+  const microsequenceKey = text(input?.microsequenceKey);
   const { lesson } = findLesson(nextDocument, courseKey, moduleKey, lessonKey);
   const microsequence = findMicrosequence(lesson, microsequenceKey);
   const cards = resolveMicrosequenceCards(microsequence).slice();
-  const cardKey = resolveRequestedId(input, "cardId", "cardKey");
+  const cardKey = text(input?.cardKey);
   const index = cards.findIndex((card, cardIndex) => normalizeCardToken(card, cardIndex) === cardKey);
   if (index < 0) {
     fail(`Card não encontrado: "${cardKey}".`);
@@ -946,14 +936,6 @@ export function createEditorSession(storage) {
       return nextDocument;
     }
   };
-}
-
-export function createContractEditorSession(storage) {
-  return createEditorSession(storage);
-}
-
-export function createBlankProjectDocument() {
-  return createEmptyProjectDocument();
 }
 
 export { PROJECT_CONTRACT, PROJECT_VERSION };

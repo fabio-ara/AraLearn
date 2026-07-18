@@ -968,7 +968,7 @@ function buildRelationMapSetGeometry(items = [], side = "left", viewHeight = 100
   };
 }
 
-function buildRelationMapItemPositions(items = [], side = "left", viewHeight = 100) {
+function buildRelationMapItemPositions(items = [], viewHeight = 100) {
   const measuredItems = buildRelationMapSideMetrics(items);
   const contentHeight = computeRelationMapColumnHeight(measuredItems);
   const availableHeight = Math.max(32, viewHeight - RELATION_MAP_LAYOUT.topPadding - RELATION_MAP_LAYOUT.bottomPadding);
@@ -989,8 +989,8 @@ function buildRelationMapLayout(leftItems = [], rightItems = []) {
   const rightMetrics = buildRelationMapSideMetrics(rightItems);
   const tallestColumn = Math.max(computeRelationMapColumnHeight(leftMetrics), computeRelationMapColumnHeight(rightMetrics));
   const viewHeight = Math.max(104, Math.ceil(tallestColumn + RELATION_MAP_LAYOUT.topPadding + RELATION_MAP_LAYOUT.bottomPadding));
-  const leftPositions = buildRelationMapItemPositions(leftMetrics, "left", viewHeight);
-  const rightPositions = buildRelationMapItemPositions(rightMetrics, "right", viewHeight);
+  const leftPositions = buildRelationMapItemPositions(leftMetrics, viewHeight);
+  const rightPositions = buildRelationMapItemPositions(rightMetrics, viewHeight);
   const leftGeometry = buildRelationMapSetGeometry(leftPositions, "left", viewHeight);
   const rightGeometry = buildRelationMapSetGeometry(rightPositions, "right", viewHeight);
   return {

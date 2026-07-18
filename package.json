@@ -2,17 +2,18 @@
   "name": "aralearn",
   "version": "0.0.7",
   "private": true,
-  "description": "Base inicial pública do AraLearn.",
+  "description": "Aplicativo de autoria e estudo em microssequências.",
   "type": "module",
   "scripts": {
     "start": "node ./scripts/servePublic.js",
     "dev": "node ./scripts/servePublic.js",
     "test": "node ./scripts/runV3Tests.mjs",
+    "test:e2e": "npm run pages:build && playwright test",
+    "lint": "eslint .",
     "validate:example": "node ./scripts/validateExampleProject.js",
     "validate:scope": "node ./src/generation/schemas/validateScopeContract.cli.js ./docs/examples/scope-contract.matematica-informatica.json",
     "harness:scope": "node ./scripts/runScopePlanningHarness.js",
     "harness:bottom-up": "node ./scripts/runBottomUpHarness.js",
-    "smoke:provider": "node ./scripts/runProviderSmoke.js",
     "smoke:deepseek:real": "node ./scripts/runDeepSeekRealSmoke.js",
     "smoke:deepseek:structured": "node ./scripts/runDeepSeekStructuredEngineSmoke.js",
     "benchmark:structured": "node ./scripts/runStructuredEngineBenchmark.js",
@@ -26,5 +27,13 @@
   "dependencies": {
     "mammoth": "^1.12.0",
     "pdfjs-dist": "^5.7.284"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.61.1",
+    "eslint": "^10.7.0",
+    "espree": "^11.2.0",
+    "fake-indexeddb": "^6.2.5",
+    "globals": "^17.7.0"
   }
 }

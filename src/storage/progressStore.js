@@ -1,170 +1,226 @@
+const PROGRESS_VERSION = 1;
+const PROGRESS_FIELDS = new Set(["version", "lessons"]);
+const PROGRESS_ENTRY_FIELDS = new Set(["cursor", "completedCardKeys", "updatedAt"]);
+const PROGRESS_REFERENCE_FIELDS = new Set(["courseKey", "moduleKey", "lessonKey"]);
+
 function isPlainObject(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
-function normalizeProgressReference(reference) {
-  if (typeof reference === "string" && reference.trim() !== "") {
-    return { lessonKey: reference.trim() };
+function fail(message) {
+  throw new Error(`Documento de progresso inválido: ${message}`);
+}
+
+function assertPlainObject(value, path) {
+  if (!isPlainObject(value)) {
+    fail(`${path} deve ser um objeto.`);
   }
+}
 
-  if (!isPlainObject(reference)) {
-    return null;
+function assertKnownFields(value, allowedFields, path) {
+  const unknownField = Object.keys(value).find((field) => !allowedFields.has(field));
+  if (unknownField) {
+    fail(`${path}.${unknownField} não pertence ao contrato.`);
   }
+}
 
-  const courseKey =
-    typeof reference.courseKey === "string" && reference.courseKey.trim() !== ""
-      ? reference.courseKey.trim()
-      : "";
-  const moduleKey =
-    typeof reference.moduleKey === "string" && reference.moduleKey.trim() !== ""
-      ? reference.moduleKey.trim()
-      : "";
-  const lessonKey =
-    typeof reference.lessonKey === "string" && reference.lessonKey.trim() !== ""
-      ? reference.lessonKey.trim()
-      : "";
-
-  if (!lessonKey) {
-    return null;
+function readRequiredText(value, path) {
+  if (typeof value !== "string" || !value.trim()) {
+    fail(`${path} deve ser uma string não vazia.`);
   }
+  if (value !== value.trim()) {
+    fail(`${path} não pode conter espaços externos.`);
+  }
+  return value;
+}
 
+function validateProgressReference(reference) {
+  assertPlainObject(reference, "reference");
+  assertKnownFields(reference, PROGRESS_REFERENCE_FIELDS, "reference");
   return {
-    courseKey,
-    moduleKey,
-    lessonKey
+    courseKey: readRequiredText(reference.courseKey, "reference.courseKey"),
+    moduleKey: readRequiredText(reference.moduleKey, "reference.moduleKey"),
+    lessonKey: readRequiredText(reference.lessonKey, "reference.lessonKey")
   };
 }
 
-function uniqueStrings(values) {
-  return [...new Set(values.filter((value) => typeof value === "string" && value.trim() !== "").map((value) => value.trim()))];
+function validateProgressPathKey(pathKey) {
+  const normalized = readRequiredText(pathKey, "lessons.<chave>");
+  const segments = normalized.split("::");
+  if (segments.length !== 3 || segments.some((segment) => !segment)) {
+    fail(`chave de lição inválida: "${normalized}".`);
+  }
+  segments.forEach((segment, index) => readRequiredText(segment, `lessons.<chave>[${index}]`));
+  return normalized;
 }
 
-export function buildLessonProgressKey(reference) {
-  const normalized = normalizeProgressReference(reference);
-  if (!normalized) {
-    return "";
+function validateCompletedCardKeys(value, path) {
+  if (!Array.isArray(value)) {
+    fail(`${path} deve ser uma lista.`);
   }
 
-  return `${normalized.courseKey}::${normalized.moduleKey}::${normalized.lessonKey}`;
+  const keys = value.map((item, index) => readRequiredText(item, `${path}[${index}]`));
+  if (new Set(keys).size !== keys.length) {
+    fail(`${path} não pode conter ids duplicados.`);
+  }
+  return keys;
 }
 
-function normalizeProgressEntry(entry) {
-  if (!isPlainObject(entry)) return null;
+function validateProgressEntry(entry, path) {
+  assertPlainObject(entry, path);
+  assertKnownFields(entry, PROGRESS_ENTRY_FIELDS, path);
+  if (!Number.isInteger(entry.cursor) || entry.cursor < 0) {
+    fail(`${path}.cursor deve ser um inteiro não negativo.`);
+  }
 
-  const cursor = Number.isInteger(entry.cursor) && entry.cursor >= 0 ? entry.cursor : 0;
-  const completedCardKeys = uniqueStrings(Array.isArray(entry.completedCardKeys) ? entry.completedCardKeys : []);
-  const updatedAt = typeof entry.updatedAt === "string" && entry.updatedAt.trim() ? entry.updatedAt.trim() : null;
+  const completedCardKeys = validateCompletedCardKeys(entry.completedCardKeys, `${path}.completedCardKeys`);
+  if (completedCardKeys.length !== entry.cursor + 1) {
+    fail(`${path}.completedCardKeys deve registrar exatamente os cards até o cursor.`);
+  }
+  const updatedAt = entry.updatedAt === undefined
+    ? null
+    : readRequiredText(entry.updatedAt, `${path}.updatedAt`);
+  if (updatedAt) {
+    const parsedDate = new Date(updatedAt);
+    if (!Number.isFinite(parsedDate.getTime()) || parsedDate.toISOString() !== updatedAt) {
+      fail(`${path}.updatedAt deve usar o formato ISO UTC.`);
+    }
+  }
 
   return {
-    cursor,
+    cursor: entry.cursor,
     completedCardKeys,
     ...(updatedAt ? { updatedAt } : {})
   };
 }
 
-export function normalizeProgressDocument(progressDocument) {
-  if (!isPlainObject(progressDocument)) {
-    return {
-      version: 1,
-      lessons: {}
-    };
+function validateCards(cards) {
+  if (!Array.isArray(cards) || cards.length === 0) {
+    throw new TypeError("A gravação de progresso exige uma lista não vazia de cards.");
   }
 
-  const lessons = isPlainObject(progressDocument.lessons) ? progressDocument.lessons : {};
-  const normalizedLessons = {};
-
-  for (const [lessonKey, value] of Object.entries(lessons)) {
-    const normalizedEntry = normalizeProgressEntry(value);
-    if (normalizedEntry) {
-      normalizedLessons[lessonKey] = normalizedEntry;
+  const ids = cards.map((card, index) => {
+    if (!isPlainObject(card)) {
+      throw new TypeError(`Card inválido na posição ${index}.`);
     }
+    return readRequiredText(card.id, `cards[${index}].id`);
+  });
+  if (new Set(ids).size !== ids.length) {
+    throw new Error("A gravação de progresso não aceita ids de card duplicados.");
+  }
+  return ids;
+}
+
+export function createEmptyProgressDocument() {
+  return {
+    version: PROGRESS_VERSION,
+    lessons: {}
+  };
+}
+
+function validateProgressEnvelope(progressDocument) {
+  assertPlainObject(progressDocument, "$");
+  assertKnownFields(progressDocument, PROGRESS_FIELDS, "$");
+  if (progressDocument.version !== PROGRESS_VERSION) {
+    fail(`$.version deve ser ${PROGRESS_VERSION}.`);
+  }
+  assertPlainObject(progressDocument.lessons, "$.lessons");
+}
+
+export function validateProgressDocument(progressDocument) {
+  validateProgressEnvelope(progressDocument);
+
+  const lessons = {};
+  for (const [rawPathKey, entry] of Object.entries(progressDocument.lessons)) {
+    const pathKey = validateProgressPathKey(rawPathKey);
+    lessons[pathKey] = validateProgressEntry(entry, `$.lessons[${JSON.stringify(pathKey)}]`);
   }
 
   return {
-    version: 1,
-    lessons: normalizedLessons
+    version: PROGRESS_VERSION,
+    lessons
   };
+}
+
+export function buildLessonProgressKey(reference) {
+  const normalized = validateProgressReference(reference);
+  return `${normalized.courseKey}::${normalized.moduleKey}::${normalized.lessonKey}`;
 }
 
 export function readLessonProgressEntry(progressDocument, reference) {
-  const normalized = normalizeProgressDocument(progressDocument);
-  const lessons = normalized.lessons || {};
+  validateProgressEnvelope(progressDocument);
   const pathKey = buildLessonProgressKey(reference);
-  return pathKey && lessons[pathKey] ? lessons[pathKey] : null;
+  const entry = progressDocument.lessons[pathKey];
+  return entry === undefined ? null : validateProgressEntry(entry, `$.lessons[${JSON.stringify(pathKey)}]`);
 }
 
 export function getLessonProgressCursor(progressDocument, reference, totalCards = 0) {
+  if (!Number.isInteger(totalCards) || totalCards < 0) {
+    throw new TypeError("A quantidade de cards deve ser um inteiro não negativo.");
+  }
   const entry = readLessonProgressEntry(progressDocument, reference);
-  if (!entry) {
+  if (!entry || totalCards === 0) {
     return 0;
   }
-
-  const maxIndex = Math.max(0, Number(totalCards || 0) - 1);
-  const safeCursor = Number.isInteger(entry.cursor) && entry.cursor >= 0 ? entry.cursor : 0;
-  return Math.max(0, Math.min(safeCursor, maxIndex));
+  return Math.min(entry.cursor, totalCards - 1);
 }
 
-export function writeLessonProgressEntry(progressDocument, reference, cards = [], reachedIndex = 0) {
-  const normalized = normalizeProgressDocument(progressDocument);
-  const normalizedCards = Array.isArray(cards) ? cards.filter((card) => card && typeof card.id === "string" && card.id.trim() !== "") : [];
-  if (!normalizedCards.length) {
-    return normalized;
-  }
-
+export function writeLessonProgressEntry(progressDocument, reference, cards, reachedIndex) {
+  const validated = validateProgressDocument(progressDocument);
   const pathKey = buildLessonProgressKey(reference);
-  if (!pathKey) {
-    return normalized;
+  const cardIds = validateCards(cards);
+  if (!Number.isInteger(reachedIndex) || reachedIndex < 0) {
+    throw new TypeError("O índice alcançado deve ser um inteiro não negativo.");
   }
 
-  const nextLessons = { ...(normalized.lessons || {}) };
-  const previous = readLessonProgressEntry(normalized, reference);
-  const previousCursor = previous && Number.isInteger(previous.cursor) && previous.cursor >= 0 ? previous.cursor : 0;
-  const safeReachedIndex = Math.max(0, Math.min(Number.isInteger(reachedIndex) ? reachedIndex : 0, normalizedCards.length - 1));
-  const furthestCursor = Math.max(previousCursor, safeReachedIndex);
-
-  nextLessons[pathKey] = {
-    cursor: furthestCursor,
-    completedCardKeys: normalizedCards.slice(0, furthestCursor + 1).map((card) => card.id.trim()),
-    updatedAt: new Date().toISOString()
-  };
-
+  const previousCursor = validated.lessons[pathKey]?.cursor || 0;
+  const lastCardIndex = cardIds.length - 1;
+  const furthestCursor = Math.min(Math.max(previousCursor, reachedIndex), lastCardIndex);
   return {
-    version: 1,
-    lessons: nextLessons
+    version: PROGRESS_VERSION,
+    lessons: {
+      ...validated.lessons,
+      [pathKey]: {
+        cursor: furthestCursor,
+        completedCardKeys: cardIds.slice(0, furthestCursor + 1),
+        updatedAt: new Date().toISOString()
+      }
+    }
   };
 }
 
 export function removeLessonProgressEntries(progressDocument, lessonReferences = []) {
-  const normalized = normalizeProgressDocument(progressDocument);
-  const blockedKeys = new Set(
-    (Array.isArray(lessonReferences) ? lessonReferences : []).map((reference) => buildLessonProgressKey(reference)).filter(Boolean)
+  const validated = validateProgressDocument(progressDocument);
+  if (!Array.isArray(lessonReferences)) {
+    throw new TypeError("As referências de progresso devem formar uma lista.");
+  }
+  const blockedKeys = new Set(lessonReferences.map((reference) => buildLessonProgressKey(reference)));
+  const lessons = Object.fromEntries(
+    Object.entries(validated.lessons).filter(([pathKey]) => !blockedKeys.has(pathKey))
   );
-
-  if (!blockedKeys.size) {
-    return normalized;
-  }
-
-  const nextLessons = {};
-  for (const [lessonKey, entry] of Object.entries(normalized.lessons)) {
-    if (!blockedKeys.has(lessonKey)) {
-      nextLessons[lessonKey] = entry;
-    }
-  }
-
   return {
-    version: 1,
-    lessons: nextLessons
+    version: PROGRESS_VERSION,
+    lessons
   };
 }
 
 export function serializeProgressDocument(progressDocument) {
-  return JSON.stringify(normalizeProgressDocument(progressDocument), null, 2);
+  return JSON.stringify(validateProgressDocument(progressDocument), null, 2);
 }
 
 export function parseProgressDocument(rawValue) {
+  if (rawValue === null) {
+    return createEmptyProgressDocument();
+  }
   if (typeof rawValue !== "string" || rawValue.trim() === "") {
-    return normalizeProgressDocument(null);
+    fail("o valor persistido deve ser JSON não vazio ou null quando ausente.");
   }
 
-  return normalizeProgressDocument(JSON.parse(rawValue));
+  let parsed;
+  try {
+    parsed = JSON.parse(rawValue);
+  } catch (error) {
+    throw new Error(`Documento de progresso inválido: JSON malformado (${error.message}).`, { cause: error });
+  }
+  return validateProgressDocument(parsed);
 }

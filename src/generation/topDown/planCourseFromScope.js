@@ -7,7 +7,9 @@ export async function planCourseFromScope({
   scopeContract,
   provider,
   modelId,
-  project = createEmptyProjectDocument()
+  project = createEmptyProjectDocument(),
+  attachments = [],
+  didacticPolicy = {}
 } = {}) {
   const scopeResult = validateScopeContractDocument(scopeContract);
   if (!scopeResult.ok) {
@@ -23,7 +25,9 @@ export async function planCourseFromScope({
     provider,
     modelId,
     project,
-    logger
+    logger,
+    attachments,
+    didacticPolicy
   });
   return {
     ...result,

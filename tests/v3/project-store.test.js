@@ -3,10 +3,10 @@ import assert from "node:assert/strict";
 
 import { parseProjectDocument } from "../../src/storage/projectStore.js";
 import { createProjectStorage } from "../../src/storage/createProjectStorage.js";
-import { createEmbeddedSeedProjectDocument } from "../../src/ui/embeddedSeedProjectDocument.js";
+import { getEmbeddedSeedProjectFixture } from "../support/embeddedCatalogFixture.js";
 
-test("o parser saneia lacunas em after e afterBlocks antes de validar o projeto", () => {
-  const parsed = parseProjectDocument(JSON.stringify({
+test("o parser rejeita feedback com lacunas interativas", () => {
+  const source = JSON.stringify({
     contract: "aralearn.contract",
     version: 3,
     kind: "project",
@@ -65,16 +65,16 @@ test("o parser saneia lacunas em after e afterBlocks antes de validar o projeto"
         ]
       }
     ]
-  }));
+  });
 
-  const card = parsed.courses[0].modules[0].lessons[0].microsequences[0].cards[0];
-  assert.equal(card.after, "Revise setor.");
-  assert.equal(card.afterBlocks[0].value, "Resumo: matriz.");
-  assert.equal(card.afterBlocks[1].code, "const nome = 'dado';");
+  assert.throws(
+    () => parseProjectDocument(source),
+    /after não pode conter lacunas interativas|afterBlocks não pode conter lacunas interativas/u
+  );
 });
 
 test("o armazenamento mantém cursos oficiais fora do documento persistido", () => {
-  const seedProject = createEmbeddedSeedProjectDocument();
+  const seedProject = getEmbeddedSeedProjectFixture();
   const ai900Course = seedProject.courses.find(
     (course) => course.id === "course-microsoft-azure-ai-fundamentals-ai900"
   );
@@ -91,7 +91,9 @@ test("o armazenamento mantém cursos oficiais fora do documento persistido", () 
   const storage = createProjectStorage({
     getItem: (key) => values.get(key) || null,
     setItem: (key, value) => values.set(key, value),
-    removeItem: (key) => values.delete(key)
+    setItems: (entries) => entries.forEach(([key, value]) => values.set(key, value)),
+    removeItem: (key) => values.delete(key),
+    flush: async () => undefined
   }, undefined, seedProject);
   storage.saveProject({ ...seedProject, courses: [...seedProject.courses, extraCourse] });
   const persisted = JSON.parse(values.get("aralearn.project"));

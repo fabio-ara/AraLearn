@@ -6,10 +6,13 @@ import { renderActionMenuOverlay } from "./renderActionMenuOverlay.js";
 import { renderAssistConfigOverlay } from "./renderAssistConfigOverlay.js";
 import { renderProviderConfigOverlay } from "./renderProviderConfigOverlay.js";
 import { renderExternalImportOverlay } from "./renderExternalImportOverlay.js";
-import { renderUiIcon } from "./renderUiIcons.js";
+import {
+  ASSIST_CARD_CONTAINER_OPTIONS,
+  buildEntityEditorModel
+} from "./entityEditorModel.js";
 import { captureRenderState, restoreRenderState } from "./renderState.js";
+import { continuePopupMatches, createContinuePopupState, resolveIndexedTarget } from "./studyCardProgression.js";
 import { mergeGenerationTopics, splitGenerationTopics } from "./generationTopicInput.js";
-import { createEmbeddedSeedProjectDocument } from "./embeddedSeedProjectDocument.js";
 import {
   buildCodexCliHealthCommand,
   buildCodexCliSetupScript,
@@ -17,30 +20,13 @@ import {
 } from "./codexCliSetup.js";
 import { handleExternalJsonImportText } from "./externalJsonImport.js";
 import {
-  buildGuideEditorFields,
   resolveGuidePayload,
   GUIDE_LEVELS
 } from "../sourceGuides/sourceGuideStructured.js";
-import {
-  buildLessonGuidanceFromPreset,
-  normalizeLessonGuidance
-} from "../generation/guidance/lessonGuidance.js";
+import { buildLessonGuidanceFromPreset } from "../generation/guidance/lessonGuidance.js";
 import { getRuntimePopupButtonEntry } from "../render/renderCardRuntime.js";
 import { extractTextGapAnswers, parseTextGapRenderableParts } from "../core/textGaps.js";
 import { resolveCardRuntime } from "../core/cardRuntime.js";
-import {
-  cloneDirectoryTreeNodes,
-  directoryTreeNodeCanHaveChildren,
-  DIRECTORY_TREE_BASE_NODE_ID,
-  findDirectoryTreeNodeEntry,
-  getDirectoryTreePathLabels,
-  normalizeDirectoryTreeNodeNameByType,
-  normalizeDirectoryTreeNodeType,
-  normalizeDirectoryTreePractice,
-  resolveDirectoryTreePracticeExpectedName,
-  resolveDirectoryTreePracticeExpectedType,
-  resolveDirectoryTreePracticeNameTemplate
-} from "../core/directoryTree.js";
 import { getCorrectExerciseOptionIds, getExerciseOptionStableId } from "../core/exerciseOptions.js";
 import {
   createFlowchartExerciseState,
@@ -64,7 +50,6 @@ import {
   buildCardPathKey,
   collectAssistRefs,
   collectLessonCards,
-  findCard,
   findLessonCardEntryIndex,
   findCourse,
   findLesson,
@@ -73,9 +58,7 @@ import {
   findSelectedCard
 } from "./lessonEditorPaths.js";
 import {
-  readAssistConfigStorage,
   readCommentStorage,
-  writeAssistConfigStorage,
   writeCommentStorage
 } from "./lessonEditorStorage.js";
 import { createEmptyInterventionSession, interventionSessionNeedsIteration } from "./interventionSessionState.js";
@@ -113,16 +96,15 @@ import {
   reduceGenerationProgress
 } from "../generation/runtime/progressViewModel.js";
 import { resolveGenerationProviderReadiness, resolveGenerationPanelScopeFromAction } from "../generation/runtime/generationViewModel.js";
-import { getLessonProgressCursor, removeLessonProgressEntries, writeLessonProgressEntry } from "../storage/progressStore.js";
+import { removeLessonProgressEntries, writeLessonProgressEntry } from "../storage/progressStore.js";
 import { detectJsonExchangeFormat } from "../storage/jsonExchange.js";
-import { createStarterContractCard, getContractCardKind, listContractAnswerValues } from "../contract/contractCard.js";
+import { createStarterContractCard } from "../contract/contractCard.js";
 import {
   isDraftMicrosequence,
-  isRunnableMicrosequence,
   resolveMicrosequenceRuntimeIncluded
 } from "../model/microsequenceStatus.js";
 import { ingestAttachments } from "../generation/ingestion/attachmentIngestion.js";
-import { listEngineProfileSeeds } from "../generation/config/engineProfileRegistry.js";
+import { DEFAULT_ENGINE_PROFILE_ID, listEngineProfileSeeds } from "../generation/config/engineProfileRegistry.js";
 import {
   createCourse as createCourseDocument,
   createLesson as createLessonDocument,
@@ -146,16 +128,6 @@ import {
 
 const MAX_ASSIST_REFS = 5;
 const MAX_ASSIST_ATTACHMENTS = 6;
-const TEORIA_DOS_GRAFOS_MODULE_KEY = "module-teoria-dos-grafos";
-const GRAFOS_FUNDAMENTOS_LESSON_KEY = "lesson-fundamentos-de-grafos";
-const GRAFOS_INTRO_MICROSEQUENCE_KEY = "microsequence-definicao-e-vocabulario-basico";
-const BROKEN_GRAFOS_CARD_PATTERNS = [
-  /varia[çc][aã]o curta/i,
-  /complete o percursocomplete:/i,
-  /sua resposta deve ajudar a aplicar o procedimento/i,
-  /^__:/m,
-  /responda no formato da lista/i
-];
 const ASSIST_MODEL_OPTIONS = [
   { value: DEEPSEEK_QUALITY_MODEL, label: "DeepSeek Quality" },
   { value: "deepseek-v4-flash", label: "DeepSeek v4 Flash" },
@@ -172,24 +144,6 @@ const DIDACTIC_PROFILE_SEED_OPTIONS = listEngineProfileSeeds().map((profile) => 
 const ASSIST_USER_MODES = {
   EDIT_MICROSEQUENCE: "edit-microsequence"
 };
-const ASSIST_CARD_CONTAINER_OPTIONS = [
-  { value: "", label: "Automático", icon: renderUiIcon("sparkles", "action-menu-svg-icon") },
-  { value: "paragraph", label: "Parágrafo", icon: renderUiIcon("prompt", "action-menu-svg-icon") },
-  { value: "choice", label: "Escolha", icon: renderUiIcon("intent", "action-menu-svg-icon") },
-  { value: "code", label: "Código", icon: renderUiIcon("title", "action-menu-svg-icon") },
-  { value: "table", label: "Tabela", icon: renderUiIcon("module", "action-menu-svg-icon") },
-  { value: "tree", label: "Árvore de diretórios", icon: renderUiIcon("folder", "action-menu-svg-icon") },
-  { value: "flow", label: "Fluxograma", icon: renderUiIcon("microsequence", "action-menu-svg-icon") },
-  { value: "graph", label: "Grafo", icon: renderUiIcon("graph", "action-menu-svg-icon") },
-  { value: "plane", label: "Plano cartesiano", icon: renderUiIcon("card", "action-menu-svg-icon") },
-  { value: "matrix", label: "Matriz", icon: renderUiIcon("card", "action-menu-svg-icon") }
-];
-const MICROSEQUENCE_ROLE_OPTIONS = [
-  { id: "explain", label: "Explicar" },
-  { id: "practice", label: "Praticar" },
-  { id: "review", label: "Revisar" },
-  { id: "support", label: "Apoio" }
-];
 const BOTTOM_UP_TARGET_MODE_OPTIONS = [
   { value: "current", label: "Nesta etapa" },
   { value: "new_after_current", label: "Nova etapa depois" }
@@ -204,10 +158,7 @@ const ASSIST_ACTION_INTENTS = Object.freeze({
   NEXT_PLANNED: "next_planned",
   BRANCH_AFTER_CURRENT: "branch_after_current"
 });
-const COURSES_VIEWS = new Set(["courses", "course", "module", "lesson", "microsequence", "microsequence-assist"]);
-const STRUCTURE_VERSIONING_ACTIVE = false;
-const GENERATED_PENDING_OPERATION = "generated-pending";
-const GENERATED_ACCEPTED_OPERATION = "generated";
+const COURSES_VIEWS = new Set(["courses", "course", "module", "lesson", "microsequence"]);
 
 export function canSubmitAssistRequestFromState({
   promptText,
@@ -231,27 +182,9 @@ function fail(message) {
   throw new Error(message);
 }
 
-function serializeCardForBrokenGrafosDetection(card = {}) {
-  const tableText = Array.isArray(card?.rows)
-    ? card.rows.flat().map((cell) => String(cell ?? "").trim()).filter(Boolean).join(" ")
-    : "";
-  return [
-    typeof card?.title === "string" ? card.title : "",
-    typeof card?.text === "string" ? card.text : "",
-    typeof card?.question === "string" ? card.question : "",
-    typeof card?.answer === "string" ? card.answer : "",
-    typeof card?.after === "string" ? card.after : "",
-    typeof card?.code === "string" ? card.code : "",
-    tableText
-  ].filter(Boolean).join("\n");
+function text(value) {
+  return typeof value === "string" ? value.trim() : "";
 }
-
-function looksLikeBrokenGrafosIntroCard(card = {}) {
-  const source = serializeCardForBrokenGrafosDetection(card);
-  return BROKEN_GRAFOS_CARD_PATTERNS.some((pattern) => pattern.test(source));
-}
-
-
 
 function buildDidacticProfileOptions(customProfiles = []) {
   return [
@@ -267,111 +200,6 @@ function buildDidacticProfileOptions(customProfiles = []) {
 
 function buildAssistCustomProfileId() {
   return `assist.custom.${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
-}
-
-function isGeneratedPendingOperation(value) {
-  return String(value || "").trim() === GENERATED_PENDING_OPERATION;
-}
-
-function summarizeFlowStructure(node, parts = []) {
-  if (!node || typeof node !== "object") return parts;
-  if (typeof node.text === "string" && node.text.trim()) {
-    parts.push(node.text.trim());
-  }
-  if (typeof node.condition === "string" && node.condition.trim()) {
-    parts.push(node.condition.trim());
-  }
-  if (typeof node.expression === "string" && node.expression.trim()) {
-    parts.push(node.expression.trim());
-  }
-  ["items", "thenBranch", "elseBranch", "body", "defaultBranch"].forEach((fieldName) => {
-    const list = node[fieldName];
-    if (Array.isArray(list)) {
-      list.forEach((item) => summarizeFlowStructure(item, parts));
-    }
-  });
-  if (Array.isArray(node.cases)) {
-    node.cases.forEach((caseItem) => {
-      if (typeof caseItem?.condition === "string" && caseItem.condition.trim()) {
-        parts.push(caseItem.condition.trim());
-      }
-      if (typeof caseItem?.match === "string" && caseItem.match.trim()) {
-        parts.push(caseItem.match.trim());
-      }
-      if (Array.isArray(caseItem?.thenBranch)) {
-        caseItem.thenBranch.forEach((item) => summarizeFlowStructure(item, parts));
-      }
-      if (Array.isArray(caseItem?.body)) {
-        caseItem.body.forEach((item) => summarizeFlowStructure(item, parts));
-      }
-    });
-  }
-  return parts;
-}
-
-function readCardText(card) {
-  if (!card || typeof card !== "object") {
-    return "";
-  }
-
-  if (typeof card.text === "string") {
-    return card.text;
-  }
-  if (typeof card.question === "string") {
-    return card.question;
-  }
-  if (typeof card.code === "string") {
-    return card.code;
-  }
-  if (Array.isArray(card?.rows) && card.rows.length) {
-    return card.rows
-      .map((row) => (Array.isArray(row) ? row.join(" | ") : ""))
-      .filter(Boolean)
-      .join("\n");
-  }
-  if (Array.isArray(card?.columns) && card.columns.length) {
-    return card.columns.join(" | ");
-  }
-  if (Array.isArray(card?.vector)) {
-    return `v = (${card.vector.join(", ")})`;
-  }
-  if (Array.isArray(card?.vectors)) {
-    const labels = ["v", "w", "u", "t"];
-    return card.vectors.map((vector, index) => `${labels[index] || `v${index + 1}`} = (${vector.join(", ")})`).join("\n");
-  }
-  if (Array.isArray(card?.sum) && card.sum.length === 2) {
-    const [first, second] = card.sum;
-    return `v + w = (${Number(first[0]) + Number(second[0])}, ${Number(first[1]) + Number(second[1])})`;
-  }
-  if (card?.scale && typeof card.scale === "object") {
-    return `${card.scale.k}v`;
-  }
-  if (Array.isArray(card?.distance) && card.distance.length === 2) {
-    return `A(${card.distance[0].join(", ")}) B(${card.distance[1].join(", ")})`;
-  }
-  if (Array.isArray(card?.vertices)) {
-    const vertices = card.vertices.map((vertex) => vertex?.label || vertex?.id).filter(Boolean);
-    const edges = Array.isArray(card?.edges) ? card.edges.map((edge) => `${edge?.from}-${edge?.to}`).filter((item) => !item.includes("undefined")) : [];
-    if (vertices.length && edges.length) {
-      return `Vértices: ${vertices.join(", ")}\nArestas: ${edges.join(", ")}`;
-    }
-    if (vertices.length) {
-      return `Vértices: ${vertices.join(", ")}`;
-    }
-  }
-  if (Array.isArray(card?.values)) {
-    return card.values
-      .map((row) => (Array.isArray(row) ? row.join(" ") : ""))
-      .filter(Boolean)
-      .join("\n");
-  }
-  if (card?.resource === "tree" && Array.isArray(card?.nodes)) {
-    return card.prompt || card.nodes.map((node) => node?.label || node?.id).filter(Boolean).join(" > ");
-  }
-  if (card?.resource === "flow" && card?.structure && typeof card.structure === "object") {
-    return summarizeFlowStructure(card.structure).join(" -> ");
-  }
-  return "";
 }
 
 function slugifyDownloadName(value, fallback = "curso") {
@@ -398,27 +226,6 @@ function normalizeAssistAttachmentName(value, fallback = "documento") {
 
 
 
-
-function formatOverlayTimestamp(value) {
-  const iso = String(value || "").trim();
-  const match = iso.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})/);
-  if (match) {
-    const [, year, month, day, hour, minute, second] = match;
-    return `${day}/${month}/${year} ${hour}:${minute}:${second}`;
-  }
-
-  const parsed = new Date(iso);
-  if (Number.isNaN(parsed.getTime())) {
-    return iso;
-  }
-
-  const pad = (item) => String(item).padStart(2, "0");
-  return (
-    [pad(parsed.getDate()), pad(parsed.getMonth() + 1), parsed.getFullYear()].join("/") +
-    " " +
-    [pad(parsed.getHours()), pad(parsed.getMinutes()), pad(parsed.getSeconds())].join(":")
-  );
-}
 
 function buildAssistAttachmentSignature(file) {
   if (!file || typeof file !== "object") {
@@ -456,418 +263,19 @@ function normalizeAssistAttachmentList(files = []) {
   return nextItems;
 }
 
-function buildCardUpdateFromText(card, title, text) {
-  const base = {
-    title: String(title || "").trim() || card?.title || "Novo card"
-  };
-  const nextText = String(text || "").trim();
-  const kind = getContractCardKind(card);
-
-  if (kind === "choice") {
-    return {
-      ...base,
-      question: nextText || card.question || "Qual alternativa é a mais adequada?",
-      options: Array.isArray(card.options) && card.options.length
-        ? card.options
-        : createStarterContractCard("choice").options,
-      answer: Array.isArray(card.options) && card.options.some((option) => option?.id === card.answer)
-        ? card.answer
-        : createStarterContractCard("choice").answer
-    };
-  }
-
-  if (kind === "code") {
-    return {
-      ...base,
-      prompt: card.prompt || "Observe o exemplo.",
-      language: card.language || "text",
-      code: String(text || "") || card.code || ""
-    };
-  }
-
-  if (kind === "table") {
-    return {
-      ...base,
-      ...(nextText ? { after: nextText } : card.after ? { after: card.after } : {}),
-      columns: Array.isArray(card.columns) && card.columns.length ? card.columns : ["Coluna A", "Coluna B"],
-      rows: Array.isArray(card.rows) && card.rows.length ? card.rows : [["Valor 1", "Valor 2"]]
-    };
-  }
-
-  if (kind === "tree") {
-    return {
-      ...base,
-      prompt: nextText || card.prompt || "Observe a estrutura.",
-      nodes: Array.isArray(card.nodes) && card.nodes.length
-        ? card.nodes
-        : createStarterContractCard("tree").nodes
-    };
-  }
-
-  if (kind === "flow") {
-    return {
-      ...base,
-      ...(nextText ? { after: nextText } : card.after ? { after: card.after } : {}),
-      prompt: card.prompt || createStarterContractCard("flow").prompt,
-      structure: card.structure && typeof card.structure === "object"
-        ? card.structure
-        : createStarterContractCard("flow").structure
-    };
-  }
-
-  if (kind === "plane") {
-    return {
-      ...base,
-      prompt: nextText || card.prompt || createStarterContractCard("plane").prompt,
-      vector: Array.isArray(card.vector) && card.vector.length ? card.vector : createStarterContractCard("plane").vector,
-      ...(card.after ? { after: card.after } : {})
-    };
-  }
-
-  if (kind === "graph") {
-    return {
-      ...base,
-      prompt: nextText || card.prompt || createStarterContractCard("graph").prompt,
-      vertices: Array.isArray(card.vertices) && card.vertices.length ? card.vertices : createStarterContractCard("graph").vertices,
-      edges: Array.isArray(card.edges) && card.edges.length ? card.edges : createStarterContractCard("graph").edges,
-      highlight: card.highlight && typeof card.highlight === "object" ? card.highlight : createStarterContractCard("graph").highlight
-    };
-  }
-
-  if (kind === "relation_map") {
-    return {
-      ...base,
-      prompt: nextText || card.prompt || createStarterContractCard("relation_map").prompt,
-      leftSet: card.leftSet && typeof card.leftSet === "object" ? card.leftSet : createStarterContractCard("relation_map").leftSet,
-      rightSet: card.rightSet && typeof card.rightSet === "object" ? card.rightSet : createStarterContractCard("relation_map").rightSet,
-      relations: Array.isArray(card.relations) && card.relations.length ? card.relations : createStarterContractCard("relation_map").relations,
-      pairList: Array.isArray(card.pairList) ? card.pairList : createStarterContractCard("relation_map").pairList,
-      relationTable: card.relationTable && typeof card.relationTable === "object"
-        ? card.relationTable
-        : createStarterContractCard("relation_map").relationTable,
-      highlight: card.highlight && typeof card.highlight === "object" ? card.highlight : createStarterContractCard("relation_map").highlight
-    };
-  }
-
-  if (kind === "matrix") {
-    return {
-      ...base,
-      prompt: nextText || card.prompt || createStarterContractCard("matrix").prompt,
-      values: Array.isArray(card.values) && card.values.length ? card.values : createStarterContractCard("matrix").values
-    };
-  }
-
-  return {
-    ...base,
-    text: nextText || card?.text || "Descreva a ideia central desta microssequência."
-  };
-}
-
 function clampFlowchartScale(value) {
   return Math.max(0.45, Math.min(2.4, Number(value || 1)));
 }
 
-function makeEntityEditorModel(state) {
-  const { project, selection, entityEditor } = state;
-  if (!entityEditor) return null;
-
-  if (entityEditor.kind === "home-actions") {
-    return {
-      variant: "action-menu",
-      title: "Ações",
-      placement: "side",
-      fields: [],
-      actions: [
-        { key: "import-json", label: "Importar", icon: "&#8679;" },
-        { key: "export-backup", label: "Exportar backup", icon: "&#8681;" }
-      ],
-      showSaveButton: false
-    };
-  }
-
-  if (entityEditor.kind === "course-actions") {
-    const course = findCourse(project, entityEditor.courseKey || selection.courseKey);
-    if (!course) return null;
-    return {
-      variant: "action-menu",
-      title: "Ações do curso",
-      placement: "bottom",
-      fields: [],
-      actions: [
-        { key: "edit-course-metadata", label: "Editar curso", icon: "&#9998;" },
-        { key: "reset-course-progress", label: "Zerar progresso do curso", icon: "&#8635;" },
-        { key: "export-course", label: "Exportar curso", icon: "&#8681;" },
-        { key: "delete-course", label: "Excluir curso", icon: "&#128465;", tone: "danger" }
-      ],
-      showSaveButton: false
-    };
-  }
-
-  if (entityEditor.kind === "course-screen-actions") {
-    return {
-      variant: "action-menu",
-      title: "Ações",
-      placement: "side",
-      fields: [],
-      actions: [
-        { key: "create-module", label: "Novo módulo", icon: "&#43;" },
-        { key: "import-module", label: "Importar módulo", icon: "&#8679;" }
-      ],
-      showSaveButton: false
-    };
-  }
-
-  if (entityEditor.kind === "module-screen-actions") {
-    return {
-      variant: "action-menu",
-      title: "Ações",
-      placement: "side",
-      fields: [],
-      actions: [
-        { key: "create-lesson", label: "Nova lição", icon: "&#43;" },
-        { key: "import-lesson", label: "Importar lição", icon: "&#8679;" }
-      ],
-      showSaveButton: false
-    };
-  }
-
-  if (entityEditor.kind === "course-metadata") {
-    const course = findCourse(project, entityEditor.courseKey || selection.courseKey);
-    if (!course) return null;
-    return {
-      title: "Curso",
-      fields: [
-        { name: "title", label: "Título", type: "text", value: course.title || "" },
-        { name: "description", label: "Descrição", type: "textarea", value: course.goal || "" }
-      ],
-      actions: []
-    };
-  }
-
-  if (entityEditor.kind === "course") {
-    const course = findCourse(project, entityEditor.courseKey || selection.courseKey);
-    if (!course) return null;
-    return {
-      title: "Curso",
-      fields: [
-        { name: "title", label: "Título", type: "text", value: course.title || "" },
-        { name: "description", label: "Descrição", type: "textarea", value: course.goal || "" }
-      ],
-      actions: [
-        { key: "create-module", label: "Novo módulo" },
-        { key: "create-course", label: "Novo curso" },
-        { key: "delete-course", label: "Excluir curso", tone: "danger" }
-      ]
-    };
-  }
-
-  if (entityEditor.kind === "module") {
-    const moduleValue = findModule(project, entityEditor.courseKey || selection.courseKey, entityEditor.moduleKey);
-    if (!moduleValue) return null;
-    return {
-      title: "Módulo",
-      fields: [
-        { name: "title", label: "Título", type: "text", value: moduleValue.title || "" },
-        { name: "description", label: "Descrição", type: "textarea", value: moduleValue.guide?.goal || "" }
-      ],
-      actions: []
-    };
-  }
-
-  if (entityEditor.kind === "module-actions") {
-    const moduleValue = findModule(project, entityEditor.courseKey || selection.courseKey, entityEditor.moduleKey);
-    if (!moduleValue) return null;
-    return {
-      variant: "action-menu",
-      title: "Ações do módulo",
-      placement: "bottom",
-      fields: [],
-      actions: [
-        { key: "edit-module-metadata", label: "Editar módulo", icon: "&#9998;" },
-        { key: "create-lesson", label: "Adicionar lição", icon: "&#43;" },
-        { key: "reset-module-progress", label: "Zerar progresso do módulo", icon: "&#8635;" },
-        { key: "export-module", label: "Exportar módulo", icon: "&#8681;" },
-        { key: "delete-module", label: "Excluir módulo", icon: "&#128465;", tone: "danger" }
-      ],
-      showSaveButton: false
-    };
-  }
-
-  if (entityEditor.kind === "lesson") {
-    const lesson = findLesson(project, entityEditor.courseKey || selection.courseKey, entityEditor.moduleKey, entityEditor.lessonKey);
-    if (!lesson) return null;
-    return {
-      title: "Lição",
-      fields: [
-        { name: "title", label: "Título", type: "text", value: lesson.title || "" },
-        { name: "description", label: "Descrição", type: "textarea", value: lesson.guide?.goal || "" }
-      ],
-      actions: []
-    };
-  }
-
-  if (entityEditor.kind === "lesson-source-guide") {
-    const lesson = findLesson(project, entityEditor.courseKey || selection.courseKey, entityEditor.moduleKey, entityEditor.lessonKey);
-    if (!lesson) return null;
-    return {
-      title: "Fonte-guia da lição",
-      fields: buildGuideEditorFields(lesson.guide || {}, { level: GUIDE_LEVELS.LESSON }),
-      actions: []
-    };
-  }
-
-  if (entityEditor.kind === "lesson-actions") {
-    const lesson = findLesson(project, entityEditor.courseKey || selection.courseKey, entityEditor.moduleKey, entityEditor.lessonKey);
-    if (!lesson) return null;
-    return {
-      variant: "action-menu",
-      title: "Ações da lição",
-      placement: "bottom",
-      fields: [],
-      actions: [
-        { key: "edit-lesson-metadata", label: "Editar lição", icon: "&#9998;" },
-        { key: "reset-lesson-progress", label: "Zerar progresso da lição", icon: "&#8635;" },
-        { key: "export-lesson", label: "Exportar lição", icon: "&#8681;" },
-        { key: "delete-lesson", label: "Excluir lição", icon: "&#128465;", tone: "danger" }
-      ],
-      showSaveButton: false
-    };
-  }
-
-  if (entityEditor.kind === "lesson-screen-actions") {
-    return {
-      variant: "action-menu",
-      title: "Ações",
-      placement: "side",
-      fields: [],
-      actions: [
-        { key: "create-microsequence", label: "Nova microssequência", icon: "&#43;" },
-        { key: "import-microsequence", label: "Importar microssequência", icon: "&#8679;" }
-      ],
-      showSaveButton: false
-    };
-  }
-
-  if (entityEditor.kind === "microsequence") {
-    const course = findCourse(project, entityEditor.courseKey || selection.courseKey);
-    const moduleValue = findModule(project, entityEditor.courseKey || selection.courseKey, entityEditor.moduleKey);
-    const lesson = findLesson(project, entityEditor.courseKey || selection.courseKey, entityEditor.moduleKey, entityEditor.lessonKey);
-    const microsequence = findMicrosequence(
-      project,
-      entityEditor.courseKey || selection.courseKey,
-      entityEditor.moduleKey,
-      entityEditor.lessonKey,
-      entityEditor.microsequenceKey
-    );
-    if (!course || !moduleValue || !lesson || !microsequence) return null;
-    const refOptions = collectAssistRefs(course, moduleValue, lesson, microsequence).map((item) => ({
-      id: item.id,
-      label: item.scope ? `${item.title} · ${item.scope}` : item.title
-    }));
-    return {
-      title: "Microssequência",
-      fields: [
-        { name: "title", label: "Título", type: "text", value: microsequence.title || "" },
-        { name: "goal", label: "Objetivo", type: "textarea", value: microsequence.goal || "", iconName: "goal" },
-        {
-          name: "role",
-          label: "Função didática",
-          type: "select",
-          value: microsequence.role || "explain",
-          options: MICROSEQUENCE_ROLE_OPTIONS
-        },
-        {
-          name: "dependsOn",
-          label: "Refs de dependência",
-          type: "multiselect",
-          value: Array.isArray(microsequence.dependsOn) ? microsequence.dependsOn : [],
-          options: refOptions,
-          iconName: "tags",
-          hint: "Selecione as microssequências anteriores que esta etapa exige."
-        },
-        {
-          name: "covers",
-          label: "Covers",
-          type: "tokenlist",
-          value: Array.isArray(microsequence.covers) ? microsequence.covers : [],
-          iconName: "tags",
-          hint: "Liste os tópicos que esta microssequência cobre."
-        },
-        {
-          name: "checks",
-          label: "Checks",
-          type: "tokenlist",
-          value: Array.isArray(microsequence.checks) ? microsequence.checks : [],
-          iconName: "tags",
-          hint: "Liste as evidências de aprendizagem esperadas."
-        }
-      ],
-      actions: []
-    };
-  }
-
-  if (entityEditor.kind === "microsequence-actions") {
-    const microsequence = findMicrosequence(
-      project,
-      entityEditor.courseKey || selection.courseKey,
-      entityEditor.moduleKey,
-      entityEditor.lessonKey,
-      entityEditor.microsequenceKey
-    );
-    if (!microsequence) return null;
-    return {
-      variant: "action-menu",
-      title: "Ações da microssequência",
-      placement: "bottom",
-      fields: [],
-      actions: [
-        { key: "edit-microsequence-metadata", label: "Editar microssequência", icon: "&#9998;" },
-        { key: "create-card", label: "Novo card", icon: "&#43;" },
-        { key: "export-microsequence", label: "Exportar microssequência", icon: "&#8681;" },
-        { key: "delete-microsequence", label: "Excluir microssequência", icon: "&#128465;", tone: "danger" }
-      ],
-      showSaveButton: false
-    };
-  }
-
-  if (entityEditor.kind === "assist-container-picker") {
-    return {
-      variant: "action-menu",
-      title: "Adicionar recursos",
-      placement: "bottom",
-      fields: [],
-      actions: ASSIST_CARD_CONTAINER_OPTIONS.map((item) => ({
-        key: `set-assist-container:${item.value}`,
-        label: item.label,
-        icon: item.icon
-      })),
-      showSaveButton: false
-    };
-  }
-
-  return null;
-}
-
-export function createLessonEditorApp({ root, storage, editor }) {
+export function createLessonEditorApp({ root, storage, localStore, editor, initialProject }) {
   if (!root) fail("Raiz inválida.");
   if (!storage || typeof storage.loadProject !== "function") fail("Storage inválido.");
+  if (!localStore || typeof localStore.getItem !== "function" || typeof localStore.setItem !== "function") fail("Store local inválido.");
   if (!editor) fail("Editor inválido.");
-
-  let loadedProject = null;
-  try {
-    loadedProject = storage.loadProject();
-  } catch {
-    loadedProject = null;
-  }
-  if (!loadedProject || !Array.isArray(loadedProject.courses)) {
-    loadedProject = createEmbeddedSeedProjectDocument();
-    storage.saveProject(loadedProject);
-  }
-  const initialProject = loadedProject;
-  const initialAssistConfig = normalizeAssistConfig(readAssistConfigStorage());
+  if (!initialProject || !Array.isArray(initialProject.courses)) fail("Projeto inicial inválido.");
+  const initialAssistConfig = normalizeAssistConfig({});
   const state = {
     project: initialProject,
-    projectHead: initialProject,
     view: "courses",
     homeTab: "courses",
     generationPanelOpen: false,
@@ -884,12 +292,11 @@ export function createLessonEditorApp({ root, storage, editor }) {
     codexCliSetupStatus: createCodexCliSetupStatus(),
     pendingExternalImport: null,
     microsequenceMode: "play",
-    cardComments: readCommentStorage(),
+    cardComments: readCommentStorage(localStore),
     cardCommentDraft: "",
     flowchartPracticeByBlockKey: {},
     activeFlowchartPrompt: null,
     flowchartPinch: null,
-    directoryTreeUiByBlockKey: {},
     choiceExerciseByBlockKey: {},
     completeExerciseByBlockKey: {},
     activeTextGapPrompt: null,
@@ -944,11 +351,8 @@ export function createLessonEditorApp({ root, storage, editor }) {
 
   state.selection = resolveFirstSelection(state.project);
 
-  function setProject(nextProject, { updateHead = true } = {}) {
+  function setProject(nextProject) {
     state.project = nextProject;
-    if (updateHead) {
-      state.projectHead = nextProject;
-    }
   }
 
   function commitVisibleProjectMutation(mutator, input) {
@@ -1139,11 +543,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
     }
 
     return nextIndex;
-  }
-
-  function getStructureDropPosition(targetNode, clientY) {
-    const rect = targetNode.getBoundingClientRect();
-    return clientY > rect.top + rect.height / 2 ? "after" : "before";
   }
 
   function getStructureAxis(level) {
@@ -1391,10 +790,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
     return ASSIST_CARD_CONTAINER_OPTIONS.find((item) => item.value === container)?.label || "Automático";
   }
 
-  function uniqueTextList(values = []) {
-    return [...new Set((Array.isArray(values) ? values : []).map((item) => String(item || "").trim()).filter(Boolean))];
-  }
-
   function getCurrentInterventionReference(reference = state.selection) {
     return {
       courseKey: String(reference?.courseKey || "").trim(),
@@ -1406,12 +801,12 @@ export function createLessonEditorApp({ root, storage, editor }) {
 
 
 
-  function getInterventionSession(reference = state.selection) {
+  function getInterventionSession() {
     return state.assistDraft.interventionSession || createEmptyInterventionSession();
   }
 
-  function persistInterventionSession(sessionPatch = {}, reference = state.selection) {
-    const current = getInterventionSession(reference);
+  function persistInterventionSession(sessionPatch = {}) {
+    const current = getInterventionSession();
     const nextSession = { ...current, ...sessionPatch };
     state.assistDraft.interventionSession = nextSession;
     if (!state.assistDraft.feedbackEditing) {
@@ -1420,20 +815,12 @@ export function createLessonEditorApp({ root, storage, editor }) {
     return nextSession;
   }
 
-  function persistAssistConfig() {
-    writeAssistConfigStorage(state.assistConfig);
-  }
-
   function cloneAssistConfig(config = state.assistConfig) {
     return structuredClone(config || {});
   }
 
   function findAssistCustomProfile(profileId = "", customProfiles = state.assistConfig.customProfiles) {
     return (Array.isArray(customProfiles) ? customProfiles : []).find((entry) => entry.id === String(profileId || "").trim()) || null;
-  }
-
-  function isAssistCustomProfile(profileId = "", customProfiles = state.assistConfig.customProfiles) {
-    return Boolean(findAssistCustomProfile(profileId, customProfiles));
   }
 
   function getSelectedAssistProfileId(config = state.assistConfig) {
@@ -1506,7 +893,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
     }
     state.assistConfig = normalizeAssistConfig(snapshot);
     state.assistConfigDraft = structuredClone(state.assistConfig);
-    persistAssistConfig();
   }
 
   function startAssistCustomProfileCreation() {
@@ -1526,7 +912,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
       profileTuning: createEmptyAssistProfileTuning()
     });
     state.assistConfigDraft = structuredClone(state.assistConfig);
-    persistAssistConfig();
     render({ preserveState: true });
   }
 
@@ -1706,31 +1091,10 @@ export function createLessonEditorApp({ root, storage, editor }) {
         await globalThis.navigator.clipboard.writeText(safeText);
         return true;
       } catch {
-        // Continua para o fallback anterior.
+        return false;
       }
     }
-
-    if (!globalThis.document?.body) {
-      return false;
-    }
-
-    const textarea = globalThis.document.createElement("textarea");
-    textarea.value = safeText;
-    textarea.setAttribute("readonly", "readonly");
-    textarea.style.position = "fixed";
-    textarea.style.opacity = "0";
-    textarea.style.pointerEvents = "none";
-    globalThis.document.body.appendChild(textarea);
-    textarea.focus();
-    textarea.select();
-
-    try {
-      return globalThis.document.execCommand("copy");
-    } catch {
-      return false;
-    } finally {
-      textarea.remove();
-    }
+    return false;
   }
 
   function openAssistConfig() {
@@ -1762,18 +1126,17 @@ export function createLessonEditorApp({ root, storage, editor }) {
   function setAssistModel(model) {
     const shouldDefaultDeepSeekBaseUrl =
       isDeepSeekModelId(model)
-      && !String(state.assistConfig.baseUrl || state.assistConfig.apiBaseUrl || "").trim();
+      && !String(state.assistConfig.baseUrl || "").trim();
     state.assistConfig = normalizeAssistConfig({
       ...state.assistConfig,
       model,
       ...(shouldDefaultDeepSeekBaseUrl
-        ? { baseUrl: DEEPSEEK_BASE_URL, apiBaseUrl: DEEPSEEK_BASE_URL }
+        ? { baseUrl: DEEPSEEK_BASE_URL }
         : {})
     });
     if (state.assistConfigOpen) {
       state.assistConfigDraft = cloneAssistConfig();
     }
-    persistAssistConfig();
     void handleCodexModelSelection(state.assistConfig.model);
   }
 
@@ -1925,7 +1288,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
     state.assistConfig = nextAssistConfigState.assistConfig;
     state.assistConfigDraft = nextAssistConfigState.assistConfigDraft;
     state.assistConfigDraft = structuredClone(state.assistConfig);
-    persistAssistConfig();
   }
 
 
@@ -1988,38 +1350,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
       state.assistDraft.feedbackDraftText = nextSession.nextPromptDraft || nextSession.feedbackText || "";
     }
   }
-
-  function applyCardContent({ title, text }) {
-    const microsequence = findMicrosequence(
-      state.project,
-      state.selection.courseKey,
-      state.selection.moduleKey,
-      state.selection.lessonKey,
-      state.selection.microsequenceKey
-    );
-    if (!microsequence) return;
-
-    const card = findSelectedCard(microsequence, state.selection);
-    if (!card) return;
-
-    try {
-      const nextCard = buildCardUpdateFromText(card, title, text);
-      const nextProject = editor.updateCard({
-        courseKey: state.selection.courseKey,
-        moduleKey: state.selection.moduleKey,
-        lessonKey: state.selection.lessonKey,
-        microsequenceKey: microsequence.id,
-        cardKey: card.id,
-        ...nextCard
-      });
-
-      setProject(nextProject);
-    } catch {
-      // Evita perder foco do editor em estados transitórios.
-    }
-  }
-
-
 
   function selectMicrosequenceCard(microsequenceKey, targetIndex = 0) {
     const microsequence = findMicrosequence(
@@ -2165,38 +1495,34 @@ export function createLessonEditorApp({ root, storage, editor }) {
         0,
         findLessonCardEntryIndex(lessonCards, state.selection)
       );
-      const safeIndex = Math.max(0, Math.min(targetIndex, Math.max(0, lessonCards.length - 1)));
-      const entry = lessonCards[safeIndex] || lessonCards[currentIndex] || null;
+      const { index: safeIndex, item: entry } = resolveIndexedTarget(lessonCards, targetIndex, currentIndex);
       if (!entry) return;
-      state.selection.microsequenceKey = entry.microsequenceKey;
-      state.selection.cardKey = entry.cardKey;
-      state.selection.cardIndex = entry.cardIndex;
+      state.selection = {
+        ...state.selection,
+        microsequenceKey: entry.microsequenceKey,
+        cardKey: entry.cardKey,
+        cardIndex: entry.cardIndex
+      };
       persistLessonProgress(
         getLessonProgressReference(state.selection.courseKey, state.selection.moduleKey, state.selection.lessonKey),
         lessonCards,
         safeIndex
       );
     } else {
-      const cards =
-        state.view === "microsequence-assist" || state.view === "microsequence"
-          ? getActiveMicrosequenceCards(state.selection)
-          : getActiveMicrosequenceCards(state.selection);
-      const safeIndex = Math.max(0, Math.min(targetIndex, Math.max(0, cards.length - 1)));
-      const card = cards[safeIndex] || null;
-      state.selection.cardIndex = safeIndex;
-      state.selection.cardKey = card ? card.id : null;
+      const cards = getActiveMicrosequenceCards(state.selection);
+      const { index: safeIndex, item: card } = resolveIndexedTarget(cards, targetIndex);
+      state.selection = {
+        ...state.selection,
+        cardIndex: safeIndex,
+        cardKey: card ? card.id : null
+      };
     }
 
-    state.assistDraft.activeWorkbenchPane = resolveWorkbenchPaneAfterCardSelection(
-      state.view,
-      state.assistDraft.activeWorkbenchPane
-    );
-
-    syncAssistDraft();
     state.continuePopup = null;
     state.activeFlowchartPrompt = null;
     state.activeTextGapPrompt = null;
     state.cardExerciseLoadVersion += 1;
+    syncAssistDraft();
     render({ preserveState: true });
   }
 
@@ -2361,70 +1687,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
     return true;
   }
 
-  function focusFirstIncompleteDirectoryTree(blockKey) {
-    const entry = getCurrentDirectoryTreeEntry(blockKey);
-    if (!entry) {
-      return false;
-    }
-
-    const practice = normalizeDirectoryTreePractice(entry.block?.practice);
-    const current = state.directoryTreeUiByBlockKey[blockKey];
-    if (!current) {
-      return false;
-    }
-
-    if (practice.mode === "select" || practice.mode === "delete" || !current.hasInteracted) {
-      queueExerciseFocus(
-        "[data-action=\"directory-tree-select-node\"][data-directory-tree-block-key=\"" + blockKey + "\"]"
-      );
-      return true;
-    }
-
-    if (practice.typePrompt?.expected && !String(current.typeValue || "").trim()) {
-      queueExerciseFocus(
-        "[data-action=\"directory-tree-set-type\"][data-directory-tree-block-key=\"" + blockKey + "\"]"
-      );
-      return true;
-    }
-
-    const parts = parseTextGapParts(practice.nameTemplate || "");
-    const values = Array.isArray(current.nameValues) ? current.nameValues : [];
-    const firstMissing = parts.find((part) => {
-      if (part.kind !== "blank") {
-        return false;
-      }
-      return !String(values[part.index] ?? "").trim();
-    });
-
-    if (!firstMissing) {
-      queueExerciseFocus(
-        "[data-action=\"directory-tree-select-node\"][data-directory-tree-block-key=\"" + blockKey + "\"]"
-      );
-      return true;
-    }
-
-    if (Array.isArray(firstMissing.options) && firstMissing.options.length) {
-      queueExerciseFocus(
-        "[data-action=\"directory-tree-name-set-choice\"][data-directory-tree-block-key=\"" +
-          blockKey +
-          "\"][data-directory-tree-blank-index=\"" +
-          firstMissing.index +
-          "\"]"
-      );
-      return true;
-    }
-
-    queueExerciseFocus(
-      "[data-action=\"directory-tree-name-input\"][data-directory-tree-block-key=\"" +
-        blockKey +
-        "\"][data-directory-tree-blank-index=\"" +
-        firstMissing.index +
-        "\"]",
-      { caretToEnd: true }
-    );
-    return true;
-  }
-
   function advanceToNextCard(event) {
     event?.preventDefault();
     event?.stopImmediatePropagation();
@@ -2435,8 +1697,11 @@ export function createLessonEditorApp({ root, storage, editor }) {
     return (
       !!popupEntry &&
       !!state.continuePopup &&
-      state.continuePopup.cardPathKey === buildCardPathKey(state.selection) &&
-      state.continuePopup.blockKey === popupEntry.blockKey
+      continuePopupMatches(
+        state.continuePopup,
+        buildCardPathKey(state.selection),
+        popupEntry.blockKey
+      )
     );
   }
 
@@ -2444,8 +1709,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
     event?.preventDefault();
     event?.stopImmediatePropagation();
 
-    // A ação do popup pertence estritamente ao card que o abriu. Se o DOM já
-    // mudou, um evento residual não pode virar um novo pedido de avanço.
+    // A ação só é válida enquanto o popup e a seleção apontarem para o mesmo card.
     if (!isCurrentContinuePopupOpen()) {
       return;
     }
@@ -2497,25 +1761,14 @@ export function createLessonEditorApp({ root, storage, editor }) {
         }
       }
 
-      const trees = getCurrentCardRuntimeDirectoryTrees();
-      for (const entry of trees) {
-        const exercise = state.directoryTreeUiByBlockKey[entry.blockKey] || { feedback: null };
-        if (normalizeDirectoryTreePractice(entry.block?.practice).mode !== "none" && exercise.feedback !== "correct") {
-          const status = validateDirectoryTree(entry.blockKey);
-          if (status !== "correct") {
-            return;
-          }
-        }
-      }
-
       const popupEntry = getCurrentPopupRuntimeButtonEntry();
       const popupIsOpen = isCurrentContinuePopupOpen(popupEntry);
 
       if (popupEntry && !popupIsOpen) {
-        state.continuePopup = {
-          cardPathKey: buildCardPathKey(state.selection),
-          blockKey: popupEntry.blockKey
-        };
+        state.continuePopup = createContinuePopupState(
+          buildCardPathKey(state.selection),
+          popupEntry.blockKey
+        );
         state.activeFlowchartPrompt = null;
         state.activeTextGapPrompt = null;
         render({ preserveState: true });
@@ -2555,17 +1808,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
           const exercise = state.completeExerciseByBlockKey[entry.blockKey] || { values: [], feedback: null };
           if (exercise.feedback !== "correct") {
             const status = validateComplete(entry.blockKey);
-            if (status !== "correct") {
-              return;
-            }
-          }
-        }
-
-        const popupTrees = getCurrentPopupRuntimeDirectoryTrees();
-        for (const entry of popupTrees) {
-          const exercise = state.directoryTreeUiByBlockKey[entry.blockKey] || { feedback: null };
-          if (normalizeDirectoryTreePractice(entry.block?.practice).mode !== "none" && exercise.feedback !== "correct") {
-            const status = validateDirectoryTree(entry.blockKey);
             if (status !== "correct") {
               return;
             }
@@ -2624,7 +1866,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
       delete state.cardComments[pathKey];
     }
 
-    writeCommentStorage(state.cardComments);
+    writeCommentStorage(state.cardComments, localStore);
     state.cardCommentOpen = false;
     render({ preserveState: true });
   }
@@ -2779,7 +2021,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
 
     node.setAttribute("data-bind-ready", "true");
     const input = node.querySelector("[data-role='tag-input']");
-    const selectedRow = node.querySelector("[data-role='selected-tags']");
     const allowCustom = node.getAttribute("data-allow-custom") === "true";
     let options = [];
     try {
@@ -3286,13 +2527,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
     });
 
     setProject(nextProject);
-    const microsequence = findMicrosequence(
-      nextProject,
-      courseKey,
-      moduleKey,
-      lessonKey,
-      microsequenceKey
-    );
     const cards = getActiveMicrosequenceCards({
       courseKey,
       moduleKey,
@@ -3637,7 +2871,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
     const context = getRenderContext();
     const hadCardsBefore = Array.isArray(context.cards) && context.cards.length > 0;
     const previousProjectDocument = structuredClone(state.project);
-    const requestReference = getCurrentInterventionReference();
     const selectedRefIds = getAssistCatalog()
       .filter((item) => state.assistDraft.selectedRefIds.includes(item.id))
       .map((item) => item.id);
@@ -3672,8 +2905,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
           persistInterventionSession(
             {
               ...feedback
-            },
-            requestReference
+            }
           );
           render({ preserveState: true });
         }
@@ -3683,8 +2915,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
         persistInterventionSession(
           {
             ...(submission.interventionFeedback || {})
-          },
-          requestReference
+          }
         );
         state.assistDraft.errorMessage = submission.errorMessage || "O bridge local não está ativo.";
         updateCodexCliSetupStatus({
@@ -3700,8 +2931,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
         persistInterventionSession(
           {
             ...(submission.interventionFeedback || {})
-          },
-          requestReference
+          }
         );
         state.assistDraft.errorMessage = submission.errorMessage || "Erro de autenticação do provider.";
         openProviderConfig();
@@ -3712,8 +2942,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
         persistInterventionSession(
           {
             ...(submission.interventionFeedback || {})
-          },
-          requestReference
+          }
         );
         state.assistDraft.errorMessage = submission.errorMessage || "Falha ao chamar o serviço de IA.";
         return;
@@ -3734,7 +2963,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
         state.selection.lessonKey,
         state.selection.microsequenceKey
       );
-      const targetReference = getCurrentInterventionReference();
       const runtimeFeedback = submission.generationResult?.interventionFeedback || {};
       persistInterventionSession(
         {
@@ -3749,8 +2977,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
           message:
             runtimeFeedback.message
             || `${Array.isArray(nextMicrosequence?.cards) ? nextMicrosequence.cards.length : 0} cards ${hadCardsBefore ? "na iteração atual" : "gerados"} em ${nextMicrosequence?.title || context.microsequence?.title || "Microssequência"} com ${getAssistModelLabel(state.assistConfig.model)}.`
-        },
-        targetReference
+        }
       );
       state.assistDraft.feedbackEditing = false;
     } catch (error) {
@@ -3765,8 +2992,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
           recommendedActionIntent: state.assistDraft.operationMode === "repair" ? "repair_current" : "generate_current",
           recommendedInterventionTargetMode: "current",
           recommendedOperationMode: state.assistDraft.operationMode === "repair" ? "repair" : "reinforce"
-        },
-        requestReference
+        }
       );
       state.assistDraft.errorMessage = fallbackMessage;
     } finally {
@@ -3944,13 +3170,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
       });
       nextProject = moveResult.document;
     } else if (drag.level === "card") {
-      const microsequence = findMicrosequence(
-        state.project,
-        drag.courseKey,
-        drag.moduleKey,
-        drag.lessonKey,
-        drag.microsequenceKey
-      );
       const items = getActiveMicrosequenceCards({
         courseKey: drag.courseKey,
         moduleKey: drag.moduleKey,
@@ -4514,18 +3733,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
 
       if (nextProject) {
         setProject(nextProject);
-        if (
-          state.entityEditor.kind === "course" ||
-          state.entityEditor.kind === "course-metadata"
-        ) {
-
-        } else if (state.entityEditor.kind === "module") {
-
-        } else if (state.entityEditor.kind === "lesson" || state.entityEditor.kind === "lesson-source-guide") {
-
-        } else if (state.entityEditor.kind === "microsequence") {
-
-        }
       }
     } catch {
       // Evita quebrar a digitação durante estados transitórios inválidos.
@@ -4842,40 +4049,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
       getCurrentCardRuntimeBlocks(card),
       buildCardPathKey(state.selection),
       (block) => blockUsesTextGapExercise(block)
-    );
-  }
-
-  function getCurrentCardRuntimeDirectoryTrees(card = getRenderContext().card) {
-    if (!card) {
-      return [];
-    }
-
-    return collectRuntimeBlockEntries(
-      getCurrentCardRuntimeBlocks(card),
-      buildCardPathKey(state.selection),
-      (block) => block?.kind === "directory_tree"
-    );
-  }
-
-  function getCurrentPopupRuntimeDirectoryTrees(card = getRenderContext().card) {
-    const popupEntry = getCurrentPopupRuntimeButtonEntry(card);
-    if (!popupEntry) {
-      return [];
-    }
-
-    return collectRuntimeBlockEntries(
-      popupEntry.block.popupBlocks,
-      `${popupEntry.blockKey}::popup`,
-      (block) => block?.kind === "directory_tree"
-    );
-  }
-
-  function getCurrentDirectoryTreeEntry(blockKey) {
-    return (
-      [
-        ...getCurrentCardRuntimeDirectoryTrees(),
-        ...getCurrentPopupRuntimeDirectoryTrees()
-      ].find((entry) => entry.blockKey === blockKey) || null
     );
   }
 
@@ -5227,386 +4400,11 @@ export function createLessonEditorApp({ root, storage, editor }) {
     return runtimeOptions;
   }
 
-  function getDirectoryTreePracticeSignature(block) {
-    return JSON.stringify({
-      base: block?.base || "/",
-      nodes: cloneDirectoryTreeNodes(block?.nodes),
-      selectedNodeId: String(block?.selectedNodeId || ""),
-      currentNodeId: String(block?.currentNodeId || block?.referenceNodeId || ""),
-      practice: normalizeDirectoryTreePractice(block?.practice)
-    });
-  }
-
-  function getDirectoryTreeInitialSelectedNodeId(block, nodes = block?.nodes) {
-    const candidateIds = [
-      block?.selectedNodeId,
-      block?.currentNodeId,
-      block?.referenceNodeId,
-      DIRECTORY_TREE_BASE_NODE_ID
-    ].map((item) => String(item || ""));
-
-    for (const candidateId of candidateIds) {
-      if (getDirectoryTreePathLabels(block?.base, nodes, candidateId)) {
-        return candidateId;
-      }
-    }
-
-    return DIRECTORY_TREE_BASE_NODE_ID;
-  }
-
-  function createDirectoryTreeNameValues(practice, currentValues = []) {
-    const template = resolveDirectoryTreePracticeNameTemplate(practice);
-    const blankCount = parseTextGapParts(template).length;
-    const values = Array.isArray(currentValues) ? currentValues.map((item) => String(item ?? "")) : [];
-    while (values.length < blankCount) {
-      values.push("");
-    }
-    return values.slice(0, blankCount);
-  }
-
-  function buildDirectoryTreeNameFromValues(practice, values, nodeType) {
-    const template = resolveDirectoryTreePracticeNameTemplate(practice);
-    if (!template) {
-      return "";
-    }
-
-    const parts = parseTextGapParts(template);
-    const answerByIndex = new Map(parts.map((part) => [part.index, String(values?.[part.index] ?? "").trim()]));
-    if (parts.some((part) => !(answerByIndex.get(part.index) || "").length)) {
-      return "";
-    }
-
-    let currentIndex = 0;
-    const resolved = template.replace(/\[\[([\s\S]*?)\]\]/g, () => {
-      const nextValue = answerByIndex.get(currentIndex) || "";
-      currentIndex += 1;
-      return nextValue;
-    });
-    return normalizeDirectoryTreeNodeNameByType(resolved, nodeType);
-  }
-
-  function fillDirectoryTreeAnswerValues(practice) {
-    const template = resolveDirectoryTreePracticeNameTemplate(practice);
-    return parseTextGapParts(template).map((part) => String(part.expected || ""));
-  }
-
-  function setDirectoryTreeState(blockKey, nextState) {
-    state.directoryTreeUiByBlockKey[blockKey] = nextState;
-  }
-
-  function ensureCurrentDirectoryTreeState() {
-    const trees = [
-      ...getCurrentCardRuntimeDirectoryTrees(),
-      ...getCurrentPopupRuntimeDirectoryTrees()
-    ];
-    const runtimeOptions = {
-      blockKeyPrefix: buildCardPathKey(state.selection),
-      directoryTreeStateByBlockKey: {}
-    };
-
-    trees.forEach((entry) => {
-      const practice = normalizeDirectoryTreePractice(entry.block?.practice);
-      const signature = getDirectoryTreePracticeSignature(entry.block);
-      const current = state.directoryTreeUiByBlockKey[entry.blockKey] || {};
-      const sourceNodes =
-        current.signature === signature && Array.isArray(current.nodes)
-          ? cloneDirectoryTreeNodes(current.nodes)
-          : cloneDirectoryTreeNodes(entry.block?.nodes);
-      const selectedNodeId = String(current.selectedNodeId || getDirectoryTreeInitialSelectedNodeId(entry.block, sourceNodes));
-      const selectedIsValid = !!getDirectoryTreePathLabels(entry.block?.base, sourceNodes, selectedNodeId);
-      const collapsedNodeIds = Array.from(
-        new Set(
-          (Array.isArray(current.collapsedNodeIds) ? current.collapsedNodeIds : Array.isArray(entry.block?.collapsedNodeIds) ? entry.block.collapsedNodeIds : [])
-            .map((item) => String(item || ""))
-            .filter((item) => !!getDirectoryTreePathLabels(entry.block?.base, sourceNodes, item))
-        )
-      );
-
-      state.directoryTreeUiByBlockKey[entry.blockKey] = {
-        signature,
-        nodes: sourceNodes,
-        selectedNodeId: selectedIsValid ? selectedNodeId : getDirectoryTreeInitialSelectedNodeId(entry.block, sourceNodes),
-        collapsedNodeIds,
-        feedback: current.signature === signature ? current.feedback || null : null,
-        hasInteracted: current.signature === signature ? !!current.hasInteracted : false,
-        typeValue: current.signature === signature ? String(current.typeValue || "") : "",
-        nameValues: createDirectoryTreeNameValues(practice, current.signature === signature ? current.nameValues : [])
-      };
-      runtimeOptions.directoryTreeStateByBlockKey[entry.blockKey] = state.directoryTreeUiByBlockKey[entry.blockKey];
-    });
-
-    return runtimeOptions;
-  }
-
-  function selectDirectoryTreeNode(blockKey, nodeId) {
-    const entry = getCurrentDirectoryTreeEntry(blockKey);
-    if (!entry) {
-      return;
-    }
-
-    ensureCurrentDirectoryTreeState();
-    const normalizedNodeId = String(nodeId || DIRECTORY_TREE_BASE_NODE_ID);
-    const current = state.directoryTreeUiByBlockKey[blockKey] || {
-      selectedNodeId: DIRECTORY_TREE_BASE_NODE_ID,
-      collapsedNodeIds: [],
-      nodes: cloneDirectoryTreeNodes(entry.block?.nodes)
-    };
-    if (!getDirectoryTreePathLabels(entry.block?.base, current.nodes, normalizedNodeId)) {
-      return;
-    }
-
-    setDirectoryTreeState(blockKey, {
-      ...current,
-      selectedNodeId: normalizedNodeId,
-      feedback: null,
-      hasInteracted: true
-    });
-    render({ preserveState: true });
-  }
-
-  function toggleDirectoryTreeNode(blockKey, nodeId) {
-    const entry = getCurrentDirectoryTreeEntry(blockKey);
-    if (!entry) {
-      return;
-    }
-
-    const normalizedNodeId = String(nodeId || "");
-    if (!normalizedNodeId) {
-      return;
-    }
-
-    const hasChildren =
-      normalizedNodeId === DIRECTORY_TREE_BASE_NODE_ID
-        ? Array.isArray(state.directoryTreeUiByBlockKey[blockKey]?.nodes) && state.directoryTreeUiByBlockKey[blockKey].nodes.length > 0
-        : (() => {
-            const current = state.directoryTreeUiByBlockKey[blockKey] || { nodes: cloneDirectoryTreeNodes(entry.block?.nodes) };
-            const labels = getDirectoryTreePathLabels(entry.block?.base, current.nodes, normalizedNodeId);
-            if (!labels) {
-              return false;
-            }
-            const queue = [...(Array.isArray(current.nodes) ? current.nodes : [])];
-            while (queue.length) {
-              const node = queue.shift();
-              if (String(node?.id || "") === normalizedNodeId) {
-                return Array.isArray(node?.children) && node.children.length > 0;
-              }
-              if (Array.isArray(node?.children) && node.children.length) {
-                queue.push(...node.children);
-              }
-            }
-            return false;
-          })();
-
-    if (!hasChildren) {
-      return;
-    }
-
-    ensureCurrentDirectoryTreeState();
-    const current = state.directoryTreeUiByBlockKey[blockKey] || {
-      selectedNodeId: DIRECTORY_TREE_BASE_NODE_ID,
-      collapsedNodeIds: [],
-      nodes: cloneDirectoryTreeNodes(entry.block?.nodes)
-    };
-    const collapsed = new Set((Array.isArray(current.collapsedNodeIds) ? current.collapsedNodeIds : []).map((item) => String(item || "")));
-    if (collapsed.has(normalizedNodeId)) {
-      collapsed.delete(normalizedNodeId);
-    } else {
-      collapsed.add(normalizedNodeId);
-    }
-    setDirectoryTreeState(blockKey, {
-      ...current,
-      collapsedNodeIds: Array.from(collapsed)
-    });
-    render({ preserveState: true });
-  }
-
-  function setDirectoryTreeType(blockKey, nodeType) {
-    const entry = getCurrentDirectoryTreeEntry(blockKey);
-    if (!entry) {
-      return;
-    }
-
-    ensureCurrentDirectoryTreeState();
-    const current = state.directoryTreeUiByBlockKey[blockKey];
-    const normalizedNodeType = normalizeDirectoryTreeNodeType(nodeType);
-    setDirectoryTreeState(blockKey, {
-      ...current,
-      typeValue: normalizedNodeType,
-      feedback: null,
-      hasInteracted: true
-    });
-    render({ preserveState: true });
-  }
-
-  function setDirectoryTreeNameBlank(blockKey, blankIndex, value, { rerender = false } = {}) {
-    const entry = getCurrentDirectoryTreeEntry(blockKey);
-    if (!entry) {
-      return;
-    }
-
-    ensureCurrentDirectoryTreeState();
-    const current = state.directoryTreeUiByBlockKey[blockKey];
-    const index = Number.parseInt(String(blankIndex), 10);
-    if (!Number.isFinite(index) || index < 0) {
-      return;
-    }
-    const values = Array.isArray(current.nameValues) ? current.nameValues.slice() : [];
-    while (values.length <= index) {
-      values.push("");
-    }
-    values[index] = String(value ?? "");
-    setDirectoryTreeState(blockKey, {
-      ...current,
-      nameValues: values,
-      feedback: null,
-      hasInteracted: true
-    });
-    if (rerender || current.feedback) {
-      render({ preserveState: true });
-    }
-  }
-
-  function clearDirectoryTreeNameBlank(blockKey, blankIndex) {
-    setDirectoryTreeNameBlank(blockKey, blankIndex, "", { rerender: true });
-  }
-
-  function tryAgainDirectoryTree(blockKey) {
-    const entry = getCurrentDirectoryTreeEntry(blockKey);
-    if (!entry) {
-      return;
-    }
-
-    ensureCurrentDirectoryTreeState();
-    const current = state.directoryTreeUiByBlockKey[blockKey];
-    const practice = normalizeDirectoryTreePractice(entry.block?.practice);
-    setDirectoryTreeState(blockKey, {
-      ...current,
-      nodes: cloneDirectoryTreeNodes(entry.block?.nodes),
-      selectedNodeId: getDirectoryTreeInitialSelectedNodeId(entry.block, entry.block?.nodes),
-      feedback: null,
-      hasInteracted: false,
-      typeValue: "",
-      nameValues: createDirectoryTreeNameValues(practice, [])
-    });
-    render({ preserveState: true });
-  }
-
-  function viewAnswerDirectoryTree(blockKey) {
-    const entry = getCurrentDirectoryTreeEntry(blockKey);
-    if (!entry) {
-      return;
-    }
-
-    ensureCurrentDirectoryTreeState();
-    const current = state.directoryTreeUiByBlockKey[blockKey];
-    const practice = normalizeDirectoryTreePractice(entry.block?.practice);
-    const nextSelectedNodeId =
-      practice.mode === "select"
-        ? String(practice.targetNodeId || DIRECTORY_TREE_BASE_NODE_ID)
-        : practice.mode === "delete"
-          ? String(practice.targetNodeId || DIRECTORY_TREE_BASE_NODE_ID)
-          : String(practice.targetNodeId || practice.parentNodeId || DIRECTORY_TREE_BASE_NODE_ID);
-    setDirectoryTreeState(blockKey, {
-      ...current,
-      selectedNodeId: nextSelectedNodeId,
-      feedback: "correct",
-      hasInteracted: true,
-      typeValue: practice.typePrompt?.expected ? practice.typePrompt.expected : "",
-      nameValues: fillDirectoryTreeAnswerValues(practice)
-    });
-    render({ preserveState: true });
-  }
-
-  function validateDirectoryTree(blockKey) {
-    const entry = getCurrentDirectoryTreeEntry(blockKey);
-    if (!entry) {
-      return null;
-    }
-
-    ensureCurrentDirectoryTreeState();
-    const practice = normalizeDirectoryTreePractice(entry.block?.practice);
-    const current = state.directoryTreeUiByBlockKey[blockKey];
-
-    if (practice.mode === "none") {
-      return "correct";
-    }
-
-    let feedback = "correct";
-    const selectedNodeId = String(current.selectedNodeId || DIRECTORY_TREE_BASE_NODE_ID);
-    const selectedEntry = selectedNodeId === DIRECTORY_TREE_BASE_NODE_ID ? null : findDirectoryTreeNodeEntry(entry.block?.nodes, selectedNodeId);
-    const selectedNode = selectedEntry?.node || null;
-
-    if (practice.mode === "select" || practice.mode === "delete") {
-      if (!current.hasInteracted) {
-        feedback = "incomplete";
-      } else {
-        feedback = String(selectedNodeId) === String(practice.targetNodeId || "") ? "correct" : "wrong";
-      }
-    } else if (practice.mode === "create_folder" || practice.mode === "create_file") {
-      const expectedParentId = String(practice.parentNodeId || DIRECTORY_TREE_BASE_NODE_ID);
-      const expectedType = resolveDirectoryTreePracticeExpectedType(practice);
-      const actualType = practice.typePrompt?.expected
-        ? String(current.typeValue || "").trim()
-        : expectedType;
-      const nextName = buildDirectoryTreeNameFromValues(practice, current.nameValues, actualType || expectedType || "folder");
-
-      if (
-        !current.hasInteracted ||
-        !selectedNodeId ||
-        (selectedNodeId !== DIRECTORY_TREE_BASE_NODE_ID && !directoryTreeNodeCanHaveChildren(selectedNode)) ||
-        !actualType ||
-        !nextName
-      ) {
-        feedback = "incomplete";
-      } else {
-        const expectedName = normalizeDirectoryTreeNodeNameByType(
-          resolveDirectoryTreePracticeExpectedName(practice),
-          expectedType || "folder"
-        );
-        feedback =
-          selectedNodeId === expectedParentId &&
-          normalizeDirectoryTreeNodeType(actualType) === normalizeDirectoryTreeNodeType(expectedType) &&
-          nextName === expectedName
-            ? "correct"
-            : "wrong";
-      }
-    } else if (practice.mode === "rename") {
-      const expectedTargetId = String(practice.targetNodeId || "");
-      const nextName = buildDirectoryTreeNameFromValues(practice, current.nameValues, selectedNode?.type || "folder");
-      if (!current.hasInteracted || !selectedNode || !nextName) {
-        feedback = "incomplete";
-      } else {
-        const expectedName = normalizeDirectoryTreeNodeNameByType(
-          resolveDirectoryTreePracticeExpectedName(practice),
-          selectedNode.type || "folder"
-        );
-        feedback =
-          selectedNodeId === expectedTargetId &&
-          nextName === expectedName
-            ? "correct"
-            : "wrong";
-      }
-    }
-
-    setDirectoryTreeState(blockKey, {
-      ...current,
-      feedback
-    });
-    if (feedback === "incomplete") {
-      notifyIncompleteExercise("Monte a resposta completa na árvore antes de continuar.");
-      focusFirstIncompleteDirectoryTree(blockKey);
-    }
-    render({ preserveState: true });
-    return feedback;
-  }
-
   function ensureCurrentCardRuntimeOptions() {
-    const directoryTreeOptions = ensureCurrentDirectoryTreeState();
     const flowchartOptions = ensureCurrentFlowchartPracticeState();
     const choiceOptions = ensureCurrentChoiceExerciseState();
     const completeOptions = ensureCurrentCompleteExerciseState();
     return {
-      ...directoryTreeOptions,
       ...flowchartOptions,
       ...choiceOptions,
       ...completeOptions,
@@ -5619,9 +4417,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
       },
       textGapExerciseStateByBlockKey: {
         ...(completeOptions.textGapExerciseStateByBlockKey || {})
-      },
-      directoryTreeStateByBlockKey: {
-        ...(directoryTreeOptions.directoryTreeStateByBlockKey || {})
       },
       activeTextGapPrompt: state.activeTextGapPrompt,
       exerciseShuffleSeed: choiceOptions.exerciseShuffleSeed || flowchartOptions.exerciseShuffleSeed || "runtime"
@@ -5907,8 +4702,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
     const currentCardRuntimeOptions = ensureCurrentCardRuntimeOptions();
     const assistCatalog = getAssistCatalog();
     const assistModeConfig = getAssistModeOptions();
-    const entityEditorModel = makeEntityEditorModel(state);
-    const isMicrosequenceWorkbenchView = state.view === "microsequence-assist" || state.view === "microsequence";
+    const entityEditorModel = buildEntityEditorModel(state);
     const nextPlannedMicrosequence = findNextPlannedMicrosequenceInLesson(context.lesson, context.microsequence?.id);
     const assistActionOptions = getAssistActionIntentOptions({
       microsequence: context.microsequence,
@@ -6018,7 +4812,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
             selectedModel: state.assistConfig.model,
             selectedModelLabel: getAssistModelLabel(state.assistConfig.model),
             apiKey: state.assistConfig.apiKey,
-            baseUrl: state.assistConfig.baseUrl || state.assistConfig.apiBaseUrl || "",
+            baseUrl: state.assistConfig.baseUrl || "",
             codexEndpoint: state.assistConfig.codexEndpoint || DEFAULT_CODEX_LOCAL_ENDPOINT,
             codexToken: state.assistConfig.codexToken || "",
             codexStatus: state.codexCliSetupStatus
@@ -6447,112 +5241,6 @@ export function createLessonEditorApp({ root, storage, editor }) {
       }
 
       closeContinuePopup();
-    });
-
-    root.querySelectorAll("[data-action='directory-tree-select-node']").forEach((node) => {
-      node.addEventListener("click", () => {
-        const blockKey = node.getAttribute("data-directory-tree-block-key");
-        const nodeId = node.getAttribute("data-directory-tree-node-id");
-        if (!blockKey || nodeId === null) return;
-        selectDirectoryTreeNode(blockKey, nodeId);
-      });
-    });
-    root.querySelectorAll("[data-action='directory-tree-toggle-node']").forEach((node) => {
-      node.addEventListener("click", (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        const blockKey = node.getAttribute("data-directory-tree-block-key");
-        const nodeId = node.getAttribute("data-directory-tree-node-id");
-        if (!blockKey || nodeId === null) return;
-        toggleDirectoryTreeNode(blockKey, nodeId);
-      });
-    });
-    root.querySelectorAll("[data-action='directory-tree-set-type']").forEach((node) => {
-      node.addEventListener("click", () => {
-        const blockKey = node.getAttribute("data-directory-tree-block-key");
-        const nodeType = node.getAttribute("data-directory-tree-node-type");
-        if (!blockKey || nodeType === null) return;
-        setDirectoryTreeType(blockKey, nodeType);
-      });
-    });
-    root.querySelectorAll("[data-action='directory-tree-name-set-choice']").forEach((node) => {
-      node.addEventListener("click", () => {
-        const blockKey = node.getAttribute("data-directory-tree-block-key");
-        const blankIndex = node.getAttribute("data-directory-tree-blank-index");
-        const value = node.getAttribute("data-directory-tree-value");
-        if (!blockKey || blankIndex === null || value === null) return;
-        setDirectoryTreeNameBlank(blockKey, blankIndex, value, { rerender: true });
-      });
-    });
-    root.querySelectorAll("[data-action='directory-tree-name-clear']").forEach((node) => {
-      const clear = () => {
-        const blockKey = node.getAttribute("data-directory-tree-block-key");
-        const blankIndex = node.getAttribute("data-directory-tree-blank-index");
-        if (!blockKey || blankIndex === null) return;
-        clearDirectoryTreeNameBlank(blockKey, blankIndex);
-      };
-      node.addEventListener("click", clear);
-      node.addEventListener("keydown", (event) => {
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault();
-          clear();
-        }
-      });
-    });
-    root.querySelectorAll("[data-action='directory-tree-apply']").forEach((node) => {
-      node.addEventListener("click", () => {
-        const blockKey = node.getAttribute("data-directory-tree-block-key");
-        if (!blockKey) return;
-        applyDirectoryTreeAction(blockKey);
-      });
-    });
-    root.querySelectorAll("[data-action='directory-tree-view-answer']").forEach((node) => {
-      node.addEventListener("click", () => {
-        const blockKey = node.getAttribute("data-directory-tree-block-key");
-        if (!blockKey) return;
-        viewAnswerDirectoryTree(blockKey);
-      });
-    });
-    root.querySelectorAll("[data-action='directory-tree-try-again']").forEach((node) => {
-      node.addEventListener("click", () => {
-        const blockKey = node.getAttribute("data-directory-tree-block-key");
-        if (!blockKey) return;
-        tryAgainDirectoryTree(blockKey);
-      });
-    });
-    root.querySelectorAll("[data-action='directory-tree-name-input']").forEach((node) => {
-      if (node.getAttribute("contenteditable") !== "true") {
-        return;
-      }
-
-      const updateEmptyAttribute = () => {
-        const content = String(node.textContent || "").replace(/\u2007/g, "");
-        node.setAttribute("data-empty", content.length ? "false" : "true");
-      };
-
-      updateEmptyAttribute();
-
-      node.addEventListener("keydown", (event) => {
-        if (event.key === "Enter") {
-          event.preventDefault();
-        }
-      });
-
-      node.addEventListener("input", () => {
-        const blockKey = node.getAttribute("data-directory-tree-block-key");
-        const blankIndex = node.getAttribute("data-directory-tree-blank-index");
-        if (!blockKey || blankIndex === null) return;
-        const normalized = normalizeTextGapContentEditableValue(node);
-        node.setAttribute("data-empty", normalized ? "false" : "true");
-        setDirectoryTreeNameBlank(blockKey, blankIndex, normalized, { rerender: false });
-      });
-
-      node.addEventListener("blur", () => {
-        if (!normalizeTextGapContentEditableValue(node)) {
-          node.textContent = "";
-          node.setAttribute("data-empty", "true");
-        }
-      });
     });
 
     root.querySelectorAll("[data-action='complete-input']").forEach((node) => {
@@ -7180,9 +5868,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
         assistPrompt instanceof HTMLTextAreaElement
           ? assistPrompt.value
           : state.assistDraft.promptText || "";
-      const canEditCurrentView =
-        (state.view === "microsequence-assist" || state.view === "microsequence") &&
-        canEditCurrentMicrosequenceVersion();
+      const canEditCurrentView = state.view === "microsequence";
       const canSubmitAssist = canEditCurrentView && canSubmitAssistRequestFromState({
         promptText: visiblePromptValue,
         actionIntent: state.assistDraft.actionIntent,
@@ -7225,7 +5911,7 @@ export function createLessonEditorApp({ root, storage, editor }) {
     }
     if (providerConfigBaseUrl) {
       providerConfigBaseUrl.addEventListener("input", () => {
-        persistAssistConfigValue({ baseUrl: providerConfigBaseUrl.value, apiBaseUrl: providerConfigBaseUrl.value });
+        persistAssistConfigValue({ baseUrl: providerConfigBaseUrl.value });
       });
     }
     if (providerConfigCodexEndpoint) {
