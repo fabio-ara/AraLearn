@@ -2,54 +2,6 @@ function normalizeText(value) {
   return typeof value === "string" ? value.trim() : "";
 }
 
-function buildHierarchyLine(label, value) {
-  const normalized = normalizeText(value);
-  return normalized ? `${label}: ${normalized}` : "";
-}
-
-function buildStructuredLine(label, value) {
-  if (!value || typeof value !== "object") {
-    return "";
-  }
-
-  const entries = Object.entries(value)
-    .map(([key, entryValue]) => [normalizeText(key), normalizeText(entryValue)])
-    .filter(([, entryValue]) => entryValue);
-  if (!entries.length) {
-    return "";
-  }
-
-  return `${label}: ${entries.map(([key, entryValue]) => `${key}=${entryValue}`).join("; ")}`;
-}
-
-function buildExistingMicrosequenceLines(items = []) {
-  const normalizedItems = Array.isArray(items)
-    ? items
-        .map((item) => ({
-          title: normalizeText(item?.title),
-          goal: normalizeText(item?.goal),
-          dependsOn: Array.isArray(item?.dependsOn) ? item.dependsOn.map((entry) => normalizeText(entry)).filter(Boolean) : [],
-          covers: Array.isArray(item?.covers) ? item.covers.map((entry) => normalizeText(entry)).filter(Boolean) : [],
-          status: normalizeText(item?.status),
-        }))
-        .filter((item) => item.title)
-    : [];
-
-  if (!normalizedItems.length) {
-    return ["Microssequências atuais: nenhuma."];
-  }
-
-  return [
-    "Microssequências atuais:",
-    ...normalizedItems.map((item, index) => {
-      const goal = item.goal ? `; objetivo: ${item.goal}` : "";
-      const dependsOn = item.dependsOn.length ? `; dependsOn: ${item.dependsOn.join(", ")}` : "";
-      const covers = item.covers.length ? `; covers: ${item.covers.join(", ")}` : "";
-      return `${index + 1}. ${item.title}; status: ${item.status || "planned"}${goal}${dependsOn}${covers}`;
-    })
-  ];
-}
-
 export function buildAttachmentPromptSection(attachments = []) {
   const items = Array.isArray(attachments)
     ? attachments
@@ -96,7 +48,7 @@ export function extractJsonFromText(text) {
     try {
       return JSON.parse(markdownMatch[1].trim());
     } catch {
-      // Continua para o fallback por substring.
+      // Continua procurando um objeto JSON na resposta completa.
     }
   }
 

@@ -64,6 +64,7 @@
                   ],
                   "cards": [
                     {
+                      "id": "card-fixture-visual-flow",
                       "position": 1,
                       "resource": "graph",
                       "kind": "theory",
@@ -106,6 +107,7 @@
                       "after": "O vértice `A` está ligado a `B`."
                     },
                     {
+                      "id": "card-fixture-visual-graph",
                       "position": 2,
                       "resource": "matrix",
                       "kind": "theory",
@@ -125,6 +127,7 @@
                       "after": "A diagonal principal fica com `1`."
                     },
                     {
+                      "id": "card-fixture-visual-relation-map",
                       "position": 3,
                       "resource": "plane",
                       "kind": "theory",

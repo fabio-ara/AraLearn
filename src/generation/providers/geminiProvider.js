@@ -43,7 +43,7 @@ function resolveGeminiMaxRetryDelayMs(request = {}) {
   if (Number.isFinite(value) && value > 0) {
     return value;
   }
-  const envValue = Number(process?.env?.GEMINI_MAX_RETRY_DELAY_MS);
+  const envValue = Number(globalThis.process?.env?.GEMINI_MAX_RETRY_DELAY_MS);
   if (Number.isFinite(envValue) && envValue > 0) {
     return envValue;
   }
@@ -55,66 +55,25 @@ function resolveGeminiTimeoutMs(request = {}) {
   if (Number.isFinite(value) && value > 0) {
     return value;
   }
-  const envValue = Number(process?.env?.GEMINI_TIMEOUT_MS);
+  const envValue = Number(globalThis.process?.env?.GEMINI_TIMEOUT_MS);
   if (Number.isFinite(envValue) && envValue > 0) {
     return envValue;
   }
   return 45000;
 }
 
-function listApiKeys(value) {
-  if (Array.isArray(value)) {
-    return value.map((item) => text(item)).filter(Boolean);
-  }
-  return text(value)
-    .split(/[\r\n,;]+/g)
-    .map((item) => text(item))
-    .filter(Boolean);
-}
-
-function uniqueList(values = []) {
-  return [...new Set((Array.isArray(values) ? values : []).map((item) => text(item)).filter(Boolean))];
-}
-
-function buildGeminiApiKeyCandidates(request = {}, options = {}) {
-  return uniqueList([
-    text(request.apiKey),
-    ...listApiKeys(request.apiKeys),
-    text(options.apiKey),
-    ...listApiKeys(options.apiKeys),
-    text(process?.env?.GEMINI_API_KEY),
-    text(process?.env?.GOOGLE_API_KEY),
-    ...listApiKeys(process?.env?.GEMINI_API_KEY_FALLBACKS),
-    ...listApiKeys(process?.env?.GOOGLE_API_KEY_FALLBACKS)
-  ]);
-}
-
-function shouldRotateGeminiApiKey(error) {
-  if (!(error instanceof ProviderHttpError)) {
-    return false;
-  }
-  const statusCode = Number(error.statusCode);
-  const message = text(error?.message || error?.payload?.error?.message).toLowerCase();
-  if (statusCode === 429) {
-    return true;
-  }
-  return [400, 403].includes(statusCode) && /quota|rate limit|resource exhausted|daily limit|free tier|billing/.test(message);
-}
-
-export function createGeminiProvider({ apiKey = "", apiKeys = [] } = {}) {
+export function createGeminiProvider({ apiKey = "" } = {}) {
   async function sendGeminiRequest(request = {}) {
-    const apiKeyCandidates = buildGeminiApiKeyCandidates(request, { apiKey, apiKeys });
-    if (!apiKeyCandidates.length) {
+    const resolvedApiKey = text(request.apiKey) || text(apiKey);
+    if (!resolvedApiKey) {
       throw new Error("Informe a chave da API do Gemini.");
     }
     const modelId = text(request.modelId) || "gemini-2.5-flash";
     let lastError = null;
-    let apiKeyIndex = 0;
     const maxAttempts = Number.isFinite(request.maxAttempts) ? Number(request.maxAttempts) : 12;
     const maxRetryDelayMs = resolveGeminiMaxRetryDelayMs(request);
     const timeoutMs = resolveGeminiTimeoutMs(request);
     for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
-      const safeApiKey = apiKeyCandidates[apiKeyIndex];
       const { controller, cancel } = createAbortController(timeoutMs);
       let response;
       try {
@@ -124,12 +83,12 @@ export function createGeminiProvider({ apiKey = "", apiKeys = [] } = {}) {
             method: "POST",
             headers: {
               "content-type": "application/json",
-              "x-goog-api-key": safeApiKey
+              "x-goog-api-key": resolvedApiKey
             },
             signal: controller?.signal,
             body: JSON.stringify({
               systemInstruction: {
-                    parts: [{ text: text(request.system) || "Responda no formato pedido." }]
+                parts: [{ text: text(request.system) || "Responda no formato pedido." }]
               },
               contents: [
                 {
@@ -141,8 +100,7 @@ export function createGeminiProvider({ apiKey = "", apiKeys = [] } = {}) {
                 temperature: typeof request.temperature === "number" ? request.temperature : 0.2,
                 ...(Number.isFinite(request.maxTokens) && Number(request.maxTokens) > 0
                   ? { maxOutputTokens: Number(request.maxTokens) }
-                  : {}),
-                
+                  : {})
               }
             })
           }
@@ -185,10 +143,6 @@ export function createGeminiProvider({ apiKey = "", apiKeys = [] } = {}) {
         message: data?.error?.message || `Falha HTTP ${response.status}.`,
         payload: data
       });
-      if (shouldRotateGeminiApiKey(lastError) && apiKeyIndex < apiKeyCandidates.length - 1) {
-        apiKeyIndex += 1;
-        continue;
-      }
       if (!shouldRetryGemini(lastError) || attempt === maxAttempts - 1) {
         throw lastError;
       }

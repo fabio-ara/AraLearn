@@ -1,4 +1,4 @@
-import { normalizeProgressDocument, parseProgressDocument, serializeProgressDocument } from "./progressStore.js";
+import { parseProgressDocument, serializeProgressDocument, validateProgressDocument } from "./progressStore.js";
 import { parseProjectDocument, serializeProjectDocument } from "./projectStore.js";
 import { STORAGE_KEYS } from "../core/storageKeys.js";
 
@@ -8,7 +8,7 @@ function parseEnvelopeJson(rawJson) {
   try {
     return JSON.parse(rawJson);
   } catch (error) {
-    throw new Error(`JSON inválido para importação: ${error.message}`);
+    throw new Error(`JSON inválido para importação: ${error.message}`, { cause: error });
   }
 }
 
@@ -26,7 +26,7 @@ function normalizeImportEnvelope(parsed) {
   }
 
   const project = parseProjectDocument(JSON.stringify(parsed.project));
-  const progress = normalizeProgressDocument(parsed.progress);
+  const progress = validateProgressDocument(parsed.progress);
 
   return {
     format: "aralearn.storage",
@@ -36,8 +36,18 @@ function normalizeImportEnvelope(parsed) {
 }
 
 export function createProjectStorage(store, keys = DEFAULT_KEYS, officialProject = null) {
-  if (!store || typeof store.getItem !== "function" || typeof store.setItem !== "function") {
+  if (
+    !store ||
+    typeof store.getItem !== "function" ||
+    typeof store.setItem !== "function" ||
+    typeof store.setItems !== "function" ||
+    typeof store.removeItem !== "function" ||
+    typeof store.flush !== "function"
+  ) {
     throw new Error("Store inválido para persistência.");
+  }
+  if (!officialProject || !Array.isArray(officialProject.courses)) {
+    throw new Error("Catálogo oficial inválido para persistência.");
   }
 
   const storageKeys = { ...DEFAULT_KEYS, ...keys };
@@ -47,8 +57,11 @@ export function createProjectStorage(store, keys = DEFAULT_KEYS, officialProject
   function mergeWithOfficialCourses(projectDocument) {
     const customCourses = Array.isArray(projectDocument?.courses) ? projectDocument.courses : [];
     return {
-      ...(officialProject || projectDocument),
-      courses: [...officialCourses, ...customCourses.filter((course) => !officialCourseIds.has(course?.id))]
+      ...structuredClone(officialProject || projectDocument),
+      courses: [
+        ...structuredClone(officialCourses),
+        ...structuredClone(customCourses.filter((course) => !officialCourseIds.has(course?.id)))
+      ]
     };
   }
 
@@ -61,22 +74,23 @@ export function createProjectStorage(store, keys = DEFAULT_KEYS, officialProject
 
   return {
     saveProject(projectDocument) {
-      const normalized = parseProjectDocument(serializeProjectDocument(projectDocument));
-      const serialized = serializeProjectDocument(onlyCustomCourses(normalized));
+      const customProject = onlyCustomCourses(projectDocument);
+      const normalizedCustomProject = parseProjectDocument(serializeProjectDocument(customProject));
+      const serialized = serializeProjectDocument(normalizedCustomProject);
       store.setItem(storageKeys.project, serialized);
-      return normalized;
+      return projectDocument;
     },
 
     loadProject() {
       const rawProject = store.getItem(storageKeys.project);
       const storedProject = parseProjectDocument(rawProject);
-      return storedProject ? mergeWithOfficialCourses(storedProject) : null;
+      return mergeWithOfficialCourses(storedProject || { ...officialProject, courses: [] });
     },
 
     saveProgress(progressDocument) {
-      const normalized = normalizeProgressDocument(progressDocument);
-      store.setItem(storageKeys.progress, serializeProgressDocument(normalized));
-      return normalized;
+      const validated = validateProgressDocument(progressDocument);
+      store.setItem(storageKeys.progress, serializeProgressDocument(validated));
+      return validated;
     },
 
     loadProgress() {
@@ -87,8 +101,8 @@ export function createProjectStorage(store, keys = DEFAULT_KEYS, officialProject
       store.removeItem(storageKeys.progress);
     },
 
-    loadStorageVersion() {
-      return null;
+    flush() {
+      return store.flush();
     },
 
     exportJson() {
@@ -106,11 +120,15 @@ export function createProjectStorage(store, keys = DEFAULT_KEYS, officialProject
 
     importJson(rawJson) {
       const envelope = normalizeImportEnvelope(parseEnvelopeJson(rawJson));
-      this.saveProject(envelope.project);
-      this.saveProgress(envelope.progress);
+      const normalizedProject = parseProjectDocument(serializeProjectDocument(onlyCustomCourses(envelope.project)));
+      const validatedProgress = validateProgressDocument(envelope.progress);
+      store.setItems([
+        [storageKeys.project, serializeProjectDocument(normalizedProject)],
+        [storageKeys.progress, serializeProgressDocument(validatedProgress)]
+      ]);
       return {
-        project: envelope.project,
-        progress: envelope.progress
+        project: mergeWithOfficialCourses(normalizedProject),
+        progress: validatedProgress
       };
     }
   };

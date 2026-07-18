@@ -1,5 +1,3 @@
-import { parsePipeList } from "./slotParser.js";
-
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
 }

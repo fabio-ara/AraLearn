@@ -6,11 +6,22 @@ import { fileURLToPath } from "node:url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const repoRoot = path.resolve(__dirname, "..");
+const rootArgumentIndex = process.argv.indexOf("--root");
+const requestedRoot = rootArgumentIndex >= 0 ? process.argv[rootArgumentIndex + 1] : "";
+if (rootArgumentIndex >= 0 && !requestedRoot) {
+  throw new Error("Informe o diretório depois de --root.");
+}
+const artifactMode = Boolean(requestedRoot);
+const serverRoot = artifactMode ? path.resolve(repoRoot, requestedRoot) : repoRoot;
+if (artifactMode && serverRoot !== path.resolve(repoRoot, ".pages")) {
+  throw new Error("O servidor de artefato aceita somente o diretório .pages.");
+}
 
 const MIME_BY_EXT = new Map([
   [".html", "text/html; charset=utf-8"],
   [".css", "text/css; charset=utf-8"],
   [".js", "text/javascript; charset=utf-8"],
+  [".mjs", "text/javascript; charset=utf-8"],
   [".json", "application/json; charset=utf-8"],
   [".svg", "image/svg+xml"],
   [".png", "image/png"],
@@ -22,8 +33,8 @@ function safeResolve(requestPath) {
   const decoded = decodeURIComponent(requestPath.split("?")[0]);
   const clean = decoded.replace(/\\/g, "/");
   const raw = clean.startsWith("/") ? clean.slice(1) : clean;
-  const resolved = path.resolve(repoRoot, raw);
-  if (!resolved.startsWith(repoRoot + path.sep)) {
+  const resolved = path.resolve(serverRoot, raw);
+  if (resolved !== serverRoot && !resolved.startsWith(serverRoot + path.sep)) {
     return null;
   }
   return resolved;
@@ -41,7 +52,7 @@ async function tryReadFile(absolutePath) {
 const server = http.createServer(async (req, res) => {
   try {
     const urlPath = req.url || "/";
-    const targetPath = urlPath === "/" ? "/public/index.html" : urlPath;
+    const targetPath = urlPath === "/" ? (artifactMode ? "/index.html" : "/public/index.html") : urlPath;
     let resolved = safeResolve(targetPath);
     if (!resolved) {
       res.writeHead(400, { "Content-Type": "text/plain; charset=utf-8" });
@@ -50,7 +61,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     let data = await tryReadFile(resolved);
-    if (!data && targetPath !== "/public/index.html" && !targetPath.startsWith("/public/")) {
+    if (!artifactMode && !data && targetPath !== "/public/index.html" && !targetPath.startsWith("/public/")) {
       resolved = safeResolve("/public" + (targetPath.startsWith("/") ? targetPath : "/" + targetPath));
       if (resolved) {
         data = await tryReadFile(resolved);
@@ -90,5 +101,5 @@ const server = http.createServer(async (req, res) => {
 
 const port = Number.parseInt(process.env.PORT || "4182", 10);
 server.listen(port, "127.0.0.1", () => {
-  console.log(`Servidor local: http://127.0.0.1:${port}/`);
+  console.log(`Servidor local (${artifactMode ? ".pages" : "desenvolvimento"}): http://127.0.0.1:${port}/`);
 });

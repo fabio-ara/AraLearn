@@ -56,6 +56,7 @@ export function compileCardFromTemplate({ templateId = "", slots = {}, position 
   if (!validation.ok) {
     throw new Error(validation.errors.map((error) => `${error.path}: ${error.message}`).join("; "));
   }
-  const { id: _ignoredId, ...normalizedCard } = validation.value;
+  const normalizedCard = { ...validation.value };
+  delete normalizedCard.id;
   return normalizedCard;
 }

@@ -1,3 +1,9 @@
+import {
+  CONTRACT_KIND_PROJECT,
+  CONTRACT_NAME,
+  CONTRACT_VERSION
+} from "../contract/validateContract.js";
+
 function isPlainObject(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
@@ -12,15 +18,15 @@ export function detectJsonExchangeFormat(parsed) {
   }
 
   if (
-    parsed.contract === "aralearn.contract" &&
-    parsed.version === 1 &&
-    parsed.kind === "project" &&
+    parsed.contract === CONTRACT_NAME &&
+    parsed.version === CONTRACT_VERSION &&
+    parsed.kind === CONTRACT_KIND_PROJECT &&
     Array.isArray(parsed.courses)
   ) {
     return "contract";
   }
 
   throw new Error(
-    'JSON inválido para importação. Use um projeto com `contract: "aralearn.contract"`, `version: 1`, `kind: "project"` ou um backup com `format: "aralearn.storage"`.'
+    `JSON inválido para importação. Use um projeto com \`contract: "${CONTRACT_NAME}"\`, \`version: ${CONTRACT_VERSION}\`, \`kind: "${CONTRACT_KIND_PROJECT}"\` ou um backup com \`format: "aralearn.storage"\`.`
   );
 }

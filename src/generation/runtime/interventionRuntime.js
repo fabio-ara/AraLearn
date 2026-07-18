@@ -294,7 +294,8 @@ export async function prepareMicrosequenceGeneration({
   preferredContainerId = "",
   preferredContainerLabel = "",
   lessonContext = {},
-  ingestAttachments
+  ingestAttachments,
+  provider = null
 } = {}) {
   if (typeof ingestAttachments !== "function") {
     throw new Error("Ingestão de anexos indisponível para a intervenção local.");
@@ -342,22 +343,15 @@ export async function prepareMicrosequenceGeneration({
     preferredContainerId,
     mode: requestConfig.operation
   });
-  const interventionRequest = buildInterventionRequestFromDraft({
-    selection,
-    draft: {
-      ...draft,
-      promptText: promptText
-    },
-    lessonContext
-  });
   const launchConfig = resolveGenerationLaunchConfig({
     selectedModel,
     apiKey: assistConfig.apiKey,
-    baseUrl: assistConfig.baseUrl || assistConfig.apiBaseUrl,
+    baseUrl: assistConfig.baseUrl,
     didacticProfileId: assistConfig.didacticProfileId,
     profileTuning: assistConfig.profileTuning,
     codexEndpoint: assistConfig.codexEndpoint,
-    codexToken: assistConfig.codexToken
+    codexToken: assistConfig.codexToken,
+    provider
   });
 
   return {
@@ -366,29 +360,7 @@ export async function prepareMicrosequenceGeneration({
     ingestedAttachments,
     launchConfig,
     requestConfig,
-    requestContext,
-    request: {
-      intent: {
-        scope: {
-          level: interventionRequest.target.level,
-          courseKey,
-          moduleKey,
-          lessonKey,
-          microsequenceKey: interventionRequest.target.level === "microsequence" ? microsequenceKey : ""
-        },
-        promptText,
-        attachments: ingestedAttachments.attachments,
-        operation: requestConfig.operation,
-        requestedGenerationDepth: requestConfig.requestedGenerationDepth,
-        interventionRequest,
-        didacticProfileId: launchConfig.didacticProfileId,
-        engineProfileOverrides: launchConfig.engineProfileOverrides,
-        phaseModelOverrides: launchConfig.phaseModelOverrides,
-        selectedTopDownProfileId: launchConfig.selectedTopDownProfileId
-      },
-      providerRegistry: launchConfig.providerRegistry,
-      providerId: launchConfig.providerId
-    }
+    requestContext
   };
 }
 
@@ -402,8 +374,7 @@ function snapshotPreparedIntervention(prepared = {}) {
       extractedCount: 0
     },
     requestConfig: prepared?.requestConfig || {},
-    requestContext: prepared?.requestContext || {},
-    request: prepared?.request || {}
+    requestContext: prepared?.requestContext || {}
   }) || null;
 }
 
@@ -575,10 +546,25 @@ export async function executeMicrosequenceGeneration({
   }
 
   try {
-    const preparedIntervention =
-      isResuming && resumeRun.resumeFrom !== "prepare" && resumeRun.artifacts?.preparedIntervention
-        ? resumeRun.artifacts.preparedIntervention
-        : await prepareMicrosequenceGeneration({
+    const savedPreparation =
+      isResuming && resumeRun.resumeFrom !== "prepare"
+        ? resumeRun.artifacts?.preparedIntervention
+        : null;
+    const preparedIntervention = savedPreparation
+      ? {
+          ...savedPreparation,
+          launchConfig: resolveGenerationLaunchConfig({
+            selectedModel: assistConfig.model,
+            apiKey: assistConfig.apiKey,
+            baseUrl: assistConfig.baseUrl,
+            didacticProfileId: assistConfig.didacticProfileId,
+            profileTuning: assistConfig.profileTuning,
+            codexEndpoint: assistConfig.codexEndpoint,
+            codexToken: assistConfig.codexToken,
+            provider
+          })
+        }
+      : await prepareMicrosequenceGeneration({
             selection,
             draft,
             assistConfig,
@@ -586,9 +572,10 @@ export async function executeMicrosequenceGeneration({
             preferredContainerId,
             preferredContainerLabel,
             lessonContext,
-            ingestAttachments
+            ingestAttachments,
+            provider
           });
-    if (isResuming && resumeRun.resumeFrom !== "prepare" && resumeRun.artifacts?.preparedIntervention) {
+    if (savedPreparation) {
       runController.progress({
         stage: "prepare",
         status: "ok",
@@ -614,9 +601,7 @@ export async function executeMicrosequenceGeneration({
         promptText: preparedIntervention.promptText,
         requestedGenerationDepth: preparedIntervention.requestConfig?.requestedGenerationDepth || draft?.requestedGenerationDepth
       },
-      assistConfig,
       projectDocument,
-      provider,
       preparedIntervention,
       resumeState: runController.run,
       onProgress: (event = {}) => {

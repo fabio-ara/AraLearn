@@ -2,8 +2,8 @@ function text(value) {
   return typeof value === "string" ? value.trim() : "";
 }
 
-const PDF_MODULE_URL = new URL("../../../node_modules/pdfjs-dist/legacy/build/pdf.mjs", import.meta.url);
-const PDF_WORKER_URL = new URL("../../../node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs", import.meta.url);
+const PDF_MODULE_URL = new URL("../../../node_modules/pdfjs-dist/build/pdf.mjs", import.meta.url);
+const PDF_WORKER_URL = new URL("../../../node_modules/pdfjs-dist/build/pdf.worker.mjs", import.meta.url);
 const MAMMOTH_BROWSER_URL = new URL("../../../node_modules/mammoth/mammoth.browser.js", import.meta.url);
 
 let pdfjsLoaderPromise = null;

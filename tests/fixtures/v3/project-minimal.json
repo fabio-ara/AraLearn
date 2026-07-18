@@ -74,6 +74,7 @@
                   ],
                   "cards": [
                     {
+                      "id": "card-fixture-minimal-regra",
                       "position": 1,
                       "resource": "paragraph",
                       "kind": "theory",
@@ -83,6 +84,7 @@
                       "after": "Se uma delas for falsa, a conjunção inteira é falsa."
                     },
                     {
+                      "id": "card-fixture-minimal-complete",
                       "position": 2,
                       "resource": "paragraph",
                       "kind": "exercise",

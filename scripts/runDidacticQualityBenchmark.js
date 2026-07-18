@@ -3,10 +3,6 @@ import path from "node:path";
 
 import { evaluateDidacticQuality } from "../src/generation/engine/didacticQualityMetrics.js";
 
-function text(value) {
-  return typeof value === "string" ? value.trim() : "";
-}
-
 function ratio(part, total) {
   if (!total) {
     return 0;
@@ -57,8 +53,7 @@ function buildProject({ title = "Posição a_ij", goal = "Ler posição em matri
                     dependsOn: [],
                     covers,
                     checks: covers.map((item) => `o aluno reconhece ${item}`),
-                    versions: [],
-                    activeVersion: null
+                    cards: []
                   }
                 ]
               }
@@ -79,6 +74,7 @@ function buildEvaluationContext({
 } = {}) {
   const project = buildProject({ title, goal, covers });
   const lesson = project.courses[0].modules[0].lessons[0];
+  lesson.guide.goal = guideGoal;
   const microsequence = lesson.microsequences[0];
   return {
     lesson,

@@ -58,7 +58,12 @@ function normalizeSources(attachedSources = [], userSelectedSourceIds = []) {
       };
     })
     .filter((item) => item.selected)
-    .map(({ selected: _selected, ...item }) => item);
+    .map((item) => ({
+      id: item.id,
+      title: item.title,
+      kind: item.kind,
+      summary: item.summary
+    }));
 }
 
 function normalizeRequestContext(requestContext = {}) {
@@ -113,12 +118,39 @@ function normalizeContextPacket(contextPacket = {}) {
   };
 }
 
-function collectKnownErrors(selectedLesson = {}, targetMicrosequence = {}, contextPacket = {}) {
+function collectKnownErrors(selectedLesson = {}, targetMicrosequence = {}) {
   return unique([
+    ...(Array.isArray(targetMicrosequence?.errors) ? targetMicrosequence.errors : []),
     ...((Array.isArray(selectedLesson?.topics) ? selectedLesson.topics : []).flatMap((topic) => (
       Array.isArray(topic?.errors) ? topic.errors : []
     )))
   ]);
+}
+
+function normalizeDidactics(didacticPolicy = {}) {
+  const strategy = didacticPolicy?.topDownCourseStrategy || {};
+  const budget = strategy?.defaultBudgetByLesson || {};
+  const reappearances = didacticPolicy?.defaultMinimumReappearances || {};
+  const semantics = didacticPolicy?.courseSemantics || {};
+  return {
+    targetStudentProfile: text(didacticPolicy?.targetStudentProfile),
+    minimumReappearances: {
+      conceptual: Number(reappearances.conceptual) || 3,
+      operational: Number(reappearances.operational) || 4
+    },
+    microsequenceBudget: {
+      minimum: Number(budget.minMicrosequences) || 3,
+      target: Number(budget.targetMicrosequences) || 5,
+      maximum: Number(budget.maxMicrosequences) || 8
+    },
+    requireCoreCoverageBeforeExtensions: strategy.requireCoreCoverageBeforeExtensions !== false,
+    requireVocabularyMap: strategy.requireVocabularyMap !== false,
+    courseSemantics: {
+      description: text(semantics.description),
+      learningTrail: text(semantics.learningTrail),
+      microsequenceProgression: text(semantics.microsequenceProgression)
+    }
+  };
 }
 
 export function buildMicrosequencePlanningContract({
@@ -131,7 +163,8 @@ export function buildMicrosequencePlanningContract({
   userSelectedSourceIds = [],
   userSelectedExtraResourceTypes = [],
   requestContext = {},
-  contextPacket = {}
+  contextPacket = {},
+  didacticPolicy = {}
 }) {
   const guide = normalizeGuide(selectedLesson?.guide || selectedModule?.guide || {});
   const normalizedRequestContext = normalizeRequestContext({
@@ -162,13 +195,14 @@ export function buildMicrosequencePlanningContract({
     },
     guide,
     microsequence,
+    didactics: normalizeDidactics(didacticPolicy),
     request: {
       mode: normalizedRequestContext.mode,
       prompt: normalizedRequestContext.prompt,
       preferredResource: normalizedRequestContext.preferredResource,
       extraResources: normalizedRequestContext.extraResources
     },
-    knownErrors: collectKnownErrors(selectedLesson, targetMicrosequence, contextPacket),
+    knownErrors: collectKnownErrors(selectedLesson, targetMicrosequence),
     context: normalizeContextPacket(contextPacket),
     availableTypes: listMicrosequenceTypeSummaries()
       .filter((item) => !["assisted", "simple"].includes(text(item?.id)))
@@ -201,6 +235,8 @@ export function buildMicrosequencePlanningContract({
       "Distribute relevant theory across multiple short steps instead of collapsing everything into one long opening card.",
       "Prefer plans that alternate explanation and consolidation when that helps the learner carry the same local idea into practice.",
       "Keep the plan inside guide.include and away from guide.exclude.",
+      "Respect didactics.targetStudentProfile, courseSemantics and the configured progression.",
+      "Introduce and explain required vocabulary before asking for autonomous use when didactics.requireVocabularyMap is true.",
       ...(microsequence.branchOf
         ? [
             "If microsequence.branchOf exists, keep the branch tightly local and reserve a final step that returns the learner to the planned track."

@@ -34,6 +34,7 @@ function buildPlanPrompt({ planningContract, validatedPlan, slotPlan }) {
     "Fase: bottom_up_micro_plan",
     `Microssequência: ${text(planningContract?.microsequence?.title)}`,
     `Objetivo: ${text(validatedPlan?.plan?.goal || planningContract?.microsequence?.goal)}`,
+    `Diretrizes didáticas: ${JSON.stringify(planningContract?.didactics || {})}`,
     "Escolha o recurso, a operação e o template didático mais adequados ao objetivo.",
     "Quando um recurso tiver mais de um template, preencha o slot 7 com o templateId permitido.",
     "Quando houver template único, o slot 7 pode repetir o mesmo template único.",

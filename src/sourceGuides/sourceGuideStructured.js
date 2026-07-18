@@ -55,7 +55,7 @@ function normalizeChipList(value) {
 }
 
 function isListField(fieldName) {
-  return fieldName === "include" || fieldName === "exclude" || fieldName === "notation";
+  return fieldName === "include" || fieldName === "exclude" || fieldName === "notation" || fieldName === "avoid";
 }
 
 function normalizeFieldValue(fieldName, value) {

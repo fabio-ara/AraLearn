@@ -1,83 +1,101 @@
-const EMBEDDED_JSON_CACHE = new Map();
+const EMBEDDED_COURSE_DIRECTORY = new URL("../data/embedded-courses/", import.meta.url);
 const EMBEDDED_COURSE_MANIFEST_FILE = "embedded-seed-manifest.json";
-const NON_PERSISTED_COURSE_MANIFEST_FILE = "non-persisted-course-manifest.json";
+const JSON_FILE_NAME_PATTERN = /^[a-z0-9][a-z0-9._-]*\.json$/i;
 
-function resolveJsonUrl(directoryName, fileName) {
-  return new URL(`../data/${directoryName}/${fileName}`, import.meta.url);
+function clone(value) {
+  return structuredClone(value);
 }
 
-function loadEmbeddedCourseTextInNode(url) {
-  const processValue = globalThis.process;
-  if (!processValue?.versions?.node || typeof processValue.getBuiltinModule !== "function") {
-    return "";
-  }
-  const fs = processValue.getBuiltinModule("node:fs");
-  const { fileURLToPath } = processValue.getBuiltinModule("node:url");
-  return fs.readFileSync(fileURLToPath(url), "utf8");
-}
-
-function loadCourseTextInBrowser(url) {
-  const request = new XMLHttpRequest();
-  request.open("GET", url.href, false);
-  request.send();
-  if (request.status >= 200 && request.status < 300) {
-    return request.responseText;
-  }
-  throw new Error(`Falha ao carregar JSON do catálogo de cursos: ${url.pathname}`);
-}
-
-export function loadJsonDocumentFromDirectory(directoryName, fileName) {
-  const normalizedDirectoryName = String(directoryName || "").trim();
+function resolveDocumentUrl(fileName) {
   const normalizedFileName = String(fileName || "").trim();
-  const cacheKey = `${normalizedDirectoryName}/${normalizedFileName}`;
-  if (!cacheKey) {
-    throw new Error("Arquivo JSON embarcado inválido.");
+  if (!JSON_FILE_NAME_PATTERN.test(normalizedFileName)) {
+    throw new Error(`Nome de arquivo embarcado inválido: "${normalizedFileName}".`);
   }
-  if (EMBEDDED_JSON_CACHE.has(cacheKey)) {
-    return structuredClone(EMBEDDED_JSON_CACHE.get(cacheKey));
+  return new URL(normalizedFileName, EMBEDDED_COURSE_DIRECTORY);
+}
+
+async function fetchJsonDocument(url, fetchImpl) {
+  if (typeof fetchImpl !== "function") {
+    throw new Error("O carregamento do catálogo requer a API Fetch.");
   }
-  const url = resolveJsonUrl(normalizedDirectoryName, normalizedFileName);
-  const sourceText = loadEmbeddedCourseTextInNode(url) || loadCourseTextInBrowser(url);
-  const document = JSON.parse(sourceText);
-  EMBEDDED_JSON_CACHE.set(cacheKey, document);
-  return structuredClone(document);
-}
 
-export function loadEmbeddedJsonDocument(fileName) {
-  return loadJsonDocumentFromDirectory("embedded-courses", fileName);
-}
-
-export function loadEmbeddedCourseFromJson(fileName) {
-  return loadEmbeddedJsonDocument(fileName);
-}
-
-export function loadNonPersistedCourseFromJson(fileName) {
-  return loadJsonDocumentFromDirectory("non-persisted-courses", fileName);
-}
-
-export function loadEmbeddedSeedManifest() {
-  const manifest = loadEmbeddedJsonDocument(EMBEDDED_COURSE_MANIFEST_FILE);
-  const courseFiles = Array.isArray(manifest?.courseFiles)
-    ? manifest.courseFiles.map((value) => String(value || "").trim()).filter(Boolean)
-    : [];
-  if (!courseFiles.length) {
-    throw new Error("Manifesto de cursos embarcados vazio ou inválido.");
+  const response = await fetchImpl(url);
+  if (!response?.ok) {
+    throw new Error(`Falha ao carregar o catálogo embarcado (${response?.status || "sem resposta"}): ${url.pathname}`);
   }
+
+  const sourceText = await response.text();
+  try {
+    return JSON.parse(sourceText);
+  } catch (error) {
+    throw new Error(`JSON inválido no catálogo embarcado: ${url.pathname}`, { cause: error });
+  }
+}
+
+export function createEmbeddedCourseLoader({ fetchImpl = globalThis.fetch } = {}) {
+  const documentPromises = new Map();
+
+  async function loadJsonDocument(fileName) {
+    const url = resolveDocumentUrl(fileName);
+    const cacheKey = url.href;
+    if (!documentPromises.has(cacheKey)) {
+      const documentPromise = fetchJsonDocument(url, fetchImpl).catch((error) => {
+        documentPromises.delete(cacheKey);
+        throw error;
+      });
+      documentPromises.set(cacheKey, documentPromise);
+    }
+    return clone(await documentPromises.get(cacheKey));
+  }
+
+  async function loadSeedManifest() {
+    const manifest = await loadJsonDocument(EMBEDDED_COURSE_MANIFEST_FILE);
+    const courseFiles = Array.isArray(manifest?.courseFiles)
+      ? manifest.courseFiles.map((value) => String(value || "").trim()).filter(Boolean)
+      : [];
+
+    if (!courseFiles.length || courseFiles.some((fileName) => !JSON_FILE_NAME_PATTERN.test(fileName))) {
+      throw new Error("Manifesto de cursos embarcados vazio ou inválido.");
+    }
+    if (new Set(courseFiles).size !== courseFiles.length) {
+      throw new Error("Manifesto de cursos embarcados contém arquivos duplicados.");
+    }
+
+    return { courseFiles };
+  }
+
   return {
-    courseFiles
+    loadJsonDocument,
+    loadCourse: loadJsonDocument,
+    loadSeedManifest
   };
 }
 
-export function loadNonPersistedCourseManifest() {
-  const manifest = loadJsonDocumentFromDirectory("non-persisted-courses", NON_PERSISTED_COURSE_MANIFEST_FILE);
-  const courseFiles = Array.isArray(manifest?.courseFiles)
-    ? manifest.courseFiles.map((value) => String(value || "").trim()).filter(Boolean)
-    : [];
-  const courseIds = Array.isArray(manifest?.courseIds)
-    ? manifest.courseIds.map((value) => String(value || "").trim()).filter(Boolean)
-    : [];
-  return {
-    courseFiles,
-    courseIds
-  };
+const defaultLoader = createEmbeddedCourseLoader();
+const loadersByFetch = new WeakMap();
+
+function resolveLoader(options = {}) {
+  const fetchImpl = options.fetchImpl;
+  if (fetchImpl === undefined || fetchImpl === globalThis.fetch) {
+    return defaultLoader;
+  }
+  if (typeof fetchImpl !== "function") {
+    throw new TypeError("A implementação de Fetch do catálogo deve ser uma função.");
+  }
+  if (!loadersByFetch.has(fetchImpl)) {
+    loadersByFetch.set(fetchImpl, createEmbeddedCourseLoader({ fetchImpl }));
+  }
+  return loadersByFetch.get(fetchImpl);
+}
+
+export function loadEmbeddedJsonDocument(fileName, options) {
+  return resolveLoader(options).loadJsonDocument(fileName);
+}
+
+export function loadEmbeddedCourseFromJson(fileName, options) {
+  return resolveLoader(options).loadCourse(fileName);
+}
+
+export function loadEmbeddedSeedManifest(options) {
+  return resolveLoader(options).loadSeedManifest();
 }

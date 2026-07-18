@@ -1,7 +1,7 @@
 import {
   buildInterventionRunFeedbackText,
   normalizeInterventionRun
-} from "../generation/runtime/interventionRunState.js"
+} from "../generation/runtime/interventionRunState.js";
 
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -38,17 +38,11 @@ export function buildInterventionSessionKey(reference = {}) {
   ].join("::");
 }
 
-export function createEmptyInterventionSession({ reference = {}, baseVersionId = "" } = {}) {
-  return normalizeInterventionSessionEntry(
-    {},
-    {
-      reference,
-      baseVersionId
-    }
-  );
+export function createEmptyInterventionSession({ reference = {} } = {}) {
+  return normalizeInterventionSessionEntry({}, { reference });
 }
 
-export function normalizeInterventionSessionEntry(entry = {}, { reference = {}, baseVersionId = "" } = {}) {
+export function normalizeInterventionSessionEntry(entry = {}, { reference = {} } = {}) {
   const normalizedReference = {
     courseKey: text(entry?.courseKey || reference?.courseKey),
     moduleKey: text(entry?.moduleKey || reference?.moduleKey),
@@ -62,7 +56,6 @@ export function normalizeInterventionSessionEntry(entry = {}, { reference = {}, 
   const feedbackText = text(entry?.feedbackText) || runFeedbackText || nextPromptDraft || text(entry?.message);
   return {
     ...normalizedReference,
-    baseVersionId: text(entry?.baseVersionId || baseVersionId),
     status,
     title: text(entry?.title),
     message: text(entry?.message),

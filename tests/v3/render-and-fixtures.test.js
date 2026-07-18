@@ -17,18 +17,18 @@ import { computeFlowchartAutoFitScale } from "../../src/flowchart/flowchartViewp
 import { renderGenerationPanelOverlay, renderHomeScreen } from "../../src/ui/renderHomeScreen.js";
 import { buildCourseNavigationState } from "../../src/ui/lessonEditorNavigation.js";
 import { renderLessonScreen } from "../../src/ui/renderLessonScreen.js";
+import { createEmptyProgressDocument } from "../../src/storage/progressStore.js";
 import {
   createExampleProjectDocument,
   createLogicPlaneMatrixTestProjectDocument,
   createTeoriaDosGrafosProvaProjectDocument
-} from "../../src/ui/exampleProjectDocument.js";
+} from "../support/exampleProjectDocument.js";
 import {
-  loadEmbeddedCourseFromJson,
-  loadEmbeddedSeedManifest,
-  loadNonPersistedCourseFromJson,
-  loadNonPersistedCourseManifest
-} from "../../src/ui/embeddedSeedCourseLoader.js";
-import { createEmbeddedSeedProjectDocument } from "../../src/ui/embeddedSeedProjectDocument.js";
+  getEmbeddedCourseFixture,
+  getEmbeddedSeedManifestFixture,
+  getEmbeddedSeedProjectFixture
+} from "../support/embeddedCatalogFixture.js";
+import { loadCourseFixture, loadCourseFixtureManifest } from "../support/loadCourseFixture.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -824,7 +824,7 @@ test("o renderer preserva quebra e indentação em opções de choice com códig
     after: ""
   });
 
-  assert.match(html, /<pre class="multiple-choice-code"><code data-language="c">#include &lt;stdio\.h&gt;\nmain\(\)\n\{\n    printf\(&quot;Ola&quot;\);\n\}<\/code><\/pre>/);
+  assert.match(html, /<pre class="multiple-choice-code"><code data-language="c">#include &lt;stdio\.h&gt;\nmain\(\)\n\{\n {4}printf\(&quot;Ola&quot;\);\n\}<\/code><\/pre>/);
   assert.match(html, /<span class="multiple-choice-label"><code>main\(\)<\/code><\/span>/);
 });
 
@@ -855,7 +855,7 @@ test("os documentos públicos de exemplo usam o contrato v3", () => {
     createExampleProjectDocument(),
     createTeoriaDosGrafosProvaProjectDocument(),
     createLogicPlaneMatrixTestProjectDocument(),
-    createEmbeddedSeedProjectDocument()
+    getEmbeddedSeedProjectFixture()
   ].forEach((document) => {
     const result = validateContractDocument(document);
     assert.equal(result.ok, true);
@@ -889,10 +889,10 @@ test("README e docs públicos descrevem o contrato atual", () => {
 });
 
 test("a home renderiza abrir curso com ids reais do contrato v3", () => {
-  const project = createEmbeddedSeedProjectDocument();
+  const project = getEmbeddedSeedProjectFixture();
   const html = renderHomeScreen({
     project,
-    progress: {},
+    progress: createEmptyProgressDocument(),
     editorSupport: {}
   });
 
@@ -902,7 +902,7 @@ test("a home renderiza abrir curso com ids reais do contrato v3", () => {
 });
 
 test("o painel de geração mostra cursos por padrão e não exibe chips de microssequência", () => {
-  const project = createEmbeddedSeedProjectDocument();
+  const project = getEmbeddedSeedProjectFixture();
   const course = project.courses.find((item) => item.id === "course-microsoft-azure-ai-fundamentals-ai900");
   const moduleValue = course?.modules?.[0];
   const lesson = moduleValue?.lessons?.[0];
@@ -946,7 +946,7 @@ test("o painel de geração mostra cursos por padrão e não exibe chips de micr
 });
 
 test("o painel de geração embute o progresso e renderiza CTA final como botão principal", () => {
-  const project = createEmbeddedSeedProjectDocument();
+  const project = getEmbeddedSeedProjectFixture();
   const html = renderGenerationPanelOverlay({
     project,
     editorSupport: {
@@ -991,7 +991,7 @@ test("o painel de geração embute o progresso e renderiza CTA final como botão
 });
 
 test("a navegação de curso resolve seleção válida a partir de ids do v3", () => {
-  const project = createEmbeddedSeedProjectDocument();
+  const project = getEmbeddedSeedProjectFixture();
   const navigationState = buildCourseNavigationState(project, "course-microsoft-azure-ai-fundamentals-ai900");
 
   assert.ok(navigationState);
@@ -1001,14 +1001,14 @@ test("a navegação de curso resolve seleção válida a partir de ids do v3", (
 });
 
 test("o seed embutido oficial mantém os cursos embarcados já materializados", () => {
-  const project = createEmbeddedSeedProjectDocument();
-  const manifest = loadEmbeddedSeedManifest();
-  const nonPersistedManifest = loadNonPersistedCourseManifest();
-  const praticasCourse = loadNonPersistedCourseFromJson("praticas-ferramentas-seed-course.json");
-  const organizacaoCourse = loadNonPersistedCourseFromJson("organizacao-arquitetura-computadores-seed-course.json");
-  const frameworkCourse = loadNonPersistedCourseFromJson("framework-ia-generativa-seed-course.json");
-  const logicaCourse = loadNonPersistedCourseFromJson("logica-programacao-seed-course.json");
-  const fundamentosCourse = loadEmbeddedCourseFromJson("fundamentos-ia-analise-dados-seed-course.json");
+  const project = getEmbeddedSeedProjectFixture();
+  const manifest = getEmbeddedSeedManifestFixture();
+  const fixtureManifest = loadCourseFixtureManifest();
+  const praticasCourse = loadCourseFixture("praticas-ferramentas-seed-course.json");
+  const organizacaoCourse = loadCourseFixture("organizacao-arquitetura-computadores-seed-course.json");
+  const frameworkCourse = loadCourseFixture("framework-ia-generativa-seed-course.json");
+  const logicaCourse = loadCourseFixture("logica-programacao-seed-course.json");
+  const fundamentosCourse = getEmbeddedCourseFixture("fundamentos-ia-analise-dados-seed-course.json");
   const ai900Course = project.courses.find((course) => course.id === "course-microsoft-azure-ai-fundamentals-ai900");
   const dataprevCourse = project.courses.find(
     (course) => course.id === "course-dataprev-2026-analista-processamento-seguranca-informacao"
@@ -1029,8 +1029,8 @@ test("o seed embutido oficial mantém os cursos embarcados já materializados", 
   );
   assert.deepEqual(
     fs
-      .readdirSync(path.resolve(__dirname, "../../src/data/non-persisted-courses"))
-      .filter((fileName) => fileName.endsWith(".json") && fileName !== "non-persisted-course-manifest.json")
+      .readdirSync(path.resolve(__dirname, "../fixtures/course-catalog"))
+      .filter((fileName) => fileName.endsWith(".json") && fileName !== "course-catalog-manifest.json")
       .sort(),
     [
       "framework-ia-generativa-seed-course.json",
@@ -1040,7 +1040,7 @@ test("o seed embutido oficial mantém os cursos embarcados já materializados", 
       "teoria-dos-grafos-prova.json"
     ]
   );
-  assert.deepEqual(nonPersistedManifest.courseFiles, [
+  assert.deepEqual(fixtureManifest.courseFiles, [
     "teoria-dos-grafos-prova.json",
     "logica-programacao-seed-course.json",
     "praticas-ferramentas-seed-course.json",
@@ -1105,8 +1105,6 @@ test("o seed embutido oficial mantém os cursos embarcados já materializados", 
     dataprevNetworkMicrosequences.reduce((count, microsequence) => count + (microsequence.cards || []).length, 0),
     307
   );
-  assert.equal(JSON.stringify(dataprevCourse).match(/"versions"|"activeVersion"/), null);
-
   const ai900Microsequences = ai900Course.modules
     .flatMap((moduleValue) => moduleValue.lessons || [])
     .flatMap((lesson) => lesson.microsequences || []);
@@ -1123,8 +1121,7 @@ test("o seed embutido oficial mantém os cursos embarcados já materializados", 
     858
   );
   const ai900TableProblems = ai900Microsequences.flatMap((microsequence) =>
-    [{ cards: microsequence.cards || [] }].flatMap((version) =>
-      (version.cards || [])
+    (microsequence.cards || [])
         .filter((card) => card.resource === "table")
         .flatMap((card) => {
           const columns = Array.isArray(card.columns) ? card.columns.length : 0;
@@ -1138,26 +1135,23 @@ test("o seed embutido oficial mantém os cursos embarcados já materializados", 
             return [];
           });
         })
-    )
   );
   assert.deepEqual(ai900TableProblems, []);
   ai900Microsequences.forEach((microsequence) => {
-    [{ cards: microsequence.cards || [] }].forEach((version) => {
-      const visibleTexts = [
-        microsequence.title,
-        microsequence.goal,
-        ...(version.cards || []).flatMap((card) => [
-          card.title,
-          card.text,
-          card.prompt,
-          card.question,
-          card.after,
-          ...(card.options || []).map((option) => option.text)
-        ])
-      ].filter((value) => typeof value === "string");
-      visibleTexts.forEach((value) => {
-        assert.doesNotMatch(value, /handoff|planner\/auditor|materializar|json completo/iu);
-      });
+    const visibleTexts = [
+      microsequence.title,
+      microsequence.goal,
+      ...(microsequence.cards || []).flatMap((card) => [
+        card.title,
+        card.text,
+        card.prompt,
+        card.question,
+        card.after,
+        ...(card.options || []).map((option) => option.text)
+      ])
+    ].filter((value) => typeof value === "string");
+    visibleTexts.forEach((value) => {
+      assert.doesNotMatch(value, /handoff|planner\/auditor|materializar|json completo/iu);
     });
   });
 
@@ -1206,8 +1200,7 @@ test("o seed embutido oficial mantém os cursos embarcados já materializados", 
   );
   assert.equal(
     frameworkMicrosequences
-      .map((microsequence) => ({ cards: microsequence.cards || [] }))
-      .flatMap((version) => version.cards || [])
+      .flatMap((microsequence) => microsequence.cards || [])
       .filter((card) => card.resource === "flow")
       .every((card) => card.structure && !("nodes" in card) && !("edges" in card)),
     true
@@ -1215,8 +1208,7 @@ test("o seed embutido oficial mantém os cursos embarcados já materializados", 
 
   assert.equal(
     organizacaoMicrosequences
-      .map((microsequence) => ({ cards: microsequence.cards || [] }))
-      .flatMap((version) => version.cards || [])
+      .flatMap((microsequence) => microsequence.cards || [])
       .filter((card) => card.resource === "flow")
       .every((card) => card.structure && !("nodes" in card) && !("edges" in card)),
     true
@@ -1231,22 +1223,19 @@ test("o seed embutido oficial mantém os cursos embarcados já materializados", 
   assert.equal(logicaMicrosequences.length, 170);
   assert.equal(
     logicaMicrosequences
-      .map((microsequence) => ({ cards: microsequence.cards || [] }))
-      .reduce((count, version) => count + ((version?.cards || []).length), 0),
+      .reduce((count, microsequence) => count + ((microsequence.cards || []).length), 0),
     924
   );
   assert.equal(
     logicaMicrosequences
-      .map((microsequence) => ({ cards: microsequence.cards || [] }))
-      .flatMap((version) => version.cards || [])
+      .flatMap((microsequence) => microsequence.cards || [])
       .filter((card) => card.resource === "flow")
       .every((card) => card.structure && !("nodes" in card) && !("edges" in card)),
     true
   );
   assert.equal(
     logicaMicrosequences
-      .map((microsequence) => ({ cards: microsequence.cards || [] }))
-      .flatMap((version) => version.cards || [])
+      .flatMap((microsequence) => microsequence.cards || [])
       .filter((card) => card.resource === "flow")
       .every((card) => {
         const html = renderCardRuntimeBlocks(card);
@@ -1307,8 +1296,7 @@ test("o seed embutido oficial mantém os cursos embarcados já materializados", 
   );
 
   const fundamentosCards = fundamentosMicrosequences
-    .map((microsequence) => ({ cards: microsequence.cards || [] }))
-    .flatMap((version) => version.cards || []);
+    .flatMap((microsequence) => microsequence.cards || []);
 
   assert.equal(
     fundamentosCards.some((card) => JSON.stringify(card).includes("dataset_aula6_numpy_pandas.csv")),
@@ -1372,11 +1360,6 @@ test("o seed embutido oficial mantém os cursos embarcados já materializados", 
   );
 });
 
-test("o editor não chama scrollers removidos com o versionamento", () => {
-  const source = fs.readFileSync(path.resolve(__dirname, "../../src/ui/lessonEditorApp.js"), "utf8");
-  assert.doesNotMatch(source, /syncVersionTabScroller|syncStructureVersionStripScroller/);
-});
-
 test("o popup de continuação não pode avançar o card que já o substituiu", () => {
   const source = fs.readFileSync(path.resolve(__dirname, "../../src/ui/lessonEditorApp.js"), "utf8");
 
@@ -1420,7 +1403,7 @@ test("o seed de Matemática para Informática mantém textos visíveis focados n
 });
 
 test("o seed de Fundamentos evita texto de bastidor e vocabulário proibido nos textos visíveis", () => {
-  const course = loadEmbeddedCourseFromJson("fundamentos-ia-analise-dados-seed-course.json");
+  const course = getEmbeddedCourseFixture("fundamentos-ia-analise-dados-seed-course.json");
 
   assert.ok(course);
 
@@ -1436,8 +1419,7 @@ test("o seed de Fundamentos evita texto de bastidor e vocabulário proibido nos 
         ...(lesson.microsequences || []).flatMap((microsequence) => [
           microsequence.title,
           microsequence.goal,
-          ...[{ cards: microsequence.cards || [] }].flatMap((version) =>
-            (version.cards || []).flatMap((card) => [
+          ...(microsequence.cards || []).flatMap((card) => [
               card.title,
               card.text,
               card.after,
@@ -1447,7 +1429,6 @@ test("o seed de Fundamentos evita texto de bastidor e vocabulário proibido nos 
               ...(card.blocks || []).flatMap((block) => [block.value, block.prompt, block.question]),
               ...(card.afterBlocks || []).flatMap((block) => [block.value, block.prompt, block.question])
             ])
-          )
         ])
       ])
     ])
@@ -1471,7 +1452,7 @@ test("o seed de Fundamentos evita texto de bastidor e vocabulário proibido nos 
 });
 
 test("o seed de Fundamentos também remove texto de bastidor dos metadados internos", () => {
-  const course = loadEmbeddedCourseFromJson("fundamentos-ia-analise-dados-seed-course.json");
+  const course = getEmbeddedCourseFixture("fundamentos-ia-analise-dados-seed-course.json");
 
   assert.ok(course);
 
@@ -1512,15 +1493,14 @@ test("o seed de Fundamentos também remove texto de bastidor dos metadados inter
 });
 
 test("exercícios de Fundamentos que dependem de contexto mostrado trazem esse contexto no próprio card", () => {
-  const course = loadEmbeddedCourseFromJson("fundamentos-ia-analise-dados-seed-course.json");
+  const course = getEmbeddedCourseFixture("fundamentos-ia-analise-dados-seed-course.json");
 
   assert.ok(course);
 
   const cards = course.modules
     .flatMap((moduleValue) => moduleValue.lessons || [])
     .flatMap((lesson) => lesson.microsequences || [])
-    .map((microsequence) => ({ cards: microsequence.cards || [] }))
-    .flatMap((version) => version.cards || []);
+    .flatMap((microsequence) => microsequence.cards || []);
   const contextMarkers = [
     /\bobserve\b/iu,
     /\bcompare\b/iu,
@@ -1557,15 +1537,14 @@ test("exercícios de Fundamentos que dependem de contexto mostrado trazem esse c
 });
 
 test("cards de Fundamentos com resultados globais da base repetem o contexto no próprio card", () => {
-  const course = loadEmbeddedCourseFromJson("fundamentos-ia-analise-dados-seed-course.json");
+  const course = getEmbeddedCourseFixture("fundamentos-ia-analise-dados-seed-course.json");
 
   assert.ok(course);
 
   const cards = course.modules
     .flatMap((moduleValue) => moduleValue.lessons || [])
     .flatMap((lesson) => lesson.microsequences || [])
-    .map((microsequence) => ({ cards: microsequence.cards || [] }))
-    .flatMap((version) => version.cards || []);
+    .flatMap((microsequence) => microsequence.cards || []);
 
   const targetIds = [
     "card-a03-09-media-verificavel",
@@ -1587,15 +1566,14 @@ test("cards de Fundamentos com resultados globais da base repetem o contexto no 
 });
 
 test("o seed de Fundamentos não mantém lacunas em after nem em afterBlocks", () => {
-  const course = loadEmbeddedCourseFromJson("fundamentos-ia-analise-dados-seed-course.json");
+  const course = getEmbeddedCourseFixture("fundamentos-ia-analise-dados-seed-course.json");
 
   assert.ok(course);
 
   const cards = course.modules
     .flatMap((moduleValue) => moduleValue.lessons || [])
     .flatMap((lesson) => lesson.microsequences || [])
-    .map((microsequence) => ({ cards: microsequence.cards || [] }))
-    .flatMap((version) => version.cards || []);
+    .flatMap((microsequence) => microsequence.cards || []);
 
   cards.forEach((card) => {
     assert.equal(hasTextGapSyntax(card.after || ""), false, `${card.id}.after`);
@@ -1619,8 +1597,7 @@ test("cards de grafo que prometem subgrafo destacado no seed materializam esse d
   const cards = course.modules
     .flatMap((moduleValue) => moduleValue.lessons || [])
     .flatMap((lesson) => lesson.microsequences || [])
-    .map((microsequence) => ({ cards: microsequence.cards || [] }))
-    .flatMap((version) => version.cards || []);
+    .flatMap((microsequence) => microsequence.cards || []);
 
   const highlightedGraphCards = cards.filter((card) => {
     if (card?.resource !== "graph") return false;
@@ -1660,8 +1637,7 @@ test("cards de sequência local em grafos materializam o recorte relevante no se
   const cards = course.modules
     .flatMap((moduleValue) => moduleValue.lessons || [])
     .flatMap((lesson) => lesson.microsequences || [])
-    .map((microsequence) => ({ cards: microsequence.cards || [] }))
-    .flatMap((version) => version.cards || []);
+    .flatMap((microsequence) => microsequence.cards || []);
 
   cards.forEach((card) => {
     if (targetIds.has(card?.id)) {
@@ -1691,8 +1667,7 @@ test("cards de exercício com grafo no seed evitam prompts genéricos demais", (
   const graphExerciseCards = course.modules
     .flatMap((moduleValue) => moduleValue.lessons || [])
     .flatMap((lesson) => lesson.microsequences || [])
-    .map((microsequence) => ({ cards: microsequence.cards || [] }))
-    .flatMap((version) => version.cards || [])
+    .flatMap((microsequence) => microsequence.cards || [])
     .filter((card) => card?.resource === "graph" && ["exercise", "practice", "review"].includes(String(card?.kind || "")));
 
   graphExerciseCards.forEach((card) => {
@@ -1719,8 +1694,7 @@ test("a síntese de vértices, arestas, graus e soma repete o grafo-base nos exe
   const micro = (lesson.microsequences || []).find((entry) => entry.id === "micro-revisao-fundamentos-graus-prova");
   assert.ok(micro);
 
-  const version = { cards: micro.cards || [] };
-  assert.ok(version);
+  assert.ok((micro.cards || []).length);
 
   const requiredIds = [
     "card-contar-n-m",
@@ -1731,7 +1705,7 @@ test("a síntese de vértices, arestas, graus e soma repete o grafo-base nos exe
   ];
 
   requiredIds.forEach((cardId) => {
-    const card = (version.cards || []).find((entry) => entry.id === cardId);
+    const card = (micro.cards || []).find((entry) => entry.id === cardId);
     assert.ok(card, `card ${cardId} ausente`);
     assert.equal(card.resource, "composite");
     const graphBlock = (card.blocks || []).find((block) => block.kind === "graph");
@@ -1884,11 +1858,10 @@ test("microssequências anteriores repetem o grafo-base quando a prática depend
     const micro = microById.get(microId);
     assert.ok(micro, `microssequência ${microId} ausente`);
 
-    const version = { cards: micro.cards || [] };
-    assert.ok(version.cards.length, `cards ausentes em ${microId}`);
+    assert.ok((micro.cards || []).length, `cards ausentes em ${microId}`);
 
     cardIds.forEach((cardId) => {
-      const card = (version.cards || []).find((entry) => entry.id === cardId);
+      const card = (micro.cards || []).find((entry) => entry.id === cardId);
       assert.ok(card, `card ${cardId} ausente em ${microId}`);
       assert.equal(card.resource, "composite");
       const kinds = new Set((card.blocks || []).map((block) => block.kind));
@@ -1899,7 +1872,7 @@ test("microssequências anteriores repetem o grafo-base quando a prática depend
 });
 
 test("o seed de Lógica de Programação evita linguagem editorial interna nos textos visíveis", () => {
-  const course = loadNonPersistedCourseFromJson("logica-programacao-seed-course.json");
+  const course = loadCourseFixture("logica-programacao-seed-course.json");
 
   assert.ok(course);
   assert.doesNotMatch(course.title, /prova|simulado|professor|disciplina/i);
@@ -1920,15 +1893,14 @@ test("o seed de Lógica de Programação evita linguagem editorial interna nos t
 });
 
 test("o seed de Lógica de Programação preserva quebra de linha em cards de code e destaca sintaxe inline em paragraph", () => {
-  const course = loadNonPersistedCourseFromJson("logica-programacao-seed-course.json");
+  const course = loadCourseFixture("logica-programacao-seed-course.json");
 
   assert.ok(course);
 
   const cards = course.modules
     .flatMap((moduleValue) => moduleValue.lessons || [])
     .flatMap((lesson) => lesson.microsequences || [])
-    .map((microsequence) => ({ cards: microsequence.cards || [] }))
-    .flatMap((version) => version.cards || []);
+    .flatMap((microsequence) => microsequence.cards || []);
 
   const codeCard = cards.find((card) => card.id === "card-m1-02-exemplo-completo");
   const paragraphCard = cards.find((card) => card.id === "card-m1-01-regra-esqueleto");
@@ -1942,15 +1914,14 @@ test("o seed de Lógica de Programação preserva quebra de linha em cards de co
 });
 
 test("o seed de Lógica de Programação preserva lacunas de code com case, operador lógico e colchete final", () => {
-  const course = loadNonPersistedCourseFromJson("logica-programacao-seed-course.json");
+  const course = loadCourseFixture("logica-programacao-seed-course.json");
 
   assert.ok(course);
 
   const cards = course.modules
     .flatMap((moduleValue) => moduleValue.lessons || [])
     .flatMap((lesson) => lesson.microsequences || [])
-    .map((microsequence) => ({ cards: microsequence.cards || [] }))
-    .flatMap((version) => version.cards || []);
+    .flatMap((microsequence) => microsequence.cards || []);
   const menuCard = cards.find((card) => card.id === "card-menu-switch-02");
   const whileCard = cards.find((card) => card.id === "card-while-validacao-02");
   const vectorCard = cards.find((card) => card.id === "card-02-01-05-02");
@@ -1975,15 +1946,14 @@ test("o seed de Lógica de Programação preserva lacunas de code com case, oper
 });
 
 test("o seed de Lógica de Programação mantém lacunas de code com fragmentos exatos de C, sem texto descritivo", () => {
-  const course = loadNonPersistedCourseFromJson("logica-programacao-seed-course.json");
+  const course = loadCourseFixture("logica-programacao-seed-course.json");
 
   assert.ok(course);
 
   const cards = course.modules
     .flatMap((moduleValue) => moduleValue.lessons || [])
     .flatMap((lesson) => lesson.microsequences || [])
-    .map((microsequence) => ({ cards: microsequence.cards || [] }))
-    .flatMap((version) => version.cards || []);
+    .flatMap((microsequence) => microsequence.cards || []);
   const accessCard = cards.find((card) => card.id === "card-02-01-04-05");
   const restartCard = cards.find((card) => card.id === "card-02-03-01-05");
   const maxPositionCard = cards.find((card) => card.id === "card-02-03-04-03");
@@ -2018,15 +1988,14 @@ test("o seed de Lógica de Programação mantém lacunas de code com fragmentos 
 });
 
 test("o renderer do seed de Lógica de Programação materializa alternativas multiline de código como blocos", () => {
-  const course = loadNonPersistedCourseFromJson("logica-programacao-seed-course.json");
+  const course = loadCourseFixture("logica-programacao-seed-course.json");
 
   assert.ok(course);
 
   const cards = course.modules
     .flatMap((moduleValue) => moduleValue.lessons || [])
     .flatMap((lesson) => lesson.microsequences || [])
-    .map((microsequence) => ({ cards: microsequence.cards || [] }))
-    .flatMap((version) => version.cards || []);
+    .flatMap((microsequence) => microsequence.cards || []);
   const codeChoiceCard = cards.find((card) => card.id === "card-m5-04-identificar-erro-getch-fora");
 
   assert.ok(codeChoiceCard);
@@ -2037,7 +2006,7 @@ test("o renderer do seed de Lógica de Programação materializa alternativas mu
 });
 
 test("o seed de Lógica de Programação mantém sintaxe de C destacada e sem crases quebradas nos textos visíveis", () => {
-  const course = loadNonPersistedCourseFromJson("logica-programacao-seed-course.json");
+  const course = loadCourseFixture("logica-programacao-seed-course.json");
 
   assert.ok(course);
 
@@ -2078,10 +2047,7 @@ test("o seed de Lógica de Programação mantém sintaxe de C destacada e sem cr
   course.modules.forEach((moduleValue) => {
     (moduleValue.lessons || []).forEach((lesson) => {
       (lesson.microsequences || []).forEach((microsequence) => {
-        const version =
-          (microsequence.versions || []).find((entry) => entry.id === (microsequence.cards || []).length > 0) ||
-          (microsequence.versions || [])[0];
-        (version?.cards || []).forEach((card) => {
+        (microsequence.cards || []).forEach((card) => {
           ["text", "after", "prompt", "question"].forEach((field) => {
             if (typeof card?.[field] === "string") {
               inspect(card[field], `${card.id}.${field}`);
@@ -2103,15 +2069,14 @@ test("o seed de Lógica de Programação mantém sintaxe de C destacada e sem cr
 });
 
 test("o seed de Lógica de Programação corrige vícios recorrentes e fragmentos corrompidos nos cards revisados", () => {
-  const course = loadNonPersistedCourseFromJson("logica-programacao-seed-course.json");
+  const course = loadCourseFixture("logica-programacao-seed-course.json");
 
   assert.ok(course);
 
   const cards = course.modules
     .flatMap((moduleValue) => moduleValue.lessons || [])
     .flatMap((lesson) => lesson.microsequences || [])
-    .map((microsequence) => ({ cards: microsequence.cards || [] }))
-    .flatMap((version) => version.cards || []);
+    .flatMap((microsequence) => microsequence.cards || []);
 
   const visibleTexts = cards.flatMap((card) => [
     card.title,
@@ -2146,16 +2111,15 @@ test("o seed de Lógica de Programação corrige vícios recorrentes e fragmento
   assert.equal(matrixProgramCard?.title, "Programa simples");
 });
 
-test("o seed de Lógica de Programação elimina placeholders legados de code e usa o contrato novo", () => {
-  const course = loadNonPersistedCourseFromJson("logica-programacao-seed-course.json");
+test("o seed de Lógica de Programação usa lacunas e opções de código válidas", () => {
+  const course = loadCourseFixture("logica-programacao-seed-course.json");
 
   assert.ok(course);
 
   const cards = course.modules
     .flatMap((moduleValue) => moduleValue.lessons || [])
     .flatMap((lesson) => lesson.microsequences || [])
-    .map((microsequence) => ({ cards: microsequence.cards || [] }))
-    .flatMap((version) => version.cards || []);
+    .flatMap((microsequence) => microsequence.cards || []);
 
   assert.equal(
     cards.some((card) => card.resource === "code" && /_{3,}/.test(String(card.code || ""))),
@@ -2163,7 +2127,7 @@ test("o seed de Lógica de Programação elimina placeholders legados de code e 
   );
 
   const gapCard = cards.find((card) => card.id === "card-m1-04-completar-getch");
-  const migratedChoiceCard = cards.find((card) => card.id === "card-programa-escolher-int-correto");
+  const codeChoiceCard = cards.find((card) => card.id === "card-programa-escolher-int-correto");
   const isMultilineCodeOption = (source) =>
     source.includes("\n") &&
     /#include|\b(?:main|printf|scanf|getch|for|if|while|switch)\s*\(|\b(?:do|case|default|struct|typedef)\b|[{};]/u.test(source);
@@ -2185,13 +2149,13 @@ test("o seed de Lógica de Programação elimina placeholders legados de code e 
 
   assert.equal(gapCard?.exercise, "gap");
   assert.match(gapCard?.code || "", /\[\[getch\(\);::getch\(\);\|/);
-  assert.equal(migratedChoiceCard?.resource, "choice");
+  assert.equal(codeChoiceCard?.resource, "choice");
   assert.equal(
-    (migratedChoiceCard?.options || []).every((option) => option.kind === "code" || typeof option.text === "string"),
+    (codeChoiceCard?.options || []).every((option) => option.kind === "code" || typeof option.text === "string"),
     true
   );
   assert.equal(
-    (migratedChoiceCard?.options || []).some((option) => option.kind === "code"),
+    (codeChoiceCard?.options || []).some((option) => option.kind === "code"),
     true
   );
   assert.deepEqual(mixedCodeChoiceCards.map((card) => card.id), []);
@@ -2200,32 +2164,21 @@ test("o seed de Lógica de Programação elimina placeholders legados de code e 
 });
 
 test("microssequência com cards em revisão continua abrindo play", () => {
-  const project = createEmbeddedSeedProjectDocument();
+  const project = getEmbeddedSeedProjectFixture();
   const course = project.courses[0];
   const moduleValue = course.modules[0];
   const lesson = moduleValue.lessons[0];
   const microsequence = lesson.microsequences[0];
-  microsequence.versions = [
+  microsequence.cards = [
     {
-      id: "version-manual",
-      createdAt: "2026-05-27T00:00:00.000Z",
-      source: "manual",
-      action: "generate",
-      request: "",
-      summary: "teste",
-      cards: [
-        {
-          id: "card-1",
-          position: 1,
-          resource: "paragraph",
-          kind: "theory",
-          exercise: "none",
-          title: "Base",
-          text: "Texto.",
-          after: ""
-        }
-      ],
-      validation: { ok: true, issues: [] }
+      id: "card-1",
+      position: 1,
+      resource: "paragraph",
+      kind: "theory",
+      exercise: "none",
+      title: "Base",
+      text: "Texto.",
+      after: ""
     }
   ];
   microsequence.status = "generated";
@@ -2245,41 +2198,30 @@ test("microssequência com cards em revisão continua abrindo play", () => {
     moduleValue,
     lesson,
     microsequence,
-    cards: microsequence.versions[0].cards,
+    cards: microsequence.cards,
     microsequenceMode: "play",
-    editorSupport: { progress: {} }
+    editorSupport: { progress: createEmptyProgressDocument() }
   });
 
   assert.match(html, /data-action="play-microsequence"/);
 });
 
 test("microssequências geradas com cards continuam na trilha principal da lição", () => {
-  const project = createEmbeddedSeedProjectDocument();
+  const project = getEmbeddedSeedProjectFixture();
   const course = project.courses[0];
   const moduleValue = course.modules[0];
   const lesson = moduleValue.lessons[0];
   const microsequence = lesson.microsequences[0];
-  microsequence.versions = [
+  microsequence.cards = [
     {
-      id: "version-manual",
-      createdAt: "2026-05-27T00:00:00.000Z",
-      source: "manual",
-      action: "generate",
-      request: "",
-      summary: "teste",
-      cards: [
-        {
-          id: "card-1",
-          position: 1,
-          resource: "paragraph",
-          kind: "theory",
-          exercise: "none",
-          title: "Base",
-          text: "Texto.",
-          after: ""
-        }
-      ],
-      validation: { ok: true, issues: [] }
+      id: "card-1",
+      position: 1,
+      resource: "paragraph",
+      kind: "theory",
+      exercise: "none",
+      title: "Base",
+      text: "Texto.",
+      after: ""
     }
   ];
   microsequence.status = "generated";
@@ -2299,9 +2241,9 @@ test("microssequências geradas com cards continuam na trilha principal da liç�
     moduleValue,
     lesson,
     microsequence,
-    cards: microsequence.versions[0].cards,
+    cards: microsequence.cards,
     microsequenceMode: "play",
-    editorSupport: { progress: {} }
+    editorSupport: { progress: createEmptyProgressDocument() }
   });
 
   assert.doesNotMatch(html, /Não há microssequências prontas para estudar aqui/);
@@ -2310,33 +2252,22 @@ test("microssequências geradas com cards continuam na trilha principal da liç�
 });
 
 test("o leitor clampa a barra de progresso e protege títulos longos contra vazamento horizontal", () => {
-  const project = createEmbeddedSeedProjectDocument();
+  const project = getEmbeddedSeedProjectFixture();
   const course = project.courses[0];
   const moduleValue = course.modules[0];
   const lesson = moduleValue.lessons[0];
   const microsequence = lesson.microsequences[0];
   microsequence.title = "Microssequência com um título extremamente longo para validar contenção horizontal no leitor móvel sem estourar a largura útil";
-  microsequence.versions = [
+  microsequence.cards = [
     {
-      id: "version-manual",
-      createdAt: "2026-06-17T00:00:00.000Z",
-      source: "manual",
-      action: "generate",
-      request: "",
-      summary: "teste",
-      cards: [
-        {
-          id: "card-1",
-          position: 1,
-          resource: "paragraph",
-          kind: "theory",
-          exercise: "none",
-          title: "Título de card muito grande para confirmar wrap e contenção horizontal dentro da superfície do leitor",
-          text: "Texto.",
-          after: ""
-        }
-      ],
-      validation: { ok: true, issues: [] }
+      id: "card-1",
+      position: 1,
+      resource: "paragraph",
+      kind: "theory",
+      exercise: "none",
+      title: "Título de card muito grande para confirmar wrap e contenção horizontal dentro da superfície do leitor",
+      text: "Texto.",
+      after: ""
     }
   ];
   microsequence.status = "generated";
@@ -2356,9 +2287,9 @@ test("o leitor clampa a barra de progresso e protege títulos longos contra vaza
     moduleValue,
     lesson,
     microsequence,
-    cards: microsequence.versions[0].cards,
+    cards: microsequence.cards,
     microsequenceMode: "play",
-    editorSupport: { progress: {} }
+    editorSupport: { progress: createEmptyProgressDocument() }
   });
 
   const stylesPath = path.join(__dirname, "../../public/styles.css");

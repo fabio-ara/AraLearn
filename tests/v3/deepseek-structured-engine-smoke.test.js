@@ -23,7 +23,7 @@ test("smoke estruturado DeepSeek tem script e usa variável de ambiente", () => 
   assert.match(source, /graphValidOptions/);
   assert.match(source, /graphInvalidOptions/);
   assert.match(source, /feedbackContradictions/);
-  assert.match(source, /choiceAnswerFallbacks/);
+  assert.match(source, /invalidChoiceAnswers/);
   assert.match(source, /topDownAuditContradictions/);
   assert.match(source, /computedAnswers/);
   assert.match(source, /auditPatchApplied/);

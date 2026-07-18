@@ -1,6 +1,5 @@
 import { resolveGenerationLaunchConfig } from "./launchConfig.js";
 import {
-  resolveGenerationScope,
   resolveGenerationNavigationTarget,
   summarizeTopDownResult
 } from "./generationState.js";
@@ -13,49 +12,38 @@ export async function prepareStructureGeneration({
   scopeState = {},
   draft = {},
   assistConfig = {},
-  ingestAttachments
+  ingestAttachments,
+  provider = null
 } = {}) {
   if (typeof ingestAttachments !== "function") {
     throw new Error("Ingestão de anexos indisponível para a geração estrutural.");
   }
 
   const promptText = text(draft.promptText);
-  const selectedModel = text(assistConfig.model) || "gemini-2.5-flash";
   const ingestedAttachments = await ingestAttachments(Array.isArray(draft.attachments) ? draft.attachments : []);
 
-  if (!promptText && ingestedAttachments.extractedCount === 0 && ingestedAttachments.attachments.length > 0) {
+  if (!promptText && ingestedAttachments.extractedCount === 0) {
     throw new Error(
-      "Os anexos atuais ainda não geraram texto utilizável para o top-down. Use TXT, Markdown, HTML, JSON, CSV ou complemente com um prompt."
+      "Informe um pedido ou anexo com texto utilizável para gerar a estrutura."
     );
   }
 
   const launchConfig = resolveGenerationLaunchConfig({
-    selectedModel,
+    selectedModel: assistConfig.model,
     apiKey: assistConfig.apiKey,
+    baseUrl: assistConfig.baseUrl,
     didacticProfileId: assistConfig.didacticProfileId,
     profileTuning: assistConfig.profileTuning,
     codexEndpoint: assistConfig.codexEndpoint,
-    codexToken: assistConfig.codexToken
+    codexToken: assistConfig.codexToken,
+    provider
   });
 
   return {
     promptText,
-    selectedModel,
     ingestedAttachments,
     launchConfig,
-    request: {
-      intent: {
-        scope: resolveGenerationScope(scopeState),
-        promptText,
-        attachments: ingestedAttachments.attachments,
-        didacticProfileId: launchConfig.didacticProfileId,
-        engineProfileOverrides: launchConfig.engineProfileOverrides,
-        phaseModelOverrides: launchConfig.phaseModelOverrides,
-        selectedTopDownProfileId: launchConfig.selectedTopDownProfileId
-      },
-      providerRegistry: launchConfig.providerRegistry,
-      providerId: launchConfig.providerId
-    }
+    scopeState
   };
 }
 

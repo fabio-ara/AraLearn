@@ -30,7 +30,6 @@ export function renderProviderConfigOverlay({
 } = {}) {
   const isCodexLocal = String(selectedModel || "").trim() === "codex-cli-local";
   const normalizedModel = String(selectedModel || "").trim();
-  const isOpenAiCompatible = normalizedModel.startsWith("openai-compatible");
   const isDeepSeek = normalizedModel === "deepseek-quality" || normalizedModel.startsWith("deepseek-");
   const statusMessage = String(codexStatus?.error || codexStatus?.message || "").trim();
   const statusClass = codexStatus?.ok ? "is-success" : statusMessage ? "is-warning" : "";
@@ -74,11 +73,11 @@ export function renderProviderConfigOverlay({
           `<input data-field="assist-api-key" type="password" autocomplete="off" spellcheck="false" value="${escapeHtml(apiKey)}" placeholder="Chave da API" title="Chave da API">`,
           "Cole a chave da LLM escolhida."
         ) +
-        (isOpenAiCompatible || isDeepSeek
+        (isDeepSeek
           ? renderField(
               "Base URL",
               `<input data-field="provider-config-base-url" type="text" autocomplete="off" spellcheck="false" value="${escapeHtml(baseUrl)}" placeholder="https://..." title="Base URL">`,
-              isDeepSeek ? "DeepSeek usa base OpenAI-compatible; o padrão é https://api.deepseek.com." : "Informe a base do provider compatível com OpenAI."
+              "O padrão do DeepSeek é https://api.deepseek.com."
             )
           : "")) +
     "</section></div></article></section>"

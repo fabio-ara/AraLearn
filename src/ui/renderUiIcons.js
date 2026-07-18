@@ -151,7 +151,7 @@ export function renderUiIcon(iconName, className = "ui-icon") {
     );
   }
 
-  if (iconName === "microsequence" || iconName === "versions") {
+  if (iconName === "microsequence") {
     return (
       '<svg class="' +
       classes +

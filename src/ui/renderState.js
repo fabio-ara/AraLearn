@@ -10,7 +10,6 @@ const TRACKED_SCROLL_SELECTORS = [
   ".home-generate-pane",
   ".generate-card",
   ".editor-step-strip",
-  ".editor-version-strip",
   ".workbench-editor-panel",
   ".assist-prompt",
   ".card-sheet-content",

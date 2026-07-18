@@ -29,7 +29,7 @@ export function handleExternalJsonImportText(rawText, { sourceName = DEFAULT_EXT
     throw new Error("JSON inválido.");
   }
 
-  let detectedFormat = "";
+  let detectedFormat;
   try {
     detectedFormat = detectJsonExchangeFormat(parsed);
   } catch {

@@ -860,7 +860,7 @@ function buildMarkdown(report = {}) {
     `- topDownAuditContradictions: ${Array.isArray(report.topDownAuditContradictions) ? report.topDownAuditContradictions.length : 0}`,
     `- graphAmbiguityWarnings: ${Array.isArray(report.graphAmbiguityWarnings) ? report.graphAmbiguityWarnings.length : 0}`,
     `- feedbackContradictions: ${Array.isArray(report.feedbackContradictions) ? report.feedbackContradictions.length : 0}`,
-    `- choiceAnswerFallbacks: ${Array.isArray(report.choiceAnswerFallbacks) ? report.choiceAnswerFallbacks.length : 0}`,
+    `- invalidChoiceAnswers: ${Array.isArray(report.invalidChoiceAnswers) ? report.invalidChoiceAnswers.length : 0}`,
     `- computedAnswers: ${Array.isArray(report.computedAnswers) ? report.computedAnswers.map((item) => `${item.position}:${item.answer}`).join(", ") : ""}`,
     `- graphComputedAnswers: ${Array.isArray(report.graphComputedAnswers) ? report.graphComputedAnswers.map((item) => `${item.position}:${item.answer}`).join(", ") : ""}`
   ].join("\n");
@@ -895,7 +895,7 @@ async function main() {
   ];
   const graphAmbiguityWarnings = [];
   const feedbackContradictions = [];
-  const choiceAnswerFallbacks = [];
+  const invalidChoiceAnswers = [];
   if (matrixScenario.semantic.answer !== undefined && matrixScenario.semantic.answer !== "b") {
     semanticErrors.push("resposta semântica de matriz diferente do esperado");
   }
@@ -989,7 +989,7 @@ async function main() {
     graphAmbiguityWarnings,
     feedbackContradictions,
     topDownAuditContradictions,
-    choiceAnswerFallbacks,
+    invalidChoiceAnswers,
     computedAnswers: [
       ...matrixScenario.computedAnswers,
       {
@@ -1011,7 +1011,7 @@ async function main() {
   assertScenario(finalReport.graphComputedAnswers[0].answer, "Smoke terminou sem graphComputedAnswers.");
   assertScenario(finalReport.bottom_up_composite.cardsAfterBuild[0].resource === "composite", "Smoke terminou sem card composto válido.");
   assertScenario(finalReport.feedbackContradictions.length === 0, `Smoke terminou com feedback contraditório: ${finalReport.feedbackContradictions.join("; ")}`);
-  assertScenario(finalReport.choiceAnswerFallbacks.length === 0, `Smoke terminou com fallback de answer em choice: ${finalReport.choiceAnswerFallbacks.join("; ")}`);
+  assertScenario(finalReport.invalidChoiceAnswers.length === 0, `Smoke terminou com answer inválido em choice: ${finalReport.invalidChoiceAnswers.join("; ")}`);
   assertScenario(finalReport.freeResourceSelection.accepted === true, "Escolha livre de recurso não foi aceita como coerente.");
   assertScenario(finalReport.auditPatchApplied === true, "Auditoria real não aplicou patch por slot.");
   assertScenario(finalReport.auditPatchScenario.cardsBeforeAudit[0].after !== finalReport.auditPatchScenario.cardsAfterAudit[0].after, "Patch real de auditoria não alterou o after.");

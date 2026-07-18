@@ -11,7 +11,7 @@ function normalizeText(value) {
 }
 
 function escapeShellSingleQuotes(value) {
-  return String(value || "").replace(/'/g, `'\"'\"'`);
+  return String(value || "").replace(/'/g, `'"'"'`);
 }
 
 function escapePowerShellSingleQuotes(value) {

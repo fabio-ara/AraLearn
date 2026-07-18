@@ -334,7 +334,7 @@ test("retry do build corrige slot textual com vazamento estrutural", async () =>
   assert.equal(result.cards[0].after, "Primeiro vem a linha e depois a coluna.");
 });
 
-test("build falha quando choice_exercise mantém answer inválido sem fallback", async () => {
+test("build falha quando choice_exercise mantém answer inválido após as tentativas de correção", async () => {
   const provider = createFakeProvider({
     structuredEngine: true,
     script: {

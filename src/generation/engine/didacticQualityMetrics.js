@@ -9,18 +9,8 @@ function text(value) {
   return typeof value === "string" ? value.trim() : "";
 }
 
-function normalize(value = "") {
-  return text(value).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-}
-
 function clampScore(value) {
   return Math.max(0, Math.min(100, Math.round(Number(value) || 0)));
-}
-
-function collectOptionTexts(card = {}) {
-  return Array.isArray(card?.options)
-    ? card.options.map((option, index) => text(getChoiceOptionComparableValue(option, index))).filter(Boolean)
-    : [];
 }
 
 function evaluateTheoryDensityMetric(cards = []) {

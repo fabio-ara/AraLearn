@@ -14,12 +14,13 @@ function summarizeErrors(errors = []) {
   return errors.map((error) => (typeof error === "string" ? error : error?.message || String(error))).join("; ");
 }
 
-function buildBranchPlanningPrompt(branchContract = {}) {
+function buildBranchPlanningPrompt(branchContract = {}, didacticPolicy = {}) {
   return [
     "Fase: branch_microsequence_structure",
     "Planeje somente uma microssequência curta de apoio local.",
     "Responda somente JSON pequeno com: title, goal, role, covers, checks.",
     "A etapa deve resolver uma lacuna local e voltar à trilha principal sem ampliar o escopo.",
+    `Diretrizes didáticas: ${JSON.stringify(didacticPolicy)}`,
     JSON.stringify(branchContract, null, 2)
   ].join("\n\n");
 }
@@ -32,6 +33,7 @@ export async function createBranchMicrosequence({
   density = "standard",
   userRequest = "",
   requestContext = null,
+  didacticPolicy = {},
   onProgress,
   ...options
 } = {}) {
@@ -64,13 +66,13 @@ export async function createBranchMicrosequence({
     artifacts: { branchContract }
   });
 
-  let rawBranch = null;
+  let rawBranch;
   try {
     const result = await provider.generateText({
       modelId,
       phase: "branch_microsequence_structure",
       system: "Responda somente JSON válido.",
-      prompt: buildBranchPlanningPrompt(branchContract),
+      prompt: buildBranchPlanningPrompt(branchContract, didacticPolicy),
       temperature: 0.1,
       maxTokens: 1500
     });
@@ -135,7 +137,7 @@ export async function createBranchMicrosequence({
     density,
     userRequest,
     requestContext,
-    versionAction: "branch",
+    didacticPolicy,
     onProgress
   });
 

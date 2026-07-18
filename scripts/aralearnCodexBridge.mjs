@@ -317,7 +317,9 @@ const server = http.createServer(async (request, response) => {
       }
       try {
         fs.unlinkSync(cleanupPath);
-      } catch {}
+      } catch {
+        // O processo pode já ter removido o arquivo temporário.
+      }
     });
     if (!result) {
       const stderrMessage = normalizeText(codexResult.stderr);

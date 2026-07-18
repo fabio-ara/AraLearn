@@ -645,7 +645,7 @@ export function renderGenerationPanelOverlay({ project, editorSupport = {} }) {
   );
 }
 
-export function renderHomeScreen({ project, progress, editorSupport = {} }) {
+export function renderHomeScreen({ project, progress }) {
   return (
     '<section class="screen">' +
     renderCoursesTopbar() +

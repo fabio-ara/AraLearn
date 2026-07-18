@@ -91,6 +91,7 @@ function buildMaterializationEnvelope({ planningContract, microsequence, cardBlu
     language: "pt-BR",
     path: structuredClone(planningContract?.path || {}),
     guide: structuredClone(planningContract?.guide || { goal: "", include: [], exclude: [], notation: [], avoid: [] }),
+    didactics: structuredClone(planningContract?.didactics || {}),
     microsequence: {
       title: text(microsequence?.title),
       goal: text(microsequence?.goal),
@@ -206,12 +207,11 @@ export async function generateMicrosequenceCards({
   modelId,
   density = "standard",
   userRequest = "",
-  source = "llm",
-  versionAction,
   attachedSources = [],
   userSelectedSourceIds = [],
   userSelectedExtraResourceTypes = [],
   requestContext = null,
+  didacticPolicy = {},
   onProgress,
   resumeState = null
 } = {}) {
@@ -242,7 +242,8 @@ export async function generateMicrosequenceCards({
     userSelectedSourceIds,
     userSelectedExtraResourceTypes,
     requestContext,
-    contextPacket
+    contextPacket,
+    didacticPolicy
   });
 
   let validatedPlan = resumeArtifacts.validatedPlan || null;
@@ -330,9 +331,9 @@ export async function generateMicrosequenceCards({
     });
   }
 
-  let cards = null;
-  let slotPackets = null;
-  let cardsBeforeAudit = null;
+  let cards;
+  let slotPackets;
+  let cardsBeforeAudit;
   emitStageProgress(onProgress, {
     stage: "compile",
     status: "started",
