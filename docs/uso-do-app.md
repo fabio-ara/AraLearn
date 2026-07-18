@@ -30,29 +30,27 @@ Essa etapa cria caminho. Ela não precisa produzir os cards finais. O usuário d
 
 ## 3. Abrir uma microssequência
 
-Ao abrir uma microssequência, o usuário sai da visão geral e entra em uma etapa específica. A microssequência informa objetivo, papel, dependências, conteúdos cobertos, critérios de verificação, status e versões disponíveis.
+Ao abrir uma microssequência, o usuário sai da visão geral e entra em uma etapa específica. A microssequência informa objetivo, papel, dependências, conteúdos cobertos, critérios de verificação, status e cards disponíveis.
 
 É nessa etapa que o AraLearn monta o contexto para a LLM: caminho da etapa, `guide`, dependências, próxima microssequência, referências escolhidas, fontes anexadas e cards existentes quando a operação é de correção.
 
 ## 4. Gerar cards por bottom-up
 
-No bottom-up, a LLM recebe uma tarefa local. Ela pode gerar cards, corrigir uma versão, propor apoio para uma dificuldade ou continuar a próxima etapa planejada.
+No bottom-up, a LLM recebe uma tarefa local. Ela pode gerar ou corrigir cards, propor apoio para uma dificuldade ou continuar a próxima etapa planejada.
 
-O resultado não entra automaticamente no projeto. O AraLearn confere formato, campos obrigatórios, alternativas, resposta, lacunas, recursos visuais e coerência mínima com o escopo. Quando a validação aceita o resultado, o app cria uma nova versão.
+O resultado não entra automaticamente no projeto. O AraLearn confere formato, campos obrigatórios, alternativas, resposta, lacunas, recursos visuais e coerência mínima com o escopo. Quando a validação aceita o resultado, o app atualiza os cards da microssequência.
 
 ## 5. Estudar os cards
 
 Os cards podem ser explicativos ou interativos. Dependendo do conteúdo, podem aparecer como parágrafo, pergunta objetiva, código, tabela, matriz, plano, grafo, mapa de relações, fluxograma, árvore ou composição de blocos.
 
-Esse ponto se relaciona a uma regra básica de usabilidade: o sistema deve tornar o estado e a ação compreensíveis ao usuário. Nielsen (1994) formulou esse princípio como visibilidade do estado do sistema. No AraLearn, a interface precisa deixar claro onde o estudante está, que etapa está ativa e que versão está sendo usada.
+Esse ponto se relaciona a uma regra básica de usabilidade: o sistema deve tornar o estado e a ação compreensíveis ao usuário. Nielsen (1994) formulou esse princípio como visibilidade do estado do sistema. No AraLearn, a interface precisa deixar claro onde o estudante está, que etapa está ativa e que card está sendo usado.
 
-Quando o conteúdo já está salvo no projeto ou vem embarcado no app, o estudo dessa etapa pode seguir localmente. A conexão volta a ser necessária quando o usuário pede planejamento, geração ou correção assistida por IA.
+Quando o conteúdo já está salvo no IndexedDB ou vem embarcado no app, o estudo dessa etapa pode seguir localmente. A conexão volta a ser necessária quando o usuário pede planejamento, geração ou correção assistida por IA.
 
-## 6. Corrigir e versionar
+## 6. Corrigir cards
 
-Se a explicação ficou ruim, o exercício saiu do escopo ou o card precisa de outro recurso, o usuário pode pedir correção. A nova resposta cria uma versão. A versão ativa é usada no estudo; versões anteriores continuam disponíveis para comparação ou restauração.
-
-Versionar é importante porque melhora uma etapa sem apagar a história do trabalho.
+Se a explicação ficou ruim, o exercício saiu do escopo ou o card precisa de outro recurso, o usuário pode pedir correção. Depois da validação, o conjunto corrigido substitui os cards atuais da microssequência.
 
 ## 7. Criar apoio local
 
@@ -72,7 +70,7 @@ definir escopo
 -> abrir microssequência
 -> gerar ou corrigir cards por bottom-up
 -> estudar
--> revisar versão
+-> revisar os cards
 -> criar apoio local quando necessário
 -> continuar
 ```

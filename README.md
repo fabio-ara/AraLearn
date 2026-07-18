@@ -50,16 +50,16 @@ O estado atual do projeto inclui:
 - planejamento top-down por LLM via API;
 - geração e correção bottom-up por LLM via API;
 - contrato público `aralearn.contract`, versão 3;
-- persistência local e exportação/importação em JSON;
+- persistência local do projeto e do progresso em IndexedDB, com exportação/importação em JSON;
 - validações estruturais e didáticas mínimas;
 - recursos de card: `paragraph`, `choice`, `composite`, `code`, `table`, `flow`, `tree`, `graph`, `relation_map`, `matrix` e `plane`;
 - aplicação web servida localmente;
 - publicação web em GitHub Pages;
 - empacotamento Android por WebView;
-- cursos embarcados editáveis;
+- catálogo de cursos embarcados disponível offline;
 - testes, validações, harnesses, smoke tests e benchmarks de geração.
 
-Os cursos embarcados funcionam como material inicial, não como conteúdo intocável. Eles podem ser estudados, corrigidos, ampliados e exportados pelo usuário.
+Os cursos embarcados funcionam como material inicial disponível no próprio pacote. Cursos criados ou importados pelo usuário e o respectivo progresso ficam persistidos no IndexedDB do dispositivo.
 
 ## Para quem o projeto foi pensado
 

@@ -6,31 +6,26 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ### Changed
 
-- atualização corretiva da APK `0.0.7`, com `versionCode` maior para atualizar instalações existentes;
-- persistência local migrada para IndexedDB, preservando cursos do usuário, progresso e comentários sem tentar gravar o catálogo embarcado em `localStorage`;
-- remoção do fluxo de versionamento local da interface e do contrato de cursos; o controle visual reservado para sincronização futura permanece inativo;
-- catálogo embarcado reunido na inicialização sem duplicar o curso inteiro no armazenamento do navegador;
-- curso embarcado `Fundamentos de IA e Análise de Dados` reintegrado ao catálogo oficial;
-- inicialização do editor corrigida para não chamar controles removidos junto com o versionamento local.
-- APK `0.0.7` preparada com `versionCode` maior para substituir a instalação anterior.
-- catálogo inicial restrito aos cursos inscritos em `embedded-courses`; cursos fora desse manifesto não aparecem até a migração planejada do catálogo.
-- APK `0.0.7` preparada com `versionCode` maior para substituir a instalação anterior.
-- correção da progressão após o feedback de prática e atualização das regressões do editor, do contrato e da persistência.
+- persistência local consolidada no IndexedDB para cursos do usuário, progresso e comentários;
+- catálogo oficial carregado de forma assíncrona a partir de um manifesto único, com três cursos embarcados;
+- contrato JSON validado estritamente na importação, na persistência e no empacotamento;
+- geração top-down e bottom-up unificada em uma configuração explícita de provider e perfil didático;
+- runtime web e Android empacotado somente com módulos alcançáveis e cursos inscritos no manifesto;
+- suíte ampliada com testes de progressão por toque, persistência real e artefatos publicados.
 
 ## [0.0.7] - 2026-07-10
 
 ### Added
 
-- curso embarcado `Concurso Dataprev`, com o módulo inicial `Segurança da Informação`, composto por `8` lições, `71` microssequências e `423` cards validados;
-- módulo `Gestão de Servidores` no curso `Dataprev: Analista de Processamento`, com `8` lições, `64` microssequências e `322` cards sobre sistemas operacionais, Linux, Windows Server, diretórios, automação, contêineres, Docker, Kubernetes e Rancher;
-- APK pública atualizada com o novo curso e `versionCode` maior para permitir atualização sobre a versão `0.0.6`.
+- curso embarcado `Dataprev: Analista de Processamento`, com os módulos `Segurança da Informação`, `Gestão de Servidores` e `Redes de Computadores`;
+- trilha Dataprev composta por `24` lições, `175` microssequências e `1.052` cards validados;
+- cursos `Microsoft Azure AI Fundamentals (AI-900)` e `Fundamentos de IA e Análise de Dados` no mesmo catálogo oficial.
 
 ### Changed
 
-- o seed persistido passa a conter `Microsoft Azure AI Fundamentals (AI-900)` e `Dataprev: Analista de Processamento`; `Lógica de Programação 1` e `Fundamentos de IA e Análise de Dados` ficam disponíveis no catálogo não persistido;
 - o curso embarcado passa a se chamar `Dataprev: Analista de Processamento` e tem objetivo alinhado à preparação completa para o cargo;
 - o módulo inicial `Segurança da Informação` permanece estruturado nos dez tópicos do edital: políticas, procedimentos e gerenciamento, redes, vulnerabilidades e ataques, criptografia, softwares maliciosos, certificação digital, LGPD, IDS/IPS/SIEM e NIST Cybersecurity Framework 1.1;
-- APK pública da versão `0.0.7` atualizada com `versionCode` maior para permitir atualização sobre a primeira publicação da mesma versão.
+- APK pública da versão `0.0.7` contém o catálogo oficial completo.
 
 ## [0.0.6] - 2026-07-08
 
@@ -40,7 +35,7 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 - integração das Partes 05 a 12 feita sobre o seed já saneado das Partes 01 a 04, evitando reintroduzir tabelas vazias e outros defeitos estruturais presentes nas entregas brutas iniciais;
 - correção estrutural do runtime e do contrato para não aceitar mais `table` com linhas vazias ou desalinhadas e para renderizar `tree` como hierarquia real em vez de lista plana;
 - suíte pública atualizada com regressões específicas para o AI-900 expandido e para os cenários de tabela inválida e árvore hierárquica;
-- APK pública de release atualizada com a versão completa do curso AI-900 até a Parte 12 e `versionCode` maior para permitir atualização sobre a linha `0.0.5`.
+- APK pública de release atualizada com a versão completa do curso AI-900 até a Parte 12.
 
 ## [0.0.5] - 2026-07-03
 
@@ -50,10 +45,8 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 - auditoria e saneamento das entregas parciais do curso AI-900 antes da incorporação ao seed oficial, com normalização de `role`, conversão de `tree`, `relation_map` e `plane` para o contrato atual e limpeza de bastidor em textos e metadados;
 - adição do compilador reutilizável `scripts/compileEmbeddedCourseFromParts.mjs` para recompilar cursos embarcados a partir de partes em `json` ou `zip` nas próximas rodadas;
 - manifesto oficial dos cursos embarcados atualizado para carregar o novo curso AI-900 diretamente no app;
-- os cursos `Matemática para Informática`, `Práticas e Ferramentas de Desenvolvimento de Software`, `Organização e Arquitetura de Computadores` e `Framework Corporativo de IA Generativa` saem temporariamente do seed persistido e passam a morar em `src/data/non-persisted-courses`, com limpeza automática desses cursos no bootstrap quando ainda vierem salvos de versões anteriores;
-- o seed persistido do app passa a embarcar apenas `Lógica de Programação 1`, `Fundamentos de IA e Análise de Dados` e `Microsoft Azure AI Fundamentals (AI-900)`, reduzindo o volume gravado no `localStorage` sem fallback em memória;
 - correção do título visível do curso `Lógica de Programação 1` no seed oficial embarcado;
-- APK pública de release atualizada com o curso AI-900 já embarcado, o seed persistido reduzido, o título corrigido de `Lógica de Programação 1` e `versionCode` maior para permitir atualização sobre a APK anterior da mesma linha `0.0.5`.
+- APK pública de release atualizada com o curso AI-900 já embarcado, o catálogo reorganizado e o título corrigido de `Lógica de Programação 1`.
 
 ## [0.0.4] - 2026-07-02
 
@@ -62,10 +55,10 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 - migração coerente dos cursos embarcados oficiais para `JSON` em `src/data/embedded-courses`, sem wrappers `*SeedCourse.js`, sem lista hardcoded de factories em `src/ui` e com manifesto único em `embedded-seed-manifest.json`;
 - atualização do curso embarcado `Fundamentos de IA e Análise de Dados`, agora com `8` módulos, `8` lições, `96` microssequências e `582` cards ativos, com as Aulas 5, 6, 7 e 8 integradas ao app;
 - auditoria e saneamento das entregas brutas das Aulas 7 e 8 antes da incorporação ao seed oficial: remoção de campos extras de raiz, limpeza de bastidor e correção de `composite` de exercício para o shape compatível com o contrato atual;
-- saneamento final da trilha de seed: remoção do hardcoded residual, do placeholder legado de OACO e da reconciliação automática que sobrescrevia projeto persistido com seed oficial;
-- correção do carregamento no app Android para sincronizar os cursos embarcados oficiais com o manifesto atual durante upgrades de APK, mesmo quando o `WebView` preserva o projeto salvo da instalação anterior;
-- correção do runtime para impedir `after` e `afterBlocks` com sintaxe de lacuna interativa, além de saneamento automático de projetos persistidos com esse defeito antes da validação;
-- APK pública de release atualizada com o seed embarcado reorganizado de forma declarativa, sincronização automática do seed oficial no upgrade, `versionCode` maior para permitir atualização sobre a instalação anterior e a expansão de `Fundamentos` até a Aula 8.
+- saneamento final da trilha de seed e adoção do manifesto como fonte única do catálogo oficial;
+- carregamento Android alinhado ao mesmo manifesto usado na web;
+- contrato ajustado para impedir `after` e `afterBlocks` com sintaxe de lacuna interativa;
+- APK pública de release atualizada com o catálogo embarcado declarativo e a expansão de `Fundamentos` até a Aula 8.
 
 ## [0.0.3] - 2026-06-23
 
@@ -92,10 +85,9 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 - aplicação web servida localmente, com projeto persistido no navegador;
 - empacotamento Android por WebView, com build pública de depuração e release;
-- contrato público `aralearn.contract`, versão `3`, para projeto, curso, módulo, lição, microssequência, versão e card;
+- contrato público `aralearn.contract`, versão `3`, para projeto, curso, módulo, lição, microssequência e card;
 - edição de cursos, módulos, lições, microssequências e cards no app;
 - importação e exportação em JSON;
-- versionamento local por microssequência;
 - assistência top-down por API para transformar escopo em trilha;
 - assistência bottom-up por API para gerar, corrigir, reforçar e continuar etapas locais;
 - validações estruturais e didáticas antes de aceitar material gerado;

@@ -20,7 +20,7 @@ Mayer (2009) contribui para a decisão de usar recursos como matriz, grafo, plan
 
 ## Autonomia e mediação
 
-Zimmerman (2002) descreve aprendizagem autorregulada como processo de planejamento, monitoramento e ajuste. O AraLearn apoia esse processo ao mostrar trilha, etapa, versão, erro e continuidade.
+Zimmerman (2002) descreve aprendizagem autorregulada como processo de planejamento, monitoramento e ajuste. O AraLearn apoia esse processo ao mostrar trilha, etapa, progresso, erro e continuidade.
 
 Vygotsky (1978) ajuda a compreender aprendizagem como processo mediado por instrumentos e signos. Bruner (1978) contribui com a ideia de apoio gradual. Freire (1996) reforça que autonomia não é abandono, mas participação crítica do estudante no próprio processo. O AraLearn, nesse sentido, tenta oferecer estrutura sem retirar autoria.
 
@@ -50,7 +50,7 @@ As hipóteses de design são:
 2. O contrato JSON torna conteúdo gerado por IA mais auditável.
 3. A divisão top-down/bottom-up reduz ambiguidade e custo de geração.
 4. Recursos visuais baseados em dados ajudam em conteúdos estruturais.
-5. Versionamento preserva histórico e torna revisão parte do estudo.
+5. Progresso e comentários locais apoiam retomada e revisão do estudo.
 6. Persistência local favorece estudantes com conexão instável.
 7. A LLM por API deve atuar como assistência, não como autoridade final.
 

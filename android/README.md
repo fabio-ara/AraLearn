@@ -25,8 +25,15 @@ O wrapper não substitui o contrato do domínio. Ele apenas hospeda a aplicaçã
 
 ## Pré-requisitos para build local
 
+- `Node.js 22.13+` ou `Node.js 24`
 - `JDK 17`
 - Android SDK
+
+Antes do primeiro build, instale as dependências JavaScript na raiz do repositório:
+
+```powershell
+npm ci
+```
 
 ## Build de depuração
 
@@ -55,16 +62,14 @@ Na raiz do projeto:
 npm run android:release
 ```
 
-O comando agora assina o APK de release automaticamente.
-
-Se estas variáveis estiverem definidas, o build usa o keystore informado:
+O build de release exige estas variáveis e usa exclusivamente o keystore informado:
 
 - `ARALEARN_ANDROID_KEYSTORE_PATH`
 - `ARALEARN_ANDROID_KEYSTORE_PASSWORD`
 - `ARALEARN_ANDROID_KEY_ALIAS`
 - `ARALEARN_ANDROID_KEY_PASSWORD`
 
-Sem essas variáveis, o build local usa `~/.android/debug.keystore` como fallback para gerar um APK assinado e instalável.
+`ARALEARN_ANDROID_KEYSTORE_PATH` deve apontar para um arquivo de keystore existente; recomenda-se usar caminho absoluto. Antes de compilar a variante, o build remove artefatos de release anteriores e valida as quatro variáveis. Se a configuração estiver ausente ou o arquivo não existir, a compilação é interrompida e nenhum APK antigo permanece na pasta de release.
 
 Alternativa direta:
 
@@ -82,6 +87,12 @@ Se o ambiente de build gerar variante diferente de nome, o artefato ficará na m
 ## Persistência e arquivos
 
 O app mantém um espaço de trabalho persistente dentro do `WebView`. Importação e exportação usam seletores nativos do Android. O compartilhamento de arquivos permite levar fontes para o fluxo estrutural do produto.
+
+## Catálogo embarcado
+
+O APK inclui somente os cursos relacionados em `src/data/embedded-courses/embedded-seed-manifest.json`. Durante o build, o staging valida o contrato do catálogo e copia apenas os arquivos indicados no manifesto; fixtures e outros catálogos de desenvolvimento não entram no pacote.
+
+Cursos do usuário, progresso, comentários e configurações locais permanecem no IndexedDB do `WebView` e não são incorporados ao APK.
 
 ## Integração local
 

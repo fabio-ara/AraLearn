@@ -1,6 +1,6 @@
 # Arquitetura
 
-A arquitetura do AraLearn foi desenhada para que uma resposta de LLM por API não altere diretamente o projeto do usuário. Entre a resposta do serviço e o material salvo há um fluxo de composição, validação, versionamento e renderização. O projeto local em JSON é o registro de referência.
+A arquitetura do AraLearn foi desenhada para que uma resposta de LLM por API não altere diretamente o projeto do usuário. Entre a resposta do serviço e o material salvo há um fluxo de composição, validação, persistência e renderização. O projeto local em JSON é o registro de referência.
 
 Para o fluxo de geração, consulte [Fluxos, prompts e contratos de geração](fluxos-prompts-e-contratos.md). Para o formato persistido, consulte [Contrato público](aralearn-contract.md).
 
@@ -27,19 +27,18 @@ project
     └── module
         └── lesson
             └── microsequence
-                └── version
-                    └── card
+                └── card
 ```
 
 A mesma árvore serve para três fins: organizar o estudo, salvar o projeto e selecionar contexto para a geração por LLM.
 
 ## Responsabilidades
 
-O usuário define escopo, escolhe a etapa, revisa versões e decide o que fica no projeto.
+O usuário define escopo, escolhe a etapa, revisa o conteúdo e decide o que fica no projeto.
 
 A LLM por API propõe estrutura, texto, exemplos, exercícios e correções dentro do contexto enviado.
 
-O AraLearn mantém o projeto local, monta contratos transitórios, escolhe o contexto, compõe a saída, valida campos, preserva versões e apresenta os cards.
+O AraLearn mantém o projeto local, monta contratos transitórios, escolhe o contexto, compõe a saída, valida campos, persiste os cards da microssequência e os apresenta.
 
 Essa divisão evita tratar a resposta da LLM como documento final.
 
@@ -85,11 +84,11 @@ Renderizar, aqui, significa transformar dados em card visível. O app não preci
 
 Essa decisão tem duas vantagens. Primeiro, o conteúdo continua editável e exportável. Segundo, o app consegue validar a estrutura antes de mostrá-la ao estudante.
 
-## Versionamento
+## Persistência local
 
-Cada geração ou correção cria uma versão de cards dentro da microssequência. A versão ativa é usada no estudo. Versões anteriores podem servir para comparação, auditoria ou restauração.
+Na web e no app Android, o AraLearn abre o IndexedDB na inicialização e o usa para persistir cursos do usuário, progresso e comentários. Os cursos distribuídos com o app são lidos do catálogo embarcado definido pelo manifesto.
 
-Esse mecanismo permite experimentar uma nova explicação sem destruir a anterior.
+Os cards ficam diretamente em `microsequence.cards`. Uma geração ou correção validada atualiza atomicamente esse conjunto no projeto atual.
 
 ## Falhas
 
