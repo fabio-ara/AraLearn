@@ -132,7 +132,7 @@ ARALEARN_SUPABASE_PUBLISHABLE_KEY
 
 O workflow recusa o deploy se alguma delas estiver vazia. São valores públicos; não cadastre a service role nesse local. A CI de validação inicia o Supabase em runner Linux, reaplica migration/seed e executa o pgTAP sem usar credenciais do projeto remoto.
 
-O job `supabase` também executa `npm run test:supabase:smoke` contra Auth, PostgREST e RPCs reais. O smoke cria temporariamente usuários autenticados A e B no stack local e comprova: negação para `anon`; efeito real de `auth.uid()`; isolamento de leitura, escrita e feed entre A e B; encapsulamento das tabelas internas; clone autorizado do catálogo; rejeição de clone/edição indevidos; e autorização das funções `SECURITY DEFINER`. Os usuários temporários são desativados no encerramento. A service role usada para criar esses sujeitos de teste vem apenas de `supabase status` no runner local e nunca entra no build.
+O job `supabase` também executa `npm run test:supabase:smoke` contra Auth, PostgREST e RPCs reais. O smoke cria temporariamente usuários autenticados A e B no stack local e comprova: negação para `anon`; efeito real de `auth.uid()`; isolamento de leitura, escrita e feed entre A e B; encapsulamento das tabelas internas; clone autorizado do catálogo; rejeição de clone/edição indevidos; e autorização das funções `SECURITY DEFINER`. O teardown tenta desativar os usuários; se a retenção referencial de uma versão local do GoTrue impedir essa limpeza, o stack efêmero é descartado por `supabase stop --no-backup` na CI e deve ser reiniciado com `db reset` no uso manual. A service role usada para criar esses sujeitos de teste vem apenas de `supabase status` no runner local e nunca entra no build.
 
 PowerShell:
 

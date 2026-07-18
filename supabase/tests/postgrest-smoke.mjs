@@ -107,10 +107,16 @@ async function softDeleteUser(userId) {
     `/auth/v1/admin/users/${encodeURIComponent(userId)}?should_soft_delete=true`,
     { method: "DELETE", token: serviceRoleKey },
   );
-  assert(
-    result.response.ok,
-    `Falha ao desativar usuário de smoke: HTTP ${result.response.status}`,
-  );
+  if (!result.response.ok) {
+    // Cópias pessoais tombstonadas e seus envelopes de idempotência conservam
+    // FKs por toda a retenção. Algumas versões locais do GoTrue respondem 500
+    // ao tentar desativar esse usuário no teardown. Isso ocorre depois de todos
+    // os asserts e não deixa estado na CI, cujo stack é parado sem backup.
+    console.warn(
+      `Teardown não desativou usuário temporário (HTTP ${result.response.status}); ` +
+      "descarte o stack local com supabase stop --no-backup ou db reset.",
+    );
+  }
 }
 
 const suffix = `${Date.now()}-${process.pid}`;
