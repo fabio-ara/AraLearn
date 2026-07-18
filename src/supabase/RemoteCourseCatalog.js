@@ -6,6 +6,41 @@ function mutationId() {
 }
 
 const SUPABASE_USER_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
+const AUTHENTICATION_FAILURE_CODES = new Set([
+  "AUTH_REQUIRED",
+  "BAD_JWT",
+  "INVALID_JWT",
+  "JWT_EXPIRED",
+  "JWT_INVALID",
+  "INVALID_TOKEN",
+  "INVALID_GRANT",
+  "SESSION_NOT_FOUND",
+  "NO_SESSION",
+  "REFRESH_TOKEN_NOT_FOUND",
+  "REFRESH_TOKEN_EXPIRED",
+  "REFRESH_TOKEN_ALREADY_USED",
+  "PGRST301"
+]);
+
+function isAuthenticationFailure(error) {
+  const status = Number(error?.status ?? error?.response?.status ?? 0);
+  const code = String(error?.code || error?.response?.code || "").toUpperCase();
+  const message = String(error?.message || "").toLowerCase();
+  if (status === 403 && error?.authRequired !== true) return false;
+  return error?.authRequired === true ||
+    status === 401 ||
+    AUTHENTICATION_FAILURE_CODES.has(code) ||
+    /(?:\bjwt\b.*\b(?:invalid|expired|malformed)\b|\b(?:invalid|expired)\b.*\bjwt\b|\b(?:refresh token|token de refresh)\b.*\b(?:invalid|expired|missing|not found|already used|inv[aá]lido|expirado|ausente)\b|\b(?:session|sess[aã]o)\b.*\b(?:invalid|expired|missing|not found|inv[aá]lida|expirada|ausente)\b|\bauthentication required\b|\bautentica(?:ção|cao) necess[aá]ria\b)/u.test(message);
+}
+
+function asAuthenticationRequired(error) {
+  const normalized = error instanceof Error ? error : new Error(String(error || "Autenticação necessária."));
+  normalized.name = "AuthRequiredError";
+  normalized.status = Number(normalized.status || 401);
+  normalized.code ||= "AUTH_REQUIRED";
+  normalized.authRequired = true;
+  return normalized;
+}
 
 function authenticatedUserId(authClient) {
   const userId = String(authClient.getSession?.()?.user?.id || "").trim().toLowerCase();
@@ -29,14 +64,22 @@ export class RemoteCourseCatalog {
   }
 
   async rpc(name, parameters = {}) {
-    const accessToken = await this.authClient.getAccessToken();
-    if (!accessToken) throw new Error("Autenticação necessária.");
     try {
+      const accessToken = await this.authClient.getAccessToken();
+      if (!accessToken) throw asAuthenticationRequired();
       return await this.http.rpc(name, parameters, { accessToken });
     } catch (error) {
-      if (error?.status === 401) {
-        await this.authClient.clearSession();
-        this.authClient.emit?.("SESSION_INVALID");
+      if (isAuthenticationFailure(error)) {
+        const authError = asAuthenticationRequired(error);
+        if (!this.authClient.sessionInvalidated) {
+          try {
+            await this.authClient.clearSession?.();
+          } catch {
+            // A invalidação local não pode converter a resposta 401 em rejeição da outbox.
+          }
+          this.authClient.emit?.("SESSION_INVALID");
+        }
+        throw authError;
       }
       throw error;
     }

@@ -163,6 +163,7 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
   const synchronizeReplica = async ({ reloadWhenDomainChanges = true } = {}) => {
     if (repository) await repository.flush();
     const result = await syncEngine.synchronize();
+    if (result.authRequired) return result;
     if (repository) {
       const refreshed = await repository.refreshFromReplica();
       if (reloadWhenDomainChanges && (refreshed.documentChanged || refreshed.progressChanged)) {
@@ -204,7 +205,8 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
   };
   let startupSyncError = null;
   try {
-    await syncEngine.synchronize();
+    const initialSync = await syncEngine.synchronize();
+    if (initialSync.authRequired) return;
   } catch (error) {
     if (authSessionWasRejected(error, authClient)) {
       if (authClient.getSession()) await authClient.clearSession();

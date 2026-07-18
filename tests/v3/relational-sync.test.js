@@ -586,6 +586,19 @@ test("mutação rejeitada permanece preservada, mas sai da fila automática", as
 
 test("classificação distingue rede, conflito e falhas determinísticas", () => {
   assert.equal(classifySyncFailure(new TypeError("offline")).kind, "retryable");
+  assert.equal(
+    classifySyncFailure(Object.assign(new Error("JWT expirado"), { status: 401, code: "JWT_EXPIRED" })).kind,
+    "auth_required"
+  );
+  assert.equal(
+    classifySyncFailure(Object.assign(new Error("refresh token inválido"), { status: 400, code: "invalid_grant" })).kind,
+    "auth_required"
+  );
+  assert.equal(classifySyncFailure(new Error("Autenticação necessária.")).kind, "auth_required");
+  assert.equal(
+    classifySyncFailure(Object.assign(new Error("JWT expirado"), { status: 403, code: "JWT_EXPIRED" })).kind,
+    "rejected"
+  );
   assert.deepEqual(classifySyncFailure(new TypeError("fragmento local malformado")), {
     kind: "rejected",
     status: 0,
@@ -643,6 +656,89 @@ test("erros determinísticos do replace viram rejeição estruturada e não são
     assert.equal(response.results[0].status, "rejected");
     assert.equal(response.results[0].code, expectedError.code);
   }
+});
+
+test("401 no apply_sync_batch preserva a outbox, interrompe o ciclo e volta a enviar após novo login", async () => {
+  const store = await createStore();
+  const mutation = outbox("a0000000-0000-4000-8000-000000000006");
+  await store.put("outbox", mutation);
+  const pendingBeforeExpiry = await store.get("outbox", mutation.mutationId);
+  let authenticated = false;
+  let pushes = 0;
+  let pulls = 0;
+  const engine = new RelationalSyncEngine({
+    store,
+    deviceId: DEVICE_ID,
+    transport: {
+      async applySyncBatch() {
+        pushes += 1;
+        if (!authenticated) {
+          throw Object.assign(new Error("JWT expirado"), { status: 401, code: "JWT_EXPIRED" });
+        }
+        return { results: [{ mutationId: mutation.mutationId, status: "applied" }] };
+      },
+      async pullSyncChanges() {
+        pulls += 1;
+        return { changes: [], nextCursor: 70, hasMore: false };
+      }
+    }
+  });
+
+  const expired = await engine.synchronize();
+  assert.equal(expired.authRequired, true);
+  assert.equal(expired.pushed.authRequired, true);
+  assert.equal(expired.pulled, null);
+  assert.equal(pulls, 0);
+  assert.deepEqual(await store.get("outbox", mutation.mutationId), pendingBeforeExpiry);
+
+  authenticated = true;
+  const resumed = await engine.synchronize();
+  assert.equal(resumed.authRequired, undefined);
+  assert.equal(resumed.pushed.accepted, 1);
+  assert.equal(await store.get("outbox", mutation.mutationId), undefined);
+  assert.equal(pushes, 2);
+  assert.equal(pulls, 1);
+  store.close();
+});
+
+test("401 no replace_microsequence_cards é relançado pelo transporte e preserva a mutação composta", async () => {
+  const store = await createStore();
+  const courseId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaab";
+  const microsequenceId = "cccccccc-cccc-4ccc-8ccc-cccccccccccd";
+  const mutation = outbox("a0000000-0000-4000-8000-000000000007", {
+    courseId,
+    entityType: "microsequenceCardReplacement",
+    entityId: microsequenceId,
+    operation: "replace",
+    payload: { courseId, microsequenceId, fragment: { cards: [] } }
+  });
+  await store.put("outbox", mutation);
+  const authError = Object.assign(new Error("sessão inválida"), { status: 401, code: "BAD_JWT" });
+  const transport = new SupabaseSyncTransport({
+    async rpc(name) {
+      assert.equal(name, "replace_microsequence_cards");
+      throw authError;
+    }
+  });
+  await assert.rejects(
+    () => transport.applySyncBatch({ deviceId: DEVICE_ID, mutations: [mutation] }),
+    (error) => classifySyncFailure(error).kind === "auth_required"
+  );
+
+  const engine = new RelationalSyncEngine({
+    store,
+    deviceId: DEVICE_ID,
+    transport,
+    pageSize: 1
+  });
+  const result = await engine.synchronize();
+  assert.equal(result.authRequired, true);
+  assert.equal(result.pulled, null);
+  const preserved = await store.get("outbox", mutation.mutationId);
+  assert.equal(preserved.status, "pending");
+  assert.equal(preserved.attemptCount, 0);
+  assert.deepEqual(preserved.payload, mutation.payload);
+  store.close();
 });
 
 test("rejeição determinística por exceção não impede pull e nunca é reenviada", async () => {

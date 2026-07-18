@@ -663,6 +663,35 @@ test("mutationId pendente de catálogo permanece isolado por UUID ao trocar de u
   assert.equal(await sessionStore.getSyncState(keyA), null);
 });
 
+test("401 de RPC invalida a sessão e propaga estado explícito para a porta de autenticação", async () => {
+  let cleared = 0;
+  const events = [];
+  const catalog = new RemoteCourseCatalog({
+    projectUrl: "https://projeto.supabase.co",
+    publishableKey: "public-key",
+    authClient: {
+      sessionStore: createSessionStore(),
+      getSession() {
+        return { user: { id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa" } };
+      },
+      async getAccessToken() { return "access-token-expirado"; },
+      async clearSession() { cleared += 1; },
+      emit(event) { events.push(event); }
+    },
+    fetchImpl: async () => response(401, {
+      code: "JWT_EXPIRED",
+      message: "JWT expired"
+    })
+  });
+
+  await assert.rejects(
+    () => catalog.listLibrary(),
+    (error) => error.authRequired === true && error.status === 401
+  );
+  assert.equal(cleared, 1);
+  assert.deepEqual(events, ["SESSION_INVALID"]);
+});
+
 test("negação de domínio 403 preserva a sessão e a réplica autenticada", async () => {
   let cleared = 0;
   const events = [];

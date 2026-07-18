@@ -109,6 +109,9 @@ function mutationIdOf(value) {
 function normalizePushResponse(rawResponse) {
   const response = firstObject(rawResponse);
   const results = array(response.results || response.mutations);
+  const authRequired = response.authRequired === true || response.auth_required === true ||
+    String(response.status || "").toLowerCase() === SYNC_FAILURE_KIND.AUTH_REQUIRED ||
+    results.some((result) => String(result?.status || "").toLowerCase() === SYNC_FAILURE_KIND.AUTH_REQUIRED);
   const accepted = new Set(
     array(response.acceptedMutationIds || response.accepted_mutation_ids || response.accepted)
       .map(mutationIdOf)
@@ -128,7 +131,8 @@ function normalizePushResponse(rawResponse) {
   return {
     accepted: [...accepted],
     conflicts,
-    rejected: [...new Map(rejected.map((entry) => [mutationIdOf(entry), entry])).values()]
+    rejected: [...new Map(rejected.map((entry) => [mutationIdOf(entry), entry])).values()],
+    authRequired
   };
 }
 
@@ -145,8 +149,33 @@ export const SYNC_FAILURE_KIND = Object.freeze({
   RETRYABLE: "retryable",
   CONFLICT: "conflict",
   REJECTED: "rejected",
+  AUTH_REQUIRED: "auth_required",
   BOOTSTRAP_REQUIRED: "bootstrap_required"
 });
+
+const AUTHENTICATION_FAILURE_CODES = new Set([
+  "AUTH_REQUIRED",
+  "BAD_JWT",
+  "INVALID_JWT",
+  "JWT_EXPIRED",
+  "JWT_INVALID",
+  "INVALID_TOKEN",
+  "INVALID_GRANT",
+  "SESSION_NOT_FOUND",
+  "NO_SESSION",
+  "REFRESH_TOKEN_NOT_FOUND",
+  "REFRESH_TOKEN_EXPIRED",
+  "REFRESH_TOKEN_ALREADY_USED",
+  "PGRST301"
+]);
+
+function isAuthenticationFailure({ status, code, message, error }) {
+  if (status === 403 && error?.authRequired !== true) return false;
+  return error?.authRequired === true ||
+    status === 401 ||
+    AUTHENTICATION_FAILURE_CODES.has(code) ||
+    /(?:\bjwt\b.*\b(?:invalid|expired|malformed)\b|\b(?:invalid|expired)\b.*\bjwt\b|\b(?:refresh token|token de refresh)\b.*\b(?:invalid|expired|missing|not found|already used|inv[aá]lido|expirado|ausente)\b|\b(?:session|sess[aã]o)\b.*\b(?:invalid|expired|missing|not found|inv[aá]lida|expirada|ausente)\b|\bauthentication required\b|\bautentica(?:ção|cao) necess[aá]ria\b)/u.test(message);
+}
 
 function failureReason(error, code, status) {
   const normalizedMessage = errorMessage(error).toLowerCase();
@@ -170,6 +199,9 @@ export function classifySyncFailure(error) {
   const message = errorMessage(error).toLowerCase();
   const networkTypeError = error instanceof TypeError &&
     /(?:failed to fetch|fetch failed|network|offline|load failed|connection|socket)/u.test(message);
+  if (isAuthenticationFailure({ status, code, message, error })) {
+    return { kind: SYNC_FAILURE_KIND.AUTH_REQUIRED, status, code, reason: "authentication_required" };
+  }
   if (code === "55000") {
     return { kind: SYNC_FAILURE_KIND.BOOTSTRAP_REQUIRED, status, code, reason: "bootstrap_required" };
   }
@@ -239,7 +271,7 @@ export class SupabaseSyncTransport {
     const results = [];
     let regularMutations = [];
     const flushRegular = async () => {
-      if (!regularMutations.length) return false;
+      if (!regularMutations.length) return { blocked: false, authRequired: false };
       const response = firstObject(await this.remote.rpc("apply_sync_batch", {
         p_device_id: deviceId,
         p_mutations: regularMutations.map(({ mutationId, courseId, entityType, entityId, operation, baseRevision, changedFields, payload }) => ({
@@ -256,9 +288,14 @@ export class SupabaseSyncTransport {
       const batchResults = array(response.results || response.mutations);
       results.push(...batchResults);
       regularMutations = [];
-      return batchResults.some((result) => ["conflict", "rejected", "invalid", "forbidden"].includes(
-        String(result?.status || "").toLowerCase()
-      ));
+      return {
+        blocked: batchResults.some((result) => ["conflict", "rejected", "invalid", "forbidden"].includes(
+          String(result?.status || "").toLowerCase()
+        )),
+        authRequired: response.authRequired === true || response.auth_required === true ||
+          String(response.status || "").toLowerCase() === SYNC_FAILURE_KIND.AUTH_REQUIRED ||
+          batchResults.some((result) => String(result?.status || "").toLowerCase() === SYNC_FAILURE_KIND.AUTH_REQUIRED)
+      };
     };
 
     for (const mutation of mutations) {
@@ -270,7 +307,9 @@ export class SupabaseSyncTransport {
       }
       // Uma operação composta não pode atravessar um conflito produzido pelo
       // lote granular anterior: ambos compartilham a mesma história local.
-      if (await flushRegular()) break;
+      const regularResult = await flushRegular();
+      if (regularResult.authRequired) return { deviceId, results, authRequired: true };
+      if (regularResult.blocked) break;
       try {
         if (isCourseDeletion) {
           const rpcResult = firstObject(await this.remote.rpc("delete_personal_course", {
@@ -279,6 +318,16 @@ export class SupabaseSyncTransport {
             p_mutation_id: mutation.mutationId
           }));
           const deletionStatus = String(rpcResult.status || "applied").toLowerCase();
+          if (deletionStatus === SYNC_FAILURE_KIND.AUTH_REQUIRED) {
+            results.push({
+              ...camelize(rpcResult),
+              mutationId: mutation.mutationId,
+              entityType: mutation.entityType,
+              entityId: mutation.entityId,
+              status: deletionStatus
+            });
+            return { deviceId, results, authRequired: true };
+          }
           results.push({
             ...camelize(rpcResult),
             mutationId: mutation.mutationId,
@@ -297,6 +346,18 @@ export class SupabaseSyncTransport {
           p_mutation_id: mutation.mutationId
         }));
         const replacementStatus = String(rpcResult.status || "").toLowerCase();
+        if (replacementStatus === SYNC_FAILURE_KIND.AUTH_REQUIRED) {
+          results.push({
+            ...camelize(rpcResult),
+            mutationId: mutation.mutationId,
+            entityType: mutation.entityType,
+            entityId: mutation.entityId,
+            courseId: mutation.courseId,
+            localRow: mutation.payload,
+            status: replacementStatus
+          });
+          return { deviceId, results, authRequired: true };
+        }
         if (["conflict", "rejected", "invalid", "forbidden"].includes(replacementStatus)) {
           results.push({
             ...camelize(rpcResult),
@@ -330,7 +391,10 @@ export class SupabaseSyncTransport {
             message: error.message
           });
           break;
-        } else if (failure.kind === SYNC_FAILURE_KIND.RETRYABLE) {
+        } else if (
+          failure.kind === SYNC_FAILURE_KIND.RETRYABLE ||
+          failure.kind === SYNC_FAILURE_KIND.AUTH_REQUIRED
+        ) {
           throw error;
         } else {
           results.push({
@@ -347,8 +411,8 @@ export class SupabaseSyncTransport {
         }
       }
     }
-    await flushRegular();
-    return { deviceId, results };
+    const regularResult = await flushRegular();
+    return { deviceId, results, authRequired: regularResult.authRequired };
   }
 
   pullSyncChanges({ deviceId, afterSequence, limit }) {
@@ -544,6 +608,16 @@ export class RelationalSyncEngine {
         rawResponse = await this.transport.applySyncBatch({ deviceId: this.deviceId, mutations: pending });
       } catch (error) {
         const failure = classifySyncFailure(error);
+        if (failure.kind === SYNC_FAILURE_KIND.AUTH_REQUIRED) {
+          return {
+            accepted: acceptedCount,
+            conflicts: conflictCount,
+            rejected: rejectedCount,
+            authRequired: true,
+            failure,
+            message: errorMessage(error)
+          };
+        }
         if (failure.kind === SYNC_FAILURE_KIND.RETRYABLE) {
           await this.markPushFailures(pending, error);
           throw error;
@@ -586,6 +660,21 @@ export class RelationalSyncEngine {
         continue;
       }
       const result = normalizePushResponse(rawResponse);
+      if (result.authRequired) {
+        return {
+          accepted: acceptedCount,
+          conflicts: conflictCount,
+          rejected: rejectedCount,
+          authRequired: true,
+          failure: {
+            kind: SYNC_FAILURE_KIND.AUTH_REQUIRED,
+            status: 401,
+            code: "AUTH_REQUIRED",
+            reason: "authentication_required"
+          },
+          message: "A sessão Supabase precisa ser renovada."
+        };
+      }
       const sentIds = new Set(pending.map((entry) => entry.mutationId));
       const accepted = result.accepted.filter((id) => sentIds.has(id));
       await this.store.acknowledgeOutbox(accepted);
@@ -728,6 +817,17 @@ export class RelationalSyncEngine {
     return missingCourseIds.length;
   }
 
+  authRequiredResult({ pushed, bootstrap = null, pulled = null } = {}) {
+    return {
+      pushed,
+      bootstrap,
+      pulled,
+      bootstrappedCourses: 0,
+      deviceId: this.deviceId,
+      authRequired: true
+    };
+  }
+
   synchronize({ expectedCourseIds = [] } = {}) {
     if (!Array.isArray(expectedCourseIds)) {
       throw new TypeError("expectedCourseIds deve ser uma lista.");
@@ -750,11 +850,18 @@ export class RelationalSyncEngine {
             message: errorMessage(error)
           };
         }
+        if (pushed.authRequired) return this.authRequiredResult({ pushed });
         let bootstrap;
         try {
           bootstrap = await this.bootstrapReplicaIfNeeded();
         } catch (error) {
           const failure = classifySyncFailure(error);
+          if (failure.kind === SYNC_FAILURE_KIND.AUTH_REQUIRED) {
+            return this.authRequiredResult({
+              pushed,
+              bootstrap: { status: SYNC_FAILURE_KIND.AUTH_REQUIRED, failure, message: errorMessage(error) }
+            });
+          }
           if (failure.kind !== SYNC_FAILURE_KIND.RETRYABLE) throw error;
           bootstrap = {
             status: "retryable_failure",
@@ -775,11 +882,25 @@ export class RelationalSyncEngine {
         try {
           pulled = await this.pull();
         } catch (error) {
-          if (classifySyncFailure(error).kind !== SYNC_FAILURE_KIND.BOOTSTRAP_REQUIRED) throw error;
+          const failure = classifySyncFailure(error);
+          if (failure.kind === SYNC_FAILURE_KIND.AUTH_REQUIRED) {
+            return this.authRequiredResult({
+              pushed,
+              bootstrap,
+              pulled: { status: SYNC_FAILURE_KIND.AUTH_REQUIRED, failure, message: errorMessage(error) }
+            });
+          }
+          if (failure.kind !== SYNC_FAILURE_KIND.BOOTSTRAP_REQUIRED) throw error;
           try {
             bootstrap = await this.bootstrapReplicaIfNeeded({ force: true });
           } catch (bootstrapError) {
             const failure = classifySyncFailure(bootstrapError);
+            if (failure.kind === SYNC_FAILURE_KIND.AUTH_REQUIRED) {
+              return this.authRequiredResult({
+                pushed,
+                bootstrap: { status: SYNC_FAILURE_KIND.AUTH_REQUIRED, failure, message: errorMessage(bootstrapError) }
+              });
+            }
             if (failure.kind !== SYNC_FAILURE_KIND.RETRYABLE) throw bootstrapError;
             bootstrap = {
               status: "retryable_failure",
@@ -796,14 +917,39 @@ export class RelationalSyncEngine {
               deviceId: this.deviceId
             };
           }
-          pulled = await this.pull();
+          try {
+            pulled = await this.pull();
+          } catch (retryPullError) {
+            const failure = classifySyncFailure(retryPullError);
+            if (failure.kind === SYNC_FAILURE_KIND.AUTH_REQUIRED) {
+              return this.authRequiredResult({
+                pushed,
+                bootstrap,
+                pulled: { status: SYNC_FAILURE_KIND.AUTH_REQUIRED, failure, message: errorMessage(retryPullError) }
+              });
+            }
+            throw retryPullError;
+          }
         }
-        const bootstrappedCourses = await this.bootstrapMissingCourses([
-          ...new Set([
-            ...pulled.membershipCourseIds,
-            ...expectedCourseIds.map(String).filter(Boolean)
-          ])
-        ]);
+        let bootstrappedCourses;
+        try {
+          bootstrappedCourses = await this.bootstrapMissingCourses([
+            ...new Set([
+              ...pulled.membershipCourseIds,
+              ...expectedCourseIds.map(String).filter(Boolean)
+            ])
+          ]);
+        } catch (error) {
+          const failure = classifySyncFailure(error);
+          if (failure.kind === SYNC_FAILURE_KIND.AUTH_REQUIRED) {
+            return this.authRequiredResult({
+              pushed,
+              bootstrap,
+              pulled: { ...pulled, authRequired: true, failure, message: errorMessage(error) }
+            });
+          }
+          throw error;
+        }
         return { pushed, bootstrap, pulled, bootstrappedCourses, deviceId: this.deviceId };
       })
       .finally(() => { this.#activeSynchronization = null; });

@@ -19,7 +19,7 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 - o catálogo passa a ser exclusivamente remoto e lista somente metadados de cursos oficiais publicados;
 - cursos escolhidos são clonados no servidor com novos UUIDs e `source_entity_id`, sem montagem da cópia por requisições independentes do cliente;
 - mudanças bottom-up, progresso e comentários passam a atualizar somente as linhas afetadas;
-- a sincronização passa a separar falhas retentáveis, conflitos e rejeições definitivas, com bootstrap atômico por high-water, pull progressivo e proteção do trabalho local durante rebootstrap ou revogação;
+- a sincronização passa a separar falhas retentáveis, autenticação necessária, conflitos e rejeições definitivas, com bootstrap atômico por high-water, pull progressivo e proteção do trabalho local durante rebootstrap ou revogação;
 - a réplica IndexedDB passa a ser isolada fisicamente por UUID de usuário, e toda gravação local expõe estado de durabilidade e pode ser aguardada por `flush()` no navegador e no Android;
 - privilégios diretos das tabelas técnicas foram removidos, a retenção usa watermark de dispositivos ativos e a CSP limita conexões à origem Supabase configurada;
 - o contrato JSON `aralearn.contract` versão 3 permanece como formato público de importação e exportação, contexto de geração, validação e visão de domínio em memória.
