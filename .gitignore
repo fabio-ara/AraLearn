@@ -13,3 +13,6 @@ test-results/
 *.jks
 *.keystore
 android/keystore.properties
+
+# Metadados locais criados pelo Supabase CLI ao vincular um projeto remoto.
+supabase/.temp/
