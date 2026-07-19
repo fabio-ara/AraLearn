@@ -52,9 +52,10 @@ async function mockSupabase(page, {
   catalog = [],
   library = [],
   includeMaterializedCourse = false,
-  bootstrapManifestOnly = false
+  bootstrapManifestOnly = false,
+  replicaRows = EXAMPLE_ROWS
 } = {}) {
-  const snapshotRows = structuredClone(EXAMPLE_ROWS);
+  const snapshotRows = structuredClone(replicaRows);
   const changes = remoteChanges(snapshotRows);
   const materializedCourse = changes.find((change) => change.storeName === "courses")?.row;
   const manifestMembership = materializedCourse ? {
@@ -348,6 +349,68 @@ test("concluir um card cria somente mutações granulares de progresso", async (
   expect(outbox.length).toBeGreaterThan(0);
   expect(new Set(outbox.map((entry) => entry.entityType))).toEqual(new Set(["lessonProgress", "cardProgress"]));
   expect(outbox.every((entry) => !entry.payload?.courses && !entry.payload?.lessons)).toBe(true);
+  expect(pageErrors).toEqual([]);
+});
+
+test("timestamp PostgreSQL de progresso não bloqueia edição nem retorno à lição", async ({ page }) => {
+  const pageErrors = [];
+  page.on("pageerror", (error) => pageErrors.push(error.message));
+  const replicaRows = structuredClone(EXAMPLE_ROWS);
+  const course = replicaRows.courses[0];
+  const moduleValue = replicaRows.modules.find((row) => row.contractKey === "module-teoria-dos-grafos");
+  const lesson = replicaRows.lessons.find((row) => row.contractKey === "lesson-vocabulario-contagem");
+  const card = replicaRows.cards.find((row) => row.contractKey === "card-grafo-conjuntos-regra");
+  const lessonProgressId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+  const timestamp = "2026-07-19T12:30:00.123456+00:00";
+  replicaRows.lessonProgress = [{
+    id: lessonProgressId,
+    userId: USER_ID,
+    courseId: course.id,
+    moduleId: moduleValue.id,
+    lessonId: lesson.id,
+    courseKey: course.contractKey,
+    moduleKey: moduleValue.contractKey,
+    lessonKey: lesson.contractKey,
+    pathKey: `${course.contractKey}::${moduleValue.contractKey}::${lesson.contractKey}`,
+    cursor: 0,
+    firstViewedAt: timestamp,
+    completedAt: null,
+    lastActivityAt: timestamp,
+    revision: 1,
+    updatedAt: timestamp,
+    deletedAt: null
+  }];
+  replicaRows.cardProgress = [{
+    id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+    userId: USER_ID,
+    courseId: course.id,
+    moduleId: moduleValue.id,
+    lessonId: lesson.id,
+    lessonProgressId,
+    cardId: card.id,
+    pathKey: `${course.contractKey}::${moduleValue.contractKey}::${lesson.contractKey}`,
+    cardKey: card.contractKey,
+    position: 0,
+    firstViewedAt: timestamp,
+    completedAt: timestamp,
+    attempts: 0,
+    lastResult: null,
+    lastActivityAt: timestamp,
+    revision: 1,
+    updatedAt: timestamp,
+    deletedAt: null
+  }];
+
+  await signIn(page, { replicaRows });
+  await page.locator('[data-action="open-course"]').tap();
+  await page.locator('[data-action="open-module"][data-module-key="module-teoria-dos-grafos"]').tap();
+  await page.locator('[data-action="open-lesson"][data-lesson-key="lesson-vocabulario-contagem"]').tap();
+  await page.locator('[data-action="play-microsequence"][data-microsequence-key="micro-grafo-como-conjuntos"]').tap();
+
+  await page.locator('[data-action="select-workbench-pane"][data-workbench-pane="edit"]').tap();
+  await expect(page.locator(".workbench-surface")).toHaveAttribute("data-workbench-pane", "edit");
+  await page.locator('[data-action="go-back"]').tap();
+  await expect(page.locator('[data-action="play-microsequence"]')).not.toHaveCount(0);
   expect(pageErrors).toEqual([]);
 });
 

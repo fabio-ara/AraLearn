@@ -835,6 +835,38 @@ test("visualização e tentativas são granulares e não concluem o card antecip
   assert.equal(lessonRow.completedAt, "2026-07-18T15:00:00.000Z");
 });
 
+test("progresso remoto com timestamp PostgreSQL é remontado em ISO UTC canônico", async (context) => {
+  const repository = await RelationalProjectRepository.open({
+    indexedDb: new IDBFactory(),
+    userId: "user-a",
+    clock: () => new Date("2026-07-19T12:30:00.000Z")
+  });
+  context.after(() => repository.store.close());
+  await repository.saveProject(buildProject());
+  await repository.recordCardAttempt({
+    courseKey: "course-a",
+    moduleKey: "module-a",
+    lessonKey: "lesson-a",
+    microsequenceKey: "micro-a",
+    cardKey: "card-a"
+  }, "correct");
+  await repository.flush();
+
+  const [lessonRow] = await repository.store.getAll("lessonProgress");
+  await repository.store.put("lessonProgress", {
+    ...lessonRow,
+    lastActivityAt: "2026-07-19T12:30:00.123456+00:00",
+    updatedAt: "2026-07-19T12:30:00.123456+00:00"
+  });
+
+  await repository.refreshFromReplica();
+  assert.deepEqual(repository.loadProgress().lessons["course-a::module-a::lesson-a"], {
+    cursor: 0,
+    completedCardKeys: ["card-a"],
+    updatedAt: "2026-07-19T12:30:00.123Z"
+  });
+});
+
 test("segunda atividade envia patches mínimos de progresso sem identidades imutáveis", async (context) => {
   let currentTime = "2026-07-18T15:10:00.000Z";
   const repository = await RelationalProjectRepository.open({

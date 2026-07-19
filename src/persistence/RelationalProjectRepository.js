@@ -170,6 +170,16 @@ function projectRowsVisibleToUser(projectRows, membershipRows, userId) {
   );
 }
 
+function canonicalProgressTimestamp(value, fieldName) {
+  const source = String(value || "").trim();
+  const hasExplicitTimezone = /(?:z|[+-]\d{2}:\d{2})$/iu.test(source);
+  const parsed = new Date(source);
+  if (!source || !hasExplicitTimezone || !Number.isFinite(parsed.getTime())) {
+    throw new Error(`Progresso relacional inválido: ${fieldName} não contém uma data ISO com fuso horário.`);
+  }
+  return parsed.toISOString();
+}
+
 function progressDocumentFromRows(lessonRows, cardRows, userId) {
   const cardsByLessonProgress = new Map();
   activeRows(cardRows, userId)
@@ -190,7 +200,9 @@ function progressDocumentFromRows(lessonRows, cardRows, userId) {
     lessons[row.pathKey] = {
       cursor: completedCardKeys.length - 1,
       completedCardKeys,
-      ...(row.lastActivityAt ? { updatedAt: row.lastActivityAt } : {})
+      ...(row.lastActivityAt
+        ? { updatedAt: canonicalProgressTimestamp(row.lastActivityAt, "lastActivityAt") }
+        : {})
     };
   });
   return { version: 1, lessons };
