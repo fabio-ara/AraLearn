@@ -18,6 +18,7 @@ const staging = read("scripts/stageWebRuntime.mjs");
 const server = read("scripts/servePublic.js");
 const styles = read("public/styles.css");
 const treeOperationsMigration = read("supabase/migrations/20260719044500_bound_personal_course_tree_operations.sql");
+const manifestBootstrapMigration = read("supabase/migrations/20260719184500_split_replica_bootstrap_manifest.sql");
 
 test("runtime torna durabilidade visível e faz flush nos caminhos de saída", () => {
   assert.match(main, /repository\.onDurabilityChange/u);
@@ -151,6 +152,13 @@ test("operações completas de curso não produzem feed redundante por descenden
   assert.match(treeOperationsMigration, /create or replace function public\.delete_personal_course\([\s\S]*set statement_timeout = '60s'/u);
   assert.match(treeOperationsMigration, /get_personal_course_graph\(uuid\)[\s\S]*statement_timeout = '60s'/u);
   assert.match(treeOperationsMigration, /bootstrap_replica\(uuid\)[\s\S]*statement_timeout = '60s'/u);
+});
+
+test("bootstrap remoto entrega manifesto leve e deixa cada árvore para uma requisição própria", () => {
+  assert.match(manifestBootstrapMigration, /'snapshotMode', 'manifest'/u);
+  assert.match(manifestBootstrapMigration, /jsonb_set\(v_snapshot, array\['courses'\]/u);
+  assert.match(manifestBootstrapMigration, /jsonb_set\(v_snapshot, array\['memberships'\]/u);
+  assert.doesNotMatch(manifestBootstrapMigration, /get_personal_course_graph\(/u);
 });
 
 test("CSP de build permite apenas a origem Supabase configurada", () => {

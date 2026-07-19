@@ -848,6 +848,103 @@ test("bootstrap aplica snapshot e high-water atomicamente antes do feed incremen
   store.close();
 });
 
+test("dispositivo limpo materializa separadamente todos os cursos do manifesto", async () => {
+  const userId = "20000000-0000-4000-8000-000000000029";
+  const store = await IndexedDbRelationalStore.open(new IDBFactory(), { userId });
+  const courseIds = [
+    "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaad1",
+    "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaad2"
+  ];
+  const membershipIds = [
+    "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbd1",
+    "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbd2"
+  ];
+  const moduleIds = [
+    "cccccccc-cccc-4ccc-8ccc-ccccccccccd1",
+    "cccccccc-cccc-4ccc-8ccc-ccccccccccd2"
+  ];
+  await store.bindReplicaToUser(userId);
+  const downloads = [];
+  const engine = new RelationalSyncEngine({
+    store,
+    deviceId: DEVICE_ID,
+    transport: {
+      async applySyncBatch() { return { results: [] }; },
+      async bootstrapReplica() {
+        return {
+          snapshotMode: "manifest",
+          snapshot: {
+            courses: courseIds.map((id, position) => ({
+              id,
+              courseId: id,
+              contractKey: `manifesto-${position + 1}`,
+              ownerId: userId,
+              revision: 1,
+              deletedAt: null
+            })),
+            memberships: courseIds.map((courseId, position) => ({
+              id: membershipIds[position],
+              courseId,
+              userId,
+              role: "owner",
+              position,
+              revision: 1,
+              deletedAt: null
+            }))
+          },
+          highWaterSequence: 901
+        };
+      },
+      async pullSyncChanges({ afterSequence }) {
+        assert.equal(afterSequence, 901);
+        return { changes: [], nextCursor: 901, hasMore: false };
+      },
+      async downloadCourseGraph(courseId) {
+        const position = courseIds.indexOf(courseId);
+        assert.notEqual(position, -1);
+        downloads.push(courseId);
+        return {
+          courses: [{
+            id: courseId,
+            courseId,
+            contractKey: `manifesto-${position + 1}`,
+            ownerId: userId,
+            revision: 1,
+            deletedAt: null
+          }],
+          memberships: [{
+            id: membershipIds[position],
+            courseId,
+            userId,
+            role: "owner",
+            position,
+            revision: 1,
+            deletedAt: null
+          }],
+          modules: [{
+            id: moduleIds[position],
+            courseId,
+            contractKey: `modulo-${position + 1}`,
+            position: 0,
+            revision: 1,
+            deletedAt: null
+          }]
+        };
+      }
+    }
+  });
+
+  const result = await engine.synchronize();
+
+  assert.equal(result.bootstrap.status, "applied");
+  assert.equal(result.bootstrappedCourses, 2);
+  assert.deepEqual(downloads, courseIds);
+  assert.equal((await store.getAll("courses")).length, 2);
+  assert.equal((await store.getAll("modules")).length, 2);
+  assert.equal((await store.get("syncState", engine.cursorStateId())).cursor, 901);
+  store.close();
+});
+
 test("bootstrap transitório em dispositivo novo adia o pull em vez de percorrer cursor zero", async () => {
   const store = await createStore();
   let pulls = 0;

@@ -1784,6 +1784,8 @@ select ok(
       and jsonb_typeof(payload -> 'snapshot' -> 'courses') = 'array'
       and jsonb_array_length(payload -> 'snapshot' -> 'courses') >= 1
       and jsonb_array_length(payload -> 'snapshot' -> 'memberships') >= 1
+      and jsonb_array_length(payload -> 'snapshot' -> 'modules') = 0
+      and payload ->> 'snapshotMode' = 'manifest'
    from replica_bootstrap)
   and (select count(*) = 1 from replica_bootstrap,
        jsonb_array_elements(payload -> 'snapshot' -> 'courses') course
@@ -1791,7 +1793,7 @@ select ok(
   and (select last_pulled_sequence from public.sync_devices
        where id = '63800000-0000-4000-8000-000000000001')
       = (select (payload ->> 'highWaterSequence')::bigint from replica_bootstrap),
-  'bootstrap materializa snapshot autorizado e cursor no mesmo high-water'
+  'bootstrap materializa manifesto autorizado e cursor no mesmo high-water'
 );
 create temp table pull_after_bootstrap as
 select public.pull_sync_changes(

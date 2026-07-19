@@ -119,10 +119,11 @@ Cada instalação recebe um UUID de dispositivo persistido. A sincronização se
 4. aplica as mutações na ordem enviada, comparando `baseRevision` com esse snapshot e com as mutações diretas anteriores do mesmo lote;
 5. diante de conflito ou rejeição real, desfaz atomicamente todo o lote; somente a mutação bloqueadora vira conflito terminal, enquanto as irmãs revertidas ou ainda não executadas continuam pendentes;
 6. confirma as mutações somente quando o lote conclui sem bloqueio;
-7. em dispositivo novo, recebe de `bootstrap_replica` um snapshot autorizado e o `highWaterSequence` da mesma visão lógica e grava ambos numa única transação local;
-8. nos ciclos seguintes, lê `pull_sync_changes` somente depois desse high-water;
-9. aplica uma página por transação IndexedDB e persiste o cursor após cada commit, sem acumular o histórico inteiro em memória;
-10. se houver interrupção, retoma da última página confirmada, sem materializar o mesmo curso novamente por snapshot e feed.
+7. em dispositivo novo, recebe de `bootstrap_replica` um manifesto autorizado — cursos, memberships e trilhas — e o `highWaterSequence` da mesma visão lógica e grava ambos numa única transação local;
+8. baixa cada árvore pessoal indicada pelo manifesto em uma requisição própria e a aplica transacionalmente, evitando agregar centenas de milhares de linhas numa única resposta;
+9. nos ciclos seguintes, lê `pull_sync_changes` somente depois desse high-water;
+10. aplica uma página por transação IndexedDB e persiste o cursor após cada commit, sem acumular o histórico inteiro em memória;
+11. se houver interrupção, retoma da última página confirmada e baixa somente árvores que ainda não possuem módulo ativo na réplica.
 
 O snapshot inicial torna causal uma sequência como inserir card, inserir bloco filho e depois atualizar o mesmo card: o incremento agregado provocado pelo filho não é confundido com escrita de outro dispositivo. As operações compostas de substituição de cards e exclusão de curso respeitam a mesma ordem da outbox e não atravessam um conflito granular anterior. Se qualquer etapa bloquear, o cliente não envia silenciosamente as mutações causais posteriores.
 
@@ -141,7 +142,7 @@ A biblioteca mostra conflitos e rejeições como estados que exigem atenção. U
 
 ### Snapshot, revogação e reconciliação
 
-`bootstrap_replica` monta todas as memberships, árvores, progressos e comentários autorizados sob a mesma barreira transacional que determina `highWaterSequence`. O IndexedDB aplica snapshot e cursor numa única transação. Depois disso, o feed começa estritamente depois do high-water e cada página confirma seu próprio cursor; o cliente nunca acumula o histórico completo antes de aplicar.
+`bootstrap_replica` monta um manifesto leve com os cursos pessoais autorizados, suas memberships e as trilhas do usuário sob a mesma barreira transacional que determina `highWaterSequence`. O IndexedDB aplica manifesto e cursor numa única transação; em seguida, ainda durante a inicialização, o cliente materializa separadamente cada árvore ausente por `get_personal_course_graph`. A home só é montada depois dessa sequência. Isso preserva a visão causal do bootstrap sem sujeitar uma conta com vários cursos grandes ao timeout de uma resposta agregada. Depois disso, o feed começa estritamente depois do high-water e cada página confirma seu próprio cursor; o cliente nunca acumula o histórico completo antes de aplicar.
 
 Um snapshot remoto só substitui um curso local quando ele ainda não existe, quando a réplica está comprovadamente limpa ou após restauração explicitamente confirmada. Outbox pendente, conflito, rejeição ou edição local ainda não confirmada bloqueiam a substituição: o curso local é preservado, o snapshot remoto fica disponível para comparação e uma reconciliação é registrada.
 

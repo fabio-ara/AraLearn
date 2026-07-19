@@ -235,10 +235,16 @@ try {
     tokenA,
   );
   assert.equal(bootstrapA.status, "applied");
+  assert.equal(bootstrapA.snapshotMode, "manifest");
   assert.equal(
     bootstrapA.snapshot.courses.filter((course) => course.courseId === personalCourseAId).length,
     1,
-    "snapshot de A deve conter sua árvore uma única vez",
+    "manifesto de A deve conter sua cópia uma única vez",
+  );
+  assert.equal(
+    bootstrapA.snapshot.modules.length,
+    0,
+    "bootstrap não deve agregar árvores grandes na resposta do manifesto",
   );
   assert.equal(
     bootstrapA.snapshot.courses.some((course) => course.courseId === personalCourseBId),

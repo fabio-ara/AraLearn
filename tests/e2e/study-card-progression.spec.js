@@ -48,10 +48,27 @@ function remoteChanges(rows = contractToRelationalRows(createExampleProjectDocum
   })));
 }
 
-async function mockSupabase(page, { catalog = [], library = [], includeMaterializedCourse = false } = {}) {
+async function mockSupabase(page, {
+  catalog = [],
+  library = [],
+  includeMaterializedCourse = false,
+  bootstrapManifestOnly = false
+} = {}) {
   const snapshotRows = structuredClone(EXAMPLE_ROWS);
   const changes = remoteChanges(snapshotRows);
   const materializedCourse = changes.find((change) => change.storeName === "courses")?.row;
+  const manifestMembership = materializedCourse ? {
+    id: "99999999-9999-4999-8999-999999999999",
+    courseId: materializedCourse.id,
+    userId: USER_ID,
+    role: "owner",
+    position: 0,
+    revision: 1,
+    deletedAt: null
+  } : null;
+  const personalSnapshotRows = manifestMembership
+    ? { ...snapshotRows, memberships: [manifestMembership] }
+    : snapshotRows;
   const libraryCourses = includeMaterializedCourse && materializedCourse
     ? [{
         course_id: materializedCourse.id,
@@ -93,7 +110,13 @@ async function mockSupabase(page, { catalog = [], library = [], includeMateriali
     if (pathname.endsWith("/rpc/bootstrap_replica")) {
       await route.fulfill({
         contentType: "application/json",
-        body: JSON.stringify({ snapshot: snapshotRows, highWaterSequence: 1 })
+        body: JSON.stringify({
+          snapshotMode: bootstrapManifestOnly ? "manifest" : "complete",
+          snapshot: bootstrapManifestOnly
+            ? { courses: [materializedCourse], memberships: [manifestMembership] }
+            : snapshotRows,
+          highWaterSequence: 1
+        })
       });
       return;
     }
@@ -150,10 +173,9 @@ async function mockSupabase(page, { catalog = [], library = [], includeMateriali
       return;
     }
     if (pathname.endsWith("/rpc/get_personal_course_graph")) {
-      const body = request.postDataJSON();
       await route.fulfill({
         contentType: "application/json",
-        body: JSON.stringify({ courses: [{ id: body.p_course_id, revision: 4 }] })
+        body: JSON.stringify(personalSnapshotRows)
       });
       return;
     }
@@ -223,6 +245,20 @@ test("a primeira sincronização monta um curso relacional sem catálogo embarca
   const course = page.locator('[data-action="open-course"]');
   await expect(course).toHaveAttribute("data-course-key", "course-matematica-para-informatica");
   await expect(page.getByText("Matemática para Informática", { exact: true }).first()).toBeVisible();
+});
+
+test("uma réplica limpa baixa a árvore indicada pelo manifesto antes de abrir a home", async ({ page }) => {
+  const graphRequests = [];
+  page.on("request", (request) => {
+    if (new URL(request.url()).pathname.endsWith("/rpc/get_personal_course_graph")) {
+      graphRequests.push(request.postDataJSON()?.p_course_id);
+    }
+  });
+
+  await signIn(page, { bootstrapManifestOnly: true });
+
+  await expect(page.getByText("Matemática para Informática", { exact: true }).first()).toBeVisible();
+  expect(graphRequests).toEqual([EXAMPLE_ROWS.courses[0].id]);
 });
 
 test("concluir um card cria somente mutações granulares de progresso", async ({ page }) => {
