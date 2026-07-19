@@ -78,6 +78,7 @@ test("overlay usa o conjunto de ícones do AraLearn e mantém ações acessívei
   assert.match(overlay, /const synchronizeAndReload = async \(options = undefined\) => \{[\s\S]*await beforeRemoteRead\(options\)/u);
   assert.match(overlay, /data-library-progress/u);
   assert.match(overlay, /const setProgress = \(\{ percent = 0, message = "" \} = \{\}\)/u);
+  assert.match(overlay, /const safePercent = Math\.max\(displayedProgress, requestedPercent\)/u);
   assert.match(overlay, /percent: 5, message: "Criando cópia relacional…"/u);
   assert.match(overlay, /expectedCourseIds: \[clonedCourseId\],[\s\S]*onProgress: setProgress/u);
   assert.match(styles, /\.remote-library-progress-track/u);

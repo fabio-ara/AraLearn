@@ -122,10 +122,13 @@ export function createRemoteLibraryOverlay({
   const progressBar = root.querySelector("[data-library-progress-bar]");
   const progressFill = root.querySelector("[data-library-progress-fill]");
   const progressPercent = root.querySelector("[data-library-progress-percent]");
+  let displayedProgress = 0;
   setText(root.querySelector("[data-library-account]"), authClient.getSession()?.user?.email || "Sessão autenticada");
 
   const setProgress = ({ percent = 0, message = "" } = {}) => {
-    const safePercent = Math.max(0, Math.min(100, Math.round(Number(percent) || 0)));
+    const requestedPercent = Math.max(0, Math.min(100, Math.round(Number(percent) || 0)));
+    const safePercent = Math.max(displayedProgress, requestedPercent);
+    displayedProgress = safePercent;
     progressRoot.hidden = false;
     progressBar.setAttribute("aria-valuenow", String(safePercent));
     progressFill.style.width = `${safePercent}%`;
@@ -136,7 +139,10 @@ export function createRemoteLibraryOverlay({
   const setBusy = (value, message = "") => {
     busy = value;
     root.querySelectorAll("button").forEach((button) => { button.disabled = value; });
-    if (!value) progressRoot.hidden = true;
+    if (!value) {
+      progressRoot.hidden = true;
+      displayedProgress = 0;
+    }
     setText(status, message);
   };
 
