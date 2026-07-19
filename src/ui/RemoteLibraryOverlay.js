@@ -60,7 +60,8 @@ const ACTION_ICONS = Object.freeze({
   refresh: "reposition",
   signout: "excluded-state",
   sync: "progress",
-  trail: "trail"
+  trail: "trail",
+  collection: "folder"
 });
 
 function iconMarkup(action, className = "remote-library-action-icon") {
@@ -99,13 +100,24 @@ export function createRemoteLibraryOverlay({
   let open = false;
   let busy = false;
   let catalogQuery = "";
+  let activeView = "collections";
   let searchTimer = null;
 
   root.innerHTML = `
     <section class="remote-library-overlay" data-library-overlay hidden aria-label="Biblioteca">
       <div class="remote-library-backdrop" data-library-close></div>
       <div class="remote-library-panel courses-home-screen" role="dialog" aria-modal="true">
-        <p class="remote-library-status" data-library-status role="status" aria-live="polite"></p>
+        <header class="remote-library-header">
+          <nav class="remote-library-tabs" role="tablist" aria-label="Biblioteca">
+            <button class="remote-library-tab is-active" type="button" role="tab" data-library-view="collections" aria-controls="remote-library-collections" aria-selected="true">${iconMarkup("collection")}<span>Coleções</span></button>
+            <button class="remote-library-tab" type="button" role="tab" data-library-view="paths" aria-controls="remote-library-paths" aria-selected="false" tabindex="-1">${iconMarkup("trail")}<span>Trilhas</span></button>
+          </nav>
+          <label class="remote-catalog-search" data-library-catalog-search>
+            ${renderUiIcon("search", "remote-library-action-icon")}
+            <input type="search" placeholder="Pesquisar cursos" data-catalog-search aria-label="Pesquisar cursos no catálogo">
+          </label>
+          <p class="remote-library-status" data-library-status role="status" aria-live="polite"></p>
+        </header>
         <div class="remote-library-content" data-library-content></div>
         <div class="remote-library-progress" data-library-progress hidden>
           <div class="remote-library-progress-track" role="progressbar" aria-label="Progresso da adição do curso" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" data-library-progress-bar><span data-library-progress-fill></span></div>
@@ -129,6 +141,8 @@ export function createRemoteLibraryOverlay({
   const progressPercent = root.querySelector("[data-library-progress-percent]");
   const progressLog = root.querySelector("[data-library-progress-log]");
   const syncButton = root.querySelector("[data-library-sync]");
+  const searchRoot = root.querySelector("[data-library-catalog-search]");
+  const searchInput = root.querySelector("[data-catalog-search]");
   let displayedProgress = 0;
   const recordedProgressMessages = new Set();
 
@@ -260,9 +274,25 @@ export function createRemoteLibraryOverlay({
     return button;
   };
 
+  const applyActiveView = () => {
+    root.querySelectorAll("[data-library-view]").forEach((button) => {
+      const selected = button.dataset.libraryView === activeView;
+      button.classList.toggle("is-active", selected);
+      button.setAttribute("aria-selected", String(selected));
+      button.tabIndex = selected ? 0 : -1;
+    });
+    root.querySelectorAll("[data-library-view-panel]").forEach((panel) => {
+      panel.hidden = panel.dataset.libraryViewPanel !== activeView;
+    });
+    searchRoot.hidden = activeView !== "collections";
+  };
+
   const renderStudyPaths = (libraryCourses, pendingCourseIds) => {
     const section = sectionWithHeading("Trilhas");
-    section.section.classList.add("remote-study-paths");
+    section.section.classList.add("remote-study-paths", "remote-library-view");
+    section.section.id = "remote-library-paths";
+    section.section.dataset.libraryViewPanel = "paths";
+    section.section.setAttribute("role", "tabpanel");
     const createRow = document.createElement("form");
     createRow.className = "remote-study-path-create";
     createRow.dataset.pathCreate = "";
@@ -283,22 +313,29 @@ export function createRemoteLibraryOverlay({
     ]));
     const paths = studyPathRepository?.loadStudyPaths?.() || [];
     paths.forEach((path) => {
-      const card = document.createElement("article");
+      const card = document.createElement("details");
       card.className = "clean-card remote-study-path-card";
-      const header = document.createElement("header");
+      card.dataset.studyPathCard = path.id;
+      const header = document.createElement("summary");
       header.className = "remote-study-path-header";
       const title = document.createElement("h3");
       title.className = "card-title";
       title.textContent = path.title || "Trilha";
+      const count = document.createElement("span");
+      count.className = "remote-collection-count";
+      count.textContent = String(array(path.courses).length);
+      header.append(title, count);
+      card.append(header);
+      const body = document.createElement("div");
+      body.className = "remote-study-path-body";
       const actions = document.createElement("div");
-      actions.className = "remote-inline-actions";
+      actions.className = "remote-inline-actions remote-study-path-tools";
       actions.append(
         pathActionButton("Renomear trilha", "edit", path.id),
         pathActionButton("Excluir trilha", "remove", path.id),
         pathActionButton("Adicionar curso à trilha", "clone", path.id)
       );
-      header.append(title, actions);
-      card.append(header);
+      body.append(actions);
       const renameRow = document.createElement("form");
       renameRow.className = "remote-study-path-create remote-study-path-rename";
       renameRow.dataset.pathRename = path.id;
@@ -313,7 +350,7 @@ export function createRemoteLibraryOverlay({
       saveButton.type = "submit";
       delete saveButton.dataset.pathAction;
       renameRow.append(renameInput, saveButton);
-      card.append(renameRow);
+      body.append(renameRow);
 
       const list = document.createElement("div");
       list.className = "remote-study-path-course-list";
@@ -353,7 +390,7 @@ export function createRemoteLibraryOverlay({
         list.append(row);
       });
       if (!list.childElementCount) list.append(emptyMessage("Sem cursos."));
-      card.append(list);
+      body.append(list);
 
       const chooser = document.createElement("div");
       chooser.className = "remote-study-path-chooser";
@@ -378,7 +415,8 @@ export function createRemoteLibraryOverlay({
           chooser.append(row);
         });
       if (!chooser.childElementCount) chooser.append(emptyMessage("Todos os cursos já estão nesta trilha."));
-      card.append(chooser);
+      body.append(chooser);
+      card.append(body);
       section.list.append(card);
     });
     if (!paths.length) section.list.append(emptyMessage("Crie uma trilha para organizar seus cursos."));
@@ -404,17 +442,10 @@ export function createRemoteLibraryOverlay({
 
   const renderCollections = (collectionRows) => {
     const section = sectionWithHeading("Coleções");
-    const search = document.createElement("label");
-    search.className = "remote-catalog-search";
-    search.innerHTML = renderUiIcon("search", "remote-library-action-icon");
-    const input = document.createElement("input");
-    input.type = "search";
-    input.value = catalogQuery;
-    input.placeholder = "Pesquisar";
-    input.dataset.catalogSearch = "";
-    input.setAttribute("aria-label", "Pesquisar no catálogo");
-    search.append(input);
-    section.section.insertBefore(search, section.list);
+    section.section.classList.add("remote-library-view", "remote-library-collections");
+    section.section.id = "remote-library-collections";
+    section.section.dataset.libraryViewPanel = "collections";
+    section.section.setAttribute("role", "tabpanel");
 
     const collections = new Map();
     array(collectionRows).forEach((row) => {
@@ -471,8 +502,8 @@ export function createRemoteLibraryOverlay({
       syncButton.title = pendingLabel;
       syncButton.setAttribute("aria-label", pendingLabel);
       content.append(
-        renderStudyPaths(libraryCourses, pendingCourseIds),
-        renderCollections(collectionRows)
+        renderCollections(collectionRows),
+        renderStudyPaths(libraryCourses, pendingCourseIds)
       );
       if (conflicts.length || rejected.length) {
         const issuesSection = document.createElement("section");
@@ -506,6 +537,7 @@ export function createRemoteLibraryOverlay({
         });
         content.append(issuesSection);
       }
+      applyActiveView();
       setBusy(false, "");
     } catch (error) {
       setBusy(false, errorMessage(error));
@@ -562,6 +594,12 @@ export function createRemoteLibraryOverlay({
     }
     const button = event.target.closest("button");
     if (!button || busy) return;
+    if (button.dataset.libraryView) {
+      activeView = button.dataset.libraryView;
+      applyActiveView();
+      if (activeView === "collections") searchInput.focus();
+      return;
+    }
     if (button.dataset.pathAction) {
       const action = button.dataset.pathAction;
       const pathId = button.dataset.pathId;
@@ -572,7 +610,7 @@ export function createRemoteLibraryOverlay({
       }
       try {
         if (action === "edit") {
-          const form = button.closest("article")?.querySelector("[data-path-rename]");
+          const form = button.closest("[data-study-path-card]")?.querySelector("[data-path-rename]");
           if (form) {
             form.hidden = !form.hidden;
             if (!form.hidden) form.querySelector("input")?.focus();

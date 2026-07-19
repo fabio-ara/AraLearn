@@ -215,10 +215,10 @@ test("a biblioteca consulta somente metadados remotos", async ({ page }) => {
     }]
   });
   await page.getByRole("button", { name: "Abrir biblioteca e sincronização" }).click();
-  await expect(page.getByRole("heading", { name: "Coleções" })).toBeVisible();
+  await expect(page.getByRole("tab", { name: "Coleções" })).toHaveAttribute("aria-selected", "true");
   await page.getByText("Geral", { exact: true }).click();
   await expect(page.getByRole("heading", { name: "Curso oficial remoto" })).toBeVisible();
-  await expect(page.getByText("Metadados sem árvore didática")).toBeVisible();
+  await expect(page.locator(".remote-course-card .card-subtitle")).toHaveText("Metadados sem árvore didática");
 });
 
 test("a biblioteca permite sincronizar, atualizar e remover somente a cópia pessoal", async ({ page }) => {
@@ -246,13 +246,19 @@ test("a biblioteca permite sincronizar, atualizar e remover somente a cópia pes
     }]
   });
   await page.getByRole("button", { name: "Abrir biblioteca e sincronização" }).click();
+  await expect(page.getByRole("tab", { name: "Coleções" })).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("searchbox", { name: "Pesquisar cursos no catálogo" })).toBeVisible();
+  await page.getByRole("tab", { name: "Trilhas" }).click();
+  await expect(page.getByRole("searchbox", { name: "Pesquisar cursos no catálogo" })).toBeHidden();
   const personalCard = page.locator(".remote-course-card").filter({ hasText: "Minha cópia pessoal" });
   await expect(personalCard).toHaveClass(/clean-card/u);
   await expect(page.getByRole("button", { name: "Sincronizar este dispositivo com a sua conta" })).toBeVisible();
   await expect(personalCard.getByRole("button", { name: "Atualizar cópia com a publicação oficial" })).toBeVisible();
   await expect(personalCard.getByRole("button", { name: "Remover minha cópia deste curso" })).toBeVisible();
+  await page.getByRole("tab", { name: "Coleções" }).click();
   await page.getByText("Geral", { exact: true }).click();
   await expect(page.getByRole("button", { name: "Adicionar aos meus cursos" })).toHaveCount(1);
+  await page.getByRole("tab", { name: "Trilhas" }).click();
 
   page.once("dialog", (dialog) => dialog.accept());
   const deletion = page.waitForRequest((request) => request.url().endsWith("/rpc/delete_personal_course"));
@@ -268,6 +274,7 @@ test("a biblioteca permite sincronizar, atualizar e remover somente a cópia pes
 test("a biblioteca cria uma trilha pessoal compacta", async ({ page }) => {
   await signIn(page);
   await page.getByRole("button", { name: "Abrir biblioteca e sincronização" }).click();
+  await page.getByRole("tab", { name: "Trilhas" }).click();
   await page.getByRole("textbox", { name: "Nome da nova trilha" }).fill("Mestrado");
   await page.getByRole("button", { name: "Criar trilha" }).click();
   await expect(page.getByRole("heading", { name: "Mestrado" })).toBeVisible();
