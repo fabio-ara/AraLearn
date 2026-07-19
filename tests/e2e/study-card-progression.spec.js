@@ -145,14 +145,21 @@ async function mockSupabase(page, {
       return;
     }
     if (pathname.endsWith("/rpc/list_catalog_collections")) {
+      const query = String(request.postDataJSON()?.p_query || "").trim().toLocaleLowerCase("pt-BR");
+      const matchingCourses = catalog.filter((course) => [
+        course.collection_title || "Geral",
+        course.collection_description || "",
+        course.title,
+        course.goal
+      ].some((value) => String(value || "").toLocaleLowerCase("pt-BR").includes(query)));
       await route.fulfill({
         contentType: "application/json",
-        body: JSON.stringify(catalog.map((course, position) => ({
-          collection_id: "88888888-8888-4888-8888-888888888888",
-          collection_key: "geral",
-          collection_title: "Geral",
-          collection_description: "",
-          collection_position: 0,
+        body: JSON.stringify(matchingCourses.map((course, position) => ({
+          collection_id: course.collection_id || "88888888-8888-4888-8888-888888888888",
+          collection_key: course.collection_key || "geral",
+          collection_title: course.collection_title || "Geral",
+          collection_description: course.collection_description || "",
+          collection_position: course.collection_position || 0,
           course_id: course.course_id,
           contract_key: course.contract_key || `course-e2e-${position}`,
           title: course.title,
@@ -350,13 +357,34 @@ test("a biblioteca consulta somente metadados remotos", async ({ page }) => {
       course_id: "99999999-9999-4999-8999-999999999999",
       title: "Curso oficial remoto",
       goal: "Metadados sem árvore didática"
+    }, {
+      collection_id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      collection_key: "segunda",
+      collection_title: "Segunda coleção",
+      collection_position: 1,
+      course_id: "aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa",
+      title: "Outro curso oficial",
+      goal: "Outro metadado remoto"
     }]
   });
   await page.getByRole("button", { name: "Abrir biblioteca e sincronização" }).click();
   await expect(page.getByRole("tab", { name: "Coleções" })).toHaveAttribute("aria-selected", "true");
-  await page.getByText("Geral", { exact: true }).click();
+  await expect(page.locator(".remote-catalog-collection")).toHaveCount(2);
+  await expect.poll(() => page.locator(".remote-catalog-collection").evaluateAll(
+    (collections) => collections.every((collection) => collection.open)
+  )).toBe(true);
+  await expect(page.getByText("Geral (1)", { exact: true })).toBeVisible();
+  await expect(page.getByText("Segunda coleção (1)", { exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Curso oficial remoto" })).toBeVisible();
-  await expect(page.locator(".remote-course-card .card-subtitle")).toHaveText("Metadados sem árvore didática");
+  await expect(page.locator(".remote-collection-courses .card-subtitle")).toHaveCount(0);
+
+  const search = page.getByRole("searchbox", { name: "Pesquisar cursos no catálogo" });
+  await search.fill("Outro curso");
+  await expect(page.getByRole("heading", { name: "Outro curso oficial" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Curso oficial remoto" })).toHaveCount(0);
+  await search.fill("");
+  await expect(page.getByRole("heading", { name: "Curso oficial remoto" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Outro curso oficial" })).toBeVisible();
 });
 
 test("a biblioteca permite sincronizar, atualizar e remover somente a cópia pessoal", async ({ page }) => {
@@ -396,13 +424,20 @@ test("a biblioteca permite sincronizar, atualizar e remover somente a cópia pes
   await expect(personalCard.getByRole("button", { name: "Remover minha cópia deste curso" })).toBeVisible();
   await expectSvgControlsCentered(page, ".remote-library-panel button[title][aria-label]");
   await page.getByRole("tab", { name: "Coleções" }).click();
-  await page.getByText("Geral", { exact: true }).click();
+  const installedCourse = page.locator(".remote-collection-courses .remote-course-card").filter({ hasText: "Curso já adicionado" });
+  const availableCourse = page.locator(".remote-collection-courses .remote-course-card").filter({ hasText: "Novo curso oficial" });
+  await expect(installedCourse).toHaveClass(/\bis-installed\b/u);
+  const removeInstalledCourse = installedCourse.getByRole("button", { name: "Remover minha cópia deste curso" });
+  await expect(removeInstalledCourse).toHaveAttribute(
+    "data-course-id",
+    personalCourseId
+  );
+  await expect(availableCourse).not.toHaveClass(/\bis-installed\b/u);
   await expect(page.getByRole("button", { name: "Adicionar aos meus cursos" })).toHaveCount(1);
-  await page.getByRole("tab", { name: "Trilhas" }).click();
 
   page.once("dialog", (dialog) => dialog.accept());
   const deletion = page.waitForRequest((request) => request.url().endsWith("/rpc/delete_personal_course"));
-  await personalCard.getByRole("button", { name: "Remover minha cópia deste curso" }).click();
+  await removeInstalledCourse.click();
   const request = await deletion;
   expect(request.postDataJSON()).toMatchObject({
     p_course_id: personalCourseId,

@@ -108,6 +108,10 @@ test("overlay usa o conjunto de ícones do AraLearn e mantém ações acessívei
   assert.match(styles, /\.remote-library-panel[\s\S]*width: min\(100%, 430px\)/u);
   assert.match(overlay, /role="tablist"[\s\S]*data-library-view="collections"[\s\S]*data-library-view="paths"/u);
   assert.match(overlay, /data-library-catalog-search[\s\S]*data-library-content/u);
+  assert.match(overlay, /details\.open = true/u);
+  assert.match(overlay, /courseCard\([\s\S]*\{ showGoal: false \}/u);
+  assert.match(overlay, /installedCourseId[\s\S]*Remover minha cópia deste curso/u);
+  assert.match(overlay, /loadGeneration \+= 1[\s\S]*load\(\{ synchronizeBeforeRead: false \}\)/u);
   assert.match(overlay, /data-library-progress[\s\S]*data-library-status[\s\S]*remote-library-footer/u);
   assert.match(overlay, /const applyActiveView = \(\) =>/u);
   assert.match(overlay, /chooser\.dataset\.coursePathChooser = courseId/u);
@@ -123,6 +127,7 @@ test("overlay usa o conjunto de ícones do AraLearn e mantém ações acessívei
   assert.match(styles, /--library-control-size: 30px/u);
   assert.match(styles, /\.remote-study-path-header,[\s\S]*grid-template-columns: minmax\(0, 1fr\) auto/u);
   assert.match(styles, /\.remote-loose-course-paths \{[\s\S]*padding: 0 0 4px 12px/u);
+  assert.match(styles, /\.remote-collection-courses \.remote-course-card\.is-installed \{[\s\S]*rgba\(108, 181, 95, 0\.07\)/u);
   assert.match(lessonEditor, /O curso oficial continuará publicado no catálogo/u);
   assert.doesNotMatch(lessonEditor, /deste dispositivo e do Supabase/u);
   assert.match(main, /removePersonalCourse\(courseId\)[\s\S]*repository\.deletePersonalCourse\(courseId\)/u);

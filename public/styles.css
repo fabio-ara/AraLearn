@@ -862,12 +862,6 @@ textarea {
   display: none;
 }
 
-.remote-collection-count {
-  flex: 0 0 auto;
-  color: var(--muted);
-  font-size: var(--type-xs);
-}
-
 .remote-collection-courses {
   padding: 0 5px 5px;
 }
@@ -885,6 +879,15 @@ textarea {
 .remote-collection-courses .card-subtitle,
 .remote-study-paths .card-subtitle {
   display: none;
+}
+
+.remote-collection-courses .remote-course-card.is-installed {
+  border-color: rgba(108, 181, 95, 0.38);
+  background: rgba(108, 181, 95, 0.07);
+}
+
+.remote-collection-courses .remote-course-card.is-installed .card-title {
+  color: #cfe8c7;
 }
 
 .remote-library-panel .remote-course-card .navigation-main {
@@ -909,8 +912,7 @@ textarea {
 }
 
 .remote-library-panel .remote-course-action,
-.remote-library-panel .remote-course-pending,
-.remote-library-panel .remote-course-installed {
+.remote-library-panel .remote-course-pending {
   min-width: var(--library-control-size);
   min-height: var(--library-control-size);
   width: var(--library-control-size);
@@ -919,14 +921,6 @@ textarea {
   padding: 5px;
   border-radius: 9px;
   line-height: 1;
-}
-
-.remote-course-installed {
-  display: inline-grid;
-  place-items: center;
-  min-width: 32px;
-  min-height: 32px;
-  color: var(--accent-strong);
 }
 
 .remote-sync-issue {

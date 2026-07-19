@@ -119,6 +119,7 @@ export function createRemoteLibraryOverlay({
   let revealedPathId = "";
   let revealedCourseId = "";
   let searchTimer = null;
+  let loadGeneration = 0;
 
   root.innerHTML = `
     <section class="remote-library-overlay" data-library-overlay hidden aria-label="Biblioteca">
@@ -224,9 +225,14 @@ export function createRemoteLibraryOverlay({
     if (value) root.querySelector("[data-account-cancel]")?.focus();
   };
 
-  const courseCard = (course, action = "clone", { hasPendingLocalChange = false } = {}) => {
+  const courseCard = (
+    course,
+    action = "clone",
+    { hasPendingLocalChange = false, showGoal = true } = {}
+  ) => {
     const id = text(field(course, "course_id", "courseId", "id"));
     const sourceId = text(field(course, "source_course_id", "sourceCourseId")) || id;
+    const installedCourseId = text(field(course, "installed_course_id", "installedCourseId"));
     const title = text(field(course, "title")) || "Curso sem título";
     const goal = text(field(course, "goal"));
     const role = text(field(course, "membership_role", "membershipRole", "role")) || "learner";
@@ -234,6 +240,9 @@ export function createRemoteLibraryOverlay({
     const updateAction = resolveLibraryCourseUpdateAction(course);
     const wrapper = document.createElement("article");
     wrapper.className = "clean-card course-card progress-card navigation-list-card remote-course-card";
+    wrapper.dataset.courseRow = "";
+    wrapper.dataset.courseTitle = title;
+    wrapper.classList.toggle("is-installed", action === "clone" && installed);
     const copy = document.createElement("div");
     copy.className = "course-copy navigation-main";
     const titleRow = document.createElement("div");
@@ -243,7 +252,7 @@ export function createRemoteLibraryOverlay({
     heading.textContent = title;
     titleRow.append(heading);
     copy.append(titleRow);
-    if (goal) {
+    if (showGoal && goal) {
       const description = document.createElement("p");
       description.className = "card-subtitle";
       description.textContent = goal;
@@ -253,12 +262,9 @@ export function createRemoteLibraryOverlay({
     actions.className = "course-actions navigation-actions remote-course-actions";
     if (action === "clone") {
       if (installed) {
-        const ready = document.createElement("span");
-        ready.className = "remote-course-installed";
-        ready.title = "Adicionado";
-        ready.setAttribute("aria-label", "Adicionado");
-        ready.innerHTML = renderUiIcon("ready-state", "remote-library-action-icon");
-        actions.append(ready);
+        if (installedCourseId) {
+          actions.append(actionButton("Remover minha cópia deste curso", "remove", installedCourseId));
+        }
       } else {
         actions.append(actionButton("Adicionar aos meus cursos", "clone", sourceId));
       }
@@ -517,18 +523,19 @@ export function createRemoteLibraryOverlay({
     collections.forEach((collection) => {
       const details = document.createElement("details");
       details.className = "remote-catalog-collection";
-      details.open = Boolean(catalogQuery);
+      details.open = true;
       const summary = document.createElement("summary");
       const title = document.createElement("span");
-      title.textContent = collection.title;
-      const count = document.createElement("span");
-      count.className = "remote-collection-count";
-      count.textContent = String(collection.courses.length);
-      summary.append(title, count);
+      title.textContent = `${collection.title} (${collection.courses.length})`;
+      summary.append(title);
       details.append(summary);
       const rows = document.createElement("div");
       rows.className = "remote-collection-courses";
-      collection.courses.forEach((course) => rows.append(courseCard(course, "clone")));
+      collection.courses.forEach((course) => rows.append(courseCard(
+        course,
+        "clone",
+        { showGoal: false }
+      )));
       if (!collection.courses.length) rows.append(emptyMessage("Sem cursos."));
       details.append(rows);
       section.list.append(details);
@@ -537,7 +544,9 @@ export function createRemoteLibraryOverlay({
     return section.section;
   };
 
-  const load = async () => {
+  const load = async ({ synchronizeBeforeRead = true } = {}) => {
+    const currentGeneration = ++loadGeneration;
+    const query = catalogQuery;
     setBusy(true, "Consultando…");
     try {
       const renderedPaths = Array.from(root.querySelectorAll("[data-study-path-card]:not([data-study-path-card='default'])"));
@@ -547,14 +556,15 @@ export function createRemoteLibraryOverlay({
           .map((card) => card.dataset.studyPathCard));
       }
       if (revealedPathId) expandedPathIds.add(revealedPathId);
-      await beforeRemoteRead();
+      if (synchronizeBeforeRead) await beforeRemoteRead();
       const [collectionRows, libraryCourses, conflicts, rejected, pending] = await Promise.all([
-        catalog.listCollections(catalogQuery),
+        catalog.listCollections(query),
         catalog.listLibrary(),
         syncEngine?.listConflicts?.() || [],
         syncEngine?.listRejectedMutations?.() || [],
         syncEngine?.listPendingMutations?.() || []
       ]);
+      if (currentGeneration !== loadGeneration) return;
       content.replaceChildren();
       const pendingCourseIds = new Set(array(pending).map((mutation) => text(field(mutation, "course_id", "courseId"))).filter(Boolean));
       const pendingLabel = pendingCourseIds.size
@@ -609,6 +619,7 @@ export function createRemoteLibraryOverlay({
         revealedCourseId = "";
       }
     } catch (error) {
+      if (currentGeneration !== loadGeneration) return;
       setBusy(false, libraryErrorMessage(error));
     }
   };
@@ -896,10 +907,11 @@ export function createRemoteLibraryOverlay({
 
   root.addEventListener("input", (event) => {
     const input = event.target.closest("[data-catalog-search]");
-    if (!input || busy) return;
+    if (!input) return;
     catalogQuery = input.value;
+    loadGeneration += 1;
     globalThis.clearTimeout(searchTimer);
-    searchTimer = globalThis.setTimeout(() => void load(), 280);
+    searchTimer = globalThis.setTimeout(() => void load({ synchronizeBeforeRead: false }), 280);
   });
 
   document.addEventListener("aralearn:open-library", () => {
