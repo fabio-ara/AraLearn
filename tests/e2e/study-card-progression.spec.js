@@ -270,7 +270,19 @@ test("porta de autenticação é compacta, iconográfica e alinhada", async ({ p
 test("exclusão da conta exige confirmação e retorna à porta de acesso", async ({ page }) => {
   await signIn(page);
   await page.getByRole("button", { name: "Abrir biblioteca e sincronização" }).click();
-  await page.getByRole("button", { name: "Excluir conta" }).click();
+  const signOutButton = page.getByRole("button", { name: "Sair da conta" });
+  const deleteAccountButton = page.getByRole("button", { name: "Excluir conta" });
+  await expect(deleteAccountButton).toHaveClass(/\bis-danger\b/u);
+  const [signOutBox, deleteAccountBox] = await Promise.all([
+    signOutButton.boundingBox(),
+    deleteAccountButton.boundingBox()
+  ]);
+  expect(signOutBox).not.toBeNull();
+  expect(deleteAccountBox).not.toBeNull();
+  expect(deleteAccountBox.x).toBeGreaterThan(signOutBox.x);
+  await expectSvgControlsCentered(page, ".remote-library-account-actions button");
+
+  await deleteAccountButton.click();
   await expect(page.getByRole("alertdialog", { name: "Excluir conta" })).toBeVisible();
   await page.getByRole("button", { name: "Cancelar exclusão" }).click();
   await expect(page.getByRole("alertdialog", { name: "Excluir conta" })).toBeHidden();

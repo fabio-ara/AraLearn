@@ -152,8 +152,8 @@ export function createRemoteLibraryOverlay({
         <footer class="remote-library-footer">
           <button class="icon-ghost" type="button" data-library-sync title="Sincronizar agora" aria-label="Sincronizar agora">${iconMarkup("sync")}</button>
           <div class="remote-library-account-actions">
-            <button class="icon-ghost" type="button" data-library-delete-account title="Excluir conta" aria-label="Excluir conta">${iconMarkup("deleteAccount")}</button>
             <button class="icon-ghost" type="button" data-library-signout title="Sair da conta" aria-label="Sair da conta">${iconMarkup("signout")}</button>
+            <button class="icon-ghost is-danger" type="button" data-library-delete-account title="Excluir conta" aria-label="Excluir conta">${iconMarkup("deleteAccount")}</button>
           </div>
         </footer>
       </div>

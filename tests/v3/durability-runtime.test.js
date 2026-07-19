@@ -69,7 +69,8 @@ test("logout fecha sem apagar a réplica física do usuário", () => {
 });
 
 test("conta pode ser excluída sem expor operação administrativa no cliente", () => {
-  assert.match(overlay, /data-library-delete-account title="Excluir conta" aria-label="Excluir conta"/u);
+  assert.match(overlay, /class="icon-ghost is-danger" type="button" data-library-delete-account title="Excluir conta" aria-label="Excluir conta"/u);
+  assert.match(overlay, /data-library-signout[\s\S]*data-library-delete-account/u);
   assert.match(overlay, /data-account-confirm-action title="Excluir conta definitivamente" aria-label="Excluir conta definitivamente"/u);
   assert.match(overlay, /await catalog\.deleteOwnAccount\(\)/u);
   assert.match(main, /await clearAraLearnLocalState\(\)/u);
