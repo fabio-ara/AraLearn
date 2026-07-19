@@ -402,10 +402,25 @@ textarea {
   background: var(--surface-1);
 }
 
+.remote-library-tab-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 34px;
+  align-items: center;
+  gap: 4px;
+}
+
 .remote-library-tabs {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 4px;
+}
+
+.remote-library-tab-row .remote-library-close {
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
+  min-height: 34px;
+  border-radius: 10px;
 }
 
 .remote-library-tab {
@@ -839,6 +854,7 @@ textarea {
   display: flex;
   align-items: center;
   padding: 4px 6px;
+  font-size: 0.8rem;
 }
 
 .remote-catalog-collection {
@@ -853,9 +869,11 @@ textarea {
   padding: 5px 9px;
   cursor: pointer;
   list-style: none;
+  font-family: var(--font-ui);
   color: var(--text);
   font-size: 0.8rem;
   font-weight: 700;
+  line-height: 1.25;
 }
 
 .remote-catalog-collection > summary::-webkit-details-marker {
@@ -896,14 +914,23 @@ textarea {
 }
 
 .remote-library-panel .remote-course-card .card-title,
-.remote-study-path-header .card-title {
+.remote-study-path-course-row > span {
   overflow: hidden;
+  font-family: var(--font-ui);
   color: #f6ead6;
   font-size: 0.8rem;
-  font-weight: 700;
+  font-weight: 400;
   line-height: 1.2;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.remote-library-panel .remote-study-path-header .card-title {
+  font-family: var(--font-ui);
+  color: var(--text);
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1.25;
 }
 
 .remote-library-panel .remote-course-actions {

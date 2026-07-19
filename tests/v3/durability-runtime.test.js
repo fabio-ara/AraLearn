@@ -96,7 +96,7 @@ test("overlay usa o conjunto de ícones do AraLearn e mantém ações acessívei
   assert.doesNotMatch(overlay, /Sincronizar cópia com o Supabase/u);
   assert.doesNotMatch(overlay, /Biblioteca e sincronização/u);
   assert.doesNotMatch(overlay, /data-library-account/u);
-  assert.doesNotMatch(overlay, /data-library-close title="Fechar biblioteca"/u);
+  assert.match(overlay, /class="icon-ghost remote-library-close"[\s\S]*title="Fechar biblioteca" aria-label="Fechar biblioteca"/u);
   assert.doesNotMatch(overlay, /appendStatus\(/u);
   assert.match(overlay, /Remover minha cópia deste curso/u);
   assert.match(overlay, /await removePersonalCourse\(button\.dataset\.courseId\)[\s\S]*await synchronizeAndReload\(\)/u);
@@ -123,6 +123,9 @@ test("overlay usa o conjunto de ícones do AraLearn e mantém ações acessívei
   assert.match(overlay, /button\.disabled = value \|\| button\.dataset\.fixedDisabled === "true"/u);
   assert.match(styles, /\.remote-library-content[\s\S]*scrollbar-gutter: stable/u);
   assert.match(styles, /\.remote-library-panel \.remote-course-card \.card-title[\s\S]*white-space: nowrap/u);
+  assert.match(styles, /\.remote-library-tab-row \{[\s\S]*grid-template-columns: minmax\(0, 1fr\) 34px/u);
+  assert.match(styles, /\.remote-library-panel \.remote-course-card \.card-title,[\s\S]*\.remote-study-path-course-row > span[\s\S]*font-weight: 400/u);
+  assert.match(styles, /\.remote-library-panel \.remote-study-path-header \.card-title \{[\s\S]*font-family: var\(--font-ui\);[\s\S]*font-weight: 700/u);
   assert.match(styles, /\.remote-library-view > \.centered-section-heading-row[\s\S]*display: none/u);
   assert.match(styles, /--library-control-size: 30px/u);
   assert.match(styles, /\.remote-study-path-header,[\s\S]*grid-template-columns: minmax\(0, 1fr\) auto/u);

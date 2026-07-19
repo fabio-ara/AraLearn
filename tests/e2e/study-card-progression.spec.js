@@ -385,6 +385,19 @@ test("a biblioteca consulta somente metadados remotos", async ({ page }) => {
   await search.fill("");
   await expect(page.getByRole("heading", { name: "Curso oficial remoto" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Outro curso oficial" })).toBeVisible();
+
+  const closeLibrary = page.getByRole("button", { name: "Fechar biblioteca" });
+  const [tabRowBox, closeBox] = await Promise.all([
+    page.locator(".remote-library-tab-row").boundingBox(),
+    closeLibrary.boundingBox()
+  ]);
+  expect(closeBox).toMatchObject({ width: 34, height: 34 });
+  expect(Math.abs(
+    (closeBox.y + closeBox.height / 2) - (tabRowBox.y + tabRowBox.height / 2)
+  )).toBeLessThanOrEqual(1);
+  await expectSvgControlsCentered(page, ".remote-library-close");
+  await closeLibrary.click();
+  await expect(page.locator("[data-library-overlay]")).toBeHidden();
 });
 
 test("a biblioteca permite sincronizar, atualizar e remover somente a cópia pessoal", async ({ page }) => {
@@ -422,6 +435,14 @@ test("a biblioteca permite sincronizar, atualizar e remover somente a cópia pes
   await expect(page.getByRole("button", { name: "Sincronizar este dispositivo com a sua conta" })).toBeVisible();
   await expect(personalCard.getByRole("button", { name: "Atualizar cópia com a publicação oficial" })).toBeVisible();
   await expect(personalCard.getByRole("button", { name: "Remover minha cópia deste curso" })).toBeVisible();
+  const pathHeadingTypography = await page.locator(".remote-study-path-header .card-title").first().evaluate((node) => {
+    const style = getComputedStyle(node);
+    return { family: style.fontFamily, size: style.fontSize, weight: style.fontWeight };
+  });
+  const pathCourseTypography = await personalCard.locator(":scope > span").evaluate((node) => {
+    const style = getComputedStyle(node);
+    return { family: style.fontFamily, size: style.fontSize, weight: style.fontWeight };
+  });
   await expectSvgControlsCentered(page, ".remote-library-panel button[title][aria-label]");
   await page.getByRole("tab", { name: "Coleções" }).click();
   const installedCourse = page.locator(".remote-collection-courses .remote-course-card").filter({ hasText: "Curso já adicionado" });
@@ -434,6 +455,17 @@ test("a biblioteca permite sincronizar, atualizar e remover somente a cópia pes
   );
   await expect(availableCourse).not.toHaveClass(/\bis-installed\b/u);
   await expect(page.getByRole("button", { name: "Adicionar aos meus cursos" })).toHaveCount(1);
+  const collectionHeadingTypography = await page.locator(".remote-catalog-collection > summary > span").first().evaluate((node) => {
+    const style = getComputedStyle(node);
+    return { family: style.fontFamily, size: style.fontSize, weight: style.fontWeight };
+  });
+  const collectionCourseTypography = await installedCourse.locator(".card-title").evaluate((node) => {
+    const style = getComputedStyle(node);
+    return { family: style.fontFamily, size: style.fontSize, weight: style.fontWeight };
+  });
+  expect(pathHeadingTypography).toEqual(collectionHeadingTypography);
+  expect(pathCourseTypography).toEqual(collectionCourseTypography);
+  expect(pathCourseTypography.weight).toBe("400");
 
   page.once("dialog", (dialog) => dialog.accept());
   const deletion = page.waitForRequest((request) => request.url().endsWith("/rpc/delete_personal_course"));
