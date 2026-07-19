@@ -1203,3 +1203,24 @@ test("pull grande mantém no máximo uma página em aplicação e confirma curso
   assert.equal((await store.getAll("courses")).length, pages);
   store.close();
 });
+
+test("sincronização comunica etapas e conclusão para a interface", async () => {
+  const store = await createStore();
+  const progress = [];
+  const engine = new RelationalSyncEngine({
+    store,
+    deviceId: DEVICE_ID,
+    onProgress: (event) => progress.push(event),
+    transport: {
+      async applySyncBatch() { return { results: [] }; },
+      async pullSyncChanges() { return { changes: [], nextCursor: 0, hasMore: false }; },
+      async downloadCourseGraph() { throw new Error("Não deveria baixar cursos sem membership."); }
+    }
+  });
+
+  await engine.synchronize();
+
+  assert.deepEqual(progress.map((event) => event.percent), [12, 20, 36, 52, 66, 100]);
+  assert.match(progress.at(-1).message, /abrindo o aralearn/i);
+  store.close();
+});

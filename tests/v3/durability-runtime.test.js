@@ -32,6 +32,16 @@ test("runtime torna durabilidade visível e faz flush nos caminhos de saída", (
   assert.match(activity, /protected void onPause\(\)[\s\S]*evaluateJavascript\(RUNTIME_FLUSH_SCRIPT/u);
 });
 
+test("inicialização informa o progresso da materialização local", () => {
+  assert.match(main, /function renderStartupLoading\(root\)/u);
+  assert.match(main, /data-startup-loading-progress/u);
+  assert.match(main, /function updateStartupLoading\(root, \{ percent, message \} = \{\}\)/u);
+  assert.match(main, /renderStartupLoading\(root\);[\s\S]*IndexedDbRelationalStore\.open/u);
+  assert.match(main, /onProgress\(progress\)[\s\S]*updateStartupLoading\(root, progress\)/u);
+  assert.match(styles, /\.startup-loading-track/u);
+  assert.match(styles, /\.startup-loading-percent/u);
+});
+
 test("logout fecha sem apagar a réplica física do usuário", () => {
   assert.match(main, /authStore = await IndexedDbRelationalStore\.open\(globalThis\.indexedDB\)/u);
   assert.match(

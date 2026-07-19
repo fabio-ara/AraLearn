@@ -246,6 +246,78 @@ textarea {
   opacity: 0.55;
 }
 
+.startup-loading-shell {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: max(24px, var(--safe-top)) max(18px, var(--safe-right)) max(24px, var(--safe-bottom)) max(18px, var(--safe-left));
+}
+
+.startup-loading-card {
+  width: min(100%, 430px);
+  padding: clamp(24px, 6vw, 38px);
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  background: linear-gradient(160deg, rgba(38, 32, 25, 0.98), rgba(23, 18, 14, 0.98));
+  box-shadow: 0 28px 70px rgba(0, 0, 0, 0.38);
+}
+
+.startup-loading-kicker {
+  margin-bottom: 6px;
+  color: var(--accent);
+  font-size: var(--type-xs);
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.startup-loading-card h1 {
+  color: var(--text);
+  font-family: var(--font-display);
+  font-size: clamp(1.55rem, 7vw, 2rem);
+  line-height: 1.16;
+}
+
+.startup-loading-message {
+  min-height: 3.1em;
+  margin-top: 12px;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.startup-loading-track {
+  height: 10px;
+  margin-top: 24px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--field-bg);
+}
+
+.startup-loading-track span {
+  display: block;
+  width: 0;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--accent), var(--accent-strong));
+  transition: width 260ms ease;
+}
+
+.startup-loading-percent {
+  margin-top: 10px;
+  color: var(--accent-strong);
+  font-size: var(--type-lg);
+  font-weight: 800;
+}
+
+.startup-loading-note {
+  margin-top: 18px;
+  color: var(--muted);
+  font-size: var(--type-sm);
+  line-height: 1.55;
+}
+
 .remote-library-overlay {
   position: fixed;
   z-index: 120;

@@ -441,7 +441,8 @@ export class RelationalSyncEngine {
     deviceId = null,
     pageSize = 100,
     clock = () => new Date(),
-    uuidFactory = defaultUuidFactory
+    uuidFactory = defaultUuidFactory,
+    onProgress = null
   } = {}) {
     if (!store || typeof store.listPendingOutbox !== "function" || typeof store.applyRemotePage !== "function") {
       throw new TypeError("RelationalSyncEngine exige um IndexedDbRelationalStore.");
@@ -458,6 +459,11 @@ export class RelationalSyncEngine {
     this.pageSize = pageSize;
     this.clock = clock;
     this.uuidFactory = uuidFactory;
+    this.onProgress = typeof onProgress === "function" ? onProgress : null;
+  }
+
+  reportProgress(progress) {
+    this.onProgress?.(progress);
   }
 
   async initialize() {
@@ -785,6 +791,7 @@ export class RelationalSyncEngine {
     ) return 0;
     const userId = await this.store.getSyncState("replica.userId");
     if (!userId) return 0;
+    this.reportProgress({ percent: 68, message: "Verificando os cursos desta conta…" });
     const [memberships, courses, modules] = await Promise.all([
       this.store.getAll("memberships"),
       this.store.getAll("courses"),
@@ -816,8 +823,22 @@ export class RelationalSyncEngine {
       .filter(
       (courseId) => !materializedCourseIds.has(courseId)
     );
-    for (const courseId of missingCourseIds) {
+    const total = missingCourseIds.length;
+    for (const [index, courseId] of missingCourseIds.entries()) {
+      const startPercent = 70 + Math.round((index / Math.max(total, 1)) * 22);
+      this.reportProgress({
+        percent: startPercent,
+        message: total > 1
+          ? `Baixando curso ${index + 1} de ${total} para este dispositivo…`
+          : "Baixando o curso para este dispositivo…"
+      });
       const snapshot = firstObject(await this.transport.downloadCourseGraph(courseId));
+      this.reportProgress({
+        percent: Math.min(95, startPercent + 12),
+        message: total > 1
+          ? `Salvando curso ${index + 1} de ${total} neste dispositivo…`
+          : "Salvando o curso neste dispositivo…"
+      });
       const result = await this.store.replaceCourseSnapshot(courseId, snapshot, {
         receivedAt: timestamp(this.clock),
         uuidFactory: this.uuidFactory
@@ -843,8 +864,10 @@ export class RelationalSyncEngine {
       throw new TypeError("expectedCourseIds deve ser uma lista.");
     }
     if (this.#activeSynchronization) return this.#activeSynchronization;
+    this.reportProgress({ percent: 12, message: "Preparando a sincronização…" });
     this.#activeSynchronization = this.initialize()
       .then(async () => {
+        this.reportProgress({ percent: 20, message: "Enviando alterações pendentes…" });
         let pushed;
         try {
           pushed = await this.push();
@@ -861,6 +884,7 @@ export class RelationalSyncEngine {
           };
         }
         if (pushed.authRequired) return this.authRequiredResult({ pushed });
+        this.reportProgress({ percent: 36, message: "Conferindo a réplica deste dispositivo…" });
         let bootstrap;
         try {
           bootstrap = await this.bootstrapReplicaIfNeeded();
@@ -890,6 +914,7 @@ export class RelationalSyncEngine {
         }
         let pulled;
         try {
+          this.reportProgress({ percent: 52, message: "Buscando alterações no Supabase…" });
           pulled = await this.pull();
         } catch (error) {
           const failure = classifySyncFailure(error);
@@ -943,6 +968,7 @@ export class RelationalSyncEngine {
         }
         let bootstrappedCourses;
         try {
+          this.reportProgress({ percent: 66, message: "Preparando os cursos para estudo…" });
           bootstrappedCourses = await this.bootstrapMissingCourses([
             ...new Set([
               ...pulled.membershipCourseIds,
@@ -960,6 +986,7 @@ export class RelationalSyncEngine {
           }
           throw error;
         }
+        this.reportProgress({ percent: 100, message: "Cursos atualizados. Abrindo o AraLearn…" });
         return { pushed, bootstrap, pulled, bootstrappedCourses, deviceId: this.deviceId };
       })
       .finally(() => { this.#activeSynchronization = null; });

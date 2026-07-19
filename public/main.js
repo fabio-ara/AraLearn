@@ -147,6 +147,37 @@ function renderStartupFailure(root, error) {
   });
 }
 
+function renderStartupLoading(root) {
+  root.innerHTML = `
+    <main class="startup-loading-shell" aria-busy="true">
+      <section class="startup-loading-card" role="status" aria-live="polite">
+        <header class="auth-brand"><img src="assets/brand/aralearn-mark.png" alt=""><span>AraLearn</span></header>
+        <p class="startup-loading-kicker">Sincronização inicial</p>
+        <h1>Preparando seus cursos</h1>
+        <p class="startup-loading-message" data-startup-loading-message>Conectando à sua réplica deste dispositivo…</p>
+        <div class="startup-loading-track" role="progressbar" aria-label="Progresso da sincronização inicial" aria-valuemin="0" aria-valuemax="100" aria-valuenow="4" data-startup-loading-progress>
+          <span data-startup-loading-fill style="width:4%"></span>
+        </div>
+        <p class="startup-loading-percent" data-startup-loading-percent>4%</p>
+        <p class="startup-loading-note">Em cursos grandes, uma etapa pode levar alguns instantes. Seus dados continuam sendo preparados localmente.</p>
+      </section>
+    </main>
+  `;
+}
+
+function updateStartupLoading(root, { percent, message } = {}) {
+  const safePercent = Math.max(0, Math.min(100, Math.round(Number(percent) || 0)));
+  const progress = root.querySelector("[data-startup-loading-progress]");
+  const fill = root.querySelector("[data-startup-loading-fill]");
+  const percentLabel = root.querySelector("[data-startup-loading-percent]");
+  const messageElement = root.querySelector("[data-startup-loading-message]");
+  if (!progress || !fill || !percentLabel || !messageElement) return;
+  progress.setAttribute("aria-valuenow", String(safePercent));
+  fill.style.width = `${safePercent}%`;
+  percentLabel.textContent = `${safePercent}%`;
+  if (message) messageElement.textContent = message;
+}
+
 async function renderAuthenticatedApplication(root, config, authClient, session) {
   const remoteCatalog = new RemoteCourseCatalog({
     projectUrl: config.projectUrl,
@@ -155,7 +186,10 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
   });
   const syncEngine = new RelationalSyncEngine({
     store: relationalStore,
-    transport: new SupabaseSyncTransport(remoteCatalog)
+    transport: new SupabaseSyncTransport(remoteCatalog),
+    onProgress(progress) {
+      updateStartupLoading(root, progress);
+    }
   });
   let editorApp = null;
   let automaticSyncTimer = null;
@@ -384,9 +418,11 @@ async function start(root) {
     return;
   }
   activeUserId = session.user.id;
+  renderStartupLoading(root);
   relationalStore = await IndexedDbRelationalStore.open(globalThis.indexedDB, {
     userId: activeUserId
   });
+  updateStartupLoading(root, { percent: 8, message: "Abrindo a réplica deste dispositivo…" });
   await relationalStore.bindReplicaToUser(session.user.id, session);
   await renderAuthenticatedApplication(root, config, authClient, session);
 }
