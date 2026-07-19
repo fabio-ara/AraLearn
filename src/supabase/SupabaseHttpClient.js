@@ -61,8 +61,12 @@ export class SupabaseHttpClient {
     headers = {},
     accessToken = this.accessToken,
     signal,
-    prefer
+    prefer,
+    timeoutMs = this.timeoutMs
   } = {}) {
+    if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) {
+      throw new TypeError("timeoutMs deve ser um número positivo.");
+    }
     const requestHeaders = new Headers(headers);
     requestHeaders.set("apikey", this.publishableKey);
     if (accessToken) requestHeaders.set("Authorization", `Bearer ${accessToken}`);
@@ -86,7 +90,7 @@ export class SupabaseHttpClient {
       timeoutId = globalThis.setTimeout(() => {
         timedOut = true;
         controller.abort();
-      }, this.timeoutMs);
+      }, timeoutMs);
     }
 
     let response;

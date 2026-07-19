@@ -14,6 +14,7 @@ const index = read("public/index.html");
 const staging = read("scripts/stageWebRuntime.mjs");
 const server = read("scripts/servePublic.js");
 const styles = read("public/styles.css");
+const treeOperationsMigration = read("supabase/migrations/20260719044500_bound_personal_course_tree_operations.sql");
 
 test("runtime torna durabilidade visível e faz flush nos caminhos de saída", () => {
   assert.match(main, /repository\.onDurabilityChange/u);
@@ -64,6 +65,16 @@ test("overlay usa o conjunto de ícones do AraLearn e mantém ações acessívei
   assert.match(lessonEditor, /O curso oficial continuará publicado no catálogo/u);
   assert.doesNotMatch(lessonEditor, /deste dispositivo e do Supabase/u);
   assert.match(main, /getCourseRevision\(courseId\)[\s\S]*relationalStore\.get\("courses", courseId\)/u);
+  assert.match(overlay, /const synchronizeAndReload = async \(options = undefined\) => \{[\s\S]*await beforeRemoteRead\(options\)/u);
+  assert.match(main, /synchronizeReplica = async \(\{ reloadWhenDomainChanges = true, expectedCourseIds = \[\] \} = \{\}\)/u);
+  assert.match(main, /syncEngine\.synchronize\(\{ expectedCourseIds \}\)/u);
+});
+
+test("operações completas de curso não produzem feed redundante por descendente", () => {
+  assert.match(treeOperationsMigration, /delete_personal_course\(uuid, bigint, uuid\)[\s\S]*aralearn\.suppress_sync_changes = 'on'/u);
+  assert.match(treeOperationsMigration, /delete_personal_course\(uuid, bigint, uuid\)[\s\S]*statement_timeout = '60s'/u);
+  assert.match(treeOperationsMigration, /get_personal_course_graph\(uuid\)[\s\S]*statement_timeout = '60s'/u);
+  assert.match(treeOperationsMigration, /bootstrap_replica\(uuid\)[\s\S]*statement_timeout = '60s'/u);
 });
 
 test("CSP de build permite apenas a origem Supabase configurada", () => {

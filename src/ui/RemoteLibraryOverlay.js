@@ -280,7 +280,7 @@ export function createRemoteLibraryOverlay({
   };
 
   const synchronizeAndReload = async (options = undefined) => {
-    if (syncEngine?.synchronize) await syncEngine.synchronize(options);
+    await beforeRemoteRead(options);
     await onChanged();
   };
 

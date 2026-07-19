@@ -63,11 +63,11 @@ export class RemoteCourseCatalog {
     this.http = new SupabaseHttpClient({ projectUrl, publishableKey, fetchImpl });
   }
 
-  async rpc(name, parameters = {}) {
+  async rpc(name, parameters = {}, requestOptions = {}) {
     try {
       const accessToken = await this.authClient.getAccessToken();
       if (!accessToken) throw asAuthenticationRequired();
-      return await this.http.rpc(name, parameters, { accessToken });
+      return await this.http.rpc(name, parameters, { ...requestOptions, accessToken });
     } catch (error) {
       if (isAuthenticationFailure(error)) {
         const authError = asAuthenticationRequired(error);
@@ -115,7 +115,7 @@ export class RemoteCourseCatalog {
       [parameterName]: courseId,
       ...additionalParameters,
       p_mutation_id: effectiveMutationId
-    });
+    }, { timeoutMs: 60_000 });
     if (typeof sessionStore?.putSyncState === "function") {
       await sessionStore.putSyncState(stateKey, null);
     }
@@ -151,6 +151,6 @@ export class RemoteCourseCatalog {
   }
 
   downloadCourseGraph(personalCourseId) {
-    return this.rpc("get_personal_course_graph", { p_course_id: personalCourseId });
+    return this.rpc("get_personal_course_graph", { p_course_id: personalCourseId }, { timeoutMs: 60_000 });
   }
 }

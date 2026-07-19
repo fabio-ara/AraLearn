@@ -91,6 +91,45 @@ test("cliente HTTP encerra uma chamada remota que excede o prazo", async () => {
   );
 });
 
+test("operações de árvore podem usar prazo explícito sem ampliar as RPCs comuns", async () => {
+  const client = new SupabaseHttpClient({
+    projectUrl: "https://projeto.supabase.co",
+    publishableKey: "public-key",
+    timeoutMs: 5,
+    fetchImpl: async (_url, { signal }) => new Promise((resolve, reject) => {
+      const timer = setTimeout(() => resolve(response(200, { ok: true })), 20);
+      signal.addEventListener("abort", () => {
+        clearTimeout(timer);
+        reject(new Error("aborted"));
+      }, { once: true });
+    })
+  });
+
+  const result = await client.request("/rest/v1/rpc/get_personal_course_graph", { timeoutMs: 60 });
+  assert.deepEqual(result, { ok: true });
+});
+
+test("catálogo reserva prazo maior apenas para snapshot de árvore", async () => {
+  const catalog = new RemoteCourseCatalog({
+    projectUrl: "https://projeto.supabase.co",
+    publishableKey: "public-key",
+    authClient: {
+      getSession() { return { user: { id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa" } }; },
+      async getAccessToken() { return "access-token"; }
+    },
+    fetchImpl: async (_url, { signal }) => new Promise((resolve, reject) => {
+      const timer = setTimeout(() => resolve(response(200, { courses: [] })), 20);
+      signal.addEventListener("abort", () => {
+        clearTimeout(timer);
+        reject(new Error("aborted"));
+      }, { once: true });
+    })
+  });
+  catalog.http.timeoutMs = 5;
+
+  assert.deepEqual(await catalog.downloadCourseGraph("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"), { courses: [] });
+});
+
 test("login persiste a sessão e envia apenas a chave pública no cabeçalho", async () => {
   const requests = [];
   const auth = new SupabaseAuthClient({

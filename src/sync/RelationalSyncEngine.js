@@ -424,7 +424,7 @@ export class SupabaseSyncTransport {
   }
 
   bootstrapReplica({ deviceId }) {
-    return this.remote.rpc("bootstrap_replica", { p_device_id: deviceId });
+    return this.remote.rpc("bootstrap_replica", { p_device_id: deviceId }, { timeoutMs: 60_000 });
   }
 
   downloadCourseGraph(courseId) {

@@ -160,9 +160,9 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
   let editorApp = null;
   let automaticSyncTimer = null;
   let automaticSyncRetryCount = 0;
-  const synchronizeReplica = async ({ reloadWhenDomainChanges = true } = {}) => {
+  const synchronizeReplica = async ({ reloadWhenDomainChanges = true, expectedCourseIds = [] } = {}) => {
     if (repository) await repository.flush();
-    const result = await syncEngine.synchronize();
+    const result = await syncEngine.synchronize({ expectedCourseIds });
     if (result.authRequired) return result;
     if (repository) {
       const refreshed = await repository.refreshFromReplica();
@@ -305,8 +305,8 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
     catalog: remoteCatalog,
     authClient,
     syncEngine,
-    async beforeRemoteRead() {
-      return synchronizeReplica();
+    async beforeRemoteRead(options) {
+      return synchronizeReplica(options);
     },
     async getCourseRevision(courseId) {
       return (await relationalStore.get("courses", courseId))?.revision;
