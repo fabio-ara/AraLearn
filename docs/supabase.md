@@ -59,7 +59,7 @@ O esquema customizado mantém o fluxo funcional no APK sem domínio próprio. O 
 
 O esquema `aralearn://` não prova ao Android que o AraLearn é seu único proprietário. PKCE impede que um aplicativo que intercepte o link troque o código sem o verifier, e a verificação de state impede a associação com outra tentativa, mas o interceptor ainda pode causar negação de serviço. Antes da distribuição pública, substitua-o por Android App Link HTTPS verificado em domínio controlado. `buildAuthRedirectUrl` já aceita um callback HTTPS validado; a migração futura precisa atualizar em conjunto o redirect permitido no Supabase, a constante do runtime, o `intent-filter` com `android:autoVerify="true"` e o arquivo `assetlinks.json` do domínio.
 
-O app implementa cadastro, confirmação, reenvio de confirmação, recuperação e troca de senha, login, renovação, sessão persistida e saída. Sem sessão, somente a porta de autenticação é renderizada. Não existe catálogo anônimo.
+O app implementa cadastro, confirmação, reenvio de confirmação, recuperação e troca de senha, login, renovação, sessão persistida e saída. O servidor de desenvolvimento resolve o arquivo pelo pathname e preserva a query `code`/`auth_state` na URL do navegador, permitindo que o runtime conclua o callback PKCE local. Sem sessão, somente a porta de autenticação é renderizada. Não existe catálogo anônimo.
 
 No ambiente local, `enable_confirmations = true`; as mensagens de confirmação e recuperação podem ser abertas na caixa SMTP local exposta em `http://127.0.0.1:54324` depois de `npx --yes supabase@2.109.1 start`.
 

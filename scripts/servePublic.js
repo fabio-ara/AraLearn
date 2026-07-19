@@ -79,7 +79,7 @@ function applyDevelopmentContentSecurityPolicy(data) {
 
 const server = http.createServer(async (req, res) => {
   try {
-    const urlPath = req.url || "/";
+    const urlPath = new URL(req.url || "/", "http://127.0.0.1").pathname;
     const targetPath = urlPath === "/" ? (artifactMode ? "/index.html" : "/public/index.html") : urlPath;
     if (!artifactMode && targetPath.split("?")[0] === "/runtime-config.js") {
       res.writeHead(200, {
