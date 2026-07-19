@@ -295,7 +295,12 @@ test("a biblioteca cria uma trilha pessoal compacta", async ({ page }) => {
   const looseCourse = defaultPath.locator(".remote-loose-course").first();
   const looseCourseTitle = await looseCourse.locator("[data-course-row]").getAttribute("data-course-title");
   await looseCourse.getByRole("button", { name: "Adicionar a uma trilha" }).click();
-  await looseCourse.getByRole("button", { name: "Adicionar a Mestrado" }).click();
+  const destination = looseCourse.locator(".remote-study-path-choice").filter({ hasText: "Mestrado" });
+  await expect(destination).toHaveJSProperty("tagName", "DIV");
+  await destination.locator("span").click();
+  await expect(defaultPath.getByRole("heading", { name: "Sem trilha (1)" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Mestrado (0)" })).toBeVisible();
+  await destination.getByRole("button", { name: "Adicionar a Mestrado" }).click();
   const path = page.locator(".remote-study-path-card:not(.remote-study-path-default)").filter({
     has: page.getByRole("heading", { name: "Mestrado (1)" })
   });
@@ -304,6 +309,15 @@ test("a biblioteca cria uma trilha pessoal compacta", async ({ page }) => {
   await expect(path.locator(".remote-study-path-course-row")).toContainText(looseCourseTitle);
   await expect(defaultPath.locator(".remote-loose-course")).toHaveCount(0);
   await expect(defaultPath.getByRole("heading", { name: "Sem trilha (0)" })).toBeVisible();
+  const emptyTypography = await defaultPath.locator(".empty-state-copy").evaluate((element) => {
+    const style = getComputedStyle(element);
+    return { family: style.fontFamily, size: style.fontSize, weight: style.fontWeight };
+  });
+  const courseTypography = await path.locator("[data-course-row] > span").evaluate((element) => {
+    const style = getComputedStyle(element);
+    return { family: style.fontFamily, size: style.fontSize, weight: style.fontWeight };
+  });
+  expect(emptyTypography).toEqual(courseTypography);
 });
 
 test("recarga online substitui shell antigo preservado no cache", async ({ browser }) => {

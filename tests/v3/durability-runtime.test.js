@@ -8,6 +8,8 @@ function read(relativePath) {
 
 const main = read("public/main.js");
 const overlay = read("src/ui/RemoteLibraryOverlay.js");
+const homeScreen = read("src/ui/renderHomeScreen.js");
+const lessonScreen = read("src/ui/renderLessonScreen.js");
 const lessonEditor = read("src/ui/lessonEditorApp.js");
 const activity = read("android/app/src/main/java/com/aralearn/app/MainActivity.java");
 const index = read("public/index.html");
@@ -90,6 +92,8 @@ test("overlay usa o conjunto de ícones do AraLearn e mantém ações acessívei
   assert.match(overlay, /Sem trilha \(\$\{looseCourses\.length\}\)/u);
   assert.match(overlay, /revealedPathId = pathId[\s\S]*revealedCourseId = button\.dataset\.courseId/u);
   assert.doesNotMatch(overlay, /Adicionar curso à trilha/u);
+  assert.match(overlay, /const row = document\.createElement\("div"\)[\s\S]*pathActionButton\([\s\S]*`Adicionar a \$\{path\.title/u);
+  assert.match(overlay, /button\.disabled = value \|\| button\.dataset\.fixedDisabled === "true"/u);
   assert.match(styles, /\.remote-library-content[\s\S]*scrollbar-gutter: stable/u);
   assert.match(styles, /\.remote-library-panel \.remote-course-card \.card-title[\s\S]*white-space: nowrap/u);
   assert.match(styles, /\.remote-library-view > \.centered-section-heading-row[\s\S]*display: none/u);
@@ -110,6 +114,17 @@ test("overlay usa o conjunto de ícones do AraLearn e mantém ações acessívei
   assert.match(styles, /\.remote-library-progress-track/u);
   assert.match(main, /synchronizeReplica = async \(\{ reloadWhenDomainChanges = true, expectedCourseIds = \[\], onProgress = null \} = \{\}\)/u);
   assert.match(main, /syncEngine\.synchronize\(\{ expectedCourseIds, onProgress \}\)/u);
+});
+
+test("estados vazios usam uma tipografia compacta única nas superfícies do app", () => {
+  assert.match(styles, /\.empty-state-copy \{[\s\S]*font-family: var\(--font-ui\)[\s\S]*font-size: 0\.78rem[\s\S]*font-weight: 400/u);
+  assert.match(overlay, /remote-library-empty empty-state-copy/u);
+  assert.match(homeScreen, /empty-state-copy home-study-path-empty/u);
+  assert.match(homeScreen, /<p class="empty-state-copy">Nenhum curso\.<\/p>/u);
+  assert.match(lessonScreen, /<p class="empty-state-copy">Sem módulos\.<\/p>/u);
+  assert.match(lessonScreen, /<p class="empty-state-copy">Sem lições\.<\/p>/u);
+  assert.match(lessonScreen, /<p class="empty-state-copy">Sem microssequências\.<\/p>/u);
+  assert.match(lessonScreen, /card-sheet-content-empty"><p class="empty-state-copy">/u);
 });
 
 test("operações completas de curso não produzem feed redundante por descendente", () => {

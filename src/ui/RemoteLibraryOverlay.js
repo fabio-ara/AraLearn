@@ -61,6 +61,7 @@ const ACTION_ICONS = Object.freeze({
   signout: "excluded-state",
   sync: "progress",
   trail: "trail",
+  addCourse: "add",
   collection: "folder"
 });
 
@@ -179,7 +180,9 @@ export function createRemoteLibraryOverlay({
 
   const setBusy = (value, message = "") => {
     busy = value;
-    root.querySelectorAll("button").forEach((button) => { button.disabled = value; });
+    root.querySelectorAll("button").forEach((button) => {
+      button.disabled = value || button.dataset.fixedDisabled === "true";
+    });
     if (!value) {
       progressRoot.hidden = true;
       displayedProgress = 0;
@@ -342,6 +345,10 @@ export function createRemoteLibraryOverlay({
       );
       rename.disabled = fixed;
       remove.disabled = fixed;
+      if (fixed) {
+        rename.dataset.fixedDisabled = "true";
+        remove.dataset.fixedDisabled = "true";
+      }
       actions.append(rename, remove);
       header.append(title, actions);
       return header;
@@ -576,7 +583,7 @@ export function createRemoteLibraryOverlay({
 
   const emptyMessage = (message) => {
     const paragraph = document.createElement("p");
-    paragraph.className = "remote-library-empty";
+    paragraph.className = "remote-library-empty empty-state-copy";
     paragraph.textContent = message;
     return paragraph;
   };
@@ -645,18 +652,18 @@ export function createRemoteLibraryOverlay({
         });
         if (shouldOpen) {
           array(studyPathRepository?.loadStudyPaths?.()).forEach((path) => {
-            const row = document.createElement("button");
-            row.type = "button";
+            const row = document.createElement("div");
             row.className = "remote-study-path-choice";
-            row.dataset.pathAction = "addCourse";
-            row.dataset.pathId = path.id;
-            row.dataset.courseId = courseId;
-            row.title = `Adicionar a ${path.title || "trilha"}`;
-            row.setAttribute("aria-label", row.title);
             const label = document.createElement("span");
             label.textContent = path.title || "Trilha";
-            row.append(label);
-            row.insertAdjacentHTML("beforeend", iconMarkup("trail"));
+            const add = pathActionButton(
+              `Adicionar a ${path.title || "trilha"}`,
+              "addCourse",
+              path.id,
+              "",
+              courseId
+            );
+            row.append(label, add);
             chooser.append(row);
           });
           chooser.hidden = false;

@@ -702,7 +702,7 @@ function renderCourseScreen({ course, progress, editorSupport }) {
     '<section class="navigation-list structure-navigation-list" data-structure-collection="module" data-course-key="' +
     escapeHtml(entityId(course)) +
     '">' +
-    (modules || '<section class="clean-card progress-card"><p class="card-subtitle">Sem módulos.</p></section>') +
+    (modules || '<section class="clean-card progress-card"><p class="empty-state-copy">Sem módulos.</p></section>') +
     "</section>" +
     "</main></section>"
   );
@@ -780,7 +780,7 @@ function renderModuleScreen({ course, moduleValue, progress, editorSupport }) {
     '" data-module-key="' +
     escapeHtml(entityId(moduleValue)) +
     '">' +
-    (lessons || '<section class="clean-card progress-card"><p class="card-subtitle">Sem lições.</p></section>') +
+    (lessons || '<section class="clean-card progress-card"><p class="empty-state-copy">Sem lições.</p></section>') +
     "</section>" +
     "</main></section>"
   );
@@ -866,7 +866,7 @@ function renderLessonScreenView({ course, lesson, moduleValue, progress, editorS
 
   const readyEmptyMessage =
     lessonTotal === 0
-      ? '<section class="clean-card lesson-ready-empty-card"><p class="card-subtitle">' +
+      ? '<section class="clean-card lesson-ready-empty-card"><p class="empty-state-copy">' +
         escapeHtml(
           groupedMicrosequences.planned.length
             ? "Não há microssequências prontas para estudar aqui. As etapas planejadas abaixo podem ser materializadas quando você quiser."
@@ -929,7 +929,7 @@ function renderLessonScreenView({ course, lesson, moduleValue, progress, editorS
     '" data-lesson-key="' +
     escapeHtml(entityId(lesson)) +
     '">' +
-    (microsequenceGroups || '<section class="clean-card progress-card"><p class="card-subtitle">Sem microssequências.</p></section>') +
+    (microsequenceGroups || '<section class="clean-card progress-card"><p class="empty-state-copy">Sem microssequências.</p></section>') +
     "</section></main></section>"
   );
 }
@@ -1094,7 +1094,7 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
         "</article>"
       : '<article class="card-portrait-body card-portrait-sheet runtime-card-sheet runtime-card-sheet-empty">' +
         '<div class="runtime-card-title">Sem cards ainda</div>' +
-        '<div class="card-sheet-content card-sheet-content-empty"><p class="runtime-paragraph">' +
+        '<div class="card-sheet-content card-sheet-content-empty"><p class="empty-state-copy">' +
         escapeHtml(readOnlyView
           ? "Esta microssequência ainda não tem cards disponíveis para estudo."
           : isPlanned

@@ -473,10 +473,19 @@ textarea {
   flex: 0 0 auto;
 }
 
-.remote-library-status,
-.remote-library-empty {
+.remote-library-status {
   color: var(--muted);
   font-size: var(--type-sm);
+}
+
+.empty-state-copy {
+  margin: 0;
+  color: var(--muted);
+  font-family: var(--font-ui);
+  font-size: 0.78rem;
+  font-weight: 400;
+  line-height: 1.35;
+  letter-spacing: var(--tracking-normal);
 }
 
 .remote-library-status {
@@ -742,6 +751,10 @@ textarea {
   border-left: 0;
   background: transparent;
   text-align: left;
+}
+
+.remote-study-path-choice .remote-course-action {
+  flex: 0 0 auto;
 }
 
 .remote-catalog-collection {

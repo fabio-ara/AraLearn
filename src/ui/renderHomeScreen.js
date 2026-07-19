@@ -279,7 +279,7 @@ function renderGenerateInputField({
 function renderStaticChips(items = [], { emptyLabel = "", iconName = "module", action = "", dataField = "" } = {}) {
   const normalizedItems = (Array.isArray(items) ? items : []).map((item) => String(item || "").trim()).filter(Boolean);
   if (!normalizedItems.length) {
-    return emptyLabel ? '<p class="tiny muted bottomup-empty-copy">' + escapeHtml(emptyLabel) + "</p>" : "";
+    return emptyLabel ? '<p class="empty-state-copy bottomup-empty-copy">' + escapeHtml(emptyLabel) + "</p>" : "";
   }
   return normalizedItems
     .map((item) => {
@@ -663,7 +663,7 @@ function renderCoursesPane({ project, progress, editorSupport }) {
         renderUiIcon("trail", "home-study-path-icon") +
         '<h2 class="section-heading">' + escapeHtml(path.title || "Trilha") + "</h2></div>" +
         '<div class="navigation-list home-study-path-courses">' +
-        (pathCourses.map(renderCoursePreview).join("") || '<p class="tiny muted home-study-path-empty">Sem cursos.</p>') +
+        (pathCourses.map(renderCoursePreview).join("") || '<p class="empty-state-copy home-study-path-empty">Sem cursos.</p>') +
         "</div></section>"
       );
     }).join("");
@@ -677,7 +677,7 @@ function renderCoursesPane({ project, progress, editorSupport }) {
 
   const courseMarkup = courses.map(renderCoursePreview).join("");
 
-  return courseMarkup || '<article class="clean-card"><p class="card-subtitle">Nenhum curso.</p></article>';
+  return courseMarkup || '<article class="clean-card"><p class="empty-state-copy">Nenhum curso.</p></article>';
 }
 
 export function renderGenerationPanelOverlay({ project, editorSupport = {} }) {
